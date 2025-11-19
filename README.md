@@ -4,6 +4,24 @@
 [![Dependencies](https://github.com/spectara/revela/actions/workflows/dependency-update-check.yml/badge.svg)](https://github.com/spectara/revela/actions/workflows/dependency-update-check.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
+> [!WARNING]
+> **🚧 WORK IN PROGRESS 🚧**
+> 
+> Revela is currently in early development (v1.0.0-dev). The core `generate` command is not yet implemented.
+> 
+> **Currently Working:**
+> - ✅ Project initialization (`revela init project`)
+> - ✅ Theme setup (`revela init theme`)
+> - ✅ Plugin management (`revela plugin list/install/uninstall`)
+> 
+> **Coming Soon:**
+> - ⏳ Site generation (`revela generate`) - **Main feature in development**
+> - ⏳ Image processing (NetVips integration)
+> - ⏳ Template rendering (Scriban integration)
+> - ⏳ Official plugins (Deploy, OneDrive)
+> 
+> **Not Ready for Production Use!** Star ⭐ and watch this repo for updates.
+
 **Reveal your stories through beautiful portfolios**
 
 Modern static site generator for photographers, built with .NET 10 and optimized for performance.
