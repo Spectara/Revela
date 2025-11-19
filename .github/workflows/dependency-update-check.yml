@@ -1,0 +1,98 @@
+name: 🔍 Check for Dependency Updates
+
+on:
+  schedule:
+    # Jeden Montag um 6:00 UTC (7:00 CET / 8:00 CEST)
+    - cron: '0 6 * * 1'
+  workflow_dispatch: # Manuell auslösbar
+  
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
+jobs:
+  check-dependencies:
+    name: Check for outdated packages
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: 🛒 Checkout Code
+        uses: actions/checkout@v4
+        
+      - name: ⚙️ Setup .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+          
+      - name: 📦 Install dotnet-outdated tool
+        run: dotnet tool install --global dotnet-outdated-tool
+        
+      - name: 🔍 Check for outdated packages
+        id: outdated
+        continue-on-error: true
+        run: |
+          echo "## 📦 Dependency Update Report" > outdated-report.md
+          echo "" >> outdated-report.md
+          echo "Generated: $(date -u)" >> outdated-report.md
+          echo "" >> outdated-report.md
+          
+          dotnet outdated --output outdated-report.txt || true
+          
+          if [ -f outdated-report.txt ]; then
+            echo '```' >> outdated-report.md
+            cat outdated-report.txt >> outdated-report.md
+            echo '```' >> outdated-report.md
+          fi
+          
+          # Check if there are outdated packages
+          if grep -q "No outdated dependencies were detected" outdated-report.txt; then
+            echo "has_updates=false" >> $GITHUB_OUTPUT
+          else
+            echo "has_updates=true" >> $GITHUB_OUTPUT
+          fi
+          
+      - name: 📝 Create Issue if updates available
+        if: steps.outdated.outputs.has_updates == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const report = fs.readFileSync('outdated-report.md', 'utf8');
+            
+            // Check if there's already an open issue
+            const issues = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              labels: 'dependencies'
+            });
+            
+            const existingIssue = issues.data.find(issue => 
+              issue.title.includes('Dependency Updates Available')
+            );
+            
+            if (existingIssue) {
+              // Update existing issue
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: existingIssue.number,
+                body: `## 🔄 Updated Dependency Report\n\n${report}`
+              });
+            } else {
+              // Create new issue
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: '📦 Dependency Updates Available',
+                body: `${report}\n\n---\n\n**Action Required:**\n1. Review the updates\n2. Test locally: \`dotnet outdated\`\n3. Update packages: \`dotnet outdated -u\`\n4. Run tests: \`dotnet test\`\n5. Commit and push`,
+                labels: ['dependencies', 'maintenance']
+              });
+            }
+            
+      - name: ✅ All dependencies up to date
+        if: steps.outdated.outputs.has_updates == 'false'
+        run: |
+          echo "✅ All dependencies are up to date!"
+          echo "No action required."

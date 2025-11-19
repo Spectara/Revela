@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <Description>Expose CLI - Static site generator for photographers</Description>
+    
+    <!-- .NET Tool Configuration -->
+    <PackAsTool>true</PackAsTool>
+    <ToolCommandName>expose</ToolCommandName>
+    <PackageId>Expose</PackageId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Core\Core.csproj" />
+    <ProjectReference Include="..\Features\Features.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Hosting" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Console" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Debug" />
+    <PackageReference Include="System.CommandLine" />
+    <PackageReference Include="Spectre.Console" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\..\README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
+
+</Project>

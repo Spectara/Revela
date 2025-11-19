@@ -1,0 +1,85 @@
+<Project>
+  <!-- 
+    Central Build Configuration
+    https://learn.microsoft.com/en-us/visualstudio/msbuild/customize-by-directory
+  -->
+
+  <PropertyGroup Label="Namespace Prefix">
+    <!-- Automatically prepend "Spectara.Revela." to all assembly and namespace names -->
+    <!-- This allows shorter project/folder names while maintaining proper namespaces -->
+    <!-- Example: Project "Core" becomes "Spectara.Revela.Core" -->
+    <AssemblyName>Spectara.Revela.$(MSBuildProjectName)</AssemblyName>
+    <RootNamespace>$(AssemblyName)</RootNamespace>
+  </PropertyGroup>
+
+  <PropertyGroup Label="Project Settings">
+    <TargetFramework>net10.0</TargetFramework>
+    <LangVersion>14</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <EnableNETAnalyzers>true</EnableNETAnalyzers>
+    <AnalysisLevel>latest-all</AnalysisLevel>
+  </PropertyGroup>
+
+  <PropertyGroup Label="Package Metadata">
+    <Authors>Spectara</Authors>
+    <Company>Spectara</Company>
+    <Product>Revela</Product>
+    <Description>Modern static site generator for photographers - Reveal your stories through beautiful portfolios</Description>
+    <Copyright>Copyright © 2025 Spectara</Copyright>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageProjectUrl>https://revela.website</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/spectara/revela</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageTags>photography;static-site;generator;netvips;scriban;portfolio;revela;spectara</PackageTags>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+  </PropertyGroup>
+
+  <PropertyGroup Label="Versioning">
+    <VersionPrefix>1.0.0</VersionPrefix>
+    <VersionSuffix Condition="'$(Configuration)' == 'Debug'">dev</VersionSuffix>
+  </PropertyGroup>
+
+  <PropertyGroup Label="Build Output">
+    <BaseOutputPath>$(MSBuildThisFileDirectory)artifacts\bin\$(MSBuildProjectName)\</BaseOutputPath>
+    <BaseIntermediateOutputPath>$(MSBuildThisFileDirectory)artifacts\obj\$(MSBuildProjectName)\</BaseIntermediateOutputPath>
+    <PackageOutputPath>$(MSBuildThisFileDirectory)artifacts\packages\</PackageOutputPath>
+  </PropertyGroup>
+
+  <PropertyGroup Label="Documentation">
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+  </PropertyGroup>
+
+  <PropertyGroup Label="Deterministic Builds">
+    <Deterministic>true</Deterministic>
+    <ContinuousIntegrationBuild Condition="'$(CI)' == 'true'">true</ContinuousIntegrationBuild>
+  </PropertyGroup>
+
+  <PropertyGroup Label="Source Link" Condition="'$(CI)' == 'true'">
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+  </PropertyGroup>
+
+  <ItemGroup Label="Source Link" Condition="'$(CI)' == 'true'">
+    <PackageReference Include="Microsoft.SourceLink.GitHub" Version="8.0.0" PrivateAssets="All"/>
+  </ItemGroup>
+
+  <ItemGroup Label="InternalsVisibleTo - Test Projects">
+    <InternalsVisibleTo Include="$(MSBuildProjectName).Tests" />
+  </ItemGroup>
+
+  <ItemGroup Label="Global Usings">
+    <Using Include="System" />
+    <Using Include="System.Collections.Generic" />
+    <Using Include="System.Linq" />
+    <Using Include="System.Threading" />
+    <Using Include="System.Threading.Tasks" />
+    <Using Include="Microsoft.Extensions.Logging" />
+  </ItemGroup>
+
+</Project>

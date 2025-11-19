@@ -1,0 +1,34 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+<PropertyGroup>
+  <TargetFramework>net10.0</TargetFramework>
+  <OutputType>Exe</OutputType>
+  <ImplicitUsings>enable</ImplicitUsings>
+  <Nullable>enable</Nullable>
+  <IsPackable>false</IsPackable>
+    
+  <!-- MSTest Runner Configuration -->
+  <EnableMSTestRunner>true</EnableMSTestRunner>
+  <TestingPlatformDotnetTestSupport>true</TestingPlatformDotnetTestSupport>
+    
+  <!-- Disable CA1515 - MSTest requires public test classes -->
+  <NoWarn>$(NoWarn);CA1515</NoWarn>
+</PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Core\Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="MSTest" />
+    <PackageReference Include="MSTest.Analyzers" />
+    <PackageReference Include="FluentAssertions" />
+    <PackageReference Include="NSubstitute" />
+    <PackageReference Include="coverlet.collector" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Microsoft.VisualStudio.TestTools.UnitTesting" />
+  </ItemGroup>
+
+</Project>

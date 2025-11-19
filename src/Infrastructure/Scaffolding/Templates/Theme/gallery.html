@@ -1,0 +1,40 @@
+<section class="gallery">
+    <h2>{{ gallery.title }}</h2>
+    <p class="gallery-description">{{ gallery.description }}</p>
+    
+    <div class="photo-grid">
+        {{ for image in images }}
+        <figure class="photo">
+            <a href="{{ image.url }}" data-lightbox="gallery">
+                <img src="{{ image.thumbnail }}" alt="{{ image.title }}" loading="lazy">
+            </a>
+            <figcaption>
+                {{ if image.title }}
+                <strong>{{ image.title }}</strong>
+                {{ end }}
+                {{ if image.caption }}
+                <p>{{ image.caption }}</p>
+                {{ end }}
+                {{ if image.exif }}
+                <small>{{ image.exif.camera }} - {{ image.exif.lens }} - {{ image.exif.settings }}</small>
+                {{ end }}
+            </figcaption>
+        </figure>
+        {{ end }}
+    </div>
+</section>
+
+<style>
+    .gallery { padding: 2rem 0; }
+    .gallery h2 { font-size: 2rem; margin-bottom: 1rem; }
+    .gallery-description { color: #666; margin-bottom: 2rem; }
+    .photo-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1.5rem; }
+    .photo { background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1); transition: transform 0.3s; }
+    .photo:hover { transform: translateY(-4px); box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
+    .photo a { display: block; }
+    .photo img { width: 100%; height: 300px; object-fit: cover; display: block; }
+    .photo figcaption { padding: 1rem; }
+    .photo figcaption strong { display: block; margin-bottom: 0.5rem; color: #2c3e50; }
+    .photo figcaption p { color: #666; font-size: 0.9rem; margin-bottom: 0.5rem; }
+    .photo figcaption small { color: #999; font-size: 0.8rem; }
+</style>

@@ -1,0 +1,42 @@
+* text=auto
+
+# Source files
+*.cs text diff=csharp
+*.cshtml text diff=html
+*.csproj text diff=xml
+*.sln text
+
+# Scripts
+*.sh text eol=lf
+*.ps1 text eol=crlf
+
+# Configuration
+*.json text
+*.yml text
+*.yaml text
+*.xml text
+*.config text
+
+# Documentation
+*.md text
+*.txt text
+
+# Binary files
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.webp binary
+*.avif binary
+
+# Git LFS - Large test images and samples
+test-data/images/*.jpg filter=lfs diff=lfs merge=lfs -text
+test-data/images/*.jpeg filter=lfs diff=lfs merge=lfs -text
+test-data/images/*.png filter=lfs diff=lfs merge=lfs -text
+test-data/images/*.webp filter=lfs diff=lfs merge=lfs -text
+test-data/expected/**/*.jpg filter=lfs diff=lfs merge=lfs -text
+test-data/expected/**/*.png filter=lfs diff=lfs merge=lfs -text
+samples/**/content/**/*.jpg filter=lfs diff=lfs merge=lfs -text
+samples/**/content/**/*.jpeg filter=lfs diff=lfs merge=lfs -text
+samples/**/content/**/*.png filter=lfs diff=lfs merge=lfs -text

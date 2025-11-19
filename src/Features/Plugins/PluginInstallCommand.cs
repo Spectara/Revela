@@ -1,0 +1,79 @@
+using System.CommandLine;
+using Spectara.Revela.Core;
+using Spectre.Console;
+
+namespace Spectara.Revela.Features.Plugins;
+
+/// <summary>
+/// Handles 'revela plugin install' command
+/// </summary>
+public static class PluginInstallCommand
+{
+    public static Command Create()
+    {
+        var command = new Command("install", "Install a plugin from NuGet");
+
+        var nameArgument = new Argument<string>("name")
+        {
+            Description = "Plugin name (e.g., 'onedrive' for Revela.Plugin.OneDrive)"
+        };
+        command.Arguments.Add(nameArgument);
+
+        var versionOption = new Option<string?>("--version", "-v")
+        {
+            Description = "Specific version to install (optional)"
+        };
+        command.Options.Add(versionOption);
+
+        command.SetAction(parseResult =>
+        {
+            var name = parseResult.GetValue(nameArgument);
+            var version = parseResult.GetValue(versionOption);
+
+            return ExecuteAsync(name!, version).GetAwaiter().GetResult();
+        });
+
+        return command;
+    }
+
+    private static async Task<int> ExecuteAsync(string name, string? version)
+    {
+        try
+        {
+            // Convert short name to full package ID
+            var packageId = name.StartsWith("Revela.Plugin.", StringComparison.OrdinalIgnoreCase)
+                ? name
+                : $"Revela.Plugin.{name}";
+
+            AnsiConsole.MarkupLine($"[blue]📦 Installing plugin:[/] [cyan]{packageId}[/]");
+
+            var pluginManager = new PluginManager();
+
+            var success = await AnsiConsole.Status()
+                .Spinner(Spinner.Known.Dots)
+                .StartAsync("Installing...", async ctx =>
+                {
+                    ctx.Status($"Downloading {packageId}...");
+                    return await pluginManager.InstallPluginAsync(packageId, version);
+                });
+
+            if (success)
+            {
+                AnsiConsole.MarkupLine($"[green]✨ Plugin '{packageId}' installed successfully![/]");
+                AnsiConsole.MarkupLine("[dim]The plugin will be available after restarting the tool.[/]");
+                return 0;
+            }
+            else
+            {
+                AnsiConsole.MarkupLine($"[red]Failed to install plugin '{packageId}'[/]");
+                return 1;
+            }
+        }
+        catch (Exception ex)
+        {
+            AnsiConsole.MarkupLine($"[red]Error:[/] {ex.Message}");
+            return 1;
+        }
+    }
+}
+

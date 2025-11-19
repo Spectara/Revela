@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <Description>Deploy plugin for Expose - SSH/SFTP deployment</Description>
+    <PackageId>Expose.Plugin.Deploy</PackageId>
+    <PackageTags>expose;plugin;deploy;ssh</PackageTags>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\Core\Core.csproj">
+      <PrivateAssets>all</PrivateAssets>
+      <ExcludeAssets>runtime</ExcludeAssets>
+    </ProjectReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="SSH.NET" />
+  </ItemGroup>
+
+</Project>

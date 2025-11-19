@@ -1,0 +1,24 @@
+<section class="hero">
+    <h2>Welcome to {{ site.title }}</h2>
+    <p>{{ site.description }}</p>
+</section>
+
+<section class="galleries">
+    {{ for gallery in galleries }}
+    <article class="gallery-preview">
+        <h3>{{ gallery.title }}</h3>
+        <p>{{ gallery.description }}</p>
+        <a href="{{ gallery.url }}">View Gallery ({{ gallery.image_count }} photos)</a>
+    </article>
+    {{ end }}
+</section>
+
+<style>
+    .hero { text-align: center; padding: 3rem 0; background: #ecf0f1; margin-bottom: 2rem; border-radius: 8px; }
+    .hero h2 { font-size: 2rem; margin-bottom: 1rem; }
+    .galleries { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 2rem; }
+    .gallery-preview { background: white; padding: 1.5rem; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+    .gallery-preview h3 { margin-bottom: 0.5rem; color: #2c3e50; }
+    .gallery-preview a { display: inline-block; margin-top: 1rem; color: #3498db; text-decoration: none; }
+    .gallery-preview a:hover { text-decoration: underline; }
+</style>

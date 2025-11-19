@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <Description>Image processing, templating and caching infrastructure</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Core\Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="NetVips" />
+    <PackageReference Include="NetVips.Native" />
+    <PackageReference Include="Scriban" />
+    <PackageReference Include="Markdig" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Embed scaffolding templates as resources -->
+    <EmbeddedResource Include="Scaffolding\Templates\**\*" />
+  </ItemGroup>
+
+</Project>
+
