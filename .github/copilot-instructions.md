@@ -53,11 +53,14 @@ This is a **complete rewrite** of the original Bash-based revela project:
 - **Async:** Always use `async/await`, include `CancellationToken`
 
 ### Naming
-- **Private fields:** `_camelCase` (underscore prefix)
+- **Private instance fields:** `camelCase` (NO underscore!)
+- **Const fields:** `PascalCase`
+- **Static readonly fields:** `PascalCase`
 - **Public members:** `PascalCase`
 - **Async methods:** `MethodNameAsync` (Async suffix)
 - **Interfaces:** `IInterfaceName` (I prefix)
-- **Constants:** `PascalCase`
+- **Local constants:** `camelCase`
+- **Parameters & locals:** `camelCase`
 
 ### Patterns
 - **Configuration:** Options Pattern (`IOptions<T>`)
@@ -283,8 +286,8 @@ public void ConfigureServices(IServiceCollection services)
 // Service Constructor - Direct HttpClient injection
 public SharedLinkProvider(HttpClient httpClient, ILogger<SharedLinkProvider> logger)
 {
-    _httpClient = httpClient;  // ✅ Pre-configured by plugin!
-    _logger = logger;
+    this.httpClient = httpClient;  // ✅ Pre-configured by plugin!
+    this.logger = logger;
 }
 ```
 
@@ -419,26 +422,26 @@ await AnsiConsole.Progress()
 **Simple caching pattern (single-threaded command execution):**
 
 ```csharp
-private string? _cachedToken;
-private DateTime _tokenExpiry = DateTime.MinValue;
+private string? cachedToken;
+private DateTime tokenExpiry = DateTime.MinValue;
 
 private async Task<string> GetTokenAsync(CancellationToken ct)
 {
     // Return cached if valid
-    if (_cachedToken != null && DateTime.UtcNow < _tokenExpiry)
+    if (cachedToken != null && DateTime.UtcNow < tokenExpiry)
     {
-        LogUsingCachedToken(_logger);
-        return _cachedToken;
+        LogUsingCachedToken(logger);
+        return cachedToken;
     }
     
     // Fetch new token
-    LogRequestingToken(_logger);
+    LogRequestingToken(logger);
     var token = await FetchNewTokenAsync(ct);
     
-    _cachedToken = token;
-    _tokenExpiry = DateTime.UtcNow.AddDays(6);  // Token valid for 7 days
+    cachedToken = token;
+    tokenExpiry = DateTime.UtcNow.AddDays(6);  // Token valid for 7 days
     
-    return _cachedToken;
+    return cachedToken;
 }
 ```
 
@@ -516,16 +519,16 @@ public interface IMyService
 
 public sealed partial class MyService : IMyService
 {
-    private readonly ILogger<MyService> _logger;
+    private readonly ILogger<MyService> logger;
     
     public MyService(ILogger<MyService> logger)
     {
-        _logger = logger;
+        this.logger = logger;
     }
     
     public async Task DoSomethingAsync(int count, CancellationToken cancellationToken = default)
     {
-        LogProcessingStarted(_logger, count);
+        LogProcessingStarted(logger, count);
         await Task.CompletedTask;
     }
     

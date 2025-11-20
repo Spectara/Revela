@@ -12,7 +12,7 @@ public static class OneDriveInitCommand
 {
     private const string ConfigFileName = "onedrive.json";
 
-    private static readonly JsonSerializerOptions _jsonOptions = new()
+    private static readonly JsonSerializerOptions JsonOptions = new()
     {
         WriteIndented = true,
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase
@@ -82,7 +82,7 @@ public static class OneDriveInitCommand
             };
 
             // Save to JSON
-            var json = JsonSerializer.Serialize(config, _jsonOptions);
+            var json = JsonSerializer.Serialize(config, JsonOptions);
             File.WriteAllText(ConfigFileName, json);
 
             // Create source directory

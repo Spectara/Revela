@@ -10,29 +10,29 @@ namespace Spectara.Revela.Core;
 /// </summary>
 public sealed partial class PluginManager
 {
-    private readonly string _pluginDirectory;
-    private readonly ILogger<PluginManager> _logger;
-    private readonly SourceRepository _repository;
+    private readonly string pluginDirectory;
+    private readonly ILogger<PluginManager> logger;
+    private readonly SourceRepository repository;
 
     public PluginManager(ILogger<PluginManager>? logger = null)
     {
         var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-        _pluginDirectory = Path.Combine(appData, "Revela", "plugins");
-        _ = Directory.CreateDirectory(_pluginDirectory);
+        this.pluginDirectory = Path.Combine(appData, "Revela", "plugins");
+        _ = Directory.CreateDirectory(this.pluginDirectory);
 
-        _logger = logger ?? Microsoft.Extensions.Logging.Abstractions.NullLogger<PluginManager>.Instance;
+        this.logger = logger ?? Microsoft.Extensions.Logging.Abstractions.NullLogger<PluginManager>.Instance;
 
         var packageSource = new PackageSource("https://api.nuget.org/v3/index.json");
-        _repository = Repository.Factory.GetCoreV3(packageSource);
+        this.repository = Repository.Factory.GetCoreV3(packageSource);
     }
 
     public async Task<bool> InstallPluginAsync(string packageId, string? version = null, CancellationToken cancellationToken = default)
     {
         try
         {
-            LogInstallingPlugin(_logger, packageId);
+            LogInstallingPlugin(logger, packageId);
 
-            var resource = await _repository.GetResourceAsync<FindPackageByIdResource>(cancellationToken);
+            var resource = await repository.GetResourceAsync<FindPackageByIdResource>(cancellationToken);
             using var cacheContext = new SourceCacheContext();
             var versions = await resource.GetAllVersionsAsync(
                 packageId,
@@ -46,11 +46,11 @@ public sealed partial class PluginManager
 
             if (targetVersion is null)
             {
-                LogPackageNotFound(_logger, packageId);
+                LogPackageNotFound(logger, packageId);
                 return false;
             }
 
-            LogInstallingVersion(_logger, packageId, targetVersion.ToString());
+            LogInstallingVersion(logger, packageId, targetVersion.ToString());
 
             // TODO: Implement actual package download and extraction
             // For now, this is a placeholder
@@ -59,14 +59,14 @@ public sealed partial class PluginManager
         }
         catch (Exception ex)
         {
-            LogInstallFailed(_logger, ex, packageId);
+            LogInstallFailed(logger, ex, packageId);
             return false;
         }
     }
 
     public async Task<bool> UpdatePluginAsync(string packageId, CancellationToken cancellationToken = default)
     {
-        LogUpdatingPlugin(_logger, packageId);
+        LogUpdatingPlugin(logger, packageId);
         // Uninstall old version, install new version
         _ = await UninstallPluginAsync(packageId, cancellationToken);
         return await InstallPluginAsync(packageId, null, cancellationToken);
@@ -78,24 +78,24 @@ public sealed partial class PluginManager
 
         try
         {
-            LogUninstallingPlugin(_logger, packageId);
+            LogUninstallingPlugin(logger, packageId);
 
-            var pluginPath = Path.Combine(_pluginDirectory, packageId);
+            var pluginPath = Path.Combine(pluginDirectory, packageId);
             if (Directory.Exists(pluginPath))
             {
                 Directory.Delete(pluginPath, recursive: true);
-                LogPluginUninstalled(_logger, packageId);
+                LogPluginUninstalled(logger, packageId);
                 return Task.FromResult(true);
             }
             else
             {
-                LogPluginNotFound(_logger, packageId);
+                LogPluginNotFound(logger, packageId);
                 return Task.FromResult(false);
             }
         }
         catch (Exception ex)
         {
-            LogUninstallFailed(_logger, ex, packageId);
+            LogUninstallFailed(logger, ex, packageId);
             return Task.FromResult(false);
         }
     }
@@ -130,12 +130,12 @@ public sealed partial class PluginManager
 
     public IEnumerable<string> ListInstalledPlugins()
     {
-        if (!Directory.Exists(_pluginDirectory))
+        if (!Directory.Exists(pluginDirectory))
         {
             return [];
         }
 
-        return Directory.GetDirectories(_pluginDirectory)
+        return Directory.GetDirectories(pluginDirectory)
             .Select(Path.GetFileName)
             .OfType<string>(); // Filters out nulls and casts to non-nullable
     }

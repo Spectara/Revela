@@ -8,34 +8,34 @@ namespace Spectara.Revela.Core;
 /// </summary>
 public sealed partial class PluginLoader
 {
-    private readonly string _pluginDirectory;
-    private readonly ILogger<PluginLoader> _logger;
-    private readonly List<IPlugin> _loadedPlugins = [];
+    private readonly string pluginDirectory;
+    private readonly ILogger<PluginLoader> logger;
+    private readonly List<IPlugin> loadedPlugins = [];
 
     public PluginLoader(ILogger<PluginLoader>? logger = null)
     {
         var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-        _pluginDirectory = Path.Combine(appData, "Revela", "plugins");
-        _logger = logger ?? Microsoft.Extensions.Logging.Abstractions.NullLogger<PluginLoader>.Instance;
+        this.pluginDirectory = Path.Combine(appData, "Revela", "plugins");
+        this.logger = logger ?? Microsoft.Extensions.Logging.Abstractions.NullLogger<PluginLoader>.Instance;
     }
 
     /// <summary>
     /// Gets the list of loaded plugins
     /// </summary>
-    public IReadOnlyList<IPlugin> GetLoadedPlugins() => _loadedPlugins.AsReadOnly();
+    public IReadOnlyList<IPlugin> GetLoadedPlugins() => loadedPlugins.AsReadOnly();
 
     /// <summary>
     /// Loads all plugins from the plugin directory
     /// </summary>
     public void LoadPlugins()
     {
-        if (!Directory.Exists(_pluginDirectory))
+        if (!Directory.Exists(pluginDirectory))
         {
-            LogPluginDirectoryNotFound(_logger, _pluginDirectory);
+            LogPluginDirectoryNotFound(logger, pluginDirectory);
             return;
         }
 
-        var pluginDlls = Directory.GetFiles(_pluginDirectory, "Revela.Plugin.*.dll", SearchOption.AllDirectories);
+        var pluginDlls = Directory.GetFiles(pluginDirectory, "Revela.Plugin.*.dll", SearchOption.AllDirectories);
 
         foreach (var dll in pluginDlls)
         {
@@ -45,11 +45,11 @@ public sealed partial class PluginLoader
             }
             catch (Exception ex)
             {
-                LogPluginLoadFailed(_logger, ex, dll);
+                LogPluginLoadFailed(logger, ex, dll);
             }
         }
 
-        LogPluginsLoaded(_logger, _loadedPlugins.Count);
+        LogPluginsLoaded(logger, loadedPlugins.Count);
     }
 
     private void LoadPluginFromAssembly(string assemblyPath)
@@ -64,8 +64,8 @@ public sealed partial class PluginLoader
             var plugin = (IPlugin?)Activator.CreateInstance(type);
             if (plugin is not null)
             {
-                _loadedPlugins.Add(plugin);
-                LogPluginDiscovered(_logger, plugin.Metadata.Name, plugin.Metadata.Version);
+                loadedPlugins.Add(plugin);
+                LogPluginDiscovered(logger, plugin.Metadata.Name, plugin.Metadata.Version);
             }
         }
     }

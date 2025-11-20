@@ -23,10 +23,10 @@ public sealed partial class SharedLinkProvider : IOneDriveProvider
     private const string BadgerTokenUrl = "https://api-badgerp.svc.ms/v1.0/token";
     private const string OneDriveApiBaseUrl = "https://api.onedrive.com/v1.0";
 
-    private readonly HttpClient _httpClient;
-    private readonly ILogger<SharedLinkProvider> _logger;
-    private string? _cachedToken;
-    private DateTime _tokenExpiry = DateTime.MinValue;
+    private readonly HttpClient httpClient;
+    private readonly ILogger<SharedLinkProvider> logger;
+    private string? cachedToken;
+    private DateTime tokenExpiry = DateTime.MinValue;
 
     /// <summary>
     /// Initializes a new instance of SharedLinkProvider with Typed Client pattern
@@ -37,8 +37,8 @@ public sealed partial class SharedLinkProvider : IOneDriveProvider
     /// </remarks>
     public SharedLinkProvider(HttpClient httpClient, ILogger<SharedLinkProvider> logger)
     {
-        _httpClient = httpClient;
-        _logger = logger;
+        this.httpClient = httpClient;
+        this.logger = logger;
     }
 
     /// <inheritdoc />
@@ -47,7 +47,7 @@ public sealed partial class SharedLinkProvider : IOneDriveProvider
         CancellationToken cancellationToken = default
     )
     {
-        LogListingItems(_logger, config.ShareUrl);
+        LogListingItems(logger, config.ShareUrl);
 
         var token = await GetBadgerTokenAsync(cancellationToken);
 
@@ -59,7 +59,7 @@ public sealed partial class SharedLinkProvider : IOneDriveProvider
         // List items recursively from root
         await ListItemsRecursiveAsync(config.ShareUrl, "", token, metadata, items, cancellationToken);
 
-        LogItemsListed(_logger, items.Count);
+        LogItemsListed(logger, items.Count);
         return items;
     }
 
@@ -91,7 +91,7 @@ public sealed partial class SharedLinkProvider : IOneDriveProvider
         using var request = new HttpRequestMessage(HttpMethod.Get, apiUrl);
         request.Headers.Add("Authorization", $"Badger {token}");
 
-        var response = await _httpClient.SendAsync(request, cancellationToken);
+        var response = await httpClient.SendAsync(request, cancellationToken);
         response.EnsureSuccessStatusCode();
 
         var jsonResponse = await response.Content.ReadFromJsonAsync<JsonDocument>(cancellationToken: cancellationToken);
@@ -136,7 +136,7 @@ public sealed partial class SharedLinkProvider : IOneDriveProvider
             throw new ArgumentException("Item does not have a download URL", nameof(item));
         }
 
-        LogDownloadingFile(_logger, item.Name, destinationPath);
+        LogDownloadingFile(logger, item.Name, destinationPath);
 
         // Ensure directory exists
         var directory = Path.GetDirectoryName(destinationPath);
@@ -146,14 +146,14 @@ public sealed partial class SharedLinkProvider : IOneDriveProvider
         }
 
         // Download file (OneDrive download URLs don't need Badger token)
-        using var response = await _httpClient.GetAsync(new Uri(item.DownloadUrl), HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+        using var response = await httpClient.GetAsync(new Uri(item.DownloadUrl), HttpCompletionOption.ResponseHeadersRead, cancellationToken);
         response.EnsureSuccessStatusCode();
 
         await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
         await using var fileStream = new FileStream(destinationPath, FileMode.Create, FileAccess.Write, FileShare.None, 8192, true);
         await stream.CopyToAsync(fileStream, cancellationToken);
 
-        LogFileDownloaded(_logger, item.Name, new FileInfo(destinationPath).Length);
+        LogFileDownloaded(logger, item.Name, new FileInfo(destinationPath).Length);
         return destinationPath;
     }
 
@@ -168,7 +168,7 @@ public sealed partial class SharedLinkProvider : IOneDriveProvider
         CancellationToken cancellationToken = default
     )
     {
-        LogDownloadingAll(_logger, config.ShareUrl);
+        LogDownloadingAll(logger, config.ShareUrl);
 
         // Use pre-scanned items if available, otherwise scan now
         var allItems = preScannedItems ?? await ListItemsAsync(config, cancellationToken);
@@ -176,7 +176,7 @@ public sealed partial class SharedLinkProvider : IOneDriveProvider
         // Debug: Log item types
         var folderCount = allItems.Count(i => i.IsFolder);
         var fileCount = allItems.Count(i => !i.IsFolder);
-        LogItemTypes(_logger, fileCount, folderCount);
+        LogItemTypes(logger, fileCount, folderCount);
 
         // Filter files using smart defaults (like original script)
         var filesOnly = allItems.Where(item => !item.IsFolder).ToList();
@@ -186,14 +186,14 @@ public sealed partial class SharedLinkProvider : IOneDriveProvider
 
         if (useDefaults)
         {
-            LogUsingDefaultFilters(_logger);
+            LogUsingDefaultFilters(logger);
         }
 
         var filteredItems = filesOnly
             .Where(item => ShouldIncludeFile(item, config.IncludePatterns, config.ExcludePatterns))
             .ToList();
 
-        LogFilesFiltered(_logger, filteredItems.Count, allItems.Count);
+        LogFilesFiltered(logger, filteredItems.Count, allItems.Count);
 
         var downloadedFiles = new List<string>();
         var current = 0;
@@ -224,7 +224,7 @@ public sealed partial class SharedLinkProvider : IOneDriveProvider
                     var fileInfo = new FileInfo(destinationPath);
                     if (fileInfo.Length == item.Size)
                     {
-                        LogFileSkipped(_logger, item.Name);
+                        LogFileSkipped(logger, item.Name);
                         return destinationPath;
                     }
                 }
@@ -241,7 +241,7 @@ public sealed partial class SharedLinkProvider : IOneDriveProvider
         var results = await Task.WhenAll(downloadTasks);
         downloadedFiles.AddRange(results);
 
-        LogDownloadComplete(_logger, downloadedFiles.Count);
+        LogDownloadComplete(logger, downloadedFiles.Count);
         return downloadedFiles;
     }
 
@@ -251,16 +251,16 @@ public sealed partial class SharedLinkProvider : IOneDriveProvider
     private async Task<string> GetBadgerTokenAsync(CancellationToken cancellationToken)
     {
         // Return cached token if still valid
-        if (_cachedToken != null && DateTime.UtcNow < _tokenExpiry)
+        if (cachedToken != null && DateTime.UtcNow < tokenExpiry)
         {
-            LogUsingCachedToken(_logger);
-            return _cachedToken;
+            LogUsingCachedToken(logger);
+            return cachedToken;
         }
 
-        LogRequestingBadgerToken(_logger);
+        LogRequestingBadgerToken(logger);
 
         var requestBody = new { appId = BadgerAppId };
-        var response = await _httpClient.PostAsJsonAsync(BadgerTokenUrl, requestBody, cancellationToken);
+        var response = await httpClient.PostAsJsonAsync(BadgerTokenUrl, requestBody, cancellationToken);
         response.EnsureSuccessStatusCode();
 
         var tokenResponse = await response.Content.ReadFromJsonAsync<BadgerTokenResponse>(cancellationToken: cancellationToken);
@@ -269,11 +269,11 @@ public sealed partial class SharedLinkProvider : IOneDriveProvider
             throw new InvalidOperationException("Failed to obtain Badger token");
         }
 
-        _cachedToken = tokenResponse.Token;
-        _tokenExpiry = DateTime.UtcNow.AddDays(6); // Cache for 6 days (token valid for 7)
+        cachedToken = tokenResponse.Token;
+        tokenExpiry = DateTime.UtcNow.AddDays(6); // Cache for 6 days (token valid for 7)
 
-        LogBadgerTokenReceived(_logger);
-        return _cachedToken;
+        LogBadgerTokenReceived(logger);
+        return cachedToken;
     }
 
     /// <summary>
@@ -290,7 +290,7 @@ public sealed partial class SharedLinkProvider : IOneDriveProvider
         request.Headers.Add("Authorization", $"Badger {token}");
         request.Headers.Add("Prefer", "autoredeem");
 
-        var response = await _httpClient.SendAsync(request, cancellationToken);
+        var response = await httpClient.SendAsync(request, cancellationToken);
         response.EnsureSuccessStatusCode();
 
         var jsonResponse = await response.Content.ReadFromJsonAsync<JsonDocument>(cancellationToken: cancellationToken) ?? throw new InvalidOperationException("Failed to get share metadata");
@@ -310,8 +310,8 @@ public sealed partial class SharedLinkProvider : IOneDriveProvider
             throw new InvalidOperationException("Could not extract drive/folder IDs from share metadata");
         }
 
-        LogBadgerTokenActivated(_logger);
-        LogShareMetadataReceived(_logger, driveId, folderId);
+        LogBadgerTokenActivated(logger);
+        LogShareMetadataReceived(logger, driveId, folderId);
 
         return new ShareMetadata { DriveId = driveId, FolderId = folderId };
     }
@@ -325,9 +325,9 @@ public sealed partial class SharedLinkProvider : IOneDriveProvider
         var encodedUrl = EncodeShareUrl(shareUrl);
 
         // Select fields to retrieve (matches original script)
-        const string SelectFields = "name,description,@content.downloadUrl,file,folder,id";
+        const string selectFields = "name,description,@content.downloadUrl,file,folder,id";
 
-        return $"{OneDriveApiBaseUrl}/shares/u!{encodedUrl}/root/children?$select={SelectFields}";
+        return $"{OneDriveApiBaseUrl}/shares/u!{encodedUrl}/root/children?$select={selectFields}";
     }
 
     /// <summary>
@@ -343,9 +343,9 @@ public sealed partial class SharedLinkProvider : IOneDriveProvider
         var encodedPath = UrlEncodePath(folderPath);
 
         // Select fields to retrieve (matches original script)
-        const string SelectFields = "name,description,@content.downloadUrl,file,folder,id";
+        const string selectFields = "name,description,@content.downloadUrl,file,folder,id";
 
-        return $"{OneDriveApiBaseUrl}/drives/{driveId}/items/{folderId}:/{encodedPath}:/children?$select={SelectFields}";
+        return $"{OneDriveApiBaseUrl}/drives/{driveId}/items/{folderId}:/{encodedPath}:/children?$select={selectFields}";
     }
 
     /// <summary>

@@ -10,7 +10,7 @@ namespace Spectara.Revela.Plugin.Source.OneDrive;
 /// </summary>
 public sealed class OneDrivePlugin : IPlugin
 {
-    private IServiceProvider? _services;
+    private IServiceProvider? services;
 
     /// <inheritdoc />
     public IPluginMetadata Metadata => new PluginMetadata
@@ -34,12 +34,12 @@ public sealed class OneDrivePlugin : IPlugin
     }
 
     /// <inheritdoc />
-    public void Initialize(IServiceProvider services) => _services = services;
+    public void Initialize(IServiceProvider services) => this.services = services;
 
     /// <inheritdoc />
     public IEnumerable<Command> GetCommands()
     {
-        if (_services == null)
+        if (services == null)
         {
             throw new InvalidOperationException("Plugin not initialized. Call Initialize() first.");
         }
@@ -49,7 +49,7 @@ public sealed class OneDrivePlugin : IPlugin
 
         // Add init and download subcommands
         oneDriveCommand.Subcommands.Add(OneDriveInitCommand.Create());
-        oneDriveCommand.Subcommands.Add(OneDriveSourceCommand.Create(_services));
+        oneDriveCommand.Subcommands.Add(OneDriveSourceCommand.Create(services));
 
         yield return oneDriveCommand;
     }
