@@ -171,37 +171,290 @@ return rootCommand.Parse(args).Invoke();
 
 **Reason:** Core commands are stable and few, plugins need dynamic discovery
 
-### 4. Plugin Interface
+### 4. Plugin System (CRITICAL!)
+
+#### Plugin Lifecycle - 3 Phases
+
+**IMPORTANT:** Plugins have a specific initialization order!
+
 ```csharp
-// All plugins implement IPlugin
 public interface IPlugin
 {
     IPluginMetadata Metadata { get; }
+    
+    // 1. ConfigureServices - Called BEFORE BuildServiceProvider
+    //    Plugin registers its own services (HttpClient, etc.)
+    void ConfigureServices(IServiceCollection services);
+    
+    // 2. Initialize - Called AFTER BuildServiceProvider
+    //    Plugin receives built ServiceProvider for initialization
     void Initialize(IServiceProvider services);
+    
+    // 3. GetCommands - Returns CLI commands
     IEnumerable<Command> GetCommands();
 }
 ```
 
-### 5. Configuration
+**Program.cs Order (MUST follow this!):**
 ```csharp
-// Options Pattern
-public class RevelaConfig
+// 1. Create ServiceCollection
+var services = new ServiceCollection();
+services.AddLogging(...);
+
+// 2. Load plugins (BEFORE BuildServiceProvider!)
+var pluginLoader = new PluginLoader(logger);
+pluginLoader.LoadPlugins();
+var plugins = pluginLoader.GetLoadedPlugins();
+
+// 3. Let plugins register services
+foreach (var plugin in plugins)
 {
-    public ProjectSettings Project { get; init; }
-    public SiteSettings Site { get; init; }
-    public BuildSettings Build { get; init; }
+    plugin.ConfigureServices(services);  // ✅ Still mutable
 }
 
-// Usage via DI
+// 4. Build ServiceProvider
+var serviceProvider = services.BuildServiceProvider();
+
+// 5. Initialize plugins
+foreach (var plugin in plugins)
+{
+    plugin.Initialize(serviceProvider);  // ✅ Now immutable
+}
+
+// 6. Register commands
+foreach (var plugin in plugins)
+{
+    foreach (var cmd in plugin.GetCommands())
+        RegisterCommand(cmd);
+}
+```
+
+**Why this order?**
+- Plugins don't know what services they need until runtime
+- Program.cs can't know what plugins exist
+- ServiceCollection must be open when plugins register services
+
+#### Parent Command Pattern
+
+Plugins declare their **desired parent command** in metadata:
+
+```csharp
+public IPluginMetadata Metadata => new PluginMetadata
+{
+    Name = "OneDrive Source",
+    Version = "1.0.0",
+    ParentCommand = "source"  // ✅ Plugin declares parent
+};
+```
+
+**Plugin returns ONLY its own command:**
+```csharp
+public IEnumerable<Command> GetCommands()
+{
+    // ✅ Return "onedrive" - Program.cs adds under "source"
+    yield return new Command("onedrive", "OneDrive plugin");
+    
+    // ❌ DON'T create parent command in plugin!
+    // var source = new Command("source", "...");  // Would conflict!
+}
+```
+
+**Program.cs creates parent automatically:**
+- Checks if parent exists
+- Creates if missing
+- Detects duplicate commands
+- Result: `revela source onedrive download`
+
+### 5. HttpClient Pattern (Microsoft Best Practice)
+
+**ALWAYS use Typed Client pattern for plugins!**
+
+```csharp
+// Plugin.ConfigureServices() - Register Typed HttpClient
+public void ConfigureServices(IServiceCollection services)
+{
+    services.AddHttpClient<SharedLinkProvider>(client =>
+    {
+        client.Timeout = TimeSpan.FromMinutes(5);
+        client.DefaultRequestHeaders.Add("User-Agent", "Revela/1.0");
+    });
+}
+
+// Service Constructor - Direct HttpClient injection
+public SharedLinkProvider(HttpClient httpClient, ILogger<SharedLinkProvider> logger)
+{
+    _httpClient = httpClient;  // ✅ Pre-configured by plugin!
+    _logger = logger;
+}
+```
+
+**Why Typed Client?**
+- ✅ Type-safe - Compiler checks dependencies
+- ✅ Configured per service - Each plugin has own config
+- ✅ Connection pooling - Automatic handler reuse
+- ✅ Testable - Easy to mock HttpClient
+- ✅ Microsoft recommended pattern
+
+**❌ DON'T:**
+```csharp
+// DON'T: Manual HttpClient creation
+using var client = new HttpClient();  // ❌ Socket exhaustion!
+
+// DON'T: IHttpClientFactory in Typed Client
+public MyService(IHttpClientFactory factory)  // ❌ Defeats purpose!
+{
+    _httpClient = factory.CreateClient();
+}
+
+// DON'T: Cache HttpClient in Singleton
+[Singleton]
 public class MyService
 {
-    private readonly RevelaConfig _config;
-    
-    public MyService(IOptions<RevelaConfig> options)
-    {
-        _config = options.Value;
-    }
+    private readonly HttpClient _client;  // ❌ Captive dependency!
 }
+```
+
+**See:** `docs/httpclient-pattern.md` for complete guide
+
+### 6. Configuration
+
+**Use ConfigurationBuilder (not manual JSON parsing):**
+
+```csharp
+private static Task<MyConfig> LoadConfigurationAsync(...)
+{
+    var configPath = Path.Combine(Directory.GetCurrentDirectory(), "config.json");
+    
+    // ✅ ConfigurationBuilder with multiple sources
+    var configuration = new ConfigurationBuilder()
+        .AddJsonFile(configPath, optional: true, reloadOnChange: false)
+        .AddEnvironmentVariables(prefix: "REVELA_MYPLUGIN_")
+        .Build();
+    
+    var config = configuration.Get<MyConfig>();
+    
+    // ✅ Validate with Data Annotations
+    var context = new ValidationContext(config);
+    Validator.ValidateObject(config, context, validateAllProperties: true);
+    
+    return Task.FromResult(config);
+}
+```
+
+**Config Model with Validation:**
+```csharp
+using System.ComponentModel.DataAnnotations;
+
+public sealed class MyConfig
+{
+    [Required(ErrorMessage = "ApiUrl is required")]
+    [Url(ErrorMessage = "Must be a valid URL")]
+    public required string ApiUrl { get; init; }
+}
+```
+
+**Benefits:**
+- JSON + Environment Variables support
+- Data Annotations validation (early error detection)
+- Standard .NET pattern
+
+### 7. Progress Display (Spectre.Console)
+
+**Two-Phase Progress Pattern (Scan + Download):**
+
+```csharp
+// Phase 1: Scan with Status Spinner
+await AnsiConsole.Status()
+    .Spinner(Spinner.Known.Dots)
+    .StartAsync("[yellow]Scanning...[/]", async ctx =>
+    {
+        var items = await ScanAsync();
+        ctx.Status($"[green]✓[/] Found {items.Count} items");
+        await Task.Delay(500); // Brief pause to show result
+    });
+
+// Phase 2: Download with Progress Bar
+await AnsiConsole.Progress()
+    .AutoClear(false)
+    .Columns(
+        new TaskDescriptionColumn(),
+        new ProgressBarColumn(),
+        new PercentageColumn(),
+        new RemainingTimeColumn(),
+        new SpinnerColumn()
+    )
+    .StartAsync(async ctx =>
+    {
+        var task = ctx.AddTask("[green]Downloading[/]");
+        task.IsIndeterminate = true; // Until total known
+        
+        var progress = new Progress<(int current, int total, string name)>(report =>
+        {
+            if (task.IsIndeterminate && report.total > 0)
+            {
+                task.IsIndeterminate = false;
+                task.MaxValue = report.total;
+            }
+            task.Value = report.current;
+            
+            // Escape Spectre markup in user data!
+            var safeName = report.name
+                .Replace("[", "[[", StringComparison.Ordinal)
+                .Replace("]", "]]", StringComparison.Ordinal);
+            
+            task.Description = $"[green]Downloading[/] ({report.current}/{report.total}) {safeName}";
+        });
+        
+        await DownloadAsync(progress);
+    });
+```
+
+**Why Two Phases?**
+- Phase 1 (Scan) - Total unknown, use spinner
+- Phase 2 (Download) - Total known, show progress bar
+- Brief pause after scan to show result before starting download
+
+### 8. Token/Auth Caching
+
+**Simple caching pattern (single-threaded command execution):**
+
+```csharp
+private string? _cachedToken;
+private DateTime _tokenExpiry = DateTime.MinValue;
+
+private async Task<string> GetTokenAsync(CancellationToken ct)
+{
+    // Return cached if valid
+    if (_cachedToken != null && DateTime.UtcNow < _tokenExpiry)
+    {
+        LogUsingCachedToken(_logger);
+        return _cachedToken;
+    }
+    
+    // Fetch new token
+    LogRequestingToken(_logger);
+    var token = await FetchNewTokenAsync(ct);
+    
+    _cachedToken = token;
+    _tokenExpiry = DateTime.UtcNow.AddDays(6);  // Token valid for 7 days
+    
+    return _cachedToken;
+}
+```
+
+**Important:** No lock needed if:
+- Token fetched **once** per command execution
+- Passed as parameter through recursive calls
+- Downloads use pre-authenticated URLs (no token needed)
+
+**Example Flow:**
+```csharp
+// 1. Scan phase - get token once
+var token = await GetTokenAsync(cancellationToken);
+await ScanAsync(shareUrl, token, cancellationToken);  // Pass as param
+
+// 2. Download phase - no token needed
+await DownloadAsync(item.DownloadUrl);  // Pre-authenticated URL
 ```
 
 ---
@@ -514,11 +767,20 @@ dotnet run --project tests/Core.Tests
 
 ---
 
-**Last Updated:** 2025-01-20
+**Last Updated:** 2025-01-20 (Session: OneDrive Plugin Complete)
+
+**Key Learnings from Latest Session:**
+- ✅ Plugin ConfigureServices pattern (3-phase lifecycle)
+- ✅ Typed HttpClient for plugins
+- ✅ Parent Command declaration in metadata
+- ✅ ConfigurationBuilder + Data Annotations validation
+- ✅ Two-phase progress display (Scan + Download)
+- ✅ Token caching without locks (single-threaded command)
 
 **For detailed architecture, see:** `docs/architecture.md`  
 **For development status, see:** `DEVELOPMENT.md`  
-**For dependency management, see:** `.github/DEPENDENCY_MANAGEMENT.md`
+**For dependency management, see:** `.github/DEPENDENCY_MANAGEMENT.md`  
+**For HttpClient patterns, see:** `docs/httpclient-pattern.md`
 
 
 

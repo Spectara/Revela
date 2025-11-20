@@ -2,6 +2,9 @@ using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+#pragma warning disable IDE0005 // Using directive is necessary for LoggerMessage attribute
+using Microsoft.Extensions.Logging;
+#pragma warning restore IDE0005
 using Spectara.Revela.Plugin.Source.OneDrive.Models;
 
 namespace Spectara.Revela.Plugin.Source.OneDrive.Providers;
@@ -25,6 +28,13 @@ public sealed partial class SharedLinkProvider : IOneDriveProvider
     private string? _cachedToken;
     private DateTime _tokenExpiry = DateTime.MinValue;
 
+    /// <summary>
+    /// Initializes a new instance of SharedLinkProvider with Typed Client pattern
+    /// </summary>
+    /// <remarks>
+    /// HttpClient is injected directly as a Typed Client (recommended .NET pattern).
+    /// Configuration (timeout, headers) is done in Program.cs via AddHttpClient&lt;SharedLinkProvider&gt;().
+    /// </remarks>
     public SharedLinkProvider(HttpClient httpClient, ILogger<SharedLinkProvider> logger)
     {
         _httpClient = httpClient;

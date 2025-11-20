@@ -52,6 +52,7 @@ public static partial class OneDriveSourceCommand
         {
             Description = "Number of concurrent downloads (defaults to auto-detect based on CPU cores)"
         };
+        // TODO: Add validation in System.CommandLine 2.0 (API different from beta)
 
         var debugOption = new Option<bool>("--debug", "-d")
         {
@@ -116,18 +117,22 @@ public static partial class OneDriveSourceCommand
             // Auto-detect concurrency if not specified (like original script)
             concurrency ??= GetDefaultConcurrency();
 
+            // Validate concurrency
+            if (concurrency <= 0)
+            {
+                throw new ArgumentException("Concurrency must be greater than 0", nameof(concurrency));
+            }
+
             AnsiConsole.MarkupLine("[blue]📥 Downloading from OneDrive...[/]");
             AnsiConsole.MarkupLine($"[dim]Share URL:[/] {config.ShareUrl}");
             AnsiConsole.MarkupLine($"[dim]Output:[/] {outputDirectory}");
             AnsiConsole.MarkupLine($"[dim]Concurrency:[/] {concurrency} parallel downloads");
             AnsiConsole.WriteLine();
 
-            // Create provider
-            using var httpClient = new HttpClient();
-            var providerLogger = loggerFactory?.CreateLogger<SharedLinkProvider>()
-                ?? throw new InvalidOperationException("Logger not available");
-
-            var provider = new SharedLinkProvider(httpClient, providerLogger);
+            // Get SharedLinkProvider from DI (Typed Client pattern)
+            // HttpClient is automatically configured and injected
+            var provider = (SharedLinkProvider?)services.GetService(typeof(SharedLinkProvider))
+                ?? throw new InvalidOperationException("SharedLinkProvider not available - ensure it's registered in Program.cs");
 
             // Phase 1: Scan OneDrive structure
             IReadOnlyList<OneDriveItem>? allItems = null;
@@ -263,19 +268,28 @@ public static partial class OneDriveSourceCommand
         excludePatterns ??= fileConfig?.ExcludePatterns?.ToArray();
 
         // Validate that we have at least a share URL
-        return string.IsNullOrWhiteSpace(shareUrl)
-            ? throw new InvalidOperationException(
+        if (string.IsNullOrWhiteSpace(shareUrl))
+        {
+            throw new InvalidOperationException(
                 "No OneDrive share URL provided. Use one of these methods:\n" +
                 $"1. Run 'revela source onedrive init' to create {ConfigFileName}\n" +
                 "2. Set environment variable: REVELA_ONEDRIVE_ShareUrl=<url>\n" +
                 "3. Provide --share-url parameter"
-            )
-            : Task.FromResult(new OneDriveConfig
-            {
-                ShareUrl = shareUrl,
-                IncludePatterns = includePatterns,
-                ExcludePatterns = excludePatterns
-            });
+            );
+        }
+
+        var config = new OneDriveConfig
+        {
+            ShareUrl = shareUrl,
+            IncludePatterns = includePatterns,
+            ExcludePatterns = excludePatterns
+        };
+
+        // Validate configuration using Data Annotations
+        var validationContext = new System.ComponentModel.DataAnnotations.ValidationContext(config);
+        System.ComponentModel.DataAnnotations.Validator.ValidateObject(config, validationContext, validateAllProperties: true);
+
+        return Task.FromResult(config);
     }
 
     /// <summary>

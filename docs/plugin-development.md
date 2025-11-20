@@ -42,28 +42,50 @@ All plugins must implement the `IPlugin` interface:
 
 ```csharp
 using System.CommandLine;
+using Microsoft.Extensions.DependencyInjection;
 using Spectara.Revela.Core.Abstractions;
 
 namespace YourName.Revela.Plugin.Example;
 
 public class ExamplePlugin : IPlugin
 {
+    private IServiceProvider? _services;
+    
     public IPluginMetadata Metadata => new PluginMetadata
     {
         Name = "Example",
         Version = "1.0.0",
         Description = "Example plugin for Revela",
-        Author = "Your Name"
+        Author = "Your Name",
+        ParentCommand = "example" // Optional: parent command name
     };
     
-    public void Initialize(IServiceProvider services)
+    // 1. ConfigureServices - Register services BEFORE ServiceProvider is built
+    public void ConfigureServices(IServiceCollection services)
     {
-        // Initialize plugin (DI, configuration, etc.)
+        // Register plugin-specific services
+        services.AddHttpClient<MyHttpService>(client =>
+        {
+            client.BaseAddress = new Uri("https://api.example.com");
+            client.Timeout = TimeSpan.FromSeconds(30);
+        });
+        
+        services.AddSingleton<IMyService, MyService>();
     }
     
+    // 2. Initialize - Called AFTER ServiceProvider is built
+    public void Initialize(IServiceProvider services)
+    {
+        _services = services;
+        // Perform initialization that requires resolved services
+    }
+    
+    // 3. GetCommands - Return CLI commands
     public IEnumerable<Command> GetCommands()
     {
-        // Return CLI commands this plugin provides
+        if (_services == null)
+            throw new InvalidOperationException("Plugin not initialized");
+        
         yield return CreateExampleCommand();
     }
     
@@ -73,7 +95,8 @@ public class ExamplePlugin : IPlugin
         
         command.SetAction(parseResult =>
         {
-            Console.WriteLine("Hello from Example Plugin!");
+            var myService = _services.GetService<IMyService>();
+            myService?.DoSomething();
             return 0;
         });
         
