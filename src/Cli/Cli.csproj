@@ -13,6 +13,8 @@
   <ItemGroup>
     <ProjectReference Include="..\Core\Core.csproj" />
     <ProjectReference Include="..\Features\Features.csproj" />
+    <!-- Development: OneDrive plugin for testing -->
+    <ProjectReference Include="..\Plugins\Plugin.Source.OneDrive\Plugin.Source.OneDrive.csproj" Condition="'$(Configuration)' == 'Debug'" />
   </ItemGroup>
 
   <ItemGroup>

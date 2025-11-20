@@ -1,9 +1,9 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <Description>Deploy plugin for Expose - SSH/SFTP deployment</Description>
-    <PackageId>Expose.Plugin.Deploy</PackageId>
-    <PackageTags>expose;plugin;deploy;ssh</PackageTags>
+    <Description>SSH/SFTP deployment plugin for Revela</Description>
+    <PackageId>Spectara.Revela.Plugin.Deploy.SSH</PackageId>
+    <PackageTags>revela;plugin;deploy;ssh;sftp</PackageTags>
   </PropertyGroup>
 
   <ItemGroup>

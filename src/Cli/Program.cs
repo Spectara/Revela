@@ -4,6 +4,15 @@ using Spectara.Revela.Core;
 using Spectara.Revela.Features.Init;
 using Spectara.Revela.Features.Plugins;
 
+// Setup basic DI for plugins
+var services = new ServiceCollection();
+services.AddLogging(builder =>
+{
+    builder.AddConsole();
+    builder.SetMinimumLevel(LogLevel.Information);
+});
+var serviceProvider = services.BuildServiceProvider();
+
 // Build root command
 var rootCommand = new RootCommand("Revela - Modern static site generator for photographers");
 
@@ -13,14 +22,22 @@ rootCommand.Subcommands.Add(PluginCommand.Create());
 // rootCommand.Subcommands.Add(GenerateCommand.Create()); // TODO: Implement later
 // rootCommand.Subcommands.Add(ServeCommand.Create());    // TODO: Implement later
 
-// Setup basic DI for plugins
-var services = new ServiceCollection();
-services.AddLogging(builder =>
+#if DEBUG
+// Development: Register OneDrive plugin directly (not via plugin loader)
+try
 {
-    builder.AddConsole();
-    builder.SetMinimumLevel(LogLevel.Information);
-});
-var serviceProvider = services.BuildServiceProvider();
+    var oneDrivePlugin = new Spectara.Revela.Plugin.Source.OneDrive.OneDrivePlugin();
+    oneDrivePlugin.Initialize(serviceProvider);
+    foreach (var cmd in oneDrivePlugin.GetCommands())
+    {
+        rootCommand.Subcommands.Add(cmd);
+    }
+}
+catch (Exception ex)
+{
+    Console.Error.WriteLine($"OneDrive plugin registration failed: {ex.Message}");
+}
+#endif
 
 // Load and register plugin commands (dynamic)
 try

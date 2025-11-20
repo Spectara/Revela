@@ -1,4 +1,4 @@
-﻿
+
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.0.31903.59
@@ -15,9 +15,9 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Cli", "src\Cli\Cli.csproj",
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Plugins", "Plugins", "{58D3A2C3-F96F-5E57-2C6B-ECE59D6A18FC}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Plugin.Deploy", "src\Plugins\Plugin.Deploy\Plugin.Deploy.csproj", "{385B564F-15FF-46D4-B7D3-8AF49FBDA563}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Plugin.Deploy.SSH", "src\Plugins\Plugin.Deploy.SSH\Plugin.Deploy.SSH.csproj", "{385B564F-15FF-46D4-B7D3-8AF49FBDA563}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Plugin.OneDrive", "src\Plugins\Plugin.OneDrive\Plugin.OneDrive.csproj", "{65DF7DAC-C1B1-4E5D-8E43-51889A8B2DB4}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Plugin.Source.OneDrive", "src\Plugins\Plugin.Source.OneDrive\Plugin.Source.OneDrive.csproj", "{65DF7DAC-C1B1-4E5D-8E43-51889A8B2DB4}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{0AB3BF05-4346-4AA6-1389-037BE0695223}"
 EndProject
