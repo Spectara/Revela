@@ -148,7 +148,7 @@ public static partial class OneDriveSourceCommand
                     await Task.Delay(500); // Brief pause to show result
                 });
 
-            if (allItems == null)
+            if (allItems is null)
             {
                 throw new InvalidOperationException("Failed to scan OneDrive folder");
             }

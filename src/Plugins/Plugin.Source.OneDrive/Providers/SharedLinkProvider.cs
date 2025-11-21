@@ -16,30 +16,20 @@ namespace Spectara.Revela.Plugin.Source.OneDrive.Providers;
 /// Uses Microsoft's internal Badger authentication service to access shared OneDrive folders.
 /// App ID: 5cbed6ac-a083-4e14-b191-b4ba07653de2 (Microsoft's OneDrive web interface)
 /// Based on: https://github.com/eugenenuke/onedrive-downloader
+/// 
+/// Uses C# 12 Primary Constructor - parameters are captured automatically.
+/// HttpClient is injected as a Typed Client (configured in OneDrivePlugin.ConfigureServices).
 /// </remarks>
-public sealed partial class SharedLinkProvider : IOneDriveProvider
+public sealed partial class SharedLinkProvider(
+    HttpClient httpClient,
+    ILogger<SharedLinkProvider> logger) : IOneDriveProvider
 {
     private const string BadgerAppId = "5cbed6ac-a083-4e14-b191-b4ba07653de2";
     private const string BadgerTokenUrl = "https://api-badgerp.svc.ms/v1.0/token";
     private const string OneDriveApiBaseUrl = "https://api.onedrive.com/v1.0";
 
-    private readonly HttpClient httpClient;
-    private readonly ILogger<SharedLinkProvider> logger;
     private string? cachedToken;
     private DateTime tokenExpiry = DateTime.MinValue;
-
-    /// <summary>
-    /// Initializes a new instance of SharedLinkProvider with Typed Client pattern
-    /// </summary>
-    /// <remarks>
-    /// HttpClient is injected directly as a Typed Client (recommended .NET pattern).
-    /// Configuration (timeout, headers) is done in Program.cs via AddHttpClient&lt;SharedLinkProvider&gt;().
-    /// </remarks>
-    public SharedLinkProvider(HttpClient httpClient, ILogger<SharedLinkProvider> logger)
-    {
-        this.httpClient = httpClient;
-        this.logger = logger;
-    }
 
     /// <inheritdoc />
     public async Task<IReadOnlyList<OneDriveItem>> ListItemsAsync(
@@ -95,7 +85,7 @@ public sealed partial class SharedLinkProvider : IOneDriveProvider
         response.EnsureSuccessStatusCode();
 
         var jsonResponse = await response.Content.ReadFromJsonAsync<JsonDocument>(cancellationToken: cancellationToken);
-        if (jsonResponse == null)
+        if (jsonResponse is null)
         {
             return;
         }
@@ -264,7 +254,7 @@ public sealed partial class SharedLinkProvider : IOneDriveProvider
         response.EnsureSuccessStatusCode();
 
         var tokenResponse = await response.Content.ReadFromJsonAsync<BadgerTokenResponse>(cancellationToken: cancellationToken);
-        if (tokenResponse?.Token == null)
+        if (tokenResponse?.Token is null)
         {
             throw new InvalidOperationException("Failed to obtain Badger token");
         }
@@ -442,7 +432,7 @@ public sealed partial class SharedLinkProvider : IOneDriveProvider
     private static bool ShouldIncludeFile(OneDriveItem item, IReadOnlyList<string>? includePatterns, IReadOnlyList<string>? excludePatterns)
     {
         // Check exclude patterns first (if any)
-        if (excludePatterns != null && excludePatterns.Count > 0)
+        if (excludePatterns is not null && excludePatterns.Count > 0)
         {
             if (excludePatterns.Any(pattern => MatchesWildcard(item.Name, pattern)))
             {
@@ -451,7 +441,7 @@ public sealed partial class SharedLinkProvider : IOneDriveProvider
         }
 
         // Use smart defaults if no include patterns specified
-        if (includePatterns == null || includePatterns.Count == 0)
+        if (includePatterns is null || includePatterns.Count == 0)
         {
             // Default 1: All images (via MIME type - like original script)
             if (!string.IsNullOrEmpty(item.MimeType) && item.MimeType.StartsWith("image/", StringComparison.OrdinalIgnoreCase))

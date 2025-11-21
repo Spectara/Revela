@@ -8,22 +8,22 @@ namespace Spectara.Revela.Core;
 /// <summary>
 /// Manages plugin installation, updates and removal via NuGet
 /// </summary>
-public sealed partial class PluginManager
+/// <remarks>
+/// Uses C# 12 Primary Constructor with optional parameter.
+/// Creates plugin directory automatically if it doesn't exist.
+/// </remarks>
+public sealed partial class PluginManager(ILogger<PluginManager>? logger = null)
 {
-    private readonly string pluginDirectory;
-    private readonly ILogger<PluginManager> logger;
-    private readonly SourceRepository repository;
+    private readonly string pluginDirectory = InitializePluginDirectory();
+    private readonly ILogger<PluginManager> logger = logger ?? Microsoft.Extensions.Logging.Abstractions.NullLogger<PluginManager>.Instance;
+    private readonly SourceRepository repository = Repository.Factory.GetCoreV3(new PackageSource("https://api.nuget.org/v3/index.json"));
 
-    public PluginManager(ILogger<PluginManager>? logger = null)
+    private static string InitializePluginDirectory()
     {
         var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-        this.pluginDirectory = Path.Combine(appData, "Revela", "plugins");
-        _ = Directory.CreateDirectory(this.pluginDirectory);
-
-        this.logger = logger ?? Microsoft.Extensions.Logging.Abstractions.NullLogger<PluginManager>.Instance;
-
-        var packageSource = new PackageSource("https://api.nuget.org/v3/index.json");
-        this.repository = Repository.Factory.GetCoreV3(packageSource);
+        var path = Path.Combine(appData, "Revela", "plugins");
+        _ = Directory.CreateDirectory(path);
+        return path;
     }
 
     public async Task<bool> InstallPluginAsync(string packageId, string? version = null, CancellationToken cancellationToken = default)

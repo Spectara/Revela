@@ -339,6 +339,37 @@ dotnet_naming_rule.private_instance_fields_must_be_camel_case.symbols = private_
 dotnet_naming_rule.private_instance_fields_must_be_camel_case.style = camel_case_style
 dotnet_naming_rule.private_instance_fields_must_be_camel_case.severity = warning
 
+# ===== BOOLEAN & NULL CHECKING STYLE (Revela Custom Rule) =====
+
+# CRITICAL: Use explicit pattern matching instead of ! operator
+# Reason: The ! operator is overloaded in modern C#:
+#   1. Logical negation: if (!condition)
+#   2. Null-forgiving operator: var x = value!;
+#   3. Pattern negation: if (x is not null)
+# This ambiguity creates confusion and potential bugs.
+#
+# ✅ PREFER (explicit pattern matching):
+#   - if (value is true) { }
+#   - if (value is false) { }
+#   - if (value is not true) { }    // false OR null (for bool?)
+#   - if (value is null) { }
+#   - if (value is not null) { }
+#
+# ❌ AVOID (ambiguous ! operator):
+#   - if (!value) { }               // Hard to distinguish from null-forgiving
+#   - if (value != null) { }        // Use 'is not null' instead
+#
+# Benefits:
+#   - Clarity: Explicit intent, no ambiguity
+#   - Safety: Works correctly with nullable types (bool?, string?)
+#   - Consistency: Uniform pattern matching syntax
+#   - Readability: "is false" is clearer than "!"
+#
+# Note: ! is still allowed for null-forgiving operator when unavoidable:
+#   var name = person.Name!;  // Compiler hint - this is safe
+#
+# Enforcement: Code Review (no automatic rule available in .editorconfig)
+
 # Public/Protected fields disallowed (use properties!)
 dotnet_naming_symbols.public_protected_fields.applicable_accessibilities = public, protected, protected_internal
 dotnet_naming_symbols.public_protected_fields.applicable_kinds = field

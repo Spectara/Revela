@@ -6,18 +6,19 @@ namespace Spectara.Revela.Core;
 /// <summary>
 /// Loads plugins from the user's plugin directory
 /// </summary>
-public sealed partial class PluginLoader
+/// <remarks>
+/// Uses C# 12 Primary Constructor with optional parameter.
+/// Plugin directory is automatically determined from AppData.
+/// </remarks>
+public sealed partial class PluginLoader(ILogger<PluginLoader>? logger = null)
 {
-    private readonly string pluginDirectory;
-    private readonly ILogger<PluginLoader> logger;
-    private readonly List<IPlugin> loadedPlugins = [];
+    private readonly string pluginDirectory = Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+        "Revela",
+        "plugins");
 
-    public PluginLoader(ILogger<PluginLoader>? logger = null)
-    {
-        var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-        this.pluginDirectory = Path.Combine(appData, "Revela", "plugins");
-        this.logger = logger ?? Microsoft.Extensions.Logging.Abstractions.NullLogger<PluginLoader>.Instance;
-    }
+    private readonly ILogger<PluginLoader> logger = logger ?? Microsoft.Extensions.Logging.Abstractions.NullLogger<PluginLoader>.Instance;
+    private readonly List<IPlugin> loadedPlugins = [];
 
     /// <summary>
     /// Gets the list of loaded plugins
