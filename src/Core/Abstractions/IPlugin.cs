@@ -1,4 +1,5 @@
 using System.CommandLine;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Spectara.Revela.Core.Abstractions;
@@ -9,6 +10,17 @@ namespace Spectara.Revela.Core.Abstractions;
 public interface IPlugin
 {
     IPluginMetadata Metadata { get; }
+
+    /// <summary>
+    /// Configure plugin-specific configuration sources
+    /// </summary>
+    /// <remarks>
+    /// Called BEFORE ConfigureServices to allow plugins to add their own config files.
+    /// Use this to register plugin-specific JSON files, environment variables, custom providers, etc.
+    /// Example: configuration.AddJsonFile("onedrive.json", optional: true);
+    /// </remarks>
+    /// <param name="configuration">Configuration builder to add sources to</param>
+    void ConfigureConfiguration(IConfigurationBuilder configuration);
 
     /// <summary>
     /// Configure services needed by this plugin

@@ -1,5 +1,8 @@
 using System.CommandLine;
 using System.Text.Json;
+#pragma warning disable IDE0005 // Using directive is necessary for LoggerMessage attribute
+using Microsoft.Extensions.Logging;
+#pragma warning restore IDE0005
 using Spectara.Revela.Plugin.Source.OneDrive.Models;
 using Spectre.Console;
 
@@ -8,7 +11,11 @@ namespace Spectara.Revela.Plugin.Source.OneDrive.Commands;
 /// <summary>
 /// Command to initialize OneDrive source configuration
 /// </summary>
-public static class OneDriveInitCommand
+/// <remarks>
+/// Uses Dependency Injection with Primary Constructor (C# 12).
+/// Logger is injected for potential error logging.
+/// </remarks>
+public sealed partial class OneDriveInitCommand(ILogger<OneDriveInitCommand> logger)
 {
     private const string ConfigFileName = "onedrive.json";
 
@@ -18,7 +25,7 @@ public static class OneDriveInitCommand
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase
     };
 
-    public static Command Create()
+    public Command Create()
     {
         var command = new Command("init", "Initialize OneDrive source configuration");
 
@@ -40,7 +47,7 @@ public static class OneDriveInitCommand
         return command;
     }
 
-    private static void Execute(string? shareUrl)
+    private void Execute(string? shareUrl)
     {
         try
         {
@@ -110,6 +117,10 @@ public static class OneDriveInitCommand
         catch (Exception ex)
         {
             AnsiConsole.MarkupLine($"[red]Error:[/] {ex.Message}");
+            LogInitFailed(logger, ex);
         }
     }
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "OneDrive initialization failed")]
+    private static partial void LogInitFailed(ILogger logger, Exception exception);
 }

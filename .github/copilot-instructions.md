@@ -65,8 +65,8 @@ This is a **complete rewrite** of the original Bash-based revela project:
 ### Patterns
 - **Configuration:** Options Pattern (`IOptions<T>`)
 - **Logging:** `ILogger<T>` (Microsoft.Extensions.Logging)
-- **DI:** Constructor injection
-- **Commands:** System.CommandLine 2.0 API
+- **DI:** Constructor injection with Primary Constructors (C# 12)
+- **Commands:** Instance classes with DI (System.CommandLine 2.0 API)
 
 ### Code Quality
 - **XML docs:** Required for public APIs
@@ -161,22 +161,50 @@ return rootCommand.Parse(args).Invoke();
   rootCommand.Subcommands.Add(InitCommand.Create());
   rootCommand.Subcommands.Add(GenerateCommand.Create());
   ```
-- **Plugin Commands:** Dynamic loading via PluginLoader (Reflection)
+- **Plugin Commands:** Automatic via `AddPlugins()` and `RegisterCommands()`
   ```csharp
-  var plugins = pluginLoader.GetLoadedPlugins();
-  foreach (var plugin in plugins)
-  {
-      plugin.Initialize(serviceProvider);
-      foreach (var cmd in plugin.GetCommands())
-          rootCommand.Subcommands.Add(cmd);
-  }
+  var plugins = builder.Services.AddPlugins(builder.Configuration);
+  plugins.Initialize(host.Services);
+  plugins.RegisterCommands(rootCommand);
   ```
 
 **Reason:** Core commands are stable and few, plugins need dynamic discovery
 
-### 4. Plugin System (CRITICAL!)
+### 4. Plugin System with Host.CreateApplicationBuilder
 
-#### Plugin Lifecycle - 3 Phases
+**MODERN PATTERN:** Use `Host.CreateApplicationBuilder` for full .NET hosting features!
+
+#### Complete Program.cs Example
+
+```csharp
+using System.CommandLine;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+
+// ✅ Use Host.CreateApplicationBuilder
+var builder = Host.CreateApplicationBuilder(args);
+
+// ✅ Load and register plugins (Extension Method Pattern)
+var plugins = builder.Services.AddPlugins(builder.Configuration);
+
+// ✅ Build host
+var host = builder.Build();
+
+// ✅ Initialize plugins
+plugins.Initialize(host.Services);
+
+// Build root command
+var rootCommand = new RootCommand("Revela");
+rootCommand.Subcommands.Add(InitCommand.Create());
+
+// ✅ Register plugin commands
+plugins.RegisterCommands(rootCommand);
+
+// Execute
+return rootCommand.Parse(args).Invoke();
+```
+
+#### Plugin Lifecycle - 4 Phases
 
 **IMPORTANT:** Plugins have a specific initialization order!
 
@@ -185,57 +213,63 @@ public interface IPlugin
 {
     IPluginMetadata Metadata { get; }
     
-    // 1. ConfigureServices - Called BEFORE BuildServiceProvider
-    //    Plugin registers its own services (HttpClient, etc.)
+    // 1. ConfigureConfiguration - Called BEFORE BuildServiceProvider
+    //    Plugin registers config sources (onedrive.json, env vars)
+    void ConfigureConfiguration(IConfigurationBuilder configuration);
+    
+    // 2. ConfigureServices - Called BEFORE BuildServiceProvider
+    //    Plugin registers services (HttpClient, Commands, IOptions)
     void ConfigureServices(IServiceCollection services);
     
-    // 2. Initialize - Called AFTER BuildServiceProvider
+    // 3. Initialize - Called AFTER host.Build()
     //    Plugin receives built ServiceProvider for initialization
     void Initialize(IServiceProvider services);
     
-    // 3. GetCommands - Returns CLI commands
+    // 4. GetCommands - Returns CLI commands for registration
     IEnumerable<Command> GetCommands();
 }
 ```
 
-**Program.cs Order (MUST follow this!):**
+#### AddPlugins() Extension Method
+
+**Automatic Plugin Lifecycle Management:**
+
 ```csharp
-// 1. Create ServiceCollection
-var services = new ServiceCollection();
-services.AddLogging(...);
-
-// 2. Load plugins (BEFORE BuildServiceProvider!)
-var pluginLoader = new PluginLoader(logger);
-pluginLoader.LoadPlugins();
-var plugins = pluginLoader.GetLoadedPlugins();
-
-// 3. Let plugins register services
-foreach (var plugin in plugins)
+// Extension method handles all plugin lifecycle phases
+public static IPluginContext AddPlugins(
+    this IServiceCollection services,
+    IConfigurationBuilder configuration,
+    Action<PluginOptions>? configure = null)
 {
-    plugin.ConfigureServices(services);  // ✅ Still mutable
-}
-
-// 4. Build ServiceProvider
-var serviceProvider = services.BuildServiceProvider();
-
-// 5. Initialize plugins
-foreach (var plugin in plugins)
-{
-    plugin.Initialize(serviceProvider);  // ✅ Now immutable
-}
-
-// 6. Register commands
-foreach (var plugin in plugins)
-{
-    foreach (var cmd in plugin.GetCommands())
-        RegisterCommand(cmd);
+    // 1. Load plugin assemblies
+    var pluginLoader = new PluginLoader(logger);
+    pluginLoader.LoadPlugins();
+    var plugins = pluginLoader.GetLoadedPlugins();
+    
+    // 2. Plugins register config sources
+    foreach (var plugin in plugins)
+    {
+        plugin.ConfigureConfiguration(configuration);
+    }
+    
+    // 3. Plugins register services
+    foreach (var plugin in plugins)
+    {
+        plugin.ConfigureServices(services);
+    }
+    
+    // 4. Return context for Initialize() and RegisterCommands()
+    return new PluginContext(plugins);
 }
 ```
 
-**Why this order?**
-- Plugins don't know what services they need until runtime
-- Program.cs can't know what plugins exist
-- ServiceCollection must be open when plugins register services
+**Benefits:**
+- ✅ **Configuration:** appsettings.json, environment variables, user secrets
+- ✅ **Logging:** Configuration-driven logging levels
+- ✅ **Dependency Injection:** Full DI container with all features
+- ✅ **IOptions:** Validation, hot-reload, fail-fast
+- ✅ **Environment:** Development/Production/Staging support
+- ✅ **Clean Code:** 72% less code in Program.cs (130 lines → 36 lines)
 
 #### Parent Command Pattern
 
@@ -319,47 +353,95 @@ public class MyService
 
 **See:** `docs/httpclient-pattern.md` for complete guide
 
-### 6. Configuration
+### 6. Plugin Configuration System
 
-**Use ConfigurationBuilder (not manual JSON parsing):**
+**Plugins register their own config files and use IOptions pattern:**
 
+#### **Step 1: Create Config Model**
 ```csharp
-private static Task<MyConfig> LoadConfigurationAsync(...)
-{
-    var configPath = Path.Combine(Directory.GetCurrentDirectory(), "config.json");
-    
-    // ✅ ConfigurationBuilder with multiple sources
-    var configuration = new ConfigurationBuilder()
-        .AddJsonFile(configPath, optional: true, reloadOnChange: false)
-        .AddEnvironmentVariables(prefix: "REVELA_MYPLUGIN_")
-        .Build();
-    
-    var config = configuration.Get<MyConfig>();
-    
-    // ✅ Validate with Data Annotations
-    var context = new ValidationContext(config);
-    Validator.ValidateObject(config, context, validateAllProperties: true);
-    
-    return Task.FromResult(config);
-}
-```
-
-**Config Model with Validation:**
-```csharp
+// src/Plugins/Plugin.{Name}/Configuration/{PluginName}Config.cs
 using System.ComponentModel.DataAnnotations;
 
-public sealed class MyConfig
+namespace Spectara.Revela.Plugin.{Name}.Configuration;
+
+public sealed class MyPluginConfig
 {
+    /// <summary>
+    /// Configuration section name in appsettings.json
+    /// </summary>
+    public const string SectionName = "Plugins:MyPlugin";
+    
     [Required(ErrorMessage = "ApiUrl is required")]
     [Url(ErrorMessage = "Must be a valid URL")]
-    public required string ApiUrl { get; init; }
+    public string ApiUrl { get; init; } = string.Empty;
+    
+    public int Timeout { get; init; } = 30;
 }
 ```
 
+#### **Step 2: Plugin Registers Config Sources**
+```csharp
+public sealed class MyPlugin : IPlugin
+{
+    // Register plugin-specific config files
+    public void ConfigureConfiguration(IConfigurationBuilder configuration)
+    {
+        // Plugin registers its own config file(s)
+        configuration.AddJsonFile(
+            "myplugin.json", 
+            optional: true,
+            reloadOnChange: true
+        );
+        
+        // Optional: Plugin-specific environment prefix
+        configuration.AddEnvironmentVariables(prefix: "MYPLUGIN_");
+    }
+    
+    // Register IOptions
+    public void ConfigureServices(IServiceCollection services)
+    {
+        // Bind config from all sources (appsettings.json, myplugin.json, env vars)
+        services.AddOptions<MyPluginConfig>()
+            .BindConfiguration(MyPluginConfig.SectionName)
+            .ValidateDataAnnotations()
+            .ValidateOnStart();  // Fail-fast at startup
+        
+        // Register other services...
+    }
+}
+```
+
+#### **Step 3: Commands Use IOptions**
+```csharp
+public sealed partial class MyCommand(
+    ILogger<MyCommand> logger,
+    IOptionsMonitor<MyPluginConfig> config)  // Injected config!
+{
+    private async Task ExecuteAsync(string? urlOverride)
+    {
+        // Get current config (hot-reload support)
+        var current = config.CurrentValue;
+        
+        // CLI overrides config
+        var url = urlOverride ?? current.ApiUrl;
+        
+        // Use config values...
+    }
+}
+```
+
+**Configuration Hierarchy (merged in order):**
+1. `appsettings.json` → `Plugins:MyPlugin` section
+2. `myplugin.json` (registered by plugin)
+3. Environment variables: `REVELA__PLUGINS__MYPLUGIN__*`
+4. CLI arguments (override in command)
+
 **Benefits:**
-- JSON + Environment Variables support
-- Data Annotations validation (early error detection)
-- Standard .NET pattern
+- ✅ Plugin self-contained (registers own config files)
+- ✅ Hot-reload support (`IOptionsMonitor<T>`)
+- ✅ Multi-source config (JSON, ENV, CLI)
+- ✅ Data Annotations validation
+- ✅ Fail-fast at startup
 
 ### 7. Progress Display (Spectre.Console)
 
@@ -481,30 +563,69 @@ public sealed class MyModel
 ```
 
 ### Adding a New Command
-Location: `src/Revela.Features/{FeatureName}/`
+Location: `src/Revela.Features/{FeatureName}/` or `src/Plugins/Plugin.*/Commands/`
 
+**MODERN PATTERN (with DI):**
 ```csharp
 namespace Revela.Features.MyFeature;
 
-public static class MyCommand
+/// <summary>
+/// Command implementation with Dependency Injection
+/// </summary>
+/// <remarks>
+/// Uses C# 12 Primary Constructor for DI.
+/// Dependencies are explicitly visible and fully testable.
+/// </remarks>
+public sealed partial class MyCommand(
+    ILogger<MyCommand> logger,
+    IMyService myService)
 {
-    public static Command Create(IServiceProvider services)
+    public Command Create()
     {
         var command = new Command("mycommand", "Description");
         
-        var option = new Option<string>("--name");
-        command.AddOption(option);
-        
-        command.SetHandler(async (name, ct) =>
+        var option = new Option<string>("--name", "-n")
         {
-            // Implementation
-            await Task.CompletedTask;
-        }, option);
+            Description = "Name option"
+        };
+        command.Options.Add(option);
+        
+        command.SetAction(async parseResult =>
+        {
+            var name = parseResult.GetValue(option);
+            await ExecuteAsync(name);
+            return 0;
+        });
         
         return command;
     }
+    
+    private async Task ExecuteAsync(string? name)
+    {
+        LogExecuting(logger, name ?? "default");
+        await myService.ProcessAsync(name);
+    }
+    
+    [LoggerMessage(Level = LogLevel.Information, Message = "Executing with name: {Name}")]
+    private static partial void LogExecuting(ILogger logger, string name);
 }
 ```
+
+**Registration in Plugin/Feature:**
+```csharp
+// In ConfigureServices:
+services.AddTransient<MyCommand>();
+
+// In GetCommands:
+var cmd = serviceProvider.GetRequiredService<MyCommand>();
+yield return cmd.Create();
+```
+
+**Benefits:**
+- ✅ Explicit dependencies (visible in constructor)
+- ✅ Fully testable (mock dependencies)
+- ✅ No IServiceProvider in methods
+- ✅ Type-safe with Primary Constructor
 
 ### Adding a New Service
 Location: `src/Revela.Infrastructure/`

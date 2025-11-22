@@ -1,8 +1,9 @@
 using System.CommandLine;
-using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Options;
 #pragma warning disable IDE0005 // Using directive is necessary for LoggerMessage attribute
 using Microsoft.Extensions.Logging;
 #pragma warning restore IDE0005
+using Spectara.Revela.Plugin.Source.OneDrive.Configuration;
 using Spectara.Revela.Plugin.Source.OneDrive.Models;
 using Spectara.Revela.Plugin.Source.OneDrive.Providers;
 using Spectre.Console;
@@ -12,11 +13,17 @@ namespace Spectara.Revela.Plugin.Source.OneDrive.Commands;
 /// <summary>
 /// Command to download images from OneDrive shared folder
 /// </summary>
-public static partial class OneDriveSourceCommand
+/// <remarks>
+/// Uses Dependency Injection with Primary Constructor (C# 12).
+/// Configuration is injected via IOptionsMonitor for hot-reload support.
+/// Dependencies are injected at construction time, making the command fully testable.
+/// </remarks>
+public sealed partial class OneDriveSourceCommand(
+    ILogger<OneDriveSourceCommand> logger,
+    SharedLinkProvider provider,
+    IOptionsMonitor<OneDrivePluginConfig> config)
 {
-    private const string ConfigFileName = "onedrive.json";
-
-    public static Command Create(IServiceProvider services)
+    public Command Create()
     {
         var command = new Command("download", "Download images from OneDrive shared folder");
 
@@ -77,70 +84,91 @@ public static partial class OneDriveSourceCommand
             var concurrency = parseResult.GetValue(concurrencyOption);
             var debug = parseResult.GetValue(debugOption);
 
-            await ExecuteAsync(services, shareUrl, outputDir, force, includePatterns, excludePatterns, concurrency, debug);
+            await ExecuteAsync(shareUrl, outputDir, force, includePatterns, excludePatterns, concurrency, debug);
             return 0;
         });
 
         return command;
     }
 
-    private static async Task ExecuteAsync(
-        IServiceProvider services,
-        string? shareUrl,
-        string? outputDirectory,
+    private async Task ExecuteAsync(
+        string? shareUrlOverride,
+        string? outputDirectoryOverride,
         bool forceRefresh,
-        string[]? includePatterns,
-        string[]? excludePatterns,
-        int? concurrency,
+        string[]? includePatternsOverride,
+        string[]? excludePatternsOverride,
+        int? concurrencyOverride,
         bool debug
     )
     {
-        var loggerFactory = (ILoggerFactory?)services.GetService(typeof(ILoggerFactory));
-        var logger = loggerFactory?.CreateLogger("OneDriveSource");
-
-        // Configure debug logging if requested
-        if (debug && loggerFactory is ILoggerFactory factory)
+        // Debug info (log level must be configured via environment before startup)
+        if (debug)
         {
-            // Note: This requires LoggerFactory to support AddFilter at runtime
-            // In production, this should be configured via appsettings or environment
-            AnsiConsole.MarkupLine("[dim]Debug logging enabled[/]");
+            AnsiConsole.MarkupLine("[yellow]Debug logging requested[/]");
+            AnsiConsole.MarkupLine("[dim]Set REVELA_LOGLEVEL=Debug before running to enable debug logs[/]");
         }
 
         try
         {
-            // Load configuration from file or use parameters
-            var config = await LoadConfigurationAsync(shareUrl, includePatterns, excludePatterns);
+            // Get current config from IOptionsMonitor (hot-reload support)
+            var currentConfig = config.CurrentValue;
 
-            // Determine output directory
-            outputDirectory ??= Path.Combine(Directory.GetCurrentDirectory(), "source");
+            // CLI parameters override config file (priority: CLI > Config)
+            var shareUrl = shareUrlOverride ?? currentConfig.ShareUrl;
+            var includePatterns = includePatternsOverride ?? currentConfig.IncludePatterns?.ToArray();
+            var excludePatterns = excludePatternsOverride ?? currentConfig.ExcludePatterns?.ToArray();
 
-            // Auto-detect concurrency if not specified (like original script)
-            concurrency ??= GetDefaultConcurrency();
+            // Validate ShareUrl (either from config or CLI)
+            if (string.IsNullOrWhiteSpace(shareUrl))
+            {
+                throw new InvalidOperationException(
+                    "No OneDrive share URL provided. Use one of these methods:\n" +
+                    "1. Set in appsettings.json → Plugins:OneDrive:ShareUrl\n" +
+                    "2. Create onedrive.json with ShareUrl property\n" +
+                    "3. Set environment variable: REVELA__PLUGINS__ONEDRIVE__SHAREURL=<url>\n" +
+                    "4. Provide --share-url parameter"
+                );
+            }
+
+            // Build OneDriveConfig for provider
+            var downloadConfig = new OneDriveConfig
+            {
+                ShareUrl = shareUrl,
+                IncludePatterns = includePatterns,
+                ExcludePatterns = excludePatterns
+            };
+
+            // Determine output directory (CLI > Config > Default)
+            var outputDirectory = outputDirectoryOverride
+                ?? currentConfig.OutputDirectory
+                ?? "source";
+            outputDirectory = Path.Combine(Directory.GetCurrentDirectory(), outputDirectory);
+
+            // Determine concurrency (CLI > Config > Auto-detect)
+            var concurrency = concurrencyOverride
+                ?? currentConfig.DefaultConcurrency
+                ?? GetDefaultConcurrency();
 
             // Validate concurrency
             if (concurrency <= 0)
             {
-                throw new ArgumentException("Concurrency must be greater than 0", nameof(concurrency));
+                throw new ArgumentException("Concurrency must be greater than 0", nameof(concurrencyOverride));
             }
 
             AnsiConsole.MarkupLine("[blue]📥 Downloading from OneDrive...[/]");
-            AnsiConsole.MarkupLine($"[dim]Share URL:[/] {config.ShareUrl}");
+            AnsiConsole.MarkupLine($"[dim]Share URL:[/] {downloadConfig.ShareUrl}");
             AnsiConsole.MarkupLine($"[dim]Output:[/] {outputDirectory}");
             AnsiConsole.MarkupLine($"[dim]Concurrency:[/] {concurrency} parallel downloads");
             AnsiConsole.WriteLine();
 
-            // Get SharedLinkProvider from DI (Typed Client pattern)
-            // HttpClient is automatically configured and injected
-            var provider = (SharedLinkProvider?)services.GetService(typeof(SharedLinkProvider))
-                ?? throw new InvalidOperationException("SharedLinkProvider not available - ensure it's registered in Program.cs");
-
             // Phase 1: Scan OneDrive structure
+            // Note: provider is injected via constructor (DI)
             IReadOnlyList<OneDriveItem>? allItems = null;
             await AnsiConsole.Status()
                 .Spinner(Spinner.Known.Dots)
                 .StartAsync("[yellow]Scanning OneDrive folder structure...[/]", async ctx =>
                 {
-                    allItems = await provider.ListItemsAsync(config);
+                    allItems = await provider.ListItemsAsync(downloadConfig);
                     var fileCount = allItems.Count(i => !i.IsFolder);
                     var folderCount = allItems.Count(i => i.IsFolder);
 
@@ -189,7 +217,7 @@ public static partial class OneDriveSourceCommand
                         task.Description = $"[green]Downloading[/] ({report.current}/{report.total}) {safeFileName}";
                     });
 
-                    downloadedFiles = [.. await provider.DownloadAllAsync(config, outputDirectory, forceRefresh, concurrency.Value, progress, allItems)];
+                    downloadedFiles = [.. await provider.DownloadAllAsync(downloadConfig, outputDirectory, forceRefresh, concurrency, progress, allItems)];
 
                     task.StopTask();
                 });
@@ -212,84 +240,8 @@ public static partial class OneDriveSourceCommand
         catch (Exception ex)
         {
             AnsiConsole.MarkupLine($"[red]Error:[/] {ex.Message}");
-
-            if (logger != null)
-            {
-                LogDownloadFailed(logger, ex);
-            }
+            LogDownloadFailed(logger, ex);
         }
-    }
-
-    /// <summary>
-    /// Loads configuration from multiple sources using ConfigurationBuilder
-    /// </summary>
-    /// <remarks>
-    /// Configuration sources (in priority order, highest to lowest):
-    /// 1. Command-line parameters (--share-url, --include, --exclude)
-    /// 2. Environment variables (REVELA_ONEDRIVE_*)
-    /// 3. Configuration file (onedrive.json)
-    /// 
-    /// Patterns are optional - if not specified, smart defaults are used:
-    /// - All images (detected via MIME type: image/*)
-    /// - All markdown files (*.md)
-    /// </remarks>
-    private static Task<OneDriveConfig> LoadConfigurationAsync(
-        string? shareUrl,
-        string[]? includePatterns,
-        string[]? excludePatterns
-    )
-    {
-        OneDriveConfig? fileConfig = null;
-
-        try
-        {
-            // Build configuration from multiple sources
-            // Note: JSON file is loaded from current working directory
-            var configPath = Path.Combine(Directory.GetCurrentDirectory(), ConfigFileName);
-
-            var configuration = new ConfigurationBuilder()
-                .AddJsonFile(configPath, optional: true, reloadOnChange: false)
-                .AddEnvironmentVariables(prefix: "REVELA_ONEDRIVE_")
-                .Build();
-
-            // Bind to OneDriveConfig
-            fileConfig = configuration.Get<OneDriveConfig>();
-        }
-        catch (Exception ex)
-        {
-            AnsiConsole.MarkupLine($"[yellow]Warning:[/] Failed to load configuration: {ex.Message}");
-        }
-
-        // Command-line parameters override file/environment config
-        shareUrl ??= fileConfig?.ShareUrl;
-
-        // Patterns are optional - null means use smart defaults
-        includePatterns ??= fileConfig?.IncludePatterns?.ToArray();
-        excludePatterns ??= fileConfig?.ExcludePatterns?.ToArray();
-
-        // Validate that we have at least a share URL
-        if (string.IsNullOrWhiteSpace(shareUrl))
-        {
-            throw new InvalidOperationException(
-                "No OneDrive share URL provided. Use one of these methods:\n" +
-                $"1. Run 'revela source onedrive init' to create {ConfigFileName}\n" +
-                "2. Set environment variable: REVELA_ONEDRIVE_ShareUrl=<url>\n" +
-                "3. Provide --share-url parameter"
-            );
-        }
-
-        var config = new OneDriveConfig
-        {
-            ShareUrl = shareUrl,
-            IncludePatterns = includePatterns,
-            ExcludePatterns = excludePatterns
-        };
-
-        // Validate configuration using Data Annotations
-        var validationContext = new System.ComponentModel.DataAnnotations.ValidationContext(config);
-        System.ComponentModel.DataAnnotations.Validator.ValidateObject(config, validationContext, validateAllProperties: true);
-
-        return Task.FromResult(config);
     }
 
     /// <summary>
