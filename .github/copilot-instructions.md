@@ -353,7 +353,82 @@ public class MyService
 
 **See:** `docs/httpclient-pattern.md` for complete guide
 
-### 6. Plugin Configuration System
+### 6. Logging Configuration
+
+**Logging uses defaults in code with optional user override:**
+
+#### **LoggingConfig with Defaults**
+```csharp
+// src/Core/Configuration/LoggingConfig.cs
+public sealed class LoggingConfig
+{
+    public const string SectionName = "Logging";
+    
+    // ✅ Defaults in C# Properties
+    public Dictionary<string, string> LogLevel { get; init; } = new()
+    {
+        ["Default"] = "Information",
+        ["Spectara.Revela"] = "Debug",
+        ["Microsoft"] = "Warning",
+        ["System"] = "Warning"
+    };
+}
+```
+
+#### **Optional logging.json (Working Directory)**
+```json
+// D:\MyPhotos\logging.json (optional!)
+{
+  "Logging": {
+    "LogLevel": {
+      "Default": "Debug",
+      "Spectara.Revela": "Trace"
+    }
+  }
+}
+```
+
+#### **Program.cs loads config**
+```csharp
+// Load optional logging.json from working directory
+builder.Configuration
+    .AddJsonFile("logging.json", optional: true, reloadOnChange: true)
+    .AddEnvironmentVariables(prefix: "REVELA__")
+    .AddCommandLine(args);
+
+// Apply config OR defaults
+var loggingConfig = new LoggingConfig();
+builder.Configuration.GetSection(LoggingConfig.SectionName).Bind(loggingConfig);
+
+// Configure logging
+foreach (var (category, level) in loggingConfig.LogLevel)
+{
+    if (Enum.TryParse<LogLevel>(level, ignoreCase: true, out var logLevel))
+    {
+        if (category == "Default")
+        {
+            builder.Logging.SetMinimumLevel(logLevel);
+        }
+        else
+        {
+            builder.Logging.AddFilter(category, logLevel);
+        }
+    }
+}
+```
+
+**Configuration Sources (in priority order):**
+1. C# Defaults (LoggingConfig.LogLevel property)
+2. `logging.json` (optional, working directory)
+3. Environment variables (`REVELA__LOGGING__LOGLEVEL__DEFAULT=Debug`)
+
+**Benefits:**
+- ✅ No appsettings.json needed (defaults in code)
+- ✅ Optional user override (logging.json)
+- ✅ Environment variables support
+- ✅ Perfect for Global Tools (ContentRoot = Working Directory)
+
+### 7. Plugin Configuration System
 
 **Plugins register their own config files and use IOptions pattern:**
 
@@ -431,9 +506,9 @@ public sealed partial class MyCommand(
 ```
 
 **Configuration Hierarchy (merged in order):**
-1. `appsettings.json` → `Plugins:MyPlugin` section
-2. `myplugin.json` (registered by plugin)
-3. Environment variables: `REVELA__PLUGINS__MYPLUGIN__*`
+1. C# Property Defaults (in Config class)
+2. `myplugin.json` (optional, registered by plugin from working directory)
+3. Environment variables: `REVELA__PLUGINS__MYPLUGIN__*` or `MYPLUGIN__*`
 4. CLI arguments (override in command)
 
 **Benefits:**
@@ -443,7 +518,7 @@ public sealed partial class MyCommand(
 - ✅ Data Annotations validation
 - ✅ Fail-fast at startup
 
-### 7. Progress Display (Spectre.Console)
+### 8. Progress Display (Spectre.Console)
 
 **Two-Phase Progress Pattern (Scan + Download):**
 
@@ -499,7 +574,7 @@ await AnsiConsole.Progress()
 - Phase 2 (Download) - Total known, show progress bar
 - Brief pause after scan to show result before starting download
 
-### 8. Token/Auth Caching
+### 9. Token/Auth Caching
 
 **Simple caching pattern (single-threaded command execution):**
 

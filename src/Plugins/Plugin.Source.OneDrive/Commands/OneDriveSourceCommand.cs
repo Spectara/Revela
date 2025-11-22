@@ -105,7 +105,8 @@ public sealed partial class OneDriveSourceCommand(
         if (debug)
         {
             AnsiConsole.MarkupLine("[yellow]Debug logging requested[/]");
-            AnsiConsole.MarkupLine("[dim]Set REVELA_LOGLEVEL=Debug before running to enable debug logs[/]");
+            AnsiConsole.MarkupLine("[dim]Set environment variable REVELA__LOGGING__LOGLEVEL__DEFAULT=Debug[/]");
+            AnsiConsole.MarkupLine("[dim]Or create logging.json with Debug level[/]");
         }
 
         try
@@ -123,10 +124,17 @@ public sealed partial class OneDriveSourceCommand(
             {
                 throw new InvalidOperationException(
                     "No OneDrive share URL provided. Use one of these methods:\n" +
-                    "1. Set in appsettings.json → Plugins:OneDrive:ShareUrl\n" +
-                    "2. Create onedrive.json with ShareUrl property\n" +
-                    "3. Set environment variable: REVELA__PLUGINS__ONEDRIVE__SHAREURL=<url>\n" +
-                    "4. Provide --share-url parameter"
+                    "1. Create onedrive.json with ShareUrl property (in Plugins:OneDrive section)\n" +
+                    "2. Set environment variable: REVELA__PLUGINS__ONEDRIVE__SHAREURL=<url> or ONEDRIVE_SHAREURL=<url>\n" +
+                    "3. Provide --share-url parameter\n\n" +
+                    "Example onedrive.json:\n" +
+                    "{\n" +
+                    "  \"Plugins\": {\n" +
+                    "    \"OneDrive\": {\n" +
+                    "      \"ShareUrl\": \"https://1drv.ms/u/...\"\n" +
+                    "    }\n" +
+                    "  }\n" +
+                    "}"
                 );
             }
 
