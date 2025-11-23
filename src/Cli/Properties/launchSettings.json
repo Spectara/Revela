@@ -1,0 +1,70 @@
+{
+  "$schema": "http://json.schemastore.org/launchsettings.json",
+  "profiles": {
+    "Revela Help": {
+      "commandName": "Project",
+      "commandLineArgs": "--help",
+      "workingDirectory": "$(SolutionDir)debug",
+      "environmentVariables": {
+        "DOTNET_ENVIRONMENT": "Development"
+      }
+    },
+    "Plugin List": {
+      "commandName": "Project",
+      "commandLineArgs": "plugin list",
+      "workingDirectory": "$(SolutionDir)debug",
+      "environmentVariables": {
+        "DOTNET_ENVIRONMENT": "Development"
+      }
+    },
+    "Source Help": {
+      "commandName": "Project",
+      "commandLineArgs": "source --help",
+      "workingDirectory": "$(SolutionDir)debug",
+      "environmentVariables": {
+        "DOTNET_ENVIRONMENT": "Development"
+      }
+    },
+    "OneDrive Help": {
+      "commandName": "Project",
+      "commandLineArgs": "source onedrive --help",
+      "workingDirectory": "$(SolutionDir)debug",
+      "environmentVariables": {
+        "DOTNET_ENVIRONMENT": "Development"
+      }
+    },
+    "OneDrive Download (Normal)": {
+      "commandName": "Project",
+      "commandLineArgs": "source onedrive download",
+      "workingDirectory": "$(SolutionDir)debug",
+      "environmentVariables": {
+        "DOTNET_ENVIRONMENT": "Development"
+      }
+    },
+    "OneDrive Download (Silent)": {
+      "commandName": "Project",
+      "commandLineArgs": "source onedrive download",
+      "workingDirectory": "$(SolutionDir)debug",
+      "environmentVariables": {
+        "DOTNET_ENVIRONMENT": "Development",
+        "LOGGING__LOGLEVEL__DEFAULT": "Error"
+      }
+    },
+    "OneDrive Init": {
+      "commandName": "Project",
+      "commandLineArgs": "source onedrive init",
+      "workingDirectory": "$(SolutionDir)debug",
+      "environmentVariables": {
+        "DOTNET_ENVIRONMENT": "Development"
+      }
+    },
+    "Init Project": {
+      "commandName": "Project",
+      "commandLineArgs": "init --path \"./my-photo-site\" --title \"My Portfolio\"",
+      "workingDirectory": "$(SolutionDir)debug",
+      "environmentVariables": {
+        "DOTNET_ENVIRONMENT": "Development"
+      }
+    }
+  }
+}

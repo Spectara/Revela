@@ -197,37 +197,35 @@ public sealed partial class OneDriveSourceCommand(
 
             await AnsiConsole.Progress()
                 .AutoClear(false)
+                .HideCompleted(false)  // Show completed downloads
                 .Columns(
                     new TaskDescriptionColumn(),
                     new ProgressBarColumn(),
                     new PercentageColumn(),
-                    new RemainingTimeColumn(),
+                    new ElapsedTimeColumn(),
                     new SpinnerColumn()
                 )
                 .StartAsync(async ctx =>
                 {
-                    var task = ctx.AddTask("[green]Downloading files[/]", maxValue: 100);
-                    task.IsIndeterminate = true; // Start indeterminate until we know the total
+                    // Main progress task (shows overall progress)
+                    var mainTask = ctx.AddTask($"[green]Overall Progress[/]", maxValue: 100);
+                    mainTask.IsIndeterminate = true;
 
                     var progress = new Progress<(int current, int total, string fileName)>(report =>
                     {
-                        if (task.IsIndeterminate && report.total > 0)
+                        // Update main task
+                        if (mainTask.IsIndeterminate && report.total > 0)
                         {
-                            task.IsIndeterminate = false;
-                            task.MaxValue = report.total;
+                            mainTask.IsIndeterminate = false;
+                            mainTask.MaxValue = report.total;
                         }
-
-                        task.Value = report.current;
-                        // Escape markup in filename to avoid Spectre.Console parsing issues
-                        var safeFileName = report.fileName
-                            .Replace("[", "[[", StringComparison.Ordinal)
-                            .Replace("]", "]]", StringComparison.Ordinal);
-                        task.Description = $"[green]Downloading[/] ({report.current}/{report.total}) {safeFileName}";
+                        mainTask.Value = report.current;
+                        mainTask.Description = $"[green]Overall Progress[/] ({report.current}/{report.total}) - {concurrency} parallel downloads";
                     });
 
                     downloadedFiles = [.. await provider.DownloadAllAsync(downloadConfig, outputDirectory, forceRefresh, concurrency, progress, allItems)];
 
-                    task.StopTask();
+                    mainTask.StopTask();
                 });
 
             // Success message
@@ -253,12 +251,23 @@ public sealed partial class OneDriveSourceCommand(
     }
 
     /// <summary>
-    /// Gets the default concurrency based on CPU cores (like original script)
+    /// Gets the default concurrency based on CPU cores
     /// </summary>
     /// <remarks>
-    /// Downloads are I/O-bound, not CPU-bound.
-    /// Optimal concurrency is higher than CPU cores for network downloads.
-    /// Based on benchmark results from original script.
+    /// Downloads are I/O-bound, not CPU-bound, allowing higher concurrency than CPU cores.
+    /// 
+    /// NOTE: OneDrive downloads use pre-signed CDN URLs (not OneDrive API), so API rate limiting
+    /// is not a concern during downloads. The scan phase (ListItemsAsync) caches all file metadata
+    /// once, then downloads proceed in parallel using direct CDN links.
+    /// 
+    /// Concurrency limits prevent:
+    /// - Network bandwidth saturation (too many parallel HTTP streams)
+    /// - Memory exhaustion (HttpClient buffers ~10MB per active download)
+    /// - CDN throttling (OneDrive CDN may limit connections per IP)
+    /// - Poor UX (progress becomes unpredictable with 64+ parallel tasks)
+    /// 
+    /// Sweet spot: 2-4x CPU cores for I/O-bound operations.
+    /// Based on benchmark results from original Bash script.
     /// </remarks>
     private static int GetDefaultConcurrency()
     {
@@ -271,7 +280,7 @@ public sealed partial class OneDriveSourceCommand(
             <= 4 => 8,           // Good for 4-core systems
             <= 8 => 12,          // 6-8 core systems
             <= 16 => 16,         // 12-16 core systems
-            _ => 24              // High-end systems (20+ cores)
+            _ => 24              // High-end systems (20+ cores, capped for safety)
         };
     }
 

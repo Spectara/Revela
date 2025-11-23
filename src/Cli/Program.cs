@@ -2,54 +2,28 @@ using System.CommandLine;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using Spectara.Revela.Core.Configuration;
 using Spectara.Revela.Features.Init;
 using Spectara.Revela.Features.Plugins;
 
-// ✅ Create Host with minimal defaults
-// ContentRoot = Working Directory (perfect for Global Tools!)
-// This allows user configs (logging.json, onedrive.json, project.json) to be loaded from working directory
-var builder = Host.CreateApplicationBuilder(new HostApplicationBuilderSettings
-{
-    Args = args,
-    DisableDefaults = true  // We configure everything ourselves for full control
-});
+// ✅ Use Host.CreateApplicationBuilder for full .NET hosting features
+// - Configuration: appsettings.json, environment variables, user secrets
+// - Logging: Configuration-driven logging levels
+// - Dependency Injection: Full DI container with all features
+// - Environment: Development/Production/Staging support
+var builder = Host.CreateApplicationBuilder(args);
 
-// ✅ Configure configuration sources (Working Directory)
-builder.Configuration
-    // Optional logging.json from working directory
-    .AddJsonFile("logging.json", optional: true, reloadOnChange: true)
-    // Environment variables (REVELA__*)
-    .AddEnvironmentVariables(prefix: "REVELA__")
-    // Command-line arguments
-    .AddCommandLine(args);
-
-// ✅ Configure logging from config OR defaults
-var loggingConfig = new LoggingConfig();
-builder.Configuration.GetSection(LoggingConfig.SectionName).Bind(loggingConfig);
-
-builder.Logging.ClearProviders();
-builder.Logging.AddConsole();
-builder.Logging.AddDebug();
-
-// Apply log levels from config
-foreach (var (category, level) in loggingConfig.LogLevel)
-{
-    if (Enum.TryParse<LogLevel>(level, ignoreCase: true, out var logLevel))
-    {
-        if (category == "Default")
-        {
-            builder.Logging.SetMinimumLevel(logLevel);
-        }
-        else
-        {
-            builder.Logging.AddFilter(category, logLevel);
-        }
-    }
-}
+// Load logging.json from working directory (optional, for user-specific logging config)
+builder.Configuration.AddJsonFile(
+    Path.Combine(Directory.GetCurrentDirectory(), "logging.json"),
+    optional: true,
+    reloadOnChange: true
+);
+builder.Logging.AddConfiguration(builder.Configuration.GetSection("Logging"));
 
 // ✅ Load and register plugins
-// Plugins will register their config sources (e.g., onedrive.json) from working directory
+// Plugins will:
+// 1. Register their config sources (e.g., onedrive.json)
+// 2. Register their services (e.g., HttpClient, Commands, IOptions)
 var plugins = builder.Services.AddPlugins(builder.Configuration);
 
 // ✅ Build host (creates ServiceProvider with all services)
@@ -72,5 +46,3 @@ plugins.RegisterCommands(rootCommand);
 
 // Parse and execute
 return rootCommand.Parse(args).Invoke();
-
-

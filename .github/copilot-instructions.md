@@ -966,7 +966,7 @@ dotnet run --project tests/Core.Tests
 
 ---
 
-**Last Updated:** 2025-01-20 (Session: OneDrive Plugin Complete)
+**Last Updated:** 2025-01-22 (Session: Parallel.ForEachAsync Refactor)
 
 **Key Learnings from Latest Session:**
 - ✅ Plugin ConfigureServices pattern (3-phase lifecycle)
@@ -975,6 +975,8 @@ dotnet run --project tests/Core.Tests
 - ✅ ConfigurationBuilder + Data Annotations validation
 - ✅ Two-phase progress display (Scan + Download)
 - ✅ Token caching without locks (single-threaded command)
+- ✅ Parallel.ForEachAsync for I/O-bound operations (replaced SemaphoreSlim)
+- ✅ LoggingConfig with defaults (no appsettings.json needed)
 
 **For detailed architecture, see:** `docs/architecture.md`  
 **For development status, see:** `DEVELOPMENT.md`  

@@ -28,9 +28,6 @@ public sealed partial class SharedLinkProvider(
     private const string BadgerTokenUrl = "https://api-badgerp.svc.ms/v1.0/token";
     private const string OneDriveApiBaseUrl = "https://api.onedrive.com/v1.0";
 
-    private string? cachedToken;
-    private DateTime tokenExpiry = DateTime.MinValue;
-
     /// <inheritdoc />
     public async Task<IReadOnlyList<OneDriveItem>> ListItemsAsync(
         OneDriveConfig config,
@@ -115,6 +112,11 @@ public sealed partial class SharedLinkProvider(
     }
 
     /// <inheritdoc />
+    /// <remarks>
+    /// Downloads use pre-signed CDN URLs (item.DownloadUrl) which are direct links to OneDrive's CDN.
+    /// These URLs do NOT require the Badger token and do NOT count against OneDrive API rate limits.
+    /// The URLs look like: https://public.am.files.1drv.com/y4m...?download&amp;...
+    /// </remarks>
     public async Task<string> DownloadFileAsync(
         OneDriveItem item,
         string destinationPath,
@@ -135,7 +137,7 @@ public sealed partial class SharedLinkProvider(
             Directory.CreateDirectory(directory);
         }
 
-        // Download file (OneDrive download URLs don't need Badger token)
+        // Download file from CDN (pre-signed URL, no Badger token needed, no API rate limit)
         using var response = await httpClient.GetAsync(new Uri(item.DownloadUrl), HttpCompletionOption.ResponseHeadersRead, cancellationToken);
         response.EnsureSuccessStatusCode();
 
@@ -148,6 +150,16 @@ public sealed partial class SharedLinkProvider(
     }
 
     /// <inheritdoc />
+    /// <remarks>
+    /// Downloads use pre-signed CDN URLs (item.DownloadUrl) which bypass OneDrive API rate limits.
+    /// The scan phase (ListItemsAsync) is called once to cache all file metadata, then downloads
+    /// proceed in parallel using Parallel.ForEachAsync with configurable concurrency.
+    /// 
+    /// Concurrency is limited to prevent:
+    /// - Network bandwidth saturation
+    /// - Memory exhaustion (HttpClient buffers per download)
+    /// - CDN throttling (OneDrive may limit connections per IP)
+    /// </remarks>
     public async Task<IReadOnlyList<string>> DownloadAllAsync(
         OneDriveConfig config,
         string destinationDirectory,
@@ -185,17 +197,21 @@ public sealed partial class SharedLinkProvider(
 
         LogFilesFiltered(logger, filteredItems.Count, allItems.Count);
 
-        var downloadedFiles = new List<string>();
+        var downloadedFiles = new System.Collections.Concurrent.ConcurrentBag<string>();
         var current = 0;
         var total = filteredItems.Count;
 
-        // Download files with parallelism (configurable concurrency)
-        using var semaphore = new SemaphoreSlim(concurrency);
-        var downloadTasks = filteredItems.Select(async item =>
-        {
-            await semaphore.WaitAsync(cancellationToken);
-            try
+        // Download files with Parallel.ForEachAsync (modern .NET pattern)
+        await Parallel.ForEachAsync(
+            filteredItems,
+            new ParallelOptions
             {
+                MaxDegreeOfParallelism = concurrency,
+                CancellationToken = cancellationToken
+            },
+            async (item, ct) =>
+            {
+                // Thread-safe progress counter
                 var currentIndex = Interlocked.Increment(ref current);
 
                 // Build destination path with folder structure
@@ -215,38 +231,30 @@ public sealed partial class SharedLinkProvider(
                     if (fileInfo.Length == item.Size)
                     {
                         LogFileSkipped(logger, item.Name);
-                        return destinationPath;
+                        downloadedFiles.Add(destinationPath);
+                        return;
                     }
                 }
 
                 // Download file
-                return await DownloadFileAsync(item, destinationPath, cancellationToken);
-            }
-            finally
-            {
-                semaphore.Release();
-            }
-        });
-
-        var results = await Task.WhenAll(downloadTasks);
-        downloadedFiles.AddRange(results);
+                var downloadedPath = await DownloadFileAsync(item, destinationPath, ct);
+                downloadedFiles.Add(downloadedPath);
+            });
 
         LogDownloadComplete(logger, downloadedFiles.Count);
-        return downloadedFiles;
+        return [.. downloadedFiles];
     }
 
     /// <summary>
-    /// Gets a Badger authentication token (cached for 7 days)
+    /// Gets a Badger authentication token from Microsoft API
     /// </summary>
+    /// <remarks>
+    /// Token is fetched fresh for each command execution (no caching).
+    /// This matches the behavior of the original Bash script and keeps the implementation simple.
+    /// The token request adds ~200ms overhead, which is negligible compared to the scan/download time.
+    /// </remarks>
     private async Task<string> GetBadgerTokenAsync(CancellationToken cancellationToken)
     {
-        // Return cached token if still valid
-        if (cachedToken != null && DateTime.UtcNow < tokenExpiry)
-        {
-            LogUsingCachedToken(logger);
-            return cachedToken;
-        }
-
         LogRequestingBadgerToken(logger);
 
         var requestBody = new { appId = BadgerAppId };
@@ -259,11 +267,8 @@ public sealed partial class SharedLinkProvider(
             throw new InvalidOperationException("Failed to obtain Badger token");
         }
 
-        cachedToken = tokenResponse.Token;
-        tokenExpiry = DateTime.UtcNow.AddDays(6); // Cache for 6 days (token valid for 7)
-
         LogBadgerTokenReceived(logger);
-        return cachedToken;
+        return tokenResponse.Token;
     }
 
     /// <summary>
@@ -484,9 +489,6 @@ public sealed partial class SharedLinkProvider(
 
     [LoggerMessage(Level = LogLevel.Debug, Message = "Share metadata received: DriveId={driveId}, FolderId={folderId}")]
     private static partial void LogShareMetadataReceived(ILogger logger, string driveId, string folderId);
-
-    [LoggerMessage(Level = LogLevel.Debug, Message = "Using cached Badger token")]
-    private static partial void LogUsingCachedToken(ILogger logger);
 
     [LoggerMessage(Level = LogLevel.Debug, Message = "Downloading file: {fileName} to {destination}")]
     private static partial void LogDownloadingFile(ILogger logger, string fileName, string destination);

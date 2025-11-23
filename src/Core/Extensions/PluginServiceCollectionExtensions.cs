@@ -57,7 +57,7 @@ public static class PluginServiceCollectionExtensions
         // Use reflection to load OneDrive plugin if available
         try
         {
-            var oneDrivePluginType = Type.GetType("Spectara.Revela.Plugin.Source.OneDrive.OneDrivePlugin, Plugin.Source.OneDrive");
+            var oneDrivePluginType = Type.GetType("Spectara.Revela.Plugin.Source.OneDrive.OneDrivePlugin, Spectara.Revela.Plugin.Source.OneDrive");
             if (oneDrivePluginType is not null)
             {
                 var oneDrivePlugin = (IPlugin?)Activator.CreateInstance(oneDrivePluginType);
