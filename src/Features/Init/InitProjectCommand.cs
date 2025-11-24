@@ -83,13 +83,13 @@ public static class InitProjectCommand
             File.WriteAllText("site.json", siteConfig);
 
             // Create empty directories (NO themes/)
-            Directory.CreateDirectory("content");
+            Directory.CreateDirectory("source");
             Directory.CreateDirectory("output");
 
             // Success
             var panel = new Panel($"[green]✨ Project '{projectName}' initialized![/]\n\n" +
                                 "[bold]Next steps:[/]\n" +
-                                "1. Add photos to [cyan]content/[/]\n" +
+                                "1. Add your content to [cyan]source/[/] (photos, markdown, etc.)\n" +
                                 "2. Run [cyan]revela generate[/]\n" +
                                 "3. (Optional) Run [cyan]revela init theme --name custom[/] to customize theme")
             {

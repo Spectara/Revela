@@ -35,7 +35,7 @@ public sealed partial class OneDriveSourceCommand(
 
         var outputOption = new Option<string?>("--output", "-o")
         {
-            Description = "Output directory (defaults to ./source)"
+            Description = "Output directory (defaults to ./content)"
         };
 
         var forceOption = new Option<bool>("--force", "-f")
@@ -233,7 +233,7 @@ public sealed partial class OneDriveSourceCommand(
                 $"[green]✨ Downloaded {downloadedFiles.Count} file(s)![/]\n\n" +
                 $"[bold]Files saved to:[/] [cyan]{outputDirectory}[/]\n\n" +
                 $"[dim]Next steps:[/]\n" +
-                $"1. Run [cyan]revela generate[/] to process images\n" +
+                $"1. Run [cyan]revela generate[/] to process your content\n" +
                 $"2. Check output in [cyan]output/[/] directory"
             )
             {

@@ -60,7 +60,7 @@
     },
     "Init Project": {
       "commandName": "Project",
-      "commandLineArgs": "init --path \"./my-photo-site\" --title \"My Portfolio\"",
+      "commandLineArgs": "init project",
       "workingDirectory": "$(SolutionDir)debug",
       "environmentVariables": {
         "DOTNET_ENVIRONMENT": "Development"
