@@ -1,8 +1,6 @@
 using System.CommandLine;
 using System.Text.Json;
-#pragma warning disable IDE0005 // Using directive is necessary for LoggerMessage attribute
-using Microsoft.Extensions.Logging;
-#pragma warning restore IDE0005
+using Spectara.Revela.Plugin.Source.OneDrive.Commands.Logging;
 using Spectara.Revela.Plugin.Source.OneDrive.Models;
 using Spectre.Console;
 
@@ -15,7 +13,7 @@ namespace Spectara.Revela.Plugin.Source.OneDrive.Commands;
 /// Uses Dependency Injection with Primary Constructor (C# 12).
 /// Logger is injected for potential error logging.
 /// </remarks>
-public sealed partial class OneDriveInitCommand(ILogger<OneDriveInitCommand> logger)
+public sealed class OneDriveInitCommand(ILogger<OneDriveInitCommand> logger)
 {
     private const string ConfigFileName = "onedrive.json";
 
@@ -61,7 +59,7 @@ public sealed partial class OneDriveInitCommand(ILogger<OneDriveInitCommand> log
                 }
             }
 
-            AnsiConsole.MarkupLine("[blue]🔧 Initializing OneDrive source...[/]\n");
+            AnsiConsole.MarkupLine("[blue]Initializing OneDrive source...[/]\n");
 
             // Get share URL (interactive or from parameter)
             shareUrl ??= AnsiConsole.Prompt(
@@ -97,7 +95,7 @@ public sealed partial class OneDriveInitCommand(ILogger<OneDriveInitCommand> log
 
             // Success message
             var panel = new Panel(
-                $"[green]✨ OneDrive source configured![/]\n\n" +
+                $"[green]OneDrive source configured![/]\n\n" +
                 $"[bold]Configuration:[/] [cyan]{ConfigFileName}[/]\n" +
                 $"[bold]Share URL:[/] [dim]{shareUrl}[/]\n" +
                 $"[bold]Download to:[/] [cyan]./source/[/]\n\n" +
@@ -117,10 +115,8 @@ public sealed partial class OneDriveInitCommand(ILogger<OneDriveInitCommand> log
         catch (Exception ex)
         {
             AnsiConsole.MarkupLine($"[red]Error:[/] {ex.Message}");
-            LogInitFailed(logger, ex);
+            logger.InitFailed(ex);
         }
     }
-
-    [LoggerMessage(Level = LogLevel.Error, Message = "OneDrive initialization failed")]
-    private static partial void LogInitFailed(ILogger logger, Exception exception);
 }
+

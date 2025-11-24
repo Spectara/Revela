@@ -30,25 +30,4 @@ public interface IOneDriveProvider
         string destinationPath,
         CancellationToken cancellationToken = default
     );
-
-    /// <summary>
-    /// Downloads all matching files from the shared folder
-    /// </summary>
-    /// <param name="config">OneDrive configuration</param>
-    /// <param name="destinationDirectory">Local destination directory</param>
-    /// <param name="forceRefresh">Force re-download even if files exist</param>
-    /// <param name="concurrency">Number of parallel downloads</param>
-    /// <param name="progress">Progress reporter</param>
-    /// <param name="preScannedItems">Optional pre-scanned items to avoid re-scanning</param>
-    /// <param name="cancellationToken">Cancellation token</param>
-    /// <returns>List of downloaded file paths</returns>
-    Task<IReadOnlyList<string>> DownloadAllAsync(
-        OneDriveConfig config,
-        string destinationDirectory,
-        bool forceRefresh = false,
-        int concurrency = 6,
-        IProgress<(int current, int total, string fileName)>? progress = null,
-        IReadOnlyList<OneDriveItem>? preScannedItems = null,
-        CancellationToken cancellationToken = default
-    );
 }

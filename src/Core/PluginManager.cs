@@ -2,6 +2,7 @@ using NuGet.Configuration;
 using NuGet.Protocol;
 using NuGet.Protocol.Core.Types;
 using NuGet.Versioning;
+using Spectara.Revela.Core.Logging;
 
 namespace Spectara.Revela.Core;
 
@@ -12,7 +13,7 @@ namespace Spectara.Revela.Core;
 /// Uses C# 12 Primary Constructor with optional parameter.
 /// Creates plugin directory automatically if it doesn't exist.
 /// </remarks>
-public sealed partial class PluginManager(ILogger<PluginManager>? logger = null)
+public sealed class PluginManager(ILogger<PluginManager>? logger = null)
 {
     private readonly string pluginDirectory = InitializePluginDirectory();
     private readonly ILogger<PluginManager> logger = logger ?? Microsoft.Extensions.Logging.Abstractions.NullLogger<PluginManager>.Instance;
@@ -30,7 +31,7 @@ public sealed partial class PluginManager(ILogger<PluginManager>? logger = null)
     {
         try
         {
-            LogInstallingPlugin(logger, packageId);
+            logger.InstallingPlugin(packageId);
 
             var resource = await repository.GetResourceAsync<FindPackageByIdResource>(cancellationToken);
             using var cacheContext = new SourceCacheContext();
@@ -46,11 +47,11 @@ public sealed partial class PluginManager(ILogger<PluginManager>? logger = null)
 
             if (targetVersion is null)
             {
-                LogPackageNotFound(logger, packageId);
+                logger.PackageNotFound(packageId);
                 return false;
             }
 
-            LogInstallingVersion(logger, packageId, targetVersion.ToString());
+            logger.InstallingVersion(packageId, targetVersion.ToString());
 
             // TODO: Implement actual package download and extraction
             // For now, this is a placeholder
@@ -59,14 +60,14 @@ public sealed partial class PluginManager(ILogger<PluginManager>? logger = null)
         }
         catch (Exception ex)
         {
-            LogInstallFailed(logger, ex, packageId);
+            logger.InstallFailed(ex, packageId);
             return false;
         }
     }
 
     public async Task<bool> UpdatePluginAsync(string packageId, CancellationToken cancellationToken = default)
     {
-        LogUpdatingPlugin(logger, packageId);
+        logger.UpdatingPlugin(packageId);
         // Uninstall old version, install new version
         _ = await UninstallPluginAsync(packageId, cancellationToken);
         return await InstallPluginAsync(packageId, null, cancellationToken);
@@ -78,55 +79,27 @@ public sealed partial class PluginManager(ILogger<PluginManager>? logger = null)
 
         try
         {
-            LogUninstallingPlugin(logger, packageId);
+            logger.UninstallingPlugin(packageId);
 
             var pluginPath = Path.Combine(pluginDirectory, packageId);
             if (Directory.Exists(pluginPath))
             {
                 Directory.Delete(pluginPath, recursive: true);
-                LogPluginUninstalled(logger, packageId);
+                logger.PluginUninstalled(packageId);
                 return Task.FromResult(true);
             }
             else
             {
-                LogPluginNotFound(logger, packageId);
+                logger.PluginNotFound(packageId);
                 return Task.FromResult(false);
             }
         }
         catch (Exception ex)
         {
-            LogUninstallFailed(logger, ex, packageId);
+            logger.UninstallFailed(ex, packageId);
             return Task.FromResult(false);
         }
     }
-
-    // High-performance logging using source generator
-    [LoggerMessage(Level = LogLevel.Information, Message = "Installing plugin: {PackageId}")]
-    private static partial void LogInstallingPlugin(ILogger logger, string packageId);
-
-    [LoggerMessage(Level = LogLevel.Error, Message = "Package {PackageId} not found")]
-    private static partial void LogPackageNotFound(ILogger logger, string packageId);
-
-    [LoggerMessage(Level = LogLevel.Information, Message = "Installing {PackageId} v{Version}")]
-    private static partial void LogInstallingVersion(ILogger logger, string packageId, string version);
-
-    [LoggerMessage(Level = LogLevel.Error, Message = "Failed to install plugin {PackageId}")]
-    private static partial void LogInstallFailed(ILogger logger, Exception exception, string packageId);
-
-    [LoggerMessage(Level = LogLevel.Information, Message = "Updating plugin: {PackageId}")]
-    private static partial void LogUpdatingPlugin(ILogger logger, string packageId);
-
-    [LoggerMessage(Level = LogLevel.Information, Message = "Uninstalling plugin: {PackageId}")]
-    private static partial void LogUninstallingPlugin(ILogger logger, string packageId);
-
-    [LoggerMessage(Level = LogLevel.Information, Message = "Uninstalled {PackageId}")]
-    private static partial void LogPluginUninstalled(ILogger logger, string packageId);
-
-    [LoggerMessage(Level = LogLevel.Warning, Message = "Plugin {PackageId} not found")]
-    private static partial void LogPluginNotFound(ILogger logger, string packageId);
-
-    [LoggerMessage(Level = LogLevel.Error, Message = "Failed to uninstall plugin {PackageId}")]
-    private static partial void LogUninstallFailed(ILogger logger, Exception exception, string packageId);
 
     public IEnumerable<string> ListInstalledPlugins()
     {

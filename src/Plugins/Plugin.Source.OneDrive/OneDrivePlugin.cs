@@ -57,6 +57,9 @@ public sealed class OneDrivePlugin : IPlugin
             client.DefaultRequestHeaders.Add("User-Agent", "Revela/1.0 (Static Site Generator)");
         });
 
+        // Register Services
+        services.AddSingleton<Services.DownloadAnalyzer>();
+
         // Register Commands for Dependency Injection
         services.AddTransient<OneDriveInitCommand>();
         services.AddTransient<OneDriveSourceCommand>();

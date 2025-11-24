@@ -1,11 +1,8 @@
 using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
-using System.Text.RegularExpressions;
-#pragma warning disable IDE0005 // Using directive is necessary for LoggerMessage attribute
-using Microsoft.Extensions.Logging;
-#pragma warning restore IDE0005
 using Spectara.Revela.Plugin.Source.OneDrive.Models;
+using Spectara.Revela.Plugin.Source.OneDrive.Providers.Logging;
 
 namespace Spectara.Revela.Plugin.Source.OneDrive.Providers;
 
@@ -20,7 +17,7 @@ namespace Spectara.Revela.Plugin.Source.OneDrive.Providers;
 /// Uses C# 12 Primary Constructor - parameters are captured automatically.
 /// HttpClient is injected as a Typed Client (configured in OneDrivePlugin.ConfigureServices).
 /// </remarks>
-public sealed partial class SharedLinkProvider(
+public sealed class SharedLinkProvider(
     HttpClient httpClient,
     ILogger<SharedLinkProvider> logger) : IOneDriveProvider
 {
@@ -34,7 +31,7 @@ public sealed partial class SharedLinkProvider(
         CancellationToken cancellationToken = default
     )
     {
-        LogListingItems(logger, config.ShareUrl);
+        logger.ListingItems(config.ShareUrl);
 
         var token = await GetBadgerTokenAsync(cancellationToken);
 
@@ -46,7 +43,7 @@ public sealed partial class SharedLinkProvider(
         // List items recursively from root
         await ListItemsRecursiveAsync(config.ShareUrl, "", token, metadata, items, cancellationToken);
 
-        LogItemsListed(logger, items.Count);
+        logger.ItemsListed(items.Count);
         return items;
     }
 
@@ -128,7 +125,7 @@ public sealed partial class SharedLinkProvider(
             throw new ArgumentException("Item does not have a download URL", nameof(item));
         }
 
-        LogDownloadingFile(logger, item.Name, destinationPath);
+        logger.DownloadingFile(item.Name, destinationPath);
 
         // Ensure directory exists
         var directory = Path.GetDirectoryName(destinationPath);
@@ -141,108 +138,17 @@ public sealed partial class SharedLinkProvider(
         using var response = await httpClient.GetAsync(new Uri(item.DownloadUrl), HttpCompletionOption.ResponseHeadersRead, cancellationToken);
         response.EnsureSuccessStatusCode();
 
-        await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
-        await using var fileStream = new FileStream(destinationPath, FileMode.Create, FileAccess.Write, FileShare.None, 8192, true);
-        await stream.CopyToAsync(fileStream, cancellationToken);
-
-        LogFileDownloaded(logger, item.Name, new FileInfo(destinationPath).Length);
-        return destinationPath;
-    }
-
-    /// <inheritdoc />
-    /// <remarks>
-    /// Downloads use pre-signed CDN URLs (item.DownloadUrl) which bypass OneDrive API rate limits.
-    /// The scan phase (ListItemsAsync) is called once to cache all file metadata, then downloads
-    /// proceed in parallel using Parallel.ForEachAsync with configurable concurrency.
-    /// 
-    /// Concurrency is limited to prevent:
-    /// - Network bandwidth saturation
-    /// - Memory exhaustion (HttpClient buffers per download)
-    /// - CDN throttling (OneDrive may limit connections per IP)
-    /// </remarks>
-    public async Task<IReadOnlyList<string>> DownloadAllAsync(
-        OneDriveConfig config,
-        string destinationDirectory,
-        bool forceRefresh = false,
-        int concurrency = 6,
-        IProgress<(int current, int total, string fileName)>? progress = null,
-        IReadOnlyList<OneDriveItem>? preScannedItems = null,
-        CancellationToken cancellationToken = default
-    )
-    {
-        LogDownloadingAll(logger, config.ShareUrl);
-
-        // Use pre-scanned items if available, otherwise scan now
-        var allItems = preScannedItems ?? await ListItemsAsync(config, cancellationToken);
-
-        // Debug: Log item types
-        var folderCount = allItems.Count(i => i.IsFolder);
-        var fileCount = allItems.Count(i => !i.IsFolder);
-        LogItemTypes(logger, fileCount, folderCount);
-
-        // Filter files using smart defaults (like original script)
-        var filesOnly = allItems.Where(item => !item.IsFolder).ToList();
-
-        // Use config patterns or defaults
-        var useDefaults = config.IncludePatterns == null || config.IncludePatterns.Count == 0;
-
-        if (useDefaults)
+        await using (var stream = await response.Content.ReadAsStreamAsync(cancellationToken))
+        await using (var fileStream = new FileStream(destinationPath, FileMode.Create, FileAccess.Write, FileShare.None, 8192, true))
         {
-            LogUsingDefaultFilters(logger);
+            await stream.CopyToAsync(fileStream, cancellationToken);
         }
 
-        var filteredItems = filesOnly
-            .Where(item => ShouldIncludeFile(item, config.IncludePatterns, config.ExcludePatterns))
-            .ToList();
+        // Preserve OneDrive's LastModified timestamp (must be done after file is closed)
+        File.SetLastWriteTimeUtc(destinationPath, item.LastModified);
 
-        LogFilesFiltered(logger, filteredItems.Count, allItems.Count);
-
-        var downloadedFiles = new System.Collections.Concurrent.ConcurrentBag<string>();
-        var current = 0;
-        var total = filteredItems.Count;
-
-        // Download files with Parallel.ForEachAsync (modern .NET pattern)
-        await Parallel.ForEachAsync(
-            filteredItems,
-            new ParallelOptions
-            {
-                MaxDegreeOfParallelism = concurrency,
-                CancellationToken = cancellationToken
-            },
-            async (item, ct) =>
-            {
-                // Thread-safe progress counter
-                var currentIndex = Interlocked.Increment(ref current);
-
-                // Build destination path with folder structure
-                var relativePath = string.IsNullOrEmpty(item.ParentPath)
-                    ? item.Name
-                    : Path.Combine(item.ParentPath, item.Name);
-
-                var destinationPath = Path.Combine(destinationDirectory, relativePath);
-
-                // Report progress
-                progress?.Report((currentIndex, total, relativePath));
-
-                // Skip if file exists and not forcing refresh
-                if (!forceRefresh && File.Exists(destinationPath))
-                {
-                    var fileInfo = new FileInfo(destinationPath);
-                    if (fileInfo.Length == item.Size)
-                    {
-                        LogFileSkipped(logger, item.Name);
-                        downloadedFiles.Add(destinationPath);
-                        return;
-                    }
-                }
-
-                // Download file
-                var downloadedPath = await DownloadFileAsync(item, destinationPath, ct);
-                downloadedFiles.Add(downloadedPath);
-            });
-
-        LogDownloadComplete(logger, downloadedFiles.Count);
-        return [.. downloadedFiles];
+        logger.FileDownloaded(item.Name, new FileInfo(destinationPath).Length);
+        return destinationPath;
     }
 
     /// <summary>
@@ -255,7 +161,7 @@ public sealed partial class SharedLinkProvider(
     /// </remarks>
     private async Task<string> GetBadgerTokenAsync(CancellationToken cancellationToken)
     {
-        LogRequestingBadgerToken(logger);
+        logger.RequestingBadgerToken();
 
         var requestBody = new { appId = BadgerAppId };
         var response = await httpClient.PostAsJsonAsync(BadgerTokenUrl, requestBody, cancellationToken);
@@ -267,7 +173,7 @@ public sealed partial class SharedLinkProvider(
             throw new InvalidOperationException("Failed to obtain Badger token");
         }
 
-        LogBadgerTokenReceived(logger);
+        logger.BadgerTokenReceived();
         return tokenResponse.Token;
     }
 
@@ -305,8 +211,8 @@ public sealed partial class SharedLinkProvider(
             throw new InvalidOperationException("Could not extract drive/folder IDs from share metadata");
         }
 
-        LogBadgerTokenActivated(logger);
-        LogShareMetadataReceived(logger, driveId, folderId);
+        logger.BadgerTokenActivated();
+        logger.ShareMetadataReceived(driveId, folderId);
 
         return new ShareMetadata { DriveId = driveId, FolderId = folderId };
     }
@@ -319,8 +225,8 @@ public sealed partial class SharedLinkProvider(
         // Encode share URL to base64url format
         var encodedUrl = EncodeShareUrl(shareUrl);
 
-        // Select fields to retrieve (matches original script)
-        const string selectFields = "name,description,@content.downloadUrl,file,folder,id";
+        // Select fields to retrieve (includes fileSystemInfo for accurate LastModified timestamp)
+        const string selectFields = "name,description,@content.downloadUrl,file,folder,id,size,fileSystemInfo";
 
         return $"{OneDriveApiBaseUrl}/shares/u!{encodedUrl}/root/children?$select={selectFields}";
     }
@@ -337,8 +243,8 @@ public sealed partial class SharedLinkProvider(
         // URL encode the path but preserve forward slashes
         var encodedPath = UrlEncodePath(folderPath);
 
-        // Select fields to retrieve (matches original script)
-        const string selectFields = "name,description,@content.downloadUrl,file,folder,id";
+        // Select fields to retrieve (includes fileSystemInfo for accurate LastModified timestamp)
+        const string selectFields = "name,description,@content.downloadUrl,file,folder,id,size,fileSystemInfo";
 
         return $"{OneDriveApiBaseUrl}/drives/{driveId}/items/{folderId}:/{encodedPath}:/children?$select={selectFields}";
     }
@@ -387,8 +293,9 @@ public sealed partial class SharedLinkProvider(
                 ? graphDownloadElement.GetString()
                 : null;
 
-        var lastModified = element.TryGetProperty("lastModifiedDateTime", out var modifiedElement)
-            ? DateTime.Parse(modifiedElement.GetString()!, System.Globalization.CultureInfo.InvariantCulture)
+        var lastModified = element.TryGetProperty("fileSystemInfo", out var fileSystemInfoElement) &&
+                           fileSystemInfoElement.TryGetProperty("lastModifiedDateTime", out var modifiedElement)
+            ? DateTime.Parse(modifiedElement.GetString()!, System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.AdjustToUniversal | System.Globalization.DateTimeStyles.AssumeUniversal)
             : DateTime.UtcNow;
 
         var mimeType = element.TryGetProperty("file", out var fileElement) &&
@@ -425,92 +332,5 @@ public sealed partial class SharedLinkProvider(
         public string DriveId { get; init; } = string.Empty;
         public string FolderId { get; init; } = string.Empty;
     }
-
-    /// <summary>
-    /// Determines if a file should be included based on patterns or smart defaults
-    /// </summary>
-    /// <remarks>
-    /// Smart defaults (like original script):
-    /// - All images (detected via MIME type: image/*)
-    /// - All markdown files (*.md)
-    /// </remarks>
-    private static bool ShouldIncludeFile(OneDriveItem item, IReadOnlyList<string>? includePatterns, IReadOnlyList<string>? excludePatterns)
-    {
-        // Check exclude patterns first (if any)
-        if (excludePatterns is not null && excludePatterns.Count > 0)
-        {
-            if (excludePatterns.Any(pattern => MatchesWildcard(item.Name, pattern)))
-            {
-                return false;
-            }
-        }
-
-        // Use smart defaults if no include patterns specified
-        if (includePatterns is null || includePatterns.Count == 0)
-        {
-            // Default 1: All images (via MIME type - like original script)
-            if (!string.IsNullOrEmpty(item.MimeType) && item.MimeType.StartsWith("image/", StringComparison.OrdinalIgnoreCase))
-            {
-                return true;
-            }
-
-            // Default 2: All markdown files
-            return item.Name.EndsWith(".md", StringComparison.OrdinalIgnoreCase);
-        }
-
-        // Use custom patterns
-        return includePatterns.Any(pattern => MatchesWildcard(item.Name, pattern));
-    }
-
-    /// <summary>
-    /// Simple wildcard matching (supports * and ?)
-    /// </summary>
-    private static bool MatchesWildcard(string text, string pattern)
-    {
-        var regexPattern = "^" + Regex.Escape(pattern).Replace("\\*", ".*", StringComparison.Ordinal).Replace("\\?", ".", StringComparison.Ordinal) + "$";
-        return Regex.IsMatch(text, regexPattern, RegexOptions.IgnoreCase);
-    }
-
-    // High-performance logging with LoggerMessage source generator
-    [LoggerMessage(Level = LogLevel.Information, Message = "Listing items from OneDrive share: {shareUrl}")]
-    private static partial void LogListingItems(ILogger logger, string shareUrl);
-
-    [LoggerMessage(Level = LogLevel.Information, Message = "Listed {count} items from OneDrive")]
-    private static partial void LogItemsListed(ILogger logger, int count);
-
-    [LoggerMessage(Level = LogLevel.Debug, Message = "Requesting Badger authentication token")]
-    private static partial void LogRequestingBadgerToken(ILogger logger);
-
-    [LoggerMessage(Level = LogLevel.Debug, Message = "Badger token received successfully")]
-    private static partial void LogBadgerTokenReceived(ILogger logger);
-
-    [LoggerMessage(Level = LogLevel.Debug, Message = "Badger token activated successfully")]
-    private static partial void LogBadgerTokenActivated(ILogger logger);
-
-    [LoggerMessage(Level = LogLevel.Debug, Message = "Share metadata received: DriveId={driveId}, FolderId={folderId}")]
-    private static partial void LogShareMetadataReceived(ILogger logger, string driveId, string folderId);
-
-    [LoggerMessage(Level = LogLevel.Debug, Message = "Downloading file: {fileName} to {destination}")]
-    private static partial void LogDownloadingFile(ILogger logger, string fileName, string destination);
-
-    [LoggerMessage(Level = LogLevel.Debug, Message = "Downloaded file: {fileName} ({size} bytes)")]
-    private static partial void LogFileDownloaded(ILogger logger, string fileName, long size);
-
-    [LoggerMessage(Level = LogLevel.Information, Message = "Downloading all files from: {shareUrl}")]
-    private static partial void LogDownloadingAll(ILogger logger, string shareUrl);
-
-    [LoggerMessage(Level = LogLevel.Information, Message = "Found {fileCount} files and {folderCount} folders")]
-    private static partial void LogItemTypes(ILogger logger, int fileCount, int folderCount);
-
-    [LoggerMessage(Level = LogLevel.Information, Message = "Using smart defaults: all images (via MIME type) and markdown files")]
-    private static partial void LogUsingDefaultFilters(ILogger logger);
-
-    [LoggerMessage(Level = LogLevel.Information, Message = "Filtered {filteredCount} files out of {totalCount} items")]
-    private static partial void LogFilesFiltered(ILogger logger, int filteredCount, int totalCount);
-
-    [LoggerMessage(Level = LogLevel.Debug, Message = "Skipping existing file: {fileName}")]
-    private static partial void LogFileSkipped(ILogger logger, string fileName);
-
-    [LoggerMessage(Level = LogLevel.Information, Message = "Download complete: {count} files")]
-    private static partial void LogDownloadComplete(ILogger logger, int count);
 }
+

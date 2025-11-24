@@ -33,7 +33,7 @@
         "DOTNET_ENVIRONMENT": "Development"
       }
     },
-    "OneDrive Download (Normal)": {
+    "OneDrive Download (Debug)": {
       "commandName": "Project",
       "commandLineArgs": "source onedrive download",
       "workingDirectory": "$(SolutionDir)debug",

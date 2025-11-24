@@ -1,12 +1,14 @@
 using System.CommandLine;
 using Microsoft.Extensions.Options;
-#pragma warning disable IDE0005 // Using directive is necessary for LoggerMessage attribute
-using Microsoft.Extensions.Logging;
-#pragma warning restore IDE0005
+using Spectara.Revela.Plugin.Source.OneDrive.Commands.Logging;
 using Spectara.Revela.Plugin.Source.OneDrive.Configuration;
+using Spectara.Revela.Plugin.Source.OneDrive.Formatting;
 using Spectara.Revela.Plugin.Source.OneDrive.Models;
 using Spectara.Revela.Plugin.Source.OneDrive.Providers;
+using Spectara.Revela.Plugin.Source.OneDrive.Services;
 using Spectre.Console;
+
+#pragma warning disable IDE0055 // Fix formatting preference differences
 
 namespace Spectara.Revela.Plugin.Source.OneDrive.Commands;
 
@@ -18,10 +20,11 @@ namespace Spectara.Revela.Plugin.Source.OneDrive.Commands;
 /// Configuration is injected via IOptionsMonitor for hot-reload support.
 /// Dependencies are injected at construction time, making the command fully testable.
 /// </remarks>
-public sealed partial class OneDriveSourceCommand(
-    ILogger<OneDriveSourceCommand> logger,
-    SharedLinkProvider provider,
-    IOptionsMonitor<OneDrivePluginConfig> config)
+public sealed class OneDriveSourceCommand(
+ILogger<OneDriveSourceCommand> logger,
+SharedLinkProvider provider,
+IOptionsMonitor<OneDrivePluginConfig> config,
+DownloadAnalyzer downloadAnalyzer)
 {
     public Command Create()
     {
@@ -66,6 +69,21 @@ public sealed partial class OneDriveSourceCommand(
             Description = "Enable debug logging"
         };
 
+        var dryRunOption = new Option<bool>("--dry-run", "-n")
+        {
+            Description = "Preview changes without downloading (dry-run)"
+        };
+
+        var cleanOption = new Option<bool>("--clean")
+        {
+            Description = "Remove local files not present in OneDrive (with confirmation)"
+        };
+
+        var cleanAllOption = new Option<bool>("--clean-all")
+        {
+            Description = "Remove ALL local files not in OneDrive, ignoring filters (dangerous!)"
+        };
+
         command.Options.Add(shareUrlOption);
         command.Options.Add(outputOption);
         command.Options.Add(forceOption);
@@ -73,6 +91,9 @@ public sealed partial class OneDriveSourceCommand(
         command.Options.Add(excludeOption);
         command.Options.Add(concurrencyOption);
         command.Options.Add(debugOption);
+        command.Options.Add(dryRunOption);
+        command.Options.Add(cleanOption);
+        command.Options.Add(cleanAllOption);
 
         command.SetAction(async parseResult =>
         {
@@ -83,8 +104,11 @@ public sealed partial class OneDriveSourceCommand(
             var excludePatterns = parseResult.GetValue(excludeOption);
             var concurrency = parseResult.GetValue(concurrencyOption);
             var debug = parseResult.GetValue(debugOption);
+            var dryRun = parseResult.GetValue(dryRunOption);
+            var clean = parseResult.GetValue(cleanOption);
+            var cleanAll = parseResult.GetValue(cleanAllOption);
 
-            await ExecuteAsync(shareUrl, outputDir, force, includePatterns, excludePatterns, concurrency, debug);
+            await ExecuteAsync(shareUrl, outputDir, force, includePatterns, excludePatterns, concurrency, debug, dryRun, clean, cleanAll);
             return 0;
         });
 
@@ -98,9 +122,15 @@ public sealed partial class OneDriveSourceCommand(
         string[]? includePatternsOverride,
         string[]? excludePatternsOverride,
         int? concurrencyOverride,
-        bool debug
+        bool debug,
+        bool dryRun,
+        bool clean,
+        bool cleanAll
     )
     {
+        // Note: forceRefresh is kept for future use, currently handled by analyzer
+        _ = forceRefresh;
+
         // Debug info (log level must be configured via environment before startup)
         if (debug)
         {
@@ -163,7 +193,7 @@ public sealed partial class OneDriveSourceCommand(
                 throw new ArgumentException("Concurrency must be greater than 0", nameof(concurrencyOverride));
             }
 
-            AnsiConsole.MarkupLine("[blue]📥 Downloading from OneDrive...[/]");
+            AnsiConsole.MarkupLine("[blue]Downloading from OneDrive...[/]");
             AnsiConsole.MarkupLine($"[dim]Share URL:[/] {downloadConfig.ShareUrl}");
             AnsiConsole.MarkupLine($"[dim]Output:[/] {outputDirectory}");
             AnsiConsole.MarkupLine($"[dim]Concurrency:[/] {concurrency} parallel downloads");
@@ -180,7 +210,7 @@ public sealed partial class OneDriveSourceCommand(
                     var fileCount = allItems.Count(i => !i.IsFolder);
                     var folderCount = allItems.Count(i => i.IsFolder);
 
-                    ctx.Status($"[green]✓[/] Found {fileCount} files in {folderCount} folders");
+                    ctx.Status($"[green]OK[/] Found {fileCount} files in {folderCount} folders");
                     await Task.Delay(500); // Brief pause to show result
                 });
 
@@ -189,15 +219,65 @@ public sealed partial class OneDriveSourceCommand(
                 throw new InvalidOperationException("Failed to scan OneDrive folder");
             }
 
-            AnsiConsole.MarkupLine($"[green]✓[/] Scan complete: {allItems.Count(i => !i.IsFolder)} files, {allItems.Count(i => i.IsFolder)} folders");
+            AnsiConsole.MarkupLine($"[green]OK[/] Scan complete: {allItems.Count(i => !i.IsFolder)} files, {allItems.Count(i => i.IsFolder)} folders");
             AnsiConsole.WriteLine();
 
-            // Phase 2: Download files with progress
+            // Phase 2: Analyze changes
+            AnsiConsole.MarkupLine("[blue]Analyzing changes...[/]");
+            
+            var analysis = downloadAnalyzer.Analyze(
+                allItems,
+                outputDirectory,
+                downloadConfig,
+                includeOrphans: clean || cleanAll,
+                includeAllOrphans: cleanAll
+            );
+
+            // Display analysis results
+            DisplayAnalysisResults(analysis, dryRun, clean || cleanAll);
+
+            // Dry-run: Exit after showing preview
+            if (dryRun)
+            {
+                AnsiConsole.MarkupLine("\n[dim]Run without --dry-run to apply changes.[/]");
+                if (analysis.Statistics.OrphanedFiles > 0)
+                {
+                    AnsiConsole.MarkupLine("[dim]Add --clean to remove orphaned files.[/]");
+                }
+                return;
+            }
+
+            // Handle orphaned files if --clean specified
+            if ((clean || cleanAll) && analysis.OrphanedFiles.Count > 0)
+            {
+                if (!await AnsiConsole.ConfirmAsync($"[yellow]Delete {analysis.OrphanedFiles.Count} orphaned file(s)?[/]").ConfigureAwait(false))
+                {
+                    AnsiConsole.MarkupLine("[dim]Skipping cleanup.[/]");
+                }
+                else
+                {
+                    foreach (var file in analysis.OrphanedFiles)
+                    {
+                        file.Delete();
+                    }
+                    AnsiConsole.MarkupLine($"[green]OK[/] Deleted {analysis.OrphanedFiles.Count} orphaned file(s)");
+                }
+            }
+
+            // Skip download if nothing to download
+            if (analysis.Statistics.TotalFilesToDownload == 0)
+            {
+                AnsiConsole.MarkupLine("[green]OK[/] All files are up to date!");
+                return;
+            }
+
+            // Phase 3: Download files with progress
+            AnsiConsole.WriteLine();
             var downloadedFiles = new List<string>();
 
             await AnsiConsole.Progress()
                 .AutoClear(false)
-                .HideCompleted(false)  // Show completed downloads
+                .HideCompleted(false)
                 .Columns(
                     new TaskDescriptionColumn(),
                     new ProgressBarColumn(),
@@ -207,31 +287,35 @@ public sealed partial class OneDriveSourceCommand(
                 )
                 .StartAsync(async ctx =>
                 {
-                    // Main progress task (shows overall progress)
-                    var mainTask = ctx.AddTask($"[green]Overall Progress[/]", maxValue: 100);
+                    var mainTask = ctx.AddTask($"[green]Downloading Changes[/]", maxValue: 100);
                     mainTask.IsIndeterminate = true;
 
                     var progress = new Progress<(int current, int total, string fileName)>(report =>
                     {
-                        // Update main task
                         if (mainTask.IsIndeterminate && report.total > 0)
                         {
                             mainTask.IsIndeterminate = false;
                             mainTask.MaxValue = report.total;
                         }
                         mainTask.Value = report.current;
-                        mainTask.Description = $"[green]Overall Progress[/] ({report.current}/{report.total}) - {concurrency} parallel downloads";
+                        mainTask.Description = $"[green]Downloading[/] ({report.current}/{report.total}) - {report.fileName}";
                     });
 
-                    downloadedFiles = [.. await provider.DownloadAllAsync(downloadConfig, outputDirectory, forceRefresh, concurrency, progress, allItems)];
+                    // Only download items that need updating
+                    var itemsToDownload = analysis.ItemsToDownload.ToList();
+                    downloadedFiles = [.. await DownloadItemsAsync(itemsToDownload, outputDirectory, concurrency, progress)];
 
                     mainTask.StopTask();
                 });
 
             // Success message
             var panel = new Panel(
-                $"[green]✨ Downloaded {downloadedFiles.Count} file(s)![/]\n\n" +
+                $"[green]Downloaded {downloadedFiles.Count} file(s)![/]\n\n" +
                 $"[bold]Files saved to:[/] [cyan]{outputDirectory}[/]\n\n" +
+                $"[dim]Statistics:[/]\n" +
+                $"  + New: {analysis.Statistics.NewFiles}\n" +
+                $"  ~ Updated: {analysis.Statistics.ModifiedFiles}\n" +
+                $"  = Unchanged: {analysis.Statistics.UnchangedFiles}\n\n" +
                 $"[dim]Next steps:[/]\n" +
                 $"1. Run [cyan]revela generate[/] to process your content\n" +
                 $"2. Check output in [cyan]output/[/] directory"
@@ -246,7 +330,7 @@ public sealed partial class OneDriveSourceCommand(
         catch (Exception ex)
         {
             AnsiConsole.MarkupLine($"[red]Error:[/] {ex.Message}");
-            LogDownloadFailed(logger, ex);
+            logger.DownloadFailed(ex);
         }
     }
 
@@ -284,6 +368,145 @@ public sealed partial class OneDriveSourceCommand(
         };
     }
 
-    [LoggerMessage(Level = LogLevel.Error, Message = "OneDrive download failed")]
-    private static partial void LogDownloadFailed(ILogger logger, Exception exception);
+    /// <summary>
+    /// Displays analysis results in a user-friendly format
+    /// </summary>
+    private static void DisplayAnalysisResults(DownloadAnalysis analysis, bool isDryRun, bool includeOrphans)
+    {
+        var stats = analysis.Statistics;
+
+        // Summary panel
+        var summaryText = isDryRun ? "[yellow]DRY RUN - Preview of Changes[/]\n\n" : "[blue]Analysis Results[/]\n\n";
+        summaryText += $"[bold]Summary:[/]\n";
+        summaryText += $"  + {stats.NewFiles} new file(s) ({FileSizeFormatter.Format(stats.TotalDownloadSize)})\n";
+        summaryText += $"  ~ {stats.ModifiedFiles} modified file(s)\n";
+        summaryText += $"  = {stats.UnchangedFiles} unchanged file(s)\n";
+
+        if (includeOrphans && stats.OrphanedFiles > 0)
+        {
+            summaryText += $"  - {stats.OrphanedFiles} orphaned file(s) ({FileSizeFormatter.Format(stats.TotalOrphanedSize)})\n";
+        }
+
+        AnsiConsole.Write(new Panel(summaryText)
+        {
+            Header = new PanelHeader(isDryRun ? "[bold yellow]Preview[/]" : "[bold blue]Analysis[/]"),
+            Border = BoxBorder.Rounded
+        });
+        AnsiConsole.WriteLine();
+
+        // Show new files
+        var newItems = analysis.Items.Where(i => i.Status == FileStatus.New).Take(10).ToList();
+        if (newItems.Count > 0)
+        {
+            AnsiConsole.MarkupLine("[green]NEW FILES:[/]");
+            var table = new Table
+            {
+                Border = TableBorder.None
+            };
+            table.AddColumn("Path");
+            table.AddColumn("Size");
+
+            foreach (var item in newItems)
+            {
+                table.AddRow($"[dim]+[/] {item.RelativePath}", FileSizeFormatter.Format(item.RemoteItem.Size));
+            }
+
+            if (stats.NewFiles > 10)
+            {
+                table.AddRow($"[dim]... and {stats.NewFiles - 10} more[/]", "");
+            }
+
+            AnsiConsole.Write(table);
+            AnsiConsole.WriteLine();
+        }
+
+        // Show modified files
+        var modifiedItems = analysis.Items.Where(i => i.Status == FileStatus.Modified).Take(10).ToList();
+        if (modifiedItems.Count > 0)
+        {
+            AnsiConsole.MarkupLine("[yellow]MODIFIED FILES:[/]");
+            var table = new Table
+            {
+                Border = TableBorder.None
+            };
+            table.AddColumn("Path");
+            table.AddColumn("Reason");
+
+            foreach (var item in modifiedItems)
+            {
+                table.AddRow($"[dim]~[/] {item.RelativePath}", item.Reason);
+            }
+
+            if (stats.ModifiedFiles > 10)
+            {
+                table.AddRow($"[dim]... and {stats.ModifiedFiles - 10} more[/]", "");
+            }
+
+            AnsiConsole.Write(table);
+            AnsiConsole.WriteLine();
+        }
+
+        // Show orphaned files
+        if (includeOrphans && analysis.OrphanedFiles.Count > 0)
+        {
+            AnsiConsole.MarkupLine("[red]ORPHANED FILES (local only):[/]");
+            var table = new Table
+            {
+                Border = TableBorder.None
+            };
+            table.AddColumn("Path");
+            table.AddColumn("Size");
+
+            var orphansToShow = analysis.OrphanedFiles.Take(10);
+            foreach (var file in orphansToShow)
+            {
+                var relativePath = file.Name; // Simplified for display
+                table.AddRow($"[dim]-[/] {relativePath}", FileSizeFormatter.Format(file.Length));
+            }
+
+            if (analysis.OrphanedFiles.Count > 10)
+            {
+                table.AddRow($"[dim]... and {analysis.OrphanedFiles.Count - 10} more[/]", "");
+            }
+
+            AnsiConsole.Write(table);
+            AnsiConsole.WriteLine();
+        }
+    }
+
+    /// <summary>
+    /// Downloads a list of items with progress reporting
+    /// </summary>
+    private async Task<List<string>> DownloadItemsAsync(
+        List<DownloadItem> items,
+        string destinationDirectory,
+        int concurrency,
+        IProgress<(int current, int total, string fileName)>? progress
+    )
+    {
+        var downloadedFiles = new System.Collections.Concurrent.ConcurrentBag<string>();
+        var current = 0;
+        var total = items.Count;
+
+        await Parallel.ForEachAsync(
+            items,
+            new ParallelOptions
+            {
+                MaxDegreeOfParallelism = concurrency,
+                CancellationToken = default
+            },
+            async (item, ct) =>
+            {
+                var currentIndex = Interlocked.Increment(ref current);
+                var destinationPath = Path.Combine(destinationDirectory, item.RelativePath);
+
+                progress?.Report((currentIndex, total, item.RelativePath));
+
+                var downloadedPath = await provider.DownloadFileAsync(item.RemoteItem, destinationPath, ct);
+                downloadedFiles.Add(downloadedPath);
+            });
+
+        return [.. downloadedFiles];
+    }
 }
+
