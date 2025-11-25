@@ -197,7 +197,7 @@ public sealed partial class DownloadAnalyzer
         }
 
         // Use defaults if no include patterns (images + markdown)
-        if (includePatterns is null || includePatterns.Count == 0)
+        if (includePatterns is null or [])
         {
             return fileName.EndsWith(".jpg", StringComparison.OrdinalIgnoreCase) ||
                    fileName.EndsWith(".jpeg", StringComparison.OrdinalIgnoreCase) ||

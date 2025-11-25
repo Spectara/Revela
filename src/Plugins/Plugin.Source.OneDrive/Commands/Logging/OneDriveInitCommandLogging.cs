@@ -5,6 +5,6 @@ namespace Spectara.Revela.Plugin.Source.OneDrive.Commands.Logging;
 /// </summary>
 internal static partial class OneDriveInitCommandLogging
 {
-    [LoggerMessage(Level = LogLevel.Error, Message = "OneDrive initialization failed")]
-    public static partial void InitFailed(this ILogger logger, Exception exception);
+    [LoggerMessage(Level = LogLevel.Error, Message = "Initialization failed")]
+    public static partial void InitFailed(this ILogger<OneDriveInitCommand> logger, Exception exception);
 }

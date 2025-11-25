@@ -248,7 +248,7 @@ DownloadAnalyzer downloadAnalyzer)
             }
 
             // Handle orphaned files if --clean specified
-            if ((clean || cleanAll) && analysis.OrphanedFiles.Count > 0)
+            if ((clean || cleanAll) && analysis.OrphanedFiles is not [])
             {
                 if (!await AnsiConsole.ConfirmAsync($"[yellow]Delete {analysis.OrphanedFiles.Count} orphaned file(s)?[/]").ConfigureAwait(false))
                 {
@@ -396,7 +396,7 @@ DownloadAnalyzer downloadAnalyzer)
 
         // Show new files
         var newItems = analysis.Items.Where(i => i.Status == FileStatus.New).Take(10).ToList();
-        if (newItems.Count > 0)
+        if (newItems is not [])
         {
             AnsiConsole.MarkupLine("[green]NEW FILES:[/]");
             var table = new Table
@@ -422,7 +422,7 @@ DownloadAnalyzer downloadAnalyzer)
 
         // Show modified files
         var modifiedItems = analysis.Items.Where(i => i.Status == FileStatus.Modified).Take(10).ToList();
-        if (modifiedItems.Count > 0)
+        if (modifiedItems is not [])
         {
             AnsiConsole.MarkupLine("[yellow]MODIFIED FILES:[/]");
             var table = new Table
@@ -447,7 +447,7 @@ DownloadAnalyzer downloadAnalyzer)
         }
 
         // Show orphaned files
-        if (includeOrphans && analysis.OrphanedFiles.Count > 0)
+        if (includeOrphans && analysis.OrphanedFiles is not [])
         {
             AnsiConsole.MarkupLine("[red]ORPHANED FILES (local only):[/]");
             var table = new Table

@@ -5,6 +5,6 @@ namespace Spectara.Revela.Plugin.Source.OneDrive.Commands.Logging;
 /// </summary>
 internal static partial class OneDriveSourceCommandLogging
 {
-    [LoggerMessage(Level = LogLevel.Error, Message = "OneDrive download failed")]
-    public static partial void DownloadFailed(this ILogger logger, Exception exception);
+    [LoggerMessage(Level = LogLevel.Error, Message = "Download failed")]
+    public static partial void DownloadFailed(this ILogger<OneDriveSourceCommand> logger, Exception exception);
 }
