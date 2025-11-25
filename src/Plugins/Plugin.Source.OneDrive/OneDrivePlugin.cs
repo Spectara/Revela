@@ -50,12 +50,15 @@ public sealed class OneDrivePlugin : IPlugin
             .ValidateDataAnnotations()      // Validate [Required], [Url], etc.
             .ValidateOnStart();             // Fail-fast at startup if config invalid
 
-        // Register Typed HttpClient for SharedLinkProvider
+        // Register Typed HttpClient for SharedLinkProvider with Resilience
+        // Standard resilience handler provides: retry (3x), circuit breaker, timeout, rate limiter
+        // Handles: HTTP 408, 429, 500+ (including 503), HttpRequestException, TimeoutRejectedException
         services.AddHttpClient<Providers.SharedLinkProvider>(client =>
         {
             client.Timeout = TimeSpan.FromMinutes(5); // OneDrive API can be slow for large files
             client.DefaultRequestHeaders.Add("User-Agent", "Revela/1.0 (Static Site Generator)");
-        });
+        })
+        .AddStandardResilienceHandler(); // Modern .NET 10 resilience (replaces old Polly)
 
         // Register Services
         services.AddSingleton<Services.DownloadAnalyzer>();
@@ -102,3 +105,4 @@ internal sealed class PluginMetadata : IPluginMetadata
     public required string Author { get; init; }
     public string? ParentCommand { get; init; }
 }
+

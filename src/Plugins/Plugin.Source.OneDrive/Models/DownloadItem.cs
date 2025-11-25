@@ -26,9 +26,9 @@ public sealed class DownloadItem
     public required string Reason { get; init; }
 
     /// <summary>
-    /// Relative path for display
+    /// Relative path for display (normalized to forward slashes)
     /// </summary>
     public string RelativePath => string.IsNullOrEmpty(RemoteItem.ParentPath)
         ? RemoteItem.Name
-        : Path.Combine(RemoteItem.ParentPath, RemoteItem.Name);
+        : Path.Combine(RemoteItem.ParentPath, RemoteItem.Name).Replace('\\', '/');
 }

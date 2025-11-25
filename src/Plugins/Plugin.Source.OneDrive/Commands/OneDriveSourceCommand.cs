@@ -84,6 +84,11 @@ DownloadAnalyzer downloadAnalyzer)
             Description = "Remove ALL local files not in OneDrive, ignoring filters (dangerous!)"
         };
 
+        var showFilesOption = new Option<bool>("--show-files")
+        {
+            Description = "Show detailed list of all affected files"
+        };
+
         command.Options.Add(shareUrlOption);
         command.Options.Add(outputOption);
         command.Options.Add(forceOption);
@@ -94,6 +99,7 @@ DownloadAnalyzer downloadAnalyzer)
         command.Options.Add(dryRunOption);
         command.Options.Add(cleanOption);
         command.Options.Add(cleanAllOption);
+        command.Options.Add(showFilesOption);
 
         command.SetAction(async parseResult =>
         {
@@ -107,8 +113,9 @@ DownloadAnalyzer downloadAnalyzer)
             var dryRun = parseResult.GetValue(dryRunOption);
             var clean = parseResult.GetValue(cleanOption);
             var cleanAll = parseResult.GetValue(cleanAllOption);
+            var showFiles = parseResult.GetValue(showFilesOption);
 
-            await ExecuteAsync(shareUrl, outputDir, force, includePatterns, excludePatterns, concurrency, debug, dryRun, clean, cleanAll);
+            await ExecuteAsync(shareUrl, outputDir, force, includePatterns, excludePatterns, concurrency, debug, dryRun, clean, cleanAll, showFiles);
             return 0;
         });
 
@@ -125,12 +132,10 @@ DownloadAnalyzer downloadAnalyzer)
         bool debug,
         bool dryRun,
         bool clean,
-        bool cleanAll
+        bool cleanAll,
+        bool showFiles
     )
     {
-        // Note: forceRefresh is kept for future use, currently handled by analyzer
-        _ = forceRefresh;
-
         // Debug info (log level must be configured via environment before startup)
         if (debug)
         {
@@ -230,11 +235,12 @@ DownloadAnalyzer downloadAnalyzer)
                 outputDirectory,
                 downloadConfig,
                 includeOrphans: clean || cleanAll,
-                includeAllOrphans: cleanAll
+                includeAllOrphans: cleanAll,
+                forceRefresh: forceRefresh
             );
 
             // Display analysis results
-            DisplayAnalysisResults(analysis, dryRun, clean || cleanAll);
+            DisplayAnalysisResults(analysis, dryRun, clean || cleanAll, forceRefresh, showFiles);
 
             // Dry-run: Exit after showing preview
             if (dryRun)
@@ -298,7 +304,7 @@ DownloadAnalyzer downloadAnalyzer)
                             mainTask.MaxValue = report.total;
                         }
                         mainTask.Value = report.current;
-                        mainTask.Description = $"[green]Downloading[/] ({report.current}/{report.total}) - {report.fileName}";
+                        mainTask.Description = $"[green]Downloading[/] ({report.current}/{report.total})";
                     });
 
                     // Only download items that need updating
@@ -371,12 +377,79 @@ DownloadAnalyzer downloadAnalyzer)
     /// <summary>
     /// Displays analysis results in a user-friendly format
     /// </summary>
-    private static void DisplayAnalysisResults(DownloadAnalysis analysis, bool isDryRun, bool includeOrphans)
+    private static void DisplayAnalysisResults(DownloadAnalysis analysis, bool isDryRun, bool includeOrphans, bool forceRefresh, bool showFiles)
     {
         var stats = analysis.Statistics;
 
-        // Summary panel
-        var summaryText = isDryRun ? "[yellow]DRY RUN - Preview of Changes[/]\n\n" : "[blue]Analysis Results[/]\n\n";
+        // Show file lists first (if --show-files is enabled)
+        if (showFiles)
+        {
+            // Show new files (ALL of them)
+            var newItems = analysis.Items.Where(i => i.Status == FileStatus.New).ToList();
+            if (newItems is not [])
+            {
+                AnsiConsole.MarkupLine("[green]NEW FILES:[/]");
+                var table = new Table
+                {
+                    Border = TableBorder.None
+                };
+                table.AddColumn("Path");
+                table.AddColumn("Size");
+
+                foreach (var item in newItems)
+                {
+                    table.AddRow($"[dim]+[/] {item.RelativePath}", FileSizeFormatter.Format(item.RemoteItem.Size));
+                }
+
+                AnsiConsole.Write(table);
+                AnsiConsole.WriteLine();
+            }
+
+            // Show modified files (ALL of them)
+            var modifiedItems = analysis.Items.Where(i => i.Status == FileStatus.Modified).ToList();
+            if (modifiedItems is not [])
+            {
+                AnsiConsole.MarkupLine("[yellow]MODIFIED FILES:[/]");
+                var table = new Table
+                {
+                    Border = TableBorder.None
+                };
+                table.AddColumn("Path");
+                table.AddColumn("Reason");
+
+                foreach (var item in modifiedItems)
+                {
+                    table.AddRow($"[dim]~[/] {item.RelativePath}", item.Reason);
+                }
+
+                AnsiConsole.Write(table);
+                AnsiConsole.WriteLine();
+            }
+
+            // Show orphaned files (ALL of them)
+            if (includeOrphans && analysis.OrphanedFiles is not [])
+            {
+                AnsiConsole.MarkupLine("[red]ORPHANED FILES (local only):[/]");
+                var table = new Table
+                {
+                    Border = TableBorder.None
+                };
+                table.AddColumn("Path");
+                table.AddColumn("Size");
+
+                foreach (var file in analysis.OrphanedFiles)
+                {
+                    var relativePath = file.Name; // Simplified for display
+                    table.AddRow($"[dim]-[/] {relativePath}", FileSizeFormatter.Format(file.Length));
+                }
+
+                AnsiConsole.Write(table);
+                AnsiConsole.WriteLine();
+            }
+        }
+
+        // Summary panel (ALWAYS shown, at the end)
+        var summaryText = isDryRun ? "[yellow]DRY RUN - Preview of Changes[/]\n\n" : "[blue]Analysis Complete[/]\n\n";
         summaryText += $"[bold]Summary:[/]\n";
         summaryText += $"  + {stats.NewFiles} new file(s) ({FileSizeFormatter.Format(stats.TotalDownloadSize)})\n";
         summaryText += $"  ~ {stats.ModifiedFiles} modified file(s)\n";
@@ -387,91 +460,22 @@ DownloadAnalyzer downloadAnalyzer)
             summaryText += $"  - {stats.OrphanedFiles} orphaned file(s) ({FileSizeFormatter.Format(stats.TotalOrphanedSize)})\n";
         }
 
+        if (forceRefresh && stats.ModifiedFiles > 0)
+        {
+            summaryText += $"\n[dim]🔄 Force refresh enabled[/]";
+        }
+
+        if (!showFiles && (stats.NewFiles > 0 || stats.ModifiedFiles > 0 || stats.OrphanedFiles > 0))
+        {
+            summaryText += $"\n\n[dim]Run with --show-files to see detailed file list[/]";
+        }
+
         AnsiConsole.Write(new Panel(summaryText)
         {
-            Header = new PanelHeader(isDryRun ? "[bold yellow]Preview[/]" : "[bold blue]Analysis[/]"),
+            Header = new PanelHeader(isDryRun ? "[bold yellow]Preview[/]" : "[bold blue]Summary[/]"),
             Border = BoxBorder.Rounded
         });
         AnsiConsole.WriteLine();
-
-        // Show new files
-        var newItems = analysis.Items.Where(i => i.Status == FileStatus.New).Take(10).ToList();
-        if (newItems is not [])
-        {
-            AnsiConsole.MarkupLine("[green]NEW FILES:[/]");
-            var table = new Table
-            {
-                Border = TableBorder.None
-            };
-            table.AddColumn("Path");
-            table.AddColumn("Size");
-
-            foreach (var item in newItems)
-            {
-                table.AddRow($"[dim]+[/] {item.RelativePath}", FileSizeFormatter.Format(item.RemoteItem.Size));
-            }
-
-            if (stats.NewFiles > 10)
-            {
-                table.AddRow($"[dim]... and {stats.NewFiles - 10} more[/]", "");
-            }
-
-            AnsiConsole.Write(table);
-            AnsiConsole.WriteLine();
-        }
-
-        // Show modified files
-        var modifiedItems = analysis.Items.Where(i => i.Status == FileStatus.Modified).Take(10).ToList();
-        if (modifiedItems is not [])
-        {
-            AnsiConsole.MarkupLine("[yellow]MODIFIED FILES:[/]");
-            var table = new Table
-            {
-                Border = TableBorder.None
-            };
-            table.AddColumn("Path");
-            table.AddColumn("Reason");
-
-            foreach (var item in modifiedItems)
-            {
-                table.AddRow($"[dim]~[/] {item.RelativePath}", item.Reason);
-            }
-
-            if (stats.ModifiedFiles > 10)
-            {
-                table.AddRow($"[dim]... and {stats.ModifiedFiles - 10} more[/]", "");
-            }
-
-            AnsiConsole.Write(table);
-            AnsiConsole.WriteLine();
-        }
-
-        // Show orphaned files
-        if (includeOrphans && analysis.OrphanedFiles is not [])
-        {
-            AnsiConsole.MarkupLine("[red]ORPHANED FILES (local only):[/]");
-            var table = new Table
-            {
-                Border = TableBorder.None
-            };
-            table.AddColumn("Path");
-            table.AddColumn("Size");
-
-            var orphansToShow = analysis.OrphanedFiles.Take(10);
-            foreach (var file in orphansToShow)
-            {
-                var relativePath = file.Name; // Simplified for display
-                table.AddRow($"[dim]-[/] {relativePath}", FileSizeFormatter.Format(file.Length));
-            }
-
-            if (analysis.OrphanedFiles.Count > 10)
-            {
-                table.AddRow($"[dim]... and {analysis.OrphanedFiles.Count - 10} more[/]", "");
-            }
-
-            AnsiConsole.Write(table);
-            AnsiConsole.WriteLine();
-        }
     }
 
     /// <summary>
@@ -497,13 +501,15 @@ DownloadAnalyzer downloadAnalyzer)
             },
             async (item, ct) =>
             {
-                var currentIndex = Interlocked.Increment(ref current);
                 var destinationPath = Path.Combine(destinationDirectory, item.RelativePath);
 
-                progress?.Report((currentIndex, total, item.RelativePath));
-
+                // Download file first
                 var downloadedPath = await provider.DownloadFileAsync(item.RemoteItem, destinationPath, ct);
                 downloadedFiles.Add(downloadedPath);
+
+                // Report progress AFTER download completes
+                var currentIndex = Interlocked.Increment(ref current);
+                progress?.Report((currentIndex, total, item.RelativePath));
             });
 
         return [.. downloadedFiles];

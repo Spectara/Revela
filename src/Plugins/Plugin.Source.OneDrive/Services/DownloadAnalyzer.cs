@@ -19,6 +19,7 @@ public sealed partial class DownloadAnalyzer
     /// <param name="config">OneDrive configuration (for filter patterns)</param>
     /// <param name="includeOrphans">Whether to detect orphaned files</param>
     /// <param name="includeAllOrphans">Whether to include all orphans (not just filtered)</param>
+    /// <param name="forceRefresh">Force re-download all files, even if they appear unchanged</param>
     /// <returns>Analysis result with items to download and orphaned files</returns>
 #pragma warning disable CA1822 // Member can be static - kept as instance method for future extensibility
     public DownloadAnalysis Analyze(
@@ -26,7 +27,8 @@ public sealed partial class DownloadAnalyzer
         string destinationDirectory,
         OneDriveConfig config,
         bool includeOrphans = false,
-        bool includeAllOrphans = false
+        bool includeAllOrphans = false,
+        bool forceRefresh = false
     )
     {
         var items = new List<DownloadItem>();
@@ -38,8 +40,8 @@ public sealed partial class DownloadAnalyzer
             var localPath = Path.Combine(destinationDirectory, relativePath);
             var localFile = File.Exists(localPath) ? new FileInfo(localPath) : null;
 
-            var status = DetermineStatus(remoteItem, localFile);
-            var reason = GetChangeReason(remoteItem, localFile, status);
+            var status = DetermineStatus(remoteItem, localFile, forceRefresh);
+            var reason = GetChangeReason(remoteItem, localFile, status, forceRefresh);
 
             items.Add(new DownloadItem
             {
@@ -83,15 +85,24 @@ public sealed partial class DownloadAnalyzer
     /// <summary>
     /// Determines file status by comparing remote and local versions
     /// </summary>
+    /// <param name="remote">Remote OneDrive item</param>
+    /// <param name="local">Local file info (null if file doesn't exist)</param>
+    /// <param name="forceRefresh">If true, treat all existing files as Modified</param>
     /// <remarks>
     /// Performance optimization: Check size FIRST (fast), only if size matches check LastModified.
     /// This avoids expensive date comparisons for files that obviously differ in size.
     /// </remarks>
-    private static FileStatus DetermineStatus(OneDriveItem remote, FileInfo? local)
+    private static FileStatus DetermineStatus(OneDriveItem remote, FileInfo? local, bool forceRefresh)
     {
         if (local is null)
         {
             return FileStatus.New;
+        }
+
+        // Force refresh: treat all existing files as modified
+        if (forceRefresh)
+        {
+            return FileStatus.Modified;
         }
 
         // 1. FIRST: Check size (fast, cheap operation)
@@ -114,12 +125,13 @@ public sealed partial class DownloadAnalyzer
     /// <summary>
     /// Gets human-readable reason for the file status
     /// </summary>
-    private static string GetChangeReason(OneDriveItem remote, FileInfo? local, FileStatus status)
+    private static string GetChangeReason(OneDriveItem remote, FileInfo? local, FileStatus status, bool forceRefresh)
     {
         return status switch
         {
             FileStatus.New => "New file",
             FileStatus.Unchanged => "Up to date",
+            FileStatus.Modified when forceRefresh => "Forced refresh",
             FileStatus.Modified when local is not null && local.Length != remote.Size =>
                 $"Size changed: {FileSizeFormatter.Format(local.Length)} → {FileSizeFormatter.Format(remote.Size)}",
             FileStatus.Modified when local is not null =>
