@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Text.RegularExpressions;
 using Spectara.Revela.Plugin.Source.OneDrive.Formatting;
 using Spectara.Revela.Plugin.Source.OneDrive.Models;
@@ -10,6 +11,10 @@ namespace Spectara.Revela.Plugin.Source.OneDrive.Services;
 public sealed partial class DownloadAnalyzer
 {
     private const double LastModifiedToleranceSeconds = 5.0;
+
+    private static readonly string[] DefaultExtensions = [".jpg", ".jpeg", ".png", ".webp", ".md"];
+
+    private static readonly ConcurrentDictionary<string, Regex> RegexCache = new();
 
     /// <summary>
     /// Analyzes which files need to be downloaded
@@ -211,11 +216,7 @@ public sealed partial class DownloadAnalyzer
         // Use defaults if no include patterns (images + markdown)
         if (includePatterns is null or [])
         {
-            return fileName.EndsWith(".jpg", StringComparison.OrdinalIgnoreCase) ||
-                   fileName.EndsWith(".jpeg", StringComparison.OrdinalIgnoreCase) ||
-                   fileName.EndsWith(".png", StringComparison.OrdinalIgnoreCase) ||
-                   fileName.EndsWith(".webp", StringComparison.OrdinalIgnoreCase) ||
-                   fileName.EndsWith(".md", StringComparison.OrdinalIgnoreCase);
+            return DefaultExtensions.Any(ext => fileName.EndsWith(ext, StringComparison.OrdinalIgnoreCase));
         }
 
         return includePatterns.Any(p => MatchesWildcard(fileName, p));
@@ -226,11 +227,17 @@ public sealed partial class DownloadAnalyzer
     /// </summary>
     private static bool MatchesWildcard(string text, string pattern)
     {
-        var regexPattern = "^" +
-            Regex.Escape(pattern)
-                .Replace("\\*", ".*", StringComparison.Ordinal)
-                .Replace("\\?", ".", StringComparison.Ordinal) + "$";
-        return Regex.IsMatch(text, regexPattern, RegexOptions.IgnoreCase);
+        var regex = RegexCache.GetOrAdd(pattern, p =>
+        {
+            var regexPattern = "^" +
+                Regex.Escape(p)
+                    .Replace("\\*", ".*", StringComparison.Ordinal)
+                    .Replace("\\?", ".", StringComparison.Ordinal) +
+                "$";
+            return new Regex(regexPattern, RegexOptions.IgnoreCase | RegexOptions.Compiled);
+        });
+
+        return regex.IsMatch(text);
     }
 }
 

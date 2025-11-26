@@ -26,6 +26,21 @@ SharedLinkProvider provider,
 IOptionsMonitor<OneDrivePluginConfig> config,
 DownloadAnalyzer downloadAnalyzer)
 {
+    private const string MissingShareUrlError = """
+        No OneDrive share URL provided. Use one of these methods:
+        1. Create onedrive.json with ShareUrl property (in Plugins:OneDrive section)
+        2. Set environment variable: REVELA__PLUGINS__ONEDRIVE__SHAREURL=<url> or ONEDRIVE_SHAREURL=<url>
+        3. Provide --share-url parameter
+
+        Example onedrive.json:
+        {
+          "Plugins": {
+            "OneDrive": {
+              "ShareUrl": "https://1drv.ms/u/..."
+            }
+          }
+        }
+        """;
     public Command Create()
     {
         var command = new Command("download", "Download images from OneDrive shared folder");
@@ -103,41 +118,32 @@ DownloadAnalyzer downloadAnalyzer)
 
         command.SetAction(async parseResult =>
         {
-            var shareUrl = parseResult.GetValue(shareUrlOption);
-            var outputDir = parseResult.GetValue(outputOption);
-            var force = parseResult.GetValue(forceOption);
-            var includePatterns = parseResult.GetValue(includeOption);
-            var excludePatterns = parseResult.GetValue(excludeOption);
-            var concurrency = parseResult.GetValue(concurrencyOption);
-            var debug = parseResult.GetValue(debugOption);
-            var dryRun = parseResult.GetValue(dryRunOption);
-            var clean = parseResult.GetValue(cleanOption);
-            var cleanAll = parseResult.GetValue(cleanAllOption);
-            var showFiles = parseResult.GetValue(showFilesOption);
+            var options = new ExecutionOptions
+            {
+                ShareUrl = parseResult.GetValue(shareUrlOption),
+                OutputDirectory = parseResult.GetValue(outputOption),
+                ForceRefresh = parseResult.GetValue(forceOption),
+                IncludePatterns = parseResult.GetValue(includeOption),
+                ExcludePatterns = parseResult.GetValue(excludeOption),
+                Concurrency = parseResult.GetValue(concurrencyOption),
+                Debug = parseResult.GetValue(debugOption),
+                DryRun = parseResult.GetValue(dryRunOption),
+                Clean = parseResult.GetValue(cleanOption),
+                CleanAll = parseResult.GetValue(cleanAllOption),
+                ShowFiles = parseResult.GetValue(showFilesOption)
+            };
 
-            await ExecuteAsync(shareUrl, outputDir, force, includePatterns, excludePatterns, concurrency, debug, dryRun, clean, cleanAll, showFiles);
+            await ExecuteAsync(options);
             return 0;
         });
 
         return command;
     }
 
-    private async Task ExecuteAsync(
-        string? shareUrlOverride,
-        string? outputDirectoryOverride,
-        bool forceRefresh,
-        string[]? includePatternsOverride,
-        string[]? excludePatternsOverride,
-        int? concurrencyOverride,
-        bool debug,
-        bool dryRun,
-        bool clean,
-        bool cleanAll,
-        bool showFiles
-    )
+    private async Task ExecuteAsync(ExecutionOptions options)
     {
         // Debug info (log level must be configured via environment before startup)
-        if (debug)
+        if (options.Debug)
         {
             AnsiConsole.MarkupLine("[yellow]Debug logging requested[/]");
             AnsiConsole.MarkupLine("[dim]Set environment variable REVELA__LOGGING__LOGLEVEL__DEFAULT=Debug[/]");
@@ -150,27 +156,14 @@ DownloadAnalyzer downloadAnalyzer)
             var currentConfig = config.CurrentValue;
 
             // CLI parameters override config file (priority: CLI > Config)
-            var shareUrl = shareUrlOverride ?? currentConfig.ShareUrl;
-            var includePatterns = includePatternsOverride ?? currentConfig.IncludePatterns?.ToArray();
-            var excludePatterns = excludePatternsOverride ?? currentConfig.ExcludePatterns?.ToArray();
+            var shareUrl = options.ShareUrl ?? currentConfig.ShareUrl;
+            var includePatterns = options.IncludePatterns ?? currentConfig.IncludePatterns?.ToArray();
+            var excludePatterns = options.ExcludePatterns ?? currentConfig.ExcludePatterns?.ToArray();
 
             // Validate ShareUrl (either from config or CLI)
             if (string.IsNullOrWhiteSpace(shareUrl))
             {
-                throw new InvalidOperationException(
-                    "No OneDrive share URL provided. Use one of these methods:\n" +
-                    "1. Create onedrive.json with ShareUrl property (in Plugins:OneDrive section)\n" +
-                    "2. Set environment variable: REVELA__PLUGINS__ONEDRIVE__SHAREURL=<url> or ONEDRIVE_SHAREURL=<url>\n" +
-                    "3. Provide --share-url parameter\n\n" +
-                    "Example onedrive.json:\n" +
-                    "{\n" +
-                    "  \"Plugins\": {\n" +
-                    "    \"OneDrive\": {\n" +
-                    "      \"ShareUrl\": \"https://1drv.ms/u/...\"\n" +
-                    "    }\n" +
-                    "  }\n" +
-                    "}"
-                );
+                throw new InvalidOperationException(MissingShareUrlError);
             }
 
             // Build OneDriveConfig for provider
@@ -182,20 +175,22 @@ DownloadAnalyzer downloadAnalyzer)
             };
 
             // Determine output directory (CLI > Config > Default)
-            var outputDirectory = outputDirectoryOverride
+            var outputDirectory = options.OutputDirectory
                 ?? currentConfig.OutputDirectory
                 ?? "source";
             outputDirectory = Path.Combine(Directory.GetCurrentDirectory(), outputDirectory);
 
             // Determine concurrency (CLI > Config > Auto-detect)
-            var concurrency = concurrencyOverride
+            var concurrency = options.Concurrency
                 ?? currentConfig.DefaultConcurrency
                 ?? GetDefaultConcurrency();
 
             // Validate concurrency
             if (concurrency <= 0)
             {
-                throw new ArgumentException("Concurrency must be greater than 0", nameof(concurrencyOverride));
+                throw new ArgumentException(
+                    "Concurrency must be greater than 0",
+                    $"{nameof(options)}.{nameof(ExecutionOptions.Concurrency)}");
             }
 
             AnsiConsole.MarkupLine("[blue]Downloading from OneDrive...[/]");
@@ -205,15 +200,27 @@ DownloadAnalyzer downloadAnalyzer)
             AnsiConsole.WriteLine();
 
             // Phase 1: Scan OneDrive structure
-            // Note: provider is injected via constructor (DI)
             IReadOnlyList<OneDriveItem>? allItems = null;
             await AnsiConsole.Status()
                 .Spinner(Spinner.Known.Dots)
                 .StartAsync("[yellow]Scanning OneDrive folder structure...[/]", async ctx =>
                 {
                     allItems = await provider.ListItemsAsync(downloadConfig);
-                    var fileCount = allItems.Count(i => !i.IsFolder);
-                    var folderCount = allItems.Count(i => i.IsFolder);
+                    
+                    // Count files and folders in single pass
+                    var fileCount = 0;
+                    var folderCount = 0;
+                    foreach (var item in allItems)
+                    {
+                        if (item.IsFolder)
+                        {
+                            folderCount++;
+                        }
+                        else
+                        {
+                            fileCount++;
+                        }
+                    }
 
                     ctx.Status($"[green]OK[/] Found {fileCount} files in {folderCount} folders");
                     await Task.Delay(500); // Brief pause to show result
@@ -224,7 +231,9 @@ DownloadAnalyzer downloadAnalyzer)
                 throw new InvalidOperationException("Failed to scan OneDrive folder");
             }
 
-            AnsiConsole.MarkupLine($"[green]OK[/] Scan complete: {allItems.Count(i => !i.IsFolder)} files, {allItems.Count(i => i.IsFolder)} folders");
+            // Count already done in Status block, reuse or recalculate
+            var (files, folders) = CountItemTypes(allItems);
+            AnsiConsole.MarkupLine($"[green]OK[/] Scan complete: {files} files, {folders} folders");
             AnsiConsole.WriteLine();
 
             // Phase 2: Analyze changes
@@ -234,16 +243,16 @@ DownloadAnalyzer downloadAnalyzer)
                 allItems,
                 outputDirectory,
                 downloadConfig,
-                includeOrphans: clean || cleanAll,
-                includeAllOrphans: cleanAll,
-                forceRefresh: forceRefresh
+                includeOrphans: options.Clean || options.CleanAll,
+                includeAllOrphans: options.CleanAll,
+                forceRefresh: options.ForceRefresh
             );
 
             // Display analysis results
-            DisplayAnalysisResults(analysis, dryRun, clean || cleanAll, forceRefresh, showFiles);
+            DisplayAnalysisResults(analysis, options.DryRun, options.Clean || options.CleanAll, options.ForceRefresh, options.ShowFiles);
 
             // Dry-run: Exit after showing preview
-            if (dryRun)
+            if (options.DryRun)
             {
                 AnsiConsole.MarkupLine("\n[dim]Run without --dry-run to apply changes.[/]");
                 if (analysis.Statistics.OrphanedFiles > 0)
@@ -254,7 +263,7 @@ DownloadAnalyzer downloadAnalyzer)
             }
 
             // Handle orphaned files if --clean specified
-            if ((clean || cleanAll) && analysis.OrphanedFiles is not [])
+            if ((options.Clean || options.CleanAll) && analysis.OrphanedFiles is not [])
             {
                 if (!await AnsiConsole.ConfirmAsync($"[yellow]Delete {analysis.OrphanedFiles.Count} orphaned file(s)?[/]").ConfigureAwait(false))
                 {
@@ -296,7 +305,7 @@ DownloadAnalyzer downloadAnalyzer)
                     var mainTask = ctx.AddTask($"[green]Downloading Changes[/]", maxValue: 100);
                     mainTask.IsIndeterminate = true;
 
-                    var progress = new Progress<(int current, int total, string fileName)>(report =>
+                    var progress = new Progress<(int current, int total)>(report =>
                     {
                         if (mainTask.IsIndeterminate && report.total > 0)
                         {
@@ -309,7 +318,7 @@ DownloadAnalyzer downloadAnalyzer)
 
                     // Only download items that need updating
                     var itemsToDownload = analysis.ItemsToDownload.ToList();
-                    downloadedFiles = [.. await DownloadItemsAsync(itemsToDownload, outputDirectory, concurrency, progress)];
+                    downloadedFiles = [.. await DownloadItemsAsync(itemsToDownload, outputDirectory, concurrency, progress, default)];
 
                     mainTask.StopTask();
                 });
@@ -338,6 +347,29 @@ DownloadAnalyzer downloadAnalyzer)
             AnsiConsole.MarkupLine($"[red]Error:[/] {ex.Message}");
             logger.DownloadFailed(ex);
         }
+    }
+
+    /// <summary>
+    /// Counts files and folders in a single pass
+    /// </summary>
+    private static (int files, int folders) CountItemTypes(IReadOnlyList<OneDriveItem> items)
+    {
+        var files = 0;
+        var folders = 0;
+        
+        foreach (var item in items)
+        {
+            if (item.IsFolder)
+            {
+                folders++;
+            }
+            else
+            {
+                files++;
+            }
+        }
+        
+        return (files, folders);
     }
 
     /// <summary>
@@ -384,71 +416,82 @@ DownloadAnalyzer downloadAnalyzer)
         // Show file lists first (if --show-files is enabled)
         if (showFiles)
         {
-            // Show new files (ALL of them)
-            var newItems = analysis.Items.Where(i => i.Status == FileStatus.New).ToList();
-            if (newItems is not [])
-            {
-                AnsiConsole.MarkupLine("[green]NEW FILES:[/]");
-                var table = new Table
-                {
-                    Border = TableBorder.None
-                };
-                table.AddColumn("Path");
-                table.AddColumn("Size");
+            DisplayFileList(analysis.Items.Where(i => i.Status == FileStatus.New).ToList(), 
+                "[green]NEW FILES:[/]", "+", 
+                item => (item.RelativePath, FileSizeFormatter.Format(item.RemoteItem.Size)));
 
-                foreach (var item in newItems)
-                {
-                    table.AddRow($"[dim]+[/] {item.RelativePath}", FileSizeFormatter.Format(item.RemoteItem.Size));
-                }
+            DisplayFileList(analysis.Items.Where(i => i.Status == FileStatus.Modified).ToList(), 
+                "[yellow]MODIFIED FILES:[/]", "~", 
+                item => (item.RelativePath, item.Reason));
 
-                AnsiConsole.Write(table);
-                AnsiConsole.WriteLine();
-            }
-
-            // Show modified files (ALL of them)
-            var modifiedItems = analysis.Items.Where(i => i.Status == FileStatus.Modified).ToList();
-            if (modifiedItems is not [])
-            {
-                AnsiConsole.MarkupLine("[yellow]MODIFIED FILES:[/]");
-                var table = new Table
-                {
-                    Border = TableBorder.None
-                };
-                table.AddColumn("Path");
-                table.AddColumn("Reason");
-
-                foreach (var item in modifiedItems)
-                {
-                    table.AddRow($"[dim]~[/] {item.RelativePath}", item.Reason);
-                }
-
-                AnsiConsole.Write(table);
-                AnsiConsole.WriteLine();
-            }
-
-            // Show orphaned files (ALL of them)
             if (includeOrphans && analysis.OrphanedFiles is not [])
             {
-                AnsiConsole.MarkupLine("[red]ORPHANED FILES (local only):[/]");
-                var table = new Table
-                {
-                    Border = TableBorder.None
-                };
-                table.AddColumn("Path");
-                table.AddColumn("Size");
-
-                foreach (var file in analysis.OrphanedFiles)
-                {
-                    var relativePath = file.Name; // Simplified for display
-                    table.AddRow($"[dim]-[/] {relativePath}", FileSizeFormatter.Format(file.Length));
-                }
-
-                AnsiConsole.Write(table);
-                AnsiConsole.WriteLine();
+                DisplayOrphanedFileList(analysis.OrphanedFiles);
             }
         }
 
         // Summary panel (ALWAYS shown, at the end)
+        DisplaySummaryPanel(stats, isDryRun, includeOrphans, forceRefresh, showFiles);
+    }
+
+    /// <summary>
+    /// Displays a file list table
+    /// </summary>
+    private static void DisplayFileList<T>(
+        List<T> items, 
+        string header, 
+        string marker,
+        Func<T, (string path, string details)> selector) where T : notnull
+    {
+        if (items is [])
+        {
+            return;
+        }
+
+        AnsiConsole.MarkupLine(header);
+        var table = new Table { Border = TableBorder.None };
+        table.AddColumn("Path");
+        table.AddColumn("Details");
+
+        foreach (var item in items)
+        {
+            var (path, details) = selector(item);
+            table.AddRow($"[dim]{marker}[/] {path}", details);
+        }
+
+        AnsiConsole.Write(table);
+        AnsiConsole.WriteLine();
+    }
+
+    /// <summary>
+    /// Displays orphaned files list
+    /// </summary>
+    private static void DisplayOrphanedFileList(IReadOnlyList<FileInfo> files)
+    {
+        AnsiConsole.MarkupLine("[red]ORPHANED FILES (local only):[/]");
+        var table = new Table { Border = TableBorder.None };
+        table.AddColumn("Path");
+        table.AddColumn("Size");
+
+        foreach (var file in files)
+        {
+            table.AddRow($"[dim]-[/] {file.Name}", FileSizeFormatter.Format(file.Length));
+        }
+
+        AnsiConsole.Write(table);
+        AnsiConsole.WriteLine();
+    }
+
+    /// <summary>
+    /// Displays summary panel
+    /// </summary>
+    private static void DisplaySummaryPanel(
+        DownloadStatistics stats, 
+        bool isDryRun, 
+        bool includeOrphans, 
+        bool forceRefresh, 
+        bool showFiles)
+    {
         var summaryText = isDryRun ? "[yellow]DRY RUN - Preview of Changes[/]\n\n" : "[blue]Analysis Complete[/]\n\n";
         summaryText += $"[bold]Summary:[/]\n";
         summaryText += $"  + {stats.NewFiles} new file(s) ({FileSizeFormatter.Format(stats.TotalDownloadSize)})\n";
@@ -485,8 +528,8 @@ DownloadAnalyzer downloadAnalyzer)
         List<DownloadItem> items,
         string destinationDirectory,
         int concurrency,
-        IProgress<(int current, int total, string fileName)>? progress
-    )
+        IProgress<(int current, int total)>? progress,
+        CancellationToken cancellationToken)
     {
         var downloadedFiles = new System.Collections.Concurrent.ConcurrentBag<string>();
         var current = 0;
@@ -497,7 +540,7 @@ DownloadAnalyzer downloadAnalyzer)
             new ParallelOptions
             {
                 MaxDegreeOfParallelism = concurrency,
-                CancellationToken = default
+                CancellationToken = cancellationToken
             },
             async (item, ct) =>
             {
@@ -509,7 +552,7 @@ DownloadAnalyzer downloadAnalyzer)
 
                 // Report progress AFTER download completes
                 var currentIndex = Interlocked.Increment(ref current);
-                progress?.Report((currentIndex, total, item.RelativePath));
+                progress?.Report((currentIndex, total));
             });
 
         return [.. downloadedFiles];
