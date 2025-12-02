@@ -59,16 +59,16 @@ internal sealed partial class PluginContext(IReadOnlyList<IPlugin> plugins) : IP
     private static void RegisterCommand(RootCommand rootCommand, IPlugin plugin, CommandDescriptor descriptor)
     {
         var command = descriptor.Command;
-        var parentName = descriptor.ParentCommand;
+        var parentPath = descriptor.ParentCommand;
 
-        if (!string.IsNullOrEmpty(parentName))
+        if (!string.IsNullOrEmpty(parentPath))
         {
-            // Plugin wants a parent command
-            var parentCmd = GetOrCreateParentCommand(rootCommand, parentName);
+            // Plugin wants a parent command (supports nested paths like "init source")
+            var parentCmd = GetOrCreateParentCommand(rootCommand, parentPath);
 
             if (parentCmd.Subcommands.Any(sc => sc.Name == command.Name))
             {
-                Console.Error.WriteLine($"Warning: Plugin '{plugin.Metadata.Name}' tried to register duplicate command '{command.Name}' under '{parentName}'");
+                Console.Error.WriteLine($"Warning: Plugin '{plugin.Metadata.Name}' tried to register duplicate command '{command.Name}' under '{parentPath}'");
                 return;
             }
 
@@ -87,26 +87,45 @@ internal sealed partial class PluginContext(IReadOnlyList<IPlugin> plugins) : IP
         }
     }
 
-    private static Command GetOrCreateParentCommand(RootCommand root, string parentName)
+    /// <summary>
+    /// Gets or creates a parent command, supporting nested paths like "init source".
+    /// </summary>
+    private static Command GetOrCreateParentCommand(RootCommand root, string parentPath)
     {
-        var existing = root.Subcommands.FirstOrDefault(c => c.Name == parentName);
-        if (existing is not null)
+        // Split path into segments: "init source" → ["init", "source"]
+        var segments = parentPath.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+
+        Command current = root;
+
+        foreach (var segment in segments)
         {
-            return existing;
+            var existing = current.Subcommands.FirstOrDefault(c => c.Name == segment);
+            if (existing is not null)
+            {
+                current = existing;
+            }
+            else
+            {
+                // Create new command with appropriate description
+                var description = GetCommandDescription(segment);
+                var newCommand = new Command(segment, description);
+                current.Subcommands.Add(newCommand);
+                current = newCommand;
+            }
         }
 
-        // Create parent command based on name
-        var description = parentName switch
+        return current;
+    }
+
+    private static string GetCommandDescription(string commandName)
+    {
+        return commandName switch
         {
             "init" => "Initialize project, sources, or plugins",
-            "source" => "Manage image sources",
+            "source" => "Image source providers",
             "deploy" => "Deploy generated site",
-            _ => $"{parentName} commands"
+            _ => $"{commandName} commands"
         };
-
-        var parent = new Command(parentName, description);
-        root.Subcommands.Add(parent);
-        return parent;
     }
 
     // High-performance logging with LoggerMessage source generator

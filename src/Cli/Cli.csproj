@@ -3,7 +3,7 @@
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <Description>Expose CLI - Static site generator for photographers</Description>
-    
+
     <!-- .NET Tool Configuration -->
     <PackAsTool>true</PackAsTool>
     <ToolCommandName>expose</ToolCommandName>
@@ -13,8 +13,11 @@
   <ItemGroup>
     <ProjectReference Include="..\Core\Core.csproj" />
     <ProjectReference Include="..\Features\Features.csproj" />
-    <!-- Development: OneDrive plugin for testing -->
-    <ProjectReference Include="..\Plugins\Plugin.Source.OneDrive\Plugin.Source.OneDrive.csproj" Condition="'$(Configuration)' == 'Debug'" />
+  </ItemGroup>
+
+  <!-- Development-only: Plugins included for debugging, NOT shipped in Release -->
+  <ItemGroup Condition="'$(Configuration)' == 'Debug'">
+    <ProjectReference Include="..\Plugins\Plugin.Source.OneDrive\Plugin.Source.OneDrive.csproj" />
   </ItemGroup>
 
   <ItemGroup>
