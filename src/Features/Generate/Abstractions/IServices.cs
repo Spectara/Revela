@@ -1,6 +1,6 @@
-using Spectara.Revela.Core.Models;
+using Spectara.Revela.Features.Generate.Models;
 
-namespace Spectara.Revela.Core.Abstractions;
+namespace Spectara.Revela.Features.Generate.Abstractions;
 
 /// <summary>
 /// Template engine abstraction
@@ -28,5 +28,5 @@ public sealed class ImageProcessingOptions
     public required IReadOnlyList<string> Formats { get; init; }
     public required IReadOnlyList<int> Sizes { get; init; }
     public required string OutputDirectory { get; init; }
+    public string? CacheDirectory { get; init; }
 }
-

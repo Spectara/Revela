@@ -1,4 +1,4 @@
-namespace Spectara.Revela.Core.Models;
+namespace Spectara.Revela.Features.Generate.Models;
 
 /// <summary>
 /// Represents a gallery containing images
@@ -16,4 +16,3 @@ public sealed class Gallery
     public IReadOnlyList<Image> Images { get; init; } = [];
     public IReadOnlyList<Gallery> SubGalleries { get; init; } = [];
 }
-

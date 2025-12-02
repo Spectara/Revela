@@ -54,6 +54,7 @@ public sealed class CacheSettings
     public bool Enabled { get; init; } = true;
     public bool Exif { get; init; } = true;
     public bool Html { get; init; } = true;
+    public string Directory { get; init; } = ".revela/cache";
 }
 
 public sealed class NavigationItem

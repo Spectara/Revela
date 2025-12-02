@@ -2,6 +2,9 @@ using System.CommandLine;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Spectara.Revela.Features.Generate;
+using Spectara.Revela.Features.Generate.Abstractions;
+using Spectara.Revela.Features.Generate.Services;
 using Spectara.Revela.Features.Init;
 using Spectara.Revela.Features.Plugins;
 
@@ -19,6 +22,17 @@ builder.Configuration.AddJsonFile(
     reloadOnChange: true
 );
 builder.Logging.AddConfiguration(builder.Configuration.GetSection("Logging"));
+
+// ✅ Register Generate feature services (Ultra-Vertical-Slice Architecture)
+// All Generate-related services are in Features.Generate.Services namespace
+builder.Services.AddSingleton<ExifCache>();
+builder.Services.AddSingleton<IImageProcessor, NetVipsImageProcessor>();
+builder.Services.AddSingleton<ITemplateEngine, ScribanTemplateEngine>();
+builder.Services.AddSingleton<ContentScanner>();
+builder.Services.AddSingleton<SiteGenerator>();
+
+// ✅ Register commands
+builder.Services.AddTransient<GenerateCommand>();
 
 // ✅ Load and register plugins
 // Plugins will:
@@ -38,8 +52,10 @@ var rootCommand = new RootCommand("Revela - Modern static site generator for pho
 // Add core commands
 rootCommand.Subcommands.Add(InitCommand.Create());
 rootCommand.Subcommands.Add(PluginCommand.Create());
-// TODO: Add GenerateCommand when implemented
-// TODO: Add ServeCommand when implemented
+
+// ✅ Add Generate command (resolves from DI)
+var generateCommand = host.Services.GetRequiredService<GenerateCommand>();
+rootCommand.Subcommands.Add(generateCommand.Create());
 
 // ✅ Register plugin commands (with smart parent handling)
 plugins.RegisterCommands(rootCommand);

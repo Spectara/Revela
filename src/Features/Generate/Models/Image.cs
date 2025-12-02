@@ -1,4 +1,4 @@
-namespace Spectara.Revela.Core.Models;
+namespace Spectara.Revela.Features.Generate.Models;
 
 /// <summary>
 /// Represents an image with its metadata and processing variants
@@ -29,4 +29,3 @@ public sealed class ImageVariant
     public required string Path { get; init; }
     public long Size { get; init; }
 }
-

@@ -16,4 +16,8 @@
     <PackageReference Include="NuGet.Configuration" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Models\" />
+  </ItemGroup>
+
 </Project>
