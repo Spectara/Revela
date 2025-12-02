@@ -25,7 +25,7 @@ public sealed class OneDriveInitCommand(ILogger<OneDriveInitCommand> logger)
 
     public Command Create()
     {
-        var command = new Command("init", "Initialize OneDrive source configuration");
+        var command = new Command("onedrive", "Initialize OneDrive source configuration");
 
         // Option to specify share URL non-interactively
         var shareUrlOption = new Option<string?>("--share-url", "-u")

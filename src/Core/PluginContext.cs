@@ -44,9 +44,9 @@ internal sealed partial class PluginContext(IReadOnlyList<IPlugin> plugins) : IP
         {
             try
             {
-                foreach (var cmd in plugin.GetCommands())
+                foreach (var descriptor in plugin.GetCommands())
                 {
-                    RegisterCommand(rootCommand, plugin, cmd);
+                    RegisterCommand(rootCommand, plugin, descriptor);
                 }
             }
             catch (Exception ex)
@@ -56,16 +56,19 @@ internal sealed partial class PluginContext(IReadOnlyList<IPlugin> plugins) : IP
         }
     }
 
-    private static void RegisterCommand(RootCommand rootCommand, IPlugin plugin, Command command)
+    private static void RegisterCommand(RootCommand rootCommand, IPlugin plugin, CommandDescriptor descriptor)
     {
-        if (!string.IsNullOrEmpty(plugin.Metadata.ParentCommand))
+        var command = descriptor.Command;
+        var parentName = descriptor.ParentCommand;
+
+        if (!string.IsNullOrEmpty(parentName))
         {
             // Plugin wants a parent command
-            var parentCmd = GetOrCreateParentCommand(rootCommand, plugin.Metadata.ParentCommand);
+            var parentCmd = GetOrCreateParentCommand(rootCommand, parentName);
 
             if (parentCmd.Subcommands.Any(sc => sc.Name == command.Name))
             {
-                Console.Error.WriteLine($"Warning: Plugin '{plugin.Metadata.Name}' tried to register duplicate command '{command.Name}' under '{plugin.Metadata.ParentCommand}'");
+                Console.Error.WriteLine($"Warning: Plugin '{plugin.Metadata.Name}' tried to register duplicate command '{command.Name}' under '{parentName}'");
                 return;
             }
 
@@ -95,6 +98,7 @@ internal sealed partial class PluginContext(IReadOnlyList<IPlugin> plugins) : IP
         // Create parent command based on name
         var description = parentName switch
         {
+            "init" => "Initialize project, sources, or plugins",
             "source" => "Manage image sources",
             "deploy" => "Deploy generated site",
             _ => $"{parentName} commands"

@@ -43,7 +43,7 @@ DownloadAnalyzer downloadAnalyzer)
         """;
     public Command Create()
     {
-        var command = new Command("download", "Download images from OneDrive shared folder");
+        var command = new Command("sync", "Sync images from OneDrive shared folder");
 
         // Options (override config file)
         var shareUrlOption = new Option<string?>("--share-url", "-u")
@@ -206,7 +206,7 @@ DownloadAnalyzer downloadAnalyzer)
                 .StartAsync("[yellow]Scanning OneDrive folder structure...[/]", async ctx =>
                 {
                     allItems = await provider.ListItemsAsync(downloadConfig);
-                    
+
                     // Count files and folders in single pass
                     var fileCount = 0;
                     var folderCount = 0;
@@ -238,7 +238,7 @@ DownloadAnalyzer downloadAnalyzer)
 
             // Phase 2: Analyze changes
             AnsiConsole.MarkupLine("[blue]Analyzing changes...[/]");
-            
+
             var analysis = downloadAnalyzer.Analyze(
                 allItems,
                 outputDirectory,
@@ -356,7 +356,7 @@ DownloadAnalyzer downloadAnalyzer)
     {
         var files = 0;
         var folders = 0;
-        
+
         foreach (var item in items)
         {
             if (item.IsFolder)
@@ -368,7 +368,7 @@ DownloadAnalyzer downloadAnalyzer)
                 files++;
             }
         }
-        
+
         return (files, folders);
     }
 
@@ -377,17 +377,17 @@ DownloadAnalyzer downloadAnalyzer)
     /// </summary>
     /// <remarks>
     /// Downloads are I/O-bound, not CPU-bound, allowing higher concurrency than CPU cores.
-    /// 
+    ///
     /// NOTE: OneDrive downloads use pre-signed CDN URLs (not OneDrive API), so API rate limiting
     /// is not a concern during downloads. The scan phase (ListItemsAsync) caches all file metadata
     /// once, then downloads proceed in parallel using direct CDN links.
-    /// 
+    ///
     /// Concurrency limits prevent:
     /// - Network bandwidth saturation (too many parallel HTTP streams)
     /// - Memory exhaustion (HttpClient buffers ~10MB per active download)
     /// - CDN throttling (OneDrive CDN may limit connections per IP)
     /// - Poor UX (progress becomes unpredictable with 64+ parallel tasks)
-    /// 
+    ///
     /// Sweet spot: 2-4x CPU cores for I/O-bound operations.
     /// Based on benchmark results from original Bash script.
     /// </remarks>
@@ -416,12 +416,12 @@ DownloadAnalyzer downloadAnalyzer)
         // Show file lists first (if --show-files is enabled)
         if (showFiles)
         {
-            DisplayFileList(analysis.Items.Where(i => i.Status == FileStatus.New).ToList(), 
-                "[green]NEW FILES:[/]", "+", 
+            DisplayFileList(analysis.Items.Where(i => i.Status == FileStatus.New).ToList(),
+                "[green]NEW FILES:[/]", "+",
                 item => (item.RelativePath, FileSizeFormatter.Format(item.RemoteItem.Size)));
 
-            DisplayFileList(analysis.Items.Where(i => i.Status == FileStatus.Modified).ToList(), 
-                "[yellow]MODIFIED FILES:[/]", "~", 
+            DisplayFileList(analysis.Items.Where(i => i.Status == FileStatus.Modified).ToList(),
+                "[yellow]MODIFIED FILES:[/]", "~",
                 item => (item.RelativePath, item.Reason));
 
             if (includeOrphans && analysis.OrphanedFiles is not [])
@@ -438,8 +438,8 @@ DownloadAnalyzer downloadAnalyzer)
     /// Displays a file list table
     /// </summary>
     private static void DisplayFileList<T>(
-        List<T> items, 
-        string header, 
+        List<T> items,
+        string header,
         string marker,
         Func<T, (string path, string details)> selector) where T : notnull
     {
@@ -486,10 +486,10 @@ DownloadAnalyzer downloadAnalyzer)
     /// Displays summary panel
     /// </summary>
     private static void DisplaySummaryPanel(
-        DownloadStatistics stats, 
-        bool isDryRun, 
-        bool includeOrphans, 
-        bool forceRefresh, 
+        DownloadStatistics stats,
+        bool isDryRun,
+        bool includeOrphans,
+        bool forceRefresh,
         bool showFiles)
     {
         var summaryText = isDryRun ? "[yellow]DRY RUN - Preview of Changes[/]\n\n" : "[blue]Analysis Complete[/]\n\n";

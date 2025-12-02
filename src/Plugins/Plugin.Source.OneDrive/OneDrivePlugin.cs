@@ -20,8 +20,7 @@ public sealed class OneDrivePlugin : IPlugin
         Name = "OneDrive Source",
         Version = "1.0.0",
         Description = "Download images from OneDrive shared folders",
-        Author = "Spectara",
-        ParentCommand = "source" // Plugin declares it wants to be under 'source' parent
+        Author = "Spectara"
     };
 
     /// <inheritdoc />
@@ -72,25 +71,24 @@ public sealed class OneDrivePlugin : IPlugin
     public void Initialize(IServiceProvider services) => this.services = services;
 
     /// <inheritdoc />
-    public IEnumerable<Command> GetCommands()
+    public IEnumerable<CommandDescriptor> GetCommands()
     {
         if (services is null)
         {
             throw new InvalidOperationException("Plugin not initialized. Call Initialize() first.");
         }
 
-        // Plugin returns ONLY its own command - Program.cs handles parent command
-        var oneDriveCommand = new Command("onedrive", "OneDrive source plugin");
-
-        // Resolve commands from DI container (Modern DI pattern)
+        // Resolve commands from DI container
         var initCommand = services.GetRequiredService<OneDriveInitCommand>();
         var sourceCommand = services.GetRequiredService<OneDriveSourceCommand>();
 
-        // Add init and download subcommands
-        oneDriveCommand.Subcommands.Add(initCommand.Create());
-        oneDriveCommand.Subcommands.Add(sourceCommand.Create());
+        // 1. Register "onedrive" under "init" parent → revela init onedrive
+        yield return new CommandDescriptor(initCommand.Create(), ParentCommand: "init");
 
-        yield return oneDriveCommand;
+        // 2. Register "onedrive" with "sync" subcommand at root → revela onedrive sync
+        var oneDriveCommand = new Command("onedrive", "OneDrive source commands");
+        oneDriveCommand.Subcommands.Add(sourceCommand.Create());
+        yield return new CommandDescriptor(oneDriveCommand, ParentCommand: null);
     }
 }
 
@@ -103,6 +101,5 @@ internal sealed class PluginMetadata : IPluginMetadata
     public required string Version { get; init; }
     public required string Description { get; init; }
     public required string Author { get; init; }
-    public string? ParentCommand { get; init; }
 }
 

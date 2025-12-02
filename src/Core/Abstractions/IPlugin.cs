@@ -1,4 +1,3 @@
-using System.CommandLine;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -42,7 +41,17 @@ public interface IPlugin
     /// <param name="services">The service provider to resolve services from</param>
     void Initialize(IServiceProvider services);
 
-    IEnumerable<Command> GetCommands();
+    /// <summary>
+    /// Get commands provided by this plugin.
+    /// </summary>
+    /// <remarks>
+    /// Each CommandDescriptor specifies where the command should be registered:
+    /// - ParentCommand = null → registered at root level (e.g., "revela mycommand")
+    /// - ParentCommand = "init" → registered under init (e.g., "revela init mycommand")
+    /// - ParentCommand = "source" → registered under source (e.g., "revela source mycommand")
+    /// </remarks>
+    /// <returns>Command descriptors with optional parent command information.</returns>
+    IEnumerable<CommandDescriptor> GetCommands();
 }
 
 /// <summary>
@@ -54,12 +63,5 @@ public interface IPluginMetadata
     string Version { get; }
     string Description { get; }
     string Author { get; }
-
-    /// <summary>
-    /// Optional parent command name (e.g., "source", "deploy")
-    /// If specified, plugin commands will be registered under this parent command.
-    /// If null, commands are registered directly under root.
-    /// </summary>
-    string? ParentCommand { get; }
 }
 
