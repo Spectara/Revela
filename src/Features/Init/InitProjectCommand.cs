@@ -1,15 +1,20 @@
 using System.CommandLine;
-using Spectara.Revela.Infrastructure.Scaffolding;
+using Spectara.Revela.Features.Init.Abstractions;
 using Spectre.Console;
 
 namespace Spectara.Revela.Features.Init;
 
 /// <summary>
-/// Handles 'revela init project' command
+/// Handles 'revela init project' command.
 /// </summary>
-public static class InitProjectCommand
+public sealed partial class InitProjectCommand(
+    ILogger<InitProjectCommand> logger,
+    IScaffoldingService scaffoldingService)
 {
-    public static Command Create()
+    /// <summary>
+    /// Creates the command definition.
+    /// </summary>
+    public Command Create()
     {
         var command = new Command("project", "Initialize a new Revela project");
 
@@ -39,7 +44,7 @@ public static class InitProjectCommand
         return command;
     }
 
-    private static void Execute(string? name, string? author)
+    private void Execute(string? name, string? author)
     {
         try
         {
@@ -56,6 +61,8 @@ public static class InitProjectCommand
             var projectName = name ?? new DirectoryInfo(Directory.GetCurrentDirectory()).Name;
             var projectAuthor = author ?? Environment.UserName;
             var currentYear = DateTime.Now.Year;
+
+            LogInitializingProject(projectName, projectAuthor);
 
             // Template model
             var model = new
@@ -76,8 +83,8 @@ public static class InitProjectCommand
             };
 
             // Use ScaffoldingService to render templates
-            var projectConfig = ScaffoldingService.RenderTemplate("Project.project.json", model);
-            var siteConfig = ScaffoldingService.RenderTemplate("Project.site.json", model);
+            var projectConfig = scaffoldingService.RenderTemplate("Project.project.json", model);
+            var siteConfig = scaffoldingService.RenderTemplate("Project.site.json", model);
 
             File.WriteAllText("project.json", projectConfig);
             File.WriteAllText("site.json", siteConfig);
@@ -101,8 +108,15 @@ public static class InitProjectCommand
         }
         catch (Exception ex)
         {
+            LogError(ex);
             AnsiConsole.MarkupLine($"[red]Error:[/] {ex.Message}");
         }
     }
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Initializing project '{ProjectName}' by '{Author}'")]
+    private partial void LogInitializingProject(string projectName, string author);
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "Failed to initialize project")]
+    private partial void LogError(Exception exception);
 }
 

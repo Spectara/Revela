@@ -5,11 +5,16 @@ using Spectre.Console;
 namespace Spectara.Revela.Features.Plugins;
 
 /// <summary>
-/// Handles 'revela plugin list' command
+/// Handles 'revela plugin list' command.
 /// </summary>
-public static class PluginListCommand
+public sealed partial class PluginListCommand(
+    ILogger<PluginListCommand> logger,
+    PluginManager pluginManager)
 {
-    public static Command Create()
+    /// <summary>
+    /// Creates the command definition.
+    /// </summary>
+    public Command Create()
     {
         var command = new Command("list", "List installed plugins");
 
@@ -22,11 +27,11 @@ public static class PluginListCommand
         return command;
     }
 
-    private static void Execute()
+    private void Execute()
     {
         try
         {
-            var pluginManager = new PluginManager();
+            LogListingPlugins();
             var installedPlugins = pluginManager.ListInstalledPlugins().ToList();
 
             if (installedPlugins.Count == 0)
@@ -52,8 +57,15 @@ public static class PluginListCommand
         }
         catch (Exception ex)
         {
+            LogError(ex);
             AnsiConsole.MarkupLine($"[red]Error:[/] {ex.Message}");
         }
     }
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Listing installed plugins")]
+    private partial void LogListingPlugins();
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "Failed to list plugins")]
+    private partial void LogError(Exception exception);
 }
 

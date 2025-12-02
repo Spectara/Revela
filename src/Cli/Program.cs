@@ -3,8 +3,6 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Spectara.Revela.Features.Generate;
-using Spectara.Revela.Features.Generate.Abstractions;
-using Spectara.Revela.Features.Generate.Services;
 using Spectara.Revela.Features.Init;
 using Spectara.Revela.Features.Plugins;
 
@@ -23,16 +21,10 @@ builder.Configuration.AddJsonFile(
 );
 builder.Logging.AddConfiguration(builder.Configuration.GetSection("Logging"));
 
-// ✅ Register Generate feature services (Ultra-Vertical-Slice Architecture)
-// All Generate-related services are in Features.Generate.Services namespace
-builder.Services.AddSingleton<ExifCache>();
-builder.Services.AddSingleton<IImageProcessor, NetVipsImageProcessor>();
-builder.Services.AddSingleton<ITemplateEngine, ScribanTemplateEngine>();
-builder.Services.AddSingleton<ContentScanner>();
-builder.Services.AddSingleton<SiteGenerator>();
-
-// ✅ Register commands
-builder.Services.AddTransient<GenerateCommand>();
+// ✅ Register feature services (Vertical Slice Architecture)
+builder.Services.AddGenerateFeature();
+builder.Services.AddInitFeature();
+builder.Services.AddPluginsFeature();
 
 // ✅ Load and register plugins
 // Plugins will:
@@ -49,11 +41,13 @@ plugins.Initialize(host.Services);
 // Build root command
 var rootCommand = new RootCommand("Revela - Modern static site generator for photographers");
 
-// Add core commands
-rootCommand.Subcommands.Add(InitCommand.Create());
-rootCommand.Subcommands.Add(PluginCommand.Create());
+// ✅ Add core commands (all resolved from DI for Vertical Slice Architecture)
+var initCommand = host.Services.GetRequiredService<InitCommand>();
+rootCommand.Subcommands.Add(initCommand.Create());
 
-// ✅ Add Generate command (resolves from DI)
+var pluginCommand = host.Services.GetRequiredService<PluginCommand>();
+rootCommand.Subcommands.Add(pluginCommand.Create());
+
 var generateCommand = host.Services.GetRequiredService<GenerateCommand>();
 rootCommand.Subcommands.Add(generateCommand.Create());
 

@@ -3,20 +3,22 @@ using System.CommandLine;
 namespace Spectara.Revela.Features.Init;
 
 /// <summary>
-/// Parent command for initialization operations
+/// Parent command for initialization operations.
 /// </summary>
-public static class InitCommand
+public sealed class InitCommand(
+    InitProjectCommand projectCommand,
+    InitThemeCommand themeCommand)
 {
     /// <summary>
-    /// Creates the 'init' command with subcommands
+    /// Creates the 'init' command with subcommands.
     /// </summary>
-    public static Command Create()
+    public Command Create()
     {
         var command = new Command("init", "Initialize new project or theme");
 
-        // Add subcommands
-        command.Subcommands.Add(InitProjectCommand.Create());
-        command.Subcommands.Add(InitThemeCommand.Create());
+        // Add subcommands (injected via DI)
+        command.Subcommands.Add(projectCommand.Create());
+        command.Subcommands.Add(themeCommand.Create());
 
         return command;
     }

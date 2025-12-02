@@ -5,11 +5,16 @@ using Spectre.Console;
 namespace Spectara.Revela.Features.Plugins;
 
 /// <summary>
-/// Handles 'revela plugin uninstall' command
+/// Handles 'revela plugin uninstall' command.
 /// </summary>
-public static class PluginUninstallCommand
+public sealed partial class PluginUninstallCommand(
+    ILogger<PluginUninstallCommand> logger,
+    PluginManager pluginManager)
 {
-    public static Command Create()
+    /// <summary>
+    /// Creates the command definition.
+    /// </summary>
+    public Command Create()
     {
         var command = new Command("uninstall", "Uninstall a plugin");
 
@@ -28,7 +33,7 @@ public static class PluginUninstallCommand
         return command;
     }
 
-    private static async Task<int> ExecuteAsync(string name)
+    private async Task<int> ExecuteAsync(string name)
     {
         try
         {
@@ -44,8 +49,8 @@ public static class PluginUninstallCommand
             }
 
             AnsiConsole.MarkupLine($"[blue]🗑️  Uninstalling plugin:[/] [cyan]{packageId}[/]");
+            LogUninstallingPlugin(packageId);
 
-            var pluginManager = new PluginManager();
             var success = await pluginManager.UninstallPluginAsync(packageId);
 
             if (success)
@@ -61,9 +66,16 @@ public static class PluginUninstallCommand
         }
         catch (Exception ex)
         {
+            LogError(ex);
             AnsiConsole.MarkupLine($"[red]Error:[/] {ex.Message}");
             return 1;
         }
     }
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Uninstalling plugin '{PackageId}'")]
+    private partial void LogUninstallingPlugin(string packageId);
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "Failed to uninstall plugin")]
+    private partial void LogError(Exception exception);
 }
 

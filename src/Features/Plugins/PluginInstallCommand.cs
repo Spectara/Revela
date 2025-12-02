@@ -5,11 +5,16 @@ using Spectre.Console;
 namespace Spectara.Revela.Features.Plugins;
 
 /// <summary>
-/// Handles 'revela plugin install' command
+/// Handles 'revela plugin install' command.
 /// </summary>
-public static class PluginInstallCommand
+public sealed partial class PluginInstallCommand(
+    ILogger<PluginInstallCommand> logger,
+    PluginManager pluginManager)
 {
-    public static Command Create()
+    /// <summary>
+    /// Creates the command definition.
+    /// </summary>
+    public Command Create()
     {
         var command = new Command("install", "Install a plugin from NuGet");
 
@@ -36,7 +41,7 @@ public static class PluginInstallCommand
         return command;
     }
 
-    private static async Task<int> ExecuteAsync(string name, string? version)
+    private async Task<int> ExecuteAsync(string name, string? version)
     {
         try
         {
@@ -46,8 +51,7 @@ public static class PluginInstallCommand
                 : $"Revela.Plugin.{name}";
 
             AnsiConsole.MarkupLine($"[blue]📦 Installing plugin:[/] [cyan]{packageId}[/]");
-
-            var pluginManager = new PluginManager();
+            LogInstallingPlugin(packageId, version);
 
             var success = await AnsiConsole.Status()
                 .Spinner(Spinner.Known.Dots)
@@ -71,9 +75,16 @@ public static class PluginInstallCommand
         }
         catch (Exception ex)
         {
+            LogError(ex);
             AnsiConsole.MarkupLine($"[red]Error:[/] {ex.Message}");
             return 1;
         }
     }
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Installing plugin '{PackageId}' version '{Version}'")]
+    private partial void LogInstallingPlugin(string packageId, string? version);
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "Failed to install plugin")]
+    private partial void LogError(Exception exception);
 }
 

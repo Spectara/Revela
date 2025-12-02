@@ -1,15 +1,20 @@
 using System.CommandLine;
-using Spectara.Revela.Infrastructure.Scaffolding;
+using Spectara.Revela.Features.Init.Abstractions;
 using Spectre.Console;
 
 namespace Spectara.Revela.Features.Init;
 
 /// <summary>
-/// Handles 'revela init theme' command
+/// Handles 'revela init theme' command.
 /// </summary>
-public static class InitThemeCommand
+public sealed partial class InitThemeCommand(
+    ILogger<InitThemeCommand> logger,
+    IScaffoldingService scaffoldingService)
 {
-    public static Command Create()
+    /// <summary>
+    /// Creates the command definition.
+    /// </summary>
+    public Command Create()
     {
         var command = new Command("theme", "Initialize a new theme");
 
@@ -31,7 +36,7 @@ public static class InitThemeCommand
         return command;
     }
 
-    private static void Execute(string name)
+    private void Execute(string name)
     {
         try
         {
@@ -49,14 +54,15 @@ public static class InitThemeCommand
             }
 
             AnsiConsole.MarkupLine($"[blue]🎨 Creating theme '{name}'...[/]");
+            LogCreatingTheme(name);
 
             // Create theme directory
             Directory.CreateDirectory(themePath);
 
             // Copy theme templates from embedded resources
-            ScaffoldingService.CopyTemplateTo("Theme.layout.html", Path.Combine(themePath, "layout.html"));
-            ScaffoldingService.CopyTemplateTo("Theme.index.html", Path.Combine(themePath, "index.html"));
-            ScaffoldingService.CopyTemplateTo("Theme.gallery.html", Path.Combine(themePath, "gallery.html"));
+            scaffoldingService.CopyTemplateTo("Theme.layout.html", Path.Combine(themePath, "layout.html"));
+            scaffoldingService.CopyTemplateTo("Theme.index.html", Path.Combine(themePath, "index.html"));
+            scaffoldingService.CopyTemplateTo("Theme.gallery.html", Path.Combine(themePath, "gallery.html"));
 
             AnsiConsole.MarkupLine($"[green]✨ Theme '{name}' created![/]");
             AnsiConsole.MarkupLine($"[dim]Theme files created in:[/] [cyan]{themePath}[/]");
@@ -64,8 +70,15 @@ public static class InitThemeCommand
         }
         catch (Exception ex)
         {
+            LogError(ex);
             AnsiConsole.MarkupLine($"[red]Error:[/] {ex.Message}");
         }
     }
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Creating theme '{ThemeName}'")]
+    private partial void LogCreatingTheme(string themeName);
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "Failed to create theme")]
+    private partial void LogError(Exception exception);
 }
 
