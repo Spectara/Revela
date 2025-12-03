@@ -488,5 +488,11 @@ $RECYCLE.BIN/
 test-*/
 *-test/
 
+# Sample projects - exclude downloaded/generated data
+samples/**/source/
+samples/**/output/
+samples/**/images/
+samples/**/.cache/
+
 # GitHub Copilot temp files
 .github/copilot-vs/

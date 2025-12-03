@@ -1,4 +1,4 @@
-# Expose.NET Sample Sites
+# Revela Sample Sites
 
 This directory contains example sites for testing and demonstration purposes.
 
@@ -11,28 +11,49 @@ A minimal photography site with basic configuration.
 **Structure:**
 ```
 minimal/
-├── expose.json          # Site configuration
+├── project.json        # Project configuration
+├── site.json           # Site metadata
 ├── content/            # Content directory
-│   ├── _index.md      # Homepage content
-│   └── gallery/       # Gallery directory
-│       ├── _index.md  # Gallery metadata
-│       └── *.jpg      # Photos
+│   └── *.jpg          # Photos
 └── themes/
     └── default/       # Theme templates
-        ├── layout.html
-        ├── index.html
-        └── gallery.html
 ```
 
 **Usage:**
 ```bash
 # Generate site
-expose generate -p samples/minimal
+revela generate -p samples/minimal
 
 # Output will be in samples/minimal/output/
 ```
 
-### 2. Portfolio (`portfolio/`) - TODO
+### 2. OneDrive (`onedrive/`)
+
+Sample project for testing the OneDrive Source Plugin. Downloads images from a shared OneDrive folder.
+
+**Structure:**
+```
+onedrive/
+├── onedrive.json       # OneDrive plugin configuration (ShareUrl)
+├── project.json        # Project configuration
+├── site.json           # Site metadata
+├── source/             # Downloaded images (gitignored)
+└── output/             # Generated site (gitignored)
+```
+
+**Usage:**
+```bash
+# Download images from OneDrive share
+revela source onedrive download -p samples/onedrive
+
+# Generate site
+revela generate -p samples/onedrive
+```
+
+> **Note:** The `source/` and `output/` folders are excluded from Git.
+> Run `revela source onedrive download` to populate them.
+
+### 3. Portfolio (`portfolio/`) - TODO
 
 Full-featured photographer portfolio with:
 - Multiple galleries
@@ -40,28 +61,30 @@ Full-featured photographer portfolio with:
 - Contact form
 - Blog posts
 
-### 3. Blog (`blog/`) - TODO
+### 4. Blog (`blog/`) - TODO
 
 Photo blog with:
 - Chronological posts
 - Tags & categories
 - RSS feed
 
-## Test Data
+## Git Exclusions
 
-Sample images for testing are stored in `../test-data/images/`:
-- Small images (< 100KB) for fast unit tests
-- Images with EXIF data for metadata extraction
-- Various formats (JPEG, PNG) for format conversion tests
+The following paths are excluded from version control:
 
-**Note:** Large test images are tracked with Git LFS.
+```gitignore
+samples/**/source/    # Downloaded/input images
+samples/**/output/    # Generated output
+```
+
+This keeps the repository small while allowing real test data via plugins.
 
 ## Adding New Samples
 
 1. Create a new directory under `samples/`
-2. Add `expose.json` configuration
-3. Create `content/` directory with images and markdown
-4. Add theme templates if needed
+2. Add `project.json` configuration
+3. Add `site.json` with site metadata
+4. Create `source/` directory with images (or use a source plugin)
 5. Document in this README
 
 ## Usage in Tests
@@ -70,7 +93,8 @@ Sample images for testing are stored in `../test-data/images/`:
 // Integration tests can reference samples
 var samplePath = Path.Combine(
     TestContext.CurrentContext.TestDirectory,
-    "..", "..", "..", "..", "samples", "minimal");
+    "..", "..", "..", "..", "samples", "onedrive");
 
 var generator = new SiteGenerator(samplePath);
 await generator.GenerateAsync();
+```

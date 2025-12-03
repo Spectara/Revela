@@ -70,7 +70,7 @@ This is a **complete rewrite** of the original Bash-based revela project:
 
 ### Code Quality
 - **XML docs:** Required for public APIs
-- **Tests:** MSTest v4 + FluentAssertions + Moq
+- **Tests:** MSTest v4 + FluentAssertions + NSubstitute
 - **Warnings:** Treat as errors (TreatWarningsAsErrors=true)
 
 ---
@@ -79,17 +79,23 @@ This is a **complete rewrite** of the original Bash-based revela project:
 
 ```
 src/
-├── Revela.Core/              # Shared kernel (models, abstractions, plugin system)
-├── Revela.Infrastructure/    # External services (NetVips, Scriban, Markdig)
-├── Revela.Features/          # Vertical slices (GenerateSite, ManagePlugins)
-├── Revela.Cli/               # Entry point (.NET Tool)
-└── Revela.Plugins/           # Optional plugins (Deploy, OneDrive)
+├── Core/                     # Shared kernel (models, abstractions, plugin system)
+├── Infrastructure/           # External services (NetVips, Scriban, Markdig)
+├── Features/                 # Vertical slices (Generate, Init, Plugins)
+├── Cli/                      # Entry point (.NET Tool)
+└── Plugins/
+    ├── Plugin.Deploy.SSH/    # SSH/SFTP deployment
+    └── Plugin.Source.OneDrive/  # OneDrive shared folder source
+tests/
+├── Core.Tests/               # Unit tests for Core
+├── IntegrationTests/         # Integration tests
+└── Plugin.Source.OneDrive.Tests/  # OneDrive plugin tests
 ```
 
 ### Key Files
-- **Models:** `src/Revela.Core/Models/` - Domain entities
-- **Config:** `src/Revela.Core/Configuration/RevelaConfig.cs` - Configuration model
-- **Plugins:** `src/Revela.Core/PluginLoader.cs` + `PluginManager.cs`
+- **Models:** `src/Core/Models/` - Domain entities
+- **Config:** `src/Core/Configuration/` - Configuration models
+- **Plugins:** `src/Core/PluginLoader.cs` + `PluginManager.cs`
 
 ---
 
@@ -735,10 +741,10 @@ public sealed partial class MyService : IMyService
 ```
 
 ### Adding Tests
-Location: `tests/Revela.Core.Tests/`
+Location: `tests/{ProjectName}.Tests/`
 
 ```csharp
-namespace Revela.Core.Tests;
+namespace Spectara.Revela.Core.Tests;
 
 [TestClass]
 public sealed class MyServiceTests
@@ -755,11 +761,64 @@ public sealed class MyServiceTests
         
         // Assert (using FluentAssertions)
         result.Should().Be(expected);
-        
-        // Verify logger was called (NSubstitute)
-        logger.Received().LogInformation(Arg.Any<string>());
     }
 }
+```
+
+### Testing Internal Classes
+
+**Use `InternalsVisibleTo` for testing internal classes:**
+
+```csharp
+// src/Plugins/Plugin.Source.OneDrive/AssemblyInfo.cs
+using System.Runtime.CompilerServices;
+
+[assembly: InternalsVisibleTo("Spectara.Revela.Plugin.Source.OneDrive.Tests")]
+```
+
+**Important:** Use the full assembly name (with `Spectara.Revela.` prefix)!
+
+### HTTP Mocking Pattern
+
+**For testing services with HttpClient:**
+
+```csharp
+public sealed class MockHttpMessageHandler : HttpMessageHandler
+{
+    private readonly Dictionary<Uri, HttpResponseMessage> responses = [];
+
+    public void AddResponse(Uri uri, HttpResponseMessage response) =>
+        responses[uri] = response;
+
+    protected override Task<HttpResponseMessage> SendAsync(
+        HttpRequestMessage request,
+        CancellationToken cancellationToken)
+    {
+        if (responses.TryGetValue(request.RequestUri!, out var response))
+            return Task.FromResult(response);
+        return Task.FromResult(new HttpResponseMessage(HttpStatusCode.NotFound));
+    }
+}
+
+// Usage in test:
+var handler = new MockHttpMessageHandler();
+handler.AddResponse(new Uri("https://api.example.com/data"), 
+    new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent("{}") });
+
+var httpClient = new HttpClient(handler);
+var service = new MyService(httpClient, logger);
+```
+
+### Culture-Independent Formatting
+
+**Always use `CultureInfo.InvariantCulture` for consistent output:**
+
+```csharp
+// ❌ DON'T - Culture-dependent (1,5 vs 1.5)
+return $"{value:0.##} MB";
+
+// ✅ DO - Culture-independent
+return string.Format(CultureInfo.InvariantCulture, "{0:0.##} MB", value);
 ```
 
 ### Registering Services
@@ -832,39 +891,23 @@ dotnet build
 ```bash
 # MSTest v4 with Microsoft.Testing.Platform
 # Run as executables (recommended for .NET 10)
-dotnet run --project tests/Revela.Core.Tests
-dotnet run --project tests/Revela.IntegrationTests
-
-# Alternative: Using artifacts
-dotnet artifacts/bin/Revela.Core.Tests/Debug/net10.0/Revela.Core.Tests.dll
+dotnet run --project tests/Core.Tests
+dotnet run --project tests/IntegrationTests
+dotnet run --project tests/Plugin.Source.OneDrive.Tests
 ```
 
 ### Run CLI
 ```bash
-dotnet run --project src/Revela.Cli -- --help
-dotnet run --project src/Revela.Cli -- generate -p samples/example-site
+dotnet run --project src/Cli -- --help
+dotnet run --project src/Cli -- generate -p samples/minimal
+dotnet run --project src/Cli -- source onedrive download
 ```
 
 ### Package as Tool
 ```bash
-dotnet pack src/Revela.Cli -c Release
-dotnet tool install -g --add-source ./artifacts/packages Expose
+dotnet pack src/Cli -c Release
+dotnet tool install -g --add-source ./artifacts/packages Revela
 ```
-
----
-
-## Known Issues & TODOs
-
-### Current Build Issues
-- Code style warnings (CA1848, IDE0055) due to TreatWarningsAsErrors=true
-- LoggerMessage delegates need implementation
-- Formatting issues in PluginLoader/PluginManager
-
-### Immediate Next Steps
-1. Implement NetVipsImageProcessor
-2. Implement ScribanTemplateEngine
-3. Create GenerateCommand
-4. Wire up Program.cs with Hosting
 
 ---
 
@@ -875,7 +918,6 @@ dotnet tool install -g --add-source ./artifacts/packages Expose
 2. Read `docs/architecture.md` for design decisions
 3. Check open files in IDE for current work
 4. **CHECK FOR DEPENDENCY UPDATES** - Run `dotnet outdated` proactively
-5. If updates available, inform user and suggest update strategy
 
 ### Dependency Management (IMPORTANT!)
 **Always check for package updates at session start!**
@@ -966,23 +1008,22 @@ dotnet run --project tests/Core.Tests
 
 ---
 
-**Last Updated:** 2025-01-22 (Session: Parallel.ForEachAsync Refactor)
+**Last Updated:** 2025-12-03 (Session: OneDrive Plugin Tests)
 
-**Key Learnings from Latest Session:**
+**Key Learnings from Latest Sessions:**
 - ✅ Plugin ConfigureServices pattern (3-phase lifecycle)
 - ✅ Typed HttpClient for plugins
 - ✅ Parent Command declaration in metadata
 - ✅ ConfigurationBuilder + Data Annotations validation
 - ✅ Two-phase progress display (Scan + Download)
-- ✅ Token caching without locks (single-threaded command)
-- ✅ Parallel.ForEachAsync for I/O-bound operations (replaced SemaphoreSlim)
+- ✅ Parallel.ForEachAsync for I/O-bound operations
 - ✅ LoggingConfig with defaults (no appsettings.json needed)
+- ✅ InternalsVisibleTo for testing internal classes
+- ✅ CultureInfo.InvariantCulture for consistent formatting
+- ✅ MockHttpMessageHandler for HTTP testing
+- ✅ MSTest v4 with FluentAssertions + NSubstitute
 
 **For detailed architecture, see:** `docs/architecture.md`  
 **For development status, see:** `DEVELOPMENT.md`  
 **For dependency management, see:** `.github/DEPENDENCY_MANAGEMENT.md`  
 **For HttpClient patterns, see:** `docs/httpclient-pattern.md`
-
-
-
-

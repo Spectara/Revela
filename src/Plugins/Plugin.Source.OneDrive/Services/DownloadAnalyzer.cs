@@ -14,7 +14,7 @@ public sealed partial class DownloadAnalyzer
 
     private static readonly string[] DefaultExtensions = [".jpg", ".jpeg", ".png", ".webp", ".md"];
 
-    private static readonly ConcurrentDictionary<string, Regex> RegexCache = new();
+    private static readonly ConcurrentDictionary<string, Regex> RegexCache = new(StringComparer.Ordinal);
 
     /// <summary>
     /// Analyzes which files need to be downloaded
