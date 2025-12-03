@@ -13,7 +13,7 @@ namespace Spectara.Revela.Plugin.Source.OneDrive.Providers;
 /// Uses Microsoft's internal Badger authentication service to access shared OneDrive folders.
 /// App ID: 5cbed6ac-a083-4e14-b191-b4ba07653de2 (Microsoft's OneDrive web interface)
 /// Based on: https://github.com/eugenenuke/onedrive-downloader
-/// 
+///
 /// Uses C# 12 Primary Constructor - parameters are captured automatically.
 /// HttpClient is injected as a Typed Client (configured in OneDrivePlugin.ConfigureServices).
 /// </remarks>
@@ -38,7 +38,7 @@ public sealed class SharedLinkProvider(
         // Activate token and get share metadata (required for subfolder access)
         var metadata = await ActivateBadgerTokenAsync(config.ShareUrl, token, cancellationToken);
 
-        var items = new List<OneDriveItem>();
+        List<OneDriveItem> items = [];
 
         // List items recursively from root
         await ListItemsRecursiveAsync(config.ShareUrl, "", token, metadata, items, cancellationToken);
@@ -90,7 +90,7 @@ public sealed class SharedLinkProvider(
             foreach (var item in valueArray.EnumerateArray())
             {
                 var oneDriveItem = ParseOneDriveItem(item, folderPath);
-                if (oneDriveItem != null)
+                if (oneDriveItem is not null)
                 {
                     items.Add(oneDriveItem);
 

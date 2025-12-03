@@ -52,6 +52,6 @@ public sealed class ScaffoldingService : IScaffoldingService
         var resourceName = $"{ResourcePrefix}{templatePath.Replace('/', '.')}";
 
         using var stream = assembly.GetManifestResourceStream(resourceName);
-        return stream != null;
+        return stream is not null;
     }
 }

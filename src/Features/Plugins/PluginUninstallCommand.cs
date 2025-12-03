@@ -24,10 +24,10 @@ public sealed partial class PluginUninstallCommand(
         };
         command.Arguments.Add(nameArgument);
 
-        command.SetAction(parseResult =>
+        command.SetAction(async parseResult =>
         {
             var name = parseResult.GetValue(nameArgument);
-            return ExecuteAsync(name!).GetAwaiter().GetResult();
+            return await ExecuteAsync(name!);
         });
 
         return command;

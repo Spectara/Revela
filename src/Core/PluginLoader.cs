@@ -137,9 +137,10 @@ public sealed partial class PluginLoader(
     private static bool MatchesPattern(string fileName, string pattern)
     {
         // Simple wildcard matching: *.Tests.dll
+        // Using Span<T> to avoid substring allocation
         if (pattern.StartsWith('*'))
         {
-            return fileName.EndsWith(pattern[1..], StringComparison.OrdinalIgnoreCase);
+            return fileName.AsSpan().EndsWith(pattern.AsSpan(1), StringComparison.OrdinalIgnoreCase);
         }
 
         return fileName.Equals(pattern, StringComparison.OrdinalIgnoreCase);

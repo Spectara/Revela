@@ -30,12 +30,12 @@ public sealed partial class PluginInstallCommand(
         };
         command.Options.Add(versionOption);
 
-        command.SetAction(parseResult =>
+        command.SetAction(async parseResult =>
         {
             var name = parseResult.GetValue(nameArgument);
             var version = parseResult.GetValue(versionOption);
 
-            return ExecuteAsync(name!, version).GetAwaiter().GetResult();
+            return await ExecuteAsync(name!, version);
         });
 
         return command;

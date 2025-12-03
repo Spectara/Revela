@@ -54,7 +54,7 @@ public sealed partial class ContentScanner(ILogger<ContentScanner> logger)
         }
 
         // Find images in current directory
-        var imageFiles = Directory.GetFiles(currentDirectory)
+        var imageFiles = Directory.EnumerateFiles(currentDirectory)
             .Where(f => ImageExtensions.Contains(Path.GetExtension(f), StringComparer.OrdinalIgnoreCase))
             .ToList();
 

@@ -1,8 +1,8 @@
+using System.Text.Json;
 using Spectara.Revela.Core.Configuration;
 using Spectara.Revela.Features.Generate.Abstractions;
 using Spectara.Revela.Features.Generate.Models;
 using Spectre.Console;
-using System.Text.Json;
 
 namespace Spectara.Revela.Features.Generate.Services;
 

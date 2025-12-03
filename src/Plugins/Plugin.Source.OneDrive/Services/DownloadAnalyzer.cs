@@ -162,7 +162,7 @@ public sealed partial class DownloadAnalyzer
         }
 
         // Get all local files
-        var allLocalFiles = Directory.GetFiles(destinationDirectory, "*", SearchOption.AllDirectories)
+        var allLocalFiles = Directory.EnumerateFiles(destinationDirectory, "*", SearchOption.AllDirectories)
             .Select(f => new FileInfo(f))
             .ToList();
 

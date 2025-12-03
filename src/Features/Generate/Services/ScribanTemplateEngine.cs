@@ -1,7 +1,7 @@
+using System.Globalization;
 using Scriban;
 using Scriban.Runtime;
 using Spectara.Revela.Features.Generate.Abstractions;
-using System.Globalization;
 
 namespace Spectara.Revela.Features.Generate.Services;
 

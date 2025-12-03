@@ -13,7 +13,7 @@ namespace Spectara.Revela.Features.Generate.Services;
 /// - Cache key: MD5({filename}_{timestamp}_{size})
 /// - Individual JSON files per image
 /// - Only extract EXIF from new/changed images
-/// 
+///
 /// Performance impact: 10-30× faster rebuilds for large galleries
 /// </remarks>
 public sealed partial class ExifCache(ILogger<ExifCache> logger)
@@ -94,12 +94,12 @@ public sealed partial class ExifCache(ILogger<ExifCache> logger)
     /// </summary>
     /// <remarks>
     /// Format: MD5({filename}_{lastWriteTime}_{fileSize})
-    /// 
+    ///
     /// This matches expose.sh strategy (line 176):
     /// mdx="${file##*/}_$(stat -c '%Y_%s' "$file")"
-    /// 
+    ///
     /// Changes to filename, timestamp, or size invalidate the cache.
-    /// 
+    ///
     /// MD5 is used for cache keys (not security), so CA5351 is suppressed.
     /// ToLowerInvariant is used for consistent hex formatting (not culture-sensitive).
     /// </remarks>
@@ -152,7 +152,7 @@ public sealed partial class ExifCache(ILogger<ExifCache> logger)
 
         try
         {
-            var files = Directory.GetFiles(cacheDirectory, "*.json", SearchOption.AllDirectories);
+            var files = Directory.EnumerateFiles(cacheDirectory, "*.json", SearchOption.AllDirectories).ToArray();
             var totalSize = files.Sum(f => new FileInfo(f).Length);
 
             return new CacheStatistics(files.Length, totalSize);

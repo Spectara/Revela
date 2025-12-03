@@ -17,7 +17,7 @@ namespace Spectara.Revela.Features.Generate.Services;
 /// - Camera model normalization (Sony ILCE → α series)
 /// - Quality control
 /// - Streaming (low memory usage)
-/// 
+///
 /// CRITICAL: NetVips/libvips has GLOBAL STATE that is NOT THREAD-SAFE
 /// All NetVips operations must be protected by a global lock
 /// </remarks>
@@ -74,7 +74,7 @@ public sealed partial class NetVipsImageProcessor(
         using (var image = Image.NewFromFile(inputPath, access: Enums.Access.Random))
         {
             // Extract EXIF if not cached
-            if (exif == null)
+            if (exif is null)
             {
                 exif = ExtractExifData(image);
 
@@ -88,7 +88,7 @@ public sealed partial class NetVipsImageProcessor(
         } // Dispose the image immediately after we have what we need
 
         // Generate variants (different sizes and formats)
-        var variants = new List<ImageVariant>();
+        List<ImageVariant> variants = [];
 
         foreach (var size in options.Sizes)
         {
@@ -101,7 +101,7 @@ public sealed partial class NetVipsImageProcessor(
             // CRITICAL: Use Image.Thumbnail() which is optimized for this exact use case
             // Thumbnail() loads the image optimally and can shrink-on-load (much faster!)
             // It automatically handles EXIF rotation and color profiles
-            // 
+            //
             // Determine which dimension to constrain based on orientation
             using var thumb = width > height
                 ? Image.Thumbnail(inputPath, size, height: 10000000)  // Landscape: constrain width
@@ -144,7 +144,7 @@ public sealed partial class NetVipsImageProcessor(
         ImageProcessingOptions options,
         CancellationToken cancellationToken)
     {
-        if (exifCache == null || string.IsNullOrEmpty(options.CacheDirectory))
+        if (exifCache is null || string.IsNullOrEmpty(options.CacheDirectory))
         {
             return null;
         }
@@ -162,7 +162,7 @@ public sealed partial class NetVipsImageProcessor(
         ImageProcessingOptions options,
         CancellationToken cancellationToken)
     {
-        if (exifCache == null || exifData == null || string.IsNullOrEmpty(options.CacheDirectory))
+        if (exifCache is null || exifData is null || string.IsNullOrEmpty(options.CacheDirectory))
         {
             return;
         }
