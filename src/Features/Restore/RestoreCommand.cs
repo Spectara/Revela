@@ -13,7 +13,7 @@ namespace Spectara.Revela.Features.Restore;
 /// <remarks>
 /// Scans the project for required dependencies and installs missing ones:
 /// - Theme from project.json
-/// - Plugins from plugins/*.json files (with $plugin property)
+/// - Plugins from plugins/*.json files (keys in "Plugins" section)
 /// </remarks>
 public sealed partial class RestoreCommand(
     IDependencyScanner dependencyScanner,

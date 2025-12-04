@@ -28,14 +28,14 @@ DownloadAnalyzer downloadAnalyzer)
 {
     private const string MissingShareUrlError = """
         No OneDrive share URL provided. Use one of these methods:
-        1. Create onedrive.json with ShareUrl property (in Plugins:OneDrive section)
-        2. Set environment variable: REVELA__PLUGINS__ONEDRIVE__SHAREURL=<url> or ONEDRIVE_SHAREURL=<url>
+        1. Create plugins/onedrive.json with ShareUrl property
+        2. Set environment variable: ONEDRIVE_SHAREURL=<url>
         3. Provide --share-url parameter
 
-        Example onedrive.json:
+        Example plugins/onedrive.json:
         {
           "Plugins": {
-            "OneDrive": {
+            "Spectara.Revela.Plugin.Source.OneDrive": {
               "ShareUrl": "https://1drv.ms/u/..."
             }
           }

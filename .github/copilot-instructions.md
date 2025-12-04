@@ -220,7 +220,9 @@ public interface IPlugin
     IPluginMetadata Metadata { get; }
     
     // 1. ConfigureConfiguration - Called BEFORE BuildServiceProvider
-    //    Plugin registers config sources (onedrive.json, env vars)
+    //    Usually empty - framework handles JSON + ENV loading
+    //    NOTE: JSON files auto-loaded from plugins/*.json
+    //    NOTE: ENV vars auto-loaded with SPECTARA__REVELA__ prefix
     void ConfigureConfiguration(IConfigurationBuilder configuration);
     
     // 2. ConfigureServices - Called BEFORE BuildServiceProvider
@@ -252,25 +254,40 @@ public static IPluginContext AddPlugins(
     pluginLoader.LoadPlugins();
     var plugins = pluginLoader.GetLoadedPlugins();
     
-    // 2. Plugins register config sources
+    // 2. Auto-load all plugins/*.json config files
+    // JSON structure: { "Spectara.Revela.Plugin.X": { ... } }
+    var pluginsDir = Path.Combine(Directory.GetCurrentDirectory(), "plugins");
+    if (Directory.Exists(pluginsDir))
+    {
+        foreach (var jsonFile in Directory.GetFiles(pluginsDir, "*.json"))
+        {
+            configuration.AddJsonFile(jsonFile, optional: true, reloadOnChange: true);
+        }
+    }
+    
+    // 3. Auto-load environment variables with global prefix
+    // Allows: SPECTARA__REVELA__PLUGIN__SOURCE__ONEDRIVE__SHAREURL=https://...
+    configuration.AddEnvironmentVariables(prefix: "SPECTARA__REVELA__");
+    
+    // 4. Plugins may register additional config sources (optional)
     foreach (var plugin in plugins)
     {
         plugin.ConfigureConfiguration(configuration);
     }
     
-    // 3. Plugins register services
+    // 5. Plugins register services
     foreach (var plugin in plugins)
     {
         plugin.ConfigureServices(services);
     }
     
-    // 4. Return context for Initialize() and RegisterCommands()
+    // 6. Return context for Initialize() and RegisterCommands()
     return new PluginContext(plugins);
 }
 ```
 
 **Benefits:**
-- ✅ **Configuration:** appsettings.json, environment variables, user secrets
+- ✅ **Configuration:** plugins/*.json, environment variables (SPECTARA__REVELA__*)
 - ✅ **Logging:** Configuration-driven logging levels
 - ✅ **Dependency Injection:** Full DI container with all features
 - ✅ **IOptions:** Validation, hot-reload, fail-fast
@@ -436,7 +453,8 @@ foreach (var (category, level) in loggingConfig.LogLevel)
 
 ### 7. Plugin Configuration System
 
-**Plugins register their own config files and use IOptions pattern:**
+**Framework auto-loads all `plugins/*.json` files before plugin initialization.**
+**Plugin filename convention:** Default = Package-ID (e.g., `Spectara.Revela.Plugin.Source.OneDrive.json`)
 
 #### **Step 1: Create Config Model**
 ```csharp
@@ -448,9 +466,13 @@ namespace Spectara.Revela.Plugin.{Name}.Configuration;
 public sealed class MyPluginConfig
 {
     /// <summary>
-    /// Configuration section name in appsettings.json
+    /// Configuration section name - uses full package ID directly
     /// </summary>
-    public const string SectionName = "Plugins:MyPlugin";
+    /// <remarks>
+    /// Format: {FullPackageId} (no Plugins: prefix)
+    /// This allows direct mapping from JSON root key and ENV variables.
+    /// </remarks>
+    public const string SectionName = "Spectara.Revela.Plugin.MyPlugin";
     
     [Required(ErrorMessage = "ApiUrl is required")]
     [Url(ErrorMessage = "Must be a valid URL")]
@@ -460,28 +482,23 @@ public sealed class MyPluginConfig
 }
 ```
 
-#### **Step 2: Plugin Registers Config Sources**
+#### **Step 2: Plugin Registers Config Sources (usually empty)**
 ```csharp
 public sealed class MyPlugin : IPlugin
 {
-    // Register plugin-specific config files
+    // ConfigureConfiguration - usually empty!
+    // Framework handles all configuration loading:
+    // - JSON files: auto-loaded from plugins/*.json
+    // - ENV vars: auto-loaded with SPECTARA__REVELA__ prefix
     public void ConfigureConfiguration(IConfigurationBuilder configuration)
     {
-        // Plugin registers its own config file(s)
-        configuration.AddJsonFile(
-            "myplugin.json", 
-            optional: true,
-            reloadOnChange: true
-        );
-        
-        // Optional: Plugin-specific environment prefix
-        configuration.AddEnvironmentVariables(prefix: "MYPLUGIN_");
+        // Nothing to do - framework handles everything
     }
     
     // Register IOptions
     public void ConfigureServices(IServiceCollection services)
     {
-        // Bind config from all sources (appsettings.json, myplugin.json, env vars)
+        // Bind config from all sources (framework-loaded JSON + ENV vars)
         services.AddOptions<MyPluginConfig>()
             .BindConfiguration(MyPluginConfig.SectionName)
             .ValidateDataAnnotations()
@@ -489,6 +506,16 @@ public sealed class MyPlugin : IPlugin
         
         // Register other services...
     }
+}
+```
+
+**Plugin config file: `plugins/Spectara.Revela.Plugin.MyPlugin.json`**
+```json
+{
+  "Spectara.Revela.Plugin.MyPlugin": {
+    "ApiUrl": "https://api.example.com",
+    "Timeout": 60
+  }
 }
 ```
 
@@ -513,12 +540,17 @@ public sealed partial class MyCommand(
 
 **Configuration Hierarchy (merged in order):**
 1. C# Property Defaults (in Config class)
-2. `myplugin.json` (optional, registered by plugin from working directory)
-3. Environment variables: `REVELA__PLUGINS__MYPLUGIN__*` or `MYPLUGIN__*`
+2. `plugins/*.json` (auto-loaded by framework, filename = Package-ID)
+3. Environment variables: `SPECTARA__REVELA__PLUGIN__MYPLUGIN__*`
 4. CLI arguments (override in command)
 
+**Config Filename Convention:**
+- Default: `plugins/Spectara.Revela.Plugin.MyPlugin.json`
+- Custom: `revela source myplugin init --name custom-name.json`
+
 **Benefits:**
-- ✅ Plugin self-contained (registers own config files)
+- ✅ No filename conflicts (Package-ID is unique)
+- ✅ Framework auto-loads (plugins don't register JSON files)
 - ✅ Hot-reload support (`IOptionsMonitor<T>`)
 - ✅ Multi-source config (JSON, ENV, CLI)
 - ✅ Data Annotations validation

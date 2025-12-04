@@ -46,7 +46,7 @@ public enum DependencyType
 /// <remarks>
 /// Discovers dependencies from:
 /// - project.json: "theme" property
-/// - plugins/*.json: "$plugin" property in each file
+/// - plugins/*.json: Root keys matching plugin package IDs (e.g., { "Spectara.Revela.Plugin.X": {...} })
 /// </remarks>
 public interface IDependencyScanner
 {
@@ -68,9 +68,9 @@ public sealed partial class DependencyScanner(ILogger<DependencyScanner> logger)
 {
     private const string ProjectJsonFileName = "project.json";
     private const string PluginsFolderName = "plugins";
-    private const string PluginPropertyName = "$plugin";
     private const string ThemePropertyName = "theme";
     private const string ThemePackagePrefix = "Spectara.Revela.Theme.";
+    private const string PluginPackagePrefix = "Spectara.Revela.Plugin.";
 
     /// <inheritdoc />
     public async Task<IReadOnlyList<RequiredDependency>> ScanAsync(
@@ -167,12 +167,16 @@ public sealed partial class DependencyScanner(ILogger<DependencyScanner> logger)
                 var json = await File.ReadAllTextAsync(jsonFile, cancellationToken);
                 using var doc = JsonDocument.Parse(json);
 
-                if (doc.RootElement.TryGetProperty(PluginPropertyName, out var pluginElement))
+                // Format: { "Spectara.Revela.Plugin.X": {...} } - Package-ID as root key
+                var foundPlugin = false;
+                foreach (var property in doc.RootElement.EnumerateObject())
                 {
-                    var pluginSpec = pluginElement.GetString();
-                    if (!string.IsNullOrEmpty(pluginSpec))
+                    var key = property.Name;
+
+                    // Check if this looks like a plugin package ID
+                    if (key.StartsWith(PluginPackagePrefix, StringComparison.OrdinalIgnoreCase))
                     {
-                        var (packageId, version) = ParsePackageSpec(pluginSpec);
+                        var (packageId, version) = ParsePackageSpec(key);
 
                         LogPluginFound(packageId, jsonFile);
                         dependencies.Add(new RequiredDependency
@@ -182,11 +186,13 @@ public sealed partial class DependencyScanner(ILogger<DependencyScanner> logger)
                             Type = DependencyType.Plugin,
                             SourceFile = jsonFile
                         });
+                        foundPlugin = true;
                     }
                 }
-                else
+
+                if (!foundPlugin)
                 {
-                    LogMissingPluginProperty(jsonFile);
+                    LogNoPluginKeyFound(jsonFile);
                 }
             }
             catch (JsonException ex)
@@ -231,8 +237,11 @@ public sealed partial class DependencyScanner(ILogger<DependencyScanner> logger)
     [LoggerMessage(Level = LogLevel.Information, Message = "Found plugin '{PackageId}' in {SourceFile}")]
     private partial void LogPluginFound(string packageId, string sourceFile);
 
-    [LoggerMessage(Level = LogLevel.Warning, Message = "JSON file {FilePath} is missing '$plugin' property")]
-    private partial void LogMissingPluginProperty(string filePath);
+    [LoggerMessage(Level = LogLevel.Warning, Message = "JSON file {FilePath} has no plugin package ID as root key (expected 'Spectara.Revela.Plugin.*')")]
+    private partial void LogNoPluginKeyFound(string filePath);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Invalid plugin key '{PluginKey}' in {FilePath} - must start with 'Spectara.Revela.Plugin.'")]
+    private partial void LogInvalidPluginKey(string pluginKey, string filePath);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Failed to parse JSON in {FilePath}: {Error}")]
     private partial void LogJsonParseError(string filePath, string error);

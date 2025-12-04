@@ -198,6 +198,73 @@ revela example --help
 
 ## 💾 Plugin Configuration
 
+### Framework Auto-Load
+
+The Revela framework automatically loads:
+1. All `plugins/*.json` files from the working directory
+2. Environment variables with prefix `SPECTARA__REVELA__`
+
+This happens **before** plugin initialization, so plugins don't need to register config sources.
+
+**Default filename:** Use the full Package-ID to avoid conflicts.
+
+Example: `plugins/YourName.Revela.Plugin.Example.json`
+
+```json
+{
+  "YourName.Revela.Plugin.Example": {
+    "ApiUrl": "https://api.example.com",
+    "Timeout": 30
+  }
+}
+```
+
+### ConfigureConfiguration - Usually Empty
+
+Since JSON files and ENV vars are auto-loaded, plugins typically don't need to do anything:
+
+```csharp
+public void ConfigureConfiguration(IConfigurationBuilder configuration)
+{
+    // Nothing to do - framework handles everything:
+    // - JSON files: auto-loaded from plugins/*.json
+    // - ENV vars: auto-loaded with SPECTARA__REVELA__ prefix
+}
+```
+
+### Using IOptions Pattern
+
+```csharp
+// Config model - SectionName = Package-ID (no prefix)
+public sealed class ExampleConfig
+{
+    public const string SectionName = "YourName.Revela.Plugin.Example";
+    
+    [Required]
+    public string ApiUrl { get; init; } = string.Empty;
+    
+    public int Timeout { get; init; } = 30;
+}
+
+// In ConfigureServices
+public void ConfigureServices(IServiceCollection services)
+{
+    services.AddOptions<ExampleConfig>()
+        .BindConfiguration(ExampleConfig.SectionName)
+        .ValidateDataAnnotations()
+        .ValidateOnStart();  // Fail-fast at startup
+}
+```
+
+### Environment Variables
+
+ENV vars are mapped using double-underscore as separator:
+
+```bash
+# For config section "YourName.Revela.Plugin.Example"
+SPECTARA__REVELA__YOURNAME_REVELA_PLUGIN_EXAMPLE__APIURL=https://...
+```
+
 ### Providing Config Templates
 
 Plugins can include embedded config templates:
@@ -206,8 +273,16 @@ Plugins can include embedded config templates:
 // In plugin's init command
 public class ExampleInitCommand
 {
-    private static void Execute()
+    private const string DefaultFileName = "YourName.Revela.Plugin.Example.json";
+    
+    private static void Execute(string? customName)
     {
+        var fileName = string.IsNullOrWhiteSpace(customName)
+            ? DefaultFileName
+            : customName.EndsWith(".json", StringComparison.OrdinalIgnoreCase)
+                ? customName
+                : $"{customName}.json";
+        
         var assembly = typeof(ExamplePlugin).Assembly;
         using var stream = assembly.GetManifestResourceStream(
             "YourName.Revela.Plugin.Example.Templates.config.json");
@@ -216,25 +291,25 @@ public class ExampleInitCommand
             throw new FileNotFoundException("Config template not found");
         
         Directory.CreateDirectory("plugins");
-        using var fileStream = File.Create("plugins/example.json");
+        using var fileStream = File.Create(Path.Combine("plugins", fileName));
         stream.CopyTo(fileStream);
         
-        Console.WriteLine("✨ Example plugin configured!");
-        Console.WriteLine("Edit plugins/example.json to configure.");
+        Console.WriteLine($"✨ Example plugin configured: plugins/{fileName}");
     }
 }
 ```
 
 ### Loading Config
 
+Config is automatically loaded via IOptions. Simply inject it:
+
 ```csharp
-public void Initialize(IServiceProvider services)
+public class ExampleCommand(IOptionsMonitor<ExampleConfig> config)
 {
-    var configPath = Path.Combine("plugins", "example.json");
-    if (File.Exists(configPath))
+    public void Execute()
     {
-        var json = File.ReadAllText(configPath);
-        _config = JsonSerializer.Deserialize<ExampleConfig>(json);
+        var current = config.CurrentValue;
+        Console.WriteLine($"API URL: {current.ApiUrl}");
     }
 }
 ```
@@ -295,8 +370,8 @@ public class ExamplePluginTests
     {
         var plugin = new ExamplePlugin();
         
-        plugin.Metadata.Name.Should().Be("Example");
-        plugin.Metadata.Version.Should().Be("1.0.0");
+        Assert.AreEqual("Example", plugin.Metadata.Name);
+        Assert.AreEqual("1.0.0", plugin.Metadata.Version);
     }
     
     [TestMethod]
@@ -305,8 +380,8 @@ public class ExamplePluginTests
         var plugin = new ExamplePlugin();
         var commands = plugin.GetCommands().ToList();
         
-        commands.Should().NotBeEmpty();
-        commands.Should().Contain(c => c.Name == "example");
+        Assert.IsNotEmpty(commands);
+        Assert.IsTrue(commands.Exists(c => c.Name == "example"));
     }
 }
 ```

@@ -63,9 +63,29 @@ public static class PluginServiceCollectionExtensions
                 "or installed in the user plugin directory.");
         }
 
-        // Phase 1: Plugins register their configuration sources
-        // (e.g., onedrive.json, environment variables)
+        // ============================================
+        // CONFIGURATION PHASE
+        // ============================================
 #pragma warning disable CA1848 // Use LoggerMessage delegates for performance (startup logging)
+
+        // Auto-load all plugins/*.json files from working directory
+        // JSON structure: { "Spectara.Revela.Plugin.X": { ... } } - Package-ID as root key
+        var pluginsDir = Path.Combine(Directory.GetCurrentDirectory(), "plugins");
+        if (Directory.Exists(pluginsDir))
+        {
+            foreach (var jsonFile in Directory.GetFiles(pluginsDir, "*.json"))
+            {
+                configuration.AddJsonFile(jsonFile, optional: true, reloadOnChange: true);
+                logger.LogDebug("Auto-loaded plugin config: {File}", Path.GetFileName(jsonFile));
+            }
+        }
+
+        // Auto-load environment variables with global prefix
+        // Allows: SPECTARA__REVELA__PLUGIN__SOURCE__ONEDRIVE__SHAREURL=https://...
+        configuration.AddEnvironmentVariables(prefix: "SPECTARA__REVELA__");
+        logger.LogDebug("Loaded environment variables with prefix SPECTARA__REVELA__");
+
+        // Phase 1: Plugins may register additional config sources (optional, usually empty)
         foreach (var plugin in plugins)
         {
             try

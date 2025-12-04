@@ -17,8 +17,8 @@ namespace Spectara.Revela.Plugin.Source.OneDrive.Commands;
 public sealed class OneDriveInitCommand(ILogger<OneDriveInitCommand> logger)
 {
     private const string PluginsFolderName = "plugins";
-    private const string ConfigFileName = "onedrive.json";
     private const string PluginPackageId = "Spectara.Revela.Plugin.Source.OneDrive";
+    private const string DefaultConfigFileName = $"{PluginPackageId}.json";
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -36,25 +36,40 @@ public sealed class OneDriveInitCommand(ILogger<OneDriveInitCommand> logger)
             Description = "OneDrive shared folder URL (skip interactive prompt)"
         };
 
+        // Option to specify custom config filename
+        var nameOption = new Option<string?>("--name", "-n")
+        {
+            Description = $"Config filename (default: {DefaultConfigFileName})"
+        };
+
         command.Options.Add(shareUrlOption);
+        command.Options.Add(nameOption);
 
         command.SetAction(parseResult =>
         {
             var shareUrl = parseResult.GetValue(shareUrlOption);
-            Execute(shareUrl);
+            var configName = parseResult.GetValue(nameOption);
+            Execute(shareUrl, configName);
             return 0;
         });
 
         return command;
     }
 
-    private void Execute(string? shareUrl)
+    private void Execute(string? shareUrl, string? configName)
     {
         try
         {
+            // Determine config filename (default: Package-ID.json)
+            var fileName = string.IsNullOrWhiteSpace(configName)
+                ? DefaultConfigFileName
+                : configName.EndsWith(".json", StringComparison.OrdinalIgnoreCase)
+                    ? configName
+                    : $"{configName}.json";
+
             // Ensure plugins folder exists
             Directory.CreateDirectory(PluginsFolderName);
-            var configPath = Path.Combine(PluginsFolderName, ConfigFileName);
+            var configPath = Path.Combine(PluginsFolderName, fileName);
 
             // Check if already initialized
             if (File.Exists(configPath))
@@ -86,12 +101,14 @@ public sealed class OneDriveInitCommand(ILogger<OneDriveInitCommand> logger)
                     })
             );
 
-            // Create configuration with $plugin identifier
+            // Create configuration with plugin package ID as root key (no Plugins wrapper)
             var configObject = new Dictionary<string, object?>
             {
-                ["$plugin"] = PluginPackageId,
-                ["shareUrl"] = shareUrl
-                // includePatterns and excludePatterns not set - will use smart defaults
+                [PluginPackageId] = new Dictionary<string, object?>
+                {
+                    ["ShareUrl"] = shareUrl
+                    // IncludePatterns and ExcludePatterns not set - will use smart defaults
+                }
             };
 
             // Save to plugins folder

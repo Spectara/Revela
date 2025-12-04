@@ -26,24 +26,18 @@ public sealed class OneDrivePlugin : IPlugin
     /// <inheritdoc />
     public void ConfigureConfiguration(IConfigurationBuilder configuration)
     {
-        // Register plugin-specific configuration file
-        // This allows users to create onedrive.json for plugin-specific settings
-        configuration.AddJsonFile(
-            "onedrive.json",
-            optional: true,          // File doesn't need to exist
-            reloadOnChange: true     // Support hot reload
-        );
-
-        // Plugin can also add environment variable prefix (in addition to global REVELA__)
-        // Note: This is optional - global REVELA__PLUGINS__ONEDRIVE__* already works
-        configuration.AddEnvironmentVariables(prefix: "ONEDRIVE_");
+        // Nothing to do - framework handles all configuration:
+        // - JSON files: auto-loaded from plugins/*.json
+        // - ENV vars: auto-loaded with SPECTARA__REVELA__ prefix
+        //
+        // Example ENV: SPECTARA__REVELA__PLUGIN__SOURCE__ONEDRIVE__SHAREURL=https://...
     }
 
     /// <inheritdoc />
     public void ConfigureServices(IServiceCollection services)
     {
         // Register Plugin Configuration (IOptions pattern)
-        // Binds to Plugins:OneDrive section from all registered config sources
+        // Binds to Plugins:Spectara.Revela.Plugin.Source.OneDrive section
         services.AddOptions<OneDrivePluginConfig>()
             .BindConfiguration(OneDrivePluginConfig.SectionName)
             .ValidateDataAnnotations()      // Validate [Required], [Url], etc.

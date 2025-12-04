@@ -9,34 +9,32 @@ namespace Spectara.Revela.Plugin.Source.OneDrive.Configuration;
 /// Default values are defined in the property initializers (OutputDirectory = "source", etc.).
 /// These can be overridden from multiple sources (in priority order, highest to lowest):
 /// 1. Command-line arguments (--share-url, --output, --concurrency, etc.)
-/// 2. Environment variables (ONEDRIVE__* or REVELA__PLUGINS__ONEDRIVE__*)
-/// 3. User config file (onedrive.json) - created by "revela source onedrive init"
-/// 
-/// Example onedrive.json (user-specific, in working directory):
+/// 2. Environment variables (SPECTARA__REVELA__PLUGIN__SOURCE__ONEDRIVE__*)
+/// 3. User config file (plugins/Spectara.Revela.Plugin.Source.OneDrive.json)
+///
+/// Example plugins/Spectara.Revela.Plugin.Source.OneDrive.json:
 /// {
-///   "Plugins": {
-///     "OneDrive": {
-///       "ShareUrl": "https://1drv.ms/...",
-///       "IncludePatterns": ["*.jpg", "*.png", "*.md"],
-///       "ExcludePatterns": ["*.tmp"]
-///     }
+///   "Spectara.Revela.Plugin.Source.OneDrive": {
+///     "ShareUrl": "https://1drv.ms/...",
+///     "IncludePatterns": ["*.jpg", "*.png", "*.md"],
+///     "ExcludePatterns": ["*.tmp"]
 ///   }
 /// }
-/// 
+///
 /// Example Environment Variables:
-/// ONEDRIVE_SHAREURL=https://1drv.ms/...
-/// ONEDRIVE_OUTPUTDIRECTORY=downloads
-/// ONEDRIVE_DEFAULTCONCURRENCY=16
-/// 
-/// Or with REVELA__ prefix:
-/// REVELA__PLUGINS__ONEDRIVE__SHAREURL=https://1drv.ms/...
+/// SPECTARA__REVELA__PLUGIN__SOURCE__ONEDRIVE__SHAREURL=https://1drv.ms/...
+/// SPECTARA__REVELA__PLUGIN__SOURCE__ONEDRIVE__OUTPUTDIRECTORY=downloads
 /// </remarks>
 public sealed class OneDrivePluginConfig
 {
     /// <summary>
-    /// Configuration section name in appsettings.json
+    /// Configuration section name
     /// </summary>
-    public const string SectionName = "Plugins:OneDrive";
+    /// <remarks>
+    /// Uses full package ID as key directly (no Plugins: prefix).
+    /// This allows direct mapping from JSON root key and ENV variables.
+    /// </remarks>
+    public const string SectionName = "Spectara.Revela.Plugin.Source.OneDrive";
 
     /// <summary>
     /// OneDrive shared folder URL
