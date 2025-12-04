@@ -65,3 +65,101 @@ public interface IPluginMetadata
     string Author { get; }
 }
 
+/// <summary>
+/// Theme plugin interface - extends IPlugin with theme-specific functionality
+/// </summary>
+/// <remarks>
+/// Theme plugins provide:
+/// - Template files (layout.html, partials, etc.)
+/// - Static assets (CSS, JS, fonts, images)
+/// - Theme configuration (variables, defaults)
+///
+/// Naming convention: Spectara.Revela.Theme.{Name}
+///
+/// Usage in project.json:
+/// <code>
+/// {
+///   "theme": "Spectara.Revela.Theme.Expose"
+/// }
+/// </code>
+///
+/// Theme plugins typically don't provide CLI commands, but can
+/// register custom Scriban template functions.
+/// </remarks>
+public interface IThemePlugin : IPlugin
+{
+    /// <summary>
+    /// Theme-specific metadata
+    /// </summary>
+    new IThemeMetadata Metadata { get; }
+
+    /// <summary>
+    /// Get the theme manifest with template and asset information
+    /// </summary>
+    ThemeManifest GetManifest();
+
+    /// <summary>
+    /// Get a file from the theme as a stream
+    /// </summary>
+    /// <param name="relativePath">Relative path within the theme (e.g., "layout.html")</param>
+    /// <returns>Stream with file contents, or null if not found</returns>
+    Stream? GetFile(string relativePath);
+
+    /// <summary>
+    /// Get all file paths in the theme
+    /// </summary>
+    /// <returns>Enumerable of relative paths</returns>
+    IEnumerable<string> GetAllFiles();
+
+    /// <summary>
+    /// Extract all theme files to a directory
+    /// </summary>
+    /// <param name="targetDirectory">Directory to extract files to</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    Task ExtractToAsync(string targetDirectory, CancellationToken cancellationToken = default);
+}
+
+/// <summary>
+/// Extended metadata for theme plugins
+/// </summary>
+public interface IThemeMetadata : IPluginMetadata
+{
+    /// <summary>
+    /// URL to preview image of the theme
+    /// </summary>
+    Uri? PreviewImageUri { get; }
+
+    /// <summary>
+    /// Theme tags for discovery (e.g., "minimal", "dark", "gallery")
+    /// </summary>
+    IReadOnlyList<string> Tags { get; }
+}
+
+/// <summary>
+/// Theme manifest describing available templates and assets
+/// </summary>
+public sealed class ThemeManifest
+{
+    /// <summary>
+    /// Main layout template path
+    /// </summary>
+    public required string LayoutTemplate { get; init; }
+
+    /// <summary>
+    /// Partial templates by name (key = include name, value = file path)
+    /// </summary>
+    public IReadOnlyDictionary<string, string> Partials { get; init; } =
+        new Dictionary<string, string>();
+
+    /// <summary>
+    /// Static assets to copy to output (CSS, JS, fonts, images)
+    /// </summary>
+    public IReadOnlyList<string> Assets { get; init; } = [];
+
+    /// <summary>
+    /// Theme variables with default values
+    /// </summary>
+    public IReadOnlyDictionary<string, string> Variables { get; init; } =
+        new Dictionary<string, string>();
+}
+

@@ -1,4 +1,3 @@
-using FluentAssertions;
 using Spectara.Revela.Plugin.Source.OneDrive.Models;
 
 namespace Spectara.Revela.Plugin.Source.OneDrive.Tests.Models;
@@ -28,9 +27,9 @@ public sealed class DownloadAnalysisTests
         var result = analysis.ItemsToDownload.ToList();
 
         // Assert
-        result.Should().HaveCount(2);
-        result.Should().Contain(i => i.RemoteItem.Name == "new.jpg");
-        result.Should().Contain(i => i.RemoteItem.Name == "modified.jpg");
+        Assert.HasCount(2, result);
+        Assert.IsTrue(result.Any(i => i.RemoteItem.Name == "new.jpg"));
+        Assert.IsTrue(result.Any(i => i.RemoteItem.Name == "modified.jpg"));
     }
 
     [TestMethod]
@@ -56,8 +55,8 @@ public sealed class DownloadAnalysisTests
         var result = analysis.UnchangedItems.ToList();
 
         // Assert
-        result.Should().HaveCount(2);
-        result.Should().OnlyContain(i => i.Status == FileStatus.Unchanged);
+        Assert.HasCount(2, result);
+        Assert.IsTrue(result.All(i => i.Status == FileStatus.Unchanged));
     }
 
     [TestMethod]
@@ -80,7 +79,7 @@ public sealed class DownloadAnalysisTests
         var result = analysis.ItemsToDownload.ToList();
 
         // Assert
-        result.Should().BeEmpty();
+        Assert.IsEmpty(result);
     }
 
     [TestMethod]
@@ -105,7 +104,7 @@ public sealed class DownloadAnalysisTests
         var result = analysis.ItemsToDownload.ToList();
 
         // Assert
-        result.Should().HaveCount(3);
+        Assert.HasCount(3, result);
     }
 
     private static DownloadItem CreateItem(string name, FileStatus status)

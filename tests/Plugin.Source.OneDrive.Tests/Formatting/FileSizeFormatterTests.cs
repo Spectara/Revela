@@ -1,4 +1,3 @@
-using FluentAssertions;
 using Spectara.Revela.Plugin.Source.OneDrive.Formatting;
 
 namespace Spectara.Revela.Plugin.Source.OneDrive.Tests.Formatting;
@@ -13,7 +12,7 @@ public sealed class FileSizeFormatterTests
         var result = FileSizeFormatter.Format(0);
 
         // Assert
-        result.Should().Be("0 B");
+        Assert.AreEqual("0 B", result);
     }
 
     [TestMethod]
@@ -26,7 +25,7 @@ public sealed class FileSizeFormatterTests
         var result = FileSizeFormatter.Format(bytes);
 
         // Assert
-        result.Should().Be(expected);
+        Assert.AreEqual(expected, result);
     }
 
     [TestMethod]
@@ -40,7 +39,7 @@ public sealed class FileSizeFormatterTests
         var result = FileSizeFormatter.Format(bytes);
 
         // Assert
-        result.Should().Be(expected);
+        Assert.AreEqual(expected, result);
     }
 
     [TestMethod]
@@ -53,7 +52,7 @@ public sealed class FileSizeFormatterTests
         var result = FileSizeFormatter.Format(bytes);
 
         // Assert
-        result.Should().Be(expected);
+        Assert.AreEqual(expected, result);
     }
 
     [TestMethod]
@@ -66,7 +65,7 @@ public sealed class FileSizeFormatterTests
         var result = FileSizeFormatter.Format(bytes);
 
         // Assert
-        result.Should().Be(expected);
+        Assert.AreEqual(expected, result);
     }
 
     [TestMethod]
@@ -79,7 +78,7 @@ public sealed class FileSizeFormatterTests
         var result = FileSizeFormatter.Format(bytes);
 
         // Assert
-        result.Should().Be("100 GB");
+        Assert.AreEqual("100 GB", result);
     }
 
     [TestMethod]
@@ -92,7 +91,7 @@ public sealed class FileSizeFormatterTests
         var result = FileSizeFormatter.Format(bytes);
 
         // Assert
-        result.Should().StartWith("5.");
-        result.Should().EndWith(" MB");
+        Assert.IsTrue(result.StartsWith("5.", StringComparison.Ordinal));
+        Assert.IsTrue(result.EndsWith(" MB", StringComparison.Ordinal));
     }
 }

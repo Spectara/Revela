@@ -21,7 +21,6 @@ public static class ServiceCollectionExtensions
 
         // Commands
         services.AddTransient<InitProjectCommand>();
-        services.AddTransient<InitThemeCommand>();
         services.AddTransient<InitCommand>();
 
         return services;

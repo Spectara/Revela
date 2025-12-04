@@ -1,0 +1,22 @@
+{{~##
+  EXIF-Zeile Partial - Expose Theme
+
+  Zeigt Kamera-Einstellungen in einer Zeile an.
+  Wird in image.html sowohl für Thumbnail-Overlay als auch Lightbox verwendet.
+
+  Erwartet: exif (ExifData Objekt)
+  ExifData: { f_number?, exposure_time?, iso?, focal_length?, lens_model?, camera_model? }
+##~}}
+
+{{~ if exif ~}}
+<p>
+  {{~ exif.f_number ? "F" + exif.f_number + " " : "" ~}}
+  {{~ exif.exposure_time ?? "" ~}}
+  {{~ exif.iso ? " ISO" + exif.iso : "" ~}}
+  {{~ exif.focal_length ? " " + exif.focal_length : "" ~}}
+</p>
+<p>
+  {{~ exif.lens_model ?? "" ~}}
+  {{~ exif.camera_model ? " on " + exif.camera_model : "" ~}}
+</p>
+{{~ end ~}}

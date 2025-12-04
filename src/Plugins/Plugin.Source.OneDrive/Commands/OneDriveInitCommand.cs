@@ -1,7 +1,8 @@
 using System.CommandLine;
 using System.Text.Json;
+
 using Spectara.Revela.Plugin.Source.OneDrive.Commands.Logging;
-using Spectara.Revela.Plugin.Source.OneDrive.Models;
+
 using Spectre.Console;
 
 namespace Spectara.Revela.Plugin.Source.OneDrive.Commands;
@@ -15,7 +16,9 @@ namespace Spectara.Revela.Plugin.Source.OneDrive.Commands;
 /// </remarks>
 public sealed class OneDriveInitCommand(ILogger<OneDriveInitCommand> logger)
 {
+    private const string PluginsFolderName = "plugins";
     private const string ConfigFileName = "onedrive.json";
+    private const string PluginPackageId = "Spectara.Revela.Plugin.Source.OneDrive";
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -49,10 +52,14 @@ public sealed class OneDriveInitCommand(ILogger<OneDriveInitCommand> logger)
     {
         try
         {
+            // Ensure plugins folder exists
+            Directory.CreateDirectory(PluginsFolderName);
+            var configPath = Path.Combine(PluginsFolderName, ConfigFileName);
+
             // Check if already initialized
-            if (File.Exists(ConfigFileName))
+            if (File.Exists(configPath))
             {
-                if (!AnsiConsole.Confirm($"[yellow]{ConfigFileName} already exists. Overwrite?[/]"))
+                if (!AnsiConsole.Confirm($"[yellow]{configPath} already exists. Overwrite?[/]"))
                 {
                     AnsiConsole.MarkupLine("[dim]Configuration unchanged.[/]");
                     return;
@@ -79,16 +86,17 @@ public sealed class OneDriveInitCommand(ILogger<OneDriveInitCommand> logger)
                     })
             );
 
-            // Create minimal configuration (patterns use smart defaults)
-            var config = new OneDriveConfig
+            // Create configuration with $plugin identifier
+            var configObject = new Dictionary<string, object?>
             {
-                ShareUrl = shareUrl
-                // IncludePatterns and ExcludePatterns not set - will use smart defaults
+                ["$plugin"] = PluginPackageId,
+                ["shareUrl"] = shareUrl
+                // includePatterns and excludePatterns not set - will use smart defaults
             };
 
-            // Save to JSON
-            var json = JsonSerializer.Serialize(config, JsonOptions);
-            File.WriteAllText(ConfigFileName, json);
+            // Save to plugins folder
+            var json = JsonSerializer.Serialize(configObject, JsonOptions);
+            File.WriteAllText(configPath, json);
 
             // Create source directory
             Directory.CreateDirectory("source");
@@ -96,11 +104,11 @@ public sealed class OneDriveInitCommand(ILogger<OneDriveInitCommand> logger)
             // Success message
             var panel = new Panel(
                 $"[green]OneDrive source configured![/]\n\n" +
-                $"[bold]Configuration:[/] [cyan]{ConfigFileName}[/]\n" +
+                $"[bold]Configuration:[/] [cyan]{configPath}[/]\n" +
                 $"[bold]Share URL:[/] [dim]{shareUrl}[/]\n" +
                 $"[bold]Download to:[/] [cyan]./source/[/]\n\n" +
                 $"[dim]Downloads all images (via MIME type) and markdown files by default.[/]\n" +
-                $"[dim]To customize, edit {ConfigFileName} and add includePatterns/excludePatterns.[/]\n\n" +
+                $"[dim]To customize, edit {configPath} and add includePatterns/excludePatterns.[/]\n\n" +
                 $"[bold]Next steps:[/]\n" +
                 $"1. Run [cyan]revela source onedrive download[/] to fetch files\n" +
                 $"2. Run [cyan]revela generate[/] to build your site"

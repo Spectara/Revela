@@ -1,0 +1,19 @@
+{
+  "name": "Minimal",
+  "version": "1.0.0",
+  "description": "Clean, minimal theme - starting point for custom themes",
+  "author": "Spectara",
+  "tags": ["minimal", "starter", "simple"],
+  "templates": {
+    "layout": "layout.html"
+  },
+  "partials": {
+    "navigation": "partials/navigation.html",
+    "image": "partials/image.html"
+  },
+  "assets": ["main.css"],
+  "variables": {
+    "primaryColor": "#333",
+    "backgroundColor": "#fff"
+  }
+}

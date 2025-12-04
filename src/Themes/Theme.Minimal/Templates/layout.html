@@ -1,0 +1,51 @@
+{{~##
+  Minimal Layout Template
+
+  Einfaches HTML5-Grundgerüst für Tests und als Startpunkt.
+
+  Erwartet:
+  - site: { title, description?, copyright? }
+  - gallery: { title, body? }
+  - nav_items: Array von NavigationItem
+  - images: Array von ImageData
+  - basepath: Relativer Pfad zur Root
+##~}}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ gallery.title }} - {{ site.title }}</title>
+  <link rel="stylesheet" href="{{ basepath }}main.css">
+</head>
+<body>
+  <header>
+    <h1><a href="{{ basepath }}">{{ site.title }}</a></h1>
+    <nav>
+      {{ include 'partials/navigation' nav_items }}
+    </nav>
+  </header>
+
+  <main>
+    <h2>{{ gallery.title }}</h2>
+
+    {{~ if gallery.body ~}}
+    <section class="content">
+      {{ gallery.body }}
+    </section>
+    {{~ end ~}}
+
+    {{~ if images && images.size > 0 ~}}
+    <section class="gallery">
+      {{~ for image in images ~}}
+      {{ include 'partials/image' image }}
+      {{~ end ~}}
+    </section>
+    {{~ end ~}}
+  </main>
+
+  <footer>
+    <p>{{ site.copyright ?? '© ' + date.now | date.to_string '%Y' }}</p>
+  </footer>
+</body>
+</html>

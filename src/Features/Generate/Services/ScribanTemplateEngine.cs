@@ -1,5 +1,6 @@
 using System.Globalization;
 using Scriban;
+using Scriban.Parsing;
 using Scriban.Runtime;
 using Spectara.Revela.Features.Generate.Abstractions;
 
@@ -13,12 +14,13 @@ namespace Spectara.Revela.Features.Generate.Services;
 /// - Liquid-compatible syntax (familiar to web developers)
 /// - Fast compilation and rendering
 /// - Sandboxed execution (safe for user templates)
-/// - Partials and layouts support
+/// - Partials and layouts support via include directive
 /// - Custom functions
-/// 
+///
 /// Example template:
 /// <code>
 /// &lt;h1&gt;{{ site.title }}&lt;/h1&gt;
+/// {{ include 'partials/navigation' nav_items }}
 /// {{ for image in images }}
 ///   &lt;img src="{{ image.url }}" alt="{{ image.title }}" /&gt;
 /// {{ end }}
@@ -27,6 +29,17 @@ namespace Spectara.Revela.Features.Generate.Services;
 public sealed partial class ScribanTemplateEngine(ILogger<ScribanTemplateEngine> logger) : ITemplateEngine
 {
     private readonly Dictionary<string, Template> compiledTemplates = [];
+    private string? themeDirectory;
+
+    /// <summary>
+    /// Set the theme directory for loading partials
+    /// </summary>
+    /// <param name="directory">Absolute path to the theme directory</param>
+    public void SetThemeDirectory(string directory)
+    {
+        themeDirectory = directory;
+        LogThemeDirectorySet(logger, directory);
+    }
 
     /// <summary>
     /// Render template content with data model
@@ -44,8 +57,8 @@ public sealed partial class ScribanTemplateEngine(ILogger<ScribanTemplateEngine>
                 throw new InvalidOperationException($"Template parsing failed: {errors}");
             }
 
-            // Create script context with custom functions
-            var context = CreateScriptContext(model);
+            // Create script context with custom functions and template loader
+            var context = CreateScriptContext(model, themeDirectory);
 
             // Render template
             var result = template.Render(context);
@@ -100,16 +113,23 @@ public sealed partial class ScribanTemplateEngine(ILogger<ScribanTemplateEngine>
         }
 
         // Create context and render
-        var context = CreateScriptContext(model);
+        var context = CreateScriptContext(model, themeDirectory);
         return template.Render(context);
     }
 
     /// <summary>
-    /// Create Scriban context with custom functions
+    /// Create Scriban context with custom functions and template loader
     /// </summary>
-    private static TemplateContext CreateScriptContext(object model)
+    private TemplateContext CreateScriptContext(object model, string? themePath)
     {
         var context = new TemplateContext();
+
+        // Set up template loader for partials if theme directory is set
+        if (!string.IsNullOrEmpty(themePath))
+        {
+            context.TemplateLoader = new ThemeTemplateLoader(themePath, compiledTemplates, logger);
+        }
+
         var scriptObject = new ScriptObject();
 
         // Import model as global variables
@@ -267,4 +287,96 @@ public sealed partial class ScribanTemplateEngine(ILogger<ScribanTemplateEngine>
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Template cache cleared")]
     static partial void LogCacheCleared(ILogger logger);
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Theme directory set: {Directory}")]
+    static partial void LogThemeDirectorySet(ILogger logger, string directory);
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Loading partial template: {PartialName}")]
+    static partial void LogLoadingPartial(ILogger logger, string partialName);
+}
+
+/// <summary>
+/// Template loader for loading partials from the theme directory
+/// </summary>
+/// <remarks>
+/// Supports the Scriban include directive:
+/// <code>
+/// {{ include 'partials/navigation' nav_items }}
+/// </code>
+///
+/// Searches for templates in the theme directory with .html extension.
+/// </remarks>
+internal sealed partial class ThemeTemplateLoader(
+    string themeDirectory,
+    Dictionary<string, Template> templateCache,
+    ILogger logger) : ITemplateLoader
+{
+    /// <summary>
+    /// Get the path for a template include
+    /// </summary>
+    /// <param name="context">Template context</param>
+    /// <param name="callerSpan">Source span of the include directive</param>
+    /// <param name="templateName">Name of the template to include (e.g., "partials/navigation")</param>
+    /// <returns>Absolute path to the template file</returns>
+    public string GetPath(TemplateContext context, SourceSpan callerSpan, string templateName)
+    {
+        // Add .html extension if not present
+        var fileName = templateName.EndsWith(".html", StringComparison.OrdinalIgnoreCase)
+            ? templateName
+            : templateName + ".html";
+
+        // Combine with theme directory
+        var fullPath = Path.Combine(themeDirectory, fileName);
+
+        return Path.GetFullPath(fullPath);
+    }
+
+    /// <summary>
+    /// Load template content from file
+    /// </summary>
+    /// <param name="context">Template context</param>
+    /// <param name="callerSpan">Source span of the include directive</param>
+    /// <param name="templatePath">Full path to the template file</param>
+    /// <returns>Template content as string</returns>
+    public string Load(TemplateContext context, SourceSpan callerSpan, string templatePath)
+    {
+        LogLoadingPartial(logger, templatePath);
+
+        if (!File.Exists(templatePath))
+        {
+            throw new FileNotFoundException($"Partial template not found: {templatePath}", templatePath);
+        }
+
+        // Check cache first
+        if (templateCache.TryGetValue(templatePath, out _))
+        {
+            // Template already compiled, just return content for re-parsing
+            // (Scriban handles caching internally when using ITemplateLoader)
+        }
+
+        var content = File.ReadAllText(templatePath);
+
+        // Parse and cache the template
+        var template = Template.Parse(content);
+        if (template.HasErrors)
+        {
+            var errors = string.Join(", ", template.Messages.Select(m => m.Message));
+            throw new InvalidOperationException($"Partial template parsing failed ({templatePath}): {errors}");
+        }
+
+        templateCache[templatePath] = template;
+
+        return content;
+    }
+
+    /// <summary>
+    /// Async version of Load (required by interface)
+    /// </summary>
+    public ValueTask<string> LoadAsync(TemplateContext context, SourceSpan callerSpan, string templatePath)
+    {
+        return new ValueTask<string>(Load(context, callerSpan, templatePath));
+    }
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Loading partial template: {PartialPath}")]
+    static partial void LogLoadingPartial(ILogger logger, string partialPath);
 }

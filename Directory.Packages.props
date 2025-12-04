@@ -27,7 +27,7 @@
     <!-- System.CommandLine 2.0.0 - Final Release -->
     <!-- https://learn.microsoft.com/en-us/dotnet/standard/commandline/ -->
     <PackageVersion Include="System.CommandLine" Version="2.0.0" />
-    
+
     <!-- Spectre.Console - Rich Console Output -->
     <!-- https://spectreconsole.net/ -->
     <PackageVersion Include="Spectre.Console" Version="0.54.0" />
@@ -70,13 +70,11 @@
     <!-- Consistent with other projects using MSTest -->
     <PackageVersion Include="MSTest" Version="4.0.2" />
     <PackageVersion Include="MSTest.Analyzers" Version="4.0.2" />
-    
-    <!-- Assertions & Mocking (work with any test framework) -->
-    <PackageVersion Include="FluentAssertions" Version="8.8.0" />
-    <!-- NSubstitute instead of Moq (security/trust concerns with Moq 4.20+) -->
+
+    <!-- Mocking (NSubstitute instead of Moq due to security/trust concerns) -->
     <!-- https://nsubstitute.github.io/ -->
     <PackageVersion Include="NSubstitute" Version="5.3.0" />
-    
+
     <!-- Code Coverage -->
     <PackageVersion Include="coverlet.collector" Version="6.0.4" />
   </ItemGroup>
@@ -84,22 +82,22 @@
   <ItemGroup Label="Code Analysis">
     <!-- Microsoft.CodeAnalysis.NetAnalyzers - Official .NET Code Analyzers -->
     <!-- https://learn.microsoft.com/en-us/dotnet/fundamentals/code-analysis/overview -->
-    <!-- 
+    <!--
       Included automatically in .NET SDK 5.0+
       No NuGet package needed!
-      
+
       Provides:
       - CA1xxx: Design rules
       - CA2xxx: Maintainability & Usage rules
       - CA3xxx: Security rules
       - CA5xxx: Security rules (additional)
       - IDExxx: Code style rules
-      
+
       Configuration in Directory.Build.props:
       - <EnableNETAnalyzers>true</EnableNETAnalyzers>
       - <AnalysisLevel>latest-all</AnalysisLevel>
       - <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
-      
+
       Fine-tuning in .editorconfig via:
       - dotnet_diagnostic.CAxxxx.severity = warning|error|suggestion|none
     -->

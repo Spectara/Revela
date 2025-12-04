@@ -1,5 +1,4 @@
 using System.ComponentModel.DataAnnotations;
-using FluentAssertions;
 using Spectara.Revela.Plugin.Source.OneDrive.Models;
 
 namespace Spectara.Revela.Plugin.Source.OneDrive.Tests.Configuration;
@@ -19,7 +18,7 @@ public sealed class OneDriveConfigTests
         var results = ValidateModel(config);
 
         // Assert
-        results.Should().ContainSingle(r => r.MemberNames.Contains("ShareUrl"));
+        Assert.IsTrue(results.Any(r => r.MemberNames.Contains("ShareUrl")));
     }
 
     [TestMethod]
@@ -32,7 +31,7 @@ public sealed class OneDriveConfigTests
         var results = ValidateModel(config);
 
         // Assert
-        results.Should().Contain(r => r.MemberNames.Contains("ShareUrl"));
+        Assert.IsTrue(results.Any(r => r.MemberNames.Contains("ShareUrl")));
     }
 
     [TestMethod]
@@ -49,7 +48,7 @@ public sealed class OneDriveConfigTests
         var results = ValidateModel(config);
 
         // Assert
-        results.Should().BeEmpty();
+        Assert.IsEmpty(results);
     }
 
     [TestMethod]
@@ -67,7 +66,7 @@ public sealed class OneDriveConfigTests
         var results = ValidateModel(config);
 
         // Assert
-        results.Should().NotBeEmpty();
+        Assert.IsNotEmpty(results);
     }
 
     #endregion
@@ -88,7 +87,7 @@ public sealed class OneDriveConfigTests
         var results = ValidateModel(config);
 
         // Assert
-        results.Should().BeEmpty();
+        Assert.IsEmpty(results);
     }
 
     [TestMethod]
@@ -105,7 +104,7 @@ public sealed class OneDriveConfigTests
         var results = ValidateModel(config);
 
         // Assert
-        results.Should().BeEmpty();
+        Assert.IsEmpty(results);
     }
 
     [TestMethod]
@@ -122,7 +121,7 @@ public sealed class OneDriveConfigTests
         var results = ValidateModel(config);
 
         // Assert
-        results.Should().BeEmpty();
+        Assert.IsEmpty(results);
     }
 
     #endregion
@@ -143,7 +142,7 @@ public sealed class OneDriveConfigTests
         var results = ValidateModel(config);
 
         // Assert
-        results.Should().BeEmpty();
+        Assert.IsEmpty(results);
     }
 
     [TestMethod]
@@ -160,7 +159,7 @@ public sealed class OneDriveConfigTests
         var results = ValidateModel(config);
 
         // Assert
-        results.Should().BeEmpty();
+        Assert.IsEmpty(results);
     }
 
     #endregion

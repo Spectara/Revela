@@ -1,6 +1,6 @@
 # Revela - Development Status
 
-**Last Updated:** 2025-01-19
+**Last Updated:** 2025-06-15
 
 ## 🔗 Original Project Reference
 
@@ -9,19 +9,19 @@ This is a **complete rewrite** of the original Bash-based Revela:
 - **Language:** Bash → .NET 10 / C# 14
 - **Goal:** Same output, better performance, more extensibility
 
-## 📊 Current Status: FOUNDATION COMPLETE ✅
+## 📊 Current Status: CLI & PLUGINS COMPLETE ✅
 
 ### ✅ Completed
 
 #### Phase 1: Foundation (DONE)
 - [x] Project structure created
-- [x] All 8 projects configured
+- [x] All projects configured
 - [x] Solution file created
 - [x] Central Package Management (CPM) configured
 - [x] .editorconfig with C# 14 best practices
 - [x] Directory.Build.props with central settings
 - [x] System.CommandLine 2.0.0 (final) integrated
-- [x] NetVips 3.0.0 integrated
+- [x] NetVips 3.1.0 integrated
 
 #### Core Models (DONE)
 - [x] `Image.cs` - Image model with variants
@@ -30,80 +30,71 @@ This is a **complete rewrite** of the original Bash-based Revela:
 - [x] `RevelaConfig.cs` - Complete configuration model
 
 #### Core Abstractions (DONE)
-- [x] `IPlugin.cs` - Plugin interface
+- [x] `IPlugin.cs` - Plugin interface with 4-phase lifecycle
+- [x] `IThemePlugin.cs` - Theme plugin interface
 - [x] `ITemplateEngine.cs` - Template engine abstraction
 - [x] `IImageProcessor.cs` - Image processing abstraction
 
 #### Core Infrastructure (DONE)
 - [x] `PluginLoader.cs` - Plugin discovery & loading
 - [x] `PluginManager.cs` - Plugin install/update/uninstall (NuGet-based)
+- [x] `PluginContext.cs` - Plugin lifecycle management
+- [x] `EmbeddedThemePlugin.cs` - Base class for theme plugins
+
+#### CLI Commands (DONE)
+- [x] `init project` - Initialize new project
+- [x] `plugin list` - List installed plugins
+- [x] `plugin install` - Install plugin from NuGet
+- [x] `plugin uninstall` - Uninstall plugin
+- [x] `theme list` - List available themes
+- [x] `theme extract` - Extract theme for customization
+- [x] `restore` - Restore project dependencies
+- [x] `source onedrive init` - Initialize OneDrive source
+- [x] `source onedrive download` - Download from OneDrive shared link
+
+#### Plugins (DONE)
+- [x] `Theme.Expose` - Default Expose theme (embedded)
+- [x] `Theme.Minimal` - Minimal theme (embedded)
+- [x] `Plugin.Source.OneDrive` - OneDrive shared folder source
 
 ### 🚧 In Progress
 
-#### Code Quality
-- [ ] Fix code style warnings (CA1848, IDE0055, etc.)
-- [ ] Add XML documentation comments
-- [ ] Run code formatter
+#### Phase 2: Generate Command
+1. [ ] **Site Generation**
+   - Content scanning
+   - Image processing pipeline
+   - Template rendering
+   - Output generation
 
 ### 📝 Next Steps
 
-#### Phase 2: Infrastructure Implementation
-1. [ ] **NetVips Image Processor**
-   - File: `src/Revela.Infrastructure/ImageProcessing/NetVipsImageProcessor.cs`
-   - Implement multi-format, multi-size image processing
-   - EXIF extraction with NetVips
-   - Caching strategy
+#### Phase 2: Generate Command
+1. [ ] **Content Scanner**
+   - Scan source directory for images
+   - Parse metadata from JSON files
+   - Build gallery tree
 
-2. [ ] **Scriban Template Engine**
-   - File: `src/Revela.Infrastructure/Templating/ScribanTemplateEngine.cs`
+2. [ ] **Image Processing Pipeline**
+   - NetVips multi-format output (WebP, AVIF, JPG)
+   - Responsive image variants
+   - EXIF extraction
+   - Smart caching
+
+3. [ ] **Template Rendering**
+   - Scriban template engine
    - Custom functions (url_for, asset, etc.)
    - Partial support
    - Layout inheritance
 
-3. [ ] **Markdig Markdown Parser**
-   - File: `src/Revela.Infrastructure/Templating/MarkdigMarkdownParser.cs`
-   - Frontmatter parsing
-   - Extension configuration
+4. [ ] **Output Generation**
+   - HTML pages
+   - Asset copying
+   - Sitemap generation
 
-#### Phase 3: Features
-1. [ ] **Generate Command**
-   - File: `src/Revela.Features/GenerateSite/GenerateCommand.cs`
-   - Site generation orchestration
-   - Progress reporting
-   - Error handling
-
-2. [ ] **Plugin Commands**
-   - `PluginInstallCommand.cs`
-   - `PluginUpdateCommand.cs` (with --all support)
-   - `PluginListCommand.cs`
-   - `PluginUninstallCommand.cs`
-
-#### Phase 4: CLI Entry Point
-1. [ ] **Program.cs**
-   - Host configuration
-   - Plugin loading
-   - Command registration
-   - Logging setup (ILogger)
-
-#### Phase 5: Plugins (Optional)
-1. [ ] **Deploy Plugin**
+#### Future Plugins
+1. [ ] **Deploy.SSH Plugin**
    - SSH/SFTP deployment
    - Rsync support
-
-2. [ ] **OneDrive Plugin**
-   - OneDrive sync
-   - Shared folder support
-
-#### Phase 6: Testing
-1. [ ] Unit tests for Core
-2. [ ] Integration tests
-3. [ ] End-to-end tests
-
-#### Phase 7: Documentation
-1. [ ] Getting Started guide
-2. [ ] Configuration reference
-3. [ ] Template guide
-4. [ ] Plugin development guide
 
 ---
 
@@ -112,11 +103,12 @@ This is a **complete rewrite** of the original Bash-based Revela:
 ### Technology Stack
 - **.NET 10** - Latest .NET version
 - **System.CommandLine 2.0.0** - Modern CLI framework (FINAL release)
-- **NetVips 3.0.0** - High-performance image processing
-- **Scriban 5.10.0** - Liquid-like template engine
-- **Markdig 0.37.0** - CommonMark Markdown parser
-- **Microsoft.Extensions.Logging 10.0.0** - Built-in logging
-- **MSTest 4.0.0** - Modern test framework with Microsoft.Testing.Platform
+- **NetVips 3.1.0** - High-performance image processing
+- **Scriban 6.5.1** - Liquid-like template engine
+- **Markdig 0.43.0** - CommonMark Markdown parser
+- **Spectre.Console 0.49.1** - Rich console output
+- **Microsoft.Extensions.Hosting 10.0.0** - Host builder
+- **MSTest 4.0.2** - Modern test framework with Microsoft.Testing.Platform
 - **NSubstitute 5.3.0** - Mocking framework
 
 ### Architecture Pattern
@@ -150,9 +142,15 @@ This is a **complete rewrite** of the original Bash-based Revela:
 ### Build Status
 - ✅ **Clean Build** - No errors or warnings
 - ✅ **LoggerMessage** - High-performance logging implemented
-- ✅ **MSTest v4** - Modern testing framework configured
+- ✅ **MSTest v4** - Modern testing framework with Microsoft.Testing.Platform
 - ✅ **All projects compile** successfully
 - ✅ **Dependencies** - Automated weekly checks via GitHub Actions
+
+### FluentAssertions Removed
+FluentAssertions was removed in favor of MSTest's built-in assertions:
+- **No external dependency** - MSTest v4 includes powerful assertions
+- **No license concerns** - FluentAssertions 8.x required paid license for commercial use
+- MSTest provides `Assert.AreEqual`, `Assert.IsTrue`, `Assert.ThrowsExactlyAsync`, etc.
 
 ---
 
@@ -161,20 +159,23 @@ This is a **complete rewrite** of the original Bash-based Revela:
 ```
 Revela/
 ├── src/
-│   ├── Revela.Core/              # ✅ Models, Abstractions, Plugin System
-│   ├── Revela.Infrastructure/    # 🚧 NetVips, Scriban, Markdig
-│   ├── Revela.Features/          # 🚧 Commands (Generate, Plugin Management)
-│   ├── Revela.Cli/               # 🚧 Entry Point
-│   └── Revela.Plugins/
-│       ├── Revela.Plugin.Deploy/      # 📝 SSH deployment
-│       └── Revela.Plugin.OneDrive/    # 📝 OneDrive sync
+│   ├── Core/                     # ✅ Models, Abstractions, Plugin System
+│   ├── Infrastructure/           # ✅ Caching, Image Processing, Scaffolding
+│   ├── Features/                 # ✅ Commands (Init, Plugin, Theme, Restore)
+│   ├── Cli/                      # ✅ Entry Point with Host.CreateApplicationBuilder
+│   └── Plugins/
+│       ├── Theme.Expose/         # ✅ Expose theme (embedded)
+│       ├── Theme.Minimal/        # ✅ Minimal theme (embedded)
+│       ├── Plugin.Deploy.SSH/    # 📝 SSH deployment
+│       └── Plugin.Source.OneDrive/ # ✅ OneDrive shared folder source
 ├── tests/
-│   ├── Revela.Core.Tests/        # 📝 Unit tests
-│   └── Revela.IntegrationTests/  # 📝 Integration tests
+│   ├── Core.Tests/               # ✅ Unit tests
+│   ├── IntegrationTests/         # ✅ Integration tests
+│   └── Plugin.Source.OneDrive.Tests/ # ✅ OneDrive plugin tests
 └── docs/
     ├── architecture.md           # ✅ Architecture decisions
     ├── setup.md                  # ✅ Setup instructions
-    └── ...
+    └── plugin-development.md     # ✅ Plugin development guide
 ```
 
 **Legend:**
@@ -208,11 +209,15 @@ cat DEVELOPMENT.md
 # Build
 dotnet build
 
-# Run tests
-dotnet test
+# Run tests (.NET 10 with Microsoft.Testing.Platform)
+dotnet run --project tests/Core.Tests
+dotnet run --project tests/IntegrationTests
+dotnet run --project tests/Plugin.Source.OneDrive.Tests
 
 # Run CLI locally
-dotnet run --project src/Revela.Cli -- --help
+dotnet run --project src/Cli -- --help
+dotnet run --project src/Cli -- theme list
+dotnet run --project src/Cli -- restore --check
 ```
 
 ---

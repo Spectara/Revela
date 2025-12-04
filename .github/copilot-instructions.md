@@ -70,7 +70,7 @@ This is a **complete rewrite** of the original Bash-based revela project:
 
 ### Code Quality
 - **XML docs:** Required for public APIs
-- **Tests:** MSTest v4 + FluentAssertions + NSubstitute
+- **Tests:** MSTest v4 + NSubstitute (built-in assertions)
 - **Warnings:** Treat as errors (TreatWarningsAsErrors=true)
 
 ---
@@ -759,8 +759,8 @@ public sealed class MyServiceTests
         // Act
         await service.DoSomethingAsync(10);
         
-        // Assert (using FluentAssertions)
-        result.Should().Be(expected);
+        // Assert (using MSTest built-in assertions)
+        Assert.AreEqual(expected, result);
     }
 }
 ```
@@ -777,6 +777,37 @@ using System.Runtime.CompilerServices;
 ```
 
 **Important:** Use the full assembly name (with `Spectara.Revela.` prefix)!
+
+### MSTest v4 Assertion Patterns
+
+**Use modern MSTest v4 assertions instead of classic patterns:**
+
+```csharp
+// ❌ DON'T - Classic patterns (trigger MSTEST0037 warning)
+Assert.AreEqual(0, list.Count);
+Assert.AreEqual(3, list.Count);
+Assert.IsTrue(list.Count > 0);
+Assert.IsTrue(text.Contains("foo"));
+Assert.IsFalse(text.Contains("bar"));
+
+// ✅ DO - MSTest v4 assertions (clearer intent, better error messages)
+Assert.IsEmpty(list);
+Assert.HasCount(3, list);
+Assert.IsNotEmpty(list);
+Assert.Contains("foo", text);
+Assert.DoesNotContain("bar", text);
+```
+
+**Available MSTest v4 Collection Assertions:**
+- `Assert.IsEmpty(collection)` - Collection has no elements
+- `Assert.IsNotEmpty(collection)` - Collection has at least one element
+- `Assert.HasCount(expected, collection)` - Collection has exact count
+- `Assert.Contains(expected, collection)` - Collection contains element
+- `Assert.DoesNotContain(expected, collection)` - Collection doesn't contain element
+
+**String Assertions:**
+- `Assert.Contains(substring, text)` - String contains substring
+- `Assert.DoesNotContain(substring, text)` - String doesn't contain substring
 
 ### HTTP Mocking Pattern
 
@@ -871,9 +902,10 @@ public static class ServiceCollectionExtensions
 ### Testing
 - `MSTest` (4.0.2) - Modern test framework with Microsoft.Testing.Platform
 - `MSTest.Analyzers` (4.0.2)
-- `FluentAssertions` (8.8.0)
 - `NSubstitute` (5.3.0) - Mocking framework (preferred over Moq due to security concerns)
 - `coverlet.collector` (6.0.4) - Code coverage
+
+**Note:** FluentAssertions was removed - use MSTest v4 built-in assertions instead!
 
 **Note:** All versions centrally managed in `Directory.Packages.props`
 
@@ -1008,7 +1040,7 @@ dotnet run --project tests/Core.Tests
 
 ---
 
-**Last Updated:** 2025-12-03 (Session: OneDrive Plugin Tests)
+**Last Updated:** 2025-12-04 (Session: Cleanup & FluentAssertions Removal)
 
 **Key Learnings from Latest Sessions:**
 - ✅ Plugin ConfigureServices pattern (3-phase lifecycle)
@@ -1021,7 +1053,8 @@ dotnet run --project tests/Core.Tests
 - ✅ InternalsVisibleTo for testing internal classes
 - ✅ CultureInfo.InvariantCulture for consistent formatting
 - ✅ MockHttpMessageHandler for HTTP testing
-- ✅ MSTest v4 with FluentAssertions + NSubstitute
+- ✅ MSTest v4 built-in assertions (HasCount, IsEmpty, Contains, etc.)
+- ✅ FluentAssertions removed - use MSTest v4 assertions only
 
 **For detailed architecture, see:** `docs/architecture.md`  
 **For development status, see:** `DEVELOPMENT.md`  

@@ -1,4 +1,3 @@
-using FluentAssertions;
 using Spectara.Revela.Plugin.Source.OneDrive.Models;
 using Spectara.Revela.Plugin.Source.OneDrive.Services;
 
@@ -41,11 +40,11 @@ public sealed class DownloadAnalyzerTests : IDisposable
         var result = analyzer.Analyze(remoteItems, tempDirectory, config);
 
         // Assert
-        result.Items.Should().HaveCount(1);
-        result.Items[0].Status.Should().Be(FileStatus.New);
-        result.Items[0].Reason.Should().Be("New file");
-        result.Statistics.NewFiles.Should().Be(1);
-        result.Statistics.TotalFilesToDownload.Should().Be(1);
+        Assert.HasCount(1, result.Items);
+        Assert.AreEqual(FileStatus.New, result.Items[0].Status);
+        Assert.AreEqual("New file", result.Items[0].Reason);
+        Assert.AreEqual(1, result.Statistics.NewFiles);
+        Assert.AreEqual(1, result.Statistics.TotalFilesToDownload);
     }
 
     [TestMethod]
@@ -64,10 +63,10 @@ public sealed class DownloadAnalyzerTests : IDisposable
         var result = analyzer.Analyze(remoteItems, tempDirectory, config);
 
         // Assert
-        result.Items.Should().HaveCount(3);
-        result.Items.Should().OnlyContain(i => i.Status == FileStatus.New);
-        result.Statistics.NewFiles.Should().Be(3);
-        result.Statistics.TotalDownloadSize.Should().Be(1024 + 2048 + 4096);
+        Assert.HasCount(3, result.Items);
+        Assert.IsTrue(result.Items.All(i => i.Status == FileStatus.New));
+        Assert.AreEqual(3, result.Statistics.NewFiles);
+        Assert.AreEqual(1024 + 2048 + 4096, result.Statistics.TotalDownloadSize);
     }
 
     #endregion
@@ -88,11 +87,11 @@ public sealed class DownloadAnalyzerTests : IDisposable
         var result = analyzer.Analyze([remoteItem], tempDirectory, config);
 
         // Assert
-        result.Items.Should().HaveCount(1);
-        result.Items[0].Status.Should().Be(FileStatus.Unchanged);
-        result.Items[0].Reason.Should().Be("Up to date");
-        result.Statistics.UnchangedFiles.Should().Be(1);
-        result.Statistics.TotalFilesToDownload.Should().Be(0);
+        Assert.HasCount(1, result.Items);
+        Assert.AreEqual(FileStatus.Unchanged, result.Items[0].Status);
+        Assert.AreEqual("Up to date", result.Items[0].Reason);
+        Assert.AreEqual(1, result.Statistics.UnchangedFiles);
+        Assert.AreEqual(0, result.Statistics.TotalFilesToDownload);
     }
 
     [TestMethod]
@@ -111,7 +110,7 @@ public sealed class DownloadAnalyzerTests : IDisposable
         var result = analyzer.Analyze([remoteItem], tempDirectory, config);
 
         // Assert
-        result.Items[0].Status.Should().Be(FileStatus.Unchanged);
+        Assert.AreEqual(FileStatus.Unchanged, result.Items[0].Status);
     }
 
     #endregion
@@ -132,11 +131,11 @@ public sealed class DownloadAnalyzerTests : IDisposable
         var result = analyzer.Analyze([remoteItem], tempDirectory, config);
 
         // Assert
-        result.Items[0].Status.Should().Be(FileStatus.Modified);
-        result.Items[0].Reason.Should().Contain("Size changed");
-        result.Items[0].Reason.Should().Contain("1 KB");
-        result.Items[0].Reason.Should().Contain("2 KB");
-        result.Statistics.ModifiedFiles.Should().Be(1);
+        Assert.AreEqual(FileStatus.Modified, result.Items[0].Status);
+        Assert.IsTrue(result.Items[0].Reason.Contains("Size changed", StringComparison.Ordinal));
+        Assert.IsTrue(result.Items[0].Reason.Contains("1 KB", StringComparison.Ordinal));
+        Assert.IsTrue(result.Items[0].Reason.Contains("2 KB", StringComparison.Ordinal));
+        Assert.AreEqual(1, result.Statistics.ModifiedFiles);
     }
 
     [TestMethod]
@@ -155,8 +154,8 @@ public sealed class DownloadAnalyzerTests : IDisposable
         var result = analyzer.Analyze([remoteItem], tempDirectory, config);
 
         // Assert
-        result.Items[0].Status.Should().Be(FileStatus.Modified);
-        result.Items[0].Reason.Should().Contain("Modified:");
+        Assert.AreEqual(FileStatus.Modified, result.Items[0].Status);
+        Assert.IsTrue(result.Items[0].Reason.Contains("Modified:", StringComparison.Ordinal));
     }
 
     #endregion
@@ -177,8 +176,8 @@ public sealed class DownloadAnalyzerTests : IDisposable
         var result = analyzer.Analyze([remoteItem], tempDirectory, config, forceRefresh: true);
 
         // Assert
-        result.Items[0].Status.Should().Be(FileStatus.Modified);
-        result.Items[0].Reason.Should().Be("Forced refresh");
+        Assert.AreEqual(FileStatus.Modified, result.Items[0].Status);
+        Assert.AreEqual("Forced refresh", result.Items[0].Reason);
     }
 
     [TestMethod]
@@ -192,7 +191,7 @@ public sealed class DownloadAnalyzerTests : IDisposable
         var result = analyzer.Analyze([remoteItem], tempDirectory, config, forceRefresh: true);
 
         // Assert
-        result.Items[0].Status.Should().Be(FileStatus.New); // Still new, not modified
+        Assert.AreEqual(FileStatus.New, result.Items[0].Status); // Still new, not modified
     }
 
     #endregion
@@ -214,9 +213,9 @@ public sealed class DownloadAnalyzerTests : IDisposable
         var result = analyzer.Analyze(remoteItems, tempDirectory, config, includeOrphans: true);
 
         // Assert
-        result.OrphanedFiles.Should().HaveCount(1);
-        result.OrphanedFiles[0].Name.Should().Be("orphan.jpg");
-        result.Statistics.OrphanedFiles.Should().Be(1);
+        Assert.HasCount(1, result.OrphanedFiles);
+        Assert.AreEqual("orphan.jpg", result.OrphanedFiles[0].Name);
+        Assert.AreEqual(1, result.Statistics.OrphanedFiles);
     }
 
     [TestMethod]
@@ -234,7 +233,7 @@ public sealed class DownloadAnalyzerTests : IDisposable
         var result = analyzer.Analyze(remoteItems, tempDirectory, config, includeOrphans: false);
 
         // Assert
-        result.OrphanedFiles.Should().BeEmpty();
+        Assert.IsEmpty(result.OrphanedFiles);
     }
 
     [TestMethod]
@@ -249,8 +248,8 @@ public sealed class DownloadAnalyzerTests : IDisposable
         var result = analyzer.Analyze([], tempDirectory, config, includeOrphans: true);
 
         // Assert
-        result.OrphanedFiles.Should().HaveCount(1);
-        result.OrphanedFiles[0].Name.Should().Be("image.jpg");
+        Assert.HasCount(1, result.OrphanedFiles);
+        Assert.AreEqual("image.jpg", result.OrphanedFiles[0].Name);
     }
 
     [TestMethod]
@@ -265,7 +264,7 @@ public sealed class DownloadAnalyzerTests : IDisposable
         var result = analyzer.Analyze([], tempDirectory, config, includeOrphans: true, includeAllOrphans: true);
 
         // Assert
-        result.OrphanedFiles.Should().HaveCount(2);
+        Assert.HasCount(2, result.OrphanedFiles);
     }
 
     #endregion
@@ -287,8 +286,8 @@ public sealed class DownloadAnalyzerTests : IDisposable
         var result = analyzer.Analyze(remoteItems, tempDirectory, config);
 
         // Assert
-        result.Items.Should().HaveCount(1);
-        result.Items[0].RemoteItem.Name.Should().Be("photo.jpg");
+        Assert.HasCount(1, result.Items);
+        Assert.AreEqual("photo.jpg", result.Items[0].RemoteItem.Name);
     }
 
     #endregion
@@ -321,8 +320,8 @@ public sealed class DownloadAnalyzerTests : IDisposable
         var result = analyzer.Analyze([remoteItem], tempDirectory, config);
 
         // Assert
-        result.Items[0].Status.Should().Be(FileStatus.Unchanged);
-        result.Items[0].RelativePath.Should().Be("Gallery/2024/photo.jpg");
+        Assert.AreEqual(FileStatus.Unchanged, result.Items[0].Status);
+        Assert.AreEqual("Gallery/2024/photo.jpg", result.Items[0].RelativePath);
     }
 
     #endregion
@@ -351,11 +350,11 @@ public sealed class DownloadAnalyzerTests : IDisposable
         var result = analyzer.Analyze(remoteItems, tempDirectory, config);
 
         // Assert
-        result.Statistics.NewFiles.Should().Be(1);
-        result.Statistics.ModifiedFiles.Should().Be(1);
-        result.Statistics.UnchangedFiles.Should().Be(1);
-        result.Statistics.TotalFilesToDownload.Should().Be(2); // new + modified
-        result.Statistics.TotalDownloadSize.Should().Be(3000); // 1000 + 2000
+        Assert.AreEqual(1, result.Statistics.NewFiles);
+        Assert.AreEqual(1, result.Statistics.ModifiedFiles);
+        Assert.AreEqual(1, result.Statistics.UnchangedFiles);
+        Assert.AreEqual(2, result.Statistics.TotalFilesToDownload); // new + modified
+        Assert.AreEqual(3000L, result.Statistics.TotalDownloadSize); // 1000 + 2000
     }
 
     #endregion

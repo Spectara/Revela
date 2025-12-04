@@ -70,9 +70,15 @@ public sealed partial class PluginLoader(
             return;
         }
 
-        // Search pattern: Spectara.Revela.Plugin.*.dll (official naming convention)
-        var pluginPattern = "Spectara.Revela.Plugin.*.dll";
-        var pluginDlls = Directory.GetFiles(directory, pluginPattern, SearchOption.TopDirectoryOnly);
+        // Search patterns:
+        // - Spectara.Revela.Plugin.*.dll (feature plugins)
+        // - Spectara.Revela.Theme.*.dll (theme plugins)
+        string[] pluginPatterns = ["Spectara.Revela.Plugin.*.dll", "Spectara.Revela.Theme.*.dll"];
+
+        var pluginDlls = pluginPatterns
+            .SelectMany(pattern => Directory.GetFiles(directory, pattern, SearchOption.TopDirectoryOnly))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
 
         if (options.EnableVerboseLogging)
         {

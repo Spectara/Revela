@@ -1,0 +1,19 @@
+{{~##
+  Minimal Image Template
+
+  Einfaches Bild mit Titel.
+  Erwartet: image (ImageData)
+##~}}
+<article class="image">
+  <a href="{{ basepath }}{{ resource_path }}{{ image.url }}/{{ image.width }}.jpg">
+    <img
+      src="{{ basepath }}{{ resource_path }}{{ image.url }}/640.jpg"
+      alt="{{ image.title ?? '' }}"
+      width="{{ image.width }}"
+      height="{{ image.height }}"
+      loading="lazy">
+  </a>
+  {{~ if image.title ~}}
+  <h3>{{ image.title }}</h3>
+  {{~ end ~}}
+</article>

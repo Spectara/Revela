@@ -1,0 +1,45 @@
+{{~##
+  Rekursives Navigation-Template - Expose Theme
+
+  Ersetzt die 4 separaten Templates:
+  - nav-column.html (type: "column")
+  - nav-branch.html (type: "branch" mit url)
+  - nav-branch-empty.html (type: "branch" ohne url)
+  - nav-leaf.html (type: "leaf")
+
+  Erwartet: nav_items (Array von NavigationItem)
+  NavigationItem: { type, text, url?, active?, children? }
+##~}}
+
+{{~ func render_item(item) ~}}
+  {{~ case item.type ~}}
+    {{~ when "column" ~}}
+<section class="nav-section">
+  <h3 class="nav-section-title">{{ item.text }}</h3>
+  <ul class="nav-list">
+  {{~ for child in item.children ~}}
+    <li class="nav-item">{{ render_item child }}</li>
+  {{~ end ~}}
+  </ul>
+</section>
+    {{~ when "branch" ~}}
+<div class="nav-branch">
+  {{~ if item.url ~}}
+  <a href="{{ basepath }}{{ item.url }}" class="nav-branch-title{{ item.active ? ' active' : '' }}">{{ item.text }}</a>
+  {{~ else ~}}
+  <span class="nav-branch-title">{{ item.text }}</span>
+  {{~ end ~}}
+  <div class="nav-branch-children">
+  {{~ for child in item.children ~}}
+  {{ render_item child }}
+  {{~ end ~}}
+  </div>
+</div>
+    {{~ when "leaf" ~}}
+<a href="{{ basepath }}{{ item.url }}" class="nav-link{{ item.active ? ' active' : '' }}">{{ item.text }}</a>
+  {{~ end ~}}
+{{~ end ~}}
+
+{{~ for item in nav_items ~}}
+{{ render_item item }}
+{{~ end ~}}

@@ -11,14 +11,15 @@
 > 
 > **Currently Working:**
 > - ✅ Project initialization (`revela init project`)
-> - ✅ Theme setup (`revela init theme`)
 > - ✅ Plugin management (`revela plugin list/install/uninstall`)
+> - ✅ Theme management (`revela theme list/extract`)
+> - ✅ Dependency restore (`revela restore`)
+> - ✅ OneDrive source plugin
 > 
 > **Coming Soon:**
 > - ⏳ Site generation (`revela generate`) - **Main feature in development**
 > - ⏳ Image processing (NetVips integration)
 > - ⏳ Template rendering (Scriban integration)
-> - ⏳ Official plugins (Deploy, OneDrive)
 > 
 > **Not Ready for Production Use!** Star ⭐ and watch this repo for updates.
 
@@ -114,6 +115,23 @@ revela generate
 
 Output in `./output/`
 
+## ⌨️ Shell Completion
+
+Enable tab-completion for commands:
+
+```bash
+# Install dotnet-suggest (once)
+dotnet tool install --global dotnet-suggest
+
+# Add to your shell profile
+# PowerShell: Add to $PROFILE
+# Bash/Zsh: Follow dotnet-suggest instructions
+
+dotnet suggest register
+```
+
+Then use `revela th<TAB>` → `revela theme`
+
 ## 🔌 Plugins
 
 ### Official Plugins (Verified by Spectara)
@@ -121,16 +139,16 @@ Output in `./output/`
 All plugins with the `Spectara.Revela.Plugin.*` prefix are officially maintained and verified by Spectara.
 
 ```bash
-# Official Deploy Plugin (SSH/SFTP)
-revela plugin install deploy
+# Official OneDrive Source Plugin
+revela plugin install Spectara.Revela.Plugin.Source.OneDrive
 
-# Official OneDrive Plugin
-revela plugin install onedrive
+# Official Deploy Plugin (SSH/SFTP) - Coming Soon
+revela plugin install Spectara.Revela.Plugin.Deploy.SSH
 ```
 
 **Package Names:**
-- `Spectara.Revela.Plugin.Deploy` ✅ **Verified**
-- `Spectara.Revela.Plugin.OneDrive` ✅ **Verified**
+- `Spectara.Revela.Plugin.Source.OneDrive` ✅ **Verified**
+- `Spectara.Revela.Plugin.Deploy.SSH` ✅ **Verified** (Coming Soon)
 
 ### Community Plugins
 

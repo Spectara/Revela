@@ -1,4 +1,3 @@
-using FluentAssertions;
 using Spectara.Revela.Plugin.Source.OneDrive.Models;
 
 namespace Spectara.Revela.Plugin.Source.OneDrive.Tests.Models;
@@ -21,7 +20,7 @@ public sealed class DownloadStatisticsTests
         };
 
         // Act & Assert
-        stats.TotalFilesToDownload.Should().Be(8); // 5 + 3
+        Assert.AreEqual(8, stats.TotalFilesToDownload); // 5 + 3
     }
 
     [TestMethod]
@@ -39,7 +38,7 @@ public sealed class DownloadStatisticsTests
         };
 
         // Act & Assert
-        stats.TotalFiles.Should().Be(18); // 5 + 3 + 10
+        Assert.AreEqual(18, stats.TotalFiles); // 5 + 3 + 10
     }
 
     [TestMethod]
@@ -57,7 +56,7 @@ public sealed class DownloadStatisticsTests
         };
 
         // Act & Assert
-        stats.TotalFilesToDownload.Should().Be(0);
+        Assert.AreEqual(0, stats.TotalFilesToDownload);
     }
 
     [TestMethod]
@@ -67,11 +66,11 @@ public sealed class DownloadStatisticsTests
         var stats = new DownloadStatistics();
 
         // Assert
-        stats.NewFiles.Should().Be(0);
-        stats.ModifiedFiles.Should().Be(0);
-        stats.UnchangedFiles.Should().Be(0);
-        stats.OrphanedFiles.Should().Be(0);
-        stats.TotalDownloadSize.Should().Be(0);
-        stats.TotalOrphanedSize.Should().Be(0);
+        Assert.AreEqual(0, stats.NewFiles);
+        Assert.AreEqual(0, stats.ModifiedFiles);
+        Assert.AreEqual(0, stats.UnchangedFiles);
+        Assert.AreEqual(0, stats.OrphanedFiles);
+        Assert.AreEqual(0L, stats.TotalDownloadSize);
+        Assert.AreEqual(0L, stats.TotalOrphanedSize);
     }
 }

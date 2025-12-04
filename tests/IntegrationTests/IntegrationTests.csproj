@@ -6,11 +6,11 @@
   <ImplicitUsings>enable</ImplicitUsings>
   <Nullable>enable</Nullable>
   <IsPackable>false</IsPackable>
-    
+
   <!-- MSTest Runner Configuration -->
   <EnableMSTestRunner>true</EnableMSTestRunner>
   <TestingPlatformDotnetTestSupport>true</TestingPlatformDotnetTestSupport>
-    
+
   <!-- Disable CA1515 - MSTest requires public test classes -->
   <NoWarn>$(NoWarn);CA1515</NoWarn>
 </PropertyGroup>
@@ -24,7 +24,6 @@
   <ItemGroup>
     <PackageReference Include="MSTest" />
     <PackageReference Include="MSTest.Analyzers" />
-    <PackageReference Include="FluentAssertions" />
     <PackageReference Include="coverlet.collector" />
   </ItemGroup>
 

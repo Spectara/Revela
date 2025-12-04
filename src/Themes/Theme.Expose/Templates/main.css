@@ -1,0 +1,465 @@
+/* ==========================================================================
+   Expose Theme - Revela Photography Portfolio
+   Migrated from original Expose project
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   CSS Reset & Base
+   -------------------------------------------------------------------------- */
+
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+}
+
+html {
+    font-size: 16px;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+    margin: 0;
+    padding: 0;
+    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    font-weight: 300;
+    line-height: 1.6;
+    color: #333;
+    background-color: #fff;
+}
+
+/* --------------------------------------------------------------------------
+   Typography
+   -------------------------------------------------------------------------- */
+
+h1, h2, h3, h4, h5, h6 {
+    margin: 0 0 1rem;
+    font-weight: 300;
+    line-height: 1.2;
+}
+
+h1 { font-size: 2.5rem; }
+h2 { font-size: 2rem; }
+h3 { font-size: 1.5rem; }
+
+a {
+    color: #333;
+    text-decoration: none;
+    transition: color 0.2s ease;
+}
+
+a:hover {
+    color: #0066cc;
+}
+
+p {
+    margin: 0 0 1rem;
+}
+
+/* --------------------------------------------------------------------------
+   Layout Structure
+   -------------------------------------------------------------------------- */
+
+.site-container {
+    display: flex;
+    min-height: 100vh;
+}
+
+/* --------------------------------------------------------------------------
+   Navigation Sidebar
+   -------------------------------------------------------------------------- */
+
+.navigation {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 280px;
+    height: 100vh;
+    padding: 2rem;
+    background-color: #fafafa;
+    border-right: 1px solid #eee;
+    overflow-y: auto;
+    z-index: 100;
+}
+
+.site-title {
+    margin-bottom: 2rem;
+    font-size: 1.5rem;
+    font-weight: 400;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+}
+
+.site-title a {
+    color: #333;
+}
+
+/* Navigation Sections (Columns) */
+.nav-section {
+    margin-bottom: 1.5rem;
+}
+
+.nav-section-title {
+    margin-bottom: 0.75rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: #999;
+}
+
+/* Navigation Lists */
+.nav-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.nav-item {
+    margin-bottom: 0.25rem;
+}
+
+.nav-link {
+    display: block;
+    padding: 0.25rem 0;
+    font-size: 0.9rem;
+    color: #666;
+    transition: color 0.2s ease, padding-left 0.2s ease;
+}
+
+.nav-link:hover {
+    color: #333;
+    padding-left: 0.5rem;
+}
+
+.nav-link.active {
+    color: #333;
+    font-weight: 400;
+}
+
+/* Navigation Branch (Expandable) */
+.nav-branch {
+    margin-bottom: 0.5rem;
+}
+
+.nav-branch-title {
+    display: block;
+    padding: 0.25rem 0;
+    font-size: 0.9rem;
+    color: #666;
+    cursor: default;
+}
+
+.nav-branch-title a {
+    color: #666;
+}
+
+.nav-branch-title a:hover {
+    color: #333;
+}
+
+.nav-branch-children {
+    padding-left: 1rem;
+    border-left: 1px solid #eee;
+    margin-left: 0.25rem;
+}
+
+/* --------------------------------------------------------------------------
+   Main Content Area
+   -------------------------------------------------------------------------- */
+
+.main-content {
+    flex: 1;
+    margin-left: 280px;
+    padding: 2rem;
+}
+
+/* --------------------------------------------------------------------------
+   Gallery Grid
+   -------------------------------------------------------------------------- */
+
+.gallery {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1.5rem;
+}
+
+/* --------------------------------------------------------------------------
+   Image Article (Gallery Item)
+   -------------------------------------------------------------------------- */
+
+.image-article {
+    position: relative;
+    overflow: hidden;
+    background-color: #f5f5f5;
+    border-radius: 4px;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.image-article:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+}
+
+/* Thumbnail Container */
+.thumbnail-container {
+    position: relative;
+    display: block;
+    aspect-ratio: 3 / 2;
+    overflow: hidden;
+}
+
+.thumbnail {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.3s ease;
+}
+
+.image-article:hover .thumbnail {
+    transform: scale(1.05);
+}
+
+/* EXIF Overlay on Thumbnail */
+.exif-overlay {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 0.75rem 1rem;
+    background: linear-gradient(to top, rgba(0, 0, 0, 0.7), transparent);
+    color: #fff;
+    font-size: 0.75rem;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+}
+
+.image-article:hover .exif-overlay {
+    opacity: 1;
+}
+
+.exif-line {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+}
+
+.exif-item {
+    white-space: nowrap;
+}
+
+/* Image Title */
+.image-title {
+    padding: 1rem;
+    margin: 0;
+    font-size: 0.9rem;
+    font-weight: 400;
+}
+
+/* Image Description (Post Content) */
+.image-description {
+    padding: 0 1rem 1rem;
+    font-size: 0.85rem;
+    color: #666;
+}
+
+.image-description p:last-child {
+    margin-bottom: 0;
+}
+
+/* --------------------------------------------------------------------------
+   Lightbox
+   -------------------------------------------------------------------------- */
+
+.lightbox {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.95);
+    z-index: 1000;
+    padding: 2rem;
+    overflow: auto;
+}
+
+.lightbox:target {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.lightbox-content {
+    max-width: 100%;
+    max-height: calc(100vh - 8rem);
+    text-align: center;
+}
+
+.lightbox-image {
+    max-width: 100%;
+    max-height: calc(100vh - 12rem);
+    object-fit: contain;
+}
+
+.lightbox-close {
+    position: absolute;
+    top: 1rem;
+    right: 1.5rem;
+    font-size: 2rem;
+    color: #fff;
+    opacity: 0.7;
+    transition: opacity 0.2s ease;
+}
+
+.lightbox-close:hover {
+    opacity: 1;
+}
+
+.lightbox-title {
+    margin-top: 1rem;
+    color: #fff;
+    font-size: 1rem;
+    font-weight: 300;
+}
+
+.lightbox-exif {
+    margin-top: 0.5rem;
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 0.8rem;
+}
+
+.lightbox-description {
+    margin-top: 1rem;
+    max-width: 600px;
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 0.9rem;
+    line-height: 1.6;
+}
+
+/* --------------------------------------------------------------------------
+   Footer
+   -------------------------------------------------------------------------- */
+
+.site-footer {
+    margin-top: 4rem;
+    padding: 2rem 0;
+    border-top: 1px solid #eee;
+    font-size: 0.8rem;
+    color: #999;
+    text-align: center;
+}
+
+/* --------------------------------------------------------------------------
+   Responsive Design
+   -------------------------------------------------------------------------- */
+
+@media (max-width: 1024px) {
+    .navigation {
+        width: 240px;
+        padding: 1.5rem;
+    }
+
+    .main-content {
+        margin-left: 240px;
+    }
+}
+
+@media (max-width: 768px) {
+    .site-container {
+        flex-direction: column;
+    }
+
+    .navigation {
+        position: relative;
+        width: 100%;
+        height: auto;
+        border-right: none;
+        border-bottom: 1px solid #eee;
+    }
+
+    .main-content {
+        margin-left: 0;
+    }
+
+    .gallery {
+        grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+        gap: 1rem;
+    }
+}
+
+@media (max-width: 480px) {
+    html {
+        font-size: 14px;
+    }
+
+    .navigation {
+        padding: 1rem;
+    }
+
+    .main-content {
+        padding: 1rem;
+    }
+
+    .gallery {
+        grid-template-columns: 1fr;
+    }
+
+    .exif-overlay {
+        opacity: 1;
+    }
+}
+
+/* --------------------------------------------------------------------------
+   Print Styles
+   -------------------------------------------------------------------------- */
+
+@media print {
+    .navigation {
+        display: none;
+    }
+
+    .main-content {
+        margin-left: 0;
+    }
+
+    .lightbox {
+        display: none !important;
+    }
+
+    .image-article {
+        break-inside: avoid;
+    }
+}
+
+/* --------------------------------------------------------------------------
+   Utility Classes
+   -------------------------------------------------------------------------- */
+
+.visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+.text-center {
+    text-align: center;
+}
+
+.mt-1 { margin-top: 0.5rem; }
+.mt-2 { margin-top: 1rem; }
+.mt-3 { margin-top: 1.5rem; }
+.mt-4 { margin-top: 2rem; }
+
+.mb-1 { margin-bottom: 0.5rem; }
+.mb-2 { margin-bottom: 1rem; }
+.mb-3 { margin-bottom: 1.5rem; }
+.mb-4 { margin-bottom: 2rem; }

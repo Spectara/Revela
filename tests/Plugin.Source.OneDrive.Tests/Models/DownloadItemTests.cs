@@ -1,4 +1,3 @@
-using FluentAssertions;
 using Spectara.Revela.Plugin.Source.OneDrive.Models;
 
 namespace Spectara.Revela.Plugin.Source.OneDrive.Tests.Models;
@@ -25,7 +24,7 @@ public sealed class DownloadItemTests
         };
 
         // Act & Assert
-        item.RelativePath.Should().Be("photo.jpg");
+        Assert.AreEqual("photo.jpg", item.RelativePath);
     }
 
     [TestMethod]
@@ -47,7 +46,7 @@ public sealed class DownloadItemTests
         };
 
         // Act & Assert
-        item.RelativePath.Should().Be("Gallery/2024/photo.jpg");
+        Assert.AreEqual("Gallery/2024/photo.jpg", item.RelativePath);
     }
 
     [TestMethod]
@@ -72,8 +71,8 @@ public sealed class DownloadItemTests
         var result = item.RelativePath;
 
         // Assert
-        result.Should().NotContain("\\");
-        result.Should().Contain("/");
+        Assert.DoesNotContain("\\", result);
+        Assert.Contains("/", result);
     }
 
     [TestMethod]
@@ -95,7 +94,7 @@ public sealed class DownloadItemTests
         };
 
         // Assert
-        item.LocalFile.Should().BeNull();
-        item.Status.Should().Be(FileStatus.New);
+        Assert.IsNull(item.LocalFile);
+        Assert.AreEqual(FileStatus.New, item.Status);
     }
 }

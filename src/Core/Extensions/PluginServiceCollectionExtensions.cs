@@ -93,6 +93,20 @@ public static class PluginServiceCollectionExtensions
                 logger.LogError(ex, "Plugin '{Name}' failed to configure services", plugin.Metadata.Name);
             }
         }
+
+        // Phase 3: Register all plugins for IEnumerable<IPlugin> injection
+        foreach (var plugin in plugins)
+        {
+            services.AddSingleton(plugin);
+            logger.LogDebug("Registered plugin: {Name}", plugin.Metadata.Name);
+        }
+
+        // Phase 4: Register theme plugins for IThemeResolver (as IThemePlugin)
+        foreach (var plugin in plugins.OfType<IThemePlugin>())
+        {
+            services.AddSingleton(plugin);
+            logger.LogDebug("Registered theme plugin: {Name}", plugin.Metadata.Name);
+        }
 #pragma warning restore CA1848
 
         // Return context for later Initialize() and RegisterCommands()

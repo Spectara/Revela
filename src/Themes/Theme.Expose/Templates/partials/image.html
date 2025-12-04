@@ -1,0 +1,60 @@
+{{~##
+  Image Article Template - Expose Theme
+
+  Rendert einen Galerie-Artikel mit:
+  - Thumbnail (responsive srcset)
+  - EXIF-Overlay (beim Hover)
+  - Lightbox (bei Focus/Click)
+
+  Erwartet: image (ImageData Objekt)
+  ImageData: { id, url, width, height, title?, post?, exif? }
+
+  Kontext: resource_path (Pfad zum Bildordner)
+##~}}
+
+<article tabindex="0" id="{{ image.id }}" style="--width:{{ image.width }}; --height:{{ image.height }};">
+  {{~ # Thumbnail mit responsive srcset ~}}
+  <picture>
+    <img
+      alt="{{ image.title ?? '' }}"
+      loading="lazy"
+      decoding="async"
+      src="./{{ resource_path }}{{ image.url }}/640.jpg"
+      srcset="./{{ resource_path }}{{ image.url }}/320.jpg 320w,
+              ./{{ resource_path }}{{ image.url }}/640.jpg 640w"
+      width="{{ image.width }}"
+      height="{{ image.height }}">
+  </picture>
+
+  {{~ # EXIF-Overlay beim Hover ~}}
+  <aside>
+    {{ include 'partials/exif' image.exif }}
+  </aside>
+
+  {{~ # Lightbox bei Focus/Click ~}}
+  <figure>
+    <a tabindex="-1" title="close">close</a>
+    <picture>
+      <img
+        loading="lazy"
+        decoding="async"
+        src="./{{ resource_path }}{{ image.url }}/{{ image.width }}.jpg"
+        srcset="./{{ resource_path }}{{ image.url }}/320.jpg 320w,
+                ./{{ resource_path }}{{ image.url }}/640.jpg 640w,
+                ./{{ resource_path }}{{ image.url }}/1024.jpg 1024w,
+                ./{{ resource_path }}{{ image.url }}/1280.jpg 1280w,
+                ./{{ resource_path }}{{ image.url }}/1920.jpg 1920w,
+                ./{{ resource_path }}{{ image.url }}/2560.jpg 2560w"
+        width="{{ image.width }}"
+        height="{{ image.height }}">
+    </picture>
+    <figcaption>
+      {{~ if image.post ~}}
+      <div class="post-content">
+        {{ image.post }}
+      </div>
+      {{~ end ~}}
+      {{ include 'partials/exif' image.exif }}
+    </figcaption>
+  </figure>
+</article>

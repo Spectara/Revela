@@ -1,0 +1,39 @@
+{{~##
+  Minimal Navigation Template
+
+  Einfache rekursive Navigation.
+  Erwartet: nav_items (Array von NavigationItem)
+##~}}
+{{~ func render_item(item) ~}}
+{{~ if item.type == "column" ~}}
+<div class="nav-group">
+  <strong>{{ item.text }}</strong>
+  <ul>
+  {{~ for child in item.children ~}}
+    <li>{{ render_item child }}</li>
+  {{~ end ~}}
+  </ul>
+</div>
+{{~ else if item.type == "branch" ~}}
+<div class="nav-branch">
+  {{~ if item.url ~}}
+  <a href="{{ basepath }}{{ item.url }}"{{ item.active ? ' class="active"' : '' }}>{{ item.text }}</a>
+  {{~ else ~}}
+  <span>{{ item.text }}</span>
+  {{~ end ~}}
+  {{~ if item.children && item.children.size > 0 ~}}
+  <ul>
+  {{~ for child in item.children ~}}
+    <li>{{ render_item child }}</li>
+  {{~ end ~}}
+  </ul>
+  {{~ end ~}}
+</div>
+{{~ else ~}}
+<a href="{{ basepath }}{{ item.url }}"{{ item.active ? ' class="active"' : '' }}>{{ item.text }}</a>
+{{~ end ~}}
+{{~ end ~}}
+
+{{~ for item in nav_items ~}}
+{{ render_item item }}
+{{~ end ~}}

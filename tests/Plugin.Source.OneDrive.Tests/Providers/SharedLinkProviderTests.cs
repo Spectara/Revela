@@ -1,6 +1,5 @@
 using System.Net;
 using System.Text.Json;
-using FluentAssertions;
 using NSubstitute;
 using Spectara.Revela.Plugin.Source.OneDrive.Models;
 using Spectara.Revela.Plugin.Source.OneDrive.Providers;
@@ -48,7 +47,7 @@ public sealed class SharedLinkProviderTests : IDisposable
         var result = await provider.ListItemsAsync(config);
 
         // Assert
-        result.Should().BeEmpty();
+        Assert.IsEmpty(result);
     }
 
     [TestMethod]
@@ -76,11 +75,11 @@ public sealed class SharedLinkProviderTests : IDisposable
         var result = await provider.ListItemsAsync(config);
 
         // Assert
-        result.Should().HaveCount(1);
-        result[0].Id.Should().Be("file1");
-        result[0].Name.Should().Be("photo.jpg");
-        result[0].Size.Should().Be(1024);
-        result[0].IsFolder.Should().BeFalse();
+        Assert.HasCount(1, result);
+        Assert.AreEqual("file1", result[0].Id);
+        Assert.AreEqual("photo.jpg", result[0].Name);
+        Assert.AreEqual(1024L, result[0].Size);
+        Assert.IsFalse(result[0].IsFolder);
     }
 
     [TestMethod]
@@ -115,9 +114,9 @@ public sealed class SharedLinkProviderTests : IDisposable
         var result = await provider.ListItemsAsync(config);
 
         // Assert
-        result.Should().HaveCount(2);
-        result.Should().Contain(i => i.Name == "Gallery" && i.IsFolder);
-        result.Should().Contain(i => i.Name == "nested.jpg" && i.ParentPath == "Gallery");
+        Assert.HasCount(2, result);
+        Assert.IsTrue(result.Any(i => i.Name == "Gallery" && i.IsFolder));
+        Assert.IsTrue(result.Any(i => i.Name == "nested.jpg" && i.ParentPath == "Gallery"));
     }
 
     [TestMethod]
@@ -144,7 +143,7 @@ public sealed class SharedLinkProviderTests : IDisposable
         var result = await provider.ListItemsAsync(config);
 
         // Assert
-        result[0].LastModified.Should().Be(expectedTime);
+        Assert.AreEqual(expectedTime, result[0].LastModified);
     }
 
     #endregion
@@ -172,8 +171,8 @@ public sealed class SharedLinkProviderTests : IDisposable
             var result = await provider.DownloadFileAsync(item, tempPath);
 
             // Assert
-            result.Should().Be(tempPath);
-            File.Exists(tempPath).Should().BeTrue();
+            Assert.AreEqual(tempPath, result);
+            Assert.IsTrue(File.Exists(tempPath));
         }
         finally
         {
@@ -207,7 +206,7 @@ public sealed class SharedLinkProviderTests : IDisposable
 
             // Assert
             var fileInfo = new FileInfo(tempPath);
-            fileInfo.LastWriteTimeUtc.Should().Be(expectedTime);
+            Assert.AreEqual(expectedTime, fileInfo.LastWriteTimeUtc);
         }
         finally
         {
@@ -240,8 +239,8 @@ public sealed class SharedLinkProviderTests : IDisposable
             await provider.DownloadFileAsync(item, tempPath);
 
             // Assert
-            File.Exists(tempPath).Should().BeTrue();
-            Directory.Exists(Path.Combine(tempBase, "nested", "folder")).Should().BeTrue();
+            Assert.IsTrue(File.Exists(tempPath));
+            Assert.IsTrue(Directory.Exists(Path.Combine(tempBase, "nested", "folder")));
         }
         finally
         {
@@ -265,12 +264,10 @@ public sealed class SharedLinkProviderTests : IDisposable
             LastModified = DateTime.UtcNow
         };
 
-        // Act
-        Func<Task> act = async () => await provider.DownloadFileAsync(item, "C:\\temp\\photo.jpg");
-
-        // Assert
-        await act.Should().ThrowAsync<ArgumentException>()
-            .WithMessage("*download URL*");
+        // Act & Assert
+        var ex = await Assert.ThrowsExactlyAsync<ArgumentException>(
+            async () => await provider.DownloadFileAsync(item, "C:\\temp\\photo.jpg"));
+        Assert.IsTrue(ex.Message.Contains("download URL", StringComparison.OrdinalIgnoreCase));
     }
 
     [TestMethod]
@@ -286,12 +283,10 @@ public sealed class SharedLinkProviderTests : IDisposable
             LastModified = DateTime.UtcNow
         };
 
-        // Act
-        Func<Task> act = async () => await provider.DownloadFileAsync(item, "C:\\temp\\photo.jpg");
-
-        // Assert
-        await act.Should().ThrowAsync<ArgumentException>()
-            .WithMessage("*download URL*");
+        // Act & Assert
+        var ex = await Assert.ThrowsExactlyAsync<ArgumentException>(
+            async () => await provider.DownloadFileAsync(item, "C:\\temp\\photo.jpg"));
+        Assert.IsTrue(ex.Message.Contains("download URL", StringComparison.OrdinalIgnoreCase));
     }
 
     #endregion
@@ -309,11 +304,9 @@ public sealed class SharedLinkProviderTests : IDisposable
             new HttpResponseMessage(HttpStatusCode.InternalServerError)
         );
 
-        // Act
-        Func<Task> act = async () => await provider.ListItemsAsync(config);
-
-        // Assert
-        await act.Should().ThrowAsync<HttpRequestException>();
+        // Act & Assert
+        await Assert.ThrowsExactlyAsync<HttpRequestException>(
+            async () => await provider.ListItemsAsync(config));
     }
 
     [TestMethod]
@@ -327,11 +320,9 @@ public sealed class SharedLinkProviderTests : IDisposable
             new HttpResponseMessage(HttpStatusCode.NotFound)
         );
 
-        // Act
-        Func<Task> act = async () => await provider.DownloadFileAsync(item, "C:\\temp\\photo.jpg");
-
-        // Assert
-        await act.Should().ThrowAsync<HttpRequestException>();
+        // Act & Assert
+        await Assert.ThrowsExactlyAsync<HttpRequestException>(
+            async () => await provider.DownloadFileAsync(item, "C:\\temp\\photo.jpg"));
     }
 
     #endregion

@@ -7,7 +7,20 @@ namespace Spectara.Revela.Features.Generate.Abstractions;
 /// </summary>
 public interface ITemplateEngine
 {
+    /// <summary>
+    /// Set the theme directory for loading partials via include directive
+    /// </summary>
+    /// <param name="directory">Absolute path to the theme directory</param>
+    void SetThemeDirectory(string directory);
+
+    /// <summary>
+    /// Render template content with data model
+    /// </summary>
     string Render(string templateContent, object model);
+
+    /// <summary>
+    /// Render template file with data model
+    /// </summary>
     Task<string> RenderFileAsync(string templatePath, object model, CancellationToken cancellationToken = default);
 }
 

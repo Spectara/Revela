@@ -1,4 +1,3 @@
-using FluentAssertions;
 using Spectara.Revela.Plugin.Source.OneDrive.Models;
 
 namespace Spectara.Revela.Plugin.Source.OneDrive.Tests.Models;
@@ -23,14 +22,14 @@ public sealed class OneDriveItemTests
         };
 
         // Assert
-        item.Id.Should().Be("abc123");
-        item.Name.Should().Be("photo.jpg");
-        item.IsFolder.Should().BeFalse();
-        item.Size.Should().Be(1024);
-        item.DownloadUrl.Should().Be("https://cdn.onedrive.com/file/photo.jpg");
-        item.LastModified.Should().Be(new DateTime(2024, 1, 15, 10, 30, 0, DateTimeKind.Utc));
-        item.MimeType.Should().Be("image/jpeg");
-        item.ParentPath.Should().Be("Gallery/2024");
+        Assert.AreEqual("abc123", item.Id);
+        Assert.AreEqual("photo.jpg", item.Name);
+        Assert.IsFalse(item.IsFolder);
+        Assert.AreEqual(1024L, item.Size);
+        Assert.AreEqual("https://cdn.onedrive.com/file/photo.jpg", item.DownloadUrl);
+        Assert.AreEqual(new DateTime(2024, 1, 15, 10, 30, 0, DateTimeKind.Utc), item.LastModified);
+        Assert.AreEqual("image/jpeg", item.MimeType);
+        Assert.AreEqual("Gallery/2024", item.ParentPath);
     }
 
     [TestMethod]
@@ -48,9 +47,9 @@ public sealed class OneDriveItemTests
         };
 
         // Assert
-        item.IsFolder.Should().BeTrue();
-        item.Size.Should().Be(0);
-        item.DownloadUrl.Should().BeNull();
+        Assert.IsTrue(item.IsFolder);
+        Assert.AreEqual(0L, item.Size);
+        Assert.IsNull(item.DownloadUrl);
     }
 
     [TestMethod]
@@ -66,7 +65,7 @@ public sealed class OneDriveItemTests
         };
 
         // Assert
-        item.ParentPath.Should().BeEmpty();
+        Assert.AreEqual(string.Empty, item.ParentPath);
     }
 
     [TestMethod]
@@ -83,7 +82,7 @@ public sealed class OneDriveItemTests
         };
 
         // Assert
-        item.MimeType.Should().BeNull();
+        Assert.IsNull(item.MimeType);
     }
 
     [TestMethod]
@@ -102,6 +101,6 @@ public sealed class OneDriveItemTests
         };
 
         // Assert
-        item.LastModified.Kind.Should().Be(DateTimeKind.Utc);
+        Assert.AreEqual(DateTimeKind.Utc, item.LastModified.Kind);
     }
 }

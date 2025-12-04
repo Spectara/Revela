@@ -5,6 +5,8 @@ using Microsoft.Extensions.Hosting;
 using Spectara.Revela.Features.Generate;
 using Spectara.Revela.Features.Init;
 using Spectara.Revela.Features.Plugins;
+using Spectara.Revela.Features.Restore;
+using Spectara.Revela.Features.Theme;
 
 // ✅ Use Host.CreateApplicationBuilder for full .NET hosting features
 // - Configuration: appsettings.json, environment variables, user secrets
@@ -25,6 +27,8 @@ builder.Logging.AddConfiguration(builder.Configuration.GetSection("Logging"));
 builder.Services.AddGenerateFeature();
 builder.Services.AddInitFeature();
 builder.Services.AddPluginsFeature();
+builder.Services.AddRestoreFeature();
+builder.Services.AddThemeFeature();
 
 // ✅ Load and register plugins
 // Plugins will:
@@ -50,6 +54,13 @@ rootCommand.Subcommands.Add(pluginCommand.Create());
 
 var generateCommand = host.Services.GetRequiredService<GenerateCommand>();
 rootCommand.Subcommands.Add(generateCommand.Create());
+
+// ✅ Add restore command
+var restoreCommand = host.Services.GetRequiredService<RestoreCommand>();
+rootCommand.Subcommands.Add(restoreCommand.Create());
+
+// ✅ Add theme command
+rootCommand.Subcommands.Add(ThemeCommand.Create(host.Services));
 
 // ✅ Register plugin commands (with smart parent handling)
 plugins.RegisterCommands(rootCommand);
