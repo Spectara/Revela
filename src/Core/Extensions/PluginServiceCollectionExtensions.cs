@@ -17,7 +17,7 @@ public static class PluginServiceCollectionExtensions
     /// <remarks>
     /// This method:
     /// 1. Loads plugin assemblies from configured directories (app directory + user plugins + custom paths)
-    /// 2. Calls ConfigureConfiguration() on each plugin (registers config sources like onedrive.json)
+    /// 2. Calls ConfigureConfiguration() on each plugin (optional, framework auto-loads plugins/*.json)
     /// 3. Calls ConfigureServices() on each plugin (registers services with DI)
     /// 4. Returns IPluginContext for later Initialize() and RegisterCommands()
     ///

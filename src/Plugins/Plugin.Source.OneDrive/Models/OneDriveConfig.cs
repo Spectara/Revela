@@ -6,15 +6,15 @@ namespace Spectara.Revela.Plugin.Source.OneDrive.Models;
 /// Configuration for OneDrive shared folder source
 /// </summary>
 /// <remarks>
-/// Stored in onedrive.json in project directory.
-/// 
+/// Stored in plugins/Spectara.Revela.Plugin.Source.OneDrive.json in project directory.
+///
 /// Minimal example (uses defaults):
 /// <code>
 /// {
 ///   "shareUrl": "https://1drv.ms/f/s!xxxxx"
 /// }
 /// </code>
-/// 
+///
 /// Advanced example (custom patterns):
 /// <code>
 /// {
@@ -23,7 +23,7 @@ namespace Spectara.Revela.Plugin.Source.OneDrive.Models;
 ///   "excludePatterns": ["thumbnail_*"]
 /// }
 /// </code>
-/// 
+///
 /// Default behavior (when patterns not specified):
 /// - Downloads all images (detected via MIME type: image/*)
 /// - Downloads all markdown files (*.md)

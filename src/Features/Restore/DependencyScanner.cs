@@ -240,9 +240,6 @@ public sealed partial class DependencyScanner(ILogger<DependencyScanner> logger)
     [LoggerMessage(Level = LogLevel.Warning, Message = "JSON file {FilePath} has no plugin package ID as root key (expected 'Spectara.Revela.Plugin.*')")]
     private partial void LogNoPluginKeyFound(string filePath);
 
-    [LoggerMessage(Level = LogLevel.Warning, Message = "Invalid plugin key '{PluginKey}' in {FilePath} - must start with 'Spectara.Revela.Plugin.'")]
-    private partial void LogInvalidPluginKey(string pluginKey, string filePath);
-
     [LoggerMessage(Level = LogLevel.Warning, Message = "Failed to parse JSON in {FilePath}: {Error}")]
     private partial void LogJsonParseError(string filePath, string error);
 

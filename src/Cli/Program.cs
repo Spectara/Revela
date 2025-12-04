@@ -32,7 +32,7 @@ builder.Services.AddThemeFeature();
 
 // ✅ Load and register plugins
 // Plugins will:
-// 1. Register their config sources (e.g., onedrive.json)
+// 1. Framework auto-loads plugins/*.json and SPECTARA__REVELA__* env vars
 // 2. Register their services (e.g., HttpClient, Commands, IOptions)
 var plugins = builder.Services.AddPlugins(builder.Configuration);
 

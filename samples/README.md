@@ -34,7 +34,7 @@ Sample project for testing the OneDrive Source Plugin. Downloads images from a s
 **Structure:**
 ```
 onedrive/
-├── onedrive.json       # OneDrive plugin configuration (ShareUrl)
+├── Spectara.Revela.Plugin.Source.OneDrive.json  # OneDrive plugin configuration
 ├── project.json        # Project configuration
 ├── site.json           # Site metadata
 ├── source/             # Downloaded images (gitignored)

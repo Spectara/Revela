@@ -51,7 +51,7 @@ After running both commands:
 ```
 onedrive/
 ├── plugins/
-│   └── onedrive.json   # OneDrive configuration
+│   └── Spectara.Revela.Plugin.Source.OneDrive.json
 ├── project.json        # Project settings
 ├── site.json           # Site metadata
 ├── source/             # Downloaded images (gitignored)
