@@ -5,7 +5,24 @@ namespace Spectara.Revela.Features.Generate.Models;
 /// </summary>
 public sealed class Gallery
 {
+    /// <summary>
+    /// Original filesystem path relative to source directory
+    /// </summary>
+    /// <remarks>
+    /// Used for finding images and matching source files.
+    /// Example: "01 Events/Fireworks"
+    /// </remarks>
     public required string Path { get; init; }
+
+    /// <summary>
+    /// URL-safe path for output directory and links
+    /// </summary>
+    /// <remarks>
+    /// Normalized version of Path with slugified segments.
+    /// Example: "events/fireworks/"
+    /// </remarks>
+    public required string Slug { get; init; }
+
     public required string Name { get; init; }
     public string? Title { get; init; }
     public string? Description { get; init; }

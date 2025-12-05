@@ -20,7 +20,9 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<ExifCache>();
         services.AddSingleton<IImageProcessor, NetVipsImageProcessor>();
         services.AddSingleton<ITemplateEngine, ScribanTemplateEngine>();
+        services.AddSingleton<FrontMatterParser>();
         services.AddSingleton<ContentScanner>();
+        services.AddSingleton<NavigationBuilder>();
         services.AddSingleton<SiteGenerator>();
 
         // Commands

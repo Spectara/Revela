@@ -11,12 +11,11 @@
   - basepath: Relativer Pfad zur Root
   - resource_path: Pfad zu Bild-Ressourcen
 ##~}}
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>{{ site.title }} - {{ gallery.title }}</title>
+  <title>{{~ if gallery.title ~}}{{ site.title }} - {{ gallery.title }}{{~ else ~}}{{ site.title }}{{~ end ~}}</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="{{ site.description }}">
   <meta name="author" content="{{ site.author }}">
@@ -29,7 +28,7 @@
 
   {{~ # Main Navigation (Fullscreen Overlay) ~}}
   <nav id="nav">
-    {{ include 'partials/navigation' nav_items }}
+    {{~ include 'partials/navigation' nav_items ~}}
   </nav>
 
   {{~ # Sticky Header ~}}
@@ -62,7 +61,7 @@
     <section class="gallery">
       <h2>{{ gallery.title }}</h2>
       {{~ for image in images ~}}
-      {{ include 'partials/image' image }}
+      {{~ include 'partials/image' image ~}}
       {{~ end ~}}
     </section>
     {{~ end ~}}
@@ -71,7 +70,7 @@
   {{~ # Footer with Navigation Copy ~}}
   <footer>
     <nav>
-      {{ include 'partials/navigation' nav_items }}
+      {{~ include 'partials/navigation' nav_items ~}}
     </nav>
     <div>
       {{ site.copyright }}

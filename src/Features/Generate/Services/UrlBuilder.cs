@@ -170,4 +170,23 @@ public static partial class UrlBuilder
 
         return sb.ToString().Normalize(NormalizationForm.FormC);
     }
+
+    /// <summary>
+    /// Converts a folder name to a display title
+    /// </summary>
+    /// <param name="name">Original folder name (e.g., "01 Events")</param>
+    /// <returns>Human-readable title (e.g., "Events")</returns>
+    /// <example>
+    /// <code>
+    /// ToTitle("01 Events")           // → "Events"
+    /// ToTitle("2024 Summer Trip")    // → "2024 Summer Trip"
+    /// ToTitle("About")               // → "About"
+    /// </code>
+    /// </example>
+    public static string ToTitle(string name)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(name);
+
+        return GallerySorter.ExtractDisplayName(name);
+    }
 }

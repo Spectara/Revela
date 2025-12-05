@@ -9,7 +9,6 @@
   Erwartet: nav_items (Array von NavigationItem)
   NavigationItem: { text, url?, active?, children }
 ##~}}
-
 {{~ func render_item(item) ~}}
   {{~ if !item.url && item.children.size > 0 ~}}
     {{~ # Column: Section ohne Link ~}}
@@ -17,7 +16,7 @@
   <h3 class="nav-section-title">{{ item.text }}</h3>
   <ul class="nav-list">
   {{~ for child in item.children ~}}
-    <li class="nav-item">{{ render_item child }}</li>
+    <li class="nav-item">{{~ render_item child ~}}</li>
   {{~ end ~}}
   </ul>
 </section>
@@ -31,7 +30,7 @@
   {{~ end ~}}
   <div class="nav-branch-children">
   {{~ for child in item.children ~}}
-  {{ render_item child }}
+  {{~ render_item child ~}}
   {{~ end ~}}
   </div>
 </div>
@@ -40,7 +39,6 @@
 <a href="{{ basepath }}{{ item.url }}" class="nav-link{{ item.active ? ' active' : '' }}">{{ item.text }}</a>
   {{~ end ~}}
 {{~ end ~}}
-
 {{~ for item in nav_items ~}}
-{{ render_item item }}
+{{~ render_item item ~}}
 {{~ end ~}}

@@ -68,26 +68,28 @@ public sealed partial class NetVipsImageProcessor(
         // Try to get EXIF from cache first (massive performance boost)
         var exif = await TryGetCachedExifAsync(inputPath, options, cancellationToken);
 
-        // CRITICAL: Get dimensions and EXIF with a SINGLE image load
-        // Do NOT load the image multiple times - JPEG decoder is single-threaded
+        // Load image once to get dimensions and EXIF
         int width, height;
-        using (var image = Image.NewFromFile(inputPath, access: Enums.Access.Random))
+        using (var original = Image.NewFromFile(inputPath, access: Enums.Access.Sequential))
         {
             // Extract EXIF if not cached
             if (exif is null)
             {
-                exif = ExtractExifData(image);
+                exif = ExtractExifData(original);
 
                 // Cache for next time
                 await TryCacheExifAsync(inputPath, exif, options, cancellationToken);
             }
 
             // Get original dimensions
-            width = image.Width;
-            height = image.Height;
-        } // Dispose the image immediately after we have what we need
+            width = original.Width;
+            height = original.Height;
+        }
 
         // Generate variants (different sizes and formats)
+        // CRITICAL: Use Image.Thumbnail() for EACH variant independently
+        // This is the safest approach to avoid "out of order read" errors
+        // Thumbnail() is optimized for this use case and handles EXIF rotation
         List<ImageVariant> variants = [];
 
         foreach (var size in options.Sizes)
@@ -98,24 +100,21 @@ public sealed partial class NetVipsImageProcessor(
                 continue;
             }
 
-            // CRITICAL: Use Image.Thumbnail() which is optimized for this exact use case
-            // Thumbnail() loads the image optimally and can shrink-on-load (much faster!)
-            // It automatically handles EXIF rotation and color profiles
-            //
-            // Determine which dimension to constrain based on orientation
-            using var thumb = width > height
-                ? Image.Thumbnail(inputPath, size, height: 10000000)  // Landscape: constrain width
-                : Image.Thumbnail(inputPath, 10000000, height: size); // Portrait: constrain height
-
             // Generate each format for this size
             foreach (var format in options.Formats)
             {
+                // Load a fresh thumbnail for each output
+                // This is safe and avoids shared state issues
+                using var thumb = width > height
+                    ? Image.Thumbnail(inputPath, size, height: 10000000)  // Landscape
+                    : Image.Thumbnail(inputPath, 10000000, height: size); // Portrait
+
                 var variant = await SaveVariantAsync(
                     thumb,
                     inputPath,
                     options.OutputDirectory,
                     format,
-                    thumb.Width,   // Use actual thumbnail dimensions
+                    thumb.Width,
                     thumb.Height,
                     options.Quality);
 
@@ -126,7 +125,7 @@ public sealed partial class NetVipsImageProcessor(
         return new Models.Image
         {
             SourcePath = inputPath,
-            FileName = Path.GetFileName(inputPath),
+            FileName = Path.GetFileNameWithoutExtension(inputPath),
             Width = width,
             Height = height,
             FileSize = new FileInfo(inputPath).Length,
@@ -325,6 +324,11 @@ public sealed partial class NetVipsImageProcessor(
     /// <summary>
     /// Save image variant to disk
     /// </summary>
+    /// <remarks>
+    /// Output structure matches Expose theme expectations:
+    /// images/{fileName}/{width}.{format}
+    /// e.g., images/photo1/640.jpg
+    /// </remarks>
     private Task<ImageVariant> SaveVariantAsync(
         Image image,
         string originalPath,
@@ -334,13 +338,14 @@ public sealed partial class NetVipsImageProcessor(
         int height,
         int quality)
     {
-        // Build output path
+        // Build output path: images/{fileName}/{width}.{format}
         var fileName = Path.GetFileNameWithoutExtension(originalPath);
-        var outputFileName = $"{fileName}-{width}w.{format}";
-        var outputPath = Path.Combine(outputDirectory, outputFileName);
+        var imageDirectory = Path.Combine(outputDirectory, fileName);
+        var outputFileName = $"{width}.{format}";
+        var outputPath = Path.Combine(imageDirectory, outputFileName);
 
-        // Ensure output directory exists
-        Directory.CreateDirectory(outputDirectory);
+        // Ensure image-specific output directory exists
+        Directory.CreateDirectory(imageDirectory);
 
         // Save with format-specific options
         // IMPORTANT: Do NOT use Task.Run here!

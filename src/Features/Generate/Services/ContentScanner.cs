@@ -1,3 +1,5 @@
+using Spectara.Revela.Features.Generate.Models;
+
 namespace Spectara.Revela.Features.Generate.Services;
 
 /// <summary>
@@ -11,7 +13,9 @@ namespace Spectara.Revela.Features.Generate.Services;
 ///
 /// Creates a content tree representing the site structure.
 /// </remarks>
-public sealed partial class ContentScanner(ILogger<ContentScanner> logger)
+public sealed partial class ContentScanner(
+    ILogger<ContentScanner> logger,
+    FrontMatterParser frontMatterParser)
 {
     private static readonly string[] ImageExtensions = [".jpg", ".jpeg", ".png", ".webp", ".gif"];
 
@@ -37,7 +41,7 @@ public sealed partial class ContentScanner(ILogger<ContentScanner> logger)
         };
     }
 
-    private static async Task ScanDirectoryAsync(
+    private async Task ScanDirectoryAsync(
         string baseDirectory,
         string relativePath,
         List<SourceImage> images,
@@ -58,19 +62,34 @@ public sealed partial class ContentScanner(ILogger<ContentScanner> logger)
             .Where(f => ImageExtensions.Contains(Path.GetExtension(f), StringComparer.OrdinalIgnoreCase))
             .ToList();
 
-        if (imageFiles.Count > 0)
+        // Check for _index.md (gallery metadata or standalone page)
+        var hasIndexFile = File.Exists(Path.Combine(currentDirectory, FrontMatterParser.IndexFileName));
+
+        // Create gallery if directory has images OR has _index.md (text-only pages)
+        if (imageFiles.Count > 0 || (hasIndexFile && !string.IsNullOrEmpty(relativePath)))
         {
-            // This directory contains images - it's a gallery
-            var galleryMetadata = await LoadGalleryMetadataAsync(currentDirectory, cancellationToken);
+            // This directory contains images or is a text-only page
+            var directoryMetadata = await LoadGalleryMetadataAsync(currentDirectory, cancellationToken);
+
+            // Build URL-safe slug from path segments
+            var pathSegments = string.IsNullOrEmpty(relativePath)
+                ? []
+                : relativePath.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+            var slug = UrlBuilder.BuildPath([.. pathSegments]);
+
+            // Use directory name as fallback title (without number prefix)
+            var directoryName = string.IsNullOrEmpty(relativePath)
+                ? "Home"
+                : Path.GetFileName(relativePath);
+            var fallbackTitle = UrlBuilder.ToTitle(directoryName);
 
             var gallery = new Gallery
             {
-                Name = string.IsNullOrEmpty(relativePath)
-                    ? "Root"
-                    : Path.GetFileName(relativePath),
+                Name = directoryName,
                 Path = relativePath,
-                Title = galleryMetadata?.Title,
-                Description = galleryMetadata?.Description,
+                Slug = slug,
+                Title = directoryMetadata.Title ?? fallbackTitle,
+                Description = directoryMetadata.Description,
                 Images = []
             };
 
@@ -109,38 +128,17 @@ public sealed partial class ContentScanner(ILogger<ContentScanner> logger)
         }
     }
 
-    private static async Task<GalleryMetadata?> LoadGalleryMetadataAsync(
+    private async Task<DirectoryMetadata> LoadGalleryMetadataAsync(
         string directoryPath,
         CancellationToken cancellationToken)
     {
-        var indexPath = Path.Combine(directoryPath, "_index.md");
+        var indexPath = Path.Combine(directoryPath, FrontMatterParser.IndexFileName);
         if (!File.Exists(indexPath))
         {
-            return null;
+            return DirectoryMetadata.Empty;
         }
 
-        try
-        {
-            var content = await File.ReadAllTextAsync(indexPath, cancellationToken);
-
-            // TODO: Parse frontmatter (YAML between --- delimiters)
-            // For now, just extract title from first # heading
-            var lines = content.Split('\n');
-            var title = lines.FirstOrDefault(l => l.TrimStart().StartsWith("# ", StringComparison.Ordinal))
-                ?.TrimStart('#', ' ')
-                .Trim();
-
-            return new GalleryMetadata
-            {
-                Title = title,
-                Description = null
-            };
-        }
-        catch
-        {
-            // Log but don't fail - gallery metadata is optional
-            return null;
-        }
+        return await frontMatterParser.ParseFileAsync(indexPath, cancellationToken);
     }
 
     // High-performance logging with LoggerMessage source generator
@@ -171,25 +169,4 @@ public sealed class SourceImage
     public required long FileSize { get; init; }
     public required DateTime LastModified { get; init; }
     public required string Gallery { get; init; }
-}
-
-/// <summary>
-/// Gallery (directory containing images)
-/// </summary>
-public sealed class Gallery
-{
-    public required string Name { get; init; }
-    public required string Path { get; init; }
-    public string? Title { get; init; }
-    public string? Description { get; init; }
-    public required IReadOnlyList<SourceImage> Images { get; init; }
-}
-
-/// <summary>
-/// Gallery metadata from _index.md
-/// </summary>
-public sealed class GalleryMetadata
-{
-    public string? Title { get; init; }
-    public string? Description { get; init; }
 }

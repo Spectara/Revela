@@ -11,7 +11,6 @@
 
   Kontext: resource_path (Pfad zum Bildordner)
 ##~}}
-
 <article tabindex="0" id="{{ image.id }}" style="--width:{{ image.width }}; --height:{{ image.height }};">
   {{~ # Thumbnail mit responsive srcset ~}}
   <picture>
@@ -28,7 +27,7 @@
 
   {{~ # EXIF-Overlay beim Hover ~}}
   <aside>
-    {{ include 'partials/exif' image.exif }}
+    {{~ include 'partials/exif' image.exif ~}}
   </aside>
 
   {{~ # Lightbox bei Focus/Click ~}}
@@ -54,7 +53,7 @@
         {{ image.post }}
       </div>
       {{~ end ~}}
-      {{ include 'partials/exif' image.exif }}
+      {{~ include 'partials/exif' image.exif ~}}
     </figcaption>
   </figure>
 </article>

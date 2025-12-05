@@ -2,6 +2,7 @@ using System.Globalization;
 using Scriban;
 using Scriban.Parsing;
 using Scriban.Runtime;
+using Spectara.Revela.Core.Abstractions;
 using Spectara.Revela.Features.Generate.Abstractions;
 
 namespace Spectara.Revela.Features.Generate.Services;
@@ -29,16 +30,38 @@ namespace Spectara.Revela.Features.Generate.Services;
 public sealed partial class ScribanTemplateEngine(ILogger<ScribanTemplateEngine> logger) : ITemplateEngine
 {
     private readonly Dictionary<string, Template> compiledTemplates = [];
-    private string? themeDirectory;
+    private IThemePlugin? currentTheme;
 
     /// <summary>
-    /// Set the theme directory for loading partials
+    /// Converts PascalCase member names to lowercase for Scriban templates
     /// </summary>
-    /// <param name="directory">Absolute path to the theme directory</param>
-    public void SetThemeDirectory(string directory)
+    /// <remarks>
+    /// Scriban templates use lowercase property names ({{ site.title }})
+    /// but C# properties are PascalCase (Site.Title). This renamer bridges the gap.
+    ///
+    /// CA1308 is suppressed because this is intentional case conversion for template
+    /// compatibility, not string normalization for comparison. Scriban requires lowercase.
+    /// </remarks>
+    [System.Diagnostics.CodeAnalysis.SuppressMessage(
+        "Globalization",
+        "CA1308:Normalize strings to uppercase",
+        Justification = "Scriban templates require lowercase property names - this is format conversion, not normalization")]
+    private static string ConvertToLowercase(System.Reflection.MemberInfo member)
     {
-        themeDirectory = directory;
-        LogThemeDirectorySet(logger, directory);
+        return member.Name.ToLowerInvariant();
+    }
+
+    /// <summary>
+    /// Set the theme for loading partials
+    /// </summary>
+    /// <param name="theme">Theme plugin to load partials from</param>
+    public void SetTheme(IThemePlugin? theme)
+    {
+        currentTheme = theme;
+        if (theme is not null)
+        {
+            LogThemeSet(logger, theme.Metadata.Name);
+        }
     }
 
     /// <summary>
@@ -58,7 +81,7 @@ public sealed partial class ScribanTemplateEngine(ILogger<ScribanTemplateEngine>
             }
 
             // Create script context with custom functions and template loader
-            var context = CreateScriptContext(model, themeDirectory);
+            var context = CreateScriptContext(model);
 
             // Render template
             var result = template.Render(context);
@@ -113,27 +136,34 @@ public sealed partial class ScribanTemplateEngine(ILogger<ScribanTemplateEngine>
         }
 
         // Create context and render
-        var context = CreateScriptContext(model, themeDirectory);
+        var context = CreateScriptContext(model);
         return template.Render(context);
     }
 
     /// <summary>
     /// Create Scriban context with custom functions and template loader
     /// </summary>
-    private TemplateContext CreateScriptContext(object model, string? themePath)
+    private TemplateContext CreateScriptContext(object model)
     {
-        var context = new TemplateContext();
-
-        // Set up template loader for partials if theme directory is set
-        if (!string.IsNullOrEmpty(themePath))
+        var context = new TemplateContext
         {
-            context.TemplateLoader = new ThemeTemplateLoader(themePath, compiledTemplates, logger);
+            // Use Scriban's built-in member renamer for lowercase property names
+            // This is required because templates use lowercase ({{ site.title }})
+            // but C# properties are PascalCase (Site.Title)
+            MemberRenamer = ConvertToLowercase
+        };
+
+        // Set up template loader for partials if theme is set
+        if (currentTheme is not null)
+        {
+            context.TemplateLoader = new ThemePluginTemplateLoader(currentTheme, compiledTemplates, logger);
         }
 
         var scriptObject = new ScriptObject();
 
         // Import model as global variables
-        scriptObject.Import(model, renamer: member => member.Name);
+        // MemberRenamer handles the PascalCase → lowercase conversion
+        scriptObject.Import(model);
 
         // Register custom functions
         scriptObject.Import("url_for", new Func<string, string>(UrlFor));
@@ -288,15 +318,15 @@ public sealed partial class ScribanTemplateEngine(ILogger<ScribanTemplateEngine>
     [LoggerMessage(Level = LogLevel.Information, Message = "Template cache cleared")]
     static partial void LogCacheCleared(ILogger logger);
 
-    [LoggerMessage(Level = LogLevel.Debug, Message = "Theme directory set: {Directory}")]
-    static partial void LogThemeDirectorySet(ILogger logger, string directory);
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Theme set for template engine: {ThemeName}")]
+    static partial void LogThemeSet(ILogger logger, string themeName);
 
     [LoggerMessage(Level = LogLevel.Debug, Message = "Loading partial template: {PartialName}")]
     static partial void LogLoadingPartial(ILogger logger, string partialName);
 }
 
 /// <summary>
-/// Template loader for loading partials from the theme directory
+/// Template loader for loading partials from IThemePlugin
 /// </summary>
 /// <remarks>
 /// Supports the Scriban include directive:
@@ -304,10 +334,11 @@ public sealed partial class ScribanTemplateEngine(ILogger<ScribanTemplateEngine>
 /// {{ include 'partials/navigation' nav_items }}
 /// </code>
 ///
-/// Searches for templates in the theme directory with .html extension.
+/// Loads templates via IThemePlugin.GetFile(), supporting both
+/// local themes (file system) and plugin themes (embedded resources).
 /// </remarks>
-internal sealed partial class ThemeTemplateLoader(
-    string themeDirectory,
+internal sealed partial class ThemePluginTemplateLoader(
+    IThemePlugin theme,
     Dictionary<string, Template> templateCache,
     ILogger logger) : ITemplateLoader
 {
@@ -317,7 +348,7 @@ internal sealed partial class ThemeTemplateLoader(
     /// <param name="context">Template context</param>
     /// <param name="callerSpan">Source span of the include directive</param>
     /// <param name="templateName">Name of the template to include (e.g., "partials/navigation")</param>
-    /// <returns>Absolute path to the template file</returns>
+    /// <returns>Template path (used as cache key)</returns>
     public string GetPath(TemplateContext context, SourceSpan callerSpan, string templateName)
     {
         // Add .html extension if not present
@@ -325,43 +356,41 @@ internal sealed partial class ThemeTemplateLoader(
             ? templateName
             : templateName + ".html";
 
-        // Combine with theme directory
-        var fullPath = Path.Combine(themeDirectory, fileName);
-
-        return Path.GetFullPath(fullPath);
+        // Return as cache key (theme name + path for uniqueness)
+        return $"{theme.Metadata.Name}:{fileName}";
     }
 
     /// <summary>
-    /// Load template content from file
+    /// Load template content from theme
     /// </summary>
     /// <param name="context">Template context</param>
     /// <param name="callerSpan">Source span of the include directive</param>
-    /// <param name="templatePath">Full path to the template file</param>
+    /// <param name="templatePath">Template path (cache key from GetPath)</param>
     /// <returns>Template content as string</returns>
     public string Load(TemplateContext context, SourceSpan callerSpan, string templatePath)
     {
-        LogLoadingPartial(logger, templatePath);
+        // Extract actual file path from cache key
+        var colonIndex = templatePath.IndexOf(':', StringComparison.Ordinal);
+        var filePath = colonIndex >= 0 ? templatePath[(colonIndex + 1)..] : templatePath;
 
-        if (!File.Exists(templatePath))
-        {
-            throw new FileNotFoundException($"Partial template not found: {templatePath}", templatePath);
-        }
+        LogLoadingPartial(logger, filePath, theme.Metadata.Name);
 
-        // Check cache first
-        if (templateCache.TryGetValue(templatePath, out _))
-        {
-            // Template already compiled, just return content for re-parsing
-            // (Scriban handles caching internally when using ITemplateLoader)
-        }
+        // Try to get file from theme
+        using var stream = theme.GetFile(filePath)
+            ?? throw new FileNotFoundException(
+                $"Partial template not found in theme '{theme.Metadata.Name}': {filePath}",
+                filePath);
 
-        var content = File.ReadAllText(templatePath);
+        // Read content
+        using var reader = new StreamReader(stream);
+        var content = reader.ReadToEnd();
 
         // Parse and cache the template
         var template = Template.Parse(content);
         if (template.HasErrors)
         {
             var errors = string.Join(", ", template.Messages.Select(m => m.Message));
-            throw new InvalidOperationException($"Partial template parsing failed ({templatePath}): {errors}");
+            throw new InvalidOperationException($"Partial template parsing failed ({filePath}): {errors}");
         }
 
         templateCache[templatePath] = template;
@@ -377,6 +406,6 @@ internal sealed partial class ThemeTemplateLoader(
         return new ValueTask<string>(Load(context, callerSpan, templatePath));
     }
 
-    [LoggerMessage(Level = LogLevel.Debug, Message = "Loading partial template: {PartialPath}")]
-    static partial void LogLoadingPartial(ILogger logger, string partialPath);
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Loading partial template: {PartialPath} from theme {ThemeName}")]
+    static partial void LogLoadingPartial(ILogger logger, string partialPath, string themeName);
 }

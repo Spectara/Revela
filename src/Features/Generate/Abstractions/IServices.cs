@@ -1,3 +1,4 @@
+using Spectara.Revela.Core.Abstractions;
 using Spectara.Revela.Features.Generate.Models;
 
 namespace Spectara.Revela.Features.Generate.Abstractions;
@@ -8,10 +9,10 @@ namespace Spectara.Revela.Features.Generate.Abstractions;
 public interface ITemplateEngine
 {
     /// <summary>
-    /// Set the theme directory for loading partials via include directive
+    /// Set the theme for loading partials via include directive
     /// </summary>
-    /// <param name="directory">Absolute path to the theme directory</param>
-    void SetThemeDirectory(string directory);
+    /// <param name="theme">Theme plugin to load partials from</param>
+    void SetTheme(IThemePlugin? theme);
 
     /// <summary>
     /// Render template content with data model
