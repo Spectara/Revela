@@ -18,7 +18,6 @@ public static class ServiceCollectionExtensions
     {
         // Services
         services.AddSingleton<ImageManifestService>();
-        services.AddSingleton<ExifCache>(); // TODO: Remove after manifest migration
         services.AddSingleton<IImageProcessor, NetVipsImageProcessor>();
         services.AddSingleton<ITemplateEngine, ScribanTemplateEngine>();
         services.AddSingleton<FrontMatterParser>();

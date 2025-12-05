@@ -13,7 +13,7 @@ namespace Spectara.Revela.Features.Generate.Services;
 /// Supports:
 /// - Multiple output formats (WebP, JPG, AVIF)
 /// - Multiple sizes (responsive images)
-/// - EXIF extraction with caching (10-30× faster rebuilds)
+/// - EXIF extraction (cached in ImageManifest)
 /// - Camera model normalization (Sony ILCE → α series)
 /// - Quality control
 /// - Streaming (low memory usage)
@@ -22,8 +22,7 @@ namespace Spectara.Revela.Features.Generate.Services;
 /// All NetVips operations must be protected by a global lock
 /// </remarks>
 public sealed partial class NetVipsImageProcessor(
-    ILogger<NetVipsImageProcessor> logger,
-    ExifCache exifCache) : IImageProcessor
+    ILogger<NetVipsImageProcessor> logger) : IImageProcessor
 {
     // CRITICAL: Global lock for ALL NetVips operations
     // NetVips/libvips has global codec instances, thread pools, and caches
@@ -63,23 +62,18 @@ public sealed partial class NetVipsImageProcessor(
         ImageProcessingOptions options,
         CancellationToken cancellationToken)
     {
-        LogProcessingImage(logger, inputPath);
+        // Suppress unused parameter warning - kept for future use and API consistency
+        _ = cancellationToken;
 
-        // Try to get EXIF from cache first (massive performance boost)
-        var exif = await TryGetCachedExifAsync(inputPath, options, cancellationToken);
+        LogProcessingImage(logger, inputPath);
 
         // Load image once to get dimensions and EXIF
         int width, height;
+        ExifData? exif;
         using (var original = Image.NewFromFile(inputPath, access: Enums.Access.Sequential))
         {
-            // Extract EXIF if not cached
-            if (exif is null)
-            {
-                exif = ExtractExifData(original);
-
-                // Cache for next time
-                await TryCacheExifAsync(inputPath, exif, options, cancellationToken);
-            }
+            // Extract EXIF data
+            exif = ExtractExifData(original);
 
             // Get original dimensions
             width = original.Width;
@@ -148,41 +142,6 @@ public sealed partial class NetVipsImageProcessor(
             AvailableSizes = generatedSizes,
             AvailableFormats = generatedFormats
         };
-    }
-
-    /// <summary>
-    /// Try to get EXIF from cache
-    /// </summary>
-    private async Task<ExifData?> TryGetCachedExifAsync(
-        string inputPath,
-        ImageProcessingOptions options,
-        CancellationToken cancellationToken)
-    {
-        if (string.IsNullOrEmpty(options.CacheDirectory))
-        {
-            return null;
-        }
-
-        var exifCacheDir = Path.Combine(options.CacheDirectory, "exif");
-        return await exifCache.TryGetAsync(inputPath, exifCacheDir, cancellationToken);
-    }
-
-    /// <summary>
-    /// Try to cache extracted EXIF data
-    /// </summary>
-    private async Task TryCacheExifAsync(
-        string inputPath,
-        ExifData? exifData,
-        ImageProcessingOptions options,
-        CancellationToken cancellationToken)
-    {
-        if (exifData is null || string.IsNullOrEmpty(options.CacheDirectory))
-        {
-            return;
-        }
-
-        var exifCacheDir = Path.Combine(options.CacheDirectory, "exif");
-        await exifCache.SetAsync(inputPath, exifData, exifCacheDir, cancellationToken);
     }
 
     /// <summary>
