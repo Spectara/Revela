@@ -1,10 +1,10 @@
 {{~##
-  EXIF-Zeile Partial - Expose Theme
+  EXIF Line Partial - Expose Theme
 
-  Zeigt Kamera-Einstellungen in einer Zeile an.
-  Wird in image.html sowohl für Thumbnail-Overlay als auch Lightbox verwendet.
+  Displays camera settings in a single line.
+  Used in image.html for both thumbnail overlay and lightbox.
 
-  Erwartet: exif (ExifData Objekt)
+  Expects: exif (ExifData object)
   ExifData: { f_number?, exposure_time?, iso?, focal_length?, lens_model?, camera_model? }
 ##~}}
 {{~ if exif ~}}

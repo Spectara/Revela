@@ -97,7 +97,8 @@ public sealed partial class NavigationBuilder(ILogger<NavigationBuilder> logger)
         {
             // Load metadata from _index.md if present
             var indexPath = Path.Combine(subdir.FullName, FrontMatterParser.IndexFileName);
-            var metadata = File.Exists(indexPath)
+            var hasIndexFile = File.Exists(indexPath);
+            var metadata = hasIndexFile
                 ? FrontMatterParser.Parse(File.ReadAllText(indexPath))
                 : DirectoryMetadata.Empty;
 
@@ -112,6 +113,9 @@ public sealed partial class NavigationBuilder(ILogger<NavigationBuilder> logger)
             // Check if directory contains images
             var hasImages = HasImages(subdir);
 
+            // A page exists if it has images OR has _index.md (text-only page)
+            var isPage = hasImages || hasIndexFile;
+
             // Recursively get children
             var children = BuildNavigationRecursive(
                 subdir,
@@ -125,11 +129,11 @@ public sealed partial class NavigationBuilder(ILogger<NavigationBuilder> logger)
                            currentPath.StartsWith(url, StringComparison.OrdinalIgnoreCase));
 
             // Create navigation item
-            // - Has images → has URL (it's a gallery)
-            // - No images + has children → section header (no URL)
-            // - No images + no children → skip (empty folder)
+            // - Has images or _index.md → has URL (it's a page)
+            // - No page + has children → section header (no URL)
+            // - No page + no children → skip (empty folder)
 
-            if (!hasImages && children.Count == 0)
+            if (!isPage && children.Count == 0)
             {
                 LogSkippingEmptyDirectory(logger, subdir.FullName);
                 continue;
@@ -138,7 +142,7 @@ public sealed partial class NavigationBuilder(ILogger<NavigationBuilder> logger)
             items.Add(new NavigationItem
             {
                 Text = displayName,
-                Url = hasImages ? url : null,  // Only galleries have URLs
+                Url = isPage ? url : null,  // Pages have URLs
                 Description = metadata.Description,
                 Active = isActive,
                 Hidden = metadata.Hidden,

@@ -1,17 +1,17 @@
 {{~##
   Minimal Navigation Template
 
-  Type-Erkennung basiert auf Eigenschaften:
-  - Column: !url && children.size > 0 (Section header ohne Link)
-  - Branch: children.size > 0 (Hat Kinder, kann Link haben)
-  - Leaf: children.size == 0 (Einfacher Link)
+  Type detection based on properties:
+  - Column: !url && children.size > 0 (Section header without link)
+  - Branch: children.size > 0 (Has children, may have link)
+  - Leaf: children.size == 0 (Simple link)
 
-  Erwartet: nav_items (Array von NavigationItem)
+  Expects: nav_items (Array of NavigationItem)
   NavigationItem: { text, url?, active?, children }
 ##~}}
 {{~ func render_item(item) ~}}
 {{~ if !item.url && item.children.size > 0 ~}}
-{{~ # Column: Section ohne Link ~}}
+{{~ # Column: Section without link ~}}
 <div class="nav-group">
   <strong>{{ item.text }}</strong>
   <ul>
@@ -21,7 +21,7 @@
   </ul>
 </div>
 {{~ else if item.children.size > 0 ~}}
-{{~ # Branch: Hat Kinder (kann Link haben) ~}}
+{{~ # Branch: Has children (may have link) ~}}
 <div class="nav-branch">
   {{~ if item.url ~}}
   <a href="{{ basepath }}{{ item.url }}"{{ item.active ? ' class="active"' : '' }}>{{ item.text }}</a>
@@ -35,7 +35,7 @@
   </ul>
 </div>
 {{~ else ~}}
-{{~ # Leaf: Einfacher Link ~}}
+{{~ # Leaf: Simple link ~}}
 <a href="{{ basepath }}{{ item.url }}"{{ item.active ? ' class="active"' : '' }}>{{ item.text }}</a>
 {{~ end ~}}
 {{~ end ~}}

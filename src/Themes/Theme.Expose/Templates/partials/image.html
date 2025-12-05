@@ -1,18 +1,18 @@
 {{~##
   Image Article Template - Expose Theme
 
-  Rendert einen Galerie-Artikel mit:
+  Renders a gallery article with:
   - Thumbnail (responsive srcset)
-  - EXIF-Overlay (beim Hover)
-  - Lightbox (bei Focus/Click)
+  - EXIF overlay (on hover)
+  - Lightbox (on focus/click)
 
-  Erwartet: image (ImageData Objekt)
+  Expects: image (ImageData object)
   ImageData: { id, url, width, height, title?, post?, exif? }
 
-  Kontext: resource_path (Pfad zum Bildordner)
+  Context: resource_path (path to image folder)
 ##~}}
 <article tabindex="0" id="{{ image.id }}" style="--width:{{ image.width }}; --height:{{ image.height }};">
-  {{~ # Thumbnail mit responsive srcset ~}}
+  {{~ # Thumbnail with responsive srcset ~}}
   <picture>
     <img
       alt="{{ image.title ?? '' }}"
@@ -25,12 +25,12 @@
       height="{{ image.height }}">
   </picture>
 
-  {{~ # EXIF-Overlay beim Hover ~}}
+  {{~ # EXIF overlay on hover ~}}
   <aside>
     {{~ include 'partials/exif' image.exif ~}}
   </aside>
 
-  {{~ # Lightbox bei Focus/Click ~}}
+  {{~ # Lightbox on focus/click ~}}
   <figure>
     <a tabindex="-1" title="close">close</a>
     <picture>
