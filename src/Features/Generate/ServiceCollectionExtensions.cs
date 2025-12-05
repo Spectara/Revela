@@ -17,7 +17,8 @@ public static class ServiceCollectionExtensions
     public static IServiceCollection AddGenerateFeature(this IServiceCollection services)
     {
         // Services
-        services.AddSingleton<ExifCache>();
+        services.AddSingleton<ImageManifestService>();
+        services.AddSingleton<ExifCache>(); // TODO: Remove after manifest migration
         services.AddSingleton<IImageProcessor, NetVipsImageProcessor>();
         services.AddSingleton<ITemplateEngine, ScribanTemplateEngine>();
         services.AddSingleton<FrontMatterParser>();

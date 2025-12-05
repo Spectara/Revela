@@ -94,8 +94,8 @@ public sealed partial class NetVipsImageProcessor(
 
         foreach (var size in options.Sizes)
         {
-            // Skip if image is smaller than target size
-            if (width < size && height < size)
+            // Skip if image width is smaller than target size
+            if (width < size)
             {
                 continue;
             }
@@ -104,23 +104,36 @@ public sealed partial class NetVipsImageProcessor(
             foreach (var format in options.Formats)
             {
                 // Load a fresh thumbnail for each output
-                // This is safe and avoids shared state issues
-                using var thumb = width > height
-                    ? Image.Thumbnail(inputPath, size, height: 10000000)  // Landscape
-                    : Image.Thumbnail(inputPath, 10000000, height: size); // Portrait
+                // Always resize by WIDTH to ensure consistent filenames (640.jpg, 1024.jpg, etc.)
+                // Height is calculated automatically to maintain aspect ratio
+                using var thumb = Image.Thumbnail(inputPath, size, height: 10000000);
 
                 var variant = await SaveVariantAsync(
                     thumb,
                     inputPath,
                     options.OutputDirectory,
                     format,
-                    thumb.Width,
+                    size,  // Use requested size for filename, not actual thumb.Width
                     thumb.Height,
                     options.Quality);
 
                 variants.Add(variant);
             }
         }
+
+        // Collect actually generated sizes (for srcset in templates)
+        var generatedSizes = variants
+            .Select(v => v.Width)
+            .Distinct()
+            .Order()
+            .ToList();
+
+        // Collect actually generated formats
+        var generatedFormats = variants
+            .Select(v => v.Format)
+            .Distinct()
+            .Order()
+            .ToList();
 
         return new Models.Image
         {
@@ -131,7 +144,9 @@ public sealed partial class NetVipsImageProcessor(
             FileSize = new FileInfo(inputPath).Length,
             DateTaken = exif?.DateTaken ?? File.GetCreationTimeUtc(inputPath),
             Exif = exif,
-            Variants = variants
+            Variants = variants,
+            AvailableSizes = generatedSizes,
+            AvailableFormats = generatedFormats
         };
     }
 

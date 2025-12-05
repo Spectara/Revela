@@ -43,6 +43,43 @@ public sealed class Image
     public string? Description { get; init; }
     public IReadOnlyList<string> Tags { get; init; } = [];
     public IReadOnlyList<ImageVariant> Variants { get; init; } = [];
+
+    /// <summary>
+    /// List of available image widths (for dynamic srcset in templates).
+    /// </summary>
+    /// <remarks>
+    /// Contains only sizes that were actually generated.
+    /// Small images may skip larger sizes if original is too small.
+    /// Used in templates: {{ for size in image.available_sizes }}...{{ end }}
+    /// </remarks>
+    public IReadOnlyList<int> AvailableSizes { get; init; } = [];
+
+    /// <summary>
+    /// List of available formats (e.g., ["jpg", "webp"]).
+    /// </summary>
+    public IReadOnlyList<string> AvailableFormats { get; init; } = [];
+
+    /// <summary>
+    /// Create an Image from a manifest entry (for cache hits).
+    /// </summary>
+    /// <param name="sourcePath">Full path to source image</param>
+    /// <param name="entry">Manifest entry with cached metadata</param>
+    /// <returns>Image populated from manifest data</returns>
+    public static Image FromManifestEntry(string sourcePath, ImageManifestEntry entry)
+    {
+        return new Image
+        {
+            SourcePath = sourcePath,
+            FileName = Path.GetFileNameWithoutExtension(entry.OutputPath),
+            Width = entry.OriginalWidth,
+            Height = entry.OriginalHeight,
+            FileSize = entry.FileSize,
+            DateTaken = entry.DateTaken ?? DateTime.MinValue,
+            Exif = entry.Exif,
+            AvailableSizes = entry.GeneratedSizes,
+            AvailableFormats = entry.GeneratedFormats
+        };
+    }
 }
 
 /// <summary>

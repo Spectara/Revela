@@ -42,13 +42,38 @@ public sealed partial class ScribanTemplateEngine(ILogger<ScribanTemplateEngine>
     /// CA1308 is suppressed because this is intentional case conversion for template
     /// compatibility, not string normalization for comparison. Scriban requires lowercase.
     /// </remarks>
+    /// <summary>
+    /// Convert PascalCase property names to snake_case for Scriban templates.
+    /// Example: AvailableSizes → available_sizes
+    /// </summary>
     [System.Diagnostics.CodeAnalysis.SuppressMessage(
         "Globalization",
         "CA1308:Normalize strings to uppercase",
         Justification = "Scriban templates require lowercase property names - this is format conversion, not normalization")]
-    private static string ConvertToLowercase(System.Reflection.MemberInfo member)
+    private static string ConvertToSnakeCase(System.Reflection.MemberInfo member)
     {
-        return member.Name.ToLowerInvariant();
+        var name = member.Name;
+        var result = new System.Text.StringBuilder(name.Length + 5);
+
+        for (var i = 0; i < name.Length; i++)
+        {
+            var c = name[i];
+            if (char.IsUpper(c))
+            {
+                if (i > 0)
+                {
+                    result.Append('_');
+                }
+
+                result.Append(char.ToLowerInvariant(c));
+            }
+            else
+            {
+                result.Append(c);
+            }
+        }
+
+        return result.ToString();
     }
 
     /// <summary>
@@ -147,10 +172,10 @@ public sealed partial class ScribanTemplateEngine(ILogger<ScribanTemplateEngine>
     {
         var context = new TemplateContext
         {
-            // Use Scriban's built-in member renamer for lowercase property names
-            // This is required because templates use lowercase ({{ site.title }})
-            // but C# properties are PascalCase (Site.Title)
-            MemberRenamer = ConvertToLowercase
+            // Use Scriban's built-in member renamer for snake_case property names
+            // This is required because templates use snake_case ({{ site.build_date }})
+            // but C# properties are PascalCase (Site.BuildDate)
+            MemberRenamer = ConvertToSnakeCase
         };
 
         // Set up template loader for partials if theme is set

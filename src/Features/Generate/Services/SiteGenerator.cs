@@ -24,12 +24,14 @@ namespace Spectara.Revela.Features.Generate.Services;
 /// 7. Render templates (ITemplateEngine)
 /// 8. Write output files and copy theme assets
 /// </remarks>
-public sealed class SiteGenerator(
+public sealed partial class SiteGenerator(
     ContentScanner contentScanner,
     NavigationBuilder navigationBuilder,
     IImageProcessor imageProcessor,
     ITemplateEngine templateEngine,
-    IThemeResolver themeResolver)
+    IThemeResolver themeResolver,
+    ImageManifestService manifestService,
+    ILogger<SiteGenerator> logger)
 {
     /// <summary>
     /// Fixed source directory (convention over configuration)
@@ -90,10 +92,12 @@ public sealed class SiteGenerator(
 
         // Step 5: Process images (unless skipped)
         List<Image> processedImages;
+        var projectDirectory = Environment.CurrentDirectory;
         if (options.SkipImages)
         {
-            AnsiConsole.MarkupLine("[yellow]Skipping image processing (HTML only mode)[/]\n");
-            processedImages = CreatePlaceholderImages(content.Images);
+            AnsiConsole.MarkupLine("[yellow]Skipping image processing (using cached data)...[/]");
+            processedImages = await CreateImagesFromManifestAsync(content.Images, projectDirectory, cancellationToken);
+            AnsiConsole.MarkupLine($"[green]Loaded {processedImages.Count} images from cache[/]\n");
         }
         else
         {
@@ -225,107 +229,209 @@ public sealed class SiteGenerator(
         return normalized;
     }
 
+    // Image processing configuration (TODO: read from project.json)
+    private static readonly int[] ImageSizes = [640, 1024, 1280, 1920];
+    private static readonly string[] ImageFormats = ["webp", "jpg"];
+    private const int ImageQuality = 90;
+
     /// <summary>
-    /// Process all images sequentially (NetVips is not thread-safe)
+    /// Process all images with manifest-based caching
     /// </summary>
+    /// <remarks>
+    /// Uses manifest to skip unchanged images:
+    /// 1. Load existing manifest
+    /// 2. Check config hash (force full rebuild if sizes/formats changed)
+    /// 3. For each image: compare source hash, skip if unchanged
+    /// 4. Save updated manifest
+    /// </remarks>
     private async Task<List<Image>> ProcessImagesAsync(
         IReadOnlyList<SourceImage> sourceImages,
         CancellationToken cancellationToken)
     {
         var processedImages = new List<Image>();
         var outputImagesDirectory = Path.Combine(OutputDirectory, ImageDirectory);
-
-        // Cache directory in project root (current working directory), not in output folder
         var cacheDirectory = Path.Combine(Environment.CurrentDirectory, ".cache");
 
-        // Progress tracking
-        await AnsiConsole.Progress()
-            .AutoClear(false)
-            .HideCompleted(false)
-            .Columns(
-                new TaskDescriptionColumn(),
-                new ProgressBarColumn(),
-                new PercentageColumn(),
-                new RemainingTimeColumn(),
-                new SpinnerColumn())
-            .StartAsync(async ctx =>
+        // Load existing manifest
+        var manifest = await manifestService.LoadAsync(cacheDirectory, cancellationToken);
+
+        // Check if config changed (forces full rebuild)
+        var configHash = ImageManifestService.ComputeConfigHash(ImageSizes, ImageFormats, ImageQuality);
+        var configChanged = ImageManifestService.ConfigChanged(manifest, configHash);
+
+        if (configChanged && manifest.Images.Count > 0)
+        {
+            LogConfigChanged(logger);
+            manifest = new ImageManifest(); // Start fresh
+        }
+
+        manifest.Meta.ConfigHash = configHash;
+
+        // Build set of current source paths for orphan detection (normalized to forward slashes)
+        var currentSourcePaths = sourceImages
+            .Select(s => s.RelativePath.Replace('\\', '/'))
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        // Remove orphaned entries
+        var orphans = manifestService.RemoveOrphans(manifest, currentSourcePaths);
+
+        // Count images needing processing
+        var imagesToProcess = new List<(SourceImage Source, string Hash, string ManifestKey)>();
+        var cachedImages = new List<(SourceImage Source, ImageManifestEntry Entry)>();
+
+        foreach (var sourceImage in sourceImages)
+        {
+            var sourceHash = ImageManifestService.ComputeSourceHash(sourceImage.SourcePath);
+            var manifestKey = sourceImage.RelativePath.Replace('\\', '/');
+
+            if (ImageManifestService.NeedsProcessing(manifest, manifestKey, sourceHash))
             {
-                var task = ctx.AddTask("[green]Processing images[/]", maxValue: sourceImages.Count);
+                imagesToProcess.Add((sourceImage, sourceHash, manifestKey));
+            }
+            else
+            {
+                var entry = manifest.Images[manifestKey];
+                cachedImages.Add((sourceImage, entry));
+            }
+        }
 
-                // Process images SEQUENTIALLY
-                // NetVips/libvips has global state (codec instances, thread pools, caches) that is NOT thread-safe
-                // Even processing different images in parallel causes "out of order read" errors
-                // This is the same issue you encountered in Bash with ImageMagick
-                foreach (var sourceImage in sourceImages)
+        // Report cache hits
+        if (cachedImages.Count > 0)
+        {
+            LogCacheHits(logger, cachedImages.Count, sourceImages.Count);
+        }
+
+        // Add cached images to result
+        foreach (var (source, entry) in cachedImages)
+        {
+            processedImages.Add(Image.FromManifestEntry(source.SourcePath, entry));
+        }
+
+        // Process only changed images
+        if (imagesToProcess.Count > 0)
+        {
+            await AnsiConsole.Progress()
+                .AutoClear(false)
+                .HideCompleted(false)
+                .Columns(
+                    new TaskDescriptionColumn(),
+                    new ProgressBarColumn(),
+                    new PercentageColumn(),
+                    new RemainingTimeColumn(),
+                    new SpinnerColumn())
+                .StartAsync(async ctx =>
                 {
-                    var image = await imageProcessor.ProcessImageAsync(
-                        sourceImage.SourcePath,
-                        new ImageProcessingOptions
-                        {
-                            Quality = 90,
-                            Formats = ["webp", "jpg"],
-                            Sizes = [640, 1024, 1280, 1920],
-                            OutputDirectory = outputImagesDirectory,
-                            CacheDirectory = cacheDirectory
-                        },
-                        cancellationToken);
+                    var task = ctx.AddTask("[green]Processing images[/]", maxValue: imagesToProcess.Count);
 
-                    processedImages.Add(image);
-                    task.Increment(1);
-                }
-            });
+                    foreach (var (sourceImage, sourceHash, manifestKey) in imagesToProcess)
+                    {
+                        var image = await imageProcessor.ProcessImageAsync(
+                            sourceImage.SourcePath,
+                            new ImageProcessingOptions
+                            {
+                                Quality = ImageQuality,
+                                Formats = ImageFormats,
+                                Sizes = ImageSizes,
+                                OutputDirectory = outputImagesDirectory,
+                                CacheDirectory = cacheDirectory
+                            },
+                            cancellationToken);
+
+                        // Update manifest with new entry
+                        manifest.Images[manifestKey] = new ImageManifestEntry
+                        {
+                            Hash = sourceHash,
+                            OriginalWidth = image.Width,
+                            OriginalHeight = image.Height,
+                            GeneratedSizes = image.AvailableSizes.Count > 0
+                                ? image.AvailableSizes
+                                : [.. ImageSizes.Where(s => s <= Math.Max(image.Width, image.Height))],
+                            GeneratedFormats = image.AvailableFormats.Count > 0
+                                ? image.AvailableFormats
+                                : [.. ImageFormats],
+                            OutputPath = image.FileName,
+                            FileSize = image.FileSize,
+                            DateTaken = image.DateTaken,
+                            Exif = image.Exif
+                        };
+
+                        processedImages.Add(image);
+                        task.Increment(1);
+                    }
+                });
+        }
+
+        // Save updated manifest
+        await manifestService.SaveAsync(manifest, cacheDirectory, cancellationToken);
 
         return processedImages;
     }
 
     /// <summary>
-    /// Create placeholder images when skipping image processing
+    /// Create images from manifest when skipping image processing
     /// </summary>
     /// <remarks>
-    /// In HTML-only mode (--skip-images), we still need Image objects for templates.
-    /// These placeholders reference expected output paths so templates render correctly.
-    /// Actual image files must already exist (from a previous full build).
+    /// In HTML-only mode (--skip-images), we use cached data from manifest.
+    /// This provides accurate dimensions and available sizes for templates.
+    /// Falls back to placeholder data if manifest entry is missing.
     /// </remarks>
-    private static List<Image> CreatePlaceholderImages(IReadOnlyList<SourceImage> sourceImages)
+    private async Task<List<Image>> CreateImagesFromManifestAsync(
+        IReadOnlyList<SourceImage> sourceImages,
+        string projectPath,
+        CancellationToken cancellationToken)
     {
-        var placeholders = new List<Image>();
+        var images = new List<Image>();
+        var cacheDirectory = Path.Combine(projectPath, ".cache");
+        var manifest = await manifestService.LoadAsync(cacheDirectory, cancellationToken);
 
         foreach (var source in sourceImages)
         {
-            // Create placeholder with expected paths
-            var fileName = Path.GetFileNameWithoutExtension(source.SourcePath);
-            var placeholder = new Image
-            {
-                SourcePath = source.SourcePath,
-                FileName = fileName,
-                Width = 0,  // Unknown without processing
-                Height = 0,
-                // Standard sizes and formats (matching ProcessImagesAsync defaults)
-                Variants = CreatePlaceholderVariants(fileName)
-            };
+            // Use relative path normalized to forward slashes for consistent keys
+            var manifestKey = source.RelativePath.Replace('\\', '/');
 
-            placeholders.Add(placeholder);
+            if (manifest.Images.TryGetValue(manifestKey, out var entry))
+            {
+                // Use cached data from manifest
+                images.Add(Image.FromManifestEntry(source.SourcePath, entry));
+            }
+            else
+            {
+                // Fallback: Create placeholder (no previous build exists)
+                var fileName = Path.GetFileNameWithoutExtension(source.SourcePath);
+                images.Add(CreatePlaceholderImage(source.SourcePath, fileName));
+            }
         }
 
-        return placeholders;
+        return images;
+    }
+
+    /// <summary>
+    /// Create placeholder image when no manifest entry exists
+    /// </summary>
+    private static Image CreatePlaceholderImage(string sourcePath, string fileName)
+    {
+        return new Image
+        {
+            SourcePath = sourcePath,
+            FileName = fileName,
+            Width = 0,  // Unknown without processing
+            Height = 0,
+            Variants = CreatePlaceholderVariants(fileName),
+            AvailableSizes = [.. ImageSizes],
+            AvailableFormats = [.. ImageFormats]
+        };
     }
 
     /// <summary>
     /// Create placeholder variants for expected sizes and formats
     /// </summary>
-    /// <remarks>
-    /// Output structure matches Expose theme expectations:
-    /// images/{fileName}/{width}.{format}
-    /// </remarks>
     private static List<ImageVariant> CreatePlaceholderVariants(string fileName)
     {
         var variants = new List<ImageVariant>();
-        int[] sizes = [640, 1024, 1280, 1920];
-        string[] formats = ["webp", "jpg"];
 
-        foreach (var size in sizes)
+        foreach (var size in ImageSizes)
         {
-            foreach (var format in formats)
+            foreach (var format in ImageFormats)
             {
                 variants.Add(new ImageVariant
                 {
@@ -657,6 +763,16 @@ public sealed class SiteGenerator(
         </body>
         </html>
         """;
+
+    #region Logging
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Config changed, rebuilding all images")]
+    private static partial void LogConfigChanged(ILogger logger);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Using cached data for {CacheHits}/{Total} images")]
+    private static partial void LogCacheHits(ILogger logger, int cacheHits, int total);
+
+    #endregion
 }
 
 /// <summary>
