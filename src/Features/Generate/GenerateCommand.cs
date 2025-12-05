@@ -83,6 +83,8 @@ public sealed partial class GenerateCommand(
             }
 
             // Clean output directory if requested
+            // Note: Always cleans entire output/ directory, including site/ and images/ subdirectories
+            // when separateImages mode is used. This ensures clean builds regardless of mode changes.
             if (options.Clean && Directory.Exists(OutputDirectory))
             {
                 AnsiConsole.MarkupLine("[yellow]Cleaning output directory...[/]");

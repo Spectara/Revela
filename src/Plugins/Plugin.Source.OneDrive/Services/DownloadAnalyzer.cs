@@ -171,11 +171,11 @@ public sealed partial class DownloadAnalyzer
             ? allLocalFiles
             : [.. allLocalFiles.Where(f => ShouldIncludeFile(f.Name, config.IncludePatterns, config.ExcludePatterns))];
 
-        // Build set of remote file paths (relative)
+        // Build set of remote file paths (relative, normalized to forward slashes)
         var remotePaths = new HashSet<string>(
             remoteItems
                 .Where(i => !i.IsFolder)
-                .Select(GetRelativePath),
+                .Select(i => NormalizePath(GetRelativePath(i))),
             StringComparer.OrdinalIgnoreCase
         );
 
@@ -184,7 +184,8 @@ public sealed partial class DownloadAnalyzer
             .Where(local =>
             {
                 var relativePath = Path.GetRelativePath(destinationDirectory, local.FullName);
-                return !remotePaths.Contains(relativePath);
+                var normalizedPath = NormalizePath(relativePath);
+                return !remotePaths.Contains(normalizedPath);
             })];
     }
 
@@ -239,5 +240,15 @@ public sealed partial class DownloadAnalyzer
 
         return regex.IsMatch(text);
     }
+
+    /// <summary>
+    /// Normalizes path separators to forward slashes for cross-platform comparison.
+    /// </summary>
+    /// <remarks>
+    /// OneDrive API uses forward slashes, Windows uses backslashes.
+    /// This ensures consistent comparison regardless of platform.
+    /// </remarks>
+    private static string NormalizePath(string path) =>
+        path.Replace('\\', '/');
 }
 

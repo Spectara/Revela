@@ -9,7 +9,7 @@
   Expects: image (ImageData object)
   ImageData: { id, url, width, height, title?, post?, exif? }
 
-  Context: resource_path (path to image folder)
+  Context: image_basepath (path/URL to image folder, can be absolute CDN URL)
 ##~}}
 <article tabindex="0" id="{{ image.id }}" style="--width:{{ image.width }}; --height:{{ image.height }};">
   {{~ # Thumbnail with responsive srcset ~}}
@@ -18,9 +18,9 @@
       alt="{{ image.title ?? '' }}"
       loading="lazy"
       decoding="async"
-      src="./{{ resource_path }}{{ image.url }}/640.jpg"
-      srcset="./{{ resource_path }}{{ image.url }}/320.jpg 320w,
-              ./{{ resource_path }}{{ image.url }}/640.jpg 640w"
+      src="{{ image_basepath }}{{ image.url }}/640.jpg"
+      srcset="{{ image_basepath }}{{ image.url }}/320.jpg 320w,
+              {{ image_basepath }}{{ image.url }}/640.jpg 640w"
       width="{{ image.width }}"
       height="{{ image.height }}">
   </picture>
@@ -37,13 +37,13 @@
       <img
         loading="lazy"
         decoding="async"
-        src="./{{ resource_path }}{{ image.url }}/{{ image.width }}.jpg"
-        srcset="./{{ resource_path }}{{ image.url }}/320.jpg 320w,
-                ./{{ resource_path }}{{ image.url }}/640.jpg 640w,
-                ./{{ resource_path }}{{ image.url }}/1024.jpg 1024w,
-                ./{{ resource_path }}{{ image.url }}/1280.jpg 1280w,
-                ./{{ resource_path }}{{ image.url }}/1920.jpg 1920w,
-                ./{{ resource_path }}{{ image.url }}/2560.jpg 2560w"
+        src="{{ image_basepath }}{{ image.url }}/{{ image.width }}.jpg"
+        srcset="{{ image_basepath }}{{ image.url }}/320.jpg 320w,
+                {{ image_basepath }}{{ image.url }}/640.jpg 640w,
+                {{ image_basepath }}{{ image.url }}/1024.jpg 1024w,
+                {{ image_basepath }}{{ image.url }}/1280.jpg 1280w,
+                {{ image_basepath }}{{ image.url }}/1920.jpg 1920w,
+                {{ image_basepath }}{{ image.url }}/2560.jpg 2560w"
         width="{{ image.width }}"
         height="{{ image.height }}">
     </picture>

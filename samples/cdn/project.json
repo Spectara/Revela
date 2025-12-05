@@ -1,0 +1,6 @@
+{
+  "name": "CDN Sample",
+  "url": "https://revela.website",
+  "theme": "Expose",
+  "imageBasePath": "https://cdn.example.com/images/"
+}

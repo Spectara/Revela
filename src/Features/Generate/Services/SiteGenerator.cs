@@ -37,9 +37,14 @@ public sealed class SiteGenerator(
     private const string SourceDirectory = "source";
 
     /// <summary>
-    /// Fixed output directory (convention over configuration)
+    /// Output directory for generated site (convention over configuration)
     /// </summary>
     private const string OutputDirectory = "output";
+
+    /// <summary>
+    /// Image output directory within output folder
+    /// </summary>
+    private const string ImageDirectory = "images";
 
     /// <summary>
     /// Generate complete static site
@@ -102,7 +107,7 @@ public sealed class SiteGenerator(
 
         // Step 7: Render templates
         AnsiConsole.MarkupLine("[yellow]Rendering templates...[/]");
-        await RenderSiteAsync(siteModel, theme, cancellationToken);
+        await RenderSiteAsync(siteModel, config, theme, cancellationToken);
         AnsiConsole.MarkupLine($"[green]Site rendered successfully[/]\n");
 
         // Step 8: Copy theme assets
@@ -144,7 +149,9 @@ public sealed class SiteGenerator(
             {
                 Name = GetJsonString(projectData, "title") ?? GetJsonString(projectData, "name") ?? "Revela Site",
                 BaseUrl = GetJsonString(projectData, "url") ?? "https://example.com",
-                Language = "en"
+                Language = "en",
+                ImageBasePath = GetJsonString(projectData, "imageBasePath"),
+                BasePath = NormalizeBasePath(GetJsonString(projectData, "basePath"))
             },
             Site = new SiteSettings
             {
@@ -184,6 +191,41 @@ public sealed class SiteGenerator(
     }
 
     /// <summary>
+    /// Normalize basePath to ensure it starts and ends with "/"
+    /// </summary>
+    /// <remarks>
+    /// Examples:
+    /// - null or empty → "/"
+    /// - "photos" → "/photos/"
+    /// - "/photos" → "/photos/"
+    /// - "photos/" → "/photos/"
+    /// - "/photos/" → "/photos/" (unchanged)
+    /// </remarks>
+    private static string NormalizeBasePath(string? basePath)
+    {
+        if (string.IsNullOrWhiteSpace(basePath))
+        {
+            return "/";
+        }
+
+        var normalized = basePath.Trim();
+
+        // Ensure starts with /
+        if (!normalized.StartsWith('/'))
+        {
+            normalized = "/" + normalized;
+        }
+
+        // Ensure ends with /
+        if (!normalized.EndsWith('/'))
+        {
+            normalized += "/";
+        }
+
+        return normalized;
+    }
+
+    /// <summary>
     /// Process all images sequentially (NetVips is not thread-safe)
     /// </summary>
     private async Task<List<Image>> ProcessImagesAsync(
@@ -191,7 +233,7 @@ public sealed class SiteGenerator(
         CancellationToken cancellationToken)
     {
         var processedImages = new List<Image>();
-        var outputImagesDirectory = Path.Combine(OutputDirectory, "images");
+        var outputImagesDirectory = Path.Combine(OutputDirectory, ImageDirectory);
         var cacheDirectory = Path.Combine(OutputDirectory, ".cache");
 
         // Progress tracking
@@ -316,10 +358,56 @@ public sealed class SiteGenerator(
         };
 
     /// <summary>
+    /// Calculate basepath for site assets and navigation links
+    /// </summary>
+    /// <remarks>
+    /// For root hosting (BasePath = "/"):
+    /// - Root level: "" → "main.css", "events/"
+    /// - Gallery level: "../" → "../main.css", "../events/"
+    ///
+    /// For subdirectory hosting (BasePath = "/photos/"):
+    /// - Root level: "/photos/" → "/photos/main.css"
+    /// - Gallery level: "/photos/" → "/photos/main.css" (absolute path)
+    /// </remarks>
+    private static string CalculateSiteBasePath(RevelaConfig config, string relativeBasePath)
+    {
+        // For root hosting ("/"), use relative paths
+        if (config.Project.BasePath == "/")
+        {
+            return relativeBasePath;
+        }
+
+        // For subdirectory hosting, use absolute path with BasePath prefix
+        // This ensures links work correctly regardless of nesting depth
+        return config.Project.BasePath;
+    }
+
+    /// <summary>
+    /// Calculate image_basepath for templates
+    /// </summary>
+    /// <remarks>
+    /// Priority:
+    /// 1. If ImageBasePath is configured → use absolute URL (e.g., "https://cdn.example.com/images/")
+    /// 2. Default → relative path to images/ folder (e.g., "images/" or "../images/")
+    /// </remarks>
+    private static string CalculateImageBasePath(RevelaConfig config, string basepath)
+    {
+        // Absolute CDN URL configured → use directly
+        if (!string.IsNullOrEmpty(config.Project.ImageBasePath))
+        {
+            return config.Project.ImageBasePath;
+        }
+
+        // Default: relative path to images/ folder
+        return $"{basepath}images/";
+    }
+
+    /// <summary>
     /// Render site templates to HTML
     /// </summary>
     private async Task RenderSiteAsync(
         SiteModel model,
+        RevelaConfig config,
         IThemePlugin? theme,
         CancellationToken cancellationToken)
     {
@@ -340,9 +428,10 @@ public sealed class SiteGenerator(
             ?? LoadTemplate(theme, "gallery.html")
             ?? GetDefaultGalleryTemplate();
 
-        // Render index page (at root, basepath is empty string)
-        // Note: For root level, basepath is "" so relative paths like "main.css" work correctly
+        // Render index page (at root level)
         var indexNavigation = SetActiveState(model.Navigation, string.Empty);
+        var indexBasePath = CalculateSiteBasePath(config, "");
+        var indexImageBasePath = CalculateImageBasePath(config, "");
         var indexHtml = templateEngine.Render(
             indexTemplate,
             new
@@ -352,8 +441,8 @@ public sealed class SiteGenerator(
                 galleries = model.Galleries,
                 images = model.Images,
                 nav_items = indexNavigation,
-                basepath = "",  // Root level: empty string, not "./"
-                resource_path = "images/"
+                basepath = indexBasePath,
+                image_basepath = indexImageBasePath
             });
 
         await File.WriteAllTextAsync(
@@ -369,10 +458,14 @@ public sealed class SiteGenerator(
                 .ToList();
 
             // Calculate basepath based on gallery depth (use Slug for URL structure)
-            var basepath = UrlBuilder.CalculateBasePath(gallery.Slug);
+            var relativeBasePath = UrlBuilder.CalculateBasePath(gallery.Slug);
+            var basepath = CalculateSiteBasePath(config, relativeBasePath);
 
             // Set active state for this gallery's path
             var galleryNavigation = SetActiveState(model.Navigation, gallery.Slug);
+
+            // Calculate image_basepath (handles CDN URLs and separate output)
+            var galleryImageBasePath = CalculateImageBasePath(config, relativeBasePath);
 
             var galleryHtml = templateEngine.Render(
                 galleryTemplate,
@@ -383,7 +476,7 @@ public sealed class SiteGenerator(
                     images = galleryImages,
                     nav_items = galleryNavigation,
                     basepath,
-                    resource_path = $"{basepath}images/"
+                    image_basepath = galleryImageBasePath
                 });
 
             // Use Slug for output path (URL-friendly directory names)

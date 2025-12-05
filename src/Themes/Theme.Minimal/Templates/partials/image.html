@@ -3,11 +3,12 @@
 
   Simple image with title.
   Expects: image (ImageData)
+  Context: image_basepath (path/URL to image folder)
 ##~}}
 <article class="image">
-  <a href="{{ basepath }}{{ resource_path }}{{ image.url }}/{{ image.width }}.jpg">
+  <a href="{{ image_basepath }}{{ image.url }}/{{ image.width }}.jpg">
     <img
-      src="{{ basepath }}{{ resource_path }}{{ image.url }}/640.jpg"
+      src="{{ image_basepath }}{{ image.url }}/640.jpg"
       alt="{{ image.title ?? '' }}"
       width="{{ image.width }}"
       height="{{ image.height }}"

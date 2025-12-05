@@ -9,7 +9,7 @@
   - nav_items: Array of NavigationItem for navigation
   - images: Array of ImageData for gallery
   - basepath: Relative path to root
-  - resource_path: Path to image resources
+  - image_basepath: Path/URL to image resources (can be absolute CDN URL)
 ##~}}
 <!DOCTYPE html>
 <html lang="en">
@@ -41,7 +41,8 @@
           <span>i</span>
           <span>i</span>
         </label>
-        <a href="/">{{ site.title }}</a>
+        {{~ # basepath is empty string at root, "../" for galleries, or "/photos/" for subdirectory hosting ~}}
+        <a href="{{ basepath == '' ? '.' : basepath }}">{{ site.title }}</a>
       </h2>
       <nav></nav>
     </div>

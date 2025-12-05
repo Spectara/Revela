@@ -59,11 +59,6 @@
     <PackageVersion Include="SSH.NET" Version="2025.1.0" />
   </ItemGroup>
 
-  <ItemGroup Label="Plugins - OneDrive">
-    <PackageVersion Include="Microsoft.Graph" Version="5.97.0" />
-    <PackageVersion Include="Azure.Identity" Version="1.17.0" />
-  </ItemGroup>
-
   <ItemGroup Label="Testing">
     <!-- MSTest v4 - Modern Testing Framework -->
     <!-- https://learn.microsoft.com/en-us/dotnet/core/testing/unit-testing-mstest-intro -->

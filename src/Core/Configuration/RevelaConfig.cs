@@ -14,11 +14,8 @@ public sealed class RevelaConfig
     /// <summary>Theme configuration</summary>
     public ThemeSettings Theme { get; init; } = new();
 
-    /// <summary>Build configuration (output, images, cache)</summary>
+    /// <summary>Build configuration (output, images)</summary>
     public BuildSettings Build { get; init; } = new();
-
-    /// <summary>Navigation menu structure</summary>
-    public IReadOnlyList<NavigationItem> Navigation { get; init; } = [];
 }
 
 /// <summary>
@@ -35,6 +32,29 @@ public sealed class ProjectSettings
 
     /// <summary>Primary language code (e.g., "en", "de")</summary>
     public string Language { get; init; } = "en";
+
+    /// <summary>
+    /// Base path/URL for image references in generated HTML.
+    /// Use absolute URL for CDN (e.g., "https://cdn.example.com/images/").
+    /// When null, uses relative paths (e.g., "images/" or "../images/").
+    /// </summary>
+    /// <example>
+    /// CDN: "https://cdn.example.com/images/" → src="https://cdn.example.com/images/photo/640.jpg"
+    /// Default: null → src="images/photo/640.jpg" or src="../images/photo/640.jpg"
+    /// </example>
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1056:URI-like properties should not be strings", Justification = "Can be relative path or absolute URL")]
+    public string? ImageBasePath { get; init; }
+
+    /// <summary>
+    /// Base path for subdirectory hosting (e.g., "/photos/" for hosting at example.com/photos/).
+    /// Must start and end with "/". Default is "/" for root hosting.
+    /// Used for CSS, navigation links, and site title link.
+    /// </summary>
+    /// <example>
+    /// Root hosting: "/" → href="main.css"
+    /// Subdirectory: "/photos/" → href="/photos/main.css"
+    /// </example>
+    public string BasePath { get; init; } = "/";
 }
 
 /// <summary>
@@ -74,36 +94,6 @@ public sealed class BuildSettings
 
     /// <summary>Image processing settings</summary>
     public ImageSettings Images { get; init; } = new();
-
-    /// <summary>Cache settings for build optimization</summary>
-    public CacheSettings Cache { get; init; } = new();
-
-    /// <summary>Sort settings for galleries and images</summary>
-    public SortSettings Sort { get; init; } = new();
-}
-
-/// <summary>
-/// Sort direction for galleries and images
-/// </summary>
-public enum SortDirection
-{
-    /// <summary>Sort in ascending order (A-Z, 1-9, oldest first)</summary>
-    Ascending,
-
-    /// <summary>Sort in descending order (Z-A, 9-1, newest first)</summary>
-    Descending
-}
-
-/// <summary>
-/// Sort configuration for galleries and images
-/// </summary>
-public sealed class SortSettings
-{
-    /// <summary>Sort direction for folders/galleries (default: ascending)</summary>
-    public SortDirection Folders { get; init; } = SortDirection.Ascending;
-
-    /// <summary>Sort direction for images within galleries (default: ascending)</summary>
-    public SortDirection Images { get; init; } = SortDirection.Ascending;
 }
 
 /// <summary>
@@ -120,41 +110,3 @@ public sealed class ImageSettings
     /// <summary>Image widths to generate (in pixels)</summary>
     public IReadOnlyList<int> Sizes { get; init; } = [640, 1024, 1280, 1920, 2560];
 }
-
-/// <summary>
-/// Cache configuration for build optimization
-/// </summary>
-public sealed class CacheSettings
-{
-    /// <summary>Whether caching is enabled</summary>
-    public bool Enabled { get; init; } = true;
-
-    /// <summary>Cache EXIF data to avoid re-reading</summary>
-    public bool Exif { get; init; } = true;
-
-    /// <summary>Cache generated HTML</summary>
-    public bool Html { get; init; } = true;
-
-    /// <summary>Cache directory path (relative to project root)</summary>
-    public string Directory { get; init; } = ".revela/cache";
-}
-
-/// <summary>
-/// Navigation menu item (supports nested hierarchy)
-/// </summary>
-public sealed class NavigationItem
-{
-    /// <summary>Display name for the navigation link</summary>
-    public required string Name { get; init; }
-
-    /// <summary>External URL (mutually exclusive with Path)</summary>
-    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1056:URI-like properties should not be strings", Justification = "Configuration value from JSON")]
-    public string? Url { get; init; }
-
-    /// <summary>Internal path to gallery or page</summary>
-    public string? Path { get; init; }
-
-    /// <summary>Nested child navigation items</summary>
-    public IReadOnlyList<NavigationItem>? Children { get; init; }
-}
-
