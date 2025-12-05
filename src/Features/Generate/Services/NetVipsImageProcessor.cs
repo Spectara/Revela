@@ -23,7 +23,7 @@ namespace Spectara.Revela.Features.Generate.Services;
 /// </remarks>
 public sealed partial class NetVipsImageProcessor(
     ILogger<NetVipsImageProcessor> logger,
-    ExifCache? exifCache = null) : IImageProcessor
+    ExifCache exifCache) : IImageProcessor
 {
     // CRITICAL: Global lock for ALL NetVips operations
     // NetVips/libvips has global codec instances, thread pools, and caches
@@ -143,7 +143,7 @@ public sealed partial class NetVipsImageProcessor(
         ImageProcessingOptions options,
         CancellationToken cancellationToken)
     {
-        if (exifCache is null || string.IsNullOrEmpty(options.CacheDirectory))
+        if (string.IsNullOrEmpty(options.CacheDirectory))
         {
             return null;
         }
@@ -161,7 +161,7 @@ public sealed partial class NetVipsImageProcessor(
         ImageProcessingOptions options,
         CancellationToken cancellationToken)
     {
-        if (exifCache is null || exifData is null || string.IsNullOrEmpty(options.CacheDirectory))
+        if (exifData is null || string.IsNullOrEmpty(options.CacheDirectory))
         {
             return;
         }

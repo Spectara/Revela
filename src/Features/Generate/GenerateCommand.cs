@@ -33,6 +33,7 @@ public sealed partial class GenerateCommand(
 {
     private const string SourceDirectory = "source";
     private const string OutputDirectory = "output";
+    private const string CacheDirectory = ".cache";
 
     /// <summary>
     /// Creates the CLI command
@@ -82,13 +83,21 @@ public sealed partial class GenerateCommand(
                 return;
             }
 
-            // Clean output directory if requested
-            // Note: Always cleans entire output/ directory, including site/ and images/ subdirectories
-            // when separateImages mode is used. This ensures clean builds regardless of mode changes.
-            if (options.Clean && Directory.Exists(OutputDirectory))
+            // Clean output and cache directories if requested
+            // Note: Cleans both output/ and .cache/ for a completely fresh build.
+            if (options.Clean)
             {
-                AnsiConsole.MarkupLine("[yellow]Cleaning output directory...[/]");
-                Directory.Delete(OutputDirectory, recursive: true);
+                if (Directory.Exists(OutputDirectory))
+                {
+                    AnsiConsole.MarkupLine("[yellow]Cleaning output directory...[/]");
+                    Directory.Delete(OutputDirectory, recursive: true);
+                }
+
+                if (Directory.Exists(CacheDirectory))
+                {
+                    AnsiConsole.MarkupLine("[yellow]Cleaning cache directory...[/]");
+                    Directory.Delete(CacheDirectory, recursive: true);
+                }
             }
 
             // Generate site

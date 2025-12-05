@@ -234,7 +234,9 @@ public sealed class SiteGenerator(
     {
         var processedImages = new List<Image>();
         var outputImagesDirectory = Path.Combine(OutputDirectory, ImageDirectory);
-        var cacheDirectory = Path.Combine(OutputDirectory, ".cache");
+
+        // Cache directory in project root (current working directory), not in output folder
+        var cacheDirectory = Path.Combine(Environment.CurrentDirectory, ".cache");
 
         // Progress tracking
         await AnsiConsole.Progress()
