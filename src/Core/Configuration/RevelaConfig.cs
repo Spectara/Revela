@@ -77,6 +77,33 @@ public sealed class BuildSettings
 
     /// <summary>Cache settings for build optimization</summary>
     public CacheSettings Cache { get; init; } = new();
+
+    /// <summary>Sort settings for galleries and images</summary>
+    public SortSettings Sort { get; init; } = new();
+}
+
+/// <summary>
+/// Sort direction for galleries and images
+/// </summary>
+public enum SortDirection
+{
+    /// <summary>Sort in ascending order (A-Z, 1-9, oldest first)</summary>
+    Ascending,
+
+    /// <summary>Sort in descending order (Z-A, 9-1, newest first)</summary>
+    Descending
+}
+
+/// <summary>
+/// Sort configuration for galleries and images
+/// </summary>
+public sealed class SortSettings
+{
+    /// <summary>Sort direction for folders/galleries (default: ascending)</summary>
+    public SortDirection Folders { get; init; } = SortDirection.Ascending;
+
+    /// <summary>Sort direction for images within galleries (default: ascending)</summary>
+    public SortDirection Images { get; init; } = SortDirection.Ascending;
 }
 
 /// <summary>

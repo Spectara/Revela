@@ -1,19 +1,18 @@
 {{~##
   Rekursives Navigation-Template - Expose Theme
 
-  Ersetzt die 4 separaten Templates:
-  - nav-column.html (type: "column")
-  - nav-branch.html (type: "branch" mit url)
-  - nav-branch-empty.html (type: "branch" ohne url)
-  - nav-leaf.html (type: "leaf")
+  Type-Erkennung basiert auf Eigenschaften:
+  - Column: !url && children.size > 0 (Section header ohne Link)
+  - Branch: children.size > 0 (Hat Kinder, kann Link haben)
+  - Leaf: children.size == 0 (Einfacher Link)
 
   Erwartet: nav_items (Array von NavigationItem)
-  NavigationItem: { type, text, url?, active?, children? }
+  NavigationItem: { text, url?, active?, children }
 ##~}}
 
 {{~ func render_item(item) ~}}
-  {{~ case item.type ~}}
-    {{~ when "column" ~}}
+  {{~ if !item.url && item.children.size > 0 ~}}
+    {{~ # Column: Section ohne Link ~}}
 <section class="nav-section">
   <h3 class="nav-section-title">{{ item.text }}</h3>
   <ul class="nav-list">
@@ -22,7 +21,8 @@
   {{~ end ~}}
   </ul>
 </section>
-    {{~ when "branch" ~}}
+  {{~ else if item.children.size > 0 ~}}
+    {{~ # Branch: Hat Kinder (kann Link haben) ~}}
 <div class="nav-branch">
   {{~ if item.url ~}}
   <a href="{{ basepath }}{{ item.url }}" class="nav-branch-title{{ item.active ? ' active' : '' }}">{{ item.text }}</a>
@@ -35,7 +35,8 @@
   {{~ end ~}}
   </div>
 </div>
-    {{~ when "leaf" ~}}
+  {{~ else ~}}
+    {{~ # Leaf: Einfacher Link ~}}
 <a href="{{ basepath }}{{ item.url }}" class="nav-link{{ item.active ? ' active' : '' }}">{{ item.text }}</a>
   {{~ end ~}}
 {{~ end ~}}

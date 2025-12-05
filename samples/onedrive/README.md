@@ -56,13 +56,44 @@ onedrive/
 ├── site.json           # Site metadata
 ├── source/             # Downloaded images (gitignored)
 │   ├── 01 Events/
+│   │   ├── _index.md   # Section metadata
+│   │   ├── Fireworks/
+│   │   │   ├── _index.md
+│   │   │   └── *.jpg
+│   │   └── Racing/
+│   │       ├── _index.md
+│   │       └── *.jpg
 │   ├── 02 Miscellaneous/
-│   ├── 03 Pages/
-│   └── *.jpg
+│   │   ├── _index.md
+│   │   └── *.jpg
+│   └── 03 Pages/
+│       └── _index.md   # hidden: true
 └── output/             # Generated site (gitignored)
     ├── index.html
     └── images/
 ```
+
+## Directory Metadata (_index.md)
+
+Each directory can have an optional `_index.md` file with YAML frontmatter:
+
+```yaml
+---
+title: Custom Display Title
+slug: custom-url-slug
+description: SEO description
+hidden: true
+---
+
+Optional body content in Markdown.
+```
+
+| Field | Description |
+|-------|-------------|
+| `title` | Overrides display name (instead of folder name) |
+| `slug` | Custom URL segment (only affects last segment) |
+| `description` | For SEO and display purposes |
+| `hidden` | Hide from navigation (page still generated) |
 
 ## Notes
 

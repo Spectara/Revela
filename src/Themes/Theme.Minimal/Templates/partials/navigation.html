@@ -1,11 +1,17 @@
 {{~##
   Minimal Navigation Template
 
-  Einfache rekursive Navigation.
+  Type-Erkennung basiert auf Eigenschaften:
+  - Column: !url && children.size > 0 (Section header ohne Link)
+  - Branch: children.size > 0 (Hat Kinder, kann Link haben)
+  - Leaf: children.size == 0 (Einfacher Link)
+
   Erwartet: nav_items (Array von NavigationItem)
+  NavigationItem: { text, url?, active?, children }
 ##~}}
 {{~ func render_item(item) ~}}
-{{~ if item.type == "column" ~}}
+{{~ if !item.url && item.children.size > 0 ~}}
+{{~ # Column: Section ohne Link ~}}
 <div class="nav-group">
   <strong>{{ item.text }}</strong>
   <ul>
@@ -14,22 +20,22 @@
   {{~ end ~}}
   </ul>
 </div>
-{{~ else if item.type == "branch" ~}}
+{{~ else if item.children.size > 0 ~}}
+{{~ # Branch: Hat Kinder (kann Link haben) ~}}
 <div class="nav-branch">
   {{~ if item.url ~}}
   <a href="{{ basepath }}{{ item.url }}"{{ item.active ? ' class="active"' : '' }}>{{ item.text }}</a>
   {{~ else ~}}
   <span>{{ item.text }}</span>
   {{~ end ~}}
-  {{~ if item.children && item.children.size > 0 ~}}
   <ul>
   {{~ for child in item.children ~}}
     <li>{{ render_item child }}</li>
   {{~ end ~}}
   </ul>
-  {{~ end ~}}
 </div>
 {{~ else ~}}
+{{~ # Leaf: Einfacher Link ~}}
 <a href="{{ basepath }}{{ item.url }}"{{ item.active ? ' class="active"' : '' }}>{{ item.text }}</a>
 {{~ end ~}}
 {{~ end ~}}

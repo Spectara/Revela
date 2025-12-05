@@ -4,21 +4,25 @@ namespace Spectara.Revela.Features.Generate.Models;
 /// Represents a navigation item for hierarchical site navigation
 /// </summary>
 /// <remarks>
-/// Navigation items are structured hierarchically:
-/// - Column: Section header (no link), contains children
-/// - Branch: Category with link and children
-/// - Leaf: Final gallery item (link only, no children)
-///
-/// Used by Scriban templates with recursive rendering:
+/// <para>
+/// Navigation structure is derived from properties in Scriban templates:
+/// </para>
+/// <list type="bullet">
+///   <item><description>Column: <c>!url &amp;&amp; children.size > 0</c> - Section header without link</description></item>
+///   <item><description>Branch: <c>children.size > 0</c> - Category with children (may have link)</description></item>
+///   <item><description>Leaf: <c>children.size == 0</c> - Simple link without children</description></item>
+/// </list>
+/// <para>
+/// Example Scriban template usage:
+/// </para>
 /// <code>
 /// {{~ func render_item(item) ~}}
-///   {{~ case item.type ~}}
-///     {{~ when "column" ~}}
-///       &lt;section&gt;{{ item.text }}...
-///     {{~ when "branch" ~}}
-///       &lt;div&gt;{{ item.text }}...
-///     {{~ when "leaf" ~}}
-///       &lt;a href="{{ item.uri }}"&gt;{{ item.text }}&lt;/a&gt;
+///   {{~ if !item.url &amp;&amp; item.children.size > 0 ~}}
+///     &lt;section&gt;{{ item.text }}...&lt;/section&gt;
+///   {{~ else if item.children.size > 0 ~}}
+///     &lt;div&gt;{{ item.text }}...&lt;/div&gt;
+///   {{~ else ~}}
+///     &lt;a href="{{ item.url }}"&gt;{{ item.text }}&lt;/a&gt;
 ///   {{~ end ~}}
 /// {{~ end ~}}
 /// </code>
@@ -26,23 +30,20 @@ namespace Spectara.Revela.Features.Generate.Models;
 public sealed class NavigationItem
 {
     /// <summary>
-    /// Type of navigation item: "column", "branch", or "leaf"
-    /// </summary>
-    public required string Type { get; init; }
-
-    /// <summary>
     /// Display text for the navigation item
     /// </summary>
     public required string Text { get; init; }
 
     /// <summary>
-    /// URL path for the navigation item (null for columns)
+    /// URL path for the navigation item (null for items without pages)
     /// </summary>
     /// <remarks>
     /// This is a relative path string, not a System.Uri, because:
-    /// - Templates use string interpolation with basepath
-    /// - Paths are relative (e.g., "gallery/2024/")
-    /// - Simplifies template syntax: {{ item.url }}
+    /// <list type="bullet">
+    ///   <item><description>Templates use string interpolation with basepath</description></item>
+    ///   <item><description>Paths are relative (e.g., "gallery/2024/")</description></item>
+    ///   <item><description>Simplifies template syntax: {{ item.url }}</description></item>
+    /// </list>
     /// </remarks>
     [System.Diagnostics.CodeAnalysis.SuppressMessage(
         "Design",
@@ -51,12 +52,29 @@ public sealed class NavigationItem
     public string? Url { get; init; }
 
     /// <summary>
+    /// Optional description for SEO and display purposes
+    /// </summary>
+    /// <remarks>
+    /// Loaded from _index.md frontmatter if present.
+    /// </remarks>
+    public string? Description { get; init; }
+
+    /// <summary>
     /// Whether this item is the currently active page
     /// </summary>
     public bool Active { get; init; }
 
     /// <summary>
-    /// Child navigation items (for columns and branches)
+    /// Whether this item is hidden from navigation
+    /// </summary>
+    /// <remarks>
+    /// Hidden items are not shown in navigation menus but are still
+    /// generated and accessible via direct URL.
+    /// </remarks>
+    public bool Hidden { get; init; }
+
+    /// <summary>
+    /// Child navigation items for nested structures
     /// </summary>
     public IReadOnlyList<NavigationItem> Children { get; init; } = [];
 }
