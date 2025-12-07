@@ -7,7 +7,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{827E0CD3-B72
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Core", "src\Core\Core.csproj", "{4D862C0D-F728-49BF-B5FC-530AB9C2333C}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Features", "src\Features\Features.csproj", "{04256F84-0D40-422E-A6F6-52C028C90D22}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Commands", "src\Commands\Commands.csproj", "{04256F84-0D40-422E-A6F6-52C028C90D22}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Cli", "src\Cli\Cli.csproj", "{8183D955-76E8-4DE3-AF29-836D3FF57E93}"
 EndProject

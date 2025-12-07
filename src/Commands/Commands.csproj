@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <Description>CLI commands for Revela (Generate, Init, Plugin Management, etc.)</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Core\Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Markdig" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Binder" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
+    <PackageReference Include="NetVips" />
+    <PackageReference Include="NetVips.Native" />
+    <PackageReference Include="Scriban" />
+    <PackageReference Include="Spectre.Console" />
+    <PackageReference Include="System.CommandLine" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Embed scaffolding templates as resources for Init feature -->
+    <EmbeddedResource Include="Init\Templates\**\*" />
+  </ItemGroup>
+
+</Project>
+

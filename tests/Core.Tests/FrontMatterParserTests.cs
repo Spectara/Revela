@@ -1,5 +1,5 @@
-using Spectara.Revela.Features.Generate.Models;
-using Spectara.Revela.Features.Generate.Services;
+using Spectara.Revela.Commands.Generate.Models;
+using Spectara.Revela.Commands.Generate.Services;
 
 namespace Spectara.Revela.Core.Tests;
 

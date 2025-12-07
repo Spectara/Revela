@@ -18,7 +18,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\Cli\Cli.csproj" />
     <ProjectReference Include="..\..\src\Core\Core.csproj" />
-    <ProjectReference Include="..\..\src\Features\Features.csproj" />
+    <ProjectReference Include="..\..\src\Commands\Commands.csproj" />
   </ItemGroup>
 
   <ItemGroup>

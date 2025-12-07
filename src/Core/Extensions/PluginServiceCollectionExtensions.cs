@@ -129,7 +129,11 @@ public static class PluginServiceCollectionExtensions
         }
 #pragma warning restore CA1848
 
+        // Phase 5: Register PluginContext as singleton for UseRevelaCommands()
+        var pluginContext = new PluginContext(plugins);
+        services.AddSingleton<IPluginContext>(pluginContext);
+
         // Return context for later Initialize() and RegisterCommands()
-        return new PluginContext(plugins);
+        return pluginContext;
     }
 }

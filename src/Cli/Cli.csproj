@@ -12,7 +12,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Core\Core.csproj" />
-    <ProjectReference Include="..\Features\Features.csproj" />
+    <ProjectReference Include="..\Commands\Commands.csproj" />
   </ItemGroup>
 
   <!-- Development-only: Plugins included for debugging, NOT shipped in Release -->
