@@ -290,8 +290,14 @@ public sealed partial class ScribanTemplateEngine(ILogger<ScribanTemplateEngine>
     }
 
     /// <summary>
-    /// Format EXIF exposure time (e.g., "1/500s")
+    /// Format EXIF exposure time (e.g., "1/500s", "0.5s", "10s")
     /// </summary>
+    /// <remarks>
+    /// Formatting rules:
+    /// - Less than 0.3s: Show as fraction (1/500s, 1/60s, 1/4s)
+    /// - 0.3s to 0.9s: Show as decimal (0.4s, 0.5s, 0.8s)
+    /// - 1s and longer: Show as whole seconds (1s, 10s, 30s)
+    /// </remarks>
     private static string FormatExifExposure(double? exposureTime)
     {
         if (!exposureTime.HasValue)
@@ -301,14 +307,27 @@ public sealed partial class ScribanTemplateEngine(ILogger<ScribanTemplateEngine>
 
         var value = exposureTime.Value;
 
-        // If less than 1 second, show as fraction
-        if (value < 1)
+        // 1 second or longer: show as whole/decimal seconds
+        if (value >= 1)
         {
-            var denominator = (int)(1 / value);
-            return $"1/{denominator}s";
+            // If it's a whole number, don't show decimals
+            if (Math.Abs(value - Math.Round(value)) < 0.001)
+            {
+                return $"{(int)value}s";
+            }
+
+            return string.Format(CultureInfo.InvariantCulture, "{0:0.#}s", value);
         }
 
-        return $"{value:0.##}s";
+        // 0.3s to 0.9s: show as decimal
+        if (value >= 0.3)
+        {
+            return string.Format(CultureInfo.InvariantCulture, "{0:0.#}s", value);
+        }
+
+        // Less than 0.3s: show as fraction 1/X
+        var denominator = (int)Math.Round(1 / value);
+        return $"1/{denominator}s";
     }
 
     /// <summary>

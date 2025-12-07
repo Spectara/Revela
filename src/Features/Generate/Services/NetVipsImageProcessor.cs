@@ -152,10 +152,16 @@ public sealed partial class NetVipsImageProcessor(
         try
         {
             // NetVips stores EXIF data in the "exif-ifd0-*" and "exif-ifd2-*" fields
-            var make = image.Get("exif-ifd0-Make") as string;
-            var model = image.Get("exif-ifd0-Model") as string;
-            var lensModel = TryGetString(image, "exif-ifd2-LensModel");
+            // All values come as formatted strings: "VALUE (VALUE, TYPE, N components, M bytes)"
+            var rawMake = image.Get("exif-ifd0-Make") as string;
+            var rawModel = image.Get("exif-ifd0-Model") as string;
+            var rawLensModel = TryGetString(image, "exif-ifd2-LensModel");
             var dateTimeOriginal = image.Get("exif-ifd2-DateTimeOriginal") as string;
+
+            // Extract actual values from NetVips format
+            var make = CameraModelTransformer.ExtractExifValue(rawMake);
+            var model = CameraModelTransformer.ExtractExifValue(rawModel);
+            var lensModel = CameraModelTransformer.ExtractExifValue(rawLensModel);
 
             // Parse camera settings
             var fNumber = TryGetDouble(image, "exif-ifd2-FNumber");
@@ -212,16 +218,29 @@ public sealed partial class NetVipsImageProcessor(
     /// <summary>
     /// Try to get a double value from EXIF field
     /// </summary>
+    /// <remarks>
+    /// NetVips returns EXIF values as formatted strings like:
+    /// - Rational: "28/10 (f/2.8, Rational, 1 components, 8 bytes)"
+    /// - Short: "100 (100, Short, 1 components, 2 bytes)"
+    /// We need to parse the fraction or first number.
+    /// </remarks>
     private static double? TryGetDouble(Image image, string field)
     {
         try
         {
             var value = image.Get(field);
+
+            // NetVips returns all EXIF as strings
+            if (value is string s && !string.IsNullOrEmpty(s))
+            {
+                return ParseExifNumericValue(s);
+            }
+
+            // Fallback for other types
             return value switch
             {
                 double d => d,
                 int i => i,
-                string s when double.TryParse(s, out var parsed) => parsed,
                 _ => null
             };
         }
@@ -239,11 +258,19 @@ public sealed partial class NetVipsImageProcessor(
         try
         {
             var value = image.Get(field);
+
+            // NetVips returns all EXIF as strings
+            if (value is string s && !string.IsNullOrEmpty(s))
+            {
+                var parsed = ParseExifNumericValue(s);
+                return parsed.HasValue ? (int)parsed.Value : null;
+            }
+
+            // Fallback for other types
             return value switch
             {
                 int i => i,
                 double d => (int)d,
-                string s when int.TryParse(s, out var parsed) => parsed,
                 _ => null
             };
         }
@@ -254,8 +281,60 @@ public sealed partial class NetVipsImageProcessor(
     }
 
     /// <summary>
-    /// Parse EXIF date string (format: "YYYY:MM:DD HH:MM:SS")
+    /// Parse numeric value from NetVips EXIF string format
     /// </summary>
+    /// <remarks>
+    /// Formats:
+    /// - Rational: "28/10 (f/2.8, Rational...)" → 2.8
+    /// - Short/Long: "100 (100, Short...)" → 100
+    /// - Direct: "1/200" → 0.005
+    /// </remarks>
+    private static double? ParseExifNumericValue(string exifString)
+    {
+        if (string.IsNullOrWhiteSpace(exifString))
+        {
+            return null;
+        }
+
+        // Get the part before the opening parenthesis (if any)
+        var spaceIndex = exifString.IndexOf(' ', StringComparison.Ordinal);
+        var valuePart = spaceIndex > 0 ? exifString[..spaceIndex] : exifString;
+
+        // Check if it's a fraction like "28/10" or "1/200"
+        var slashIndex = valuePart.IndexOf('/', StringComparison.Ordinal);
+        if (slashIndex > 0)
+        {
+            var numeratorStr = valuePart[..slashIndex];
+            var denominatorStr = valuePart[(slashIndex + 1)..];
+
+            if (double.TryParse(numeratorStr, System.Globalization.NumberStyles.Any,
+                    System.Globalization.CultureInfo.InvariantCulture, out var numerator) &&
+                double.TryParse(denominatorStr, System.Globalization.NumberStyles.Any,
+                    System.Globalization.CultureInfo.InvariantCulture, out var denominator) &&
+                denominator != 0)
+            {
+                return numerator / denominator;
+            }
+        }
+
+        // Try to parse as a direct number
+        if (double.TryParse(valuePart, System.Globalization.NumberStyles.Any,
+                System.Globalization.CultureInfo.InvariantCulture, out var directValue))
+        {
+            return directValue;
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Parse EXIF date string
+    /// </summary>
+    /// <remarks>
+    /// NetVips format: "2022:07:31 22:22:22 (2022:07:31 22:22:22, ASCII, 20 components...)"
+    /// Standard EXIF format: "2024:01:20 14:30:45"
+    /// We need to extract "YYYY:MM:DD HH:MM:SS" from the beginning.
+    /// </remarks>
     private static DateTime? ParseExifDate(string? dateString)
     {
         if (string.IsNullOrWhiteSpace(dateString))
@@ -265,9 +344,13 @@ public sealed partial class NetVipsImageProcessor(
 
         try
         {
-            // EXIF date format: "2024:01:20 14:30:45"
-            var parts = dateString.Split(' ');
-            if (parts.Length != 2)
+            // NetVips adds metadata after the date, extract just the date/time part
+            // Format: "2022:07:31 22:22:22 (2022:07:31..."
+            // We need first 19 characters: "YYYY:MM:DD HH:MM:SS"
+            var dateTimePart = dateString.Length >= 19 ? dateString[..19] : dateString;
+
+            var parts = dateTimePart.Split(' ');
+            if (parts.Length < 2)
             {
                 return null;
             }

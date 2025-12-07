@@ -7,7 +7,7 @@ namespace Spectara.Revela.Features.Generate.Services;
 /// Inspired by expose.sh camera model transformations (line 683):
 /// - Sony ILCE codes → α series names
 /// - Removes parenthetical info from lens names
-/// 
+///
 /// Examples:
 /// - "ILCE-7M4" → "α 7 IV"
 /// - "ILCE-7RM5" → "α 7R V"
@@ -15,6 +15,31 @@ namespace Spectara.Revela.Features.Generate.Services;
 /// </remarks>
 public static class CameraModelTransformer
 {
+    /// <summary>
+    /// Extract the actual value from NetVips EXIF string format.
+    /// </summary>
+    /// <remarks>
+    /// NetVips returns EXIF strings in format: "VALUE (VALUE, TYPE, N components, M bytes)"
+    /// Example: "SONY (SONY, ASCII, 5 components, 5 bytes)" → "SONY"
+    /// Example: "ILCE-7M4 (ILCE-7M4, ASCII, 9 components, 9 bytes)" → "ILCE-7M4"
+    /// </remarks>
+    public static string? ExtractExifValue(string? raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw))
+        {
+            return raw;
+        }
+
+        // Find the first " (" pattern which marks start of metadata
+        var metaStart = raw.IndexOf(" (", StringComparison.Ordinal);
+        if (metaStart > 0)
+        {
+            return raw[..metaStart].Trim();
+        }
+
+        return raw.Trim();
+    }
+
     /// <summary>
     /// Transform camera model code to user-friendly name
     /// </summary>
@@ -70,7 +95,7 @@ public static class CameraModelTransformer
     /// </summary>
     /// <remarks>
     /// Based on expose.sh line 681: sed 's/ (.*)//'
-    /// 
+    ///
     /// Example:
     /// "Sony FE 50mm F1.8 (SEL50F18F)" → "Sony FE 50mm F1.8"
     /// </remarks>

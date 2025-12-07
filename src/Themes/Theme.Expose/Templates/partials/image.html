@@ -46,7 +46,18 @@
 
   {{~ # EXIF overlay on hover ~}}
   <aside>
-    {{~ include 'partials/exif' image.exif ~}}
+    {{~ if image.exif ~}}
+    <p>
+      {{~ image.exif.f_number ? "f/" + image.exif.f_number + " " : "" ~}}
+      {{~ image.exif.exposure_time ? format_exif_exposure(image.exif.exposure_time) + " " : "" ~}}
+      {{~ image.exif.iso ? "ISO " + image.exif.iso + " " : "" ~}}
+      {{~ image.exif.focal_length ? image.exif.focal_length + "mm" : "" ~}}
+    </p>
+    <p>
+      {{~ image.exif.lens_model ?? "" ~}}
+      {{~ image.exif.model ? " on " + image.exif.model : "" ~}}
+    </p>
+    {{~ end ~}}
   </aside>
 
   {{~ # Lightbox on focus/click ~}}
