@@ -22,7 +22,8 @@ namespace Spectara.Revela.Features.Generate.Services;
 /// All NetVips operations must be protected by a global lock
 /// </remarks>
 public sealed partial class NetVipsImageProcessor(
-    ILogger<NetVipsImageProcessor> logger) : IImageProcessor
+    ILogger<NetVipsImageProcessor> logger,
+    CameraModelTransformer cameraModelTransformer) : IImageProcessor
 {
     // CRITICAL: Global lock for ALL NetVips operations
     // NetVips/libvips has global codec instances, thread pools, and caches
@@ -174,8 +175,8 @@ public sealed partial class NetVipsImageProcessor(
             var gpsLongitude = TryGetDouble(image, "exif-ifd3-GPSLongitude");
 
             // Apply camera model transformations (Sony ILCE → α series, etc.)
-            var transformedMake = CameraModelTransformer.TransformMake(make);
-            var transformedModel = CameraModelTransformer.TransformModel(model);
+            var transformedMake = cameraModelTransformer.TransformMake(make);
+            var transformedModel = cameraModelTransformer.TransformModel(model);
             var cleanedLens = CameraModelTransformer.CleanLensModel(lensModel);
 
             return new ExifData

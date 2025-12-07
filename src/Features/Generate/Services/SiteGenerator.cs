@@ -168,7 +168,7 @@ public sealed partial class SiteGenerator(
             {
                 Name = GetJsonString(projectData, "theme") ?? "default"
             },
-            Build = new BuildSettings
+            Generate = new GenerateSettings
             {
                 Output = "output",
                 Images = new ImageSettings

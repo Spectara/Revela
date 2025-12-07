@@ -14,8 +14,8 @@ public sealed class RevelaConfig
     /// <summary>Theme configuration</summary>
     public ThemeSettings Theme { get; init; } = new();
 
-    /// <summary>Build configuration (output, images)</summary>
-    public BuildSettings Build { get; init; } = new();
+    /// <summary>Generate configuration (output, images, cameras)</summary>
+    public GenerateSettings Generate { get; init; } = new();
 }
 
 /// <summary>
@@ -85,15 +85,18 @@ public sealed class ThemeSettings
 }
 
 /// <summary>
-/// Build output configuration
+/// Generate output configuration
 /// </summary>
-public sealed class BuildSettings
+public sealed class GenerateSettings
 {
     /// <summary>Output directory path (relative to project root)</summary>
     public string Output { get; init; } = "output";
 
     /// <summary>Image processing settings</summary>
     public ImageSettings Images { get; init; } = new();
+
+    /// <summary>Camera model transformation settings</summary>
+    public CameraSettings Cameras { get; init; } = new();
 }
 
 /// <summary>
@@ -109,4 +112,36 @@ public sealed class ImageSettings
 
     /// <summary>Image widths to generate (in pixels)</summary>
     public IReadOnlyList<int> Sizes { get; init; } = [640, 1024, 1280, 1920, 2560];
+}
+
+/// <summary>
+/// Camera model transformation settings
+/// </summary>
+/// <remarks>
+/// Custom mappings override built-in defaults for Sony ILCE → α series.
+/// Configure in project.json:
+/// <code>
+/// {
+///   "generate": {
+///     "cameras": {
+///       "models": { "ILCE-7M4": "α 7 IV" },
+///       "makes": { "SONY": "Sony" }
+///     }
+///   }
+/// }
+/// </code>
+/// </remarks>
+public sealed class CameraSettings
+{
+    /// <summary>
+    /// Custom camera model mappings (e.g., "ILCE-7M4" → "α 7 IV").
+    /// Merged with built-in defaults (custom values override defaults).
+    /// </summary>
+    public Dictionary<string, string> Models { get; init; } = [];
+
+    /// <summary>
+    /// Custom manufacturer name mappings (e.g., "SONY" → "Sony").
+    /// Merged with built-in defaults (custom values override defaults).
+    /// </summary>
+    public Dictionary<string, string> Makes { get; init; } = [];
 }

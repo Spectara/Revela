@@ -17,6 +17,7 @@ public static class ServiceCollectionExtensions
     public static IServiceCollection AddGenerateFeature(this IServiceCollection services)
     {
         // Services
+        services.AddSingleton<CameraModelTransformer>();
         services.AddSingleton<ImageManifestService>();
         services.AddSingleton<IImageProcessor, NetVipsImageProcessor>();
         services.AddSingleton<ITemplateEngine, ScribanTemplateEngine>();
