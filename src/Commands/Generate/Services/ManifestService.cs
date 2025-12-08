@@ -1,7 +1,8 @@
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
-using Spectara.Revela.Commands.Generate.Models;
+using Spectara.Revela.Commands.Generate.Abstractions;
+using Spectara.Revela.Commands.Generate.Models.Manifest;
 
 namespace Spectara.Revela.Commands.Generate.Services;
 
@@ -15,11 +16,13 @@ namespace Spectara.Revela.Commands.Generate.Services;
 /// - Caching EXIF data (eliminates need for separate ExifCache)
 /// - Tracking config changes (forces full rebuild when sizes change)
 ///
-/// Inspired by expose.sh caching strategy.
+/// Holds manifest state in memory, persists on SaveAsync.
+/// Cache directory is determined from current working directory.
 /// </remarks>
-public sealed partial class ImageManifestService(ILogger<ImageManifestService> logger)
+public sealed partial class ManifestService(ILogger<ManifestService> logger) : IManifestRepository
 {
     private const string ManifestFileName = "manifest.json";
+    private const string CacheDirectoryName = ".cache";
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -27,56 +30,128 @@ public sealed partial class ImageManifestService(ILogger<ImageManifestService> l
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase
     };
 
-    /// <summary>
-    /// Load manifest from cache directory.
-    /// </summary>
-    /// <param name="cacheDirectory">Path to .cache directory</param>
-    /// <param name="cancellationToken">Cancellation token</param>
-    /// <returns>Existing manifest or new empty manifest</returns>
-    public async Task<ImageManifest> LoadAsync(
-        string cacheDirectory,
-        CancellationToken cancellationToken = default)
+    private ImageManifest manifest = new();
+
+    #region Image Entries
+
+    /// <inheritdoc />
+    public IReadOnlyDictionary<string, ImageManifestEntry> Images => manifest.Images;
+
+    /// <inheritdoc />
+    public ImageManifestEntry? GetImage(string sourcePath)
     {
+        return manifest.Images.TryGetValue(sourcePath, out var entry) ? entry : null;
+    }
+
+    /// <inheritdoc />
+    public void SetImage(string sourcePath, ImageManifestEntry entry)
+    {
+        manifest.Images[sourcePath] = entry;
+    }
+
+    /// <inheritdoc />
+    public bool RemoveImage(string sourcePath)
+    {
+        return manifest.Images.Remove(sourcePath);
+    }
+
+    #endregion
+
+    #region Gallery Entries
+
+    /// <inheritdoc />
+    public IReadOnlyList<GalleryManifestEntry> Galleries => manifest.Galleries;
+
+    /// <inheritdoc />
+    public void SetGalleries(IEnumerable<GalleryManifestEntry> galleries)
+    {
+        manifest.Galleries.Clear();
+        manifest.Galleries.AddRange(galleries);
+    }
+
+    #endregion
+
+    #region Navigation Entries
+
+    /// <inheritdoc />
+    public IReadOnlyList<NavigationManifestEntry> Navigation => manifest.Navigation;
+
+    /// <inheritdoc />
+    public void SetNavigation(IEnumerable<NavigationManifestEntry> navigation)
+    {
+        manifest.Navigation.Clear();
+        manifest.Navigation.AddRange(navigation);
+    }
+
+    #endregion
+
+    #region Metadata
+
+    /// <inheritdoc />
+    public string ConfigHash
+    {
+        get => manifest.Meta.ConfigHash;
+        set => manifest.Meta.ConfigHash = value;
+    }
+
+    /// <inheritdoc />
+    public DateTime? LastScanned
+    {
+        get => manifest.Meta.LastScanned;
+        set => manifest.Meta.LastScanned = value;
+    }
+
+    /// <inheritdoc />
+    public DateTime? LastImagesProcessed
+    {
+        get => manifest.Meta.LastImagesProcessed;
+        set => manifest.Meta.LastImagesProcessed = value;
+    }
+
+    #endregion
+
+    #region Lifecycle
+
+    /// <inheritdoc />
+    public async Task LoadAsync(CancellationToken cancellationToken = default)
+    {
+        var cacheDirectory = GetCacheDirectory();
         var manifestPath = Path.Combine(cacheDirectory, ManifestFileName);
 
         if (!File.Exists(manifestPath))
         {
             LogManifestNotFound(logger, manifestPath);
-            return new ImageManifest();
+            manifest = new ImageManifest();
+            return;
         }
 
         try
         {
             var json = await File.ReadAllTextAsync(manifestPath, cancellationToken);
-            var manifest = JsonSerializer.Deserialize<ImageManifest>(json, JsonOptions);
+            var loaded = JsonSerializer.Deserialize<ImageManifest>(json, JsonOptions);
 
-            if (manifest is null)
+            if (loaded is null)
             {
                 LogManifestInvalid(logger, manifestPath);
-                return new ImageManifest();
+                manifest = new ImageManifest();
             }
-
-            LogManifestLoaded(logger, manifest.Images.Count);
-            return manifest;
+            else
+            {
+                manifest = loaded;
+                LogManifestLoaded(logger, manifest.Images.Count);
+            }
         }
         catch (JsonException ex)
         {
             LogManifestParseError(logger, manifestPath, ex);
-            return new ImageManifest();
+            manifest = new ImageManifest();
         }
     }
 
-    /// <summary>
-    /// Save manifest to cache directory.
-    /// </summary>
-    /// <remarks>
-    /// Uses atomic write (temp file + rename) to prevent corruption.
-    /// </remarks>
-    public async Task SaveAsync(
-        ImageManifest manifest,
-        string cacheDirectory,
-        CancellationToken cancellationToken = default)
+    /// <inheritdoc />
+    public async Task SaveAsync(CancellationToken cancellationToken = default)
     {
+        var cacheDirectory = GetCacheDirectory();
         Directory.CreateDirectory(cacheDirectory);
 
         var manifestPath = Path.Combine(cacheDirectory, ManifestFileName);
@@ -117,6 +192,46 @@ public sealed partial class ImageManifestService(ILogger<ImageManifestService> l
         }
     }
 
+    /// <inheritdoc />
+    public void Clear()
+    {
+        manifest = new ImageManifest();
+    }
+
+    #endregion
+
+    #region Utilities
+
+    /// <inheritdoc />
+    public IReadOnlyList<string> RemoveOrphans(IReadOnlySet<string> existingSourcePaths)
+    {
+        var orphans = manifest.Images.Keys
+            .Where(key => !existingSourcePaths.Contains(key))
+            .ToList();
+
+        foreach (var orphan in orphans)
+        {
+            manifest.Images.Remove(orphan);
+            LogOrphanRemoved(logger, orphan);
+        }
+
+        if (orphans.Count > 0)
+        {
+            LogOrphansRemoved(logger, orphans.Count);
+        }
+
+        return orphans;
+    }
+
+    private static string GetCacheDirectory()
+    {
+        return Path.Combine(Environment.CurrentDirectory, CacheDirectoryName);
+    }
+
+    #endregion
+
+    #region Static Helpers
+
     /// <summary>
     /// Compute hash for a source image file.
     /// </summary>
@@ -155,61 +270,22 @@ public sealed partial class ImageManifestService(ILogger<ImageManifestService> l
 #pragma warning restore CA5351
 
     /// <summary>
-    /// Check if an image needs to be processed.
+    /// Check if an image needs to be processed based on hash comparison.
     /// </summary>
-    /// <param name="manifest">Current manifest</param>
-    /// <param name="sourcePath">Relative path to source image</param>
+    /// <param name="existingEntry">Existing manifest entry (null if new image)</param>
     /// <param name="sourceHash">Hash of source image</param>
     /// <returns>True if image needs processing, false if unchanged</returns>
-    public static bool NeedsProcessing(
-        ImageManifest manifest,
-        string sourcePath,
-        string sourceHash)
+    public static bool NeedsProcessing(ImageManifestEntry? existingEntry, string sourceHash)
     {
-        if (!manifest.Images.TryGetValue(sourcePath, out var entry))
+        if (existingEntry is null)
         {
             return true; // New image
         }
 
-        return entry.Hash != sourceHash; // Changed if hash differs
+        return existingEntry.Hash != sourceHash; // Changed if hash differs
     }
 
-    /// <summary>
-    /// Check if configuration has changed since last build.
-    /// </summary>
-    /// <returns>True if config changed (all images need regeneration)</returns>
-    public static bool ConfigChanged(ImageManifest manifest, string currentConfigHash)
-    {
-        return manifest.Meta.ConfigHash != currentConfigHash;
-    }
-
-    /// <summary>
-    /// Remove orphaned entries (source files that no longer exist).
-    /// </summary>
-    /// <param name="manifest">Manifest to clean</param>
-    /// <param name="existingSourcePaths">Set of source paths that currently exist</param>
-    /// <returns>List of removed entry keys</returns>
-    public IReadOnlyList<string> RemoveOrphans(
-        ImageManifest manifest,
-        IReadOnlySet<string> existingSourcePaths)
-    {
-        var orphans = manifest.Images.Keys
-            .Where(key => !existingSourcePaths.Contains(key))
-            .ToList();
-
-        foreach (var orphan in orphans)
-        {
-            manifest.Images.Remove(orphan);
-            LogOrphanRemoved(logger, orphan);
-        }
-
-        if (orphans.Count > 0)
-        {
-            LogOrphansRemoved(logger, orphans.Count);
-        }
-
-        return orphans;
-    }
+    #endregion
 
     #region Logging
 

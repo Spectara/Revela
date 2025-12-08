@@ -1,5 +1,5 @@
 using Spectara.Revela.Commands.Generate.Models;
-using Spectara.Revela.Commands.Generate.Services;
+using Spectara.Revela.Commands.Generate.Parsing;
 
 namespace Spectara.Revela.Commands.Tests;
 

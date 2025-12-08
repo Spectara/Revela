@@ -2,7 +2,7 @@ using System.Globalization;
 using System.Text;
 using System.Text.RegularExpressions;
 
-namespace Spectara.Revela.Commands.Generate.Services;
+namespace Spectara.Revela.Commands.Generate.Building;
 
 /// <summary>
 /// Provides URL and slug generation utilities for gallery paths

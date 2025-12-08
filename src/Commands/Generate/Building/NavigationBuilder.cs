@@ -1,6 +1,7 @@
 using Spectara.Revela.Commands.Generate.Models;
+using Spectara.Revela.Commands.Generate.Parsing;
 
-namespace Spectara.Revela.Commands.Generate.Services;
+namespace Spectara.Revela.Commands.Generate.Building;
 
 /// <summary>
 /// Builds hierarchical navigation from source directory structure
@@ -33,8 +34,6 @@ namespace Spectara.Revela.Commands.Generate.Services;
 /// </remarks>
 public sealed partial class NavigationBuilder(ILogger<NavigationBuilder> logger)
 {
-    private static readonly string[] ImageExtensions = [".jpg", ".jpeg", ".png", ".webp", ".gif"];
-
     /// <summary>
     /// Builds navigation tree from source directory
     /// </summary>
@@ -160,9 +159,7 @@ public sealed partial class NavigationBuilder(ILogger<NavigationBuilder> logger)
     {
         return directory
             .EnumerateFiles()
-            .Any(f => ImageExtensions.Contains(
-                f.Extension,
-                StringComparer.OrdinalIgnoreCase));
+            .Any(f => SupportedImageExtensions.IsSupported(f.Extension));
     }
 
     /// <summary>

@@ -3,6 +3,11 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Spectara.Revela.Core.Configuration;
 using Spectara.Revela.Commands.Generate.Abstractions;
+using Spectara.Revela.Commands.Generate.Building;
+using Spectara.Revela.Commands.Generate.Commands;
+using Spectara.Revela.Commands.Generate.Mapping;
+using Spectara.Revela.Commands.Generate.Parsing;
+using Spectara.Revela.Commands.Generate.Scanning;
 using Spectara.Revela.Commands.Generate.Services;
 
 namespace Spectara.Revela.Commands.Generate;
@@ -22,17 +27,26 @@ public static class ServiceCollectionExtensions
         // Bind RevelaConfig.Generate section via IConfigureOptions (resolves IConfiguration from DI)
         services.AddSingleton<IConfigureOptions<RevelaConfig>, ConfigureRevelaConfig>();
 
-        // Services
-        services.AddSingleton<CameraModelTransformer>();
-        services.AddSingleton<ImageManifestService>();
-        services.AddSingleton<IImageProcessor, NetVipsImageProcessor>();
-        services.AddSingleton<ITemplateEngine, ScribanTemplateEngine>();
+        // Parsing, Scanning, Building, Mapping (static classes not registered: GallerySorter, UrlBuilder)
         services.AddSingleton<FrontMatterParser>();
         services.AddSingleton<ContentScanner>();
         services.AddSingleton<NavigationBuilder>();
-        services.AddSingleton<SiteGenerator>();
+        services.AddSingleton<CameraModelMapper>();
 
-        // Commands
+        // Infrastructure services
+        services.AddSingleton<IImageProcessor, NetVipsImageProcessor>();
+        services.AddSingleton<ITemplateEngine, ScribanTemplateEngine>();
+        services.AddSingleton<IManifestRepository, ManifestService>();
+
+        // Domain services (three main services)
+        services.AddSingleton<IContentService, ContentService>();
+        services.AddSingleton<IImageService, ImageService>();
+        services.AddSingleton<IRenderService, RenderService>();
+
+        // Commands (thin CLI wrappers)
+        services.AddTransient<ScanCommand>();
+        services.AddTransient<ImagesCommand>();
+        services.AddTransient<PagesCommand>();
         services.AddTransient<GenerateCommand>();
 
         return services;

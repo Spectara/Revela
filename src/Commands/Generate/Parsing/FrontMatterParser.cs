@@ -4,7 +4,7 @@ using Markdig.Syntax;
 
 using Spectara.Revela.Commands.Generate.Models;
 
-namespace Spectara.Revela.Commands.Generate.Services;
+namespace Spectara.Revela.Commands.Generate.Parsing;
 
 /// <summary>
 /// Parses _index.md files to extract directory metadata from YAML frontmatter.
@@ -139,30 +139,29 @@ public sealed partial class FrontMatterParser(ILogger<FrontMatterParser> logger)
                 continue;
             }
 
-            var key = trimmed[..colonIndex].Trim().ToUpperInvariant();
+            var key = trimmed[..colonIndex].Trim();
             var value = trimmed[(colonIndex + 1)..].Trim();
 
             // Remove surrounding quotes if present
             value = RemoveQuotes(value);
 
-            switch (key)
+            if (key.Equals("title", StringComparison.OrdinalIgnoreCase))
             {
-                case "TITLE":
-                    title = string.IsNullOrEmpty(value) ? null : value;
-                    break;
-                case "SLUG":
-                    slug = string.IsNullOrEmpty(value) ? null : value;
-                    break;
-                case "DESCRIPTION":
-                    description = string.IsNullOrEmpty(value) ? null : value;
-                    break;
-                case "HIDDEN":
-                    hidden = ParseBool(value);
-                    break;
-                default:
-                    // Unknown keys are ignored
-                    break;
+                title = string.IsNullOrEmpty(value) ? null : value;
             }
+            else if (key.Equals("slug", StringComparison.OrdinalIgnoreCase))
+            {
+                slug = string.IsNullOrEmpty(value) ? null : value;
+            }
+            else if (key.Equals("description", StringComparison.OrdinalIgnoreCase))
+            {
+                description = string.IsNullOrEmpty(value) ? null : value;
+            }
+            else if (key.Equals("hidden", StringComparison.OrdinalIgnoreCase))
+            {
+                hidden = ParseBool(value);
+            }
+            // Unknown keys are ignored
         }
 
         return (title, slug, description, hidden);

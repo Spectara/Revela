@@ -1,7 +1,7 @@
 using System.CommandLine;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using Spectara.Revela.Commands.Generate;
+using Spectara.Revela.Commands.Generate.Commands;
 using Spectara.Revela.Commands.Init;
 using Spectara.Revela.Commands.Plugins;
 using Spectara.Revela.Commands.Restore;

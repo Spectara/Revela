@@ -1,7 +1,7 @@
 using System.Globalization;
 using System.Text.RegularExpressions;
 
-namespace Spectara.Revela.Commands.Generate.Services;
+namespace Spectara.Revela.Commands.Generate.Building;
 
 /// <summary>
 /// Provides natural sorting for gallery items using .NET 10 NumericOrdering

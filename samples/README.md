@@ -95,6 +95,7 @@ var samplePath = Path.Combine(
     TestContext.CurrentContext.TestDirectory,
     "..", "..", "..", "..", "samples", "onedrive");
 
-var generator = new SiteGenerator(samplePath);
-await generator.GenerateAsync();
+// Use ISiteGenerationService (resolve from DI)
+var service = serviceProvider.GetRequiredService<ISiteGenerationService>();
+await service.GenerateAsync(samplePath, CancellationToken.None);
 ```

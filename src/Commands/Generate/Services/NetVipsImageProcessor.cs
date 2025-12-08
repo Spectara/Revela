@@ -1,5 +1,6 @@
 using NetVips;
 using Spectara.Revela.Commands.Generate.Abstractions;
+using Spectara.Revela.Commands.Generate.Mapping;
 using Spectara.Revela.Commands.Generate.Models;
 using Image = NetVips.Image;
 
@@ -23,7 +24,7 @@ namespace Spectara.Revela.Commands.Generate.Services;
 /// </remarks>
 public sealed partial class NetVipsImageProcessor(
     ILogger<NetVipsImageProcessor> logger,
-    CameraModelTransformer cameraModelTransformer) : IImageProcessor
+    CameraModelMapper cameraModelMapper) : IImageProcessor
 {
     // CRITICAL: Global lock for ALL NetVips operations
     // NetVips/libvips has global codec instances, thread pools, and caches
@@ -160,9 +161,9 @@ public sealed partial class NetVipsImageProcessor(
             var dateTimeOriginal = image.Get("exif-ifd2-DateTimeOriginal") as string;
 
             // Extract actual values from NetVips format
-            var make = CameraModelTransformer.ExtractExifValue(rawMake);
-            var model = CameraModelTransformer.ExtractExifValue(rawModel);
-            var lensModel = CameraModelTransformer.ExtractExifValue(rawLensModel);
+            var make = CameraModelMapper.ExtractExifValue(rawMake);
+            var model = CameraModelMapper.ExtractExifValue(rawModel);
+            var lensModel = CameraModelMapper.ExtractExifValue(rawLensModel);
 
             // Parse camera settings
             var fNumber = TryGetDouble(image, "exif-ifd2-FNumber");
@@ -174,15 +175,15 @@ public sealed partial class NetVipsImageProcessor(
             var gpsLatitude = TryGetDouble(image, "exif-ifd3-GPSLatitude");
             var gpsLongitude = TryGetDouble(image, "exif-ifd3-GPSLongitude");
 
-            // Apply camera model transformations (Sony ILCE → α series, etc.)
-            var transformedMake = cameraModelTransformer.TransformMake(make);
-            var transformedModel = cameraModelTransformer.TransformModel(model);
-            var cleanedLens = CameraModelTransformer.CleanLensModel(lensModel);
+            // Apply camera model mappings (Sony ILCE → α series, etc.)
+            var mappedMake = cameraModelMapper.MapMake(make);
+            var mappedModel = cameraModelMapper.MapModel(model);
+            var cleanedLens = CameraModelMapper.CleanLensModel(lensModel);
 
             return new ExifData
             {
-                Make = transformedMake,
-                Model = transformedModel,
+                Make = mappedMake,
+                Model = mappedModel,
                 LensModel = cleanedLens,
                 DateTaken = ParseExifDate(dateTimeOriginal),
                 FNumber = fNumber,

@@ -1,3 +1,5 @@
+using Spectara.Revela.Commands.Generate.Models.Manifest;
+
 namespace Spectara.Revela.Commands.Generate.Models;
 
 /// <summary>

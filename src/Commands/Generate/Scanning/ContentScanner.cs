@@ -1,13 +1,15 @@
+using Spectara.Revela.Commands.Generate.Building;
 using Spectara.Revela.Commands.Generate.Models;
+using Spectara.Revela.Commands.Generate.Parsing;
 
-namespace Spectara.Revela.Commands.Generate.Services;
+namespace Spectara.Revela.Commands.Generate.Scanning;
 
 /// <summary>
 /// Scans content directory for images and markdown files
 /// </summary>
 /// <remarks>
 /// Discovers:
-/// - Image files (*.jpg, *.jpeg, *.png, *.webp)
+/// - Image files (*.jpg, *.jpeg, *.png, *.webp, *.gif)
 /// - Markdown files (_index.md for gallery metadata)
 /// - Directory structure (galleries/albums)
 ///
@@ -17,7 +19,6 @@ public sealed partial class ContentScanner(
     ILogger<ContentScanner> logger,
     FrontMatterParser frontMatterParser)
 {
-    private static readonly string[] ImageExtensions = [".jpg", ".jpeg", ".png", ".webp", ".gif"];
 
     /// <summary>
     /// Scans directory and returns content tree
@@ -59,7 +60,7 @@ public sealed partial class ContentScanner(
 
         // Find images in current directory
         var imageFiles = Directory.EnumerateFiles(currentDirectory)
-            .Where(f => ImageExtensions.Contains(Path.GetExtension(f), StringComparer.OrdinalIgnoreCase))
+            .Where(f => SupportedImageExtensions.IsSupported(Path.GetExtension(f)))
             .ToList();
 
         // Check for _index.md (gallery metadata or standalone page)

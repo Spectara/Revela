@@ -1,68 +1,6 @@
 using System.Text.Json.Serialization;
 
-namespace Spectara.Revela.Commands.Generate.Models;
-
-/// <summary>
-/// Image manifest for incremental builds and caching.
-/// </summary>
-/// <remarks>
-/// The manifest stores metadata about all processed images, enabling:
-/// - Skip unchanged images (hash comparison)
-/// - Provide image data without loading files (--skip-images mode)
-/// - Dynamic srcset based on actually generated sizes
-/// - EXIF data caching (replaces separate ExifCache)
-///
-/// Location: .cache/manifest.json
-/// </remarks>
-public sealed class ImageManifest
-{
-    /// <summary>
-    /// Manifest metadata for version and configuration tracking.
-    /// </summary>
-    [JsonPropertyName("_meta")]
-    public ManifestMeta Meta { get; set; } = new();
-
-    /// <summary>
-    /// Image entries keyed by source path (relative to source directory).
-    /// </summary>
-    /// <example>
-    /// "01 Events/photo-001.jpg" → ImageManifestEntry
-    /// </example>
-    [JsonPropertyName("images")]
-    public Dictionary<string, ImageManifestEntry> Images { get; init; } = [];
-}
-
-/// <summary>
-/// Manifest metadata for tracking configuration changes.
-/// </summary>
-public sealed class ManifestMeta
-{
-    /// <summary>
-    /// Manifest schema version for future migrations.
-    /// </summary>
-    [JsonPropertyName("version")]
-    public int Version { get; set; } = 1;
-
-    /// <summary>
-    /// Hash of image processing configuration (sizes, formats, quality).
-    /// When this changes, all images need to be regenerated.
-    /// </summary>
-    [JsonPropertyName("configHash")]
-    public string ConfigHash { get; set; } = string.Empty;
-
-    /// <summary>
-    /// Theme ID used for generation.
-    /// Different themes may require different image sizes.
-    /// </summary>
-    [JsonPropertyName("themeId")]
-    public string? ThemeId { get; set; }
-
-    /// <summary>
-    /// Timestamp of last manifest update.
-    /// </summary>
-    [JsonPropertyName("lastUpdated")]
-    public DateTime LastUpdated { get; set; } = DateTime.UtcNow;
-}
+namespace Spectara.Revela.Commands.Generate.Models.Manifest;
 
 /// <summary>
 /// Manifest entry for a single source image.

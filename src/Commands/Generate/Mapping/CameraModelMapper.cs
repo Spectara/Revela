@@ -1,10 +1,10 @@
 using Microsoft.Extensions.Options;
 using Spectara.Revela.Core.Configuration;
 
-namespace Spectara.Revela.Commands.Generate.Services;
+namespace Spectara.Revela.Commands.Generate.Mapping;
 
 /// <summary>
-/// Transforms camera model codes to user-friendly names
+/// Maps camera model codes to user-friendly names
 /// </summary>
 /// <remarks>
 /// Supports:
@@ -23,7 +23,7 @@ namespace Spectara.Revela.Commands.Generate.Services;
 /// }
 /// </code>
 /// </remarks>
-public sealed class CameraModelTransformer
+public sealed class CameraModelMapper
 {
     private readonly Dictionary<string, string> modelMappings;
     private readonly Dictionary<string, string> makeMappings;
@@ -102,9 +102,9 @@ public sealed class CameraModelTransformer
     };
 
     /// <summary>
-    /// Create transformer with default mappings and optional custom config
+    /// Create mapper with default mappings and optional custom config
     /// </summary>
-    public CameraModelTransformer(IOptions<RevelaConfig> config)
+    public CameraModelMapper(IOptions<RevelaConfig> config)
     {
         // Start with defaults
         modelMappings = new Dictionary<string, string>(DefaultModelMappings, StringComparer.OrdinalIgnoreCase);
@@ -150,9 +150,9 @@ public sealed class CameraModelTransformer
     }
 
     /// <summary>
-    /// Transform camera model code to user-friendly name
+    /// Map camera model code to user-friendly name
     /// </summary>
-    public string? TransformModel(string? model)
+    public string? MapModel(string? model)
     {
         if (string.IsNullOrWhiteSpace(model))
         {
@@ -172,7 +172,7 @@ public sealed class CameraModelTransformer
     /// <summary>
     /// Get user-friendly camera manufacturer name
     /// </summary>
-    public string? TransformMake(string? make)
+    public string? MapMake(string? make)
     {
         if (string.IsNullOrWhiteSpace(make))
         {
