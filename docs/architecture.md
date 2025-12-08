@@ -51,16 +51,19 @@ Revela/
 │   │   ├── ImageProcessing/      # NetVips wrapper
 │   │   └── Templating/           # Scriban + Markdig
 │   │
-│   ├── Spectara.Revela.Features/          # Vertical Slices
-│   │   ├── GenerateSite/         # Site generation feature
-│   │   └── ManagePlugins/        # Plugin management feature
+│   ├── Spectara.Revela.Commands/          # CLI Commands (Vertical Slices)
+│   │   ├── Generate/             # Site generation command
+│   │   ├── Init/                 # Project initialization
+│   │   ├── Plugins/              # Plugin management
+│   │   ├── Restore/              # Dependency restore
+│   │   └── Theme/                # Theme management
 │   │
 │   ├── Spectara.Revela.Cli/               # CLI Entry Point
 │   │   └── Program.cs            # Host + Commands
 │   │
 │   └── Spectara.Revela.Plugins/           # Optional Plugins
-│       ├── Spectara.Revela.Plugin.Deploy/
-│       └── Spectara.Revela.Plugin.OneDrive/
+│       ├── Plugin.Deploy.SSH/
+│       └── Plugin.Source.OneDrive/
 │
 └── tests/
 ```
@@ -75,8 +78,8 @@ Revela/
 - **System.CommandLine 2.0.0** - CLI framework
 
 ### Image Processing
-- **NetVips 3.0.0** - High-performance image processing (libvips wrapper)
-- **NetVips.Native 8.15.3** - Native libvips binaries
+- **NetVips 3.1.0** - High-performance image processing (libvips wrapper)
+- **NetVips.Native 8.17.3** - Native libvips binaries
 
 ### Templating
 - **Scriban 5.10.0** - Liquid-like template engine
@@ -196,7 +199,7 @@ Spectara.Revela.json → ExposeConfig → IOptions<ExposeConfig>
 User runs: revela generate -p mysite
 
 1. Load Configuration
-   Spectara.Revela.json → ExposeConfig
+   project.json + site.json → RevelaConfig
 
 2. Discover Content
    content/ → Images + Markdown

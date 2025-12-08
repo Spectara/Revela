@@ -4,12 +4,13 @@
 [![Dependencies](https://github.com/spectara/revela/actions/workflows/dependency-update-check.yml/badge.svg)](https://github.com/spectara/revela/actions/workflows/dependency-update-check.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-> [!WARNING]
-> **🚧 WORK IN PROGRESS 🚧**
+> [!NOTE]
+> **🚧 BETA - Core Features Complete 🚧**
 > 
-> Revela is currently in early development (v1.0.0-dev). The core `generate` command is not yet implemented.
+> Revela is in beta (v1.0.0-dev). All core features are working!
 > 
-> **Currently Working:**
+> **Working Features:**
+> - ✅ Site generation (`revela generate`) - **Full image processing & template rendering**
 > - ✅ Project initialization (`revela init project`)
 > - ✅ Plugin management (`revela plugin list/install/uninstall`)
 > - ✅ Theme management (`revela theme list/extract`)
@@ -17,11 +18,11 @@
 > - ✅ OneDrive source plugin
 > 
 > **Coming Soon:**
-> - ⏳ Site generation (`revela generate`) - **Main feature in development**
-> - ⏳ Image processing (NetVips integration)
-> - ⏳ Template rendering (Scriban integration)
+> - ⏳ Watch mode with auto-rebuild
+> - ⏳ Local dev server with hot reload
+> - ⏳ Deploy plugins (SSH, Azure)
 > 
-> **Not Ready for Production Use!** Star ⭐ and watch this repo for updates.
+> **Ready for Testing!** Star ⭐ and watch this repo for updates.
 
 **Reveal your stories through beautiful portfolios**
 

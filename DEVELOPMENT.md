@@ -1,6 +1,6 @@
 # Revela - Development Status
 
-**Last Updated:** 2025-06-15
+**Last Updated:** 2025-12-08
 
 ## 🔗 Original Project Reference
 
@@ -9,7 +9,7 @@ This is a **complete rewrite** of the original Bash-based Revela:
 - **Language:** Bash → .NET 10 / C# 14
 - **Goal:** Same output, better performance, more extensibility
 
-## 📊 Current Status: CLI & PLUGINS COMPLETE ✅
+## 📊 Current Status: CORE FEATURES COMPLETE ✅
 
 ### ✅ Completed
 
@@ -43,6 +43,7 @@ This is a **complete rewrite** of the original Bash-based Revela:
 
 #### CLI Commands (DONE)
 - [x] `init project` - Initialize new project
+- [x] `generate` - Generate static site from content ✅
 - [x] `plugin list` - List installed plugins
 - [x] `plugin install` - Install plugin from NuGet
 - [x] `plugin uninstall` - Uninstall plugin
@@ -52,49 +53,34 @@ This is a **complete rewrite** of the original Bash-based Revela:
 - [x] `source onedrive init` - Initialize OneDrive source
 - [x] `source onedrive download` - Download from OneDrive shared link
 
+#### Phase 2: Generate Command (DONE)
+- [x] **Content Scanner** - Scan source directory, build gallery tree
+- [x] **Image Processing** - NetVips multi-format output, responsive variants
+- [x] **EXIF Extraction** - Camera settings, exposure time formatting
+- [x] **Template Rendering** - Scriban engine with custom functions
+- [x] **Smart Caching** - Image manifest for fast rebuilds
+- [x] **Navigation Builder** - Automatic navigation from directory structure
+
 #### Plugins (DONE)
 - [x] `Theme.Expose` - Default Expose theme (embedded)
 - [x] `Theme.Minimal` - Minimal theme (embedded)
 - [x] `Plugin.Source.OneDrive` - OneDrive shared folder source
 
-### 🚧 In Progress
-
-#### Phase 2: Generate Command
-1. [ ] **Site Generation**
-   - Content scanning
-   - Image processing pipeline
-   - Template rendering
-   - Output generation
-
 ### 📝 Next Steps
-
-#### Phase 2: Generate Command
-1. [ ] **Content Scanner**
-   - Scan source directory for images
-   - Parse metadata from JSON files
-   - Build gallery tree
-
-2. [ ] **Image Processing Pipeline**
-   - NetVips multi-format output (WebP, AVIF, JPG)
-   - Responsive image variants
-   - EXIF extraction
-   - Smart caching
-
-3. [ ] **Template Rendering**
-   - Scriban template engine
-   - Custom functions (url_for, asset, etc.)
-   - Partial support
-   - Layout inheritance
-
-4. [ ] **Output Generation**
-   - HTML pages
-   - Asset copying
-   - Sitemap generation
 
 #### Future Plugins
 1. [ ] **Deploy.SSH Plugin**
    - SSH/SFTP deployment
    - Rsync support
+
+2. [ ] **Deploy.Azure Plugin**
+   - Azure Blob Storage deployment
+   - Azure Static Web Apps
+
+#### Future Features
+1. [ ] **Watch Mode** - Auto-rebuild on file changes
+2. [ ] **Dev Server** - Local preview server with hot reload
+3. [ ] **Multi-format Images** - WebP, AVIF output (currently JPG only)
 
 ---
 

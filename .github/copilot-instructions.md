@@ -81,7 +81,7 @@ This is a **complete rewrite** of the original Bash-based revela project:
 src/
 ├── Core/                     # Shared kernel (models, abstractions, plugin system)
 ├── Infrastructure/           # External services (NetVips, Scriban, Markdig)
-├── Features/                 # Vertical slices (Generate, Init, Plugins)
+├── Commands/                 # CLI commands (Generate, Init, Plugins, Restore, Theme)
 ├── Cli/                      # Entry point (.NET Tool)
 └── Plugins/
     ├── Plugin.Deploy.SSH/    # SSH/SFTP deployment
@@ -162,19 +162,16 @@ return rootCommand.Parse(args).Invoke();
 ```
 
 **Command Registration Pattern:**
-- **Core Commands:** Manual registration in Program.cs (3-5 commands)
+- **Core Commands:** Registered via `UseRevelaCommands()` extension
   ```csharp
-  rootCommand.Subcommands.Add(InitCommand.Create());
-  rootCommand.Subcommands.Add(GenerateCommand.Create());
+  return host.UseRevelaCommands().Parse(args).Invoke();
   ```
-- **Plugin Commands:** Automatic via `AddPlugins()` and `RegisterCommands()`
+- **Plugin Commands:** Automatic via `AddPlugins()` (registered in `UseRevelaCommands()`)
   ```csharp
-  var plugins = builder.Services.AddPlugins(builder.Configuration);
-  plugins.Initialize(host.Services);
-  plugins.RegisterCommands(rootCommand);
+  builder.Services.AddPlugins(builder.Configuration);
   ```
 
-**Reason:** Core commands are stable and few, plugins need dynamic discovery
+**Reason:** All commands resolved from DI, unified registration via extension method
 
 ### 4. Plugin System with Host.CreateApplicationBuilder
 
@@ -183,31 +180,24 @@ return rootCommand.Parse(args).Invoke();
 #### Complete Program.cs Example
 
 ```csharp
-using System.CommandLine;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Spectara.Revela.Cli;
+using Spectara.Revela.Commands;
 
 // ✅ Use Host.CreateApplicationBuilder
 var builder = Host.CreateApplicationBuilder(args);
 
-// ✅ Load and register plugins (Extension Method Pattern)
-var plugins = builder.Services.AddPlugins(builder.Configuration);
+// ✅ Pre-build: Load configuration and register services
+builder.AddRevelaConfiguration();
+builder.Services.AddRevelaCommands();
+builder.Services.AddPlugins(builder.Configuration);
 
 // ✅ Build host
 var host = builder.Build();
 
-// ✅ Initialize plugins
-plugins.Initialize(host.Services);
-
-// Build root command
-var rootCommand = new RootCommand("Revela");
-rootCommand.Subcommands.Add(InitCommand.Create());
-
-// ✅ Register plugin commands
-plugins.RegisterCommands(rootCommand);
-
-// Execute
-return rootCommand.Parse(args).Invoke();
+// ✅ Post-build: Create CLI and execute
+return host.UseRevelaCommands().Parse(args).Invoke();
 ```
 
 #### Plugin Lifecycle - 4 Phases
