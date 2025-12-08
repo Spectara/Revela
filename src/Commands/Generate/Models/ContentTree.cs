@@ -1,0 +1,21 @@
+namespace Spectara.Revela.Commands.Generate.Models;
+
+/// <summary>
+/// Content tree representing scanned content
+/// </summary>
+/// <remarks>
+/// Result of scanning the source directory.
+/// Contains discovered images and gallery structure.
+/// </remarks>
+public sealed class ContentTree
+{
+    /// <summary>
+    /// All source images found during scan
+    /// </summary>
+    public required IReadOnlyList<SourceImage> Images { get; init; }
+
+    /// <summary>
+    /// Gallery structure discovered from directories
+    /// </summary>
+    public required IReadOnlyList<Gallery> Galleries { get; init; }
+}

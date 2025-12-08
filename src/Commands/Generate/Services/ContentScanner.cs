@@ -148,25 +148,3 @@ public sealed partial class ContentScanner(
     [LoggerMessage(Level = LogLevel.Information, Message = "Scan complete: {ImageCount} images, {GalleryCount} galleries")]
     private static partial void LogScanComplete(ILogger logger, int imageCount, int galleryCount);
 }
-
-/// <summary>
-/// Content tree representing scanned content
-/// </summary>
-public sealed class ContentTree
-{
-    public required IReadOnlyList<SourceImage> Images { get; init; }
-    public required IReadOnlyList<Gallery> Galleries { get; init; }
-}
-
-/// <summary>
-/// Source image before processing
-/// </summary>
-public sealed class SourceImage
-{
-    public required string SourcePath { get; init; }
-    public required string RelativePath { get; init; }
-    public required string FileName { get; init; }
-    public required long FileSize { get; init; }
-    public required DateTime LastModified { get; init; }
-    public required string Gallery { get; init; }
-}

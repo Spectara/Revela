@@ -747,16 +747,3 @@ public sealed partial class SiteGenerator(
 
     #endregion
 }
-
-/// <summary>
-/// Site model for template rendering
-/// </summary>
-public sealed class SiteModel
-{
-    public required SiteSettings Site { get; init; }
-    public required ProjectSettings Project { get; init; }
-    public required IReadOnlyList<Gallery> Galleries { get; init; }
-    public required IReadOnlyList<Image> Images { get; init; }
-    public required IReadOnlyList<NavigationItem> Navigation { get; init; }
-    public DateTime BuildDate { get; init; }
-}
