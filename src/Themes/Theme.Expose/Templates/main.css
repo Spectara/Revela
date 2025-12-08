@@ -189,14 +189,17 @@ body > nav section div {
   display: flex;
   flex-direction: column;
 }
-body > nav section div > span {
+body > nav section div > span,
+body > nav section div > a:first-child {
   font-weight: 100;
   font-size: var(--font-size-3);
   text-decoration: none;
-  color: hsl(var(--color-light-hsl));
+}
+body > nav section div > span {
+  color: hsl(var(--color-light-hsl)/0.65);
   cursor: default;
 }
-body > nav section div a {
+body > nav section div a:not(:first-child) {
   margin-left: var(--space-l);
   font-size: var(--font-size-2);
 }
@@ -423,7 +426,7 @@ main .gallery > h2 {
 }
 main .gallery > article {
   flex-grow: calc(var(--width) * (500000000 / var(--height)));
-  flex-basis: calc(var(--space-s) * 15 * (var(--width) / var(--height)));
+  flex-basis: calc(var(--space-s) * 18 * (var(--width) / var(--height)));
   position: relative;
   background-color: hsl(var(--color-background-hsl));
   outline: solid var(--grid-gap) hsl(var(--color-background-hsl));
@@ -626,14 +629,17 @@ footer nav section div {
   display: flex;
   flex-direction: column;
 }
-footer nav section div > span {
+footer nav section div > span,
+footer nav section div > a:first-child {
   font-weight: 100;
   font-size: var(--font-size-2);
   text-decoration: none;
-  color: hsl(var(--color-light-hsl));
+}
+footer nav section div > span {
+  color: hsl(var(--color-light-hsl)/0.65);
   cursor: default;
 }
-footer nav section div a {
+footer nav section div a:not(:first-child) {
   margin-left: var(--space-l);
   font-size: var(--font-size-1);
 }
