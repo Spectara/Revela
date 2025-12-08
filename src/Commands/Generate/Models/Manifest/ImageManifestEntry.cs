@@ -8,6 +8,13 @@ namespace Spectara.Revela.Commands.Generate.Models.Manifest;
 public sealed class ImageManifestEntry
 {
     /// <summary>
+    /// Filename of the source image (without directory path).
+    /// </summary>
+    /// <example>"photo-001.jpg"</example>
+    [JsonPropertyName("filename")]
+    public required string Filename { get; init; }
+
+    /// <summary>
     /// Hash of source image for change detection.
     /// Format: MD5({filename}_{lastWriteTime}_{fileSize})[0..12]
     /// </summary>
@@ -15,35 +22,24 @@ public sealed class ImageManifestEntry
     public required string Hash { get; init; }
 
     /// <summary>
-    /// Original image width in pixels.
+    /// Image width in pixels.
     /// </summary>
-    [JsonPropertyName("originalWidth")]
-    public required int OriginalWidth { get; init; }
+    [JsonPropertyName("width")]
+    public required int Width { get; init; }
 
     /// <summary>
-    /// Original image height in pixels.
+    /// Image height in pixels.
     /// </summary>
-    [JsonPropertyName("originalHeight")]
-    public required int OriginalHeight { get; init; }
+    [JsonPropertyName("height")]
+    public required int Height { get; init; }
 
     /// <summary>
-    /// List of generated image widths (e.g., [320, 640, 1024, 1920]).
-    /// Smaller images are skipped if original is too small.
+    /// List of sizes to generate (widths in pixels).
+    /// Calculated from config, filtered by actual image width.
     /// </summary>
-    [JsonPropertyName("generatedSizes")]
-    public required IReadOnlyList<int> GeneratedSizes { get; init; }
-
-    /// <summary>
-    /// List of generated formats (e.g., ["jpg", "webp"]).
-    /// </summary>
-    [JsonPropertyName("generatedFormats")]
-    public required IReadOnlyList<string> GeneratedFormats { get; init; }
-
-    /// <summary>
-    /// Output path relative to images directory (e.g., "01-events/photo-001").
-    /// </summary>
-    [JsonPropertyName("outputPath")]
-    public required string OutputPath { get; init; }
+    /// <example>[320, 640, 1024, 1920]</example>
+    [JsonPropertyName("sizes")]
+    public required IReadOnlyList<int> Sizes { get; init; }
 
     /// <summary>
     /// Original file size in bytes.

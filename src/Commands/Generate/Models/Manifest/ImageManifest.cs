@@ -1,21 +1,24 @@
-using System.Diagnostics.CodeAnalysis;
 using System.Text.Json.Serialization;
 
 namespace Spectara.Revela.Commands.Generate.Models.Manifest;
 
 /// <summary>
-/// Image manifest for incremental builds and caching.
+/// Site manifest for incremental builds and caching.
 /// </summary>
 /// <remarks>
-/// The manifest stores metadata about all processed content, enabling:
+/// <para>
+/// The manifest stores metadata about all processed content in a unified tree structure.
+/// The root node represents the home page and contains the entire site hierarchy.
+/// </para>
+/// <para>
+/// Enables:
 /// - Skip unchanged images (hash comparison)
 /// - Provide gallery/navigation data without re-scanning
 /// - Dynamic srcset based on actually generated sizes
 /// - EXIF data caching (replaces separate ExifCache)
-///
-/// Location: .cache/manifest.json
+/// </para>
+/// <para>Location: .cache/manifest.json</para>
 /// </remarks>
-[SuppressMessage("Design", "CA1002:Do not expose generic lists", Justification = "Required for JSON deserialization")]
 public sealed class ImageManifest
 {
     /// <summary>
@@ -25,23 +28,12 @@ public sealed class ImageManifest
     public ManifestMeta Meta { get; set; } = new();
 
     /// <summary>
-    /// Gallery entries from content scan.
+    /// Root node of the site tree (home page).
     /// </summary>
-    [JsonPropertyName("galleries")]
-    public List<GalleryManifestEntry> Galleries { get; init; } = [];
-
-    /// <summary>
-    /// Navigation tree from content scan.
-    /// </summary>
-    [JsonPropertyName("navigation")]
-    public List<NavigationManifestEntry> Navigation { get; init; } = [];
-
-    /// <summary>
-    /// Image entries keyed by source path (relative to source directory).
-    /// </summary>
-    /// <example>
-    /// "01 Events/photo-001.jpg" → ImageManifestEntry
-    /// </example>
-    [JsonPropertyName("images")]
-    public Dictionary<string, ImageManifestEntry> Images { get; init; } = [];
+    /// <remarks>
+    /// The entire site structure is represented as a tree starting from this root.
+    /// Galleries with images have a non-null slug, branch nodes have null slug.
+    /// </remarks>
+    [JsonPropertyName("root")]
+    public ManifestEntry? Root { get; set; }
 }

@@ -20,7 +20,7 @@ namespace Spectara.Revela.Commands.Generate.Services;
 /// </para>
 /// </remarks>
 public sealed partial class RenderService(
-    ScribanTemplateEngine templateEngine,
+    ITemplateEngine templateEngine,
     IThemeResolver themeResolver,
     IManifestRepository manifestRepository,
     IConfiguration configuration,
@@ -60,12 +60,12 @@ public sealed partial class RenderService(
             // Load manifest
             await manifestRepository.LoadAsync(cancellationToken);
 
-            if (manifestRepository.Galleries.Count == 0)
+            if (manifestRepository.Root is null)
             {
                 return new RenderResult
                 {
                     Success = false,
-                    ErrorMessage = "No galleries in manifest. Run scan first."
+                    ErrorMessage = "No content in manifest. Run scan first."
                 };
             }
 
@@ -76,16 +76,16 @@ public sealed partial class RenderService(
             var theme = themeResolver.Resolve(config.Theme.Name, Environment.CurrentDirectory);
             SetTheme(theme);
 
+            // Reconstruct galleries and navigation from unified root
+            var galleries = ReconstructGalleries(manifestRepository.Root);
+            var navigation = ReconstructNavigation(manifestRepository.Root);
+
             progress?.Report(new RenderProgress
             {
                 CurrentPage = "Preparing...",
                 Rendered = 0,
-                Total = manifestRepository.Galleries.Count + 1 // +1 for index
+                Total = galleries.Count + 1 // +1 for index
             });
-
-            // Reconstruct galleries with images from manifest
-            var galleries = ReconstructGalleries(manifestRepository.Galleries);
-            var navigation = ReconstructNavigation(manifestRepository.Navigation);
 
             // Build site model
             var allImages = new List<Image>();
@@ -191,64 +191,92 @@ public sealed partial class RenderService(
 
     #region Private Methods - Reconstruction
 
-    private List<Gallery> ReconstructGalleries(IReadOnlyList<GalleryManifestEntry> entries)
+    /// <summary>
+    /// Reconstruct galleries from the unified root tree.
+    /// </summary>
+    /// <remarks>
+    /// Galleries are nodes with a non-null slug (meaning they have a page).
+    /// </remarks>
+    private static List<Gallery> ReconstructGalleries(ManifestEntry root)
     {
         var galleries = new List<Gallery>();
-        foreach (var entry in entries)
+
+        // Add root as home gallery if it has a slug
+        if (!string.IsNullOrEmpty(root.Slug) || string.IsNullOrEmpty(root.Path))
         {
-            galleries.Add(ReconstructGallery(entry));
+            galleries.Add(ReconstructGalleryFromEntry(root));
         }
+
+        // Recursively find all gallery nodes
+        CollectGalleries(root.Children, galleries);
+
         return galleries;
     }
 
-    private Gallery ReconstructGallery(GalleryManifestEntry entry)
+    private static void CollectGalleries(IReadOnlyList<ManifestEntry> entries, List<Gallery> galleries)
+    {
+        foreach (var entry in entries)
+        {
+            // Only nodes with a slug are galleries (leaf nodes with pages)
+            if (!string.IsNullOrEmpty(entry.Slug))
+            {
+                galleries.Add(ReconstructGalleryFromEntry(entry));
+            }
+
+            // Recurse into children
+            CollectGalleries(entry.Children, galleries);
+        }
+    }
+
+    private static Gallery ReconstructGalleryFromEntry(ManifestEntry entry)
     {
         var images = new List<Image>();
-        foreach (var imagePath in entry.ImagePaths)
+        foreach (var imageEntry in entry.Images)
         {
-            var manifestKey = imagePath.Replace('\\', '/');
-            var imageEntry = manifestRepository.GetImage(manifestKey);
-            if (imageEntry is not null)
-            {
-                images.Add(Image.FromManifestEntry(imagePath, imageEntry));
-            }
+            var sourcePath = string.IsNullOrEmpty(entry.Path)
+                ? imageEntry.Filename
+                : $"{entry.Path}\\{imageEntry.Filename}";
+            images.Add(Image.FromManifestEntry(sourcePath, imageEntry));
         }
 
         return new Gallery
         {
             Path = entry.Path,
-            Slug = entry.Slug,
-            Name = entry.Name,
-            Title = entry.Title,
+            Slug = entry.Slug ?? string.Empty,
+            Name = entry.Text,
+            Title = entry.Text,
             Description = entry.Description,
             Cover = entry.Cover,
             Date = entry.Date,
             Featured = entry.Featured,
-            Weight = entry.Weight,
+            Weight = 0, // Weight removed from new structure
             Images = images,
-            SubGalleries = [.. entry.SubGalleries.Select(ReconstructGallery)]
+            SubGalleries = [] // Sub-galleries are flattened in the tree
         };
     }
 
-    private static List<NavigationItem> ReconstructNavigation(IReadOnlyList<NavigationManifestEntry> entries)
+    /// <summary>
+    /// Reconstruct navigation from the unified root tree.
+    /// </summary>
+    private static List<NavigationItem> ReconstructNavigation(ManifestEntry root)
     {
-        var items = new List<NavigationItem>();
-        foreach (var entry in entries)
-        {
-            items.Add(ReconstructNavigationItem(entry));
-        }
-        return items;
+        // Navigation is the children of root (root itself is Home, not in nav)
+        return [.. root.Children
+            .Where(e => !e.Hidden)
+            .Select(ReconstructNavigationItem)];
     }
 
-    private static NavigationItem ReconstructNavigationItem(NavigationManifestEntry entry)
+    private static NavigationItem ReconstructNavigationItem(ManifestEntry entry)
     {
         return new NavigationItem
         {
             Text = entry.Text,
-            Url = entry.Url,
+            Url = entry.Slug,
             Description = entry.Description,
             Hidden = entry.Hidden,
-            Children = [.. entry.Children.Select(ReconstructNavigationItem)]
+            Children = [.. entry.Children
+                .Where(e => !e.Hidden)
+                .Select(ReconstructNavigationItem)]
         };
     }
 

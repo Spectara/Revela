@@ -74,11 +74,11 @@ public sealed partial class PagesCommand(
 
         if (result.Success)
         {
-            AnsiConsole.MarkupLine($"[green]✓ Pages generated![/] {result.PageCount} pages");
+            AnsiConsole.MarkupLine($"[green]OK Pages generated![/] {result.PageCount} pages");
         }
         else
         {
-            AnsiConsole.MarkupLine($"[red]✗ Page generation failed:[/] {result.ErrorMessage}");
+            AnsiConsole.MarkupLine($"[red]ERROR Page generation failed:[/] {result.ErrorMessage}");
             LogPagesGenerationFailed(logger);
         }
     }

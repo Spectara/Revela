@@ -97,16 +97,16 @@ public sealed partial class ImagesCommand(
 
             if (result.ProcessedCount == 0 && result.SkippedCount > 0)
             {
-                AnsiConsole.MarkupLine("[green]✓ All images up to date![/]");
+                AnsiConsole.MarkupLine("[green]OK All images up to date![/]");
             }
             else
             {
-                AnsiConsole.MarkupLine($"[green]✓ Processed {result.ProcessedCount} images[/]");
+                AnsiConsole.MarkupLine($"[green]OK Processed {result.ProcessedCount} images[/]");
             }
         }
         else
         {
-            AnsiConsole.MarkupLine($"[red]✗ Image processing failed:[/] {result.ErrorMessage}");
+            AnsiConsole.MarkupLine($"[red]ERROR Image processing failed:[/] {result.ErrorMessage}");
             LogImageProcessingFailed(logger);
         }
     }

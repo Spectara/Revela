@@ -7,17 +7,24 @@ using Spectara.Revela.Commands.Generate.Models.Manifest;
 namespace Spectara.Revela.Commands.Generate.Services;
 
 /// <summary>
-/// Service for managing the image manifest file.
+/// Service for managing the site manifest file.
 /// </summary>
 /// <remarks>
+/// <para>
 /// The manifest enables incremental builds by:
 /// - Tracking source image hashes for change detection
 /// - Storing generated sizes/formats for templates
 /// - Caching EXIF data (eliminates need for separate ExifCache)
 /// - Tracking config changes (forces full rebuild when sizes change)
-///
+/// </para>
+/// <para>
+/// Uses a unified tree structure with Root node containing the entire site.
+/// Image lookups are cached internally for O(1) access by source path.
+/// </para>
+/// <para>
 /// Holds manifest state in memory, persists on SaveAsync.
 /// Cache directory is determined from current working directory.
+/// </para>
 /// </remarks>
 public sealed partial class ManifestService(ILogger<ManifestService> logger) : IManifestRepository
 {
@@ -32,55 +39,88 @@ public sealed partial class ManifestService(ILogger<ManifestService> logger) : I
 
     private ImageManifest manifest = new();
 
+    /// <summary>
+    /// Internal cache for O(1) image lookups by source path.
+    /// </summary>
+    /// <remarks>
+    /// Built from traversing the tree on load/setRoot.
+    /// Keys are normalized source paths (forward slashes).
+    /// Values are tuples of (ImageManifestEntry, containing ManifestEntry node).
+    /// </remarks>
+    private Dictionary<string, (ImageManifestEntry Entry, ManifestEntry Node)> imageCache = [];
+
+    #region Root Node
+
+    /// <inheritdoc />
+    public ManifestEntry? Root => manifest.Root;
+
+    /// <inheritdoc />
+    public void SetRoot(ManifestEntry root)
+    {
+        manifest.Root = root;
+        RebuildImageCache();
+    }
+
+    #endregion
+
     #region Image Entries
 
     /// <inheritdoc />
-    public IReadOnlyDictionary<string, ImageManifestEntry> Images => manifest.Images;
+    public IReadOnlyDictionary<string, ImageManifestEntry> Images =>
+        imageCache.ToDictionary(kvp => kvp.Key, kvp => kvp.Value.Entry);
 
     /// <inheritdoc />
     public ImageManifestEntry? GetImage(string sourcePath)
     {
-        return manifest.Images.TryGetValue(sourcePath, out var entry) ? entry : null;
+        return imageCache.TryGetValue(sourcePath, out var cached) ? cached.Entry : null;
     }
 
     /// <inheritdoc />
     public void SetImage(string sourcePath, ImageManifestEntry entry)
     {
-        manifest.Images[sourcePath] = entry;
+        // Find the node that should contain this image (based on path prefix)
+        var node = FindNodeForImage(sourcePath);
+        if (node is null)
+        {
+            LogImageNodeNotFound(logger, sourcePath);
+            return;
+        }
+
+        // Check if image already exists in node
+        var existingIndex = node.Images.FindIndex(img =>
+            GetImageSourcePath(node.Path, img) == sourcePath);
+
+        if (existingIndex >= 0)
+        {
+            node.Images[existingIndex] = entry;
+        }
+        else
+        {
+            node.Images.Add(entry);
+        }
+
+        // Update cache
+        imageCache[sourcePath] = (entry, node);
     }
 
     /// <inheritdoc />
     public bool RemoveImage(string sourcePath)
     {
-        return manifest.Images.Remove(sourcePath);
-    }
+        if (!imageCache.TryGetValue(sourcePath, out var cached))
+        {
+            return false;
+        }
 
-    #endregion
+        // Remove from node
+        var index = cached.Node.Images.IndexOf(cached.Entry);
+        if (index >= 0)
+        {
+            cached.Node.Images.RemoveAt(index);
+        }
 
-    #region Gallery Entries
-
-    /// <inheritdoc />
-    public IReadOnlyList<GalleryManifestEntry> Galleries => manifest.Galleries;
-
-    /// <inheritdoc />
-    public void SetGalleries(IEnumerable<GalleryManifestEntry> galleries)
-    {
-        manifest.Galleries.Clear();
-        manifest.Galleries.AddRange(galleries);
-    }
-
-    #endregion
-
-    #region Navigation Entries
-
-    /// <inheritdoc />
-    public IReadOnlyList<NavigationManifestEntry> Navigation => manifest.Navigation;
-
-    /// <inheritdoc />
-    public void SetNavigation(IEnumerable<NavigationManifestEntry> navigation)
-    {
-        manifest.Navigation.Clear();
-        manifest.Navigation.AddRange(navigation);
+        // Remove from cache
+        imageCache.Remove(sourcePath);
+        return true;
     }
 
     #endregion
@@ -122,6 +162,7 @@ public sealed partial class ManifestService(ILogger<ManifestService> logger) : I
         {
             LogManifestNotFound(logger, manifestPath);
             manifest = new ImageManifest();
+            imageCache.Clear();
             return;
         }
 
@@ -134,17 +175,20 @@ public sealed partial class ManifestService(ILogger<ManifestService> logger) : I
             {
                 LogManifestInvalid(logger, manifestPath);
                 manifest = new ImageManifest();
+                imageCache.Clear();
             }
             else
             {
                 manifest = loaded;
-                LogManifestLoaded(logger, manifest.Images.Count);
+                RebuildImageCache();
+                LogManifestLoaded(logger, imageCache.Count);
             }
         }
         catch (JsonException ex)
         {
             LogManifestParseError(logger, manifestPath, ex);
             manifest = new ImageManifest();
+            imageCache.Clear();
         }
     }
 
@@ -169,7 +213,7 @@ public sealed partial class ManifestService(ILogger<ManifestService> logger) : I
             // Atomic rename
             File.Move(tempPath, manifestPath, overwrite: true);
 
-            LogManifestSaved(logger, manifest.Images.Count, manifestPath);
+            LogManifestSaved(logger, imageCache.Count, manifestPath);
         }
         catch (Exception ex)
         {
@@ -196,6 +240,7 @@ public sealed partial class ManifestService(ILogger<ManifestService> logger) : I
     public void Clear()
     {
         manifest = new ImageManifest();
+        imageCache.Clear();
     }
 
     #endregion
@@ -205,13 +250,13 @@ public sealed partial class ManifestService(ILogger<ManifestService> logger) : I
     /// <inheritdoc />
     public IReadOnlyList<string> RemoveOrphans(IReadOnlySet<string> existingSourcePaths)
     {
-        var orphans = manifest.Images.Keys
+        var orphans = imageCache.Keys
             .Where(key => !existingSourcePaths.Contains(key))
             .ToList();
 
         foreach (var orphan in orphans)
         {
-            manifest.Images.Remove(orphan);
+            RemoveImage(orphan);
             LogOrphanRemoved(logger, orphan);
         }
 
@@ -226,6 +271,90 @@ public sealed partial class ManifestService(ILogger<ManifestService> logger) : I
     private static string GetCacheDirectory()
     {
         return Path.Combine(Environment.CurrentDirectory, CacheDirectoryName);
+    }
+
+    /// <summary>
+    /// Rebuild the internal image cache by traversing the tree.
+    /// </summary>
+    private void RebuildImageCache()
+    {
+        imageCache = [];
+
+        if (manifest.Root is null)
+        {
+            return;
+        }
+
+        TraverseForImages(manifest.Root);
+    }
+
+    /// <summary>
+    /// Recursively traverse the tree to populate image cache.
+    /// </summary>
+    private void TraverseForImages(ManifestEntry node)
+    {
+        foreach (var image in node.Images)
+        {
+            var sourcePath = GetImageSourcePath(node.Path, image);
+            imageCache[sourcePath] = (image, node);
+        }
+
+        foreach (var child in node.Children)
+        {
+            TraverseForImages(child);
+        }
+    }
+
+    /// <summary>
+    /// Find the node that should contain an image based on its source path.
+    /// </summary>
+    private ManifestEntry? FindNodeForImage(string sourcePath)
+    {
+        if (manifest.Root is null)
+        {
+            return null;
+        }
+
+        // Extract directory path from source path
+        var lastSeparator = sourcePath.LastIndexOfAny(['/', '\\']);
+        var directoryPath = lastSeparator > 0 ? sourcePath[..lastSeparator] : string.Empty;
+
+        // Normalize to backslashes for comparison with node paths
+        directoryPath = directoryPath.Replace('/', '\\');
+
+        return FindNodeByPath(manifest.Root, directoryPath);
+    }
+
+    /// <summary>
+    /// Find a node by its filesystem path.
+    /// </summary>
+    private static ManifestEntry? FindNodeByPath(ManifestEntry node, string path)
+    {
+        if (string.Equals(node.Path, path, StringComparison.OrdinalIgnoreCase))
+        {
+            return node;
+        }
+
+        foreach (var child in node.Children)
+        {
+            var found = FindNodeByPath(child, path);
+            if (found is not null)
+            {
+                return found;
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Get the full source path for an image in a node.
+    /// </summary>
+    private static string GetImageSourcePath(string nodePath, ImageManifestEntry image)
+    {
+        return string.IsNullOrEmpty(nodePath)
+            ? image.Filename
+            : $"{nodePath}\\{image.Filename}";
     }
 
     #endregion
@@ -312,6 +441,9 @@ public sealed partial class ManifestService(ILogger<ManifestService> logger) : I
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Removed {Count} orphaned manifest entries")]
     private static partial void LogOrphansRemoved(ILogger logger, int count);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Could not find node for image: {SourcePath}")]
+    private static partial void LogImageNodeNotFound(ILogger logger, string sourcePath);
 
     #endregion
 }

@@ -111,7 +111,7 @@ public sealed partial class ThemeExtractCommand(
             UpdateThemeName(targetPath, targetName);
         }
 
-        AnsiConsole.MarkupLine($"[green]✓[/] Theme extracted to [blue]themes/{EscapeMarkup(themeName)}/[/]");
+        AnsiConsole.MarkupLine($"[green]OK[/] Theme extracted to [blue]themes/{EscapeMarkup(themeName)}/[/]");
         AnsiConsole.MarkupLine("\nYou can now customize the theme and use it in your project.");
 
         return 0;

@@ -64,11 +64,6 @@ public sealed class Image
     public IReadOnlyList<int> AvailableSizes { get; init; } = [];
 
     /// <summary>
-    /// List of available formats (e.g., ["jpg", "webp"]).
-    /// </summary>
-    public IReadOnlyList<string> AvailableFormats { get; init; } = [];
-
-    /// <summary>
     /// Create an Image from a manifest entry (for cache hits).
     /// </summary>
     /// <param name="sourcePath">Full path to source image</param>
@@ -79,14 +74,13 @@ public sealed class Image
         return new Image
         {
             SourcePath = sourcePath,
-            FileName = Path.GetFileNameWithoutExtension(entry.OutputPath),
-            Width = entry.OriginalWidth,
-            Height = entry.OriginalHeight,
+            FileName = Path.GetFileNameWithoutExtension(entry.Filename),
+            Width = entry.Width,
+            Height = entry.Height,
             FileSize = entry.FileSize,
             DateTaken = entry.DateTaken ?? DateTime.MinValue,
             Exif = entry.Exif,
-            AvailableSizes = entry.GeneratedSizes,
-            AvailableFormats = entry.GeneratedFormats
+            AvailableSizes = entry.Sizes
         };
     }
 }

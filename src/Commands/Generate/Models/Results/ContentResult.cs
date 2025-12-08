@@ -14,6 +14,9 @@ public sealed class ContentResult
     /// <summary>Number of images found.</summary>
     public int ImageCount { get; init; }
 
+    /// <summary>Number of navigation items found.</summary>
+    public int NavigationItemCount { get; init; }
+
     /// <summary>Error message if failed.</summary>
     public string? ErrorMessage { get; init; }
 }

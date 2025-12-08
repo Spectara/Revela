@@ -6,17 +6,46 @@ namespace Spectara.Revela.Commands.Generate.Abstractions;
 /// Repository for manifest persistence operations.
 /// </summary>
 /// <remarks>
+/// <para>
 /// Abstracts the storage mechanism for the manifest file,
 /// enabling testability and potential future storage backends.
 /// The repository holds manifest state in memory and persists on Save.
+/// </para>
+/// <para>
+/// The manifest uses a unified tree structure with a single root node.
+/// Image lookups are cached internally for performance.
+/// </para>
 /// </remarks>
 public interface IManifestRepository
 {
+    #region Root Node
+
+    /// <summary>
+    /// Root node of the site tree (home page).
+    /// </summary>
+    /// <remarks>
+    /// The entire site structure is represented as a tree starting from this root.
+    /// Galleries with images have a non-null slug, branch nodes have null slug.
+    /// </remarks>
+    ManifestEntry? Root { get; }
+
+    /// <summary>
+    /// Set the root node (replaces entire tree).
+    /// </summary>
+    /// <param name="root">The root manifest entry</param>
+    void SetRoot(ManifestEntry root);
+
+    #endregion
+
     #region Image Entries
 
     /// <summary>
-    /// All image entries (read-only view).
+    /// All image entries (read-only view, built from tree).
     /// </summary>
+    /// <remarks>
+    /// This is a cached dictionary built from traversing the tree.
+    /// Keys are source paths relative to source directory.
+    /// </remarks>
     IReadOnlyDictionary<string, ImageManifestEntry> Images { get; }
 
     /// <summary>
@@ -27,7 +56,7 @@ public interface IManifestRepository
     ImageManifestEntry? GetImage(string sourcePath);
 
     /// <summary>
-    /// Add or update image entry.
+    /// Add or update image entry in the appropriate tree node.
     /// </summary>
     /// <param name="sourcePath">Relative path to source image (normalized with forward slashes)</param>
     /// <param name="entry">Image manifest entry</param>
@@ -39,34 +68,6 @@ public interface IManifestRepository
     /// <param name="sourcePath">Relative path to source image</param>
     /// <returns>True if entry was removed, false if not found</returns>
     bool RemoveImage(string sourcePath);
-
-    #endregion
-
-    #region Gallery Entries
-
-    /// <summary>
-    /// All gallery entries from content scan.
-    /// </summary>
-    IReadOnlyList<GalleryManifestEntry> Galleries { get; }
-
-    /// <summary>
-    /// Set all gallery entries (replaces existing).
-    /// </summary>
-    void SetGalleries(IEnumerable<GalleryManifestEntry> galleries);
-
-    #endregion
-
-    #region Navigation Entries
-
-    /// <summary>
-    /// Navigation tree from content scan.
-    /// </summary>
-    IReadOnlyList<NavigationManifestEntry> Navigation { get; }
-
-    /// <summary>
-    /// Set navigation tree (replaces existing).
-    /// </summary>
-    void SetNavigation(IEnumerable<NavigationManifestEntry> navigation);
 
     #endregion
 

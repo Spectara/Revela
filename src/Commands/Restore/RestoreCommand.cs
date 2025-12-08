@@ -57,7 +57,7 @@ public sealed partial class RestoreCommand(
 
         if (!Directory.Exists(fullPath))
         {
-            AnsiConsole.MarkupLine($"[red]✗[/] Project directory not found: {fullPath}");
+            AnsiConsole.MarkupLine($"[red]ERROR[/] Project directory not found: {fullPath}");
             return 1;
         }
 
@@ -65,7 +65,7 @@ public sealed partial class RestoreCommand(
         var projectJsonPath = Path.Combine(fullPath, "project.json");
         if (!File.Exists(projectJsonPath))
         {
-            AnsiConsole.MarkupLine($"[red]✗[/] No project.json found in {fullPath}");
+            AnsiConsole.MarkupLine($"[red]ERROR[/] No project.json found in {fullPath}");
             AnsiConsole.MarkupLine("    Run [blue]revela init project[/] to create a new project.");
             return 1;
         }
@@ -77,7 +77,7 @@ public sealed partial class RestoreCommand(
 
         if (dependencies.Count == 0)
         {
-            AnsiConsole.MarkupLine("[green]✓[/] No dependencies to restore.");
+            AnsiConsole.MarkupLine("[green]OK[/] No dependencies to restore.");
             return 0;
         }
 
@@ -102,12 +102,12 @@ public sealed partial class RestoreCommand(
 
             if (isInstalled)
             {
-                AnsiConsole.MarkupLine($"  [green]✓[/] {typeLabel} [white]{shortName}[/] [dim]({sourceFile})[/]");
+                AnsiConsole.MarkupLine($"  [green]+[/] {typeLabel} [white]{shortName}[/] [dim]({sourceFile})[/]");
                 installed.Add(dep);
             }
             else
             {
-                AnsiConsole.MarkupLine($"  [red]✗[/] {typeLabel} [white]{shortName}[/] [dim]({sourceFile})[/] - [yellow]missing[/]");
+                AnsiConsole.MarkupLine($"  [red]-[/] {typeLabel} [white]{shortName}[/] [dim]({sourceFile})[/] - [yellow]missing[/]");
                 missing.Add(dep);
             }
         }
@@ -117,7 +117,7 @@ public sealed partial class RestoreCommand(
         // Summary
         if (missing.Count == 0)
         {
-            AnsiConsole.MarkupLine($"[green]✓[/] All {dependencies.Count} dependency(ies) are installed.");
+            AnsiConsole.MarkupLine($"[green]OK[/] All {dependencies.Count} dependency(ies) are installed.");
             return 0;
         }
 
@@ -150,7 +150,7 @@ public sealed partial class RestoreCommand(
             catch (Exception ex)
             {
                 installFailed.Add((dep, ex.Message));
-                AnsiConsole.MarkupLine($"  [red]✗[/] Failed to install {shortName}: {ex.Message}");
+                AnsiConsole.MarkupLine($"  [red]x[/] Failed to install {shortName}: {ex.Message}");
             }
         }
 
@@ -158,11 +158,11 @@ public sealed partial class RestoreCommand(
 
         if (installFailed.Count > 0)
         {
-            AnsiConsole.MarkupLine($"[red]✗[/] Failed to install {installFailed.Count} package(s).");
+            AnsiConsole.MarkupLine($"[red]ERROR[/] Failed to install {installFailed.Count} package(s).");
             return 1;
         }
 
-        AnsiConsole.MarkupLine($"[green]✓[/] Restore complete.");
+        AnsiConsole.MarkupLine($"[green]OK[/] Restore complete.");
         return 0;
     }
 

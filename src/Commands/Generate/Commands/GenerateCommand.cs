@@ -117,12 +117,12 @@ public sealed partial class GenerateCommand(
 
         if (!scanResult.Success)
         {
-            AnsiConsole.MarkupLine($"[red]✗ Scan failed:[/] {scanResult.ErrorMessage}");
+            AnsiConsole.MarkupLine($"[red]ERROR Scan failed:[/] {scanResult.ErrorMessage}");
             LogGenerationFailed(logger);
             return;
         }
 
-        AnsiConsole.MarkupLine($"[dim]✓ Scanned: {scanResult.GalleryCount} galleries, {scanResult.ImageCount} images[/]");
+        AnsiConsole.MarkupLine($"[dim]Scanned: {scanResult.GalleryCount} galleries, {scanResult.ImageCount} images[/]");
 
         // Phase 2: Images
         var imageResult = await AnsiConsole.Progress()
@@ -135,7 +135,7 @@ public sealed partial class GenerateCommand(
                 new SpinnerColumn())
             .StartAsync(async ctx =>
             {
-                var task = ctx.AddTask("[green]🖼️ Processing images[/]");
+                var task = ctx.AddTask("[green]Processing images[/]");
                 task.IsIndeterminate = true;
 
                 var progress = new Progress<ImageProgress>(p =>
@@ -154,7 +154,7 @@ public sealed partial class GenerateCommand(
 
         if (!imageResult.Success)
         {
-            AnsiConsole.MarkupLine($"[red]✗ Image processing failed:[/] {imageResult.ErrorMessage}");
+            AnsiConsole.MarkupLine($"[red]ERROR Image processing failed:[/] {imageResult.ErrorMessage}");
             LogGenerationFailed(logger);
             return;
         }
@@ -170,7 +170,7 @@ public sealed partial class GenerateCommand(
                 new SpinnerColumn())
             .StartAsync(async ctx =>
             {
-                var task = ctx.AddTask("[green]📄 Rendering pages[/]");
+                var task = ctx.AddTask("[green]Rendering pages[/]");
                 task.IsIndeterminate = true;
 
                 var progress = new Progress<RenderProgress>(p =>
@@ -189,7 +189,7 @@ public sealed partial class GenerateCommand(
 
         if (!renderResult.Success)
         {
-            AnsiConsole.MarkupLine($"[red]✗ Page generation failed:[/] {renderResult.ErrorMessage}");
+            AnsiConsole.MarkupLine($"[red]ERROR Page generation failed:[/] {renderResult.ErrorMessage}");
             LogGenerationFailed(logger);
             return;
         }

@@ -50,7 +50,7 @@ public sealed partial class PluginInstallCommand(
                 ? name
                 : $"Revela.Plugin.{name}";
 
-            AnsiConsole.MarkupLine($"[blue]📦 Installing plugin:[/] [cyan]{packageId}[/]");
+            AnsiConsole.MarkupLine($"[blue]Installing plugin:[/] [cyan]{packageId}[/]");
             LogInstallingPlugin(packageId, version);
 
             var success = await AnsiConsole.Status()

@@ -1,4 +1,7 @@
+#pragma warning disable IDE0005 // Usings required for method signatures (Image, ImageProcessingOptions)
 using Spectara.Revela.Commands.Generate.Models;
+using Spectara.Revela.Commands.Generate.Models.Manifest;
+#pragma warning restore IDE0005
 
 namespace Spectara.Revela.Commands.Generate.Abstractions;
 
@@ -25,4 +28,42 @@ public interface IImageProcessor
         string inputPath,
         ImageProcessingOptions options,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Read image metadata without processing (fast operation).
+    /// </summary>
+    /// <remarks>
+    /// Reads only the image header - does NOT decode full image.
+    /// Used during scan phase for:
+    /// - Width/Height extraction
+    /// - EXIF data extraction
+    /// - Hash calculation
+    /// </remarks>
+    /// <param name="inputPath">Path to the source image</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>Image metadata (dimensions, EXIF, file info)</returns>
+    Task<ImageMetadata> ReadMetadataAsync(
+        string inputPath,
+        CancellationToken cancellationToken = default);
+}
+
+/// <summary>
+/// Image metadata extracted without full processing.
+/// </summary>
+public sealed class ImageMetadata
+{
+    /// <summary>Image width in pixels</summary>
+    public required int Width { get; init; }
+
+    /// <summary>Image height in pixels</summary>
+    public required int Height { get; init; }
+
+    /// <summary>File size in bytes</summary>
+    public required long FileSize { get; init; }
+
+    /// <summary>EXIF metadata (may be null if extraction fails)</summary>
+    public ExifData? Exif { get; init; }
+
+    /// <summary>Date photo was taken (from EXIF or file date)</summary>
+    public DateTime? DateTaken { get; init; }
 }

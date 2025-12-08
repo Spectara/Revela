@@ -8,22 +8,30 @@ using Spectara.Revela.Commands.Generate.Scanning;
 namespace Spectara.Revela.Commands.Generate.Services;
 
 /// <summary>
-/// Service for content scanning and gallery/navigation building.
+/// Service for content scanning and building the unified site tree.
 /// </summary>
 /// <remarks>
 /// <para>
 /// Scans the source directory to discover galleries, images, and navigation structure.
-/// Updates the manifest with gallery and navigation data.
+/// Builds a unified root node containing the entire site hierarchy.
+/// </para>
+/// <para>
+/// During scan, reads image metadata (dimensions, EXIF) for each discovered image.
+/// This allows calculating target sizes and provides complete manifest data upfront.
 /// </para>
 /// </remarks>
 public sealed partial class ContentService(
     ContentScanner contentScanner,
     NavigationBuilder navigationBuilder,
     IManifestRepository manifestRepository,
+    IImageProcessor imageProcessor,
     ILogger<ContentService> logger) : IContentService
 {
     /// <summary>Fixed source directory (convention over configuration)</summary>
     private const string SourceDirectory = "source";
+
+    /// <summary>Default image sizes to generate (will be filtered by actual image width)</summary>
+    private static readonly int[] DefaultSizes = [320, 640, 1024, 1920, 2560];
 
     /// <inheritdoc />
     public async Task<ContentResult> ScanAsync(
@@ -64,6 +72,19 @@ public sealed partial class ContentService(
 
             progress?.Report(new ContentProgress
             {
+                Status = "Reading image metadata...",
+                GalleriesFound = content.Galleries.Count,
+                ImagesFound = content.Images.Count
+            });
+
+            // Read metadata for all images (dimensions, EXIF)
+            var imageMetadata = await ReadAllImageMetadataAsync(
+                content.Images,
+                progress,
+                cancellationToken);
+
+            progress?.Report(new ContentProgress
+            {
                 Status = "Building navigation...",
                 GalleriesFound = content.Galleries.Count,
                 ImagesFound = content.Images.Count
@@ -72,13 +93,11 @@ public sealed partial class ContentService(
             // Build navigation tree
             var navigation = await navigationBuilder.BuildAsync(SourceDirectory, cancellationToken: cancellationToken);
 
-            // Convert to manifest entries
-            var galleryEntries = ConvertGalleries(content.Galleries);
-            var navigationEntries = ConvertNavigation(navigation);
+            // Build unified root node with metadata
+            var root = BuildRoot(content, navigation, imageMetadata);
 
             // Update manifest
-            manifestRepository.SetGalleries(galleryEntries);
-            manifestRepository.SetNavigation(navigationEntries);
+            manifestRepository.SetRoot(root);
             manifestRepository.LastScanned = DateTime.UtcNow;
 
             // Save manifest
@@ -97,7 +116,8 @@ public sealed partial class ContentService(
             {
                 Success = true,
                 GalleryCount = content.Galleries.Count,
-                ImageCount = content.Images.Count
+                ImageCount = content.Images.Count,
+                NavigationItemCount = CountManifestEntries(root)
             };
         }
         catch (Exception ex)
@@ -111,56 +131,233 @@ public sealed partial class ContentService(
         }
     }
 
-    #region Conversion Helpers
-
-    private static List<GalleryManifestEntry> ConvertGalleries(IReadOnlyList<Gallery> galleries)
+    /// <summary>
+    /// Read metadata for all discovered images.
+    /// </summary>
+    /// <remarks>
+    /// Uses sequential NetVips access (header-only) for fast metadata extraction.
+    /// Approximately 10-20ms per image vs 200-500ms for full processing.
+    /// </remarks>
+    private async Task<Dictionary<string, ImageMetadata>> ReadAllImageMetadataAsync(
+        IReadOnlyList<SourceImage> images,
+        IProgress<ContentProgress>? progress,
+        CancellationToken cancellationToken)
     {
-        var entries = new List<GalleryManifestEntry>();
-        foreach (var gallery in galleries)
+        var metadata = new Dictionary<string, ImageMetadata>(StringComparer.OrdinalIgnoreCase);
+
+        for (var i = 0; i < images.Count; i++)
         {
-            entries.Add(ConvertGallery(gallery));
+            var image = images[i];
+            try
+            {
+                var meta = await imageProcessor.ReadMetadataAsync(image.SourcePath, cancellationToken);
+                metadata[image.RelativePath] = meta;
+
+                // Report progress every 10 images or on last image
+                if (i % 10 == 0 || i == images.Count - 1)
+                {
+                    progress?.Report(new ContentProgress
+                    {
+                        Status = $"Reading metadata... ({i + 1}/{images.Count})",
+                        GalleriesFound = 0,
+                        ImagesFound = i + 1
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                // Log but don't fail - image may be corrupt or unsupported format
+                LogMetadataReadFailed(logger, image.SourcePath, ex);
+            }
         }
-        return entries;
+
+        return metadata;
     }
 
-    private static GalleryManifestEntry ConvertGallery(Gallery gallery)
+    #region Tree Building
+
+    /// <summary>
+    /// Build the unified root node from scanned content and navigation.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The root node represents the home gallery with all navigation children.
+    /// Gallery data (images, dates, etc.) is merged into navigation nodes.
+    /// </para>
+    /// <para>
+    /// Images from content.Images are grouped by their Gallery path and
+    /// assigned to the corresponding ManifestEntry nodes.
+    /// </para>
+    /// </remarks>
+    private static ManifestEntry BuildRoot(
+        ContentTree content,
+        IReadOnlyList<NavigationItem> navigation,
+        Dictionary<string, ImageMetadata> imageMetadata)
     {
-        return new GalleryManifestEntry
+        // Find the home gallery (empty path)
+        var homeGallery = content.Galleries.FirstOrDefault(g => string.IsNullOrEmpty(g.Path));
+
+        // Build a lookup for galleries by slug for merging with navigation
+        var galleryBySlug = new Dictionary<string, Gallery>(StringComparer.OrdinalIgnoreCase);
+        foreach (var gallery in content.Galleries.Where(g => !string.IsNullOrEmpty(g.Slug)))
         {
-            Path = gallery.Path,
-            Slug = gallery.Slug,
-            Name = gallery.Name,
-            Title = gallery.Title,
-            Description = gallery.Description,
-            Cover = gallery.Cover,
-            Date = gallery.Date,
-            Featured = gallery.Featured,
-            Weight = gallery.Weight,
-            ImagePaths = [.. gallery.Images.Select(i => i.SourcePath)],
-            SubGalleries = [.. gallery.SubGalleries.Select(ConvertGallery)]
+            galleryBySlug[gallery.Slug] = gallery;
+        }
+
+        // Build a lookup for images by gallery path
+        // Gallery path is the relative path to the directory containing the image
+        var imagesByPath = content.Images
+            .GroupBy(img => img.Gallery, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(
+                g => g.Key,
+                g => g.ToList(),
+                StringComparer.OrdinalIgnoreCase);
+
+        // Create root node from home gallery
+        var rootImages = imagesByPath.GetValueOrDefault(string.Empty) ?? [];
+        var root = new ManifestEntry
+        {
+            Text = homeGallery?.Title ?? homeGallery?.Name ?? "Home",
+            Slug = string.Empty,
+            Path = string.Empty,
+            Description = homeGallery?.Description,
+            Cover = homeGallery?.Cover,
+            Date = homeGallery?.Date,
+            Featured = homeGallery?.Featured ?? false,
+            Hidden = false,
+            Images = [.. rootImages.Select(img => ConvertSourceImage(img, imageMetadata))],
+            Children = [.. navigation.Select(nav => ConvertNavigationToEntry(nav, galleryBySlug, imagesByPath, imageMetadata))]
+        };
+
+        return root;
+    }
+
+    /// <summary>
+    /// Convert a NavigationItem to ManifestEntry, merging gallery data where available.
+    /// </summary>
+    private static ManifestEntry ConvertNavigationToEntry(
+        NavigationItem navItem,
+        Dictionary<string, Gallery> galleryBySlug,
+        Dictionary<string, List<SourceImage>> imagesByPath,
+        Dictionary<string, ImageMetadata> imageMetadata)
+    {
+        // Try to find matching gallery by URL/slug
+        Gallery? gallery = null;
+        if (!string.IsNullOrEmpty(navItem.Url))
+        {
+            galleryBySlug.TryGetValue(navItem.Url, out gallery);
+        }
+
+        // Get images for this gallery path (only for gallery nodes, not branches)
+        // Branch nodes (slug=null) don't have direct images - they only contain children
+        List<SourceImage> images = [];
+        if (gallery != null)
+        {
+            images = imagesByPath.GetValueOrDefault(gallery.Path) ?? [];
+        }
+
+        return new ManifestEntry
+        {
+            Text = navItem.Text,
+            Slug = navItem.Url,
+            Path = gallery?.Path ?? BuildPathFromNavigation(navItem),
+            Description = navItem.Description ?? gallery?.Description,
+            Cover = gallery?.Cover,
+            Date = gallery?.Date,
+            Featured = gallery?.Featured ?? false,
+            Hidden = navItem.Hidden,
+            Images = [.. images.Select(img => ConvertSourceImage(img, imageMetadata))],
+            Children = [.. navItem.Children.Select(child => ConvertNavigationToEntry(child, galleryBySlug, imagesByPath, imageMetadata))]
         };
     }
 
-    private static List<NavigationManifestEntry> ConvertNavigation(IReadOnlyList<NavigationItem> navigation)
+    /// <summary>
+    /// Build a path from navigation text for branch nodes without a gallery.
+    /// </summary>
+    private static string BuildPathFromNavigation(NavigationItem navItem)
     {
-        var entries = new List<NavigationManifestEntry>();
-        foreach (var item in navigation)
-        {
-            entries.Add(ConvertNavigationItem(item));
-        }
-        return entries;
+        // Branch nodes don't have galleries, so we construct a path from the text
+        // This is used for finding images later
+        return navItem.Text;
     }
 
-    private static NavigationManifestEntry ConvertNavigationItem(NavigationItem item)
+    /// <summary>
+    /// Convert a SourceImage to ImageManifestEntry with metadata.
+    /// </summary>
+    /// <remarks>
+    /// If metadata was successfully read, populates Width, Height, EXIF, DateTaken, and Sizes.
+    /// Sizes are calculated based on the actual image width and default size presets.
+    /// </remarks>
+    private static ImageManifestEntry ConvertSourceImage(
+        SourceImage source,
+        Dictionary<string, ImageMetadata> imageMetadata)
     {
-        return new NavigationManifestEntry
+        // Try to get metadata for this image
+        imageMetadata.TryGetValue(source.RelativePath, out var meta);
+
+        // Calculate which sizes to generate (only sizes smaller than image width)
+        var sizes = meta != null
+            ? CalculateSizes(meta.Width)
+            : [];
+
+        return new ImageManifestEntry
         {
-            Text = item.Text,
-            Url = item.Url,
-            Description = item.Description,
-            Hidden = item.Hidden,
-            Children = [.. item.Children.Select(ConvertNavigationItem)]
+            Filename = source.FileName,
+            Hash = ComputeHash(source, meta),
+            Width = meta?.Width ?? 0,
+            Height = meta?.Height ?? 0,
+            Sizes = sizes,
+            FileSize = meta?.FileSize ?? source.FileSize,
+            DateTaken = meta?.DateTaken,
+            Exif = meta?.Exif,
+            ProcessedAt = DateTime.MinValue
         };
+    }
+
+    /// <summary>
+    /// Calculate which sizes to generate based on image width.
+    /// </summary>
+    /// <remarks>
+    /// Only includes sizes smaller than the original image width.
+    /// The original size is implicit (width property) and not included.
+    /// </remarks>
+    private static List<int> CalculateSizes(int imageWidth)
+    {
+        // Filter default sizes to only include those smaller than original
+        // Original size is NOT included - it's redundant with width property
+        return [.. DefaultSizes.Where(s => s < imageWidth)];
+    }
+
+    /// <summary>
+    /// Compute a hash for change detection.
+    /// </summary>
+    /// <remarks>
+    /// Hash is based on filename, file size, and dimensions.
+    /// This allows detecting when an image has been modified.
+    /// Uses MD5 for speed (not security - just cache invalidation).
+    /// </remarks>
+#pragma warning disable CA5351 // MD5 is fine for non-security hash (cache key)
+    private static string ComputeHash(SourceImage source, ImageMetadata? meta)
+    {
+        // Combine filename, size, and dimensions for hash
+        var hashInput = $"{source.FileName}_{source.FileSize}_{meta?.Width ?? 0}x{meta?.Height ?? 0}";
+        var hashBytes = System.Security.Cryptography.MD5.HashData(
+            System.Text.Encoding.UTF8.GetBytes(hashInput));
+        return Convert.ToHexString(hashBytes)[..12];
+    }
+#pragma warning restore CA5351
+
+    /// <summary>
+    /// Counts total manifest entries including children recursively.
+    /// </summary>
+    private static int CountManifestEntries(ManifestEntry entry)
+    {
+        var count = 1; // Count self
+        foreach (var child in entry.Children)
+        {
+            count += CountManifestEntries(child);
+        }
+        return count;
     }
 
     #endregion
@@ -172,6 +369,9 @@ public sealed partial class ContentService(
 
     [LoggerMessage(Level = LogLevel.Error, Message = "Scan failed")]
     private static partial void LogScanFailed(ILogger logger, Exception exception);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Failed to read metadata for {ImagePath}")]
+    private static partial void LogMetadataReadFailed(ILogger logger, string imagePath, Exception exception);
 
     #endregion
 }

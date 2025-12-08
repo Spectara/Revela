@@ -503,7 +503,7 @@ DownloadAnalyzer downloadAnalyzer)
 
         if (forceRefresh && stats.ModifiedFiles > 0)
         {
-            summaryText += $"\n[dim]🔄 Force refresh enabled[/]";
+            summaryText += $"\n[dim]Force refresh enabled[/]";
         }
 
         if (!showFiles && (stats.NewFiles > 0 || stats.ModifiedFiles > 0 || stats.OrphanedFiles > 0))

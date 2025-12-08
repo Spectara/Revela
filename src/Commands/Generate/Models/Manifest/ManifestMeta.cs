@@ -10,8 +10,14 @@ public sealed class ManifestMeta
     /// <summary>
     /// Manifest schema version for future migrations.
     /// </summary>
+    /// <remarks>
+    /// Version history:
+    /// - v1: Initial version with separate galleries and images
+    /// - v2: Added navigation tree
+    /// - v3: Unified tree structure with root node containing everything
+    /// </remarks>
     [JsonPropertyName("version")]
-    public int Version { get; set; } = 2;
+    public int Version { get; set; } = 3;
 
     /// <summary>
     /// Hash of image processing configuration (sizes, formats, quality).

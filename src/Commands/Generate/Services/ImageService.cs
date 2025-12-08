@@ -16,7 +16,7 @@ namespace Spectara.Revela.Commands.Generate.Services;
 /// </para>
 /// </remarks>
 public sealed partial class ImageService(
-    NetVipsImageProcessor imageProcessor,
+    IImageProcessor imageProcessor,
     IManifestRepository manifestRepository,
     ILogger<ImageService> logger) : IImageService
 {
@@ -48,12 +48,12 @@ public sealed partial class ImageService(
             // Load manifest
             await manifestRepository.LoadAsync(cancellationToken);
 
-            if (manifestRepository.Galleries.Count == 0)
+            if (manifestRepository.Root is null)
             {
                 return new ImageResult
                 {
                     Success = false,
-                    ErrorMessage = "No galleries in manifest. Run scan first."
+                    ErrorMessage = "No content in manifest. Run scan first."
                 };
             }
 
@@ -65,13 +65,13 @@ public sealed partial class ImageService(
             {
                 LogConfigChanged(logger);
                 manifestRepository.Clear();
-                await manifestRepository.LoadAsync(cancellationToken); // Reload to get galleries back
+                await manifestRepository.LoadAsync(cancellationToken); // Reload to get content back
             }
 
             manifestRepository.ConfigHash = configHash;
 
-            // Collect all image paths from galleries
-            var allImagePaths = CollectImagePaths(manifestRepository.Galleries);
+            // Collect all image paths from the root tree
+            var allImagePaths = CollectImagePaths(manifestRepository.Root);
             var currentSourcePaths = allImagePaths.ToHashSet(StringComparer.OrdinalIgnoreCase);
 
             // Remove orphaned entries
@@ -160,16 +160,13 @@ public sealed partial class ImageService(
                 // Update manifest with new entry
                 manifestRepository.SetImage(manifestKey, new ImageManifestEntry
                 {
+                    Filename = Path.GetFileName(sourcePath),
                     Hash = sourceHash,
-                    OriginalWidth = image.Width,
-                    OriginalHeight = image.Height,
-                    GeneratedSizes = image.AvailableSizes.Count > 0
+                    Width = image.Width,
+                    Height = image.Height,
+                    Sizes = image.AvailableSizes.Count > 0
                         ? image.AvailableSizes
                         : [.. ImageSizes.Where(s => s <= Math.Max(image.Width, image.Height))],
-                    GeneratedFormats = image.AvailableFormats.Count > 0
-                        ? image.AvailableFormats
-                        : [.. ImageFormats],
-                    OutputPath = image.FileName,
                     FileSize = image.FileSize,
                     DateTaken = image.DateTaken,
                     Exif = image.Exif
@@ -222,19 +219,31 @@ public sealed partial class ImageService(
 
     #region Private Helpers
 
-    private static List<string> CollectImagePaths(IReadOnlyList<GalleryManifestEntry> galleries)
+    /// <summary>
+    /// Collect all image source paths from the unified tree.
+    /// </summary>
+    private static List<string> CollectImagePaths(ManifestEntry root)
     {
         var paths = new List<string>();
-        CollectImagePathsRecursive(galleries, paths);
+        CollectImagePathsRecursive(root, paths);
         return paths;
     }
 
-    private static void CollectImagePathsRecursive(IReadOnlyList<GalleryManifestEntry> galleries, List<string> paths)
+    private static void CollectImagePathsRecursive(ManifestEntry entry, List<string> paths)
     {
-        foreach (var gallery in galleries)
+        // Collect images from this node
+        foreach (var image in entry.Images)
         {
-            paths.AddRange(gallery.ImagePaths);
-            CollectImagePathsRecursive(gallery.SubGalleries, paths);
+            var sourcePath = string.IsNullOrEmpty(entry.Path)
+                ? image.Filename
+                : $"{entry.Path}\\{image.Filename}";
+            paths.Add(sourcePath);
+        }
+
+        // Recurse into children
+        foreach (var child in entry.Children)
+        {
+            CollectImagePathsRecursive(child, paths);
         }
     }
 

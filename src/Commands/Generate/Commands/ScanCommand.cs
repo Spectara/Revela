@@ -53,11 +53,27 @@ public sealed partial class ScanCommand(
 
         if (result.Success)
         {
-            AnsiConsole.MarkupLine($"[green]✓ Scan complete![/] {result.GalleryCount} galleries, {result.ImageCount} images");
+            var panel = new Panel(
+                $"[green]Scan complete![/]\n\n" +
+                $"[dim]Content:[/]\n" +
+                $"  Galleries:  {result.GalleryCount}\n" +
+                $"  Images:     {result.ImageCount}\n" +
+                $"  Navigation: {result.NavigationItemCount}\n\n" +
+                $"[dim]Next steps:[/]\n" +
+                $"1. Run [cyan]revela generate images[/] to process images\n" +
+                $"2. Run [cyan]revela generate pages[/] to render HTML\n" +
+                $"3. Or run [cyan]revela generate[/] for full build"
+            )
+            {
+                Header = new PanelHeader("[bold green]Success[/]"),
+                Border = BoxBorder.Rounded
+            };
+
+            AnsiConsole.Write(panel);
         }
         else
         {
-            AnsiConsole.MarkupLine($"[red]✗ Scan failed:[/] {result.ErrorMessage}");
+            AnsiConsole.MarkupLine($"[red]ERROR Scan failed:[/] {result.ErrorMessage}");
             LogScanFailed(logger);
         }
     }
