@@ -1,4 +1,5 @@
 using System.CommandLine;
+using Spectara.Revela.Commands.Generate.Models;
 using Spectara.Revela.Commands.Generate.Services;
 using Spectre.Console;
 
@@ -137,24 +138,4 @@ public sealed partial class GenerateCommand(
     // High-performance logging with LoggerMessage source generator
     [LoggerMessage(Level = LogLevel.Error, Message = "Site generation failed")]
     private static partial void LogGenerationFailed(ILogger logger, Exception exception);
-}
-
-/// <summary>
-/// Options for site generation
-/// </summary>
-public sealed class GenerateOptions
-{
-    /// <summary>
-    /// Skip image processing (HTML only mode)
-    /// </summary>
-    /// <remarks>
-    /// Useful for theme development - generates HTML without
-    /// time-consuming image processing.
-    /// </remarks>
-    public bool SkipImages { get; init; }
-
-    /// <summary>
-    /// Clean output directory before generation
-    /// </summary>
-    public bool Clean { get; init; }
 }

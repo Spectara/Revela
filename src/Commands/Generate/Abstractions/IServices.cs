@@ -30,17 +30,12 @@ public interface ITemplateEngine
 /// </summary>
 public interface IImageProcessor
 {
+    /// <summary>
+    /// Process an image and generate all size variants
+    /// </summary>
+    /// <param name="inputPath">Path to source image</param>
+    /// <param name="options">Processing options (sizes, formats, quality)</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>Processed image with all variants</returns>
     Task<Image> ProcessImageAsync(string inputPath, ImageProcessingOptions options, CancellationToken cancellationToken = default);
-}
-
-/// <summary>
-/// Image processing options
-/// </summary>
-public sealed class ImageProcessingOptions
-{
-    public required int Quality { get; init; }
-    public required IReadOnlyList<string> Formats { get; init; }
-    public required IReadOnlyList<int> Sizes { get; init; }
-    public required string OutputDirectory { get; init; }
-    public string? CacheDirectory { get; init; }
 }
