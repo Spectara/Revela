@@ -354,19 +354,19 @@ public sealed partial class ScribanTemplateEngine(ILogger<ScribanTemplateEngine>
 
     // High-performance logging with LoggerMessage source generator
     [LoggerMessage(Level = LogLevel.Error, Message = "Template rendering failed")]
-    static partial void LogRenderingFailed(ILogger logger, Exception exception);
+    private static partial void LogRenderingFailed(ILogger logger, Exception exception);
 
     [LoggerMessage(Level = LogLevel.Debug, Message = "Rendering template: {Path}")]
-    static partial void LogRenderingTemplate(ILogger logger, string path);
+    private static partial void LogRenderingTemplate(ILogger logger, string path);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Template cache cleared")]
-    static partial void LogCacheCleared(ILogger logger);
+    private static partial void LogCacheCleared(ILogger logger);
 
     [LoggerMessage(Level = LogLevel.Debug, Message = "Theme set for template engine: {ThemeName}")]
-    static partial void LogThemeSet(ILogger logger, string themeName);
+    private static partial void LogThemeSet(ILogger logger, string themeName);
 
     [LoggerMessage(Level = LogLevel.Debug, Message = "Loading partial template: {PartialName}")]
-    static partial void LogLoadingPartial(ILogger logger, string partialName);
+    private static partial void LogLoadingPartial(ILogger logger, string partialName);
 }
 
 /// <summary>
@@ -451,5 +451,5 @@ internal sealed partial class ThemePluginTemplateLoader(
     }
 
     [LoggerMessage(Level = LogLevel.Debug, Message = "Loading partial template: {PartialPath} from theme {ThemeName}")]
-    static partial void LogLoadingPartial(ILogger logger, string partialPath, string themeName);
+    private static partial void LogLoadingPartial(ILogger logger, string partialPath, string themeName);
 }

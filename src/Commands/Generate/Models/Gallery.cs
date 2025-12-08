@@ -23,13 +23,48 @@ public sealed class Gallery
     /// </remarks>
     public required string Slug { get; init; }
 
+    /// <summary>
+    /// Gallery display name derived from folder name.
+    /// </summary>
     public required string Name { get; init; }
+
+    /// <summary>
+    /// Optional custom title from front matter.
+    /// </summary>
     public string? Title { get; init; }
+
+    /// <summary>
+    /// Optional description from front matter.
+    /// </summary>
     public string? Description { get; init; }
+
+    /// <summary>
+    /// Optional cover image filename.
+    /// </summary>
     public string? Cover { get; init; }
+
+    /// <summary>
+    /// Gallery date for sorting (from front matter or first image EXIF).
+    /// </summary>
     public DateTime? Date { get; init; }
+
+    /// <summary>
+    /// Whether this gallery is featured on the home page.
+    /// </summary>
     public bool Featured { get; init; }
+
+    /// <summary>
+    /// Manual sort weight (lower values appear first).
+    /// </summary>
     public int Weight { get; init; }
+
+    /// <summary>
+    /// Images contained in this gallery.
+    /// </summary>
     public IReadOnlyList<Image> Images { get; init; } = [];
+
+    /// <summary>
+    /// Nested sub-galleries.
+    /// </summary>
     public IReadOnlyList<Gallery> SubGalleries { get; init; } = [];
 }

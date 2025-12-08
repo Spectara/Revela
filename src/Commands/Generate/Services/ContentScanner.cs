@@ -143,10 +143,10 @@ public sealed partial class ContentScanner(
 
     // High-performance logging with LoggerMessage source generator
     [LoggerMessage(Level = LogLevel.Information, Message = "Scanning content directory: {Directory}")]
-    static partial void LogScanningDirectory(ILogger logger, string directory);
+    private static partial void LogScanningDirectory(ILogger logger, string directory);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Scan complete: {ImageCount} images, {GalleryCount} galleries")]
-    static partial void LogScanComplete(ILogger logger, int imageCount, int galleryCount);
+    private static partial void LogScanComplete(ILogger logger, int imageCount, int galleryCount);
 }
 
 /// <summary>

@@ -1,7 +1,5 @@
 using System.CommandLine;
 
-using Microsoft.Extensions.DependencyInjection;
-
 using Spectre.Console;
 
 using Spectara.Revela.Core.Abstractions;
@@ -10,7 +8,7 @@ using Spectara.Revela.Core.Services;
 namespace Spectara.Revela.Commands.Theme;
 
 /// <summary>
-/// Command to list available themes
+/// Command to list available themes.
 /// </summary>
 /// <remarks>
 /// Shows themes from three sources:
@@ -20,24 +18,24 @@ namespace Spectara.Revela.Commands.Theme;
 /// </remarks>
 public sealed partial class ThemeListCommand(IThemeResolver themeResolver)
 {
-
     /// <summary>
-    /// Creates the CLI command
+    /// Creates the CLI command.
     /// </summary>
-    public static Command Create(IServiceProvider services)
+    /// <returns>The configured list command.</returns>
+    public Command Create()
     {
         var command = new Command("list", "List available themes");
 
         command.SetAction(_ =>
         {
-            var handler = services.GetRequiredService<ThemeListCommand>();
-            return handler.Execute();
+            Execute();
+            return 0;
         });
 
         return command;
     }
 
-    private int Execute()
+    private void Execute()
     {
         var projectPath = Environment.CurrentDirectory;
         var themes = themeResolver.GetAvailableThemes(projectPath).ToList();
@@ -46,7 +44,7 @@ public sealed partial class ThemeListCommand(IThemeResolver themeResolver)
         {
             AnsiConsole.MarkupLine("[yellow]No themes found.[/]");
             AnsiConsole.MarkupLine("Install a theme with [blue]revela theme add <name>[/]");
-            return 0;
+            return;
         }
 
         var table = new Table();
@@ -69,8 +67,6 @@ public sealed partial class ThemeListCommand(IThemeResolver themeResolver)
 
         AnsiConsole.Write(table);
         AnsiConsole.MarkupLine($"\n[dim]Found {themes.Count} theme(s)[/]");
-
-        return 0;
     }
 
     private static string GetThemeSource(IThemePlugin theme)

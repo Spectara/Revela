@@ -1,7 +1,5 @@
 using System.CommandLine;
 
-using Microsoft.Extensions.DependencyInjection;
-
 using Spectre.Console;
 
 using Spectara.Revela.Core.Services;
@@ -9,7 +7,7 @@ using Spectara.Revela.Core.Services;
 namespace Spectara.Revela.Commands.Theme;
 
 /// <summary>
-/// Command to extract a theme to the local themes folder for customization
+/// Command to extract a theme to the local themes folder for customization.
 /// </summary>
 /// <remarks>
 /// Usage:
@@ -21,9 +19,10 @@ public sealed partial class ThemeExtractCommand(
     ILogger<ThemeExtractCommand> logger)
 {
     /// <summary>
-    /// Creates the CLI command
+    /// Creates the CLI command.
     /// </summary>
-    public static Command Create(IServiceProvider services)
+    /// <returns>The configured extract command.</returns>
+    public Command Create()
     {
         var sourceArg = new Argument<string>("source")
         {
@@ -52,8 +51,7 @@ public sealed partial class ThemeExtractCommand(
             var target = parseResult.GetValue(targetArg);
             var force = parseResult.GetValue(forceOption);
 
-            var handler = services.GetRequiredService<ThemeExtractCommand>();
-            return await handler.ExecuteAsync(source, target, force, cancellationToken);
+            return await ExecuteAsync(source, target, force, cancellationToken);
         });
 
         return command;

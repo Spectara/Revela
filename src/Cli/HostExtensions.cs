@@ -62,8 +62,8 @@ internal static class HostExtensions
         var restoreCommand = services.GetRequiredService<RestoreCommand>();
         rootCommand.Subcommands.Add(restoreCommand.Create());
 
-        // Theme command uses static factory pattern (legacy)
-        rootCommand.Subcommands.Add(ThemeCommand.Create(services));
+        var themeCommand = services.GetRequiredService<ThemeCommand>();
+        rootCommand.Subcommands.Add(themeCommand.Create());
 
         // Plugin commands (with smart parent handling)
         plugins.RegisterCommands(rootCommand);

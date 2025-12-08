@@ -136,7 +136,7 @@ public sealed partial class GenerateCommand(
 
     // High-performance logging with LoggerMessage source generator
     [LoggerMessage(Level = LogLevel.Error, Message = "Site generation failed")]
-    static partial void LogGenerationFailed(ILogger logger, Exception exception);
+    private static partial void LogGenerationFailed(ILogger logger, Exception exception);
 }
 
 /// <summary>

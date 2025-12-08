@@ -10,7 +10,14 @@ namespace Spectara.Revela.Commands.Generate.Models;
 /// </remarks>
 public sealed class Image
 {
+    /// <summary>
+    /// Full path to the source image file.
+    /// </summary>
     public required string SourcePath { get; init; }
+
+    /// <summary>
+    /// Image filename without path (e.g., "photo1.jpg").
+    /// </summary>
     public required string FileName { get; init; }
 
     /// <summary>

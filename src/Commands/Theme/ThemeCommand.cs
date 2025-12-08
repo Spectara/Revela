@@ -3,7 +3,7 @@ using System.CommandLine;
 namespace Spectara.Revela.Commands.Theme;
 
 /// <summary>
-/// Parent command for theme management
+/// Parent command for theme management.
 /// </summary>
 /// <remarks>
 /// Subcommands:
@@ -14,18 +14,21 @@ namespace Spectara.Revela.Commands.Theme;
 /// - add: Install theme from NuGet
 /// - remove: Uninstall theme
 /// </remarks>
-public static class ThemeCommand
+public sealed class ThemeCommand(
+    ThemeListCommand listCommand,
+    ThemeExtractCommand extractCommand)
 {
     /// <summary>
-    /// Creates the theme command with all subcommands
+    /// Creates the theme command with all subcommands.
     /// </summary>
-    public static Command Create(IServiceProvider services)
+    /// <returns>The configured theme command.</returns>
+    public Command Create()
     {
         var command = new Command("theme", "Manage themes for your Revela site");
 
         // Add subcommands
-        command.Subcommands.Add(ThemeListCommand.Create(services));
-        command.Subcommands.Add(ThemeExtractCommand.Create(services));
+        command.Subcommands.Add(listCommand.Create());
+        command.Subcommands.Add(extractCommand.Create());
 
         return command;
     }
