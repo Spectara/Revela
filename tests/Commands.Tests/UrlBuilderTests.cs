@@ -1,6 +1,6 @@
 using Spectara.Revela.Commands.Generate.Services;
 
-namespace Spectara.Revela.Core.Tests;
+namespace Spectara.Revela.Commands.Tests;
 
 /// <summary>
 /// Tests for UrlBuilder slug and path generation

@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
 <PropertyGroup>
   <TargetFramework>net10.0</TargetFramework>
@@ -16,7 +16,7 @@
 </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\Core\Core.csproj" />
+    <ProjectReference Include="..\..\src\Commands\Commands.csproj" />
   </ItemGroup>
 
   <ItemGroup>

@@ -1,7 +1,7 @@
 using Spectara.Revela.Commands.Generate.Models;
 using Spectara.Revela.Commands.Generate.Services;
 
-namespace Spectara.Revela.Core.Tests;
+namespace Spectara.Revela.Commands.Tests;
 
 [TestClass]
 public sealed class FrontMatterParserTests
