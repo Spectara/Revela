@@ -18,7 +18,8 @@ namespace Spectara.Revela.Commands.Generate.Commands;
 /// </remarks>
 public sealed partial class ImagesCommand(
     ILogger<ImagesCommand> logger,
-    IImageService imageService)
+    IImageService imageService,
+    IManifestRepository manifestRepository)
 {
     /// <summary>
     /// Creates the CLI command.
@@ -45,6 +46,25 @@ public sealed partial class ImagesCommand(
 
     private async Task ExecuteAsync(bool force, CancellationToken cancellationToken)
     {
+        // Early manifest check before showing progress bar
+        await manifestRepository.LoadAsync(cancellationToken);
+
+        if (manifestRepository.Root is null)
+        {
+            var panel = new Panel(
+                "[yellow]No manifest found.[/]\n\n" +
+                "[dim]Solution:[/]\n" +
+                "Run [cyan]revela generate scan[/] first to scan your content."
+            )
+            {
+                Header = new PanelHeader("[bold yellow]Warning[/]"),
+                Border = BoxBorder.Rounded
+            };
+
+            AnsiConsole.Write(panel);
+            return;
+        }
+
         var options = new ProcessImagesOptions { Force = force };
 
         if (force)
