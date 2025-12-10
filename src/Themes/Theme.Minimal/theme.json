@@ -13,7 +13,6 @@
   },
   "assets": ["main.css"],
   "variables": {
-    "primaryColor": "#333",
-    "backgroundColor": "#fff"
+    "credits": "Powered by Revela"
   }
 }

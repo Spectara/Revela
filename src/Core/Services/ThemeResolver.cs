@@ -23,6 +23,13 @@ public interface IThemeResolver
     IThemePlugin? Resolve(string? themeName, string projectPath);
 
     /// <summary>
+    /// Resolve an installed theme by name, ignoring local themes
+    /// </summary>
+    /// <param name="themeName">Theme name (null = default)</param>
+    /// <returns>Installed theme plugin or null if not found</returns>
+    IThemePlugin? ResolveInstalled(string? themeName);
+
+    /// <summary>
     /// Get all available themes
     /// </summary>
     /// <param name="projectPath">Project path for local theme lookup</param>
@@ -79,6 +86,26 @@ public sealed partial class ThemeResolver : IThemeResolver
         }
 
         // 3. Not found
+        LogThemeNotFound(logger, name);
+        return null;
+    }
+
+    /// <inheritdoc />
+    public IThemePlugin? ResolveInstalled(string? themeName)
+    {
+        var name = string.IsNullOrEmpty(themeName) ? DefaultThemeName : themeName;
+        LogResolvingTheme(logger, name);
+
+        // Only check installed plugins, ignore local themes
+        var installedTheme = installedThemes.FirstOrDefault(
+            t => t.Metadata.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
+
+        if (installedTheme is not null)
+        {
+            LogFoundInstalledTheme(logger, name);
+            return installedTheme;
+        }
+
         LogThemeNotFound(logger, name);
         return null;
     }

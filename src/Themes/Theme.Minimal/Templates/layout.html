@@ -46,7 +46,7 @@
   </main>
 
   <footer>
-    <p>{{ site.copyright ?? '© ' + date.now | date.to_string '%Y' }}</p>
+    <p>{{ site.copyright ?? '© ' + date.now | date.to_string '%Y' }}{{~ if theme.credits ~}} · {{ theme.credits }}{{~ end ~}}</p>
   </footer>
 </body>
 </html>

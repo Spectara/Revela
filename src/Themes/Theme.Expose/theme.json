@@ -14,9 +14,6 @@
   },
   "assets": ["main.css"],
   "variables": {
-    "primaryColor": "#333",
-    "backgroundColor": "#fff",
-    "accentColor": "#0066cc",
-    "fontFamily": "'Helvetica Neue', Helvetica, Arial, sans-serif"
+    "credits": "Powered by Revela"
   }
 }

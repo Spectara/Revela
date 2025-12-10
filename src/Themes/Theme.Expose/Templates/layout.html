@@ -74,7 +74,7 @@
       {{~ include 'partials/navigation' nav_items ~}}
     </nav>
     <div>
-      {{ site.copyright }}
+      {{ site.copyright }}{{~ if theme.credits ~}} · {{ theme.credits }}{{~ end ~}}
     </div>
   </footer>
 </body>

@@ -329,6 +329,7 @@ public sealed partial class RenderService(
         var indexNavigation = SetActiveState(model.Navigation, string.Empty);
         var indexBasePath = CalculateSiteBasePath(config, "");
         var indexImageBasePath = CalculateImageBasePath(config, "");
+        var themeVariables = manifest?.Variables ?? new Dictionary<string, string>();
         var indexHtml = templateEngine.Render(
             indexTemplate,
             new
@@ -340,7 +341,8 @@ public sealed partial class RenderService(
                 nav_items = indexNavigation,
                 basepath = indexBasePath,
                 image_basepath = indexImageBasePath,
-                image_formats = imageSettings.Formats.Keys
+                image_formats = imageSettings.Formats.Keys,
+                theme = themeVariables
             });
 
         await File.WriteAllTextAsync(
@@ -378,7 +380,8 @@ public sealed partial class RenderService(
                     nav_items = galleryNavigation,
                     basepath,
                     image_basepath = galleryImageBasePath,
-                    image_formats = imageSettings.Formats.Keys
+                    image_formats = imageSettings.Formats.Keys,
+                    theme = themeVariables
                 });
 
             var galleryOutputPath = Path.Combine(OutputDirectory, gallery.Slug);

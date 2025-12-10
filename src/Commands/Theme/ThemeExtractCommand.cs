@@ -64,26 +64,31 @@ public sealed partial class ThemeExtractCommand(
         var projectPath = Environment.CurrentDirectory;
         var themeName = targetName ?? sourceName;
 
-        // Resolve source theme
-        var sourceTheme = themeResolver.Resolve(sourceName, projectPath);
-        if (sourceTheme is null)
-        {
-            AnsiConsole.MarkupLine($"[red]Theme '{EscapeMarkup(sourceName)}' not found.[/]");
-            AnsiConsole.MarkupLine("Use [blue]revela theme list[/] to see available themes.");
-            return 1;
-        }
-
-        // Determine target path
+        // Determine target path first
         var themesFolder = Path.Combine(projectPath, "themes");
         var targetPath = Path.Combine(themesFolder, themeName);
+
+        // For extract: always prefer installed theme (user wants fresh copy from original)
+        // Fall back to local only if installed theme not found
+        var sourceTheme = themeResolver.ResolveInstalled(sourceName)
+                          ?? themeResolver.Resolve(sourceName, projectPath);
+
+        if (sourceTheme is null)
+        {
+            AnsiConsole.MarkupLine($"[red]✗[/] Theme [yellow]'{EscapeMarkup(sourceName)}'[/] not found.");
+            AnsiConsole.MarkupLine("");
+            AnsiConsole.MarkupLine("Run [cyan]revela theme list[/] to see available themes.");
+            return 1;
+        }
 
         // Check if target exists
         if (Directory.Exists(targetPath))
         {
             if (!force)
             {
-                AnsiConsole.MarkupLine($"[red]Theme folder '{EscapeMarkup(themeName)}' already exists.[/]");
-                AnsiConsole.MarkupLine("Use [blue]--force[/] to overwrite.");
+                AnsiConsole.MarkupLine($"[red]✗[/] Theme folder [yellow]'{EscapeMarkup(themeName)}'[/] already exists.");
+                AnsiConsole.MarkupLine("");
+                AnsiConsole.MarkupLine("Use [cyan]--force[/] to overwrite existing theme.");
                 return 1;
             }
 
@@ -109,8 +114,19 @@ public sealed partial class ThemeExtractCommand(
             UpdateThemeName(targetPath, targetName);
         }
 
-        AnsiConsole.MarkupLine($"[green]OK[/] Theme extracted to [blue]themes/{EscapeMarkup(themeName)}/[/]");
-        AnsiConsole.MarkupLine("\nYou can now customize the theme and use it in your project.");
+        // Success panel
+        var panel = new Panel($"[green]✨ Theme '{EscapeMarkup(themeName)}' extracted![/]\n\n" +
+                            $"[bold]Location:[/] [cyan]themes/{EscapeMarkup(themeName)}/[/]\n\n" +
+                            "[bold]Next steps:[/]\n" +
+                            $"1. Edit [cyan]themes/{EscapeMarkup(themeName)}/[/] to customize\n" +
+                            "2. Run [cyan]revela generate[/] to see changes\n" +
+                            "3. Your local theme takes priority over installed themes")
+        {
+            Header = new PanelHeader("[bold green]Success[/]"),
+            Border = BoxBorder.Rounded
+        };
+
+        AnsiConsole.Write(panel);
 
         return 0;
     }
