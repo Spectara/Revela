@@ -1,6 +1,5 @@
 using System.CommandLine;
 using Spectara.Revela.Commands.Generate.Abstractions;
-using Spectara.Revela.Commands.Generate.Models;
 using Spectara.Revela.Commands.Generate.Models.Results;
 using Spectre.Console;
 
@@ -27,6 +26,9 @@ namespace Spectara.Revela.Commands.Generate.Commands;
 ///   <item><description>revela generate images - Process images only</description></item>
 ///   <item><description>revela generate pages - Render pages only</description></item>
 /// </list>
+/// <para>
+/// To clean output/cache before generating, use: revela clean --all
+/// </para>
 /// </remarks>
 public sealed partial class GenerateCommand(
     ILogger<GenerateCommand> logger,
@@ -37,12 +39,6 @@ public sealed partial class GenerateCommand(
     ImagesCommand imagesCommand,
     PagesCommand pagesCommand)
 {
-    /// <summary>Output directory for generated site</summary>
-    private const string OutputDirectory = "output";
-
-    /// <summary>Cache directory name</summary>
-    private const string CacheDirectory = ".cache";
-
     /// <summary>
     /// Creates the CLI command
     /// </summary>
@@ -50,22 +46,9 @@ public sealed partial class GenerateCommand(
     {
         var command = new Command("generate", "Generate static site from content");
 
-        // Options
-        var cleanOption = new Option<bool>("--clean", "-c")
-        {
-            Description = "Clean output directory before generation"
-        };
-
-        command.Options.Add(cleanOption);
-
         command.SetAction(async parseResult =>
         {
-            var options = new GenerateOptions
-            {
-                Clean = parseResult.GetValue(cleanOption)
-            };
-
-            await ExecuteAsync(options);
+            await ExecuteAsync();
             return 0;
         });
 
@@ -77,7 +60,7 @@ public sealed partial class GenerateCommand(
         return command;
     }
 
-    private async Task ExecuteAsync(GenerateOptions options)
+    private async Task ExecuteAsync()
     {
         var startTime = DateTime.UtcNow;
 
@@ -85,22 +68,6 @@ public sealed partial class GenerateCommand(
         AnsiConsole.MarkupLine("[dim]Source:[/] source");
         AnsiConsole.MarkupLine("[dim]Output:[/] output");
         AnsiConsole.WriteLine();
-
-        // Clean if requested
-        if (options.Clean)
-        {
-            AnsiConsole.MarkupLine("[yellow]Cleaning output directory...[/]");
-
-            if (Directory.Exists(OutputDirectory))
-            {
-                Directory.Delete(OutputDirectory, recursive: true);
-            }
-
-            if (Directory.Exists(CacheDirectory))
-            {
-                Directory.Delete(CacheDirectory, recursive: true);
-            }
-        }
 
         // Phase 1: Scan
         var scanResult = await AnsiConsole.Status()

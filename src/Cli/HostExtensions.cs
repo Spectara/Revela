@@ -1,6 +1,7 @@
 using System.CommandLine;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Spectara.Revela.Commands.Clean;
 using Spectara.Revela.Commands.Generate.Commands;
 using Spectara.Revela.Commands.Init;
 using Spectara.Revela.Commands.Plugins;
@@ -50,6 +51,9 @@ internal static class HostExtensions
         var rootCommand = new RootCommand(description);
 
         // Core commands (resolved from DI)
+        var cleanCommand = services.GetRequiredService<CleanCommand>();
+        rootCommand.Subcommands.Add(cleanCommand.Create());
+
         var initCommand = services.GetRequiredService<InitCommand>();
         rootCommand.Subcommands.Add(initCommand.Create());
 

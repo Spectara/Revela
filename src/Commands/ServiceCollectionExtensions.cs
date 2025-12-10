@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using Spectara.Revela.Commands.Clean;
 using Spectara.Revela.Commands.Generate;
 using Spectara.Revela.Commands.Init;
 using Spectara.Revela.Commands.Plugins;
@@ -23,6 +24,7 @@ public static class ServiceCollectionExtensions
     /// <returns>The service collection for chaining.</returns>
     public static IServiceCollection AddRevelaCommands(this IServiceCollection services)
     {
+        services.AddCleanFeature();
         services.AddGenerateFeature();
         services.AddInitFeature();
         services.AddPluginsFeature();
