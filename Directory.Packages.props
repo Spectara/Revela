@@ -60,6 +60,11 @@
     <PackageVersion Include="SSH.NET" Version="2025.1.0" />
   </ItemGroup>
 
+  <ItemGroup Label="Build Tools">
+    <PackageVersion Include="Microsoft.SourceLink.GitHub" Version="8.0.0" />
+  </ItemGroup>
+  </ItemGroup>
+
   <ItemGroup Label="Testing">
     <!-- MSTest v4 - Modern Testing Framework -->
     <!-- https://learn.microsoft.com/en-us/dotnet/core/testing/unit-testing-mstest-intro -->

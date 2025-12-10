@@ -1,5 +1,5 @@
 <Project>
-  <!-- 
+  <!--
     Central Build Configuration
     https://learn.microsoft.com/en-us/visualstudio/msbuild/customize-by-directory
   -->
@@ -66,7 +66,7 @@
   </PropertyGroup>
 
   <ItemGroup Label="Source Link" Condition="'$(CI)' == 'true'">
-    <PackageReference Include="Microsoft.SourceLink.GitHub" Version="8.0.0" PrivateAssets="All"/>
+    <PackageReference Include="Microsoft.SourceLink.GitHub" PrivateAssets="All"/>
   </ItemGroup>
 
   <ItemGroup Label="InternalsVisibleTo - Test Projects">
