@@ -136,57 +136,70 @@ public sealed partial class ImageService(
                 };
             }
 
-            // Process images
+            // Process images in parallel
+            // Uses Environment.ProcessorCount by default (optimal for CPU-bound work)
             var outputImagesDirectory = Path.Combine(OutputDirectory, ImageDirectory);
             var cacheDirectory = Path.Combine(Environment.CurrentDirectory, CacheDirectory);
             var processedCount = 0;
             var totalFilesCreated = 0;
             var totalSizeBytes = 0L;
+            var manifestLock = new object();
 
-            foreach (var (sourcePath, sourceHash, manifestKey) in imagesToProcess)
-            {
-                progress?.Report(new ImageProgress
+            await Parallel.ForEachAsync(
+                imagesToProcess,
+                cancellationToken,
+                async (item, ct) =>
                 {
-                    CurrentImage = Path.GetFileName(sourcePath),
-                    Processed = processedCount,
-                    Total = imagesToProcess.Count,
-                    Skipped = cachedCount
-                });
+                    var (sourcePath, sourceHash, manifestKey) = item;
 
-                var image = await imageProcessor.ProcessImageAsync(
-                    sourcePath,
-                    new ImageProcessingOptions
+                    var image = await imageProcessor.ProcessImageAsync(
+                        sourcePath,
+                        new ImageProcessingOptions
+                        {
+                            Quality = ImageQuality,
+                            Formats = ImageFormats,
+                            Sizes = ImageSizes,
+                            OutputDirectory = outputImagesDirectory,
+                            CacheDirectory = cacheDirectory
+                        },
+                        ct);
+
+                    // Count files created: sizes × formats (filtered by actual image width)
+                    var actualSizes = image.Sizes.Count > 0
+                        ? image.Sizes
+                        : [.. ImageSizes.Where(s => s <= Math.Max(image.Width, image.Height))];
+                    var filesCreated = actualSizes.Count * ImageFormats.Length;
+
+                    // Thread-safe updates
+                    var currentProcessed = Interlocked.Increment(ref processedCount);
+                    Interlocked.Add(ref totalFilesCreated, filesCreated);
+
+                    // Report progress (Progress<T> is thread-safe)
+                    progress?.Report(new ImageProgress
                     {
-                        Quality = ImageQuality,
-                        Formats = ImageFormats,
-                        Sizes = ImageSizes,
-                        OutputDirectory = outputImagesDirectory,
-                        CacheDirectory = cacheDirectory
-                    },
-                    cancellationToken);
+                        CurrentImage = Path.GetFileName(sourcePath),
+                        Processed = currentProcessed,
+                        Total = imagesToProcess.Count,
+                        Skipped = cachedCount
+                    });
 
-                // Count files created: sizes × formats (filtered by actual image width)
-                var actualSizes = image.Sizes.Count > 0
-                    ? image.Sizes
-                    : [.. ImageSizes.Where(s => s <= Math.Max(image.Width, image.Height))];
-                totalFilesCreated += actualSizes.Count * ImageFormats.Length;
-
-                // Update manifest with new entry
-                manifestRepository.SetImage(manifestKey, new ImageContent
-                {
-                    Filename = Path.GetFileName(sourcePath),
-                    Hash = sourceHash,
-                    Width = image.Width,
-                    Height = image.Height,
-                    Sizes = actualSizes,
-                    FileSize = image.FileSize,
-                    DateTaken = image.DateTaken,
-                    Exif = image.Exif,
-                    ProcessedAt = DateTime.UtcNow
+                    // Thread-safe manifest update
+                    lock (manifestLock)
+                    {
+                        manifestRepository.SetImage(manifestKey, new ImageContent
+                        {
+                            Filename = Path.GetFileName(sourcePath),
+                            Hash = sourceHash,
+                            Width = image.Width,
+                            Height = image.Height,
+                            Sizes = actualSizes,
+                            FileSize = image.FileSize,
+                            DateTaken = image.DateTaken,
+                            Exif = image.Exif,
+                            ProcessedAt = DateTime.UtcNow
+                        });
+                    }
                 });
-
-                processedCount++;
-            }
 
             // Calculate total size of output files
             if (Directory.Exists(outputImagesDirectory))

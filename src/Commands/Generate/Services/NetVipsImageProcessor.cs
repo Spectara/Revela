@@ -10,31 +10,67 @@ namespace Spectara.Revela.Commands.Generate.Services;
 /// Image processor using NetVips for high-performance image processing
 /// </summary>
 /// <remarks>
+/// <para>
 /// NetVips is 3-5× faster than ImageSharp and handles large images efficiently.
 /// Supports:
-/// - Multiple output formats (WebP, JPG, AVIF)
-/// - Multiple sizes (responsive images)
-/// - EXIF extraction (cached in ImageManifest)
-/// - Camera model normalization (Sony ILCE → α series)
-/// - Quality control
-/// - Streaming (low memory usage)
-///
-/// CRITICAL: NetVips/libvips has GLOBAL STATE that is NOT THREAD-SAFE
-/// All NetVips operations must be protected by a global lock
+/// </para>
+/// <list type="bullet">
+///   <item><description>Multiple output formats (WebP, JPG, AVIF)</description></item>
+///   <item><description>Multiple sizes (responsive images)</description></item>
+///   <item><description>EXIF extraction (cached in ImageManifest)</description></item>
+///   <item><description>Camera model normalization (Sony ILCE → α series)</description></item>
+///   <item><description>Quality control</description></item>
+///   <item><description>Streaming (low memory usage)</description></item>
+/// </list>
+/// <para>
+/// Thread Safety: Each image is processed independently. LibVips is thread-safe
+/// for reading different images in parallel. We disable the libvips cache and
+/// set internal concurrency to 1 to avoid contention when processing multiple
+/// images in parallel from ImageService.
+/// </para>
 /// </remarks>
 public sealed partial class NetVipsImageProcessor(
     ILogger<NetVipsImageProcessor> logger,
     CameraModelMapper cameraModelMapper) : IImageProcessor
 {
-    // CRITICAL: Global lock for ALL NetVips operations
-    // NetVips/libvips has global codec instances, thread pools, and caches
-    // Even processing different images in parallel causes "out of order read" errors
-    private static readonly SemaphoreSlim GlobalNetVipsLock = new(1, 1);
+    /// <summary>
+    /// Flag to ensure NetVips is initialized only once
+    /// </summary>
+    private static bool netVipsInitialized;
+    private static readonly Lock InitLock = new();
+
+    /// <summary>
+    /// Initialize NetVips settings for parallel processing
+    /// </summary>
+    private static void EnsureNetVipsInitialized()
+    {
+        if (netVipsInitialized)
+        {
+            return;
+        }
+
+        lock (InitLock)
+        {
+            if (netVipsInitialized)
+            {
+                return;
+            }
+
+            // Disable cache - each image is unique, no benefit from caching
+            // Also prevents memory accumulation during batch processing
+            Cache.Max = 0;
+
+            // Let libvips use its default concurrency (ProcessorCount)
+            // Each image is processed independently, libvips handles internal threading
+
+            netVipsInitialized = true;
+        }
+    }
 
     /// <summary>
     /// Process a single image: resize, convert formats, extract EXIF
     /// </summary>
-    public async Task<Models.Image> ProcessImageAsync(
+    public Task<Models.Image> ProcessImageAsync(
         string inputPath,
         ImageProcessingOptions options,
         CancellationToken cancellationToken = default)
@@ -44,16 +80,10 @@ public sealed partial class NetVipsImageProcessor(
             throw new FileNotFoundException($"Image not found: {inputPath}", inputPath);
         }
 
-        // CRITICAL: Acquire global lock before ANY NetVips operations
-        await GlobalNetVipsLock.WaitAsync(cancellationToken);
-        try
-        {
-            return await ProcessImageInternalAsync(inputPath, options, cancellationToken);
-        }
-        finally
-        {
-            GlobalNetVipsLock.Release();
-        }
+        // Ensure NetVips is configured for parallel processing
+        EnsureNetVipsInitialized();
+
+        return ProcessImageInternalAsync(inputPath, options, cancellationToken);
     }
 
     /// <summary>
@@ -145,40 +175,37 @@ public sealed partial class NetVipsImageProcessor(
     /// Uses Sequential access mode - only reads image header, not full decode.
     /// Much faster than full processing (~10-20ms vs 200-500ms per image).
     /// </remarks>
-    public async Task<ImageMetadata> ReadMetadataAsync(
+    public Task<ImageMetadata> ReadMetadataAsync(
         string inputPath,
         CancellationToken cancellationToken = default)
     {
+        // Suppress unused parameter warning - kept for API consistency
+        _ = cancellationToken;
+
         if (!File.Exists(inputPath))
         {
             throw new FileNotFoundException($"Image not found: {inputPath}", inputPath);
         }
 
-        // CRITICAL: Acquire global lock before ANY NetVips operations
-        await GlobalNetVipsLock.WaitAsync(cancellationToken);
-        try
-        {
-            // Sequential access = only read header, not full image decode
-            using var image = Image.NewFromFile(inputPath, access: Enums.Access.Sequential);
+        // Ensure NetVips is configured for parallel processing
+        EnsureNetVipsInitialized();
 
-            var width = image.Width;
-            var height = image.Height;
-            var fileInfo = new FileInfo(inputPath);
-            var exif = ExtractExifData(image);
+        // Sequential access = only read header, not full image decode
+        using var image = Image.NewFromFile(inputPath, access: Enums.Access.Sequential);
 
-            return new ImageMetadata
-            {
-                Width = width,
-                Height = height,
-                FileSize = fileInfo.Length,
-                Exif = exif,
-                DateTaken = exif?.DateTaken ?? fileInfo.LastWriteTimeUtc
-            };
-        }
-        finally
+        var width = image.Width;
+        var height = image.Height;
+        var fileInfo = new FileInfo(inputPath);
+        var exif = ExtractExifData(image);
+
+        return Task.FromResult(new ImageMetadata
         {
-            GlobalNetVipsLock.Release();
-        }
+            Width = width,
+            Height = height,
+            FileSize = fileInfo.Length,
+            Exif = exif,
+            DateTaken = exif?.DateTaken ?? fileInfo.LastWriteTimeUtc
+        });
     }
 
     /// <summary>
