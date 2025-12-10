@@ -1,4 +1,5 @@
 using System.CommandLine;
+using Microsoft.Extensions.Configuration;
 using Spectara.Revela.Commands.Generate.Abstractions;
 using Spectara.Revela.Commands.Generate.Models.Results;
 using Spectre.Console;
@@ -35,6 +36,7 @@ public sealed partial class GenerateCommand(
     IContentService contentService,
     IImageService imageService,
     IRenderService renderService,
+    IConfiguration configuration,
     ScanCommand scanCommand,
     ImagesCommand imagesCommand,
     PagesCommand pagesCommand)
@@ -162,20 +164,32 @@ public sealed partial class GenerateCommand(
         }
 
         var duration = DateTime.UtcNow - startTime;
+        var projectName = configuration["name"] ?? "Revela Site";
 
-        // Success message
-        var panel = new Panel(
-            "[green]Site generated successfully![/]\n\n" +
-            $"[bold]Output:[/] [cyan]output[/]\n" +
-            $"[bold]Duration:[/] {duration.TotalSeconds:F2}s\n\n" +
-            $"[dim]Stats:[/]\n" +
-            $"  Galleries: {scanResult.GalleryCount}\n" +
-            $"  Images: {imageResult.ProcessedCount} processed, {imageResult.SkippedCount} cached\n" +
-            $"  Pages: {renderResult.PageCount}\n\n" +
-            "[dim]Next steps:[/]\n" +
-            "1. Open [cyan]output/index.html[/] in your browser\n" +
-            "2. Deploy with [cyan]revela deploy[/] (coming soon)"
-        )
+        // Success message with detailed stats
+        var content = "[green]Site generated successfully![/]\n\n";
+        content += $"[dim]Project:[/]   [cyan]{projectName}[/]\n";
+        content += "[dim]Output:[/]    [cyan]output/[/]\n\n";
+        content += "[dim]Statistics:[/]\n";
+        content += $"  Galleries:  {scanResult.GalleryCount}\n";
+        content += $"  Images:     {imageResult.ProcessedCount} processed";
+        if (imageResult.SkippedCount > 0)
+        {
+            content += $", {imageResult.SkippedCount} cached";
+        }
+
+        content += "\n";
+        content += $"  Pages:      {renderResult.PageCount}\n\n";
+        content += "[dim]Timing:[/]\n";
+        content += $"  Scan:       {scanResult.Duration.TotalSeconds:F2}s\n";
+        content += $"  Images:     {imageResult.Duration.TotalSeconds:F2}s\n";
+        content += $"  Render:     {renderResult.Duration.TotalSeconds:F2}s\n";
+        content += $"  [bold]Total:[/]      {duration.TotalSeconds:F2}s\n\n";
+        content += "[dim]Next steps:[/]\n";
+        content += "  • Open [cyan]output/index.html[/] in your browser\n";
+        content += "  • Deploy with [cyan]revela deploy[/] (coming soon)";
+
+        var panel = new Panel(new Markup(content))
         {
             Header = new PanelHeader("[bold green]Success[/]"),
             Border = BoxBorder.Rounded

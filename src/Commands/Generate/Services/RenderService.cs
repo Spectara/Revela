@@ -59,6 +59,8 @@ public sealed partial class RenderService(
         IProgress<RenderProgress>? progress = null,
         CancellationToken cancellationToken = default)
     {
+        var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+
         try
         {
             // Load manifest
@@ -122,11 +124,13 @@ public sealed partial class RenderService(
             });
 
             LogPagesGenerated(logger, pageCount);
+            stopwatch.Stop();
 
             return new RenderResult
             {
                 Success = true,
-                PageCount = pageCount
+                PageCount = pageCount,
+                Duration = stopwatch.Elapsed
             };
         }
         catch (Exception ex)
@@ -135,7 +139,8 @@ public sealed partial class RenderService(
             return new RenderResult
             {
                 Success = false,
-                ErrorMessage = ex.Message
+                ErrorMessage = ex.Message,
+                Duration = stopwatch.Elapsed
             };
         }
     }
@@ -151,7 +156,7 @@ public sealed partial class RenderService(
         {
             Project = new ProjectSettings
             {
-                Name = configuration["title"] ?? configuration["name"] ?? "Revela Site",
+                Name = configuration["name"] ?? "Revela Site",
                 BaseUrl = configuration["url"] ?? "https://example.com",
                 Language = configuration["language"] ?? "en",
                 ImageBasePath = configuration["imageBasePath"],
@@ -159,7 +164,7 @@ public sealed partial class RenderService(
             },
             Site = new SiteSettings
             {
-                Title = configuration["title"] ?? "Photo Portfolio",
+                Title = configuration["title"],
                 Author = configuration["author"],
                 Description = configuration["description"],
                 Copyright = configuration["copyright"]

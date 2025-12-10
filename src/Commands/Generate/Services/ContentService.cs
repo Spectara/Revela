@@ -38,6 +38,8 @@ public sealed partial class ContentService(
         IProgress<ContentProgress>? progress = null,
         CancellationToken cancellationToken = default)
     {
+        var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+
         try
         {
             // Validate source directory exists
@@ -112,12 +114,15 @@ public sealed partial class ContentService(
 
             LogScanCompleted(logger, content.Galleries.Count, content.Images.Count);
 
+            stopwatch.Stop();
+
             return new ContentResult
             {
                 Success = true,
                 GalleryCount = content.Galleries.Count,
                 ImageCount = content.Images.Count,
-                NavigationItemCount = CountManifestEntries(root)
+                NavigationItemCount = CountManifestEntries(root),
+                Duration = stopwatch.Elapsed
             };
         }
         catch (Exception ex)
@@ -126,7 +131,8 @@ public sealed partial class ContentService(
             return new ContentResult
             {
                 Success = false,
-                ErrorMessage = ex.Message
+                ErrorMessage = ex.Message,
+                Duration = stopwatch.Elapsed
             };
         }
     }

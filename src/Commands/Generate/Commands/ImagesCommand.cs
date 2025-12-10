@@ -1,4 +1,6 @@
 using System.CommandLine;
+using System.Globalization;
+using Microsoft.Extensions.Configuration;
 using Spectara.Revela.Commands.Generate.Abstractions;
 using Spectara.Revela.Commands.Generate.Models.Results;
 using Spectre.Console;
@@ -19,7 +21,8 @@ namespace Spectara.Revela.Commands.Generate.Commands;
 public sealed partial class ImagesCommand(
     ILogger<ImagesCommand> logger,
     IImageService imageService,
-    IManifestRepository manifestRepository)
+    IManifestRepository manifestRepository,
+    IConfiguration configuration)
 {
     /// <summary>
     /// Creates the CLI command.
@@ -110,25 +113,58 @@ public sealed partial class ImagesCommand(
 
         if (result.Success)
         {
+            var projectName = configuration["name"] ?? "Revela Site";
+
+            var content = "[green]Image processing complete![/]\n\n";
+            content += $"[dim]Project:[/]   [cyan]{projectName}[/]\n\n";
+            content += "[dim]Statistics:[/]\n";
+            content += $"  Processed: {result.ProcessedCount} images\n";
+
             if (result.SkippedCount > 0)
             {
-                AnsiConsole.MarkupLine($"[dim]Skipped {result.SkippedCount} unchanged images[/]");
+                content += $"  Cached:    {result.SkippedCount} images\n";
             }
 
-            if (result.ProcessedCount == 0 && result.SkippedCount > 0)
+            if (result.FilesCreated > 0)
             {
-                AnsiConsole.MarkupLine("[green]OK All images up to date![/]");
+                content += $"  Files:     {result.FilesCreated} created\n";
+                content += $"  Size:      {FormatSize(result.TotalSize)}\n";
             }
-            else
+
+            content += $"  Duration:  {result.Duration.TotalSeconds:F2}s\n";
+            content += "\n[dim]Next steps:[/]\n";
+            content += "  • Run [cyan]revela generate pages[/] to render HTML\n";
+            content += "  • Or run [cyan]revela generate[/] for full build";
+
+            var panel = new Panel(new Markup(content))
             {
-                AnsiConsole.MarkupLine($"[green]OK Processed {result.ProcessedCount} images[/]");
-            }
+                Header = new PanelHeader("[bold green]Success[/]"),
+                Border = BoxBorder.Rounded
+            };
+            AnsiConsole.Write(panel);
         }
         else
         {
-            AnsiConsole.MarkupLine($"[red]ERROR Image processing failed:[/] {result.ErrorMessage}");
+            var panel = new Panel(
+                new Markup($"[red]{result.ErrorMessage}[/]"))
+            {
+                Header = new PanelHeader("[bold red]Image processing failed[/]"),
+                Border = BoxBorder.Rounded
+            };
+            AnsiConsole.Write(panel);
             LogImageProcessingFailed(logger);
         }
+    }
+
+    private static string FormatSize(long bytes)
+    {
+        return bytes switch
+        {
+            < 1024 => string.Format(CultureInfo.InvariantCulture, "{0} B", bytes),
+            < 1024 * 1024 => string.Format(CultureInfo.InvariantCulture, "{0:F1} KB", bytes / 1024.0),
+            < 1024 * 1024 * 1024 => string.Format(CultureInfo.InvariantCulture, "{0:F1} MB", bytes / (1024.0 * 1024.0)),
+            _ => string.Format(CultureInfo.InvariantCulture, "{0:F2} GB", bytes / (1024.0 * 1024.0 * 1024.0))
+        };
     }
 
     [LoggerMessage(Level = LogLevel.Error, Message = "Image processing command failed")]

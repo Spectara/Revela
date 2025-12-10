@@ -63,7 +63,7 @@ public sealed class ProjectSettings
 public sealed class SiteSettings
 {
     /// <summary>Site title displayed in browser and headers</summary>
-    public string Title { get; init; } = string.Empty;
+    public string? Title { get; init; }
 
     /// <summary>Site description for SEO meta tags</summary>
     public string? Description { get; init; }

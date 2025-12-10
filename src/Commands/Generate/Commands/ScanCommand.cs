@@ -1,4 +1,5 @@
 using System.CommandLine;
+using Microsoft.Extensions.Configuration;
 using Spectara.Revela.Commands.Generate.Abstractions;
 using Spectara.Revela.Commands.Generate.Models.Results;
 using Spectre.Console;
@@ -18,7 +19,8 @@ namespace Spectara.Revela.Commands.Generate.Commands;
 /// </remarks>
 public sealed partial class ScanCommand(
     ILogger<ScanCommand> logger,
-    IContentService contentService)
+    IContentService contentService,
+    IConfiguration configuration)
 {
     /// <summary>
     /// Creates the CLI command.
@@ -53,16 +55,20 @@ public sealed partial class ScanCommand(
 
         if (result.Success)
         {
+            var projectName = configuration["name"] ?? "Revela Site";
+
             var panel = new Panel(
-                $"[green]Scan complete![/]\n\n" +
-                $"[dim]Content:[/]\n" +
+                $"[green]Content scan complete![/]\n\n" +
+                $"[dim]Project:[/]    [cyan]{projectName}[/]\n\n" +
+                $"[dim]Statistics:[/]\n" +
                 $"  Galleries:  {result.GalleryCount}\n" +
                 $"  Images:     {result.ImageCount}\n" +
-                $"  Navigation: {result.NavigationItemCount}\n\n" +
+                $"  Navigation: {result.NavigationItemCount}\n" +
+                $"  Duration:   {result.Duration.TotalSeconds:F2}s\n\n" +
                 $"[dim]Next steps:[/]\n" +
-                $"1. Run [cyan]revela generate images[/] to process images\n" +
-                $"2. Run [cyan]revela generate pages[/] to render HTML\n" +
-                $"3. Or run [cyan]revela generate[/] for full build"
+                $"  • Run [cyan]revela generate images[/] to process images\n" +
+                $"  • Run [cyan]revela generate pages[/] to render HTML\n" +
+                $"  • Or run [cyan]revela generate[/] for full build"
             )
             {
                 Header = new PanelHeader("[bold green]Success[/]"),
@@ -73,7 +79,13 @@ public sealed partial class ScanCommand(
         }
         else
         {
-            AnsiConsole.MarkupLine($"[red]ERROR Scan failed:[/] {result.ErrorMessage}");
+            var panel = new Panel(
+                new Markup($"[red]{result.ErrorMessage}[/]"))
+            {
+                Header = new PanelHeader("[bold red]Scan failed[/]"),
+                Border = BoxBorder.Rounded
+            };
+            AnsiConsole.Write(panel);
             LogScanFailed(logger);
         }
     }

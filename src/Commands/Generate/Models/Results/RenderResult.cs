@@ -11,6 +11,9 @@ public sealed class RenderResult
     /// <summary>Number of pages rendered.</summary>
     public int PageCount { get; init; }
 
+    /// <summary>Rendering duration.</summary>
+    public TimeSpan Duration { get; init; }
+
     /// <summary>Error message if failed.</summary>
     public string? ErrorMessage { get; init; }
 }

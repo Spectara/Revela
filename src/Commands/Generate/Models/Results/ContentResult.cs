@@ -17,6 +17,9 @@ public sealed class ContentResult
     /// <summary>Number of navigation items found.</summary>
     public int NavigationItemCount { get; init; }
 
+    /// <summary>Scanning duration.</summary>
+    public TimeSpan Duration { get; init; }
+
     /// <summary>Error message if failed.</summary>
     public string? ErrorMessage { get; init; }
 }

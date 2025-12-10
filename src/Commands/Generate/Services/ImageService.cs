@@ -43,6 +43,8 @@ public sealed partial class ImageService(
         IProgress<ImageProgress>? progress = null,
         CancellationToken cancellationToken = default)
     {
+        var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+
         try
         {
             // Load manifest
@@ -121,12 +123,16 @@ public sealed partial class ImageService(
             {
                 manifestRepository.LastImagesProcessed = DateTime.UtcNow;
                 await manifestRepository.SaveAsync(cancellationToken);
+                stopwatch.Stop();
 
                 return new ImageResult
                 {
                     Success = true,
                     ProcessedCount = 0,
-                    SkippedCount = cachedCount
+                    SkippedCount = cachedCount,
+                    FilesCreated = 0,
+                    TotalSize = 0,
+                    Duration = stopwatch.Elapsed
                 };
             }
 
@@ -134,6 +140,8 @@ public sealed partial class ImageService(
             var outputImagesDirectory = Path.Combine(OutputDirectory, ImageDirectory);
             var cacheDirectory = Path.Combine(Environment.CurrentDirectory, CacheDirectory);
             var processedCount = 0;
+            var totalFilesCreated = 0;
+            var totalSizeBytes = 0L;
 
             foreach (var (sourcePath, sourceHash, manifestKey) in imagesToProcess)
             {
@@ -157,6 +165,12 @@ public sealed partial class ImageService(
                     },
                     cancellationToken);
 
+                // Count files created: sizes × formats (filtered by actual image width)
+                var actualSizes = image.Sizes.Count > 0
+                    ? image.Sizes
+                    : [.. ImageSizes.Where(s => s <= Math.Max(image.Width, image.Height))];
+                totalFilesCreated += actualSizes.Count * ImageFormats.Length;
+
                 // Update manifest with new entry
                 manifestRepository.SetImage(manifestKey, new ImageContent
                 {
@@ -164,9 +178,7 @@ public sealed partial class ImageService(
                     Hash = sourceHash,
                     Width = image.Width,
                     Height = image.Height,
-                    Sizes = image.Sizes.Count > 0
-                        ? image.Sizes
-                        : [.. ImageSizes.Where(s => s <= Math.Max(image.Width, image.Height))],
+                    Sizes = actualSizes,
                     FileSize = image.FileSize,
                     DateTaken = image.DateTaken,
                     Exif = image.Exif,
@@ -174,6 +186,13 @@ public sealed partial class ImageService(
                 });
 
                 processedCount++;
+            }
+
+            // Calculate total size of output files
+            if (Directory.Exists(outputImagesDirectory))
+            {
+                totalSizeBytes = Directory.EnumerateFiles(outputImagesDirectory, "*.*", SearchOption.AllDirectories)
+                    .Sum(f => new FileInfo(f).Length);
             }
 
             // Save manifest
@@ -190,12 +209,16 @@ public sealed partial class ImageService(
             });
 
             LogImagesProcessed(logger, processedCount);
+            stopwatch.Stop();
 
             return new ImageResult
             {
                 Success = true,
                 ProcessedCount = processedCount,
-                SkippedCount = cachedCount
+                SkippedCount = cachedCount,
+                FilesCreated = totalFilesCreated,
+                TotalSize = totalSizeBytes,
+                Duration = stopwatch.Elapsed
             };
         }
         catch (Exception ex)
@@ -204,7 +227,8 @@ public sealed partial class ImageService(
             return new ImageResult
             {
                 Success = false,
-                ErrorMessage = ex.Message
+                ErrorMessage = ex.Message,
+                Duration = stopwatch.Elapsed
             };
         }
     }

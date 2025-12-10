@@ -14,6 +14,15 @@ public sealed class ImageResult
     /// <summary>Number of images skipped (unchanged).</summary>
     public int SkippedCount { get; init; }
 
+    /// <summary>Number of files created (multiple per image: sizes × formats).</summary>
+    public int FilesCreated { get; init; }
+
+    /// <summary>Total size of created files in bytes.</summary>
+    public long TotalSize { get; init; }
+
+    /// <summary>Processing duration.</summary>
+    public TimeSpan Duration { get; init; }
+
     /// <summary>Error message if failed.</summary>
     public string? ErrorMessage { get; init; }
 }

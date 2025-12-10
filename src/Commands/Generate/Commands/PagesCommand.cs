@@ -1,4 +1,5 @@
 using System.CommandLine;
+using Microsoft.Extensions.Configuration;
 using Spectara.Revela.Commands.Generate.Abstractions;
 using Spectara.Revela.Commands.Generate.Models.Results;
 using Spectre.Console;
@@ -19,7 +20,8 @@ namespace Spectara.Revela.Commands.Generate.Commands;
 public sealed partial class PagesCommand(
     ILogger<PagesCommand> logger,
     IRenderService renderService,
-    IManifestRepository manifestRepository)
+    IManifestRepository manifestRepository,
+    IConfiguration configuration)
 {
     /// <summary>
     /// Creates the CLI command.
@@ -94,11 +96,32 @@ public sealed partial class PagesCommand(
 
         if (result.Success)
         {
-            AnsiConsole.MarkupLine($"[green]OK Pages generated![/] {result.PageCount} pages");
+            var projectName = configuration["name"] ?? "Revela Site";
+
+            var panel = new Panel(
+                new Markup($"[green]Page rendering complete![/]\n\n" +
+                          $"[dim]Project:[/]  [cyan]{projectName}[/]\n\n" +
+                          $"[dim]Statistics:[/]\n" +
+                          $"  Pages:    {result.PageCount}\n" +
+                          $"  Duration: {result.Duration.TotalSeconds:F2}s\n\n" +
+                          "[dim]Next steps:[/]\n" +
+                          "  • Open [cyan]output/index.html[/] in your browser\n" +
+                          "  • Run [cyan]revela generate[/] for full generation"))
+            {
+                Header = new PanelHeader("[bold green]Success[/]"),
+                Border = BoxBorder.Rounded
+            };
+            AnsiConsole.Write(panel);
         }
         else
         {
-            AnsiConsole.MarkupLine($"[red]ERROR Page generation failed:[/] {result.ErrorMessage}");
+            var panel = new Panel(
+                new Markup($"[red]{result.ErrorMessage}[/]"))
+            {
+                Header = new PanelHeader("[bold red]Page generation failed[/]"),
+                Border = BoxBorder.Rounded
+            };
+            AnsiConsole.Write(panel);
             LogPagesGenerationFailed(logger);
         }
     }
