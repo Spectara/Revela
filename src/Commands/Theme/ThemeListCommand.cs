@@ -41,30 +41,47 @@ public sealed partial class ThemeListCommand(IThemeResolver themeResolver)
         if (themes.Count == 0)
         {
             AnsiConsole.MarkupLine("[yellow]No themes found.[/]");
-            AnsiConsole.MarkupLine("Install a theme with [blue]revela theme add <name>[/]");
+            AnsiConsole.MarkupLine("");
+            AnsiConsole.MarkupLine("Install a theme with [cyan]revela theme add <name>[/]");
             return;
         }
 
-        var table = new Table();
-        table.AddColumn("Name");
-        table.AddColumn("Version");
-        table.AddColumn("Source");
-        table.AddColumn("Description");
+        // Build content for panel
+        var content = new List<string>();
 
         foreach (var theme in themes)
         {
             var metadata = theme.Metadata;
             var source = GetThemeSource(theme);
+            var sourceIcon = source == "local" ? "[blue]*[/]" : "[green]+[/]";
 
-            table.AddRow(
-                $"[green]{EscapeMarkup(metadata.Name)}[/]",
-                metadata.Version,
-                source,
-                EscapeMarkup(metadata.Description));
+            content.Add($"{sourceIcon} [bold green]{EscapeMarkup(metadata.Name)}[/] [dim]v{metadata.Version}[/]");
+            content.Add($"   [dim]{EscapeMarkup(metadata.Description)}[/]");
+
+            if (source == "local")
+            {
+                content.Add($"   [blue]Source: themes/{EscapeMarkup(metadata.Name)}/[/]");
+            }
+
+            content.Add("");
         }
 
-        AnsiConsole.Write(table);
-        AnsiConsole.MarkupLine($"\n[dim]Found {themes.Count} theme(s)[/]");
+        // Remove last empty line
+        if (content.Count > 0 && string.IsNullOrEmpty(content[^1]))
+        {
+            content.RemoveAt(content.Count - 1);
+        }
+
+        var panel = new Panel(new Markup(string.Join("\n", content)))
+        {
+            Header = new PanelHeader($"[bold]Available Themes[/] [dim]({themes.Count})[/]"),
+            Border = BoxBorder.Rounded,
+            Padding = new Padding(1, 0, 1, 0)
+        };
+
+        AnsiConsole.Write(panel);
+        AnsiConsole.MarkupLine("");
+        AnsiConsole.MarkupLine("[dim]Tip:[/] Use [cyan]revela theme extract <name>[/] to customize a theme");
     }
 
     private static string GetThemeSource(IThemePlugin theme)
@@ -72,12 +89,9 @@ public sealed partial class ThemeListCommand(IThemeResolver themeResolver)
         // Check if it's a local theme by type name
         var typeName = theme.GetType().Name;
 
-        if (typeName.Contains("LocalThemeAdapter", StringComparison.Ordinal))
-        {
-            return "[blue]local[/]";
-        }
-
-        return "[dim]installed[/]";
+        return typeName.Contains("LocalThemeAdapter", StringComparison.Ordinal)
+            ? "local"
+            : "installed";
     }
 
     private static string EscapeMarkup(string text)

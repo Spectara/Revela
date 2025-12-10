@@ -19,7 +19,6 @@
   <ItemGroup Condition="'$(Configuration)' == 'Debug'">
     <ProjectReference Include="..\Plugins\Plugin.Source.OneDrive\Plugin.Source.OneDrive.csproj" />
     <ProjectReference Include="..\Themes\Theme.Expose\Theme.Expose.csproj" />
-    <ProjectReference Include="..\Themes\Theme.Minimal\Theme.Minimal.csproj" />
   </ItemGroup>
 
   <ItemGroup>
