@@ -83,9 +83,11 @@ src/
 ├── Infrastructure/           # External services (NetVips, Scriban, Markdig)
 ├── Commands/                 # CLI commands (Generate, Init, Plugins, Restore, Theme)
 ├── Cli/                      # Entry point (.NET Tool)
-└── Plugins/
-    ├── Plugin.Deploy.SSH/    # SSH/SFTP deployment
-    └── Plugin.Source.OneDrive/  # OneDrive shared folder source
+├── Plugins/
+│   ├── Plugin.Deploy.SSH/    # SSH/SFTP deployment
+│   └── Plugin.Source.OneDrive/  # OneDrive shared folder source
+└── Themes/
+    └── Theme.Expose/         # Default photography portfolio theme
 tests/
 ├── Core.Tests/               # Unit tests for Core
 ├── IntegrationTests/         # Integration tests

@@ -64,7 +64,6 @@ This is a **complete rewrite** of the original Bash-based Revela:
 
 #### Plugins (DONE)
 - [x] `Theme.Expose` - Default Expose theme (embedded)
-- [x] `Theme.Minimal` - Minimal theme (embedded)
 - [x] `Plugin.Source.OneDrive` - OneDrive shared folder source
 
 ### 📝 Next Steps
@@ -151,10 +150,10 @@ Revela/
 │   ├── Features/                 # ✅ Commands (Init, Plugin, Theme, Restore)
 │   ├── Cli/                      # ✅ Entry Point with Host.CreateApplicationBuilder
 │   └── Plugins/
-│       ├── Theme.Expose/         # ✅ Expose theme (embedded)
-│       ├── Theme.Minimal/        # ✅ Minimal theme (embedded)
 │       ├── Plugin.Deploy.SSH/    # 📝 SSH deployment
 │       └── Plugin.Source.OneDrive/ # ✅ OneDrive shared folder source
+│   └── Themes/
+│       └── Theme.Expose/         # ✅ Expose theme (embedded)
 ├── tests/
 │   ├── Core.Tests/               # ✅ Unit tests
 │   ├── IntegrationTests/         # ✅ Integration tests
