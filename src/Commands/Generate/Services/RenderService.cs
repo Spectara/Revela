@@ -231,7 +231,7 @@ public sealed partial class RenderService(
     private static Gallery ReconstructGalleryFromEntry(ManifestEntry entry)
     {
         var images = new List<Image>();
-        foreach (var imageEntry in entry.Images)
+        foreach (var imageEntry in entry.Content.OfType<ImageContent>())
         {
             var sourcePath = string.IsNullOrEmpty(entry.Path)
                 ? imageEntry.Filename

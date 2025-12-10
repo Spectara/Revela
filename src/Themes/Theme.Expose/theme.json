@@ -10,8 +10,7 @@
   },
   "partials": {
     "navigation": "partials/navigation.html",
-    "image": "partials/image.html",
-    "exif": "partials/exif.html"
+    "image": "partials/image.html"
   },
   "assets": ["main.css"],
   "variables": {

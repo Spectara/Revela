@@ -7,39 +7,28 @@
   - Lightbox (on focus/click)
 
   Expects: image (ImageData object)
-  ImageData: { id, url, width, height, title?, post?, exif?, available_sizes?, available_formats? }
+  ImageData: { id, url, width, height, title?, post?, exif?, sizes, formats }
 
   Context: image_basepath (path/URL to image folder, can be absolute CDN URL)
 ##~}}
-{{~ # Default sizes and formats if not available ~}}
-{{~ sizes = image.available_sizes ~}}
-{{~ if !sizes || sizes.size == 0 ~}}
-  {{~ sizes = [640, 1024, 1280, 1920] ~}}
+{{~ # Skip rendering if no sizes available ~}}
+{{~ if !image.sizes || image.sizes.size == 0 ~}}
+  {{~ ret ~}}
 {{~ end ~}}
-{{~ formats = image.available_formats ~}}
-{{~ if !formats || formats.size == 0 ~}}
-  {{~ formats = ["webp", "jpg"] ~}}
-{{~ end ~}}
-{{~ thumb_size = sizes[0] ~}}
-{{~ full_size = sizes[sizes.size - 1] ~}}
 <article tabindex="0" id="{{ image.id }}" style="--width:{{ image.width }}; --height:{{ image.height }};">
   {{~ # Thumbnail with responsive srcset and format selection ~}}
   <picture>
-    {{~ for format in formats ~}}
-    {{~ if format != "jpg" ~}}
+    {{~ for format in image.formats ~}}
     <source
       type="image/{{ format }}"
-      srcset="{{~ for size in sizes ~}}{{ image_basepath }}{{ image.url }}/{{ size }}.{{ format }} {{ size }}w{{~ if !for.last ~}},
+      srcset="{{~ for size in image.sizes ~}}{{ image_basepath }}{{ image.url }}/{{ size }}.{{ format }} {{ size }}w{{~ if !for.last ~}},
               {{~ end ~}}{{~ end ~}}">
-    {{~ end ~}}
     {{~ end ~}}
     <img
       alt="{{ image.title ?? '' }}"
       loading="lazy"
       decoding="async"
-      src="{{ image_basepath }}{{ image.url }}/{{ thumb_size }}.jpg"
-      srcset="{{~ for size in sizes ~}}{{ image_basepath }}{{ image.url }}/{{ size }}.jpg {{ size }}w{{~ if !for.last ~}},
-              {{~ end ~}}{{~ end ~}}"
+      src="{{ image_basepath }}{{ image.url }}/{{ image.sizes[0] }}.jpg"
       width="{{ image.width }}"
       height="{{ image.height }}">
   </picture>
@@ -60,34 +49,22 @@
     {{~ end ~}}
   </aside>
 
-  {{~ # Lightbox on focus/click ~}}
+  {{~ # Lightbox on focus/click - always load largest size for zoom ~}}
   <figure>
     <a tabindex="-1" title="close">close</a>
     <picture>
-      {{~ for format in formats ~}}
-      {{~ if format != "jpg" ~}}
+      {{~ for format in image.formats ~}}
       <source
         type="image/{{ format }}"
-        srcset="{{~ for size in sizes ~}}{{ image_basepath }}{{ image.url }}/{{ size }}.{{ format }} {{ size }}w{{~ if !for.last ~}},
-                {{~ end ~}}{{~ end ~}}">
-      {{~ end ~}}
+        srcset="{{ image_basepath }}{{ image.url }}/{{ image.width }}.{{ format }}">
       {{~ end ~}}
       <img
+        alt="{{ image.title ?? '' }}"
         loading="lazy"
         decoding="async"
-        src="{{ image_basepath }}{{ image.url }}/{{ full_size }}.jpg"
-        srcset="{{~ for size in sizes ~}}{{ image_basepath }}{{ image.url }}/{{ size }}.jpg {{ size }}w{{~ if !for.last ~}},
-                {{~ end ~}}{{~ end ~}}"
+        src="{{ image_basepath }}{{ image.url }}/{{ image.width }}.jpg"
         width="{{ image.width }}"
         height="{{ image.height }}">
     </picture>
-    <figcaption>
-      {{~ if image.post ~}}
-      <div class="post-content">
-        {{ image.post }}
-      </div>
-      {{~ end ~}}
-      {{~ include 'partials/exif' image.exif ~}}
-    </figcaption>
   </figure>
 </article>

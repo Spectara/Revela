@@ -158,18 +158,20 @@ public sealed partial class ImageService(
                     cancellationToken);
 
                 // Update manifest with new entry
-                manifestRepository.SetImage(manifestKey, new ImageManifestEntry
+                manifestRepository.SetImage(manifestKey, new ImageContent
                 {
                     Filename = Path.GetFileName(sourcePath),
                     Hash = sourceHash,
                     Width = image.Width,
                     Height = image.Height,
-                    Sizes = image.AvailableSizes.Count > 0
-                        ? image.AvailableSizes
+                    Sizes = image.Sizes.Count > 0
+                        ? image.Sizes
                         : [.. ImageSizes.Where(s => s <= Math.Max(image.Width, image.Height))],
+                    Formats = ImageFormats,
                     FileSize = image.FileSize,
                     DateTaken = image.DateTaken,
-                    Exif = image.Exif
+                    Exif = image.Exif,
+                    ProcessedAt = DateTime.UtcNow
                 });
 
                 processedCount++;
@@ -232,7 +234,7 @@ public sealed partial class ImageService(
     private static void CollectImagePathsRecursive(ManifestEntry entry, List<string> paths)
     {
         // Collect images from this node
-        foreach (var image in entry.Images)
+        foreach (var image in entry.Content.OfType<ImageContent>())
         {
             var sourcePath = string.IsNullOrEmpty(entry.Path)
                 ? image.Filename

@@ -5,7 +5,7 @@ namespace Spectara.Revela.Commands.Generate.Models;
 /// </summary>
 /// <remarks>
 /// Result of scanning the source directory.
-/// Contains discovered images and gallery structure.
+/// Contains discovered images, markdown files, and gallery structure.
 /// </remarks>
 public sealed class ContentTree
 {
@@ -13,6 +13,11 @@ public sealed class ContentTree
     /// All source images found during scan
     /// </summary>
     public required IReadOnlyList<SourceImage> Images { get; init; }
+
+    /// <summary>
+    /// All markdown files found during scan (excluding _index.md).
+    /// </summary>
+    public required IReadOnlyList<SourceMarkdown> Markdowns { get; init; }
 
     /// <summary>
     /// Gallery structure discovered from directories

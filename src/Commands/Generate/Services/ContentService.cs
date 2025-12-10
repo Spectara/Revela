@@ -213,8 +213,17 @@ public sealed partial class ContentService(
                 g => g.ToList(),
                 StringComparer.OrdinalIgnoreCase);
 
+        // Build a lookup for markdown files by gallery path
+        var markdownsByPath = content.Markdowns
+            .GroupBy(md => md.Gallery, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(
+                g => g.Key,
+                g => g.ToList(),
+                StringComparer.OrdinalIgnoreCase);
+
         // Create root node from home gallery
         var rootImages = imagesByPath.GetValueOrDefault(string.Empty) ?? [];
+        var rootMarkdowns = markdownsByPath.GetValueOrDefault(string.Empty) ?? [];
         var root = new ManifestEntry
         {
             Text = homeGallery?.Title ?? homeGallery?.Name ?? "Home",
@@ -225,8 +234,8 @@ public sealed partial class ContentService(
             Date = homeGallery?.Date,
             Featured = homeGallery?.Featured ?? false,
             Hidden = false,
-            Images = [.. rootImages.Select(img => ConvertSourceImage(img, imageMetadata))],
-            Children = [.. navigation.Select(nav => ConvertNavigationToEntry(nav, galleryBySlug, imagesByPath, imageMetadata))]
+            Content = BuildContentList(rootImages, rootMarkdowns, imageMetadata),
+            Children = [.. navigation.Select(nav => ConvertNavigationToEntry(nav, galleryBySlug, imagesByPath, markdownsByPath, imageMetadata))]
         };
 
         return root;
@@ -239,6 +248,7 @@ public sealed partial class ContentService(
         NavigationItem navItem,
         Dictionary<string, Gallery> galleryBySlug,
         Dictionary<string, List<SourceImage>> imagesByPath,
+        Dictionary<string, List<SourceMarkdown>> markdownsByPath,
         Dictionary<string, ImageMetadata> imageMetadata)
     {
         // Try to find matching gallery by URL/slug
@@ -251,9 +261,11 @@ public sealed partial class ContentService(
         // Get images for this gallery path (only for gallery nodes, not branches)
         // Branch nodes (slug=null) don't have direct images - they only contain children
         List<SourceImage> images = [];
+        List<SourceMarkdown> markdowns = [];
         if (gallery != null)
         {
             images = imagesByPath.GetValueOrDefault(gallery.Path) ?? [];
+            markdowns = markdownsByPath.GetValueOrDefault(gallery.Path) ?? [];
         }
 
         return new ManifestEntry
@@ -266,9 +278,39 @@ public sealed partial class ContentService(
             Date = gallery?.Date,
             Featured = gallery?.Featured ?? false,
             Hidden = navItem.Hidden,
-            Images = [.. images.Select(img => ConvertSourceImage(img, imageMetadata))],
-            Children = [.. navItem.Children.Select(child => ConvertNavigationToEntry(child, galleryBySlug, imagesByPath, imageMetadata))]
+            Content = BuildContentList(images, markdowns, imageMetadata),
+            Children = [.. navItem.Children.Select(child => ConvertNavigationToEntry(child, galleryBySlug, imagesByPath, markdownsByPath, imageMetadata))]
         };
+    }
+
+    /// <summary>
+    /// Build a combined content list from images and markdown files, sorted by filename.
+    /// </summary>
+    /// <remarks>
+    /// Content is sorted alphabetically by filename to allow users to control
+    /// ordering via filename prefixes (e.g., "01-intro.md", "02-photo.jpg").
+    /// </remarks>
+    private static List<GalleryContent> BuildContentList(
+        List<SourceImage> images,
+        List<SourceMarkdown> markdowns,
+        Dictionary<string, ImageMetadata> imageMetadata)
+    {
+        var content = new List<GalleryContent>();
+
+        // Convert images
+        foreach (var image in images)
+        {
+            content.Add(ConvertSourceImage(image, imageMetadata));
+        }
+
+        // Convert markdown files
+        foreach (var markdown in markdowns)
+        {
+            content.Add(ConvertSourceMarkdown(markdown));
+        }
+
+        // Sort by filename for predictable ordering
+        return [.. content.OrderBy(c => c.Filename, StringComparer.OrdinalIgnoreCase)];
     }
 
     /// <summary>
@@ -282,13 +324,13 @@ public sealed partial class ContentService(
     }
 
     /// <summary>
-    /// Convert a SourceImage to ImageManifestEntry with metadata.
+    /// Convert a SourceImage to ImageContent with metadata.
     /// </summary>
     /// <remarks>
     /// If metadata was successfully read, populates Width, Height, EXIF, DateTaken, and Sizes.
     /// Sizes are calculated based on the actual image width and default size presets.
     /// </remarks>
-    private static ImageManifestEntry ConvertSourceImage(
+    private static ImageContent ConvertSourceImage(
         SourceImage source,
         Dictionary<string, ImageMetadata> imageMetadata)
     {
@@ -300,19 +342,50 @@ public sealed partial class ContentService(
             ? CalculateSizes(meta.Width)
             : [];
 
-        return new ImageManifestEntry
+        return new ImageContent
         {
             Filename = source.FileName,
             Hash = ComputeHash(source, meta),
             Width = meta?.Width ?? 0,
             Height = meta?.Height ?? 0,
             Sizes = sizes,
+            Formats = ["webp", "jpg"],  // TODO: Get from config
             FileSize = meta?.FileSize ?? source.FileSize,
             DateTaken = meta?.DateTaken,
             Exif = meta?.Exif,
             ProcessedAt = DateTime.MinValue
         };
     }
+
+    /// <summary>
+    /// Convert a SourceMarkdown to MarkdownContent.
+    /// </summary>
+    /// <remarks>
+    /// The markdown body is NOT stored in the manifest - it's loaded at render time.
+    /// Only metadata (filename, size, hash) is stored for change detection.
+    /// </remarks>
+    private static MarkdownContent ConvertSourceMarkdown(SourceMarkdown source)
+    {
+        return new MarkdownContent
+        {
+            Filename = source.FileName,
+            FileSize = source.FileSize,
+            Hash = ComputeMarkdownHash(source)
+        };
+    }
+
+    /// <summary>
+    /// Compute a hash for markdown change detection.
+    /// </summary>
+#pragma warning disable CA5351 // MD5 is fine for non-security hash (cache key)
+    private static string ComputeMarkdownHash(SourceMarkdown source)
+    {
+        var hashInput = $"{source.FileName}_{source.FileSize}_{source.LastModified.Ticks}";
+        var hashBytes = System.Security.Cryptography.MD5.HashData(
+            System.Text.Encoding.UTF8.GetBytes(hashInput));
+        return Convert.ToHexString(hashBytes)[..12];
+    }
+#pragma warning restore CA5351
 
     /// <summary>
     /// Calculate which sizes to generate based on image width.

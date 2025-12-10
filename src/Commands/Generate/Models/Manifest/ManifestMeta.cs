@@ -15,9 +15,10 @@ public sealed class ManifestMeta
     /// - v1: Initial version with separate galleries and images
     /// - v2: Added navigation tree
     /// - v3: Unified tree structure with root node containing everything
+    /// - v4: Polymorphic content list (images + markdown), renamed images to content
     /// </remarks>
     [JsonPropertyName("version")]
-    public int Version { get; set; } = 3;
+    public int Version { get; set; } = 4;
 
     /// <summary>
     /// Hash of image processing configuration (sizes, formats, quality).

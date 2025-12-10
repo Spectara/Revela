@@ -46,21 +46,21 @@ public interface IManifestRepository
     /// This is a cached dictionary built from traversing the tree.
     /// Keys are source paths relative to source directory.
     /// </remarks>
-    IReadOnlyDictionary<string, ImageManifestEntry> Images { get; }
+    IReadOnlyDictionary<string, ImageContent> Images { get; }
 
     /// <summary>
     /// Get image entry by source path.
     /// </summary>
     /// <param name="sourcePath">Relative path to source image (normalized with forward slashes)</param>
     /// <returns>Entry if exists, null otherwise</returns>
-    ImageManifestEntry? GetImage(string sourcePath);
+    ImageContent? GetImage(string sourcePath);
 
     /// <summary>
     /// Add or update image entry in the appropriate tree node.
     /// </summary>
     /// <param name="sourcePath">Relative path to source image (normalized with forward slashes)</param>
     /// <param name="entry">Image manifest entry</param>
-    void SetImage(string sourcePath, ImageManifestEntry entry);
+    void SetImage(string sourcePath, ImageContent entry);
 
     /// <summary>
     /// Remove image entry.

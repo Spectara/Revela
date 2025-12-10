@@ -3,24 +3,10 @@ using System.Text.Json.Serialization;
 namespace Spectara.Revela.Commands.Generate.Models.Manifest;
 
 /// <summary>
-/// Manifest entry for a single source image.
+/// Content item representing an image file.
 /// </summary>
-public sealed class ImageManifestEntry
+public sealed record ImageContent : GalleryContent
 {
-    /// <summary>
-    /// Filename of the source image (without directory path).
-    /// </summary>
-    /// <example>"photo-001.jpg"</example>
-    [JsonPropertyName("filename")]
-    public required string Filename { get; init; }
-
-    /// <summary>
-    /// Hash of source image for change detection.
-    /// Format: MD5({filename}_{lastWriteTime}_{fileSize})[0..12]
-    /// </summary>
-    [JsonPropertyName("hash")]
-    public required string Hash { get; init; }
-
     /// <summary>
     /// Image width in pixels.
     /// </summary>
@@ -42,10 +28,11 @@ public sealed class ImageManifestEntry
     public required IReadOnlyList<int> Sizes { get; init; }
 
     /// <summary>
-    /// Original file size in bytes.
+    /// List of formats generated for this image.
     /// </summary>
-    [JsonPropertyName("fileSize")]
-    public long FileSize { get; init; }
+    /// <example>["webp", "jpg"]</example>
+    [JsonPropertyName("formats")]
+    public required IReadOnlyList<string> Formats { get; init; }
 
     /// <summary>
     /// Date the photo was taken (from EXIF or file date).
@@ -60,8 +47,8 @@ public sealed class ImageManifestEntry
     public ExifData? Exif { get; init; }
 
     /// <summary>
-    /// Timestamp when this entry was last processed.
+    /// Timestamp when this image was last processed.
     /// </summary>
     [JsonPropertyName("processedAt")]
-    public DateTime ProcessedAt { get; init; } = DateTime.UtcNow;
+    public DateTime ProcessedAt { get; init; }
 }

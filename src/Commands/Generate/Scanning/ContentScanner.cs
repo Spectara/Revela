@@ -28,16 +28,18 @@ public sealed partial class ContentScanner(
         LogScanningDirectory(logger, sourceDirectory);
 
         var images = new List<SourceImage>();
+        var markdowns = new List<SourceMarkdown>();
         var galleries = new List<Gallery>();
 
         // Scan root directory
-        await ScanDirectoryAsync(sourceDirectory, string.Empty, images, galleries, cancellationToken);
+        await ScanDirectoryAsync(sourceDirectory, string.Empty, images, markdowns, galleries, cancellationToken);
 
         LogScanComplete(logger, images.Count, galleries.Count);
 
         return new ContentTree
         {
             Images = images,
+            Markdowns = markdowns,
             Galleries = galleries
         };
     }
@@ -46,6 +48,7 @@ public sealed partial class ContentScanner(
         string baseDirectory,
         string relativePath,
         List<SourceImage> images,
+        List<SourceMarkdown> markdowns,
         List<Gallery> galleries,
         CancellationToken cancellationToken)
     {
@@ -61,6 +64,11 @@ public sealed partial class ContentScanner(
         // Find images in current directory
         var imageFiles = Directory.EnumerateFiles(currentDirectory)
             .Where(f => SupportedImageExtensions.IsSupported(Path.GetExtension(f)))
+            .ToList();
+
+        // Find markdown files (*.md) excluding _index.md
+        var markdownFiles = Directory.EnumerateFiles(currentDirectory, "*.md")
+            .Where(f => !Path.GetFileName(f).Equals(FrontMatterParser.IndexFileName, StringComparison.OrdinalIgnoreCase))
             .ToList();
 
         // Check for _index.md (gallery metadata or standalone page)
@@ -113,6 +121,26 @@ public sealed partial class ContentScanner(
                 images.Add(sourceImage);
             }
 
+            // Add markdown files to the collection
+            foreach (var markdownFile in markdownFiles)
+            {
+                var mdRelativePath = string.IsNullOrEmpty(relativePath)
+                    ? Path.GetFileName(markdownFile)
+                    : Path.Combine(relativePath, Path.GetFileName(markdownFile));
+
+                var sourceMarkdown = new SourceMarkdown
+                {
+                    SourcePath = markdownFile,
+                    RelativePath = mdRelativePath,
+                    FileName = Path.GetFileName(markdownFile),
+                    FileSize = new FileInfo(markdownFile).Length,
+                    LastModified = File.GetLastWriteTimeUtc(markdownFile),
+                    Gallery = relativePath
+                };
+
+                markdowns.Add(sourceMarkdown);
+            }
+
             galleries.Add(gallery);
         }
 
@@ -125,7 +153,7 @@ public sealed partial class ContentScanner(
                 ? subdirName
                 : Path.Combine(relativePath, subdirName);
 
-            await ScanDirectoryAsync(baseDirectory, subdirRelativePath, images, galleries, cancellationToken);
+            await ScanDirectoryAsync(baseDirectory, subdirRelativePath, images, markdowns, galleries, cancellationToken);
         }
     }
 

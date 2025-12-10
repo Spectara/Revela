@@ -44,7 +44,7 @@ public sealed partial class ScribanTemplateEngine(ILogger<ScribanTemplateEngine>
     /// </remarks>
     /// <summary>
     /// Convert PascalCase property names to snake_case for Scriban templates.
-    /// Example: AvailableSizes → available_sizes
+    /// Example: Sizes → sizes
     /// </summary>
     [System.Diagnostics.CodeAnalysis.SuppressMessage(
         "Globalization",

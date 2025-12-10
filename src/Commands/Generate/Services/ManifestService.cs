@@ -45,9 +45,9 @@ public sealed partial class ManifestService(ILogger<ManifestService> logger) : I
     /// <remarks>
     /// Built from traversing the tree on load/setRoot.
     /// Keys are normalized source paths (forward slashes).
-    /// Values are tuples of (ImageManifestEntry, containing ManifestEntry node).
+    /// Values are tuples of (ImageContent, containing ManifestEntry node).
     /// </remarks>
-    private Dictionary<string, (ImageManifestEntry Entry, ManifestEntry Node)> imageCache = [];
+    private Dictionary<string, (ImageContent Entry, ManifestEntry Node)> imageCache = [];
 
     #region Root Node
 
@@ -66,17 +66,17 @@ public sealed partial class ManifestService(ILogger<ManifestService> logger) : I
     #region Image Entries
 
     /// <inheritdoc />
-    public IReadOnlyDictionary<string, ImageManifestEntry> Images =>
+    public IReadOnlyDictionary<string, ImageContent> Images =>
         imageCache.ToDictionary(kvp => kvp.Key, kvp => kvp.Value.Entry);
 
     /// <inheritdoc />
-    public ImageManifestEntry? GetImage(string sourcePath)
+    public ImageContent? GetImage(string sourcePath)
     {
         return imageCache.TryGetValue(sourcePath, out var cached) ? cached.Entry : null;
     }
 
     /// <inheritdoc />
-    public void SetImage(string sourcePath, ImageManifestEntry entry)
+    public void SetImage(string sourcePath, ImageContent entry)
     {
         // Find the node that should contain this image (based on path prefix)
         var node = FindNodeForImage(sourcePath);
@@ -87,16 +87,24 @@ public sealed partial class ManifestService(ILogger<ManifestService> logger) : I
         }
 
         // Check if image already exists in node
-        var existingIndex = node.Images.FindIndex(img =>
-            GetImageSourcePath(node.Path, img) == sourcePath);
+        var existingIndex = node.Content
+            .Select((c, i) => (Content: c, Index: i))
+            .Where(x => x.Content is ImageContent)
+            .FirstOrDefault(x => GetImageSourcePath(node.Path, x.Content) == sourcePath)
+            .Index;
 
-        if (existingIndex >= 0)
+        // FirstOrDefault returns 0 for Index if not found, so we need to check separately
+        var existingImage = node.Content.OfType<ImageContent>()
+            .FirstOrDefault(img => GetImageSourcePath(node.Path, img) == sourcePath);
+
+        if (existingImage is not null)
         {
-            node.Images[existingIndex] = entry;
+            var actualIndex = node.Content.IndexOf(existingImage);
+            node.Content[actualIndex] = entry;
         }
         else
         {
-            node.Images.Add(entry);
+            node.Content.Add(entry);
         }
 
         // Update cache
@@ -112,15 +120,11 @@ public sealed partial class ManifestService(ILogger<ManifestService> logger) : I
         }
 
         // Remove from node
-        var index = cached.Node.Images.IndexOf(cached.Entry);
-        if (index >= 0)
-        {
-            cached.Node.Images.RemoveAt(index);
-        }
+        var removed = cached.Node.Content.Remove(cached.Entry);
 
         // Remove from cache
         imageCache.Remove(sourcePath);
-        return true;
+        return removed;
     }
 
     #endregion
@@ -293,7 +297,7 @@ public sealed partial class ManifestService(ILogger<ManifestService> logger) : I
     /// </summary>
     private void TraverseForImages(ManifestEntry node)
     {
-        foreach (var image in node.Images)
+        foreach (var image in node.Content.OfType<ImageContent>())
         {
             var sourcePath = GetImageSourcePath(node.Path, image);
             imageCache[sourcePath] = (image, node);
@@ -350,11 +354,11 @@ public sealed partial class ManifestService(ILogger<ManifestService> logger) : I
     /// <summary>
     /// Get the full source path for an image in a node.
     /// </summary>
-    private static string GetImageSourcePath(string nodePath, ImageManifestEntry image)
+    private static string GetImageSourcePath(string nodePath, GalleryContent content)
     {
         return string.IsNullOrEmpty(nodePath)
-            ? image.Filename
-            : $"{nodePath}\\{image.Filename}";
+            ? content.Filename
+            : $"{nodePath}\\{content.Filename}";
     }
 
     #endregion
@@ -404,7 +408,7 @@ public sealed partial class ManifestService(ILogger<ManifestService> logger) : I
     /// <param name="existingEntry">Existing manifest entry (null if new image)</param>
     /// <param name="sourceHash">Hash of source image</param>
     /// <returns>True if image needs processing, false if unchanged</returns>
-    public static bool NeedsProcessing(ImageManifestEntry? existingEntry, string sourceHash)
+    public static bool NeedsProcessing(ImageContent? existingEntry, string sourceHash)
     {
         if (existingEntry is null)
         {

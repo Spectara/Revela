@@ -59,9 +59,18 @@ public sealed class Image
     /// <remarks>
     /// Contains only sizes that were actually generated.
     /// Small images may skip larger sizes if original is too small.
-    /// Used in templates: {{ for size in image.available_sizes }}...{{ end }}
+    /// Used in templates: {{ for size in image.sizes }}...{{ end }}
     /// </remarks>
-    public IReadOnlyList<int> AvailableSizes { get; init; } = [];
+    public IReadOnlyList<int> Sizes { get; init; } = [];
+
+    /// <summary>
+    /// List of available image formats (for dynamic source elements in templates).
+    /// </summary>
+    /// <remarks>
+    /// Contains the formats that were generated (e.g., ["webp", "jpg"]).
+    /// Used in templates: {{ for format in image.formats }}...{{ end }}
+    /// </remarks>
+    public IReadOnlyList<string> Formats { get; init; } = [];
 
     /// <summary>
     /// Create an Image from a manifest entry (for cache hits).
@@ -69,7 +78,7 @@ public sealed class Image
     /// <param name="sourcePath">Full path to source image</param>
     /// <param name="entry">Manifest entry with cached metadata</param>
     /// <returns>Image populated from manifest data</returns>
-    public static Image FromManifestEntry(string sourcePath, ImageManifestEntry entry)
+    public static Image FromManifestEntry(string sourcePath, ImageContent entry)
     {
         return new Image
         {
@@ -80,7 +89,8 @@ public sealed class Image
             FileSize = entry.FileSize,
             DateTaken = entry.DateTaken ?? DateTime.MinValue,
             Exif = entry.Exif,
-            AvailableSizes = entry.Sizes
+            Sizes = entry.Sizes,
+            Formats = entry.Formats
         };
     }
 }

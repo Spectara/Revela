@@ -71,10 +71,11 @@ public sealed class ManifestEntry
     public bool Hidden { get; init; }
 
     /// <summary>
-    /// Images contained in this node.
+    /// Content items (images and markdown files) contained in this node.
+    /// Sorted alphabetically by filename for predictable ordering.
     /// </summary>
-    [JsonPropertyName("images")]
-    public List<ImageManifestEntry> Images { get; init; } = [];
+    [JsonPropertyName("content")]
+    public List<GalleryContent> Content { get; init; } = [];
 
     /// <summary>
     /// Child nodes (sub-galleries or branch sections).
