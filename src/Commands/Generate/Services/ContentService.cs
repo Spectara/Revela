@@ -322,12 +322,10 @@ public sealed partial class ContentService(
     /// <summary>
     /// Build a path from navigation text for branch nodes without a gallery.
     /// </summary>
-    private static string BuildPathFromNavigation(NavigationItem navItem)
-    {
+    private static string BuildPathFromNavigation(NavigationItem navItem) =>
         // Branch nodes don't have galleries, so we construct a path from the text
         // This is used for finding images later
-        return navItem.Text;
-    }
+        navItem.Text;
 
     /// <summary>
     /// Convert a SourceImage to ImageContent with metadata.
@@ -399,12 +397,10 @@ public sealed partial class ContentService(
     /// Only includes sizes smaller than the original image width.
     /// The original size is implicit (width property) and not included.
     /// </remarks>
-    private static List<int> CalculateSizes(int imageWidth)
-    {
+    private static List<int> CalculateSizes(int imageWidth) =>
         // Filter default sizes to only include those smaller than original
         // Original size is NOT included - it's redundant with width property
-        return [.. DefaultSizes.Where(s => s < imageWidth)];
-    }
+        [.. DefaultSizes.Where(s => s < imageWidth)];
 
     /// <summary>
     /// Compute a hash for change detection.

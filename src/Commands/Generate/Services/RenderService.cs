@@ -1,12 +1,12 @@
 using Microsoft.Extensions.Configuration;
-using Spectara.Revela.Core.Abstractions;
-using Spectara.Revela.Core.Configuration;
-using Spectara.Revela.Core.Services;
 using Spectara.Revela.Commands.Generate.Abstractions;
 using Spectara.Revela.Commands.Generate.Building;
 using Spectara.Revela.Commands.Generate.Models;
 using Spectara.Revela.Commands.Generate.Models.Manifest;
 using Spectara.Revela.Commands.Generate.Models.Results;
+using Spectara.Revela.Core.Abstractions;
+using Spectara.Revela.Core.Configuration;
+using Spectara.Revela.Core.Services;
 
 namespace Spectara.Revela.Commands.Generate.Services;
 
@@ -34,25 +34,16 @@ public sealed partial class RenderService(
     private static readonly string[] ImageFormats = ["webp", "jpg"];
 
     /// <inheritdoc />
-    public void SetTheme(IThemePlugin? theme)
-    {
-        templateEngine.SetTheme(theme);
-    }
+    public void SetTheme(IThemePlugin? theme) => templateEngine.SetTheme(theme);
 
     /// <inheritdoc />
-    public string Render(string templateContent, object model)
-    {
-        return templateEngine.Render(templateContent, model);
-    }
+    public string Render(string templateContent, object model) => templateEngine.Render(templateContent, model);
 
     /// <inheritdoc />
     public async Task<string> RenderFileAsync(
         string templatePath,
         object model,
-        CancellationToken cancellationToken = default)
-    {
-        return await templateEngine.RenderFileAsync(templatePath, model, cancellationToken);
-    }
+        CancellationToken cancellationToken = default) => await templateEngine.RenderFileAsync(templatePath, model, cancellationToken);
 
     /// <inheritdoc />
     public async Task<RenderResult> RenderAsync(
@@ -404,10 +395,7 @@ public sealed partial class RenderService(
 
     private static List<NavigationItem> SetActiveState(
         IReadOnlyList<NavigationItem> items,
-        string currentPath)
-    {
-        return [.. items.Select(item => SetActiveStateRecursive(item, currentPath))];
-    }
+        string currentPath) => [.. items.Select(item => SetActiveStateRecursive(item, currentPath))];
 
     private static NavigationItem SetActiveStateRecursive(NavigationItem item, string currentPath)
     {

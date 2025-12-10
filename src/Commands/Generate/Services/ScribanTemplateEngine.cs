@@ -2,8 +2,8 @@ using System.Globalization;
 using Scriban;
 using Scriban.Parsing;
 using Scriban.Runtime;
-using Spectara.Revela.Core.Abstractions;
 using Spectara.Revela.Commands.Generate.Abstractions;
+using Spectara.Revela.Core.Abstractions;
 
 namespace Spectara.Revela.Commands.Generate.Services;
 
@@ -445,10 +445,7 @@ internal sealed partial class ThemePluginTemplateLoader(
     /// <summary>
     /// Async version of Load (required by interface)
     /// </summary>
-    public ValueTask<string> LoadAsync(TemplateContext context, SourceSpan callerSpan, string templatePath)
-    {
-        return new ValueTask<string>(Load(context, callerSpan, templatePath));
-    }
+    public ValueTask<string> LoadAsync(TemplateContext context, SourceSpan callerSpan, string templatePath) => new(Load(context, callerSpan, templatePath));
 
     [LoggerMessage(Level = LogLevel.Debug, Message = "Loading partial template: {PartialPath} from theme {ThemeName}")]
     private static partial void LogLoadingPartial(ILogger logger, string partialPath, string themeName);

@@ -237,10 +237,7 @@ public sealed partial class ImageService(
     public async Task<Image> ProcessImageAsync(
         string inputPath,
         ImageProcessingOptions options,
-        CancellationToken cancellationToken = default)
-    {
-        return await imageProcessor.ProcessImageAsync(inputPath, options, cancellationToken);
-    }
+        CancellationToken cancellationToken = default) => await imageProcessor.ProcessImageAsync(inputPath, options, cancellationToken);
 
     #region Private Helpers
 

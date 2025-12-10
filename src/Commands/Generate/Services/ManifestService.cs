@@ -70,10 +70,7 @@ public sealed partial class ManifestService(ILogger<ManifestService> logger) : I
         imageCache.ToDictionary(kvp => kvp.Key, kvp => kvp.Value.Entry);
 
     /// <inheritdoc />
-    public ImageContent? GetImage(string sourcePath)
-    {
-        return imageCache.TryGetValue(sourcePath, out var cached) ? cached.Entry : null;
-    }
+    public ImageContent? GetImage(string sourcePath) => imageCache.TryGetValue(sourcePath, out var cached) ? cached.Entry : null;
 
     /// <inheritdoc />
     public void SetImage(string sourcePath, ImageContent entry)
@@ -272,10 +269,7 @@ public sealed partial class ManifestService(ILogger<ManifestService> logger) : I
         return orphans;
     }
 
-    private static string GetCacheDirectory()
-    {
-        return Path.Combine(Environment.CurrentDirectory, CacheDirectoryName);
-    }
+    private static string GetCacheDirectory() => Path.Combine(Environment.CurrentDirectory, CacheDirectoryName);
 
     /// <summary>
     /// Rebuild the internal image cache by traversing the tree.

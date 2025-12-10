@@ -1,7 +1,6 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
-using Spectara.Revela.Core.Configuration;
 using Spectara.Revela.Commands.Generate.Abstractions;
 using Spectara.Revela.Commands.Generate.Building;
 using Spectara.Revela.Commands.Generate.Commands;
@@ -9,6 +8,7 @@ using Spectara.Revela.Commands.Generate.Mapping;
 using Spectara.Revela.Commands.Generate.Parsing;
 using Spectara.Revela.Commands.Generate.Scanning;
 using Spectara.Revela.Commands.Generate.Services;
+using Spectara.Revela.Core.Configuration;
 
 namespace Spectara.Revela.Commands.Generate;
 

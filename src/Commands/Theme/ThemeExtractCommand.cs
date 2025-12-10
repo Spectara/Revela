@@ -1,8 +1,6 @@
 using System.CommandLine;
-
-using Spectre.Console;
-
 using Spectara.Revela.Core.Services;
+using Spectre.Console;
 
 namespace Spectara.Revela.Commands.Theme;
 

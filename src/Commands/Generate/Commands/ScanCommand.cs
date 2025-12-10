@@ -45,10 +45,7 @@ public sealed partial class ScanCommand(
             .Spinner(Spinner.Known.Dots)
             .StartAsync("[yellow]Scanning content...[/]", async ctx =>
             {
-                var progress = new Progress<ContentProgress>(p =>
-                {
-                    ctx.Status($"[yellow]{p.Status}[/] ({p.GalleriesFound} galleries, {p.ImagesFound} images)");
-                });
+                var progress = new Progress<ContentProgress>(p => ctx.Status($"[yellow]{p.Status}[/] ({p.GalleriesFound} galleries, {p.ImagesFound} images)"));
 
                 return await contentService.ScanAsync(progress, cancellationToken);
             });
