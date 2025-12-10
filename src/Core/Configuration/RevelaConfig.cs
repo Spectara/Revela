@@ -105,18 +105,28 @@ public sealed class GenerateSettings
 public sealed class ImageSettings
 {
     /// <summary>
-    /// Output formats with quality settings.
-    /// Key = format (avif, webp, jpg), Value = quality (1-100).
+    /// Default output formats with quality settings.
+    /// Used when no formats are configured in project.json.
     /// </summary>
-    /// <example>
-    /// { "avif": 80, "webp": 85, "jpg": 90 }
-    /// </example>
-    public IReadOnlyDictionary<string, int> Formats { get; init; } = new Dictionary<string, int>
+    public static readonly IReadOnlyDictionary<string, int> DefaultFormats = new Dictionary<string, int>
     {
         ["avif"] = 80,
         ["webp"] = 85,
         ["jpg"] = 90
     };
+
+    /// <summary>
+    /// Output formats with quality settings.
+    /// Key = format (avif, webp, jpg), Value = quality (1-100).
+    /// </summary>
+    /// <remarks>
+    /// Empty by default - consumers should use <see cref="DefaultFormats"/> as fallback.
+    /// This allows project.json to completely replace formats instead of merging.
+    /// </remarks>
+    /// <example>
+    /// { "avif": 80, "webp": 85, "jpg": 90 }
+    /// </example>
+    public IReadOnlyDictionary<string, int> Formats { get; init; } = new Dictionary<string, int>();
 
     /// <summary>Image widths to generate (in pixels)</summary>
     public IReadOnlyList<int> Sizes { get; init; } = [640, 1024, 1280, 1920, 2560];

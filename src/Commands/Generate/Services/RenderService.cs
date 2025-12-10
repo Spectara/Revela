@@ -330,6 +330,9 @@ public sealed partial class RenderService(
         var indexBasePath = CalculateSiteBasePath(config, "");
         var indexImageBasePath = CalculateImageBasePath(config, "");
         var themeVariables = manifest?.Variables ?? new Dictionary<string, string>();
+        var formats = imageSettings.Formats.Count > 0
+            ? imageSettings.Formats
+            : ImageSettings.DefaultFormats;
         var indexHtml = templateEngine.Render(
             indexTemplate,
             new
@@ -341,7 +344,7 @@ public sealed partial class RenderService(
                 nav_items = indexNavigation,
                 basepath = indexBasePath,
                 image_basepath = indexImageBasePath,
-                image_formats = imageSettings.Formats.Keys,
+                image_formats = formats.Keys,
                 theme = themeVariables
             });
 
@@ -380,7 +383,7 @@ public sealed partial class RenderService(
                     nav_items = galleryNavigation,
                     basepath,
                     image_basepath = galleryImageBasePath,
-                    image_formats = imageSettings.Formats.Keys,
+                    image_formats = formats.Keys,
                     theme = themeVariables
                 });
 

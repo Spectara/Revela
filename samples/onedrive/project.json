@@ -1,5 +1,12 @@
 {
   "name": "OneDrive Sample",
   "url": "https://revela.website",
-  "theme": "Expose"
+  "theme": "Expose",
+  "generate": {
+    "images": {
+      "formats": {
+        "jpg": 90
+      }
+    }
+  }
 }

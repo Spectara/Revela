@@ -62,7 +62,9 @@ public sealed partial class ImageService(
 
             // Check if config changed (forces full rebuild)
             var sizes = imageSettings.Sizes.ToArray();
-            var formats = imageSettings.Formats;
+            var formats = imageSettings.Formats.Count > 0
+                ? imageSettings.Formats
+                : ImageSettings.DefaultFormats;
             var configHash = ManifestService.ComputeConfigHash(sizes, formats);
             var configChanged = manifestRepository.ConfigHash != configHash;
 
