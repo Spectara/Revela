@@ -4,6 +4,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Spectara.Revela.Core.Abstractions;
 using Spectara.Revela.Plugin.Source.OneDrive.Commands;
 using Spectara.Revela.Plugin.Source.OneDrive.Configuration;
+using Spectara.Revela.Plugin.Source.OneDrive.Providers;
+using Spectara.Revela.Plugin.Source.OneDrive.Services;
 
 namespace Spectara.Revela.Plugin.Source.OneDrive;
 
@@ -46,7 +48,7 @@ public sealed class OneDrivePlugin : IPlugin
         // Register Typed HttpClient for SharedLinkProvider with Resilience
         // Standard resilience handler provides: retry (3x), circuit breaker, timeout, rate limiter
         // Handles: HTTP 408, 429, 500+ (including 503), HttpRequestException, TimeoutRejectedException
-        services.AddHttpClient<Providers.SharedLinkProvider>(client =>
+        services.AddHttpClient<SharedLinkProvider>(client =>
         {
             client.Timeout = TimeSpan.FromMinutes(5); // OneDrive API can be slow for large files
             client.DefaultRequestHeaders.Add("User-Agent", "Revela/1.0 (Static Site Generator)");
@@ -54,7 +56,7 @@ public sealed class OneDrivePlugin : IPlugin
         .AddStandardResilienceHandler(); // Modern .NET 10 resilience (replaces old Polly)
 
         // Register Services
-        services.AddSingleton<Services.DownloadAnalyzer>();
+        services.AddSingleton<DownloadAnalyzer>();
 
         // Register Commands for Dependency Injection
         services.AddTransient<OneDriveInitCommand>();

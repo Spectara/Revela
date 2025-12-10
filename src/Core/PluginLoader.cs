@@ -10,8 +10,9 @@ namespace Spectara.Revela.Core;
 /// <remarks>
 /// Plugin search order:
 /// 1. Application directory (for development/debugging via ProjectReference)
-/// 2. User plugin directory (AppData/Revela/plugins - installed plugins)
-/// 3. Additional search paths (custom locations)
+/// 2. Local plugin directory (next to exe in 'plugins' subfolder)
+/// 3. User plugin directory (AppData/Revela/plugins - installed plugins)
+/// 4. Additional search paths (custom locations)
 ///
 /// This unified approach ensures Debug and Release builds use identical code paths.
 /// </remarks>
@@ -25,6 +26,8 @@ public sealed partial class PluginLoader(
         "plugins");
 
     private static readonly string ApplicationDirectory = AppContext.BaseDirectory;
+
+    private static readonly string LocalPluginDirectory = Path.Combine(AppContext.BaseDirectory, "plugins");
 
     private readonly ILogger<PluginLoader> logger = logger ?? Microsoft.Extensions.Logging.Abstractions.NullLogger<PluginLoader>.Instance;
     private readonly HashSet<string> loadedAssemblyPaths = new(StringComparer.OrdinalIgnoreCase);
@@ -46,13 +49,16 @@ public sealed partial class PluginLoader(
             LoadPluginsFromDirectory(ApplicationDirectory, "application");
         }
 
-        // 2. User plugin directory (installed plugins)
+        // 2. Local plugin directory (next to exe in 'plugins' subfolder)
+        LoadPluginsFromDirectory(LocalPluginDirectory, "local");
+
+        // 3. User plugin directory (global installed plugins)
         if (options.SearchUserPluginDirectory)
         {
             LoadPluginsFromDirectory(UserPluginDirectory, "user");
         }
 
-        // 3. Additional search paths
+        // 4. Additional search paths
         foreach (var path in options.AdditionalSearchPaths)
         {
             var fullPath = Path.IsPathRooted(path) ? path : Path.GetFullPath(path);
