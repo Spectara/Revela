@@ -12,6 +12,12 @@ on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version number (without v prefix, e.g. 0.0.1)'
+        required: true
+        type: string
 
 env:
   DOTNET_NOLOGO: true
@@ -31,14 +37,31 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Extract version from tag
+      - name: Extract version
         id: version
         run: |
-          VERSION="${GITHUB_REF_NAME#v}"
+          # Use input version for manual trigger, tag for push trigger
+          if [ -n "${{ inputs.version }}" ]; then
+            VERSION="${{ inputs.version }}"
+            echo "📦 Manual trigger with version: $VERSION"
+          else
+            VERSION="${GITHUB_REF_NAME#v}"
+            echo "📦 Tag trigger with version: $VERSION"
+          fi
           echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "📦 Version: $VERSION"
 
-      - name: Validate version is newer than previous tags
+      - name: Validate version format
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9]+)?$ ]]; then
+            echo "❌ Invalid version format: $VERSION"
+            echo "   Expected: X.Y.Z or X.Y.Z-suffix (e.g. 0.0.1, 1.0.0-beta)"
+            exit 1
+          fi
+          echo "✅ Version format valid: $VERSION"
+
+      - name: Validate version is newer (tag trigger only)
+        if: github.event_name == 'push'
         run: |
           CURRENT="${GITHUB_REF_NAME#v}"
 
@@ -194,6 +217,8 @@ jobs:
   release:
     name: Create Release
     needs: [validate, build, plugins]
+    # Only create release on tag push, not manual trigger
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
     permissions:
       contents: write
