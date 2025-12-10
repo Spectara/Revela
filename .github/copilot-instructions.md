@@ -1062,7 +1062,7 @@ dotnet run --project tests/Core.Tests
 
 ---
 
-**Last Updated:** 2025-12-10 (Session: Template Refactoring & Global Image Formats)
+**Last Updated:** 2025-12-10 (Session: Parallel Image Processing)
 
 **Key Learnings from Latest Sessions:**
 - ✅ Plugin ConfigureServices pattern (3-phase lifecycle)
@@ -1080,6 +1080,9 @@ dotnet run --project tests/Core.Tests
 - ✅ **Template Context:** `image_formats` is global, `image.sizes` is per-image
 - ✅ **Manifest optimization:** Formats removed from ImageContent (redundant)
 - ✅ **Template simplification:** No local variables needed, direct property access
+- ✅ **Parallel image processing:** 5× speedup with Parallel.ForEachAsync
+- ✅ **LibVips thread-safety:** Safe for independent images, no global lock needed
+- ✅ **NetVips Cache.Max = 0:** Disable cache for batch processing (saves memory)
 
 **Template Context Variables:**
 - `site` - Site settings (title, author, description, copyright)

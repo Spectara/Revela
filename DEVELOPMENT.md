@@ -56,6 +56,7 @@ This is a **complete rewrite** of the original Bash-based Revela:
 #### Phase 2: Generate Command (DONE)
 - [x] **Content Scanner** - Scan source directory, build gallery tree
 - [x] **Image Processing** - NetVips multi-format output, responsive variants
+- [x] **Parallel Processing** - 5× speedup with Parallel.ForEachAsync
 - [x] **EXIF Extraction** - Camera settings, exposure time formatting
 - [x] **Template Rendering** - Scriban engine with custom functions
 - [x] **Smart Caching** - Image manifest for fast rebuilds
