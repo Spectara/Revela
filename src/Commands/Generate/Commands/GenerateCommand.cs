@@ -182,7 +182,7 @@ public sealed partial class GenerateCommand(
         content += "[dim]Timing:[/]\n";
         content += $"  Scan:       {scanResult.Duration.TotalSeconds:F2}s\n";
         content += $"  Images:     {imageResult.Duration.TotalSeconds:F2}s\n";
-        content += $"  Render:     {renderResult.Duration.TotalSeconds:F2}s\n";
+        content += $"  Pages:      {renderResult.Duration.TotalSeconds:F2}s\n";
         content += $"  [bold]Total:[/]      {duration.TotalSeconds:F2}s\n\n";
         content += "[dim]Next steps:[/]\n";
         content += "  • Open [cyan]output/index.html[/] in your browser\n";
