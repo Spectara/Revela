@@ -1062,7 +1062,7 @@ dotnet run --project tests/Core.Tests
 
 ---
 
-**Last Updated:** 2025-12-04 (Session: Cleanup & FluentAssertions Removal)
+**Last Updated:** 2025-12-10 (Session: Template Refactoring & Global Image Formats)
 
 **Key Learnings from Latest Sessions:**
 - ✅ Plugin ConfigureServices pattern (3-phase lifecycle)
@@ -1077,6 +1077,19 @@ dotnet run --project tests/Core.Tests
 - ✅ MockHttpMessageHandler for HTTP testing
 - ✅ MSTest v4 built-in assertions (HasCount, IsEmpty, Contains, etc.)
 - ✅ FluentAssertions removed - use MSTest v4 assertions only
+- ✅ **Template Context:** `image_formats` is global, `image.sizes` is per-image
+- ✅ **Manifest optimization:** Formats removed from ImageContent (redundant)
+- ✅ **Template simplification:** No local variables needed, direct property access
+
+**Template Context Variables:**
+- `site` - Site settings (title, author, description, copyright)
+- `basepath` - Relative path to root ("", "../", "/photos/")
+- `image_basepath` - Path/URL to images (can be CDN URL)
+- `image_formats` - Global: ["webp", "jpg"] (same for all images)
+- `nav_items` - Navigation tree with active state
+- `gallery` - Current gallery (title, body)
+- `images` - Array of Image objects
+- `image.sizes` - Per-image: available widths (filtered by original)
 
 **For detailed architecture, see:** `docs/architecture.md`  
 **For development status, see:** `DEVELOPMENT.md`  

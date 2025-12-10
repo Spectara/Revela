@@ -522,6 +522,65 @@ themes/default/
 **Decision:** Use System.CommandLine (final release)  
 **Rationale:** Official Microsoft CLI framework, modern API
 
+### ADR-005: Global Image Formats (Not Per-Image)
+**Status:** Accepted  
+**Date:** 2025-12-10  
+**Decision:** Store image formats globally, not in per-image manifest entries  
+**Rationale:** Formats are identical for all images (webp, jpg). Per-image storage was redundant. Sizes remain per-image because small images may skip larger sizes.
+
+---
+
+## Template Context Variables
+
+Templates receive the following context variables from `RenderService`:
+
+### Global Variables (all pages)
+
+| Variable | Type | Description |
+|----------|------|-------------|
+| `site` | `SiteSettings` | Site metadata (title, author, description, copyright) |
+| `basepath` | `string` | Relative path to site root (e.g., `""`, `"../"`, `"/photos/"`) |
+| `image_basepath` | `string` | Path/URL to image folder (can be absolute CDN URL) |
+| `image_formats` | `string[]` | Global list of image formats `["webp", "jpg"]` |
+| `nav_items` | `NavigationItem[]` | Navigation tree with active state |
+
+### Page-Specific Variables
+
+| Variable | Type | Pages | Description |
+|----------|------|-------|-------------|
+| `gallery` | `Gallery` | all | Current gallery (title, body, description) |
+| `galleries` | `Gallery[]` | index | All galleries for index listing |
+| `images` | `Image[]` | all | Images for current page |
+
+### Image Properties
+
+Used in templates as `image.{property}`:
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `id` | `string` | HTML anchor ID (filename without extension) |
+| `url` | `string` | Path segment for variants (e.g., `"photo1"`) |
+| `width` | `int` | Original width in pixels |
+| `height` | `int` | Original height in pixels |
+| `sizes` | `int[]` | Available widths for srcset (per-image, filtered by actual width) |
+| `title` | `string?` | Optional image title |
+| `exif` | `ExifData?` | EXIF metadata (f_number, exposure_time, iso, etc.) |
+
+### Template Example
+
+```scriban
+{{~ # image_formats is GLOBAL (identical for all images) ~}}
+{{~ # image.sizes is PER-IMAGE (varies based on original dimensions) ~}}
+<picture>
+  {{~ for format in image_formats ~}}
+  <source
+    type="image/{{ format }}"
+    srcset="{{~ for size in image.sizes ~}}{{ image_basepath }}{{ image.url }}/{{ size }}.{{ format }} {{ size }}w{{~ if !for.last ~}}, {{~ end ~}}{{~ end ~}}">
+  {{~ end ~}}
+  <img src="{{ image_basepath }}{{ image.url }}/{{ image.sizes[0] }}.jpg">
+</picture>
+```
+
 ---
 
 **For questions or clarifications, refer to DEVELOPMENT.md**
