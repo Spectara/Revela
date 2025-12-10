@@ -385,12 +385,11 @@ public sealed partial class ManifestService(ILogger<ManifestService> logger) : I
 #pragma warning disable CA5351 // MD5 is used for caching, not security
     public static string ComputeConfigHash(
         IReadOnlyList<int> sizes,
-        IReadOnlyList<string> formats,
-        int quality)
+        IReadOnlyDictionary<string, int> formats)
     {
         var sizesStr = string.Join(",", sizes.OrderBy(s => s));
-        var formatsStr = string.Join(",", formats.OrderBy(f => f));
-        var input = $"sizes:{sizesStr}|formats:{formatsStr}|quality:{quality}";
+        var formatsStr = string.Join(",", formats.OrderBy(f => f.Key).Select(f => $"{f.Key}:{f.Value}"));
+        var input = $"sizes:{sizesStr}|formats:{formatsStr}";
         var hashBytes = MD5.HashData(Encoding.UTF8.GetBytes(input));
         return Convert.ToHexString(hashBytes)[..12];
     }

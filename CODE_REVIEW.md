@@ -33,7 +33,12 @@ namespace Spectara.Revela.Core.Configuration;
 ```csharp
 // ✅ PERFECT - Using [] instead of new List<>()
 public IReadOnlyList<NavigationItem> Navigation { get; init; } = [];
-public IReadOnlyList<string> Formats { get; init; } = ["webp", "jpg"];
+public IReadOnlyDictionary<string, int> Formats { get; init; } = new Dictionary<string, int>
+{
+    ["avif"] = 80,
+    ["webp"] = 85,
+    ["jpg"] = 90
+};
 ```
 **Status:** ✅ Modern syntax everywhere
 

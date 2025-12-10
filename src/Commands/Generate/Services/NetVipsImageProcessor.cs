@@ -127,7 +127,7 @@ public sealed partial class NetVipsImageProcessor(
             }
 
             // Generate each format for this size
-            foreach (var format in options.Formats)
+            foreach (var (format, quality) in options.Formats)
             {
                 // Load a fresh thumbnail for each output
                 // Always resize by WIDTH to ensure consistent filenames (640.jpg, 1024.jpg, etc.)
@@ -141,7 +141,7 @@ public sealed partial class NetVipsImageProcessor(
                     format,
                     size,  // Use requested size for filename, not actual thumb.Width
                     thumb.Height,
-                    options.Quality);
+                    quality);
 
                 variants.Add(variant);
             }
@@ -483,8 +483,8 @@ public sealed partial class NetVipsImageProcessor(
                 break;
 
             case "AVIF":
-                // AVIF support (requires libvips 8.12+)
-                image.Heifsave(outputPath, q: quality);
+                // AVIF uses AV1 compression via HEIF container
+                image.Heifsave(outputPath, q: quality, compression: Enums.ForeignHeifCompression.Av1);
                 break;
 
             case "PNG":

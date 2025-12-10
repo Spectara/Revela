@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Options;
 using Spectara.Revela.Commands.Generate.Abstractions;
 using Spectara.Revela.Commands.Generate.Building;
 using Spectara.Revela.Commands.Generate.Models;
@@ -24,14 +25,14 @@ public sealed partial class RenderService(
     IThemeResolver themeResolver,
     IManifestRepository manifestRepository,
     IConfiguration configuration,
+    IOptions<RevelaConfig> options,
     ILogger<RenderService> logger) : IRenderService
 {
     /// <summary>Output directory for generated site</summary>
     private const string OutputDirectory = "output";
 
-    /// <summary>Image formats to generate (global, not per-image)</summary>
-    /// <remarks>TODO: Read from project.json configuration</remarks>
-    private static readonly string[] ImageFormats = ["webp", "jpg"];
+    /// <summary>Image settings from configuration</summary>
+    private readonly ImageSettings imageSettings = options.Value.Generate.Images;
 
     /// <inheritdoc />
     public void SetTheme(IThemePlugin? theme) => templateEngine.SetTheme(theme);
@@ -339,7 +340,7 @@ public sealed partial class RenderService(
                 nav_items = indexNavigation,
                 basepath = indexBasePath,
                 image_basepath = indexImageBasePath,
-                image_formats = ImageFormats
+                image_formats = imageSettings.Formats.Keys
             });
 
         await File.WriteAllTextAsync(
@@ -377,7 +378,7 @@ public sealed partial class RenderService(
                     nav_items = galleryNavigation,
                     basepath,
                     image_basepath = galleryImageBasePath,
-                    image_formats = ImageFormats
+                    image_formats = imageSettings.Formats.Keys
                 });
 
             var galleryOutputPath = Path.Combine(OutputDirectory, gallery.Slug);

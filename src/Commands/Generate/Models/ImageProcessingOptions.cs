@@ -6,14 +6,10 @@ namespace Spectara.Revela.Commands.Generate.Models;
 public sealed class ImageProcessingOptions
 {
     /// <summary>
-    /// JPEG quality (0-100)
+    /// Output formats with quality (1-100).
+    /// Key = format (avif, webp, jpg), Value = quality
     /// </summary>
-    public required int Quality { get; init; }
-
-    /// <summary>
-    /// Output formats to generate (e.g., ["jpg", "webp"])
-    /// </summary>
-    public required IReadOnlyList<string> Formats { get; init; }
+    public required IReadOnlyDictionary<string, int> Formats { get; init; }
 
     /// <summary>
     /// Sizes to generate in pixels (e.g., [640, 1280, 1920])

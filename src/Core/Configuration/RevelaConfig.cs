@@ -104,11 +104,19 @@ public sealed class GenerateSettings
 /// </summary>
 public sealed class ImageSettings
 {
-    /// <summary>JPEG/WebP quality (1-100, default 90)</summary>
-    public int Quality { get; init; } = 90;
-
-    /// <summary>Output formats to generate (e.g., "webp", "jpg")</summary>
-    public IReadOnlyList<string> Formats { get; init; } = ["webp", "jpg"];
+    /// <summary>
+    /// Output formats with quality settings.
+    /// Key = format (avif, webp, jpg), Value = quality (1-100).
+    /// </summary>
+    /// <example>
+    /// { "avif": 80, "webp": 85, "jpg": 90 }
+    /// </example>
+    public IReadOnlyDictionary<string, int> Formats { get; init; } = new Dictionary<string, int>
+    {
+        ["avif"] = 80,
+        ["webp"] = 85,
+        ["jpg"] = 90
+    };
 
     /// <summary>Image widths to generate (in pixels)</summary>
     public IReadOnlyList<int> Sizes { get; init; } = [640, 1024, 1280, 1920, 2560];

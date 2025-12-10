@@ -1,7 +1,9 @@
+using Microsoft.Extensions.Options;
 using Spectara.Revela.Commands.Generate.Abstractions;
 using Spectara.Revela.Commands.Generate.Models;
 using Spectara.Revela.Commands.Generate.Models.Manifest;
 using Spectara.Revela.Commands.Generate.Models.Results;
+using Spectara.Revela.Core.Configuration;
 
 namespace Spectara.Revela.Commands.Generate.Services;
 
@@ -18,6 +20,7 @@ namespace Spectara.Revela.Commands.Generate.Services;
 public sealed partial class ImageService(
     IImageProcessor imageProcessor,
     IManifestRepository manifestRepository,
+    IOptions<RevelaConfig> options,
     ILogger<ImageService> logger) : IImageService
 {
     /// <summary>Fixed source directory (convention over configuration)</summary>
@@ -32,10 +35,8 @@ public sealed partial class ImageService(
     /// <summary>Cache directory name</summary>
     private const string CacheDirectory = ".cache";
 
-    // Image processing configuration (TODO: read from project.json)
-    private static readonly int[] ImageSizes = [640, 1024, 1280, 1920];
-    private static readonly string[] ImageFormats = ["webp", "jpg"];
-    private const int ImageQuality = 90;
+    /// <summary>Image settings from configuration</summary>
+    private readonly ImageSettings imageSettings = options.Value.Generate.Images;
 
     /// <inheritdoc />
     public async Task<ImageResult> ProcessAsync(
@@ -60,7 +61,9 @@ public sealed partial class ImageService(
             }
 
             // Check if config changed (forces full rebuild)
-            var configHash = ManifestService.ComputeConfigHash(ImageSizes, ImageFormats, ImageQuality);
+            var sizes = imageSettings.Sizes.ToArray();
+            var formats = imageSettings.Formats;
+            var configHash = ManifestService.ComputeConfigHash(sizes, formats);
             var configChanged = manifestRepository.ConfigHash != configHash;
 
             if (configChanged && manifestRepository.Images.Count > 0)
@@ -156,9 +159,8 @@ public sealed partial class ImageService(
                         sourcePath,
                         new ImageProcessingOptions
                         {
-                            Quality = ImageQuality,
-                            Formats = ImageFormats,
-                            Sizes = ImageSizes,
+                            Formats = formats,
+                            Sizes = sizes,
                             OutputDirectory = outputImagesDirectory,
                             CacheDirectory = cacheDirectory
                         },
@@ -167,8 +169,8 @@ public sealed partial class ImageService(
                     // Count files created: sizes × formats (filtered by actual image width)
                     var actualSizes = image.Sizes.Count > 0
                         ? image.Sizes
-                        : [.. ImageSizes.Where(s => s <= Math.Max(image.Width, image.Height))];
-                    var filesCreated = actualSizes.Count * ImageFormats.Length;
+                        : [.. sizes.Where(s => s <= Math.Max(image.Width, image.Height))];
+                    var filesCreated = actualSizes.Count * formats.Count;
 
                     // Thread-safe updates
                     var currentProcessed = Interlocked.Increment(ref processedCount);

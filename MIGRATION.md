@@ -74,7 +74,15 @@ IMAGE_QUALITY=90
 # New (project.json and site.json)
 {
   "site": { "title": "My Site" },
-  "build": { "images": { "quality": 90 } }
+  "generate": { 
+    "images": { 
+      "formats": {
+        "avif": 80,
+        "webp": 85,
+        "jpg": 90
+      }
+    } 
+  }
 }
 ```
 

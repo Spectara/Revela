@@ -393,7 +393,7 @@ expose
 
 - **Content structure** - `content/` folder organization
 - **Output structure** - Same HTML hierarchy
-- **Image formats** - WebP, JPG support
+- **Image formats** - AVIF, WebP, JPG support (format-specific quality)
 - **Responsive images** - Multiple sizes
 - **EXIF display** - Camera settings shown
 - **Navigation** - Hierarchical structure
@@ -525,11 +525,15 @@ themes/default/
 **Decision:** Use System.CommandLine (final release)  
 **Rationale:** Official Microsoft CLI framework, modern API
 
-### ADR-005: Global Image Formats (Not Per-Image)
+### ADR-005: Global Image Formats with Per-Format Quality
 **Status:** Accepted  
 **Date:** 2025-12-10  
-**Decision:** Store image formats globally, not in per-image manifest entries  
-**Rationale:** Formats are identical for all images (webp, jpg). Per-image storage was redundant. Sizes remain per-image because small images may skip larger sizes.
+**Decision:** Store image formats as dictionary with format-specific quality settings  
+**Rationale:** 
+- Different formats have different quality characteristics (AVIF Q80 ≈ JPEG Q95)
+- Allows optimization per format (AVIF: 80, WebP: 85, JPG: 90)
+- Eliminates separate Quality property (single source of truth)
+- Measured ~22% file size reduction vs uniform Q90
 
 ---
 
@@ -544,7 +548,7 @@ Templates receive the following context variables from `RenderService`:
 | `site` | `SiteSettings` | Site metadata (title, author, description, copyright) |
 | `basepath` | `string` | Relative path to site root (e.g., `""`, `"../"`, `"/photos/"`) |
 | `image_basepath` | `string` | Path/URL to image folder (can be absolute CDN URL) |
-| `image_formats` | `string[]` | Global list of image formats `["webp", "jpg"]` |
+| `image_formats` | `string[]` | Global list of image formats `["avif", "webp", "jpg"]` |
 | `nav_items` | `NavigationItem[]` | Navigation tree with active state |
 
 ### Page-Specific Variables

@@ -1062,7 +1062,7 @@ dotnet run --project tests/Core.Tests
 
 ---
 
-**Last Updated:** 2025-12-10 (Session: Parallel Image Processing)
+**Last Updated:** 2025-12-10 (Session: AVIF Support + Format-Specific Quality)
 
 **Key Learnings from Latest Sessions:**
 - ✅ Plugin ConfigureServices pattern (3-phase lifecycle)
@@ -1083,16 +1083,34 @@ dotnet run --project tests/Core.Tests
 - ✅ **Parallel image processing:** 5× speedup with Parallel.ForEachAsync
 - ✅ **LibVips thread-safety:** Safe for independent images, no global lock needed
 - ✅ **NetVips Cache.Max = 0:** Disable cache for batch processing (saves memory)
+- ✅ **Format-specific quality:** AVIF:80, WebP:85, JPG:90 (22% smaller files)
+- ✅ **AVIF support:** AV1 compression via Heifsave with ForeignHeifCompression.Av1
 
 **Template Context Variables:**
 - `site` - Site settings (title, author, description, copyright)
 - `basepath` - Relative path to root ("", "../", "/photos/")
 - `image_basepath` - Path/URL to images (can be CDN URL)
-- `image_formats` - Global: ["webp", "jpg"] (same for all images)
+- `image_formats` - Global: ["avif", "webp", "jpg"] (same for all images)
 - `nav_items` - Navigation tree with active state
 - `gallery` - Current gallery (title, body)
 - `images` - Array of Image objects
 - `image.sizes` - Per-image: available widths (filtered by original)
+
+**Image Configuration (project.json):**
+```json
+{
+  "generate": {
+    "images": {
+      "formats": {
+        "avif": 80,
+        "webp": 85,
+        "jpg": 90
+      },
+      "sizes": [640, 1024, 1280, 1920, 2560]
+    }
+  }
+}
+```
 
 **For detailed architecture, see:** `docs/architecture.md`  
 **For development status, see:** `DEVELOPMENT.md`  
