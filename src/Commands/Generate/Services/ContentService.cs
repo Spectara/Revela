@@ -141,8 +141,9 @@ public sealed partial class ContentService(
     /// Read metadata for all discovered images.
     /// </summary>
     /// <remarks>
-    /// Uses sequential NetVips access (header-only) for fast metadata extraction.
+    /// Uses parallel NetVips access (header-only) for fast metadata extraction.
     /// Approximately 10-20ms per image vs 200-500ms for full processing.
+    /// Parallelized using Environment.ProcessorCount for optimal throughput.
     /// </remarks>
     private async Task<Dictionary<string, ImageMetadata>> ReadAllImageMetadataAsync(
         IReadOnlyList<SourceImage> images,
@@ -150,32 +151,42 @@ public sealed partial class ContentService(
         CancellationToken cancellationToken)
     {
         var metadata = new Dictionary<string, ImageMetadata>(StringComparer.OrdinalIgnoreCase);
+        var metadataLock = new object();
+        var processedCount = 0;
 
-        for (var i = 0; i < images.Count; i++)
-        {
-            var image = images[i];
-            try
+        await Parallel.ForEachAsync(
+            images,
+            cancellationToken,
+            async (image, ct) =>
             {
-                var meta = await imageProcessor.ReadMetadataAsync(image.SourcePath, cancellationToken);
-                metadata[image.RelativePath] = meta;
-
-                // Report progress every 10 images or on last image
-                if (i % 10 == 0 || i == images.Count - 1)
+                try
                 {
-                    progress?.Report(new ContentProgress
+                    var meta = await imageProcessor.ReadMetadataAsync(image.SourcePath, ct);
+
+                    lock (metadataLock)
                     {
-                        Status = $"Reading metadata... ({i + 1}/{images.Count})",
-                        GalleriesFound = 0,
-                        ImagesFound = i + 1
-                    });
+                        metadata[image.RelativePath] = meta;
+                    }
+
+                    var current = Interlocked.Increment(ref processedCount);
+
+                    // Report progress every 10 images or on last image
+                    if (current % 10 == 0 || current == images.Count)
+                    {
+                        progress?.Report(new ContentProgress
+                        {
+                            Status = $"Reading metadata... ({current}/{images.Count})",
+                            GalleriesFound = 0,
+                            ImagesFound = current
+                        });
+                    }
                 }
-            }
-            catch (Exception ex)
-            {
-                // Log but don't fail - image may be corrupt or unsupported format
-                LogMetadataReadFailed(logger, image.SourcePath, ex);
-            }
-        }
+                catch (Exception ex)
+                {
+                    // Log but don't fail - image may be corrupt or unsupported format
+                    LogMetadataReadFailed(logger, image.SourcePath, ex);
+                }
+            });
 
         return metadata;
     }
