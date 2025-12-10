@@ -64,15 +64,6 @@ public sealed class Image
     public IReadOnlyList<int> Sizes { get; init; } = [];
 
     /// <summary>
-    /// List of available image formats (for dynamic source elements in templates).
-    /// </summary>
-    /// <remarks>
-    /// Contains the formats that were generated (e.g., ["webp", "jpg"]).
-    /// Used in templates: {{ for format in image.formats }}...{{ end }}
-    /// </remarks>
-    public IReadOnlyList<string> Formats { get; init; } = [];
-
-    /// <summary>
     /// Create an Image from a manifest entry (for cache hits).
     /// </summary>
     /// <param name="sourcePath">Full path to source image</param>
@@ -89,8 +80,7 @@ public sealed class Image
             FileSize = entry.FileSize,
             DateTaken = entry.DateTaken ?? DateTime.MinValue,
             Exif = entry.Exif,
-            Sizes = entry.Sizes,
-            Formats = entry.Formats
+            Sizes = entry.Sizes
         };
     }
 }

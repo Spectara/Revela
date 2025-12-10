@@ -134,8 +134,7 @@ public sealed partial class NetVipsImageProcessor(
             DateTaken = exif?.DateTaken ?? File.GetCreationTimeUtc(inputPath),
             Exif = exif,
             Variants = variants,
-            Sizes = generatedSizes,
-            Formats = options.Formats
+            Sizes = generatedSizes
         };
     }
 

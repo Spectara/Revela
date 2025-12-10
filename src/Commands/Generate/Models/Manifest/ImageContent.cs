@@ -28,13 +28,6 @@ public sealed record ImageContent : GalleryContent
     public required IReadOnlyList<int> Sizes { get; init; }
 
     /// <summary>
-    /// List of formats generated for this image.
-    /// </summary>
-    /// <example>["webp", "jpg"]</example>
-    [JsonPropertyName("formats")]
-    public required IReadOnlyList<string> Formats { get; init; }
-
-    /// <summary>
     /// Date the photo was taken (from EXIF or file date).
     /// </summary>
     [JsonPropertyName("dateTaken")]

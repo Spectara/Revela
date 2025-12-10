@@ -349,7 +349,6 @@ public sealed partial class ContentService(
             Width = meta?.Width ?? 0,
             Height = meta?.Height ?? 0,
             Sizes = sizes,
-            Formats = ["webp", "jpg"],  // TODO: Get from config
             FileSize = meta?.FileSize ?? source.FileSize,
             DateTaken = meta?.DateTaken,
             Exif = meta?.Exif,

@@ -7,9 +7,11 @@
   - Lightbox (on focus/click)
 
   Expects: image (ImageData object)
-  ImageData: { id, url, width, height, title?, post?, exif?, sizes, formats }
+  ImageData: { id, url, width, height, title?, post?, exif?, sizes }
 
-  Context: image_basepath (path/URL to image folder, can be absolute CDN URL)
+  Context:
+  - image_basepath: path/URL to image folder (can be absolute CDN URL)
+  - image_formats: global list of image formats ["webp", "jpg"]
 ##~}}
 {{~ # Skip rendering if no sizes available ~}}
 {{~ if !image.sizes || image.sizes.size == 0 ~}}
@@ -18,7 +20,7 @@
 <article tabindex="0" id="{{ image.id }}" style="--width:{{ image.width }}; --height:{{ image.height }};">
   {{~ # Thumbnail with responsive srcset and format selection ~}}
   <picture>
-    {{~ for format in image.formats ~}}
+    {{~ for format in image_formats ~}}
     <source
       type="image/{{ format }}"
       srcset="{{~ for size in image.sizes ~}}{{ image_basepath }}{{ image.url }}/{{ size }}.{{ format }} {{ size }}w{{~ if !for.last ~}},
@@ -53,7 +55,7 @@
   <figure>
     <a tabindex="-1" title="close">close</a>
     <picture>
-      {{~ for format in image.formats ~}}
+      {{~ for format in image_formats ~}}
       <source
         type="image/{{ format }}"
         srcset="{{ image_basepath }}{{ image.url }}/{{ image.width }}.{{ format }}">

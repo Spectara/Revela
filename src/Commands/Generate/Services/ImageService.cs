@@ -167,7 +167,6 @@ public sealed partial class ImageService(
                     Sizes = image.Sizes.Count > 0
                         ? image.Sizes
                         : [.. ImageSizes.Where(s => s <= Math.Max(image.Width, image.Height))],
-                    Formats = ImageFormats,
                     FileSize = image.FileSize,
                     DateTaken = image.DateTaken,
                     Exif = image.Exif,

@@ -29,6 +29,10 @@ public sealed partial class RenderService(
     /// <summary>Output directory for generated site</summary>
     private const string OutputDirectory = "output";
 
+    /// <summary>Image formats to generate (global, not per-image)</summary>
+    /// <remarks>TODO: Read from project.json configuration</remarks>
+    private static readonly string[] ImageFormats = ["webp", "jpg"];
+
     /// <inheritdoc />
     public void SetTheme(IThemePlugin? theme)
     {
@@ -338,7 +342,8 @@ public sealed partial class RenderService(
                 images = model.Images,
                 nav_items = indexNavigation,
                 basepath = indexBasePath,
-                image_basepath = indexImageBasePath
+                image_basepath = indexImageBasePath,
+                image_formats = ImageFormats
             });
 
         await File.WriteAllTextAsync(
@@ -375,7 +380,8 @@ public sealed partial class RenderService(
                     images = galleryImages,
                     nav_items = galleryNavigation,
                     basepath,
-                    image_basepath = galleryImageBasePath
+                    image_basepath = galleryImageBasePath,
+                    image_formats = ImageFormats
                 });
 
             var galleryOutputPath = Path.Combine(OutputDirectory, gallery.Slug);
