@@ -4,37 +4,15 @@ This directory contains example sites for testing and demonstration purposes.
 
 ## Samples
 
-### 1. Minimal (`minimal/`)
-
-A minimal photography site with basic configuration.
-
-**Structure:**
-```
-minimal/
-├── project.json        # Project configuration
-├── site.json           # Site metadata
-├── content/            # Content directory
-│   └── *.jpg          # Photos
-└── themes/
-    └── default/       # Theme templates
-```
-
-**Usage:**
-```bash
-# Generate site
-revela generate -p samples/minimal
-
-# Output will be in samples/minimal/output/
-```
-
-### 2. OneDrive (`onedrive/`)
+### 1. OneDrive (`onedrive/`)
 
 Sample project for testing the OneDrive Source Plugin. Downloads images from a shared OneDrive folder.
 
 **Structure:**
 ```
 onedrive/
-├── Spectara.Revela.Plugin.Source.OneDrive.json  # OneDrive plugin configuration
+├── plugins/
+│   └── Spectara.Revela.Plugin.Source.OneDrive.json  # OneDrive plugin configuration
 ├── project.json        # Project configuration
 ├── site.json           # Site metadata
 ├── source/             # Downloaded images (gitignored)
@@ -53,7 +31,15 @@ revela generate -p samples/onedrive
 > **Note:** The `source/` and `output/` folders are excluded from Git.
 > Run `revela source onedrive download` to populate them.
 
-### 3. Portfolio (`portfolio/`) - TODO
+### 2. Subdirectory (`subdirectory/`)
+
+Sample project demonstrating nested gallery structure with sub-galleries.
+
+### 3. CDN (`cdn/`)
+
+Sample project demonstrating CDN configuration for serving images from external URLs.
+
+### 4. Portfolio (`portfolio/`) - TODO
 
 Full-featured photographer portfolio with:
 - Multiple galleries
@@ -61,7 +47,7 @@ Full-featured photographer portfolio with:
 - Contact form
 - Blog posts
 
-### 4. Blog (`blog/`) - TODO
+### 5. Blog (`blog/`) - TODO
 
 Photo blog with:
 - Chronological posts
