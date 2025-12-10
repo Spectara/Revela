@@ -118,6 +118,7 @@ jobs:
         run: dotnet restore
 
       - name: Publish
+        shell: bash
         run: |
           dotnet publish src/Cli/Cli.csproj \
             -c Release \
@@ -133,6 +134,7 @@ jobs:
         shell: bash
 
       - name: Build default theme
+        shell: bash
         run: |
           dotnet build src/Themes/Theme.Expose/Theme.Expose.csproj \
             -c Release \
