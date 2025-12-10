@@ -1,0 +1,222 @@
+# Release Workflow
+# Triggered by pushing a version tag (v0.0.1, v1.0.0, etc.)
+# Builds native executables for all platforms and creates a GitHub Release
+#
+# Release contents:
+# - CLI executables (per platform) with default theme included
+# - Plugins as separate ZIP files (optional downloads)
+
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
+
+jobs:
+  # Validate version tag
+  validate:
+    name: Validate Version
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Extract version from tag
+        id: version
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "📦 Version: $VERSION"
+
+      - name: Validate version is newer than previous tags
+        run: |
+          CURRENT="${GITHUB_REF_NAME#v}"
+
+          # Get all version tags, sort by version, get the latest (excluding current)
+          LATEST=$(git tag -l 'v*' | grep -v "^${GITHUB_REF_NAME}$" | sed 's/^v//' | sort -V | tail -1)
+
+          if [ -n "$LATEST" ]; then
+            # Compare versions
+            HIGHEST=$(echo -e "$CURRENT\n$LATEST" | sort -V | tail -1)
+            if [ "$HIGHEST" != "$CURRENT" ]; then
+              echo "❌ Version $CURRENT is not greater than latest release $LATEST"
+              exit 1
+            fi
+            echo "✅ Version $CURRENT is greater than $LATEST"
+          else
+            echo "✅ First release: $CURRENT"
+          fi
+
+  # Build native executables for each platform
+  build:
+    name: Build ${{ matrix.rid }}
+    needs: validate
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            rid: win-x64
+            artifact: revela-win-x64.zip
+          - os: ubuntu-latest
+            rid: linux-x64
+            artifact: revela-linux-x64.tar.gz
+          - os: ubuntu-latest
+            rid: linux-arm64
+            artifact: revela-linux-arm64.tar.gz
+          - os: macos-latest
+            rid: osx-x64
+            artifact: revela-osx-x64.tar.gz
+          - os: macos-latest
+            rid: osx-arm64
+            artifact: revela-osx-arm64.tar.gz
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+          dotnet-quality: 'preview'
+
+      - name: Restore
+        run: dotnet restore
+
+      - name: Publish
+        run: |
+          dotnet publish src/Cli/Cli.csproj \
+            -c Release \
+            -r ${{ matrix.rid }} \
+            --self-contained \
+            -p:PublishSingleFile=true \
+            -p:IncludeNativeLibrariesForSelfExtract=true \
+            -p:Version=${{ needs.validate.outputs.version }} \
+            -o ./publish
+
+      - name: Build default theme
+        run: |
+          dotnet build src/Themes/Theme.Expose/Theme.Expose.csproj \
+            -c Release \
+            -r ${{ matrix.rid }} \
+            -p:Version=${{ needs.validate.outputs.version }}
+
+      - name: Copy default theme DLL
+        run: |
+          # Theme DLL goes next to revela.exe so PluginLoader finds it
+          cp artifacts/bin/Theme.Expose/Release/net10.0/${{ matrix.rid }}/Spectara.Revela.Theme.Expose.dll ./publish/
+        shell: bash
+
+      - name: Package (Windows)
+        if: matrix.os == 'windows-latest'
+        run: |
+          cd publish
+          Compress-Archive -Path revela.exe, Spectara.Revela.Theme.Expose.dll -DestinationPath ../${{ matrix.artifact }}
+        shell: pwsh
+
+      - name: Package (Linux/macOS)
+        if: matrix.os != 'windows-latest'
+        run: |
+          cd publish
+          chmod +x revela
+          tar -czvf ../${{ matrix.artifact }} revela Spectara.Revela.Theme.Expose.dll
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.rid }}
+          path: ${{ matrix.artifact }}
+          retention-days: 1
+
+  # Build plugins as separate packages
+  plugins:
+    name: Build Plugins
+    needs: validate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+          dotnet-quality: 'preview'
+
+      - name: Restore
+        run: dotnet restore
+
+      - name: Build Plugin.Source.OneDrive
+        run: |
+          dotnet build src/Plugins/Plugin.Source.OneDrive/Plugin.Source.OneDrive.csproj \
+            -c Release \
+            -p:Version=${{ needs.validate.outputs.version }}
+
+      - name: Build Plugin.Deploy.SSH
+        run: |
+          dotnet build src/Plugins/Plugin.Deploy.SSH/Plugin.Deploy.SSH.csproj \
+            -c Release \
+            -p:Version=${{ needs.validate.outputs.version }}
+
+      - name: Package plugins
+        run: |
+          VERSION=${{ needs.validate.outputs.version }}
+
+          # OneDrive Plugin - only the DLL is needed (dependencies are in CLI)
+          zip -j "Spectara.Revela.Plugin.Source.OneDrive-v${VERSION}.zip" \
+            artifacts/bin/Plugin.Source.OneDrive/Release/net10.0/Spectara.Revela.Plugin.Source.OneDrive.dll
+
+          # SSH Plugin - only the DLL is needed
+          zip -j "Spectara.Revela.Plugin.Deploy.SSH-v${VERSION}.zip" \
+            artifacts/bin/Plugin.Deploy.SSH/Release/net10.0/Spectara.Revela.Plugin.Deploy.SSH.dll
+
+      - name: Upload plugin artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: plugins
+          path: |
+            Spectara.Revela.Plugin.*.zip
+          retention-days: 1
+
+  # Create GitHub Release with all artifacts
+  release:
+    name: Create Release
+    needs: [validate, build, plugins]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: List artifacts
+        run: find artifacts -type f
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: v${{ needs.validate.outputs.version }}
+          tag_name: ${{ github.ref_name }}
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+          files: |
+            artifacts/**/*.zip
+            artifacts/**/*.tar.gz
