@@ -2,12 +2,15 @@
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <Description>Expose CLI - Static site generator for photographers</Description>
+    <Description>Revela CLI - Static site generator for photographers</Description>
+
+    <!-- Override AssemblyName to get 'revela' executable instead of 'Spectara.Revela.Cli' -->
+    <AssemblyName>revela</AssemblyName>
 
     <!-- .NET Tool Configuration -->
     <PackAsTool>true</PackAsTool>
-    <ToolCommandName>expose</ToolCommandName>
-    <PackageId>Expose</PackageId>
+    <ToolCommandName>revela</ToolCommandName>
+    <PackageId>Spectara.Revela</PackageId>
   </PropertyGroup>
 
   <ItemGroup>

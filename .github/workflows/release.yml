@@ -128,6 +128,10 @@ jobs:
             -p:Version=${{ needs.validate.outputs.version }} \
             -o ./publish
 
+      - name: List publish output
+        run: ls -la ./publish/
+        shell: bash
+
       - name: Build default theme
         run: |
           dotnet build src/Themes/Theme.Expose/Theme.Expose.csproj \
