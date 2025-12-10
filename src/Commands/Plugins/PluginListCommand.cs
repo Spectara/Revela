@@ -8,8 +8,7 @@ namespace Spectara.Revela.Commands.Plugins;
 /// Handles 'revela plugin list' command.
 /// </summary>
 public sealed partial class PluginListCommand(
-    ILogger<PluginListCommand> logger,
-    PluginManager pluginManager)
+    ILogger<PluginListCommand> logger)
 {
     /// <summary>
     /// Creates the command definition.
@@ -32,12 +31,14 @@ public sealed partial class PluginListCommand(
         try
         {
             LogListingPlugins();
-            var installedPlugins = pluginManager.ListInstalledPlugins().ToList();
+            var installedPlugins = PluginManager.ListInstalledPlugins().ToList();
 
             if (installedPlugins.Count == 0)
             {
                 AnsiConsole.MarkupLine("[yellow]No plugins installed.[/]");
                 AnsiConsole.MarkupLine("[dim]Install plugins with:[/] [cyan]revela plugin install <name>[/]");
+                AnsiConsole.MarkupLine($"[dim]Local directory:[/] {PluginManager.LocalPluginDirectory}");
+                AnsiConsole.MarkupLine($"[dim]Global directory:[/] {PluginManager.GlobalPluginDirectory}");
                 return;
             }
 
@@ -46,14 +47,18 @@ public sealed partial class PluginListCommand(
                 Border = TableBorder.Rounded
             };
             table.AddColumn("[bold]Plugin[/]");
+            table.AddColumn("[bold]Location[/]");
 
-            foreach (var plugin in installedPlugins)
+            foreach (var (name, location) in installedPlugins)
             {
-                table.AddRow(plugin);
+                var locationStyle = location == "local" ? "[green]local[/]" : "[blue]global[/]";
+                table.AddRow(name, locationStyle);
             }
 
             AnsiConsole.Write(table);
             AnsiConsole.MarkupLine($"\n[dim]Total:[/] {installedPlugins.Count} plugin(s)");
+            AnsiConsole.MarkupLine($"[dim]Local directory:[/] {PluginManager.LocalPluginDirectory}");
+            AnsiConsole.MarkupLine($"[dim]Global directory:[/] {PluginManager.GlobalPluginDirectory}");
         }
         catch (Exception ex)
         {
