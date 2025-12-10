@@ -83,7 +83,7 @@ public sealed partial class ImageService(
             manifestRepository.RemoveOrphans(currentSourcePaths);
 
             // Determine which images need processing
-            var imagesToProcess = new List<(string SourcePath, string Hash, string ManifestKey)>();
+            var imagesToProcess = new List<(string SourcePath, string Hash, string ManifestKey, IReadOnlyList<int> Sizes)>();
             var cachedCount = 0;
 
             foreach (var imagePath in allImagePaths)
@@ -104,7 +104,9 @@ public sealed partial class ImageService(
                 }
                 else
                 {
-                    imagesToProcess.Add((fullPath, sourceHash, manifestKey));
+                    // Get sizes from manifest (calculated during scan)
+                    var manifestSizes = existingEntry?.Sizes ?? [];
+                    imagesToProcess.Add((fullPath, sourceHash, manifestKey, manifestSizes));
                 }
             }
 
@@ -153,24 +155,25 @@ public sealed partial class ImageService(
                 cancellationToken,
                 async (item, ct) =>
                 {
-                    var (sourcePath, sourceHash, manifestKey) = item;
+                    var (sourcePath, sourceHash, manifestKey, manifestSizes) = item;
+
+                    // Use sizes from manifest (calculated during scan with original width)
+                    // Fall back to config sizes if manifest sizes are empty (shouldn't happen)
+                    var sizesToGenerate = manifestSizes.Count > 0 ? manifestSizes : sizes;
 
                     var image = await imageProcessor.ProcessImageAsync(
                         sourcePath,
                         new ImageProcessingOptions
                         {
                             Formats = formats,
-                            Sizes = sizes,
+                            Sizes = sizesToGenerate,
                             OutputDirectory = outputImagesDirectory,
                             CacheDirectory = cacheDirectory
                         },
                         ct);
 
-                    // Count files created: sizes × formats (filtered by actual image width)
-                    var actualSizes = image.Sizes.Count > 0
-                        ? image.Sizes
-                        : [.. sizes.Where(s => s <= Math.Max(image.Width, image.Height))];
-                    var filesCreated = actualSizes.Count * formats.Count;
+                    // Count files created: sizes × formats
+                    var filesCreated = image.Sizes.Count * formats.Count;
 
                     // Thread-safe updates
                     var currentProcessed = Interlocked.Increment(ref processedCount);
@@ -185,21 +188,18 @@ public sealed partial class ImageService(
                         Skipped = cachedCount
                     });
 
-                    // Thread-safe manifest update
+                    // Thread-safe manifest update - only update ProcessedAt timestamp
                     lock (manifestLock)
                     {
-                        manifestRepository.SetImage(manifestKey, new ImageContent
+                        var existingEntry = manifestRepository.GetImage(manifestKey);
+                        if (existingEntry != null)
                         {
-                            Filename = Path.GetFileName(sourcePath),
-                            Hash = sourceHash,
-                            Width = image.Width,
-                            Height = image.Height,
-                            Sizes = actualSizes,
-                            FileSize = image.FileSize,
-                            DateTaken = image.DateTaken,
-                            Exif = image.Exif,
-                            ProcessedAt = DateTime.UtcNow
-                        });
+                            manifestRepository.SetImage(manifestKey, existingEntry with
+                            {
+                                Hash = sourceHash,
+                                ProcessedAt = DateTime.UtcNow
+                            });
+                        }
                     }
                 });
 

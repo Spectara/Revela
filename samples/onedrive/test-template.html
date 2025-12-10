@@ -1,0 +1,5 @@
+{{ for image in images }}
+Image: {{ image.id }}
+Sizes type: {{ image.sizes | object.typeof }}
+Sizes: {{ image.sizes }}
+{{ end }}

@@ -175,7 +175,12 @@ public sealed partial class ScribanTemplateEngine(ILogger<ScribanTemplateEngine>
             // Use Scriban's built-in member renamer for snake_case property names
             // This is required because templates use snake_case ({{ site.build_date }})
             // but C# properties are PascalCase (Site.BuildDate)
-            MemberRenamer = ConvertToSnakeCase
+            MemberRenamer = ConvertToSnakeCase,
+
+            // Disable loop limit (default 1000) - our templates are trusted, not user-provided
+            // Large galleries with nested loops (images × formats × sizes) easily exceed 1000
+            // See: https://github.com/scriban/scriban/blob/master/doc/runtime.md#safe-runtime
+            LoopLimit = 0
         };
 
         // Set up template loader for partials if theme is set

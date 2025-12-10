@@ -118,20 +118,20 @@ public sealed partial class NetVipsImageProcessor(
         // Thumbnail() is optimized for this use case and handles EXIF rotation
         List<ImageVariant> variants = [];
 
-        foreach (var size in options.Sizes)
-        {
-            // Skip if image width is smaller than target size
-            if (width < size)
-            {
-                continue;
-            }
+        // Use sizes from options (already includes original width from scan phase)
+        // Filter to only sizes <= original width (in case config changed)
+        var sizesToGenerate = options.Sizes
+            .Where(s => s <= width)
+            .ToList();
 
+        foreach (var size in sizesToGenerate)
+        {
             // Generate each format for this size
             foreach (var (format, quality) in options.Formats)
             {
-                // Load a fresh thumbnail for each output
-                // Always resize by WIDTH to ensure consistent filenames (640.jpg, 1024.jpg, etc.)
-                // Height is calculated automatically to maintain aspect ratio
+                // Use Thumbnail for all sizes (including original)
+                // Thumbnail handles EXIF rotation and is optimized for this use case
+                // For original size, it effectively just loads and re-encodes with our quality settings
                 using var thumb = Image.Thumbnail(inputPath, size, height: 10000000);
 
                 var variant = await SaveVariantAsync(
@@ -139,7 +139,7 @@ public sealed partial class NetVipsImageProcessor(
                     inputPath,
                     options.OutputDirectory,
                     format,
-                    size,  // Use requested size for filename, not actual thumb.Width
+                    size,  // Use requested size for filename
                     thumb.Height,
                     quality);
 

@@ -1,9 +1,11 @@
+using Microsoft.Extensions.Options;
 using Spectara.Revela.Commands.Generate.Abstractions;
 using Spectara.Revela.Commands.Generate.Building;
 using Spectara.Revela.Commands.Generate.Models;
 using Spectara.Revela.Commands.Generate.Models.Manifest;
 using Spectara.Revela.Commands.Generate.Models.Results;
 using Spectara.Revela.Commands.Generate.Scanning;
+using Spectara.Revela.Core.Configuration;
 
 namespace Spectara.Revela.Commands.Generate.Services;
 
@@ -25,13 +27,14 @@ public sealed partial class ContentService(
     NavigationBuilder navigationBuilder,
     IManifestRepository manifestRepository,
     IImageProcessor imageProcessor,
+    IOptions<RevelaConfig> options,
     ILogger<ContentService> logger) : IContentService
 {
     /// <summary>Fixed source directory (convention over configuration)</summary>
     private const string SourceDirectory = "source";
 
-    /// <summary>Default image sizes to generate (will be filtered by actual image width)</summary>
-    private static readonly int[] DefaultSizes = [320, 640, 1024, 1920, 2560];
+    /// <summary>Image settings from configuration</summary>
+    private readonly ImageSettings imageSettings = options.Value.Generate.Images;
 
     /// <inheritdoc />
     public async Task<ContentResult> ScanAsync(
@@ -206,7 +209,7 @@ public sealed partial class ContentService(
     /// assigned to the corresponding ManifestEntry nodes.
     /// </para>
     /// </remarks>
-    private static ManifestEntry BuildRoot(
+    private ManifestEntry BuildRoot(
         ContentTree content,
         IReadOnlyList<NavigationItem> navigation,
         Dictionary<string, ImageMetadata> imageMetadata)
@@ -261,7 +264,7 @@ public sealed partial class ContentService(
     /// <summary>
     /// Convert a NavigationItem to ManifestEntry, merging gallery data where available.
     /// </summary>
-    private static ManifestEntry ConvertNavigationToEntry(
+    private ManifestEntry ConvertNavigationToEntry(
         NavigationItem navItem,
         Dictionary<string, Gallery> galleryBySlug,
         Dictionary<string, List<SourceImage>> imagesByPath,
@@ -307,7 +310,7 @@ public sealed partial class ContentService(
     /// Content is sorted alphabetically by filename to allow users to control
     /// ordering via filename prefixes (e.g., "01-intro.md", "02-photo.jpg").
     /// </remarks>
-    private static List<GalleryContent> BuildContentList(
+    private List<GalleryContent> BuildContentList(
         List<SourceImage> images,
         List<SourceMarkdown> markdowns,
         Dictionary<string, ImageMetadata> imageMetadata)
@@ -343,16 +346,16 @@ public sealed partial class ContentService(
     /// </summary>
     /// <remarks>
     /// If metadata was successfully read, populates Width, Height, EXIF, DateTaken, and Sizes.
-    /// Sizes are calculated based on the actual image width and default size presets.
+    /// Sizes are calculated based on the actual image width and configured size presets.
     /// </remarks>
-    private static ImageContent ConvertSourceImage(
+    private ImageContent ConvertSourceImage(
         SourceImage source,
         Dictionary<string, ImageMetadata> imageMetadata)
     {
         // Try to get metadata for this image
         imageMetadata.TryGetValue(source.RelativePath, out var meta);
 
-        // Calculate which sizes to generate (only sizes smaller than image width)
+        // Calculate which sizes to generate (config sizes + original width)
         var sizes = meta != null
             ? CalculateSizes(meta.Width)
             : [];
@@ -405,13 +408,13 @@ public sealed partial class ContentService(
     /// Calculate which sizes to generate based on image width.
     /// </summary>
     /// <remarks>
-    /// Only includes sizes smaller than the original image width.
-    /// The original size is implicit (width property) and not included.
+    /// Includes configured sizes smaller than original width, plus the original width.
+    /// Original width is included for full-resolution lightbox view.
     /// </remarks>
-    private static List<int> CalculateSizes(int imageWidth) =>
-        // Filter default sizes to only include those smaller than original
-        // Original size is NOT included - it's redundant with width property
-        [.. DefaultSizes.Where(s => s < imageWidth)];
+    private List<int> CalculateSizes(int imageWidth) =>
+        // Filter configured sizes to only include those smaller than original
+        // Then add original width for full-resolution lightbox
+        [.. imageSettings.Sizes.Where(s => s < imageWidth).Append(imageWidth).Order()];
 
     /// <summary>
     /// Compute a hash for change detection.

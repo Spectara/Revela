@@ -17,20 +17,22 @@
 {{~ if !image.sizes || image.sizes.size == 0 ~}}
   {{~ ret ~}}
 {{~ end ~}}
+{{~ # Limit thumbnail sizes to small/medium (320, 640, 1024) ~}}
+{{~ thumbnail_sizes = image.sizes | array.limit 3 ~}}
 <article tabindex="0" id="{{ image.id }}" style="--width:{{ image.width }}; --height:{{ image.height }};">
   {{~ # Thumbnail with responsive srcset and format selection ~}}
   <picture>
     {{~ for format in image_formats ~}}
     <source
       type="image/{{ format }}"
-      srcset="{{~ for size in image.sizes ~}}{{ image_basepath }}{{ image.url }}/{{ size }}.{{ format }} {{ size }}w{{~ if !for.last ~}},
+      srcset="{{~ for size in thumbnail_sizes ~}}{{ image_basepath }}{{ image.url }}/{{ size }}.{{ format }} {{ size }}w{{~ if !for.last ~}},
               {{~ end ~}}{{~ end ~}}">
     {{~ end ~}}
     <img
       alt="{{ image.title ?? '' }}"
       loading="lazy"
       decoding="async"
-      src="{{ image_basepath }}{{ image.url }}/{{ image.sizes[0] }}.jpg"
+      src="{{ image_basepath }}{{ image.url }}/{{ image.sizes | array.first }}.jpg"
       width="{{ image.width }}"
       height="{{ image.height }}">
   </picture>
@@ -51,20 +53,21 @@
     {{~ end ~}}
   </aside>
 
-  {{~ # Lightbox on focus/click - always load largest size for zoom ~}}
+  {{~ # Lightbox on focus/click - use largest available size ~}}
+  {{~ largest_size = image.sizes | array.last ~}}
   <figure>
     <a tabindex="-1" title="close">close</a>
     <picture>
       {{~ for format in image_formats ~}}
       <source
         type="image/{{ format }}"
-        srcset="{{ image_basepath }}{{ image.url }}/{{ image.width }}.{{ format }}">
+        srcset="{{ image_basepath }}{{ image.url }}/{{ largest_size }}.{{ format }}">
       {{~ end ~}}
       <img
         alt="{{ image.title ?? '' }}"
         loading="lazy"
         decoding="async"
-        src="{{ image_basepath }}{{ image.url }}/{{ image.width }}.jpg"
+        src="{{ image_basepath }}{{ image.url }}/{{ largest_size }}.jpg"
         width="{{ image.width }}"
         height="{{ image.height }}">
     </picture>
