@@ -273,10 +273,12 @@ public sealed partial class ImageService(
         // Collect images from this node
         foreach (var image in entry.Content.OfType<ImageContent>())
         {
+            // Use forward slashes for cross-platform consistency (matches imageCache keys)
             var sourcePath = string.IsNullOrEmpty(entry.Path)
                 ? image.Filename
-                : $"{entry.Path}\\{image.Filename}";
-            paths.Add(sourcePath);
+                : $"{entry.Path}/{image.Filename}";
+            // Normalize any remaining backslashes from entry.Path
+            paths.Add(sourcePath.Replace('\\', '/'));
         }
 
         // Recurse into children

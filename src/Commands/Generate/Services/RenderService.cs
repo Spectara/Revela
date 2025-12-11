@@ -234,10 +234,12 @@ public sealed partial class RenderService(
         var images = new List<Image>();
         foreach (var imageEntry in entry.Content.OfType<ImageContent>())
         {
+            // Use forward slashes for cross-platform consistency
             var sourcePath = string.IsNullOrEmpty(entry.Path)
                 ? imageEntry.Filename
-                : $"{entry.Path}\\{imageEntry.Filename}";
-            images.Add(Image.FromManifestEntry(sourcePath, imageEntry));
+                : $"{entry.Path}/{imageEntry.Filename}";
+            // Normalize any remaining backslashes from entry.Path
+            images.Add(Image.FromManifestEntry(sourcePath.Replace('\\', '/'), imageEntry));
         }
 
         return new Gallery
@@ -364,8 +366,10 @@ public sealed partial class RenderService(
                 Total = totalPages
             });
 
+            // Normalize paths for comparison (both may contain backslashes from manifest)
+            var normalizedGalleryPath = gallery.Path.Replace('\\', '/');
             var galleryImages = model.Images
-                .Where(img => img.SourcePath.Contains(gallery.Path, StringComparison.OrdinalIgnoreCase))
+                .Where(img => img.SourcePath.Replace('\\', '/').Contains(normalizedGalleryPath, StringComparison.OrdinalIgnoreCase))
                 .ToList();
 
             var relativeBasePath = UrlBuilder.CalculateBasePath(gallery.Slug);

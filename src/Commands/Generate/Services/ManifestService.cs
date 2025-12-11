@@ -348,11 +348,16 @@ public sealed partial class ManifestService(ILogger<ManifestService> logger) : I
     /// <summary>
     /// Get the full source path for an image in a node.
     /// </summary>
+    /// <remarks>
+    /// Uses forward slashes for consistency with manifest key format.
+    /// </remarks>
     private static string GetImageSourcePath(string nodePath, GalleryContent content)
     {
-        return string.IsNullOrEmpty(nodePath)
+        // Use forward slashes for cross-platform consistency
+        var path = string.IsNullOrEmpty(nodePath)
             ? content.Filename
-            : $"{nodePath}\\{content.Filename}";
+            : $"{nodePath}/{content.Filename}";
+        return path.Replace('\\', '/');
     }
 
     #endregion
