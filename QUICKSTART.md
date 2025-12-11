@@ -13,13 +13,15 @@ Place `revela.exe` (or `revela` on Linux/macOS) in any folder.
 cd /path/to/my-photos
 
 # Initialize a new project
-revela init
+revela init project
 ```
 
 This creates:
 - `site.json` - Site settings (title, author, etc.)
 - `project.json` - Project settings (image sizes, formats, etc.)
 - `source/` - Put your photos here (organized in folders = galleries)
+
+**Note:** Revela includes the **Expose** theme by default - a beautiful, minimal photography theme.
 
 ### 3. Add Your Photos
 ```
@@ -99,7 +101,7 @@ revela plugin list
 
 | Command | Description |
 |---------|-------------|
-| `revela init` | Create a new project |
+| `revela init project` | Create a new project |
 | `revela generate` | Build your site |
 | `revela generate --watch` | Build and watch for changes |
 | `revela clean` | Remove generated files |

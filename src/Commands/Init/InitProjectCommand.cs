@@ -71,7 +71,7 @@ public sealed partial class InitProjectCommand(
                 {
                     name = projectName,
                     url = "https://revela.website",
-                    theme = "default"
+                    theme = "expose"
                 },
                 site = new
                 {
