@@ -511,8 +511,6 @@ main .gallery > article figure::before {
 main .gallery > article figure > a {
   position: absolute;
   display: block;
-  height: 100%;
-  width: 100%;
   text-indent: 100%;
   white-space: nowrap;
   overflow: hidden;
@@ -537,7 +535,6 @@ main .gallery > article figure > a::after {
 }
 main .gallery > article figure img {
   outline: none;
-  pointer-events: none;
   position: relative;
   z-index: 190;
   top: 0;
@@ -566,13 +563,18 @@ main .gallery > article:focus figure, main .gallery > article:target figure {
     opacity: 0;
   }
 }
-main .gallery > article:focus figure img, main .gallery > article:target figure img {
-  transition: all var(--animation-time);
-}
 main .gallery > article:focus figure.zooming img, main .gallery > article:target figure.zooming img {
   transition: none;
   transform: translate3d(var(--zoom-x), var(--zoom-y), 0) scale(var(--zoom-scale));
   -webkit-transform: translate3d(var(--zoom-x), var(--zoom-y), 0) scale(var(--zoom-scale));
+  cursor: grab;
+}
+main .gallery > article:focus figure.swiping img, main .gallery > article:target figure.swiping img {
+  transform: translateY(var(--swipe-y, 0)) scale(var(--swipe-scale, 1));
+  transition: none;
+}
+main .gallery > article:focus figure.dragging img, main .gallery > article:target figure.dragging img {
+  cursor: grabbing;
 }
 main .gallery:after {
   content: " ";

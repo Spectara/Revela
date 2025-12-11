@@ -12,7 +12,7 @@
     "navigation": "partials/navigation.html",
     "image": "partials/image.html"
   },
-  "assets": ["main.css"],
+  "assets": ["main.css", "main.js"],
   "variables": {
     "credits": "Powered by Revela"
   }
