@@ -1,7 +1,7 @@
 # TODO - Revela Development Tasks
 
-**Last Updated:** 2025-01-20  
-**Current Version:** v1.0.0-dev  
+**Last Updated:** 2025-12-11  
+**Current Version:** v0.1.0-beta  
 **Repository:** https://github.com/Spectara/Revela
 
 ---
@@ -15,426 +15,169 @@
 revela init project [--name <name>] [--author <author>]  # ✅ WORKING
 revela init theme --name <theme-name>                     # ✅ WORKING
 
+# Site Generation
+revela generate                                           # ✅ WORKING
+revela clean                                              # ✅ WORKING
+
 # Plugin Management
 revela plugin list                                        # ✅ WORKING
-revela plugin install <plugin-name>                       # ⚠️ PARTIAL (placeholder)
-revela plugin uninstall <plugin-name>                     # ✅ WORKING
+revela plugin install <name>                              # ✅ WORKING (NuGet + ZIP)
+revela plugin install --from-zip <path>                   # ✅ WORKING
+revela plugin uninstall <name>                            # ✅ WORKING
 
-# OneDrive Source Plugin (Official)
-revela source onedrive init [--share-url <url>]          # ✅ WORKING
-revela source onedrive download                           # ✅ WORKING (26 files tested)
+# Theme Management
+revela theme list                                         # ✅ WORKING
+revela theme extract                                      # ✅ WORKING
+
+# Dependency Management
+revela restore                                            # ✅ WORKING
+
+# OneDrive Source Plugin
+revela source onedrive sync                               # ✅ WORKING
 ```
 
-### ❌ Not Yet Implemented
+### ⏳ Not Yet Implemented
 
 ```bash
-# Site Generation (CRITICAL - Main Feature!)
-revela generate [--config <path>]                        # ❌ TODO
-revela generate --watch                                   # ❌ TODO (v1.1+)
+# Watch Mode (v1.1+)
+revela generate --watch                                   # ⏳ TODO
 
-# Deploy Plugin (Official - Future)
-revela deploy ssh init                                    # ❌ TODO
-revela deploy ssh upload                                  # ❌ TODO
+# Dev Server (v1.1+)
+revela serve [--port <port>]                             # ⏳ TODO
 
-# Development Tools (Future)
-revela serve [--port <port>]                             # ❌ TODO (v1.1+)
-revela clean                                              # ❌ TODO
+# Deploy Plugins (Future)
+revela deploy ssh                                         # ⏳ TODO
+revela deploy azure                                       # ⏳ TODO
 ```
 
-### 🔧 Command Details
+---
 
-#### `revela init project`
-- **Status:** ✅ Fully working
-- **Creates:** `project.json`, `site.json`, `content/` directory
-- **Options:**
-  - `--name, -n`: Project name (defaults to directory name)
-  - `--author, -a`: Author name (defaults to username)
+## ✅ COMPLETED FEATURES
 
-#### `revela init theme`
-- **Status:** ✅ Fully working
-- **Creates:** `themes/{name}/` with layout.html, index.html, gallery.html
-- **Options:**
-  - `--name, -n`: Theme name (required)
+### Core Features (v0.1.0)
 
-#### `revela plugin list`
-- **Status:** ✅ Fully working
-- **Shows:** All installed plugins with metadata
+- [x] **GenerateCommand** - Full site generation
+  - [x] Content scanning with gallery tree building
+  - [x] NetVips image processing (resize, optimize)
+  - [x] Multi-format output (AVIF, WebP, JPG)
+  - [x] Multi-size generation (responsive images)
+  - [x] EXIF extraction from images
+  - [x] Smart caching with image manifest
+  - [x] Parallel processing (5× speedup)
 
-#### `revela plugin install`
-- **Status:** ⚠️ Partially implemented (placeholder)
-- **TODO:** Actual NuGet download and extraction
+- [x] **Template Engine**
+  - [x] Scriban integration
+  - [x] Custom functions (url_for, format_exposure, etc.)
+  - [x] Partial templates support
+  - [x] Layout inheritance
+  - [x] Navigation builder
 
-#### `revela plugin uninstall`
-- **Status:** ✅ Fully working
-- **Removes:** Plugin directory from `%APPDATA%/Revela/plugins/`
+- [x] **Content Processing**
+  - [x] Markdown parsing (Markdig)
+  - [x] Frontmatter extraction (YAML)
+  - [x] Gallery metadata (_index.md)
+  - [x] Automatic navigation generation
 
-#### `revela source onedrive init`
-- **Status:** ✅ Fully working
-- **Creates:** `onedrive.json` config, `source/` directory
-- **Options:**
-  - `--share-url, -u`: OneDrive share URL (optional, interactive prompt)
+- [x] **Plugin System**
+  - [x] Plugin discovery & loading
+  - [x] AssemblyLoadContext isolation (no dependency conflicts)
+  - [x] NuGet-based installation
+  - [x] ZIP installation with dependencies
+  - [x] Self-contained plugins with .deps.json
 
-#### `revela source onedrive download`
-- **Status:** ✅ Fully working
-- **Features:**
-  - Badger API authentication (no OAuth needed)
-  - Smart file filtering (images via MIME type + markdown)
-  - Parallel downloads (6 concurrent by default)
-  - Progress reporting with Spectre.Console
-  - Token caching (7-day validity)
-- **Tested:** 26 files successfully downloaded
+- [x] **Theme System**
+  - [x] Embedded themes (Theme.Expose)
+  - [x] Theme extraction for customization
+  - [x] Custom theme support
 
-#### `revela generate` ⏳ COMING SOON
-- **Status:** ❌ Not yet implemented (TOP PRIORITY!)
-- **Planned Features:**
-  - Process images with NetVips (resize, optimize, EXIF)
-  - Render templates with Scriban
-  - Generate responsive HTML site
-  - Create gallery structure
-  - Copy assets
-- **Target:** v1.0.0-alpha
+### Plugins (v0.1.0)
+
+- [x] **Theme.Expose** - Default photography theme
+  - [x] Responsive design
+  - [x] Gallery navigation
+  - [x] Image lightbox
+  - [x] EXIF display
+
+- [x] **Plugin.Source.OneDrive** - OneDrive shared folder source
+  - [x] Badger API authentication (no OAuth)
+  - [x] Smart file filtering (images + markdown)
+  - [x] Parallel downloads (configurable)
+  - [x] Progress reporting
+  - [x] Incremental sync (--dry-run, --clean)
+
+### Build & Release (v0.1.0)
+
+- [x] **GitHub Actions Pipeline**
+  - [x] Automated build on push
+  - [x] Multi-platform releases (Windows, Linux, macOS)
+  - [x] Single-file executables (~100 MB)
+  - [x] Plugin packaging with dependencies
+  - [x] QUICKSTART.md in release ZIP
 
 ---
 
-## 🔴 CRITICAL (Blocking v1.0)
+## ⏳ IN PROGRESS
 
-### Core Features
-
-- [ ] **GenerateCommand** - Site generation orchestration
-  - [ ] NetVipsImageProcessor implementation
-  - [ ] ScribanTemplateEngine implementation
-  - [ ] Site generation workflow
-  - [ ] Gallery structure processing
-  - [ ] First test site generation
-
-- [ ] **Image Processing**
-  - [ ] NetVips integration
-  - [ ] Multi-format support (WebP, AVIF, JPG)
-  - [ ] Multi-size generation (responsive images)
-  - [ ] EXIF extraction from images
-  - [ ] Image caching strategy
-  - [ ] Thumbnail generation
-
-- [ ] **Template Engine**
-  - [ ] Scriban integration
-  - [ ] Custom functions (url_for, asset, image_url)
-  - [ ] Partial templates support
-  - [ ] Layout inheritance
-  - [ ] Template caching
-
-- [ ] **Content Processing**
-  - [ ] Markdown parsing (Markdig)
-  - [ ] Frontmatter extraction
-  - [ ] Gallery metadata processing
-  - [ ] Navigation generation
+Nothing currently in progress.
 
 ---
 
-## 🟡 HIGH PRIORITY (v1.0 Release)
+## 🟡 NEXT PRIORITIES (v1.0 Release)
 
-### Stability & Testing
+### Watch Mode
+- [ ] File system watcher for source directory
+- [ ] Incremental rebuild (only changed files)
+- [ ] Console output for changes
 
-- [ ] **Unit Tests**
-  - [ ] PluginLoader tests
-  - [ ] PluginManager tests
-  - [ ] ScaffoldingService tests
-  - [ ] Config loading tests
-  - [ ] Template rendering tests
-  - [ ] Image processing tests
-
-- [ ] **Integration Tests**
-  - [x] OneDrive Plugin e2e ✅ (26 files downloaded successfully)
-  - [ ] Generate workflow e2e
-  - [ ] Plugin install/uninstall workflow
-  - [ ] Full site generation test
+### Dev Server
+- [ ] Local HTTP server for preview
+- [ ] Hot reload on changes
+- [ ] Browser auto-refresh
 
 ### Documentation
+- [ ] Complete Getting Started guide
+- [ ] Configuration reference
+- [ ] Theme development guide
+- [ ] Plugin development tutorial
 
-- [ ] **User Documentation**
-  - [ ] Getting Started guide
-  - [ ] Configuration reference (project.json, site.json)
-  - [ ] Template development guide
-  - [ ] Theme customization guide
-  - [ ] Troubleshooting section
-
-- [ ] **Developer Documentation**
-  - [ ] Architecture deep-dive
-  - [ ] Plugin development tutorial
-  - [ ] Contributing guide
-  - [ ] Code style guide
-
-### Error Handling
-
-- [ ] Network failure handling (OneDrive, downloads)
-- [ ] File system error handling
-- [ ] Plugin loading error recovery
-- [ ] Configuration validation errors
-- [ ] Build error reporting
+### Testing
+- [ ] Increase unit test coverage
+- [ ] End-to-end tests for generate workflow
+- [ ] Cross-platform testing (Linux, macOS)
 
 ---
 
-## 🟢 MEDIUM PRIORITY (v1.1+)
+## 🟢 FUTURE (v1.1+)
 
-### Official Plugins
+### Deploy Plugins
+- [ ] **Deploy.SSH** - SSH/SFTP deployment
+- [ ] **Deploy.Azure** - Azure Blob Storage / Static Web Apps
+- [ ] **Deploy.S3** - AWS S3 deployment
 
-- [x] ~~OneDrive Plugin~~ ✅ **COMPLETE** (2025-01-20)
-  - [x] SharedLinkProvider with Badger API
-  - [x] Smart file filtering (images + markdown)
-  - [x] Parallel downloads (configurable concurrency)
-  - [x] Progress reporting (Spectre.Console)
-  - [x] Token caching (7-day validity)
-
-- [ ] **Deploy Plugin (SSH/SFTP)**
-  - [ ] SSH.NET client integration
-  - [ ] SFTP upload implementation
-  - [ ] Deploy command (revela deploy ssh)
-  - [ ] Deploy config setup
-  - [ ] Incremental upload (only changed files)
-  - [ ] Deploy rollback support
-
-### Tooling & Automation
-
-- [ ] **CI/CD Pipeline (GitHub Actions)**
-  - [ ] Automated build on push
-  - [ ] Run tests on PR
-  - [ ] Dependency security scanning
-  - [ ] Release automation
-  - [ ] NuGet package publishing
-  - [ ] GitHub Release creation
-
-- [ ] **Development Tools**
-  - [ ] Watch mode (auto-rebuild on file change)
-  - [ ] Dev server with live reload
-  - [ ] Performance profiling tools
-  - [ ] Build time optimization
-
-### Website & Publishing
-
-- [ ] **revela.website Setup**
-  - [ ] Landing page design
-  - [ ] Documentation site (static or Docusaurus)
-  - [ ] Plugin showcase
-  - [ ] Examples gallery
-  - [ ] Download instructions
-  - [ ] Community section
-
-- [ ] **NuGet Publishing**
-  - [ ] Publish Revela.Cli as .NET Tool
-  - [ ] Publish Core libraries
-  - [ ] Publish official plugins
-  - [ ] Setup package signing
-  - [ ] Setup SymbolSource for debugging
-
----
-
-## 🔵 LOW PRIORITY (Future / v2.0+)
-
-### Advanced Features
-
-- [ ] Watch mode with incremental rebuilds
-- [ ] Dev server with live reload (WebSocket)
-- [ ] Image optimization profiles (quality presets)
-- [ ] Custom plugin hooks (before/after generation)
-- [ ] Theme marketplace integration
-- [ ] Multi-language support (i18n)
-- [ ] SEO optimization tools
-- [ ] Sitemap generation
+### Additional Features
+- [ ] Image watermarking
+- [ ] Custom image filters
+- [ ] SEO optimization (sitemap, robots.txt)
 - [ ] RSS feed generation
 - [ ] Social media meta tags
 
-### Community Plugins (Ideas)
-
-- [ ] AWS S3 deploy plugin
-- [ ] Azure Blob Storage deploy plugin
-- [ ] Cloudflare Pages plugin
-- [ ] Netlify plugin
-- [ ] Google Photos source plugin
-- [ ] Flickr source plugin
-- [ ] Dropbox source plugin
-- [ ] Instagram import plugin
-
-### GUI (Future)
-
-- [ ] WPF desktop app (Windows)
-- [ ] MAUI cross-platform app
-- [ ] Electron-based app
-- [ ] Web-based admin panel
+### GUI
+- [ ] Desktop app (WPF/MAUI)
+- [ ] Visual theme editor
+- [ ] Drag & drop gallery management
 
 ---
 
-## ✅ COMPLETED
+## 📊 Version History
 
-### Session 2025-01-20 (Code Quality & OneDrive Plugin)
-
-- [x] `.editorconfig` perfected - `_camelCase` permanently banned! 🚫
-- [x] Anti-underscore naming rule with detailed documentation
-- [x] OneDrive Plugin **COMPLETE** and tested
-  - [x] SharedLinkProvider implementation (Badger API)
-  - [x] OneDriveSourceCommand (download workflow)
-  - [x] OneDriveInitCommand (config setup)
-  - [x] Smart file filtering (MIME type + patterns)
-  - [x] Two-phase progress display (Scan + Download)
-  - [x] 26 files successfully downloaded in testing
-- [x] Typed HttpClient pattern documented
-- [x] `copilot-instructions.md` updated
-  - [x] Corrected naming examples (no underscore)
-  - [x] Updated code samples
-- [x] Build successful (zero errors, zero warnings)
-- [x] All changes committed and pushed to GitHub
-
-### Session 2025-01-19 (Foundation & Setup)
-
-- [x] Complete rename: Expose → Revela → Spectara.Revela
-- [x] Plugin System architecture designed
-  - [x] IPlugin interface
-  - [x] PluginLoader (reflection-based discovery)
-  - [x] PluginManager (NuGet-based installation)
-  - [x] 3-phase plugin lifecycle (ConfigureServices → Initialize → GetCommands)
-- [x] Init commands implemented
-  - [x] `revela init project`
-  - [x] `revela init theme`
-- [x] ScaffoldingService with embedded templates
-- [x] Plugin management commands
-  - [x] `revela plugin list`
-  - [x] `revela plugin install`
-  - [x] `revela plugin uninstall`
-- [x] Git repository setup
-  - [x] GitHub repository created
-  - [x] All code pushed to main branch
-  - [x] `.gitignore` configured
-- [x] Domain purchased: **revela.website** 🌐
-- [x] NuGet prefix reservation requested: "Spectara"
+| Version | Date | Highlights |
+|---------|------|------------|
+| v0.1.0-beta | 2025-12-11 | First public test build, full generate, plugin system |
 
 ---
 
-## 📝 NOTES & DECISIONS
+## 🔗 Links
 
-### Next Session Goals
-
-**Primary Goal:** GenerateCommand implementation  
-**Milestone:** First site generation working  
-**Success Criteria:** `revela generate` produces a functional HTML site
-
-### Architecture Decisions
-
-✅ **Naming Convention:**
-- Private instance fields: `camelCase` (NO underscore!)
-- Const fields: `PascalCase`
-- Static readonly: `PascalCase`
-- **Rationale:** Modern C# style, better readability, matches Microsoft's codebase
-
-✅ **Global Usings:**
-- Do NOT use global usings for `Microsoft.Extensions.Logging`
-- **Rationale:** Source Generator compatibility (LoggerMessage pattern requires explicit using)
-
-✅ **using Directive Placement:**
-- `outside_namespace:warning` (C# 10+ standard)
-- **Rationale:** File-scoped namespaces make inside-namespace placement redundant
-
-✅ **Plugin Architecture:**
-- NuGet-based plugin distribution
-- Official plugins: `Spectara.Revela.Plugin.*` (verified ✅)
-- Community plugins: `YourName.Revela.Plugin.*` (community ⚠️)
-- **Rationale:** Security, trust, and ecosystem growth
-
-✅ **HttpClient Pattern:**
-- Always use Typed Client pattern for plugins
-- Register in `ConfigureServices`, inject directly in constructor
-- **Rationale:** Type safety, connection pooling, testability
-
-### Known Issues
-
-- [ ] PluginManager: NuGet install not fully implemented (placeholder code)
-- [ ] No error handling for network failures in OneDrive plugin
-- [ ] Some CA-warnings suppressed (CA1031, CA1062, CA2007) - need review
-- [ ] No retry logic for failed downloads
-
-### Technical Debt
-
-- [ ] Add retry logic with Polly for HTTP requests
-- [ ] Implement proper NuGet package download in PluginManager
-- [ ] Add telemetry/analytics (optional, privacy-respecting)
-- [ ] Performance profiling for large galleries
-- [ ] Memory optimization for large image processing
-
-### Design Considerations
-
-**Templates:**
-- Default theme embedded in Infrastructure/Scaffolding/Templates/
-- User themes in `themes/{name}/` (optional override)
-- Fallback chain: User theme → Built-in theme
-- **Status:** ⏳ Template engine not yet implemented
-
-**Image Processing:**
-- NetVips for performance (3-5× faster than ImageSharp)
-- Multi-format: WebP (primary), AVIF (future), JPG (fallback)
-- Multi-size: 640, 1024, 1280, 1920, 2560 (responsive)
-- **Status:** ⏳ NetVips integration pending
-
-**Caching:**
-- EXIF cache: JSON files in `.revela/cache/exif/`
-- Image cache: Generated images in `.revela/cache/images/`
-- HTML cache: Rendered pages in `.revela/cache/html/`
-- **Status:** ⏳ Caching strategy not yet implemented
-
----
-
-## 🎯 PRIORITY MATRIX
-
-| Task | Impact | Effort | Priority |
-|------|--------|--------|----------|
-| GenerateCommand | 🔥🔥🔥 | High | 🔴 CRITICAL |
-| NetVips Integration | 🔥🔥🔥 | Medium | 🔴 CRITICAL |
-| Scriban Integration | 🔥🔥🔥 | Medium | 🔴 CRITICAL |
-| Unit Tests | 🔥🔥 | Medium | 🟡 HIGH |
-| Deploy Plugin | 🔥🔥 | High | 🟢 MEDIUM |
-| Website Setup | 🔥 | High | 🟢 MEDIUM |
-| Watch Mode | 🔥 | Medium | 🔵 LOW |
-
----
-
-## 🚀 RELEASE ROADMAP
-
-### v1.0.0-alpha (Target: Q1 2025)
-- [x] Project setup
-- [x] Plugin system
-- [x] OneDrive plugin
-- [ ] Generate command (MVP)
-- [ ] Basic documentation
-
-### v1.0.0-beta (Target: Q2 2025)
-- [ ] All core features complete
-- [ ] Deploy plugin
-- [ ] Comprehensive tests
-- [ ] User documentation
-- [ ] revela.website live
-
-### v1.0.0 (Target: Q2 2025)
-- [ ] Production-ready
-- [ ] Published to NuGet
-- [ ] Migration guide from original Expose
-- [ ] Community feedback integrated
-
-### v1.1.0 (Target: Q3 2025)
-- [ ] Watch mode
-- [ ] Dev server
-- [ ] Performance optimizations
-- [ ] Community plugins
-
----
-
-**Legend:**
-- 🔴 CRITICAL - Blocking release, must be done
-- 🟡 HIGH - Important for quality and UX
-- 🟢 MEDIUM - Nice to have, improves experience
-- 🔵 LOW - Future considerations, low priority
-
----
-
-**Contributing:**
-See [CONTRIBUTING.md](CONTRIBUTING.md) for how to help with these tasks!
-
-**Questions?**
-- 💬 [GitHub Discussions](https://github.com/Spectara/Revela/discussions)
-- 🐛 [Report Issues](https://github.com/Spectara/Revela/issues)
-- 📧 Contact: https://spectara.dev
+- **Repository:** https://github.com/Spectara/Revela
+- **Website:** https://revela.website
+- **Issues:** https://github.com/Spectara/Revela/issues

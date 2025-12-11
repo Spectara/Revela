@@ -5,24 +5,27 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 > [!NOTE]
-> **🚧 BETA - Core Features Complete 🚧**
+> **🚧 BETA - Ready for Testing! 🚧**
 > 
-> Revela is in beta (v1.0.0-dev). All core features are working!
+> Revela v0.1.0-beta is available for testing.
 > 
 > **Working Features:**
-> - ✅ Site generation (`revela generate`) - **Full image processing & template rendering**
+> - ✅ Site generation (`revela generate`) - Full image processing & template rendering
 > - ✅ Project initialization (`revela init project`)
+> - ✅ Plugin system with dependency isolation
 > - ✅ Plugin management (`revela plugin list/install/uninstall`)
 > - ✅ Theme management (`revela theme list/extract`)
-> - ✅ Dependency restore (`revela restore`)
 > - ✅ OneDrive source plugin
+> - ✅ Multi-platform builds (Windows, Linux, macOS)
 > 
 > **Coming Soon:**
 > - ⏳ Watch mode with auto-rebuild
 > - ⏳ Local dev server with hot reload
 > - ⏳ Deploy plugins (SSH, Azure)
 > 
-> **Ready for Testing!** Star ⭐ and watch this repo for updates.
+> **Download:** [Latest Release](https://github.com/Spectara/Revela/releases)
+> 
+> Star ⭐ and watch this repo for updates.
 
 **Reveal your stories through beautiful portfolios**
 
@@ -94,8 +97,19 @@ Edit `project.json`:
 {
   "name": "my-photo-site",
   "url": "https://example.com",
-  "theme": "default"
+  "theme": "expose",
+  "generate": {
+    "images": {
+      "formats": { "jpg": 90 },
+      "sizes": [640, 1280, 1920]
+    }
+  }
 }
+```
+
+**Tip:** For production, enable modern formats for smaller files:
+```json
+"formats": { "avif": 80, "webp": 85, "jpg": 90 }
 ```
 
 Edit `site.json`:

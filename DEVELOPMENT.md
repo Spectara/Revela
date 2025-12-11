@@ -1,15 +1,15 @@
 # Revela - Development Status
 
-**Last Updated:** 2025-12-10
+**Last Updated:** 2025-12-11
 
 ## 🔗 Original Project Reference
 
-This is a **complete rewrite** of the original Bash-based Revela:
-- **Original:** https://github.com/kirkone/Revela
+This is a **complete rewrite** of the original Bash-based Expose:
+- **Original:** https://github.com/kirkone/Expose
 - **Language:** Bash → .NET 10 / C# 14
 - **Goal:** Same output, better performance, more extensibility
 
-## 📊 Current Status: CORE FEATURES COMPLETE ✅
+## 📊 Current Status: FIRST PUBLIC BETA ✅
 
 ### ✅ Completed
 
@@ -80,7 +80,7 @@ This is a **complete rewrite** of the original Bash-based Revela:
 #### Future Features
 1. [ ] **Watch Mode** - Auto-rebuild on file changes
 2. [ ] **Dev Server** - Local preview server with hot reload
-3. [ ] **Multi-format Images** - WebP, AVIF output (currently JPG only)
+3. [ ] **Deploy Plugins** - SSH, Azure, S3 deployment
 
 ---
 
