@@ -1,4 +1,4 @@
-using System.Reflection;
+using System.Runtime.Loader;
 using Spectara.Revela.Core.Abstractions;
 using Spectara.Revela.Core.Configuration;
 
@@ -32,6 +32,7 @@ public sealed partial class PluginLoader(
     private readonly ILogger<PluginLoader> logger = logger ?? Microsoft.Extensions.Logging.Abstractions.NullLogger<PluginLoader>.Instance;
     private readonly HashSet<string> loadedAssemblyPaths = new(StringComparer.OrdinalIgnoreCase);
     private readonly List<IPlugin> loadedPlugins = [];
+    private readonly List<AssemblyLoadContext> pluginContexts = []; // Keep contexts alive
 
     /// <summary>
     /// Gets the list of loaded plugins.
@@ -41,6 +42,10 @@ public sealed partial class PluginLoader(
     /// <summary>
     /// Loads all plugins from configured directories.
     /// </summary>
+    /// <remarks>
+    /// Each plugin is loaded in its own AssemblyLoadContext for isolation.
+    /// This prevents dependency version conflicts between plugins.
+    /// </remarks>
     public void LoadPlugins()
     {
         // 1. Application directory (development - plugins built via ProjectReference)
@@ -76,15 +81,10 @@ public sealed partial class PluginLoader(
             return;
         }
 
-        // Search patterns:
-        // - Spectara.Revela.Plugin.*.dll (feature plugins)
-        // - Spectara.Revela.Theme.*.dll (theme plugins)
-        string[] pluginPatterns = ["Spectara.Revela.Plugin.*.dll", "Spectara.Revela.Theme.*.dll"];
-
-        var pluginDlls = pluginPatterns
-            .SelectMany(pattern => Directory.GetFiles(directory, pattern, SearchOption.TopDirectoryOnly))
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .ToArray();
+        // Load all DLLs from root directory (not subfolders)
+        // Each DLL is checked if it implements IPlugin
+        // Dependencies should be placed in a subfolder named after the plugin
+        var pluginDlls = Directory.GetFiles(directory, "*.dll", SearchOption.TopDirectoryOnly);
 
         if (options.EnableVerboseLogging)
         {
@@ -121,7 +121,13 @@ public sealed partial class PluginLoader(
 
     private void LoadPluginFromAssembly(string assemblyPath)
     {
-        var assembly = Assembly.LoadFrom(assemblyPath);
+        // Each plugin gets its own isolated AssemblyLoadContext
+        // This allows different plugins to use different versions of the same dependency
+        var loadContext = new PluginLoadContext(assemblyPath);
+        pluginContexts.Add(loadContext); // Keep context alive
+
+        var assembly = loadContext.LoadFromAssemblyPath(assemblyPath);
+        LogPluginContextCreated(Path.GetFileName(assemblyPath), loadContext.Name ?? "unnamed");
 
         var pluginTypes = assembly.GetTypes()
             .Where(t => typeof(IPlugin).IsAssignableFrom(t) && !t.IsInterface && !t.IsAbstract);
@@ -179,6 +185,9 @@ public sealed partial class PluginLoader(
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Discovered plugin: {Name} v{Version} ({Assembly})")]
     private partial void LogPluginDiscovered(string name, string version, string assembly);
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Created isolated load context '{ContextName}' for plugin {Assembly}")]
+    private partial void LogPluginContextCreated(string assembly, string contextName);
 }
 
 

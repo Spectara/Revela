@@ -6,6 +6,9 @@
     <RootNamespace>Spectara.Revela.Theme.Expose</RootNamespace>
     <PackageId>Spectara.Revela.Theme.Expose</PackageId>
     <PackageTags>revela;theme;expose;photography;gallery;lightbox</PackageTags>
+
+    <!-- Plugin Support: Copies all dependencies to output, generates complete .deps.json -->
+    <EnableDynamicLoading>true</EnableDynamicLoading>
   </PropertyGroup>
 
   <ItemGroup>
@@ -20,8 +23,9 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- Reference to host Core - NOT copied to output (loaded from host) -->
     <ProjectReference Include="..\..\Core\Core.csproj">
-      <PrivateAssets>all</PrivateAssets>
+      <Private>false</Private>
       <ExcludeAssets>runtime</ExcludeAssets>
     </ProjectReference>
   </ItemGroup>

@@ -5,11 +5,15 @@
   <AssemblyName>Spectara.Revela.Plugin.Source.OneDrive</AssemblyName>
   <PackageId>Spectara.Revela.Plugin.Source.OneDrive</PackageId>
   <PackageTags>revela;plugin;source;onedrive;shared</PackageTags>
+
+  <!-- Plugin Support: Copies all dependencies to output, generates complete .deps.json -->
+  <EnableDynamicLoading>true</EnableDynamicLoading>
 </PropertyGroup>
 
   <ItemGroup>
+    <!-- Reference to host Core - NOT copied to output (loaded from host) -->
     <ProjectReference Include="..\..\Core\Core.csproj">
-      <PrivateAssets>all</PrivateAssets>
+      <Private>false</Private>
       <ExcludeAssets>runtime</ExcludeAssets>
     </ProjectReference>
   </ItemGroup>

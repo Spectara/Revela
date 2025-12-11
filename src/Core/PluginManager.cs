@@ -217,23 +217,28 @@ public sealed class PluginManager(ILogger<PluginManager>? logger = null)
     /// <summary>
     /// Lists all installed plugins from both local and global directories.
     /// </summary>
+    /// <remarks>
+    /// Lists all DLLs in the root of plugin directories.
+    /// Dependencies should be in subfolders (named after the plugin DLL).
+    /// Convention: plugins/MyPlugin.dll + plugins/MyPlugin/*.dll (deps)
+    /// </remarks>
     public static IEnumerable<(string Name, string Location)> ListInstalledPlugins()
     {
         var results = new List<(string Name, string Location)>();
 
-        // Check local plugins
+        // Check local plugins (only root DLLs, not in subfolders)
         if (Directory.Exists(LocalPluginDirectory))
         {
-            foreach (var dll in Directory.GetFiles(LocalPluginDirectory, "*.dll"))
+            foreach (var dll in Directory.GetFiles(LocalPluginDirectory, "*.dll", SearchOption.TopDirectoryOnly))
             {
                 results.Add((Path.GetFileNameWithoutExtension(dll), "local"));
             }
         }
 
-        // Check global plugins
+        // Check global plugins (only root DLLs, not in subfolders)
         if (Directory.Exists(GlobalPluginDirectory))
         {
-            foreach (var dll in Directory.GetFiles(GlobalPluginDirectory, "*.dll"))
+            foreach (var dll in Directory.GetFiles(GlobalPluginDirectory, "*.dll", SearchOption.TopDirectoryOnly))
             {
                 results.Add((Path.GetFileNameWithoutExtension(dll), "global"));
             }
