@@ -42,10 +42,10 @@ Each gallery folder can have an `_index.md` file:
 ```markdown
 ---
 title: Portraits
-date: 2025-01-15
+description: A collection of portrait photography
 ---
 
-A collection of portrait photography from 2025.
+Some additional text about this gallery.
 ```
 
 The text below the `---` becomes the gallery description.
