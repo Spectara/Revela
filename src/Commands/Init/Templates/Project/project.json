@@ -1,5 +1,13 @@
 {
   "name": "{{ project.name }}",
   "url": "{{ project.url }}",
-  "theme": "{{ project.theme }}"
+  "theme": "{{ project.theme }}",
+  "generate": {
+    "images": {
+      "formats": {
+        "jpg": 90
+      },
+      "sizes": [640, 1280, 1920]
+    }
+  }
 }

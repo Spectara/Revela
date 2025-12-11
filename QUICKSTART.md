@@ -78,13 +78,19 @@ revela plugin list
 {
   "source": "source",
   "output": "output",
+  "theme": "expose",
   "generate": {
     "images": {
-      "formats": { "avif": 80, "webp": 85, "jpg": 90 },
-      "sizes": [640, 1024, 1280, 1920, 2560]
+      "formats": { "jpg": 90 },
+      "sizes": [640, 1280, 1920]
     }
   }
 }
+```
+
+**Tip:** For production, enable modern formats for smaller files:
+```json
+"formats": { "avif": 80, "webp": 85, "jpg": 90 }
 ```
 
 ---
