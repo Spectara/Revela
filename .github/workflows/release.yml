@@ -147,11 +147,15 @@ jobs:
           cp artifacts/bin/Theme.Expose/Release/net10.0/${{ matrix.rid }}/Spectara.Revela.Theme.Expose.dll ./publish/
         shell: bash
 
+      - name: Copy quickstart guide
+        run: cp QUICKSTART.md ./publish/
+        shell: bash
+
       - name: Package (Windows)
         if: matrix.os == 'windows-latest'
         run: |
           cd publish
-          Compress-Archive -Path revela.exe, Spectara.Revela.Theme.Expose.dll -DestinationPath ../${{ matrix.artifact }}
+          Compress-Archive -Path revela.exe, Spectara.Revela.Theme.Expose.dll, QUICKSTART.md -DestinationPath ../${{ matrix.artifact }}
         shell: pwsh
 
       - name: Package (Linux/macOS)
@@ -159,7 +163,7 @@ jobs:
         run: |
           cd publish
           chmod +x revela
-          tar -czvf ../${{ matrix.artifact }} revela Spectara.Revela.Theme.Expose.dll
+          tar -czvf ../${{ matrix.artifact }} revela Spectara.Revela.Theme.Expose.dll QUICKSTART.md
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
