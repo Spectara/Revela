@@ -202,16 +202,16 @@ jobs:
       - name: Package plugins
         run: |
           VERSION=${{ needs.validate.outputs.version }}
-          
+
           # OneDrive Plugin with dependencies
           # Structure: Plugin.dll + Plugin.deps.json in root, dependencies in subfolder
           PLUGIN_NAME="Spectara.Revela.Plugin.Source.OneDrive"
           mkdir -p "./plugin-package/${PLUGIN_NAME}"
-          
+
           # Copy main plugin files to root
           cp "./publish-plugins/onedrive/${PLUGIN_NAME}.dll" ./plugin-package/
           cp "./publish-plugins/onedrive/${PLUGIN_NAME}.deps.json" ./plugin-package/
-          
+
           # Copy dependencies to subfolder (exclude main plugin and shared assemblies)
           for dll in ./publish-plugins/onedrive/*.dll; do
             filename=$(basename "$dll")
@@ -223,20 +223,20 @@ jobs:
               cp "$dll" "./plugin-package/${PLUGIN_NAME}/"
             fi
           done
-          
+
           # Create ZIP
           cd plugin-package
           zip -r "../${PLUGIN_NAME}-v${VERSION}.zip" .
           cd ..
-          
+
           # SSH Plugin (simpler - fewer dependencies)
           PLUGIN_NAME="Spectara.Revela.Plugin.Deploy.SSH"
           rm -rf ./plugin-package/*
           mkdir -p "./plugin-package/${PLUGIN_NAME}"
-          
+
           cp "./publish-plugins/ssh/${PLUGIN_NAME}.dll" ./plugin-package/
           cp "./publish-plugins/ssh/${PLUGIN_NAME}.deps.json" ./plugin-package/ 2>/dev/null || true
-          
+
           for dll in ./publish-plugins/ssh/*.dll; do
             filename=$(basename "$dll")
             if [[ "$filename" != "${PLUGIN_NAME}.dll" && \
@@ -246,7 +246,7 @@ jobs:
               cp "$dll" "./plugin-package/${PLUGIN_NAME}/"
             fi
           done
-          
+
           cd plugin-package
           zip -r "../${PLUGIN_NAME}-v${VERSION}.zip" .
           cd ..
