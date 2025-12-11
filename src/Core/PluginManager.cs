@@ -145,28 +145,46 @@ public sealed class PluginManager(ILogger<PluginManager>? logger = null)
             return false;
         }
 
-        // Extract DLL files directly to plugin directory
+        // Extract files preserving directory structure
+        // ZIP structure: Plugin.dll, Plugin.deps.json, Plugin/*.dll (dependencies)
         using var archive = await Task.Run(() => ZipFile.OpenRead(zipPath), cancellationToken);
-        var dllCount = 0;
+        var fileCount = 0;
 
         foreach (var entry in archive.Entries)
         {
-            if (entry.Name.EndsWith(".dll", StringComparison.OrdinalIgnoreCase))
+            // Skip directories (they end with /)
+            if (string.IsNullOrEmpty(entry.Name))
             {
-                var destPath = Path.Combine(targetDir, entry.Name);
-                await Task.Run(() => entry.ExtractToFile(destPath, overwrite: true), cancellationToken);
-                logger.ExtractedFile(entry.Name, targetDir);
-                dllCount++;
+                continue;
             }
+
+            // Only extract DLL and deps.json files
+            if (!entry.Name.EndsWith(".dll", StringComparison.OrdinalIgnoreCase) &&
+                !entry.Name.EndsWith(".deps.json", StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            // Preserve directory structure from ZIP
+            var destPath = Path.Combine(targetDir, entry.FullName);
+            var destDir = Path.GetDirectoryName(destPath);
+            if (!string.IsNullOrEmpty(destDir))
+            {
+                _ = Directory.CreateDirectory(destDir);
+            }
+
+            await Task.Run(() => entry.ExtractToFile(destPath, overwrite: true), cancellationToken);
+            logger.ExtractedFile(entry.FullName, targetDir);
+            fileCount++;
         }
 
-        if (dllCount == 0)
+        if (fileCount == 0)
         {
             logger.NoDllsInZip(zipPath);
             return false;
         }
 
-        logger.PluginInstalledFromZip(dllCount, targetDir);
+        logger.PluginInstalledFromZip(fileCount, targetDir);
         return true;
     }
 
