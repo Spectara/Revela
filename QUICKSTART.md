@@ -27,13 +27,28 @@ This creates:
 ```
 source/
 ├── 01 Portraits/
+│   ├── _index.md      # Gallery title & description
 │   ├── photo1.jpg
 │   └── photo2.jpg
 ├── 02 Landscapes/
+│   ├── _index.md
 │   ├── mountains.jpg
 │   └── sunset.jpg
-└── _about.md          # Optional: pages (underscore prefix)
+└── _about.md          # Optional: standalone pages (underscore prefix)
 ```
+
+#### Gallery Metadata (`_index.md`)
+Each gallery folder can have an `_index.md` file:
+```markdown
+---
+title: Portraits
+date: 2025-01-15
+---
+
+A collection of portrait photography from 2025.
+```
+
+The text below the `---` becomes the gallery description.
 
 ### 4. Generate Your Site
 ```bash
