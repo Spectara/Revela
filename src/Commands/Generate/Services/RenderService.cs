@@ -128,6 +128,9 @@ public sealed partial class RenderService(
                 await CopyThemeAssetsAsync(theme, cancellationToken);
             }
 
+            // Copy extension assets (stylesheets)
+            await CopyExtensionAssetsAsync(cancellationToken);
+
             progress?.Report(new RenderProgress
             {
                 CurrentPage = "Complete",
@@ -537,40 +540,42 @@ public sealed partial class RenderService(
             }
         }
 
-        // Then try theme extensions
-        // Extensions store partials under Templates/Partials/{ExtensionName}/
-        // Template names use lowercase (statistics/overview), but folder is PascalCase (Statistics/)
-        // e.g., "statistics/overview" → "Templates/Partials/Statistics/overview.html"
-        var extensionTemplatePath = ConvertToExtensionPath(templateName);
-        foreach (var extension in currentExtensions)
+        // Then try theme extensions via their manifest
+        // Template names like "statistics/overview.html" → prefix "statistics", template "overview"
+        var slashIndex = templateName.IndexOf('/', StringComparison.Ordinal);
+        if (slashIndex > 0)
         {
-            using var stream = extension.GetFile(extensionTemplatePath);
-            if (stream is not null)
+            var prefix = templateName[..slashIndex];
+            var templateKey = templateName[(slashIndex + 1)..];
+
+            // Remove .html extension if present (manifest keys don't include extension)
+            if (templateKey.EndsWith(".html", StringComparison.OrdinalIgnoreCase))
             {
-                using var reader = new StreamReader(stream);
-                return reader.ReadToEnd();
+                templateKey = templateKey[..^5];
+            }
+
+            // Find extension with matching prefix
+            var extension = currentExtensions.FirstOrDefault(e =>
+                e.PartialPrefix.Equals(prefix, StringComparison.OrdinalIgnoreCase));
+
+            if (extension is not null)
+            {
+                // Look up the actual file path from extension manifest
+                var manifest = extension.GetManifest();
+
+                if (manifest.Partials.TryGetValue(templateKey, out var extensionFilePath))
+                {
+                    using var stream = extension.GetFile(extensionFilePath);
+                    if (stream is not null)
+                    {
+                        using var reader = new StreamReader(stream);
+                        return reader.ReadToEnd();
+                    }
+                }
             }
         }
 
         return null;
-    }
-
-    /// <summary>
-    /// Converts a template name to extension path with PascalCase folder.
-    /// </summary>
-    /// <param name="templateName">Template name (e.g., "statistics/overview")</param>
-    /// <returns>Extension path (e.g., "Templates/Partials/Statistics/overview.html")</returns>
-    private static string ConvertToExtensionPath(string templateName)
-    {
-        var parts = templateName.Split('/');
-        if (parts.Length >= 2)
-        {
-            // Capitalize first letter of extension folder name
-            var folderName = char.ToUpperInvariant(parts[0][0]) + parts[0][1..];
-            return $"Templates/Partials/{folderName}/{string.Join('/', parts[1..])}.html";
-        }
-
-        return $"Templates/Partials/{templateName}.html";
     }
 
     private static async Task CopyThemeAssetsAsync(IThemePlugin theme, CancellationToken cancellationToken)
@@ -597,6 +602,47 @@ public sealed partial class RenderService(
 
             await using var fileStream = File.Create(outputPath);
             await stream.CopyToAsync(fileStream, cancellationToken);
+        }
+    }
+
+    private async Task CopyExtensionAssetsAsync(CancellationToken cancellationToken)
+    {
+        foreach (var extension in currentExtensions)
+        {
+            var manifest = extension.GetManifest();
+
+            // Copy stylesheets
+            foreach (var stylesheetPath in manifest.StyleSheets)
+            {
+                using var stream = extension.GetFile(stylesheetPath);
+                if (stream is null)
+                {
+                    continue;
+                }
+
+                // Stylesheets keep their filename in output root
+                var fileName = Path.GetFileName(stylesheetPath);
+                var outputPath = Path.Combine(OutputDirectory, fileName);
+
+                await using var fileStream = File.Create(outputPath);
+                await stream.CopyToAsync(fileStream, cancellationToken);
+            }
+
+            // Copy other assets (if any)
+            foreach (var assetPath in manifest.Assets)
+            {
+                using var stream = extension.GetFile(assetPath);
+                if (stream is null)
+                {
+                    continue;
+                }
+
+                var fileName = Path.GetFileName(assetPath);
+                var outputPath = Path.Combine(OutputDirectory, fileName);
+
+                await using var fileStream = File.Create(outputPath);
+                await stream.CopyToAsync(fileStream, cancellationToken);
+            }
         }
     }
 
@@ -716,7 +762,7 @@ public sealed partial class RenderService(
     /// <summary>
     /// Collect all stylesheet paths from theme extensions
     /// </summary>
-    /// <returns>List of stylesheet paths relative to output directory</returns>
+    /// <returns>List of stylesheet filenames (copied to output root)</returns>
     private List<string> CollectExtensionStylesheets()
     {
         var stylesheets = new List<string>();
@@ -724,7 +770,12 @@ public sealed partial class RenderService(
         foreach (var extension in currentExtensions)
         {
             var manifest = extension.GetManifest();
-            stylesheets.AddRange(manifest.StyleSheets);
+
+            // Return only filenames - stylesheets are copied to output root
+            foreach (var stylesheetPath in manifest.StyleSheets)
+            {
+                stylesheets.Add(Path.GetFileName(stylesheetPath));
+            }
         }
 
         return stylesheets;

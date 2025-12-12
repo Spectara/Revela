@@ -21,6 +21,9 @@
   <meta name="author" content="{{ site.author }}">
   <meta name="keywords" content="{{ site.keywords }}">
   <link type="text/css" rel="stylesheet" media="all" href="{{ basepath }}main.css">
+{{~ for stylesheet in extension_stylesheets ~}}
+  <link type="text/css" rel="stylesheet" media="all" href="{{ basepath }}{{ stylesheet }}">
+{{~ end ~}}
 </head>
 <body>
   {{~ # Navigation Toggle (CSS-only Hamburger Menu) ~}}
