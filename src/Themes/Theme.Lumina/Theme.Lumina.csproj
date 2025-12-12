@@ -1,0 +1,37 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <Description>Lumina theme for Revela - elegant photography portfolio design</Description>
+    <AssemblyName>Spectara.Revela.Theme.Lumina</AssemblyName>
+    <RootNamespace>Spectara.Revela.Theme.Lumina</RootNamespace>
+    <PackageId>Spectara.Revela.Theme.Lumina</PackageId>
+    <PackageTags>revela;theme;lumina;photography;gallery;lightbox</PackageTags>
+
+    <!-- Plugin Support: Copies all dependencies to output, generates complete .deps.json -->
+    <EnableDynamicLoading>true</EnableDynamicLoading>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Embed theme.json as resource -->
+    <EmbeddedResource Include="theme.json">
+      <LogicalName>theme.json</LogicalName>
+    </EmbeddedResource>
+    <!-- Embed all template files with Templates/ prefix for consistent export structure -->
+    <EmbeddedResource Include="Templates\**\*">
+      <LogicalName>Templates\%(RecursiveDir)%(Filename)%(Extension)</LogicalName>
+    </EmbeddedResource>
+    <!-- Embed CSS/JS assets with Assets/ prefix for consistent export structure -->
+    <EmbeddedResource Include="Assets\**\*">
+      <LogicalName>Assets\%(RecursiveDir)%(Filename)%(Extension)</LogicalName>
+    </EmbeddedResource>
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Reference to host Core - NOT copied to output (loaded from host) -->
+    <ProjectReference Include="..\..\Core\Core.csproj">
+      <Private>false</Private>
+      <ExcludeAssets>runtime</ExcludeAssets>
+    </ProjectReference>
+  </ItemGroup>
+
+</Project>

@@ -5,6 +5,7 @@ using Spectara.Revela.Commands.Generate.Building;
 using Spectara.Revela.Commands.Generate.Models;
 using Spectara.Revela.Commands.Generate.Models.Manifest;
 using Spectara.Revela.Commands.Generate.Models.Results;
+using Spectara.Revela.Commands.Generate.Parsing;
 using Spectara.Revela.Core.Abstractions;
 using Spectara.Revela.Core.Configuration;
 using Spectara.Revela.Core.Services;
@@ -24,6 +25,7 @@ public sealed partial class RenderService(
     ITemplateEngine templateEngine,
     IThemeResolver themeResolver,
     IManifestRepository manifestRepository,
+    FrontMatterParser frontMatterParser,
     IConfiguration configuration,
     IOptions<RevelaConfig> options,
     ILogger<RenderService> logger) : IRenderService
@@ -31,11 +33,24 @@ public sealed partial class RenderService(
     /// <summary>Output directory for generated site</summary>
     private const string OutputDirectory = "output";
 
+    /// <summary>Source directory for content</summary>
+    private const string SourceDirectory = "source";
+
     /// <summary>Image settings from configuration</summary>
     private readonly ImageSettings imageSettings = options.Value.Generate.Images;
 
+    /// <summary>Current theme extensions (set during render)</summary>
+    private IReadOnlyList<IThemeExtension> currentExtensions = [];
+
     /// <inheritdoc />
     public void SetTheme(IThemePlugin? theme) => templateEngine.SetTheme(theme);
+
+    /// <inheritdoc />
+    public void SetExtensions(IReadOnlyList<IThemeExtension> extensions)
+    {
+        currentExtensions = extensions;
+        templateEngine.SetExtensions(extensions);
+    }
 
     /// <inheritdoc />
     public string Render(string templateContent, object model) => templateEngine.Render(templateContent, model);
@@ -70,9 +85,13 @@ public sealed partial class RenderService(
             // Load configuration
             var config = LoadConfiguration();
 
-            // Resolve theme
+            // Resolve theme and extensions
             var theme = themeResolver.Resolve(config.Theme.Name, Environment.CurrentDirectory);
             SetTheme(theme);
+
+            // Get theme extensions matching this theme
+            var extensions = themeResolver.GetExtensions(config.Theme.Name);
+            SetExtensions(extensions);
 
             // Reconstruct galleries and navigation from unified root
             var galleries = ReconstructGalleries(manifestRepository.Root);
@@ -335,6 +354,10 @@ public sealed partial class RenderService(
         var formats = imageSettings.Formats.Count > 0
             ? imageSettings.Formats
             : ImageSettings.DefaultFormats;
+
+        // Collect extension stylesheets
+        var extensionStylesheets = CollectExtensionStylesheets();
+
         var indexHtml = templateEngine.Render(
             indexTemplate,
             new
@@ -347,7 +370,8 @@ public sealed partial class RenderService(
                 basepath = indexBasePath,
                 image_basepath = indexImageBasePath,
                 image_formats = formats.Keys,
-                theme = themeVariables
+                theme = themeVariables,
+                extension_stylesheets = extensionStylesheets
             });
 
         await File.WriteAllTextAsync(
@@ -365,6 +389,9 @@ public sealed partial class RenderService(
                 Rendered = pageCount,
                 Total = totalPages
             });
+
+            // Load body content from _index.md at render time (not stored in manifest)
+            await LoadGalleryBodyAsync(gallery, cancellationToken);
 
             // Normalize paths for comparison (both may contain backslashes from manifest)
             var normalizedGalleryPath = gallery.Path.Replace('\\', '/');
@@ -388,7 +415,8 @@ public sealed partial class RenderService(
                     basepath,
                     image_basepath = galleryImageBasePath,
                     image_formats = formats.Keys,
-                    theme = themeVariables
+                    theme = themeVariables,
+                    extension_stylesheets = extensionStylesheets
                 });
 
             var galleryOutputPath = Path.Combine(OutputDirectory, gallery.Slug);
@@ -475,7 +503,10 @@ public sealed partial class RenderService(
                 continue;
             }
 
-            var outputPath = Path.Combine(OutputDirectory, assetPath);
+            // Extract just the filename - assets are always copied to output root
+            // (e.g., 'Assets/main.css' → 'main.css' in output)
+            var fileName = Path.GetFileName(assetPath);
+            var outputPath = Path.Combine(OutputDirectory, fileName);
             var outputDir = Path.GetDirectoryName(outputPath);
             if (!string.IsNullOrEmpty(outputDir))
             {
@@ -485,6 +516,27 @@ public sealed partial class RenderService(
             await using var fileStream = File.Create(outputPath);
             await stream.CopyToAsync(fileStream, cancellationToken);
         }
+    }
+
+    /// <summary>
+    /// Loads the body content from _index.md for a gallery at render time.
+    /// </summary>
+    /// <remarks>
+    /// Body content is not stored in the manifest to keep file size small.
+    /// Instead, we load it on demand during rendering.
+    /// </remarks>
+    private async Task LoadGalleryBodyAsync(Gallery gallery, CancellationToken cancellationToken)
+    {
+        // Build path to _index.md in source directory
+        var indexPath = Path.Combine(SourceDirectory, gallery.Path, FrontMatterParser.IndexFileName);
+
+        if (!File.Exists(indexPath))
+        {
+            return;
+        }
+
+        var metadata = await frontMatterParser.ParseFileAsync(indexPath, cancellationToken);
+        gallery.Body = metadata.Body;
     }
 
     #endregion
@@ -562,6 +614,27 @@ public sealed partial class RenderService(
         </body>
         </html>
         """;
+
+    #endregion
+
+    #region Private Methods - Extensions
+
+    /// <summary>
+    /// Collect all stylesheet paths from theme extensions
+    /// </summary>
+    /// <returns>List of stylesheet paths relative to output directory</returns>
+    private List<string> CollectExtensionStylesheets()
+    {
+        var stylesheets = new List<string>();
+
+        foreach (var extension in currentExtensions)
+        {
+            var manifest = extension.GetManifest();
+            stylesheets.AddRange(manifest.StyleSheets);
+        }
+
+        return stylesheets;
+    }
 
     #endregion
 

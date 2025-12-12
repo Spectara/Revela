@@ -9,7 +9,7 @@ This sample demonstrates hosting a Revela site in a subdirectory (e.g., `example
 ```json
 {
   "name": "Subdirectory Sample",
-  "theme": "Expose",
+  "theme": "Lumina",
   "basePath": "/photos/"
 }
 ```

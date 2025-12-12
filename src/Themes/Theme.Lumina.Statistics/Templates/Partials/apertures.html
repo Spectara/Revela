@@ -1,0 +1,14 @@
+<section class="stat-section">
+    <h2>📐 Apertures</h2>
+    <div class="chart-container">
+        {{ for item in stats.apertures }}
+        <div class="bar-row">
+            <span class="bar-label">f/{{ item.value }}</span>
+            <div class="bar-track">
+                <div class="bar-fill" style="width: {{ item.percentage }}%"></div>
+            </div>
+            <span class="bar-value">{{ item.count }} ({{ item.percentage | math.round 1 }}%)</span>
+        </div>
+        {{ end }}
+    </div>
+</section>

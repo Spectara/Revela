@@ -217,7 +217,7 @@ public sealed partial class RestoreCommand(
     {
         // Extract short name from package ID
         // "Spectara.Revela.Plugin.Source.OneDrive" → "OneDrive Source" or just last part
-        // "Spectara.Revela.Theme.Expose" → "Expose"
+        // "Spectara.Revela.Theme.Lumina" → "Lumina"
 
         var parts = dep.PackageId.Split('.');
         if (parts.Length >= 2)

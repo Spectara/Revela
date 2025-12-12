@@ -10,7 +10,7 @@ namespace Spectara.Revela.Core.Services;
 /// Theme resolution order:
 /// 1. Local theme folder (project/themes/{name}/)
 /// 2. Installed theme plugins
-/// 3. Default bundled theme (Theme.Expose)
+/// 3. Default bundled theme (Theme.Lumina)
 /// </remarks>
 public interface IThemeResolver
 {
@@ -35,6 +35,13 @@ public interface IThemeResolver
     /// <param name="projectPath">Project path for local theme lookup</param>
     /// <returns>All available themes (local + installed + default)</returns>
     IEnumerable<IThemePlugin> GetAvailableThemes(string projectPath);
+
+    /// <summary>
+    /// Get theme extensions for a specific theme
+    /// </summary>
+    /// <param name="themeName">Theme name to get extensions for</param>
+    /// <returns>List of extensions targeting this theme</returns>
+    IReadOnlyList<IThemeExtension> GetExtensions(string themeName);
 }
 
 /// <summary>
@@ -42,23 +49,42 @@ public interface IThemeResolver
 /// </summary>
 public sealed partial class ThemeResolver : IThemeResolver
 {
-    private const string DefaultThemeName = "Expose";
+    private const string DefaultThemeName = "Lumina";
     private const string ThemesFolderName = "themes";
 
     private readonly IEnumerable<IThemePlugin> installedThemes;
+    private readonly IEnumerable<IThemeExtension> themeExtensions;
     private readonly ILogger<ThemeResolver> logger;
 
     /// <summary>
     /// Creates a new ThemeResolver
     /// </summary>
     /// <param name="installedThemes">Themes from plugin system</param>
+    /// <param name="themeExtensions">Theme extensions from plugin system</param>
     /// <param name="logger">Logger instance</param>
     public ThemeResolver(
         IEnumerable<IThemePlugin> installedThemes,
+        IEnumerable<IThemeExtension> themeExtensions,
         ILogger<ThemeResolver> logger)
     {
         this.installedThemes = installedThemes;
+        this.themeExtensions = themeExtensions;
         this.logger = logger;
+    }
+
+    /// <inheritdoc />
+    public IReadOnlyList<IThemeExtension> GetExtensions(string themeName)
+    {
+        var extensions = themeExtensions
+            .Where(e => e.TargetTheme.Equals(themeName, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+
+        if (extensions.Count > 0)
+        {
+            LogFoundExtensions(logger, themeName, extensions.Count);
+        }
+
+        return extensions.AsReadOnly();
     }
 
     /// <inheritdoc />
@@ -219,4 +245,7 @@ public sealed partial class ThemeResolver : IThemeResolver
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Failed to load local theme '{ThemeName}': {Error}")]
     private static partial void LogLocalThemeError(ILogger logger, string themeName, string error);
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Found {Count} extension(s) for theme '{ThemeName}'")]
+    private static partial void LogFoundExtensions(ILogger logger, string themeName, int count);
 }

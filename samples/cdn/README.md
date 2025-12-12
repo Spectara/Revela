@@ -9,7 +9,7 @@ This sample demonstrates using a CDN for images while hosting HTML locally.
 ```json
 {
   "name": "CDN Sample",
-  "theme": "Expose",
+  "theme": "Lumina",
   "imageBasePath": "https://cdn.example.com/images/"
 }
 ```

@@ -6,7 +6,7 @@ namespace Spectara.Revela.Commands.Generate.Models;
 /// Represents an image with its metadata and processing variants
 /// </summary>
 /// <remarks>
-/// Properties are named to match template expectations (Expose theme):
+/// Properties are named to match template expectations (Lumina theme):
 /// - id: Unique identifier for HTML anchors (filename without extension)
 /// - url: Relative path to image variants (e.g., "photo1" -> images/photo1/640.jpg)
 /// </remarks>

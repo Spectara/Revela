@@ -79,7 +79,7 @@ public interface IPluginMetadata
 /// Usage in project.json:
 /// <code>
 /// {
-///   "theme": "Spectara.Revela.Theme.Expose"
+///   "theme": "Spectara.Revela.Theme.Lumina"
 /// }
 /// </code>
 ///
@@ -161,5 +161,103 @@ public sealed class ThemeManifest
     /// </summary>
     public IReadOnlyDictionary<string, string> Variables { get; init; } =
         new Dictionary<string, string>();
+}
+
+/// <summary>
+/// Theme extension plugin interface - extends a theme with plugin-specific templates and assets
+/// </summary>
+/// <remarks>
+/// <para>
+/// Theme extensions provide templates and CSS for specific plugins, styled for a specific theme.
+/// This allows plugins to have beautiful, theme-consistent output without coupling.
+/// </para>
+///
+/// <para>
+/// Naming convention: Spectara.Revela.Theme.{ThemeName}.{PluginName}
+/// Example: Spectara.Revela.Theme.Lumina.Statistics
+/// </para>
+///
+/// <para>
+/// Discovery: Extensions are matched to themes by <see cref="TargetTheme"/> property,
+/// no NuGet dependency required. This allows third-party theme extensions.
+/// </para>
+///
+/// <para>
+/// Template access: Templates are available as "{PartialPrefix}/{name}" in Scriban.
+/// Example: {{ include 'statistics/chart' stats }}
+/// </para>
+/// </remarks>
+public interface IThemeExtension : IPlugin
+{
+    /// <summary>
+    /// Name of the target theme (e.g., "Lumina")
+    /// </summary>
+    /// <remarks>
+    /// Matched case-insensitively against IThemePlugin.Metadata.Name.
+    /// Extension only activates when this theme is used.
+    /// </remarks>
+    string TargetTheme { get; }
+
+    /// <summary>
+    /// Prefix for partial templates (e.g., "statistics")
+    /// </summary>
+    /// <remarks>
+    /// Templates are accessed as "{PartialPrefix}/{name}" in Scriban.
+    /// Example: "statistics" → {{ include 'statistics/chart' }}
+    /// </remarks>
+    string PartialPrefix { get; }
+
+    /// <summary>
+    /// Extension manifest with templates and assets
+    /// </summary>
+    ThemeExtensionManifest GetManifest();
+
+    /// <summary>
+    /// Get a file from the extension as a stream
+    /// </summary>
+    /// <param name="relativePath">Relative path within the extension (e.g., "templates/chart.html")</param>
+    /// <returns>Stream with file contents, or null if not found</returns>
+    Stream? GetFile(string relativePath);
+
+    /// <summary>
+    /// Get all file paths in the extension
+    /// </summary>
+    /// <returns>Enumerable of relative paths</returns>
+    IEnumerable<string> GetAllFiles();
+
+    /// <summary>
+    /// Extract all extension files to a directory
+    /// </summary>
+    /// <param name="targetDirectory">Directory to extract files to</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    Task ExtractToAsync(string targetDirectory, CancellationToken cancellationToken = default);
+}
+
+/// <summary>
+/// Manifest for theme extensions describing available templates and assets
+/// </summary>
+public sealed class ThemeExtensionManifest
+{
+    /// <summary>
+    /// Partial templates by name (key = template name, value = file path)
+    /// </summary>
+    /// <remarks>
+    /// Keys are relative to PartialPrefix. Example: "chart" → accessed as "statistics/chart"
+    /// </remarks>
+    public IReadOnlyDictionary<string, string> Partials { get; init; } =
+        new Dictionary<string, string>();
+
+    /// <summary>
+    /// CSS files to include via separate &lt;link&gt; tags
+    /// </summary>
+    /// <remarks>
+    /// Paths relative to extension root. Files are copied to output and linked.
+    /// </remarks>
+    public IReadOnlyList<string> StyleSheets { get; init; } = [];
+
+    /// <summary>
+    /// Additional static assets (JS, images, fonts)
+    /// </summary>
+    public IReadOnlyList<string> Assets { get; init; } = [];
 }
 

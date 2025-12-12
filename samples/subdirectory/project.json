@@ -1,6 +1,6 @@
 {
   "name": "Subdirectory Sample",
   "url": "https://example.com",
-  "theme": "Expose",
+  "theme": "Lumina",
   "basePath": "/photos/"
 }

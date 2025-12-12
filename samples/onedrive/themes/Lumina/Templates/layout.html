@@ -1,0 +1,84 @@
+{{~##
+  Main Layout Template - Expose Theme
+
+  Main layout for all gallery pages.
+
+  Expects:
+  - site: { title, description, author, keywords, copyright }
+  - gallery: { title, body? }
+  - nav_items: Array of NavigationItem for navigation
+  - images: Array of ImageData for gallery
+  - basepath: Relative path to root
+  - image_basepath: Path/URL to image resources (can be absolute CDN URL)
+##~}}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>{{~ if gallery.title ~}}{{ site.title }} - {{ gallery.title }}{{~ else ~}}{{ site.title }}{{~ end ~}}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="{{ site.description }}">
+  <meta name="author" content="{{ site.author }}">
+  <meta name="keywords" content="{{ site.keywords }}">
+  <link type="text/css" rel="stylesheet" media="all" href="{{ basepath }}main.css">
+</head>
+<body>
+  {{~ # Navigation Toggle (CSS-only Hamburger Menu) ~}}
+  <input type="checkbox" id="nav-trigger" class="nav-trigger">
+
+  {{~ # Main Navigation (Fullscreen Overlay) ~}}
+  <nav>
+    {{~ include 'partials/navigation' nav_items ~}}
+  </nav>
+
+  {{~ # Sticky Header ~}}
+  <header>
+    <div>
+      <h2>
+        <label for="nav-trigger" title="Menu">
+          <span>Menu</span>
+          <span>i</span>
+          <span>i</span>
+          <span>i</span>
+        </label>
+        {{~ # basepath is empty string at root, "../" for galleries, or "/photos/" for subdirectory hosting ~}}
+        <a href="{{ basepath == '' ? '.' : basepath }}">{{ site.title }}</a>
+      </h2>
+      <nav></nav>
+    </div>
+  </header>
+
+  {{~ # Main Content ~}}
+  <main>
+    {{~ # Gallery Introduction (from _index.md) ~}}
+    {{~ if gallery.body ~}}
+    <section>
+      {{ gallery.body }}
+    </section>
+    {{~ end ~}}
+
+    {{~ # Image Gallery ~}}
+    {{~ if images && images.size > 0 ~}}
+    <section class="gallery">
+      <h2>{{ gallery.title }}</h2>
+      {{~ for image in images ~}}
+      {{~ include 'partials/image' image ~}}
+      {{~ end ~}}
+    </section>
+    {{~ end ~}}
+  </main>
+
+  {{~ # Footer with Navigation Copy ~}}
+  <footer>
+    <nav>
+      {{~ include 'partials/navigation' nav_items ~}}
+    </nav>
+    <div>
+      {{ site.copyright }}{{~ if theme.credits ~}} · {{ theme.credits }}{{~ end ~}}
+    </div>
+  </footer>
+
+  {{~ # Scripts ~}}
+  <script src="{{ basepath }}main.js"></script>
+</body>
+</html>

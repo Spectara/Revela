@@ -6,9 +6,11 @@
     <Folder Name="/Plugins/">
       <Project Path="src/Plugins/Plugin.Deploy.SSH/Plugin.Deploy.SSH.csproj" />
       <Project Path="src/Plugins/Plugin.Source.OneDrive/Plugin.Source.OneDrive.csproj" />
+      <Project Path="src/Plugins/Plugin.Statistics/Plugin.Statistics.csproj" />
     </Folder>
     <Folder Name="/Themes/">
-      <Project Path="src/Themes/Theme.Expose/Theme.Expose.csproj" />
+      <Project Path="src/Themes/Theme.Lumina/Theme.Lumina.csproj" />
+      <Project Path="src/Themes/Theme.Lumina.Statistics/Theme.Lumina.Statistics.csproj" />
     </Folder>
   </Folder>
   <Folder Name="/tests/">
@@ -16,5 +18,6 @@
     <Project Path="tests/Commands.Tests/Commands.Tests.csproj" />
     <Project Path="tests/IntegrationTests/IntegrationTests.csproj" />
     <Project Path="tests/Plugin.Source.OneDrive.Tests/Plugin.Source.OneDrive.Tests.csproj" />
+    <Project Path="tests/Plugin.Statistics.Tests/Plugin.Statistics.Tests.csproj" />
   </Folder>
 </Solution>

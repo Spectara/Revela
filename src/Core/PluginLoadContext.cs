@@ -32,6 +32,9 @@ internal sealed class PluginLoadContext : AssemblyLoadContext
         // Core abstractions (IPlugin, IPluginMetadata, etc.)
         "Spectara.Revela.Core",
 
+        // Commands (shared for plugins that use IManifestRepository, IImageProcessor, etc.)
+        "Spectara.Revela.Commands",
+
         // Microsoft.Extensions.* are shared for DI, Configuration, Logging
         "Microsoft.Extensions.DependencyInjection.Abstractions",
         "Microsoft.Extensions.DependencyInjection",

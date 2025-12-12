@@ -659,3 +659,118 @@ footer nav section a:hover {
 footer nav section a.active {
   color: hsl(var(--color-dark-hsl));
 }
+
+/* ==========================================================================
+   Statistics Plugin Support
+   ========================================================================== */
+
+.stats-section {
+  margin-block: var(--space-xl);
+}
+
+.stats-section h2 {
+  font-weight: 100;
+  font-size: var(--font-size-2);
+  margin-bottom: var(--space-m);
+  padding-bottom: var(--space-xs);
+  border-bottom: 1px solid hsl(var(--color-hsl) / 0.2);
+}
+
+/* Overview grid with cards */
+.stats-overview .stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: var(--space-m);
+}
+
+.stats-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: var(--space-m);
+  background: hsl(var(--color-hsl) / 0.05);
+  border-radius: var(--space-xs);
+}
+
+.stats-big {
+  font-size: var(--font-size-4);
+  font-weight: 100;
+  line-height: 1;
+}
+
+/* Bar chart layout */
+.stats-chart {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.stats-bar {
+  display: grid;
+  grid-template-columns: minmax(8rem, 12rem) 1fr 3rem;
+  gap: var(--space-s);
+  align-items: center;
+}
+
+.stats-bar .stats-label {
+  font-size: var(--font-size-0);
+  text-align: right;
+  color: hsl(var(--color-hsl));
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.stats-track {
+  height: 0.5rem;
+  background: hsl(var(--color-hsl) / 0.1);
+  border-radius: 0.25rem;
+  overflow: hidden;
+}
+
+.stats-fill {
+  height: 100%;
+  width: var(--percent, 0%);
+  background: hsl(var(--color-hsl));
+  border-radius: 0.25rem;
+  transition: width var(--animation-time) ease-out;
+}
+
+.stats-value {
+  font-size: var(--font-size-0);
+  color: hsl(var(--color-light-hsl));
+  text-align: right;
+}
+
+.stats-generated {
+  font-size: var(--font-size--1, 0.75rem);
+  color: hsl(var(--color-light-hsl));
+  margin-top: var(--space-xl);
+  text-align: center;
+}
+
+/* Dark mode adjustments */
+@media (prefers-color-scheme: dark) {
+  .stats-card {
+    background: hsl(var(--color-hsl) / 0.1);
+  }
+  .stats-track {
+    background: hsl(var(--color-hsl) / 0.2);
+  }
+}
+
+/* Responsive: Stack labels on small screens */
+@media (max-width: 480px) {
+  .stats-bar {
+    grid-template-columns: 1fr 3rem;
+    grid-template-rows: auto auto;
+  }
+  .stats-bar .stats-label {
+    grid-column: 1 / -1;
+    text-align: left;
+    margin-bottom: calc(var(--space-3xs) * -1);
+  }
+  .stats-track {
+    grid-column: 1;
+  }
+}

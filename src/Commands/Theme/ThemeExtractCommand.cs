@@ -9,8 +9,9 @@ namespace Spectara.Revela.Commands.Theme;
 /// </summary>
 /// <remarks>
 /// Usage:
-///   revela theme extract Expose           → themes/Expose/
-///   revela theme extract Expose MyTheme   → themes/MyTheme/
+///   revela theme extract Lumina           → themes/Lumina/
+///   revela theme extract Lumina MyTheme   → themes/MyTheme/
+///   revela theme extract Lumina --extensions → also extracts Theme.Lumina.* extensions
 /// </remarks>
 public sealed partial class ThemeExtractCommand(
     IThemeResolver themeResolver,
@@ -38,18 +39,25 @@ public sealed partial class ThemeExtractCommand(
             Description = "Overwrite existing theme folder"
         };
 
+        var extensionsOption = new Option<bool>("--extensions", "-e")
+        {
+            Description = "Also extract matching theme extensions (Theme.{Name}.* packages)"
+        };
+
         var command = new Command("extract", "Extract a theme to themes/ folder for customization");
         command.Arguments.Add(sourceArg);
         command.Arguments.Add(targetArg);
         command.Options.Add(forceOption);
+        command.Options.Add(extensionsOption);
 
         command.SetAction(async (parseResult, cancellationToken) =>
         {
             var source = parseResult.GetValue(sourceArg)!;
             var target = parseResult.GetValue(targetArg);
             var force = parseResult.GetValue(forceOption);
+            var includeExtensions = parseResult.GetValue(extensionsOption);
 
-            return await ExecuteAsync(source, target, force, cancellationToken);
+            return await ExecuteAsync(source, target, force, includeExtensions, cancellationToken);
         });
 
         return command;
@@ -59,6 +67,7 @@ public sealed partial class ThemeExtractCommand(
         string sourceName,
         string? targetName,
         bool force,
+        bool includeExtensions,
         CancellationToken cancellationToken)
     {
         var projectPath = Environment.CurrentDirectory;
@@ -114,9 +123,51 @@ public sealed partial class ThemeExtractCommand(
             UpdateThemeName(targetPath, targetName);
         }
 
+        // Extract matching extensions if requested
+        var extractedExtensions = new List<string>();
+        if (includeExtensions)
+        {
+            var extensions = themeResolver.GetExtensions(sourceName);
+            if (extensions.Count > 0)
+            {
+                await AnsiConsole.Status()
+                    .Spinner(Spinner.Known.Dots)
+                    .StartAsync(
+                        "Extracting theme extensions...",
+                        async _ =>
+                        {
+                            foreach (var extension in extensions)
+                            {
+                                var extensionFolder = Path.Combine(targetPath, "Extensions", extension.PartialPrefix);
+
+                                if (Directory.Exists(extensionFolder))
+                                {
+                                    if (force)
+                                    {
+                                        Directory.Delete(extensionFolder, recursive: true);
+                                    }
+                                    else
+                                    {
+                                        continue;
+                                    }
+                                }
+
+                                Directory.CreateDirectory(extensionFolder);
+                                await extension.ExtractToAsync(extensionFolder, cancellationToken);
+                                extractedExtensions.Add(extension.PartialPrefix);
+                                LogExtractingExtension(logger, extension.Metadata.Name, extensionFolder);
+                            }
+                        });
+            }
+        }
+
         // Success panel
+        var extensionsInfo = extractedExtensions.Count > 0
+            ? $"\n[bold]Extensions:[/] {string.Join(", ", extractedExtensions)}"
+            : "";
+
         var panel = new Panel($"[green]✨ Theme '{EscapeMarkup(themeName)}' extracted![/]\n\n" +
-                            $"[bold]Location:[/] [cyan]themes/{EscapeMarkup(themeName)}/[/]\n\n" +
+                            $"[bold]Location:[/] [cyan]themes/{EscapeMarkup(themeName)}/[/]{extensionsInfo}\n\n" +
                             "[bold]Next steps:[/]\n" +
                             $"1. Edit [cyan]themes/{EscapeMarkup(themeName)}/[/] to customize\n" +
                             "2. Run [cyan]revela generate[/] to see changes\n" +
@@ -158,6 +209,9 @@ public sealed partial class ThemeExtractCommand(
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Extracting theme '{ThemeName}' to {TargetPath}")]
     private static partial void LogExtracting(ILogger logger, string themeName, string targetPath);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Extracting extension '{ExtensionName}' to {TargetPath}")]
+    private static partial void LogExtractingExtension(ILogger logger, string extensionName, string targetPath);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Overwriting existing theme folder: {Path}")]
     private static partial void LogOverwriting(ILogger logger, string path);

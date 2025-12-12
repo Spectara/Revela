@@ -446,7 +446,7 @@ public sealed partial class NetVipsImageProcessor(
     /// Save image variant to disk
     /// </summary>
     /// <remarks>
-    /// Output structure matches Expose theme expectations:
+    /// Output structure matches Lumina theme expectations:
     /// images/{fileName}/{width}.{format}
     /// e.g., images/photo1/640.jpg
     /// </remarks>

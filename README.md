@@ -97,7 +97,7 @@ Edit `project.json`:
 {
   "name": "my-photo-site",
   "url": "https://example.com",
-  "theme": "expose",
+  "theme": "lumina",
   "generate": {
     "images": {
       "formats": { "jpg": 90 },

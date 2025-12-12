@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <Description>Statistics plugin for Revela - generates EXIF statistics pages</Description>
+    <AssemblyName>Spectara.Revela.Plugin.Statistics</AssemblyName>
+    <PackageId>Spectara.Revela.Plugin.Statistics</PackageId>
+    <PackageTags>revela;plugin;statistics;exif;photography</PackageTags>
+
+    <!-- Plugin Support: Copies all dependencies to output, generates complete .deps.json -->
+    <EnableDynamicLoading>true</EnableDynamicLoading>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Reference to host Commands - NOT copied to output (loaded from host) -->
+    <ProjectReference Include="..\..\Commands\Commands.csproj">
+      <Private>false</Private>
+      <ExcludeAssets>runtime</ExcludeAssets>
+    </ProjectReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Markdig" />
+    <PackageReference Include="Microsoft.Extensions.Configuration" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Binder" />
+    <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" />
+    <PackageReference Include="Spectre.Console" />
+    <PackageReference Include="System.CommandLine" />
+  </ItemGroup>
+
+</Project>

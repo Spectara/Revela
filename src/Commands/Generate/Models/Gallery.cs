@@ -39,6 +39,14 @@ public sealed class Gallery
     public string? Description { get; init; }
 
     /// <summary>
+    /// Rendered HTML body content from _index.md (below frontmatter).
+    /// </summary>
+    /// <remarks>
+    /// Loaded at render time, not stored in manifest to keep file size small.
+    /// </remarks>
+    public string? Body { get; set; }
+
+    /// <summary>
     /// Optional cover image filename.
     /// </summary>
     public string? Cover { get; init; }

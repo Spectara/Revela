@@ -21,7 +21,7 @@ This creates:
 - `project.json` - Project settings (image sizes, formats, etc.)
 - `source/` - Put your photos here (organized in folders = galleries)
 
-**Note:** Revela includes the **Expose** theme by default - a beautiful, minimal photography theme.
+**Note:** Revela includes the **Lumina** theme by default - a beautiful, minimal photography theme.
 
 ### 3. Add Your Photos
 ```
@@ -93,7 +93,7 @@ revela plugin list
 {
   "source": "source",
   "output": "output",
-  "theme": "expose",
+  "theme": "lumina",
   "generate": {
     "images": {
       "formats": { "jpg": 90 },

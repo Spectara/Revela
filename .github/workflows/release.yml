@@ -136,7 +136,7 @@ jobs:
       - name: Build default theme
         shell: bash
         run: |
-          dotnet build src/Themes/Theme.Expose/Theme.Expose.csproj \
+          dotnet build src/Themes/Theme.Lumina/Theme.Lumina.csproj \
             -c Release \
             -r ${{ matrix.rid }} \
             -p:Version=${{ needs.validate.outputs.version }}
@@ -144,7 +144,7 @@ jobs:
       - name: Copy default theme DLL
         run: |
           # Theme DLL goes next to revela.exe so PluginLoader finds it
-          cp artifacts/bin/Theme.Expose/Release/net10.0/${{ matrix.rid }}/Spectara.Revela.Theme.Expose.dll ./publish/
+          cp artifacts/bin/Theme.Lumina/Release/net10.0/${{ matrix.rid }}/Spectara.Revela.Theme.Lumina.dll ./publish/
         shell: bash
 
       - name: Copy quickstart guide
@@ -155,7 +155,7 @@ jobs:
         if: matrix.os == 'windows-latest'
         run: |
           cd publish
-          Compress-Archive -Path revela.exe, Spectara.Revela.Theme.Expose.dll, QUICKSTART.md -DestinationPath ../${{ matrix.artifact }}
+          Compress-Archive -Path revela.exe, Spectara.Revela.Theme.Lumina.dll, QUICKSTART.md -DestinationPath ../${{ matrix.artifact }}
         shell: pwsh
 
       - name: Package (Linux/macOS)
@@ -163,7 +163,7 @@ jobs:
         run: |
           cd publish
           chmod +x revela
-          tar -czvf ../${{ matrix.artifact }} revela Spectara.Revela.Theme.Expose.dll QUICKSTART.md
+          tar -czvf ../${{ matrix.artifact }} revela Spectara.Revela.Theme.Lumina.dll QUICKSTART.md
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
@@ -201,6 +201,20 @@ jobs:
           dotnet publish src/Plugins/Plugin.Deploy.SSH/Plugin.Deploy.SSH.csproj \
             -c Release \
             -o ./publish-plugins/ssh \
+            -p:Version=${{ needs.validate.outputs.version }}
+
+      - name: Build Plugin.Statistics
+        run: |
+          dotnet publish src/Plugins/Plugin.Statistics/Plugin.Statistics.csproj \
+            -c Release \
+            -o ./publish-plugins/statistics \
+            -p:Version=${{ needs.validate.outputs.version }}
+
+      - name: Build Theme.Lumina.Statistics
+        run: |
+          dotnet publish src/Themes/Theme.Lumina.Statistics/Theme.Lumina.Statistics.csproj \
+            -c Release \
+            -o ./publish-plugins/lumina-statistics \
             -p:Version=${{ needs.validate.outputs.version }}
 
       - name: Package plugins
@@ -255,12 +269,57 @@ jobs:
           zip -r "../${PLUGIN_NAME}-v${VERSION}.zip" .
           cd ..
 
+          # Statistics Plugin
+          PLUGIN_NAME="Spectara.Revela.Plugin.Statistics"
+          rm -rf ./plugin-package/*
+          mkdir -p "./plugin-package/${PLUGIN_NAME}"
+
+          cp "./publish-plugins/statistics/${PLUGIN_NAME}.dll" ./plugin-package/
+          cp "./publish-plugins/statistics/${PLUGIN_NAME}.deps.json" ./plugin-package/ 2>/dev/null || true
+
+          for dll in ./publish-plugins/statistics/*.dll; do
+            filename=$(basename "$dll")
+            if [[ "$filename" != "${PLUGIN_NAME}.dll" && \
+                  "$filename" != Spectara.Revela.Core.dll && \
+                  "$filename" != System.CommandLine.dll && \
+                  "$filename" != Spectre.Console.dll ]]; then
+              cp "$dll" "./plugin-package/${PLUGIN_NAME}/"
+            fi
+          done
+
+          cd plugin-package
+          zip -r "../${PLUGIN_NAME}-v${VERSION}.zip" .
+          cd ..
+
+          # Lumina Statistics Theme Extension
+          PLUGIN_NAME="Spectara.Revela.Theme.Lumina.Statistics"
+          rm -rf ./plugin-package/*
+          mkdir -p "./plugin-package/${PLUGIN_NAME}"
+
+          cp "./publish-plugins/lumina-statistics/${PLUGIN_NAME}.dll" ./plugin-package/
+          cp "./publish-plugins/lumina-statistics/${PLUGIN_NAME}.deps.json" ./plugin-package/ 2>/dev/null || true
+
+          for dll in ./publish-plugins/lumina-statistics/*.dll; do
+            filename=$(basename "$dll")
+            if [[ "$filename" != "${PLUGIN_NAME}.dll" && \
+                  "$filename" != Spectara.Revela.Core.dll && \
+                  "$filename" != System.CommandLine.dll && \
+                  "$filename" != Spectre.Console.dll ]]; then
+              cp "$dll" "./plugin-package/${PLUGIN_NAME}/"
+            fi
+          done
+
+          cd plugin-package
+          zip -r "../${PLUGIN_NAME}-v${VERSION}.zip" .
+          cd ..
+
       - name: Upload plugin artifacts
         uses: actions/upload-artifact@v4
         with:
           name: plugins
           path: |
             Spectara.Revela.Plugin.*.zip
+            Spectara.Revela.Theme.*.zip
           retention-days: 1
 
   # Create GitHub Release with all artifacts

@@ -21,6 +21,12 @@ public interface ITemplateEngine
     void SetTheme(IThemePlugin? theme);
 
     /// <summary>
+    /// Set the theme extensions for loading extension partials
+    /// </summary>
+    /// <param name="extensions">Theme extensions that match the current theme</param>
+    void SetExtensions(IReadOnlyList<IThemeExtension> extensions);
+
+    /// <summary>
     /// Render template content with data model
     /// </summary>
     /// <param name="templateContent">Template string content</param>

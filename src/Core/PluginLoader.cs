@@ -40,6 +40,24 @@ public sealed partial class PluginLoader(
     public IReadOnlyList<IPlugin> GetLoadedPlugins() => loadedPlugins.AsReadOnly();
 
     /// <summary>
+    /// Gets all loaded theme extensions.
+    /// </summary>
+    public IReadOnlyList<IThemeExtension> GetThemeExtensions() =>
+        loadedPlugins.OfType<IThemeExtension>().ToList().AsReadOnly();
+
+    /// <summary>
+    /// Gets theme extensions for a specific theme.
+    /// </summary>
+    /// <param name="themeName">Theme name to match (case-insensitive)</param>
+    /// <returns>List of extensions targeting the specified theme</returns>
+    public IReadOnlyList<IThemeExtension> GetThemeExtensions(string themeName) =>
+        loadedPlugins
+            .OfType<IThemeExtension>()
+            .Where(e => e.TargetTheme.Equals(themeName, StringComparison.OrdinalIgnoreCase))
+            .ToList()
+            .AsReadOnly();
+
+    /// <summary>
     /// Loads all plugins from configured directories.
     /// </summary>
     /// <remarks>

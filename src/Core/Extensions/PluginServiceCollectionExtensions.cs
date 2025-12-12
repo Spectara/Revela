@@ -127,6 +127,14 @@ public static class PluginServiceCollectionExtensions
             services.AddSingleton(plugin);
             logger.LogDebug("Registered theme plugin: {Name}", plugin.Metadata.Name);
         }
+
+        // Phase 4b: Register theme extensions for IThemeResolver (as IThemeExtension)
+        foreach (var extension in plugins.OfType<IThemeExtension>())
+        {
+            services.AddSingleton(extension);
+            logger.LogDebug("Registered theme extension: {Name} for theme {TargetTheme}",
+                extension.Metadata.Name, extension.TargetTheme);
+        }
 #pragma warning restore CA1848
 
         // Phase 5: Register PluginContext as singleton for UseRevelaCommands()

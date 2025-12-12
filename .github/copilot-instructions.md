@@ -87,7 +87,8 @@ src/
 │   ├── Plugin.Deploy.SSH/    # SSH/SFTP deployment
 │   └── Plugin.Source.OneDrive/  # OneDrive shared folder source
 └── Themes/
-    └── Theme.Expose/         # Default photography portfolio theme
+    ├── Theme.Lumina/         # Default photography portfolio theme
+    └── Theme.Lumina.Statistics/  # Statistics extension for Lumina theme
 tests/
 ├── Core.Tests/               # Unit tests for Core
 ├── IntegrationTests/         # Integration tests
