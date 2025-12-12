@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
 using Spectara.Revela.Commands.Generate.Abstractions;
@@ -390,8 +391,8 @@ public sealed partial class RenderService(
                 Total = totalPages
             });
 
-            // Load body content from _index.md at render time (not stored in manifest)
-            await LoadGalleryBodyAsync(gallery, cancellationToken);
+            // Load metadata from _index.md at render time (not stored in manifest)
+            var (customTemplate, dataSources, metadataBasePath) = await LoadGalleryMetadataAsync(gallery, cancellationToken);
 
             // Normalize paths for comparison (both may contain backslashes from manifest)
             var normalizedGalleryPath = gallery.Path.Replace('\\', '/');
@@ -404,13 +405,56 @@ public sealed partial class RenderService(
             var galleryNavigation = SetActiveState(model.Navigation, gallery.Slug);
             var galleryImageBasePath = CalculateImageBasePath(config, relativeBasePath);
 
+            // Resolve data sources from data: field (JSON files, $galleries, $images)
+            var resolvedData = await ResolveDataSourcesAsync(
+                dataSources,
+                metadataBasePath,
+                model.Galleries,
+                galleryImages,
+                cancellationToken);
+
+            // If custom template specified, render it to gallery.body
+            // The layout template is ALWAYS used (never replaced)
+            if (customTemplate is not null)
+            {
+                var contentTemplate = LoadTemplate(theme, $"{customTemplate}.html");
+                if (contentTemplate is not null)
+                {
+                    // Build base model for custom template
+                    var baseModel = new Dictionary<string, object?>
+                    {
+                        ["site"] = model.Site,
+                        ["gallery"] = gallery,
+                        ["nav_items"] = galleryNavigation,
+                        ["basepath"] = basepath,
+                        ["image_basepath"] = galleryImageBasePath,
+                        ["image_formats"] = formats.Keys,
+                        ["theme"] = themeVariables,
+                        ["images"] = galleryImages
+                    };
+
+                    // Merge resolved data sources (user-defined variable names)
+                    foreach (var (key, value) in resolvedData)
+                    {
+                        baseModel[key] = value;
+                    }
+
+                    // Render the custom template as content
+                    var renderedContent = templateEngine.Render(contentTemplate, baseModel);
+
+                    // Set the rendered content as gallery.body
+                    gallery.Body = renderedContent;
+                }
+            }
+
+            // Always use layout template
             var galleryHtml = templateEngine.Render(
                 galleryTemplate,
                 new
                 {
                     site = model.Site,
                     gallery,
-                    images = galleryImages,
+                    images = customTemplate is not null ? [] : galleryImages,
                     nav_items = galleryNavigation,
                     basepath,
                     image_basepath = galleryImageBasePath,
@@ -474,21 +518,59 @@ public sealed partial class RenderService(
         return $"{basepath}images/";
     }
 
-    private static string? LoadTemplate(IThemePlugin? theme, string templateName)
+    /// <summary>
+    /// Loads a template from the theme or theme extensions.
+    /// </summary>
+    /// <param name="theme">The main theme plugin</param>
+    /// <param name="templateName">Template file name (e.g., "gallery.html" or "statistics/overview.html")</param>
+    /// <returns>Template content or null if not found</returns>
+    private string? LoadTemplate(IThemePlugin? theme, string templateName)
     {
-        if (theme is null)
+        // First try the main theme
+        if (theme is not null)
         {
-            return null;
+            using var stream = theme.GetFile(templateName);
+            if (stream is not null)
+            {
+                using var reader = new StreamReader(stream);
+                return reader.ReadToEnd();
+            }
         }
 
-        using var stream = theme.GetFile(templateName);
-        if (stream is null)
+        // Then try theme extensions
+        // Extensions store partials under Templates/Partials/{ExtensionName}/
+        // Template names use lowercase (statistics/overview), but folder is PascalCase (Statistics/)
+        // e.g., "statistics/overview" → "Templates/Partials/Statistics/overview.html"
+        var extensionTemplatePath = ConvertToExtensionPath(templateName);
+        foreach (var extension in currentExtensions)
         {
-            return null;
+            using var stream = extension.GetFile(extensionTemplatePath);
+            if (stream is not null)
+            {
+                using var reader = new StreamReader(stream);
+                return reader.ReadToEnd();
+            }
         }
 
-        using var reader = new StreamReader(stream);
-        return reader.ReadToEnd();
+        return null;
+    }
+
+    /// <summary>
+    /// Converts a template name to extension path with PascalCase folder.
+    /// </summary>
+    /// <param name="templateName">Template name (e.g., "statistics/overview")</param>
+    /// <returns>Extension path (e.g., "Templates/Partials/Statistics/overview.html")</returns>
+    private static string ConvertToExtensionPath(string templateName)
+    {
+        var parts = templateName.Split('/');
+        if (parts.Length >= 2)
+        {
+            // Capitalize first letter of extension folder name
+            var folderName = char.ToUpperInvariant(parts[0][0]) + parts[0][1..];
+            return $"Templates/Partials/{folderName}/{string.Join('/', parts[1..])}.html";
+        }
+
+        return $"Templates/Partials/{templateName}.html";
     }
 
     private static async Task CopyThemeAssetsAsync(IThemePlugin theme, CancellationToken cancellationToken)
@@ -519,24 +601,36 @@ public sealed partial class RenderService(
     }
 
     /// <summary>
-    /// Loads the body content from _index.md for a gallery at render time.
+    /// Loads metadata from _index.md for a gallery at render time.
     /// </summary>
     /// <remarks>
-    /// Body content is not stored in the manifest to keep file size small.
-    /// Instead, we load it on demand during rendering.
+    /// Returns template name, data sources dictionary, and base path.
+    /// When template is set (e.g., "statistics/overview"), the page uses a custom template.
     /// </remarks>
-    private async Task LoadGalleryBodyAsync(Gallery gallery, CancellationToken cancellationToken)
+    private async Task<(string? Template, IReadOnlyDictionary<string, string> DataSources, string BasePath)> LoadGalleryMetadataAsync(
+        Gallery gallery,
+        CancellationToken cancellationToken)
     {
         // Build path to _index.md in source directory
         var indexPath = Path.Combine(SourceDirectory, gallery.Path, FrontMatterParser.IndexFileName);
+        var basePath = Path.GetDirectoryName(indexPath)!;
 
         if (!File.Exists(indexPath))
         {
-            return;
+            return (null, new Dictionary<string, string>(), basePath);
         }
 
         var metadata = await frontMatterParser.ParseFileAsync(indexPath, cancellationToken);
+
+        // If custom template is specified, return template info (body handled by template)
+        if (metadata.Template is not null)
+        {
+            return (metadata.Template, metadata.DataSources, basePath);
+        }
+
+        // Standard gallery: set body from markdown
         gallery.Body = metadata.Body;
+        return (null, new Dictionary<string, string>(), basePath);
     }
 
     #endregion
@@ -634,6 +728,81 @@ public sealed partial class RenderService(
         }
 
         return stylesheets;
+    }
+
+    #endregion
+
+    #region Private Methods - Data Sources
+
+    /// <summary>
+    /// Resolved data sources from the data: frontmatter field.
+    /// </summary>
+    /// <param name="dataSources">Dictionary of variable name → source (JSON file or $built-in)</param>
+    /// <param name="basePath">Base path for resolving relative file paths</param>
+    /// <param name="allGalleries">All galleries in the site</param>
+    /// <param name="localImages">Images in the current gallery folder</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>Dictionary of resolved data (variable name → value)</returns>
+    private static async Task<Dictionary<string, object?>> ResolveDataSourcesAsync(
+        IReadOnlyDictionary<string, string> dataSources,
+        string basePath,
+        IReadOnlyList<Gallery> allGalleries,
+        IReadOnlyList<Image> localImages,
+        CancellationToken cancellationToken)
+    {
+        var result = new Dictionary<string, object?>();
+
+        foreach (var (variableName, source) in dataSources)
+        {
+            var value = await ResolveSingleDataSourceAsync(
+                source,
+                basePath,
+                allGalleries,
+                localImages,
+                cancellationToken);
+
+            if (value is not null)
+            {
+                result[variableName] = value;
+            }
+        }
+
+        return result;
+    }
+
+    /// <summary>
+    /// Resolves a single data source to its value.
+    /// </summary>
+    private static async Task<object?> ResolveSingleDataSourceAsync(
+        string source,
+        string basePath,
+        IReadOnlyList<Gallery> allGalleries,
+        IReadOnlyList<Image> localImages,
+        CancellationToken cancellationToken)
+    {
+        // Handle built-in data sources (prefixed with $)
+        if (source.StartsWith('$'))
+        {
+            return source.ToUpperInvariant() switch
+            {
+                "$GALLERIES" => allGalleries,
+                "$IMAGES" => localImages,
+                _ => null
+            };
+        }
+
+        // Handle JSON file references
+        if (source.EndsWith(".json", StringComparison.OrdinalIgnoreCase))
+        {
+            var dataPath = Path.Combine(basePath, source);
+            if (File.Exists(dataPath))
+            {
+                var json = await File.ReadAllTextAsync(dataPath, cancellationToken);
+                return JsonSerializer.Deserialize<JsonElement>(json);
+            }
+        }
+
+        return null;
     }
 
     #endregion

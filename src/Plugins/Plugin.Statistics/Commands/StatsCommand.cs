@@ -1,5 +1,4 @@
 using System.CommandLine;
-using System.Globalization;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Spectre.Console;
@@ -101,27 +100,22 @@ public sealed class StatsCommand(
         await WriteIndexMarkdownAsync(mdPath, cancellationToken).ConfigureAwait(false);
 
         // Display summary
-        AnsiConsole.WriteLine();
-        AnsiConsole.MarkupLine("[green]✓[/] Statistics generated successfully!");
-        AnsiConsole.WriteLine();
-
-        var table = new Table()
-            .Border(TableBorder.Rounded)
-            .AddColumn("Metric")
-            .AddColumn("Value");
-
-        table.AddRow("Total Images", stats.TotalImages.ToString(CultureInfo.InvariantCulture));
-        table.AddRow("Images with EXIF", stats.ImagesWithExif.ToString(CultureInfo.InvariantCulture));
-        table.AddRow("Galleries", stats.TotalGalleries.ToString(CultureInfo.InvariantCulture));
-        table.AddRow("Camera Models", stats.CameraModels.Count.ToString(CultureInfo.InvariantCulture));
-        table.AddRow("Lenses", stats.LensModels.Count.ToString(CultureInfo.InvariantCulture));
-        table.AddRow("Output", outputDir);
-
-        AnsiConsole.Write(table);
-
-        AnsiConsole.WriteLine();
-        AnsiConsole.MarkupLine("[dim]Run 'revela generate pages' to include statistics in your site.[/]");
-        AnsiConsole.MarkupLine("[dim]Note: Requires Theme.Lumina.Statistics extension for styled output.[/]");
+        var panel = new Panel(
+            new Markup($"[green]Statistics generated![/]\n\n" +
+                      $"[dim]Summary:[/]\n" +
+                      $"  Images:   {stats.TotalImages} ({stats.ImagesWithExif} with EXIF)\n" +
+                      $"  Cameras:  {stats.CameraModels.Count}\n" +
+                      $"  Lenses:   {stats.LensModels.Count}\n" +
+                      $"  Galleries: {stats.TotalGalleries}\n\n" +
+                      $"[dim]Output:[/]   [cyan]{Path.GetFullPath(outputDir)}[/]\n\n" +
+                      "[dim]Next steps:[/]\n" +
+                      "  • Run [cyan]revela generate pages[/] to include in your site\n" +
+                      "  • Requires [cyan]Theme.Lumina.Statistics[/] extension for styling"))
+        {
+            Header = new PanelHeader("[bold green]Success[/]"),
+            Border = BoxBorder.Rounded
+        };
+        AnsiConsole.Write(panel);
 
         return 0;
     }
@@ -141,11 +135,10 @@ public sealed class StatsCommand(
             ---
             title: "Photo Statistics"
             description: "EXIF statistics from your photo library"
-            template: page
-            data: statistics.json
+            template: statistics/overview
+            data:
+              statistics: statistics.json
             ---
-
-            {{ include 'statistics/page' stats }}
             """;
 
         await File.WriteAllTextAsync(filePath, content, cancellationToken).ConfigureAwait(false);

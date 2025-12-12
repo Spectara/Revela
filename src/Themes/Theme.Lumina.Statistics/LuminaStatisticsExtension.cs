@@ -12,7 +12,7 @@ namespace Spectara.Revela.Theme.Lumina.Statistics;
 /// - Aperture, focal length, and ISO distributions
 ///
 /// All configuration is in extension.json (embedded resource).
-/// Usage: {{ include 'statistics/page' stats }}
+/// Usage: {{ include 'statistics/overview' stats }}
 /// </remarks>
 public sealed class LuminaStatisticsExtension()
     : EmbeddedThemeExtension(typeof(LuminaStatisticsExtension).Assembly);

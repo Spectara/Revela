@@ -138,7 +138,9 @@ public sealed partial class ThemeExtractCommand(
                         {
                             foreach (var extension in extensions)
                             {
-                                var extensionFolder = Path.Combine(targetPath, "Extensions", extension.PartialPrefix);
+                                // Convert prefix to PascalCase for folder name (statistics → Statistics)
+                                var folderName = char.ToUpperInvariant(extension.PartialPrefix[0]) + extension.PartialPrefix[1..];
+                                var extensionFolder = Path.Combine(targetPath, "Extensions", folderName);
 
                                 if (Directory.Exists(extensionFolder))
                                 {
@@ -154,7 +156,7 @@ public sealed partial class ThemeExtractCommand(
 
                                 Directory.CreateDirectory(extensionFolder);
                                 await extension.ExtractToAsync(extensionFolder, cancellationToken);
-                                extractedExtensions.Add(extension.PartialPrefix);
+                                extractedExtensions.Add(folderName);
                                 LogExtractingExtension(logger, extension.Metadata.Name, extensionFolder);
                             }
                         });

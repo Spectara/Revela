@@ -315,4 +315,120 @@ public sealed class FrontMatterParserTests
         Assert.IsNotNull(result.Body);
         Assert.IsTrue(result.Body.Contains("<p>Just some text without frontmatter.</p>", StringComparison.Ordinal));
     }
+
+    [TestMethod]
+    public void Parse_DataSingleValue_ExtractsAsStatisticsKey()
+    {
+        // Arrange - Legacy single-value syntax defaults to "statistics" key
+        var content = """
+            ---
+            title: Stats Page
+            data: statistics.json
+            ---
+            """;
+
+        // Act
+        var result = FrontMatterParser.Parse(content);
+
+        // Assert
+        Assert.IsTrue(result.HasMetadata);
+        Assert.AreEqual("Stats Page", result.Title);
+        Assert.IsNotNull(result.DataSources);
+        Assert.HasCount(1, result.DataSources);
+        Assert.IsTrue(result.DataSources.ContainsKey("statistics"));
+        Assert.AreEqual("statistics.json", result.DataSources["statistics"]);
+    }
+
+    [TestMethod]
+    public void Parse_DataObjectSyntax_ExtractsMultipleSources()
+    {
+        // Arrange - Object syntax with multiple named sources
+        var content = """
+            ---
+            title: Overview Page
+            data:
+              stats: statistics.json
+              galleries: $galleries
+              images: $images
+            ---
+            """;
+
+        // Act
+        var result = FrontMatterParser.Parse(content);
+
+        // Assert
+        Assert.IsTrue(result.HasMetadata);
+        Assert.AreEqual("Overview Page", result.Title);
+        Assert.IsNotNull(result.DataSources);
+        Assert.HasCount(3, result.DataSources);
+        Assert.AreEqual("statistics.json", result.DataSources["stats"]);
+        Assert.AreEqual("$galleries", result.DataSources["galleries"]);
+        Assert.AreEqual("$images", result.DataSources["images"]);
+    }
+
+    [TestMethod]
+    public void Parse_DataObjectSyntax_SingleSource()
+    {
+        // Arrange - Object syntax with single named source
+        var content = """
+            ---
+            title: Photo Statistics
+            template: statistics/overview
+            data:
+              statistics: statistics.json
+            ---
+            """;
+
+        // Act
+        var result = FrontMatterParser.Parse(content);
+
+        // Assert
+        Assert.IsTrue(result.HasMetadata);
+        Assert.AreEqual("Photo Statistics", result.Title);
+        Assert.AreEqual("statistics/overview", result.Template);
+        Assert.IsNotNull(result.DataSources);
+        Assert.HasCount(1, result.DataSources);
+        Assert.AreEqual("statistics.json", result.DataSources["statistics"]);
+    }
+
+    [TestMethod]
+    public void Parse_DataWithBuiltinSources_ExtractsCorrectly()
+    {
+        // Arrange - Built-in sources with $ prefix
+        var content = """
+            ---
+            title: Home
+            data:
+              allGalleries: $galleries
+              allImages: $images
+            ---
+            """;
+
+        // Act
+        var result = FrontMatterParser.Parse(content);
+
+        // Assert
+        Assert.IsNotNull(result.DataSources);
+        Assert.HasCount(2, result.DataSources);
+        Assert.AreEqual("$galleries", result.DataSources["allGalleries"]);
+        Assert.AreEqual("$images", result.DataSources["allImages"]);
+    }
+
+    [TestMethod]
+    public void Parse_NoDataField_ReturnsEmptyDataSources()
+    {
+        // Arrange
+        var content = """
+            ---
+            title: Simple Page
+            ---
+            """;
+
+        // Act
+        var result = FrontMatterParser.Parse(content);
+
+        // Assert
+        Assert.IsNotNull(result.DataSources);
+        Assert.IsEmpty(result.DataSources);
+    }
 }

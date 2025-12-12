@@ -180,6 +180,147 @@ public sealed partial class ScribanTemplateEngine(ILogger<ScribanTemplateEngine>
     }
 
     /// <summary>
+    /// Render body content as a Scriban template with optional data.
+    /// </summary>
+    /// <remarks>
+    /// Used for processing _index.md body content that contains Scriban includes.
+    /// The data is available as 'stats' variable in the template.
+    /// </remarks>
+    public string RenderBodyTemplate(string bodyContent, object? stats)
+    {
+        try
+        {
+            var template = Template.Parse(bodyContent);
+
+            if (template.HasErrors)
+            {
+                var errors = string.Join(", ", template.Messages.Select(m => m.Message));
+                LogBodyTemplateParsingFailed(logger, errors);
+                return bodyContent; // Return original content on parse error
+            }
+
+            // Create minimal context with stats data
+            var context = new TemplateContext
+            {
+                MemberRenamer = ConvertToSnakeCase
+            };
+
+            // Set up template loader for includes
+            if (currentTheme is not null)
+            {
+                context.TemplateLoader = new ThemePluginTemplateLoader(currentTheme, themeExtensions, compiledTemplates, logger);
+            }
+
+            // Add stats as a named variable (convert JsonElement to Scriban-compatible types)
+            var scriptObject = new ScriptObject();
+            if (stats is not null)
+            {
+                scriptObject["stats"] = ConvertToScribanValue(stats);
+            }
+            context.PushGlobal(scriptObject);
+
+            return template.Render(context);
+        }
+        catch (Exception ex)
+        {
+            LogBodyRenderingFailed(logger, ex);
+            return bodyContent; // Return original content on error
+        }
+    }
+
+    /// <summary>
+    /// Converts a value (including JsonElement) to a Scriban-compatible type.
+    /// </summary>
+    private static object? ConvertToScribanValue(object? value)
+    {
+        if (value is null)
+        {
+            return null;
+        }
+
+        if (value is System.Text.Json.JsonElement jsonElement)
+        {
+            return ConvertJsonElement(jsonElement);
+        }
+
+        return value;
+    }
+
+    /// <summary>
+    /// Converts a JsonElement to Scriban-compatible types (ScriptObject, ScriptArray, primitives).
+    /// </summary>
+    private static object? ConvertJsonElement(System.Text.Json.JsonElement element)
+    {
+        return element.ValueKind switch
+        {
+            System.Text.Json.JsonValueKind.Object => ConvertJsonObject(element),
+            System.Text.Json.JsonValueKind.Array => ConvertJsonArray(element),
+            System.Text.Json.JsonValueKind.String => element.GetString(),
+            System.Text.Json.JsonValueKind.Number => element.TryGetInt64(out var l) ? l : element.GetDouble(),
+            System.Text.Json.JsonValueKind.True => true,
+            System.Text.Json.JsonValueKind.False => false,
+            System.Text.Json.JsonValueKind.Null => null,
+            System.Text.Json.JsonValueKind.Undefined => null,
+            _ => element.ToString()
+        };
+    }
+
+    /// <summary>
+    /// Converts a JSON object to a ScriptObject.
+    /// </summary>
+    private static ScriptObject ConvertJsonObject(System.Text.Json.JsonElement element)
+    {
+        var obj = new ScriptObject();
+        foreach (var prop in element.EnumerateObject())
+        {
+            obj[prop.Name] = ConvertJsonElement(prop.Value);
+        }
+        return obj;
+    }
+
+    /// <summary>
+    /// Converts a JSON array to a ScriptArray.
+    /// </summary>
+    private static ScriptArray ConvertJsonArray(System.Text.Json.JsonElement element)
+    {
+        var arr = new ScriptArray();
+        foreach (var item in element.EnumerateArray())
+        {
+            arr.Add(ConvertJsonElement(item));
+        }
+        return arr;
+    }
+
+    /// <summary>
+    /// Converts any JsonElement values in a ScriptObject to Scriban-compatible types.
+    /// </summary>
+    /// <remarks>
+    /// This handles data sources loaded from JSON files via the data: frontmatter field.
+    /// Variable names are user-defined (e.g., "statistics", "galleries", "images").
+    /// </remarks>
+    private static void ConvertJsonElementsInScriptObject(ScriptObject scriptObject)
+    {
+        // Collect keys to convert (can't modify during enumeration)
+        var keysToConvert = new List<string>();
+        foreach (var key in scriptObject.Keys)
+        {
+            if (scriptObject[key] is System.Text.Json.JsonElement)
+            {
+                keysToConvert.Add(key);
+            }
+        }
+
+        // Convert each JsonElement
+        foreach (var key in keysToConvert)
+        {
+            if (scriptObject[key] is System.Text.Json.JsonElement jsonElement)
+            {
+                scriptObject[key] = ConvertJsonElement(jsonElement);
+            }
+        }
+    }
+
+    /// <summary>
     /// Create Scriban context with custom functions and template loader
     /// </summary>
     private TemplateContext CreateScriptContext(object model)
@@ -209,6 +350,10 @@ public sealed partial class ScribanTemplateEngine(ILogger<ScribanTemplateEngine>
         // Import model as global variables
         // MemberRenamer handles the PascalCase → lowercase conversion
         scriptObject.Import(model);
+
+        // Convert any JsonElement values in the model to Scriban-compatible types
+        // This is needed for custom templates that use data: field with JSON files
+        ConvertJsonElementsInScriptObject(scriptObject);
 
         // Register custom functions
         scriptObject.Import("url_for", new Func<string, string>(UrlFor));
@@ -390,6 +535,12 @@ public sealed partial class ScribanTemplateEngine(ILogger<ScribanTemplateEngine>
 
     [LoggerMessage(Level = LogLevel.Debug, Message = "Loading partial template: {PartialName}")]
     private static partial void LogLoadingPartial(ILogger logger, string partialName);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Body template parsing failed: {Errors}")]
+    private static partial void LogBodyTemplateParsingFailed(ILogger logger, string errors);
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "Body template rendering failed")]
+    private static partial void LogBodyRenderingFailed(ILogger logger, Exception exception);
 }
 
 /// <summary>

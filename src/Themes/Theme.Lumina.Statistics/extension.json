@@ -6,12 +6,12 @@
   "targetTheme": "Lumina",
   "partialPrefix": "statistics",
   "partials": {
-    "page": "Templates/Partials/page.html",
-    "cameras": "Templates/Partials/cameras.html",
-    "lenses": "Templates/Partials/lenses.html",
-    "apertures": "Templates/Partials/apertures.html",
-    "focal-lengths": "Templates/Partials/focal-lengths.html",
-    "iso": "Templates/Partials/iso.html"
+    "overview": "Templates/Partials/Statistics/overview.html",
+    "cameras": "Templates/Partials/Statistics/cameras.html",
+    "lenses": "Templates/Partials/Statistics/lenses.html",
+    "apertures": "Templates/Partials/Statistics/apertures.html",
+    "focal-lengths": "Templates/Partials/Statistics/focal-lengths.html",
+    "iso": "Templates/Partials/Statistics/iso.html"
   },
   "styleSheets": [
     "Assets/statistics.css"

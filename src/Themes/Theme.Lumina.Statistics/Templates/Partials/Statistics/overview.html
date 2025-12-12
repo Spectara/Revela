@@ -1,0 +1,30 @@
+<div class="statistics-container">
+    <h1>{{ statistics.title }}</h1>
+
+    {{ if statistics.description }}
+    <p class="stats-description">{{ statistics.description }}</p>
+    {{ end }}
+
+    <div class="stats-summary">
+        <div class="stat-card">
+            <span class="stat-value">{{ statistics.total_images }}</span>
+            <span class="stat-label">Total Images</span>
+        </div>
+        <div class="stat-card">
+            <span class="stat-value">{{ statistics.cameras | array.size }}</span>
+            <span class="stat-label">Cameras</span>
+        </div>
+        <div class="stat-card">
+            <span class="stat-value">{{ statistics.lenses | array.size }}</span>
+            <span class="stat-label">Lenses</span>
+        </div>
+    </div>
+
+    <div class="stats-grid">
+        {{ include 'statistics/cameras' statistics }}
+        {{ include 'statistics/lenses' statistics }}
+        {{ include 'statistics/apertures' statistics }}
+        {{ include 'statistics/focal-lengths' statistics }}
+        {{ include 'statistics/iso' statistics }}
+    </div>
+</div>

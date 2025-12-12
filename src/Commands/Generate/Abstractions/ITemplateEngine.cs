@@ -42,4 +42,16 @@ public interface ITemplateEngine
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>Rendered HTML output</returns>
     Task<string> RenderFileAsync(string templatePath, object model, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Render body content as a Scriban template with optional data.
+    /// </summary>
+    /// <remarks>
+    /// Used for processing _index.md body content that contains Scriban includes.
+    /// The data is available as 'stats' variable in the template.
+    /// </remarks>
+    /// <param name="bodyContent">Raw body content with Scriban syntax</param>
+    /// <param name="stats">Optional data to expose as 'stats' variable</param>
+    /// <returns>Rendered HTML output</returns>
+    string RenderBodyTemplate(string bodyContent, object? stats);
 }
