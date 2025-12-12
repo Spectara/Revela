@@ -1,39 +1,28 @@
 using System.CommandLine;
-using Microsoft.Extensions.DependencyInjection;
-#pragma warning disable IDE0005 // Using directive is necessary for LoggerMessage attribute
-using Microsoft.Extensions.Logging;
-#pragma warning restore IDE0005
 using Spectara.Revela.Core.Abstractions;
+using Spectara.Revela.Core.Logging;
 
 namespace Spectara.Revela.Core;
 
 /// <summary>
 /// Internal implementation of IPluginContext
 /// </summary>
-internal sealed partial class PluginContext(IReadOnlyList<IPlugin> plugins) : IPluginContext
+internal sealed class PluginContext(IReadOnlyList<IPlugin> plugins, ILogger<PluginContext> logger) : IPluginContext
 {
     public IReadOnlyList<IPlugin> Plugins { get; } = plugins;
 
     public void Initialize(IServiceProvider serviceProvider)
     {
-        var logger = serviceProvider.GetService<ILoggerFactory>()?.CreateLogger<PluginContext>();
-
         foreach (var plugin in Plugins)
         {
             try
             {
                 plugin.Initialize(serviceProvider);
-                if (logger is not null)
-                {
-                    LogPluginInitialized(logger, plugin.Metadata.Name);
-                }
+                logger.PluginInitialized(plugin.Metadata.Name);
             }
             catch (Exception ex)
             {
-                if (logger is not null)
-                {
-                    LogPluginInitializationFailed(logger, plugin.Metadata.Name, ex);
-                }
+                logger.PluginInitializationFailed(plugin.Metadata.Name, ex);
             }
         }
     }
@@ -51,12 +40,12 @@ internal sealed partial class PluginContext(IReadOnlyList<IPlugin> plugins) : IP
             }
             catch (Exception ex)
             {
-                Console.Error.WriteLine($"Failed to register commands for plugin '{plugin.Metadata.Name}': {ex.Message}");
+                logger.CommandRegistrationFailed(plugin.Metadata.Name, ex);
             }
         }
     }
 
-    private static void RegisterCommand(RootCommand rootCommand, IPlugin plugin, CommandDescriptor descriptor)
+    private void RegisterCommand(RootCommand rootCommand, IPlugin plugin, CommandDescriptor descriptor)
     {
         var command = descriptor.Command;
         var parentPath = descriptor.ParentCommand;
@@ -68,7 +57,7 @@ internal sealed partial class PluginContext(IReadOnlyList<IPlugin> plugins) : IP
 
             if (parentCmd.Subcommands.Any(sc => sc.Name == command.Name))
             {
-                Console.Error.WriteLine($"Warning: Plugin '{plugin.Metadata.Name}' tried to register duplicate command '{command.Name}' under '{parentPath}'");
+                logger.DuplicateSubcommand(plugin.Metadata.Name, command.Name, parentPath);
                 return;
             }
 
@@ -79,7 +68,7 @@ internal sealed partial class PluginContext(IReadOnlyList<IPlugin> plugins) : IP
             // No parent - register directly under root
             if (rootCommand.Subcommands.Any(sc => sc.Name == command.Name))
             {
-                Console.Error.WriteLine($"Warning: Plugin '{plugin.Metadata.Name}' tried to register duplicate root command '{command.Name}'");
+                logger.DuplicateRootCommand(plugin.Metadata.Name, command.Name);
                 return;
             }
 
@@ -127,11 +116,5 @@ internal sealed partial class PluginContext(IReadOnlyList<IPlugin> plugins) : IP
             _ => $"{commandName} commands"
         };
     }
-
-    // High-performance logging with LoggerMessage source generator
-    [LoggerMessage(Level = LogLevel.Information, Message = "Plugin '{PluginName}' initialized successfully")]
-    private static partial void LogPluginInitialized(ILogger logger, string pluginName);
-
-    [LoggerMessage(Level = LogLevel.Error, Message = "Failed to initialize plugin '{PluginName}'")]
-    private static partial void LogPluginInitializationFailed(ILogger logger, string pluginName, Exception exception);
 }
+

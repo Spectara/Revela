@@ -138,10 +138,38 @@ public static class PluginServiceCollectionExtensions
 #pragma warning restore CA1848
 
         // Phase 5: Register PluginContext as singleton for UseRevelaCommands()
-        var pluginContext = new PluginContext(plugins);
-        services.AddSingleton<IPluginContext>(pluginContext);
+        // Uses factory to resolve ILogger<PluginContext> from built ServiceProvider
+        services.AddSingleton<IPluginContext>(sp =>
+        {
+            var contextLogger = sp.GetRequiredService<ILogger<PluginContext>>();
+            return new PluginContext(plugins, contextLogger);
+        });
 
-        // Return context for later Initialize() and RegisterCommands()
-        return pluginContext;
+        // Return placeholder context for fluent API compatibility
+        // The actual context will be resolved from DI with proper logger
+        return new PluginContextPlaceholder(plugins);
+    }
+}
+
+/// <summary>
+/// Placeholder context returned by AddPlugins() before ServiceProvider is built.
+/// The real PluginContext is resolved from DI in UseRevelaCommands().
+/// </summary>
+sealed file class PluginContextPlaceholder(IReadOnlyList<IPlugin> plugins) : IPluginContext
+{
+    public IReadOnlyList<IPlugin> Plugins => plugins;
+
+    public void Initialize(IServiceProvider serviceProvider)
+    {
+        // Resolve real context from DI and delegate
+        var realContext = serviceProvider.GetRequiredService<IPluginContext>();
+        realContext.Initialize(serviceProvider);
+    }
+
+    public void RegisterCommands(System.CommandLine.RootCommand rootCommand)
+    {
+        throw new InvalidOperationException(
+            "RegisterCommands should be called on the real PluginContext resolved from DI. " +
+            "Use host.Services.GetRequiredService<IPluginContext>().RegisterCommands().");
     }
 }

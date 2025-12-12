@@ -371,15 +371,13 @@ public sealed partial class ManifestService(ILogger<ManifestService> logger) : I
     /// Uses filename + lastWriteTime + fileSize for fast change detection.
     /// Same approach as expose.sh (lines 409-472).
     /// </remarks>
-#pragma warning disable CA5351 // MD5 is used for caching, not security
     public static string ComputeSourceHash(string imagePath)
     {
         var fileInfo = new FileInfo(imagePath);
         var input = $"{fileInfo.Name}_{fileInfo.LastWriteTimeUtc.Ticks}_{fileInfo.Length}";
-        var hashBytes = MD5.HashData(Encoding.UTF8.GetBytes(input));
+        var hashBytes = SHA256.HashData(Encoding.UTF8.GetBytes(input));
         return Convert.ToHexString(hashBytes)[..12];
     }
-#pragma warning restore CA5351
 
     /// <summary>
     /// Compute hash for image processing configuration.
@@ -387,7 +385,6 @@ public sealed partial class ManifestService(ILogger<ManifestService> logger) : I
     /// <remarks>
     /// When this hash changes, all images need to be regenerated.
     /// </remarks>
-#pragma warning disable CA5351 // MD5 is used for caching, not security
     public static string ComputeConfigHash(
         IReadOnlyList<int> sizes,
         IReadOnlyDictionary<string, int> formats)
@@ -395,10 +392,9 @@ public sealed partial class ManifestService(ILogger<ManifestService> logger) : I
         var sizesStr = string.Join(",", sizes.OrderBy(s => s));
         var formatsStr = string.Join(",", formats.OrderBy(f => f.Key).Select(f => $"{f.Key}:{f.Value}"));
         var input = $"sizes:{sizesStr}|formats:{formatsStr}";
-        var hashBytes = MD5.HashData(Encoding.UTF8.GetBytes(input));
+        var hashBytes = SHA256.HashData(Encoding.UTF8.GetBytes(input));
         return Convert.ToHexString(hashBytes)[..12];
     }
-#pragma warning restore CA5351
 
     /// <summary>
     /// Check if an image needs to be processed based on hash comparison.

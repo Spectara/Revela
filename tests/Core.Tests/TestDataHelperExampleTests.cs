@@ -32,18 +32,18 @@ public sealed class TestDataHelperExampleTests
     }
 
     [TestMethod]
-    public void TestDataHelperShouldFindMinimalSample()
+    public void TestDataHelperShouldFindSubdirectorySample()
     {
         // Arrange & Act
-        var minimalPath = TestDataHelper.GetSamplePath("minimal");
+        var samplePath = TestDataHelper.GetSamplePath("subdirectory");
 
         // Assert
-        Assert.IsFalse(string.IsNullOrEmpty(minimalPath));
-        Assert.IsTrue(Directory.Exists(minimalPath), $"minimal sample should exist at: {minimalPath}");
+        Assert.IsFalse(string.IsNullOrEmpty(samplePath));
+        Assert.IsTrue(Directory.Exists(samplePath), $"subdirectory sample should exist at: {samplePath}");
 
         // Check for config file
-        var configPath = Path.Combine(minimalPath, "project.json");
-        Assert.IsTrue(File.Exists(configPath), "minimal sample should have project.json");
+        var configPath = Path.Combine(samplePath, "project.json");
+        Assert.IsTrue(File.Exists(configPath), "subdirectory sample should have project.json");
     }
 
     [TestMethod]

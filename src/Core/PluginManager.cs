@@ -11,13 +11,12 @@ namespace Spectara.Revela.Core;
 /// Manages plugin installation, updates and removal via NuGet
 /// </summary>
 /// <remarks>
-/// Uses C# 12 Primary Constructor with optional parameter.
+/// Uses C# 12 Primary Constructor with Typed HttpClient pattern.
 /// Creates plugin directory automatically if it doesn't exist.
 /// Supports both NuGet and ZIP installation sources.
 /// </remarks>
-public sealed class PluginManager(ILogger<PluginManager>? logger = null)
+public sealed class PluginManager(HttpClient httpClient, ILogger<PluginManager> logger)
 {
-    private readonly ILogger<PluginManager> logger = logger ?? Microsoft.Extensions.Logging.Abstractions.NullLogger<PluginManager>.Instance;
     private readonly SourceRepository repository = Repository.Factory.GetCoreV3(new PackageSource("https://api.nuget.org/v3/index.json"));
 
     /// <summary>
@@ -114,7 +113,6 @@ public sealed class PluginManager(ILogger<PluginManager>? logger = null)
 
     private async Task<bool> InstallFromUrlAsync(Uri url, string targetDir, CancellationToken cancellationToken)
     {
-        using var httpClient = new HttpClient();
         await using var stream = await httpClient.GetStreamAsync(url, cancellationToken);
 
         // Download to temp file first

@@ -75,14 +75,3 @@ public sealed class StatisticsPlugin : IPlugin
         yield return new CommandDescriptor(statsCommand.Create(), ParentCommand: "generate");
     }
 }
-
-/// <summary>
-/// Plugin metadata implementation
-/// </summary>
-internal sealed class PluginMetadata : IPluginMetadata
-{
-    public required string Name { get; init; }
-    public required string Version { get; init; }
-    public required string Description { get; init; }
-    public required string Author { get; init; }
-}

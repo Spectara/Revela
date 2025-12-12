@@ -7,13 +7,11 @@ namespace Spectara.Revela.Plugin.Source.OneDrive.Tests.Services;
 public sealed class DownloadAnalyzerTests : IDisposable
 {
     private readonly string tempDirectory;
-    private readonly DownloadAnalyzer analyzer;
 
     public DownloadAnalyzerTests()
     {
         tempDirectory = Path.Combine(Path.GetTempPath(), $"OneDriveTests_{Guid.NewGuid():N}");
         Directory.CreateDirectory(tempDirectory);
-        analyzer = new DownloadAnalyzer();
     }
 
     public void Dispose()
@@ -37,7 +35,7 @@ public sealed class DownloadAnalyzerTests : IDisposable
         var config = CreateConfig();
 
         // Act
-        var result = analyzer.Analyze(remoteItems, tempDirectory, config);
+        var result = DownloadAnalyzer.Analyze(remoteItems, tempDirectory, config);
 
         // Assert
         Assert.HasCount(1, result.Items);
@@ -60,7 +58,7 @@ public sealed class DownloadAnalyzerTests : IDisposable
         var config = CreateConfig();
 
         // Act
-        var result = analyzer.Analyze(remoteItems, tempDirectory, config);
+        var result = DownloadAnalyzer.Analyze(remoteItems, tempDirectory, config);
 
         // Assert
         Assert.HasCount(3, result.Items);
@@ -84,7 +82,7 @@ public sealed class DownloadAnalyzerTests : IDisposable
         var config = CreateConfig();
 
         // Act
-        var result = analyzer.Analyze([remoteItem], tempDirectory, config);
+        var result = DownloadAnalyzer.Analyze([remoteItem], tempDirectory, config);
 
         // Assert
         Assert.HasCount(1, result.Items);
@@ -107,7 +105,7 @@ public sealed class DownloadAnalyzerTests : IDisposable
         var config = CreateConfig();
 
         // Act
-        var result = analyzer.Analyze([remoteItem], tempDirectory, config);
+        var result = DownloadAnalyzer.Analyze([remoteItem], tempDirectory, config);
 
         // Assert
         Assert.AreEqual(FileStatus.Unchanged, result.Items[0].Status);
@@ -128,7 +126,7 @@ public sealed class DownloadAnalyzerTests : IDisposable
         var config = CreateConfig();
 
         // Act
-        var result = analyzer.Analyze([remoteItem], tempDirectory, config);
+        var result = DownloadAnalyzer.Analyze([remoteItem], tempDirectory, config);
 
         // Assert
         Assert.AreEqual(FileStatus.Modified, result.Items[0].Status);
@@ -151,7 +149,7 @@ public sealed class DownloadAnalyzerTests : IDisposable
         var config = CreateConfig();
 
         // Act
-        var result = analyzer.Analyze([remoteItem], tempDirectory, config);
+        var result = DownloadAnalyzer.Analyze([remoteItem], tempDirectory, config);
 
         // Assert
         Assert.AreEqual(FileStatus.Modified, result.Items[0].Status);
@@ -173,7 +171,7 @@ public sealed class DownloadAnalyzerTests : IDisposable
         var config = CreateConfig();
 
         // Act
-        var result = analyzer.Analyze([remoteItem], tempDirectory, config, forceRefresh: true);
+        var result = DownloadAnalyzer.Analyze([remoteItem], tempDirectory, config, forceRefresh: true);
 
         // Assert
         Assert.AreEqual(FileStatus.Modified, result.Items[0].Status);
@@ -188,7 +186,7 @@ public sealed class DownloadAnalyzerTests : IDisposable
         var config = CreateConfig();
 
         // Act
-        var result = analyzer.Analyze([remoteItem], tempDirectory, config, forceRefresh: true);
+        var result = DownloadAnalyzer.Analyze([remoteItem], tempDirectory, config, forceRefresh: true);
 
         // Assert
         Assert.AreEqual(FileStatus.New, result.Items[0].Status); // Still new, not modified
@@ -210,7 +208,7 @@ public sealed class DownloadAnalyzerTests : IDisposable
         var config = CreateConfig();
 
         // Act
-        var result = analyzer.Analyze(remoteItems, tempDirectory, config, includeOrphans: true);
+        var result = DownloadAnalyzer.Analyze(remoteItems, tempDirectory, config, includeOrphans: true);
 
         // Assert
         Assert.HasCount(1, result.OrphanedFiles);
@@ -230,7 +228,7 @@ public sealed class DownloadAnalyzerTests : IDisposable
         var config = CreateConfig();
 
         // Act
-        var result = analyzer.Analyze(remoteItems, tempDirectory, config, includeOrphans: false);
+        var result = DownloadAnalyzer.Analyze(remoteItems, tempDirectory, config, includeOrphans: false);
 
         // Assert
         Assert.IsEmpty(result.OrphanedFiles);
@@ -245,7 +243,7 @@ public sealed class DownloadAnalyzerTests : IDisposable
         var config = CreateConfig();
 
         // Act (no remote files, so all local files are potentially orphans)
-        var result = analyzer.Analyze([], tempDirectory, config, includeOrphans: true);
+        var result = DownloadAnalyzer.Analyze([], tempDirectory, config, includeOrphans: true);
 
         // Assert
         Assert.HasCount(1, result.OrphanedFiles);
@@ -261,7 +259,7 @@ public sealed class DownloadAnalyzerTests : IDisposable
         var config = CreateConfig();
 
         // Act
-        var result = analyzer.Analyze([], tempDirectory, config, includeOrphans: true, includeAllOrphans: true);
+        var result = DownloadAnalyzer.Analyze([], tempDirectory, config, includeOrphans: true, includeAllOrphans: true);
 
         // Assert
         Assert.HasCount(2, result.OrphanedFiles);
@@ -283,7 +281,7 @@ public sealed class DownloadAnalyzerTests : IDisposable
         var config = CreateConfig();
 
         // Act
-        var result = analyzer.Analyze(remoteItems, tempDirectory, config);
+        var result = DownloadAnalyzer.Analyze(remoteItems, tempDirectory, config);
 
         // Assert
         Assert.HasCount(1, result.Items);
@@ -317,7 +315,7 @@ public sealed class DownloadAnalyzerTests : IDisposable
         var config = CreateConfig();
 
         // Act
-        var result = analyzer.Analyze([remoteItem], tempDirectory, config);
+        var result = DownloadAnalyzer.Analyze([remoteItem], tempDirectory, config);
 
         // Assert
         Assert.AreEqual(FileStatus.Unchanged, result.Items[0].Status);
@@ -347,7 +345,7 @@ public sealed class DownloadAnalyzerTests : IDisposable
         var config = CreateConfig();
 
         // Act
-        var result = analyzer.Analyze(remoteItems, tempDirectory, config);
+        var result = DownloadAnalyzer.Analyze(remoteItems, tempDirectory, config);
 
         // Assert
         Assert.AreEqual(1, result.Statistics.NewFiles);

@@ -8,8 +8,6 @@ using Spectara.Revela.Plugin.Source.OneDrive.Providers;
 using Spectara.Revela.Plugin.Source.OneDrive.Services;
 using Spectre.Console;
 
-#pragma warning disable IDE0055 // Fix formatting preference differences
-
 namespace Spectara.Revela.Plugin.Source.OneDrive.Commands;
 
 /// <summary>
@@ -21,10 +19,9 @@ namespace Spectara.Revela.Plugin.Source.OneDrive.Commands;
 /// Dependencies are injected at construction time, making the command fully testable.
 /// </remarks>
 public sealed class OneDriveSourceCommand(
-ILogger<OneDriveSourceCommand> logger,
-SharedLinkProvider provider,
-IOptionsMonitor<OneDrivePluginConfig> config,
-DownloadAnalyzer downloadAnalyzer)
+    ILogger<OneDriveSourceCommand> logger,
+    SharedLinkProvider provider,
+    IOptionsMonitor<OneDrivePluginConfig> config)
 {
     private const string MissingShareUrlError = """
         No OneDrive share URL provided. Use one of these methods:
@@ -114,7 +111,7 @@ DownloadAnalyzer downloadAnalyzer)
         command.Options.Add(cleanAllOption);
         command.Options.Add(showFilesOption);
 
-        command.SetAction(async parseResult =>
+        command.SetAction(async (parseResult, cancellationToken) =>
         {
             var options = new ExecutionOptions
             {
@@ -131,14 +128,14 @@ DownloadAnalyzer downloadAnalyzer)
                 ShowFiles = parseResult.GetValue(showFilesOption)
             };
 
-            await ExecuteAsync(options);
+            await ExecuteAsync(options, cancellationToken);
             return 0;
         });
 
         return command;
     }
 
-    private async Task ExecuteAsync(ExecutionOptions options)
+    private async Task ExecuteAsync(ExecutionOptions options, CancellationToken cancellationToken)
     {
         // Debug info (log level must be configured via environment before startup)
         if (options.Debug)
@@ -203,7 +200,7 @@ DownloadAnalyzer downloadAnalyzer)
                 .Spinner(Spinner.Known.Dots)
                 .StartAsync("[yellow]Scanning OneDrive folder structure...[/]", async ctx =>
                 {
-                    allItems = await provider.ListItemsAsync(downloadConfig);
+                    allItems = await provider.ListItemsAsync(downloadConfig, cancellationToken);
 
                     // Count files and folders in single pass
                     var fileCount = 0;
@@ -237,7 +234,7 @@ DownloadAnalyzer downloadAnalyzer)
             // Phase 2: Analyze changes
             AnsiConsole.MarkupLine("[blue]Analyzing changes...[/]");
 
-            var analysis = downloadAnalyzer.Analyze(
+            var analysis = DownloadAnalyzer.Analyze(
                 allItems,
                 outputDirectory,
                 downloadConfig,
@@ -263,7 +260,9 @@ DownloadAnalyzer downloadAnalyzer)
             // Handle orphaned files if --clean specified
             if ((options.Clean || options.CleanAll) && analysis.OrphanedFiles is not [])
             {
+#pragma warning disable CA2016 // Spectre.Console ConfirmAsync doesn't support CancellationToken
                 if (!await AnsiConsole.ConfirmAsync($"[yellow]Delete {analysis.OrphanedFiles.Count} orphaned file(s)?[/]").ConfigureAwait(false))
+#pragma warning restore CA2016
                 {
                     AnsiConsole.MarkupLine("[dim]Skipping cleanup.[/]");
                 }
@@ -316,7 +315,7 @@ DownloadAnalyzer downloadAnalyzer)
 
                     // Only download items that need updating
                     var itemsToDownload = analysis.ItemsToDownload.ToList();
-                    downloadedFiles = [.. await DownloadItemsAsync(itemsToDownload, outputDirectory, concurrency, progress, default)];
+                    downloadedFiles = [.. await DownloadItemsAsync(itemsToDownload, outputDirectory, concurrency, progress, cancellationToken)];
 
                     mainTask.StopTask();
                 });

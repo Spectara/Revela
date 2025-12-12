@@ -394,15 +394,13 @@ public sealed partial class ContentService(
     /// <summary>
     /// Compute a hash for markdown change detection.
     /// </summary>
-#pragma warning disable CA5351 // MD5 is fine for non-security hash (cache key)
     private static string ComputeMarkdownHash(SourceMarkdown source)
     {
         var hashInput = $"{source.FileName}_{source.FileSize}_{source.LastModified.Ticks}";
-        var hashBytes = System.Security.Cryptography.MD5.HashData(
+        var hashBytes = System.Security.Cryptography.SHA256.HashData(
             System.Text.Encoding.UTF8.GetBytes(hashInput));
         return Convert.ToHexString(hashBytes)[..12];
     }
-#pragma warning restore CA5351
 
     /// <summary>
     /// Calculate which sizes to generate based on image width.
@@ -422,18 +420,16 @@ public sealed partial class ContentService(
     /// <remarks>
     /// Hash is based on filename, file size, and dimensions.
     /// This allows detecting when an image has been modified.
-    /// Uses MD5 for speed (not security - just cache invalidation).
+    /// Uses SHA256 for cache invalidation.
     /// </remarks>
-#pragma warning disable CA5351 // MD5 is fine for non-security hash (cache key)
     private static string ComputeHash(SourceImage source, ImageMetadata? meta)
     {
         // Combine filename, size, and dimensions for hash
         var hashInput = $"{source.FileName}_{source.FileSize}_{meta?.Width ?? 0}x{meta?.Height ?? 0}";
-        var hashBytes = System.Security.Cryptography.MD5.HashData(
+        var hashBytes = System.Security.Cryptography.SHA256.HashData(
             System.Text.Encoding.UTF8.GetBytes(hashInput));
         return Convert.ToHexString(hashBytes)[..12];
     }
-#pragma warning restore CA5351
 
     /// <summary>
     /// Counts total manifest entries including children recursively.

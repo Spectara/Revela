@@ -26,8 +26,7 @@ public sealed partial class DownloadAnalyzer
     /// <param name="includeAllOrphans">Whether to include all orphans (not just filtered)</param>
     /// <param name="forceRefresh">Force re-download all files, even if they appear unchanged</param>
     /// <returns>Analysis result with items to download and orphaned files</returns>
-#pragma warning disable CA1822 // Member can be static - kept as instance method for future extensibility
-    public DownloadAnalysis Analyze(
+    public static DownloadAnalysis Analyze(
         IReadOnlyList<OneDriveItem> remoteItems,
         string destinationDirectory,
         OneDriveConfig config,

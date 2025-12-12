@@ -66,6 +66,36 @@ public interface IPluginMetadata
 }
 
 /// <summary>
+/// Default implementation of <see cref="IPluginMetadata"/>
+/// </summary>
+/// <remarks>
+/// Use this in plugins instead of creating your own implementation.
+/// <code>
+/// public IPluginMetadata Metadata => new PluginMetadata
+/// {
+///     Name = "My Plugin",
+///     Version = "1.0.0",
+///     Description = "Plugin description",
+///     Author = "Author Name"
+/// };
+/// </code>
+/// </remarks>
+public sealed class PluginMetadata : IPluginMetadata
+{
+    /// <inheritdoc />
+    public required string Name { get; init; }
+
+    /// <inheritdoc />
+    public required string Version { get; init; }
+
+    /// <inheritdoc />
+    public required string Description { get; init; }
+
+    /// <inheritdoc />
+    public required string Author { get; init; }
+}
+
+/// <summary>
 /// Theme plugin interface - extends IPlugin with theme-specific functionality
 /// </summary>
 /// <remarks>

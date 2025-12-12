@@ -15,8 +15,14 @@ public static class ServiceCollectionExtensions
     /// <returns>The service collection for chaining.</returns>
     public static IServiceCollection AddPluginsFeature(this IServiceCollection services)
     {
-        // PluginManager from Core
-        services.AddSingleton<PluginManager>();
+        // PluginManager from Core with Typed HttpClient
+        // Standard resilience handler provides: retry (3x), circuit breaker, timeout
+        services.AddHttpClient<PluginManager>(client =>
+        {
+            client.Timeout = TimeSpan.FromMinutes(10); // ZIP downloads can be large
+            client.DefaultRequestHeaders.Add("User-Agent", "Revela-PluginManager/1.0");
+        })
+        .AddStandardResilienceHandler();
 
         // Commands
         services.AddTransient<PluginListCommand>();

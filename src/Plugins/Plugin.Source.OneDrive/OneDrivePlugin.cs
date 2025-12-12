@@ -5,7 +5,6 @@ using Spectara.Revela.Core.Abstractions;
 using Spectara.Revela.Plugin.Source.OneDrive.Commands;
 using Spectara.Revela.Plugin.Source.OneDrive.Configuration;
 using Spectara.Revela.Plugin.Source.OneDrive.Providers;
-using Spectara.Revela.Plugin.Source.OneDrive.Services;
 
 namespace Spectara.Revela.Plugin.Source.OneDrive;
 
@@ -55,8 +54,7 @@ public sealed class OneDrivePlugin : IPlugin
         })
         .AddStandardResilienceHandler(); // Modern .NET 10 resilience (replaces old Polly)
 
-        // Register Services
-        services.AddSingleton<DownloadAnalyzer>();
+        // Note: DownloadAnalyzer is static, no DI registration needed
 
         // Register Commands for Dependency Injection
         services.AddTransient<OneDriveInitCommand>();
@@ -88,16 +86,5 @@ public sealed class OneDrivePlugin : IPlugin
         oneDriveCommand.Subcommands.Add(sourceCommand.Create());
         yield return new CommandDescriptor(oneDriveCommand, ParentCommand: "source");
     }
-}
-
-/// <summary>
-/// Plugin metadata implementation
-/// </summary>
-internal sealed class PluginMetadata : IPluginMetadata
-{
-    public required string Name { get; init; }
-    public required string Version { get; init; }
-    public required string Description { get; init; }
-    public required string Author { get; init; }
 }
 
