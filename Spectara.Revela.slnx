@@ -1,0 +1,20 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Core/Core.csproj" />
+    <Project Path="src/Commands/Commands.csproj" />
+    <Project Path="src/Cli/Cli.csproj" />
+    <Folder Name="/Plugins/">
+      <Project Path="src/Plugins/Plugin.Deploy.SSH/Plugin.Deploy.SSH.csproj" />
+      <Project Path="src/Plugins/Plugin.Source.OneDrive/Plugin.Source.OneDrive.csproj" />
+    </Folder>
+    <Folder Name="/Themes/">
+      <Project Path="src/Themes/Theme.Expose/Theme.Expose.csproj" />
+    </Folder>
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Core.Tests/Core.Tests.csproj" />
+    <Project Path="tests/Commands.Tests/Commands.Tests.csproj" />
+    <Project Path="tests/IntegrationTests/IntegrationTests.csproj" />
+    <Project Path="tests/Plugin.Source.OneDrive.Tests/Plugin.Source.OneDrive.Tests.csproj" />
+  </Folder>
+</Solution>
