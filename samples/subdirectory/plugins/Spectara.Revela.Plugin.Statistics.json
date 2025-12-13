@@ -2,7 +2,7 @@
   "Spectara.Revela.Plugin.Statistics": {
     "OutputPath": "source/statistics",
     "MaxEntriesPerCategory": 15,
-    "SortByFrequency": true,
+    "SortByCount": true,
     "MaxBarWidth": 100
   }
 }

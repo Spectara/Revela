@@ -10,6 +10,7 @@
 
     <!-- MSTest v4 with Microsoft.Testing.Platform -->
     <EnableMSTestRunner>true</EnableMSTestRunner>
+    <TestingPlatformDotnetTestSupport>true</TestingPlatformDotnetTestSupport>
     <OutputType>Exe</OutputType>
 
     <!-- Suppress MSTest public class requirement warning -->

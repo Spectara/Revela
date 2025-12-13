@@ -23,6 +23,12 @@
     <AnalysisLevel>latest-all</AnalysisLevel>
   </PropertyGroup>
 
+  <PropertyGroup Label="Testing Platform (.NET 10+)">
+    <!-- Enable new dotnet test experience required for .NET 10 SDK -->
+    <!-- https://aka.ms/dotnet-test-mtp-error -->
+    <TestingPlatformDotnetTestSupport>true</TestingPlatformDotnetTestSupport>
+  </PropertyGroup>
+
   <PropertyGroup Label="Package Metadata">
     <Authors>Spectara</Authors>
     <Company>Spectara</Company>

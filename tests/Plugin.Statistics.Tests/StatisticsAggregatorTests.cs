@@ -130,7 +130,7 @@ public sealed class StatisticsAggregatorTests
     public void Aggregate_SortsByFrequencyWhenConfigured()
     {
         // Arrange
-        config.CurrentValue.Returns(new StatisticsPluginConfig { SortByFrequency = true });
+        config.CurrentValue.Returns(new StatisticsPluginConfig { SortByCount = true });
         var images = new Dictionary<string, ImageContent>
         {
             ["img1.jpg"] = CreateImage("img1.jpg", new ExifData { FNumber = 1.4 }),  // f/1.4-2.0 bucket

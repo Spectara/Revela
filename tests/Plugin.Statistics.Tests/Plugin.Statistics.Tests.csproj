@@ -10,6 +10,7 @@
 
     <!-- MSTest v4 with Microsoft.Testing.Platform -->
     <EnableMSTestRunner>true</EnableMSTestRunner>
+    <TestingPlatformDotnetTestSupport>true</TestingPlatformDotnetTestSupport>
     <OutputType>Exe</OutputType>
 
     <!-- Suppress MSTest public class requirement warning -->
@@ -18,6 +19,7 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
+    <PackageReference Include="Microsoft.Extensions.Telemetry.Abstractions" />
     <PackageReference Include="MSTest" />
     <PackageReference Include="MSTest.Analyzers" />
     <PackageReference Include="NSubstitute" />
