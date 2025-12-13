@@ -185,10 +185,12 @@ public sealed partial class StatisticsAggregator(
         List<(string Label, int Count)> counts,
         StatisticsPluginConfig settings)
     {
-        // Sort
-        List<(string Label, int Count)> sorted = settings.SortByFrequency
+        // Sort - use NumericOrdering for natural sorting (ISO 100 before ISO 1000)
+        var naturalComparer = StringComparer.Create(CultureInfo.InvariantCulture, CompareOptions.NumericOrdering);
+
+        List<(string Label, int Count)> sorted = settings.SortByCount
             ? [.. counts.OrderByDescending(c => c.Count)]
-            : [.. counts.OrderBy(c => c.Label)];
+            : [.. counts.OrderBy(c => c.Label, naturalComparer)];
 
         // Limit entries if configured
         if (settings.MaxEntriesPerCategory > 0 && sorted.Count > settings.MaxEntriesPerCategory)

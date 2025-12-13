@@ -1,5 +1,6 @@
 {
   "Spectara.Revela.Plugin.Statistics": {
-    "OutputPath": "source/03 Pages/Statistics"
+    "OutputPath": "source/03 Pages/Statistics",
+    "SortByCount": false
   }
 }

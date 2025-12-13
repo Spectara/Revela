@@ -17,7 +17,7 @@ namespace Spectara.Revela.Plugin.Statistics.Configuration;
 ///   "Spectara.Revela.Plugin.Statistics": {
 ///     "OutputPath": "source/statistics",
 ///     "MaxEntriesPerCategory": 15,
-///     "SortByFrequency": true
+///     "SortByCount": true
 ///   }
 /// }
 ///
@@ -53,9 +53,9 @@ public sealed class StatisticsPluginConfig
     public int MaxEntriesPerCategory { get; init; } = 15;
 
     /// <summary>
-    /// Sort entries by frequency (descending) instead of by value
+    /// Sort entries by count (descending) instead of by value
     /// </summary>
-    public bool SortByFrequency { get; init; } = true;
+    public bool SortByCount { get; init; } = true;
 
     /// <summary>
     /// Maximum width of the bar chart (in characters for text mode, or percentage for HTML)

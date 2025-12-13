@@ -1,7 +1,7 @@
 <h3>Aperture</h3>
 <dl>
 {{ for item in statistics.apertures }}
-    <dt data-count="{{ item.count }}">f/{{ item.value }}</dt>
+    <dt data-count="{{ item.count }}">{{ item.value }}</dt>
     <dd style="--percent: {{ item.percentage }}"></dd>
 {{ end }}
 </dl>

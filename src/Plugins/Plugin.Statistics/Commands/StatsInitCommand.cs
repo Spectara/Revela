@@ -87,7 +87,7 @@ public sealed class StatsInitCommand(ILogger<StatsInitCommand> logger)
                 {
                     ["OutputPath"] = outputPath,
                     ["MaxEntriesPerCategory"] = 15,
-                    ["SortByFrequency"] = true,
+                    ["SortByCount"] = true,
                     ["MaxBarWidth"] = 100
                 }
             };
