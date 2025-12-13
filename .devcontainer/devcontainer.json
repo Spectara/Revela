@@ -1,0 +1,22 @@
+{
+    "name": "Revela Development",
+    "image": "mcr.microsoft.com/devcontainers/dotnet:10.0",
+    "features": {
+        "ghcr.io/devcontainers/features/powershell:1": {}
+    },
+    "customizations": {
+        "vscode": {
+            "extensions": [
+                "ms-dotnettools.csdevkit",
+                "ms-dotnettools.csharp",
+                "editorconfig.editorconfig",
+                "ms-vscode.vscode-github-actions"
+            ],
+            "settings": {
+                "dotnet.defaultSolution": "Spectara.Revela.slnx"
+            }
+        }
+    },
+    "postCreateCommand": "dotnet restore",
+    "remoteUser": "vscode"
+}

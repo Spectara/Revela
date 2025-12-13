@@ -3,6 +3,7 @@
 [![Build](https://github.com/spectara/revela/actions/workflows/build.yml/badge.svg)](https://github.com/spectara/revela/actions/workflows/build.yml)
 [![Dependencies](https://github.com/spectara/revela/actions/workflows/dependency-update-check.yml/badge.svg)](https://github.com/spectara/revela/actions/workflows/dependency-update-check.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/spectara/revela)
 
 > [!NOTE]
 > **🚧 BETA - Ready for Testing! 🚧**

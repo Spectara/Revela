@@ -1,0 +1,8 @@
+{
+    "recommendations": [
+        "ms-dotnettools.csdevkit",
+        "ms-dotnettools.csharp",
+        "editorconfig.editorconfig",
+        "ms-vscode.vscode-github-actions"
+    ]
+}
