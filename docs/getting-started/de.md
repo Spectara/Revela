@@ -195,7 +195,9 @@ Die `project.json` enthält technische Einstellungen. Für den Anfang kannst du 
         "webp": 85,
         "jpg": 90
       },
-      "sizes": [640, 1024, 1280, 1920, 2560]
+      "sizes": [640, 1024, 1280, 1920, 2560],
+      "minWidth": 800,
+      "minHeight": 600
     }
   }
 }
@@ -207,8 +209,10 @@ Die `project.json` enthält technische Einstellungen. Für den Anfang kannst du 
 |-------------|-----------|
 | `formats` | Welche Bildformate erstellt werden (AVIF, WebP, JPG) |
 | Die Zahlen (80, 85, 90) | Qualitätsstufe (0-100), höher = bessere Qualität, größere Dateien |
-| `sizes` | Bildbreiten in Pixeln, die erstellt werden |
+| `sizes` | Bildbreiten in Pixeln, die erstellt werden || `minWidth` | Minimale Bildbreite in Pixeln (kleinere Bilder werden ignoriert) |
+| `minHeight` | Minimale Bildhöhe in Pixeln (kleinere Bilder werden ignoriert) |
 
+**Tipp:** Verwende `minWidth` und `minHeight`, um Vorschau-/Thumbnail-Dateien herauszufiltern, die manche Programme oder Handys neben deine Fotos legen.
 **Tipp für den Anfang:** AVIF bietet die beste Kompression, braucht aber deutlich länger zum Berechnen. Für einen schnellen ersten Test empfehlen wir nur JPG:
 ```json
 "formats": {

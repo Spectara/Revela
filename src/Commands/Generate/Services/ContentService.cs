@@ -147,6 +147,7 @@ public sealed partial class ContentService(
     /// Uses parallel NetVips access (header-only) for fast metadata extraction.
     /// Approximately 10-20ms per image vs 200-500ms for full processing.
     /// Parallelized using Environment.ProcessorCount for optimal throughput.
+    /// Images below MinWidth or MinHeight thresholds are skipped.
     /// </remarks>
     private async Task<Dictionary<string, ImageMetadata>> ReadAllImageMetadataAsync(
         IReadOnlyList<SourceImage> images,
@@ -156,6 +157,10 @@ public sealed partial class ContentService(
         var metadata = new Dictionary<string, ImageMetadata>(StringComparer.OrdinalIgnoreCase);
         var metadataLock = new object();
         var processedCount = 0;
+        var skippedCount = 0;
+
+        var minWidth = imageSettings.MinWidth;
+        var minHeight = imageSettings.MinHeight;
 
         await Parallel.ForEachAsync(
             images,
@@ -165,6 +170,16 @@ public sealed partial class ContentService(
                 try
                 {
                     var meta = await imageProcessor.ReadMetadataAsync(image.SourcePath, ct);
+
+                    // Skip images below minimum size thresholds
+                    if ((minWidth > 0 && meta.Width < minWidth) ||
+                        (minHeight > 0 && meta.Height < minHeight))
+                    {
+                        LogImageTooSmall(logger, image.SourcePath, meta.Width, meta.Height, minWidth, minHeight);
+                        Interlocked.Increment(ref skippedCount);
+                        Interlocked.Increment(ref processedCount);
+                        return;
+                    }
 
                     lock (metadataLock)
                     {
@@ -190,6 +205,11 @@ public sealed partial class ContentService(
                     LogMetadataReadFailed(logger, image.SourcePath, ex);
                 }
             });
+
+        if (skippedCount > 0)
+        {
+            LogSmallImagesSkipped(logger, skippedCount, minWidth, minHeight);
+        }
 
         return metadata;
     }
@@ -456,6 +476,12 @@ public sealed partial class ContentService(
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Failed to read metadata for {ImagePath}")]
     private static partial void LogMetadataReadFailed(ILogger logger, string imagePath, Exception exception);
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Skipping small image {ImagePath} ({Width}x{Height}, min: {MinWidth}x{MinHeight})")]
+    private static partial void LogImageTooSmall(ILogger logger, string imagePath, int width, int height, int minWidth, int minHeight);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Skipped {SkippedCount} small images (below {MinWidth}x{MinHeight})")]
+    private static partial void LogSmallImagesSkipped(ILogger logger, int skippedCount, int minWidth, int minHeight);
 
     #endregion
 }

@@ -130,6 +130,30 @@ public sealed class ImageSettings
 
     /// <summary>Image widths to generate (in pixels)</summary>
     public IReadOnlyList<int> Sizes { get; init; } = [640, 1024, 1280, 1920, 2560];
+
+    /// <summary>
+    /// Minimum image width in pixels. Images narrower than this are skipped during scan.
+    /// </summary>
+    /// <remarks>
+    /// Useful for filtering out preview/thumbnail files that some programs or phones
+    /// place alongside the actual photos. Set to 0 to disable filtering (default).
+    /// </remarks>
+    /// <example>
+    /// Set to 800 to skip images smaller than 800px wide.
+    /// </example>
+    public int MinWidth { get; init; }
+
+    /// <summary>
+    /// Minimum image height in pixels. Images shorter than this are skipped during scan.
+    /// </summary>
+    /// <remarks>
+    /// Useful for filtering out preview/thumbnail files. Combined with <see cref="MinWidth"/>,
+    /// images failing either threshold are skipped. Set to 0 to disable filtering (default).
+    /// </remarks>
+    /// <example>
+    /// Set to 600 to skip images smaller than 600px tall.
+    /// </example>
+    public int MinHeight { get; init; }
 }
 
 /// <summary>
