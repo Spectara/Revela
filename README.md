@@ -66,6 +66,15 @@ dotnet pack src/Cli
 dotnet tool install -g --add-source ./artifacts/packages Revela
 ```
 
+## 📖 Getting Started Guides
+
+New to Revela? Check out our step-by-step guides:
+
+| Language | Guide |
+|----------|-------|
+| 🇬🇧 English | [Getting Started](docs/getting-started/en.md) |
+| 🇩🇪 Deutsch | [Erste Schritte](docs/getting-started/de.md) |
+
 ## 🎯 Quick Start
 
 ### 1. Create a New Site

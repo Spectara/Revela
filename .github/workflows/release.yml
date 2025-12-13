@@ -147,15 +147,17 @@ jobs:
           cp artifacts/bin/Theme.Lumina/Release/net10.0/${{ matrix.rid }}/Spectara.Revela.Theme.Lumina.dll ./publish/
         shell: bash
 
-      - name: Copy quickstart guide
-        run: cp QUICKSTART.md ./publish/
+      - name: Copy getting-started guides
+        run: |
+          mkdir -p ./publish/getting-started
+          cp docs/getting-started/*.md ./publish/getting-started/
         shell: bash
 
       - name: Package (Windows)
         if: matrix.os == 'windows-latest'
         run: |
           cd publish
-          Compress-Archive -Path revela.exe, Spectara.Revela.Theme.Lumina.dll, QUICKSTART.md -DestinationPath ../${{ matrix.artifact }}
+          Compress-Archive -Path revela.exe, Spectara.Revela.Theme.Lumina.dll, getting-started -DestinationPath ../${{ matrix.artifact }}
         shell: pwsh
 
       - name: Package (Linux/macOS)
@@ -163,7 +165,7 @@ jobs:
         run: |
           cd publish
           chmod +x revela
-          tar -czvf ../${{ matrix.artifact }} revela Spectara.Revela.Theme.Lumina.dll QUICKSTART.md
+          tar -czvf ../${{ matrix.artifact }} revela Spectara.Revela.Theme.Lumina.dll getting-started
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4

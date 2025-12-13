@@ -36,7 +36,10 @@ Nach dem Entpacken hast du folgende Dateien:
 C:\Revela\
 ├── revela.exe                          ← Das Hauptprogramm
 ├── Spectara.Revela.Theme.Lumina.dll    ← Das Standard-Theme
-└── QUICKSTART.md                       ← Kurzanleitung (Englisch)
+└── getting-started/                    ← Anleitungen (mehrsprachig)
+    ├── README.md
+    ├── de.md                           ← Deutsch
+    └── en.md                           ← English
 ```
 
 ### Schritt 1.2: Installation testen
@@ -86,7 +89,7 @@ Revela erstellt automatisch die Grundstruktur:
 C:\Revela\
 ├── revela.exe                          ← Das Hauptprogramm
 ├── Spectara.Revela.Theme.Lumina.dll    ← Das Standard-Theme
-├── QUICKSTART.md                       ← Kurzanleitung (Englisch)
+├── getting-started/                    ← Anleitungen
 ├── project.json                        ← Projekt-Einstellungen (neu)
 ├── site.json                           ← Website-Informationen (neu)
 ├── source/                             ← Hier kommen deine Fotos rein (neu)
