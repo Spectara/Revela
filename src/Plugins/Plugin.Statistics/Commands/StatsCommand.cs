@@ -20,7 +20,7 @@ namespace Spectara.Revela.Plugin.Statistics.Commands;
 /// and resolved only when the command executes.
 /// </para>
 /// <para>
-/// Output: Creates _index.md with front-matter and partial reference.
+/// Output: Creates _index.revela with frontmatter and template reference.
 /// The actual rendering is done by the theme extension (Theme.Lumina.Statistics).
 /// </para>
 /// </remarks>
@@ -89,15 +89,15 @@ public sealed class StatsCommand(
         var outputPath = outputOverride ?? settings.OutputPath;
         var outputDir = Path.Combine(Directory.GetCurrentDirectory(), outputPath);
         var jsonPath = Path.Combine(outputDir, "statistics.json");
-        var mdPath = Path.Combine(outputDir, "_index.md");
+        var revelaPath = Path.Combine(outputDir, "_index.revela");
 
         // Write JSON data file (for template consumption)
         logger.WritingJson();
         await JsonWriter.WriteAsync(jsonPath, stats, cancellationToken).ConfigureAwait(false);
 
-        // Write _index.md with front-matter and partial reference
+        // Write _index.revela with frontmatter
         logger.WritingMarkdown();
-        await WriteIndexMarkdownAsync(mdPath, cancellationToken).ConfigureAwait(false);
+        await WriteIndexRevelaAsync(revelaPath, cancellationToken).ConfigureAwait(false);
 
         // Display summary
         var panel = new Panel(
@@ -121,9 +121,9 @@ public sealed class StatsCommand(
     }
 
     /// <summary>
-    /// Write _index.md with front-matter and partial reference
+    /// Write _index.revela with Scriban frontmatter
     /// </summary>
-    private static async Task WriteIndexMarkdownAsync(string filePath, CancellationToken cancellationToken)
+    private static async Task WriteIndexRevelaAsync(string filePath, CancellationToken cancellationToken)
     {
         var directory = Path.GetDirectoryName(filePath);
         if (!string.IsNullOrEmpty(directory))
@@ -132,13 +132,12 @@ public sealed class StatsCommand(
         }
 
         const string content = """
-            ---
-            title: "Photo Statistics"
-            description: "EXIF statistics from your photo library"
-            template: statistics/overview
-            data:
-              statistics: statistics.json
-            ---
+            +++
+            title = "Photo Statistics"
+            description = "EXIF statistics from your photo library"
+            template = "statistics/overview"
+            data = { statistics: "statistics.json" }
+            +++
             """;
 
         await File.WriteAllTextAsync(filePath, content, cancellationToken).ConfigureAwait(false);

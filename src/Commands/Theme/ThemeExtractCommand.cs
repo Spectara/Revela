@@ -1,4 +1,6 @@
 using System.CommandLine;
+using Microsoft.Extensions.Configuration;
+using Spectara.Revela.Core.Abstractions;
 using Spectara.Revela.Core.Services;
 using Spectre.Console;
 
@@ -9,12 +11,17 @@ namespace Spectara.Revela.Commands.Theme;
 /// </summary>
 /// <remarks>
 /// Usage:
-///   revela theme extract Lumina           → themes/Lumina/
-///   revela theme extract Lumina MyTheme   → themes/MyTheme/
+///   revela theme extract Lumina           → themes/Lumina/ (full extraction)
+///   revela theme extract Lumina MyTheme   → themes/MyTheme/ (renamed)
+///   revela theme extract --file Body/Gallery.revela → themes/Lumina/Body/Gallery.revela
+///   revela theme extract --file Partials/ → themes/Lumina/Partials/* (folder)
 ///   revela theme extract Lumina --extensions → also extracts Theme.Lumina.* extensions
 /// </remarks>
 public sealed partial class ThemeExtractCommand(
     IThemeResolver themeResolver,
+    ITemplateResolver templateResolver,
+    IAssetResolver assetResolver,
+    IConfiguration configuration,
     ILogger<ThemeExtractCommand> logger)
 {
     /// <summary>
@@ -23,9 +30,10 @@ public sealed partial class ThemeExtractCommand(
     /// <returns>The configured extract command.</returns>
     public Command Create()
     {
-        var sourceArg = new Argument<string>("source")
+        var sourceArg = new Argument<string?>("source")
         {
-            Description = "Name of the theme to extract"
+            Description = "Name of the theme to extract (required for full extraction)",
+            Arity = ArgumentArity.ZeroOrOne
         };
 
         var targetArg = new Argument<string?>("target")
@@ -34,9 +42,14 @@ public sealed partial class ThemeExtractCommand(
             Arity = ArgumentArity.ZeroOrOne
         };
 
+        var fileOption = new Option<string?>("--file", "-F")
+        {
+            Description = "Extract specific file or folder (e.g., 'Body/Gallery.revela' or 'Partials/')"
+        };
+
         var forceOption = new Option<bool>("--force", "-f")
         {
-            Description = "Overwrite existing theme folder"
+            Description = "Overwrite existing files without confirmation"
         };
 
         var extensionsOption = new Option<bool>("--extensions", "-e")
@@ -44,26 +57,326 @@ public sealed partial class ThemeExtractCommand(
             Description = "Also extract matching theme extensions (Theme.{Name}.* packages)"
         };
 
-        var command = new Command("extract", "Extract a theme to themes/ folder for customization");
+        var command = new Command("extract", "Extract a theme or specific files to themes/ folder for customization");
         command.Arguments.Add(sourceArg);
         command.Arguments.Add(targetArg);
+        command.Options.Add(fileOption);
         command.Options.Add(forceOption);
         command.Options.Add(extensionsOption);
 
         command.SetAction(async (parseResult, cancellationToken) =>
         {
-            var source = parseResult.GetValue(sourceArg)!;
+            var source = parseResult.GetValue(sourceArg);
             var target = parseResult.GetValue(targetArg);
+            var file = parseResult.GetValue(fileOption);
             var force = parseResult.GetValue(forceOption);
             var includeExtensions = parseResult.GetValue(extensionsOption);
 
-            return await ExecuteAsync(source, target, force, includeExtensions, cancellationToken);
+            // If --file is specified, use selective extraction
+            if (!string.IsNullOrEmpty(file))
+            {
+                return await ExecuteSelectiveExtractAsync(file, force, cancellationToken);
+            }
+
+            // Otherwise, require source argument for full extraction
+            if (string.IsNullOrEmpty(source))
+            {
+                AnsiConsole.MarkupLine("[red]✗[/] Theme name is required for full extraction.");
+                AnsiConsole.MarkupLine("");
+                AnsiConsole.MarkupLine("Usage:");
+                AnsiConsole.MarkupLine("  [cyan]revela theme extract <theme>[/]         Full theme extraction");
+                AnsiConsole.MarkupLine("  [cyan]revela theme extract --file <path>[/]   Extract specific file");
+                return 1;
+            }
+
+            return await ExecuteFullExtractAsync(source, target, force, includeExtensions, cancellationToken);
         });
 
         return command;
     }
 
-    private async Task<int> ExecuteAsync(
+    private async Task<int> ExecuteSelectiveExtractAsync(
+        string filePath,
+        bool force,
+        CancellationToken cancellationToken)
+    {
+        var projectPath = Environment.CurrentDirectory;
+
+        // Get theme name from config
+        var themeName = configuration["theme"] ?? "default";
+
+        // Resolve theme
+        var theme = themeResolver.Resolve(themeName, projectPath);
+        if (theme is null)
+        {
+            AnsiConsole.MarkupLine($"[red]✗[/] Theme [yellow]'{EscapeMarkup(themeName)}'[/] not found.");
+            AnsiConsole.MarkupLine("");
+            AnsiConsole.MarkupLine("Run [cyan]revela theme list[/] to see available themes.");
+            return 1;
+        }
+
+        // Get extensions
+        var extensions = themeResolver.GetExtensions(themeName);
+
+        // Initialize resolvers
+        templateResolver.Initialize(theme, extensions, projectPath);
+        assetResolver.Initialize(theme, extensions, projectPath);
+
+        // Normalize path
+        var normalizedPath = filePath.Replace('\\', '/');
+        var isFolder = normalizedPath.EndsWith('/') || !Path.HasExtension(normalizedPath);
+
+        // Find matching entries
+        var templateEntries = templateResolver.GetAllEntries();
+        var assetEntries = assetResolver.GetAllEntries();
+
+        var matchingFiles = new List<(ResolvedFileInfo Entry, bool IsAsset)>();
+
+        if (isFolder)
+        {
+            // Match by prefix (case-insensitive)
+            var prefix = normalizedPath.TrimEnd('/');
+
+            foreach (var entry in templateEntries)
+            {
+                if (entry.Key.StartsWith(prefix + "/", StringComparison.OrdinalIgnoreCase) ||
+                    entry.Key.Equals(prefix, StringComparison.OrdinalIgnoreCase))
+                {
+                    matchingFiles.Add((entry, false));
+                }
+            }
+
+            foreach (var entry in assetEntries)
+            {
+                var assetKey = "assets/" + entry.Key;
+                if (assetKey.StartsWith(prefix + "/", StringComparison.OrdinalIgnoreCase) ||
+                    assetKey.Equals(prefix, StringComparison.OrdinalIgnoreCase))
+                {
+                    matchingFiles.Add((entry, true));
+                }
+            }
+        }
+        else
+        {
+            // Exact match (with or without .revela)
+            var keyWithoutExt = normalizedPath.EndsWith(".revela", StringComparison.OrdinalIgnoreCase)
+                ? normalizedPath[..^".revela".Length]
+                : normalizedPath;
+
+            var templateEntry = templateEntries.FirstOrDefault(e =>
+                e.Key.Equals(keyWithoutExt, StringComparison.OrdinalIgnoreCase));
+
+            if (templateEntry is not null)
+            {
+                matchingFiles.Add((templateEntry, false));
+            }
+            else
+            {
+                // Try as asset (Assets/xxx)
+                var assetKey = normalizedPath.StartsWith("assets/", StringComparison.OrdinalIgnoreCase)
+                    ? normalizedPath["assets/".Length..]
+                    : normalizedPath;
+
+                var assetEntry = assetEntries.FirstOrDefault(e =>
+                    e.Key.Equals(assetKey, StringComparison.OrdinalIgnoreCase));
+
+                if (assetEntry is not null)
+                {
+                    matchingFiles.Add((assetEntry, true));
+                }
+            }
+        }
+
+        if (matchingFiles.Count == 0)
+        {
+            AnsiConsole.MarkupLine($"[red]✗[/] No files match [yellow]'{EscapeMarkup(filePath)}'[/]");
+            AnsiConsole.MarkupLine("");
+            AnsiConsole.MarkupLine("Run [cyan]revela theme files[/] to see available files.");
+            return 1;
+        }
+
+        // Filter out files that are already local overrides (nothing to extract)
+        var localFiles = matchingFiles.Where(f => f.Entry.Source == FileSourceType.Local).ToList();
+        if (localFiles.Count > 0)
+        {
+            AnsiConsole.MarkupLine("[yellow]The following files are already local overrides:[/]");
+            foreach (var (entry, _) in localFiles)
+            {
+                AnsiConsole.MarkupLine($"  • [cyan]{EscapeMarkup(entry.Key)}[/]");
+            }
+            AnsiConsole.MarkupLine("");
+
+            matchingFiles = [.. matchingFiles.Where(f => f.Entry.Source != FileSourceType.Local)];
+
+            if (matchingFiles.Count == 0)
+            {
+                AnsiConsole.MarkupLine("[dim]All requested files are already local overrides. Nothing to extract.[/]");
+                return 0;
+            }
+        }
+
+        // Check for existing files
+        var existingFiles = new List<string>();
+        var filesToExtract = new List<(ResolvedFileInfo Entry, bool IsAsset, string TargetPath)>();
+
+        foreach (var (entry, isAsset) in matchingFiles)
+        {
+            var targetPath = GetTargetPath(entry, isAsset, themeName, projectPath);
+            filesToExtract.Add((entry, isAsset, targetPath));
+
+            if (File.Exists(targetPath))
+            {
+                existingFiles.Add(Path.GetRelativePath(projectPath, targetPath));
+            }
+        }
+
+        // Handle existing files
+        if (existingFiles.Count > 0 && !force)
+        {
+            AnsiConsole.MarkupLine("[yellow]The following files already exist:[/]");
+            foreach (var file in existingFiles)
+            {
+                AnsiConsole.MarkupLine($"  • [cyan]{EscapeMarkup(file)}[/]");
+            }
+            AnsiConsole.MarkupLine("");
+
+            if (!await AnsiConsole.ConfirmAsync("Overwrite?", defaultValue: false, cancellationToken))
+            {
+                AnsiConsole.MarkupLine("[dim]Cancelled.[/]");
+                return 0;
+            }
+        }
+
+        // Extract files
+        var extractedFiles = new List<string>();
+
+        await AnsiConsole.Status()
+            .Spinner(Spinner.Known.Dots)
+            .StartAsync("Extracting files...", async _ =>
+            {
+                foreach (var (entry, isAsset, targetPath) in filesToExtract)
+                {
+                    await ExtractFileAsync(entry, isAsset, targetPath, theme, extensions, cancellationToken);
+                    extractedFiles.Add(Path.GetRelativePath(projectPath, targetPath));
+                }
+            });
+
+        // Success panel
+        var fileList = string.Join("\n", extractedFiles.Select(f => $"  [green]✓[/] [cyan]{EscapeMarkup(f)}[/]"));
+        var panel = new Panel($"{fileList}\n\n" +
+                            "[dim]These files will now override the embedded theme files.[/]")
+        {
+            Header = new PanelHeader("[bold green]Success[/]"),
+            Border = BoxBorder.Rounded
+        };
+
+        AnsiConsole.Write(panel);
+
+        return 0;
+    }
+
+    private static string GetTargetPath(ResolvedFileInfo entry, bool isAsset, string themeName, string projectPath)
+    {
+        // All local overrides go to themes/{ThemeName}/
+        // The key structure already matches the expected override structure
+        var themesFolder = Path.Combine(projectPath, "themes", themeName);
+
+        if (isAsset)
+        {
+            // Assets/main.css → themes/Lumina/Assets/main.css
+            return Path.Combine(themesFolder, "Assets", entry.Key.Replace('/', Path.DirectorySeparatorChar));
+        }
+        else
+        {
+            // body/gallery → themes/Lumina/Body/Gallery.revela
+            // statistics/overview → themes/Lumina/statistics/Overview.revela
+            var parts = entry.Key.Split('/');
+            var pascalParts = parts.Select(ToPascalCase).ToArray();
+            var relativePath = string.Join(Path.DirectorySeparatorChar.ToString(), pascalParts) + ".revela";
+            return Path.Combine(themesFolder, relativePath);
+        }
+    }
+
+    private static string ToPascalCase(string input)
+    {
+        if (string.IsNullOrEmpty(input))
+        {
+            return input;
+        }
+
+        return char.ToUpperInvariant(input[0]) + input[1..];
+    }
+
+    private async Task ExtractFileAsync(
+        ResolvedFileInfo entry,
+        bool isAsset,
+        string targetPath,
+        IThemePlugin theme,
+        IReadOnlyList<IThemeExtension> extensions,
+        CancellationToken cancellationToken)
+    {
+        // Ensure directory exists
+        var targetDir = Path.GetDirectoryName(targetPath);
+        if (!string.IsNullOrEmpty(targetDir))
+        {
+            Directory.CreateDirectory(targetDir);
+        }
+
+        // Get source stream based on entry source
+        // CA2000 is a false positive - stream is disposed in finally block via DisposeAsync
+#pragma warning disable CA2000
+        var sourceStream = GetSourceStream(entry, isAsset, theme, extensions);
+#pragma warning restore CA2000
+
+        if (sourceStream is null)
+        {
+            LogFileNotFound(entry.Key, entry.OriginalPath);
+            return;
+        }
+
+        try
+        {
+            await using var targetStream = File.Create(targetPath);
+            await sourceStream.CopyToAsync(targetStream, cancellationToken);
+            LogExtractedFile(entry.Key, targetPath);
+        }
+        finally
+        {
+            await sourceStream.DisposeAsync();
+        }
+    }
+
+    private static Stream? GetSourceStream(
+        ResolvedFileInfo entry,
+        bool isAsset,
+        IThemePlugin theme,
+        IReadOnlyList<IThemeExtension> extensions)
+    {
+        return entry.Source switch
+        {
+            FileSourceType.Theme => isAsset
+                ? theme.GetFile("Assets/" + entry.Key.Replace('/', Path.DirectorySeparatorChar))
+                : theme.GetFile(entry.OriginalPath),
+            FileSourceType.Extension => GetExtensionStream(entry, extensions),
+            FileSourceType.Local when File.Exists(entry.OriginalPath) => File.OpenRead(entry.OriginalPath),
+            _ => null
+        };
+    }
+
+    private static Stream? GetExtensionStream(ResolvedFileInfo entry, IReadOnlyList<IThemeExtension> extensions)
+    {
+        if (entry.ExtensionName is null)
+        {
+            return null;
+        }
+
+        var extension = extensions.FirstOrDefault(e =>
+            e.Metadata.Name.Equals(entry.ExtensionName, StringComparison.OrdinalIgnoreCase));
+
+        return extension?.GetFile(entry.OriginalPath);
+    }
+
+    private async Task<int> ExecuteFullExtractAsync(
         string sourceName,
         string? targetName,
         bool force,
@@ -217,4 +530,10 @@ public sealed partial class ThemeExtractCommand(
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Overwriting existing theme folder: {Path}")]
     private static partial void LogOverwriting(ILogger logger, string path);
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Extracted file '{Key}' to {TargetPath}")]
+    private partial void LogExtractedFile(string key, string targetPath);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "File not found: '{Key}' at path '{Path}'")]
+    private partial void LogFileNotFound(string key, string path);
 }

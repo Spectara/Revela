@@ -25,8 +25,11 @@ namespace Spectara.Revela.Commands.Generate.Services;
 public sealed partial class RenderService(
     ITemplateEngine templateEngine,
     IThemeResolver themeResolver,
+    ITemplateResolver templateResolver,
+    IAssetResolver assetResolver,
     IManifestRepository manifestRepository,
-    FrontMatterParser frontMatterParser,
+    RevelaParser revelaParser,
+    IMarkdownService markdownService,
     IConfiguration configuration,
     IOptions<RevelaConfig> options,
     ILogger<RenderService> logger) : IRenderService
@@ -40,18 +43,12 @@ public sealed partial class RenderService(
     /// <summary>Image settings from configuration</summary>
     private readonly ImageSettings imageSettings = options.Value.Generate.Images;
 
-    /// <summary>Current theme extensions (set during render)</summary>
-    private IReadOnlyList<IThemeExtension> currentExtensions = [];
-
     /// <inheritdoc />
     public void SetTheme(IThemePlugin? theme) => templateEngine.SetTheme(theme);
 
     /// <inheritdoc />
-    public void SetExtensions(IReadOnlyList<IThemeExtension> extensions)
-    {
-        currentExtensions = extensions;
+    public void SetExtensions(IReadOnlyList<IThemeExtension> extensions) =>
         templateEngine.SetExtensions(extensions);
-    }
 
     /// <inheritdoc />
     public string Render(string templateContent, object model) => templateEngine.Render(templateContent, model);
@@ -94,6 +91,13 @@ public sealed partial class RenderService(
             var extensions = themeResolver.GetExtensions(config.Theme.Name);
             SetExtensions(extensions);
 
+            // Initialize template resolver (scans theme, extensions, local overrides)
+            if (theme is not null)
+            {
+                templateResolver.Initialize(theme, extensions, Environment.CurrentDirectory);
+                assetResolver.Initialize(theme, extensions, Environment.CurrentDirectory);
+            }
+
             // Reconstruct galleries and navigation from unified root
             var galleries = ReconstructGalleries(manifestRepository.Root);
             var navigation = ReconstructNavigation(manifestRepository.Root);
@@ -122,14 +126,11 @@ public sealed partial class RenderService(
             // Render templates
             var pageCount = await RenderSiteAsync(siteModel, config, theme, progress, cancellationToken);
 
-            // Copy theme assets
+            // Copy assets (theme, extensions, local overrides)
             if (theme is not null)
             {
-                await CopyThemeAssetsAsync(theme, cancellationToken);
+                await assetResolver.CopyToOutputAsync(OutputDirectory, cancellationToken);
             }
-
-            // Copy extension assets (stylesheets)
-            await CopyExtensionAssetsAsync(cancellationToken);
 
             progress?.Report(new RenderProgress
             {
@@ -334,10 +335,10 @@ public sealed partial class RenderService(
             : null;
 
         var indexTemplate = layoutTemplate
-            ?? LoadTemplate(theme, "index.html")
+            ?? LoadTemplate(theme, "index.revela")
             ?? GetDefaultIndexTemplate();
         var galleryTemplate = layoutTemplate
-            ?? LoadTemplate(theme, "gallery.html")
+            ?? LoadTemplate(theme, "gallery.revela")
             ?? GetDefaultGalleryTemplate();
 
         var pageCount = 0;
@@ -359,8 +360,9 @@ public sealed partial class RenderService(
             ? imageSettings.Formats
             : ImageSettings.DefaultFormats;
 
-        // Collect extension stylesheets
-        var extensionStylesheets = CollectExtensionStylesheets();
+        // Get assets from resolver
+        var stylesheets = assetResolver.GetStyleSheets();
+        var scripts = assetResolver.GetScripts();
 
         var indexHtml = templateEngine.Render(
             indexTemplate,
@@ -375,7 +377,8 @@ public sealed partial class RenderService(
                 image_basepath = indexImageBasePath,
                 image_formats = formats.Keys,
                 theme = themeVariables,
-                extension_stylesheets = extensionStylesheets
+                stylesheets,
+                scripts
             });
 
         await File.WriteAllTextAsync(
@@ -420,7 +423,7 @@ public sealed partial class RenderService(
             // The layout template is ALWAYS used (never replaced)
             if (customTemplate is not null)
             {
-                var contentTemplate = LoadTemplate(theme, $"{customTemplate}.html");
+                var contentTemplate = LoadTemplate(theme, $"{customTemplate}.revela");
                 if (contentTemplate is not null)
                 {
                     // Build base model for custom template
@@ -463,7 +466,8 @@ public sealed partial class RenderService(
                     image_basepath = galleryImageBasePath,
                     image_formats = formats.Keys,
                     theme = themeVariables,
-                    extension_stylesheets = extensionStylesheets
+                    stylesheets,
+                    scripts
                 });
 
             var galleryOutputPath = Path.Combine(OutputDirectory, gallery.Slug);
@@ -522,132 +526,35 @@ public sealed partial class RenderService(
     }
 
     /// <summary>
-    /// Loads a template from the theme or theme extensions.
+    /// Loads a template from the theme, extensions, or local overrides via ITemplateResolver.
     /// </summary>
-    /// <param name="theme">The main theme plugin</param>
-    /// <param name="templateName">Template file name (e.g., "gallery.html" or "statistics/overview.html")</param>
+    /// <param name="theme">The main theme plugin (unused, kept for signature compatibility)</param>
+    /// <param name="templateName">Template file name (e.g., "gallery.revela" or "statistics/overview.revela")</param>
     /// <returns>Template content or null if not found</returns>
+#pragma warning disable IDE0060 // Remove unused parameter - kept for call site compatibility
     private string? LoadTemplate(IThemePlugin? theme, string templateName)
+#pragma warning restore IDE0060
     {
-        // First try the main theme
-        if (theme is not null)
+        // Derive key from template name
+        var key = templateName;
+        if (key.EndsWith(".revela", StringComparison.OrdinalIgnoreCase))
         {
-            using var stream = theme.GetFile(templateName);
-            if (stream is not null)
-            {
-                using var reader = new StreamReader(stream);
-                return reader.ReadToEnd();
-            }
+            key = key[..^7];
         }
 
-        // Then try theme extensions via their manifest
-        // Template names like "statistics/overview.html" → prefix "statistics", template "overview"
-        var slashIndex = templateName.IndexOf('/', StringComparison.Ordinal);
-        if (slashIndex > 0)
+        // Use template resolver for unified lookup (theme → extensions → local)
+        using var stream = templateResolver.GetTemplate(key);
+        if (stream is not null)
         {
-            var prefix = templateName[..slashIndex];
-            var templateKey = templateName[(slashIndex + 1)..];
-
-            // Remove .html extension if present (manifest keys don't include extension)
-            if (templateKey.EndsWith(".html", StringComparison.OrdinalIgnoreCase))
-            {
-                templateKey = templateKey[..^5];
-            }
-
-            // Find extension with matching prefix
-            var extension = currentExtensions.FirstOrDefault(e =>
-                e.PartialPrefix.Equals(prefix, StringComparison.OrdinalIgnoreCase));
-
-            if (extension is not null)
-            {
-                // Look up the actual file path from extension manifest
-                var manifest = extension.GetManifest();
-
-                if (manifest.Partials.TryGetValue(templateKey, out var extensionFilePath))
-                {
-                    using var stream = extension.GetFile(extensionFilePath);
-                    if (stream is not null)
-                    {
-                        using var reader = new StreamReader(stream);
-                        return reader.ReadToEnd();
-                    }
-                }
-            }
+            using var reader = new StreamReader(stream);
+            return reader.ReadToEnd();
         }
 
         return null;
     }
 
-    private static async Task CopyThemeAssetsAsync(IThemePlugin theme, CancellationToken cancellationToken)
-    {
-        var manifest = theme.GetManifest();
-
-        foreach (var assetPath in manifest.Assets)
-        {
-            using var stream = theme.GetFile(assetPath);
-            if (stream is null)
-            {
-                continue;
-            }
-
-            // Extract just the filename - assets are always copied to output root
-            // (e.g., 'Assets/main.css' → 'main.css' in output)
-            var fileName = Path.GetFileName(assetPath);
-            var outputPath = Path.Combine(OutputDirectory, fileName);
-            var outputDir = Path.GetDirectoryName(outputPath);
-            if (!string.IsNullOrEmpty(outputDir))
-            {
-                Directory.CreateDirectory(outputDir);
-            }
-
-            await using var fileStream = File.Create(outputPath);
-            await stream.CopyToAsync(fileStream, cancellationToken);
-        }
-    }
-
-    private async Task CopyExtensionAssetsAsync(CancellationToken cancellationToken)
-    {
-        foreach (var extension in currentExtensions)
-        {
-            var manifest = extension.GetManifest();
-
-            // Copy stylesheets
-            foreach (var stylesheetPath in manifest.StyleSheets)
-            {
-                using var stream = extension.GetFile(stylesheetPath);
-                if (stream is null)
-                {
-                    continue;
-                }
-
-                // Stylesheets keep their filename in output root
-                var fileName = Path.GetFileName(stylesheetPath);
-                var outputPath = Path.Combine(OutputDirectory, fileName);
-
-                await using var fileStream = File.Create(outputPath);
-                await stream.CopyToAsync(fileStream, cancellationToken);
-            }
-
-            // Copy other assets (if any)
-            foreach (var assetPath in manifest.Assets)
-            {
-                using var stream = extension.GetFile(assetPath);
-                if (stream is null)
-                {
-                    continue;
-                }
-
-                var fileName = Path.GetFileName(assetPath);
-                var outputPath = Path.Combine(OutputDirectory, fileName);
-
-                await using var fileStream = File.Create(outputPath);
-                await stream.CopyToAsync(fileStream, cancellationToken);
-            }
-        }
-    }
-
     /// <summary>
-    /// Loads metadata from _index.md for a gallery at render time.
+    /// Loads metadata from _index.revela for a gallery at render time.
     /// </summary>
     /// <remarks>
     /// Returns template name, data sources dictionary, and base path.
@@ -657,8 +564,8 @@ public sealed partial class RenderService(
         Gallery gallery,
         CancellationToken cancellationToken)
     {
-        // Build path to _index.md in source directory
-        var indexPath = Path.Combine(SourceDirectory, gallery.Path, FrontMatterParser.IndexFileName);
+        // Build path to _index.revela in source directory
+        var indexPath = Path.Combine(SourceDirectory, gallery.Path, RevelaParser.IndexFileName);
         var basePath = Path.GetDirectoryName(indexPath)!;
 
         if (!File.Exists(indexPath))
@@ -666,17 +573,19 @@ public sealed partial class RenderService(
             return (null, new Dictionary<string, string>(), basePath);
         }
 
-        var metadata = await frontMatterParser.ParseFileAsync(indexPath, cancellationToken);
+        var metadata = await revelaParser.ParseFileAsync(indexPath, cancellationToken);
 
-        // If custom template is specified, return template info (body handled by template)
-        if (metadata.Template is not null)
+        // Convert raw body (Markdown) to HTML and set as gallery.Body
+        if (metadata.RawBody is not null)
         {
-            return (metadata.Template, metadata.DataSources, basePath);
+            gallery.Body = markdownService.ToHtml(metadata.RawBody);
         }
 
-        // Standard gallery: set body from markdown
-        gallery.Body = metadata.Body;
-        return (null, new Dictionary<string, string>(), basePath);
+        // Always set template (may be null - layout will use default "body/gallery")
+        gallery.Template = metadata.Template;
+
+        // Return template info and data sources for custom template processing
+        return (metadata.Template, metadata.DataSources, basePath);
     }
 
     #endregion
@@ -754,32 +663,6 @@ public sealed partial class RenderService(
         </body>
         </html>
         """;
-
-    #endregion
-
-    #region Private Methods - Extensions
-
-    /// <summary>
-    /// Collect all stylesheet paths from theme extensions
-    /// </summary>
-    /// <returns>List of stylesheet filenames (copied to output root)</returns>
-    private List<string> CollectExtensionStylesheets()
-    {
-        var stylesheets = new List<string>();
-
-        foreach (var extension in currentExtensions)
-        {
-            var manifest = extension.GetManifest();
-
-            // Return only filenames - stylesheets are copied to output root
-            foreach (var stylesheetPath in manifest.StyleSheets)
-            {
-                stylesheets.Add(Path.GetFileName(stylesheetPath));
-            }
-        }
-
-        return stylesheets;
-    }
 
     #endregion
 

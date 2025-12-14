@@ -8,7 +8,7 @@ public interface IScaffoldingService
     /// <summary>
     /// Gets raw template content from embedded resources.
     /// </summary>
-    /// <param name="templatePath">Template path (e.g., "Project.site.json" or "Theme.layout.html").</param>
+    /// <param name="templatePath">Template path (e.g., "Project.site.json" or "Theme.Layout.revela").</param>
     /// <returns>Template content as string.</returns>
     string GetTemplate(string templatePath);
 

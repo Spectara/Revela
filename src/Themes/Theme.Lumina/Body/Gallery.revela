@@ -1,0 +1,29 @@
+{{~##
+Gallery Body Template
+
+Renders the main content for a gallery page with images.
+This is the default body template if no `template` is specified.
+
+Expects:
+- gallery: { title, body? }
+- images: Array of ImageData
+- image_formats: Array of format strings ["avif", "webp", "jpg"]
+- image_basepath: Path/URL to image resources
+- basepath: Relative path to root (for navigation)
+##~}}
+{{~ # Gallery Introduction (rendered from _index.revela body using Markdig) ~}}
+{{~ if gallery.body ~}}
+<section class="gallery-intro">
+    {{ gallery.body }}
+</section>
+{{~ end ~}}
+
+{{~ # Image Gallery Grid ~}}
+{{~ if images && images.size > 0 ~}}
+<section class="gallery">
+    <h2>{{ gallery.title }}</h2>
+    {{~ for image in images ~}}
+    {{~ include 'partials/image' image ~}}
+    {{~ end ~}}
+</section>
+{{~ end ~}}

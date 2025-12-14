@@ -515,10 +515,17 @@ try {
             Write-Warn "Statistics page not found (optional)"
         }
 
-        # Check statistics.css
-        $statsCss = Join-Path $outputDir "statistics.css"
-        if (Test-Path $statsCss) {
-            Write-Success "statistics.css included (Theme.Lumina.Statistics)"
+        # Check _assets directory (scan-based asset system)
+        $assetsDir = Join-Path $outputDir "_assets"
+        if (Test-Path $assetsDir) {
+            $assetFiles = Get-ChildItem $assetsDir -Recurse -File
+            Write-Success "_assets/ directory: $($assetFiles.Count) files"
+
+            # Check for extension assets
+            $extensionDir = Join-Path $assetsDir "lumina-statistics"
+            if (Test-Path $extensionDir) {
+                Write-Success "Theme.Lumina.Statistics assets included"
+            }
         }
 
         # Check index.html content

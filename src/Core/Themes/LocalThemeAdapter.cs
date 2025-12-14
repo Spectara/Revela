@@ -16,11 +16,10 @@ namespace Spectara.Revela.Core.Themes;
 /// <code>
 /// themes/my-theme/
 /// ├── theme.json       # Required: theme manifest
-/// ├── layout.html      # Main layout template
-/// ├── main.css         # Stylesheet
-/// └── partials/        # Partial templates
-///     ├── navigation.html
-///     └── image.html
+/// ├── Layout.revela    # Main layout template
+/// ├── Assets/          # CSS, JS, fonts, images (auto-scanned)
+/// ├── Body/            # Body templates (Gallery.revela, Page.revela)
+/// └── Partials/        # Partial templates (Navigation.revela, Image.revela)
 /// </code>
 /// </remarks>
 public sealed class LocalThemeAdapter : IThemePlugin
@@ -74,11 +73,8 @@ public sealed class LocalThemeAdapter : IThemePlugin
 
         manifest = new ThemeManifest
         {
-            LayoutTemplate = themeConfig.Templates?.Layout ?? "layout.html",
-            Partials = themeConfig.Partials?.ToDictionary(
-                kvp => kvp.Key,
-                kvp => kvp.Value) ?? [],
-            Assets = themeConfig.Assets ?? ["main.css"],
+            LayoutTemplate = themeConfig.Templates?.Layout ?? "layout.revela",
+
             Variables = themeConfig.Variables?.ToDictionary(
                 kvp => kvp.Key,
                 kvp => kvp.Value) ?? []

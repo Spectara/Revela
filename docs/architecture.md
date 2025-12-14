@@ -424,19 +424,25 @@ template/
 
 #### New Theme Structure
 ```
-themes/default/
-├── layouts/
-│   ├── _default.html
-│   ├── gallery.html
-│   └── image.html
-├── partials/
-│   ├── head.html
-│   ├── navigation.html
-│   └── footer.html
-└── static/
-    ├── css/
-    └── js/
+themes/my-theme/
+├── theme.json           # Theme manifest (name, version, variables)
+├── Layout.revela        # Main layout template
+├── Assets/              # Static assets (auto-scanned)
+│   ├── main.css
+│   └── main.js
+├── Body/                # Body templates
+│   ├── Gallery.revela   # Image gallery (default)
+│   └── Page.revela      # Text-only pages
+└── Partials/            # Partial templates
+    ├── Navigation.revela
+    └── Image.revela
 ```
+
+**Key conventions:**
+- Templates use `.revela` extension (Scriban syntax)
+- PascalCase folder/file names → lowercase keys (`Body/Gallery.revela` → `body/gallery`)
+- Assets folder is auto-scanned (no manifest declaration needed)
+- Local overrides: `project/themes/{ThemeName}/` (same structure)
 
 #### Template Syntax Migration
 

@@ -4,15 +4,15 @@
   "description": "Lumina - elegant photography portfolio theme",
   "author": "Spectara",
   "previewImageUrl": "https://revela.website/themes/lumina/preview.jpg",
-  "tags": ["photography", "gallery", "lightbox", "responsive"],
+  "tags": [
+    "photography",
+    "gallery",
+    "lightbox",
+    "responsive"
+  ],
   "templates": {
-    "layout": "Templates/layout.html"
+    "layout": "Layout.revela"
   },
-  "partials": {
-    "navigation": "Templates/Partials/navigation.html",
-    "image": "Templates/Partials/image.html"
-  },
-  "assets": ["Assets/main.css", "Assets/main.js"],
   "variables": {
     "credits": "Powered by Revela"
   }

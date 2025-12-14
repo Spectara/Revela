@@ -14,6 +14,6 @@ internal static partial class StatsCommandLogging
     [LoggerMessage(Level = LogLevel.Debug, Message = "Writing statistics.json")]
     public static partial void WritingJson(this ILogger<StatsCommand> logger);
 
-    [LoggerMessage(Level = LogLevel.Debug, Message = "Writing _index.md with partial reference")]
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Writing _index.revela with frontmatter")]
     public static partial void WritingMarkdown(this ILogger<StatsCommand> logger);
 }

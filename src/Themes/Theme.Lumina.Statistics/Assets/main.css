@@ -36,6 +36,6 @@ section dl dd {
     height: 4px;
     margin: var(--space-3xs, 0.25rem) 0 0 0;
     background: linear-gradient(to right,
-        hsl(var(--color-hsl, 0deg 0% 40%) / 0.4) calc(var(--percent, 0) * 1%),
-        transparent calc(var(--percent, 0) * 1%));
+            hsl(var(--color-hsl, 0deg 0% 40%) / 0.4) calc(var(--percent, 0) * 1%),
+            transparent calc(var(--percent, 0) * 1%));
 }

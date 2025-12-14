@@ -100,9 +100,9 @@ public sealed class PluginMetadata : IPluginMetadata
 /// </summary>
 /// <remarks>
 /// Theme plugins provide:
-/// - Template files (layout.html, partials, etc.)
-/// - Static assets (CSS, JS, fonts, images)
-/// - Theme configuration (variables, defaults)
+/// - Template files (Layout.revela, Body/, Partials/)
+/// - Static assets (Assets/ folder - CSS, JS, fonts, images)
+/// - Theme configuration (variables in theme.json)
 ///
 /// Naming convention: Spectara.Revela.Theme.{Name}
 ///
@@ -131,7 +131,7 @@ public interface IThemePlugin : IPlugin
     /// <summary>
     /// Get a file from the theme as a stream
     /// </summary>
-    /// <param name="relativePath">Relative path within the theme (e.g., "layout.html")</param>
+    /// <param name="relativePath">Relative path within the theme (e.g., "layout.revela")</param>
     /// <returns>Stream with file contents, or null if not found</returns>
     Stream? GetFile(string relativePath);
 
@@ -174,17 +174,6 @@ public sealed class ThemeManifest
     /// Main layout template path
     /// </summary>
     public required string LayoutTemplate { get; init; }
-
-    /// <summary>
-    /// Partial templates by name (key = include name, value = file path)
-    /// </summary>
-    public IReadOnlyDictionary<string, string> Partials { get; init; } =
-        new Dictionary<string, string>();
-
-    /// <summary>
-    /// Static assets to copy to output (CSS, JS, fonts, images)
-    /// </summary>
-    public IReadOnlyList<string> Assets { get; init; } = [];
 
     /// <summary>
     /// Theme variables with default values
@@ -238,14 +227,9 @@ public interface IThemeExtension : IPlugin
     string PartialPrefix { get; }
 
     /// <summary>
-    /// Extension manifest with templates and assets
-    /// </summary>
-    ThemeExtensionManifest GetManifest();
-
-    /// <summary>
     /// Get a file from the extension as a stream
     /// </summary>
-    /// <param name="relativePath">Relative path within the extension (e.g., "templates/chart.html")</param>
+    /// <param name="relativePath">Relative path within the extension (e.g., "templates/chart.revela")</param>
     /// <returns>Stream with file contents, or null if not found</returns>
     Stream? GetFile(string relativePath);
 
@@ -261,33 +245,5 @@ public interface IThemeExtension : IPlugin
     /// <param name="targetDirectory">Directory to extract files to</param>
     /// <param name="cancellationToken">Cancellation token</param>
     Task ExtractToAsync(string targetDirectory, CancellationToken cancellationToken = default);
-}
-
-/// <summary>
-/// Manifest for theme extensions describing available templates and assets
-/// </summary>
-public sealed class ThemeExtensionManifest
-{
-    /// <summary>
-    /// Partial templates by name (key = template name, value = file path)
-    /// </summary>
-    /// <remarks>
-    /// Keys are relative to PartialPrefix. Example: "chart" → accessed as "statistics/chart"
-    /// </remarks>
-    public IReadOnlyDictionary<string, string> Partials { get; init; } =
-        new Dictionary<string, string>();
-
-    /// <summary>
-    /// CSS files to include via separate &lt;link&gt; tags
-    /// </summary>
-    /// <remarks>
-    /// Paths relative to extension root. Files are copied to output and linked.
-    /// </remarks>
-    public IReadOnlyList<string> StyleSheets { get; init; } = [];
-
-    /// <summary>
-    /// Additional static assets (JS, images, fonts)
-    /// </summary>
-    public IReadOnlyList<string> Assets { get; init; } = [];
 }
 

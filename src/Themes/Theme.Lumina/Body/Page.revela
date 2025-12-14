@@ -1,0 +1,19 @@
+{{~##
+Page Body Template
+
+Renders a simple content page without image gallery.
+Used for text-only pages like About, Contact, etc.
+
+Expects:
+- gallery: { title, body }
+- basepath: Relative path to root
+##~}}
+{{~ # Page Content (rendered from _index.revela body using Markdig) ~}}
+<section class="page-content">
+    {{~ if gallery.title ~}}
+    <h1>{{ gallery.title }}</h1>
+    {{~ end ~}}
+    {{~ if gallery.body ~}}
+    {{ gallery.body }}
+    {{~ end ~}}
+</section>

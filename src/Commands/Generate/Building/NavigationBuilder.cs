@@ -15,7 +15,7 @@ namespace Spectara.Revela.Commands.Generate.Building;
 ///   <item><description>Directories without images → sections (branch/column nodes)</description></item>
 ///   <item><description>Sort prefixes stripped from display names</description></item>
 ///   <item><description>Natural sorting (1, 2, 10 not 1, 10, 2)</description></item>
-///   <item><description>_index.md frontmatter for custom titles, slugs, descriptions</description></item>
+///   <item><description>_index.revela frontmatter for custom titles, slugs, descriptions</description></item>
 /// </list>
 /// <para>
 /// Example directory structure:
@@ -23,7 +23,7 @@ namespace Spectara.Revela.Commands.Generate.Building;
 /// <code>
 /// content/
 /// ├── 01 Events/
-/// │   ├── _index.md            → Metadata: title, description, etc.
+/// │   ├── _index.revela       → Metadata: title, description, etc.
 /// │   ├── 2024 Wedding/
 /// │   │   └── *.jpg           → Gallery: "2024 Wedding"
 /// │   └── 2023 Party/
@@ -94,11 +94,11 @@ public sealed partial class NavigationBuilder(ILogger<NavigationBuilder> logger)
 
         foreach (var subdir in subdirectories)
         {
-            // Load metadata from _index.md if present
-            var indexPath = Path.Combine(subdir.FullName, FrontMatterParser.IndexFileName);
+            // Load metadata from _index.revela if present
+            var indexPath = Path.Combine(subdir.FullName, RevelaParser.IndexFileName);
             var hasIndexFile = File.Exists(indexPath);
             var metadata = hasIndexFile
-                ? FrontMatterParser.Parse(File.ReadAllText(indexPath))
+                ? RevelaParser.Parse(File.ReadAllText(indexPath))
                 : DirectoryMetadata.Empty;
 
             // Use metadata title or extract from folder name

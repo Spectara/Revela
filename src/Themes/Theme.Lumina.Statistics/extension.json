@@ -4,17 +4,5 @@
   "description": "Statistics charts extension for the Lumina theme",
   "author": "Spectara",
   "targetTheme": "Lumina",
-  "partialPrefix": "statistics",
-  "partials": {
-    "overview": "Templates/Partials/Statistics/overview.html",
-    "cameras": "Templates/Partials/Statistics/cameras.html",
-    "lenses": "Templates/Partials/Statistics/lenses.html",
-    "apertures": "Templates/Partials/Statistics/apertures.html",
-    "focal-lengths": "Templates/Partials/Statistics/focal-lengths.html",
-    "iso": "Templates/Partials/Statistics/iso.html"
-  },
-  "styleSheets": [
-    "Assets/statistics.css"
-  ],
-  "assets": []
+  "partialPrefix": "statistics"
 }

@@ -36,7 +36,7 @@ public sealed class StatisticsPluginConfig
     /// Output directory for the statistics page (relative to working directory)
     /// </summary>
     /// <remarks>
-    /// The plugin will create _index.md in this directory.
+    /// The plugin will create _index.revela in this directory.
     /// Default: source/statistics
     /// </remarks>
     [Required(ErrorMessage = "OutputPath is required")]

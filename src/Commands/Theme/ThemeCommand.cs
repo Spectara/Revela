@@ -8,6 +8,7 @@ namespace Spectara.Revela.Commands.Theme;
 /// <remarks>
 /// Subcommands:
 /// - list: Show available themes (local + installed)
+/// - files: List all theme files with source information
 /// - extract: Extract a theme to themes/ folder for customization
 ///
 /// Future:
@@ -16,6 +17,7 @@ namespace Spectara.Revela.Commands.Theme;
 /// </remarks>
 public sealed class ThemeCommand(
     ThemeListCommand listCommand,
+    ThemeFilesCommand filesCommand,
     ThemeExtractCommand extractCommand)
 {
     /// <summary>
@@ -28,6 +30,7 @@ public sealed class ThemeCommand(
 
         // Add subcommands
         command.Subcommands.Add(listCommand.Create());
+        command.Subcommands.Add(filesCommand.Create());
         command.Subcommands.Add(extractCommand.Create());
 
         return command;

@@ -1,0 +1,107 @@
+{{~##
+Main Layout Template - Lumina Theme
+
+Main layout for all pages, supports dynamic body templates.
+
+Expects:
+- site: { title, description, author, keywords, copyright }
+- gallery: { title, body?, template? }
+- nav_items: Array of NavigationItem for navigation
+- images: Array of ImageData for gallery (optional)
+- basepath: Relative path to root
+- image_basepath: Path/URL to image resources (can be absolute CDN URL)
+- image_formats: Array of format strings ["avif", "webp", "jpg"]
+- stylesheets: Array of CSS paths relative to _assets/
+- scripts: Array of JS paths relative to _assets/
+
+Body Template Selection:
+- Default: "body/gallery" (shows images and optional intro text)
+- Custom: Specify in _index.revela frontmatter: template = "body/page"
+- Extension templates: "statistics/overview" etc.
+##~}}
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>{{~ if gallery.title ~}}{{ site.title }} - {{ gallery.title }}{{~ else ~}}{{ site.title }}{{~ end ~}}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="{{ site.description }}">
+    <meta name="author" content="{{ site.author }}">
+    <meta name="keywords" content="{{ site.keywords }}">
+    {{~ for css in stylesheets ~}}
+    <link type="text/css" rel="stylesheet" media="all" href="{{ basepath }}_assets/{{ css }}">
+    {{~ end ~}}
+</head>
+
+<body>
+    {{~ # Navigation Toggle (CSS-only Hamburger Menu) ~}}
+    <input type="checkbox" id="nav-trigger" class="nav-trigger">
+
+    {{~ # Main Navigation (Fullscreen Overlay) ~}}
+    <nav>
+        {{~ include 'partials/navigation' nav_items ~}}
+    </nav>
+
+    {{~ # Sticky Header ~}}
+    <header>
+        <div>
+            <h2>
+                <label for="nav-trigger" title="Menu">
+                    <span>Menu</span>
+                    <span>i</span>
+                    <span>i</span>
+                    <span>i</span>
+                </label>
+                {{~ # basepath is empty string at root, "../" for galleries, or "/photos/" for subdirectory hosting ~}}
+                <a href="{{ basepath == '' ? '.' : basepath }}">{{ site.title }}</a>
+            </h2>
+            <nav></nav>
+        </div>
+    </header>
+
+    {{~ # Main Content ~}}
+    <main>
+        {{~##
+        Dynamic Body Template Inclusion
+
+        Two modes of operation:
+        1. Pre-rendered content (plugins): gallery.body contains HTML
+        - Used when template = "statistics/overview" etc.
+        - RenderService pre-renders with full data context
+        2. Dynamic include (theme templates): gallery.body is empty or markdown
+        - Used when template = "body/page", "body/gallery", or not set
+        - Template is included and rendered with current context
+
+        Examples:
+        - template = "body/page" → Simple text page (include)
+        - template = "body/gallery" → Image gallery (include, default)
+        - template = "statistics/overview" → Plugin template (pre-rendered)
+        ##~}}
+        {{~ if gallery.template && !string.starts_with gallery.template 'body/' ~}}
+        {{~ # Plugin/extension template: already pre-rendered in gallery.body ~}}
+        {{ gallery.body }}
+        {{~ else ~}}
+        {{~ # Theme body template: include dynamically ~}}
+        {{~ body_template = gallery.template ?? 'body/gallery' ~}}
+        {{~ include body_template ~}}
+        {{~ end ~}}
+    </main>
+
+    {{~ # Footer with Navigation Copy ~}}
+    <footer>
+        <nav>
+            {{~ include 'partials/navigation' nav_items ~}}
+        </nav>
+        <div>
+            {{ site.copyright }}{{~ if theme.credits ~}} · {{ theme.credits }}{{~ end ~}}
+        </div>
+    </footer>
+
+    {{~ # Scripts ~}}
+    {{~ for js in scripts ~}}
+    <script src="{{ basepath }}_assets/{{ js }}"></script>
+    {{~ end ~}}
+</body>
+
+</html>

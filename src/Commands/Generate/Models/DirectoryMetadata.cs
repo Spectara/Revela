@@ -49,7 +49,7 @@ public sealed class DirectoryMetadata
     /// </summary>
     /// <remarks>
     /// Specifies a custom template for rendering this page's content.
-    /// The template is rendered to gallery.body and wrapped by layout.html.
+    /// The template is rendered to gallery.body and wrapped by Layout.revela.
     /// </remarks>
     public string? Template { get; init; }
 

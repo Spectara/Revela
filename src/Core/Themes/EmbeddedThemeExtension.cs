@@ -46,7 +46,6 @@ public abstract class EmbeddedThemeExtension : IThemeExtension
     private readonly string resourcePrefix;
     private readonly Lazy<ExtensionJsonConfig> config;
     private readonly Lazy<EmbeddedExtensionMetadata> metadata;
-    private readonly Lazy<ThemeExtensionManifest> manifest;
 
     /// <summary>
     /// Creates a new embedded theme extension
@@ -61,7 +60,6 @@ public abstract class EmbeddedThemeExtension : IThemeExtension
 
         config = new Lazy<ExtensionJsonConfig>(LoadConfig);
         metadata = new Lazy<EmbeddedExtensionMetadata>(() => CreateMetadata(config.Value));
-        manifest = new Lazy<ThemeExtensionManifest>(() => CreateManifest(config.Value));
     }
 
     /// <inheritdoc />
@@ -97,9 +95,6 @@ public abstract class EmbeddedThemeExtension : IThemeExtension
         // Extensions don't provide commands
         yield break;
     }
-
-    /// <inheritdoc />
-    public ThemeExtensionManifest GetManifest() => manifest.Value;
 
     /// <inheritdoc />
     public Stream? GetFile(string relativePath)
@@ -158,24 +153,10 @@ public abstract class EmbeddedThemeExtension : IThemeExtension
         }
 
         // Extract all template files
-        var manifestData = manifest.Value;
-
-        // Extract partials
-        foreach (var (_, filePath) in manifestData.Partials)
+        // Extract all files from the extension
+        foreach (var file in GetAllFiles())
         {
-            await ExtractResourceAsync(filePath, targetDirectory, cancellationToken);
-        }
-
-        // Extract stylesheets
-        foreach (var stylesheet in manifestData.StyleSheets)
-        {
-            await ExtractResourceAsync(stylesheet, targetDirectory, cancellationToken);
-        }
-
-        // Extract assets
-        foreach (var asset in manifestData.Assets)
-        {
-            await ExtractResourceAsync(asset, targetDirectory, cancellationToken);
+            await ExtractResourceAsync(file, targetDirectory, cancellationToken);
         }
     }
 
@@ -230,13 +211,6 @@ public abstract class EmbeddedThemeExtension : IThemeExtension
         Author = cfg.Author ?? ""
     };
 
-    private static ThemeExtensionManifest CreateManifest(ExtensionJsonConfig cfg) => new()
-    {
-        Partials = cfg.Partials ?? [],
-        StyleSheets = cfg.StyleSheets ?? [],
-        Assets = cfg.Assets ?? []
-    };
-
     /// <summary>
     /// Configuration model for extension.json
     /// </summary>
@@ -248,9 +222,6 @@ public abstract class EmbeddedThemeExtension : IThemeExtension
         public string? Author { get; init; }
         public string? TargetTheme { get; init; }
         public string? PartialPrefix { get; init; }
-        public Dictionary<string, string>? Partials { get; init; }
-        public List<string>? StyleSheets { get; init; }
-        public List<string>? Assets { get; init; }
     }
 }
 

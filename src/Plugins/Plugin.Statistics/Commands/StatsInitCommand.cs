@@ -100,26 +100,26 @@ public sealed class StatsInitCommand(ILogger<StatsInitCommand> logger)
             // Create output directory
             Directory.CreateDirectory(outputPath);
 
-            // Create initial markdown file
-            var mdPath = Path.Combine(outputPath, "_index.md");
-            if (!File.Exists(mdPath))
+            // Create initial revela file
+            var revelaPath = Path.Combine(outputPath, "_index.revela");
+            if (!File.Exists(revelaPath))
             {
                 var frontmatter = $"""
-                    ---
-                    title: {title}
-                    template: page
-                    nav_order: 100
-                    ---
+                    +++
+                    title = "{title}"
+                    template = "page"
+                    nav_order = 100
+                    +++
 
                     Your photo library statistics will appear below after running `revela generate stats`.
 
                     """;
-                File.WriteAllText(mdPath, frontmatter);
-                logger.MarkdownCreated(mdPath);
+                File.WriteAllText(revelaPath, frontmatter);
+                logger.MarkdownCreated(revelaPath);
             }
             else
             {
-                AnsiConsole.MarkupLine($"[dim]Markdown file already exists: {mdPath}[/]");
+                AnsiConsole.MarkupLine($"[dim]Revela file already exists: {revelaPath}[/]");
             }
 
             // Success message
@@ -127,7 +127,7 @@ public sealed class StatsInitCommand(ILogger<StatsInitCommand> logger)
                 $"[green]Statistics plugin configured![/]\n\n" +
                 $"[bold]Configuration:[/] [cyan]{configPath}[/]\n" +
                 $"[bold]Output path:[/] [cyan]{outputPath}[/]\n" +
-                $"[bold]Markdown:[/] [cyan]{mdPath}[/]\n\n" +
+                $"[bold]Content file:[/] [cyan]{revelaPath}[/]\n\n" +
                 $"[bold]Next steps:[/]\n" +
                 $"1. Run [cyan]revela generate scan[/] to scan your images\n" +
                 $"2. Run [cyan]revela generate stats[/] to generate statistics\n" +

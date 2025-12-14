@@ -1,3 +1,4 @@
+<section>
 <h2>Overview</h2>
 
 <p class="stats-summary">
@@ -11,3 +12,5 @@
 {{ include 'statistics/focal-lengths' statistics }}
 {{ include 'statistics/apertures' statistics }}
 {{ include 'statistics/iso' statistics }}
+
+</section>

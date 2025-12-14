@@ -9,6 +9,7 @@ using Spectara.Revela.Commands.Generate.Parsing;
 using Spectara.Revela.Commands.Generate.Scanning;
 using Spectara.Revela.Commands.Generate.Services;
 using Spectara.Revela.Core.Configuration;
+using Spectara.Revela.Core.Services;
 
 namespace Spectara.Revela.Commands.Generate;
 
@@ -28,14 +29,17 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IConfigureOptions<RevelaConfig>, ConfigureRevelaConfig>();
 
         // Parsing, Scanning, Building, Mapping (static classes not registered: GallerySorter, UrlBuilder)
-        services.AddSingleton<FrontMatterParser>();
+        services.AddSingleton<RevelaParser>();
         services.AddSingleton<ContentScanner>();
         services.AddSingleton<NavigationBuilder>();
         services.AddSingleton<CameraModelMapper>();
 
         // Infrastructure services
+        services.AddSingleton<IMarkdownService, MarkdownService>();
         services.AddSingleton<IImageProcessor, NetVipsImageProcessor>();
         services.AddSingleton<ITemplateEngine, ScribanTemplateEngine>();
+        services.AddSingleton<ITemplateResolver, TemplateResolver>();
+        services.AddSingleton<IAssetResolver, AssetResolver>();
         services.AddSingleton<IManifestRepository, ManifestService>();
 
         // Domain services (three main services)

@@ -204,9 +204,7 @@ public abstract class EmbeddedThemePlugin : IThemePlugin
     {
         return new ThemeManifest
         {
-            LayoutTemplate = config.Templates?.Layout ?? "layout.html",
-            Partials = config.Partials ?? [],
-            Assets = config.Assets ?? ["main.css"],
+            LayoutTemplate = config.Templates?.Layout ?? "layout.revela",
             Variables = config.Variables ?? []
         };
     }
@@ -261,8 +259,6 @@ internal sealed class ThemeJsonConfig
     public string? PreviewImageUrl { get; set; }
     public List<string>? Tags { get; set; }
     public ThemeTemplatesConfig? Templates { get; set; }
-    public Dictionary<string, string>? Partials { get; set; }
-    public List<string>? Assets { get; set; }
     public Dictionary<string, string>? Variables { get; set; }
 }
 

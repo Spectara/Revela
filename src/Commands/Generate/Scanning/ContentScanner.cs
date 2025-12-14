@@ -5,19 +5,19 @@ using Spectara.Revela.Commands.Generate.Parsing;
 namespace Spectara.Revela.Commands.Generate.Scanning;
 
 /// <summary>
-/// Scans content directory for images and markdown files
+/// Scans content directory for images and content files
 /// </summary>
 /// <remarks>
 /// Discovers:
 /// - Image files (*.jpg, *.jpeg, *.png, *.webp, *.gif)
-/// - Markdown files (_index.md for gallery metadata)
+/// - Content files (_index.revela for gallery metadata)
 /// - Directory structure (galleries/albums)
 ///
 /// Creates a content tree representing the site structure.
 /// </remarks>
 public sealed partial class ContentScanner(
     ILogger<ContentScanner> logger,
-    FrontMatterParser frontMatterParser)
+    RevelaParser revelaParser)
 {
 
     /// <summary>
@@ -66,13 +66,13 @@ public sealed partial class ContentScanner(
             .Where(f => SupportedImageExtensions.IsSupported(Path.GetExtension(f)))
             .ToList();
 
-        // Find markdown files (*.md) excluding _index.md
+        // Find markdown files (*.md) excluding _index.revela
         var markdownFiles = Directory.EnumerateFiles(currentDirectory, "*.md")
-            .Where(f => !Path.GetFileName(f).Equals(FrontMatterParser.IndexFileName, StringComparison.OrdinalIgnoreCase))
+            .Where(f => !Path.GetFileName(f).Equals(RevelaParser.IndexFileName, StringComparison.OrdinalIgnoreCase))
             .ToList();
 
-        // Check for _index.md (gallery metadata or standalone page)
-        var hasIndexFile = File.Exists(Path.Combine(currentDirectory, FrontMatterParser.IndexFileName));
+        // Check for _index.revela (gallery metadata or standalone page)
+        var hasIndexFile = File.Exists(Path.Combine(currentDirectory, RevelaParser.IndexFileName));
 
         // Create gallery if directory has images OR has _index.md (text-only pages)
         if (imageFiles.Count > 0 || (hasIndexFile && !string.IsNullOrEmpty(relativePath)))
@@ -144,11 +144,18 @@ public sealed partial class ContentScanner(
             galleries.Add(gallery);
         }
 
-        // Recursively scan subdirectories
+        // Recursively scan subdirectories (skip folders starting with _)
         var subdirectories = Directory.GetDirectories(currentDirectory);
         foreach (var subdirectory in subdirectories)
         {
             var subdirName = Path.GetFileName(subdirectory);
+
+            // Skip folders starting with underscore (convention: _assets, _drafts, etc.)
+            if (subdirName.StartsWith('_'))
+            {
+                continue;
+            }
+
             var subdirRelativePath = string.IsNullOrEmpty(relativePath)
                 ? subdirName
                 : Path.Combine(relativePath, subdirName);
@@ -161,13 +168,13 @@ public sealed partial class ContentScanner(
         string directoryPath,
         CancellationToken cancellationToken)
     {
-        var indexPath = Path.Combine(directoryPath, FrontMatterParser.IndexFileName);
+        var indexPath = Path.Combine(directoryPath, RevelaParser.IndexFileName);
         if (!File.Exists(indexPath))
         {
             return DirectoryMetadata.Empty;
         }
 
-        return await frontMatterParser.ParseFileAsync(indexPath, cancellationToken);
+        return await revelaParser.ParseFileAsync(indexPath, cancellationToken);
     }
 
     // High-performance logging with LoggerMessage source generator

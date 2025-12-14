@@ -39,12 +39,27 @@ public sealed class Gallery
     public string? Description { get; init; }
 
     /// <summary>
-    /// Rendered HTML body content from _index.md (below frontmatter).
+    /// Rendered HTML body content from _index.revela (below frontmatter).
     /// </summary>
     /// <remarks>
     /// Loaded at render time, not stored in manifest to keep file size small.
     /// </remarks>
     public string? Body { get; set; }
+
+    /// <summary>
+    /// Custom body template name from frontmatter.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Specifies which body template to use inside the layout.
+    /// Default is "body/gallery" if not specified.
+    /// </para>
+    /// <example>
+    /// template = "body/page" - Simple text page without gallery
+    /// template = "statistics/overview" - Statistics plugin template
+    /// </example>
+    /// </remarks>
+    public string? Template { get; set; }
 
     /// <summary>
     /// Optional cover image filename.
