@@ -4,6 +4,7 @@ using Spectara.Revela.Plugin.Source.OneDrive.Services;
 namespace Spectara.Revela.Plugin.Source.OneDrive.Tests.Services;
 
 [TestClass]
+[TestCategory("Unit")]
 public sealed class DownloadAnalyzerTests : IDisposable
 {
     private readonly string tempDirectory;

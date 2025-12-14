@@ -1,22 +1,22 @@
 using Microsoft.Extensions.Options;
 using NSubstitute;
 using Spectara.Revela.Commands.Generate.Abstractions;
-using Spectara.Revela.Commands.Generate.Models;
 using Spectara.Revela.Commands.Generate.Models.Manifest;
 using Spectara.Revela.Plugin.Statistics.Configuration;
 using Spectara.Revela.Plugin.Statistics.Services;
+using Spectara.Revela.Tests.Shared;
 
 namespace Spectara.Revela.Plugin.Statistics.Tests;
 
 [TestClass]
+[TestCategory("Unit")]
 public sealed class StatisticsAggregatorTests
 {
-    private IManifestRepository manifestRepository = null!;
-    private IOptionsMonitor<StatisticsPluginConfig> config = null!;
-    private ILogger logger = null!;
+    private readonly IManifestRepository manifestRepository;
+    private readonly IOptionsMonitor<StatisticsPluginConfig> config;
+    private readonly ILogger logger;
 
-    [TestInitialize]
-    public void Setup()
+    public StatisticsAggregatorTests()
     {
         manifestRepository = Substitute.For<IManifestRepository>();
         config = Substitute.For<IOptionsMonitor<StatisticsPluginConfig>>();
@@ -45,7 +45,7 @@ public sealed class StatisticsAggregatorTests
     public void Aggregate_CountsTotalImages()
     {
         // Arrange
-        var images = CreateTestImages(10);
+        var images = TestData.Images(10);
         manifestRepository.Images.Returns(images);
         var aggregator = new StatisticsAggregator(manifestRepository, config, logger);
 
@@ -62,9 +62,9 @@ public sealed class StatisticsAggregatorTests
         // Arrange
         var images = new Dictionary<string, ImageContent>
         {
-            ["img1.jpg"] = CreateImage("img1.jpg", new ExifData { FNumber = 2.8 }),
-            ["img2.jpg"] = CreateImage("img2.jpg", new ExifData { Iso = 100 }),
-            ["img3.jpg"] = CreateImage("img3.jpg", exif: null) // No EXIF
+            ["img1.jpg"] = TestData.Image("img1.jpg", TestData.Exif(fNumber: 2.8)),
+            ["img2.jpg"] = TestData.Image("img2.jpg", TestData.Exif(iso: 100)),
+            ["img3.jpg"] = TestData.Image("img3.jpg", exif: null) // No EXIF
         };
         manifestRepository.Images.Returns(images);
         var aggregator = new StatisticsAggregator(manifestRepository, config, logger);
@@ -83,10 +83,10 @@ public sealed class StatisticsAggregatorTests
         // Arrange
         var images = new Dictionary<string, ImageContent>
         {
-            ["img1.jpg"] = CreateImage("img1.jpg", new ExifData { FNumber = 1.4 }),
-            ["img2.jpg"] = CreateImage("img2.jpg", new ExifData { FNumber = 1.8 }),
-            ["img3.jpg"] = CreateImage("img3.jpg", new ExifData { FNumber = 2.8 }),
-            ["img4.jpg"] = CreateImage("img4.jpg", new ExifData { FNumber = 4.0 }) // Falls into f/2.8-4.0 bucket
+            ["img1.jpg"] = TestData.Image("img1.jpg", TestData.Exif(fNumber: 1.4)),
+            ["img2.jpg"] = TestData.Image("img2.jpg", TestData.Exif(fNumber: 1.8)),
+            ["img3.jpg"] = TestData.Image("img3.jpg", TestData.Exif(fNumber: 2.8)),
+            ["img4.jpg"] = TestData.Image("img4.jpg", TestData.Exif(fNumber: 4.0)) // Falls into f/2.8-4.0 bucket
         };
         manifestRepository.Images.Returns(images);
         var aggregator = new StatisticsAggregator(manifestRepository, config, logger);
@@ -107,10 +107,10 @@ public sealed class StatisticsAggregatorTests
         // Arrange
         var images = new Dictionary<string, ImageContent>
         {
-            ["img1.jpg"] = CreateImage("img1.jpg", new ExifData { FocalLength = 24 }),  // 18-35mm
-            ["img2.jpg"] = CreateImage("img2.jpg", new ExifData { FocalLength = 50 }),  // 35-70mm
-            ["img3.jpg"] = CreateImage("img3.jpg", new ExifData { FocalLength = 85 }),  // 70-135mm
-            ["img4.jpg"] = CreateImage("img4.jpg", new ExifData { FocalLength = 200 })  // 135-300mm
+            ["img1.jpg"] = TestData.Image("img1.jpg", TestData.Exif(focalLength: 24)),  // 18-35mm
+            ["img2.jpg"] = TestData.Image("img2.jpg", TestData.Exif(focalLength: 50)),  // 35-70mm
+            ["img3.jpg"] = TestData.Image("img3.jpg", TestData.Exif(focalLength: 85)),  // 70-135mm
+            ["img4.jpg"] = TestData.Image("img4.jpg", TestData.Exif(focalLength: 200))  // 135-300mm
         };
         manifestRepository.Images.Returns(images);
         var aggregator = new StatisticsAggregator(manifestRepository, config, logger);
@@ -133,10 +133,10 @@ public sealed class StatisticsAggregatorTests
         config.CurrentValue.Returns(new StatisticsPluginConfig { SortByCount = true });
         var images = new Dictionary<string, ImageContent>
         {
-            ["img1.jpg"] = CreateImage("img1.jpg", new ExifData { FNumber = 1.4 }),  // f/1.4-2.0 bucket
-            ["img2.jpg"] = CreateImage("img2.jpg", new ExifData { FNumber = 2.8 }),  // f/2.8-4.0 bucket
-            ["img3.jpg"] = CreateImage("img3.jpg", new ExifData { FNumber = 2.8 }),  // f/2.8-4.0 bucket
-            ["img4.jpg"] = CreateImage("img4.jpg", new ExifData { FNumber = 2.8 })   // f/2.8-4.0 bucket
+            ["img1.jpg"] = TestData.Image("img1.jpg", TestData.Exif(fNumber: 1.4)),  // f/1.4-2.0 bucket
+            ["img2.jpg"] = TestData.Image("img2.jpg", TestData.Exif(fNumber: 2.8)),  // f/2.8-4.0 bucket
+            ["img3.jpg"] = TestData.Image("img3.jpg", TestData.Exif(fNumber: 2.8)),  // f/2.8-4.0 bucket
+            ["img4.jpg"] = TestData.Image("img4.jpg", TestData.Exif(fNumber: 2.8))   // f/2.8-4.0 bucket
         };
         manifestRepository.Images.Returns(images);
         var aggregator = new StatisticsAggregator(manifestRepository, config, logger);
@@ -156,10 +156,10 @@ public sealed class StatisticsAggregatorTests
         config.CurrentValue.Returns(new StatisticsPluginConfig { MaxEntriesPerCategory = 2 });
         var images = new Dictionary<string, ImageContent>
         {
-            ["img1.jpg"] = CreateImage("img1.jpg", new ExifData { Model = "Camera A" }),
-            ["img2.jpg"] = CreateImage("img2.jpg", new ExifData { Model = "Camera A" }),
-            ["img3.jpg"] = CreateImage("img3.jpg", new ExifData { Model = "Camera B" }),
-            ["img4.jpg"] = CreateImage("img4.jpg", new ExifData { Model = "Camera C" })
+            ["img1.jpg"] = TestData.Image("img1.jpg", TestData.Exif(model: "Camera A")),
+            ["img2.jpg"] = TestData.Image("img2.jpg", TestData.Exif(model: "Camera A")),
+            ["img3.jpg"] = TestData.Image("img3.jpg", TestData.Exif(model: "Camera B")),
+            ["img4.jpg"] = TestData.Image("img4.jpg", TestData.Exif(model: "Camera C"))
         };
         manifestRepository.Images.Returns(images);
         var aggregator = new StatisticsAggregator(manifestRepository, config, logger);
@@ -178,12 +178,12 @@ public sealed class StatisticsAggregatorTests
         // Arrange
         var images = new Dictionary<string, ImageContent>
         {
-            ["img1.jpg"] = CreateImage("img1.jpg", new ExifData { Model = "A" }),
-            ["img2.jpg"] = CreateImage("img2.jpg", new ExifData { Model = "A" }),
-            ["img3.jpg"] = CreateImage("img3.jpg", new ExifData { Model = "A" }),
-            ["img4.jpg"] = CreateImage("img4.jpg", new ExifData { Model = "A" }),
-            ["img5.jpg"] = CreateImage("img5.jpg", new ExifData { Model = "B" }),
-            ["img6.jpg"] = CreateImage("img6.jpg", new ExifData { Model = "B" })
+            ["img1.jpg"] = TestData.Image("img1.jpg", TestData.Exif(model: "A")),
+            ["img2.jpg"] = TestData.Image("img2.jpg", TestData.Exif(model: "A")),
+            ["img3.jpg"] = TestData.Image("img3.jpg", TestData.Exif(model: "A")),
+            ["img4.jpg"] = TestData.Image("img4.jpg", TestData.Exif(model: "A")),
+            ["img5.jpg"] = TestData.Image("img5.jpg", TestData.Exif(model: "B")),
+            ["img6.jpg"] = TestData.Image("img6.jpg", TestData.Exif(model: "B"))
         };
         manifestRepository.Images.Returns(images);
         var aggregator = new StatisticsAggregator(manifestRepository, config, logger);
@@ -204,10 +204,10 @@ public sealed class StatisticsAggregatorTests
         // Arrange
         var images = new Dictionary<string, ImageContent>
         {
-            ["img1.jpg"] = CreateImage("img1.jpg", new ExifData(), dateTaken: new DateTime(2024, 6, 15)),
-            ["img2.jpg"] = CreateImage("img2.jpg", new ExifData(), dateTaken: new DateTime(2024, 3, 10)),
-            ["img3.jpg"] = CreateImage("img3.jpg", new ExifData(), dateTaken: new DateTime(2023, 12, 1)),
-            ["img4.jpg"] = CreateImage("img4.jpg", new ExifData(), dateTaken: new DateTime(2023, 1, 1))
+            ["img1.jpg"] = TestData.Image("img1.jpg", TestData.Exif(), dateTaken: new DateTime(2024, 6, 15)),
+            ["img2.jpg"] = TestData.Image("img2.jpg", TestData.Exif(), dateTaken: new DateTime(2024, 3, 10)),
+            ["img3.jpg"] = TestData.Image("img3.jpg", TestData.Exif(), dateTaken: new DateTime(2023, 12, 1)),
+            ["img4.jpg"] = TestData.Image("img4.jpg", TestData.Exif(), dateTaken: new DateTime(2023, 1, 1))
         };
         manifestRepository.Images.Returns(images);
         var aggregator = new StatisticsAggregator(manifestRepository, config, logger);
@@ -222,30 +222,4 @@ public sealed class StatisticsAggregatorTests
         // Most recent year should be first
         Assert.AreEqual("2024", result.ImagesByYear[0].Label);
     }
-
-    #region Helper Methods
-
-    private static Dictionary<string, ImageContent> CreateTestImages(int count)
-    {
-        var images = new Dictionary<string, ImageContent>();
-        for (var i = 0; i < count; i++)
-        {
-            var path = $"img{i}.jpg";
-            images[path] = CreateImage(path, new ExifData { FNumber = 2.8, Iso = 100 });
-        }
-        return images;
-    }
-
-    private static ImageContent CreateImage(string filename, ExifData? exif, DateTime? dateTaken = null) => new()
-    {
-        Filename = filename,
-        Hash = $"hash_{filename}",
-        Width = 1920,
-        Height = 1080,
-        Sizes = [1920],
-        Exif = exif,
-        DateTaken = dateTaken
-    };
-
-    #endregion
 }

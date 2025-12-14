@@ -4,6 +4,7 @@ using Spectara.Revela.Plugin.Source.OneDrive.Models;
 namespace Spectara.Revela.Plugin.Source.OneDrive.Tests.Configuration;
 
 [TestClass]
+[TestCategory("Unit")]
 public sealed class OneDriveConfigTests
 {
     #region ShareUrl Validation

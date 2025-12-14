@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+
+    <!-- This is a test helper library, not an actual test project -->
+    <IsTestProject>false</IsTestProject>
+
+    <!-- Suppress analyzer warnings for test helper types -->
+    <NoWarn>$(NoWarn);CA1515;CA1716;CA1054;MSTEST0001</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Core\Core.csproj" />
+    <ProjectReference Include="..\..\src\Commands\Commands.csproj" />
+    <ProjectReference Include="..\..\src\Plugins\Plugin.Source.OneDrive\Plugin.Source.OneDrive.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="MSTest" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Microsoft.VisualStudio.TestTools.UnitTesting" />
+  </ItemGroup>
+
+</Project>

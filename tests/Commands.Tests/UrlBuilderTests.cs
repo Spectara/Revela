@@ -6,6 +6,7 @@ namespace Spectara.Revela.Commands.Tests;
 /// Tests for UrlBuilder slug and path generation
 /// </summary>
 [TestClass]
+[TestCategory("Unit")]
 public sealed class UrlBuilderTests
 {
     #region ToSlug Tests

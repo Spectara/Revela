@@ -3,6 +3,7 @@ using Spectara.Revela.Plugin.Source.OneDrive.Formatting;
 namespace Spectara.Revela.Plugin.Source.OneDrive.Tests.Formatting;
 
 [TestClass]
+[TestCategory("Unit")]
 public sealed class FileSizeFormatterTests
 {
     [TestMethod]

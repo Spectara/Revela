@@ -3,6 +3,7 @@ using Spectara.Revela.Plugin.Source.OneDrive.Models;
 namespace Spectara.Revela.Plugin.Source.OneDrive.Tests.Models;
 
 [TestClass]
+[TestCategory("Unit")]
 public sealed class DownloadAnalysisTests
 {
     [TestMethod]

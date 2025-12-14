@@ -4,6 +4,7 @@ using Spectara.Revela.Commands.Generate.Parsing;
 namespace Spectara.Revela.Commands.Tests;
 
 [TestClass]
+[TestCategory("Unit")]
 public sealed class FrontMatterParserTests
 {
     [TestMethod]

@@ -14,7 +14,8 @@
     <OutputType>Exe</OutputType>
 
     <!-- Suppress MSTest public class requirement warning -->
-    <NoWarn>$(NoWarn);CA1515</NoWarn>
+    <!-- CA2000: HttpResponseMessage in test mocks are managed by MockHttpMessageHandler -->
+    <NoWarn>$(NoWarn);CA1515;CA2000</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
@@ -26,6 +27,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Plugins\Plugin.Source.OneDrive\Plugin.Source.OneDrive.csproj" />
+    <ProjectReference Include="..\Shared\Shared.csproj" />
   </ItemGroup>
 
 </Project>

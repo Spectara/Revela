@@ -6,6 +6,7 @@ namespace Spectara.Revela.Commands.Tests;
 /// Tests for GallerySorter natural sorting functionality
 /// </summary>
 [TestClass]
+[TestCategory("Unit")]
 public sealed class GallerySorterTests
 {
     #region ExtractDisplayName Tests

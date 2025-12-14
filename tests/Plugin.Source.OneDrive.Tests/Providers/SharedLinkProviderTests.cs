@@ -3,6 +3,7 @@ using System.Text.Json;
 using NSubstitute;
 using Spectara.Revela.Plugin.Source.OneDrive.Models;
 using Spectara.Revela.Plugin.Source.OneDrive.Providers;
+using Spectara.Revela.Tests.Shared.Http;
 
 namespace Spectara.Revela.Plugin.Source.OneDrive.Tests.Providers;
 
@@ -10,6 +11,7 @@ namespace Spectara.Revela.Plugin.Source.OneDrive.Tests.Providers;
 /// Unit tests for SharedLinkProvider using mocked HttpClient
 /// </summary>
 [TestClass]
+[TestCategory("Unit")]
 public sealed class SharedLinkProviderTests : IDisposable
 {
     private readonly MockHttpMessageHandler mockHandler;
@@ -454,64 +456,4 @@ public sealed class SharedLinkProviderTests : IDisposable
     }
 
     #endregion
-}
-
-/// <summary>
-/// Simple HTTP message handler for mocking HTTP responses in tests
-/// </summary>
-public sealed class MockHttpMessageHandler : HttpMessageHandler
-{
-    private readonly Dictionary<Uri, HttpResponseMessage> responses = [];
-    private readonly List<(Func<string, bool> Matcher, HttpResponseMessage Response)> patternResponses = [];
-
-    public void AddResponse(Uri uri, HttpResponseMessage response) => responses[uri] = response;
-
-    public void AddPatternResponse(Func<string, bool> urlMatcher, HttpResponseMessage response) => patternResponses.Add((urlMatcher, response));
-
-    protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
-    {
-        var uri = request.RequestUri!;
-
-        // Check exact match first
-        if (responses.TryGetValue(uri, out var response))
-        {
-            return Task.FromResult(CloneResponse(response));
-        }
-
-        // Check pattern matches
-        foreach (var (matcher, patternResponse) in patternResponses)
-        {
-            if (matcher(uri.ToString()))
-            {
-                return Task.FromResult(CloneResponse(patternResponse));
-            }
-        }
-
-        // Default: not found
-        return Task.FromResult(new HttpResponseMessage(HttpStatusCode.NotFound));
-    }
-
-    private static HttpResponseMessage CloneResponse(HttpResponseMessage original)
-    {
-        // Clone to allow reuse
-        var clone = new HttpResponseMessage(original.StatusCode);
-
-        if (original.Content != null)
-        {
-            var contentBytes = original.Content.ReadAsByteArrayAsync().GetAwaiter().GetResult();
-            clone.Content = new ByteArrayContent(contentBytes);
-
-            foreach (var header in original.Content.Headers)
-            {
-                clone.Content.Headers.TryAddWithoutValidation(header.Key, header.Value);
-            }
-        }
-
-        foreach (var header in original.Headers)
-        {
-            clone.Headers.TryAddWithoutValidation(header.Key, header.Value);
-        }
-
-        return clone;
-    }
 }

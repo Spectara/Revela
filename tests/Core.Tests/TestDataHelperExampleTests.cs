@@ -4,6 +4,7 @@ namespace Spectara.Revela.Core.Tests;
 /// Example tests demonstrating how to use TestDataHelper
 /// </summary>
 [TestClass]
+[TestCategory("Unit")]
 public sealed class TestDataHelperExampleTests
 {
     [TestMethod]
