@@ -7,6 +7,21 @@ und dieses Projekt folgt [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+## [0.0.1-beta.3] - 2025-12-14
+
+### Added
+- Test Infrastructure: SharedTestDataHelper und MockHttpMessageHandler
+- Plugin.Statistics.Tests: Unit Tests für StatisticsAggregator
+- TestData Factory für konsistente Test-Daten
+- IntegrationTests Placeholder-Struktur
+
+### Changed
+- Tests nutzen jetzt shared Shared-Projekt für gemeinsame Test-Utilities
+- Alle Test-Projekte referenzieren nun das Shared-Projekt
+
+### Fixed
+- Test-Projekt Konfiguration für MSTest v4 vereinheitlicht
+
 ## [0.0.1-beta.2] - 2025-12-13
 
 ### Added
@@ -37,6 +52,7 @@ und dieses Projekt folgt [Semantic Versioning](https://semver.org/lang/de/).
 - Plugin.Source.OneDrive (OneDrive Shared Folder Support)
 - Commands: generate, init, clean, theme, plugins, restore
 
-[Unreleased]: https://github.com/spectara/revela/compare/v0.0.1-beta.2...HEAD
+[Unreleased]: https://github.com/spectara/revela/compare/v0.0.1-beta.3...HEAD
+[0.0.1-beta.3]: https://github.com/spectara/revela/compare/v0.0.1-beta.2...v0.0.1-beta.3
 [0.0.1-beta.2]: https://github.com/spectara/revela/compare/v0.0.1-beta.1...v0.0.1-beta.2
 [0.0.1-beta.1]: https://github.com/spectara/revela/releases/tag/v0.0.1-beta.1
