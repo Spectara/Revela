@@ -55,7 +55,7 @@ public sealed partial class InitProjectCommand(
                 return;
             }
 
-            AnsiConsole.MarkupLine("[blue]🎨 Initializing Revela project...[/]");
+            AnsiConsole.MarkupLine("[blue]>[/] Initializing Revela project...");
 
             // Get project name (default to directory name)
             var projectName = name ?? new DirectoryInfo(Directory.GetCurrentDirectory()).Name;
@@ -94,7 +94,7 @@ public sealed partial class InitProjectCommand(
             Directory.CreateDirectory("output");
 
             // Success
-            var panel = new Panel($"[green]✨ Project '{projectName}' initialized![/]\n\n" +
+            var panel = new Panel($"[green]Project '{projectName}' initialized![/]\n\n" +
                                 "[bold]Next steps:[/]\n" +
                                 "1. Add your content to [cyan]source/[/] (photos, markdown, etc.)\n" +
                                 "2. Run [cyan]revela generate[/]\n" +

@@ -74,10 +74,10 @@ public sealed partial class GenerateCommand(
         // Phase 1: Scan
         var scanResult = await AnsiConsole.Status()
             .Spinner(Spinner.Known.Dots)
-            .StartAsync("[yellow]🔍 Scanning content...[/]", async ctx =>
+            .StartAsync("[yellow]Scanning content...[/]", async ctx =>
             {
                 var progress = new Progress<ContentProgress>(
-                    p => ctx.Status($"[yellow]🔍 {p.Status}[/] ({p.GalleriesFound} galleries, {p.ImagesFound} images)")
+                    p => ctx.Status($"[yellow]{p.Status}[/] ({p.GalleriesFound} galleries, {p.ImagesFound} images)")
                 );
 
                 return await contentService.ScanAsync(progress, CancellationToken.None);

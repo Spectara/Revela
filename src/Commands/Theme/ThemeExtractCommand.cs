@@ -262,7 +262,7 @@ public sealed partial class ThemeExtractCommand(
             });
 
         // Success panel
-        var fileList = string.Join("\n", extractedFiles.Select(f => $"  [green]✓[/] [cyan]{EscapeMarkup(f)}[/]"));
+        var fileList = string.Join("\n", extractedFiles.Select(f => $"  [green]+[/] [cyan]{EscapeMarkup(f)}[/]"));
         var panel = new Panel($"{fileList}\n\n" +
                             "[dim]These files will now override the embedded theme files.[/]")
         {
@@ -481,7 +481,7 @@ public sealed partial class ThemeExtractCommand(
             ? $"\n[bold]Extensions:[/] {string.Join(", ", extractedExtensions)}"
             : "";
 
-        var panel = new Panel($"[green]✨ Theme '{EscapeMarkup(themeName)}' extracted![/]\n\n" +
+        var panel = new Panel($"[green]Theme '{EscapeMarkup(themeName)}' extracted![/]\n\n" +
                             $"[bold]Location:[/] [cyan]themes/{EscapeMarkup(themeName)}/[/]{extensionsInfo}\n\n" +
                             "[bold]Next steps:[/]\n" +
                             $"1. Edit [cyan]themes/{EscapeMarkup(themeName)}/[/] to customize\n" +

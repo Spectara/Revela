@@ -91,7 +91,7 @@ public sealed partial class PluginInstallCommand(
 
             if (success)
             {
-                AnsiConsole.MarkupLine($"[green]✨ Plugin '{packageId}' installed successfully![/]");
+                AnsiConsole.MarkupLine($"[green]Plugin '{packageId}' installed successfully.[/]");
                 AnsiConsole.MarkupLine("[dim]The plugin will be available after restarting revela.[/]");
                 return 0;
             }
@@ -137,7 +137,7 @@ public sealed partial class PluginInstallCommand(
 
             if (success)
             {
-                AnsiConsole.MarkupLine("[green]✨ Plugin installed successfully![/]");
+                AnsiConsole.MarkupLine("[green]Plugin installed successfully.[/]");
                 AnsiConsole.MarkupLine("[dim]The plugin will be available after restarting revela.[/]");
                 return 0;
             }

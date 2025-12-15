@@ -48,14 +48,14 @@ public sealed partial class PluginUninstallCommand(
                 return 0;
             }
 
-            AnsiConsole.MarkupLine($"[blue]🗑️  Uninstalling plugin:[/] [cyan]{packageId}[/]");
+            AnsiConsole.MarkupLine($"[blue]Uninstalling plugin:[/] [cyan]{packageId}[/]");
             LogUninstallingPlugin(packageId);
 
             var success = await pluginManager.UninstallPluginAsync(packageId);
 
             if (success)
             {
-                AnsiConsole.MarkupLine($"[green]✨ Plugin '{packageId}' uninstalled successfully![/]");
+                AnsiConsole.MarkupLine($"[green]Plugin '{packageId}' uninstalled successfully.[/]");
                 return 0;
             }
             else
