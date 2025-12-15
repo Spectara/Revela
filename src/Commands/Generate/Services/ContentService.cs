@@ -128,6 +128,10 @@ public sealed partial class ContentService(
                 Duration = stopwatch.Elapsed
             };
         }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
         catch (Exception ex)
         {
             LogScanFailed(logger, ex);

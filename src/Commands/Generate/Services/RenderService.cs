@@ -149,6 +149,10 @@ public sealed partial class RenderService(
                 Duration = stopwatch.Elapsed
             };
         }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
         catch (Exception ex)
         {
             LogPagesGenerationFailed(logger, ex);
@@ -390,6 +394,8 @@ public sealed partial class RenderService(
         // Render gallery pages
         foreach (var gallery in model.Galleries)
         {
+            cancellationToken.ThrowIfCancellationRequested();
+
             progress?.Report(new RenderProgress
             {
                 CurrentPage = $"{gallery.Slug}/index.html",
@@ -442,6 +448,7 @@ public sealed partial class RenderService(
                     // Merge resolved data sources (user-defined variable names)
                     foreach (var (key, value) in resolvedData)
                     {
+                        cancellationToken.ThrowIfCancellationRequested();
                         baseModel[key] = value;
                     }
 

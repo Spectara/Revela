@@ -90,10 +90,14 @@ public sealed partial class ImageService(
             var imagesToProcess = new List<(string SourcePath, string Hash, string ManifestKey, IReadOnlyList<int> Sizes)>();
             var cachedCount = 0;
 
+            var selectionStopwatch = System.Diagnostics.Stopwatch.StartNew();
+
             var outputImagesDirectory = Path.Combine(OutputDirectory, ImageDirectory);
 
             foreach (var imagePath in allImagePaths)
             {
+                cancellationToken.ThrowIfCancellationRequested();
+
                 var fullPath = Path.Combine(SourceDirectory, imagePath);
                 if (!File.Exists(fullPath))
                 {
@@ -119,6 +123,21 @@ public sealed partial class ImageService(
                     var manifestSizes = existingEntry?.Sizes ?? [];
                     imagesToProcess.Add((fullPath, sourceHash, manifestKey, manifestSizes));
                 }
+            }
+
+            selectionStopwatch.Stop();
+            LogSelectionCompleted(logger, allImagePaths.Count, imagesToProcess.Count, cachedCount, selectionStopwatch.Elapsed);
+
+            long plannedVariants = 0;
+            foreach (var (_, _, _, manifestSizes) in imagesToProcess)
+            {
+                var sizesToGenerateCount = manifestSizes.Count > 0 ? manifestSizes.Count : sizes.Length;
+                plannedVariants += (long)sizesToGenerateCount * formats.Count;
+            }
+
+            if (imagesToProcess.Count > 0)
+            {
+                LogVariantsPlanned(logger, imagesToProcess.Count, plannedVariants, formats.Count);
             }
 
             if (cachedCount > 0)
@@ -216,8 +235,18 @@ public sealed partial class ImageService(
             // Calculate total size of output files
             if (Directory.Exists(outputImagesDirectory))
             {
-                totalSizeBytes = Directory.EnumerateFiles(outputImagesDirectory, "*.*", SearchOption.AllDirectories)
-                    .Sum(f => new FileInfo(f).Length);
+                var sizeStopwatch = System.Diagnostics.Stopwatch.StartNew();
+                var fileCount = 0;
+
+                foreach (var file in Directory.EnumerateFiles(outputImagesDirectory, "*.*", SearchOption.AllDirectories))
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    fileCount++;
+                    totalSizeBytes += new FileInfo(file).Length;
+                }
+
+                sizeStopwatch.Stop();
+                LogOutputSizeScanned(logger, fileCount, totalSizeBytes, sizeStopwatch.Elapsed);
             }
 
             // Save manifest
@@ -245,6 +274,10 @@ public sealed partial class ImageService(
                 TotalSize = totalSizeBytes,
                 Duration = stopwatch.Elapsed
             };
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
         }
         catch (Exception ex)
         {
@@ -340,6 +373,15 @@ public sealed partial class ImageService(
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Processed {Count} images")]
     private static partial void LogImagesProcessed(ILogger logger, int count);
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Image selection: {Total} total, {ToProcess} to process, {Cached} cached in {Duration}")]
+    private static partial void LogSelectionCompleted(ILogger logger, int total, int toProcess, int cached, TimeSpan duration);
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Planned processing: {ImageCount} images, {VariantCount} variants ({FormatCount} formats)")]
+    private static partial void LogVariantsPlanned(ILogger logger, int imageCount, long variantCount, int formatCount);
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Output size scan: {FileCount} files, {Bytes} bytes in {Duration}")]
+    private static partial void LogOutputSizeScanned(ILogger logger, int fileCount, long bytes, TimeSpan duration);
 
     [LoggerMessage(Level = LogLevel.Error, Message = "Image processing failed")]
     private static partial void LogImageProcessingFailed(ILogger logger, Exception exception);

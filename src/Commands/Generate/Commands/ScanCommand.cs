@@ -29,61 +29,69 @@ public sealed partial class ScanCommand(
     {
         var command = new Command("scan", "Scan content and update manifest");
 
-        command.SetAction(async parseResult =>
+        command.SetAction(async (parseResult, cancellationToken) =>
         {
-            _ = parseResult; // Unused but required by SetAction
-            await ExecuteAsync(CancellationToken.None);
-            return 0;
+            _ = parseResult;
+            return await ExecuteAsync(cancellationToken);
         });
 
         return command;
     }
 
-    private async Task ExecuteAsync(CancellationToken cancellationToken)
+    private async Task<int> ExecuteAsync(CancellationToken cancellationToken)
     {
-        var result = await AnsiConsole.Status()
-            .Spinner(Spinner.Known.Dots)
-            .StartAsync("[yellow]Scanning content...[/]", async ctx =>
-            {
-                var progress = new Progress<ContentProgress>(p => ctx.Status($"[yellow]{p.Status}[/] ({p.GalleriesFound} galleries, {p.ImagesFound} images)"));
-
-                return await contentService.ScanAsync(progress, cancellationToken);
-            });
-
-        if (result.Success)
+        try
         {
-            var projectName = configuration["name"] ?? "Revela Site";
+            var result = await AnsiConsole.Status()
+                .Spinner(Spinner.Known.Dots)
+                .StartAsync("[yellow]Scanning content...[/]", async ctx =>
+                {
+                    var progress = new Progress<ContentProgress>(p => ctx.Status($"[yellow]{p.Status}[/] ({p.GalleriesFound} galleries, {p.ImagesFound} images)"));
 
-            var panel = new Panel(
-                $"[green]Content scan complete![/]\n\n" +
-                $"[dim]Project:[/]    [cyan]{projectName}[/]\n\n" +
-                $"[dim]Statistics:[/]\n" +
-                $"  Galleries:  {result.GalleryCount}\n" +
-                $"  Images:     {result.ImageCount}\n" +
-                $"  Navigation: {result.NavigationItemCount}\n" +
-                $"  Duration:   {result.Duration.TotalSeconds:F2}s\n\n" +
-                $"[dim]Next steps:[/]\n" +
-                $"  • Run [cyan]revela generate images[/] to process images\n" +
-                $"  • Run [cyan]revela generate pages[/] to render HTML\n" +
-                $"  • Or run [cyan]revela generate[/] for full build"
-            )
+                    return await contentService.ScanAsync(progress, cancellationToken);
+                });
+
+            if (result.Success)
             {
-                Header = new PanelHeader("[bold green]Success[/]"),
-                Border = BoxBorder.Rounded
-            };
+                var projectName = configuration["name"] ?? "Revela Site";
 
-            AnsiConsole.Write(panel);
-        }
-        else
-        {
-            var panel = new Panel(
+                var panel = new Panel(
+                    $"[green]Content scan complete![/]\n\n" +
+                    $"[dim]Project:[/]    [cyan]{projectName}[/]\n\n" +
+                    $"[dim]Statistics:[/]\n" +
+                    $"  Galleries:  {result.GalleryCount}\n" +
+                    $"  Images:     {result.ImageCount}\n" +
+                    $"  Navigation: {result.NavigationItemCount}\n" +
+                    $"  Duration:   {result.Duration.TotalSeconds:F2}s\n\n" +
+                    $"[dim]Next steps:[/]\n" +
+                    $"  • Run [cyan]revela generate images[/] to process images\n" +
+                    $"  • Run [cyan]revela generate pages[/] to render HTML\n" +
+                    $"  • Or run [cyan]revela generate[/] for full build"
+                )
+                {
+                    Header = new PanelHeader("[bold green]Success[/]"),
+                    Border = BoxBorder.Rounded
+                };
+
+                AnsiConsole.Write(panel);
+                return 0;
+            }
+
+            var errorPanel = new Panel(
                 new Markup($"[red]{result.ErrorMessage}[/]"))
             {
                 Header = new PanelHeader("[bold red]Scan failed[/]"),
                 Border = BoxBorder.Rounded
             };
-            AnsiConsole.Write(panel);
+            AnsiConsole.Write(errorPanel);
             LogScanFailed(logger);
+            return 1;
+        }
+        catch (OperationCanceledException)
+        {
+            AnsiConsole.MarkupLine("[yellow]Canceled[/]");
+            LogScanFailed(logger);
+            return 1;
         }
     }
 

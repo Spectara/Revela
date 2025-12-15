@@ -48,10 +48,10 @@ public sealed partial class GenerateCommand(
     {
         var command = new Command("generate", "Generate static site from content");
 
-        command.SetAction(async parseResult =>
+        command.SetAction(async (parseResult, cancellationToken) =>
         {
-            await ExecuteAsync();
-            return 0;
+            _ = parseResult;
+            return await ExecuteAsync(cancellationToken);
         });
 
         // Add sub-commands
@@ -62,139 +62,161 @@ public sealed partial class GenerateCommand(
         return command;
     }
 
-    private async Task ExecuteAsync()
+    private async Task<int> ExecuteAsync(CancellationToken cancellationToken)
     {
         var startTime = DateTime.UtcNow;
 
-        AnsiConsole.MarkupLine("[blue]Generating site...[/]");
-        AnsiConsole.MarkupLine("[dim]Source:[/] source");
-        AnsiConsole.MarkupLine("[dim]Output:[/] output");
-        AnsiConsole.WriteLine();
-
-        // Phase 1: Scan
-        var scanResult = await AnsiConsole.Status()
-            .Spinner(Spinner.Known.Dots)
-            .StartAsync("[yellow]Scanning content...[/]", async ctx =>
-            {
-                var progress = new Progress<ContentProgress>(
-                    p => ctx.Status($"[yellow]{p.Status}[/] ({p.GalleriesFound} galleries, {p.ImagesFound} images)")
-                );
-
-                return await contentService.ScanAsync(progress, CancellationToken.None);
-            });
-
-        if (!scanResult.Success)
+        try
         {
-            AnsiConsole.MarkupLine($"[red]ERROR Scan failed:[/] {scanResult.ErrorMessage}");
-            LogGenerationFailed(logger);
-            return;
-        }
+            cancellationToken.ThrowIfCancellationRequested();
 
-        AnsiConsole.MarkupLine($"[dim]Scanned: {scanResult.GalleryCount} galleries, {scanResult.ImageCount} images[/]");
+            AnsiConsole.MarkupLine("[blue]Generating site...[/]");
+            AnsiConsole.MarkupLine("[dim]Source:[/] source");
+            AnsiConsole.MarkupLine("[dim]Output:[/] output");
+            AnsiConsole.WriteLine();
 
-        // Phase 2: Images
-        var imageResult = await AnsiConsole.Progress()
-            .AutoClear(false)
-            .HideCompleted(false)
-            .Columns(
-                new TaskDescriptionColumn(),
-                new ProgressBarColumn(),
-                new PercentageColumn(),
-                new SpinnerColumn())
-            .StartAsync(async ctx =>
-            {
-                var task = ctx.AddTask("[green]Processing images[/]");
-                task.IsIndeterminate = true;
-
-                var progress = new Progress<ImageProgress>(p =>
+            // Phase 1: Scan
+            var scanResult = await AnsiConsole.Status()
+                .Spinner(Spinner.Known.Dots)
+                .StartAsync("[yellow]Scanning content...[/]", async ctx =>
                 {
-                    if (task.IsIndeterminate && p.Total > 0)
-                    {
-                        task.IsIndeterminate = false;
-                        task.MaxValue = p.Total;
-                    }
+                    var progress = new Progress<ContentProgress>(
+                        p => ctx.Status($"[yellow]{p.Status}[/] ({p.GalleriesFound} galleries, {p.ImagesFound} images)")
+                    );
 
-                    task.Value = p.Processed;
+                    return await contentService.ScanAsync(progress, cancellationToken);
                 });
 
-                return await imageService.ProcessAsync(new ProcessImagesOptions(), progress, CancellationToken.None);
-            });
-
-        if (!imageResult.Success)
-        {
-            AnsiConsole.MarkupLine($"[red]ERROR Image processing failed:[/] {imageResult.ErrorMessage}");
-            LogGenerationFailed(logger);
-            return;
-        }
-
-        // Phase 3: Pages
-        var renderResult = await AnsiConsole.Progress()
-            .AutoClear(false)
-            .HideCompleted(false)
-            .Columns(
-                new TaskDescriptionColumn(),
-                new ProgressBarColumn(),
-                new PercentageColumn(),
-                new SpinnerColumn())
-            .StartAsync(async ctx =>
+            if (!scanResult.Success)
             {
-                var task = ctx.AddTask("[green]Rendering pages[/]");
-                task.IsIndeterminate = true;
+                AnsiConsole.MarkupLine($"[red]ERROR Scan failed:[/] {scanResult.ErrorMessage}");
+                LogGenerationFailed(logger);
+                return 1;
+            }
 
-                var progress = new Progress<RenderProgress>(p =>
+            cancellationToken.ThrowIfCancellationRequested();
+
+            AnsiConsole.MarkupLine($"[dim]Scanned: {scanResult.GalleryCount} galleries, {scanResult.ImageCount} images[/]");
+
+            // Phase 2: Images
+            var imageResult = await AnsiConsole.Progress()
+                .AutoClear(false)
+                .HideCompleted(false)
+                .Columns(
+                    new TaskDescriptionColumn(),
+                    new ProgressBarColumn(),
+                    new PercentageColumn(),
+                    new SpinnerColumn())
+                .StartAsync(async ctx =>
                 {
-                    if (task.IsIndeterminate && p.Total > 0)
-                    {
-                        task.IsIndeterminate = false;
-                        task.MaxValue = p.Total;
-                    }
+                    var task = ctx.AddTask("[green]Processing images[/]");
+                    task.IsIndeterminate = true;
 
-                    task.Value = p.Rendered;
+                    var progress = new Progress<ImageProgress>(p =>
+                    {
+                        if (task.IsIndeterminate && p.Total > 0)
+                        {
+                            task.IsIndeterminate = false;
+                            task.MaxValue = p.Total;
+                        }
+
+                        task.Value = p.Processed;
+                    });
+
+                    return await imageService.ProcessAsync(new ProcessImagesOptions(), progress, cancellationToken);
                 });
 
-                return await renderService.RenderAsync(progress, CancellationToken.None);
-            });
+            if (!imageResult.Success)
+            {
+                AnsiConsole.MarkupLine($"[red]ERROR Image processing failed:[/] {imageResult.ErrorMessage}");
+                LogGenerationFailed(logger);
+                return 1;
+            }
 
-        if (!renderResult.Success)
+            cancellationToken.ThrowIfCancellationRequested();
+
+            // Phase 3: Pages
+            var renderResult = await AnsiConsole.Progress()
+                .AutoClear(false)
+                .HideCompleted(false)
+                .Columns(
+                    new TaskDescriptionColumn(),
+                    new ProgressBarColumn(),
+                    new PercentageColumn(),
+                    new SpinnerColumn())
+                .StartAsync(async ctx =>
+                {
+                    var task = ctx.AddTask("[green]Rendering pages[/]");
+                    task.IsIndeterminate = true;
+
+                    var progress = new Progress<RenderProgress>(p =>
+                    {
+                        if (task.IsIndeterminate && p.Total > 0)
+                        {
+                            task.IsIndeterminate = false;
+                            task.MaxValue = p.Total;
+                        }
+
+                        task.Value = p.Rendered;
+                    });
+
+                    return await renderService.RenderAsync(progress, cancellationToken);
+                });
+
+            if (!renderResult.Success)
+            {
+                AnsiConsole.MarkupLine($"[red]ERROR Page generation failed:[/] {renderResult.ErrorMessage}");
+                LogGenerationFailed(logger);
+                return 1;
+            }
+
+            var duration = DateTime.UtcNow - startTime;
+            var projectName = configuration["name"] ?? "Revela Site";
+
+            // Success message with detailed stats
+            var content = "[green]Site generated successfully![/]\n\n";
+            content += $"[dim]Project:[/]   [cyan]{projectName}[/]\n";
+            content += "[dim]Output:[/]    [cyan]output/[/]\n\n";
+            content += "[dim]Statistics:[/]\n";
+            content += $"  Galleries:  {scanResult.GalleryCount}\n";
+            content += $"  Images:     {imageResult.ProcessedCount} processed";
+            if (imageResult.SkippedCount > 0)
+            {
+                content += $", {imageResult.SkippedCount} cached";
+            }
+
+            content += "\n";
+            content += $"  Pages:      {renderResult.PageCount}\n\n";
+            content += "[dim]Timing:[/]\n";
+            content += $"  Scan:       {scanResult.Duration.TotalSeconds:F2}s\n";
+            content += $"  Images:     {imageResult.Duration.TotalSeconds:F2}s\n";
+            content += $"  Pages:      {renderResult.Duration.TotalSeconds:F2}s\n";
+            content += $"  [bold]Total:[/]      {duration.TotalSeconds:F2}s\n\n";
+            content += "[dim]Next steps:[/]\n";
+            content += "  • Open [cyan]output/index.html[/] in your browser\n";
+            content += "  • Deploy with [cyan]revela deploy[/] (coming soon)";
+
+            var panel = new Panel(new Markup(content))
+            {
+                Header = new PanelHeader("[bold green]Success[/]"),
+                Border = BoxBorder.Rounded
+            };
+
+            AnsiConsole.Write(panel);
+            return 0;
+        }
+        catch (OperationCanceledException)
         {
-            AnsiConsole.MarkupLine($"[red]ERROR Page generation failed:[/] {renderResult.ErrorMessage}");
+            AnsiConsole.MarkupLine("[yellow]Canceled[/]");
             LogGenerationFailed(logger);
-            return;
+            return 1;
         }
-
-        var duration = DateTime.UtcNow - startTime;
-        var projectName = configuration["name"] ?? "Revela Site";
-
-        // Success message with detailed stats
-        var content = "[green]Site generated successfully![/]\n\n";
-        content += $"[dim]Project:[/]   [cyan]{projectName}[/]\n";
-        content += "[dim]Output:[/]    [cyan]output/[/]\n\n";
-        content += "[dim]Statistics:[/]\n";
-        content += $"  Galleries:  {scanResult.GalleryCount}\n";
-        content += $"  Images:     {imageResult.ProcessedCount} processed";
-        if (imageResult.SkippedCount > 0)
+        catch (Exception ex)
         {
-            content += $", {imageResult.SkippedCount} cached";
+            AnsiConsole.MarkupLine($"[red]ERROR[/] {ex.Message}");
+            LogGenerationFailed(logger);
+            return 1;
         }
-
-        content += "\n";
-        content += $"  Pages:      {renderResult.PageCount}\n\n";
-        content += "[dim]Timing:[/]\n";
-        content += $"  Scan:       {scanResult.Duration.TotalSeconds:F2}s\n";
-        content += $"  Images:     {imageResult.Duration.TotalSeconds:F2}s\n";
-        content += $"  Pages:      {renderResult.Duration.TotalSeconds:F2}s\n";
-        content += $"  [bold]Total:[/]      {duration.TotalSeconds:F2}s\n\n";
-        content += "[dim]Next steps:[/]\n";
-        content += "  • Open [cyan]output/index.html[/] in your browser\n";
-        content += "  • Deploy with [cyan]revela deploy[/] (coming soon)";
-
-        var panel = new Panel(new Markup(content))
-        {
-            Header = new PanelHeader("[bold green]Success[/]"),
-            Border = BoxBorder.Rounded
-        };
-
-        AnsiConsole.Write(panel);
     }
 
     [LoggerMessage(Level = LogLevel.Error, Message = "Site generation failed")]

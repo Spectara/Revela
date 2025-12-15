@@ -30,99 +30,107 @@ public sealed partial class PagesCommand(
     {
         var command = new Command("pages", "Generate HTML pages from manifest");
 
-        command.SetAction(async parseResult =>
+        command.SetAction(async (parseResult, cancellationToken) =>
         {
-            _ = parseResult; // Unused but required by SetAction
-            await ExecuteAsync(CancellationToken.None);
-            return 0;
+            _ = parseResult;
+            return await ExecuteAsync(cancellationToken);
         });
 
         return command;
     }
 
-    private async Task ExecuteAsync(CancellationToken cancellationToken)
+    private async Task<int> ExecuteAsync(CancellationToken cancellationToken)
     {
-        // Early manifest check before showing progress bar
-        await manifestRepository.LoadAsync(cancellationToken);
-
-        if (manifestRepository.Root is null)
+        try
         {
-            var panel = new Panel(
-                "[yellow]No manifest found.[/]\n\n" +
-                "[dim]Solution:[/]\n" +
-                "Run [cyan]revela generate scan[/] first to scan your content."
-            )
+            // Early manifest check before showing progress bar
+            await manifestRepository.LoadAsync(cancellationToken);
+
+            if (manifestRepository.Root is null)
             {
-                Header = new PanelHeader("[bold yellow]Warning[/]"),
-                Border = BoxBorder.Rounded
-            };
-
-            AnsiConsole.Write(panel);
-            return;
-        }
-
-        var result = await AnsiConsole.Progress()
-            .AutoClear(false)
-            .HideCompleted(false)
-            .Columns(
-                new TaskDescriptionColumn(),
-                new ProgressBarColumn(),
-                new PercentageColumn(),
-                new SpinnerColumn())
-            .StartAsync(async ctx =>
-            {
-                var task = ctx.AddTask("[green]Rendering pages[/]");
-                task.IsIndeterminate = true;
-
-                var progress = new Progress<RenderProgress>(p =>
+                var warningPanel = new Panel(
+                    "[yellow]No manifest found.[/]\n\n" +
+                    "[dim]Solution:[/]\n" +
+                    "Run [cyan]revela generate scan[/] first to scan your content."
+                )
                 {
-                    if (task.IsIndeterminate && p.Total > 0)
+                    Header = new PanelHeader("[bold yellow]Warning[/]"),
+                    Border = BoxBorder.Rounded
+                };
+
+                AnsiConsole.Write(warningPanel);
+                return 1;
+            }
+
+            var result = await AnsiConsole.Progress()
+                .AutoClear(false)
+                .HideCompleted(false)
+                .Columns(
+                    new TaskDescriptionColumn(),
+                    new ProgressBarColumn(),
+                    new PercentageColumn(),
+                    new SpinnerColumn())
+                .StartAsync(async ctx =>
+                {
+                    var task = ctx.AddTask("[green]Rendering pages[/]");
+                    task.IsIndeterminate = true;
+
+                    var progress = new Progress<RenderProgress>(p =>
                     {
-                        task.IsIndeterminate = false;
-                        task.MaxValue = p.Total;
-                    }
+                        if (task.IsIndeterminate && p.Total > 0)
+                        {
+                            task.IsIndeterminate = false;
+                            task.MaxValue = p.Total;
+                        }
 
-                    task.Value = p.Rendered;
+                        task.Value = p.Rendered;
 
-                    var safeName = p.CurrentPage
-                        .Replace("[", "[[", StringComparison.Ordinal)
-                        .Replace("]", "]]", StringComparison.Ordinal);
+                        var safeName = p.CurrentPage
+                            .Replace("[", "[[", StringComparison.Ordinal)
+                            .Replace("]", "]]", StringComparison.Ordinal);
 
-                    task.Description = $"[green]Rendering[/] {safeName}";
+                        task.Description = $"[green]Rendering[/] {safeName}";
+                    });
+
+                    return await renderService.RenderAsync(progress, cancellationToken);
                 });
 
-                return await renderService.RenderAsync(progress, cancellationToken);
-            });
-
-        if (result.Success)
-        {
-            var projectName = configuration["name"] ?? "Revela Site";
-
-            var panel = new Panel(
-                new Markup($"[green]Page rendering complete![/]\n\n" +
-                          $"[dim]Project:[/]  [cyan]{projectName}[/]\n\n" +
-                          $"[dim]Statistics:[/]\n" +
-                          $"  Pages:    {result.PageCount}\n" +
-                          $"  Duration: {result.Duration.TotalSeconds:F2}s\n\n" +
-                          "[dim]Next steps:[/]\n" +
-                          "  • Open [cyan]output/index.html[/] in your browser\n" +
-                          "  • Run [cyan]revela generate[/] for full generation"))
+            if (result.Success)
             {
-                Header = new PanelHeader("[bold green]Success[/]"),
-                Border = BoxBorder.Rounded
-            };
-            AnsiConsole.Write(panel);
-        }
-        else
-        {
-            var panel = new Panel(
+                var projectName = configuration["name"] ?? "Revela Site";
+
+                var successPanel = new Panel(
+                    new Markup($"[green]Page rendering complete![/]\n\n" +
+                              $"[dim]Project:[/]  [cyan]{projectName}[/]\n\n" +
+                              $"[dim]Statistics:[/]\n" +
+                              $"  Pages:    {result.PageCount}\n" +
+                              $"  Duration: {result.Duration.TotalSeconds:F2}s\n\n" +
+                              "[dim]Next steps:[/]\n" +
+                              "  • Open [cyan]output/index.html[/] in your browser\n" +
+                              "  • Run [cyan]revela generate[/] for full generation"))
+                {
+                    Header = new PanelHeader("[bold green]Success[/]"),
+                    Border = BoxBorder.Rounded
+                };
+                AnsiConsole.Write(successPanel);
+                return 0;
+            }
+
+            var errorPanel = new Panel(
                 new Markup($"[red]{result.ErrorMessage}[/]"))
             {
                 Header = new PanelHeader("[bold red]Page generation failed[/]"),
                 Border = BoxBorder.Rounded
             };
-            AnsiConsole.Write(panel);
+            AnsiConsole.Write(errorPanel);
             LogPagesGenerationFailed(logger);
+            return 1;
+        }
+        catch (OperationCanceledException)
+        {
+            AnsiConsole.MarkupLine("[yellow]Canceled[/]");
+            LogPagesGenerationFailed(logger);
+            return 1;
         }
     }
 

@@ -37,122 +37,130 @@ public sealed partial class ImagesCommand(
         };
         command.Options.Add(forceOption);
 
-        command.SetAction(async parseResult =>
+        command.SetAction(async (parseResult, cancellationToken) =>
         {
             var force = parseResult.GetValue(forceOption);
-            await ExecuteAsync(force, CancellationToken.None);
-            return 0;
+            return await ExecuteAsync(force, cancellationToken);
         });
 
         return command;
     }
 
-    private async Task ExecuteAsync(bool force, CancellationToken cancellationToken)
+    private async Task<int> ExecuteAsync(bool force, CancellationToken cancellationToken)
     {
-        // Early manifest check before showing progress bar
-        await manifestRepository.LoadAsync(cancellationToken);
-
-        if (manifestRepository.Root is null)
+        try
         {
-            var panel = new Panel(
-                "[yellow]No manifest found.[/]\n\n" +
-                "[dim]Solution:[/]\n" +
-                "Run [cyan]revela generate scan[/] first to scan your content."
-            )
+            // Early manifest check before showing progress bar
+            await manifestRepository.LoadAsync(cancellationToken);
+
+            if (manifestRepository.Root is null)
             {
-                Header = new PanelHeader("[bold yellow]Warning[/]"),
-                Border = BoxBorder.Rounded
-            };
-
-            AnsiConsole.Write(panel);
-            return;
-        }
-
-        var options = new ProcessImagesOptions { Force = force };
-
-        if (force)
-        {
-            AnsiConsole.MarkupLine("[yellow]Force rebuild requested, processing all images...[/]");
-        }
-
-        var result = await AnsiConsole.Progress()
-            .AutoClear(false)
-            .HideCompleted(false)
-            .Columns(
-                new TaskDescriptionColumn(),
-                new ProgressBarColumn(),
-                new PercentageColumn(),
-                new RemainingTimeColumn(),
-                new SpinnerColumn())
-            .StartAsync(async ctx =>
-            {
-                var task = ctx.AddTask("[green]Processing images[/]");
-                task.IsIndeterminate = true;
-
-                var progress = new Progress<ImageProgress>(p =>
+                var warningPanel = new Panel(
+                    "[yellow]No manifest found.[/]\n\n" +
+                    "[dim]Solution:[/]\n" +
+                    "Run [cyan]revela generate scan[/] first to scan your content."
+                )
                 {
-                    if (task.IsIndeterminate && p.Total > 0)
+                    Header = new PanelHeader("[bold yellow]Warning[/]"),
+                    Border = BoxBorder.Rounded
+                };
+
+                AnsiConsole.Write(warningPanel);
+                return 1;
+            }
+
+            var options = new ProcessImagesOptions { Force = force };
+
+            if (force)
+            {
+                AnsiConsole.MarkupLine("[yellow]Force rebuild requested, processing all images...[/]");
+            }
+
+            var result = await AnsiConsole.Progress()
+                .AutoClear(false)
+                .HideCompleted(false)
+                .Columns(
+                    new TaskDescriptionColumn(),
+                    new ProgressBarColumn(),
+                    new PercentageColumn(),
+                    new RemainingTimeColumn(),
+                    new SpinnerColumn())
+                .StartAsync(async ctx =>
+                {
+                    var task = ctx.AddTask("[green]Processing images[/]");
+                    task.IsIndeterminate = true;
+
+                    var progress = new Progress<ImageProgress>(p =>
                     {
-                        task.IsIndeterminate = false;
-                        task.MaxValue = p.Total;
-                    }
+                        if (task.IsIndeterminate && p.Total > 0)
+                        {
+                            task.IsIndeterminate = false;
+                            task.MaxValue = p.Total;
+                        }
 
-                    task.Value = p.Processed;
+                        task.Value = p.Processed;
 
-                    var safeName = p.CurrentImage
-                        .Replace("[", "[[", StringComparison.Ordinal)
-                        .Replace("]", "]]", StringComparison.Ordinal);
+                        var safeName = p.CurrentImage
+                            .Replace("[", "[[", StringComparison.Ordinal)
+                            .Replace("]", "]]", StringComparison.Ordinal);
 
-                    task.Description = string.IsNullOrEmpty(safeName)
-                        ? "[green]Processing images[/]"
-                        : $"[green]Processing[/] {safeName}";
+                        task.Description = string.IsNullOrEmpty(safeName)
+                            ? "[green]Processing images[/]"
+                            : $"[green]Processing[/] {safeName}";
+                    });
+
+                    return await imageService.ProcessAsync(options, progress, cancellationToken);
                 });
 
-                return await imageService.ProcessAsync(options, progress, cancellationToken);
-            });
-
-        if (result.Success)
-        {
-            var projectName = configuration["name"] ?? "Revela Site";
-
-            var content = "[green]Image processing complete![/]\n\n";
-            content += $"[dim]Project:[/]   [cyan]{projectName}[/]\n\n";
-            content += "[dim]Statistics:[/]\n";
-            content += $"  Processed: {result.ProcessedCount} images\n";
-
-            if (result.SkippedCount > 0)
+            if (result.Success)
             {
-                content += $"  Cached:    {result.SkippedCount} images\n";
+                var projectName = configuration["name"] ?? "Revela Site";
+
+                var content = "[green]Image processing complete![/]\n\n";
+                content += $"[dim]Project:[/]   [cyan]{projectName}[/]\n\n";
+                content += "[dim]Statistics:[/]\n";
+                content += $"  Processed: {result.ProcessedCount} images\n";
+
+                if (result.SkippedCount > 0)
+                {
+                    content += $"  Cached:    {result.SkippedCount} images\n";
+                }
+
+                if (result.FilesCreated > 0)
+                {
+                    content += $"  Files:     {result.FilesCreated} created\n";
+                    content += $"  Size:      {FormatSize(result.TotalSize)}\n";
+                }
+
+                content += $"  Duration:  {result.Duration.TotalSeconds:F2}s\n";
+                content += "\n[dim]Next steps:[/]\n";
+                content += "  • Run [cyan]revela generate pages[/] to render HTML\n";
+                content += "  • Or run [cyan]revela generate[/] for full build";
+
+                var successPanel = new Panel(new Markup(content))
+                {
+                    Header = new PanelHeader("[bold green]Success[/]"),
+                    Border = BoxBorder.Rounded
+                };
+                AnsiConsole.Write(successPanel);
+                return 0;
             }
 
-            if (result.FilesCreated > 0)
-            {
-                content += $"  Files:     {result.FilesCreated} created\n";
-                content += $"  Size:      {FormatSize(result.TotalSize)}\n";
-            }
-
-            content += $"  Duration:  {result.Duration.TotalSeconds:F2}s\n";
-            content += "\n[dim]Next steps:[/]\n";
-            content += "  • Run [cyan]revela generate pages[/] to render HTML\n";
-            content += "  • Or run [cyan]revela generate[/] for full build";
-
-            var panel = new Panel(new Markup(content))
-            {
-                Header = new PanelHeader("[bold green]Success[/]"),
-                Border = BoxBorder.Rounded
-            };
-            AnsiConsole.Write(panel);
-        }
-        else
-        {
-            var panel = new Panel(
+            var errorPanel = new Panel(
                 new Markup($"[red]{result.ErrorMessage}[/]"))
             {
                 Header = new PanelHeader("[bold red]Image processing failed[/]"),
                 Border = BoxBorder.Rounded
             };
-            AnsiConsole.Write(panel);
+            AnsiConsole.Write(errorPanel);
             LogImageProcessingFailed(logger);
+            return 1;
+        }
+        catch (OperationCanceledException)
+        {
+            AnsiConsole.MarkupLine("[yellow]Canceled[/]");
+            LogImageProcessingFailed(logger);
+            return 1;
         }
     }
 

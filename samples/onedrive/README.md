@@ -28,21 +28,38 @@ Site metadata (title, description, author, etc.)
 
 ## Usage
 
-### 1. Download images from OneDrive
+### 1. Sync images from OneDrive
 
 ```bash
-revela source onedrive download -p samples/onedrive
+cd samples/onedrive
+revela source onedrive sync
 ```
 
-This downloads all images from the shared OneDrive folder into `source/`.
+This syncs all images from the shared OneDrive folder into `source/`.
+
+If you're running from the repo without installing the global tool:
+
+```powershell
+Push-Location "samples/onedrive"
+dotnet run --project "../../src/Cli" -- source onedrive sync
+Pop-Location
+```
 
 ### 2. Generate the site
 
 ```bash
-revela generate -p samples/onedrive
+revela generate
 ```
 
 This processes images and generates the static site in `output/`.
+
+From the repo:
+
+```powershell
+Push-Location "samples/onedrive"
+dotnet run --project "../../src/Cli" -- generate
+Pop-Location
+```
 
 ## Folder Structure
 

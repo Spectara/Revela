@@ -34,7 +34,7 @@ public sealed partial class RestoreCommand(
             Description = "Only check dependencies, don't install"
         };
 
-        var command = new Command("restore", "Restore project dependencies (themes and plugins)");
+        var command = new Command("restore", "Restore project dependencies (themes and plugins) (not implemented yet)");
         command.Options.Add(pathOption);
         command.Options.Add(checkOption);
 
@@ -142,7 +142,7 @@ public sealed partial class RestoreCommand(
                 AnsiConsole.MarkupLine($"  [yellow]↓[/] Installing {shortName}...");
 
                 // Placeholder - will integrate with NuGet/plugin installation
-                AnsiConsole.MarkupLine($"    [dim]Package installation not yet implemented[/]");
+                AnsiConsole.MarkupLine($"    [dim](not implemented yet)[/]");
                 AnsiConsole.MarkupLine($"    [dim]Install manually: revela plugin add {dep.PackageId}[/]");
             }
             catch (Exception ex)

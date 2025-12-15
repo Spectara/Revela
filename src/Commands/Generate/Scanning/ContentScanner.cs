@@ -52,6 +52,8 @@ public sealed partial class ContentScanner(
         List<Gallery> galleries,
         CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
+
         var currentDirectory = string.IsNullOrEmpty(relativePath)
             ? baseDirectory
             : Path.Combine(baseDirectory, relativePath);
@@ -148,6 +150,8 @@ public sealed partial class ContentScanner(
         var subdirectories = Directory.GetDirectories(currentDirectory);
         foreach (var subdirectory in subdirectories)
         {
+            cancellationToken.ThrowIfCancellationRequested();
+
             var subdirName = Path.GetFileName(subdirectory);
 
             // Skip folders starting with underscore (convention: _assets, _drafts, etc.)
