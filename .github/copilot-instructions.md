@@ -380,11 +380,11 @@ public sealed class LoggingConfig
 {
     public const string SectionName = "Logging";
     
-    // ✅ Defaults in C# Properties
+    // ✅ Defaults in C# Properties (Warning to keep console clean)
     public Dictionary<string, string> LogLevel { get; init; } = new()
     {
-        ["Default"] = "Information",
-        ["Spectara.Revela"] = "Debug",
+        ["Default"] = "Warning",
+        ["Spectara.Revela"] = "Warning",
         ["Microsoft"] = "Warning",
         ["System"] = "Warning"
     };
@@ -393,12 +393,12 @@ public sealed class LoggingConfig
 
 #### **Optional logging.json (Working Directory)**
 ```json
-// D:\MyPhotos\logging.json (optional!)
+// D:\MyPhotos\logging.json (optional - for debugging)
 {
   "Logging": {
     "LogLevel": {
-      "Default": "Debug",
-      "Spectara.Revela": "Trace"
+      "Default": "Information",
+      "Spectara.Revela": "Debug"
     }
   }
 }

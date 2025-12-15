@@ -240,7 +240,7 @@ public sealed partial class ThemeResolver : IThemeResolver
     [LoggerMessage(Level = LogLevel.Warning, Message = "Theme '{ThemeName}' not found")]
     private static partial void LogThemeNotFound(ILogger logger, string themeName);
 
-    [LoggerMessage(Level = LogLevel.Warning, Message = "Local theme '{ThemeName}' is missing theme.json at {Path}")]
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Local theme '{ThemeName}' is missing theme.json at {Path}, checking installed themes")]
     private static partial void LogLocalThemeMissingManifest(ILogger logger, string themeName, string path);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Failed to load local theme '{ThemeName}': {Error}")]

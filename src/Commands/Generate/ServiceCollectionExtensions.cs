@@ -8,6 +8,7 @@ using Spectara.Revela.Commands.Generate.Mapping;
 using Spectara.Revela.Commands.Generate.Parsing;
 using Spectara.Revela.Commands.Generate.Scanning;
 using Spectara.Revela.Commands.Generate.Services;
+using Spectara.Revela.Core.Abstractions;
 using Spectara.Revela.Core.Configuration;
 using Spectara.Revela.Core.Services;
 
@@ -27,6 +28,9 @@ public static class ServiceCollectionExtensions
     {
         // Bind RevelaConfig.Generate section via IConfigureOptions (resolves IConfiguration from DI)
         services.AddSingleton<IConfigureOptions<RevelaConfig>, ConfigureRevelaConfig>();
+
+        // Core services
+        services.AddSingleton<IFileHashService, FileHashService>();
 
         // Parsing, Scanning, Building, Mapping (static classes not registered: GallerySorter, UrlBuilder)
         services.AddSingleton<RevelaParser>();

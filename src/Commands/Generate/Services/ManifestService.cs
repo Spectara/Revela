@@ -365,21 +365,6 @@ public sealed partial class ManifestService(ILogger<ManifestService> logger) : I
     #region Static Helpers
 
     /// <summary>
-    /// Compute hash for a source image file.
-    /// </summary>
-    /// <remarks>
-    /// Uses filename + lastWriteTime + fileSize for fast change detection.
-    /// Same approach as expose.sh (lines 409-472).
-    /// </remarks>
-    public static string ComputeSourceHash(string imagePath)
-    {
-        var fileInfo = new FileInfo(imagePath);
-        var input = $"{fileInfo.Name}_{fileInfo.LastWriteTimeUtc.Ticks}_{fileInfo.Length}";
-        var hashBytes = SHA256.HashData(Encoding.UTF8.GetBytes(input));
-        return Convert.ToHexString(hashBytes)[..12];
-    }
-
-    /// <summary>
     /// Compute hash for image processing configuration.
     /// </summary>
     /// <remarks>

@@ -3,6 +3,7 @@ using Spectara.Revela.Commands.Generate.Abstractions;
 using Spectara.Revela.Commands.Generate.Models;
 using Spectara.Revela.Commands.Generate.Models.Manifest;
 using Spectara.Revela.Commands.Generate.Models.Results;
+using Spectara.Revela.Core.Abstractions;
 using Spectara.Revela.Core.Configuration;
 
 namespace Spectara.Revela.Commands.Generate.Services;
@@ -19,6 +20,7 @@ namespace Spectara.Revela.Commands.Generate.Services;
 /// </remarks>
 public sealed partial class ImageService(
     IImageProcessor imageProcessor,
+    IFileHashService fileHashService,
     IManifestRepository manifestRepository,
     IOptions<RevelaConfig> options,
     ILogger<ImageService> logger) : IImageService
@@ -96,7 +98,7 @@ public sealed partial class ImageService(
                     continue;
                 }
 
-                var sourceHash = ManifestService.ComputeSourceHash(fullPath);
+                var sourceHash = fileHashService.ComputeHash(fullPath);
                 var manifestKey = imagePath.Replace('\\', '/');
                 var existingEntry = manifestRepository.GetImage(manifestKey);
 

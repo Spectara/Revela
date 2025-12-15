@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
+using Spectara.Revela.Core.Configuration;
 
 namespace Spectara.Revela.Cli;
 
@@ -16,6 +17,9 @@ internal static class HostBuilderExtensions
     /// - project.json: Project settings (name, url, theme, generate.cameras, etc.)
     /// - site.json: Site metadata (title, author, description, copyright)
     /// - logging.json: Logging configuration (log levels per category)
+    ///
+    /// Default log level is <c>Warning</c> to keep console output clean.
+    /// Override via <c>logging.json</c> or environment variables for debugging.
     /// </remarks>
     /// <param name="builder">The host application builder.</param>
     /// <returns>The builder for chaining.</returns>
@@ -44,8 +48,26 @@ internal static class HostBuilderExtensions
             reloadOnChange: true
         );
 
-        // Apply logging configuration
-        builder.Logging.AddConfiguration(builder.Configuration.GetSection("Logging"));
+        // Apply logging configuration with sensible defaults
+        // Defaults are Warning to keep console clean (Spectre.Console progress bars)
+        // Users can override via logging.json for debugging
+        var loggingConfig = new LoggingConfig();
+        builder.Configuration.GetSection(LoggingConfig.SectionName).Bind(loggingConfig);
+
+        foreach (var (category, level) in loggingConfig.LogLevel)
+        {
+            if (Enum.TryParse<Microsoft.Extensions.Logging.LogLevel>(level, ignoreCase: true, out var logLevel))
+            {
+                if (category == "Default")
+                {
+                    builder.Logging.SetMinimumLevel(logLevel);
+                }
+                else
+                {
+                    builder.Logging.AddFilter(category, logLevel);
+                }
+            }
+        }
 
         return builder;
     }
