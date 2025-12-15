@@ -90,6 +90,8 @@ public sealed partial class ImageService(
             var imagesToProcess = new List<(string SourcePath, string Hash, string ManifestKey, IReadOnlyList<int> Sizes)>();
             var cachedCount = 0;
 
+            var outputImagesDirectory = Path.Combine(OutputDirectory, ImageDirectory);
+
             foreach (var imagePath in allImagePaths)
             {
                 var fullPath = Path.Combine(SourceDirectory, imagePath);
@@ -102,7 +104,12 @@ public sealed partial class ImageService(
                 var manifestKey = imagePath.Replace('\\', '/');
                 var existingEntry = manifestRepository.GetImage(manifestKey);
 
-                if (!options.Force && !ManifestService.NeedsProcessing(existingEntry, sourceHash))
+                // Check if output files exist (cache is only valid if outputs exist)
+                var imageName = Path.GetFileNameWithoutExtension(existingEntry?.Filename ?? "");
+                var outputExists = existingEntry?.Sizes.Count > 0 &&
+                    OutputFilesExist(outputImagesDirectory, imageName, existingEntry.Sizes, formats);
+
+                if (!options.Force && outputExists && !ManifestService.NeedsProcessing(existingEntry, sourceHash))
                 {
                     cachedCount++;
                 }
@@ -147,7 +154,6 @@ public sealed partial class ImageService(
 
             // Process images in parallel
             // Uses Environment.ProcessorCount by default (optimal for CPU-bound work)
-            var outputImagesDirectory = Path.Combine(OutputDirectory, ImageDirectory);
             var cacheDirectory = Path.Combine(Environment.CurrentDirectory, CacheDirectory);
             var processedCount = 0;
             var totalFilesCreated = 0;
@@ -288,6 +294,38 @@ public sealed partial class ImageService(
         {
             CollectImagePathsRecursive(child, paths);
         }
+    }
+
+    #endregion
+
+    #region Output Validation
+
+    /// <summary>
+    /// Check if at least one output file exists for the image.
+    /// </summary>
+    /// <remarks>
+    /// Only checks if the first size/format combination exists.
+    /// If that exists, we assume all outputs are present.
+    /// This is a quick check to detect missing outputs (e.g., deleted output folder).
+    /// </remarks>
+    private static bool OutputFilesExist(
+        string outputDirectory,
+        string imageName,
+        IReadOnlyList<int> sizes,
+        IReadOnlyDictionary<string, int> formats)
+    {
+        if (string.IsNullOrEmpty(imageName) || sizes.Count == 0 || formats.Count == 0)
+        {
+            return false;
+        }
+
+        // Check first size/format combination
+        // Output path pattern: images/{imageName}/{width}.{format}
+        var firstSize = sizes[0];
+        var firstFormat = formats.Keys.First();
+        var expectedPath = Path.Combine(outputDirectory, imageName, $"{firstSize}.{firstFormat}");
+
+        return File.Exists(expectedPath);
     }
 
     #endregion

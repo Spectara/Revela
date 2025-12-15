@@ -394,6 +394,11 @@ public sealed partial class ManifestService(ILogger<ManifestService> logger) : I
             return true; // New image
         }
 
+        if (string.IsNullOrEmpty(existingEntry.Hash))
+        {
+            return true; // No hash yet (scanned but not processed)
+        }
+
         return existingEntry.Hash != sourceHash; // Changed if hash differs
     }
 

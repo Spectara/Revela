@@ -30,8 +30,8 @@ public abstract record GalleryContent
 
     /// <summary>
     /// Hash for change detection.
-    /// Format: MD5({filename}_{fileSize}_{dimensions})[0..12]
+    /// Computed during image processing, empty until then.
     /// </summary>
     [JsonPropertyName("hash")]
-    public required string Hash { get; init; }
+    public string Hash { get; init; } = "";
 }

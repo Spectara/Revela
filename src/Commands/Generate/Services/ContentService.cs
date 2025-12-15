@@ -5,7 +5,6 @@ using Spectara.Revela.Commands.Generate.Models;
 using Spectara.Revela.Commands.Generate.Models.Manifest;
 using Spectara.Revela.Commands.Generate.Models.Results;
 using Spectara.Revela.Commands.Generate.Scanning;
-using Spectara.Revela.Core.Abstractions;
 using Spectara.Revela.Core.Configuration;
 
 namespace Spectara.Revela.Commands.Generate.Services;
@@ -28,7 +27,6 @@ public sealed partial class ContentService(
     NavigationBuilder navigationBuilder,
     IManifestRepository manifestRepository,
     IImageProcessor imageProcessor,
-    IFileHashService fileHashService,
     IOptions<RevelaConfig> options,
     ILogger<ContentService> logger) : IContentService
 {
@@ -385,7 +383,7 @@ public sealed partial class ContentService(
         return new ImageContent
         {
             Filename = source.FileName,
-            Hash = fileHashService.ComputeHash(source.SourcePath),
+            Hash = "", // Computed during image processing
             Width = meta?.Width ?? 0,
             Height = meta?.Height ?? 0,
             Sizes = sizes,
