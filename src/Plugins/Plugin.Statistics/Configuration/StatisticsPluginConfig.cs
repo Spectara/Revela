@@ -15,15 +15,14 @@ namespace Spectara.Revela.Plugin.Statistics.Configuration;
 /// Example plugins/Spectara.Revela.Plugin.Statistics.json:
 /// {
 ///   "Spectara.Revela.Plugin.Statistics": {
-///     "OutputPath": "source/statistics",
 ///     "MaxEntriesPerCategory": 15,
 ///     "SortByCount": true
 ///   }
 /// }
 ///
 /// Example Environment Variables:
-/// SPECTARA__REVELA__PLUGIN__STATISTICS__OUTPUTPATH=source/stats
 /// SPECTARA__REVELA__PLUGIN__STATISTICS__MAXENTRIESPERCATEGORY=20
+/// SPECTARA__REVELA__PLUGIN__STATISTICS__SORTBYCOUNT=false
 /// </remarks>
 public sealed class StatisticsPluginConfig
 {
@@ -31,16 +30,6 @@ public sealed class StatisticsPluginConfig
     /// Configuration section name
     /// </summary>
     public const string SectionName = "Spectara.Revela.Plugin.Statistics";
-
-    /// <summary>
-    /// Output directory for the statistics page (relative to working directory)
-    /// </summary>
-    /// <remarks>
-    /// The plugin will create _index.revela in this directory.
-    /// Default: source/statistics
-    /// </remarks>
-    [Required(ErrorMessage = "OutputPath is required")]
-    public string OutputPath { get; init; } = "source/statistics";
 
     /// <summary>
     /// Maximum number of entries per category (e.g., top 15 apertures)

@@ -277,7 +277,7 @@ public sealed partial class TemplateResolver(ILogger<TemplateResolver> logger) :
     [LoggerMessage(Level = LogLevel.Information, Message = "Local template: '{Key}' → {Path}")]
     private partial void LogLocalNew(string key, string path);
 
-    [LoggerMessage(Level = LogLevel.Warning, Message = "Template not found: '{Key}'")]
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Template not found: '{Key}' (check if required theme extension is installed)")]
     private partial void LogTemplateNotFound(string key);
 
     #endregion

@@ -76,9 +76,9 @@ public sealed class OneDrivePlugin : IPlugin
         var initCommand = services.GetRequiredService<OneDriveInitCommand>();
         var sourceCommand = services.GetRequiredService<OneDriveSourceCommand>();
 
-        // 1. Register init command → revela init source onedrive
-        //    Creates: init → source → onedrive (nested parent)
-        yield return new CommandDescriptor(initCommand.Create(), ParentCommand: "init source");
+        // 1. Register init command → revela init config source onedrive
+        //    Creates: init → config → source → onedrive (nested parent)
+        yield return new CommandDescriptor(initCommand.Create(), ParentCommand: "init config source");
 
         // 2. Register source command → revela source onedrive sync
         //    Creates: source → onedrive → sync

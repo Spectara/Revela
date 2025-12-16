@@ -62,6 +62,15 @@ public sealed class Gallery
     public string? Template { get; set; }
 
     /// <summary>
+    /// Data sources for template rendering from frontmatter.
+    /// </summary>
+    /// <remarks>
+    /// Maps variable names to data source paths (e.g., { "statistics": "statistics.json" }).
+    /// Plugins can query manifest for galleries with specific data sources.
+    /// </remarks>
+    public IReadOnlyDictionary<string, string> DataSources { get; init; } = new Dictionary<string, string>();
+
+    /// <summary>
     /// Optional cover image filename.
     /// </summary>
     public string? Cover { get; init; }

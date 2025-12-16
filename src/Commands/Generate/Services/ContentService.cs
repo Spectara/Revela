@@ -278,6 +278,8 @@ public sealed partial class ContentService(
             Date = homeGallery?.Date,
             Featured = homeGallery?.Featured ?? false,
             Hidden = false,
+            Template = null,  // Root uses default template
+            DataSources = [],
             Content = BuildContentList(rootImages, rootMarkdowns, imageMetadata),
             Children = [.. navigation.Select(nav => ConvertNavigationToEntry(nav, galleryBySlug, imagesByPath, markdownsByPath, imageMetadata))]
         };
@@ -322,6 +324,8 @@ public sealed partial class ContentService(
             Date = gallery?.Date,
             Featured = gallery?.Featured ?? false,
             Hidden = navItem.Hidden,
+            Template = gallery?.Template,
+            DataSources = gallery?.DataSources.ToDictionary(kvp => kvp.Key, kvp => kvp.Value) ?? [],
             Content = BuildContentList(images, markdowns, imageMetadata),
             Children = [.. navItem.Children.Select(child => ConvertNavigationToEntry(child, galleryBySlug, imagesByPath, markdownsByPath, imageMetadata))]
         };

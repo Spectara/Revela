@@ -398,7 +398,7 @@ public sealed partial class RenderService(
 
             progress?.Report(new RenderProgress
             {
-                CurrentPage = $"{gallery.Slug}/index.html",
+                CurrentPage = $"{gallery.Slug.TrimEnd('/')}​/index.html",
                 Rendered = pageCount,
                 Total = totalPages
             });
@@ -732,13 +732,17 @@ public sealed partial class RenderService(
             };
         }
 
-        // Handle JSON file references
+        // Handle JSON file references (plugin-generated data from .cache directory)
         if (source.EndsWith(".json", StringComparison.OrdinalIgnoreCase))
         {
-            var dataPath = Path.Combine(basePath, source);
-            if (File.Exists(dataPath))
+            var relativePath = Path.GetRelativePath(
+                Path.Combine(Directory.GetCurrentDirectory(), "source"),
+                basePath);
+            var cachePath = Path.Combine(".cache", relativePath, source);
+
+            if (File.Exists(cachePath))
             {
-                var json = await File.ReadAllTextAsync(dataPath, cancellationToken);
+                var json = await File.ReadAllTextAsync(cachePath, cancellationToken);
                 return JsonSerializer.Deserialize<JsonElement>(json);
             }
         }

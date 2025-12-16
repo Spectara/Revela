@@ -71,6 +71,19 @@ public sealed class ManifestEntry
     public bool Hidden { get; init; }
 
     /// <summary>
+    /// Optional custom template for rendering (e.g., "statistics/overview").
+    /// </summary>
+    [JsonPropertyName("template")]
+    public string? Template { get; init; }
+
+    /// <summary>
+    /// Data sources for template rendering from frontmatter.
+    /// Maps variable names to data source paths (e.g., { "statistics": "statistics.json" }).
+    /// </summary>
+    [JsonPropertyName("dataSources")]
+    public Dictionary<string, string> DataSources { get; init; } = [];
+
+    /// <summary>
     /// Content items (images and markdown files) contained in this node.
     /// Sorted alphabetically by filename for predictable ordering.
     /// </summary>
