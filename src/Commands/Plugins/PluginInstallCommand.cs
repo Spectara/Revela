@@ -68,14 +68,14 @@ public sealed partial class PluginInstallCommand(
         return command;
     }
 
-    private async Task<int> ExecuteFromNuGetAsync(string name, string? version, bool global)
+    internal async Task<int> ExecuteFromNuGetAsync(string name, string? version, bool global)
     {
         try
         {
             // Convert short name to full package ID
-            var packageId = name.StartsWith("Revela.Plugin.", StringComparison.OrdinalIgnoreCase)
+            var packageId = name.StartsWith("Spectara.Revela.Plugin.", StringComparison.OrdinalIgnoreCase)
                 ? name
-                : $"Revela.Plugin.{name}";
+                : $"Spectara.Revela.Plugin.{name}";
 
             var location = global ? "globally" : "locally";
             AnsiConsole.MarkupLine($"[blue]Installing plugin {location}:[/] [cyan]{packageId}[/]");

@@ -203,19 +203,36 @@ public sealed class PluginManager(HttpClient httpClient, ILogger<PluginManager> 
             logger.UninstallingPlugin(packageId);
 
             var pluginDir = global ? GlobalPluginDirectory : LocalPluginDirectory;
+            var found = false;
+
+            // Delete plugin directory with dependencies
             var pluginPath = Path.Combine(pluginDir, packageId);
             if (Directory.Exists(pluginPath))
             {
                 Directory.Delete(pluginPath, recursive: true);
-                logger.PluginUninstalled(packageId);
-                return Task.FromResult(true);
+                found = true;
             }
 
-            // Also check for single DLL file
+            // Delete main DLL file
             var dllPath = Path.Combine(pluginDir, $"{packageId}.dll");
             if (File.Exists(dllPath))
             {
                 File.Delete(dllPath);
+                found = true;
+            }
+
+            // Delete .deps.json file
+            var depsPath = Path.Combine(pluginDir, $"{packageId}.deps.json");
+            if (File.Exists(depsPath))
+            {
+                File.Delete(depsPath);
+                found = true;
+            }
+
+            // Note: Keep config file (*.json) - user may want to reinstall with same settings
+
+            if (found)
+            {
                 logger.PluginUninstalled(packageId);
                 return Task.FromResult(true);
             }

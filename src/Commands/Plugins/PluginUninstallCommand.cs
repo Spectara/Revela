@@ -33,14 +33,14 @@ public sealed partial class PluginUninstallCommand(
         return command;
     }
 
-    private async Task<int> ExecuteAsync(string name)
+    internal async Task<int> ExecuteAsync(string name)
     {
         try
         {
             // Convert short name to full package ID
-            var packageId = name.StartsWith("Revela.Plugin.", StringComparison.OrdinalIgnoreCase)
+            var packageId = name.StartsWith("Spectara.Revela.Plugin.", StringComparison.OrdinalIgnoreCase)
                 ? name
-                : $"Revela.Plugin.{name}";
+                : $"Spectara.Revela.Plugin.{name}";
 
             if (!await AnsiConsole.ConfirmAsync($"[yellow]Uninstall plugin '{packageId}'?[/]"))
             {
