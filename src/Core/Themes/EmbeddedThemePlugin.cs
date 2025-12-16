@@ -94,29 +94,10 @@ public abstract class EmbeddedThemePlugin : IThemePlugin
     /// <inheritdoc />
     public Stream? GetFile(string relativePath)
     {
-        // Normalize path separators to match resource name format
-        var normalizedPath = relativePath.Replace('/', Path.DirectorySeparatorChar);
-
-        // Try various resource naming patterns:
-        // 1. With prefix, path separators (standard convention)
-        // 2. Without prefix, path separators (LogicalName with RecursiveDir)
-        // 3. With prefix, dot separators (standard embedded resource)
-        // 4. Without prefix, dot separators (LogicalName simple)
-
-        // Pattern 1 & 2: Path separators (LogicalName with %(RecursiveDir))
-        var fullResourceWithPath = resourcePrefix + normalizedPath;
-        var stream = assembly.GetManifestResourceStream(fullResourceWithPath)
-            ?? assembly.GetManifestResourceStream(normalizedPath);
-        if (stream != null)
-        {
-            return stream;
-        }
-
-        // Pattern 3 & 4: Dot separators (standard resource naming)
-        var resourceName = relativePath.Replace('/', '.').Replace('\\', '.');
-        var fullResourceName = resourcePrefix + resourceName;
-        return assembly.GetManifestResourceStream(fullResourceName)
-            ?? assembly.GetManifestResourceStream(resourceName);
+        // MSBuild always normalizes embedded resource names to forward slashes
+        // Try with prefix first, then without
+        return assembly.GetManifestResourceStream(resourcePrefix + relativePath)
+            ?? assembly.GetManifestResourceStream(relativePath);
     }
 
     /// <inheritdoc />

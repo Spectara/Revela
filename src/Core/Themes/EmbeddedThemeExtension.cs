@@ -99,23 +99,10 @@ public abstract class EmbeddedThemeExtension : IThemeExtension
     /// <inheritdoc />
     public Stream? GetFile(string relativePath)
     {
-        // Normalize path separators to match resource name format
-        var normalizedPath = relativePath.Replace('/', Path.DirectorySeparatorChar);
-
-        // Try various resource naming patterns
-        var fullResourceWithPath = resourcePrefix + normalizedPath;
-        var stream = assembly.GetManifestResourceStream(fullResourceWithPath)
-            ?? assembly.GetManifestResourceStream(normalizedPath);
-        if (stream != null)
-        {
-            return stream;
-        }
-
-        // Pattern with dot separators
-        var resourceName = relativePath.Replace('/', '.').Replace('\\', '.');
-        var fullResourceName = resourcePrefix + resourceName;
-        return assembly.GetManifestResourceStream(fullResourceName)
-            ?? assembly.GetManifestResourceStream(resourceName);
+        // MSBuild always normalizes embedded resource names to forward slashes
+        // Try with prefix first, then without
+        return assembly.GetManifestResourceStream(resourcePrefix + relativePath)
+            ?? assembly.GetManifestResourceStream(relativePath);
     }
 
     /// <inheritdoc />
