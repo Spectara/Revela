@@ -18,11 +18,10 @@ namespace Spectara.Revela.Core;
 /// Uses C# 12 Primary Constructor pattern.
 /// Creates plugin directory automatically if it doesn't exist.
 /// Supports NuGet packages from feeds or local .nupkg files.
+/// Multi-source discovery tries all configured sources automatically.
 /// </remarks>
 public sealed class PluginManager(ILogger<PluginManager> logger)
 {
-    private readonly SourceRepository repository = Repository.Factory.GetCoreV3(new PackageSource("https://api.nuget.org/v3/index.json"));
-
     /// <summary>
     /// Gets the local plugin directory (next to executable).
     /// </summary>
@@ -79,10 +78,19 @@ public sealed class PluginManager(ILogger<PluginManager> logger)
             {
                 // Package ID from NuGet feed
                 logger.InstallingPlugin(packageIdOrPath);
-                var sourceRepo = source is not null
-                    ? Repository.Factory.GetCoreV3(new PackageSource(source))
-                    : repository;
-                return await InstallFromNuGetAsync(packageIdOrPath, version, sourceRepo, targetDir, cancellationToken);
+
+                if (source is not null)
+                {
+                    // Explicit source - try named source or treat as URL
+                    var sourceUrl = await ResolveSourceAsync(source, cancellationToken);
+                    var sourceRepo = Repository.Factory.GetCoreV3(new PackageSource(sourceUrl));
+                    return await InstallFromNuGetAsync(packageIdOrPath, version, sourceRepo, targetDir, cancellationToken);
+                }
+                else
+                {
+                    // No explicit source - try all configured sources
+                    return await InstallFromMultipleSourcesAsync(packageIdOrPath, version, targetDir, cancellationToken);
+                }
             }
         }
         catch (Exception ex)
@@ -159,6 +167,71 @@ public sealed class PluginManager(ILogger<PluginManager> logger)
                 File.Delete(tempFile);
             }
         }
+    }
+
+    /// <summary>
+    /// Resolves a source name to URL (checks nuget-sources.json, falls back to treating as URL)
+    /// </summary>
+    private async Task<string> ResolveSourceAsync(string source, CancellationToken cancellationToken)
+    {
+        // Check if it's already a URL
+        if (Uri.TryCreate(source, UriKind.Absolute, out var uri) &&
+            (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps))
+        {
+            return source;
+        }
+
+        // Try to resolve as named source
+        var sources = await Services.NuGetSourceManager.GetAllSourcesAsync(cancellationToken);
+        var namedSource = sources.FirstOrDefault(s => s.Name.Equals(source, StringComparison.OrdinalIgnoreCase));
+
+        if (namedSource is not null)
+        {
+            logger.UsingNamedSource(source, namedSource.Url);
+            return namedSource.Url;
+        }
+
+        // Fall back to treating as URL (will fail if invalid)
+        logger.SourceNotFoundTreatingAsUrl(source);
+        return source;
+    }
+
+    /// <summary>
+    /// Tries to install from all configured sources until one succeeds
+    /// </summary>
+    private async Task<bool> InstallFromMultipleSourcesAsync(
+        string packageId,
+        string? version,
+        string targetDir,
+        CancellationToken cancellationToken)
+    {
+        var sources = await Services.NuGetSourceManager.LoadSourcesAsync(cancellationToken);
+        logger.TryingMultipleSources(packageId, sources.Count);
+
+        foreach (var source in sources)
+        {
+            try
+            {
+                logger.TryingSource(source.Name, source.Url);
+                var sourceRepo = Repository.Factory.GetCoreV3(new PackageSource(source.Url));
+                var success = await InstallFromNuGetAsync(packageId, version, sourceRepo, targetDir, cancellationToken);
+
+                if (success)
+                {
+                    logger.SuccessFromSource(packageId, source.Name);
+                    return true;
+                }
+            }
+            catch
+            {
+                // Continue to next source
+                logger.SourceFailed(source.Name);
+            }
+        }
+
+        // All sources failed
+        logger.AllSourcesFailed(packageId);
+        return false;
     }
 
     private async Task<bool> InstallFromUrlAsync(Uri url, string targetDir, CancellationToken cancellationToken)

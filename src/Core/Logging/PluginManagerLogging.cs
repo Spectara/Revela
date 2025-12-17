@@ -71,4 +71,27 @@ internal static partial class PluginManagerLogging
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Failed to remove {packageId} from {projectJsonPath}")]
     public static partial void ProjectJsonRemoveFailed(this ILogger<PluginManager> logger, Exception exception, string projectJsonPath, string packageId);
+
+    // Multi-source discovery logging
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Using named source '{sourceName}' -> {url}")]
+    public static partial void UsingNamedSource(this ILogger<PluginManager> logger, string sourceName, string url);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Source '{source}' not found in config, treating as URL")]
+    public static partial void SourceNotFoundTreatingAsUrl(this ILogger<PluginManager> logger, string source);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Trying {sourceCount} source(s) for package {packageId}")]
+    public static partial void TryingMultipleSources(this ILogger<PluginManager> logger, string packageId, int sourceCount);
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Trying source '{sourceName}' ({url})")]
+    public static partial void TryingSource(this ILogger<PluginManager> logger, string sourceName, string url);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Successfully installed {packageId} from source '{sourceName}'")]
+    public static partial void SuccessFromSource(this ILogger<PluginManager> logger, string packageId, string sourceName);
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Source '{sourceName}' failed, trying next")]
+    public static partial void SourceFailed(this ILogger<PluginManager> logger, string sourceName);
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "All sources failed for package {packageId}")]
+    public static partial void AllSourcesFailed(this ILogger<PluginManager> logger, string packageId);
 }
+

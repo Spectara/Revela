@@ -37,11 +37,18 @@ public sealed partial class PluginInstallCommand(
         };
         command.Options.Add(globalOption);
 
+        var sourceOption = new Option<string?>("--source", "-s")
+        {
+            Description = "NuGet source name (from 'revela plugin source list') or URL"
+        };
+        command.Options.Add(sourceOption);
+
         command.SetAction(async parseResult =>
         {
             var name = parseResult.GetValue(nameArgument);
             var version = parseResult.GetValue(versionOption);
             var global = parseResult.GetValue(globalOption);
+            var source = parseResult.GetValue(sourceOption);
 
             if (string.IsNullOrEmpty(name))
             {
@@ -49,13 +56,13 @@ public sealed partial class PluginInstallCommand(
                 return 1;
             }
 
-            return await ExecuteFromNuGetAsync(name, version, global);
+            return await ExecuteFromNuGetAsync(name, version, global, source);
         });
 
         return command;
     }
 
-    internal async Task<int> ExecuteFromNuGetAsync(string name, string? version, bool global)
+    internal async Task<int> ExecuteFromNuGetAsync(string name, string? version, bool global, string? source = null)
     {
         try
         {
@@ -65,15 +72,16 @@ public sealed partial class PluginInstallCommand(
                 : $"Spectara.Revela.Plugin.{name}";
 
             var location = global ? "globally" : "locally";
-            AnsiConsole.MarkupLine($"[blue]Installing plugin {location}:[/] [cyan]{packageId}[/]");
-            LogInstallingPlugin(packageId, version);
+            var sourceInfo = source is not null ? $" from [dim]{source}[/]" : "";
+            AnsiConsole.MarkupLine($"[blue]Installing plugin {location}:[/] [cyan]{packageId}[/]{sourceInfo}");
+            LogInstallingPlugin(packageId, version, source);
 
             var success = await AnsiConsole.Status()
                 .Spinner(Spinner.Known.Dots)
                 .StartAsync("Installing...", async ctx =>
                 {
                     ctx.Status($"Downloading {packageId}...");
-                    return await pluginManager.InstallAsync(packageId, version, source: null, global);
+                    return await pluginManager.InstallAsync(packageId, version, source, global);
                 });
 
             if (success)
@@ -96,8 +104,8 @@ public sealed partial class PluginInstallCommand(
         }
     }
 
-    [LoggerMessage(Level = LogLevel.Information, Message = "Installing plugin '{PackageId}' version '{Version}'")]
-    private partial void LogInstallingPlugin(string packageId, string? version);
+    [LoggerMessage(Level = LogLevel.Information, Message = "Installing plugin '{PackageId}' version '{Version}' from source '{Source}'")]
+    private partial void LogInstallingPlugin(string packageId, string? version, string? source);
 
     [LoggerMessage(Level = LogLevel.Error, Message = "Failed to install plugin")]
     private partial void LogError(Exception exception);
