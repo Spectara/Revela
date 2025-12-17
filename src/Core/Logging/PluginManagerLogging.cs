@@ -56,4 +56,7 @@ internal static partial class PluginManagerLogging
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Plugin {packageId} installed successfully ({fileCount} file(s))")]
     public static partial void PluginInstalled(this ILogger<PluginManager> logger, string packageId, int fileCount);
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Created metadata file: {metadataPath}")]
+    public static partial void MetadataCreated(this ILogger<PluginManager> logger, string metadataPath);
 }

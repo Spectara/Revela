@@ -1,10 +1,13 @@
 using System.IO.Compression;
+using System.Text.Json;
 using NuGet.Configuration;
 using NuGet.Packaging;
+using NuGet.Packaging.Core;
 using NuGet.Protocol;
 using NuGet.Protocol.Core.Types;
 using NuGet.Versioning;
 using Spectara.Revela.Core.Logging;
+using Spectara.Revela.Core.Models;
 
 namespace Spectara.Revela.Core;
 
@@ -63,7 +66,7 @@ public sealed class PluginManager(ILogger<PluginManager> logger)
             {
                 // Local .nupkg file
                 logger.InstallingFromFile(packageIdOrPath);
-                return await InstallFromNupkgFileAsync(packageIdOrPath, targetDir, cancellationToken);
+                return await InstallFromNupkgFileAsync(packageIdOrPath, targetDir, Path.GetFullPath(packageIdOrPath), cancellationToken);
             }
             else if (Uri.TryCreate(packageIdOrPath, UriKind.Absolute, out var uri) &&
                      (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps))
@@ -146,8 +149,8 @@ public sealed class PluginManager(ILogger<PluginManager> logger)
                 }
             }
 
-            // Install from downloaded file
-            return await InstallFromNupkgFileAsync(tempFile, targetDir, cancellationToken);
+            // Install from downloaded file - use source URL for metadata
+            return await InstallFromNupkgFileAsync(tempFile, targetDir, sourceRepo.PackageSource.Source, cancellationToken);
         }
         finally
         {
@@ -171,7 +174,7 @@ public sealed class PluginManager(ILogger<PluginManager> logger)
                 await stream.CopyToAsync(fileStream, cancellationToken);
             }
 
-            return await InstallFromNupkgFileAsync(tempFile, targetDir, cancellationToken);
+            return await InstallFromNupkgFileAsync(tempFile, targetDir, url.ToString(), cancellationToken);
         }
         finally
         {
@@ -182,7 +185,7 @@ public sealed class PluginManager(ILogger<PluginManager> logger)
         }
     }
 
-    private async Task<bool> InstallFromNupkgFileAsync(string nupkgPath, string targetDir, CancellationToken cancellationToken)
+    private async Task<bool> InstallFromNupkgFileAsync(string nupkgPath, string targetDir, string installedFrom, CancellationToken cancellationToken)
     {
         using var packageReader = new PackageArchiveReader(nupkgPath);
         var nuspec = await packageReader.GetNuspecAsync(cancellationToken);
@@ -242,8 +245,62 @@ public sealed class PluginManager(ILogger<PluginManager> logger)
             return false;
         }
 
+        // Create plugin.meta.json with metadata from .nuspec
+        await CreatePluginMetadataAsync(packageReader, identity, installedFrom, targetDir, cancellationToken);
+
         logger.PluginInstalled(identity.Id, fileCount);
         return true;
+    }
+
+    private static readonly JsonSerializerOptions MetadataJsonOptions = new()
+    {
+        WriteIndented = true,
+        DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
+    };
+
+    private async Task CreatePluginMetadataAsync(
+        PackageArchiveReader packageReader,
+        PackageIdentity identity,
+        string installedFrom,
+        string targetDir,
+        CancellationToken cancellationToken)
+    {
+        using var nuspecStream = await packageReader.GetNuspecAsync(cancellationToken);
+        var nuspecReader = new NuspecReader(nuspecStream);
+
+        // Parse authors
+        var authors = nuspecReader.GetAuthors()?.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                     ?? [];
+
+        // Parse dependencies
+        var dependencyGroups = await packageReader.GetPackageDependenciesAsync(cancellationToken);
+        var dependencies = dependencyGroups
+            .SelectMany(g => g.Packages)
+            .ToDictionary(d => d.Id, d => d.VersionRange.MinVersion?.ToString() ?? "*");
+
+        // Determine source type
+        var source = installedFrom.StartsWith("http", StringComparison.OrdinalIgnoreCase) ? "url"
+                   : File.Exists(installedFrom) ? "nupkg"
+                   : "nuget";
+
+        var metadata = new PluginMetadata
+        {
+            Name = identity.Id,
+            Version = identity.Version.ToString(),
+            Source = source,
+            InstalledFrom = installedFrom,
+            InstalledAt = DateTime.UtcNow.ToString("O"),
+            Authors = authors,
+            Description = nuspecReader.GetDescription(),
+            Dependencies = dependencies
+        };
+
+        // Write to plugin.meta.json
+        var metadataPath = Path.Combine(targetDir, $"{identity.Id}.meta.json");
+        await using var fileStream = File.Create(metadataPath);
+        await JsonSerializer.SerializeAsync(fileStream, metadata, MetadataJsonOptions, cancellationToken);
+
+        logger.MetadataCreated(metadataPath);
     }
 
 
