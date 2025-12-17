@@ -34,7 +34,7 @@ public sealed class PluginUninstallCommandTests
     }
 
     [TestMethod]
-    public void TransformFullName_NoTransformation()
+    public void TransformFullPluginName_NoTransformation()
     {
         // Arrange
         var fullName = "Spectara.Revela.Plugin.Source.OneDrive";
@@ -46,13 +46,27 @@ public sealed class PluginUninstallCommandTests
         Assert.AreEqual("Spectara.Revela.Plugin.Source.OneDrive", packageId);
     }
 
+    [TestMethod]
+    public void TransformFullThemeName_NoTransformation()
+    {
+        // Arrange - Theme names should NOT get Plugin. prefix added
+        var fullName = "Spectara.Revela.Theme.Lumina.Statistics";
+
+        // Act
+        var packageId = TransformPackageName(fullName);
+
+        // Assert - Should remain unchanged (not get double prefix)
+        Assert.AreEqual("Spectara.Revela.Theme.Lumina.Statistics", packageId);
+    }
+
     /// <summary>
     /// Replicates the transformation logic from PluginUninstallCommand.ExecuteAsync
     /// </summary>
     private static string TransformPackageName(string name)
     {
-        // This is the FIXED implementation from the code
-        return name.StartsWith("Spectara.Revela.Plugin.", StringComparison.OrdinalIgnoreCase)
+        // This matches the implementation in PluginUninstallCommand
+        // Names starting with "Spectara.Revela." are treated as full package IDs
+        return name.StartsWith("Spectara.Revela.", StringComparison.OrdinalIgnoreCase)
             ? name
             : $"Spectara.Revela.Plugin.{name}";
     }

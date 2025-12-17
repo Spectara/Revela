@@ -70,7 +70,8 @@ function Write-Banner {
 # Determine script and repo paths
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $RepoRoot = Split-Path -Parent $ScriptDir
-$TestDir = Join-Path $RepoRoot "artifacts/release-test"
+$Timestamp = [DateTime]::Now.ToString('yyyyMMdd-HHmmss')
+$TestDir = Join-Path $RepoRoot "artifacts/release-test-$Timestamp"
 $PublishDir = Join-Path $TestDir "publish"
 $PluginsDir = Join-Path $TestDir "plugins"
 $SampleDir = Join-Path $RepoRoot "samples/onedrive"
@@ -205,17 +206,10 @@ try {
     }
 
     # ========================================================================
-    # STEP 5: Build & Package Plugins (like release.yml)
+    # STEP 5: Build NuGet Packages (like CI pipeline)
     # ========================================================================
-    Write-Step "Step 5: Build & Package Plugins"
-    Measure-Step "Plugins" {
-        # Shared assemblies to exclude (loaded from host)
-        $sharedAssemblies = @(
-            "Spectara.Revela.Core.dll",
-            "System.CommandLine.dll",
-            "Spectre.Console.dll"
-        )
-
+    Write-Step "Step 5: Build NuGet Packages"
+    Measure-Step "NuGet Packages" {
         # Theme.Lumina (goes next to CLI - bundled with release)
         Write-Info "Building Theme.Lumina..."
         dotnet build src/Themes/Theme.Lumina/Theme.Lumina.csproj `
@@ -225,78 +219,32 @@ try {
         Copy-Item "artifacts/bin/Theme.Lumina/Release/net10.0/$RuntimeIdentifier/Spectara.Revela.Theme.Lumina.dll" $PublishDir
         Write-Success "Theme.Lumina bundled with CLI"
 
-        # Helper function to package plugin like release.yml
-        function Package-Plugin {
-            param(
-                [string]$PluginName,
-                [string]$BuildDir
-            )
-            $packageDir = Join-Path $PluginsDir "package"
-            $pluginSubDir = Join-Path $packageDir $PluginName
+        # Pack Plugin.Source.OneDrive
+        Write-Info "Packing Plugin.Source.OneDrive..."
+        dotnet pack src/Plugins/Plugin.Source.OneDrive/Plugin.Source.OneDrive.csproj `
+            -c Release -o $PluginsDir -p:PackageVersion=$Version --verbosity quiet
+        if ($LASTEXITCODE -ne 0) { throw "OneDrive plugin pack failed" }
+        Write-Success "Plugin.Source.OneDrive packed"
 
-            # Clean package directory
-            if (Test-Path $packageDir) { Remove-Item $packageDir -Recurse -Force }
-            New-Item -ItemType Directory -Path $pluginSubDir -Force | Out-Null
+        # Pack Plugin.Statistics
+        Write-Info "Packing Plugin.Statistics..."
+        dotnet pack src/Plugins/Plugin.Statistics/Plugin.Statistics.csproj `
+            -c Release -o $PluginsDir -p:PackageVersion=$Version --verbosity quiet
+        if ($LASTEXITCODE -ne 0) { throw "Statistics plugin pack failed" }
+        Write-Success "Plugin.Statistics packed"
 
-            # Copy main plugin DLL to root
-            Copy-Item "$BuildDir/$PluginName.dll" $packageDir
+        # Pack Theme.Lumina.Statistics
+        Write-Info "Packing Theme.Lumina.Statistics..."
+        dotnet pack src/Themes/Theme.Lumina.Statistics/Theme.Lumina.Statistics.csproj `
+            -c Release -o $PluginsDir -p:PackageVersion=$Version --verbosity quiet
+        if ($LASTEXITCODE -ne 0) { throw "Theme.Lumina.Statistics pack failed" }
+        Write-Success "Theme.Lumina.Statistics packed"
 
-            # Copy deps.json if exists
-            $depsJson = "$BuildDir/$PluginName.deps.json"
-            if (Test-Path $depsJson) {
-                Copy-Item $depsJson $packageDir
-            }
-
-            # Copy dependencies to subfolder (exclude main plugin and shared assemblies)
-            Get-ChildItem "$BuildDir" -Filter "*.dll" | ForEach-Object {
-                $filename = $_.Name
-                if ($filename -ne "$PluginName.dll" -and $filename -notin $sharedAssemblies) {
-                    Copy-Item $_.FullName $pluginSubDir
-                }
-            }
-
-            # Create ZIP
-            $zipPath = Join-Path $PluginsDir "$PluginName.zip"
-            Compress-Archive -Path "$packageDir/*" -DestinationPath $zipPath -Force
-            return $zipPath
-        }
-
-        # Plugin.Source.OneDrive
-        Write-Info "Building Plugin.Source.OneDrive..."
-        $pluginBuildDir = Join-Path $PluginsDir "build/onedrive"
-        dotnet publish src/Plugins/Plugin.Source.OneDrive/Plugin.Source.OneDrive.csproj `
-            -c Release -o $pluginBuildDir -p:Version=$Version --verbosity quiet
-        if ($LASTEXITCODE -ne 0) { throw "OneDrive plugin build failed" }
-
-        $zip = Package-Plugin -PluginName "Spectara.Revela.Plugin.Source.OneDrive" -BuildDir $pluginBuildDir
-        Write-Success "Plugin.Source.OneDrive packaged"
-
-        # Plugin.Statistics
-        Write-Info "Building Plugin.Statistics..."
-        $pluginBuildDir = Join-Path $PluginsDir "build/statistics"
-        dotnet publish src/Plugins/Plugin.Statistics/Plugin.Statistics.csproj `
-            -c Release -o $pluginBuildDir -p:Version=$Version --verbosity quiet
-        if ($LASTEXITCODE -ne 0) { throw "Statistics plugin build failed" }
-
-        $zip = Package-Plugin -PluginName "Spectara.Revela.Plugin.Statistics" -BuildDir $pluginBuildDir
-        Write-Success "Plugin.Statistics packaged"
-
-        # Theme.Lumina.Statistics
-        Write-Info "Building Theme.Lumina.Statistics..."
-        $pluginBuildDir = Join-Path $PluginsDir "build/lumina-statistics"
-        dotnet publish src/Themes/Theme.Lumina.Statistics/Theme.Lumina.Statistics.csproj `
-            -c Release -o $pluginBuildDir -p:Version=$Version --verbosity quiet
-        if ($LASTEXITCODE -ne 0) { throw "Theme.Lumina.Statistics build failed" }
-
-        $zip = Package-Plugin -PluginName "Spectara.Revela.Theme.Lumina.Statistics" -BuildDir $pluginBuildDir
-        Write-Success "Theme.Lumina.Statistics packaged"
-
-        # List all artifacts
-        Write-Info "Release artifacts:"
-        Get-ChildItem $PublishDir -Filter "*.dll" | ForEach-Object { Write-Info "  CLI: $($_.Name)" }
-        Get-ChildItem $PluginsDir -Filter "*.zip" | ForEach-Object {
+        # List all NuGet packages
+        Write-Info "NuGet packages:"
+        Get-ChildItem $PluginsDir -Filter "*.nupkg" | ForEach-Object {
             $size = [math]::Round($_.Length / 1KB, 1)
-            Write-Info "  Package: $($_.Name) ($size KB)"
+            Write-Info "  $($_.Name) ($size KB)"
         }
     }
 
@@ -321,32 +269,29 @@ try {
     }
 
     # ========================================================================
-    # STEP 7: Install Plugins via CLI
+    # STEP 7: Install Plugins via NuGet (local feed)
     # ========================================================================
     $testProjectDir = Join-Path $TestDir "test-project"
 
-    Write-Step "Step 7: Install Plugins via CLI"
+    Write-Step "Step 7: Install Plugins (NuGet from local feed)"
     Measure-Step "Install Plugins" {
         Push-Location $testProjectDir
         try {
-            # Install OneDrive Plugin
+            # Install OneDrive Plugin from local NuGet feed
             Write-Info "Installing Plugin.Source.OneDrive..."
-            $zipPath = Join-Path $PluginsDir "Spectara.Revela.Plugin.Source.OneDrive.zip"
-            & $ExePath plugin install --from-zip $zipPath
+            & $ExePath plugin install Source.OneDrive --version $Version --source $PluginsDir
             if ($LASTEXITCODE -ne 0) { throw "OneDrive plugin installation failed" }
             Write-Success "Plugin.Source.OneDrive installed"
 
             # Install Statistics Plugin
             Write-Info "Installing Plugin.Statistics..."
-            $zipPath = Join-Path $PluginsDir "Spectara.Revela.Plugin.Statistics.zip"
-            & $ExePath plugin install --from-zip $zipPath
+            & $ExePath plugin install Statistics --version $Version --source $PluginsDir
             if ($LASTEXITCODE -ne 0) { throw "Statistics plugin installation failed" }
             Write-Success "Plugin.Statistics installed"
 
             # Install Theme.Lumina.Statistics Extension
             Write-Info "Installing Theme.Lumina.Statistics..."
-            $zipPath = Join-Path $PluginsDir "Spectara.Revela.Theme.Lumina.Statistics.zip"
-            & $ExePath plugin install --from-zip $zipPath
+            & $ExePath plugin install Spectara.Revela.Theme.Lumina.Statistics --version $Version --source $PluginsDir
             if ($LASTEXITCODE -ne 0) { throw "Theme.Lumina.Statistics installation failed" }
             Write-Success "Theme.Lumina.Statistics installed"
 
@@ -425,15 +370,7 @@ try {
             if ($LASTEXITCODE -ne 0) { throw "Statistics generation failed" }
             Write-Success "Statistics generated"
 
-            # Check statistics output
-            $statsDir = Join-Path $testProjectDir "source/03 Pages/Statistics"
-            if (Test-Path $statsDir) {
-                $statsFiles = Get-ChildItem $statsDir -File
-                Write-Info "Statistics files: $($statsFiles.Count)"
-                foreach ($file in $statsFiles) {
-                    Write-Info "  $($file.Name)"
-                }
-            }
+            # Note: Statistics plugin generates data into manifest, no separate files
         } finally {
             Pop-Location
         }
@@ -467,19 +404,20 @@ try {
         }
 
         # Check for expected files
+        # Note: CSS/JS assets are in _assets/ directory (theme asset system)
         $expectedFiles = @(
-            "index.html",
-            "main.css"
+            @{ Path = "index.html"; Description = "Homepage" },
+            @{ Path = "_assets/main.css"; Description = "Theme CSS" }
         )
 
         $missingFiles = @()
         foreach ($file in $expectedFiles) {
-            $path = Join-Path $outputDir $file
+            $path = Join-Path $outputDir $file.Path
             if (Test-Path $path) {
-                Write-Success "Found: $file"
+                Write-Success "Found: $($file.Path)"
             } else {
-                $missingFiles += $file
-                Write-Err "Missing: $file"
+                $missingFiles += $file.Path
+                Write-Err "Missing: $($file.Path) ($($file.Description))"
             }
         }
 
@@ -493,11 +431,11 @@ try {
         }
 
         # Check gallery directories
-        $galleryDirs = Get-ChildItem $outputDir -Directory | Where-Object { $_.Name -ne "images" }
+        $galleryDirs = @(Get-ChildItem $outputDir -Directory | Where-Object { $_.Name -ne "images" })
         if ($galleryDirs.Count -gt 0) {
             Write-Success "Gallery directories: $($galleryDirs.Count)"
             foreach ($dir in $galleryDirs) {
-                $htmlFiles = Get-ChildItem $dir.FullName -Filter "*.html" -Recurse
+                $htmlFiles = @(Get-ChildItem $dir.FullName -Filter "*.html" -Recurse)
                 Write-Info "  $($dir.Name): $($htmlFiles.Count) HTML files"
             }
         }
@@ -595,7 +533,8 @@ try {
         Write-Success "Plugin list command works"
 
         Write-Info "Uninstalling tool..."
-        dotnet tool uninstall -g Spectara.Revela --verbosity quiet
+        # Note: dotnet tool uninstall doesn't support --verbosity
+        $null = dotnet tool uninstall -g Spectara.Revela 2>&1
         if ($LASTEXITCODE -ne 0) { throw "Tool uninstall failed" }
         Write-Success "Tool uninstalled"
 

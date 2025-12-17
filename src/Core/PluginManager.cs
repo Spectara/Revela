@@ -519,6 +519,14 @@ public sealed class PluginManager(HttpClient httpClient, ILogger<PluginManager> 
                 found = true;
             }
 
+            // Delete .meta.json file (plugin metadata)
+            var metaPath = Path.Combine(pluginDir, $"{packageId}.meta.json");
+            if (File.Exists(metaPath))
+            {
+                File.Delete(metaPath);
+                // Don't set found=true - meta alone doesn't count as plugin presence
+            }
+
             // Note: Keep config file (*.json) - user may want to reinstall with same settings
 
             if (found)

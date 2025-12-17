@@ -1,3 +1,4 @@
+using System.Reflection;
 using System.Runtime.Loader;
 using Spectara.Revela.Core.Abstractions;
 using Spectara.Revela.Core.Configuration;
@@ -130,6 +131,20 @@ public sealed partial class PluginLoader(
                 LoadPluginFromAssembly(dll);
                 loadedAssemblyPaths.Add(dll);
             }
+            catch (ReflectionTypeLoadException rtle)
+            {
+                // Log detailed info for debugging
+                LogPluginReflectionLoadFailed(Path.GetFileName(dll), rtle.Message);
+                foreach (var ex in rtle.LoaderExceptions.Where(e => e != null).Take(3))
+                {
+                    if (ex is FileNotFoundException fnf && !string.IsNullOrEmpty(fnf.FileName))
+                    {
+                        LogMissingDependency(fnf.FileName);
+                    }
+                }
+
+                LogPluginLoadFailed(rtle, dll);
+            }
             catch (Exception ex)
             {
                 LogPluginLoadFailed(ex, dll);
@@ -192,6 +207,12 @@ public sealed partial class PluginLoader(
     [LoggerMessage(Level = LogLevel.Debug, Message = "Plugin excluded by pattern: {FileName}")]
     private partial void LogPluginExcluded(string fileName);
 
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Plugin load failed for {Assembly}: {Message}")]
+    private partial void LogPluginReflectionLoadFailed(string assembly, string message);
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Missing dependency: {FileName}")]
+    private partial void LogMissingDependency(string fileName);
+
     [LoggerMessage(Level = LogLevel.Warning, Message = "Plugin '{Name}' already loaded, skipping duplicate from {Assembly}")]
     private partial void LogPluginDuplicate(string name, string assembly);
 
@@ -207,5 +228,3 @@ public sealed partial class PluginLoader(
     [LoggerMessage(Level = LogLevel.Debug, Message = "Created isolated load context '{ContextName}' for plugin {Assembly}")]
     private partial void LogPluginContextCreated(string assembly, string contextName);
 }
-
-

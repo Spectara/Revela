@@ -74,7 +74,25 @@ internal sealed class PluginLoadContext : AssemblyLoadContext
         // This ensures IPlugin from plugin == IPlugin from host
         if (IsSharedAssembly(name))
         {
-            return null; // Returning null delegates to default context
+            // First, check if already loaded in any context
+            var alreadyLoaded = AppDomain.CurrentDomain.GetAssemblies()
+                .FirstOrDefault(a => a.GetName().Name == name);
+
+            if (alreadyLoaded != null)
+            {
+                return alreadyLoaded;
+            }
+
+            // For single-file publish, try to load from default context
+            try
+            {
+                return Default.LoadFromAssemblyName(assemblyName);
+            }
+            catch
+            {
+                // If not found, return null to let the framework try
+                return null;
+            }
         }
 
         // Try resolver first (for NuGet-style layouts)

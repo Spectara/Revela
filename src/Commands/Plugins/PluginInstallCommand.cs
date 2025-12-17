@@ -67,7 +67,11 @@ public sealed partial class PluginInstallCommand(
         try
         {
             // Convert short name to full package ID
-            var packageId = name.StartsWith("Spectara.Revela.Plugin.", StringComparison.OrdinalIgnoreCase)
+            // Examples: "OneDrive" → "Spectara.Revela.Plugin.OneDrive"
+            //           "Source.OneDrive" → "Spectara.Revela.Plugin.Source.OneDrive"
+            //           "Spectara.Revela.Plugin.OneDrive" → unchanged
+            //           "Spectara.Revela.Theme.Lumina.Statistics" → unchanged
+            var packageId = name.StartsWith("Spectara.Revela.", StringComparison.OrdinalIgnoreCase)
                 ? name
                 : $"Spectara.Revela.Plugin.{name}";
 
