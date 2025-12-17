@@ -6,10 +6,16 @@
     <RootNamespace>Spectara.Revela.Theme.Lumina.Statistics</RootNamespace>
     <PackageId>Spectara.Revela.Theme.Lumina.Statistics</PackageId>
     <PackageTags>revela;theme;lumina;statistics;exif;charts</PackageTags>
+    <PackageIcon>icon.png</PackageIcon>
+    <PackageReleaseNotes>https://github.com/spectara/revela/blob/main/CHANGELOG.md</PackageReleaseNotes>
 
     <!-- Plugin Support: Copies all dependencies to output, generates complete .deps.json -->
     <EnableDynamicLoading>true</EnableDynamicLoading>
   </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="..\..\..\assets\Spectara_100.png" Pack="true" PackagePath="icon.png" />
+  </ItemGroup>
 
   <ItemGroup>
     <!-- Embed extension.json as resource -->

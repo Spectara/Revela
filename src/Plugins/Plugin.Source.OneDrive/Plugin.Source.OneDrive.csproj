@@ -5,10 +5,16 @@
   <AssemblyName>Spectara.Revela.Plugin.Source.OneDrive</AssemblyName>
   <PackageId>Spectara.Revela.Plugin.Source.OneDrive</PackageId>
   <PackageTags>revela;plugin;source;onedrive;shared</PackageTags>
+  <PackageIcon>icon.png</PackageIcon>
+  <PackageReleaseNotes>https://github.com/spectara/revela/blob/main/CHANGELOG.md</PackageReleaseNotes>
 
   <!-- Plugin Support: Copies all dependencies to output, generates complete .deps.json -->
   <EnableDynamicLoading>true</EnableDynamicLoading>
 </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="..\..\..\assets\Spectara_100.png" Pack="true" PackagePath="icon.png" />
+  </ItemGroup>
 
   <ItemGroup>
     <!-- Reference to host Core - NOT copied to output (loaded from host) -->

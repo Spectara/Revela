@@ -34,8 +34,14 @@
     <PackageReference Include="Spectre.Console" />
   </ItemGroup>
 
+  <PropertyGroup Label="Package Icon">
+    <PackageIcon>icon.png</PackageIcon>
+    <PackageReleaseNotes>https://github.com/spectara/revela/blob/main/CHANGELOG.md</PackageReleaseNotes>
+  </PropertyGroup>
+
   <ItemGroup>
     <None Include="..\..\README.md" Pack="true" PackagePath="\" />
+    <None Include="..\..\assets\Spectara_100.png" Pack="true" PackagePath="icon.png" />
   </ItemGroup>
 
 </Project>

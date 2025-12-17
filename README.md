@@ -1,9 +1,15 @@
+<div align="center">
+
+![Revela](assets/Spectara_200.png)
+
 # Revela
 
 [![Build](https://github.com/spectara/revela/actions/workflows/build.yml/badge.svg)](https://github.com/spectara/revela/actions/workflows/build.yml)
 [![Dependencies](https://github.com/spectara/revela/actions/workflows/dependency-update-check.yml/badge.svg)](https://github.com/spectara/revela/actions/workflows/dependency-update-check.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/spectara/revela)
+
+</div>
 
 > [!NOTE]
 > **🚧 BETA - Ready for Testing! 🚧**
@@ -50,20 +56,61 @@ Modern static site generator for photographers, built with .NET 10 and optimized
 
 ## 📦 Installation
 
-### As .NET Tool (Global)
+Choose the installation method that best fits your needs:
+
+### Option A: .NET Global Tool (Recommended for Developers)
+
+**Requirements:** .NET Runtime 10.0 or later
 
 ```bash
-dotnet tool install -g Revela
+# Install from NuGet.org
+dotnet tool install -g Spectara.Revela
+
+# Verify installation
+revela --version
 ```
 
-### From Source
+**Advantages:**
+- ✅ Small download size (~10 MB)
+- ✅ Easy updates with `dotnet tool update -g Spectara.Revela`
+- ✅ Automatic PATH configuration
+
+### Option B: Native Executable (For Users Without .NET SDK)
+
+**Requirements:** None - fully self-contained
+
+**Download for your platform:**
+- [Windows (x64)](https://github.com/spectara/revela/releases/latest) - `revela-win-x64.zip`
+- [Linux (x64)](https://github.com/spectara/revela/releases/latest) - `revela-linux-x64.tar.gz`
+- [Linux (ARM64)](https://github.com/spectara/revela/releases/latest) - `revela-linux-arm64.tar.gz`
+- [macOS (Intel)](https://github.com/spectara/revela/releases/latest) - `revela-osx-x64.tar.gz`
+- [macOS (Apple Silicon)](https://github.com/spectara/revela/releases/latest) - `revela-osx-arm64.tar.gz`
+
+**Extract and run:**
+```bash
+# Windows
+Expand-Archive revela-win-x64.zip -DestinationPath C:\Tools\revela
+$env:PATH += ";C:\Tools\revela"
+
+# Linux/macOS
+tar -xzf revela-linux-x64.tar.gz -C /usr/local/bin
+chmod +x /usr/local/bin/revela
+```
+
+**Advantages:**
+- ✅ No .NET Runtime required
+- ✅ Works on systems without SDK
+- ✅ Ideal for CI/CD environments
+
+### Option C: From Source (For Contributors)
 
 ```bash
 git clone https://github.com/spectara/revela.git
 cd revela
+dotnet restore
 dotnet build
-dotnet pack src/Cli
-dotnet tool install -g --add-source ./artifacts/packages Revela
+dotnet pack src/Cli -c Release
+dotnet tool install -g --add-source ./artifacts/packages Spectara.Revela
 ```
 
 ## 📖 Getting Started Guides

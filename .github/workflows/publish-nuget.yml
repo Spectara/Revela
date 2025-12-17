@@ -1,7 +1,7 @@
 # Publish to NuGet.org
 # Requires manual approval via GitHub Environment protection rules
 # Triggered when a GitHub Release is created
-# 
+#
 # Setup required:
 # 1. Create GitHub Environment named "nuget-org" in repository settings
 # 2. Add required reviewers (repository maintainers)
@@ -55,29 +55,37 @@ jobs:
       - name: Restore
         run: dotnet restore
 
-      - name: Pack all plugins
+      - name: Pack CLI and plugins
         run: |
           VERSION=${{ steps.version.outputs.version }}
-          echo "📦 Packing plugins with version $VERSION"
-          
+          echo "📦 Packing CLI and plugins with version $VERSION"
+
+          # Pack CLI Tool
+          dotnet pack src/Cli/Cli.csproj \
+            -c Release \
+            -o ./nupkgs \
+            -p:PackageVersion=$VERSION \
+            -p:IncludeSymbols=false
+
+          # Pack Plugins
           dotnet pack src/Plugins/Plugin.Source.OneDrive/Plugin.Source.OneDrive.csproj \
             -c Release \
             -o ./nupkgs \
             -p:PackageVersion=$VERSION \
             -p:IncludeSymbols=false
-          
+
           dotnet pack src/Plugins/Plugin.Deploy.SSH/Plugin.Deploy.SSH.csproj \
             -c Release \
             -o ./nupkgs \
             -p:PackageVersion=$VERSION \
             -p:IncludeSymbols=false
-          
+
           dotnet pack src/Plugins/Plugin.Statistics/Plugin.Statistics.csproj \
             -c Release \
             -o ./nupkgs \
             -p:PackageVersion=$VERSION \
             -p:IncludeSymbols=false
-          
+
           dotnet pack src/Themes/Theme.Lumina.Statistics/Theme.Lumina.Statistics.csproj \
             -c Release \
             -o ./nupkgs \
@@ -102,6 +110,7 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Version:** ${{ steps.version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
           echo "**Packages:**" >> $GITHUB_STEP_SUMMARY
+          echo "- **Spectara.Revela** (CLI Tool)" >> $GITHUB_STEP_SUMMARY
           echo "- Spectara.Revela.Plugin.Source.OneDrive" >> $GITHUB_STEP_SUMMARY
           echo "- Spectara.Revela.Plugin.Deploy.SSH" >> $GITHUB_STEP_SUMMARY
           echo "- Spectara.Revela.Plugin.Statistics" >> $GITHUB_STEP_SUMMARY
@@ -109,7 +118,12 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Packages will be available on NuGet.org within a few minutes.**" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Install command:**" >> $GITHUB_STEP_SUMMARY
+          echo "**Install CLI:**" >> $GITHUB_STEP_SUMMARY
+          echo '```bash' >> $GITHUB_STEP_SUMMARY
+          echo "dotnet tool install -g Spectara.Revela" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Install Plugins:**" >> $GITHUB_STEP_SUMMARY
           echo '```bash' >> $GITHUB_STEP_SUMMARY
           echo "revela plugin install <plugin-name>" >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY

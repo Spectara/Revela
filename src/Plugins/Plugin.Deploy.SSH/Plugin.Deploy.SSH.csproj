@@ -5,7 +5,13 @@
   <AssemblyName>Spectara.Revela.Plugin.Deploy.SSH</AssemblyName>
   <PackageId>Spectara.Revela.Plugin.Deploy.SSH</PackageId>
   <PackageTags>revela;plugin;deploy;ssh;sftp</PackageTags>
+  <PackageIcon>icon.png</PackageIcon>
+  <PackageReleaseNotes>https://github.com/spectara/revela/blob/main/CHANGELOG.md</PackageReleaseNotes>
 </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="..\..\..\assets\Spectara_100.png" Pack="true" PackagePath="icon.png" />
+  </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\..\Core\Core.csproj">

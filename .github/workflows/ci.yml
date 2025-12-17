@@ -1,0 +1,145 @@
+# Continuous Integration
+# Runs on every push and pull request
+# Builds all projects and runs tests to ensure code quality
+
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - 'samples/**'
+  pull_request:
+    branches:
+      - main
+      - develop
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - 'samples/**'
+  workflow_dispatch:
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
+
+jobs:
+  build-and-test:
+    name: Build & Test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Restore
+        run: dotnet restore
+
+      - name: Build
+        run: dotnet build --no-restore -c Release
+
+      - name: Run Tests
+        run: dotnet test --no-build -c Release --logger trx --results-directory ./TestResults
+
+      - name: Upload Test Results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-${{ matrix.os }}
+          path: ./TestResults/*.trx
+
+      - name: Test Summary
+        if: always()
+        run: |
+          echo "### Test Results (${{ matrix.os }})" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Test results uploaded as artifacts." >> $GITHUB_STEP_SUMMARY
+
+  verify-packages:
+    name: Verify Package Build
+    runs-on: ubuntu-latest
+    needs: build-and-test
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Restore
+        run: dotnet restore
+
+      - name: Pack CLI
+        run: |
+          dotnet pack src/Cli/Cli.csproj \
+            -c Release \
+            -o ./nupkgs \
+            -p:PackageVersion=0.0.0-ci \
+            -p:IncludeSymbols=false
+
+      - name: Pack Plugins
+        run: |
+          dotnet pack src/Plugins/Plugin.Source.OneDrive/Plugin.Source.OneDrive.csproj \
+            -c Release \
+            -o ./nupkgs \
+            -p:PackageVersion=0.0.0-ci \
+            -p:IncludeSymbols=false
+
+          dotnet pack src/Plugins/Plugin.Deploy.SSH/Plugin.Deploy.SSH.csproj \
+            -c Release \
+            -o ./nupkgs \
+            -p:PackageVersion=0.0.0-ci \
+            -p:IncludeSymbols=false
+
+          dotnet pack src/Plugins/Plugin.Statistics/Plugin.Statistics.csproj \
+            -c Release \
+            -o ./nupkgs \
+            -p:PackageVersion=0.0.0-ci \
+            -p:IncludeSymbols=false
+
+      - name: Pack Themes
+        run: |
+          dotnet pack src/Themes/Theme.Lumina.Statistics/Theme.Lumina.Statistics.csproj \
+            -c Release \
+            -o ./nupkgs \
+            -p:PackageVersion=0.0.0-ci \
+            -p:IncludeSymbols=false
+
+      - name: List Packages
+        run: ls -lh ./nupkgs/
+
+      - name: Upload Packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: nupkg-ci
+          path: ./nupkgs/*.nupkg
+
+      - name: Package Summary
+        run: |
+          echo "### Package Build Verification" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "✅ All packages built successfully" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Packages:**" >> $GITHUB_STEP_SUMMARY
+          echo "- Spectara.Revela (CLI Tool)" >> $GITHUB_STEP_SUMMARY
+          echo "- Spectara.Revela.Plugin.Source.OneDrive" >> $GITHUB_STEP_SUMMARY
+          echo "- Spectara.Revela.Plugin.Deploy.SSH" >> $GITHUB_STEP_SUMMARY
+          echo "- Spectara.Revela.Plugin.Statistics" >> $GITHUB_STEP_SUMMARY
+          echo "- Spectara.Revela.Theme.Lumina.Statistics" >> $GITHUB_STEP_SUMMARY

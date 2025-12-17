@@ -547,7 +547,63 @@ try {
     }
 
     # ========================================================================
-    # STEP 13: Summary
+    # STEP 13: Test .NET Tool Package
+    # ========================================================================
+    Write-Step "Step 13: Test .NET Tool Package"
+    Measure-Step "ToolTest" {
+        $nupkgDir = Join-Path $TestDir "nupkgs"
+        New-Item -ItemType Directory -Path $nupkgDir -Force | Out-Null
+
+        Write-Info "Packing CLI as .NET Tool..."
+        dotnet pack src/Cli/Cli.csproj `
+            -c Release `
+            -o $nupkgDir `
+            -p:PackageVersion=$Version `
+            -p:IncludeSymbols=false `
+            --verbosity quiet
+        if ($LASTEXITCODE -ne 0) { throw "Pack failed" }
+        Write-Success "CLI packed to NuGet package"
+
+        $nupkgFile = Get-ChildItem -Path $nupkgDir -Filter "Spectara.Revela.$Version.nupkg" | Select-Object -First 1
+        if (-not $nupkgFile) { throw "NuGet package not found" }
+        Write-Info "Package: $($nupkgFile.Name) ($([Math]::Round($nupkgFile.Length / 1MB, 2)) MB)"
+
+        Write-Info "Installing tool from local package..."
+        $installResult = dotnet tool install -g Spectara.Revela `
+            --version $Version `
+            --add-source $nupkgDir `
+            --verbosity quiet 2>&1
+        if ($LASTEXITCODE -ne 0) {
+            # Tool might already be installed from previous run
+            Write-Warn "Install failed (might be already installed), trying update..."
+            dotnet tool update -g Spectara.Revela `
+                --version $Version `
+                --add-source $nupkgDir `
+                --verbosity quiet
+            if ($LASTEXITCODE -ne 0) { throw "Tool install/update failed" }
+        }
+        Write-Success "Tool installed globally"
+
+        Write-Info "Testing tool command..."
+        $versionOutput = & revela --version 2>&1
+        if ($LASTEXITCODE -ne 0) { throw "Tool command failed: $versionOutput" }
+        Write-Success "Tool executable: $versionOutput"
+
+        Write-Info "Testing plugin list..."
+        $pluginOutput = & revela plugin list 2>&1
+        if ($LASTEXITCODE -ne 0) { throw "Plugin list failed: $pluginOutput" }
+        Write-Success "Plugin list command works"
+
+        Write-Info "Uninstalling tool..."
+        dotnet tool uninstall -g Spectara.Revela --verbosity quiet
+        if ($LASTEXITCODE -ne 0) { throw "Tool uninstall failed" }
+        Write-Success "Tool uninstalled"
+
+        Write-Success "✓ .NET Tool package verified"
+    }
+
+    # ========================================================================
+    # STEP 14: Summary
     # ========================================================================
     Write-Banner "Release Test Complete"
 

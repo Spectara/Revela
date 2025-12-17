@@ -6,10 +6,16 @@
     <RootNamespace>Spectara.Revela.Theme.Lumina</RootNamespace>
     <PackageId>Spectara.Revela.Theme.Lumina</PackageId>
     <PackageTags>revela;theme;lumina;photography;gallery;lightbox</PackageTags>
+    <PackageIcon>icon.png</PackageIcon>
+    <PackageReleaseNotes>https://github.com/spectara/revela/blob/main/CHANGELOG.md</PackageReleaseNotes>
 
     <!-- Plugin Support: Copies all dependencies to output, generates complete .deps.json -->
     <EnableDynamicLoading>true</EnableDynamicLoading>
   </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="..\..\..\assets\Spectara_100.png" Pack="true" PackagePath="icon.png" />
+  </ItemGroup>
 
   <ItemGroup>
     <!-- Embed theme.json as resource -->
