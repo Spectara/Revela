@@ -174,9 +174,9 @@ jobs:
           path: ${{ matrix.artifact }}
           retention-days: 1
 
-  # Build plugins as separate packages
+  # Build plugins as NuGet packages
   plugins:
-    name: Build Plugins
+    name: Build Plugins (NuGet)
     needs: validate
     runs-on: ubuntu-latest
     steps:
@@ -191,137 +191,46 @@ jobs:
       - name: Restore
         run: dotnet restore
 
-      - name: Build Plugin.Source.OneDrive
+      - name: Pack Plugin.Source.OneDrive
         run: |
-          dotnet publish src/Plugins/Plugin.Source.OneDrive/Plugin.Source.OneDrive.csproj \
+          dotnet pack src/Plugins/Plugin.Source.OneDrive/Plugin.Source.OneDrive.csproj \
             -c Release \
-            -o ./publish-plugins/onedrive \
-            -p:Version=${{ needs.validate.outputs.version }}
+            -o ./nupkgs \
+            -p:PackageVersion=${{ needs.validate.outputs.version }} \
+            -p:IncludeSymbols=false
 
-      - name: Build Plugin.Deploy.SSH
+      - name: Pack Plugin.Deploy.SSH
         run: |
-          dotnet publish src/Plugins/Plugin.Deploy.SSH/Plugin.Deploy.SSH.csproj \
+          dotnet pack src/Plugins/Plugin.Deploy.SSH/Plugin.Deploy.SSH.csproj \
             -c Release \
-            -o ./publish-plugins/ssh \
-            -p:Version=${{ needs.validate.outputs.version }}
+            -o ./nupkgs \
+            -p:PackageVersion=${{ needs.validate.outputs.version }} \
+            -p:IncludeSymbols=false
 
-      - name: Build Plugin.Statistics
+      - name: Pack Plugin.Statistics
         run: |
-          dotnet publish src/Plugins/Plugin.Statistics/Plugin.Statistics.csproj \
+          dotnet pack src/Plugins/Plugin.Statistics/Plugin.Statistics.csproj \
             -c Release \
-            -o ./publish-plugins/statistics \
-            -p:Version=${{ needs.validate.outputs.version }}
+            -o ./nupkgs \
+            -p:PackageVersion=${{ needs.validate.outputs.version }} \
+            -p:IncludeSymbols=false
 
-      - name: Build Theme.Lumina.Statistics
+      - name: Pack Theme.Lumina.Statistics
         run: |
-          dotnet publish src/Themes/Theme.Lumina.Statistics/Theme.Lumina.Statistics.csproj \
+          dotnet pack src/Themes/Theme.Lumina.Statistics/Theme.Lumina.Statistics.csproj \
             -c Release \
-            -o ./publish-plugins/lumina-statistics \
-            -p:Version=${{ needs.validate.outputs.version }}
+            -o ./nupkgs \
+            -p:PackageVersion=${{ needs.validate.outputs.version }} \
+            -p:IncludeSymbols=false
 
-      - name: Package plugins
-        run: |
-          VERSION=${{ needs.validate.outputs.version }}
+      - name: List NuGet packages
+        run: ls -lh ./nupkgs/
 
-          # OneDrive Plugin with dependencies
-          # Structure: Plugin.dll + Plugin.deps.json in root, dependencies in subfolder
-          PLUGIN_NAME="Spectara.Revela.Plugin.Source.OneDrive"
-          mkdir -p "./plugin-package/${PLUGIN_NAME}"
-
-          # Copy main plugin files to root
-          cp "./publish-plugins/onedrive/${PLUGIN_NAME}.dll" ./plugin-package/
-          cp "./publish-plugins/onedrive/${PLUGIN_NAME}.deps.json" ./plugin-package/
-
-          # Copy dependencies to subfolder (exclude main plugin and shared assemblies)
-          for dll in ./publish-plugins/onedrive/*.dll; do
-            filename=$(basename "$dll")
-            # Skip the main plugin DLL and shared assemblies (loaded from host)
-            if [[ "$filename" != "${PLUGIN_NAME}.dll" && \
-                  "$filename" != Spectara.Revela.Core.dll && \
-                  "$filename" != System.CommandLine.dll && \
-                  "$filename" != Spectre.Console.dll ]]; then
-              cp "$dll" "./plugin-package/${PLUGIN_NAME}/"
-            fi
-          done
-
-          # Create ZIP
-          cd plugin-package
-          zip -r "../${PLUGIN_NAME}-v${VERSION}.zip" .
-          cd ..
-
-          # SSH Plugin (simpler - fewer dependencies)
-          PLUGIN_NAME="Spectara.Revela.Plugin.Deploy.SSH"
-          rm -rf ./plugin-package/*
-          mkdir -p "./plugin-package/${PLUGIN_NAME}"
-
-          cp "./publish-plugins/ssh/${PLUGIN_NAME}.dll" ./plugin-package/
-          cp "./publish-plugins/ssh/${PLUGIN_NAME}.deps.json" ./plugin-package/ 2>/dev/null || true
-
-          for dll in ./publish-plugins/ssh/*.dll; do
-            filename=$(basename "$dll")
-            if [[ "$filename" != "${PLUGIN_NAME}.dll" && \
-                  "$filename" != Spectara.Revela.Core.dll && \
-                  "$filename" != System.CommandLine.dll && \
-                  "$filename" != Spectre.Console.dll ]]; then
-              cp "$dll" "./plugin-package/${PLUGIN_NAME}/"
-            fi
-          done
-
-          cd plugin-package
-          zip -r "../${PLUGIN_NAME}-v${VERSION}.zip" .
-          cd ..
-
-          # Statistics Plugin
-          PLUGIN_NAME="Spectara.Revela.Plugin.Statistics"
-          rm -rf ./plugin-package/*
-          mkdir -p "./plugin-package/${PLUGIN_NAME}"
-
-          cp "./publish-plugins/statistics/${PLUGIN_NAME}.dll" ./plugin-package/
-          cp "./publish-plugins/statistics/${PLUGIN_NAME}.deps.json" ./plugin-package/ 2>/dev/null || true
-
-          for dll in ./publish-plugins/statistics/*.dll; do
-            filename=$(basename "$dll")
-            if [[ "$filename" != "${PLUGIN_NAME}.dll" && \
-                  "$filename" != Spectara.Revela.Core.dll && \
-                  "$filename" != System.CommandLine.dll && \
-                  "$filename" != Spectre.Console.dll ]]; then
-              cp "$dll" "./plugin-package/${PLUGIN_NAME}/"
-            fi
-          done
-
-          cd plugin-package
-          zip -r "../${PLUGIN_NAME}-v${VERSION}.zip" .
-          cd ..
-
-          # Lumina Statistics Theme Extension
-          PLUGIN_NAME="Spectara.Revela.Theme.Lumina.Statistics"
-          rm -rf ./plugin-package/*
-          mkdir -p "./plugin-package/${PLUGIN_NAME}"
-
-          cp "./publish-plugins/lumina-statistics/${PLUGIN_NAME}.dll" ./plugin-package/
-          cp "./publish-plugins/lumina-statistics/${PLUGIN_NAME}.deps.json" ./plugin-package/ 2>/dev/null || true
-
-          for dll in ./publish-plugins/lumina-statistics/*.dll; do
-            filename=$(basename "$dll")
-            if [[ "$filename" != "${PLUGIN_NAME}.dll" && \
-                  "$filename" != Spectara.Revela.Core.dll && \
-                  "$filename" != System.CommandLine.dll && \
-                  "$filename" != Spectre.Console.dll ]]; then
-              cp "$dll" "./plugin-package/${PLUGIN_NAME}/"
-            fi
-          done
-
-          cd plugin-package
-          zip -r "../${PLUGIN_NAME}-v${VERSION}.zip" .
-          cd ..
-
-      - name: Upload plugin artifacts
+      - name: Upload NuGet packages
         uses: actions/upload-artifact@v4
         with:
-          name: plugins
-          path: |
-            Spectara.Revela.Plugin.*.zip
-            Spectara.Revela.Theme.*.zip
+          name: nupkgs
+          path: ./nupkgs/*.nupkg
           retention-days: 1
 
   # Create GitHub Release with all artifacts
@@ -356,3 +265,4 @@ jobs:
           files: |
             artifacts/**/*.zip
             artifacts/**/*.tar.gz
+            artifacts/**/*.nupkg
