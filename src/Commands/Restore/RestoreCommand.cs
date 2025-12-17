@@ -1,4 +1,5 @@
 using System.CommandLine;
+using Spectara.Revela.Core;
 using Spectara.Revela.Core.Abstractions;
 using Spectara.Revela.Core.Services;
 using Spectre.Console;
@@ -12,11 +13,13 @@ namespace Spectara.Revela.Commands.Restore;
 /// Scans the project for required dependencies and installs missing ones:
 /// - Theme from project.json
 /// - Plugins from plugins/*.json files (keys in "Plugins" section)
+/// Uses PluginManager for installation.
 /// </remarks>
 public sealed partial class RestoreCommand(
     IDependencyScanner dependencyScanner,
     IThemeResolver themeResolver,
     IEnumerable<IPlugin> installedPlugins,
+    PluginManager pluginManager,
     ILogger<RestoreCommand> logger)
 {
     /// <summary>
@@ -126,41 +129,87 @@ public sealed partial class RestoreCommand(
             return 1;
         }
 
-        // Install missing dependencies
+        // Install missing dependencies with progress bar
         AnsiConsole.MarkupLine($"[bold]Installing {missing.Count} missing dependency(ies)...[/]\n");
 
-        var installFailed = new List<(RequiredDependency Dep, string Error)>();
+        var installFailed = new System.Collections.Concurrent.ConcurrentBag<(RequiredDependency Dep, string Error)>();
 
-        foreach (var dep in missing)
-        {
-            var shortName = GetShortName(dep);
-
-            try
+        await AnsiConsole.Progress()
+            .AutoClear(false)
+            .Columns(
+                new TaskDescriptionColumn(),
+                new ProgressBarColumn(),
+                new PercentageColumn(),
+                new RemainingTimeColumn(),
+                new SpinnerColumn())
+            .StartAsync(async ctx =>
             {
-                // TODO: Implement actual package installation from NuGet
-                // For now, just show what would be installed
-                AnsiConsole.MarkupLine($"  [yellow]↓[/] Installing {shortName}...");
+                var progressTask = ctx.AddTask("[green]Restoring dependencies[/]", maxValue: missing.Count);
 
-                // Placeholder - will integrate with NuGet/plugin installation
-                AnsiConsole.MarkupLine($"    [dim](not implemented yet)[/]");
-                AnsiConsole.MarkupLine($"    [dim]Install manually: revela plugin add {dep.PackageId}[/]");
-            }
-            catch (Exception ex)
-            {
-                installFailed.Add((dep, ex.Message));
-                AnsiConsole.MarkupLine($"  [red]x[/] Failed to install {shortName}: {ex.Message}");
-            }
-        }
+                await Parallel.ForEachAsync(
+                    missing,
+                    new ParallelOptions
+                    {
+                        MaxDegreeOfParallelism = 4,
+                        CancellationToken = cancellationToken
+                    },
+                    async (dep, ct) =>
+                    {
+                        var shortName = GetShortName(dep);
+
+                        try
+                        {
+                            // Install plugin or theme using PluginManager
+                            var success = await pluginManager.InstallAsync(
+                                packageIdOrPath: dep.PackageId,
+                                version: dep.Version,
+                                source: null, // Use default NuGet.org
+                                global: false, // Install locally
+                                cancellationToken: ct);
+
+                            if (!success)
+                            {
+                                installFailed.Add((dep, "Installation failed (see logs)"));
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            installFailed.Add((dep, ex.Message));
+                        }
+                        finally
+                        {
+                            progressTask.Increment(1);
+                        }
+                    });
+            });
 
         AnsiConsole.WriteLine();
 
-        if (installFailed.Count > 0)
+        // Show results
+        var successCount = missing.Count - installFailed.Count;
+        if (successCount > 0)
         {
-            AnsiConsole.MarkupLine($"[red]ERROR[/] Failed to install {installFailed.Count} package(s).");
+            AnsiConsole.MarkupLine($"[green]✓[/] Installed {successCount} package(s)");
+        }
+
+        if (!installFailed.IsEmpty)
+        {
+            AnsiConsole.MarkupLine($"[red]x[/] Failed to install {installFailed.Count} package(s):");
+            foreach (var (dep, error) in installFailed)
+            {
+                var shortName = GetShortName(dep);
+                // Escape Spectre markup in error message
+                var safeError = error
+                    .Replace("[", "[[", StringComparison.Ordinal)
+                    .Replace("]", "]]", StringComparison.Ordinal);
+                AnsiConsole.MarkupLine($"  [red]-[/] {shortName}: [dim]{safeError}[/]");
+            }
+            AnsiConsole.WriteLine();
+            AnsiConsole.MarkupLine($"[yellow]![/] Run with increased log level for details: [blue]revela restore --loglevel Debug[/]");
             return 1;
         }
 
-        AnsiConsole.MarkupLine($"[green]OK[/] Restore complete.");
+        AnsiConsole.MarkupLine($"[green]OK[/] Restore complete - all dependencies installed.");
         return 0;
     }
 
