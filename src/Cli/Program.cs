@@ -13,7 +13,7 @@ var builder = Host.CreateApplicationBuilder(args);
 // ✅ Pre-build: Load configuration and register services
 builder.AddRevelaConfiguration();
 builder.Services.AddRevelaCommands();
-builder.Services.AddPlugins(builder.Configuration);
+builder.Services.AddPlugins(builder.Configuration, args);
 
 // ✅ Build host
 var host = builder.Build();

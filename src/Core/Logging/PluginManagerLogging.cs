@@ -76,7 +76,7 @@ internal static partial class PluginManagerLogging
     [LoggerMessage(Level = LogLevel.Debug, Message = "Using named source '{sourceName}' -> {url}")]
     public static partial void UsingNamedSource(this ILogger<PluginManager> logger, string sourceName, string url);
 
-    [LoggerMessage(Level = LogLevel.Warning, Message = "Source '{source}' not found in config, treating as URL")]
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Source '{source}' not found in config, treating as path/URL")]
     public static partial void SourceNotFoundTreatingAsUrl(this ILogger<PluginManager> logger, string source);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Trying {sourceCount} source(s) for package {packageId}")]

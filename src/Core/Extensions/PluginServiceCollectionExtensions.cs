@@ -16,33 +16,51 @@ public static class PluginServiceCollectionExtensions
     /// </summary>
     /// <remarks>
     /// This method:
-    /// 1. Loads plugin assemblies from configured directories (app directory + user plugins + custom paths)
-    /// 2. Calls ConfigureConfiguration() on each plugin (optional, framework auto-loads plugins/*.json)
-    /// 3. Calls ConfigureServices() on each plugin (registers services with DI)
-    /// 4. Returns IPluginContext for later Initialize() and RegisterCommands()
+    /// 1. Checks if command-line args indicate plugin management (skips loading if so)
+    /// 2. Loads plugin assemblies from configured directories (app directory + user plugins + custom paths)
+    /// 3. Calls ConfigureConfiguration() on each plugin (optional, framework auto-loads plugins/*.json)
+    /// 4. Calls ConfigureServices() on each plugin (registers services with DI)
+    /// 5. Returns IPluginContext for later Initialize() and RegisterCommands()
     ///
     /// Plugin search order:
     /// - Application directory (for development - plugins built via ProjectReference)
     /// - User plugin directory (~/.revela/plugins - installed plugins)
     /// - Additional search paths (custom locations)
     ///
+    /// Plugin loading is skipped for 'plugin' commands (install, uninstall, list, etc.)
+    /// because these commands manage plugin files and cannot work if DLLs are locked.
+    ///
     /// Must be called BEFORE host.Build() so plugins can register services.
     ///
     /// Example:
     /// var builder = Host.CreateApplicationBuilder(args);
-    /// var plugins = builder.Services.AddPlugins(builder.Configuration);
+    /// var plugins = builder.Services.AddPlugins(builder.Configuration, args);
     /// var host = builder.Build();
     /// plugins.Initialize(host.Services);
     /// </remarks>
     /// <param name="services">Service collection to register plugin services with.</param>
     /// <param name="configuration">Configuration builder (from Host) to register plugin config sources.</param>
+    /// <param name="args">Command-line arguments to detect plugin management commands.</param>
     /// <param name="configure">Optional configuration for plugin loading behavior.</param>
     /// <returns>Plugin context for initialization and command registration.</returns>
     public static IPluginContext AddPlugins(
         this IServiceCollection services,
         IConfigurationBuilder configuration,
+        string[] args,
         Action<PluginOptions>? configure = null)
     {
+        // Skip plugin loading for plugin management commands
+        // These commands manage plugin files and can't work if DLLs are locked by AssemblyLoadContext
+        if (IsPluginManagementCommand(args))
+        {
+            services.AddSingleton<IPluginContext>(sp =>
+            {
+                var logger = sp.GetRequiredService<ILogger<PluginContext>>();
+                return new PluginContext([], logger);
+            });
+            return new EmptyPluginContext();
+        }
+
         var options = new PluginOptions();
         configure?.Invoke(options);
 
@@ -149,6 +167,16 @@ public static class PluginServiceCollectionExtensions
         // The actual context will be resolved from DI with proper logger
         return new PluginContextPlaceholder(plugins);
     }
+
+    /// <summary>
+    /// Checks if the command-line arguments indicate a plugin management command.
+    /// </summary>
+    /// <remarks>
+    /// Plugin management commands (install, uninstall, list, source) don't need loaded plugins
+    /// and must be able to modify plugin files without them being locked.
+    /// </remarks>
+    private static bool IsPluginManagementCommand(string[] args)
+        => args.Length > 0 && args[0].Equals("plugin", StringComparison.OrdinalIgnoreCase);
 }
 
 /// <summary>
@@ -171,5 +199,26 @@ sealed file class PluginContextPlaceholder(IReadOnlyList<IPlugin> plugins) : IPl
         throw new InvalidOperationException(
             "RegisterCommands should be called on the real PluginContext resolved from DI. " +
             "Use host.Services.GetRequiredService<IPluginContext>().RegisterCommands().");
+    }
+}
+
+/// <summary>
+/// Empty plugin context for plugin management commands.
+/// </summary>
+/// <remarks>
+/// Used when plugin loading is skipped to allow file operations on plugin DLLs.
+/// </remarks>
+sealed file class EmptyPluginContext : IPluginContext
+{
+    public IReadOnlyList<IPlugin> Plugins => [];
+
+    public void Initialize(IServiceProvider serviceProvider)
+    {
+        // No plugins to initialize
+    }
+
+    public void RegisterCommands(System.CommandLine.RootCommand rootCommand)
+    {
+        // No plugin commands to register
     }
 }

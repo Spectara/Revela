@@ -17,7 +17,7 @@
     Skip running unit tests (faster iteration)
 
 .PARAMETER SkipDownload
-    Skip OneDrive download (use existing source files)
+    Skip OneDrive sync (use existing source files)
 
 .PARAMETER KeepArtifacts
     Don't clean up artifacts after test
@@ -316,12 +316,9 @@ try {
     }
 
     # ========================================================================
-    # STEP 7b: Verify Plugin System
+    # STEP 7b: Verify Plugin System (including uninstall)
     # ========================================================================
-    # Note: Cannot test actual uninstall because plugin DLLs are locked by the
-    # running process (AssemblyLoadContext keeps files open). This is expected
-    # behavior - users need to close revela before uninstalling plugins.
-    Write-Step "Step 7b: Verify Plugin Installation"
+    Write-Step "Step 7b: Verify Plugin Installation & Uninstall"
     Measure-Step "Plugin Verify" {
         $localPluginsDir = Join-Path $PublishDir "plugins"
 
@@ -351,20 +348,38 @@ try {
             }
         }
         Write-Success "Verified: All plugin DLLs present in local directory"
+
+        # Test plugin uninstall (critical - DLLs must not be locked)
+        Write-Info "Testing plugin uninstall (DLLs must not be locked)..."
+        & $ExePath plugin uninstall Statistics --yes
+        if ($LASTEXITCODE -ne 0) { throw "Plugin uninstall command failed" }
+
+        # Verify plugin was actually removed
+        $statisticsPath = Join-Path $localPluginsDir "Spectara.Revela.Plugin.Statistics.dll"
+        if (Test-Path $statisticsPath) {
+            throw "Plugin uninstall failed - DLL still exists (probably locked by AssemblyLoadContext)"
+        }
+        Write-Success "Verified: Plugin uninstall works (DLLs not locked)"
+
+        # Re-install for subsequent tests
+        Write-Info "Re-installing Statistics plugin..."
+        & $ExePath plugin install Spectara.Revela.Plugin.Statistics --source $PluginsDir
+        if ($LASTEXITCODE -ne 0) { throw "Plugin re-install failed" }
+        Write-Success "Plugin re-installed for subsequent tests"
     }
 
     # ========================================================================
-    # STEP 8: OneDrive Download (optional)
+    # STEP 8: OneDrive Sync (optional)
     # ========================================================================
     if (-not $SkipDownload) {
-        Write-Step "Step 8: OneDrive Download"
-        Measure-Step "OneDrive Download" {
-            Write-Info "Running: revela source onedrive download"
+        Write-Step "Step 8: OneDrive Sync"
+        Measure-Step "OneDrive Sync" {
+            Write-Info "Running: revela source onedrive sync"
             Push-Location $testProjectDir
             try {
-                & $ExePath source onedrive download
-                if ($LASTEXITCODE -ne 0) { throw "OneDrive download failed" }
-                Write-Success "OneDrive download completed"
+                & $ExePath source onedrive sync
+                if ($LASTEXITCODE -ne 0) { throw "OneDrive sync failed" }
+                Write-Success "OneDrive sync completed"
 
                 # Show downloaded files
                 $sourceDir = Join-Path $testProjectDir "source"
@@ -377,7 +392,7 @@ try {
             }
         }
     } else {
-        Write-Step "Step 8: OneDrive Download [SKIPPED]"
+        Write-Step "Step 8: OneDrive Sync [SKIPPED]"
         Measure-Step "Copy Source" {
             # Copy existing source files from sample
             $sourceDir = Join-Path $testProjectDir "source"
