@@ -30,6 +30,12 @@ public static class ServiceCollectionExtensions
         services.AddTransient<PluginUninstallCommand>();
         services.AddTransient<PluginCommand>();
 
+        // Source management (static methods, no DI needed)
+        services.AddTransient<Source.PluginSourceListCommand>();
+        services.AddTransient<Source.PluginSourceAddCommand>();
+        services.AddTransient<Source.PluginSourceRemoveCommand>();
+        services.AddTransient<PluginSourceCommand>();
+
         return services;
     }
 }
