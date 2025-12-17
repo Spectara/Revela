@@ -226,26 +226,85 @@ User runs: revela generate -p mysite
 ### Plugin Installation Flow
 
 ```
-User runs: revela plugin install Spectara.Revela.Plugin.Deploy
+User runs: revela plugin install OneDrive
 
-1. Query NuGet.org
-   Search for package
+1. Name Transformation
+   OneDrive → Spectara.Revela.Plugin.OneDrive
 
-2. Resolve Version
-   Get latest (or specified)
+2. Multi-Source Discovery
+   Try configured NuGet sources in order:
+   - nuget.org (built-in)
+   - GitHub Packages (if configured)
+   - Custom feeds (if configured)
 
 3. Download Package
-   .nupkg file
+   Download .nupkg to temp file
 
-4. Extract to Plugin Dir
-   %APPDATA%/Revela/plugins/Spectara.Revela.Plugin.Deploy/
+4. Extract lib/net10.0/*.dll
+   Extract plugin DLL + dependencies to:
+   - Local: ./plugins/
+   - Global: %APPDATA%/Revela/plugins/
 
-5. Verify Plugin
-   Check IPlugin implementation
+5. Create plugin.meta.json
+   Parse .nuspec metadata:
+   - Name, Version, Authors
+   - Description, Dependencies
+   - Source (nuget/nupkg/url)
+   - Installation timestamp
 
-6. Success
-   Plugin available on next run
+6. Update project.json
+   Add plugin to "plugins" dictionary:
+   "Spectara.Revela.Plugin.OneDrive": "1.0.0"
+
+7. Success
+   Plugin available immediately (no restart needed)
 ```
+
+### Plugin Restore Flow
+
+```
+User runs: revela restore
+
+1. Read project.json
+   Get "plugins" dictionary
+
+2. Check Installed
+   Compare with ./plugins/ directory
+
+3. Install Missing (Parallel)
+   - Use Parallel.ForEachAsync (4 concurrent)
+   - Show progress bar (Spectre.Console)
+   - Try all configured NuGet sources
+
+4. Report Results
+   - Success count
+   - Failed plugins with errors
+   - Exit code 1 if any failures
+```
+
+### NuGet Source Management
+
+```
+# List all configured sources
+revela plugin source list
+
+# Add custom source (GitHub Packages)
+revela plugin source add --name github --url https://nuget.pkg.github.com/kirkone/index.json
+
+# Add custom source (Private feed)
+revela plugin source add --name myfeed --url https://my-nuget-feed.com/v3/index.json
+
+# Remove custom source
+revela plugin source remove github
+
+# Install from specific source
+revela plugin install OneDrive --source github
+```
+
+**Source Resolution:**
+- Name → URL lookup in `%APPDATA%/Revela/nuget-sources.json`
+- Direct URL also supported: `--source https://...`
+- Multi-source fallback if no --source specified
 
 ---
 
@@ -521,9 +580,16 @@ themes/my-theme/
 
 ### ADR-003: NuGet-based Plugin System
 **Status:** Accepted  
-**Date:** 2025-01-19  
-**Decision:** Plugins as NuGet packages  
-**Rationale:** Standard distribution, version management, easy updates
+**Date:** 2025-12-17 (Updated from ZIP-based system)  
+**Decision:** Plugins as NuGet packages (.nupkg) instead of ZIP files  
+**Rationale:** 
+- **Standard ecosystem** - NuGet.org, GitHub Packages support
+- **Version management** - Semantic versioning, dependency resolution
+- **Easy distribution** - `dotnet pack` + GitHub Actions workflows
+- **Auto-restore** - `revela restore` installs missing plugins from project.json
+- **Multi-source** - Support for private feeds, GitHub Packages
+- **Metadata** - .nuspec provides authors, description, dependencies
+- **3-stage release** - GitHub Release → GitHub Packages (auto) → NuGet.org (approval)
 
 ### ADR-004: System.CommandLine 2.0.0
 **Status:** Accepted  

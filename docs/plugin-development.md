@@ -390,25 +390,115 @@ public class ExamplePluginTests
 
 ## 📦 Publishing Your Plugin
 
-### 1. Pack Your Plugin
+### Option 1: Manual Publishing
+
+#### 1. Pack Your Plugin
 
 ```bash
-dotnet pack -c Release
+dotnet pack -c Release -o ./nupkgs
 ```
 
-### 2. Publish to NuGet.org
+#### 2. Test Locally
 
 ```bash
-dotnet nuget push bin/Release/YourName.Revela.Plugin.Example.*.nupkg \
+# Install from local package
+revela plugin install ./nupkgs/YourName.Revela.Plugin.Example.1.0.0.nupkg
+
+# Test in a sample project
+cd /path/to/test-project
+revela generate
+```
+
+#### 3. Publish to NuGet.org
+
+```bash
+dotnet nuget push ./nupkgs/YourName.Revela.Plugin.Example.*.nupkg \
   --api-key YOUR_NUGET_API_KEY \
   --source https://api.nuget.org/v3/index.json
 ```
 
-### 3. Announce Your Plugin
+**Get NuGet API Key:**
+- Go to https://www.nuget.org/account/apikeys
+- Create new key with "Push" permission
+- Store securely (GitHub Secrets recommended)
+
+### Option 2: Automated GitHub Actions
+
+Create `.github/workflows/release.yml` for automated releases:
+
+```yaml
+name: Release Plugin
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      
+      - name: Extract version
+        id: version
+        run: echo "version=${GITHUB_REF_NAME#v}" >> $GITHUB_OUTPUT
+      
+      - name: Pack
+        run: |
+          dotnet pack -c Release -o ./nupkgs \
+            -p:PackageVersion=${{ steps.version.outputs.version }}
+      
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ./nupkgs/*.nupkg
+          generate_release_notes: true
+      
+      - name: Publish to NuGet.org
+        run: |
+          dotnet nuget push "./nupkgs/*.nupkg" \
+            --source https://api.nuget.org/v3/index.json \
+            --api-key ${{ secrets.NUGET_API_KEY }} \
+            --skip-duplicate
+```
+
+**Setup:**
+1. Add `NUGET_API_KEY` secret to GitHub repository settings
+2. Push a tag: `git tag v1.0.0 && git push --tags`
+3. Workflow automatically creates release and publishes to NuGet.org
+
+### Option 3: GitHub Packages + NuGet.org (Recommended)
+
+Multi-stage release for better testing:
+
+```yaml
+# Stage 1: GitHub Release (on tag push)
+# - Creates GitHub Release with .nupkg
+# Stage 2: GitHub Packages (auto)
+# - Publishes to GitHub Packages for testing
+# Stage 3: NuGet.org (manual approval)
+# - Requires approval via GitHub Environment
+
+# See: docs/migration-nuget.md for complete workflow example
+```
+
+**Benefits:**
+- Test on GitHub Packages before public release
+- Manual approval gate for NuGet.org
+- Rollback possible (GitHub Packages only)
+
+### 4. Announce Your Plugin
 
 - Add to [Community Plugins Wiki](https://github.com/spectara/revela/wiki/Community-Plugins)
 - Share on social media with `#Revela` hashtag
 - Create GitHub repository with examples
+- Add README with installation instructions
 
 ---
 
