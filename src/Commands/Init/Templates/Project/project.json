@@ -2,6 +2,7 @@
   "name": "{{ project.name }}",
   "url": "{{ project.url }}",
   "theme": "{{ project.theme }}",
+  "plugins": {},
   "generate": {
     "images": {
       "formats": {

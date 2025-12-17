@@ -2,6 +2,7 @@
   "name": "OneDrive Sample",
   "url": "https://revela.website",
   "theme": "Lumina",
+  "plugins": {},
   "generate": {
     "images": {
       "formats": {

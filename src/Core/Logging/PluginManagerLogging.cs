@@ -59,4 +59,16 @@ internal static partial class PluginManagerLogging
 
     [LoggerMessage(Level = LogLevel.Debug, Message = "Created metadata file: {metadataPath}")]
     public static partial void MetadataCreated(this ILogger<PluginManager> logger, string metadataPath);
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Updated {projectJsonPath} with plugin {packageId} v{version}")]
+    public static partial void ProjectJsonUpdated(this ILogger<PluginManager> logger, string projectJsonPath, string packageId, string version);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Failed to update project.json at {projectJsonPath}")]
+    public static partial void ProjectJsonUpdateFailed(this ILogger<PluginManager> logger, Exception exception, string projectJsonPath);
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Removed {packageId} from {projectJsonPath}")]
+    public static partial void ProjectJsonPluginRemoved(this ILogger<PluginManager> logger, string projectJsonPath, string packageId);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Failed to remove {packageId} from {projectJsonPath}")]
+    public static partial void ProjectJsonRemoveFailed(this ILogger<PluginManager> logger, Exception exception, string projectJsonPath, string packageId);
 }
