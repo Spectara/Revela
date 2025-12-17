@@ -19,8 +19,9 @@ namespace Spectara.Revela.Core;
 /// Creates plugin directory automatically if it doesn't exist.
 /// Supports NuGet packages from feeds or local .nupkg files.
 /// Multi-source discovery tries all configured sources automatically.
+/// HttpClient is injected via Typed HttpClient pattern for proper pooling.
 /// </remarks>
-public sealed class PluginManager(ILogger<PluginManager> logger)
+public sealed class PluginManager(HttpClient httpClient, ILogger<PluginManager> logger)
 {
     /// <summary>
     /// Gets the local plugin directory (next to executable).
@@ -236,7 +237,6 @@ public sealed class PluginManager(ILogger<PluginManager> logger)
 
     private async Task<bool> InstallFromUrlAsync(Uri url, string targetDir, CancellationToken cancellationToken)
     {
-        using var httpClient = new HttpClient();
         await using var stream = await httpClient.GetStreamAsync(url, cancellationToken);
 
         var tempFile = Path.GetTempFileName();
