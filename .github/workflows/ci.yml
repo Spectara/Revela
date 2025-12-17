@@ -54,14 +54,14 @@ jobs:
         run: dotnet build --no-restore -c Release
 
       - name: Run Tests
-        run: dotnet test --no-build -c Release --logger trx --results-directory ./TestResults
+        run: dotnet test --no-build -c Release --report-trx --results-directory ./TestResults
 
       - name: Upload Test Results
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: test-results-${{ matrix.os }}
-          path: ./TestResults/*.trx
+          path: ./TestResults/**/*.trx
 
       - name: Test Summary
         if: always()
