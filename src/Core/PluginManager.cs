@@ -1,5 +1,6 @@
 using System.IO.Compression;
 using NuGet.Configuration;
+using NuGet.Packaging;
 using NuGet.Protocol;
 using NuGet.Protocol.Core.Types;
 using NuGet.Versioning;
@@ -11,11 +12,11 @@ namespace Spectara.Revela.Core;
 /// Manages plugin installation, updates and removal via NuGet
 /// </summary>
 /// <remarks>
-/// Uses C# 12 Primary Constructor with Typed HttpClient pattern.
+/// Uses C# 12 Primary Constructor pattern.
 /// Creates plugin directory automatically if it doesn't exist.
-/// Supports both NuGet and ZIP installation sources.
+/// Supports NuGet packages from feeds or local .nupkg files.
 /// </remarks>
-public sealed class PluginManager(HttpClient httpClient, ILogger<PluginManager> logger)
+public sealed class PluginManager(ILogger<PluginManager> logger)
 {
     private readonly SourceRepository repository = Repository.Factory.GetCoreV3(new PackageSource("https://api.nuget.org/v3/index.json"));
 
@@ -36,95 +37,117 @@ public sealed class PluginManager(HttpClient httpClient, ILogger<PluginManager> 
         }
     }
 
-    public async Task<bool> InstallPluginAsync(string packageId, string? version = null, bool global = false, CancellationToken cancellationToken = default)
+    /// <summary>
+    /// Installs a plugin from a package ID, local .nupkg file, or URL.
+    /// </summary>
+    /// <param name="packageIdOrPath">Package ID (e.g., 'Spectara.Revela.Plugin.Statistics'), local .nupkg path, or HTTP(S) URL</param>
+    /// <param name="version">Specific version to install (only for package IDs)</param>
+    /// <param name="source">Custom NuGet source URL (null = use default nuget.org)</param>
+    /// <param name="global">If true, installs to global AppData; otherwise next to executable</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>True if installation succeeded</returns>
+    public async Task<bool> InstallAsync(
+        string packageIdOrPath,
+        string? version = null,
+        string? source = null,
+        bool global = false,
+        CancellationToken cancellationToken = default)
     {
         try
         {
             var targetDir = global ? GlobalPluginDirectory : LocalPluginDirectory;
             _ = Directory.CreateDirectory(targetDir);
 
-            logger.InstallingPlugin(packageId);
-
-            var resource = await repository.GetResourceAsync<FindPackageByIdResource>(cancellationToken);
-            using var cacheContext = new SourceCacheContext();
-            var versions = await resource.GetAllVersionsAsync(
-                packageId,
-                cacheContext,
-                NuGet.Common.NullLogger.Instance,
-                cancellationToken);
-
-            var targetVersion = version is not null
-                ? NuGetVersion.Parse(version)
-                : versions.MaxBy(v => v);
-
-            if (targetVersion is null)
+            // Detect installation type
+            if (File.Exists(packageIdOrPath) && packageIdOrPath.EndsWith(".nupkg", StringComparison.OrdinalIgnoreCase))
             {
-                logger.PackageNotFound(packageId);
-                return false;
+                // Local .nupkg file
+                logger.InstallingFromFile(packageIdOrPath);
+                return await InstallFromNupkgFileAsync(packageIdOrPath, targetDir, cancellationToken);
             }
-
-            logger.InstallingVersion(packageId, targetVersion.ToString());
-
-            // TODO: Implement actual package download and extraction
-            // For now, this is a placeholder
-
-            return true;
+            else if (Uri.TryCreate(packageIdOrPath, UriKind.Absolute, out var uri) &&
+                     (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps))
+            {
+                // URL to .nupkg
+                logger.InstallingFromUrl(packageIdOrPath);
+                return await InstallFromUrlAsync(uri, targetDir, cancellationToken);
+            }
+            else
+            {
+                // Package ID from NuGet feed
+                logger.InstallingPlugin(packageIdOrPath);
+                var sourceRepo = source is not null
+                    ? Repository.Factory.GetCoreV3(new PackageSource(source))
+                    : repository;
+                return await InstallFromNuGetAsync(packageIdOrPath, version, sourceRepo, targetDir, cancellationToken);
+            }
         }
         catch (Exception ex)
         {
-            logger.InstallFailed(ex, packageId);
+            logger.InstallFailed(ex, packageIdOrPath);
             return false;
         }
     }
 
     /// <summary>
-    /// Installs a plugin from a ZIP file (local path or URL).
+    /// Legacy method for backward compatibility. Use InstallAsync instead.
     /// </summary>
-    /// <param name="zipPath">Local file path or HTTP(S) URL to the ZIP file.</param>
-    /// <param name="global">If true, installs to global AppData folder; otherwise installs next to executable.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns>True if installation succeeded.</returns>
-    public async Task<bool> InstallFromZipAsync(string zipPath, bool global = false, CancellationToken cancellationToken = default)
+    [Obsolete("Use InstallAsync instead")]
+    public Task<bool> InstallPluginAsync(string packageId, string? version = null, bool global = false, CancellationToken cancellationToken = default)
+        => InstallAsync(packageId, version, source: null, global, cancellationToken);
+
+    private async Task<bool> InstallFromNuGetAsync(
+        string packageId,
+        string? version,
+        SourceRepository sourceRepo,
+        string targetDir,
+        CancellationToken cancellationToken)
     {
-        try
-        {
-            var targetDir = global ? GlobalPluginDirectory : LocalPluginDirectory;
-            _ = Directory.CreateDirectory(targetDir);
+        var resource = await sourceRepo.GetResourceAsync<FindPackageByIdResource>(cancellationToken);
+        using var cacheContext = new SourceCacheContext();
 
-            logger.InstallingFromZip(zipPath, targetDir);
+        // Get all versions
+        var versions = await resource.GetAllVersionsAsync(
+            packageId,
+            cacheContext,
+            NuGet.Common.NullLogger.Instance,
+            cancellationToken);
 
-            // Handle URL or local path
-            if (zipPath.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
-                zipPath.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
-            {
-                return await InstallFromUrlAsync(new Uri(zipPath), targetDir, cancellationToken);
-            }
-            else
-            {
-                return await InstallFromLocalZipAsync(zipPath, targetDir, cancellationToken);
-            }
-        }
-        catch (Exception ex)
+        var targetVersion = version is not null
+            ? NuGetVersion.Parse(version)
+            : versions.MaxBy(v => v);
+
+        if (targetVersion is null)
         {
-            logger.InstallFromZipFailed(ex, zipPath);
+            logger.PackageNotFound(packageId);
             return false;
         }
-    }
 
-    private async Task<bool> InstallFromUrlAsync(Uri url, string targetDir, CancellationToken cancellationToken)
-    {
-        await using var stream = await httpClient.GetStreamAsync(url, cancellationToken);
+        logger.InstallingVersion(packageId, targetVersion.ToString());
 
-        // Download to temp file first
+        // Download package to temp file
         var tempFile = Path.GetTempFileName();
         try
         {
-            await using (var fileStream = File.Create(tempFile))
+            using (var packageStream = File.Create(tempFile))
             {
-                await stream.CopyToAsync(fileStream, cancellationToken);
+                var success = await resource.CopyNupkgToStreamAsync(
+                    packageId,
+                    targetVersion,
+                    packageStream,
+                    cacheContext,
+                    NuGet.Common.NullLogger.Instance,
+                    cancellationToken);
+
+                if (!success)
+                {
+                    logger.DownloadFailed(packageId, targetVersion.ToString());
+                    return false;
+                }
             }
 
-            return await InstallFromLocalZipAsync(tempFile, targetDir, cancellationToken);
+            // Install from downloaded file
+            return await InstallFromNupkgFileAsync(tempFile, targetDir, cancellationToken);
         }
         finally
         {
@@ -135,63 +158,102 @@ public sealed class PluginManager(HttpClient httpClient, ILogger<PluginManager> 
         }
     }
 
-    private async Task<bool> InstallFromLocalZipAsync(string zipPath, string targetDir, CancellationToken cancellationToken)
+    private async Task<bool> InstallFromUrlAsync(Uri url, string targetDir, CancellationToken cancellationToken)
     {
-        if (!File.Exists(zipPath))
+        using var httpClient = new HttpClient();
+        await using var stream = await httpClient.GetStreamAsync(url, cancellationToken);
+
+        var tempFile = Path.GetTempFileName();
+        try
         {
-            logger.ZipFileNotFound(zipPath);
+            await using (var fileStream = File.Create(tempFile))
+            {
+                await stream.CopyToAsync(fileStream, cancellationToken);
+            }
+
+            return await InstallFromNupkgFileAsync(tempFile, targetDir, cancellationToken);
+        }
+        finally
+        {
+            if (File.Exists(tempFile))
+            {
+                File.Delete(tempFile);
+            }
+        }
+    }
+
+    private async Task<bool> InstallFromNupkgFileAsync(string nupkgPath, string targetDir, CancellationToken cancellationToken)
+    {
+        using var packageReader = new PackageArchiveReader(nupkgPath);
+        var nuspec = await packageReader.GetNuspecAsync(cancellationToken);
+        var identity = await packageReader.GetIdentityAsync(cancellationToken);
+
+        logger.ExtractingPackage(identity.Id, identity.Version.ToString());
+
+        // Extract lib/net10.0/*.dll files
+        var libItems = await packageReader.GetLibItemsAsync(cancellationToken);
+        var net10Group = libItems.FirstOrDefault(g => g.TargetFramework.Framework == ".NETCoreApp" && g.TargetFramework.Version.Major >= 10)
+                      ?? libItems.FirstOrDefault(g => g.TargetFramework.Framework == ".NETCoreApp");
+
+        if (net10Group is null || !net10Group.Items.Any())
+        {
+            logger.NoCompatibleLibs(identity.Id);
             return false;
         }
 
-        // Extract files preserving directory structure
-        // ZIP structure: Plugin.dll, Plugin.deps.json, Plugin/*.dll (dependencies)
-        using var archive = await Task.Run(() => ZipFile.OpenRead(zipPath), cancellationToken);
         var fileCount = 0;
+        using var archive = await Task.Run(() => ZipFile.OpenRead(nupkgPath), cancellationToken);
 
-        foreach (var entry in archive.Entries)
+        foreach (var item in net10Group.Items)
         {
-            // Skip directories (they end with /)
-            if (string.IsNullOrEmpty(entry.Name))
+            var entry = archive.GetEntry(item);
+            if (entry is null)
             {
                 continue;
             }
 
-            // Only extract DLL and deps.json files
-            if (!entry.Name.EndsWith(".dll", StringComparison.OrdinalIgnoreCase) &&
-                !entry.Name.EndsWith(".deps.json", StringComparison.OrdinalIgnoreCase))
-            {
-                continue;
-            }
+            var fileName = Path.GetFileName(item);
+            var destPath = Path.Combine(targetDir, fileName);
 
-            // Preserve directory structure from ZIP
-            var destPath = Path.Combine(targetDir, entry.FullName);
-            var destDir = Path.GetDirectoryName(destPath);
-            if (!string.IsNullOrEmpty(destDir))
-            {
-                _ = Directory.CreateDirectory(destDir);
-            }
+            await using var entryStream = await Task.Run(() => entry.Open(), cancellationToken);
+            await using var fileStream = File.Create(destPath);
+            await entryStream.CopyToAsync(fileStream, cancellationToken);
 
-            await Task.Run(() => entry.ExtractToFile(destPath, overwrite: true), cancellationToken);
-            logger.ExtractedFile(entry.FullName, targetDir);
+            logger.ExtractedFile(fileName, targetDir);
+            fileCount++;
+        }
+
+        // Also extract .deps.json if present
+        var depsEntry = archive.Entries.FirstOrDefault(e =>
+            e.Name.EndsWith(".deps.json", StringComparison.OrdinalIgnoreCase));
+        if (depsEntry is not null)
+        {
+            var destPath = Path.Combine(targetDir, depsEntry.Name);
+            await using var entryStream = await Task.Run(() => depsEntry.Open(), cancellationToken);
+            await using var fileStream = File.Create(destPath);
+            await entryStream.CopyToAsync(fileStream, cancellationToken);
+            logger.ExtractedFile(depsEntry.Name, targetDir);
             fileCount++;
         }
 
         if (fileCount == 0)
         {
-            logger.NoDllsInZip(zipPath);
+            logger.NoFilesExtracted(identity.Id);
             return false;
         }
 
-        logger.PluginInstalledFromZip(fileCount, targetDir);
+        logger.PluginInstalled(identity.Id, fileCount);
         return true;
     }
+
+
 
     public async Task<bool> UpdatePluginAsync(string packageId, bool global = false, CancellationToken cancellationToken = default)
     {
         logger.UpdatingPlugin(packageId);
         // Uninstall old version, install new version
         _ = await UninstallPluginAsync(packageId, global, cancellationToken);
-        return await InstallPluginAsync(packageId, null, global, cancellationToken);
+        return await InstallAsync(packageId, version: null, source: null, global, cancellationToken);
     }
 
     public Task<bool> UninstallPluginAsync(string packageId, bool global = false, CancellationToken cancellationToken = default)

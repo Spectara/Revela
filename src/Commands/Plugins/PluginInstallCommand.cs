@@ -16,7 +16,7 @@ public sealed partial class PluginInstallCommand(
     /// </summary>
     public Command Create()
     {
-        var command = new Command("install", "Install a plugin from NuGet or ZIP file");
+        var command = new Command("install", "Install a plugin from NuGet");
 
         var nameArgument = new Argument<string?>("name")
         {
@@ -31,12 +31,6 @@ public sealed partial class PluginInstallCommand(
         };
         command.Options.Add(versionOption);
 
-        var fromZipOption = new Option<string?>("--from-zip", "-z")
-        {
-            Description = "Install from a ZIP file (local path or URL)"
-        };
-        command.Options.Add(fromZipOption);
-
         var globalOption = new Option<bool>("--global", "-g")
         {
             Description = "Install globally to AppData (default: local, next to executable)"
@@ -47,22 +41,15 @@ public sealed partial class PluginInstallCommand(
         {
             var name = parseResult.GetValue(nameArgument);
             var version = parseResult.GetValue(versionOption);
-            var fromZip = parseResult.GetValue(fromZipOption);
             var global = parseResult.GetValue(globalOption);
 
-            if (!string.IsNullOrEmpty(fromZip))
+            if (string.IsNullOrEmpty(name))
             {
-                return await ExecuteFromZipAsync(fromZip, global);
-            }
-            else if (!string.IsNullOrEmpty(name))
-            {
-                return await ExecuteFromNuGetAsync(name, version, global);
-            }
-            else
-            {
-                AnsiConsole.MarkupLine("[red]Error:[/] Either provide a plugin name or use --from-zip");
+                AnsiConsole.MarkupLine("[red]Error:[/] Plugin name is required");
                 return 1;
             }
+
+            return await ExecuteFromNuGetAsync(name, version, global);
         });
 
         return command;
@@ -86,7 +73,7 @@ public sealed partial class PluginInstallCommand(
                 .StartAsync("Installing...", async ctx =>
                 {
                     ctx.Status($"Downloading {packageId}...");
-                    return await pluginManager.InstallPluginAsync(packageId, version, global);
+                    return await pluginManager.InstallAsync(packageId, version, source: null, global);
                 });
 
             if (success)
@@ -109,57 +96,8 @@ public sealed partial class PluginInstallCommand(
         }
     }
 
-    private async Task<int> ExecuteFromZipAsync(string zipPath, bool global)
-    {
-        try
-        {
-            var location = global ? "globally" : "locally";
-            var targetDir = global ? PluginManager.GlobalPluginDirectory : PluginManager.LocalPluginDirectory;
-
-            AnsiConsole.MarkupLine($"[blue]Installing plugin {location} from ZIP:[/] [cyan]{zipPath}[/]");
-            AnsiConsole.MarkupLine($"[dim]Target: {targetDir}[/]");
-            LogInstallingFromZip(zipPath);
-
-            var success = await AnsiConsole.Status()
-                .Spinner(Spinner.Known.Dots)
-                .StartAsync("Installing...", async ctx =>
-                {
-                    if (zipPath.StartsWith("http", StringComparison.OrdinalIgnoreCase))
-                    {
-                        ctx.Status("Downloading ZIP...");
-                    }
-                    else
-                    {
-                        ctx.Status("Extracting ZIP...");
-                    }
-                    return await pluginManager.InstallFromZipAsync(zipPath, global);
-                });
-
-            if (success)
-            {
-                AnsiConsole.MarkupLine("[green]Plugin installed successfully.[/]");
-                AnsiConsole.MarkupLine("[dim]The plugin will be available after restarting revela.[/]");
-                return 0;
-            }
-            else
-            {
-                AnsiConsole.MarkupLine("[red]Failed to install plugin from ZIP[/]");
-                return 1;
-            }
-        }
-        catch (Exception ex)
-        {
-            LogError(ex);
-            AnsiConsole.MarkupLine($"[red]Error:[/] {ex.Message}");
-            return 1;
-        }
-    }
-
     [LoggerMessage(Level = LogLevel.Information, Message = "Installing plugin '{PackageId}' version '{Version}'")]
     private partial void LogInstallingPlugin(string packageId, string? version);
-
-    [LoggerMessage(Level = LogLevel.Information, Message = "Installing plugin from ZIP: {ZipPath}")]
-    private partial void LogInstallingFromZip(string zipPath);
 
     [LoggerMessage(Level = LogLevel.Error, Message = "Failed to install plugin")]
     private partial void LogError(Exception exception);

@@ -32,22 +32,28 @@ internal static partial class PluginManagerLogging
     [LoggerMessage(Level = LogLevel.Error, Message = "Failed to uninstall plugin {packageId}")]
     public static partial void UninstallFailed(this ILogger<PluginManager> logger, Exception exception, string packageId);
 
-    // ZIP installation logging
-    [LoggerMessage(Level = LogLevel.Information, Message = "Installing plugin from ZIP: {zipPath} to {targetDir}")]
-    public static partial void InstallingFromZip(this ILogger<PluginManager> logger, string zipPath, string targetDir);
+    // NuGet package installation logging
+    [LoggerMessage(Level = LogLevel.Information, Message = "Installing plugin from file: {filePath}")]
+    public static partial void InstallingFromFile(this ILogger<PluginManager> logger, string filePath);
 
-    [LoggerMessage(Level = LogLevel.Error, Message = "Failed to install plugin from ZIP: {zipPath}")]
-    public static partial void InstallFromZipFailed(this ILogger<PluginManager> logger, Exception exception, string zipPath);
+    [LoggerMessage(Level = LogLevel.Information, Message = "Installing plugin from URL: {url}")]
+    public static partial void InstallingFromUrl(this ILogger<PluginManager> logger, string url);
 
-    [LoggerMessage(Level = LogLevel.Error, Message = "ZIP file not found: {zipPath}")]
-    public static partial void ZipFileNotFound(this ILogger<PluginManager> logger, string zipPath);
+    [LoggerMessage(Level = LogLevel.Error, Message = "Failed to download package {packageId} v{version}")]
+    public static partial void DownloadFailed(this ILogger<PluginManager> logger, string packageId, string version);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Extracting package: {packageId} v{version}")]
+    public static partial void ExtractingPackage(this ILogger<PluginManager> logger, string packageId, string version);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "No compatible libraries found in package {packageId}")]
+    public static partial void NoCompatibleLibs(this ILogger<PluginManager> logger, string packageId);
 
     [LoggerMessage(Level = LogLevel.Debug, Message = "Extracted {fileName} to {targetDir}")]
     public static partial void ExtractedFile(this ILogger<PluginManager> logger, string fileName, string targetDir);
 
-    [LoggerMessage(Level = LogLevel.Warning, Message = "No DLL files found in ZIP: {zipPath}")]
-    public static partial void NoDllsInZip(this ILogger<PluginManager> logger, string zipPath);
+    [LoggerMessage(Level = LogLevel.Warning, Message = "No files extracted from package {packageId}")]
+    public static partial void NoFilesExtracted(this ILogger<PluginManager> logger, string packageId);
 
-    [LoggerMessage(Level = LogLevel.Information, Message = "Installed {dllCount} plugin DLL(s) to {targetDir}")]
-    public static partial void PluginInstalledFromZip(this ILogger<PluginManager> logger, int dllCount, string targetDir);
+    [LoggerMessage(Level = LogLevel.Information, Message = "Plugin {packageId} installed successfully ({fileCount} file(s))")]
+    public static partial void PluginInstalled(this ILogger<PluginManager> logger, string packageId, int fileCount);
 }
