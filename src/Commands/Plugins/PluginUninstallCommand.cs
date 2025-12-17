@@ -24,16 +24,23 @@ public sealed partial class PluginUninstallCommand(
         };
         command.Arguments.Add(nameArgument);
 
+        var yesOption = new Option<bool>("--yes", "-y")
+        {
+            Description = "Skip confirmation prompt"
+        };
+        command.Options.Add(yesOption);
+
         command.SetAction(async parseResult =>
         {
             var name = parseResult.GetValue(nameArgument);
-            return await ExecuteAsync(name!);
+            var skipConfirm = parseResult.GetValue(yesOption);
+            return await ExecuteAsync(name!, skipConfirm);
         });
 
         return command;
     }
 
-    internal async Task<int> ExecuteAsync(string name)
+    internal async Task<int> ExecuteAsync(string name, bool skipConfirm = false)
     {
         try
         {
@@ -45,7 +52,7 @@ public sealed partial class PluginUninstallCommand(
                 ? name
                 : $"Spectara.Revela.Plugin.{name}";
 
-            if (!await AnsiConsole.ConfirmAsync($"[yellow]Uninstall plugin '{packageId}'?[/]"))
+            if (!skipConfirm && !await AnsiConsole.ConfirmAsync($"[yellow]Uninstall plugin '{packageId}'?[/]"))
             {
                 AnsiConsole.MarkupLine("[dim]Cancelled.[/]");
                 return 0;

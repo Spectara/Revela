@@ -295,12 +295,62 @@ try {
             if ($LASTEXITCODE -ne 0) { throw "Theme.Lumina.Statistics installation failed" }
             Write-Success "Theme.Lumina.Statistics installed"
 
+            # Verify plugins are installed in correct directory (local, next to exe)
+            # This validates the "GitHub Release" scenario: user extracts ZIP, runs exe, installs plugins
+            $localPluginsDir = Join-Path $PublishDir "plugins"
+            $installedDlls = @(Get-ChildItem $localPluginsDir -Filter "*.dll" -ErrorAction SilentlyContinue)
+            if ($installedDlls.Count -eq 0) {
+                throw "No plugins found in local directory: $localPluginsDir"
+            }
+            Write-Success "Plugins installed to local directory: $localPluginsDir"
+            foreach ($dll in $installedDlls) {
+                Write-Info "  $($dll.Name)"
+            }
+
             # List installed plugins
             Write-Info "Installed plugins:"
             & $ExePath plugin list
         } finally {
             Pop-Location
         }
+    }
+
+    # ========================================================================
+    # STEP 7b: Verify Plugin System
+    # ========================================================================
+    # Note: Cannot test actual uninstall because plugin DLLs are locked by the
+    # running process (AssemblyLoadContext keeps files open). This is expected
+    # behavior - users need to close revela before uninstalling plugins.
+    Write-Step "Step 7b: Verify Plugin Installation"
+    Measure-Step "Plugin Verify" {
+        $localPluginsDir = Join-Path $PublishDir "plugins"
+
+        # Verify correct number of plugins installed
+        $pluginListOutput = & $ExePath plugin list 2>&1 | Out-String
+        if ($pluginListOutput -match "Total: 3 plugin") {
+            Write-Success "Verified: 3 plugins installed"
+        } else {
+            throw "Expected 3 plugins, got unexpected output"
+        }
+
+        # Verify all plugins are local (not global)
+        if ($pluginListOutput -match "local.*local.*local") {
+            Write-Success "Verified: All plugins installed locally (next to exe)"
+        }
+
+        # Verify DLL files exist
+        $expectedDlls = @(
+            "Spectara.Revela.Plugin.Source.OneDrive.dll",
+            "Spectara.Revela.Plugin.Statistics.dll",
+            "Spectara.Revela.Theme.Lumina.Statistics.dll"
+        )
+        foreach ($dll in $expectedDlls) {
+            $dllPath = Join-Path $localPluginsDir $dll
+            if (-not (Test-Path $dllPath)) {
+                throw "Missing plugin DLL: $dll"
+            }
+        }
+        Write-Success "Verified: All plugin DLLs present in local directory"
     }
 
     # ========================================================================
