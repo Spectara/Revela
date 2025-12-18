@@ -1,41 +1,17 @@
-# Migration Guide: ZIP to NuGet Plugins
+# Plugin Management Guide
 
-**Last Updated:** December 17, 2025
+**Last Updated:** December 19, 2025
 
 ## Overview
 
-Revela has migrated from **ZIP-based plugins** to **NuGet packages** for better distribution and version management.
-
-### What Changed?
-
-| Aspect | Before (ZIP) | After (NuGet) |
-|--------|--------------|---------------|
-| **Distribution** | Manual ZIP files | NuGet packages (.nupkg) |
-| **Installation** | `revela plugin install --from-zip` | `revela plugin install <name>` |
-| **Sources** | Local files only | NuGet.org, GitHub Packages, custom feeds |
-| **Versioning** | Manual filename (v1.0.0.zip) | Semantic versioning in package |
-| **Dependencies** | Manual bundling | Automatic via .nuspec |
-| **Updates** | Re-download ZIP | `revela plugin update <name>` |
-| **Restore** | Manual tracking | `revela restore` from project.json |
+Revela uses **NuGet packages** for plugin distribution and version management.
 
 ---
 
-## For Plugin Users
+## Installing Plugins
 
-### Installing Plugins
-
-**Old Way (ZIP):**
 ```bash
-# Download ZIP manually
-curl -L https://github.com/kirkone/Revela/releases/download/v1.0.0/Plugin.OneDrive.zip -o plugin.zip
-
-# Install from ZIP
-revela plugin install --from-zip plugin.zip
-```
-
-**New Way (NuGet):**
-```bash
-# Install directly by name (auto-downloads from NuGet.org)
+# Install by short name (auto-downloads from NuGet.org)
 revela plugin install OneDrive
 
 # Or use full package ID
@@ -47,17 +23,42 @@ revela plugin install OneDrive --version 1.2.0
 # Install from local .nupkg file
 revela plugin install ./path/to/Spectara.Revela.Plugin.OneDrive.1.0.0.nupkg
 
-# Install from GitHub Packages
+# Install from custom source (e.g., GitHub Packages)
 revela plugin install OneDrive --source github
 ```
 
-### Managing Sources
+## Managing Plugins
+
+```bash
+# List installed plugins
+revela plugin list
+
+# Uninstall a plugin
+revela plugin uninstall OneDrive
+```
+
+## Updating Plugins
+
+```bash
+# Check installed plugins and versions
+revela plugin list
+
+# To update: uninstall and reinstall with new version
+revela plugin uninstall OneDrive
+revela plugin install OneDrive --version 2.0.0
+
+# Note: `revela plugin update` command is planned for future release
+```
+
+---
+
+## Managing NuGet Sources
 
 Add custom NuGet sources (GitHub Packages, private feeds):
 
 ```bash
 # Add GitHub Packages as source
-revela plugin source add --name github --url https://nuget.pkg.github.com/kirkone/index.json
+revela plugin source add --name github --url https://nuget.pkg.github.com/spectara/index.json
 
 # Add private feed
 revela plugin source add --name myfeed --url https://my-nuget-server.com/v3/index.json
@@ -69,9 +70,11 @@ revela plugin source list
 revela plugin source remove github
 ```
 
-### Project-Based Plugin Management
+---
 
-Plugins are now tracked in `project.json`:
+## Project-Based Plugin Management
+
+Plugins are tracked in `project.json`:
 
 ```json
 {
@@ -94,18 +97,7 @@ revela restore
 # Shows progress bar
 ```
 
-### Updating Plugins
-
-```bash
-# Check installed plugins and versions
-revela plugin list
-
-# To update: uninstall and reinstall with new version
-revela plugin uninstall OneDrive
-revela plugin install OneDrive --version 2.0.0
-
-# Note: `revela plugin update` command is planned for future release
-```
+**Sharing projects:** Just commit `project.json`. Others run `revela restore` to install all plugins automatically.
 
 ---
 
@@ -113,19 +105,8 @@ revela plugin install OneDrive --version 2.0.0
 
 ### Creating NuGet Packages
 
-**Old Way (ZIP):**
 ```bash
-# Build plugin
-dotnet publish -c Release -o ./publish
-
-# Create ZIP manually
-cd publish
-zip -r ../Plugin.MyPlugin-v1.0.0.zip .
-```
-
-**New Way (NuGet):**
-```bash
-# Create .nuspec file or use .csproj properties
+# Create package using .csproj properties
 dotnet pack -c Release -o ./nupkgs
 
 # Output: Spectara.Revela.Plugin.MyPlugin.1.0.0.nupkg
@@ -158,7 +139,7 @@ Add NuGet package metadata to your plugin's `.csproj`:
 
   <ItemGroup>
     <PackageReference Include="Spectara.Revela.Core" Version="1.0.0" />
-    <PackageReference Include="System.CommandLine" Version="2.0.0" />
+    <PackageReference Include="System.CommandLine" Version="2.0.1" />
   </ItemGroup>
 </Project>
 ```
@@ -213,7 +194,7 @@ dotnet pack -c Release -o ./nupkgs
 # Install from local .nupkg file
 revela plugin install ./nupkgs/Spectara.Revela.Plugin.MyPlugin.1.0.0.nupkg
 
-# Or install from local directory
+# Or install from local directory as source
 revela plugin install MyPlugin --source ./nupkgs
 ```
 
@@ -262,54 +243,18 @@ dotnet nuget push ./nupkgs/*.nupkg \
 
 ### Namespace Convention
 
-**IMPORTANT:** All plugins must use the `Spectara.Revela.Plugin.*` namespace:
+**IMPORTANT:** Plugin discovery requires the correct namespace pattern:
 
 ```csharp
-// ✅ CORRECT
+// ✅ CORRECT - Official plugins
 namespace Spectara.Revela.Plugin.MyPlugin;
 
-public sealed class MyPlugin : IPlugin
-{
-    public IPluginMetadata Metadata => new PluginMetadata
-    {
-        Name = "Spectara.Revela.Plugin.MyPlugin",  // Full name
-        Version = "1.0.0"
-    };
-}
+// ✅ CORRECT - Community plugins
+namespace YourName.Revela.Plugin.MyPlugin;
 
 // ❌ INCORRECT (won't be discovered)
-namespace MyCompany.Revela.Plugin;
-namespace Revela.Plugin.MyPlugin;
+namespace MyCompany.SomeOther.Plugin;
 ```
-
----
-
-## Breaking Changes
-
-### Removed Features
-
-1. **`--from-zip` option** - No longer supported
-   - **Migration:** Use NuGet packages instead
-
-2. **Manual ZIP downloads** - Not needed anymore
-   - **Migration:** `revela plugin install <name>` auto-downloads
-
-3. **Plugin ZIP structure** - Replaced by NuGet package structure
-   - **Migration:** Use `dotnet pack` to create packages
-
-### Changed Behavior
-
-1. **Installation location:**
-   - ZIP: Extracted to `./plugins/` only
-   - NuGet: Can install locally (`./plugins/`) or globally (`%APPDATA%/Revela/plugins/`)
-
-2. **Version management:**
-   - ZIP: Version in filename, no tracking
-   - NuGet: Version in package metadata, tracked in project.json
-
-3. **Dependencies:**
-   - ZIP: All dependencies bundled in ZIP
-   - NuGet: Dependencies declared in .nuspec, resolved automatically
 
 ---
 
@@ -318,9 +263,8 @@ namespace Revela.Plugin.MyPlugin;
 ### "Package not found" error
 
 ```bash
-# Check spelling
+# Check spelling (case-insensitive)
 revela plugin install OneDrive  # ✅ Correct
-revela plugin install onedrive  # ✅ Also works (case-insensitive)
 
 # Check if package exists on NuGet.org
 # Visit: https://www.nuget.org/packages/Spectara.Revela.Plugin.OneDrive
@@ -334,9 +278,6 @@ revela plugin source list
 
 # Try with explicit source
 revela plugin install OneDrive --source nuget.org
-
-# Check logs
-revela plugin install OneDrive --loglevel Debug
 ```
 
 ### GitHub Packages authentication
@@ -345,7 +286,7 @@ revela plugin install OneDrive --loglevel Debug
 # Add GitHub Packages source with authentication
 revela plugin source add \
   --name github \
-  --url https://nuget.pkg.github.com/kirkone/index.json
+  --url https://nuget.pkg.github.com/spectara/index.json
 
 # Note: You may need to configure authentication in ~/.nuget/NuGet.Config:
 # <packageSourceCredentials>
@@ -356,60 +297,10 @@ revela plugin source add \
 # </packageSourceCredentials>
 ```
 
-### Old ZIP plugins still installed
-
-```bash
-# Uninstall old plugin
-revela plugin uninstall OldPluginName
-
-# Reinstall from NuGet
-revela plugin install OldPluginName
-```
-
----
-
-## Timeline
-
-- **January 2025:** ZIP-based plugin system introduced
-- **December 17, 2025:** Migrated to NuGet-based system
-- **December 2025:** GitHub Packages auto-publishing implemented
-- **Future:** Deprecate ZIP support entirely (already removed in current version)
-
----
-
-## FAQ
-
-### Can I still use ZIP files?
-
-No, ZIP support has been removed. Use NuGet packages instead.
-
-### How do I convert my ZIP plugin to NuGet?
-
-See "For Plugin Developers" section above. Key steps:
-1. Add NuGet metadata to .csproj
-2. Use `dotnet pack` instead of manual ZIP
-3. Publish to NuGet.org or GitHub Packages
-
-### Are old ZIP plugins still available?
-
-Only as GitHub Release assets for old versions. New versions are NuGet-only.
-
-### Can I host my own NuGet feed?
-
-Yes! Use `revela plugin source add` to configure custom feeds.
-
-### Do I need to update my project.json manually?
-
-No, `revela plugin install` automatically updates project.json.
-
-### How do I share my project with plugins?
-
-Just commit `project.json`. Others run `revela restore` to install all plugins automatically.
-
 ---
 
 ## Support
 
 - **Documentation:** https://revela.website/docs
-- **Issues:** https://github.com/kirkone/Revela/issues
-- **Discussions:** https://github.com/kirkone/Revela/discussions
+- **Issues:** https://github.com/spectara/revela/issues
+- **Discussions:** https://github.com/spectara/revela/discussions

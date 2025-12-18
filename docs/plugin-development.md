@@ -490,7 +490,7 @@ Multi-stage release for better testing:
 # Stage 3: NuGet.org (manual approval)
 # - Requires approval via GitHub Environment
 
-# See: docs/migration-nuget.md for complete workflow example
+# See: docs/plugin-management.md for complete workflow example
 ```
 
 **Benefits:**
