@@ -80,7 +80,6 @@ This is a **complete rewrite** of the original Bash-based revela project:
 ```
 src/
 ├── Core/                     # Shared kernel (models, abstractions, plugin system)
-├── Infrastructure/           # External services (NetVips, Scriban, Markdig)
 ├── Commands/                 # CLI commands (Generate, Init, Plugins, Restore, Theme)
 ├── Cli/                      # Entry point (.NET Tool)
 ├── Plugins/
@@ -734,10 +733,10 @@ yield return cmd.Create();
 - ✅ Type-safe with Primary Constructor
 
 ### Adding a New Service
-Location: `src/Revela.Infrastructure/`
+Location: `src/Core/Services/`
 
 ```csharp
-namespace Revela.Infrastructure.MyService;
+namespace Spectara.Revela.Core.Services;
 
 public interface IMyService
 {

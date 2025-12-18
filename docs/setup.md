@@ -1,19 +1,5 @@
 # Setup & Build Instructions
 
-## 🔄 Migrating from Original Expose?
-
-If you're coming from the **original Bash-based Expose** (https://github.com/kirkone/Expose):
-
-1. ✅ **This is a complete rewrite** - Not a drop-in replacement
-2. ✅ **Content stays the same** - `content/` folder structure unchanged
-3. ✅ **Config changes** - `config.sh` → `expose.json` (see migration guide)
-4. ✅ **Templates change** - Mustache → Scriban (see template guide)
-5. ✅ **Output identical** - Generated sites should look the same
-
-**See:** `docs/architecture.md` (Migration section) for detailed migration guide.
-
----
-
 ## Prerequisites
 
 - **.NET 10 SDK** (or later)
@@ -27,8 +13,8 @@ If you're coming from the **original Bash-based Expose** (https://github.com/kir
 ### 1. Clone Repository
 
 ```bash
-git clone https://github.com/yourname/expose.git
-cd expose
+git clone https://github.com/spectara/revela.git
+cd revela
 ```
 
 ### 2. Restore Packages
@@ -72,13 +58,13 @@ dotnet test --verbosity normal
 
 ```bash
 # Show help
-dotnet run --project src/Expose.Cli -- --help
+dotnet run --project src/Cli -- --help
 
-# Generate site (when implemented)
-dotnet run --project src/Expose.Cli -- generate -p ./samples/example-site
+# Generate site
+dotnet run --project src/Cli -- generate -p ./samples/subdirectory
 
-# Plugin commands (when implemented)
-dotnet run --project src/Expose.Cli -- plugin list
+# Plugin commands
+dotnet run --project src/Cli -- plugins list
 ```
 
 ### Code Formatting
@@ -97,11 +83,11 @@ dotnet format --verify-no-changes
 
 ### Visual Studio 2022
 
-1. Open `Expose.sln`
-2. Set `Expose.Cli` as startup project
+1. Open `Spectara.Revela.slnx`
+2. Set `Cli` as startup project
 3. Configure command-line arguments:
-   - Right-click `Expose.Cli` → Properties → Debug
-   - Add arguments: `generate -p samples/example-site`
+   - Right-click `Cli` → Properties → Debug
+   - Add arguments: `generate -p samples/subdirectory`
 
 ### Visual Studio Code
 
@@ -113,8 +99,8 @@ dotnet format --verify-no-changes
 
 ### Rider
 
-1. Open `Expose.sln`
-2. Set `Expose.Cli` as startup project
+1. Open `Spectara.Revela.slnx`
+2. Set `Cli` as startup project
 3. Edit run configuration to add arguments
 
 ---
@@ -122,24 +108,31 @@ dotnet format --verify-no-changes
 ## Project Structure
 
 ```
-Expose/
+Revela/
 ├── src/                          # Source code
-│   ├── Expose.Core/              # Core models & abstractions
-│   ├── Expose.Infrastructure/    # External services (NetVips, Scriban)
-│   ├── Expose.Features/          # Feature implementations
-│   ├── Expose.Cli/               # CLI entry point
-│   └── Expose.Plugins/           # Optional plugins
+│   ├── Core/                     # Shared kernel (models, abstractions, plugin system)
+│   ├── Commands/                 # CLI commands (Generate, Init, Plugins, Restore, Theme)
+│   ├── Cli/                      # CLI entry point
+│   ├── Plugins/                  # Optional plugins
+│   │   ├── Plugin.Deploy.SSH/
+│   │   └── Plugin.Source.OneDrive/
+│   └── Themes/                   # Built-in themes
+│       ├── Theme.Lumina/
+│       └── Theme.Lumina.Statistics/
 │
 ├── tests/                        # Test projects
-│   ├── Expose.Core.Tests/
-│   └── Expose.IntegrationTests/
+│   ├── Core.Tests/
+│   ├── Commands.Tests/
+│   └── IntegrationTests/
 │
 ├── docs/                         # Documentation
 │   ├── architecture.md
 │   └── setup.md (this file)
 │
 ├── samples/                      # Example projects
-│   └── example-site/
+│   ├── subdirectory/
+│   ├── cdn/
+│   └── onedrive/
 │
 ├── artifacts/                    # Build output (gitignored)
 │   ├── bin/
@@ -151,7 +144,7 @@ Expose/
 ├── global.json                   # .NET SDK version
 ├── .editorconfig                 # Code style rules
 ├── DEVELOPMENT.md                # Development status & TODOs
-└── Expose.sln                    # Solution file
+└── Spectara.Revela.slnx          # Solution file
 ```
 
 ---
@@ -162,34 +155,34 @@ Expose/
 
 ```bash
 # Pack
-dotnet pack src/Expose.Cli -c Release
+dotnet pack src/Cli -c Release
 
-# Output: artifacts/packages/Expose.1.0.0.nupkg
+# Output: artifacts/packages/Spectara.Revela.1.0.0.nupkg
 ```
 
 ### Install Locally
 
 ```bash
 # Install from local package
-dotnet tool install -g --add-source ./artifacts/packages Expose
+dotnet tool install -g --add-source ./artifacts/packages Spectara.Revela
 
 # Or uninstall first
-dotnet tool uninstall -g Expose
-dotnet tool install -g --add-source ./artifacts/packages Expose
+dotnet tool uninstall -g Spectara.Revela
+dotnet tool install -g --add-source ./artifacts/packages Spectara.Revela
 ```
 
 ### Test Installed Tool
 
 ```bash
-expose --help
-expose generate -p path/to/site
+revela --help
+revela generate -p path/to/site
 ```
 
 ### Publish to NuGet.org
 
 ```bash
 # Requires NuGet API key
-dotnet nuget push artifacts/packages/Expose.1.0.0.nupkg \
+dotnet nuget push artifacts/packages/Spectara.Revela.1.0.0.nupkg \
   --api-key YOUR_API_KEY \
   --source https://api.nuget.org/v3/index.json
 ```
@@ -217,8 +210,8 @@ dotnet list package | findstr NetVips
 ```
 
 Should show:
-- `NetVips` (3.0.0)
-- `NetVips.Native` (8.15.3)
+- `NetVips` (3.1.0)
+- `NetVips.Native` (8.17.3)
 
 ### Code Style Errors (CA1848, IDE0055)
 
@@ -231,7 +224,7 @@ Should show:
 </PropertyGroup>
 ```
 
-### System.CommandLine Beta Version
+### System.CommandLine Version
 
 **Solution:** We use 2.0.0 (final). Check `Directory.Packages.props`:
 
@@ -264,7 +257,7 @@ Pins .NET SDK version:
 ```json
 {
   "sdk": {
-    "version": "10.0.100"
+    "version": "10.0.100-preview.7.25364.1"
   }
 }
 ```
@@ -284,11 +277,10 @@ Code style rules:
 ### Optional Configuration
 
 ```bash
-# Set log level
-export EXPOSE_LOG_LEVEL=Debug
+# Set log level (via logging.json or environment)
+REVELA__LOGGING__LOGLEVEL__DEFAULT=Debug
 
-# Set plugin directory (override default)
-export EXPOSE_PLUGIN_DIR=/custom/path
+# Plugin directory is auto-discovered from project folder
 ```
 
 ---
@@ -299,8 +291,8 @@ export EXPOSE_PLUGIN_DIR=/custom/path
 # Full clean rebuild
 dotnet clean && dotnet restore && dotnet build
 
-# Run all tests with coverage
-dotnet test /p:CollectCoverage=true
+# Run all tests
+dotnet test
 
 # Pack all projects
 dotnet pack -c Release
@@ -308,8 +300,8 @@ dotnet pack -c Release
 # List outdated packages
 dotnet list package --outdated
 
-# Update all packages (careful!)
-# Edit Directory.Packages.props manually
+# Check for updates (recommended: use dotnet-outdated tool)
+dotnet outdated
 ```
 
 ---

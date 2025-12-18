@@ -47,10 +47,6 @@ Revela/
 │   │   ├── PluginLoader.cs       # Plugin discovery
 │   │   └── PluginManager.cs      # Plugin management
 │   │
-│   ├── Spectara.Revela.Infrastructure/    # External Services
-│   │   ├── ImageProcessing/      # NetVips wrapper
-│   │   └── Templating/           # Scriban + Markdig
-│   │
 │   ├── Spectara.Revela.Commands/          # CLI Commands (Vertical Slices)
 │   │   ├── Generate/             # Site generation command
 │   │   ├── Init/                 # Project initialization
