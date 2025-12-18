@@ -51,13 +51,13 @@ public class ExamplePlugin : IPlugin
 {
     private IServiceProvider? _services;
     
+    // PluginMetadata has: Name, Version, Description, Author (NO ParentCommand!)
     public IPluginMetadata Metadata => new PluginMetadata
     {
         Name = "Example",
         Version = "1.0.0",
         Description = "Example plugin for Revela",
-        Author = "Your Name",
-        ParentCommand = "example" // Optional: parent command name
+        Author = "Your Name"
     };
     
     // 1. ConfigureServices - Register services BEFORE ServiceProvider is built
@@ -80,13 +80,15 @@ public class ExamplePlugin : IPlugin
         // Perform initialization that requires resolved services
     }
     
-    // 3. GetCommands - Return CLI commands
-    public IEnumerable<Command> GetCommands()
+    // 3. GetCommands - Return CommandDescriptors (command + optional parent)
+    public IEnumerable<CommandDescriptor> GetCommands()
     {
         if (_services == null)
             throw new InvalidOperationException("Plugin not initialized");
         
-        yield return CreateExampleCommand();
+        // ParentCommand is specified here, NOT in PluginMetadata!
+        // null = root level, "init" = under init, "source" = under source, etc.
+        yield return new CommandDescriptor(CreateExampleCommand(), ParentCommand: null);
     }
     
     private Command CreateExampleCommand()
@@ -147,7 +149,7 @@ YourName.Revela.Plugin.Example/
     <PackageReference Include="Spectara.Revela.Core" Version="1.0.0" />
     
     <!-- System.CommandLine for CLI -->
-    <PackageReference Include="System.CommandLine" Version="2.0.0" />
+    <PackageReference Include="System.CommandLine" Version="2.0.1" />
   </ItemGroup>
 
   <ItemGroup>
@@ -378,10 +380,13 @@ public class ExamplePluginTests
     public void Plugin_ShouldProvideCommands()
     {
         var plugin = new ExamplePlugin();
-        var commands = plugin.GetCommands().ToList();
+        var services = new ServiceCollection().BuildServiceProvider();
+        plugin.Initialize(services);
         
-        Assert.IsNotEmpty(commands);
-        Assert.IsTrue(commands.Exists(c => c.Name == "example"));
+        var descriptors = plugin.GetCommands().ToList();
+        
+        Assert.IsNotEmpty(descriptors);
+        Assert.IsTrue(descriptors.Exists(d => d.Command.Name == "example"));
     }
 }
 ```

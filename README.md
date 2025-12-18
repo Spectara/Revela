@@ -138,7 +138,7 @@ revela init project
 my-photo-site/
 ├── project.json
 ├── site.json
-└── content/
+└── source/
     ├── photo1.jpg
     ├── photo2.jpg
     └── galleries/
@@ -214,12 +214,16 @@ All plugins with the `Spectara.Revela.Plugin.*` prefix are officially maintained
 # Official OneDrive Source Plugin
 revela plugin install Spectara.Revela.Plugin.Source.OneDrive
 
+# Official Statistics Plugin
+revela plugin install Spectara.Revela.Plugin.Statistics
+
 # Official Deploy Plugin (SSH/SFTP) - Coming Soon
 revela plugin install Spectara.Revela.Plugin.Deploy.SSH
 ```
 
 **Package Names:**
 - `Spectara.Revela.Plugin.Source.OneDrive` ✅ **Verified**
+- `Spectara.Revela.Plugin.Statistics` ✅ **Verified**
 - `Spectara.Revela.Plugin.Deploy.SSH` ✅ **Verified** (Coming Soon)
 
 ### Community Plugins
@@ -250,10 +254,10 @@ revela plugin uninstall onedrive
 
 ## 📖 Documentation
 
-- [Getting Started](docs/getting-started.md)
-- [Configuration Reference](docs/configuration.md)
-- [Template Guide](docs/templates.md)
+- [Getting Started](docs/getting-started/README.md)
+- [Architecture Overview](docs/architecture.md)
 - [Plugin Development](docs/plugin-development.md)
+- [HttpClient Pattern](docs/httpclient-pattern.md)
 
 ## 🏗️ Architecture
 
@@ -307,7 +311,7 @@ See [Dependency Management](.github/DEPENDENCY_MANAGEMENT.md) for details.
 
 ## 🤝 Contributing
 
-Contributions welcome! Please read [CONTRIBUTING.md](CONTRIBUTING.md) first.
+Contributions welcome! Please open an issue or pull request on GitHub.
 
 ## 📄 License
 

@@ -22,6 +22,6 @@ Each guide covers:
 
 ## Quick Links
 
-- [Download Revela](https://github.com/Spectara/Revela/releases)
+- [Download Revela](https://github.com/spectara/revela/releases)
 - [Full Documentation](../README.md)
-- [GitHub Issues](https://github.com/Spectara/Revela/issues)
+- [GitHub Issues](https://github.com/spectara/revela/issues)

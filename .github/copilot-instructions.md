@@ -83,15 +83,19 @@ src/
 ├── Commands/                 # CLI commands (Generate, Init, Plugins, Restore, Theme)
 ├── Cli/                      # Entry point (.NET Tool)
 ├── Plugins/
-│   ├── Plugin.Deploy.SSH/    # SSH/SFTP deployment
-│   └── Plugin.Source.OneDrive/  # OneDrive shared folder source
+│   ├── Plugin.Deploy.SSH/    # SSH/SFTP deployment (planned)
+│   ├── Plugin.Source.OneDrive/  # OneDrive shared folder source
+│   └── Plugin.Statistics/    # Statistics functionality
 └── Themes/
     ├── Theme.Lumina/         # Default photography portfolio theme
     └── Theme.Lumina.Statistics/  # Statistics extension for Lumina theme
 tests/
 ├── Core.Tests/               # Unit tests for Core
+├── Commands.Tests/           # Unit tests for Commands
 ├── IntegrationTests/         # Integration tests
-└── Plugin.Source.OneDrive.Tests/  # OneDrive plugin tests
+├── Plugin.Source.OneDrive.Tests/  # OneDrive plugin tests
+├── Plugin.Statistics.Tests/  # Statistics plugin tests
+└── Shared/                   # Shared test utilities
 ```
 
 ### Key Files
@@ -288,26 +292,33 @@ public static IPluginContext AddPlugins(
 
 #### Parent Command Pattern
 
-Plugins declare their **desired parent command** in metadata:
+Plugins specify **parent command** in `CommandDescriptor`, NOT in metadata:
 
 ```csharp
+// PluginMetadata has NO ParentCommand - only Name, Version, Description, Author
 public IPluginMetadata Metadata => new PluginMetadata
 {
     Name = "OneDrive Source",
     Version = "1.0.0",
-    ParentCommand = "source"  // ✅ Plugin declares parent
+    Description = "OneDrive shared folder source",
+    Author = "Spectara"
 };
 ```
 
-**Plugin returns ONLY its own command:**
+**Plugin returns CommandDescriptor with optional parent:**
 ```csharp
-public IEnumerable<Command> GetCommands()
+public IEnumerable<CommandDescriptor> GetCommands()
 {
-    // ✅ Return "onedrive" - Program.cs adds under "source"
-    yield return new Command("onedrive", "OneDrive plugin");
+    // ✅ ParentCommand specified here, not in metadata!
+    // "source" = registered under source (revela source onedrive)
+    yield return new CommandDescriptor(
+        new Command("onedrive", "OneDrive plugin"),
+        ParentCommand: "source");
     
-    // ❌ DON'T create parent command in plugin!
-    // var source = new Command("source", "...");  // Would conflict!
+    // null = registered at root level (revela mycommand)
+    yield return new CommandDescriptor(
+        new Command("sync", "Sync command"),
+        ParentCommand: null);
 }
 ```
 
@@ -897,31 +908,31 @@ public static class ServiceCollectionExtensions
 ## Dependencies
 
 ### Core Framework
-- `Microsoft.Extensions.Hosting` (10.0.0)
-- `Microsoft.Extensions.Configuration.Json` (10.0.0)
-- `Microsoft.Extensions.Logging` (10.0.0)
+- `Microsoft.Extensions.Hosting` (10.0.1)
+- `Microsoft.Extensions.Configuration.Json` (10.0.1)
+- `Microsoft.Extensions.Logging` (10.0.1)
 
 ### CLI
-- `System.CommandLine` (2.0.0) - **FINAL release, not beta!**
-- `Spectre.Console` (0.49.1) - Rich console output (progress bars, tables, panels)
+- `System.CommandLine` (2.0.1) - **FINAL release, not beta!**
+- `Spectre.Console` (0.54.0) - Rich console output (progress bars, tables, panels)
 
 ### Image Processing
 - `NetVips` (3.1.0)
 - `NetVips.Native` (8.17.3)
 
 ### Templating
-- `Scriban` (6.5.1)
-- `Markdig` (0.43.0)
+- `Scriban` (6.5.2)
+- `Markdig` (0.44.0)
 
 ### Logging
-- `Microsoft.Extensions.Logging` (10.0.0) - Built-in logging
-- `Microsoft.Extensions.Logging.Console` (10.0.0)
-- `Microsoft.Extensions.Logging.Debug` (10.0.0)
+- `Microsoft.Extensions.Logging` (10.0.1) - Built-in logging
+- `Microsoft.Extensions.Logging.Console` (10.0.1)
+- `Microsoft.Extensions.Logging.Debug` (10.0.1)
 
 ### Plugin Management
-- `NuGet.Protocol` (7.0.0)
-- `NuGet.Packaging` (7.0.0)
-- `NuGet.Configuration` (7.0.0)
+- `NuGet.Protocol` (7.0.1)
+- `NuGet.Packaging` (7.0.1)
+- `NuGet.Configuration` (7.0.1)
 
 ### Testing
 - `MSTest` (4.0.2) - Modern test framework with Microsoft.Testing.Platform

@@ -161,8 +161,8 @@ public async Task GetDataAsync_ShouldReturnData()
     // Act
     var result = await service.GetDataAsync();
     
-    // Assert
-    result.Should().Contain("test");
+    // Assert (MSTest v4)
+    Assert.Contains("test", result);
 }
 ```
 
@@ -243,5 +243,5 @@ When creating a new plugin with HTTP calls:
 
 ---
 
-**Last Updated:** 2025-01-20  
+**Last Updated:** 2025-12-18  
 **Pattern Used By:** OneDrive Plugin v1.0.0

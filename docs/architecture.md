@@ -59,7 +59,8 @@ Revela/
 │   │
 │   └── Spectara.Revela.Plugins/           # Optional Plugins
 │       ├── Plugin.Deploy.SSH/
-│       └── Plugin.Source.OneDrive/
+│       ├── Plugin.Source.OneDrive/
+│       └── Plugin.Statistics/
 │
 └── tests/
 ```
@@ -71,27 +72,27 @@ Revela/
 ### Core Framework
 - **.NET 10** - Target framework
 - **C# 14** - Language version
-- **System.CommandLine 2.0.0** - CLI framework
+- **System.CommandLine 2.0.1** - CLI framework
 
 ### Image Processing
 - **NetVips 3.1.0** - High-performance image processing (libvips wrapper)
 - **NetVips.Native 8.17.3** - Native libvips binaries
 
 ### Templating
-- **Scriban 5.10.0** - Liquid-like template engine
-- **Markdig 0.37.0** - Markdown parser
+- **Scriban 6.5.2** - Liquid-like template engine
+- **Markdig 0.44.0** - Markdown parser
 
 ### Configuration
 - **Microsoft.Extensions.Configuration** - Configuration system
 - **Microsoft.Extensions.Options** - Options pattern
 
 ### Logging
-- **Microsoft.Extensions.Logging 10.0.0** - Built-in logging abstraction
+- **Microsoft.Extensions.Logging 10.0.1** - Built-in logging abstraction
 - **Console & Debug providers** - Standard output
 
 ### Plugin Management
-- **NuGet.Protocol 6.12.1** - NuGet package installation
-- **NuGet.Packaging 6.12.1** - Package extraction
+- **NuGet.Protocol 7.0.1** - NuGet package installation
+- **NuGet.Packaging 7.0.1** - Package extraction
 
 ---
 

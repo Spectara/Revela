@@ -115,7 +115,8 @@ Revela/
 │   ├── Cli/                      # CLI entry point
 │   ├── Plugins/                  # Optional plugins
 │   │   ├── Plugin.Deploy.SSH/
-│   │   └── Plugin.Source.OneDrive/
+│   │   ├── Plugin.Source.OneDrive/
+│   │   └── Plugin.Statistics/
 │   └── Themes/                   # Built-in themes
 │       ├── Theme.Lumina/
 │       └── Theme.Lumina.Statistics/
@@ -123,7 +124,10 @@ Revela/
 ├── tests/                        # Test projects
 │   ├── Core.Tests/
 │   ├── Commands.Tests/
-│   └── IntegrationTests/
+│   ├── IntegrationTests/
+│   ├── Plugin.Source.OneDrive.Tests/
+│   ├── Plugin.Statistics.Tests/
+│   └── Shared/
 │
 ├── docs/                         # Documentation
 │   ├── architecture.md
@@ -257,7 +261,7 @@ Pins .NET SDK version:
 ```json
 {
   "sdk": {
-    "version": "10.0.100-preview.7.25364.1"
+    "version": "10.0.101"
   }
 }
 ```
