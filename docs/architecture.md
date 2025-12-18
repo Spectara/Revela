@@ -314,16 +314,44 @@ Implement `IPlugin` interface:
 ```csharp
 public class MyPlugin : IPlugin
 {
-    public IPluginMetadata Metadata { get; }
+    private IServiceProvider? services;
     
-    public void Initialize(IServiceProvider services)
+    public IPluginMetadata Metadata => new PluginMetadata
     {
-        // Register services
+        Name = "My Plugin",
+        Version = "1.0.0",
+        Description = "Plugin description",
+        Author = "Your Name"
+    };
+    
+    // 1. ConfigureConfiguration - usually empty (framework auto-loads plugins/*.json)
+    public void ConfigureConfiguration(IConfigurationBuilder configuration)
+    {
+        // Nothing to do - framework handles JSON + ENV loading
     }
     
-    public IEnumerable<Command> GetCommands()
+    // 2. ConfigureServices - register services BEFORE ServiceProvider is built
+    public void ConfigureServices(IServiceCollection services)
     {
-        yield return new Command("mycmd") { /* ... */ };
+        services.AddHttpClient<MyHttpService>();
+        services.AddOptions<MyConfig>()
+            .BindConfiguration(MyConfig.SectionName)
+            .ValidateDataAnnotations();
+    }
+    
+    // 3. Initialize - called AFTER ServiceProvider is built
+    public void Initialize(IServiceProvider services)
+    {
+        this.services = services;
+    }
+    
+    // 4. GetCommands - returns CommandDescriptor (command + optional parent)
+    public IEnumerable<CommandDescriptor> GetCommands()
+    {
+        // ParentCommand: null = root level, "init" = under init, etc.
+        yield return new CommandDescriptor(
+            new Command("mycmd", "My command"),
+            ParentCommand: null);  // revela mycmd
     }
 }
 ```

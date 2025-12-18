@@ -44,6 +44,9 @@ revela plugin install Spectara.Revela.Plugin.OneDrive
 # Install specific version
 revela plugin install OneDrive --version 1.2.0
 
+# Install from local .nupkg file
+revela plugin install ./path/to/Spectara.Revela.Plugin.OneDrive.1.0.0.nupkg
+
 # Install from GitHub Packages
 revela plugin install OneDrive --source github
 ```
@@ -94,11 +97,14 @@ revela restore
 ### Updating Plugins
 
 ```bash
-# Update specific plugin to latest version
-revela plugin update OneDrive
-
-# Check for updates
+# Check installed plugins and versions
 revela plugin list
+
+# To update: uninstall and reinstall with new version
+revela plugin uninstall OneDrive
+revela plugin install OneDrive --version 2.0.0
+
+# Note: `revela plugin update` command is planned for future release
 ```
 
 ---
