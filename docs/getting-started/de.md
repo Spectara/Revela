@@ -31,6 +31,8 @@ Eine Schritt-für-Schritt-Anleitung für Fotografen, um mit Revela eine Portfoli
    - `C:\Revela\`
    - oder `D:\Tools\Revela\`
 
+**Optional (für Fortgeschrittene):** Du kannst die Release-Dateien verifizieren. Zu jeder Version gibt es Prüfsummen (`SHA256SUMS`), cosign-Signaturen und GitHub Attestations – Details findest du auf der jeweiligen Release-Seite.
+
 Nach dem Entpacken hast du folgende Dateien:
 ```
 C:\Revela\

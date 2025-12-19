@@ -31,6 +31,8 @@ A step-by-step guide for photographers to create a portfolio website with Revela
    - `C:\Revela\`
    - or `D:\Tools\Revela\`
 
+**Optional (advanced):** You can verify the release artifacts. Each version provides checksums (`SHA256SUMS`), cosign signatures, and GitHub Attestations — see the release page for details.
+
 After extracting, you'll have these files:
 ```
 C:\Revela\

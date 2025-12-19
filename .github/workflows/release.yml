@@ -85,6 +85,10 @@ jobs:
     name: Build ${{ matrix.rid }}
     needs: validate
     runs-on: ${{ matrix.os }}
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
     strategy:
       fail-fast: false
       matrix:
@@ -167,6 +171,11 @@ jobs:
           chmod +x revela
           tar -czvf ../${{ matrix.artifact }} revela Spectara.Revela.Theme.Lumina.dll getting-started
 
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@v1
+        with:
+          subject-path: ${{ matrix.artifact }}
+
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
@@ -179,6 +188,10 @@ jobs:
     name: Build Plugins (NuGet)
     needs: validate
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -226,6 +239,11 @@ jobs:
       - name: List NuGet packages
         run: ls -lh ./nupkgs/
 
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@v1
+        with:
+          subject-path: ./nupkgs/*.nupkg
+
       - name: Upload NuGet packages
         uses: actions/upload-artifact@v4
         with:
@@ -233,10 +251,89 @@ jobs:
           path: ./nupkgs/*.nupkg
           retention-days: 1
 
+  # Keyless signing + checksums (cosign)
+  sign:
+    name: Sign Release Artifacts
+    needs: [validate, build, plugins]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: List artifacts
+        run: find artifacts -type f
+
+      - name: Generate SHA256SUMS
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          rm -rf signatures
+          mkdir -p signatures
+
+          cd artifacts
+
+          mapfile -t files < <(
+            find . -type f \( -name '*.zip' -o -name '*.tar.gz' -o -name '*.nupkg' \) -print | sort
+          )
+
+          if [ ${#files[@]} -eq 0 ]; then
+            echo "❌ No artifacts found to checksum/sign."
+            exit 1
+          fi
+
+          : > ../signatures/SHA256SUMS
+          for f in "${files[@]}"; do
+            sha256sum "$f" | sed 's| \./| |' >> ../signatures/SHA256SUMS
+          done
+
+      - name: Install cosign
+        uses: sigstore/cosign-installer@v3
+
+      - name: Sign artifacts (keyless)
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          cd artifacts
+
+          mapfile -t files < <(
+            find . -type f \( -name '*.zip' -o -name '*.tar.gz' -o -name '*.nupkg' \) -print | sort
+          )
+
+          for f in "${files[@]}"; do
+            outBase="../signatures/${f#./}"
+            mkdir -p "$(dirname "$outBase")"
+
+            cosign sign-blob \
+              --yes \
+              --output-signature "${outBase}.sig" \
+              --output-certificate "${outBase}.crt" \
+              "$f"
+          done
+
+          cosign sign-blob \
+            --yes \
+            --output-signature ../signatures/SHA256SUMS.sig \
+            --output-certificate ../signatures/SHA256SUMS.crt \
+            ../signatures/SHA256SUMS
+
+      - name: Upload signatures and checksums
+        uses: actions/upload-artifact@v4
+        with:
+          name: signatures
+          path: signatures/**
+          retention-days: 7
+
   # Create GitHub Release with all artifacts
   release:
     name: Create Release
-    needs: [validate, build, plugins]
+    needs: [validate, build, plugins, sign]
     # Only create release on tag push, not manual trigger
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
@@ -266,3 +363,6 @@ jobs:
             artifacts/**/*.zip
             artifacts/**/*.tar.gz
             artifacts/**/*.nupkg
+            artifacts/**/SHA256SUMS*
+            artifacts/**/*.sig
+            artifacts/**/*.crt
