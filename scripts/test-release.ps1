@@ -72,7 +72,7 @@ $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $RepoRoot = Split-Path -Parent $ScriptDir
 $Timestamp = [DateTime]::Now.ToString('yyyyMMdd-HHmmss')
 $TestDir = Join-Path $RepoRoot "artifacts/release-test-$Timestamp"
-$PublishDir = Join-Path $TestDir "publish"
+$CliDir = Join-Path $TestDir "cli"
 $NuGetDir = Join-Path $TestDir "nuget"
 $PluginsDir = Join-Path $TestDir "plugins"
 $ToolDir = Join-Path $TestDir "tool"
@@ -92,7 +92,7 @@ if (-not $RuntimeIdentifier) {
     }
 }
 
-$ExePath = Join-Path $PublishDir $ExeName
+$ExePath = Join-Path $CliDir $ExeName
 
 # Track timing
 $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
@@ -134,7 +134,7 @@ try {
             Write-Success "Cleaned previous test artifacts"
         }
         New-Item -ItemType Directory -Path $TestDir -Force | Out-Null
-        New-Item -ItemType Directory -Path $PublishDir -Force | Out-Null
+        New-Item -ItemType Directory -Path $CliDir -Force | Out-Null
         New-Item -ItemType Directory -Path $NuGetDir -Force | Out-Null
         New-Item -ItemType Directory -Path $PluginsDir -Force | Out-Null
         New-Item -ItemType Directory -Path $ToolDir -Force | Out-Null
@@ -202,13 +202,13 @@ try {
             -p:DebugType=none `
             -p:DebugSymbols=false `
             -p:Version=$Version `
-            -o $PublishDir `
+            -o $CliDir `
             --verbosity quiet
 
         if ($LASTEXITCODE -ne 0) { throw "CLI publish failed" }
 
         # Clean up XML documentation files (not needed for end users)
-        Get-ChildItem $PublishDir -Filter "*.xml" | Remove-Item -Force
+        Get-ChildItem $CliDir -Filter "*.xml" | Remove-Item -Force
 
         $exeSize = (Get-Item $ExePath).Length / 1MB
         Write-Success "CLI published: $ExeName ($([math]::Round($exeSize, 1)) MB)"
@@ -225,7 +225,7 @@ try {
             -c Release -r $RuntimeIdentifier -p:Version=$Version --verbosity quiet
         if ($LASTEXITCODE -ne 0) { throw "Theme.Lumina build failed" }
 
-        Copy-Item "artifacts/bin/Theme.Lumina/Release/net10.0/$RuntimeIdentifier/Spectara.Revela.Theme.Lumina.dll" $PublishDir
+        Copy-Item "artifacts/bin/Theme.Lumina/Release/net10.0/$RuntimeIdentifier/Spectara.Revela.Theme.Lumina.dll" $CliDir
         Write-Success "Theme.Lumina bundled with CLI"
 
         # Pack SDK (for third-party plugin/theme developers)
@@ -320,14 +320,19 @@ try {
 
             # Verify plugins are installed in correct directory (local, next to exe)
             # This validates the "GitHub Release" scenario: user extracts ZIP, runs exe, installs plugins
-            $localPluginsDir = Join-Path $PublishDir "plugins"
-            $installedDlls = @(Get-ChildItem $localPluginsDir -Filter "*.dll" -ErrorAction SilentlyContinue)
-            if ($installedDlls.Count -eq 0) {
+            # New structure: plugins/{PackageId}/{PackageId}.dll (with dependencies in same folder)
+            $localPluginsDir = Join-Path $CliDir "plugins"
+            $installedPlugins = @(Get-ChildItem $localPluginsDir -Directory -ErrorAction SilentlyContinue)
+            if ($installedPlugins.Count -eq 0) {
                 throw "No plugins found in local directory: $localPluginsDir"
             }
             Write-Success "Plugins installed to local directory: $localPluginsDir"
-            foreach ($dll in $installedDlls) {
-                Write-Info "  $($dll.Name)"
+            foreach ($pluginFolder in $installedPlugins) {
+                $mainDll = Join-Path $pluginFolder.FullName "$($pluginFolder.Name).dll"
+                if (Test-Path $mainDll) {
+                    $dllCount = @(Get-ChildItem $pluginFolder.FullName -Filter "*.dll").Count
+                    Write-Info "  $($pluginFolder.Name)/ ($dllCount DLLs)"
+                }
             }
 
             # List installed plugins
@@ -337,13 +342,12 @@ try {
             Pop-Location
         }
     }
-
     # ========================================================================
     # STEP 7b: Verify Plugin System (including uninstall)
     # ========================================================================
     Write-Step "Step 7b: Verify Plugin Installation & Uninstall"
     Measure-Step "Plugin Verify" {
-        $localPluginsDir = Join-Path $PublishDir "plugins"
+        $localPluginsDir = Join-Path $CliDir "plugins"
 
         # Verify correct number of plugins installed
         $pluginListOutput = & $ExePath plugin list 2>&1 | Out-String
@@ -358,31 +362,32 @@ try {
             Write-Success "Verified: All plugins installed locally (next to exe)"
         }
 
-        # Verify DLL files exist
-        $expectedDlls = @(
-            "Spectara.Revela.Plugin.Source.OneDrive.dll",
-            "Spectara.Revela.Plugin.Statistics.dll",
-            "Spectara.Revela.Theme.Lumina.Statistics.dll"
+        # Verify plugin folders exist with main DLLs (new structure: plugins/{PackageId}/{PackageId}.dll)
+        $expectedPlugins = @(
+            "Spectara.Revela.Plugin.Source.OneDrive",
+            "Spectara.Revela.Plugin.Statistics",
+            "Spectara.Revela.Theme.Lumina.Statistics"
         )
-        foreach ($dll in $expectedDlls) {
-            $dllPath = Join-Path $localPluginsDir $dll
-            if (-not (Test-Path $dllPath)) {
-                throw "Missing plugin DLL: $dll"
+        foreach ($pluginName in $expectedPlugins) {
+            $pluginFolder = Join-Path $localPluginsDir $pluginName
+            $mainDll = Join-Path $pluginFolder "$pluginName.dll"
+            if (-not (Test-Path $mainDll)) {
+                throw "Missing plugin: $pluginName (expected at $mainDll)"
             }
         }
-        Write-Success "Verified: All plugin DLLs present in local directory"
+        Write-Success "Verified: All plugin folders present with main DLLs"
 
         # Test plugin uninstall (critical - DLLs must not be locked)
         Write-Info "Testing plugin uninstall (DLLs must not be locked)..."
         & $ExePath plugin uninstall Statistics --yes
         if ($LASTEXITCODE -ne 0) { throw "Plugin uninstall command failed" }
 
-        # Verify plugin was actually removed
-        $statisticsPath = Join-Path $localPluginsDir "Spectara.Revela.Plugin.Statistics.dll"
-        if (Test-Path $statisticsPath) {
-            throw "Plugin uninstall failed - DLL still exists (probably locked by AssemblyLoadContext)"
+        # Verify plugin folder was actually removed
+        $statisticsFolder = Join-Path $localPluginsDir "Spectara.Revela.Plugin.Statistics"
+        if (Test-Path $statisticsFolder) {
+            throw "Plugin uninstall failed - folder still exists (probably locked by AssemblyLoadContext)"
         }
-        Write-Success "Verified: Plugin uninstall works (DLLs not locked)"
+        Write-Success "Verified: Plugin uninstall works (folder removed)"
 
         # Re-install for subsequent tests
         Write-Info "Re-installing Statistics plugin..."

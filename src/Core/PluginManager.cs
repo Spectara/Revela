@@ -280,6 +280,11 @@ public sealed class PluginManager(HttpClient httpClient, ILogger<PluginManager> 
         var fileCount = 0;
         using var archive = await Task.Run(() => ZipFile.OpenRead(nupkgPath), cancellationToken);
 
+        // All files go into plugins/{PackageId}/ subfolder
+        // This keeps main DLL and dependencies together for clean isolation
+        var pluginDir = Path.Combine(targetDir, identity.Id);
+        _ = Directory.CreateDirectory(pluginDir);
+
         foreach (var item in net10Group.Items)
         {
             var entry = archive.GetEntry(item);
@@ -289,26 +294,13 @@ public sealed class PluginManager(HttpClient httpClient, ILogger<PluginManager> 
             }
 
             var fileName = Path.GetFileName(item);
-            var destPath = Path.Combine(targetDir, fileName);
+            var destPath = Path.Combine(pluginDir, fileName);
 
             await using var entryStream = await Task.Run(() => entry.Open(), cancellationToken);
             await using var fileStream = File.Create(destPath);
             await entryStream.CopyToAsync(fileStream, cancellationToken);
 
-            logger.ExtractedFile(fileName, targetDir);
-            fileCount++;
-        }
-
-        // Also extract .deps.json if present
-        var depsEntry = archive.Entries.FirstOrDefault(e =>
-            e.Name.EndsWith(".deps.json", StringComparison.OrdinalIgnoreCase));
-        if (depsEntry is not null)
-        {
-            var destPath = Path.Combine(targetDir, depsEntry.Name);
-            await using var entryStream = await Task.Run(() => depsEntry.Open(), cancellationToken);
-            await using var fileStream = File.Create(destPath);
-            await entryStream.CopyToAsync(fileStream, cancellationToken);
-            logger.ExtractedFile(depsEntry.Name, targetDir);
+            logger.ExtractedFile(fileName, pluginDir);
             fileCount++;
         }
 
@@ -318,8 +310,8 @@ public sealed class PluginManager(HttpClient httpClient, ILogger<PluginManager> 
             return false;
         }
 
-        // Create plugin.meta.json with metadata from .nuspec
-        await CreatePluginMetadataAsync(packageReader, identity, installedFrom, targetDir, cancellationToken);
+        // Create plugin.meta.json with metadata from .nuspec (in plugin subfolder)
+        await CreatePluginMetadataAsync(packageReader, identity, installedFrom, pluginDir, cancellationToken);
 
         // Update project.json if it exists in current directory
         await UpdateProjectJsonAsync(identity.Id, identity.Version.ToString(), cancellationToken);
@@ -348,6 +340,11 @@ public sealed class PluginManager(HttpClient httpClient, ILogger<PluginManager> 
         var authors = nuspecReader.GetAuthors()?.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
                      ?? [];
 
+        // Parse package types (e.g., RevelaPlugin, RevelaTheme)
+        var packageTypes = nuspecReader.GetPackageTypes()
+            .Select(pt => pt.Name)
+            .ToList();
+
         // Parse dependencies
         var dependencyGroups = await packageReader.GetPackageDependenciesAsync(cancellationToken);
         var dependencies = dependencyGroups
@@ -368,7 +365,8 @@ public sealed class PluginManager(HttpClient httpClient, ILogger<PluginManager> 
             InstalledAt = DateTime.UtcNow.ToString("O"),
             Authors = authors,
             Description = nuspecReader.GetDescription(),
-            Dependencies = dependencies
+            Dependencies = dependencies,
+            PackageTypes = packageTypes
         };
 
         // Write to plugin.meta.json
@@ -495,7 +493,8 @@ public sealed class PluginManager(HttpClient httpClient, ILogger<PluginManager> 
             var pluginDir = global ? GlobalPluginDirectory : LocalPluginDirectory;
             var found = false;
 
-            // Delete plugin directory with dependencies
+            // Delete plugin subdirectory with all contents (main DLL + dependencies)
+            // New structure: plugins/{PackageId}/*.dll
             var pluginPath = Path.Combine(pluginDir, packageId);
             if (Directory.Exists(pluginPath))
             {
@@ -503,7 +502,7 @@ public sealed class PluginManager(HttpClient httpClient, ILogger<PluginManager> 
                 found = true;
             }
 
-            // Delete main DLL file
+            // Legacy: Also check for root DLL (old structure or development builds)
             var dllPath = Path.Combine(pluginDir, $"{packageId}.dll");
             if (File.Exists(dllPath))
             {
@@ -511,23 +510,14 @@ public sealed class PluginManager(HttpClient httpClient, ILogger<PluginManager> 
                 found = true;
             }
 
-            // Delete .deps.json file
-            var depsPath = Path.Combine(pluginDir, $"{packageId}.deps.json");
-            if (File.Exists(depsPath))
-            {
-                File.Delete(depsPath);
-                found = true;
-            }
-
-            // Delete .meta.json file (plugin metadata)
+            // Legacy: Delete .meta.json file in root (old structure)
             var metaPath = Path.Combine(pluginDir, $"{packageId}.meta.json");
             if (File.Exists(metaPath))
             {
                 File.Delete(metaPath);
-                // Don't set found=true - meta alone doesn't count as plugin presence
             }
 
-            // Note: Keep config file (*.json) - user may want to reinstall with same settings
+            // Note: Keep config file (*.json in plugins/ config folder) - user may want to reinstall with same settings
 
             if (found)
             {
@@ -552,33 +542,47 @@ public sealed class PluginManager(HttpClient httpClient, ILogger<PluginManager> 
     /// Lists all installed plugins from both local and global directories.
     /// </summary>
     /// <remarks>
-    /// Lists all DLLs in the root of plugin directories.
-    /// Dependencies should be in subfolders (named after the plugin DLL).
-    /// Convention: plugins/MyPlugin.dll + plugins/MyPlugin/*.dll (deps)
+    /// Plugins can be installed in two ways:
+    /// 1. Subdirectory: plugins/{PackageId}/{PackageId}.dll (with dependencies)
+    /// 2. Root DLL: plugins/{PackageId}.dll (development/legacy)
     /// </remarks>
     public static IEnumerable<(string Name, string Location)> ListInstalledPlugins()
     {
         var results = new List<(string Name, string Location)>();
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
-        // Check local plugins (only root DLLs, not in subfolders)
-        if (Directory.Exists(LocalPluginDirectory))
+        void ScanDirectory(string directory, string location)
         {
-            foreach (var dll in Directory.GetFiles(LocalPluginDirectory, "*.dll", SearchOption.TopDirectoryOnly))
+            if (!Directory.Exists(directory))
             {
-                results.Add((Path.GetFileNameWithoutExtension(dll), "local"));
+                return;
+            }
+
+            // Check subdirectories first (installed plugins)
+            foreach (var subDir in Directory.GetDirectories(directory))
+            {
+                var folderName = Path.GetFileName(subDir);
+                var mainDll = Path.Combine(subDir, $"{folderName}.dll");
+                if (File.Exists(mainDll) && seen.Add(folderName))
+                {
+                    results.Add((folderName, location));
+                }
+            }
+
+            // Check root DLLs (development/legacy)
+            foreach (var dll in Directory.GetFiles(directory, "*.dll", SearchOption.TopDirectoryOnly))
+            {
+                var name = Path.GetFileNameWithoutExtension(dll);
+                if (seen.Add(name))
+                {
+                    results.Add((name, location));
+                }
             }
         }
 
-        // Check global plugins (only root DLLs, not in subfolders)
-        if (Directory.Exists(GlobalPluginDirectory))
-        {
-            foreach (var dll in Directory.GetFiles(GlobalPluginDirectory, "*.dll", SearchOption.TopDirectoryOnly))
-            {
-                results.Add((Path.GetFileNameWithoutExtension(dll), "global"));
-            }
-        }
+        ScanDirectory(LocalPluginDirectory, "local");
+        ScanDirectory(GlobalPluginDirectory, "global");
 
         return results;
     }
 }
-

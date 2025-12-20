@@ -12,13 +12,16 @@ namespace Spectara.Revela.Core;
 /// - No conflicts between plugin dependencies and host
 /// - Clean unloading (future feature)
 ///
+/// Plugin structure: plugins/{PackageId}/{PackageId}.dll + dependencies
+/// All files (main DLL + dependencies) are in the same folder.
+///
 /// Shared assemblies (IPlugin interface, Microsoft.Extensions.*) are resolved
 /// from the default context to enable cross-context communication.
 /// </remarks>
 internal sealed class PluginLoadContext : AssemblyLoadContext
 {
     private readonly AssemblyDependencyResolver resolver;
-    private readonly string dependencyDirectory;
+    private readonly string pluginDirectory;
 
     /// <summary>
     /// Known shared assemblies that should be loaded from the host.
@@ -41,10 +44,8 @@ internal sealed class PluginLoadContext : AssemblyLoadContext
     {
         resolver = new AssemblyDependencyResolver(pluginPath);
 
-        // Dependencies folder: same name as plugin DLL (without extension)
-        var pluginDir = Path.GetDirectoryName(pluginPath)!;
-        var pluginName = Path.GetFileNameWithoutExtension(pluginPath);
-        dependencyDirectory = Path.Combine(pluginDir, pluginName);
+        // Plugin directory contains main DLL and all dependencies
+        pluginDirectory = Path.GetDirectoryName(pluginPath)!;
     }
 
     protected override Assembly? Load(AssemblyName assemblyName)
@@ -87,14 +88,11 @@ internal sealed class PluginLoadContext : AssemblyLoadContext
             return LoadFromAssemblyPath(assemblyPath);
         }
 
-        // Try dependency subfolder (our convention: plugins/MyPlugin/*.dll)
-        if (Directory.Exists(dependencyDirectory))
+        // Try plugin directory (all dependencies are in same folder as main DLL)
+        var dependencyPath = Path.Combine(pluginDirectory, $"{name}.dll");
+        if (File.Exists(dependencyPath))
         {
-            var dependencyPath = Path.Combine(dependencyDirectory, $"{name}.dll");
-            if (File.Exists(dependencyPath))
-            {
-                return LoadFromAssemblyPath(dependencyPath);
-            }
+            return LoadFromAssemblyPath(dependencyPath);
         }
 
         // Not found - delegate to default context

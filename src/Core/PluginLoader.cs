@@ -100,10 +100,23 @@ public sealed partial class PluginLoader(
             return;
         }
 
-        // Load all DLLs from root directory (not subfolders)
-        // Each DLL is checked if it implements IPlugin
-        // Dependencies should be placed in a subfolder named after the plugin
-        var pluginDlls = Directory.GetFiles(directory, "*.dll", SearchOption.TopDirectoryOnly);
+        // Load plugin DLLs from:
+        // 1. Root directory (development - plugins built via ProjectReference)
+        // 2. Subdirectories (installed plugins - each in own folder with dependencies)
+        var rootDlls = Directory.GetFiles(directory, "*.dll", SearchOption.TopDirectoryOnly);
+        var subDirDlls = Directory.GetDirectories(directory)
+            .Select(subDir =>
+            {
+                // Look for main plugin DLL matching folder name
+                var folderName = Path.GetFileName(subDir);
+                var mainDll = Path.Combine(subDir, $"{folderName}.dll");
+                return File.Exists(mainDll) ? mainDll : null;
+            })
+            .Where(dll => dll is not null)
+            .Cast<string>()
+            .ToArray();
+
+        var pluginDlls = rootDlls.Concat(subDirDlls).ToArray();
 
         if (options.EnableVerboseLogging)
         {

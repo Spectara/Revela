@@ -8,6 +8,7 @@
     <PackageTags>revela;theme;lumina;photography;gallery;lightbox</PackageTags>
     <PackageIcon>icon.png</PackageIcon>
     <PackageReleaseNotes>https://github.com/spectara/revela/blob/main/CHANGELOG.md</PackageReleaseNotes>
+    <PackageType>RevelaTheme</PackageType>
 
     <!-- Plugin Support: Copies all dependencies to output, generates complete .deps.json -->
     <EnableDynamicLoading>true</EnableDynamicLoading>

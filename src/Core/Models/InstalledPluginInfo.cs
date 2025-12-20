@@ -59,4 +59,10 @@ public sealed class InstalledPluginInfo
     /// </summary>
     [JsonPropertyName("dependencies")]
     public IReadOnlyDictionary<string, string> Dependencies { get; init; } = new Dictionary<string, string>();
+
+    /// <summary>
+    /// Package types (e.g., RevelaPlugin, RevelaTheme)
+    /// </summary>
+    [JsonPropertyName("packageTypes")]
+    public IReadOnlyList<string> PackageTypes { get; init; } = [];
 }

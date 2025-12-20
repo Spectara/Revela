@@ -7,6 +7,7 @@
   <PackageTags>revela;plugin;deploy;ssh;sftp</PackageTags>
   <PackageIcon>icon.png</PackageIcon>
   <PackageReleaseNotes>https://github.com/spectara/revela/blob/main/CHANGELOG.md</PackageReleaseNotes>
+  <PackageType>RevelaPlugin</PackageType>
 </PropertyGroup>
 
   <ItemGroup>
