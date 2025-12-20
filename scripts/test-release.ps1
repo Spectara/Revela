@@ -195,11 +195,16 @@ try {
             --self-contained `
             -p:PublishSingleFile=true `
             -p:IncludeNativeLibrariesForSelfExtract=true `
+            -p:DebugType=none `
+            -p:DebugSymbols=false `
             -p:Version=$Version `
             -o $PublishDir `
             --verbosity quiet
 
         if ($LASTEXITCODE -ne 0) { throw "CLI publish failed" }
+
+        # Clean up XML documentation files (not needed for end users)
+        Get-ChildItem $PublishDir -Filter "*.xml" | Remove-Item -Force
 
         $exeSize = (Get-Item $ExePath).Length / 1MB
         Write-Success "CLI published: $ExeName ($([math]::Round($exeSize, 1)) MB)"
