@@ -27,7 +27,7 @@ internal sealed class PluginContext(IReadOnlyList<IPlugin> plugins, ILogger<Plug
         }
     }
 
-    public void RegisterCommands(RootCommand rootCommand)
+    public void RegisterCommands(RootCommand rootCommand, Action<Command, int>? onCommandRegistered = null)
     {
         foreach (var plugin in Plugins)
         {
@@ -35,7 +35,7 @@ internal sealed class PluginContext(IReadOnlyList<IPlugin> plugins, ILogger<Plug
             {
                 foreach (var descriptor in plugin.GetCommands())
                 {
-                    RegisterCommand(rootCommand, plugin, descriptor);
+                    RegisterCommand(rootCommand, plugin, descriptor, onCommandRegistered);
                 }
             }
             catch (Exception ex)
@@ -45,7 +45,7 @@ internal sealed class PluginContext(IReadOnlyList<IPlugin> plugins, ILogger<Plug
         }
     }
 
-    private void RegisterCommand(RootCommand rootCommand, IPlugin plugin, CommandDescriptor descriptor)
+    private void RegisterCommand(RootCommand rootCommand, IPlugin plugin, CommandDescriptor descriptor, Action<Command, int>? onCommandRegistered)
     {
         var command = descriptor.Command;
         var parentPath = descriptor.ParentCommand;
@@ -53,7 +53,7 @@ internal sealed class PluginContext(IReadOnlyList<IPlugin> plugins, ILogger<Plug
         if (!string.IsNullOrEmpty(parentPath))
         {
             // Plugin wants a parent command (supports nested paths like "init source")
-            var parentCmd = GetOrCreateParentCommand(rootCommand, parentPath);
+            var parentCmd = GetOrCreateParentCommand(rootCommand, parentPath, onCommandRegistered);
 
             if (parentCmd.Subcommands.Any(sc => sc.Name == command.Name))
             {
@@ -74,12 +74,15 @@ internal sealed class PluginContext(IReadOnlyList<IPlugin> plugins, ILogger<Plug
 
             rootCommand.Subcommands.Add(command);
         }
+
+        // Notify caller about registered command with its order
+        onCommandRegistered?.Invoke(command, descriptor.Order);
     }
 
     /// <summary>
     /// Gets or creates a parent command, supporting nested paths like "init source".
     /// </summary>
-    private static Command GetOrCreateParentCommand(RootCommand root, string parentPath)
+    private static Command GetOrCreateParentCommand(RootCommand root, string parentPath, Action<Command, int>? onCommandRegistered)
     {
         // Split path into segments: "init source" → ["init", "source"]
         var segments = parentPath.Split(' ', StringSplitOptions.RemoveEmptyEntries);
@@ -95,10 +98,11 @@ internal sealed class PluginContext(IReadOnlyList<IPlugin> plugins, ILogger<Plug
             }
             else
             {
-                // Create new command with appropriate description
-                var description = GetCommandDescription(segment);
+                // Create new command with appropriate description and order
+                var (description, order) = GetCommandInfo(segment);
                 var newCommand = new Command(segment, description);
                 current.Subcommands.Add(newCommand);
+                onCommandRegistered?.Invoke(newCommand, order);
                 current = newCommand;
             }
         }
@@ -106,14 +110,14 @@ internal sealed class PluginContext(IReadOnlyList<IPlugin> plugins, ILogger<Plug
         return current;
     }
 
-    private static string GetCommandDescription(string commandName)
+    private static (string Description, int Order) GetCommandInfo(string commandName)
     {
         return commandName switch
         {
-            "init" => "Initialize project, sources, or plugins",
-            "source" => "Image source providers",
-            "deploy" => "Deploy generated site",
-            _ => $"{commandName} commands"
+            "init" => ("Initialize project, sources, or plugins", 30),
+            "source" => ("Image source providers", 20),
+            "deploy" => ("Deploy generated site", 55),
+            _ => ($"{commandName} commands", 50)  // Default order
         };
     }
 }

@@ -428,10 +428,10 @@ try {
     # ========================================================================
     Write-Step "Step 10: Generate Statistics"
     Measure-Step "Statistics" {
-        Write-Info "Running: revela generate stats"
+        Write-Info "Running: revela generate statistics"
         Push-Location $testProjectDir
         try {
-            & $ExePath generate stats
+            & $ExePath generate statistics
             if ($LASTEXITCODE -ne 0) { throw "Statistics generation failed" }
             Write-Success "Statistics generated"
 

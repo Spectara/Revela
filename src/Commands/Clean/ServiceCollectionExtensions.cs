@@ -1,5 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 
+using Spectara.Revela.Commands.Clean.Commands;
+
 namespace Spectara.Revela.Commands.Clean;
 
 /// <summary>
@@ -15,6 +17,9 @@ public static class ServiceCollectionExtensions
     public static IServiceCollection AddCleanFeature(this IServiceCollection services)
     {
         services.AddTransient<CleanCommand>();
+        services.AddTransient<CleanAllCommand>();
+        services.AddTransient<CleanOutputCommand>();
+        services.AddTransient<CleanCacheCommand>();
         return services;
     }
 }

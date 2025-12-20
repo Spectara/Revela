@@ -52,6 +52,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IRenderService, RenderService>();
 
         // Commands (thin CLI wrappers)
+        services.AddTransient<AllCommand>();
         services.AddTransient<ScanCommand>();
         services.AddTransient<ImagesCommand>();
         services.AddTransient<PagesCommand>();

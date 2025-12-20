@@ -17,7 +17,8 @@
 > Revela v0.1.0-beta is available for testing.
 > 
 > **Working Features:**
-> - ✅ Site generation (`revela generate`) - Full image processing & template rendering
+> - ✅ Site generation (`revela generate all`) - Full image processing & template rendering
+> - ✅ Interactive CLI mode - Menu-driven interface when running without arguments
 > - ✅ Project initialization (`revela init project`)
 > - ✅ Plugin system with dependency isolation
 > - ✅ Plugin management (`revela plugin list/install/uninstall`)
@@ -182,10 +183,22 @@ Edit `site.json`:
 ### 4. Generate
 
 ```bash
-revela generate
+revela
 ```
 
+This opens **interactive mode** with a menu-driven interface - perfect for beginners!
+
 Output in `./output/`
+
+### For Scripting/Automation
+
+When writing scripts, you can pass commands directly:
+
+```bash
+revela generate all    # Run complete pipeline
+revela clean all       # Clear output + cache
+revela init project    # Initialize new project
+```
 
 ## ⌨️ Shell Completion
 
@@ -291,7 +304,10 @@ dotnet test
 
 ```bash
 dotnet run --project src/Cli -- init project
-dotnet run --project src/Cli -- generate
+dotnet run --project src/Cli -- generate all
+
+# Or use interactive mode:
+dotnet run --project src/Cli
 ```
 
 ### Check for Dependency Updates

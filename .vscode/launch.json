@@ -1,0 +1,42 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Interactive (OneDrive)",
+            "type": "coreclr",
+            "request": "launch",
+            "preLaunchTask": "build",
+            "program": "${workspaceFolder}/artifacts/bin/Cli/Debug/net10.0/revela.dll",
+            "args": [],
+            "cwd": "${workspaceFolder}/samples/onedrive",
+            "console": "externalTerminal",
+            "stopAtEntry": false
+        },
+        {
+            "name": "Generate (Debug)",
+            "type": "coreclr",
+            "request": "launch",
+            "preLaunchTask": "build",
+            "program": "${workspaceFolder}/artifacts/bin/Cli/Debug/net10.0/revela.dll",
+            "args": [
+                "generate"
+            ],
+            "cwd": "${workspaceFolder}/debug",
+            "console": "integratedTerminal",
+            "stopAtEntry": false
+        },
+        {
+            "name": "Help",
+            "type": "coreclr",
+            "request": "launch",
+            "preLaunchTask": "build",
+            "program": "${workspaceFolder}/artifacts/bin/Cli/Debug/net10.0/revela.dll",
+            "args": [
+                "--help"
+            ],
+            "cwd": "${workspaceFolder}/debug",
+            "console": "integratedTerminal",
+            "stopAtEntry": false
+        }
+    ]
+}

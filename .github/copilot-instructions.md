@@ -1075,7 +1075,7 @@ dotnet run --project tests/Core.Tests
 
 ---
 
-**Last Updated:** 2025-12-10 (Session: AVIF Support + Format-Specific Quality)
+**Last Updated:** 2025-12-20 (Session: Interactive CLI + Clean Refactoring)
 
 **Key Learnings from Latest Sessions:**
 - ✅ Plugin ConfigureServices pattern (3-phase lifecycle)
@@ -1098,6 +1098,11 @@ dotnet run --project tests/Core.Tests
 - ✅ **NetVips Cache.Max = 0:** Disable cache for batch processing (saves memory)
 - ✅ **Format-specific quality:** AVIF:80, WebP:85, JPG:90 (22% smaller files)
 - ✅ **AVIF support:** AV1 compression via Heifsave with ForeignHeifCompression.Av1
+- ✅ **Interactive CLI:** Menu-driven interface when running without arguments
+- ✅ **`generate all` command:** Explicit pipeline execution (scan → statistics → pages → images)
+- ✅ **`clean` subcommands:** all, output, cache, statistics (no more flags)
+- ✅ **CommandOrderRegistry:** Controls menu order in interactive mode
+- ✅ **Debug builds:** Plugins as project references, no DLL copying needed
 
 **Template Context Variables:**
 - `site` - Site settings (title, author, description, copyright)

@@ -2,7 +2,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using Spectara.Revela.Core.Configuration;
 
-namespace Spectara.Revela.Cli;
+namespace Spectara.Revela.Cli.Hosting;
 
 /// <summary>
 /// Extension methods for configuring the Revela host.

@@ -13,10 +13,7 @@ A step-by-step guide for photographers to create a portfolio website with Revela
 - Responsive design (works on phone, tablet, desktop)
 - Fast loading times through optimized image formats (AVIF, WebP, JPG)
 
-**Important:** Revela is a **command-line program** (CLI = Command Line Interface). This means:
-- It has **no graphical interface** with windows and buttons
-- You control it via **text commands** in the command line (CMD or PowerShell)
-- If you double-click `revela.exe`, nothing seems to happen – that's normal!
+**Easy to use:** When you double-click `revela.exe`, an **interactive mode** opens with a menu-driven interface. Just select what you want to do - no command line knowledge required!
 
 ---
 
@@ -79,11 +76,9 @@ C:\Revela\
 
 ### Step 2.1: Initialize Project
 
-Open the command line in the Revela folder (as described in Step 1.2) and run:
-
-```
-.\revela.exe init project
-```
+1. Double-click `revela.exe` to open the interactive mode
+2. Select **init** from the menu
+3. Select **project**
 
 Revela automatically creates the basic structure:
 
@@ -226,13 +221,11 @@ The `project.json` contains technical settings. For starters, you can keep the d
 
 ## 5. Generate Website
 
-### Step 5.1: Run Generate Command
+### Step 5.1: Generate Your Website
 
-Open the command line in the Revela folder and run:
-
-```
-.\revela.exe generate
-```
+1. Double-click `revela.exe` to open the interactive mode
+2. Select **generate** from the menu
+3. Select **all** to run the complete pipeline
 
 **What happens now?**
 
@@ -254,15 +247,17 @@ Rendering pages   [████████████████████]
 
 ### Step 5.2: Regenerate Only Parts (optional)
 
-If you've only made small changes, you can regenerate only parts:
+In the **generate** submenu, you can also select specific steps:
 
-```
-.\revela.exe generate scan      # Scan source files (always first if images changed)
-.\revela.exe generate images    # Only reprocess images
-.\revela.exe generate pages     # Only re-render HTML pages
-```
+| Menu Option | What it does |
+|-------------|-------------|
+| **all** | Complete pipeline (scan → statistics → pages → images) |
+| **scan** | Scan source files (run first when images changed) |
+| **statistics** | Generate statistics JSON (requires Statistics plugin) |
+| **pages** | Only re-render HTML pages |
+| **images** | Only re-process images |
 
-**Note:** If you've added/deleted images or modified `_index.md` files, run `generate scan` first so Revela recognizes the changes.
+**Note:** If you've added/deleted images or changed `_index.md` files, run **scan** first so Revela recognizes the changes.
 
 ---
 
@@ -298,43 +293,34 @@ To put your website online, upload the complete contents of the `output` folder 
 
 ---
 
-## 7. Useful Commands
+## 7. Menu Reference
 
-### All Commands at a Glance
+### Main Menu Options
 
-| Command | Description |
-|---------|-------------|
-| `.\revela.exe --help` | Shows all available commands |
-| `.\revela.exe init project` | Create new project |
-| `.\revela.exe generate` | Generate website |
-| `.\revela.exe generate images` | Only process images |
-| `.\revela.exe generate pages` | Only create HTML pages |
-| `.\revela.exe clean` | Delete generated files |
-| `.\revela.exe clean --all` | Delete everything (incl. cache) |
-| `.\revela.exe theme list` | Show available themes |
-
-### Help for Individual Commands
-
-```
-.\revela.exe generate --help
-.\revela.exe clean --help
-.\revela.exe init --help
-```
+| Menu | Submenu | Description |
+|------|---------|-------------|
+| **generate** | all | Generate website (full pipeline) |
+| | scan | Scan source files |
+| | images | Only process images |
+| | pages | Only create HTML pages |
+| **clean** | all | Delete everything (output + cache) |
+| | output | Delete only output directory |
+| | cache | Delete only cache directory |
+| **init** | project | Create new project |
+| **theme** | list | Show available themes |
+| | extract | Create custom theme copy |
 
 ---
 
 ## Common Problems
 
-### "The CMD window opens briefly and closes again"
+### "The menu doesn't appear" or "Window closes immediately"
 
-**Cause:** You double-clicked `revela.exe`.
+**Possible causes:**
+- Revela crashed before the menu could load
+- Missing dependencies
 
-**Solution:** Revela is a command-line program and must be started via CMD or PowerShell:
-
-1. Press `Windows + R`
-2. Type `cmd` and press Enter
-3. Navigate to the Revela folder: `cd C:\Revela`
-4. Run the command: `.\revela.exe generate`
+**Solution:** Check if there's an error message in the window before it closes. You may need to reinstall Revela or check the GitHub Issues for known problems.
 
 ### "No images found"
 
@@ -364,7 +350,7 @@ source/
 
 **Solutions:**
 1. Press `Ctrl + F5` in the browser (Hard Refresh)
-2. Run `.\revela.exe clean --all` and regenerate
+2. In Revela: select **clean** → **all**, then **generate** → **all**
 3. Check `site.json` and `project.json` for typos
 
 ---
@@ -373,7 +359,7 @@ source/
 
 Once your website works, you can:
 
-- **Customize theme:** `.\revela.exe theme extract Lumina MyTheme` creates a copy to edit
+- **Customize theme:** In Revela, select **theme** → **extract** to create your own theme copy
 - **Install plugins:** For extended features like OneDrive integration or statistics
 - **Upload to a server:** Upload the `output` folder via FTP/SFTP
 

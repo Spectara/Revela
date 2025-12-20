@@ -28,26 +28,18 @@ public sealed class StatsCommand(
     /// </summary>
     public Command Create()
     {
-        var command = new Command("stats", "Generate statistics page from EXIF data");
-
-        var outputOption = new Option<string?>("--output", "-o")
-        {
-            Description = "Output directory for statistics page (default: from config or source/statistics)"
-        };
-        command.Options.Add(outputOption);
+        var command = new Command("statistics", "Generate statistics JSON from EXIF data");
 
         command.SetAction(async (parseResult, cancellationToken) =>
         {
-            var outputOverride = parseResult.GetValue(outputOption);
-            return await ExecuteAsync(outputOverride, cancellationToken).ConfigureAwait(false);
+            return await ExecuteAsync(cancellationToken).ConfigureAwait(false);
         });
 
         return command;
     }
 
-    private async Task<int> ExecuteAsync(string? outputOverride, CancellationToken cancellationToken)
+    private async Task<int> ExecuteAsync(CancellationToken cancellationToken)
     {
-        _ = outputOverride; // Reserved for future per-page output override
 
         // Check if manifest exists
         var manifestFile = Path.Combine(Directory.GetCurrentDirectory(), ManifestPath);

@@ -84,7 +84,7 @@ public sealed class OneDrivePlugin : IPlugin
         //    Creates: source → onedrive → sync
         var oneDriveCommand = new Command("onedrive", "OneDrive shared folder source");
         oneDriveCommand.Subcommands.Add(sourceCommand.Create());
-        yield return new CommandDescriptor(oneDriveCommand, ParentCommand: "source");
+        yield return new CommandDescriptor(oneDriveCommand, ParentCommand: "source", Order: 20);
     }
 }
 

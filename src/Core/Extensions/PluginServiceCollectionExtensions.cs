@@ -64,6 +64,13 @@ public static class PluginServiceCollectionExtensions
         var options = new PluginOptions();
         configure?.Invoke(options);
 
+        // Always search working directory plugins folder (for project-based workflows)
+        var workingDirPlugins = Path.Combine(Directory.GetCurrentDirectory(), "plugins");
+        if (!options.AdditionalSearchPaths.Contains(workingDirPlugins, StringComparer.OrdinalIgnoreCase))
+        {
+            options.AdditionalSearchPaths.Add(workingDirPlugins);
+        }
+
         // Create null logger for plugin loading
         // Real logging will be available after host is built
         ILogger<PluginLoader> logger = NullLogger<PluginLoader>.Instance;
@@ -194,7 +201,7 @@ sealed file class PluginContextPlaceholder(IReadOnlyList<IPlugin> plugins) : IPl
         realContext.Initialize(serviceProvider);
     }
 
-    public void RegisterCommands(System.CommandLine.RootCommand rootCommand)
+    public void RegisterCommands(System.CommandLine.RootCommand rootCommand, Action<System.CommandLine.Command, int>? onCommandRegistered = null)
     {
         throw new InvalidOperationException(
             "RegisterCommands should be called on the real PluginContext resolved from DI. " +
@@ -217,7 +224,7 @@ sealed file class EmptyPluginContext : IPluginContext
         // No plugins to initialize
     }
 
-    public void RegisterCommands(System.CommandLine.RootCommand rootCommand)
+    public void RegisterCommands(System.CommandLine.RootCommand rootCommand, Action<System.CommandLine.Command, int>? onCommandRegistered = null)
     {
         // No plugin commands to register
     }

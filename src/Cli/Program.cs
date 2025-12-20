@@ -1,7 +1,7 @@
 using System.Text;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using Spectara.Revela.Cli;
+using Spectara.Revela.Cli.Hosting;
 using Spectara.Revela.Commands;
 
 // Enable UTF-8 output for proper Unicode/emoji rendering
@@ -13,6 +13,7 @@ var builder = Host.CreateApplicationBuilder(args);
 // ✅ Pre-build: Load configuration and register services
 builder.AddRevelaConfiguration();
 builder.Services.AddRevelaCommands();
+builder.Services.AddInteractiveMode();
 builder.Services.AddPlugins(builder.Configuration, args);
 
 // ✅ Build host

@@ -13,10 +13,7 @@ Eine Schritt-für-Schritt-Anleitung für Fotografen, um mit Revela eine Portfoli
 - Responsivem Design (funktioniert auf Handy, Tablet, Desktop)
 - Schneller Ladezeit durch optimierte Bildformate (AVIF, WebP, JPG)
 
-**Wichtig:** Revela ist ein **Kommandozeilen-Programm** (CLI = Command Line Interface). Das bedeutet:
-- Es hat **keine grafische Oberfläche** mit Fenstern und Buttons
-- Du steuerst es über **Textbefehle** in der Kommandozeile (CMD oder PowerShell)
-- Wenn du `revela.exe` doppelklickst, passiert scheinbar nichts – das ist normal!
+**Einfach zu bedienen:** Wenn du `revela.exe` doppelklickst, öffnet sich ein **interaktiver Modus** mit einer menügesteuerten Oberfläche. Wähle einfach aus, was du tun möchtest - keine Kommandozeilen-Kenntnisse erforderlich!
 
 ---
 
@@ -46,32 +43,17 @@ C:\Revela\
 
 ### Schritt 1.2: Installation testen
 
-1. Öffne die **Kommandozeile im Revela-Ordner**:
-   
-   **Einfachste Methode (empfohlen):**
-   - Öffne den Ordner `C:\Revela` im Windows Explorer
-   - Rechtsklick auf eine leere Stelle im Ordner
-   - Wähle **"Im Terminal öffnen"** (Windows 11) oder **"PowerShell-Fenster hier öffnen"** (Windows 10)
-   
-   **Alternative über Ausführen-Dialog:**
-   - Drücke `Windows + R`
-   - Tippe `cmd` und drücke Enter
-   - Navigiere zum Revela-Ordner: `cd C:\Revela`
-   
-2. Teste ob Revela funktioniert:
-   ```
-   .\revela.exe --version
-   ```
-   
-   Du solltest die Versionsnummer sehen, z.B.:
-   ```
-   revela 1.0.0
-   ```
+1. Öffne den Ordner `C:\Revela` im Windows Explorer
+2. Doppelklicke auf `revela.exe`
+3. Der **interaktive Modus** öffnet sich mit einem Menü
 
-3. Zeige alle verfügbaren Befehle:
-   ```
-   .\revela.exe --help
-   ```
+Du solltest einen Willkommensbildschirm mit Optionen wie:
+- generate
+- clean
+- init
+- theme
+
+**Das war's!** Du kannst jetzt über das Menü durch Revela navigieren.
 
 ---
 
@@ -79,11 +61,9 @@ C:\Revela\
 
 ### Schritt 2.1: Projekt initialisieren
 
-Öffne die Kommandozeile im Revela-Ordner (wie in Schritt 1.2 beschrieben) und führe aus:
-
-```
-.\revela.exe init project
-```
+1. Doppelklicke `revela.exe` um den interaktiven Modus zu öffnen
+2. Wähle **init** aus dem Menü
+3. Wähle **project**
 
 Revela erstellt automatisch die Grundstruktur:
 
@@ -226,13 +206,11 @@ Die `project.json` enthält technische Einstellungen. Für den Anfang kannst du 
 
 ## 5. Website generieren
 
-### Schritt 5.1: Generate-Befehl ausführen
+### Schritt 5.1: Website generieren
 
-Öffne die Kommandozeile im Revela-Ordner und führe aus:
-
-```
-.\revela.exe generate
-```
+1. Doppelklicke `revela.exe` um den interaktiven Modus zu öffnen
+2. Wähle **generate** aus dem Menü
+3. Wähle **all** um die vollständige Pipeline auszuführen
 
 **Was passiert jetzt?**
 
@@ -254,15 +232,17 @@ Rendering pages   [████████████████████]
 
 ### Schritt 5.2: Nur Teile neu generieren (optional)
 
-Wenn du nur kleine Änderungen gemacht hast, kannst du auch nur Teile neu generieren:
+Im **generate**-Untermenü kannst du auch einzelne Schritte auswählen:
 
-```
-.\revela.exe generate scan      # Quelldateien scannen (immer zuerst, wenn sich Bilder geändert haben)
-.\revela.exe generate images    # Nur Bilder neu verarbeiten
-.\revela.exe generate pages     # Nur HTML-Seiten neu rendern
-```
+| Menü-Option | Was sie macht |
+|-------------|---------------|
+| **all** | Vollständige Pipeline (scan → statistics → pages → images) |
+| **scan** | Quelldateien scannen (zuerst ausführen wenn Bilder geändert) |
+| **statistics** | Statistik-JSON generieren (erfordert Statistics-Plugin) |
+| **pages** | Nur HTML-Seiten neu rendern |
+| **images** | Nur Bilder neu verarbeiten |
 
-**Hinweis:** Wenn du Bilder hinzugefügt/gelöscht oder `_index.md` Dateien geändert hast, führe zuerst `generate scan` aus, damit Revela die Änderungen erkennt.
+**Hinweis:** Wenn du Bilder hinzugefügt/gelöscht oder `_index.md` Dateien geändert hast, führe zuerst **scan** aus, damit Revela die Änderungen erkennt.
 
 ---
 
@@ -298,43 +278,34 @@ Um deine Website online zu stellen, lade den kompletten Inhalt des `output`-Ordn
 
 ---
 
-## 7. Nützliche Befehle
+## 7. Menü-Übersicht
 
-### Alle Befehle auf einen Blick
+### Hauptmenü-Optionen
 
-| Befehl | Beschreibung |
-|--------|--------------|
-| `.\revela.exe --help` | Zeigt alle verfügbaren Befehle |
-| `.\revela.exe init project` | Neues Projekt erstellen |
-| `.\revela.exe generate` | Website generieren |
-| `.\revela.exe generate images` | Nur Bilder verarbeiten |
-| `.\revela.exe generate pages` | Nur HTML-Seiten erstellen |
-| `.\revela.exe clean` | Generierte Dateien löschen |
-| `.\revela.exe clean --all` | Alles löschen (inkl. Cache) |
-| `.\revela.exe theme list` | Verfügbare Themes anzeigen |
-
-### Hilfe zu einzelnen Befehlen
-
-```
-.\revela.exe generate --help
-.\revela.exe clean --help
-.\revela.exe init --help
-```
+| Menü | Untermenü | Beschreibung |
+|------|-----------|-------------|
+| **generate** | all | Website generieren (vollständige Pipeline) |
+| | scan | Quelldateien scannen |
+| | images | Nur Bilder verarbeiten |
+| | pages | Nur HTML-Seiten erstellen |
+| **clean** | all | Alles löschen (output + cache) |
+| | output | Nur output-Verzeichnis löschen |
+| | cache | Nur cache-Verzeichnis löschen |
+| **init** | project | Neues Projekt erstellen |
+| **theme** | list | Verfügbare Themes anzeigen |
+| | extract | Eigene Theme-Kopie erstellen |
 
 ---
 
 ## Häufige Probleme
 
-### "Das CMD-Fenster geht kurz auf und schließt sich wieder"
+### "Das Menü erscheint nicht" oder "Fenster schließt sich sofort"
 
-**Ursache:** Du hast `revela.exe` doppelgeklickt.
+**Mögliche Ursachen:**
+- Revela ist abgestürzt bevor das Menü laden konnte
+- Fehlende Abhängigkeiten
 
-**Lösung:** Revela ist ein Kommandozeilen-Programm und muss über CMD oder PowerShell gestartet werden:
-
-1. Drücke `Windows + R`
-2. Tippe `cmd` und drücke Enter
-3. Navigiere zum Revela-Ordner: `cd C:\Revela`
-4. Führe den Befehl aus: `.\revela.exe generate`
+**Lösung:** Überprüfe ob eine Fehlermeldung im Fenster erscheint bevor es sich schließt. Möglicherweise musst du Revela neu installieren oder die GitHub Issues nach bekannten Problemen durchsuchen.
 
 ### "Keine Bilder gefunden"
 
@@ -364,7 +335,7 @@ source/
 
 **Lösungen:**
 1. Drücke `Strg + F5` im Browser (Hard Refresh)
-2. Führe `.\revela.exe clean --all` aus und generiere neu
+2. In Revela: wähle **clean** → **all**, dann **generate** → **all**
 3. Überprüfe `site.json` und `project.json` auf Tippfehler
 
 ---
@@ -373,7 +344,7 @@ source/
 
 Wenn deine Website funktioniert, kannst du:
 
-- **Theme anpassen:** `.\revela.exe theme extract Lumina MeinTheme` erstellt eine Kopie zum Bearbeiten
+- **Theme anpassen:** In Revela wähle **theme** → **extract** um eine eigene Theme-Kopie zu erstellen
 - **Plugins installieren:** Für erweiterte Funktionen wie OneDrive-Integration oder Statistiken
 - **Auf einen Server hochladen:** Den `output`-Ordner per FTP/SFTP hochladen
 

@@ -48,6 +48,7 @@ public sealed class StatisticsPlugin : IPlugin
 
         // Register Commands for Dependency Injection
         services.AddTransient<StatsCommand>();
+        services.AddTransient<CleanStatisticsCommand>();
 
         // Register Page Template for init commands
         services.AddSingleton<Spectara.Revela.Commands.Init.Abstractions.IPageTemplate, StatsPageTemplate>();
@@ -66,9 +67,15 @@ public sealed class StatisticsPlugin : IPlugin
 
         // Resolve commands from DI container
         var statsCommand = services.GetRequiredService<StatsCommand>();
+        var cleanStatsCommand = services.GetRequiredService<CleanStatisticsCommand>();
 
-        // Register stats command → revela generate stats
-        yield return new CommandDescriptor(statsCommand.Create(), ParentCommand: "generate");
+        // Register stats command → revela generate statistics
+        // Order 20 places it between scan (10) and pages (30) in interactive menu
+        yield return new CommandDescriptor(statsCommand.Create(), ParentCommand: "generate", Order: 20);
+
+        // Register clean statistics command → revela clean statistics
+        // Order 30 places it after output (10) and cache (20) in interactive menu
+        yield return new CommandDescriptor(cleanStatsCommand.Create(), ParentCommand: "clean", Order: CleanStatisticsCommand.Order);
 
         // Note: Init commands (page, config) are automatically registered via IPageTemplate discovery
         // Template: StatsPageTemplate provides PageProperties and ConfigProperties
