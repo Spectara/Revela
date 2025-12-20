@@ -43,7 +43,7 @@ public sealed partial class PluginInstallCommand(
         };
         command.Options.Add(sourceOption);
 
-        command.SetAction(async parseResult =>
+        command.SetAction(async (parseResult, cancellationToken) =>
         {
             var name = parseResult.GetValue(nameArgument);
             var version = parseResult.GetValue(versionOption);
@@ -56,13 +56,14 @@ public sealed partial class PluginInstallCommand(
                 return 1;
             }
 
-            return await ExecuteFromNuGetAsync(name, version, global, source);
+            cancellationToken.ThrowIfCancellationRequested();
+            return await ExecuteFromNuGetAsync(name, version, global, source, cancellationToken);
         });
 
         return command;
     }
 
-    internal async Task<int> ExecuteFromNuGetAsync(string name, string? version, bool global, string? source = null)
+    internal async Task<int> ExecuteFromNuGetAsync(string name, string? version, bool global, string? source = null, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -84,8 +85,9 @@ public sealed partial class PluginInstallCommand(
                 .Spinner(Spinner.Known.Dots)
                 .StartAsync("Installing...", async ctx =>
                 {
+                    cancellationToken.ThrowIfCancellationRequested();
                     ctx.Status($"Downloading {packageId}...");
-                    return await pluginManager.InstallAsync(packageId, version, source, global);
+                    return await pluginManager.InstallAsync(packageId, version, source, global, cancellationToken);
                 });
 
             if (success)

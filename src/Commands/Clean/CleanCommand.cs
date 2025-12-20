@@ -59,7 +59,7 @@ public sealed partial class CleanCommand(ILogger<CleanCommand> logger)
         command.Options.Add(dryRunOption);
         command.Options.Add(forceOption);
 
-        command.SetAction(parseResult =>
+        command.SetAction(async (parseResult, cancellationToken) =>
         {
             var options = new CleanOptions
             {
@@ -69,19 +69,21 @@ public sealed partial class CleanCommand(ILogger<CleanCommand> logger)
                 Force = parseResult.GetValue(forceOption)
             };
 
-            return Execute(options);
+            return await ExecuteAsync(options, cancellationToken).ConfigureAwait(false);
         });
 
         return command;
     }
 
-    private int Execute(CleanOptions options)
+    private async Task<int> ExecuteAsync(CleanOptions options, CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         var targets = new List<CleanTarget>();
 
         // Output is always cleaned (unless only --cache is specified)
         if (!options.CleanCache || options.CleanAll)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             if (Directory.Exists(OutputDirectory))
             {
                 targets.Add(AnalyzeDirectory(OutputDirectory));
@@ -91,6 +93,7 @@ public sealed partial class CleanCommand(ILogger<CleanCommand> logger)
         // Cache is cleaned with --cache or --all
         if (options.CleanCache || options.CleanAll)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             if (Directory.Exists(CacheDirectory))
             {
                 targets.Add(AnalyzeDirectory(CacheDirectory));
@@ -139,7 +142,12 @@ public sealed partial class CleanCommand(ILogger<CleanCommand> logger)
             AnsiConsole.Write(confirmPanel);
             AnsiConsole.WriteLine();
 
-            if (!AnsiConsole.Confirm("Delete all generated files and cache?", defaultValue: false))
+            var confirmed = await AnsiConsole.ConfirmAsync(
+                "Delete all generated files and cache?",
+                defaultValue: false,
+                cancellationToken).ConfigureAwait(false);
+
+            if (!confirmed)
             {
                 AnsiConsole.MarkupLine("[yellow]Aborted.[/]");
                 return 0;
@@ -150,6 +158,7 @@ public sealed partial class CleanCommand(ILogger<CleanCommand> logger)
         var deletedTargets = new List<CleanTarget>();
         foreach (var target in targets)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             try
             {
                 Directory.Delete(target.Path, recursive: true);

@@ -43,10 +43,10 @@ public sealed partial class ConfigInitCommand(
             optionsMap[property] = option;
         }
 
-        command.SetAction(parseResult =>
+        command.SetAction(async (parseResult, cancellationToken) =>
         {
             var values = ExtractValues(parseResult, optionsMap);
-            GenerateConfig(template, values);
+            await GenerateConfigAsync(template, values, cancellationToken).ConfigureAwait(false);
             return 0;
         });
 
@@ -115,8 +115,9 @@ public sealed partial class ConfigInitCommand(
         WriteIndented = true
     };
 
-    private void GenerateConfig(IPageTemplate template, Dictionary<string, object?> values)
+    private async Task GenerateConfigAsync(IPageTemplate template, Dictionary<string, object?> values, CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         // Ensure plugins directory exists
         const string pluginsDir = "plugins";
         Directory.CreateDirectory(pluginsDir);
@@ -132,7 +133,7 @@ public sealed partial class ConfigInitCommand(
         var json = JsonSerializer.Serialize(configObj, JsonOptions);
 
         // Write file
-        File.WriteAllText(configPath, json);
+        await File.WriteAllTextAsync(configPath, json, cancellationToken).ConfigureAwait(false);
 
         LogConfigCreated(logger, configPath, template.DisplayName);
     }

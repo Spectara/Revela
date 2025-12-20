@@ -44,10 +44,10 @@ public sealed partial class PageInitCommand(
             optionsMap[property] = option;
         }
 
-        command.SetAction(parseResult =>
+        command.SetAction(async (parseResult, cancellationToken) =>
         {
             var values = ExtractValues(parseResult, optionsMap);
-            GeneratePage(template, values);
+            await GeneratePageAsync(template, values, cancellationToken).ConfigureAwait(false);
             return 0;
         });
 
@@ -112,8 +112,9 @@ public sealed partial class PageInitCommand(
         return values;
     }
 
-    private void GeneratePage(IPageTemplate template, Dictionary<string, object?> values)
+    private async Task GeneratePageAsync(IPageTemplate template, Dictionary<string, object?> values, CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         // Determine output path (from --path option or property default)
         var pathProperty = template.PageProperties.FirstOrDefault(p => p.Name == "path");
         var outputPath = values.TryGetValue("path", out var pathValue) && pathValue is string strPath
@@ -129,7 +130,7 @@ public sealed partial class PageInitCommand(
         var frontmatter = GenerateFrontmatter(template, values);
 
         // Write file
-        File.WriteAllText(revelaPath, frontmatter);
+        await File.WriteAllTextAsync(revelaPath, frontmatter, cancellationToken).ConfigureAwait(false);
 
         LogPageCreated(logger, revelaPath, template.DisplayName);
     }

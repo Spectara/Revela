@@ -24,17 +24,19 @@ public sealed partial class ThemeListCommand(IThemeResolver themeResolver)
     {
         var command = new Command("list", "List available themes");
 
-        command.SetAction(_ =>
+        command.SetAction(async (_, cancellationToken) =>
         {
-            Execute();
+            await ExecuteAsync(cancellationToken).ConfigureAwait(false);
             return 0;
         });
 
         return command;
     }
 
-    private void Execute()
+    private Task ExecuteAsync(CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
+
         var projectPath = Environment.CurrentDirectory;
         var themes = themeResolver.GetAvailableThemes(projectPath).ToList();
 
@@ -43,7 +45,7 @@ public sealed partial class ThemeListCommand(IThemeResolver themeResolver)
             AnsiConsole.MarkupLine("[yellow]No themes found.[/]");
             AnsiConsole.MarkupLine("");
             AnsiConsole.MarkupLine("Install a theme with [cyan]revela theme add <name>[/]");
-            return;
+            return Task.CompletedTask;
         }
 
         // Build content for panel
@@ -51,6 +53,7 @@ public sealed partial class ThemeListCommand(IThemeResolver themeResolver)
 
         foreach (var theme in themes)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             var metadata = theme.Metadata;
             var source = GetThemeSource(theme);
             var sourceIcon = source == "local" ? "[blue]*[/]" : "[green]+[/]";
@@ -82,6 +85,8 @@ public sealed partial class ThemeListCommand(IThemeResolver themeResolver)
         AnsiConsole.Write(panel);
         AnsiConsole.MarkupLine("");
         AnsiConsole.MarkupLine("[dim]Tip:[/] Use [cyan]revela theme extract <name>[/] to customize a theme");
+
+        return Task.CompletedTask;
     }
 
     private static string GetThemeSource(IThemePlugin theme)

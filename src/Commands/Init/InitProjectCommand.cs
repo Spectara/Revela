@@ -32,27 +32,27 @@ public sealed partial class InitProjectCommand(
         command.Options.Add(nameOption);
         command.Options.Add(authorOption);
 
-        command.SetAction(parseResult =>
+        command.SetAction(async (parseResult, cancellationToken) =>
         {
             var name = parseResult.GetValue(nameOption);
             var author = parseResult.GetValue(authorOption);
 
-            Execute(name, author);
-            return 0;
+            return await ExecuteAsync(name, author, cancellationToken).ConfigureAwait(false);
         });
 
         return command;
     }
 
-    private void Execute(string? name, string? author)
+    private async Task<int> ExecuteAsync(string? name, string? author, CancellationToken cancellationToken)
     {
         try
         {
+            cancellationToken.ThrowIfCancellationRequested();
             // Check if already initialized
             if (File.Exists("project.json") || File.Exists("site.json"))
             {
                 AnsiConsole.MarkupLine("[red]Error:[/] Project already initialized (project.json or site.json exists)");
-                return;
+                return 1;
             }
 
             AnsiConsole.MarkupLine("[blue]>[/] Initializing Revela project...");
@@ -86,8 +86,9 @@ public sealed partial class InitProjectCommand(
             var projectConfig = scaffoldingService.RenderTemplate("Project.project.json", model);
             var siteConfig = scaffoldingService.RenderTemplate("Project.site.json", model);
 
-            File.WriteAllText("project.json", projectConfig);
-            File.WriteAllText("site.json", siteConfig);
+            cancellationToken.ThrowIfCancellationRequested();
+            await File.WriteAllTextAsync("project.json", projectConfig, cancellationToken).ConfigureAwait(false);
+            await File.WriteAllTextAsync("site.json", siteConfig, cancellationToken).ConfigureAwait(false);
 
             // Create empty directories (NO themes/)
             Directory.CreateDirectory("source");
@@ -105,11 +106,13 @@ public sealed partial class InitProjectCommand(
             };
 
             AnsiConsole.Write(panel);
+            return 0;
         }
         catch (Exception ex)
         {
             LogError(ex);
             AnsiConsole.MarkupLine($"[red]Error:[/] {ex.Message}");
+            return 1;
         }
     }
 

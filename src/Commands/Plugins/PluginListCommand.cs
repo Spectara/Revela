@@ -17,19 +17,20 @@ public sealed partial class PluginListCommand(
     {
         var command = new Command("list", "List installed plugins");
 
-        command.SetAction(_ =>
+        command.SetAction(async (_, cancellationToken) =>
         {
-            Execute();
+            await ExecuteAsync(cancellationToken).ConfigureAwait(false);
             return 0;
         });
 
         return command;
     }
 
-    private void Execute()
+    private Task ExecuteAsync(CancellationToken cancellationToken)
     {
         try
         {
+            cancellationToken.ThrowIfCancellationRequested();
             LogListingPlugins();
             var installedPlugins = PluginManager.ListInstalledPlugins().ToList();
 
@@ -39,7 +40,7 @@ public sealed partial class PluginListCommand(
                 AnsiConsole.MarkupLine("[dim]Install plugins with:[/] [cyan]revela plugin install <name>[/]");
                 AnsiConsole.MarkupLine($"[dim]Local directory:[/] {PluginManager.LocalPluginDirectory}");
                 AnsiConsole.MarkupLine($"[dim]Global directory:[/] {PluginManager.GlobalPluginDirectory}");
-                return;
+                return Task.CompletedTask;
             }
 
             var table = new Table
@@ -51,6 +52,7 @@ public sealed partial class PluginListCommand(
 
             foreach (var (name, location) in installedPlugins)
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 var locationStyle = location == "local" ? "[green]local[/]" : "[blue]global[/]";
                 table.AddRow(name, locationStyle);
             }
@@ -65,6 +67,8 @@ public sealed partial class PluginListCommand(
             LogError(ex);
             AnsiConsole.MarkupLine($"[red]Error:[/] {ex.Message}");
         }
+
+        return Task.CompletedTask;
     }
 
     [LoggerMessage(Level = LogLevel.Debug, Message = "Listing installed plugins")]

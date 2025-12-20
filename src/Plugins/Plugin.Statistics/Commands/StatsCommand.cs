@@ -1,11 +1,8 @@
 using System.CommandLine;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Options;
 using Spectre.Console;
 using Spectara.Revela.Commands.Generate.Abstractions;
 using Spectara.Revela.Commands.Generate.Models.Manifest;
 using Spectara.Revela.Plugin.Statistics.Commands.Logging;
-using Spectara.Revela.Plugin.Statistics.Configuration;
 using Spectara.Revela.Plugin.Statistics.Services;
 
 namespace Spectara.Revela.Plugin.Statistics.Commands;
@@ -15,20 +12,14 @@ namespace Spectara.Revela.Plugin.Statistics.Commands;
 /// </summary>
 /// <remarks>
 /// <para>
-/// Uses IServiceProvider for lazy resolution of IManifestRepository
-/// to avoid DI validation issues during startup.
-/// IManifestRepository is registered by Commands.AddGenerateFeature()
-/// and resolved only when the command executes.
-/// </para>
-/// <para>
 /// Output: Creates _index.revela with frontmatter and template reference.
 /// The actual rendering is done by the theme extension (Theme.Lumina.Statistics).
 /// </para>
 /// </remarks>
 public sealed class StatsCommand(
     ILogger<StatsCommand> logger,
-    IServiceProvider serviceProvider,
-    IOptionsMonitor<StatisticsPluginConfig> config)
+    IManifestRepository manifestRepository,
+    StatisticsAggregator aggregator)
 {
     private const string ManifestPath = ".cache/manifest.json";
 
@@ -66,10 +57,6 @@ public sealed class StatsCommand(
             AnsiConsole.MarkupLine("[yellow]Run 'revela generate scan' first to scan your images.[/]");
             return 1;
         }
-
-        // Lazy-resolve IManifestRepository (depends on Commands infrastructure)
-        var manifestRepository = serviceProvider.GetRequiredService<IManifestRepository>();
-
         // Load manifest
         logger.LoadingManifest();
         await manifestRepository.LoadAsync(cancellationToken).ConfigureAwait(false);
@@ -92,9 +79,6 @@ public sealed class StatsCommand(
         }
 
         logger.GeneratingStats(statsPages.Count);
-
-        // Create aggregator with resolved dependencies
-        var aggregator = new StatisticsAggregator(manifestRepository, config, logger);
 
         var generatedCount = 0;
         foreach (var page in statsPages)

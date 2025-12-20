@@ -37,10 +37,10 @@ public sealed partial class ThemeFilesCommand(
         var command = new Command("files", "List all theme files with source information");
         command.Options.Add(themeOption);
 
-        command.SetAction(parseResult =>
+        command.SetAction(async (parseResult, cancellationToken) =>
         {
             var themeName = parseResult.GetValue(themeOption);
-            Execute(themeName);
+            await ExecuteAsync(themeName, cancellationToken).ConfigureAwait(false);
             return 0;
         });
 
@@ -51,8 +51,9 @@ public sealed partial class ThemeFilesCommand(
     private const string ThemeColor = "grey";
     private static readonly string[] ExtensionColors = ["blue", "magenta", "darkcyan", "darkorange", "mediumpurple"];
 
-    private void Execute(string? themeNameOverride)
+    private Task ExecuteAsync(string? themeNameOverride, CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         var projectPath = Environment.CurrentDirectory;
 
         // Get theme name from option or config
@@ -65,7 +66,7 @@ public sealed partial class ThemeFilesCommand(
             AnsiConsole.MarkupLine($"[red]✗[/] Theme [yellow]'{EscapeMarkup(themeName)}'[/] not found.");
             AnsiConsole.MarkupLine("");
             AnsiConsole.MarkupLine("Run [cyan]revela theme list[/] to see available themes.");
-            return;
+            return Task.CompletedTask;
         }
 
         // Get extensions
@@ -96,6 +97,7 @@ public sealed partial class ThemeFilesCommand(
 
         foreach (var entry in templateEntries.OrderBy(e => e.Key, StringComparer.OrdinalIgnoreCase))
         {
+            cancellationToken.ThrowIfCancellationRequested();
             var sourceDisplay = FormatSource(entry, themeName, extensionColorMap);
             templatesTable.AddRow(
                 $"[cyan]{EscapeMarkup(entry.Key)}.revela[/]",
@@ -112,6 +114,7 @@ public sealed partial class ThemeFilesCommand(
 
         foreach (var entry in assetEntries.OrderBy(e => e.Key, StringComparer.OrdinalIgnoreCase))
         {
+            cancellationToken.ThrowIfCancellationRequested();
             var sourceDisplay = FormatSource(entry, themeName, extensionColorMap);
             assetsTable.AddRow(
                 $"[cyan]{EscapeMarkup(entry.Key)}[/]",
@@ -123,8 +126,8 @@ public sealed partial class ThemeFilesCommand(
         var coloredExtensions = extensionNames
             .Select(name => $"[{extensionColorMap[name]}]{EscapeMarkup(name)}[/]");
         var extensionInfo = extensionNames.Count > 0
-            ? $" + {string.Join(", ", coloredExtensions)}"
-            : "";
+            ? " + " + string.Join(", ", coloredExtensions)
+            : string.Empty;
 
         // Create grid to hold both tables with left-aligned titles
         var grid = new Grid();
@@ -156,6 +159,8 @@ public sealed partial class ThemeFilesCommand(
 
         AnsiConsole.MarkupLine("");
         AnsiConsole.MarkupLine("[dim]Tip:[/] Use [cyan]revela theme extract --file <path>[/] to extract specific files for customization");
+
+        return Task.CompletedTask;
     }
 
     private static string FormatSource(

@@ -17,7 +17,7 @@ namespace Spectara.Revela.Plugin.Statistics.Services;
 public sealed partial class StatisticsAggregator(
     IManifestRepository manifestRepository,
     IOptionsMonitor<StatisticsPluginConfig> config,
-    ILogger logger)
+    ILogger<StatisticsAggregator> logger)
 {
     #region Bucket Definitions
 

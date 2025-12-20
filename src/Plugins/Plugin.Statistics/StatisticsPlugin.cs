@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Spectara.Revela.Core.Abstractions;
 using Spectara.Revela.Plugin.Statistics.Commands;
 using Spectara.Revela.Plugin.Statistics.Configuration;
+using Spectara.Revela.Plugin.Statistics.Services;
 
 namespace Spectara.Revela.Plugin.Statistics;
 
@@ -36,17 +37,14 @@ public sealed class StatisticsPlugin : IPlugin
     public void ConfigureServices(IServiceCollection services)
     {
         // Register Plugin Configuration (IOptions pattern)
-        // Note: ValidateOnStart() removed to avoid DI validation issues
-        // Options are validated when first accessed
         services.AddOptions<StatisticsPluginConfig>()
             .BindConfiguration(StatisticsPluginConfig.SectionName)
-            .ValidateDataAnnotations();
+            .ValidateDataAnnotations()
+            .ValidateOnStart();
 
-        // Note: StatisticsAggregator NOT registered here - it depends on IManifestRepository
-        // from Commands which would fail DI validation at startup. It's resolved lazily
-        // in StatsCommand via IServiceProvider.
+        services.AddTransient<StatisticsAggregator>();
 
-        // Note: JsonWriter is now static, no DI needed.
+        // JsonWriter remains static, no DI needed.
 
         // Register Commands for Dependency Injection
         services.AddTransient<StatsCommand>();

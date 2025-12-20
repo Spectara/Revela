@@ -14,14 +14,14 @@ public sealed class StatisticsAggregatorTests
 {
     private readonly IManifestRepository manifestRepository;
     private readonly IOptionsMonitor<StatisticsPluginConfig> config;
-    private readonly ILogger logger;
+    private readonly Microsoft.Extensions.Logging.ILogger<StatisticsAggregator> logger;
 
     public StatisticsAggregatorTests()
     {
         manifestRepository = Substitute.For<IManifestRepository>();
         config = Substitute.For<IOptionsMonitor<StatisticsPluginConfig>>();
         config.CurrentValue.Returns(new StatisticsPluginConfig());
-        logger = Substitute.For<ILogger>();
+        logger = Substitute.For<Microsoft.Extensions.Logging.ILogger<StatisticsAggregator>>();
     }
 
     [TestMethod]

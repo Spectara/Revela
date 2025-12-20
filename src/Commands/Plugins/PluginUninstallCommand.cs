@@ -30,17 +30,17 @@ public sealed partial class PluginUninstallCommand(
         };
         command.Options.Add(yesOption);
 
-        command.SetAction(async parseResult =>
+        command.SetAction(async (parseResult, cancellationToken) =>
         {
             var name = parseResult.GetValue(nameArgument);
             var skipConfirm = parseResult.GetValue(yesOption);
-            return await ExecuteAsync(name!, skipConfirm);
+            return await ExecuteAsync(name!, skipConfirm, cancellationToken);
         });
 
         return command;
     }
 
-    internal async Task<int> ExecuteAsync(string name, bool skipConfirm = false)
+    internal async Task<int> ExecuteAsync(string name, bool skipConfirm = false, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -52,7 +52,7 @@ public sealed partial class PluginUninstallCommand(
                 ? name
                 : $"Spectara.Revela.Plugin.{name}";
 
-            if (!skipConfirm && !await AnsiConsole.ConfirmAsync($"[yellow]Uninstall plugin '{packageId}'?[/]"))
+            if (!skipConfirm && !await AnsiConsole.ConfirmAsync($"[yellow]Uninstall plugin '{packageId}'?[/]", defaultValue: false, cancellationToken))
             {
                 AnsiConsole.MarkupLine("[dim]Cancelled.[/]");
                 return 0;
@@ -61,7 +61,7 @@ public sealed partial class PluginUninstallCommand(
             AnsiConsole.MarkupLine($"[blue]Uninstalling plugin:[/] [cyan]{packageId}[/]");
             LogUninstallingPlugin(packageId);
 
-            var success = await pluginManager.UninstallPluginAsync(packageId);
+            var success = await pluginManager.UninstallPluginAsync(packageId, cancellationToken: cancellationToken);
 
             if (success)
             {
