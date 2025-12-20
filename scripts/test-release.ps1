@@ -441,6 +441,80 @@ try {
     }
 
     # ========================================================================
+    # STEP 7d: Test CLI Commands (create, init, config)
+    # ========================================================================
+    Write-Step "Step 7d: Test CLI Commands (create, init, config)"
+    Measure-Step "CLI Commands" {
+        Push-Location $testProjectDir
+        try {
+            # Test create page gallery
+            Write-Info "Running: revela create page gallery source/test-gallery --title 'Test Gallery'"
+            & $ExePath create page gallery source/test-gallery --title "Test Gallery"
+            if ($LASTEXITCODE -ne 0) { throw "create page gallery failed" }
+            
+            $revelaFile = Join-Path $testProjectDir "source/test-gallery/_index.revela"
+            if (Test-Path $revelaFile) {
+                Write-Success "Gallery page created: source/test-gallery/_index.revela"
+            } else {
+                throw "Gallery page file not created"
+            }
+
+            # Test create page statistics
+            Write-Info "Running: revela create page statistics source/test-stats --title 'Test Stats'"
+            & $ExePath create page statistics source/test-stats --title "Test Stats"
+            if ($LASTEXITCODE -ne 0) { throw "create page statistics failed" }
+            
+            $statsFile = Join-Path $testProjectDir "source/test-stats/_index.revela"
+            if (Test-Path $statsFile) {
+                Write-Success "Statistics page created: source/test-stats/_index.revela"
+            } else {
+                throw "Statistics page file not created"
+            }
+
+            # Test config statistics (non-interactive with args)
+            Write-Info "Running: revela config statistics --max-entries 20"
+            & $ExePath config statistics --max-entries 20
+            if ($LASTEXITCODE -ne 0) { throw "config statistics failed" }
+            Write-Success "Statistics config updated"
+
+            # Test config onedrive (non-interactive with args)
+            Write-Info "Running: revela config onedrive --concurrency 4"
+            & $ExePath config onedrive --concurrency 4
+            if ($LASTEXITCODE -ne 0) { throw "config onedrive failed" }
+            Write-Success "OneDrive config updated"
+
+            # Verify config files were updated
+            $statsConfig = Join-Path $testProjectDir "plugins/Spectara.Revela.Plugin.Statistics.json"
+            if (Test-Path $statsConfig) {
+                $content = Get-Content $statsConfig -Raw | ConvertFrom-Json
+                if ($content.'Spectara.Revela.Plugin.Statistics'.MaxEntriesPerCategory -eq 20) {
+                    Write-Success "Statistics config verified: MaxEntriesPerCategory = 20"
+                } else {
+                    Write-Warn "Statistics config value not as expected"
+                }
+            }
+
+            # Test config show
+            Write-Info "Running: revela config show"
+            $configShowOutput = & $ExePath config show 2>&1 | Out-String
+            if ($LASTEXITCODE -ne 0) { throw "config show failed" }
+            if ($configShowOutput -match "Theme:" -or $configShowOutput -match "project.json") {
+                Write-Success "config show works"
+            } else {
+                Write-Warn "config show output may be incomplete"
+            }
+
+            # Cleanup test directories (keep original structure)
+            Remove-Item (Join-Path $testProjectDir "source/test-gallery") -Recurse -Force -ErrorAction SilentlyContinue
+            Remove-Item (Join-Path $testProjectDir "source/test-stats") -Recurse -Force -ErrorAction SilentlyContinue
+            Write-Info "Test directories cleaned up"
+
+        } finally {
+            Pop-Location
+        }
+    }
+
+    # ========================================================================
     # STEP 8: OneDrive Sync (optional)
     # ========================================================================
     if (-not $SkipDownload) {
