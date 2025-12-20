@@ -1,7 +1,7 @@
 using System.CommandLine;
 using System.Reflection;
 using System.Text.Json;
-using Spectara.Revela.Commands.Init.Abstractions;
+using Spectara.Revela.Sdk.Abstractions;
 
 namespace Spectara.Revela.Commands.Init;
 

@@ -1,7 +1,7 @@
 using System.Text.Json;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Spectara.Revela.Core.Abstractions;
+using Spectara.Revela.Sdk.Abstractions;
 
 namespace Spectara.Revela.Core.Themes;
 
@@ -179,4 +179,27 @@ internal sealed class LocalThemeMetadata : IThemeMetadata
     public required string Author { get; init; }
     public Uri? PreviewImageUri { get; init; }
     public IReadOnlyList<string> Tags { get; init; } = [];
+}
+
+/// <summary>
+/// JSON configuration structure for theme.json
+/// </summary>
+internal sealed class ThemeJsonConfig
+{
+    public string? Name { get; set; }
+    public string? Version { get; set; }
+    public string? Description { get; set; }
+    public string? Author { get; set; }
+    public string? PreviewImageUrl { get; set; }
+    public List<string>? Tags { get; set; }
+    public ThemeTemplatesConfig? Templates { get; set; }
+    public Dictionary<string, string>? Variables { get; set; }
+}
+
+/// <summary>
+/// Templates section in theme.json
+/// </summary>
+internal sealed class ThemeTemplatesConfig
+{
+    public string? Layout { get; set; }
 }

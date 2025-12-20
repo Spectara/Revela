@@ -1,5 +1,5 @@
-using Spectara.Revela.Commands.Generate.Models;
-using Spectara.Revela.Commands.Generate.Models.Manifest;
+using Spectara.Revela.Sdk.Models;
+using Spectara.Revela.Sdk.Models.Manifest;
 using Spectara.Revela.Plugin.Source.OneDrive.Models;
 
 namespace Spectara.Revela.Tests.Shared;

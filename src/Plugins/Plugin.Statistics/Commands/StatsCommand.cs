@@ -1,7 +1,7 @@
 using System.CommandLine;
 using Spectre.Console;
-using Spectara.Revela.Commands.Generate.Abstractions;
-using Spectara.Revela.Commands.Generate.Models.Manifest;
+using Spectara.Revela.Sdk.Abstractions;
+using Spectara.Revela.Sdk.Models.Manifest;
 using Spectara.Revela.Plugin.Statistics.Commands.Logging;
 using Spectara.Revela.Plugin.Statistics.Services;
 

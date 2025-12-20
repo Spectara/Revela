@@ -1,6 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using Spectara.Revela.Commands.Generate.Models.Manifest;
+using Spectara.Revela.Sdk.Models.Manifest;
 
 namespace Spectara.Revela.Commands.Tests.Generate.Models.Manifest;
 

@@ -2,8 +2,8 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using Spectara.Revela.Commands.Generate.Abstractions;
-using Spectara.Revela.Commands.Generate.Models.Manifest;
+using Spectara.Revela.Sdk.Abstractions;
+using Spectara.Revela.Sdk.Models.Manifest;
 
 namespace Spectara.Revela.Commands.Generate.Services;
 

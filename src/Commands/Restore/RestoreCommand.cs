@@ -1,7 +1,7 @@
 using System.CommandLine;
 using Spectara.Revela.Core;
-using Spectara.Revela.Core.Abstractions;
 using Spectara.Revela.Core.Services;
+using Spectara.Revela.Sdk.Abstractions;
 using Spectre.Console;
 
 namespace Spectara.Revela.Commands.Restore;

@@ -1,6 +1,6 @@
 using System.Text.Json.Serialization;
 
-namespace Spectara.Revela.Commands.Generate.Models.Manifest;
+namespace Spectara.Revela.Sdk.Models.Manifest;
 
 /// <summary>
 /// Base record for all gallery content items (images, markdown files, etc.).

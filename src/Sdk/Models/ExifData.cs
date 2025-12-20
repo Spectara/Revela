@@ -1,4 +1,4 @@
-namespace Spectara.Revela.Commands.Generate.Models;
+namespace Spectara.Revela.Sdk.Models;
 
 /// <summary>
 /// EXIF metadata extracted from an image

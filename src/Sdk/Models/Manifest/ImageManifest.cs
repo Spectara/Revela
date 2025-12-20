@@ -1,6 +1,6 @@
 using System.Text.Json.Serialization;
 
-namespace Spectara.Revela.Commands.Generate.Models.Manifest;
+namespace Spectara.Revela.Sdk.Models.Manifest;
 
 /// <summary>
 /// Site manifest for incremental builds and caching.

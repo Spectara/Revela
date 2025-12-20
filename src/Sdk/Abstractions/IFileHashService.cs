@@ -1,4 +1,4 @@
-namespace Spectara.Revela.Core.Abstractions;
+namespace Spectara.Revela.Sdk.Abstractions;
 
 /// <summary>
 /// Service for computing file hashes for change detection.

@@ -1,4 +1,4 @@
-namespace Spectara.Revela.Commands.Init.Abstractions;
+namespace Spectara.Revela.Sdk.Abstractions;
 
 /// <summary>
 /// Defines a page template for creating _index.revela files with frontmatter and optional plugin configuration.

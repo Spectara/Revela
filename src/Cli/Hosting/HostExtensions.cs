@@ -9,7 +9,7 @@ using Spectara.Revela.Commands.Init;
 using Spectara.Revela.Commands.Plugins;
 using Spectara.Revela.Commands.Restore;
 using Spectara.Revela.Commands.Theme;
-using Spectara.Revela.Core.Abstractions;
+using Spectara.Revela.Sdk.Abstractions;
 
 namespace Spectara.Revela.Cli.Hosting;
 

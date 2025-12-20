@@ -1,6 +1,6 @@
 using System.CommandLine;
 
-namespace Spectara.Revela.Core.Abstractions;
+namespace Spectara.Revela.Sdk.Abstractions;
 
 /// <summary>
 /// Context for managing loaded plugins

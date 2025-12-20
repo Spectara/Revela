@@ -4,9 +4,9 @@ using System.Text.Json;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
-using Spectara.Revela.Core.Abstractions;
+using Spectara.Revela.Sdk.Abstractions;
 
-namespace Spectara.Revela.Core.Themes;
+namespace Spectara.Revela.Sdk.Themes;
 
 /// <summary>
 /// Base class for theme extensions with embedded resources
@@ -139,7 +139,6 @@ public abstract class EmbeddedThemeExtension : IThemeExtension
             }
         }
 
-        // Extract all template files
         // Extract all files from the extension
         foreach (var file in GetAllFiles())
         {

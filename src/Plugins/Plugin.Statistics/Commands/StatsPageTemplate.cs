@@ -1,4 +1,4 @@
-using Spectara.Revela.Commands.Init.Abstractions;
+using Spectara.Revela.Sdk.Abstractions;
 
 namespace Spectara.Revela.Plugin.Statistics.Commands;
 

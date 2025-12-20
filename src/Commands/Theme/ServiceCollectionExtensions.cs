@@ -1,7 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
-
-using Spectara.Revela.Core.Abstractions;
 using Spectara.Revela.Core.Services;
+using Spectara.Revela.Sdk.Abstractions;
 
 namespace Spectara.Revela.Commands.Theme;
 

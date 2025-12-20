@@ -4,12 +4,13 @@ using Microsoft.Extensions.Options;
 using Spectara.Revela.Commands.Generate.Abstractions;
 using Spectara.Revela.Commands.Generate.Building;
 using Spectara.Revela.Commands.Generate.Models;
-using Spectara.Revela.Commands.Generate.Models.Manifest;
 using Spectara.Revela.Commands.Generate.Models.Results;
 using Spectara.Revela.Commands.Generate.Parsing;
-using Spectara.Revela.Core.Abstractions;
 using Spectara.Revela.Core.Configuration;
+using Spectara.Revela.Sdk.Abstractions;
 using Spectara.Revela.Core.Services;
+using Spectara.Revela.Sdk.Models.Manifest;
+using IManifestRepository = Spectara.Revela.Sdk.Abstractions.IManifestRepository;
 
 namespace Spectara.Revela.Commands.Generate.Services;
 

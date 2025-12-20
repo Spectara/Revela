@@ -1,5 +1,5 @@
-using Spectara.Revela.Core.Abstractions;
 using Spectara.Revela.Core.Themes;
+using Spectara.Revela.Sdk.Abstractions;
 
 namespace Spectara.Revela.Core.Services;
 

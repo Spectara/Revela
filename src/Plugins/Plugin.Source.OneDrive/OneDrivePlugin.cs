@@ -1,7 +1,7 @@
 using System.CommandLine;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Spectara.Revela.Core.Abstractions;
+using Spectara.Revela.Sdk.Abstractions;
 using Spectara.Revela.Plugin.Source.OneDrive.Commands;
 using Spectara.Revela.Plugin.Source.OneDrive.Configuration;
 using Spectara.Revela.Plugin.Source.OneDrive.Providers;

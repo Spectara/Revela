@@ -1,5 +1,5 @@
 using System.Security.Cryptography;
-using Spectara.Revela.Core.Abstractions;
+using Spectara.Revela.Sdk.Abstractions;
 
 namespace Spectara.Revela.Core.Services;
 

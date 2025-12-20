@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <Description>SDK for building Revela plugins and themes. Provides interfaces, models, and base classes for plugin and theme development.</Description>
+    <AssemblyName>Spectara.Revela.Sdk</AssemblyName>
+    <PackageId>Spectara.Revela.Sdk</PackageId>
+    <PackageTags>revela;sdk;plugin;theme;photography;static-site-generator</PackageTags>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Minimal dependencies - abstractions only! -->
+    <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
+    <PackageReference Include="System.CommandLine" />
+  </ItemGroup>
+
+</Project>

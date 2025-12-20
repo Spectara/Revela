@@ -3,8 +3,8 @@ using Scriban;
 using Scriban.Parsing;
 using Scriban.Runtime;
 using Spectara.Revela.Commands.Generate.Abstractions;
-using Spectara.Revela.Core.Abstractions;
 using Spectara.Revela.Core.Services;
+using Spectara.Revela.Sdk.Abstractions;
 
 namespace Spectara.Revela.Commands.Generate.Services;
 

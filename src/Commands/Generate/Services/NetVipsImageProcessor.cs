@@ -2,6 +2,7 @@ using NetVips;
 using Spectara.Revela.Commands.Generate.Abstractions;
 using Spectara.Revela.Commands.Generate.Mapping;
 using Spectara.Revela.Commands.Generate.Models;
+using Spectara.Revela.Sdk.Models;
 using Image = NetVips.Image;
 
 namespace Spectara.Revela.Commands.Generate.Services;

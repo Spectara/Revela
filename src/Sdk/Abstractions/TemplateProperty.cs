@@ -1,4 +1,4 @@
-namespace Spectara.Revela.Commands.Init.Abstractions;
+namespace Spectara.Revela.Sdk.Abstractions;
 
 /// <summary>
 /// Defines a property for page templates that serves dual purpose as CLI option and frontmatter/config field.

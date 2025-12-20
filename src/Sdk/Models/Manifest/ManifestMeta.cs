@@ -1,6 +1,6 @@
 using System.Text.Json.Serialization;
 
-namespace Spectara.Revela.Commands.Generate.Models.Manifest;
+namespace Spectara.Revela.Sdk.Models.Manifest;
 
 /// <summary>
 /// Manifest metadata for tracking configuration changes.

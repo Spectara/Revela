@@ -1,7 +1,7 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Text.Json.Serialization;
 
-namespace Spectara.Revela.Commands.Generate.Models.Manifest;
+namespace Spectara.Revela.Sdk.Models.Manifest;
 
 /// <summary>
 /// Unified manifest entry representing a node in the site tree.

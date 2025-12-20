@@ -359,7 +359,7 @@ public sealed class PluginManager(HttpClient httpClient, ILogger<PluginManager> 
                    : File.Exists(installedFrom) ? "nupkg"
                    : "nuget";
 
-        var metadata = new PluginMetadata
+        var metadata = new InstalledPluginInfo
         {
             Name = identity.Id,
             Version = identity.Version.ToString(),

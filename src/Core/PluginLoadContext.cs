@@ -26,25 +26,10 @@ internal sealed class PluginLoadContext : AssemblyLoadContext
     /// <remarks>
     /// These assemblies define contracts between host and plugins.
     /// Loading them from the plugin would break type compatibility.
+    /// Note: Spectara.Revela.* and Microsoft.Extensions.* are handled by convention in IsSharedAssembly().
     /// </remarks>
     private static readonly HashSet<string> SharedAssemblies =
     [
-        // Core abstractions (IPlugin, IPluginMetadata, etc.)
-        "Spectara.Revela.Core",
-
-        // Commands (shared for plugins that use IManifestRepository, IImageProcessor, etc.)
-        "Spectara.Revela.Commands",
-
-        // Microsoft.Extensions.* are shared for DI, Configuration, Logging
-        "Microsoft.Extensions.DependencyInjection.Abstractions",
-        "Microsoft.Extensions.DependencyInjection",
-        "Microsoft.Extensions.Configuration.Abstractions",
-        "Microsoft.Extensions.Configuration",
-        "Microsoft.Extensions.Logging.Abstractions",
-        "Microsoft.Extensions.Logging",
-        "Microsoft.Extensions.Options",
-        "Microsoft.Extensions.Primitives",
-
         // System.CommandLine for CLI integration
         "System.CommandLine",
 
@@ -124,8 +109,15 @@ internal sealed class PluginLoadContext : AssemblyLoadContext
 
     private static bool IsSharedAssembly(string assemblyName)
     {
-        // Exact match
+        // Exact match for third-party shared assemblies
         if (SharedAssemblies.Contains(assemblyName))
+        {
+            return true;
+        }
+
+        // Spectara.Revela.* are always shared (Sdk, Core, Commands)
+        // This ensures IPlugin, IThemePlugin etc. are the same type in host and plugins
+        if (assemblyName.StartsWith("Spectara.Revela.", StringComparison.Ordinal))
         {
             return true;
         }

@@ -42,8 +42,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- Reference to host Core - NOT copied to output (loaded from host) -->
-    <ProjectReference Include="..\..\Core\Core.csproj">
+    <!-- Reference to host Sdk - NOT copied to output (loaded from host) -->
+    <ProjectReference Include="..\..\Sdk\Sdk.csproj">
       <Private>false</Private>
       <ExcludeAssets>runtime</ExcludeAssets>
     </ProjectReference>

@@ -1,8 +1,8 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
 using Spectara.Revela.Core;
-using Spectara.Revela.Core.Abstractions;
 using Spectara.Revela.Core.Configuration;
+using Spectara.Revela.Sdk.Abstractions;
 
 namespace Microsoft.Extensions.DependencyInjection;
 

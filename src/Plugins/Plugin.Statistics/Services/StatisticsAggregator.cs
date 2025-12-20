@@ -1,7 +1,7 @@
 using System.Globalization;
 using Microsoft.Extensions.Options;
-using Spectara.Revela.Commands.Generate.Abstractions;
-using Spectara.Revela.Commands.Generate.Models.Manifest;
+using Spectara.Revela.Sdk.Abstractions;
+using Spectara.Revela.Sdk.Models.Manifest;
 using Spectara.Revela.Plugin.Statistics.Configuration;
 using Spectara.Revela.Plugin.Statistics.Models;
 

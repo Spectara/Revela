@@ -1,6 +1,6 @@
 using System.CommandLine;
-using Spectara.Revela.Core.Abstractions;
 using Spectara.Revela.Core.Logging;
+using Spectara.Revela.Sdk.Abstractions;
 
 namespace Spectara.Revela.Core;
 

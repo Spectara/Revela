@@ -2,7 +2,7 @@ using System.CommandLine;
 using System.Globalization;
 using System.Reflection;
 using System.Text;
-using Spectara.Revela.Commands.Init.Abstractions;
+using Spectara.Revela.Sdk.Abstractions;
 
 namespace Spectara.Revela.Commands.Init;
 

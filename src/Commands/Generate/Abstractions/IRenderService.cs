@@ -1,5 +1,5 @@
 using Spectara.Revela.Commands.Generate.Models.Results;
-using Spectara.Revela.Core.Abstractions;
+using Spectara.Revela.Sdk.Abstractions;
 
 namespace Spectara.Revela.Commands.Generate.Abstractions;
 

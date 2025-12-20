@@ -1,6 +1,6 @@
 using System.CommandLine;
 
-namespace Spectara.Revela.Core.Abstractions;
+namespace Spectara.Revela.Sdk.Abstractions;
 
 /// <summary>
 /// Describes a command with its optional parent command and display order.

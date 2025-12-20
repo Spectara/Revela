@@ -1,5 +1,6 @@
 <Solution>
   <Folder Name="/src/">
+    <Project Path="src/Sdk/Sdk.csproj" />
     <Project Path="src/Core/Core.csproj" />
     <Project Path="src/Commands/Commands.csproj" />
     <Project Path="src/Cli/Cli.csproj" />

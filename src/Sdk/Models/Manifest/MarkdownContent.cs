@@ -1,4 +1,4 @@
-namespace Spectara.Revela.Commands.Generate.Models.Manifest;
+namespace Spectara.Revela.Sdk.Models.Manifest;
 
 /// <summary>
 /// Content item representing a markdown file.
