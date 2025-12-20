@@ -219,6 +219,13 @@ try {
         Copy-Item "artifacts/bin/Theme.Lumina/Release/net10.0/$RuntimeIdentifier/Spectara.Revela.Theme.Lumina.dll" $PublishDir
         Write-Success "Theme.Lumina bundled with CLI"
 
+        # Pack SDK (for third-party plugin/theme developers)
+        Write-Info "Packing Sdk..."
+        dotnet pack src/Sdk/Sdk.csproj `
+            -c Release -o $PluginsDir -p:PackageVersion=$Version --verbosity quiet
+        if ($LASTEXITCODE -ne 0) { throw "Sdk pack failed" }
+        Write-Success "Sdk packed"
+
         # Pack Plugin.Source.OneDrive
         Write-Info "Packing Plugin.Source.OneDrive..."
         dotnet pack src/Plugins/Plugin.Source.OneDrive/Plugin.Source.OneDrive.csproj `
