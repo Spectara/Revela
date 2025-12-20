@@ -1,24 +1,41 @@
 using System.CommandLine;
 using Spectara.Revela.Commands.Init.Abstractions;
 using Spectara.Revela.Core.Services;
+using Spectara.Revela.Sdk.Abstractions;
 using Spectre.Console;
+using System.Text.Json;
 
 namespace Spectara.Revela.Commands.Init;
 
 /// <summary>
-/// Handles 'revela init project' command.
+/// Initializes a complete project with all available plugin configurations.
 /// </summary>
-public sealed partial class InitProjectCommand(
-    ILogger<InitProjectCommand> logger,
+/// <remarks>
+/// <para>
+/// This command runs the project initialization and then initializes all
+/// available plugin configurations with their default values.
+/// </para>
+/// <para>
+/// Usage: revela init all
+/// </para>
+/// </remarks>
+public sealed partial class InitAllCommand(
+    ILogger<InitAllCommand> logger,
     IScaffoldingService scaffoldingService,
-    IThemeResolver themeResolver)
+    IThemeResolver themeResolver,
+    IEnumerable<IPageTemplate> templates)
 {
+    private static readonly JsonSerializerOptions JsonOptions = new()
+    {
+        WriteIndented = true
+    };
+
     /// <summary>
-    /// Creates the command definition.
+    /// Creates the 'init all' command.
     /// </summary>
     public Command Create()
     {
-        var command = new Command("project", "Initialize a new Revela project");
+        var command = new Command("all", "Initialize project with all plugin configurations");
 
         command.SetAction(async (_, cancellationToken) =>
         {
@@ -55,7 +72,7 @@ public sealed partial class InitProjectCommand(
                 return 1;
             }
 
-            AnsiConsole.MarkupLine("[blue]>[/] Initializing Revela project...");
+            AnsiConsole.MarkupLine("[blue]>[/] Initializing complete Revela project...\n");
 
             // Use sensible defaults - user can customize via 'revela config'
             var projectName = new DirectoryInfo(Directory.GetCurrentDirectory()).Name;
@@ -91,13 +108,29 @@ public sealed partial class InitProjectCommand(
             await File.WriteAllTextAsync("project.json", projectConfig, cancellationToken).ConfigureAwait(false);
             await File.WriteAllTextAsync("site.json", siteConfig, cancellationToken).ConfigureAwait(false);
 
-            // Create empty directories
+            // Create directories
             Directory.CreateDirectory("source");
             Directory.CreateDirectory("output");
 
+            AnsiConsole.MarkupLine($"[green]✓[/] Created project files with theme [cyan]{defaultTheme}[/]");
+
+            // Initialize all plugin configurations
+            var pluginTemplates = templates.Where(t => t.ConfigProperties.Count > 0).ToList();
+
+            if (pluginTemplates.Count > 0)
+            {
+                AnsiConsole.MarkupLine("");
+                Directory.CreateDirectory("plugins");
+
+                foreach (var template in pluginTemplates)
+                {
+                    await InitializePluginConfigAsync(template, cancellationToken).ConfigureAwait(false);
+                }
+            }
+
             // Success message
-            AnsiConsole.MarkupLine($"\n[green]✓[/] Project '{projectName}' initialized with theme [cyan]{defaultTheme}[/]");
-            AnsiConsole.MarkupLine("[dim]Created: project.json, site.json, source/, output/[/]\n");
+            AnsiConsole.MarkupLine($"\n[green]✓[/] Project '{projectName}' fully initialized");
+            AnsiConsole.MarkupLine("[dim]Created: project.json, site.json, source/, output/, plugins/[/]\n");
 
             // Show next steps
             var panel = new Panel("[bold]Next steps:[/]\n" +
@@ -119,8 +152,79 @@ public sealed partial class InitProjectCommand(
         }
     }
 
+    private async Task InitializePluginConfigAsync(IPageTemplate template, CancellationToken cancellationToken)
+    {
+        var filename = $"{template.ConfigSectionName}.json";
+        var configPath = Path.Combine("plugins", filename);
+
+        // Build config with defaults
+        var config = BuildConfigObject(template);
+
+        // Serialize and write
+        var json = JsonSerializer.Serialize(config, JsonOptions);
+        await File.WriteAllTextAsync(configPath, json, cancellationToken).ConfigureAwait(false);
+
+        LogPluginConfigCreated(logger, configPath, template.DisplayName);
+        AnsiConsole.MarkupLine($"[green]✓[/] Created [cyan]{configPath}[/] ({template.DisplayName})");
+    }
+
+    private static Dictionary<string, object> BuildConfigObject(IPageTemplate template)
+    {
+        var root = new Dictionary<string, object>();
+        var config = new Dictionary<string, object>();
+
+        foreach (var property in template.ConfigProperties)
+        {
+            if (property.DefaultValue == null || property.ConfigKey == null)
+            {
+                continue;
+            }
+
+            SetNestedValue(config, property.ConfigKey, property.DefaultValue);
+        }
+
+        root[template.ConfigSectionName] = config;
+        return root;
+    }
+
+    private static void SetNestedValue(Dictionary<string, object> root, string key, object value)
+    {
+        var segments = key.Split('.');
+
+        if (segments.Length == 1)
+        {
+            root[key] = value;
+            return;
+        }
+
+        var current = root;
+        for (var i = 0; i < segments.Length - 1; i++)
+        {
+            var segment = segments[i];
+            if (!current.TryGetValue(segment, out var nested))
+            {
+                nested = new Dictionary<string, object>();
+                current[segment] = nested;
+            }
+
+            if (nested is Dictionary<string, object> dict)
+            {
+                current = dict;
+            }
+            else
+            {
+                return;
+            }
+        }
+
+        current[segments[^1]] = value;
+    }
+
     [LoggerMessage(Level = LogLevel.Information, Message = "Initializing project '{ProjectName}'")]
     private partial void LogInitializingProject(string projectName);
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Created plugin config: {Path} ({TemplateName})")]
+    private static partial void LogPluginConfigCreated(ILogger logger, string path, string templateName);
 
     [LoggerMessage(Level = LogLevel.Error, Message = "Failed to initialize project")]
     private partial void LogError(Exception exception);

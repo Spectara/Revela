@@ -32,7 +32,7 @@ public sealed partial class RenderService(
     RevelaParser revelaParser,
     IMarkdownService markdownService,
     IConfiguration configuration,
-    IOptions<RevelaConfig> options,
+    IOptionsMonitor<RevelaConfig> options,
     ILogger<RenderService> logger) : IRenderService
 {
     /// <summary>Output directory for generated site</summary>
@@ -41,8 +41,8 @@ public sealed partial class RenderService(
     /// <summary>Source directory for content</summary>
     private const string SourceDirectory = "source";
 
-    /// <summary>Image settings from configuration</summary>
-    private readonly ImageSettings imageSettings = options.Value.Generate.Images;
+    /// <summary>Gets current image settings (supports hot-reload)</summary>
+    private ImageSettings ImageSettings => options.CurrentValue.Generate.Images;
 
     /// <inheritdoc />
     public void SetTheme(IThemePlugin? theme) => templateEngine.SetTheme(theme);
@@ -361,9 +361,9 @@ public sealed partial class RenderService(
         var indexBasePath = CalculateSiteBasePath(config, "");
         var indexImageBasePath = CalculateImageBasePath(config, "");
         var themeVariables = manifest?.Variables ?? new Dictionary<string, string>();
-        var formats = imageSettings.Formats.Count > 0
-            ? imageSettings.Formats
-            : ImageSettings.DefaultFormats;
+        var formats = ImageSettings.Formats.Count > 0
+            ? ImageSettings.Formats
+            : Core.Configuration.ImageSettings.DefaultFormats;
 
         // Get assets from resolver
         var stylesheets = assetResolver.GetStyleSheets();

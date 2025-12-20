@@ -28,14 +28,14 @@ public sealed partial class ContentService(
     NavigationBuilder navigationBuilder,
     IManifestRepository manifestRepository,
     IImageProcessor imageProcessor,
-    IOptions<RevelaConfig> options,
+    IOptionsMonitor<RevelaConfig> options,
     ILogger<ContentService> logger) : IContentService
 {
     /// <summary>Fixed source directory (convention over configuration)</summary>
     private const string SourceDirectory = "source";
 
-    /// <summary>Image settings from configuration</summary>
-    private readonly ImageSettings imageSettings = options.Value.Generate.Images;
+    /// <summary>Gets current image settings (supports hot-reload)</summary>
+    private ImageSettings ImageSettings => options.CurrentValue.Generate.Images;
 
     /// <inheritdoc />
     public async Task<ContentResult> ScanAsync(
@@ -164,8 +164,8 @@ public sealed partial class ContentService(
         var processedCount = 0;
         var skippedCount = 0;
 
-        var minWidth = imageSettings.MinWidth;
-        var minHeight = imageSettings.MinHeight;
+        var minWidth = ImageSettings.MinWidth;
+        var minHeight = ImageSettings.MinHeight;
 
         await Parallel.ForEachAsync(
             images,
@@ -441,7 +441,7 @@ public sealed partial class ContentService(
     private List<int> CalculateSizes(int imageWidth) =>
         // Filter configured sizes to only include those smaller than original
         // Then add original width for full-resolution lightbox
-        [.. imageSettings.Sizes.Where(s => s < imageWidth).Append(imageWidth).Order()];
+        [.. ImageSettings.Sizes.Where(s => s < imageWidth).Append(imageWidth).Order()];
 
     /// <summary>
     /// Counts total manifest entries including children recursively.

@@ -4,12 +4,15 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
 using Spectara.Revela.Commands.Clean.Commands;
+using Spectara.Revela.Commands.Config;
+using Spectara.Revela.Commands.Create;
 using Spectara.Revela.Commands.Generate.Commands;
 using Spectara.Revela.Commands.Init;
 using Spectara.Revela.Commands.Plugins;
 using Spectara.Revela.Commands.Restore;
 using Spectara.Revela.Commands.Theme;
 using Spectara.Revela.Sdk.Abstractions;
+
 
 namespace Spectara.Revela.Cli.Hosting;
 
@@ -57,17 +60,27 @@ internal static class HostExtensions
         var rootCommand = new RootCommand(description);
 
         // Core commands (resolved from DI) with display order
-        // Order: generate (10), source (20-plugin), init (30), theme (40), plugin (50), restore (60), clean (70)
+        // Order: generate (10), source (20-plugin), create (25), init (30), config (35), theme (40), plugin (50), restore (60), clean (70)
         var generateCommand = services.GetRequiredService<GenerateCommand>();
         var generateCmd = generateCommand.Create();
         rootCommand.Subcommands.Add(generateCmd);
         orderRegistry.Register(generateCmd, 10);
         RegisterSubcommandOrders(generateCmd, orderRegistry);
 
+        var createCommand = services.GetRequiredService<CreateCommand>();
+        var createCmd = createCommand.Create();
+        rootCommand.Subcommands.Add(createCmd);
+        orderRegistry.Register(createCmd, 25);
+
         var initCommand = services.GetRequiredService<InitCommand>();
         var initCmd = initCommand.Create();
         rootCommand.Subcommands.Add(initCmd);
         orderRegistry.Register(initCmd, 30);
+
+        var configCommand = services.GetRequiredService<ConfigCommand>();
+        var configCmd = configCommand.Create();
+        rootCommand.Subcommands.Add(configCmd);
+        orderRegistry.Register(configCmd, 35);
 
         var themeCommand = services.GetRequiredService<ThemeCommand>();
         var themeCmd = themeCommand.Create();

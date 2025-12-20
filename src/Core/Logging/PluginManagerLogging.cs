@@ -93,5 +93,21 @@ internal static partial class PluginManagerLogging
 
     [LoggerMessage(Level = LogLevel.Error, Message = "All sources failed for package {packageId}")]
     public static partial void AllSourcesFailed(this ILogger<PluginManager> logger, string packageId);
+
+    // Package search logging
+    [LoggerMessage(Level = LogLevel.Information, Message = "Searching for packages matching '{searchTerm}' in {sourceCount} source(s)")]
+    public static partial void SearchingPackages(this ILogger<PluginManager> logger, string searchTerm, int sourceCount);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Search resource not available for source '{sourceName}'")]
+    public static partial void SearchResourceNotAvailable(this ILogger<PluginManager> logger, string sourceName);
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Search completed for source '{sourceName}': {packageCount} package(s) found")]
+    public static partial void SearchSourceCompleted(this ILogger<PluginManager> logger, string sourceName, int packageCount);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Search failed for source '{sourceName}'")]
+    public static partial void SearchSourceFailed(this ILogger<PluginManager> logger, string sourceName, Exception exception);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Search for '{searchTerm}' completed: {totalCount} package(s) found")]
+    public static partial void SearchCompleted(this ILogger<PluginManager> logger, string searchTerm, int totalCount);
 }
 

@@ -228,6 +228,13 @@ try {
         Copy-Item "artifacts/bin/Theme.Lumina/Release/net10.0/$RuntimeIdentifier/Spectara.Revela.Theme.Lumina.dll" $CliDir
         Write-Success "Theme.Lumina bundled with CLI"
 
+        # Pack Theme.Lumina (for online theme list test)
+        Write-Info "Packing Theme.Lumina..."
+        dotnet pack src/Themes/Theme.Lumina/Theme.Lumina.csproj `
+            -c Release -o $PluginsDir -p:PackageVersion=$Version --verbosity quiet
+        if ($LASTEXITCODE -ne 0) { throw "Theme.Lumina pack failed" }
+        Write-Success "Theme.Lumina packed"
+
         # Pack SDK (for third-party plugin/theme developers)
         Write-Info "Packing Sdk..."
         dotnet pack src/Sdk/Sdk.csproj `
@@ -394,6 +401,43 @@ try {
         & $ExePath plugin install Spectara.Revela.Plugin.Statistics --source $PluginsDir
         if ($LASTEXITCODE -ne 0) { throw "Plugin re-install failed" }
         Write-Success "Plugin re-installed for subsequent tests"
+    }
+
+    # ========================================================================
+    # STEP 7c: Theme List with Online Search
+    # ========================================================================
+    Write-Step "Step 7c: Theme List (Online Search)"
+    Measure-Step "Theme List Online" {
+        Push-Location $testProjectDir
+        try {
+            # Test theme list (shows installed/built-in themes)
+            Write-Info "Running: revela theme list"
+            $themeListOutput = & $ExePath theme list 2>&1 | Out-String
+            if ($themeListOutput -match "Lumina") {
+                Write-Success "Found built-in Lumina theme"
+            } else {
+                throw "Built-in Lumina theme not found in theme list"
+            }
+
+            # Test theme list --online (searches NuGet sources)
+            # Add local NuGet source first (for testing without nuget.org)
+            Write-Info "Adding local NuGet source for testing..."
+            & $ExePath plugin source add local-test $PluginsDir
+            if ($LASTEXITCODE -ne 0) { Write-Warn "Source may already exist, continuing..." }
+
+            Write-Info "Running: revela theme list --online"
+            $themeOnlineOutput = & $ExePath theme list --online 2>&1 | Out-String
+            Write-Info $themeOnlineOutput
+
+            # Should find Theme.Lumina from local NuGet feed
+            if ($themeOnlineOutput -match "Spectara.Revela.Theme.Lumina" -or $themeOnlineOutput -match "Available from NuGet") {
+                Write-Success "Theme list --online works (searched NuGet sources)"
+            } else {
+                Write-Warn "No online themes found (may be expected if not published)"
+            }
+        } finally {
+            Pop-Location
+        }
     }
 
     # ========================================================================

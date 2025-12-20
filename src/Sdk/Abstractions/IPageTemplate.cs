@@ -50,6 +50,15 @@ public interface IPageTemplate
     string ConfigSectionName { get; }
 
     /// <summary>
+    /// Gets a value indicating whether a corresponding 'config {name}' command exists.
+    /// </summary>
+    /// <remarks>
+    /// When true, 'init {name}' will show a hint to use 'config {name}' for interactive configuration.
+    /// Default should be false for templates that only have init commands.
+    /// </remarks>
+    bool HasConfigCommand { get; }
+
+    /// <summary>
     /// Gets the properties that appear in page frontmatter (title, description, etc.).
     /// </summary>
     /// <remarks>

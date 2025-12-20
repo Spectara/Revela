@@ -3,20 +3,32 @@ using System.Globalization;
 using System.Reflection;
 using System.Text;
 using Spectara.Revela.Sdk.Abstractions;
+using Spectre.Console;
 
-namespace Spectara.Revela.Commands.Init;
+namespace Spectara.Revela.Commands.Create;
 
 /// <summary>
 /// Command for creating _index.revela files from page templates.
 /// </summary>
 /// <remarks>
+/// <para>
 /// Discovers all <see cref="IPageTemplate"/> instances via DI and creates subcommands dynamically.
-/// Properties are exposed as CLI options with user values active and defaults commented in frontmatter.
+/// Each template becomes a subcommand under 'create page'.
+/// </para>
+/// <para>
+/// Usage: revela create page &lt;template&gt; &lt;path&gt; [options]
+/// </para>
+/// <para>
+/// The path argument is required. Options are dynamically generated from template properties.
+/// </para>
 /// </remarks>
-public sealed partial class PageInitCommand(
-    ILogger<PageInitCommand> logger,
+public sealed partial class CreatePageCommand(
+    ILogger<CreatePageCommand> logger,
     IEnumerable<IPageTemplate> templates)
 {
+    /// <summary>
+    /// Creates the 'create page' command with template subcommands.
+    /// </summary>
     public Command Create()
     {
         var command = new Command("page", "Create _index.revela file from template");
@@ -34,10 +46,17 @@ public sealed partial class PageInitCommand(
     {
         var command = new Command(template.Name, template.Description);
 
+        // Fixed path argument (required)
+        var pathArgument = new Argument<string>("path")
+        {
+            Description = "Target directory for _index.revela"
+        };
+        command.Arguments.Add(pathArgument);
+
         var optionsMap = new Dictionary<TemplateProperty, Option>();
 
-        // Dynamically create options from template's PageProperties
-        foreach (var property in template.PageProperties)
+        // Dynamically create options from template's PageProperties (excluding path)
+        foreach (var property in template.PageProperties.Where(p => p.Name != "path"))
         {
             var option = CreateOptionFromProperty(property);
             command.Options.Add(option);
@@ -46,9 +65,9 @@ public sealed partial class PageInitCommand(
 
         command.SetAction(async (parseResult, cancellationToken) =>
         {
+            var path = parseResult.GetValue(pathArgument);
             var values = ExtractValues(parseResult, optionsMap);
-            await GeneratePageAsync(template, values, cancellationToken).ConfigureAwait(false);
-            return 0;
+            return await GeneratePageAsync(template, path!, values, cancellationToken).ConfigureAwait(false);
         });
 
         return command;
@@ -112,19 +131,25 @@ public sealed partial class PageInitCommand(
         return values;
     }
 
-    private async Task GeneratePageAsync(IPageTemplate template, Dictionary<string, object?> values, CancellationToken cancellationToken)
+    private async Task<int> GeneratePageAsync(
+        IPageTemplate template,
+        string path,
+        Dictionary<string, object?> values,
+        CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        // Determine output path (from --path option or property default)
-        var pathProperty = template.PageProperties.FirstOrDefault(p => p.Name == "path");
-        var outputPath = values.TryGetValue("path", out var pathValue) && pathValue is string strPath
-            ? strPath
-            : pathProperty?.DefaultValue as string ?? "source";
 
         // Ensure directory exists
-        Directory.CreateDirectory(outputPath);
+        Directory.CreateDirectory(path);
 
-        var revelaPath = Path.Combine(outputPath, "_index.revela");
+        var revelaPath = Path.Combine(path, "_index.revela");
+
+        // Check if file already exists
+        if (File.Exists(revelaPath))
+        {
+            AnsiConsole.MarkupLine($"[red]Error:[/] File already exists: [cyan]{revelaPath}[/]");
+            return 1;
+        }
 
         // Generate frontmatter
         var frontmatter = GenerateFrontmatter(template, values);
@@ -133,6 +158,9 @@ public sealed partial class PageInitCommand(
         await File.WriteAllTextAsync(revelaPath, frontmatter, cancellationToken).ConfigureAwait(false);
 
         LogPageCreated(logger, revelaPath, template.DisplayName);
+        AnsiConsole.MarkupLine($"[green]✓[/] Created [cyan]{revelaPath}[/]");
+
+        return 0;
     }
 
     private static string GenerateFrontmatter(IPageTemplate template, Dictionary<string, object?> values)
@@ -152,19 +180,21 @@ public sealed partial class PageInitCommand(
                 var formattedValue = FormatValue(property, userValue);
                 sb.AppendLine(string.Format(CultureInfo.InvariantCulture, "{0} = {1}", property.FrontmatterKey, formattedValue));
             }
-            else
+            else if (property.DefaultValue != null)
             {
-                // No user value - write default as comment
+                // No user value - write default as active (not commented)
                 var formattedDefault = FormatValue(property, property.DefaultValue);
-                sb.AppendLine(string.Format(CultureInfo.InvariantCulture, "# {0} = {1}", property.FrontmatterKey, formattedDefault));
+                sb.AppendLine(string.Format(CultureInfo.InvariantCulture, "{0} = {1}", property.FrontmatterKey, formattedDefault));
             }
         }
 
-        // Hardcoded template field
-        sb.AppendLine(string.Format(CultureInfo.InvariantCulture, "template = \"{0}\"", template.TemplateName));
+        // Template field (only if specified)
+        if (!string.IsNullOrEmpty(template.TemplateName))
+        {
+            sb.AppendLine(string.Format(CultureInfo.InvariantCulture, "template = \"{0}\"", template.TemplateName));
+        }
 
-        // Hardcoded data sources (template-specific)
-        // For statistics: data = { statistics: "statistics.json" }
+        // Template-specific data sources
         if (template.Name == "statistics")
         {
             sb.AppendLine("data = { statistics: \"statistics.json\" }");

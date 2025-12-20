@@ -28,17 +28,19 @@ internal static class HostBuilderExtensions
         var workingDirectory = Directory.GetCurrentDirectory();
 
         // Load project.json (project-specific config)
+        // reloadOnChange: true enables hot-reload when config is modified during interactive session
         builder.Configuration.AddJsonFile(
             Path.Combine(workingDirectory, "project.json"),
             optional: true,
-            reloadOnChange: false
+            reloadOnChange: true
         );
 
         // Load site.json (site metadata)
+        // reloadOnChange: true enables hot-reload when config is modified during interactive session
         builder.Configuration.AddJsonFile(
             Path.Combine(workingDirectory, "site.json"),
             optional: true,
-            reloadOnChange: false
+            reloadOnChange: true
         );
 
         // Load logging.json (optional logging config with hot-reload)
