@@ -74,6 +74,7 @@ $Timestamp = [DateTime]::Now.ToString('yyyyMMdd-HHmmss')
 $TestDir = Join-Path $RepoRoot "artifacts/release-test-$Timestamp"
 $PublishDir = Join-Path $TestDir "publish"
 $NuGetDir = Join-Path $TestDir "nuget"
+$PluginsDir = Join-Path $TestDir "plugins"
 $ToolDir = Join-Path $TestDir "tool"
 $SampleDir = Join-Path $RepoRoot "samples/onedrive"
 
@@ -135,6 +136,7 @@ try {
         New-Item -ItemType Directory -Path $TestDir -Force | Out-Null
         New-Item -ItemType Directory -Path $PublishDir -Force | Out-Null
         New-Item -ItemType Directory -Path $NuGetDir -Force | Out-Null
+        New-Item -ItemType Directory -Path $PluginsDir -Force | Out-Null
         New-Item -ItemType Directory -Path $ToolDir -Force | Out-Null
         Write-Success "Created test directories"
     }
@@ -236,27 +238,34 @@ try {
         # Pack Plugin.Source.OneDrive
         Write-Info "Packing Plugin.Source.OneDrive..."
         dotnet pack src/Plugins/Plugin.Source.OneDrive/Plugin.Source.OneDrive.csproj `
-            -c Release -o $NuGetDir -p:PackageVersion=$Version --verbosity quiet
+            -c Release -o $PluginsDir -p:PackageVersion=$Version --verbosity quiet
         if ($LASTEXITCODE -ne 0) { throw "OneDrive plugin pack failed" }
         Write-Success "Plugin.Source.OneDrive packed"
 
         # Pack Plugin.Statistics
         Write-Info "Packing Plugin.Statistics..."
         dotnet pack src/Plugins/Plugin.Statistics/Plugin.Statistics.csproj `
-            -c Release -o $NuGetDir -p:PackageVersion=$Version --verbosity quiet
+            -c Release -o $PluginsDir -p:PackageVersion=$Version --verbosity quiet
         if ($LASTEXITCODE -ne 0) { throw "Statistics plugin pack failed" }
         Write-Success "Plugin.Statistics packed"
 
         # Pack Theme.Lumina.Statistics
         Write-Info "Packing Theme.Lumina.Statistics..."
         dotnet pack src/Themes/Theme.Lumina.Statistics/Theme.Lumina.Statistics.csproj `
-            -c Release -o $NuGetDir -p:PackageVersion=$Version --verbosity quiet
+            -c Release -o $PluginsDir -p:PackageVersion=$Version --verbosity quiet
         if ($LASTEXITCODE -ne 0) { throw "Theme.Lumina.Statistics pack failed" }
         Write-Success "Theme.Lumina.Statistics packed"
 
-        # List all NuGet packages
-        Write-Info "NuGet packages:"
+        # List SDK package (for developers)
+        Write-Info "SDK package (nuget/):"
         Get-ChildItem $NuGetDir -Filter "*.nupkg" | ForEach-Object {
+            $size = [math]::Round($_.Length / 1KB, 1)
+            Write-Info "  $($_.Name) ($size KB)"
+        }
+
+        # List plugin packages (for installation)
+        Write-Info "Plugin packages (plugins/):"
+        Get-ChildItem $PluginsDir -Filter "*.nupkg" | ForEach-Object {
             $size = [math]::Round($_.Length / 1KB, 1)
             Write-Info "  $($_.Name) ($size KB)"
         }
@@ -293,19 +302,19 @@ try {
         try {
             # Install OneDrive Plugin from local NuGet feed
             Write-Info "Installing Plugin.Source.OneDrive..."
-            & $ExePath plugin install Source.OneDrive --version $Version --source $NuGetDir
+            & $ExePath plugin install Source.OneDrive --version $Version --source $PluginsDir
             if ($LASTEXITCODE -ne 0) { throw "OneDrive plugin installation failed" }
             Write-Success "Plugin.Source.OneDrive installed"
 
             # Install Statistics Plugin
             Write-Info "Installing Plugin.Statistics..."
-            & $ExePath plugin install Statistics --version $Version --source $NuGetDir
+            & $ExePath plugin install Statistics --version $Version --source $PluginsDir
             if ($LASTEXITCODE -ne 0) { throw "Statistics plugin installation failed" }
             Write-Success "Plugin.Statistics installed"
 
             # Install Theme.Lumina.Statistics Extension
             Write-Info "Installing Theme.Lumina.Statistics..."
-            & $ExePath plugin install Spectara.Revela.Theme.Lumina.Statistics --version $Version --source $NuGetDir
+            & $ExePath plugin install Spectara.Revela.Theme.Lumina.Statistics --version $Version --source $PluginsDir
             if ($LASTEXITCODE -ne 0) { throw "Theme.Lumina.Statistics installation failed" }
             Write-Success "Theme.Lumina.Statistics installed"
 
@@ -377,7 +386,7 @@ try {
 
         # Re-install for subsequent tests
         Write-Info "Re-installing Statistics plugin..."
-        & $ExePath plugin install Spectara.Revela.Plugin.Statistics --source $NuGetDir
+        & $ExePath plugin install Spectara.Revela.Plugin.Statistics --source $PluginsDir
         if ($LASTEXITCODE -ne 0) { throw "Plugin re-install failed" }
         Write-Success "Plugin re-installed for subsequent tests"
     }
@@ -638,7 +647,8 @@ try {
     # Artifact locations
     Write-Host "  Artifacts:" -ForegroundColor White
     Write-Host "    CLI:      $ExePath" -ForegroundColor Gray
-    Write-Host "    NuGet:    $NuGetDir" -ForegroundColor Gray
+    Write-Host "    SDK:      $NuGetDir" -ForegroundColor Gray
+    Write-Host "    Plugins:  $PluginsDir" -ForegroundColor Gray
     Write-Host "    Tool:     $ToolDir" -ForegroundColor Gray
     Write-Host "    Output:   $(Join-Path $testProjectDir 'output')" -ForegroundColor Gray
     Write-Host ""
