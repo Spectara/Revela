@@ -1,5 +1,9 @@
 using System.CommandLine;
+using Spectara.Revela.Commands.Config.Images;
+using Spectara.Revela.Commands.Config.Revela;
 using Spectara.Revela.Commands.Config.Services;
+using Spectara.Revela.Commands.Config.Site;
+using Spectara.Revela.Commands.Config.Theme;
 using Spectre.Console;
 
 namespace Spectara.Revela.Commands.Config;
@@ -15,8 +19,10 @@ public sealed class ConfigCommand(
     IConfigService configService,
     ConfigThemeCommand themeCommand,
     ConfigSiteCommand siteCommand,
-    ConfigImagesCommand imagesCommand,
-    ConfigShowCommand showCommand)
+    ConfigImageCommand imageCommand,
+    ConfigShowCommand showCommand,
+    ConfigFeedCommand feedCommand,
+    ConfigPathCommand pathCommand)
 {
     /// <summary>
     /// Creates the command definition.
@@ -25,11 +31,15 @@ public sealed class ConfigCommand(
     {
         var command = new Command("config", "Configure project settings");
 
-        // Add subcommands
+        // Project subcommands
         command.Subcommands.Add(themeCommand.Create());
         command.Subcommands.Add(siteCommand.Create());
-        command.Subcommands.Add(imagesCommand.Create());
+        command.Subcommands.Add(imageCommand.Create());
         command.Subcommands.Add(showCommand.Create());
+
+        // Revela (global) subcommands
+        command.Subcommands.Add(feedCommand.Create());
+        command.Subcommands.Add(pathCommand.Create());
 
         // Default action: interactive menu
         command.SetAction(async (_, cancellationToken) =>
@@ -70,16 +80,30 @@ public sealed class ConfigCommand(
             var choice = AnsiConsole.Prompt(
                 new SelectionPrompt<MenuChoice>()
                     .Title("[cyan]What would you like to configure?[/]")
-                    .PageSize(8)
+                    .PageSize(14)
                     .HighlightStyle(new Style(Color.Cyan1, decoration: Decoration.Bold))
                     .AddChoices(
+                        // Project Section
+                        new MenuChoice("header-project", "───── Project Settings ─────", "", IsHeader: true),
                         new MenuChoice("theme", "Theme", "Select the site theme"),
                         new MenuChoice("site", "Site metadata", "Title, author, description"),
-                        new MenuChoice("images", "Image settings", "Formats, quality, sizes"),
+                        new MenuChoice("image", "Image settings", "Formats, quality, sizes"),
+                        // Revela Section
+                        new MenuChoice("header-revela", "───── Revela Settings ─────", "", IsHeader: true),
+                        new MenuChoice("feed", "NuGet feeds", "Manage plugin sources"),
+                        new MenuChoice("path", "Show paths", "Display config locations"),
+                        // Actions
+                        new MenuChoice("header-actions", "─────────────────────────────", "", IsHeader: true),
                         new MenuChoice("show", "Show current config", "Display configuration"),
                         new MenuChoice("exit", "Exit", "Save and exit")));
 
             AnsiConsole.WriteLine();
+
+            // Skip headers (user shouldn't be able to select them, but handle it)
+            if (choice.IsHeader)
+            {
+                continue;
+            }
 
             if (choice.Id == "exit")
             {
@@ -91,7 +115,9 @@ public sealed class ConfigCommand(
             {
                 "theme" => await themeCommand.ExecuteAsync(null, cancellationToken).ConfigureAwait(false),
                 "site" => await siteCommand.ExecuteAsync(null, null, null, null, cancellationToken).ConfigureAwait(false),
-                "images" => await imagesCommand.ExecuteAsync(null, null, cancellationToken).ConfigureAwait(false),
+                "image" => await imageCommand.ExecuteAsync(null, null, cancellationToken).ConfigureAwait(false),
+                "feed" => await ExecuteFeedMenuAsync(cancellationToken).ConfigureAwait(false),
+                "path" => ExecutePathCommand(),
                 "show" => await ExecuteShowAsync(cancellationToken).ConfigureAwait(false),
                 _ => 0
             };
@@ -107,6 +133,52 @@ public sealed class ConfigCommand(
             }
         }
 
+        return 0;
+    }
+
+    private static async Task<int> ExecuteFeedMenuAsync(CancellationToken cancellationToken)
+    {
+        // Show current feeds
+        var config = await Core.Services.GlobalConfigManager.LoadAsync(cancellationToken).ConfigureAwait(false);
+
+        var table = new Table()
+            .Border(TableBorder.Rounded)
+            .AddColumn("Name")
+            .AddColumn("URL")
+            .AddColumn("Type");
+
+        table.AddRow("[cyan]nuget.org[/]", "[dim]https://api.nuget.org/v3/index.json[/]", "[blue]built-in[/]");
+
+        foreach (var feed in config.Feeds)
+        {
+            var feedType = feed.Url.StartsWith("http", StringComparison.OrdinalIgnoreCase) ? "remote" : "local";
+            table.AddRow($"[cyan]{feed.Name}[/]", $"[dim]{feed.Url}[/]", feedType == "local" ? "[green]local[/]" : "[dim]remote[/]");
+        }
+
+        AnsiConsole.Write(table);
+        AnsiConsole.WriteLine();
+        AnsiConsole.MarkupLine("[dim]Use CLI to modify:[/]");
+        AnsiConsole.MarkupLine("  [cyan]revela config feed add <name> <url>[/]");
+        AnsiConsole.MarkupLine("  [cyan]revela config feed remove <name>[/]");
+
+        return 0;
+    }
+
+    private static int ExecutePathCommand()
+    {
+        var locationType = Core.Services.ConfigPathResolver.IsPortableInstallation ? "Portable" : "User";
+
+        var table = new Table()
+            .Border(TableBorder.Rounded)
+            .AddColumn("Setting")
+            .AddColumn("Path");
+
+        table.AddRow("[cyan]Installation Type[/]", $"[green]{locationType}[/]");
+        table.AddRow("[cyan]Config Directory[/]", $"[dim]{Core.Services.ConfigPathResolver.ConfigDirectory}[/]");
+        table.AddRow("[cyan]Config File[/]", $"[dim]{Core.Services.GlobalConfigManager.ConfigFilePath}[/]");
+        table.AddRow("[cyan]Plugins (local)[/]", $"[dim]{Core.Services.ConfigPathResolver.LocalPluginDirectory}[/]");
+
+        AnsiConsole.Write(table);
         return 0;
     }
 
@@ -146,8 +218,10 @@ public sealed class ConfigCommand(
     /// <summary>
     /// Represents a menu choice in the interactive wizard.
     /// </summary>
-    private sealed record MenuChoice(string Id, string Title, string Description)
+    private sealed record MenuChoice(string Id, string Title, string Description, bool IsHeader = false)
     {
-        public override string ToString() => $"{Title} [dim]- {Description}[/]";
+        public override string ToString() => IsHeader
+            ? $"[dim]{Title}[/]"
+            : $"{Title} [dim]- {Description}[/]";
     }
 }

@@ -14,6 +14,7 @@ namespace Spectara.Revela.Commands.Init;
 /// Subcommands:
 /// - project: Initialize a new Revela project
 /// - all: Initialize project with all plugin configurations
+/// - revela: Initialize global Revela configuration
 /// - [plugin]: Create plugin configuration file (flattened)
 /// </para>
 /// <para>
@@ -28,6 +29,7 @@ public sealed partial class InitCommand(
     ILogger<InitCommand> logger,
     InitProjectCommand projectCommand,
     InitAllCommand allCommand,
+    InitRevelaCommand revelaCommand,
     IEnumerable<IPageTemplate> templates)
 {
     private static readonly JsonSerializerOptions JsonOptions = new()
@@ -45,6 +47,7 @@ public sealed partial class InitCommand(
         // Add fixed subcommands
         command.Subcommands.Add(projectCommand.Create());
         command.Subcommands.Add(allCommand.Create());
+        command.Subcommands.Add(revelaCommand.Create());
 
         // Add flattened plugin config commands (was: init config <plugin>)
         foreach (var template in templates.Where(t => t.ConfigProperties.Count > 0))

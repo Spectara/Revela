@@ -3,7 +3,7 @@ using Spectara.Revela.Commands.Config.Models;
 using Spectara.Revela.Commands.Config.Services;
 using Spectre.Console;
 
-namespace Spectara.Revela.Commands.Config;
+namespace Spectara.Revela.Commands.Config.Site;
 
 /// <summary>
 /// Command to configure site metadata.

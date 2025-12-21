@@ -4,7 +4,7 @@ using Spectara.Revela.Commands.Config.Models;
 using Spectara.Revela.Commands.Config.Services;
 using Spectre.Console;
 
-namespace Spectara.Revela.Commands.Config;
+namespace Spectara.Revela.Commands.Config.Images;
 
 /// <summary>
 /// Command to configure image processing settings.
@@ -12,8 +12,8 @@ namespace Spectara.Revela.Commands.Config;
 /// <remarks>
 /// Configures output formats, quality, and sizes in project.json.
 /// </remarks>
-public sealed partial class ConfigImagesCommand(
-    ILogger<ConfigImagesCommand> logger,
+public sealed partial class ConfigImageCommand(
+    ILogger<ConfigImageCommand> logger,
     IConfigService configService)
 {
     private static readonly Dictionary<string, int> DefaultQualities = new()
@@ -30,7 +30,7 @@ public sealed partial class ConfigImagesCommand(
     /// </summary>
     public Command Create()
     {
-        var command = new Command("images", "Configure image processing settings");
+        var command = new Command("image", "Configure image processing settings");
 
         var formatsOption = new Option<string?>("--formats", "-f")
         {
@@ -180,7 +180,7 @@ public sealed partial class ConfigImagesCommand(
         await configService.UpdateProjectConfigAsync(update, cancellationToken).ConfigureAwait(false);
 
         var formatList = string.Join(", ", formats.Select(f => $"{f.Key}:{f.Value}"));
-        LogImagesConfigured(formatList, string.Join(", ", sizes));
+        LogImageConfigured(formatList, string.Join(", ", sizes));
         AnsiConsole.MarkupLine("[green]✓[/] Image settings updated");
 
         return 0;
@@ -269,7 +269,7 @@ public sealed partial class ConfigImagesCommand(
 
         await configService.UpdateProjectConfigAsync(update, cancellationToken).ConfigureAwait(false);
 
-        LogImagesConfigured(string.Join(", ", selectedFormats), string.Join(", ", sizes));
+        LogImageConfigured(string.Join(", ", selectedFormats), string.Join(", ", sizes));
         AnsiConsole.MarkupLine("\n[green]✓[/] Image settings updated");
 
         // Show summary
@@ -311,6 +311,6 @@ public sealed partial class ConfigImagesCommand(
         return sizes;
     }
 
-    [LoggerMessage(Level = LogLevel.Information, Message = "Images configured: formats=[{Formats}], sizes=[{Sizes}]")]
-    private partial void LogImagesConfigured(string formats, string sizes);
+    [LoggerMessage(Level = LogLevel.Information, Message = "Image configured: formats=[{Formats}], sizes=[{Sizes}]")]
+    private partial void LogImageConfigured(string formats, string sizes);
 }

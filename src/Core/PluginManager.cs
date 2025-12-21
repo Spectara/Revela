@@ -171,7 +171,7 @@ public sealed class PluginManager(HttpClient httpClient, ILogger<PluginManager> 
     }
 
     /// <summary>
-    /// Resolves a source name to URL (checks nuget-sources.json, falls back to treating as URL)
+    /// Resolves a source name to URL (checks revela.json feeds, falls back to treating as URL)
     /// </summary>
     private async Task<string> ResolveSourceAsync(string source, CancellationToken cancellationToken)
     {

@@ -5,7 +5,7 @@ using Spectara.Revela.Core.Services;
 using Spectara.Revela.Sdk.Abstractions;
 using Spectre.Console;
 
-namespace Spectara.Revela.Commands.Config;
+namespace Spectara.Revela.Commands.Config.Theme;
 
 /// <summary>
 /// Command to configure the theme.

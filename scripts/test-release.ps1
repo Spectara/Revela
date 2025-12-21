@@ -76,7 +76,8 @@ $CliDir = Join-Path $TestDir "cli"
 $NuGetDir = Join-Path $TestDir "nuget"
 $PluginsDir = Join-Path $TestDir "plugins"
 $ToolDir = Join-Path $TestDir "tool"
-$SampleDir = Join-Path $RepoRoot "samples/onedrive"
+$SampleProjectDir = Join-Path $TestDir "sample"
+$SampleSourceDir = Join-Path $RepoRoot "samples/onedrive"
 
 # Determine runtime identifier
 if (-not $RuntimeIdentifier) {
@@ -283,29 +284,27 @@ try {
     # ========================================================================
     Write-Step "Step 6: Integration Test Setup"
     Measure-Step "Integration Setup" {
-        $testProjectDir = Join-Path $TestDir "test-project"
-        New-Item -ItemType Directory -Path $testProjectDir -Force | Out-Null
+        New-Item -ItemType Directory -Path $SampleProjectDir -Force | Out-Null
 
-        # Copy project files from onedrive sample
-        Copy-Item "$SampleDir/project.json" $testProjectDir
-        Copy-Item "$SampleDir/site.json" $testProjectDir
+        # Copy project files from onedrive sample (without source - will be downloaded or copied later)
+        Copy-Item "$SampleSourceDir/project.json" $SampleProjectDir
+        Copy-Item "$SampleSourceDir/site.json" $SampleProjectDir
 
         # Create plugins config folder and copy JSON configs
-        $testPluginsConfig = Join-Path $testProjectDir "plugins"
-        New-Item -ItemType Directory -Path $testPluginsConfig -Force | Out-Null
-        Copy-Item "$SampleDir/plugins/*.json" $testPluginsConfig
+        $samplePluginsConfig = Join-Path $SampleProjectDir "plugins"
+        New-Item -ItemType Directory -Path $samplePluginsConfig -Force | Out-Null
+        Copy-Item "$SampleSourceDir/plugins/*.json" $samplePluginsConfig
 
-        Write-Success "Test project created at: $testProjectDir"
+        Write-Success "Sample project created at: $SampleProjectDir"
     }
 
     # ========================================================================
     # STEP 7: Install Plugins via NuGet (local feed)
     # ========================================================================
-    $testProjectDir = Join-Path $TestDir "test-project"
 
     Write-Step "Step 7: Install Plugins (NuGet from local feed)"
     Measure-Step "Install Plugins" {
-        Push-Location $testProjectDir
+        Push-Location $SampleProjectDir
         try {
             # Install OneDrive Plugin from local NuGet feed
             Write-Info "Installing Plugin.Source.OneDrive..."
@@ -408,7 +407,7 @@ try {
     # ========================================================================
     Write-Step "Step 7c: Theme List (Online Search)"
     Measure-Step "Theme List Online" {
-        Push-Location $testProjectDir
+        Push-Location $SampleProjectDir
         try {
             # Test theme list (shows installed/built-in themes)
             Write-Info "Running: revela theme list"
@@ -421,9 +420,9 @@ try {
 
             # Test theme list --online (searches NuGet sources)
             # Add local NuGet source first (for testing without nuget.org)
-            Write-Info "Adding local NuGet source for testing..."
-            & $ExePath plugin source add local-test $PluginsDir
-            if ($LASTEXITCODE -ne 0) { Write-Warn "Source may already exist, continuing..." }
+            Write-Info "Adding local NuGet feed for testing..."
+            & $ExePath config feed add local-test $PluginsDir
+            if ($LASTEXITCODE -ne 0) { Write-Warn "Feed may already exist, continuing..." }
 
             Write-Info "Running: revela theme list --online"
             $themeOnlineOutput = & $ExePath theme list --online 2>&1 | Out-String
@@ -441,18 +440,52 @@ try {
     }
 
     # ========================================================================
-    # STEP 7d: Test CLI Commands (create, init, config)
+    # STEP 7d: Get Source Content (OneDrive Sync or Copy)
     # ========================================================================
-    Write-Step "Step 7d: Test CLI Commands (create, init, config)"
+    if (-not $SkipDownload) {
+        Write-Step "Step 7d: OneDrive Sync"
+        Measure-Step "OneDrive Sync" {
+            Write-Info "Running: revela source onedrive sync"
+            Push-Location $SampleProjectDir
+            try {
+                & $ExePath source onedrive sync
+                if ($LASTEXITCODE -ne 0) { throw "OneDrive sync failed" }
+                Write-Success "OneDrive sync completed"
+
+                # Show downloaded files
+                $sourceDir = Join-Path $SampleProjectDir "source"
+                if (Test-Path $sourceDir) {
+                    $fileCount = (Get-ChildItem $sourceDir -Recurse -File).Count
+                    Write-Info "Downloaded $fileCount files to source/"
+                }
+            } finally {
+                Pop-Location
+            }
+        }
+    } else {
+        Write-Step "Step 7d: Copy Source [OneDrive SKIPPED]"
+        Measure-Step "Copy Source" {
+            # Copy existing source files from sample
+            Copy-Item "$SampleSourceDir/source" $SampleProjectDir -Recurse
+            $sourceDir = Join-Path $SampleProjectDir "source"
+            $fileCount = (Get-ChildItem $sourceDir -Recurse -File).Count
+            Write-Success "Copied $fileCount source files from sample"
+        }
+    }
+
+    # ========================================================================
+    # STEP 7e: Test CLI Commands (create, init, config)
+    # ========================================================================
+    Write-Step "Step 7e: Test CLI Commands (create, init, config)"
     Measure-Step "CLI Commands" {
-        Push-Location $testProjectDir
+        Push-Location $SampleProjectDir
         try {
-            # Test create page gallery
+            # Test create page gallery (in existing source directory)
             Write-Info "Running: revela create page gallery source/test-gallery --title 'Test Gallery'"
             & $ExePath create page gallery source/test-gallery --title "Test Gallery"
             if ($LASTEXITCODE -ne 0) { throw "create page gallery failed" }
             
-            $revelaFile = Join-Path $testProjectDir "source/test-gallery/_index.revela"
+            $revelaFile = Join-Path $SampleProjectDir "source/test-gallery/_index.revela"
             if (Test-Path $revelaFile) {
                 Write-Success "Gallery page created: source/test-gallery/_index.revela"
             } else {
@@ -464,7 +497,7 @@ try {
             & $ExePath create page statistics source/test-stats --title "Test Stats"
             if ($LASTEXITCODE -ne 0) { throw "create page statistics failed" }
             
-            $statsFile = Join-Path $testProjectDir "source/test-stats/_index.revela"
+            $statsFile = Join-Path $SampleProjectDir "source/test-stats/_index.revela"
             if (Test-Path $statsFile) {
                 Write-Success "Statistics page created: source/test-stats/_index.revela"
             } else {
@@ -484,7 +517,7 @@ try {
             Write-Success "OneDrive config updated"
 
             # Verify config files were updated
-            $statsConfig = Join-Path $testProjectDir "plugins/Spectara.Revela.Plugin.Statistics.json"
+            $statsConfig = Join-Path $SampleProjectDir "plugins/Spectara.Revela.Plugin.Statistics.json"
             if (Test-Path $statsConfig) {
                 $content = Get-Content $statsConfig -Raw | ConvertFrom-Json
                 if ($content.'Spectara.Revela.Plugin.Statistics'.MaxEntriesPerCategory -eq 20) {
@@ -504,56 +537,17 @@ try {
                 Write-Warn "config show output may be incomplete"
             }
 
-            # Cleanup test directories (keep original structure)
-            Remove-Item (Join-Path $testProjectDir "source/test-gallery") -Recurse -Force -ErrorAction SilentlyContinue
-            Remove-Item (Join-Path $testProjectDir "source/test-stats") -Recurse -Force -ErrorAction SilentlyContinue
-            Write-Info "Test directories cleaned up"
-
         } finally {
             Pop-Location
         }
     }
 
     # ========================================================================
-    # STEP 8: OneDrive Sync (optional)
+    # STEP 8: Generate - Scan & Images
     # ========================================================================
-    if (-not $SkipDownload) {
-        Write-Step "Step 8: OneDrive Sync"
-        Measure-Step "OneDrive Sync" {
-            Write-Info "Running: revela source onedrive sync"
-            Push-Location $testProjectDir
-            try {
-                & $ExePath source onedrive sync
-                if ($LASTEXITCODE -ne 0) { throw "OneDrive sync failed" }
-                Write-Success "OneDrive sync completed"
-
-                # Show downloaded files
-                $sourceDir = Join-Path $testProjectDir "source"
-                if (Test-Path $sourceDir) {
-                    $fileCount = (Get-ChildItem $sourceDir -Recurse -File).Count
-                    Write-Info "Downloaded $fileCount files to source/"
-                }
-            } finally {
-                Pop-Location
-            }
-        }
-    } else {
-        Write-Step "Step 8: OneDrive Sync [SKIPPED]"
-        Measure-Step "Copy Source" {
-            # Copy existing source files from sample
-            $sourceDir = Join-Path $testProjectDir "source"
-            Copy-Item "$SampleDir/source" $testProjectDir -Recurse
-            $fileCount = (Get-ChildItem $sourceDir -Recurse -File).Count
-            Write-Success "Copied $fileCount source files from sample"
-        }
-    }
-
-    # ========================================================================
-    # STEP 9: Generate - Scan & Images
-    # ========================================================================
-    Write-Step "Step 9: Scan Content & Process Images"
+    Write-Step "Step 8: Scan Content & Process Images"
     Measure-Step "Scan & Images" {
-        Push-Location $testProjectDir
+        Push-Location $SampleProjectDir
         try {
             Write-Info "Running: revela generate scan"
             & $ExePath generate scan
@@ -570,12 +564,12 @@ try {
     }
 
     # ========================================================================
-    # STEP 10: Generate Statistics
+    # STEP 9: Generate Statistics
     # ========================================================================
-    Write-Step "Step 10: Generate Statistics"
+    Write-Step "Step 9: Generate Statistics"
     Measure-Step "Statistics" {
         Write-Info "Running: revela generate statistics"
-        Push-Location $testProjectDir
+        Push-Location $SampleProjectDir
         try {
             & $ExePath generate statistics
             if ($LASTEXITCODE -ne 0) { throw "Statistics generation failed" }
@@ -588,12 +582,12 @@ try {
     }
 
     # ========================================================================
-    # STEP 11: Generate Pages (includes Statistics page)
+    # STEP 10: Generate Pages (includes Statistics page)
     # ========================================================================
-    Write-Step "Step 11: Render Pages"
+    Write-Step "Step 10: Render Pages"
     Measure-Step "Pages" {
         Write-Info "Running: revela generate pages"
-        Push-Location $testProjectDir
+        Push-Location $SampleProjectDir
         try {
             & $ExePath generate pages
             if ($LASTEXITCODE -ne 0) { throw "Page rendering failed" }
@@ -604,11 +598,11 @@ try {
     }
 
     # ========================================================================
-    # STEP 12: Validate Output
+    # STEP 11: Validate Output
     # ========================================================================
-    Write-Step "Step 12: Validate Output"
+    Write-Step "Step 11: Validate Output"
     Measure-Step "Validate" {
-        $outputDir = Join-Path $testProjectDir "output"
+        $outputDir = Join-Path $SampleProjectDir "output"
 
         if (-not (Test-Path $outputDir)) {
             throw "Output directory not created!"
@@ -696,9 +690,9 @@ try {
     }
 
     # ========================================================================
-    # STEP 13: Test .NET Tool Package
+    # STEP 12: Test .NET Tool Package
     # ========================================================================
-    Write-Step "Step 13: Test .NET Tool Package"
+    Write-Step "Step 12: Test .NET Tool Package"
     Measure-Step "ToolTest" {
         # Use the pre-created ToolDir instead of separate nupkgs folder
 
@@ -773,7 +767,7 @@ try {
     Write-Host "    SDK:      $NuGetDir" -ForegroundColor Gray
     Write-Host "    Plugins:  $PluginsDir" -ForegroundColor Gray
     Write-Host "    Tool:     $ToolDir" -ForegroundColor Gray
-    Write-Host "    Output:   $(Join-Path $testProjectDir 'output')" -ForegroundColor Gray
+    Write-Host "    Output:   $(Join-Path $SampleProjectDir 'output')" -ForegroundColor Gray
     Write-Host ""
 
     Write-Host "  ✓ Release pipeline test PASSED" -ForegroundColor Green
