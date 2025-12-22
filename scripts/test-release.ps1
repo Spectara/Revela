@@ -564,18 +564,49 @@ try {
     }
 
     # ========================================================================
-    # STEP 9: Generate Statistics
+    # STEP 9: Generate Statistics (Plugin Integration Test)
     # ========================================================================
-    Write-Step "Step 9: Generate Statistics"
+    Write-Step "Step 9: Generate Statistics (Plugin Integration Test)"
     Measure-Step "Statistics" {
         Write-Info "Running: revela generate statistics"
         Push-Location $SampleProjectDir
         try {
-            & $ExePath generate statistics
-            if ($LASTEXITCODE -ne 0) { throw "Statistics generation failed" }
+            # Run statistics command - this tests that the plugin is correctly loaded
+            $statsOutput = & $ExePath generate statistics 2>&1 | Out-String
+            if ($LASTEXITCODE -ne 0) { 
+                Write-Err "Statistics output: $statsOutput"
+                throw "Statistics generation failed" 
+            }
             Write-Success "Statistics generated"
-
-            # Note: Statistics plugin generates data into manifest, no separate files
+            
+            # Verify plugin was loaded and executed by checking manifest
+            $manifestPath = Join-Path $SampleProjectDir ".revela/manifest.json"
+            if (Test-Path $manifestPath) {
+                $manifest = Get-Content $manifestPath -Raw | ConvertFrom-Json
+                
+                # Check if statistics data was added to manifest
+                if ($manifest.Statistics) {
+                    Write-Success "Statistics data found in manifest"
+                    
+                    # Check for expected statistics categories
+                    $statsCategories = @()
+                    if ($manifest.Statistics.Cameras) { $statsCategories += "Cameras" }
+                    if ($manifest.Statistics.Lenses) { $statsCategories += "Lenses" }
+                    if ($manifest.Statistics.FocalLengths) { $statsCategories += "FocalLengths" }
+                    if ($manifest.Statistics.Years) { $statsCategories += "Years" }
+                    if ($manifest.Statistics.Months) { $statsCategories += "Months" }
+                    
+                    if ($statsCategories.Count -gt 0) {
+                        Write-Success "Statistics categories: $($statsCategories -join ', ')"
+                    } else {
+                        Write-Warn "No statistics categories found (may be expected if no EXIF data)"
+                    }
+                } else {
+                    Write-Warn "No statistics data in manifest (plugin may have no data to process)"
+                }
+            } else {
+                throw "Manifest not found at: $manifestPath"
+            }
         } finally {
             Pop-Location
         }
@@ -649,13 +680,25 @@ try {
         $statsPage = Join-Path $outputDir "pages/statistics/index.html"
         if (Test-Path $statsPage) {
             $statsContent = Get-Content $statsPage -Raw
-            if ($statsContent -match "statistics" -or $statsContent -match "chart") {
-                Write-Success "Statistics page generated with charts"
+            $statsChecks = @()
+            if ($statsContent -match "statistics") { $statsChecks += "statistics keyword" }
+            if ($statsContent -match "chart|Chart") { $statsChecks += "chart elements" }
+            if ($statsContent -match "camera|Camera") { $statsChecks += "camera data" }
+            if ($statsContent -match "lens|Lens") { $statsChecks += "lens data" }
+            
+            if ($statsChecks.Count -ge 2) {
+                Write-Success "Statistics page generated with: $($statsChecks -join ', ')"
             } else {
-                Write-Warn "Statistics page found but may be missing charts"
+                Write-Warn "Statistics page found but content may be incomplete"
             }
         } else {
-            Write-Warn "Statistics page not found (optional)"
+            # Also check test-stats directory (created by test)
+            $testStatsPage = Join-Path $outputDir "test-stats/index.html"
+            if (Test-Path $testStatsPage) {
+                Write-Success "Test statistics page found at: test-stats/index.html"
+            } else {
+                Write-Warn "Statistics page not found (optional - requires statistics source page)"
+            }
         }
 
         # Check _assets directory (scan-based asset system)
