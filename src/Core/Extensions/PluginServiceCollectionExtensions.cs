@@ -49,7 +49,7 @@ public static class PluginServiceCollectionExtensions
         string[] args,
         Action<PluginOptions>? configure = null)
     {
-        // Skip plugin loading for plugin management commands
+        // Skip plugin loading for plugin management commands (except 'plugin list')
         // These commands manage plugin files and can't work if DLLs are locked by AssemblyLoadContext
         if (IsPluginManagementCommand(args))
         {
@@ -111,50 +111,50 @@ public static class PluginServiceCollectionExtensions
         logger.LogDebug("Loaded environment variables with prefix SPECTARA__REVELA__");
 
         // Phase 1: Plugins may register additional config sources (optional, usually empty)
-        foreach (var plugin in plugins)
+        foreach (var pluginInfo in plugins)
         {
             try
             {
-                plugin.ConfigureConfiguration(configuration);
-                logger.LogDebug("Plugin '{Name}' configured configuration sources", plugin.Metadata.Name);
+                pluginInfo.Plugin.ConfigureConfiguration(configuration);
+                logger.LogDebug("Plugin '{Name}' configured configuration sources", pluginInfo.Plugin.Metadata.Name);
             }
             catch (Exception ex)
             {
-                logger.LogError(ex, "Plugin '{Name}' failed to configure configuration", plugin.Metadata.Name);
+                logger.LogError(ex, "Plugin '{Name}' failed to configure configuration", pluginInfo.Plugin.Metadata.Name);
             }
         }
 
         // Phase 2: Plugins register their services
         // (e.g., HttpClient, Commands, IOptions)
-        foreach (var plugin in plugins)
+        foreach (var pluginInfo in plugins)
         {
             try
             {
-                plugin.ConfigureServices(services);
-                logger.LogInformation("Plugin '{Name}' v{Version} registered services", plugin.Metadata.Name, plugin.Metadata.Version);
+                pluginInfo.Plugin.ConfigureServices(services);
+                logger.LogInformation("Plugin '{Name}' v{Version} registered services", pluginInfo.Plugin.Metadata.Name, pluginInfo.Plugin.Metadata.Version);
             }
             catch (Exception ex)
             {
-                logger.LogError(ex, "Plugin '{Name}' failed to configure services", plugin.Metadata.Name);
+                logger.LogError(ex, "Plugin '{Name}' failed to configure services", pluginInfo.Plugin.Metadata.Name);
             }
         }
 
         // Phase 3: Register all plugins for IEnumerable<IPlugin> injection
-        foreach (var plugin in plugins)
+        foreach (var pluginInfo in plugins)
         {
-            services.AddSingleton(plugin);
-            logger.LogDebug("Registered plugin: {Name}", plugin.Metadata.Name);
+            services.AddSingleton(pluginInfo.Plugin);
+            logger.LogDebug("Registered plugin: {Name}", pluginInfo.Plugin.Metadata.Name);
         }
 
         // Phase 4: Register theme plugins for IThemeResolver (as IThemePlugin)
-        foreach (var plugin in plugins.OfType<IThemePlugin>())
+        foreach (var plugin in plugins.Select(p => p.Plugin).OfType<IThemePlugin>())
         {
             services.AddSingleton(plugin);
             logger.LogDebug("Registered theme plugin: {Name}", plugin.Metadata.Name);
         }
 
         // Phase 4b: Register theme extensions for IThemeResolver (as IThemeExtension)
-        foreach (var extension in plugins.OfType<IThemeExtension>())
+        foreach (var extension in plugins.Select(p => p.Plugin).OfType<IThemeExtension>())
         {
             services.AddSingleton(extension);
             logger.LogDebug("Registered theme extension: {Name} for theme {TargetTheme}",
@@ -179,20 +179,35 @@ public static class PluginServiceCollectionExtensions
     /// Checks if the command-line arguments indicate a plugin management command.
     /// </summary>
     /// <remarks>
-    /// Plugin management commands (install, uninstall, list, source) don't need loaded plugins
-    /// and must be able to modify plugin files without them being locked.
+    /// Plugin management commands (install, uninstall) need to modify plugin files
+    /// and cannot work if DLLs are locked by AssemblyLoadContext.
+    /// 'plugin list' is excluded because it only reads and can show loaded plugin metadata.
     /// </remarks>
     private static bool IsPluginManagementCommand(string[] args)
-        => args.Length > 0 && args[0].Equals("plugin", StringComparison.OrdinalIgnoreCase);
+    {
+        if (args.Length == 0 || !args[0].Equals("plugin", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        // "plugin list" can safely load plugins (read-only operation)
+        if (args.Length >= 2 && args[1].Equals("list", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        // Other plugin commands (install, uninstall) skip loading
+        return true;
+    }
 }
 
 /// <summary>
 /// Placeholder context returned by AddPlugins() before ServiceProvider is built.
 /// The real PluginContext is resolved from DI in UseRevelaCommands().
 /// </summary>
-sealed file class PluginContextPlaceholder(IReadOnlyList<IPlugin> plugins) : IPluginContext
+sealed file class PluginContextPlaceholder(IReadOnlyList<ILoadedPluginInfo> plugins) : IPluginContext
 {
-    public IReadOnlyList<IPlugin> Plugins => plugins;
+    public IReadOnlyList<ILoadedPluginInfo> Plugins => plugins;
 
     public void Initialize(IServiceProvider serviceProvider)
     {
@@ -217,7 +232,7 @@ sealed file class PluginContextPlaceholder(IReadOnlyList<IPlugin> plugins) : IPl
 /// </remarks>
 sealed file class EmptyPluginContext : IPluginContext
 {
-    public IReadOnlyList<IPlugin> Plugins => [];
+    public IReadOnlyList<ILoadedPluginInfo> Plugins => [];
 
     public void Initialize(IServiceProvider serviceProvider)
     {

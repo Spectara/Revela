@@ -12,9 +12,9 @@ namespace Spectara.Revela.Sdk.Abstractions;
 public interface IPluginContext
 {
     /// <summary>
-    /// All loaded plugins
+    /// All loaded plugins with their source information.
     /// </summary>
-    IReadOnlyList<IPlugin> Plugins { get; }
+    IReadOnlyList<ILoadedPluginInfo> Plugins { get; }
 
     /// <summary>
     /// Initialize all plugins with the built ServiceProvider

@@ -32,19 +32,23 @@ public sealed partial class PluginLoader(
 
     private readonly ILogger<PluginLoader> logger = logger ?? Microsoft.Extensions.Logging.Abstractions.NullLogger<PluginLoader>.Instance;
     private readonly HashSet<string> loadedAssemblyPaths = new(StringComparer.OrdinalIgnoreCase);
-    private readonly List<IPlugin> loadedPlugins = [];
+    private readonly List<ILoadedPluginInfo> loadedPlugins = [];
     private readonly List<AssemblyLoadContext> pluginContexts = []; // Keep contexts alive
 
     /// <summary>
-    /// Gets the list of loaded plugins.
+    /// Gets the list of loaded plugins with their source information.
     /// </summary>
-    public IReadOnlyList<IPlugin> GetLoadedPlugins() => loadedPlugins.AsReadOnly();
+    public IReadOnlyList<ILoadedPluginInfo> GetLoadedPlugins() => loadedPlugins.AsReadOnly();
 
     /// <summary>
     /// Gets all loaded theme extensions.
     /// </summary>
     public IReadOnlyList<IThemeExtension> GetThemeExtensions() =>
-        loadedPlugins.OfType<IThemeExtension>().ToList().AsReadOnly();
+        loadedPlugins
+            .Select(p => p.Plugin)
+            .OfType<IThemeExtension>()
+            .ToList()
+            .AsReadOnly();
 
     /// <summary>
     /// Gets theme extensions for a specific theme.
@@ -53,6 +57,7 @@ public sealed partial class PluginLoader(
     /// <returns>List of extensions targeting the specified theme</returns>
     public IReadOnlyList<IThemeExtension> GetThemeExtensions(string themeName) =>
         loadedPlugins
+            .Select(p => p.Plugin)
             .OfType<IThemeExtension>()
             .Where(e => e.TargetTheme.Equals(themeName, StringComparison.OrdinalIgnoreCase))
             .ToList()
@@ -70,33 +75,33 @@ public sealed partial class PluginLoader(
         // 1. Application directory (development - plugins built via ProjectReference)
         if (options.SearchApplicationDirectory)
         {
-            LoadPluginsFromDirectory(ApplicationDirectory, "application");
+            LoadPluginsFromDirectory(ApplicationDirectory, "application", PluginSource.Bundled);
         }
 
         // 2. Local plugin directory (next to exe in 'plugins' subfolder)
-        LoadPluginsFromDirectory(LocalPluginDirectory, "local");
+        LoadPluginsFromDirectory(LocalPluginDirectory, "local", PluginSource.Local);
 
         // 3. User plugin directory (global installed plugins)
         if (options.SearchUserPluginDirectory)
         {
-            LoadPluginsFromDirectory(UserPluginDirectory, "user");
+            LoadPluginsFromDirectory(UserPluginDirectory, "user", PluginSource.Global);
         }
 
-        // 4. Additional search paths
+        // 4. Additional search paths (treated as local)
         foreach (var path in options.AdditionalSearchPaths)
         {
             var fullPath = Path.IsPathRooted(path) ? path : Path.GetFullPath(path);
-            LoadPluginsFromDirectory(fullPath, "additional");
+            LoadPluginsFromDirectory(fullPath, "additional", PluginSource.Local);
         }
 
         LogPluginsLoaded(loadedPlugins.Count);
     }
 
-    private void LoadPluginsFromDirectory(string directory, string source)
+    private void LoadPluginsFromDirectory(string directory, string sourceLabel, PluginSource source)
     {
         if (!Directory.Exists(directory))
         {
-            LogPluginDirectoryNotFound(directory, source);
+            LogPluginDirectoryNotFound(directory, sourceLabel);
             return;
         }
 
@@ -120,11 +125,11 @@ public sealed partial class PluginLoader(
 
         if (options.EnableVerboseLogging)
         {
-            LogSearchingDirectory(directory, source, pluginDlls.Length);
+            LogSearchingDirectory(directory, sourceLabel, pluginDlls.Length);
         }
 
         // Determine if we should use default context (for app directory = development mode)
-        var useDefaultContext = source == "application";
+        var useDefaultContext = sourceLabel == "application";
 
         foreach (var dll in pluginDlls)
         {
@@ -144,7 +149,7 @@ public sealed partial class PluginLoader(
 
             try
             {
-                LoadPluginFromAssembly(dll, useDefaultContext);
+                LoadPluginFromAssembly(dll, useDefaultContext, source);
                 loadedAssemblyPaths.Add(dll);
             }
             catch (ReflectionTypeLoadException rtle)
@@ -168,7 +173,7 @@ public sealed partial class PluginLoader(
         }
     }
 
-    private void LoadPluginFromAssembly(string assemblyPath, bool useDefaultContext)
+    private void LoadPluginFromAssembly(string assemblyPath, bool useDefaultContext, PluginSource source)
     {
         Assembly assembly;
 
@@ -202,7 +207,7 @@ public sealed partial class PluginLoader(
                 continue;
             }
 
-            if (loadedPlugins.Any(p => p.Metadata.Name == plugin.Metadata.Name))
+            if (loadedPlugins.Any(p => p.Plugin.Metadata.Name == plugin.Metadata.Name))
             {
                 LogPluginDuplicate(plugin.Metadata.Name, assemblyPath);
                 continue;
@@ -211,7 +216,7 @@ public sealed partial class PluginLoader(
             // Check SDK version compatibility
             CheckSdkVersionCompatibility(assembly, plugin.Metadata.Name);
 
-            loadedPlugins.Add(plugin);
+            loadedPlugins.Add(new LoadedPluginInfo(plugin, source));
             LogPluginDiscovered(plugin.Metadata.Name, plugin.Metadata.Version, Path.GetFileName(assemblyPath));
         }
     }

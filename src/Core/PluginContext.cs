@@ -7,40 +7,40 @@ namespace Spectara.Revela.Core;
 /// <summary>
 /// Internal implementation of IPluginContext
 /// </summary>
-internal sealed class PluginContext(IReadOnlyList<IPlugin> plugins, ILogger<PluginContext> logger) : IPluginContext
+internal sealed class PluginContext(IReadOnlyList<ILoadedPluginInfo> plugins, ILogger<PluginContext> logger) : IPluginContext
 {
-    public IReadOnlyList<IPlugin> Plugins { get; } = plugins;
+    public IReadOnlyList<ILoadedPluginInfo> Plugins { get; } = plugins;
 
     public void Initialize(IServiceProvider serviceProvider)
     {
-        foreach (var plugin in Plugins)
+        foreach (var pluginInfo in Plugins)
         {
             try
             {
-                plugin.Initialize(serviceProvider);
-                logger.PluginInitialized(plugin.Metadata.Name);
+                pluginInfo.Plugin.Initialize(serviceProvider);
+                logger.PluginInitialized(pluginInfo.Plugin.Metadata.Name);
             }
             catch (Exception ex)
             {
-                logger.PluginInitializationFailed(plugin.Metadata.Name, ex);
+                logger.PluginInitializationFailed(pluginInfo.Plugin.Metadata.Name, ex);
             }
         }
     }
 
     public void RegisterCommands(RootCommand rootCommand, Action<Command, int, string?>? onCommandRegistered = null)
     {
-        foreach (var plugin in Plugins)
+        foreach (var pluginInfo in Plugins)
         {
             try
             {
-                foreach (var descriptor in plugin.GetCommands())
+                foreach (var descriptor in pluginInfo.Plugin.GetCommands())
                 {
-                    RegisterCommand(rootCommand, plugin, descriptor, onCommandRegistered);
+                    RegisterCommand(rootCommand, pluginInfo.Plugin, descriptor, onCommandRegistered);
                 }
             }
             catch (Exception ex)
             {
-                logger.CommandRegistrationFailed(plugin.Metadata.Name, ex);
+                logger.CommandRegistrationFailed(pluginInfo.Plugin.Metadata.Name, ex);
             }
         }
     }

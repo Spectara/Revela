@@ -355,17 +355,22 @@ try {
     Measure-Step "Plugin Verify" {
         $localPluginsDir = Join-Path $CliDir "plugins"
 
-        # Verify correct number of plugins installed
+        # Verify correct number of plugins loaded (2 functional plugins: OneDrive + Statistics)
+        # Themes (Lumina, Lumina Statistics) are now shown in 'theme list' instead
         $pluginListOutput = & $ExePath plugin list 2>&1 | Out-String
-        if ($pluginListOutput -match "Total: 3 plugin") {
-            Write-Success "Verified: 3 plugins installed"
+        if ($pluginListOutput -match "Installed Plugins.*\(2\)") {
+            Write-Success "Verified: 2 plugins loaded (OneDrive + Statistics)"
         } else {
-            throw "Expected 3 plugins, got unexpected output"
+            Write-Warn "Plugin list output: $pluginListOutput"
+            throw "Expected 2 plugins in panel header, got unexpected output"
         }
 
-        # Verify all plugins are local (not global)
-        if ($pluginListOutput -match "local.*local.*local") {
-            Write-Success "Verified: All plugins installed locally (next to exe)"
+        # Verify installed plugins are local (2 plugins should show 'local')
+        $localMatches = ([regex]::Matches($pluginListOutput, '\blocal\b')).Count
+        if ($localMatches -ge 2) {
+            Write-Success "Verified: 2 plugins installed locally (next to exe)"
+        } else {
+            Write-Warn "Expected 2 local plugins, found $localMatches in output"
         }
 
         # Verify plugin folders exist with main DLLs (new structure: plugins/{PackageId}/{PackageId}.dll)

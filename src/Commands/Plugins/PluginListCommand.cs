@@ -1,5 +1,6 @@
 using System.CommandLine;
-using Spectara.Revela.Core;
+using Spectara.Revela.Sdk;
+using Spectara.Revela.Sdk.Abstractions;
 using Spectre.Console;
 
 namespace Spectara.Revela.Commands.Plugins;
@@ -8,14 +9,15 @@ namespace Spectara.Revela.Commands.Plugins;
 /// Handles 'revela plugin list' command.
 /// </summary>
 public sealed partial class PluginListCommand(
-    ILogger<PluginListCommand> logger)
+    ILogger<PluginListCommand> logger,
+    IPluginContext pluginContext)
 {
     /// <summary>
     /// Creates the command definition.
     /// </summary>
     public Command Create()
     {
-        var command = new Command("list", "List installed plugins");
+        var command = new Command("list", "List loaded plugins");
 
         command.SetAction(async (_, cancellationToken) =>
         {
@@ -32,35 +34,47 @@ public sealed partial class PluginListCommand(
         {
             cancellationToken.ThrowIfCancellationRequested();
             LogListingPlugins();
-            var installedPlugins = PluginManager.ListInstalledPlugins().ToList();
 
-            if (installedPlugins.Count == 0)
+            // Filter out themes and theme extensions (shown in 'theme list' instead)
+            var loadedPlugins = pluginContext.Plugins
+                .Where(p => p.Plugin is not IThemePlugin and not IThemeExtension)
+                .ToList();
+
+            if (loadedPlugins.Count == 0)
             {
-                AnsiConsole.MarkupLine("[yellow]No plugins installed.[/]");
+                AnsiConsole.MarkupLine("[yellow]No plugins loaded.[/]");
                 AnsiConsole.MarkupLine("[dim]Install plugins with:[/] [cyan]revela plugin install <name>[/]");
-                AnsiConsole.MarkupLine($"[dim]Local directory:[/] {PluginManager.LocalPluginDirectory}");
-                AnsiConsole.MarkupLine($"[dim]Global directory:[/] {PluginManager.GlobalPluginDirectory}");
                 return Task.CompletedTask;
             }
 
-            var table = new Table
-            {
-                Border = TableBorder.Rounded
-            };
-            table.AddColumn("[bold]Plugin[/]");
-            table.AddColumn("[bold]Location[/]");
+            // Build content for panel
+            var content = new List<string>();
 
-            foreach (var (name, location) in installedPlugins)
+            foreach (var pluginInfo in loadedPlugins)
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                var locationStyle = location == "local" ? "[green]local[/]" : "[blue]global[/]";
-                table.AddRow(name, locationStyle);
+                var metadata = pluginInfo.Plugin.Metadata;
+                var sourceMarkup = GetSourceMarkup(pluginInfo.Source);
+
+                content.Add($"[green]+[/] [bold green]{EscapeMarkup(metadata.Name)}[/] [dim]v{metadata.Version}[/] {sourceMarkup}");
+                content.Add($"   [dim]{EscapeMarkup(metadata.Description)}[/]");
+                content.Add("");
             }
 
-            AnsiConsole.Write(table);
-            AnsiConsole.MarkupLine($"\n[dim]Total:[/] {installedPlugins.Count} plugin(s)");
-            AnsiConsole.MarkupLine($"[dim]Local directory:[/] {PluginManager.LocalPluginDirectory}");
-            AnsiConsole.MarkupLine($"[dim]Global directory:[/] {PluginManager.GlobalPluginDirectory}");
+            // Remove last empty line
+            if (content.Count > 0 && string.IsNullOrEmpty(content[^1]))
+            {
+                content.RemoveAt(content.Count - 1);
+            }
+
+            var panel = new Panel(new Markup(string.Join("\n", content)))
+                .WithHeader($"[bold]Installed Plugins[/] [dim]({loadedPlugins.Count})[/]")
+                .WithInfoStyle();
+            panel.Padding = new Padding(1, 0, 1, 0);
+
+            AnsiConsole.Write(panel);
+            AnsiConsole.MarkupLine("");
+            AnsiConsole.MarkupLine("[dim]Tip:[/] Use [cyan]revela plugin install <name>[/] to add more plugins");
         }
         catch (Exception ex)
         {
@@ -71,7 +85,22 @@ public sealed partial class PluginListCommand(
         return Task.CompletedTask;
     }
 
-    [LoggerMessage(Level = LogLevel.Debug, Message = "Listing installed plugins")]
+    private static string GetSourceMarkup(PluginSource source) => source switch
+    {
+        PluginSource.Bundled => "[magenta]bundled[/]",
+        PluginSource.Local => "[green]local[/]",
+        PluginSource.Global => "[blue]global[/]",
+        _ => "[dim]unknown[/]"
+    };
+
+    private static string EscapeMarkup(string text)
+    {
+        return text
+            .Replace("[", "[[", StringComparison.Ordinal)
+            .Replace("]", "]]", StringComparison.Ordinal);
+    }
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Listing loaded plugins")]
     private partial void LogListingPlugins();
 
     [LoggerMessage(Level = LogLevel.Error, Message = "Failed to list plugins")]

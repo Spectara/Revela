@@ -18,6 +18,7 @@ namespace Spectara.Revela.Commands.Theme;
 /// </remarks>
 public sealed partial class ThemeListCommand(
     IThemeResolver themeResolver,
+    IPluginContext pluginContext,
     PluginManager pluginManager)
 {
     /// <summary>
@@ -51,6 +52,14 @@ public sealed partial class ThemeListCommand(
         var projectPath = Environment.CurrentDirectory;
         var themes = themeResolver.GetAvailableThemes(projectPath).ToList();
 
+        // Build source lookup from plugin context
+        var pluginSources = pluginContext.Plugins
+            .Where(p => p.Plugin is IThemePlugin or IThemeExtension)
+            .ToDictionary(
+                p => p.Plugin.Metadata.Name,
+                p => p.Source,
+                StringComparer.OrdinalIgnoreCase);
+
         // Show installed themes
         if (themes.Count == 0)
         {
@@ -58,7 +67,7 @@ public sealed partial class ThemeListCommand(
         }
         else
         {
-            ShowInstalledThemes(themes, cancellationToken);
+            ShowInstalledThemes(themes, pluginSources, cancellationToken);
         }
 
         // Show online themes if requested
@@ -74,7 +83,10 @@ public sealed partial class ThemeListCommand(
         }
     }
 
-    private static void ShowInstalledThemes(List<IThemePlugin> themes, CancellationToken cancellationToken)
+    private void ShowInstalledThemes(
+        List<IThemePlugin> themes,
+        Dictionary<string, PluginSource> pluginSources,
+        CancellationToken cancellationToken)
     {
         // Build content for panel
         var content = new List<string>();
@@ -83,15 +95,24 @@ public sealed partial class ThemeListCommand(
         {
             cancellationToken.ThrowIfCancellationRequested();
             var metadata = theme.Metadata;
-            var source = GetThemeSource(theme);
-            var sourceIcon = source == "local" ? "[blue]*[/]" : "[green]+[/]";
+            var isLocal = IsLocalTheme(theme);
+            var sourceIcon = isLocal ? "[blue]*[/]" : "[green]+[/]";
+            var sourceMarkup = GetSourceMarkup(metadata.Name, pluginSources, isLocal);
 
-            content.Add($"{sourceIcon} [bold green]{EscapeMarkup(metadata.Name)}[/] [dim]v{metadata.Version}[/]");
+            content.Add($"{sourceIcon} [bold green]{EscapeMarkup(metadata.Name)}[/] [dim]v{metadata.Version}[/] {sourceMarkup}");
             content.Add($"   [dim]{EscapeMarkup(metadata.Description)}[/]");
 
-            if (source == "local")
+            if (isLocal)
             {
                 content.Add($"   [blue]Source: themes/{EscapeMarkup(metadata.Name)}/[/]");
+            }
+
+            // Show extensions for this theme
+            var extensions = themeResolver.GetExtensions(metadata.Name);
+            foreach (var ext in extensions)
+            {
+                var extSourceMarkup = GetSourceMarkup(ext.Metadata.Name, pluginSources, isLocal: false);
+                content.Add($"   [dim]└─[/] [cyan]{EscapeMarkup(ext.Metadata.Name)}[/] [dim]v{ext.Metadata.Version}[/] {extSourceMarkup}");
             }
 
             content.Add("");
@@ -182,14 +203,31 @@ public sealed partial class ThemeListCommand(
         AnsiConsole.Write(panel);
     }
 
-    private static string GetThemeSource(IThemePlugin theme)
+    private static string GetSourceMarkup(string name, Dictionary<string, PluginSource> pluginSources, bool isLocal)
     {
-        // Check if it's a local theme by type name
-        var typeName = theme.GetType().Name;
+        if (isLocal)
+        {
+            return "[blue]themes/[/]";
+        }
 
-        return typeName.Contains("LocalThemeAdapter", StringComparison.Ordinal)
-            ? "local"
-            : "installed";
+        if (pluginSources.TryGetValue(name, out var source))
+        {
+            return source switch
+            {
+                PluginSource.Bundled => "[magenta]bundled[/]",
+                PluginSource.Local => "[green]local[/]",
+                PluginSource.Global => "[blue]global[/]",
+                _ => "[dim]unknown[/]"
+            };
+        }
+
+        return "[dim]installed[/]";
+    }
+
+    private static bool IsLocalTheme(IThemePlugin theme)
+    {
+        var typeName = theme.GetType().Name;
+        return typeName.Contains("LocalThemeAdapter", StringComparison.Ordinal);
     }
 
     /// <summary>

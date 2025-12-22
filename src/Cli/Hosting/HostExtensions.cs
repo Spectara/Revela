@@ -113,12 +113,14 @@ internal static class HostExtensions
         rootCommand.Subcommands.Add(themeCmd);
         orderRegistry.Register(themeCmd, 40);
         orderRegistry.RegisterGroup(themeCmd, CommandGroups.Customize);
+        RegisterThemeSubcommandOrders(themeCmd, orderRegistry);
 
         var pluginCommand = services.GetRequiredService<PluginCommand>();
         var pluginCmd = pluginCommand.Create();
         rootCommand.Subcommands.Add(pluginCmd);
         orderRegistry.Register(pluginCmd, 50);
         orderRegistry.RegisterGroup(pluginCmd, CommandGroups.Customize);
+        RegisterPluginSubcommandOrders(pluginCmd, orderRegistry);
 
         // Plugin commands (with smart parent handling, order, and group registration)
         plugins.RegisterCommands(
@@ -178,6 +180,44 @@ internal static class HostExtensions
                 "all" => CleanAllCommand.Order,
                 "output" => CleanOutputCommand.Order,
                 "cache" => CleanCacheCommand.Order,
+                _ => CommandOrderRegistry.DefaultOrder
+            };
+            orderRegistry.Register(sub, order);
+        }
+    }
+
+    /// <summary>
+    /// Registers order for subcommands of theme command.
+    /// </summary>
+    private static void RegisterThemeSubcommandOrders(Command themeCmd, CommandOrderRegistry orderRegistry)
+    {
+        // Order within theme: list (10), files (20), extract (30)
+        foreach (var sub in themeCmd.Subcommands)
+        {
+            var order = sub.Name switch
+            {
+                "list" => 10,
+                "files" => 20,
+                "extract" => 30,
+                _ => CommandOrderRegistry.DefaultOrder
+            };
+            orderRegistry.Register(sub, order);
+        }
+    }
+
+    /// <summary>
+    /// Registers order for subcommands of plugin command.
+    /// </summary>
+    private static void RegisterPluginSubcommandOrders(Command pluginCmd, CommandOrderRegistry orderRegistry)
+    {
+        // Order within plugin: list (10), install (20), uninstall (30)
+        foreach (var sub in pluginCmd.Subcommands)
+        {
+            var order = sub.Name switch
+            {
+                "list" => 10,
+                "install" => 20,
+                "uninstall" => 30,
                 _ => CommandOrderRegistry.DefaultOrder
             };
             orderRegistry.Register(sub, order);
