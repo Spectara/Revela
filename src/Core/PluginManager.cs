@@ -8,6 +8,7 @@ using NuGet.Protocol.Core.Types;
 using NuGet.Versioning;
 using Spectara.Revela.Core.Logging;
 using Spectara.Revela.Core.Models;
+using Spectara.Revela.Core.Services;
 
 namespace Spectara.Revela.Core;
 
@@ -20,8 +21,12 @@ namespace Spectara.Revela.Core;
 /// Supports NuGet packages from feeds or local .nupkg files.
 /// Multi-source discovery tries all configured sources automatically.
 /// HttpClient is injected via Typed HttpClient pattern for proper pooling.
+/// INuGetSourceManager is injected for NuGet source resolution with relative path support.
 /// </remarks>
-public sealed class PluginManager(HttpClient httpClient, ILogger<PluginManager> logger)
+public sealed class PluginManager(
+    HttpClient httpClient,
+    ILogger<PluginManager> logger,
+    INuGetSourceManager nugetSourceManager)
 {
     /// <summary>
     /// Gets the local plugin directory (next to executable).
@@ -183,7 +188,7 @@ public sealed class PluginManager(HttpClient httpClient, ILogger<PluginManager> 
         }
 
         // Try to resolve as named source
-        var sources = await Services.NuGetSourceManager.GetAllSourcesAsync(cancellationToken);
+        var sources = await nugetSourceManager.GetAllSourcesAsync(cancellationToken);
         var namedSource = sources.FirstOrDefault(s => s.Name.Equals(source, StringComparison.OrdinalIgnoreCase));
 
         if (namedSource is not null)
@@ -206,7 +211,7 @@ public sealed class PluginManager(HttpClient httpClient, ILogger<PluginManager> 
         string targetDir,
         CancellationToken cancellationToken)
     {
-        var sources = await Services.NuGetSourceManager.LoadSourcesAsync(cancellationToken);
+        var sources = await nugetSourceManager.LoadSourcesAsync(cancellationToken);
         logger.TryingMultipleSources(packageId, sources.Count);
 
         foreach (var source in sources)
@@ -553,7 +558,7 @@ public sealed class PluginManager(HttpClient httpClient, ILogger<PluginManager> 
         CancellationToken cancellationToken = default)
     {
         var results = new List<PackageSearchResult>();
-        var sources = await Services.NuGetSourceManager.LoadSourcesAsync(cancellationToken);
+        var sources = await nugetSourceManager.LoadSourcesAsync(cancellationToken);
 
         logger.SearchingPackages(searchTerm, sources.Count);
 

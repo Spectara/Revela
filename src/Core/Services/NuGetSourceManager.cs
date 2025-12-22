@@ -13,8 +13,13 @@ namespace Spectara.Revela.Core.Services;
 /// <para>
 /// Built-in source (nuget.org) is always available.
 /// </para>
+/// <para>
+/// Relative paths in feed URLs are resolved relative to the config file location,
+/// making configurations portable across different machines.
+/// </para>
 /// </remarks>
-public static class NuGetSourceManager
+public sealed partial class NuGetSourceManager(
+    ILogger<NuGetSourceManager> logger) : INuGetSourceManager
 {
     /// <summary>
     /// Gets the path to the config file
@@ -34,20 +39,19 @@ public static class NuGetSourceManager
         Enabled = true
     };
 
-    /// <summary>
-    /// Loads all configured sources (including built-in nuget.org)
-    /// </summary>
-    public static async Task<List<NuGetSource>> LoadSourcesAsync(CancellationToken cancellationToken = default)
+    /// <inheritdoc/>
+    public async Task<List<NuGetSource>> LoadSourcesAsync(CancellationToken cancellationToken = default)
     {
         var sources = new List<NuGetSource> { DefaultSource };
 
         var config = await GlobalConfigManager.LoadAsync(cancellationToken);
         foreach (var feed in config.Feeds)
         {
+            var resolvedUrl = ResolvePathIfRelative(feed.Url);
             sources.Add(new NuGetSource
             {
                 Name = feed.Name,
-                Url = feed.Url,
+                Url = resolvedUrl,
                 Enabled = true
             });
         }
@@ -55,10 +59,8 @@ public static class NuGetSourceManager
         return sources;
     }
 
-    /// <summary>
-    /// Gets all sources with location info for display
-    /// </summary>
-    public static async Task<List<(NuGetSource Source, string Location)>> GetAllSourcesWithLocationAsync(CancellationToken cancellationToken = default)
+    /// <inheritdoc/>
+    public async Task<List<(NuGetSource Source, string Location)>> GetAllSourcesWithLocationAsync(CancellationToken cancellationToken = default)
     {
         var sources = new List<(NuGetSource Source, string Location)>
         {
@@ -68,6 +70,7 @@ public static class NuGetSourceManager
         var config = await GlobalConfigManager.LoadAsync(cancellationToken);
         foreach (var feed in config.Feeds)
         {
+            var resolvedUrl = ResolvePathIfRelative(feed.Url);
             var location = feed.Url.StartsWith("http", StringComparison.OrdinalIgnoreCase)
                 ? "remote"
                 : "local";
@@ -75,7 +78,7 @@ public static class NuGetSourceManager
             sources.Add((new NuGetSource
             {
                 Name = feed.Name,
-                Url = feed.Url,
+                Url = resolvedUrl,
                 Enabled = true
             }, location));
         }
@@ -83,35 +86,23 @@ public static class NuGetSourceManager
         return sources;
     }
 
-    /// <summary>
-    /// Gets all sources including built-in
-    /// </summary>
-    public static async Task<List<NuGetSource>> GetAllSourcesAsync(CancellationToken cancellationToken = default)
+    /// <inheritdoc/>
+    public async Task<List<NuGetSource>> GetAllSourcesAsync(CancellationToken cancellationToken = default)
     {
         var sourcesWithLocation = await GetAllSourcesWithLocationAsync(cancellationToken);
         return [.. sourcesWithLocation.Select(s => s.Source)];
     }
 
-    /// <summary>
-    /// Adds a new NuGet source
-    /// </summary>
-    /// <remarks>
-    /// Delegates to GlobalConfigManager for consistent config management.
-    /// </remarks>
+    /// <inheritdoc/>
 #pragma warning disable CA1054 // URI parameters should not be strings - string required for user input
-    public static Task AddSourceAsync(string name, string url, CancellationToken cancellationToken = default)
+    public Task AddSourceAsync(string name, string url, CancellationToken cancellationToken = default)
 #pragma warning restore CA1054
     {
         return GlobalConfigManager.AddFeedAsync(name, url, cancellationToken);
     }
 
-    /// <summary>
-    /// Removes a NuGet source
-    /// </summary>
-    /// <remarks>
-    /// Delegates to GlobalConfigManager for consistent config management.
-    /// </remarks>
-    public static Task<bool> RemoveSourceAsync(string name, CancellationToken cancellationToken = default)
+    /// <inheritdoc/>
+    public Task<bool> RemoveSourceAsync(string name, CancellationToken cancellationToken = default)
     {
         if (name.Equals("nuget.org", StringComparison.OrdinalIgnoreCase))
         {
@@ -120,4 +111,43 @@ public static class NuGetSourceManager
 
         return GlobalConfigManager.RemoveFeedAsync(name, cancellationToken);
     }
+
+    /// <summary>
+    /// Resolves a path if it's relative, keeping HTTP URLs and absolute paths unchanged
+    /// </summary>
+    /// <param name="url">The URL or path to resolve</param>
+    /// <returns>The resolved absolute path, or the original URL if it's HTTP or already absolute</returns>
+    private string ResolvePathIfRelative(string url)
+    {
+        // HTTP/HTTPS URLs are never resolved
+        if (url.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
+            url.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+        {
+            return url;
+        }
+
+        // Absolute paths remain unchanged
+        if (Path.IsPathRooted(url))
+        {
+            return url;
+        }
+
+        // Relative paths are resolved relative to config file location
+        var configDir = Path.GetDirectoryName(ConfigFilePath);
+        if (string.IsNullOrEmpty(configDir))
+        {
+            LogCannotResolveRelativePath(url);
+            return url;
+        }
+
+        var resolvedPath = Path.GetFullPath(Path.Combine(configDir, url));
+        LogResolvedRelativePath(url, resolvedPath);
+        return resolvedPath;
+    }
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Resolved relative path '{RelativePath}' to '{AbsolutePath}'")]
+    private partial void LogResolvedRelativePath(string relativePath, string absolutePath);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Cannot resolve relative path '{RelativePath}' - config directory unknown")]
+    private partial void LogCannotResolveRelativePath(string relativePath);
 }

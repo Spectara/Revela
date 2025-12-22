@@ -420,8 +420,10 @@ try {
 
             # Test theme list --online (searches NuGet sources)
             # Add local NuGet source first (for testing without nuget.org)
-            Write-Info "Adding local NuGet feed for testing..."
-            & $ExePath config feed add local-test $PluginsDir
+            # Use relative path from config directory (cli/) to plugins directory (../plugins)
+            # This tests that relative paths are correctly resolved at runtime
+            Write-Info "Adding local NuGet feed for testing (relative path)..."
+            & $ExePath config feed add local-test "../plugins"
             if ($LASTEXITCODE -ne 0) { Write-Warn "Feed may already exist, continuing..." }
 
             Write-Info "Running: revela theme list --online"
@@ -484,7 +486,7 @@ try {
             Write-Info "Running: revela create page gallery source/test-gallery --title 'Test Gallery'"
             & $ExePath create page gallery source/test-gallery --title "Test Gallery"
             if ($LASTEXITCODE -ne 0) { throw "create page gallery failed" }
-            
+
             $revelaFile = Join-Path $SampleProjectDir "source/test-gallery/_index.revela"
             if (Test-Path $revelaFile) {
                 Write-Success "Gallery page created: source/test-gallery/_index.revela"
@@ -496,7 +498,7 @@ try {
             Write-Info "Running: revela create page statistics source/test-stats --title 'Test Stats'"
             & $ExePath create page statistics source/test-stats --title "Test Stats"
             if ($LASTEXITCODE -ne 0) { throw "create page statistics failed" }
-            
+
             $statsFile = Join-Path $SampleProjectDir "source/test-stats/_index.revela"
             if (Test-Path $statsFile) {
                 Write-Success "Statistics page created: source/test-stats/_index.revela"
@@ -573,39 +575,36 @@ try {
         try {
             # Run statistics command - this tests that the plugin is correctly loaded
             $statsOutput = & $ExePath generate statistics 2>&1 | Out-String
-            if ($LASTEXITCODE -ne 0) { 
+            if ($LASTEXITCODE -ne 0) {
                 Write-Err "Statistics output: $statsOutput"
-                throw "Statistics generation failed" 
+                throw "Statistics generation failed"
             }
             Write-Success "Statistics generated"
-            
-            # Verify plugin was loaded and executed by checking manifest
-            $manifestPath = Join-Path $SampleProjectDir ".revela/manifest.json"
-            if (Test-Path $manifestPath) {
-                $manifest = Get-Content $manifestPath -Raw | ConvertFrom-Json
-                
-                # Check if statistics data was added to manifest
-                if ($manifest.Statistics) {
-                    Write-Success "Statistics data found in manifest"
-                    
-                    # Check for expected statistics categories
-                    $statsCategories = @()
-                    if ($manifest.Statistics.Cameras) { $statsCategories += "Cameras" }
-                    if ($manifest.Statistics.Lenses) { $statsCategories += "Lenses" }
-                    if ($manifest.Statistics.FocalLengths) { $statsCategories += "FocalLengths" }
-                    if ($manifest.Statistics.Years) { $statsCategories += "Years" }
-                    if ($manifest.Statistics.Months) { $statsCategories += "Months" }
-                    
-                    if ($statsCategories.Count -gt 0) {
-                        Write-Success "Statistics categories: $($statsCategories -join ', ')"
-                    } else {
-                        Write-Warn "No statistics categories found (may be expected if no EXIF data)"
-                    }
+
+            # Verify plugin was loaded and executed by checking statistics.json files
+            # Statistics are stored per-page in .cache/{page-path}/statistics.json
+            $statsFiles = Get-ChildItem -Path (Join-Path $SampleProjectDir ".cache") -Recurse -Filter "statistics.json" -ErrorAction SilentlyContinue
+            if ($statsFiles -and $statsFiles.Count -gt 0) {
+                Write-Success "Statistics files found: $($statsFiles.Count) page(s)"
+
+                # Check first statistics file for expected categories
+                $firstStatsFile = $statsFiles | Select-Object -First 1
+                $statsData = Get-Content $firstStatsFile.FullName -Raw | ConvertFrom-Json
+
+                $statsCategories = @()
+                if ($statsData.PSObject.Properties['cameras']) { $statsCategories += "cameras" }
+                if ($statsData.PSObject.Properties['lenses']) { $statsCategories += "lenses" }
+                if ($statsData.PSObject.Properties['apertures']) { $statsCategories += "apertures" }
+                if ($statsData.PSObject.Properties['years']) { $statsCategories += "years" }
+                if ($statsData.PSObject.Properties['months']) { $statsCategories += "months" }
+
+                if ($statsCategories.Count -gt 0) {
+                    Write-Success "Statistics categories: $($statsCategories -join ', ')"
                 } else {
-                    Write-Warn "No statistics data in manifest (plugin may have no data to process)"
+                    Write-Warn "No statistics categories found (may be expected if no EXIF data)"
                 }
             } else {
-                throw "Manifest not found at: $manifestPath"
+                Write-Warn "No statistics files found (plugin may have no data to process)"
             }
         } finally {
             Pop-Location
@@ -685,7 +684,7 @@ try {
             if ($statsContent -match "chart|Chart") { $statsChecks += "chart elements" }
             if ($statsContent -match "camera|Camera") { $statsChecks += "camera data" }
             if ($statsContent -match "lens|Lens") { $statsChecks += "lens data" }
-            
+
             if ($statsChecks.Count -ge 2) {
                 Write-Success "Statistics page generated with: $($statsChecks -join ', ')"
             } else {

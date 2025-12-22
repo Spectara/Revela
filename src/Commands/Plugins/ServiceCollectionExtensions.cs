@@ -1,5 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using Spectara.Revela.Core;
+using Spectara.Revela.Core.Services;
 
 namespace Spectara.Revela.Commands.Plugins;
 
@@ -15,6 +16,9 @@ public static class ServiceCollectionExtensions
     /// <returns>The service collection for chaining.</returns>
     public static IServiceCollection AddPluginsFeature(this IServiceCollection services)
     {
+        // NuGetSourceManager for resolving package sources (supports relative paths)
+        services.AddSingleton<INuGetSourceManager, NuGetSourceManager>();
+
         // PluginManager from Core with Typed HttpClient
         // Standard resilience handler provides: retry (3x), circuit breaker, timeout
         services.AddHttpClient<PluginManager>(client =>
