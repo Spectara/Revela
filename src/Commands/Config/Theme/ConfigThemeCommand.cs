@@ -2,6 +2,7 @@ using System.CommandLine;
 using Spectara.Revela.Commands.Config.Models;
 using Spectara.Revela.Commands.Config.Services;
 using Spectara.Revela.Core.Services;
+using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Abstractions;
 using Spectre.Console;
 
@@ -51,7 +52,7 @@ public sealed partial class ConfigThemeCommand(
     {
         if (!configService.IsProjectInitialized())
         {
-            AnsiConsole.MarkupLine("[red]Error:[/] Not a Revela project. Run [cyan]revela init project[/] first.");
+            ErrorPanels.ShowNotAProjectError();
             return 1;
         }
 
@@ -65,9 +66,10 @@ public sealed partial class ConfigThemeCommand(
 
         if (availableThemes.Count == 0)
         {
-            AnsiConsole.MarkupLine("[red]Error:[/] No themes available.\n");
-            AnsiConsole.MarkupLine("Install a theme first:");
-            AnsiConsole.MarkupLine("  [cyan]revela plugin install Spectara.Revela.Theme.Lumina[/]");
+            ErrorPanels.ShowNothingInstalledError(
+                "themes",
+                "theme install Spectara.Revela.Theme.Lumina",
+                "theme list --online");
             return 1;
         }
 

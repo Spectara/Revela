@@ -38,8 +38,13 @@ internal sealed partial class CommandPromptBuilder(ILogger<CommandPromptBuilder>
     }
 
     /// <summary>
-    /// Prompts the user for all options of a command.
+    /// Prompts the user for boolean behavior options of a command.
     /// </summary>
+    /// <remarks>
+    /// Only prompts for visible bool options (behavior flags like --force, --dry-run).
+    /// Config overrides (nullable types like string?, int?) are never prompted.
+    /// If no boolean options exist, returns empty dictionary without prompting.
+    /// </remarks>
     /// <param name="command">The command to prompt options for.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>Dictionary mapping options to their values.</returns>
@@ -50,19 +55,54 @@ internal sealed partial class CommandPromptBuilder(ILogger<CommandPromptBuilder>
         _ = cancellationToken;
         var results = new Dictionary<Option, object?>();
 
-        foreach (var option in command.Options)
-        {
-            // Skip hidden options (check via Hidden property)
-            if (option.Hidden)
-            {
-                continue;
-            }
+        // Collect only visible bool options (behavior flags)
+        var boolOptions = command.Options
+            .Where(o => !o.Hidden && o.ValueType == typeof(bool))
+            .ToList();
 
-            var value = PromptForOption(option);
-            results[option] = value;
+        // No bool options → execute directly without prompts
+        if (boolOptions.Count == 0)
+        {
+            return Task.FromResult(results);
+        }
+
+        // Use multi-selection prompt for behavior flags
+        var choices = boolOptions
+            .Select(o => new
+            {
+                Option = o,
+                Display = FormatOptionDisplay(o)
+            })
+            .ToList();
+
+        var selected = AnsiConsole.Prompt(
+            new MultiSelectionPrompt<string>()
+                .Title("[blue]Options[/] [dim](Space to toggle, Enter to confirm)[/]")
+                .NotRequired()
+                .InstructionsText("[dim](All options default to off)[/]")
+                .AddChoices(choices.Select(c => c.Display)));
+
+        // Map selections back to options
+        foreach (var choice in choices)
+        {
+            var isSelected = selected.Contains(choice.Display);
+            results[choice.Option] = isSelected;
         }
 
         return Task.FromResult(results);
+    }
+
+    /// <summary>
+    /// Formats an option for display in the multi-selection prompt.
+    /// </summary>
+    private static string FormatOptionDisplay(Option option)
+    {
+        var name = option.Name;
+        var description = option.Description;
+
+        return string.IsNullOrWhiteSpace(description)
+            ? name
+            : $"{name} [dim]({description})[/]";
     }
 
     /// <summary>
@@ -145,18 +185,6 @@ internal sealed partial class CommandPromptBuilder(ILogger<CommandPromptBuilder>
         var description = argument.Description ?? string.Empty;
         var isRequired = argument.Arity.MinimumNumberOfValues > 0;
         var valueType = argument.ValueType;
-
-        var title = BuildPromptTitle(name, description, isRequired);
-
-        return PromptByType(title, valueType, isRequired);
-    }
-
-    private static object? PromptForOption(Option option)
-    {
-        var name = option.Name.TrimStart('-');
-        var description = option.Description ?? string.Empty;
-        var isRequired = option.Required;
-        var valueType = option.ValueType;
 
         var title = BuildPromptTitle(name, description, isRequired);
 

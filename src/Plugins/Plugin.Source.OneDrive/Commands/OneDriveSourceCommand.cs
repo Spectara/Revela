@@ -24,19 +24,6 @@ public sealed class OneDriveSourceCommand(
     SharedLinkProvider provider,
     IOptionsMonitor<OneDrivePluginConfig> config)
 {
-    private const string MissingShareUrlError = """
-        No OneDrive share URL provided. Use one of these methods:
-        1. Create plugins/Spectara.Revela.Plugin.Source.OneDrive.json with ShareUrl
-        2. Set environment variable: SPECTARA__REVELA__PLUGIN__SOURCE__ONEDRIVE__SHAREURL=<url>
-        3. Provide --share-url parameter
-
-        Example plugins/Spectara.Revela.Plugin.Source.OneDrive.json:
-        {
-          "Spectara.Revela.Plugin.Source.OneDrive": {
-            "ShareUrl": "https://1drv.ms/u/..."
-          }
-        }
-        """;
     public Command Create()
     {
         var command = new Command("sync", "Sync images from OneDrive shared folder");
@@ -77,7 +64,8 @@ public sealed class OneDriveSourceCommand(
 
         var debugOption = new Option<bool>("--debug", "-d")
         {
-            Description = "Enable debug logging"
+            Description = "Enable debug logging",
+            Hidden = true
         };
 
         var dryRunOption = new Option<bool>("--dry-run", "-n")
@@ -92,12 +80,14 @@ public sealed class OneDriveSourceCommand(
 
         var cleanAllOption = new Option<bool>("--clean-all")
         {
-            Description = "Remove ALL local files not in OneDrive, ignoring filters (dangerous!)"
+            Description = "Remove ALL local files not in OneDrive, ignoring filters (dangerous!)",
+            Hidden = true
         };
 
         var showFilesOption = new Option<bool>("--show-files")
         {
-            Description = "Show detailed list of all affected files"
+            Description = "Show detailed list of all affected files",
+            Hidden = true
         };
 
         command.Options.Add(shareUrlOption);
@@ -159,7 +149,8 @@ public sealed class OneDriveSourceCommand(
             // Validate ShareUrl (either from config or CLI)
             if (string.IsNullOrWhiteSpace(shareUrl))
             {
-                throw new InvalidOperationException(MissingShareUrlError);
+                ShowMissingConfigError();
+                return;
             }
 
             // Build OneDriveConfig for provider
@@ -550,6 +541,19 @@ public sealed class OneDriveSourceCommand(
             });
 
         return [.. downloadedFiles];
+    }
+
+    /// <summary>
+    /// Shows a user-friendly error when OneDrive is not configured.
+    /// </summary>
+    private static void ShowMissingConfigError()
+    {
+        ErrorPanels.ShowConfigRequiredError(
+            "OneDrive share URL",
+            "config onedrive",
+            "  1. Create [cyan]plugins/Spectara.Revela.Plugin.Source.OneDrive.json[/] with ShareUrl\n" +
+            "  2. Set environment variable: [cyan]SPECTARA__REVELA__PLUGIN__SOURCE__ONEDRIVE__SHAREURL[/]\n" +
+            "  3. Provide [cyan]--share-url[/] parameter");
     }
 }
 

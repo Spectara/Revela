@@ -1,6 +1,7 @@
 using System.CommandLine;
 using Spectara.Revela.Core;
 using Spectara.Revela.Core.Services;
+using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Abstractions;
 using Spectre.Console;
 
@@ -66,8 +67,7 @@ public sealed partial class RestoreCommand(
         var projectJsonPath = Path.Combine(fullPath, "project.json");
         if (!File.Exists(projectJsonPath))
         {
-            AnsiConsole.MarkupLine($"[red]ERROR[/] No project.json found in {fullPath}");
-            AnsiConsole.MarkupLine("    Run [blue]revela init project[/] to create a new project.");
+            ErrorPanels.ShowNotAProjectError();
             return 1;
         }
 

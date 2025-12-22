@@ -1,6 +1,8 @@
 using System.CommandLine;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Http.Resilience;
+using Polly;
 using Spectara.Revela.Sdk.Abstractions;
 using Spectara.Revela.Plugin.Source.OneDrive.Commands;
 using Spectara.Revela.Plugin.Source.OneDrive.Configuration;
@@ -45,14 +47,36 @@ public sealed class OneDrivePlugin : IPlugin
             .ValidateOnStart();             // Fail-fast at startup if config invalid
 
         // Register Typed HttpClient for SharedLinkProvider with Resilience
-        // Standard resilience handler provides: retry (3x), circuit breaker, timeout, rate limiter
-        // Handles: HTTP 408, 429, 500+ (including 503), HttpRequestException, TimeoutRejectedException
+        // Custom resilience handler: retry without verbose logging
+        // Only logs on final failure, not on each retry attempt
         services.AddHttpClient<SharedLinkProvider>(client =>
         {
             client.Timeout = TimeSpan.FromMinutes(5); // OneDrive API can be slow for large files
             client.DefaultRequestHeaders.Add("User-Agent", "Revela/1.0 (Static Site Generator)");
         })
-        .AddStandardResilienceHandler(); // Modern .NET 10 resilience (replaces old Polly)
+        .AddResilienceHandler("onedrive-retry", builder =>
+        {
+            // Retry: 3 attempts with exponential backoff, no logging on retry
+            builder.AddRetry(new HttpRetryStrategyOptions
+            {
+                MaxRetryAttempts = 3,
+                BackoffType = DelayBackoffType.Exponential,
+                UseJitter = true,
+                Delay = TimeSpan.FromSeconds(2),
+                // Handles: HTTP 408, 429, 500+ (including 503), network errors
+                ShouldHandle = new PredicateBuilder<HttpResponseMessage>()
+                    .Handle<HttpRequestException>()
+                    .Handle<TaskCanceledException>()
+                    .HandleResult(r => (int)r.StatusCode >= 500 ||
+                                       r.StatusCode == System.Net.HttpStatusCode.RequestTimeout ||
+                                       r.StatusCode == System.Net.HttpStatusCode.TooManyRequests)
+                // No OnRetry callback = no logging during retries
+                // User only sees error if ALL retries fail
+            });
+
+            // Timeout per request attempt
+            builder.AddTimeout(TimeSpan.FromMinutes(2));
+        });
 
         // Note: DownloadAnalyzer is static, no DI registration needed
 

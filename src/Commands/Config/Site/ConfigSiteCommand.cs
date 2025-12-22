@@ -1,6 +1,7 @@
 using System.CommandLine;
 using Spectara.Revela.Commands.Config.Models;
 using Spectara.Revela.Commands.Config.Services;
+using Spectara.Revela.Sdk;
 using Spectre.Console;
 
 namespace Spectara.Revela.Commands.Config.Site;
@@ -69,7 +70,7 @@ public sealed partial class ConfigSiteCommand(
     {
         if (!configService.IsProjectInitialized())
         {
-            AnsiConsole.MarkupLine("[red]Error:[/] Not a Revela project. Run [cyan]revela init project[/] first.");
+            ErrorPanels.ShowNotAProjectError();
             return 1;
         }
 

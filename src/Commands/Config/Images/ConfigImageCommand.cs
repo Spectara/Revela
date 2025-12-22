@@ -2,6 +2,7 @@ using System.CommandLine;
 using System.Globalization;
 using Spectara.Revela.Commands.Config.Models;
 using Spectara.Revela.Commands.Config.Services;
+using Spectara.Revela.Sdk;
 using Spectre.Console;
 
 namespace Spectara.Revela.Commands.Config.Images;
@@ -69,7 +70,7 @@ public sealed partial class ConfigImageCommand(
     {
         if (!configService.IsProjectInitialized())
         {
-            AnsiConsole.MarkupLine("[red]Error:[/] Not a Revela project. Run [cyan]revela init project[/] first.");
+            ErrorPanels.ShowNotAProjectError();
             return 1;
         }
 

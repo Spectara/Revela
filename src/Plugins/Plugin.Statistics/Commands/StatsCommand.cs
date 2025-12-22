@@ -46,8 +46,10 @@ public sealed class StatsCommand(
         var manifestFile = Path.Combine(Directory.GetCurrentDirectory(), ManifestPath);
         if (!File.Exists(manifestFile))
         {
-            AnsiConsole.MarkupLine("[red]Error:[/] No manifest found.");
-            AnsiConsole.MarkupLine("[yellow]Run 'revela generate scan' first to scan your images.[/]");
+            ErrorPanels.ShowPrerequisiteError(
+                "Site manifest",
+                "generate scan",
+                "The manifest contains all image metadata needed for statistics.");
             return 1;
         }
         // Load manifest

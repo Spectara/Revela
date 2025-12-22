@@ -63,7 +63,10 @@ public sealed partial class ThemeListCommand(
         // Show installed themes
         if (themes.Count == 0)
         {
-            AnsiConsole.MarkupLine("[yellow]No themes installed.[/]");
+            ErrorPanels.ShowNothingInstalledError(
+                "themes",
+                "theme install Spectara.Revela.Theme.Lumina",
+                "theme list --online");
         }
         else
         {
@@ -74,12 +77,6 @@ public sealed partial class ThemeListCommand(
         if (includeOnline)
         {
             await ShowOnlineThemesAsync(themes, cancellationToken).ConfigureAwait(false);
-        }
-        else if (themes.Count == 0)
-        {
-            AnsiConsole.MarkupLine("");
-            AnsiConsole.MarkupLine("To see available themes from NuGet:");
-            AnsiConsole.MarkupLine("  [cyan]revela theme list --online[/]");
         }
     }
 
