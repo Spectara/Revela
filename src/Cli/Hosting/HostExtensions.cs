@@ -57,16 +57,17 @@ internal static class HostExtensions
         var orderRegistry = services.GetRequiredService<CommandOrderRegistry>();
 
         // Register well-known groups with display order
-        groupRegistry.Register(CommandGroups.Setup, 10);
+        // Build first (most used), then Content, Setup, Customize
+        groupRegistry.Register(CommandGroups.Build, 10);
         groupRegistry.Register(CommandGroups.Content, 20);
-        groupRegistry.Register(CommandGroups.Build, 30);
+        groupRegistry.Register(CommandGroups.Setup, 30);
         groupRegistry.Register(CommandGroups.Customize, 40);
 
         // Create root command
         var rootCommand = new RootCommand(description);
 
         // Core commands (resolved from DI) with display order and group assignment
-        // Build group: generate (10), clean (70)
+        // Build group: generate (10), clean (20)
         var generateCommand = services.GetRequiredService<GenerateCommand>();
         var generateCmd = generateCommand.Create();
         rootCommand.Subcommands.Add(generateCmd);
@@ -77,48 +78,50 @@ internal static class HostExtensions
         var cleanCommand = services.GetRequiredService<CleanCommand>();
         var cleanCmd = cleanCommand.Create();
         rootCommand.Subcommands.Add(cleanCmd);
-        orderRegistry.Register(cleanCmd, 70);
+        orderRegistry.Register(cleanCmd, 20);
         orderRegistry.RegisterGroup(cleanCmd, CommandGroups.Build);
         RegisterCleanSubcommandOrders(cleanCmd, orderRegistry);
 
-        // Content group: create (25)
+        // Content group: create (10)
         var createCommand = services.GetRequiredService<CreateCommand>();
         var createCmd = createCommand.Create();
         rootCommand.Subcommands.Add(createCmd);
-        orderRegistry.Register(createCmd, 25);
+        orderRegistry.Register(createCmd, 10);
         orderRegistry.RegisterGroup(createCmd, CommandGroups.Content);
 
-        // Setup group: init (30), config (35), restore (60)
+        // Setup group: init (10), config (20), restore (30) - workflow order
         var initCommand = services.GetRequiredService<InitCommand>();
         var initCmd = initCommand.Create();
         rootCommand.Subcommands.Add(initCmd);
-        orderRegistry.Register(initCmd, 30);
+        orderRegistry.Register(initCmd, 10);
         orderRegistry.RegisterGroup(initCmd, CommandGroups.Setup);
+        RegisterInitSubcommandOrders(initCmd, orderRegistry);
 
         var configCommand = services.GetRequiredService<ConfigCommand>();
         var configCmd = configCommand.Create();
         rootCommand.Subcommands.Add(configCmd);
-        orderRegistry.Register(configCmd, 35);
+        orderRegistry.Register(configCmd, 20);
         orderRegistry.RegisterGroup(configCmd, CommandGroups.Setup);
+        RegisterConfigSubcommandOrders(configCmd, orderRegistry);
 
         var restoreCommand = services.GetRequiredService<RestoreCommand>();
         var restoreCmd = restoreCommand.Create();
         rootCommand.Subcommands.Add(restoreCmd);
-        orderRegistry.Register(restoreCmd, 60);
+        orderRegistry.Register(restoreCmd, 30);
         orderRegistry.RegisterGroup(restoreCmd, CommandGroups.Setup);
 
-        // Customize group: theme (40), plugin (50)
+        // Customize group: theme (10), plugin (20)
         var themeCommand = services.GetRequiredService<ThemeCommand>();
         var themeCmd = themeCommand.Create();
         rootCommand.Subcommands.Add(themeCmd);
-        orderRegistry.Register(themeCmd, 40);
+        orderRegistry.Register(themeCmd, 10);
         orderRegistry.RegisterGroup(themeCmd, CommandGroups.Customize);
         RegisterThemeSubcommandOrders(themeCmd, orderRegistry);
 
         var pluginCommand = services.GetRequiredService<PluginCommand>();
         var pluginCmd = pluginCommand.Create();
         rootCommand.Subcommands.Add(pluginCmd);
-        orderRegistry.Register(pluginCmd, 50);
+        orderRegistry.Register(pluginCmd, 20);
         orderRegistry.RegisterGroup(pluginCmd, CommandGroups.Customize);
         RegisterPluginSubcommandOrders(pluginCmd, orderRegistry);
 
@@ -219,6 +222,47 @@ internal static class HostExtensions
                 "install" => 20,
                 "uninstall" => 30,
                 _ => CommandOrderRegistry.DefaultOrder
+            };
+            orderRegistry.Register(sub, order);
+        }
+    }
+
+    /// <summary>
+    /// Registers order for subcommands of init command.
+    /// </summary>
+    private static void RegisterInitSubcommandOrders(Command initCmd, CommandOrderRegistry orderRegistry)
+    {
+        // Order within init: project (0), all (10), revela (20), plugin configs (100+)
+        foreach (var sub in initCmd.Subcommands)
+        {
+            var order = sub.Name switch
+            {
+                "project" => 0,
+                "all" => 10,
+                "revela" => 20,
+                _ => 100 // Plugin config commands
+            };
+            orderRegistry.Register(sub, order);
+        }
+    }
+
+    /// <summary>
+    /// Registers order for subcommands of config command.
+    /// </summary>
+    private static void RegisterConfigSubcommandOrders(Command configCmd, CommandOrderRegistry orderRegistry)
+    {
+        // Order within config: show (0), site (10), theme (20), image (30), feed (40), path (50)
+        foreach (var sub in configCmd.Subcommands)
+        {
+            var order = sub.Name switch
+            {
+                "show" => 0,
+                "site" => 10,
+                "theme" => 20,
+                "image" => 30,
+                "feed" => 40,
+                "path" => 50,
+                _ => CommandOrderRegistry.DefaultOrder // Plugin config commands
             };
             orderRegistry.Register(sub, order);
         }
