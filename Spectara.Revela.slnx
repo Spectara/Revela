@@ -14,11 +14,17 @@
       <Project Path="src/Themes/Theme.Lumina.Statistics/Theme.Lumina.Statistics.csproj" />
     </Folder>
   </Folder>
+  <Folder Name="/src/Plugins/">
+    <Project Path="src/Plugins/Plugin.Serve/Plugin.Serve.csproj" />
+    <Project Path="src/Plugins/Plugin.Source.OneDrive/Plugin.Source.OneDrive.csproj" />
+  </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Core.Tests/Core.Tests.csproj" />
     <Project Path="tests/Commands.Tests/Commands.Tests.csproj" />
     <Project Path="tests/IntegrationTests/IntegrationTests.csproj" />
+    <Project Path="tests/Plugin.Serve.Tests/Plugin.Serve.Tests.csproj" />
     <Project Path="tests/Plugin.Source.OneDrive.Tests/Plugin.Source.OneDrive.Tests.csproj" />
     <Project Path="tests/Plugin.Statistics.Tests/Plugin.Statistics.Tests.csproj" />
+    <Project Path="tests/Shared/Shared.csproj" />
   </Folder>
 </Solution>
