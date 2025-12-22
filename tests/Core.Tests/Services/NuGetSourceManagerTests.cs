@@ -133,7 +133,19 @@ public sealed class NuGetSourceManagerTests
         var result = InvokeResolvePathIfRelative(path);
 
         // Assert
-        Assert.AreEqual(path, result);
+        // On Windows, this is recognized as an absolute path and returned unchanged
+        // On Linux/macOS, Windows paths are NOT recognized as absolute (no drive letters),
+        // so they get resolved relative to the config directory - this is expected behavior
+        if (OperatingSystem.IsWindows())
+        {
+            Assert.AreEqual(path, result);
+        }
+        else
+        {
+            // On Unix, the path will be treated as relative and resolved
+            Assert.IsTrue(Path.IsPathRooted(result), $"Expected rooted path, got: {result}");
+            Assert.IsTrue(result.Contains("NuGet", StringComparison.Ordinal), $"Expected path containing 'NuGet', got: {result}");
+        }
     }
 
     [TestMethod]
