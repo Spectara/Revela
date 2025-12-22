@@ -3,12 +3,13 @@ using System.CommandLine;
 namespace Spectara.Revela.Cli.Hosting;
 
 /// <summary>
-/// Registry for command display order in interactive menu.
+/// Registry for command display order and group assignment in interactive menu.
 /// </summary>
 /// <remarks>
 /// Commands with lower order values appear first in menus.
 /// Commands with the same order are sorted alphabetically.
 /// Default order is 50, giving plugins room to insert before (1-49) or after (51-100).
+/// Commands can optionally be assigned to groups for visual organization.
 /// </remarks>
 internal sealed class CommandOrderRegistry
 {
@@ -18,6 +19,7 @@ internal sealed class CommandOrderRegistry
     public const int DefaultOrder = 50;
 
     private readonly Dictionary<Command, int> orderMap = [];
+    private readonly Dictionary<Command, string> groupMap = [];
 
     /// <summary>
     /// Registers the display order for a command.
@@ -27,6 +29,16 @@ internal sealed class CommandOrderRegistry
     public void Register(Command command, int order)
     {
         orderMap[command] = order;
+    }
+
+    /// <summary>
+    /// Registers the group assignment for a command.
+    /// </summary>
+    /// <param name="command">The command to assign to a group.</param>
+    /// <param name="groupName">The group name (must be registered in <see cref="CommandGroupRegistry"/>).</param>
+    public void RegisterGroup(Command command, string groupName)
+    {
+        groupMap[command] = groupName;
     }
 
     /// <summary>
@@ -40,6 +52,16 @@ internal sealed class CommandOrderRegistry
     }
 
     /// <summary>
+    /// Gets the group name for a command.
+    /// </summary>
+    /// <param name="command">The command to look up.</param>
+    /// <returns>The group name, or null if not assigned to any group.</returns>
+    public string? GetGroup(Command command)
+    {
+        return groupMap.TryGetValue(command, out var group) ? group : null;
+    }
+
+    /// <summary>
     /// Sorts commands by order, then alphabetically by name.
     /// </summary>
     /// <param name="commands">The commands to sort.</param>
@@ -49,5 +71,44 @@ internal sealed class CommandOrderRegistry
         return commands
             .OrderBy(GetOrder)
             .ThenBy(c => c.Name, StringComparer.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// Gets commands organized by groups, with ungrouped commands at the end.
+    /// </summary>
+    /// <param name="commands">The commands to organize.</param>
+    /// <param name="groupRegistry">The group registry for group ordering.</param>
+    /// <returns>
+    /// A list of tuples where each tuple contains:
+    /// - GroupName: The group name, or null for ungrouped commands
+    /// - Commands: The sorted commands in that group
+    /// </returns>
+    public IReadOnlyList<(string? GroupName, IReadOnlyList<Command> Commands)> GetGroupedCommands(
+        IEnumerable<Command> commands,
+        CommandGroupRegistry groupRegistry)
+    {
+        var commandList = commands.ToList();
+
+        // Separate grouped and ungrouped commands
+        var grouped = commandList
+            .Where(c => groupMap.ContainsKey(c))
+            .GroupBy(c => groupMap[c])
+            .OrderBy(g => groupRegistry.GetOrder(g.Key))
+            .ThenBy(g => g.Key, StringComparer.OrdinalIgnoreCase)
+            .Select(g => (
+                GroupName: (string?)g.Key,
+                Commands: (IReadOnlyList<Command>)[.. Sort(g)]))
+            .ToList();
+
+        var ungrouped = commandList
+            .Where(c => !groupMap.ContainsKey(c))
+            .ToList();
+
+        if (ungrouped.Count > 0)
+        {
+            grouped.Add((null, [.. Sort(ungrouped)]));
+        }
+
+        return grouped;
     }
 }

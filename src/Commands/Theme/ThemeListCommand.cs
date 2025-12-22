@@ -3,6 +3,7 @@ using Spectara.Revela.Core;
 using Spectara.Revela.Core.Services;
 using Spectara.Revela.Sdk.Abstractions;
 using Spectre.Console;
+using Spectara.Revela.Sdk;
 
 namespace Spectara.Revela.Commands.Theme;
 
@@ -103,11 +104,9 @@ public sealed partial class ThemeListCommand(
         }
 
         var panel = new Panel(new Markup(string.Join("\n", content)))
-        {
-            Header = new PanelHeader($"[bold]Installed Themes[/] [dim]({themes.Count})[/]"),
-            Border = BoxBorder.Rounded,
-            Padding = new Padding(1, 0, 1, 0)
-        };
+            .WithHeader($"[bold]Installed Themes[/] [dim]({themes.Count})[/]")
+            .WithInfoStyle();
+        panel.Padding = new Padding(1, 0, 1, 0);
 
         AnsiConsole.Write(panel);
         AnsiConsole.MarkupLine("");
@@ -176,11 +175,9 @@ public sealed partial class ThemeListCommand(
         }
 
         var panel = new Panel(new Markup(string.Join("\n", content)))
-        {
-            Header = new PanelHeader($"[bold]Available from NuGet[/] [dim]({onlineThemes.Count})[/]"),
-            Border = BoxBorder.Rounded,
-            Padding = new Padding(1, 0, 1, 0)
-        };
+            .WithHeader($"[bold]Available from NuGet[/] [dim]({onlineThemes.Count})[/]")
+            .WithInfoStyle();
+        panel.Padding = new Padding(1, 0, 1, 0);
 
         AnsiConsole.Write(panel);
     }
@@ -214,3 +211,4 @@ public sealed partial class ThemeListCommand(
             .Replace("]", "]]", StringComparison.Ordinal);
     }
 }
+

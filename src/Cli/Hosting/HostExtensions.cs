@@ -13,7 +13,6 @@ using Spectara.Revela.Commands.Restore;
 using Spectara.Revela.Commands.Theme;
 using Spectara.Revela.Sdk.Abstractions;
 
-
 namespace Spectara.Revela.Cli.Hosting;
 
 /// <summary>
@@ -53,58 +52,86 @@ internal static class HostExtensions
         var plugins = services.GetRequiredService<IPluginContext>();
         plugins.Initialize(services);
 
-        // Get order registry for interactive menu sorting
+        // Get registries for interactive menu
+        var groupRegistry = services.GetRequiredService<CommandGroupRegistry>();
         var orderRegistry = services.GetRequiredService<CommandOrderRegistry>();
+
+        // Register well-known groups with display order
+        groupRegistry.Register(CommandGroups.Setup, 10);
+        groupRegistry.Register(CommandGroups.Content, 20);
+        groupRegistry.Register(CommandGroups.Build, 30);
+        groupRegistry.Register(CommandGroups.Customize, 40);
 
         // Create root command
         var rootCommand = new RootCommand(description);
 
-        // Core commands (resolved from DI) with display order
-        // Order: generate (10), source (20-plugin), create (25), init (30), config (35), theme (40), plugin (50), restore (60), clean (70)
+        // Core commands (resolved from DI) with display order and group assignment
+        // Build group: generate (10), clean (70)
         var generateCommand = services.GetRequiredService<GenerateCommand>();
         var generateCmd = generateCommand.Create();
         rootCommand.Subcommands.Add(generateCmd);
         orderRegistry.Register(generateCmd, 10);
+        orderRegistry.RegisterGroup(generateCmd, CommandGroups.Build);
         RegisterSubcommandOrders(generateCmd, orderRegistry);
-
-        var createCommand = services.GetRequiredService<CreateCommand>();
-        var createCmd = createCommand.Create();
-        rootCommand.Subcommands.Add(createCmd);
-        orderRegistry.Register(createCmd, 25);
-
-        var initCommand = services.GetRequiredService<InitCommand>();
-        var initCmd = initCommand.Create();
-        rootCommand.Subcommands.Add(initCmd);
-        orderRegistry.Register(initCmd, 30);
-
-        var configCommand = services.GetRequiredService<ConfigCommand>();
-        var configCmd = configCommand.Create();
-        rootCommand.Subcommands.Add(configCmd);
-        orderRegistry.Register(configCmd, 35);
-
-        var themeCommand = services.GetRequiredService<ThemeCommand>();
-        var themeCmd = themeCommand.Create();
-        rootCommand.Subcommands.Add(themeCmd);
-        orderRegistry.Register(themeCmd, 40);
-
-        var pluginCommand = services.GetRequiredService<PluginCommand>();
-        var pluginCmd = pluginCommand.Create();
-        rootCommand.Subcommands.Add(pluginCmd);
-        orderRegistry.Register(pluginCmd, 50);
-
-        var restoreCommand = services.GetRequiredService<RestoreCommand>();
-        var restoreCmd = restoreCommand.Create();
-        rootCommand.Subcommands.Add(restoreCmd);
-        orderRegistry.Register(restoreCmd, 60);
 
         var cleanCommand = services.GetRequiredService<CleanCommand>();
         var cleanCmd = cleanCommand.Create();
         rootCommand.Subcommands.Add(cleanCmd);
         orderRegistry.Register(cleanCmd, 70);
+        orderRegistry.RegisterGroup(cleanCmd, CommandGroups.Build);
         RegisterCleanSubcommandOrders(cleanCmd, orderRegistry);
 
-        // Plugin commands (with smart parent handling and order registration)
-        plugins.RegisterCommands(rootCommand, (cmd, order) => orderRegistry.Register(cmd, order));
+        // Content group: create (25)
+        var createCommand = services.GetRequiredService<CreateCommand>();
+        var createCmd = createCommand.Create();
+        rootCommand.Subcommands.Add(createCmd);
+        orderRegistry.Register(createCmd, 25);
+        orderRegistry.RegisterGroup(createCmd, CommandGroups.Content);
+
+        // Setup group: init (30), config (35), restore (60)
+        var initCommand = services.GetRequiredService<InitCommand>();
+        var initCmd = initCommand.Create();
+        rootCommand.Subcommands.Add(initCmd);
+        orderRegistry.Register(initCmd, 30);
+        orderRegistry.RegisterGroup(initCmd, CommandGroups.Setup);
+
+        var configCommand = services.GetRequiredService<ConfigCommand>();
+        var configCmd = configCommand.Create();
+        rootCommand.Subcommands.Add(configCmd);
+        orderRegistry.Register(configCmd, 35);
+        orderRegistry.RegisterGroup(configCmd, CommandGroups.Setup);
+
+        var restoreCommand = services.GetRequiredService<RestoreCommand>();
+        var restoreCmd = restoreCommand.Create();
+        rootCommand.Subcommands.Add(restoreCmd);
+        orderRegistry.Register(restoreCmd, 60);
+        orderRegistry.RegisterGroup(restoreCmd, CommandGroups.Setup);
+
+        // Customize group: theme (40), plugin (50)
+        var themeCommand = services.GetRequiredService<ThemeCommand>();
+        var themeCmd = themeCommand.Create();
+        rootCommand.Subcommands.Add(themeCmd);
+        orderRegistry.Register(themeCmd, 40);
+        orderRegistry.RegisterGroup(themeCmd, CommandGroups.Customize);
+
+        var pluginCommand = services.GetRequiredService<PluginCommand>();
+        var pluginCmd = pluginCommand.Create();
+        rootCommand.Subcommands.Add(pluginCmd);
+        orderRegistry.Register(pluginCmd, 50);
+        orderRegistry.RegisterGroup(pluginCmd, CommandGroups.Customize);
+
+        // Plugin commands (with smart parent handling, order, and group registration)
+        plugins.RegisterCommands(
+            rootCommand,
+            (cmd, order, group) =>
+            {
+                orderRegistry.Register(cmd, order);
+                if (!string.IsNullOrEmpty(group))
+                {
+                    groupRegistry.GetOrCreate(group);
+                    orderRegistry.RegisterGroup(cmd, group);
+                }
+            });
 
         // Set interactive mode handler for root command (no subcommand specified)
         rootCommand.SetAction(async (parseResult, cancellationToken) =>

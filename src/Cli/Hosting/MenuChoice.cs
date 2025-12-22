@@ -30,15 +30,18 @@ internal sealed record MenuChoice(
     /// <returns>A menu choice with the command's name and description.</returns>
     public static MenuChoice FromCommand(Command cmd)
     {
+        var hasSubcommands = cmd.Subcommands.Count > 0;
+        var arrow = hasSubcommands ? " →" : "";
+
         var description = string.IsNullOrWhiteSpace(cmd.Description)
             ? string.Empty
             : $"  [dim]{cmd.Description}[/]";
 
-        var action = cmd.Subcommands.Count > 0
+        var action = hasSubcommands
             ? MenuAction.Navigate
             : MenuAction.Execute;
 
-        return new MenuChoice($"{cmd.Name}{description}", cmd, action);
+        return new MenuChoice($"{cmd.Name}{arrow}{description}", cmd, action);
     }
 
     /// <inheritdoc />

@@ -2,6 +2,7 @@ using System.CommandLine;
 using Spectara.Revela.Commands.Init.Abstractions;
 using Spectara.Revela.Core.Services;
 using Spectre.Console;
+using Spectara.Revela.Sdk;
 
 namespace Spectara.Revela.Commands.Init;
 
@@ -81,8 +82,8 @@ public sealed partial class InitRevelaCommand(
         AnsiConsole.WriteLine();
 
         var panel = new Panel(new Markup($"[dim]{configPath}[/]"))
-            .Header("[cyan]Configuration Location[/]")
-            .Border(BoxBorder.Rounded)
+            .WithHeader("[cyan]Configuration Location[/]")
+            .WithInfoStyle()
             .Padding(1, 0);
         AnsiConsole.Write(panel);
 
@@ -100,3 +101,4 @@ public sealed partial class InitRevelaCommand(
     [LoggerMessage(Level = LogLevel.Information, Message = "Created global config: {Path}")]
     private static partial void LogCreatedConfig(ILogger logger, string path);
 }
+

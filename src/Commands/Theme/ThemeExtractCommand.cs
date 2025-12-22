@@ -3,6 +3,7 @@ using Microsoft.Extensions.Configuration;
 using Spectara.Revela.Core.Services;
 using Spectara.Revela.Sdk.Abstractions;
 using Spectre.Console;
+using Spectara.Revela.Sdk;
 
 namespace Spectara.Revela.Commands.Theme;
 
@@ -265,10 +266,8 @@ public sealed partial class ThemeExtractCommand(
         var fileList = string.Join("\n", extractedFiles.Select(f => $"  [green]+[/] [cyan]{EscapeMarkup(f)}[/]"));
         var panel = new Panel($"{fileList}\n\n" +
                             "[dim]These files will now override the embedded theme files.[/]")
-        {
-            Header = new PanelHeader("[bold green]Success[/]"),
-            Border = BoxBorder.Rounded
-        };
+            .WithHeader("[bold green]Success[/]")
+            .WithSuccessStyle();
 
         AnsiConsole.Write(panel);
 
@@ -487,10 +486,8 @@ public sealed partial class ThemeExtractCommand(
                             $"1. Edit [cyan]themes/{EscapeMarkup(themeName)}/[/] to customize\n" +
                             "2. Run [cyan]revela generate[/] to see changes\n" +
                             "3. Your local theme takes priority over installed themes")
-        {
-            Header = new PanelHeader("[bold green]Success[/]"),
-            Border = BoxBorder.Rounded
-        };
+            .WithHeader("[bold green]Success[/]")
+            .WithSuccessStyle();
 
         AnsiConsole.Write(panel);
 
@@ -537,3 +534,4 @@ public sealed partial class ThemeExtractCommand(
     [LoggerMessage(Level = LogLevel.Warning, Message = "File not found: '{Key}' at path '{Path}'")]
     private partial void LogFileNotFound(string key, string path);
 }
+

@@ -34,6 +34,6 @@ public interface IPluginContext
     /// Should be called after Initialize().
     /// </remarks>
     /// <param name="rootCommand">Root command to register plugin commands under</param>
-    /// <param name="onCommandRegistered">Optional callback when a command is registered, receives command and order.</param>
-    void RegisterCommands(RootCommand rootCommand, Action<Command, int>? onCommandRegistered = null);
+    /// <param name="onCommandRegistered">Optional callback when a command is registered, receives command, order, and optional group name.</param>
+    void RegisterCommands(RootCommand rootCommand, Action<Command, int, string?>? onCommandRegistered = null);
 }

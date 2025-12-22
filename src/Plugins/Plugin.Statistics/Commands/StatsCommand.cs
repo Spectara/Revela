@@ -1,5 +1,6 @@
 using System.CommandLine;
 using Spectre.Console;
+using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Abstractions;
 using Spectara.Revela.Sdk.Models.Manifest;
 using Spectara.Revela.Plugin.Statistics.Commands.Logging;
@@ -100,10 +101,8 @@ public sealed class StatsCommand(
                       "[dim]Next steps:[/]\n" +
                       "  • Run [cyan]revela generate pages[/] to render statistics pages\n" +
                       "  • Requires [cyan]Theme.Lumina.Statistics[/] extension for styling"))
-        {
-            Header = new PanelHeader("[bold green]Success[/]"),
-            Border = BoxBorder.Rounded
-        };
+            .WithHeader("[bold green]Success[/]")
+            .WithSuccessStyle();
         AnsiConsole.Write(panel);
 
         return 0;
@@ -132,3 +131,4 @@ public sealed class StatsCommand(
         }
     }
 }
+

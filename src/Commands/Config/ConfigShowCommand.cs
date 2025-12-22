@@ -1,6 +1,7 @@
 using System.CommandLine;
 using Spectara.Revela.Commands.Config.Services;
 using Spectre.Console;
+using Spectara.Revela.Sdk;
 
 namespace Spectara.Revela.Commands.Config;
 
@@ -52,11 +53,9 @@ public sealed class ConfigShowCommand(IConfigService configService)
             {
                 var json = projectConfig.ToJsonString(new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
                 var panel = new Panel(new Text(json))
-                {
-                    Header = new PanelHeader("[bold]project.json[/]"),
-                    Border = BoxBorder.Rounded,
-                    Padding = new Padding(1, 0, 1, 0)
-                };
+                    .WithHeader("[bold]project.json[/]")
+                    .WithInfoStyle();
+                panel.Padding = new Padding(1, 0, 1, 0);
                 AnsiConsole.Write(panel);
             }
         }
@@ -73,11 +72,9 @@ public sealed class ConfigShowCommand(IConfigService configService)
             {
                 var json = siteConfig.ToJsonString(new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
                 var panel = new Panel(new Text(json))
-                {
-                    Header = new PanelHeader("[bold]site.json[/]"),
-                    Border = BoxBorder.Rounded,
-                    Padding = new Padding(1, 0, 1, 0)
-                };
+                    .WithHeader("[bold]site.json[/]")
+                    .WithInfoStyle();
+                panel.Padding = new Padding(1, 0, 1, 0);
                 AnsiConsole.Write(panel);
             }
         }
@@ -85,3 +82,4 @@ public sealed class ConfigShowCommand(IConfigService configService)
         return 0;
     }
 }
+

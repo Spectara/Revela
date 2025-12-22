@@ -123,6 +123,9 @@ public sealed partial class PluginLoader(
             LogSearchingDirectory(directory, source, pluginDlls.Length);
         }
 
+        // Determine if we should use default context (for app directory = development mode)
+        var useDefaultContext = source == "application";
+
         foreach (var dll in pluginDlls)
         {
             // Skip if already loaded (prevents duplicates from multiple directories)
@@ -141,7 +144,7 @@ public sealed partial class PluginLoader(
 
             try
             {
-                LoadPluginFromAssembly(dll);
+                LoadPluginFromAssembly(dll, useDefaultContext);
                 loadedAssemblyPaths.Add(dll);
             }
             catch (ReflectionTypeLoadException rtle)
@@ -165,15 +168,27 @@ public sealed partial class PluginLoader(
         }
     }
 
-    private void LoadPluginFromAssembly(string assemblyPath)
+    private void LoadPluginFromAssembly(string assemblyPath, bool useDefaultContext)
     {
-        // Each plugin gets its own isolated AssemblyLoadContext
-        // This allows different plugins to use different versions of the same dependency
-        var loadContext = new PluginLoadContext(assemblyPath);
-        pluginContexts.Add(loadContext); // Keep context alive
+        Assembly assembly;
 
-        var assembly = loadContext.LoadFromAssemblyPath(assemblyPath);
-        LogPluginContextCreated(Path.GetFileName(assemblyPath), loadContext.Name ?? "unnamed");
+        if (useDefaultContext)
+        {
+            // Development mode: Load from default context (same as host)
+            // This ensures all types are compatible (e.g., PanelStyles extension methods)
+            assembly = AssemblyLoadContext.Default.LoadFromAssemblyPath(assemblyPath);
+            LogPluginContextCreated(Path.GetFileName(assemblyPath), "Default (development)");
+        }
+        else
+        {
+            // Production mode: Each plugin gets its own isolated AssemblyLoadContext
+            // This allows different plugins to use different versions of the same dependency
+            var loadContext = new PluginLoadContext(assemblyPath);
+            pluginContexts.Add(loadContext); // Keep context alive
+
+            assembly = loadContext.LoadFromAssemblyPath(assemblyPath);
+            LogPluginContextCreated(Path.GetFileName(assemblyPath), loadContext.Name ?? "unnamed");
+        }
 
         var pluginTypes = assembly.GetTypes()
             .Where(t => typeof(IPlugin).IsAssignableFrom(t) && !t.IsInterface && !t.IsAbstract);
@@ -193,8 +208,46 @@ public sealed partial class PluginLoader(
                 continue;
             }
 
+            // Check SDK version compatibility
+            CheckSdkVersionCompatibility(assembly, plugin.Metadata.Name);
+
             loadedPlugins.Add(plugin);
             LogPluginDiscovered(plugin.Metadata.Name, plugin.Metadata.Version, Path.GetFileName(assemblyPath));
+        }
+    }
+
+    /// <summary>
+    /// Checks if the plugin was compiled against a compatible SDK version.
+    /// </summary>
+    /// <remarks>
+    /// Plugins should be compiled against the same or older SDK version as the host.
+    /// If a plugin uses a newer SDK, it may call methods that don't exist in the host's SDK,
+    /// causing MissingMethodException at runtime.
+    /// </remarks>
+    private void CheckSdkVersionCompatibility(Assembly pluginAssembly, string pluginName)
+    {
+        var pluginSdkRef = pluginAssembly.GetReferencedAssemblies()
+            .FirstOrDefault(a => a.Name == "Spectara.Revela.Sdk");
+
+        if (pluginSdkRef?.Version is null)
+        {
+            return; // Plugin doesn't reference SDK (unusual but possible)
+        }
+
+        var hostSdkAssembly = typeof(IPlugin).Assembly;
+        var hostSdkVersion = hostSdkAssembly.GetName().Version;
+
+        if (hostSdkVersion is null)
+        {
+            return; // Host SDK version unknown
+        }
+
+        if (pluginSdkRef.Version > hostSdkVersion)
+        {
+            LogPluginSdkVersionMismatch(
+                pluginName,
+                pluginSdkRef.Version.ToString(),
+                hostSdkVersion.ToString());
         }
     }
 
@@ -240,4 +293,7 @@ public sealed partial class PluginLoader(
 
     [LoggerMessage(Level = LogLevel.Debug, Message = "Created isolated load context '{ContextName}' for plugin {Assembly}")]
     private partial void LogPluginContextCreated(string assembly, string contextName);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Plugin '{PluginName}' was compiled against SDK {PluginSdkVersion}, but host has SDK {HostSdkVersion}. This may cause runtime errors if the plugin uses newer SDK features.")]
+    private partial void LogPluginSdkVersionMismatch(string pluginName, string pluginSdkVersion, string hostSdkVersion);
 }

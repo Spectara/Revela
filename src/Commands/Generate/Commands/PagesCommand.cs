@@ -3,6 +3,7 @@ using Microsoft.Extensions.Configuration;
 using Spectara.Revela.Commands.Generate.Abstractions;
 using Spectara.Revela.Commands.Generate.Models.Results;
 using Spectre.Console;
+using Spectara.Revela.Sdk;
 using IManifestRepository = Spectara.Revela.Sdk.Abstractions.IManifestRepository;
 
 namespace Spectara.Revela.Commands.Generate.Commands;
@@ -54,10 +55,8 @@ public sealed partial class PagesCommand(
                     "[dim]Solution:[/]\n" +
                     "Run [cyan]revela generate scan[/] first to scan your content."
                 )
-                {
-                    Header = new PanelHeader("[bold yellow]Warning[/]"),
-                    Border = BoxBorder.Rounded
-                };
+                .WithHeader("[bold yellow]Warning[/]")
+                .WithWarningStyle();
 
                 AnsiConsole.Write(warningPanel);
                 return 1;
@@ -109,20 +108,16 @@ public sealed partial class PagesCommand(
                               "[dim]Next steps:[/]\n" +
                               "  • Open [cyan]output/index.html[/] in your browser\n" +
                               "  • Run [cyan]revela generate[/] for full generation"))
-                {
-                    Header = new PanelHeader("[bold green]Success[/]"),
-                    Border = BoxBorder.Rounded
-                };
+                .WithHeader("[bold green]Success[/]")
+                .WithSuccessStyle();
                 AnsiConsole.Write(successPanel);
                 return 0;
             }
 
             var errorPanel = new Panel(
                 new Markup($"[red]{result.ErrorMessage}[/]"))
-            {
-                Header = new PanelHeader("[bold red]Page generation failed[/]"),
-                Border = BoxBorder.Rounded
-            };
+                .WithHeader("[bold red]Page generation failed[/]")
+                .WithErrorStyle();
             AnsiConsole.Write(errorPanel);
             LogPagesGenerationFailed(logger);
             return 1;
@@ -138,3 +133,4 @@ public sealed partial class PagesCommand(
     [LoggerMessage(Level = LogLevel.Error, Message = "Page generation command failed")]
     private static partial void LogPagesGenerationFailed(ILogger logger);
 }
+

@@ -27,7 +27,7 @@ internal sealed class PluginContext(IReadOnlyList<IPlugin> plugins, ILogger<Plug
         }
     }
 
-    public void RegisterCommands(RootCommand rootCommand, Action<Command, int>? onCommandRegistered = null)
+    public void RegisterCommands(RootCommand rootCommand, Action<Command, int, string?>? onCommandRegistered = null)
     {
         foreach (var plugin in Plugins)
         {
@@ -45,7 +45,7 @@ internal sealed class PluginContext(IReadOnlyList<IPlugin> plugins, ILogger<Plug
         }
     }
 
-    private void RegisterCommand(RootCommand rootCommand, IPlugin plugin, CommandDescriptor descriptor, Action<Command, int>? onCommandRegistered)
+    private void RegisterCommand(RootCommand rootCommand, IPlugin plugin, CommandDescriptor descriptor, Action<Command, int, string?>? onCommandRegistered)
     {
         var command = descriptor.Command;
         var parentPath = descriptor.ParentCommand;
@@ -75,14 +75,14 @@ internal sealed class PluginContext(IReadOnlyList<IPlugin> plugins, ILogger<Plug
             rootCommand.Subcommands.Add(command);
         }
 
-        // Notify caller about registered command with its order
-        onCommandRegistered?.Invoke(command, descriptor.Order);
+        // Notify caller about registered command with its order and group
+        onCommandRegistered?.Invoke(command, descriptor.Order, descriptor.Group);
     }
 
     /// <summary>
     /// Gets or creates a parent command, supporting nested paths like "init source".
     /// </summary>
-    private static Command GetOrCreateParentCommand(RootCommand root, string parentPath, Action<Command, int>? onCommandRegistered)
+    private static Command GetOrCreateParentCommand(RootCommand root, string parentPath, Action<Command, int, string?>? onCommandRegistered)
     {
         // Split path into segments: "init source" → ["init", "source"]
         var segments = parentPath.Split(' ', StringSplitOptions.RemoveEmptyEntries);
@@ -98,11 +98,11 @@ internal sealed class PluginContext(IReadOnlyList<IPlugin> plugins, ILogger<Plug
             }
             else
             {
-                // Create new command with appropriate description and order
-                var (description, order) = GetCommandInfo(segment);
+                // Create new command with appropriate description, order, and group
+                var (description, order, group) = GetCommandInfo(segment);
                 var newCommand = new Command(segment, description);
                 current.Subcommands.Add(newCommand);
-                onCommandRegistered?.Invoke(newCommand, order);
+                onCommandRegistered?.Invoke(newCommand, order, group);
                 current = newCommand;
             }
         }
@@ -110,14 +110,14 @@ internal sealed class PluginContext(IReadOnlyList<IPlugin> plugins, ILogger<Plug
         return current;
     }
 
-    private static (string Description, int Order) GetCommandInfo(string commandName)
+    private static (string Description, int Order, string? Group) GetCommandInfo(string commandName)
     {
         return commandName switch
         {
-            "init" => ("Initialize project, sources, or plugins", 30),
-            "source" => ("Image source providers", 20),
-            "deploy" => ("Deploy generated site", 55),
-            _ => ($"{commandName} commands", 50)  // Default order
+            "init" => ("Initialize project, sources, or plugins", 30, "Setup"),
+            "source" => ("Image source providers", 20, "Content"),
+            "deploy" => ("Deploy generated site", 55, "Build"),
+            _ => ($"{commandName} commands", 50, null)  // Default order, no group
         };
     }
 }

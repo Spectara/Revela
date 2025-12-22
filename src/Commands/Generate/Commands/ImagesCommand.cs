@@ -4,6 +4,7 @@ using Microsoft.Extensions.Configuration;
 using Spectara.Revela.Commands.Generate.Abstractions;
 using Spectara.Revela.Commands.Generate.Models.Results;
 using Spectre.Console;
+using Spectara.Revela.Sdk;
 using IManifestRepository = Spectara.Revela.Sdk.Abstractions.IManifestRepository;
 
 namespace Spectara.Revela.Commands.Generate.Commands;
@@ -61,10 +62,8 @@ public sealed partial class ImagesCommand(
                     "[dim]Solution:[/]\n" +
                     "Run [cyan]revela generate scan[/] first to scan your content."
                 )
-                {
-                    Header = new PanelHeader("[bold yellow]Warning[/]"),
-                    Border = BoxBorder.Rounded
-                };
+                .WithHeader("[bold yellow]Warning[/]")
+                .WithWarningStyle();
 
                 AnsiConsole.Write(warningPanel);
                 return 1;
@@ -139,20 +138,16 @@ public sealed partial class ImagesCommand(
                 content += "  • Or run [cyan]revela generate[/] for full build";
 
                 var successPanel = new Panel(new Markup(content))
-                {
-                    Header = new PanelHeader("[bold green]Success[/]"),
-                    Border = BoxBorder.Rounded
-                };
+                    .WithHeader("[bold green]Success[/]")
+                    .WithSuccessStyle();
                 AnsiConsole.Write(successPanel);
                 return 0;
             }
 
             var errorPanel = new Panel(
                 new Markup($"[red]{result.ErrorMessage}[/]"))
-            {
-                Header = new PanelHeader("[bold red]Image processing failed[/]"),
-                Border = BoxBorder.Rounded
-            };
+                .WithHeader("[bold red]Image processing failed[/]")
+                .WithErrorStyle();
             AnsiConsole.Write(errorPanel);
             LogImageProcessingFailed(logger);
             return 1;
@@ -179,3 +174,4 @@ public sealed partial class ImagesCommand(
     [LoggerMessage(Level = LogLevel.Error, Message = "Image processing command failed")]
     private static partial void LogImageProcessingFailed(ILogger logger);
 }
+

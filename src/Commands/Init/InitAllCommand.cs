@@ -3,6 +3,7 @@ using Spectara.Revela.Commands.Init.Abstractions;
 using Spectara.Revela.Core.Services;
 using Spectara.Revela.Sdk.Abstractions;
 using Spectre.Console;
+using Spectara.Revela.Sdk;
 using System.Text.Json;
 
 namespace Spectara.Revela.Commands.Init;
@@ -137,9 +138,7 @@ public sealed partial class InitAllCommand(
                                 "1. Run [cyan]revela config[/] to customize settings\n" +
                                 "2. Add photos to [cyan]source/[/]\n" +
                                 "3. Run [cyan]revela generate[/]")
-            {
-                Border = BoxBorder.Rounded
-            };
+                .WithInfoStyle();
             AnsiConsole.Write(panel);
 
             return 0;
@@ -229,3 +228,4 @@ public sealed partial class InitAllCommand(
     [LoggerMessage(Level = LogLevel.Error, Message = "Failed to initialize project")]
     private partial void LogError(Exception exception);
 }
+

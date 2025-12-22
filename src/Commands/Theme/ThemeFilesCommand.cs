@@ -2,6 +2,7 @@ using System.CommandLine;
 using Microsoft.Extensions.Configuration;
 using Spectara.Revela.Core.Services;
 using Spectre.Console;
+using Spectara.Revela.Sdk;
 
 namespace Spectara.Revela.Commands.Theme;
 
@@ -139,11 +140,9 @@ public sealed partial class ThemeFilesCommand(
         grid.AddRow(assetsTable);
 
         var panel = new Panel(grid)
-        {
-            Header = new PanelHeader($"[bold]Theme Files[/] [dim]([/][{ThemeColor}]{EscapeMarkup(themeName)}[/]{extensionInfo}[dim])[/]"),
-            Border = BoxBorder.Rounded,
-            Padding = new Padding(1, 0, 1, 0)
-        };
+            .WithHeader($"[bold]Theme Files[/] [dim]([/][{ThemeColor}]{EscapeMarkup(themeName)}[/]{extensionInfo}[dim])[/]")
+            .WithInfoStyle();
+        panel.Padding = new Padding(1, 0, 1, 0);
 
         AnsiConsole.Write(panel);
         AnsiConsole.MarkupLine($"\n[dim]Total:[/] {templateEntries.Count} templates, {assetEntries.Count} assets");
@@ -190,3 +189,4 @@ public sealed partial class ThemeFilesCommand(
     [LoggerMessage(Level = LogLevel.Debug, Message = "Listing files for theme '{ThemeName}' with {ExtensionCount} extension(s)")]
     private partial void LogInitialized(string themeName, int extensionCount);
 }
+

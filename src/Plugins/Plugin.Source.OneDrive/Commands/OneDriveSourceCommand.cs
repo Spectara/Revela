@@ -6,6 +6,7 @@ using Spectara.Revela.Plugin.Source.OneDrive.Formatting;
 using Spectara.Revela.Plugin.Source.OneDrive.Models;
 using Spectara.Revela.Plugin.Source.OneDrive.Providers;
 using Spectara.Revela.Plugin.Source.OneDrive.Services;
+using Spectara.Revela.Sdk;
 using Spectre.Console;
 
 namespace Spectara.Revela.Plugin.Source.OneDrive.Commands;
@@ -332,10 +333,8 @@ public sealed class OneDriveSourceCommand(
                 $"1. Run [cyan]revela generate[/] to process your content\n" +
                 $"2. Check output in [cyan]output/[/] directory"
             )
-            {
-                Header = new PanelHeader("[bold green]Success[/]"),
-                Border = BoxBorder.Rounded
-            };
+            .WithHeader("[bold green]Success[/]")
+            .WithSuccessStyle();
 
             AnsiConsole.Write(panel);
         }
@@ -511,10 +510,8 @@ public sealed class OneDriveSourceCommand(
         }
 
         AnsiConsole.Write(new Panel(summaryText)
-        {
-            Header = new PanelHeader(isDryRun ? "[bold yellow]Preview[/]" : "[bold blue]Summary[/]"),
-            Border = BoxBorder.Rounded
-        });
+            .WithHeader(isDryRun ? "[bold yellow]Preview[/]" : "[bold blue]Summary[/]")
+            .WithInfoStyle());
         AnsiConsole.WriteLine();
     }
 

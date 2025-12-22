@@ -2,6 +2,7 @@ using System.CommandLine;
 using System.Reflection;
 
 using Spectre.Console;
+using Spectara.Revela.Sdk;
 
 namespace Spectara.Revela.Cli.Hosting;
 
@@ -10,6 +11,7 @@ namespace Spectara.Revela.Cli.Hosting;
 /// </summary>
 internal sealed partial class InteractiveMenuService(
     CommandPromptBuilder promptBuilder,
+    CommandGroupRegistry groupRegistry,
     CommandOrderRegistry orderRegistry,
     ILogger<InteractiveMenuService> logger) : IInteractiveMenuService
 {
@@ -56,7 +58,7 @@ internal sealed partial class InteractiveMenuService(
 
         foreach (var line in logoLines)
         {
-            AnsiConsole.MarkupLine("[cyan]" + line + "[/]");
+            AnsiConsole.MarkupLine("[cyan1]" + line + "[/]");
         }
 
         AnsiConsole.WriteLine();
@@ -69,11 +71,8 @@ internal sealed partial class InteractiveMenuService(
                 $"[bold]Version {version}[/]\n" +
                 "[dim]Modern static site generator for photographers[/]\n\n" +
                 "[blue]Navigate with[/] [bold]↑↓[/][blue], select with[/] [bold]Enter[/]"))
-            .Header("[cyan]Welcome[/]")
-            .HeaderAlignment(Justify.Center)
-            .Border(BoxBorder.Rounded)
-            .BorderColor(Color.Cyan1)
-            .Padding(1, 0);
+            .WithHeader("[cyan1]Welcome[/]")
+            .WithInfoStyle();
 
         AnsiConsole.Write(panel);
         AnsiConsole.WriteLine();
@@ -98,23 +97,11 @@ internal sealed partial class InteractiveMenuService(
 
     private async Task<MenuResult> ShowMainMenuAsync(CancellationToken cancellationToken)
     {
-        var choices = new List<MenuChoice>();
+        var prompt = BuildGroupedSelectionPrompt(
+            RootCommand!.Subcommands,
+            "\n[cyan]What would you like to do?[/]");
 
-        // Add all top-level commands (sorted by order, then name)
-        foreach (var command in orderRegistry.Sort(RootCommand!.Subcommands))
-        {
-            choices.Add(MenuChoice.FromCommand(command));
-        }
-
-        // Add separator and exit
-        choices.Add(MenuChoice.Exit);
-
-        var selection = AnsiConsole.Prompt(
-            new SelectionPrompt<MenuChoice>()
-                .Title("\n[cyan]What would you like to do?[/]")
-                .PageSize(15)
-                .HighlightStyle(new Style(Color.Cyan1, decoration: Decoration.Bold))
-                .AddChoices(choices));
+        var selection = AnsiConsole.Prompt(prompt);
 
         return selection.Action switch
         {
@@ -133,28 +120,17 @@ internal sealed partial class InteractiveMenuService(
     {
         while (!cancellationToken.IsCancellationRequested)
         {
-            var choices = new List<MenuChoice> { MenuChoice.Back };
-
-            foreach (var command in orderRegistry.Sort(parent.Subcommands))
-            {
-                choices.Add(MenuChoice.FromCommand(command));
-            }
-
-            choices.Add(MenuChoice.Exit);
-
             var pathDisplay = string.Join(" → ", commandPath);
-            var selection = AnsiConsole.Prompt(
-                new SelectionPrompt<MenuChoice>()
-                    .Title($"\n[cyan]{pathDisplay}[/] - [dim]Select a command:[/]")
-                    .PageSize(15)
-                    .HighlightStyle(new Style(Color.Cyan1, decoration: Decoration.Bold))
-                    .AddChoices(choices));
+            var prompt = BuildGroupedSelectionPrompt(
+                parent.Subcommands,
+                $"\n[cyan]{pathDisplay}[/] - [dim]Select a command:[/]",
+                includeBack: true,
+                includeExit: false);
+
+            var selection = AnsiConsole.Prompt(prompt);
 
             switch (selection.Action)
             {
-                case MenuAction.Exit:
-                    return new MenuResult(true, 0);
-
                 case MenuAction.Back:
                     return new MenuResult(false, 0);
 
@@ -178,6 +154,7 @@ internal sealed partial class InteractiveMenuService(
 
                     break;
 
+                case MenuAction.Exit:
                 default:
                     break;
             }
@@ -259,10 +236,8 @@ internal sealed partial class InteractiveMenuService(
                 "The plugin assembly is loaded in memory and cannot be deleted.\n" +
                 "Please use the command line instead:\n\n" +
                 "[cyan]revela plugin uninstall <plugin-name>[/]"))
-            .Header("[yellow]⚠ Not Available[/]")
-            .HeaderAlignment(Justify.Center)
-            .Border(BoxBorder.Rounded)
-            .BorderColor(Color.Yellow)
+            .WithHeader("[yellow]⚠ Not Available[/]")
+            .WithWarningStyle()
             .Padding(1, 0);
 
         AnsiConsole.Write(panel);
@@ -273,6 +248,81 @@ internal sealed partial class InteractiveMenuService(
         AnsiConsole.WriteLine();
         AnsiConsole.MarkupLine("[dim]Press any key to continue...[/]");
         Console.ReadKey(intercept: true);
+    }
+
+    /// <summary>
+    /// Builds a grouped selection prompt for commands.
+    /// </summary>
+    /// <param name="commands">The commands to display.</param>
+    /// <param name="title">The prompt title.</param>
+    /// <param name="includeBack">Whether to include a "Back" option at the top.</param>
+    /// <param name="includeExit">Whether to include an "Exit" option at the bottom.</param>
+    /// <returns>A configured selection prompt.</returns>
+    private SelectionPrompt<MenuChoice> BuildGroupedSelectionPrompt(
+        IEnumerable<Command> commands,
+        string title,
+        bool includeBack = false,
+        bool includeExit = true)
+    {
+        var prompt = new SelectionPrompt<MenuChoice>()
+            .Title(title)
+            .PageSize(20)
+            .WrapAround()
+            .Mode(SelectionMode.Leaf)
+            .HighlightStyle(new Style(Color.Cyan1, decoration: Decoration.Bold));
+
+        // Set disabled style for group headers (dimmed)
+        prompt.DisabledStyle = new Style(Color.Grey);
+
+        // Add Back option if requested
+        if (includeBack)
+        {
+            prompt.AddChoice(MenuChoice.Back);
+        }
+
+        // Get grouped commands
+        var grouped = orderRegistry.GetGroupedCommands(commands, groupRegistry);
+        var hasGroups = grouped.Any(g => g.GroupName is not null);
+
+        if (hasGroups)
+        {
+            // Add each group with its commands
+            foreach (var (groupName, groupCommands) in grouped)
+            {
+                if (groupName is not null)
+                {
+                    // Create group header as MenuChoice (will be non-selectable due to Leaf mode)
+                    var groupChoice = new MenuChoice(groupName, Action: MenuAction.Navigate);
+                    var commandChoices = groupCommands.Select(MenuChoice.FromCommand).ToArray();
+
+                    prompt.AddChoiceGroup(groupChoice, commandChoices);
+                }
+                else
+                {
+                    // Ungrouped commands - add directly
+                    foreach (var cmd in groupCommands)
+                    {
+                        prompt.AddChoice(MenuChoice.FromCommand(cmd));
+                    }
+                }
+            }
+        }
+        else
+        {
+            // No groups - just add sorted commands
+            foreach (var cmd in orderRegistry.Sort(commands))
+            {
+                prompt.AddChoice(MenuChoice.FromCommand(cmd));
+            }
+        }
+
+        // Add Exit at the end (only for top-level menu)
+        if (includeExit)
+        {
+            prompt.AddChoice(MenuChoice.Exit);
+        }
+
+        return prompt;
     }
 
     [LoggerMessage(Level = LogLevel.Error, Message = "RootCommand not set")]

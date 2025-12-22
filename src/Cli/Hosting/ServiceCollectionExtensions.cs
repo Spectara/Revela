@@ -14,6 +14,7 @@ internal static class ServiceCollectionExtensions
     /// <returns>The service collection for chaining.</returns>
     public static IServiceCollection AddInteractiveMode(this IServiceCollection services)
     {
+        services.AddSingleton<CommandGroupRegistry>();
         services.AddSingleton<CommandOrderRegistry>();
         services.AddTransient<CommandPromptBuilder>();
         services.AddTransient<IInteractiveMenuService, InteractiveMenuService>();

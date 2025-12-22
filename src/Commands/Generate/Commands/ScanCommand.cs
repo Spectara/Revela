@@ -3,6 +3,7 @@ using Microsoft.Extensions.Configuration;
 using Spectara.Revela.Commands.Generate.Abstractions;
 using Spectara.Revela.Commands.Generate.Models.Results;
 using Spectre.Console;
+using Spectara.Revela.Sdk;
 
 namespace Spectara.Revela.Commands.Generate.Commands;
 
@@ -68,10 +69,8 @@ public sealed partial class ScanCommand(
                     $"  • Run [cyan]revela generate pages[/] to render HTML\n" +
                     $"  • Or run [cyan]revela generate[/] for full build"
                 )
-                {
-                    Header = new PanelHeader("[bold green]Success[/]"),
-                    Border = BoxBorder.Rounded
-                };
+                .WithHeader("[bold green]Success[/]")
+                .WithSuccessStyle();
 
                 AnsiConsole.Write(panel);
                 return 0;
@@ -79,10 +78,8 @@ public sealed partial class ScanCommand(
 
             var errorPanel = new Panel(
                 new Markup($"[red]{result.ErrorMessage}[/]"))
-            {
-                Header = new PanelHeader("[bold red]Scan failed[/]"),
-                Border = BoxBorder.Rounded
-            };
+                .WithHeader("[bold red]Scan failed[/]")
+                .WithErrorStyle();
             AnsiConsole.Write(errorPanel);
             LogScanFailed(logger);
             return 1;
@@ -98,3 +95,4 @@ public sealed partial class ScanCommand(
     [LoggerMessage(Level = LogLevel.Error, Message = "Scan command failed")]
     private static partial void LogScanFailed(ILogger logger);
 }
+

@@ -201,7 +201,7 @@ sealed file class PluginContextPlaceholder(IReadOnlyList<IPlugin> plugins) : IPl
         realContext.Initialize(serviceProvider);
     }
 
-    public void RegisterCommands(System.CommandLine.RootCommand rootCommand, Action<System.CommandLine.Command, int>? onCommandRegistered = null)
+    public void RegisterCommands(System.CommandLine.RootCommand rootCommand, Action<System.CommandLine.Command, int, string?>? onCommandRegistered = null)
     {
         throw new InvalidOperationException(
             "RegisterCommands should be called on the real PluginContext resolved from DI. " +
@@ -224,7 +224,7 @@ sealed file class EmptyPluginContext : IPluginContext
         // No plugins to initialize
     }
 
-    public void RegisterCommands(System.CommandLine.RootCommand rootCommand, Action<System.CommandLine.Command, int>? onCommandRegistered = null)
+    public void RegisterCommands(System.CommandLine.RootCommand rootCommand, Action<System.CommandLine.Command, int, string?>? onCommandRegistered = null)
     {
         // No plugin commands to register
     }

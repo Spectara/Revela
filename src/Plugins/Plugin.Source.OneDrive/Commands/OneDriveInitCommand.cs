@@ -2,6 +2,7 @@ using System.CommandLine;
 using System.Text.Json;
 
 using Spectara.Revela.Plugin.Source.OneDrive.Commands.Logging;
+using Spectara.Revela.Sdk;
 
 using Spectre.Console;
 
@@ -130,10 +131,8 @@ public sealed class OneDriveInitCommand(ILogger<OneDriveInitCommand> logger)
                 $"1. Run [cyan]revela source onedrive download[/] to fetch files\n" +
                 $"2. Run [cyan]revela generate[/] to build your site"
             )
-            {
-                Header = new PanelHeader("[bold green]Success[/]"),
-                Border = BoxBorder.Rounded
-            };
+            .WithHeader("[bold green]Success[/]")
+            .WithSuccessStyle();
 
             AnsiConsole.Write(panel);
         }
