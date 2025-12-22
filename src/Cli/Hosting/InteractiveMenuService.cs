@@ -46,14 +46,14 @@ internal sealed partial class InteractiveMenuService(
 
         AnsiConsole.Clear();
 
-        // ASCII logo
+        // ASCII logo (2 spaces indent to align with panel border)
         var logoLines = new[]
         {
-            @" ____                _       ",
-            @"|  _ \ _____   _____| | __ _ ",
-            @"| |_) / _ \ \ / / _ \ |/ _` |",
-            @"|  _ <  __/\ V /  __/ | (_| |",
-            @"|_| \_\___| \_/ \___|_|\__,_|",
+            @"   ____                _       ",
+            @"  |  _ \ _____   _____| | __ _ ",
+            @"  | |_) / _ \ \ / / _ \ |/ _` |",
+            @"  |  _ <  __/\ V /  __/ | (_| |",
+            @"  |_| \_\___| \_/ \___|_|\__,_|",
         };
 
         foreach (var line in logoLines)
@@ -75,7 +75,6 @@ internal sealed partial class InteractiveMenuService(
             .WithInfoStyle();
 
         AnsiConsole.Write(panel);
-        AnsiConsole.WriteLine();
     }
 
     private async Task<int> RunMenuLoopAsync(CancellationToken cancellationToken)
@@ -99,7 +98,7 @@ internal sealed partial class InteractiveMenuService(
     {
         var prompt = BuildGroupedSelectionPrompt(
             RootCommand!.Subcommands,
-            "\n[cyan]What would you like to do?[/]");
+            string.Empty);
 
         var selection = AnsiConsole.Prompt(prompt);
 
