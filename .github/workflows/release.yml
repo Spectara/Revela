@@ -228,6 +228,14 @@ jobs:
             -p:PackageVersion=${{ needs.validate.outputs.version }} \
             -p:IncludeSymbols=false
 
+      - name: Pack Plugin.Serve
+        run: |
+          dotnet pack src/Plugins/Plugin.Serve/Plugin.Serve.csproj \
+            -c Release \
+            -o ./nupkgs \
+            -p:PackageVersion=${{ needs.validate.outputs.version }} \
+            -p:IncludeSymbols=false
+
       - name: Pack Theme.Lumina.Statistics
         run: |
           dotnet pack src/Themes/Theme.Lumina.Statistics/Theme.Lumina.Statistics.csproj \
