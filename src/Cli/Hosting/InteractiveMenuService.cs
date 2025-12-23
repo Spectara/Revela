@@ -64,11 +64,13 @@ internal sealed partial class InteractiveMenuService(
 
         // Version and description panel
         var version = Assembly.GetEntryAssembly()?.GetName().Version?.ToString(3) ?? "1.0.0";
+        var workingDir = Directory.GetCurrentDirectory();
 
         var panel = new Panel(
             new Markup(
                 $"[bold]Version {version}[/]\n" +
                 "[dim]Modern static site generator for photographers[/]\n\n" +
+                $"[blue]Working directory:[/] [link]{workingDir}[/]\n\n" +
                 "[blue]Navigate with[/] [bold]↑↓[/][blue], select with[/] [bold]Enter[/]"))
             .WithHeader("[cyan1]Welcome[/]")
             .WithInfoStyle();
