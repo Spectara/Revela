@@ -18,7 +18,7 @@ namespace Spectara.Revela.Sdk.Abstractions;
 /// </param>
 /// <param name="Group">
 /// Optional group name for visual organization in the interactive menu.
-/// Well-known groups: "Setup", "Content", "Build", "Customize".
+/// Well-known groups: "Build", "Content", "Setup", "Addons".
 /// Unknown group names are created automatically with default order.
 /// If null, the command appears in an ungrouped section at the end.
 /// </param>

@@ -14,8 +14,8 @@ internal static class CommandGroups
     /// <summary>Build, generation, and cleanup commands.</summary>
     public const string Build = "Build";
 
-    /// <summary>Theme and plugin customization commands.</summary>
-    public const string Customize = "Customize";
+    /// <summary>Theme, plugin, and dependency management commands.</summary>
+    public const string Addons = "Addons";
 }
 
 /// <summary>

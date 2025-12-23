@@ -1,4 +1,5 @@
 using System.CommandLine;
+using System.CommandLine.Help;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -57,14 +58,25 @@ internal static class HostExtensions
         var orderRegistry = services.GetRequiredService<CommandOrderRegistry>();
 
         // Register well-known groups with display order
-        // Build first (most used), then Content, Setup, Customize
+        // Build first (most used), then Content, Setup, Addons
         groupRegistry.Register(CommandGroups.Build, 10);
         groupRegistry.Register(CommandGroups.Content, 20);
         groupRegistry.Register(CommandGroups.Setup, 30);
-        groupRegistry.Register(CommandGroups.Customize, 40);
+        groupRegistry.Register(CommandGroups.Addons, 40);
 
         // Create root command
         var rootCommand = new RootCommand(description);
+
+        // Replace default HelpOption action with grouped help
+        for (var i = 0; i < rootCommand.Options.Count; i++)
+        {
+            if (rootCommand.Options[i] is HelpOption helpOption)
+            {
+                var defaultHelpAction = (HelpAction)helpOption.Action!;
+                helpOption.Action = new GroupedHelpAction(groupRegistry, orderRegistry, defaultHelpAction);
+                break;
+            }
+        }
 
         // Core commands (resolved from DI) with display order and group assignment
         // Build group: generate (10), clean (20)
@@ -104,25 +116,25 @@ internal static class HostExtensions
         orderRegistry.RegisterGroup(configCmd, CommandGroups.Setup);
         // Note: RegisterConfigSubcommandOrders called after plugins.RegisterCommands()
 
+        // Addons group: restore (5), theme (10), plugin (20)
         var restoreCommand = services.GetRequiredService<RestoreCommand>();
         var restoreCmd = restoreCommand.Create();
         rootCommand.Subcommands.Add(restoreCmd);
-        orderRegistry.Register(restoreCmd, 30);
-        orderRegistry.RegisterGroup(restoreCmd, CommandGroups.Setup);
+        orderRegistry.Register(restoreCmd, 5);
+        orderRegistry.RegisterGroup(restoreCmd, CommandGroups.Addons);
 
-        // Customize group: theme (10), plugin (20)
         var themeCommand = services.GetRequiredService<ThemeCommand>();
         var themeCmd = themeCommand.Create();
         rootCommand.Subcommands.Add(themeCmd);
         orderRegistry.Register(themeCmd, 10);
-        orderRegistry.RegisterGroup(themeCmd, CommandGroups.Customize);
+        orderRegistry.RegisterGroup(themeCmd, CommandGroups.Addons);
         RegisterThemeSubcommandOrders(themeCmd, orderRegistry);
 
         var pluginCommand = services.GetRequiredService<PluginCommand>();
         var pluginCmd = pluginCommand.Create();
         rootCommand.Subcommands.Add(pluginCmd);
         orderRegistry.Register(pluginCmd, 20);
-        orderRegistry.RegisterGroup(pluginCmd, CommandGroups.Customize);
+        orderRegistry.RegisterGroup(pluginCmd, CommandGroups.Addons);
         RegisterPluginSubcommandOrders(pluginCmd, orderRegistry);
 
         // Plugin commands (with smart parent handling, order, and group registration)
@@ -143,6 +155,9 @@ internal static class HostExtensions
         RegisterInitSubcommandOrders(initCmd, orderRegistry, groupRegistry);
         RegisterConfigSubcommandOrders(configCmd, orderRegistry);
 
+        // Replace default help with grouped help output
+        ConfigureGroupedHelp(rootCommand, groupRegistry, orderRegistry);
+
         // Set interactive mode handler for root command (no subcommand specified)
         rootCommand.SetAction(async (parseResult, cancellationToken) =>
         {
@@ -153,6 +168,50 @@ internal static class HostExtensions
         });
 
         return rootCommand;
+    }
+
+    /// <summary>
+    /// Configures the root command to use grouped help output.
+    /// </summary>
+    private static void ConfigureGroupedHelp(
+        RootCommand rootCommand,
+        CommandGroupRegistry groupRegistry,
+        CommandOrderRegistry orderRegistry)
+    {
+        // Recursively configure grouped help for all commands with subcommands
+        ConfigureGroupedHelpRecursive(rootCommand, groupRegistry, orderRegistry);
+    }
+
+    /// <summary>
+    /// Recursively configures grouped help for a command and all its subcommands.
+    /// </summary>
+    private static void ConfigureGroupedHelpRecursive(
+        Command command,
+        CommandGroupRegistry groupRegistry,
+        CommandOrderRegistry orderRegistry)
+    {
+        // Only configure if command has visible subcommands
+        var hasSubcommands = command.Subcommands.Any(c => !c.Hidden);
+        if (!hasSubcommands)
+        {
+            return;
+        }
+
+        // Find and replace the HelpOption action
+        foreach (var option in command.Options)
+        {
+            if (option is HelpOption helpOption && helpOption.Action is HelpAction defaultHelp)
+            {
+                helpOption.Action = new GroupedHelpAction(groupRegistry, orderRegistry, defaultHelp);
+                break;
+            }
+        }
+
+        // Recurse into subcommands
+        foreach (var sub in command.Subcommands)
+        {
+            ConfigureGroupedHelpRecursive(sub, groupRegistry, orderRegistry);
+        }
     }
 
     /// <summary>
