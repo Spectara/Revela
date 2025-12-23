@@ -1,5 +1,7 @@
 using System.CommandLine;
 using System.Reflection;
+using Microsoft.Extensions.Options;
+using Spectara.Revela.Core.Configuration;
 using Spectara.Revela.Sdk;
 using Spectre.Console;
 
@@ -12,6 +14,7 @@ internal sealed partial class InteractiveMenuService(
     CommandPromptBuilder promptBuilder,
     CommandGroupRegistry groupRegistry,
     CommandOrderRegistry orderRegistry,
+    IOptions<ProjectConfig> projectConfig,
     ILogger<InteractiveMenuService> logger) : IInteractiveMenuService
 {
     private bool bannerShown;
@@ -65,12 +68,18 @@ internal sealed partial class InteractiveMenuService(
         // Version and description panel
         var version = Assembly.GetEntryAssembly()?.GetName().Version?.ToString(3) ?? "1.0.0";
         var workingDir = Directory.GetCurrentDirectory();
+        var folderName = Path.GetFileName(workingDir);
+
+        // Show project name if initialized, otherwise show folder name
+        var contextLine = string.IsNullOrEmpty(projectConfig.Value.Name)
+            ? $"[dim]Directory:[/] {folderName}"
+            : $"[blue]Project:[/] {projectConfig.Value.Name}";
 
         var panel = new Panel(
             new Markup(
                 $"[bold]Version {version}[/]\n" +
                 "[dim]Modern static site generator for photographers[/]\n\n" +
-                $"[blue]Working directory:[/] [link]{workingDir}[/]\n\n" +
+                $"{contextLine}\n\n" +
                 "[blue]Navigate with[/] [bold]↑↓[/][blue], select with[/] [bold]Enter[/]"))
             .WithHeader("[cyan1]Welcome[/]")
             .WithInfoStyle();
