@@ -1,3 +1,5 @@
+using Microsoft.Extensions.Options;
+using Spectara.Revela.Core.Configuration;
 using Spectara.Revela.Core.Models;
 
 namespace Spectara.Revela.Core.Services;
@@ -19,7 +21,8 @@ namespace Spectara.Revela.Core.Services;
 /// </para>
 /// </remarks>
 public sealed partial class NuGetSourceManager(
-    ILogger<NuGetSourceManager> logger) : INuGetSourceManager
+    ILogger<NuGetSourceManager> logger,
+    IOptionsMonitor<FeedsConfig> feedsConfig) : INuGetSourceManager
 {
     /// <summary>
     /// Gets the path to the config file
@@ -40,50 +43,50 @@ public sealed partial class NuGetSourceManager(
     };
 
     /// <inheritdoc/>
-    public async Task<List<NuGetSource>> LoadSourcesAsync(CancellationToken cancellationToken = default)
+    public Task<List<NuGetSource>> LoadSourcesAsync(CancellationToken cancellationToken = default)
     {
         var sources = new List<NuGetSource> { DefaultSource };
 
-        var config = await GlobalConfigManager.LoadAsync(cancellationToken);
-        foreach (var feed in config.Feeds)
+        var config = feedsConfig.CurrentValue;
+        foreach (var (name, url) in config.Feeds)
         {
-            var resolvedUrl = ResolvePathIfRelative(feed.Url);
+            var resolvedUrl = ResolvePathIfRelative(url);
             sources.Add(new NuGetSource
             {
-                Name = feed.Name,
+                Name = name,
                 Url = resolvedUrl,
                 Enabled = true
             });
         }
 
-        return sources;
+        return Task.FromResult(sources);
     }
 
     /// <inheritdoc/>
-    public async Task<List<(NuGetSource Source, string Location)>> GetAllSourcesWithLocationAsync(CancellationToken cancellationToken = default)
+    public Task<List<(NuGetSource Source, string Location)>> GetAllSourcesWithLocationAsync(CancellationToken cancellationToken = default)
     {
         var sources = new List<(NuGetSource Source, string Location)>
         {
             (DefaultSource, "built-in")
         };
 
-        var config = await GlobalConfigManager.LoadAsync(cancellationToken);
-        foreach (var feed in config.Feeds)
+        var config = feedsConfig.CurrentValue;
+        foreach (var (name, url) in config.Feeds)
         {
-            var resolvedUrl = ResolvePathIfRelative(feed.Url);
-            var location = feed.Url.StartsWith("http", StringComparison.OrdinalIgnoreCase)
+            var resolvedUrl = ResolvePathIfRelative(url);
+            var location = url.StartsWith("http", StringComparison.OrdinalIgnoreCase)
                 ? "remote"
                 : "local";
 
             sources.Add((new NuGetSource
             {
-                Name = feed.Name,
+                Name = name,
                 Url = resolvedUrl,
                 Enabled = true
             }, location));
         }
 
-        return sources;
+        return Task.FromResult(sources);
     }
 
     /// <inheritdoc/>

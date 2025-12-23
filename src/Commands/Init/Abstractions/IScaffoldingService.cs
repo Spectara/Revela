@@ -33,4 +33,12 @@ public interface IScaffoldingService
     /// <param name="templatePath">Template path to check.</param>
     /// <returns>True if template exists, false otherwise.</returns>
     bool TemplateExists(string templatePath);
+
+    /// <summary>
+    /// Renders template content directly with the given model using Scriban.
+    /// </summary>
+    /// <param name="templateContent">Template content as string.</param>
+    /// <param name="model">Data model for template.</param>
+    /// <returns>Rendered template content.</returns>
+    string RenderTemplateContent(string templateContent, object model);
 }

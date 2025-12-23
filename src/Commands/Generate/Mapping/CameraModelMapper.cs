@@ -104,14 +104,14 @@ public sealed class CameraModelMapper
     /// <summary>
     /// Create mapper with default mappings and optional custom config
     /// </summary>
-    public CameraModelMapper(IOptions<RevelaConfig> config)
+    public CameraModelMapper(IOptionsMonitor<GenerateConfig> config)
     {
         // Start with defaults
         modelMappings = new Dictionary<string, string>(DefaultModelMappings, StringComparer.OrdinalIgnoreCase);
         makeMappings = new Dictionary<string, string>(DefaultMakeMappings, StringComparer.OrdinalIgnoreCase);
 
         // Merge custom mappings from config (custom overrides defaults)
-        var cameras = config.Value.Generate.Cameras;
+        var cameras = config.CurrentValue.Cameras;
 
         foreach (var (key, value) in cameras.Models)
         {

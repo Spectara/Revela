@@ -23,7 +23,7 @@ public sealed partial class ImageService(
     IImageProcessor imageProcessor,
     IFileHashService fileHashService,
     IManifestRepository manifestRepository,
-    IOptionsMonitor<RevelaConfig> options,
+    IOptionsMonitor<GenerateConfig> options,
     ILogger<ImageService> logger) : IImageService
 {
     /// <summary>Fixed source directory (convention over configuration)</summary>
@@ -39,7 +39,7 @@ public sealed partial class ImageService(
     private const string CacheDirectory = ".cache";
 
     /// <summary>Gets current image settings (supports hot-reload)</summary>
-    private ImageSettings ImageSettings => options.CurrentValue.Generate.Images;
+    private ImageConfig ImageSettings => options.CurrentValue.Images;
 
     /// <inheritdoc />
     public async Task<ImageResult> ProcessAsync(
@@ -67,7 +67,7 @@ public sealed partial class ImageService(
             var sizes = ImageSettings.Sizes.ToArray();
             var formats = ImageSettings.Formats.Count > 0
                 ? ImageSettings.Formats
-                : Core.Configuration.ImageSettings.DefaultFormats;
+                : ImageConfig.DefaultFormats;
             var configHash = ManifestService.ComputeConfigHash(sizes, formats);
             var configChanged = manifestRepository.ConfigHash != configHash;
 

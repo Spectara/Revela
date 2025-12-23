@@ -12,7 +12,7 @@ namespace Spectara.Revela.Plugin.Serve;
 /// </summary>
 public sealed partial class ServeCommand(
     ILogger<ServeCommand> logger,
-    IOptions<ServeConfig> serveConfig)
+    IOptionsMonitor<ServeConfig> serveConfig)
 {
     /// <summary>
     /// Create the serve command
@@ -55,7 +55,7 @@ public sealed partial class ServeCommand(
     private int ServeAsync(int? portOverride, bool verboseOverride, string? pathOverride)
     {
         // Resolve configuration: CLI > Config > Default
-        var config = serveConfig.Value;
+        var config = serveConfig.CurrentValue;
         var port = portOverride ?? config.Port;
         var verbose = verboseOverride || config.Verbose;
 

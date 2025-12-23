@@ -1,9 +1,11 @@
 using System.CommandLine;
+using Microsoft.Extensions.Options;
 using Spectara.Revela.Commands.Config.Images;
 using Spectara.Revela.Commands.Config.Revela;
 using Spectara.Revela.Commands.Config.Services;
 using Spectara.Revela.Commands.Config.Site;
 using Spectara.Revela.Commands.Config.Theme;
+using Spectara.Revela.Core.Configuration;
 using Spectre.Console;
 using Spectara.Revela.Sdk;
 
@@ -18,6 +20,7 @@ namespace Spectara.Revela.Commands.Config;
 /// </remarks>
 public sealed class ConfigCommand(
     IConfigService configService,
+    IOptionsMonitor<FeedsConfig> feedsConfig,
     ConfigThemeCommand themeCommand,
     ConfigSiteCommand siteCommand,
     ConfigImageCommand imageCommand,
@@ -117,7 +120,7 @@ public sealed class ConfigCommand(
                 "theme" => await themeCommand.ExecuteAsync(null, cancellationToken).ConfigureAwait(false),
                 "site" => await siteCommand.ExecuteAsync(null, null, null, null, cancellationToken).ConfigureAwait(false),
                 "image" => await imageCommand.ExecuteAsync(null, null, cancellationToken).ConfigureAwait(false),
-                "feed" => await ExecuteFeedMenuAsync(cancellationToken).ConfigureAwait(false),
+                "feed" => ExecuteFeedMenuAsync(feedsConfig.CurrentValue),
                 "path" => ExecutePathCommand(),
                 "show" => await ExecuteShowAsync(cancellationToken).ConfigureAwait(false),
                 _ => 0
@@ -137,11 +140,9 @@ public sealed class ConfigCommand(
         return 0;
     }
 
-    private static async Task<int> ExecuteFeedMenuAsync(CancellationToken cancellationToken)
+    private static int ExecuteFeedMenuAsync(FeedsConfig config)
     {
         // Show current feeds
-        var config = await Core.Services.GlobalConfigManager.LoadAsync(cancellationToken).ConfigureAwait(false);
-
         var table = new Table()
             .Border(TableBorder.Rounded)
             .AddColumn("Name")
@@ -150,10 +151,10 @@ public sealed class ConfigCommand(
 
         table.AddRow("[cyan]nuget.org[/]", "[dim]https://api.nuget.org/v3/index.json[/]", "[blue]built-in[/]");
 
-        foreach (var feed in config.Feeds)
+        foreach (var (name, url) in config.Feeds)
         {
-            var feedType = feed.Url.StartsWith("http", StringComparison.OrdinalIgnoreCase) ? "remote" : "local";
-            table.AddRow($"[cyan]{feed.Name}[/]", $"[dim]{feed.Url}[/]", feedType == "local" ? "[green]local[/]" : "[dim]remote[/]");
+            var feedType = url.StartsWith("http", StringComparison.OrdinalIgnoreCase) ? "remote" : "local";
+            table.AddRow($"[cyan]{name}[/]", $"[dim]{url}[/]", feedType == "local" ? "[green]local[/]" : "[dim]remote[/]");
         }
 
         AnsiConsole.Write(table);

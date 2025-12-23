@@ -1,6 +1,4 @@
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Options;
 using Spectara.Revela.Commands.Generate.Abstractions;
 using Spectara.Revela.Commands.Generate.Building;
 using Spectara.Revela.Commands.Generate.Commands;
@@ -8,7 +6,6 @@ using Spectara.Revela.Commands.Generate.Mapping;
 using Spectara.Revela.Commands.Generate.Parsing;
 using Spectara.Revela.Commands.Generate.Scanning;
 using Spectara.Revela.Commands.Generate.Services;
-using Spectara.Revela.Core.Configuration;
 using Spectara.Revela.Sdk.Abstractions;
 using Spectara.Revela.Core.Services;
 using IManifestRepository = Spectara.Revela.Sdk.Abstractions.IManifestRepository;
@@ -27,8 +24,7 @@ public static class ServiceCollectionExtensions
     /// <returns>The service collection for chaining.</returns>
     public static IServiceCollection AddGenerateFeature(this IServiceCollection services)
     {
-        // Bind RevelaConfig.Generate section via IConfigureOptions (resolves IConfiguration from DI)
-        services.AddSingleton<IConfigureOptions<RevelaConfig>, ConfigureRevelaConfig>();
+        // GenerateConfig is bound via AddRevelaConfigSections() in Program.cs
 
         // Core services
         services.AddSingleton<IFileHashService, FileHashService>();
@@ -61,17 +57,4 @@ public static class ServiceCollectionExtensions
 
         return services;
     }
-}
-
-/// <summary>
-/// Configures RevelaConfig by binding the "generate" section from IConfiguration.
-/// </summary>
-/// <remarks>
-/// Uses IConfigureOptions pattern to defer IConfiguration resolution until runtime.
-/// This allows AddGenerateFeature() to work without an IConfiguration parameter.
-/// </remarks>
-internal sealed class ConfigureRevelaConfig(IConfiguration configuration) : IConfigureOptions<RevelaConfig>
-{
-    public void Configure(RevelaConfig options) =>
-        configuration.GetSection("generate").Bind(options.Generate);
 }

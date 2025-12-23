@@ -166,6 +166,13 @@ public sealed class LocalThemeAdapter : IThemePlugin
             await source.CopyToAsync(target, cancellationToken);
         }
     }
+
+    /// <inheritdoc />
+    public Stream? GetSiteTemplate()
+    {
+        // Try to load site.template.json from theme directory
+        return GetFile("site.template.json");
+    }
 }
 
 /// <summary>

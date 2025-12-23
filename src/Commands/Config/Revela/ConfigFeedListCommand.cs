@@ -1,4 +1,6 @@
 using System.CommandLine;
+using Microsoft.Extensions.Options;
+using Spectara.Revela.Core.Configuration;
 using Spectara.Revela.Core.Services;
 using Spectre.Console;
 
@@ -8,7 +10,8 @@ namespace Spectara.Revela.Commands.Config.Revela;
 /// Command to list all NuGet feeds
 /// </summary>
 public sealed partial class ConfigFeedListCommand(
-    ILogger<ConfigFeedListCommand> logger)
+    ILogger<ConfigFeedListCommand> logger,
+    IOptionsMonitor<FeedsConfig> feedsConfig)
 {
     /// <summary>
     /// Creates the CLI command
@@ -17,20 +20,17 @@ public sealed partial class ConfigFeedListCommand(
     {
         var command = new Command("list", "List all NuGet feeds");
 
-        command.SetAction(async (_, cancellationToken) =>
-        {
-            return await ExecuteAsync(cancellationToken);
-        });
+        command.SetAction((_, _) => Task.FromResult(Execute()));
 
         return command;
     }
 
-    private async Task<int> ExecuteAsync(CancellationToken cancellationToken)
+    private int Execute()
     {
         try
         {
             LogListingFeeds(logger);
-            var config = await GlobalConfigManager.LoadAsync(cancellationToken);
+            var config = feedsConfig.CurrentValue;
 
             var table = new Table()
                 .Border(TableBorder.Rounded)
@@ -45,15 +45,15 @@ public sealed partial class ConfigFeedListCommand(
                 "[blue]built-in[/]");
 
             // User-configured feeds
-            foreach (var feed in config.Feeds)
+            foreach (var (name, url) in config.Feeds)
             {
-                var feedType = feed.Url.StartsWith("http", StringComparison.OrdinalIgnoreCase)
+                var feedType = url.StartsWith("http", StringComparison.OrdinalIgnoreCase)
                     ? "remote"
                     : "local";
 
                 table.AddRow(
-                    $"[cyan]{feed.Name}[/]",
-                    $"[dim]{feed.Url}[/]",
+                    $"[cyan]{name}[/]",
+                    $"[dim]{url}[/]",
                     feedType == "local" ? "[green]local[/]" : "[dim]remote[/]");
             }
 

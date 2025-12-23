@@ -1,4 +1,4 @@
-using Spectara.Revela.Core.Configuration;
+using System.Text.Json;
 
 namespace Spectara.Revela.Commands.Generate.Models;
 
@@ -12,14 +12,15 @@ namespace Spectara.Revela.Commands.Generate.Models;
 public sealed class SiteModel
 {
     /// <summary>
-    /// Site settings (title, author, description, copyright)
+    /// Site settings loaded dynamically from site.json.
+    /// Supports arbitrary properties defined by the theme.
     /// </summary>
-    public required SiteSettings Site { get; init; }
+    public JsonElement? Site { get; init; }
 
     /// <summary>
     /// Project settings (name, baseUrl, basePath, imageBasePath)
     /// </summary>
-    public required ProjectSettings Project { get; init; }
+    public required RenderProjectSettings Project { get; init; }
 
     /// <summary>
     /// All galleries in the site

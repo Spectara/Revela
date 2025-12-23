@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using Spectara.Revela.Core.Configuration;
+using Spectara.Revela.Core.Services;
 
 namespace Spectara.Revela.Cli.Hosting;
 
@@ -10,16 +11,22 @@ namespace Spectara.Revela.Cli.Hosting;
 internal static class HostBuilderExtensions
 {
     /// <summary>
-    /// Adds Revela project configuration files from the working directory.
+    /// Adds Revela configuration files with proper layering.
     /// </summary>
     /// <remarks>
-    /// Loads the following JSON files (all optional):
-    /// - project.json: Project settings (name, url, theme, generate.cameras, etc.)
-    /// - site.json: Site metadata (title, author, description, copyright)
-    /// - logging.json: Logging configuration (log levels per category)
-    ///
-    /// Default log level is <c>Warning</c> to keep console output clean.
-    /// Override via <c>logging.json</c> or environment variables for debugging.
+    /// <para>
+    /// Configuration sources are loaded in order (later sources override earlier):
+    /// </para>
+    /// <list type="number">
+    /// <item><b>revela.json</b> (global): User-wide defaults from %APPDATA%/Revela/</item>
+    /// <item><b>project.json</b> (local): Project-specific settings</item>
+    /// <item><b>site.json</b> (local): Site metadata (title, author, etc.)</item>
+    /// <item><b>logging.json</b> (local): Logging configuration</item>
+    /// </list>
+    /// <para>
+    /// This allows global defaults (themes, plugins, feeds) to be overridden per-project.
+    /// Similar to NuGet.Config hierarchical loading.
+    /// </para>
     /// </remarks>
     /// <param name="builder">The host application builder.</param>
     /// <returns>The builder for chaining.</returns>
@@ -27,23 +34,26 @@ internal static class HostBuilderExtensions
     {
         var workingDirectory = Directory.GetCurrentDirectory();
 
-        // Load project.json (project-specific config)
-        // reloadOnChange: true enables hot-reload when config is modified during interactive session
+        // 1. Load revela.json (global config - user-wide defaults)
+        // This provides default themes, plugins, feeds that apply to all projects
+        builder.Configuration.AddJsonFile(
+            ConfigPathResolver.ConfigFilePath,
+            optional: true,
+            reloadOnChange: true
+        );
+
+        // 2. Load project.json (local config - overrides global)
+        // Project-specific settings override global defaults
         builder.Configuration.AddJsonFile(
             Path.Combine(workingDirectory, "project.json"),
             optional: true,
             reloadOnChange: true
         );
 
-        // Load site.json (site metadata)
-        // reloadOnChange: true enables hot-reload when config is modified during interactive session
-        builder.Configuration.AddJsonFile(
-            Path.Combine(workingDirectory, "site.json"),
-            optional: true,
-            reloadOnChange: true
-        );
+        // Note: site.json is NOT loaded via IConfiguration.
+        // It's loaded dynamically by RenderService to support theme-specific schemas.
 
-        // Load logging.json (optional logging config with hot-reload)
+        // 3. Load logging.json (logging config - can override global logging settings)
         builder.Configuration.AddJsonFile(
             Path.Combine(workingDirectory, "logging.json"),
             optional: true,

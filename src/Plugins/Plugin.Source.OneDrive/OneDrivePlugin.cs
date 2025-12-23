@@ -20,7 +20,7 @@ public sealed class OneDrivePlugin : IPlugin
     /// <inheritdoc />
     public IPluginMetadata Metadata => new PluginMetadata
     {
-        Name = "OneDrive Source",
+        Name = "Source OneDrive",
         Version = "1.0.0",
         Description = "Download images from OneDrive shared folders",
         Author = "Spectara"

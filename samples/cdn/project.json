@@ -1,7 +1,10 @@
 {
-  "name": "CDN Sample",
-  "url": "https://revela.website",
-  "theme": "Lumina",
-  "plugins": {},
-  "imageBasePath": "https://cdn.example.com/images/"
+  "project": {
+    "name": "CDN Sample",
+    "baseUrl": "https://revela.website",
+    "imageBasePath": "https://cdn.example.com/images/"
+  },
+  "dependencies": {
+    "theme": "Lumina"
+  }
 }

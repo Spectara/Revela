@@ -1,8 +1,11 @@
 {
-  "name": "OneDrive Sample",
-  "url": "https://revela.website",
-  "theme": "Lumina",
-  "plugins": {},
+  "project": {
+    "name": "OneDrive Sample",
+    "baseUrl": "https://revela.website"
+  },
+  "dependencies": {
+    "theme": "Lumina"
+  },
   "generate": {
     "images": {
       "formats": {

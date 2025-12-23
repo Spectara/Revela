@@ -298,7 +298,7 @@ Plugins specify **parent command** in `CommandDescriptor`, NOT in metadata:
 // PluginMetadata has NO ParentCommand - only Name, Version, Description, Author
 public IPluginMetadata Metadata => new PluginMetadata
 {
-    Name = "OneDrive Source",
+    Name = "Source OneDrive",
     Version = "1.0.0",
     Description = "OneDrive shared folder source",
     Author = "Spectara"

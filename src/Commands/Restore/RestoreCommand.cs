@@ -11,9 +11,11 @@ namespace Spectara.Revela.Commands.Restore;
 /// Restores project dependencies (themes and plugins)
 /// </summary>
 /// <remarks>
-/// Scans the project for required dependencies and installs missing ones:
-/// - Theme from project.json
-/// - Plugins from plugins/*.json files (keys in "Plugins" section)
+/// Reads dependencies from the merged configuration (revela.json + project.json)
+/// and installs any that are missing:
+/// - Theme from "theme" property
+/// - Themes from "themes" section
+/// - Plugins from "plugins" section
 /// Uses PluginManager for installation.
 /// </remarks>
 public sealed partial class RestoreCommand(
@@ -73,8 +75,8 @@ public sealed partial class RestoreCommand(
 
         LogRestoring(fullPath);
 
-        // Scan for dependencies
-        var dependencies = await dependencyScanner.ScanAsync(fullPath, cancellationToken);
+        // Get dependencies from merged config (revela.json + project.json)
+        var dependencies = dependencyScanner.GetDependencies();
 
         if (dependencies.Count == 0)
         {
@@ -99,16 +101,15 @@ public sealed partial class RestoreCommand(
 
             var typeLabel = dep.Type == DependencyType.Theme ? "Theme" : "Plugin";
             var shortName = GetShortName(dep);
-            var sourceFile = Path.GetFileName(dep.SourceFile);
 
             if (isInstalled)
             {
-                AnsiConsole.MarkupLine($"  [green]+[/] {typeLabel} [white]{shortName}[/] [dim]({sourceFile})[/]");
+                AnsiConsole.MarkupLine($"  [green]+[/] {typeLabel} [white]{shortName}[/]");
                 installed.Add(dep);
             }
             else
             {
-                AnsiConsole.MarkupLine($"  [red]-[/] {typeLabel} [white]{shortName}[/] [dim]({sourceFile})[/] - [yellow]missing[/]");
+                AnsiConsole.MarkupLine($"  [red]-[/] {typeLabel} [white]{shortName}[/] - [yellow]missing[/]");
                 missing.Add(dep);
             }
         }

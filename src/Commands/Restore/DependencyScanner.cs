@@ -1,4 +1,5 @@
-using System.Text.Json;
+using Microsoft.Extensions.Options;
+using Spectara.Revela.Core.Configuration;
 
 namespace Spectara.Revela.Commands.Restore;
 
@@ -21,11 +22,6 @@ public sealed record RequiredDependency
     /// Type of dependency
     /// </summary>
     public required DependencyType Type { get; init; }
-
-    /// <summary>
-    /// Source file where dependency was declared
-    /// </summary>
-    public required string SourceFile { get; init; }
 }
 
 /// <summary>
@@ -41,175 +37,121 @@ public enum DependencyType
 }
 
 /// <summary>
-/// Scans project directory for required dependencies
+/// Scans configuration for required dependencies
 /// </summary>
 /// <remarks>
-/// Discovers dependencies from:
-/// - project.json: "theme" property
-/// - plugins/*.json: Root keys matching plugin package IDs (e.g., { "Spectara.Revela.Plugin.X": {...} })
+/// <para>
+/// Dependencies are read from the merged configuration (revela.json + project.json).
+/// The .NET Configuration system automatically merges these sources.
+/// </para>
+/// <list type="bullet">
+/// <item><b>theme</b>: Active theme (short name or full package ID)</item>
+/// <item><b>themes</b>: Installed theme packages with versions</item>
+/// <item><b>plugins</b>: Installed plugin packages with versions</item>
+/// </list>
 /// </remarks>
 public interface IDependencyScanner
 {
     /// <summary>
-    /// Scan project for required dependencies
+    /// Get all required dependencies from configuration
     /// </summary>
-    /// <param name="projectPath">Path to project directory</param>
-    /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>List of required dependencies</returns>
-    Task<IReadOnlyList<RequiredDependency>> ScanAsync(
-        string projectPath,
-        CancellationToken cancellationToken = default);
+    IReadOnlyList<RequiredDependency> GetDependencies();
 }
 
 /// <summary>
-/// Default implementation of dependency scanner
+/// Default implementation of dependency scanner using IOptions
 /// </summary>
-public sealed partial class DependencyScanner(ILogger<DependencyScanner> logger) : IDependencyScanner
+public sealed partial class DependencyScanner(
+    ILogger<DependencyScanner> logger,
+    IOptionsMonitor<DependenciesConfig> options) : IDependencyScanner
 {
-    private const string ProjectJsonFileName = "project.json";
-    private const string PluginsFolderName = "plugins";
-    private const string ThemePropertyName = "theme";
     private const string ThemePackagePrefix = "Spectara.Revela.Theme.";
     private const string PluginPackagePrefix = "Spectara.Revela.Plugin.";
 
     /// <inheritdoc />
-    public async Task<IReadOnlyList<RequiredDependency>> ScanAsync(
-        string projectPath,
-        CancellationToken cancellationToken = default)
+    public IReadOnlyList<RequiredDependency> GetDependencies()
     {
+        var config = options.CurrentValue;
         var dependencies = new List<RequiredDependency>();
+        var addedPackageIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
-        // 1. Scan project.json for theme
-        var themeDep = await ScanProjectJsonAsync(projectPath, cancellationToken);
-        if (themeDep != null)
+        // 1. Active theme from "theme" property
+        if (!string.IsNullOrEmpty(config.Theme))
         {
-            dependencies.Add(themeDep);
+            var (name, version) = ParsePackageSpec(config.Theme);
+            var packageId = NormalizeThemePackageId(name);
+
+            LogActiveThemeFound(packageId, version);
+            dependencies.Add(new RequiredDependency
+            {
+                PackageId = packageId,
+                Version = version,
+                Type = DependencyType.Theme
+            });
+            addedPackageIds.Add(packageId);
         }
 
-        // 2. Scan plugins/ folder for plugin configs
-        var pluginDeps = await ScanPluginsFolderAsync(projectPath, cancellationToken);
-        dependencies.AddRange(pluginDeps);
+        // 2. Themes from "themes" section
+        foreach (var (packageId, version) in config.Themes)
+        {
+            if (!packageId.StartsWith(ThemePackagePrefix, StringComparison.OrdinalIgnoreCase))
+            {
+                LogInvalidThemePackageId(packageId);
+                continue;
+            }
 
-        LogDependenciesFound(dependencies.Count, projectPath);
+            // Skip if already added via "theme" property
+            if (!addedPackageIds.Add(packageId))
+            {
+                continue;
+            }
+
+            LogThemeFound(packageId, version);
+            dependencies.Add(new RequiredDependency
+            {
+                PackageId = packageId,
+                Version = version,
+                Type = DependencyType.Theme
+            });
+        }
+
+        // 3. Plugins from "plugins" section
+        foreach (var (packageId, version) in config.Plugins)
+        {
+            if (!packageId.StartsWith(PluginPackagePrefix, StringComparison.OrdinalIgnoreCase))
+            {
+                LogInvalidPluginPackageId(packageId);
+                continue;
+            }
+
+            LogPluginFound(packageId, version);
+            dependencies.Add(new RequiredDependency
+            {
+                PackageId = packageId,
+                Version = version,
+                Type = DependencyType.Plugin
+            });
+        }
+
+        LogDependenciesFound(dependencies.Count);
         return dependencies;
     }
 
-    private async Task<RequiredDependency?> ScanProjectJsonAsync(
-        string projectPath,
-        CancellationToken cancellationToken)
-    {
-        var projectJsonPath = Path.Combine(projectPath, ProjectJsonFileName);
-        if (!File.Exists(projectJsonPath))
-        {
-            LogProjectJsonNotFound(projectPath);
-            return null;
-        }
-
-        try
-        {
-            var json = await File.ReadAllTextAsync(projectJsonPath, cancellationToken);
-            using var doc = JsonDocument.Parse(json);
-
-            if (doc.RootElement.TryGetProperty(ThemePropertyName, out var themeElement))
-            {
-                var themeName = themeElement.GetString();
-                if (!string.IsNullOrEmpty(themeName))
-                {
-                    // Parse version if specified (e.g., "Fancy@1.2.0")
-                    var (name, version) = ParsePackageSpec(themeName);
-
-                    // Convert theme name to package ID
-                    var packageId = name.StartsWith(ThemePackagePrefix, StringComparison.OrdinalIgnoreCase)
-                        ? name
-                        : ThemePackagePrefix + name;
-
-                    LogThemeFound(name, projectJsonPath);
-                    return new RequiredDependency
-                    {
-                        PackageId = packageId,
-                        Version = version,
-                        Type = DependencyType.Theme,
-                        SourceFile = projectJsonPath
-                    };
-                }
-            }
-        }
-        catch (JsonException ex)
-        {
-            LogJsonParseError(projectJsonPath, ex.Message);
-        }
-
-        return null;
-    }
-
-    private async Task<IReadOnlyList<RequiredDependency>> ScanPluginsFolderAsync(
-        string projectPath,
-        CancellationToken cancellationToken)
-    {
-        var dependencies = new List<RequiredDependency>();
-        var pluginsPath = Path.Combine(projectPath, PluginsFolderName);
-
-        if (!Directory.Exists(pluginsPath))
-        {
-            LogPluginsFolderNotFound(projectPath);
-            return dependencies;
-        }
-
-        var jsonFiles = Directory.GetFiles(pluginsPath, "*.json");
-        LogScanningPluginsFolder(pluginsPath, jsonFiles.Length);
-
-        foreach (var jsonFile in jsonFiles)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-
-            try
-            {
-                var json = await File.ReadAllTextAsync(jsonFile, cancellationToken);
-                using var doc = JsonDocument.Parse(json);
-
-                // Format: { "Spectara.Revela.Plugin.X": {...} } - Package-ID as root key
-                var foundPlugin = false;
-                foreach (var property in doc.RootElement.EnumerateObject())
-                {
-                    var key = property.Name;
-
-                    // Check if this looks like a plugin package ID
-                    if (key.StartsWith(PluginPackagePrefix, StringComparison.OrdinalIgnoreCase))
-                    {
-                        var (packageId, version) = ParsePackageSpec(key);
-
-                        LogPluginFound(packageId, jsonFile);
-                        dependencies.Add(new RequiredDependency
-                        {
-                            PackageId = packageId,
-                            Version = version,
-                            Type = DependencyType.Plugin,
-                            SourceFile = jsonFile
-                        });
-                        foundPlugin = true;
-                    }
-                }
-
-                if (!foundPlugin)
-                {
-                    LogNoPluginKeyFound(jsonFile);
-                }
-            }
-            catch (JsonException ex)
-            {
-                LogJsonParseError(jsonFile, ex.Message);
-            }
-        }
-
-        return dependencies;
-    }
+    /// <summary>
+    /// Normalize theme name to full package ID
+    /// </summary>
+    private static string NormalizeThemePackageId(string name) =>
+        name.StartsWith(ThemePackagePrefix, StringComparison.OrdinalIgnoreCase)
+            ? name
+            : ThemePackagePrefix + name;
 
     /// <summary>
     /// Parse package specification with optional version
     /// </summary>
     /// <example>
-    /// "MyPackage" → ("MyPackage", null)
-    /// "MyPackage@1.2.0" → ("MyPackage", "1.2.0")
+    /// "Lumina" → ("Lumina", null)
+    /// "Lumina@1.2.0" → ("Lumina", "1.2.0")
     /// </example>
     private static (string Name, string? Version) ParsePackageSpec(string spec)
     {
@@ -222,27 +164,21 @@ public sealed partial class DependencyScanner(ILogger<DependencyScanner> logger)
         return (spec, null);
     }
 
-    [LoggerMessage(Level = LogLevel.Debug, Message = "project.json not found in {ProjectPath}")]
-    private partial void LogProjectJsonNotFound(string projectPath);
+    [LoggerMessage(Level = LogLevel.Information, Message = "Found active theme '{PackageId}' version '{Version}'")]
+    private partial void LogActiveThemeFound(string packageId, string? version);
 
-    [LoggerMessage(Level = LogLevel.Debug, Message = "plugins/ folder not found in {ProjectPath}")]
-    private partial void LogPluginsFolderNotFound(string projectPath);
+    [LoggerMessage(Level = LogLevel.Information, Message = "Found theme '{PackageId}' version '{Version}'")]
+    private partial void LogThemeFound(string packageId, string? version);
 
-    [LoggerMessage(Level = LogLevel.Debug, Message = "Scanning plugins folder {PluginsPath}: {Count} JSON file(s)")]
-    private partial void LogScanningPluginsFolder(string pluginsPath, int count);
+    [LoggerMessage(Level = LogLevel.Information, Message = "Found plugin '{PackageId}' version '{Version}'")]
+    private partial void LogPluginFound(string packageId, string? version);
 
-    [LoggerMessage(Level = LogLevel.Information, Message = "Found theme '{ThemeName}' in {SourceFile}")]
-    private partial void LogThemeFound(string themeName, string sourceFile);
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Invalid theme package ID '{PackageId}' (expected 'Spectara.Revela.Theme.*')")]
+    private partial void LogInvalidThemePackageId(string packageId);
 
-    [LoggerMessage(Level = LogLevel.Information, Message = "Found plugin '{PackageId}' in {SourceFile}")]
-    private partial void LogPluginFound(string packageId, string sourceFile);
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Invalid plugin package ID '{PackageId}' (expected 'Spectara.Revela.Plugin.*')")]
+    private partial void LogInvalidPluginPackageId(string packageId);
 
-    [LoggerMessage(Level = LogLevel.Warning, Message = "JSON file {FilePath} has no plugin package ID as root key (expected 'Spectara.Revela.Plugin.*')")]
-    private partial void LogNoPluginKeyFound(string filePath);
-
-    [LoggerMessage(Level = LogLevel.Warning, Message = "Failed to parse JSON in {FilePath}: {Error}")]
-    private partial void LogJsonParseError(string filePath, string error);
-
-    [LoggerMessage(Level = LogLevel.Information, Message = "Found {Count} dependency(ies) in {ProjectPath}")]
-    private partial void LogDependenciesFound(int count, string projectPath);
+    [LoggerMessage(Level = LogLevel.Information, Message = "Found {Count} dependency(ies)")]
+    private partial void LogDependenciesFound(int count);
 }

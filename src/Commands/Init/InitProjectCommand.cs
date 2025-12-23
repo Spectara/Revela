@@ -84,21 +84,33 @@ public sealed partial class InitProjectCommand(
                 }
             };
 
-            // Use ScaffoldingService to render templates
+            // Use ScaffoldingService to render project.json template
             var projectConfig = scaffoldingService.RenderTemplate("Project.project.json", model);
-            var siteConfig = scaffoldingService.RenderTemplate("Project.site.json", model);
 
             cancellationToken.ThrowIfCancellationRequested();
             await File.WriteAllTextAsync("project.json", projectConfig, cancellationToken).ConfigureAwait(false);
-            await File.WriteAllTextAsync("site.json", siteConfig, cancellationToken).ConfigureAwait(false);
+
+            // Get site.json template from theme (if theme provides one)
+            var selectedTheme = availableThemes[0];
+            await using var siteTemplateStream = selectedTheme.GetSiteTemplate();
+            if (siteTemplateStream is not null)
+            {
+                using var reader = new StreamReader(siteTemplateStream);
+                var siteTemplate = await reader.ReadToEndAsync(cancellationToken).ConfigureAwait(false);
+                var siteConfig = scaffoldingService.RenderTemplateContent(siteTemplate, model);
+                await File.WriteAllTextAsync("site.json", siteConfig, cancellationToken).ConfigureAwait(false);
+            }
 
             // Create empty directories
             Directory.CreateDirectory("source");
             Directory.CreateDirectory("output");
 
             // Success message
+            var createdFiles = siteTemplateStream is not null
+                ? "project.json, site.json, source/, output/"
+                : "project.json, source/, output/";
             AnsiConsole.MarkupLine($"\n[green]✓[/] Project '{projectName}' initialized with theme [cyan]{defaultTheme}[/]");
-            AnsiConsole.MarkupLine("[dim]Created: project.json, site.json, source/, output/[/]\n");
+            AnsiConsole.MarkupLine($"[dim]Created: {createdFiles}[/]\n");
 
             // Show next steps
             var panel = new Panel("[bold]Next steps:[/]\n" +

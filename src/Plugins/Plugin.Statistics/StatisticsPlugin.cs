@@ -17,7 +17,7 @@ public sealed class StatisticsPlugin : IPlugin
     /// <inheritdoc />
     public IPluginMetadata Metadata => new PluginMetadata
     {
-        Name = "Statistics",
+        Name = "Generate Statistics",
         Version = "1.0.0",
         Description = "Generate EXIF statistics pages for your photo library",
         Author = "Spectara"

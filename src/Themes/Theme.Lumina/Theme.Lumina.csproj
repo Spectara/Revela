@@ -24,6 +24,10 @@
     <EmbeddedResource Include="theme.json">
       <LogicalName>theme.json</LogicalName>
     </EmbeddedResource>
+    <!-- Embed site.template.json for project initialization -->
+    <EmbeddedResource Include="site.template.json">
+      <LogicalName>site.template.json</LogicalName>
+    </EmbeddedResource>
     <!-- Embed layout template (convention: always Layout.revela in root) -->
     <EmbeddedResource Include="Layout.revela">
       <LogicalName>Layout.revela</LogicalName>

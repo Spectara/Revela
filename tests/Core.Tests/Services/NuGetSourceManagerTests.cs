@@ -1,4 +1,7 @@
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
+using NSubstitute;
+using Spectara.Revela.Core.Configuration;
 using Spectara.Revela.Core.Services;
 
 namespace Spectara.Revela.Core.Tests.Services;
@@ -14,11 +17,14 @@ namespace Spectara.Revela.Core.Tests.Services;
 public sealed class NuGetSourceManagerTests
 {
     private NuGetSourceManager service = null!;
+    private IOptionsMonitor<FeedsConfig> feedsConfig = null!;
 
     [TestInitialize]
     public void Setup()
     {
-        service = new NuGetSourceManager(NullLogger<NuGetSourceManager>.Instance);
+        feedsConfig = Substitute.For<IOptionsMonitor<FeedsConfig>>();
+        feedsConfig.CurrentValue.Returns(new FeedsConfig());
+        service = new NuGetSourceManager(NullLogger<NuGetSourceManager>.Instance, feedsConfig);
     }
 
     #region Static Properties Tests

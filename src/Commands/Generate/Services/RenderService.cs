@@ -32,7 +32,7 @@ public sealed partial class RenderService(
     RevelaParser revelaParser,
     IMarkdownService markdownService,
     IConfiguration configuration,
-    IOptionsMonitor<RevelaConfig> options,
+    IOptionsMonitor<GenerateConfig> options,
     ILogger<RenderService> logger) : IRenderService
 {
     /// <summary>Output directory for generated site</summary>
@@ -42,7 +42,7 @@ public sealed partial class RenderService(
     private const string SourceDirectory = "source";
 
     /// <summary>Gets current image settings (supports hot-reload)</summary>
-    private ImageSettings ImageSettings => options.CurrentValue.Generate.Images;
+    private ImageConfig ImageSettings => options.CurrentValue.Images;
 
     /// <inheritdoc />
     public void SetTheme(IThemePlugin? theme) => templateEngine.SetTheme(theme);
@@ -85,11 +85,11 @@ public sealed partial class RenderService(
             var config = LoadConfiguration();
 
             // Resolve theme and extensions
-            var theme = themeResolver.Resolve(config.Theme.Name, Environment.CurrentDirectory);
+            var theme = themeResolver.Resolve(config.ThemeName, Environment.CurrentDirectory);
             SetTheme(theme);
 
             // Get theme extensions matching this theme
-            var extensions = themeResolver.GetExtensions(config.Theme.Name);
+            var extensions = themeResolver.GetExtensions(config.ThemeName);
             SetExtensions(extensions);
 
             // Initialize template resolver (scans theme, extensions, local overrides)
@@ -168,34 +168,47 @@ public sealed partial class RenderService(
 
     #region Private Methods - Configuration
 
-    private RevelaConfig LoadConfiguration()
+    private RenderContext LoadConfiguration()
     {
-        var generateSettings = new GenerateSettings();
-        configuration.GetSection("generate").Bind(generateSettings);
+        var projectSection = configuration.GetSection("project");
+        var dependenciesSection = configuration.GetSection("dependencies");
 
-        return new RevelaConfig
+        return new RenderContext
         {
-            Project = new ProjectSettings
+            Project = new RenderProjectSettings
             {
-                Name = configuration["name"] ?? "Revela Site",
-                BaseUrl = configuration["url"] ?? "https://example.com",
-                Language = configuration["language"] ?? "en",
-                ImageBasePath = configuration["imageBasePath"],
-                BasePath = NormalizeBasePath(configuration["basePath"])
+                Name = projectSection["name"] ?? "Revela Site",
+                BaseUrl = projectSection["baseUrl"] ?? "https://example.com",
+                Language = projectSection["language"] ?? "en",
+                ImageBasePath = projectSection["imageBasePath"],
+                BasePath = NormalizeBasePath(projectSection["basePath"])
             },
-            Site = new SiteSettings
-            {
-                Title = configuration["title"],
-                Author = configuration["author"],
-                Description = configuration["description"],
-                Copyright = configuration["copyright"]
-            },
-            Theme = new ThemeSettings
-            {
-                Name = configuration["theme"] ?? "default"
-            },
-            Generate = generateSettings
+            Site = LoadSiteJson(),
+            ThemeName = dependenciesSection["theme"] ?? "default"
         };
+    }
+
+    /// <summary>
+    /// Load site.json directly as JsonElement for dynamic template access.
+    /// </summary>
+    /// <returns>JsonElement with site properties, or null if site.json doesn't exist.</returns>
+    private static JsonElement? LoadSiteJson()
+    {
+        var siteJsonPath = Path.Combine(Directory.GetCurrentDirectory(), "site.json");
+        if (!File.Exists(siteJsonPath))
+        {
+            return null;
+        }
+
+        try
+        {
+            var json = File.ReadAllText(siteJsonPath);
+            return JsonDocument.Parse(json).RootElement.Clone();
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
     }
 
     private static string NormalizeBasePath(string? basePath)
@@ -327,7 +340,7 @@ public sealed partial class RenderService(
 
     private async Task<int> RenderSiteAsync(
         SiteModel model,
-        RevelaConfig config,
+        RenderContext config,
         IThemePlugin? theme,
         IProgress<RenderProgress>? progress,
         CancellationToken cancellationToken)
@@ -363,7 +376,7 @@ public sealed partial class RenderService(
         var themeVariables = manifest?.Variables ?? new Dictionary<string, string>();
         var formats = ImageSettings.Formats.Count > 0
             ? ImageSettings.Formats
-            : Core.Configuration.ImageSettings.DefaultFormats;
+            : ImageConfig.DefaultFormats;
 
         // Get assets from resolver
         var stylesheets = assetResolver.GetStyleSheets();
@@ -515,7 +528,7 @@ public sealed partial class RenderService(
         };
     }
 
-    private static string CalculateSiteBasePath(RevelaConfig config, string relativeBasePath)
+    private static string CalculateSiteBasePath(RenderContext config, string relativeBasePath)
     {
         if (config.Project.BasePath == "/")
         {
@@ -524,7 +537,7 @@ public sealed partial class RenderService(
         return config.Project.BasePath;
     }
 
-    private static string CalculateImageBasePath(RevelaConfig config, string basepath)
+    private static string CalculateImageBasePath(RenderContext config, string basepath)
     {
         if (!string.IsNullOrEmpty(config.Project.ImageBasePath))
         {

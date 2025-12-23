@@ -28,14 +28,14 @@ public sealed partial class ContentService(
     NavigationBuilder navigationBuilder,
     IManifestRepository manifestRepository,
     IImageProcessor imageProcessor,
-    IOptionsMonitor<RevelaConfig> options,
+    IOptionsMonitor<GenerateConfig> options,
     ILogger<ContentService> logger) : IContentService
 {
     /// <summary>Fixed source directory (convention over configuration)</summary>
     private const string SourceDirectory = "source";
 
     /// <summary>Gets current image settings (supports hot-reload)</summary>
-    private ImageSettings ImageSettings => options.CurrentValue.Generate.Images;
+    private ImageConfig ImageSettings => options.CurrentValue.Images;
 
     /// <inheritdoc />
     public async Task<ContentResult> ScanAsync(

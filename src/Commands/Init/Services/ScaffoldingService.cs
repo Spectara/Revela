@@ -54,4 +54,11 @@ public sealed class ScaffoldingService : IScaffoldingService
         using var stream = assembly.GetManifestResourceStream(resourceName);
         return stream is not null;
     }
+
+    /// <inheritdoc />
+    public string RenderTemplateContent(string templateContent, object model)
+    {
+        var template = Template.Parse(templateContent);
+        return template.Render(model);
+    }
 }

@@ -1,7 +1,10 @@
 {
-  "name": "Subdirectory Sample",
-  "url": "https://example.com",
-  "theme": "Lumina",
-  "plugins": {},
-  "basePath": "/photos/"
+  "project": {
+    "name": "Subdirectory Sample",
+    "baseUrl": "https://example.com",
+    "basePath": "/photos/"
+  },
+  "dependencies": {
+    "theme": "Lumina"
+  }
 }

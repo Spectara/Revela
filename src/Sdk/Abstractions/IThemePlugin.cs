@@ -52,6 +52,22 @@ public interface IThemePlugin : IPlugin
     /// <param name="targetDirectory">Directory to extract files to</param>
     /// <param name="cancellationToken">Cancellation token</param>
     Task ExtractToAsync(string targetDirectory, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Get the site.json template for project initialization
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Returns a Scriban template for generating site.json during <c>revela init</c>.
+    /// The template receives the same model as other init templates (site.title, site.author, etc.).
+    /// </para>
+    /// <para>
+    /// If the theme doesn't need site.json (no site.* variables in templates), return null.
+    /// The init command will skip site.json creation in that case.
+    /// </para>
+    /// </remarks>
+    /// <returns>Stream with template contents, or null if theme doesn't use site.json</returns>
+    Stream? GetSiteTemplate();
 }
 
 /// <summary>
