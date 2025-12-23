@@ -204,15 +204,12 @@ internal sealed partial class InteractiveMenuService(
             exitCode = 1;
         }
 
-        // Show result
+        // Show result only for success
+        // Errors should be shown by the command itself using ErrorPanels
         AnsiConsole.WriteLine();
         if (exitCode == 0)
         {
             AnsiConsole.MarkupLine("[green]✓ Command completed successfully[/]");
-        }
-        else
-        {
-            AnsiConsole.MarkupLine($"[red]✗ Command failed with exit code {exitCode}[/]");
         }
 
         AnsiConsole.WriteLine();

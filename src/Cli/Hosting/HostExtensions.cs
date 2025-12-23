@@ -95,14 +95,14 @@ internal static class HostExtensions
         rootCommand.Subcommands.Add(initCmd);
         orderRegistry.Register(initCmd, 10);
         orderRegistry.RegisterGroup(initCmd, CommandGroups.Setup);
-        RegisterInitSubcommandOrders(initCmd, orderRegistry);
+        // Note: RegisterInitSubcommandOrders called after plugins.RegisterCommands()
 
         var configCommand = services.GetRequiredService<ConfigCommand>();
         var configCmd = configCommand.Create();
         rootCommand.Subcommands.Add(configCmd);
         orderRegistry.Register(configCmd, 20);
         orderRegistry.RegisterGroup(configCmd, CommandGroups.Setup);
-        RegisterConfigSubcommandOrders(configCmd, orderRegistry);
+        // Note: RegisterConfigSubcommandOrders called after plugins.RegisterCommands()
 
         var restoreCommand = services.GetRequiredService<RestoreCommand>();
         var restoreCmd = restoreCommand.Create();
@@ -137,6 +137,11 @@ internal static class HostExtensions
                     orderRegistry.RegisterGroup(cmd, group);
                 }
             });
+
+        // Register subcommand orders AFTER plugins have added their subcommands
+        // This ensures plugin subcommands (like onedrive, serve under init) get proper ordering
+        RegisterInitSubcommandOrders(initCmd, orderRegistry, groupRegistry);
+        RegisterConfigSubcommandOrders(configCmd, orderRegistry);
 
         // Set interactive mode handler for root command (no subcommand specified)
         rootCommand.SetAction(async (parseResult, cancellationToken) =>
@@ -228,21 +233,34 @@ internal static class HostExtensions
     }
 
     /// <summary>
-    /// Registers order for subcommands of init command.
+    /// Registers order and groups for subcommands of init command.
     /// </summary>
-    private static void RegisterInitSubcommandOrders(Command initCmd, CommandOrderRegistry orderRegistry)
+    private static void RegisterInitSubcommandOrders(
+        Command initCmd,
+        CommandOrderRegistry orderRegistry,
+        CommandGroupRegistry groupRegistry)
     {
-        // Order within init: project (0), all (10), revela (20), plugin configs (100+)
+        // Define init-specific subgroups
+        const string project = "Project";
+        const string plugins = "Plugins";
+
+        // Register group orders (Project first, then Plugins)
+        groupRegistry.Register(project, 10);
+        groupRegistry.Register(plugins, 20);
+
+        // Order within init: all (0), project (10), site (20) for Project group
+        // Plugin configs get default order (50+)
         foreach (var sub in initCmd.Subcommands)
         {
-            var order = sub.Name switch
+            var (order, group) = sub.Name switch
             {
-                "project" => 0,
-                "all" => 10,
-                "revela" => 20,
-                _ => 100 // Plugin config commands
+                "all" => (0, project),
+                "project" => (10, project),
+                "site" => (20, project),
+                _ => (CommandOrderRegistry.DefaultOrder, plugins)
             };
             orderRegistry.Register(sub, order);
+            orderRegistry.RegisterGroup(sub, group);
         }
     }
 

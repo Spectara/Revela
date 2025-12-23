@@ -11,11 +11,14 @@ namespace Spectara.Revela.Commands.Init;
 /// </summary>
 /// <remarks>
 /// <para>
-/// Subcommands:
-/// - project: Initialize a new Revela project
-/// - all: Initialize project with all plugin configurations
-/// - revela: Initialize global Revela configuration
-/// - [plugin]: Create plugin configuration file (flattened)
+/// Bundled Subcommands:
+/// - all: Initialize project with all bundled configurations
+/// - project: Initialize project.json
+/// - site: Initialize site.json from theme template
+/// </para>
+/// <para>
+/// Plugin Subcommands:
+/// - [plugin]: Create plugin configuration file (dynamically added by plugins)
 /// </para>
 /// <para>
 /// Plugin config commands are created dynamically from IPageTemplate instances
@@ -29,7 +32,7 @@ public sealed partial class InitCommand(
     ILogger<InitCommand> logger,
     InitProjectCommand projectCommand,
     InitAllCommand allCommand,
-    InitRevelaCommand revelaCommand,
+    InitSiteCommand siteCommand,
     IEnumerable<IPageTemplate> templates)
 {
     private static readonly JsonSerializerOptions JsonOptions = new()
@@ -44,12 +47,12 @@ public sealed partial class InitCommand(
     {
         var command = new Command("init", "Initialize project or plugin configurations");
 
-        // Add fixed subcommands
-        command.Subcommands.Add(projectCommand.Create());
+        // Bundled subcommands (all, project, site)
         command.Subcommands.Add(allCommand.Create());
-        command.Subcommands.Add(revelaCommand.Create());
+        command.Subcommands.Add(projectCommand.Create());
+        command.Subcommands.Add(siteCommand.Create());
 
-        // Add flattened plugin config commands (was: init config <plugin>)
+        // Plugin config commands (dynamically created from IPageTemplate)
         foreach (var template in templates.Where(t => t.ConfigProperties.Count > 0))
         {
             var configCmd = CreatePluginConfigCommand(template);

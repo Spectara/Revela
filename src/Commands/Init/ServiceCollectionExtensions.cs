@@ -21,8 +21,8 @@ public static class ServiceCollectionExtensions
 
         // Commands
         services.AddTransient<InitProjectCommand>();
+        services.AddTransient<InitSiteCommand>();
         services.AddTransient<InitAllCommand>();
-        services.AddTransient<InitRevelaCommand>();
         services.AddTransient<InitCommand>();
 
         return services;

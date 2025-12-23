@@ -19,7 +19,7 @@ public sealed partial class InitProjectCommand(
     /// </summary>
     public Command Create()
     {
-        var command = new Command("project", "Initialize a new Revela project");
+        var command = new Command("project", "Initialize project.json and folders");
 
         command.SetAction(async (_, cancellationToken) => await ExecuteAsync(cancellationToken).ConfigureAwait(false));
 
@@ -35,7 +35,12 @@ public sealed partial class InitProjectCommand(
             // Check if already initialized
             if (File.Exists("project.json") || File.Exists("site.json"))
             {
-                AnsiConsole.MarkupLine("[red]Error:[/] Project already initialized (project.json or site.json exists)");
+                ErrorPanels.ShowError(
+                    "Already Initialized",
+                    "[yellow]Project already initialized.[/]\n\n" +
+                    "[dim]project.json or site.json already exists in this directory.[/]\n\n" +
+                    "[bold]To modify settings:[/]\n" +
+                    "  Run [cyan]revela config[/]");
                 return 1;
             }
 
@@ -45,11 +50,10 @@ public sealed partial class InitProjectCommand(
 
             if (availableThemes.Count == 0)
             {
-                AnsiConsole.MarkupLine("[red]Error:[/] No themes available.\n");
-                AnsiConsole.MarkupLine("Install a theme first:");
-                AnsiConsole.MarkupLine("  [cyan]revela plugin install Spectara.Revela.Theme.Lumina[/]\n");
-                AnsiConsole.MarkupLine("To see available themes:");
-                AnsiConsole.MarkupLine("  [cyan]revela theme list --online[/]");
+                ErrorPanels.ShowNothingInstalledError(
+                    "themes",
+                    "plugin install Spectara.Revela.Theme.Lumina",
+                    "theme list --online");
                 return 1;
             }
 
@@ -87,27 +91,14 @@ public sealed partial class InitProjectCommand(
             cancellationToken.ThrowIfCancellationRequested();
             await File.WriteAllTextAsync("project.json", projectConfig, cancellationToken).ConfigureAwait(false);
 
-            // Get site.json template from theme (if theme provides one)
-            var selectedTheme = availableThemes[0];
-            await using var siteTemplateStream = selectedTheme.GetSiteTemplate();
-            if (siteTemplateStream is not null)
-            {
-                using var reader = new StreamReader(siteTemplateStream);
-                var siteTemplate = await reader.ReadToEndAsync(cancellationToken).ConfigureAwait(false);
-                var siteConfig = scaffoldingService.RenderTemplateContent(siteTemplate, model);
-                await File.WriteAllTextAsync("site.json", siteConfig, cancellationToken).ConfigureAwait(false);
-            }
-
             // Create empty directories
             Directory.CreateDirectory("source");
             Directory.CreateDirectory("output");
 
             // Success message
-            var createdFiles = siteTemplateStream is not null
-                ? "project.json, site.json, source/, output/"
-                : "project.json, source/, output/";
             AnsiConsole.MarkupLine($"\n[green]✓[/] Project '{projectName}' initialized with theme [cyan]{defaultTheme}[/]");
-            AnsiConsole.MarkupLine($"[dim]Created: {createdFiles}[/]\n");
+            AnsiConsole.MarkupLine("[dim]Created: project.json, source/, output/[/]\n");
+            AnsiConsole.MarkupLine("[dim]Run 'revela init site' to create site.json[/]\n");
 
             // Show next steps
             var panel = new Panel("[bold]Next steps:[/]\n" +

@@ -1,8 +1,13 @@
 {
-  "name": "{{ project.name }}",
-  "url": "{{ project.url }}",
-  "theme": "{{ project.theme }}",
-  "plugins": {},
+  "project": {
+    "name": "{{ project.name }}",
+    "baseUrl": "{{ project.url }}",
+    "language": "en",
+    "basePath": "/"
+  },
+  "dependencies": {
+    "theme": "{{ project.theme }}"
+  },
   "generate": {
     "images": {
       "formats": {
