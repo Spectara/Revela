@@ -1,5 +1,8 @@
 using System.CommandLine;
+
 using Spectara.Revela.Core.Services;
+using Spectara.Revela.Sdk;
+
 using Spectre.Console;
 
 namespace Spectara.Revela.Commands.Config.Revela;
@@ -63,7 +66,7 @@ public sealed partial class ConfigFeedRemoveCommand(
         catch (Exception ex)
         {
             LogRemoveFailed(logger, name, ex);
-            AnsiConsole.MarkupLine($"[red]ERROR[/] Failed to remove feed: {ex.Message}");
+            ErrorPanels.ShowException(ex, "Failed to remove feed.");
             return 1;
         }
     }

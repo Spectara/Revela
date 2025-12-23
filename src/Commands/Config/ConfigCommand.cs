@@ -69,7 +69,7 @@ public sealed class ConfigCommand(
     {
         if (!configService.IsProjectInitialized())
         {
-            AnsiConsole.MarkupLine("[red]Error:[/] Not a Revela project. Run [cyan]revela init project[/] first.");
+            ErrorPanels.ShowNotAProjectError();
             return 1;
         }
 

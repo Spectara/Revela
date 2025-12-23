@@ -1,5 +1,8 @@
 using System.CommandLine;
+
 using Spectara.Revela.Core;
+using Spectara.Revela.Sdk;
+
 using Spectre.Console;
 
 namespace Spectara.Revela.Commands.Plugins;
@@ -77,7 +80,7 @@ public sealed partial class PluginUninstallCommand(
         catch (Exception ex)
         {
             LogError(ex);
-            AnsiConsole.MarkupLine($"[red]Error:[/] {ex.Message}");
+            ErrorPanels.ShowException(ex);
             return 1;
         }
     }

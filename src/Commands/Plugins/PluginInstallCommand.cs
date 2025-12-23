@@ -1,5 +1,8 @@
 using System.CommandLine;
+
 using Spectara.Revela.Core;
+using Spectara.Revela.Sdk;
+
 using Spectre.Console;
 
 namespace Spectara.Revela.Commands.Plugins;
@@ -52,7 +55,7 @@ public sealed partial class PluginInstallCommand(
 
             if (string.IsNullOrEmpty(name))
             {
-                AnsiConsole.MarkupLine("[red]Error:[/] Plugin name is required");
+                ErrorPanels.ShowValidationError("Plugin name is required.");
                 return 1;
             }
 
@@ -105,7 +108,7 @@ public sealed partial class PluginInstallCommand(
         catch (Exception ex)
         {
             LogError(ex);
-            AnsiConsole.MarkupLine($"[red]Error:[/] {ex.Message}");
+            ErrorPanels.ShowException(ex);
             return 1;
         }
     }

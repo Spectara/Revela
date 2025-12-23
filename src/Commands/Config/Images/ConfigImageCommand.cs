@@ -135,7 +135,9 @@ public sealed partial class ConfigImageCommand(
 
             if (parsedCount == 0)
             {
-                AnsiConsole.MarkupLine("[red]Error:[/] No valid formats specified. Use: avif, webp, jpg (optionally with :quality)");
+                ErrorPanels.ShowValidationError(
+                    "No valid formats specified.",
+                    "  avif, webp, jpg (optionally with :quality, e.g. webp:85)");
                 return 1;
             }
         }
@@ -160,7 +162,9 @@ public sealed partial class ConfigImageCommand(
 
             if (sizes.Length == 0)
             {
-                AnsiConsole.MarkupLine("[red]Error:[/] No valid sizes specified.");
+                ErrorPanels.ShowValidationError(
+                    "No valid sizes specified.",
+                    "  Comma-separated widths in pixels (e.g. 640,1280,1920)");
                 return 1;
             }
         }

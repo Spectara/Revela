@@ -1,5 +1,8 @@
 using System.CommandLine;
+
 using Spectara.Revela.Core.Services;
+using Spectara.Revela.Sdk;
+
 using Spectre.Console;
 
 namespace Spectara.Revela.Commands.Config.Revela;
@@ -62,7 +65,7 @@ public sealed partial class ConfigFeedAddCommand(
         catch (Exception ex)
         {
             LogAddFailed(logger, name, ex);
-            AnsiConsole.MarkupLine($"[red]ERROR[/] Failed to add feed: {ex.Message}");
+            ErrorPanels.ShowException(ex, "Failed to add feed.");
             return 1;
         }
     }

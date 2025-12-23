@@ -61,7 +61,7 @@ public sealed partial class RestoreCommand(
 
         if (!Directory.Exists(fullPath))
         {
-            AnsiConsole.MarkupLine($"[red]ERROR[/] Project directory not found: {fullPath}");
+            ErrorPanels.ShowDirectoryNotFoundError(fullPath);
             return 1;
         }
 

@@ -138,7 +138,7 @@ public sealed class OneDriveInitCommand(ILogger<OneDriveInitCommand> logger)
         }
         catch (Exception ex)
         {
-            AnsiConsole.MarkupLine($"[red]Error:[/] {ex.Message}");
+            ErrorPanels.ShowException(ex);
             logger.InitFailed(ex);
         }
     }

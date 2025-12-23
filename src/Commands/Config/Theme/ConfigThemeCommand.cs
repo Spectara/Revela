@@ -83,13 +83,11 @@ public sealed partial class ConfigThemeCommand(
 
             if (matchingTheme is null)
             {
-                AnsiConsole.MarkupLine($"[red]Error:[/] Theme '{themeArg}' not found.\n");
-                AnsiConsole.MarkupLine("Available themes:");
-                foreach (var t in availableThemes)
-                {
-                    var source = GetThemeSource(t);
-                    AnsiConsole.MarkupLine($"  [green]{t.Metadata.Name}[/] [dim]({source})[/]");
-                }
+                var availableList = string.Join("\n", availableThemes.Select(t => $"  [green]{t.Metadata.Name}[/] [dim]({GetThemeSource(t)})[/]"));
+                ErrorPanels.ShowError(
+                    "Theme Not Found",
+                    $"[yellow]Theme '{themeArg}' not found.[/]\n\n" +
+                    $"[bold]Available themes:[/]\n{availableList}");
                 return 1;
             }
 

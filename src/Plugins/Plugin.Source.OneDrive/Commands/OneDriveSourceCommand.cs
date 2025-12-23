@@ -331,7 +331,7 @@ public sealed class OneDriveSourceCommand(
         }
         catch (Exception ex)
         {
-            AnsiConsole.MarkupLine($"[red]Error:[/] {ex.Message}");
+            ErrorPanels.ShowException(ex);
             logger.DownloadFailed(ex);
         }
     }

@@ -136,4 +136,117 @@ public static class ErrorPanels
 
         AnsiConsole.Write(panel);
     }
+
+    /// <summary>
+    /// Shows an error panel for exceptions with the exception message.
+    /// </summary>
+    /// <param name="ex">The exception that occurred.</param>
+    /// <param name="hint">Optional hint for how to resolve the issue.</param>
+    public static void ShowException(Exception ex, string? hint = null)
+    {
+        var content = $"[yellow]{EscapeMarkup(ex.Message)}[/]";
+
+        if (!string.IsNullOrWhiteSpace(hint))
+        {
+            content += $"\n\n[dim]{hint}[/]";
+        }
+
+        var panel = new Panel(content)
+            .WithHeader("[bold red]Error[/]")
+            .WithErrorStyle();
+
+        AnsiConsole.Write(panel);
+    }
+
+    /// <summary>
+    /// Shows an error panel when a validation fails.
+    /// </summary>
+    /// <param name="message">The validation error message.</param>
+    /// <param name="hint">Optional hint for valid values.</param>
+    public static void ShowValidationError(string message, string? hint = null)
+    {
+        var content = $"[yellow]{message}[/]";
+
+        if (!string.IsNullOrWhiteSpace(hint))
+        {
+            content += $"\n\n[bold]Valid values:[/]\n{hint}";
+        }
+
+        var panel = new Panel(content)
+            .WithHeader("[bold red]Validation Error[/]")
+            .WithErrorStyle();
+
+        AnsiConsole.Write(panel);
+    }
+
+    /// <summary>
+    /// Shows an error panel when a file already exists.
+    /// </summary>
+    /// <param name="path">The path that already exists.</param>
+    /// <param name="hint">Optional hint for next steps.</param>
+    public static void ShowFileExistsError(string path, string? hint = null)
+    {
+        var content = $"[yellow]File already exists:[/] [cyan]{EscapeMarkup(path)}[/]";
+
+        if (!string.IsNullOrWhiteSpace(hint))
+        {
+            content += $"\n\n[dim]{hint}[/]";
+        }
+
+        var panel = new Panel(content)
+            .WithHeader("[bold red]File Exists[/]")
+            .WithErrorStyle();
+
+        AnsiConsole.Write(panel);
+    }
+
+    /// <summary>
+    /// Shows an error panel when a directory is not found.
+    /// </summary>
+    /// <param name="path">The path that was not found.</param>
+    /// <param name="prerequisiteCommand">Optional command to create the directory.</param>
+    public static void ShowDirectoryNotFoundError(string path, string? prerequisiteCommand = null)
+    {
+        var content = $"[yellow]Directory not found:[/] [cyan]{EscapeMarkup(path)}[/]";
+
+        if (!string.IsNullOrWhiteSpace(prerequisiteCommand))
+        {
+            content += $"\n\n[bold]Solution:[/]\n  Run [cyan]revela {prerequisiteCommand}[/] first.";
+        }
+
+        var panel = new Panel(content)
+            .WithHeader("[bold red]Directory Not Found[/]")
+            .WithErrorStyle();
+
+        AnsiConsole.Write(panel);
+    }
+
+    /// <summary>
+    /// Shows an error panel when a port is unavailable.
+    /// </summary>
+    /// <param name="port">The port that is unavailable.</param>
+    /// <param name="reason">The reason (e.g., "in use", "access denied").</param>
+    /// <param name="hint">Optional hint for resolution.</param>
+    public static void ShowPortError(int port, string reason, string? hint = null)
+    {
+        var content = $"[yellow]Port {port} {reason}.[/]";
+
+        if (!string.IsNullOrWhiteSpace(hint))
+        {
+            content += $"\n\n[dim]{hint}[/]";
+        }
+
+        var panel = new Panel(content)
+            .WithHeader("[bold red]Port Unavailable[/]")
+            .WithErrorStyle();
+
+        AnsiConsole.Write(panel);
+    }
+
+    /// <summary>
+    /// Escapes Spectre markup characters in user-provided text.
+    /// </summary>
+    private static string EscapeMarkup(string text) =>
+        text.Replace("[", "[[", StringComparison.Ordinal)
+            .Replace("]", "]]", StringComparison.Ordinal);
 }

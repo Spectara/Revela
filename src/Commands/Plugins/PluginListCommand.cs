@@ -79,7 +79,7 @@ public sealed partial class PluginListCommand(
         catch (Exception ex)
         {
             LogError(ex);
-            AnsiConsole.MarkupLine($"[red]Error:[/] {ex.Message}");
+            ErrorPanels.ShowException(ex);
         }
 
         return Task.CompletedTask;

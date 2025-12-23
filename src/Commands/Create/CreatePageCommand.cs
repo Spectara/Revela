@@ -2,7 +2,10 @@ using System.CommandLine;
 using System.Globalization;
 using System.Reflection;
 using System.Text;
+
+using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Abstractions;
+
 using Spectre.Console;
 
 namespace Spectara.Revela.Commands.Create;
@@ -147,7 +150,7 @@ public sealed partial class CreatePageCommand(
         // Check if file already exists
         if (File.Exists(revelaPath))
         {
-            AnsiConsole.MarkupLine($"[red]Error:[/] File already exists: [cyan]{revelaPath}[/]");
+            ErrorPanels.ShowFileExistsError(revelaPath, "Use a different path or delete the existing file.");
             return 1;
         }
 

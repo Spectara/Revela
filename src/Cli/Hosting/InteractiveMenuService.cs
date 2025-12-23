@@ -25,7 +25,7 @@ internal sealed partial class InteractiveMenuService(
         if (RootCommand is null)
         {
             LogRootCommandNotSet(logger);
-            AnsiConsole.MarkupLine("[red]Error: RootCommand not set.[/]");
+            ErrorPanels.ShowError("Internal Error", "[yellow]RootCommand not set.[/]\n\n[dim]This is a bug in Revela. Please report it.[/]");
             return 1;
         }
 
@@ -200,7 +200,7 @@ internal sealed partial class InteractiveMenuService(
         catch (Exception ex)
         {
             LogCommandFailed(logger, pathDisplay, ex);
-            AnsiConsole.MarkupLine($"[red]Error: {ex.Message}[/]");
+            ErrorPanels.ShowException(ex);
             exitCode = 1;
         }
 

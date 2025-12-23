@@ -1,8 +1,12 @@
 using System.CommandLine;
 using System.Globalization;
 using System.Net;
+
 using Microsoft.Extensions.Options;
+
 using Spectara.Revela.Plugin.Serve.Configuration;
+using Spectara.Revela.Sdk;
+
 using Spectre.Console;
 
 namespace Spectara.Revela.Plugin.Serve;
@@ -66,8 +70,7 @@ public sealed partial class ServeCommand(
         // Validate output directory exists
         if (!Directory.Exists(fullOutputPath))
         {
-            AnsiConsole.MarkupLine($"[red]Error:[/] Output directory not found: [yellow]{outputPath}/[/]");
-            AnsiConsole.MarkupLine("[dim]Run [cyan]revela generate all[/] first to generate the site.[/]");
+            ErrorPanels.ShowDirectoryNotFoundError($"{outputPath}/", "generate all");
             return 1;
         }
 
@@ -124,19 +127,17 @@ public sealed partial class ServeCommand(
         }
         catch (HttpListenerException ex) when (ex.ErrorCode == 5) // Access denied
         {
-            AnsiConsole.MarkupLine($"[red]Error:[/] Access denied for port [yellow]{port}[/]");
-            AnsiConsole.MarkupLine("[dim]Try running as administrator or use a port above 1024.[/]");
+            ErrorPanels.ShowPortError(port, "access denied", "Try running as administrator or use a port above 1024.");
             return 1;
         }
         catch (HttpListenerException ex) when (ex.ErrorCode is 183 or 32) // Port in use
         {
-            AnsiConsole.MarkupLine($"[red]Error:[/] Port [yellow]{port}[/] is already in use");
-            AnsiConsole.MarkupLine("[dim]Try a different port: [cyan]revela serve --port 3000[/][/]");
+            ErrorPanels.ShowPortError(port, "is already in use", "Try a different port: revela serve --port 3000");
             return 1;
         }
         catch (HttpListenerException ex)
         {
-            AnsiConsole.MarkupLine($"[red]Error:[/] Failed to start server: {ex.Message}");
+            ErrorPanels.ShowException(ex, "Failed to start the HTTP server.");
             LogServerError(logger, port, ex);
             return 1;
         }

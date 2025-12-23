@@ -124,7 +124,7 @@ public sealed partial class InitSiteCommand(
         catch (Exception ex)
         {
             LogError(ex);
-            AnsiConsole.MarkupLine($"[red]Error:[/] {ex.Message}");
+            ErrorPanels.ShowException(ex);
             return 1;
         }
     }

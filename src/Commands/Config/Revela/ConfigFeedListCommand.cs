@@ -1,7 +1,11 @@
 using System.CommandLine;
+
 using Microsoft.Extensions.Options;
+
 using Spectara.Revela.Core.Configuration;
 using Spectara.Revela.Core.Services;
+using Spectara.Revela.Sdk;
+
 using Spectre.Console;
 
 namespace Spectara.Revela.Commands.Config.Revela;
@@ -68,7 +72,7 @@ public sealed partial class ConfigFeedListCommand(
         catch (Exception ex)
         {
             LogListFailed(logger, ex);
-            AnsiConsole.MarkupLine($"[red]ERROR[/] Failed to list feeds: {ex.Message}");
+            ErrorPanels.ShowException(ex, "Failed to list feeds.");
             return 1;
         }
     }
