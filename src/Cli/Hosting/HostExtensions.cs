@@ -176,11 +176,9 @@ internal static class HostExtensions
     private static void ConfigureGroupedHelp(
         RootCommand rootCommand,
         CommandGroupRegistry groupRegistry,
-        CommandOrderRegistry orderRegistry)
-    {
+        CommandOrderRegistry orderRegistry) =>
         // Recursively configure grouped help for all commands with subcommands
         ConfigureGroupedHelpRecursive(rootCommand, groupRegistry, orderRegistry);
-    }
 
     /// <summary>
     /// Recursively configures grouped help for a command and all its subcommands.
