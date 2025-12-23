@@ -494,5 +494,8 @@ samples/**/output/
 samples/**/images/
 samples/**/.cache/
 
+# Local playground folder for testing from scratch
+playground/
+
 # GitHub Copilot temp files
 .github/copilot-vs/
