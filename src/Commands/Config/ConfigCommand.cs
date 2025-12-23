@@ -1,6 +1,7 @@
 using System.CommandLine;
 using Microsoft.Extensions.Options;
 using Spectara.Revela.Commands.Config.Images;
+using Spectara.Revela.Commands.Config.Project;
 using Spectara.Revela.Commands.Config.Revela;
 using Spectara.Revela.Commands.Config.Services;
 using Spectara.Revela.Commands.Config.Site;
@@ -21,12 +22,12 @@ namespace Spectara.Revela.Commands.Config;
 public sealed class ConfigCommand(
     IConfigService configService,
     IOptionsMonitor<FeedsConfig> feedsConfig,
+    ConfigProjectCommand projectCommand,
     ConfigThemeCommand themeCommand,
     ConfigSiteCommand siteCommand,
     ConfigImageCommand imageCommand,
-    ConfigShowCommand showCommand,
     ConfigFeedCommand feedCommand,
-    ConfigPathCommand pathCommand)
+    ConfigLocationsCommand locationsCommand)
 {
     /// <summary>
     /// Creates the command definition.
@@ -36,14 +37,14 @@ public sealed class ConfigCommand(
         var command = new Command("config", "Configure project settings");
 
         // Project subcommands
+        command.Subcommands.Add(projectCommand.Create());
         command.Subcommands.Add(themeCommand.Create());
         command.Subcommands.Add(siteCommand.Create());
         command.Subcommands.Add(imageCommand.Create());
-        command.Subcommands.Add(showCommand.Create());
 
         // Revela (global) subcommands
         command.Subcommands.Add(feedCommand.Create());
-        command.Subcommands.Add(pathCommand.Create());
+        command.Subcommands.Add(locationsCommand.Create());
 
         // Default action: interactive menu
         command.SetAction(async (_, cancellationToken) => await ExecuteInteractiveAsync(cancellationToken).ConfigureAwait(false));
@@ -115,7 +116,7 @@ public sealed class ConfigCommand(
             var result = choice.Id switch
             {
                 "theme" => await themeCommand.ExecuteAsync(null, cancellationToken).ConfigureAwait(false),
-                "site" => await siteCommand.ExecuteAsync(null, null, null, null, cancellationToken).ConfigureAwait(false),
+                "site" => await siteCommand.ExecuteAsync(cancellationToken).ConfigureAwait(false),
                 "image" => await imageCommand.ExecuteAsync(null, null, cancellationToken).ConfigureAwait(false),
                 "feed" => ExecuteFeedMenuAsync(feedsConfig.CurrentValue),
                 "path" => ExecutePathCommand(),

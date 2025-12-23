@@ -42,7 +42,6 @@ public sealed class ServePlugin : IPlugin
 
         // Register Commands for Dependency Injection
         services.AddTransient<ServeCommand>();
-        services.AddTransient<InitServeCommand>();
         services.AddTransient<ConfigServeCommand>();
     }
 
@@ -59,7 +58,6 @@ public sealed class ServePlugin : IPlugin
 
         // Resolve commands from DI container
         var serveCommand = services.GetRequiredService<ServeCommand>();
-        var initCommand = services.GetRequiredService<InitServeCommand>();
         var configCommand = services.GetRequiredService<ConfigServeCommand>();
 
         // 1. Register serve command at root level → revela serve
@@ -71,10 +69,7 @@ public sealed class ServePlugin : IPlugin
             Order: 15,
             Group: "Build");
 
-        // 2. Register init command → revela init serve
-        yield return new CommandDescriptor(initCommand.Create(), ParentCommand: "init");
-
-        // 3. Register config command → revela config serve
+        // 2. Register config command → revela config serve
         yield return new CommandDescriptor(configCommand.Create(), ParentCommand: "config");
     }
 }

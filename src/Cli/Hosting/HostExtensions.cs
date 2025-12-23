@@ -8,7 +8,6 @@ using Spectara.Revela.Commands.Clean.Commands;
 using Spectara.Revela.Commands.Config;
 using Spectara.Revela.Commands.Create;
 using Spectara.Revela.Commands.Generate.Commands;
-using Spectara.Revela.Commands.Init;
 using Spectara.Revela.Commands.Plugins;
 using Spectara.Revela.Commands.Restore;
 using Spectara.Revela.Commands.Theme;
@@ -101,18 +100,11 @@ internal static class HostExtensions
         orderRegistry.Register(createCmd, 10);
         orderRegistry.RegisterGroup(createCmd, CommandGroups.Content);
 
-        // Setup group: init (10), config (20), restore (30) - workflow order
-        var initCommand = services.GetRequiredService<InitCommand>();
-        var initCmd = initCommand.Create();
-        rootCommand.Subcommands.Add(initCmd);
-        orderRegistry.Register(initCmd, 10);
-        orderRegistry.RegisterGroup(initCmd, CommandGroups.Setup);
-        // Note: RegisterInitSubcommandOrders called after plugins.RegisterCommands()
-
+        // Setup group: config (10), restore (20) - workflow order
         var configCommand = services.GetRequiredService<ConfigCommand>();
         var configCmd = configCommand.Create();
         rootCommand.Subcommands.Add(configCmd);
-        orderRegistry.Register(configCmd, 20);
+        orderRegistry.Register(configCmd, 10);
         orderRegistry.RegisterGroup(configCmd, CommandGroups.Setup);
         // Note: RegisterConfigSubcommandOrders called after plugins.RegisterCommands()
 
@@ -151,9 +143,8 @@ internal static class HostExtensions
             });
 
         // Register subcommand orders AFTER plugins have added their subcommands
-        // This ensures plugin subcommands (like onedrive, serve under init) get proper ordering
-        RegisterInitSubcommandOrders(initCmd, orderRegistry, groupRegistry);
-        RegisterConfigSubcommandOrders(configCmd, orderRegistry);
+        // This ensures plugin subcommands get proper ordering
+        RegisterConfigSubcommandOrders(configCmd, orderRegistry, groupRegistry);
 
         // Replace default help with grouped help output
         ConfigureGroupedHelp(rootCommand, groupRegistry, orderRegistry);
@@ -290,56 +281,46 @@ internal static class HostExtensions
     }
 
     /// <summary>
-    /// Registers order and groups for subcommands of init command.
+    /// Registers order and groups for subcommands of config command.
     /// </summary>
-    private static void RegisterInitSubcommandOrders(
-        Command initCmd,
+    private static void RegisterConfigSubcommandOrders(
+        Command configCmd,
         CommandOrderRegistry orderRegistry,
         CommandGroupRegistry groupRegistry)
     {
-        // Define init-specific subgroups
-        const string project = "Project";
-        const string plugins = "Plugins";
+        // Register config-specific groups with display order
+        groupRegistry.Register(CommandGroups.ConfigProject, 10);
+        groupRegistry.Register(CommandGroups.ConfigSource, 20);
+        groupRegistry.Register(CommandGroups.ConfigAddons, 30);
 
-        // Register group orders (Project first, then Plugins)
-        groupRegistry.Register(project, 10);
-        groupRegistry.Register(plugins, 20);
-
-        // Order within init: all (0), project (10), site (20) for Project group
-        // Plugin configs get default order (50+)
-        foreach (var sub in initCmd.Subcommands)
-        {
-            var (order, group) = sub.Name switch
-            {
-                "all" => (0, project),
-                "project" => (10, project),
-                "site" => (20, project),
-                _ => (CommandOrderRegistry.DefaultOrder, plugins)
-            };
-            orderRegistry.Register(sub, order);
-            orderRegistry.RegisterGroup(sub, group);
-        }
-    }
-
-    /// <summary>
-    /// Registers order for subcommands of config command.
-    /// </summary>
-    private static void RegisterConfigSubcommandOrders(Command configCmd, CommandOrderRegistry orderRegistry)
-    {
-        // Order within config: show (0), site (10), theme (20), image (30), feed (40), path (50)
         foreach (var sub in configCmd.Subcommands)
         {
-            var order = sub.Name switch
+            // Assign order and group based on command name
+            var (order, group) = sub.Name switch
             {
-                "show" => 0,
-                "site" => 10,
-                "theme" => 20,
-                "image" => 30,
-                "feed" => 40,
-                "path" => 50,
-                _ => CommandOrderRegistry.DefaultOrder // Plugin config commands
+                // Project group: core project settings
+                "project" => (10, CommandGroups.ConfigProject),
+                "theme" => (20, CommandGroups.ConfigProject),
+                "image" => (30, CommandGroups.ConfigProject),
+                "site" => (40, CommandGroups.ConfigProject),
+
+                // Addons group: optional plugin features
+                "feed" => (10, CommandGroups.ConfigAddons),
+                "serve" => (20, CommandGroups.ConfigAddons),
+                "statistics" => (30, CommandGroups.ConfigAddons),
+
+                // Ungrouped: locations (at the end)
+                "locations" => (90, null),
+
+                // Plugin commands use Group from CommandDescriptor
+                _ => (CommandOrderRegistry.DefaultOrder, null)
             };
+
             orderRegistry.Register(sub, order);
+            if (group is not null)
+            {
+                orderRegistry.RegisterGroup(sub, group);
+            }
         }
     }
 }

@@ -81,7 +81,6 @@ public sealed class OneDrivePlugin : IPlugin
         // Note: DownloadAnalyzer is static, no DI registration needed
 
         // Register Commands for Dependency Injection
-        services.AddTransient<OneDriveInitCommand>();
         services.AddTransient<OneDriveSourceCommand>();
         services.AddTransient<ConfigOneDriveCommand>();
     }
@@ -98,22 +97,22 @@ public sealed class OneDrivePlugin : IPlugin
         }
 
         // Resolve commands from DI container
-        var initCommand = services.GetRequiredService<OneDriveInitCommand>();
         var sourceCommand = services.GetRequiredService<OneDriveSourceCommand>();
         var configCommand = services.GetRequiredService<ConfigOneDriveCommand>();
 
-        // 1. Register init command → revela init onedrive
-        //    Creates plugin config file via flat init structure
-        yield return new CommandDescriptor(initCommand.Create(), ParentCommand: "init");
-
-        // 2. Register source command → revela source onedrive sync
+        // 1. Register source command → revela source onedrive sync
         //    Creates: source → onedrive → sync
         var oneDriveCommand = new Command("onedrive", "OneDrive shared folder source");
         oneDriveCommand.Subcommands.Add(sourceCommand.Create());
         yield return new CommandDescriptor(oneDriveCommand, ParentCommand: "source", Order: 20);
 
-        // 3. Register config command → revela config onedrive
-        yield return new CommandDescriptor(configCommand.Create(), ParentCommand: "config");
+        // 2. Register config command → revela config onedrive
+        //    Direct under config with Source group for menu organization
+        yield return new CommandDescriptor(
+            configCommand.Create(),
+            ParentCommand: "config",
+            Order: 10,
+            Group: "Source");
     }
 }
 

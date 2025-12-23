@@ -15,10 +15,10 @@ public static class ErrorPanels
         var panel = new Panel(
             "[yellow]This command requires a Revela project.[/]\n\n" +
             "[bold]Solution:[/]\n" +
-            "  Run [cyan]revela init project[/] to initialize a new project.\n\n" +
+            "  Run [cyan]revela config project[/] to initialize a new project.\n\n" +
             "[dim]A Revela project needs:[/]\n" +
-            "  • [cyan]site.json[/] - Site configuration\n" +
-            "  • [cyan]project.json[/] - Project settings"
+            "  • [cyan]project.json[/] - Project settings\n" +
+            "  • [cyan]site.json[/] - Site configuration (theme-dependent)"
         )
         .WithHeader("[bold red]Not a Revela Project[/]")
         .WithErrorStyle();

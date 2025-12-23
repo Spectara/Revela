@@ -1,5 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using Spectara.Revela.Commands.Config.Images;
+using Spectara.Revela.Commands.Config.Project;
 using Spectara.Revela.Commands.Config.Revela;
 using Spectara.Revela.Commands.Config.Services;
 using Spectara.Revela.Commands.Config.Site;
@@ -24,7 +25,9 @@ public static class ServiceCollectionExtensions
 
         // Main config command
         services.AddTransient<ConfigCommand>();
-        services.AddTransient<ConfigShowCommand>();
+
+        // Project commands
+        services.AddTransient<ConfigProjectCommand>();
 
         // Theme commands
         services.AddTransient<ConfigThemeCommand>();
@@ -40,7 +43,7 @@ public static class ServiceCollectionExtensions
         services.AddTransient<ConfigFeedListCommand>();
         services.AddTransient<ConfigFeedAddCommand>();
         services.AddTransient<ConfigFeedRemoveCommand>();
-        services.AddTransient<ConfigPathCommand>();
+        services.AddTransient<ConfigLocationsCommand>();
 
         return services;
     }

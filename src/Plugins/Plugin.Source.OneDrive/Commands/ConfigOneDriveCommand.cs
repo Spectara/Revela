@@ -2,6 +2,7 @@ using System.CommandLine;
 using System.Text.Json;
 using Microsoft.Extensions.Options;
 using Spectara.Revela.Plugin.Source.OneDrive.Configuration;
+using Spectara.Revela.Sdk;
 using Spectre.Console;
 
 namespace Spectara.Revela.Plugin.Source.OneDrive.Commands;
@@ -12,17 +13,19 @@ namespace Spectara.Revela.Plugin.Source.OneDrive.Commands;
 /// <remarks>
 /// <para>
 /// Allows interactive or argument-based configuration of the OneDrive plugin.
-/// Reads/writes to plugins/Spectara.Revela.Plugin.Source.OneDrive.json.
+/// Creates or updates plugins/Spectara.Revela.Plugin.Source.OneDrive.json.
 /// </para>
 /// <para>
-/// Usage: revela config onedrive [options]
+/// Usage: revela config source onedrive [options]
 /// </para>
 /// </remarks>
 public sealed partial class ConfigOneDriveCommand(
     ILogger<ConfigOneDriveCommand> logger,
     IOptionsMonitor<OneDrivePluginConfig> configMonitor)
 {
-    private const string ConfigPath = "plugins/Spectara.Revela.Plugin.Source.OneDrive.json";
+    private const string PluginsFolderName = "plugins";
+    private const string PluginPackageId = "Spectara.Revela.Plugin.Source.OneDrive";
+    private const string ConfigPath = $"{PluginsFolderName}/{PluginPackageId}.json";
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -34,7 +37,7 @@ public sealed partial class ConfigOneDriveCommand(
     /// </summary>
     public Command Create()
     {
-        var command = new Command("onedrive", "Configure OneDrive source plugin settings");
+        var command = new Command("onedrive", "Configure OneDrive source plugin");
 
         var shareUrlOption = new Option<string?>("--share-url", "-u")
         {
@@ -71,8 +74,9 @@ public sealed partial class ConfigOneDriveCommand(
         int? concurrencyArg,
         CancellationToken cancellationToken)
     {
-        // Read current values from IOptions
+        // Read current values from IOptions (empty if config doesn't exist yet)
         var current = configMonitor.CurrentValue;
+        var isFirstTime = !File.Exists(ConfigPath);
 
         // Determine if interactive mode (no arguments provided)
         var isInteractive = shareUrlArg is null && outputArg is null && concurrencyArg is null;
@@ -88,7 +92,27 @@ public sealed partial class ConfigOneDriveCommand(
             shareUrl = AnsiConsole.Prompt(
                 new TextPrompt<string>("OneDrive share URL:")
                     .DefaultValue(current.ShareUrl)
-                    .AllowEmpty());
+                    .AllowEmpty()
+                    .Validate(url =>
+                    {
+                        if (string.IsNullOrWhiteSpace(url))
+                        {
+                            return ValidationResult.Success(); // Allow empty for now
+                        }
+
+                        if (!url.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+                        {
+                            return ValidationResult.Error("[red]URL must start with https://[/]");
+                        }
+
+                        if (!url.Contains("1drv.ms", StringComparison.OrdinalIgnoreCase) &&
+                            !url.Contains("onedrive.live.com", StringComparison.OrdinalIgnoreCase))
+                        {
+                            return ValidationResult.Error("[red]Must be a valid OneDrive share URL[/]");
+                        }
+
+                        return ValidationResult.Success();
+                    }));
 
             output = AnsiConsole.Prompt(
                 new TextPrompt<string>("Output directory:")
@@ -109,7 +133,7 @@ public sealed partial class ConfigOneDriveCommand(
         }
 
         // Ensure plugins directory exists
-        Directory.CreateDirectory("plugins");
+        Directory.CreateDirectory(PluginsFolderName);
 
         // Build config object (only include non-default values)
         var configValues = new Dictionary<string, object>();
@@ -131,7 +155,7 @@ public sealed partial class ConfigOneDriveCommand(
 
         var config = new Dictionary<string, object>
         {
-            [OneDrivePluginConfig.SectionName] = configValues
+            [PluginPackageId] = configValues
         };
 
         // Write config file
@@ -139,7 +163,21 @@ public sealed partial class ConfigOneDriveCommand(
         await File.WriteAllTextAsync(ConfigPath, json, cancellationToken).ConfigureAwait(false);
 
         LogConfigSaved(logger, ConfigPath);
-        AnsiConsole.MarkupLine($"\n[green]✓[/] Configuration saved to [cyan]{ConfigPath}[/]");
+
+        // Show success panel
+        var action = isFirstTime ? "created" : "updated";
+        var panel = new Panel(
+            $"[green]OneDrive source {action}![/]\n\n" +
+            $"[bold]Configuration:[/] [cyan]{ConfigPath}[/]\n" +
+            (string.IsNullOrEmpty(shareUrl) ? "" : $"[bold]Share URL:[/] [dim]{shareUrl}[/]\n") +
+            $"[bold]Output directory:[/] [cyan]{output}[/]\n\n" +
+            $"[bold]Next steps:[/]\n" +
+            $"1. Run [cyan]revela source onedrive download[/] to fetch files\n" +
+            $"2. Run [cyan]revela generate[/] to build your site")
+            .WithHeader($"[bold green]{(isFirstTime ? "Created" : "Updated")}[/]")
+            .WithSuccessStyle();
+
+        AnsiConsole.Write(panel);
 
         return 0;
     }

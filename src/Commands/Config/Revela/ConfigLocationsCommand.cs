@@ -5,21 +5,21 @@ using Spectre.Console;
 namespace Spectara.Revela.Commands.Config.Revela;
 
 /// <summary>
-/// Command to display configuration paths.
+/// Command to display configuration and plugin locations.
 /// </summary>
-public sealed partial class ConfigPathCommand(
-    ILogger<ConfigPathCommand> logger)
+public sealed partial class ConfigLocationsCommand(
+    ILogger<ConfigLocationsCommand> logger)
 {
     /// <summary>
     /// Creates the command definition.
     /// </summary>
     public Command Create()
     {
-        var command = new Command("path", "Display configuration and plugin paths");
+        var command = new Command("locations", "Display configuration and plugin locations");
 
         command.SetAction((_, _) =>
         {
-            LogDisplayingPaths(logger);
+            LogDisplayingLocations(logger);
             var locationType = ConfigPathResolver.IsPortableInstallation ? "Portable" : "User";
 
             var table = new Table()
@@ -53,6 +53,6 @@ public sealed partial class ConfigPathCommand(
         return command;
     }
 
-    [LoggerMessage(Level = LogLevel.Debug, Message = "Displaying configuration paths")]
-    private static partial void LogDisplayingPaths(ILogger logger);
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Displaying configuration locations")]
+    private static partial void LogDisplayingLocations(ILogger logger);
 }

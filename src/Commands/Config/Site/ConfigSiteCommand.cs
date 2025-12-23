@@ -1,59 +1,39 @@
 using System.CommandLine;
-using Spectara.Revela.Commands.Config.Models;
+using System.Globalization;
 using Spectara.Revela.Commands.Config.Services;
+using Spectara.Revela.Commands.Init.Abstractions;
+using Spectara.Revela.Core.Services;
 using Spectara.Revela.Sdk;
 using Spectre.Console;
 
 namespace Spectara.Revela.Commands.Config.Site;
 
 /// <summary>
-/// Command to configure site metadata.
+/// Command to manage site configuration.
 /// </summary>
 /// <remarks>
-/// Configures title, author, description, copyright in site.json.
+/// <para>
+/// Creates site.json from theme template with interactive prompts.
+/// Options are generated dynamically from template placeholders.
+/// </para>
 /// </remarks>
 public sealed partial class ConfigSiteCommand(
     ILogger<ConfigSiteCommand> logger,
-    IConfigService configService)
+    IConfigService configService,
+    IScaffoldingService scaffoldingService,
+    IThemeResolver themeResolver)
 {
     /// <summary>
-    /// Creates the command definition.
+    /// Creates the command definition with dynamic options from template.
     /// </summary>
     public Command Create()
     {
-        var command = new Command("site", "Configure site metadata");
+        var command = new Command("site", "Configure site settings (site.json)");
 
-        var titleOption = new Option<string?>("--title")
-        {
-            Description = "Site title"
-        };
-        var authorOption = new Option<string?>("--author")
-        {
-            Description = "Author name"
-        };
-        var descriptionOption = new Option<string?>("--description")
-        {
-            Description = "Site description"
-        };
-        var copyrightOption = new Option<string?>("--copyright")
-        {
-            Description = "Copyright notice"
-        };
-
-        command.Options.Add(titleOption);
-        command.Options.Add(authorOption);
-        command.Options.Add(descriptionOption);
-        command.Options.Add(copyrightOption);
-
+        // We'll add dynamic options when we have the template
+        // For now, set up the action that will handle both cases
         command.SetAction(async (parseResult, cancellationToken) =>
-        {
-            var title = parseResult.GetValue(titleOption);
-            var author = parseResult.GetValue(authorOption);
-            var description = parseResult.GetValue(descriptionOption);
-            var copyright = parseResult.GetValue(copyrightOption);
-
-            return await ExecuteAsync(title, author, description, copyright, cancellationToken).ConfigureAwait(false);
-        });
+            await ExecuteAsync(cancellationToken).ConfigureAwait(false));
 
         return command;
     }
@@ -61,12 +41,9 @@ public sealed partial class ConfigSiteCommand(
     /// <summary>
     /// Executes the site configuration.
     /// </summary>
-    public async Task<int> ExecuteAsync(
-        string? titleArg,
-        string? authorArg,
-        string? descriptionArg,
-        string? copyrightArg,
-        CancellationToken cancellationToken)
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>Exit code.</returns>
+    public async Task<int> ExecuteAsync(CancellationToken cancellationToken)
     {
         if (!configService.IsProjectInitialized())
         {
@@ -74,70 +51,160 @@ public sealed partial class ConfigSiteCommand(
             return 1;
         }
 
-        // Read current values
-        var current = await configService.ReadSiteConfigAsync(cancellationToken).ConfigureAwait(false)
-            ?? new SiteConfigDto();
+        var siteConfigPath = Path.GetFullPath(configService.SiteConfigPath);
 
-        // Determine if interactive mode (no arguments provided)
-        var isInteractive = titleArg is null && authorArg is null && descriptionArg is null && copyrightArg is null;
-
-        string title, author, description, copyright;
-
-        if (isInteractive)
+        if (configService.IsSiteConfigured())
         {
-            AnsiConsole.MarkupLine("[cyan]Configure site metadata[/]\n");
-
-            title = AnsiConsole.Prompt(
-                new TextPrompt<string>("Title:")
-                    .DefaultValue(current.Title ?? "")
-                    .AllowEmpty());
-
-            author = AnsiConsole.Prompt(
-                new TextPrompt<string>("Author:")
-                    .DefaultValue(current.Author ?? "")
-                    .AllowEmpty());
-
-            description = AnsiConsole.Prompt(
-                new TextPrompt<string>("Description:")
-                    .DefaultValue(current.Description ?? "")
-                    .AllowEmpty());
-
-            // Generate default copyright if not set
-            var defaultCopyright = string.IsNullOrEmpty(current.Copyright)
-                ? $"© {DateTime.Now.Year} {author}. All rights reserved."
-                : current.Copyright;
-
-            copyright = AnsiConsole.Prompt(
-                new TextPrompt<string>("Copyright:")
-                    .DefaultValue(defaultCopyright)
-                    .AllowEmpty());
-        }
-        else
-        {
-            // Use provided arguments, fall back to current values
-            title = titleArg ?? current.Title ?? "";
-            author = authorArg ?? current.Author ?? "";
-            description = descriptionArg ?? current.Description ?? "";
-            copyright = copyrightArg ?? current.Copyright ?? "";
+            // File exists - show clickable path
+            ShowSiteConfigPath(siteConfigPath);
+            return 0;
         }
 
-        // Update config using DTO
-        var update = new SiteConfigDto
+        // Get theme template
+        var projectPath = Directory.GetCurrentDirectory();
+        var availableThemes = themeResolver.GetAvailableThemes(projectPath).ToList();
+
+        if (availableThemes.Count == 0)
         {
-            Title = title,
-            Author = author,
-            Description = description,
-            Copyright = copyright
-        };
+            ErrorPanels.ShowNothingInstalledError(
+                "themes",
+                "plugin install Spectara.Revela.Theme.Lumina");
+            return 1;
+        }
 
-        await configService.UpdateSiteConfigAsync(update, cancellationToken).ConfigureAwait(false);
+        var selectedTheme = availableThemes[0];
+        await using var siteTemplateStream = selectedTheme.GetSiteTemplate();
 
-        LogSiteConfigured(title, author);
-        AnsiConsole.MarkupLine("[green]✓[/] Site metadata updated");
+        if (siteTemplateStream is null)
+        {
+            ErrorPanels.ShowWarning(
+                "No Template",
+                $"[yellow]Theme '{selectedTheme.Metadata.Name}' doesn't provide a site.json template.[/]\n\n" +
+                "[dim]Create site.json manually.[/]");
+            return 1;
+        }
+
+        // Read template and extract variables
+        using var reader = new StreamReader(siteTemplateStream);
+        var siteTemplate = await reader.ReadToEndAsync(cancellationToken).ConfigureAwait(false);
+        var variables = TemplateVariableExtractor.ExtractVariables(siteTemplate);
+
+        LogFoundVariables(logger, string.Join(", ", variables));
+
+        // Collect values for each variable (interactive prompts)
+        var values = await CollectValuesAsync(variables, cancellationToken).ConfigureAwait(false);
+
+        // Render template with collected values
+        var siteConfig = scaffoldingService.RenderTemplateContent(siteTemplate, values);
+        await File.WriteAllTextAsync(siteConfigPath, siteConfig, cancellationToken).ConfigureAwait(false);
+
+        LogCreatedSiteConfig(logger, siteConfigPath);
+
+        // Show success with summary
+        ShowSuccessPanel(siteConfigPath, values, selectedTheme.Metadata.Name);
 
         return 0;
     }
 
-    [LoggerMessage(Level = LogLevel.Information, Message = "Site configured: title='{Title}', author='{Author}'")]
-    private partial void LogSiteConfigured(string title, string author);
+    /// <summary>
+    /// Collects values for template variables via interactive prompts.
+    /// </summary>
+    private static Task<Dictionary<string, object>> CollectValuesAsync(
+        IReadOnlySet<string> variables,
+        CancellationToken cancellationToken)
+    {
+        _ = cancellationToken; // Reserved for future async prompts
+
+        var values = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
+        var projectName = new DirectoryInfo(Directory.GetCurrentDirectory()).Name;
+        var year = DateTime.Now.Year.ToString(CultureInfo.InvariantCulture);
+
+        AnsiConsole.MarkupLine("[cyan]Configure site settings[/]\n");
+
+        foreach (var variable in variables.OrderBy(v => GetVariableOrder(v)))
+        {
+            var (defaultValue, description) = GetVariableDefaults(variable, projectName, year, values);
+
+            var value = AnsiConsole.Prompt(
+                new TextPrompt<string>($"{description}:")
+                    .DefaultValue(defaultValue)
+                    .AllowEmpty());
+
+            // Use default if empty
+            values[variable] = string.IsNullOrWhiteSpace(value) ? defaultValue : value;
+        }
+
+        AnsiConsole.WriteLine();
+
+        return Task.FromResult(values);
+    }
+
+    /// <summary>
+    /// Gets the sort order for a variable (controls prompt order).
+    /// </summary>
+    private static int GetVariableOrder(string variable) => variable.ToUpperInvariant() switch
+    {
+        "TITLE" => 1,
+        "AUTHOR" => 2,
+        "DESCRIPTION" => 3,
+        "COPYRIGHT" => 4,
+        _ => 100
+    };
+
+    /// <summary>
+    /// Gets default value and description for a variable.
+    /// </summary>
+    private static (string DefaultValue, string Description) GetVariableDefaults(
+        string variable,
+        string projectName,
+        string year,
+        Dictionary<string, object> collectedValues)
+    {
+        return variable.ToUpperInvariant() switch
+        {
+            "TITLE" => (projectName, "Site title"),
+            "AUTHOR" => (Environment.UserName, "Author name"),
+            "DESCRIPTION" => ("Photography portfolio", "Site description"),
+            "COPYRIGHT" => (
+                collectedValues.TryGetValue("author", out var author)
+                    ? $"© {year} {author}. All rights reserved."
+                    : $"© {year} Your Name. All rights reserved.",
+                "Copyright notice"),
+            _ => (string.Empty, variable.Replace("_", " ", StringComparison.Ordinal))
+        };
+    }
+
+    private static void ShowSiteConfigPath(string path)
+    {
+        var panel = new Panel(
+            $"[bold]Site configuration:[/]\n" +
+            $"[link={path}]{path}[/]\n\n" +
+            $"[dim]Edit this file directly - structure depends on your theme.[/]")
+            .WithHeader("[bold cyan]site.json[/]")
+            .WithInfoStyle();
+
+        AnsiConsole.Write(panel);
+    }
+
+    private static void ShowSuccessPanel(string path, Dictionary<string, object> values, string themeName)
+    {
+        var valuesSummary = string.Join("\n",
+            values.Select(kv => $"  [dim]{kv.Key}:[/] {kv.Value}"));
+
+        var panel = new Panel(
+            $"[green]Created site.json[/]\n\n" +
+            $"[bold]Values:[/]\n{valuesSummary}\n\n" +
+            $"[bold]File:[/]\n[link={path}]{path}[/]\n\n" +
+            $"[dim]Theme: {themeName}[/]")
+            .WithHeader("[bold green]✓ Site Configured[/]")
+            .WithSuccessStyle();
+
+        AnsiConsole.Write(panel);
+    }
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Found template variables: {Variables}")]
+    private static partial void LogFoundVariables(ILogger logger, string variables);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Created site.json at {Path}")]
+    private static partial void LogCreatedSiteConfig(ILogger logger, string path);
 }

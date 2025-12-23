@@ -14,16 +14,13 @@ public static class ServiceCollectionExtensions
     /// </summary>
     /// <param name="services">The service collection.</param>
     /// <returns>The service collection for chaining.</returns>
+    /// <remarks>
+    /// Only registers scaffolding service. Init commands have been migrated to config commands.
+    /// </remarks>
     public static IServiceCollection AddInitFeature(this IServiceCollection services)
     {
-        // Services
+        // Services (still needed by config commands)
         services.AddSingleton<IScaffoldingService, ScaffoldingService>();
-
-        // Commands
-        services.AddTransient<InitProjectCommand>();
-        services.AddTransient<InitSiteCommand>();
-        services.AddTransient<InitAllCommand>();
-        services.AddTransient<InitCommand>();
 
         return services;
     }

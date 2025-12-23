@@ -58,29 +58,9 @@ public sealed class StatsPageTemplate : IPageTemplate
         }
     ];
 
-    public IReadOnlyList<TemplateProperty> ConfigProperties { get; } =
-    [
-        new()
-        {
-            Name = "max-entries",
-            Aliases = ["--max-entries", "-m"],
-            Type = typeof(int),
-            DefaultValue = 15,
-            Description = "Maximum entries per category (example: 20)",
-            Required = false,
-            FrontmatterKey = null,
-            ConfigKey = "MaxEntriesPerCategory"
-        },
-        new()
-        {
-            Name = "sort-by-count",
-            Aliases = ["--sort-by-count", "-s"],
-            Type = typeof(bool),
-            DefaultValue = true,
-            Description = "Sort by count instead of alphabetically (example: false)",
-            Required = false,
-            FrontmatterKey = null,
-            ConfigKey = "SortByCount"
-        }
-    ];
+    /// <inheritdoc />
+    /// <remarks>
+    /// Empty - configuration is handled by ConfigStatisticsCommand, not dynamically generated.
+    /// </remarks>
+    public IReadOnlyList<TemplateProperty> ConfigProperties { get; } = [];
 }

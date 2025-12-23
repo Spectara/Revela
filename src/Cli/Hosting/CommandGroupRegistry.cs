@@ -5,17 +5,30 @@ namespace Spectara.Revela.Cli.Hosting;
 /// </summary>
 internal static class CommandGroups
 {
-    /// <summary>Project setup and configuration commands.</summary>
+    // Main menu groups
+
+    /// <summary>Project setup and configuration commands (main menu).</summary>
     public const string Setup = "Setup";
 
-    /// <summary>Content creation and source management commands.</summary>
+    /// <summary>Content creation and source management commands (main menu).</summary>
     public const string Content = "Content";
 
     /// <summary>Build, generation, and cleanup commands.</summary>
     public const string Build = "Build";
 
-    /// <summary>Theme, plugin, and dependency management commands.</summary>
+    /// <summary>Plugin addons and optional features.</summary>
     public const string Addons = "Addons";
+
+    // Config submenu groups
+
+    /// <summary>Core project configuration commands (config submenu).</summary>
+    public const string ConfigProject = "Project";
+
+    /// <summary>Image source providers (config submenu).</summary>
+    public const string ConfigSource = "Source";
+
+    /// <summary>Plugin addon configuration (config submenu).</summary>
+    public const string ConfigAddons = "Addons";
 }
 
 /// <summary>
