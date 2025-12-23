@@ -6,8 +6,8 @@ using Spectara.Revela.Commands.Config.Services;
 using Spectara.Revela.Commands.Config.Site;
 using Spectara.Revela.Commands.Config.Theme;
 using Spectara.Revela.Core.Configuration;
-using Spectre.Console;
 using Spectara.Revela.Sdk;
+using Spectre.Console;
 
 namespace Spectara.Revela.Commands.Config;
 
@@ -46,10 +46,7 @@ public sealed class ConfigCommand(
         command.Subcommands.Add(pathCommand.Create());
 
         // Default action: interactive menu
-        command.SetAction(async (_, cancellationToken) =>
-        {
-            return await ExecuteInteractiveAsync(cancellationToken).ConfigureAwait(false);
-        });
+        command.SetAction(async (_, cancellationToken) => await ExecuteInteractiveAsync(cancellationToken).ConfigureAwait(false));
 
         return command;
     }

@@ -1,8 +1,7 @@
 using System.CommandLine;
 using System.Reflection;
-
-using Spectre.Console;
 using Spectara.Revela.Sdk;
+using Spectre.Console;
 
 namespace Spectara.Revela.Cli.Hosting;
 

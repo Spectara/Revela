@@ -57,20 +57,14 @@ internal sealed class CommandGroupRegistry
     /// </summary>
     /// <param name="name">The group name.</param>
     /// <returns>The registered order, or <see cref="DefaultOrder"/> if not registered.</returns>
-    public int GetOrder(string name)
-    {
-        return orderMap.TryGetValue(name, out var order) ? order : DefaultOrder;
-    }
+    public int GetOrder(string name) => orderMap.TryGetValue(name, out var order) ? order : DefaultOrder;
 
     /// <summary>
     /// Checks if a group is registered.
     /// </summary>
     /// <param name="name">The group name.</param>
     /// <returns>True if the group exists.</returns>
-    public bool Exists(string name)
-    {
-        return orderMap.ContainsKey(name);
-    }
+    public bool Exists(string name) => orderMap.ContainsKey(name);
 
     /// <summary>
     /// Gets an existing group order or creates a new group with auto-incremented order.

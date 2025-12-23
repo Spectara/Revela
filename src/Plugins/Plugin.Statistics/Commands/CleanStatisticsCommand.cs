@@ -26,10 +26,7 @@ public sealed partial class CleanStatisticsCommand(ILogger<CleanStatisticsComman
     {
         var command = new Command("statistics", "Clean statistics JSON files from cache");
 
-        command.SetAction(async (parseResult, cancellationToken) =>
-        {
-            return await ExecuteAsync(cancellationToken).ConfigureAwait(false);
-        });
+        command.SetAction(async (parseResult, cancellationToken) => await ExecuteAsync(cancellationToken).ConfigureAwait(false));
 
         return command;
     }

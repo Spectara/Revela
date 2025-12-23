@@ -3,10 +3,10 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Http.Resilience;
 using Polly;
-using Spectara.Revela.Sdk.Abstractions;
 using Spectara.Revela.Plugin.Source.OneDrive.Commands;
 using Spectara.Revela.Plugin.Source.OneDrive.Configuration;
 using Spectara.Revela.Plugin.Source.OneDrive.Providers;
+using Spectara.Revela.Sdk.Abstractions;
 
 namespace Spectara.Revela.Plugin.Source.OneDrive;
 

@@ -6,8 +6,8 @@ using Spectara.Revela.Commands.Generate.Mapping;
 using Spectara.Revela.Commands.Generate.Parsing;
 using Spectara.Revela.Commands.Generate.Scanning;
 using Spectara.Revela.Commands.Generate.Services;
-using Spectara.Revela.Sdk.Abstractions;
 using Spectara.Revela.Core.Services;
+using Spectara.Revela.Sdk.Abstractions;
 using IManifestRepository = Spectara.Revela.Sdk.Abstractions.IManifestRepository;
 
 namespace Spectara.Revela.Commands.Generate;

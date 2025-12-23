@@ -27,6 +27,20 @@ This is a **complete rewrite** of the original Bash-based revela project:
 - **Focus:** Performance (large images), simplicity, extensibility
 - **Architecture:** Vertical Slice + Plugin System
 - **Technology:** .NET 10, NetVips, Scriban, System.CommandLine 2.0
+- **Status:** Pre-release, no public users yet
+
+### Breaking Changes Policy
+> ⚠️ **No backward compatibility required!**
+> 
+> This project has **no users yet**. Feel free to:
+> - Rename classes, methods, properties without migration
+> - Change configuration formats (JSON structure, property names)
+> - Restructure folders and namespaces
+> - Remove deprecated code immediately
+> - Change CLI command names and options
+> 
+> **Don't waste time on:** Migration scripts, deprecation warnings, or compatibility layers.
+> **Focus on:** Clean design, best practices, and getting it right the first time.
 
 ### Differences from Original
 | Aspect | Original (Bash) | Revela |
@@ -976,6 +990,37 @@ dotnet pack src/Cli -c Release
 dotnet tool install -g --add-source ./artifacts/packages Revela
 ```
 
+### Code Formatting (IMPORTANT!)
+
+**Run `dotnet format` before committing to ensure consistent code style!**
+
+```bash
+# Check for formatting issues (CI/pre-commit)
+dotnet format --verify-no-changes
+
+# Auto-fix all formatting issues
+dotnet format
+```
+
+**Common issues fixed by `dotnet format`:**
+- **IMPORTS:** Using directives not sorted alphabetically
+- **IDE0001:** Name can be simplified (redundant namespace qualifiers)
+- **IDE0022:** Use expression body for method
+- **IDE0053:** Use expression body for lambda expression
+- **IDE0055:** Formatting issues (indentation, spacing)
+
+**When to run:**
+- ✅ Before every commit
+- ✅ After large refactoring
+- ✅ When CI fails with format errors
+- ✅ At session start to check codebase health
+
+**Pragma Guidelines:**
+- ❌ Don't suppress warnings for unused code - remove the code instead
+- ❌ Don't suppress IDE0005 (unused usings) - remove the usings
+- ✅ Legitimate suppressions: CA1054 (URI strings for user input), CA2000 (complex ownership)
+- ✅ Always include `#pragma warning restore` after `#pragma warning disable`
+
 ---
 
 ## Context for AI Assistants
@@ -985,6 +1030,7 @@ dotnet tool install -g --add-source ./artifacts/packages Revela
 2. Read `docs/architecture.md` for design decisions
 3. Check open files in IDE for current work
 4. **CHECK FOR DEPENDENCY UPDATES** - Run `dotnet outdated` proactively
+5. **CHECK CODE FORMATTING** - Run `dotnet format --verify-no-changes`
 
 ### Dependency Management (IMPORTANT!)
 **Always check for package updates at session start!**

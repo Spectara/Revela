@@ -1,8 +1,8 @@
 using System.CommandLine;
 using System.Text.Json;
 using Microsoft.Extensions.Options;
-using Spectre.Console;
 using Spectara.Revela.Plugin.Serve.Configuration;
+using Spectre.Console;
 
 namespace Spectara.Revela.Plugin.Serve;
 

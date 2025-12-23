@@ -68,7 +68,7 @@ internal static class HostBuilderExtensions
 
         foreach (var (category, level) in loggingConfig.LogLevel)
         {
-            if (Enum.TryParse<Microsoft.Extensions.Logging.LogLevel>(level, ignoreCase: true, out var logLevel))
+            if (Enum.TryParse<LogLevel>(level, ignoreCase: true, out var logLevel))
             {
                 if (category == "Default")
                 {

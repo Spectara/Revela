@@ -42,6 +42,6 @@ public sealed class MarkdownService : IMarkdownService
     public string ToHtml(string markdown)
     {
         ArgumentNullException.ThrowIfNull(markdown);
-        return Markdig.Markdown.ToHtml(markdown, Pipeline);
+        return Markdown.ToHtml(markdown, Pipeline);
     }
 }

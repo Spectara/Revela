@@ -2,8 +2,8 @@ using System.CommandLine;
 using System.Globalization;
 using System.Net;
 using Microsoft.Extensions.Options;
-using Spectre.Console;
 using Spectara.Revela.Plugin.Serve.Configuration;
+using Spectre.Console;
 
 namespace Spectara.Revela.Plugin.Serve;
 

@@ -3,8 +3,8 @@ using System.Globalization;
 using Microsoft.Extensions.Configuration;
 using Spectara.Revela.Commands.Generate.Abstractions;
 using Spectara.Revela.Commands.Generate.Models.Results;
-using Spectre.Console;
 using Spectara.Revela.Sdk;
+using Spectre.Console;
 using IManifestRepository = Spectara.Revela.Sdk.Abstractions.IManifestRepository;
 
 namespace Spectara.Revela.Commands.Generate.Commands;

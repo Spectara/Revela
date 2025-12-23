@@ -84,10 +84,7 @@ public static class ConfigPathResolver
         return appDataDir;
     }
 
-    private static bool DetermineIsPortable()
-    {
-        return IsDirectoryWritable(ExeDirectory);
-    }
+    private static bool DetermineIsPortable() => IsDirectoryWritable(ExeDirectory);
 
     private static bool IsDirectoryWritable(string path)
     {

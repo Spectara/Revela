@@ -1,7 +1,5 @@
-#pragma warning disable IDE0005 // Usings required for method signatures (Image, ImageProcessingOptions)
 using Spectara.Revela.Commands.Generate.Models;
 using Spectara.Revela.Sdk.Models;
-#pragma warning restore IDE0005
 
 namespace Spectara.Revela.Commands.Generate.Abstractions;
 

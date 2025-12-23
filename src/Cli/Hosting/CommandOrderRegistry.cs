@@ -26,40 +26,28 @@ internal sealed class CommandOrderRegistry
     /// </summary>
     /// <param name="command">The command to register.</param>
     /// <param name="order">The display order (1-100, lower = first).</param>
-    public void Register(Command command, int order)
-    {
-        orderMap[command] = order;
-    }
+    public void Register(Command command, int order) => orderMap[command] = order;
 
     /// <summary>
     /// Registers the group assignment for a command.
     /// </summary>
     /// <param name="command">The command to assign to a group.</param>
     /// <param name="groupName">The group name (must be registered in <see cref="CommandGroupRegistry"/>).</param>
-    public void RegisterGroup(Command command, string groupName)
-    {
-        groupMap[command] = groupName;
-    }
+    public void RegisterGroup(Command command, string groupName) => groupMap[command] = groupName;
 
     /// <summary>
     /// Gets the display order for a command.
     /// </summary>
     /// <param name="command">The command to look up.</param>
     /// <returns>The registered order, or <see cref="DefaultOrder"/> if not registered.</returns>
-    public int GetOrder(Command command)
-    {
-        return orderMap.TryGetValue(command, out var order) ? order : DefaultOrder;
-    }
+    public int GetOrder(Command command) => orderMap.TryGetValue(command, out var order) ? order : DefaultOrder;
 
     /// <summary>
     /// Gets the group name for a command.
     /// </summary>
     /// <param name="command">The command to look up.</param>
     /// <returns>The group name, or null if not assigned to any group.</returns>
-    public string? GetGroup(Command command)
-    {
-        return groupMap.TryGetValue(command, out var group) ? group : null;
-    }
+    public string? GetGroup(Command command) => groupMap.TryGetValue(command, out var group) ? group : null;
 
     /// <summary>
     /// Sorts commands by order, then alphabetically by name.

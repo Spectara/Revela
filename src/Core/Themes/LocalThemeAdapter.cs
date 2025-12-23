@@ -168,11 +168,9 @@ public sealed class LocalThemeAdapter : IThemePlugin
     }
 
     /// <inheritdoc />
-    public Stream? GetSiteTemplate()
-    {
+    public Stream? GetSiteTemplate() =>
         // Try to load site.template.json from theme directory
-        return GetFile("site.template.json");
-    }
+        GetFile("site.template.json");
 }
 
 /// <summary>

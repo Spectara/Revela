@@ -1,7 +1,7 @@
 using System.CommandLine;
 using System.Text.Json;
-using Spectre.Console;
 using Spectara.Revela.Plugin.Serve.Configuration;
+using Spectre.Console;
 
 namespace Spectara.Revela.Plugin.Serve;
 

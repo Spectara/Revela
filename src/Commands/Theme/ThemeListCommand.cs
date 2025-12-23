@@ -1,9 +1,9 @@
 using System.CommandLine;
 using Spectara.Revela.Core;
 using Spectara.Revela.Core.Services;
+using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Abstractions;
 using Spectre.Console;
-using Spectara.Revela.Sdk;
 
 namespace Spectara.Revela.Commands.Theme;
 

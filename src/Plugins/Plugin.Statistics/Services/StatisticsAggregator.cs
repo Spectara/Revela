@@ -1,9 +1,9 @@
 using System.Globalization;
 using Microsoft.Extensions.Options;
-using Spectara.Revela.Sdk.Abstractions;
-using Spectara.Revela.Sdk.Models.Manifest;
 using Spectara.Revela.Plugin.Statistics.Configuration;
 using Spectara.Revela.Plugin.Statistics.Models;
+using Spectara.Revela.Sdk.Abstractions;
+using Spectara.Revela.Sdk.Models.Manifest;
 
 namespace Spectara.Revela.Plugin.Statistics.Services;
 

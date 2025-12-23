@@ -31,10 +31,7 @@ public sealed partial class AllCommand(ILogger<AllCommand> logger)
     {
         var command = new Command("all", "Execute full pipeline (scan → statistics → pages → images)");
 
-        command.SetAction(async (parseResult, cancellationToken) =>
-        {
-            return await ExecuteAsync(command, cancellationToken);
-        });
+        command.SetAction(async (parseResult, cancellationToken) => await ExecuteAsync(command, cancellationToken));
 
         return command;
     }

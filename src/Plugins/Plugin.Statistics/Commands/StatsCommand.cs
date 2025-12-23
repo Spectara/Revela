@@ -1,10 +1,10 @@
 using System.CommandLine;
-using Spectre.Console;
+using Spectara.Revela.Plugin.Statistics.Commands.Logging;
+using Spectara.Revela.Plugin.Statistics.Services;
 using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Abstractions;
 using Spectara.Revela.Sdk.Models.Manifest;
-using Spectara.Revela.Plugin.Statistics.Commands.Logging;
-using Spectara.Revela.Plugin.Statistics.Services;
+using Spectre.Console;
 
 namespace Spectara.Revela.Plugin.Statistics.Commands;
 
@@ -31,10 +31,7 @@ public sealed class StatsCommand(
     {
         var command = new Command("statistics", "Generate statistics JSON from EXIF data");
 
-        command.SetAction(async (parseResult, cancellationToken) =>
-        {
-            return await ExecuteAsync(cancellationToken).ConfigureAwait(false);
-        });
+        command.SetAction(async (parseResult, cancellationToken) => await ExecuteAsync(cancellationToken).ConfigureAwait(false));
 
         return command;
     }

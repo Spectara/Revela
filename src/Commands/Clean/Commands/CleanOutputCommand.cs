@@ -23,10 +23,7 @@ public sealed partial class CleanOutputCommand(ILogger<CleanOutputCommand> logge
     {
         var command = new Command("output", "Clean output directory (generated HTML/images)");
 
-        command.SetAction(async (parseResult, cancellationToken) =>
-        {
-            return await ExecuteAsync(cancellationToken).ConfigureAwait(false);
-        });
+        command.SetAction(async (parseResult, cancellationToken) => await ExecuteAsync(cancellationToken).ConfigureAwait(false));
 
         return command;
     }

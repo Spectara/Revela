@@ -1,7 +1,7 @@
 using System.CommandLine;
 using Spectara.Revela.Commands.Config.Services;
-using Spectre.Console;
 using Spectara.Revela.Sdk;
+using Spectre.Console;
 
 namespace Spectara.Revela.Commands.Config;
 

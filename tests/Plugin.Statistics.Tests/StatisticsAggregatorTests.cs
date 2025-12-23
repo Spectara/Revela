@@ -1,9 +1,9 @@
 using Microsoft.Extensions.Options;
 using NSubstitute;
-using Spectara.Revela.Sdk.Abstractions;
-using Spectara.Revela.Sdk.Models.Manifest;
 using Spectara.Revela.Plugin.Statistics.Configuration;
 using Spectara.Revela.Plugin.Statistics.Services;
+using Spectara.Revela.Sdk.Abstractions;
+using Spectara.Revela.Sdk.Models.Manifest;
 using Spectara.Revela.Tests.Shared;
 
 namespace Spectara.Revela.Plugin.Statistics.Tests;
@@ -14,14 +14,14 @@ public sealed class StatisticsAggregatorTests
 {
     private readonly IManifestRepository manifestRepository;
     private readonly IOptionsMonitor<StatisticsPluginConfig> config;
-    private readonly Microsoft.Extensions.Logging.ILogger<StatisticsAggregator> logger;
+    private readonly ILogger<StatisticsAggregator> logger;
 
     public StatisticsAggregatorTests()
     {
         manifestRepository = Substitute.For<IManifestRepository>();
         config = Substitute.For<IOptionsMonitor<StatisticsPluginConfig>>();
         config.CurrentValue.Returns(new StatisticsPluginConfig());
-        logger = Substitute.For<Microsoft.Extensions.Logging.ILogger<StatisticsAggregator>>();
+        logger = Substitute.For<ILogger<StatisticsAggregator>>();
     }
 
     [TestMethod]

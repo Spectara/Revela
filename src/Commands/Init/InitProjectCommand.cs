@@ -1,8 +1,8 @@
 using System.CommandLine;
 using Spectara.Revela.Commands.Init.Abstractions;
 using Spectara.Revela.Core.Services;
-using Spectre.Console;
 using Spectara.Revela.Sdk;
+using Spectre.Console;
 
 namespace Spectara.Revela.Commands.Init;
 
@@ -21,10 +21,7 @@ public sealed partial class InitProjectCommand(
     {
         var command = new Command("project", "Initialize a new Revela project");
 
-        command.SetAction(async (_, cancellationToken) =>
-        {
-            return await ExecuteAsync(cancellationToken).ConfigureAwait(false);
-        });
+        command.SetAction(async (_, cancellationToken) => await ExecuteAsync(cancellationToken).ConfigureAwait(false));
 
         return command;
     }

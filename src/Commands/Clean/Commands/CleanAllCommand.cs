@@ -22,10 +22,7 @@ public sealed partial class CleanAllCommand(ILogger<CleanAllCommand> logger)
     {
         var command = new Command("all", "Clean output and cache (full clean)");
 
-        command.SetAction(async (parseResult, cancellationToken) =>
-        {
-            return await ExecuteAsync(command, cancellationToken).ConfigureAwait(false);
-        });
+        command.SetAction(async (parseResult, cancellationToken) => await ExecuteAsync(command, cancellationToken).ConfigureAwait(false));
 
         return command;
     }

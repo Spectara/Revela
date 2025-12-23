@@ -196,10 +196,7 @@ public static class GlobalConfigManager
     /// <summary>
     /// Clears the cached configuration (for testing)
     /// </summary>
-    public static void ClearCache()
-    {
-        cachedConfig = null;
-    }
+    public static void ClearCache() => cachedConfig = null;
 
     /// <summary>
     /// Internal file structure for revela.json serialization

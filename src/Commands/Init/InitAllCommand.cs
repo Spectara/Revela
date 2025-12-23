@@ -1,10 +1,10 @@
 using System.CommandLine;
+using System.Text.Json;
 using Spectara.Revela.Commands.Init.Abstractions;
 using Spectara.Revela.Core.Services;
+using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Abstractions;
 using Spectre.Console;
-using Spectara.Revela.Sdk;
-using System.Text.Json;
 
 namespace Spectara.Revela.Commands.Init;
 
@@ -38,10 +38,7 @@ public sealed partial class InitAllCommand(
     {
         var command = new Command("all", "Initialize project with all plugin configurations");
 
-        command.SetAction(async (_, cancellationToken) =>
-        {
-            return await ExecuteAsync(cancellationToken).ConfigureAwait(false);
-        });
+        command.SetAction(async (_, cancellationToken) => await ExecuteAsync(cancellationToken).ConfigureAwait(false));
 
         return command;
     }

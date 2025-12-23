@@ -1,8 +1,8 @@
 using System.CommandLine;
+using System.Text.Json;
 using Microsoft.Extensions.Options;
 using Spectara.Revela.Plugin.Source.OneDrive.Configuration;
 using Spectre.Console;
-using System.Text.Json;
 
 namespace Spectara.Revela.Plugin.Source.OneDrive.Commands;
 

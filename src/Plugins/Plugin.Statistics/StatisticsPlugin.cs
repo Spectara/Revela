@@ -1,9 +1,9 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Spectara.Revela.Sdk.Abstractions;
 using Spectara.Revela.Plugin.Statistics.Commands;
 using Spectara.Revela.Plugin.Statistics.Configuration;
 using Spectara.Revela.Plugin.Statistics.Services;
+using Spectara.Revela.Sdk.Abstractions;
 
 namespace Spectara.Revela.Plugin.Statistics;
 
@@ -52,7 +52,7 @@ public sealed class StatisticsPlugin : IPlugin
         services.AddTransient<ConfigStatisticsCommand>();
 
         // Register Page Template for init commands
-        services.AddSingleton<Spectara.Revela.Sdk.Abstractions.IPageTemplate, StatsPageTemplate>();
+        services.AddSingleton<IPageTemplate, StatsPageTemplate>();
     }
 
     /// <inheritdoc />

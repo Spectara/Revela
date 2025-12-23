@@ -154,11 +154,9 @@ public abstract class EmbeddedThemePlugin : IThemePlugin
     }
 
     /// <inheritdoc />
-    public Stream? GetSiteTemplate()
-    {
+    public Stream? GetSiteTemplate() =>
         // Try to load site.template.json from embedded resources
-        return GetFile("site.template.json");
-    }
+        GetFile("site.template.json");
 
     private ThemeJsonConfig LoadConfig()
     {

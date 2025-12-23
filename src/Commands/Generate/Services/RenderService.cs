@@ -7,8 +7,8 @@ using Spectara.Revela.Commands.Generate.Models;
 using Spectara.Revela.Commands.Generate.Models.Results;
 using Spectara.Revela.Commands.Generate.Parsing;
 using Spectara.Revela.Core.Configuration;
-using Spectara.Revela.Sdk.Abstractions;
 using Spectara.Revela.Core.Services;
+using Spectara.Revela.Sdk.Abstractions;
 using Spectara.Revela.Sdk.Models.Manifest;
 using IManifestRepository = Spectara.Revela.Sdk.Abstractions.IManifestRepository;
 
@@ -349,14 +349,14 @@ public sealed partial class RenderService(
 
         var manifest = theme?.GetManifest();
         var layoutTemplate = manifest is not null
-            ? LoadTemplate(theme, manifest.LayoutTemplate)
+            ? LoadTemplate(manifest.LayoutTemplate)
             : null;
 
         var indexTemplate = layoutTemplate
-            ?? LoadTemplate(theme, "index.revela")
+            ?? LoadTemplate("index.revela")
             ?? GetDefaultIndexTemplate();
         var galleryTemplate = layoutTemplate
-            ?? LoadTemplate(theme, "gallery.revela")
+            ?? LoadTemplate("gallery.revela")
             ?? GetDefaultGalleryTemplate();
 
         var pageCount = 0;
@@ -443,7 +443,7 @@ public sealed partial class RenderService(
             // The layout template is ALWAYS used (never replaced)
             if (customTemplate is not null)
             {
-                var contentTemplate = LoadTemplate(theme, $"{customTemplate}.revela");
+                var contentTemplate = LoadTemplate($"{customTemplate}.revela");
                 if (contentTemplate is not null)
                 {
                     // Build base model for custom template
@@ -549,12 +549,9 @@ public sealed partial class RenderService(
     /// <summary>
     /// Loads a template from the theme, extensions, or local overrides via ITemplateResolver.
     /// </summary>
-    /// <param name="theme">The main theme plugin (unused, kept for signature compatibility)</param>
     /// <param name="templateName">Template file name (e.g., "gallery.revela" or "statistics/overview.revela")</param>
     /// <returns>Template content or null if not found</returns>
-#pragma warning disable IDE0060 // Remove unused parameter - kept for call site compatibility
-    private string? LoadTemplate(IThemePlugin? theme, string templateName)
-#pragma warning restore IDE0060
+    private string? LoadTemplate(string templateName)
     {
         // Derive key from template name
         var key = templateName;

@@ -1,7 +1,7 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Spectara.Revela.Sdk.Abstractions;
 using Spectara.Revela.Plugin.Serve.Configuration;
+using Spectara.Revela.Sdk.Abstractions;
 
 namespace Spectara.Revela.Plugin.Serve;
 

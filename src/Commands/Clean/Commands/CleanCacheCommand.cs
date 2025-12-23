@@ -23,10 +23,7 @@ public sealed partial class CleanCacheCommand(ILogger<CleanCacheCommand> logger)
     {
         var command = new Command("cache", "Clean cache directory (.cache)");
 
-        command.SetAction(async (parseResult, cancellationToken) =>
-        {
-            return await ExecuteAsync(cancellationToken).ConfigureAwait(false);
-        });
+        command.SetAction(async (parseResult, cancellationToken) => await ExecuteAsync(cancellationToken).ConfigureAwait(false));
 
         return command;
     }

@@ -2,11 +2,11 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using NSubstitute;
-using Spectara.Revela.Sdk.Abstractions;
-using Spectara.Revela.Sdk.Models.Manifest;
 using Spectara.Revela.Plugin.Statistics.Commands;
 using Spectara.Revela.Plugin.Statistics.Configuration;
 using Spectara.Revela.Plugin.Statistics.Services;
+using Spectara.Revela.Sdk.Abstractions;
+using Spectara.Revela.Sdk.Models.Manifest;
 
 namespace Spectara.Revela.Plugin.Statistics.Tests;
 
@@ -35,7 +35,7 @@ public sealed class StatisticsPluginRegistrationTests
 
         services.AddSingleton<IConfiguration>(configuration);
 
-        var plugin = new Spectara.Revela.Plugin.Statistics.StatisticsPlugin();
+        var plugin = new StatisticsPlugin();
         plugin.ConfigureServices(services);
 
         var provider = services.BuildServiceProvider(new ServiceProviderOptions
@@ -71,7 +71,7 @@ public sealed class StatisticsPluginRegistrationTests
         var configuration = new ConfigurationBuilder().Build();
         services.AddSingleton<IConfiguration>(configuration);
 
-        var plugin = new Spectara.Revela.Plugin.Statistics.StatisticsPlugin();
+        var plugin = new StatisticsPlugin();
         plugin.ConfigureServices(services);
 
         var provider = services.BuildServiceProvider(new ServiceProviderOptions
