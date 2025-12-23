@@ -42,8 +42,9 @@ public sealed partial class PluginListCommand(
 
             if (loadedPlugins.Count == 0)
             {
-                AnsiConsole.MarkupLine("[yellow]No plugins loaded.[/]");
-                AnsiConsole.MarkupLine("[dim]Install plugins with:[/] [cyan]revela plugin install <name>[/]");
+                ErrorPanels.ShowNothingInstalledError(
+                    "plugins",
+                    "plugin install <name>");
                 return Task.CompletedTask;
             }
 

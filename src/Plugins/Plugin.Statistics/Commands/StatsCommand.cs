@@ -65,8 +65,10 @@ public sealed class StatsCommand(
 
         if (statsPages.Count == 0)
         {
-            AnsiConsole.MarkupLine("[yellow]No statistics pages found in manifest.[/]");
-            AnsiConsole.MarkupLine("[dim]Create a page with [cyan]data = { statistics: \"statistics.json\" }[/] in frontmatter.[/]");
+            ErrorPanels.ShowWarning(
+                "No Statistics Pages",
+                "[yellow]No statistics pages found in manifest.[/]\n\n" +
+                "Create a page with [cyan]data = { statistics: \"statistics.json\" }[/] in frontmatter.");
             return 0;
         }
 

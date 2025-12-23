@@ -82,11 +82,10 @@ public sealed partial class ThemeExtractCommand(
             // Otherwise, require source argument for full extraction
             if (string.IsNullOrEmpty(source))
             {
-                AnsiConsole.MarkupLine("[red]✗[/] Theme name is required for full extraction.");
-                AnsiConsole.MarkupLine("");
-                AnsiConsole.MarkupLine("Usage:");
-                AnsiConsole.MarkupLine("  [cyan]revela theme extract <theme>[/]         Full theme extraction");
-                AnsiConsole.MarkupLine("  [cyan]revela theme extract --file <path>[/]   Extract specific file");
+                ErrorPanels.ShowValidationError(
+                    "Theme name is required for full extraction.",
+                    "  [cyan]revela theme extract <theme>[/]         Full theme extraction\n" +
+                    "  [cyan]revela theme extract --file <path>[/]   Extract specific file");
                 return 1;
             }
 
@@ -110,9 +109,10 @@ public sealed partial class ThemeExtractCommand(
         var theme = themeResolver.Resolve(themeName, projectPath);
         if (theme is null)
         {
-            AnsiConsole.MarkupLine($"[red]✗[/] Theme [yellow]'{EscapeMarkup(themeName)}'[/] not found.");
-            AnsiConsole.MarkupLine("");
-            AnsiConsole.MarkupLine("Run [cyan]revela theme list[/] to see available themes.");
+            ErrorPanels.ShowError(
+                "Theme Not Found",
+                $"[yellow]Theme '{EscapeMarkup(themeName)}' not found.[/]\n\n" +
+                "Run [cyan]revela theme list[/] to see available themes.");
             return 1;
         }
 
@@ -190,9 +190,10 @@ public sealed partial class ThemeExtractCommand(
 
         if (matchingFiles.Count == 0)
         {
-            AnsiConsole.MarkupLine($"[red]✗[/] No files match [yellow]'{EscapeMarkup(filePath)}'[/]");
-            AnsiConsole.MarkupLine("");
-            AnsiConsole.MarkupLine("Run [cyan]revela theme files[/] to see available files.");
+            ErrorPanels.ShowError(
+                "No Match",
+                $"[yellow]No files match '{EscapeMarkup(filePath)}'[/]\n\n" +
+                "Run [cyan]revela theme files[/] to see available files.");
             return 1;
         }
 
@@ -396,9 +397,10 @@ public sealed partial class ThemeExtractCommand(
 
         if (sourceTheme is null)
         {
-            AnsiConsole.MarkupLine($"[red]✗[/] Theme [yellow]'{EscapeMarkup(sourceName)}'[/] not found.");
-            AnsiConsole.MarkupLine("");
-            AnsiConsole.MarkupLine("Run [cyan]revela theme list[/] to see available themes.");
+            ErrorPanels.ShowError(
+                "Theme Not Found",
+                $"[yellow]Theme '{EscapeMarkup(sourceName)}' not found.[/]\n\n" +
+                "Run [cyan]revela theme list[/] to see available themes.");
             return 1;
         }
 
@@ -407,9 +409,9 @@ public sealed partial class ThemeExtractCommand(
         {
             if (!force)
             {
-                AnsiConsole.MarkupLine($"[red]✗[/] Theme folder [yellow]'{EscapeMarkup(themeName)}'[/] already exists.");
-                AnsiConsole.MarkupLine("");
-                AnsiConsole.MarkupLine("Use [cyan]--force[/] to overwrite existing theme.");
+                ErrorPanels.ShowFileExistsError(
+                    $"themes/{themeName}/",
+                    "Use [cyan]--force[/] to overwrite existing theme.");
                 return 1;
             }
 

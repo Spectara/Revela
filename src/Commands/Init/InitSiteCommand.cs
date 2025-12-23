@@ -103,8 +103,10 @@ public sealed partial class InitSiteCommand(
 
             if (siteTemplateStream is null)
             {
-                AnsiConsole.MarkupLine($"[yellow]Warning:[/] Theme '{selectedTheme.Metadata.Name}' doesn't provide a site.json template");
-                AnsiConsole.MarkupLine("[dim]You may need to create site.json manually[/]");
+                ErrorPanels.ShowWarning(
+                    "No Template",
+                    $"[yellow]Theme '{selectedTheme.Metadata.Name}' doesn't provide a site.json template.[/]\n\n" +
+                    "[dim]You may need to create site.json manually.[/]");
                 return 1;
             }
 

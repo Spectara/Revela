@@ -64,9 +64,10 @@ public sealed partial class ThemeFilesCommand(
         var theme = themeResolver.Resolve(themeName, projectPath);
         if (theme is null)
         {
-            AnsiConsole.MarkupLine($"[red]✗[/] Theme [yellow]'{EscapeMarkup(themeName)}'[/] not found.");
-            AnsiConsole.MarkupLine("");
-            AnsiConsole.MarkupLine("Run [cyan]revela theme list[/] to see available themes.");
+            ErrorPanels.ShowError(
+                "Theme Not Found",
+                $"[yellow]Theme '{EscapeMarkup(themeName)}' not found.[/]\n\n" +
+                "Run [cyan]revela theme list[/] to see available themes.");
             return Task.CompletedTask;
         }
 
