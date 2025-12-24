@@ -1,6 +1,11 @@
 {
-  "title": "{{ title }}",
-  "author": "{{ author }}",
-  "copyright": "{{ copyright }}",
-  "description": "{{ description }}"
+  "title": "",
+  "author": "",
+  "copyright": "",
+  "description": "",
+  "social": {
+    "twitter": "",
+    "github": "",
+    "instagram": ""
+  }
 }

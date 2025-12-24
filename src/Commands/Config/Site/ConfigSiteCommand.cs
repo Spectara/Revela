@@ -1,7 +1,6 @@
 using System.CommandLine;
 using System.Globalization;
 using Spectara.Revela.Commands.Config.Services;
-using Spectara.Revela.Commands.Init.Abstractions;
 using Spectara.Revela.Core.Services;
 using Spectara.Revela.Sdk;
 using Spectre.Console;
@@ -13,33 +12,31 @@ namespace Spectara.Revela.Commands.Config.Site;
 /// </summary>
 /// <remarks>
 /// <para>
-/// Creates site.json from theme template with interactive prompts.
-/// Options are generated dynamically from template placeholders.
+/// Creates or edits site.json with interactive prompts.
+/// Uses JSON structure from theme template to determine available properties.
+/// When editing, existing values are used as defaults.
 /// </para>
 /// </remarks>
 public sealed partial class ConfigSiteCommand(
     ILogger<ConfigSiteCommand> logger,
     IConfigService configService,
-    IScaffoldingService scaffoldingService,
     IThemeResolver themeResolver)
 {
     /// <summary>
-    /// Creates the command definition with dynamic options from template.
+    /// Creates the command definition.
     /// </summary>
     public Command Create()
     {
         var command = new Command("site", "Configure site settings (site.json)");
 
-        // We'll add dynamic options when we have the template
-        // For now, set up the action that will handle both cases
-        command.SetAction(async (parseResult, cancellationToken) =>
+        command.SetAction(async (_, cancellationToken) =>
             await ExecuteAsync(cancellationToken).ConfigureAwait(false));
 
         return command;
     }
 
     /// <summary>
-    /// Executes the site configuration.
+    /// Executes the site configuration (create or edit).
     /// </summary>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>Exit code.</returns>
@@ -52,15 +49,9 @@ public sealed partial class ConfigSiteCommand(
         }
 
         var siteConfigPath = Path.GetFullPath(configService.SiteConfigPath);
+        var isEditMode = configService.IsSiteConfigured();
 
-        if (configService.IsSiteConfigured())
-        {
-            // File exists - show clickable path
-            ShowSiteConfigPath(siteConfigPath);
-            return 0;
-        }
-
-        // Get theme template
+        // Get theme template for structure
         var projectPath = Directory.GetCurrentDirectory();
         var availableThemes = themeResolver.GetAvailableThemes(projectPath).ToList();
 
@@ -84,127 +75,185 @@ public sealed partial class ConfigSiteCommand(
             return 1;
         }
 
-        // Read template and extract variables
+        // Read template for structure
         using var reader = new StreamReader(siteTemplateStream);
-        var siteTemplate = await reader.ReadToEndAsync(cancellationToken).ConfigureAwait(false);
-        var variables = TemplateVariableExtractor.ExtractVariables(siteTemplate);
+        var templateJson = await reader.ReadToEndAsync(cancellationToken).ConfigureAwait(false);
 
-        LogFoundVariables(logger, string.Join(", ", variables));
+        // Get current values (from existing file or empty from template)
+        string sourceJson;
+        if (isEditMode)
+        {
+            sourceJson = await File.ReadAllTextAsync(siteConfigPath, cancellationToken).ConfigureAwait(false);
+            LogEditingExisting(logger, siteConfigPath);
+        }
+        else
+        {
+            sourceJson = templateJson;
+            LogCreatingNew(logger);
+        }
 
-        // Collect values for each variable (interactive prompts)
-        var values = await CollectValuesAsync(variables, cancellationToken).ConfigureAwait(false);
+        // Extract properties with current values
+        var properties = JsonPropertyExtractor.ExtractProperties(sourceJson);
 
-        // Render template with collected values
-        var siteConfig = scaffoldingService.RenderTemplateContent(siteTemplate, values);
-        await File.WriteAllTextAsync(siteConfigPath, siteConfig, cancellationToken).ConfigureAwait(false);
+        LogFoundProperties(logger, string.Join(", ", properties.Select(p => p.Path)));
 
-        LogCreatedSiteConfig(logger, siteConfigPath);
+        // Collect values via interactive prompts
+        var values = CollectValues(properties, isEditMode);
 
-        // Show success with summary
-        ShowSuccessPanel(siteConfigPath, values, selectedTheme.Metadata.Name);
+        // Build final JSON using template structure
+        var finalJson = JsonPropertyExtractor.BuildJson(templateJson, values);
+        await File.WriteAllTextAsync(siteConfigPath, finalJson, cancellationToken).ConfigureAwait(false);
+
+        LogSavedSiteConfig(logger, siteConfigPath);
+
+        // Show success
+        ShowSuccessPanel(siteConfigPath, values, selectedTheme.Metadata.Name, isEditMode);
 
         return 0;
     }
 
     /// <summary>
-    /// Collects values for template variables via interactive prompts.
+    /// Collects values for all properties via interactive prompts.
     /// </summary>
-    private static Task<Dictionary<string, object>> CollectValuesAsync(
-        IReadOnlySet<string> variables,
-        CancellationToken cancellationToken)
+    private static Dictionary<string, string> CollectValues(
+        IReadOnlyList<JsonProperty> properties,
+        bool isEditMode)
     {
-        _ = cancellationToken; // Reserved for future async prompts
-
-        var values = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
+        var values = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         var projectName = new DirectoryInfo(Directory.GetCurrentDirectory()).Name;
         var year = DateTime.Now.Year.ToString(CultureInfo.InvariantCulture);
 
-        AnsiConsole.MarkupLine("[cyan]Configure site settings[/]\n");
+        var action = isEditMode ? "Edit" : "Configure";
+        AnsiConsole.MarkupLine($"[cyan]{action} site settings[/]\n");
 
-        foreach (var variable in variables.OrderBy(v => GetVariableOrder(v)))
+        // Sort properties by order, then alphabetically
+        var sortedProperties = properties
+            .OrderBy(p => GetPropertyOrder(p.Path))
+            .ThenBy(p => p.Path)
+            .ToList();
+
+        foreach (var property in sortedProperties)
         {
-            var (defaultValue, description) = GetVariableDefaults(variable, projectName, year, values);
+            var (smartDefault, description) = GetPropertyDefaults(property.Path, projectName, year, values);
+
+            // Use existing value if available, otherwise smart default
+            var currentValue = !string.IsNullOrEmpty(property.Value) ? property.Value : smartDefault;
 
             var value = AnsiConsole.Prompt(
                 new TextPrompt<string>($"{description}:")
-                    .DefaultValue(defaultValue)
+                    .DefaultValue(currentValue)
                     .AllowEmpty());
 
-            // Use default if empty
-            values[variable] = string.IsNullOrWhiteSpace(value) ? defaultValue : value;
+            // Use current value if user just pressed Enter
+            values[property.Path] = string.IsNullOrWhiteSpace(value) ? currentValue : value;
         }
 
         AnsiConsole.WriteLine();
 
-        return Task.FromResult(values);
+        return values;
     }
 
     /// <summary>
-    /// Gets the sort order for a variable (controls prompt order).
+    /// Gets the sort order for a property (controls prompt order).
     /// </summary>
-    private static int GetVariableOrder(string variable) => variable.ToUpperInvariant() switch
+    private static int GetPropertyOrder(string path) => path.ToUpperInvariant() switch
     {
         "TITLE" => 1,
         "AUTHOR" => 2,
         "DESCRIPTION" => 3,
         "COPYRIGHT" => 4,
+        _ when path.StartsWith("SOCIAL.", StringComparison.OrdinalIgnoreCase) => 50,
         _ => 100
     };
 
     /// <summary>
-    /// Gets default value and description for a variable.
+    /// Gets smart default value and description for a property.
     /// </summary>
-    private static (string DefaultValue, string Description) GetVariableDefaults(
-        string variable,
+    private static (string DefaultValue, string Description) GetPropertyDefaults(
+        string path,
         string projectName,
         string year,
-        Dictionary<string, object> collectedValues)
+        Dictionary<string, string> collectedValues)
     {
-        return variable.ToUpperInvariant() switch
+        // Description always from property path (e.g., "social.twitter" → "Social Twitter")
+        var description = FormatPropertyName(path);
+
+        // Smart defaults for known properties
+        var defaultValue = path.ToUpperInvariant() switch
         {
-            "TITLE" => (projectName, "Site title"),
-            "AUTHOR" => (Environment.UserName, "Author name"),
-            "DESCRIPTION" => ("Photography portfolio", "Site description"),
-            "COPYRIGHT" => (
-                collectedValues.TryGetValue("author", out var author)
-                    ? $"© {year} {author}. All rights reserved."
-                    : $"© {year} Your Name. All rights reserved.",
-                "Copyright notice"),
-            _ => (string.Empty, variable.Replace("_", " ", StringComparison.Ordinal))
+            "TITLE" => projectName,
+            "AUTHOR" => Environment.UserName,
+            "DESCRIPTION" => "Photography portfolio",
+            "COPYRIGHT" => collectedValues.TryGetValue("author", out var author) && !string.IsNullOrEmpty(author)
+                ? $"© {year} {author}. All rights reserved."
+                : $"© {year} {Environment.UserName}. All rights reserved.",
+            _ => ""
         };
+
+        return (defaultValue, description);
     }
 
-    private static void ShowSiteConfigPath(string path)
+    /// <summary>
+    /// Formats a property path as a human-readable label.
+    /// </summary>
+    /// <remarks>
+    /// Examples:
+    /// - "social.twitter" → "Social Twitter"
+    /// - "my_property" → "My Property"
+    /// </remarks>
+    private static string FormatPropertyName(string path)
     {
-        var panel = new Panel(
-            $"[bold]Site configuration:[/]\n" +
-            $"[link={path}]{path}[/]\n\n" +
-            $"[dim]Edit this file directly - structure depends on your theme.[/]")
-            .WithHeader("[bold cyan]site.json[/]")
-            .WithInfoStyle();
+        // Replace dots and underscores with spaces, then capitalize each word
+        var name = path
+            .Replace(".", " ", StringComparison.Ordinal)
+            .Replace("_", " ", StringComparison.Ordinal);
 
-        AnsiConsole.Write(panel);
+        var words = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        return string.Join(" ", words.Select(w =>
+            string.IsNullOrEmpty(w)
+                ? w
+                : char.ToUpperInvariant(w[0]) + w[1..]));
     }
 
-    private static void ShowSuccessPanel(string path, Dictionary<string, object> values, string themeName)
+    private static void ShowSuccessPanel(
+        string path,
+        Dictionary<string, string> values,
+        string themeName,
+        bool isEditMode)
     {
+        var action = isEditMode ? "Updated" : "Created";
+
+        // Group values by top-level key for cleaner display
         var valuesSummary = string.Join("\n",
-            values.Select(kv => $"  [dim]{kv.Key}:[/] {kv.Value}"));
+            values
+                .Where(kv => !string.IsNullOrEmpty(kv.Value))
+                .Select(kv => $"  [dim]{kv.Key}:[/] {kv.Value}"));
+
+        if (string.IsNullOrWhiteSpace(valuesSummary))
+        {
+            valuesSummary = "  [dim](all empty)[/]";
+        }
 
         var panel = new Panel(
-            $"[green]Created site.json[/]\n\n" +
+            $"[green]{action} site.json[/]\n\n" +
             $"[bold]Values:[/]\n{valuesSummary}\n\n" +
             $"[bold]File:[/]\n[link={path}]{path}[/]\n\n" +
             $"[dim]Theme: {themeName}[/]")
-            .WithHeader("[bold green]✓ Site Configured[/]")
+            .WithHeader($"[bold green]✓ Site {action}[/]")
             .WithSuccessStyle();
 
         AnsiConsole.Write(panel);
     }
 
-    [LoggerMessage(Level = LogLevel.Debug, Message = "Found template variables: {Variables}")]
-    private static partial void LogFoundVariables(ILogger logger, string variables);
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Editing existing site.json at {Path}")]
+    private static partial void LogEditingExisting(ILogger logger, string path);
 
-    [LoggerMessage(Level = LogLevel.Information, Message = "Created site.json at {Path}")]
-    private static partial void LogCreatedSiteConfig(ILogger logger, string path);
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Creating new site.json from template")]
+    private static partial void LogCreatingNew(ILogger logger);
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Found properties: {Properties}")]
+    private static partial void LogFoundProperties(ILogger logger, string properties);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Saved site.json at {Path}")]
+    private static partial void LogSavedSiteConfig(ILogger logger, string path);
 }

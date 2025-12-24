@@ -1,5 +1,11 @@
 {
   "title": "Subdirectory Test",
   "author": "Test User",
-  "description": "Testing subdirectory hosting"
+  "copyright": "© 2025 Test User",
+  "description": "Testing subdirectory hosting",
+  "social": {
+    "twitter": "",
+    "github": "",
+    "instagram": ""
+  }
 }
