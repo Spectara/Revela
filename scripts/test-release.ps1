@@ -79,19 +79,27 @@ $ToolDir = Join-Path $TestDir "tool"
 $SampleProjectDir = Join-Path $TestDir "sample"
 $SampleSourceDir = Join-Path $RepoRoot "samples/onedrive"
 
-# Determine runtime identifier
+# Determine runtime identifier and executable name
+# Note: $IsWindows, $IsMacOS, $IsLinux are automatic variables in PowerShell Core 6+
+# For Windows PowerShell 5.x compatibility, we also check $env:OS
+$isWindowsOS = $IsWindows -or $env:OS -eq "Windows_NT"
+
 if (-not $RuntimeIdentifier) {
-    if ($IsWindows -or $env:OS -eq "Windows_NT") {
+    if ($isWindowsOS) {
         $RuntimeIdentifier = "win-x64"
-        $ExeName = "revela.exe"
-    } elseif ($IsMacOS) {
+    }
+    elseif ($IsMacOS) {
         $RuntimeIdentifier = "osx-x64"
-        $ExeName = "revela"
-    } else {
+    }
+    else {
         $RuntimeIdentifier = "linux-x64"
-        $ExeName = "revela"
     }
 }
+
+# Determine executable extension based on runtime (not current OS!)
+# This allows cross-compilation scenarios
+$ExeName = if ($RuntimeIdentifier -like "win-*") { "revela.exe" } else { "revela" }
+$exeExt = if ($RuntimeIdentifier -like "win-*") { ".exe" } else { "" }
 
 $ExePath = Join-Path $CliDir $ExeName
 
@@ -104,7 +112,8 @@ function Measure-Step {
     $sw = [System.Diagnostics.Stopwatch]::StartNew()
     try {
         & $Action
-    } finally {
+    }
+    finally {
         $sw.Stop()
         $stepTimes[$Name] = $sw.Elapsed
     }
@@ -165,11 +174,16 @@ try {
         Write-Step "Step 3: Run Tests"
         Measure-Step "Tests" {
             # .NET 10 uses Microsoft.Testing.Platform - run tests as executables
+            # Determine executable extension based on OS
+            # Test executables use CURRENT OS extension (tests run locally, not cross-compiled)
+            $testExeExt = if ($isWindowsOS) { ".exe" } else { "" }
+
             $testProjects = @(
-                @{ Name = "Core.Tests"; Path = "artifacts/bin/Core.Tests/Release/net10.0/Spectara.Revela.Core.Tests.exe" },
-                @{ Name = "Commands.Tests"; Path = "artifacts/bin/Commands.Tests/Release/net10.0/Spectara.Revela.Commands.Tests.exe" },
-                @{ Name = "Plugin.Source.OneDrive.Tests"; Path = "artifacts/bin/Plugin.Source.OneDrive.Tests/Release/net10.0/Spectara.Revela.Plugin.Source.OneDrive.Tests.exe" },
-                @{ Name = "Plugin.Statistics.Tests"; Path = "artifacts/bin/Plugin.Statistics.Tests/Release/net10.0/Spectara.Revela.Plugin.Statistics.Tests.exe" }
+                @{ Name = "Core.Tests"; Path = "artifacts/bin/Core.Tests/Release/net10.0/Spectara.Revela.Core.Tests$testExeExt" },
+                @{ Name = "Commands.Tests"; Path = "artifacts/bin/Commands.Tests/Release/net10.0/Spectara.Revela.Commands.Tests$testExeExt" },
+                @{ Name = "Plugin.Source.OneDrive.Tests"; Path = "artifacts/bin/Plugin.Source.OneDrive.Tests/Release/net10.0/Spectara.Revela.Plugin.Source.OneDrive.Tests$testExeExt" },
+                @{ Name = "Plugin.Statistics.Tests"; Path = "artifacts/bin/Plugin.Statistics.Tests/Release/net10.0/Spectara.Revela.Plugin.Statistics.Tests$testExeExt" },
+                @{ Name = "Plugin.Serve.Tests"; Path = "artifacts/bin/Plugin.Serve.Tests/Release/net10.0/Spectara.Revela.Plugin.Serve.Tests$testExeExt" }
             )
 
             foreach ($test in $testProjects) {
@@ -183,7 +197,8 @@ try {
                 Write-Success "$($test.Name) passed"
             }
         }
-    } else {
+    }
+    else {
         Write-Step "Step 3: Run Tests [SKIPPED]"
         Write-Warn "Tests skipped by -SkipTests flag"
     }
@@ -257,6 +272,13 @@ try {
         if ($LASTEXITCODE -ne 0) { throw "Statistics plugin pack failed" }
         Write-Success "Plugin.Statistics packed"
 
+        # Pack Plugin.Serve (live preview server)
+        Write-Info "Packing Plugin.Serve..."
+        dotnet pack src/Plugins/Plugin.Serve/Plugin.Serve.csproj `
+            -c Release -o $PluginsDir -p:PackageVersion=$Version --verbosity quiet
+        if ($LASTEXITCODE -ne 0) { throw "Serve plugin pack failed" }
+        Write-Success "Plugin.Serve packed"
+
         # Pack Theme.Lumina.Statistics
         Write-Info "Packing Theme.Lumina.Statistics..."
         dotnet pack src/Themes/Theme.Lumina.Statistics/Theme.Lumina.Statistics.csproj `
@@ -324,6 +346,12 @@ try {
             if ($LASTEXITCODE -ne 0) { throw "Theme.Lumina.Statistics installation failed" }
             Write-Success "Theme.Lumina.Statistics installed"
 
+            # Install Serve Plugin (live preview server)
+            Write-Info "Installing Plugin.Serve..."
+            & $ExePath plugin install Serve --version $Version --source $PluginsDir
+            if ($LASTEXITCODE -ne 0) { throw "Serve plugin installation failed" }
+            Write-Success "Plugin.Serve installed"
+
             # Verify plugins are installed in correct directory (local, next to exe)
             # This validates the "GitHub Release" scenario: user extracts ZIP, runs exe, installs plugins
             # New structure: plugins/{PackageId}/{PackageId}.dll (with dependencies in same folder)
@@ -344,7 +372,8 @@ try {
             # List installed plugins
             Write-Info "Installed plugins:"
             & $ExePath plugin list
-        } finally {
+        }
+        finally {
             Pop-Location
         }
     }
@@ -355,28 +384,31 @@ try {
     Measure-Step "Plugin Verify" {
         $localPluginsDir = Join-Path $CliDir "plugins"
 
-        # Verify correct number of plugins loaded (2 functional plugins: OneDrive + Statistics)
+        # Verify correct number of plugins loaded (3 functional plugins: OneDrive + Statistics + Serve)
         # Themes (Lumina, Lumina Statistics) are now shown in 'theme list' instead
         $pluginListOutput = & $ExePath plugin list 2>&1 | Out-String
-        if ($pluginListOutput -match "Installed Plugins.*\(2\)") {
-            Write-Success "Verified: 2 plugins loaded (OneDrive + Statistics)"
-        } else {
+        if ($pluginListOutput -match "Installed Plugins.*\(3\)") {
+            Write-Success "Verified: 3 plugins loaded (OneDrive + Statistics + Serve)"
+        }
+        else {
             Write-Warn "Plugin list output: $pluginListOutput"
-            throw "Expected 2 plugins in panel header, got unexpected output"
+            throw "Expected 3 plugins in panel header, got unexpected output"
         }
 
-        # Verify installed plugins are local (2 plugins should show 'local')
+        # Verify installed plugins are local (3 plugins should show 'local')
         $localMatches = ([regex]::Matches($pluginListOutput, '\blocal\b')).Count
-        if ($localMatches -ge 2) {
-            Write-Success "Verified: 2 plugins installed locally (next to exe)"
-        } else {
-            Write-Warn "Expected 2 local plugins, found $localMatches in output"
+        if ($localMatches -ge 3) {
+            Write-Success "Verified: 3 plugins installed locally (next to exe)"
+        }
+        else {
+            Write-Warn "Expected 3 local plugins, found $localMatches in output"
         }
 
         # Verify plugin folders exist with main DLLs (new structure: plugins/{PackageId}/{PackageId}.dll)
         $expectedPlugins = @(
             "Spectara.Revela.Plugin.Source.OneDrive",
             "Spectara.Revela.Plugin.Statistics",
+            "Spectara.Revela.Plugin.Serve",
             "Spectara.Revela.Theme.Lumina.Statistics"
         )
         foreach ($pluginName in $expectedPlugins) {
@@ -405,6 +437,17 @@ try {
         & $ExePath plugin install Spectara.Revela.Plugin.Statistics --source $PluginsDir
         if ($LASTEXITCODE -ne 0) { throw "Plugin re-install failed" }
         Write-Success "Plugin re-installed for subsequent tests"
+
+        # Test Serve plugin command is registered (--help is non-blocking, unlike actual serve)
+        Write-Info "Testing serve command (--help)..."
+        $serveHelpOutput = & $ExePath serve --help 2>&1 | Out-String
+        if ($serveHelpOutput -match "Preview generated site") {
+            Write-Success "Verified: Serve plugin command registered and working"
+        }
+        else {
+            Write-Warn "Serve help output: $serveHelpOutput"
+            throw "Serve plugin command not working correctly"
+        }
     }
 
     # ========================================================================
@@ -419,7 +462,8 @@ try {
             $themeListOutput = & $ExePath theme list 2>&1 | Out-String
             if ($themeListOutput -match "Lumina") {
                 Write-Success "Found built-in Lumina theme"
-            } else {
+            }
+            else {
                 throw "Built-in Lumina theme not found in theme list"
             }
 
@@ -438,10 +482,12 @@ try {
             # Should find Theme.Lumina from local NuGet feed
             if ($themeOnlineOutput -match "Spectara.Revela.Theme.Lumina" -or $themeOnlineOutput -match "Available from NuGet") {
                 Write-Success "Theme list --online works (searched NuGet sources)"
-            } else {
+            }
+            else {
                 Write-Warn "No online themes found (may be expected if not published)"
             }
-        } finally {
+        }
+        finally {
             Pop-Location
         }
     }
@@ -465,11 +511,13 @@ try {
                     $fileCount = (Get-ChildItem $sourceDir -Recurse -File).Count
                     Write-Info "Downloaded $fileCount files to source/"
                 }
-            } finally {
+            }
+            finally {
                 Pop-Location
             }
         }
-    } else {
+    }
+    else {
         Write-Step "Step 7d: Copy Source [OneDrive SKIPPED]"
         Measure-Step "Copy Source" {
             # Copy existing source files from sample
@@ -495,7 +543,8 @@ try {
             $revelaFile = Join-Path $SampleProjectDir "source/test-gallery/_index.revela"
             if (Test-Path $revelaFile) {
                 Write-Success "Gallery page created: source/test-gallery/_index.revela"
-            } else {
+            }
+            else {
                 throw "Gallery page file not created"
             }
 
@@ -507,7 +556,8 @@ try {
             $statsFile = Join-Path $SampleProjectDir "source/test-stats/_index.revela"
             if (Test-Path $statsFile) {
                 Write-Success "Statistics page created: source/test-stats/_index.revela"
-            } else {
+            }
+            else {
                 throw "Statistics page file not created"
             }
 
@@ -529,22 +579,25 @@ try {
                 $content = Get-Content $statsConfig -Raw | ConvertFrom-Json
                 if ($content.'Spectara.Revela.Plugin.Statistics'.MaxEntriesPerCategory -eq 20) {
                     Write-Success "Statistics config verified: MaxEntriesPerCategory = 20"
-                } else {
+                }
+                else {
                     Write-Warn "Statistics config value not as expected"
                 }
             }
 
-            # Test config show
-            Write-Info "Running: revela config show"
-            $configShowOutput = & $ExePath config show 2>&1 | Out-String
-            if ($LASTEXITCODE -ne 0) { throw "config show failed" }
-            if ($configShowOutput -match "Theme:" -or $configShowOutput -match "project.json") {
-                Write-Success "config show works"
-            } else {
-                Write-Warn "config show output may be incomplete"
+            # Test config locations (shows where configs are stored)
+            Write-Info "Running: revela config locations"
+            $configLocationsOutput = & $ExePath config locations 2>&1 | Out-String
+            if ($LASTEXITCODE -ne 0) { throw "config locations failed" }
+            if ($configLocationsOutput -match "Project" -or $configLocationsOutput -match "project.json") {
+                Write-Success "config locations works"
+            }
+            else {
+                Write-Warn "config locations output may be incomplete"
             }
 
-        } finally {
+        }
+        finally {
             Pop-Location
         }
     }
@@ -565,7 +618,8 @@ try {
             & $ExePath generate images
             if ($LASTEXITCODE -ne 0) { throw "Image processing failed" }
             Write-Success "Images processed"
-        } finally {
+        }
+        finally {
             Pop-Location
         }
     }
@@ -605,13 +659,16 @@ try {
 
                 if ($statsCategories.Count -gt 0) {
                     Write-Success "Statistics categories: $($statsCategories -join ', ')"
-                } else {
+                }
+                else {
                     Write-Warn "No statistics categories found (may be expected if no EXIF data)"
                 }
-            } else {
+            }
+            else {
                 Write-Warn "No statistics files found (plugin may have no data to process)"
             }
-        } finally {
+        }
+        finally {
             Pop-Location
         }
     }
@@ -627,7 +684,8 @@ try {
             & $ExePath generate pages
             if ($LASTEXITCODE -ne 0) { throw "Page rendering failed" }
             Write-Success "Pages rendered (including Statistics)"
-        } finally {
+        }
+        finally {
             Pop-Location
         }
     }
@@ -655,7 +713,8 @@ try {
             $path = Join-Path $outputDir $file.Path
             if (Test-Path $path) {
                 Write-Success "Found: $($file.Path)"
-            } else {
+            }
+            else {
                 $missingFiles += $file.Path
                 Write-Err "Missing: $($file.Path) ($($file.Description))"
             }
@@ -666,7 +725,8 @@ try {
         if (Test-Path $imagesDir) {
             $imageCount = (Get-ChildItem $imagesDir -Recurse -File).Count
             Write-Success "Images generated: $imageCount files"
-        } else {
+        }
+        else {
             Write-Warn "Images directory not found"
         }
 
@@ -692,15 +752,18 @@ try {
 
             if ($statsChecks.Count -ge 2) {
                 Write-Success "Statistics page generated with: $($statsChecks -join ', ')"
-            } else {
+            }
+            else {
                 Write-Warn "Statistics page found but content may be incomplete"
             }
-        } else {
+        }
+        else {
             # Also check test-stats directory (created by test)
             $testStatsPage = Join-Path $outputDir "test-stats/index.html"
             if (Test-Path $testStatsPage) {
                 Write-Success "Test statistics page found at: test-stats/index.html"
-            } else {
+            }
+            else {
                 Write-Warn "Statistics page not found (optional - requires statistics source page)"
             }
         }
@@ -724,7 +787,8 @@ try {
             $indexContent = Get-Content $indexPath -Raw
             if ($indexContent -match "<html") {
                 Write-Success "index.html contains valid HTML"
-            } else {
+            }
+            else {
                 Write-Warn "index.html may be invalid"
             }
         }
@@ -820,13 +884,15 @@ try {
     Write-Host "  ✓ Release pipeline test PASSED" -ForegroundColor Green
     Write-Host ""
 
-} catch {
+}
+catch {
     Write-Host ""
     Write-Err "Pipeline failed: $_"
     Write-Host ""
     Write-Host $_.ScriptStackTrace -ForegroundColor DarkGray
     exit 1
-} finally {
+}
+finally {
     Pop-Location
 
     # Cleanup (unless -KeepArtifacts)
