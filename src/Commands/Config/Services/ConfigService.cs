@@ -1,7 +1,5 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
-using System.Text.Json.Serialization;
-using Spectara.Revela.Commands.Config.Models;
 
 namespace Spectara.Revela.Commands.Config.Services;
 
@@ -10,17 +8,15 @@ namespace Spectara.Revela.Commands.Config.Services;
 /// </summary>
 /// <remarks>
 /// Provides JSON configuration file management with:
-/// - Strongly-typed DTO serialization
-/// - Partial updates (null properties preserved)
+/// - JsonObject-based access
+/// - Deep merge for partial updates
 /// - Pretty-printed output
 /// </remarks>
 public sealed partial class ConfigService(ILogger<ConfigService> logger) : IConfigService
 {
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
-        WriteIndented = true,
-        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+        WriteIndented = true
     };
 
     /// <inheritdoc />
@@ -36,7 +32,7 @@ public sealed partial class ConfigService(ILogger<ConfigService> logger) : IConf
     public bool IsSiteConfigured() => File.Exists(SiteConfigPath);
 
     /// <inheritdoc />
-    public async Task<ProjectConfigDto?> ReadProjectConfigAsync(CancellationToken cancellationToken = default)
+    public async Task<JsonObject?> ReadProjectConfigAsync(CancellationToken cancellationToken = default)
     {
         if (!File.Exists(ProjectConfigPath))
         {
@@ -46,7 +42,7 @@ public sealed partial class ConfigService(ILogger<ConfigService> logger) : IConf
         try
         {
             var json = await File.ReadAllTextAsync(ProjectConfigPath, cancellationToken).ConfigureAwait(false);
-            return JsonSerializer.Deserialize<ProjectConfigDto>(json, JsonOptions);
+            return JsonNode.Parse(json)?.AsObject();
         }
         catch (JsonException ex)
         {
@@ -56,88 +52,20 @@ public sealed partial class ConfigService(ILogger<ConfigService> logger) : IConf
     }
 
     /// <inheritdoc />
-    public async Task<SiteConfigDto?> ReadSiteConfigAsync(CancellationToken cancellationToken = default)
+    public async Task UpdateProjectConfigAsync(JsonObject updates, CancellationToken cancellationToken = default)
     {
-        if (!File.Exists(SiteConfigPath))
-        {
-            return null;
-        }
+        var existing = await ReadProjectConfigAsync(cancellationToken).ConfigureAwait(false) ?? [];
 
-        try
-        {
-            var json = await File.ReadAllTextAsync(SiteConfigPath, cancellationToken).ConfigureAwait(false);
-            return JsonSerializer.Deserialize<SiteConfigDto>(json, JsonOptions);
-        }
-        catch (JsonException ex)
-        {
-            LogReadFailed(SiteConfigPath, ex);
-            return null;
-        }
-    }
+        // Deep merge updates into existing
+        DeepMerge(existing, updates);
 
-    /// <inheritdoc />
-    public async Task UpdateProjectConfigAsync(ProjectConfigDto update, CancellationToken cancellationToken = default)
-    {
-        var existing = await ReadProjectConfigAsync(cancellationToken).ConfigureAwait(false) ?? new ProjectConfigDto();
-
-        // Merge: only update non-null properties
-        var merged = new ProjectConfigDto
-        {
-            Name = update.Name ?? existing.Name,
-            Url = update.Url ?? existing.Url,
-            Theme = update.Theme ?? existing.Theme,
-            Plugins = update.Plugins ?? existing.Plugins,
-            ImageBasePath = update.ImageBasePath ?? existing.ImageBasePath,
-            BasePath = update.BasePath ?? existing.BasePath,
-            Generate = MergeGenerateConfig(existing.Generate, update.Generate)
-        };
-
-        var json = JsonSerializer.Serialize(merged, JsonOptions);
+        var json = existing.ToJsonString(JsonOptions);
         await File.WriteAllTextAsync(ProjectConfigPath, json, cancellationToken).ConfigureAwait(false);
         LogConfigUpdated(ProjectConfigPath);
     }
 
     /// <inheritdoc />
-    public async Task UpdateSiteConfigAsync(SiteConfigDto update, CancellationToken cancellationToken = default)
-    {
-        var existing = await ReadSiteConfigAsync(cancellationToken).ConfigureAwait(false) ?? new SiteConfigDto();
-
-        // Merge: only update non-null properties
-        var merged = new SiteConfigDto
-        {
-            Title = update.Title ?? existing.Title,
-            Author = update.Author ?? existing.Author,
-            Description = update.Description ?? existing.Description,
-            Copyright = update.Copyright ?? existing.Copyright
-        };
-
-        var json = JsonSerializer.Serialize(merged, JsonOptions);
-        await File.WriteAllTextAsync(SiteConfigPath, json, cancellationToken).ConfigureAwait(false);
-        LogConfigUpdated(SiteConfigPath);
-    }
-
-    /// <inheritdoc />
-    public async Task<JsonObject?> ReadProjectConfigRawAsync(CancellationToken cancellationToken = default)
-    {
-        if (!File.Exists(ProjectConfigPath))
-        {
-            return null;
-        }
-
-        try
-        {
-            var json = await File.ReadAllTextAsync(ProjectConfigPath, cancellationToken).ConfigureAwait(false);
-            return JsonNode.Parse(json)?.AsObject();
-        }
-        catch (JsonException ex)
-        {
-            LogReadFailed(ProjectConfigPath, ex);
-            return null;
-        }
-    }
-
-    /// <inheritdoc />
-    public async Task<JsonObject?> ReadSiteConfigRawAsync(CancellationToken cancellationToken = default)
+    public async Task<JsonObject?> ReadSiteConfigAsync(CancellationToken cancellationToken = default)
     {
         if (!File.Exists(SiteConfigPath))
         {
@@ -157,51 +85,25 @@ public sealed partial class ConfigService(ILogger<ConfigService> logger) : IConf
     }
 
     /// <summary>
-    /// Merges generate configuration, handling nested objects.
+    /// Deep merges source into target. Source values override target values.
+    /// Objects are merged recursively, arrays and primitives are replaced.
     /// </summary>
-    private static GenerateConfigDto? MergeGenerateConfig(GenerateConfigDto? existing, GenerateConfigDto? update)
+    private static void DeepMerge(JsonObject target, JsonObject source)
     {
-        if (update is null)
+        foreach (var property in source)
         {
-            return existing;
+            if (property.Value is JsonObject sourceObj &&
+                target[property.Key] is JsonObject targetObj)
+            {
+                // Both are objects: merge recursively
+                DeepMerge(targetObj, sourceObj);
+            }
+            else
+            {
+                // Replace value (clone to avoid parent issues)
+                target[property.Key] = property.Value?.DeepClone();
+            }
         }
-
-        if (existing is null)
-        {
-            return update;
-        }
-
-        return new GenerateConfigDto
-        {
-            Output = update.Output ?? existing.Output,
-            Images = MergeImageConfig(existing.Images, update.Images)
-        };
-    }
-
-    /// <summary>
-    /// Merges image configuration.
-    /// Note: Formats and Sizes are replaced entirely if provided (not merged).
-    /// </summary>
-    private static ImageConfigDto? MergeImageConfig(ImageConfigDto? existing, ImageConfigDto? update)
-    {
-        if (update is null)
-        {
-            return existing;
-        }
-
-        if (existing is null)
-        {
-            return update;
-        }
-
-        return new ImageConfigDto
-        {
-            // Formats and Sizes: replace entirely if provided
-            Formats = update.Formats ?? existing.Formats,
-            Sizes = update.Sizes ?? existing.Sizes,
-            MinWidth = update.MinWidth ?? existing.MinWidth,
-            MinHeight = update.MinHeight ?? existing.MinHeight
-        };
     }
 
     [LoggerMessage(Level = LogLevel.Debug, Message = "Updated configuration: {ConfigPath}")]

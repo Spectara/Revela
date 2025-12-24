@@ -4,7 +4,6 @@ using Spectara.Revela.Commands.Clean;
 using Spectara.Revela.Commands.Config;
 using Spectara.Revela.Commands.Create;
 using Spectara.Revela.Commands.Generate;
-using Spectara.Revela.Commands.Init;
 using Spectara.Revela.Commands.Plugins;
 using Spectara.Revela.Commands.Restore;
 using Spectara.Revela.Commands.Theme;
@@ -32,7 +31,6 @@ public static class ServiceCollectionExtensions
         services.AddConfigFeature();
         services.AddCreateFeature();
         services.AddGenerateFeature();
-        services.AddInitFeature();
         services.AddPluginsFeature();
         services.AddRestoreFeature();
         services.AddThemeFeature();

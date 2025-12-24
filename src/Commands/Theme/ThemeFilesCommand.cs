@@ -1,5 +1,6 @@
 using System.CommandLine;
-using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Options;
+using Spectara.Revela.Core.Configuration;
 using Spectara.Revela.Core.Services;
 using Spectara.Revela.Sdk;
 using Spectre.Console;
@@ -21,7 +22,7 @@ public sealed partial class ThemeFilesCommand(
     IThemeResolver themeResolver,
     ITemplateResolver templateResolver,
     IAssetResolver assetResolver,
-    IConfiguration configuration,
+    IOptionsMonitor<ThemeConfig> themeConfig,
     ILogger<ThemeFilesCommand> logger)
 {
     /// <summary>
@@ -58,7 +59,11 @@ public sealed partial class ThemeFilesCommand(
         var projectPath = Environment.CurrentDirectory;
 
         // Get theme name from option or config
-        var themeName = themeNameOverride ?? configuration["theme"] ?? "default";
+        var themeName = themeNameOverride ?? themeConfig.CurrentValue.Name;
+        if (string.IsNullOrWhiteSpace(themeName))
+        {
+            themeName = "default";
+        }
 
         // Resolve theme
         var theme = themeResolver.Resolve(themeName, projectPath);

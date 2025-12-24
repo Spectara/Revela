@@ -22,6 +22,7 @@ public static class ConfigurationServiceCollectionExtensions
     /// <item><see cref="GlobalSettingsConfig"/> - settings section (checkUpdates)</item>
     /// <item><see cref="LoggingConfig"/> - Logging section</item>
     /// <item><see cref="ProjectConfig"/> - project section</item>
+    /// <item><see cref="ThemeConfig"/> - theme section</item>
     /// <item><see cref="GenerateConfig"/> - generate section</item>
     /// </list>
     /// <para>
@@ -51,6 +52,9 @@ public static class ConfigurationServiceCollectionExtensions
         // Core sections
         services.AddOptions<ProjectConfig>()
             .Bind(configuration.GetSection(ProjectConfig.SectionName));
+
+        services.AddOptions<ThemeConfig>()
+            .Bind(configuration.GetSection(ThemeConfig.SectionName));
 
         services.AddOptions<GenerateConfig>()
             .Bind(configuration.GetSection(GenerateConfig.SectionName));

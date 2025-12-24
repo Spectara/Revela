@@ -68,6 +68,30 @@ public interface IThemePlugin : IPlugin
     /// </remarks>
     /// <returns>Stream with template contents, or null if theme doesn't use site.json</returns>
     Stream? GetSiteTemplate();
+
+    /// <summary>
+    /// Get the images configuration template for image processing setup.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Returns recommended image formats and sizes based on the theme's layout.
+    /// Only the theme knows which image sizes make sense for its CSS breakpoints.
+    /// </para>
+    /// <para>
+    /// Expected JSON format:
+    /// <code>
+    /// {
+    ///   "formats": { "avif": 80, "webp": 85, "jpg": 90 },
+    ///   "sizes": [640, 1024, 1280, 1920, 2560]
+    /// }
+    /// </code>
+    /// </para>
+    /// <para>
+    /// If the theme doesn't provide this template, users must enter values manually.
+    /// </para>
+    /// </remarks>
+    /// <returns>Stream with template contents, or null if theme doesn't provide defaults</returns>
+    Stream? GetImagesTemplate();
 }
 
 /// <summary>

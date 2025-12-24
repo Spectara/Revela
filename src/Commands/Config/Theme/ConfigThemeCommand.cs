@@ -1,6 +1,8 @@
 using System.CommandLine;
-using Spectara.Revela.Commands.Config.Models;
+using System.Text.Json.Nodes;
+using Microsoft.Extensions.Options;
 using Spectara.Revela.Commands.Config.Services;
+using Spectara.Revela.Core.Configuration;
 using Spectara.Revela.Core.Services;
 using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Abstractions;
@@ -17,6 +19,7 @@ namespace Spectara.Revela.Commands.Config.Theme;
 /// </remarks>
 public sealed partial class ConfigThemeCommand(
     ILogger<ConfigThemeCommand> logger,
+    IOptionsMonitor<ThemeConfig> themeConfig,
     IConfigService configService,
     IThemeResolver themeResolver)
 {
@@ -56,9 +59,12 @@ public sealed partial class ConfigThemeCommand(
             return 1;
         }
 
-        // Get current config
-        var current = await configService.ReadProjectConfigAsync(cancellationToken).ConfigureAwait(false);
-        var currentTheme = current?.Theme;
+        // Get current theme from IOptions (runtime reading)
+        var currentTheme = themeConfig.CurrentValue.Name;
+        if (string.IsNullOrWhiteSpace(currentTheme))
+        {
+            currentTheme = null; // Treat empty as unset
+        }
 
         // Get available themes
         var projectPath = Directory.GetCurrentDirectory();
@@ -117,8 +123,11 @@ public sealed partial class ConfigThemeCommand(
             return 0;
         }
 
-        // Save theme using DTO
-        var update = new ProjectConfigDto { Theme = selectedTheme };
+        // Save theme using JsonObject (theme section with name property)
+        var update = new JsonObject
+        {
+            ["theme"] = new JsonObject { ["name"] = selectedTheme }
+        };
         await configService.UpdateProjectConfigAsync(update, cancellationToken).ConfigureAwait(false);
 
         LogThemeChanged(currentTheme ?? "none", selectedTheme);

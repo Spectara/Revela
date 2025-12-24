@@ -184,8 +184,8 @@ public sealed class ConfigCommand(
 
     private async Task<int> ExecuteShowAsync(CancellationToken cancellationToken)
     {
-        var projectConfig = await configService.ReadProjectConfigRawAsync(cancellationToken).ConfigureAwait(false);
-        var siteConfig = await configService.ReadSiteConfigRawAsync(cancellationToken).ConfigureAwait(false);
+        var projectConfig = await configService.ReadProjectConfigAsync(cancellationToken).ConfigureAwait(false);
+        var siteConfig = await configService.ReadSiteConfigAsync(cancellationToken).ConfigureAwait(false);
 
         if (projectConfig is not null)
         {

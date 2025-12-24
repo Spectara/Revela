@@ -52,7 +52,7 @@ public sealed class ServePluginTests
     }
 
     [TestMethod]
-    public void GetCommands_ReturnsThreeCommands()
+    public void GetCommands_ReturnsTwoCommands()
     {
         // Arrange
         var plugin = new ServePlugin();
@@ -72,17 +72,13 @@ public sealed class ServePluginTests
         // Act
         var commands = plugin.GetCommands().ToList();
 
-        // Assert - returns 3 commands: serve, init, config
-        Assert.HasCount(3, commands);
+        // Assert - returns 2 commands: serve (root), config serve
+        Assert.HasCount(2, commands);
 
         // Check serve command (root level)
         var serveDescriptor = commands.First(c => c.Command.Name == "serve" && c.ParentCommand is null);
         Assert.AreEqual(15, serveDescriptor.Order, "Should be between generate (10) and clean (20)");
         Assert.AreEqual("Build", serveDescriptor.Group, "Should be in Build group");
-
-        // Check init command (under init parent)
-        var initDescriptor = commands.First(c => c.ParentCommand == "init");
-        Assert.AreEqual("serve", initDescriptor.Command.Name);
 
         // Check config command (under config parent)
         var configDescriptor = commands.First(c => c.ParentCommand == "config");

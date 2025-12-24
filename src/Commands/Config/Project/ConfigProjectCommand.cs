@@ -1,9 +1,6 @@
 using System.CommandLine;
-using Spectara.Revela.Commands.Config.Models;
+using System.Text.Json.Nodes;
 using Spectara.Revela.Commands.Config.Services;
-using Spectara.Revela.Commands.Init.Abstractions;
-using Spectara.Revela.Core.Services;
-using Spectara.Revela.Sdk;
 using Spectre.Console;
 
 namespace Spectara.Revela.Commands.Config.Project;
@@ -13,20 +10,20 @@ namespace Spectara.Revela.Commands.Config.Project;
 /// </summary>
 /// <remarks>
 /// Creates project.json if it doesn't exist, otherwise updates.
-/// Configures name, url, theme in project.json.
+/// Configures name and url in project.json.
+/// Theme is configured separately via 'config theme'.
+/// Uses ConfigService for both create and update (no template needed).
 /// </remarks>
 public sealed partial class ConfigProjectCommand(
     ILogger<ConfigProjectCommand> logger,
-    IConfigService configService,
-    IScaffoldingService scaffoldingService,
-    IThemeResolver themeResolver)
+    IConfigService configService)
 {
     /// <summary>
     /// Creates the command definition.
     /// </summary>
     public Command Create()
     {
-        var command = new Command("project", "Configure project settings");
+        var command = new Command("project", "Configure project settings (name, url)");
 
         var nameOption = new Option<string?>("--name", "-n")
         {
@@ -36,22 +33,16 @@ public sealed partial class ConfigProjectCommand(
         {
             Description = "Base URL for the generated site"
         };
-        var themeOption = new Option<string?>("--theme", "-t")
-        {
-            Description = "Theme to use"
-        };
 
         command.Options.Add(nameOption);
         command.Options.Add(urlOption);
-        command.Options.Add(themeOption);
 
         command.SetAction(async (parseResult, cancellationToken) =>
         {
             var name = parseResult.GetValue(nameOption);
             var url = parseResult.GetValue(urlOption);
-            var theme = parseResult.GetValue(themeOption);
 
-            return await ExecuteAsync(name, url, theme, cancellationToken).ConfigureAwait(false);
+            return await ExecuteAsync(name, url, cancellationToken).ConfigureAwait(false);
         });
 
         return command;
@@ -60,32 +51,17 @@ public sealed partial class ConfigProjectCommand(
     private async Task<int> ExecuteAsync(
         string? nameArg,
         string? urlArg,
-        string? themeArg,
         CancellationToken cancellationToken)
     {
         var isFirstTime = !configService.IsProjectInitialized();
 
-        // Check for available themes
-        var projectPath = Directory.GetCurrentDirectory();
-        var availableThemes = themeResolver.GetAvailableThemes(projectPath).ToList();
-
-        if (availableThemes.Count == 0)
-        {
-            ErrorPanels.ShowNothingInstalledError(
-                "themes",
-                "plugin install Spectara.Revela.Theme.Lumina",
-                "theme list --online");
-            return 1;
-        }
-
-        // Get current config (or defaults for new project)
-        var current = await configService.ReadProjectConfigAsync(cancellationToken).ConfigureAwait(false)
-            ?? new ProjectConfigDto();
+        // Get current config (or empty for new project)
+        var current = await configService.ReadProjectConfigAsync(cancellationToken).ConfigureAwait(false);
 
         // Determine if interactive mode (no arguments provided)
-        var isInteractive = nameArg is null && urlArg is null && themeArg is null;
+        var isInteractive = nameArg is null && urlArg is null;
 
-        string name, url, theme;
+        string name, url;
 
         if (isInteractive)
         {
@@ -93,96 +69,53 @@ public sealed partial class ConfigProjectCommand(
             AnsiConsole.MarkupLine($"[cyan]{action} project settings[/]\n");
 
             // Default name from current directory
-            var defaultName = current.Name ?? new DirectoryInfo(Directory.GetCurrentDirectory()).Name;
+            var defaultName = current?["name"]?.GetValue<string>()
+                ?? new DirectoryInfo(Directory.GetCurrentDirectory()).Name;
             name = AnsiConsole.Prompt(
                 new TextPrompt<string>("Project name:")
                     .DefaultValue(defaultName));
 
             url = AnsiConsole.Prompt(
                 new TextPrompt<string>("Base URL:")
-                    .DefaultValue(current.Url ?? "https://example.com")
+                    .DefaultValue(current?["url"]?.GetValue<string>() ?? string.Empty)
                     .AllowEmpty());
-
-            // Theme selection
-            var currentTheme = current.Theme ?? availableThemes[0].Metadata.Name;
-            if (availableThemes.Count == 1)
-            {
-                theme = availableThemes[0].Metadata.Name;
-                AnsiConsole.MarkupLine($"Theme: [cyan]{theme}[/] [dim](only available)[/]");
-            }
-            else
-            {
-                theme = AnsiConsole.Prompt(
-                    new SelectionPrompt<string>()
-                        .Title("Select theme:")
-                        .AddChoices(availableThemes.Select(t => t.Metadata.Name))
-                        .UseConverter(t => t == currentTheme ? $"{t} [dim](current)[/]" : t));
-            }
         }
         else
         {
             // Use provided arguments, fall back to current values or defaults
-            name = nameArg ?? current.Name ?? new DirectoryInfo(Directory.GetCurrentDirectory()).Name;
-            url = urlArg ?? current.Url ?? "";
-            theme = themeArg ?? current.Theme ?? availableThemes[0].Metadata.Name;
+            name = nameArg ?? current?["name"]?.GetValue<string>()
+                ?? new DirectoryInfo(Directory.GetCurrentDirectory()).Name;
+            url = urlArg ?? current?["url"]?.GetValue<string>() ?? "";
         }
 
-        // Validate theme exists
-        if (!availableThemes.Any(t => t.Metadata.Name.Equals(theme, StringComparison.OrdinalIgnoreCase)))
+        // Create or update project configuration using ConfigService
+        var update = new JsonObject
         {
-            ErrorPanels.ShowError(
-                "Theme Not Found",
-                $"[yellow]Theme '{theme}' is not installed.[/]\n\n" +
-                "[bold]Available themes:[/]\n" +
-                string.Join("\n", availableThemes.Select(t => $"  • {t.Metadata.Name}")));
-            return 1;
+            ["name"] = name,
+            ["url"] = url
+        };
+
+        // For new projects, log initialization
+        if (isFirstTime)
+        {
+            LogInitializingProject(name);
         }
+
+        await configService.UpdateProjectConfigAsync(update, cancellationToken).ConfigureAwait(false);
 
         if (isFirstTime)
         {
-            // Create new project using template
-            LogInitializingProject(name);
-
-            var model = new
-            {
-                project = new
-                {
-                    name,
-                    url,
-                    theme
-                },
-                site = new
-                {
-                    title = name,
-                    author = Environment.UserName,
-                    year = DateTime.Now.Year,
-                    description = $"Photography portfolio by {Environment.UserName}"
-                }
-            };
-
-            var projectConfig = scaffoldingService.RenderTemplate("Project.project.json", model);
-            await File.WriteAllTextAsync(configService.ProjectConfigPath, projectConfig, cancellationToken).ConfigureAwait(false);
-
             // Create directories
             Directory.CreateDirectory("source");
             Directory.CreateDirectory("output");
 
-            AnsiConsole.MarkupLine($"\n[green]✓[/] Project '{name}' initialized with theme [cyan]{theme}[/]");
+            AnsiConsole.MarkupLine($"\n[green]✓[/] Project '{name}' initialized");
             AnsiConsole.MarkupLine("[dim]Created: project.json, source/, output/[/]");
+            AnsiConsole.MarkupLine("\n[yellow]Next:[/] Run [cyan]revela config theme[/] to select a theme");
         }
         else
         {
-            // Update existing project
-            var update = new ProjectConfigDto
-            {
-                Name = name,
-                Url = url,
-                Theme = theme
-            };
-
-            await configService.UpdateProjectConfigAsync(update, cancellationToken).ConfigureAwait(false);
-
-            LogProjectConfigured(name, theme);
+            LogProjectConfigured(name);
             AnsiConsole.MarkupLine("[green]✓[/] Project settings updated");
         }
 
@@ -192,6 +125,6 @@ public sealed partial class ConfigProjectCommand(
     [LoggerMessage(Level = LogLevel.Information, Message = "Initializing project '{ProjectName}'")]
     private partial void LogInitializingProject(string projectName);
 
-    [LoggerMessage(Level = LogLevel.Information, Message = "Project configured: name='{Name}', theme='{Theme}'")]
-    private partial void LogProjectConfigured(string name, string theme);
+    [LoggerMessage(Level = LogLevel.Information, Message = "Project configured: name='{Name}'")]
+    private partial void LogProjectConfigured(string name);
 }

@@ -1,5 +1,4 @@
 using System.Text.Json.Nodes;
-using Spectara.Revela.Commands.Config.Models;
 
 namespace Spectara.Revela.Commands.Config.Services;
 
@@ -7,10 +6,11 @@ namespace Spectara.Revela.Commands.Config.Services;
 /// Service for reading and writing Revela configuration files.
 /// </summary>
 /// <remarks>
-/// Provides abstraction over project.json and site.json with:
-/// - Strongly-typed DTO access (ProjectConfigDto, SiteConfigDto)
-/// - Partial updates (only non-null properties are written)
+/// Provides abstraction over project.json with:
+/// - JSON-based access via JsonObject
+/// - Deep merge for partial updates (only provided properties are written)
 /// Reusable by Core commands and Plugins.
+/// Note: site.json is theme-dependent and handled dynamically via JsonPropertyExtractor.
 /// </remarks>
 public interface IConfigService
 {
@@ -37,48 +37,25 @@ public interface IConfigService
     string SiteConfigPath { get; }
 
     /// <summary>
-    /// Reads the project.json configuration as a strongly-typed DTO.
+    /// Reads the project.json configuration as JSON.
     /// </summary>
     /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns>The parsed configuration, or null if file doesn't exist.</returns>
-    Task<ProjectConfigDto?> ReadProjectConfigAsync(CancellationToken cancellationToken = default);
+    /// <returns>The parsed JSON object, or null if file doesn't exist.</returns>
+    Task<JsonObject?> ReadProjectConfigAsync(CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Reads the site.json configuration as a strongly-typed DTO.
+    /// Updates the project.json configuration with deep merge.
+    /// Only provided properties are updated, existing properties are preserved.
     /// </summary>
+    /// <param name="updates">The properties to update (deep merged with existing).</param>
     /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns>The parsed configuration, or null if file doesn't exist.</returns>
-    Task<SiteConfigDto?> ReadSiteConfigAsync(CancellationToken cancellationToken = default);
+    Task UpdateProjectConfigAsync(JsonObject updates, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Updates the project.json configuration.
-    /// Only non-null properties in the update DTO are written.
-    /// </summary>
-    /// <param name="update">The properties to update (null = keep existing).</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
-    Task UpdateProjectConfigAsync(ProjectConfigDto update, CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Updates the site.json configuration.
-    /// Only non-null properties in the update DTO are written.
-    /// </summary>
-    /// <param name="update">The properties to update (null = keep existing).</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
-    Task UpdateSiteConfigAsync(SiteConfigDto update, CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Reads the entire project.json configuration as raw JSON.
+    /// Reads the site.json configuration as JSON.
     /// Used for display purposes (config show command).
     /// </summary>
     /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns>The raw JSON object, or null if file doesn't exist.</returns>
-    Task<JsonObject?> ReadProjectConfigRawAsync(CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Reads the entire site.json configuration as raw JSON.
-    /// Used for display purposes (config show command).
-    /// </summary>
-    /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns>The raw JSON object, or null if file doesn't exist.</returns>
-    Task<JsonObject?> ReadSiteConfigRawAsync(CancellationToken cancellationToken = default);
+    /// <returns>The JSON object, or null if file doesn't exist.</returns>
+    Task<JsonObject?> ReadSiteConfigAsync(CancellationToken cancellationToken = default);
 }

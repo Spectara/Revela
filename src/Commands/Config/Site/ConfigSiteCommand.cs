@@ -1,6 +1,8 @@
 using System.CommandLine;
 using System.Globalization;
+using Microsoft.Extensions.Options;
 using Spectara.Revela.Commands.Config.Services;
+using Spectara.Revela.Core.Configuration;
 using Spectara.Revela.Core.Services;
 using Spectara.Revela.Sdk;
 using Spectre.Console;
@@ -19,6 +21,7 @@ namespace Spectara.Revela.Commands.Config.Site;
 /// </remarks>
 public sealed partial class ConfigSiteCommand(
     ILogger<ConfigSiteCommand> logger,
+    IOptionsMonitor<ThemeConfig> themeConfig,
     IConfigService configService,
     IThemeResolver themeResolver)
 {
@@ -48,22 +51,36 @@ public sealed partial class ConfigSiteCommand(
             return 1;
         }
 
-        var siteConfigPath = Path.GetFullPath(configService.SiteConfigPath);
-        var isEditMode = configService.IsSiteConfigured();
+        // Get selected theme from IOptions (runtime reading)
+        var themeName = themeConfig.CurrentValue.Name;
 
-        // Get theme template for structure
-        var projectPath = Directory.GetCurrentDirectory();
-        var availableThemes = themeResolver.GetAvailableThemes(projectPath).ToList();
-
-        if (availableThemes.Count == 0)
+        if (string.IsNullOrWhiteSpace(themeName))
         {
-            ErrorPanels.ShowNothingInstalledError(
-                "themes",
-                "plugin install Spectara.Revela.Theme.Lumina");
+            ErrorPanels.ShowError(
+                "No Theme Selected",
+                "[yellow]Site configuration depends on the selected theme.[/]\n\n" +
+                "[bold]Run first:[/] [cyan]revela config theme[/]");
             return 1;
         }
 
-        var selectedTheme = availableThemes[0];
+        var siteConfigPath = Path.GetFullPath(configService.SiteConfigPath);
+        var isEditMode = configService.IsSiteConfigured();
+
+        // Get the configured theme
+        var projectPath = Directory.GetCurrentDirectory();
+        var availableThemes = themeResolver.GetAvailableThemes(projectPath).ToList();
+        var selectedTheme = availableThemes.FirstOrDefault(t =>
+            t.Metadata.Name.Equals(themeName, StringComparison.OrdinalIgnoreCase));
+
+        if (selectedTheme is null)
+        {
+            ErrorPanels.ShowError(
+                "Theme Not Found",
+                $"[yellow]Theme '{themeName}' is not installed.[/]\n\n" +
+                "[bold]Install it:[/] [cyan]revela plugin install Spectara.Revela.Theme.{themeName}[/]");
+            return 1;
+        }
+
         await using var siteTemplateStream = selectedTheme.GetSiteTemplate();
 
         if (siteTemplateStream is null)
@@ -97,8 +114,11 @@ public sealed partial class ConfigSiteCommand(
 
         LogFoundProperties(logger, string.Join(", ", properties.Select(p => p.Path)));
 
+        // Get project name for smart defaults (from directory if not set)
+        var projectName = new DirectoryInfo(Directory.GetCurrentDirectory()).Name;
+
         // Collect values via interactive prompts
-        var values = CollectValues(properties, isEditMode);
+        var values = CollectValues(properties, isEditMode, projectName);
 
         // Build final JSON using template structure
         var finalJson = JsonPropertyExtractor.BuildJson(templateJson, values);
@@ -117,10 +137,10 @@ public sealed partial class ConfigSiteCommand(
     /// </summary>
     private static Dictionary<string, string> CollectValues(
         IReadOnlyList<JsonProperty> properties,
-        bool isEditMode)
+        bool isEditMode,
+        string projectName)
     {
         var values = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-        var projectName = new DirectoryInfo(Directory.GetCurrentDirectory()).Name;
         var year = DateTime.Now.Year.ToString(CultureInfo.InvariantCulture);
 
         var action = isEditMode ? "Edit" : "Configure";

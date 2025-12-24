@@ -155,8 +155,13 @@ public abstract class EmbeddedThemePlugin : IThemePlugin
 
     /// <inheritdoc />
     public Stream? GetSiteTemplate() =>
-        // Try to load site.template.json from embedded resources
-        GetFile("site.template.json");
+        // Load site.json from Configuration folder
+        GetFile("Configuration/site.json");
+
+    /// <inheritdoc />
+    public Stream? GetImagesTemplate() =>
+        // Load images.json from Configuration folder
+        GetFile("Configuration/images.json");
 
     private ThemeJsonConfig LoadConfig()
     {
