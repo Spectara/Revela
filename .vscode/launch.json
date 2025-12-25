@@ -2,7 +2,7 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "Interactive (OneDrive)",
+      "name": "Interactive (OneDrive) - Local",
       "type": "coreclr",
       "request": "launch",
       "preLaunchTask": "build",
@@ -10,10 +10,29 @@
       "args": [],
       "cwd": "${workspaceFolder}/samples/onedrive",
       "console": "externalTerminal",
-      "stopAtEntry": false
+      "stopAtEntry": false,
+      "presentation": {
+        "group": "Interactive",
+        "order": 1
+      }
     },
     {
-      "name": "Interactive (empty)",
+      "name": "Interactive (OneDrive) - Container",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "build",
+      "program": "${workspaceFolder}/artifacts/bin/Cli/Debug/net10.0/revela.dll",
+      "args": [],
+      "cwd": "${workspaceFolder}/samples/onedrive",
+      "console": "integratedTerminal",
+      "stopAtEntry": false,
+      "presentation": {
+        "group": "Interactive",
+        "order": 2
+      }
+    },
+    {
+      "name": "Interactive (empty) - Local",
       "type": "coreclr",
       "request": "launch",
       "preLaunchTask": "build",
@@ -21,7 +40,26 @@
       "args": [],
       "cwd": "${workspaceFolder}/playground",
       "console": "externalTerminal",
-      "stopAtEntry": false
+      "stopAtEntry": false,
+      "presentation": {
+        "group": "Interactive",
+        "order": 3
+      }
+    },
+    {
+      "name": "Interactive (empty) - Container",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "build",
+      "program": "${workspaceFolder}/artifacts/bin/Cli/Debug/net10.0/revela.dll",
+      "args": [],
+      "cwd": "${workspaceFolder}/playground",
+      "console": "integratedTerminal",
+      "stopAtEntry": false,
+      "presentation": {
+        "group": "Interactive",
+        "order": 4
+      }
     },
     {
       "name": "Generate (Debug)",
@@ -34,7 +72,11 @@
       ],
       "cwd": "${workspaceFolder}/debug",
       "console": "integratedTerminal",
-      "stopAtEntry": false
+      "stopAtEntry": false,
+      "presentation": {
+        "group": "Commands",
+        "order": 1
+      }
     },
     {
       "name": "Help",
@@ -47,7 +89,11 @@
       ],
       "cwd": "${workspaceFolder}/debug",
       "console": "integratedTerminal",
-      "stopAtEntry": false
+      "stopAtEntry": false,
+      "presentation": {
+        "group": "Commands",
+        "order": 2
+      }
     }
   ]
 }
