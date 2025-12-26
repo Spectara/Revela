@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
 <PropertyGroup>
-  <Description>OneDrive shared folder source plugin for Revela</Description>
+  <Description>Revela Plugin - OneDrive shared folder source</Description>
   <AssemblyName>Spectara.Revela.Plugin.Source.OneDrive</AssemblyName>
   <PackageId>Spectara.Revela.Plugin.Source.OneDrive</PackageId>
   <PackageTags>revela;plugin;source;onedrive;shared</PackageTags>

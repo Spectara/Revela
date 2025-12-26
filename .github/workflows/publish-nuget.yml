@@ -74,12 +74,6 @@ jobs:
             -p:PackageVersion=$VERSION \
             -p:IncludeSymbols=false
 
-          dotnet pack src/Plugins/Plugin.Deploy.SSH/Plugin.Deploy.SSH.csproj \
-            -c Release \
-            -o ./nupkgs \
-            -p:PackageVersion=$VERSION \
-            -p:IncludeSymbols=false
-
           dotnet pack src/Plugins/Plugin.Statistics/Plugin.Statistics.csproj \
             -c Release \
             -o ./nupkgs \
@@ -87,6 +81,13 @@ jobs:
             -p:IncludeSymbols=false
 
           dotnet pack src/Plugins/Plugin.Serve/Plugin.Serve.csproj \
+            -c Release \
+            -o ./nupkgs \
+            -p:PackageVersion=$VERSION \
+            -p:IncludeSymbols=false
+
+          # Pack Themes
+          dotnet pack src/Themes/Theme.Lumina/Theme.Lumina.csproj \
             -c Release \
             -o ./nupkgs \
             -p:PackageVersion=$VERSION \
@@ -118,9 +119,9 @@ jobs:
           echo "**Packages:**" >> $GITHUB_STEP_SUMMARY
           echo "- **Spectara.Revela** (CLI Tool)" >> $GITHUB_STEP_SUMMARY
           echo "- Spectara.Revela.Plugin.Source.OneDrive" >> $GITHUB_STEP_SUMMARY
-          echo "- Spectara.Revela.Plugin.Deploy.SSH" >> $GITHUB_STEP_SUMMARY
           echo "- Spectara.Revela.Plugin.Statistics" >> $GITHUB_STEP_SUMMARY
           echo "- Spectara.Revela.Plugin.Serve" >> $GITHUB_STEP_SUMMARY
+          echo "- Spectara.Revela.Theme.Lumina" >> $GITHUB_STEP_SUMMARY
           echo "- Spectara.Revela.Theme.Lumina.Statistics" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Packages will be available on NuGet.org within a few minutes.**" >> $GITHUB_STEP_SUMMARY

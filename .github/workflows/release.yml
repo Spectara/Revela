@@ -3,8 +3,9 @@
 # Builds native executables for all platforms and creates a GitHub Release
 #
 # Release contents:
-# - CLI executables (per platform) with default theme included
-# - Plugins as separate ZIP files (optional downloads)
+# - Core: CLI executable only (downloads plugins from NuGet.org)
+# - Full: CLI executable + all plugins/themes as bundled NuGet packages
+# - Plugins/Themes as separate NuGet packages
 
 name: Release
 
@@ -80,112 +81,9 @@ jobs:
             echo "✅ First release: $CURRENT"
           fi
 
-  # Build native executables for each platform
-  build:
-    name: Build ${{ matrix.rid }}
-    needs: validate
-    runs-on: ${{ matrix.os }}
-    permissions:
-      contents: read
-      id-token: write
-      attestations: write
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - os: windows-latest
-            rid: win-x64
-            artifact: revela-win-x64.zip
-          - os: ubuntu-latest
-            rid: linux-x64
-            artifact: revela-linux-x64.tar.gz
-          - os: ubuntu-latest
-            rid: linux-arm64
-            artifact: revela-linux-arm64.tar.gz
-          - os: macos-latest
-            rid: osx-x64
-            artifact: revela-osx-x64.tar.gz
-          - os: macos-latest
-            rid: osx-arm64
-            artifact: revela-osx-arm64.tar.gz
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v4
-        with:
-          global-json-file: global.json
-
-      - name: Restore
-        run: dotnet restore
-
-      - name: Publish
-        shell: bash
-        run: |
-          dotnet publish src/Cli/Cli.csproj \
-            -c Release \
-            -r ${{ matrix.rid }} \
-            --self-contained \
-            -p:PublishSingleFile=true \
-            -p:IncludeNativeLibrariesForSelfExtract=true \
-            -p:Version=${{ needs.validate.outputs.version }} \
-            -o ./publish
-
-      - name: List publish output
-        run: ls -la ./publish/
-        shell: bash
-
-      - name: Build default theme
-        shell: bash
-        run: |
-          dotnet build src/Themes/Theme.Lumina/Theme.Lumina.csproj \
-            -c Release \
-            -r ${{ matrix.rid }} \
-            -p:Version=${{ needs.validate.outputs.version }}
-
-      - name: Copy default theme DLL
-        run: |
-          # Theme DLL goes next to revela.exe so PluginLoader finds it
-          cp artifacts/bin/Theme.Lumina/Release/net10.0/${{ matrix.rid }}/Spectara.Revela.Theme.Lumina.dll ./publish/
-        shell: bash
-
-      - name: Copy getting-started guides
-        run: |
-          mkdir -p ./publish/getting-started
-          cp docs/getting-started/*.md ./publish/getting-started/
-        shell: bash
-
-      - name: Package (Windows)
-        if: matrix.os == 'windows-latest'
-        run: |
-          cd publish
-          Compress-Archive -Path revela.exe, Spectara.Revela.Theme.Lumina.dll, getting-started -DestinationPath ../${{ matrix.artifact }}
-        shell: pwsh
-
-      - name: Package (Linux/macOS)
-        if: matrix.os != 'windows-latest'
-        run: |
-          cd publish
-          chmod +x revela
-          tar -czvf ../${{ matrix.artifact }} revela Spectara.Revela.Theme.Lumina.dll getting-started
-
-      - name: Attest build provenance
-        uses: actions/attest-build-provenance@v1
-        with:
-          subject-path: ${{ matrix.artifact }}
-
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ matrix.rid }}
-          path: ${{ matrix.artifact }}
-          retention-days: 1
-
-  # Build plugins as NuGet packages
-  plugins:
-    name: Build Plugins (NuGet)
+  # Build plugins and themes as NuGet packages (platform-independent, runs first)
+  packages:
+    name: Build Packages (NuGet)
     needs: validate
     runs-on: ubuntu-latest
     permissions:
@@ -204,17 +102,17 @@ jobs:
       - name: Restore
         run: dotnet restore
 
-      - name: Pack Plugin.Source.OneDrive
+      - name: Pack Theme.Lumina
         run: |
-          dotnet pack src/Plugins/Plugin.Source.OneDrive/Plugin.Source.OneDrive.csproj \
+          dotnet pack src/Themes/Theme.Lumina/Theme.Lumina.csproj \
             -c Release \
             -o ./nupkgs \
             -p:PackageVersion=${{ needs.validate.outputs.version }} \
             -p:IncludeSymbols=false
 
-      - name: Pack Plugin.Deploy.SSH
+      - name: Pack Theme.Lumina.Statistics
         run: |
-          dotnet pack src/Plugins/Plugin.Deploy.SSH/Plugin.Deploy.SSH.csproj \
+          dotnet pack src/Themes/Theme.Lumina.Statistics/Theme.Lumina.Statistics.csproj \
             -c Release \
             -o ./nupkgs \
             -p:PackageVersion=${{ needs.validate.outputs.version }} \
@@ -228,17 +126,17 @@ jobs:
             -p:PackageVersion=${{ needs.validate.outputs.version }} \
             -p:IncludeSymbols=false
 
-      - name: Pack Plugin.Serve
+      - name: Pack Plugin.Source.OneDrive
         run: |
-          dotnet pack src/Plugins/Plugin.Serve/Plugin.Serve.csproj \
+          dotnet pack src/Plugins/Plugin.Source.OneDrive/Plugin.Source.OneDrive.csproj \
             -c Release \
             -o ./nupkgs \
             -p:PackageVersion=${{ needs.validate.outputs.version }} \
             -p:IncludeSymbols=false
 
-      - name: Pack Theme.Lumina.Statistics
+      - name: Pack Plugin.Serve
         run: |
-          dotnet pack src/Themes/Theme.Lumina.Statistics/Theme.Lumina.Statistics.csproj \
+          dotnet pack src/Plugins/Plugin.Serve/Plugin.Serve.csproj \
             -c Release \
             -o ./nupkgs \
             -p:PackageVersion=${{ needs.validate.outputs.version }} \
@@ -259,10 +157,139 @@ jobs:
           path: ./nupkgs/*.nupkg
           retention-days: 1
 
+  # Build native executables for each platform (Core + Full variants)
+  build:
+    name: Build ${{ matrix.rid }}
+    needs: [validate, packages]
+    runs-on: ${{ matrix.os }}
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            rid: win-x64
+            exe: revela.exe
+          - os: ubuntu-latest
+            rid: linux-x64
+            exe: revela
+          - os: ubuntu-latest
+            rid: linux-arm64
+            exe: revela
+          - os: macos-latest
+            rid: osx-x64
+            exe: revela
+          - os: macos-latest
+            rid: osx-arm64
+            exe: revela
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Restore
+        run: dotnet restore
+
+      - name: Publish CLI
+        shell: bash
+        run: |
+          dotnet publish src/Cli/Cli.csproj \
+            -c Release \
+            -r ${{ matrix.rid }} \
+            --self-contained \
+            -p:PublishSingleFile=true \
+            -p:IncludeNativeLibrariesForSelfExtract=true \
+            -p:DebugType=none \
+            -p:DebugSymbols=false \
+            -p:Version=${{ needs.validate.outputs.version }} \
+            -o ./publish
+
+      - name: Copy getting-started guides
+        run: |
+          mkdir -p ./publish/getting-started
+          cp docs/getting-started/*.md ./publish/getting-started/
+        shell: bash
+
+      - name: List publish output
+        run: ls -la ./publish/
+        shell: bash
+
+      # === Core Release ===
+      - name: Package Core (Windows)
+        if: matrix.os == 'windows-latest'
+        run: |
+          cd publish
+          Compress-Archive -Path ${{ matrix.exe }}, getting-started -DestinationPath ../revela-${{ matrix.rid }}-core.zip
+        shell: pwsh
+
+      - name: Package Core (Linux/macOS)
+        if: matrix.os != 'windows-latest'
+        run: |
+          cd publish
+          chmod +x ${{ matrix.exe }}
+          tar -czvf ../revela-${{ matrix.rid }}-core.tar.gz ${{ matrix.exe }} getting-started
+
+      # === Full Release ===
+      - name: Download NuGet packages
+        uses: actions/download-artifact@v4
+        with:
+          name: nupkgs
+          path: ./publish/packages
+
+      - name: List packages for Full release
+        run: ls -la ./publish/packages/
+        shell: bash
+
+      - name: Package Full (Windows)
+        if: matrix.os == 'windows-latest'
+        run: |
+          cd publish
+          Compress-Archive -Path ${{ matrix.exe }}, packages, getting-started -DestinationPath ../revela-${{ matrix.rid }}-full.zip
+        shell: pwsh
+
+      - name: Package Full (Linux/macOS)
+        if: matrix.os != 'windows-latest'
+        run: |
+          cd publish
+          tar -czvf ../revela-${{ matrix.rid }}-full.tar.gz ${{ matrix.exe }} packages getting-started
+
+      # === Attestation & Upload ===
+      - name: Attest Core build provenance
+        uses: actions/attest-build-provenance@v1
+        with:
+          subject-path: revela-${{ matrix.rid }}-core.*
+
+      - name: Attest Full build provenance
+        uses: actions/attest-build-provenance@v1
+        with:
+          subject-path: revela-${{ matrix.rid }}-full.*
+
+      - name: Upload Core artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.rid }}-core
+          path: revela-${{ matrix.rid }}-core.*
+          retention-days: 1
+
+      - name: Upload Full artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.rid }}-full
+          path: revela-${{ matrix.rid }}-full.*
+          retention-days: 1
+
   # Keyless signing + checksums (cosign)
   sign:
     name: Sign Release Artifacts
-    needs: [validate, build, plugins]
+    needs: [validate, build, packages]
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -341,7 +368,7 @@ jobs:
   # Create GitHub Release with all artifacts
   release:
     name: Create Release
-    needs: [validate, build, plugins, sign]
+    needs: [validate, build, packages, sign]
     # Only create release on tag push, not manual trigger
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
@@ -359,6 +386,45 @@ jobs:
       - name: List artifacts
         run: find artifacts -type f
 
+      - name: Generate release notes
+        run: |
+          cat << 'EOF' > release-notes.md
+          ## Downloads
+
+          ### 🚀 Full Release (recommended)
+          All themes and plugins included - ready to use immediately.
+
+          | Platform | Download |
+          |----------|----------|
+          | Windows x64 | `revela-win-x64-full.zip` |
+          | Linux x64 | `revela-linux-x64-full.tar.gz` |
+          | Linux ARM64 | `revela-linux-arm64-full.tar.gz` |
+          | macOS Intel | `revela-osx-x64-full.tar.gz` |
+          | macOS Apple Silicon | `revela-osx-arm64-full.tar.gz` |
+
+          ### 📦 Core Release
+          Minimal download (~15MB). Install plugins/themes via `revela plugin install`.
+
+          | Platform | Download |
+          |----------|----------|
+          | Windows x64 | `revela-win-x64-core.zip` |
+          | Linux x64 | `revela-linux-x64-core.tar.gz` |
+          | Linux ARM64 | `revela-linux-arm64-core.tar.gz` |
+          | macOS Intel | `revela-osx-x64-core.tar.gz` |
+          | macOS Apple Silicon | `revela-osx-arm64-core.tar.gz` |
+
+          ### 🔌 Individual Packages (NuGet)
+          For manual installation or existing projects:
+          - `Spectara.Revela.Theme.Lumina` - Default photography theme
+          - `Spectara.Revela.Theme.Lumina.Statistics` - Statistics extension for Lumina
+          - `Spectara.Revela.Plugin.Statistics` - Site statistics generation
+          - `Spectara.Revela.Plugin.Source.OneDrive` - OneDrive shared folder source
+          - `Spectara.Revela.Plugin.Serve` - Local development server
+
+          ---
+
+          EOF
+
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
@@ -366,7 +432,9 @@ jobs:
           tag_name: ${{ github.ref_name }}
           draft: false
           prerelease: ${{ contains(needs.validate.outputs.version, '-') }}
+          body_path: release-notes.md
           generate_release_notes: true
+          append_body: true
           files: |
             artifacts/**/*.zip
             artifacts/**/*.tar.gz

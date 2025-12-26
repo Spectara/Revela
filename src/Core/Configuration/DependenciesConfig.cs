@@ -20,14 +20,14 @@ namespace Spectara.Revela.Core.Configuration;
 /// // revela.json (global)
 /// {
 ///   "themes": { "Spectara.Revela.Theme.Lumina": "1.0.0" },
-///   "plugins": { "Spectara.Revela.Plugin.Deploy.SSH": "2.0.0" }
+///   "plugins": { "Spectara.Revela.Plugin.Statistics": "1.0.0" }
 /// }
 ///
 /// // project.json (local)
 /// {
 ///   "theme": "Lumina",
 ///   "themes": { "Spectara.Revela.Theme.Lumina": "2.0.0" },  // overrides global
-///   "plugins": { "Spectara.Revela.Plugin.Statistics": "1.0.0" }  // extends
+///   "plugins": { "Spectara.Revela.Plugin.Source.OneDrive": "1.0.0" }  // extends
 /// }
 /// </code>
 /// </example>

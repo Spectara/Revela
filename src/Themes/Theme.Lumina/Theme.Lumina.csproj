@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <Description>Lumina theme for Revela - elegant photography portfolio design</Description>
+    <Description>Revela Theme - Elegant photography portfolio design</Description>
     <AssemblyName>Spectara.Revela.Theme.Lumina</AssemblyName>
     <RootNamespace>Spectara.Revela.Theme.Lumina</RootNamespace>
     <PackageId>Spectara.Revela.Theme.Lumina</PackageId>

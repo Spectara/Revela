@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <Description>Statistics extension for Lumina theme - displays EXIF statistics with charts</Description>
+    <Description>Revela Theme Extension - Statistics display for Lumina theme</Description>
     <AssemblyName>Spectara.Revela.Theme.Lumina.Statistics</AssemblyName>
     <RootNamespace>Spectara.Revela.Theme.Lumina.Statistics</RootNamespace>
     <PackageId>Spectara.Revela.Theme.Lumina.Statistics</PackageId>

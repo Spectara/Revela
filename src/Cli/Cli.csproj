@@ -2,7 +2,8 @@
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <Description>Revela CLI - Static site generator for photographers</Description>
+    <Description>Revela - Static site generator for photographers</Description>
+    <PackageTags>revela;photography;static-site-generator;gallery;portfolio;cli;dotnet-tool</PackageTags>
 
     <!-- Override AssemblyName to get 'revela' executable instead of 'Spectara.Revela.Cli' -->
     <AssemblyName>revela</AssemblyName>

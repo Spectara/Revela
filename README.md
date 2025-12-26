@@ -230,14 +230,14 @@ revela plugin install Spectara.Revela.Plugin.Source.OneDrive
 # Official Statistics Plugin
 revela plugin install Spectara.Revela.Plugin.Statistics
 
-# Official Deploy Plugin (SSH/SFTP) - Coming Soon
-revela plugin install Spectara.Revela.Plugin.Deploy.SSH
+# Official Serve Plugin (Local Development Server)
+revela plugin install Spectara.Revela.Plugin.Serve
 ```
 
 **Package Names:**
 - `Spectara.Revela.Plugin.Source.OneDrive` ✅ **Verified**
 - `Spectara.Revela.Plugin.Statistics` ✅ **Verified**
-- `Spectara.Revela.Plugin.Deploy.SSH` ✅ **Verified** (Coming Soon)
+- `Spectara.Revela.Plugin.Serve` ✅ **Verified**
 
 ### Community Plugins
 

@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <Description>Statistics plugin for Revela - generates EXIF statistics pages</Description>
+    <Description>Revela Plugin - Generates EXIF statistics pages</Description>
     <AssemblyName>Spectara.Revela.Plugin.Statistics</AssemblyName>
     <PackageId>Spectara.Revela.Plugin.Statistics</PackageId>
     <PackageTags>revela;plugin;statistics;exif;photography</PackageTags>

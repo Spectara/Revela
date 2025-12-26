@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <Description>Serve plugin for Revela - local HTTP server for previewing generated sites</Description>
+    <Description>Revela Plugin - Local HTTP server for previewing generated sites</Description>
     <AssemblyName>Spectara.Revela.Plugin.Serve</AssemblyName>
     <PackageId>Spectara.Revela.Plugin.Serve</PackageId>
     <PackageTags>revela;plugin;serve;preview;development;http;server</PackageTags>

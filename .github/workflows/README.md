@@ -9,10 +9,9 @@ This directory hosts all automation used to build, test, sign, and ship Revela. 
 | Workflow | File | Triggers | Purpose |
 | --- | --- | --- | --- |
 | CI | [`ci.yml`](ci.yml) | Push/PR to `main` or `develop`, manual dispatch | Multi-OS build (Windows/Linux/macOS), run all tests, pack CLI/plugins/themes for verification. |
-| Release | [`release.yml`](release.yml) | `v*` tag push or manual dispatch | Validate version, publish self-contained binaries per RID, pack plugins & themes, sign artifacts with cosign, create GitHub Release. |
+| Release | [`release.yml`](release.yml) | `v*` tag push or manual dispatch | Validate version, publish self-contained binaries (Core + Full variants), pack plugins & themes, sign artifacts with cosign, create GitHub Release. |
 | Dependency Update Check | [`dependency-update-check.yml`](dependency-update-check.yml) | Weekly cron, manual dispatch | Run `dotnet outdated`, open GitHub Issue with available package updates. |
-| Publish – GitHub Packages | [`publish-github-packages.yml`](publish-github-packages.yml) | Manual dispatch | Push Spectara.Revela packages to GitHub Packages feed. |
-| Publish – NuGet.org | [`publish-nuget.yml`](publish-nuget.yml) | Manual dispatch (approvals required) | Publish Spectara.Revela artifacts to NuGet.org after release validation. |
+| Publish – NuGet.org | [`publish-nuget.yml`](publish-nuget.yml) | Release published, manual dispatch (approvals required) | Publish all Spectara.Revela packages to NuGet.org. |
 
 > **Note**
 > `code-quality.yml` from early plans was replaced by the consolidated `ci.yml` pipeline.
@@ -56,7 +55,7 @@ Follow this checklist whenever cutting a new release:
 
 5. **Promote**
 	- If the dry run is clean, push the final `vX.Y.Z` git tag to trigger `_Release_` again. This time the `release` job publishes the GitHub Release with all artifacts and signatures.
-	- Invoke `publish-nuget.yml` and `publish-github-packages.yml` afterwards if distribution to external feeds is required.
+	- The `publish-nuget.yml` workflow is triggered automatically when the release is published. Approve the deployment in the `nuget-org` environment.
 
 6. **Record the Verification**
 	- Capture a short summary (workflow run URL + verification date) in the release notes or issue tracker for traceability.
@@ -72,8 +71,7 @@ gh workflow run ci.yml -f reason="release smoke"
 # Trigger release dry run (requires GitHub CLI 2.21+)
 gh workflow run release.yml -f version=0.2.0-rc.1
 
-# After release, publish packages
-gh workflow run publish-github-packages.yml -f version=0.2.0
+# Manually trigger NuGet publish (after release, if needed)
 gh workflow run publish-nuget.yml -f version=0.2.0
 ```
 
