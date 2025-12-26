@@ -10,9 +10,9 @@ namespace Spectara.Revela.Plugin.Statistics.Configuration;
 /// These can be overridden from multiple sources (in priority order, highest to lowest):
 /// 1. Command-line arguments (--output, etc.)
 /// 2. Environment variables (SPECTARA__REVELA__PLUGIN__STATISTICS__*)
-/// 3. User config file (plugins/Spectara.Revela.Plugin.Statistics.json)
+/// 3. User config file (config/Spectara.Revela.Plugin.Statistics.json)
 ///
-/// Example plugins/Spectara.Revela.Plugin.Statistics.json:
+/// Example config/Spectara.Revela.Plugin.Statistics.json:
 /// {
 ///   "Spectara.Revela.Plugin.Statistics": {
 ///     "MaxEntriesPerCategory": 15,

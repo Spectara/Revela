@@ -18,7 +18,7 @@ public static class PluginServiceCollectionExtensions
     /// This method:
     /// 1. Checks if command-line args indicate plugin management (skips loading if so)
     /// 2. Loads plugin assemblies from configured directories (app directory + user plugins + custom paths)
-    /// 3. Calls ConfigureConfiguration() on each plugin (optional, framework auto-loads plugins/*.json)
+    /// 3. Calls ConfigureConfiguration() on each plugin (optional, framework auto-loads config/*.json)
     /// 4. Calls ConfigureServices() on each plugin (registers services with DI)
     /// 5. Returns IPluginContext for later Initialize() and RegisterCommands()
     ///
@@ -93,12 +93,12 @@ public static class PluginServiceCollectionExtensions
         // ============================================
 #pragma warning disable CA1848 // Use LoggerMessage delegates for performance (startup logging)
 
-        // Auto-load all plugins/*.json files from working directory
+        // Auto-load all config/*.json files from working directory
         // JSON structure: { "Spectara.Revela.Plugin.X": { ... } } - Package-ID as root key
-        var pluginsDir = Path.Combine(Directory.GetCurrentDirectory(), "plugins");
-        if (Directory.Exists(pluginsDir))
+        var configDir = Path.Combine(Directory.GetCurrentDirectory(), "config");
+        if (Directory.Exists(configDir))
         {
-            foreach (var jsonFile in Directory.GetFiles(pluginsDir, "*.json"))
+            foreach (var jsonFile in Directory.GetFiles(configDir, "*.json"))
             {
                 configuration.AddJsonFile(jsonFile, optional: true, reloadOnChange: true);
                 logger.LogDebug("Auto-loaded plugin config: {File}", Path.GetFileName(jsonFile));
@@ -216,7 +216,7 @@ sealed file class PluginContextPlaceholder(IReadOnlyList<ILoadedPluginInfo> plug
         realContext.Initialize(serviceProvider);
     }
 
-    public void RegisterCommands(System.CommandLine.RootCommand rootCommand, Action<System.CommandLine.Command, int, string?>? onCommandRegistered = null)
+    public void RegisterCommands(System.CommandLine.RootCommand rootCommand, Action<System.CommandLine.Command, int, string?, bool, bool>? onCommandRegistered = null)
     {
         throw new InvalidOperationException(
             "RegisterCommands should be called on the real PluginContext resolved from DI. " +
@@ -239,7 +239,7 @@ sealed file class EmptyPluginContext : IPluginContext
         // No plugins to initialize
     }
 
-    public void RegisterCommands(System.CommandLine.RootCommand rootCommand, Action<System.CommandLine.Command, int, string?>? onCommandRegistered = null)
+    public void RegisterCommands(System.CommandLine.RootCommand rootCommand, Action<System.CommandLine.Command, int, string?, bool, bool>? onCommandRegistered = null)
     {
         // No plugin commands to register
     }

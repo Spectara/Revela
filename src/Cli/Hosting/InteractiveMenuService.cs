@@ -257,6 +257,28 @@ internal sealed partial class InteractiveMenuService(
     }
 
     /// <summary>
+    /// Gets whether a project is currently loaded.
+    /// </summary>
+    private bool HasProject => !string.IsNullOrEmpty(projectConfig.Value.Name);
+
+    /// <summary>
+    /// Filters commands based on project requirement.
+    /// </summary>
+    /// <param name="commands">The commands to filter.</param>
+    /// <returns>Commands that are available based on current project status.</returns>
+    private IEnumerable<Command> FilterCommandsByProject(IEnumerable<Command> commands)
+    {
+        if (HasProject)
+        {
+            // Hide commands that are only for "no project" state (e.g., init)
+            return commands.Where(cmd => !orderRegistry.ShouldHideWhenProjectExists(cmd));
+        }
+
+        // Only show commands that don't require a project
+        return commands.Where(cmd => !orderRegistry.RequiresProject(cmd));
+    }
+
+    /// <summary>
     /// Builds a grouped selection prompt for commands.
     /// </summary>
     /// <param name="commands">The commands to display.</param>
@@ -286,8 +308,9 @@ internal sealed partial class InteractiveMenuService(
             prompt.AddChoice(MenuChoice.Back);
         }
 
-        // Get grouped commands
-        var grouped = orderRegistry.GetGroupedCommands(commands, groupRegistry);
+        // Filter commands based on project status and get grouped commands
+        var filteredCommands = FilterCommandsByProject(commands);
+        var grouped = orderRegistry.GetGroupedCommands(filteredCommands, groupRegistry);
         var hasGroups = grouped.Any(g => g.GroupName is not null);
 
         if (hasGroups)
@@ -295,6 +318,12 @@ internal sealed partial class InteractiveMenuService(
             // Add each group with its commands
             foreach (var (groupName, groupCommands) in grouped)
             {
+                // Skip empty groups (can happen after filtering)
+                if (groupCommands.Count == 0)
+                {
+                    continue;
+                }
+
                 if (groupName is not null)
                 {
                     // Create group header as MenuChoice (will be non-selectable due to Leaf mode)

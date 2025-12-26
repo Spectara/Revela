@@ -27,7 +27,7 @@ internal sealed class PluginContext(IReadOnlyList<ILoadedPluginInfo> plugins, IL
         }
     }
 
-    public void RegisterCommands(RootCommand rootCommand, Action<Command, int, string?>? onCommandRegistered = null)
+    public void RegisterCommands(RootCommand rootCommand, Action<Command, int, string?, bool, bool>? onCommandRegistered = null)
     {
         foreach (var pluginInfo in Plugins)
         {
@@ -45,7 +45,7 @@ internal sealed class PluginContext(IReadOnlyList<ILoadedPluginInfo> plugins, IL
         }
     }
 
-    private void RegisterCommand(RootCommand rootCommand, IPlugin plugin, CommandDescriptor descriptor, Action<Command, int, string?>? onCommandRegistered)
+    private void RegisterCommand(RootCommand rootCommand, IPlugin plugin, CommandDescriptor descriptor, Action<Command, int, string?, bool, bool>? onCommandRegistered)
     {
         var command = descriptor.Command;
         var parentPath = descriptor.ParentCommand;
@@ -75,14 +75,14 @@ internal sealed class PluginContext(IReadOnlyList<ILoadedPluginInfo> plugins, IL
             rootCommand.Subcommands.Add(command);
         }
 
-        // Notify caller about registered command with its order and group
-        onCommandRegistered?.Invoke(command, descriptor.Order, descriptor.Group);
+        // Notify caller about registered command with its order, group, project requirement, and hide flag
+        onCommandRegistered?.Invoke(command, descriptor.Order, descriptor.Group, descriptor.RequiresProject, descriptor.HideWhenProjectExists);
     }
 
     /// <summary>
     /// Gets or creates a parent command, supporting nested paths like "init source".
     /// </summary>
-    private static Command GetOrCreateParentCommand(RootCommand root, string parentPath, Action<Command, int, string?>? onCommandRegistered)
+    private static Command GetOrCreateParentCommand(RootCommand root, string parentPath, Action<Command, int, string?, bool, bool>? onCommandRegistered)
     {
         // Split path into segments: "init source" → ["init", "source"]
         var segments = parentPath.Split(' ', StringSplitOptions.RemoveEmptyEntries);
@@ -98,11 +98,11 @@ internal sealed class PluginContext(IReadOnlyList<ILoadedPluginInfo> plugins, IL
             }
             else
             {
-                // Create new command with appropriate description, order, and group
-                var (description, order, group) = GetCommandInfo(segment);
+                // Create new command with appropriate description, order, group, project requirement, and hide flag
+                var (description, order, group, requiresProject, hideWhenProjectExists) = GetCommandInfo(segment);
                 var newCommand = new Command(segment, description);
                 current.Subcommands.Add(newCommand);
-                onCommandRegistered?.Invoke(newCommand, order, group);
+                onCommandRegistered?.Invoke(newCommand, order, group, requiresProject, hideWhenProjectExists);
                 current = newCommand;
             }
         }
@@ -110,15 +110,19 @@ internal sealed class PluginContext(IReadOnlyList<ILoadedPluginInfo> plugins, IL
         return current;
     }
 
-    private static (string Description, int Order, string? Group) GetCommandInfo(string commandName)
+    private static (string Description, int Order, string? Group, bool RequiresProject, bool HideWhenProjectExists) GetCommandInfo(string commandName)
     {
         return commandName switch
         {
-            "init" => ("Initialize project, sources, or plugins", 30, "Setup"),
-            "source" => ("Image source providers", 20, "Content"),
-            "deploy" => ("Deploy generated site", 55, "Build"),
-            _ => ($"{commandName} commands", 50, null)  // Default order, no group
+            // Parent commands that don't require project (setup/management)
+            "init" => ("Initialize project, sources, or plugins", 30, "Setup", false, false),
+
+            // Parent commands that require project (content operations)
+            "source" => ("Image source providers", 20, "Content", true, false),
+            "deploy" => ("Deploy generated site", 55, "Build", true, false),
+
+            // Default: require project
+            _ => ($"{commandName} commands", 50, null, true, false)
         };
     }
 }
-

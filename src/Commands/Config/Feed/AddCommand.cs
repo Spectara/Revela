@@ -5,16 +5,16 @@ using Spectara.Revela.Sdk;
 
 using Spectre.Console;
 
-namespace Spectara.Revela.Commands.Config.Revela;
+namespace Spectara.Revela.Commands.Config.Feed;
 
 /// <summary>
-/// Command to add a NuGet feed
+/// Command to add a NuGet feed.
 /// </summary>
-public sealed partial class ConfigFeedAddCommand(
-    ILogger<ConfigFeedAddCommand> logger)
+public sealed partial class AddCommand(
+    ILogger<AddCommand> logger)
 {
     /// <summary>
-    /// Creates the CLI command
+    /// Creates the CLI command.
     /// </summary>
     public Command Create()
     {
@@ -46,6 +46,19 @@ public sealed partial class ConfigFeedAddCommand(
     {
         try
         {
+            // Check for reserved names
+            if (name.Equals("bundled", StringComparison.OrdinalIgnoreCase))
+            {
+                AnsiConsole.MarkupLine("[yellow]WARNING[/] 'bundled' is a reserved feed name");
+                return 1;
+            }
+
+            if (name.Equals("nuget.org", StringComparison.OrdinalIgnoreCase))
+            {
+                AnsiConsole.MarkupLine("[yellow]WARNING[/] 'nuget.org' is a reserved feed name");
+                return 1;
+            }
+
             LogAddingFeed(logger, name, url);
 
             await GlobalConfigManager.AddFeedAsync(name, url, cancellationToken);
@@ -54,6 +67,8 @@ public sealed partial class ConfigFeedAddCommand(
             AnsiConsole.MarkupLine($"  URL: [dim]{url}[/]");
             AnsiConsole.WriteLine();
             AnsiConsole.MarkupLine($"Config: [dim]{GlobalConfigManager.ConfigFilePath}[/]");
+            AnsiConsole.WriteLine();
+            AnsiConsole.MarkupLine("[dim]Run [cyan]revela packages refresh[/] to update the package index.[/]");
 
             return 0;
         }

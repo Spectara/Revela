@@ -30,7 +30,7 @@ public sealed class OneDrivePlugin : IPlugin
     public void ConfigureConfiguration(IConfigurationBuilder configuration)
     {
         // Nothing to do - framework handles all configuration:
-        // - JSON files: auto-loaded from plugins/*.json
+        // - JSON files: auto-loaded from config/*.json
         // - ENV vars: auto-loaded with SPECTARA__REVELA__ prefix
         //
         // Example ENV: SPECTARA__REVELA__PLUGIN__SOURCE__ONEDRIVE__SHAREURL=https://...
@@ -102,17 +102,19 @@ public sealed class OneDrivePlugin : IPlugin
 
         // 1. Register source command → revela source onedrive sync
         //    Creates: source → onedrive → sync
+        //    Requires project (downloads to project's source folder)
         var oneDriveCommand = new Command("onedrive", "OneDrive shared folder source");
         oneDriveCommand.Subcommands.Add(sourceCommand.Create());
         yield return new CommandDescriptor(oneDriveCommand, ParentCommand: "source", Order: 20);
 
         // 2. Register config command → revela config onedrive
         //    Direct under config with Source group for menu organization
+        //    Doesn't require project (config file is independent)
         yield return new CommandDescriptor(
             configCommand.Create(),
             ParentCommand: "config",
             Order: 10,
-            Group: "Source");
+            Group: "Source",
+            RequiresProject: false);
     }
 }
-

@@ -1,5 +1,8 @@
 using System.CommandLine;
+
 using Microsoft.Extensions.Options;
+
+using Spectara.Revela.Commands.Config.Feed;
 using Spectara.Revela.Commands.Config.Images;
 using Spectara.Revela.Commands.Config.Project;
 using Spectara.Revela.Commands.Config.Revela;
@@ -8,6 +11,7 @@ using Spectara.Revela.Commands.Config.Site;
 using Spectara.Revela.Commands.Config.Theme;
 using Spectara.Revela.Core.Configuration;
 using Spectara.Revela.Sdk;
+
 using Spectre.Console;
 
 namespace Spectara.Revela.Commands.Config;
@@ -21,12 +25,12 @@ namespace Spectara.Revela.Commands.Config;
 /// </remarks>
 public sealed class ConfigCommand(
     IConfigService configService,
-    IOptionsMonitor<FeedsConfig> feedsConfig,
+    IOptionsMonitor<PackagesConfig> packagesConfig,
     ConfigProjectCommand projectCommand,
     ConfigThemeCommand themeCommand,
     ConfigSiteCommand siteCommand,
     ConfigImageCommand imageCommand,
-    ConfigFeedCommand feedCommand,
+    FeedCommand feedCommand,
     ConfigLocationsCommand locationsCommand)
 {
     /// <summary>
@@ -92,7 +96,7 @@ public sealed class ConfigCommand(
                         new MenuChoice("image", "Image settings", "Formats, quality, sizes"),
                         // Revela Section
                         new MenuChoice("header-revela", "───── Revela Settings ─────", "", IsHeader: true),
-                        new MenuChoice("feed", "NuGet feeds", "Manage plugin sources"),
+                        new MenuChoice("feed", "NuGet feeds", "Manage package sources"),
                         new MenuChoice("path", "Show paths", "Display config locations"),
                         // Actions
                         new MenuChoice("header-actions", "─────────────────────────────", "", IsHeader: true),
@@ -118,7 +122,7 @@ public sealed class ConfigCommand(
                 "theme" => await themeCommand.ExecuteAsync(null, cancellationToken).ConfigureAwait(false),
                 "site" => await siteCommand.ExecuteAsync(cancellationToken).ConfigureAwait(false),
                 "image" => await imageCommand.ExecuteAsync(null, null, cancellationToken).ConfigureAwait(false),
-                "feed" => ExecuteFeedMenuAsync(feedsConfig.CurrentValue),
+                "feed" => ExecuteFeedMenu(packagesConfig.CurrentValue),
                 "path" => ExecutePathCommand(),
                 "show" => await ExecuteShowAsync(cancellationToken).ConfigureAwait(false),
                 _ => 0
@@ -138,7 +142,7 @@ public sealed class ConfigCommand(
         return 0;
     }
 
-    private static int ExecuteFeedMenuAsync(FeedsConfig config)
+    private static int ExecuteFeedMenu(PackagesConfig config)
     {
         // Show current feeds
         var table = new Table()

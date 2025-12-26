@@ -1,0 +1,202 @@
+<#
+.SYNOPSIS
+    Build a standalone Revela release for testing
+
+.DESCRIPTION
+    Creates a complete standalone release structure in playground/ for testing
+    the standalone multi-project mode. Each run creates a timestamped folder.
+
+    Output structure:
+        playground/standalone-{timestamp}/
+        ├── revela.exe
+        ├── revela.json         (with local packages feed configured)
+        ├── plugins/            (for installed plugin DLLs)
+        └── packages/           (local NuGet feed with all packages)
+            ├── Spectara.Revela.Theme.Lumina.{version}.nupkg
+            ├── Spectara.Revela.Theme.Lumina.Statistics.{version}.nupkg
+            ├── Spectara.Revela.Plugin.Statistics.{version}.nupkg
+            ├── Spectara.Revela.Plugin.Source.OneDrive.{version}.nupkg
+            └── Spectara.Revela.Plugin.Serve.{version}.nupkg
+
+.PARAMETER Version
+    Version number for the build (default: 0.0.0-test)
+
+.PARAMETER RuntimeIdentifier
+    Target runtime (default: win-x64)
+
+.PARAMETER Open
+    Open the output folder in Explorer after build
+
+.EXAMPLE
+    .\scripts\build-standalone.ps1
+    # Build with defaults
+
+.EXAMPLE
+    .\scripts\build-standalone.ps1 -Open
+    # Build and open folder in Explorer
+
+.EXAMPLE
+    .\scripts\build-standalone.ps1 -Version "1.0.0-beta.1"
+    # Build with specific version
+#>
+
+[CmdletBinding()]
+param(
+    [string]$Version = "0.0.0-test",
+    [string]$RuntimeIdentifier = "win-x64",
+    [switch]$Open
+)
+
+Set-StrictMode -Version Latest
+$ErrorActionPreference = "Stop"
+
+# Colors
+function Write-Step { param([string]$Message) Write-Host "`n▶ $Message" -ForegroundColor Cyan }
+function Write-Success { param([string]$Message) Write-Host "  ✓ $Message" -ForegroundColor Green }
+function Write-Info { param([string]$Message) Write-Host "  ℹ $Message" -ForegroundColor Gray }
+
+# Paths
+$ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+$RepoRoot = Split-Path -Parent $ScriptDir
+$Timestamp = [DateTime]::Now.ToString('yyyyMMdd-HHmmss')
+$OutputDir = Join-Path $RepoRoot "playground/standalone-$Timestamp"
+$PluginsDir = Join-Path $OutputDir "plugins"
+$PackagesDir = Join-Path $OutputDir "packages"
+
+$ExeName = if ($RuntimeIdentifier -like "win-*") { "revela.exe" } else { "revela" }
+$ExePath = Join-Path $OutputDir $ExeName
+
+Write-Host ""
+Write-Host "╔════════════════════════════════════════════════════════════╗" -ForegroundColor Magenta
+Write-Host "║ Revela Standalone Build                                    ║" -ForegroundColor Magenta
+Write-Host "╚════════════════════════════════════════════════════════════╝" -ForegroundColor Magenta
+Write-Host ""
+Write-Info "Version:  $Version"
+Write-Info "Runtime:  $RuntimeIdentifier"
+Write-Info "Output:   $OutputDir"
+
+Push-Location $RepoRoot
+try {
+    # ========================================================================
+    # Step 1: Create directories
+    # ========================================================================
+    Write-Step "Creating directories"
+    
+    New-Item -ItemType Directory -Path $OutputDir -Force | Out-Null
+    New-Item -ItemType Directory -Path $PluginsDir -Force | Out-Null
+    New-Item -ItemType Directory -Path $PackagesDir -Force | Out-Null
+    
+    Write-Success "Created output structure"
+
+    # ========================================================================
+    # Step 2: Build solution
+    # ========================================================================
+    Write-Step "Building solution"
+    
+    dotnet build -c Release --verbosity quiet
+    if ($LASTEXITCODE -ne 0) { throw "Build failed" }
+    
+    Write-Success "Build completed"
+
+    # ========================================================================
+    # Step 3: Publish CLI
+    # ========================================================================
+    Write-Step "Publishing CLI (self-contained)"
+    
+    dotnet publish src/Cli/Cli.csproj `
+        -c Release `
+        -r $RuntimeIdentifier `
+        --self-contained `
+        -p:PublishSingleFile=true `
+        -p:IncludeNativeLibrariesForSelfExtract=true `
+        -p:DebugType=none `
+        -p:DebugSymbols=false `
+        -p:Version=$Version `
+        -o $OutputDir `
+        --verbosity quiet
+    
+    if ($LASTEXITCODE -ne 0) { throw "Publish failed" }
+    
+    # Clean up XML docs
+    Get-ChildItem $OutputDir -Filter "*.xml" | Remove-Item -Force -ErrorAction SilentlyContinue
+    
+    $exeSize = [math]::Round((Get-Item $ExePath).Length / 1MB, 1)
+    Write-Success "CLI published: $ExeName ($exeSize MB)"
+
+    # ========================================================================
+    # Step 4: Pack all packages
+    # ========================================================================
+    Write-Step "Packing NuGet packages"
+    
+    $packages = @(
+        "src/Themes/Theme.Lumina/Theme.Lumina.csproj",
+        "src/Themes/Theme.Lumina.Statistics/Theme.Lumina.Statistics.csproj",
+        "src/Plugins/Plugin.Statistics/Plugin.Statistics.csproj",
+        "src/Plugins/Plugin.Source.OneDrive/Plugin.Source.OneDrive.csproj",
+        "src/Plugins/Plugin.Serve/Plugin.Serve.csproj"
+    )
+    
+    foreach ($proj in $packages) {
+        $name = [System.IO.Path]::GetFileNameWithoutExtension($proj)
+        Write-Info "Packing $name..."
+        
+        dotnet pack $proj -c Release -o $PackagesDir -p:PackageVersion=$Version --verbosity quiet
+        if ($LASTEXITCODE -ne 0) { throw "Pack failed for $name" }
+    }
+    
+    $packageCount = (Get-ChildItem $PackagesDir -Filter "*.nupkg").Count
+    Write-Success "Packed $packageCount packages"
+
+    # ========================================================================
+    # Step 5: Create revela.json with local feed
+    # ========================================================================
+    Write-Step "Creating configuration"
+    
+    $config = @"
+{
+  "packages": {
+    "feeds": {
+      "local": "./packages"
+    }
+  }
+}
+"@
+    
+    $configPath = Join-Path $OutputDir "revela.json"
+    Set-Content -Path $configPath -Value $config -Encoding UTF8
+    
+    Write-Success "Created revela.json with local packages feed"
+
+    # ========================================================================
+    # Summary
+    # ========================================================================
+    Write-Host ""
+    Write-Host "╔════════════════════════════════════════════════════════════╗" -ForegroundColor Green
+    Write-Host "║ Build Complete!                                            ║" -ForegroundColor Green
+    Write-Host "╚════════════════════════════════════════════════════════════╝" -ForegroundColor Green
+    Write-Host ""
+    Write-Host "  Output: " -NoNewline; Write-Host $OutputDir -ForegroundColor Yellow
+    Write-Host ""
+    Write-Host "  Contents:" -ForegroundColor Cyan
+    Write-Host "    $ExeName" -ForegroundColor White
+    Write-Host "    revela.json" -ForegroundColor White
+    Write-Host "    plugins/        (for installed plugins)" -ForegroundColor DarkGray
+    Write-Host "    packages/       ($packageCount packages)" -ForegroundColor White
+    Write-Host ""
+    Write-Host "  Available packages:" -ForegroundColor Cyan
+    Get-ChildItem $PackagesDir -Filter "*.nupkg" | ForEach-Object {
+        Write-Host "    • $($_.BaseName)" -ForegroundColor DarkGray
+    }
+    Write-Host ""
+    Write-Host "  Quick start:" -ForegroundColor Cyan
+    Write-Host "    cd `"$OutputDir`"" -ForegroundColor Yellow
+    Write-Host "    .\$ExeName" -ForegroundColor Yellow
+    Write-Host ""
+    
+    if ($Open) {
+        Start-Process "explorer.exe" -ArgumentList $OutputDir
+    }
+}
+finally {
+    Pop-Location
+}

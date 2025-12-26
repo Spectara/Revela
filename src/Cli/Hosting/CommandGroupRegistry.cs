@@ -27,6 +27,9 @@ internal static class CommandGroups
     /// <summary>Image source providers (config submenu).</summary>
     public const string ConfigSource = "Source";
 
+    /// <summary>Package feed configuration (config submenu).</summary>
+    public const string ConfigPackages = "Packages";
+
     /// <summary>Plugin addon configuration (config submenu).</summary>
     public const string ConfigAddons = "Addons";
 }

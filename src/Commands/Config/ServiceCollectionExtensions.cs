@@ -1,4 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
+
+using Spectara.Revela.Commands.Config.Feed;
 using Spectara.Revela.Commands.Config.Images;
 using Spectara.Revela.Commands.Config.Project;
 using Spectara.Revela.Commands.Config.Revela;
@@ -38,11 +40,13 @@ public static class ServiceCollectionExtensions
         // Image commands
         services.AddTransient<ConfigImageCommand>();
 
+        // Feed commands (NuGet sources)
+        services.AddTransient<FeedCommand>();
+        services.AddTransient<ListCommand>();
+        services.AddTransient<AddCommand>();
+        services.AddTransient<RemoveCommand>();
+
         // Revela commands (global config)
-        services.AddTransient<ConfigFeedCommand>();
-        services.AddTransient<ConfigFeedListCommand>();
-        services.AddTransient<ConfigFeedAddCommand>();
-        services.AddTransient<ConfigFeedRemoveCommand>();
         services.AddTransient<ConfigLocationsCommand>();
 
         return services;

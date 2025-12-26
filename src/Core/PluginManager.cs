@@ -29,6 +29,15 @@ public sealed class PluginManager(
     INuGetSourceManager nugetSourceManager)
 {
     /// <summary>
+    /// Gets the bundled packages directory (next to executable).
+    /// </summary>
+    /// <remarks>
+    /// Used as a local NuGet feed for offline-first installation.
+    /// Contains .nupkg files bundled with the application.
+    /// </remarks>
+    public static string BundledPackagesDirectory => Path.Combine(AppContext.BaseDirectory, "packages");
+
+    /// <summary>
     /// Gets the local plugin directory (next to executable).
     /// </summary>
     public static string LocalPluginDirectory => Path.Combine(AppContext.BaseDirectory, "plugins");

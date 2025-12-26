@@ -112,7 +112,7 @@ public sealed class TemplateProperty
     /// <remarks>
     /// Set to <c>null</c> for properties that shouldn't appear in config (only in frontmatter).
     /// Supports dot notation for nested objects: "Deploy.Host" → {"Deploy": {"Host": "..."}}.
-    /// Written to: plugins/{ConfigSectionName}.json
+    /// Written to: config/{ConfigSectionName}.json
     /// </remarks>
     public string? ConfigKey { get; init; }
 

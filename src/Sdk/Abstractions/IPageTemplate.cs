@@ -73,7 +73,7 @@ public interface IPageTemplate
     /// </summary>
     /// <remarks>
     /// These properties are exposed as CLI options in "revela init config {name}" command.
-    /// Properties are written to plugins/{ConfigSectionName}.json using <see cref="TemplateProperty.ConfigKey"/>.
+    /// Properties are written to config/{ConfigSectionName}.json using <see cref="TemplateProperty.ConfigKey"/>.
     /// Supports dot notation for nested objects (e.g., "Deploy.Host" → {"Deploy": {"Host": "..."}}).
     /// </remarks>
     IReadOnlyList<TemplateProperty> ConfigProperties { get; }

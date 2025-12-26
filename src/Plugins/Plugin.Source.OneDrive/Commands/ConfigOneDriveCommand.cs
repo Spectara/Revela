@@ -13,7 +13,7 @@ namespace Spectara.Revela.Plugin.Source.OneDrive.Commands;
 /// <remarks>
 /// <para>
 /// Allows interactive or argument-based configuration of the OneDrive plugin.
-/// Creates or updates plugins/Spectara.Revela.Plugin.Source.OneDrive.json.
+/// Creates or updates config/Spectara.Revela.Plugin.Source.OneDrive.json.
 /// </para>
 /// <para>
 /// Usage: revela config source onedrive [options]
@@ -23,9 +23,9 @@ public sealed partial class ConfigOneDriveCommand(
     ILogger<ConfigOneDriveCommand> logger,
     IOptionsMonitor<OneDrivePluginConfig> configMonitor)
 {
-    private const string PluginsFolderName = "plugins";
+    private const string ConfigFolderName = "config";
     private const string PluginPackageId = "Spectara.Revela.Plugin.Source.OneDrive";
-    private const string ConfigPath = $"{PluginsFolderName}/{PluginPackageId}.json";
+    private const string ConfigPath = $"{ConfigFolderName}/{PluginPackageId}.json";
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -132,8 +132,8 @@ public sealed partial class ConfigOneDriveCommand(
             concurrency = concurrencyArg ?? current.DefaultConcurrency;
         }
 
-        // Ensure plugins directory exists
-        Directory.CreateDirectory(PluginsFolderName);
+        // Ensure config directory exists
+        Directory.CreateDirectory(ConfigFolderName);
 
         // Build config object (only include non-default values)
         var configValues = new Dictionary<string, object>();

@@ -12,7 +12,7 @@ namespace Spectara.Revela.Plugin.Serve;
 /// <remarks>
 /// <para>
 /// Allows interactive or argument-based configuration of the serve plugin.
-/// Reads/writes to plugins/Spectara.Revela.Plugin.Serve.json.
+/// Reads/writes to config/Spectara.Revela.Plugin.Serve.json.
 /// </para>
 /// <para>
 /// Usage: revela config serve [options]
@@ -22,7 +22,7 @@ public sealed partial class ConfigServeCommand(
     ILogger<ConfigServeCommand> logger,
     IOptionsMonitor<ServeConfig> configMonitor)
 {
-    private const string ConfigPath = "plugins/Spectara.Revela.Plugin.Serve.json";
+    private const string ConfigPath = "config/Spectara.Revela.Plugin.Serve.json";
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {

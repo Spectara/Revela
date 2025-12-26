@@ -1,15 +1,15 @@
 namespace Spectara.Revela.Core.Configuration;
 
 /// <summary>
-/// Configuration for NuGet feeds used for plugin/theme installation
+/// Configuration for package management (NuGet feeds, cache settings)
 /// </summary>
 /// <remarks>
 /// <para>
 /// This configuration can be merged from multiple sources (in order, later wins):
 /// </para>
 /// <list type="number">
-/// <item><b>revela.json</b> (global): User-wide feeds</item>
-/// <item><b>project.json</b> (local): Project-specific feeds (e.g., private company feed)</item>
+/// <item><b>revela.json</b> (global): User-wide package settings</item>
+/// <item><b>project.json</b> (local): Project-specific settings (e.g., private company feed)</item>
 /// </list>
 /// <para>
 /// nuget.org is always available as a built-in source and doesn't need to be configured.
@@ -18,20 +18,22 @@ namespace Spectara.Revela.Core.Configuration;
 /// <code>
 /// // revela.json or project.json
 /// {
-///   "feeds": {
-///     "MyCompany": "https://nuget.mycompany.com/v3/index.json",
-///     "Local": "./plugins"
+///   "packages": {
+///     "feeds": {
+///       "MyCompany": "https://nuget.mycompany.com/v3/index.json",
+///       "Local": "./plugins"
+///     }
 ///   }
 /// }
 /// </code>
 /// </example>
 /// </remarks>
-public sealed class FeedsConfig
+public sealed class PackagesConfig
 {
     /// <summary>
     /// Configuration section name
     /// </summary>
-    public const string SectionName = "feeds";
+    public const string SectionName = "packages";
 
     /// <summary>
     /// Configured NuGet feeds (Key = Name, Value = URL)

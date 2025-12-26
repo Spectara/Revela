@@ -11,8 +11,11 @@ namespace Spectara.Revela.Commands.Create;
 ///
 /// Templates are discovered dynamically via IPageTemplate implementations.
 /// Core provides 'gallery', plugins can add more (e.g., 'statistics').
+///
+/// Note: 'project' subcommand was removed. Use 'config project' or 'init' instead.
 /// </remarks>
-public sealed class CreateCommand(CreatePageCommand pageCommand)
+public sealed class CreateCommand(
+    CreatePageCommand pageCommand)
 {
     /// <summary>
     /// Creates the 'create' command with subcommands.

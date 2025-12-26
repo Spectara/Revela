@@ -17,14 +17,14 @@ namespace Spectara.Revela.Core.Tests.Services;
 public sealed class NuGetSourceManagerTests
 {
     private NuGetSourceManager service = null!;
-    private IOptionsMonitor<FeedsConfig> feedsConfig = null!;
+    private IOptionsMonitor<PackagesConfig> packagesConfig = null!;
 
     [TestInitialize]
     public void Setup()
     {
-        feedsConfig = Substitute.For<IOptionsMonitor<FeedsConfig>>();
-        feedsConfig.CurrentValue.Returns(new FeedsConfig());
-        service = new NuGetSourceManager(NullLogger<NuGetSourceManager>.Instance, feedsConfig);
+        packagesConfig = Substitute.For<IOptionsMonitor<PackagesConfig>>();
+        packagesConfig.CurrentValue.Returns(new PackagesConfig());
+        service = new NuGetSourceManager(NullLogger<NuGetSourceManager>.Instance, packagesConfig);
     }
 
     #region Static Properties Tests

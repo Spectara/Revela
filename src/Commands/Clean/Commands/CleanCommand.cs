@@ -15,7 +15,7 @@ namespace Spectara.Revela.Commands.Clean.Commands;
 ///   <item><description>revela clean cache - Clean only cache directory</description></item>
 /// </list>
 /// <para>
-/// Safety: NEVER deletes source files (source/, plugins/, *.json configs).
+/// Safety: NEVER deletes source files (source/, config/, *.json configs).
 /// </para>
 /// </remarks>
 public sealed class CleanCommand(

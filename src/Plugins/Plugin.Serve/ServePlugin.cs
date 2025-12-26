@@ -25,7 +25,7 @@ public sealed class ServePlugin : IPlugin
     public void ConfigureConfiguration(IConfigurationBuilder configuration)
     {
         // Nothing to do - framework handles all configuration:
-        // - JSON files: auto-loaded from plugins/*.json
+        // - JSON files: auto-loaded from config/*.json
         // - ENV vars: auto-loaded with SPECTARA__REVELA__ prefix
         //
         // Example ENV: SPECTARA__REVELA__PLUGIN__SERVE__PORT=3000
@@ -63,6 +63,7 @@ public sealed class ServePlugin : IPlugin
         // 1. Register serve command at root level → revela serve
         //    Group "Build" places it with generate and clean
         //    Order 15 places it between generate (10) and clean (20)
+        //    Requires project (serves project's output folder)
         yield return new CommandDescriptor(
             serveCommand.Create(),
             ParentCommand: null,
@@ -70,6 +71,10 @@ public sealed class ServePlugin : IPlugin
             Group: "Build");
 
         // 2. Register config command → revela config serve
-        yield return new CommandDescriptor(configCommand.Create(), ParentCommand: "config");
+        //    Doesn't require project (config file is independent)
+        yield return new CommandDescriptor(
+            configCommand.Create(),
+            ParentCommand: "config",
+            RequiresProject: false);
     }
 }

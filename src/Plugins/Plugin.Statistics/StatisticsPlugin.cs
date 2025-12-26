@@ -27,7 +27,7 @@ public sealed class StatisticsPlugin : IPlugin
     public void ConfigureConfiguration(IConfigurationBuilder configuration)
     {
         // Nothing to do - framework handles all configuration:
-        // - JSON files: auto-loaded from plugins/*.json
+        // - JSON files: auto-loaded from config/*.json
         // - ENV vars: auto-loaded with SPECTARA__REVELA__ prefix
         //
         // Example ENV: SPECTARA__REVELA__PLUGIN__STATISTICS__OUTPUTPATH=source/stats

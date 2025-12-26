@@ -16,7 +16,7 @@ public static class ConfigurationServiceCollectionExtensions
     /// Binds the following configuration sections to their respective models:
     /// </para>
     /// <list type="bullet">
-    /// <item><see cref="FeedsConfig"/> - feeds (NuGet feeds, merged)</item>
+    /// <item><see cref="PackagesConfig"/> - packages section (NuGet feeds)</item>
     /// <item><see cref="DependenciesConfig"/> - dependencies section (theme, plugins)</item>
     /// <item><see cref="GlobalDefaultsConfig"/> - defaults section (default theme)</item>
     /// <item><see cref="GlobalSettingsConfig"/> - settings section (checkUpdates)</item>
@@ -69,9 +69,10 @@ public static class ConfigurationServiceCollectionExtensions
         services.AddOptions<GlobalDefaultsConfig>()
             .Bind(configuration.GetSection(GlobalDefaultsConfig.SectionName));
 
-        // NuGet feeds
-        services.AddOptions<FeedsConfig>()
-            .Bind(configuration.GetSection(FeedsConfig.SectionName));
+        // Package management (NuGet feeds)
+        // Standard binding works: { "packages": { "feeds": {...} } } maps to PackagesConfig.Feeds
+        services.AddOptions<PackagesConfig>()
+            .Bind(configuration.GetSection(PackagesConfig.SectionName));
 
         // Logging
         services.AddOptions<LoggingConfig>()

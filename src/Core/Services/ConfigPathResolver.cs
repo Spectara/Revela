@@ -70,6 +70,49 @@ public static class ConfigPathResolver
     /// </summary>
     public static string ConfigFilePath => Path.Combine(ConfigDirectory, "revela.json");
 
+    /// <summary>
+    /// Gets whether the current working directory is the exe directory
+    /// </summary>
+    /// <remarks>
+    /// This is used to detect standalone mode where the user double-clicked revela.exe.
+    /// When CWD equals exe directory, we enable multi-project mode.
+    /// </remarks>
+    public static bool IsRunningFromExeDirectory
+    {
+        get
+        {
+            var cwd = Directory.GetCurrentDirectory();
+            var exeDir = ExeDirectory.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+            return string.Equals(cwd, exeDir, StringComparison.OrdinalIgnoreCase);
+        }
+    }
+
+    /// <summary>
+    /// Gets the projects directory for standalone mode
+    /// </summary>
+    /// <remarks>
+    /// In standalone mode, all projects are stored in the projects/ subdirectory
+    /// of the exe directory. This keeps projects separate from the application.
+    /// </remarks>
+    public static string ProjectsDirectory => Path.Combine(ExeDirectory, "projects");
+
+    /// <summary>
+    /// Gets whether standalone multi-project mode is active
+    /// </summary>
+    /// <remarks>
+    /// Standalone mode is active when:
+    /// <list type="bullet">
+    /// <item>This is a portable installation (exe dir is writable)</item>
+    /// <item>The user started from the exe directory (double-click scenario)</item>
+    /// </list>
+    /// In standalone mode, the exe directory is never a project itself.
+    /// Users create projects in the projects/ subdirectory.
+    /// The projects/ directory is created on first project creation.
+    /// </remarks>
+    public static bool IsStandaloneMode =>
+        IsPortableInstallation &&
+        IsRunningFromExeDirectory;
+
     private static string DetermineConfigDirectory()
     {
         // Try to write to exe directory

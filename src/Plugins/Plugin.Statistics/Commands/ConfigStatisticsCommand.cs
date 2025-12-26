@@ -12,7 +12,7 @@ namespace Spectara.Revela.Plugin.Statistics.Commands;
 /// <remarks>
 /// <para>
 /// Allows interactive or argument-based configuration of the statistics plugin.
-/// Reads/writes to plugins/Spectara.Revela.Plugin.Statistics.json.
+/// Reads/writes to config/Spectara.Revela.Plugin.Statistics.json.
 /// </para>
 /// <para>
 /// Usage: revela config statistics [options]
@@ -22,7 +22,7 @@ public sealed partial class ConfigStatisticsCommand(
     ILogger<ConfigStatisticsCommand> logger,
     IOptionsMonitor<StatisticsPluginConfig> configMonitor)
 {
-    private const string ConfigPath = "plugins/Spectara.Revela.Plugin.Statistics.json";
+    private const string ConfigPath = "config/Spectara.Revela.Plugin.Statistics.json";
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {

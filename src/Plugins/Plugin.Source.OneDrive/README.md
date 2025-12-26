@@ -17,7 +17,7 @@ revela plugin install Spectara.Revela.Plugin.Source.OneDrive
 
 ## Configuration
 
-Create a configuration file at `plugins/Spectara.Revela.Plugin.Source.OneDrive.json`:
+Create a configuration file at `config/Spectara.Revela.Plugin.Source.OneDrive.json`:
 
 ```json
 {
@@ -55,7 +55,7 @@ revela source onedrive download --output ./source
 revela plugin install OneDrive
 
 # 2. Configure share URL
-# Edit plugins/Spectara.Revela.Plugin.Source.OneDrive.json
+# Edit config/Spectara.Revela.Plugin.Source.OneDrive.json
 
 # 3. Download images
 revela source onedrive download

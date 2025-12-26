@@ -102,7 +102,7 @@ public static class GlobalConfigManager
         var config = await LoadFileAsync(cancellationToken);
 
         // Check for duplicate
-        if (config.Feeds.ContainsKey(name))
+        if (config.Packages.Feeds.ContainsKey(name))
         {
             throw new InvalidOperationException($"Feed '{name}' already exists");
         }
@@ -113,7 +113,7 @@ public static class GlobalConfigManager
             throw new InvalidOperationException("Cannot add feed with reserved name 'nuget.org'");
         }
 
-        config.Feeds[name] = url;
+        config.Packages.Feeds[name] = url;
         await SaveFileAsync(config, cancellationToken);
     }
 
@@ -130,7 +130,7 @@ public static class GlobalConfigManager
 
         var config = await LoadFileAsync(cancellationToken);
 
-        if (!config.Feeds.Remove(name))
+        if (!config.Packages.Feeds.Remove(name))
         {
             return false; // Not found
         }
@@ -203,16 +203,21 @@ public static class GlobalConfigManager
     /// </summary>
     /// <remarks>
     /// This matches the JSON structure written to disk. For reading, use the
-    /// separate config classes via IOptionsMonitor (FeedsConfig, DependenciesConfig, etc.)
+    /// separate config classes via IOptionsMonitor (PackagesConfig, DependenciesConfig, etc.)
     /// </remarks>
     private sealed class GlobalConfigFile
     {
-        public Dictionary<string, string> Feeds { get; init; } = [];
+        public PackagesSection Packages { get; init; } = new();
         public LoggingSection Logging { get; init; } = new();
         public DefaultsSection Defaults { get; init; } = new();
         public bool CheckUpdates { get; init; } = true;
         public Dictionary<string, string> Themes { get; init; } = [];
         public Dictionary<string, string> Plugins { get; init; } = [];
+
+        public sealed class PackagesSection
+        {
+            public Dictionary<string, string> Feeds { get; init; } = [];
+        }
 
         public sealed class LoggingSection
         {

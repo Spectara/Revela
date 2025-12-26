@@ -19,7 +19,7 @@ revela plugin install Spectara.Revela.Plugin.Deploy.SSH
 
 ## Configuration
 
-Create a configuration file at `plugins/Spectara.Revela.Plugin.Deploy.SSH.json`:
+Create a configuration file at `config/Spectara.Revela.Plugin.Deploy.SSH.json`:
 
 ```json
 {

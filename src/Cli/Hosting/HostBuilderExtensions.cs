@@ -27,12 +27,18 @@ internal static class HostBuilderExtensions
     /// This allows global defaults (themes, plugins, feeds) to be overridden per-project.
     /// Similar to NuGet.Config hierarchical loading.
     /// </para>
+    /// <para>
+    /// The project directory is determined by ContentRootPath, which is set in Program.cs
+    /// based on standalone mode detection and --project argument parsing.
+    /// </para>
     /// </remarks>
     /// <param name="builder">The host application builder.</param>
     /// <returns>The builder for chaining.</returns>
     public static HostApplicationBuilder AddRevelaConfiguration(this HostApplicationBuilder builder)
     {
-        var workingDirectory = Directory.GetCurrentDirectory();
+        // Use ContentRootPath instead of GetCurrentDirectory()
+        // This allows standalone mode to set the project path before host build
+        var projectDirectory = builder.Environment.ContentRootPath;
 
         // 1. Load revela.json (global config - user-wide defaults)
         // This provides default themes, plugins, feeds that apply to all projects
@@ -45,7 +51,7 @@ internal static class HostBuilderExtensions
         // 2. Load project.json (local config - overrides global)
         // Project-specific settings override global defaults
         builder.Configuration.AddJsonFile(
-            Path.Combine(workingDirectory, "project.json"),
+            Path.Combine(projectDirectory, "project.json"),
             optional: true,
             reloadOnChange: true
         );
@@ -55,7 +61,7 @@ internal static class HostBuilderExtensions
 
         // 3. Load logging.json (logging config - can override global logging settings)
         builder.Configuration.AddJsonFile(
-            Path.Combine(workingDirectory, "logging.json"),
+            Path.Combine(projectDirectory, "logging.json"),
             optional: true,
             reloadOnChange: true
         );

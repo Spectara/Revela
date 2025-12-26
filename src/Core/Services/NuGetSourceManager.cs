@@ -19,10 +19,13 @@ namespace Spectara.Revela.Core.Services;
 /// Relative paths in feed URLs are resolved relative to the config file location,
 /// making configurations portable across different machines.
 /// </para>
+/// <para>
+/// Uses IOptionsMonitor for automatic hot-reload when revela.json changes.
+/// </para>
 /// </remarks>
 public sealed partial class NuGetSourceManager(
     ILogger<NuGetSourceManager> logger,
-    IOptionsMonitor<FeedsConfig> feedsConfig) : INuGetSourceManager
+    IOptionsMonitor<PackagesConfig> packagesConfig) : INuGetSourceManager
 {
     /// <summary>
     /// Gets the path to the config file
@@ -45,9 +48,26 @@ public sealed partial class NuGetSourceManager(
     /// <inheritdoc/>
     public Task<List<NuGetSource>> LoadSourcesAsync(CancellationToken cancellationToken = default)
     {
-        var sources = new List<NuGetSource> { DefaultSource };
+        var sources = new List<NuGetSource>();
 
-        var config = feedsConfig.CurrentValue;
+        // Bundled packages directory (offline-first, highest priority)
+        var bundledDir = PluginManager.BundledPackagesDirectory;
+        if (Directory.Exists(bundledDir))
+        {
+            LogUsingBundledPackages(bundledDir);
+            sources.Add(new NuGetSource
+            {
+                Name = "bundled",
+                Url = bundledDir,
+                Enabled = true
+            });
+        }
+
+        // Built-in nuget.org
+        sources.Add(DefaultSource);
+
+        // User-configured feeds from revela.json (hot-reload via IOptionsMonitor)
+        var config = packagesConfig.CurrentValue;
         foreach (var (name, url) in config.Feeds)
         {
             var resolvedUrl = ResolvePathIfRelative(url);
@@ -63,14 +83,27 @@ public sealed partial class NuGetSourceManager(
     }
 
     /// <inheritdoc/>
-    public Task<List<(NuGetSource Source, string Location)>> GetAllSourcesWithLocationAsync(CancellationToken cancellationToken = default)
+    public async Task<List<(NuGetSource Source, string Location)>> GetAllSourcesWithLocationAsync(CancellationToken cancellationToken = default)
     {
-        var sources = new List<(NuGetSource Source, string Location)>
-        {
-            (DefaultSource, "built-in")
-        };
+        var sources = new List<(NuGetSource Source, string Location)>();
 
-        var config = feedsConfig.CurrentValue;
+        // Bundled packages directory
+        var bundledDir = PluginManager.BundledPackagesDirectory;
+        if (Directory.Exists(bundledDir))
+        {
+            sources.Add((new NuGetSource
+            {
+                Name = "bundled",
+                Url = bundledDir,
+                Enabled = true
+            }, "bundled"));
+        }
+
+        // Built-in nuget.org
+        sources.Add((DefaultSource, "built-in"));
+
+        // User-configured feeds from revela.json (hot-reload via IOptionsMonitor)
+        var config = packagesConfig.CurrentValue;
         foreach (var (name, url) in config.Feeds)
         {
             var resolvedUrl = ResolvePathIfRelative(url);
@@ -86,7 +119,7 @@ public sealed partial class NuGetSourceManager(
             }, location));
         }
 
-        return Task.FromResult(sources);
+        return sources;
     }
 
     /// <inheritdoc/>
@@ -150,4 +183,7 @@ public sealed partial class NuGetSourceManager(
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Cannot resolve relative path '{RelativePath}' - config directory unknown")]
     private partial void LogCannotResolveRelativePath(string relativePath);
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Using bundled packages from '{BundledDirectory}'")]
+    private partial void LogUsingBundledPackages(string bundledDirectory);
 }

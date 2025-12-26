@@ -3,13 +3,14 @@ using System.CommandLine;
 namespace Spectara.Revela.Cli.Hosting;
 
 /// <summary>
-/// Registry for command display order and group assignment in interactive menu.
+/// Registry for command display order, group assignment, and project requirement in interactive menu.
 /// </summary>
 /// <remarks>
 /// Commands with lower order values appear first in menus.
 /// Commands with the same order are sorted alphabetically.
 /// Default order is 50, giving plugins room to insert before (1-49) or after (51-100).
 /// Commands can optionally be assigned to groups for visual organization.
+/// Commands can be marked as requiring a project context (default: true).
 /// </remarks>
 internal sealed class CommandOrderRegistry
 {
@@ -20,6 +21,8 @@ internal sealed class CommandOrderRegistry
 
     private readonly Dictionary<Command, int> orderMap = [];
     private readonly Dictionary<Command, string> groupMap = [];
+    private readonly HashSet<Command> noProjectRequired = [];
+    private readonly HashSet<Command> hideWhenProjectExists = [];
 
     /// <summary>
     /// Registers the display order for a command.
@@ -34,6 +37,40 @@ internal sealed class CommandOrderRegistry
     /// <param name="command">The command to assign to a group.</param>
     /// <param name="groupName">The group name (must be registered in <see cref="CommandGroupRegistry"/>).</param>
     public void RegisterGroup(Command command, string groupName) => groupMap[command] = groupName;
+
+    /// <summary>
+    /// Marks a command as not requiring a project context.
+    /// </summary>
+    /// <remarks>
+    /// By default, all commands require a project. Call this method for commands
+    /// that should be available without an active project (e.g., config project, theme install).
+    /// </remarks>
+    /// <param name="command">The command that doesn't require a project.</param>
+    public void RegisterNoProjectRequired(Command command) => noProjectRequired.Add(command);
+
+    /// <summary>
+    /// Gets whether a command requires a project context.
+    /// </summary>
+    /// <param name="command">The command to check.</param>
+    /// <returns>True if the command requires a project (default), false otherwise.</returns>
+    public bool RequiresProject(Command command) => !noProjectRequired.Contains(command);
+
+    /// <summary>
+    /// Marks a command to be hidden when a project exists.
+    /// </summary>
+    /// <remarks>
+    /// Used for setup commands like 'init' that are only relevant
+    /// when no project is configured yet.
+    /// </remarks>
+    /// <param name="command">The command to hide when project exists.</param>
+    public void RegisterHideWhenProjectExists(Command command) => hideWhenProjectExists.Add(command);
+
+    /// <summary>
+    /// Gets whether a command should be hidden when a project exists.
+    /// </summary>
+    /// <param name="command">The command to check.</param>
+    /// <returns>True if the command should be hidden when project exists.</returns>
+    public bool ShouldHideWhenProjectExists(Command command) => hideWhenProjectExists.Contains(command);
 
     /// <summary>
     /// Gets the display order for a command.
