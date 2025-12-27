@@ -1,6 +1,7 @@
 using System.CommandLine;
 
 using Spectara.Revela.Core;
+using Spectara.Revela.Core.Services;
 using Spectara.Revela.Sdk;
 
 using Spectre.Console;
@@ -10,9 +11,14 @@ namespace Spectara.Revela.Commands.Plugins;
 /// <summary>
 /// Handles 'revela plugin install' command.
 /// </summary>
+/// <remarks>
+/// Installs plugins from NuGet. Before running, use 'revela packages refresh'
+/// to update the package index for better type validation.
+/// </remarks>
 public sealed partial class PluginInstallCommand(
     ILogger<PluginInstallCommand> logger,
-    PluginManager pluginManager)
+    PluginManager pluginManager,
+    IPackageIndexService packageIndexService)
 {
     /// <summary>
     /// Creates the command definition.
@@ -78,6 +84,20 @@ public sealed partial class PluginInstallCommand(
             var packageId = name.StartsWith("Spectara.Revela.", StringComparison.OrdinalIgnoreCase)
                 ? name
                 : $"Spectara.Revela.Plugin.{name}";
+
+            // Check package type in index (if available)
+            var packageEntry = await packageIndexService.FindPackageAsync(packageId, cancellationToken);
+            if (packageEntry is not null)
+            {
+                // Validate it's a plugin, not a theme
+                if (packageEntry.Types.Contains("RevelaTheme", StringComparer.OrdinalIgnoreCase) &&
+                    !packageEntry.Types.Contains("RevelaPlugin", StringComparer.OrdinalIgnoreCase))
+                {
+                    AnsiConsole.MarkupLine($"[red]✗[/] Package [cyan]{packageId}[/] is a theme, not a plugin.");
+                    AnsiConsole.MarkupLine("  Use [cyan]revela theme install[/] for themes.");
+                    return 1;
+                }
+            }
 
             var location = global ? "globally" : "locally";
             var sourceInfo = source is not null ? $" from [dim]{source}[/]" : "";

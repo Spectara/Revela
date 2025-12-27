@@ -8,7 +8,7 @@
     <PackageTags>revela;theme;lumina;statistics;exif;charts</PackageTags>
     <PackageIcon>icon.png</PackageIcon>
     <PackageReleaseNotes>https://github.com/spectara/revela/blob/main/CHANGELOG.md</PackageReleaseNotes>
-    <PackageType>RevelaPlugin;RevelaTheme</PackageType>
+    <PackageType>RevelaTheme</PackageType>
 
     <!-- Plugin Support: Copies all dependencies to output, generates complete .deps.json -->
     <EnableDynamicLoading>true</EnableDynamicLoading>

@@ -8,6 +8,7 @@ using Spectara.Revela.Commands.Packages;
 using Spectara.Revela.Commands.Plugins;
 using Spectara.Revela.Commands.Restore;
 using Spectara.Revela.Commands.Theme;
+using Spectara.Revela.Core.Services;
 
 namespace Spectara.Revela.Commands;
 
@@ -27,6 +28,9 @@ public static class ServiceCollectionExtensions
     /// <returns>The service collection for chaining.</returns>
     public static IServiceCollection AddRevelaCommands(this IServiceCollection services)
     {
+        // Shared services
+        services.AddSingleton<IPackageIndexService, PackageIndexService>();
+
         // Feature commands
         services.AddCleanFeature();
         services.AddConfigFeature();

@@ -693,8 +693,9 @@ public sealed class PluginManager(
     /// Infers package types from naming convention.
     /// </summary>
     /// <remarks>
-    /// Since NuGet search API doesn't return PackageTypes directly,
-    /// we infer them from the package ID naming convention:
+    /// Used for search results where NuGet API doesn't return PackageTypes.
+    /// Real types are read from .nuspec during installation.
+    /// Naming convention:
     /// - Spectara.Revela.Theme.* → RevelaTheme
     /// - Spectara.Revela.Plugin.* → RevelaPlugin
     /// </remarks>
@@ -702,19 +703,12 @@ public sealed class PluginManager(
     {
         var types = new List<string>();
 
-        if (packageId.StartsWith("Spectara.Revela.Theme.", StringComparison.OrdinalIgnoreCase))
+        if (packageId.Contains(".Theme.", StringComparison.OrdinalIgnoreCase))
         {
             types.Add("RevelaTheme");
-
-            // Theme extensions also have RevelaPlugin type
-            // e.g., Spectara.Revela.Theme.Lumina.Statistics
-            var themePart = packageId["Spectara.Revela.Theme.".Length..];
-            if (themePart.Contains('.', StringComparison.Ordinal))
-            {
-                types.Add("RevelaPlugin");
-            }
         }
-        else if (packageId.StartsWith("Spectara.Revela.Plugin.", StringComparison.OrdinalIgnoreCase))
+
+        if (packageId.Contains(".Plugin.", StringComparison.OrdinalIgnoreCase))
         {
             types.Add("RevelaPlugin");
         }

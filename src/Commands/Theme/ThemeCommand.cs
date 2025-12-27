@@ -10,15 +10,15 @@ namespace Spectara.Revela.Commands.Theme;
 /// - list: Show available themes (local + installed)
 /// - files: List all theme files with source information
 /// - extract: Extract a theme to themes/ folder for customization
-///
-/// Future:
-/// - add: Install theme from NuGet
-/// - remove: Uninstall theme
+/// - install: Install theme from NuGet package index
+/// - uninstall: Remove an installed theme
 /// </remarks>
 public sealed class ThemeCommand(
     ThemeListCommand listCommand,
     ThemeFilesCommand filesCommand,
-    ThemeExtractCommand extractCommand)
+    ThemeExtractCommand extractCommand,
+    ThemeInstallCommand installCommand,
+    ThemeUninstallCommand uninstallCommand)
 {
     /// <summary>
     /// Creates the theme command with all subcommands.
@@ -32,6 +32,8 @@ public sealed class ThemeCommand(
         command.Subcommands.Add(listCommand.Create());
         command.Subcommands.Add(filesCommand.Create());
         command.Subcommands.Add(extractCommand.Create());
+        command.Subcommands.Add(installCommand.Create());
+        command.Subcommands.Add(uninstallCommand.Create());
 
         return command;
     }

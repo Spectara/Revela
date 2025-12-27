@@ -23,6 +23,8 @@ public static class ServiceCollectionExtensions
         services.AddTransient<ThemeListCommand>();
         services.AddTransient<ThemeFilesCommand>();
         services.AddTransient<ThemeExtractCommand>();
+        services.AddTransient<ThemeInstallCommand>();
+        services.AddTransient<ThemeUninstallCommand>();
         services.AddTransient<ThemeCommand>();
 
         return services;
