@@ -105,72 +105,6 @@ internal static class ProjectResolver
     }
 
     /// <summary>
-    /// Shows first-run menu when no projects exist (standalone mode)
-    /// </summary>
-    /// <returns>True if user wants to create a project, false to exit</returns>
-    public static bool ShowFirstRunMenu()
-    {
-        return ShowNoProjectMenu(
-            "No projects found in the projects/ folder.",
-            "Create your first project");
-    }
-
-    /// <summary>
-    /// Shows menu when current directory is not a project (tool mode)
-    /// </summary>
-    /// <returns>True if user wants to initialize this folder, false to exit</returns>
-    public static bool ShowNoProjectInCwdMenu()
-    {
-        return ShowNoProjectMenu(
-            "This directory doesn't contain a project.",
-            "Initialize this folder as a project");
-    }
-
-    /// <summary>
-    /// Shows the no-project menu with customizable message
-    /// </summary>
-    private static bool ShowNoProjectMenu(string message, string createOption)
-    {
-        AnsiConsole.Clear();
-
-        // ASCII logo
-        var logoLines = new[]
-        {
-            @"   ____                _       ",
-            @"  |  _ \ _____   _____| | __ _ ",
-            @"  | |_) / _ \ \ / / _ \ |/ _` |",
-            @"  |  _ <  __/\ V /  __/ | (_| |",
-            @"  |_| \_\___| \_/ \___|_|\__,_|",
-        };
-
-        foreach (var line in logoLines)
-        {
-            AnsiConsole.MarkupLine("[cyan1]" + line + "[/]");
-        }
-
-        AnsiConsole.WriteLine();
-
-        var panel = new Panel(
-            new Markup(
-                "[bold]Welcome to Revela![/]\n\n" +
-                $"[dim]{message}[/]\n\n" +
-                "Let's get started."))
-            .Border(BoxBorder.Rounded)
-            .BorderColor(Color.Cyan1)
-            .Padding(1, 0);
-
-        AnsiConsole.Write(panel);
-        AnsiConsole.WriteLine();
-
-        var selection = AnsiConsole.Prompt(
-            new SelectionPrompt<string>()
-                .HighlightStyle(new Style(Color.Cyan1, decoration: Decoration.Bold))
-                .AddChoices([createOption, "[dim]Exit[/]"]));
-
-        return selection != "[dim]Exit[/]";
-    }
-
-    /// <summary>
     /// Parses --project or -p argument from command line
     /// </summary>
     /// <param name="args">Command line arguments</param>
@@ -406,18 +340,11 @@ internal static class ProjectResolver
         // Interactive mode
         var availableProjects = GetAvailableProjects();
 
-        // No projects - show first run
+        // No projects - go to interactive menu (which shows init, theme, plugin, etc.)
         if (availableProjects.Count == 0)
         {
-            var wantsCreate = ShowFirstRunMenu();
-            if (!wantsCreate)
-            {
-                return (null, filteredArgs, true);
-            }
-
-            // User wants to create - we'll handle this by returning a special marker
-            // The create command will be triggered in Program.cs
-            return (ConfigPathResolver.ProjectsDirectory, ["create", "project"], false);
+            // Return current directory as context, no commands = interactive mode
+            return (Directory.GetCurrentDirectory(), filteredArgs, false);
         }
 
         // Single project - auto-select

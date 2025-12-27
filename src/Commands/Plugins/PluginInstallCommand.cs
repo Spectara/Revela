@@ -59,10 +59,14 @@ public sealed partial class PluginInstallCommand(
             var global = parseResult.GetValue(globalOption);
             var source = parseResult.GetValue(sourceOption);
 
+            // No name provided → show interactive selection
             if (string.IsNullOrEmpty(name))
             {
-                ErrorPanels.ShowValidationError("Plugin name is required.");
-                return 1;
+                name = await SelectPluginInteractivelyAsync(cancellationToken);
+                if (name is null)
+                {
+                    return 0; // User cancelled
+                }
             }
 
             cancellationToken.ThrowIfCancellationRequested();
@@ -71,6 +75,51 @@ public sealed partial class PluginInstallCommand(
 
         return command;
     }
+
+    private async Task<string?> SelectPluginInteractivelyAsync(CancellationToken cancellationToken)
+    {
+        var plugins = await packageIndexService.SearchByTypeAsync("RevelaPlugin", cancellationToken);
+
+        if (plugins.Count == 0)
+        {
+            var indexAge = packageIndexService.GetIndexAge();
+            if (indexAge is null)
+            {
+                AnsiConsole.MarkupLine("[yellow]⚠[/] Package index not found.");
+                AnsiConsole.MarkupLine("  Run [cyan]revela packages refresh[/] first.");
+            }
+            else
+            {
+                AnsiConsole.MarkupLine("[yellow]⚠[/] No plugins found in package index.");
+                AnsiConsole.MarkupLine("  Run [cyan]revela packages refresh[/] to update.");
+            }
+
+            return null;
+        }
+
+        var choices = plugins
+            .Select(p => $"{p.Id} [dim]({p.Version})[/] - {Truncate(p.Description, 40)}")
+            .Concat(["[dim]Cancel[/]"])
+            .ToList();
+
+        var selection = AnsiConsole.Prompt(
+            new SelectionPrompt<string>()
+                .Title("[cyan]Select a plugin to install:[/]")
+                .PageSize(15)
+                .HighlightStyle(new Style(Color.Cyan1))
+                .AddChoices(choices));
+
+        if (selection == "[dim]Cancel[/]")
+        {
+            return null;
+        }
+
+        // Extract package ID from selection (before first space)
+        return selection.Split(' ')[0];
+    }
+
+    private static string Truncate(string text, int maxLength) =>
+        text.Length <= maxLength ? text : text[..(maxLength - 3)] + "...";
 
     internal async Task<int> ExecuteFromNuGetAsync(string name, string? version, bool global, string? source = null, CancellationToken cancellationToken = default)
     {
