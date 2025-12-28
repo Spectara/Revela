@@ -24,6 +24,11 @@ internal sealed record MenuChoice(
     public static MenuChoice Exit => new("Exit", Action: MenuAction.Exit);
 
     /// <summary>
+    /// Creates a "Setup Wizard" menu choice.
+    /// </summary>
+    public static MenuChoice SetupWizard => new("🔧 Setup Wizard  [dim]Configure themes and plugins[/]", Action: MenuAction.RunSetupWizard);
+
+    /// <summary>
     /// Creates a menu choice from a command.
     /// </summary>
     /// <param name="cmd">The command to create a choice for.</param>
@@ -63,5 +68,8 @@ internal enum MenuAction
     Back,
 
     /// <summary>Exit the interactive mode.</summary>
-    Exit
+    Exit,
+
+    /// <summary>Run the setup wizard.</summary>
+    RunSetupWizard
 }

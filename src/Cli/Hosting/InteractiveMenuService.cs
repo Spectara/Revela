@@ -2,6 +2,7 @@ using System.CommandLine;
 using System.Reflection;
 using Microsoft.Extensions.Options;
 using Spectara.Revela.Core.Configuration;
+using Spectara.Revela.Core.Services;
 using Spectara.Revela.Sdk;
 using Spectre.Console;
 
@@ -15,6 +16,7 @@ internal sealed partial class InteractiveMenuService(
     CommandGroupRegistry groupRegistry,
     CommandOrderRegistry orderRegistry,
     IOptions<ProjectConfig> projectConfig,
+    SetupWizard setupWizard,
     ILogger<InteractiveMenuService> logger) : IInteractiveMenuService
 {
     private bool bannerShown;
@@ -32,8 +34,81 @@ internal sealed partial class InteractiveMenuService(
             return 1;
         }
 
+        // Check if this is a fresh installation (no revela.json)
+        if (!GlobalConfigManager.ConfigFileExists())
+        {
+            return await HandleFirstRunAsync(cancellationToken);
+        }
+
         ShowWelcomeBanner();
 
+        return await RunMenuLoopAsync(cancellationToken);
+    }
+
+    private async Task<int> HandleFirstRunAsync(CancellationToken cancellationToken)
+    {
+        AnsiConsole.Clear();
+
+        var logoLines = new[]
+        {
+            @"   ____                _       ",
+            @"  |  _ \ _____   _____| | __ _ ",
+            @"  | |_) / _ \ \ / / _ \ |/ _` |",
+            @"  |  _ <  __/\ V /  __/ | (_| |",
+            @"  |_| \_\___| \_/ \___|_|\__,_|",
+        };
+
+        foreach (var line in logoLines)
+        {
+            AnsiConsole.MarkupLine("[cyan1]" + line + "[/]");
+        }
+
+        AnsiConsole.WriteLine();
+
+        var panel = new Panel(
+            new Markup(
+                "[bold]Welcome to Revela![/]\n\n" +
+                "This appears to be your first time running Revela.\n" +
+                "The setup wizard will help you install themes and plugins."))
+            .WithHeader("[cyan1]First Run[/]")
+            .Border(BoxBorder.Rounded)
+            .BorderStyle(new Style(Color.Cyan1))
+            .Padding(1, 0);
+
+        AnsiConsole.Write(panel);
+        AnsiConsole.WriteLine();
+
+        var choice = AnsiConsole.Prompt(
+            new SelectionPrompt<string>()
+                .Title("[cyan]What would you like to do?[/]")
+                .HighlightStyle(new Style(Color.Cyan1))
+                .AddChoices(["Start Setup Wizard", "Skip (use menu instead)"]));
+
+        if (choice == "Start Setup Wizard")
+        {
+            var result = await setupWizard.RunAsync(cancellationToken);
+
+            // Exit code 2 = packages installed, restart required
+            if (result == SetupWizard.ExitCodeRestartRequired)
+            {
+                return 0;
+            }
+
+            // Exit code 0 = nothing installed, continue to menu
+            if (result == 0)
+            {
+                bannerShown = true; // Don't show banner, wizard already showed welcome
+                return await RunMenuLoopAsync(cancellationToken);
+            }
+
+            // Wizard failed or was cancelled - continue to menu
+            AnsiConsole.WriteLine();
+            AnsiConsole.MarkupLine("[yellow]Setup was not completed. Continuing to menu...[/]");
+            WaitForKeyPress();
+        }
+
+        // User skipped or wizard failed - show normal menu
+        bannerShown = true; // Don't show banner again, we already showed first-run screen
         return await RunMenuLoopAsync(cancellationToken);
     }
 
@@ -108,7 +183,8 @@ internal sealed partial class InteractiveMenuService(
     {
         var prompt = BuildGroupedSelectionPrompt(
             RootCommand!.Subcommands,
-            string.Empty);
+            string.Empty,
+            includeSetupWizard: true);
 
         var selection = AnsiConsole.Prompt(prompt);
 
@@ -118,8 +194,30 @@ internal sealed partial class InteractiveMenuService(
             MenuAction.Back => new MenuResult(false, 0),
             MenuAction.Navigate => await NavigateToCommandAsync(selection.Command!, [selection.Command!.Name], cancellationToken),
             MenuAction.Execute => await ExecuteCommandAsync(selection.Command!, [selection.Command!.Name], cancellationToken),
+            MenuAction.RunSetupWizard => await RunSetupWizardAsync(cancellationToken),
             _ => new MenuResult(false, 0),
         };
+    }
+
+    private async Task<MenuResult> RunSetupWizardAsync(CancellationToken cancellationToken)
+    {
+        var result = await setupWizard.RunAsync(cancellationToken);
+
+        // Exit code 2 = packages installed, restart required
+        if (result == SetupWizard.ExitCodeRestartRequired)
+        {
+            return new MenuResult(true, 0);
+        }
+
+        // Exit code 0 = nothing installed, continue to menu
+        if (result == 0)
+        {
+            return new MenuResult(false, 0);
+        }
+
+        // Wizard failed or was cancelled - continue menu
+        WaitForKeyPress();
+        return new MenuResult(false, 0);
     }
 
     private async Task<MenuResult> NavigateToCommandAsync(
@@ -159,6 +257,15 @@ internal sealed partial class InteractiveMenuService(
                     if (execResult.ShouldExit)
                     {
                         return execResult;
+                    }
+
+                    break;
+
+                case MenuAction.RunSetupWizard:
+                    var wizardResult = await RunSetupWizardAsync(cancellationToken);
+                    if (wizardResult.ShouldExit)
+                    {
+                        return wizardResult;
                     }
 
                     break;
@@ -285,12 +392,14 @@ internal sealed partial class InteractiveMenuService(
     /// <param name="title">The prompt title.</param>
     /// <param name="includeBack">Whether to include a "Back" option at the top.</param>
     /// <param name="includeExit">Whether to include an "Exit" option at the bottom.</param>
+    /// <param name="includeSetupWizard">Whether to include the Setup Wizard option in the Setup group.</param>
     /// <returns>A configured selection prompt.</returns>
     private SelectionPrompt<MenuChoice> BuildGroupedSelectionPrompt(
         IEnumerable<Command> commands,
         string title,
         bool includeBack = false,
-        bool includeExit = true)
+        bool includeExit = true,
+        bool includeSetupWizard = false)
     {
         var prompt = new SelectionPrompt<MenuChoice>()
             .Title(title)
@@ -328,9 +437,15 @@ internal sealed partial class InteractiveMenuService(
                 {
                     // Create group header as MenuChoice (will be non-selectable due to Leaf mode)
                     var groupChoice = new MenuChoice(groupName, Action: MenuAction.Navigate);
-                    var commandChoices = groupCommands.Select(MenuChoice.FromCommand).ToArray();
+                    var commandChoices = groupCommands.Select(MenuChoice.FromCommand).ToList();
 
-                    prompt.AddChoiceGroup(groupChoice, commandChoices);
+                    // Add Setup Wizard to the Setup group
+                    if (includeSetupWizard && groupName == CommandGroups.Setup)
+                    {
+                        commandChoices.Add(MenuChoice.SetupWizard);
+                    }
+
+                    prompt.AddChoiceGroup(groupChoice, [.. commandChoices]);
                 }
                 else
                 {

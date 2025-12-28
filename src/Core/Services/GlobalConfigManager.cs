@@ -194,6 +194,32 @@ public static class GlobalConfigManager
     }
 
     /// <summary>
+    /// Gets all installed themes from the global configuration.
+    /// </summary>
+    /// <returns>Dictionary of package ID to version.</returns>
+    public static async Task<IReadOnlyDictionary<string, string>> GetThemesAsync(CancellationToken cancellationToken = default)
+    {
+        var config = await LoadFileAsync(cancellationToken);
+        return config.Themes;
+    }
+
+    /// <summary>
+    /// Gets all installed plugins from the global configuration.
+    /// </summary>
+    /// <returns>Dictionary of package ID to version.</returns>
+    public static async Task<IReadOnlyDictionary<string, string>> GetPluginsAsync(CancellationToken cancellationToken = default)
+    {
+        var config = await LoadFileAsync(cancellationToken);
+        return config.Plugins;
+    }
+
+    /// <summary>
+    /// Checks if the global config file exists.
+    /// </summary>
+    /// <returns>True if revela.json exists.</returns>
+    public static bool ConfigFileExists() => File.Exists(ConfigFilePath);
+
+    /// <summary>
     /// Clears the cached configuration (for testing)
     /// </summary>
     public static void ClearCache() => cachedConfig = null;

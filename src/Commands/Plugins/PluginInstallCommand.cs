@@ -1,6 +1,7 @@
 using System.CommandLine;
 
 using Spectara.Revela.Core;
+using Spectara.Revela.Core.Models;
 using Spectara.Revela.Core.Services;
 using Spectara.Revela.Sdk;
 
@@ -52,21 +53,32 @@ public sealed partial class PluginInstallCommand(
         };
         command.Options.Add(sourceOption);
 
+        var allOption = new Option<bool>("--all", "-a")
+        {
+            Description = "Install all available plugins"
+        };
+        command.Options.Add(allOption);
+
         command.SetAction(async (parseResult, cancellationToken) =>
         {
             var name = parseResult.GetValue(nameArgument);
             var version = parseResult.GetValue(versionOption);
             var global = parseResult.GetValue(globalOption);
             var source = parseResult.GetValue(sourceOption);
+            var all = parseResult.GetValue(allOption);
 
-            // No name provided → show interactive selection
+            // --all flag → install all available plugins
+            if (all)
+            {
+                var result = await InstallAllAsync(cancellationToken);
+                return result.HasFailures ? 1 : 0;
+            }
+
+            // No name provided → show interactive multi-selection
             if (string.IsNullOrEmpty(name))
             {
-                name = await SelectPluginInteractivelyAsync(cancellationToken);
-                if (name is null)
-                {
-                    return 0; // User cancelled
-                }
+                var result = await InstallInteractiveAsync(cancellationToken);
+                return result.HasFailures ? 1 : 0;
             }
 
             cancellationToken.ThrowIfCancellationRequested();
@@ -76,7 +88,123 @@ public sealed partial class PluginInstallCommand(
         return command;
     }
 
-    private async Task<string?> SelectPluginInteractivelyAsync(CancellationToken cancellationToken)
+    /// <summary>
+    /// Installs all available plugins (for --all flag).
+    /// </summary>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>Result containing installed, already-installed, and failed packages.</returns>
+    public async Task<InstallResult> InstallAllAsync(CancellationToken cancellationToken = default)
+    {
+        var plugins = await packageIndexService.SearchByTypeAsync("RevelaPlugin", cancellationToken);
+
+        if (plugins.Count == 0)
+        {
+            AnsiConsole.MarkupLine("[yellow]⚠[/] No plugins found in package index.");
+            AnsiConsole.MarkupLine("  Run [cyan]revela packages refresh[/] to update.");
+            return InstallResult.Empty;
+        }
+
+        // Get already installed plugins to filter them out
+        var installedPlugins = await GlobalConfigManager.GetPluginsAsync(cancellationToken);
+        var installedIds = installedPlugins.Keys.ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        var availablePlugins = plugins.Where(p => !installedIds.Contains(p.Id)).ToList();
+
+        if (availablePlugins.Count == 0)
+        {
+            AnsiConsole.MarkupLine("[green]✓[/] All available plugins are already installed.");
+            return new InstallResult([], [.. installedPlugins.Keys], []);
+        }
+
+        AnsiConsole.MarkupLine($"Installing [cyan]{availablePlugins.Count}[/] plugin(s)...");
+        AnsiConsole.WriteLine();
+
+        var installed = new List<string>();
+        var failed = new List<string>();
+
+        foreach (var plugin in availablePlugins)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var result = await ExecuteFromNuGetAsync(plugin.Id, version: null, global: false, source: null, cancellationToken);
+            if (result == 0)
+            {
+                installed.Add(plugin.Id);
+            }
+            else
+            {
+                failed.Add(plugin.Id);
+            }
+        }
+
+        // Show summary
+        AnsiConsole.WriteLine();
+        if (failed.Count == 0)
+        {
+            AnsiConsole.MarkupLine($"[green]✓[/] All {installed.Count} plugins installed successfully.");
+        }
+        else
+        {
+            AnsiConsole.MarkupLine($"[yellow]⚠[/] {installed.Count} of {availablePlugins.Count} plugins installed.");
+        }
+
+        return new InstallResult(installed, [.. installedIds], failed);
+    }
+
+    /// <summary>
+    /// Installs plugins interactively (shows multi-select prompt).
+    /// </summary>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>Result containing installed, already-installed, and failed packages.</returns>
+    public async Task<InstallResult> InstallInteractiveAsync(CancellationToken cancellationToken = default)
+    {
+        var selectedPlugins = await SelectPluginsInteractivelyAsync(cancellationToken);
+        if (selectedPlugins.Count == 0)
+        {
+            // Check if all plugins are already installed
+            var installedPlugins = await GlobalConfigManager.GetPluginsAsync(cancellationToken);
+            if (installedPlugins.Count > 0)
+            {
+                return new InstallResult([], [.. installedPlugins.Keys], []);
+            }
+
+            return InstallResult.Empty;
+        }
+
+        var installed = new List<string>();
+        var failed = new List<string>();
+
+        foreach (var pluginId in selectedPlugins)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var result = await ExecuteFromNuGetAsync(pluginId, version: null, global: false, source: null, cancellationToken);
+            if (result == 0)
+            {
+                installed.Add(pluginId);
+            }
+            else
+            {
+                failed.Add(pluginId);
+            }
+        }
+
+        // Show summary if multiple plugins
+        if (selectedPlugins.Count > 1)
+        {
+            AnsiConsole.WriteLine();
+            if (failed.Count == 0)
+            {
+                AnsiConsole.MarkupLine($"[green]✓[/] All {installed.Count} plugins installed successfully.");
+            }
+            else
+            {
+                AnsiConsole.MarkupLine($"[yellow]⚠[/] {installed.Count} of {selectedPlugins.Count} plugins installed.");
+            }
+        }
+
+        return new InstallResult(installed, [], failed);
+    }
+
+    private async Task<IReadOnlyList<string>> SelectPluginsInteractivelyAsync(CancellationToken cancellationToken)
     {
         var plugins = await packageIndexService.SearchByTypeAsync("RevelaPlugin", cancellationToken);
 
@@ -94,28 +222,57 @@ public sealed partial class PluginInstallCommand(
                 AnsiConsole.MarkupLine("  Run [cyan]revela packages refresh[/] to update.");
             }
 
-            return null;
+            return [];
         }
 
-        var choices = plugins
+        // Get already installed plugins to filter them out
+        var installedPlugins = await GlobalConfigManager.GetPluginsAsync(cancellationToken);
+        var installedIds = installedPlugins.Keys.ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        // Filter out already installed plugins
+        var availablePlugins = plugins.Where(p => !installedIds.Contains(p.Id)).ToList();
+
+        if (availablePlugins.Count == 0)
+        {
+            AnsiConsole.MarkupLine("[green]✓[/] All available plugins are already installed.");
+            return [];
+        }
+
+        // Show info about installed plugins
+        if (installedPlugins.Count > 0)
+        {
+            AnsiConsole.MarkupLine("[green]Already installed:[/]");
+            foreach (var pluginId in installedPlugins.Keys)
+            {
+                AnsiConsole.MarkupLine($"  [green]✓[/] {pluginId}");
+            }
+
+            AnsiConsole.WriteLine();
+        }
+
+        const string selectAllChoice = "[yellow]» All «[/]";
+        var choices = availablePlugins
             .Select(p => $"{p.Id} [dim]({p.Version})[/] - {Truncate(p.Description, 40)}")
-            .Concat(["[dim]Cancel[/]"])
             .ToList();
 
-        var selection = AnsiConsole.Prompt(
-            new SelectionPrompt<string>()
-                .Title("[cyan]Select a plugin to install:[/]")
+        var selections = AnsiConsole.Prompt(
+            new MultiSelectionPrompt<string>()
+                .Title("[cyan]Select plugins to install:[/] [dim](Space to select, Enter to confirm)[/]")
                 .PageSize(15)
+                .Required(false)
                 .HighlightStyle(new Style(Color.Cyan1))
+                .InstructionsText("[dim](↑↓ navigate, Space select, Enter confirm)[/]")
+                .AddChoices(selectAllChoice)
                 .AddChoices(choices));
 
-        if (selection == "[dim]Cancel[/]")
+        // Handle "Select all" option
+        if (selections.Contains(selectAllChoice))
         {
-            return null;
+            return [.. availablePlugins.Select(p => p.Id)];
         }
 
-        // Extract package ID from selection (before first space)
-        return selection.Split(' ')[0];
+        // Extract package IDs from selections (before first space)
+        return [.. selections.Select(s => s.Split(' ')[0])];
     }
 
     private static string Truncate(string text, int maxLength) =>
@@ -164,6 +321,10 @@ public sealed partial class PluginInstallCommand(
 
             if (success)
             {
+                // Register plugin in global config (revela.json)
+                var installedVersion = version ?? packageEntry?.Version ?? "latest";
+                await GlobalConfigManager.AddPluginAsync(packageId, installedVersion, cancellationToken);
+
                 AnsiConsole.MarkupLine($"[green]Plugin '{packageId}' installed successfully.[/]");
                 AnsiConsole.MarkupLine("[dim]The plugin will be available after restarting revela.[/]");
                 return 0;

@@ -1,6 +1,7 @@
 using System.CommandLine;
 
 using Spectara.Revela.Core;
+using Spectara.Revela.Core.Models;
 using Spectara.Revela.Core.Services;
 using Spectara.Revela.Sdk;
 
@@ -52,21 +53,32 @@ public sealed partial class ThemeInstallCommand(
         };
         command.Options.Add(sourceOption);
 
+        var allOption = new Option<bool>("--all", "-a")
+        {
+            Description = "Install all available themes"
+        };
+        command.Options.Add(allOption);
+
         command.SetAction(async (parseResult, cancellationToken) =>
         {
             var name = parseResult.GetValue(nameArgument);
             var version = parseResult.GetValue(versionOption);
             var global = parseResult.GetValue(globalOption);
             var source = parseResult.GetValue(sourceOption);
+            var all = parseResult.GetValue(allOption);
 
-            // No name provided → show interactive selection
+            // --all flag → install all available themes
+            if (all)
+            {
+                var result = await InstallAllAsync(cancellationToken);
+                return result.HasFailures ? 1 : 0;
+            }
+
+            // No name provided → show interactive multi-selection
             if (string.IsNullOrEmpty(name))
             {
-                name = await SelectThemeInteractivelyAsync(cancellationToken);
-                if (name is null)
-                {
-                    return 0; // User cancelled
-                }
+                var result = await InstallInteractiveAsync(cancellationToken);
+                return result.HasFailures ? 1 : 0;
             }
 
             return await ExecuteAsync(name, version, global, source, cancellationToken);
@@ -75,7 +87,123 @@ public sealed partial class ThemeInstallCommand(
         return command;
     }
 
-    private async Task<string?> SelectThemeInteractivelyAsync(CancellationToken cancellationToken)
+    /// <summary>
+    /// Installs all available themes (for --all flag).
+    /// </summary>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>Result containing installed, already-installed, and failed packages.</returns>
+    public async Task<InstallResult> InstallAllAsync(CancellationToken cancellationToken = default)
+    {
+        var themes = await packageIndexService.SearchByTypeAsync("RevelaTheme", cancellationToken);
+
+        if (themes.Count == 0)
+        {
+            AnsiConsole.MarkupLine("[yellow]⚠[/] No themes found in package index.");
+            AnsiConsole.MarkupLine("  Run [cyan]revela packages refresh[/] to update.");
+            return InstallResult.Empty;
+        }
+
+        // Get already installed themes to filter them out
+        var installedThemes = await GlobalConfigManager.GetThemesAsync(cancellationToken);
+        var installedIds = installedThemes.Keys.ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        var availableThemes = themes.Where(t => !installedIds.Contains(t.Id)).ToList();
+
+        if (availableThemes.Count == 0)
+        {
+            AnsiConsole.MarkupLine("[green]✓[/] All available themes are already installed.");
+            return new InstallResult([], [.. installedThemes.Keys], []);
+        }
+
+        AnsiConsole.MarkupLine($"Installing [cyan]{availableThemes.Count}[/] theme(s)...");
+        AnsiConsole.WriteLine();
+
+        var installed = new List<string>();
+        var failed = new List<string>();
+
+        foreach (var theme in availableThemes)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var result = await ExecuteAsync(theme.Id, version: null, global: false, source: null, cancellationToken);
+            if (result == 0)
+            {
+                installed.Add(theme.Id);
+            }
+            else
+            {
+                failed.Add(theme.Id);
+            }
+        }
+
+        // Show summary
+        AnsiConsole.WriteLine();
+        if (failed.Count == 0)
+        {
+            AnsiConsole.MarkupLine($"[green]✓[/] All {installed.Count} themes installed successfully.");
+        }
+        else
+        {
+            AnsiConsole.MarkupLine($"[yellow]⚠[/] {installed.Count} of {availableThemes.Count} themes installed.");
+        }
+
+        return new InstallResult(installed, [.. installedIds], failed);
+    }
+
+    /// <summary>
+    /// Installs themes interactively (shows multi-select prompt).
+    /// </summary>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>Result containing installed, already-installed, and failed packages.</returns>
+    public async Task<InstallResult> InstallInteractiveAsync(CancellationToken cancellationToken = default)
+    {
+        var selectedThemes = await SelectThemesInteractivelyAsync(cancellationToken);
+        if (selectedThemes.Count == 0)
+        {
+            // Check if all themes are already installed
+            var installedThemes = await GlobalConfigManager.GetThemesAsync(cancellationToken);
+            if (installedThemes.Count > 0)
+            {
+                return new InstallResult([], [.. installedThemes.Keys], []);
+            }
+
+            return InstallResult.Empty;
+        }
+
+        var installed = new List<string>();
+        var failed = new List<string>();
+
+        foreach (var themeId in selectedThemes)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var result = await ExecuteAsync(themeId, version: null, global: false, source: null, cancellationToken);
+            if (result == 0)
+            {
+                installed.Add(themeId);
+            }
+            else
+            {
+                failed.Add(themeId);
+            }
+        }
+
+        // Show summary if multiple themes
+        if (selectedThemes.Count > 1)
+        {
+            AnsiConsole.WriteLine();
+            if (failed.Count == 0)
+            {
+                AnsiConsole.MarkupLine($"[green]✓[/] All {installed.Count} themes installed successfully.");
+            }
+            else
+            {
+                AnsiConsole.MarkupLine($"[yellow]⚠[/] {installed.Count} of {selectedThemes.Count} themes installed.");
+            }
+        }
+
+        return new InstallResult(installed, [], failed);
+    }
+
+    private async Task<IReadOnlyList<string>> SelectThemesInteractivelyAsync(CancellationToken cancellationToken)
     {
         var themes = await packageIndexService.SearchByTypeAsync("RevelaTheme", cancellationToken);
 
@@ -93,28 +221,63 @@ public sealed partial class ThemeInstallCommand(
                 AnsiConsole.MarkupLine("  Run [cyan]revela packages refresh[/] to update.");
             }
 
-            return null;
+            return [];
         }
 
-        var choices = themes
-            .Select(p => $"{p.Id} [dim]({p.Version})[/] - {Truncate(p.Description, 40)}")
-            .Concat(["[dim]Cancel[/]"])
+        // Get already installed themes to filter them out
+        var installedThemes = await GlobalConfigManager.GetThemesAsync(cancellationToken);
+        var installedIds = installedThemes.Keys.ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        // Filter out already installed themes
+        var availableThemes = themes.Where(t => !installedIds.Contains(t.Id)).ToList();
+
+        if (availableThemes.Count == 0)
+        {
+            AnsiConsole.MarkupLine("[green]✓[/] All available themes are already installed.");
+            return [];
+        }
+
+        // Show info about installed themes
+        if (installedThemes.Count > 0)
+        {
+            AnsiConsole.MarkupLine("[green]Already installed:[/]");
+            foreach (var themeId in installedThemes.Keys)
+            {
+                AnsiConsole.MarkupLine($"  [green]✓[/] {themeId}");
+            }
+
+            AnsiConsole.WriteLine();
+        }
+
+        // Theme is required if none are installed yet
+        var isRequired = installedThemes.Count == 0;
+
+        const string selectAllChoice = "[yellow]» All «[/]";
+        var choices = availableThemes
+            .Select(t => $"{t.Id} [dim]({t.Version})[/] - {Truncate(t.Description, 40)}")
             .ToList();
 
-        var selection = AnsiConsole.Prompt(
-            new SelectionPrompt<string>()
-                .Title("[cyan]Select a theme to install:[/]")
-                .PageSize(15)
-                .HighlightStyle(new Style(Color.Cyan1))
-                .AddChoices(choices));
+        var prompt = new MultiSelectionPrompt<string>()
+            .Title(isRequired
+                ? "[cyan]Select at least one theme to install:[/] [dim](Space to select, Enter to confirm)[/]"
+                : "[cyan]Select themes to install:[/] [dim](Space to select, Enter to confirm)[/]")
+            .PageSize(15)
+            .Required(isRequired)
+            .HighlightStyle(new Style(Color.Cyan1))
+            .InstructionsText("[dim](↑↓ navigate, Space select, Enter confirm)[/]")
+            .AddChoices(selectAllChoice)
+            .AddChoices(choices);
 
-        if (selection == "[dim]Cancel[/]")
+        var selections = AnsiConsole.Prompt(prompt);
+
+        // Handle "Select all" option
+        if (selections.Contains(selectAllChoice))
         {
-            return null;
+            return [.. availableThemes.Select(t => t.Id)];
         }
 
-        // Extract package ID from selection (before first space)
-        return selection.Split(' ')[0];
+        // Extract package IDs from selections (before first space)
+        return [.. selections.Select(s => s.Split(' ')[0])];
     }
 
     private static string Truncate(string text, int maxLength) =>
@@ -180,6 +343,10 @@ public sealed partial class ThemeInstallCommand(
 
             if (success)
             {
+                // Register theme in global config (revela.json)
+                var installedVersion = version ?? packageEntry.Version;
+                await GlobalConfigManager.AddThemeAsync(packageId, installedVersion, cancellationToken);
+
                 AnsiConsole.MarkupLine($"[green]✓[/] Theme [cyan]{packageId}[/] installed successfully.");
                 AnsiConsole.MarkupLine("[dim]Configure with:[/] revela config theme select");
                 return 0;

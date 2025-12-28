@@ -1,150 +1,129 @@
-# Setup Wizard Plan (`revela init`)
+# Setup Wizard Plan
 
-**Status:** In Progress  
+**Status:** ✅ Revela Setup Wizard Implemented, Project Init pending  
 **Created:** 2025-12-25  
-**Updated:** 2025-12-26
+**Updated:** 2025-12-27
 
-## Completed Prerequisites
+## Two-Step Approach
 
-- ✅ `CommandDescriptor.RequiresProject` - Commands can now declare if they need a project
-- ✅ Project-independent commands work in empty folders (config, plugin, theme, packages)
-- ✅ Interactive menu filters commands based on project status
-- ✅ `create project` removed (use `config project` instead)
-- ✅ Empty folder detection with helpful menu
+Revela now uses a two-step setup:
 
-## Overview
+1. **Revela Setup Wizard** (Program-level) - Configures Revela itself (themes, plugins)
+2. **Project Init** (Project-level) - Creates a new project (future)
 
-Guided first-time setup that creates all config files, installs theme/plugins, and optionally creates sample content.
+## ✅ Revela Setup Wizard (Implemented)
 
-## Flow
+### Trigger
+
+The Setup Wizard is shown automatically when:
+- `revela.json` does not exist (fresh installation)
+
+### Flow
+
+```
+revela                    ← Start without arguments
+  │
+  ├── revela.json missing?
+  │     ├── "Start Setup Wizard" → Wizard → Exit (for plugin reload)
+  │     └── "Skip" → Normal menu (limited functionality)
+  │
+  └── revela.json exists → Normal menu
+        └── "Setup" group → "🔧 Setup Wizard" to re-run
+```
+
+### Wizard Steps
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│  Welcome to Revela Setup                                    │
+│  SETUP WIZARD                                               │
 ├─────────────────────────────────────────────────────────────┤
-│  ○ New project    ○ Express setup (smart defaults)          │
-└─────────────────────────────────────────────────────────────┘
-                            ↓
-        ┌───────────────────────────────────────┐
-        │  — config project —                   │  ← existing
-        │  Name, Base URL, Language             │
-        └───────────────────────────────────────┘
-                            ↓
-        ┌───────────────────────────────────────┐
-        │  — theme select + restore —           │  ← existing
-        │  Lumina, Lumina+Statistics, ...       │
-        └───────────────────────────────────────┘
-                            ↓
-        ┌───────────────────────────────────────┐
-        │  — config site —                      │  ← existing
-        │  Title, Author, Copyright, Social     │
-        └───────────────────────────────────────┘
-                            ↓
-        ┌───────────────────────────────────────┐
-        │  — plugin install (multi-select) —    │  ← new: Multi-Select UI
-        │  [x] Serve  [x] Statistics  [ ] ...   │
-        └───────────────────────────────────────┘
-                            ↓
-        ┌───────────────────────────────────────┐
-        │  — sample content —                   │  ← new
-        │  Empty / Sample gallery / Import      │
-        └───────────────────────────────────────┘
-                            ↓
-┌─────────────────────────────────────────────────────────────┐
-│  Setup complete!                                            │
-│                                                             │
-│  Created:                                                   │
-│    ✓ project.json                                           │
-│    ✓ site.json                                              │
-│    ✓ source/                                                │
-│                                                             │
-│  Next steps:                                                │
-│    1. Add images to source/                                 │
-│    2. revela generate all                                   │
-│    3. revela serve                                          │
+│  Step 1/3: Package Sources                                  │
+│    • Show current NuGet feeds                               │
+│    • Optional: Add custom feed                              │
+├─────────────────────────────────────────────────────────────┤
+│  [Packages Refresh - automatic]                             │
+│    • Download package index from all feeds                  │
+├─────────────────────────────────────────────────────────────┤
+│  Step 2/3: Install Themes                                   │
+│    • Multi-select from available themes                     │
+│    • Already installed = disabled                           │
+│    • At least 1 theme required                              │
+├─────────────────────────────────────────────────────────────┤
+│  Step 3/3: Install Plugins (Optional)                       │
+│    • Multi-select from available plugins                    │
+│    • Already installed = disabled                           │
+├─────────────────────────────────────────────────────────────┤
+│  ✓ Setup completed!                                         │
+│  Revela will exit. Please restart to continue.              │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-## Architecture
+### Implementation Files
 
-The wizard orchestrates existing commands - no duplicated code:
+- [SetupWizard.cs](../src/Cli/Hosting/SetupWizard.cs) - Wizard orchestrator
+- [InteractiveMenuService.cs](../src/Cli/Hosting/InteractiveMenuService.cs) - First-run detection
+- [MenuChoice.cs](../src/Cli/Hosting/MenuChoice.cs) - `MenuAction.RunSetupWizard`
+- [GlobalConfigManager.cs](../src/Core/Services/GlobalConfigManager.cs) - `ConfigFileExists()`, `GetThemesAsync()`
+
+### Automation (without Wizard)
+
+Advanced users can bypass the wizard:
+
+```bash
+revela packages refresh
+revela theme install Spectara.Revela.Theme.Lumina
+revela plugin install Spectara.Revela.Plugin.Serve
+```
+
+---
+
+## 📋 Project Init Wizard (Planned)
+
+The project init wizard creates a new Revela project. It requires the Revela Setup to be completed first (at least one theme installed).
+
+### Trigger
+
+- User runs `revela init` OR
+- User selects "Create Project" from menu (when no project.json exists)
+
+### Planned Flow
+
+```
+revela init
+  │
+  ├── Check: Theme installed? → If not, show error
+  │
+  ├── 1. Project Settings (config project)
+  │     • Name, Base URL, Language
+  │
+  ├── 2. Theme Selection (config theme select)
+  │     • Choose from installed themes
+  │
+  ├── 3. Site Configuration (config site)
+  │     • Title, Author, Copyright
+  │
+  ├── 4. Create source/ directory
+  │
+  └── Summary: "Project created! Add images to source/"
+```
+
+### Architecture
+
+The init wizard orchestrates existing commands:
 
 ```
 InitCommand (orchestrator)
     │
-    ├─→ ConfigProjectCommand.ExecuteAsync()   // Step 2: Project settings
+    ├─→ ConfigProjectCommand    // Project settings
     │
-    ├─→ ThemeManager + PluginManager          // Step 3: Theme install/select
-    │       └─→ RestoreCommand (auto)
+    ├─→ ConfigThemeCommand      // Theme selection
     │
-    ├─→ ConfigSiteCommand.ExecuteAsync()      // Step 4: Site info
+    ├─→ ConfigSiteCommand       // Site info
     │
-    ├─→ PluginManager.InstallAsync()          // Step 5: Plugins
-    │
-    └─→ SampleContentService (new)            // Step 6: Sample content
+    └─→ Create source/          // Directory creation
 ```
 
-## Steps Detail
-
-### 1. Welcome
-
-- New project vs Express setup (smart defaults)
-- `--yes` flag for CI/scripting (accept all defaults)
-
-### 2. Project Settings (existing: `config project`)
-
-| Field | Default | Required |
-|-------|---------|----------|
-| Name | Folder name | Yes |
-| Base URL | (empty) | No |
-| Language | en | No |
-
-### 3. Theme Selection (existing: `config theme`)
-
-- Show installed themes
-- Offer to download Lumina if not installed
-- Auto-restore after selection
-- Theme extensions (e.g., Lumina.Statistics)
-
-### 4. Site Configuration (existing: `config site`)
-
-| Field | Default | Required |
-|-------|---------|----------|
-| Title | Project name | Yes |
-| Author | (empty) | No |
-| Copyright | © {year} {author} | No |
-| Social links | (empty) | No |
-
-### 5. Plugin Selection (new: multi-select UI)
-
-Show available/recommended plugins:
-
-| Plugin | Description | Default |
-|--------|-------------|---------|
-| Serve | Local preview server | ✓ Selected |
-| Statistics | EXIF statistics pages | ✓ Selected |
-| Source.OneDrive | Download from OneDrive | Not selected |
-
-### 6. Sample Content (new: `SampleContentService`)
-
-Options:
-- **Empty project** - Just create directories
-- **Sample gallery** - Create example with placeholder images
-- **Import existing** - Detect images already in source/
-
-### 7. Summary
-
-- List created files
-- Show next steps
-- Suggest commands to run
-
-## New Components Needed
-
-1. **`InitCommand`** - Orchestrates the flow
-2. **Plugin multi-select UI** - In InitCommand
-3. **`SampleContentService`** - Creates example galleries
-
-## CLI Options
+### CLI Options
 
 ```bash
 # Interactive wizard (default)
@@ -157,14 +136,11 @@ revela init --yes
 revela init ./my-portfolio
 ```
 
-## Edge Cases
+---
 
-- **Existing files** - Ask to overwrite/merge?
-- **No network** - Skip theme download, use bundled
-- **Existing source/ with images** - Offer to import
+## Summary
 
-## Future Enhancements
-
-- Project templates (minimal, portfolio, multi-gallery)
-- Git ignore file creation
-- VS Code workspace settings
+| Wizard | Trigger | Purpose | Files Created |
+|--------|---------|---------|---------------|
+| Revela Setup | No revela.json | Install themes/plugins | revela.json |
+| Project Init | No project.json | Create project | project.json, site.json, source/ |

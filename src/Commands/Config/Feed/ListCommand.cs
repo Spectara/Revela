@@ -23,12 +23,17 @@ public sealed partial class ListCommand(
         var command = new Command("list", "List all NuGet feeds");
 
         command.SetAction(async (_, cancellationToken) =>
-            await ExecuteAsync(cancellationToken));
+            await ShowFeedsAsync(cancellationToken));
 
         return command;
     }
 
-    private async Task<int> ExecuteAsync(CancellationToken cancellationToken)
+    /// <summary>
+    /// Shows the list of configured NuGet feeds.
+    /// </summary>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>Exit code (0 = success).</returns>
+    public async Task<int> ShowFeedsAsync(CancellationToken cancellationToken = default)
     {
         try
         {

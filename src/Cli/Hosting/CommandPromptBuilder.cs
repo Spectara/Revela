@@ -24,8 +24,15 @@ internal sealed partial class CommandPromptBuilder(ILogger<CommandPromptBuilder>
 
         foreach (var argument in command.Arguments)
         {
-            // Skip hidden arguments (check via Hidden property)
+            // Skip hidden arguments
             if (argument.Hidden)
+            {
+                continue;
+            }
+
+            // Skip optional arguments (ZeroOrOne, ZeroOrMore)
+            // These commands handle their own interactive selection
+            if (argument.Arity.MinimumNumberOfValues == 0)
             {
                 continue;
             }
@@ -54,6 +61,14 @@ internal sealed partial class CommandPromptBuilder(ILogger<CommandPromptBuilder>
     {
         _ = cancellationToken;
         var results = new Dictionary<Option, object?>();
+
+        // Skip options prompt if command has only optional arguments
+        // These commands (like plugin install, theme install) have their own interactive flow
+        var hasRequiredArguments = command.Arguments.Any(a => !a.Hidden && a.Arity.MinimumNumberOfValues > 0);
+        if (!hasRequiredArguments && command.Arguments.Count > 0)
+        {
+            return Task.FromResult(results);
+        }
 
         // Collect only visible bool options (behavior flags)
         var boolOptions = command.Options

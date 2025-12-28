@@ -18,6 +18,7 @@ internal static class ServiceCollectionExtensions
         services.AddSingleton<CommandOrderRegistry>();
         services.AddTransient<CommandPromptBuilder>();
         services.AddTransient<IInteractiveMenuService, InteractiveMenuService>();
+        services.AddTransient<SetupWizard>();
 
         return services;
     }

@@ -1,4 +1,7 @@
 using System.CommandLine;
+using System.Diagnostics;
+
+using Spectara.Revela.Sdk.Abstractions;
 
 using Spectre.Console;
 
@@ -8,21 +11,23 @@ namespace Spectara.Revela.Commands.Generate.Commands;
 /// Command to execute the full generation pipeline.
 /// </summary>
 /// <remarks>
-/// Executes all subcommands of 'generate' in defined order, excluding itself.
+/// <para>
+/// Executes all registered <see cref="IGeneratePipelineStep"/> implementations
+/// in order. Core steps (scan, pages, images) are built-in; plugins can add
+/// additional steps (e.g., statistics).
+/// </para>
+/// <para>
 /// Order 0 ensures this appears first in the menu.
+/// </para>
 /// </remarks>
-public sealed partial class AllCommand(ILogger<AllCommand> logger)
+public sealed partial class AllCommand(
+    ILogger<AllCommand> logger,
+    IEnumerable<IGeneratePipelineStep> pipelineSteps)
 {
     /// <summary>
     /// Order for this command (first in menu).
     /// </summary>
     public const int Order = 0;
-
-    /// <summary>
-    /// Pipeline execution order: scan → statistics → pages → images.
-    /// Commands not in this list execute after in registration order.
-    /// </summary>
-    private static readonly string[] ExecutionOrder = ["scan", "statistics", "pages", "images"];
 
     /// <summary>
     /// Creates the CLI command.
@@ -31,89 +36,79 @@ public sealed partial class AllCommand(ILogger<AllCommand> logger)
     {
         var command = new Command("all", "Execute full pipeline (scan → statistics → pages → images)");
 
-        command.SetAction(async (parseResult, cancellationToken) => await ExecuteAsync(command, cancellationToken));
+        command.SetAction(async (_, cancellationToken) => await ExecuteAsync(cancellationToken));
 
         return command;
     }
 
-    private async Task<int> ExecuteAsync(Command allCommand, CancellationToken cancellationToken)
+    /// <summary>
+    /// Executes all pipeline steps in order.
+    /// </summary>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>Exit code (0 = success).</returns>
+    public async Task<int> ExecuteAsync(CancellationToken cancellationToken = default)
     {
-        var parent = allCommand.Parents.OfType<Command>().FirstOrDefault();
-        if (parent is null)
+        var steps = pipelineSteps.OrderBy(s => s.Order).ToList();
+
+        if (steps.Count == 0)
         {
-            LogNoParentCommand(logger);
-            return 1;
-        }
-
-        // Get all sibling subcommands, excluding 'all' itself, sorted by ExecutionOrder
-        var subcommandsByName = parent.Subcommands
-            .Where(cmd => cmd.Name != "all")
-            .ToDictionary(cmd => cmd.Name, StringComparer.OrdinalIgnoreCase);
-
-        var orderedSubcommands = new List<Command>();
-
-        // First, add commands in defined execution order
-        foreach (var name in ExecutionOrder)
-        {
-            if (subcommandsByName.Remove(name, out var cmd))
-            {
-                orderedSubcommands.Add(cmd);
-            }
-        }
-
-        // Then, add any remaining commands (future plugins)
-        orderedSubcommands.AddRange(subcommandsByName.Values);
-
-        if (orderedSubcommands.Count == 0)
-        {
-            AnsiConsole.MarkupLine("[yellow]No subcommands to execute.[/]");
+            AnsiConsole.MarkupLine("[yellow]No pipeline steps registered.[/]");
             return 0;
         }
 
-        var pipelineNames = string.Join(" → ", orderedSubcommands.Select(c => c.Name));
+        var pipelineNames = string.Join(" → ", steps.Select(s => s.Name));
         AnsiConsole.MarkupLine($"[blue]Executing pipeline:[/] {pipelineNames}");
         AnsiConsole.WriteLine();
 
-        var startTime = DateTime.UtcNow;
+        LogPipelineStart(logger, steps.Count);
+        var stopwatch = Stopwatch.StartNew();
 
-        foreach (var subcommand in orderedSubcommands)
+        foreach (var step in steps)
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            AnsiConsole.MarkupLine($"[cyan]▶ {subcommand.Name}[/] - {subcommand.Description}");
+            AnsiConsole.MarkupLine($"[cyan]▶ {step.Name}[/] - {step.Description}");
 
-            // Build args for subcommand: "generate <subcommand>"
-            var args = new[] { parent.Name, subcommand.Name };
+            var result = await AnsiConsole.Status()
+                .Spinner(Spinner.Known.Dots)
+                .StartAsync($"[yellow]{step.Description}...[/]", async ctx =>
+                {
+                    var progress = new Progress<PipelineProgress>(p =>
+                    {
+                        var status = p.Total > 0
+                            ? $"[yellow]{step.Name}[/] ({p.Current}/{p.Total}) {p.Status}"
+                            : $"[yellow]{step.Name}[/] {p.Status}";
+                        ctx.Status(status);
+                    });
 
-            // Find root command
-            var root = parent;
-            while (root.Parents.OfType<Command>().FirstOrDefault() is { } grandparent)
+                    return await step.ExecuteAsync(progress, cancellationToken);
+                });
+
+            if (!result.Success)
             {
-                root = grandparent;
+                AnsiConsole.MarkupLine($"[red]✗ {step.Name} failed:[/] {result.Message}");
+                LogStepFailed(logger, step.Name, result.Message ?? "Unknown error");
+                return 1;
             }
 
-            var parseResult = root.Parse(args);
-            var exitCode = await parseResult.InvokeAsync(configuration: null, cancellationToken);
-
-            if (exitCode != 0)
-            {
-                AnsiConsole.MarkupLine($"[red]✗ {subcommand.Name} failed with exit code {exitCode}[/]");
-                LogSubcommandFailed(logger, subcommand.Name, exitCode);
-                return exitCode;
-            }
-
+            var info = result.Message is not null ? $" ({result.Message})" : "";
+            AnsiConsole.MarkupLine($"[green]✓ {step.Name}[/]{info}");
             AnsiConsole.WriteLine();
         }
 
-        var duration = DateTime.UtcNow - startTime;
-        AnsiConsole.MarkupLine($"[green]✓ Pipeline completed in {duration.TotalSeconds:F2}s[/]");
+        stopwatch.Stop();
+        AnsiConsole.MarkupLine($"[green]✓ Pipeline completed in {stopwatch.Elapsed.TotalSeconds:F2}s[/]");
+        LogPipelineComplete(logger, stopwatch.Elapsed.TotalSeconds);
 
         return 0;
     }
 
-    [LoggerMessage(Level = LogLevel.Error, Message = "No parent command found for 'all'")]
-    private static partial void LogNoParentCommand(ILogger logger);
+    [LoggerMessage(Level = LogLevel.Information, Message = "Starting pipeline with {StepCount} steps")]
+    private static partial void LogPipelineStart(ILogger logger, int stepCount);
 
-    [LoggerMessage(Level = LogLevel.Error, Message = "Subcommand '{Name}' failed with exit code {ExitCode}")]
-    private static partial void LogSubcommandFailed(ILogger logger, string name, int exitCode);
+    [LoggerMessage(Level = LogLevel.Error, Message = "Pipeline step '{Step}' failed: {Error}")]
+    private static partial void LogStepFailed(ILogger logger, string step, string error);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Pipeline completed in {Seconds:F2}s")]
+    private static partial void LogPipelineComplete(ILogger logger, double seconds);
 }
