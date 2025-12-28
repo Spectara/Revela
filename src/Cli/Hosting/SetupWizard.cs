@@ -127,7 +127,7 @@ internal sealed partial class SetupWizard(
                 "This wizard will help you configure Revela for first use:\n" +
                 "  [cyan]1.[/] Install a theme (required)\n" +
                 "  [cyan]2.[/] Install plugins (optional)\n\n" +
-                "[dim]You can re-run this wizard later via:[/] Setup → Setup Wizard"))
+                "[dim]You can re-run this wizard later via:[/] Addons → wizard"))
             .WithHeader("[cyan1]Setup[/]")
             .Border(BoxBorder.Rounded)
             .BorderStyle(new Style(Color.Cyan1))
