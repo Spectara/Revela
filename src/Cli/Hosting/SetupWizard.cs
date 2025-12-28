@@ -73,7 +73,7 @@ internal sealed partial class SetupWizard(
         AnsiConsole.MarkupLine("[dim]At least one theme is required to generate websites.[/]");
         AnsiConsole.WriteLine();
 
-        var themeResult = await themeInstallCommand.InstallInteractiveAsync(cancellationToken);
+        var themeResult = await themeInstallCommand.InstallInteractiveAsync(showRestartNotice: false, cancellationToken);
 
         // Check if we have any themes (either just installed or already installed)
         if (!themeResult.HasInstalled && !themeResult.AllAlreadyInstalled)
@@ -88,7 +88,7 @@ internal sealed partial class SetupWizard(
         AnsiConsole.MarkupLine("[dim]Plugins add extra functionality. Select none to skip.[/]");
         AnsiConsole.WriteLine();
 
-        var pluginResult = await pluginInstallCommand.InstallInteractiveAsync(cancellationToken);
+        var pluginResult = await pluginInstallCommand.InstallInteractiveAsync(showRestartNotice: false, cancellationToken);
 
         // Determine if restart is needed
         var anythingInstalled = themeResult.HasInstalled || pluginResult.HasInstalled;

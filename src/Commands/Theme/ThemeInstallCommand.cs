@@ -1,6 +1,7 @@
 using System.CommandLine;
 
 using Spectara.Revela.Core;
+using Spectara.Revela.Core.Helpers;
 using Spectara.Revela.Core.Models;
 using Spectara.Revela.Core.Services;
 using Spectara.Revela.Sdk;
@@ -70,14 +71,14 @@ public sealed partial class ThemeInstallCommand(
             // --all flag → install all available themes
             if (all)
             {
-                var result = await InstallAllAsync(cancellationToken);
+                var result = await InstallAllAsync(showRestartNotice: true, cancellationToken);
                 return result.HasFailures ? 1 : 0;
             }
 
             // No name provided → show interactive multi-selection
             if (string.IsNullOrEmpty(name))
             {
-                var result = await InstallInteractiveAsync(cancellationToken);
+                var result = await InstallInteractiveAsync(showRestartNotice: true, cancellationToken);
                 return result.HasFailures ? 1 : 0;
             }
 
@@ -90,9 +91,10 @@ public sealed partial class ThemeInstallCommand(
     /// <summary>
     /// Installs all available themes (for --all flag).
     /// </summary>
+    /// <param name="showRestartNotice">Whether to show a prominent restart notice (false when called from wizard).</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>Result containing installed, already-installed, and failed packages.</returns>
-    public async Task<InstallResult> InstallAllAsync(CancellationToken cancellationToken = default)
+    public async Task<InstallResult> InstallAllAsync(bool showRestartNotice = true, CancellationToken cancellationToken = default)
     {
         var themes = await packageIndexService.SearchByTypeAsync("RevelaTheme", cancellationToken);
 
@@ -146,15 +148,22 @@ public sealed partial class ThemeInstallCommand(
             AnsiConsole.MarkupLine($"[yellow]⚠[/] {installed.Count} of {availableThemes.Count} themes installed.");
         }
 
+        // Show prominent restart notice if packages were installed
+        if (showRestartNotice && installed.Count > 0)
+        {
+            InstallCommandHelper.ShowRestartNotice("themes");
+        }
+
         return new InstallResult(installed, [.. installedIds], failed);
     }
 
     /// <summary>
     /// Installs themes interactively (shows multi-select prompt).
     /// </summary>
+    /// <param name="showRestartNotice">Whether to show a prominent restart notice (false when called from wizard).</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>Result containing installed, already-installed, and failed packages.</returns>
-    public async Task<InstallResult> InstallInteractiveAsync(CancellationToken cancellationToken = default)
+    public async Task<InstallResult> InstallInteractiveAsync(bool showRestartNotice = true, CancellationToken cancellationToken = default)
     {
         var selectedThemes = await SelectThemesInteractivelyAsync(cancellationToken);
         if (selectedThemes.Count == 0)
@@ -198,6 +207,12 @@ public sealed partial class ThemeInstallCommand(
             {
                 AnsiConsole.MarkupLine($"[yellow]⚠[/] {installed.Count} of {selectedThemes.Count} themes installed.");
             }
+        }
+
+        // Show prominent restart notice if packages were installed
+        if (showRestartNotice && installed.Count > 0)
+        {
+            InstallCommandHelper.ShowRestartNotice("themes");
         }
 
         return new InstallResult(installed, [], failed);
@@ -252,9 +267,8 @@ public sealed partial class ThemeInstallCommand(
         // Theme is required if none are installed yet
         var isRequired = installedThemes.Count == 0;
 
-        const string selectAllChoice = "[yellow]» All «[/]";
         var choices = availableThemes
-            .Select(t => $"{t.Id} [dim]({t.Version})[/] - {Truncate(t.Description, 40)}")
+            .Select(t => $"{t.Id} [dim]({t.Version})[/] - {InstallCommandHelper.Truncate(t.Description, 40)}")
             .ToList();
 
         var prompt = new MultiSelectionPrompt<string>()
@@ -265,13 +279,13 @@ public sealed partial class ThemeInstallCommand(
             .Required(isRequired)
             .HighlightStyle(new Style(Color.Cyan1))
             .InstructionsText("[dim](↑↓ navigate, Space select, Enter confirm)[/]")
-            .AddChoices(selectAllChoice)
+            .AddChoices(InstallCommandHelper.SelectAllChoice)
             .AddChoices(choices);
 
         var selections = AnsiConsole.Prompt(prompt);
 
         // Handle "Select all" option
-        if (selections.Contains(selectAllChoice))
+        if (selections.Contains(InstallCommandHelper.SelectAllChoice))
         {
             return [.. availableThemes.Select(t => t.Id)];
         }
@@ -279,9 +293,6 @@ public sealed partial class ThemeInstallCommand(
         // Extract package IDs from selections (before first space)
         return [.. selections.Select(s => s.Split(' ')[0])];
     }
-
-    private static string Truncate(string text, int maxLength) =>
-        text.Length <= maxLength ? text : text[..(maxLength - 3)] + "...";
 
     internal async Task<int> ExecuteAsync(
         string name,

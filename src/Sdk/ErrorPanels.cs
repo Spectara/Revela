@@ -244,6 +244,20 @@ public static class ErrorPanels
     }
 
     /// <summary>
+    /// Shows an info panel when a restart is required after installing packages.
+    /// </summary>
+    /// <param name="what">What was installed (e.g., "plugins", "themes").</param>
+    public static void ShowRestartRequired(string what)
+    {
+        var panel = new Panel(
+            $"The installed {what} will be available after restarting Revela.")
+            .WithHeader("[bold yellow]Restart Required[/]")
+            .WithWarningStyle();
+
+        AnsiConsole.Write(panel);
+    }
+
+    /// <summary>
     /// Escapes Spectre markup characters in user-provided text.
     /// </summary>
     private static string EscapeMarkup(string text) =>

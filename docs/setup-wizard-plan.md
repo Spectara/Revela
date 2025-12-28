@@ -2,7 +2,7 @@
 
 **Status:** ✅ Revela Setup Wizard Implemented, Project Init pending  
 **Created:** 2025-12-25  
-**Updated:** 2025-12-27
+**Updated:** 2025-12-28
 
 ## Two-Step Approach
 
@@ -28,7 +28,7 @@ revela                    ← Start without arguments
   │     └── "Skip" → Normal menu (limited functionality)
   │
   └── revela.json exists → Normal menu
-        └── "Setup" group → "🔧 Setup Wizard" to re-run
+        └── "Addons" group → "wizard" to re-run
 ```
 
 ### Wizard Steps
@@ -37,21 +37,19 @@ revela                    ← Start without arguments
 ┌─────────────────────────────────────────────────────────────┐
 │  SETUP WIZARD                                               │
 ├─────────────────────────────────────────────────────────────┤
-│  Step 1/3: Package Sources                                  │
-│    • Show current NuGet feeds                               │
-│    • Optional: Add custom feed                              │
-├─────────────────────────────────────────────────────────────┤
-│  [Packages Refresh - automatic]                             │
+│  [Packages Refresh - automatic/silent]                      │
 │    • Download package index from all feeds                  │
 ├─────────────────────────────────────────────────────────────┤
-│  Step 2/3: Install Themes                                   │
+│  Step 1/2: Install Themes                                   │
 │    • Multi-select from available themes                     │
-│    • Already installed = disabled                           │
+│    • "» All «" option to install all                        │
+│    • Already installed shown with checkmarks                │
 │    • At least 1 theme required                              │
 ├─────────────────────────────────────────────────────────────┤
-│  Step 3/3: Install Plugins (Optional)                       │
+│  Step 2/2: Install Plugins (Optional)                       │
 │    • Multi-select from available plugins                    │
-│    • Already installed = disabled                           │
+│    • "» All «" option to install all                        │
+│    • Already installed shown with checkmarks                │
 ├─────────────────────────────────────────────────────────────┤
 │  ✓ Setup completed!                                         │
 │  Revela will exit. Please restart to continue.              │

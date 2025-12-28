@@ -392,7 +392,7 @@ internal sealed partial class InteractiveMenuService(
     /// <param name="title">The prompt title.</param>
     /// <param name="includeBack">Whether to include a "Back" option at the top.</param>
     /// <param name="includeExit">Whether to include an "Exit" option at the bottom.</param>
-    /// <param name="includeSetupWizard">Whether to include the Setup Wizard option in the Setup group.</param>
+    /// <param name="includeSetupWizard">Whether to include the Wizard option in the Addons group.</param>
     /// <returns>A configured selection prompt.</returns>
     private SelectionPrompt<MenuChoice> BuildGroupedSelectionPrompt(
         IEnumerable<Command> commands,
@@ -439,10 +439,10 @@ internal sealed partial class InteractiveMenuService(
                     var groupChoice = new MenuChoice(groupName, Action: MenuAction.Navigate);
                     var commandChoices = groupCommands.Select(MenuChoice.FromCommand).ToList();
 
-                    // Add Setup Wizard to the Setup group
-                    if (includeSetupWizard && groupName == CommandGroups.Setup)
+                    // Add Wizard to the Addons group (as last item)
+                    if (includeSetupWizard && groupName == CommandGroups.Addons)
                     {
-                        commandChoices.Add(MenuChoice.SetupWizard);
+                        commandChoices.Add(MenuChoice.Wizard);
                     }
 
                     prompt.AddChoiceGroup(groupChoice, [.. commandChoices]);

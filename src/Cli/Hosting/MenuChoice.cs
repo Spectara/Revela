@@ -24,9 +24,9 @@ internal sealed record MenuChoice(
     public static MenuChoice Exit => new("Exit", Action: MenuAction.Exit);
 
     /// <summary>
-    /// Creates a "Setup Wizard" menu choice.
+    /// Creates a "wizard" menu choice for the Addons group.
     /// </summary>
-    public static MenuChoice SetupWizard => new("🔧 Setup Wizard  [dim]Configure themes and plugins[/]", Action: MenuAction.RunSetupWizard);
+    public static MenuChoice Wizard => new("wizard  [dim]Install themes and plugins[/]", Action: MenuAction.RunSetupWizard);
 
     /// <summary>
     /// Creates a menu choice from a command.
