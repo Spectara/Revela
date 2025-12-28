@@ -38,21 +38,13 @@ public sealed class PluginManager(
     public static string BundledPackagesDirectory => Path.Combine(AppContext.BaseDirectory, "packages");
 
     /// <summary>
-    /// Gets the local plugin directory (next to executable).
+    /// Gets the plugin directory based on installation type.
     /// </summary>
-    public static string LocalPluginDirectory => Path.Combine(AppContext.BaseDirectory, "plugins");
-
-    /// <summary>
-    /// Gets the global plugin directory (in user's AppData).
-    /// </summary>
-    public static string GlobalPluginDirectory
-    {
-        get
-        {
-            var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-            return Path.Combine(appData, "Revela", "plugins");
-        }
-    }
+    /// <remarks>
+    /// Standalone: {exe-dir}/plugins
+    /// dotnet tool: %APPDATA%/Revela/plugins
+    /// </remarks>
+    public static string PluginDirectory => ConfigPathResolver.LocalPluginDirectory;
 
     /// <summary>
     /// Installs a plugin from a package ID, local .nupkg file, or URL.
@@ -60,19 +52,17 @@ public sealed class PluginManager(
     /// <param name="packageIdOrPath">Package ID (e.g., 'Spectara.Revela.Plugin.Statistics'), local .nupkg path, or HTTP(S) URL</param>
     /// <param name="version">Specific version to install (only for package IDs)</param>
     /// <param name="source">Custom NuGet source URL (null = use default nuget.org)</param>
-    /// <param name="global">If true, installs to global AppData; otherwise next to executable</param>
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>True if installation succeeded</returns>
     public async Task<bool> InstallAsync(
         string packageIdOrPath,
         string? version = null,
         string? source = null,
-        bool global = false,
         CancellationToken cancellationToken = default)
     {
         try
         {
-            var targetDir = global ? GlobalPluginDirectory : LocalPluginDirectory;
+            var targetDir = PluginDirectory;
             _ = Directory.CreateDirectory(targetDir);
 
             // Detect installation type
@@ -114,13 +104,6 @@ public sealed class PluginManager(
             return false;
         }
     }
-
-    /// <summary>
-    /// Legacy method for backward compatibility. Use InstallAsync instead.
-    /// </summary>
-    [Obsolete("Use InstallAsync instead")]
-    public Task<bool> InstallPluginAsync(string packageId, string? version = null, bool global = false, CancellationToken cancellationToken = default)
-        => InstallAsync(packageId, version, source: null, global, cancellationToken);
 
     private async Task<bool> InstallFromNuGetAsync(
         string packageId,
@@ -490,21 +473,21 @@ public sealed class PluginManager(
         }
     }
 
-    public async Task<bool> UpdatePluginAsync(string packageId, bool global = false, CancellationToken cancellationToken = default)
+    public async Task<bool> UpdatePluginAsync(string packageId, CancellationToken cancellationToken = default)
     {
         logger.UpdatingPlugin(packageId);
         // Uninstall old version, install new version
-        _ = await UninstallPluginAsync(packageId, global, cancellationToken);
-        return await InstallAsync(packageId, version: null, source: null, global, cancellationToken);
+        _ = await UninstallPluginAsync(packageId, cancellationToken);
+        return await InstallAsync(packageId, version: null, source: null, cancellationToken);
     }
 
-    public async Task<bool> UninstallPluginAsync(string packageId, bool global = false, CancellationToken cancellationToken = default)
+    public async Task<bool> UninstallPluginAsync(string packageId, CancellationToken cancellationToken = default)
     {
         try
         {
             logger.UninstallingPlugin(packageId);
 
-            var pluginDir = global ? GlobalPluginDirectory : LocalPluginDirectory;
+            var pluginDir = PluginDirectory;
             var found = false;
 
             // Delete plugin subdirectory with all contents (main DLL + dependencies)
@@ -642,7 +625,7 @@ public sealed class PluginManager(
     }
 
     /// <summary>
-    /// Lists all installed plugins from both local and global directories.
+    /// Lists all installed plugins from the plugin directory.
     /// </summary>
     /// <remarks>
     /// Plugins can be installed in two ways:
@@ -683,8 +666,7 @@ public sealed class PluginManager(
             }
         }
 
-        ScanDirectory(LocalPluginDirectory, "local");
-        ScanDirectory(GlobalPluginDirectory, "global");
+        ScanDirectory(PluginDirectory, "installed");
 
         return results;
     }

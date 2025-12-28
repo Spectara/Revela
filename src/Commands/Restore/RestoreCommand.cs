@@ -165,7 +165,6 @@ public sealed partial class RestoreCommand(
                                 packageIdOrPath: dep.PackageId,
                                 version: dep.Version,
                                 source: null, // Use default NuGet.org
-                                global: false, // Install locally
                                 cancellationToken: ct);
 
                             if (!success)

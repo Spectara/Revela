@@ -64,13 +64,6 @@ public static class PluginServiceCollectionExtensions
         var options = new PluginOptions();
         configure?.Invoke(options);
 
-        // Always search working directory plugins folder (for project-based workflows)
-        var workingDirPlugins = Path.Combine(Directory.GetCurrentDirectory(), "plugins");
-        if (!options.AdditionalSearchPaths.Contains(workingDirPlugins, StringComparer.OrdinalIgnoreCase))
-        {
-            options.AdditionalSearchPaths.Add(workingDirPlugins);
-        }
-
         // Create null logger for plugin loading
         // Real logging will be available after host is built
         ILogger<PluginLoader> logger = NullLogger<PluginLoader>.Instance;

@@ -11,12 +11,10 @@ public enum PluginSource
     Bundled,
 
     /// <summary>
-    /// Plugin loaded from local plugins folder (next to executable or working directory).
+    /// Plugin installed in the plugins directory.
+    /// Location depends on installation type:
+    /// - Standalone: {exe-dir}/plugins
+    /// - dotnet tool: %APPDATA%/Revela/plugins
     /// </summary>
-    Local,
-
-    /// <summary>
-    /// Plugin loaded from global user directory (AppData/Revela/plugins).
-    /// </summary>
-    Global
+    Local
 }

@@ -42,12 +42,6 @@ public sealed partial class PluginInstallCommand(
         };
         command.Options.Add(versionOption);
 
-        var globalOption = new Option<bool>("--global", "-g")
-        {
-            Description = "Install globally to AppData (default: local, next to executable)"
-        };
-        command.Options.Add(globalOption);
-
         var sourceOption = new Option<string?>("--source", "-s")
         {
             Description = "NuGet source name (from 'revela plugin source list') or URL"
@@ -64,7 +58,6 @@ public sealed partial class PluginInstallCommand(
         {
             var name = parseResult.GetValue(nameArgument);
             var version = parseResult.GetValue(versionOption);
-            var global = parseResult.GetValue(globalOption);
             var source = parseResult.GetValue(sourceOption);
             var all = parseResult.GetValue(allOption);
 
@@ -83,7 +76,7 @@ public sealed partial class PluginInstallCommand(
             }
 
             cancellationToken.ThrowIfCancellationRequested();
-            return await ExecuteFromNuGetAsync(name, version, global, source, cancellationToken);
+            return await ExecuteFromNuGetAsync(name, version, source, cancellationToken);
         });
 
         return command;
@@ -127,7 +120,7 @@ public sealed partial class PluginInstallCommand(
         foreach (var plugin in availablePlugins)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            var result = await ExecuteFromNuGetAsync(plugin.Id, version: null, global: false, source: null, cancellationToken);
+            var result = await ExecuteFromNuGetAsync(plugin.Id, version: null, source: null, cancellationToken);
             if (result == 0)
             {
                 installed.Add(plugin.Id);
@@ -185,7 +178,7 @@ public sealed partial class PluginInstallCommand(
         foreach (var pluginId in selectedPlugins)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            var result = await ExecuteFromNuGetAsync(pluginId, version: null, global: false, source: null, cancellationToken);
+            var result = await ExecuteFromNuGetAsync(pluginId, version: null, source: null, cancellationToken);
             if (result == 0)
             {
                 installed.Add(pluginId);
@@ -289,7 +282,7 @@ public sealed partial class PluginInstallCommand(
         return [.. selections.Select(s => s.Split(' ')[0])];
     }
 
-    internal async Task<int> ExecuteFromNuGetAsync(string name, string? version, bool global, string? source = null, CancellationToken cancellationToken = default)
+    internal async Task<int> ExecuteFromNuGetAsync(string name, string? version, string? source = null, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -316,9 +309,8 @@ public sealed partial class PluginInstallCommand(
                 }
             }
 
-            var location = global ? "globally" : "locally";
             var sourceInfo = source is not null ? $" from [dim]{source}[/]" : "";
-            AnsiConsole.MarkupLine($"[blue]Installing plugin {location}:[/] [cyan]{packageId}[/]{sourceInfo}");
+            AnsiConsole.MarkupLine($"[blue]Installing plugin:[/] [cyan]{packageId}[/]{sourceInfo}");
             LogInstallingPlugin(packageId, version, source);
 
             var success = await AnsiConsole.Status()
@@ -327,7 +319,7 @@ public sealed partial class PluginInstallCommand(
                 {
                     cancellationToken.ThrowIfCancellationRequested();
                     ctx.Status($"Downloading {packageId}...");
-                    return await pluginManager.InstallAsync(packageId, version, source, global, cancellationToken);
+                    return await pluginManager.InstallAsync(packageId, version, source, cancellationToken);
                 });
 
             if (success)

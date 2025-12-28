@@ -42,12 +42,6 @@ public sealed partial class ThemeInstallCommand(
         };
         command.Options.Add(versionOption);
 
-        var globalOption = new Option<bool>("--global", "-g")
-        {
-            Description = "Install globally to AppData (default: local, next to executable)"
-        };
-        command.Options.Add(globalOption);
-
         var sourceOption = new Option<string?>("--source", "-s")
         {
             Description = "NuGet source name (from 'revela plugin source list') or URL"
@@ -64,7 +58,6 @@ public sealed partial class ThemeInstallCommand(
         {
             var name = parseResult.GetValue(nameArgument);
             var version = parseResult.GetValue(versionOption);
-            var global = parseResult.GetValue(globalOption);
             var source = parseResult.GetValue(sourceOption);
             var all = parseResult.GetValue(allOption);
 
@@ -82,7 +75,7 @@ public sealed partial class ThemeInstallCommand(
                 return result.HasFailures ? 1 : 0;
             }
 
-            return await ExecuteAsync(name, version, global, source, cancellationToken);
+            return await ExecuteAsync(name, version, source, cancellationToken);
         });
 
         return command;
@@ -126,7 +119,7 @@ public sealed partial class ThemeInstallCommand(
         foreach (var theme in availableThemes)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            var result = await ExecuteAsync(theme.Id, version: null, global: false, source: null, cancellationToken);
+            var result = await ExecuteAsync(theme.Id, version: null, source: null, cancellationToken);
             if (result == 0)
             {
                 installed.Add(theme.Id);
@@ -184,7 +177,7 @@ public sealed partial class ThemeInstallCommand(
         foreach (var themeId in selectedThemes)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            var result = await ExecuteAsync(themeId, version: null, global: false, source: null, cancellationToken);
+            var result = await ExecuteAsync(themeId, version: null, source: null, cancellationToken);
             if (result == 0)
             {
                 installed.Add(themeId);
@@ -297,7 +290,6 @@ public sealed partial class ThemeInstallCommand(
     internal async Task<int> ExecuteAsync(
         string name,
         string? version,
-        bool global,
         string? source,
         CancellationToken cancellationToken)
     {
@@ -338,9 +330,8 @@ public sealed partial class ThemeInstallCommand(
                 return 1;
             }
 
-            var location = global ? "globally" : "locally";
             var sourceInfo = source is not null ? $" from [dim]{source}[/]" : "";
-            AnsiConsole.MarkupLine($"[blue]Installing theme {location}:[/] [cyan]{packageId}[/]{sourceInfo}");
+            AnsiConsole.MarkupLine($"[blue]Installing theme:[/] [cyan]{packageId}[/]{sourceInfo}");
             LogInstallingTheme(logger, packageId, version, source);
 
             var success = await AnsiConsole.Status()
@@ -349,7 +340,7 @@ public sealed partial class ThemeInstallCommand(
                 {
                     cancellationToken.ThrowIfCancellationRequested();
                     ctx.Status($"Downloading {packageId}...");
-                    return await pluginManager.InstallAsync(packageId, version, source, global, cancellationToken);
+                    return await pluginManager.InstallAsync(packageId, version, source, cancellationToken);
                 });
 
             if (success)

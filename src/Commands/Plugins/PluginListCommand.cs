@@ -89,8 +89,7 @@ public sealed partial class PluginListCommand(
     private static string GetSourceMarkup(PluginSource source) => source switch
     {
         PluginSource.Bundled => "[magenta]bundled[/]",
-        PluginSource.Local => "[green]local[/]",
-        PluginSource.Global => "[blue]global[/]",
+        PluginSource.Local => "[green]installed[/]",
         _ => "[dim]unknown[/]"
     };
 

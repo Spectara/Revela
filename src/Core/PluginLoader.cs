@@ -1,34 +1,34 @@
 using System.Reflection;
 using System.Runtime.Loader;
 using Spectara.Revela.Core.Configuration;
+using Spectara.Revela.Core.Services;
 using Spectara.Revela.Sdk.Abstractions;
 
 namespace Spectara.Revela.Core;
 
 /// <summary>
-/// Loads plugins from multiple directories based on configuration.
+/// Loads plugins from configured directories.
 /// </summary>
 /// <remarks>
 /// Plugin search order:
 /// 1. Application directory (for development/debugging via ProjectReference)
-/// 2. Local plugin directory (next to exe in 'plugins' subfolder)
-/// 3. User plugin directory (AppData/Revela/plugins - installed plugins)
-/// 4. Additional search paths (custom locations)
+/// 2. Plugin directory (context-aware: exe-dir/plugins for standalone, AppData/plugins for dotnet tool)
 ///
 /// This unified approach ensures Debug and Release builds use identical code paths.
+/// The plugin directory is determined by ConfigPathResolver based on installation type.
 /// </remarks>
 public sealed partial class PluginLoader(
     PluginOptions options,
     ILogger<PluginLoader>? logger = null)
 {
-    private static readonly string UserPluginDirectory = Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-        "Revela",
-        "plugins");
+    /// <summary>
+    /// Gets the plugin directory based on installation type.
+    /// Standalone: {exe-dir}/plugins
+    /// dotnet tool: %APPDATA%/Revela/plugins
+    /// </summary>
+    private static readonly string PluginDirectory = ConfigPathResolver.LocalPluginDirectory;
 
     private static readonly string ApplicationDirectory = AppContext.BaseDirectory;
-
-    private static readonly string LocalPluginDirectory = Path.Combine(AppContext.BaseDirectory, "plugins");
 
     private readonly ILogger<PluginLoader> logger = logger ?? Microsoft.Extensions.Logging.Abstractions.NullLogger<PluginLoader>.Instance;
     private readonly HashSet<string> loadedAssemblyPaths = new(StringComparer.OrdinalIgnoreCase);
@@ -78,21 +78,8 @@ public sealed partial class PluginLoader(
             LoadPluginsFromDirectory(ApplicationDirectory, "application", PluginSource.Bundled);
         }
 
-        // 2. Local plugin directory (next to exe in 'plugins' subfolder)
-        LoadPluginsFromDirectory(LocalPluginDirectory, "local", PluginSource.Local);
-
-        // 3. User plugin directory (global installed plugins)
-        if (options.SearchUserPluginDirectory)
-        {
-            LoadPluginsFromDirectory(UserPluginDirectory, "user", PluginSource.Global);
-        }
-
-        // 4. Additional search paths (treated as local)
-        foreach (var path in options.AdditionalSearchPaths)
-        {
-            var fullPath = Path.IsPathRooted(path) ? path : Path.GetFullPath(path);
-            LoadPluginsFromDirectory(fullPath, "additional", PluginSource.Local);
-        }
+        // 2. Plugin directory (context-aware: exe-dir/plugins or AppData/plugins)
+        LoadPluginsFromDirectory(PluginDirectory, "installed", PluginSource.Local);
 
         LogPluginsLoaded(loadedPlugins.Count);
     }
