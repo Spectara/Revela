@@ -13,15 +13,15 @@ A step-by-step guide for photographers to create a portfolio website with Revela
 - Responsive design (works on phone, tablet, desktop)
 - Fast loading times through optimized image formats (AVIF, WebP, JPG)
 
-**Easy to use:** When you double-click `revela.exe`, an **interactive mode** opens with a menu-driven interface. Just select what you want to do - no command line knowledge required!
+**Easy to use:** When you double-click `revela.exe`, interactive wizards guide you through the setup. Just follow the prompts - no command line knowledge required!
 
 ---
 
-## 1. Installation (Windows)
+## 1. Download Revela
 
-### Step 1.1: Download Revela
+### Step 1.1: Download
 
-1. Go to the **GitHub Releases**: https://github.com/spectara/revela/releases
+1. Go to **GitHub Releases**: https://github.com/spectara/revela/releases
 2. Download the latest version:
    - `revela-win-x64.zip` for Windows (64-bit)
 3. Extract the ZIP file to a folder of your choice, e.g.:
@@ -34,72 +34,152 @@ After extracting, you'll have these files:
 ```
 C:\Revela\
 ├── revela.exe                          ← The main program
-├── Spectara.Revela.Theme.Lumina.dll    ← The default theme
 └── getting-started/                    ← Guides (multilingual)
     ├── README.md
     ├── de.md                           ← Deutsch
     └── en.md                           ← English
 ```
 
-### Step 1.2: Test the Installation
+### Step 1.2: Start Revela
 
-1. Open the **command line in the Revela folder**:
-   
-   **Easiest method (recommended):**
-   - Open the folder `C:\Revela` in Windows Explorer
-   - Right-click on an empty area in the folder
-   - Select **"Open in Terminal"** (Windows 11) or **"Open PowerShell window here"** (Windows 10)
-   
-   **Alternative via Run dialog:**
-   - Press `Windows + R`
-   - Type `cmd` and press Enter
-   - Navigate to the Revela folder: `cd C:\Revela`
-   
-2. Test if Revela works:
-   ```
-   .\revela.exe --version
-   ```
-   
-   You should see the version number, e.g.:
-   ```
-   revela 1.0.0
-   ```
+1. Open the folder `C:\Revela` in Windows Explorer
+2. **Double-click on `revela.exe`**
+3. The **Revela Setup Wizard** opens automatically
 
-3. Show all available commands:
-   ```
-   .\revela.exe --help
-   ```
+That's it! No installation required, no command line needed.
 
 ---
 
-## 2. Create a Project
+## 2. Revela Setup Wizard (First Run)
 
-### Step 2.1: Initialize Project
+When you start Revela for the first time, the **Setup Wizard** appears automatically. This wizard helps you install themes and plugins.
 
-1. Double-click `revela.exe` to open the interactive mode
-2. Select **init** from the menu
-3. Select **project**
+### What You'll See
 
-Revela automatically creates the basic structure:
+```
+┌─────────────────────────────────────────────────────────────┐
+│  Welcome to the Revela Setup Wizard!                        │
+│                                                             │
+│  This wizard will help you configure Revela for first use:  │
+│    1. Install a theme (required)                            │
+│    2. Install plugins (optional)                            │
+│                                                             │
+│  You can re-run this wizard later via: Addons → wizard      │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Step 2.1: Install a Theme
+
+1. The wizard automatically downloads the package index
+2. You'll see a list of available themes
+3. Select at least one theme (use **Space** to select, **Enter** to confirm)
+4. Recommended: **Lumina** (the default photography theme)
+
+**Tip:** You can select multiple themes if you want to try different looks.
+
+### Step 2.2: Install Plugins (Optional)
+
+1. You'll see a list of available plugins
+2. Select any plugins you want (or none)
+3. Useful plugins:
+   - **Serve** - Preview your site locally before uploading
+   - **Statistics** - Track image count, total size, etc.
+   - **Source.OneDrive** - Import photos from OneDrive shared folders
+
+### Step 2.3: Restart
+
+After installation, Revela needs to restart to load the new packages:
+
+```
+✓ Setup completed successfully!
+
+Installed themes:
+  • Lumina
+
+Please restart Revela to load the new packages.
+```
+
+**Double-click `revela.exe` again** to continue.
+
+---
+
+## 3. Create a Project (Project Wizard)
+
+After the setup wizard, when you start Revela in a folder without a project, the **Project Wizard** appears automatically.
+
+### What You'll See
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  Create a New Revela Project                                │
+│                                                             │
+│  This wizard will help you set up a new photo gallery:      │
+│    1. Project settings (name, URL)                          │
+│    2. Select a theme                                        │
+│    3. Image settings (formats, sizes)                       │
+│    4. Site metadata (title, author)                         │
+│                                                             │
+│  You can change these settings later via: revela config     │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Step 3.1: Project Settings
+
+Enter your project details:
+
+- **Project name:** A short name for your project (e.g., "MyPortfolio")
+- **Base URL:** Your website address (e.g., "https://photos.example.com")
+  - Leave empty if you don't know yet
+
+### Step 3.2: Select Theme
+
+Choose a theme from your installed themes. If you only installed Lumina, it will be selected automatically.
+
+### Step 3.3: Image Settings
+
+Configure how your images should be processed:
+
+- **Formats:** Which formats to generate (AVIF, WebP, JPG)
+- **Quality:** Higher = better quality but larger files
+- **Sizes:** Which widths to generate (responsive images)
+
+**Tip for beginners:** The defaults work great! Just press Enter to accept them.
+
+**Tip for speed:** AVIF offers the best compression but takes longer. For a quick first test, you can disable AVIF and keep only WebP and JPG.
+
+### Step 3.4: Site Metadata
+
+Enter information about your website:
+
+- **Title:** Your website title (appears in browser tab)
+- **Author:** Your name
+- **Copyright:** Copyright notice (e.g., "© 2025 John Smith")
+
+### After the Wizard
+
+The wizard creates these files and folders:
 
 ```
 C:\Revela\
-├── revela.exe                          ← The main program
-├── Spectara.Revela.Theme.Lumina.dll    ← The default theme
-├── getting-started/                    ← Guides
-├── project.json                        ← Project settings (new)
-├── site.json                           ← Website information (new)
-├── source/                             ← Put your photos here (new)
+├── revela.exe
+├── revela.json                         ← Revela configuration
+├── project.json                        ← Project settings (NEW)
+├── site.json                           ← Website metadata (NEW)
+├── source/                             ← Put your photos here (NEW)
 │   └── (empty)
-└── output/                             ← The finished website goes here (new)
-    └── (empty)
+├── output/                             ← Generated website goes here (NEW)
+│   └── (empty)
+├── cache/                              ← Image cache (NEW)
+│   └── (empty)
+└── packages/                           ← Installed themes & plugins
+    └── ...
 ```
 
 ---
 
-## 3. Add Photos
+## 4. Add Photos
 
-### Step 3.1: Create Galleries as Folders
+### Step 4.1: Create Galleries as Folders
 
 Create subfolders in the `source` folder for your galleries. The folder names become gallery titles:
 
@@ -119,9 +199,9 @@ C:\Revela\source\
 
 **Tips for folder structure:**
 
-- **Numbering:** The numbers at the beginning (`01`, `02`, `03`) determine the order in the menu
+- **Numbering:** Numbers at the beginning (`01`, `02`, `03`) control menu order
 - **Folder name = Gallery title:** "01 Weddings" becomes "Weddings" on the website
-- **Sub-galleries:** You can also create nested folders:
+- **Nested galleries:** You can create sub-galleries:
   ```
   source/
   └── 01 Events/
@@ -129,62 +209,149 @@ C:\Revela\source\
       └── 02 Miller Corp Company Party/
   ```
 
-### Step 3.2: Add Gallery Description (optional)
+### Step 4.2: Add Gallery Description (Optional)
 
-To give a gallery its own title or description, create an `_index.md` file in the gallery folder:
+To customize a gallery's title or add a description, create an `_index.md` file:
 
 **File:** `source/01 Weddings/_index.md`
 ```markdown
 ---
 title: Wedding Photography
-description: Emotional moments captured for eternity
+description: Emotional moments captured forever
 ---
 
 Every wedding tells its own story. Here you'll find 
 a selection of my most beautiful wedding photos.
 ```
 
-The fields mean:
 | Field | Meaning |
 |-------|---------|
 | `title` | Overrides the folder name as title |
 | `description` | Description text for the gallery |
 
-The text below the `---` lines is displayed as introductory text on the gallery page.
+The text below the `---` lines appears as introduction text on the gallery page.
 
 ---
 
-## 4. Customize Configuration
+## 5. Generate Website
 
-### Step 4.1: Website Information (site.json)
+### Step 5.1: Generate Your Website
 
-Open `site.json` with a text editor (Notepad, VS Code, etc.) and adjust the values:
+1. Double-click `revela.exe` to open the menu
+2. Select **generate**
+3. Select **all** to run the complete pipeline
 
-```json
-{
-  "title": "John Smith Photography",
-  "author": "John Smith",
-  "description": "Professional wedding and portrait photography in New York",
-  "copyright": "© 2025 John Smith"
-}
+**What happens:**
+
+1. **Scan:** Revela finds all images in `source/`
+2. **Process images:** Each image is created in all configured sizes and formats
+3. **Render pages:** HTML files are generated from the templates
+
+You'll see a progress bar:
+
+```
+Scanning...
+✓ Found 47 images in 5 galleries
+
+Processing images [████████████████████] 100% 47/47 - mountains.jpg
+Rendering pages   [████████████████████] 100% 12/12 - index.html
+
+✓ Generation complete!
 ```
 
-| Field | Meaning |
-|-------|---------|
-| `title` | Title of the website (appears in browser tab) |
-| `author` | Your name |
-| `description` | Short description for search engines |
-| `copyright` | Copyright notice in the footer |
+### Step 5.2: Regenerate Only Parts (Optional)
 
-### Step 4.2: Project Settings (project.json)
+In the **generate** submenu, you can select specific steps:
 
-The `project.json` contains technical settings. For starters, you can keep the default values:
+| Option | What it does |
+|--------|-------------|
+| **all** | Complete pipeline (scan → statistics → pages → images) |
+| **scan** | Scan source files (run first when images changed) |
+| **statistics** | Generate statistics (requires Statistics plugin) |
+| **pages** | Only re-render HTML pages |
+| **images** | Only re-process images |
+
+**Note:** After adding/deleting images or changing `_index.md` files, run **scan** first.
+
+---
+
+## 6. Preview & Upload
+
+### Step 6.1: Preview Locally (with Serve Plugin)
+
+If you installed the **Serve** plugin:
+
+1. In the menu, select **serve** → **start**
+2. Your browser opens automatically with your site
+3. Press **Ctrl+C** in the terminal to stop the server
+
+### Step 6.2: Open Files Directly
+
+Without the Serve plugin, you can open the files directly:
+
+1. Go to `C:\Revela\output\` in Windows Explorer
+2. Double-click on `index.html`
+3. The website opens in your browser
+
+**Note:** Some features (like lazy loading) work better with a real server.
+
+### Step 6.3: Upload to Web Server
+
+To put your website online, upload the complete contents of the `output` folder to your web server via FTP, SFTP, or your hosting provider's file manager.
+
+---
+
+## 7. Menu Reference
+
+### Main Menu
+
+| Menu | Submenu | Description |
+|------|---------|-------------|
+| **generate** | all | Generate website (full pipeline) |
+| | scan | Scan source files |
+| | images | Only process images |
+| | pages | Only create HTML pages |
+| | statistics | Generate statistics JSON |
+| **clean** | all | Delete output + cache |
+| | output | Delete only output |
+| | cache | Delete only cache |
+| **config** | project | Edit project settings |
+| | theme | Change theme |
+| | images | Edit image settings |
+| | site | Edit site metadata |
+| | feed | Manage package feeds |
+| **theme** | list | Show installed themes |
+| | install | Install new theme |
+| | extract | Create custom theme copy |
+| **plugins** | list | Show installed plugins |
+| | install | Install new plugin |
+| | uninstall | Remove a plugin |
+| **packages** | refresh | Update package index |
+| | list | Show all available packages |
+| **serve** | start | Start local preview server |
+| | | *(requires Serve plugin)* |
+
+### Addons Group
+
+| Option | Description |
+|--------|-------------|
+| **wizard** | Re-run the Revela Setup Wizard |
+
+---
+
+## 8. Configuration Files
+
+### project.json
+
+Technical settings for your project:
 
 ```json
 {
   "name": "MyPortfolio",
   "url": "https://www.my-website.com",
-  "theme": "Lumina",
+  "theme": {
+    "name": "Lumina"
+  },
   "generate": {
     "images": {
       "formats": {
@@ -200,133 +367,63 @@ The `project.json` contains technical settings. For starters, you can keep the d
 }
 ```
 
-**What do the image settings mean?**
-
 | Setting | Meaning |
 |---------|---------|
-| `formats` | Which image formats are created (AVIF, WebP, JPG) |
-| The numbers (80, 85, 90) | Quality level (0-100), higher = better quality, larger files |
-| `sizes` | Image widths in pixels that are created || `minWidth` | Minimum image width in pixels (smaller images are ignored) |
-| `minHeight` | Minimum image height in pixels (smaller images are ignored) |
+| `name` | Project name |
+| `url` | Website base URL |
+| `theme.name` | Active theme |
+| `formats` | Image formats with quality (0-100) |
+| `sizes` | Image widths in pixels |
+| `minWidth/minHeight` | Ignore smaller images (filters thumbnails) |
 
-**Tip:** Use `minWidth` and `minHeight` to filter out preview/thumbnail files that some programs or phones place alongside your photos.
-**Tip for getting started:** AVIF offers the best compression but takes significantly longer to process. For a quick first test, we recommend using only JPG:
+### site.json
+
+Website metadata:
+
 ```json
-"formats": {
-  "jpg": 90
+{
+  "title": "John Smith Photography",
+  "author": "John Smith",
+  "description": "Professional wedding and portrait photography",
+  "copyright": "© 2025 John Smith"
+}
+```
+
+### revela.json
+
+Global Revela configuration (in Revela folder):
+
+```json
+{
+  "feeds": [
+    {
+      "name": "Official",
+      "url": "https://nuget.pkg.github.com/spectara/index.json"
+    }
+  ]
 }
 ```
 
 ---
 
-## 5. Generate Website
-
-### Step 5.1: Generate Your Website
-
-1. Double-click `revela.exe` to open the interactive mode
-2. Select **generate** from the menu
-3. Select **all** to run the complete pipeline
-
-**What happens now?**
-
-1. **Scan:** Revela finds all images in `source/`
-2. **Process images:** Each image is created in all configured sizes and formats
-3. **Render pages:** HTML files are generated from the templates
-
-Depending on the number and size of your images, this can take several minutes. You'll see a progress bar:
-
-```
-Scanning...
-✓ Found 47 images in 5 galleries
-
-Processing images [████████████████████] 100% 47/47 - mountains.jpg
-Rendering pages   [████████████████████] 100% 12/12 - index.html
-
-✓ Generation complete!
-```
-
-### Step 5.2: Regenerate Only Parts (optional)
-
-In the **generate** submenu, you can also select specific steps:
-
-| Menu Option | What it does |
-|-------------|-------------|
-| **all** | Complete pipeline (scan → statistics → pages → images) |
-| **scan** | Scan source files (run first when images changed) |
-| **statistics** | Generate statistics JSON (requires Statistics plugin) |
-| **pages** | Only re-render HTML pages |
-| **images** | Only re-process images |
-
-**Note:** If you've added/deleted images or changed `_index.md` files, run **scan** first so Revela recognizes the changes.
-
----
-
-## 6. View the Result
-
-### Step 6.1: Open Website in Browser
-
-After generating, you'll find the finished website in the `output` folder:
-
-```
-C:\Revela\output\
-├── index.html          ← Homepage
-├── main.css
-├── main.js
-├── weddings/
-│   └── index.html
-├── portraits/
-│   └── index.html
-├── images/
-│   └── (all processed images)
-└── ...
-```
-
-**How to open the website:**
-
-1. Go to `C:\Revela\output\` in Windows Explorer
-2. Double-click on `index.html`
-3. The website opens in your default browser
-
-### Step 6.2: Upload Website to a Web Server
-
-To put your website online, upload the complete contents of the `output` folder to your web server (FTP, SFTP, etc.).
-
----
-
-## 7. Menu Reference
-
-### Main Menu Options
-
-| Menu | Submenu | Description |
-|------|---------|-------------|
-| **generate** | all | Generate website (full pipeline) |
-| | scan | Scan source files |
-| | images | Only process images |
-| | pages | Only create HTML pages |
-| **clean** | all | Delete everything (output + cache) |
-| | output | Delete only output directory |
-| | cache | Delete only cache directory |
-| **init** | project | Create new project |
-| **theme** | list | Show available themes |
-| | extract | Create custom theme copy |
-
----
-
-## Common Problems
+## 9. Common Problems
 
 ### "The menu doesn't appear" or "Window closes immediately"
 
-**Possible causes:**
-- Revela crashed before the menu could load
+**Causes:**
+- Revela crashed before loading
 - Missing dependencies
 
-**Solution:** Check if there's an error message in the window before it closes. You may need to reinstall Revela or check the GitHub Issues for known problems.
+**Solution:** Try running from command line to see error messages:
+1. Open PowerShell in the Revela folder
+2. Run `.\revela.exe`
+3. Check the error message
 
 ### "No images found"
 
-**Cause:** The `source` folder is empty or the images are not in subfolders.
+**Cause:** The `source` folder is empty or images are not in subfolders.
 
-**Solution:** Create at least one subfolder in `source/` and put images in it:
+**Solution:** Create at least one subfolder with images:
 ```
 source/
 └── 01 My Photos/
@@ -335,33 +432,43 @@ source/
 
 ### "Error processing images"
 
-**Possible causes:**
+**Causes:**
 - Corrupted image file
-- Unsupported format (only JPG, PNG, TIFF are supported)
-- Very large images (>100 MP) can cause memory problems
+- Unsupported format (only JPG, PNG, TIFF supported)
+- Very large images (>100 MP) can cause memory issues
 
-**Solution:** Check the error message in the console. It shows which image caused the problem.
+**Solution:** Check the error message - it shows which image caused the problem.
 
 ### Website looks different than expected
 
-**Possible causes:**
+**Causes:**
 - Browser cache showing old version
-- Error in configuration
+- Configuration error
 
 **Solutions:**
-1. Press `Ctrl + F5` in the browser (Hard Refresh)
-2. In Revela: select **clean** → **all**, then **generate** → **all**
+1. Press **Ctrl+F5** in browser (hard refresh)
+2. Run **clean** → **all**, then **generate** → **all**
 3. Check `site.json` and `project.json` for typos
+
+### "No themes available" in wizard
+
+**Cause:** Package index not loaded or network issue.
+
+**Solution:**
+1. Check your internet connection
+2. Run **packages** → **refresh** from the menu
+3. Or re-run the wizard via **Addons** → **wizard**
 
 ---
 
-## Next Steps
+## 10. Next Steps
 
-Once your website works, you can:
+Once your website works:
 
-- **Customize theme:** In Revela, select **theme** → **extract** to create your own theme copy
-- **Install plugins:** For extended features like OneDrive integration or statistics
-- **Upload to a server:** Upload the `output` folder via FTP/SFTP
+- **Customize theme:** Select **theme** → **extract** to create your own copy
+- **Install more plugins:** Select **plugins** → **install**
+- **Change settings:** Select **config** for all configuration options
+- **Upload to server:** Copy contents of `output/` via FTP/SFTP
 
 ---
 

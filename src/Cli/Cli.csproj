@@ -12,6 +12,9 @@
     <PackAsTool>true</PackAsTool>
     <ToolCommandName>revela</ToolCommandName>
     <PackageId>Spectara.Revela</PackageId>
+
+    <!-- Application Icon (shown in Windows Explorer and taskbar) -->
+    <ApplicationIcon>..\..\assets\revela.ico</ApplicationIcon>
   </PropertyGroup>
 
   <ItemGroup>
@@ -43,7 +46,7 @@
 
   <ItemGroup>
     <None Include="..\..\README.md" Pack="true" PackagePath="\" />
-    <None Include="..\..\assets\Spectara_100.png" Pack="true" PackagePath="icon.png" />
+    <None Include="..\..\assets\revela_100.png" Pack="true" PackagePath="icon.png" />
   </ItemGroup>
 
 </Project>

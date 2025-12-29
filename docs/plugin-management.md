@@ -1,10 +1,36 @@
 # Plugin Management Guide
 
-**Last Updated:** December 19, 2025
+**Last Updated:** December 29, 2025
 
 ## Overview
 
 Revela uses **NuGet packages** for plugin distribution and version management.
+
+---
+
+## Official vs Community Plugins
+
+### Official Plugins (Verified by Spectara)
+
+All plugins with the `Spectara.Revela.Plugin.*` prefix are officially maintained and verified by Spectara.
+
+| Plugin | Package ID | Description |
+|--------|------------|-------------|
+| **Serve** | `Spectara.Revela.Plugin.Serve` | Local development server with live preview |
+| **Statistics** | `Spectara.Revela.Plugin.Statistics` | Image count, sizes, and analytics |
+| **OneDrive** | `Spectara.Revela.Plugin.Source.OneDrive` | Import photos from OneDrive shared folders |
+
+**Security:** The `Spectara` prefix is **reserved on NuGet.org** and can only be used by the Spectara organization. This ensures that all `Spectara.Revela.*` packages are authentic and trustworthy.
+
+### Community Plugins
+
+Community plugins use their own prefix and are maintained by third-party developers.
+
+**Examples:**
+- `JohnDoe.Revela.Plugin.AWS` ⚠️ Community Plugin
+- `CommunityDev.Revela.Plugin.FTP` ⚠️ Community Plugin
+
+**Note:** Community plugins are not officially verified by Spectara. Install at your own risk.
 
 ---
 

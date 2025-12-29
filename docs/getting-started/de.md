@@ -11,15 +11,15 @@ Eine Schritt-für-Schritt-Anleitung für Fotografen, um mit Revela eine Portfoli
 - Automatisch skalierten Bildern (verschiedene Größen für schnelles Laden)
 - Moderner Galerie-Ansicht mit Lightbox
 - Responsivem Design (funktioniert auf Handy, Tablet, Desktop)
-- Schneller Ladezeit durch optimierte Bildformate (AVIF, WebP, JPG)
+- Schnellen Ladezeiten durch optimierte Bildformate (AVIF, WebP, JPG)
 
-**Einfach zu bedienen:** Wenn du `revela.exe` doppelklickst, öffnet sich ein **interaktiver Modus** mit einer menügesteuerten Oberfläche. Wähle einfach aus, was du tun möchtest - keine Kommandozeilen-Kenntnisse erforderlich!
+**Einfach zu bedienen:** Wenn du `revela.exe` doppelklickst, führen dich interaktive Assistenten durch die Einrichtung. Folge einfach den Anweisungen - keine Kommandozeilen-Kenntnisse erforderlich!
 
 ---
 
-## 1. Installation (Windows)
+## 1. Revela herunterladen
 
-### Schritt 1.1: Revela herunterladen
+### Schritt 1.1: Download
 
 1. Gehe zu den **GitHub Releases**: https://github.com/spectara/revela/releases
 2. Lade die neueste Version herunter:
@@ -34,57 +34,154 @@ Nach dem Entpacken hast du folgende Dateien:
 ```
 C:\Revela\
 ├── revela.exe                          ← Das Hauptprogramm
-├── Spectara.Revela.Theme.Lumina.dll    ← Das Standard-Theme
 └── getting-started/                    ← Anleitungen (mehrsprachig)
     ├── README.md
     ├── de.md                           ← Deutsch
     └── en.md                           ← English
 ```
 
-### Schritt 1.2: Installation testen
+### Schritt 1.2: Revela starten
 
 1. Öffne den Ordner `C:\Revela` im Windows Explorer
-2. Doppelklicke auf `revela.exe`
-3. Der **interaktive Modus** öffnet sich mit einem Menü
+2. **Doppelklicke auf `revela.exe`**
+3. Der **Revela Setup-Assistent** öffnet sich automatisch
 
-Du solltest einen Willkommensbildschirm mit Optionen wie:
-- generate
-- clean
-- init
-- theme
-
-**Das war's!** Du kannst jetzt über das Menü durch Revela navigieren.
+Das war's! Keine Installation nötig, keine Kommandozeile erforderlich.
 
 ---
 
-## 2. Projekt erstellen
+## 2. Revela Setup-Assistent (Erster Start)
 
-### Schritt 2.1: Projekt initialisieren
+Beim ersten Start von Revela erscheint automatisch der **Setup-Assistent**. Dieser Assistent hilft dir, Themes und Plugins zu installieren.
 
-1. Doppelklicke `revela.exe` um den interaktiven Modus zu öffnen
-2. Wähle **init** aus dem Menü
-3. Wähle **project**
+### Was du siehst
 
-Revela erstellt automatisch die Grundstruktur:
+```
+┌─────────────────────────────────────────────────────────────┐
+│  Willkommen beim Revela Setup-Assistenten!                  │
+│                                                             │
+│  Dieser Assistent hilft dir bei der Ersteinrichtung:        │
+│    1. Theme installieren (erforderlich)                     │
+│    2. Plugins installieren (optional)                       │
+│                                                             │
+│  Du kannst diesen Assistenten später erneut starten via:    │
+│  Addons → wizard                                            │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Schritt 2.1: Theme installieren
+
+1. Der Assistent lädt automatisch den Paketindex herunter
+2. Du siehst eine Liste verfügbarer Themes
+3. Wähle mindestens ein Theme aus (**Leertaste** zum Auswählen, **Enter** zum Bestätigen)
+4. Empfohlen: **Lumina** (das Standard-Fotografie-Theme)
+
+**Tipp:** Du kannst mehrere Themes auswählen, wenn du verschiedene Looks ausprobieren möchtest.
+
+### Schritt 2.2: Plugins installieren (Optional)
+
+1. Du siehst eine Liste verfügbarer Plugins
+2. Wähle beliebige Plugins aus (oder keine)
+3. Nützliche Plugins:
+   - **Serve** - Vorschau deiner Seite lokal vor dem Hochladen
+   - **Statistics** - Bildanzahl, Gesamtgröße usw. erfassen
+   - **Source.OneDrive** - Fotos aus OneDrive-Freigaben importieren
+
+### Schritt 2.3: Neustart
+
+Nach der Installation muss Revela neu gestartet werden, um die neuen Pakete zu laden:
+
+```
+✓ Setup erfolgreich abgeschlossen!
+
+Installierte Themes:
+  • Lumina
+
+Bitte starte Revela neu, um die neuen Pakete zu laden.
+```
+
+**Doppelklicke erneut auf `revela.exe`** um fortzufahren.
+
+---
+
+## 3. Projekt erstellen (Projekt-Assistent)
+
+Nach dem Setup-Assistenten erscheint automatisch der **Projekt-Assistent**, wenn du Revela in einem Ordner ohne Projekt startest.
+
+### Was du siehst
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  Neues Revela-Projekt erstellen                             │
+│                                                             │
+│  Dieser Assistent hilft dir bei der Einrichtung:            │
+│    1. Projekt-Einstellungen (Name, URL)                     │
+│    2. Theme auswählen                                       │
+│    3. Bild-Einstellungen (Formate, Größen)                  │
+│    4. Website-Metadaten (Titel, Autor)                      │
+│                                                             │
+│  Du kannst diese Einstellungen später ändern via:           │
+│  revela config                                              │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Schritt 3.1: Projekt-Einstellungen
+
+Gib deine Projektdetails ein:
+
+- **Projektname:** Ein kurzer Name für dein Projekt (z.B. "MeinPortfolio")
+- **Basis-URL:** Deine Website-Adresse (z.B. "https://fotos.beispiel.de")
+  - Leer lassen, wenn du sie noch nicht weißt
+
+### Schritt 3.2: Theme auswählen
+
+Wähle ein Theme aus deinen installierten Themes. Wenn du nur Lumina installiert hast, wird es automatisch ausgewählt.
+
+### Schritt 3.3: Bild-Einstellungen
+
+Konfiguriere, wie deine Bilder verarbeitet werden sollen:
+
+- **Formate:** Welche Formate erstellt werden (AVIF, WebP, JPG)
+- **Qualität:** Höher = bessere Qualität, aber größere Dateien
+- **Größen:** Welche Breiten erstellt werden (responsive Bilder)
+
+**Tipp für Anfänger:** Die Standardwerte funktionieren super! Drücke einfach Enter, um sie zu übernehmen.
+
+**Tipp für Geschwindigkeit:** AVIF bietet die beste Kompression, braucht aber länger. Für einen schnellen ersten Test kannst du AVIF deaktivieren und nur WebP und JPG behalten.
+
+### Schritt 3.4: Website-Metadaten
+
+Gib Informationen über deine Website ein:
+
+- **Titel:** Dein Website-Titel (erscheint im Browser-Tab)
+- **Autor:** Dein Name
+- **Copyright:** Copyright-Hinweis (z.B. "© 2025 Max Mustermann")
+
+### Nach dem Assistenten
+
+Der Assistent erstellt diese Dateien und Ordner:
 
 ```
 C:\Revela\
-├── revela.exe                          ← Das Hauptprogramm
-├── Spectara.Revela.Theme.Lumina.dll    ← Das Standard-Theme
-├── getting-started/                    ← Anleitungen
-├── project.json                        ← Projekt-Einstellungen (neu)
-├── site.json                           ← Website-Informationen (neu)
-├── source/                             ← Hier kommen deine Fotos rein (neu)
+├── revela.exe
+├── revela.json                         ← Revela-Konfiguration
+├── project.json                        ← Projekt-Einstellungen (NEU)
+├── site.json                           ← Website-Metadaten (NEU)
+├── source/                             ← Hier kommen deine Fotos rein (NEU)
 │   └── (leer)
-└── output/                             ← Hier landet die fertige Website (neu)
-    └── (leer)
+├── output/                             ← Hier landet die fertige Website (NEU)
+│   └── (leer)
+├── cache/                              ← Bild-Cache (NEU)
+│   └── (leer)
+└── packages/                           ← Installierte Themes & Plugins
+    └── ...
 ```
 
 ---
 
-## 3. Fotos hinzufügen
+## 4. Fotos hinzufügen
 
-### Schritt 3.1: Galerien als Ordner anlegen
+### Schritt 4.1: Galerien als Ordner anlegen
 
 Erstelle im `source`-Ordner Unterordner für deine Galerien. Die Ordnernamen werden zu Galerie-Titeln:
 
@@ -104,9 +201,9 @@ C:\Revela\source\
 
 **Tipps zur Ordnerstruktur:**
 
-- **Nummerierung:** Die Zahlen am Anfang (`01`, `02`, `03`) bestimmen die Reihenfolge im Menü
+- **Nummerierung:** Zahlen am Anfang (`01`, `02`, `03`) bestimmen die Menü-Reihenfolge
 - **Ordnername = Galerie-Titel:** "01 Hochzeiten" wird zu "Hochzeiten" auf der Website
-- **Untergalerien:** Du kannst auch verschachtelte Ordner anlegen:
+- **Verschachtelte Galerien:** Du kannst Untergalerien anlegen:
   ```
   source/
   └── 01 Events/
@@ -114,9 +211,9 @@ C:\Revela\source\
       └── 02 Firmenfeier Müller AG/
   ```
 
-### Schritt 3.2: Galerie-Beschreibung hinzufügen (optional)
+### Schritt 4.2: Galerie-Beschreibung hinzufügen (Optional)
 
-Um einer Galerie einen eigenen Titel oder eine Beschreibung zu geben, erstelle eine `_index.md` Datei im Galerie-Ordner:
+Um den Titel einer Galerie anzupassen oder eine Beschreibung hinzuzufügen, erstelle eine `_index.md`-Datei:
 
 **Datei:** `source/01 Hochzeiten/_index.md`
 ```markdown
@@ -129,47 +226,134 @@ Jede Hochzeit erzählt ihre eigene Geschichte. Hier findest du
 eine Auswahl meiner schönsten Hochzeitsbilder.
 ```
 
-Die Felder bedeuten:
 | Feld | Bedeutung |
 |------|-----------|
 | `title` | Überschreibt den Ordnernamen als Titel |
 | `description` | Beschreibungstext für die Galerie |
 
-Der Text unter den `---` Linien wird als Einleitungstext auf der Galerie-Seite angezeigt.
+Der Text unter den `---`-Linien erscheint als Einleitungstext auf der Galerie-Seite.
 
 ---
 
-## 4. Konfiguration anpassen
+## 5. Website generieren
 
-### Schritt 4.1: Website-Informationen (site.json)
+### Schritt 5.1: Website generieren
 
-Öffne `site.json` mit einem Texteditor (Notepad, VS Code, etc.) und passe die Werte an:
+1. Doppelklicke `revela.exe` um das Menü zu öffnen
+2. Wähle **generate**
+3. Wähle **all** für die vollständige Pipeline
 
-```json
-{
-  "title": "Max Mustermann Fotografie",
-  "author": "Max Mustermann",
-  "description": "Professionelle Hochzeits- und Portraitfotografie in München",
-  "copyright": "© 2025 Max Mustermann"
-}
+**Was passiert:**
+
+1. **Scan:** Revela findet alle Bilder in `source/`
+2. **Bilder verarbeiten:** Jedes Bild wird in allen konfigurierten Größen und Formaten erstellt
+3. **Seiten rendern:** HTML-Dateien werden aus den Templates generiert
+
+Du siehst einen Fortschrittsbalken:
+
+```
+Scanning...
+✓ Found 47 images in 5 galleries
+
+Processing images [████████████████████] 100% 47/47 - berge.jpg
+Rendering pages   [████████████████████] 100% 12/12 - index.html
+
+✓ Generation complete!
 ```
 
-| Feld | Bedeutung |
-|------|-----------|
-| `title` | Titel der Website (erscheint im Browser-Tab) |
-| `author` | Dein Name |
-| `description` | Kurzbeschreibung für Suchmaschinen |
-| `copyright` | Copyright-Hinweis im Footer |
+### Schritt 5.2: Nur Teile neu generieren (Optional)
 
-### Schritt 4.2: Projekt-Einstellungen (project.json)
+Im **generate**-Untermenü kannst du einzelne Schritte auswählen:
 
-Die `project.json` enthält technische Einstellungen. Für den Anfang kannst du die Standardwerte belassen:
+| Option | Was sie macht |
+|--------|---------------|
+| **all** | Vollständige Pipeline (scan → statistics → pages → images) |
+| **scan** | Quelldateien scannen (zuerst ausführen bei Bildänderungen) |
+| **statistics** | Statistiken generieren (erfordert Statistics-Plugin) |
+| **pages** | Nur HTML-Seiten neu rendern |
+| **images** | Nur Bilder neu verarbeiten |
+
+**Hinweis:** Nach dem Hinzufügen/Löschen von Bildern oder Ändern von `_index.md`-Dateien zuerst **scan** ausführen.
+
+---
+
+## 6. Vorschau & Hochladen
+
+### Schritt 6.1: Lokale Vorschau (mit Serve-Plugin)
+
+Wenn du das **Serve**-Plugin installiert hast:
+
+1. Wähle im Menü **serve** → **start**
+2. Dein Browser öffnet sich automatisch mit deiner Seite
+3. Drücke **Strg+C** im Terminal um den Server zu stoppen
+
+### Schritt 6.2: Dateien direkt öffnen
+
+Ohne das Serve-Plugin kannst du die Dateien direkt öffnen:
+
+1. Gehe im Windows Explorer zu `C:\Revela\output\`
+2. Doppelklicke auf `index.html`
+3. Die Website öffnet sich in deinem Browser
+
+**Hinweis:** Einige Funktionen (wie Lazy Loading) funktionieren besser mit einem echten Server.
+
+### Schritt 6.3: Auf Webserver hochladen
+
+Um deine Website online zu stellen, lade den kompletten Inhalt des `output`-Ordners auf deinen Webserver per FTP, SFTP oder den Dateimanager deines Hosting-Anbieters.
+
+---
+
+## 7. Menü-Übersicht
+
+### Hauptmenü
+
+| Menü | Untermenü | Beschreibung |
+|------|-----------|--------------|
+| **generate** | all | Website generieren (volle Pipeline) |
+| | scan | Quelldateien scannen |
+| | images | Nur Bilder verarbeiten |
+| | pages | Nur HTML-Seiten erstellen |
+| | statistics | Statistik-JSON generieren |
+| **clean** | all | Output + Cache löschen |
+| | output | Nur Output löschen |
+| | cache | Nur Cache löschen |
+| **config** | project | Projekt-Einstellungen bearbeiten |
+| | theme | Theme wechseln |
+| | images | Bild-Einstellungen bearbeiten |
+| | site | Website-Metadaten bearbeiten |
+| | feed | Paketquellen verwalten |
+| **theme** | list | Installierte Themes anzeigen |
+| | install | Neues Theme installieren |
+| | extract | Eigene Theme-Kopie erstellen |
+| **plugins** | list | Installierte Plugins anzeigen |
+| | install | Neues Plugin installieren |
+| | uninstall | Plugin entfernen |
+| **packages** | refresh | Paketindex aktualisieren |
+| | list | Alle verfügbaren Pakete anzeigen |
+| **serve** | start | Lokalen Vorschau-Server starten |
+| | | *(erfordert Serve-Plugin)* |
+
+### Addons-Gruppe
+
+| Option | Beschreibung |
+|--------|--------------|
+| **wizard** | Revela Setup-Assistenten erneut starten |
+
+---
+
+## 8. Konfigurationsdateien
+
+### project.json
+
+Technische Einstellungen für dein Projekt:
 
 ```json
 {
   "name": "MeinPortfolio",
   "url": "https://www.meine-website.de",
-  "theme": "Lumina",
+  "theme": {
+    "name": "Lumina"
+  },
   "generate": {
     "images": {
       "formats": {
@@ -185,133 +369,63 @@ Die `project.json` enthält technische Einstellungen. Für den Anfang kannst du 
 }
 ```
 
-**Was bedeuten die Bildeinstellungen?**
-
 | Einstellung | Bedeutung |
 |-------------|-----------|
-| `formats` | Welche Bildformate erstellt werden (AVIF, WebP, JPG) |
-| Die Zahlen (80, 85, 90) | Qualitätsstufe (0-100), höher = bessere Qualität, größere Dateien |
-| `sizes` | Bildbreiten in Pixeln, die erstellt werden || `minWidth` | Minimale Bildbreite in Pixeln (kleinere Bilder werden ignoriert) |
-| `minHeight` | Minimale Bildhöhe in Pixeln (kleinere Bilder werden ignoriert) |
+| `name` | Projektname |
+| `url` | Website-Basis-URL |
+| `theme.name` | Aktives Theme |
+| `formats` | Bildformate mit Qualität (0-100) |
+| `sizes` | Bildbreiten in Pixeln |
+| `minWidth/minHeight` | Kleinere Bilder ignorieren (filtert Thumbnails) |
 
-**Tipp:** Verwende `minWidth` und `minHeight`, um Vorschau-/Thumbnail-Dateien herauszufiltern, die manche Programme oder Handys neben deine Fotos legen.
-**Tipp für den Anfang:** AVIF bietet die beste Kompression, braucht aber deutlich länger zum Berechnen. Für einen schnellen ersten Test empfehlen wir nur JPG:
+### site.json
+
+Website-Metadaten:
+
 ```json
-"formats": {
-  "jpg": 90
+{
+  "title": "Max Mustermann Fotografie",
+  "author": "Max Mustermann",
+  "description": "Professionelle Hochzeits- und Portraitfotografie",
+  "copyright": "© 2025 Max Mustermann"
+}
+```
+
+### revela.json
+
+Globale Revela-Konfiguration (im Revela-Ordner):
+
+```json
+{
+  "feeds": [
+    {
+      "name": "Official",
+      "url": "https://nuget.pkg.github.com/spectara/index.json"
+    }
+  ]
 }
 ```
 
 ---
 
-## 5. Website generieren
-
-### Schritt 5.1: Website generieren
-
-1. Doppelklicke `revela.exe` um den interaktiven Modus zu öffnen
-2. Wähle **generate** aus dem Menü
-3. Wähle **all** um die vollständige Pipeline auszuführen
-
-**Was passiert jetzt?**
-
-1. **Scan:** Revela findet alle Bilder in `source/`
-2. **Bilder verarbeiten:** Jedes Bild wird in allen konfigurierten Größen und Formaten erstellt
-3. **Seiten rendern:** HTML-Dateien werden aus den Templates generiert
-
-Je nach Anzahl und Größe deiner Bilder kann das einige Minuten dauern. Du siehst einen Fortschrittsbalken:
-
-```
-Scanning...
-✓ Found 47 images in 5 galleries
-
-Processing images [████████████████████] 100% 47/47 - berge.jpg
-Rendering pages   [████████████████████] 100% 12/12 - index.html
-
-✓ Generation complete!
-```
-
-### Schritt 5.2: Nur Teile neu generieren (optional)
-
-Im **generate**-Untermenü kannst du auch einzelne Schritte auswählen:
-
-| Menü-Option | Was sie macht |
-|-------------|---------------|
-| **all** | Vollständige Pipeline (scan → statistics → pages → images) |
-| **scan** | Quelldateien scannen (zuerst ausführen wenn Bilder geändert) |
-| **statistics** | Statistik-JSON generieren (erfordert Statistics-Plugin) |
-| **pages** | Nur HTML-Seiten neu rendern |
-| **images** | Nur Bilder neu verarbeiten |
-
-**Hinweis:** Wenn du Bilder hinzugefügt/gelöscht oder `_index.md` Dateien geändert hast, führe zuerst **scan** aus, damit Revela die Änderungen erkennt.
-
----
-
-## 6. Ergebnis anschauen
-
-### Schritt 6.1: Website im Browser öffnen
-
-Nach dem Generieren findest du die fertige Website im `output`-Ordner:
-
-```
-C:\Revela\output\
-├── index.html          ← Startseite
-├── main.css
-├── main.js
-├── hochzeiten/
-│   └── index.html
-├── portraits/
-│   └── index.html
-├── images/
-│   └── (alle verarbeiteten Bilder)
-└── ...
-```
-
-**So öffnest du die Website:**
-
-1. Gehe im Windows Explorer zu `C:\Revela\output\`
-2. Doppelklicke auf `index.html`
-3. Die Website öffnet sich in deinem Standard-Browser
-
-### Schritt 6.2: Website auf einen Webserver hochladen
-
-Um deine Website online zu stellen, lade den kompletten Inhalt des `output`-Ordners auf deinen Webserver (FTP, SFTP, etc.).
-
----
-
-## 7. Menü-Übersicht
-
-### Hauptmenü-Optionen
-
-| Menü | Untermenü | Beschreibung |
-|------|-----------|-------------|
-| **generate** | all | Website generieren (vollständige Pipeline) |
-| | scan | Quelldateien scannen |
-| | images | Nur Bilder verarbeiten |
-| | pages | Nur HTML-Seiten erstellen |
-| **clean** | all | Alles löschen (output + cache) |
-| | output | Nur output-Verzeichnis löschen |
-| | cache | Nur cache-Verzeichnis löschen |
-| **init** | project | Neues Projekt erstellen |
-| **theme** | list | Verfügbare Themes anzeigen |
-| | extract | Eigene Theme-Kopie erstellen |
-
----
-
-## Häufige Probleme
+## 9. Häufige Probleme
 
 ### "Das Menü erscheint nicht" oder "Fenster schließt sich sofort"
 
-**Mögliche Ursachen:**
-- Revela ist abgestürzt bevor das Menü laden konnte
+**Ursachen:**
+- Revela ist vor dem Laden abgestürzt
 - Fehlende Abhängigkeiten
 
-**Lösung:** Überprüfe ob eine Fehlermeldung im Fenster erscheint bevor es sich schließt. Möglicherweise musst du Revela neu installieren oder die GitHub Issues nach bekannten Problemen durchsuchen.
+**Lösung:** Versuche, von der Kommandozeile zu starten, um Fehlermeldungen zu sehen:
+1. Öffne PowerShell im Revela-Ordner
+2. Führe `.\revela.exe` aus
+3. Prüfe die Fehlermeldung
 
 ### "Keine Bilder gefunden"
 
-**Ursache:** Der `source`-Ordner ist leer oder die Bilder sind nicht in Unterordnern.
+**Ursache:** Der `source`-Ordner ist leer oder Bilder sind nicht in Unterordnern.
 
-**Lösung:** Erstelle mindestens einen Unterordner in `source/` und lege Bilder hinein:
+**Lösung:** Erstelle mindestens einen Unterordner mit Bildern:
 ```
 source/
 └── 01 Meine Fotos/
@@ -320,33 +434,43 @@ source/
 
 ### "Fehler beim Verarbeiten von Bildern"
 
-**Mögliche Ursachen:**
+**Ursachen:**
 - Beschädigte Bilddatei
-- Nicht unterstütztes Format (nur JPG, PNG, TIFF werden unterstützt)
+- Nicht unterstütztes Format (nur JPG, PNG, TIFF unterstützt)
 - Sehr große Bilder (>100 MP) können Speicherprobleme verursachen
 
-**Lösung:** Überprüfe die Fehlermeldung in der Konsole. Sie zeigt an, welches Bild das Problem verursacht.
+**Lösung:** Prüfe die Fehlermeldung - sie zeigt an, welches Bild das Problem verursacht.
 
 ### Website sieht anders aus als erwartet
 
-**Mögliche Ursachen:**
+**Ursachen:**
 - Browser-Cache zeigt alte Version
-- Fehler in der Konfiguration
+- Konfigurationsfehler
 
 **Lösungen:**
-1. Drücke `Strg + F5` im Browser (Hard Refresh)
-2. In Revela: wähle **clean** → **all**, dann **generate** → **all**
-3. Überprüfe `site.json` und `project.json` auf Tippfehler
+1. Drücke **Strg+F5** im Browser (Hard Refresh)
+2. Führe **clean** → **all**, dann **generate** → **all** aus
+3. Prüfe `site.json` und `project.json` auf Tippfehler
+
+### "Keine Themes verfügbar" im Assistenten
+
+**Ursache:** Paketindex nicht geladen oder Netzwerkproblem.
+
+**Lösung:**
+1. Prüfe deine Internetverbindung
+2. Führe **packages** → **refresh** im Menü aus
+3. Oder starte den Assistenten erneut via **Addons** → **wizard**
 
 ---
 
-## Nächste Schritte
+## 10. Nächste Schritte
 
-Wenn deine Website funktioniert, kannst du:
+Wenn deine Website funktioniert:
 
-- **Theme anpassen:** In Revela wähle **theme** → **extract** um eine eigene Theme-Kopie zu erstellen
-- **Plugins installieren:** Für erweiterte Funktionen wie OneDrive-Integration oder Statistiken
-- **Auf einen Server hochladen:** Den `output`-Ordner per FTP/SFTP hochladen
+- **Theme anpassen:** Wähle **theme** → **extract** um eine eigene Kopie zu erstellen
+- **Weitere Plugins installieren:** Wähle **plugins** → **install**
+- **Einstellungen ändern:** Wähle **config** für alle Konfigurationsoptionen
+- **Auf Server hochladen:** Kopiere den Inhalt von `output/` per FTP/SFTP
 
 ---
 

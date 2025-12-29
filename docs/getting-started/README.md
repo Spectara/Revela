@@ -13,12 +13,17 @@ Step-by-step guides for photographers to create a portfolio website with Revela.
 
 Each guide covers:
 
-1. **Installation** - Download and setup
-2. **Project Creation** - Initialize your first project
-3. **Adding Photos** - Organize galleries and add descriptions
-4. **Configuration** - Customize site settings
+1. **Download** - Get Revela and start it
+2. **Setup Wizard** - Install themes and plugins (first run)
+3. **Project Wizard** - Create your first project
+4. **Adding Photos** - Organize galleries and add descriptions
 5. **Generation** - Build your website
-6. **Troubleshooting** - Common problems and solutions
+6. **Preview & Upload** - View locally and publish online
+7. **Menu Reference** - All available commands
+8. **Configuration** - Detailed settings reference
+9. **Troubleshooting** - Common problems and solutions
+
+**No command line required!** Interactive wizards guide you through the entire setup.
 
 ## Quick Links
 
