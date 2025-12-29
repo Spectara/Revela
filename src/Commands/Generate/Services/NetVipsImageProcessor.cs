@@ -472,24 +472,31 @@ public sealed partial class NetVipsImageProcessor(
         // Save with format-specific options
         // IMPORTANT: Do NOT use Task.Run here!
         // NetVips is NOT thread-safe - all operations on an Image must happen on the same thread
+        //
+        // keep: ForeignKeep.None - removes all metadata (EXIF, XMP, ICC profiles)
+        // Benefits:
+        // - Smaller file sizes (XMP/EXIF can add several KB per image)
+        // - No "large XMP not saved" warnings from libvips
+        // - Privacy: GPS coordinates etc. not leaked (already extracted to manifest)
+        // - Web images don't need embedded metadata
         switch (format.ToUpperInvariant())
         {
             case "WEBP":
-                image.Webpsave(outputPath, q: quality);
+                image.Webpsave(outputPath, q: quality, keep: Enums.ForeignKeep.None);
                 break;
 
             case "JPG":
             case "JPEG":
-                image.Jpegsave(outputPath, q: quality);
+                image.Jpegsave(outputPath, q: quality, keep: Enums.ForeignKeep.None);
                 break;
 
             case "AVIF":
                 // AVIF uses AV1 compression via HEIF container
-                image.Heifsave(outputPath, q: quality, compression: Enums.ForeignHeifCompression.Av1);
+                image.Heifsave(outputPath, q: quality, compression: Enums.ForeignHeifCompression.Av1, keep: Enums.ForeignKeep.None);
                 break;
 
             case "PNG":
-                image.Pngsave(outputPath, compression: 9);
+                image.Pngsave(outputPath, compression: 9, keep: Enums.ForeignKeep.None);
                 break;
 
             default:

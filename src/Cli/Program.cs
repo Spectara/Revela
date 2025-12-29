@@ -17,6 +17,14 @@ if (shouldExit)
     return 1;
 }
 
+// ✅ Detect interactive mode: no arguments AND interactive terminal
+// System.CommandLine 2.0 shows help by default when no subcommand is given,
+// so we need to detect this case and explicitly trigger interactive mode.
+var isInteractiveMode = filteredArgs.Length == 0
+    && !Console.IsInputRedirected
+    && !Console.IsOutputRedirected
+    && Environment.UserInteractive;
+
 // ✅ Create builder with correct ContentRootPath
 // In standalone mode: project directory from selection or --project
 // In tool mode: current working directory (default behavior)
@@ -39,4 +47,14 @@ builder.Services.AddPlugins(builder.Configuration, filteredArgs);
 var host = builder.Build();
 
 // ✅ Post-build: Create CLI and execute
-return host.UseRevelaCommands().Parse(filteredArgs).Invoke();
+var rootCommand = host.UseRevelaCommands();
+
+// If interactive mode detected, run it directly instead of going through System.CommandLine parser
+if (isInteractiveMode)
+{
+    var interactiveService = host.Services.GetRequiredService<IInteractiveMenuService>();
+    interactiveService.RootCommand = rootCommand;
+    return await interactiveService.RunAsync(CancellationToken.None);
+}
+
+return await rootCommand.Parse(filteredArgs).InvokeAsync();
