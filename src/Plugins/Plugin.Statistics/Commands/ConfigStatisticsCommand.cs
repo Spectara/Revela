@@ -1,7 +1,8 @@
 using System.CommandLine;
-using System.Text.Json;
+using System.Text.Json.Nodes;
 using Microsoft.Extensions.Options;
 using Spectara.Revela.Plugin.Statistics.Configuration;
+using Spectara.Revela.Sdk.Abstractions;
 using Spectre.Console;
 
 namespace Spectara.Revela.Plugin.Statistics.Commands;
@@ -12,7 +13,7 @@ namespace Spectara.Revela.Plugin.Statistics.Commands;
 /// <remarks>
 /// <para>
 /// Allows interactive or argument-based configuration of the statistics plugin.
-/// Reads/writes to config/Spectara.Revela.Plugin.Statistics.json.
+/// Stores configuration in project.json under the plugin's section.
 /// </para>
 /// <para>
 /// Usage: revela config statistics [options]
@@ -20,15 +21,9 @@ namespace Spectara.Revela.Plugin.Statistics.Commands;
 /// </remarks>
 public sealed partial class ConfigStatisticsCommand(
     ILogger<ConfigStatisticsCommand> logger,
+    IConfigService configService,
     IOptionsMonitor<StatisticsPluginConfig> configMonitor)
 {
-    private const string ConfigPath = "config/Spectara.Revela.Plugin.Statistics.json";
-
-    private static readonly JsonSerializerOptions JsonOptions = new()
-    {
-        WriteIndented = true
-    };
-
     /// <summary>
     /// Creates the command definition.
     /// </summary>
@@ -90,25 +85,23 @@ public sealed partial class ConfigStatisticsCommand(
             sortByCount = sortByCountArg ?? current.SortByCount;
         }
 
-        // Ensure plugins directory exists
-        Directory.CreateDirectory("plugins");
-
-        // Build config object
-        var config = new Dictionary<string, object>
+        // Build plugin config object
+        var pluginConfig = new JsonObject
         {
-            [StatisticsPluginConfig.SectionName] = new Dictionary<string, object>
-            {
-                ["MaxEntriesPerCategory"] = maxEntries,
-                ["SortByCount"] = sortByCount
-            }
+            ["MaxEntriesPerCategory"] = maxEntries,
+            ["SortByCount"] = sortByCount
         };
 
-        // Write config file
-        var json = JsonSerializer.Serialize(config, JsonOptions);
-        await File.WriteAllTextAsync(ConfigPath, json, cancellationToken).ConfigureAwait(false);
+        // Wrap with plugin section name and update project.json
+        var updates = new JsonObject
+        {
+            [StatisticsPluginConfig.SectionName] = pluginConfig
+        };
 
-        LogConfigSaved(logger, ConfigPath);
-        AnsiConsole.MarkupLine($"\n[green]✓[/] Configuration saved to [cyan]{ConfigPath}[/]");
+        await configService.UpdateProjectConfigAsync(updates, cancellationToken).ConfigureAwait(false);
+
+        LogConfigSaved(logger, configService.ProjectConfigPath);
+        AnsiConsole.MarkupLine($"\n[green]✓[/] Configuration saved to [cyan]project.json[/]");
 
         return 0;
     }

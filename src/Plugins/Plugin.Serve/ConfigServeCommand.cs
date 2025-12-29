@@ -1,7 +1,9 @@
 using System.CommandLine;
-using System.Text.Json;
+using System.Globalization;
+using System.Text.Json.Nodes;
 using Microsoft.Extensions.Options;
 using Spectara.Revela.Plugin.Serve.Configuration;
+using Spectara.Revela.Sdk.Abstractions;
 using Spectre.Console;
 
 namespace Spectara.Revela.Plugin.Serve;
@@ -12,7 +14,7 @@ namespace Spectara.Revela.Plugin.Serve;
 /// <remarks>
 /// <para>
 /// Allows interactive or argument-based configuration of the serve plugin.
-/// Reads/writes to config/Spectara.Revela.Plugin.Serve.json.
+/// Stores configuration in project.json under the plugin's section.
 /// </para>
 /// <para>
 /// Usage: revela config serve [options]
@@ -20,15 +22,9 @@ namespace Spectara.Revela.Plugin.Serve;
 /// </remarks>
 public sealed partial class ConfigServeCommand(
     ILogger<ConfigServeCommand> logger,
+    IConfigService configService,
     IOptionsMonitor<ServeConfig> configMonitor)
 {
-    private const string ConfigPath = "config/Spectara.Revela.Plugin.Serve.json";
-
-    private static readonly JsonSerializerOptions JsonOptions = new()
-    {
-        WriteIndented = true
-    };
-
     /// <summary>
     /// Creates the command definition.
     /// </summary>
@@ -93,25 +89,23 @@ public sealed partial class ConfigServeCommand(
             verbose = verboseArg ?? current.Verbose;
         }
 
-        // Ensure plugins directory exists
-        Directory.CreateDirectory("plugins");
-
-        // Build config object
-        var config = new Dictionary<string, object>
+        // Build plugin config object
+        var pluginConfig = new JsonObject
         {
-            [ServeConfig.SectionName] = new Dictionary<string, object>
-            {
-                ["Port"] = port,
-                ["Verbose"] = verbose
-            }
+            ["Port"] = port,
+            ["Verbose"] = verbose
         };
 
-        // Write config file
-        var json = JsonSerializer.Serialize(config, JsonOptions);
-        await File.WriteAllTextAsync(ConfigPath, json, cancellationToken).ConfigureAwait(false);
+        // Wrap with plugin section name and update project.json
+        var updates = new JsonObject
+        {
+            [ServeConfig.SectionName] = pluginConfig
+        };
 
-        LogConfigSaved(logger, ConfigPath);
-        AnsiConsole.MarkupLine($"\n[green]✓[/] Configuration saved to [cyan]{ConfigPath}[/]");
+        await configService.UpdateProjectConfigAsync(updates, cancellationToken).ConfigureAwait(false);
+
+        LogConfigSaved(logger, configService.ProjectConfigPath);
+        AnsiConsole.MarkupLine($"\n[green]✓[/] Configuration saved to [cyan]project.json[/]");
 
         // Show summary
         var table = new Table()
@@ -119,7 +113,7 @@ public sealed partial class ConfigServeCommand(
             .AddColumn("Setting")
             .AddColumn("Value");
 
-        table.AddRow("Port", port.ToString(System.Globalization.CultureInfo.InvariantCulture));
+        table.AddRow("Port", port.ToString(CultureInfo.InvariantCulture));
         table.AddRow("Verbose", verbose ? "Yes" : "No");
 
         AnsiConsole.Write(table);

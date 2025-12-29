@@ -10,9 +10,9 @@ namespace Spectara.Revela.Plugin.Source.OneDrive.Configuration;
 /// These can be overridden from multiple sources (in priority order, highest to lowest):
 /// 1. Command-line arguments (--share-url, --output, --concurrency, etc.)
 /// 2. Environment variables (SPECTARA__REVELA__PLUGIN__SOURCE__ONEDRIVE__*)
-/// 3. User config file (config/Spectara.Revela.Plugin.Source.OneDrive.json)
+/// 3. Project config file (project.json)
 ///
-/// Example config/Spectara.Revela.Plugin.Source.OneDrive.json:
+/// Example project.json:
 /// {
 ///   "Spectara.Revela.Plugin.Source.OneDrive": {
 ///     "ShareUrl": "https://1drv.ms/...",

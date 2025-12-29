@@ -5,6 +5,7 @@ using Spectara.Revela.Commands.Config.Services;
 using Spectara.Revela.Core.Configuration;
 using Spectara.Revela.Core.Services;
 using Spectara.Revela.Sdk;
+using Spectara.Revela.Sdk.Abstractions;
 using Spectre.Console;
 
 namespace Spectara.Revela.Commands.Config.Site;
@@ -51,7 +52,7 @@ public sealed partial class ConfigSiteCommand(
             return 1;
         }
 
-        // Get selected theme from IOptions (runtime reading)
+        // Get selected theme from IOptions (cache is invalidated after theme change)
         var themeName = themeConfig.CurrentValue.Name;
 
         if (string.IsNullOrWhiteSpace(themeName))

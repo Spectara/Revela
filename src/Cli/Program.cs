@@ -30,7 +30,7 @@ var builder = Host.CreateApplicationBuilder(settings);
 
 // ✅ Pre-build: Load configuration and register services
 builder.AddRevelaConfiguration();
-builder.Services.AddRevelaConfigSections(builder.Configuration);
+builder.Services.AddRevelaConfigSections();
 builder.Services.AddRevelaCommands();
 builder.Services.AddInteractiveMode();
 builder.Services.AddPlugins(builder.Configuration, filteredArgs);

@@ -6,11 +6,11 @@ using Spectara.Revela.Commands.Config.Feed;
 using Spectara.Revela.Commands.Config.Images;
 using Spectara.Revela.Commands.Config.Project;
 using Spectara.Revela.Commands.Config.Revela;
-using Spectara.Revela.Commands.Config.Services;
 using Spectara.Revela.Commands.Config.Site;
 using Spectara.Revela.Commands.Config.Theme;
 using Spectara.Revela.Core.Configuration;
 using Spectara.Revela.Sdk;
+using Spectara.Revela.Sdk.Abstractions;
 
 using Spectre.Console;
 
@@ -57,16 +57,7 @@ public sealed class ConfigCommand(
     }
 
     /// <summary>
-    /// Executes the interactive configuration wizard.
-    /// Called from init command after project scaffolding.
-    /// </summary>
-    /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns>Exit code.</returns>
-    public Task<int> ExecuteWizardAsync(CancellationToken cancellationToken)
-        => ExecuteInteractiveAsync(cancellationToken);
-
-    /// <summary>
-    /// Executes the interactive configuration wizard.
+    /// Executes the interactive configuration menu.
     /// </summary>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>Exit code.</returns>

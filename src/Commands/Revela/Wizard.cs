@@ -6,7 +6,7 @@ using Spectara.Revela.Sdk;
 
 using Spectre.Console;
 
-namespace Spectara.Revela.Cli.Hosting;
+namespace Spectara.Revela.Commands.Revela;
 
 /// <summary>
 /// Setup wizard for first-time Revela configuration.
@@ -30,8 +30,8 @@ namespace Spectara.Revela.Cli.Hosting;
 /// Feed configuration is available via 'revela config feed' commands.
 /// </para>
 /// </remarks>
-internal sealed partial class SetupWizard(
-    ILogger<SetupWizard> logger,
+public sealed partial class Wizard(
+    ILogger<Wizard> logger,
     RefreshCommand packagesRefreshCommand,
     ThemeInstallCommand themeInstallCommand,
     PluginInstallCommand pluginInstallCommand)
@@ -209,7 +209,7 @@ internal sealed partial class SetupWizard(
                 "",
                 "All themes and plugins were already installed.",
                 "",
-                "You're ready to use Revela!"
+                "You're ready to use Revela!",
             };
 
             var panel = new Panel(new Markup(string.Join("\n", lines)))

@@ -1,8 +1,9 @@
 using System.CommandLine;
-using System.Text.Json;
+using System.Text.Json.Nodes;
 using Microsoft.Extensions.Options;
 using Spectara.Revela.Plugin.Source.OneDrive.Configuration;
 using Spectara.Revela.Sdk;
+using Spectara.Revela.Sdk.Abstractions;
 using Spectre.Console;
 
 namespace Spectara.Revela.Plugin.Source.OneDrive.Commands;
@@ -13,7 +14,7 @@ namespace Spectara.Revela.Plugin.Source.OneDrive.Commands;
 /// <remarks>
 /// <para>
 /// Allows interactive or argument-based configuration of the OneDrive plugin.
-/// Creates or updates config/Spectara.Revela.Plugin.Source.OneDrive.json.
+/// Stores configuration in project.json under the plugin's section.
 /// </para>
 /// <para>
 /// Usage: revela config source onedrive [options]
@@ -21,17 +22,9 @@ namespace Spectara.Revela.Plugin.Source.OneDrive.Commands;
 /// </remarks>
 public sealed partial class ConfigOneDriveCommand(
     ILogger<ConfigOneDriveCommand> logger,
+    IConfigService configService,
     IOptionsMonitor<OneDrivePluginConfig> configMonitor)
 {
-    private const string ConfigFolderName = "config";
-    private const string PluginPackageId = "Spectara.Revela.Plugin.Source.OneDrive";
-    private const string ConfigPath = $"{ConfigFolderName}/{PluginPackageId}.json";
-
-    private static readonly JsonSerializerOptions JsonOptions = new()
-    {
-        WriteIndented = true
-    };
-
     /// <summary>
     /// Creates the command definition.
     /// </summary>
@@ -68,6 +61,18 @@ public sealed partial class ConfigOneDriveCommand(
         return command;
     }
 
+    /// <summary>
+    /// Executes the configuration in interactive mode (no arguments).
+    /// </summary>
+    /// <remarks>
+    /// Used by <see cref="Wizard.OneDriveWizardStep"/> to run configuration
+    /// as part of the project setup wizard.
+    /// </remarks>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>Exit code: 0 = success, non-zero = error.</returns>
+    public Task<int> ExecuteInteractiveAsync(CancellationToken cancellationToken)
+        => ExecuteAsync(null, null, null, cancellationToken);
+
     private async Task<int> ExecuteAsync(
         string? shareUrlArg,
         string? outputArg,
@@ -76,7 +81,9 @@ public sealed partial class ConfigOneDriveCommand(
     {
         // Read current values from IOptions (empty if config doesn't exist yet)
         var current = configMonitor.CurrentValue;
-        var isFirstTime = !File.Exists(ConfigPath);
+
+        // Check if plugin is already configured by looking for non-default ShareUrl
+        var isFirstTime = string.IsNullOrEmpty(current.ShareUrl);
 
         // Determine if interactive mode (no arguments provided)
         var isInteractive = shareUrlArg is null && outputArg is null && concurrencyArg is null;
@@ -132,43 +139,39 @@ public sealed partial class ConfigOneDriveCommand(
             concurrency = concurrencyArg ?? current.DefaultConcurrency;
         }
 
-        // Ensure config directory exists
-        Directory.CreateDirectory(ConfigFolderName);
-
         // Build config object (only include non-default values)
-        var configValues = new Dictionary<string, object>();
+        var pluginConfig = new JsonObject();
 
         if (!string.IsNullOrEmpty(shareUrl))
         {
-            configValues["ShareUrl"] = shareUrl;
+            pluginConfig["ShareUrl"] = shareUrl;
         }
 
         if (output != "source")
         {
-            configValues["OutputDirectory"] = output;
+            pluginConfig["OutputDirectory"] = output;
         }
 
         if (concurrency.HasValue)
         {
-            configValues["DefaultConcurrency"] = concurrency.Value;
+            pluginConfig["DefaultConcurrency"] = concurrency.Value;
         }
 
-        var config = new Dictionary<string, object>
+        // Wrap with plugin section name and update project.json
+        var updates = new JsonObject
         {
-            [PluginPackageId] = configValues
+            [OneDrivePluginConfig.SectionName] = pluginConfig
         };
 
-        // Write config file
-        var json = JsonSerializer.Serialize(config, JsonOptions);
-        await File.WriteAllTextAsync(ConfigPath, json, cancellationToken).ConfigureAwait(false);
+        await configService.UpdateProjectConfigAsync(updates, cancellationToken).ConfigureAwait(false);
 
-        LogConfigSaved(logger, ConfigPath);
+        LogConfigSaved(logger, configService.ProjectConfigPath);
 
         // Show success panel
         var action = isFirstTime ? "created" : "updated";
         var panel = new Panel(
             $"[green]OneDrive source {action}![/]\n\n" +
-            $"[bold]Configuration:[/] [cyan]{ConfigPath}[/]\n" +
+            $"[bold]Configuration:[/] [cyan]project.json[/]\n" +
             (string.IsNullOrEmpty(shareUrl) ? "" : $"[bold]Share URL:[/] [dim]{shareUrl}[/]\n") +
             $"[bold]Output directory:[/] [cyan]{output}[/]\n\n" +
             $"[bold]Next steps:[/]\n" +

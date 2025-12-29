@@ -1,7 +1,8 @@
 using System.CommandLine;
-using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Options;
 using Spectara.Revela.Commands.Generate.Abstractions;
 using Spectara.Revela.Commands.Generate.Models.Results;
+using Spectara.Revela.Core.Configuration;
 using Spectara.Revela.Sdk;
 using Spectre.Console;
 using IManifestRepository = Spectara.Revela.Sdk.Abstractions.IManifestRepository;
@@ -23,7 +24,7 @@ public sealed partial class PagesCommand(
     ILogger<PagesCommand> logger,
     IRenderService renderService,
     IManifestRepository manifestRepository,
-    IConfiguration configuration)
+    IOptionsMonitor<ProjectConfig> projectConfig)
 {
     /// <summary>
     /// Creates the CLI command.
@@ -97,7 +98,11 @@ public sealed partial class PagesCommand(
 
             if (result.Success)
             {
-                var projectName = configuration["name"] ?? "Revela Site";
+                var projectName = projectConfig.CurrentValue.Name;
+                if (string.IsNullOrEmpty(projectName))
+                {
+                    projectName = "Revela Site";
+                }
 
                 var successPanel = new Panel(
                     new Markup($"[green]Page rendering complete![/]\n\n" +

@@ -1,5 +1,9 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Options;
+using Spectara.Revela.Core.Configuration;
+using Spectara.Revela.Sdk.Abstractions;
 
 namespace Spectara.Revela.Commands.Config.Services;
 
@@ -11,8 +15,15 @@ namespace Spectara.Revela.Commands.Config.Services;
 /// - JsonObject-based access
 /// - Deep merge for partial updates
 /// - Pretty-printed output
+/// - Automatic IConfiguration reload and IOptionsMonitor cache invalidation after writes
 /// </remarks>
-public sealed partial class ConfigService(ILogger<ConfigService> logger) : IConfigService
+public sealed partial class ConfigService(
+    ILogger<ConfigService> logger,
+    IConfiguration configuration,
+    IOptionsMonitorCache<ThemeConfig> themeCache,
+    IOptionsMonitorCache<ProjectConfig> projectCache,
+    IOptionsMonitorCache<GenerateConfig> generateCache,
+    IOptionsMonitorCache<DependenciesConfig> dependenciesCache) : IConfigService
 {
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -61,7 +72,39 @@ public sealed partial class ConfigService(ILogger<ConfigService> logger) : IConf
 
         var json = existing.ToJsonString(JsonOptions);
         await File.WriteAllTextAsync(ProjectConfigPath, json, cancellationToken).ConfigureAwait(false);
+
+        // Force IConfiguration to reload from file immediately (don't wait for FileSystemWatcher)
+        // Then invalidate IOptionsMonitor caches so CurrentValue returns fresh data
+        ReloadConfigurationAndInvalidateCaches();
+
         LogConfigUpdated(ProjectConfigPath);
+    }
+
+    /// <summary>
+    /// Reloads configuration from files and invalidates all IOptionsMonitor caches.
+    /// </summary>
+    /// <remarks>
+    /// This is needed for immediate in-process updates (e.g., wizard flows).
+    /// Without explicit Reload(), the FileSystemWatcher has a delay before detecting changes.
+    /// </remarks>
+    private void ReloadConfigurationAndInvalidateCaches()
+    {
+        // Force configuration to reload from all sources
+        (configuration as IConfigurationRoot)?.Reload();
+
+        // Invalidate caches (BindConfiguration registered change tokens, so this triggers re-bind)
+        InvalidateProjectConfigCaches();
+    }
+
+    /// <summary>
+    /// Invalidates all IOptionsMonitor caches that depend on project.json.
+    /// </summary>
+    private void InvalidateProjectConfigCaches()
+    {
+        themeCache.TryRemove(Options.DefaultName);
+        projectCache.TryRemove(Options.DefaultName);
+        generateCache.TryRemove(Options.DefaultName);
+        dependenciesCache.TryRemove(Options.DefaultName);
     }
 
     /// <inheritdoc />

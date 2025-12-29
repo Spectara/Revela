@@ -1,4 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
+using NSubstitute;
+using Spectara.Revela.Sdk.Abstractions;
 
 namespace Spectara.Revela.Plugin.Serve.Tests;
 
@@ -64,6 +66,10 @@ public sealed class ServePluginTests
         var configBuilder = new Microsoft.Extensions.Configuration.ConfigurationBuilder();
         var configuration = configBuilder.Build();
         services.AddSingleton<Microsoft.Extensions.Configuration.IConfiguration>(configuration);
+
+        // Add mock IConfigService (required by ConfigServeCommand)
+        var configService = Substitute.For<IConfigService>();
+        services.AddSingleton(configService);
 
         plugin.ConfigureServices(services);
         var serviceProvider = services.BuildServiceProvider();

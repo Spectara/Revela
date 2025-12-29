@@ -6,7 +6,7 @@ namespace Spectara.Revela.Plugin.Source.OneDrive.Models;
 /// Configuration for OneDrive shared folder source
 /// </summary>
 /// <remarks>
-/// Stored in config/Spectara.Revela.Plugin.Source.OneDrive.json in project directory.
+/// Stored in project.json under the "Spectara.Revela.Plugin.Source.OneDrive" section.
 ///
 /// Minimal example (uses defaults):
 /// <code>

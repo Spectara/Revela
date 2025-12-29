@@ -551,7 +551,7 @@ public sealed class OneDriveSourceCommand(
         ErrorPanels.ShowConfigRequiredError(
             "OneDrive share URL",
             "config onedrive",
-            "  1. Create [cyan]config/Spectara.Revela.Plugin.Source.OneDrive.json[/] with ShareUrl\n" +
+            "  1. Run [cyan]revela config onedrive[/] to configure interactively\n" +
             "  2. Set environment variable: [cyan]SPECTARA__REVELA__PLUGIN__SOURCE__ONEDRIVE__SHAREURL[/]\n" +
             "  3. Provide [cyan]--share-url[/] parameter");
     }

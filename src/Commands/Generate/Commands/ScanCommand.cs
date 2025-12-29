@@ -1,7 +1,8 @@
 using System.CommandLine;
-using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Options;
 using Spectara.Revela.Commands.Generate.Abstractions;
 using Spectara.Revela.Commands.Generate.Models.Results;
+using Spectara.Revela.Core.Configuration;
 using Spectara.Revela.Sdk;
 using Spectre.Console;
 
@@ -21,7 +22,7 @@ namespace Spectara.Revela.Commands.Generate.Commands;
 public sealed partial class ScanCommand(
     ILogger<ScanCommand> logger,
     IContentService contentService,
-    IConfiguration configuration)
+    IOptionsMonitor<ProjectConfig> projectConfig)
 {
     /// <summary>
     /// Creates the CLI command.
@@ -54,7 +55,11 @@ public sealed partial class ScanCommand(
 
             if (result.Success)
             {
-                var projectName = configuration["name"] ?? "Revela Site";
+                var projectName = projectConfig.CurrentValue.Name;
+                if (string.IsNullOrEmpty(projectName))
+                {
+                    projectName = "Revela Site";
+                }
 
                 var panel = new Panel(
                     $"[green]Content scan complete![/]\n\n" +

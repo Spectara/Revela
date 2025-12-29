@@ -18,7 +18,7 @@ public static class PluginServiceCollectionExtensions
     /// This method:
     /// 1. Checks if command-line args indicate plugin management (skips loading if so)
     /// 2. Loads plugin assemblies from configured directories (app directory + user plugins + custom paths)
-    /// 3. Calls ConfigureConfiguration() on each plugin (optional, framework auto-loads config/*.json)
+    /// 3. Calls ConfigureConfiguration() on each plugin (optional)
     /// 4. Calls ConfigureServices() on each plugin (registers services with DI)
     /// 5. Returns IPluginContext for later Initialize() and RegisterCommands()
     ///
@@ -26,6 +26,9 @@ public static class PluginServiceCollectionExtensions
     /// - Application directory (for development - plugins built via ProjectReference)
     /// - User plugin directory (~/.revela/plugins - installed plugins)
     /// - Additional search paths (custom locations)
+    ///
+    /// Plugin configuration is stored in project.json via IConfigService.
+    /// Environment variables with SPECTARA__REVELA__ prefix are also loaded.
     ///
     /// Plugin loading is skipped for 'plugin' commands (install, uninstall, list, etc.)
     /// because these commands manage plugin files and cannot work if DLLs are locked.
@@ -86,20 +89,9 @@ public static class PluginServiceCollectionExtensions
         // ============================================
 #pragma warning disable CA1848 // Use LoggerMessage delegates for performance (startup logging)
 
-        // Auto-load all config/*.json files from working directory
-        // JSON structure: { "Spectara.Revela.Plugin.X": { ... } } - Package-ID as root key
-        var configDir = Path.Combine(Directory.GetCurrentDirectory(), "config");
-        if (Directory.Exists(configDir))
-        {
-            foreach (var jsonFile in Directory.GetFiles(configDir, "*.json"))
-            {
-                configuration.AddJsonFile(jsonFile, optional: true, reloadOnChange: true);
-                logger.LogDebug("Auto-loaded plugin config: {File}", Path.GetFileName(jsonFile));
-            }
-        }
-
         // Auto-load environment variables with global prefix
         // Allows: SPECTARA__REVELA__PLUGIN__SOURCE__ONEDRIVE__SHAREURL=https://...
+        // Note: Plugin configs are stored in project.json (via IConfigService), not separate files
         configuration.AddEnvironmentVariables(prefix: "SPECTARA__REVELA__");
         logger.LogDebug("Loaded environment variables with prefix SPECTARA__REVELA__");
 

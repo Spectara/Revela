@@ -6,6 +6,7 @@ using Polly;
 using Spectara.Revela.Plugin.Source.OneDrive.Commands;
 using Spectara.Revela.Plugin.Source.OneDrive.Configuration;
 using Spectara.Revela.Plugin.Source.OneDrive.Providers;
+using Spectara.Revela.Plugin.Source.OneDrive.Wizard;
 using Spectara.Revela.Sdk.Abstractions;
 
 namespace Spectara.Revela.Plugin.Source.OneDrive;
@@ -29,10 +30,8 @@ public sealed class OneDrivePlugin : IPlugin
     /// <inheritdoc />
     public void ConfigureConfiguration(IConfigurationBuilder configuration)
     {
-        // Nothing to do - framework handles all configuration:
-        // - JSON files: auto-loaded from config/*.json
-        // - ENV vars: auto-loaded with SPECTARA__REVELA__ prefix
-        //
+        // Nothing to do - plugin config is stored in project.json via IConfigService.
+        // Environment variables with SPECTARA__REVELA__ prefix are auto-loaded.
         // Example ENV: SPECTARA__REVELA__PLUGIN__SOURCE__ONEDRIVE__SHAREURL=https://...
     }
 
@@ -41,10 +40,10 @@ public sealed class OneDrivePlugin : IPlugin
     {
         // Register Plugin Configuration (IOptions pattern)
         // Binds to Plugins:Spectara.Revela.Plugin.Source.OneDrive section
+        // Note: No ValidateDataAnnotations/ValidateOnStart - plugins may be installed but not configured.
+        // Validation happens in commands when config is actually needed (e.g., DownloadCommand).
         services.AddOptions<OneDrivePluginConfig>()
-            .BindConfiguration(OneDrivePluginConfig.SectionName)
-            .ValidateDataAnnotations()      // Validate [Required], [Url], etc.
-            .ValidateOnStart();             // Fail-fast at startup if config invalid
+            .BindConfiguration(OneDrivePluginConfig.SectionName);
 
         // Register Typed HttpClient for SharedLinkProvider with Resilience
         // Custom resilience handler: retry without verbose logging
@@ -83,6 +82,9 @@ public sealed class OneDrivePlugin : IPlugin
         // Register Commands for Dependency Injection
         services.AddTransient<OneDriveSourceCommand>();
         services.AddTransient<ConfigOneDriveCommand>();
+
+        // Register Wizard Step (for project setup wizard integration)
+        services.AddTransient<IWizardStep, OneDriveWizardStep>();
     }
 
     /// <inheritdoc />

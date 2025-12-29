@@ -1,5 +1,3 @@
-using System.CommandLine;
-
 using Microsoft.Extensions.DependencyInjection;
 
 using Spectara.Revela.Commands.Clean.Commands;
@@ -11,8 +9,6 @@ using Spectara.Revela.Commands.Plugins;
 using Spectara.Revela.Commands.Restore;
 using Spectara.Revela.Commands.Theme;
 using Spectara.Revela.Sdk.Abstractions;
-
-using Spectre.Console;
 
 namespace Spectara.Revela.Cli.Hosting;
 
@@ -57,16 +53,7 @@ internal sealed class CoreCommandProvider(IServiceProvider services)
             Group: CommandGroups.Content,
             RequiresProject: true);
 
-        // Setup group: init (5), config (10) - workflow order
-        // init is the entry point for new projects (doesn't require project, hides when exists)
-        yield return new CommandDescriptor(
-            CreateInitCommand(),
-            ParentCommand: null,
-            Order: 5,
-            Group: CommandGroups.Setup,
-            RequiresProject: false,
-            HideWhenProjectExists: true);
-
+        // Setup group: config (10)
         // config has mixed requirements (subcommands registered separately)
         var configCommand = services.GetRequiredService<ConfigCommand>();
         yield return new CommandDescriptor(
@@ -112,23 +99,5 @@ internal sealed class CoreCommandProvider(IServiceProvider services)
             Order: 30,
             Group: CommandGroups.Addons,
             RequiresProject: false);
-    }
-
-    /// <summary>
-    /// Creates the init placeholder command.
-    /// </summary>
-    private static Command CreateInitCommand()
-    {
-        var initCmd = new Command("init", "Initialize a new Revela project (setup wizard)");
-        initCmd.SetAction((_, _) =>
-        {
-            AnsiConsole.MarkupLine("[yellow]The init wizard is not yet implemented.[/]");
-            AnsiConsole.MarkupLine("[dim]For now, use:[/]");
-            AnsiConsole.MarkupLine("  [cyan]revela config project[/]  - Create project.json");
-            AnsiConsole.MarkupLine("  [cyan]revela config site[/]     - Configure site settings");
-            AnsiConsole.MarkupLine("  [cyan]revela theme list[/]      - See available themes");
-            return Task.FromResult(0);
-        });
-        return initCmd;
     }
 }

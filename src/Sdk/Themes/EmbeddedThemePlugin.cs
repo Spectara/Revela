@@ -94,10 +94,15 @@ public abstract class EmbeddedThemePlugin : IThemePlugin
     /// <inheritdoc />
     public Stream? GetFile(string relativePath)
     {
-        // MSBuild always normalizes embedded resource names to forward slashes
-        // Try with prefix first, then without
-        return assembly.GetManifestResourceStream(resourcePrefix + relativePath)
-            ?? assembly.GetManifestResourceStream(relativePath);
+        // Normalize path separators - LogicalName preserves original separators (backslash on Windows)
+        // Try both forward and backslash variants to handle cross-platform builds
+        var forwardSlash = relativePath.Replace('\\', '/');
+        var backSlash = relativePath.Replace('/', '\\');
+
+        return assembly.GetManifestResourceStream(resourcePrefix + forwardSlash)
+            ?? assembly.GetManifestResourceStream(forwardSlash)
+            ?? assembly.GetManifestResourceStream(resourcePrefix + backSlash)
+            ?? assembly.GetManifestResourceStream(backSlash);
     }
 
     /// <inheritdoc />

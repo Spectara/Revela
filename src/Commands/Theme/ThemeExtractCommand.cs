@@ -107,7 +107,7 @@ public sealed partial class ThemeExtractCommand(
         var themeName = themeConfig.CurrentValue.Name;
         if (string.IsNullOrWhiteSpace(themeName))
         {
-            themeName = "default";
+            themeName = "Lumina";
         }
 
         // Resolve theme

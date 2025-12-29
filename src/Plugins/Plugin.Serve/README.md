@@ -54,7 +54,7 @@ revela config serve --verbose
 
 ## Configuration
 
-The plugin configuration file is stored at `config/Spectara.Revela.Plugin.Serve.json`:
+Plugin configuration is stored in `project.json`:
 
 ```json
 {

@@ -16,7 +16,8 @@ public interface IPlugin
     /// <remarks>
     /// Called BEFORE ConfigureServices to allow plugins to add their own config files.
     /// Use this to register plugin-specific JSON files, environment variables, custom providers, etc.
-    /// Example: Framework auto-loads config/*.json, plugin can add env vars.
+    /// Note: Plugin configs are typically stored in project.json via IConfigService.
+    /// Environment variables with SPECTARA__REVELA__ prefix are auto-loaded.
     /// </remarks>
     /// <param name="configuration">Configuration builder to add sources to</param>
     void ConfigureConfiguration(IConfigurationBuilder configuration);

@@ -62,7 +62,7 @@ public sealed partial class ThemeFilesCommand(
         var themeName = themeNameOverride ?? themeConfig.CurrentValue.Name;
         if (string.IsNullOrWhiteSpace(themeName))
         {
-            themeName = "default";
+            themeName = "Lumina";
         }
 
         // Resolve theme

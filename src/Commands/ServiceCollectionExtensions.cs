@@ -10,6 +10,9 @@ using Spectara.Revela.Commands.Restore;
 using Spectara.Revela.Commands.Theme;
 using Spectara.Revela.Core.Services;
 
+using ProjectWizard = Spectara.Revela.Commands.Project.Wizard;
+using RevelaWizard = Spectara.Revela.Commands.Revela.Wizard;
+
 namespace Spectara.Revela.Commands;
 
 /// <summary>
@@ -30,6 +33,10 @@ public static class ServiceCollectionExtensions
     {
         // Shared services
         services.AddSingleton<IPackageIndexService, PackageIndexService>();
+
+        // Wizards
+        services.AddTransient<RevelaWizard>();
+        services.AddTransient<ProjectWizard>();
 
         // Feature commands
         services.AddCleanFeature();

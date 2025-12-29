@@ -24,10 +24,8 @@ public sealed class ServePlugin : IPlugin
     /// <inheritdoc />
     public void ConfigureConfiguration(IConfigurationBuilder configuration)
     {
-        // Nothing to do - framework handles all configuration:
-        // - JSON files: auto-loaded from config/*.json
-        // - ENV vars: auto-loaded with SPECTARA__REVELA__ prefix
-        //
+        // Nothing to do - plugin config is stored in project.json via IConfigService.
+        // Environment variables with SPECTARA__REVELA__ prefix are auto-loaded.
         // Example ENV: SPECTARA__REVELA__PLUGIN__SERVE__PORT=3000
     }
 
@@ -35,10 +33,10 @@ public sealed class ServePlugin : IPlugin
     public void ConfigureServices(IServiceCollection services)
     {
         // Register Plugin Configuration (IOptions pattern)
+        // Note: No ValidateDataAnnotations/ValidateOnStart - plugins may be installed but not configured.
+        // Validation happens in commands when config is actually needed.
         services.AddOptions<ServeConfig>()
-            .BindConfiguration(ServeConfig.SectionName)
-            .ValidateDataAnnotations()
-            .ValidateOnStart();
+            .BindConfiguration(ServeConfig.SectionName);
 
         // Register Commands for Dependency Injection
         services.AddTransient<ServeCommand>();

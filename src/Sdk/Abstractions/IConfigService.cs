@@ -1,6 +1,6 @@
 using System.Text.Json.Nodes;
 
-namespace Spectara.Revela.Commands.Config.Services;
+namespace Spectara.Revela.Sdk.Abstractions;
 
 /// <summary>
 /// Service for reading and writing Revela configuration files.

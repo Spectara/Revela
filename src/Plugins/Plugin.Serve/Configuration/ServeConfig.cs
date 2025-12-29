@@ -13,10 +13,10 @@ namespace Spectara.Revela.Plugin.Serve.Configuration;
 /// <list type="number">
 /// <item>Command-line arguments (--port, --verbose)</item>
 /// <item>Environment variables (SPECTARA__REVELA__PLUGIN__SERVE__*)</item>
-/// <item>User config file (config/Spectara.Revela.Plugin.Serve.json)</item>
+/// <item>Project config file (project.json)</item>
 /// </list>
 /// <para>
-/// Example config/Spectara.Revela.Plugin.Serve.json:
+/// Example project.json:
 /// </para>
 /// <code>
 /// {

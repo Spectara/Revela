@@ -1,15 +1,15 @@
 # Setup Wizard Plan
 
-**Status:** ✅ Revela Setup Wizard Implemented, Project Init pending  
+**Status:** ✅ Both Wizards Implemented  
 **Created:** 2025-12-25  
 **Updated:** 2025-12-28
 
 ## Two-Step Approach
 
-Revela now uses a two-step setup:
+Revela uses a two-step setup:
 
 1. **Revela Setup Wizard** (Program-level) - Configures Revela itself (themes, plugins)
-2. **Project Init** (Project-level) - Creates a new project (future)
+2. **Project Setup Wizard** (Project-level) - Creates a new project
 
 ## ✅ Revela Setup Wizard (Implemented)
 
@@ -58,7 +58,7 @@ revela                    ← Start without arguments
 
 ### Implementation Files
 
-- [SetupWizard.cs](../src/Cli/Hosting/SetupWizard.cs) - Wizard orchestrator
+- [Commands/Revela/Wizard.cs](../src/Commands/Revela/Wizard.cs) - Wizard orchestrator
 - [InteractiveMenuService.cs](../src/Cli/Hosting/InteractiveMenuService.cs) - First-run detection
 - [MenuChoice.cs](../src/Cli/Hosting/MenuChoice.cs) - `MenuAction.RunSetupWizard`
 - [GlobalConfigManager.cs](../src/Core/Services/GlobalConfigManager.cs) - `ConfigFileExists()`, `GetThemesAsync()`
@@ -75,63 +75,73 @@ revela plugin install Spectara.Revela.Plugin.Serve
 
 ---
 
-## 📋 Project Init Wizard (Planned)
+## ✅ Project Setup Wizard (Implemented)
 
-The project init wizard creates a new Revela project. It requires the Revela Setup to be completed first (at least one theme installed).
+The project wizard creates a new Revela project. It requires the Revela Setup to be completed first (at least one theme installed).
 
 ### Trigger
 
-- User runs `revela init` OR
-- User selects "Create Project" from menu (when no project.json exists)
+The Project Wizard is shown automatically when:
+- `revela.json` exists (Revela is set up)
+- `project.json` does not exist (no project in current directory)
 
-### Planned Flow
-
-```
-revela init
-  │
-  ├── Check: Theme installed? → If not, show error
-  │
-  ├── 1. Project Settings (config project)
-  │     • Name, Base URL, Language
-  │
-  ├── 2. Theme Selection (config theme select)
-  │     • Choose from installed themes
-  │
-  ├── 3. Site Configuration (config site)
-  │     • Title, Author, Copyright
-  │
-  ├── 4. Create source/ directory
-  │
-  └── Summary: "Project created! Add images to source/"
-```
-
-### Architecture
-
-The init wizard orchestrates existing commands:
+### Flow
 
 ```
-InitCommand (orchestrator)
-    │
-    ├─→ ConfigProjectCommand    // Project settings
-    │
-    ├─→ ConfigThemeCommand      // Theme selection
-    │
-    ├─→ ConfigSiteCommand       // Site info
-    │
-    └─→ Create source/          // Directory creation
+revela                    ← Start without arguments
+  │
+  ├── revela.json missing? → Revela Setup Wizard
+  │
+  └── revela.json exists?
+        │
+        ├── project.json missing?
+        │     ├── "Create New Project" → Project Wizard → Menu
+        │     └── "Skip" → Normal menu (limited functionality)
+        │
+        └── project.json exists → Normal menu
 ```
 
-### CLI Options
+### Wizard Steps
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  PROJECT SETUP WIZARD                                       │
+├─────────────────────────────────────────────────────────────┤
+│  Step 1/3: Project Settings                                 │
+│    • Project name (default: directory name)                 │
+│    • Base URL (optional)                                    │
+│    → Creates: project.json, source/, output/                │
+├─────────────────────────────────────────────────────────────┤
+│  Step 2/3: Select Theme                                     │
+│    • Choose from installed themes                           │
+│    → Updates: project.json (theme.name)                     │
+├─────────────────────────────────────────────────────────────┤
+│  Step 3/3: Site Metadata                                    │
+│    • Title, author, copyright, etc.                         │
+│    • Fields based on theme template                         │
+│    → Creates: site.json                                     │
+├─────────────────────────────────────────────────────────────┤
+│  ✓ Project created successfully!                            │
+│  Next: Add images to source/ and run revela generate        │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Implementation Files
+
+- [Commands/Project/Wizard.cs](../src/Commands/Project/Wizard.cs) - Wizard orchestrator
+- [InteractiveMenuService.cs](../src/Cli/Hosting/InteractiveMenuService.cs) - No-project detection
+- [Config/Project/ConfigProjectCommand.cs](../src/Commands/Config/Project/ConfigProjectCommand.cs) - Step 1
+- [Config/Theme/ConfigThemeCommand.cs](../src/Commands/Config/Theme/ConfigThemeCommand.cs) - Step 2
+- [Config/Site/ConfigSiteCommand.cs](../src/Commands/Config/Site/ConfigSiteCommand.cs) - Step 3
+
+### Automation (without Wizard)
+
+Advanced users can create projects manually:
 
 ```bash
-# Interactive wizard (default)
-revela init
-
-# Express setup with all defaults
-revela init --yes
-
-# Specify project directory
-revela init ./my-portfolio
+revela config project --name "My Portfolio" --url "https://photos.example.com"
+revela config theme --set Lumina
+revela config site
 ```
 
 ---
@@ -141,4 +151,4 @@ revela init ./my-portfolio
 | Wizard | Trigger | Purpose | Files Created |
 |--------|---------|---------|---------------|
 | Revela Setup | No revela.json | Install themes/plugins | revela.json |
-| Project Init | No project.json | Create project | project.json, site.json, source/ |
+| Project Setup | No project.json | Create project | project.json, site.json, source/, output/ |

@@ -1,5 +1,4 @@
 using System.Text.Json;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
 using Spectara.Revela.Commands.Generate.Abstractions;
 using Spectara.Revela.Commands.Generate.Building;
@@ -31,8 +30,9 @@ public sealed partial class RenderService(
     IManifestRepository manifestRepository,
     RevelaParser revelaParser,
     IMarkdownService markdownService,
-    IConfiguration configuration,
+    IOptionsMonitor<ProjectConfig> projectConfig,
     IOptionsMonitor<GenerateConfig> options,
+    IOptionsMonitor<ThemeConfig> themeConfig,
     ILogger<RenderService> logger) : IRenderService
 {
     /// <summary>Output directory for generated site</summary>
@@ -170,21 +170,28 @@ public sealed partial class RenderService(
 
     private RenderContext LoadConfiguration()
     {
-        var projectSection = configuration.GetSection("project");
-        var dependenciesSection = configuration.GetSection("dependencies");
+        var project = projectConfig.CurrentValue;
+
+        // Get theme name from ThemeConfig (IOptions pattern)
+        // Fallback to "Lumina" if not configured
+        var themeName = themeConfig.CurrentValue.Name;
+        if (string.IsNullOrEmpty(themeName))
+        {
+            themeName = "Lumina";
+        }
 
         return new RenderContext
         {
             Project = new RenderProjectSettings
             {
-                Name = projectSection["name"] ?? "Revela Site",
-                BaseUrl = projectSection["baseUrl"] ?? "https://example.com",
-                Language = projectSection["language"] ?? "en",
-                ImageBasePath = projectSection["imageBasePath"],
-                BasePath = NormalizeBasePath(projectSection["basePath"])
+                Name = !string.IsNullOrEmpty(project.Name) ? project.Name : "Revela Site",
+                BaseUrl = !string.IsNullOrEmpty(project.BaseUrl) ? project.BaseUrl : "https://example.com",
+                Language = !string.IsNullOrEmpty(project.Language) ? project.Language : "en",
+                ImageBasePath = project.ImageBasePath,
+                BasePath = NormalizeBasePath(project.BasePath)
             },
             Site = LoadSiteJson(),
-            ThemeName = dependenciesSection["theme"] ?? "default"
+            ThemeName = themeName
         };
     }
 

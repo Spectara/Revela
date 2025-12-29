@@ -1,10 +1,17 @@
 using System.CommandLine;
 using System.Reflection;
+
 using Microsoft.Extensions.Options;
+
 using Spectara.Revela.Core.Configuration;
 using Spectara.Revela.Core.Services;
 using Spectara.Revela.Sdk;
+using Spectara.Revela.Sdk.Abstractions;
+
 using Spectre.Console;
+
+using ProjectWizard = Spectara.Revela.Commands.Project.Wizard;
+using RevelaWizard = Spectara.Revela.Commands.Revela.Wizard;
 
 namespace Spectara.Revela.Cli.Hosting;
 
@@ -15,8 +22,10 @@ internal sealed partial class InteractiveMenuService(
     CommandPromptBuilder promptBuilder,
     CommandGroupRegistry groupRegistry,
     CommandOrderRegistry orderRegistry,
-    IOptions<ProjectConfig> projectConfig,
-    SetupWizard setupWizard,
+    IOptionsMonitor<ProjectConfig> projectConfig,
+    IConfigService configService,
+    RevelaWizard revelaWizard,
+    ProjectWizard projectWizard,
     ILogger<InteractiveMenuService> logger) : IInteractiveMenuService
 {
     private bool bannerShown;
@@ -38,6 +47,12 @@ internal sealed partial class InteractiveMenuService(
         if (!GlobalConfigManager.ConfigFileExists())
         {
             return await HandleFirstRunAsync(cancellationToken);
+        }
+
+        // Check if this directory has no project (no project.json)
+        if (!configService.IsProjectInitialized())
+        {
+            return await HandleNoProjectAsync(cancellationToken);
         }
 
         ShowWelcomeBanner();
@@ -86,10 +101,10 @@ internal sealed partial class InteractiveMenuService(
 
         if (choice == "Start Setup Wizard")
         {
-            var result = await setupWizard.RunAsync(cancellationToken);
+            var result = await revelaWizard.RunAsync(cancellationToken);
 
             // Exit code 2 = packages installed, restart required
-            if (result == SetupWizard.ExitCodeRestartRequired)
+            if (result == RevelaWizard.ExitCodeRestartRequired)
             {
                 return 0;
             }
@@ -109,6 +124,68 @@ internal sealed partial class InteractiveMenuService(
 
         // User skipped or wizard failed - show normal menu
         bannerShown = true; // Don't show banner again, we already showed first-run screen
+        return await RunMenuLoopAsync(cancellationToken);
+    }
+
+    private async Task<int> HandleNoProjectAsync(CancellationToken cancellationToken)
+    {
+        AnsiConsole.Clear();
+
+        var logoLines = new[]
+        {
+            @"   ____                _       ",
+            @"  |  _ \ _____   _____| | __ _ ",
+            @"  | |_) / _ \ \ / / _ \ |/ _` |",
+            @"  |  _ <  __/\ V /  __/ | (_| |",
+            @"  |_| \_\___| \_/ \___|_|\__,_|",
+        };
+
+        foreach (var line in logoLines)
+        {
+            AnsiConsole.MarkupLine("[cyan1]" + line + "[/]");
+        }
+
+        AnsiConsole.WriteLine();
+
+        var folderName = Path.GetFileName(Directory.GetCurrentDirectory());
+
+        var panel = new Panel(
+            new Markup(
+                $"[bold]No Project Found[/]\n\n" +
+                $"This directory ([cyan]{folderName}[/]) doesn't contain a Revela project.\n" +
+                "Would you like to create one?"))
+            .WithHeader("[cyan1]Create Project[/]")
+            .Border(BoxBorder.Rounded)
+            .BorderStyle(new Style(Color.Cyan1))
+            .Padding(1, 0);
+
+        AnsiConsole.Write(panel);
+        AnsiConsole.WriteLine();
+
+        var choice = AnsiConsole.Prompt(
+            new SelectionPrompt<string>()
+                .Title("[cyan]What would you like to do?[/]")
+                .HighlightStyle(new Style(Color.Cyan1))
+                .AddChoices(["Create New Project", "Skip (use menu instead)"]));
+
+        if (choice == "Create New Project")
+        {
+            var result = await projectWizard.RunAsync(cancellationToken);
+
+            if (result == 0)
+            {
+                bannerShown = true; // Don't show banner, wizard already showed welcome
+                return await RunMenuLoopAsync(cancellationToken);
+            }
+
+            // Wizard failed or was cancelled - continue to menu
+            AnsiConsole.WriteLine();
+            AnsiConsole.MarkupLine("[yellow]Project creation was not completed. Continuing to menu...[/]");
+            WaitForKeyPress();
+        }
+
+        // User skipped or wizard failed - show normal menu
+        bannerShown = true; // Don't show banner again
         return await RunMenuLoopAsync(cancellationToken);
     }
 
@@ -146,9 +223,9 @@ internal sealed partial class InteractiveMenuService(
         var folderName = Path.GetFileName(workingDir);
 
         // Show project name if initialized, otherwise show folder name
-        var contextLine = string.IsNullOrEmpty(projectConfig.Value.Name)
+        var contextLine = string.IsNullOrEmpty(projectConfig.CurrentValue.Name)
             ? $"[dim]Directory:[/] {folderName}"
-            : $"[blue]Project:[/] {projectConfig.Value.Name}";
+            : $"[blue]Project:[/] {projectConfig.CurrentValue.Name}";
 
         var panel = new Panel(
             new Markup(
@@ -201,10 +278,10 @@ internal sealed partial class InteractiveMenuService(
 
     private async Task<MenuResult> RunSetupWizardAsync(CancellationToken cancellationToken)
     {
-        var result = await setupWizard.RunAsync(cancellationToken);
+        var result = await revelaWizard.RunAsync(cancellationToken);
 
         // Exit code 2 = packages installed, restart required
-        if (result == SetupWizard.ExitCodeRestartRequired)
+        if (result == RevelaWizard.ExitCodeRestartRequired)
         {
             return new MenuResult(true, 0);
         }
@@ -364,9 +441,14 @@ internal sealed partial class InteractiveMenuService(
     }
 
     /// <summary>
-    /// Gets whether a project is currently loaded.
+    /// Gets whether a project is currently initialized in the current directory.
     /// </summary>
-    private bool HasProject => !string.IsNullOrEmpty(projectConfig.Value.Name);
+    /// <remarks>
+    /// Uses file-based check (project.json exists) instead of IOptions
+    /// because IOptions is cached at startup and doesn't reflect changes
+    /// made during the session (e.g., after running the wizard).
+    /// </remarks>
+    private bool HasProject => configService.IsProjectInitialized();
 
     /// <summary>
     /// Filters commands based on project requirement.

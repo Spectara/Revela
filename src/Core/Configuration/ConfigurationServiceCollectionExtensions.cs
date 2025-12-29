@@ -1,4 +1,3 @@
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Spectara.Revela.Core.Configuration;
@@ -38,45 +37,45 @@ public static class ConfigurationServiceCollectionExtensions
     /// </para>
     /// </remarks>
     /// <param name="services">The service collection.</param>
-    /// <param name="configuration">The configuration root.</param>
     /// <returns>The service collection for chaining.</returns>
     public static IServiceCollection AddRevelaConfigSections(
-        this IServiceCollection services,
-        IConfiguration configuration)
+        this IServiceCollection services)
     {
-        // All configs use section-based binding with IOptionsMonitor support.
+        // All configs use BindConfiguration for proper hot-reload support.
+        // BindConfiguration registers IOptionsChangeTokenSource which enables
+        // IOptionsMonitor to automatically refresh when configuration files change.
         // Configuration is merged from multiple JSON files (revela.json → project.json → logging.json).
         // Later sources override earlier sources for the same section.
         // Note: site.json is NOT loaded via IOptions - it's loaded dynamically by RenderService.
 
         // Core sections
         services.AddOptions<ProjectConfig>()
-            .Bind(configuration.GetSection(ProjectConfig.SectionName));
+            .BindConfiguration(ProjectConfig.SectionName);
 
         services.AddOptions<ThemeConfig>()
-            .Bind(configuration.GetSection(ThemeConfig.SectionName));
+            .BindConfiguration(ThemeConfig.SectionName);
 
         services.AddOptions<GenerateConfig>()
-            .Bind(configuration.GetSection(GenerateConfig.SectionName));
+            .BindConfiguration(GenerateConfig.SectionName);
 
         services.AddOptions<DependenciesConfig>()
-            .Bind(configuration.GetSection(DependenciesConfig.SectionName));
+            .BindConfiguration(DependenciesConfig.SectionName);
 
         // Global settings
         services.AddOptions<GlobalSettingsConfig>()
-            .Bind(configuration.GetSection(GlobalSettingsConfig.SectionName));
+            .BindConfiguration(GlobalSettingsConfig.SectionName);
 
         services.AddOptions<GlobalDefaultsConfig>()
-            .Bind(configuration.GetSection(GlobalDefaultsConfig.SectionName));
+            .BindConfiguration(GlobalDefaultsConfig.SectionName);
 
         // Package management (NuGet feeds)
         // Standard binding works: { "packages": { "feeds": {...} } } maps to PackagesConfig.Feeds
         services.AddOptions<PackagesConfig>()
-            .Bind(configuration.GetSection(PackagesConfig.SectionName));
+            .BindConfiguration(PackagesConfig.SectionName);
 
         // Logging
         services.AddOptions<LoggingConfig>()
-            .Bind(configuration.GetSection(LoggingConfig.SectionName));
+            .BindConfiguration(LoggingConfig.SectionName);
 
         return services;
     }

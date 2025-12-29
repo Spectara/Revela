@@ -1,6 +1,6 @@
 using System.CommandLine;
 using System.Text.Json.Nodes;
-using Spectara.Revela.Commands.Config.Services;
+using Spectara.Revela.Sdk.Abstractions;
 using Spectre.Console;
 
 namespace Spectara.Revela.Commands.Config.Project;
@@ -48,10 +48,19 @@ public sealed partial class ConfigProjectCommand(
         return command;
     }
 
-    private async Task<int> ExecuteAsync(
+    /// <summary>
+    /// Executes the project configuration.
+    /// </summary>
+    /// <param name="nameArg">Optional project name.</param>
+    /// <param name="urlArg">Optional base URL (string for CLI input, may be empty).</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>Exit code.</returns>
+#pragma warning disable CA1054 // URI-like parameters should not be strings - CLI input may be empty or invalid
+    public async Task<int> ExecuteAsync(
         string? nameArg,
         string? urlArg,
         CancellationToken cancellationToken)
+#pragma warning restore CA1054
     {
         var isFirstTime = !configService.IsProjectInitialized();
 
@@ -69,7 +78,7 @@ public sealed partial class ConfigProjectCommand(
             AnsiConsole.MarkupLine($"[cyan]{action} project settings[/]\n");
 
             // Default name from current directory
-            var defaultName = current?["name"]?.GetValue<string>()
+            var defaultName = current?["project"]?["name"]?.GetValue<string>()
                 ?? new DirectoryInfo(Directory.GetCurrentDirectory()).Name;
             name = AnsiConsole.Prompt(
                 new TextPrompt<string>("Project name:")
@@ -77,22 +86,26 @@ public sealed partial class ConfigProjectCommand(
 
             url = AnsiConsole.Prompt(
                 new TextPrompt<string>("Base URL:")
-                    .DefaultValue(current?["url"]?.GetValue<string>() ?? string.Empty)
+                    .DefaultValue(current?["project"]?["url"]?.GetValue<string>() ?? string.Empty)
                     .AllowEmpty());
         }
         else
         {
             // Use provided arguments, fall back to current values or defaults
-            name = nameArg ?? current?["name"]?.GetValue<string>()
+            name = nameArg ?? current?["project"]?["name"]?.GetValue<string>()
                 ?? new DirectoryInfo(Directory.GetCurrentDirectory()).Name;
-            url = urlArg ?? current?["url"]?.GetValue<string>() ?? "";
+            url = urlArg ?? current?["project"]?["url"]?.GetValue<string>() ?? "";
         }
 
         // Create or update project configuration using ConfigService
+        // Structure must match ProjectConfig.SectionName ("project")
         var update = new JsonObject
         {
-            ["name"] = name,
-            ["url"] = url
+            ["project"] = new JsonObject
+            {
+                ["name"] = name,
+                ["url"] = url
+            }
         };
 
         // For new projects, log initialization

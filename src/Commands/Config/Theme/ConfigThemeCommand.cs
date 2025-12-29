@@ -1,7 +1,6 @@
 using System.CommandLine;
 using System.Text.Json.Nodes;
 using Microsoft.Extensions.Options;
-using Spectara.Revela.Commands.Config.Services;
 using Spectara.Revela.Core.Configuration;
 using Spectara.Revela.Core.Services;
 using Spectara.Revela.Sdk;
@@ -129,6 +128,8 @@ public sealed partial class ConfigThemeCommand(
             ["theme"] = new JsonObject { ["name"] = selectedTheme }
         };
         await configService.UpdateProjectConfigAsync(update, cancellationToken).ConfigureAwait(false);
+
+        // Note: ConfigService automatically invalidates IOptionsMonitor caches after write
 
         LogThemeChanged(currentTheme ?? "none", selectedTheme);
         AnsiConsole.MarkupLine($"[green]✓[/] Theme set to: [bold]{selectedTheme}[/]");

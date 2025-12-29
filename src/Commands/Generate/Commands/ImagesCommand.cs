@@ -1,8 +1,9 @@
 using System.CommandLine;
 using System.Globalization;
-using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Options;
 using Spectara.Revela.Commands.Generate.Abstractions;
 using Spectara.Revela.Commands.Generate.Models.Results;
+using Spectara.Revela.Core.Configuration;
 using Spectara.Revela.Sdk;
 using Spectre.Console;
 using IManifestRepository = Spectara.Revela.Sdk.Abstractions.IManifestRepository;
@@ -24,7 +25,7 @@ public sealed partial class ImagesCommand(
     ILogger<ImagesCommand> logger,
     IImageService imageService,
     IManifestRepository manifestRepository,
-    IConfiguration configuration)
+    IOptionsMonitor<ProjectConfig> projectConfig)
 {
     /// <summary>
     /// Creates the CLI command.
@@ -114,7 +115,11 @@ public sealed partial class ImagesCommand(
 
             if (result.Success)
             {
-                var projectName = configuration["name"] ?? "Revela Site";
+                var projectName = projectConfig.CurrentValue.Name;
+                if (string.IsNullOrEmpty(projectName))
+                {
+                    projectName = "Revela Site";
+                }
 
                 var content = "[green]Image processing complete![/]\n\n";
                 content += $"[dim]Project:[/]   [cyan]{projectName}[/]\n\n";

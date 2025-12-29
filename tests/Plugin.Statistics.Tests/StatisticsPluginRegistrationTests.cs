@@ -14,9 +14,12 @@ namespace Spectara.Revela.Plugin.Statistics.Tests;
 public sealed class StatisticsPluginRegistrationTests
 {
     [TestMethod]
-    public void ConfigureServices_InvalidOptions_ShouldThrowOnValidation()
+    public void ConfigureServices_InvalidOptions_ShouldNotThrowAtStartup()
     {
         // Arrange
+        // Note: ValidateDataAnnotations was removed from plugins.
+        // Plugins may be installed but not configured - validation happens in commands when config is needed.
+        // This test verifies that invalid config does NOT throw at startup anymore.
         var services = new ServiceCollection();
         services.AddLogging();
 
@@ -29,11 +32,15 @@ public sealed class StatisticsPluginRegistrationTests
         var configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
-                [$"{StatisticsPluginConfig.SectionName}:MaxEntriesPerCategory"] = "150"
+                [$"{StatisticsPluginConfig.SectionName}:MaxEntriesPerCategory"] = "150" // Invalid: > 100
             }!)
             .Build();
 
         services.AddSingleton<IConfiguration>(configuration);
+
+        // Add mock IConfigService (required by ConfigStatisticsCommand)
+        var configService = Substitute.For<IConfigService>();
+        services.AddSingleton(configService);
 
         var plugin = new StatisticsPlugin();
         plugin.ConfigureServices(services);
@@ -46,8 +53,11 @@ public sealed class StatisticsPluginRegistrationTests
 
         var optionsMonitor = provider.GetRequiredService<IOptionsMonitor<StatisticsPluginConfig>>();
 
-        // Act & Assert
-        Assert.ThrowsExactly<OptionsValidationException>(() => optionsMonitor.Get(Options.DefaultName));
+        // Act - should NOT throw
+        var config = optionsMonitor.CurrentValue;
+
+        // Assert - config is bound without validation (value is clamped/handled by command)
+        Assert.AreEqual(150, config.MaxEntriesPerCategory);
     }
 
     [TestMethod]
@@ -70,6 +80,10 @@ public sealed class StatisticsPluginRegistrationTests
 
         var configuration = new ConfigurationBuilder().Build();
         services.AddSingleton<IConfiguration>(configuration);
+
+        // Add mock IConfigService (required by ConfigStatisticsCommand)
+        var configService = Substitute.For<IConfigService>();
+        services.AddSingleton(configService);
 
         var plugin = new StatisticsPlugin();
         plugin.ConfigureServices(services);
