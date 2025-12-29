@@ -12,7 +12,7 @@
 
   <ItemGroup>
     <None Include="README.md" Pack="true" PackagePath="\" />
-    <None Include="..\..\..\assets\Spectara_100.png" Pack="true" PackagePath="icon.png" />
+    <None Include="..\..\..\assets\revela_100.png" Pack="true" PackagePath="icon.png" />
   </ItemGroup>
 
   <ItemGroup>
