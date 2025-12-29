@@ -439,6 +439,6 @@ jobs:
             artifacts/**/*.zip
             artifacts/**/*.tar.gz
             artifacts/**/*.nupkg
-            artifacts/**/SHA256SUMS*
+            artifacts/**/SHA256SUMS
             artifacts/**/*.sig
             artifacts/**/*.crt
