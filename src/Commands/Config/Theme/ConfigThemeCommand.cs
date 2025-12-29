@@ -20,7 +20,8 @@ public sealed partial class ConfigThemeCommand(
     ILogger<ConfigThemeCommand> logger,
     IOptionsMonitor<ThemeConfig> themeConfig,
     IConfigService configService,
-    IThemeResolver themeResolver)
+    IThemeResolver themeResolver,
+    IPluginContext pluginContext)
 {
     /// <summary>
     /// Creates the command definition.
@@ -137,10 +138,25 @@ public sealed partial class ConfigThemeCommand(
         return 0;
     }
 
-    private static string GetThemeSource(IThemePlugin theme)
+    private string GetThemeSource(IThemePlugin theme)
     {
+        // Check for local themes first
         var typeName = theme.GetType().Name;
-        return typeName.Contains("LocalThemeAdapter", StringComparison.Ordinal) ? "local" : "built-in";
+        if (typeName.Contains("LocalThemeAdapter", StringComparison.Ordinal))
+        {
+            return "local";
+        }
+
+        // Look up source from plugin context
+        var pluginInfo = pluginContext.Plugins
+            .FirstOrDefault(p => p.Plugin.Metadata.Name.Equals(theme.Metadata.Name, StringComparison.OrdinalIgnoreCase));
+
+        return pluginInfo?.Source switch
+        {
+            PluginSource.Bundled => "bundled",
+            PluginSource.Local => "installed",
+            _ => "installed"
+        };
     }
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Theme changed from '{OldTheme}' to '{NewTheme}'")]

@@ -44,19 +44,19 @@ public sealed partial class ServeCommand(
         command.Options.Add(verboseOption);
         command.Options.Add(pathOption);
 
-        command.SetAction(parseResult =>
+        command.SetAction(async (parseResult, cancellationToken) =>
         {
             var port = parseResult.GetValue(portOption);
             var verbose = parseResult.GetValue(verboseOption);
             var path = parseResult.GetValue(pathOption);
 
-            return ServeAsync(port, verbose, path);
+            return await ServeAsync(port, verbose, path, cancellationToken);
         });
 
         return command;
     }
 
-    private int ServeAsync(int? portOverride, bool verboseOverride, string? pathOverride)
+    private async Task<int> ServeAsync(int? portOverride, bool verboseOverride, string? pathOverride, CancellationToken cancellationToken)
     {
         // Resolve configuration: CLI > Config > Default
         var config = serveConfig.CurrentValue;
@@ -111,13 +111,22 @@ public sealed partial class ServeCommand(
         // Track if we should keep running
         var running = true;
 
-        // Setup Ctrl+C handler for graceful shutdown
-        Console.CancelKeyPress += (_, e) =>
+        // Use CancellationToken for graceful shutdown (works in interactive menu)
+        using var registration = cancellationToken.Register(() =>
+        {
+            running = false;
+            AnsiConsole.MarkupLine("\n[yellow]Stopping server...[/]");
+        });
+
+        // Also handle Ctrl+C directly for non-interactive mode
+        Console.CancelKeyPress += OnCancelKeyPress;
+
+        void OnCancelKeyPress(object? sender, ConsoleCancelEventArgs e)
         {
             e.Cancel = true; // Prevent immediate termination
             running = false;
             AnsiConsole.MarkupLine("\n[yellow]Stopping server...[/]");
-        };
+        }
 
         // Create and start server
         using var server = new StaticFileServer(fullOutputPath, port, RequestCallback);
@@ -150,11 +159,14 @@ public sealed partial class ServeCommand(
 
         LogServerStarted(logger, fullOutputPath, port);
 
-        // Wait for Ctrl+C
-        while (running)
+        // Wait for cancellation
+        while (running && !cancellationToken.IsCancellationRequested)
         {
-            Thread.Sleep(100);
+            await Task.Delay(100, CancellationToken.None);
         }
+
+        // Cleanup event handler
+        Console.CancelKeyPress -= OnCancelKeyPress;
 
         // Server disposed automatically by using statement
         LogServerStopped(logger);

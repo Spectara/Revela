@@ -385,12 +385,30 @@ internal sealed partial class InteractiveMenuService(
         AnsiConsole.MarkupLine($"[dim]Executing: revela {string.Join(" ", args)}[/]");
         AnsiConsole.WriteLine();
 
+        // Create a linked token source that can be cancelled by Ctrl+C
+        // This allows long-running commands (like serve) to be stopped gracefully
+        using var commandCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+
+        // Setup Ctrl+C handler for this command execution
+        void OnCancelKeyPress(object? sender, ConsoleCancelEventArgs e)
+        {
+            e.Cancel = true; // Don't terminate the process
+            commandCts.Cancel();
+        }
+
+        Console.CancelKeyPress += OnCancelKeyPress;
+
         // Execute the command
         int exitCode;
         try
         {
             var parseResult = RootCommand!.Parse(args);
-            exitCode = await parseResult.InvokeAsync(configuration: null, cancellationToken);
+            exitCode = await parseResult.InvokeAsync(configuration: null, commandCts.Token);
+        }
+        catch (OperationCanceledException)
+        {
+            // Command was cancelled by Ctrl+C - this is expected
+            exitCode = 0;
         }
         catch (Exception ex)
         {
@@ -398,11 +416,15 @@ internal sealed partial class InteractiveMenuService(
             ErrorPanels.ShowException(ex);
             exitCode = 1;
         }
+        finally
+        {
+            Console.CancelKeyPress -= OnCancelKeyPress;
+        }
 
-        // Show result only for success
+        // Show result only for success (and not cancelled)
         // Errors should be shown by the command itself using ErrorPanels
         AnsiConsole.WriteLine();
-        if (exitCode == 0)
+        if (exitCode == 0 && !commandCts.IsCancellationRequested)
         {
             AnsiConsole.MarkupLine("[green]✓ Command completed successfully[/]");
         }

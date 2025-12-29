@@ -1,3 +1,4 @@
+using Spectara.Revela.Commands.Config.Images;
 using Spectara.Revela.Commands.Config.Project;
 using Spectara.Revela.Commands.Config.Site;
 using Spectara.Revela.Commands.Config.Theme;
@@ -30,6 +31,7 @@ public sealed partial class Wizard(
     ILogger<Wizard> logger,
     ConfigProjectCommand configProjectCommand,
     ConfigThemeCommand configThemeCommand,
+    ConfigImageCommand configImageCommand,
     ConfigSiteCommand configSiteCommand,
     IEnumerable<IWizardStep> wizardSteps)
 {
@@ -45,7 +47,7 @@ public sealed partial class Wizard(
 
         // Step 1: Configure project (creates project.json, source/, output/)
         AnsiConsole.WriteLine();
-        AnsiConsole.MarkupLine("[cyan]━━━ Step 1/3: Project Settings ━━━[/]");
+        AnsiConsole.MarkupLine("[cyan]━━━ Step 1/4: Project Settings ━━━[/]");
         AnsiConsole.MarkupLine("[dim]Configure your project name and base URL.[/]");
         AnsiConsole.WriteLine();
 
@@ -58,7 +60,7 @@ public sealed partial class Wizard(
 
         // Step 2: Select theme
         AnsiConsole.WriteLine();
-        AnsiConsole.MarkupLine("[cyan]━━━ Step 2/3: Select Theme ━━━[/]");
+        AnsiConsole.MarkupLine("[cyan]━━━ Step 2/4: Select Theme ━━━[/]");
         AnsiConsole.MarkupLine("[dim]Choose a theme for your site.[/]");
         AnsiConsole.WriteLine();
 
@@ -69,9 +71,22 @@ public sealed partial class Wizard(
             return 1;
         }
 
-        // Step 3: Configure site metadata
+        // Step 3: Configure image settings (uses theme defaults)
         AnsiConsole.WriteLine();
-        AnsiConsole.MarkupLine("[cyan]━━━ Step 3/3: Site Metadata ━━━[/]");
+        AnsiConsole.MarkupLine("[cyan]━━━ Step 3/4: Image Settings ━━━[/]");
+        AnsiConsole.MarkupLine("[dim]Configure output formats and sizes for your images.[/]");
+        AnsiConsole.WriteLine();
+
+        var imageResult = await configImageCommand.ExecuteAsync(null, null, cancellationToken);
+        if (imageResult != 0)
+        {
+            ShowStepFailedError("image configuration");
+            return 1;
+        }
+
+        // Step 4: Configure site metadata
+        AnsiConsole.WriteLine();
+        AnsiConsole.MarkupLine("[cyan]━━━ Step 4/4: Site Metadata ━━━[/]");
         AnsiConsole.MarkupLine("[dim]Configure your site title, author, and other metadata.[/]");
         AnsiConsole.WriteLine();
 
@@ -178,7 +193,8 @@ public sealed partial class Wizard(
                 "This wizard will help you set up a new photo gallery:\n" +
                 "  [cyan]1.[/] Project settings (name, URL)\n" +
                 "  [cyan]2.[/] Select a theme\n" +
-                "  [cyan]3.[/] Site metadata (title, author)\n\n" +
+                "  [cyan]3.[/] Image settings (formats, sizes)\n" +
+                "  [cyan]4.[/] Site metadata (title, author)\n\n" +
                 "[dim]You can change these settings later via:[/] revela config"))
             .WithHeader("[cyan1]New Project[/]")
             .Border(BoxBorder.Rounded)
