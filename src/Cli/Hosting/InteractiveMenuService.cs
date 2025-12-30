@@ -97,7 +97,12 @@ internal sealed partial class InteractiveMenuService(
             new SelectionPrompt<string>()
                 .Title("[cyan]What would you like to do?[/]")
                 .HighlightStyle(new Style(Color.Cyan1))
-                .AddChoices(["Start Setup Wizard", "Skip (use menu instead)"]));
+                .AddChoices(["Start Setup Wizard", "Skip (use menu instead)", "Exit"]));
+
+        if (choice == "Exit")
+        {
+            return ExitWithGoodbye();
+        }
 
         if (choice == "Start Setup Wizard")
         {
@@ -166,7 +171,12 @@ internal sealed partial class InteractiveMenuService(
             new SelectionPrompt<string>()
                 .Title("[cyan]What would you like to do?[/]")
                 .HighlightStyle(new Style(Color.Cyan1))
-                .AddChoices(["Create New Project", "Skip (use menu instead)"]));
+                .AddChoices(["Create New Project", "Skip (use menu instead)", "Exit"]));
+
+        if (choice == "Exit")
+        {
+            return ExitWithGoodbye();
+        }
 
         if (choice == "Create New Project")
         {
@@ -247,9 +257,7 @@ internal sealed partial class InteractiveMenuService(
 
             if (result.ShouldExit)
             {
-                LogExiting(logger);
-                AnsiConsole.MarkupLine("\n[dim]Goodbye![/]");
-                return result.ExitCode;
+                return ExitWithGoodbye();
             }
         }
 
@@ -584,6 +592,13 @@ internal sealed partial class InteractiveMenuService(
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Exiting interactive mode")]
     private static partial void LogExiting(ILogger logger);
+
+    private int ExitWithGoodbye()
+    {
+        LogExiting(logger);
+        AnsiConsole.MarkupLine("\n[dim]Goodbye![/]");
+        return 0;
+    }
 
     [LoggerMessage(Level = LogLevel.Error, Message = "Command '{CommandPath}' failed")]
     private static partial void LogCommandFailed(ILogger logger, string commandPath, Exception ex);
