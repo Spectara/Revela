@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using Microsoft.Extensions.Options;
 using Spectara.Revela.Commands.Generate.Abstractions;
 using Spectara.Revela.Commands.Generate.Models;
@@ -146,13 +147,23 @@ public sealed partial class ImageService(
                 LogCacheHits(logger, cachedCount, allImagePaths.Count);
             }
 
+            // Worker pool configuration
+            var workerCount = Math.Max(1, Environment.ProcessorCount - 2);
+
+            // Thread-safe worker state storage for progress display
+            var workerStates = new ConcurrentDictionary<int, WorkerState>();
+            for (var i = 0; i < workerCount; i++)
+            {
+                workerStates[i] = new WorkerState { WorkerId = i };
+            }
+
             // Report initial progress
             progress?.Report(new ImageProgress
             {
-                CurrentImage = string.Empty,
                 Processed = 0,
                 Total = imagesToProcess.Count,
-                Skipped = cachedCount
+                Skipped = cachedCount,
+                Workers = [.. workerStates.Values.OrderBy(w => w.WorkerId)]
             });
 
             if (imagesToProcess.Count == 0)
@@ -172,24 +183,59 @@ public sealed partial class ImageService(
                 };
             }
 
-            // Process images in parallel
-            // Uses Environment.ProcessorCount by default (optimal for CPU-bound work)
+            // Process images in parallel with limited worker pool
             var cacheDirectory = Path.Combine(Environment.CurrentDirectory, CacheDirectory);
             var processedCount = 0;
             var totalFilesCreated = 0;
             var totalSizeBytes = 0L;
             var manifestLock = new object();
 
+            // Track which worker is processing each image
+            var workerAssignments = new ConcurrentDictionary<int, int>(); // taskId -> workerId
+            var nextWorkerId = 0;
+
             await Parallel.ForEachAsync(
                 imagesToProcess,
-                cancellationToken,
+                new ParallelOptions
+                {
+                    MaxDegreeOfParallelism = workerCount,
+                    CancellationToken = cancellationToken
+                },
                 async (item, ct) =>
                 {
                     var (sourcePath, sourceHash, manifestKey, manifestSizes) = item;
 
+                    // Assign a worker ID to this task
+                    var taskId = Environment.CurrentManagedThreadId;
+                    var workerId = workerAssignments.GetOrAdd(taskId, _ => Interlocked.Increment(ref nextWorkerId) - 1) % workerCount;
+
                     // Use sizes from manifest (calculated during scan with original width)
                     // Fall back to config sizes if manifest sizes are empty (shouldn't happen)
                     var sizesToGenerate = manifestSizes.Count > 0 ? manifestSizes : sizes;
+
+                    // Calculate total variants for this image
+                    var variantsTotal = sizesToGenerate.Count * formats.Count;
+                    var variantsDone = 0;
+                    var variantsSkipped = 0;
+
+                    // Update worker state: starting new image
+                    workerStates[workerId] = new WorkerState
+                    {
+                        WorkerId = workerId,
+                        ImageName = Path.GetFileName(sourcePath),
+                        VariantsTotal = variantsTotal,
+                        VariantsDone = 0,
+                        VariantsSkipped = 0
+                    };
+
+                    // Report progress with updated worker state
+                    progress?.Report(new ImageProgress
+                    {
+                        Processed = processedCount,
+                        Total = imagesToProcess.Count,
+                        Skipped = cachedCount,
+                        Workers = [.. workerStates.Values.OrderBy(w => w.WorkerId)]
+                    });
 
                     var image = await imageProcessor.ProcessImageAsync(
                         sourcePath,
@@ -200,6 +246,37 @@ public sealed partial class ImageService(
                             OutputDirectory = outputImagesDirectory,
                             CacheDirectory = cacheDirectory
                         },
+                        onVariantSaved: skipped =>
+                        {
+                            // Update variant progress
+                            if (skipped)
+                            {
+                                Interlocked.Increment(ref variantsSkipped);
+                            }
+                            else
+                            {
+                                Interlocked.Increment(ref variantsDone);
+                            }
+
+                            // Update worker state
+                            workerStates[workerId] = new WorkerState
+                            {
+                                WorkerId = workerId,
+                                ImageName = Path.GetFileName(sourcePath),
+                                VariantsTotal = variantsTotal,
+                                VariantsDone = variantsDone,
+                                VariantsSkipped = variantsSkipped
+                            };
+
+                            // Report progress
+                            progress?.Report(new ImageProgress
+                            {
+                                Processed = processedCount,
+                                Total = imagesToProcess.Count,
+                                Skipped = cachedCount,
+                                Workers = [.. workerStates.Values.OrderBy(w => w.WorkerId)]
+                            });
+                        },
                         ct);
 
                     // Count files created: sizes × formats
@@ -209,13 +286,16 @@ public sealed partial class ImageService(
                     var currentProcessed = Interlocked.Increment(ref processedCount);
                     Interlocked.Add(ref totalFilesCreated, filesCreated);
 
-                    // Report progress (Progress<T> is thread-safe)
+                    // Mark worker as idle
+                    workerStates[workerId] = new WorkerState { WorkerId = workerId };
+
+                    // Report final progress for this image
                     progress?.Report(new ImageProgress
                     {
-                        CurrentImage = Path.GetFileName(sourcePath),
                         Processed = currentProcessed,
                         Total = imagesToProcess.Count,
-                        Skipped = cachedCount
+                        Skipped = cachedCount,
+                        Workers = [.. workerStates.Values.OrderBy(w => w.WorkerId)]
                     });
 
                     // Thread-safe manifest update - only update ProcessedAt timestamp
@@ -254,13 +334,13 @@ public sealed partial class ImageService(
             manifestRepository.LastImagesProcessed = DateTime.UtcNow;
             await manifestRepository.SaveAsync(cancellationToken);
 
-            // Final progress
+            // Final progress - all workers idle but keep row count stable
             progress?.Report(new ImageProgress
             {
-                CurrentImage = string.Empty,
                 Processed = processedCount,
                 Total = imagesToProcess.Count,
-                Skipped = cachedCount
+                Skipped = cachedCount,
+                Workers = [.. workerStates.Values.OrderBy(w => w.WorkerId)]
             });
 
             LogImagesProcessed(logger, processedCount);
@@ -300,7 +380,8 @@ public sealed partial class ImageService(
     public async Task<Image> ProcessImageAsync(
         string inputPath,
         ImageProcessingOptions options,
-        CancellationToken cancellationToken = default) => await imageProcessor.ProcessImageAsync(inputPath, options, cancellationToken);
+        Action<bool>? onVariantSaved = null,
+        CancellationToken cancellationToken = default) => await imageProcessor.ProcessImageAsync(inputPath, options, onVariantSaved, cancellationToken);
 
     #region Private Helpers
 

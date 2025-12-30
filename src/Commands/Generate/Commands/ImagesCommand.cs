@@ -6,6 +6,7 @@ using Spectara.Revela.Commands.Generate.Models.Results;
 using Spectara.Revela.Core.Configuration;
 using Spectara.Revela.Sdk;
 using Spectre.Console;
+using Spectre.Console.Rendering;
 using IManifestRepository = Spectara.Revela.Sdk.Abstractions.IManifestRepository;
 
 namespace Spectara.Revela.Commands.Generate.Commands;
@@ -77,37 +78,26 @@ public sealed partial class ImagesCommand(
                 AnsiConsole.MarkupLine("[yellow]Force rebuild requested, processing all images...[/]");
             }
 
-            var result = await AnsiConsole.Progress()
+            // Empty line before progress display
+            AnsiConsole.WriteLine();
+
+            // Shared state for Live Display
+            ImageProgress? currentProgress = null;
+            var progressLock = new object();
+
+            var result = await AnsiConsole.Live(new Text("Initializing..."))
                 .AutoClear(false)
-                .HideCompleted(false)
-                .Columns(
-                    new TaskDescriptionColumn(),
-                    new ProgressBarColumn(),
-                    new PercentageColumn(),
-                    new RemainingTimeColumn(),
-                    new SpinnerColumn())
                 .StartAsync(async ctx =>
                 {
-                    var task = ctx.AddTask("[green]Processing images[/]");
-                    task.IsIndeterminate = true;
-
                     var progress = new Progress<ImageProgress>(p =>
                     {
-                        if (task.IsIndeterminate && p.Total > 0)
+                        lock (progressLock)
                         {
-                            task.IsIndeterminate = false;
-                            task.MaxValue = p.Total;
+                            currentProgress = p;
                         }
 
-                        task.Value = p.Processed;
-
-                        var safeName = p.CurrentImage
-                            .Replace("[", "[[", StringComparison.Ordinal)
-                            .Replace("]", "]]", StringComparison.Ordinal);
-
-                        task.Description = string.IsNullOrEmpty(safeName)
-                            ? "[green]Processing images[/]"
-                            : $"[green]Processing[/] {safeName}";
+                        // Render the display
+                        ctx.UpdateTarget(RenderProgress(p));
                     });
 
                     return await imageService.ProcessAsync(options, progress, cancellationToken);
@@ -196,7 +186,85 @@ public sealed partial class ImagesCommand(
         };
     }
 
+    /// <summary>
+    /// Render the progress display for Live Display.
+    /// </summary>
+    /// <remarks>
+    /// Format like original Bash Expose script:
+    /// <code>
+    /// 029081.jpg ■ ■ ■ □ □ □
+    /// 029088.jpg ■ ■ □ □ □ □
+    /// 029135.jpg ■ □ □ □ □ □
+    ///
+    /// ━━━━━━━━━━░░░░░░░░░░  12/1000 (1%)
+    /// </code>
+    /// Symbols: ■ = done, » = skipped (cache), □ = pending
+    /// </remarks>
+    private static Rows RenderProgress(ImageProgress p)
+    {
+        var rows = new List<IRenderable>();
+
+        // Get total worker count (for fixed row reservation)
+        var workerCount = p.Workers.Count;
+
+        // Render all workers (active ones with progress, idle ones as empty lines)
+        foreach (var worker in p.Workers)
+        {
+            if (worker.IsIdle)
+            {
+                // Empty line for idle worker
+                rows.Add(new Text(""));
+            }
+            else
+            {
+                // Escape Spectre markup in filename
+                var safeName = worker.ImageName?
+                    .Replace("[", "[[", StringComparison.Ordinal)
+                    .Replace("]", "]]", StringComparison.Ordinal) ?? "";
+
+                // Build variant symbols: ■ = done, » = skipped, □ = pending
+                var symbols = new List<string>();
+                for (var i = 0; i < worker.VariantsTotal; i++)
+                {
+                    if (i < worker.VariantsDone)
+                    {
+                        symbols.Add("[green]■[/]");
+                    }
+                    else if (i < worker.VariantsDone + worker.VariantsSkipped)
+                    {
+                        symbols.Add("[blue]»[/]");
+                    }
+                    else
+                    {
+                        symbols.Add("[dim]□[/]");
+                    }
+                }
+
+                var symbolLine = string.Join(" ", symbols);
+                rows.Add(new Markup($"[cyan]{safeName,-20}[/] {symbolLine}"));
+            }
+        }
+
+        // Add empty line before progress bar
+        if (workerCount > 0)
+        {
+            rows.Add(new Text(""));
+        }
+
+        // Render progress bar
+        var progressWidth = 40;
+        var percentage = p.Total > 0 ? (double)p.Processed / p.Total : 0;
+        var filledWidth = (int)(percentage * progressWidth);
+
+        var filled = new string('━', filledWidth);
+        var empty = new string('━', progressWidth - filledWidth);
+        var percentValue = (int)(percentage * 100);
+
+        rows.Add(new Markup($"[green]{filled}[/][dim]{empty}[/]  {p.Processed}/{p.Total} ({percentValue}%)"));
+
+        return new Rows(rows);
+    }
+
     [LoggerMessage(Level = LogLevel.Error, Message = "Image processing command failed")]
     private static partial void LogImageProcessingFailed(ILogger logger);
 }
-

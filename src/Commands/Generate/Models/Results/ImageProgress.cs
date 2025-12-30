@@ -5,9 +5,6 @@ namespace Spectara.Revela.Commands.Generate.Models.Results;
 /// </summary>
 public sealed class ImageProgress
 {
-    /// <summary>Current image being processed.</summary>
-    public required string CurrentImage { get; init; }
-
     /// <summary>Number of images processed so far.</summary>
     public int Processed { get; init; }
 
@@ -16,4 +13,34 @@ public sealed class ImageProgress
 
     /// <summary>Number of images skipped (cached).</summary>
     public int Skipped { get; init; }
+
+    /// <summary>Active workers with their current state.</summary>
+    public IReadOnlyList<WorkerState> Workers { get; init; } = [];
+}
+
+/// <summary>
+/// State of a single worker processing an image.
+/// </summary>
+public sealed class WorkerState
+{
+    /// <summary>Worker index (0-based).</summary>
+    public int WorkerId { get; init; }
+
+    /// <summary>Image filename being processed (null if idle).</summary>
+    public string? ImageName { get; init; }
+
+    /// <summary>Total number of variants to generate (sizes × formats).</summary>
+    public int VariantsTotal { get; init; }
+
+    /// <summary>Variants completed so far (■).</summary>
+    public int VariantsDone { get; init; }
+
+    /// <summary>Variants skipped from cache (»).</summary>
+    public int VariantsSkipped { get; init; }
+
+    /// <summary>Whether this worker is idle (no image assigned).</summary>
+    public bool IsIdle => ImageName is null;
+
+    /// <summary>Whether this image is complete.</summary>
+    public bool IsComplete => !IsIdle && (VariantsDone + VariantsSkipped) >= VariantsTotal;
 }

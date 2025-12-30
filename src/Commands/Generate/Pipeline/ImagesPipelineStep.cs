@@ -39,7 +39,10 @@ public sealed partial class ImagesPipelineStep(
             var options = new ProcessImagesOptions { Force = false };
 
             var serviceProgress = new Progress<ImageProgress>(p =>
-                progress?.Report(new PipelineProgress(p.Processed, p.Total, p.CurrentImage)));
+            {
+                var currentImage = p.Workers.Count > 0 ? p.Workers[0].ImageName ?? "" : "";
+                progress?.Report(new PipelineProgress(p.Processed, p.Total, currentImage));
+            });
 
             var result = await imageService.ProcessAsync(options, serviceProgress, cancellationToken);
 

@@ -102,6 +102,7 @@ public sealed partial class NetVipsImageProcessor(
     public Task<Models.Image> ProcessImageAsync(
         string inputPath,
         ImageProcessingOptions options,
+        Action<bool>? onVariantSaved = null,
         CancellationToken cancellationToken = default)
     {
         if (!File.Exists(inputPath))
@@ -112,7 +113,7 @@ public sealed partial class NetVipsImageProcessor(
         // Ensure NetVips is configured for parallel processing
         EnsureNetVipsInitialized();
 
-        return ProcessImageInternalAsync(inputPath, options, cancellationToken);
+        return ProcessImageInternalAsync(inputPath, options, onVariantSaved, cancellationToken);
     }
 
     /// <summary>
@@ -121,6 +122,7 @@ public sealed partial class NetVipsImageProcessor(
     private async Task<Models.Image> ProcessImageInternalAsync(
         string inputPath,
         ImageProcessingOptions options,
+        Action<bool>? onVariantSaved,
         CancellationToken cancellationToken)
     {
         // Suppress unused parameter warning - kept for future use and API consistency
@@ -176,6 +178,9 @@ public sealed partial class NetVipsImageProcessor(
                     quality);
 
                 variants.Add(variant);
+
+                // Notify caller that a variant was saved (not skipped)
+                onVariantSaved?.Invoke(false);
             }
         }
 
