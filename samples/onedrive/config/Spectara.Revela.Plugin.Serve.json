@@ -1,6 +1,0 @@
-{
-  "Spectara.Revela.Plugin.Serve": {
-    "Port": 8080,
-    "Verbose": false
-  }
-}

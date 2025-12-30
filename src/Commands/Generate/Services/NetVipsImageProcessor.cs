@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using NetVips;
 using Spectara.Revela.Commands.Generate.Abstractions;
 using Spectara.Revela.Commands.Generate.Mapping;
@@ -41,6 +42,11 @@ public sealed partial class NetVipsImageProcessor(
     private static readonly Lock InitLock = new();
 
     /// <summary>
+    /// Collected warnings during processing (thread-safe)
+    /// </summary>
+    private static readonly ConcurrentBag<string> CollectedWarnings = [];
+
+    /// <summary>
     /// Initialize NetVips settings for parallel processing
     /// </summary>
     private static void EnsureNetVipsInitialized()
@@ -61,11 +67,33 @@ public sealed partial class NetVipsImageProcessor(
             // Also prevents memory accumulation during batch processing
             Cache.Max = 0;
 
+            // Redirect libvips warnings to our collection instead of stderr
+            // This prevents warnings like "large XMP not saved" from interrupting
+            // the progress display in the console
+            Log.SetLogHandler("VIPS", Enums.LogLevelFlags.Warning, (_, _, message) =>
+            {
+                // Collect unique warnings (many images may have the same issue)
+                if (!string.IsNullOrEmpty(message))
+                {
+                    CollectedWarnings.Add(message);
+                }
+            });
+
             // Let libvips use its default concurrency (ProcessorCount)
             // Each image is processed independently, libvips handles internal threading
 
             netVipsInitialized = true;
         }
+    }
+
+    /// <summary>
+    /// Get and clear collected warnings
+    /// </summary>
+    public static IReadOnlyList<string> GetAndClearWarnings()
+    {
+        var warnings = CollectedWarnings.Distinct().ToList();
+        CollectedWarnings.Clear();
+        return warnings;
     }
 
     /// <summary>
@@ -114,9 +142,12 @@ public sealed partial class NetVipsImageProcessor(
         }
 
         // Generate variants (different sizes and formats)
-        // CRITICAL: Use Image.Thumbnail() for EACH variant independently
-        // This is the safest approach to avoid "out of order read" errors
-        // Thumbnail() is optimized for this use case and handles EXIF rotation
+        // OPTIMIZATION: Load thumbnail ONCE per size, then save to ALL formats
+        // This reduces file operations from (sizes × formats) to just (sizes)
+        // Example: 6 sizes × 2 formats = 12 saves, but only 6 file reads!
+        //
+        // Note: We use Image.Thumbnail() for each size because JPEG shrink-on-load
+        // is faster than loading the full image and resizing in memory.
         List<ImageVariant> variants = [];
 
         // Use sizes from options (already includes original width from scan phase)
@@ -127,21 +158,21 @@ public sealed partial class NetVipsImageProcessor(
 
         foreach (var size in sizesToGenerate)
         {
-            // Generate each format for this size
+            // Load thumbnail for this size using shrink-on-load optimization
+            // CopyMemory() renders to RAM, enabling saves to multiple formats
+            using var thumb = Image.Thumbnail(inputPath, size, height: 10000000).CopyMemory();
+            var thumbHeight = thumb.Height;
+
+            // Save to ALL formats from the same thumbnail (no re-decode needed)
             foreach (var (format, quality) in options.Formats)
             {
-                // Use Thumbnail for all sizes (including original)
-                // Thumbnail handles EXIF rotation and is optimized for this use case
-                // For original size, it effectively just loads and re-encodes with our quality settings
-                using var thumb = Image.Thumbnail(inputPath, size, height: 10000000);
-
                 var variant = await SaveVariantAsync(
                     thumb,
                     inputPath,
                     options.OutputDirectory,
                     format,
-                    size,  // Use requested size for filename
-                    thumb.Height,
+                    size,
+                    thumbHeight,
                     quality);
 
                 variants.Add(variant);

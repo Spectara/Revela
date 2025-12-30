@@ -18,7 +18,7 @@ namespace Spectara.Revela.Core.Configuration;
 ///   "generate": {
 ///     "output": "dist",
 ///     "images": {
-///       "formats": { "avif": 80, "webp": 85, "jpg": 90 },
+///       "formats": { "webp": 85, "jpg": 90 },
 ///       "sizes": [640, 1024, 1920, 2560]
 ///     },
 ///     "cameras": {
@@ -61,9 +61,12 @@ public sealed class ImageConfig
     /// Default output formats with quality settings.
     /// Used when no formats are configured in project.json.
     /// </summary>
+    /// <remarks>
+    /// AVIF is not included by default due to very slow encoding (~10x slower than WebP).
+    /// Users can enable it manually in project.json for better compression.
+    /// </remarks>
     public static readonly IReadOnlyDictionary<string, int> DefaultFormats = new Dictionary<string, int>
     {
-        ["avif"] = 80,
         ["webp"] = 85,
         ["jpg"] = 90
     };
@@ -75,9 +78,10 @@ public sealed class ImageConfig
     /// <remarks>
     /// Empty by default - consumers should use <see cref="DefaultFormats"/> as fallback.
     /// This allows project.json to completely replace formats instead of merging.
+    /// AVIF can be added manually for better compression (but ~10x slower encoding).
     /// </remarks>
     /// <example>
-    /// { "avif": 80, "webp": 85, "jpg": 90 }
+    /// { "webp": 85, "jpg": 90 }
     /// </example>
     public IReadOnlyDictionary<string, int> Formats { get; init; } = new Dictionary<string, int>();
 

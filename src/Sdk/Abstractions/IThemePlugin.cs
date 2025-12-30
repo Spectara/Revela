@@ -81,10 +81,11 @@ public interface IThemePlugin : IPlugin
     /// Expected JSON format:
     /// <code>
     /// {
-    ///   "formats": { "avif": 80, "webp": 85, "jpg": 90 },
+    ///   "formats": { "webp": 85, "jpg": 90 },
     ///   "sizes": [640, 1024, 1280, 1920, 2560]
     /// }
     /// </code>
+    /// Note: AVIF can be added for better compression, but encoding is ~10x slower.
     /// </para>
     /// <para>
     /// If the theme doesn't provide this template, users must enter values manually.

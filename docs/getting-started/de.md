@@ -357,7 +357,6 @@ Technische Einstellungen für dein Projekt:
   "generate": {
     "images": {
       "formats": {
-        "avif": 80,
         "webp": 85,
         "jpg": 90
       },

@@ -266,6 +266,9 @@ public sealed partial class ImageService(
             LogImagesProcessed(logger, processedCount);
             stopwatch.Stop();
 
+            // Collect warnings from image processor
+            var warnings = NetVipsImageProcessor.GetAndClearWarnings();
+
             return new ImageResult
             {
                 Success = true,
@@ -273,7 +276,8 @@ public sealed partial class ImageService(
                 SkippedCount = cachedCount,
                 FilesCreated = totalFilesCreated,
                 TotalSize = totalSizeBytes,
-                Duration = stopwatch.Elapsed
+                Duration = stopwatch.Elapsed,
+                Warnings = warnings
             };
         }
         catch (OperationCanceledException)

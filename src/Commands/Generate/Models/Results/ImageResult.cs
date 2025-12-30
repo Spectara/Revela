@@ -25,4 +25,7 @@ public sealed class ImageResult
 
     /// <summary>Error message if failed.</summary>
     public string? ErrorMessage { get; init; }
+
+    /// <summary>Warnings collected during processing (e.g., from libvips).</summary>
+    public IReadOnlyList<string> Warnings { get; init; } = [];
 }

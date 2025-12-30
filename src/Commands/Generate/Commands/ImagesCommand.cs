@@ -146,6 +146,26 @@ public sealed partial class ImagesCommand(
                     .WithHeader("[bold green]Success[/]")
                     .WithSuccessStyle();
                 AnsiConsole.Write(successPanel);
+
+                // Display collected warnings (if any) after success panel
+                if (result.Warnings.Count > 0)
+                {
+                    AnsiConsole.WriteLine();
+                    AnsiConsole.MarkupLine($"[yellow]⚠ {result.Warnings.Count} warning(s) during processing:[/]");
+                    foreach (var warning in result.Warnings.Take(5))
+                    {
+                        var safeWarning = warning
+                            .Replace("[", "[[", StringComparison.Ordinal)
+                            .Replace("]", "]]", StringComparison.Ordinal);
+                        AnsiConsole.MarkupLine($"  [dim]• {safeWarning}[/]");
+                    }
+
+                    if (result.Warnings.Count > 5)
+                    {
+                        AnsiConsole.MarkupLine($"  [dim]... and {result.Warnings.Count - 5} more[/]");
+                    }
+                }
+
                 return 0;
             }
 
