@@ -2,6 +2,8 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Microsoft.Extensions.Options;
+using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Abstractions;
 using Spectara.Revela.Sdk.Models.Manifest;
 
@@ -24,10 +26,12 @@ namespace Spectara.Revela.Commands.Generate.Services;
 /// </para>
 /// <para>
 /// Holds manifest state in memory, persists on SaveAsync.
-/// Cache directory is determined from current working directory.
+/// Cache directory is determined from project environment.
 /// </para>
 /// </remarks>
-public sealed partial class ManifestService(ILogger<ManifestService> logger) : IManifestRepository
+public sealed partial class ManifestService(
+    ILogger<ManifestService> logger,
+    IOptions<ProjectEnvironment> projectEnvironment) : IManifestRepository
 {
     private const string ManifestFileName = "manifest.json";
     private const string CacheDirectoryName = ".cache";
@@ -271,7 +275,7 @@ public sealed partial class ManifestService(ILogger<ManifestService> logger) : I
         return orphans;
     }
 
-    private static string GetCacheDirectory() => Path.Combine(Environment.CurrentDirectory, CacheDirectoryName);
+    private string GetCacheDirectory() => Path.Combine(projectEnvironment.Value.Path, CacheDirectoryName);
 
     /// <summary>
     /// Rebuild the internal image cache by traversing the tree.

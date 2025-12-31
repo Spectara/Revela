@@ -23,6 +23,7 @@ public sealed partial class ThemeExtractCommand(
     IThemeResolver themeResolver,
     ITemplateResolver templateResolver,
     IAssetResolver assetResolver,
+    IOptions<ProjectEnvironment> projectEnvironment,
     IOptionsMonitor<ThemeConfig> themeConfig,
     ILogger<ThemeExtractCommand> logger)
 {
@@ -101,7 +102,7 @@ public sealed partial class ThemeExtractCommand(
         bool force,
         CancellationToken cancellationToken)
     {
-        var projectPath = Environment.CurrentDirectory;
+        var projectPath = projectEnvironment.Value.Path;
 
         // Get theme name from config
         var themeName = themeConfig.CurrentValue.Name;
@@ -388,7 +389,7 @@ public sealed partial class ThemeExtractCommand(
         bool includeExtensions,
         CancellationToken cancellationToken)
     {
-        var projectPath = Environment.CurrentDirectory;
+        var projectPath = projectEnvironment.Value.Path;
         var themeName = targetName ?? sourceName;
 
         // Determine target path first

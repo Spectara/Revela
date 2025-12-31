@@ -212,7 +212,7 @@ jobs:
             -p:Version=${{ needs.validate.outputs.version }} \
             -o ./publish
 
-      - name: Copy getting-started guides
+      - name: Copy documentation
         run: |
           mkdir -p ./publish/getting-started
           cp docs/getting-started/*.md ./publish/getting-started/

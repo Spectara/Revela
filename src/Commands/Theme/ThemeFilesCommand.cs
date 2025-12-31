@@ -22,6 +22,7 @@ public sealed partial class ThemeFilesCommand(
     IThemeResolver themeResolver,
     ITemplateResolver templateResolver,
     IAssetResolver assetResolver,
+    IOptions<ProjectEnvironment> projectEnvironment,
     IOptionsMonitor<ThemeConfig> themeConfig,
     ILogger<ThemeFilesCommand> logger)
 {
@@ -56,7 +57,7 @@ public sealed partial class ThemeFilesCommand(
     private Task ExecuteAsync(string? themeNameOverride, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        var projectPath = Environment.CurrentDirectory;
+        var projectPath = projectEnvironment.Value.Path;
 
         // Get theme name from option or config
         var themeName = themeNameOverride ?? themeConfig.CurrentValue.Name;

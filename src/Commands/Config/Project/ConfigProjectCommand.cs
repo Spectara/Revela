@@ -1,6 +1,11 @@
 using System.CommandLine;
 using System.Text.Json.Nodes;
+
+using Microsoft.Extensions.Options;
+
+using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Abstractions;
+
 using Spectre.Console;
 
 namespace Spectara.Revela.Commands.Config.Project;
@@ -16,6 +21,7 @@ namespace Spectara.Revela.Commands.Config.Project;
 /// </remarks>
 public sealed partial class ConfigProjectCommand(
     ILogger<ConfigProjectCommand> logger,
+    IOptions<ProjectEnvironment> projectEnvironment,
     IConfigService configService)
 {
     /// <summary>
@@ -79,7 +85,7 @@ public sealed partial class ConfigProjectCommand(
 
             // Default name from current directory
             var defaultName = current?["project"]?["name"]?.GetValue<string>()
-                ?? new DirectoryInfo(Directory.GetCurrentDirectory()).Name;
+                ?? projectEnvironment.Value.FolderName;
             name = AnsiConsole.Prompt(
                 new TextPrompt<string>("Project name:")
                     .DefaultValue(defaultName));
@@ -93,7 +99,7 @@ public sealed partial class ConfigProjectCommand(
         {
             // Use provided arguments, fall back to current values or defaults
             name = nameArg ?? current?["project"]?["name"]?.GetValue<string>()
-                ?? new DirectoryInfo(Directory.GetCurrentDirectory()).Name;
+                ?? projectEnvironment.Value.FolderName;
             url = urlArg ?? current?["project"]?["url"]?.GetValue<string>() ?? "";
         }
 

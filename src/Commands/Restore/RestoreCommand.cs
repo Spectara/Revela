@@ -1,4 +1,5 @@
 using System.CommandLine;
+using Microsoft.Extensions.Options;
 using Spectara.Revela.Core;
 using Spectara.Revela.Core.Services;
 using Spectara.Revela.Sdk;
@@ -23,6 +24,7 @@ public sealed partial class RestoreCommand(
     IThemeResolver themeResolver,
     IEnumerable<IPlugin> installedPlugins,
     PluginManager pluginManager,
+    IOptions<ProjectEnvironment> projectEnvironment,
     ILogger<RestoreCommand> logger)
 {
     /// <summary>
@@ -46,7 +48,7 @@ public sealed partial class RestoreCommand(
 
         command.SetAction(async (parseResult, cancellationToken) =>
         {
-            var path = parseResult.GetValue(pathOption) ?? Directory.GetCurrentDirectory();
+            var path = parseResult.GetValue(pathOption) ?? projectEnvironment.Value.Path;
             var checkOnly = parseResult.GetValue(checkOption);
 
             return await ExecuteAsync(path, checkOnly, cancellationToken);

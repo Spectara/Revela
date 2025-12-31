@@ -6,8 +6,10 @@ using Spectara.Revela.Commands.Create;
 using Spectara.Revela.Commands.Generate.Commands;
 using Spectara.Revela.Commands.Packages;
 using Spectara.Revela.Commands.Plugins;
+using Spectara.Revela.Commands.Projects;
 using Spectara.Revela.Commands.Restore;
 using Spectara.Revela.Commands.Theme;
+using Spectara.Revela.Core.Services;
 using Spectara.Revela.Sdk.Abstractions;
 
 namespace Spectara.Revela.Cli.Hosting;
@@ -99,5 +101,17 @@ internal sealed class CoreCommandProvider(IServiceProvider services)
             Order: 30,
             Group: CommandGroups.Addons,
             RequiresProject: false);
+
+        // Projects command: only in standalone mode
+        if (ConfigPathResolver.IsStandaloneMode)
+        {
+            var projectsCommand = services.GetRequiredService<ProjectsCommand>();
+            yield return new CommandDescriptor(
+                projectsCommand.Create(),
+                ParentCommand: null,
+                Order: 5,  // Before config in Setup group
+                Group: CommandGroups.Setup,
+                RequiresProject: false);
+        }
     }
 }

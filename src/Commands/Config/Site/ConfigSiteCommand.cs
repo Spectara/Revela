@@ -22,6 +22,7 @@ namespace Spectara.Revela.Commands.Config.Site;
 /// </remarks>
 public sealed partial class ConfigSiteCommand(
     ILogger<ConfigSiteCommand> logger,
+    IOptions<ProjectEnvironment> projectEnvironment,
     IOptionsMonitor<ThemeConfig> themeConfig,
     IConfigService configService,
     IThemeResolver themeResolver)
@@ -68,7 +69,7 @@ public sealed partial class ConfigSiteCommand(
         var isEditMode = configService.IsSiteConfigured();
 
         // Get the configured theme
-        var projectPath = Directory.GetCurrentDirectory();
+        var projectPath = projectEnvironment.Value.Path;
         var availableThemes = themeResolver.GetAvailableThemes(projectPath).ToList();
         var selectedTheme = availableThemes.FirstOrDefault(t =>
             t.Metadata.Name.Equals(themeName, StringComparison.OrdinalIgnoreCase));
@@ -116,7 +117,7 @@ public sealed partial class ConfigSiteCommand(
         LogFoundProperties(logger, string.Join(", ", properties.Select(p => p.Path)));
 
         // Get project name for smart defaults (from directory if not set)
-        var projectName = new DirectoryInfo(Directory.GetCurrentDirectory()).Name;
+        var projectName = projectEnvironment.Value.FolderName;
 
         // Collect values via interactive prompts
         var values = CollectValues(properties, isEditMode, projectName);

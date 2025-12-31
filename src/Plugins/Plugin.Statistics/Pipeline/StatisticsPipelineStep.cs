@@ -1,4 +1,6 @@
+using Microsoft.Extensions.Options;
 using Spectara.Revela.Plugin.Statistics.Services;
+using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Abstractions;
 using Spectara.Revela.Sdk.Models.Manifest;
 
@@ -14,6 +16,7 @@ namespace Spectara.Revela.Plugin.Statistics.Pipeline;
 public sealed class StatisticsPipelineStep(
     ILogger<StatisticsPipelineStep> logger,
     IManifestRepository manifestRepository,
+    IOptions<ProjectEnvironment> projectEnvironment,
     StatisticsAggregator aggregator) : IGeneratePipelineStep
 {
     private const string ManifestPath = ".cache/manifest.json";
@@ -35,7 +38,8 @@ public sealed class StatisticsPipelineStep(
         try
         {
             // Check if manifest exists
-            var manifestFile = Path.Combine(Directory.GetCurrentDirectory(), ManifestPath);
+            var projectPath = projectEnvironment.Value.Path;
+            var manifestFile = Path.Combine(projectPath, ManifestPath);
             if (!File.Exists(manifestFile))
             {
                 return PipelineStepResult.Fail("No manifest found. Run scan first.");
@@ -73,7 +77,7 @@ public sealed class StatisticsPipelineStep(
                 var stats = aggregator.Aggregate();
 
                 // Calculate output path in .cache/{page.Path}/
-                var cacheDir = Path.Combine(Directory.GetCurrentDirectory(), ".cache", page.Path);
+                var cacheDir = Path.Combine(projectPath, ".cache", page.Path);
                 var jsonPath = Path.Combine(cacheDir, "statistics.json");
 
                 // Write JSON data file

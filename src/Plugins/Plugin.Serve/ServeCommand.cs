@@ -16,6 +16,7 @@ namespace Spectara.Revela.Plugin.Serve;
 /// </summary>
 public sealed partial class ServeCommand(
     ILogger<ServeCommand> logger,
+    IOptions<ProjectEnvironment> projectEnvironment,
     IOptionsMonitor<ServeConfig> serveConfig)
 {
     /// <summary>
@@ -65,7 +66,7 @@ public sealed partial class ServeCommand(
 
         // Get output directory: CLI override or default "output"
         var outputPath = pathOverride ?? "output";
-        var fullOutputPath = Path.GetFullPath(Path.Combine(Directory.GetCurrentDirectory(), outputPath));
+        var fullOutputPath = Path.GetFullPath(Path.Combine(projectEnvironment.Value.Path, outputPath));
 
         // Validate output directory exists
         if (!Directory.Exists(fullOutputPath))

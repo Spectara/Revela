@@ -3,6 +3,8 @@ using System.Globalization;
 using System.Reflection;
 using System.Text;
 
+using Microsoft.Extensions.Options;
+
 using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Abstractions;
 
@@ -27,6 +29,7 @@ namespace Spectara.Revela.Commands.Create;
 /// </remarks>
 public sealed partial class CreatePageCommand(
     ILogger<CreatePageCommand> logger,
+    IOptions<ProjectEnvironment> projectEnvironment,
     IEnumerable<IPageTemplate> templates)
 {
     /// <summary>
@@ -142,10 +145,15 @@ public sealed partial class CreatePageCommand(
     {
         cancellationToken.ThrowIfCancellationRequested();
 
-        // Ensure directory exists
-        Directory.CreateDirectory(path);
+        // Combine with project path if relative
+        var fullPath = Path.IsPathRooted(path)
+            ? path
+            : Path.Combine(projectEnvironment.Value.Path, path);
 
-        var revelaPath = Path.Combine(path, "_index.revela");
+        // Ensure directory exists
+        Directory.CreateDirectory(fullPath);
+
+        var revelaPath = Path.Combine(fullPath, "_index.revela");
 
         // Check if file already exists
         if (File.Exists(revelaPath))

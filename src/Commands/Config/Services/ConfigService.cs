@@ -3,6 +3,7 @@ using System.Text.Json.Nodes;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
 using Spectara.Revela.Core.Configuration;
+using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Abstractions;
 
 namespace Spectara.Revela.Commands.Config.Services;
@@ -20,6 +21,7 @@ namespace Spectara.Revela.Commands.Config.Services;
 public sealed partial class ConfigService(
     ILogger<ConfigService> logger,
     IConfiguration configuration,
+    IOptions<ProjectEnvironment> projectEnvironment,
     IOptionsMonitorCache<ThemeConfig> themeCache,
     IOptionsMonitorCache<ProjectConfig> projectCache,
     IOptionsMonitorCache<GenerateConfig> generateCache,
@@ -31,10 +33,10 @@ public sealed partial class ConfigService(
     };
 
     /// <inheritdoc />
-    public string ProjectConfigPath => Path.Combine(Directory.GetCurrentDirectory(), "project.json");
+    public string ProjectConfigPath => Path.Combine(projectEnvironment.Value.Path, "project.json");
 
     /// <inheritdoc />
-    public string SiteConfigPath => Path.Combine(Directory.GetCurrentDirectory(), "site.json");
+    public string SiteConfigPath => Path.Combine(projectEnvironment.Value.Path, "site.json");
 
     /// <inheritdoc />
     public bool IsProjectInitialized() => File.Exists(ProjectConfigPath);

@@ -1,6 +1,10 @@
 using System.CommandLine;
 using System.Globalization;
 
+using Microsoft.Extensions.Options;
+
+using Spectara.Revela.Sdk;
+
 using Spectre.Console;
 
 namespace Spectara.Revela.Commands.Clean.Commands;
@@ -8,13 +12,18 @@ namespace Spectara.Revela.Commands.Clean.Commands;
 /// <summary>
 /// Cleans the output directory.
 /// </summary>
-public sealed partial class CleanOutputCommand(ILogger<CleanOutputCommand> logger)
+public sealed partial class CleanOutputCommand(
+    ILogger<CleanOutputCommand> logger,
+    IOptions<ProjectEnvironment> projectEnvironment)
 {
     /// <summary>Order for this command in menu.</summary>
     public const int Order = 10;
 
     /// <summary>Output directory for generated site.</summary>
     private const string OutputDirectory = "output";
+
+    /// <summary>Gets full path to output directory.</summary>
+    private string OutputPath => Path.Combine(projectEnvironment.Value.Path, OutputDirectory);
 
     /// <summary>
     /// Creates the CLI command.
@@ -32,30 +41,30 @@ public sealed partial class CleanOutputCommand(ILogger<CleanOutputCommand> logge
     {
         cancellationToken.ThrowIfCancellationRequested();
 
-        if (!Directory.Exists(OutputDirectory))
+        if (!Directory.Exists(OutputPath))
         {
             AnsiConsole.MarkupLine($"[dim]{OutputDirectory}/[/] [yellow]does not exist[/]");
             return Task.FromResult(0);
         }
 
-        var target = AnalyzeDirectory(OutputDirectory);
+        var target = AnalyzeDirectory(OutputPath);
 
         try
         {
-            Directory.Delete(OutputDirectory, recursive: true);
+            Directory.Delete(OutputPath, recursive: true);
             LogDirectoryDeleted(logger, target.Path, target.FileCount);
 
             AnsiConsole.MarkupLine($"[green]✓[/] Deleted [cyan]{OutputDirectory}/[/] ({target.FileCount} files, {FormatSize(target.TotalSize)})");
         }
         catch (IOException ex)
         {
-            LogDeleteFailed(logger, OutputDirectory, ex);
+            LogDeleteFailed(logger, OutputPath, ex);
             AnsiConsole.MarkupLine($"[red]✗[/] Failed to delete {OutputDirectory}: {ex.Message}");
             return Task.FromResult(1);
         }
         catch (UnauthorizedAccessException ex)
         {
-            LogDeleteFailed(logger, OutputDirectory, ex);
+            LogDeleteFailed(logger, OutputPath, ex);
             AnsiConsole.MarkupLine($"[red]✗[/] Access denied: {OutputDirectory}");
             return Task.FromResult(1);
         }

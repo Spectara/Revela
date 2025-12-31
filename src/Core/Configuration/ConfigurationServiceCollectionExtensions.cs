@@ -77,6 +77,8 @@ public static class ConfigurationServiceCollectionExtensions
         services.AddOptions<LoggingConfig>()
             .BindConfiguration(LoggingConfig.SectionName);
 
+        // Note: ProjectEnvironment is registered in CLI (requires IHostEnvironment)
+
         return services;
     }
 }

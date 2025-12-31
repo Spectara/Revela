@@ -18,6 +18,7 @@ namespace Spectara.Revela.Commands.Config.Theme;
 /// </remarks>
 public sealed partial class ConfigThemeCommand(
     ILogger<ConfigThemeCommand> logger,
+    IOptions<ProjectEnvironment> projectEnvironment,
     IOptionsMonitor<ThemeConfig> themeConfig,
     IConfigService configService,
     IThemeResolver themeResolver,
@@ -67,7 +68,7 @@ public sealed partial class ConfigThemeCommand(
         }
 
         // Get available themes
-        var projectPath = Directory.GetCurrentDirectory();
+        var projectPath = projectEnvironment.Value.Path;
         var availableThemes = themeResolver.GetAvailableThemes(projectPath).ToList();
 
         if (availableThemes.Count == 0)

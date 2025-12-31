@@ -1,4 +1,5 @@
 using System.CommandLine;
+using Microsoft.Extensions.Options;
 using Spectara.Revela.Core;
 using Spectara.Revela.Core.Services;
 using Spectara.Revela.Sdk;
@@ -19,6 +20,7 @@ namespace Spectara.Revela.Commands.Theme;
 public sealed partial class ThemeListCommand(
     IThemeResolver themeResolver,
     IPluginContext pluginContext,
+    IOptions<ProjectEnvironment> projectEnvironment,
     PluginManager pluginManager)
 {
     /// <summary>
@@ -49,7 +51,7 @@ public sealed partial class ThemeListCommand(
     {
         cancellationToken.ThrowIfCancellationRequested();
 
-        var projectPath = Environment.CurrentDirectory;
+        var projectPath = projectEnvironment.Value.Path;
         var themes = themeResolver.GetAvailableThemes(projectPath).ToList();
 
         // Build source lookup from plugin context

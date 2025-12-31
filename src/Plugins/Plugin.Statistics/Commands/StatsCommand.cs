@@ -1,4 +1,5 @@
 using System.CommandLine;
+using Microsoft.Extensions.Options;
 using Spectara.Revela.Plugin.Statistics.Commands.Logging;
 using Spectara.Revela.Plugin.Statistics.Services;
 using Spectara.Revela.Sdk;
@@ -20,6 +21,7 @@ namespace Spectara.Revela.Plugin.Statistics.Commands;
 public sealed class StatsCommand(
     ILogger<StatsCommand> logger,
     IManifestRepository manifestRepository,
+    IOptions<ProjectEnvironment> projectEnvironment,
     StatisticsAggregator aggregator)
 {
     private const string ManifestPath = ".cache/manifest.json";
@@ -38,9 +40,10 @@ public sealed class StatsCommand(
 
     private async Task<int> ExecuteAsync(CancellationToken cancellationToken)
     {
+        var projectPath = projectEnvironment.Value.Path;
 
         // Check if manifest exists
-        var manifestFile = Path.Combine(Directory.GetCurrentDirectory(), ManifestPath);
+        var manifestFile = Path.Combine(projectPath, ManifestPath);
         if (!File.Exists(manifestFile))
         {
             ErrorPanels.ShowPrerequisiteError(
@@ -82,7 +85,7 @@ public sealed class StatsCommand(
 
             // Calculate output path in .cache/{page.Path}/
             // page.Path is already relative (e.g., "03 Pages\Statistics")
-            var cacheDir = Path.Combine(Directory.GetCurrentDirectory(), ".cache", page.Path);
+            var cacheDir = Path.Combine(projectPath, ".cache", page.Path);
             var jsonPath = Path.Combine(cacheDir, "statistics.json");
 
             // Write JSON data file

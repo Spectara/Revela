@@ -20,6 +20,7 @@ namespace Spectara.Revela.Commands.Config.Images;
 /// </remarks>
 public sealed partial class ConfigImageCommand(
     ILogger<ConfigImageCommand> logger,
+    IOptions<ProjectEnvironment> projectEnvironment,
     IOptionsMonitor<ThemeConfig> themeConfig,
     IThemeResolver themeResolver,
     IConfigService configService)
@@ -103,7 +104,7 @@ public sealed partial class ConfigImageCommand(
     /// </summary>
     private ImageDefaults? LoadThemeDefaults(string themeName)
     {
-        var projectPath = Directory.GetCurrentDirectory();
+        var projectPath = projectEnvironment.Value.Path;
         var theme = themeResolver.Resolve(themeName, projectPath);
 
         if (theme is null)

@@ -4,6 +4,7 @@ using Spectara.Revela.Commands.Generate.Abstractions;
 using Spectara.Revela.Commands.Generate.Models;
 using Spectara.Revela.Commands.Generate.Models.Results;
 using Spectara.Revela.Core.Configuration;
+using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Abstractions;
 using Spectara.Revela.Sdk.Models.Manifest;
 using IManifestRepository = Spectara.Revela.Sdk.Abstractions.IManifestRepository;
@@ -24,10 +25,11 @@ public sealed partial class ImageService(
     IImageProcessor imageProcessor,
     IFileHashService fileHashService,
     IManifestRepository manifestRepository,
+    IOptions<ProjectEnvironment> projectEnvironment,
     IOptionsMonitor<GenerateConfig> options,
     ILogger<ImageService> logger) : IImageService
 {
-    /// <summary>Fixed source directory (convention over configuration)</summary>
+    /// <summary>Fixed source directory name (convention over configuration)</summary>
     private const string SourceDirectory = "source";
 
     /// <summary>Output directory for generated site</summary>
@@ -38,6 +40,12 @@ public sealed partial class ImageService(
 
     /// <summary>Cache directory name</summary>
     private const string CacheDirectory = ".cache";
+
+    /// <summary>Gets full path to source directory</summary>
+    private string SourcePath => Path.Combine(projectEnvironment.Value.Path, SourceDirectory);
+
+    /// <summary>Gets full path to output directory</summary>
+    private string OutputPath => Path.Combine(projectEnvironment.Value.Path, OutputDirectory);
 
     /// <summary>Gets current image settings (supports hot-reload)</summary>
     private ImageConfig ImageSettings => options.CurrentValue.Images;
@@ -94,13 +102,13 @@ public sealed partial class ImageService(
 
             var selectionStopwatch = System.Diagnostics.Stopwatch.StartNew();
 
-            var outputImagesDirectory = Path.Combine(OutputDirectory, ImageDirectory);
+            var outputImagesDirectory = Path.Combine(OutputPath, ImageDirectory);
 
             foreach (var imagePath in allImagePaths)
             {
                 cancellationToken.ThrowIfCancellationRequested();
 
-                var fullPath = Path.Combine(SourceDirectory, imagePath);
+                var fullPath = Path.Combine(SourcePath, imagePath);
                 if (!File.Exists(fullPath))
                 {
                     continue;
@@ -184,7 +192,7 @@ public sealed partial class ImageService(
             }
 
             // Process images in parallel with limited worker pool
-            var cacheDirectory = Path.Combine(Environment.CurrentDirectory, CacheDirectory);
+            var cacheDirectory = Path.Combine(projectEnvironment.Value.Path, CacheDirectory);
             var processedCount = 0;
             var totalFilesCreated = 0;
             var totalSizeBytes = 0L;

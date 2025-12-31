@@ -7,6 +7,7 @@ using Spectara.Revela.Commands.Generate.Models.Results;
 using Spectara.Revela.Commands.Generate.Parsing;
 using Spectara.Revela.Core.Configuration;
 using Spectara.Revela.Core.Services;
+using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Abstractions;
 using Spectara.Revela.Sdk.Models.Manifest;
 using IManifestRepository = Spectara.Revela.Sdk.Abstractions.IManifestRepository;
@@ -30,6 +31,7 @@ public sealed partial class RenderService(
     IManifestRepository manifestRepository,
     RevelaParser revelaParser,
     IMarkdownService markdownService,
+    IOptions<ProjectEnvironment> projectEnvironment,
     IOptionsMonitor<ProjectConfig> projectConfig,
     IOptionsMonitor<GenerateConfig> options,
     IOptionsMonitor<ThemeConfig> themeConfig,
@@ -40,6 +42,12 @@ public sealed partial class RenderService(
 
     /// <summary>Source directory for content</summary>
     private const string SourceDirectory = "source";
+
+    /// <summary>Gets full path to source directory</summary>
+    private string SourcePath => Path.Combine(projectEnvironment.Value.Path, SourceDirectory);
+
+    /// <summary>Gets full path to output directory</summary>
+    private string OutputPath => Path.Combine(projectEnvironment.Value.Path, OutputDirectory);
 
     /// <summary>Gets current image settings (supports hot-reload)</summary>
     private ImageConfig ImageSettings => options.CurrentValue.Images;
@@ -85,7 +93,7 @@ public sealed partial class RenderService(
             var config = LoadConfiguration();
 
             // Resolve theme and extensions
-            var theme = themeResolver.Resolve(config.ThemeName, Environment.CurrentDirectory);
+            var theme = themeResolver.Resolve(config.ThemeName, projectEnvironment.Value.Path);
             SetTheme(theme);
 
             // Get theme extensions matching this theme
@@ -95,8 +103,8 @@ public sealed partial class RenderService(
             // Initialize template resolver (scans theme, extensions, local overrides)
             if (theme is not null)
             {
-                templateResolver.Initialize(theme, extensions, Environment.CurrentDirectory);
-                assetResolver.Initialize(theme, extensions, Environment.CurrentDirectory);
+                templateResolver.Initialize(theme, extensions, projectEnvironment.Value.Path);
+                assetResolver.Initialize(theme, extensions, projectEnvironment.Value.Path);
             }
 
             // Reconstruct galleries and navigation from unified root
@@ -130,7 +138,7 @@ public sealed partial class RenderService(
             // Copy assets (theme, extensions, local overrides)
             if (theme is not null)
             {
-                await assetResolver.CopyToOutputAsync(OutputDirectory, cancellationToken);
+                await assetResolver.CopyToOutputAsync(OutputPath, cancellationToken);
             }
 
             progress?.Report(new RenderProgress
@@ -199,9 +207,9 @@ public sealed partial class RenderService(
     /// Load site.json directly as JsonElement for dynamic template access.
     /// </summary>
     /// <returns>JsonElement with site properties, or null if site.json doesn't exist.</returns>
-    private static JsonElement? LoadSiteJson()
+    private JsonElement? LoadSiteJson()
     {
-        var siteJsonPath = Path.Combine(Directory.GetCurrentDirectory(), "site.json");
+        var siteJsonPath = Path.Combine(projectEnvironment.Value.Path, "site.json");
         if (!File.Exists(siteJsonPath))
         {
             return null;
@@ -352,7 +360,7 @@ public sealed partial class RenderService(
         IProgress<RenderProgress>? progress,
         CancellationToken cancellationToken)
     {
-        Directory.CreateDirectory(OutputDirectory);
+        Directory.CreateDirectory(OutputPath);
 
         var manifest = theme?.GetManifest();
         var layoutTemplate = manifest is not null
@@ -407,7 +415,7 @@ public sealed partial class RenderService(
             });
 
         await File.WriteAllTextAsync(
-            Path.Combine(OutputDirectory, "index.html"),
+            Path.Combine(OutputPath, "index.html"),
             indexHtml,
             cancellationToken);
         pageCount++;
@@ -442,6 +450,7 @@ public sealed partial class RenderService(
             var resolvedData = await ResolveDataSourcesAsync(
                 dataSources,
                 metadataBasePath,
+                projectEnvironment.Value.Path,
                 model.Galleries,
                 galleryImages,
                 cancellationToken);
@@ -498,7 +507,7 @@ public sealed partial class RenderService(
                     scripts
                 });
 
-            var galleryOutputPath = Path.Combine(OutputDirectory, gallery.Slug);
+            var galleryOutputPath = Path.Combine(OutputPath, gallery.Slug);
             Directory.CreateDirectory(galleryOutputPath);
 
             await File.WriteAllTextAsync(
@@ -590,7 +599,7 @@ public sealed partial class RenderService(
         CancellationToken cancellationToken)
     {
         // Build path to _index.revela in source directory
-        var indexPath = Path.Combine(SourceDirectory, gallery.Path, RevelaParser.IndexFileName);
+        var indexPath = Path.Combine(SourcePath, gallery.Path, RevelaParser.IndexFileName);
         var basePath = Path.GetDirectoryName(indexPath)!;
 
         if (!File.Exists(indexPath))
@@ -698,6 +707,7 @@ public sealed partial class RenderService(
     /// </summary>
     /// <param name="dataSources">Dictionary of variable name → source (JSON file or $built-in)</param>
     /// <param name="basePath">Base path for resolving relative file paths</param>
+    /// <param name="projectPath">Project root path for resolving source folder</param>
     /// <param name="allGalleries">All galleries in the site</param>
     /// <param name="localImages">Images in the current gallery folder</param>
     /// <param name="cancellationToken">Cancellation token</param>
@@ -705,6 +715,7 @@ public sealed partial class RenderService(
     private static async Task<Dictionary<string, object?>> ResolveDataSourcesAsync(
         IReadOnlyDictionary<string, string> dataSources,
         string basePath,
+        string projectPath,
         IReadOnlyList<Gallery> allGalleries,
         IReadOnlyList<Image> localImages,
         CancellationToken cancellationToken)
@@ -716,6 +727,7 @@ public sealed partial class RenderService(
             var value = await ResolveSingleDataSourceAsync(
                 source,
                 basePath,
+                projectPath,
                 allGalleries,
                 localImages,
                 cancellationToken);
@@ -735,6 +747,7 @@ public sealed partial class RenderService(
     private static async Task<object?> ResolveSingleDataSourceAsync(
         string source,
         string basePath,
+        string projectPath,
         IReadOnlyList<Gallery> allGalleries,
         IReadOnlyList<Image> localImages,
         CancellationToken cancellationToken)
@@ -754,9 +767,9 @@ public sealed partial class RenderService(
         if (source.EndsWith(".json", StringComparison.OrdinalIgnoreCase))
         {
             var relativePath = Path.GetRelativePath(
-                Path.Combine(Directory.GetCurrentDirectory(), "source"),
+                Path.Combine(projectPath, "source"),
                 basePath);
-            var cachePath = Path.Combine(".cache", relativePath, source);
+            var cachePath = Path.Combine(projectPath, ".cache", relativePath, source);
 
             if (File.Exists(cachePath))
             {

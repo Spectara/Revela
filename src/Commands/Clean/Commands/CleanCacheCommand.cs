@@ -1,6 +1,10 @@
 using System.CommandLine;
 using System.Globalization;
 
+using Microsoft.Extensions.Options;
+
+using Spectara.Revela.Sdk;
+
 using Spectre.Console;
 
 namespace Spectara.Revela.Commands.Clean.Commands;
@@ -8,13 +12,18 @@ namespace Spectara.Revela.Commands.Clean.Commands;
 /// <summary>
 /// Cleans the cache directory.
 /// </summary>
-public sealed partial class CleanCacheCommand(ILogger<CleanCacheCommand> logger)
+public sealed partial class CleanCacheCommand(
+    ILogger<CleanCacheCommand> logger,
+    IOptions<ProjectEnvironment> projectEnvironment)
 {
     /// <summary>Order for this command in menu.</summary>
     public const int Order = 20;
 
     /// <summary>Cache directory name.</summary>
     private const string CacheDirectory = ".cache";
+
+    /// <summary>Gets full path to cache directory.</summary>
+    private string CachePath => Path.Combine(projectEnvironment.Value.Path, CacheDirectory);
 
     /// <summary>
     /// Creates the CLI command.
@@ -32,30 +41,30 @@ public sealed partial class CleanCacheCommand(ILogger<CleanCacheCommand> logger)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
-        if (!Directory.Exists(CacheDirectory))
+        if (!Directory.Exists(CachePath))
         {
             AnsiConsole.MarkupLine($"[dim]{CacheDirectory}/[/] [yellow]does not exist[/]");
             return Task.FromResult(0);
         }
 
-        var target = AnalyzeDirectory(CacheDirectory);
+        var target = AnalyzeDirectory(CachePath);
 
         try
         {
-            Directory.Delete(CacheDirectory, recursive: true);
+            Directory.Delete(CachePath, recursive: true);
             LogDirectoryDeleted(logger, target.Path, target.FileCount);
 
             AnsiConsole.MarkupLine($"[green]✓[/] Deleted [cyan]{CacheDirectory}/[/] ({target.FileCount} files, {FormatSize(target.TotalSize)})");
         }
         catch (IOException ex)
         {
-            LogDeleteFailed(logger, CacheDirectory, ex);
+            LogDeleteFailed(logger, CachePath, ex);
             AnsiConsole.MarkupLine($"[red]✗[/] Failed to delete {CacheDirectory}: {ex.Message}");
             return Task.FromResult(1);
         }
         catch (UnauthorizedAccessException ex)
         {
-            LogDeleteFailed(logger, CacheDirectory, ex);
+            LogDeleteFailed(logger, CachePath, ex);
             AnsiConsole.MarkupLine($"[red]✗[/] Access denied: {CacheDirectory}");
             return Task.FromResult(1);
         }

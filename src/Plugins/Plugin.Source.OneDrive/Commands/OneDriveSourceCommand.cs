@@ -22,6 +22,7 @@ namespace Spectara.Revela.Plugin.Source.OneDrive.Commands;
 public sealed class OneDriveSourceCommand(
     ILogger<OneDriveSourceCommand> logger,
     SharedLinkProvider provider,
+    IOptions<ProjectEnvironment> projectEnvironment,
     IOptionsMonitor<OneDrivePluginConfig> config)
 {
     public Command Create()
@@ -165,7 +166,7 @@ public sealed class OneDriveSourceCommand(
             var outputDirectory = options.OutputDirectory
                 ?? currentConfig.OutputDirectory
                 ?? "source";
-            outputDirectory = Path.Combine(Directory.GetCurrentDirectory(), outputDirectory);
+            outputDirectory = Path.Combine(projectEnvironment.Value.Path, outputDirectory);
 
             // Determine concurrency (CLI > Config > Auto-detect)
             var concurrency = options.Concurrency

@@ -5,6 +5,7 @@ using Spectara.Revela.Commands.Generate.Models;
 using Spectara.Revela.Commands.Generate.Models.Results;
 using Spectara.Revela.Commands.Generate.Scanning;
 using Spectara.Revela.Core.Configuration;
+using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Models.Manifest;
 using IManifestRepository = Spectara.Revela.Sdk.Abstractions.IManifestRepository;
 
@@ -28,11 +29,15 @@ public sealed partial class ContentService(
     NavigationBuilder navigationBuilder,
     IManifestRepository manifestRepository,
     IImageProcessor imageProcessor,
+    IOptions<ProjectEnvironment> projectEnvironment,
     IOptionsMonitor<GenerateConfig> options,
     ILogger<ContentService> logger) : IContentService
 {
-    /// <summary>Fixed source directory (convention over configuration)</summary>
+    /// <summary>Fixed source directory name (convention over configuration)</summary>
     private const string SourceDirectory = "source";
+
+    /// <summary>Gets full path to source directory</summary>
+    private string SourcePath => Path.Combine(projectEnvironment.Value.Path, SourceDirectory);
 
     /// <summary>Gets current image settings (supports hot-reload)</summary>
     private ImageConfig ImageSettings => options.CurrentValue.Images;
@@ -47,12 +52,12 @@ public sealed partial class ContentService(
         try
         {
             // Validate source directory exists
-            if (!Directory.Exists(SourceDirectory))
+            if (!Directory.Exists(SourcePath))
             {
                 return new ContentResult
                 {
                     Success = false,
-                    ErrorMessage = $"Source directory not found: {SourceDirectory}"
+                    ErrorMessage = $"Source directory not found: {SourcePath}"
                 };
             }
 
@@ -74,7 +79,7 @@ public sealed partial class ContentService(
             });
 
             // Scan content
-            var content = await contentScanner.ScanAsync(SourceDirectory, cancellationToken);
+            var content = await contentScanner.ScanAsync(SourcePath, cancellationToken);
 
             progress?.Report(new ContentProgress
             {
@@ -97,7 +102,7 @@ public sealed partial class ContentService(
             });
 
             // Build navigation tree
-            var navigation = await navigationBuilder.BuildAsync(SourceDirectory, cancellationToken: cancellationToken);
+            var navigation = await navigationBuilder.BuildAsync(SourcePath, cancellationToken: cancellationToken);
 
             // Build unified root node with metadata
             var root = BuildRoot(content, navigation, imageMetadata);

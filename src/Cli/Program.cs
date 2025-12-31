@@ -4,6 +4,7 @@ using Microsoft.Extensions.Hosting;
 using Spectara.Revela.Cli.Hosting;
 using Spectara.Revela.Commands;
 using Spectara.Revela.Core.Configuration;
+using Spectara.Revela.Sdk;
 
 // Enable UTF-8 output for proper Unicode/emoji rendering
 Console.OutputEncoding = Encoding.UTF8;
@@ -42,6 +43,13 @@ builder.Services.AddRevelaConfigSections();
 builder.Services.AddRevelaCommands();
 builder.Services.AddInteractiveMode();
 builder.Services.AddPlugins(builder.Configuration, filteredArgs);
+
+// Register ProjectEnvironment (runtime info, not from JSON)
+builder.Services.AddOptions<ProjectEnvironment>()
+    .Configure<IHostEnvironment>((env, host) =>
+    {
+        env.Path = host.ContentRootPath;
+    });
 
 // ✅ Build host
 var host = builder.Build();

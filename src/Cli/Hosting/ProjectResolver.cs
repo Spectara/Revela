@@ -1,3 +1,5 @@
+using System.Text.Json;
+
 using Spectara.Revela.Core.Services;
 using Spectre.Console;
 
@@ -6,9 +8,10 @@ namespace Spectara.Revela.Cli.Hosting;
 /// <summary>
 /// Information about a discovered project
 /// </summary>
-/// <param name="Name">Display name (folder name)</param>
+/// <param name="FolderName">Folder name in projects/ directory</param>
 /// <param name="Path">Full path to the project directory</param>
-internal sealed record ProjectInfo(string Name, string Path);
+/// <param name="DisplayName">Project name from project.json, or folder name if not set</param>
+internal sealed record ProjectInfo(string FolderName, string Path, string DisplayName);
 
 /// <summary>
 /// Resolves and selects projects in standalone multi-project mode
@@ -29,10 +32,14 @@ internal sealed record ProjectInfo(string Name, string Path);
 internal static class ProjectResolver
 {
     /// <summary>
-    /// Gets all available projects in the projects/ directory
+    /// Gets all project folders in the projects/ directory
     /// </summary>
-    /// <returns>List of discovered projects, empty if none found</returns>
-    public static IReadOnlyList<ProjectInfo> GetAvailableProjects()
+    /// <remarks>
+    /// Returns all subdirectories, regardless of whether they contain a project.json.
+    /// Folders without project.json are shown as "not configured".
+    /// </remarks>
+    /// <returns>List of discovered project folders, empty if none found</returns>
+    public static IReadOnlyList<ProjectInfo> GetProjectFolders()
     {
         var projectsDir = ConfigPathResolver.ProjectsDirectory;
 
@@ -41,67 +48,78 @@ internal static class ProjectResolver
             return [];
         }
 
-        var projects = new List<ProjectInfo>();
+        var folders = new List<ProjectInfo>();
 
         foreach (var dir in Directory.GetDirectories(projectsDir))
         {
+            var folderName = Path.GetFileName(dir);
             var projectFile = Path.Combine(dir, "project.json");
+
             if (File.Exists(projectFile))
             {
-                var name = Path.GetFileName(dir);
-                projects.Add(new ProjectInfo(name, dir));
+                // Configured project - use project name or folder name
+                var displayName = ReadProjectName(projectFile) ?? folderName;
+                folders.Add(new ProjectInfo(folderName, dir, displayName));
+            }
+            else
+            {
+                // Empty folder - show as not configured
+                var displayName = $"{folderName} [dim](not configured)[/]";
+                folders.Add(new ProjectInfo(folderName, dir, displayName));
             }
         }
 
-        return [.. projects.OrderBy(p => p.Name, StringComparer.OrdinalIgnoreCase)];
+        return [.. folders.OrderBy(p => p.FolderName, StringComparer.OrdinalIgnoreCase)];
     }
 
     /// <summary>
-    /// Shows interactive project selection menu
+    /// Shows interactive project folder selection menu
     /// </summary>
-    /// <param name="projects">Available projects to choose from</param>
-    /// <returns>Selected project path, or null if user chose to exit</returns>
-    public static string? SelectProjectInteractively(IReadOnlyList<ProjectInfo> projects)
+    /// <param name="folders">Available project folders to choose from</param>
+    /// <returns>Selected folder path, or null if user chose to exit</returns>
+    public static string? SelectProjectInteractively(IReadOnlyList<ProjectInfo> folders)
     {
-        AnsiConsole.Clear();
-
-        // ASCII logo
-        var logoLines = new[]
-        {
-            @"   ____                _       ",
-            @"  |  _ \ _____   _____| | __ _ ",
-            @"  | |_) / _ \ \ / / _ \ |/ _` |",
-            @"  |  _ <  __/\ V /  __/ | (_| |",
-            @"  |_| \_\___| \_/ \___|_|\__,_|",
-        };
-
-        foreach (var line in logoLines)
-        {
-            AnsiConsole.MarkupLine("[cyan1]" + line + "[/]");
-        }
-
+        ConsoleUI.ClearAndShowLogo();
+        ConsoleUI.ShowWelcomePanel();
         AnsiConsole.WriteLine();
 
-        // Build choices
-        var choices = projects
-            .Select(p => p.Name)
-            .Concat(["[dim]Exit[/]"])
+        // Build choices - DisplayName already contains markup for unconfigured folders
+        const string projectsHeader = "Projects";
+        const string setupHeader = "Setup";
+        const string newFolderChoice = "Create new project folder";
+        const string exitChoice = "Exit";
+
+        var folderChoices = folders
+            .Select(p => p.DisplayName)
             .ToList();
 
-        var selection = AnsiConsole.Prompt(
-            new SelectionPrompt<string>()
-                .Title("[blue]Select a project:[/]")
-                .PageSize(15)
-                .HighlightStyle(new Style(Color.Cyan1, decoration: Decoration.Bold))
-                .AddChoices(choices));
+        var prompt = new SelectionPrompt<string>()
+            .Title("[cyan]Select a project folder:[/]")
+            .PageSize(20)
+            .WrapAround()
+            .Mode(SelectionMode.Leaf)
+            .HighlightStyle(new Style(Color.Cyan1, decoration: Decoration.Bold))
+            .AddChoiceGroup(projectsHeader, folderChoices)
+            .AddChoiceGroup(setupHeader, newFolderChoice)
+            .AddChoices(exitChoice);
 
-        if (selection == "[dim]Exit[/]")
+        prompt.DisabledStyle = new Style(Color.Grey);
+
+        var selection = AnsiConsole.Prompt(prompt);
+
+        if (selection == "Exit")
         {
             return null;
         }
 
-        var project = projects.FirstOrDefault(p => p.Name == selection);
-        return project?.Path;
+        if (selection == newFolderChoice)
+        {
+            return CreateNewProjectFolder();
+        }
+
+        // Find folder by matching the choice text
+        var selectedIndex = folderChoices.IndexOf(selection);
+        return selectedIndex >= 0 ? folders[selectedIndex].Path : null;
     }
 
     /// <summary>
@@ -326,40 +344,151 @@ internal static class ProjectResolver
             AnsiConsole.MarkupLine("[red]Error:[/] No project specified.");
             AnsiConsole.MarkupLine("[dim]Use --project <name> or run without arguments for interactive mode.[/]");
             AnsiConsole.WriteLine();
-            AnsiConsole.MarkupLine("[blue]Available projects:[/]");
+            AnsiConsole.MarkupLine("[blue]Available project folders:[/]");
 
-            var projects = GetAvailableProjects();
-            foreach (var p in projects)
+            var folders = GetProjectFolders();
+            foreach (var f in folders)
             {
-                AnsiConsole.MarkupLine($"  • {p.Name}");
+                AnsiConsole.MarkupLine($"  • {f.DisplayName}");
             }
 
             return (null, filteredArgs, true);
         }
 
         // Interactive mode
-        var availableProjects = GetAvailableProjects();
+        var projectFolders = GetProjectFolders();
 
-        // No projects - go to interactive menu (which shows init, theme, plugin, etc.)
-        if (availableProjects.Count == 0)
+        // No project folders - offer to create one
+        if (projectFolders.Count == 0)
         {
-            // Return current directory as context, no commands = interactive mode
-            return (Directory.GetCurrentDirectory(), filteredArgs, false);
+            var newFolderPath = PromptCreateFirstProjectFolder();
+            if (newFolderPath is null)
+            {
+                return (null, filteredArgs, true);
+            }
+
+            return (newFolderPath, filteredArgs, false);
         }
 
-        // Single project - auto-select
-        if (availableProjects.Count == 1)
+        // Single folder - auto-select
+        if (projectFolders.Count == 1)
         {
-            return (availableProjects[0].Path, filteredArgs, false);
+            return (projectFolders[0].Path, filteredArgs, false);
         }
 
-        // Multiple projects - show selection
-        var selectedPath = SelectProjectInteractively(availableProjects);
+        // Multiple folders - show selection
+        var selectedPath = SelectProjectInteractively(projectFolders);
         if (selectedPath is null)
         {
             return (null, filteredArgs, true);
         }
 
         return (selectedPath, filteredArgs, false);
+    }
+
+    /// <summary>
+    /// Reads project.name from project.json
+    /// </summary>
+    /// <param name="projectFilePath">Path to project.json</param>
+    /// <returns>Project name or null if not found/readable</returns>
+    private static string? ReadProjectName(string projectFilePath)
+    {
+        try
+        {
+            var json = File.ReadAllText(projectFilePath);
+            using var doc = JsonDocument.Parse(json);
+
+            if (doc.RootElement.TryGetProperty("project", out var projectSection) &&
+                projectSection.TryGetProperty("name", out var nameElement) &&
+                nameElement.ValueKind == JsonValueKind.String)
+            {
+                var name = nameElement.GetString();
+                return string.IsNullOrWhiteSpace(name) ? null : name;
+            }
+        }
+        catch
+        {
+            // Ignore parse errors, fall back to folder name
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Creates a new project folder interactively
+    /// </summary>
+    /// <returns>Path to the new project folder, or null if cancelled</returns>
+    internal static string? CreateNewProjectFolder()
+    {
+        AnsiConsole.WriteLine();
+
+        var folderName = AnsiConsole.Prompt(
+            new TextPrompt<string>("[blue]Folder name:[/]")
+                .Validate(name =>
+                {
+                    if (string.IsNullOrWhiteSpace(name))
+                    {
+                        return ValidationResult.Error("[red]Name cannot be empty[/]");
+                    }
+
+                    // Check for invalid path characters
+                    var invalidChars = Path.GetInvalidFileNameChars();
+                    if (name.Any(c => invalidChars.Contains(c)))
+                    {
+                        return ValidationResult.Error("[red]Name contains invalid characters[/]");
+                    }
+
+                    // Check if folder already exists
+                    var targetPath = Path.Combine(ConfigPathResolver.ProjectsDirectory, name);
+                    if (Directory.Exists(targetPath))
+                    {
+                        return ValidationResult.Error($"[red]Folder '{name}' already exists[/]");
+                    }
+
+                    return ValidationResult.Success();
+                }));
+
+        var projectPath = Path.Combine(ConfigPathResolver.ProjectsDirectory, folderName);
+
+        // Create the folder structure
+        Directory.CreateDirectory(projectPath);
+
+        AnsiConsole.MarkupLine($"[green]✓[/] Project folder created: [cyan]{folderName}[/]");
+        AnsiConsole.WriteLine();
+
+        return projectPath;
+    }
+
+    /// <summary>
+    /// Prompts user to create the first project folder when none exist
+    /// </summary>
+    /// <returns>Path to the new project folder, or null if user chose to exit</returns>
+    private static string? PromptCreateFirstProjectFolder()
+    {
+        ConsoleUI.ClearAndShowLogo();
+        ConsoleUI.ShowWelcomePanel();
+        AnsiConsole.WriteLine();
+        AnsiConsole.MarkupLine("[yellow]No project folders found.[/]");
+        AnsiConsole.WriteLine();
+
+        var prompt = new SelectionPrompt<string>()
+            .Title("[cyan]Select an option:[/]")
+            .PageSize(20)
+            .WrapAround()
+            .Mode(SelectionMode.Leaf)
+            .HighlightStyle(new Style(Color.Cyan1, decoration: Decoration.Bold))
+            .AddChoiceGroup("Setup", "Create new project folder")
+            .AddChoices("Exit");
+
+        prompt.DisabledStyle = new Style(Color.Grey);
+
+        var choice = AnsiConsole.Prompt(prompt);
+
+        if (choice == "Exit")
+        {
+            return null;
+        }
+
+        return CreateNewProjectFolder();
     }
 }

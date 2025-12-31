@@ -1,6 +1,10 @@
 using System.CommandLine;
 using System.Globalization;
 
+using Microsoft.Extensions.Options;
+
+using Spectara.Revela.Sdk;
+
 using Spectre.Console;
 
 namespace Spectara.Revela.Plugin.Statistics.Commands;
@@ -8,7 +12,9 @@ namespace Spectara.Revela.Plugin.Statistics.Commands;
 /// <summary>
 /// Cleans statistics JSON files from the cache directory.
 /// </summary>
-public sealed partial class CleanStatisticsCommand(ILogger<CleanStatisticsCommand> logger)
+public sealed partial class CleanStatisticsCommand(
+    ILogger<CleanStatisticsCommand> logger,
+    IOptions<ProjectEnvironment> projectEnvironment)
 {
     /// <summary>Order for this command in menu.</summary>
     public const int Order = 30;
@@ -18,6 +24,9 @@ public sealed partial class CleanStatisticsCommand(ILogger<CleanStatisticsComman
 
     /// <summary>Statistics JSON filename.</summary>
     private const string StatisticsFileName = "statistics.json";
+
+    /// <summary>Gets full path to cache directory.</summary>
+    private string CachePath => Path.Combine(projectEnvironment.Value.Path, CacheDirectory);
 
     /// <summary>
     /// Creates the CLI command.
@@ -35,14 +44,14 @@ public sealed partial class CleanStatisticsCommand(ILogger<CleanStatisticsComman
     {
         cancellationToken.ThrowIfCancellationRequested();
 
-        if (!Directory.Exists(CacheDirectory))
+        if (!Directory.Exists(CachePath))
         {
             AnsiConsole.MarkupLine($"[dim]{CacheDirectory}/[/] [yellow]does not exist[/]");
             return Task.FromResult(0);
         }
 
         // Find all statistics.json files in .cache
-        var statsFiles = Directory.GetFiles(CacheDirectory, StatisticsFileName, SearchOption.AllDirectories);
+        var statsFiles = Directory.GetFiles(CachePath, StatisticsFileName, SearchOption.AllDirectories);
 
         if (statsFiles.Length == 0)
         {

@@ -34,6 +34,8 @@ After extracting, you'll have these files:
 ```
 C:\Revela\
 ├── revela.exe                          ← The main program
+├── projects/                           ← Your projects will be here
+│   └── (empty)
 └── getting-started/                    ← Guides (multilingual)
     ├── README.md
     ├── de.md                           ← Deutsch
@@ -103,9 +105,35 @@ Please restart Revela to load the new packages.
 
 ---
 
-## 3. Create a Project (Project Wizard)
+## 3. Select or Create a Project Folder
 
-After the setup wizard, when you start Revela in a folder without a project, the **Project Wizard** appears automatically.
+After the setup wizard (and restart), you'll see the **Project Selection** screen:
+
+```
+Select a project folder:
+
+Projects
+  (no projects yet)
+Setup
+  Create new project folder
+Exit
+```
+
+### Step 3.1: Create a Project Folder
+
+1. Select **Create new project folder**
+2. Enter a name for your project (e.g., "MyPhotos", "Wedding2025")
+3. The folder will be created at `C:\Revela\projects\MyPhotos\`
+
+**Tip:** Use descriptive names - you can have multiple projects for different photo collections!
+
+After creating the folder, Revela restarts and opens your new project.
+
+---
+
+## 4. Project Wizard (First Time in a Project)
+
+When you enter a project folder for the first time (no `project.json`), the **Project Wizard** appears automatically.
 
 ### What You'll See
 
@@ -123,7 +151,7 @@ After the setup wizard, when you start Revela in a folder without a project, the
 └─────────────────────────────────────────────────────────────┘
 ```
 
-### Step 3.1: Project Settings
+### Step 4.1: Project Settings
 
 Enter your project details:
 
@@ -131,11 +159,11 @@ Enter your project details:
 - **Base URL:** Your website address (e.g., "https://photos.example.com")
   - Leave empty if you don't know yet
 
-### Step 3.2: Select Theme
+### Step 4.2: Select Theme
 
 Choose a theme from your installed themes. If you only installed Lumina, it will be selected automatically.
 
-### Step 3.3: Image Settings
+### Step 4.3: Image Settings
 
 Configure how your images should be processed:
 
@@ -147,7 +175,7 @@ Configure how your images should be processed:
 
 **Tip for speed:** AVIF offers the best compression but takes longer. For a quick first test, you can disable AVIF and keep only WebP and JPG.
 
-### Step 3.4: Site Metadata
+### Step 4.4: Site Metadata
 
 Enter information about your website:
 
@@ -157,34 +185,36 @@ Enter information about your website:
 
 ### After the Wizard
 
-The wizard creates these files and folders:
+The wizard creates these files and folders in your project:
 
 ```
 C:\Revela\
 ├── revela.exe
 ├── revela.json                         ← Revela configuration
-├── project.json                        ← Project settings (NEW)
-├── site.json                           ← Website metadata (NEW)
-├── source/                             ← Put your photos here (NEW)
-│   └── (empty)
-├── output/                             ← Generated website goes here (NEW)
-│   └── (empty)
-├── cache/                              ← Image cache (NEW)
-│   └── (empty)
-└── packages/                           ← Installed themes & plugins
-    └── ...
+├── packages/                           ← Installed themes & plugins
+│   └── ...
+└── projects/
+    └── MyPhotos/                       ← Your project folder
+        ├── project.json                ← Project settings
+        ├── site.json                   ← Website metadata
+        ├── source/                     ← Put your photos here
+        │   └── (empty)
+        ├── output/                     ← Generated website goes here
+        │   └── (empty)
+        └── cache/                      ← Image cache
+            └── (empty)
 ```
 
 ---
 
-## 4. Add Photos
+## 5. Add Photos
 
-### Step 4.1: Create Galleries as Folders
+### Step 5.1: Create Galleries as Folders
 
 Create subfolders in the `source` folder for your galleries. The folder names become gallery titles:
 
 ```
-C:\Revela\source\
+C:\Revela\projects\MyPhotos\source\
 ├── 01 Weddings/
 │   ├── photo1.jpg
 │   ├── photo2.jpg
@@ -209,7 +239,7 @@ C:\Revela\source\
       └── 02 Miller Corp Company Party/
   ```
 
-### Step 4.2: Add Gallery Description (Optional)
+### Step 5.2: Add Gallery Description (Optional)
 
 To customize a gallery's title or add a description, create an `_index.md` file:
 
@@ -233,9 +263,9 @@ The text below the `---` lines appears as introduction text on the gallery page.
 
 ---
 
-## 5. Generate Website
+## 6. Generate Website
 
-### Step 5.1: Generate Your Website
+### Step 6.1: Generate Your Website
 
 1. Double-click `revela.exe` to open the menu
 2. Select **generate**
@@ -259,7 +289,7 @@ Rendering pages   [████████████████████]
 ✓ Generation complete!
 ```
 
-### Step 5.2: Regenerate Only Parts (Optional)
+### Step 6.2: Regenerate Only Parts (Optional)
 
 In the **generate** submenu, you can select specific steps:
 
@@ -275,9 +305,9 @@ In the **generate** submenu, you can select specific steps:
 
 ---
 
-## 6. Preview & Upload
+## 7. Preview & Upload
 
-### Step 6.1: Preview Locally (with Serve Plugin)
+### Step 7.1: Preview Locally (with Serve Plugin)
 
 If you installed the **Serve** plugin:
 
@@ -285,23 +315,23 @@ If you installed the **Serve** plugin:
 2. Your browser opens automatically with your site
 3. Press **Ctrl+C** in the terminal to stop the server
 
-### Step 6.2: Open Files Directly
+### Step 7.2: Open Files Directly
 
 Without the Serve plugin, you can open the files directly:
 
-1. Go to `C:\Revela\output\` in Windows Explorer
+1. Go to `C:\Revela\projects\MyPhotos\output\` in Windows Explorer
 2. Double-click on `index.html`
 3. The website opens in your browser
 
 **Note:** Some features (like lazy loading) work better with a real server.
 
-### Step 6.3: Upload to Web Server
+### Step 7.3: Upload to Web Server
 
 To put your website online, upload the complete contents of the `output` folder to your web server via FTP, SFTP, or your hosting provider's file manager.
 
 ---
 
-## 7. Menu Reference
+## 8. Menu Reference
 
 ### Main Menu
 
@@ -331,6 +361,12 @@ To put your website online, upload the complete contents of the `output` folder 
 | **serve** | start | Start local preview server |
 | | | *(requires Serve plugin)* |
 
+### Setup Group (Standalone Mode)
+
+| Option | Description |
+|--------|-------------|
+| **projects** | Manage project folders (list, create, delete) |
+
 ### Addons Group
 
 | Option | Description |
@@ -339,7 +375,69 @@ To put your website online, upload the complete contents of the `output` folder 
 
 ---
 
-## 8. Configuration Files
+## 9. Working with Multiple Projects
+
+Revela supports multiple projects in standalone mode. Each project has its own folder with separate `source/`, `output/`, and `cache/` directories.
+
+### Switching Between Projects
+
+1. Double-click `revela.exe`
+2. The project selection screen shows all your projects:
+   ```
+   Select a project folder:
+   
+   Projects
+     > MyPhotos
+       Wedding2025
+       Landscapes (not configured)
+   Setup
+     Create new project folder
+   Exit
+   ```
+3. Select the project you want to work on
+
+**Note:** Projects marked "(not configured)" don't have a `project.json` yet - the Project Wizard will run when you select them.
+
+### Managing Projects
+
+From the main menu, go to **Setup** → **projects**:
+
+| Option | Description |
+|--------|-------------|
+| **list** | Show all project folders with status |
+| **create** | Create a new project folder |
+| **delete** | Delete a project folder (with confirmation) |
+
+### Project Structure
+
+```
+C:\Revela\
+├── revela.exe
+├── revela.json                    ← Global config (shared)
+├── packages/                      ← Themes & plugins (shared)
+└── projects/
+    ├── MyPhotos/                  ← Project 1
+    │   ├── project.json
+    │   ├── site.json
+    │   ├── source/
+    │   ├── output/
+    │   └── cache/
+    └── Wedding2025/               ← Project 2
+        ├── project.json
+        ├── site.json
+        ├── source/
+        ├── output/
+        └── cache/
+```
+
+**Benefits:**
+- Separate photo collections in different projects
+- Each project can have different settings (theme, image sizes)
+- Shared packages - install once, use everywhere
+
+---
+
+## 10. Configuration Files
 
 ### project.json
 
@@ -405,7 +503,7 @@ Global Revela configuration (in Revela folder):
 
 ---
 
-## 9. Common Problems
+## 11. Common Problems
 
 ### "The menu doesn't appear" or "Window closes immediately"
 
@@ -460,7 +558,7 @@ source/
 
 ---
 
-## 10. Next Steps
+## 12. Next Steps
 
 Once your website works:
 

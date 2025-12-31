@@ -6,8 +6,16 @@ Step-by-step guides for photographers to create a portfolio website with Revela.
 
 | Language | File | Description |
 |----------|------|-------------|
-| 🇬🇧 English | [en.md](en.md) | Complete guide in English |
-| 🇩🇪 Deutsch | [de.md](de.md) | Vollständige Anleitung auf Deutsch |
+| 🇬🇧 English | [getting-started-en.md](getting-started-en.md) | Complete guide in English |
+| 🇩🇪 Deutsch | [getting-started-de.md](getting-started-de.md) | Vollständige Anleitung auf Deutsch |
+
+## CLI Reference
+
+For advanced users and automation:
+
+| Document | Description |
+|----------|-------------|
+| [cli-reference.md](cli-reference.md) | Command-line reference, scripting, CI/CD |
 
 ## What's Inside
 

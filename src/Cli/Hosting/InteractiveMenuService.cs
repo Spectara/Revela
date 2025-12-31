@@ -1,5 +1,4 @@
 using System.CommandLine;
-using System.Reflection;
 
 using Microsoft.Extensions.Options;
 
@@ -19,6 +18,7 @@ namespace Spectara.Revela.Cli.Hosting;
 /// Service for running the interactive CLI menu.
 /// </summary>
 internal sealed partial class InteractiveMenuService(
+    IOptions<ProjectEnvironment> projectEnvironment,
     CommandPromptBuilder promptBuilder,
     CommandGroupRegistry groupRegistry,
     CommandOrderRegistry orderRegistry,
@@ -62,36 +62,8 @@ internal sealed partial class InteractiveMenuService(
 
     private async Task<int> HandleFirstRunAsync(CancellationToken cancellationToken)
     {
-        AnsiConsole.Clear();
-
-        var logoLines = new[]
-        {
-            @"   ____                _       ",
-            @"  |  _ \ _____   _____| | __ _ ",
-            @"  | |_) / _ \ \ / / _ \ |/ _` |",
-            @"  |  _ <  __/\ V /  __/ | (_| |",
-            @"  |_| \_\___| \_/ \___|_|\__,_|",
-        };
-
-        foreach (var line in logoLines)
-        {
-            AnsiConsole.MarkupLine("[cyan1]" + line + "[/]");
-        }
-
-        AnsiConsole.WriteLine();
-
-        var panel = new Panel(
-            new Markup(
-                "[bold]Welcome to Revela![/]\n\n" +
-                "This appears to be your first time running Revela.\n" +
-                "The setup wizard will help you install themes and plugins."))
-            .WithHeader("[cyan1]First Run[/]")
-            .Border(BoxBorder.Rounded)
-            .BorderStyle(new Style(Color.Cyan1))
-            .Padding(1, 0);
-
-        AnsiConsole.Write(panel);
-        AnsiConsole.WriteLine();
+        ConsoleUI.ClearAndShowLogo();
+        ConsoleUI.ShowFirstRunPanel();
 
         var choice = AnsiConsole.Prompt(
             new SelectionPrompt<string>()
@@ -134,25 +106,9 @@ internal sealed partial class InteractiveMenuService(
 
     private async Task<int> HandleNoProjectAsync(CancellationToken cancellationToken)
     {
-        AnsiConsole.Clear();
+        ConsoleUI.ClearAndShowLogo();
 
-        var logoLines = new[]
-        {
-            @"   ____                _       ",
-            @"  |  _ \ _____   _____| | __ _ ",
-            @"  | |_) / _ \ \ / / _ \ |/ _` |",
-            @"  |  _ <  __/\ V /  __/ | (_| |",
-            @"  |_| \_\___| \_/ \___|_|\__,_|",
-        };
-
-        foreach (var line in logoLines)
-        {
-            AnsiConsole.MarkupLine("[cyan1]" + line + "[/]");
-        }
-
-        AnsiConsole.WriteLine();
-
-        var folderName = Path.GetFileName(Directory.GetCurrentDirectory());
+        var folderName = projectEnvironment.Value.FolderName;
 
         var panel = new Panel(
             new Markup(
@@ -180,19 +136,28 @@ internal sealed partial class InteractiveMenuService(
 
         if (choice == "Create New Project")
         {
-            var result = await projectWizard.RunAsync(cancellationToken);
-
-            if (result == 0)
-            {
-                bannerShown = true; // Don't show banner, wizard already showed welcome
-                return await RunMenuLoopAsync(cancellationToken);
-            }
-
-            // Wizard failed or was cancelled - continue to menu
-            AnsiConsole.WriteLine();
-            AnsiConsole.MarkupLine("[yellow]Project creation was not completed. Continuing to menu...[/]");
-            WaitForKeyPress();
+            return await RunProjectWizardAsync(cancellationToken);
         }
+
+        // User skipped or wizard failed - show normal menu
+        bannerShown = true; // Don't show banner again
+        return await RunMenuLoopAsync(cancellationToken);
+    }
+
+    private async Task<int> RunProjectWizardAsync(CancellationToken cancellationToken)
+    {
+        var result = await projectWizard.RunAsync(cancellationToken);
+
+        if (result == 0)
+        {
+            bannerShown = true; // Don't show banner, wizard already showed welcome
+            return await RunMenuLoopAsync(cancellationToken);
+        }
+
+        // Wizard failed or was cancelled - continue to menu
+        AnsiConsole.WriteLine();
+        AnsiConsole.MarkupLine("[yellow]Project creation was not completed. Continuing to menu...[/]");
+        WaitForKeyPress();
 
         // User skipped or wizard failed - show normal menu
         bannerShown = true; // Don't show banner again
@@ -208,45 +173,13 @@ internal sealed partial class InteractiveMenuService(
 
         bannerShown = true;
 
-        AnsiConsole.Clear();
-
-        // ASCII logo (2 spaces indent to align with panel border)
-        var logoLines = new[]
-        {
-            @"   ____                _       ",
-            @"  |  _ \ _____   _____| | __ _ ",
-            @"  | |_) / _ \ \ / / _ \ |/ _` |",
-            @"  |  _ <  __/\ V /  __/ | (_| |",
-            @"  |_| \_\___| \_/ \___|_|\__,_|",
-        };
-
-        foreach (var line in logoLines)
-        {
-            AnsiConsole.MarkupLine("[cyan1]" + line + "[/]");
-        }
-
-        AnsiConsole.WriteLine();
-
-        // Version and description panel
-        var version = Assembly.GetEntryAssembly()?.GetName().Version?.ToString(3) ?? "1.0.0";
-        var workingDir = Directory.GetCurrentDirectory();
-        var folderName = Path.GetFileName(workingDir);
+        ConsoleUI.ClearAndShowLogo();
 
         // Show project name if initialized, otherwise show folder name
-        var contextLine = string.IsNullOrEmpty(projectConfig.CurrentValue.Name)
-            ? $"[dim]Directory:[/] {folderName}"
-            : $"[blue]Project:[/] {projectConfig.CurrentValue.Name}";
+        var projectName = projectConfig.CurrentValue.Name;
+        var folderName = projectEnvironment.Value.FolderName;
 
-        var panel = new Panel(
-            new Markup(
-                $"[bold]Version {version}[/]\n" +
-                "[dim]Modern static site generator for photographers[/]\n\n" +
-                $"{contextLine}\n\n" +
-                "[blue]Navigate with[/] [bold]↑↓[/][blue], select with[/] [bold]Enter[/]"))
-            .WithHeader("[cyan1]Welcome[/]")
-            .WithInfoStyle();
-
-        AnsiConsole.Write(panel);
+        ConsoleUI.ShowWelcomePanel(projectName, folderName);
     }
 
     private async Task<int> RunMenuLoopAsync(CancellationToken cancellationToken)

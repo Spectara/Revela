@@ -14,8 +14,10 @@
         playground/standalone-{timestamp}/
         ├── revela.exe
         ├── getting-started/
+        │   ├── README.md
         │   ├── en.md
-        │   └── de.md
+        │   ├── de.md
+        │   └── cli-reference.md
         └── packages/           (local NuGet feed with all packages)
             ├── Spectara.Revela.Theme.Lumina.{version}.nupkg
             ├── Spectara.Revela.Theme.Lumina.Statistics.{version}.nupkg
@@ -137,14 +139,14 @@ try {
     Write-Success "CLI published: $ExeName ($exeSize MB)"
 
     # ========================================================================
-    # Step 4: Copy getting-started guides
+    # Step 4: Copy documentation
     # ========================================================================
-    Write-Step "Copying getting-started guides"
+    Write-Step "Copying documentation"
 
     Copy-Item -Path "docs/getting-started/*.md" -Destination $GettingStartedDir
 
-    $guideCount = (Get-ChildItem $GettingStartedDir -Filter "*.md").Count
-    Write-Success "Copied $guideCount guides"
+    $docCount = (Get-ChildItem $GettingStartedDir -Filter "*.md").Count
+    Write-Success "Copied $docCount documentation files"
 
     # ========================================================================
     # Step 5: Pack all packages (Full variant only)

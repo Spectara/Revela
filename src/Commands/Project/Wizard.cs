@@ -1,3 +1,5 @@
+using Microsoft.Extensions.Options;
+
 using Spectara.Revela.Commands.Config.Images;
 using Spectara.Revela.Commands.Config.Project;
 using Spectara.Revela.Commands.Config.Site;
@@ -29,6 +31,7 @@ namespace Spectara.Revela.Commands.Project;
 /// </remarks>
 public sealed partial class Wizard(
     ILogger<Wizard> logger,
+    IOptions<ProjectEnvironment> projectEnvironment,
     ConfigProjectCommand configProjectCommand,
     ConfigThemeCommand configThemeCommand,
     ConfigImageCommand configImageCommand,
@@ -211,11 +214,11 @@ public sealed partial class Wizard(
         AnsiConsole.MarkupLine("[dim]Please try again or use individual config commands.[/]");
     }
 
-    private static void ShowCompletionSummary()
+    private void ShowCompletionSummary()
     {
         AnsiConsole.WriteLine();
 
-        var projectName = new DirectoryInfo(Directory.GetCurrentDirectory()).Name;
+        var folderName = projectEnvironment.Value.FolderName;
 
         var lines = new List<string>
         {

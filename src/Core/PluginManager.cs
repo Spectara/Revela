@@ -1,5 +1,6 @@
 using System.IO.Compression;
 using System.Text.Json;
+using Microsoft.Extensions.Options;
 using NuGet.Configuration;
 using NuGet.Packaging;
 using NuGet.Packaging.Core;
@@ -9,6 +10,7 @@ using NuGet.Versioning;
 using Spectara.Revela.Core.Logging;
 using Spectara.Revela.Core.Models;
 using Spectara.Revela.Core.Services;
+using Spectara.Revela.Sdk;
 
 namespace Spectara.Revela.Core;
 
@@ -25,6 +27,7 @@ namespace Spectara.Revela.Core;
 /// </remarks>
 public sealed class PluginManager(
     HttpClient httpClient,
+    IOptions<ProjectEnvironment> projectEnvironment,
     ILogger<PluginManager> logger,
     INuGetSourceManager nugetSourceManager)
 {
@@ -383,7 +386,7 @@ public sealed class PluginManager(
     /// </remarks>
     private async Task UpdateProjectJsonAsync(string packageId, string version, CancellationToken cancellationToken)
     {
-        var projectJsonPath = Path.Combine(Directory.GetCurrentDirectory(), "project.json");
+        var projectJsonPath = Path.Combine(projectEnvironment.Value.Path, "project.json");
         if (!File.Exists(projectJsonPath))
         {
             // project.json is optional - don't log warning
@@ -435,7 +438,7 @@ public sealed class PluginManager(
     /// </remarks>
     private async Task RemoveFromProjectJsonAsync(string packageId, CancellationToken cancellationToken)
     {
-        var projectJsonPath = Path.Combine(Directory.GetCurrentDirectory(), "project.json");
+        var projectJsonPath = Path.Combine(projectEnvironment.Value.Path, "project.json");
         if (!File.Exists(projectJsonPath))
         {
             return;
