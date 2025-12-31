@@ -388,7 +388,11 @@ jobs:
 
       - name: Generate release notes
         run: |
-          cat << 'EOF' > release-notes.md
+          VERSION="${{ needs.validate.outputs.version }}"
+          REPO="${{ github.repository }}"
+          BASE_URL="https://github.com/${REPO}/releases/download/v${VERSION}"
+
+          cat << EOF > release-notes.md
           ## Downloads
 
           ### 🚀 Full Release (recommended)
@@ -396,30 +400,33 @@ jobs:
 
           | Platform | Download |
           |----------|----------|
-          | Windows x64 | `revela-win-x64-full.zip` |
-          | Linux x64 | `revela-linux-x64-full.tar.gz` |
-          | Linux ARM64 | `revela-linux-arm64-full.tar.gz` |
-          | macOS Intel | `revela-osx-x64-full.tar.gz` |
-          | macOS Apple Silicon | `revela-osx-arm64-full.tar.gz` |
+          | Windows x64 | [revela-win-x64-full.zip](${BASE_URL}/revela-win-x64-full.zip) |
+          | Linux x64 | [revela-linux-x64-full.tar.gz](${BASE_URL}/revela-linux-x64-full.tar.gz) |
+          | Linux ARM64 | [revela-linux-arm64-full.tar.gz](${BASE_URL}/revela-linux-arm64-full.tar.gz) |
+          | macOS Intel | [revela-osx-x64-full.tar.gz](${BASE_URL}/revela-osx-x64-full.tar.gz) |
+          | macOS Apple Silicon | [revela-osx-arm64-full.tar.gz](${BASE_URL}/revela-osx-arm64-full.tar.gz) |
 
           ### 📦 Core Release
-          Minimal download (~15MB). Install plugins/themes via `revela plugin install`.
+          Minimal download (~15MB). Install plugins/themes via \`revela plugin install\`.
 
           | Platform | Download |
           |----------|----------|
-          | Windows x64 | `revela-win-x64-core.zip` |
-          | Linux x64 | `revela-linux-x64-core.tar.gz` |
-          | Linux ARM64 | `revela-linux-arm64-core.tar.gz` |
-          | macOS Intel | `revela-osx-x64-core.tar.gz` |
-          | macOS Apple Silicon | `revela-osx-arm64-core.tar.gz` |
+          | Windows x64 | [revela-win-x64-core.zip](${BASE_URL}/revela-win-x64-core.zip) |
+          | Linux x64 | [revela-linux-x64-core.tar.gz](${BASE_URL}/revela-linux-x64-core.tar.gz) |
+          | Linux ARM64 | [revela-linux-arm64-core.tar.gz](${BASE_URL}/revela-linux-arm64-core.tar.gz) |
+          | macOS Intel | [revela-osx-x64-core.tar.gz](${BASE_URL}/revela-osx-x64-core.tar.gz) |
+          | macOS Apple Silicon | [revela-osx-arm64-core.tar.gz](${BASE_URL}/revela-osx-arm64-core.tar.gz) |
 
           ### 🔌 Individual Packages (NuGet)
-          For manual installation or existing projects:
-          - `Spectara.Revela.Theme.Lumina` - Default photography theme
-          - `Spectara.Revela.Theme.Lumina.Statistics` - Statistics extension for Lumina
-          - `Spectara.Revela.Plugin.Statistics` - Site statistics generation
-          - `Spectara.Revela.Plugin.Source.OneDrive` - OneDrive shared folder source
-          - `Spectara.Revela.Plugin.Serve` - Local development server
+          For manual installation or existing projects.
+
+          | Package | Description |
+          |---------|-------------|
+          | [Spectara.Revela.Theme.Lumina.${VERSION}.nupkg](${BASE_URL}/Spectara.Revela.Theme.Lumina.${VERSION}.nupkg) | Default photography theme |
+          | [Spectara.Revela.Theme.Lumina.Statistics.${VERSION}.nupkg](${BASE_URL}/Spectara.Revela.Theme.Lumina.Statistics.${VERSION}.nupkg) | Statistics extension for Lumina |
+          | [Spectara.Revela.Plugin.Statistics.${VERSION}.nupkg](${BASE_URL}/Spectara.Revela.Plugin.Statistics.${VERSION}.nupkg) | Site statistics generation |
+          | [Spectara.Revela.Plugin.Source.OneDrive.${VERSION}.nupkg](${BASE_URL}/Spectara.Revela.Plugin.Source.OneDrive.${VERSION}.nupkg) | OneDrive shared folder source |
+          | [Spectara.Revela.Plugin.Serve.${VERSION}.nupkg](${BASE_URL}/Spectara.Revela.Plugin.Serve.${VERSION}.nupkg) | Local development server |
 
           ---
 
