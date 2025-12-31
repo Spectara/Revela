@@ -12,7 +12,7 @@ Modern static site generator for photographers, built with .NET 10.
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![.NET 10](https://img.shields.io/badge/.NET-10.0-512BD4)](https://dotnet.microsoft.com/)
 
-[Getting Started](docs/getting-started/en.md) · [Documentation](docs/) · [Download](https://github.com/spectara/revela/releases)
+[Getting Started](docs/getting-started/getting-started-en.md) · [Documentation](docs/) · [Download](https://github.com/spectara/revela/releases)
 
 </div>
 
@@ -30,8 +30,9 @@ Modern static site generator for photographers, built with .NET 10.
 
 ## ✨ Features
 
-- **🖼️ Smart Image Processing** — AVIF, WebP, JPG with responsive sizes
+- **🖼️ Smart Image Processing** — WebP, JPG (AVIF optional) with responsive sizes
 - **🧙 Interactive Wizards** — No command line knowledge required
+- **📁 Multi-Project** — Manage multiple portfolios from one installation
 - **🔌 Plugin System** — Extend with OneDrive, Statistics, Dev Server
 - **🎨 Themeable** — Customizable templates with Scriban
 - **⚡ Fast** — Powered by libvips, parallel processing
@@ -145,8 +146,9 @@ revela plugin install Spectara.Revela.Plugin.Serve
 
 | Guide | Description |
 |-------|-------------|
-| [Getting Started](docs/getting-started/en.md) | Step-by-step tutorial |
-| [Erste Schritte (DE)](docs/getting-started/de.md) | Deutsche Anleitung |
+| [Getting Started](docs/getting-started/getting-started-en.md) | Step-by-step tutorial |
+| [Erste Schritte (DE)](docs/getting-started/getting-started-de.md) | Deutsche Anleitung |
+| [CLI Reference](docs/getting-started/cli-reference.md) | Commands for automation |
 | [Installation](docs/installation.md) | All installation options |
 | [Plugin Management](docs/plugin-management.md) | Install & create plugins |
 | [Development](docs/development.md) | Build & contribute |
