@@ -99,6 +99,13 @@ jobs:
             -p:PackageVersion=$VERSION \
             -p:IncludeSymbols=false
 
+          # Pack SDK
+          dotnet pack src/Sdk/Sdk.csproj \
+            -c Release \
+            -o ./nupkgs \
+            -p:PackageVersion=$VERSION \
+            -p:IncludeSymbols=false
+
       - name: List packages
         run: ls -lh ./nupkgs/
 
@@ -118,6 +125,7 @@ jobs:
           echo "**Version:** ${{ steps.version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
           echo "**Packages:**" >> $GITHUB_STEP_SUMMARY
           echo "- **Spectara.Revela** (CLI Tool)" >> $GITHUB_STEP_SUMMARY
+          echo "- Spectara.Revela.Sdk" >> $GITHUB_STEP_SUMMARY
           echo "- Spectara.Revela.Plugin.Source.OneDrive" >> $GITHUB_STEP_SUMMARY
           echo "- Spectara.Revela.Plugin.Statistics" >> $GITHUB_STEP_SUMMARY
           echo "- Spectara.Revela.Plugin.Serve" >> $GITHUB_STEP_SUMMARY

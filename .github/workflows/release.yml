@@ -142,6 +142,14 @@ jobs:
             -p:PackageVersion=${{ needs.validate.outputs.version }} \
             -p:IncludeSymbols=false
 
+      - name: Pack SDK
+        run: |
+          dotnet pack src/Sdk/Sdk.csproj \
+            -c Release \
+            -o ./nupkgs \
+            -p:PackageVersion=${{ needs.validate.outputs.version }} \
+            -p:IncludeSymbols=false
+
       - name: List NuGet packages
         run: ls -lh ./nupkgs/
 

@@ -19,6 +19,7 @@
         │   ├── de.md
         │   └── cli-reference.md
         └── packages/           (local NuGet feed with all packages)
+            ├── Spectara.Revela.Sdk.{version}.nupkg
             ├── Spectara.Revela.Theme.Lumina.{version}.nupkg
             ├── Spectara.Revela.Theme.Lumina.Statistics.{version}.nupkg
             ├── Spectara.Revela.Plugin.Statistics.{version}.nupkg
@@ -155,6 +156,7 @@ try {
         Write-Step "Packing NuGet packages"
 
         $packages = @(
+            "src/Sdk/Sdk.csproj",
             "src/Themes/Theme.Lumina/Theme.Lumina.csproj",
             "src/Themes/Theme.Lumina.Statistics/Theme.Lumina.Statistics.csproj",
             "src/Plugins/Plugin.Statistics/Plugin.Statistics.csproj",
