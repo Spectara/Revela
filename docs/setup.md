@@ -114,7 +114,7 @@ Revela/
 │   ├── Commands/                 # CLI commands (Generate, Init, Plugins, Restore, Theme)
 │   ├── Cli/                      # CLI entry point
 │   ├── Plugins/                  # Optional plugins
-│   │   ├── Plugin.Deploy.SSH/
+│   │   ├── Plugin.Serve/
 │   │   ├── Plugin.Source.OneDrive/
 │   │   └── Plugin.Statistics/
 │   └── Themes/                   # Built-in themes

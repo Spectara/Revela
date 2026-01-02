@@ -97,7 +97,7 @@ src/
 ├── Commands/                 # CLI commands (Generate, Init, Plugins, Restore, Theme)
 ├── Cli/                      # Entry point (.NET Tool)
 ├── Plugins/
-│   ├── Plugin.Deploy.SSH/    # SSH/SFTP deployment (planned)
+│   ├── Plugin.Serve/         # Local development server
 │   ├── Plugin.Source.OneDrive/  # OneDrive shared folder source
 │   └── Plugin.Statistics/    # Statistics functionality
 └── Themes/

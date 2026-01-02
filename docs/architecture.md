@@ -58,7 +58,7 @@ Revela/
 │   │   └── Program.cs            # Host + Commands
 │   │
 │   └── Spectara.Revela.Plugins/           # Optional Plugins
-│       ├── Plugin.Deploy.SSH/
+│       ├── Plugin.Serve/
 │       ├── Plugin.Source.OneDrive/
 │       └── Plugin.Statistics/
 │

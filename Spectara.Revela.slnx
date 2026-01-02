@@ -5,6 +5,7 @@
     <Project Path="src/Commands/Commands.csproj" />
     <Project Path="src/Cli/Cli.csproj" />
     <Folder Name="/Plugins/">
+      <Project Path="src/Plugins/Plugin.Serve/Plugin.Serve.csproj" />
       <Project Path="src/Plugins/Plugin.Source.OneDrive/Plugin.Source.OneDrive.csproj" />
       <Project Path="src/Plugins/Plugin.Statistics/Plugin.Statistics.csproj" />
     </Folder>
@@ -12,10 +13,6 @@
       <Project Path="src/Themes/Theme.Lumina/Theme.Lumina.csproj" />
       <Project Path="src/Themes/Theme.Lumina.Statistics/Theme.Lumina.Statistics.csproj" />
     </Folder>
-  </Folder>
-  <Folder Name="/src/Plugins/">
-    <Project Path="src/Plugins/Plugin.Serve/Plugin.Serve.csproj" />
-    <Project Path="src/Plugins/Plugin.Source.OneDrive/Plugin.Source.OneDrive.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Core.Tests/Core.Tests.csproj" />
