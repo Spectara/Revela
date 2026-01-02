@@ -4,7 +4,7 @@ This directory contains example sites for testing and demonstration purposes.
 
 ## Samples
 
-### 1. OneDrive (`onedrive/`)
+### OneDrive (`onedrive/`)
 
 Sample project for testing the OneDrive Source Plugin. Downloads images from a shared OneDrive folder.
 
@@ -30,29 +30,6 @@ revela generate -p samples/onedrive
 
 > **Note:** The `source/` and `output/` folders are excluded from Git.
 > Run `revela source onedrive download` to populate them.
-
-### 2. Subdirectory (`subdirectory/`)
-
-Sample project demonstrating nested gallery structure with sub-galleries.
-
-### 3. CDN (`cdn/`)
-
-Sample project demonstrating CDN configuration for serving images from external URLs.
-
-### 4. Portfolio (`portfolio/`) - TODO
-
-Full-featured photographer portfolio with:
-- Multiple galleries
-- About page
-- Contact form
-- Blog posts
-
-### 5. Blog (`blog/`) - TODO
-
-Photo blog with:
-- Chronological posts
-- Tags & categories
-- RSS feed
 
 ## Git Exclusions
 
