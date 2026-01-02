@@ -41,10 +41,8 @@ public sealed class OneDriveWizardStep(
     }
 
     /// <inheritdoc />
-    public Task<int> ExecuteAsync(CancellationToken cancellationToken)
-    {
+    public Task<int> ExecuteAsync(CancellationToken cancellationToken) =>
         // Delegate to the config command (interactive mode - no arguments)
         // ConfigOneDriveCommand.ExecuteAsync() handles all the prompts
-        return configCommand.ExecuteInteractiveAsync(cancellationToken);
-    }
+        configCommand.ExecuteInteractiveAsync(cancellationToken);
 }

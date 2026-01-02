@@ -46,10 +46,7 @@ builder.Services.AddPlugins(builder.Configuration, filteredArgs);
 
 // Register ProjectEnvironment (runtime info, not from JSON)
 builder.Services.AddOptions<ProjectEnvironment>()
-    .Configure<IHostEnvironment>((env, host) =>
-    {
-        env.Path = host.ContentRootPath;
-    });
+    .Configure<IHostEnvironment>((env, host) => env.Path = host.ContentRootPath);
 
 // ✅ Build host
 var host = builder.Build();

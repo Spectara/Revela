@@ -40,22 +40,16 @@ public sealed partial class ConfigOneDriveCommand(
         {
             Description = "Output directory for downloaded files"
         };
-        var concurrencyOption = new Option<int?>("--concurrency", "-c")
-        {
-            Description = "Number of parallel downloads"
-        };
 
         command.Options.Add(shareUrlOption);
         command.Options.Add(outputOption);
-        command.Options.Add(concurrencyOption);
 
         command.SetAction(async (parseResult, cancellationToken) =>
         {
             var shareUrl = parseResult.GetValue(shareUrlOption);
             var output = parseResult.GetValue(outputOption);
-            var concurrency = parseResult.GetValue(concurrencyOption);
 
-            return await ExecuteAsync(shareUrl, output, concurrency, cancellationToken).ConfigureAwait(false);
+            return await ExecuteAsync(shareUrl, output, cancellationToken).ConfigureAwait(false);
         });
 
         return command;
@@ -71,12 +65,11 @@ public sealed partial class ConfigOneDriveCommand(
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>Exit code: 0 = success, non-zero = error.</returns>
     public Task<int> ExecuteInteractiveAsync(CancellationToken cancellationToken)
-        => ExecuteAsync(null, null, null, cancellationToken);
+        => ExecuteAsync(null, null, cancellationToken);
 
     private async Task<int> ExecuteAsync(
         string? shareUrlArg,
         string? outputArg,
-        int? concurrencyArg,
         CancellationToken cancellationToken)
     {
         // Read current values from IOptions (empty if config doesn't exist yet)
@@ -86,11 +79,10 @@ public sealed partial class ConfigOneDriveCommand(
         var isFirstTime = string.IsNullOrEmpty(current.ShareUrl);
 
         // Determine if interactive mode (no arguments provided)
-        var isInteractive = shareUrlArg is null && outputArg is null && concurrencyArg is null;
+        var isInteractive = shareUrlArg is null && outputArg is null;
 
         string shareUrl;
         string output;
-        int? concurrency;
 
         if (isInteractive)
         {
@@ -124,19 +116,12 @@ public sealed partial class ConfigOneDriveCommand(
             output = AnsiConsole.Prompt(
                 new TextPrompt<string>("Output directory:")
                     .DefaultValue(current.OutputDirectory));
-
-            var defaultConcurrency = current.DefaultConcurrency ?? Environment.ProcessorCount;
-            var concurrencyInput = AnsiConsole.Prompt(
-                new TextPrompt<int>("Parallel downloads:")
-                    .DefaultValue(defaultConcurrency));
-            concurrency = concurrencyInput;
         }
         else
         {
             // Use provided arguments or current values
             shareUrl = shareUrlArg ?? current.ShareUrl;
             output = outputArg ?? current.OutputDirectory;
-            concurrency = concurrencyArg ?? current.DefaultConcurrency;
         }
 
         // Build config object (only include non-default values)
@@ -150,11 +135,6 @@ public sealed partial class ConfigOneDriveCommand(
         if (output != "source")
         {
             pluginConfig["OutputDirectory"] = output;
-        }
-
-        if (concurrency.HasValue)
-        {
-            pluginConfig["DefaultConcurrency"] = concurrency.Value;
         }
 
         // Wrap with plugin section name and update project.json

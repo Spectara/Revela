@@ -33,34 +33,27 @@ public sealed partial class RestoreCommand(
     /// </summary>
     public Command Create()
     {
-        var pathOption = new Option<string?>("--path", "-p")
-        {
-            Description = "Path to the project directory (default: current directory)"
-        };
-
         var checkOption = new Option<bool>("--check")
         {
             Description = "Only check dependencies, don't install"
         };
 
-        var command = new Command("restore", "Restore project dependencies (themes and plugins) (not implemented yet)");
-        command.Options.Add(pathOption);
+        var command = new Command("restore", "Restore project dependencies (themes and plugins)");
         command.Options.Add(checkOption);
 
         command.SetAction(async (parseResult, cancellationToken) =>
         {
-            var path = parseResult.GetValue(pathOption) ?? projectEnvironment.Value.Path;
             var checkOnly = parseResult.GetValue(checkOption);
 
-            return await ExecuteAsync(path, checkOnly, cancellationToken);
+            return await ExecuteAsync(checkOnly, cancellationToken);
         });
 
         return command;
     }
 
-    private async Task<int> ExecuteAsync(string projectPath, bool checkOnly, CancellationToken cancellationToken)
+    private async Task<int> ExecuteAsync(bool checkOnly, CancellationToken cancellationToken)
     {
-        var fullPath = Path.GetFullPath(projectPath);
+        var fullPath = Path.GetFullPath(projectEnvironment.Value.Path);
 
         if (!Directory.Exists(fullPath))
         {

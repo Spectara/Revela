@@ -123,10 +123,7 @@ internal static class ConsoleUI
     /// <summary>
     /// Displays a goodbye message when exiting.
     /// </summary>
-    public static void ShowGoodbye()
-    {
-        AnsiConsole.MarkupLine("[dim]Goodbye![/]");
-    }
+    public static void ShowGoodbye() => AnsiConsole.MarkupLine("[dim]Goodbye![/]");
 
     /// <summary>
     /// Shows a "press any key" prompt and waits for input.

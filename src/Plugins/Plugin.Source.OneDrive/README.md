@@ -28,30 +28,42 @@ Or add to `project.json`:
 ```json
 {
   "Spectara.Revela.Plugin.Source.OneDrive": {
-    "ShareUrl": "https://1drv.ms/f/your-shared-folder-link"
+    "ShareUrl": "https://1drv.ms/f/your-shared-folder-link",
+    "OutputDirectory": "source",
+    "DefaultConcurrency": 4
   }
 }
 ```
 
 ### Configuration Options
 
-| Option | Required | Description |
-|--------|----------|-------------|
-| `ShareUrl` | Yes | OneDrive shared folder URL (1drv.ms or onedrive.live.com) |
+| Option | Required | Default | Description |
+|--------|----------|---------|-------------|
+| `ShareUrl` | Yes | - | OneDrive shared folder URL (1drv.ms or onedrive.live.com) |
+| `OutputDirectory` | No | `source` | Local directory for downloaded files |
+| `DefaultConcurrency` | No | `4` | Number of parallel downloads (increase for fast connections) |
+| `IncludePatterns` | No | `["*.jpg", "*.jpeg", ...]` | File patterns to include |
+| `ExcludePatterns` | No | `[]` | File patterns to exclude |
 
 ## Usage
 
-### Download Images
+### Sync Images
 
 ```bash
-# Download all images from configured OneDrive folder
-revela source onedrive download
+# Sync images from configured OneDrive folder
+revela source onedrive sync
 
-# Override share URL via command line
-revela source onedrive download --share-url "https://1drv.ms/f/..."
+# Override share URL for one-time sync
+revela source onedrive sync --share-url "https://1drv.ms/f/..."
 
-# Specify output directory
-revela source onedrive download --output ./source
+# Preview changes without downloading
+revela source onedrive sync --dry-run
+
+# Force re-download all files
+revela source onedrive sync --force
+
+# Remove local files not in OneDrive
+revela source onedrive sync --clean
 ```
 
 ### Workflow Example
@@ -60,11 +72,11 @@ revela source onedrive download --output ./source
 # 1. Install plugin
 revela plugin install OneDrive
 
-# 2. Configure share URL
+# 2. Configure (interactive)
 revela config onedrive
 
-# 3. Download images
-revela source onedrive download
+# 3. Sync images
+revela source onedrive sync
 
 # 4. Generate site
 revela generate

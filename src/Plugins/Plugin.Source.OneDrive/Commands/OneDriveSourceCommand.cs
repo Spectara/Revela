@@ -30,44 +30,15 @@ public sealed class OneDriveSourceCommand(
     {
         var command = new Command("sync", "Sync images from OneDrive shared folder");
 
-        // Options (override config file)
+        // Options
         var shareUrlOption = new Option<string?>("--share-url", "-u")
         {
             Description = "OneDrive shared folder URL (overrides config)"
         };
 
-        var outputOption = new Option<string?>("--output", "-o")
-        {
-            Description = "Output directory (defaults to ./content)"
-        };
-
         var forceOption = new Option<bool>("--force", "-f")
         {
             Description = "Force re-download even if files exist"
-        };
-
-        var includeOption = new Option<string[]?>("--include", "-i")
-        {
-            Description = "File patterns to include (overrides config)",
-            AllowMultipleArgumentsPerToken = true
-        };
-
-        var excludeOption = new Option<string[]?>("--exclude", "-e")
-        {
-            Description = "File patterns to exclude (overrides config)",
-            AllowMultipleArgumentsPerToken = true
-        };
-
-        var concurrencyOption = new Option<int?>("--concurrency", "-c")
-        {
-            Description = "Number of concurrent downloads (defaults to auto-detect based on CPU cores)"
-        };
-        // TODO: Add validation in System.CommandLine 2.0 (API different from beta)
-
-        var debugOption = new Option<bool>("--debug", "-d")
-        {
-            Description = "Enable debug logging",
-            Hidden = true
         };
 
         var dryRunOption = new Option<bool>("--dry-run", "-n")
@@ -93,12 +64,7 @@ public sealed class OneDriveSourceCommand(
         };
 
         command.Options.Add(shareUrlOption);
-        command.Options.Add(outputOption);
         command.Options.Add(forceOption);
-        command.Options.Add(includeOption);
-        command.Options.Add(excludeOption);
-        command.Options.Add(concurrencyOption);
-        command.Options.Add(debugOption);
         command.Options.Add(dryRunOption);
         command.Options.Add(cleanOption);
         command.Options.Add(cleanAllOption);
@@ -109,12 +75,7 @@ public sealed class OneDriveSourceCommand(
             var options = new ExecutionOptions
             {
                 ShareUrl = parseResult.GetValue(shareUrlOption),
-                OutputDirectory = parseResult.GetValue(outputOption),
                 ForceRefresh = parseResult.GetValue(forceOption),
-                IncludePatterns = parseResult.GetValue(includeOption),
-                ExcludePatterns = parseResult.GetValue(excludeOption),
-                Concurrency = parseResult.GetValue(concurrencyOption),
-                Debug = parseResult.GetValue(debugOption),
                 DryRun = parseResult.GetValue(dryRunOption),
                 Clean = parseResult.GetValue(cleanOption),
                 CleanAll = parseResult.GetValue(cleanAllOption),
@@ -130,23 +91,15 @@ public sealed class OneDriveSourceCommand(
 
     private async Task ExecuteAsync(ExecutionOptions options, CancellationToken cancellationToken)
     {
-        // Debug info (log level must be configured via environment before startup)
-        if (options.Debug)
-        {
-            AnsiConsole.MarkupLine("[yellow]Debug logging requested[/]");
-            AnsiConsole.MarkupLine("[dim]Set environment variable REVELA__LOGGING__LOGLEVEL__DEFAULT=Debug[/]");
-            AnsiConsole.MarkupLine("[dim]Or create logging.json with Debug level[/]");
-        }
-
         try
         {
             // Get current config from IOptionsMonitor (hot-reload support)
             var currentConfig = config.CurrentValue;
 
-            // CLI parameters override config file (priority: CLI > Config)
+            // CLI --share-url overrides config file
             var shareUrl = options.ShareUrl ?? currentConfig.ShareUrl;
-            var includePatterns = options.IncludePatterns ?? currentConfig.IncludePatterns?.ToArray();
-            var excludePatterns = options.ExcludePatterns ?? currentConfig.ExcludePatterns?.ToArray();
+            var includePatterns = currentConfig.IncludePatterns?.ToArray();
+            var excludePatterns = currentConfig.ExcludePatterns?.ToArray();
 
             // Validate ShareUrl (either from config or CLI)
             if (string.IsNullOrWhiteSpace(shareUrl))
@@ -163,24 +116,13 @@ public sealed class OneDriveSourceCommand(
                 ExcludePatterns = excludePatterns
             };
 
-            // Determine output directory (CLI > Config > Default)
-            var outputDirectory = options.OutputDirectory
-                ?? currentConfig.OutputDirectory
-                ?? "source";
+            // Determine output directory (Config > Default)
+            var outputDirectory = currentConfig.OutputDirectory ?? "source";
             outputDirectory = Path.Combine(projectEnvironment.Value.Path, outputDirectory);
 
-            // Determine concurrency (CLI > Config > Auto-detect)
-            var concurrency = options.Concurrency
-                ?? currentConfig.DefaultConcurrency
-                ?? GetDefaultConcurrency();
-
-            // Validate concurrency
-            if (concurrency <= 0)
-            {
-                throw new ArgumentException(
-                    "Concurrency must be greater than 0",
-                    $"{nameof(options)}.{nameof(ExecutionOptions.Concurrency)}");
-            }
+            // Determine concurrency (Config > Default)
+            // Most users never need to change this - sensible default works for typical home internet
+            var concurrency = currentConfig.DefaultConcurrency ?? DefaultConcurrency;
 
             AnsiConsole.MarkupLine("[blue]Downloading from OneDrive...[/]");
             AnsiConsole.MarkupLine($"[dim]Share URL:[/] {downloadConfig.ShareUrl}");
@@ -362,38 +304,14 @@ public sealed class OneDriveSourceCommand(
     }
 
     /// <summary>
-    /// Gets the default concurrency based on CPU cores
+    /// Default number of parallel downloads.
     /// </summary>
     /// <remarks>
-    /// Downloads are I/O-bound, not CPU-bound, allowing higher concurrency than CPU cores.
-    ///
-    /// NOTE: OneDrive downloads use pre-signed CDN URLs (not OneDrive API), so API rate limiting
-    /// is not a concern during downloads. The scan phase (ListItemsAsync) caches all file metadata
-    /// once, then downloads proceed in parallel using direct CDN links.
-    ///
-    /// Concurrency limits prevent:
-    /// - Network bandwidth saturation (too many parallel HTTP streams)
-    /// - Memory exhaustion (HttpClient buffers ~10MB per active download)
-    /// - CDN throttling (OneDrive CDN may limit connections per IP)
-    /// - Poor UX (progress becomes unpredictable with 64+ parallel tasks)
-    ///
-    /// Sweet spot: 2-4x CPU cores for I/O-bound operations.
-    /// Based on benchmark results from original Bash script.
+    /// Downloads are I/O-bound (network), not CPU-bound. A value of 4 works well for
+    /// typical home internet (50-500 Mbit). Power users with fast connections can
+    /// increase this via config file (DefaultConcurrency setting).
     /// </remarks>
-    private static int GetDefaultConcurrency()
-    {
-        var processorCount = Environment.ProcessorCount;
-
-        return processorCount switch
-        {
-            1 => 4,              // Even single-core can handle multiple downloads
-            2 => 6,              // Sweet spot for 2-core systems
-            <= 4 => 8,           // Good for 4-core systems
-            <= 8 => 12,          // 6-8 core systems
-            <= 16 => 16,         // 12-16 core systems
-            _ => 24              // High-end systems (20+ cores, capped for safety)
-        };
-    }
+    private const int DefaultConcurrency = 4;
 
     /// <summary>
     /// Displays analysis results in a user-friendly format

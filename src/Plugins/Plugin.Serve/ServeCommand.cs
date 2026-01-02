@@ -36,42 +36,36 @@ public sealed partial class ServeCommand(
             Description = "Log all requests (default: only 404 errors)"
         };
 
-        var pathOption = new Option<string?>("--path")
-        {
-            Description = "Output directory to serve (default: output)"
-        };
-
         command.Options.Add(portOption);
         command.Options.Add(verboseOption);
-        command.Options.Add(pathOption);
 
         command.SetAction(async (parseResult, cancellationToken) =>
         {
             var port = parseResult.GetValue(portOption);
             var verbose = parseResult.GetValue(verboseOption);
-            var path = parseResult.GetValue(pathOption);
 
-            return await ServeAsync(port, verbose, path, cancellationToken);
+            return await ServeAsync(port, verbose, cancellationToken);
         });
 
         return command;
     }
 
-    private async Task<int> ServeAsync(int? portOverride, bool verboseOverride, string? pathOverride, CancellationToken cancellationToken)
+    private const string OutputDirectory = "output";
+
+    private async Task<int> ServeAsync(int? portOverride, bool verboseOverride, CancellationToken cancellationToken)
     {
         // Resolve configuration: CLI > Config > Default
         var config = serveConfig.CurrentValue;
         var port = portOverride ?? config.Port;
         var verbose = verboseOverride || config.Verbose;
 
-        // Get output directory: CLI override or default "output"
-        var outputPath = pathOverride ?? "output";
-        var fullOutputPath = Path.GetFullPath(Path.Combine(projectEnvironment.Value.Path, outputPath));
+        // Output directory is always "output" (consistent with generate commands)
+        var fullOutputPath = Path.GetFullPath(Path.Combine(projectEnvironment.Value.Path, OutputDirectory));
 
         // Validate output directory exists
         if (!Directory.Exists(fullOutputPath))
         {
-            ErrorPanels.ShowDirectoryNotFoundError($"{outputPath}/", "generate all");
+            ErrorPanels.ShowDirectoryNotFoundError($"{OutputDirectory}/", "generate all");
             return 1;
         }
 
@@ -79,7 +73,7 @@ public sealed partial class ServeCommand(
         var indexPath = Path.Combine(fullOutputPath, "index.html");
         if (!File.Exists(indexPath))
         {
-            AnsiConsole.MarkupLine($"[yellow]Warning:[/] No index.html found in [cyan]{outputPath}/[/]");
+            AnsiConsole.MarkupLine($"[yellow]Warning:[/] No index.html found in [cyan]{OutputDirectory}/[/]");
         }
 
         // Setup request logging callback
@@ -154,7 +148,7 @@ public sealed partial class ServeCommand(
 
         // Display server info
         AnsiConsole.WriteLine();
-        AnsiConsole.MarkupLine($"🌐 Serving [blue]{outputPath}/[/] at [link]http://localhost:{port}[/]");
+        AnsiConsole.MarkupLine($"🌐 Serving [blue]{OutputDirectory}/[/] at [link]http://localhost:{port}[/]");
         AnsiConsole.MarkupLine("[dim]   Press Ctrl+C to stop[/]");
         AnsiConsole.WriteLine();
 
