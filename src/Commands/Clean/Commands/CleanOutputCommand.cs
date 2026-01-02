@@ -4,6 +4,7 @@ using System.Globalization;
 using Microsoft.Extensions.Options;
 
 using Spectara.Revela.Sdk;
+using Spectara.Revela.Sdk.Output;
 
 using Spectre.Console;
 
@@ -54,18 +55,18 @@ public sealed partial class CleanOutputCommand(
             Directory.Delete(OutputPath, recursive: true);
             LogDirectoryDeleted(logger, target.Path, target.FileCount);
 
-            AnsiConsole.MarkupLine($"[green]✓[/] Deleted [cyan]{OutputDirectory}/[/] ({target.FileCount} files, {FormatSize(target.TotalSize)})");
+            AnsiConsole.MarkupLine($"{OutputMarkers.Success} Deleted [cyan]{OutputDirectory}/[/] ({target.FileCount} files, {FormatSize(target.TotalSize)})");
         }
         catch (IOException ex)
         {
             LogDeleteFailed(logger, OutputPath, ex);
-            AnsiConsole.MarkupLine($"[red]✗[/] Failed to delete {OutputDirectory}: {ex.Message}");
+            AnsiConsole.MarkupLine($"{OutputMarkers.Error} Failed to delete {OutputDirectory}: {ex.Message}");
             return Task.FromResult(1);
         }
         catch (UnauthorizedAccessException ex)
         {
             LogDeleteFailed(logger, OutputPath, ex);
-            AnsiConsole.MarkupLine($"[red]✗[/] Access denied: {OutputDirectory}");
+            AnsiConsole.MarkupLine($"{OutputMarkers.Error} Access denied: {OutputDirectory}");
             return Task.FromResult(1);
         }
 

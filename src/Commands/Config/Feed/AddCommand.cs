@@ -2,6 +2,7 @@ using System.CommandLine;
 
 using Spectara.Revela.Core.Services;
 using Spectara.Revela.Sdk;
+using Spectara.Revela.Sdk.Output;
 
 using Spectre.Console;
 
@@ -63,7 +64,7 @@ public sealed partial class AddCommand(
 
             await GlobalConfigManager.AddFeedAsync(name, url, cancellationToken);
 
-            AnsiConsole.MarkupLine($"[green]✓[/] Added feed [cyan]{name}[/]");
+            AnsiConsole.MarkupLine($"{OutputMarkers.Success} Added feed [cyan]{name}[/]");
             AnsiConsole.MarkupLine($"  URL: [dim]{url}[/]");
             AnsiConsole.WriteLine();
             AnsiConsole.MarkupLine($"Config: [dim]{GlobalConfigManager.ConfigFilePath}[/]");

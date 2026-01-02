@@ -5,6 +5,7 @@ using Spectara.Revela.Core.Helpers;
 using Spectara.Revela.Core.Models;
 using Spectara.Revela.Core.Services;
 using Spectara.Revela.Sdk;
+using Spectara.Revela.Sdk.Output;
 
 using Spectre.Console;
 
@@ -94,7 +95,7 @@ public sealed partial class PluginInstallCommand(
 
         if (plugins.Count == 0)
         {
-            AnsiConsole.MarkupLine("[yellow]⚠[/] No plugins found in package index.");
+            AnsiConsole.MarkupLine($"{OutputMarkers.Warning} No plugins found in package index.");
             AnsiConsole.MarkupLine("  Run [cyan]revela packages refresh[/] to update.");
             return InstallResult.Empty;
         }
@@ -107,7 +108,7 @@ public sealed partial class PluginInstallCommand(
 
         if (availablePlugins.Count == 0)
         {
-            AnsiConsole.MarkupLine("[green]✓[/] All available plugins are already installed.");
+            AnsiConsole.MarkupLine($"{OutputMarkers.Success} All available plugins are already installed.");
             return new InstallResult([], [.. installedPlugins.Keys], []);
         }
 
@@ -135,11 +136,11 @@ public sealed partial class PluginInstallCommand(
         AnsiConsole.WriteLine();
         if (failed.Count == 0)
         {
-            AnsiConsole.MarkupLine($"[green]✓[/] All {installed.Count} plugins installed successfully.");
+            AnsiConsole.MarkupLine($"{OutputMarkers.Success} All {installed.Count} plugins installed successfully.");
         }
         else
         {
-            AnsiConsole.MarkupLine($"[yellow]⚠[/] {installed.Count} of {availablePlugins.Count} plugins installed.");
+            AnsiConsole.MarkupLine($"{OutputMarkers.Warning} {installed.Count} of {availablePlugins.Count} plugins installed.");
         }
 
         // Show prominent restart notice if packages were installed
@@ -195,11 +196,11 @@ public sealed partial class PluginInstallCommand(
             AnsiConsole.WriteLine();
             if (failed.Count == 0)
             {
-                AnsiConsole.MarkupLine($"[green]✓[/] All {installed.Count} plugins installed successfully.");
+                AnsiConsole.MarkupLine($"{OutputMarkers.Success} All {installed.Count} plugins installed successfully.");
             }
             else
             {
-                AnsiConsole.MarkupLine($"[yellow]⚠[/] {installed.Count} of {selectedPlugins.Count} plugins installed.");
+                AnsiConsole.MarkupLine($"{OutputMarkers.Warning} {installed.Count} of {selectedPlugins.Count} plugins installed.");
             }
         }
 
@@ -221,12 +222,12 @@ public sealed partial class PluginInstallCommand(
             var indexAge = packageIndexService.GetIndexAge();
             if (indexAge is null)
             {
-                AnsiConsole.MarkupLine("[yellow]⚠[/] Package index not found.");
+                AnsiConsole.MarkupLine($"{OutputMarkers.Warning} Package index not found.");
                 AnsiConsole.MarkupLine("  Run [cyan]revela packages refresh[/] first.");
             }
             else
             {
-                AnsiConsole.MarkupLine("[yellow]⚠[/] No plugins found in package index.");
+                AnsiConsole.MarkupLine($"{OutputMarkers.Warning} No plugins found in package index.");
                 AnsiConsole.MarkupLine("  Run [cyan]revela packages refresh[/] to update.");
             }
 
@@ -242,7 +243,7 @@ public sealed partial class PluginInstallCommand(
 
         if (availablePlugins.Count == 0)
         {
-            AnsiConsole.MarkupLine("[green]✓[/] All available plugins are already installed.");
+            AnsiConsole.MarkupLine($"{OutputMarkers.Success} All available plugins are already installed.");
             return [];
         }
 
@@ -252,7 +253,7 @@ public sealed partial class PluginInstallCommand(
             AnsiConsole.MarkupLine("[green]Already installed:[/]");
             foreach (var pluginId in installedPlugins.Keys)
             {
-                AnsiConsole.MarkupLine($"  [green]✓[/] {pluginId}");
+                AnsiConsole.MarkupLine($"  {OutputMarkers.Success} {pluginId}");
             }
 
             AnsiConsole.WriteLine();
@@ -303,7 +304,7 @@ public sealed partial class PluginInstallCommand(
                 if (packageEntry.Types.Contains("RevelaTheme", StringComparer.OrdinalIgnoreCase) &&
                     !packageEntry.Types.Contains("RevelaPlugin", StringComparer.OrdinalIgnoreCase))
                 {
-                    AnsiConsole.MarkupLine($"[red]✗[/] Package [cyan]{packageId}[/] is a theme, not a plugin.");
+                    AnsiConsole.MarkupLine($"{OutputMarkers.Error} Package [cyan]{packageId}[/] is a theme, not a plugin.");
                     AnsiConsole.MarkupLine("  Use [cyan]revela theme install[/] for themes.");
                     return 1;
                 }

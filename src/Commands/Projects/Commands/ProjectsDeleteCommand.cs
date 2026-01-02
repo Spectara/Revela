@@ -5,6 +5,7 @@ using Microsoft.Extensions.Options;
 
 using Spectara.Revela.Core.Services;
 using Spectara.Revela.Sdk;
+using Spectara.Revela.Sdk.Output;
 
 using Spectre.Console;
 
@@ -128,7 +129,7 @@ public sealed partial class ProjectsDeleteCommand(
         try
         {
             Directory.Delete(project.Path, recursive: true);
-            AnsiConsole.MarkupLine($"[green]✓[/] Deleted project folder: [cyan]{project.FolderName}[/]");
+            AnsiConsole.MarkupLine($"{OutputMarkers.Success} Deleted project folder: [cyan]{project.FolderName}[/]");
 
             if (isCurrentProject)
             {

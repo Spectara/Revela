@@ -5,6 +5,7 @@ using Microsoft.Extensions.Options;
 
 using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Abstractions;
+using Spectara.Revela.Sdk.Output;
 
 using Spectre.Console;
 
@@ -128,14 +129,14 @@ public sealed partial class ConfigProjectCommand(
             Directory.CreateDirectory("source");
             Directory.CreateDirectory("output");
 
-            AnsiConsole.MarkupLine($"\n[green]✓[/] Project '{name}' initialized");
+            AnsiConsole.MarkupLine($"\n{OutputMarkers.Success} Project '{name}' initialized");
             AnsiConsole.MarkupLine("[dim]Created: project.json, source/, output/[/]");
             AnsiConsole.MarkupLine("\n[yellow]Next:[/] Run [cyan]revela config theme[/] to select a theme");
         }
         else
         {
             LogProjectConfigured(name);
-            AnsiConsole.MarkupLine("[green]✓[/] Project settings updated");
+            AnsiConsole.MarkupLine($"{OutputMarkers.Success} Project settings updated");
         }
 
         return 0;

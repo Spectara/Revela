@@ -7,6 +7,7 @@ using Spectara.Revela.Plugin.Source.OneDrive.Models;
 using Spectara.Revela.Plugin.Source.OneDrive.Providers;
 using Spectara.Revela.Plugin.Source.OneDrive.Services;
 using Spectara.Revela.Sdk;
+using Spectara.Revela.Sdk.Output;
 using Spectre.Console;
 
 namespace Spectara.Revela.Plugin.Source.OneDrive.Commands;
@@ -210,7 +211,7 @@ public sealed class OneDriveSourceCommand(
                         }
                     }
 
-                    ctx.Status($"[green]OK[/] Found {fileCount} files in {folderCount} folders");
+                    ctx.Status($"{OutputMarkers.Success} Found {fileCount} files in {folderCount} folders");
                     await Task.Delay(500); // Brief pause to show result
                 });
 
@@ -221,7 +222,7 @@ public sealed class OneDriveSourceCommand(
 
             // Count already done in Status block, reuse or recalculate
             var (files, folders) = CountItemTypes(allItems);
-            AnsiConsole.MarkupLine($"[green]OK[/] Scan complete: {files} files, {folders} folders");
+            AnsiConsole.MarkupLine($"{OutputMarkers.Success} Scan complete: {files} files, {folders} folders");
             AnsiConsole.WriteLine();
 
             // Phase 2: Analyze changes
@@ -265,14 +266,14 @@ public sealed class OneDriveSourceCommand(
                     {
                         file.Delete();
                     }
-                    AnsiConsole.MarkupLine($"[green]OK[/] Deleted {analysis.OrphanedFiles.Count} orphaned file(s)");
+                    AnsiConsole.MarkupLine($"{OutputMarkers.Success} Deleted {analysis.OrphanedFiles.Count} orphaned file(s)");
                 }
             }
 
             // Skip download if nothing to download
             if (analysis.Statistics.TotalFilesToDownload == 0)
             {
-                AnsiConsole.MarkupLine("[green]OK[/] All files are up to date!");
+                AnsiConsole.MarkupLine($"{OutputMarkers.Success} All files are up to date!");
                 return;
             }
 

@@ -3,6 +3,7 @@ using System.Text.Json.Nodes;
 using Microsoft.Extensions.Options;
 using Spectara.Revela.Plugin.Statistics.Configuration;
 using Spectara.Revela.Sdk.Abstractions;
+using Spectara.Revela.Sdk.Output;
 using Spectre.Console;
 
 namespace Spectara.Revela.Plugin.Statistics.Commands;
@@ -101,7 +102,7 @@ public sealed partial class ConfigStatisticsCommand(
         await configService.UpdateProjectConfigAsync(updates, cancellationToken).ConfigureAwait(false);
 
         LogConfigSaved(logger, configService.ProjectConfigPath);
-        AnsiConsole.MarkupLine($"\n[green]✓[/] Configuration saved to [cyan]project.json[/]");
+        AnsiConsole.MarkupLine($"\n{OutputMarkers.Success} Configuration saved to [cyan]project.json[/]");
 
         return 0;
     }

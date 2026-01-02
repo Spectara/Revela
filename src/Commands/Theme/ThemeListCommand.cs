@@ -4,6 +4,7 @@ using Spectara.Revela.Core;
 using Spectara.Revela.Core.Services;
 using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Abstractions;
+using Spectara.Revela.Sdk.Output;
 using Spectre.Console;
 
 namespace Spectara.Revela.Commands.Theme;
@@ -171,7 +172,7 @@ public sealed partial class ThemeListCommand(
             cancellationToken.ThrowIfCancellationRequested();
             var themeName = ExtractThemeName(theme.Id);
             var isInstalled = installedNames.Contains(themeName);
-            var statusIcon = isInstalled ? "[green]✓[/]" : "[dim]○[/]";
+            var statusIcon = isInstalled ? OutputMarkers.Success : "[dim]○[/]";
 
             content.Add($"{statusIcon} [bold]{EscapeMarkup(themeName)}[/] [dim]v{theme.Version}[/] [dim]({theme.SourceName})[/]");
 

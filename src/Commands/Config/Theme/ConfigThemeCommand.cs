@@ -5,6 +5,7 @@ using Spectara.Revela.Core.Configuration;
 using Spectara.Revela.Core.Services;
 using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Abstractions;
+using Spectara.Revela.Sdk.Output;
 using Spectre.Console;
 
 namespace Spectara.Revela.Commands.Config.Theme;
@@ -134,7 +135,7 @@ public sealed partial class ConfigThemeCommand(
         // Note: ConfigService automatically invalidates IOptionsMonitor caches after write
 
         LogThemeChanged(currentTheme ?? "none", selectedTheme);
-        AnsiConsole.MarkupLine($"[green]✓[/] Theme set to: [bold]{selectedTheme}[/]");
+        AnsiConsole.MarkupLine($"{OutputMarkers.Success} Theme set to: [bold]{selectedTheme}[/]");
 
         return 0;
     }

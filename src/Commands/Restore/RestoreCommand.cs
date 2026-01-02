@@ -4,6 +4,7 @@ using Spectara.Revela.Core;
 using Spectara.Revela.Core.Services;
 using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Abstractions;
+using Spectara.Revela.Sdk.Output;
 using Spectre.Console;
 
 namespace Spectara.Revela.Commands.Restore;
@@ -82,7 +83,7 @@ public sealed partial class RestoreCommand(
 
         if (dependencies.Count == 0)
         {
-            AnsiConsole.MarkupLine("[green]OK[/] No dependencies to restore.");
+            AnsiConsole.MarkupLine($"{OutputMarkers.Success} No dependencies to restore.");
             return 0;
         }
 
@@ -121,13 +122,13 @@ public sealed partial class RestoreCommand(
         // Summary
         if (missing.Count == 0)
         {
-            AnsiConsole.MarkupLine($"[green]OK[/] All {dependencies.Count} dependency(ies) are installed.");
+            AnsiConsole.MarkupLine($"{OutputMarkers.Success} All {dependencies.Count} dependency(ies) are installed.");
             return 0;
         }
 
         if (checkOnly)
         {
-            AnsiConsole.MarkupLine($"[yellow]![/] {missing.Count} dependency(ies) missing.");
+            AnsiConsole.MarkupLine($"{OutputMarkers.Warning} {missing.Count} dependency(ies) missing.");
             AnsiConsole.MarkupLine("    Run [blue]revela restore[/] to install them.");
             return 1;
         }
@@ -191,12 +192,12 @@ public sealed partial class RestoreCommand(
         var successCount = missing.Count - installFailed.Count;
         if (successCount > 0)
         {
-            AnsiConsole.MarkupLine($"[green]✓[/] Installed {successCount} package(s)");
+            AnsiConsole.MarkupLine($"{OutputMarkers.Success} Installed {successCount} package(s)");
         }
 
         if (!installFailed.IsEmpty)
         {
-            AnsiConsole.MarkupLine($"[red]x[/] Failed to install {installFailed.Count} package(s):");
+            AnsiConsole.MarkupLine($"{OutputMarkers.Error} Failed to install {installFailed.Count} package(s):");
             foreach (var (dep, error) in installFailed)
             {
                 var shortName = GetShortName(dep);
@@ -207,11 +208,11 @@ public sealed partial class RestoreCommand(
                 AnsiConsole.MarkupLine($"  [red]-[/] {shortName}: [dim]{safeError}[/]");
             }
             AnsiConsole.WriteLine();
-            AnsiConsole.MarkupLine($"[yellow]![/] Run with increased log level for details: [blue]revela restore --loglevel Debug[/]");
+            AnsiConsole.MarkupLine($"{OutputMarkers.Warning} Run with increased log level for details: [blue]revela restore --loglevel Debug[/]");
             return 1;
         }
 
-        AnsiConsole.MarkupLine($"[green]OK[/] Restore complete - all dependencies installed.");
+        AnsiConsole.MarkupLine($"{OutputMarkers.Success} Restore complete - all dependencies installed.");
         return 0;
     }
 

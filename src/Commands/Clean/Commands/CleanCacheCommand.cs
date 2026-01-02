@@ -4,6 +4,7 @@ using System.Globalization;
 using Microsoft.Extensions.Options;
 
 using Spectara.Revela.Sdk;
+using Spectara.Revela.Sdk.Output;
 
 using Spectre.Console;
 
@@ -54,18 +55,18 @@ public sealed partial class CleanCacheCommand(
             Directory.Delete(CachePath, recursive: true);
             LogDirectoryDeleted(logger, target.Path, target.FileCount);
 
-            AnsiConsole.MarkupLine($"[green]✓[/] Deleted [cyan]{CacheDirectory}/[/] ({target.FileCount} files, {FormatSize(target.TotalSize)})");
+            AnsiConsole.MarkupLine($"{OutputMarkers.Success} Deleted [cyan]{CacheDirectory}/[/] ({target.FileCount} files, {FormatSize(target.TotalSize)})");
         }
         catch (IOException ex)
         {
             LogDeleteFailed(logger, CachePath, ex);
-            AnsiConsole.MarkupLine($"[red]✗[/] Failed to delete {CacheDirectory}: {ex.Message}");
+            AnsiConsole.MarkupLine($"{OutputMarkers.Error} Failed to delete {CacheDirectory}: {ex.Message}");
             return Task.FromResult(1);
         }
         catch (UnauthorizedAccessException ex)
         {
             LogDeleteFailed(logger, CachePath, ex);
-            AnsiConsole.MarkupLine($"[red]✗[/] Access denied: {CacheDirectory}");
+            AnsiConsole.MarkupLine($"{OutputMarkers.Error} Access denied: {CacheDirectory}");
             return Task.FromResult(1);
         }
 

@@ -6,6 +6,7 @@ using Spectara.Revela.Commands.Config.Site;
 using Spectara.Revela.Commands.Config.Theme;
 using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Abstractions;
+using Spectara.Revela.Sdk.Output;
 
 using Spectre.Console;
 
@@ -160,12 +161,12 @@ public sealed partial class Wizard(
             var result = await step.ExecuteAsync(cancellationToken);
             if (result != 0)
             {
-                AnsiConsole.MarkupLine($"[yellow]⚠[/] {step.Name} configuration was not completed.");
+                AnsiConsole.MarkupLine($"{OutputMarkers.Warning} {step.Name} configuration was not completed.");
                 AnsiConsole.MarkupLine($"[dim]You can configure it later via: revela config[/]");
             }
             else
             {
-                AnsiConsole.MarkupLine($"[green]✓[/] {step.Name} configured");
+                AnsiConsole.MarkupLine($"{OutputMarkers.Success} {step.Name} configured");
             }
         }
     }
@@ -210,7 +211,7 @@ public sealed partial class Wizard(
     private static void ShowStepFailedError(string step)
     {
         AnsiConsole.WriteLine();
-        AnsiConsole.MarkupLine($"[red]✗[/] Failed to complete {step}.");
+        AnsiConsole.MarkupLine($"{OutputMarkers.Error} Failed to complete {step}.");
         AnsiConsole.MarkupLine("[dim]Please try again or use individual config commands.[/]");
     }
 

@@ -2,6 +2,7 @@ using System.CommandLine;
 
 using Spectara.Revela.Core;
 using Spectara.Revela.Sdk;
+using Spectara.Revela.Sdk.Output;
 
 using Spectre.Console;
 
@@ -84,11 +85,11 @@ public sealed partial class ThemeUninstallCommand(
 
             if (success)
             {
-                AnsiConsole.MarkupLine($"[green]✓[/] Theme [cyan]{packageId}[/] uninstalled successfully.");
+                AnsiConsole.MarkupLine($"{OutputMarkers.Success} Theme [cyan]{packageId}[/] uninstalled successfully.");
                 return 0;
             }
 
-            AnsiConsole.MarkupLine($"[yellow]⚠[/] Theme [cyan]{packageId}[/] not found.");
+            AnsiConsole.MarkupLine($"{OutputMarkers.Warning} Theme [cyan]{packageId}[/] not found.");
             return 1;
         }
         catch (Exception ex)

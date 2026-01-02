@@ -2,6 +2,7 @@ using System.CommandLine;
 
 using Spectara.Revela.Core.Services;
 using Spectara.Revela.Sdk;
+using Spectara.Revela.Sdk.Output;
 
 using Spectre.Console;
 
@@ -70,7 +71,7 @@ public sealed partial class RemoveCommand(
 
             if (removed)
             {
-                AnsiConsole.MarkupLine($"[green]✓[/] Removed feed [cyan]{name}[/]");
+                AnsiConsole.MarkupLine($"{OutputMarkers.Success} Removed feed [cyan]{name}[/]");
                 AnsiConsole.WriteLine();
                 AnsiConsole.MarkupLine($"Config: [dim]{GlobalConfigManager.ConfigFilePath}[/]");
                 return 0;

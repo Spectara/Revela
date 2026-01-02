@@ -5,6 +5,7 @@ using Spectara.Revela.Core.Helpers;
 using Spectara.Revela.Core.Models;
 using Spectara.Revela.Core.Services;
 using Spectara.Revela.Sdk;
+using Spectara.Revela.Sdk.Output;
 
 using Spectre.Console;
 
@@ -93,7 +94,7 @@ public sealed partial class ThemeInstallCommand(
 
         if (themes.Count == 0)
         {
-            AnsiConsole.MarkupLine("[yellow]⚠[/] No themes found in package index.");
+            AnsiConsole.MarkupLine($"{OutputMarkers.Warning} No themes found in package index.");
             AnsiConsole.MarkupLine("  Run [cyan]revela packages refresh[/] to update.");
             return InstallResult.Empty;
         }
@@ -106,7 +107,7 @@ public sealed partial class ThemeInstallCommand(
 
         if (availableThemes.Count == 0)
         {
-            AnsiConsole.MarkupLine("[green]✓[/] All available themes are already installed.");
+            AnsiConsole.MarkupLine($"{OutputMarkers.Success} All available themes are already installed.");
             return new InstallResult([], [.. installedThemes.Keys], []);
         }
 
@@ -134,11 +135,11 @@ public sealed partial class ThemeInstallCommand(
         AnsiConsole.WriteLine();
         if (failed.Count == 0)
         {
-            AnsiConsole.MarkupLine($"[green]✓[/] All {installed.Count} themes installed successfully.");
+            AnsiConsole.MarkupLine($"{OutputMarkers.Success} All {installed.Count} themes installed successfully.");
         }
         else
         {
-            AnsiConsole.MarkupLine($"[yellow]⚠[/] {installed.Count} of {availableThemes.Count} themes installed.");
+            AnsiConsole.MarkupLine($"{OutputMarkers.Warning} {installed.Count} of {availableThemes.Count} themes installed.");
         }
 
         // Show prominent restart notice if packages were installed
@@ -194,11 +195,11 @@ public sealed partial class ThemeInstallCommand(
             AnsiConsole.WriteLine();
             if (failed.Count == 0)
             {
-                AnsiConsole.MarkupLine($"[green]✓[/] All {installed.Count} themes installed successfully.");
+                AnsiConsole.MarkupLine($"{OutputMarkers.Success} All {installed.Count} themes installed successfully.");
             }
             else
             {
-                AnsiConsole.MarkupLine($"[yellow]⚠[/] {installed.Count} of {selectedThemes.Count} themes installed.");
+                AnsiConsole.MarkupLine($"{OutputMarkers.Warning} {installed.Count} of {selectedThemes.Count} themes installed.");
             }
         }
 
@@ -220,12 +221,12 @@ public sealed partial class ThemeInstallCommand(
             var indexAge = packageIndexService.GetIndexAge();
             if (indexAge is null)
             {
-                AnsiConsole.MarkupLine("[yellow]⚠[/] Package index not found.");
+                AnsiConsole.MarkupLine($"{OutputMarkers.Warning} Package index not found.");
                 AnsiConsole.MarkupLine("  Run [cyan]revela packages refresh[/] first.");
             }
             else
             {
-                AnsiConsole.MarkupLine("[yellow]⚠[/] No themes found in package index.");
+                AnsiConsole.MarkupLine($"{OutputMarkers.Warning} No themes found in package index.");
                 AnsiConsole.MarkupLine("  Run [cyan]revela packages refresh[/] to update.");
             }
 
@@ -241,7 +242,7 @@ public sealed partial class ThemeInstallCommand(
 
         if (availableThemes.Count == 0)
         {
-            AnsiConsole.MarkupLine("[green]✓[/] All available themes are already installed.");
+            AnsiConsole.MarkupLine($"{OutputMarkers.Success} All available themes are already installed.");
             return [];
         }
 
@@ -251,7 +252,7 @@ public sealed partial class ThemeInstallCommand(
             AnsiConsole.MarkupLine("[green]Already installed:[/]");
             foreach (var themeId in installedThemes.Keys)
             {
-                AnsiConsole.MarkupLine($"  [green]✓[/] {themeId}");
+                AnsiConsole.MarkupLine($"  {OutputMarkers.Success} {themeId}");
             }
 
             AnsiConsole.WriteLine();
@@ -311,12 +312,12 @@ public sealed partial class ThemeInstallCommand(
                 var indexAge = packageIndexService.GetIndexAge();
                 if (indexAge is null)
                 {
-                    AnsiConsole.MarkupLine("[yellow]⚠[/] Package index not found.");
+                    AnsiConsole.MarkupLine($"{OutputMarkers.Warning} Package index not found.");
                     AnsiConsole.MarkupLine("  Run [cyan]revela packages refresh[/] first.");
                     return 1;
                 }
 
-                AnsiConsole.MarkupLine($"[red]✗[/] Package [cyan]{packageId}[/] not found in index.");
+                AnsiConsole.MarkupLine($"{OutputMarkers.Error} Package [cyan]{packageId}[/] not found in index.");
                 AnsiConsole.MarkupLine("  Run [cyan]revela packages refresh[/] to update the index.");
                 return 1;
             }
@@ -324,7 +325,7 @@ public sealed partial class ThemeInstallCommand(
             // Validate package type
             if (!packageEntry.Types.Contains("RevelaTheme", StringComparer.OrdinalIgnoreCase))
             {
-                AnsiConsole.MarkupLine($"[red]✗[/] Package [cyan]{packageId}[/] is not a theme.");
+                AnsiConsole.MarkupLine($"{OutputMarkers.Error} Package [cyan]{packageId}[/] is not a theme.");
                 AnsiConsole.MarkupLine($"  Package types: {string.Join(", ", packageEntry.Types)}");
                 AnsiConsole.MarkupLine("  Use [cyan]revela plugin install[/] for plugins.");
                 return 1;
@@ -349,12 +350,12 @@ public sealed partial class ThemeInstallCommand(
                 var installedVersion = version ?? packageEntry.Version;
                 await GlobalConfigManager.AddThemeAsync(packageId, installedVersion, cancellationToken);
 
-                AnsiConsole.MarkupLine($"[green]✓[/] Theme [cyan]{packageId}[/] installed successfully.");
+                AnsiConsole.MarkupLine($"{OutputMarkers.Success} Theme [cyan]{packageId}[/] installed successfully.");
                 AnsiConsole.MarkupLine("[dim]Configure with:[/] revela config theme select");
                 return 0;
             }
 
-            AnsiConsole.MarkupLine($"[red]✗[/] Failed to install theme.");
+            AnsiConsole.MarkupLine($"{OutputMarkers.Error} Failed to install theme.");
             return 1;
         }
         catch (Exception ex)

@@ -11,6 +11,7 @@ using Spectara.Revela.Commands.Config.Theme;
 using Spectara.Revela.Core.Configuration;
 using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Abstractions;
+using Spectara.Revela.Sdk.Output;
 
 using Spectre.Console;
 
@@ -104,7 +105,7 @@ public sealed class ConfigCommand(
 
             if (choice.Id == "exit")
             {
-                AnsiConsole.MarkupLine("[green]✓[/] Configuration complete");
+                AnsiConsole.MarkupLine($"{OutputMarkers.Success} Configuration complete");
                 break;
             }
 

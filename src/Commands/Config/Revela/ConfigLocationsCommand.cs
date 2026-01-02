@@ -1,5 +1,6 @@
 using System.CommandLine;
 using Spectara.Revela.Core.Services;
+using Spectara.Revela.Sdk.Output;
 using Spectre.Console;
 
 namespace Spectara.Revela.Commands.Config.Revela;
@@ -39,11 +40,11 @@ public sealed partial class ConfigLocationsCommand(
             AnsiConsole.WriteLine();
             if (File.Exists(GlobalConfigManager.ConfigFilePath))
             {
-                AnsiConsole.MarkupLine("[green]✓[/] Configuration file exists");
+                AnsiConsole.MarkupLine($"{OutputMarkers.Success} Configuration file exists");
             }
             else
             {
-                AnsiConsole.MarkupLine("[yellow]![/] Configuration file not found");
+                AnsiConsole.MarkupLine($"{OutputMarkers.Warning} Configuration file not found");
                 AnsiConsole.MarkupLine("  Run [cyan]revela init revela[/] to create it");
             }
 

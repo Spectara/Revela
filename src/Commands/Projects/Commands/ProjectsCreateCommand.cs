@@ -1,6 +1,7 @@
 using System.CommandLine;
 
 using Spectara.Revela.Core.Services;
+using Spectara.Revela.Sdk.Output;
 
 using Spectre.Console;
 
@@ -46,7 +47,7 @@ public sealed partial class ProjectsCreateCommand(
         }
 
         AnsiConsole.WriteLine();
-        AnsiConsole.MarkupLine("[blue]ℹ[/] Restart Revela to use the new project.");
+        AnsiConsole.MarkupLine($"{OutputMarkers.Info} Restart Revela to use the new project.");
     }
 
     private static string? CreateNewProjectFolder()
@@ -81,7 +82,7 @@ public sealed partial class ProjectsCreateCommand(
 
         Directory.CreateDirectory(projectPath);
 
-        AnsiConsole.MarkupLine($"[green]✓[/] Project folder created: [cyan]{folderName}[/]");
+        AnsiConsole.MarkupLine($"{OutputMarkers.Success} Project folder created: [cyan]{folderName}[/]");
 
         return projectPath;
     }

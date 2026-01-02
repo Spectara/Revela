@@ -7,6 +7,7 @@ using Spectara.Revela.Core.Configuration;
 using Spectara.Revela.Core.Services;
 using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Abstractions;
+using Spectara.Revela.Sdk.Output;
 using Spectre.Console;
 
 namespace Spectara.Revela.Commands.Config.Images;
@@ -266,7 +267,7 @@ public sealed partial class ConfigImageCommand(
 
         var formatList = string.Join(", ", formats.Select(f => $"{f.Key}:{f.Value}"));
         LogImageConfigured(formatList, string.Join(", ", sizes));
-        AnsiConsole.MarkupLine("[green]✓[/] Image settings updated");
+        AnsiConsole.MarkupLine($"{OutputMarkers.Success} Image settings updated");
 
         return 0;
     }
@@ -368,7 +369,7 @@ public sealed partial class ConfigImageCommand(
         await configService.UpdateProjectConfigAsync(update, cancellationToken).ConfigureAwait(false);
 
         LogImageConfigured(string.Join(", ", selectedFormats), string.Join(", ", sizes));
-        AnsiConsole.MarkupLine("\n[green]✓[/] Image settings updated");
+        AnsiConsole.MarkupLine($"\n{OutputMarkers.Success} Image settings updated");
 
         // Show summary
         var summary = new Table()

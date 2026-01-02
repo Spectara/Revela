@@ -3,6 +3,7 @@ using Spectara.Revela.Commands.Plugins;
 using Spectara.Revela.Commands.Theme;
 using Spectara.Revela.Core.Models;
 using Spectara.Revela.Sdk;
+using Spectara.Revela.Sdk.Output;
 
 using Spectre.Console;
 
@@ -140,14 +141,14 @@ public sealed partial class Wizard(
     private static void ShowRefreshFailedError()
     {
         AnsiConsole.WriteLine();
-        AnsiConsole.MarkupLine("[red]✗[/] Failed to refresh package index.");
+        AnsiConsole.MarkupLine($"{OutputMarkers.Error} Failed to refresh package index.");
         AnsiConsole.MarkupLine("[dim]Check your network connection and try again.[/]");
     }
 
     private static void ShowNoThemesError()
     {
         AnsiConsole.WriteLine();
-        AnsiConsole.MarkupLine("[red]✗[/] No theme installed. Setup incomplete.");
+        AnsiConsole.MarkupLine($"{OutputMarkers.Error} No theme installed. Setup incomplete.");
         AnsiConsole.MarkupLine("[dim]At least one theme is required to generate websites.[/]");
         AnsiConsole.MarkupLine("[dim]Run 'revela' again to restart the setup wizard.[/]");
     }

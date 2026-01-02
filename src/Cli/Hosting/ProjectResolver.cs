@@ -1,6 +1,7 @@
 using System.Text.Json;
 
 using Spectara.Revela.Core.Services;
+using Spectara.Revela.Sdk.Output;
 using Spectre.Console;
 
 namespace Spectara.Revela.Cli.Hosting;
@@ -453,7 +454,7 @@ internal static class ProjectResolver
         // Create the folder structure
         Directory.CreateDirectory(projectPath);
 
-        AnsiConsole.MarkupLine($"[green]✓[/] Project folder created: [cyan]{folderName}[/]");
+        AnsiConsole.MarkupLine($"{OutputMarkers.Success} Project folder created: [cyan]{folderName}[/]");
         AnsiConsole.WriteLine();
 
         return projectPath;

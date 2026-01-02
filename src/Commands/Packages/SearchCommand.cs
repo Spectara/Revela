@@ -4,6 +4,7 @@ using System.Text.Json;
 using Spectara.Revela.Core.Models;
 using Spectara.Revela.Core.Services;
 using Spectara.Revela.Sdk;
+using Spectara.Revela.Sdk.Output;
 
 using Spectre.Console;
 
@@ -58,7 +59,7 @@ public sealed partial class SearchCommand(
         {
             if (!File.Exists(IndexFilePath))
             {
-                AnsiConsole.MarkupLine("[yellow]⚠[/] Package index not found.");
+                AnsiConsole.MarkupLine($"{OutputMarkers.Warning} Package index not found.");
                 AnsiConsole.MarkupLine("  Run [cyan]revela packages refresh[/] first.");
                 return 1;
             }
@@ -68,7 +69,7 @@ public sealed partial class SearchCommand(
 
             if (index is null || index.Packages.Count == 0)
             {
-                AnsiConsole.MarkupLine("[yellow]⚠[/] Package index is empty.");
+                AnsiConsole.MarkupLine($"{OutputMarkers.Warning} Package index is empty.");
                 AnsiConsole.MarkupLine("  Run [cyan]revela packages refresh[/] to update.");
                 return 1;
             }
@@ -77,7 +78,7 @@ public sealed partial class SearchCommand(
             var age = DateTime.UtcNow - index.LastUpdated;
             if (age.TotalDays > 7)
             {
-                AnsiConsole.MarkupLine($"[yellow]⚠[/] Package index is {age.Days} days old.");
+                AnsiConsole.MarkupLine($"{OutputMarkers.Warning} Package index is {age.Days} days old.");
                 AnsiConsole.MarkupLine("  Run [cyan]revela packages refresh[/] to update.");
                 AnsiConsole.WriteLine();
             }

@@ -4,6 +4,7 @@ using System.Globalization;
 using Microsoft.Extensions.Options;
 
 using Spectara.Revela.Sdk;
+using Spectara.Revela.Sdk.Output;
 
 using Spectre.Console;
 
@@ -77,18 +78,18 @@ public sealed partial class CleanStatisticsCommand(
             catch (IOException ex)
             {
                 LogDeleteFailed(logger, file, ex);
-                AnsiConsole.MarkupLine($"[red]✗[/] Failed to delete {file}: {ex.Message}");
+                AnsiConsole.MarkupLine($"{OutputMarkers.Error} Failed to delete {file}: {ex.Message}");
             }
             catch (UnauthorizedAccessException ex)
             {
                 LogDeleteFailed(logger, file, ex);
-                AnsiConsole.MarkupLine($"[red]✗[/] Access denied: {file}");
+                AnsiConsole.MarkupLine($"{OutputMarkers.Error} Access denied: {file}");
             }
         }
 
         if (deletedCount > 0)
         {
-            AnsiConsole.MarkupLine($"[green]✓[/] Deleted [cyan]{deletedCount}[/] statistics.json file(s) ({FormatSize(totalSize)})");
+            AnsiConsole.MarkupLine($"{OutputMarkers.Success} Deleted [cyan]{deletedCount}[/] statistics.json file(s) ({FormatSize(totalSize)})");
         }
 
         return Task.FromResult(0);

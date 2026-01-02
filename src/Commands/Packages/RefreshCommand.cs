@@ -9,6 +9,7 @@ using NuGet.Packaging;
 using Spectara.Revela.Core.Models;
 using Spectara.Revela.Core.Services;
 using Spectara.Revela.Sdk;
+using Spectara.Revela.Sdk.Output;
 
 using Spectre.Console;
 
@@ -109,7 +110,7 @@ public sealed partial class RefreshCommand(
             await File.WriteAllTextAsync(IndexFilePath, json, cancellationToken);
 
             AnsiConsole.WriteLine();
-            AnsiConsole.MarkupLine($"[green]✓[/] Indexed [cyan]{uniquePackages.Count}[/] packages from [cyan]{sources.Count}[/] sources");
+            AnsiConsole.MarkupLine($"{OutputMarkers.Success} Indexed [cyan]{uniquePackages.Count}[/] packages from [cyan]{sources.Count}[/] sources");
             AnsiConsole.MarkupLine($"  Cache: [dim]{IndexFilePath}[/]");
 
             return 0;

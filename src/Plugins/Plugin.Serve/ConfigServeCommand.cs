@@ -4,6 +4,7 @@ using System.Text.Json.Nodes;
 using Microsoft.Extensions.Options;
 using Spectara.Revela.Plugin.Serve.Configuration;
 using Spectara.Revela.Sdk.Abstractions;
+using Spectara.Revela.Sdk.Output;
 using Spectre.Console;
 
 namespace Spectara.Revela.Plugin.Serve;
@@ -105,7 +106,7 @@ public sealed partial class ConfigServeCommand(
         await configService.UpdateProjectConfigAsync(updates, cancellationToken).ConfigureAwait(false);
 
         LogConfigSaved(logger, configService.ProjectConfigPath);
-        AnsiConsole.MarkupLine($"\n[green]✓[/] Configuration saved to [cyan]project.json[/]");
+        AnsiConsole.MarkupLine($"\n{OutputMarkers.Success} Configuration saved to [cyan]project.json[/]");
 
         // Show summary
         var table = new Table()

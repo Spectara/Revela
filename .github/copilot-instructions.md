@@ -901,6 +901,51 @@ return $"{value:0.##} MB";
 return string.Format(CultureInfo.InvariantCulture, "{0:0.##} MB", value);
 ```
 
+### Console Output Standards
+
+**Use `OutputMarkers` from `Spectara.Revela.Sdk.Output` for consistent console feedback:**
+
+```csharp
+using Spectara.Revela.Sdk.Output;
+
+// Success: completed actions, successful operations
+AnsiConsole.MarkupLine($"{OutputMarkers.Success} Operation completed");
+// Output: ✓ Operation completed (green)
+
+// Error: failed operations, validation errors
+AnsiConsole.MarkupLine($"{OutputMarkers.Error} Failed to process file");
+// Output: ✗ Failed to process file (red)
+
+// Warning: skipped items, potential issues, non-critical problems
+AnsiConsole.MarkupLine($"{OutputMarkers.Warning} File already exists");
+// Output: ⚠ File already exists (yellow)
+
+// Info: informational messages, hints, neutral status updates
+AnsiConsole.MarkupLine($"{OutputMarkers.Info} Processing 5 items...");
+// Output: ℹ Processing 5 items... (blue)
+```
+
+**Available Constants:**
+| Constant | Symbol | Color | Use For |
+|----------|--------|-------|---------|
+| `OutputMarkers.Success` | ✓ | Green | Completed actions, passed validation |
+| `OutputMarkers.Error` | ✗ | Red | Failed operations, errors |
+| `OutputMarkers.Warning` | ⚠ | Yellow | Skipped items, potential issues |
+| `OutputMarkers.Info` | ℹ | Blue | Informational messages, hints |
+
+**❌ DON'T use raw markup strings:**
+```csharp
+// ❌ DON'T - Inconsistent symbols
+AnsiConsole.MarkupLine("[green]OK[/] Done");
+AnsiConsole.MarkupLine("[red]x[/] Failed");
+AnsiConsole.MarkupLine("[yellow]![/] Warning");
+
+// ✅ DO - Use OutputMarkers
+AnsiConsole.MarkupLine($"{OutputMarkers.Success} Done");
+AnsiConsole.MarkupLine($"{OutputMarkers.Error} Failed");
+AnsiConsole.MarkupLine($"{OutputMarkers.Warning} Warning");
+```
+
 ### Registering Services
 Location: `src/Revela.Features/{FeatureName}/ServiceCollectionExtensions.cs`
 

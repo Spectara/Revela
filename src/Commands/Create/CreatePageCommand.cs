@@ -7,6 +7,7 @@ using Microsoft.Extensions.Options;
 
 using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Abstractions;
+using Spectara.Revela.Sdk.Output;
 
 using Spectre.Console;
 
@@ -169,7 +170,7 @@ public sealed partial class CreatePageCommand(
         await File.WriteAllTextAsync(revelaPath, frontmatter, cancellationToken).ConfigureAwait(false);
 
         LogPageCreated(logger, revelaPath, template.DisplayName);
-        AnsiConsole.MarkupLine($"[green]✓[/] Created [cyan]{revelaPath}[/]");
+        AnsiConsole.MarkupLine($"{OutputMarkers.Success} Created [cyan]{revelaPath}[/]");
 
         return 0;
     }
