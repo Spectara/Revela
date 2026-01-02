@@ -86,7 +86,12 @@ public sealed partial class AllCommand(
 
             if (!result.Success)
             {
-                AnsiConsole.MarkupLine($"[red]✗ {step.Name} failed:[/] {result.Message}");
+                // Only show error line if not already displayed (e.g., via ErrorPanel)
+                if (!result.ErrorDisplayed)
+                {
+                    AnsiConsole.MarkupLine($"[red]✗ {step.Name} failed:[/] {result.Message}");
+                }
+
                 LogStepFailed(logger, step.Name, result.Message ?? "Unknown error");
                 return 1;
             }

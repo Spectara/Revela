@@ -89,10 +89,12 @@ public static class PipelineOrder
 /// <param name="Success">Whether the step completed successfully.</param>
 /// <param name="Message">Optional message (success info or error details).</param>
 /// <param name="ItemsProcessed">Number of items processed (for display).</param>
+/// <param name="ErrorDisplayed">Whether error was already displayed (skip duplicate output).</param>
 public sealed record PipelineStepResult(
     bool Success,
     string? Message = null,
-    int ItemsProcessed = 0)
+    int ItemsProcessed = 0,
+    bool ErrorDisplayed = false)
 {
     /// <summary>
     /// Creates a successful result.
@@ -105,6 +107,12 @@ public sealed record PipelineStepResult(
     /// </summary>
     public static PipelineStepResult Fail(string message) =>
         new(false, message);
+
+    /// <summary>
+    /// Creates a failed result where error was already displayed to user.
+    /// </summary>
+    public static PipelineStepResult FailWithDisplayedError(string message) =>
+        new(false, message, ErrorDisplayed: true);
 
     /// <summary>
     /// Creates a skipped result (e.g., no items to process).

@@ -1,5 +1,6 @@
 using Spectara.Revela.Commands.Generate.Abstractions;
 using Spectara.Revela.Commands.Generate.Models.Results;
+using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Abstractions;
 
 namespace Spectara.Revela.Commands.Generate.Pipeline;
@@ -43,8 +44,18 @@ public sealed partial class ScanPipelineStep(
                     result.ImageCount);
             }
 
-            LogScanFailed(logger, result.ErrorMessage ?? "Unknown error");
-            return PipelineStepResult.Fail(result.ErrorMessage ?? "Scan failed");
+            // Check for source directory not found error and show user-friendly panel
+            var errorMessage = result.ErrorMessage ?? "Unknown error";
+            if (errorMessage.StartsWith("Source directory not found:", StringComparison.Ordinal))
+            {
+                var path = errorMessage.Replace("Source directory not found: ", string.Empty, StringComparison.Ordinal);
+                ErrorPanels.ShowSourceDirectoryNotFoundError(path);
+                LogScanFailed(logger, errorMessage);
+                return PipelineStepResult.FailWithDisplayedError(errorMessage);
+            }
+
+            LogScanFailed(logger, errorMessage);
+            return PipelineStepResult.Fail(errorMessage);
         }
         catch (OperationCanceledException)
         {

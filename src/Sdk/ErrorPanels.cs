@@ -258,6 +258,33 @@ public static class ErrorPanels
     }
 
     /// <summary>
+    /// Shows an error panel when the source directory is missing.
+    /// </summary>
+    /// <param name="path">The source directory path that was not found.</param>
+    /// <param name="additionalHints">Optional additional solution hints (e.g., for installed plugins).</param>
+    public static void ShowSourceDirectoryNotFoundError(string path, IEnumerable<string>? additionalHints = null)
+    {
+        var content = $"[yellow]Source directory not found:[/] [cyan]{EscapeMarkup(path)}[/]\n\n" +
+            "[bold]Solutions:[/]\n" +
+            "  • Add your images to the [cyan]source/[/] folder\n" +
+            "  • Run [cyan]revela init[/] to set up a new project";
+
+        if (additionalHints is not null)
+        {
+            foreach (var hint in additionalHints)
+            {
+                content += $"\n  • {hint}";
+            }
+        }
+
+        var panel = new Panel(content)
+            .WithHeader("[bold red]Source Directory Missing[/]")
+            .WithErrorStyle();
+
+        AnsiConsole.Write(panel);
+    }
+
+    /// <summary>
     /// Escapes Spectre markup characters in user-provided text.
     /// </summary>
     private static string EscapeMarkup(string text) =>
