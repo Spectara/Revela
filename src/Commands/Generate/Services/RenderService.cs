@@ -383,9 +383,7 @@ public sealed partial class RenderService(
         var indexBasePath = CalculateSiteBasePath(config, "");
         var indexImageBasePath = CalculateImageBasePath(config, "");
         var themeVariables = manifest?.Variables ?? new Dictionary<string, string>();
-        var formats = ImageSettings.Formats.Count > 0
-            ? ImageSettings.Formats
-            : ImageConfig.DefaultFormats;
+        var formats = ImageSettings.GetActiveFormats();
 
         // Get assets from resolver
         var stylesheets = assetResolver.GetStyleSheets();

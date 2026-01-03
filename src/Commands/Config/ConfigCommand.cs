@@ -7,6 +7,7 @@ using Spectara.Revela.Commands.Config.Images;
 using Spectara.Revela.Commands.Config.Project;
 using Spectara.Revela.Commands.Config.Revela;
 using Spectara.Revela.Commands.Config.Site;
+using Spectara.Revela.Commands.Config.Sorting;
 using Spectara.Revela.Commands.Config.Theme;
 using Spectara.Revela.Core.Configuration;
 using Spectara.Revela.Sdk;
@@ -31,6 +32,7 @@ public sealed class ConfigCommand(
     ConfigThemeCommand themeCommand,
     ConfigSiteCommand siteCommand,
     ConfigImageCommand imageCommand,
+    ConfigSortingCommand sortingCommand,
     FeedCommand feedCommand,
     ConfigLocationsCommand locationsCommand)
 {
@@ -46,6 +48,7 @@ public sealed class ConfigCommand(
         command.Subcommands.Add(themeCommand.Create());
         command.Subcommands.Add(siteCommand.Create());
         command.Subcommands.Add(imageCommand.Create());
+        command.Subcommands.Add(sortingCommand.Create());
 
         // Revela (global) subcommands
         command.Subcommands.Add(feedCommand.Create());
@@ -78,7 +81,7 @@ public sealed class ConfigCommand(
             var choice = AnsiConsole.Prompt(
                 new SelectionPrompt<MenuChoice>()
                     .Title("[cyan]What would you like to configure?[/]")
-                    .PageSize(14)
+                    .PageSize(15)
                     .HighlightStyle(new Style(Color.Cyan1, decoration: Decoration.Bold))
                     .AddChoices(
                         // Project Section
@@ -86,6 +89,7 @@ public sealed class ConfigCommand(
                         new MenuChoice("theme", "Theme", "Select the site theme"),
                         new MenuChoice("site", "Site metadata", "Title, author, description"),
                         new MenuChoice("image", "Image settings", "Formats, quality, sizes"),
+                        new MenuChoice("sorting", "Sorting", "Gallery and image order"),
                         // Revela Section
                         new MenuChoice("header-revela", "───── Revela Settings ─────", "", IsHeader: true),
                         new MenuChoice("feed", "NuGet feeds", "Manage package sources"),
@@ -113,7 +117,8 @@ public sealed class ConfigCommand(
             {
                 "theme" => await themeCommand.ExecuteAsync(null, cancellationToken).ConfigureAwait(false),
                 "site" => await siteCommand.ExecuteAsync(cancellationToken).ConfigureAwait(false),
-                "image" => await imageCommand.ExecuteAsync(null, null, cancellationToken).ConfigureAwait(false),
+                "image" => await imageCommand.ExecuteAsync(null, cancellationToken).ConfigureAwait(false),
+                "sorting" => await sortingCommand.ExecuteAsync(null, null, null, null, cancellationToken).ConfigureAwait(false),
                 "feed" => ExecuteFeedMenu(packagesConfig.CurrentValue),
                 "path" => ExecutePathCommand(),
                 "show" => await ExecuteShowAsync(cancellationToken).ConfigureAwait(false),

@@ -279,6 +279,9 @@ public sealed partial class NetVipsImageProcessor(
             var mappedModel = cameraModelMapper.MapModel(model);
             var cleanedLens = CameraModelMapper.CleanLensModel(lensModel);
 
+            // Extract additional useful fields
+            var raw = ExtractAdditionalExifFields(image);
+
             return new ExifData
             {
                 Make = mappedMake,
@@ -290,7 +293,8 @@ public sealed partial class NetVipsImageProcessor(
                 Iso = iso,
                 FocalLength = focalLength,
                 GpsLatitude = gpsLatitude,
-                GpsLongitude = gpsLongitude
+                GpsLongitude = gpsLongitude,
+                Raw = raw.Count > 0 ? raw : null
             };
         }
         catch (Exception ex)
@@ -299,6 +303,104 @@ public sealed partial class NetVipsImageProcessor(
             LogExifExtractionFailed(logger, ex);
             return null;
         }
+    }
+
+    /// <summary>
+    /// Additional EXIF fields that are useful for photographers.
+    /// </summary>
+    /// <remarks>
+    /// These fields are extracted into the Raw dictionary for sorting, filtering,
+    /// and display purposes. Only fields with non-empty values are included.
+    /// </remarks>
+    private static readonly HashSet<string> UsefulExifFields =
+    [
+        // Exposure and metering
+        "ExposureProgram",      // 0=Unknown, 1=Manual, 2=Program, 3=Aperture Priority, etc.
+        "ExposureMode",         // 0=Auto, 1=Manual, 2=Auto bracket
+        "MeteringMode",         // 1=Average, 2=Center-weighted, 3=Spot, etc.
+        "Flash",                // Flash status and mode
+        "WhiteBalance",         // 0=Auto, 1=Manual
+        "ExposureCompensation", // Exposure bias
+
+        // Lens and focus
+        "FocalLengthIn35mmFormat", // 35mm equivalent focal length
+        "MaxApertureValue",     // Maximum aperture of lens
+        "SubjectDistance",      // Distance to subject
+
+        // Scene info
+        "SceneCaptureType",     // 0=Standard, 1=Landscape, 2=Portrait, 3=Night
+        "Contrast",             // 0=Normal, 1=Low, 2=High
+        "Saturation",           // 0=Normal, 1=Low, 2=High
+        "Sharpness",            // 0=Normal, 1=Soft, 2=Hard
+
+        // Rating and metadata
+        "Rating",               // Star rating (1-5)
+        "RatingPercent",        // Rating as percentage
+        "Copyright",            // Copyright notice
+        "Artist",               // Photographer name
+        "ImageDescription",     // Image title/description
+        "UserComment",          // User comment
+
+        // Windows metadata (from XP)
+        "XPTitle",              // Windows title
+        "XPComment",            // Windows comment
+        "XPAuthor",             // Windows author
+        "XPKeywords",           // Windows keywords/tags
+        "XPSubject",            // Windows subject
+
+        // Additional camera info
+        "LensMake",             // Lens manufacturer
+        "LensSerialNumber",     // Lens serial number
+        "SerialNumber",         // Camera body serial number (BodySerialNumber)
+        "CameraSerialNumber",   // Alternative camera serial number field
+
+        // GPS (additional)
+        "GPSAltitude",          // Altitude
+
+        // Software
+        "Software",             // Processing software
+    ];
+
+    /// <summary>
+    /// Extract additional EXIF fields into a dictionary.
+    /// Only fields with non-empty values are included.
+    /// </summary>
+    private static Dictionary<string, string> ExtractAdditionalExifFields(Image image)
+    {
+        var raw = new Dictionary<string, string>(StringComparer.Ordinal);
+
+        foreach (var fieldName in UsefulExifFields)
+        {
+            // Try different IFD locations
+            var value = TryGetExifValue(image, fieldName);
+            if (!string.IsNullOrWhiteSpace(value))
+            {
+                raw[fieldName] = value;
+            }
+        }
+
+        return raw;
+    }
+
+    /// <summary>
+    /// Try to get an EXIF value by field name, checking multiple IFD locations.
+    /// </summary>
+    private static string? TryGetExifValue(Image image, string fieldName)
+    {
+        // Try different IFD locations (IFD0, ExifIFD/IFD2, GPS/IFD3)
+        string[] prefixes = ["exif-ifd0-", "exif-ifd2-", "exif-ifd3-"];
+
+        foreach (var prefix in prefixes)
+        {
+            var value = TryGetString(image, prefix + fieldName);
+            if (!string.IsNullOrWhiteSpace(value))
+            {
+                // Extract actual value from NetVips format
+                return CameraModelMapper.ExtractExifValue(value);
+            }
+        }
+
+        return null;
     }
 
     /// <summary>

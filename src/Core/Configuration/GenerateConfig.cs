@@ -6,10 +6,14 @@ namespace Spectara.Revela.Core.Configuration;
 /// <remarks>
 /// <para>
 /// Loaded from the "generate" section of revela.json or project.json.
-/// Controls output directory, image processing, and camera mappings.
+/// Controls output directory, image processing, sorting, and camera mappings.
 /// </para>
 /// <para>
 /// Global defaults in revela.json can be overridden per-project.
+/// </para>
+/// <para>
+/// Note: Image sizes are defined by the theme (see <see cref="ThemeConfig"/>),
+/// not in the generate section. Only format quality is configured here.
 /// </para>
 /// <example>
 /// <code>
@@ -17,9 +21,18 @@ namespace Spectara.Revela.Core.Configuration;
 /// {
 ///   "generate": {
 ///     "output": "dist",
+///     "sorting": {
+///       "galleries": "desc",
+///       "images": {
+///         "field": "dateTaken",
+///         "direction": "desc",
+///         "fallback": "filename"
+///       }
+///     },
 ///     "images": {
-///       "formats": { "webp": 85, "jpg": 90 },
-///       "sizes": [640, 1024, 1920, 2560]
+///       "webp": 85,
+///       "jpg": 90,
+///       "avif": 0
 ///     },
 ///     "cameras": {
 ///       "models": { "ILCE-7M4": "α 7 IV" }
@@ -42,6 +55,11 @@ public sealed class GenerateConfig
     public string Output { get; init; } = "output";
 
     /// <summary>
+    /// Sorting settings for galleries and images
+    /// </summary>
+    public SortingConfig Sorting { get; init; } = new();
+
+    /// <summary>
     /// Image processing settings
     /// </summary>
     public ImageConfig Images { get; init; } = new();
@@ -53,42 +71,171 @@ public sealed class GenerateConfig
 }
 
 /// <summary>
+/// Sorting configuration for galleries and images
+/// </summary>
+/// <remarks>
+/// <para>
+/// Controls the sort order of galleries in navigation and images within galleries.
+/// Images can be sorted by any property path including EXIF data.
+/// </para>
+/// <example>
+/// <code>
+/// // project.json
+/// {
+///   "generate": {
+///     "sorting": {
+///       "galleries": "desc",
+///       "images": {
+///         "field": "dateTaken",
+///         "direction": "desc",
+///         "fallback": "filename"
+///       }
+///     }
+///   }
+/// }
+/// </code>
+/// </example>
+/// </remarks>
+public sealed class SortingConfig
+{
+    /// <summary>
+    /// Gallery sort direction (always sorted by name with natural ordering).
+    /// </summary>
+    /// <remarks>
+    /// Galleries are always sorted by folder name using natural ordering
+    /// (1, 2, 10 instead of 1, 10, 2). Sort prefixes like "01 Events" are
+    /// stripped for display but used for ordering.
+    /// </remarks>
+    public SortDirection Galleries { get; init; } = SortDirection.Asc;
+
+    /// <summary>
+    /// Image sort configuration within galleries.
+    /// </summary>
+    /// <remarks>
+    /// Can be overridden per gallery using front matter:
+    /// <code>
+    /// +++
+    /// sort = "exif.rating"
+    /// sort_direction = "desc"
+    /// +++
+    /// </code>
+    /// </remarks>
+    public ImageSortConfig Images { get; init; } = new();
+}
+
+/// <summary>
+/// Sort direction
+/// </summary>
+/// <remarks>
+/// JSON values: "asc" or "desc" (case-insensitive).
+/// </remarks>
+public enum SortDirection
+{
+    /// <summary>A → Z, 1 → 9, oldest → newest</summary>
+    Asc,
+
+    /// <summary>Z → A, 9 → 1, newest → oldest</summary>
+    Desc
+}
+
+/// <summary>
+/// Image sort configuration
+/// </summary>
+/// <remarks>
+/// <para>
+/// Allows flexible sorting by any property path. Supports:
+/// </para>
+/// <list type="bullet">
+///   <item><c>filename</c> - File name</item>
+///   <item><c>dateTaken</c> - EXIF date taken</item>
+///   <item><c>exif.focalLength</c> - Focal length</item>
+///   <item><c>exif.iso</c> - ISO sensitivity</item>
+///   <item><c>exif.aperture</c> - Aperture (f-number)</item>
+///   <item><c>exif.raw.Rating</c> - Star rating (1-5)</item>
+///   <item><c>exif.raw.{FieldName}</c> - Any field from EXIF Raw dictionary</item>
+/// </list>
+/// <para>
+/// When the primary field is null/missing, falls back to the fallback field.
+/// </para>
+/// </remarks>
+public sealed class ImageSortConfig
+{
+    /// <summary>
+    /// Property path to sort by.
+    /// </summary>
+    /// <remarks>
+    /// Use dot notation for nested properties: "exif.focalLength", "exif.raw.Rating".
+    /// </remarks>
+    public string Field { get; init; } = "dateTaken";
+
+    /// <summary>
+    /// Sort direction.
+    /// </summary>
+    public SortDirection Direction { get; init; } = SortDirection.Desc;
+
+    /// <summary>
+    /// Fallback field when primary field is null/missing.
+    /// </summary>
+    /// <remarks>
+    /// Uses same direction as primary sort.
+    /// </remarks>
+    public string Fallback { get; init; } = "filename";
+}
+
+/// <summary>
 /// Image processing configuration
 /// </summary>
+/// <remarks>
+/// <para>
+/// Controls image output formats and quality settings.
+/// Sizes are defined by the theme (see <see cref="ThemeImagesConfig"/>).
+/// </para>
+/// <para>
+/// Format quality is 1-100. Set to 0 to disable a format.
+/// </para>
+/// <example>
+/// <code>
+/// // project.json - only webp, no jpg
+/// {
+///   "generate": {
+///     "images": {
+///       "webp": 85,
+///       "jpg": 0,
+///       "avif": 0
+///     }
+///   }
+/// }
+/// </code>
+/// </example>
+/// </remarks>
 public sealed class ImageConfig
 {
     /// <summary>
-    /// Default output formats with quality settings.
-    /// Used when no formats are configured in project.json.
+    /// WebP quality (1-100). Set to 0 to disable WebP output.
     /// </summary>
     /// <remarks>
-    /// AVIF is not included by default due to very slow encoding (~10x slower than WebP).
-    /// Users can enable it manually in project.json for better compression.
+    /// WebP offers good compression with wide browser support.
+    /// Recommended quality: 80-90.
     /// </remarks>
-    public static readonly IReadOnlyDictionary<string, int> DefaultFormats = new Dictionary<string, int>
-    {
-        ["webp"] = 85,
-        ["jpg"] = 90
-    };
+    public int Webp { get; init; } = 85;
 
     /// <summary>
-    /// Output formats with quality settings.
-    /// Key = format (avif, webp, jpg), Value = quality (1-100).
+    /// JPEG quality (1-100). Set to 0 to disable JPEG output.
     /// </summary>
     /// <remarks>
-    /// Empty by default - consumers should use <see cref="DefaultFormats"/> as fallback.
-    /// This allows project.json to completely replace formats instead of merging.
-    /// AVIF can be added manually for better compression (but ~10x slower encoding).
+    /// JPEG is the universal fallback format for older browsers.
+    /// Recommended quality: 85-95.
     /// </remarks>
-    /// <example>
-    /// { "webp": 85, "jpg": 90 }
-    /// </example>
-    public IReadOnlyDictionary<string, int> Formats { get; init; } = new Dictionary<string, int>();
+    public int Jpg { get; init; } = 90;
 
     /// <summary>
-    /// Image widths to generate (in pixels)
+    /// AVIF quality (1-100). Set to 0 to disable AVIF output.
     /// </summary>
-    public IReadOnlyList<int> Sizes { get; init; } = [640, 1024, 1280, 1920, 2560];
+    /// <remarks>
+    /// AVIF offers best compression but encoding is ~10x slower than WebP.
+    /// Disabled by default. Recommended quality: 75-85.
+    /// </remarks>
+    public int Avif { get; init; }
 
     /// <summary>
     /// Minimum image width in pixels. Images narrower than this are skipped during scan.
@@ -107,6 +254,38 @@ public sealed class ImageConfig
     /// images failing either threshold are skipped. Set to 0 to disable filtering (default).
     /// </remarks>
     public int MinHeight { get; init; }
+
+    /// <summary>
+    /// Gets the active formats (quality > 0) as a dictionary.
+    /// </summary>
+    /// <returns>Dictionary of format name to quality.</returns>
+    /// <remarks>
+    /// This is intentionally a method, not a property, because it creates a new
+    /// dictionary on each call based on the current quality values.
+    /// </remarks>
+#pragma warning disable CA1024 // Use properties where appropriate
+    public IReadOnlyDictionary<string, int> GetActiveFormats()
+#pragma warning restore CA1024
+    {
+        var formats = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+
+        if (Avif > 0)
+        {
+            formats["avif"] = Avif;
+        }
+
+        if (Webp > 0)
+        {
+            formats["webp"] = Webp;
+        }
+
+        if (Jpg > 0)
+        {
+            formats["jpg"] = Jpg;
+        }
+
+        return formats;
+    }
 }
 
 /// <summary>

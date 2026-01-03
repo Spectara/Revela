@@ -7,18 +7,17 @@
     "name": "Lumina"
   },
   "generate": {
+    "sorting": {
+      "galleries": "asc",
+      "images": {
+        "field": "dateTaken",
+        "direction": "desc",
+        "fallback": "filename"
+      }
+    },
     "images": {
-      "formats": {
-        "webp": 85,
-        "jpg": 90
-      },
-      "sizes": [
-        640,
-        1024,
-        1280,
-        1920,
-        2560
-      ]
+      "webp": 85,
+      "jpg": 90
     }
   },
   "Spectara.Revela.Plugin.Source.OneDrive": {

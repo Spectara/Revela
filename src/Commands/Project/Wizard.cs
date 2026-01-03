@@ -81,7 +81,7 @@ public sealed partial class Wizard(
         AnsiConsole.MarkupLine("[dim]Configure output formats and sizes for your images.[/]");
         AnsiConsole.WriteLine();
 
-        var imageResult = await configImageCommand.ExecuteAsync(null, null, cancellationToken);
+        var imageResult = await configImageCommand.ExecuteAsync(null, cancellationToken);
         if (imageResult != 0)
         {
             ShowStepFailedError("image configuration");

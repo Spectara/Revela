@@ -5,7 +5,9 @@ using Spectara.Revela.Commands.Generate.Models;
 using Spectara.Revela.Commands.Generate.Models.Results;
 using Spectara.Revela.Commands.Generate.Scanning;
 using Spectara.Revela.Core.Configuration;
+using Spectara.Revela.Core.Services;
 using Spectara.Revela.Sdk;
+using Spectara.Revela.Sdk.Models;
 using Spectara.Revela.Sdk.Models.Manifest;
 using IManifestRepository = Spectara.Revela.Sdk.Abstractions.IManifestRepository;
 
@@ -29,15 +31,19 @@ public sealed partial class ContentService(
     NavigationBuilder navigationBuilder,
     IManifestRepository manifestRepository,
     IImageProcessor imageProcessor,
+    IImageSizesProvider imageSizesProvider,
     IOptions<ProjectEnvironment> projectEnvironment,
-    IOptionsMonitor<GenerateConfig> options,
+    IOptionsMonitor<GenerateConfig> generateOptions,
     ILogger<ContentService> logger) : IContentService
 {
     /// <summary>Gets full path to source directory</summary>
     private string SourcePath => Path.Combine(projectEnvironment.Value.Path, ProjectPaths.Source);
 
     /// <summary>Gets current image settings (supports hot-reload)</summary>
-    private ImageConfig ImageSettings => options.CurrentValue.Images;
+    private ImageConfig ImageSettings => generateOptions.CurrentValue.Images;
+
+    /// <summary>Gets current sorting settings (supports hot-reload)</summary>
+    private SortingConfig SortingSettings => generateOptions.CurrentValue.Sorting;
 
     /// <inheritdoc />
     public async Task<ContentResult> ScanAsync(
@@ -99,7 +105,11 @@ public sealed partial class ContentService(
             });
 
             // Build navigation tree
-            var navigation = await navigationBuilder.BuildAsync(SourcePath, cancellationToken: cancellationToken);
+            var sortDescending = SortingSettings.Galleries == SortDirection.Desc;
+            var navigation = await navigationBuilder.BuildAsync(
+                SourcePath,
+                sortDescending: sortDescending,
+                cancellationToken: cancellationToken);
 
             // Build unified root node with metadata
             var root = BuildRoot(content, navigation, imageMetadata);
@@ -283,7 +293,7 @@ public sealed partial class ContentService(
             Hidden = false,
             Template = null,  // Root uses default template
             DataSources = [],
-            Content = BuildContentList(rootImages, rootMarkdowns, imageMetadata),
+            Content = BuildContentList(rootImages, rootMarkdowns, imageMetadata, homeGallery?.Sort),
             Children = [.. navigation.Select(nav => ConvertNavigationToEntry(nav, galleryBySlug, imagesByPath, markdownsByPath, imageMetadata))]
         };
 
@@ -329,22 +339,25 @@ public sealed partial class ContentService(
             Hidden = navItem.Hidden,
             Template = gallery?.Template,
             DataSources = gallery?.DataSources.ToDictionary(kvp => kvp.Key, kvp => kvp.Value) ?? [],
-            Content = BuildContentList(images, markdowns, imageMetadata),
+            Content = BuildContentList(images, markdowns, imageMetadata, gallery?.Sort),
             Children = [.. navItem.Children.Select(child => ConvertNavigationToEntry(child, galleryBySlug, imagesByPath, markdownsByPath, imageMetadata))]
         };
     }
 
     /// <summary>
-    /// Build a combined content list from images and markdown files, sorted by filename.
+    /// Build a combined content list from images and markdown files.
     /// </summary>
     /// <remarks>
-    /// Content is sorted alphabetically by filename to allow users to control
+    /// Content is sorted based on the configured image sort order.
+    /// Default: alphabetically by filename to allow users to control
     /// ordering via filename prefixes (e.g., "01-intro.md", "02-photo.jpg").
+    /// Alternative: by EXIF DateTaken for chronological galleries.
     /// </remarks>
     private List<GalleryContent> BuildContentList(
         List<SourceImage> images,
         List<SourceMarkdown> markdowns,
-        Dictionary<string, ImageMetadata> imageMetadata)
+        Dictionary<string, ImageMetadata> imageMetadata,
+        string? sortOverride)
     {
         var content = new List<GalleryContent>();
 
@@ -360,8 +373,132 @@ public sealed partial class ContentService(
             content.Add(ConvertSourceMarkdown(markdown));
         }
 
-        // Sort by filename for predictable ordering
-        return [.. content.OrderBy(c => c.Filename, StringComparer.OrdinalIgnoreCase)];
+        // Sort based on configuration (with optional gallery override)
+        return SortContent(content, sortOverride);
+    }
+
+    /// <summary>
+    /// Sort content based on the configured image sort settings.
+    /// </summary>
+    /// <remarks>
+    /// Uses configurable field path with fallback for null values.
+    /// Gallery sort override format: "field" or "field:direction".
+    /// </remarks>
+    private List<GalleryContent> SortContent(List<GalleryContent> content, string? sortOverride)
+    {
+        var config = SortingSettings.Images;
+        var field = config.Field;
+        var direction = config.Direction;
+        var fallback = config.Fallback;
+
+        // Parse gallery sort override: "field" or "field:direction"
+        if (!string.IsNullOrEmpty(sortOverride))
+        {
+            var parts = sortOverride.Split(':', 2);
+            field = parts[0];
+
+            if (parts.Length > 1)
+            {
+                direction = parts[1].ToUpperInvariant() switch
+                {
+                    "ASC" => SortDirection.Asc,
+                    "DESC" => SortDirection.Desc,
+                    _ => direction // Keep global default if invalid
+                };
+            }
+        }
+
+        var sorted = direction == SortDirection.Asc
+            ? content.OrderBy(c => GetSortKey(c, field, fallback), SortKeyComparer.Instance)
+            : content.OrderByDescending(c => GetSortKey(c, field, fallback), SortKeyComparer.Instance);
+
+        // Always use filename as final tie-breaker for stable sorting
+        return [.. sorted.ThenBy(c => c.Filename, StringComparer.OrdinalIgnoreCase)];
+    }
+
+    /// <summary>
+    /// Get a comparable sort key from content using the specified field path.
+    /// </summary>
+    /// <param name="content">The content item to extract the sort key from.</param>
+    /// <param name="field">Primary field path (e.g., "dateTaken", "exif.focalLength").</param>
+    /// <param name="fallback">Fallback field when primary is null.</param>
+    /// <returns>A comparable object for sorting (string, DateTime, or number).</returns>
+    private static object GetSortKey(GalleryContent content, string field, string fallback)
+    {
+        var value = GetFieldValue(content, field);
+        if (value is null or "")
+        {
+            value = GetFieldValue(content, fallback);
+        }
+
+        return value ?? string.Empty;
+    }
+
+    /// <summary>
+    /// Extract a field value from content using dot notation path.
+    /// </summary>
+    /// <remarks>
+    /// Supported paths:
+    /// <list type="bullet">
+    ///   <item><c>filename</c> - GalleryContent.Filename</item>
+    ///   <item><c>dateTaken</c> - ImageContent.DateTaken</item>
+    ///   <item><c>exif.focalLength</c> - Typed EXIF property</item>
+    ///   <item><c>exif.raw.Rating</c> - Raw EXIF dictionary value</item>
+    /// </list>
+    /// </remarks>
+    private static object? GetFieldValue(GalleryContent content, string fieldPath)
+    {
+        var parts = fieldPath.Split('.', StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length == 0)
+        {
+            return null;
+        }
+
+        var root = parts[0].ToUpperInvariant();
+
+        return root switch
+        {
+            "FILENAME" => content.Filename,
+            "DATETAKEN" when content is ImageContent img => img.DateTaken ?? DateTime.MaxValue,
+            "EXIF" when content is ImageContent img && img.Exif is not null => GetExifFieldValue(img.Exif, parts.AsSpan()[1..]),
+            _ => null
+        };
+    }
+
+    /// <summary>
+    /// Extract a field value from EXIF data using property path.
+    /// </summary>
+    private static object? GetExifFieldValue(ExifData exif, ReadOnlySpan<string> path)
+    {
+        if (path.IsEmpty)
+        {
+            return null;
+        }
+
+        var field = path[0].ToUpperInvariant();
+
+        // Check for raw dictionary access: exif.raw.{FieldName}
+        if (field == "RAW" && path.Length > 1 && exif.Raw is not null)
+        {
+            var rawField = path[1]; // Keep original case for dictionary lookup
+            return exif.Raw.TryGetValue(rawField, out var rawValue) ? rawValue : null;
+        }
+
+        // Typed EXIF properties (match ExifData property names)
+        return field switch
+        {
+            "MAKE" => exif.Make,
+            "MODEL" => exif.Model,
+            "LENSMODEL" => exif.LensModel,
+            "FOCALLENGTH" => exif.FocalLength,
+            "FNUMBER" => exif.FNumber,
+            "EXPOSURETIME" => exif.ExposureTime,
+            "ISO" => exif.Iso,
+            "DATETAKEN" => exif.DateTaken,
+            "GPSLATITUDE" => exif.GpsLatitude,
+            "GPSLONGITUDE" => exif.GpsLongitude,
+            _ => null
+        };
     }
 
     /// <summary>
@@ -439,11 +576,17 @@ public sealed partial class ContentService(
     /// <remarks>
     /// Includes configured sizes smaller than original width, plus the original width.
     /// Original width is included for full-resolution lightbox view.
+    /// Sizes come from theme configuration (theme defines responsive breakpoints).
     /// </remarks>
-    private List<int> CalculateSizes(int imageWidth) =>
+    private List<int> CalculateSizes(int imageWidth)
+    {
+        // Get sizes from theme via provider (handles local override vs theme default)
+        var themeSizes = imageSizesProvider.GetSizes();
+
         // Filter configured sizes to only include those smaller than original
         // Then add original width for full-resolution lightbox
-        [.. ImageSettings.Sizes.Where(s => s < imageWidth).Append(imageWidth).Order()];
+        return [.. themeSizes.Where(s => s < imageWidth).Append(imageWidth).Order()];
+    }
 
     /// <summary>
     /// Counts total manifest entries including children recursively.
@@ -476,6 +619,60 @@ public sealed partial class ContentService(
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Skipped {SkippedCount} small images (below {MinWidth}x{MinHeight})")]
     private static partial void LogSmallImagesSkipped(ILogger logger, int skippedCount, int minWidth, int minHeight);
+
+    #endregion
+
+    #region Nested Types
+
+    /// <summary>
+    /// Comparer for heterogeneous sort keys (handles DateTime, string, numbers).
+    /// </summary>
+    private sealed class SortKeyComparer : IComparer<object>
+    {
+        public static readonly SortKeyComparer Instance = new();
+
+        public int Compare(object? x, object? y)
+        {
+            // Handle nulls
+            if (x is null && y is null)
+            {
+                return 0;
+            }
+
+            if (x is null)
+            {
+                return -1;
+            }
+
+            if (y is null)
+            {
+                return 1;
+            }
+
+            // Same type: use natural comparison
+            if (x.GetType() == y.GetType() && x is IComparable comparableX)
+            {
+                return comparableX.CompareTo(y);
+            }
+
+            // Different types: convert to string for comparison
+            var strX = x switch
+            {
+                DateTime dt => dt.ToString("O", System.Globalization.CultureInfo.InvariantCulture),
+                IFormattable f => f.ToString(null, System.Globalization.CultureInfo.InvariantCulture),
+                _ => x.ToString() ?? string.Empty
+            };
+
+            var strY = y switch
+            {
+                DateTime dt => dt.ToString("O", System.Globalization.CultureInfo.InvariantCulture),
+                IFormattable f => f.ToString(null, System.Globalization.CultureInfo.InvariantCulture),
+                _ => y.ToString() ?? string.Empty
+            };
+
+            return string.Compare(strX, strY, StringComparison.OrdinalIgnoreCase);
+        }
+    }
 
     #endregion
 }

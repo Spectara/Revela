@@ -6,6 +6,7 @@ using Spectara.Revela.Commands.Config.Project;
 using Spectara.Revela.Commands.Config.Revela;
 using Spectara.Revela.Commands.Config.Services;
 using Spectara.Revela.Commands.Config.Site;
+using Spectara.Revela.Commands.Config.Sorting;
 using Spectara.Revela.Commands.Config.Theme;
 using Spectara.Revela.Sdk.Abstractions;
 
@@ -40,6 +41,9 @@ public static class ServiceCollectionExtensions
 
         // Image commands
         services.AddTransient<ConfigImageCommand>();
+
+        // Sorting commands
+        services.AddTransient<ConfigSortingCommand>();
 
         // Feed commands (NuGet sources)
         services.AddTransient<FeedCommand>();

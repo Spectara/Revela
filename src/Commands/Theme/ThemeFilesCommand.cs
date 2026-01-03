@@ -3,6 +3,7 @@ using Microsoft.Extensions.Options;
 using Spectara.Revela.Core.Configuration;
 using Spectara.Revela.Core.Services;
 using Spectara.Revela.Sdk;
+using Spectara.Revela.Sdk.Abstractions;
 using Spectre.Console;
 
 namespace Spectara.Revela.Commands.Theme;
@@ -94,6 +95,7 @@ public sealed partial class ThemeFilesCommand(
         // Get all entries
         var templateEntries = templateResolver.GetAllEntries();
         var assetEntries = assetResolver.GetAllEntries();
+        var configEntries = GetConfigurationEntries(theme, extensions, projectPath, themeName, extensionColorMap);
 
         // Build templates table
         var templatesTable = new Table
@@ -110,6 +112,22 @@ public sealed partial class ThemeFilesCommand(
             templatesTable.AddRow(
                 $"[cyan]{EscapeMarkup(entry.Key)}.revela[/]",
                 sourceDisplay);
+        }
+
+        // Build configuration table
+        var configTable = new Table
+        {
+            Border = TableBorder.Rounded
+        };
+        configTable.AddColumn("[bold]Path[/]");
+        configTable.AddColumn("[bold]Source[/]");
+
+        foreach (var (path, source) in configEntries.OrderBy(e => e.Path, StringComparer.OrdinalIgnoreCase))
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            configTable.AddRow(
+                $"[cyan]{EscapeMarkup(path)}[/]",
+                source);
         }
 
         // Build assets table
@@ -137,11 +155,14 @@ public sealed partial class ThemeFilesCommand(
             ? " + " + string.Join(", ", coloredExtensions)
             : string.Empty;
 
-        // Create grid to hold both tables with left-aligned titles
+        // Create grid to hold tables with left-aligned titles
         var grid = new Grid();
         grid.AddColumn();
         grid.AddRow(new Markup("[blue]Templates[/]"));
         grid.AddRow(templatesTable);
+        grid.AddEmptyRow();
+        grid.AddRow(new Markup("[green]Configuration[/]"));
+        grid.AddRow(configTable);
         grid.AddEmptyRow();
         grid.AddRow(new Markup("[yellow]Assets[/]"));
         grid.AddRow(assetsTable);
@@ -152,7 +173,7 @@ public sealed partial class ThemeFilesCommand(
         panel.Padding = new Padding(1, 0, 1, 0);
 
         AnsiConsole.Write(panel);
-        AnsiConsole.MarkupLine($"\n[dim]Total:[/] {templateEntries.Count} templates, {assetEntries.Count} assets");
+        AnsiConsole.MarkupLine($"\n[dim]Total:[/] {templateEntries.Count} templates, {configEntries.Count} config files, {assetEntries.Count} assets");
 
         // Build legend with colored extension names
         var legendParts = new List<string> { $"[{ThemeColor}]{EscapeMarkup(themeName)}[/] = Theme" };
@@ -186,6 +207,76 @@ public sealed partial class ThemeFilesCommand(
         };
     }
 
+    /// <summary>
+    /// Gets configuration files from theme and extensions with source information.
+    /// </summary>
+    private static List<(string Path, string Source)> GetConfigurationEntries(
+        IThemePlugin theme,
+        IReadOnlyList<IThemeExtension> extensions,
+        string projectPath,
+        string themeName,
+        Dictionary<string, string> extensionColorMap)
+    {
+        var entries = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+        // Get from base theme (Configuration/*.json and theme.json)
+        foreach (var file in theme.GetAllFiles())
+        {
+            var normalized = file.Replace('\\', '/');
+            if (normalized.StartsWith("Configuration/", StringComparison.OrdinalIgnoreCase))
+            {
+                // Use lowercase for consistency
+                var key = "configuration/" + normalized["Configuration/".Length..];
+                entries[key] = $"[{ThemeColor}]{EscapeMarkup(themeName)}[/]";
+            }
+            else if (normalized.Equals("theme.json", StringComparison.OrdinalIgnoreCase))
+            {
+                entries["theme.json"] = $"[{ThemeColor}]{EscapeMarkup(themeName)}[/]";
+            }
+        }
+
+        // Get from extensions (can override)
+        foreach (var ext in extensions)
+        {
+            var extName = ext.Metadata.Name;
+            var color = extensionColorMap.GetValueOrDefault(extName, "blue");
+
+            foreach (var file in ext.GetAllFiles())
+            {
+                var normalized = file.Replace('\\', '/');
+                if (normalized.StartsWith("Configuration/", StringComparison.OrdinalIgnoreCase))
+                {
+                    var key = "configuration/" + normalized["Configuration/".Length..];
+                    entries[key] = $"[{color}]{EscapeMarkup(extName)}[/]";
+                }
+                else if (normalized.Equals("theme.json", StringComparison.OrdinalIgnoreCase))
+                {
+                    entries["theme.json"] = $"[{color}]{EscapeMarkup(extName)}[/]";
+                }
+            }
+        }
+
+        // Check for local overrides in theme/configuration/ folder (lowercase)
+        var localConfigPath = Path.Combine(projectPath, "theme", "configuration");
+        if (Directory.Exists(localConfigPath))
+        {
+            foreach (var file in Directory.GetFiles(localConfigPath, "*.json", SearchOption.AllDirectories))
+            {
+                var relativePath = Path.GetRelativePath(localConfigPath, file).Replace('\\', '/');
+                var configPath = "configuration/" + relativePath;
+
+                // Only mark as local override if it matches a theme config file (case-insensitive)
+                var matchingKey = entries.Keys.FirstOrDefault(k => k.Equals(configPath, StringComparison.OrdinalIgnoreCase));
+                if (matchingKey is not null)
+                {
+                    entries[matchingKey] = "[green]Local[/]";
+                }
+            }
+        }
+
+        return [.. entries.Select(kvp => (kvp.Key, kvp.Value))];
+    }
+
     private static string EscapeMarkup(string text)
     {
         return text
@@ -196,4 +287,3 @@ public sealed partial class ThemeFilesCommand(
     [LoggerMessage(Level = LogLevel.Debug, Message = "Listing files for theme '{ThemeName}' with {ExtensionCount} extension(s)")]
     private partial void LogInitialized(string themeName, int extensionCount);
 }
-

@@ -3,6 +3,16 @@ namespace Spectara.Revela.Sdk.Models;
 /// <summary>
 /// EXIF metadata extracted from an image
 /// </summary>
+/// <remarks>
+/// <para>
+/// Contains commonly used EXIF fields as typed properties for convenience.
+/// Additional fields are available in the <see cref="Raw"/> dictionary.
+/// </para>
+/// <para>
+/// Only fields with actual values are stored - null/empty fields are omitted
+/// to keep the manifest compact.
+/// </para>
+/// </remarks>
 public sealed class ExifData
 {
     /// <summary>Camera manufacturer (e.g., "Canon", "Nikon", "Sony")</summary>
@@ -34,4 +44,26 @@ public sealed class ExifData
 
     /// <summary>GPS longitude (decimal degrees)</summary>
     public double? GpsLongitude { get; init; }
+
+    /// <summary>
+    /// Additional EXIF fields not covered by typed properties.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Contains useful photographer-relevant fields like:
+    /// Rating, Copyright, Artist, ExposureProgram, MeteringMode, Flash, etc.
+    /// </para>
+    /// <para>
+    /// Only fields with non-empty values are included.
+    /// Keys are the EXIF field names without the "exif-ifd" prefix.
+    /// </para>
+    /// </remarks>
+    /// <example>
+    /// Accessing additional fields:
+    /// <code>
+    /// if (exif.Raw.TryGetValue("Rating", out var rating))
+    ///     Console.WriteLine($"Rating: {rating}");
+    /// </code>
+    /// </example>
+    public IReadOnlyDictionary<string, string>? Raw { get; init; }
 }

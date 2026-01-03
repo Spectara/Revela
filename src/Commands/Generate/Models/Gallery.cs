@@ -76,6 +76,15 @@ public sealed class Gallery
     public string? Cover { get; init; }
 
     /// <summary>
+    /// Sort override for images in this gallery.
+    /// </summary>
+    /// <remarks>
+    /// <para>Format: <c>field</c> or <c>field:direction</c></para>
+    /// <para>Overrides the global sort configuration from project.json.</para>
+    /// </remarks>
+    public string? Sort { get; init; }
+
+    /// <summary>
     /// Gallery date for sorting (from front matter or first image EXIF).
     /// </summary>
     public DateTime? Date { get; init; }

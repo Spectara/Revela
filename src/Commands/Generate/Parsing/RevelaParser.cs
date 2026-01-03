@@ -104,13 +104,14 @@ public sealed partial class RevelaParser(ILogger<RevelaParser> logger)
         var description = GetStringValue(global, "description");
         var hidden = GetBoolValue(global, "hidden");
         var templateName = GetStringValue(global, "template");
+        var sort = GetStringValue(global, "sort");
         var dataSources = GetDataSources(global);
 
         // Extract raw body (text after frontmatter, before Scriban processing)
         var rawBody = ExtractRawBody(content);
 
         if (title is null && slug is null && description is null && !hidden &&
-            rawBody is null && templateName is null && dataSources.Count == 0)
+            rawBody is null && templateName is null && sort is null && dataSources.Count == 0)
         {
             return DirectoryMetadata.Empty;
         }
@@ -122,6 +123,7 @@ public sealed partial class RevelaParser(ILogger<RevelaParser> logger)
             Description = description,
             Hidden = hidden,
             Template = templateName,
+            Sort = sort,
             DataSources = dataSources,
             RawBody = rawBody,
             Body = null // Body is rendered later with full context

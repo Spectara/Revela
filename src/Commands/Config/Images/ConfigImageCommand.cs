@@ -16,8 +16,22 @@ namespace Spectara.Revela.Commands.Config.Images;
 /// Command to configure image processing settings.
 /// </summary>
 /// <remarks>
-/// Configures output formats, quality, and sizes in project.json.
-/// Uses theme's images.template.json for recommended defaults.
+/// <para>
+/// Configures output formats and quality settings in project.json.
+/// Sizes are defined by the theme (via images.json) and cannot be changed here.
+/// </para>
+/// <para>
+/// Format configuration uses flat properties:
+/// <code>
+/// "generate": {
+///   "images": {
+///     "webp": 85,
+///     "jpg": 90,
+///     "avif": 0   // 0 = disabled
+///   }
+/// }
+/// </code>
+/// </para>
 /// </remarks>
 public sealed partial class ConfigImageCommand(
     ILogger<ConfigImageCommand> logger,
@@ -35,22 +49,16 @@ public sealed partial class ConfigImageCommand(
 
         var formatsOption = new Option<string?>("--formats", "-f")
         {
-            Description = "Output formats with optional quality (e.g., avif:80,webp:85,jpg or just avif,webp,jpg)"
-        };
-        var sizesOption = new Option<string?>("--sizes", "-s")
-        {
-            Description = "Output sizes in pixels (comma-separated: 640,1280,1920)"
+            Description = "Output formats with optional quality (e.g., avif:80,webp:85,jpg or just avif,webp,jpg). Set quality to 0 to disable."
         };
 
         command.Options.Add(formatsOption);
-        command.Options.Add(sizesOption);
 
         command.SetAction(async (parseResult, cancellationToken) =>
         {
             var formats = parseResult.GetValue(formatsOption);
-            var sizes = parseResult.GetValue(sizesOption);
 
-            return await ExecuteAsync(formats, sizes, cancellationToken).ConfigureAwait(false);
+            return await ExecuteAsync(formats, cancellationToken).ConfigureAwait(false);
         });
 
         return command;
@@ -60,12 +68,10 @@ public sealed partial class ConfigImageCommand(
     /// Executes the image configuration.
     /// </summary>
     /// <param name="formatsArg">Formats with optional quality (format:quality or just format).</param>
-    /// <param name="sizesArg">Sizes argument (comma-separated).</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>Exit code.</returns>
     public async Task<int> ExecuteAsync(
         string? formatsArg,
-        string? sizesArg,
         CancellationToken cancellationToken)
     {
         if (!configService.IsProjectInitialized())
@@ -86,13 +92,13 @@ public sealed partial class ConfigImageCommand(
             return 1;
         }
 
-        // Load theme defaults from images.template.json
+        // Load theme defaults for format quality defaults
         var themeDefaults = LoadThemeDefaults(themeName);
 
-        // Non-interactive mode if any argument provided
-        if (!string.IsNullOrEmpty(formatsArg) || !string.IsNullOrEmpty(sizesArg))
+        // Non-interactive mode if argument provided
+        if (!string.IsNullOrEmpty(formatsArg))
         {
-            return await ExecuteNonInteractiveAsync(formatsArg, sizesArg, themeDefaults, cancellationToken)
+            return await ExecuteNonInteractiveAsync(formatsArg, themeDefaults, cancellationToken)
                 .ConfigureAwait(false);
         }
 
@@ -101,7 +107,7 @@ public sealed partial class ConfigImageCommand(
     }
 
     /// <summary>
-    /// Loads image defaults from theme's images.template.json.
+    /// Loads image defaults from theme's images.json (for quality defaults).
     /// </summary>
     private ImageDefaults? LoadThemeDefaults(string themeName)
     {
@@ -158,115 +164,82 @@ public sealed partial class ConfigImageCommand(
     }
 
     private async Task<int> ExecuteNonInteractiveAsync(
-        string? formatsArg,
-        string? sizesArg,
+        string formatsArg,
         ImageDefaults? themeDefaults,
         CancellationToken cancellationToken)
     {
         // Read current config
         var current = await configService.ReadProjectConfigAsync(cancellationToken).ConfigureAwait(false);
         var currentFormats = GetCurrentFormats(current);
-        var currentSizes = GetCurrentSizes(current);
 
         // Determine defaults: current > theme > fallback
         var defaultFormats = currentFormats
             ?? themeDefaults?.Formats
             ?? new Dictionary<string, int> { ["jpg"] = 90 };
-        var defaultSizes = currentSizes
-            ?? themeDefaults?.Sizes
-            ?? [640, 1280, 1920];
 
-        // Parse formats (format or format:quality)
+        // Parse formats (format or format:quality or format:0 to disable)
         var validFormats = new HashSet<string>(["avif", "webp", "jpg"], StringComparer.OrdinalIgnoreCase);
         var formats = new Dictionary<string, int>();
 
-        if (!string.IsNullOrEmpty(formatsArg))
+        var entries = formatsArg.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        var parsedCount = 0;
+
+        foreach (var entry in entries)
         {
-            var entries = formatsArg.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-            var parsedCount = 0;
+            var parts = entry.Split(':', StringSplitOptions.TrimEntries);
+            var formatName = parts[0];
 
-            foreach (var entry in entries)
+            if (!validFormats.Contains(formatName))
             {
-                var parts = entry.Split(':', StringSplitOptions.TrimEntries);
-                var formatName = parts[0];
+                continue;
+            }
 
-                if (!validFormats.Contains(formatName))
-                {
-                    continue;
-                }
-
-                // Normalize to lowercase for JSON keys
+            // Normalize to lowercase for JSON keys
 #pragma warning disable CA1308
-                var normalizedFormat = formatName.ToLowerInvariant();
+            var normalizedFormat = formatName.ToLowerInvariant();
 #pragma warning restore CA1308
 
-                // Check for quality (format:quality)
-                if (parts.Length == 2 && int.TryParse(parts[1], out var quality) && quality is >= 1 and <= 100)
-                {
-                    formats[normalizedFormat] = quality;
-                }
-                else
-                {
-                    // No quality specified, use default from theme or fallback
-                    formats[normalizedFormat] = defaultFormats.GetValueOrDefault(normalizedFormat, 90);
-                }
-
-                parsedCount++;
-            }
-
-            if (parsedCount == 0)
+            // Check for quality (format:quality or format:0 to disable)
+            if (parts.Length == 2 && int.TryParse(parts[1], out var quality) && quality is >= 0 and <= 100)
             {
-                ErrorPanels.ShowValidationError(
-                    "No valid formats specified.",
-                    "  avif, webp, jpg (optionally with :quality, e.g. webp:85)");
-                return 1;
+                formats[normalizedFormat] = quality;
             }
+            else
+            {
+                // No quality specified, use default from theme or fallback
+                formats[normalizedFormat] = defaultFormats.GetValueOrDefault(normalizedFormat, 90);
+            }
+
+            parsedCount++;
         }
-        else
+
+        if (parsedCount == 0)
         {
-            // Keep current/default formats
-            foreach (var (format, quality) in defaultFormats)
-            {
-                formats[format] = quality;
-            }
+            ErrorPanels.ShowValidationError(
+                "No valid formats specified.",
+                "  avif, webp, jpg (optionally with :quality, e.g. webp:85, or :0 to disable)");
+            return 1;
         }
 
-        // Parse sizes
-        var sizes = defaultSizes;
-        if (!string.IsNullOrEmpty(sizesArg))
+        // Build and save config using flat format properties
+        var imagesObj = new JsonObject();
+        foreach (var (format, quality) in formats)
         {
-            sizes = [.. sizesArg
-                .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-                .Select(s => int.TryParse(s, out var n) ? n : 0)
-                .Where(n => n > 0)
-                .OrderBy(n => n)];
-
-            if (sizes.Length == 0)
-            {
-                ErrorPanels.ShowValidationError(
-                    "No valid sizes specified.",
-                    "  Comma-separated widths in pixels (e.g. 640,1280,1920)");
-                return 1;
-            }
+            imagesObj[format] = quality;
         }
 
-        // Build and save config using JsonObject
         var update = new JsonObject
         {
             ["generate"] = new JsonObject
             {
-                ["images"] = new JsonObject
-                {
-                    ["formats"] = CreateFormatsObject(formats),
-                    ["sizes"] = new JsonArray(sizes.Select(s => JsonValue.Create(s)).ToArray())
-                }
+                ["images"] = imagesObj
             }
         };
 
         await configService.UpdateProjectConfigAsync(update, cancellationToken).ConfigureAwait(false);
 
-        var formatList = string.Join(", ", formats.Select(f => $"{f.Key}:{f.Value}"));
-        LogImageConfigured(formatList, string.Join(", ", sizes));
+        var formatList = string.Join(", ", formats.Select(f => f.Value > 0 ? $"{f.Key}:{f.Value}" : $"{f.Key}:disabled"));
+        LogImageConfigured(formatList);
         AnsiConsole.MarkupLine($"{OutputMarkers.Success} Image settings updated");
 
         return 0;
@@ -279,11 +252,9 @@ public sealed partial class ConfigImageCommand(
         // Read current config
         var current = await configService.ReadProjectConfigAsync(cancellationToken).ConfigureAwait(false);
         var currentFormats = GetCurrentFormats(current);
-        var currentSizes = GetCurrentSizes(current);
 
         // Determine defaults: current > theme
         var defaultFormats = currentFormats ?? themeDefaults?.Formats;
-        var defaultSizes = currentSizes ?? themeDefaults?.Sizes;
 
         // Format selection
         var formatChoices = new[] { "avif", "webp", "jpg" };
@@ -325,50 +296,24 @@ public sealed partial class ConfigImageCommand(
             formats[format] = quality;
         }
 
-        // Size input - use theme defaults or prompt for custom
-        AnsiConsole.WriteLine();
-        int[] sizes;
-
-        if (defaultSizes is { Length: > 0 })
+        // Build update using flat format properties
+        var imagesObj = new JsonObject();
+        foreach (var (format, quality) in formats)
         {
-            // Theme provides defaults - show them and allow editing
-            var defaultSizesStr = string.Join(", ", defaultSizes);
-            AnsiConsole.MarkupLine($"[dim]Theme recommends:[/] {defaultSizesStr}px");
-
-            var useDefaults = await AnsiConsole.ConfirmAsync("Use recommended sizes?", defaultValue: true, cancellationToken)
-                .ConfigureAwait(false);
-            if (useDefaults)
-            {
-                sizes = defaultSizes;
-            }
-            else
-            {
-                sizes = PromptCustomSizes(defaultSizes);
-            }
-        }
-        else
-        {
-            // No theme defaults - user must enter sizes manually
-            AnsiConsole.MarkupLine("[yellow]Theme doesn't provide size recommendations.[/]");
-            sizes = PromptCustomSizes([640, 1280, 1920]);
+            imagesObj[format] = quality;
         }
 
-        // Build update using JsonObject
         var update = new JsonObject
         {
             ["generate"] = new JsonObject
             {
-                ["images"] = new JsonObject
-                {
-                    ["formats"] = CreateFormatsObject(formats),
-                    ["sizes"] = new JsonArray(sizes.Select(s => JsonValue.Create(s)).ToArray())
-                }
+                ["images"] = imagesObj
             }
         };
 
         await configService.UpdateProjectConfigAsync(update, cancellationToken).ConfigureAwait(false);
 
-        LogImageConfigured(string.Join(", ", selectedFormats), string.Join(", ", sizes));
+        LogImageConfigured(string.Join(", ", selectedFormats));
         AnsiConsole.MarkupLine($"\n{OutputMarkers.Success} Image settings updated");
 
         // Show summary
@@ -383,53 +328,62 @@ public sealed partial class ConfigImageCommand(
         }
 
         AnsiConsole.Write(summary);
-        AnsiConsole.MarkupLine($"\n[dim]Sizes:[/] {string.Join(", ", sizes)}px");
+
+        // Show info about sizes
+        AnsiConsole.WriteLine();
+        AnsiConsole.MarkupLine("[dim]Note: Image sizes are defined by the theme.[/]");
+        AnsiConsole.MarkupLine("[dim]To customize sizes, create theme/images.json in your project.[/]");
 
         return 0;
     }
 
-    private static int[] PromptCustomSizes(int[] defaultSizes)
-    {
-        var input = AnsiConsole.Prompt(
-            new TextPrompt<string>("Enter sizes (comma-separated, e.g., 640,1280,1920):")
-                .DefaultValue(string.Join(",", defaultSizes)));
-
-        var sizes = input
-            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-            .Select(s => int.TryParse(s, out var n) ? n : 0)
-            .Where(n => n > 0)
-            .OrderBy(n => n)
-            .ToArray();
-
-        if (sizes.Length == 0)
-        {
-            AnsiConsole.MarkupLine("[yellow]Warning:[/] Invalid sizes. Using defaults.");
-            return defaultSizes;
-        }
-
-        return sizes;
-    }
-
-    [LoggerMessage(Level = LogLevel.Information, Message = "Image configured: formats=[{Formats}], sizes=[{Sizes}]")]
-    private partial void LogImageConfigured(string formats, string sizes);
+    [LoggerMessage(Level = LogLevel.Information, Message = "Image configured: formats=[{Formats}]")]
+    private partial void LogImageConfigured(string formats);
 
     /// <summary>
-    /// Extracts formats dictionary from JsonObject config.
+    /// Extracts formats from flat properties in JsonObject config.
     /// </summary>
+    /// <remarks>
+    /// New format: generate.images.webp: 85, generate.images.jpg: 90
+    /// Legacy format: generate.images.formats.webp: 85 (still supported for reading)
+    /// </remarks>
     private static Dictionary<string, int>? GetCurrentFormats(JsonObject? config)
     {
-        var formats = config?["generate"]?["images"]?["formats"]?.AsObject();
-        if (formats is null)
+        var imagesNode = config?["generate"]?["images"];
+        if (imagesNode is null)
         {
             return null;
         }
 
         var result = new Dictionary<string, int>();
-        foreach (var (key, value) in formats)
+
+        // Try new flat format first (webp, jpg, avif as direct properties)
+        var validFormats = new HashSet<string>(["avif", "webp", "jpg"], StringComparer.OrdinalIgnoreCase);
+
+        if (imagesNode is JsonObject imagesObj)
         {
-            if (value?.GetValue<int>() is { } quality)
+            foreach (var (key, value) in imagesObj)
             {
-                result[key] = quality;
+                if (validFormats.Contains(key) && value?.GetValue<int>() is { } quality)
+                {
+                    result[key] = quality;
+                }
+            }
+        }
+
+        // If no flat formats found, try legacy nested format
+        if (result.Count == 0)
+        {
+            var legacyFormats = imagesNode["formats"]?.AsObject();
+            if (legacyFormats is not null)
+            {
+                foreach (var (key, value) in legacyFormats)
+                {
+                    if (value?.GetValue<int>() is { } quality)
+                    {
+                        result[key] = quality;
+                    }
+                }
             }
         }
 
@@ -437,40 +391,11 @@ public sealed partial class ConfigImageCommand(
     }
 
     /// <summary>
-    /// Extracts sizes array from JsonObject config.
+    /// Image defaults loaded from theme's images.json.
     /// </summary>
-    private static int[]? GetCurrentSizes(JsonObject? config)
-    {
-        var sizes = config?["generate"]?["images"]?["sizes"]?.AsArray();
-        if (sizes is null)
-        {
-            return null;
-        }
-
-        var result = sizes
-            .Where(s => s is not null)
-            .Select(s => s!.GetValue<int>())
-            .ToArray();
-
-        return result.Length > 0 ? result : null;
-    }
-
-    /// <summary>
-    /// Creates a JsonObject from formats dictionary.
-    /// </summary>
-    private static JsonObject CreateFormatsObject(Dictionary<string, int> formats)
-    {
-        var obj = new JsonObject();
-        foreach (var (format, quality) in formats)
-        {
-            obj[format] = quality;
-        }
-
-        return obj;
-    }
-
-    /// <summary>
-    /// Image defaults loaded from theme's images.template.json.
-    /// </summary>
+    /// <remarks>
+    /// Only formats are used as defaults for quality values.
+    /// Sizes are informational only (managed by theme).
+    /// </remarks>
     private sealed record ImageDefaults(Dictionary<string, int> Formats, int[] Sizes);
 }

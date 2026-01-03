@@ -102,6 +102,7 @@ public sealed partial class ContentScanner(
                 Title = directoryMetadata.Title ?? fallbackTitle,
                 Description = directoryMetadata.Description,
                 Template = directoryMetadata.Template,
+                Sort = directoryMetadata.Sort,
                 DataSources = directoryMetadata.DataSources,
                 Images = []
             };

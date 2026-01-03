@@ -4,6 +4,7 @@ using Spectara.Revela.Commands.Generate.Abstractions;
 using Spectara.Revela.Commands.Generate.Models;
 using Spectara.Revela.Commands.Generate.Models.Results;
 using Spectara.Revela.Core.Configuration;
+using Spectara.Revela.Core.Services;
 using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Abstractions;
 using Spectara.Revela.Sdk.Models.Manifest;
@@ -25,8 +26,9 @@ public sealed partial class ImageService(
     IImageProcessor imageProcessor,
     IFileHashService fileHashService,
     IManifestRepository manifestRepository,
+    IImageSizesProvider imageSizesProvider,
     IOptions<ProjectEnvironment> projectEnvironment,
-    IOptionsMonitor<GenerateConfig> options,
+    IOptionsMonitor<GenerateConfig> generateOptions,
     ILogger<ImageService> logger) : IImageService
 {
     /// <summary>Image output directory within output folder</summary>
@@ -38,8 +40,8 @@ public sealed partial class ImageService(
     /// <summary>Gets full path to output directory</summary>
     private string OutputPath => Path.Combine(projectEnvironment.Value.Path, ProjectPaths.Output);
 
-    /// <summary>Gets current image settings (supports hot-reload)</summary>
-    private ImageConfig ImageSettings => options.CurrentValue.Images;
+    /// <summary>Gets current image format settings (supports hot-reload)</summary>
+    private ImageConfig ImageSettings => generateOptions.CurrentValue.Images;
 
     /// <inheritdoc />
     public async Task<ImageResult> ProcessAsync(
@@ -64,10 +66,8 @@ public sealed partial class ImageService(
             }
 
             // Check if config changed (forces full rebuild)
-            var sizes = ImageSettings.Sizes.ToArray();
-            var formats = ImageSettings.Formats.Count > 0
-                ? ImageSettings.Formats
-                : ImageConfig.DefaultFormats;
+            var sizes = imageSizesProvider.GetSizes();
+            var formats = ImageSettings.GetActiveFormats();
             var configHash = ManifestService.ComputeConfigHash(sizes, formats);
             var configChanged = manifestRepository.ConfigHash != configHash;
 
@@ -132,7 +132,7 @@ public sealed partial class ImageService(
             long plannedVariants = 0;
             foreach (var (_, _, _, manifestSizes) in imagesToProcess)
             {
-                var sizesToGenerateCount = manifestSizes.Count > 0 ? manifestSizes.Count : sizes.Length;
+                var sizesToGenerateCount = manifestSizes.Count > 0 ? manifestSizes.Count : sizes.Count;
                 plannedVariants += (long)sizesToGenerateCount * formats.Count;
             }
 

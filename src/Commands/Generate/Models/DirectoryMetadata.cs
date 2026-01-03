@@ -54,6 +54,20 @@ public sealed class DirectoryMetadata
     public string? Template { get; init; }
 
     /// <summary>
+    /// Gets the sort override for images in this gallery.
+    /// </summary>
+    /// <remarks>
+    /// <para>Format: <c>field</c> or <c>field:direction</c></para>
+    /// <para>Examples:</para>
+    /// <list type="bullet">
+    /// <item><c>dateTaken</c> - Sort by date (direction from global config)</item>
+    /// <item><c>dateTaken:asc</c> - Sort by date, oldest first</item>
+    /// <item><c>exif.raw.Rating:desc</c> - Sort by rating, highest first</item>
+    /// </list>
+    /// </remarks>
+    public string? Sort { get; init; }
+
+    /// <summary>
     /// Gets the data sources for template rendering.
     /// </summary>
     /// <remarks>
@@ -85,7 +99,8 @@ public sealed class DirectoryMetadata
     /// Gets a value indicating whether any metadata was found.
     /// </summary>
     public bool HasMetadata => Title is not null || Slug is not null || Description is not null ||
-                               Hidden || Body is not null || Template is not null || DataSources.Count > 0;
+                               Hidden || Body is not null || Template is not null || Sort is not null ||
+                               DataSources.Count > 0;
 
     /// <summary>
     /// Gets an empty metadata instance.

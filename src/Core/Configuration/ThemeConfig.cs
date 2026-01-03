@@ -8,12 +8,25 @@ namespace Spectara.Revela.Core.Configuration;
 /// Loaded from the "theme" section of project.json.
 /// Contains theme selection and theme-specific options.
 /// </para>
+/// <para>
+/// Image sizes can be overridden locally via theme/images.json.
+/// If not present, sizes come from the theme's GetImagesTemplate().
+/// </para>
 /// <example>
 /// <code>
 /// // project.json
 /// {
 ///   "theme": {
 ///     "name": "Lumina"
+///   }
+/// }
+///
+/// // theme/images.json (optional override)
+/// {
+///   "theme": {
+///     "images": {
+///       "sizes": [640, 1280, 2560]
+///     }
 ///   }
 /// }
 /// </code>
@@ -30,4 +43,33 @@ public sealed class ThemeConfig
     /// Name of the theme to use (e.g., "Lumina").
     /// </summary>
     public string Name { get; init; } = string.Empty;
+
+    /// <summary>
+    /// Image settings from theme (sizes for responsive breakpoints).
+    /// </summary>
+    public ThemeImagesConfig Images { get; init; } = new();
+}
+
+/// <summary>
+/// Theme image settings (responsive breakpoints).
+/// </summary>
+/// <remarks>
+/// <para>
+/// The theme defines which image sizes to generate based on its CSS breakpoints.
+/// Users typically don't need to change this unless they modify the theme's CSS.
+/// </para>
+/// <para>
+/// To override, create a local theme/images.json file with custom sizes.
+/// This completely replaces theme defaults (no merging).
+/// </para>
+/// </remarks>
+public sealed class ThemeImagesConfig
+{
+    /// <summary>
+    /// Image widths to generate (in pixels) for responsive images.
+    /// </summary>
+    /// <remarks>
+    /// These match the theme's CSS breakpoints. Empty means use theme defaults.
+    /// </remarks>
+    public IReadOnlyList<int> Sizes { get; init; } = [];
 }

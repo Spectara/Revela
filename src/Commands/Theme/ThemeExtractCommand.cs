@@ -136,8 +136,9 @@ public sealed partial class ThemeExtractCommand(
         // Find matching entries
         var templateEntries = templateResolver.GetAllEntries();
         var assetEntries = assetResolver.GetAllEntries();
+        var configEntries = GetConfigurationEntries(theme, extensions);
 
-        var matchingFiles = new List<(ResolvedFileInfo Entry, bool IsAsset)>();
+        var matchingFiles = new List<(ResolvedFileInfo Entry, bool IsAsset, bool IsConfig)>();
 
         if (isFolder)
         {
@@ -149,7 +150,7 @@ public sealed partial class ThemeExtractCommand(
                 if (entry.Key.StartsWith(prefix + "/", StringComparison.OrdinalIgnoreCase) ||
                     entry.Key.Equals(prefix, StringComparison.OrdinalIgnoreCase))
                 {
-                    matchingFiles.Add((entry, false));
+                    matchingFiles.Add((entry, false, false));
                 }
             }
 
@@ -159,7 +160,16 @@ public sealed partial class ThemeExtractCommand(
                 if (assetKey.StartsWith(prefix + "/", StringComparison.OrdinalIgnoreCase) ||
                     assetKey.Equals(prefix, StringComparison.OrdinalIgnoreCase))
                 {
-                    matchingFiles.Add((entry, true));
+                    matchingFiles.Add((entry, true, false));
+                }
+            }
+
+            foreach (var entry in configEntries)
+            {
+                if (entry.Key.StartsWith(prefix + "/", StringComparison.OrdinalIgnoreCase) ||
+                    entry.Key.Equals(prefix, StringComparison.OrdinalIgnoreCase))
+                {
+                    matchingFiles.Add((entry, false, true));
                 }
             }
         }
@@ -175,21 +185,32 @@ public sealed partial class ThemeExtractCommand(
 
             if (templateEntry is not null)
             {
-                matchingFiles.Add((templateEntry, false));
+                matchingFiles.Add((templateEntry, false, false));
             }
             else
             {
-                // Try as asset (Assets/xxx)
-                var assetKey = normalizedPath.StartsWith("assets/", StringComparison.OrdinalIgnoreCase)
-                    ? normalizedPath["assets/".Length..]
-                    : normalizedPath;
+                // Try as configuration file
+                var configEntry = configEntries.FirstOrDefault(e =>
+                    e.Key.Equals(normalizedPath, StringComparison.OrdinalIgnoreCase));
 
-                var assetEntry = assetEntries.FirstOrDefault(e =>
-                    e.Key.Equals(assetKey, StringComparison.OrdinalIgnoreCase));
-
-                if (assetEntry is not null)
+                if (configEntry is not null)
                 {
-                    matchingFiles.Add((assetEntry, true));
+                    matchingFiles.Add((configEntry, false, true));
+                }
+                else
+                {
+                    // Try as asset (Assets/xxx)
+                    var assetKey = normalizedPath.StartsWith("assets/", StringComparison.OrdinalIgnoreCase)
+                        ? normalizedPath["assets/".Length..]
+                        : normalizedPath;
+
+                    var assetEntry = assetEntries.FirstOrDefault(e =>
+                        e.Key.Equals(assetKey, StringComparison.OrdinalIgnoreCase));
+
+                    if (assetEntry is not null)
+                    {
+                        matchingFiles.Add((assetEntry, true, false));
+                    }
                 }
             }
         }
@@ -208,7 +229,7 @@ public sealed partial class ThemeExtractCommand(
         if (localFiles.Count > 0)
         {
             AnsiConsole.MarkupLine("[yellow]The following files are already local overrides:[/]");
-            foreach (var (entry, _) in localFiles)
+            foreach (var (entry, _, _) in localFiles)
             {
                 AnsiConsole.MarkupLine($"  • [cyan]{EscapeMarkup(entry.Key)}[/]");
             }
@@ -225,12 +246,12 @@ public sealed partial class ThemeExtractCommand(
 
         // Check for existing files
         var existingFiles = new List<string>();
-        var filesToExtract = new List<(ResolvedFileInfo Entry, bool IsAsset, string TargetPath)>();
+        var filesToExtract = new List<(ResolvedFileInfo Entry, bool IsAsset, bool IsConfig, string TargetPath)>();
 
-        foreach (var (entry, isAsset) in matchingFiles)
+        foreach (var (entry, isAsset, isConfig) in matchingFiles)
         {
-            var targetPath = GetTargetPath(entry, isAsset, themeName, projectPath);
-            filesToExtract.Add((entry, isAsset, targetPath));
+            var targetPath = GetTargetPath(entry, isAsset, isConfig, themeName, projectPath);
+            filesToExtract.Add((entry, isAsset, isConfig, targetPath));
 
             if (File.Exists(targetPath))
             {
@@ -262,9 +283,9 @@ public sealed partial class ThemeExtractCommand(
             .Spinner(Spinner.Known.Dots)
             .StartAsync("Extracting files...", async _ =>
             {
-                foreach (var (entry, isAsset, targetPath) in filesToExtract)
+                foreach (var (entry, isAsset, isConfig, targetPath) in filesToExtract)
                 {
-                    await ExtractFileAsync(entry, isAsset, targetPath, theme, extensions, cancellationToken);
+                    await ExtractFileAsync(entry, isAsset, isConfig, targetPath, theme, extensions, cancellationToken);
                     extractedFiles.Add(Path.GetRelativePath(projectPath, targetPath));
                 }
             });
@@ -281,10 +302,17 @@ public sealed partial class ThemeExtractCommand(
         return 0;
     }
 
-    private static string GetTargetPath(ResolvedFileInfo entry, bool isAsset, string themeName, string projectPath)
+    private static string GetTargetPath(ResolvedFileInfo entry, bool isAsset, bool isConfig, string themeName, string projectPath)
     {
-        // All local overrides go to themes/{ThemeName}/
-        // The key structure already matches the expected override structure
+        // Configuration files go to theme/configuration/ folder (mirrors theme structure, lowercase)
+        if (isConfig)
+        {
+            // theme.json → theme/theme.json
+            // configuration/images.json → theme/configuration/images.json
+            return Path.Combine(projectPath, "theme", entry.Key.Replace('/', Path.DirectorySeparatorChar));
+        }
+
+        // Templates and assets go to themes/{ThemeName}/
         var themesFolder = Path.Combine(projectPath, "themes", themeName);
 
         if (isAsset)
@@ -316,6 +344,7 @@ public sealed partial class ThemeExtractCommand(
     private async Task ExtractFileAsync(
         ResolvedFileInfo entry,
         bool isAsset,
+        bool isConfig,
         string targetPath,
         IThemePlugin theme,
         IReadOnlyList<IThemeExtension> extensions,
@@ -331,7 +360,7 @@ public sealed partial class ThemeExtractCommand(
         // Get source stream based on entry source
         // CA2000 is a false positive - stream is disposed in finally block via DisposeAsync
 #pragma warning disable CA2000
-        var sourceStream = GetSourceStream(entry, isAsset, theme, extensions);
+        var sourceStream = GetSourceStream(entry, isAsset, isConfig, theme, extensions);
 #pragma warning restore CA2000
 
         if (sourceStream is null)
@@ -355,21 +384,34 @@ public sealed partial class ThemeExtractCommand(
     private static Stream? GetSourceStream(
         ResolvedFileInfo entry,
         bool isAsset,
+        bool isConfig,
         IThemePlugin theme,
         IReadOnlyList<IThemeExtension> extensions)
     {
+        if (isConfig)
+        {
+            // Configuration files - use OriginalPath which has correct case for embedded resource
+            return entry.Source switch
+            {
+                FileSourceType.Theme => theme.GetFile(entry.OriginalPath),
+                FileSourceType.Extension => GetExtensionStream(entry, extensions, entry.OriginalPath),
+                FileSourceType.Local when File.Exists(entry.OriginalPath) => File.OpenRead(entry.OriginalPath),
+                _ => null
+            };
+        }
+
         return entry.Source switch
         {
             FileSourceType.Theme => isAsset
                 ? theme.GetFile("Assets/" + entry.Key.Replace('/', Path.DirectorySeparatorChar))
                 : theme.GetFile(entry.OriginalPath),
-            FileSourceType.Extension => GetExtensionStream(entry, extensions),
+            FileSourceType.Extension => GetExtensionStream(entry, extensions, entry.OriginalPath),
             FileSourceType.Local when File.Exists(entry.OriginalPath) => File.OpenRead(entry.OriginalPath),
             _ => null
         };
     }
 
-    private static Stream? GetExtensionStream(ResolvedFileInfo entry, IReadOnlyList<IThemeExtension> extensions)
+    private static Stream? GetExtensionStream(ResolvedFileInfo entry, IReadOnlyList<IThemeExtension> extensions, string path)
     {
         if (entry.ExtensionName is null)
         {
@@ -379,7 +421,70 @@ public sealed partial class ThemeExtractCommand(
         var extension = extensions.FirstOrDefault(e =>
             e.Metadata.Name.Equals(entry.ExtensionName, StringComparison.OrdinalIgnoreCase));
 
-        return extension?.GetFile(entry.OriginalPath);
+        return extension?.GetFile(path);
+    }
+
+    /// <summary>
+    /// Gets configuration file entries from theme and extensions.
+    /// Includes theme.json and Configuration/*.json files.
+    /// </summary>
+    private static List<ResolvedFileInfo> GetConfigurationEntries(
+        IThemePlugin theme,
+        IReadOnlyList<IThemeExtension> extensions)
+    {
+        var entries = new Dictionary<string, ResolvedFileInfo>(StringComparer.OrdinalIgnoreCase);
+
+        // Get from base theme (theme.json and Configuration/*.json)
+        foreach (var file in theme.GetAllFiles())
+        {
+            var normalized = file.Replace('\\', '/');
+            if (normalized.StartsWith("Configuration/", StringComparison.OrdinalIgnoreCase))
+            {
+                // Use lowercase for consistency
+                var key = "configuration/" + normalized["Configuration/".Length..];
+                entries[key] = new ResolvedFileInfo(
+                    key,
+                    normalized,
+                    FileSourceType.Theme,
+                    null);
+            }
+            else if (normalized.Equals("theme.json", StringComparison.OrdinalIgnoreCase))
+            {
+                entries["theme.json"] = new ResolvedFileInfo(
+                    "theme.json",
+                    normalized,
+                    FileSourceType.Theme,
+                    null);
+            }
+        }
+
+        // Get from extensions (can override)
+        foreach (var ext in extensions)
+        {
+            foreach (var file in ext.GetAllFiles())
+            {
+                var normalized = file.Replace('\\', '/');
+                if (normalized.StartsWith("Configuration/", StringComparison.OrdinalIgnoreCase))
+                {
+                    var key = "configuration/" + normalized["Configuration/".Length..];
+                    entries[key] = new ResolvedFileInfo(
+                        key,
+                        normalized,
+                        FileSourceType.Extension,
+                        ext.Metadata.Name);
+                }
+                else if (normalized.Equals("theme.json", StringComparison.OrdinalIgnoreCase))
+                {
+                    entries["theme.json"] = new ResolvedFileInfo(
+                        "theme.json",
+                        normalized,
+                        FileSourceType.Extension,
+                        ext.Metadata.Name);
+                }
+            }
+        }
+
+        return [.. entries.Values];
     }
 
     private async Task<int> ExecuteFullExtractAsync(
