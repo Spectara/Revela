@@ -29,7 +29,6 @@ public static class ServiceCollectionExtensions
         // Core services
         services.AddSingleton<IFileHashService, FileHashService>();
         services.AddSingleton<IImageSizesProvider, ImageSizesProvider>();
-        services.AddSingleton<IThemeVariablesProvider, ThemeVariablesProvider>();
 
         // Parsing, Scanning, Building, Mapping (static classes not registered: GallerySorter, UrlBuilder)
         services.AddSingleton<RevelaParser>();

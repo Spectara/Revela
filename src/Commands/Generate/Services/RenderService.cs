@@ -31,7 +31,6 @@ public sealed partial class RenderService(
     IManifestRepository manifestRepository,
     RevelaParser revelaParser,
     IMarkdownService markdownService,
-    IThemeVariablesProvider themeVariablesProvider,
     IOptions<ProjectEnvironment> projectEnvironment,
     IOptionsMonitor<ProjectConfig> projectConfig,
     IOptionsMonitor<GenerateConfig> options,
@@ -383,7 +382,7 @@ public sealed partial class RenderService(
         var indexNavigation = SetActiveState(model.Navigation, string.Empty);
         var indexBasePath = CalculateSiteBasePath(config, "");
         var indexImageBasePath = CalculateImageBasePath(config, "");
-        var themeVariables = themeVariablesProvider.GetVariables(theme);
+        var themeVariables = theme?.GetManifest().Variables ?? new Dictionary<string, string>();
         var formats = ImageSettings.GetActiveFormats();
 
         // Get assets from resolver

@@ -25,6 +25,7 @@ public sealed partial class ThemeExtractCommand(
     IAssetResolver assetResolver,
     IOptions<ProjectEnvironment> projectEnvironment,
     IOptionsMonitor<ThemeConfig> themeConfig,
+    IPluginContext pluginContext,
     ILogger<ThemeExtractCommand> logger)
 {
     /// <summary>
@@ -81,14 +82,25 @@ public sealed partial class ThemeExtractCommand(
                 return await ExecuteSelectiveExtractAsync(file, force, cancellationToken);
             }
 
-            // Otherwise, require source argument for full extraction
+            // If no source argument, show interactive selection
             if (string.IsNullOrEmpty(source))
             {
-                ErrorPanels.ShowValidationError(
-                    "Theme name is required for full extraction.",
-                    "  [cyan]revela theme extract <theme>[/]         Full theme extraction\n" +
-                    "  [cyan]revela theme extract --file <path>[/]   Extract specific file");
-                return 1;
+                source = PromptForThemeSelection();
+                if (source is null)
+                {
+                    return 1; // User cancelled or no themes available
+                }
+
+                // In interactive mode, ask what to extract
+                var extractionChoice = PromptForExtractionMode();
+#pragma warning disable IDE0072 // Populate switch - we explicitly want default for future enum values
+                return extractionChoice switch
+                {
+                    ExtractionMode.Full => await ExecuteFullExtractAsync(source, target, force, includeExtensions, cancellationToken),
+                    ExtractionMode.SelectFiles => await ExecuteInteractiveFileSelectionAsync(source, target, force, cancellationToken),
+                    _ => 0, // Cancel or unknown
+                };
+#pragma warning restore IDE0072
             }
 
             return await ExecuteFullExtractAsync(source, target, force, includeExtensions, cancellationToken);
@@ -632,6 +644,350 @@ public sealed partial class ThemeExtractCommand(
             .Replace("]", "]]", StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// Prompts the user to select a theme for extraction.
+    /// </summary>
+    /// <returns>The selected theme name, or null if cancelled or no themes available.</returns>
+    private string? PromptForThemeSelection()
+    {
+        var projectPath = projectEnvironment.Value.Path;
+        var availableThemes = themeResolver.GetAvailableThemes(projectPath).ToList();
+
+        if (availableThemes.Count == 0)
+        {
+            ErrorPanels.ShowError(
+                "No Themes Available",
+                "[yellow]No themes are installed.[/]\n\n" +
+                "Install a theme first:\n" +
+                "  [cyan]revela theme install Lumina[/]");
+            return null;
+        }
+
+        var choices = availableThemes
+            .Select(t => new ThemeChoice(t.Metadata.Name, GetThemeSource(t)))
+            .ToList();
+
+        var selection = AnsiConsole.Prompt(
+            new SelectionPrompt<ThemeChoice>()
+                .Title("[cyan]Select theme to extract[/]")
+                .PageSize(10)
+                .HighlightStyle(new Style(Color.Cyan1, decoration: Decoration.Bold))
+                .UseConverter(c => c.Display)
+                .AddChoices(choices));
+
+        return selection.Name;
+    }
+
+    private string GetThemeSource(IThemePlugin theme)
+    {
+        // Look up source from plugin context
+        var pluginInfo = pluginContext.Plugins
+            .FirstOrDefault(p => p.Plugin.Metadata.Name.Equals(theme.Metadata.Name, StringComparison.OrdinalIgnoreCase));
+
+        return pluginInfo?.Source switch
+        {
+            PluginSource.Bundled => "bundled",
+            PluginSource.Local => "installed",
+            _ => "installed"
+        };
+    }
+
+    /// <summary>
+    /// Prompts the user to select extraction mode.
+    /// </summary>
+    private static ExtractionMode PromptForExtractionMode()
+    {
+        var choices = new List<ExtractionChoice>
+        {
+            new("Extract entire theme", ExtractionMode.Full),
+            new("Select specific files", ExtractionMode.SelectFiles),
+            new("Cancel", ExtractionMode.Cancel)
+        };
+
+        var selection = AnsiConsole.Prompt(
+            new SelectionPrompt<ExtractionChoice>()
+                .Title("[cyan]What would you like to extract?[/]")
+                .HighlightStyle(new Style(Color.Cyan1, decoration: Decoration.Bold))
+                .UseConverter(c => c.Display)
+                .AddChoices(choices));
+
+        return selection.Mode;
+    }
+
+    /// <summary>
+    /// Executes interactive file selection and extraction.
+    /// </summary>
+    private async Task<int> ExecuteInteractiveFileSelectionAsync(
+        string sourceName,
+        string? targetName,
+        bool force,
+        CancellationToken cancellationToken)
+    {
+        var projectPath = projectEnvironment.Value.Path;
+
+        // Resolve theme
+        var sourceTheme = themeResolver.ResolveInstalled(sourceName)
+                          ?? themeResolver.Resolve(sourceName, projectPath);
+
+        if (sourceTheme is null)
+        {
+            ErrorPanels.ShowError(
+                "Theme Not Found",
+                $"[yellow]Theme '{EscapeMarkup(sourceName)}' not found.[/]\n\n" +
+                "Run [cyan]revela theme list[/] to see available themes.");
+            return 1;
+        }
+
+        // Get extensions for this theme
+        var extensions = themeResolver.GetExtensions(sourceName);
+
+        // Get all available files from theme and extensions
+        var allFiles = GetThemeAndExtensionFiles(sourceTheme, extensions)
+            .OrderBy(f => f.Category)
+            .ThenBy(f => f.Path)
+            .ToList();
+
+        if (allFiles.Count == 0)
+        {
+            ErrorPanels.ShowError(
+                "No Files Found",
+                $"[yellow]Theme '{EscapeMarkup(sourceName)}' has no extractable files.[/]");
+            return 1;
+        }
+
+        // Group files by category for display (include SourceType and ExtensionIndex)
+        var templateFiles = allFiles.Where(f => f.Category == "Templates")
+            .Select(f => new FileChoice(f.Path, f.Category, f.SourceType, f.ExtensionIndex)).ToList();
+        var assetFiles = allFiles.Where(f => f.Category == "Assets")
+            .Select(f => new FileChoice(f.Path, f.Category, f.SourceType, f.ExtensionIndex)).ToList();
+        var configFiles = allFiles.Where(f => f.Category == "Configuration")
+            .Select(f => new FileChoice(f.Path, f.Category, f.SourceType, f.ExtensionIndex)).ToList();
+        var otherFiles = allFiles.Where(f => f.Category == "Other")
+            .Select(f => new FileChoice(f.Path, f.Category, f.SourceType, f.ExtensionIndex)).ToList();
+
+        var prompt = new MultiSelectionPrompt<FileChoice>()
+            .Title("[cyan]Select files to extract[/] [dim](Space to toggle, Enter to confirm)[/]")
+            .PageSize(15)
+            .HighlightStyle(new Style(Color.Cyan1))
+            .InstructionsText("[dim](↑↓ navigate, Space toggle, Enter confirm)[/]")
+            .UseConverter(f => f.Display);
+
+        if (templateFiles.Count > 0)
+        {
+            prompt.AddChoiceGroup(new FileChoice("Templates", "group"), templateFiles);
+        }
+
+        if (assetFiles.Count > 0)
+        {
+            prompt.AddChoiceGroup(new FileChoice("Assets", "group"), assetFiles);
+        }
+
+        if (configFiles.Count > 0)
+        {
+            prompt.AddChoiceGroup(new FileChoice("Configuration", "group"), configFiles);
+        }
+
+        if (otherFiles.Count > 0)
+        {
+            prompt.AddChoiceGroup(new FileChoice("Other", "group"), otherFiles);
+        }
+
+        var selectedFiles = AnsiConsole.Prompt(prompt);
+
+        if (selectedFiles.Count == 0)
+        {
+            AnsiConsole.MarkupLine("[yellow]No files selected. Extraction cancelled.[/]");
+            return 0;
+        }
+
+        // Determine target directory
+        var targetThemeName = targetName ?? sourceName;
+        var themesDir = Path.Combine(projectPath, "themes", targetThemeName);
+
+        // Check if target exists
+        if (Directory.Exists(themesDir) && !force)
+        {
+            var existingFiles = selectedFiles
+                .Where(f => f.Category != "group" && File.Exists(Path.Combine(themesDir, f.Path)))
+                .ToList();
+
+            if (existingFiles.Count > 0)
+            {
+                AnsiConsole.MarkupLine($"[yellow]Some files already exist in themes/{EscapeMarkup(targetThemeName)}/[/]");
+
+                var overwrite = await AnsiConsole.ConfirmAsync("Overwrite existing files?", defaultValue: false, cancellationToken).ConfigureAwait(false);
+                if (!overwrite)
+                {
+                    AnsiConsole.MarkupLine("[dim]Extraction cancelled.[/]");
+                    return 0;
+                }
+            }
+        }
+
+        // Extract selected files using appropriate source (theme or extension)
+        var extractedCount = 0;
+        foreach (var file in selectedFiles.Where(f => f.Category != "group"))
+        {
+            var targetPath = Path.Combine(themesDir, file.Path);
+            var targetDir = Path.GetDirectoryName(targetPath);
+
+            if (!string.IsNullOrEmpty(targetDir))
+            {
+                Directory.CreateDirectory(targetDir);
+            }
+
+            try
+            {
+                // Get file from correct source (theme or extension)
+                Stream? sourceStream;
+                if (file.SourceType == FileSourceType.Extension && file.ExtensionIndex >= 0 && file.ExtensionIndex < extensions.Count)
+                {
+                    sourceStream = extensions[file.ExtensionIndex].GetFile(file.Path);
+                }
+                else
+                {
+                    sourceStream = sourceTheme.GetFile(file.Path);
+                }
+
+                if (sourceStream is null)
+                {
+                    AnsiConsole.MarkupLine($"[yellow]⚠[/] File not found: {EscapeMarkup(file.Path)}");
+                    continue;
+                }
+
+                using (sourceStream)
+                {
+                    using var targetStream = File.Create(targetPath);
+                    await sourceStream.CopyToAsync(targetStream, cancellationToken).ConfigureAwait(false);
+                }
+
+                extractedCount++;
+                LogExtractedFile(file.Path, targetPath);
+            }
+            catch (Exception ex)
+            {
+                AnsiConsole.MarkupLine($"[red]✗[/] Failed to extract {EscapeMarkup(file.Path)}: {EscapeMarkup(ex.Message)}");
+            }
+        }
+
+        AnsiConsole.WriteLine();
+        AnsiConsole.MarkupLine($"[green]✓[/] Extracted [cyan]{extractedCount}[/] file(s) to [cyan]themes/{EscapeMarkup(targetThemeName)}/[/]");
+
+        return 0;
+    }
+
+    /// <summary>
+    /// Gets all files from a theme and its extensions for selection, categorized by type.
+    /// </summary>
+    private static List<(string Path, string Category, FileSourceType SourceType, int ExtensionIndex)> GetThemeAndExtensionFiles(
+        IThemePlugin theme,
+        IReadOnlyList<IThemeExtension> extensions)
+    {
+        var files = new List<(string Path, string Category, FileSourceType SourceType, int ExtensionIndex)>();
+        var seenPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        // Add files from base theme
+        foreach (var file in theme.GetAllFiles())
+        {
+            var normalized = file.Replace('\\', '/');
+            var category = GetFileCategory(normalized);
+            files.Add((normalized, category, FileSourceType.Theme, -1));
+            seenPaths.Add(normalized);
+        }
+
+        // Add files from extensions (may override theme files)
+        for (var i = 0; i < extensions.Count; i++)
+        {
+            var extension = extensions[i];
+            foreach (var file in extension.GetAllFiles())
+            {
+                var normalized = file.Replace('\\', '/');
+                var category = GetFileCategory(normalized);
+
+                // If extension overrides a theme file, replace it
+                if (seenPaths.Contains(normalized))
+                {
+                    var existingIndex = files.FindIndex(f =>
+                        f.Path.Equals(normalized, StringComparison.OrdinalIgnoreCase));
+                    if (existingIndex >= 0)
+                    {
+                        files[existingIndex] = (normalized, category, FileSourceType.Extension, i);
+                    }
+                }
+                else
+                {
+                    files.Add((normalized, category, FileSourceType.Extension, i));
+                    seenPaths.Add(normalized);
+                }
+            }
+        }
+
+        return files;
+    }
+
+    /// <summary>
+    /// Determines the category of a file based on its path.
+    /// </summary>
+    private static string GetFileCategory(string path)
+    {
+        if (path.EndsWith(".revela", StringComparison.OrdinalIgnoreCase))
+        {
+            return "Templates";
+        }
+
+        if (path.StartsWith("Assets/", StringComparison.OrdinalIgnoreCase))
+        {
+            return "Assets";
+        }
+
+        if (path.StartsWith("Configuration/", StringComparison.OrdinalIgnoreCase) ||
+            path.Equals("theme.json", StringComparison.OrdinalIgnoreCase))
+        {
+            return "Configuration";
+        }
+
+        return "Other";
+    }
+
+    /// <summary>
+    /// Extraction mode selection.
+    /// </summary>
+    private enum ExtractionMode
+    {
+        Full,
+        SelectFiles,
+        Cancel
+    }
+
+    /// <summary>
+    /// Represents an extraction mode choice.
+    /// </summary>
+    private sealed record ExtractionChoice(string Display, ExtractionMode Mode);
+
+    /// <summary>
+    /// Represents a theme choice in the selection prompt.
+    /// </summary>
+    private sealed record ThemeChoice(string Name, string Source)
+    {
+        public string Display => $"{Name} [dim]({Source})[/]";
+    }
+
+    /// <summary>
+    /// Represents a file choice in the selection prompt.
+    /// </summary>
+    /// <param name="Path">Relative path of the file.</param>
+    /// <param name="Category">Category (Templates, Assets, Configuration, Other).</param>
+    /// <param name="SourceType">Source type (Theme or Extension).</param>
+    /// <param name="ExtensionIndex">Index of the extension in the extensions list (-1 for theme).</param>
+    private sealed record FileChoice(string Path, string Category, FileSourceType SourceType = FileSourceType.Theme, int ExtensionIndex = -1)
+    {
+        public string Display => Category == "group"
+            ? $"[bold]{Path}[/]"
+            : SourceType == FileSourceType.Extension
+                ? $"  {Path} [dim](extension)[/]"
+                : $"  {Path}";
+    }
+
     [LoggerMessage(Level = LogLevel.Information, Message = "Extracting theme '{ThemeName}' to {TargetPath}")]
     private static partial void LogExtracting(ILogger logger, string themeName, string targetPath);
 
@@ -647,4 +1003,3 @@ public sealed partial class ThemeExtractCommand(
     [LoggerMessage(Level = LogLevel.Warning, Message = "File not found: '{Key}' at path '{Path}'")]
     private partial void LogFileNotFound(string key, string path);
 }
-
