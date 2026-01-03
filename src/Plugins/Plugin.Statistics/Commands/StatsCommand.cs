@@ -126,8 +126,13 @@ public sealed class StatsCommand(
     }
 
     /// <summary>
-    /// Recursively find all pages with statistics data source
+    /// Recursively find all pages with statistics data source or statistics template
     /// </summary>
+    /// <remarks>
+    /// Matches pages with:
+    /// 1. Explicit data source: data = { statistics: "statistics.json" }
+    /// 2. Statistics template: template = "statistics/..." (uses extension data defaults)
+    /// </remarks>
     private static List<(string Path, string Slug)> FindStatisticsPages(ManifestEntry root)
     {
         var results = new List<(string Path, string Slug)>();
@@ -136,7 +141,11 @@ public sealed class StatsCommand(
 
         static void FindRecursive(ManifestEntry node, List<(string Path, string Slug)> results)
         {
-            if (node.DataSources.ContainsKey("statistics"))
+            // Match explicit data source OR statistics template
+            var hasStatisticsData = node.DataSources.ContainsKey("statistics");
+            var hasStatisticsTemplate = node.Template?.StartsWith("statistics/", StringComparison.OrdinalIgnoreCase) == true;
+
+            if (hasStatisticsData || hasStatisticsTemplate)
             {
                 results.Add((node.Path, node.Slug ?? string.Empty));
             }

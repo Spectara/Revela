@@ -8,11 +8,7 @@
   "templates": {
     "statistics/overview": {
       "data": {
-        "cameras": "statistics/cameras.json",
-        "lenses": "statistics/lenses.json",
-        "focal_lengths": "statistics/focal-lengths.json",
-        "apertures": "statistics/apertures.json",
-        "iso": "statistics/iso.json"
+        "statistics": "statistics.json"
       }
     }
   }

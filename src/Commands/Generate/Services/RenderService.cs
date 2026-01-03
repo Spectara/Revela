@@ -494,23 +494,30 @@ public sealed partial class RenderService(
                     gallery.Body = renderedContent;
                 }
             }
+            // Build layout model - use Dictionary to support dynamic data
+            var layoutModel = new Dictionary<string, object?>
+            {
+                ["site"] = model.Site,
+                ["gallery"] = gallery,
+                ["images"] = customTemplate is not null ? [] : galleryImages,
+                ["nav_items"] = galleryNavigation,
+                ["basepath"] = basepath,
+                ["image_basepath"] = galleryImageBasePath,
+                ["image_formats"] = formats.Keys,
+                ["theme"] = themeVariables,
+                ["stylesheets"] = stylesheets,
+                ["scripts"] = scripts
+            };
+
+            // Add resolved data (e.g., statistics) to layout context
+            // This makes data available for body templates included via {{ include body_template }}
+            foreach (var (key, value) in resolvedData)
+            {
+                layoutModel[key] = value;
+            }
 
             // Always use layout template
-            var galleryHtml = templateEngine.Render(
-                galleryTemplate,
-                new
-                {
-                    site = model.Site,
-                    gallery,
-                    images = customTemplate is not null ? [] : galleryImages,
-                    nav_items = galleryNavigation,
-                    basepath,
-                    image_basepath = galleryImageBasePath,
-                    image_formats = formats.Keys,
-                    theme = themeVariables,
-                    stylesheets,
-                    scripts
-                });
+            var galleryHtml = templateEngine.Render(galleryTemplate, layoutModel);
 
             var galleryOutputPath = Path.Combine(OutputPath, gallery.Slug);
             Directory.CreateDirectory(galleryOutputPath);
@@ -581,6 +588,16 @@ public sealed partial class RenderService(
             key = key[..^7];
         }
 
+        // Add body/ prefix for custom page templates
+        // This matches Layout.revela behavior: body_template = 'body/' + (gallery.template ?? 'gallery')
+        // Root templates (layout, index, gallery) don't need prefix
+        if (!key.StartsWith("body/", StringComparison.OrdinalIgnoreCase) &&
+            !key.StartsWith("partials/", StringComparison.OrdinalIgnoreCase) &&
+            !IsRootTemplate(key))
+        {
+            key = "body/" + key;
+        }
+
         // Use template resolver for unified lookup (theme → extensions → local)
         using var stream = templateResolver.GetTemplate(key);
         if (stream is not null)
@@ -591,6 +608,17 @@ public sealed partial class RenderService(
 
         return null;
     }
+
+    /// <summary>
+    /// Determines if a template name is a root template (layout, index, gallery).
+    /// </summary>
+    /// <remarks>
+    /// Root templates are NOT prefixed with body/ since they exist at the theme root level.
+    /// </remarks>
+    private static bool IsRootTemplate(string key) =>
+        key.Equals("layout", StringComparison.OrdinalIgnoreCase) ||
+        key.Equals("index", StringComparison.OrdinalIgnoreCase) ||
+        key.Equals("gallery", StringComparison.OrdinalIgnoreCase);
 
     /// <summary>
     /// Loads metadata from _index.revela for a gallery at render time.
@@ -634,7 +662,7 @@ public sealed partial class RenderService(
     /// Extensions can define default data sources for their templates in manifest.json.
     /// This allows users to use body templates without explicit data configuration.
     /// </remarks>
-    /// <param name="templateKey">Template key (e.g., "body/statistics/overview")</param>
+    /// <param name="templateKey">Template key (e.g., "statistics/overview")</param>
     /// <returns>Dictionary of default data sources, or empty if none defined</returns>
     private IReadOnlyDictionary<string, string> GetExtensionDataDefaults(string templateKey)
     {
@@ -802,11 +830,39 @@ public sealed partial class RenderService(
             if (File.Exists(cachePath))
             {
                 var json = await File.ReadAllTextAsync(cachePath, cancellationToken);
-                return JsonSerializer.Deserialize<JsonElement>(json);
+                var jsonElement = JsonSerializer.Deserialize<JsonElement>(json);
+                return ConvertJsonElement(jsonElement);
             }
         }
 
         return null;
+    }
+
+    /// <summary>
+    /// Converts a JsonElement to Scriban-compatible types.
+    /// </summary>
+    /// <remarks>
+    /// Scriban cannot access properties on JsonElement directly.
+    /// This method converts JSON to Dictionary/List structures that Scriban can traverse.
+    /// </remarks>
+    private static object? ConvertJsonElement(JsonElement element)
+    {
+#pragma warning disable IDE0072 // Populate switch - we handle all known values explicitly with a fallback
+        return element.ValueKind switch
+        {
+            JsonValueKind.Object => element.EnumerateObject()
+                .ToDictionary(p => p.Name, p => ConvertJsonElement(p.Value)),
+            JsonValueKind.Array => element.EnumerateArray()
+                .Select(ConvertJsonElement)
+                .ToList(),
+            JsonValueKind.String => element.GetString(),
+            JsonValueKind.Number when element.TryGetInt64(out var l) => l,
+            JsonValueKind.Number => element.GetDouble(),
+            JsonValueKind.True => true,
+            JsonValueKind.False => false,
+            _ => null, // Handles Null, Undefined, and any future values
+        };
+#pragma warning restore IDE0072
     }
 
     #endregion
