@@ -11,7 +11,7 @@ namespace Spectara.Revela.Theme.Lumina.Statistics;
 /// - Lens popularity
 /// - Aperture, focal length, and ISO distributions
 ///
-/// All configuration is in extension.json (embedded resource).
+/// All configuration is in manifest.json (embedded resource).
 /// Usage: {{ include 'statistics/overview' stats }}
 /// </remarks>
 public sealed class LuminaStatisticsExtension()

@@ -41,7 +41,7 @@ public interface IThemeResolver
     /// Get theme extensions for a specific theme
     /// </summary>
     /// <param name="themeName">Theme name to get extensions for</param>
-    /// <returns>List of extensions targeting this theme</returns>
+    /// <returns>List of installed extensions targeting this theme</returns>
     IReadOnlyList<IThemeExtension> GetExtensions(string themeName);
 }
 

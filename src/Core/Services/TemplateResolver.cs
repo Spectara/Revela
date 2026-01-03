@@ -12,10 +12,10 @@ namespace Spectara.Revela.Core.Services;
 /// Local overrides take priority over extensions, which take priority over theme.
 /// </para>
 /// <para>
-/// Key derivation conventions:
-/// - Theme: path relative to theme root, lowercase, no extension
-/// - Extension: partialPrefix + "/" + filename (Body/Partials folders stripped)
-/// - Local: path relative to themes/{ThemeName}/, lowercase, no extension
+/// Key derivation conventions (all sources use same pattern):
+/// - Theme: path relative to theme root → body/gallery, partials/navigation
+/// - Extension: folder + prefix + filename → partials/statistics/overview
+/// - Local: path relative to themes/{ThemeName}/ → partials/statistics/overview
 /// </para>
 /// </remarks>
 public sealed partial class TemplateResolver(ILogger<TemplateResolver> logger) : ITemplateResolver
@@ -205,8 +205,15 @@ public sealed partial class TemplateResolver(ILogger<TemplateResolver> logger) :
     /// Derives template key for extension files.
     /// </summary>
     /// <remarks>
-    /// Body/Overview.revela + prefix "statistics" → statistics/overview
-    /// Partials/Cameras.revela + prefix "statistics" → statistics/cameras
+    /// <para>
+    /// Extension keys include folder path for consistency with theme keys:
+    /// Partials/overview.revela + prefix "statistics" → partials/statistics/overview
+    /// Body/chart.revela + prefix "statistics" → body/statistics/chart
+    /// </para>
+    /// <para>
+    /// This allows local overrides to use the same key pattern:
+    /// themes/Lumina/Partials/Statistics/overview.revela → partials/statistics/overview
+    /// </para>
     /// </remarks>
     [System.Diagnostics.CodeAnalysis.SuppressMessage(
         "Globalization",
@@ -214,11 +221,18 @@ public sealed partial class TemplateResolver(ILogger<TemplateResolver> logger) :
         Justification = "Template keys use lowercase by convention - this is format conversion, not normalization")]
     private static string DeriveExtensionKey(string prefix, string path)
     {
-        // Get filename without extension
+        // Get folder (Partials, Body) and filename without extension
+        var folder = Path.GetDirectoryName(path)?.Replace('\\', '/');
         var fileName = Path.GetFileNameWithoutExtension(path);
 
-        // Combine prefix with filename (lowercase)
-        return $"{prefix}/{fileName}".ToLowerInvariant();
+        // Combine folder + prefix + filename (lowercase)
+        // Partials/overview.revela → partials/statistics/overview
+        if (string.IsNullOrEmpty(folder))
+        {
+            return $"{prefix}/{fileName}".ToLowerInvariant();
+        }
+
+        return $"{folder}/{prefix}/{fileName}".ToLowerInvariant();
     }
 
     [System.Diagnostics.CodeAnalysis.SuppressMessage(

@@ -40,7 +40,7 @@ Body Template Selection:
 
     {{~ # Main Navigation (Fullscreen Overlay) ~}}
     <nav>
-        {{~ include 'partials/navigation' nav_items ~}}
+        {{~ include 'navigation' nav_items ~}}
     </nav>
 
     {{~ # Sticky Header ~}}
@@ -65,33 +65,24 @@ Body Template Selection:
         {{~##
         Dynamic Body Template Inclusion
 
-        Two modes of operation:
-        1. Pre-rendered content (plugins): gallery.body contains HTML
-        - Used when template = "statistics/overview" etc.
-        - RenderService pre-renders with full data context
-        2. Dynamic include (theme templates): gallery.body is empty or markdown
-        - Used when template = "body/page", "body/gallery", or not set
-        - Template is included and rendered with current context
+        All body templates are included dynamically with full context.
+        Extension templates define data defaults in manifest.json, so users
+        can simply specify template = "body/statistics/overview" without
+        explicit data configuration.
 
         Examples:
-        - template = "body/page" → Simple text page (include)
-        - template = "body/gallery" → Image gallery (include, default)
-        - template = "statistics/overview" → Plugin template (pre-rendered)
+        - template = "body/page" → Simple text page
+        - template = "body/gallery" → Image gallery (default)
+        - template = "body/statistics/overview" → Statistics extension template
         ##~}}
-        {{~ if gallery.template && !string.starts_with gallery.template 'body/' ~}}
-        {{~ # Plugin/extension template: already pre-rendered in gallery.body ~}}
-        {{ gallery.body }}
-        {{~ else ~}}
-        {{~ # Theme body template: include dynamically ~}}
-        {{~ body_template = gallery.template ?? 'body/gallery' ~}}
+        {{~ body_template = 'body/' + (gallery.template ?? 'gallery') ~}}
         {{~ include body_template ~}}
-        {{~ end ~}}
     </main>
 
     {{~ # Footer with Navigation Copy ~}}
     <footer>
         <nav>
-            {{~ include 'partials/navigation' nav_items ~}}
+            {{~ include 'navigation' nav_items ~}}
         </nav>
         <div>
             {{ site.copyright }}{{~ if theme.credits ~}} · {{ theme.credits }}{{~ end ~}}

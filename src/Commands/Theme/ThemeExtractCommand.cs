@@ -56,17 +56,11 @@ public sealed partial class ThemeExtractCommand(
             Description = "Overwrite existing files without confirmation"
         };
 
-        var extensionsOption = new Option<bool>("--extensions", "-e")
-        {
-            Description = "Also extract matching theme extensions (Theme.{Name}.* packages)"
-        };
-
         var command = new Command("extract", "Extract a theme or specific files to themes/ folder for customization");
         command.Arguments.Add(sourceArg);
         command.Arguments.Add(targetArg);
         command.Options.Add(fileOption);
         command.Options.Add(forceOption);
-        command.Options.Add(extensionsOption);
 
         command.SetAction(async (parseResult, cancellationToken) =>
         {
@@ -74,7 +68,6 @@ public sealed partial class ThemeExtractCommand(
             var target = parseResult.GetValue(targetArg);
             var file = parseResult.GetValue(fileOption);
             var force = parseResult.GetValue(forceOption);
-            var includeExtensions = parseResult.GetValue(extensionsOption);
 
             // If --file is specified, use selective extraction
             if (!string.IsNullOrEmpty(file))
@@ -96,14 +89,14 @@ public sealed partial class ThemeExtractCommand(
 #pragma warning disable IDE0072 // Populate switch - we explicitly want default for future enum values
                 return extractionChoice switch
                 {
-                    ExtractionMode.Full => await ExecuteFullExtractAsync(source, target, force, includeExtensions, cancellationToken),
+                    ExtractionMode.Full => await ExecuteFullExtractAsync(source, target, force, cancellationToken),
                     ExtractionMode.SelectFiles => await ExecuteInteractiveFileSelectionAsync(source, target, force, cancellationToken),
                     _ => 0, // Cancel or unknown
                 };
 #pragma warning restore IDE0072
             }
 
-            return await ExecuteFullExtractAsync(source, target, force, includeExtensions, cancellationToken);
+            return await ExecuteFullExtractAsync(source, target, force, cancellationToken);
         });
 
         return command;
@@ -319,7 +312,7 @@ public sealed partial class ThemeExtractCommand(
         // Configuration files go to theme/configuration/ folder (mirrors theme structure, lowercase)
         if (isConfig)
         {
-            // theme.json → theme/theme.json
+            // manifest.json → theme/manifest.json
             // configuration/images.json → theme/configuration/images.json
             return Path.Combine(projectPath, "theme", entry.Key.Replace('/', Path.DirectorySeparatorChar));
         }
@@ -438,7 +431,7 @@ public sealed partial class ThemeExtractCommand(
 
     /// <summary>
     /// Gets configuration file entries from theme and extensions.
-    /// Includes theme.json and Configuration/*.json files.
+    /// Includes manifest.json and Configuration/*.json files.
     /// </summary>
     private static List<ResolvedFileInfo> GetConfigurationEntries(
         IThemePlugin theme,
@@ -460,10 +453,10 @@ public sealed partial class ThemeExtractCommand(
                     FileSourceType.Theme,
                     null);
             }
-            else if (normalized.Equals("theme.json", StringComparison.OrdinalIgnoreCase))
+            else if (normalized.Equals("manifest.json", StringComparison.OrdinalIgnoreCase))
             {
-                entries["theme.json"] = new ResolvedFileInfo(
-                    "theme.json",
+                entries["manifest.json"] = new ResolvedFileInfo(
+                    "manifest.json",
                     normalized,
                     FileSourceType.Theme,
                     null);
@@ -485,10 +478,10 @@ public sealed partial class ThemeExtractCommand(
                         FileSourceType.Extension,
                         ext.Metadata.Name);
                 }
-                else if (normalized.Equals("theme.json", StringComparison.OrdinalIgnoreCase))
+                else if (normalized.Equals("manifest.json", StringComparison.OrdinalIgnoreCase))
                 {
-                    entries["theme.json"] = new ResolvedFileInfo(
-                        "theme.json",
+                    entries["manifest.json"] = new ResolvedFileInfo(
+                        "manifest.json",
                         normalized,
                         FileSourceType.Extension,
                         ext.Metadata.Name);
@@ -503,7 +496,6 @@ public sealed partial class ThemeExtractCommand(
         string sourceName,
         string? targetName,
         bool force,
-        bool includeExtensions,
         CancellationToken cancellationToken)
     {
         var projectPath = projectEnvironment.Value.Path;
@@ -560,44 +552,66 @@ public sealed partial class ThemeExtractCommand(
             UpdateThemeName(targetPath, targetName);
         }
 
-        // Extract matching extensions if requested
+        // Extract extensions into category subfolders (Partials/<ExtName>/, Assets/<ExtName>/)
         var extractedExtensions = new List<string>();
-        if (includeExtensions)
+        var extensions = themeResolver.GetExtensions(sourceName);
+        if (extensions.Count > 0)
         {
-            var extensions = themeResolver.GetExtensions(sourceName);
-            if (extensions.Count > 0)
-            {
-                await AnsiConsole.Status()
-                    .Spinner(Spinner.Known.Dots)
-                    .StartAsync(
-                        "Extracting theme extensions...",
-                        async _ =>
+            await AnsiConsole.Status()
+                .Spinner(Spinner.Known.Dots)
+                .StartAsync(
+                    "Extracting theme extensions...",
+                    async _ =>
+                    {
+                        foreach (var extension in extensions)
                         {
-                            foreach (var extension in extensions)
-                            {
-                                // Convert prefix to PascalCase for folder name (statistics → Statistics)
-                                var folderName = char.ToUpperInvariant(extension.PartialPrefix[0]) + extension.PartialPrefix[1..];
-                                var extensionFolder = Path.Combine(targetPath, "Extensions", folderName);
+                            // Convert prefix to PascalCase for folder name (statistics → Statistics)
+                            var folderName = char.ToUpperInvariant(extension.PartialPrefix[0]) + extension.PartialPrefix[1..];
 
-                                if (Directory.Exists(extensionFolder))
+                            // Extract each file into the appropriate category subfolder
+                            foreach (var file in extension.GetAllFiles())
+                            {
+                                // file is like "Partials/Statistics.revela" or "Assets/statistics.css"
+                                // We want to insert the extension name: "Partials/Statistics/Statistics.revela"
+                                var parts = file.Split('/', 2);
+                                string targetFile;
+                                if (parts.Length == 2)
                                 {
-                                    if (force)
-                                    {
-                                        Directory.Delete(extensionFolder, recursive: true);
-                                    }
-                                    else
-                                    {
-                                        continue;
-                                    }
+                                    // Has category: Category/ExtName/FileName
+                                    targetFile = Path.Combine(targetPath, parts[0], folderName, parts[1]);
+                                }
+                                else
+                                {
+                                    // No category (root file): ExtName/FileName
+                                    targetFile = Path.Combine(targetPath, folderName, file);
                                 }
 
-                                Directory.CreateDirectory(extensionFolder);
-                                await extension.ExtractToAsync(extensionFolder, cancellationToken);
-                                extractedExtensions.Add(folderName);
-                                LogExtractingExtension(logger, extension.Metadata.Name, extensionFolder);
+                                // Ensure directory exists
+                                var targetDir = Path.GetDirectoryName(targetFile);
+                                if (!string.IsNullOrEmpty(targetDir))
+                                {
+                                    Directory.CreateDirectory(targetDir);
+                                }
+
+                                // Handle overwrite
+                                if (File.Exists(targetFile) && !force)
+                                {
+                                    continue;
+                                }
+
+                                // Copy file
+                                using var stream = extension.GetFile(file);
+                                if (stream is not null)
+                                {
+                                    await using var fileStream = File.Create(targetFile);
+                                    await stream.CopyToAsync(fileStream, cancellationToken);
+                                }
                             }
-                        });
-            }
+
+                            extractedExtensions.Add(folderName);
+                            LogExtractingExtension(logger, extension.Metadata.Name, $"{targetPath}/*/'{folderName}/");
+                        }
+                    });
         }
 
         // Success panel
@@ -621,20 +635,20 @@ public sealed partial class ThemeExtractCommand(
 
     private static void UpdateThemeName(string themePath, string newName)
     {
-        var themeJsonPath = Path.Combine(themePath, "theme.json");
-        if (!File.Exists(themeJsonPath))
+        var manifestPath = Path.Combine(themePath, "manifest.json");
+        if (!File.Exists(manifestPath))
         {
             return;
         }
 
-        var json = File.ReadAllText(themeJsonPath);
+        var json = File.ReadAllText(manifestPath);
 
         // Simple regex replacement for "name": "..."
         var pattern = "\"name\"\\s*:\\s*\"[^\"]*\"";
         var replacement = $"\"name\": \"{newName}\"";
         var updatedJson = System.Text.RegularExpressions.Regex.Replace(json, pattern, replacement);
 
-        File.WriteAllText(themeJsonPath, updatedJson);
+        File.WriteAllText(manifestPath, updatedJson);
     }
 
     private static string EscapeMarkup(string text)
@@ -842,7 +856,12 @@ public sealed partial class ThemeExtractCommand(
                 Stream? sourceStream;
                 if (file.SourceType == FileSourceType.Extension && file.ExtensionIndex >= 0 && file.ExtensionIndex < extensions.Count)
                 {
-                    sourceStream = extensions[file.ExtensionIndex].GetFile(file.Path);
+                    // For extensions, file.Path is the target path with extension folder inserted
+                    // e.g., "Partials/Statistics/Statistics.revela" - we need to extract "Partials/Statistics.revela"
+                    var extension = extensions[file.ExtensionIndex];
+                    var folderName = char.ToUpperInvariant(extension.PartialPrefix[0]) + extension.PartialPrefix[1..];
+                    var originalPath = GetExtensionOriginalPath(file.Path, folderName);
+                    sourceStream = extension.GetFile(originalPath);
                 }
                 else
                 {
@@ -878,13 +897,13 @@ public sealed partial class ThemeExtractCommand(
 
     /// <summary>
     /// Gets all files from a theme and its extensions for selection, categorized by type.
+    /// Extension files are shown with their target path: Category/{ExtName}/file
     /// </summary>
     private static List<(string Path, string Category, FileSourceType SourceType, int ExtensionIndex)> GetThemeAndExtensionFiles(
         IThemePlugin theme,
         IReadOnlyList<IThemeExtension> extensions)
     {
         var files = new List<(string Path, string Category, FileSourceType SourceType, int ExtensionIndex)>();
-        var seenPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
         // Add files from base theme
         foreach (var file in theme.GetAllFiles())
@@ -892,37 +911,44 @@ public sealed partial class ThemeExtractCommand(
             var normalized = file.Replace('\\', '/');
             var category = GetFileCategory(normalized);
             files.Add((normalized, category, FileSourceType.Theme, -1));
-            seenPaths.Add(normalized);
         }
 
-        // Add files from extensions (may override theme files)
+        // Add files from extensions - insert extension name into path
+        // e.g., "Partials/Statistics.revela" → "Partials/Statistics/Statistics.revela"
         for (var i = 0; i < extensions.Count; i++)
         {
             var extension = extensions[i];
+            // Convert prefix to PascalCase for folder name (statistics → Statistics)
+            var folderName = char.ToUpperInvariant(extension.PartialPrefix[0]) + extension.PartialPrefix[1..];
+
             foreach (var file in extension.GetAllFiles())
             {
                 var normalized = file.Replace('\\', '/');
+                var targetPath = InsertExtensionFolder(normalized, folderName);
                 var category = GetFileCategory(normalized);
-
-                // If extension overrides a theme file, replace it
-                if (seenPaths.Contains(normalized))
-                {
-                    var existingIndex = files.FindIndex(f =>
-                        f.Path.Equals(normalized, StringComparison.OrdinalIgnoreCase));
-                    if (existingIndex >= 0)
-                    {
-                        files[existingIndex] = (normalized, category, FileSourceType.Extension, i);
-                    }
-                }
-                else
-                {
-                    files.Add((normalized, category, FileSourceType.Extension, i));
-                    seenPaths.Add(normalized);
-                }
+                files.Add((targetPath, category, FileSourceType.Extension, i));
             }
         }
 
         return files;
+    }
+
+    /// <summary>
+    /// Inserts extension folder name into the path.
+    /// "Partials/Statistics.revela" + "Statistics" → "Partials/Statistics/Statistics.revela"
+    /// "Assets/styles.css" + "Statistics" → "Assets/Statistics/styles.css"
+    /// </summary>
+    private static string InsertExtensionFolder(string path, string folderName)
+    {
+        var parts = path.Split('/', 2);
+        if (parts.Length == 2)
+        {
+            // Has category: Category/ExtName/rest
+            return $"{parts[0]}/{folderName}/{parts[1]}";
+        }
+
+        // Root file: ExtName/file
+        return $"{folderName}/{path}";
     }
 
     /// <summary>
@@ -941,12 +967,35 @@ public sealed partial class ThemeExtractCommand(
         }
 
         if (path.StartsWith("Configuration/", StringComparison.OrdinalIgnoreCase) ||
-            path.Equals("theme.json", StringComparison.OrdinalIgnoreCase))
+            path.Equals("manifest.json", StringComparison.OrdinalIgnoreCase))
         {
             return "Configuration";
         }
 
         return "Other";
+    }
+
+    /// <summary>
+    /// Extracts the original extension file path from the target path.
+    /// E.g., "Partials/Statistics/Statistics.revela" → "Partials/Statistics.revela"
+    /// </summary>
+    private static string GetExtensionOriginalPath(string targetPath, string folderName)
+    {
+        // Format: Category/ExtName/file → Category/file
+        var parts = targetPath.Split('/', 3);
+        if (parts.Length == 3 && parts[1].Equals(folderName, StringComparison.OrdinalIgnoreCase))
+        {
+            // Category/ExtName/rest → Category/rest
+            return $"{parts[0]}/{parts[2]}";
+        }
+
+        if (parts.Length == 2 && parts[0].Equals(folderName, StringComparison.OrdinalIgnoreCase))
+        {
+            // ExtName/file → file (root level extension file)
+            return parts[1];
+        }
+
+        return targetPath;
     }
 
     /// <summary>

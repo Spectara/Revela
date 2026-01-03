@@ -123,7 +123,7 @@ Customize HTML output by editing `.revela` files:
     {{ end }}
 </head>
 <body style="background: {{ theme.background-color }}">
-    {{ include 'Partials/Navigation.revela' }}
+    {{ include 'navigation' }}
     {{ body }}
 </body>
 </html>
@@ -138,7 +138,7 @@ Customize HTML output by editing `.revela` files:
     {{ end }}
     <div class="images">
         {{ for image in images }}
-        {{ include 'Partials/Image.revela' }}
+        {{ include 'image' }}
         {{ end }}
     </div>
 </main>
@@ -204,39 +204,57 @@ The rest will be loaded from the installed theme.
 
 ## Theme Extensions
 
-If the theme has extensions (e.g., Statistics), you have two options:
+Theme extensions (e.g., Statistics for Lumina) add functionality like charts, maps, or analytics.
 
-### Include Extensions in Full Extraction
+### Automatic Extension Extraction
 
-Use `--extensions` / `-e` to extract extensions into separate folders:
+When you extract a theme, **extensions are automatically included** in category subfolders:
 
 ```bash
-revela theme extract Lumina --extensions
+revela theme extract Lumina
 ```
 
 This creates:
 ```
 themes/Lumina/
-├── ...theme files...
-└── Extensions/
-    └── Statistics/
-        └── ...extension files...
+├── layout.revela
+├── theme.json
+├── Assets/
+│   ├── styles.css              # Theme assets
+│   └── Statistics/             # Extension assets in subfolder
+│       └── statistics.css
+├── Partials/
+│   ├── Navigation.revela       # Theme partials
+│   └── Statistics/             # Extension partials in subfolder
+│       └── Statistics.revela
+└── Configuration/
+    └── images.json
 ```
 
-### Extract Individual Extension Files
+**Why subfolders?** Extension files are placed in `Category/ExtensionName/` subfolders. This keeps your theme organized and avoids file name conflicts.
 
-In interactive mode or with `--file`, extension files are available:
+### Customizing Extension Files
+
+You can extract and modify specific extension files using the interactive mode:
 
 ```bash
-# Interactive mode shows extensions
 revela theme extract Lumina
-# → Files marked with "(extension)" come from extensions
-
-# Extract specific extension file into theme
-revela theme extract Lumina --file Partials/Statistics.revela
+# → Select specific files
+# → Extension files show their target path: Partials/Statistics/Statistics.revela
 ```
 
-This extracts the file directly into your theme folder (not a separate Extensions folder).
+Or via CLI:
+
+```bash
+# Extract specific extension file
+revela theme extract Lumina --file Partials/Statistics/Statistics.revela
+```
+
+### How Extensions Are Found
+
+When generating, Revela looks for extension files in category subfolders. For example, a Statistics extension partial is found at:
+- `themes/Lumina/Partials/Statistics/Statistics.revela` (local)
+- Or from the installed extension plugin
 
 ## Workflow Example
 
@@ -285,14 +303,16 @@ Your customizations are automatically used.
 ## CLI Reference
 
 ```bash
-# Full extraction
+# Full extraction (includes extensions)
 revela theme extract <theme-name>
 revela theme extract <theme-name> --name <custom-name>
-revela theme extract <theme-name> --extensions  # Include extensions
 
 # Selective extraction
 revela theme extract <theme-name> --file <path>
 revela theme extract <theme-name> --file <path1> --file <path2>
+
+# Extract specific extension file (note the subfolder structure)
+revela theme extract <theme-name> --file Partials/Statistics/Statistics.revela
 
 # Interactive mode
 revela theme extract

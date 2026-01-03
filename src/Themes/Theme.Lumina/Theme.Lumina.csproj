@@ -20,9 +20,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- Embed theme.json as resource -->
-    <EmbeddedResource Include="theme.json">
-      <LogicalName>theme.json</LogicalName>
+    <!-- Embed manifest.json as resource -->
+    <EmbeddedResource Include="manifest.json">
+      <LogicalName>manifest.json</LogicalName>
     </EmbeddedResource>
     <!-- Embed configuration templates -->
     <EmbeddedResource Include="Configuration\**\*.json">

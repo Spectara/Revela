@@ -37,6 +37,9 @@ public sealed partial class RenderService(
     IOptionsMonitor<ThemeConfig> themeConfig,
     ILogger<RenderService> logger) : IRenderService
 {
+    /// <summary>Current theme extensions (set during rendering)</summary>
+    private IReadOnlyList<IThemeExtension> currentExtensions = [];
+
     /// <summary>Gets full path to source directory</summary>
     private string SourcePath => Path.Combine(projectEnvironment.Value.Path, ProjectPaths.Source);
 
@@ -50,8 +53,11 @@ public sealed partial class RenderService(
     public void SetTheme(IThemePlugin? theme) => templateEngine.SetTheme(theme);
 
     /// <inheritdoc />
-    public void SetExtensions(IReadOnlyList<IThemeExtension> extensions) =>
+    public void SetExtensions(IReadOnlyList<IThemeExtension> extensions)
+    {
+        currentExtensions = extensions;
         templateEngine.SetExtensions(extensions);
+    }
 
     /// <inheritdoc />
     public string Render(string templateContent, object model) => templateEngine.Render(templateContent, model);
@@ -439,8 +445,15 @@ public sealed partial class RenderService(
             var galleryImageBasePath = CalculateImageBasePath(config, relativeBasePath);
 
             // Resolve data sources from data: field (JSON files, $galleries, $images)
+            // If no explicit data sources, use extension defaults for the template
+            var effectiveDataSources = dataSources;
+            if (dataSources.Count == 0 && customTemplate is not null)
+            {
+                effectiveDataSources = GetExtensionDataDefaults(customTemplate);
+            }
+
             var resolvedData = await ResolveDataSourcesAsync(
-                dataSources,
+                effectiveDataSources,
                 metadataBasePath,
                 projectEnvironment.Value.Path,
                 model.Galleries,
@@ -612,6 +625,29 @@ public sealed partial class RenderService(
 
         // Return template info and data sources for custom template processing
         return (metadata.Template, metadata.DataSources, basePath);
+    }
+
+    /// <summary>
+    /// Gets default data sources from theme extensions for a template.
+    /// </summary>
+    /// <remarks>
+    /// Extensions can define default data sources for their templates in manifest.json.
+    /// This allows users to use body templates without explicit data configuration.
+    /// </remarks>
+    /// <param name="templateKey">Template key (e.g., "body/statistics/overview")</param>
+    /// <returns>Dictionary of default data sources, or empty if none defined</returns>
+    private IReadOnlyDictionary<string, string> GetExtensionDataDefaults(string templateKey)
+    {
+        foreach (var extension in currentExtensions)
+        {
+            var defaults = extension.GetTemplateDataDefaults(templateKey);
+            if (defaults.Count > 0)
+            {
+                return defaults;
+            }
+        }
+
+        return new Dictionary<string, string>();
     }
 
     #endregion

@@ -7,8 +7,8 @@ namespace Spectara.Revela.Plugin.Statistics.Commands;
 /// </summary>
 /// <remarks>
 /// <para>
-/// Generates _index.revela files with frontmatter for the statistics/overview template
-/// and optional plugin configuration for MaxEntriesPerCategory and SortByCount settings.
+/// Generates _index.revela files with frontmatter for the body/statistics/overview template.
+/// The extension provides default data sources, so users don't need explicit data configuration.
 /// </para>
 /// <para>
 /// Usage: revela create page statistics source/stats --title "My Stats"

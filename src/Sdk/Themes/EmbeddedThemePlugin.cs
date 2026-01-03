@@ -13,7 +13,7 @@ namespace Spectara.Revela.Sdk.Themes;
 /// </summary>
 /// <remarks>
 /// This base class handles all the boilerplate for theme plugins:
-/// - Reads theme.json from embedded resources for metadata and manifest
+/// - Reads manifest.json from embedded resources for metadata and manifest
 /// - Implements GetFile(), GetAllFiles(), ExtractToAsync()
 ///
 /// Theme authors only need to create a minimal derived class:
@@ -21,13 +21,13 @@ namespace Spectara.Revela.Sdk.Themes;
 /// public sealed class MyThemePlugin() : EmbeddedThemePlugin(typeof(MyThemePlugin).Assembly) { }
 /// </code>
 ///
-/// And provide a theme.json file as embedded resource with:
+/// And provide a manifest.json file as embedded resource with:
 /// - name, version, description, author (metadata)
 /// - templates.layout, partials, assets, variables (manifest)
 /// </remarks>
 public abstract class EmbeddedThemePlugin : IThemePlugin
 {
-    private const string ThemeJsonFileName = "theme.json";
+    private const string ManifestFileName = "manifest.json";
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -171,23 +171,23 @@ public abstract class EmbeddedThemePlugin : IThemePlugin
     private ThemeJsonConfig LoadConfig()
     {
         // Try with prefix first (standard resource naming), then without (LogicalName override)
-        var resourceNameWithPrefix = resourcePrefix + ThemeJsonFileName;
+        var resourceNameWithPrefix = resourcePrefix + ManifestFileName;
         var stream = assembly.GetManifestResourceStream(resourceNameWithPrefix)
-            ?? assembly.GetManifestResourceStream(ThemeJsonFileName)
+            ?? assembly.GetManifestResourceStream(ManifestFileName)
             ?? throw new InvalidOperationException(
-                $"Theme plugin {assembly.GetName().Name} is missing embedded resource '{ThemeJsonFileName}'");
+                $"Theme plugin {assembly.GetName().Name} is missing embedded resource '{ManifestFileName}'");
 
         var config = JsonSerializer.Deserialize<ThemeJsonConfig>(stream, JsonOptions);
 
         return config ?? throw new InvalidOperationException(
-            $"Failed to parse {ThemeJsonFileName} in {assembly.GetName().Name}");
+            $"Failed to parse {ManifestFileName} in {assembly.GetName().Name}");
     }
 
     private static EmbeddedThemeMetadata CreateMetadata(ThemeJsonConfig config)
     {
         return new EmbeddedThemeMetadata
         {
-            Name = config.Name ?? throw new InvalidOperationException("Theme name is required in theme.json"),
+            Name = config.Name ?? throw new InvalidOperationException("Theme name is required in manifest.json"),
             Version = config.Version ?? "1.0.0",
             Description = config.Description ?? string.Empty,
             Author = config.Author ?? "Unknown",

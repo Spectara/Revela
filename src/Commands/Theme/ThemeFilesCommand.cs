@@ -219,7 +219,7 @@ public sealed partial class ThemeFilesCommand(
     {
         var entries = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
-        // Get from base theme (Configuration/*.json and theme.json)
+        // Get from base theme (Configuration/*.json and manifest.json)
         foreach (var file in theme.GetAllFiles())
         {
             var normalized = file.Replace('\\', '/');
@@ -229,9 +229,9 @@ public sealed partial class ThemeFilesCommand(
                 var key = "configuration/" + normalized["Configuration/".Length..];
                 entries[key] = $"[{ThemeColor}]{EscapeMarkup(themeName)}[/]";
             }
-            else if (normalized.Equals("theme.json", StringComparison.OrdinalIgnoreCase))
+            else if (normalized.Equals("manifest.json", StringComparison.OrdinalIgnoreCase))
             {
-                entries["theme.json"] = $"[{ThemeColor}]{EscapeMarkup(themeName)}[/]";
+                entries["manifest.json"] = $"[{ThemeColor}]{EscapeMarkup(themeName)}[/]";
             }
         }
 
@@ -249,9 +249,9 @@ public sealed partial class ThemeFilesCommand(
                     var key = "configuration/" + normalized["Configuration/".Length..];
                     entries[key] = $"[{color}]{EscapeMarkup(extName)}[/]";
                 }
-                else if (normalized.Equals("theme.json", StringComparison.OrdinalIgnoreCase))
+                else if (normalized.Equals("manifest.json", StringComparison.OrdinalIgnoreCase))
                 {
-                    entries["theme.json"] = $"[{color}]{EscapeMarkup(extName)}[/]";
+                    entries["manifest.json"] = $"[{color}]{EscapeMarkup(extName)}[/]";
                 }
             }
         }

@@ -23,7 +23,7 @@ Expects:
 <section class="gallery">
     <h2>{{ gallery.title }}</h2>
     {{~ for image in images ~}}
-    {{~ include 'partials/image' image ~}}
+    {{~ include 'image' image ~}}
     {{~ end ~}}
 </section>
 {{~ end ~}}

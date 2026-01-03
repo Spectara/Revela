@@ -13,7 +13,7 @@ namespace Spectara.Revela.Theme.Lumina;
 /// - EXIF data overlay
 /// - Mobile-first design
 ///
-/// All configuration is in theme.json (embedded resource).
+/// All configuration is in manifest.json (embedded resource).
 /// </remarks>
 public sealed class LuminaThemePlugin() : EmbeddedThemePlugin(typeof(LuminaThemePlugin).Assembly);
 

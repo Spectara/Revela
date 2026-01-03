@@ -7,7 +7,7 @@ namespace Spectara.Revela.Sdk.Abstractions;
 /// Theme plugins provide:
 /// - Template files (Layout.revela, Body/, Partials/)
 /// - Static assets (Assets/ folder - CSS, JS, fonts, images)
-/// - Theme configuration (variables in theme.json)
+/// - Theme configuration (variables in manifest.json)
 ///
 /// Naming convention: Spectara.Revela.Theme.{Name}
 ///
@@ -171,6 +171,33 @@ public interface IThemeExtension : IPlugin
     /// Example: "statistics" → {{ include 'statistics/chart' }}
     /// </remarks>
     string PartialPrefix { get; }
+
+    /// <summary>
+    /// Extension variables with default values
+    /// </summary>
+    /// <remarks>
+    /// Variables are merged with theme variables and available in templates.
+    /// Extension variables can override theme variables with same name.
+    /// </remarks>
+    IReadOnlyDictionary<string, string> Variables { get; }
+
+    /// <summary>
+    /// Get default data sources for a template
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Extensions can define default data sources for their templates in manifest.json.
+    /// This allows users to simply specify <c>template = "body/statistics/overview"</c>
+    /// without explicitly declaring <c>data = { statistics: "statistics.json" }</c>.
+    /// </para>
+    /// <para>
+    /// The returned dictionary maps variable names to default filenames.
+    /// User-specified data sources in _index.revela override these defaults.
+    /// </para>
+    /// </remarks>
+    /// <param name="templateKey">Template key relative to extension (e.g., "body/overview")</param>
+    /// <returns>Dictionary of variable name → default filename, or empty if no defaults</returns>
+    IReadOnlyDictionary<string, string> GetTemplateDataDefaults(string templateKey);
 
     /// <summary>
     /// Get a file from the extension as a stream

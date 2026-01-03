@@ -123,7 +123,7 @@ Passe die HTML-Ausgabe durch Bearbeiten der `.revela`-Dateien an:
     {{ end }}
 </head>
 <body style="background: {{ theme.background-color }}">
-    {{ include 'Partials/Navigation.revela' }}
+    {{ include 'navigation' }}
     {{ body }}
 </body>
 </html>
@@ -138,7 +138,7 @@ Passe die HTML-Ausgabe durch Bearbeiten der `.revela`-Dateien an:
     {{ end }}
     <div class="images">
         {{ for image in images }}
-        {{ include 'Partials/Image.revela' }}
+        {{ include 'image' }}
         {{ end }}
     </div>
 </main>
@@ -204,39 +204,57 @@ Der Rest wird vom installierten Theme geladen.
 
 ## Theme-Extensions
 
-Wenn das Theme Extensions hat (z.B. Statistics), hast du zwei Möglichkeiten:
+Theme-Extensions (z.B. Statistics für Lumina) fügen Funktionalität wie Diagramme, Karten oder Statistiken hinzu.
 
-### Extensions bei vollständiger Extraktion einschließen
+### Automatische Extension-Extraktion
 
-Nutze `--extensions` / `-e` um Extensions in separate Ordner zu extrahieren:
+Wenn du ein Theme extrahierst, werden **Extensions automatisch einbezogen** in Kategorie-Unterordner:
 
 ```bash
-revela theme extract Lumina --extensions
+revela theme extract Lumina
 ```
 
 Dies erstellt:
 ```
 themes/Lumina/
-├── ...theme-Dateien...
-└── Extensions/
-    └── Statistics/
-        └── ...extension-Dateien...
+├── layout.revela
+├── theme.json
+├── Assets/
+│   ├── styles.css              # Theme-Assets
+│   └── Statistics/             # Extension-Assets im Unterordner
+│       └── statistics.css
+├── Partials/
+│   ├── Navigation.revela       # Theme-Partials
+│   └── Statistics/             # Extension-Partials im Unterordner
+│       └── Statistics.revela
+└── Configuration/
+    └── images.json
 ```
 
-### Einzelne Extension-Dateien extrahieren
+**Warum Unterordner?** Extension-Dateien werden in `Kategorie/ExtensionName/` Unterordner platziert. Das hält dein Theme organisiert und vermeidet Dateinamenkonflikte.
 
-Im interaktiven Modus oder mit `--file` sind Extension-Dateien verfügbar:
+### Extension-Dateien anpassen
+
+Du kannst bestimmte Extension-Dateien im interaktiven Modus extrahieren und anpassen:
 
 ```bash
-# Interaktiver Modus zeigt Extensions
 revela theme extract Lumina
-# → Dateien mit "(extension)" stammen aus Extensions
-
-# Bestimmte Extension-Datei ins Theme extrahieren
-revela theme extract Lumina --file Partials/Statistics.revela
+# → Wähle bestimmte Dateien aus
+# → Extension-Dateien zeigen ihren Zielpfad: Partials/Statistics/Statistics.revela
 ```
 
-Dies extrahiert die Datei direkt in deinen Theme-Ordner (nicht in einen separaten Extensions-Ordner).
+Oder via CLI:
+
+```bash
+# Bestimmte Extension-Datei extrahieren
+revela theme extract Lumina --file Partials/Statistics/Statistics.revela
+```
+
+### Wie Extensions gefunden werden
+
+Bei der Generierung sucht Revela Extension-Dateien in Kategorie-Unterordnern. Zum Beispiel wird ein Statistics-Extension-Partial gefunden unter:
+- `themes/Lumina/Partials/Statistics/Statistics.revela` (lokal)
+- Oder vom installierten Extension-Plugin
 
 ## Workflow-Beispiel
 
@@ -285,14 +303,16 @@ Deine Anpassungen werden automatisch verwendet.
 ## CLI-Referenz
 
 ```bash
-# Vollständige Extraktion
+# Vollständige Extraktion (inkl. Extensions)
 revela theme extract <theme-name>
 revela theme extract <theme-name> --name <eigener-name>
-revela theme extract <theme-name> --extensions  # Extensions einschließen
 
 # Selektive Extraktion
 revela theme extract <theme-name> --file <pfad>
 revela theme extract <theme-name> --file <pfad1> --file <pfad2>
+
+# Bestimmte Extension-Datei extrahieren (beachte Unterordner-Struktur)
+revela theme extract <theme-name> --file Partials/Statistics/Statistics.revela
 
 # Interaktiver Modus
 revela theme extract

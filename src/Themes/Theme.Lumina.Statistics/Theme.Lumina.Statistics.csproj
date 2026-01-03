@@ -36,13 +36,17 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- Embed extension.json as resource -->
-    <EmbeddedResource Include="extension.json">
-      <LogicalName>extension.json</LogicalName>
+    <!-- Embed manifest.json as resource -->
+    <EmbeddedResource Include="manifest.json">
+      <LogicalName>manifest.json</LogicalName>
     </EmbeddedResource>
-    <!-- Embed all template files with Templates/ prefix for consistent export structure -->
-    <EmbeddedResource Include="Templates\**\*">
-      <LogicalName>Templates\%(RecursiveDir)%(Filename)%(Extension)</LogicalName>
+    <!-- Embed Body templates with Body/ prefix (full-page templates with data requirements) -->
+    <EmbeddedResource Include="Body\**\*">
+      <LogicalName>Body\%(RecursiveDir)%(Filename)%(Extension)</LogicalName>
+    </EmbeddedResource>
+    <!-- Embed Partials templates with Partials/ prefix (reusable components) -->
+    <EmbeddedResource Include="Partials\**\*">
+      <LogicalName>Partials\%(RecursiveDir)%(Filename)%(Extension)</LogicalName>
     </EmbeddedResource>
     <!-- Embed CSS files with Assets/ prefix -->
     <EmbeddedResource Include="Assets\**\*">

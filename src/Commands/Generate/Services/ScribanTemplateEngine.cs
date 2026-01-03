@@ -22,7 +22,7 @@ namespace Spectara.Revela.Commands.Generate.Services;
 /// Example template:
 /// <code>
 /// &lt;h1&gt;{{ site.title }}&lt;/h1&gt;
-/// {{ include 'partials/navigation' nav_items }}
+/// {{ include 'navigation' nav_items }}
 /// {{ for image in images }}
 ///   &lt;img src="{{ image.url }}" alt="{{ image.title }}" /&gt;
 /// {{ end }}
@@ -566,8 +566,8 @@ public sealed partial class ScribanTemplateEngine(
 /// <para>
 /// Supports the Scriban include directive:
 /// <code>
-/// {{ include 'body/gallery' }}
-/// {{ include 'statistics/overview' stats }}
+/// {{ include 'gallery' }}              {{~ // → body/gallery ~}}
+/// {{ include 'statistics/overview' }}  {{~ // → partials/statistics/overview ~}}
 /// </code>
 /// </para>
 /// <para>
@@ -585,6 +585,18 @@ internal sealed partial class TemplateResolverLoader(
     /// <summary>
     /// Get the path for a template include (used as cache key)
     /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Template key conventions:
+    /// - Include without prefix → implicitly partials/ (e.g., "navigation" → "partials/navigation")
+    /// - Include with body/ prefix → explicit body template (e.g., "body/gallery")
+    /// - Include with partials/ prefix → kept as-is for backward compatibility
+    /// </para>
+    /// <para>
+    /// This allows users to write cleaner includes:
+    /// {{ include 'navigation' }} instead of {{ include 'partials/navigation' }}
+    /// </para>
+    /// </remarks>
     [System.Diagnostics.CodeAnalysis.SuppressMessage(
         "Globalization",
         "CA1308:Normalize strings to uppercase",
@@ -596,7 +608,17 @@ internal sealed partial class TemplateResolverLoader(
             ? templateName[..^7]
             : templateName;
 
-        return key.ToLowerInvariant();
+        key = key.ToLowerInvariant();
+
+        // Add implicit partials/ prefix if no prefix specified
+        // body/ and partials/ prefixes are kept as-is
+        if (!key.StartsWith("body/", StringComparison.Ordinal) &&
+            !key.StartsWith("partials/", StringComparison.Ordinal))
+        {
+            key = "partials/" + key;
+        }
+
+        return key;
     }
 
     /// <summary>

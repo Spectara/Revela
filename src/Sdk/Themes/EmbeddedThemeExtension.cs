@@ -14,7 +14,7 @@ namespace Spectara.Revela.Sdk.Themes;
 /// <remarks>
 /// <para>
 /// This base class handles all the boilerplate for theme extensions:
-/// - Reads extension.json from embedded resources for metadata and manifest
+/// - Reads manifest.json from embedded resources for metadata and manifest
 /// - Implements GetFile(), ExtractToAsync()
 /// </para>
 /// <para>
@@ -25,17 +25,16 @@ namespace Spectara.Revela.Sdk.Themes;
 /// </code>
 /// </para>
 /// <para>
-/// And provide an extension.json file as embedded resource with:
+/// And provide a manifest.json file as embedded resource with:
 /// - name, version, description, author (metadata)
 /// - targetTheme (theme this extends, e.g., "Lumina")
-/// - partialPrefix (prefix for partials, e.g., "statistics")
-/// - partials (dictionary of template name → file path)
-/// - stylesheets, assets (files to copy)
+/// - partialPrefix (prefix for templates, e.g., "statistics")
+/// - variables (optional theme variables)
 /// </para>
 /// </remarks>
 public abstract class EmbeddedThemeExtension : IThemeExtension
 {
-    private const string ExtensionJsonFileName = "extension.json";
+    private const string ManifestFileName = "manifest.json";
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -70,6 +69,27 @@ public abstract class EmbeddedThemeExtension : IThemeExtension
 
     /// <inheritdoc />
     public string PartialPrefix => config.Value.PartialPrefix ?? string.Empty;
+
+    /// <inheritdoc />
+    public IReadOnlyDictionary<string, string> Variables =>
+        config.Value.Variables ?? [];
+
+    /// <inheritdoc />
+    public IReadOnlyDictionary<string, string> GetTemplateDataDefaults(string templateKey)
+    {
+        var templates = config.Value.Templates;
+        if (templates is null)
+        {
+            return new Dictionary<string, string>();
+        }
+
+        if (templates.TryGetValue(templateKey, out var templateConfig) && templateConfig.Data is not null)
+        {
+            return templateConfig.Data;
+        }
+
+        return new Dictionary<string, string>();
+    }
 
     /// <inheritdoc />
     public void ConfigureConfiguration(IConfigurationBuilder configuration)
@@ -127,13 +147,13 @@ public abstract class EmbeddedThemeExtension : IThemeExtension
     {
         Directory.CreateDirectory(targetDirectory);
 
-        // Extract extension.json
+        // Extract manifest.json
         var configStream = GetConfigStream();
         if (configStream is not null)
         {
             await using (configStream)
             {
-                var targetPath = Path.Combine(targetDirectory, ExtensionJsonFileName);
+                var targetPath = Path.Combine(targetDirectory, ManifestFileName);
                 await using var fileStream = File.Create(targetPath);
                 await configStream.CopyToAsync(fileStream, cancellationToken);
             }
@@ -170,23 +190,23 @@ public abstract class EmbeddedThemeExtension : IThemeExtension
 
     private Stream? GetConfigStream()
     {
-        // Try various patterns for extension.json
-        return assembly.GetManifestResourceStream(resourcePrefix + ExtensionJsonFileName)
-            ?? assembly.GetManifestResourceStream(ExtensionJsonFileName);
+        // Try various patterns for manifest.json
+        return assembly.GetManifestResourceStream(resourcePrefix + ManifestFileName)
+            ?? assembly.GetManifestResourceStream(ManifestFileName);
     }
 
     private ExtensionJsonConfig LoadConfig()
     {
         using var stream = GetConfigStream()
             ?? throw new InvalidOperationException(
-                $"Extension {assembly.GetName().Name} must have embedded {ExtensionJsonFileName}");
+                $"Extension {assembly.GetName().Name} must have embedded {ManifestFileName}");
 
         using var reader = new StreamReader(stream);
         var json = reader.ReadToEnd();
 
         return JsonSerializer.Deserialize<ExtensionJsonConfig>(json, JsonOptions)
             ?? throw new InvalidOperationException(
-                $"Failed to deserialize {ExtensionJsonFileName} in {assembly.GetName().Name}");
+                $"Failed to deserialize {ManifestFileName} in {assembly.GetName().Name}");
     }
 
     private static EmbeddedExtensionMetadata CreateMetadata(ExtensionJsonConfig cfg) => new()
@@ -198,7 +218,7 @@ public abstract class EmbeddedThemeExtension : IThemeExtension
     };
 
     /// <summary>
-    /// Configuration model for extension.json
+    /// Configuration model for manifest.json
     /// </summary>
     private sealed class ExtensionJsonConfig
     {
@@ -208,6 +228,20 @@ public abstract class EmbeddedThemeExtension : IThemeExtension
         public string? Author { get; init; }
         public string? TargetTheme { get; init; }
         public string? PartialPrefix { get; init; }
+        public Dictionary<string, string>? Variables { get; init; }
+        public Dictionary<string, TemplateConfig>? Templates { get; init; }
+    }
+
+    /// <summary>
+    /// Template configuration with default data sources
+    /// </summary>
+    private sealed class TemplateConfig
+    {
+        /// <summary>
+        /// Default data sources for this template.
+        /// Key = variable name, Value = default filename.
+        /// </summary>
+        public Dictionary<string, string>? Data { get; init; }
     }
 }
 

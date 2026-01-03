@@ -1,0 +1,19 @@
+{
+  "name": "Lumina Statistics",
+  "version": "1.0.0",
+  "description": "Statistics charts extension for the Lumina theme",
+  "author": "Spectara",
+  "targetTheme": "Lumina",
+  "partialPrefix": "statistics",
+  "templates": {
+    "statistics/overview": {
+      "data": {
+        "cameras": "statistics/cameras.json",
+        "lenses": "statistics/lenses.json",
+        "focal_lengths": "statistics/focal-lengths.json",
+        "apertures": "statistics/apertures.json",
+        "iso": "statistics/iso.json"
+      }
+    }
+  }
+}

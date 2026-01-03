@@ -1,0 +1,16 @@
+<section>
+<h2>Overview</h2>
+
+<p class="stats-summary">
+    <span><strong>{{ statistics.total_images }}</strong> Images</span>
+    <span><strong>{{ statistics.cameras | array.size }}</strong> Cameras</span>
+    <span><strong>{{ statistics.lenses | array.size }}</strong> Lenses</span>
+</p>
+
+{{ include 'partials/statistics/cameras' statistics }}
+{{ include 'partials/statistics/lenses' statistics }}
+{{ include 'partials/statistics/focal-lengths' statistics }}
+{{ include 'partials/statistics/apertures' statistics }}
+{{ include 'partials/statistics/iso' statistics }}
+
+</section>
