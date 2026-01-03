@@ -33,11 +33,8 @@ public sealed partial class ContentService(
     IOptionsMonitor<GenerateConfig> options,
     ILogger<ContentService> logger) : IContentService
 {
-    /// <summary>Fixed source directory name (convention over configuration)</summary>
-    private const string SourceDirectory = "source";
-
     /// <summary>Gets full path to source directory</summary>
-    private string SourcePath => Path.Combine(projectEnvironment.Value.Path, SourceDirectory);
+    private string SourcePath => Path.Combine(projectEnvironment.Value.Path, ProjectPaths.Source);
 
     /// <summary>Gets current image settings (supports hot-reload)</summary>
     private ImageConfig ImageSettings => options.CurrentValue.Images;

@@ -20,11 +20,8 @@ public sealed partial class CleanOutputCommand(
     /// <summary>Order for this command in menu.</summary>
     public const int Order = 10;
 
-    /// <summary>Output directory for generated site.</summary>
-    private const string OutputDirectory = "output";
-
     /// <summary>Gets full path to output directory.</summary>
-    private string OutputPath => Path.Combine(projectEnvironment.Value.Path, OutputDirectory);
+    private string OutputPath => Path.Combine(projectEnvironment.Value.Path, ProjectPaths.Output);
 
     /// <summary>
     /// Creates the CLI command.
@@ -44,7 +41,7 @@ public sealed partial class CleanOutputCommand(
 
         if (!Directory.Exists(OutputPath))
         {
-            AnsiConsole.MarkupLine($"[dim]{OutputDirectory}/[/] [yellow]does not exist[/]");
+            AnsiConsole.MarkupLine($"[dim]{ProjectPaths.Output}/[/] [yellow]does not exist[/]");
             return Task.FromResult(0);
         }
 
@@ -55,18 +52,18 @@ public sealed partial class CleanOutputCommand(
             Directory.Delete(OutputPath, recursive: true);
             LogDirectoryDeleted(logger, target.Path, target.FileCount);
 
-            AnsiConsole.MarkupLine($"{OutputMarkers.Success} Deleted [cyan]{OutputDirectory}/[/] ({target.FileCount} files, {FormatSize(target.TotalSize)})");
+            AnsiConsole.MarkupLine($"{OutputMarkers.Success} Deleted [cyan]{ProjectPaths.Output}/[/] ({target.FileCount} files, {FormatSize(target.TotalSize)})");
         }
         catch (IOException ex)
         {
             LogDeleteFailed(logger, OutputPath, ex);
-            AnsiConsole.MarkupLine($"{OutputMarkers.Error} Failed to delete {OutputDirectory}: {ex.Message}");
+            AnsiConsole.MarkupLine($"{OutputMarkers.Error} Failed to delete {ProjectPaths.Output}: {ex.Message}");
             return Task.FromResult(1);
         }
         catch (UnauthorizedAccessException ex)
         {
             LogDeleteFailed(logger, OutputPath, ex);
-            AnsiConsole.MarkupLine($"{OutputMarkers.Error} Access denied: {OutputDirectory}");
+            AnsiConsole.MarkupLine($"{OutputMarkers.Error} Access denied: {ProjectPaths.Output}");
             return Task.FromResult(1);
         }
 

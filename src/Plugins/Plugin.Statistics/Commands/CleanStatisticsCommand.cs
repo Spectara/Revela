@@ -20,14 +20,11 @@ public sealed partial class CleanStatisticsCommand(
     /// <summary>Order for this command in menu.</summary>
     public const int Order = 30;
 
-    /// <summary>Cache directory name.</summary>
-    private const string CacheDirectory = ".cache";
-
     /// <summary>Statistics JSON filename.</summary>
     private const string StatisticsFileName = "statistics.json";
 
     /// <summary>Gets full path to cache directory.</summary>
-    private string CachePath => Path.Combine(projectEnvironment.Value.Path, CacheDirectory);
+    private string CachePath => Path.Combine(projectEnvironment.Value.Path, ProjectPaths.Cache);
 
     /// <summary>
     /// Creates the CLI command.
@@ -47,7 +44,7 @@ public sealed partial class CleanStatisticsCommand(
 
         if (!Directory.Exists(CachePath))
         {
-            AnsiConsole.MarkupLine($"[dim]{CacheDirectory}/[/] [yellow]does not exist[/]");
+            AnsiConsole.MarkupLine($"[dim]{ProjectPaths.Cache}/[/] [yellow]does not exist[/]");
             return Task.FromResult(0);
         }
 

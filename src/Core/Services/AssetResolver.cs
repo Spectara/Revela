@@ -1,3 +1,4 @@
+using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Abstractions;
 
 namespace Spectara.Revela.Core.Services;
@@ -19,7 +20,6 @@ namespace Spectara.Revela.Core.Services;
 /// </remarks>
 public sealed partial class AssetResolver(ILogger<AssetResolver> logger) : IAssetResolver
 {
-    private const string ThemesFolderName = "themes";
     private const string AssetsFolderName = "Assets";
     private const string OutputAssetsFolderName = "_assets";
 
@@ -50,7 +50,7 @@ public sealed partial class AssetResolver(ILogger<AssetResolver> logger) : IAsse
         scriptOrder.Clear();
 
         var themeName = theme.Metadata.Name;
-        localThemePath = Path.Combine(projectPath, ThemesFolderName, themeName, AssetsFolderName);
+        localThemePath = Path.Combine(projectPath, ProjectPaths.Themes, themeName, AssetsFolderName);
 
         LogInitializing(themeName);
 

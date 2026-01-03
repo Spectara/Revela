@@ -50,8 +50,6 @@ public sealed partial class ServeCommand(
         return command;
     }
 
-    private const string OutputDirectory = "output";
-
     private async Task<int> ServeAsync(int? portOverride, bool verboseOverride, CancellationToken cancellationToken)
     {
         // Resolve configuration: CLI > Config > Default
@@ -60,12 +58,12 @@ public sealed partial class ServeCommand(
         var verbose = verboseOverride || config.Verbose;
 
         // Output directory is always "output" (consistent with generate commands)
-        var fullOutputPath = Path.GetFullPath(Path.Combine(projectEnvironment.Value.Path, OutputDirectory));
+        var fullOutputPath = Path.GetFullPath(Path.Combine(projectEnvironment.Value.Path, ProjectPaths.Output));
 
         // Validate output directory exists
         if (!Directory.Exists(fullOutputPath))
         {
-            ErrorPanels.ShowDirectoryNotFoundError($"{OutputDirectory}/", "generate all");
+            ErrorPanels.ShowDirectoryNotFoundError($"{ProjectPaths.Output}/", "generate all");
             return 1;
         }
 
@@ -73,7 +71,7 @@ public sealed partial class ServeCommand(
         var indexPath = Path.Combine(fullOutputPath, "index.html");
         if (!File.Exists(indexPath))
         {
-            AnsiConsole.MarkupLine($"[yellow]Warning:[/] No index.html found in [cyan]{OutputDirectory}/[/]");
+            AnsiConsole.MarkupLine($"[yellow]Warning:[/] No index.html found in [cyan]{ProjectPaths.Output}/[/]");
         }
 
         // Setup request logging callback
@@ -148,7 +146,7 @@ public sealed partial class ServeCommand(
 
         // Display server info
         AnsiConsole.WriteLine();
-        AnsiConsole.MarkupLine($"🌐 Serving [blue]{OutputDirectory}/[/] at [link]http://localhost:{port}[/]");
+        AnsiConsole.MarkupLine($"🌐 Serving [blue]{ProjectPaths.Output}/[/] at [link]http://localhost:{port}[/]");
         AnsiConsole.MarkupLine("[dim]   Press Ctrl+C to stop[/]");
         AnsiConsole.WriteLine();
 

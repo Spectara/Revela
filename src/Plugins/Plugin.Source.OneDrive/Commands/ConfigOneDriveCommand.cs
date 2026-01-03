@@ -36,20 +36,14 @@ public sealed partial class ConfigOneDriveCommand(
         {
             Description = "OneDrive shared folder URL"
         };
-        var outputOption = new Option<string?>("--output", "-o")
-        {
-            Description = "Output directory for downloaded files"
-        };
 
         command.Options.Add(shareUrlOption);
-        command.Options.Add(outputOption);
 
         command.SetAction(async (parseResult, cancellationToken) =>
         {
             var shareUrl = parseResult.GetValue(shareUrlOption);
-            var output = parseResult.GetValue(outputOption);
 
-            return await ExecuteAsync(shareUrl, output, cancellationToken).ConfigureAwait(false);
+            return await ExecuteAsync(shareUrl, cancellationToken).ConfigureAwait(false);
         });
 
         return command;
@@ -65,11 +59,10 @@ public sealed partial class ConfigOneDriveCommand(
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>Exit code: 0 = success, non-zero = error.</returns>
     public Task<int> ExecuteInteractiveAsync(CancellationToken cancellationToken)
-        => ExecuteAsync(null, null, cancellationToken);
+        => ExecuteAsync(null, cancellationToken);
 
     private async Task<int> ExecuteAsync(
         string? shareUrlArg,
-        string? outputArg,
         CancellationToken cancellationToken)
     {
         // Read current values from IOptions (empty if config doesn't exist yet)
@@ -79,10 +72,9 @@ public sealed partial class ConfigOneDriveCommand(
         var isFirstTime = string.IsNullOrEmpty(current.ShareUrl);
 
         // Determine if interactive mode (no arguments provided)
-        var isInteractive = shareUrlArg is null && outputArg is null;
+        var isInteractive = shareUrlArg is null;
 
         string shareUrl;
-        string output;
 
         if (isInteractive)
         {
@@ -112,16 +104,11 @@ public sealed partial class ConfigOneDriveCommand(
 
                         return ValidationResult.Success();
                     }));
-
-            output = AnsiConsole.Prompt(
-                new TextPrompt<string>("Output directory:")
-                    .DefaultValue(current.OutputDirectory));
         }
         else
         {
-            // Use provided arguments or current values
+            // Use provided argument or current value
             shareUrl = shareUrlArg ?? current.ShareUrl;
-            output = outputArg ?? current.OutputDirectory;
         }
 
         // Build config object (only include non-default values)
@@ -130,11 +117,6 @@ public sealed partial class ConfigOneDriveCommand(
         if (!string.IsNullOrEmpty(shareUrl))
         {
             pluginConfig["ShareUrl"] = shareUrl;
-        }
-
-        if (output != "source")
-        {
-            pluginConfig["OutputDirectory"] = output;
         }
 
         // Wrap with plugin section name and update project.json
@@ -153,7 +135,7 @@ public sealed partial class ConfigOneDriveCommand(
             $"[green]OneDrive source {action}![/]\n\n" +
             $"[bold]Configuration:[/] [cyan]project.json[/]\n" +
             (string.IsNullOrEmpty(shareUrl) ? "" : $"[bold]Share URL:[/] [dim]{shareUrl}[/]\n") +
-            $"[bold]Output directory:[/] [cyan]{output}[/]\n\n" +
+            $"[bold]Output directory:[/] [cyan]{ProjectPaths.Source}/[/]\n\n" +
             $"[bold]Next steps:[/]\n" +
             $"1. Run [cyan]revela source onedrive download[/] to fetch files\n" +
             $"2. Run [cyan]revela generate[/] to build your site")

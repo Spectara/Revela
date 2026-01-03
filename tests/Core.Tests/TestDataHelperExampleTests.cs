@@ -33,18 +33,18 @@ public sealed class TestDataHelperExampleTests
     }
 
     [TestMethod]
-    public void TestDataHelperShouldFindSubdirectorySample()
+    public void TestDataHelperShouldFindOneDriveSample()
     {
         // Arrange & Act
-        var samplePath = TestDataHelper.GetSamplePath("subdirectory");
+        var samplePath = TestDataHelper.GetSamplePath("onedrive");
 
         // Assert
         Assert.IsFalse(string.IsNullOrEmpty(samplePath));
-        Assert.IsTrue(Directory.Exists(samplePath), $"subdirectory sample should exist at: {samplePath}");
+        Assert.IsTrue(Directory.Exists(samplePath), $"onedrive sample should exist at: {samplePath}");
 
         // Check for config file
         var configPath = Path.Combine(samplePath, "project.json");
-        Assert.IsTrue(File.Exists(configPath), "subdirectory sample should have project.json");
+        Assert.IsTrue(File.Exists(configPath), "onedrive sample should have project.json");
     }
 
     [TestMethod]

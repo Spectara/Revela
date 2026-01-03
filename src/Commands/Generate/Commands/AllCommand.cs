@@ -12,17 +12,17 @@ namespace Spectara.Revela.Commands.Generate.Commands;
 /// </summary>
 /// <remarks>
 /// <para>
-/// Executes all registered <see cref="IGeneratePipelineStep"/> implementations
-/// in order. Core steps (scan, pages, images) are built-in; plugins can add
-/// additional steps (e.g., statistics).
+/// Orchestrates all registered <see cref="IGenerateStep"/> implementations
+/// in order. Each step handles its own console output (progress bars, panels, etc.).
 /// </para>
 /// <para>
-/// Order 0 ensures this appears first in the menu.
+/// Standard steps: scan → statistics → pages → images.
+/// Plugins can register additional steps at any order.
 /// </para>
 /// </remarks>
 public sealed partial class AllCommand(
     ILogger<AllCommand> logger,
-    IEnumerable<IGeneratePipelineStep> pipelineSteps)
+    IEnumerable<IGenerateStep> generateSteps)
 {
     /// <summary>
     /// Order for this command (first in menu).
@@ -42,13 +42,13 @@ public sealed partial class AllCommand(
     }
 
     /// <summary>
-    /// Executes all pipeline steps in order.
+    /// Executes the full generation pipeline.
     /// </summary>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>Exit code (0 = success).</returns>
     public async Task<int> ExecuteAsync(CancellationToken cancellationToken = default)
     {
-        var steps = pipelineSteps.OrderBy(s => s.Order).ToList();
+        var steps = generateSteps.OrderBy(s => s.Order).ToList();
 
         if (steps.Count == 0)
         {
@@ -56,49 +56,34 @@ public sealed partial class AllCommand(
             return 0;
         }
 
+        // Build pipeline description
         var pipelineNames = string.Join(" → ", steps.Select(s => s.Name));
-        AnsiConsole.MarkupLine($"[blue]Executing pipeline:[/] {pipelineNames}");
+        AnsiConsole.MarkupLine($"[blue]Pipeline:[/] {pipelineNames}");
         AnsiConsole.WriteLine();
 
         LogPipelineStart(logger, steps.Count);
         var stopwatch = Stopwatch.StartNew();
 
+        // Execute each step
+        var stepNumber = 1;
         foreach (var step in steps)
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            AnsiConsole.MarkupLine($"[cyan]▶ {step.Name}[/] - {step.Description}");
+            AnsiConsole.MarkupLine($"[cyan]━━━ Step {stepNumber}/{steps.Count}: {step.Name} ━━━[/]");
+            AnsiConsole.MarkupLine($"[dim]{step.Description}[/]");
+            AnsiConsole.WriteLine();
 
-            var result = await AnsiConsole.Status()
-                .Spinner(Spinner.Known.Dots)
-                .StartAsync($"[yellow]{step.Description}...[/]", async ctx =>
-                {
-                    var progress = new Progress<PipelineProgress>(p =>
-                    {
-                        var status = p.Total > 0
-                            ? $"[yellow]{step.Name}[/] ({p.Current}/{p.Total}) {p.Status}"
-                            : $"[yellow]{step.Name}[/] {p.Status}";
-                        ctx.Status(status);
-                    });
+            var result = await step.ExecuteAsync(cancellationToken);
 
-                    return await step.ExecuteAsync(progress, cancellationToken);
-                });
-
-            if (!result.Success)
+            if (result != 0)
             {
-                // Only show error line if not already displayed (e.g., via ErrorPanel)
-                if (!result.ErrorDisplayed)
-                {
-                    AnsiConsole.MarkupLine($"[red]✗ {step.Name} failed:[/] {result.Message}");
-                }
-
-                LogStepFailed(logger, step.Name, result.Message ?? "Unknown error");
-                return 1;
+                LogStepFailed(logger, step.Name);
+                return result;
             }
 
-            var info = result.Message is not null ? $" ({result.Message})" : "";
-            AnsiConsole.MarkupLine($"[green]✓ {step.Name}[/]{info}");
             AnsiConsole.WriteLine();
+            stepNumber++;
         }
 
         stopwatch.Stop();
@@ -111,8 +96,8 @@ public sealed partial class AllCommand(
     [LoggerMessage(Level = LogLevel.Information, Message = "Starting pipeline with {StepCount} steps")]
     private static partial void LogPipelineStart(ILogger logger, int stepCount);
 
-    [LoggerMessage(Level = LogLevel.Error, Message = "Pipeline step '{Step}' failed: {Error}")]
-    private static partial void LogStepFailed(ILogger logger, string step, string error);
+    [LoggerMessage(Level = LogLevel.Error, Message = "Pipeline step '{Step}' failed")]
+    private static partial void LogStepFailed(ILogger logger, string step);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Pipeline completed in {Seconds:F2}s")]
     private static partial void LogPipelineComplete(ILogger logger, double seconds);

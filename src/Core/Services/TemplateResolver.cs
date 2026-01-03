@@ -1,3 +1,4 @@
+using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Abstractions;
 
 namespace Spectara.Revela.Core.Services;
@@ -19,7 +20,6 @@ namespace Spectara.Revela.Core.Services;
 /// </remarks>
 public sealed partial class TemplateResolver(ILogger<TemplateResolver> logger) : ITemplateResolver
 {
-    private const string ThemesFolderName = "themes";
     private const string LayoutFileName = "Layout.revela";
     private const string RevelaExtension = ".revela";
 
@@ -35,7 +35,7 @@ public sealed partial class TemplateResolver(ILogger<TemplateResolver> logger) :
         templates.Clear();
 
         var themeName = theme.Metadata.Name;
-        localThemePath = Path.Combine(projectPath, ThemesFolderName, themeName);
+        localThemePath = Path.Combine(projectPath, ProjectPaths.Themes, themeName);
 
         LogInitializing(themeName);
 

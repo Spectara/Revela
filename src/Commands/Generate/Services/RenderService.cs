@@ -37,17 +37,11 @@ public sealed partial class RenderService(
     IOptionsMonitor<ThemeConfig> themeConfig,
     ILogger<RenderService> logger) : IRenderService
 {
-    /// <summary>Output directory for generated site</summary>
-    private const string OutputDirectory = "output";
-
-    /// <summary>Source directory for content</summary>
-    private const string SourceDirectory = "source";
-
     /// <summary>Gets full path to source directory</summary>
-    private string SourcePath => Path.Combine(projectEnvironment.Value.Path, SourceDirectory);
+    private string SourcePath => Path.Combine(projectEnvironment.Value.Path, ProjectPaths.Source);
 
     /// <summary>Gets full path to output directory</summary>
-    private string OutputPath => Path.Combine(projectEnvironment.Value.Path, OutputDirectory);
+    private string OutputPath => Path.Combine(projectEnvironment.Value.Path, ProjectPaths.Output);
 
     /// <summary>Gets current image settings (supports hot-reload)</summary>
     private ImageConfig ImageSettings => options.CurrentValue.Images;

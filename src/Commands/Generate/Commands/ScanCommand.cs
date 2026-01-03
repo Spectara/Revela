@@ -4,6 +4,7 @@ using Spectara.Revela.Commands.Generate.Abstractions;
 using Spectara.Revela.Commands.Generate.Models.Results;
 using Spectara.Revela.Core.Configuration;
 using Spectara.Revela.Sdk;
+using Spectara.Revela.Sdk.Abstractions;
 using Spectre.Console;
 
 namespace Spectara.Revela.Commands.Generate.Commands;
@@ -14,6 +15,7 @@ namespace Spectara.Revela.Commands.Generate.Commands;
 /// <remarks>
 /// <para>
 /// Thin CLI wrapper that delegates to <see cref="IContentService.ScanAsync"/>.
+/// Implements <see cref="IGenerateStep"/> for pipeline orchestration.
 /// </para>
 /// <para>
 /// Usage: revela generate scan
@@ -22,8 +24,17 @@ namespace Spectara.Revela.Commands.Generate.Commands;
 public sealed partial class ScanCommand(
     ILogger<ScanCommand> logger,
     IContentService contentService,
-    IOptionsMonitor<ProjectConfig> projectConfig)
+    IOptionsMonitor<ProjectConfig> projectConfig) : IGenerateStep
 {
+    /// <inheritdoc />
+    public string Name => "scan";
+
+    /// <inheritdoc />
+    public string Description => "Scan content and update manifest";
+
+    /// <inheritdoc />
+    public int Order => GenerateStepOrder.Scan;
+
     /// <summary>
     /// Creates the CLI command.
     /// </summary>
@@ -40,7 +51,15 @@ public sealed partial class ScanCommand(
         return command;
     }
 
-    private async Task<int> ExecuteAsync(CancellationToken cancellationToken)
+    /// <summary>
+    /// Executes the scan command.
+    /// </summary>
+    /// <remarks>
+    /// Public to allow orchestration by <see cref="AllCommand"/>.
+    /// </remarks>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>Exit code (0 = success).</returns>
+    public async Task<int> ExecuteAsync(CancellationToken cancellationToken)
     {
         try
         {

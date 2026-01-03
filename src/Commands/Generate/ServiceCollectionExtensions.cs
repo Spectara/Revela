@@ -4,7 +4,6 @@ using Spectara.Revela.Commands.Generate.Building;
 using Spectara.Revela.Commands.Generate.Commands;
 using Spectara.Revela.Commands.Generate.Mapping;
 using Spectara.Revela.Commands.Generate.Parsing;
-using Spectara.Revela.Commands.Generate.Pipeline;
 using Spectara.Revela.Commands.Generate.Scanning;
 using Spectara.Revela.Commands.Generate.Services;
 using Spectara.Revela.Core.Services;
@@ -49,17 +48,17 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IImageService, ImageService>();
         services.AddSingleton<IRenderService, RenderService>();
 
-        // Commands (thin CLI wrappers)
+        // Commands (thin CLI wrappers) - also registered as IGenerateStep
         services.AddTransient<AllCommand>();
         services.AddTransient<ScanCommand>();
         services.AddTransient<ImagesCommand>();
         services.AddTransient<PagesCommand>();
         services.AddTransient<GenerateCommand>();
 
-        // Pipeline steps (auto-discovered by AllCommand via DI)
-        services.AddTransient<IGeneratePipelineStep, ScanPipelineStep>();
-        services.AddTransient<IGeneratePipelineStep, PagesPipelineStep>();
-        services.AddTransient<IGeneratePipelineStep, ImagesPipelineStep>();
+        // Register commands as generate steps for pipeline orchestration
+        services.AddTransient<IGenerateStep, ScanCommand>();
+        services.AddTransient<IGenerateStep, PagesCommand>();
+        services.AddTransient<IGenerateStep, ImagesCommand>();
 
         return services;
     }

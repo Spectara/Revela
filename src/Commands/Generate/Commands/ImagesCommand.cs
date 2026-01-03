@@ -5,6 +5,7 @@ using Spectara.Revela.Commands.Generate.Abstractions;
 using Spectara.Revela.Commands.Generate.Models.Results;
 using Spectara.Revela.Core.Configuration;
 using Spectara.Revela.Sdk;
+using Spectara.Revela.Sdk.Abstractions;
 using Spectre.Console;
 using Spectre.Console.Rendering;
 using IManifestRepository = Spectara.Revela.Sdk.Abstractions.IManifestRepository;
@@ -17,6 +18,7 @@ namespace Spectara.Revela.Commands.Generate.Commands;
 /// <remarks>
 /// <para>
 /// Thin CLI wrapper that delegates to <see cref="IImageService.ProcessAsync"/>.
+/// Implements <see cref="IGenerateStep"/> for pipeline orchestration.
 /// </para>
 /// <para>
 /// Usage: revela generate images [--force]
@@ -26,8 +28,17 @@ public sealed partial class ImagesCommand(
     ILogger<ImagesCommand> logger,
     IImageService imageService,
     IManifestRepository manifestRepository,
-    IOptionsMonitor<ProjectConfig> projectConfig)
+    IOptionsMonitor<ProjectConfig> projectConfig) : IGenerateStep
 {
+    /// <inheritdoc />
+    public string Name => "images";
+
+    /// <inheritdoc />
+    public string Description => "Process images from manifest";
+
+    /// <inheritdoc />
+    public int Order => GenerateStepOrder.Images;
+
     /// <summary>
     /// Creates the CLI command.
     /// </summary>
@@ -50,7 +61,20 @@ public sealed partial class ImagesCommand(
         return command;
     }
 
-    private async Task<int> ExecuteAsync(bool force, CancellationToken cancellationToken)
+    /// <inheritdoc />
+    /// <remarks>
+    /// Called by pipeline orchestration. Uses default options (no force rebuild).
+    /// </remarks>
+    public Task<int> ExecuteAsync(CancellationToken cancellationToken = default)
+        => ExecuteAsync(force: false, cancellationToken);
+
+    /// <summary>
+    /// Executes the images command with force option.
+    /// </summary>
+    /// <param name="force">Force rebuild all images (ignore cache).</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>Exit code (0 = success).</returns>
+    public async Task<int> ExecuteAsync(bool force, CancellationToken cancellationToken)
     {
         try
         {

@@ -117,7 +117,7 @@ public sealed class OneDriveSourceCommand(
             };
 
             // Determine output directory (Config > Default)
-            var outputDirectory = currentConfig.OutputDirectory ?? "source";
+            var outputDirectory = currentConfig.OutputDirectory ?? ProjectPaths.Source;
             outputDirectory = Path.Combine(projectEnvironment.Value.Path, outputDirectory);
 
             // Determine concurrency (Config > Default)

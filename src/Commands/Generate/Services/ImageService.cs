@@ -29,23 +29,14 @@ public sealed partial class ImageService(
     IOptionsMonitor<GenerateConfig> options,
     ILogger<ImageService> logger) : IImageService
 {
-    /// <summary>Fixed source directory name (convention over configuration)</summary>
-    private const string SourceDirectory = "source";
-
-    /// <summary>Output directory for generated site</summary>
-    private const string OutputDirectory = "output";
-
     /// <summary>Image output directory within output folder</summary>
     private const string ImageDirectory = "images";
 
-    /// <summary>Cache directory name</summary>
-    private const string CacheDirectory = ".cache";
-
     /// <summary>Gets full path to source directory</summary>
-    private string SourcePath => Path.Combine(projectEnvironment.Value.Path, SourceDirectory);
+    private string SourcePath => Path.Combine(projectEnvironment.Value.Path, ProjectPaths.Source);
 
     /// <summary>Gets full path to output directory</summary>
-    private string OutputPath => Path.Combine(projectEnvironment.Value.Path, OutputDirectory);
+    private string OutputPath => Path.Combine(projectEnvironment.Value.Path, ProjectPaths.Output);
 
     /// <summary>Gets current image settings (supports hot-reload)</summary>
     private ImageConfig ImageSettings => options.CurrentValue.Images;
@@ -192,7 +183,7 @@ public sealed partial class ImageService(
             }
 
             // Process images in parallel with limited worker pool
-            var cacheDirectory = Path.Combine(projectEnvironment.Value.Path, CacheDirectory);
+            var cacheDirectory = Path.Combine(projectEnvironment.Value.Path, ProjectPaths.Cache);
             var processedCount = 0;
             var totalFilesCreated = 0;
             var totalSizeBytes = 0L;

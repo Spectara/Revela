@@ -10,21 +10,33 @@ using Spectre.Console;
 namespace Spectara.Revela.Plugin.Statistics.Commands;
 
 /// <summary>
-/// Command to generate statistics page from manifest EXIF data
+/// Command to generate statistics page from manifest EXIF data.
 /// </summary>
 /// <remarks>
 /// <para>
-/// Output: Creates _index.revela with frontmatter and template reference.
+/// Output: Creates statistics.json in .cache/{page.Path}/.
 /// The actual rendering is done by the theme extension (Theme.Lumina.Statistics).
+/// </para>
+/// <para>
+/// Implements <see cref="IGenerateStep"/> for pipeline integration.
 /// </para>
 /// </remarks>
 public sealed class StatsCommand(
     ILogger<StatsCommand> logger,
     IManifestRepository manifestRepository,
     IOptions<ProjectEnvironment> projectEnvironment,
-    StatisticsAggregator aggregator)
+    StatisticsAggregator aggregator) : IGenerateStep
 {
     private const string ManifestPath = ".cache/manifest.json";
+
+    /// <inheritdoc />
+    public string Name => "statistics";
+
+    /// <inheritdoc />
+    public string Description => "Generate statistics from EXIF data";
+
+    /// <inheritdoc />
+    public int Order => GenerateStepOrder.Statistics;
 
     /// <summary>
     /// Create the command
@@ -38,7 +50,8 @@ public sealed class StatsCommand(
         return command;
     }
 
-    private async Task<int> ExecuteAsync(CancellationToken cancellationToken)
+    /// <inheritdoc />
+    public async Task<int> ExecuteAsync(CancellationToken cancellationToken = default)
     {
         var projectPath = projectEnvironment.Value.Path;
 

@@ -2,7 +2,6 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Spectara.Revela.Plugin.Statistics.Commands;
 using Spectara.Revela.Plugin.Statistics.Configuration;
-using Spectara.Revela.Plugin.Statistics.Pipeline;
 using Spectara.Revela.Plugin.Statistics.Services;
 using Spectara.Revela.Sdk.Abstractions;
 
@@ -50,8 +49,8 @@ public sealed class StatisticsPlugin : IPlugin
         services.AddTransient<CleanStatisticsCommand>();
         services.AddTransient<ConfigStatisticsCommand>();
 
-        // Register Pipeline Step - auto-discovered by AllCommand via DI
-        services.AddTransient<IGeneratePipelineStep, StatisticsPipelineStep>();
+        // Register StatsCommand as IGenerateStep for pipeline orchestration
+        services.AddTransient<IGenerateStep, StatsCommand>();
 
         // Register Page Template for init commands
         services.AddSingleton<IPageTemplate, StatsPageTemplate>();

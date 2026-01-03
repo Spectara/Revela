@@ -1,4 +1,5 @@
 using Spectara.Revela.Core.Themes;
+using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Abstractions;
 
 namespace Spectara.Revela.Core.Services;
@@ -50,7 +51,6 @@ public interface IThemeResolver
 public sealed partial class ThemeResolver : IThemeResolver
 {
     private const string DefaultThemeName = "Lumina";
-    private const string ThemesFolderName = "themes";
 
     private readonly IEnumerable<IThemePlugin> installedThemes;
     private readonly IEnumerable<IThemeExtension> themeExtensions;
@@ -165,7 +165,7 @@ public sealed partial class ThemeResolver : IThemeResolver
 
     private LocalThemeAdapter? TryResolveLocalTheme(string themeName, string projectPath)
     {
-        var themesPath = Path.Combine(projectPath, ThemesFolderName);
+        var themesPath = Path.Combine(projectPath, ProjectPaths.Themes);
         if (!Directory.Exists(themesPath))
         {
             return null;
@@ -197,7 +197,7 @@ public sealed partial class ThemeResolver : IThemeResolver
 
     private IEnumerable<IThemePlugin> GetLocalThemes(string projectPath)
     {
-        var themesPath = Path.Combine(projectPath, ThemesFolderName);
+        var themesPath = Path.Combine(projectPath, ProjectPaths.Themes);
         if (!Directory.Exists(themesPath))
         {
             yield break;

@@ -4,6 +4,7 @@ using Spectara.Revela.Commands.Generate.Abstractions;
 using Spectara.Revela.Commands.Generate.Models.Results;
 using Spectara.Revela.Core.Configuration;
 using Spectara.Revela.Sdk;
+using Spectara.Revela.Sdk.Abstractions;
 using Spectre.Console;
 using IManifestRepository = Spectara.Revela.Sdk.Abstractions.IManifestRepository;
 
@@ -15,6 +16,7 @@ namespace Spectara.Revela.Commands.Generate.Commands;
 /// <remarks>
 /// <para>
 /// Thin CLI wrapper that delegates to <see cref="IRenderService.RenderAsync"/>.
+/// Implements <see cref="IGenerateStep"/> for pipeline orchestration.
 /// </para>
 /// <para>
 /// Usage: revela generate pages
@@ -24,8 +26,17 @@ public sealed partial class PagesCommand(
     ILogger<PagesCommand> logger,
     IRenderService renderService,
     IManifestRepository manifestRepository,
-    IOptionsMonitor<ProjectConfig> projectConfig)
+    IOptionsMonitor<ProjectConfig> projectConfig) : IGenerateStep
 {
+    /// <inheritdoc />
+    public string Name => "pages";
+
+    /// <inheritdoc />
+    public string Description => "Generate HTML pages from manifest";
+
+    /// <inheritdoc />
+    public int Order => GenerateStepOrder.Pages;
+
     /// <summary>
     /// Creates the CLI command.
     /// </summary>
@@ -42,7 +53,15 @@ public sealed partial class PagesCommand(
         return command;
     }
 
-    private async Task<int> ExecuteAsync(CancellationToken cancellationToken)
+    /// <summary>
+    /// Executes the pages command.
+    /// </summary>
+    /// <remarks>
+    /// Public to allow orchestration by <see cref="AllCommand"/>.
+    /// </remarks>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>Exit code (0 = success).</returns>
+    public async Task<int> ExecuteAsync(CancellationToken cancellationToken)
     {
         try
         {
