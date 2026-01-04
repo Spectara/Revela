@@ -7,6 +7,30 @@ und dieses Projekt folgt [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+## [0.0.1-beta.8] - 2026-01-04
+
+### Added
+- **Create Page Command**: Erweiterte Seitenvorlagen mit interaktivem Modus
+  - `create page gallery`: Neue Optionen --sort, --hidden, --slug
+  - `create page text`: Neue Vorlage für reine Textseiten (About, Kontakt)
+  - Interaktiver Wizard wenn Pfad-Argument fehlt
+  - DefaultBody-Property für Starter-Inhalte
+- **Theme Customization**: Lokale Theme-Variablen über theme/theme.json
+- **Dokumentation**: Theme-Anpassung Guide (DE/EN), Seiten-Dokumentation (DE/EN)
+
+### Changed
+- **Standalone Mode**: Setup Wizard erscheint jetzt VOR der Projektauswahl
+- **Getting-Started Guides**: Fokus auf interaktiven Menü-Modus
+- **UX**: Base URL Prompt mit hilfreicher Beschreibung
+- **Template System**: Unified theme/extension structure mit implicit template prefixes
+- **Generate Pipeline**: Unified IGenerateStep Interface
+- **Config System**: IConfiguration Array-Merge Problem gelöst
+
+### Fixed
+- Statistics Rendering mit implicit template prefix system
+- Pfad-Handling: Seiten werden relativ zu source/ erstellt
+- Option-Konstruktor für Properties ohne Short-Alias
+
 ## [0.0.1-beta.7] - 2025-12-29
 
 ### Changed
