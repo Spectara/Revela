@@ -3,47 +3,38 @@ using Spectara.Revela.Sdk.Abstractions;
 namespace Spectara.Revela.Commands.Create.Templates;
 
 /// <summary>
-/// Core page template for creating gallery pages.
+/// Page template for creating text-only pages without gallery.
 /// </summary>
 /// <remarks>
 /// <para>
-/// Creates a _index.revela file with frontmatter for gallery pages.
-/// Supports all standard frontmatter fields: title, description, sort, hidden, and slug.
+/// Creates a _index.revela file for pages like About, Contact, Imprint, etc.
+/// Uses the "page" template which renders only the markdown body without image grid.
 /// </para>
 /// <para>
-/// Usage: revela create page gallery source/vacation --title "Summer 2024"
-/// </para>
-/// <para>
-/// Advanced: revela create page gallery source/best --title "Best Shots" --sort "exif.raw.Rating:desc"
+/// Usage: revela create page text source/about --title "About Me"
 /// </para>
 /// </remarks>
-public sealed class GalleryPageTemplate : IPageTemplate
+public sealed class TextPageTemplate : IPageTemplate
 {
     /// <inheritdoc />
-    public string Name => "gallery";
+    public string Name => "text";
 
     /// <inheritdoc />
-    public string DisplayName => "Gallery Page";
+    public string DisplayName => "Text Page";
 
     /// <inheritdoc />
-    public string Description => "Create a gallery page with title, description, and sorting options";
-
-    /// <inheritdoc />
-    /// <remarks>
-    /// Empty string means use the theme's default template (usually body/gallery).
-    /// </remarks>
-    public string TemplateName => "";
+    public string Description => "Create a text-only page (About, Contact, Imprint, etc.)";
 
     /// <inheritdoc />
     /// <remarks>
-    /// Empty string means no plugin configuration is needed.
+    /// Uses "page" template which renders body content without gallery grid.
     /// </remarks>
+    public string TemplateName => "page";
+
+    /// <inheritdoc />
     public string ConfigSectionName => "";
 
     /// <inheritdoc />
-    /// <remarks>
-    /// Gallery pages don't have a dedicated config command.
-    /// </remarks>
     public bool HasConfigCommand => false;
 
     /// <inheritdoc />
@@ -54,7 +45,7 @@ public sealed class GalleryPageTemplate : IPageTemplate
             Name = "title",
             Aliases = ["--title", "-t"],
             Type = typeof(string),
-            DefaultValue = "Gallery",
+            DefaultValue = "Page",
             Description = "Page title",
             Required = false,
             FrontmatterKey = "title",
@@ -66,20 +57,9 @@ public sealed class GalleryPageTemplate : IPageTemplate
             Aliases = ["--description", "-d"],
             Type = typeof(string),
             DefaultValue = "",
-            Description = "Page description",
+            Description = "Page description (for SEO)",
             Required = false,
             FrontmatterKey = "description",
-            ConfigKey = null
-        },
-        new()
-        {
-            Name = "sort",
-            Aliases = ["--sort", "-s"],
-            Type = typeof(string),
-            DefaultValue = null,
-            Description = "Sort override (e.g., 'dateTaken:asc', 'exif.raw.Rating:desc')",
-            Required = false,
-            FrontmatterKey = "sort",
             ConfigKey = null
         },
         new()
@@ -107,18 +87,17 @@ public sealed class GalleryPageTemplate : IPageTemplate
     ];
 
     /// <inheritdoc />
-    /// <remarks>
-    /// Gallery pages don't require any plugin configuration.
-    /// </remarks>
     public IReadOnlyList<TemplateProperty> ConfigProperties { get; } = [];
 
     /// <inheritdoc />
-    /// <remarks>
-    /// Optional introduction text shown above the image grid.
-    /// </remarks>
-    public string? DefaultBody => """
-        Add an optional introduction here.
+    public string DefaultBody => """
+        Write your content here using **Markdown**.
 
-        This text appears above the image gallery.
+        ## Example Heading
+
+        - List item one
+        - List item two
+
+        *Edit this file to add your own content.*
         """;
 }

@@ -22,6 +22,7 @@ public static class ServiceCollectionExtensions
 
         // Core page templates
         services.AddSingleton<IPageTemplate, GalleryPageTemplate>();
+        services.AddSingleton<IPageTemplate, TextPageTemplate>();
 
         return services;
     }

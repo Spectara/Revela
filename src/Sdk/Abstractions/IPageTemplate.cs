@@ -77,4 +77,18 @@ public interface IPageTemplate
     /// Supports dot notation for nested objects (e.g., "Deploy.Host" → {"Deploy": {"Host": "..."}}).
     /// </remarks>
     IReadOnlyList<TemplateProperty> ConfigProperties { get; }
+
+    /// <summary>
+    /// Gets the default body content (Markdown) to include after frontmatter.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Optional starter content to help users get started.
+    /// Return <c>null</c> or empty string for no default body.
+    /// </para>
+    /// <para>
+    /// The content is written directly after the closing <c>+++</c> frontmatter marker.
+    /// </para>
+    /// </remarks>
+    string? DefaultBody => null;
 }
