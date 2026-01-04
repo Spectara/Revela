@@ -91,6 +91,7 @@ public sealed partial class ConfigProjectCommand(
                 new TextPrompt<string>("Project name:")
                     .DefaultValue(defaultName));
 
+            AnsiConsole.MarkupLine("[dim]Your website address, e.g. https://photos.example.com (leave empty if unknown)[/]");
             url = AnsiConsole.Prompt(
                 new TextPrompt<string>("Base URL:")
                     .DefaultValue(current?["project"]?["url"]?.GetValue<string>() ?? string.Empty)

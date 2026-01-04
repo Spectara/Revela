@@ -243,25 +243,29 @@ C:\Revela\projects\MeineFotos\source\
 
 ### Schritt 5.2: Galerie-Beschreibung hinzufügen (Optional)
 
-Um den Titel einer Galerie anzupassen oder eine Beschreibung hinzuzufügen, erstelle eine `_index.md`-Datei:
+Um den Titel einer Galerie anzupassen oder eine Beschreibung hinzuzufügen:
 
-**Datei:** `source/01 Hochzeiten/_index.md`
-```markdown
----
-title: Hochzeitsfotografie
-description: Emotionale Momente für die Ewigkeit festgehalten
----
+1. Wähle im Menü **create** → **page** → **gallery**
+2. Gib den Pfad zur Galerie ein (z.B. `01 Hochzeiten`)
+3. Beantworte die Fragen zu Titel und Beschreibung
+4. Bestätige die Vorschau
 
-Jede Hochzeit erzählt ihre eigene Geschichte. Hier findest du 
-eine Auswahl meiner schönsten Hochzeitsbilder.
-```
+Revela erstellt automatisch eine `_index.revela`-Datei in der Galerie:
 
 | Feld | Bedeutung |
 |------|-----------|
 | `title` | Überschreibt den Ordnernamen als Titel |
 | `description` | Beschreibungstext für die Galerie |
 
-Der Text unter den `---`-Linien erscheint als Einleitungstext auf der Galerie-Seite.
+Der Text unter den Metadaten erscheint als Einleitungstext auf der Galerie-Seite.
+
+### Schritt 5.3: Reine Textseiten erstellen (Optional)
+
+Für Seiten ohne Galerie (About, Kontakt, Impressum):
+
+1. Wähle **create** → **page** → **text**
+2. Gib einen Pfad ein (z.B. `about`)
+3. Fülle Titel und Beschreibung aus
 
 ---
 

@@ -316,6 +316,15 @@ internal static class ProjectResolver
         string[] filteredArgs,
         bool hasCommands)
     {
+        // First-run check: If no revela.json exists, skip project selection entirely.
+        // The InteractiveMenuService.HandleFirstRunAsync() will show the Setup Wizard.
+        // This ensures: Setup Wizard → Project Selection (not the other way around!)
+        if (!GlobalConfigManager.ConfigFileExists())
+        {
+            // Return null project path - let InteractiveMenuService handle first-run
+            return (null, filteredArgs, false);
+        }
+
         var projectName = ParseProjectArgument(args);
 
         // --project specified

@@ -241,23 +241,29 @@ C:\Revela\projects\MyPhotos\source\
 
 ### Step 5.2: Add Gallery Description (Optional)
 
-To customize a gallery's title or add a description, create an `_index.md` file:
+To customize a gallery's title or add a description:
 
-**File:** `source/01 Weddings/_index.md`
-```markdown
----
-title: Wedding Photography
-description: Emotional moments captured forever
----
+1. Select **create** → **page** → **gallery** from the menu
+2. Enter the path to the gallery (e.g., `01 Weddings`)
+3. Answer the prompts for title and description
+4. Confirm the preview
 
-Every wedding tells its own story. Here you'll find 
-a selection of my most beautiful wedding photos.
-```
+Revela automatically creates an `_index.revela` file in the gallery:
 
 | Field | Meaning |
 |-------|---------|
 | `title` | Overrides the folder name as title |
 | `description` | Description text for the gallery |
+
+The text below the metadata appears as introductory text on the gallery page.
+
+### Step 5.3: Create Text-Only Pages (Optional)
+
+For pages without a gallery (About, Contact, Imprint):
+
+1. Select **create** → **page** → **text**
+2. Enter a path (e.g., `about`)
+3. Fill in title and description
 
 The text below the `---` lines appears as introduction text on the gallery page.
 
