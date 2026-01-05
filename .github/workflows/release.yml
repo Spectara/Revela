@@ -226,6 +226,22 @@ jobs:
           cp docs/getting-started/*.md ./publish/getting-started/
         shell: bash
 
+      - name: Copy launcher script (Linux/macOS)
+        if: matrix.os != 'windows-latest'
+        run: |
+          # Copy launcher script that sets CWD to script directory
+          # This fixes double-click behavior on macOS/Linux where CWD defaults to HOME
+          if [[ "${{ matrix.rid }}" == osx-* ]]; then
+            cp scripts/launchers/start-revela.command "./publish/Start Revela.command"
+            chmod +x "./publish/Start Revela.command"
+            echo "✅ Copied 'Start Revela.command' for macOS"
+          else
+            cp scripts/launchers/start-revela.sh ./publish/start-revela.sh
+            chmod +x ./publish/start-revela.sh
+            echo "✅ Copied 'start-revela.sh' for Linux"
+          fi
+        shell: bash
+
       - name: List publish output
         run: ls -la ./publish/
         shell: bash
@@ -243,7 +259,11 @@ jobs:
         run: |
           cd publish
           chmod +x ${{ matrix.exe }}
-          tar -czvf ../revela-${{ matrix.rid }}-core.tar.gz ${{ matrix.exe }} getting-started
+          if [[ "${{ matrix.rid }}" == osx-* ]]; then
+            tar -czvf ../revela-${{ matrix.rid }}-core.tar.gz ${{ matrix.exe }} "Start Revela.command" getting-started
+          else
+            tar -czvf ../revela-${{ matrix.rid }}-core.tar.gz ${{ matrix.exe }} start-revela.sh getting-started
+          fi
 
       # === Full Release ===
       - name: Download NuGet packages
@@ -267,7 +287,11 @@ jobs:
         if: matrix.os != 'windows-latest'
         run: |
           cd publish
-          tar -czvf ../revela-${{ matrix.rid }}-full.tar.gz ${{ matrix.exe }} packages getting-started
+          if [[ "${{ matrix.rid }}" == osx-* ]]; then
+            tar -czvf ../revela-${{ matrix.rid }}-full.tar.gz ${{ matrix.exe }} "Start Revela.command" packages getting-started
+          else
+            tar -czvf ../revela-${{ matrix.rid }}-full.tar.gz ${{ matrix.exe }} start-revela.sh packages getting-started
+          fi
 
       # === Attestation & Upload ===
       - name: Attest Core build provenance

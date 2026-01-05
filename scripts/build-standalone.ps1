@@ -140,7 +140,33 @@ try {
     Write-Success "CLI published: $ExeName ($exeSize MB)"
 
     # ========================================================================
-    # Step 4: Copy documentation
+    # Step 4: Copy launcher scripts (macOS/Linux)
+    # ========================================================================
+    if ($RuntimeIdentifier -like "osx-*" -or $RuntimeIdentifier -like "linux-*") {
+        Write-Step "Copying launcher scripts"
+
+        $launchersDir = Join-Path $ScriptDir "launchers"
+
+        if ($RuntimeIdentifier -like "osx-*") {
+            # macOS: .command file opens Terminal on double-click
+            $sourcePath = Join-Path $launchersDir "start-revela.command"
+            $destPath = Join-Path $OutputDir "Start Revela.command"
+            Copy-Item -Path $sourcePath -Destination $destPath
+            Write-Success "Copied 'Start Revela.command' (macOS double-click launcher)"
+        }
+        else {
+            # Linux: .sh file
+            $sourcePath = Join-Path $launchersDir "start-revela.sh"
+            $destPath = Join-Path $OutputDir "start-revela.sh"
+            Copy-Item -Path $sourcePath -Destination $destPath
+            Write-Success "Copied 'start-revela.sh' (Linux double-click launcher)"
+        }
+
+        Write-Info "Launcher ensures correct working directory on double-click"
+    }
+
+    # ========================================================================
+    # Step 5: Copy documentation
     # ========================================================================
     Write-Step "Copying documentation"
 
@@ -150,7 +176,7 @@ try {
     Write-Success "Copied $docCount documentation files"
 
     # ========================================================================
-    # Step 5: Pack all packages (Full variant only)
+    # Step 6: Pack all packages (Full variant only)
     # ========================================================================
     if ($Full) {
         Write-Step "Packing NuGet packages"
@@ -189,10 +215,16 @@ try {
     Write-Host ""
     Write-Host "  Contents:" -ForegroundColor Cyan
     Write-Host "    $ExeName" -ForegroundColor White
+    if ($RuntimeIdentifier -like "osx-*") {
+        Write-Host "    Start Revela.command  (double-click launcher)" -ForegroundColor White
+    }
+    elseif ($RuntimeIdentifier -like "linux-*") {
+        Write-Host "    start-revela.sh       (double-click launcher)" -ForegroundColor White
+    }
     Write-Host "    getting-started/" -ForegroundColor White
     if ($Full) {
         $packageCount = (Get-ChildItem $PackagesDir -Filter "*.nupkg").Count
-        Write-Host "    packages/       ($packageCount packages)" -ForegroundColor White
+        Write-Host "    packages/             ($packageCount packages)" -ForegroundColor White
         Write-Host ""
         Write-Host "  Bundled packages:" -ForegroundColor Cyan
         Get-ChildItem $PackagesDir -Filter "*.nupkg" | ForEach-Object {
@@ -201,8 +233,18 @@ try {
     }
     Write-Host ""
     Write-Host "  Quick start:" -ForegroundColor Cyan
-    Write-Host "    cd `"$OutputDir`"" -ForegroundColor Yellow
-    Write-Host "    .\$ExeName" -ForegroundColor Yellow
+    if ($RuntimeIdentifier -like "win-*") {
+        Write-Host "    cd `"$OutputDir`"" -ForegroundColor Yellow
+        Write-Host "    .\$ExeName" -ForegroundColor Yellow
+    }
+    elseif ($RuntimeIdentifier -like "osx-*") {
+        Write-Host "    Double-click 'Start Revela.command'" -ForegroundColor Yellow
+        Write-Host "    Or in Terminal: cd `"$OutputDir`" && ./revela" -ForegroundColor Yellow
+    }
+    else {
+        Write-Host "    Double-click 'start-revela.sh'" -ForegroundColor Yellow
+        Write-Host "    Or in Terminal: cd `"$OutputDir`" && ./revela" -ForegroundColor Yellow
+    }
     Write-Host ""
 
     if ($Open) {
