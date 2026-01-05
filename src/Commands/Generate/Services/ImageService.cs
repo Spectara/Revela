@@ -74,8 +74,8 @@ public sealed partial class ImageService(
             if (configChanged && manifestRepository.Images.Count > 0)
             {
                 LogConfigChanged(logger);
-                manifestRepository.Clear();
-                await manifestRepository.LoadAsync(cancellationToken); // Reload to get content back
+                // Clear hashes to force reprocessing, but keep tree structure
+                manifestRepository.ClearImageHashes();
             }
 
             manifestRepository.ConfigHash = configHash;

@@ -250,6 +250,27 @@ public sealed partial class ManifestService(
         imageCache.Clear();
     }
 
+    /// <inheritdoc />
+    public void ClearImageHashes()
+    {
+        // Clear hash on all images in the tree to force reprocessing
+        foreach (var (_, node) in imageCache.Values)
+        {
+            foreach (var content in node.Content.OfType<ImageContent>())
+            {
+                // Use reflection to set the init-only property, or create a new record
+                var index = node.Content.IndexOf(content);
+                if (index >= 0)
+                {
+                    node.Content[index] = content with { Hash = string.Empty };
+                }
+            }
+        }
+
+        // Rebuild cache with updated entries
+        RebuildImageCache();
+    }
+
     #endregion
 
     #region Utilities
@@ -323,8 +344,8 @@ public sealed partial class ManifestService(
         var lastSeparator = sourcePath.LastIndexOfAny(['/', '\\']);
         var directoryPath = lastSeparator > 0 ? sourcePath[..lastSeparator] : string.Empty;
 
-        // Normalize to backslashes for comparison with node paths
-        directoryPath = directoryPath.Replace('/', '\\');
+        // Normalize to forward slashes for cross-platform comparison
+        directoryPath = NormalizePath(directoryPath);
 
         return FindNodeByPath(manifest.Root, directoryPath);
     }
@@ -334,7 +355,11 @@ public sealed partial class ManifestService(
     /// </summary>
     private static ManifestEntry? FindNodeByPath(ManifestEntry node, string path)
     {
-        if (string.Equals(node.Path, path, StringComparison.OrdinalIgnoreCase))
+        // Normalize both paths for cross-platform comparison
+        var normalizedNodePath = NormalizePath(node.Path);
+        var normalizedSearchPath = NormalizePath(path);
+
+        if (string.Equals(normalizedNodePath, normalizedSearchPath, StringComparison.OrdinalIgnoreCase))
         {
             return node;
         }
@@ -350,6 +375,11 @@ public sealed partial class ManifestService(
 
         return null;
     }
+
+    /// <summary>
+    /// Normalize path separators to forward slashes for cross-platform comparison.
+    /// </summary>
+    private static string NormalizePath(string path) => path.Replace('\\', '/');
 
     /// <summary>
     /// Get the full source path for an image in a node.

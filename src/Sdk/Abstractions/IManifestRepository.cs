@@ -108,6 +108,16 @@ public interface IManifestRepository
     /// </summary>
     void Clear();
 
+    /// <summary>
+    /// Clear all image hashes to force reprocessing.
+    /// </summary>
+    /// <remarks>
+    /// Used when image configuration changes (sizes, formats).
+    /// Keeps the tree structure intact but clears hashes so all images
+    /// are considered "changed" and will be reprocessed.
+    /// </remarks>
+    void ClearImageHashes();
+
     #endregion
 
     #region Utilities

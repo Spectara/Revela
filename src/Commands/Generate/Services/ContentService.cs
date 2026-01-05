@@ -71,8 +71,30 @@ public sealed partial class ContentService(
                 ImagesFound = 0
             });
 
-            // Load existing manifest
+            // Load existing manifest (to preserve image hashes for incremental builds)
             await manifestRepository.LoadAsync(cancellationToken);
+
+            // Check if image config changed - if so, don't preserve old hashes
+            var sizes = imageSizesProvider.GetSizes();
+            var formats = generateOptions.CurrentValue.Images.GetActiveFormats();
+            var configHash = ManifestService.ComputeConfigHash(sizes, formats);
+            var configChanged = manifestRepository.ConfigHash != configHash;
+
+            // Cache existing image hashes before rebuilding tree (unless config changed)
+            Dictionary<string, (string Hash, DateTime ProcessedAt)> existingHashes;
+            if (configChanged && manifestRepository.Images.Count > 0)
+            {
+                LogConfigChanged(logger);
+                existingHashes = new Dictionary<string, (string, DateTime)>(StringComparer.OrdinalIgnoreCase);
+            }
+            else
+            {
+                existingHashes = manifestRepository.Images
+                    .ToDictionary(
+                        kvp => kvp.Key,
+                        kvp => (kvp.Value.Hash, kvp.Value.ProcessedAt),
+                        StringComparer.OrdinalIgnoreCase);
+            }
 
             progress?.Report(new ContentProgress
             {
@@ -111,11 +133,12 @@ public sealed partial class ContentService(
                 sortDescending: sortDescending,
                 cancellationToken: cancellationToken);
 
-            // Build unified root node with metadata
-            var root = BuildRoot(content, navigation, imageMetadata);
+            // Build unified root node with metadata (preserving existing hashes)
+            var root = BuildRoot(content, navigation, imageMetadata, existingHashes);
 
             // Update manifest
             manifestRepository.SetRoot(root);
+            manifestRepository.ConfigHash = configHash;
             manifestRepository.LastScanned = DateTime.UtcNow;
 
             // Save manifest
@@ -245,11 +268,16 @@ public sealed partial class ContentService(
     /// Images from content.Images are grouped by their Gallery path and
     /// assigned to the corresponding ManifestEntry nodes.
     /// </para>
+    /// <para>
+    /// Existing image hashes are preserved for incremental builds.
+    /// Images that no longer exist in source are automatically excluded.
+    /// </para>
     /// </remarks>
     private ManifestEntry BuildRoot(
         ContentTree content,
         IReadOnlyList<NavigationItem> navigation,
-        Dictionary<string, ImageMetadata> imageMetadata)
+        Dictionary<string, ImageMetadata> imageMetadata,
+        Dictionary<string, (string Hash, DateTime ProcessedAt)> existingHashes)
     {
         // Find the home gallery (empty path)
         var homeGallery = content.Galleries.FirstOrDefault(g => string.IsNullOrEmpty(g.Path));
@@ -293,8 +321,8 @@ public sealed partial class ContentService(
             Hidden = false,
             Template = null,  // Root uses default template
             DataSources = [],
-            Content = BuildContentList(rootImages, rootMarkdowns, imageMetadata, homeGallery?.Sort),
-            Children = [.. navigation.Select(nav => ConvertNavigationToEntry(nav, galleryBySlug, imagesByPath, markdownsByPath, imageMetadata))]
+            Content = BuildContentList(rootImages, rootMarkdowns, imageMetadata, existingHashes, homeGallery?.Sort),
+            Children = [.. navigation.Select(nav => ConvertNavigationToEntry(nav, galleryBySlug, imagesByPath, markdownsByPath, imageMetadata, existingHashes))]
         };
 
         return root;
@@ -308,7 +336,8 @@ public sealed partial class ContentService(
         Dictionary<string, Gallery> galleryBySlug,
         Dictionary<string, List<SourceImage>> imagesByPath,
         Dictionary<string, List<SourceMarkdown>> markdownsByPath,
-        Dictionary<string, ImageMetadata> imageMetadata)
+        Dictionary<string, ImageMetadata> imageMetadata,
+        Dictionary<string, (string Hash, DateTime ProcessedAt)> existingHashes)
     {
         // Try to find matching gallery by URL/slug
         Gallery? gallery = null;
@@ -339,8 +368,8 @@ public sealed partial class ContentService(
             Hidden = navItem.Hidden,
             Template = gallery?.Template,
             DataSources = gallery?.DataSources.ToDictionary(kvp => kvp.Key, kvp => kvp.Value) ?? [],
-            Content = BuildContentList(images, markdowns, imageMetadata, gallery?.Sort),
-            Children = [.. navItem.Children.Select(child => ConvertNavigationToEntry(child, galleryBySlug, imagesByPath, markdownsByPath, imageMetadata))]
+            Content = BuildContentList(images, markdowns, imageMetadata, existingHashes, gallery?.Sort),
+            Children = [.. navItem.Children.Select(child => ConvertNavigationToEntry(child, galleryBySlug, imagesByPath, markdownsByPath, imageMetadata, existingHashes))]
         };
     }
 
@@ -352,19 +381,21 @@ public sealed partial class ContentService(
     /// Default: alphabetically by filename to allow users to control
     /// ordering via filename prefixes (e.g., "01-intro.md", "02-photo.jpg").
     /// Alternative: by EXIF DateTaken for chronological galleries.
+    /// Existing image hashes are preserved for incremental builds.
     /// </remarks>
     private List<GalleryContent> BuildContentList(
         List<SourceImage> images,
         List<SourceMarkdown> markdowns,
         Dictionary<string, ImageMetadata> imageMetadata,
+        Dictionary<string, (string Hash, DateTime ProcessedAt)> existingHashes,
         string? sortOverride)
     {
         var content = new List<GalleryContent>();
 
-        // Convert images
+        // Convert images (preserving existing hashes)
         foreach (var image in images)
         {
-            content.Add(ConvertSourceImage(image, imageMetadata));
+            content.Add(ConvertSourceImage(image, imageMetadata, existingHashes));
         }
 
         // Convert markdown files
@@ -515,10 +546,12 @@ public sealed partial class ContentService(
     /// <remarks>
     /// If metadata was successfully read, populates Width, Height, EXIF, DateTaken, and Sizes.
     /// Sizes are calculated based on the actual image width and configured size presets.
+    /// Existing hash and ProcessedAt are preserved for incremental builds.
     /// </remarks>
     private ImageContent ConvertSourceImage(
         SourceImage source,
-        Dictionary<string, ImageMetadata> imageMetadata)
+        Dictionary<string, ImageMetadata> imageMetadata,
+        Dictionary<string, (string Hash, DateTime ProcessedAt)> existingHashes)
     {
         // Try to get metadata for this image
         imageMetadata.TryGetValue(source.RelativePath, out var meta);
@@ -528,17 +561,24 @@ public sealed partial class ContentService(
             ? CalculateSizes(meta.Width)
             : [];
 
+        // Preserve existing hash if available (for incremental builds)
+        // Use forward slashes for consistent key lookup
+        var manifestKey = source.RelativePath.Replace('\\', '/');
+        var (existingHash, existingProcessedAt) = existingHashes.TryGetValue(manifestKey, out var cached)
+            ? cached
+            : (string.Empty, DateTime.MinValue);
+
         return new ImageContent
         {
             Filename = source.FileName,
-            Hash = "", // Computed during image processing
+            Hash = existingHash,
             Width = meta?.Width ?? 0,
             Height = meta?.Height ?? 0,
             Sizes = sizes,
             FileSize = meta?.FileSize ?? source.FileSize,
             DateTaken = meta?.DateTaken,
             Exif = meta?.Exif,
-            ProcessedAt = DateTime.MinValue
+            ProcessedAt = existingProcessedAt
         };
     }
 
@@ -619,6 +659,9 @@ public sealed partial class ContentService(
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Skipped {SkippedCount} small images (below {MinWidth}x{MinHeight})")]
     private static partial void LogSmallImagesSkipped(ILogger logger, int skippedCount, int minWidth, int minHeight);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Image config changed, all images will be reprocessed")]
+    private static partial void LogConfigChanged(ILogger logger);
 
     #endregion
 
