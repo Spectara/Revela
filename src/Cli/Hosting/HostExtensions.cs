@@ -331,6 +331,7 @@ internal static class HostExtensions
                 "theme" => (20, CommandGroups.ConfigProject, true),
                 "image" => (30, CommandGroups.ConfigProject, true),
                 "site" => (40, CommandGroups.ConfigProject, true),
+                "sorting" => (50, CommandGroups.ConfigProject, true),
 
                 // Packages group: feed management (global, no project needed)
                 "feed" => (10, CommandGroups.ConfigPackages, false),
