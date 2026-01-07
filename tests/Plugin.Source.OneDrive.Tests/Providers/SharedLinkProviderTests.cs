@@ -148,6 +148,92 @@ public sealed class SharedLinkProviderTests : IDisposable
         Assert.AreEqual(expectedTime, result[0].LastModified);
     }
 
+    [TestMethod]
+    public async Task ListItemsAsync_WithPagination_FetchesAllPages()
+    {
+        // Arrange
+        var config = new OneDriveConfig { ShareUrl = "https://1drv.ms/f/s!example" };
+
+        SetupBadgerTokenResponse();
+        SetupActivationResponse("drive123", "folder123");
+
+        // First page with nextLink
+        SetupPaginatedListItemsResponse(
+            [
+                new ItemData { Id = "file1", Name = "photo1.jpg", Size = 1024 },
+                new ItemData { Id = "file2", Name = "photo2.jpg", Size = 2048 }
+            ],
+            nextLink: "https://api.onedrive.com/v1.0/shares/u!xyz/root/children?$skiptoken=page2"
+        );
+
+        // Second page (no nextLink = last page)
+        SetupNextPageResponse(
+            "https://api.onedrive.com/v1.0/shares/u!xyz/root/children?$skiptoken=page2",
+            [
+                new ItemData { Id = "file3", Name = "photo3.jpg", Size = 3072 },
+                new ItemData { Id = "file4", Name = "photo4.jpg", Size = 4096 }
+            ],
+            furtherNextLink: null
+        );
+
+        // Act
+        var result = await provider.ListItemsAsync(config);
+
+        // Assert - should have all 4 files from both pages
+        Assert.HasCount(4, result);
+        Assert.IsTrue(result.Any(i => i.Name == "photo1.jpg"));
+        Assert.IsTrue(result.Any(i => i.Name == "photo2.jpg"));
+        Assert.IsTrue(result.Any(i => i.Name == "photo3.jpg"));
+        Assert.IsTrue(result.Any(i => i.Name == "photo4.jpg"));
+    }
+
+    [TestMethod]
+    public async Task ListItemsAsync_WithPaginationInSubfolder_FetchesAllPagesRecursively()
+    {
+        // Arrange
+        var config = new OneDriveConfig { ShareUrl = "https://1drv.ms/f/s!example" };
+
+        SetupBadgerTokenResponse();
+        SetupActivationResponse("drive123", "folder123");
+
+        // Root folder with subfolder
+        SetupListItemsResponse(
+        [
+            new ItemData { Id = "folder1", Name = "Gallery", IsFolder = true }
+        ]);
+
+        // Subfolder first page with nextLink
+        SetupPaginatedSubfolderResponse(
+            "drive123",
+            "folder123",
+            "Gallery",
+            [
+                new ItemData { Id = "file1", Name = "nested1.jpg", Size = 1024 },
+                new ItemData { Id = "file2", Name = "nested2.jpg", Size = 2048 }
+            ],
+            nextLink: "https://api.onedrive.com/v1.0/drives/drive123/items/folder123:/Gallery:/children?$skiptoken=page2"
+        );
+
+        // Subfolder second page
+        SetupNextPageResponse(
+            "https://api.onedrive.com/v1.0/drives/drive123/items/folder123:/Gallery:/children?$skiptoken=page2",
+            [
+                new ItemData { Id = "file3", Name = "nested3.jpg", Size = 3072 }
+            ],
+            furtherNextLink: null
+        );
+
+        // Act
+        var result = await provider.ListItemsAsync(config);
+
+        // Assert - should have folder + 3 files from paginated subfolder
+        Assert.HasCount(4, result);
+        Assert.IsTrue(result.Any(i => i.Name == "Gallery" && i.IsFolder));
+        Assert.IsTrue(result.Any(i => i.Name == "nested1.jpg" && i.ParentPath == "Gallery"));
+        Assert.IsTrue(result.Any(i => i.Name == "nested2.jpg" && i.ParentPath == "Gallery"));
+        Assert.IsTrue(result.Any(i => i.Name == "nested3.jpg" && i.ParentPath == "Gallery"));
+    }
+
     #endregion
 
     #region DownloadFileAsync Tests
@@ -390,6 +476,76 @@ public sealed class SharedLinkProviderTests : IDisposable
             {
                 Content = new StringContent(
                     JsonSerializer.Serialize(new { value }),
+                    System.Text.Encoding.UTF8,
+                    "application/json"
+                )
+            }
+        );
+    }
+
+    private void SetupPaginatedListItemsResponse(IEnumerable<ItemData> items, string? nextLink)
+    {
+        var value = items.Select(i => CreateItemJson(i)).ToList();
+        var response = new Dictionary<string, object> { ["value"] = value };
+
+        if (nextLink is not null)
+        {
+            response["@odata.nextLink"] = nextLink;
+        }
+
+        mockHandler.AddPatternResponse(
+            url => url.Contains("/root/children", StringComparison.Ordinal),
+            new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent(
+                    JsonSerializer.Serialize(response),
+                    System.Text.Encoding.UTF8,
+                    "application/json"
+                )
+            }
+        );
+    }
+
+    private void SetupPaginatedSubfolderResponse(string driveId, string folderId, string folderPath, IEnumerable<ItemData> items, string? nextLink)
+    {
+        var value = items.Select(i => CreateItemJson(i)).ToList();
+        var response = new Dictionary<string, object> { ["value"] = value };
+
+        if (nextLink is not null)
+        {
+            response["@odata.nextLink"] = nextLink;
+        }
+
+        // Match subfolder URL pattern: /drives/{driveId}/items/{folderId}:/{path}:/children
+        mockHandler.AddPatternResponse(
+            url => url.Contains($"/drives/{driveId}/items/{folderId}:", StringComparison.Ordinal) && url.Contains(folderPath, StringComparison.Ordinal),
+            new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent(
+                    JsonSerializer.Serialize(response),
+                    System.Text.Encoding.UTF8,
+                    "application/json"
+                )
+            }
+        );
+    }
+
+    private void SetupNextPageResponse(string nextLink, IEnumerable<ItemData> items, string? furtherNextLink)
+    {
+        var value = items.Select(i => CreateItemJson(i)).ToList();
+        var response = new Dictionary<string, object> { ["value"] = value };
+
+        if (furtherNextLink is not null)
+        {
+            response["@odata.nextLink"] = furtherNextLink;
+        }
+
+        mockHandler.AddResponse(
+            new Uri(nextLink),
+            new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent(
+                    JsonSerializer.Serialize(response),
                     System.Text.Encoding.UTF8,
                     "application/json"
                 )

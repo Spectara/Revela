@@ -72,39 +72,63 @@ public sealed class SharedLinkProvider(
             apiUrl = BuildSubfolderApiUrl(metadata.DriveId, metadata.FolderId, folderPath);
         }
 
-        using var request = new HttpRequestMessage(HttpMethod.Get, apiUrl);
-        request.Headers.Add("Authorization", $"Badger {token}");
+        // Collect folders to process recursively (after all pages)
+        var foldersToProcess = new List<(string Name, string SubPath)>();
 
-        var response = await httpClient.SendAsync(request, cancellationToken);
-        response.EnsureSuccessStatusCode();
-
-        var jsonResponse = await response.Content.ReadFromJsonAsync<JsonDocument>(cancellationToken: cancellationToken);
-        if (jsonResponse is null)
+        // Handle pagination - OneDrive API returns max ~200 items per page
+        var nextLink = apiUrl;
+        while (nextLink is not null)
         {
-            return;
-        }
+            using var request = new HttpRequestMessage(HttpMethod.Get, nextLink);
+            request.Headers.Add("Authorization", $"Badger {token}");
 
-        // Parse children
-        if (jsonResponse.RootElement.TryGetProperty("value", out var valueArray))
-        {
-            foreach (var item in valueArray.EnumerateArray())
+            var response = await httpClient.SendAsync(request, cancellationToken);
+            response.EnsureSuccessStatusCode();
+
+            var jsonResponse = await response.Content.ReadFromJsonAsync<JsonDocument>(cancellationToken: cancellationToken);
+            if (jsonResponse is null)
             {
-                var oneDriveItem = ParseOneDriveItem(item, folderPath);
-                if (oneDriveItem is not null)
+                break;
+            }
+
+            // Parse children
+            if (jsonResponse.RootElement.TryGetProperty("value", out var valueArray))
+            {
+                foreach (var item in valueArray.EnumerateArray())
                 {
-                    items.Add(oneDriveItem);
-
-                    // Recursively process subfolders
-                    if (oneDriveItem.IsFolder)
+                    var oneDriveItem = ParseOneDriveItem(item, folderPath);
+                    if (oneDriveItem is not null)
                     {
-                        var subPath = string.IsNullOrEmpty(folderPath)
-                            ? oneDriveItem.Name
-                            : $"{folderPath}/{oneDriveItem.Name}";
+                        items.Add(oneDriveItem);
 
-                        await ListItemsRecursiveAsync(shareUrl, subPath, token, metadata, items, cancellationToken);
+                        // Collect folders for later recursive processing
+                        if (oneDriveItem.IsFolder)
+                        {
+                            var subPath = string.IsNullOrEmpty(folderPath)
+                                ? oneDriveItem.Name
+                                : $"{folderPath}/{oneDriveItem.Name}";
+
+                            foldersToProcess.Add((oneDriveItem.Name, subPath));
+                        }
                     }
                 }
             }
+
+            // Check for next page (@odata.nextLink)
+            nextLink = jsonResponse.RootElement.TryGetProperty("@odata.nextLink", out var nextLinkElement)
+                ? nextLinkElement.GetString()
+                : null;
+
+            if (nextLink is not null)
+            {
+                logger.FetchingNextPage(items.Count);
+            }
+        }
+
+        // Process all subfolders after pagination is complete
+        foreach (var (_, subPath) in foldersToProcess)
+        {
+            await ListItemsRecursiveAsync(shareUrl, subPath, token, metadata, items, cancellationToken);
         }
     }
 

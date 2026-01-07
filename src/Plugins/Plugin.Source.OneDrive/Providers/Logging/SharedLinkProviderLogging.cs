@@ -28,4 +28,7 @@ internal static partial class SharedLinkProviderLogging
 
     [LoggerMessage(Level = LogLevel.Debug, Message = "Downloaded file: {fileName} ({size} bytes)")]
     public static partial void FileDownloaded(this ILogger<SharedLinkProvider> logger, string fileName, long size);
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Fetching next page of items (current count: {currentCount})")]
+    public static partial void FetchingNextPage(this ILogger<SharedLinkProvider> logger, int currentCount);
 }
