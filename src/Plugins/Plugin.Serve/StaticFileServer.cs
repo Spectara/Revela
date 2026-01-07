@@ -88,8 +88,21 @@ public sealed class StaticFileServer : IDisposable
     /// </summary>
     public void Stop()
     {
+        if (!isRunning)
+        {
+            return;
+        }
+
         isRunning = false;
-        listener.Stop();
+
+        try
+        {
+            listener.Stop();
+        }
+        catch (ObjectDisposedException)
+        {
+            // Already disposed - ignore
+        }
     }
 
     /// <summary>
@@ -216,6 +229,14 @@ public sealed class StaticFileServer : IDisposable
         disposed = true;
 
         Stop();
-        listener.Close();
+
+        try
+        {
+            listener.Close();
+        }
+        catch (ObjectDisposedException)
+        {
+            // Already disposed - ignore
+        }
     }
 }
