@@ -460,9 +460,16 @@ public sealed partial class RenderService(
                 galleryImages,
                 cancellationToken);
 
-            // If custom template specified, render it to gallery.body
-            // The layout template is ALWAYS used (never replaced)
-            if (customTemplate is not null)
+            // Custom templates with data sources need pre-rendering to make resolved data available.
+            // However, standard body templates (page, gallery) that don't use data sources
+            // should NOT be pre-rendered, as they will be included by the layout template.
+            // Pre-rendering would cause double-wrapping since the template renders gallery.body
+            // which already contains the HTML, and then the layout includes the same template again.
+            //
+            // Pre-render only when:
+            // 1. A custom template is specified AND
+            // 2. There are resolved data sources (e.g., statistics data)
+            if (customTemplate is not null && resolvedData.Count > 0)
             {
                 var contentTemplate = LoadTemplate($"{customTemplate}.revela");
                 if (contentTemplate is not null)
