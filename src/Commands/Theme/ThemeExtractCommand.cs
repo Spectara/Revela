@@ -318,7 +318,7 @@ public sealed partial class ThemeExtractCommand(
         }
 
         // Templates and assets go to themes/{ThemeName}/
-        var themesFolder = Path.Combine(projectPath, "themes", themeName);
+        var themesFolder = Path.Combine(projectPath, ProjectPaths.Themes, themeName);
 
         if (isAsset)
         {
@@ -502,7 +502,7 @@ public sealed partial class ThemeExtractCommand(
         var themeName = targetName ?? sourceName;
 
         // Determine target path first
-        var themesFolder = Path.Combine(projectPath, "themes");
+        var themesFolder = Path.Combine(projectPath, ProjectPaths.Themes);
         var targetPath = Path.Combine(themesFolder, themeName);
 
         // For extract: always prefer installed theme (user wants fresh copy from original)
@@ -816,7 +816,7 @@ public sealed partial class ThemeExtractCommand(
 
         // Determine target directory
         var targetThemeName = targetName ?? sourceName;
-        var themesDir = Path.Combine(projectPath, "themes", targetThemeName);
+        var themesDir = Path.Combine(projectPath, ProjectPaths.Themes, targetThemeName);
 
         // Check if target exists
         if (Directory.Exists(themesDir) && !force)

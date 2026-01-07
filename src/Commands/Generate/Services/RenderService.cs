@@ -823,9 +823,9 @@ public sealed partial class RenderService(
         if (source.EndsWith(".json", StringComparison.OrdinalIgnoreCase))
         {
             var relativePath = Path.GetRelativePath(
-                Path.Combine(projectPath, "source"),
+                Path.Combine(projectPath, ProjectPaths.Source),
                 basePath);
-            var cachePath = Path.Combine(projectPath, ".cache", relativePath, source);
+            var cachePath = Path.Combine(projectPath, ProjectPaths.Cache, relativePath, source);
 
             if (File.Exists(cachePath))
             {

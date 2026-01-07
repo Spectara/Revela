@@ -127,11 +127,11 @@ public sealed partial class ConfigProjectCommand(
         if (isFirstTime)
         {
             // Create directories
-            Directory.CreateDirectory("source");
-            Directory.CreateDirectory("output");
+            Directory.CreateDirectory(ProjectPaths.Source);
+            Directory.CreateDirectory(ProjectPaths.Output);
 
             AnsiConsole.MarkupLine($"\n{OutputMarkers.Success} Project '{name}' initialized");
-            AnsiConsole.MarkupLine("[dim]Created: project.json, source/, output/[/]");
+            AnsiConsole.MarkupLine($"[dim]Created: project.json, {ProjectPaths.Source}/, {ProjectPaths.Output}/[/]");
             AnsiConsole.MarkupLine("\n[yellow]Next:[/] Run [cyan]revela config theme[/] to select a theme");
         }
         else

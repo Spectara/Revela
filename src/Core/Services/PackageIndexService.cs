@@ -14,7 +14,7 @@ public sealed class PackageIndexService : IPackageIndexService
 
     /// <inheritdoc />
     public string IndexFilePath { get; } = Path.Combine(
-        ConfigPathResolver.ConfigDirectory, "cache", "packages.json");
+        ConfigPathResolver.ConfigDirectory, "packages.json");
 
     /// <inheritdoc />
     public async Task<PackageIndex?> LoadIndexAsync(CancellationToken cancellationToken = default)

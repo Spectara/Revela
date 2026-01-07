@@ -6,7 +6,7 @@ namespace Spectara.Revela.Core.Services;
 /// Service for loading and searching the local package index.
 /// </summary>
 /// <remarks>
-/// The package index is cached at cache/packages.json and must be
+/// The package index is stored at {ConfigDirectory}/packages.json and must be
 /// refreshed using 'revela packages refresh' before use.
 /// </remarks>
 public interface IPackageIndexService

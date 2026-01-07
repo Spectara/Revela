@@ -3,7 +3,7 @@ using System.Text.Json.Serialization;
 namespace Spectara.Revela.Core.Models;
 
 /// <summary>
-/// Package index stored in cache/packages.json.
+/// Package index stored in {ConfigDirectory}/packages.json.
 /// </summary>
 public sealed class PackageIndex
 {

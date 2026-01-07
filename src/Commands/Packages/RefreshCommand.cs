@@ -20,18 +20,15 @@ namespace Spectara.Revela.Commands.Packages;
 /// </summary>
 /// <remarks>
 /// Scans all configured feeds (bundled, nuget.org, custom) and creates
-/// a local index at cache/packages.json for offline search capability.
+/// a local index at {ConfigDirectory}/packages.json for offline search capability.
 /// </remarks>
 public sealed partial class RefreshCommand(
     ILogger<RefreshCommand> logger,
     INuGetSourceManager nugetSourceManager,
     HttpClient httpClient)
 {
-    private static readonly string CacheDirectory = Path.Combine(
-        ConfigPathResolver.ConfigDirectory, "cache");
-
     private static readonly string IndexFilePath = Path.Combine(
-        CacheDirectory, "packages.json");
+        ConfigPathResolver.ConfigDirectory, "packages.json");
 
     /// <summary>
     /// Creates the CLI command.
@@ -98,8 +95,7 @@ public sealed partial class RefreshCommand(
                 .OrderBy(p => p.Id)
                 .ToList();
 
-            // Save index
-            _ = Directory.CreateDirectory(CacheDirectory);
+            // Save index (ConfigDirectory is ensured to exist by ConfigPathResolver)
             var index = new PackageIndex
             {
                 LastUpdated = DateTime.UtcNow,

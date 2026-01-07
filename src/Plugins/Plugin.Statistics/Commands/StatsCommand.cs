@@ -96,9 +96,9 @@ public sealed class StatsCommand(
             // Aggregate statistics (TODO: filter by page metadata)
             var stats = aggregator.Aggregate();
 
-            // Calculate output path in .cache/{page.Path}/
+            // Calculate output path in {ProjectPaths.Cache}/{page.Path}/
             // page.Path is already relative (e.g., "03 Pages\Statistics")
-            var cacheDir = Path.Combine(projectPath, ".cache", page.Path);
+            var cacheDir = Path.Combine(projectPath, ProjectPaths.Cache, page.Path);
             var jsonPath = Path.Combine(cacheDir, "statistics.json");
 
             // Write JSON data file
