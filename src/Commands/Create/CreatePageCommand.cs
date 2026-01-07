@@ -96,10 +96,16 @@ public sealed partial class CreatePageCommand(
         AnsiConsole.Write(new Rule($"[cyan]Create {template.DisplayName}[/]").RuleStyle("grey"));
         AnsiConsole.WriteLine();
 
-        // Prompt for path
+        // Prompt for path (empty = source root)
         var path = AnsiConsole.Prompt(
-            new TextPrompt<string>("[cyan]Directory path[/] [dim](relative to source/, e.g., vacation/summer-2024)[/]:")
-                .Validate(p => !string.IsNullOrWhiteSpace(p), "Path cannot be empty"));
+            new TextPrompt<string>("[cyan]Directory path[/] [dim](relative to source/, empty = source root)[/]:")
+                .AllowEmpty());
+
+        // Normalize empty path to current directory
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            path = ".";
+        }
 
         var values = new Dictionary<string, object?>();
 
