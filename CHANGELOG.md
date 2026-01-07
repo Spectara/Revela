@@ -1,103 +1,125 @@
 # Changelog
 
-Alle wichtigen Änderungen an diesem Projekt werden in dieser Datei dokumentiert.
+All notable changes to this project will be documented in this file.
 
-Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.1.0/),
-und dieses Projekt folgt [Semantic Versioning](https://semver.org/lang/de/).
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [0.0.1-beta.10] - 2026-01-07
+
+### Fixed
+- **Serve Plugin**: Prevent ObjectDisposedException when port is in use
+  - Stop() now checks isRunning flag before calling HttpListener.Stop()
+  - Dispose() catches ObjectDisposedException during Close()
+- **Template Rendering**: Fix double `<section class="page-content">` wrapper on text pages
+  - Pre-rendering now only applies to custom templates with data sources
+  - Standard body templates (page, gallery) no longer get double-wrapped
+- **Create Page**: Allow empty path input for source root pages
+  - Pressing Enter without input creates page directly in source/
+
+### Changed
+- **Package Index**: packages.json now stored directly in ConfigDirectory
+  - No separate cache/ folder in standalone root anymore
+  - More consistent structure alongside revela.json
+- **Path Constants**: Replace all hardcoded paths with ProjectPaths.* constants
+  - source, output, .cache, themes centralized in Sdk/ProjectPaths.cs
+  - Better maintainability and consistency
+- **Config Menu**: Move sorting command to Project group
+  - Now appears alongside project, theme, image, site commands
 
 ## [0.0.1-beta.8] - 2026-01-04
 
 ### Added
-- **Create Page Command**: Erweiterte Seitenvorlagen mit interaktivem Modus
-  - `create page gallery`: Neue Optionen --sort, --hidden, --slug
-  - `create page text`: Neue Vorlage für reine Textseiten (About, Kontakt)
-  - Interaktiver Wizard wenn Pfad-Argument fehlt
-  - DefaultBody-Property für Starter-Inhalte
-- **Theme Customization**: Lokale Theme-Variablen über theme/theme.json
-- **Dokumentation**: Theme-Anpassung Guide (DE/EN), Seiten-Dokumentation (DE/EN)
+- **Create Page Command**: Extended page templates with interactive mode
+  - `create page gallery`: New options --sort, --hidden, --slug
+  - `create page text`: New template for text-only pages (About, Contact)
+  - Interactive wizard when path argument is missing
+  - DefaultBody property for starter content
+- **Theme Customization**: Local theme variables via theme/theme.json
+- **Documentation**: Theme customization guide (DE/EN), pages documentation (DE/EN)
 
 ### Changed
-- **Standalone Mode**: Setup Wizard erscheint jetzt VOR der Projektauswahl
-- **Getting-Started Guides**: Fokus auf interaktiven Menü-Modus
-- **UX**: Base URL Prompt mit hilfreicher Beschreibung
-- **Template System**: Unified theme/extension structure mit implicit template prefixes
-- **Generate Pipeline**: Unified IGenerateStep Interface
-- **Config System**: IConfiguration Array-Merge Problem gelöst
+- **Standalone Mode**: Setup wizard now appears BEFORE project selection
+- **Getting-Started Guides**: Focus on interactive menu mode
+- **UX**: Base URL prompt with helpful description
+- **Template System**: Unified theme/extension structure with implicit template prefixes
+- **Generate Pipeline**: Unified IGenerateStep interface
+- **Config System**: Fixed IConfiguration array-merge problem
 
 ### Fixed
-- Statistics Rendering mit implicit template prefix system
-- Pfad-Handling: Seiten werden relativ zu source/ erstellt
-- Option-Konstruktor für Properties ohne Short-Alias
+- Statistics rendering with implicit template prefix system
+- Path handling: Pages are created relative to source/
+- Option constructor for properties without short alias
 
 ## [0.0.1-beta.7] - 2025-12-29
 
 ### Changed
-- Dokumentation: Umfassende Überarbeitung und Asset-Neustrukturierung
-- CI/CD: Fix für doppelte SHA256SUMS-Uploads im Release-Workflow
+- Documentation: Comprehensive revision and asset restructuring
+- CI/CD: Fix duplicate SHA256SUMS uploads in release workflow
 
 ## [0.0.1-beta.6] - 2025-12-29
 
 ### Added
-- **Setup Wizard**: Interaktiver Assistent für neue Projekte
-- **Packages Command**: Package Index mit NuGet packageTypes Support
-- **Plugin.Serve**: Lokaler HTTP-Server für Site-Preview
-- **Spectara.Revela.Sdk**: Separates SDK-Paket für Plugin-Entwicklung
-- Unified Command Registration mit CommandDescriptor
-- Kontextabhängiges interaktives Menü
-- DevContainer Debug-Konfigurationen (Local/Container)
+- **Setup Wizard**: Interactive assistant for new projects
+- **Packages Command**: Package index with NuGet packageTypes support
+- **Plugin.Serve**: Local HTTP server for site preview
+- **Spectara.Revela.Sdk**: Separate SDK package for plugin development
+- Unified command registration with CommandDescriptor
+- Context-aware interactive menu
+- DevContainer debug configurations (Local/Container)
 
 ### Changed
-- **CLI Restructuring**: Neue Befehle `create`, `init`, `config`
-- **Config System**: Unified global config mit `revela.json`
-- **Theme-based Configuration**: ThemeConfig System
-- **IOptions Pattern**: Hierarchisches Config-Merging
-- Plugin-Verzeichnisstruktur vereinfacht (CWD und global options entfernt)
-- Plugin-Konfiguration in project.json konsolidiert
-- Interactive Mode UX-Verbesserungen
-- Release Pipeline überarbeitet und NuGet Metadata standardisiert
+- **CLI Restructuring**: New commands `create`, `init`, `config`
+- **Config System**: Unified global config with `revela.json`
+- **Theme-based Configuration**: ThemeConfig system
+- **IOptions Pattern**: Hierarchical config merging
+- Simplified plugin directory structure (removed CWD and global options)
+- Consolidated plugin configuration in project.json
+- Interactive mode UX improvements
+- Revised release pipeline and standardized NuGet metadata
 
 ### Fixed
-- Cross-platform Pfad-Handling in NuGetSourceManagerTests
-- Fehlende Packages Command Dateien zu Git hinzugefügt
+- Cross-platform path handling in NuGetSourceManagerTests
+- Added missing Packages Command files to Git
 
 ## [0.0.1-beta.5] - 2025-12-21
 
 ### Added
-- **NuGet Plugin System**: Vollständiges NuGet-Paket-Support (statt ZIP)
-- **plugin.meta.json**: Automatische Erstellung mit Package-Metadaten
-- **Restore Command**: NuGet-basiertes Plugin-Restore mit Parallelisierung
-- **NuGet Source Management**: add/remove/list Befehle für NuGet-Quellen
-- **Multi-Source Discovery**: --source Parameter für Plugin-Installation
-- **GitHub Workflows**: 3-stufiger NuGet Release-Prozess
-- **.NET Global Tool**: CLI als installierbares dotnet Tool
-- Dedizierte README für jedes Plugin und Theme
-- Provenance Attestations und Keyless Signatures
+- **NuGet Plugin System**: Full NuGet package support (instead of ZIP)
+- **plugin.meta.json**: Automatic creation with package metadata
+- **Restore Command**: NuGet-based plugin restore with parallelization
+- **NuGet Source Management**: add/remove/list commands for NuGet sources
+- **Multi-Source Discovery**: --source parameter for plugin installation
+- **GitHub Workflows**: 3-stage NuGet release process
+- **.NET Global Tool**: CLI as installable dotnet tool
+- Dedicated README for each plugin and theme
+- Provenance attestations and keyless signatures
 
 ### Changed
-- Plugin-Installation von ZIP auf NuGet umgestellt
-- CI Workflow für MSTest v4 Testing Platform aktualisiert
-- HttpClient Parameter zu PluginManager hinzugefügt (Typed HttpClient Pattern)
-- Single-File Publish Kompatibilität für Plugin-System
-- Dokumentation umfassend aktualisiert
+- Switched plugin installation from ZIP to NuGet
+- Updated CI workflow for MSTest v4 Testing Platform
+- Added HttpClient parameter to PluginManager (Typed HttpClient Pattern)
+- Single-file publish compatibility for plugin system
+- Comprehensive documentation updates
 
 ### Fixed
-- Embedded Resource Loading für Theme Assets
-- Plugin loading für Plugin-Management Commands übersprungen
-- --yes Flag für plugin uninstall hinzugefügt
+- Embedded resource loading for theme assets
+- Skip plugin loading for plugin management commands
+- Added --yes flag for plugin uninstall
 
 ## [0.0.1-beta.4] - 2025-12-15
 
 ### Added
-- **Template/Asset Resolver System**: Theme Files Command
-- **FileHashService**: Service für Datei-Hashing
-- CancellationToken-Propagierung durch alle CLI Commands
-- Interactive Mode mit menügesteuerter Oberfläche
+- **Template/Asset Resolver System**: Theme files command
+- **FileHashService**: Service for file hashing
+- CancellationToken propagation through all CLI commands
+- Interactive mode with menu-driven interface
 
 ### Changed
-- Image Caching verbessert (Hash in Processing-Phase verschoben)
-- Logging Defaults optimiert
+- Improved image caching (moved hash to processing phase)
+- Optimized logging defaults
 
 ### Fixed
 - Emojis durch ASCII ersetzt für Terminal-Kompatibilität
@@ -150,7 +172,9 @@ und dieses Projekt folgt [Semantic Versioning](https://semver.org/lang/de/).
 - Plugin.Source.OneDrive (OneDrive Shared Folder Support)
 - Commands: generate, init, clean, theme, plugins, restore
 
-[Unreleased]: https://github.com/spectara/revela/compare/v0.0.1-beta.7...HEAD
+[Unreleased]: https://github.com/spectara/revela/compare/v0.0.1-beta.10...HEAD
+[0.0.1-beta.10]: https://github.com/spectara/revela/compare/v0.0.1-beta.8...v0.0.1-beta.10
+[0.0.1-beta.8]: https://github.com/spectara/revela/compare/v0.0.1-beta.7...v0.0.1-beta.8
 [0.0.1-beta.7]: https://github.com/spectara/revela/compare/v0.0.1-beta.6...v0.0.1-beta.7
 [0.0.1-beta.6]: https://github.com/spectara/revela/compare/v0.0.1-beta.5...v0.0.1-beta.6
 [0.0.1-beta.5]: https://github.com/spectara/revela/compare/v0.0.1-beta.4...v0.0.1-beta.5
