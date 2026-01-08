@@ -2,7 +2,9 @@
   Recursive Navigation Template - Expose Theme
 
   Structure:
-  - Section: <section><h3>Title</h3>...children...</section>
+  - Section with children: <section><h3>Title</h3>...children...</section>
+  - Section with link: <section><h3><a>Title</a></h3>...children...</section>
+  - Top-level leaf: <a href="#">Title</a> (flat navigation)
   - Branch with link: <div><a href="#">Title</a>...children...</div>
   - Branch without link: <div><span>Title</span>...children...</div>
   - Leaf: <a href="#">Title</a>
@@ -12,13 +14,22 @@
 ##~}}
 {{~ func render_item(item, is_top_level) ~}}
 {{~ if is_top_level ~}}
-{{~ # Top-level items are sections ~}}
+{{~ if item.children.size > 0 ~}}
+{{~ # Top-level with children = section ~}}
 <section>
+{{~ if item.url ~}}
+  <h3><a href="{{ basepath }}{{ item.url }}"{{ item.active ? ' class="active"' : '' }}>{{ item.text }}</a></h3>
+{{~ else ~}}
   <h3>{{ item.text }}</h3>
+{{~ end ~}}
 {{~ for child in item.children ~}}
 {{~ render_item child false ~}}
 {{~ end ~}}
 </section>
+{{~ else ~}}
+{{~ # Top-level leaf = direct link (flat navigation) ~}}
+  <a href="{{ basepath }}{{ item.url }}"{{ item.active ? ' class="active"' : '' }}>{{ item.text }}</a>
+{{~ end ~}}
 {{~ else if item.children.size > 0 ~}}
 {{~ # Branch: Has children ~}}
 <div>
