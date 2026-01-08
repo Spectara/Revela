@@ -1,0 +1,15 @@
++++
+title = "Portraits"
+description = "All portrait-orientation photos"
+filter = "height > width"
++++
+
+# Portraits
+
+Portrait photos are selected by orientation (height > width):
+
+```
+height > width
+```
+
+**Expected:** 6 images (all portrait orientation)

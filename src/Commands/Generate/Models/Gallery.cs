@@ -85,6 +85,15 @@ public sealed class Gallery
     public string? Sort { get; init; }
 
     /// <summary>
+    /// Filter expression to select images from the entire site.
+    /// </summary>
+    /// <remarks>
+    /// <para>When set, images are selected by filtering all site images,</para>
+    /// <para>instead of using only images in this gallery's directory.</para>
+    /// </remarks>
+    public string? Filter { get; init; }
+
+    /// <summary>
     /// Gallery date for sorting (from front matter or first image EXIF).
     /// </summary>
     public DateTime? Date { get; init; }

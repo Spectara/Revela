@@ -1,0 +1,15 @@
++++
+title = "Sony Photos"
+description = "All photos taken with Sony cameras"
+filter = "exif.make == 'Sony'"
++++
+
+# Sony Photos
+
+These photos were automatically selected using **EXIF metadata**:
+
+```
+exif.make == 'Sony'
+```
+
+**Expected:** 6 images (all Sony cameras)

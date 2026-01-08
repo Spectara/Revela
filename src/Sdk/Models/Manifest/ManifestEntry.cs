@@ -84,6 +84,21 @@ public sealed class ManifestEntry
     public Dictionary<string, string> DataSources { get; init; } = [];
 
     /// <summary>
+    /// Filter expression to select images from the entire site.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// When set, images are selected by filtering all site images,
+    /// instead of using only images in this gallery's directory.
+    /// </para>
+    /// <para>
+    /// Example: <c>year(dateTaken) == 2024</c> selects all images from 2024.
+    /// </para>
+    /// </remarks>
+    [JsonPropertyName("filter")]
+    public string? Filter { get; init; }
+
+    /// <summary>
     /// Content items (images and markdown files) contained in this node.
     /// Sorted alphabetically by filename for predictable ordering.
     /// </summary>

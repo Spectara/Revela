@@ -1,0 +1,17 @@
++++
+title = "Canon Photos"
+description = "All photos taken with Canon cameras"
+filter = "exif.make == 'Canon'"
++++
+
+# Canon Photos
+
+These photos were automatically selected using **EXIF metadata**:
+
+```
+exif.make == 'Canon'
+```
+
+Demonstrates camera manufacturer filtering via EXIF data.
+
+**Expected:** 6 images (all Canon cameras)

@@ -68,6 +68,21 @@ public sealed class DirectoryMetadata
     public string? Sort { get; init; }
 
     /// <summary>
+    /// Gets the filter expression to select images from the entire site.
+    /// </summary>
+    /// <remarks>
+    /// <para>When set, images are selected from all site images matching this filter,</para>
+    /// <para>instead of using only images in this directory.</para>
+    /// <para>Examples:</para>
+    /// <list type="bullet">
+    /// <item><c>year(dateTaken) == 2024</c> - Images from 2024</item>
+    /// <item><c>exif.make == 'Canon'</c> - Canon camera images</item>
+    /// <item><c>exif.iso >= 800 and exif.make == 'Sony'</c> - High ISO Sony images</item>
+    /// </list>
+    /// </remarks>
+    public string? Filter { get; init; }
+
+    /// <summary>
     /// Gets the data sources for template rendering.
     /// </summary>
     /// <remarks>
@@ -100,7 +115,7 @@ public sealed class DirectoryMetadata
     /// </summary>
     public bool HasMetadata => Title is not null || Slug is not null || Description is not null ||
                                Hidden || Body is not null || Template is not null || Sort is not null ||
-                               DataSources.Count > 0;
+                               Filter is not null || DataSources.Count > 0;
 
     /// <summary>
     /// Gets an empty metadata instance.

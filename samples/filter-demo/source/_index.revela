@@ -1,0 +1,18 @@
++++
+title = "Welcome"
+description = "Demo site for Revela filter galleries"
++++
+
+# Filter Gallery Demo
+
+This sample demonstrates **virtual galleries** using filter expressions.
+
+## How it works
+
+1. **`_images/`** - Shared images folder (not a gallery itself)
+2. **Filter galleries** - Select images using expressions like:
+   - `exif.make == 'Canon'` - All Canon photos
+   - `year(dateTaken) == 2024` - Photos from 2024
+   - `contains(filename, 'portrait')` - Portrait photos
+
+Browse the galleries to see filters in action!

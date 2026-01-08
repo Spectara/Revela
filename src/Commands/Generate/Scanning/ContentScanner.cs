@@ -1,6 +1,7 @@
 using Spectara.Revela.Commands.Generate.Building;
 using Spectara.Revela.Commands.Generate.Models;
 using Spectara.Revela.Commands.Generate.Parsing;
+using Spectara.Revela.Sdk;
 
 namespace Spectara.Revela.Commands.Generate.Scanning;
 
@@ -103,6 +104,7 @@ public sealed partial class ContentScanner(
                 Description = directoryMetadata.Description,
                 Template = directoryMetadata.Template,
                 Sort = directoryMetadata.Sort,
+                Filter = directoryMetadata.Filter,
                 DataSources = directoryMetadata.DataSources,
                 Images = []
             };
@@ -160,6 +162,17 @@ public sealed partial class ContentScanner(
             // Skip folders starting with underscore (convention: _assets, _drafts, etc.)
             if (subdirName.StartsWith('_'))
             {
+                // Special case: _images folder at root level - scan images but don't create galleries
+                if (string.IsNullOrEmpty(relativePath) &&
+                    subdirName.Equals(ProjectPaths.SharedImages, StringComparison.OrdinalIgnoreCase))
+                {
+                    var sharedImageCount = ScanSharedImagesRecursive(subdirectory, baseDirectory, images, cancellationToken);
+                    if (sharedImageCount > 0)
+                    {
+                        LogSharedImagesFound(logger, sharedImageCount, ProjectPaths.SharedImages);
+                    }
+                }
+
                 continue;
             }
 
@@ -169,6 +182,55 @@ public sealed partial class ContentScanner(
 
             await ScanDirectoryAsync(baseDirectory, subdirRelativePath, images, markdowns, galleries, cancellationToken);
         }
+    }
+
+    /// <summary>
+    /// Recursively scans the shared images folder for images without creating galleries.
+    /// </summary>
+    /// <param name="sharedDirectory">Current directory to scan.</param>
+    /// <param name="baseDirectory">The source root directory (parent of _images).</param>
+    /// <param name="images">List to add discovered images to.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>Number of images found.</returns>
+    private static int ScanSharedImagesRecursive(
+        string sharedDirectory,
+        string baseDirectory,
+        List<SourceImage> images,
+        CancellationToken cancellationToken)
+    {
+        var count = 0;
+
+        // Scan images in this directory
+        var imageFiles = Directory.EnumerateFiles(sharedDirectory)
+            .Where(f => SupportedImageExtensions.IsSupported(Path.GetExtension(f)));
+
+        foreach (var imageFile in imageFiles)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            // Build relative path from source root (e.g., "_images/subfolder/photo.jpg")
+            var relativePath = Path.GetRelativePath(baseDirectory, imageFile);
+
+            images.Add(new SourceImage
+            {
+                SourcePath = imageFile,
+                RelativePath = relativePath,
+                FileName = Path.GetFileName(imageFile),
+                FileSize = new FileInfo(imageFile).Length,
+                LastModified = File.GetLastWriteTimeUtc(imageFile),
+                Gallery = ProjectPaths.SharedImages  // Mark as shared image
+            });
+
+            count++;
+        }
+
+        // Recursively scan subdirectories
+        foreach (var subdir in Directory.GetDirectories(sharedDirectory))
+        {
+            count += ScanSharedImagesRecursive(subdir, baseDirectory, images, cancellationToken);
+        }
+
+        return count;
     }
 
     private async Task<DirectoryMetadata> LoadGalleryMetadataAsync(
@@ -190,4 +252,7 @@ public sealed partial class ContentScanner(
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Scan complete: {ImageCount} images, {GalleryCount} galleries")]
     private static partial void LogScanComplete(ILogger logger, int imageCount, int galleryCount);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Found {Count} shared images in {Folder}/")]
+    private static partial void LogSharedImagesFound(ILogger logger, int count, string folder);
 }

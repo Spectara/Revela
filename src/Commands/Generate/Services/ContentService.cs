@@ -1,6 +1,8 @@
 using Microsoft.Extensions.Options;
+
 using Spectara.Revela.Commands.Generate.Abstractions;
 using Spectara.Revela.Commands.Generate.Building;
+using Spectara.Revela.Commands.Generate.Filtering;
 using Spectara.Revela.Commands.Generate.Models;
 using Spectara.Revela.Commands.Generate.Models.Results;
 using Spectara.Revela.Commands.Generate.Scanning;
@@ -9,6 +11,7 @@ using Spectara.Revela.Core.Services;
 using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Models;
 using Spectara.Revela.Sdk.Models.Manifest;
+
 using IManifestRepository = Spectara.Revela.Sdk.Abstractions.IManifestRepository;
 
 namespace Spectara.Revela.Commands.Generate.Services;
@@ -269,6 +272,10 @@ public sealed partial class ContentService(
     /// assigned to the corresponding ManifestEntry nodes.
     /// </para>
     /// <para>
+    /// Galleries with a <c>filter</c> property receive images matching the filter
+    /// from the entire site, instead of only images in their directory.
+    /// </para>
+    /// <para>
     /// Existing image hashes are preserved for incremental builds.
     /// Images that no longer exist in source are automatically excluded.
     /// </para>
@@ -291,7 +298,9 @@ public sealed partial class ContentService(
 
         // Build a lookup for images by gallery path
         // Gallery path is the relative path to the directory containing the image
+        // Exclude shared images (_images) - they are only available via filters
         var imagesByPath = content.Images
+            .Where(img => !img.Gallery.Equals(ProjectPaths.SharedImages, StringComparison.OrdinalIgnoreCase))
             .GroupBy(img => img.Gallery, StringComparer.OrdinalIgnoreCase)
             .ToDictionary(
                 g => g.Key,
@@ -305,6 +314,19 @@ public sealed partial class ContentService(
                 g => g.Key,
                 g => g.ToList(),
                 StringComparer.OrdinalIgnoreCase);
+
+        // Pre-convert ALL images to ImageContent for filter galleries
+        // This allows filters to query across the entire site
+        var allImages = ConvertAllImagesToContent(content.Images, imageMetadata, existingHashes);
+
+        // Create context for building entries (includes all images for filtering)
+        var buildContext = new EntryBuildContext(
+            galleryBySlug,
+            imagesByPath,
+            markdownsByPath,
+            imageMetadata,
+            existingHashes,
+            allImages);
 
         // Create root node from home gallery
         var rootImages = imagesByPath.GetValueOrDefault(string.Empty) ?? [];
@@ -320,12 +342,85 @@ public sealed partial class ContentService(
             Featured = homeGallery?.Featured ?? false,
             Hidden = false,
             Template = null,  // Root uses default template
+            Filter = homeGallery?.Filter,
             DataSources = [],
-            Content = BuildContentList(rootImages, rootMarkdowns, imageMetadata, existingHashes, homeGallery?.Sort),
-            Children = [.. navigation.Select(nav => ConvertNavigationToEntry(nav, galleryBySlug, imagesByPath, markdownsByPath, imageMetadata, existingHashes))]
+            Content = BuildContentListWithFilter(rootImages, rootMarkdowns, homeGallery?.Sort, homeGallery?.Filter, buildContext),
+            Children = [.. navigation.Select(nav => ConvertNavigationToEntry(nav, buildContext))]
         };
 
         return root;
+    }
+
+    /// <summary>
+    /// Context for building manifest entries, including pre-converted images for filtering.
+    /// </summary>
+    private sealed record EntryBuildContext(
+        Dictionary<string, Gallery> GalleryBySlug,
+        Dictionary<string, List<SourceImage>> ImagesByPath,
+        Dictionary<string, List<SourceMarkdown>> MarkdownsByPath,
+        Dictionary<string, ImageMetadata> ImageMetadata,
+        Dictionary<string, (string Hash, DateTime ProcessedAt)> ExistingHashes,
+        IReadOnlyList<ImageContent> AllImages);
+
+    /// <summary>
+    /// Convert all source images to ImageContent for use in filter expressions.
+    /// </summary>
+    private List<ImageContent> ConvertAllImagesToContent(
+        IReadOnlyList<SourceImage> images,
+        Dictionary<string, ImageMetadata> imageMetadata,
+        Dictionary<string, (string Hash, DateTime ProcessedAt)> existingHashes)
+    {
+        var result = new List<ImageContent>(images.Count);
+
+        foreach (var image in images)
+        {
+            if (imageMetadata.TryGetValue(image.RelativePath, out var meta))
+            {
+                result.Add(CreateImageContent(image, meta, existingHashes));
+            }
+        }
+
+        return result;
+    }
+
+    /// <summary>
+    /// Create an ImageContent from a SourceImage and its metadata.
+    /// </summary>
+    private ImageContent CreateImageContent(
+        SourceImage image,
+        ImageMetadata meta,
+        Dictionary<string, (string Hash, DateTime ProcessedAt)> existingHashes)
+    {
+        // Calculate sizes based on actual image dimensions
+        var sizes = CalculateSizes(meta.Width);
+
+        // Preserve existing hash if available
+        string hash;
+        DateTime processedAt;
+        if (existingHashes.TryGetValue(image.RelativePath, out var existing))
+        {
+            hash = existing.Hash;
+            processedAt = existing.ProcessedAt;
+        }
+        else
+        {
+            hash = string.Empty;
+            processedAt = default;
+        }
+
+        return new ImageContent
+        {
+            Filename = image.FileName,
+            SourcePath = image.RelativePath.Replace('\\', '/'),
+            FileSize = image.FileSize,
+            Hash = hash,
+            Width = meta.Width,
+            Height = meta.Height,
+            Sizes = sizes,
+            DateTaken = meta.DateTaken,
+            Exif = meta.Exif,
+            ProcessedAt = processedAt
+        };
     }
 
     /// <summary>
@@ -333,17 +428,13 @@ public sealed partial class ContentService(
     /// </summary>
     private ManifestEntry ConvertNavigationToEntry(
         NavigationItem navItem,
-        Dictionary<string, Gallery> galleryBySlug,
-        Dictionary<string, List<SourceImage>> imagesByPath,
-        Dictionary<string, List<SourceMarkdown>> markdownsByPath,
-        Dictionary<string, ImageMetadata> imageMetadata,
-        Dictionary<string, (string Hash, DateTime ProcessedAt)> existingHashes)
+        EntryBuildContext context)
     {
         // Try to find matching gallery by URL/slug
         Gallery? gallery = null;
         if (!string.IsNullOrEmpty(navItem.Url))
         {
-            galleryBySlug.TryGetValue(navItem.Url, out gallery);
+            context.GalleryBySlug.TryGetValue(navItem.Url, out gallery);
         }
 
         // Get images for this gallery path (only for gallery nodes, not branches)
@@ -352,8 +443,8 @@ public sealed partial class ContentService(
         List<SourceMarkdown> markdowns = [];
         if (gallery != null)
         {
-            images = imagesByPath.GetValueOrDefault(gallery.Path) ?? [];
-            markdowns = markdownsByPath.GetValueOrDefault(gallery.Path) ?? [];
+            images = context.ImagesByPath.GetValueOrDefault(gallery.Path) ?? [];
+            markdowns = context.MarkdownsByPath.GetValueOrDefault(gallery.Path) ?? [];
         }
 
         return new ManifestEntry
@@ -367,10 +458,57 @@ public sealed partial class ContentService(
             Featured = gallery?.Featured ?? false,
             Hidden = navItem.Hidden,
             Template = gallery?.Template,
+            Filter = gallery?.Filter,
             DataSources = gallery?.DataSources.ToDictionary(kvp => kvp.Key, kvp => kvp.Value) ?? [],
-            Content = BuildContentList(images, markdowns, imageMetadata, existingHashes, gallery?.Sort),
-            Children = [.. navItem.Children.Select(child => ConvertNavigationToEntry(child, galleryBySlug, imagesByPath, markdownsByPath, imageMetadata, existingHashes))]
+            Content = BuildContentListWithFilter(images, markdowns, gallery?.Sort, gallery?.Filter, context),
+            Children = [.. navItem.Children.Select(child => ConvertNavigationToEntry(child, context))]
         };
+    }
+
+    /// <summary>
+    /// Build a combined content list, optionally using a filter expression.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// When a filter expression is provided, images are selected from ALL site images
+    /// that match the filter, instead of only images in the gallery's directory.
+    /// </para>
+    /// <para>
+    /// If the filter expression is invalid, a <see cref="FilterParseException"/> is thrown
+    /// with a detailed error message including the position of the error.
+    /// </para>
+    /// </remarks>
+    /// <exception cref="FilterParseException">Thrown when the filter expression is invalid.</exception>
+    private List<GalleryContent> BuildContentListWithFilter(
+        List<SourceImage> folderImages,
+        List<SourceMarkdown> markdowns,
+        string? sortOverride,
+        string? filterExpression,
+        EntryBuildContext context)
+    {
+        List<GalleryContent> content;
+
+        if (!string.IsNullOrEmpty(filterExpression))
+        {
+            // Filter mode: select images from ALL site images matching the filter
+            var filteredImages = FilterService.Apply(context.AllImages, filterExpression);
+            content = [.. filteredImages];
+
+            // Add markdown files from the folder (filters only apply to images)
+            foreach (var markdown in markdowns)
+            {
+                content.Add(ConvertSourceMarkdown(markdown));
+            }
+        }
+        else
+        {
+            // Normal mode: use images from the folder
+            content = BuildContentList(folderImages, markdowns, context.ImageMetadata, context.ExistingHashes, sortOverride);
+            return content; // Already sorted by BuildContentList
+        }
+
+        // Sort filtered content
+        return SortContent(content, sortOverride);
     }
 
     /// <summary>
@@ -571,6 +709,7 @@ public sealed partial class ContentService(
         return new ImageContent
         {
             Filename = source.FileName,
+            SourcePath = source.RelativePath.Replace('\\', '/'),
             Hash = existingHash,
             Width = meta?.Width ?? 0,
             Height = meta?.Height ?? 0,
@@ -594,6 +733,7 @@ public sealed partial class ContentService(
         return new MarkdownContent
         {
             Filename = source.FileName,
+            SourcePath = source.RelativePath.Replace('\\', '/'),
             FileSize = source.FileSize,
             Hash = ComputeMarkdownHash(source)
         };

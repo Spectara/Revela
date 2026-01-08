@@ -1,0 +1,17 @@
++++
+title = "High ISO (Night)"
+description = "Photos with ISO >= 3200 (low-light photography)"
+filter = "exif.iso >= 3200"
++++
+
+# High ISO / Night Photography
+
+Low-light photos selected by high ISO value:
+
+```
+exif.iso >= 3200
+```
+
+Demonstrates numeric EXIF comparison.
+
+**Expected:** 2 images (ISO 3200 and ISO 6400)

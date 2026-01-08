@@ -1,0 +1,19 @@
+{
+    "name": "filter-demo",
+    "theme": {
+        "name": "Lumina"
+    },
+    "generate": {
+        "images": {
+            "formats": {
+                "webp": 85,
+                "jpg": 90
+            },
+            "sizes": [
+                640,
+                1024,
+                1920
+            ]
+        }
+    }
+}

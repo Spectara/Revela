@@ -33,4 +33,19 @@ public static class ProjectPaths
     /// Plugins configuration directory.
     /// </summary>
     public const string Plugins = "plugins";
+
+    /// <summary>
+    /// Shared images directory for images available to filter galleries.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Images in <c>source/_images/</c> (including subdirectories) are scanned
+    /// and available for filter expressions, but do not create their own galleries.
+    /// </para>
+    /// <para>
+    /// Use this for images that should be accessible via filters but not displayed
+    /// in a dedicated gallery (e.g., curated collections, featured images).
+    /// </para>
+    /// </remarks>
+    public const string SharedImages = "_images";
 }

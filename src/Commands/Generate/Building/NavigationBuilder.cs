@@ -88,7 +88,7 @@ public sealed partial class NavigationBuilder(ILogger<NavigationBuilder> logger)
         // Get and sort subdirectories
         var subdirectories = directory
             .EnumerateDirectories()
-            .Where(d => !d.Name.StartsWith('.'))  // Skip hidden dirs
+            .Where(d => !d.Name.StartsWith('.') && !d.Name.StartsWith('_'))  // Skip hidden and system dirs
             .SortNatural(sortDescending)
             .ToList();
 

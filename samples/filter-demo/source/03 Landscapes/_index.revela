@@ -1,0 +1,17 @@
++++
+title = "Landscapes"
+description = "All wide-angle landscape photos (aspect ratio >= 1.4)"
+filter = "width > height"
++++
+
+# Landscapes
+
+Landscape photos are selected by orientation (width > height):
+
+```
+width > height
+```
+
+This demonstrates dimension-based filtering.
+
+**Expected:** 8 images (all landscape orientation)

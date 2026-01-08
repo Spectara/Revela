@@ -496,6 +496,9 @@ samples/**/output/
 samples/**/images/
 samples/**/.cache/
 
+# Exception: filter-demo includes test images for demonstration
+!samples/filter-demo/source/
+
 # Local playground folder for testing from scratch
 playground/
 
