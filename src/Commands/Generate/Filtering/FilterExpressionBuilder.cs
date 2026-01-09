@@ -34,10 +34,10 @@ public sealed class FilterExpressionBuilder : IFilterNodeVisitor<Expression>
         ["month"] = (b, n) => b.BuildDatePartFunction(n, "Month"),
         ["day"] = (b, n) => b.BuildDatePartFunction(n, "Day"),
         ["contains"] = (b, n) => b.BuildStringFunction(n, "Contains"),
-        ["startswith"] = (b, n) => b.BuildStringFunction(n, "StartsWith"),
-        ["endswith"] = (b, n) => b.BuildStringFunction(n, "EndsWith"),
-        ["tolower"] = (b, n) => b.BuildToLowerFunction(n),
-        ["toupper"] = (b, n) => b.BuildToUpperFunction(n)
+        ["starts_with"] = (b, n) => b.BuildStringFunction(n, "StartsWith"),
+        ["ends_with"] = (b, n) => b.BuildStringFunction(n, "EndsWith"),
+        ["lower"] = (b, n) => b.BuildToLowerFunction(n),
+        ["upper"] = (b, n) => b.BuildToUpperFunction(n)
     };
 
     /// <summary>

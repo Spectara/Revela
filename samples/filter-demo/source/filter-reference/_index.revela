@@ -112,8 +112,8 @@ exif.raw.Artist == 'John Doe'
 | Function | Description | Example |
 |----------|-------------|---------|
 | `contains(str, substr)` | Check if string contains substring | `contains(filename, 'portrait')` |
-| `startsWith(str, prefix)` | Check if string starts with prefix | `startsWith(filename, 'IMG_')` |
-| `endsWith(str, suffix)` | Check if string ends with suffix | `endsWith(filename, '-edit.jpg')` |
+| `starts_with(str, prefix)` | Check if string starts with prefix | `starts_with(filename, 'IMG_')` |
+| `ends_with(str, suffix)` | Check if string ends with suffix | `ends_with(filename, '-edit.jpg')` |
 | `lower(str)` | Convert to lowercase | `lower(exif.make) == 'canon'` |
 | `upper(str)` | Convert to uppercase | `upper(exif.make) == 'CANON'` |
 
