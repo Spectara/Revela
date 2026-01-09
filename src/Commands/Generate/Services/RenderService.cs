@@ -452,11 +452,9 @@ public sealed partial class RenderService(
             // Load metadata from _index.md at render time (not stored in manifest)
             var (customTemplate, dataSources, metadataBasePath) = await LoadGalleryMetadataAsync(gallery, cancellationToken);
 
-            // Normalize paths for comparison (both may contain backslashes from manifest)
-            var normalizedGalleryPath = gallery.Path.Replace('\\', '/');
-            var galleryImages = model.Images
-                .Where(img => img.SourcePath.Replace('\\', '/').Contains(normalizedGalleryPath, StringComparison.OrdinalIgnoreCase))
-                .ToList();
+            // Use gallery's own images (from manifest Content, populated during scan)
+            // Works for both normal galleries and filter galleries
+            var galleryImages = gallery.Images.ToList();
 
             var relativeBasePath = UrlBuilder.CalculateBasePath(gallery.Slug);
             var basepath = CalculateSiteBasePath(config, relativeBasePath);

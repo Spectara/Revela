@@ -48,10 +48,7 @@ public sealed class FilterParseException : Exception
     /// <param name="message">The error message.</param>
     /// <param name="position">The position where the error occurred.</param>
     public FilterParseException(string message, int position)
-        : base(FormatMessage(message, position))
-    {
-        Position = position;
-    }
+        : base(FormatMessage(message, position)) => Position = position;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="FilterParseException"/> class.
@@ -60,10 +57,7 @@ public sealed class FilterParseException : Exception
     /// <param name="position">The position where the error occurred.</param>
     /// <param name="innerException">The inner exception.</param>
     public FilterParseException(string message, int position, Exception innerException)
-        : base(FormatMessage(message, position), innerException)
-    {
-        Position = position;
-    }
+        : base(FormatMessage(message, position), innerException) => Position = position;
 
     private static string FormatMessage(string message, int position) =>
         $"{message} at position {position}";

@@ -135,16 +135,10 @@ public sealed class FilterExpressionBuilder : IFilterNodeVisitor<Expression>
     }
 
     /// <inheritdoc />
-    public Expression Visit(PropertyNode node)
-    {
-        return BuildPropertyAccess(node.Path, node.Position);
-    }
+    public Expression Visit(PropertyNode node) => BuildPropertyAccess(node.Path, node.Position);
 
     /// <inheritdoc />
-    public Expression Visit(ConstantNode node)
-    {
-        return Expression.Constant(node.Value, node.Value?.GetType() ?? typeof(object));
-    }
+    public Expression Visit(ConstantNode node) => Expression.Constant(node.Value, node.Value?.GetType() ?? typeof(object));
 
     private Expression BuildPropertyAccess(IReadOnlyList<string> path, int position)
     {

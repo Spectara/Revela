@@ -26,10 +26,7 @@ public sealed class FilterLexer
     /// Initializes a new instance of the <see cref="FilterLexer"/> class.
     /// </summary>
     /// <param name="source">The filter expression to tokenize.</param>
-    public FilterLexer(string source)
-    {
-        this.source = source ?? throw new ArgumentNullException(nameof(source));
-    }
+    public FilterLexer(string source) => this.source = source ?? throw new ArgumentNullException(nameof(source));
 
     /// <summary>
     /// Tokenizes the source string into a list of tokens.
