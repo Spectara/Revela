@@ -13,7 +13,5 @@ Expects:
     {{~ if gallery.title ~}}
     <h1>{{ gallery.title }}</h1>
     {{~ end ~}}
-    {{~ if gallery.body ~}}
-    {{ gallery.body }}
-    {{~ end ~}}
+    {{~ gallery.body ~}}
 </section>

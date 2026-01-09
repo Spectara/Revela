@@ -3,9 +3,6 @@ title = "Filter Reference"
 description = "Complete guide to filter expressions"
 template = "page"
 +++
-
-# Filter Expression Reference
-
 This page documents all filter syntax and functions available in Revela.
 
 ---

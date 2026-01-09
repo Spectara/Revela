@@ -1,41 +1,159 @@
 /* Statistics Extension for Lumina Theme */
 
+/* ==========================================================================
+   Statistics Plugin Support
+   ========================================================================== */
+
+.stats-section {
+    margin-block: var(--space-xl);
+}
+
+.stats-section h2 {
+    font-weight: 100;
+    font-size: var(--font-size-2);
+    margin-bottom: var(--space-m);
+    padding-bottom: var(--space-xs);
+    border-bottom: 1px solid hsl(var(--color-hsl) / 0.2);
+}
+
+/* Overview grid with cards */
+.stats-overview .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: var(--space-m);
+}
+
+.stats-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: var(--space-m);
+    background: hsl(var(--color-hsl) / 0.05);
+    border-radius: var(--space-xs);
+}
+
+.stats-big {
+    font-size: var(--font-size-4);
+    font-weight: 100;
+    line-height: 1;
+}
+
+/* Bar chart layout */
+.stats-chart {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-xs);
+}
+
+.stats-bar {
+    display: grid;
+    grid-template-columns: minmax(8rem, 12rem) 1fr 3rem;
+    gap: var(--space-s);
+    align-items: center;
+}
+
+.stats-bar .stats-label {
+    font-size: var(--font-size-0);
+    text-align: right;
+    color: hsl(var(--color-hsl));
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.stats-track {
+    height: 0.5rem;
+    background: hsl(var(--color-hsl) / 0.1);
+    border-radius: 0.25rem;
+    overflow: hidden;
+}
+
+.stats-fill {
+    height: 100%;
+    width: var(--percent, 0%);
+    background: hsl(var(--color-hsl));
+    border-radius: 0.25rem;
+    transition: width var(--animation-time) ease-out;
+}
+
+.stats-value {
+    font-size: var(--font-size-0);
+    color: hsl(var(--color-light-hsl));
+    text-align: right;
+}
+
+.stats-generated {
+    font-size: var(--font-size--1, 0.75rem);
+    color: hsl(var(--color-light-hsl));
+    margin-top: var(--space-xl);
+    text-align: center;
+}
+
 /* Summary line */
 .stats-summary {
     display: flex;
-    gap: var(--space-m, 1.5rem);
-    margin-bottom: var(--space-l, 2rem);
+    gap: var(--space-m);
+    margin-bottom: var(--space-l);
 }
 
 .stats-summary span {
-    color: hsl(var(--color-light-hsl, 0deg 0% 50%));
+    color: hsl(var(--color-light-hsl));
 }
 
 /* Bar charts using dl/dt/dd - two lines per entry */
 section dl {
     display: block;
-    margin: 0 0 var(--space-xl, 3rem) 0;
+    margin: 0 0 var(--space-xl) 0;
 }
 
 section dl dt {
     display: flex;
-    gap: var(--space-s, 0.75rem);
-    font-size: var(--font-size-0, 0.875rem);
-    color: hsl(var(--color-hsl, 0deg 0% 40%));
-    margin-top: var(--space-xs, 0.5rem);
+    gap: var(--space-s);
+    font-size: var(--font-size-0);
+    color: hsl(var(--color-hsl));
+    margin-top: var(--space-xs);
 }
 
 section dl dt::before {
     content: attr(data-count);
     min-width: 2ch;
     text-align: right;
-    color: hsl(var(--color-light-hsl, 0deg 0% 50%));
+    color: hsl(var(--color-light-hsl));
 }
 
 section dl dd {
     height: 4px;
-    margin: var(--space-3xs, 0.25rem) 0 0 0;
+    margin: var(--space-3xs) 0 0 0;
     background: linear-gradient(to right,
-            hsl(var(--color-hsl, 0deg 0% 40%) / 0.4) calc(var(--percent, 0) * 1%),
+            hsl(var(--color-hsl) / 0.4) calc(var(--percent, 0) * 1%),
             transparent calc(var(--percent, 0) * 1%));
+}
+
+/* Dark mode adjustments */
+@media (prefers-color-scheme: dark) {
+    .stats-card {
+        background: hsl(var(--color-hsl) / 0.1);
+    }
+
+    .stats-track {
+        background: hsl(var(--color-hsl) / 0.2);
+    }
+}
+
+/* Responsive: Stack labels on small screens */
+@media (max-width: 480px) {
+    .stats-bar {
+        grid-template-columns: 1fr 3rem;
+        grid-template-rows: auto auto;
+    }
+
+    .stats-bar .stats-label {
+        grid-column: 1 / -1;
+        text-align: left;
+        margin-bottom: calc(var(--space-3xs) * -1);
+    }
+
+    .stats-track {
+        grid-column: 1;
+    }
 }
