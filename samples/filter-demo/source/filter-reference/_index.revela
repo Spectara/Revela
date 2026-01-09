@@ -1,0 +1,287 @@
++++
+title = "Filter Reference"
+description = "Complete guide to filter expressions"
+template = "page"
++++
+
+# Filter Expression Reference
+
+This page documents all filter syntax and functions available in Revela.
+
+---
+
+## Basic Syntax
+
+Filter expressions are set in the frontmatter of `_index.revela`:
+
+```toml
++++
+filter = "exif.make == 'Canon'"
++++
+```
+
+---
+
+## Comparison Operators
+
+| Operator | Description | Example |
+|----------|-------------|---------|
+| `==` | Equal | `exif.make == 'Canon'` |
+| `!=` | Not equal | `exif.make != 'Sony'` |
+| `<` | Less than | `exif.iso < 800` |
+| `<=` | Less than or equal | `exif.iso <= 800` |
+| `>` | Greater than | `exif.iso > 1600` |
+| `>=` | Greater than or equal | `exif.iso >= 3200` |
+
+---
+
+## Logical Operators
+
+Combine multiple conditions:
+
+| Operator | Description | Example |
+|----------|-------------|---------|
+| `and` | Both conditions must be true | `exif.make == 'Canon' and exif.iso >= 800` |
+| `or` | Either condition must be true | `exif.make == 'Canon' or exif.make == 'Sony'` |
+| `not` | Negates the condition | `not exif.make == 'Canon'` |
+
+### Precedence
+
+`and` has higher precedence than `or`. Use parentheses to change order:
+
+```
+# Without parentheses: a or (b and c)
+exif.make == 'Canon' or exif.make == 'Sony' and exif.iso >= 800
+
+# With parentheses: (a or b) and c
+(exif.make == 'Canon' or exif.make == 'Sony') and exif.iso >= 800
+```
+
+---
+
+## Available Properties
+
+### Image Properties
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `filename` | string | Image filename (e.g., `photo-001.jpg`) |
+| `sourcePath` | string | Full path within source directory |
+| `width` | int | Image width in pixels |
+| `height` | int | Image height in pixels |
+| `fileSize` | long | File size in bytes |
+| `dateTaken` | DateTime | Date photo was taken (from EXIF or file date) |
+
+### EXIF Properties
+
+Access via `exif.` prefix:
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `exif.make` | string | Camera manufacturer (Canon, Sony, Nikon, etc.) |
+| `exif.model` | string | Camera model (EOS R5, A7C, Z6 III, etc.) |
+| `exif.lensModel` | string | Lens name |
+| `exif.fNumber` | double | Aperture (f/2.8 = 2.8) |
+| `exif.exposureTime` | double | Shutter speed in seconds (1/125 = 0.008) |
+| `exif.iso` | int | ISO sensitivity |
+| `exif.focalLength` | int | Focal length in mm |
+| `exif.dateTaken` | DateTime | EXIF date/time |
+| `exif.gpsLatitude` | double? | GPS latitude (if available) |
+| `exif.gpsLongitude` | double? | GPS longitude (if available) |
+
+### Raw EXIF Access
+
+Access any EXIF tag via `exif.raw.TagName`:
+
+```
+exif.raw.Software == 'Lightroom'
+exif.raw.Artist == 'John Doe'
+```
+
+---
+
+## Built-in Functions
+
+### Date Functions
+
+| Function | Description | Example |
+|----------|-------------|---------|
+| `year(date)` | Extract year | `year(dateTaken) == 2024` |
+| `month(date)` | Extract month (1-12) | `month(dateTaken) == 12` |
+| `day(date)` | Extract day (1-31) | `day(dateTaken) == 25` |
+
+### String Functions
+
+| Function | Description | Example |
+|----------|-------------|---------|
+| `contains(str, substr)` | Check if string contains substring | `contains(filename, 'portrait')` |
+| `startsWith(str, prefix)` | Check if string starts with prefix | `startsWith(filename, 'IMG_')` |
+| `endsWith(str, suffix)` | Check if string ends with suffix | `endsWith(filename, '-edit.jpg')` |
+| `lower(str)` | Convert to lowercase | `lower(exif.make) == 'canon'` |
+| `upper(str)` | Convert to uppercase | `upper(exif.make) == 'CANON'` |
+
+---
+
+## Pipe Syntax (Sort & Limit)
+
+Chain operations using the pipe `|` operator:
+
+```
+filter_expression | sort property [asc|desc] | limit n
+```
+
+### The `all` Keyword
+
+Select all images without filtering:
+
+```toml
+filter = "all"
+filter = "all | sort dateTaken desc"
+filter = "all | sort dateTaken desc | limit 10"
+```
+
+### Sort Clause
+
+Sort results by any property:
+
+```toml
+# Sort by date, newest first
+filter = "all | sort dateTaken desc"
+
+# Sort by filename, alphabetically
+filter = "all | sort filename"
+filter = "all | sort filename asc"  # explicit ascending
+
+# Sort by nested property
+filter = "all | sort exif.iso desc"
+```
+
+**Default direction:** `asc` (ascending)
+
+### Limit Clause
+
+Restrict the number of results:
+
+```toml
+# Get only 5 images
+filter = "all | limit 5"
+
+# Get 10 newest images
+filter = "all | sort dateTaken desc | limit 10"
+```
+
+### Combined Example
+
+```toml
+# Top 5 high-ISO Canon photos, newest first
+filter = "exif.make == 'Canon' and exif.iso >= 1600 | sort dateTaken desc | limit 5"
+```
+
+---
+
+## Literal Values
+
+### Strings
+
+Use single or double quotes:
+
+```
+filename == 'test.jpg'
+filename == "test.jpg"
+```
+
+Escape sequences: `\'`, `\"`, `\\`, `\n`, `\r`, `\t`
+
+### Numbers
+
+```
+exif.iso == 800        # integer
+exif.fNumber == 2.8    # decimal
+```
+
+### Boolean
+
+```
+true   # always matches
+false  # never matches
+```
+
+### Null
+
+Check for missing values:
+
+```
+exif.gpsLatitude != null   # has GPS data
+exif.lensModel == null     # no lens info
+```
+
+---
+
+## Complete Examples
+
+### By Camera Brand
+
+```toml
+filter = "exif.make == 'Canon'"
+filter = "exif.make == 'Sony'"
+filter = "exif.make == 'Nikon'"
+```
+
+### By Year
+
+```toml
+filter = "year(dateTaken) == 2024"
+filter = "year(dateTaken) >= 2020 and year(dateTaken) <= 2024"
+```
+
+### High ISO (Night/Low Light)
+
+```toml
+filter = "exif.iso >= 3200"
+filter = "exif.iso >= 1600 | sort exif.iso desc"
+```
+
+### Portraits (by Filename)
+
+```toml
+filter = "contains(filename, 'portrait')"
+filter = "contains(lower(filename), 'portrait')"
+```
+
+### Landscapes (Wide Angle)
+
+```toml
+filter = "exif.focalLength <= 35"
+```
+
+### Recent Photos
+
+```toml
+filter = "all | sort dateTaken desc | limit 20"
+```
+
+### Multiple Brands
+
+```toml
+filter = "exif.make == 'Canon' or exif.make == 'Sony'"
+```
+
+### Specific Camera + High Quality
+
+```toml
+filter = "exif.model == 'EOS R5' and exif.iso <= 1600"
+```
+
+---
+
+## Error Handling
+
+Invalid filter expressions will cause an error during generation with a helpful message:
+
+```
+Filter parse error at position 15: Unexpected token 'xyz'
+Expression: exif.make == xyz
+                         ^^^
+```
+
+Use `revela generate scan` to validate filters before full generation.
