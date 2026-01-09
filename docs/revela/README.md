@@ -8,6 +8,7 @@ Dokumentation für Revela-Features auf Englisch und Deutsch.
 
 | English | Deutsch | Description |
 |---------|---------|-------------|
+| [Source Structure](source-structure-en.md) | [Source-Struktur](source-structure-de.md) | Organize photos: traditional, filter, or hybrid |
 | [Creating Pages](pages-en.md) | [Seiten erstellen](pages-de.md) | Create gallery, text, and statistics pages |
 | [Filter Galleries](filtering-en.md) | [Filter-Galerien](filtering-de.md) | Virtual galleries with filter expressions |
 | [Sorting](sorting-en.md) | [Sortierung](sorting-de.md) | Configure gallery and image sorting |
