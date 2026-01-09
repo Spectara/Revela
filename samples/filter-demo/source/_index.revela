@@ -10,7 +10,7 @@ This sample demonstrates **virtual galleries** using filter expressions.
 
 ## Latest 5 Photos
 
-The 5 most recent photos from the shared `_images/` folder, automatically sorted by date.
+The 5 most recent photos from the **entire site**, automatically sorted by date.
 
 ```
 filter = "all | sort dateTaken desc | limit 5"
