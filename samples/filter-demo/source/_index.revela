@@ -1,18 +1,30 @@
 +++
 title = "Welcome"
 description = "Demo site for Revela filter galleries"
+filter = "all | sort dateTaken desc | limit 5"
 +++
 
 # Filter Gallery Demo
 
 This sample demonstrates **virtual galleries** using filter expressions.
 
+## Latest 5 Photos
+
+The 5 most recent photos from the shared `_images/` folder, automatically sorted by date.
+
+```
+filter = "all | sort dateTaken desc | limit 5"
+```
+
 ## How it works
 
-1. **`_images/`** - Shared images folder (not a gallery itself)
-2. **Filter galleries** - Select images using expressions like:
-   - `exif.make == 'Canon'` - All Canon photos
-   - `year(dateTaken) == 2024` - Photos from 2024
-   - `contains(filename, 'portrait')` - Portrait photos
+- **`_images/`** - Shared images folder (not a gallery itself)
+- **Filter galleries** - Select images using expressions like:
+  - `exif.make == 'Canon'` - All Canon photos
+  - `year(dateTaken) == 2024` - Photos from 2024
+  - `contains(filename, 'portrait')` - Portrait photos
+- **Pipe syntax** - Chain operations:
+  - `all | sort dateTaken desc | limit 5` - 5 newest photos
+  - `exif.make == 'Canon' | sort exif.iso desc` - Canon, highest ISO first
 
 Browse the galleries to see filters in action!

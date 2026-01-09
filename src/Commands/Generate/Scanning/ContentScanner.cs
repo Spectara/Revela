@@ -77,8 +77,12 @@ public sealed partial class ContentScanner(
         // Check for _index.revela (gallery metadata or standalone page)
         var hasIndexFile = File.Exists(Path.Combine(currentDirectory, RevelaParser.IndexFileName));
 
-        // Create gallery if directory has images OR has _index.md (text-only pages)
-        if (imageFiles.Count > 0 || (hasIndexFile && !string.IsNullOrEmpty(relativePath)))
+        // Create gallery if directory has images, has _index.revela (text/filter pages), or is root with metadata
+        // Note: Root (_index.revela at source root) is always created if it exists - allows filter galleries on homepage
+        var isRoot = string.IsNullOrEmpty(relativePath);
+        var shouldCreateGallery = imageFiles.Count > 0 || hasIndexFile;
+
+        if (shouldCreateGallery)
         {
             // This directory contains images or is a text-only page
             var directoryMetadata = await LoadGalleryMetadataAsync(currentDirectory, cancellationToken);

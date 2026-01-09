@@ -491,13 +491,21 @@ public sealed partial class ContentService(
         if (!string.IsNullOrEmpty(filterExpression))
         {
             // Filter mode: select images from ALL site images matching the filter
-            var filteredImages = FilterService.Apply(context.AllImages, filterExpression);
+            // ApplyQuery handles filter, sort (via pipe), and limit in one pass
+            var filteredImages = FilterService.ApplyQuery(context.AllImages, filterExpression);
             content = [.. filteredImages];
 
             // Add markdown files from the folder (filters only apply to images)
             foreach (var markdown in markdowns)
             {
                 content.Add(ConvertSourceMarkdown(markdown));
+            }
+
+            // Check if filter has its own sort clause - if so, skip gallery sort
+            var query = FilterService.ParseQuery(filterExpression);
+            if (query.HasSort)
+            {
+                return content; // Already sorted by filter's sort clause
             }
         }
         else
@@ -507,7 +515,7 @@ public sealed partial class ContentService(
             return content; // Already sorted by BuildContentList
         }
 
-        // Sort filtered content
+        // Sort filtered content using gallery/global sort
         return SortContent(content, sortOverride);
     }
 

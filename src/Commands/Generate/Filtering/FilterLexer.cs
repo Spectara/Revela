@@ -68,6 +68,7 @@ public sealed class FilterLexer
             ')' => new Token(TokenType.RightParen, ")", startPos),
             '.' => new Token(TokenType.Dot, ".", startPos),
             ',' => new Token(TokenType.Comma, ",", startPos),
+            '|' => new Token(TokenType.Pipe, "|", startPos),
             '=' when Match('=') => new Token(TokenType.Equal, "==", startPos),
             '!' when Match('=') => new Token(TokenType.NotEqual, "!=", startPos),
             '<' when Match('=') => new Token(TokenType.LessThanOrEqual, "<=", startPos),
@@ -164,6 +165,11 @@ public sealed class FilterLexer
             "TRUE" => TokenType.True,
             "FALSE" => TokenType.False,
             "NULL" => TokenType.Null,
+            "ALL" => TokenType.All,
+            "SORT" => TokenType.Sort,
+            "LIMIT" => TokenType.Limit,
+            "ASC" => TokenType.Asc,
+            "DESC" => TokenType.Desc,
             _ => TokenType.Identifier
         };
 

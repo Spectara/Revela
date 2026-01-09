@@ -66,7 +66,25 @@ public enum TokenType
     False,
 
     /// <summary>Null literal.</summary>
-    Null
+    Null,
+
+    /// <summary>Pipe operator for chaining (|).</summary>
+    Pipe,
+
+    /// <summary>All keyword (selects all images).</summary>
+    All,
+
+    /// <summary>Sort keyword for ordering results.</summary>
+    Sort,
+
+    /// <summary>Limit keyword for restricting result count.</summary>
+    Limit,
+
+    /// <summary>Ascending sort direction.</summary>
+    Asc,
+
+    /// <summary>Descending sort direction.</summary>
+    Desc
 }
 
 /// <summary>
@@ -105,6 +123,12 @@ public readonly record struct Token(TokenType Type, string Value, int Position)
         TokenType.True => "true",
         TokenType.False => "false",
         TokenType.Null => "null",
+        TokenType.Pipe => "|",
+        TokenType.All => "all",
+        TokenType.Sort => "sort",
+        TokenType.Limit => "limit",
+        TokenType.Asc => "asc",
+        TokenType.Desc => "desc",
         _ => $"<{Type}>"
     };
 }

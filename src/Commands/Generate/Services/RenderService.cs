@@ -291,11 +291,14 @@ public sealed partial class RenderService(
         var images = new List<Image>();
         foreach (var imageEntry in entry.Content.OfType<ImageContent>())
         {
-            // Use forward slashes for cross-platform consistency
-            var sourcePath = string.IsNullOrEmpty(entry.Path)
-                ? imageEntry.Filename
-                : $"{entry.Path}/{imageEntry.Filename}";
-            // Normalize any remaining backslashes from entry.Path
+            // Use SourcePath if available (for filtered images from _images),
+            // otherwise construct from entry.Path + filename (for regular gallery images)
+            var sourcePath = !string.IsNullOrEmpty(imageEntry.SourcePath)
+                ? imageEntry.SourcePath
+                : string.IsNullOrEmpty(entry.Path)
+                    ? imageEntry.Filename
+                    : $"{entry.Path}/{imageEntry.Filename}";
+            // Normalize any remaining backslashes for cross-platform consistency
             images.Add(Image.FromManifestEntry(sourcePath.Replace('\\', '/'), imageEntry));
         }
 
@@ -395,14 +398,30 @@ public sealed partial class RenderService(
         var stylesheets = assetResolver.GetStyleSheets();
         var scripts = assetResolver.GetScripts();
 
+        // Find root gallery (home page) - has empty Path
+        var rootGallery = model.Galleries.FirstOrDefault(g => string.IsNullOrEmpty(g.Path));
+
+        // Load root gallery metadata (body content, etc.)
+        if (rootGallery is not null)
+        {
+            var (_, _, _) = await LoadGalleryMetadataAsync(rootGallery, cancellationToken);
+        }
+
+        // Use root gallery images if available (may be filtered), otherwise all images
+        var indexImages = rootGallery?.Images.Count > 0
+            ? rootGallery.Images
+            : model.Images;
+
         var indexHtml = templateEngine.Render(
             indexTemplate,
             new
             {
                 site = model.Site,
-                gallery = new { title = "Home", body = (string?)null },
+                gallery = rootGallery is not null
+                    ? new { title = rootGallery.Title ?? "Home", body = rootGallery.Body }
+                    : new { title = "Home", body = (string?)null },
                 galleries = model.Galleries,
-                images = model.Images,
+                images = indexImages,
                 nav_items = indexNavigation,
                 basepath = indexBasePath,
                 image_basepath = indexImageBasePath,
@@ -418,8 +437,8 @@ public sealed partial class RenderService(
             cancellationToken);
         pageCount++;
 
-        // Render gallery pages
-        foreach (var gallery in model.Galleries)
+        // Render gallery pages (skip root gallery, already rendered as index)
+        foreach (var gallery in model.Galleries.Where(g => !string.IsNullOrEmpty(g.Path)))
         {
             cancellationToken.ThrowIfCancellationRequested();
 

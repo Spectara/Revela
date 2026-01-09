@@ -1,5 +1,6 @@
 using Spectara.Revela.Commands.Generate.Filtering;
 using Spectara.Revela.Commands.Generate.Filtering.Ast;
+using Spectara.Revela.Core.Configuration;
 
 namespace Spectara.Revela.Commands.Tests.Generate.Filtering;
 
@@ -9,16 +10,32 @@ namespace Spectara.Revela.Commands.Tests.Generate.Filtering;
 [TestClass]
 public sealed class FilterParserTests
 {
+    /// <summary>
+    /// Helper to parse a filter and get the predicate (for tests that don't use sort/limit).
+    /// </summary>
+    private static FilterNode ParsePredicate(string filter)
+    {
+        var tokens = new FilterLexer(filter).Tokenize();
+        var parser = new FilterParser(tokens, filter);
+        var query = parser.Parse();
+        return query.Predicate ?? throw new InvalidOperationException("Expected predicate");
+    }
+
+    /// <summary>
+    /// Helper to parse a filter and get the full query.
+    /// </summary>
+    private static FilterQuery ParseQuery(string filter)
+    {
+        var tokens = new FilterLexer(filter).Tokenize();
+        var parser = new FilterParser(tokens, filter);
+        return parser.Parse();
+    }
+
     [TestMethod]
     public void Parse_SimpleComparison_ReturnsCorrectAst()
     {
-        // Arrange
-        var filter = "filename == 'test.jpg'";
-        var tokens = new FilterLexer(filter).Tokenize();
-        var parser = new FilterParser(tokens, filter);
-
-        // Act
-        var result = parser.Parse();
+        // Arrange & Act
+        var result = ParsePredicate("filename == 'test.jpg'");
 
         // Assert
         Assert.IsInstanceOfType<BinaryNode>(result);
@@ -38,13 +55,8 @@ public sealed class FilterParserTests
     [TestMethod]
     public void Parse_PropertyPath_ReturnsPropertyNode()
     {
-        // Arrange
-        var filter = "exif.make == 'Canon'";
-        var tokens = new FilterLexer(filter).Tokenize();
-        var parser = new FilterParser(tokens, filter);
-
-        // Act
-        var result = parser.Parse();
+        // Arrange & Act
+        var result = ParsePredicate("exif.make == 'Canon'");
 
         // Assert
         var binary = (BinaryNode)result;
@@ -57,13 +69,8 @@ public sealed class FilterParserTests
     [TestMethod]
     public void Parse_NestedPropertyPath_ReturnsPropertyNode()
     {
-        // Arrange
-        var filter = "exif.raw.key == 'value'";
-        var tokens = new FilterLexer(filter).Tokenize();
-        var parser = new FilterParser(tokens, filter);
-
-        // Act
-        var result = parser.Parse();
+        // Arrange & Act
+        var result = ParsePredicate("exif.raw.key == 'value'");
 
         // Assert
         var binary = (BinaryNode)result;
@@ -83,12 +90,8 @@ public sealed class FilterParserTests
     [DataRow("a >= b", BinaryOperator.GreaterThanOrEqual)]
     public void Parse_ComparisonOperators_ReturnsCorrectOperator(string filter, BinaryOperator expected)
     {
-        // Arrange
-        var tokens = new FilterLexer(filter).Tokenize();
-        var parser = new FilterParser(tokens, filter);
-
-        // Act
-        var result = parser.Parse();
+        // Arrange & Act
+        var result = ParsePredicate(filter);
 
         // Assert
         var binary = (BinaryNode)result;
@@ -98,13 +101,8 @@ public sealed class FilterParserTests
     [TestMethod]
     public void Parse_AndExpression_ReturnsCorrectAst()
     {
-        // Arrange
-        var filter = "a == 1 and b == 2";
-        var tokens = new FilterLexer(filter).Tokenize();
-        var parser = new FilterParser(tokens, filter);
-
-        // Act
-        var result = parser.Parse();
+        // Arrange & Act
+        var result = ParsePredicate("a == 1 and b == 2");
 
         // Assert
         Assert.IsInstanceOfType<BinaryNode>(result);
@@ -117,13 +115,8 @@ public sealed class FilterParserTests
     [TestMethod]
     public void Parse_OrExpression_ReturnsCorrectAst()
     {
-        // Arrange
-        var filter = "a == 1 or b == 2";
-        var tokens = new FilterLexer(filter).Tokenize();
-        var parser = new FilterParser(tokens, filter);
-
-        // Act
-        var result = parser.Parse();
+        // Arrange & Act
+        var result = ParsePredicate("a == 1 or b == 2");
 
         // Assert
         var binary = (BinaryNode)result;
@@ -134,12 +127,7 @@ public sealed class FilterParserTests
     public void Parse_AndPrecedenceOverOr_ReturnsCorrectTree()
     {
         // Arrange: a == 1 or b == 2 and c == 3 should be: a == 1 or (b == 2 and c == 3)
-        var filter = "a == 1 or b == 2 and c == 3";
-        var tokens = new FilterLexer(filter).Tokenize();
-        var parser = new FilterParser(tokens, filter);
-
-        // Act
-        var result = parser.Parse();
+        var result = ParsePredicate("a == 1 or b == 2 and c == 3");
 
         // Assert
         var orNode = (BinaryNode)result;
@@ -157,13 +145,8 @@ public sealed class FilterParserTests
     [TestMethod]
     public void Parse_NotExpression_ReturnsUnaryNode()
     {
-        // Arrange
-        var filter = "not a == 1";
-        var tokens = new FilterLexer(filter).Tokenize();
-        var parser = new FilterParser(tokens, filter);
-
-        // Act
-        var result = parser.Parse();
+        // Arrange & Act
+        var result = ParsePredicate("not a == 1");
 
         // Assert
         Assert.IsInstanceOfType<UnaryNode>(result);
@@ -176,12 +159,7 @@ public sealed class FilterParserTests
     public void Parse_ParenthesizedExpression_ReturnsCorrectTree()
     {
         // Arrange: (a == 1 or b == 2) and c == 3 should be: (a == 1 or b == 2) and c == 3
-        var filter = "(a == 1 or b == 2) and c == 3";
-        var tokens = new FilterLexer(filter).Tokenize();
-        var parser = new FilterParser(tokens, filter);
-
-        // Act
-        var result = parser.Parse();
+        var result = ParsePredicate("(a == 1 or b == 2) and c == 3");
 
         // Assert
         var andNode = (BinaryNode)result;
@@ -197,13 +175,8 @@ public sealed class FilterParserTests
     [TestMethod]
     public void Parse_FunctionCall_ReturnsCallNode()
     {
-        // Arrange
-        var filter = "year(dateTaken) == 2024";
-        var tokens = new FilterLexer(filter).Tokenize();
-        var parser = new FilterParser(tokens, filter);
-
-        // Act
-        var result = parser.Parse();
+        // Arrange & Act
+        var result = ParsePredicate("year(dateTaken) == 2024");
 
         // Assert
         var binary = (BinaryNode)result;
@@ -217,13 +190,8 @@ public sealed class FilterParserTests
     [TestMethod]
     public void Parse_FunctionWithMultipleArguments_ReturnsCallNode()
     {
-        // Arrange
-        var filter = "contains(filename, 'test')";
-        var tokens = new FilterLexer(filter).Tokenize();
-        var parser = new FilterParser(tokens, filter);
-
-        // Act
-        var result = parser.Parse();
+        // Arrange & Act
+        var result = ParsePredicate("contains(filename, 'test')");
 
         // Assert
         Assert.IsInstanceOfType<CallNode>(result);
@@ -237,13 +205,8 @@ public sealed class FilterParserTests
     [TestMethod]
     public void Parse_BooleanLiteral_ReturnsConstantNode()
     {
-        // Arrange
-        var filter = "true";
-        var tokens = new FilterLexer(filter).Tokenize();
-        var parser = new FilterParser(tokens, filter);
-
-        // Act
-        var result = parser.Parse();
+        // Arrange & Act
+        var result = ParsePredicate("true");
 
         // Assert
         Assert.IsInstanceOfType<ConstantNode>(result);
@@ -254,13 +217,8 @@ public sealed class FilterParserTests
     [TestMethod]
     public void Parse_NullLiteral_ReturnsConstantNode()
     {
-        // Arrange
-        var filter = "filename == null";
-        var tokens = new FilterLexer(filter).Tokenize();
-        var parser = new FilterParser(tokens, filter);
-
-        // Act
-        var result = parser.Parse();
+        // Arrange & Act
+        var result = ParsePredicate("filename == null");
 
         // Assert
         var binary = (BinaryNode)result;
@@ -272,13 +230,8 @@ public sealed class FilterParserTests
     [TestMethod]
     public void Parse_IntegerLiteral_ReturnsConstantNode()
     {
-        // Arrange
-        var filter = "exif.iso == 800";
-        var tokens = new FilterLexer(filter).Tokenize();
-        var parser = new FilterParser(tokens, filter);
-
-        // Act
-        var result = parser.Parse();
+        // Arrange & Act
+        var result = ParsePredicate("exif.iso == 800");
 
         // Assert
         var binary = (BinaryNode)result;
@@ -289,13 +242,8 @@ public sealed class FilterParserTests
     [TestMethod]
     public void Parse_DecimalLiteral_ReturnsConstantNode()
     {
-        // Arrange
-        var filter = "value == 3.14";
-        var tokens = new FilterLexer(filter).Tokenize();
-        var parser = new FilterParser(tokens, filter);
-
-        // Act
-        var result = parser.Parse();
+        // Arrange & Act
+        var result = ParsePredicate("value == 3.14");
 
         // Assert
         var binary = (BinaryNode)result;
@@ -341,4 +289,136 @@ public sealed class FilterParserTests
         var ex = Assert.ThrowsExactly<FilterParseException>(() => parser.Parse());
         Assert.Contains("Unexpected", ex.Message);
     }
+
+    #region Sort and Limit Tests
+
+    [TestMethod]
+    public void Parse_AllKeyword_ReturnsNullPredicate()
+    {
+        // Arrange & Act
+        var query = ParseQuery("all");
+
+        // Assert
+        Assert.IsNull(query.Predicate);
+        Assert.IsTrue(query.SelectsAll);
+    }
+
+    [TestMethod]
+    public void Parse_AllWithSort_ReturnsSortClause()
+    {
+        // Arrange & Act
+        var query = ParseQuery("all | sort dateTaken desc");
+
+        // Assert
+        Assert.IsNull(query.Predicate);
+        Assert.IsNotNull(query.Sort);
+        Assert.HasCount(1, query.Sort.PropertyPath);
+        Assert.AreEqual("dateTaken", query.Sort.PropertyPath[0]);
+        Assert.AreEqual(SortDirection.Desc, query.Sort.Direction);
+    }
+
+    [TestMethod]
+    public void Parse_AllWithSortAsc_ReturnsAscending()
+    {
+        // Arrange & Act
+        var query = ParseQuery("all | sort filename asc");
+
+        // Assert
+        Assert.IsNotNull(query.Sort);
+        Assert.AreEqual(SortDirection.Asc, query.Sort.Direction);
+    }
+
+    [TestMethod]
+    public void Parse_SortWithoutDirection_DefaultsToAsc()
+    {
+        // Arrange & Act
+        var query = ParseQuery("all | sort filename");
+
+        // Assert
+        Assert.IsNotNull(query.Sort);
+        Assert.AreEqual(SortDirection.Asc, query.Sort.Direction);
+    }
+
+    [TestMethod]
+    public void Parse_SortWithNestedProperty_ReturnsPropertyPath()
+    {
+        // Arrange & Act
+        var query = ParseQuery("all | sort exif.iso desc");
+
+        // Assert
+        Assert.IsNotNull(query.Sort);
+        Assert.HasCount(2, query.Sort.PropertyPath);
+        Assert.AreEqual("exif", query.Sort.PropertyPath[0]);
+        Assert.AreEqual("iso", query.Sort.PropertyPath[1]);
+        Assert.AreEqual("exif.iso", query.Sort.PropertyPathString);
+    }
+
+    [TestMethod]
+    public void Parse_Limit_ReturnsLimitValue()
+    {
+        // Arrange & Act
+        var query = ParseQuery("all | limit 5");
+
+        // Assert
+        Assert.IsNull(query.Sort);
+        Assert.AreEqual(5, query.Limit);
+        Assert.IsTrue(query.HasLimit);
+    }
+
+    [TestMethod]
+    public void Parse_SortAndLimit_ReturnsBoth()
+    {
+        // Arrange & Act
+        var query = ParseQuery("all | sort dateTaken desc | limit 10");
+
+        // Assert
+        Assert.IsNotNull(query.Sort);
+        Assert.AreEqual("dateTaken", query.Sort.PropertyPath[0]);
+        Assert.AreEqual(SortDirection.Desc, query.Sort.Direction);
+        Assert.AreEqual(10, query.Limit);
+    }
+
+    [TestMethod]
+    public void Parse_FilterWithSortAndLimit_ReturnsFull()
+    {
+        // Arrange & Act
+        var query = ParseQuery("exif.make == 'Canon' | sort dateTaken desc | limit 5");
+
+        // Assert
+        Assert.IsNotNull(query.Predicate);
+        Assert.IsInstanceOfType<BinaryNode>(query.Predicate);
+        Assert.IsNotNull(query.Sort);
+        Assert.AreEqual(5, query.Limit);
+    }
+
+    [TestMethod]
+    public void Parse_LimitZero_ThrowsException()
+    {
+        // Arrange
+        var filter = "all | limit 0";
+        var tokens = new FilterLexer(filter).Tokenize();
+        var parser = new FilterParser(tokens, filter);
+
+        // Act & Assert
+        var ex = Assert.ThrowsExactly<FilterParseException>(() => parser.Parse());
+        Assert.Contains("positive", ex.Message);
+    }
+
+    [TestMethod]
+    public void Parse_LimitNegative_ThrowsException()
+    {
+        // Arrange - negative numbers will fail in lexer because '-' is not a recognized token
+        var filter = "all | limit -5";
+
+        // Act & Assert - Lexer throws because '-' is unexpected
+        var ex = Assert.ThrowsExactly<FilterParseException>(() =>
+        {
+            var tokens = new FilterLexer(filter).Tokenize();
+            var parser = new FilterParser(tokens, filter);
+            parser.Parse();
+        });
+        Assert.Contains("-", ex.Message);
+    }
+
+    #endregion
 }

@@ -1,6 +1,7 @@
 using System.Globalization;
 
 using Spectara.Revela.Commands.Generate.Filtering.Ast;
+using Spectara.Revela.Core.Configuration;
 
 namespace Spectara.Revela.Commands.Generate.Filtering;
 
@@ -10,7 +11,11 @@ namespace Spectara.Revela.Commands.Generate.Filtering;
 /// <remarks>
 /// Grammar (simplified EBNF):
 /// <code>
-/// expression     → or_expr
+/// query          → filter_expr ("|" sort_clause)? ("|" limit_clause)?
+///                | "all" ("|" sort_clause)? ("|" limit_clause)?
+/// filter_expr    → or_expr
+/// sort_clause    → "sort" property ("asc" | "desc")?
+/// limit_clause   → "limit" INTEGER
 /// or_expr        → and_expr ("or" and_expr)*
 /// and_expr       → unary_expr ("and" unary_expr)*
 /// unary_expr     → "not" unary_expr | comparison
@@ -41,25 +46,131 @@ public sealed class FilterParser
     }
 
     /// <summary>
-    /// Parses the tokens into an AST.
+    /// Parses the tokens into a filter query with optional sort and limit clauses.
     /// </summary>
-    /// <returns>The root node of the AST.</returns>
+    /// <returns>The complete filter query.</returns>
     /// <exception cref="FilterParseException">Thrown when the expression is invalid.</exception>
-    public FilterNode Parse()
+    public FilterQuery Parse()
     {
         if (tokens.Count == 0 || (tokens.Count == 1 && tokens[0].Type == TokenType.Eof))
         {
             throw CreateError("Empty filter expression", 0);
         }
 
-        var expr = ParseOrExpression();
+        FilterNode? predicate;
+
+        // Check for "all" keyword - selects all images
+        if (Match(TokenType.All))
+        {
+            predicate = null;
+        }
+        else
+        {
+            predicate = ParseOrExpression();
+        }
+
+        // Parse optional pipe clauses
+        var sort = ParseSortClause();
+        var limit = ParseLimitClause();
 
         if (!IsAtEnd())
         {
             throw CreateError($"Unexpected token '{Current()}'", Current().Position);
         }
 
-        return expr;
+        return new FilterQuery(predicate, sort, limit);
+    }
+
+    /// <summary>
+    /// Parses the tokens into an AST (legacy method for backward compatibility).
+    /// </summary>
+    /// <returns>The root node of the AST.</returns>
+    /// <exception cref="FilterParseException">Thrown when the expression is invalid.</exception>
+    /// <remarks>
+    /// Use <see cref="Parse"/> instead to get the full query including sort and limit.
+    /// This method throws if the expression contains pipe clauses.
+    /// </remarks>
+    public FilterNode ParseExpression()
+    {
+        var query = Parse();
+
+        if (query.HasSort || query.HasLimit)
+        {
+            throw CreateError("Use Parse() method for expressions with sort or limit clauses", 0);
+        }
+
+        return query.Predicate ?? throw CreateError("'all' keyword requires sort or limit clause, or use 'true' instead", 0);
+    }
+
+    private SortClause? ParseSortClause()
+    {
+        if (!Match(TokenType.Pipe))
+        {
+            return null;
+        }
+
+        if (!Match(TokenType.Sort))
+        {
+            // Put back the pipe - might be for limit
+            current--;
+            return null;
+        }
+
+        // Parse property path for sort field
+        if (!Check(TokenType.Identifier))
+        {
+            throw CreateError("Expected property name after 'sort'", Current().Position);
+        }
+
+        var firstSegment = Advance();
+        var path = new List<string> { firstSegment.Value };
+
+        while (Match(TokenType.Dot))
+        {
+            var segment = Consume(TokenType.Identifier, "Expected property name after '.'");
+            path.Add(segment.Value);
+        }
+
+        // Parse optional direction (default: ascending)
+        var direction = SortDirection.Asc;
+        if (Match(TokenType.Desc))
+        {
+            direction = SortDirection.Desc;
+        }
+        else
+        {
+            Match(TokenType.Asc); // consume optional "asc"
+        }
+
+        return new SortClause(path, direction);
+    }
+
+    private int? ParseLimitClause()
+    {
+        if (!Match(TokenType.Pipe))
+        {
+            return null;
+        }
+
+        if (!Match(TokenType.Limit))
+        {
+            throw CreateError("Expected 'sort' or 'limit' after '|'", Current().Position);
+        }
+
+        if (!Check(TokenType.IntegerLiteral))
+        {
+            throw CreateError("Expected number after 'limit'", Current().Position);
+        }
+
+        var token = Advance();
+        var limit = int.Parse(token.Value, CultureInfo.InvariantCulture);
+
+        if (limit <= 0)
+        {
+            throw CreateError("Limit must be a positive number", token.Position);
+        }
+
+        return limit;
     }
 
     private FilterNode ParseOrExpression()

@@ -27,8 +27,10 @@
 {{~ end ~}}
 </section>
 {{~ else ~}}
-{{~ # Top-level leaf = direct link (flat navigation) ~}}
+{{~ # Top-level leaf = section with link (flat navigation) ~}}
+<section>
   <a href="{{ basepath }}{{ item.url }}"{{ item.active ? ' class="active"' : '' }}>{{ item.text }}</a>
+</section>
 {{~ end ~}}
 {{~ else if item.children.size > 0 ~}}
 {{~ # Branch: Has children ~}}
