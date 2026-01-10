@@ -1,10 +1,8 @@
 +++
-title = "About"
+title = "About Revela"
 template = "page"
 pinned = true
 +++
-
-# About Revela
 
 Revela is a modern static site generator built specifically for photographers who want beautiful, fast portfolio websites without the complexity of traditional web development.
 
