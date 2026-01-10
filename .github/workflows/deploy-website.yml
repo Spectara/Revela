@@ -26,6 +26,7 @@ jobs:
         with:
           repository: Spectara/Revela
           latest: true
+          preRelease: true
           fileName: "revela-linux-x64-core.tar.gz"
           out-file-path: ./revela-download
 
