@@ -4,70 +4,32 @@ template = "docs"
 pinned = true
 +++
 
-# Getting Started
+# Documentation
 
-Welcome to the Aurora theme documentation.
+Welcome to the Revela documentation. Here you'll find everything you need to create beautiful photo galleries.
 
-## Installation
+<div class="features-grid">
 
-Install Revela using .NET:
+### 📁 Source Structure
 
-```bash
-dotnet tool install -g Spectara.Revela
-```
+Learn how to organize your photos with traditional galleries, filter galleries, or a hybrid approach.
 
-## Project Setup
+### ⚙️ Configuration
 
-Create a new project:
+Configure your project with `project.json` and `site.json` settings.
 
-```bash
-revela init my-site
-cd my-site
-```
+### 🎨 Themes
 
-## Configuration
+Customize the look and feel of your gallery with theme options.
 
-Edit `project.json` to configure your site:
+### 🔌 Plugins
 
-```json
-{
-  "source": "source",
-  "output": "output",
-  "theme": "aurora"
-}
-```
+Extend Revela with plugins for OneDrive, statistics, and more.
 
-## Templates
+</div>
 
-Aurora provides several templates:
+---
 
-| Template | Use Case |
-|----------|----------|
-| `home` | Landing page with hero |
-| `page` | Standard content page |
-| `docs` | Documentation with sidebar |
-| `gallery` | Simple image gallery |
-
-## Code Examples
-
-Here's some C# code:
-
-```csharp
-public class Example
-{
-    public void SayHello()
-    {
-        Console.WriteLine("Hello, Aurora!");
-    }
-}
-```
-
-And some JavaScript:
-
-```javascript
-const greet = (name) => {
-    console.log(`Hello, ${name}!`);
-};
-
-greet('Aurora');
-```
+> **🚧 Work in Progress**
+> 
+> This documentation is still being written. More content coming soon!

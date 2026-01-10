@@ -43,12 +43,15 @@ Download the latest release for your platform:
 
 <p class="download-more"><a href="https://github.com/Spectara/Revela/releases">All downloads →</a></p>
 
-**2. Create a new project**
+**2. Run Revela**
+
+Simply run `revela` without arguments to start the interactive mode:
 
 ```bash
-revela init my-portfolio
-cd my-portfolio
+revela
 ```
+
+The interactive menu guides you through creating a new project, generating your site, and more. For advanced usage via command line, see the [CLI Reference](docs/).
 
 **3. Add your photos**
 
@@ -90,3 +93,7 @@ Revela is open source and actively developed. Contributions welcome!
 - 📖 [Documentation](docs/)
 - 🐛 [Report Issues](https://github.com/kirkone/Revela/issues)
 - 💬 [Discussions](https://github.com/kirkone/Revela/discussions)
+
+---
+
+*This website is built with Revela. [View the source →](https://github.com/Spectara/Revela/tree/main/samples/revela-website)*

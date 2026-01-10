@@ -240,7 +240,13 @@ body>nav section a.active {
   pointer-events: none;
 }
 
-nav:focus-within,
+/* Parent link should not look active when a child is active */
+body>nav section:has(> a.active) h3 a.active {
+  color: hsl(var(--color-light-hsl));
+  pointer-events: auto;
+}
+
+body>nav:focus-within,
 .nav-trigger:checked~nav {
   display: flex;
   opacity: 1;
@@ -248,7 +254,7 @@ nav:focus-within,
 
 @starting-style {
 
-  nav:focus-within,
+  body>nav:focus-within,
   .nav-trigger:checked~nav {
     opacity: 0;
   }
@@ -396,8 +402,8 @@ header div a:hover {
   }
 }
 
-nav:focus-within~header nav,
-nav:focus-within~header form,
+body>nav:focus-within~header nav,
+body>nav:focus-within~header form,
 .nav-trigger:checked~header nav,
 .nav-trigger:checked~header form {
   opacity: 0;
@@ -802,4 +808,9 @@ footer nav section a:hover {
 
 footer nav section a.active {
   color: hsl(var(--color-dark-hsl));
+}
+
+/* Parent link should not look active when a child is active */
+footer nav section:has(> a.active) h3 a.active {
+  color: hsl(var(--color-light-hsl));
 }

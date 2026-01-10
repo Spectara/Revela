@@ -199,8 +199,8 @@ header {
    ============================================ */
 .docs-layout {
   display: grid;
-  grid-template-columns: minmax(200px, 280px) 1fr;
-  gap: var(--space-xl);
+  grid-template-columns: 200px 1fr;
+  gap: var(--space-m);
   margin-bottom: var(--space-2xl);
 }
 
@@ -319,7 +319,7 @@ header {
   }
 
   .docs-sidebar {
-    display: none;
+    position: unset;
   }
 }
 

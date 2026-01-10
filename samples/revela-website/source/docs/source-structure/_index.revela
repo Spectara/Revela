@@ -1,0 +1,139 @@
++++
+title = "Source Structure"
+template = "docs"
++++
+
+Revela supports two approaches for organizing your photos, and you can combine them in the same project:
+
+<div class="features-grid">
+
+### 📁 Traditional Galleries
+
+Photos belong to one gallery. Images stored directly in the gallery folder.
+
+### 🔍 Filter Galleries
+
+Photos appear in multiple galleries. All images in a shared `_images/` folder.
+
+### 🔀 Hybrid Approach
+
+Mix both approaches. Some galleries with local images, others with filters.
+
+</div>
+
+## Traditional Galleries
+
+Each gallery contains its own images directly in the folder.
+
+```
+source/
+├── _index.revela          # Homepage
+├── events/
+│   ├── _index.revela      # Gallery page
+│   ├── event-001.jpg
+│   └── event-002.jpg
+├── portraits/
+│   ├── _index.revela
+│   └── portrait-001.jpg
+└── landscapes/
+    ├── _index.revela
+    └── mountain.jpg
+```
+
+### Characteristics
+
+- ✅ Simple and intuitive
+- ✅ Each photo belongs to exactly one gallery
+- ✅ Easy to manage manually
+- ❌ Photos cannot appear in multiple galleries
+
+## Filter Galleries
+
+All images are stored in a shared `_images/` folder. Galleries use filter expressions to select which images to display.
+
+```
+source/
+├── _index.revela          # Homepage
+├── _images/               # Shared image pool
+│   ├── canon-event-001.jpg
+│   ├── sony-landscape-002.jpg
+│   └── sony-portrait-003.jpg
+├── canon/
+│   └── _index.revela      # filter = "exif.make == 'Canon'"
+├── sony/
+│   └── _index.revela      # filter = "exif.make == 'Sony'"
+└── portraits/
+    └── _index.revela      # filter = "contains(filename, 'portrait')"
+```
+
+### The `_images/` Folder
+
+The underscore prefix is significant:
+
+- `_images/` is **not** rendered as a gallery itself
+- Images are only accessible via filter expressions
+- You can use any name: `_photos/`, `_pool/`, `_shared/`
+
+### Example Front Matter
+
+```toml
++++
+title = "Canon Photos"
+description = "All photos taken with Canon cameras"
+filter = "exif.make == 'Canon'"
++++
+```
+
+## Hybrid Approach
+
+Combine both approaches in the same project:
+
+```
+source/
+├── _images/                   # Shared pool for filter galleries
+│   ├── 2024-trip-001.jpg
+│   └── 2025-event-001.jpg
+│
+├── by-year/                   # Filter galleries
+│   ├── 2024/
+│   │   └── _index.revela      # filter = "year(dateTaken) == 2024"
+│   └── 2025/
+│       └── _index.revela      # filter = "year(dateTaken) == 2025"
+│
+└── clients/                   # Traditional galleries (exclusive)
+    └── wedding-smith/
+        ├── _index.revela
+        └── ceremony-001.jpg   # Only in this gallery
+```
+
+## Choosing the Right Approach
+
+| Scenario | Recommended |
+|----------|-------------|
+| Simple portfolio | Traditional |
+| Photos need multiple categorizations | Filter |
+| Client work (exclusive galleries) | Traditional |
+| "By camera", "By year" views | Filter |
+| Mix of exclusive and shared content | Hybrid |
+
+## Common Patterns
+
+### Homepage with Recent Photos
+
+```toml
++++
+title = "Welcome"
+filter = "all | sort dateTaken desc | limit 6"
++++
+```
+
+### Category Landing Page (No Images)
+
+```toml
++++
+title = "Browse by Camera"
+template = "page"
++++
+
+Select a camera brand below.
+```

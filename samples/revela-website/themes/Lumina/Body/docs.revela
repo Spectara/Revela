@@ -10,21 +10,23 @@ Expects:
 <div class="docs-layout">
     <aside class="docs-sidebar">
         <nav>
-            <h4>Navigation</h4>
             <ul>
-                {{~ for item in nav_items ~}}
-                <li><a href="{{ basepath }}{{ item.url }}"{{ if item.active }} class="active"{{ end }}>{{ item.text }}</a></li>
-                {{~ end ~}}
+{{~ for item in nav_items ~}}
+{{~ if item.active || item.text == gallery.title ~}}
+{{~ for child in item.children }}
+                <li><a href="{{ basepath }}{{ child.url }}"{{ if child.active }} class="active"{{ end }}>{{ child.text }}</a></li>
+{{~ end ~}}
+{{~ end ~}}
+{{~ end ~}}
             </ul>
         </nav>
     </aside>
-
-<article class="docs-content">
+    <article class="docs-content">
 {{~ if gallery.title ~}}
-<h1>{{ gallery.title }}</h1>
+        <h1>{{ gallery.title }}</h1>
 {{~ end ~}}
 {{~ if gallery.body ~}}
 {{ gallery.body }}
 {{~ end ~}}
-</article>
+    </article>
 </div>
