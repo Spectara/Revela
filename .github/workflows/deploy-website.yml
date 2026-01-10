@@ -27,12 +27,12 @@ jobs:
           repository: Spectara/Revela
           latest: true
           preRelease: true
-          fileName: "revela-linux-x64-core.tar.gz"
+          fileName: "revela-linux-x64-full.tar.gz"
           out-file-path: ./revela-download
 
       - name: Extract Revela
         run: |
-          tar -xzf ./revela-download/revela-linux-x64-core.tar.gz
+          tar -xzf ./revela-download/revela-linux-x64-full.tar.gz
           chmod +x ./revela
 
       - name: Generate website
