@@ -35,6 +35,11 @@ jobs:
           tar -xzf ./revela-download/revela-linux-x64-full.tar.gz
           chmod +x ./revela
 
+      - name: Install theme from bundled packages
+        run: |
+          ./revela packages refresh
+          ./revela theme install Spectara.Revela.Theme.Lumina
+
       - name: Generate website
         run: |
           cd samples/revela-website
