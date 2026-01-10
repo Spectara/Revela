@@ -1,0 +1,52 @@
+name: Deploy Website
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'samples/revela-website/**'
+  release:
+    types: [published]
+  workflow_dispatch:
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+
+jobs:
+  deploy:
+    name: Generate & Deploy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download latest Revela release
+        uses: robinraju/release-downloader@v1
+        with:
+          repository: Spectara/Revela
+          latest: true
+          fileName: "revela-linux-x64-core.tar.gz"
+          out-file-path: ./revela-download
+
+      - name: Extract Revela
+        run: |
+          tar -xzf ./revela-download/revela-linux-x64-core.tar.gz
+          chmod +x ./revela
+
+      - name: Generate website
+        run: ./revela generate all -p samples/revela-website
+
+      - name: Add GitHub Pages files
+        run: |
+          echo "revela.website" > ./samples/revela-website/output/CNAME
+          touch ./samples/revela-website/output/.nojekyll
+
+      - name: Deploy to Revela.Website
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          personal_token: ${{ secrets.WEBSITE_DEPLOY_TOKEN }}
+          external_repository: Spectara/Revela.Website
+          publish_branch: main
+          publish_dir: ./samples/revela-website/output
+          commit_message: "Deploy from ${{ github.repository }}@${{ github.sha }}"
