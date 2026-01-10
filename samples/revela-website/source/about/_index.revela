@@ -4,30 +4,32 @@ template = "page"
 pinned = true
 +++
 
-# About Aurora
+# About Revela
 
-Aurora is a theme for **Revela** designed for non-photography use cases.
+Revela is a modern static site generator built specifically for photographers who want beautiful, fast portfolio websites without the complexity of traditional web development.
 
-## Why Aurora?
+## The Story
 
-While Lumina is optimized for photography portfolios, Aurora focuses on:
+Revela started as a complete rewrite of [Expose](https://github.com/kirkone/Expose), a Bash-based static site generator I created years ago. While Expose worked well, it had limitations: slow image processing, platform dependencies, and no extensibility.
 
-- Text-heavy content
-- Technical documentation
-- Product landing pages
-- Personal blogs
+In 2025, I decided to rebuild it from scratch using .NET — bringing modern tooling, blazing-fast image processing with libvips, and a plugin architecture that makes it easy to extend.
 
-## Design Philosophy
+The name "Revela" comes from the Spanish/Portuguese word meaning "to reveal" — fitting for a tool that helps photographers reveal their work to the world.
 
-> Simple, clean, and functional.
+## Philosophy
 
-Aurora uses a dark color scheme that's easy on the eyes, with careful typography choices for optimal readability.
+**Simplicity first.** Drop your photos in a folder, run one command, get a website. No databases, no CMS, no JavaScript frameworks required.
 
-## Technology
+**Performance matters.** Your visitors shouldn't wait for images to load. Revela generates optimized images in multiple sizes and modern formats (AVIF, WebP) automatically.
 
-Built with:
+**Your photos, your way.** Organize by date, by project, by camera — Revela adapts to your workflow, not the other way around.
 
-- Pure CSS (no frameworks)
-- Prism.js for syntax highlighting
-- Responsive design
-- CSS variables for customization
+## Open Source
+
+Revela is free and open source software, released under the MIT license. The source code is available on [GitHub](https://github.com/Spectara/Revela).
+
+Contributions, bug reports, and feature requests are welcome!
+
+## Get Started
+
+Ready to build your portfolio? Check out the [Documentation](/docs/) or download Revela from the [GitHub Releases](https://github.com/Spectara/Revela/releases) page.
