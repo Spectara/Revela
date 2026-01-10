@@ -219,7 +219,7 @@ public sealed class FilterExpressionBuilderTests
     public void Build_StartsWithFunction_MatchesPrefix()
     {
         // Arrange
-        var predicate = Compile("startswith(filename, 'IMG_')");
+        var predicate = Compile("starts_with(filename, 'IMG_')");
         var matching = CreateTestImage(filename: "IMG_1234.jpg");
         var nonMatching = CreateTestImage(filename: "photo_1234.jpg");
 
@@ -232,7 +232,7 @@ public sealed class FilterExpressionBuilderTests
     public void Build_EndsWithFunction_MatchesSuffix()
     {
         // Arrange
-        var predicate = Compile("endswith(filename, '.jpg')");
+        var predicate = Compile("ends_with(filename, '.jpg')");
         var jpg = CreateTestImage(filename: "photo.jpg");
         var png = CreateTestImage(filename: "photo.png");
 
@@ -299,7 +299,7 @@ public sealed class FilterExpressionBuilderTests
     public void Build_ToLowerFunction_ConvertsToLowerCase()
     {
         // Arrange
-        var predicate = Compile("tolower(filename) == 'test.jpg'");
+        var predicate = Compile("lower(filename) == 'test.jpg'");
         var uppercase = CreateTestImage(filename: "TEST.JPG");
         var mixedcase = CreateTestImage(filename: "Test.Jpg");
 
@@ -312,7 +312,7 @@ public sealed class FilterExpressionBuilderTests
     public void Build_ToUpperFunction_ConvertsToUpperCase()
     {
         // Arrange
-        var predicate = Compile("toupper(filename) == 'TEST.JPG'");
+        var predicate = Compile("upper(filename) == 'TEST.JPG'");
         var lowercase = CreateTestImage(filename: "test.jpg");
 
         // Act & Assert
