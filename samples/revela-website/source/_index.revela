@@ -1,0 +1,92 @@
++++
+title = "Revela"
+template = "home"
+description = "A modern static site generator for photographers"
++++
+
+<div class="cta-buttons">
+  <a href="docs/">Get Started</a>
+  <a href="https://github.com/Spectara/Revela">View on GitHub</a>
+</div>
+
+## Why Revela?
+
+**Built for photographers.** While other static site generators are designed for blogs and documentation, Revela focuses on what matters most: **showcasing your images beautifully**.
+
+<div class="features-grid">
+
+### ⚡ Blazing Fast
+Optimized image processing with NetVips - 3-5× faster than ImageMagick. Incremental builds only regenerate what's changed.
+
+### 🖼️ Modern Formats
+Automatic AVIF, WebP, and JPEG generation. Responsive images with `<picture>` elements out of the box.
+
+### 🎨 Beautiful Themes
+Minimalist gallery themes that put your photos front and center. Dark mode support included.
+
+### 🔌 Extensible
+Plugin system for custom sources (OneDrive, cloud storage), statistics, and more.
+
+</div>
+
+## Quick Start
+
+**1. Download Revela**
+
+Download the latest release for your platform:
+
+<div class="cta-buttons">
+  <a href="https://github.com/Spectara/Revela/releases/latest/download/revela-win-x64.zip">Windows x64</a>
+  <a href="https://github.com/Spectara/Revela/releases/latest/download/revela-osx-arm64.zip">macOS Apple Silicon</a>
+  <a href="https://github.com/Spectara/Revela/releases/latest/download/revela-linux-x64.zip">Linux x64</a>
+</div>
+
+<p class="download-more"><a href="https://github.com/Spectara/Revela/releases">All downloads →</a></p>
+
+**2. Create a new project**
+
+```bash
+revela init my-portfolio
+cd my-portfolio
+```
+
+**3. Add your photos**
+
+Drop your images into the `source/` folder and organize them into galleries:
+
+```
+source/
+├── _index.revela        # Homepage
+├── Landscapes/
+│   ├── _index.revela    # Gallery metadata
+│   └── sunset.jpg
+└── Portraits/
+    └── portrait-01.jpg
+```
+
+**4. Generate & Preview**
+
+```bash
+revela generate
+revela serve
+```
+
+Open `http://localhost:8080` and see your portfolio!
+
+## Features
+
+| Feature | Description |
+|---------|-------------|
+| **EXIF Extraction** | Automatic camera, lens, and settings metadata |
+| **Smart Sorting** | Sort by date, filename, or custom order |
+| **Incremental Builds** | Only regenerate changed images |
+| **Theme Overrides** | Customize any template without forking |
+| **Multiple Sources** | Local files, OneDrive, or custom plugins |
+
+## Join the Community
+
+Revela is open source and actively developed. Contributions welcome!
+
+- 📖 [Documentation](docs/)
+- 🐛 [Report Issues](https://github.com/kirkone/Revela/issues)
+- 💬 [Discussions](https://github.com/kirkone/Revela/discussions)

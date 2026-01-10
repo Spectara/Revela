@@ -71,6 +71,12 @@ public sealed class ManifestEntry
     public bool Hidden { get; init; }
 
     /// <summary>
+    /// Whether this item should appear in header navigation.
+    /// </summary>
+    [JsonPropertyName("pinned")]
+    public bool Pinned { get; init; }
+
+    /// <summary>
     /// Optional custom template for rendering (e.g., "statistics/overview").
     /// </summary>
     [JsonPropertyName("template")]

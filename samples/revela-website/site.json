@@ -1,0 +1,13 @@
+{
+  "title": "Revela",
+  "description": "Modern static site generator for photographers",
+  "author": "Spectara",
+  "copyright": "© 2026 Spectara",
+  "stylesheets": [
+    "aurora.css",
+    "prism.css"
+  ],
+  "scripts": [
+    "prism.js"
+  ]
+}

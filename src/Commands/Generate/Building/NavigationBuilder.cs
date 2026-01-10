@@ -145,6 +145,7 @@ public sealed partial class NavigationBuilder(ILogger<NavigationBuilder> logger)
                 Description = metadata.Description,
                 Active = isActive,
                 Hidden = metadata.Hidden,
+                Pinned = metadata.Pinned,
                 Children = children
             });
         }

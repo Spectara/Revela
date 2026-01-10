@@ -1,0 +1,73 @@
++++
+title = "Documentation"
+template = "docs"
+pinned = true
++++
+
+# Getting Started
+
+Welcome to the Aurora theme documentation.
+
+## Installation
+
+Install Revela using .NET:
+
+```bash
+dotnet tool install -g Spectara.Revela
+```
+
+## Project Setup
+
+Create a new project:
+
+```bash
+revela init my-site
+cd my-site
+```
+
+## Configuration
+
+Edit `project.json` to configure your site:
+
+```json
+{
+  "source": "source",
+  "output": "output",
+  "theme": "aurora"
+}
+```
+
+## Templates
+
+Aurora provides several templates:
+
+| Template | Use Case |
+|----------|----------|
+| `home` | Landing page with hero |
+| `page` | Standard content page |
+| `docs` | Documentation with sidebar |
+| `gallery` | Simple image gallery |
+
+## Code Examples
+
+Here's some C# code:
+
+```csharp
+public class Example
+{
+    public void SayHello()
+    {
+        Console.WriteLine("Hello, Aurora!");
+    }
+}
+```
+
+And some JavaScript:
+
+```javascript
+const greet = (name) => {
+    console.log(`Hello, ${name}!`);
+};
+
+greet('Aurora');
+```

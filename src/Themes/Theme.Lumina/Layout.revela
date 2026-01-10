@@ -56,7 +56,14 @@ Body Template Selection:
                 {{~ # basepath is empty string at root, "../" for galleries, or "/photos/" for subdirectory hosting ~}}
                 <a href="{{ basepath == '' ? '.' : basepath }}">{{ site.title }}</a>
             </h2>
-            <nav></nav>
+            <nav>
+                {{~ # Pinned navigation items appear in header ~}}
+                {{~ for item in nav_items ~}}
+                {{~ if item.pinned ~}}
+                <a href="{{ basepath }}{{ item.url }}"{{ if item.active }} class="active"{{ end }}>{{ item.text }}</a>
+                {{~ end ~}}
+                {{~ end ~}}
+            </nav>
         </div>
     </header>
 

@@ -490,14 +490,10 @@ $RECYCLE.BIN/
 test-*/
 *-test/
 
-# Sample projects - exclude downloaded/generated data
-samples/**/source/
+# Sample projects - exclude generated output and cache
 samples/**/output/
 samples/**/images/
 samples/**/.cache/
-
-# Exception: filter-demo includes test images for demonstration
-!samples/filter-demo/source/
 
 # Local playground folder for testing from scratch
 playground/

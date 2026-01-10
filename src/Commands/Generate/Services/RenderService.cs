@@ -115,7 +115,7 @@ public sealed partial class RenderService(
             {
                 CurrentPage = "Preparing...",
                 Rendered = 0,
-                Total = galleries.Count + 1 // +1 for index
+                Total = galleries.Count // Galleries already includes root as home
             });
 
             // Build site model
@@ -309,6 +309,8 @@ public sealed partial class RenderService(
             Name = entry.Text,
             Title = entry.Text,
             Description = entry.Description,
+            Template = entry.Template,
+            DataSources = entry.DataSources,
             Cover = entry.Cover,
             Date = entry.Date,
             Featured = entry.Featured,
@@ -337,6 +339,7 @@ public sealed partial class RenderService(
             Url = entry.Slug,
             Description = entry.Description,
             Hidden = entry.Hidden,
+            Pinned = entry.Pinned,
             Children = [.. entry.Children
                 .Where(e => !e.Hidden)
                 .Select(ReconstructNavigationItem)]
@@ -378,7 +381,7 @@ public sealed partial class RenderService(
             ?? GetDefaultGalleryTemplate();
 
         var pageCount = 0;
-        var totalPages = model.Galleries.Count + 1;
+        var totalPages = model.Galleries.Count; // Galleries already includes root as home
 
         // Render index page
         progress?.Report(new RenderProgress
@@ -417,9 +420,7 @@ public sealed partial class RenderService(
             new
             {
                 site = model.Site,
-                gallery = rootGallery is not null
-                    ? new { title = rootGallery.Title ?? "Home", body = rootGallery.Body }
-                    : new { title = "Home", body = (string?)null },
+                gallery = rootGallery,
                 galleries = model.Galleries,
                 images = indexImages,
                 nav_items = indexNavigation,
@@ -576,6 +577,7 @@ public sealed partial class RenderService(
             Description = item.Description,
             Active = isActive,
             Hidden = item.Hidden,
+            Pinned = item.Pinned,
             Children = activeChildren
         };
     }

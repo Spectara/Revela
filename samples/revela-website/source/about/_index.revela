@@ -1,0 +1,33 @@
++++
+title = "About"
+template = "page"
+pinned = true
++++
+
+# About Aurora
+
+Aurora is a theme for **Revela** designed for non-photography use cases.
+
+## Why Aurora?
+
+While Lumina is optimized for photography portfolios, Aurora focuses on:
+
+- Text-heavy content
+- Technical documentation
+- Product landing pages
+- Personal blogs
+
+## Design Philosophy
+
+> Simple, clean, and functional.
+
+Aurora uses a dark color scheme that's easy on the eyes, with careful typography choices for optimal readability.
+
+## Technology
+
+Built with:
+
+- Pure CSS (no frameworks)
+- Prism.js for syntax highlighting
+- Responsive design
+- CSS variables for customization

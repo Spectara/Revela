@@ -1,0 +1,30 @@
+{{~##
+Docs Body Template - Documentation with Sidebar
+
+Renders a documentation page with sidebar navigation.
+
+Expects:
+- gallery: { title, body }
+- nav_items: Array of NavigationItem for sidebar
+##~}}
+<div class="docs-layout">
+    <aside class="docs-sidebar">
+        <nav>
+            <h4>Navigation</h4>
+            <ul>
+                {{~ for item in nav_items ~}}
+                <li><a href="{{ basepath }}{{ item.url }}"{{ if item.active }} class="active"{{ end }}>{{ item.text }}</a></li>
+                {{~ end ~}}
+            </ul>
+        </nav>
+    </aside>
+
+<article class="docs-content">
+{{~ if gallery.title ~}}
+<h1>{{ gallery.title }}</h1>
+{{~ end ~}}
+{{~ if gallery.body ~}}
+{{ gallery.body }}
+{{~ end ~}}
+</article>
+</div>

@@ -45,6 +45,14 @@ public sealed class DirectoryMetadata
     public bool Hidden { get; init; }
 
     /// <summary>
+    /// Gets a value indicating whether this item should appear in header navigation.
+    /// </summary>
+    /// <remarks>
+    /// Pinned items appear in the sticky header for quick access.
+    /// </remarks>
+    public bool Pinned { get; init; }
+
+    /// <summary>
     /// Gets the template type for rendering.
     /// </summary>
     /// <remarks>

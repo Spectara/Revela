@@ -74,6 +74,15 @@ public sealed class NavigationItem
     public bool Hidden { get; init; }
 
     /// <summary>
+    /// Whether this item should appear in the header navigation
+    /// </summary>
+    /// <remarks>
+    /// Set via frontmatter: <c>pinned = true</c>.
+    /// Pinned items appear in the sticky header for quick access.
+    /// </remarks>
+    public bool Pinned { get; init; }
+
+    /// <summary>
     /// Child navigation items for nested structures
     /// </summary>
     public IReadOnlyList<NavigationItem> Children { get; init; } = [];

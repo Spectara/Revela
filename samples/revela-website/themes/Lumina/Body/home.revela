@@ -1,0 +1,21 @@
+{{~##
+Home Body Template - Landing Page
+
+Renders a hero section for the homepage.
+
+Expects:
+- site: { title, description }
+- gallery: { title, body }
+##~}}
+<section class="hero">
+    <div class="hero-content">
+        <h1 class="hero-title">{{ gallery.title ?? site.title }}</h1>
+        <p class="hero-subtitle">{{ gallery.description ?? site.description }}</p>
+    </div>
+</section>
+
+{{~ if gallery.body ~}}
+<div class="page-content">
+{{ gallery.body }}
+</div>
+{{~ end ~}}
