@@ -36,7 +36,9 @@ jobs:
           chmod +x ./revela
 
       - name: Generate website
-        run: ./revela generate all -p samples/revela-website
+        run: |
+          cd samples/revela-website
+          ../../revela generate all
 
       - name: Add GitHub Pages files
         run: |
