@@ -10,7 +10,9 @@
   - Leaf: <a href="#">Title</a>
 
   Expects: nav_items (Array of NavigationItem)
-  NavigationItem: { text, url?, active?, children }
+  NavigationItem: { text, url?, active?, current?, children }
+  - active: true if this item or any child is the current page (for breadcrumbs)
+  - current: true only if this item is the exact current page (for highlighting)
 ##~}}
 {{~ func render_item(item, is_top_level) ~}}
 {{~ if is_top_level ~}}
@@ -18,7 +20,7 @@
 {{~ # Top-level with children = section ~}}
 <section>
 {{~ if item.url ~}}
-  <h3><a href="{{ basepath }}{{ item.url }}"{{ item.active ? ' class="active"' : '' }}>{{ item.text }}</a></h3>
+  <h3><a href="{{ basepath }}{{ item.url }}"{{ item.current ? ' class="active"' : '' }}>{{ item.text }}</a></h3>
 {{~ else ~}}
   <h3>{{ item.text }}</h3>
 {{~ end ~}}
@@ -29,14 +31,14 @@
 {{~ else ~}}
 {{~ # Top-level leaf = section with link (flat navigation) ~}}
 <section>
-  <a href="{{ basepath }}{{ item.url }}"{{ item.active ? ' class="active"' : '' }}>{{ item.text }}</a>
+  <a href="{{ basepath }}{{ item.url }}"{{ item.current ? ' class="active"' : '' }}>{{ item.text }}</a>
 </section>
 {{~ end ~}}
 {{~ else if item.children.size > 0 ~}}
 {{~ # Branch: Has children ~}}
 <div>
 {{~ if item.url ~}}
-  <a href="{{ basepath }}{{ item.url }}"{{ item.active ? ' class="active"' : '' }}>{{ item.text }}</a>
+  <a href="{{ basepath }}{{ item.url }}"{{ item.current ? ' class="active"' : '' }}>{{ item.text }}</a>
 {{~ else ~}}
   <span>{{ item.text }}</span>
 {{~ end ~}}
@@ -46,7 +48,7 @@
 </div>
 {{~ else ~}}
 {{~ # Leaf: Simple link ~}}
-  <a href="{{ basepath }}{{ item.url }}"{{ item.active ? ' class="active"' : '' }}>{{ item.text }}</a>
+  <a href="{{ basepath }}{{ item.url }}"{{ item.current ? ' class="active"' : '' }}>{{ item.text }}</a>
 {{~ end ~}}
 {{~ end ~}}
 {{~ for item in nav_items ~}}

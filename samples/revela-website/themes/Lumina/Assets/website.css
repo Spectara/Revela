@@ -1,6 +1,6 @@
 /* ============================================
    Aurora Theme Customization for Lumina
-   
+
    Project-level overrides for revela.website
    - Purple accent color
    - Hero section
@@ -225,6 +225,11 @@ header {
   list-style: none;
   padding: 0;
   margin-bottom: var(--space-l);
+}
+
+.docs-sidebar ul ul {
+  padding-left: var(--space-m);
+  margin-bottom: 0;
 }
 
 .docs-sidebar a {

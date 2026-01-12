@@ -2,6 +2,7 @@
 Docs Body Template - Documentation with Sidebar
 
 Renders a documentation page with sidebar navigation.
+Supports nested documentation (e.g., docs/source-structure/static-files).
 
 Expects:
 - gallery: { title, body }
@@ -14,7 +15,16 @@ Expects:
 {{~ for item in nav_items ~}}
 {{~ if item.active || item.text == gallery.title ~}}
 {{~ for child in item.children }}
-                <li><a href="{{ basepath }}{{ child.url }}"{{ if child.active }} class="active"{{ end }}>{{ child.text }}</a></li>
+                <li>
+                    <a href="{{ basepath }}{{ child.url }}"{{ if child.current }} class="active"{{ end }}>{{ child.text }}</a>
+{{~ if child.children ~}}
+                    <ul>
+{{~ for grandchild in child.children ~}}
+                        <li><a href="{{ basepath }}{{ grandchild.url }}"{{ if grandchild.current }} class="active"{{ end }}>{{ grandchild.text }}</a></li>
+{{~ end ~}}
+                    </ul>
+{{~ end ~}}
+                </li>
 {{~ end ~}}
 {{~ end ~}}
 {{~ end ~}}

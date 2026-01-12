@@ -567,6 +567,12 @@ public sealed partial class RenderService(
 
     private static NavigationItem SetActiveStateRecursive(NavigationItem item, string currentPath)
     {
+        // Current = exact match (this is the current page)
+        var isCurrent = !string.IsNullOrEmpty(item.Url) &&
+                        !string.IsNullOrEmpty(currentPath) &&
+                        currentPath.Equals(item.Url, StringComparison.OrdinalIgnoreCase);
+
+        // Active = in path (this item or a child is current)
         var isActive = !string.IsNullOrEmpty(item.Url) &&
                       !string.IsNullOrEmpty(currentPath) &&
                       (currentPath.Equals(item.Url, StringComparison.OrdinalIgnoreCase) ||
@@ -580,6 +586,7 @@ public sealed partial class RenderService(
             Url = item.Url,
             Description = item.Description,
             Active = isActive,
+            Current = isCurrent,
             Hidden = item.Hidden,
             Pinned = item.Pinned,
             Children = activeChildren

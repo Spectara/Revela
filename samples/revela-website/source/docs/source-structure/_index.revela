@@ -108,13 +108,24 @@ source/
 
 ## Choosing the Right Approach
 
-| Scenario | Recommended |
-|----------|-------------|
-| Simple portfolio | Traditional |
-| Photos need multiple categorizations | Filter |
-| Client work (exclusive galleries) | Traditional |
-| "By camera", "By year" views | Filter |
-| Mix of exclusive and shared content | Hybrid |
+<div class="features-grid">
+
+### 📷 Simple Portfolio
+Use **Traditional** - each photo belongs to one gallery.
+
+### 🏷️ Multiple Categories
+Use **Filter** - photos can appear in many galleries based on metadata.
+
+### 🔒 Client Work
+Use **Traditional** - exclusive galleries for private content.
+
+### 📅 By Camera / By Year
+Use **Filter** - dynamic views based on EXIF data.
+
+### 🔀 Mixed Content
+Use **Hybrid** - combine both approaches as needed.
+
+</div>
 
 ## Common Patterns
 

@@ -62,7 +62,20 @@ public sealed class NavigationItem
     /// <summary>
     /// Whether this item is the currently active page
     /// </summary>
+    /// <remarks>
+    /// True when this item or any of its children is the current page.
+    /// Used for expanding navigation sections and showing breadcrumb paths.
+    /// </remarks>
     public bool Active { get; init; }
+
+    /// <summary>
+    /// Whether this item is the exact current page
+    /// </summary>
+    /// <remarks>
+    /// True only when this item's URL exactly matches the current page.
+    /// Use this for highlighting the current page in navigation.
+    /// </remarks>
+    public bool Current { get; init; }
 
     /// <summary>
     /// Whether this item is hidden from navigation
