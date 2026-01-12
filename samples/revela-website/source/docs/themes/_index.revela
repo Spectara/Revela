@@ -1,0 +1,258 @@
++++
+title = "Theme Customization"
+template = "docs"
++++
+
+Revela allows you to customize themes without modifying the original theme files. You can:
+
+<div class="features-grid">
+
+### 📦 Extract Theme
+
+Copy the entire theme to your project for full customization.
+
+### 🎯 Override Files
+
+Extract only specific files (templates, assets, configuration).
+
+### 🎨 Theme Variables
+
+Modify colors, fonts, and sizes via `theme.json`.
+
+</div>
+
+---
+
+## How It Works
+
+When generating your site, Revela resolves themes with this priority:
+
+1. **Local theme** (`themes/<name>/`) - Highest priority
+2. **Installed plugins** (NuGet packages)
+3. **Default theme** (Lumina)
+
+This means: If you have a `themes/Lumina/` folder in your project, it takes precedence over the installed Lumina theme.
+
+---
+
+## Extracting a Theme
+
+### Full Extraction
+
+Extract an entire theme for complete customization:
+
+```bash
+# Extract to themes/Lumina/
+revela theme extract Lumina
+
+# Extract with custom name
+revela theme extract Lumina MyTheme
+```
+
+### Interactive Mode
+
+Run without arguments for guided extraction:
+
+```bash
+revela theme extract
+```
+
+### Selective Extraction
+
+Extract only specific files:
+
+```bash
+# Extract single file
+revela theme extract Lumina --file layout.revela
+
+# Extract multiple files
+revela theme extract Lumina --file layout.revela --file Assets/styles.css
+
+# Extract entire folder
+revela theme extract Lumina --file Assets/
+
+# Configuration only
+revela theme extract Lumina --file theme.json
+```
+
+---
+
+## Theme Structure
+
+After extraction, your theme folder looks like this:
+
+```
+your-project/
+├── themes/
+│   └── Lumina/
+│       ├── theme.json             # Theme manifest & variables
+│       ├── layout.revela          # Main layout template
+│       ├── Assets/                # CSS, JS, fonts, images
+│       │   ├── styles.css
+│       │   └── scripts.js
+│       ├── Body/                  # Body templates
+│       │   ├── Gallery.revela
+│       │   └── Page.revela
+│       └── Partials/              # Partial templates
+│           ├── Navigation.revela
+│           └── Image.revela
+├── source/
+├── project.json
+└── site.json
+```
+
+---
+
+## Customization Options
+
+### Theme Variables (theme.json)
+
+Modify colors, fonts, and other design tokens:
+
+```json
+{
+  "name": "Lumina",
+  "version": "1.0.0",
+  "variables": {
+    "primary-color": "#2563eb",
+    "background-color": "#ffffff",
+    "text-color": "#1f2937",
+    "font-family": "Inter, sans-serif"
+  }
+}
+```
+
+Variables are available in templates as `{{ theme.primary-color }}`.
+
+### Templates
+
+Customize HTML output by editing `.revela` files:
+
+**layout.revela** - Main page structure:
+```html
+<!DOCTYPE html>
+<html>
+<head>
+    <title>{{ site.title }} - {{ gallery.title }}</title>
+</head>
+<body>
+    {{ include 'navigation' }}
+    {{ body }}
+</body>
+</html>
+```
+
+**Body/Gallery.revela** - Gallery page content:
+```html
+<main class="gallery">
+    <h1>{{ gallery.title }}</h1>
+    {{ if gallery.body }}
+    <div class="description">{{ gallery.body }}</div>
+    {{ end }}
+    <div class="images">
+        {{ for image in images }}
+        {{ include 'image' }}
+        {{ end }}
+    </div>
+</main>
+```
+
+### Assets (CSS/JS)
+
+Modify styles in `Assets/styles.css`:
+
+```css
+:root {
+    --primary: {{ theme.primary-color }};
+    --bg: {{ theme.background-color }};
+}
+
+.gallery {
+    max-width: 1200px;
+    margin: 0 auto;
+}
+```
+
+---
+
+## Partial Overrides
+
+You don't need to extract the entire theme. Extract only what you want to change:
+
+```bash
+# Only customize the navigation
+revela theme extract Lumina --file Partials/Navigation.revela
+
+# Only change styles
+revela theme extract Lumina --file Assets/styles.css
+```
+
+The rest will be loaded from the installed theme.
+
+---
+
+## Workflow Example
+
+### 1. Start with Default Theme
+
+```bash
+revela generate all
+```
+
+### 2. Customize Colors
+
+```bash
+# Extract only theme.json
+revela theme extract Lumina --file theme.json
+```
+
+Edit `themes/Lumina/theme.json`:
+```json
+{
+  "variables": {
+    "primary-color": "#dc2626",
+    "background-color": "#0f172a"
+  }
+}
+```
+
+### 3. Regenerate
+
+```bash
+revela generate all
+```
+
+Your customizations are automatically used.
+
+---
+
+## CLI Reference
+
+```bash
+# Full extraction
+revela theme extract Lumina
+revela theme extract Lumina MyTheme
+
+# Selective extraction
+revela theme extract Lumina --file Body/Gallery.revela
+revela theme extract Lumina --file Body/Gallery.revela --file Assets/
+
+# Overwrite existing files
+revela theme extract Lumina --force
+
+# Interactive mode
+revela theme extract
+
+# List available files
+revela theme files
+revela theme files --theme Lumina
+```
+
+---
+
+## Tips
+
+1. **Start small** - Extract only what you need to change
+2. **Version control** - Commit your `themes/` folder
+3. **Use variables** - Prefer theme variables over hardcoded values
+4. **Test live** - Run `revela serve` to preview changes

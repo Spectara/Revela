@@ -14,22 +14,20 @@ Welcome to the Revela documentation. Here you'll find everything you need to cre
 
 Learn how to organize your photos with traditional galleries, filter galleries, or a hybrid approach.
 
-### ⚙️ Configuration
+### 🔍 Filter Galleries
 
-Configure your project with `project.json` and `site.json` settings.
+Create dynamic galleries that automatically select images based on EXIF data, filename, or date.
 
-### 🎨 Themes
+### 📊 Sorting
 
-Customize the look and feel of your gallery with theme options.
+Configure how galleries and images are sorted, with per-gallery overrides.
 
-### 🔌 Plugins
+### 📝 Creating Pages
 
-Extend Revela with plugins for OneDrive, statistics, and more.
+Use CLI commands to quickly create gallery, text, and statistics pages.
+
+### 🎨 Theme Customization
+
+Extract and customize themes to match your style with variables and templates.
 
 </div>
-
----
-
-> **🚧 Work in Progress**
-> 
-> This documentation is still being written. More content coming soon!
