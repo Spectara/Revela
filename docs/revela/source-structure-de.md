@@ -242,3 +242,4 @@ source/
 - [Filter-Galerien](filtering-de.md) - Vollständige Filter-Syntax Referenz
 - [Sortierung konfigurieren](sorting-de.md) - Bild- und Galerie-Sortierung
 - [Seiten erstellen](pages-de.md) - Seitentypen und Templates
+- [Statische Dateien](static-files-de.md) - Favicons, robots.txt und andere statische Dateien

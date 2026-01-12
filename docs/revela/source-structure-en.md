@@ -242,3 +242,4 @@ source/
 - [Filter Galleries](filtering-en.md) - Complete filter syntax reference
 - [Sorting Configuration](sorting-en.md) - Image and gallery sorting
 - [Creating Pages](pages-en.md) - Page types and templates
+- [Static Files](static-files-en.md) - Favicons, robots.txt, and other static assets
