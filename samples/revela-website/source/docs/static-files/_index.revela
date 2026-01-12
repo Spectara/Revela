@@ -1,0 +1,125 @@
++++
+title = "Static Files"
+template = "docs"
++++
+
+Static files are files that should be copied directly to the output root without any processing.
+
+<div class="features-grid">
+
+### 🎨 Favicons
+
+Browser icons in various formats for desktop and mobile.
+
+### 🤖 robots.txt
+
+Search engine crawler instructions.
+
+### 🔗 CNAME
+
+Custom domain configuration for GitHub Pages.
+
+### 📄 Other Files
+
+sitemap.xml, ads.txt, security.txt, and more.
+
+</div>
+
+## Convention
+
+Place static files in the `source/_static/` folder. They will be copied 1:1 to the output root.
+
+```
+source/
+├── _static/                    # Static files folder
+│   ├── favicon/               # Favicon files
+│   │   ├── favicon.ico
+│   │   ├── favicon.svg
+│   │   └── apple-touch-icon.png
+│   ├── CNAME                  # GitHub Pages domain
+│   ├── .nojekyll              # Disable Jekyll
+│   └── robots.txt             # Crawler instructions
+├── _index.revela
+└── gallery/
+```
+
+**Output:**
+
+```
+output/
+├── favicon/
+│   ├── favicon.ico
+│   ├── favicon.svg
+│   └── apple-touch-icon.png
+├── CNAME
+├── .nojekyll
+├── robots.txt
+└── index.html
+```
+
+## Favicon Setup
+
+### Step 1: Generate Favicons
+
+Use a favicon generator like [realfavicongenerator.net](https://realfavicongenerator.net):
+
+1. Upload your logo/image
+2. Configure platform-specific icons
+3. Download the generated package
+4. Copy files to `source/_static/favicon/`
+
+### Step 2: Create Favicon Partial
+
+Create a theme override to include the favicon HTML.
+
+**File:** `themes/Lumina/Partials/Favicon.revela`
+
+```html
+<link rel="icon" type="image/png" href="/favicon/favicon-96x96.png" sizes="96x96" />
+<link rel="icon" type="image/svg+xml" href="/favicon/favicon.svg" />
+<link rel="shortcut icon" href="/favicon/favicon.ico" />
+<link rel="apple-touch-icon" sizes="180x180" href="/favicon/apple-touch-icon.png" />
+<meta name="apple-mobile-web-app-title" content="Your Site" />
+<link rel="manifest" href="/favicon/site.webmanifest" />
+```
+
+> **Tip:** Copy the exact HTML provided by your favicon generator.
+
+### Step 3: Generate
+
+```bash
+revela generate pages
+```
+
+## Common Static Files
+
+### robots.txt
+
+```
+User-agent: *
+Allow: /
+```
+
+### CNAME (GitHub Pages)
+
+```
+example.com
+```
+
+### .nojekyll
+
+Empty file - just create it, no content needed. Prevents GitHub Pages from processing files with Jekyll.
+
+## How It Works
+
+1. **Scanning:** Folders starting with `_` are skipped (no galleries created)
+2. **Copying:** After page rendering, files from `_static/` are copied to output
+3. **Structure:** Directory structure is preserved
+4. **Overwrite:** Existing files are overwritten silently
+
+## Best Practices
+
+- ✅ Keep favicon files in `_static/favicon/` for organization
+- ✅ Place root files (CNAME, robots.txt) directly in `_static/`
+- ✅ Commit static files to version control
+- ✅ Save favicon generator output for future updates
