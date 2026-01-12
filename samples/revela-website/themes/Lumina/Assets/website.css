@@ -12,8 +12,23 @@
    Accent Color Override
    ============================================ */
 :root {
-  --accent-hsl: 263deg 70% 70%;
-  --accent-light-hsl: 263deg 70% 80%;
+  --accent-hsl: 263deg 70% 30%;
+  --accent-light-hsl: 309deg 60% 50%;
+  --color-hsl: 0deg 0% 0%;
+  --color-light-hsl: 300deg 5% 5%;
+  --code-background-hsl: 220deg 20% 20%;
+  --code-color-hsl: 0deg 0% 88%;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --accent-hsl: 263deg 70% 70%;
+    --accent-light-hsl: 309deg 60% 50%;
+    --color-hsl: 0deg 0% 100%;
+    --color-light-hsl: 300deg 5% 95%;
+    --code-background-hsl: 220deg 20% 15%;
+    --code-color-hsl: 0deg 0% 88%;
+  }
 }
 
 /* ============================================
@@ -21,11 +36,21 @@
    ============================================ */
 body {
   background-image: radial-gradient(ellipse 100% 60% at 50% -10%,
-      hsl(220deg 50% 30% / 0.25) 0%,
-      hsl(280deg 60% 40% / 0.15) 40%,
-      hsl(340deg 70% 50% / 0.08) 70%,
+      hsl(220deg 50% 60% / 0.20) 0%,
+      hsl(280deg 60% 65% / 0.15) 40%,
+      hsl(340deg 70% 70% / 0.08) 70%,
       transparent 100%);
   background-attachment: fixed;
+}
+
+@media (prefers-color-scheme: dark) {
+  body {
+    background-image: radial-gradient(ellipse 100% 60% at 50% -10%,
+        hsl(220deg 50% 30% / 0.25) 0%,
+        hsl(280deg 60% 40% / 0.15) 40%,
+        hsl(340deg 70% 50% / 0.08) 70%,
+        transparent 100%);
+  }
 }
 
 /* ============================================
@@ -58,6 +83,19 @@ header .github-link {
 
 header .github-link:hover {
   opacity: 1;
+}
+
+/* ============================================
+   Navigation Colors
+   ============================================ */
+body>nav section a:hover,
+footer nav section a:hover {
+  color: hsl(var(--accent-light-hsl));
+}
+
+body>nav section a.active,
+footer nav section a.active {
+  color: hsl(var(--accent-hsl));
 }
 
 /* ============================================
@@ -126,21 +164,23 @@ header .github-link:hover {
 }
 
 /* Code */
-.page-content code {
+.page-content code,
+.docs-content code {
   font-family: ui-monospace, "Cascadia Code", "Source Code Pro", Menlo, Consolas, "DejaVu Sans Mono", monospace;
   font-size: var(--font-size-1);
   padding: var(--space-3xs) var(--space-2xs);
 }
 
-.page-content pre {
+:is(.page-content, .docs-content) :is(pre, pre[class*="language-"]) {
   margin-bottom: var(--space-m);
   padding: var(--space-s);
-  background-color: hsl(var(--color-hsl) / 0.05);
+  background-color: hsl(var(--code-background-hsl));
   border-radius: var(--space-2xs);
   overflow-x: auto;
 }
 
-.page-content pre code {
+:is(.page-content, .docs-content) :is(pre code, code[class*="language-"]) {
+  color: hsl(var(--code-color-hsl));
   padding: 0;
 }
 
@@ -268,7 +308,7 @@ header .github-link:hover {
 }
 
 .docs-sidebar a:hover {
-  color: hsl(var(--color-dark-hsl));
+  color: hsl(var(--accent-light-hsl));
 }
 
 .docs-sidebar a.active {
@@ -329,18 +369,6 @@ header .github-link:hover {
   font-family: ui-monospace, "Cascadia Code", "Source Code Pro", Menlo, Consolas, monospace;
   font-size: var(--font-size-0);
   padding: var(--space-3xs) var(--space-2xs);
-}
-
-.docs-content pre {
-  margin-bottom: var(--space-m);
-  padding: var(--space-s);
-  background-color: hsl(var(--color-hsl) / 0.05);
-  border-radius: var(--space-2xs);
-  overflow-x: auto;
-}
-
-.docs-content pre code {
-  padding: 0;
 }
 
 @media (width <=768px) {
