@@ -58,12 +58,7 @@ Body Template Selection:
                 <a href="{{ basepath == '' ? '.' : basepath }}">{{ site.title }}</a>
             </h2>
             <nav>
-                {{~ # Pinned navigation items appear in header ~}}
-                {{~ for item in nav_items ~}}
-                {{~ if item.pinned ~}}
-                <a href="{{ basepath }}{{ item.url }}"{{ if item.active }} class="active"{{ end }}>{{ item.text }}</a>
-                {{~ end ~}}
-                {{~ end ~}}
+                {{~ include 'HeaderNavigation' ~}}
             </nav>
         </div>
     </header>

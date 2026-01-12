@@ -218,7 +218,6 @@ body>nav section div>span {
 
 body>nav section div a:not(:first-child) {
   margin-left: var(--space-l);
-  font-size: var(--font-size-2);
 }
 
 body>nav section a {
@@ -789,7 +788,6 @@ footer nav section div>span {
 
 footer nav section div a:not(:first-child) {
   margin-left: var(--space-l);
-  font-size: var(--font-size-1);
 }
 
 footer nav section a {

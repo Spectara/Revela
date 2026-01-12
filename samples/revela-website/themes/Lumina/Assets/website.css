@@ -44,6 +44,22 @@ header {
   backdrop-filter: saturate(180%) blur(2rem);
 }
 
+header div a {
+  border-bottom: solid 1px hsl(var(--color-hsl) / 0);
+}
+
+/* GitHub Icon in Header */
+header .github-link {
+  display: flex;
+  align-items: center;
+  opacity: 0.7;
+  transition: opacity var(--animation-time);
+}
+
+header .github-link:hover {
+  opacity: 1;
+}
+
 /* ============================================
    Page Content (body/page template)
    ============================================ */
@@ -417,4 +433,12 @@ header {
 .page-content strong {
   color: hsl(var(--color-dark-hsl));
   font-weight: 400;
+}
+
+/* ============================================
+   Footer (transparent for gradient background)
+   ============================================ */
+footer {
+  background: unset;
+  outline: unset;
 }

@@ -1,0 +1,15 @@
+{{~##
+Header Navigation Partial
+
+Renders pinned navigation items in the sticky header.
+Override this partial to add custom links (e.g., GitHub icon).
+
+Expects:
+- nav_items: Array of NavigationItem
+- basepath: Relative path to root
+##~}}
+{{~ for item in nav_items ~}}
+{{~ if item.pinned ~}}
+<a href="{{ basepath }}{{ item.url }}"{{ if item.active }} class="active"{{ end }}>{{ item.text }}</a>
+{{~ end ~}}
+{{~ end ~}}
