@@ -105,7 +105,7 @@ Rendering pages   [████████████████████]
 With the Serve plugin installed:
 
 ```bash
-revela serve start
+revela serve
 ```
 
 Your browser opens automatically with a live preview.

@@ -149,9 +149,10 @@ revela -p MyPhotos generate statistics # Generate statistics JSON
 Delete generated files.
 
 ```bash
-revela -p MyPhotos clean all      # Delete output + cache
-revela -p MyPhotos clean output   # Delete output only
-revela -p MyPhotos clean cache    # Delete cache only
+revela -p MyPhotos clean all         # Delete output + cache
+revela -p MyPhotos clean output      # Delete output only
+revela -p MyPhotos clean cache       # Delete cache only
+revela -p MyPhotos clean statistics  # Delete statistics JSON only
 ```
 
 ### serve (requires Serve plugin)
@@ -159,8 +160,9 @@ revela -p MyPhotos clean cache    # Delete cache only
 Start local preview server.
 
 ```bash
-revela -p MyPhotos serve start
-revela -p MyPhotos serve start --port 8080
+revela -p MyPhotos serve
+revela -p MyPhotos serve --port 8080
+revela -p MyPhotos serve --verbose
 ```
 
 ### config

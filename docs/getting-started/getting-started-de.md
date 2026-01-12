@@ -351,10 +351,12 @@ Um deine Website online zu stellen, lade den kompletten Inhalt des `output`-Ordn
 | **clean** | all | Output + Cache löschen |
 | | output | Nur Output löschen |
 | | cache | Nur Cache löschen |
+| | statistics | Nur Statistik-JSON löschen |
 | **config** | project | Projekt-Einstellungen bearbeiten |
 | | theme | Theme wechseln |
-| | images | Bild-Einstellungen bearbeiten |
+| | image | Bild-Einstellungen bearbeiten |
 | | site | Website-Metadaten bearbeiten |
+| | sorting | Sortierung konfigurieren |
 | | feed | Paketquellen verwalten |
 | **theme** | list | Installierte Themes anzeigen |
 | | install | Neues Theme installieren |
@@ -364,7 +366,7 @@ Um deine Website online zu stellen, lade den kompletten Inhalt des `output`-Ordn
 | | uninstall | Plugin entfernen |
 | **packages** | refresh | Paketindex aktualisieren |
 | | list | Alle verfügbaren Pakete anzeigen |
-| **serve** | start | Lokalen Vorschau-Server starten |
+| **serve** | *(direkt)* | Lokalen Vorschau-Server starten |
 | | | *(erfordert Serve-Plugin)* |
 
 ### Setup-Gruppe (Standalone-Modus)

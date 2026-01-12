@@ -351,10 +351,12 @@ To put your website online, upload the complete contents of the `output` folder 
 | **clean** | all | Delete output + cache |
 | | output | Delete only output |
 | | cache | Delete only cache |
+| | statistics | Delete only statistics JSON |
 | **config** | project | Edit project settings |
 | | theme | Change theme |
-| | images | Edit image settings |
+| | image | Edit image settings |
 | | site | Edit site metadata |
+| | sorting | Configure sorting |
 | | feed | Manage package feeds |
 | **theme** | list | Show installed themes |
 | | install | Install new theme |
@@ -364,7 +366,7 @@ To put your website online, upload the complete contents of the `output` folder 
 | | uninstall | Remove a plugin |
 | **packages** | refresh | Update package index |
 | | list | Show all available packages |
-| **serve** | start | Start local preview server |
+| **serve** | *(direct)* | Start local preview server |
 | | | *(requires Serve plugin)* |
 
 ### Setup Group (Standalone Mode)

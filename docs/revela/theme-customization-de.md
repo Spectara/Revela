@@ -28,7 +28,7 @@ Extrahiere ein komplettes Theme für vollständige Anpassung:
 revela theme extract Lumina
 
 # Extrahieren mit eigenem Namen
-revela theme extract Lumina --name MeinTheme
+revela theme extract Lumina MeinTheme
 ```
 
 ### Interaktiver Modus
@@ -54,6 +54,9 @@ revela theme extract Lumina --file layout.revela
 
 # Mehrere Dateien extrahieren
 revela theme extract Lumina --file layout.revela --file Assets/styles.css
+
+# Kompletten Ordner extrahieren
+revela theme extract Lumina --file Assets/
 
 # Nur Konfiguration extrahieren
 revela theme extract Lumina --file theme.json --file Configuration/images.json
@@ -304,24 +307,25 @@ Deine Anpassungen werden automatisch verwendet.
 
 ```bash
 # Vollständige Extraktion (inkl. Extensions)
-revela theme extract <theme-name>
-revela theme extract <theme-name> --name <eigener-name>
+revela theme extract Lumina
+revela theme extract Lumina MeinTheme
 
 # Selektive Extraktion
-revela theme extract <theme-name> --file <pfad>
-revela theme extract <theme-name> --file <pfad1> --file <pfad2>
+revela theme extract Lumina --file Body/Gallery.revela
+revela theme extract Lumina --file Body/Gallery.revela --file Assets/
 
 # Bestimmte Extension-Datei extrahieren (beachte Unterordner-Struktur)
-revela theme extract <theme-name> --file Partials/Statistics/Statistics.revela
+revela theme extract Lumina --file Partials/Statistics/Statistics.revela
+
+# Vorhandene Dateien überschreiben
+revela theme extract Lumina --force
 
 # Interaktiver Modus
 revela theme extract
 
 # Verfügbare Dateien auflisten
-revela theme files <theme-name>
-revela theme files <theme-name> --category templates
-revela theme files <theme-name> --category assets
-revela theme files <theme-name> --category configuration
+revela theme files
+revela theme files --theme Lumina
 ```
 
 ## Tipps
