@@ -121,7 +121,7 @@ revela create page statistics stats --title "Photo Statistics" \
     --description "Analysis of my camera and lens usage"
 ```
 
-> **Note:** The Statistics plugin must be installed (`revela plugins install Statistics`).
+> **Note:** The Statistics plugin must be installed (`revela plugin install Statistics`).
 
 ### Generated File
 

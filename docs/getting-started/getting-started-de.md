@@ -361,7 +361,7 @@ Um deine Website online zu stellen, lade den kompletten Inhalt des `output`-Ordn
 | **theme** | list | Installierte Themes anzeigen |
 | | install | Neues Theme installieren |
 | | extract | Eigene Theme-Kopie erstellen |
-| **plugins** | list | Installierte Plugins anzeigen |
+| **plugin** | list | Installierte Plugins anzeigen |
 | | install | Neues Plugin installieren |
 | | uninstall | Plugin entfernen |
 | **packages** | refresh | Paketindex aktualisieren |
@@ -571,7 +571,7 @@ source/
 Wenn deine Website funktioniert:
 
 - **Theme anpassen:** Wähle **theme** → **extract** um eine eigene Kopie zu erstellen
-- **Weitere Plugins installieren:** Wähle **plugins** → **install**
+- **Weitere Plugins installieren:** Wähle **plugin** → **install**
 - **Einstellungen ändern:** Wähle **config** für alle Konfigurationsoptionen
 - **Auf Server hochladen:** Kopiere den Inhalt von `output/` per FTP/SFTP
 

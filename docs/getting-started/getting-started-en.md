@@ -361,7 +361,7 @@ To put your website online, upload the complete contents of the `output` folder 
 | **theme** | list | Show installed themes |
 | | install | Install new theme |
 | | extract | Create custom theme copy |
-| **plugins** | list | Show installed plugins |
+| **plugin** | list | Show installed plugins |
 | | install | Install new plugin |
 | | uninstall | Remove a plugin |
 | **packages** | refresh | Update package index |
@@ -571,7 +571,7 @@ source/
 Once your website works:
 
 - **Customize theme:** Select **theme** → **extract** to create your own copy
-- **Install more plugins:** Select **plugins** → **install**
+- **Install more plugins:** Select **plugin** → **install**
 - **Change settings:** Select **config** for all configuration options
 - **Upload to server:** Copy contents of `output/` via FTP/SFTP
 

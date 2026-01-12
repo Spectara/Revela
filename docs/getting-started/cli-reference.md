@@ -57,7 +57,7 @@ revela --project <name> <command> [options]
 revela -p <name> <command> [options]
 
 # Project-independent commands (no --project needed)
-revela plugins list
+revela plugin list
 revela packages refresh
 revela projects list
 ```
@@ -112,9 +112,9 @@ These commands work without a project context:
 
 | Command | Description |
 |---------|-------------|
-| `plugins list` | List installed plugins |
-| `plugins install` | Install a plugin |
-| `plugins uninstall` | Remove a plugin |
+| `plugin list` | List installed plugins |
+| `plugin install` | Install a plugin |
+| `plugin uninstall` | Remove a plugin |
 | `theme list` | List installed themes |
 | `theme install` | Install a theme |
 | `packages list` | List all available packages |
@@ -191,9 +191,9 @@ revela -p MyPhotos theme extract    # Create custom copy
 Manage plugins.
 
 ```bash
-revela plugins list                 # List installed
-revela plugins install              # Install new plugin
-revela plugins uninstall            # Remove plugin
+revela plugin list                  # List installed
+revela plugin install               # Install new plugin
+revela plugin uninstall             # Remove plugin
 ```
 
 ### packages
