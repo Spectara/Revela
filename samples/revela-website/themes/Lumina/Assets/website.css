@@ -186,10 +186,8 @@ header {
 }
 
 .hero-logo {
-  width: 150px;
+  width: 200px;
   height: auto;
-  margin-bottom: var(--space-l);
-  opacity: 0.9;
 }
 
 .hero-title {
@@ -197,7 +195,6 @@ header {
   letter-spacing: 0.1em;
   font-weight: 100;
   margin-bottom: var(--space-m);
-  color: hsl(var(--color-light-hsl));
 }
 
 .hero-subtitle {
