@@ -4,8 +4,6 @@ template = "docs"
 pinned = true
 +++
 
-# Documentation
-
 Welcome to the Revela documentation. Here you'll find everything you need to create beautiful photo galleries.
 
 <div class="features-grid">
