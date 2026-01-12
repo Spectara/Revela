@@ -1,13 +1,24 @@
 name: Deploy Website
 
 on:
+  # Automatically deploy after a successful release
+  workflow_run:
+    workflows: ["Release"]
+    types: [completed]
+  
+  # Also deploy on website content changes (uses latest existing release)
   push:
     branches: [main]
     paths:
       - 'samples/revela-website/**'
-  release:
-    types: [published]
+  
+  # Manual trigger
   workflow_dispatch:
+
+# Only one website deployment at a time
+concurrency:
+  group: website-deploy
+  cancel-in-progress: true
 
 env:
   DOTNET_NOLOGO: true
@@ -17,6 +28,8 @@ jobs:
   deploy:
     name: Generate & Deploy
     runs-on: ubuntu-latest
+    # Skip if triggered by a failed release workflow
+    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
