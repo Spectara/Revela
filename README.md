@@ -12,7 +12,9 @@ Modern static site generator for photographers, built with .NET 10.
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![.NET 10](https://img.shields.io/badge/.NET-10.0-512BD4)](https://dotnet.microsoft.com/)
 
-[Getting Started](docs/getting-started/getting-started-en.md) · [Documentation](docs/) · [Download](https://github.com/spectara/revela/releases)
+🌐 **[revela.website](https://revela.website)** — Documentation & Demo
+
+[Getting Started](https://revela.website/docs/) · [Download](https://github.com/spectara/revela/releases) · [GitHub](https://github.com/spectara/revela)
 
 </div>
 
@@ -120,7 +122,7 @@ Your browser opens automatically with a live preview.
 | **.NET Tool** | Developers | `dotnet tool install -g Spectara.Revela` |
 | **From Source** | Contributors | See [Development Guide](docs/development.md) |
 
-**[Detailed Installation Guide →](docs/installation.md)**
+**[Detailed Installation Guide →](https://revela.website/docs/)**
 
 ---
 
@@ -138,21 +140,21 @@ Install via the Setup Wizard or manually:
 revela plugin install Spectara.Revela.Plugin.Serve
 ```
 
-**[Plugin Management Guide →](docs/plugin-management.md)**
+**[Plugin Management Guide →](https://revela.website/docs/)**
 
 ---
 
 ## 📖 Documentation
 
-| Guide | Description |
-|-------|-------------|
-| [Getting Started](docs/getting-started/getting-started-en.md) | Step-by-step tutorial |
-| [Erste Schritte (DE)](docs/getting-started/getting-started-de.md) | Deutsche Anleitung |
-| [CLI Reference](docs/getting-started/cli-reference.md) | Commands for automation |
-| [Installation](docs/installation.md) | All installation options |
-| [Plugin Management](docs/plugin-management.md) | Install & create plugins |
-| [Development](docs/development.md) | Build & contribute |
-| [Architecture](docs/architecture.md) | Technical overview |
+Visit **[revela.website/docs](https://revela.website/docs/)** for the full documentation:
+
+- **[Source Structure](https://revela.website/docs/source-structure/)** — Organize photos with galleries or filters
+- **[Filter Galleries](https://revela.website/docs/filtering/)** — Dynamic galleries with EXIF queries
+- **[Sorting](https://revela.website/docs/sorting/)** — Configure image and gallery order
+- **[Creating Pages](https://revela.website/docs/pages/)** — Gallery, text, and statistics pages
+- **[Theme Customization](https://revela.website/docs/themes/)** — Extract and customize themes
+
+**Offline/GitHub:** [docs/](docs/) folder contains the same documentation in Markdown.
 
 ---
 
@@ -188,8 +190,6 @@ Contributions welcome! Please open an [issue](https://github.com/spectara/revela
 <div align="center">
 
 **[⬆ Back to top](#revela)**
-
-🌐 [revela.website](https://revela.website) · 🏢 [Spectara](https://github.com/spectara)
 
 </div>
 
