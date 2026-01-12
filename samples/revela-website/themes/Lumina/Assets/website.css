@@ -185,6 +185,13 @@ header {
   max-width: var(--content-max-width);
 }
 
+.hero-logo {
+  width: 150px;
+  height: auto;
+  margin-bottom: var(--space-l);
+  opacity: 0.9;
+}
+
 .hero-title {
   font-size: calc(var(--font-size-5) * 2);
   letter-spacing: 0.1em;

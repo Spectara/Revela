@@ -9,6 +9,7 @@ Expects:
 ##~}}
 <section class="hero">
     <div class="hero-content">
+        <img src="{{ basepath }}revela.png" alt="Revela" class="hero-logo" />
         <h1 class="hero-title">{{ gallery.title ?? site.title }}</h1>
         <p class="hero-subtitle">{{ gallery.description ?? site.description }}</p>
     </div>
