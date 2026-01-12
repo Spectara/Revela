@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.0.1-beta.12] - 2026-01-12
+
+### Added
+- **Static Files**: New `_static/` folder support for custom assets (CNAME, .nojekyll, favicon)
+- **Favicon Partial**: Configurable favicon via `site.favicon` and theme partial
+- **HeaderNavigation Partial**: Extracted from Layout for easier customization
+- **NavigationItem.Current**: Property for active page detection in navigation
+- **robots.txt**: Added to revela-website sample
+- **CI/CD**: Automatic website deployment after release workflow
+
+### Changed
+- **Website Styling**: Complete color palette overhaul
+  - Purple accent (263°) for links, buttons, active states
+  - Pink accent-light (309°) for hover states
+  - Separate light/dark mode gradients (logo-inspired)
+  - Dark code blocks with Prism.js syntax highlighting
+  - Consistent navigation hover colors across all sections
+- **Documentation**: Updated CLI reference and plugin command names
+
+### Fixed
+- **Website**: Table styling in docs-content, duplicate H1 removal
+- **Docs Navigation**: Proper active state and current page detection
+
 ## [0.0.1-beta.10] - 2026-01-07
 
 ### Fixed
@@ -172,7 +195,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Plugin.Source.OneDrive (OneDrive Shared Folder Support)
 - Commands: generate, init, clean, theme, plugins, restore
 
-[Unreleased]: https://github.com/spectara/revela/compare/v0.0.1-beta.10...HEAD
+[Unreleased]: https://github.com/spectara/revela/compare/v0.0.1-beta.12...HEAD
+[0.0.1-beta.12]: https://github.com/spectara/revela/compare/v0.0.1-beta.10...v0.0.1-beta.12
 [0.0.1-beta.10]: https://github.com/spectara/revela/compare/v0.0.1-beta.8...v0.0.1-beta.10
 [0.0.1-beta.8]: https://github.com/spectara/revela/compare/v0.0.1-beta.7...v0.0.1-beta.8
 [0.0.1-beta.7]: https://github.com/spectara/revela/compare/v0.0.1-beta.6...v0.0.1-beta.7
