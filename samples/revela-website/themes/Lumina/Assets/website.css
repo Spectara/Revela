@@ -129,7 +129,8 @@ header {
 }
 
 /* Tables */
-.page-content table {
+.page-content table,
+.docs-content table {
   width: 100%;
   margin-bottom: var(--space-m);
   font-size: var(--font-size-1);
@@ -139,20 +140,24 @@ header {
 }
 
 .page-content th,
-.page-content td {
+.page-content td,
+.docs-content th,
+.docs-content td {
   padding: var(--space-xs) var(--space-s);
   text-align: left;
   border-bottom: solid 1px hsl(var(--color-hsl) / 0.2);
   vertical-align: top;
 }
 
-.page-content th {
+.page-content th,
+.docs-content th {
   font-weight: 400;
   color: hsl(var(--color-dark-hsl));
   border-bottom: solid 1px hsl(var(--color-hsl) / 0.4);
 }
 
-.page-content tr:hover td {
+.page-content tr:hover td,
+.docs-content tr:hover td {
   background-color: hsl(var(--color-hsl) / 0.05);
 }
 
