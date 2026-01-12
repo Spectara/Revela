@@ -1,0 +1,217 @@
++++
+title = "revela.website"
+template = "docs"
++++
+
+This website ([revela.website](https://revela.website)) is built with Revela itself. Here's a detailed walkthrough of how we customized the default Lumina theme.
+
+## Project Structure
+
+```
+revela-website/
+├── project.json          # Project configuration
+├── site.json             # Site metadata + custom stylesheets
+├── source/
+│   ├── _index.revela     # Homepage (template = "home")
+│   ├── _static/          # Static files (favicon, CNAME, logo)
+│   ├── about/            # About page
+│   └── docs/             # Documentation pages
+└── themes/
+    └── Lumina/           # Theme overrides (not a full copy!)
+        ├── Assets/
+        │   └── website.css
+        ├── Body/
+        │   ├── home.revela
+        │   └── docs.revela
+        └── Partials/
+            └── HeaderNavigation.revela
+```
+
+**Key principle:** Only override what you need. The base Lumina theme provides everything else.
+
+---
+
+## Custom Stylesheets
+
+### site.json
+
+Register additional CSS files in `site.json`:
+
+```json
+{
+  "title": "Revela",
+  "stylesheets": [
+    "website.css",
+    "prism.css"
+  ],
+  "scripts": [
+    "prism.js"
+  ]
+}
+```
+
+These files are loaded from `themes/Lumina/Assets/` after the base theme's `main.css`.
+
+### Accent Color
+
+The base theme uses CSS custom properties. Override them in your stylesheet:
+
+```css
+:root {
+  --accent-hsl: 263deg 70% 70%;
+  --accent-light-hsl: 263deg 70% 80%;
+}
+```
+
+### Background Gradient
+
+Add a subtle gradient inspired by the logo:
+
+```css
+body {
+  background-image: radial-gradient(
+    ellipse 100% 60% at 50% -10%,
+    hsl(220deg 50% 30% / 0.25) 0%,
+    hsl(280deg 60% 40% / 0.15) 40%,
+    hsl(340deg 70% 50% / 0.08) 70%,
+    transparent 100%
+  );
+  background-attachment: fixed;
+}
+```
+
+### Header Blur Effect
+
+Frosted glass effect for the sticky header:
+
+```css
+header {
+  background-color: hsl(var(--color-background-hsl) / 0.3);
+  -webkit-backdrop-filter: saturate(180%) blur(2rem);
+  backdrop-filter: saturate(180%) blur(2rem);
+}
+```
+
+### Transparent Footer
+
+Remove the footer background so the gradient shows through:
+
+```css
+footer {
+  background: unset;
+  outline: unset;
+}
+```
+
+---
+
+## Body Templates
+
+### Homepage (home.revela)
+
+Create `themes/Lumina/Body/home.revela` for a custom hero section:
+
+```html
+<section class="hero">
+    <div class="hero-content">
+        <img src="{{ basepath }}revela.png" class="hero-logo" />
+        <h1 class="hero-title">{{ site.title }}</h1>
+        <p class="hero-subtitle">{{ site.description }}</p>
+        <div class="hero-cta">
+            <a href="{{ basepath }}docs/" class="cta-primary">Get Started</a>
+            <a href="https://github.com/Spectara/Revela" class="cta-secondary">View on GitHub</a>
+        </div>
+    </div>
+</section>
+{{ gallery.body }}
+```
+
+Use it in your page with `template = "home"` in the frontmatter.
+
+### Documentation (docs.revela)
+
+For pages with sidebar navigation, create `themes/Lumina/Body/docs.revela`:
+
+```html
+<article class="docs-layout">
+    <aside class="docs-sidebar">
+        <nav>
+            {{~ for item in nav_items ~}}
+            {{~ if item.url | string.starts_with "docs/" ~}}
+            <a href="{{ basepath }}{{ item.url }}"{{ if item.active }} class="active"{{ end }}>{{ item.text }}</a>
+            {{~ end ~}}
+            {{~ end ~}}
+        </nav>
+    </aside>
+    <div class="docs-content">
+        {{ gallery.body }}
+    </div>
+</article>
+```
+
+---
+
+## Extending Partials
+
+### Adding a GitHub Icon
+
+Instead of copying the entire Layout, override just the `HeaderNavigation` partial.
+
+Create `themes/Lumina/Partials/HeaderNavigation.revela`:
+
+```html
+{{~ for item in nav_items ~}}
+{{~ if item.pinned ~}}
+<a href="{{ basepath }}{{ item.url }}"{{ if item.active }} class="active"{{ end }}>{{ item.text }}</a>
+{{~ end ~}}
+{{~ end ~}}
+<a href="https://github.com/Spectara/Revela" title="View on GitHub" class="github-link">
+    <svg viewBox="0 0 16 16" width="20" height="20" fill="currentColor">
+        <path d="M8 0c4.42 0 8 3.58 8 8a8.013 8.013 0 0 1-5.45 7.59..."></path>
+    </svg>
+</a>
+```
+
+The SVG uses `fill="currentColor"` to match the text color automatically.
+
+Style it with:
+
+```css
+header .github-link {
+  display: flex;
+  align-items: center;
+  opacity: 0.7;
+  transition: opacity var(--animation-time);
+}
+
+header .github-link:hover {
+  opacity: 1;
+}
+```
+
+---
+
+## Static Files
+
+Place files in `source/_static/` to copy them to the output root:
+
+```
+source/_static/
+├── favicon/           # Favicon files
+│   ├── favicon.ico
+│   └── favicon.svg
+├── CNAME              # GitHub Pages custom domain
+├── .nojekyll          # Disable Jekyll processing
+├── robots.txt         # Search engine directives
+└── revela.png         # Logo for hero section
+```
+
+---
+
+## View the Source
+
+The complete source code for this website is available on GitHub:
+
+**[samples/revela-website](https://github.com/Spectara/Revela/tree/main/samples/revela-website)**
+
+Feel free to use it as a starting point for your own customizations!
