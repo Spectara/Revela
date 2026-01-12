@@ -48,4 +48,18 @@ public static class ProjectPaths
     /// </para>
     /// </remarks>
     public const string SharedImages = "_images";
+
+    /// <summary>
+    /// Static files directory for files copied directly to output root.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Files in <c>source/_static/</c> are copied 1:1 to the output root.
+    /// Use this for favicon files, robots.txt, CNAME, or other static assets.
+    /// </para>
+    /// <para>
+    /// Example: <c>source/_static/favicon/favicon.ico</c> → <c>output/favicon/favicon.ico</c>
+    /// </para>
+    /// </remarks>
+    public const string Static = "_static";
 }

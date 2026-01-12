@@ -42,6 +42,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<ITemplateEngine, ScribanTemplateEngine>();
         services.AddSingleton<ITemplateResolver, TemplateResolver>();
         services.AddSingleton<IAssetResolver, AssetResolver>();
+        services.AddSingleton<IStaticFileService, StaticFileService>();
         services.AddSingleton<IManifestRepository, ManifestService>();
 
         // Domain services (three main services)

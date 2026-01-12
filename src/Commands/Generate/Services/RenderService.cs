@@ -28,6 +28,7 @@ public sealed partial class RenderService(
     IThemeResolver themeResolver,
     ITemplateResolver templateResolver,
     IAssetResolver assetResolver,
+    IStaticFileService staticFileService,
     IManifestRepository manifestRepository,
     RevelaParser revelaParser,
     IMarkdownService markdownService,
@@ -140,6 +141,9 @@ public sealed partial class RenderService(
             {
                 await assetResolver.CopyToOutputAsync(OutputPath, cancellationToken);
             }
+
+            // Copy static files (source/_static/ → output/)
+            await staticFileService.CopyStaticFilesAsync(SourcePath, OutputPath, cancellationToken);
 
             progress?.Report(new RenderProgress
             {
