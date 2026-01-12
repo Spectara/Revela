@@ -45,11 +45,6 @@ jobs:
           cd samples/revela-website
           ../../revela generate all
 
-      - name: Add GitHub Pages files
-        run: |
-          echo "revela.website" > ./samples/revela-website/output/CNAME
-          touch ./samples/revela-website/output/.nojekyll
-
       - name: Deploy to Revela.Website
         uses: peaceiris/actions-gh-pages@v4
         with:
