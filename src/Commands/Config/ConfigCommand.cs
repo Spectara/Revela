@@ -4,6 +4,7 @@ using Microsoft.Extensions.Options;
 
 using Spectara.Revela.Commands.Config.Feed;
 using Spectara.Revela.Commands.Config.Images;
+using Spectara.Revela.Commands.Config.Paths;
 using Spectara.Revela.Commands.Config.Project;
 using Spectara.Revela.Commands.Config.Revela;
 using Spectara.Revela.Commands.Config.Site;
@@ -33,6 +34,7 @@ public sealed class ConfigCommand(
     ConfigSiteCommand siteCommand,
     ConfigImageCommand imageCommand,
     ConfigSortingCommand sortingCommand,
+    ConfigPathsCommand pathsCommand,
     FeedCommand feedCommand,
     ConfigLocationsCommand locationsCommand)
 {
@@ -49,6 +51,7 @@ public sealed class ConfigCommand(
         command.Subcommands.Add(siteCommand.Create());
         command.Subcommands.Add(imageCommand.Create());
         command.Subcommands.Add(sortingCommand.Create());
+        command.Subcommands.Add(pathsCommand.Create());
 
         // Revela (global) subcommands
         command.Subcommands.Add(feedCommand.Create());
@@ -90,10 +93,11 @@ public sealed class ConfigCommand(
                         new MenuChoice("site", "Site metadata", "Title, author, description"),
                         new MenuChoice("image", "Image settings", "Formats, quality, sizes"),
                         new MenuChoice("sorting", "Sorting", "Gallery and image order"),
+                        new MenuChoice("paths", "Paths", "Source and output directories"),
                         // Revela Section
                         new MenuChoice("header-revela", "───── Revela Settings ─────", "", IsHeader: true),
                         new MenuChoice("feed", "NuGet feeds", "Manage package sources"),
-                        new MenuChoice("path", "Show paths", "Display config locations"),
+                        new MenuChoice("locations", "Show locations", "Display config file paths"),
                         // Actions
                         new MenuChoice("header-actions", "─────────────────────────────", "", IsHeader: true),
                         new MenuChoice("show", "Show current config", "Display configuration"),
@@ -119,8 +123,9 @@ public sealed class ConfigCommand(
                 "site" => await siteCommand.ExecuteAsync(cancellationToken).ConfigureAwait(false),
                 "image" => await imageCommand.ExecuteAsync(null, cancellationToken).ConfigureAwait(false),
                 "sorting" => await sortingCommand.ExecuteAsync(null, null, null, null, cancellationToken).ConfigureAwait(false),
+                "paths" => await pathsCommand.ExecuteInteractiveAsync(cancellationToken).ConfigureAwait(false),
                 "feed" => ExecuteFeedMenu(packagesConfig.CurrentValue),
-                "path" => ExecutePathCommand(),
+                "locations" => ExecutePathCommand(),
                 "show" => await ExecuteShowAsync(cancellationToken).ConfigureAwait(false),
                 _ => 0
             };

@@ -1,0 +1,155 @@
++++
+title = "Configuration"
+template = "docs"
+pinned = true
++++
+
+Revela stores all project settings in `project.json`. This file is created automatically when you initialize a project with `revela config project`.
+
+## Quick Configuration
+
+Use the interactive config menu:
+
+```bash
+revela config
+```
+
+Or configure specific settings directly:
+
+```bash
+revela config theme --set Lumina
+revela config paths --source "D:\Photos" --output "dist"
+revela config site --title "My Portfolio" --author "John Doe"
+```
+
+## Configuration File Structure
+
+```json
+{
+  "name": "my-portfolio",
+  "paths": {
+    "source": "source",
+    "output": "output"
+  },
+  "theme": {
+    "name": "Lumina"
+  },
+  "generate": {
+    "images": {
+      "formats": { "webp": 85, "jpg": 90 },
+      "sizes": [640, 1024, 1920]
+    },
+    "sorting": {
+      "galleries": "asc",
+      "images": { "field": "dateTaken", "direction": "desc" }
+    }
+  }
+}
+```
+
+## Custom Paths
+
+By default, Revela uses a `source/` folder for your images and `output/` for the generated site. You can customize these paths for advanced workflows.
+
+### Configure via CLI
+
+```bash
+# Interactive
+revela config paths
+
+# Direct
+revela config paths --source "D:\OneDrive\Photos\Portfolio" --output "dist"
+```
+
+### Use Cases
+
+<div class="features-grid">
+
+### ☁️ Cloud Storage Source
+
+Point source to a OneDrive, Dropbox, or iCloud folder. Your photos sync automatically, Revela generates from them.
+
+### 🌐 Direct Deployment
+
+Output directly to your webserver directory (`/var/www/html`) without copying files.
+
+### 📁 Shared Photo Library
+
+Multiple Revela projects can share the same source folder with different filters.
+
+</div>
+
+### Example: OneDrive Integration
+
+```json
+{
+  "paths": {
+    "source": "D:\\OneDrive\\Photos\\Portfolio",
+    "output": "output"
+  }
+}
+```
+
+Your workflow:
+1. Add photos to OneDrive on any device
+2. They sync to your computer
+3. Run `revela generate all` to rebuild
+
+### Example: Direct Server Deployment
+
+```json
+{
+  "paths": {
+    "source": "source",
+    "output": "/var/www/html/photos"
+  }
+}
+```
+
+After `revela generate all`, your site is immediately live—no file copying needed.
+
+### Path Resolution
+
+| Path Type | Example | Resolves To |
+|-----------|---------|-------------|
+| Relative | `source` | `{project}/source` |
+| Relative | `../photos` | `{parent}/photos` |
+| Absolute | `D:\Photos` | `D:\Photos` |
+| Absolute | `/var/www/html` | `/var/www/html` |
+
+## Available Config Commands
+
+| Command | Description |
+|---------|-------------|
+| `revela config` | Interactive configuration menu |
+| `revela config project` | Project name and URL |
+| `revela config theme` | Select site theme |
+| `revela config site` | Site metadata (title, author, description) |
+| `revela config paths` | Source and output directories |
+| `revela config image` | Image formats and quality |
+| `revela config sorting` | Gallery and image sort order |
+| `revela config feed` | NuGet package sources |
+
+## Site Metadata
+
+Site-specific content (title, description, copyright) is stored separately in `site.json`:
+
+```json
+{
+  "title": "My Photography Portfolio",
+  "author": "Jane Smith",
+  "description": "Landscapes and nature photography",
+  "copyright": "© 2026 Jane Smith"
+}
+```
+
+Configure with:
+
+```bash
+revela config site
+```
+
+This separation allows you to:
+- Share `project.json` settings across projects
+- Keep personal branding in `site.json`
+- Use different site metadata for staging/production
