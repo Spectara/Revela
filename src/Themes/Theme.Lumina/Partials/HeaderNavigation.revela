@@ -2,6 +2,7 @@
 Header Navigation Partial
 
 Renders pinned navigation items in the sticky header.
+Searches recursively through all navigation levels to find pinned items.
 Override this partial to add custom links (e.g., GitHub icon).
 
 Expects:
@@ -11,5 +12,15 @@ Expects:
 {{~ for item in nav_items ~}}
 {{~ if item.pinned ~}}
 <a href="{{ basepath }}{{ item.url }}"{{ if item.active }} class="active"{{ end }}>{{ item.text }}</a>
+{{~ end ~}}
+{{~ for child in item.children ~}}
+{{~ if child.pinned ~}}
+<a href="{{ basepath }}{{ child.url }}"{{ if child.active }} class="active"{{ end }}>{{ child.text }}</a>
+{{~ end ~}}
+{{~ for grandchild in child.children ~}}
+{{~ if grandchild.pinned ~}}
+<a href="{{ basepath }}{{ grandchild.url }}"{{ if grandchild.active }} class="active"{{ end }}>{{ grandchild.text }}</a>
+{{~ end ~}}
+{{~ end ~}}
 {{~ end ~}}
 {{~ end ~}}
