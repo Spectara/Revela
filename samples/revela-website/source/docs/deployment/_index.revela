@@ -1,0 +1,172 @@
++++
+title = "Deployment"
+template = "docs"
+pinned = true
++++
+
+After running `revela generate`, you have a complete static website in your `output/` folder. This guide shows you how to publish it online.
+
+## What Gets Generated?
+
+Revela creates a fully self-contained static website:
+
+```
+output/
+├── index.html          # Your homepage
+├── gallery/
+│   └── index.html      # A gallery page
+├── images/             # Optimized images (AVIF, WebP, JPG)
+├── css/                # Stylesheets
+└── js/                 # JavaScript (if any)
+```
+
+**No server-side processing needed!** Any web host that serves HTML files will work.
+
+## Hosting Options
+
+| Option | Cost | Difficulty | Best For |
+|--------|------|------------|----------|
+| **GitHub Pages** | Free | Easy | Developers, version control |
+| **Netlify** | Free tier | Easy | Drag & drop, custom domains |
+| **Cloudflare Pages** | Free tier | Easy | Fast global CDN |
+| **Traditional Hoster** | Varies | Easy | Existing hosting |
+| **Own Server** | Varies | Medium | Full control |
+
+## Option 1: GitHub Pages
+
+This is how [revela.website](https://revela.website) is hosted. Free, fast, and integrates with Git.
+
+### Manual Upload
+
+1. Create a GitHub repository (e.g., `my-portfolio`)
+2. Upload the contents of your `output/` folder
+3. Go to **Settings → Pages**
+4. Select **Branch: main** and **/ (root)**
+5. Your site is live at `https://username.github.io/my-portfolio/`
+
+### Automated with GitHub Actions
+
+For automatic deployment when you push changes, create `.github/workflows/deploy.yml`:
+
+```yaml
+name: Deploy Portfolio
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Download Revela
+        run: |
+          curl -L https://github.com/Spectara/Revela/releases/latest/download/revela-linux-x64-full.tar.gz | tar xz
+          chmod +x ./revela
+      
+      - name: Generate site
+        run: ./revela generate all
+      
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./output
+```
+
+> **Note:** For pre-releases, replace `/latest/download/` with `/download/v0.0.1-beta.12/` (your version).
+
+## Option 2: Netlify (Drag & Drop)
+
+The easiest option if you're not using Git:
+
+1. Go to [netlify.com](https://www.netlify.com/) and sign up
+2. Drag your `output/` folder onto the page
+3. Done! You get a URL like `random-name.netlify.app`
+4. Optionally connect a custom domain
+
+## Option 3: Traditional Web Host (FTP)
+
+If you have existing web hosting (1&1, Strato, HostEurope, etc.):
+
+1. Open your FTP client (FileZilla, WinSCP, etc.)
+2. Connect to your host
+3. Upload the contents of `output/` to your web root (often `public_html/` or `htdocs/`)
+4. Done!
+
+### Using Command Line
+
+```bash
+# With rsync (Linux/macOS)
+rsync -avz --delete output/ user@yourserver:/var/www/html/
+
+# With lftp
+lftp -e "mirror -R output/ /public_html; quit" -u user,password ftp.yourhost.com
+```
+
+## Option 4: Cloudflare Pages
+
+Fast global CDN with generous free tier:
+
+1. Push your project to GitHub/GitLab
+2. Go to [pages.cloudflare.com](https://pages.cloudflare.com/)
+3. Connect your repository
+4. Build command: `./revela generate all`
+5. Output directory: `output`
+
+## Custom Domain
+
+Most hosts support custom domains. General steps:
+
+1. Buy a domain (Namecheap, Google Domains, etc.)
+2. Add a CNAME record pointing to your host:
+   - GitHub Pages: `username.github.io`
+   - Netlify: `your-site.netlify.app`
+3. Configure the custom domain in your host's settings
+4. Wait for DNS propagation (up to 24h)
+
+## Tips
+
+### Base Path for Subdirectories
+
+If your site is hosted at `example.com/photos/` instead of the root:
+
+```json
+// project.json
+{
+  "site": {
+    "basepath": "/photos/"
+  }
+}
+```
+
+### Image CDN
+
+For large portfolios, consider hosting images separately on a CDN:
+
+```json
+// project.json
+{
+  "site": {
+    "image_basepath": "https://cdn.example.com/images/"
+  }
+}
+```
+
+### HTTPS
+
+Always use HTTPS! Most modern hosts provide free SSL certificates:
+- GitHub Pages: Automatic
+- Netlify: Automatic
+- Cloudflare: Automatic
+- Traditional: Let's Encrypt (free)
+
+## Real Example: revela.website
+
+This documentation site is built with Revela and deployed to GitHub Pages. See:
+
+- **Source:** [samples/revela-website](https://github.com/Spectara/Revela/tree/main/samples/revela-website)
+- **Workflow:** [.github/workflows/deploy-website.yml](https://github.com/Spectara/Revela/blob/main/.github/workflows/deploy-website.yml)
+- **Result:** [revela.website](https://revela.website)

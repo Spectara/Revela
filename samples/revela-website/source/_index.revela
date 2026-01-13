@@ -36,9 +36,9 @@ Plugin system for custom sources (OneDrive, cloud storage), statistics, and more
 Download the latest release for your platform:
 
 <div class="cta-buttons">
-  <a href="https://github.com/Spectara/Revela/releases/latest/download/revela-win-x64.zip">Windows x64</a>
-  <a href="https://github.com/Spectara/Revela/releases/latest/download/revela-osx-arm64.zip">macOS Apple Silicon</a>
-  <a href="https://github.com/Spectara/Revela/releases/latest/download/revela-linux-x64.zip">Linux x64</a>
+  <a href="__DOWNLOAD_URL_WIN_X64__">Windows x64</a>
+  <a href="__DOWNLOAD_URL_OSX_ARM64__">macOS Apple Silicon</a>
+  <a href="__DOWNLOAD_URL_LINUX_X64__">Linux x64</a>
 </div>
 
 <p class="download-more"><a href="https://github.com/Spectara/Revela/releases">All downloads →</a></p>
@@ -85,6 +85,7 @@ Open `http://localhost:8080` and see your portfolio!
 | **Incremental Builds** | Only regenerate changed images |
 | **Theme Overrides** | Customize any template without forking |
 | **Multiple Sources** | Local files, OneDrive, or custom plugins |
+| **Easy Deployment** | Works with GitHub Pages, Netlify, any web host |
 
 ## Join the Community
 
