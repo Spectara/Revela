@@ -27,7 +27,7 @@ namespace Spectara.Revela.Sdk.Configuration;
 ///     "output": "output"
 ///   }
 /// }
-/// 
+///
 /// // OneDrive source with local output
 /// {
 ///   "paths": {
@@ -35,7 +35,7 @@ namespace Spectara.Revela.Sdk.Configuration;
 ///     "output": "output"
 ///   }
 /// }
-/// 
+///
 /// // Direct server deployment
 /// {
 ///   "paths": {

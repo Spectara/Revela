@@ -3,6 +3,7 @@ using System.Text.Json.Nodes;
 
 using Microsoft.Extensions.Options;
 
+using Spectara.Revela.Commands.Config.Paths;
 using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Abstractions;
 using Spectara.Revela.Sdk.Configuration;
@@ -79,6 +80,10 @@ public sealed partial class ConfigProjectCommand(
         var isInteractive = nameArg is null && urlArg is null;
 
         string name, url;
+        string sourcePath, outputPath;
+
+        // Default paths
+        var defaultPaths = new PathsConfig();
 
         if (isInteractive)
         {
@@ -97,6 +102,19 @@ public sealed partial class ConfigProjectCommand(
                 new TextPrompt<string>("Base URL:")
                     .DefaultValue(current?["project"]?["url"]?.GetValue<string>() ?? string.Empty)
                     .AllowEmpty());
+
+            // Only ask for paths on first-time setup (not when editing existing project)
+            if (isFirstTime)
+            {
+                // Use the shared prompt from ConfigPathsCommand
+                (sourcePath, outputPath) = ConfigPathsCommand.PromptForPathsWithDefaults();
+            }
+            else
+            {
+                // Keep existing paths when editing
+                sourcePath = current?["paths"]?["source"]?.GetValue<string>() ?? defaultPaths.Source;
+                outputPath = current?["paths"]?["output"]?.GetValue<string>() ?? defaultPaths.Output;
+            }
         }
         else
         {
@@ -104,10 +122,11 @@ public sealed partial class ConfigProjectCommand(
             name = nameArg ?? current?["project"]?["name"]?.GetValue<string>()
                 ?? projectEnvironment.Value.FolderName;
             url = urlArg ?? current?["project"]?["url"]?.GetValue<string>() ?? "";
+            sourcePath = current?["paths"]?["source"]?.GetValue<string>() ?? defaultPaths.Source;
+            outputPath = current?["paths"]?["output"]?.GetValue<string>() ?? defaultPaths.Output;
         }
 
         // Create or update project configuration using ConfigService
-        // Structure must match ProjectConfig.SectionName ("project")
         var update = new JsonObject
         {
             ["project"] = new JsonObject
@@ -116,6 +135,17 @@ public sealed partial class ConfigProjectCommand(
                 ["url"] = url
             }
         };
+
+        // Only write paths section if non-default (keeps project.json clean)
+        var hasCustomPaths = sourcePath != defaultPaths.Source || outputPath != defaultPaths.Output;
+        if (hasCustomPaths)
+        {
+            update["paths"] = new JsonObject
+            {
+                ["source"] = sourcePath,
+                ["output"] = outputPath
+            };
+        }
 
         // For new projects, log initialization
         if (isFirstTime)
@@ -127,13 +157,47 @@ public sealed partial class ConfigProjectCommand(
 
         if (isFirstTime)
         {
-            // Create directories using defaults from PathsConfig
-            var defaultPaths = new PathsConfig();
-            Directory.CreateDirectory(defaultPaths.Source);
-            Directory.CreateDirectory(defaultPaths.Output);
+            // Create directories (only if relative paths - don't create absolute paths like D:\OneDrive)
+            if (!Path.IsPathRooted(sourcePath))
+            {
+                Directory.CreateDirectory(sourcePath);
+            }
+
+            if (!Path.IsPathRooted(outputPath))
+            {
+                Directory.CreateDirectory(outputPath);
+            }
 
             AnsiConsole.MarkupLine($"\n{OutputMarkers.Success} Project '{name}' initialized");
-            AnsiConsole.MarkupLine($"[dim]Created: project.json, {defaultPaths.Source}/, {defaultPaths.Output}/[/]");
+
+            // Show what was created
+            var createdItems = new List<string> { "project.json" };
+            if (!Path.IsPathRooted(sourcePath))
+            {
+                createdItems.Add($"{sourcePath}/");
+            }
+
+            if (!Path.IsPathRooted(outputPath))
+            {
+                createdItems.Add($"{outputPath}/");
+            }
+
+            AnsiConsole.MarkupLine($"[dim]Created: {string.Join(", ", createdItems)}[/]");
+
+            // Show path info if custom
+            if (hasCustomPaths)
+            {
+                if (Path.IsPathRooted(sourcePath))
+                {
+                    AnsiConsole.MarkupLine($"[dim]Source: {sourcePath}[/]");
+                }
+
+                if (Path.IsPathRooted(outputPath))
+                {
+                    AnsiConsole.MarkupLine($"[dim]Output: {outputPath}[/]");
+                }
+            }
+
             AnsiConsole.MarkupLine("\n[yellow]Next:[/] Run [cyan]revela config theme[/] to select a theme");
         }
         else

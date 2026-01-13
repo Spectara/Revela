@@ -178,6 +178,33 @@ public sealed partial class ConfigPathsCommand(
         return 0;
     }
 
+    /// <summary>
+    /// Prompts for source and output paths during project initialization.
+    /// </summary>
+    /// <remarks>
+    /// This method is designed for use during project creation when no project.json exists yet.
+    /// It shows simple prompts with defaults and returns the selected values without saving.
+    /// The caller is responsible for saving these values to the config.
+    /// </remarks>
+    /// <returns>Tuple of (sourcePath, outputPath) selected by user.</returns>
+    public static (string Source, string Output) PromptForPathsWithDefaults()
+    {
+        var defaults = new PathsConfig();
+
+        AnsiConsole.WriteLine();
+        AnsiConsole.MarkupLine("[dim]Directory paths (press Enter for defaults, or enter custom path)[/]");
+
+        var source = AnsiConsole.Prompt(
+            new TextPrompt<string>("Source directory (your images):")
+                .DefaultValue(defaults.Source));
+
+        var output = AnsiConsole.Prompt(
+            new TextPrompt<string>("Output directory (generated site):")
+                .DefaultValue(defaults.Output));
+
+        return (source, output);
+    }
+
     [LoggerMessage(Level = LogLevel.Information, Message = "Paths configured: source='{Source}', output='{Output}'")]
     private static partial void LogPathsConfigured(ILogger logger, string source, string output);
 }
