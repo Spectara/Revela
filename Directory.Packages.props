@@ -4,33 +4,29 @@
     <CentralPackageTransitivePinningEnabled>true</CentralPackageTransitivePinningEnabled>
   </PropertyGroup>
   <ItemGroup Label="Core Framework">
-    <PackageVersion Include="Microsoft.Extensions.Hosting" Version="10.0.1" />
-    <PackageVersion Include="Microsoft.Extensions.Hosting.Abstractions" Version="10.0.1" />
-    <PackageVersion Include="Microsoft.Extensions.Configuration" Version="10.0.1" />
-    <PackageVersion Include="Microsoft.Extensions.Configuration.Abstractions" Version="10.0.1" />
-    <PackageVersion Include="Microsoft.Extensions.Configuration.Json" Version="10.0.1" />
-    <PackageVersion Include="Microsoft.Extensions.Configuration.Binder" Version="10.0.1" />
-    <PackageVersion Include="Microsoft.Extensions.Configuration.EnvironmentVariables" Version="10.0.1" />
-    <PackageVersion Include="Microsoft.Extensions.Configuration.CommandLine" Version="10.0.1" />
-    <PackageVersion Include="Microsoft.Extensions.Options" Version="10.0.1" />
-    <PackageVersion Include="Microsoft.Extensions.Options.DataAnnotations" Version="10.0.1" />
-    <PackageVersion Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="10.0.1" />
-    <PackageVersion Include="Microsoft.Extensions.DependencyInjection" Version="10.0.1" />
-    <PackageVersion Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.1" />
-    <PackageVersion Include="Microsoft.Extensions.Http" Version="10.0.1" />
-    <PackageVersion Include="Microsoft.Extensions.Http.Resilience" Version="10.1.0" />
-    <PackageVersion Include="Microsoft.Extensions.Logging" Version="10.0.1" />
-    <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.1" />
-    <PackageVersion Include="Microsoft.Extensions.Logging.Console" Version="10.0.1" />
-    <PackageVersion Include="Microsoft.Extensions.Logging.Debug" Version="10.0.1" />
-    <PackageVersion Include="Microsoft.Extensions.Telemetry.Abstractions" Version="10.1.0" />
+    <PackageVersion Include="Microsoft.Extensions.Hosting" Version="10.0.2" />
+    <PackageVersion Include="Microsoft.Extensions.Hosting.Abstractions" Version="10.0.2" />
+    <PackageVersion Include="Microsoft.Extensions.Configuration" Version="10.0.2" />
+    <PackageVersion Include="Microsoft.Extensions.Configuration.Abstractions" Version="10.0.2" />
+    <PackageVersion Include="Microsoft.Extensions.Configuration.Json" Version="10.0.2" />
+    <PackageVersion Include="Microsoft.Extensions.Configuration.Binder" Version="10.0.2" />
+    <PackageVersion Include="Microsoft.Extensions.Configuration.EnvironmentVariables" Version="10.0.2" />
+    <PackageVersion Include="Microsoft.Extensions.Configuration.CommandLine" Version="10.0.2" />
+    <PackageVersion Include="Microsoft.Extensions.Options" Version="10.0.2" />
+    <PackageVersion Include="Microsoft.Extensions.Options.DataAnnotations" Version="10.0.2" />
+    <PackageVersion Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="10.0.2" />
+    <PackageVersion Include="Microsoft.Extensions.DependencyInjection" Version="10.0.2" />
+    <PackageVersion Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.2" />
+    <PackageVersion Include="Microsoft.Extensions.Http" Version="10.0.2" />
+    <PackageVersion Include="Microsoft.Extensions.Http.Resilience" Version="10.2.0" />
+    <PackageVersion Include="Microsoft.Extensions.Logging" Version="10.0.2" />
+    <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.2" />
+    <PackageVersion Include="Microsoft.Extensions.Logging.Console" Version="10.0.2" />
+    <PackageVersion Include="Microsoft.Extensions.Logging.Debug" Version="10.0.2" />
+    <PackageVersion Include="Microsoft.Extensions.Telemetry.Abstractions" Version="10.2.0" />
   </ItemGroup>
   <ItemGroup Label="CLI Framework">
-    <!-- System.CommandLine 2.0.0 - Final Release -->
-    <!-- https://learn.microsoft.com/en-us/dotnet/standard/commandline/ -->
-    <PackageVersion Include="System.CommandLine" Version="2.0.1" />
-    <!-- Spectre.Console - Rich Console Output -->
-    <!-- https://spectreconsole.net/ -->
+    <PackageVersion Include="System.CommandLine" Version="2.0.2" />
     <PackageVersion Include="Spectre.Console" Version="0.54.0" />
   </ItemGroup>
   <ItemGroup Label="Template Engine">
@@ -48,24 +44,16 @@
     <PackageVersion Include="NuGet.Packaging" Version="7.0.1" />
     <PackageVersion Include="NuGet.Configuration" Version="7.0.1" />
   </ItemGroup>
-  <!-- Serilog removed - using built-in Microsoft.Extensions.Logging instead -->
-  <!-- For file logging (optional): Add Microsoft.Extensions.Logging.File later if needed -->
   <ItemGroup Label="Plugins - Deploy">
     <PackageVersion Include="SSH.NET" Version="2025.1.0" />
   </ItemGroup>
   <ItemGroup Label="Build Tools">
-    <PackageVersion Include="Microsoft.SourceLink.GitHub" Version="8.0.0" />
+    <PackageVersion Include="Microsoft.SourceLink.GitHub" Version="10.0.102" />
   </ItemGroup>
   <ItemGroup Label="Testing">
-    <!-- MSTest v4 - Modern Testing Framework -->
-    <!-- https://learn.microsoft.com/en-us/dotnet/core/testing/unit-testing-mstest-intro -->
-    <!-- Consistent with other projects using MSTest -->
     <PackageVersion Include="MSTest" Version="4.0.2" />
     <PackageVersion Include="MSTest.Analyzers" Version="4.0.2" />
-    <!-- Mocking (NSubstitute instead of Moq due to security/trust concerns) -->
-    <!-- https://nsubstitute.github.io/ -->
     <PackageVersion Include="NSubstitute" Version="5.3.0" />
-    <!-- Code Coverage -->
     <PackageVersion Include="coverlet.collector" Version="6.0.4" />
   </ItemGroup>
   <ItemGroup Label="Code Analysis">
