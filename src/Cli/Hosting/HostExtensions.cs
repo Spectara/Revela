@@ -327,11 +327,11 @@ internal static class HostExtensions
                 // Project group: core project settings
                 // "project" doesn't require project - it creates project.json
                 "project" => (10, CommandGroups.ConfigProject, false),
-                // These require an existing project
-                "theme" => (20, CommandGroups.ConfigProject, true),
-                "image" => (30, CommandGroups.ConfigProject, true),
-                "site" => (40, CommandGroups.ConfigProject, true),
-                "sorting" => (50, CommandGroups.ConfigProject, true),
+                "paths" => (20, CommandGroups.ConfigProject, true),
+                "theme" => (30, CommandGroups.ConfigProject, true),
+                "image" => (40, CommandGroups.ConfigProject, true),
+                "site" => (50, CommandGroups.ConfigProject, true),
+                "sorting" => (60, CommandGroups.ConfigProject, true),
 
                 // Packages group: feed management (global, no project needed)
                 "feed" => (10, CommandGroups.ConfigPackages, false),
