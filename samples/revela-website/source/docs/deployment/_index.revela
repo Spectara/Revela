@@ -60,15 +60,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Download Revela
         run: |
           curl -L https://github.com/Spectara/Revela/releases/latest/download/revela-linux-x64-full.tar.gz | tar xz
           chmod +x ./revela
-      
+
       - name: Generate site
         run: ./revela generate all
-      
+
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
         with:

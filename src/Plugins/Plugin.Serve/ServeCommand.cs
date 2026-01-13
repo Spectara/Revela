@@ -6,6 +6,7 @@ using Microsoft.Extensions.Options;
 
 using Spectara.Revela.Plugin.Serve.Configuration;
 using Spectara.Revela.Sdk;
+using Spectara.Revela.Sdk.Services;
 
 using Spectre.Console;
 
@@ -16,7 +17,7 @@ namespace Spectara.Revela.Plugin.Serve;
 /// </summary>
 public sealed partial class ServeCommand(
     ILogger<ServeCommand> logger,
-    IOptions<ProjectEnvironment> projectEnvironment,
+    IPathResolver pathResolver,
     IOptionsMonitor<ServeConfig> serveConfig)
 {
     /// <summary>
@@ -57,13 +58,13 @@ public sealed partial class ServeCommand(
         var port = portOverride ?? config.Port;
         var verbose = verboseOverride || config.Verbose;
 
-        // Output directory is always "output" (consistent with generate commands)
-        var fullOutputPath = Path.GetFullPath(Path.Combine(projectEnvironment.Value.Path, ProjectPaths.Output));
+        // Output directory from resolved path (supports absolute paths in config)
+        var fullOutputPath = pathResolver.OutputPath;
 
         // Validate output directory exists
         if (!Directory.Exists(fullOutputPath))
         {
-            ErrorPanels.ShowDirectoryNotFoundError($"{ProjectPaths.Output}/", "generate all");
+            ErrorPanels.ShowDirectoryNotFoundError(fullOutputPath, "generate all");
             return 1;
         }
 
@@ -71,7 +72,7 @@ public sealed partial class ServeCommand(
         var indexPath = Path.Combine(fullOutputPath, "index.html");
         if (!File.Exists(indexPath))
         {
-            AnsiConsole.MarkupLine($"[yellow]Warning:[/] No index.html found in [cyan]{ProjectPaths.Output}/[/]");
+            AnsiConsole.MarkupLine($"[yellow]Warning:[/] No index.html found in [cyan]{fullOutputPath}[/]");
         }
 
         // Setup request logging callback
@@ -146,7 +147,7 @@ public sealed partial class ServeCommand(
 
         // Display server info
         AnsiConsole.WriteLine();
-        AnsiConsole.MarkupLine($"🌐 Serving [blue]{ProjectPaths.Output}/[/] at [link]http://localhost:{port}[/]");
+        AnsiConsole.MarkupLine($"🌐 Serving [blue]{fullOutputPath}[/] at [link]http://localhost:{port}[/]");
         AnsiConsole.MarkupLine("[dim]   Press Ctrl+C to stop[/]");
         AnsiConsole.WriteLine();
 

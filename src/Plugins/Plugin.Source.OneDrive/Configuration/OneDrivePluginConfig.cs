@@ -1,5 +1,4 @@
 using System.ComponentModel.DataAnnotations;
-using Spectara.Revela.Sdk;
 
 namespace Spectara.Revela.Plugin.Source.OneDrive.Configuration;
 
@@ -7,9 +6,8 @@ namespace Spectara.Revela.Plugin.Source.OneDrive.Configuration;
 /// OneDrive plugin configuration
 /// </summary>
 /// <remarks>
-/// Default values are defined in the property initializers (OutputDirectory = "source", etc.).
 /// These can be overridden from multiple sources (in priority order, highest to lowest):
-/// 1. Command-line arguments (--share-url, --concurrency, etc.)
+/// 1. Command-line arguments (--share-url, etc.)
 /// 2. Environment variables (SPECTARA__REVELA__PLUGIN__SOURCE__ONEDRIVE__*)
 /// 3. Project config file (project.json)
 ///
@@ -24,6 +22,8 @@ namespace Spectara.Revela.Plugin.Source.OneDrive.Configuration;
 ///
 /// Example Environment Variables:
 /// SPECTARA__REVELA__PLUGIN__SOURCE__ONEDRIVE__SHAREURL=https://1drv.ms/...
+///
+/// Downloaded files are saved to the project's source directory (paths.source config).
 /// </remarks>
 public sealed class OneDrivePluginConfig
 {
@@ -47,15 +47,6 @@ public sealed class OneDrivePluginConfig
     [Url(ErrorMessage = "ShareUrl must be a valid URL")]
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1056:URI properties should not be strings", Justification = "Share URLs with tokens don't parse as System.Uri")]
     public string ShareUrl { get; init; } = string.Empty;
-
-    /// <summary>
-    /// Output directory for downloaded files (relative to project root)
-    /// </summary>
-    /// <remarks>
-    /// Defaults to the standard source directory. This setting is rarely changed
-    /// and is not exposed in interactive configuration.
-    /// </remarks>
-    public string OutputDirectory { get; init; } = ProjectPaths.Source;
 
     /// <summary>
     /// Default number of parallel downloads (auto-detected based on CPU cores if not specified)

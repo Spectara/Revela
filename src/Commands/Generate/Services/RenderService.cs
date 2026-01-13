@@ -10,6 +10,7 @@ using Spectara.Revela.Core.Services;
 using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Abstractions;
 using Spectara.Revela.Sdk.Models.Manifest;
+using Spectara.Revela.Sdk.Services;
 using IManifestRepository = Spectara.Revela.Sdk.Abstractions.IManifestRepository;
 
 namespace Spectara.Revela.Commands.Generate.Services;
@@ -33,6 +34,7 @@ public sealed partial class RenderService(
     RevelaParser revelaParser,
     IMarkdownService markdownService,
     IOptions<ProjectEnvironment> projectEnvironment,
+    IPathResolver pathResolver,
     IOptionsMonitor<ProjectConfig> projectConfig,
     IOptionsMonitor<GenerateConfig> options,
     IOptionsMonitor<ThemeConfig> themeConfig,
@@ -41,11 +43,11 @@ public sealed partial class RenderService(
     /// <summary>Current theme extensions (set during rendering)</summary>
     private IReadOnlyList<IThemeExtension> currentExtensions = [];
 
-    /// <summary>Gets full path to source directory</summary>
-    private string SourcePath => Path.Combine(projectEnvironment.Value.Path, ProjectPaths.Source);
+    /// <summary>Gets full path to source directory (supports hot-reload)</summary>
+    private string SourcePath => pathResolver.SourcePath;
 
-    /// <summary>Gets full path to output directory</summary>
-    private string OutputPath => Path.Combine(projectEnvironment.Value.Path, ProjectPaths.Output);
+    /// <summary>Gets full path to output directory (supports hot-reload)</summary>
+    private string OutputPath => pathResolver.OutputPath;
 
     /// <summary>Gets current image settings (supports hot-reload)</summary>
     private ImageConfig ImageSettings => options.CurrentValue.Images;
@@ -478,6 +480,7 @@ public sealed partial class RenderService(
                 effectiveDataSources,
                 metadataBasePath,
                 projectEnvironment.Value.Path,
+                SourcePath,
                 model.Galleries,
                 galleryImages,
                 cancellationToken);
@@ -801,6 +804,7 @@ public sealed partial class RenderService(
     /// <param name="dataSources">Dictionary of variable name → source (JSON file or $built-in)</param>
     /// <param name="basePath">Base path for resolving relative file paths</param>
     /// <param name="projectPath">Project root path for resolving source folder</param>
+    /// <param name="sourcePath">Resolved source directory path</param>
     /// <param name="allGalleries">All galleries in the site</param>
     /// <param name="localImages">Images in the current gallery folder</param>
     /// <param name="cancellationToken">Cancellation token</param>
@@ -809,6 +813,7 @@ public sealed partial class RenderService(
         IReadOnlyDictionary<string, string> dataSources,
         string basePath,
         string projectPath,
+        string sourcePath,
         IReadOnlyList<Gallery> allGalleries,
         IReadOnlyList<Image> localImages,
         CancellationToken cancellationToken)
@@ -821,6 +826,7 @@ public sealed partial class RenderService(
                 source,
                 basePath,
                 projectPath,
+                sourcePath,
                 allGalleries,
                 localImages,
                 cancellationToken);
@@ -841,6 +847,7 @@ public sealed partial class RenderService(
         string source,
         string basePath,
         string projectPath,
+        string sourcePath,
         IReadOnlyList<Gallery> allGalleries,
         IReadOnlyList<Image> localImages,
         CancellationToken cancellationToken)
@@ -860,7 +867,7 @@ public sealed partial class RenderService(
         if (source.EndsWith(".json", StringComparison.OrdinalIgnoreCase))
         {
             var relativePath = Path.GetRelativePath(
-                Path.Combine(projectPath, ProjectPaths.Source),
+                sourcePath,
                 basePath);
             var cachePath = Path.Combine(projectPath, ProjectPaths.Cache, relativePath, source);
 

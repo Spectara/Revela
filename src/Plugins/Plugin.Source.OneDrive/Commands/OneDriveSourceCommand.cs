@@ -8,6 +8,7 @@ using Spectara.Revela.Plugin.Source.OneDrive.Providers;
 using Spectara.Revela.Plugin.Source.OneDrive.Services;
 using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Output;
+using Spectara.Revela.Sdk.Services;
 using Spectre.Console;
 
 namespace Spectara.Revela.Plugin.Source.OneDrive.Commands;
@@ -23,7 +24,7 @@ namespace Spectara.Revela.Plugin.Source.OneDrive.Commands;
 public sealed class OneDriveSourceCommand(
     ILogger<OneDriveSourceCommand> logger,
     SharedLinkProvider provider,
-    IOptions<ProjectEnvironment> projectEnvironment,
+    IPathResolver pathResolver,
     IOptionsMonitor<OneDrivePluginConfig> config)
 {
     public Command Create()
@@ -116,9 +117,8 @@ public sealed class OneDriveSourceCommand(
                 ExcludePatterns = excludePatterns
             };
 
-            // Determine output directory (Config > Default)
-            var outputDirectory = currentConfig.OutputDirectory ?? ProjectPaths.Source;
-            outputDirectory = Path.Combine(projectEnvironment.Value.Path, outputDirectory);
+            // Output to project's source directory
+            var outputDirectory = pathResolver.SourcePath;
 
             // Determine concurrency (Config > Default)
             // Most users never need to change this - sensible default works for typical home internet

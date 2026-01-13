@@ -1,6 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using NSubstitute;
 using Spectara.Revela.Sdk.Abstractions;
+using Spectara.Revela.Sdk.Services;
 
 namespace Spectara.Revela.Plugin.Serve.Tests;
 
@@ -70,6 +71,11 @@ public sealed class ServePluginTests
         // Add mock IConfigService (required by ConfigServeCommand)
         var configService = Substitute.For<IConfigService>();
         services.AddSingleton(configService);
+
+        // Add mock IPathResolver (required by ServeCommand)
+        var pathResolver = Substitute.For<IPathResolver>();
+        pathResolver.OutputPath.Returns("/fake/output");
+        services.AddSingleton(pathResolver);
 
         plugin.ConfigureServices(services);
         var serviceProvider = services.BuildServiceProvider();

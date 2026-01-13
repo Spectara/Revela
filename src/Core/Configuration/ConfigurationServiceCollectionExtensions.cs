@@ -1,4 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
+using Spectara.Revela.Sdk.Configuration;
+using Spectara.Revela.Sdk.Services;
 
 namespace Spectara.Revela.Core.Configuration;
 
@@ -23,6 +25,7 @@ public static class ConfigurationServiceCollectionExtensions
     /// <item><see cref="ProjectConfig"/> - project section</item>
     /// <item><see cref="ThemeConfig"/> - theme section</item>
     /// <item><see cref="GenerateConfig"/> - generate section</item>
+    /// <item><see cref="PathsConfig"/> - paths section (source/output directories)</item>
     /// </list>
     /// <para>
     /// Note: site.json is loaded dynamically by RenderService, not via IOptions.
@@ -76,6 +79,15 @@ public static class ConfigurationServiceCollectionExtensions
         // Logging
         services.AddOptions<LoggingConfig>()
             .BindConfiguration(LoggingConfig.SectionName);
+
+        // Paths (source/output directories)
+        // Allows absolute paths or paths relative to project root
+        services.AddOptions<PathsConfig>()
+            .BindConfiguration(PathsConfig.SectionName);
+
+        // Path resolver service (resolves relative paths against project root)
+        // Uses IOptionsMonitor for hot-reload support during interactive sessions
+        services.AddSingleton<IPathResolver, PathResolver>();
 
         // Note: ProjectEnvironment is registered in CLI (requires IHostEnvironment)
 

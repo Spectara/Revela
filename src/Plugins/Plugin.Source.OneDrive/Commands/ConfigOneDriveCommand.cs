@@ -4,6 +4,7 @@ using Microsoft.Extensions.Options;
 using Spectara.Revela.Plugin.Source.OneDrive.Configuration;
 using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Abstractions;
+using Spectara.Revela.Sdk.Configuration;
 using Spectre.Console;
 
 namespace Spectara.Revela.Plugin.Source.OneDrive.Commands;
@@ -23,7 +24,8 @@ namespace Spectara.Revela.Plugin.Source.OneDrive.Commands;
 public sealed partial class ConfigOneDriveCommand(
     ILogger<ConfigOneDriveCommand> logger,
     IConfigService configService,
-    IOptionsMonitor<OneDrivePluginConfig> configMonitor)
+    IOptionsMonitor<OneDrivePluginConfig> configMonitor,
+    IOptionsMonitor<PathsConfig> pathsConfig)
 {
     /// <summary>
     /// Creates the command definition.
@@ -131,11 +133,12 @@ public sealed partial class ConfigOneDriveCommand(
 
         // Show success panel
         var action = isFirstTime ? "created" : "updated";
+        var sourceDir = pathsConfig.CurrentValue.Source;
         var panel = new Panel(
             $"[green]OneDrive source {action}![/]\n\n" +
             $"[bold]Configuration:[/] [cyan]project.json[/]\n" +
             (string.IsNullOrEmpty(shareUrl) ? "" : $"[bold]Share URL:[/] [dim]{shareUrl}[/]\n") +
-            $"[bold]Output directory:[/] [cyan]{ProjectPaths.Source}/[/]\n\n" +
+            $"[bold]Output directory:[/] [cyan]{sourceDir}/[/]\n\n" +
             $"[bold]Next steps:[/]\n" +
             $"1. Run [cyan]revela source onedrive download[/] to fetch files\n" +
             $"2. Run [cyan]revela generate[/] to build your site")

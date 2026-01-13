@@ -14,6 +14,10 @@ namespace Spectara.Revela.Sdk;
 /// <para>
 /// This is in the SDK so plugins can access it via IOptions&lt;ProjectEnvironment&gt;.
 /// </para>
+/// <para>
+/// For resolved source/output paths, use <see cref="Services.IPathResolver"/> instead.
+/// That service supports hot-reload when configuration changes during a session.
+/// </para>
 /// </remarks>
 public sealed class ProjectEnvironment
 {

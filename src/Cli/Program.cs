@@ -44,7 +44,7 @@ builder.Services.AddRevelaCommands();
 builder.Services.AddInteractiveMode();
 builder.Services.AddPlugins(builder.Configuration, filteredArgs);
 
-// Register ProjectEnvironment (runtime info, not from JSON)
+// Register ProjectEnvironment (runtime info about project location)
 builder.Services.AddOptions<ProjectEnvironment>()
     .Configure<IHostEnvironment>((env, host) => env.Path = host.ContentRootPath);
 

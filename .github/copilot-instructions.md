@@ -62,7 +62,7 @@ This is a **complete rewrite** of the original Bash-based revela project:
 ### General
 - **Language:** C# 14
 - **Framework:** .NET 10
-- **Namespaces:** File-scoped (`namespace Revela.Core.Models;`)
+- **Namespaces:** File-scoped (`namespace Spectara.Revela.Core.Models;`)
 - **Nullable:** Enabled globally
 - **Async:** Always use `async/await`, include `CancellationToken`
 
@@ -672,15 +672,62 @@ await ScanAsync(shareUrl, token, cancellationToken);  // Pass as param
 await DownloadAsync(item.DownloadUrl);  // Pre-authenticated URL
 ```
 
+### 10. Path Resolution (IPathResolver)
+
+**IMPORTANT:** Never hardcode "source" or "output" paths! Use `IPathResolver`.
+
+#### Why IPathResolver?
+Users can configure custom paths in `project.json`:
+```json
+{
+  "paths": {
+    "source": "D:\\OneDrive\\Photos",
+    "output": "/var/www/html"
+  }
+}
+```
+
+#### Usage Pattern
+```csharp
+// ✅ CORRECT - Inject IPathResolver
+public sealed class MyService(IPathResolver pathResolver)
+{
+    public void Process()
+    {
+        var sourcePath = pathResolver.SourcePath;  // Resolves to configured path
+        var outputPath = pathResolver.OutputPath;  // Supports relative & absolute
+    }
+}
+
+// ❌ WRONG - Hardcoded paths
+var sourcePath = Path.Combine(projectPath, "source");  // Ignores user config!
+```
+
+#### Path Resolution Logic
+- **Relative paths:** Resolved against project root (e.g., "source" → "D:\MyProject\source")
+- **Absolute paths:** Used directly (e.g., "D:\OneDrive\Photos" → "D:\OneDrive\Photos")
+- **Hot-reload:** Uses `IOptionsMonitor<PathsConfig>` - changes apply without restart
+
+#### ProjectPaths Constants
+`ProjectPaths` contains ONLY non-configurable paths:
+- `ProjectPaths.Cache` → ".cache"
+- `ProjectPaths.Themes` → "themes"  
+- `ProjectPaths.Plugins` → "plugins"
+- `ProjectPaths.SharedImages` → "_images"
+- `ProjectPaths.Static` → "_static"
+
+**❌ `ProjectPaths.Source` and `ProjectPaths.Output` were REMOVED!**
+Use `IPathResolver.SourcePath` and `IPathResolver.OutputPath` instead.
+
 ---
 
 ## Common Tasks
 
 ### Adding a New Model
-Location: `src/Revela.Core/Models/`
+Location: `src/Core/Models/` or `src/Sdk/Models/`
 
 ```csharp
-namespace Revela.Core.Models;
+namespace Spectara.Revela.Core.Models;
 
 /// <summary>
 /// Description of the model
@@ -693,11 +740,11 @@ public sealed class MyModel
 ```
 
 ### Adding a New Command
-Location: `src/Revela.Features/{FeatureName}/` or `src/Plugins/Plugin.*/Commands/`
+Location: `src/Commands/{FeatureName}/` or `src/Plugins/Plugin.*/Commands/`
 
 **MODERN PATTERN (with DI):**
 ```csharp
-namespace Revela.Features.MyFeature;
+namespace Spectara.Revela.Commands.MyFeature;
 
 /// <summary>
 /// Command implementation with Dependency Injection
@@ -947,10 +994,10 @@ AnsiConsole.MarkupLine($"{OutputMarkers.Warning} Warning");
 ```
 
 ### Registering Services
-Location: `src/Revela.Features/{FeatureName}/ServiceCollectionExtensions.cs`
+Location: `src/Commands/{FeatureName}/Extensions/` or `src/Core/Extensions/`
 
 ```csharp
-namespace Revela.Features.MyFeature;
+namespace Spectara.Revela.Commands.MyFeature;
 
 public static class ServiceCollectionExtensions
 {
@@ -976,8 +1023,8 @@ public static class ServiceCollectionExtensions
 - `Spectre.Console` (0.54.0) - Rich console output (progress bars, tables, panels)
 
 ### Image Processing
-- `NetVips` (3.1.0)
-- `NetVips.Native` (8.17.3)
+- `NetVips` (3.2.0)
+- `NetVips.Native` (8.18.0)
 
 ### Templating
 - `Scriban` (6.5.2)
@@ -1025,8 +1072,8 @@ dotnet run --project tests/Plugin.Source.OneDrive.Tests
 ### Run CLI
 ```bash
 dotnet run --project src/Cli -- --help
-dotnet run --project src/Cli -- generate -p samples/minimal
-dotnet run --project src/Cli -- source onedrive download
+cd samples/filter-demo && dotnet run --project ../../src/Cli -- generate all
+cd samples/filter-demo && dotnet run --project ../../src/Cli -- source onedrive download
 ```
 
 ### Package as Tool
@@ -1133,7 +1180,7 @@ dotnet run --project tests/Core.Tests
   using System;
   using Spectre.Console;
   
-  namespace Revela.Features.Init;
+  namespace Spectara.Revela.Commands.Init;
   
   public class MyCommand { }
   ```
@@ -1166,7 +1213,7 @@ dotnet run --project tests/Core.Tests
 
 ---
 
-**Last Updated:** 2025-12-20 (Session: Interactive CLI + Clean Refactoring)
+**Last Updated:** 2026-01-13 (Session: Configurable Paths + IPathResolver)
 
 **Key Learnings from Latest Sessions:**
 - ✅ Plugin ConfigureServices pattern (3-phase lifecycle)
@@ -1194,6 +1241,10 @@ dotnet run --project tests/Core.Tests
 - ✅ **`clean` subcommands:** all, output, cache, statistics (no more flags)
 - ✅ **CommandOrderRegistry:** Controls menu order in interactive mode
 - ✅ **Debug builds:** Plugins as project references, no DLL copying needed
+- ✅ **IPathResolver:** Dynamic path resolution for source/output directories
+- ✅ **PathsConfig:** Configurable paths via project.json `paths` section
+- ✅ **ProjectPaths cleanup:** Source/Output constants removed - use IPathResolver
+- ✅ **TTY detection:** Graceful fallback when interactive mode lacks terminal
 
 **Template Context Variables:**
 - `site` - Site settings (title, author, description, copyright)
@@ -1208,6 +1259,10 @@ dotnet run --project tests/Core.Tests
 **Image Configuration (project.json):**
 ```json
 {
+  "paths": {
+    "source": "D:\\OneDrive\\Photos",
+    "output": "dist"
+  },
   "generate": {
     "images": {
       "formats": {

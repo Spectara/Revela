@@ -1,4 +1,5 @@
 using NSubstitute;
+using Spectara.Revela.Sdk.Services;
 
 namespace Spectara.Revela.Plugin.Source.OneDrive.Tests.Commands;
 
@@ -53,10 +54,11 @@ public sealed class OneDriveSourceCommandTests
         };
         var httpClient = new HttpClient(handler);
         var provider = new OneDrive.Providers.SharedLinkProvider(httpClient, providerLogger);
-        var projectEnvironment = Microsoft.Extensions.Options.Options.Create(new Sdk.ProjectEnvironment { Path = Path.GetTempPath() });
+        var pathResolver = Substitute.For<IPathResolver>();
+        pathResolver.SourcePath.Returns(Path.GetTempPath());
         var configMonitor = Substitute.For<Microsoft.Extensions.Options.IOptionsMonitor<OneDrive.Configuration.OneDrivePluginConfig>>();
         configMonitor.CurrentValue.Returns(new OneDrive.Configuration.OneDrivePluginConfig());
 
-        return new OneDrive.Commands.OneDriveSourceCommand(commandLogger, provider, projectEnvironment, configMonitor);
+        return new OneDrive.Commands.OneDriveSourceCommand(commandLogger, provider, pathResolver, configMonitor);
     }
 }

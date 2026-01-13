@@ -10,16 +10,6 @@ namespace Spectara.Revela.Sdk;
 public static class ProjectPaths
 {
     /// <summary>
-    /// Source directory for input images (photos to process).
-    /// </summary>
-    public const string Source = "source";
-
-    /// <summary>
-    /// Output directory for generated site files.
-    /// </summary>
-    public const string Output = "output";
-
-    /// <summary>
     /// Cache directory for intermediate files (manifest, processed images).
     /// </summary>
     public const string Cache = ".cache";

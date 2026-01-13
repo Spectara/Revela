@@ -8,6 +8,7 @@ using Spectara.Revela.Core.Services;
 using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Abstractions;
 using Spectara.Revela.Sdk.Models.Manifest;
+using Spectara.Revela.Sdk.Services;
 using IManifestRepository = Spectara.Revela.Sdk.Abstractions.IManifestRepository;
 
 namespace Spectara.Revela.Commands.Generate.Services;
@@ -28,17 +29,18 @@ public sealed partial class ImageService(
     IManifestRepository manifestRepository,
     IImageSizesProvider imageSizesProvider,
     IOptions<ProjectEnvironment> projectEnvironment,
+    IPathResolver pathResolver,
     IOptionsMonitor<GenerateConfig> generateOptions,
     ILogger<ImageService> logger) : IImageService
 {
     /// <summary>Image output directory within output folder</summary>
     private const string ImageDirectory = "images";
 
-    /// <summary>Gets full path to source directory</summary>
-    private string SourcePath => Path.Combine(projectEnvironment.Value.Path, ProjectPaths.Source);
+    /// <summary>Gets full path to source directory (supports hot-reload)</summary>
+    private string SourcePath => pathResolver.SourcePath;
 
-    /// <summary>Gets full path to output directory</summary>
-    private string OutputPath => Path.Combine(projectEnvironment.Value.Path, ProjectPaths.Output);
+    /// <summary>Gets full path to output directory (supports hot-reload)</summary>
+    private string OutputPath => pathResolver.OutputPath;
 
     /// <summary>Gets current image format settings (supports hot-reload)</summary>
     private ImageConfig ImageSettings => generateOptions.CurrentValue.Images;

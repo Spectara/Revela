@@ -53,12 +53,12 @@ jobs:
         run: |
           VERSION="${{ steps.download-release.outputs.tag_name }}"
           BASE_URL="https://github.com/Spectara/Revela/releases/download/${VERSION}"
-          
+
           # Replace placeholders in _index.revela
           sed -i "s|__DOWNLOAD_URL_WIN_X64__|${BASE_URL}/revela-win-x64-full.zip|g" samples/revela-website/source/_index.revela
           sed -i "s|__DOWNLOAD_URL_OSX_ARM64__|${BASE_URL}/revela-osx-arm64-full.tar.gz|g" samples/revela-website/source/_index.revela
           sed -i "s|__DOWNLOAD_URL_LINUX_X64__|${BASE_URL}/revela-linux-x64-full.tar.gz|g" samples/revela-website/source/_index.revela
-          
+
           echo "✅ Updated download links to version ${VERSION}"
           echo "   Windows: ${BASE_URL}/revela-win-x64-full.zip"
           echo "   macOS:   ${BASE_URL}/revela-osx-arm64-full.tar.gz"

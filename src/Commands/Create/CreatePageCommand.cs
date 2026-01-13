@@ -3,11 +3,10 @@ using System.Globalization;
 using System.Reflection;
 using System.Text;
 
-using Microsoft.Extensions.Options;
-
 using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Abstractions;
 using Spectara.Revela.Sdk.Output;
+using Spectara.Revela.Sdk.Services;
 
 using Spectre.Console;
 
@@ -30,7 +29,7 @@ namespace Spectara.Revela.Commands.Create;
 /// </remarks>
 public sealed partial class CreatePageCommand(
     ILogger<CreatePageCommand> logger,
-    IOptions<ProjectEnvironment> projectEnvironment,
+    IPathResolver pathResolver,
     IEnumerable<IPageTemplate> templates)
 {
     /// <summary>
@@ -287,7 +286,7 @@ public sealed partial class CreatePageCommand(
         // Pages are always created inside source/ directory
         var fullPath = Path.IsPathRooted(path)
             ? path
-            : Path.Combine(projectEnvironment.Value.Path, ProjectPaths.Source, path);
+            : Path.Combine(pathResolver.SourcePath, path);
 
         // Ensure directory exists
         Directory.CreateDirectory(fullPath);

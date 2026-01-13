@@ -6,7 +6,11 @@ namespace Spectara.Revela.Core.Configuration;
 /// <remarks>
 /// <para>
 /// Loaded from the "generate" section of revela.json or project.json.
-/// Controls output directory, image processing, sorting, and camera mappings.
+/// Controls image processing, sorting, and camera mappings.
+/// </para>
+/// <para>
+/// Note: Source and output paths are configured in the "paths" section
+/// (see <see cref="Sdk.Configuration.PathsConfig"/>).
 /// </para>
 /// <para>
 /// Global defaults in revela.json can be overridden per-project.
@@ -20,7 +24,6 @@ namespace Spectara.Revela.Core.Configuration;
 /// // project.json
 /// {
 ///   "generate": {
-///     "output": "dist",
 ///     "sorting": {
 ///       "galleries": "desc",
 ///       "images": {
@@ -48,11 +51,6 @@ public sealed class GenerateConfig
     /// Configuration section name
     /// </summary>
     public const string SectionName = "generate";
-
-    /// <summary>
-    /// Output directory path (relative to project root)
-    /// </summary>
-    public string Output { get; init; } = "output";
 
     /// <summary>
     /// Sorting settings for galleries and images
