@@ -43,6 +43,18 @@ internal sealed partial class InteractiveMenuService(
             return 1;
         }
 
+        // Check if terminal supports interactive mode (TTY available)
+        // This fails in Docker without -it, CI/CD pipelines, or piped input
+        if (!AnsiConsole.Profile.Capabilities.Interactive)
+        {
+            LogNonInteractiveTerminal(logger);
+            AnsiConsole.MarkupLine("[yellow]Interactive mode requires a terminal.[/]");
+            AnsiConsole.MarkupLine("[dim]Use [white]revela --help[/] for available commands.[/]");
+            AnsiConsole.WriteLine();
+            AnsiConsole.MarkupLine("[dim]Tip: In Docker, use [white]docker run -it ...[/] for interactive mode.[/]");
+            return 1;
+        }
+
         // Check if this is a fresh installation (no revela.json)
         if (!GlobalConfigManager.ConfigFileExists())
         {
@@ -522,6 +534,9 @@ internal sealed partial class InteractiveMenuService(
 
     [LoggerMessage(Level = LogLevel.Error, Message = "RootCommand not set")]
     private static partial void LogRootCommandNotSet(ILogger logger);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Interactive mode unavailable - terminal does not support interactive input")]
+    private static partial void LogNonInteractiveTerminal(ILogger logger);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Exiting interactive mode")]
     private static partial void LogExiting(ILogger logger);
