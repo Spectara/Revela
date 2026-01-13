@@ -136,9 +136,17 @@ public sealed partial class ConfigPathsCommand(
         }
 
         // Check if anything changed
-        if (source == current.Source && output == current.Output)
+        var hasChanges = source != current.Source || output != current.Output;
+        var defaults = new PathsConfig();
+
+        if (!hasChanges)
         {
-            AnsiConsole.MarkupLine($"{OutputMarkers.Info} No changes made");
+            // Create default directories to help new users get started
+            EnsureDefaultDirectoriesExist(source, output, defaults);
+
+            AnsiConsole.MarkupLine($"{OutputMarkers.Info} Using default paths");
+            AnsiConsole.MarkupLine($"  [dim]Source:[/] {source}");
+            AnsiConsole.MarkupLine($"  [dim]Output:[/] {output}");
             return 0;
         }
 
@@ -153,6 +161,9 @@ public sealed partial class ConfigPathsCommand(
         };
 
         await configService.UpdateProjectConfigAsync(updates, cancellationToken).ConfigureAwait(false);
+
+        // Create default directories (only if using defaults, not custom paths)
+        EnsureDefaultDirectoriesExist(source, output, defaults);
 
         LogPathsConfigured(logger, source, output);
 
@@ -169,7 +180,7 @@ public sealed partial class ConfigPathsCommand(
         AnsiConsole.MarkupLine($"  [dim]Source:[/] {source} → [cyan]{resolvedSource}[/]");
         AnsiConsole.MarkupLine($"  [dim]Output:[/] {output} → [cyan]{resolvedOutput}[/]");
 
-        // Warn if source directory doesn't exist
+        // Warn if source directory doesn't exist (for custom paths that user provided)
         if (!Directory.Exists(resolvedSource))
         {
             AnsiConsole.MarkupLine($"\n{OutputMarkers.Warning} Source directory does not exist yet: [dim]{resolvedSource}[/]");
@@ -179,30 +190,24 @@ public sealed partial class ConfigPathsCommand(
     }
 
     /// <summary>
-    /// Prompts for source and output paths during project initialization.
+    /// Creates directories only if they match the default paths.
     /// </summary>
     /// <remarks>
-    /// This method is designed for use during project creation when no project.json exists yet.
-    /// It shows simple prompts with defaults and returns the selected values without saving.
-    /// The caller is responsible for saving these values to the config.
+    /// This helps new users get started by showing them where to put images.
+    /// Custom paths (like "D:\OneDrive\Photos") are not created - the user
+    /// is expected to have set them up already.
     /// </remarks>
-    /// <returns>Tuple of (sourcePath, outputPath) selected by user.</returns>
-    public static (string Source, string Output) PromptForPathsWithDefaults()
+    private static void EnsureDefaultDirectoriesExist(string source, string output, PathsConfig defaults)
     {
-        var defaults = new PathsConfig();
+        if (source == defaults.Source)
+        {
+            Directory.CreateDirectory(source);
+        }
 
-        AnsiConsole.WriteLine();
-        AnsiConsole.MarkupLine("[dim]Directory paths (press Enter for defaults, or enter custom path)[/]");
-
-        var source = AnsiConsole.Prompt(
-            new TextPrompt<string>("Source directory (your images):")
-                .DefaultValue(defaults.Source));
-
-        var output = AnsiConsole.Prompt(
-            new TextPrompt<string>("Output directory (generated site):")
-                .DefaultValue(defaults.Output));
-
-        return (source, output);
+        if (output == defaults.Output)
+        {
+            Directory.CreateDirectory(output);
+        }
     }
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Paths configured: source='{Source}', output='{Output}'")]

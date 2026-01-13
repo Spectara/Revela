@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Options;
 
 using Spectara.Revela.Commands.Config.Images;
+using Spectara.Revela.Commands.Config.Paths;
 using Spectara.Revela.Commands.Config.Project;
 using Spectara.Revela.Commands.Config.Site;
 using Spectara.Revela.Commands.Config.Theme;
@@ -34,6 +35,7 @@ public sealed partial class Wizard(
     ILogger<Wizard> logger,
     IOptions<ProjectEnvironment> projectEnvironment,
     ConfigProjectCommand configProjectCommand,
+    ConfigPathsCommand configPathsCommand,
     ConfigThemeCommand configThemeCommand,
     ConfigImageCommand configImageCommand,
     ConfigSiteCommand configSiteCommand,
@@ -49,9 +51,9 @@ public sealed partial class Wizard(
         LogStartingWizard(logger);
         ShowWelcomeScreen();
 
-        // Step 1: Configure project (creates project.json, source/, output/)
+        // Step 1: Configure project (creates project.json)
         AnsiConsole.WriteLine();
-        AnsiConsole.MarkupLine("[cyan]━━━ Step 1/4: Project Settings ━━━[/]");
+        AnsiConsole.MarkupLine("[cyan]━━━ Step 1/5: Project Settings ━━━[/]");
         AnsiConsole.MarkupLine("[dim]Configure your project name and base URL.[/]");
         AnsiConsole.WriteLine();
 
@@ -62,9 +64,22 @@ public sealed partial class Wizard(
             return 1;
         }
 
-        // Step 2: Select theme
+        // Step 2: Configure directory paths
         AnsiConsole.WriteLine();
-        AnsiConsole.MarkupLine("[cyan]━━━ Step 2/4: Select Theme ━━━[/]");
+        AnsiConsole.MarkupLine("[cyan]━━━ Step 2/5: Directory Paths ━━━[/]");
+        AnsiConsole.MarkupLine("[dim]Configure source and output directories (defaults work for most users).[/]");
+        AnsiConsole.WriteLine();
+
+        var pathsResult = await configPathsCommand.ExecuteAsync(null, null, cancellationToken);
+        if (pathsResult != 0)
+        {
+            ShowStepFailedError("paths configuration");
+            return 1;
+        }
+
+        // Step 3: Select theme
+        AnsiConsole.WriteLine();
+        AnsiConsole.MarkupLine("[cyan]━━━ Step 3/5: Select Theme ━━━[/]");
         AnsiConsole.MarkupLine("[dim]Choose a theme for your site.[/]");
         AnsiConsole.WriteLine();
 
@@ -75,9 +90,9 @@ public sealed partial class Wizard(
             return 1;
         }
 
-        // Step 3: Configure image settings (uses theme defaults)
+        // Step 4: Configure image settings (uses theme defaults)
         AnsiConsole.WriteLine();
-        AnsiConsole.MarkupLine("[cyan]━━━ Step 3/4: Image Settings ━━━[/]");
+        AnsiConsole.MarkupLine("[cyan]━━━ Step 4/5: Image Settings ━━━[/]");
         AnsiConsole.MarkupLine("[dim]Configure output formats and sizes for your images.[/]");
         AnsiConsole.WriteLine();
 
@@ -88,9 +103,9 @@ public sealed partial class Wizard(
             return 1;
         }
 
-        // Step 4: Configure site metadata
+        // Step 5: Configure site metadata
         AnsiConsole.WriteLine();
-        AnsiConsole.MarkupLine("[cyan]━━━ Step 4/4: Site Metadata ━━━[/]");
+        AnsiConsole.MarkupLine("[cyan]━━━ Step 5/5: Site Metadata ━━━[/]");
         AnsiConsole.MarkupLine("[dim]Configure your site title, author, and other metadata.[/]");
         AnsiConsole.WriteLine();
 
