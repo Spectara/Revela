@@ -481,6 +481,8 @@ Technische Einstellungen für dein Projekt:
 | `sizes` | Bildbreiten in Pixeln |
 | `minWidth/minHeight` | Kleinere Bilder ignorieren (filtert Thumbnails) |
 
+> **Fortgeschritten:** Parallelität für die Bildverarbeitung kannst du über `generate.images.maxDegreeOfParallelism` in `project.json` steuern (siehe [Architecture](../architecture.md#performance-considerations)).
+
 ### site.json
 
 Website-Metadaten:

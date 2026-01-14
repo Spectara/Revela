@@ -386,10 +386,19 @@ public sealed partial class ManifestService(
     /// </summary>
     /// <remarks>
     /// Uses forward slashes for consistency with manifest key format.
+    /// For filtered images (e.g., homepage showing images from other galleries),
+    /// SourcePath contains the original location. For regular images,
+    /// SourcePath equals nodePath + Filename.
     /// </remarks>
     private static string GetImageSourcePath(string nodePath, GalleryContent content)
     {
-        // Use forward slashes for cross-platform consistency
+        // If content has SourcePath set, use it directly (handles filtered images)
+        if (content is ImageContent image && !string.IsNullOrEmpty(image.SourcePath))
+        {
+            return image.SourcePath.Replace('\\', '/');
+        }
+
+        // Fall back to nodePath + Filename for backward compatibility
         var path = string.IsNullOrEmpty(nodePath)
             ? content.Filename
             : $"{nodePath}/{content.Filename}";

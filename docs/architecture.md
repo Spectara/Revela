@@ -407,7 +407,7 @@ public class CustomProcessor : IImageProcessor
 
 ### 1. Image Processing
 
-- **Parallel processing** - Uses `Parallel.ForEachAsync` with `Environment.ProcessorCount`
+- **Parallel processing** - Uses `Parallel.ForEachAsync` (default `Environment.ProcessorCount - 2`), configurable via `generate.images.maxDegreeOfParallelism`
 - **Thread-safe** - LibVips is thread-safe for independent images
 - **No global lock** - Each image processed independently
 - **Streaming** - NetVips streams large images (low memory)
@@ -418,6 +418,7 @@ public class CustomProcessor : IImageProcessor
 
 - **Compiled templates** - Scriban compiles once
 - **Partial caching** - Reuse common partials
+- **Parallel rendering** - Configurable via `generate.render.parallel` (default `false`) and `generate.render.maxDegreeOfParallelism`
 
 ### 3. Plugin Loading
 

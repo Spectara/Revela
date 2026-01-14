@@ -25,7 +25,7 @@ namespace Spectara.Revela.Commands.Generate.Services;
 /// </para>
 /// </remarks>
 public sealed partial class RenderService(
-    ITemplateEngine templateEngine,
+    Func<ITemplateEngine> templateEngineFactory,
     IThemeResolver themeResolver,
     ITemplateResolver templateResolver,
     IAssetResolver assetResolver,
@@ -42,6 +42,7 @@ public sealed partial class RenderService(
 {
     /// <summary>Current theme extensions (set during rendering)</summary>
     private IReadOnlyList<IThemeExtension> currentExtensions = [];
+    private IThemePlugin? currentTheme;
 
     /// <summary>Gets full path to source directory (supports hot-reload)</summary>
     private string SourcePath => pathResolver.SourcePath;
@@ -52,24 +53,38 @@ public sealed partial class RenderService(
     /// <summary>Gets current image settings (supports hot-reload)</summary>
     private ImageConfig ImageSettings => options.CurrentValue.Images;
 
-    /// <inheritdoc />
-    public void SetTheme(IThemePlugin? theme) => templateEngine.SetTheme(theme);
+    private RenderConfig RenderSettings => options.CurrentValue.Render;
 
-    /// <inheritdoc />
-    public void SetExtensions(IReadOnlyList<IThemeExtension> extensions)
+    private ITemplateEngine CreateAndConfigureEngine()
     {
-        currentExtensions = extensions;
-        templateEngine.SetExtensions(extensions);
+        var engine = templateEngineFactory();
+        engine.SetTheme(currentTheme);
+        engine.SetExtensions(currentExtensions);
+        return engine;
     }
 
     /// <inheritdoc />
-    public string Render(string templateContent, object model) => templateEngine.Render(templateContent, model);
+    public void SetTheme(IThemePlugin? theme) => currentTheme = theme;
+
+    /// <inheritdoc />
+    public void SetExtensions(IReadOnlyList<IThemeExtension> extensions) => currentExtensions = extensions;
+
+    /// <inheritdoc />
+    public string Render(string templateContent, object model)
+    {
+        var engine = CreateAndConfigureEngine();
+        return engine.Render(templateContent, model);
+    }
 
     /// <inheritdoc />
     public async Task<string> RenderFileAsync(
         string templatePath,
         object model,
-        CancellationToken cancellationToken = default) => await templateEngine.RenderFileAsync(templatePath, model, cancellationToken);
+        CancellationToken cancellationToken = default)
+    {
+        var engine = CreateAndConfigureEngine();
+        return await engine.RenderFileAsync(templatePath, model, cancellationToken);
+    }
 
     /// <inheritdoc />
     public async Task<RenderResult> RenderAsync(
@@ -136,7 +151,8 @@ public sealed partial class RenderService(
             };
 
             // Render templates
-            var pageCount = await RenderSiteAsync(siteModel, config, theme, progress, cancellationToken);
+            var engine = CreateAndConfigureEngine();
+            var pageCount = await RenderSiteAsync(engine, siteModel, config, theme, progress, cancellationToken);
 
             // Copy assets (theme, extensions, local overrides)
             if (theme is not null)
@@ -366,6 +382,7 @@ public sealed partial class RenderService(
     #region Private Methods - Rendering
 
     private async Task<int> RenderSiteAsync(
+        ITemplateEngine engine,
         SiteModel model,
         RenderContext config,
         IThemePlugin? theme,
@@ -421,7 +438,7 @@ public sealed partial class RenderService(
             ? rootGallery.Images
             : model.Images;
 
-        var indexHtml = templateEngine.Render(
+        var indexHtml = engine.Render(
             indexTemplate,
             new
             {
@@ -444,23 +461,16 @@ public sealed partial class RenderService(
             cancellationToken);
         pageCount++;
 
-        // Render gallery pages (skip root gallery, already rendered as index)
-        foreach (var gallery in model.Galleries.Where(g => !string.IsNullOrEmpty(g.Path)))
-        {
-            cancellationToken.ThrowIfCancellationRequested();
+        var galleriesToRender = model.Galleries.Where(g => !string.IsNullOrEmpty(g.Path)).ToList();
+        pageCount++; // index rendered
 
-            progress?.Report(new RenderProgress
-            {
-                CurrentPage = $"{gallery.Slug.TrimEnd('/')}​/index.html",
-                Rendered = pageCount,
-                Total = totalPages
-            });
+        async Task RenderGalleryAsync(Gallery gallery, ITemplateEngine renderEngine, CancellationToken ct)
+        {
+            ct.ThrowIfCancellationRequested();
 
             // Load metadata from _index.md at render time (not stored in manifest)
-            var (customTemplate, dataSources, metadataBasePath) = await LoadGalleryMetadataAsync(gallery, cancellationToken);
+            var (customTemplate, dataSources, metadataBasePath) = await LoadGalleryMetadataAsync(gallery, ct);
 
-            // Use gallery's own images (from manifest Content, populated during scan)
-            // Works for both normal galleries and filter galleries
             var galleryImages = gallery.Images.ToList();
 
             var relativeBasePath = UrlBuilder.CalculateBasePath(gallery.Slug);
@@ -468,8 +478,6 @@ public sealed partial class RenderService(
             var galleryNavigation = SetActiveState(model.Navigation, gallery.Slug);
             var galleryImageBasePath = CalculateImageBasePath(config, relativeBasePath);
 
-            // Resolve data sources from data: field (JSON files, $galleries, $images)
-            // If no explicit data sources, use extension defaults for the template
             var effectiveDataSources = dataSources;
             if (dataSources.Count == 0 && customTemplate is not null)
             {
@@ -483,23 +491,13 @@ public sealed partial class RenderService(
                 SourcePath,
                 model.Galleries,
                 galleryImages,
-                cancellationToken);
+                ct);
 
-            // Custom templates with data sources need pre-rendering to make resolved data available.
-            // However, standard body templates (page, gallery) that don't use data sources
-            // should NOT be pre-rendered, as they will be included by the layout template.
-            // Pre-rendering would cause double-wrapping since the template renders gallery.body
-            // which already contains the HTML, and then the layout includes the same template again.
-            //
-            // Pre-render only when:
-            // 1. A custom template is specified AND
-            // 2. There are resolved data sources (e.g., statistics data)
             if (customTemplate is not null && resolvedData.Count > 0)
             {
                 var contentTemplate = LoadTemplate($"{customTemplate}.revela");
                 if (contentTemplate is not null)
                 {
-                    // Build base model for custom template
                     var baseModel = new Dictionary<string, object?>
                     {
                         ["site"] = model.Site,
@@ -512,21 +510,19 @@ public sealed partial class RenderService(
                         ["images"] = galleryImages
                     };
 
-                    // Merge resolved data sources (user-defined variable names)
                     foreach (var (key, value) in resolvedData)
                     {
-                        cancellationToken.ThrowIfCancellationRequested();
+                        ct.ThrowIfCancellationRequested();
                         baseModel[key] = value;
                     }
 
-                    // Render the custom template as content
-                    var renderedContent = templateEngine.Render(contentTemplate, baseModel);
-
-                    // Set the rendered content as gallery.body
+                    var renderedContent = renderEngine.Render(contentTemplate, baseModel);
                     gallery.Body = renderedContent;
                 }
             }
-            // Build layout model - use Dictionary to support dynamic data
+
+            gallery.Body ??= string.Empty;
+
             var layoutModel = new Dictionary<string, object?>
             {
                 ["site"] = model.Site,
@@ -541,15 +537,12 @@ public sealed partial class RenderService(
                 ["scripts"] = scripts
             };
 
-            // Add resolved data (e.g., statistics) to layout context
-            // This makes data available for body templates included via {{ include body_template }}
             foreach (var (key, value) in resolvedData)
             {
                 layoutModel[key] = value;
             }
 
-            // Always use layout template
-            var galleryHtml = templateEngine.Render(galleryTemplate, layoutModel);
+            var galleryHtml = renderEngine.Render(galleryTemplate, layoutModel);
 
             var galleryOutputPath = Path.Combine(OutputPath, gallery.Slug);
             Directory.CreateDirectory(galleryOutputPath);
@@ -557,8 +550,37 @@ public sealed partial class RenderService(
             await File.WriteAllTextAsync(
                 Path.Combine(galleryOutputPath, "index.html"),
                 galleryHtml,
-                cancellationToken);
-            pageCount++;
+                ct);
+
+            var rendered = Interlocked.Increment(ref pageCount);
+            progress?.Report(new RenderProgress
+            {
+                CurrentPage = $"{gallery.Slug.TrimEnd('/')}​/index.html",
+                Rendered = rendered,
+                Total = totalPages
+            });
+        }
+
+        if (RenderSettings.Parallel)
+        {
+            var parallelOptions = new ParallelOptions
+            {
+                MaxDegreeOfParallelism = RenderSettings.MaxDegreeOfParallelism ?? -1,
+                CancellationToken = cancellationToken
+            };
+
+            await Parallel.ForEachAsync(galleriesToRender, parallelOptions, async (gallery, ct) =>
+            {
+                var renderEngine = CreateAndConfigureEngine();
+                await RenderGalleryAsync(gallery, renderEngine, ct);
+            });
+        }
+        else
+        {
+            foreach (var gallery in galleriesToRender)
+            {
+                await RenderGalleryAsync(gallery, engine, cancellationToken);
+            }
         }
 
         return pageCount;

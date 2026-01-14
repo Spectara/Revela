@@ -481,6 +481,8 @@ Technical settings for your project:
 | `sizes` | Image widths in pixels |
 | `minWidth/minHeight` | Ignore smaller images (filters thumbnails) |
 
+> **Advanced:** To tune image processing parallelism, set `generate.images.maxDegreeOfParallelism` in `project.json` (see [architecture](../architecture.md#performance-considerations)).
+
 ### site.json
 
 Website metadata:

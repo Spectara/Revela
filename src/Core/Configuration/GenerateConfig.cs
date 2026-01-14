@@ -63,9 +63,36 @@ public sealed class GenerateConfig
     public ImageConfig Images { get; init; } = new();
 
     /// <summary>
+    /// Rendering settings
+    /// </summary>
+    public RenderConfig Render { get; init; } = new();
+
+    /// <summary>
     /// Camera model transformation settings
     /// </summary>
     public CameraConfig Cameras { get; init; } = new();
+}
+
+/// <summary>
+/// Rendering configuration
+/// </summary>
+public sealed class RenderConfig
+{
+    /// <summary>
+    /// Enable parallel rendering of galleries/pages.
+    /// </summary>
+    /// <remarks>
+    /// Default is false; set to true to speed up rendering on multi-core machines.
+    /// </remarks>
+    public bool Parallel { get; init; }
+
+    /// <summary>
+    /// Optional maximum degree of parallelism.
+    /// </summary>
+    /// <remarks>
+    /// When null, uses the default from ParallelOptions (Environment.ProcessorCount).
+    /// </remarks>
+    public int? MaxDegreeOfParallelism { get; init; }
 }
 
 /// <summary>
@@ -213,27 +240,39 @@ public sealed class ImageConfig
     /// </summary>
     /// <remarks>
     /// WebP offers good compression with wide browser support.
-    /// Recommended quality: 80-90.
+    /// Recommended quality: 80-90. Set to 0 to disable.
+    /// Default is 0 - user must explicitly configure via 'revela config image'.
     /// </remarks>
-    public int Webp { get; init; } = 85;
+    public int Webp { get; init; }
 
     /// <summary>
     /// JPEG quality (1-100). Set to 0 to disable JPEG output.
     /// </summary>
     /// <remarks>
     /// JPEG is the universal fallback format for older browsers.
-    /// Recommended quality: 85-95.
+    /// Recommended quality: 85-95. Set to 0 to disable.
+    /// Default is 0 - user must explicitly configure via 'revela config image'.
     /// </remarks>
-    public int Jpg { get; init; } = 90;
+    public int Jpg { get; init; }
 
     /// <summary>
     /// AVIF quality (1-100). Set to 0 to disable AVIF output.
     /// </summary>
     /// <remarks>
     /// AVIF offers best compression but encoding is ~10x slower than WebP.
-    /// Disabled by default. Recommended quality: 75-85.
+    /// Recommended quality: 75-85. Set to 0 to disable.
+    /// Default is 0 - user must explicitly configure via 'revela config image'.
     /// </remarks>
     public int Avif { get; init; }
+
+    /// <summary>
+    /// Optional maximum degree of parallelism for image processing.
+    /// </summary>
+    /// <remarks>
+    /// When null, defaults to <c>Environment.ProcessorCount - 2</c> to leave headroom.
+    /// Set to 1 to process images sequentially on low-memory systems.
+    /// </remarks>
+    public int? MaxDegreeOfParallelism { get; init; }
 
     /// <summary>
     /// Minimum image width in pixels. Images narrower than this are skipped during scan.

@@ -42,9 +42,10 @@ public sealed partial class CleanStatisticsCommand(
     {
         cancellationToken.ThrowIfCancellationRequested();
 
+        // If cache doesn't exist, nothing to clean - exit silently
+        // (this is expected when running after 'clean cache' or 'clean all')
         if (!Directory.Exists(CachePath))
         {
-            AnsiConsole.MarkupLine($"[dim]{ProjectPaths.Cache}/[/] [yellow]does not exist[/]");
             return Task.FromResult(0);
         }
 

@@ -40,6 +40,12 @@ public sealed partial class ConfigImageCommand(
     IThemeResolver themeResolver,
     IConfigService configService)
 {
+    private static readonly Dictionary<string, int> DefaultFormatQualities = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["jpg"] = 90,
+        ["webp"] = 85,
+        ["avif"] = 80
+    };
     /// <summary>
     /// Creates the command definition.
     /// </summary>
@@ -175,7 +181,7 @@ public sealed partial class ConfigImageCommand(
         // Determine defaults: current > theme > fallback
         var defaultFormats = currentFormats
             ?? themeDefaults?.Formats
-            ?? new Dictionary<string, int> { ["jpg"] = 90 };
+            ?? DefaultFormatQualities;
 
         // Parse formats (format or format:quality or format:0 to disable)
         var validFormats = new HashSet<string>(["avif", "webp", "jpg"], StringComparer.OrdinalIgnoreCase);
@@ -207,7 +213,7 @@ public sealed partial class ConfigImageCommand(
             else
             {
                 // No quality specified, use default from theme or fallback
-                formats[normalizedFormat] = defaultFormats.GetValueOrDefault(normalizedFormat, 90);
+                formats[normalizedFormat] = defaultFormats.GetValueOrDefault(normalizedFormat, DefaultFormatQualities.GetValueOrDefault(normalizedFormat, 90));
             }
 
             parsedCount++;
@@ -254,12 +260,12 @@ public sealed partial class ConfigImageCommand(
         var currentFormats = GetCurrentFormats(current);
 
         // Determine defaults: current > theme
-        var defaultFormats = currentFormats ?? themeDefaults?.Formats;
+        var defaultFormats = currentFormats ?? themeDefaults?.Formats ?? DefaultFormatQualities;
 
         // Format selection
-        var formatChoices = new[] { "avif", "webp", "jpg" };
+        var formatChoices = new[] { "jpg", "webp", "avif" };
         var prompt = new MultiSelectionPrompt<string>()
-            .Title("Select output formats:")
+            .Title("Select output formats (deselect to disable):")
             .PageSize(5)
             .InstructionsText("[grey](Press [blue]<space>[/] to toggle, [green]<enter>[/] to accept)[/]")
             .AddChoices(formatChoices);
@@ -281,11 +287,16 @@ public sealed partial class ConfigImageCommand(
             selectedFormats = ["jpg"];
         }
 
-        // Quality per format
+        // Quality per format - use current config value or recommended defaults
         var formats = new Dictionary<string, int>();
         foreach (var format in selectedFormats)
         {
-            var defaultQuality = defaultFormats?.GetValueOrDefault(format, 85) ?? 85;
+            // Priority: current config (if > 0) > recommended defaults
+            var configuredQuality = currentFormats?.GetValueOrDefault(format) ?? 0;
+            var defaultQuality = configuredQuality > 0
+                ? configuredQuality
+                : DefaultFormatQualities.GetValueOrDefault(format, 85);
+
             var quality = AnsiConsole.Prompt(
                 new TextPrompt<int>($"Quality for [green]{format.ToUpperInvariant()}[/] (1-100):")
                     .DefaultValue(defaultQuality)
@@ -296,11 +307,20 @@ public sealed partial class ConfigImageCommand(
             formats[format] = quality;
         }
 
-        // Build update using flat format properties
+        // Build update with only selected formats (no C# defaults to override)
+        // Deselected formats are removed via null value in DeepMerge
         var imagesObj = new JsonObject();
-        foreach (var (format, quality) in formats)
+        foreach (var knownFormat in formatChoices)
         {
-            imagesObj[format] = quality;
+            if (formats.TryGetValue(knownFormat, out var quality))
+            {
+                imagesObj[knownFormat] = quality;
+            }
+            else
+            {
+                // Set to null to remove from config (DeepMerge handles this)
+                imagesObj[knownFormat] = null;
+            }
         }
 
         var update = new JsonObject

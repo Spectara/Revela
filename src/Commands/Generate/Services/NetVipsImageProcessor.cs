@@ -160,14 +160,37 @@ public sealed partial class NetVipsImageProcessor(
 
         foreach (var size in sizesToGenerate)
         {
+            cancellationToken.ThrowIfCancellationRequested();
+
             // Load thumbnail for this size using shrink-on-load optimization
-            // CopyMemory() renders to RAM, enabling saves to multiple formats
-            using var thumb = Image.Thumbnail(inputPath, size, height: 10000000).CopyMemory();
+            // After loading, we strip all metadata immediately to reduce memory footprint
+            // and avoid "large XMP not saved" warnings during encoding.
+            // CopyMemory() is essential - it renders the image to RAM, enabling:
+            // 1. Multiple format saves without re-decoding the source
+            // 2. Avoids "out of order read" errors from lazy JPEG decoding
+            using var thumb = Image.Thumbnail(inputPath, size, height: 10000000)
+                .Mutate(mutable =>
+                {
+                    // Remove all metadata fields that start with known prefixes
+                    // This reduces memory and prevents metadata from being encoded
+                    foreach (var field in mutable.GetFields())
+                    {
+                        if (field.StartsWith("exif-", StringComparison.Ordinal) ||
+                            field.StartsWith("xmp-", StringComparison.Ordinal) ||
+                            field.StartsWith("iptc-", StringComparison.Ordinal) ||
+                            field.StartsWith("icc-", StringComparison.Ordinal))
+                        {
+                            mutable.Remove(field);
+                        }
+                    }
+                })
+                .CopyMemory(); // Render to RAM for multi-format saves
             var thumbHeight = thumb.Height;
 
             // Save to ALL formats from the same thumbnail (no re-decode needed)
             foreach (var (format, quality) in options.Formats)
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 var variant = await SaveVariantAsync(
                     thumb,
                     inputPath,
@@ -252,12 +275,15 @@ public sealed partial class NetVipsImageProcessor(
     {
         try
         {
+            // Cache available metadata fields to avoid first-chance exceptions when fields are missing
+            var fields = new HashSet<string>(image.GetFields(), StringComparer.Ordinal);
+
             // NetVips stores EXIF data in the "exif-ifd0-*" and "exif-ifd2-*" fields
             // All values come as formatted strings: "VALUE (VALUE, TYPE, N components, M bytes)"
-            var rawMake = image.Get("exif-ifd0-Make") as string;
-            var rawModel = image.Get("exif-ifd0-Model") as string;
-            var rawLensModel = TryGetString(image, "exif-ifd2-LensModel");
-            var dateTimeOriginal = image.Get("exif-ifd2-DateTimeOriginal") as string;
+            var rawMake = TryGetString(image, "exif-ifd0-Make", fields);
+            var rawModel = TryGetString(image, "exif-ifd0-Model", fields);
+            var rawLensModel = TryGetString(image, "exif-ifd2-LensModel", fields);
+            var dateTimeOriginal = TryGetString(image, "exif-ifd2-DateTimeOriginal", fields);
 
             // Extract actual values from NetVips format
             var make = CameraModelMapper.ExtractExifValue(rawMake);
@@ -265,14 +291,14 @@ public sealed partial class NetVipsImageProcessor(
             var lensModel = CameraModelMapper.ExtractExifValue(rawLensModel);
 
             // Parse camera settings
-            var fNumber = TryGetDouble(image, "exif-ifd2-FNumber");
-            var exposureTime = TryGetDouble(image, "exif-ifd2-ExposureTime");
-            var iso = TryGetInt(image, "exif-ifd2-ISOSpeedRatings");
-            var focalLength = TryGetDouble(image, "exif-ifd2-FocalLength");
+            var fNumber = TryGetDouble(image, "exif-ifd2-FNumber", fields);
+            var exposureTime = TryGetDouble(image, "exif-ifd2-ExposureTime", fields);
+            var iso = TryGetInt(image, "exif-ifd2-ISOSpeedRatings", fields);
+            var focalLength = TryGetDouble(image, "exif-ifd2-FocalLength", fields);
 
             // GPS coordinates (optional)
-            var gpsLatitude = TryGetDouble(image, "exif-ifd3-GPSLatitude");
-            var gpsLongitude = TryGetDouble(image, "exif-ifd3-GPSLongitude");
+            var gpsLatitude = TryGetDouble(image, "exif-ifd3-GPSLatitude", fields);
+            var gpsLongitude = TryGetDouble(image, "exif-ifd3-GPSLongitude", fields);
 
             // Apply camera model mappings (Sony ILCE → α series, etc.)
             var mappedMake = cameraModelMapper.MapMake(make);
@@ -280,7 +306,7 @@ public sealed partial class NetVipsImageProcessor(
             var cleanedLens = CameraModelMapper.CleanLensModel(lensModel);
 
             // Extract additional useful fields
-            var raw = ExtractAdditionalExifFields(image);
+            var raw = ExtractAdditionalExifFields(image, fields);
 
             return new ExifData
             {
@@ -365,14 +391,14 @@ public sealed partial class NetVipsImageProcessor(
     /// Extract additional EXIF fields into a dictionary.
     /// Only fields with non-empty values are included.
     /// </summary>
-    private static Dictionary<string, string> ExtractAdditionalExifFields(Image image)
+    private static Dictionary<string, string> ExtractAdditionalExifFields(Image image, ISet<string> fields)
     {
         var raw = new Dictionary<string, string>(StringComparer.Ordinal);
 
         foreach (var fieldName in UsefulExifFields)
         {
             // Try different IFD locations
-            var value = TryGetExifValue(image, fieldName);
+            var value = TryGetExifValue(image, fieldName, fields);
             if (!string.IsNullOrWhiteSpace(value))
             {
                 raw[fieldName] = value;
@@ -385,14 +411,14 @@ public sealed partial class NetVipsImageProcessor(
     /// <summary>
     /// Try to get an EXIF value by field name, checking multiple IFD locations.
     /// </summary>
-    private static string? TryGetExifValue(Image image, string fieldName)
+    private static string? TryGetExifValue(Image image, string fieldName, ISet<string> fields)
     {
         // Try different IFD locations (IFD0, ExifIFD/IFD2, GPS/IFD3)
         string[] prefixes = ["exif-ifd0-", "exif-ifd2-", "exif-ifd3-"];
 
         foreach (var prefix in prefixes)
         {
-            var value = TryGetString(image, prefix + fieldName);
+            var value = TryGetString(image, prefix + fieldName, fields);
             if (!string.IsNullOrWhiteSpace(value))
             {
                 // Extract actual value from NetVips format
@@ -406,8 +432,26 @@ public sealed partial class NetVipsImageProcessor(
     /// <summary>
     /// Try to get a string value from EXIF field
     /// </summary>
-    private static string? TryGetString(Image image, string field)
+    /// <remarks>
+    /// Uses image.Contains() to check field existence before Get() to avoid
+    /// first-chance exceptions in the debugger. The fields set is used as an
+    /// additional fast-path optimization.
+    /// </remarks>
+    private static string? TryGetString(Image image, string field, ISet<string>? fields = null)
     {
+        // Fast path: if we have a cached field set and the field is not in it, skip
+        if (fields is not null && !fields.Contains(field))
+        {
+            return null;
+        }
+
+        // Check with NetVips native Contains() to avoid exception on Get()
+        if (!image.Contains(field))
+        {
+            return null;
+        }
+
+        // Field exists - safe to read (still try/catch for edge cases like corrupt data)
         try
         {
             return image.Get(field) as string;
@@ -427,25 +471,19 @@ public sealed partial class NetVipsImageProcessor(
     /// - Short: "100 (100, Short, 1 components, 2 bytes)"
     /// We need to parse the fraction or first number.
     /// </remarks>
-    private static double? TryGetDouble(Image image, string field)
+    private static double? TryGetDouble(Image image, string field, ISet<string>? fields = null)
     {
         try
         {
-            var value = image.Get(field);
+            var value = TryGetString(image, field, fields);
 
-            // NetVips returns all EXIF as strings
-            if (value is string s && !string.IsNullOrEmpty(s))
+            // NetVips returns EXIF as strings "value (meta)"; parse first number/fraction
+            if (!string.IsNullOrEmpty(value))
             {
-                return ParseExifNumericValue(s);
+                return ParseExifNumericValue(value);
             }
 
-            // Fallback for other types
-            return value switch
-            {
-                double d => d,
-                int i => i,
-                _ => null
-            };
+            return null;
         }
         catch
         {
@@ -456,26 +494,19 @@ public sealed partial class NetVipsImageProcessor(
     /// <summary>
     /// Try to get an int value from EXIF field
     /// </summary>
-    private static int? TryGetInt(Image image, string field)
+    private static int? TryGetInt(Image image, string field, ISet<string>? fields = null)
     {
         try
         {
-            var value = image.Get(field);
+            var value = TryGetString(image, field, fields);
 
-            // NetVips returns all EXIF as strings
-            if (value is string s && !string.IsNullOrEmpty(s))
+            if (!string.IsNullOrEmpty(value))
             {
-                var parsed = ParseExifNumericValue(s);
+                var parsed = ParseExifNumericValue(value);
                 return parsed.HasValue ? (int)parsed.Value : null;
             }
 
-            // Fallback for other types
-            return value switch
-            {
-                int i => i,
-                double d => (int)d,
-                _ => null
-            };
+            return null;
         }
         catch
         {

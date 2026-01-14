@@ -132,12 +132,18 @@ public sealed partial class ConfigService(
     /// <summary>
     /// Deep merges source into target. Source values override target values.
     /// Objects are merged recursively, arrays and primitives are replaced.
+    /// Null values in source remove the key from target.
     /// </summary>
     private static void DeepMerge(JsonObject target, JsonObject source)
     {
         foreach (var property in source)
         {
-            if (property.Value is JsonObject sourceObj &&
+            if (property.Value is null)
+            {
+                // Null value means "remove this key"
+                target.Remove(property.Key);
+            }
+            else if (property.Value is JsonObject sourceObj &&
                 target[property.Key] is JsonObject targetObj)
             {
                 // Both are objects: merge recursively
@@ -146,7 +152,7 @@ public sealed partial class ConfigService(
             else
             {
                 // Replace value (clone to avoid parent issues)
-                target[property.Key] = property.Value?.DeepClone();
+                target[property.Key] = property.Value.DeepClone();
             }
         }
     }

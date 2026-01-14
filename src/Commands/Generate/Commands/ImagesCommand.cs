@@ -105,21 +105,12 @@ public sealed partial class ImagesCommand(
             // Empty line before progress display
             AnsiConsole.WriteLine();
 
-            // Shared state for Live Display
-            ImageProgress? currentProgress = null;
-            var progressLock = new object();
-
             var result = await AnsiConsole.Live(new Text("Initializing..."))
                 .AutoClear(false)
                 .StartAsync(async ctx =>
                 {
                     var progress = new Progress<ImageProgress>(p =>
                     {
-                        lock (progressLock)
-                        {
-                            currentProgress = p;
-                        }
-
                         // Render the display
                         ctx.UpdateTarget(RenderProgress(p));
                     });
@@ -138,6 +129,7 @@ public sealed partial class ImagesCommand(
                 var content = "[green]Image processing complete![/]\n\n";
                 content += $"[dim]Project:[/]   [cyan]{projectName}[/]\n\n";
                 content += "[dim]Statistics:[/]\n";
+
                 content += $"  Processed: {result.ProcessedCount} images\n";
 
                 if (result.SkippedCount > 0)
@@ -148,7 +140,7 @@ public sealed partial class ImagesCommand(
                 if (result.FilesCreated > 0)
                 {
                     content += $"  Files:     {result.FilesCreated} created\n";
-                    content += $"  Size:      {FormatSize(result.TotalSize)}\n";
+                    content += $"  Size:      {FormatSize(result.TotalSize)} (generated)\n";
                 }
 
                 content += $"  Duration:  {result.Duration.TotalSeconds:F2}s\n";

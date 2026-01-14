@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Globalization;
 using Scriban;
 using Scriban.Parsing;
@@ -33,7 +34,7 @@ public sealed partial class ScribanTemplateEngine(
     IMarkdownService markdownService,
     ITemplateResolver templateResolver) : ITemplateEngine
 {
-    private readonly Dictionary<string, Template> compiledTemplates = [];
+    private readonly ConcurrentDictionary<string, Template> compiledTemplates = new();
     private IThemePlugin? currentTheme;
 
     /// <summary>
@@ -163,21 +164,17 @@ public sealed partial class ScribanTemplateEngine(
     /// </summary>
     private string RenderWithCache(string templateKey, string templateContent, object model)
     {
-        // Check if template is already compiled
-        if (!compiledTemplates.TryGetValue(templateKey, out var template))
+        var template = compiledTemplates.GetOrAdd(templateKey, key =>
         {
-            // Parse and compile
-            template = Template.Parse(templateContent);
-
-            if (template.HasErrors)
+            var parsed = Template.Parse(templateContent);
+            if (parsed.HasErrors)
             {
-                var errors = string.Join(", ", template.Messages.Select(m => m.Message));
+                var errors = string.Join(", ", parsed.Messages.Select(m => m.Message));
                 throw new InvalidOperationException($"Template parsing failed: {errors}");
             }
 
-            // Cache compiled template
-            compiledTemplates[templateKey] = template;
-        }
+            return parsed;
+        });
 
         // Create context and render
         var context = CreateScriptContext(model);
@@ -456,7 +453,7 @@ public sealed partial class ScribanTemplateEngine(
             len /= 1024;
         }
 
-        return $"{len:0.##} {sizes[order]}";
+        return string.Format(CultureInfo.InvariantCulture, "{0:0.##} {1}", len, sizes[order]);
     }
 
     /// <summary>
@@ -579,7 +576,7 @@ public sealed partial class ScribanTemplateEngine(
 /// </remarks>
 internal sealed partial class TemplateResolverLoader(
     ITemplateResolver resolver,
-    Dictionary<string, Template> templateCache,
+    ConcurrentDictionary<string, Template> templateCache,
     ILogger logger) : ITemplateLoader
 {
     /// <summary>

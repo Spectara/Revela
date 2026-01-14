@@ -39,7 +39,8 @@ public static class ServiceCollectionExtensions
         // Infrastructure services
         services.AddSingleton<IMarkdownService, MarkdownService>();
         services.AddSingleton<IImageProcessor, NetVipsImageProcessor>();
-        services.AddSingleton<ITemplateEngine, ScribanTemplateEngine>();
+        services.AddTransient<ITemplateEngine, ScribanTemplateEngine>();
+        services.AddTransient<Func<ITemplateEngine>>(sp => () => sp.GetRequiredService<ITemplateEngine>());
         services.AddSingleton<ITemplateResolver, TemplateResolver>();
         services.AddSingleton<IAssetResolver, AssetResolver>();
         services.AddSingleton<IStaticFileService, StaticFileService>();
@@ -48,7 +49,7 @@ public static class ServiceCollectionExtensions
         // Domain services (three main services)
         services.AddSingleton<IContentService, ContentService>();
         services.AddSingleton<IImageService, ImageService>();
-        services.AddSingleton<IRenderService, RenderService>();
+        services.AddTransient<IRenderService, RenderService>();
 
         // Commands (thin CLI wrappers) - also registered as IGenerateStep
         services.AddTransient<AllCommand>();

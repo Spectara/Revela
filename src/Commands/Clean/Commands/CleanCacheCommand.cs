@@ -39,9 +39,9 @@ public sealed partial class CleanCacheCommand(
     {
         cancellationToken.ThrowIfCancellationRequested();
 
+        // Nothing to clean - exit silently (goal already achieved)
         if (!Directory.Exists(CachePath))
         {
-            AnsiConsole.MarkupLine($"[dim]{ProjectPaths.Cache}/[/] [yellow]does not exist[/]");
             return Task.FromResult(0);
         }
 

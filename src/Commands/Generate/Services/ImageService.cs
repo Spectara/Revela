@@ -67,9 +67,19 @@ public sealed partial class ImageService(
                 };
             }
 
+            // Check if formats are configured
+            var formats = ImageSettings.GetActiveFormats();
+            if (formats.Count == 0)
+            {
+                return new ImageResult
+                {
+                    Success = false,
+                    ErrorMessage = "No image formats configured. Run 'revela config image' first."
+                };
+            }
+
             // Check if config changed (forces full rebuild)
             var sizes = imageSizesProvider.GetSizes();
-            var formats = ImageSettings.GetActiveFormats();
             var configHash = ManifestService.ComputeConfigHash(sizes, formats);
             var configChanged = manifestRepository.ConfigHash != configHash;
 
@@ -82,12 +92,15 @@ public sealed partial class ImageService(
 
             manifestRepository.ConfigHash = configHash;
 
-            // Collect all image paths from the root tree
+            // Collect all unique image paths from the root tree
+            // Note: The tree may contain duplicate paths (e.g., filtered images on homepage
+            // that also exist in their original gallery). We use a HashSet to ensure each
+            // image is only processed/counted once.
             var allImagePaths = CollectImagePaths(manifestRepository.Root);
-            var currentSourcePaths = allImagePaths.ToHashSet(StringComparer.OrdinalIgnoreCase);
+            var uniqueSourcePaths = allImagePaths.ToHashSet(StringComparer.OrdinalIgnoreCase);
 
             // Remove orphaned entries
-            manifestRepository.RemoveOrphans(currentSourcePaths);
+            manifestRepository.RemoveOrphans(uniqueSourcePaths);
 
             // Determine which images need processing
             var imagesToProcess = new List<(string SourcePath, string Hash, string ManifestKey, IReadOnlyList<int> Sizes)>();
@@ -97,7 +110,8 @@ public sealed partial class ImageService(
 
             var outputImagesDirectory = Path.Combine(OutputPath, ImageDirectory);
 
-            foreach (var imagePath in allImagePaths)
+            // Iterate over unique paths only (avoids double-counting filtered duplicates)
+            foreach (var imagePath in uniqueSourcePaths)
             {
                 cancellationToken.ThrowIfCancellationRequested();
 
@@ -129,7 +143,7 @@ public sealed partial class ImageService(
             }
 
             selectionStopwatch.Stop();
-            LogSelectionCompleted(logger, allImagePaths.Count, imagesToProcess.Count, cachedCount, selectionStopwatch.Elapsed);
+            LogSelectionCompleted(logger, uniqueSourcePaths.Count, imagesToProcess.Count, cachedCount, selectionStopwatch.Elapsed);
 
             long plannedVariants = 0;
             foreach (var (_, _, _, manifestSizes) in imagesToProcess)
@@ -145,11 +159,19 @@ public sealed partial class ImageService(
 
             if (cachedCount > 0)
             {
-                LogCacheHits(logger, cachedCount, allImagePaths.Count);
+                LogCacheHits(logger, cachedCount, uniqueSourcePaths.Count);
             }
 
-            // Worker pool configuration
-            var workerCount = Math.Max(1, Environment.ProcessorCount - 2);
+            // Worker pool configuration (configurable)
+            var configuredParallelism = ImageSettings.MaxDegreeOfParallelism;
+            var workerCount = configuredParallelism.HasValue
+                ? Math.Max(1, configuredParallelism.Value)
+                : Math.Max(1, Environment.ProcessorCount - 2);
+
+            if (configuredParallelism.HasValue)
+            {
+                LogUsingConfiguredParallelism(logger, workerCount);
+            }
 
             // Thread-safe worker state storage for progress display
             var workerStates = new ConcurrentDictionary<int, WorkerState>();
@@ -280,12 +302,14 @@ public sealed partial class ImageService(
                         },
                         ct);
 
-                    // Count files created: sizes × formats
-                    var filesCreated = image.Sizes.Count * formats.Count;
+                    // Count files created (actual variants) and accumulate size
+                    var filesCreated = image.Variants.Count;
+                    var imageSize = image.Variants.Sum(v => v.Size);
 
                     // Thread-safe updates
                     var currentProcessed = Interlocked.Increment(ref processedCount);
                     Interlocked.Add(ref totalFilesCreated, filesCreated);
+                    Interlocked.Add(ref totalSizeBytes, imageSize);
 
                     // Mark worker as idle
                     workerStates[workerId] = new WorkerState { WorkerId = workerId };
@@ -314,22 +338,7 @@ public sealed partial class ImageService(
                     }
                 });
 
-            // Calculate total size of output files
-            if (Directory.Exists(outputImagesDirectory))
-            {
-                var sizeStopwatch = System.Diagnostics.Stopwatch.StartNew();
-                var fileCount = 0;
-
-                foreach (var file in Directory.EnumerateFiles(outputImagesDirectory, "*.*", SearchOption.AllDirectories))
-                {
-                    cancellationToken.ThrowIfCancellationRequested();
-                    fileCount++;
-                    totalSizeBytes += new FileInfo(file).Length;
-                }
-
-                sizeStopwatch.Stop();
-                LogOutputSizeScanned(logger, fileCount, totalSizeBytes, sizeStopwatch.Elapsed);
-            }
+            // totalSizeBytes already accumulated from variants; skip directory scan
 
             // Save manifest
             manifestRepository.LastImagesProcessed = DateTime.UtcNow;
@@ -472,6 +481,9 @@ public sealed partial class ImageService(
 
     [LoggerMessage(Level = LogLevel.Debug, Message = "Output size scan: {FileCount} files, {Bytes} bytes in {Duration}")]
     private static partial void LogOutputSizeScanned(ILogger logger, int fileCount, long bytes, TimeSpan duration);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Using configured parallelism for images: {Workers}")]
+    private static partial void LogUsingConfiguredParallelism(ILogger logger, int workers);
 
     [LoggerMessage(Level = LogLevel.Error, Message = "Image processing failed")]
     private static partial void LogImageProcessingFailed(ILogger logger, Exception exception);

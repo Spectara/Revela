@@ -37,9 +37,9 @@ public sealed partial class CleanOutputCommand(
     {
         cancellationToken.ThrowIfCancellationRequested();
 
+        // Nothing to clean - exit silently (goal already achieved)
         if (!Directory.Exists(OutputPath))
         {
-            AnsiConsole.MarkupLine($"[dim]{OutputPath}[/] [yellow]does not exist[/]");
             return Task.FromResult(0);
         }
 
