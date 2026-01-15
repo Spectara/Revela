@@ -25,4 +25,14 @@ public sealed class ImageProcessingOptions
     /// Optional cache directory for incremental builds
     /// </summary>
     public string? CacheDirectory { get; init; }
+
+    /// <summary>
+    /// Which dimension to use for resizing images.
+    /// </summary>
+    /// <remarks>
+    /// - "longest": Size applies to the longest side (default, best for justified galleries)
+    /// - "width": Size applies to width (all images same width)
+    /// - "height": Size applies to height (all images same height)
+    /// </remarks>
+    public string ResizeMode { get; init; } = "longest";
 }

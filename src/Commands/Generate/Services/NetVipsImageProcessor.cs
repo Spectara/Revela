@@ -153,9 +153,10 @@ public sealed partial class NetVipsImageProcessor(
         List<ImageVariant> variants = [];
 
         // Use sizes from options (already includes original width from scan phase)
-        // Filter to only sizes <= original width (in case config changed)
+        // Filter to only sizes <= longest side (in case config changed)
+        var longestSide = Math.Max(width, height);
         var sizesToGenerate = options.Sizes
-            .Where(s => s <= width)
+            .Where(s => s <= longestSide)
             .ToList();
 
         foreach (var size in sizesToGenerate)
@@ -163,12 +164,20 @@ public sealed partial class NetVipsImageProcessor(
             cancellationToken.ThrowIfCancellationRequested();
 
             // Load thumbnail for this size using shrink-on-load optimization
+            // ResizeMode determines which dimension the size applies to:
+            // - "longest": Size = longest side (portrait: height, landscape: width)
+            // - "width": Size = width (traditional, all same width)
+            // - "height": Size = height (all same height)
+            //
             // After loading, we strip all metadata immediately to reduce memory footprint
             // and avoid "large XMP not saved" warnings during encoding.
             // CopyMemory() is essential - it renders the image to RAM, enabling:
             // 1. Multiple format saves without re-decoding the source
             // 2. Avoids "out of order read" errors from lazy JPEG decoding
-            using var thumb = Image.Thumbnail(inputPath, size, height: 10000000)
+#pragma warning disable CA2000 // rawThumb is disposed via using statement; Mutate returns same instance
+            using var rawThumb = CreateThumbnail(inputPath, size, width, height, options.ResizeMode);
+#pragma warning restore CA2000
+            using var thumb = rawThumb
                 .Mutate(mutable =>
                 {
                     // Remove all metadata fields that start with known prefixes
@@ -266,6 +275,45 @@ public sealed partial class NetVipsImageProcessor(
             Exif = exif,
             DateTaken = exif?.DateTaken ?? fileInfo.LastWriteTimeUtc
         });
+    }
+
+    /// <summary>
+    /// Create a thumbnail based on the resize mode.
+    /// </summary>
+    /// <param name="inputPath">Path to source image.</param>
+    /// <param name="size">Target size in pixels.</param>
+    /// <param name="originalWidth">Original image width.</param>
+    /// <param name="originalHeight">Original image height.</param>
+    /// <param name="resizeMode">Which dimension to constrain: "longest", "width", or "height".</param>
+    /// <returns>Thumbnail image (caller must dispose).</returns>
+    private static Image CreateThumbnail(string inputPath, int size, int originalWidth, int originalHeight, string resizeMode)
+    {
+        // Image.Thumbnail behavior (from libvips docs):
+        // - With only width: "fit within a square of size width x width" = longest side = width
+        // - With width + height: fit within width x height box
+        //
+        // ResizeMode mapping:
+        // - "longest" (default): size = longest side → use Thumbnail(path, size) - fits in size×size square
+        // - "width": size = exact width → use Thumbnail(path, size, height: largeValue)
+        // - "height": size = exact height → calculate width from aspect ratio
+
+        var aspectRatio = (double)originalWidth / originalHeight;
+        const int largeValue = 100_000; // Large enough to not constrain, small enough for gint
+
+        return resizeMode.ToUpperInvariant() switch
+        {
+            "WIDTH" =>
+                // Size = target width, height unconstrained
+                Image.Thumbnail(inputPath, size, height: largeValue),
+
+            "HEIGHT" =>
+                // Size = target height, calculate width from aspect ratio
+                Image.Thumbnail(inputPath, (int)(size * aspectRatio), height: size),
+
+            // "LONGEST" (default) - libvips default: fits within size×size square
+            // This automatically makes the longest side = size
+            _ => Image.Thumbnail(inputPath, size)
+        };
     }
 
     /// <summary>

@@ -207,8 +207,8 @@ public sealed partial class ConfigSiteCommand(
             "AUTHOR" => Environment.UserName,
             "DESCRIPTION" => "Photography portfolio",
             "COPYRIGHT" => collectedValues.TryGetValue("author", out var author) && !string.IsNullOrEmpty(author)
-                ? $"© {year} {author}. All rights reserved."
-                : $"© {year} {Environment.UserName}. All rights reserved.",
+                ? $"© {year} {author}"
+                : $"© {year} {Environment.UserName}",
             _ => ""
         };
 

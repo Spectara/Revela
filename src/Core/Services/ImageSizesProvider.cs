@@ -6,16 +6,22 @@ using Spectara.Revela.Core.Configuration;
 namespace Spectara.Revela.Core.Services;
 
 /// <summary>
-/// Provides image sizes from theme configuration.
+/// Provides image sizes and resize mode from theme configuration.
 /// </summary>
 public interface IImageSizesProvider
 {
     /// <summary>
     /// Gets the image sizes to generate for responsive images.
     /// </summary>
-    /// <returns>List of widths in pixels.</returns>
+    /// <returns>List of sizes in pixels (interpretation depends on ResizeMode).</returns>
     /// <exception cref="InvalidOperationException">When no sizes are configured and theme is not found.</exception>
     IReadOnlyList<int> GetSizes();
+
+    /// <summary>
+    /// Gets the resize mode that determines how sizes are applied.
+    /// </summary>
+    /// <returns>Resize mode: "longest" (default), "width", or "height".</returns>
+    string GetResizeMode();
 }
 
 /// <summary>
@@ -40,6 +46,7 @@ public sealed class ImageSizesProvider(
     IThemeResolver themeResolver) : IImageSizesProvider
 {
     private IReadOnlyList<int>? cachedSizes;
+    private string? cachedResizeMode;
 
     /// <inheritdoc />
     public IReadOnlyList<int> GetSizes()
@@ -51,7 +58,7 @@ public sealed class ImageSizesProvider(
         }
 
         // Load from resolved theme (local or installed)
-        var themeSizes = TryLoadThemeSizes();
+        var (themeSizes, _) = TryLoadThemeSettings();
         if (themeSizes is { Count: > 0 })
         {
             cachedSizes = themeSizes;
@@ -64,54 +71,84 @@ public sealed class ImageSizesProvider(
             $"Configuration/images.json with a 'sizes' array.");
     }
 
+    /// <inheritdoc />
+    public string GetResizeMode()
+    {
+        // Return cached value if available
+        if (cachedResizeMode is not null)
+        {
+            return cachedResizeMode;
+        }
+
+        // Load from resolved theme
+        var (_, resizeMode) = TryLoadThemeSettings();
+        cachedResizeMode = resizeMode ?? "longest";
+        return cachedResizeMode;
+    }
+
     /// <summary>
-    /// Load sizes from resolved theme's GetImagesTemplate().
+    /// Load settings from resolved theme's GetImagesTemplate().
     /// </summary>
-    private ReadOnlyCollection<int>? TryLoadThemeSizes()
+    private (ReadOnlyCollection<int>? Sizes, string? ResizeMode) TryLoadThemeSettings()
     {
         var themeName = themeConfig.CurrentValue.Name;
         if (string.IsNullOrEmpty(themeName))
         {
-            return null;
+            return (null, null);
         }
 
         var projectPath = projectEnvironment.Value.Path;
         var theme = themeResolver.Resolve(themeName, projectPath);
         if (theme is null)
         {
-            return null;
+            return (null, null);
         }
 
         using var stream = theme.GetImagesTemplate();
         if (stream is null)
         {
-            return null;
+            return (null, null);
         }
 
         try
         {
             using var doc = JsonDocument.Parse(stream);
 
-            // images.json format: { "sizes": [...], "formats": {...} }
+            // images.json format: { "sizes": [...], "resizeMode": "longest" }
+            ReadOnlyCollection<int>? sizes = null;
+            string? resizeMode = null;
+
             if (doc.RootElement.TryGetProperty("sizes", out var sizesElement) &&
                 sizesElement.ValueKind == JsonValueKind.Array)
             {
-                var sizes = new List<int>();
+                var sizesList = new List<int>();
                 foreach (var size in sizesElement.EnumerateArray())
                 {
-                    if (size.TryGetInt32(out var width))
+                    if (size.TryGetInt32(out var value))
                     {
-                        sizes.Add(width);
+                        sizesList.Add(value);
                     }
                 }
-                return sizes.AsReadOnly();
+                sizes = sizesList.AsReadOnly();
             }
+
+            if (doc.RootElement.TryGetProperty("resizeMode", out var resizeModeElement) &&
+                resizeModeElement.ValueKind == JsonValueKind.String)
+            {
+                resizeMode = resizeModeElement.GetString();
+            }
+
+            // Cache both values
+            cachedSizes = sizes;
+            cachedResizeMode = resizeMode ?? "longest";
+
+            return (sizes, resizeMode);
         }
         catch (JsonException)
         {
             // Invalid JSON in theme
         }
 
-        return null;
+        return (null, null);
     }
 }

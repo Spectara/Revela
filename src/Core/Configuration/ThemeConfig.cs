@@ -66,10 +66,24 @@ public sealed class ThemeConfig
 public sealed class ThemeImagesConfig
 {
     /// <summary>
-    /// Image widths to generate (in pixels) for responsive images.
+    /// Image sizes to generate (in pixels) for responsive images.
     /// </summary>
     /// <remarks>
     /// These match the theme's CSS breakpoints. Empty means use theme defaults.
+    /// The value represents the dimension specified by <see cref="ResizeMode"/>.
     /// </remarks>
     public IReadOnlyList<int> Sizes { get; init; } = [];
+
+    /// <summary>
+    /// Which dimension to use for resizing images.
+    /// </summary>
+    /// <remarks>
+    /// - "longest": Size applies to the longest side (portrait=height, landscape=width).
+    ///   Best for justified galleries where images have varying aspect ratios.
+    /// - "width": Size applies to width (traditional, all images same width).
+    ///   Best for grid layouts with fixed columns.
+    /// - "height": Size applies to height (all images same height).
+    ///   Best for filmstrip/carousel layouts.
+    /// </remarks>
+    public string ResizeMode { get; init; } = "longest";
 }

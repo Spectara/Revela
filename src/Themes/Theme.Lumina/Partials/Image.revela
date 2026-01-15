@@ -1,75 +1,72 @@
 {{~##
-  Image Article Template - Expose Theme
+Image Article Template - Lumina Theme
 
-  Renders a gallery article with:
-  - Thumbnail (responsive srcset with WebP support)
-  - EXIF overlay (on hover)
-  - Lightbox (on focus/click)
+Renders a gallery article with responsive images:
+- Thumbnail with srcset (multi-format, multi-resolution)
+- EXIF overlay (on hover)
+- Lightbox (on focus/click)
 
-  Expects: image (ImageData object)
-  ImageData: { id, url, width, height, title?, post?, exif?, sizes }
+Context variables:
+- image: ImageData { id, url, width, height, title?, exif?, sizes }
+- image_basepath: path/URL to image folder (can be CDN URL)
+- image_formats: available formats ["avif", "webp", "jpg"]
 
-  Context:
-  - image_basepath: path/URL to image folder (can be absolute CDN URL)
-  - image_formats: global list of image formats ["webp", "jpg"]
+Note: Images use resizeMode "longest" - portrait images have
+actual widths smaller than size value. We calculate true widths
+for accurate srcset w-descriptors.
 ##~}}
-{{~ # Skip rendering if no sizes available ~}}
-{{~ if !image.sizes || image.sizes.size == 0 ~}}
-  {{~ ret ~}}
-{{~ end ~}}
-{{~ # Limit thumbnail sizes to small/medium (320, 640, 1024) ~}}
-{{~ thumbnail_sizes = image.sizes | array.limit 3 ~}}
+
+{{~ # Guard: skip if no sizes available ~}}
+{{~ if !image.sizes || image.sizes.size == 0; ret; end ~}}
+
+{{~ # Variables used multiple times ~}}
+{{~ largest_size = image.sizes | array.last ~}}
+{{~ alt_text = image.title ?? '' ~}}
+
 <article tabindex="0" id="{{ image.id }}" style="--width:{{ image.width }}; --height:{{ image.height }};">
-  {{~ # Thumbnail with responsive srcset and format selection ~}}
-  <picture>
-    {{~ for format in image_formats ~}}
-    <source
-      type="image/{{ format }}"
-      srcset="{{~ for size in thumbnail_sizes ~}}{{ image_basepath }}{{ image.url }}/{{ size }}.{{ format }} {{ size }}w{{~ if !for.last ~}},
-              {{~ end ~}}{{~ end ~}}">
-    {{~ end ~}}
-    <img
-      alt="{{ image.title ?? '' }}"
-      loading="lazy"
-      decoding="async"
-      src="{{ image_basepath }}{{ image.url }}/{{ image.sizes | array.first }}.jpg"
-      width="{{ image.width }}"
-      height="{{ image.height }}">
-  </picture>
 
-  {{~ # EXIF overlay on hover ~}}
-  <aside>
-    {{~ if image.exif ~}}
-    <p>
-      {{~ image.exif.f_number ? "f/" + image.exif.f_number + " " : "" ~}}
-      {{~ image.exif.exposure_time ? format_exif_exposure(image.exif.exposure_time) + " " : "" ~}}
-      {{~ image.exif.iso ? "ISO " + image.exif.iso + " " : "" ~}}
-      {{~ image.exif.focal_length ? image.exif.focal_length + "mm" : "" ~}}
-    </p>
-    <p>
-      {{~ image.exif.lens_model ?? "" ~}}
-      {{~ image.exif.model ? " on " + image.exif.model : "" ~}}
-    </p>
-    {{~ end ~}}
-  </aside>
-
-  {{~ # Lightbox on focus/click - use largest available size ~}}
-  {{~ largest_size = image.sizes | array.last ~}}
-  <figure>
-    <a tabindex="-1" title="close">close</a>
+    {{~ # --- Thumbnail (responsive srcset) --- ~}}
+    {{~ # Mobile: full width, Desktop (>600px): ~220px in grid ~}}
     <picture>
-      {{~ for format in image_formats ~}}
-      <source
-        type="image/{{ format }}"
-        srcset="{{ image_basepath }}{{ image.url }}/{{ largest_size }}.{{ format }}">
-      {{~ end ~}}
-      <img
-        alt="{{ image.title ?? '' }}"
-        loading="lazy"
-        decoding="async"
-        src="{{ image_basepath }}{{ image.url }}/{{ largest_size }}.jpg"
-        width="{{ image.width }}"
-        height="{{ image.height }}">
+        {{~ is_landscape = image.width >= image.height ~}}
+        {{~ for format in image_formats ~}}
+        <source type="image/{{ format }}" sizes="(max-width: 600px) 100vw, 220px" srcset="
+            {{~ for size in image.sizes | array.limit 4 ~}}
+            {{~ actual_width = is_landscape ? size : ((size * image.width / image.height) | math.floor) ~}}
+            {{- image_basepath }}{{ image.url }}/{{ size }}.{{ format }} {{ actual_width }}w{{ !for.last ? " ," : "" }}
+            {{~ end ~}}">
+        {{~ end ~}}
+        <img alt="{{ alt_text }}" src="{{ image_basepath }}{{ image.url }}/{{ image.sizes | array.first }}.jpg"
+            width="{{ image.width }}" height="{{ image.height }}" loading="lazy" decoding="async">
     </picture>
-  </figure>
+
+    {{~ # --- EXIF Overlay (on hover) --- ~}}
+    {{~ if image.exif ~}}
+    <aside>
+        <p>
+            {{~ image.exif.f_number ? "f/" + image.exif.f_number + " " : "" ~}}
+            {{~ image.exif.exposure_time ? format_exif_exposure(image.exif.exposure_time) + " " : "" ~}}
+            {{~ image.exif.iso ? "ISO " + image.exif.iso + " " : "" ~}}
+            {{~ image.exif.focal_length ? image.exif.focal_length + "mm" : "" ~}}
+        </p>
+        <p>
+            {{~ image.exif.lens_model ?? "" ~}}
+            {{~ image.exif.model ? " on " + image.exif.model : "" ~}}
+        </p>
+    </aside>
+    {{~ end ~}}
+
+    {{~ # --- Lightbox (on focus/click) --- ~}}
+    <figure>
+        <a href="#" tabindex="-1" title="close">close</a>
+        <picture>
+            {{~ for format in image_formats ~}}
+            <source type="image/{{ format }}"
+                srcset="{{ image_basepath }}{{ image.url }}/{{ largest_size }}.{{ format }}">
+            {{~ end ~}}
+            <img alt="{{ alt_text }}" src="{{ image_basepath }}{{ image.url }}/{{ largest_size }}.jpg"
+                width="{{ image.width }}" height="{{ image.height }}" loading="lazy" decoding="async">
+        </picture>
+    </figure>
+
 </article>

@@ -267,7 +267,8 @@ public sealed partial class ImageService(
                             Formats = formats,
                             Sizes = sizesToGenerate,
                             OutputDirectory = outputImagesDirectory,
-                            CacheDirectory = cacheDirectory
+                            CacheDirectory = cacheDirectory,
+                            ResizeMode = imageSizesProvider.GetResizeMode()
                         },
                         onVariantSaved: skipped =>
                         {

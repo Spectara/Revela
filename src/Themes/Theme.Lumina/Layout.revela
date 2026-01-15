@@ -88,7 +88,7 @@ Body Template Selection:
             {{~ include 'navigation' nav_items ~}}
         </nav>
         <div>
-            {{ site.copyright }}{{~ if theme.credits ~}} · <a href="https://revela.website" target="_blank" rel="noopener">{{ theme.credits }}</a>{{~ end ~}}
+            {{ site.copyright }}{{ if theme.credits }} - <a href="https://revela.website" target="_blank" rel="noopener">{{ theme.credits }}</a>{{ end }}
         </div>
     </footer>
 
