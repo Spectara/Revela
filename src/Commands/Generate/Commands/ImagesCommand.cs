@@ -238,22 +238,23 @@ public sealed partial class ImagesCommand(
                     .Replace("[", "[[", StringComparison.Ordinal)
                     .Replace("]", "]]", StringComparison.Ordinal) ?? "";
 
-                // Build variant symbols: ■ = done, » = skipped, □ = pending
+                // Build variant symbols from VariantResults list (ordered)
+                // ■ = done (green), ■ = skipped (dim), □ = pending
                 var symbols = new List<string>();
-                for (var i = 0; i < worker.VariantsTotal; i++)
+
+                // First: show completed variants in their actual order
+                foreach (var result in worker.VariantResults)
                 {
-                    if (i < worker.VariantsDone)
-                    {
-                        symbols.Add("[green]■[/]");
-                    }
-                    else if (i < worker.VariantsDone + worker.VariantsSkipped)
-                    {
-                        symbols.Add("[blue]»[/]");
-                    }
-                    else
-                    {
-                        symbols.Add("[dim]□[/]");
-                    }
+                    symbols.Add(result == VariantResult.Done
+                        ? "[green]■[/]"  // Generated
+                        : "[dim]■[/]");   // Skipped (exists)
+                }
+
+                // Then: fill remaining with pending symbols
+                var remaining = worker.VariantsTotal - worker.VariantResults.Count;
+                for (var i = 0; i < remaining; i++)
+                {
+                    symbols.Add("[dim]□[/]");
                 }
 
                 var symbolLine = string.Join(" ", symbols);

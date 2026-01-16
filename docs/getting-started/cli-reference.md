@@ -142,6 +142,19 @@ revela -p MyPhotos generate images     # Process images only
 revela -p MyPhotos generate statistics # Generate statistics JSON
 ```
 
+**Options:**
+
+| Option | Description |
+|--------|-------------|
+| `--force`, `-f` | Force rebuild (ignore cache) |
+
+**Incremental Processing:**
+
+`generate images` automatically detects missing variants and only generates those:
+- Add new format (e.g., webp) → only new format files are created
+- Add new size → only that size is generated
+- Existing files are skipped (shown as gray ■ in progress)
+
 **Pipeline order:** `scan` → `statistics` → `pages` → `images`
 
 ### clean
@@ -153,6 +166,33 @@ revela -p MyPhotos clean all         # Delete output + cache
 revela -p MyPhotos clean output      # Delete output only
 revela -p MyPhotos clean cache       # Delete cache only
 revela -p MyPhotos clean statistics  # Delete statistics JSON only
+revela -p MyPhotos clean images      # Smart cleanup of unused image files
+```
+
+#### clean images
+
+Intelligently removes unused image files without full regeneration:
+
+```bash
+# Preview what would be deleted
+revela -p MyPhotos clean images --dry-run
+
+# Actually delete unused files
+revela -p MyPhotos clean images
+```
+
+**Detects and removes:**
+- **Orphaned folders** - Images deleted from source
+- **Unused sizes** - Widths no longer in theme config
+- **Unused formats** - Formats disabled in project config (e.g., webp → jpg only)
+
+**Safety:** Requires valid manifest. Run `generate scan` first.
+
+**Typical workflow after config change:**
+```bash
+# Changed from webp+jpg to jpg only?
+revela -p MyPhotos clean images --dry-run  # Preview
+revela -p MyPhotos clean images            # Delete webp files
 ```
 
 ### serve (requires Serve plugin)

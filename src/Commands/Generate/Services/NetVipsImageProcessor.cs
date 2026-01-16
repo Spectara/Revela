@@ -159,9 +159,48 @@ public sealed partial class NetVipsImageProcessor(
             .Where(s => s <= longestSide)
             .ToList();
 
+        // Incremental mode: only generate specific variants
+        // Group by size for efficient thumbnail reuse
+        var variantsToGenerate = options.VariantsToGenerate;
+        var isIncrementalMode = variantsToGenerate != null && variantsToGenerate.Count > 0;
+
+        // Build lookup: which formats need to be generated for each size
+        var formatsPerSize = new Dictionary<int, HashSet<string>>();
+        if (isIncrementalMode)
+        {
+            foreach (var (size, format) in variantsToGenerate!)
+            {
+                if (!formatsPerSize.TryGetValue(size, out var formatSet))
+                {
+                    formatSet = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                    formatsPerSize[size] = formatSet;
+                }
+
+                formatSet.Add(format);
+            }
+        }
+
+        // Process each size - in incremental mode, report skipped sizes too
         foreach (var size in sizesToGenerate)
         {
             cancellationToken.ThrowIfCancellationRequested();
+
+            // In incremental mode, check if this size has any missing formats
+            var formatsNeededForSize = isIncrementalMode && formatsPerSize.TryGetValue(size, out var needed)
+                ? needed
+                : null;
+
+            // If this size has no missing formats, report all as skipped and continue
+            if (isIncrementalMode && formatsNeededForSize == null)
+            {
+                // All formats for this size already exist - report as skipped
+                foreach (var _ in options.Formats)
+                {
+                    onVariantSaved?.Invoke(true);
+                }
+
+                continue;
+            }
 
             // Load thumbnail for this size using shrink-on-load optimization
             // ResizeMode determines which dimension the size applies to:
@@ -196,23 +235,35 @@ public sealed partial class NetVipsImageProcessor(
                 .CopyMemory(); // Render to RAM for multi-format saves
             var thumbHeight = thumb.Height;
 
-            // Save to ALL formats from the same thumbnail (no re-decode needed)
+            // Process each format - report saved or skipped in order
             foreach (var (format, quality) in options.Formats)
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                var variant = await SaveVariantAsync(
-                    thumb,
-                    inputPath,
-                    options.OutputDirectory,
-                    format,
-                    size,
-                    thumbHeight,
-                    quality);
 
-                variants.Add(variant);
+                // In incremental mode, check if this specific format needs to be generated
+                var needsGeneration = !isIncrementalMode || formatsNeededForSize!.Contains(format);
 
-                // Notify caller that a variant was saved (not skipped)
-                onVariantSaved?.Invoke(false);
+                if (needsGeneration)
+                {
+                    var variant = await SaveVariantAsync(
+                        thumb,
+                        inputPath,
+                        options.OutputDirectory,
+                        format,
+                        size,
+                        thumbHeight,
+                        quality);
+
+                    variants.Add(variant);
+
+                    // Notify caller that a variant was saved
+                    onVariantSaved?.Invoke(false);
+                }
+                else
+                {
+                    // Format already exists - report as skipped
+                    onVariantSaved?.Invoke(true);
+                }
             }
         }
 

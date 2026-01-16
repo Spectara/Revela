@@ -35,4 +35,18 @@ public sealed class ImageProcessingOptions
     /// - "height": Size applies to height (all images same height)
     /// </remarks>
     public string ResizeMode { get; init; } = "longest";
+
+    /// <summary>
+    /// Specific variants to generate (incremental mode).
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// When set, only these specific size/format combinations will be generated.
+    /// This enables incremental generation after config changes (e.g., adding a new size).
+    /// </para>
+    /// <para>
+    /// When null, all combinations of <see cref="Sizes"/> × <see cref="Formats"/> are generated.
+    /// </para>
+    /// </remarks>
+    public IReadOnlyList<(int Size, string Format)>? VariantsToGenerate { get; init; }
 }

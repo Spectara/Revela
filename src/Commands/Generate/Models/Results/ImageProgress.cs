@@ -38,9 +38,27 @@ public sealed class WorkerState
     /// <summary>Variants skipped from cache (»).</summary>
     public int VariantsSkipped { get; init; }
 
+    /// <summary>
+    /// Ordered list of variant results (Done/Skipped) in processing order.
+    /// Used for accurate progress display with interleaved symbols.
+    /// </summary>
+    public IReadOnlyList<VariantResult> VariantResults { get; init; } = [];
+
     /// <summary>Whether this worker is idle (no image assigned).</summary>
     public bool IsIdle => ImageName is null;
 
     /// <summary>Whether this image is complete.</summary>
     public bool IsComplete => !IsIdle && (VariantsDone + VariantsSkipped) >= VariantsTotal;
+}
+
+/// <summary>
+/// Result of processing a single variant.
+/// </summary>
+public enum VariantResult
+{
+    /// <summary>Variant was generated (new file).</summary>
+    Done,
+
+    /// <summary>Variant was skipped (already exists).</summary>
+    Skipped
 }

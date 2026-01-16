@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Clean Images Command**: Intelligently remove unused image files
+  - Detects orphaned folders (deleted source images)
+  - Detects unused sizes (removed from theme config)
+  - Detects unused formats (disabled in project config)
+  - `--dry-run` option to preview without deleting
+  - Safety check: requires valid manifest to prevent accidental deletion
+- **Incremental Image Generation**: Only generate missing variants
+  - Adding a new format only generates that format (existing files kept)
+  - Adding a new size only generates that size
+  - Progress display shows green ■ (new) vs gray ■ (skipped)
+  - Processing order: largest sizes first for smoother progress display
+- **Documentation**: New "Image Processing" page on website
+
 ## [0.0.1-beta.12] - 2026-01-12
 
 ### Added

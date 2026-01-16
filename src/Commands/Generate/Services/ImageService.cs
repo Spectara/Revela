@@ -78,18 +78,10 @@ public sealed partial class ImageService(
                 };
             }
 
-            // Check if config changed (forces full rebuild)
+            // Store config hash for reference (but don't clear hashes on change)
+            // Incremental generation handles missing variants per-image
             var sizes = imageSizesProvider.GetSizes();
             var configHash = ManifestService.ComputeConfigHash(sizes, formats);
-            var configChanged = manifestRepository.ConfigHash != configHash;
-
-            if (configChanged && manifestRepository.Images.Count > 0)
-            {
-                LogConfigChanged(logger);
-                // Clear hashes to force reprocessing, but keep tree structure
-                manifestRepository.ClearImageHashes();
-            }
-
             manifestRepository.ConfigHash = configHash;
 
             // Collect all unique image paths from the root tree
@@ -103,7 +95,7 @@ public sealed partial class ImageService(
             manifestRepository.RemoveOrphans(uniqueSourcePaths);
 
             // Determine which images need processing
-            var imagesToProcess = new List<(string SourcePath, string Hash, string ManifestKey, IReadOnlyList<int> Sizes)>();
+            var imagesToProcess = new List<(string SourcePath, string Hash, string ManifestKey, IReadOnlyList<int> Sizes, IReadOnlyList<(int Size, string Format)>? MissingVariants)>();
             var cachedCount = 0;
 
             var selectionStopwatch = System.Diagnostics.Stopwatch.StartNew();
@@ -124,21 +116,34 @@ public sealed partial class ImageService(
                 var sourceHash = fileHashService.ComputeHash(fullPath);
                 var manifestKey = imagePath.Replace('\\', '/');
                 var existingEntry = manifestRepository.GetImage(manifestKey);
-
-                // Check if output files exist (cache is only valid if outputs exist)
                 var imageName = Path.GetFileNameWithoutExtension(existingEntry?.Filename ?? "");
-                var outputExists = existingEntry?.Sizes.Count > 0 &&
-                    OutputFilesExist(outputImagesDirectory, imageName, existingEntry.Sizes, formats);
 
-                if (!options.Force && outputExists && !ManifestService.NeedsProcessing(existingEntry, sourceHash))
+                // Get sizes from manifest (calculated during scan)
+                var manifestSizes = existingEntry?.Sizes ?? [];
+
+                // Check if source hash changed - forces full regeneration
+                var sourceChanged = options.Force || ManifestService.NeedsProcessing(existingEntry, sourceHash);
+
+                if (sourceChanged)
                 {
-                    cachedCount++;
+                    // Source changed or forced: regenerate all variants
+                    imagesToProcess.Add((fullPath, sourceHash, manifestKey, manifestSizes, null));
                 }
                 else
                 {
-                    // Get sizes from manifest (calculated during scan)
-                    var manifestSizes = existingEntry?.Sizes ?? [];
-                    imagesToProcess.Add((fullPath, sourceHash, manifestKey, manifestSizes));
+                    // Source unchanged: check which variants are missing
+                    var missingVariants = GetMissingVariants(outputImagesDirectory, imageName, manifestSizes, formats);
+
+                    if (missingVariants.Count > 0)
+                    {
+                        // Incremental: only generate missing variants
+                        imagesToProcess.Add((fullPath, sourceHash, manifestKey, manifestSizes, missingVariants));
+                    }
+                    else
+                    {
+                        // All variants exist - skip
+                        cachedCount++;
+                    }
                 }
             }
 
@@ -146,10 +151,19 @@ public sealed partial class ImageService(
             LogSelectionCompleted(logger, uniqueSourcePaths.Count, imagesToProcess.Count, cachedCount, selectionStopwatch.Elapsed);
 
             long plannedVariants = 0;
-            foreach (var (_, _, _, manifestSizes) in imagesToProcess)
+            foreach (var (_, _, _, manifestSizes, missingVariants) in imagesToProcess)
             {
-                var sizesToGenerateCount = manifestSizes.Count > 0 ? manifestSizes.Count : sizes.Count;
-                plannedVariants += (long)sizesToGenerateCount * formats.Count;
+                if (missingVariants != null)
+                {
+                    // Incremental mode: count only missing variants
+                    plannedVariants += missingVariants.Count;
+                }
+                else
+                {
+                    // Full mode: all size/format combinations
+                    var sizesToGenerateCount = manifestSizes.Count > 0 ? manifestSizes.Count : sizes.Count;
+                    plannedVariants += (long)sizesToGenerateCount * formats.Count;
+                }
             }
 
             if (imagesToProcess.Count > 0)
@@ -226,7 +240,7 @@ public sealed partial class ImageService(
                 },
                 async (item, ct) =>
                 {
-                    var (sourcePath, sourceHash, manifestKey, manifestSizes) = item;
+                    var (sourcePath, sourceHash, manifestKey, manifestSizes, missingVariants) = item;
 
                     // Assign a worker ID to this task
                     var taskId = Environment.CurrentManagedThreadId;
@@ -234,12 +248,17 @@ public sealed partial class ImageService(
 
                     // Use sizes from manifest (calculated during scan with original width)
                     // Fall back to config sizes if manifest sizes are empty (shouldn't happen)
-                    var sizesToGenerate = manifestSizes.Count > 0 ? manifestSizes : sizes;
+                    // Sort descending: largest first (heavy work first, then quick small sizes)
+                    var sizesToGenerate = (manifestSizes.Count > 0 ? manifestSizes : sizes)
+                        .OrderByDescending(s => s)
+                        .ToList();
 
                     // Calculate total variants for this image
+                    // In incremental mode: total = all possible, but only missing will be generated
                     var variantsTotal = sizesToGenerate.Count * formats.Count;
                     var variantsDone = 0;
                     var variantsSkipped = 0;
+                    var variantResults = new List<VariantResult>();
 
                     // Update worker state: starting new image
                     workerStates[workerId] = new WorkerState
@@ -248,7 +267,8 @@ public sealed partial class ImageService(
                         ImageName = Path.GetFileName(sourcePath),
                         VariantsTotal = variantsTotal,
                         VariantsDone = 0,
-                        VariantsSkipped = 0
+                        VariantsSkipped = 0,
+                        VariantResults = []
                     };
 
                     // Report progress with updated worker state
@@ -266,30 +286,46 @@ public sealed partial class ImageService(
                         {
                             Formats = formats,
                             Sizes = sizesToGenerate,
+                            VariantsToGenerate = missingVariants,  // null = all, list = incremental
                             OutputDirectory = outputImagesDirectory,
                             CacheDirectory = cacheDirectory,
                             ResizeMode = imageSizesProvider.GetResizeMode()
                         },
                         onVariantSaved: skipped =>
                         {
-                            // Update variant progress
+                            // Track result in order and update counters
                             if (skipped)
                             {
                                 Interlocked.Increment(ref variantsSkipped);
+                                lock (variantResults)
+                                {
+                                    variantResults.Add(VariantResult.Skipped);
+                                }
                             }
                             else
                             {
                                 Interlocked.Increment(ref variantsDone);
+                                lock (variantResults)
+                                {
+                                    variantResults.Add(VariantResult.Done);
+                                }
                             }
 
-                            // Update worker state
+                            // Update worker state with results list
+                            List<VariantResult> resultsCopy;
+                            lock (variantResults)
+                            {
+                                resultsCopy = [.. variantResults];
+                            }
+
                             workerStates[workerId] = new WorkerState
                             {
                                 WorkerId = workerId,
                                 ImageName = Path.GetFileName(sourcePath),
                                 VariantsTotal = variantsTotal,
                                 VariantsDone = variantsDone,
-                                VariantsSkipped = variantsSkipped
+                                VariantsSkipped = variantsSkipped,
+                                VariantResults = resultsCopy
                             };
 
                             // Report progress
@@ -431,42 +467,64 @@ public sealed partial class ImageService(
 
     #endregion
 
-    #region Output Validation
+    #region Incremental Generation
 
     /// <summary>
-    /// Check if at least one output file exists for the image.
+    /// Get list of missing size/format combinations for an image.
     /// </summary>
     /// <remarks>
-    /// Only checks if the first size/format combination exists.
-    /// If that exists, we assume all outputs are present.
-    /// This is a quick check to detect missing outputs (e.g., deleted output folder).
+    /// Checks each expected output file and returns those that don't exist.
+    /// This enables incremental generation when config changes (e.g., new size added).
     /// </remarks>
-    private static bool OutputFilesExist(
+    private static List<(int Size, string Format)> GetMissingVariants(
         string outputDirectory,
         string imageName,
         IReadOnlyList<int> sizes,
         IReadOnlyDictionary<string, int> formats)
     {
+        var missing = new List<(int Size, string Format)>();
+
         if (string.IsNullOrEmpty(imageName) || sizes.Count == 0 || formats.Count == 0)
         {
-            return false;
+            // No valid image info - return empty (will be handled as "all missing")
+            return missing;
         }
 
-        // Check first size/format combination
-        // Output path pattern: images/{imageName}/{width}.{format}
-        var firstSize = sizes[0];
-        var firstFormat = formats.Keys.First();
-        var expectedPath = Path.Combine(outputDirectory, imageName, $"{firstSize}.{firstFormat}");
+        var imageDirectory = Path.Combine(outputDirectory, imageName);
 
-        return File.Exists(expectedPath);
+        // If image directory doesn't exist, all variants are missing
+        if (!Directory.Exists(imageDirectory))
+        {
+            foreach (var size in sizes)
+            {
+                foreach (var format in formats.Keys)
+                {
+                    missing.Add((size, format));
+                }
+            }
+
+            return missing;
+        }
+
+        // Check each size/format combination
+        foreach (var size in sizes)
+        {
+            foreach (var format in formats.Keys)
+            {
+                var expectedPath = Path.Combine(imageDirectory, $"{size}.{format}");
+                if (!File.Exists(expectedPath))
+                {
+                    missing.Add((size, format));
+                }
+            }
+        }
+
+        return missing;
     }
 
     #endregion
 
     #region Logging
-
-    [LoggerMessage(Level = LogLevel.Information, Message = "Config changed, rebuilding all images")]
-    private static partial void LogConfigChanged(ILogger logger);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Using cached data for {CacheHits}/{Total} images")]
     private static partial void LogCacheHits(ILogger logger, int cacheHits, int total);

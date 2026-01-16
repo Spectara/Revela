@@ -19,6 +19,7 @@ public static class ServiceCollectionExtensions
         services.AddTransient<CleanCommand>();
         services.AddTransient<CleanAllCommand>();
         services.AddTransient<CleanOutputCommand>();
+        services.AddTransient<CleanImagesCommand>();
         services.AddTransient<CleanCacheCommand>();
         return services;
     }
