@@ -2,7 +2,7 @@
 Image Article Template - Lumina Theme
 
 Renders a gallery article with responsive images:
-- Thumbnail with srcset (multi-format, multi-resolution)
+- Thumbnail with srcset + sizes="auto" (Chrome 126+)
 - EXIF overlay (on hover)
 - Lightbox (on focus/click)
 
@@ -11,32 +11,30 @@ Context variables:
 - image_basepath: path/URL to image folder (can be CDN URL)
 - image_formats: available formats ["avif", "webp", "jpg"]
 
-Note: Images use resizeMode "longest" - portrait images have
-actual widths smaller than size value. We calculate true widths
-for accurate srcset w-descriptors.
+Note: sizes="auto" requires loading="lazy" - browser uses actual
+rendered size instead of viewport. Firefox/Safari fallback to 100vw.
 ##~}}
 
 {{~ # Guard: skip if no sizes available ~}}
 {{~ if !image.sizes || image.sizes.size == 0; ret; end ~}}
 
-{{~ # Variables used multiple times ~}}
+{{~ # Variables ~}}
 {{~ largest_size = image.sizes | array.last ~}}
 {{~ alt_text = image.title ?? '' ~}}
+{{~ is_landscape = image.width >= image.height ~}}
 
 <article tabindex="0" id="{{ image.id }}" style="--width:{{ image.width }}; --height:{{ image.height }};">
 
-    {{~ # --- Thumbnail (responsive srcset) --- ~}}
-    {{~ # Mobile: full width, Desktop (>600px): ~220px in grid ~}}
+    {{~ # --- Thumbnail (sizes="auto" for smart loading) --- ~}}
     <picture>
-        {{~ is_landscape = image.width >= image.height ~}}
         {{~ for format in image_formats ~}}
-        <source type="image/{{ format }}" sizes="(max-width: 600px) 100vw, 220px" srcset="
-            {{~ for size in image.sizes | array.limit 4 ~}}
+        <source type="image/{{ format }}" sizes="auto" srcset="
+            {{~ for size in image.sizes ~}}
             {{~ actual_width = is_landscape ? size : ((size * image.width / image.height) | math.floor) ~}}
-            {{- image_basepath }}{{ image.url }}/{{ size }}.{{ format }} {{ actual_width }}w{{ !for.last ? " ," : "" }}
+            {{- image_basepath }}{{ image.url }}/{{ size }}.{{ format }} {{ actual_width }}w{{ !for.last ? " , " : "" }}
             {{~ end ~}}">
         {{~ end ~}}
-        <img alt="{{ alt_text }}" src="{{ image_basepath }}{{ image.url }}/{{ image.sizes | array.first }}.jpg"
+        <img alt="{{ alt_text }}" src="{{ image_basepath }}{{ image.url }}/640.jpg" sizes="auto"
             width="{{ image.width }}" height="{{ image.height }}" loading="lazy" decoding="async">
     </picture>
 
@@ -57,6 +55,7 @@ for accurate srcset w-descriptors.
     {{~ end ~}}
 
     {{~ # --- Lightbox (on focus/click) --- ~}}
+    {{~ # Always load largest size - user can zoom in ~}}
     <figure>
         <a href="#" tabindex="-1" title="close">close</a>
         <picture>
