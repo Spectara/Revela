@@ -2,6 +2,7 @@ using Spectara.Revela.Commands.Packages;
 using Spectara.Revela.Commands.Plugins;
 using Spectara.Revela.Commands.Theme;
 using Spectara.Revela.Core.Models;
+using Spectara.Revela.Core.Services;
 using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Output;
 
@@ -15,20 +16,16 @@ namespace Spectara.Revela.Commands.Revela;
 /// <remarks>
 /// <para>
 /// The wizard is triggered automatically when revela.json doesn't exist
-/// (fresh installation). It orchestrates existing commands to:
+/// (fresh installation). It offers two modes:
 /// </para>
-/// <list type="number">
-/// <item>Refresh package index from all feeds</item>
-/// <item>Install themes (at least one required)</item>
-/// <item>Install plugins (optional)</item>
+/// <list type="bullet">
+/// <item><b>Full Installation (recommended):</b> Installs all available themes and plugins</item>
+/// <item><b>Custom Installation:</b> User selects specific packages to install</item>
 /// </list>
 /// <para>
 /// After completion:
 /// - If packages were installed: exits for plugin reload
 /// - If all packages already installed: continues to menu
-/// </para>
-/// <para>
-/// Feed configuration is available via 'revela config feed' commands.
 /// </para>
 /// </remarks>
 public sealed partial class Wizard(
@@ -41,6 +38,9 @@ public sealed partial class Wizard(
     /// Exit code indicating packages were installed and restart is required.
     /// </summary>
     public const int ExitCodeRestartRequired = 2;
+
+    private const string FullInstallation = "full";
+    private const string CustomInstallation = "custom";
 
     /// <summary>
     /// Runs the setup wizard.
@@ -57,7 +57,7 @@ public sealed partial class Wizard(
         LogStartingWizard(logger);
         ShowWelcomeScreen();
 
-        // Refresh package index silently
+        // Refresh package index
         AnsiConsole.MarkupLine("[dim]Refreshing package index...[/]");
         AnsiConsole.WriteLine();
 
@@ -68,28 +68,62 @@ public sealed partial class Wizard(
             return 1;
         }
 
-        // Step 1: Install themes (required)
-        AnsiConsole.WriteLine();
-        AnsiConsole.MarkupLine("[cyan]━━━ Step 1/2: Install Themes ━━━[/]");
-        AnsiConsole.MarkupLine("[dim]At least one theme is required to generate websites.[/]");
-        AnsiConsole.WriteLine();
+        // Get available packages
+        var availableThemes = await themeInstallCommand.GetAvailableThemesAsync(cancellationToken);
+        var availablePlugins = await pluginInstallCommand.GetAvailablePluginsAsync(cancellationToken);
 
-        var themeResult = await themeInstallCommand.InstallInteractiveAsync(showRestartNotice: false, cancellationToken);
+        var totalAvailable = availableThemes.Count + availablePlugins.Count;
 
-        // Check if we have any themes (either just installed or already installed)
-        if (!themeResult.HasInstalled && !themeResult.AllAlreadyInstalled)
+        // All already installed?
+        if (totalAvailable == 0)
         {
-            ShowNoThemesError();
-            return 1;
+            ShowAlreadyInstalledMessage();
+            return 0;
         }
 
-        // Step 2: Install plugins (optional)
-        AnsiConsole.WriteLine();
-        AnsiConsole.MarkupLine("[cyan]━━━ Step 2/2: Install Plugins (Optional) ━━━[/]");
-        AnsiConsole.MarkupLine("[dim]Plugins add extra functionality. Select none to skip.[/]");
-        AnsiConsole.WriteLine();
+        // Show setup mode selection
+        var mode = PromptSetupMode(availableThemes.Count, availablePlugins.Count);
 
-        var pluginResult = await pluginInstallCommand.InstallInteractiveAsync(showRestartNotice: false, cancellationToken);
+        InstallResult themeResult;
+        InstallResult pluginResult;
+
+        if (mode == FullInstallation)
+        {
+            // Full installation - install everything
+            AnsiConsole.WriteLine();
+            AnsiConsole.MarkupLine("[cyan]Installing all packages...[/]");
+            AnsiConsole.WriteLine();
+
+            themeResult = await themeInstallCommand.InstallAllAsync(showRestartNotice: false, cancellationToken);
+            pluginResult = await pluginInstallCommand.InstallAllAsync(showRestartNotice: false, cancellationToken);
+        }
+        else
+        {
+            // Custom installation - show combined multi-select
+            var (selectedThemes, selectedPlugins) = PromptCustomSelection(availableThemes, availablePlugins);
+
+            // Must have at least one theme
+            if (selectedThemes.Count == 0)
+            {
+                var installedThemes = await GlobalConfigManager.GetThemesAsync(cancellationToken);
+                if (installedThemes.Count == 0)
+                {
+                    ShowNoThemesError();
+                    return 1;
+                }
+            }
+
+            // Install selected packages
+            themeResult = await InstallSelectedAsync(
+                selectedThemes,
+                themeInstallCommand.ExecuteAsync,
+                cancellationToken);
+
+            pluginResult = await InstallSelectedAsync(
+                selectedPlugins,
+                pluginInstallCommand.ExecuteFromNuGetAsync,
+                cancellationToken);
+        }
 
         // Determine if restart is needed
         var anythingInstalled = themeResult.HasInstalled || pluginResult.HasInstalled;
@@ -125,9 +159,7 @@ public sealed partial class Wizard(
         var panel = new Panel(
             new Markup(
                 "[bold]Welcome to the Revela Setup Wizard![/]\n\n" +
-                "This wizard will help you configure Revela for first use:\n" +
-                "  [cyan]1.[/] Install a theme (required)\n" +
-                "  [cyan]2.[/] Install plugins (optional)\n\n" +
+                "This wizard will help you install themes and plugins.\n\n" +
                 "[dim]You can re-run this wizard later via:[/] Addons → wizard"))
             .WithHeader("[cyan1]Setup[/]")
             .Border(BoxBorder.Rounded)
@@ -136,6 +168,156 @@ public sealed partial class Wizard(
 
         AnsiConsole.Write(panel);
         AnsiConsole.WriteLine();
+    }
+
+    private static string PromptSetupMode(int themeCount, int pluginCount)
+    {
+        var totalCount = themeCount + pluginCount;
+        var themesText = themeCount == 1 ? "1 theme" : $"{themeCount} themes";
+        var pluginsText = pluginCount == 1 ? "1 plugin" : $"{pluginCount} plugins";
+
+        AnsiConsole.WriteLine();
+
+        var fullLabel = $"[green]⭐ Full Installation[/] [dim](recommended)[/]\n   Install all {themesText} and {pluginsText}";
+        var customLabel = "[blue]🔧 Custom Installation[/]\n   Choose which packages to install";
+
+        var selection = AnsiConsole.Prompt(
+            new SelectionPrompt<string>()
+                .Title("[cyan]How would you like to set up Revela?[/]")
+                .PageSize(10)
+                .HighlightStyle(new Style(Color.Cyan1))
+                .AddChoices(fullLabel, customLabel));
+
+        return selection.Contains("Full", StringComparison.Ordinal) ? FullInstallation : CustomInstallation;
+    }
+
+    private static (List<string> Themes, List<string> Plugins) PromptCustomSelection(
+        IReadOnlyList<PackageIndexEntry> availableThemes,
+        IReadOnlyList<PackageIndexEntry> availablePlugins)
+    {
+        AnsiConsole.WriteLine();
+
+        // Build choices with group structure
+        var allChoices = new List<string>();
+        var themeChoices = new List<string>();
+        var pluginChoices = new List<string>();
+
+        foreach (var theme in availableThemes)
+        {
+            var shortName = theme.Id.Replace("Spectara.Revela.Theme.", "", StringComparison.Ordinal);
+            var choice = $"{theme.Id}|[cyan]Theme:[/] {shortName} [dim]- {Truncate(theme.Description, 40)}[/]";
+            themeChoices.Add(choice);
+            allChoices.Add(choice);
+        }
+
+        foreach (var plugin in availablePlugins)
+        {
+            var shortName = plugin.Id.Replace("Spectara.Revela.Plugin.", "", StringComparison.Ordinal);
+            var choice = $"{plugin.Id}|[blue]Plugin:[/] {shortName} [dim]- {Truncate(plugin.Description, 40)}[/]";
+            pluginChoices.Add(choice);
+            allChoices.Add(choice);
+        }
+
+        var prompt = new MultiSelectionPrompt<string>()
+            .Title("[cyan]Select packages to install:[/] [dim](Space to toggle, Enter to confirm)[/]")
+            .PageSize(15)
+            .Required(false)
+            .HighlightStyle(new Style(Color.Cyan1))
+            .InstructionsText("[dim](↑↓ navigate, Space toggle, a=all, Enter confirm)[/]");
+
+        // Add themes group
+        if (themeChoices.Count > 0)
+        {
+            prompt.AddChoiceGroup(
+                "[yellow]── Themes ──[/]",
+                [.. themeChoices.Select(c => c.Split('|')[1])]);
+        }
+
+        // Add plugins group
+        if (pluginChoices.Count > 0)
+        {
+            prompt.AddChoiceGroup(
+                "[yellow]── Plugins ──[/]",
+                [.. pluginChoices.Select(c => c.Split('|')[1])]);
+        }
+
+        // Pre-select all items
+        foreach (var choice in allChoices)
+        {
+            prompt.Select(choice.Split('|')[1]);
+        }
+
+        var selections = AnsiConsole.Prompt(prompt);
+
+        // Map back to package IDs
+        var selectedThemes = new List<string>();
+        var selectedPlugins = new List<string>();
+
+        foreach (var selection in selections)
+        {
+            // Skip group headers
+            if (selection.Contains("── Themes ──", StringComparison.Ordinal) || selection.Contains("── Plugins ──", StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            // Find the original choice to get the package ID
+            var originalChoice = allChoices.FirstOrDefault(c => c.Split('|')[1] == selection);
+            if (originalChoice is not null)
+            {
+                var packageId = originalChoice.Split('|')[0];
+                if (packageId.Contains(".Theme.", StringComparison.Ordinal))
+                {
+                    selectedThemes.Add(packageId);
+                }
+                else
+                {
+                    selectedPlugins.Add(packageId);
+                }
+            }
+        }
+
+        return (selectedThemes, selectedPlugins);
+    }
+
+    private static async Task<InstallResult> InstallSelectedAsync(
+        List<string> packageIds,
+        Func<string, string?, string?, CancellationToken, Task<int>> installFunc,
+        CancellationToken cancellationToken)
+    {
+        if (packageIds.Count == 0)
+        {
+            return InstallResult.Empty;
+        }
+
+        var installed = new List<string>();
+        var failed = new List<string>();
+
+        foreach (var packageId in packageIds)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var result = await installFunc(packageId, null, null, cancellationToken);
+            if (result == 0)
+            {
+                installed.Add(packageId);
+            }
+            else
+            {
+                failed.Add(packageId);
+            }
+        }
+
+        return new InstallResult(installed, [], failed);
+    }
+
+    private static string Truncate(string? text, int maxLength)
+    {
+        if (string.IsNullOrEmpty(text))
+        {
+            return "";
+        }
+
+        return text.Length <= maxLength ? text : text[..(maxLength - 3)] + "...";
     }
 
     private static void ShowRefreshFailedError()
@@ -148,9 +330,34 @@ public sealed partial class Wizard(
     private static void ShowNoThemesError()
     {
         AnsiConsole.WriteLine();
-        AnsiConsole.MarkupLine($"{OutputMarkers.Error} No theme installed. Setup incomplete.");
+        AnsiConsole.MarkupLine($"{OutputMarkers.Error} No theme selected. Setup incomplete.");
         AnsiConsole.MarkupLine("[dim]At least one theme is required to generate websites.[/]");
         AnsiConsole.MarkupLine("[dim]Run 'revela' again to restart the setup wizard.[/]");
+    }
+
+    private static void ShowAlreadyInstalledMessage()
+    {
+        AnsiConsole.WriteLine();
+
+        var lines = new List<string>
+        {
+            "[green]✓ All packages already installed![/]",
+            "",
+            "All available themes and plugins are already set up.",
+            "",
+            "You're ready to use Revela!",
+        };
+
+        var panel = new Panel(new Markup(string.Join("\n", lines)))
+            .WithHeader("[green]Complete[/]")
+            .Border(BoxBorder.Rounded)
+            .BorderStyle(new Style(Color.Green))
+            .Padding(1, 0);
+
+        AnsiConsole.Write(panel);
+        AnsiConsole.WriteLine();
+        AnsiConsole.MarkupLine("[dim]Press any key to continue...[/]");
+        Console.ReadKey(intercept: true);
     }
 
     private static void ShowCompletionSummary(InstallResult themeResult, InstallResult pluginResult)
@@ -169,7 +376,6 @@ public sealed partial class Wizard(
                 lines.Add("[bold]Installed themes:[/]");
                 foreach (var theme in themeResult.Installed)
                 {
-                    // Extract short name from full package ID
                     var shortName = theme.Replace("Spectara.Revela.Theme.", "", StringComparison.Ordinal);
                     lines.Add($"  [cyan]•[/] {shortName}");
                 }
@@ -203,12 +409,12 @@ public sealed partial class Wizard(
         }
         else
         {
-            // Nothing new installed
+            // Nothing new installed (user selected nothing or all were already installed)
             var lines = new List<string>
             {
                 "[green]✓ Setup completed![/]",
                 "",
-                "All themes and plugins were already installed.",
+                "No new packages were installed.",
                 "",
                 "You're ready to use Revela!",
             };

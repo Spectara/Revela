@@ -366,6 +366,25 @@ public sealed partial class ThemeInstallCommand(
         }
     }
 
+    /// <summary>
+    /// Gets available themes (not yet installed) from the package index.
+    /// </summary>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>List of available theme packages.</returns>
+    public async Task<IReadOnlyList<PackageIndexEntry>> GetAvailableThemesAsync(CancellationToken cancellationToken = default)
+    {
+        var themes = await packageIndexService.SearchByTypeAsync("RevelaTheme", cancellationToken);
+        if (themes.Count == 0)
+        {
+            return [];
+        }
+
+        var installedThemes = await GlobalConfigManager.GetThemesAsync(cancellationToken);
+        var installedIds = installedThemes.Keys.ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        return [.. themes.Where(t => !installedIds.Contains(t.Id))];
+    }
+
     [LoggerMessage(Level = LogLevel.Information, Message = "Installing theme {PackageId} version={Version} source={Source}")]
     private static partial void LogInstallingTheme(ILogger logger, string packageId, string? version, string? source);
 

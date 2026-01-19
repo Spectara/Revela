@@ -347,6 +347,25 @@ public sealed partial class PluginInstallCommand(
         }
     }
 
+    /// <summary>
+    /// Gets available plugins (not yet installed) from the package index.
+    /// </summary>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>List of available plugin packages.</returns>
+    public async Task<IReadOnlyList<PackageIndexEntry>> GetAvailablePluginsAsync(CancellationToken cancellationToken = default)
+    {
+        var plugins = await packageIndexService.SearchByTypeAsync("RevelaPlugin", cancellationToken);
+        if (plugins.Count == 0)
+        {
+            return [];
+        }
+
+        var installedPlugins = await GlobalConfigManager.GetPluginsAsync(cancellationToken);
+        var installedIds = installedPlugins.Keys.ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        return [.. plugins.Where(p => !installedIds.Contains(p.Id))];
+    }
+
     [LoggerMessage(Level = LogLevel.Information, Message = "Installing plugin '{PackageId}' version '{Version}' from source '{Source}'")]
     private partial void LogInstallingPlugin(string packageId, string? version, string? source);
 
