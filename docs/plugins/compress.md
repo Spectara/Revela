@@ -6,15 +6,31 @@
 
 ## Overview
 
-The Compress plugin pre-compresses static files in your output directory with **Gzip** and **Brotli**. This improves loading times on hosting platforms that don't support on-the-fly compression (GitHub Pages, S3, basic web hosts).
+The Compress plugin pre-compresses static files in your output directory with **Gzip** and **Brotli**. This improves loading times on hosting platforms that don't support on-the-fly compression.
+
+> **Note:** Many modern platforms (GitHub Pages, Netlify, Vercel, Cloudflare Pages) compress automatically. This plugin is primarily for self-hosted servers, AWS S3 (without CloudFront), or basic web hosts.
+
+## Do You Need This Plugin?
+
+| Platform | Need Plugin? | Reason |
+|----------|--------------|--------|
+| **GitHub Pages** | ❌ No | Automatic Gzip compression |
+| **Netlify** | ❌ No | Automatic Gzip + Brotli |
+| **Vercel** | ❌ No | Automatic Gzip + Brotli |
+| **Cloudflare Pages** | ❌ No | Automatic Gzip + Brotli |
+| **AWS S3 + CloudFront** | 🟡 Optional | CloudFront compresses, but pre-compressed is faster |
+| **AWS S3 (direct)** | ✅ Yes | No automatic compression |
+| **nginx / Apache** | ✅ Yes | Saves CPU, serves pre-compressed instantly |
+| **Basic web hosting** | ✅ Yes | Often no compression support |
 
 ## Why Pre-Compression?
 
-Many static hosting platforms serve files as-is without compression. By pre-generating `.gz` and `.br` files, you enable:
+Some static hosting platforms serve files as-is without compression. By pre-generating `.gz` and `.br` files, you enable:
 
 - **70-95% smaller file sizes** for text-based content
 - **Faster page loads** for visitors
 - **Lower bandwidth costs** for high-traffic sites
+- **Reduced server CPU** - no on-the-fly compression needed
 
 Modern web servers (nginx, Apache, Caddy) can automatically serve pre-compressed files when the browser supports them.
 
