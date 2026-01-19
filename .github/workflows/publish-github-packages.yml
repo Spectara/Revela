@@ -70,6 +70,12 @@ jobs:
             -p:PackageVersion=$VERSION \
             -p:IncludeSymbols=false
 
+          dotnet pack src/Plugins/Plugin.Compress/Plugin.Compress.csproj \
+            -c Release \
+            -o ./nupkgs \
+            -p:PackageVersion=$VERSION \
+            -p:IncludeSymbols=false
+
           # Pack SDK
           dotnet pack src/Sdk/Sdk.csproj \
             -c Release \

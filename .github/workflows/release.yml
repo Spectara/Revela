@@ -142,6 +142,14 @@ jobs:
             -p:PackageVersion=${{ needs.validate.outputs.version }} \
             -p:IncludeSymbols=false
 
+      - name: Pack Plugin.Compress
+        run: |
+          dotnet pack src/Plugins/Plugin.Compress/Plugin.Compress.csproj \
+            -c Release \
+            -o ./nupkgs \
+            -p:PackageVersion=${{ needs.validate.outputs.version }} \
+            -p:IncludeSymbols=false
+
       - name: Pack SDK
         run: |
           dotnet pack src/Sdk/Sdk.csproj \

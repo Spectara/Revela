@@ -86,6 +86,12 @@ jobs:
             -p:PackageVersion=$VERSION \
             -p:IncludeSymbols=false
 
+          dotnet pack src/Plugins/Plugin.Compress/Plugin.Compress.csproj \
+            -c Release \
+            -o ./nupkgs \
+            -p:PackageVersion=$VERSION \
+            -p:IncludeSymbols=false
+
           # Pack Themes
           dotnet pack src/Themes/Theme.Lumina/Theme.Lumina.csproj \
             -c Release \

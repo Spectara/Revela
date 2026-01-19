@@ -187,7 +187,8 @@ try {
             "src/Themes/Theme.Lumina.Statistics/Theme.Lumina.Statistics.csproj",
             "src/Plugins/Plugin.Statistics/Plugin.Statistics.csproj",
             "src/Plugins/Plugin.Source.OneDrive/Plugin.Source.OneDrive.csproj",
-            "src/Plugins/Plugin.Serve/Plugin.Serve.csproj"
+            "src/Plugins/Plugin.Serve/Plugin.Serve.csproj",
+            "src/Plugins/Plugin.Compress/Plugin.Compress.csproj"
         )
 
         foreach ($proj in $packages) {
