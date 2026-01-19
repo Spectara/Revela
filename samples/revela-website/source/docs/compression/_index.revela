@@ -1,0 +1,123 @@
++++
+title = "Static Compression"
+template = "docs"
++++
+
+Revela can pre-compress your static files with **Gzip** and **Brotli** for faster loading on any hosting platform. This is especially useful for hosts that don't compress files on-the-fly.
+
+<div class="features-grid">
+
+### 📦 Pre-Generated
+
+Compressed files created at build time, not on every request.
+
+### 🚀 95% Smaller
+
+HTML, CSS, and JS files compress dramatically with Brotli.
+
+### ✅ Zero Config
+
+Works automatically with GitHub Pages, Netlify, Cloudflare, and more.
+
+</div>
+
+## Installation
+
+```bash
+revela plugin install Compress
+```
+
+## Usage
+
+### Compress Your Site
+
+```bash
+# After generating your site
+revela generate compress
+
+# Or include in full pipeline
+revela generate all
+```
+
+### Remove Compressed Files
+
+```bash
+revela clean compress
+```
+
+## What Gets Compressed?
+
+| File Type | Typical Savings |
+|-----------|-----------------|
+| HTML | 70-85% |
+| CSS | 75-90% |
+| JavaScript | 65-80% |
+| JSON | 70-85% |
+| SVG | 50-70% |
+| XML | 70-85% |
+
+**Images are skipped** – they're already optimized (AVIF, WebP, JPG).
+
+## Output Structure
+
+Your files remain unchanged. Compressed versions are added alongside:
+
+```
+output/
+├── index.html          ← Original (10 KB)
+├── index.html.gz       ← Gzip (2.5 KB)
+├── index.html.br       ← Brotli (2.1 KB)
+├── _assets/
+│   ├── main.css
+│   ├── main.css.gz
+│   └── main.css.br
+```
+
+## Example Output
+
+```
+╭─Success────────────────────────────╮
+│ Compression complete!              │
+│                                    │
+│ Summary:                           │
+│   Files:    14                     │
+│   Original: 1.22 MB                │
+│                                    │
+│ Compressed sizes:                  │
+│   Gzip:    93.4 KB (92.5% savings) │
+│   Brotli:  61.6 KB (95.1% savings) │
+╰────────────────────────────────────╯
+```
+
+## Hosting Compatibility
+
+| Platform | Serves Pre-Compressed? |
+|----------|------------------------|
+| GitHub Pages | ✅ Automatic |
+| Netlify | ✅ Automatic |
+| Cloudflare Pages | ✅ Automatic |
+| Vercel | ✅ Automatic |
+| AWS S3 + CloudFront | ✅ Automatic |
+| nginx | ✅ With `gzip_static on` |
+| Apache | ⚙️ Needs RewriteRule |
+
+## Pipeline Order
+
+Compression runs **last** in the generate pipeline:
+
+```
+scan → statistics → pages → images → compress
+```
+
+This ensures all content exists before compressing.
+
+## Compression Settings
+
+The plugin uses **maximum compression** for smallest files:
+
+| Format | Level | Browser Support |
+|--------|-------|-----------------|
+| Gzip | 9 (max) | All browsers |
+| Brotli | 11 (max) | Modern browsers (95%+) |
+
+Files under **256 bytes** are skipped – compression overhead exceeds savings.

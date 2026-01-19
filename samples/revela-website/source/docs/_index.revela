@@ -28,7 +28,11 @@ Use CLI commands to quickly create gallery, text, and statistics pages.
 
 Extract and customize themes to match your style with variables and templates.
 
-### 🚀 Deployment
+### � Static Compression
+
+Pre-compress HTML, CSS, and JS with Gzip and Brotli for 70-95% smaller files.
+
+### �🚀 Deployment
 
 Publish your portfolio online - GitHub Pages, Netlify, or your own server.
 

@@ -16,6 +16,7 @@ All plugins with the `Spectara.Revela.Plugin.*` prefix are officially maintained
 
 | Plugin | Package ID | Description |
 |--------|------------|-------------|
+| **Compress** | `Spectara.Revela.Plugin.Compress` | Pre-compress static files with Gzip/Brotli |
 | **Serve** | `Spectara.Revela.Plugin.Serve` | Local development server with live preview |
 | **Statistics** | `Spectara.Revela.Plugin.Statistics` | Image count, sizes, and analytics |
 | **OneDrive** | `Spectara.Revela.Plugin.Source.OneDrive` | Import photos from OneDrive shared folders |

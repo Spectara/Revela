@@ -1,0 +1,52 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <Description>Revela Plugin - Compress static files with Gzip and Brotli</Description>
+    <AssemblyName>Spectara.Revela.Plugin.Compress</AssemblyName>
+    <PackageId>Spectara.Revela.Plugin.Compress</PackageId>
+    <PackageTags>revela;plugin;compress;gzip;brotli;static</PackageTags>
+    <PackageIcon>icon.png</PackageIcon>
+    <PackageReleaseNotes>https://github.com/spectara/revela/blob/main/CHANGELOG.md</PackageReleaseNotes>
+    <PackageType>RevelaPlugin</PackageType>
+
+    <!-- Plugin Support: Copies all dependencies to output, generates complete .deps.json -->
+    <EnableDynamicLoading>true</EnableDynamicLoading>
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+  </PropertyGroup>
+
+  <!-- Include all runtime dependencies in NuGet package (except Spectara.Revela.* which come from host) -->
+  <Target Name="IncludeAllDependencies" AfterTargets="Build">
+    <ItemGroup>
+      <!-- All dependency DLLs (exclude main DLL - SDK includes it, and Spectara.Revela.Sdk.dll - loaded from host) -->
+      <_PackageFiles Include="$(OutputPath)*.dll" Exclude="$(OutputPath)$(AssemblyName).dll;$(OutputPath)Spectara.Revela.Sdk.dll">
+        <PackagePath>lib/$(TargetFramework)/</PackagePath>
+        <BuildAction>None</BuildAction>
+      </_PackageFiles>
+      <_PackageFiles Include="$(OutputPath)$(AssemblyName).deps.json">
+        <PackagePath>lib/$(TargetFramework)/</PackagePath>
+        <BuildAction>None</BuildAction>
+      </_PackageFiles>
+    </ItemGroup>
+  </Target>
+
+  <ItemGroup>
+    <None Include="README.md" Pack="true" PackagePath="\" />
+    <None Include="..\..\..\assets\revela_100.png" Pack="true" PackagePath="icon.png" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Reference to host Sdk - NOT copied to output (loaded from host) -->
+    <ProjectReference Include="..\..\Sdk\Sdk.csproj">
+      <Private>false</Private>
+      <ExcludeAssets>runtime</ExcludeAssets>
+    </ProjectReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Configuration" />
+    <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" />
+    <PackageReference Include="Spectre.Console" />
+    <PackageReference Include="System.CommandLine" />
+  </ItemGroup>
+
+</Project>

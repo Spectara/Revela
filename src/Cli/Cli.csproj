@@ -24,6 +24,7 @@
 
   <!-- Development-only: Plugins included for debugging, NOT shipped in Release -->
   <ItemGroup Condition="'$(Configuration)' == 'Debug'">
+    <ProjectReference Include="..\Plugins\Plugin.Compress\Plugin.Compress.csproj" />
     <ProjectReference Include="..\Plugins\Plugin.Serve\Plugin.Serve.csproj" />
     <ProjectReference Include="..\Plugins\Plugin.Source.OneDrive\Plugin.Source.OneDrive.csproj" />
     <ProjectReference Include="..\Plugins\Plugin.Statistics\Plugin.Statistics.csproj" />
