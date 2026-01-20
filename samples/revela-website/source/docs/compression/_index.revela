@@ -36,10 +36,10 @@ revela plugin install Compress
 ```bash
 # After generating your site
 revela generate compress
-
-# Or include in full pipeline
-revela generate all
 ```
+
+> **Note:** Compression runs separately, not as part of `generate all`.
+> Your server must be configured to serve pre-compressed files.
 
 ### Remove Compressed Files
 

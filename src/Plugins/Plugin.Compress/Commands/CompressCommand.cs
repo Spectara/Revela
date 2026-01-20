@@ -15,8 +15,14 @@ namespace Spectara.Revela.Plugin.Compress.Commands;
 /// Command to compress static files in the output directory.
 /// </summary>
 /// <remarks>
+/// <para>
 /// Creates .gz (Gzip) and .br (Brotli) files alongside originals.
-/// Implements <see cref="IGenerateStep"/> for pipeline integration (Order=500).
+/// </para>
+/// <para>
+/// <b>Note:</b> This command is NOT included in 'generate all' pipeline.
+/// Pre-compression requires server configuration (nginx gzip_static, Apache mod_deflate, etc.).
+/// Run explicitly with 'revela generate compress' when needed.
+/// </para>
 /// </remarks>
 public sealed partial class CompressCommand(
     ILogger<CompressCommand> logger,

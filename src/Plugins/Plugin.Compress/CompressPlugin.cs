@@ -49,9 +49,9 @@ public sealed class CompressPlugin : IPlugin
         services.AddTransient<CompressCommand>();
         services.AddTransient<CleanCompressCommand>();
 
-        // Register CompressCommand as IGenerateStep for pipeline integration
-        // This enables automatic execution in 'generate all' pipeline
-        services.AddTransient<IGenerateStep, CompressCommand>();
+        // Note: CompressCommand is NOT registered as IGenerateStep
+        // Pre-compression requires server configuration (nginx gzip_static, etc.)
+        // Users who need it can run 'revela generate compress' explicitly
     }
 
     /// <inheritdoc />

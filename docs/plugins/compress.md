@@ -49,12 +49,13 @@ revela plugin install Spectara.Revela.Plugin.Compress
 ### Compress Output Files
 
 ```bash
-# Compress all static files
+# Compress all static files (run explicitly)
 revela generate compress
-
-# Or run the full pipeline (compression runs last)
-revela generate all
 ```
+
+> **Note:** Compression is NOT included in `generate all`.
+> Pre-compression requires server configuration to be useful.
+> Run it explicitly when you know your server supports it.
 
 ### Clean Compressed Files
 
@@ -62,16 +63,6 @@ revela generate all
 # Remove all .gz and .br files
 revela clean compress
 ```
-
-## Pipeline Integration
-
-The compress step runs **after** all content is generated:
-
-```
-scan (100) → statistics (200) → pages (300) → images (400) → compress (500)
-```
-
-This ensures all HTML, CSS, and JS files exist before compression.
 
 ## Supported File Types
 
