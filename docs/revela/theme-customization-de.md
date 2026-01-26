@@ -179,11 +179,9 @@ Passe responsive Bildgrößen an:
 {
   "generate": {
     "images": {
-      "formats": {
-        "avif": 80,
-        "webp": 85,
-        "jpg": 90
-      }
+      "avif": 80,
+      "webp": 85,
+      "jpg": 90
     }
   }
 }

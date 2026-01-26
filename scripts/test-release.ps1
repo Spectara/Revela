@@ -183,7 +183,8 @@ try {
                 @{ Name = "Commands.Tests"; Path = "artifacts/bin/Commands.Tests/Release/net10.0/Spectara.Revela.Commands.Tests$testExeExt" },
                 @{ Name = "Plugin.Source.OneDrive.Tests"; Path = "artifacts/bin/Plugin.Source.OneDrive.Tests/Release/net10.0/Spectara.Revela.Plugin.Source.OneDrive.Tests$testExeExt" },
                 @{ Name = "Plugin.Statistics.Tests"; Path = "artifacts/bin/Plugin.Statistics.Tests/Release/net10.0/Spectara.Revela.Plugin.Statistics.Tests$testExeExt" },
-                @{ Name = "Plugin.Serve.Tests"; Path = "artifacts/bin/Plugin.Serve.Tests/Release/net10.0/Spectara.Revela.Plugin.Serve.Tests$testExeExt" }
+                @{ Name = "Plugin.Serve.Tests"; Path = "artifacts/bin/Plugin.Serve.Tests/Release/net10.0/Spectara.Revela.Plugin.Serve.Tests$testExeExt" },
+                @{ Name = "Plugin.Compress.Tests"; Path = "artifacts/bin/Plugin.Compress.Tests/Release/net10.0/Spectara.Revela.Plugin.Compress.Tests$testExeExt" }
             )
 
             foreach ($test in $testProjects) {
@@ -278,6 +279,13 @@ try {
             -c Release -o $PluginsDir -p:PackageVersion=$Version --verbosity quiet
         if ($LASTEXITCODE -ne 0) { throw "Serve plugin pack failed" }
         Write-Success "Plugin.Serve packed"
+
+        # Pack Plugin.Compress (static file pre-compression)
+        Write-Info "Packing Plugin.Compress..."
+        dotnet pack src/Plugins/Plugin.Compress/Plugin.Compress.csproj `
+            -c Release -o $PluginsDir -p:PackageVersion=$Version --verbosity quiet
+        if ($LASTEXITCODE -ne 0) { throw "Compress plugin pack failed" }
+        Write-Success "Plugin.Compress packed"
 
         # Pack Theme.Lumina.Statistics
         Write-Info "Packing Theme.Lumina.Statistics..."

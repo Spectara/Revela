@@ -109,11 +109,7 @@ public sealed partial class ImagesCommand(
                 .AutoClear(false)
                 .StartAsync(async ctx =>
                 {
-                    var progress = new Progress<ImageProgress>(p =>
-                    {
-                        // Render the display
-                        ctx.UpdateTarget(RenderProgress(p));
-                    });
+                    var progress = new Progress<ImageProgress>(p => ctx.UpdateTarget(RenderProgress(p)));
 
                     return await imageService.ProcessAsync(options, progress, cancellationToken);
                 });

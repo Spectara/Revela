@@ -35,7 +35,7 @@ Modern static site generator for photographers, built with .NET 10.
 - **🖼️ Smart Image Processing** — WebP, JPG (AVIF optional) with responsive sizes
 - **🧙 Interactive Wizards** — No command line knowledge required
 - **📁 Multi-Project** — Manage multiple portfolios from one installation
-- **🔌 Plugin System** — Extend with OneDrive, Statistics, Dev Server
+- **🔌 Plugin System** — Extend with Compress, OneDrive, Statistics, Dev Server
 - **🎨 Themeable** — Customizable templates with Scriban
 - **⚡ Fast** — Powered by libvips, parallel processing
 - **📱 Responsive** — Works on phone, tablet, desktop
@@ -132,6 +132,7 @@ Install via the Setup Wizard or manually:
 
 | Plugin | Description |
 |--------|-------------|
+| **Compress** | Pre-compress static files with Gzip/Brotli |
 | **Serve** | Local dev server with live preview |
 | **Statistics** | Image count, sizes, analytics |
 | **Source.OneDrive** | Import from OneDrive shared folders |

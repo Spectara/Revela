@@ -32,7 +32,7 @@ public sealed partial class PluginInstallCommand(
 
         var nameArgument = new Argument<string?>("name")
         {
-            Description = "Plugin name (e.g., 'onedrive' for Revela.Plugin.OneDrive)",
+            Description = "Plugin name (e.g., 'Source.OneDrive' for Revela.Plugin.Source.OneDrive)",
             Arity = ArgumentArity.ZeroOrOne
         };
         command.Arguments.Add(nameArgument);

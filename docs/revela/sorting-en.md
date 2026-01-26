@@ -97,6 +97,61 @@ sort = "dateTaken:desc"
 Most recent photos first.
 ```
 
+## Gallery Order with Number Prefixes
+
+Control gallery order in navigation by adding number prefixes to folder names:
+
+```
+source/
+├── 01 Weddings/           # Appears first
+│   └── *.jpg
+├── 02 Portraits/          # Appears second
+│   └── *.jpg
+├── 03 Landscapes/         # Appears third
+│   └── *.jpg
+└── 99 Archive/            # Appears last
+    └── *.jpg
+```
+
+### How It Works
+
+- **Prefix format:** 1-2 digit number followed by a space (e.g., `01 `, `2 `, `99 `)
+- **Display name:** Number prefix is automatically removed
+  - `01 Weddings` → displayed as "Weddings"
+  - `99 Archive` → displayed as "Archive"
+- **URL slug:** Number prefix is stripped from URLs
+  - `01 Weddings` → `/weddings/`
+- **Natural sorting:** Uses natural order (1, 2, 10 instead of 1, 10, 2)
+
+### Year Prefixes Are Preserved
+
+Four-digit year prefixes are NOT stripped (they're meaningful content):
+
+```
+source/
+├── 2024 Summer/           # Displayed as "2024 Summer"
+├── 2023 Fall/             # Displayed as "2023 Fall"
+└── 2022 Winter/           # Displayed as "2022 Winter"
+```
+
+### Combining with `galleries` Setting
+
+The `galleries` setting controls sort direction:
+
+```json
+{
+  "generate": {
+    "sorting": {
+      "galleries": "desc"
+    }
+  }
+}
+```
+
+With `desc`:
+- `01 Weddings` → `99 Archive` becomes `99 Archive` → `01 Weddings`
+- Year folders: 2024 → 2023 → 2022
+
 ## CLI Configuration
 
 Configure sorting interactively or via command line:

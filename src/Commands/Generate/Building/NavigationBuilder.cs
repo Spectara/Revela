@@ -104,8 +104,8 @@ public sealed partial class NavigationBuilder(ILogger<NavigationBuilder> logger)
             // Use metadata title or extract from folder name
             var displayName = metadata.Title ?? GallerySorter.ExtractDisplayName(subdir.Name);
 
-            // Use metadata slug or folder name for path
-            var pathSegment = metadata.Slug ?? subdir.Name;
+            // Use metadata slug or generate from folder name (strips sort prefix, creates URL-safe slug)
+            var pathSegment = metadata.Slug ?? UrlBuilder.ToSlug(subdir.Name);
             var newPathSegments = new List<string>(pathSegments) { pathSegment };
             var url = UrlBuilder.BuildPath([.. newPathSegments]);
 

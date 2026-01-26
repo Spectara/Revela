@@ -20,6 +20,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Progress display shows green ■ (new) vs gray ■ (skipped)
   - Processing order: largest sizes first for smoother progress display
 - **Documentation**: New "Image Processing" page on website
+- **Documentation**: Number prefix sorting for galleries (e.g., `01 Weddings`, `02 Portraits`)
+
+### Fixed
+- **NavigationBuilder**: URL slugs now correctly strip number prefixes (was including `01-` in URLs)
+- **Documentation**: Fixed incorrect JSON format examples (`formats` wrapper removed)
+- **Documentation**: Plugin naming consistency (`Source.OneDrive` instead of `OneDrive`)
+- **CI/CD**: Added missing Plugin.Compress to all workflows and scripts
 
 ## [0.0.1-beta.12] - 2026-01-12
 

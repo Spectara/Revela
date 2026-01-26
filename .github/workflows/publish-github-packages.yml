@@ -117,6 +117,7 @@ jobs:
           echo "- Spectara.Revela.Plugin.Source.OneDrive" >> $GITHUB_STEP_SUMMARY
           echo "- Spectara.Revela.Plugin.Statistics" >> $GITHUB_STEP_SUMMARY
           echo "- Spectara.Revela.Plugin.Serve" >> $GITHUB_STEP_SUMMARY
+          echo "- Spectara.Revela.Plugin.Compress" >> $GITHUB_STEP_SUMMARY
           echo "- Spectara.Revela.Theme.Lumina" >> $GITHUB_STEP_SUMMARY
           echo "- Spectara.Revela.Theme.Lumina.Statistics" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY

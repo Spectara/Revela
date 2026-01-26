@@ -456,15 +456,15 @@ Technical settings for your project:
   "name": "MyPortfolio",
   "url": "https://www.my-website.com",
   "theme": {
-    "name": "Lumina"
+    "name": "Lumina",
+    "images": {
+      "sizes": [640, 1024, 1280, 1920, 2560]
+    }
   },
   "generate": {
     "images": {
-      "formats": {
-        "webp": 85,
-        "jpg": 90
-      },
-      "sizes": [640, 1024, 1280, 1920, 2560],
+      "webp": 85,
+      "jpg": 90,
       "minWidth": 800,
       "minHeight": 600
     }
@@ -477,9 +477,9 @@ Technical settings for your project:
 | `name` | Project name |
 | `url` | Website base URL |
 | `theme.name` | Active theme |
-| `formats` | Image formats with quality (0-100) |
-| `sizes` | Image widths in pixels |
-| `minWidth/minHeight` | Ignore smaller images (filters thumbnails) |
+| `theme.images.sizes` | Image sizes in pixels (from theme) |
+| `generate.images.webp/jpg` | Image formats with quality (0-100) |
+| `generate.images.minWidth/minHeight` | Ignore smaller images (filters thumbnails) |
 
 > **Advanced:** To tune image processing parallelism, set `generate.images.maxDegreeOfParallelism` in `project.json` (see [architecture](../architecture.md#performance-considerations)).
 

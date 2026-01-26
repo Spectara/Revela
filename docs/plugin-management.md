@@ -39,19 +39,19 @@ Community plugins use their own prefix and are maintained by third-party develop
 
 ```bash
 # Install by short name (auto-downloads from NuGet.org)
-revela plugin install OneDrive
+revela plugin install Source.OneDrive
 
 # Or use full package ID
-revela plugin install Spectara.Revela.Plugin.OneDrive
+revela plugin install Spectara.Revela.Plugin.Source.OneDrive
 
 # Install specific version
-revela plugin install OneDrive --version 1.2.0
+revela plugin install Source.OneDrive --version 1.2.0
 
 # Install from local .nupkg file
-revela plugin install ./path/to/Spectara.Revela.Plugin.OneDrive.1.0.0.nupkg
+revela plugin install ./path/to/Spectara.Revela.Plugin.Source.OneDrive.1.0.0.nupkg
 
 # Install from custom source (e.g., GitHub Packages)
-revela plugin install OneDrive --source github
+revela plugin install Source.OneDrive --source github
 ```
 
 ## Managing Plugins
@@ -61,7 +61,7 @@ revela plugin install OneDrive --source github
 revela plugin list
 
 # Uninstall a plugin
-revela plugin uninstall OneDrive
+revela plugin uninstall Source.OneDrive
 ```
 
 ## Updating Plugins
@@ -71,8 +71,8 @@ revela plugin uninstall OneDrive
 revela plugin list
 
 # To update: uninstall and reinstall with new version
-revela plugin uninstall OneDrive
-revela plugin install OneDrive --version 2.0.0
+revela plugin uninstall Source.OneDrive
+revela plugin install Source.OneDrive --version 2.0.0
 
 # Note: `revela plugin update` command is planned for future release
 ```
@@ -108,7 +108,7 @@ Plugins are tracked in `project.json`:
   "name": "My Photography Site",
   "theme": "Lumina",
   "plugins": {
-    "Spectara.Revela.Plugin.OneDrive": "1.2.0",
+    "Spectara.Revela.Plugin.Source.OneDrive": "1.2.0",
     "Spectara.Revela.Plugin.Statistics": "1.0.0"
   }
 }
@@ -291,10 +291,10 @@ namespace MyCompany.SomeOther.Plugin;
 
 ```bash
 # Check spelling (case-insensitive)
-revela plugin install OneDrive  # ✅ Correct
+revela plugin install Source.OneDrive  # ✅ Correct
 
 # Check if package exists on NuGet.org
-# Visit: https://www.nuget.org/packages/Spectara.Revela.Plugin.OneDrive
+# Visit: https://www.nuget.org/packages/Spectara.Revela.Plugin.Source.OneDrive
 ```
 
 ### "Failed to install" error
@@ -304,7 +304,7 @@ revela plugin install OneDrive  # ✅ Correct
 revela plugin source list
 
 # Try with explicit source
-revela plugin install OneDrive --source nuget.org
+revela plugin install Source.OneDrive --source nuget.org
 ```
 
 ### GitHub Packages authentication

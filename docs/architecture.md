@@ -223,10 +223,10 @@ User runs: revela generate -p mysite
 ### Plugin Installation Flow
 
 ```
-User runs: revela plugin install OneDrive
+User runs: revela plugin install Source.OneDrive
 
 1. Name Transformation
-   OneDrive → Spectara.Revela.Plugin.OneDrive
+   Source.OneDrive → Spectara.Revela.Plugin.Source.OneDrive
 
 2. Multi-Source Discovery
    Try configured NuGet sources in order:
@@ -251,7 +251,7 @@ User runs: revela plugin install OneDrive
 
 6. Update project.json
    Add plugin to "plugins" dictionary:
-   "Spectara.Revela.Plugin.OneDrive": "1.0.0"
+   "Spectara.Revela.Plugin.Source.OneDrive": "1.0.0"
 
 7. Success
    Plugin available immediately (no restart needed)

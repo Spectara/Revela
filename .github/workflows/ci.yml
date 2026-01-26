@@ -114,6 +114,12 @@ jobs:
             -p:PackageVersion=0.0.0-ci \
             -p:IncludeSymbols=false
 
+          dotnet pack src/Plugins/Plugin.Compress/Plugin.Compress.csproj \
+            -c Release \
+            -o ./nupkgs \
+            -p:PackageVersion=0.0.0-ci \
+            -p:IncludeSymbols=false
+
       - name: Pack SDK
         run: |
           dotnet pack src/Sdk/Sdk.csproj \
@@ -157,5 +163,6 @@ jobs:
           echo "- Spectara.Revela.Plugin.Source.OneDrive" >> $GITHUB_STEP_SUMMARY
           echo "- Spectara.Revela.Plugin.Statistics" >> $GITHUB_STEP_SUMMARY
           echo "- Spectara.Revela.Plugin.Serve" >> $GITHUB_STEP_SUMMARY
+          echo "- Spectara.Revela.Plugin.Compress" >> $GITHUB_STEP_SUMMARY
           echo "- Spectara.Revela.Theme.Lumina" >> $GITHUB_STEP_SUMMARY
           echo "- Spectara.Revela.Theme.Lumina.Statistics" >> $GITHUB_STEP_SUMMARY

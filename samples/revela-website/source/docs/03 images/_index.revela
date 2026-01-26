@@ -1,0 +1,137 @@
++++
+title = "Image Processing"
+template = "docs"
+pinned = true
++++
+
+Revela automatically processes your images into optimized web formats. This page covers configuration, incremental updates, and cleanup.
+
+## Image Configuration
+
+Configure image formats and quality in `project.json`:
+
+```json
+{
+  "generate": {
+    "images": {
+      "jpg": 90,
+      "webp": 85
+    }
+  }
+}
+```
+
+**Supported formats:**
+- `jpg` - Universal compatibility (quality 1-100)
+- `webp` - Smaller files, modern browsers (quality 1-100)
+- `avif` - Smallest files, newest browsers (quality 1-100)
+
+**Recommendation:** Start with just `jpg: 90` for compatibility. Add `webp` or `avif` later if needed.
+
+## Image Sizes
+
+Sizes are defined by your theme. The default Lumina theme generates these widths:
+
+```
+320, 640, 1024, 1280, 1920, 2560
+```
+
+Plus the **original width** for full-resolution lightbox view.
+
+## Generating Images
+
+```bash
+# Full generation
+revela generate images
+
+# Force regenerate all (ignore cache)
+revela generate images --force
+```
+
+## Incremental Processing
+
+Revela automatically detects what's missing and only generates those variants:
+
+### Adding a New Format
+
+```bash
+# Before: only jpg configured
+# After: add webp to project.json
+
+revela generate images
+# → Only webp files are created
+# → Existing jpg files are kept
+```
+
+### Progress Display
+
+```
+image001.jpg  ■ ■ ■ ■ □ □ □ □ □ □ □ □
+image002.jpg  ■ ■ ■ □ □ □ □ □ □ □ □ □
+image003.jpg  ■ ■ □ □ □ □ □ □ □ □ □ □
+```
+
+- **Green ■** = Generated (new file)
+- **Gray ■** = Skipped (already exists)
+- **Empty □** = Pending
+
+## Cleaning Up
+
+When you change your image configuration (remove a format, change sizes), old files remain. Use `clean images` to remove them:
+
+```bash
+# Preview what would be deleted
+revela clean images --dry-run
+
+# Actually delete unused files
+revela clean images
+```
+
+### What Gets Cleaned
+
+| Category | Description | Example |
+|----------|-------------|---------|
+| **Orphaned folders** | Source image was deleted | `output/images/deleted-photo/` |
+| **Unused sizes** | Width no longer in theme config | `*_480w.jpg` when 480 removed |
+| **Unused formats** | Format disabled in project | `*.webp` when webp removed |
+
+### Typical Workflow
+
+```bash
+# 1. Change config (remove webp)
+# Edit project.json: remove "webp": 85
+
+# 2. Preview cleanup
+revela clean images --dry-run
+# → Shows: 4220 webp files (852 MB)
+
+# 3. Delete unused files
+revela clean images
+# → Deleted: 4220 files (852 MB)
+
+# 4. Verify (optional)
+revela generate images
+# → Shows: 0 processed, 1153 cached
+```
+
+## Best Practices
+
+<div class="features-grid">
+
+### 🚀 Start Simple
+
+Begin with `jpg: 90` only. Add webp/avif later when you need smaller files.
+
+### 🔄 Incremental Updates
+
+Don't use `--force` unless necessary. Incremental processing is much faster.
+
+### 🧹 Clean After Config Changes
+
+After removing formats or sizes, run `clean images` to free disk space.
+
+### 📊 Check Dry-Run First
+
+Always use `--dry-run` before `clean images` to preview what will be deleted.
+
+</div>

@@ -97,6 +97,61 @@ sort = "dateTaken:desc"
 Neueste Fotos zuerst.
 ```
 
+## Galerie-Reihenfolge mit Nummern-Präfix
+
+Steuere die Galerie-Reihenfolge in der Navigation durch Nummern-Präfixe bei Ordnernamen:
+
+```
+source/
+├── 01 Hochzeiten/         # Erscheint als erstes
+│   └── *.jpg
+├── 02 Portraits/          # Erscheint als zweites
+│   └── *.jpg
+├── 03 Landschaften/       # Erscheint als drittes
+│   └── *.jpg
+└── 99 Archiv/             # Erscheint als letztes
+    └── *.jpg
+```
+
+### So funktioniert es
+
+- **Präfix-Format:** 1-2 stellige Zahl gefolgt von Leerzeichen (z.B. `01 `, `2 `, `99 `)
+- **Anzeigename:** Nummern-Präfix wird automatisch entfernt
+  - `01 Hochzeiten` → angezeigt als "Hochzeiten"
+  - `99 Archiv` → angezeigt als "Archiv"
+- **URL-Slug:** Nummern-Präfix wird aus URLs entfernt
+  - `01 Hochzeiten` → `/hochzeiten/`
+- **Natürliche Sortierung:** Verwendet natürliche Reihenfolge (1, 2, 10 statt 1, 10, 2)
+
+### Jahres-Präfixe bleiben erhalten
+
+Vierstellige Jahres-Präfixe werden NICHT entfernt (sie sind inhaltlich relevant):
+
+```
+source/
+├── 2024 Sommer/           # Angezeigt als "2024 Sommer"
+├── 2023 Herbst/           # Angezeigt als "2023 Herbst"
+└── 2022 Winter/           # Angezeigt als "2022 Winter"
+```
+
+### Kombiniert mit `galleries` Einstellung
+
+Die `galleries` Einstellung steuert die Sortierrichtung:
+
+```json
+{
+  "generate": {
+    "sorting": {
+      "galleries": "desc"
+    }
+  }
+}
+```
+
+Mit `desc`:
+- `01 Hochzeiten` → `99 Archiv` wird zu `99 Archiv` → `01 Hochzeiten`
+- Jahres-Ordner: 2024 → 2023 → 2022
+
 ## CLI-Konfiguration
 
 Sortierung interaktiv oder per Kommandozeile konfigurieren:

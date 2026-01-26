@@ -526,7 +526,7 @@ Contact Spectara team to discuss official plugin development.
 ### Reference Implementations
 
 - [Spectara.Revela.Plugin.Deploy](https://github.com/spectara/revela-plugin-deploy) - SSH/SFTP deployment
-- [Spectara.Revela.Plugin.OneDrive](https://github.com/spectara/revela-plugin-onedrive) - OneDrive sync
+- [Spectara.Revela.Plugin.Source.OneDrive](https://github.com/spectara/revela-plugin-source-onedrive) - OneDrive sync
 
 ---
 

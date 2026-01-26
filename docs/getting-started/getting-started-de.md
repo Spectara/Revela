@@ -456,15 +456,15 @@ Technische Einstellungen für dein Projekt:
   "name": "MeinPortfolio",
   "url": "https://www.meine-website.de",
   "theme": {
-    "name": "Lumina"
+    "name": "Lumina",
+    "images": {
+      "sizes": [640, 1024, 1280, 1920, 2560]
+    }
   },
   "generate": {
     "images": {
-      "formats": {
-        "webp": 85,
-        "jpg": 90
-      },
-      "sizes": [640, 1024, 1280, 1920, 2560],
+      "webp": 85,
+      "jpg": 90,
       "minWidth": 800,
       "minHeight": 600
     }
@@ -477,9 +477,9 @@ Technische Einstellungen für dein Projekt:
 | `name` | Projektname |
 | `url` | Website-Basis-URL |
 | `theme.name` | Aktives Theme |
-| `formats` | Bildformate mit Qualität (0-100) |
-| `sizes` | Bildbreiten in Pixeln |
-| `minWidth/minHeight` | Kleinere Bilder ignorieren (filtert Thumbnails) |
+| `theme.images.sizes` | Bildgrößen in Pixeln (vom Theme) |
+| `generate.images.webp/jpg` | Bildformate mit Qualität (0-100) |
+| `generate.images.minWidth/minHeight` | Kleinere Bilder ignorieren (filtert Thumbnails) |
 
 > **Fortgeschritten:** Parallelität für die Bildverarbeitung kannst du über `generate.images.maxDegreeOfParallelism` in `project.json` steuern (siehe [Architecture](../architecture.md#performance-considerations)).
 

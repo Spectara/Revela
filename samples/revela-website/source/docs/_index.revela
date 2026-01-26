@@ -12,27 +12,35 @@ Welcome to the Revela documentation. Here you'll find everything you need to cre
 
 Learn how to organize your photos with traditional galleries, filter galleries, or a hybrid approach.
 
-### 🔍 Filter Galleries
+### � Creating Pages
 
-Create dynamic galleries that automatically select images based on EXIF data, filename, or date.
+Use CLI commands to quickly create gallery, text, and statistics pages.
+
+### 🖼️ Image Processing
+
+Configure image formats, sizes, and use incremental generation.
 
 ### 📊 Sorting
 
 Configure how galleries and images are sorted, with per-gallery overrides.
 
-### 📝 Creating Pages
+### 🔍 Filter Galleries
 
-Use CLI commands to quickly create gallery, text, and statistics pages.
+Create dynamic galleries that automatically select images based on EXIF data, filename, or date.
 
 ### 🎨 Theme Customization
 
 Extract and customize themes to match your style with variables and templates.
 
-### � Static Compression
+### ⚙️ Configuration
+
+Advanced project settings and configuration options.
+
+### 📦 Static Compression
 
 Pre-compress HTML, CSS, and JS with Gzip and Brotli for 70-95% smaller files.
 
-### �🚀 Deployment
+### 🚀 Deployment
 
 Publish your portfolio online - GitHub Pages, Netlify, or your own server.
 

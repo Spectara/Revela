@@ -1263,14 +1263,16 @@ dotnet run --project tests/Core.Tests
     "source": "D:\\OneDrive\\Photos",
     "output": "dist"
   },
+  "theme": {
+    "images": {
+      "sizes": [640, 1024, 1280, 1920, 2560]
+    }
+  },
   "generate": {
     "images": {
-      "formats": {
-        "avif": 80,
-        "webp": 85,
-        "jpg": 90
-      },
-      "sizes": [640, 1024, 1280, 1920, 2560]
+      "avif": 80,
+      "webp": 85,
+      "jpg": 90
     }
   }
 }
