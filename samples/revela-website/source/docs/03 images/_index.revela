@@ -114,6 +114,43 @@ revela generate images
 # → Shows: 0 processed, 1153 cached
 ```
 
+## Low-Quality Image Placeholders (LQIP)
+
+Revela generates **CSS-only placeholders** that display while images load. This creates a smooth loading experience without layout shifts.
+
+### How It Works
+
+1. During scan, Revela analyzes each image's average color and brightness pattern
+2. This data is encoded into a compact integer (e.g., `-721311`)
+3. The theme's CSS decodes this integer into gradient placeholders
+4. When the image loads, it smoothly replaces the placeholder
+
+**Result:** ~7 bytes per image instead of a separate LQIP file. No additional HTTP requests.
+
+### Configuration
+
+LQIP is **enabled by default**. To disable it:
+
+```json
+{
+  "generate": {
+    "images": {
+      "placeholder": {
+        "strategy": "none"
+      }
+    }
+  }
+}
+```
+
+### Technical Details
+
+The CSS hash encodes:
+- **Average color** in Oklab color space (8 bits)
+- **3×2 brightness grid** as grayscale values (12 bits)
+
+The browser reconstructs this as radial gradients with blend modes, creating a blurred approximation of the image. Based on [Lean Rada's CSS-only LQIP technique](https://leanrada.com/notes/css-only-lqip/).
+
 ## Best Practices
 
 <div class="features-grid">

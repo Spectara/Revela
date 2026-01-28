@@ -1,8 +1,10 @@
 using System.Collections.Concurrent;
+using System.Globalization;
 using NetVips;
 using Spectara.Revela.Commands.Generate.Abstractions;
 using Spectara.Revela.Commands.Generate.Mapping;
 using Spectara.Revela.Commands.Generate.Models;
+using Spectara.Revela.Core.Configuration;
 using Spectara.Revela.Sdk.Models;
 using Image = NetVips.Image;
 
@@ -130,9 +132,10 @@ public sealed partial class NetVipsImageProcessor(
 
         LogProcessingImage(logger, inputPath);
 
-        // Load image once to get dimensions and EXIF
+        // Load image once to get dimensions, EXIF, and placeholder
         int width, height;
         ExifData? exif;
+        string? placeholder;
         using (var original = Image.NewFromFile(inputPath, access: Enums.Access.Sequential))
         {
             // Extract EXIF data
@@ -141,6 +144,10 @@ public sealed partial class NetVipsImageProcessor(
             // Get original dimensions
             width = original.Width;
             height = original.Height;
+
+            // Use existing placeholder from scan phase
+            // Note: CssHash requires Random access and is generated during scan
+            placeholder = options.ExistingPlaceholder;
         }
 
         // Generate variants (different sizes and formats)
@@ -284,7 +291,8 @@ public sealed partial class NetVipsImageProcessor(
             DateTaken = exif?.DateTaken ?? File.GetCreationTimeUtc(inputPath),
             Exif = exif,
             Variants = variants,
-            Sizes = generatedSizes
+            Sizes = generatedSizes,
+            Placeholder = placeholder
         };
     }
 
@@ -292,11 +300,19 @@ public sealed partial class NetVipsImageProcessor(
     /// Read image metadata without processing (fast operation).
     /// </summary>
     /// <remarks>
+    /// <para>
     /// Uses Sequential access mode - only reads image header, not full decode.
     /// Much faster than full processing (~10-20ms vs 200-500ms per image).
+    /// </para>
+    /// <para>
+    /// When placeholderConfig is provided with Strategy != None, the image is loaded
+    /// with random access to generate the placeholder. This is slower but ensures
+    /// placeholders are available when pages are generated.
+    /// </para>
     /// </remarks>
     public Task<ImageMetadata> ReadMetadataAsync(
         string inputPath,
+        PlaceholderConfig? placeholderConfig = null,
         CancellationToken cancellationToken = default)
     {
         // Suppress unused parameter warning - kept for API consistency
@@ -310,13 +326,23 @@ public sealed partial class NetVipsImageProcessor(
         // Ensure NetVips is configured for parallel processing
         EnsureNetVipsInitialized();
 
-        // Sequential access = only read header, not full image decode
-        using var image = Image.NewFromFile(inputPath, access: Enums.Access.Sequential);
+        // Determine access mode based on whether we need to generate placeholder
+        var needsPlaceholder = placeholderConfig?.Strategy is PlaceholderStrategy.CssHash;
+        var accessMode = needsPlaceholder ? Enums.Access.Random : Enums.Access.Sequential;
+
+        using var image = Image.NewFromFile(inputPath, access: accessMode);
 
         var width = image.Width;
         var height = image.Height;
         var fileInfo = new FileInfo(inputPath);
         var exif = ExtractExifData(image);
+
+        // Generate placeholder if configured
+        string? placeholder = null;
+        if (needsPlaceholder && placeholderConfig is not null)
+        {
+            placeholder = GenerateCssHash(image);
+        }
 
         return Task.FromResult(new ImageMetadata
         {
@@ -324,7 +350,8 @@ public sealed partial class NetVipsImageProcessor(
             Height = height,
             FileSize = fileInfo.Length,
             Exif = exif,
-            DateTaken = exif?.DateTaken ?? fileInfo.LastWriteTimeUtc
+            DateTaken = exif?.DateTaken ?? fileInfo.LastWriteTimeUtc,
+            Placeholder = placeholder
         });
     }
 
@@ -794,4 +821,221 @@ public sealed partial class NetVipsImageProcessor(
 
     [LoggerMessage(Level = LogLevel.Debug, Message = "Saved variant: {Path} ({Width}×{Height}, {Format})")]
     private static partial void LogSavedVariant(ILogger logger, string path, int width, int height, string format);
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Generated {Strategy} placeholder ({Bytes} bytes)")]
+    private static partial void LogPlaceholderGenerated(ILogger logger, string strategy, int bytes);
+
+    /// <summary>
+    /// Generate a CSS-only LQIP hash (20-bit integer)
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Based on: https://leanrada.com/notes/css-only-lqip/
+    /// Encodes image as a single integer that CSS can decode and render
+    /// using radial gradients. Extremely minimal markup (~6-7 characters).
+    /// </para>
+    /// <para>
+    /// Encoding scheme (20 bits total):
+    /// - Bits 0-2: Oklab b component (3 bits = 8 values)
+    /// - Bits 3-5: Oklab a component (3 bits = 8 values)
+    /// - Bits 6-7: Oklab L (lightness) (2 bits = 4 values)
+    /// - Bits 8-19: 6 brightness values for 3×2 grid (2 bits each = 4 levels)
+    /// </para>
+    /// <para>
+    /// Matches original leanrada.com algorithm:
+    /// - Uses dominant color (histogram peak) instead of average
+    /// - Applies sharpen to 3×2 grid for better contrast
+    /// - Uses relative brightness values (0.5 + cellL - baseL)
+    /// </para>
+    /// </remarks>
+    /// <param name="image">Source image (already loaded)</param>
+    /// <returns>Integer hash as string (e.g., "-721311")</returns>
+    private string GenerateCssHash(Image image)
+    {
+        // Step 1: Calculate average color in Oklab space
+        // Using average instead of dominant color works better for high-contrast images
+        // (e.g., white fur on black background)
+        using var sampler = image.ThumbnailImage(10, height: 10, crop: Enums.Interesting.Centre);
+
+        var sumL = 0.0;
+        var sumA = 0.0;
+        var sumB = 0.0;
+        var pixelCount = 0;
+
+        for (var y = 0; y < sampler.Height; y++)
+        {
+            for (var x = 0; x < sampler.Width; x++)
+            {
+                var pixel = sampler.Getpoint(x, y);
+                var r = Math.Clamp(pixel[0], 0, 255) / 255.0;
+                var g = Math.Clamp(pixel[1], 0, 255) / 255.0;
+                var b = Math.Clamp(pixel[2], 0, 255) / 255.0;
+
+                // Convert to Oklab for perceptually uniform averaging
+                var (l, a, ob) = RgbToOklab(r, g, b);
+                sumL += l;
+                sumA += a;
+                sumB += ob;
+                pixelCount++;
+            }
+        }
+
+        // Average in Oklab space
+        var rawBaseL = sumL / pixelCount;
+        var rawBaseA = sumA / pixelCount;
+        var rawBaseB = sumB / pixelCount;
+
+        // Step 2: Find optimal Oklab bit representation via brute-force search
+        var (qL, qA, qB) = FindOklabBits(rawBaseL, rawBaseA, rawBaseB);
+
+        // Get the actual Oklab values that will be used in CSS decoding
+        var (baseL, _, _) = BitsToOklab(qL, qA, qB);
+
+        // Step 3: Resize to 3x2 with sharpen (like original)
+        var gridScaleX = 3.0 / image.Width;
+        var gridScaleY = 2.0 / image.Height;
+        using var gridRaw = image.Resize(gridScaleX, vscale: gridScaleY);
+        using var grid = gridRaw.Sharpen(sigma: 1.0);
+
+        // Step 4: Calculate ABSOLUTE brightness values (original algorithm)
+        // The CSS uses grayscale cells (hsl(0 0% x%)) NOT relative to base color
+        var brightness = new int[6];
+        for (var y = 0; y < 2; y++)
+        {
+            for (var x = 0; x < 3; x++)
+            {
+                var pixel = grid.Getpoint(x, y);
+                var r = Math.Clamp(pixel[0], 0, 255) / 255.0;
+                var g = Math.Clamp(pixel[1], 0, 255) / 255.0;
+                var b = Math.Clamp(pixel[2], 0, 255) / 255.0;
+
+                // Get cell lightness in Oklab (for perceptual accuracy)
+                var (cellL, _, _) = RgbToOklab(r, g, b);
+
+                // Map lightness [0-1] to [0-3] (CSS maps 0-3 to 20%-80%)
+                // cellL is typically 0-1, quantize directly
+                brightness[(y * 3) + x] = (int)Math.Clamp(Math.Round(cellL * 3), 0, 3);
+            }
+        }
+
+        // Step 5: Pack into 20-bit integer
+        var hash = 0;
+        hash |= brightness[0] << 18;
+        hash |= brightness[1] << 16;
+        hash |= brightness[2] << 14;
+        hash |= brightness[3] << 12;
+        hash |= brightness[4] << 10;
+        hash |= brightness[5] << 8;
+        hash |= qL << 6;
+        hash |= qA << 3;
+        hash |= qB;
+
+        var signedHash = hash - 524288;
+
+        LogPlaceholderGenerated(logger, "csshash", signedHash.ToString(CultureInfo.InvariantCulture).Length);
+        return signedHash.ToString(CultureInfo.InvariantCulture);
+    }
+
+    /// <summary>
+    /// Find the best bit configuration that produces a color closest to target
+    /// </summary>
+    /// <remarks>
+    /// Brute-force search through all 128 combinations (4×8×8) to find
+    /// the quantized Oklab values that minimize perceptual distance.
+    /// Uses chroma-aware scaling to avoid bias toward neutral colors.
+    /// </remarks>
+    private static (int ll, int aaa, int bbb) FindOklabBits(double targetL, double targetA, double targetB)
+    {
+        var targetChroma = Math.Sqrt((targetA * targetA) + (targetB * targetB));
+        var scaledTargetA = ScaleComponentForDiff(targetA, targetChroma);
+        var scaledTargetB = ScaleComponentForDiff(targetB, targetChroma);
+
+        var bestBits = (ll: 0, aaa: 0, bbb: 0);
+        var bestDifference = double.MaxValue;
+
+        // Try all 128 combinations: L(4) × a(8) × b(8)
+        for (var lli = 0; lli <= 3; lli++)
+        {
+            for (var aaai = 0; aaai <= 7; aaai++)
+            {
+                for (var bbbi = 0; bbbi <= 7; bbbi++)
+                {
+                    var (l, a, b) = BitsToOklab(lli, aaai, bbbi);
+                    var chroma = Math.Sqrt((a * a) + (b * b));
+                    var scaledA = ScaleComponentForDiff(a, chroma);
+                    var scaledB = ScaleComponentForDiff(b, chroma);
+
+                    // Euclidean distance in scaled Oklab space
+                    var dL = l - targetL;
+                    var dA = scaledA - scaledTargetA;
+                    var dB = scaledB - scaledTargetB;
+                    var difference = Math.Sqrt((dL * dL) + (dA * dA) + (dB * dB));
+
+                    if (difference < bestDifference)
+                    {
+                        bestDifference = difference;
+                        bestBits = (lli, aaai, bbbi);
+                    }
+                }
+            }
+        }
+
+        return bestBits;
+    }
+
+    /// <summary>
+    /// Scale a/b component to reduce bias toward neutral colors
+    /// </summary>
+    /// <remarks>
+    /// Without this scaling, euclidean comparison in Oklab space would
+    /// be biased toward low-chroma (gray) colors. This spreads out
+    /// the comparison space for saturated colors.
+    /// </remarks>
+    private static double ScaleComponentForDiff(double x, double chroma) =>
+        x / (1e-6 + Math.Pow(chroma, 0.5));
+
+    /// <summary>
+    /// Convert quantized bits back to Oklab values (matches CSS decoder)
+    /// </summary>
+    private static (double L, double a, double b) BitsToOklab(int ll, int aaa, int bbb)
+    {
+        // Must match CSS decoder exactly! (original formula from leanrada.com)
+        // L: 2 bits -> [0.2, 0.8]
+        var l = (ll / 3.0 * 0.6) + 0.2;
+        // a: 3 bits -> [-0.35, 0.35]
+        var a = (aaa / 8.0 * 0.7) - 0.35;
+        // b: 3 bits -> [-0.35, 0.35] with +1 offset (asymmetric range)
+        var b = ((bbb + 1) / 8.0 * 0.7) - 0.35;
+        return (l, a, b);
+    }
+
+    /// <summary>
+    /// Convert sRGB to Oklab color space
+    /// </summary>
+    /// <remarks>
+    /// Based on Björn Ottosson's Oklab: https://bottosson.github.io/posts/oklab/
+    /// </remarks>
+    private static (double L, double a, double b) RgbToOklab(double r, double g, double b)
+    {
+        // sRGB to linear RGB
+        var lr = r <= 0.04045 ? r / 12.92 : Math.Pow((r + 0.055) / 1.055, 2.4);
+        var lg = g <= 0.04045 ? g / 12.92 : Math.Pow((g + 0.055) / 1.055, 2.4);
+        var lb = b <= 0.04045 ? b / 12.92 : Math.Pow((b + 0.055) / 1.055, 2.4);
+
+        // Linear RGB to LMS
+        var l = (0.4122214708 * lr) + (0.5363325363 * lg) + (0.0514459929 * lb);
+        var m = (0.2119034982 * lr) + (0.6806995451 * lg) + (0.1073969566 * lb);
+        var s = (0.0883024619 * lr) + (0.2817188376 * lg) + (0.6299787005 * lb);
+
+        // LMS to Oklab
+        var l_ = Math.Cbrt(l);
+        var m_ = Math.Cbrt(m);
+        var s_ = Math.Cbrt(s);
+
+        return (
+            L: (0.2104542553 * l_) + (0.7936177850 * m_) - (0.0040720468 * s_),
+            a: (1.9779984951 * l_) - (2.4285922050 * m_) + (0.4505937099 * s_),
+            b: (0.0259040371 * l_) + (0.7827717662 * m_) - (0.8086757660 * s_)
+        );
+    }
 }

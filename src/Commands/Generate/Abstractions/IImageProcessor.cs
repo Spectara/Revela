@@ -1,4 +1,5 @@
 using Spectara.Revela.Commands.Generate.Models;
+using Spectara.Revela.Core.Configuration;
 using Spectara.Revela.Sdk.Models;
 
 namespace Spectara.Revela.Commands.Generate.Abstractions;
@@ -33,17 +34,27 @@ public interface IImageProcessor
     /// Read image metadata without processing (fast operation).
     /// </summary>
     /// <remarks>
-    /// Reads only the image header - does NOT decode full image.
+    /// <para>
+    /// Reads only the image header - does NOT decode full image (unless placeholderConfig is set).
     /// Used during scan phase for:
     /// - Width/Height extraction
     /// - EXIF data extraction
     /// - Hash calculation
+    /// </para>
+    /// <para>
+    /// When <paramref name="placeholderConfig"/> is provided with Strategy != None,
+    /// the placeholder is generated during scan and included in the metadata.
+    /// This requires loading the full image but ensures placeholders are available
+    /// when pages are generated.
+    /// </para>
     /// </remarks>
     /// <param name="inputPath">Path to the source image</param>
+    /// <param name="placeholderConfig">Optional placeholder configuration (null = no placeholder)</param>
     /// <param name="cancellationToken">Cancellation token</param>
-    /// <returns>Image metadata (dimensions, EXIF, file info)</returns>
+    /// <returns>Image metadata (dimensions, EXIF, file info, optional placeholder)</returns>
     Task<ImageMetadata> ReadMetadataAsync(
         string inputPath,
+        PlaceholderConfig? placeholderConfig = null,
         CancellationToken cancellationToken = default);
 }
 
@@ -66,4 +77,13 @@ public sealed class ImageMetadata
 
     /// <summary>Date photo was taken (from EXIF or file date)</summary>
     public DateTime? DateTaken { get; init; }
+
+    /// <summary>
+    /// Pre-generated placeholder for lazy loading (CSS-only LQIP hash).
+    /// </summary>
+    /// <remarks>
+    /// Generated during scan when PlaceholderConfig is provided.
+    /// Contains a 20-bit integer as string (e.g., "-721311").
+    /// </remarks>
+    public string? Placeholder { get; init; }
 }

@@ -293,6 +293,16 @@ public sealed class ImageConfig
     public int MinHeight { get; init; }
 
     /// <summary>
+    /// Placeholder image settings for lazy loading
+    /// </summary>
+    /// <remarks>
+    /// Configures placeholder generation using CSS-only LQIP technique.
+    /// Default strategy is <see cref="PlaceholderStrategy.CssHash"/> - a compact integer (~7 bytes).
+    /// Set to <c>None</c> to disable placeholders.
+    /// </remarks>
+    public PlaceholderConfig Placeholder { get; init; } = new();
+
+    /// <summary>
     /// Gets the active formats (quality > 0) as a dictionary.
     /// </summary>
     /// <returns>Dictionary of format name to quality.</returns>

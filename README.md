@@ -185,6 +185,7 @@ Contributions welcome! Please open an [issue](https://github.com/spectara/revela
 - [Expose](https://github.com/kirkone/Expose) — Original inspiration
 - [libvips](https://www.libvips.org/) — Image processing
 - [Scriban](https://github.com/scriban/scriban) — Templates
+- [CSS-only LQIP](https://leanrada.com/notes/css-only-lqip/) — Blur placeholder technique by Lean Rada
 
 ---
 

@@ -7,7 +7,7 @@ Renders a gallery article with responsive images:
 - Lightbox (on focus/click)
 
 Context variables:
-- image: ImageData { id, url, width, height, title?, exif?, sizes }
+- image: ImageData { id, url, width, height, title?, exif?, sizes, placeholder? }
 - image_basepath: path/URL to image folder (can be CDN URL)
 - image_formats: available formats ["avif", "webp", "jpg"]
 
@@ -23,8 +23,7 @@ rendered size instead of viewport. Firefox/Safari fallback to 100vw.
 {{~ alt_text = image.title ?? '' ~}}
 {{~ is_landscape = image.width >= image.height ~}}
 
-<article tabindex="0" id="{{ image.id }}" style="--width:{{ image.width }}; --height:{{ image.height }};">
-
+<article tabindex="0" id="{{ image.id }}" style="--width:{{ image.width }}; --height:{{ image.height }};{{~ if image.placeholder ~}} --lqip:{{ image.placeholder }};{{~ end ~}}">
     {{~ # --- Thumbnail (sizes="auto" for smart loading) --- ~}}
     <picture>
         {{~ for format in image_formats ~}}

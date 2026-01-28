@@ -1,3 +1,5 @@
+using Spectara.Revela.Core.Configuration;
+
 namespace Spectara.Revela.Commands.Generate.Models;
 
 /// <summary>
@@ -49,4 +51,22 @@ public sealed class ImageProcessingOptions
     /// </para>
     /// </remarks>
     public IReadOnlyList<(int Size, string Format)>? VariantsToGenerate { get; init; }
+
+    /// <summary>
+    /// Placeholder generation configuration
+    /// </summary>
+    /// <remarks>
+    /// Controls CSS-only LQIP hash generation.
+    /// Default strategy is CssHash (20-bit integer).
+    /// </remarks>
+    public PlaceholderConfig Placeholder { get; init; } = new();
+
+    /// <summary>
+    /// Pre-computed placeholder from scan phase.
+    /// </summary>
+    /// <remarks>
+    /// When set, this placeholder is used instead of generating a new one.
+    /// This avoids regenerating placeholders during image processing.
+    /// </remarks>
+    public string? ExistingPlaceholder { get; init; }
 }

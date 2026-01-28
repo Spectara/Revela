@@ -206,6 +206,11 @@ public sealed partial class ContentService(
         var minWidth = ImageSettings.MinWidth;
         var minHeight = ImageSettings.MinHeight;
 
+        // Get placeholder config - will be null if strategy is None (= no placeholder generation during scan)
+        var placeholderConfig = ImageSettings.Placeholder.Strategy != PlaceholderStrategy.None
+            ? ImageSettings.Placeholder
+            : null;
+
         await Parallel.ForEachAsync(
             images,
             cancellationToken,
@@ -213,7 +218,7 @@ public sealed partial class ContentService(
             {
                 try
                 {
-                    var meta = await imageProcessor.ReadMetadataAsync(image.SourcePath, ct);
+                    var meta = await imageProcessor.ReadMetadataAsync(image.SourcePath, placeholderConfig, ct);
 
                     // Skip images below minimum size thresholds
                     if ((minWidth > 0 && meta.Width < minWidth) ||
@@ -420,7 +425,8 @@ public sealed partial class ContentService(
             Sizes = sizes,
             DateTaken = meta.DateTaken,
             Exif = meta.Exif,
-            ProcessedAt = processedAt
+            ProcessedAt = processedAt,
+            Placeholder = meta.Placeholder
         };
     }
 
@@ -727,7 +733,8 @@ public sealed partial class ContentService(
             FileSize = meta?.FileSize ?? source.FileSize,
             DateTaken = meta?.DateTaken,
             Exif = meta?.Exif,
-            ProcessedAt = existingProcessedAt
+            ProcessedAt = existingProcessedAt,
+            Placeholder = meta?.Placeholder
         };
     }
 

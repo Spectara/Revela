@@ -65,6 +65,17 @@ public sealed class Image
     public IReadOnlyList<int> Sizes { get; init; } = [];
 
     /// <summary>
+    /// Placeholder CSS value for lazy loading
+    /// </summary>
+    /// <remarks>
+    /// Contains a CSS-only LQIP hash (20-bit integer as string, e.g., "-721311")
+    /// that CSS decodes into 6 radial gradients over a base color.
+    /// <c>null</c> when placeholder generation is disabled.
+    /// Used in templates: <c>style="--lqip:{{ image.placeholder }}"</c>
+    /// </remarks>
+    public string? Placeholder { get; init; }
+
+    /// <summary>
     /// Create an Image from a manifest entry (for cache hits).
     /// </summary>
     /// <param name="sourcePath">Full path to source image</param>
@@ -81,7 +92,8 @@ public sealed class Image
             FileSize = entry.FileSize,
             DateTaken = entry.DateTaken ?? DateTime.MinValue,
             Exif = entry.Exif,
-            Sizes = entry.Sizes
+            Sizes = entry.Sizes,
+            Placeholder = entry.Placeholder
         };
     }
 }

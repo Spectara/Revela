@@ -44,4 +44,16 @@ public sealed record ImageContent : GalleryContent
     /// </summary>
     [JsonPropertyName("processedAt")]
     public DateTime ProcessedAt { get; init; }
+
+    /// <summary>
+    /// Placeholder for lazy loading (CSS-only LQIP hash)
+    /// </summary>
+    /// <remarks>
+    /// Contains a 20-bit integer as string (e.g., "-721311") that CSS decodes
+    /// into 6 radial gradients over a base color. <c>null</c> when placeholder
+    /// generation is disabled.
+    /// Used in templates: <c>style="--lqip:{{ image.placeholder }}"</c>
+    /// </remarks>
+    [JsonPropertyName("placeholder")]
+    public string? Placeholder { get; init; }
 }

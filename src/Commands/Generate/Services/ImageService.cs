@@ -95,7 +95,7 @@ public sealed partial class ImageService(
             manifestRepository.RemoveOrphans(uniqueSourcePaths);
 
             // Determine which images need processing
-            var imagesToProcess = new List<(string SourcePath, string Hash, string ManifestKey, IReadOnlyList<int> Sizes, IReadOnlyList<(int Size, string Format)>? MissingVariants)>();
+            var imagesToProcess = new List<(string SourcePath, string Hash, string ManifestKey, IReadOnlyList<int> Sizes, IReadOnlyList<(int Size, string Format)>? MissingVariants, string? ExistingPlaceholder)>();
             var cachedCount = 0;
 
             var selectionStopwatch = System.Diagnostics.Stopwatch.StartNew();
@@ -124,10 +124,13 @@ public sealed partial class ImageService(
                 // Check if source hash changed - forces full regeneration
                 var sourceChanged = options.Force || ManifestService.NeedsProcessing(existingEntry, sourceHash);
 
+                // Get existing placeholder from manifest (generated during scan)
+                var existingPlaceholder = existingEntry?.Placeholder;
+
                 if (sourceChanged)
                 {
                     // Source changed or forced: regenerate all variants
-                    imagesToProcess.Add((fullPath, sourceHash, manifestKey, manifestSizes, null));
+                    imagesToProcess.Add((fullPath, sourceHash, manifestKey, manifestSizes, null, existingPlaceholder));
                 }
                 else
                 {
@@ -137,7 +140,7 @@ public sealed partial class ImageService(
                     if (missingVariants.Count > 0)
                     {
                         // Incremental: only generate missing variants
-                        imagesToProcess.Add((fullPath, sourceHash, manifestKey, manifestSizes, missingVariants));
+                        imagesToProcess.Add((fullPath, sourceHash, manifestKey, manifestSizes, missingVariants, existingPlaceholder));
                     }
                     else
                     {
@@ -151,7 +154,7 @@ public sealed partial class ImageService(
             LogSelectionCompleted(logger, uniqueSourcePaths.Count, imagesToProcess.Count, cachedCount, selectionStopwatch.Elapsed);
 
             long plannedVariants = 0;
-            foreach (var (_, _, _, manifestSizes, missingVariants) in imagesToProcess)
+            foreach (var (_, _, _, manifestSizes, missingVariants, _) in imagesToProcess)
             {
                 if (missingVariants != null)
                 {
@@ -240,7 +243,7 @@ public sealed partial class ImageService(
                 },
                 async (item, ct) =>
                 {
-                    var (sourcePath, sourceHash, manifestKey, manifestSizes, missingVariants) = item;
+                    var (sourcePath, sourceHash, manifestKey, manifestSizes, missingVariants, existingPlaceholder) = item;
 
                     // Assign a worker ID to this task
                     var taskId = Environment.CurrentManagedThreadId;
@@ -289,7 +292,9 @@ public sealed partial class ImageService(
                             VariantsToGenerate = missingVariants,  // null = all, list = incremental
                             OutputDirectory = outputImagesDirectory,
                             CacheDirectory = cacheDirectory,
-                            ResizeMode = imageSizesProvider.GetResizeMode()
+                            ResizeMode = imageSizesProvider.GetResizeMode(),
+                            Placeholder = ImageSettings.Placeholder,
+                            ExistingPlaceholder = existingPlaceholder
                         },
                         onVariantSaved: skipped =>
                         {
@@ -360,7 +365,7 @@ public sealed partial class ImageService(
                         Workers = [.. workerStates.Values.OrderBy(w => w.WorkerId)]
                     });
 
-                    // Thread-safe manifest update - only update ProcessedAt timestamp
+                    // Thread-safe manifest update - update ProcessedAt, Hash, and Placeholder
                     lock (manifestLock)
                     {
                         var existingEntry = manifestRepository.GetImage(manifestKey);
@@ -369,7 +374,8 @@ public sealed partial class ImageService(
                             manifestRepository.SetImage(manifestKey, existingEntry with
                             {
                                 Hash = sourceHash,
-                                ProcessedAt = DateTime.UtcNow
+                                ProcessedAt = DateTime.UtcNow,
+                                Placeholder = image.Placeholder
                             });
                         }
                     }
