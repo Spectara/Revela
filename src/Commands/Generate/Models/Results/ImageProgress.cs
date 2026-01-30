@@ -14,6 +14,9 @@ public sealed class ImageProgress
     /// <summary>Number of images skipped (cached).</summary>
     public int Skipped { get; init; }
 
+    /// <summary>Configured output formats (for legend display).</summary>
+    public IReadOnlyList<string> Formats { get; init; } = [];
+
     /// <summary>Active workers with their current state.</summary>
     public IReadOnlyList<WorkerState> Workers { get; init; } = [];
 }
@@ -56,8 +59,20 @@ public sealed class WorkerState
 /// </summary>
 public enum VariantResult
 {
-    /// <summary>Variant was generated (new file).</summary>
-    Done,
+    /// <summary>Variant was generated (new file) - JPG format.</summary>
+    DoneJpg,
+
+    /// <summary>Variant was generated (new file) - WebP format.</summary>
+    DoneWebp,
+
+    /// <summary>Variant was generated (new file) - AVIF format.</summary>
+    DoneAvif,
+
+    /// <summary>Variant was generated (new file) - PNG format.</summary>
+    DonePng,
+
+    /// <summary>Variant was generated (new file) - other format.</summary>
+    DoneOther,
 
     /// <summary>Variant was skipped (already exists).</summary>
     Skipped

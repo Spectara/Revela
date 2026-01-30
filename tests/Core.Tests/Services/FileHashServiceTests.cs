@@ -6,6 +6,7 @@ namespace Spectara.Revela.Core.Tests.Services;
 /// Unit tests for <see cref="FileHashService"/>
 /// </summary>
 [TestClass]
+[TestCategory("Unit")]
 public sealed class FileHashServiceTests
 {
     private FileHashService service = null!;

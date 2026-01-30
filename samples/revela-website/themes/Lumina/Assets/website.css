@@ -464,6 +464,41 @@ footer nav section a.active {
 }
 
 /* ============================================
+   Blockquote / Info Box
+   ============================================ */
+.page-content blockquote,
+.docs-content blockquote {
+  margin: 1.5rem 0;
+  padding: 1rem 1.25rem;
+  border-left: 4px solid hsl(var(--accent-hsl));
+  background: hsl(var(--accent-hsl) / 0.08);
+  border-radius: 0 0.5rem 0.5rem 0;
+}
+
+.page-content blockquote p,
+.docs-content blockquote p {
+  margin: 0;
+}
+
+.page-content blockquote p:not(:last-child),
+.docs-content blockquote p:not(:last-child) {
+  margin-bottom: 0.5rem;
+}
+
+.page-content blockquote strong,
+.docs-content blockquote strong {
+  color: hsl(var(--accent-hsl));
+}
+
+@media (prefers-color-scheme: dark) {
+
+  .page-content blockquote,
+  .docs-content blockquote {
+    background: hsl(var(--accent-hsl) / 0.12);
+  }
+}
+
+/* ============================================
    Footer (transparent for gradient background)
    ============================================ */
 footer {

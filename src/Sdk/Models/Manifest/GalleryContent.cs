@@ -40,11 +40,4 @@ public abstract record GalleryContent
     /// </summary>
     [JsonPropertyName("fileSize")]
     public long FileSize { get; init; }
-
-    /// <summary>
-    /// Hash for change detection.
-    /// Computed during image processing, empty until then.
-    /// </summary>
-    [JsonPropertyName("hash")]
-    public string Hash { get; init; } = "";
 }

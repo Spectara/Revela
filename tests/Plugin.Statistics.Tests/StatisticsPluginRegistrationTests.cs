@@ -11,6 +11,7 @@ using Spectara.Revela.Sdk.Models.Manifest;
 namespace Spectara.Revela.Plugin.Statistics.Tests;
 
 [TestClass]
+[TestCategory("Unit")]
 public sealed class StatisticsPluginRegistrationTests
 {
     [TestMethod]

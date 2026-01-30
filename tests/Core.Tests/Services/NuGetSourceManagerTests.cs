@@ -14,6 +14,7 @@ namespace Spectara.Revela.Core.Tests.Services;
 /// to avoid race conditions when multiple tests try to create/access revela.json simultaneously.
 /// </remarks>
 [TestClass]
+[TestCategory("Unit")]
 public sealed class NuGetSourceManagerTests
 {
     private NuGetSourceManager service = null!;

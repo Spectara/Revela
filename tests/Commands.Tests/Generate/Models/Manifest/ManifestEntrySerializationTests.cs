@@ -5,6 +5,7 @@ using Spectara.Revela.Sdk.Models.Manifest;
 namespace Spectara.Revela.Commands.Tests.Generate.Models.Manifest;
 
 [TestClass]
+[TestCategory("Unit")]
 public sealed class ManifestEntrySerializationTests
 {
     private static readonly JsonSerializerOptions JsonOptions = new()

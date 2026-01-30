@@ -80,6 +80,23 @@ public interface IManifestRepository
     string ConfigHash { get; set; }
 
     /// <summary>
+    /// Hash of scan configuration (placeholder strategy, min dimensions).
+    /// When this changes, all metadata needs to be re-read.
+    /// </summary>
+    string ScanConfigHash { get; set; }
+
+    /// <summary>
+    /// Format qualities used for last image generation.
+    /// Key = format (jpg, webp, avif), Value = quality (1-100).
+    /// </summary>
+    IReadOnlyDictionary<string, int> FormatQualities { get; }
+
+    /// <summary>
+    /// Update format qualities after image generation.
+    /// </summary>
+    void SetFormatQualities(IReadOnlyDictionary<string, int> qualities);
+
+    /// <summary>
     /// Timestamp of last content scan.
     /// </summary>
     DateTime? LastScanned { get; set; }
@@ -107,16 +124,6 @@ public interface IManifestRepository
     /// Clear all entries and reset to empty manifest.
     /// </summary>
     void Clear();
-
-    /// <summary>
-    /// Clear all image hashes to force reprocessing.
-    /// </summary>
-    /// <remarks>
-    /// Used when image configuration changes (sizes, formats).
-    /// Keeps the tree structure intact but clears hashes so all images
-    /// are considered "changed" and will be reprocessed.
-    /// </remarks>
-    void ClearImageHashes();
 
     #endregion
 

@@ -69,4 +69,14 @@ public sealed class ImageProcessingOptions
     /// This avoids regenerating placeholders during image processing.
     /// </remarks>
     public string? ExistingPlaceholder { get; init; }
+
+    /// <summary>
+    /// Original image width in pixels (from manifest/scan).
+    /// </summary>
+    public required int Width { get; init; }
+
+    /// <summary>
+    /// Original image height in pixels (from manifest/scan).
+    /// </summary>
+    public required int Height { get; init; }
 }

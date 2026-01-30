@@ -28,6 +28,22 @@ public sealed class ManifestMeta
     public string ConfigHash { get; set; } = string.Empty;
 
     /// <summary>
+    /// Hash of scan configuration (placeholder strategy, min dimensions).
+    /// When this changes, all metadata needs to be re-read from source files.
+    /// </summary>
+    [JsonPropertyName("scanConfigHash")]
+    public string ScanConfigHash { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Format qualities used for last image generation.
+    /// Key = format (jpg, webp, avif), Value = quality (1-100).
+    /// When a quality changes, all images of that format need regeneration.
+    /// </summary>
+    [JsonPropertyName("formatQualities")]
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Usage", "CA2227:Collection properties should be read only", Justification = "Required for JSON deserialization")]
+    public Dictionary<string, int> FormatQualities { get; set; } = [];
+
+    /// <summary>
     /// Timestamp of last content scan.
     /// </summary>
     [JsonPropertyName("lastScanned")]

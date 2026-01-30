@@ -3,6 +3,7 @@ using Spectara.Revela.Core.Configuration;
 namespace Spectara.Revela.Core.Tests;
 
 [TestClass]
+[TestCategory("Unit")]
 public sealed class GenerateConfigTests
 {
     [TestMethod]

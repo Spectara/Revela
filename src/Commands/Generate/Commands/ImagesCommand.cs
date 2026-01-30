@@ -204,17 +204,35 @@ public sealed partial class ImagesCommand(
     /// <remarks>
     /// Format like original Bash Expose script:
     /// <code>
+    /// Legend: ■ jpg  ■ webp  ■ avif  ■ cached  □ pending
+    ///
     /// 029081.jpg ■ ■ ■ □ □ □
     /// 029088.jpg ■ ■ □ □ □ □
     /// 029135.jpg ■ □ □ □ □ □
     ///
     /// ━━━━━━━━━━░░░░░░░░░░  12/1000 (1%)
     /// </code>
-    /// Symbols: ■ = done, » = skipped (cache), □ = pending
     /// </remarks>
     private static Rows RenderProgress(ImageProgress p)
     {
-        var rows = new List<IRenderable>();
+        // Build dynamic legend based on configured formats
+        var legendParts = new List<string>();
+        foreach (var format in p.Formats)
+        {
+            var color = GetFormatColor(format);
+            legendParts.Add($"[{color}]■[/] {format}");
+        }
+
+        legendParts.Add("[dim]■[/] cached");
+        legendParts.Add("[dim]□[/] pending");
+
+        var legend = "[dim]Legend:[/] " + string.Join("  ", legendParts);
+
+        var rows = new List<IRenderable>
+        {
+            new Markup(legend),
+            new Text("")
+        };
 
         // Get total worker count (for fixed row reservation)
         var workerCount = p.Workers.Count;
@@ -235,15 +253,24 @@ public sealed partial class ImagesCommand(
                     .Replace("]", "]]", StringComparison.Ordinal) ?? "";
 
                 // Build variant symbols from VariantResults list (ordered)
-                // ■ = done (green), ■ = skipped (dim), □ = pending
+                // Format colors: JPG=green, WebP=blue, AVIF=magenta, PNG=cyan
+                // ■ = done (colored by format), ■ = skipped (dim), □ = pending
                 var symbols = new List<string>();
 
                 // First: show completed variants in their actual order
                 foreach (var result in worker.VariantResults)
                 {
-                    symbols.Add(result == VariantResult.Done
-                        ? "[green]■[/]"  // Generated
-                        : "[dim]■[/]");   // Skipped (exists)
+                    var symbol = result switch
+                    {
+                        VariantResult.DoneJpg => "[green]■[/]",
+                        VariantResult.DoneWebp => "[blue]■[/]",
+                        VariantResult.DoneAvif => "[fuchsia]■[/]",
+                        VariantResult.DonePng => "[aqua]■[/]",
+                        VariantResult.DoneOther => "[green]■[/]",
+                        VariantResult.Skipped => "[dim]■[/]",
+                        _ => "[dim]■[/]"
+                    };
+                    symbols.Add(symbol);
                 }
 
                 // Then: fill remaining with pending symbols
@@ -277,6 +304,18 @@ public sealed partial class ImagesCommand(
 
         return new Rows(rows);
     }
+
+    /// <summary>
+    /// Get Spectre.Console color name for a format.
+    /// </summary>
+    private static string GetFormatColor(string format) => format.ToUpperInvariant() switch
+    {
+        "JPG" or "JPEG" => "green",
+        "WEBP" => "blue",
+        "AVIF" => "fuchsia",
+        "PNG" => "aqua",
+        _ => "green"
+    };
 
     [LoggerMessage(Level = LogLevel.Error, Message = "Image processing command failed")]
     private static partial void LogImageProcessingFailed(ILogger logger);

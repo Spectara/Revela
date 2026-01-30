@@ -33,7 +33,6 @@ public static class TestData
         int height = 1080) => new()
         {
             Filename = filename,
-            Hash = $"hash_{filename}",
             Width = width,
             Height = height,
             Sizes = [width],

@@ -4,6 +4,7 @@ using Spectara.Revela.Sdk.Services;
 namespace Spectara.Revela.Plugin.Source.OneDrive.Tests.Commands;
 
 [TestClass]
+[TestCategory("Unit")]
 public sealed class OneDriveSourceCommandTests
 {
     [TestMethod]

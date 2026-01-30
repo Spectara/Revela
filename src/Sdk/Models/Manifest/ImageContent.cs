@@ -40,10 +40,11 @@ public sealed record ImageContent : GalleryContent
     public ExifData? Exif { get; init; }
 
     /// <summary>
-    /// Timestamp when this image was last processed.
+    /// Last modification time of the source file.
+    /// Used for cache invalidation during scan.
     /// </summary>
-    [JsonPropertyName("processedAt")]
-    public DateTime ProcessedAt { get; init; }
+    [JsonPropertyName("lastModified")]
+    public DateTime LastModified { get; init; }
 
     /// <summary>
     /// Placeholder for lazy loading (CSS-only LQIP hash)

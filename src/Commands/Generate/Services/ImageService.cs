@@ -6,7 +6,6 @@ using Spectara.Revela.Commands.Generate.Models.Results;
 using Spectara.Revela.Core.Configuration;
 using Spectara.Revela.Core.Services;
 using Spectara.Revela.Sdk;
-using Spectara.Revela.Sdk.Abstractions;
 using Spectara.Revela.Sdk.Models.Manifest;
 using Spectara.Revela.Sdk.Services;
 using IManifestRepository = Spectara.Revela.Sdk.Abstractions.IManifestRepository;
@@ -19,13 +18,12 @@ namespace Spectara.Revela.Commands.Generate.Services;
 /// <remarks>
 /// <para>
 /// Processes images from the manifest, generating responsive variants
-/// in multiple sizes and formats. Uses hash-based caching to skip
-/// unchanged images.
+/// in multiple sizes and formats. Uses metadata-based caching (LastModified + FileSize)
+/// to skip unchanged images.
 /// </para>
 /// </remarks>
 public sealed partial class ImageService(
     IImageProcessor imageProcessor,
-    IFileHashService fileHashService,
     IManifestRepository manifestRepository,
     IImageSizesProvider imageSizesProvider,
     IOptions<ProjectEnvironment> projectEnvironment,
@@ -78,11 +76,22 @@ public sealed partial class ImageService(
                 };
             }
 
-            // Store config hash for reference (but don't clear hashes on change)
-            // Incremental generation handles missing variants per-image
+            // Store config hash for manifest tracking
             var sizes = imageSizesProvider.GetSizes();
             var configHash = ManifestService.ComputeConfigHash(sizes, formats);
             manifestRepository.ConfigHash = configHash;
+
+            // Detect which formats have quality changes (need regeneration)
+            var savedQualities = manifestRepository.FormatQualities;
+            var formatsWithQualityChange = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var (format, quality) in formats)
+            {
+                if (savedQualities.TryGetValue(format, out var savedQuality) && savedQuality != quality)
+                {
+                    formatsWithQualityChange.Add(format);
+                    LogQualityChanged(logger, format, savedQuality, quality);
+                }
+            }
 
             // Collect all unique image paths from the root tree
             // Note: The tree may contain duplicate paths (e.g., filtered images on homepage
@@ -95,7 +104,7 @@ public sealed partial class ImageService(
             manifestRepository.RemoveOrphans(uniqueSourcePaths);
 
             // Determine which images need processing
-            var imagesToProcess = new List<(string SourcePath, string Hash, string ManifestKey, IReadOnlyList<int> Sizes, IReadOnlyList<(int Size, string Format)>? MissingVariants, string? ExistingPlaceholder)>();
+            var imagesToProcess = new List<(string SourcePath, string ManifestKey, IReadOnlyList<int> Sizes, IReadOnlyList<(int Size, string Format)>? MissingVariants, string? ExistingPlaceholder, int Width, int Height)>();
             var cachedCount = 0;
 
             var selectionStopwatch = System.Diagnostics.Stopwatch.StartNew();
@@ -108,43 +117,54 @@ public sealed partial class ImageService(
                 cancellationToken.ThrowIfCancellationRequested();
 
                 var fullPath = Path.Combine(SourcePath, imagePath);
-                if (!File.Exists(fullPath))
+                var fileInfo = new FileInfo(fullPath);
+                if (!fileInfo.Exists)
                 {
                     continue;
                 }
 
-                var sourceHash = fileHashService.ComputeHash(fullPath);
                 var manifestKey = imagePath.Replace('\\', '/');
                 var existingEntry = manifestRepository.GetImage(manifestKey);
-                var imageName = Path.GetFileNameWithoutExtension(existingEntry?.Filename ?? "");
+                var imageName = Path.GetFileNameWithoutExtension(existingEntry?.Filename ?? Path.GetFileNameWithoutExtension(fullPath));
 
                 // Get sizes from manifest (calculated during scan)
                 var manifestSizes = existingEntry?.Sizes ?? [];
 
-                // Check if source hash changed - forces full regeneration
-                var sourceChanged = options.Force || ManifestService.NeedsProcessing(existingEntry, sourceHash);
+                // Get dimensions from manifest (required for processing)
+                var width = existingEntry?.Width ?? 0;
+                var height = existingEntry?.Height ?? 0;
 
                 // Get existing placeholder from manifest (generated during scan)
                 var existingPlaceholder = existingEntry?.Placeholder;
 
-                if (sourceChanged)
+                // Change detection: LastModified + FileSize (like git/rsync)
+                var sourceUnchanged = existingEntry != null
+                    && existingEntry.LastModified == fileInfo.LastWriteTimeUtc
+                    && existingEntry.FileSize == fileInfo.Length;
+
+                // Decision tree
+                if (options.Force)
                 {
-                    // Source changed or forced: regenerate all variants
-                    imagesToProcess.Add((fullPath, sourceHash, manifestKey, manifestSizes, null, existingPlaceholder));
+                    // Force: regenerate everything
+                    imagesToProcess.Add((fullPath, manifestKey, manifestSizes, null, existingPlaceholder, width, height));
+                }
+                else if (!sourceUnchanged)
+                {
+                    // Source changed or never processed: regenerate everything
+                    imagesToProcess.Add((fullPath, manifestKey, manifestSizes, null, existingPlaceholder, width, height));
                 }
                 else
                 {
-                    // Source unchanged: check which variants are missing
-                    var missingVariants = GetMissingVariants(outputImagesDirectory, imageName, manifestSizes, formats);
-
+                    // Source unchanged: check if all output files exist or quality changed
+                    // This handles: config changes, quality changes, manually deleted files, interrupted builds
+                    // Cost: ~10 File.Exists calls per image (cheap I/O, typically cached by OS)
+                    var missingVariants = GetMissingVariants(outputImagesDirectory, imageName, manifestSizes, formats, formatsWithQualityChange);
                     if (missingVariants.Count > 0)
                     {
-                        // Incremental: only generate missing variants
-                        imagesToProcess.Add((fullPath, sourceHash, manifestKey, manifestSizes, missingVariants, existingPlaceholder));
+                        imagesToProcess.Add((fullPath, manifestKey, manifestSizes, missingVariants, existingPlaceholder, width, height));
                     }
                     else
                     {
-                        // All variants exist - skip
                         cachedCount++;
                     }
                 }
@@ -154,7 +174,7 @@ public sealed partial class ImageService(
             LogSelectionCompleted(logger, uniqueSourcePaths.Count, imagesToProcess.Count, cachedCount, selectionStopwatch.Elapsed);
 
             long plannedVariants = 0;
-            foreach (var (_, _, _, manifestSizes, missingVariants, _) in imagesToProcess)
+            foreach (var (_, _, manifestSizes, missingVariants, _, _, _) in imagesToProcess)
             {
                 if (missingVariants != null)
                 {
@@ -179,11 +199,14 @@ public sealed partial class ImageService(
                 LogCacheHits(logger, cachedCount, uniqueSourcePaths.Count);
             }
 
-            // Worker pool configuration (configurable)
+            // Worker pool configuration: (CPU/2) × (CPU/2) strategy
+            // Combined with NetVips.Concurrency = CPU/2, this optimizes thread usage:
+            // - Fewer workers = fewer parallel AVIF encoder instances (each spawns ~15 threads)
+            // - Reduces total thread count by ~30% with equal or better performance
             var configuredParallelism = ImageSettings.MaxDegreeOfParallelism;
             var workerCount = configuredParallelism.HasValue
                 ? Math.Max(1, configuredParallelism.Value)
-                : Math.Max(1, Environment.ProcessorCount - 2);
+                : Math.Max(1, Environment.ProcessorCount / 2);
 
             if (configuredParallelism.HasValue)
             {
@@ -198,16 +221,21 @@ public sealed partial class ImageService(
             }
 
             // Report initial progress
+            var formatNames = formats.Keys.ToList();
             progress?.Report(new ImageProgress
             {
                 Processed = 0,
                 Total = imagesToProcess.Count,
                 Skipped = cachedCount,
+                Formats = formatNames,
                 Workers = [.. workerStates.Values.OrderBy(w => w.WorkerId)]
             });
 
             if (imagesToProcess.Count == 0)
             {
+                // Still save format qualities even when nothing to process
+                // This initializes the qualities on first run or after manifest reset
+                manifestRepository.SetFormatQualities(formats);
                 manifestRepository.LastImagesProcessed = DateTime.UtcNow;
                 await manifestRepository.SaveAsync(cancellationToken);
                 stopwatch.Stop();
@@ -243,7 +271,7 @@ public sealed partial class ImageService(
                 },
                 async (item, ct) =>
                 {
-                    var (sourcePath, sourceHash, manifestKey, manifestSizes, missingVariants, existingPlaceholder) = item;
+                    var (sourcePath, manifestKey, manifestSizes, missingVariants, existingPlaceholder, width, height) = item;
 
                     // Assign a worker ID to this task
                     var taskId = Environment.CurrentManagedThreadId;
@@ -280,6 +308,7 @@ public sealed partial class ImageService(
                         Processed = processedCount,
                         Total = imagesToProcess.Count,
                         Skipped = cachedCount,
+                        Formats = formatNames,
                         Workers = [.. workerStates.Values.OrderBy(w => w.WorkerId)]
                     });
 
@@ -294,9 +323,11 @@ public sealed partial class ImageService(
                             CacheDirectory = cacheDirectory,
                             ResizeMode = imageSizesProvider.GetResizeMode(),
                             Placeholder = ImageSettings.Placeholder,
-                            ExistingPlaceholder = existingPlaceholder
+                            ExistingPlaceholder = existingPlaceholder,
+                            Width = width,
+                            Height = height
                         },
-                        onVariantSaved: skipped =>
+                        onVariantSaved: (skipped, format) =>
                         {
                             // Track result in order and update counters
                             if (skipped)
@@ -312,7 +343,16 @@ public sealed partial class ImageService(
                                 Interlocked.Increment(ref variantsDone);
                                 lock (variantResults)
                                 {
-                                    variantResults.Add(VariantResult.Done);
+                                    // Map format to specific Done variant for colored display
+                                    var result = format.ToUpperInvariant() switch
+                                    {
+                                        "JPG" or "JPEG" => VariantResult.DoneJpg,
+                                        "WEBP" => VariantResult.DoneWebp,
+                                        "AVIF" => VariantResult.DoneAvif,
+                                        "PNG" => VariantResult.DonePng,
+                                        _ => VariantResult.DoneOther
+                                    };
+                                    variantResults.Add(result);
                                 }
                             }
 
@@ -339,6 +379,7 @@ public sealed partial class ImageService(
                                 Processed = processedCount,
                                 Total = imagesToProcess.Count,
                                 Skipped = cachedCount,
+                                Formats = formatNames,
                                 Workers = [.. workerStates.Values.OrderBy(w => w.WorkerId)]
                             });
                         },
@@ -362,19 +403,18 @@ public sealed partial class ImageService(
                         Processed = currentProcessed,
                         Total = imagesToProcess.Count,
                         Skipped = cachedCount,
+                        Formats = formatNames,
                         Workers = [.. workerStates.Values.OrderBy(w => w.WorkerId)]
                     });
 
-                    // Thread-safe manifest update - update ProcessedAt, Hash, and Placeholder
+                    // Thread-safe manifest update - update placeholder if changed
                     lock (manifestLock)
                     {
                         var existingEntry = manifestRepository.GetImage(manifestKey);
-                        if (existingEntry != null)
+                        if (existingEntry != null && existingEntry.Placeholder != image.Placeholder)
                         {
                             manifestRepository.SetImage(manifestKey, existingEntry with
                             {
-                                Hash = sourceHash,
-                                ProcessedAt = DateTime.UtcNow,
                                 Placeholder = image.Placeholder
                             });
                         }
@@ -383,7 +423,8 @@ public sealed partial class ImageService(
 
             // totalSizeBytes already accumulated from variants; skip directory scan
 
-            // Save manifest
+            // Save manifest with updated format qualities
+            manifestRepository.SetFormatQualities(formats);
             manifestRepository.LastImagesProcessed = DateTime.UtcNow;
             await manifestRepository.SaveAsync(cancellationToken);
 
@@ -393,6 +434,7 @@ public sealed partial class ImageService(
                 Processed = processedCount,
                 Total = imagesToProcess.Count,
                 Skipped = cachedCount,
+                Formats = formatNames,
                 Workers = [.. workerStates.Values.OrderBy(w => w.WorkerId)]
             });
 
@@ -433,7 +475,7 @@ public sealed partial class ImageService(
     public async Task<Image> ProcessImageAsync(
         string inputPath,
         ImageProcessingOptions options,
-        Action<bool>? onVariantSaved = null,
+        Action<bool, string>? onVariantSaved = null,
         CancellationToken cancellationToken = default) => await imageProcessor.ProcessImageAsync(inputPath, options, onVariantSaved, cancellationToken);
 
     #region Private Helpers
@@ -479,14 +521,17 @@ public sealed partial class ImageService(
     /// Get list of missing size/format combinations for an image.
     /// </summary>
     /// <remarks>
-    /// Checks each expected output file and returns those that don't exist.
-    /// This enables incremental generation when config changes (e.g., new size added).
+    /// Checks each expected output file and returns those that:
+    /// - Don't exist on disk (deleted, new size, new format)
+    /// - Have quality changes (format exists but quality setting changed)
+    /// This enables incremental generation when config changes.
     /// </remarks>
     private static List<(int Size, string Format)> GetMissingVariants(
         string outputDirectory,
         string imageName,
         IReadOnlyList<int> sizes,
-        IReadOnlyDictionary<string, int> formats)
+        IReadOnlyDictionary<string, int> formats,
+        HashSet<string> formatsWithQualityChange)
     {
         var missing = new List<(int Size, string Format)>();
 
@@ -518,7 +563,9 @@ public sealed partial class ImageService(
             foreach (var format in formats.Keys)
             {
                 var expectedPath = Path.Combine(imageDirectory, $"{size}.{format}");
-                if (!File.Exists(expectedPath))
+
+                // Mark as missing if: file doesn't exist OR quality changed for this format
+                if (!File.Exists(expectedPath) || formatsWithQualityChange.Contains(format))
                 {
                     missing.Add((size, format));
                 }
@@ -549,6 +596,9 @@ public sealed partial class ImageService(
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Using configured parallelism for images: {Workers}")]
     private static partial void LogUsingConfiguredParallelism(ILogger logger, int workers);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Quality changed for {Format}: {OldQuality} → {NewQuality}, regenerating all {Format} files")]
+    private static partial void LogQualityChanged(ILogger logger, string format, int oldQuality, int newQuality);
 
     [LoggerMessage(Level = LogLevel.Error, Message = "Image processing failed")]
     private static partial void LogImageProcessingFailed(ILogger logger, Exception exception);

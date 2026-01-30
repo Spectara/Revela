@@ -6,6 +6,7 @@ using Spectara.Revela.Core.Services;
 namespace Spectara.Revela.Commands.Tests;
 
 [TestClass]
+[TestCategory("Unit")]
 public sealed class ScribanTemplateEngineTests
 {
     [TestMethod]

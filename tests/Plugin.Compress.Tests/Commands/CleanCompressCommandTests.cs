@@ -8,6 +8,7 @@ using Spectara.Revela.Sdk.Services;
 namespace Spectara.Revela.Plugin.Compress.Tests.Commands;
 
 [TestClass]
+[TestCategory("Unit")]
 public sealed class CleanCompressCommandTests
 {
     private string testDirectory = null!;

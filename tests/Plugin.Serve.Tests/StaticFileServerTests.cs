@@ -1,6 +1,7 @@
 namespace Spectara.Revela.Plugin.Serve.Tests;
 
 [TestClass]
+[TestCategory("Unit")]
 public sealed class StaticFileServerTests
 {
     [TestMethod]

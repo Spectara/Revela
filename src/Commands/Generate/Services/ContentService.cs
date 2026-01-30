@@ -84,20 +84,32 @@ public sealed partial class ContentService(
             var configHash = ManifestService.ComputeConfigHash(sizes, formats);
             var configChanged = manifestRepository.ConfigHash != configHash;
 
-            // Cache existing image hashes before rebuilding tree (unless config changed)
-            Dictionary<string, (string Hash, DateTime ProcessedAt)> existingHashes;
-            if (configChanged && manifestRepository.Images.Count > 0)
+            // Check if scan config changed - if so, don't use metadata cache
+            var scanConfigHash = ManifestService.ComputeScanConfigHash(
+                ImageSettings.Placeholder.Strategy,
+                ImageSettings.MinWidth,
+                ImageSettings.MinHeight);
+            var scanConfigChanged = manifestRepository.ScanConfigHash != scanConfigHash;
+
+            // Cache existing image entries for metadata caching (unless scan config changed)
+            Dictionary<string, ImageContent> existingImages;
+            if (scanConfigChanged && manifestRepository.Images.Count > 0)
             {
-                LogConfigChanged(logger);
-                existingHashes = new Dictionary<string, (string, DateTime)>(StringComparer.OrdinalIgnoreCase);
+                LogScanConfigChanged(logger);
+                existingImages = new Dictionary<string, ImageContent>(StringComparer.OrdinalIgnoreCase);
             }
             else
             {
-                existingHashes = manifestRepository.Images
+                existingImages = manifestRepository.Images
                     .ToDictionary(
                         kvp => kvp.Key,
-                        kvp => (kvp.Value.Hash, kvp.Value.ProcessedAt),
+                        kvp => kvp.Value,
                         StringComparer.OrdinalIgnoreCase);
+            }
+
+            if (configChanged && manifestRepository.Images.Count > 0)
+            {
+                LogConfigChanged(logger);
             }
 
             progress?.Report(new ContentProgress
@@ -117,9 +129,10 @@ public sealed partial class ContentService(
                 ImagesFound = content.Images.Count
             });
 
-            // Read metadata for all images (dimensions, EXIF)
+            // Read metadata for all images (dimensions, EXIF) - uses cache for unchanged images
             var imageMetadata = await ReadAllImageMetadataAsync(
                 content.Images,
+                existingImages,
                 progress,
                 cancellationToken);
 
@@ -137,12 +150,13 @@ public sealed partial class ContentService(
                 sortDescending: sortDescending,
                 cancellationToken: cancellationToken);
 
-            // Build unified root node with metadata (preserving existing hashes)
-            var root = BuildRoot(content, navigation, imageMetadata, existingHashes);
+            // Build unified root node with metadata
+            var root = BuildRoot(content, navigation, imageMetadata);
 
             // Update manifest
             manifestRepository.SetRoot(root);
             manifestRepository.ConfigHash = configHash;
+            manifestRepository.ScanConfigHash = scanConfigHash;
             manifestRepository.LastScanned = DateTime.UtcNow;
 
             // Save manifest
@@ -188,19 +202,29 @@ public sealed partial class ContentService(
     /// Read metadata for all discovered images.
     /// </summary>
     /// <remarks>
-    /// Uses parallel NetVips access (header-only) for fast metadata extraction.
-    /// Approximately 10-20ms per image vs 200-500ms for full processing.
-    /// Parallelized using Environment.ProcessorCount for optimal throughput.
+    /// <para>
+    /// Uses caching to skip unchanged images (based on FileSize + LastModified).
+    /// Only new or modified images require NetVips metadata extraction.
+    /// </para>
+    /// <para>
+    /// When cached metadata is available, it's reused directly without disk I/O.
+    /// Approximately 10-20ms per image vs &lt;0.1ms for cached images.
+    /// </para>
+    /// <para>
     /// Images below MinWidth or MinHeight thresholds are skipped.
+    /// </para>
     /// </remarks>
     private async Task<Dictionary<string, ImageMetadata>> ReadAllImageMetadataAsync(
         IReadOnlyList<SourceImage> images,
+        Dictionary<string, ImageContent> existingImages,
         IProgress<ContentProgress>? progress,
         CancellationToken cancellationToken)
     {
         var metadata = new Dictionary<string, ImageMetadata>(StringComparer.OrdinalIgnoreCase);
         var metadataLock = new object();
         var processedCount = 0;
+        var cachedCount = 0;
+        var newCount = 0;
         var skippedCount = 0;
 
         var minWidth = ImageSettings.MinWidth;
@@ -218,7 +242,33 @@ public sealed partial class ContentService(
             {
                 try
                 {
-                    var meta = await imageProcessor.ReadMetadataAsync(image.SourcePath, placeholderConfig, ct);
+                    // Normalize path for cache lookup (forward slashes)
+                    var normalizedPath = image.RelativePath.Replace('\\', '/');
+
+                    // Check if we can use cached metadata (same file size and modification time)
+                    ImageMetadata meta;
+                    if (existingImages.TryGetValue(normalizedPath, out var cached) &&
+                        cached.FileSize == image.FileSize &&
+                        cached.LastModified == image.LastModified)
+                    {
+                        // Cache hit - reconstruct ImageMetadata from cached ImageContent
+                        meta = new ImageMetadata
+                        {
+                            Width = cached.Width,
+                            Height = cached.Height,
+                            FileSize = cached.FileSize,
+                            Exif = cached.Exif,
+                            DateTaken = cached.DateTaken,
+                            Placeholder = cached.Placeholder
+                        };
+                        Interlocked.Increment(ref cachedCount);
+                    }
+                    else
+                    {
+                        // Cache miss - read metadata from disk
+                        meta = await imageProcessor.ReadMetadataAsync(image.SourcePath, placeholderConfig, ct);
+                        Interlocked.Increment(ref newCount);
+                    }
 
                     // Skip images below minimum size thresholds
                     if ((minWidth > 0 && meta.Width < minWidth) ||
@@ -242,7 +292,7 @@ public sealed partial class ContentService(
                     {
                         progress?.Report(new ContentProgress
                         {
-                            Status = $"Reading metadata... ({current}/{images.Count})",
+                            Status = $"Reading metadata... ({current}/{images.Count}) ({cachedCount} cached, {newCount} new)",
                             GalleriesFound = 0,
                             ImagesFound = current
                         });
@@ -259,6 +309,8 @@ public sealed partial class ContentService(
         {
             LogSmallImagesSkipped(logger, skippedCount, minWidth, minHeight);
         }
+
+        LogMetadataCacheStats(logger, cachedCount, newCount, skippedCount);
 
         return metadata;
     }
@@ -289,8 +341,7 @@ public sealed partial class ContentService(
     private ManifestEntry BuildRoot(
         ContentTree content,
         IReadOnlyList<NavigationItem> navigation,
-        Dictionary<string, ImageMetadata> imageMetadata,
-        Dictionary<string, (string Hash, DateTime ProcessedAt)> existingHashes)
+        Dictionary<string, ImageMetadata> imageMetadata)
     {
         // Find the home gallery (empty path)
         var homeGallery = content.Galleries.FirstOrDefault(g => string.IsNullOrEmpty(g.Path));
@@ -323,7 +374,7 @@ public sealed partial class ContentService(
 
         // Pre-convert ALL images to ImageContent for filter galleries
         // This allows filters to query across the entire site
-        var allImages = ConvertAllImagesToContent(content.Images, imageMetadata, existingHashes);
+        var allImages = ConvertAllImagesToContent(content.Images, imageMetadata);
 
         // Create context for building entries (includes all images for filtering)
         var buildContext = new EntryBuildContext(
@@ -331,7 +382,6 @@ public sealed partial class ContentService(
             imagesByPath,
             markdownsByPath,
             imageMetadata,
-            existingHashes,
             allImages);
 
         // Create root node from home gallery
@@ -365,7 +415,6 @@ public sealed partial class ContentService(
         Dictionary<string, List<SourceImage>> ImagesByPath,
         Dictionary<string, List<SourceMarkdown>> MarkdownsByPath,
         Dictionary<string, ImageMetadata> ImageMetadata,
-        Dictionary<string, (string Hash, DateTime ProcessedAt)> ExistingHashes,
         IReadOnlyList<ImageContent> AllImages);
 
     /// <summary>
@@ -373,8 +422,7 @@ public sealed partial class ContentService(
     /// </summary>
     private List<ImageContent> ConvertAllImagesToContent(
         IReadOnlyList<SourceImage> images,
-        Dictionary<string, ImageMetadata> imageMetadata,
-        Dictionary<string, (string Hash, DateTime ProcessedAt)> existingHashes)
+        Dictionary<string, ImageMetadata> imageMetadata)
     {
         var result = new List<ImageContent>(images.Count);
 
@@ -382,7 +430,7 @@ public sealed partial class ContentService(
         {
             if (imageMetadata.TryGetValue(image.RelativePath, out var meta))
             {
-                result.Add(CreateImageContent(image, meta, existingHashes));
+                result.Add(CreateImageContent(image, meta));
             }
         }
 
@@ -394,38 +442,22 @@ public sealed partial class ContentService(
     /// </summary>
     private ImageContent CreateImageContent(
         SourceImage image,
-        ImageMetadata meta,
-        Dictionary<string, (string Hash, DateTime ProcessedAt)> existingHashes)
+        ImageMetadata meta)
     {
         // Calculate sizes based on actual image dimensions
         var sizes = CalculateSizes(meta.Width);
-
-        // Preserve existing hash if available
-        string hash;
-        DateTime processedAt;
-        if (existingHashes.TryGetValue(image.RelativePath, out var existing))
-        {
-            hash = existing.Hash;
-            processedAt = existing.ProcessedAt;
-        }
-        else
-        {
-            hash = string.Empty;
-            processedAt = default;
-        }
 
         return new ImageContent
         {
             Filename = image.FileName,
             SourcePath = image.RelativePath.Replace('\\', '/'),
             FileSize = image.FileSize,
-            Hash = hash,
+            LastModified = image.LastModified,
             Width = meta.Width,
             Height = meta.Height,
             Sizes = sizes,
             DateTaken = meta.DateTaken,
             Exif = meta.Exif,
-            ProcessedAt = processedAt,
             Placeholder = meta.Placeholder
         };
     }
@@ -519,7 +551,7 @@ public sealed partial class ContentService(
         else
         {
             // Normal mode: use images from the folder
-            content = BuildContentList(folderImages, markdowns, context.ImageMetadata, context.ExistingHashes, sortOverride);
+            content = BuildContentList(folderImages, markdowns, context.ImageMetadata, sortOverride);
             return content; // Already sorted by BuildContentList
         }
 
@@ -535,21 +567,19 @@ public sealed partial class ContentService(
     /// Default: alphabetically by filename to allow users to control
     /// ordering via filename prefixes (e.g., "01-intro.md", "02-photo.jpg").
     /// Alternative: by EXIF DateTaken for chronological galleries.
-    /// Existing image hashes are preserved for incremental builds.
     /// </remarks>
     private List<GalleryContent> BuildContentList(
         List<SourceImage> images,
         List<SourceMarkdown> markdowns,
         Dictionary<string, ImageMetadata> imageMetadata,
-        Dictionary<string, (string Hash, DateTime ProcessedAt)> existingHashes,
         string? sortOverride)
     {
         var content = new List<GalleryContent>();
 
-        // Convert images (preserving existing hashes)
+        // Convert images
         foreach (var image in images)
         {
-            content.Add(ConvertSourceImage(image, imageMetadata, existingHashes));
+            content.Add(ConvertSourceImage(image, imageMetadata));
         }
 
         // Convert markdown files
@@ -700,12 +730,10 @@ public sealed partial class ContentService(
     /// <remarks>
     /// If metadata was successfully read, populates Width, Height, EXIF, DateTaken, and Sizes.
     /// Sizes are calculated based on the actual image width and configured size presets.
-    /// Existing hash and ProcessedAt are preserved for incremental builds.
     /// </remarks>
     private ImageContent ConvertSourceImage(
         SourceImage source,
-        Dictionary<string, ImageMetadata> imageMetadata,
-        Dictionary<string, (string Hash, DateTime ProcessedAt)> existingHashes)
+        Dictionary<string, ImageMetadata> imageMetadata)
     {
         // Try to get metadata for this image
         imageMetadata.TryGetValue(source.RelativePath, out var meta);
@@ -715,25 +743,17 @@ public sealed partial class ContentService(
             ? CalculateSizes(meta.Width)
             : [];
 
-        // Preserve existing hash if available (for incremental builds)
-        // Use forward slashes for consistent key lookup
-        var manifestKey = source.RelativePath.Replace('\\', '/');
-        var (existingHash, existingProcessedAt) = existingHashes.TryGetValue(manifestKey, out var cached)
-            ? cached
-            : (string.Empty, DateTime.MinValue);
-
         return new ImageContent
         {
             Filename = source.FileName,
             SourcePath = source.RelativePath.Replace('\\', '/'),
-            Hash = existingHash,
             Width = meta?.Width ?? 0,
             Height = meta?.Height ?? 0,
             Sizes = sizes,
             FileSize = meta?.FileSize ?? source.FileSize,
+            LastModified = source.LastModified,
             DateTaken = meta?.DateTaken,
             Exif = meta?.Exif,
-            ProcessedAt = existingProcessedAt,
             Placeholder = meta?.Placeholder
         };
     }
@@ -817,8 +837,14 @@ public sealed partial class ContentService(
     [LoggerMessage(Level = LogLevel.Information, Message = "Skipped {SkippedCount} small images (below {MinWidth}x{MinHeight})")]
     private static partial void LogSmallImagesSkipped(ILogger logger, int skippedCount, int minWidth, int minHeight);
 
+    [LoggerMessage(Level = LogLevel.Information, Message = "Metadata cache: {CachedCount} cached, {NewCount} new, {SkippedCount} skipped")]
+    private static partial void LogMetadataCacheStats(ILogger logger, int cachedCount, int newCount, int skippedCount);
+
     [LoggerMessage(Level = LogLevel.Information, Message = "Image config changed, all images will be reprocessed")]
     private static partial void LogConfigChanged(ILogger logger);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Scan config changed, all metadata will be re-read")]
+    private static partial void LogScanConfigChanged(ILogger logger);
 
     #endregion
 

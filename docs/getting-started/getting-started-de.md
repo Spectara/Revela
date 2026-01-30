@@ -458,7 +458,7 @@ Technische Einstellungen für dein Projekt:
   "theme": {
     "name": "Lumina",
     "images": {
-      "sizes": [640, 1024, 1280, 1920, 2560]
+      "sizes": [160, 320, 480, 640, 720, 960, 1280, 1440, 1920, 2560]
     }
   },
   "generate": {

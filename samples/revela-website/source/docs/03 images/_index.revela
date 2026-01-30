@@ -33,8 +33,10 @@ Configure image formats and quality in `project.json`:
 Sizes are defined by your theme. The default Lumina theme generates these widths:
 
 ```
-320, 640, 1024, 1280, 1920, 2560
+160, 320, 480, 640, 720, 960, 1280, 1440, 1920, 2560
 ```
+
+These sizes are optimized for High-DPI displays (1.5x, 2x scaling).
 
 Plus the **original width** for full-resolution lightbox view.
 

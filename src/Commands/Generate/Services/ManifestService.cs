@@ -3,6 +3,7 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.Extensions.Options;
+using Spectara.Revela.Core.Configuration;
 using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Abstractions;
 using Spectara.Revela.Sdk.Models.Manifest;
@@ -142,6 +143,13 @@ public sealed partial class ManifestService(
     }
 
     /// <inheritdoc />
+    public string ScanConfigHash
+    {
+        get => manifest.Meta.ScanConfigHash;
+        set => manifest.Meta.ScanConfigHash = value;
+    }
+
+    /// <inheritdoc />
     public DateTime? LastScanned
     {
         get => manifest.Meta.LastScanned;
@@ -154,6 +162,12 @@ public sealed partial class ManifestService(
         get => manifest.Meta.LastImagesProcessed;
         set => manifest.Meta.LastImagesProcessed = value;
     }
+
+    /// <inheritdoc />
+    public IReadOnlyDictionary<string, int> FormatQualities => manifest.Meta.FormatQualities;
+
+    /// <inheritdoc />
+    public void SetFormatQualities(IReadOnlyDictionary<string, int> qualities) => manifest.Meta.FormatQualities = new Dictionary<string, int>(qualities);
 
     #endregion
 
@@ -248,27 +262,6 @@ public sealed partial class ManifestService(
     {
         manifest = new ImageManifest();
         imageCache.Clear();
-    }
-
-    /// <inheritdoc />
-    public void ClearImageHashes()
-    {
-        // Clear hash on all images in the tree to force reprocessing
-        foreach (var (_, node) in imageCache.Values)
-        {
-            foreach (var content in node.Content.OfType<ImageContent>())
-            {
-                // Use reflection to set the init-only property, or create a new record
-                var index = node.Content.IndexOf(content);
-                if (index >= 0)
-                {
-                    node.Content[index] = content with { Hash = string.Empty };
-                }
-            }
-        }
-
-        // Rebuild cache with updated entries
-        RebuildImageCache();
     }
 
     #endregion
@@ -427,24 +420,20 @@ public sealed partial class ManifestService(
     }
 
     /// <summary>
-    /// Check if an image needs to be processed based on hash comparison.
+    /// Compute hash for scan configuration.
     /// </summary>
-    /// <param name="existingEntry">Existing manifest entry (null if new image)</param>
-    /// <param name="sourceHash">Hash of source image</param>
-    /// <returns>True if image needs processing, false if unchanged</returns>
-    public static bool NeedsProcessing(ImageContent? existingEntry, string sourceHash)
+    /// <remarks>
+    /// When this hash changes, all metadata needs to be re-read from source files.
+    /// Includes: placeholder strategy, min dimensions.
+    /// </remarks>
+    public static string ComputeScanConfigHash(
+        PlaceholderStrategy placeholderStrategy,
+        int minWidth,
+        int minHeight)
     {
-        if (existingEntry is null)
-        {
-            return true; // New image
-        }
-
-        if (string.IsNullOrEmpty(existingEntry.Hash))
-        {
-            return true; // No hash yet (scanned but not processed)
-        }
-
-        return existingEntry.Hash != sourceHash; // Changed if hash differs
+        var input = $"placeholder:{placeholderStrategy}|minWidth:{minWidth}|minHeight:{minHeight}";
+        var hashBytes = SHA256.HashData(Encoding.UTF8.GetBytes(input));
+        return Convert.ToHexString(hashBytes)[..12];
     }
 
     #endregion

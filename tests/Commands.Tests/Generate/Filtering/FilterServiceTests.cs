@@ -8,6 +8,7 @@ namespace Spectara.Revela.Commands.Tests.Generate.Filtering;
 /// Tests for the <see cref="FilterService"/> class.
 /// </summary>
 [TestClass]
+[TestCategory("Unit")]
 public sealed class FilterServiceTests
 {
     private static ImageContent CreateTestImage(

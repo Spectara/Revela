@@ -9,7 +9,12 @@ namespace Spectara.Revela.Sdk.Models.Manifest;
 /// </remarks>
 public sealed record MarkdownContent : GalleryContent
 {
-    // No additional properties needed.
-    // Filename, FileSize, and Hash are inherited from GalleryContent.
-    // The rendered HTML body is loaded from the source file during rendering.
+    /// <summary>
+    /// Hash for change detection.
+    /// </summary>
+    /// <remarks>
+    /// Computed from filename, size, and last modified date.
+    /// Used to detect when markdown needs to be re-rendered.
+    /// </remarks>
+    public string Hash { get; init; } = string.Empty;
 }

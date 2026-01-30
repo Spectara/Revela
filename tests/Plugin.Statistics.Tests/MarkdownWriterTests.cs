@@ -3,6 +3,7 @@ using Spectara.Revela.Plugin.Statistics.Services;
 namespace Spectara.Revela.Plugin.Statistics.Tests;
 
 [TestClass]
+[TestCategory("Unit")]
 public sealed class MarkdownWriterTests
 {
     [TestMethod]

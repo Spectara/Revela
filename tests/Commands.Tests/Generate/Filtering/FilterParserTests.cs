@@ -8,6 +8,7 @@ namespace Spectara.Revela.Commands.Tests.Generate.Filtering;
 /// Tests for the <see cref="FilterParser"/> class.
 /// </summary>
 [TestClass]
+[TestCategory("Unit")]
 public sealed class FilterParserTests
 {
     /// <summary>

@@ -82,7 +82,7 @@ public interface IThemePlugin : IPlugin
     /// <code>
     /// {
     ///   "formats": { "webp": 85, "jpg": 90 },
-    ///   "sizes": [640, 1024, 1280, 1920, 2560]
+    ///   "sizes": [160, 320, 480, 640, 720, 960, 1280, 1440, 1920, 2560]
     /// }
     /// </code>
     /// Note: AVIF can be added for better compression, but encoding is ~10x slower.
