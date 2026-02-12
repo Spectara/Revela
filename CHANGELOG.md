@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.0.1-beta.15] - 2026-02-12
+
+### Added
+- **Content Images**: Markdig extension for responsive images in Markdown body content
+  - Transform `![alt](path)` into `<picture>` elements with AVIF/WebP/JPG srcset
+  - 3-step image resolution: gallery-local → `_images/` shared → exact match
+  - LQIP placeholder support via `--lqip` CSS custom property
+  - GenericAttributes support: `{.class}` syntax passes CSS classes to `<picture>`
+- **Shared Images**: `_images/` folder included as hidden node in manifest tree
+  - Images available for content references across all galleries
+  - Subdirectories supported (e.g., `_images/screenshots/`)
+- **Browser Mockup CSS**: Simulated browser chrome for screenshots on website
+  - Titlebar with traffic light dots (red/yellow/green)
+  - Uses CSS variables for dark/light mode compatibility
+- **Showcase Section**: "See it in action" section on revela.website homepage
+
+### Changed
+- **Website CSS**: Convert website.css to native CSS nesting
+  - Nested `@media`, `&::before`, `&:hover`, `&.active` selectors
+  - Reduced repetition, improved readability
+- **Lumina Theme**: Add `.content-image` and `.breakout` CSS classes
+
+### Fixed
+- **Documentation**: Correct false "any name" claim for `_images/` folder
+- **Website**: Remove unnecessary local main.css theme override
+
 ## [0.0.1-beta.14] - 2026-02-12
 
 ### Added
@@ -281,7 +307,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Plugin.Source.OneDrive (OneDrive Shared Folder Support)
 - Commands: generate, init, clean, theme, plugins, restore
 
-[Unreleased]: https://github.com/spectara/revela/compare/v0.0.1-beta.14...HEAD
+[Unreleased]: https://github.com/spectara/revela/compare/v0.0.1-beta.15...HEAD
+[0.0.1-beta.15]: https://github.com/spectara/revela/compare/v0.0.1-beta.14...v0.0.1-beta.15
 [0.0.1-beta.14]: https://github.com/spectara/revela/compare/v0.0.1-beta.13...v0.0.1-beta.14
 [0.0.1-beta.13]: https://github.com/spectara/revela/compare/v0.0.1-beta.12...v0.0.1-beta.13
 [0.0.1-beta.12]: https://github.com/spectara/revela/compare/v0.0.1-beta.10...v0.0.1-beta.12
