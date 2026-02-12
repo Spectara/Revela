@@ -609,7 +609,8 @@ public sealed partial class ThemeExtractCommand(
                             }
 
                             extractedExtensions.Add(folderName);
-                            LogExtractingExtension(logger, extension.Metadata.Name, $"{targetPath}/*/'{folderName}/");
+                            var extensionTargetPath = $"{targetPath}/*/'{folderName}/";
+                            LogExtractingExtension(logger, extension.Metadata.Name, extensionTargetPath);
                         }
                     });
         }

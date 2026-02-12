@@ -88,25 +88,9 @@ public sealed class ScanCachingTests
     [TestMethod]
     public void CacheHitCondition_SameFileSizeAndLastModified_ShouldMatch()
     {
-        // Simulate the cache hit condition from ContentService
-        var cachedEntry = new ImageContent
-        {
-            Filename = "photo.jpg",
-            SourcePath = "gallery/photo.jpg",
-            Width = 1920,
-            Height = 1080,
-            Sizes = [1920],
-            FileSize = 5_000_000,
-            LastModified = new DateTime(2026, 1, 15, 10, 0, 0, DateTimeKind.Utc)
-        };
+        var cachedEntry = CreateCachedEntry(5_000_000, new DateTime(2026, 1, 15, 10, 0, 0, DateTimeKind.Utc));
 
-        // Simulated file info from disk
-        var currentFileSize = 5_000_000L;
-        var currentLastModified = new DateTime(2026, 1, 15, 10, 0, 0, DateTimeKind.Utc);
-
-        // This is the exact condition from ContentService
-        var isCacheHit = cachedEntry.FileSize == currentFileSize &&
-                         cachedEntry.LastModified == currentLastModified;
+        var isCacheHit = IsCacheHit(cachedEntry, 5_000_000L, new DateTime(2026, 1, 15, 10, 0, 0, DateTimeKind.Utc));
 
         Assert.IsTrue(isCacheHit, "Should be cache hit when FileSize and LastModified match");
     }
@@ -114,23 +98,10 @@ public sealed class ScanCachingTests
     [TestMethod]
     public void CacheHitCondition_DifferentFileSize_ShouldNotMatch()
     {
-        var cachedEntry = new ImageContent
-        {
-            Filename = "photo.jpg",
-            SourcePath = "gallery/photo.jpg",
-            Width = 1920,
-            Height = 1080,
-            Sizes = [1920],
-            FileSize = 5_000_000,
-            LastModified = new DateTime(2026, 1, 15, 10, 0, 0, DateTimeKind.Utc)
-        };
+        var cachedEntry = CreateCachedEntry(5_000_000, new DateTime(2026, 1, 15, 10, 0, 0, DateTimeKind.Utc));
 
         // Different file size (image was modified)
-        var currentFileSize = 5_500_000L;
-        var currentLastModified = new DateTime(2026, 1, 15, 10, 0, 0, DateTimeKind.Utc);
-
-        var isCacheHit = cachedEntry.FileSize == currentFileSize &&
-                         cachedEntry.LastModified == currentLastModified;
+        var isCacheHit = IsCacheHit(cachedEntry, 5_500_000L, new DateTime(2026, 1, 15, 10, 0, 0, DateTimeKind.Utc));
 
         Assert.IsFalse(isCacheHit, "Should be cache miss when FileSize differs");
     }
@@ -138,24 +109,32 @@ public sealed class ScanCachingTests
     [TestMethod]
     public void CacheHitCondition_DifferentLastModified_ShouldNotMatch()
     {
-        var cachedEntry = new ImageContent
-        {
-            Filename = "photo.jpg",
-            SourcePath = "gallery/photo.jpg",
-            Width = 1920,
-            Height = 1080,
-            Sizes = [1920],
-            FileSize = 5_000_000,
-            LastModified = new DateTime(2026, 1, 15, 10, 0, 0, DateTimeKind.Utc)
-        };
+        var cachedEntry = CreateCachedEntry(5_000_000, new DateTime(2026, 1, 15, 10, 0, 0, DateTimeKind.Utc));
 
         // Different LastModified (file was touched/re-saved)
-        var currentFileSize = 5_000_000L;
-        var currentLastModified = new DateTime(2026, 1, 16, 10, 0, 0, DateTimeKind.Utc);
-
-        var isCacheHit = cachedEntry.FileSize == currentFileSize &&
-                         cachedEntry.LastModified == currentLastModified;
+        var isCacheHit = IsCacheHit(cachedEntry, 5_000_000L, new DateTime(2026, 1, 16, 10, 0, 0, DateTimeKind.Utc));
 
         Assert.IsFalse(isCacheHit, "Should be cache miss when LastModified differs");
     }
+
+    /// <summary>
+    /// Creates a cached entry with the given file size and last modified date.
+    /// Extracted to prevent CA1508 false positives from constant folding.
+    /// </summary>
+    private static ImageContent CreateCachedEntry(long fileSize, DateTime lastModified) => new()
+    {
+        Filename = "photo.jpg",
+        SourcePath = "gallery/photo.jpg",
+        Width = 1920,
+        Height = 1080,
+        Sizes = [1920],
+        FileSize = fileSize,
+        LastModified = lastModified
+    };
+
+    /// <summary>
+    /// Evaluates the cache hit condition (same logic as ContentService).
+    /// </summary>
+    private static bool IsCacheHit(ImageContent cached, long currentFileSize, DateTime currentLastModified) =>
+        cached.FileSize == currentFileSize && cached.LastModified == currentLastModified;
 }

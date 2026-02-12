@@ -1,4 +1,7 @@
 <Solution>
+  <Folder Name="/benchmarks/">
+    <Project Path="benchmarks/ImageProcessing.Benchmarks/ImageProcessing.Benchmarks.csproj" />
+  </Folder>
   <Folder Name="/src/">
     <Project Path="src/Sdk/Sdk.csproj" />
     <Project Path="src/Core/Core.csproj" />

@@ -190,7 +190,8 @@ internal sealed partial class CommandPromptBuilder(ILogger<CommandPromptBuilder>
             args.Add(value.ToString()!);
         }
 
-        LogBuiltArgs(logger, string.Join(" ", args));
+        var builtArgs = string.Join(" ", args);
+        LogBuiltArgs(logger, builtArgs);
         return [.. args];
     }
 

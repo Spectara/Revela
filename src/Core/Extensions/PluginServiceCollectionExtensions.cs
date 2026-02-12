@@ -69,7 +69,7 @@ public static class PluginServiceCollectionExtensions
 
         // Create null logger for plugin loading
         // Real logging will be available after host is built
-        ILogger<PluginLoader> logger = NullLogger<PluginLoader>.Instance;
+        var logger = NullLogger<PluginLoader>.Instance;
 
         // Load plugins from all configured directories
         var pluginLoader = new PluginLoader(options, logger);
@@ -101,7 +101,10 @@ public static class PluginServiceCollectionExtensions
             try
             {
                 pluginInfo.Plugin.ConfigureConfiguration(configuration);
-                logger.LogDebug("Plugin '{Name}' configured configuration sources", pluginInfo.Plugin.Metadata.Name);
+                if (logger.IsEnabled(LogLevel.Debug))
+                {
+                    logger.LogDebug("Plugin '{Name}' configured configuration sources", pluginInfo.Plugin.Metadata.Name);
+                }
             }
             catch (Exception ex)
             {
@@ -116,7 +119,10 @@ public static class PluginServiceCollectionExtensions
             try
             {
                 pluginInfo.Plugin.ConfigureServices(services);
-                logger.LogInformation("Plugin '{Name}' v{Version} registered services", pluginInfo.Plugin.Metadata.Name, pluginInfo.Plugin.Metadata.Version);
+                if (logger.IsEnabled(LogLevel.Information))
+                {
+                    logger.LogInformation("Plugin '{Name}' v{Version} registered services", pluginInfo.Plugin.Metadata.Name, pluginInfo.Plugin.Metadata.Version);
+                }
             }
             catch (Exception ex)
             {
@@ -128,22 +134,31 @@ public static class PluginServiceCollectionExtensions
         foreach (var pluginInfo in plugins)
         {
             services.AddSingleton(pluginInfo.Plugin);
-            logger.LogDebug("Registered plugin: {Name}", pluginInfo.Plugin.Metadata.Name);
+            if (logger.IsEnabled(LogLevel.Debug))
+            {
+                logger.LogDebug("Registered plugin: {Name}", pluginInfo.Plugin.Metadata.Name);
+            }
         }
 
         // Phase 4: Register theme plugins for IThemeResolver (as IThemePlugin)
         foreach (var plugin in plugins.Select(p => p.Plugin).OfType<IThemePlugin>())
         {
             services.AddSingleton(plugin);
-            logger.LogDebug("Registered theme plugin: {Name}", plugin.Metadata.Name);
+            if (logger.IsEnabled(LogLevel.Debug))
+            {
+                logger.LogDebug("Registered theme plugin: {Name}", plugin.Metadata.Name);
+            }
         }
 
         // Phase 4b: Register theme extensions for IThemeResolver (as IThemeExtension)
         foreach (var extension in plugins.Select(p => p.Plugin).OfType<IThemeExtension>())
         {
             services.AddSingleton(extension);
-            logger.LogDebug("Registered theme extension: {Name} for theme {TargetTheme}",
-                extension.Metadata.Name, extension.TargetTheme);
+            if (logger.IsEnabled(LogLevel.Debug))
+            {
+                logger.LogDebug("Registered theme extension: {Name} for theme {TargetTheme}",
+                    extension.Metadata.Name, extension.TargetTheme);
+            }
         }
 #pragma warning restore CA1848
 

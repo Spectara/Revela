@@ -114,7 +114,8 @@ public sealed partial class ConfigSiteCommand(
         // Extract properties with current values
         var properties = JsonPropertyExtractor.ExtractProperties(sourceJson);
 
-        LogFoundProperties(logger, string.Join(", ", properties.Select(p => p.Path)));
+        var propertyList = string.Join(", ", properties.Select(p => p.Path));
+        LogFoundProperties(logger, propertyList);
 
         // Get project name for smart defaults (from directory if not set)
         var projectName = projectEnvironment.Value.FolderName;

@@ -171,7 +171,11 @@ public sealed class SharedLinkProvider(
         // Preserve OneDrive's LastModified timestamp (must be done after file is closed)
         File.SetLastWriteTimeUtc(destinationPath, item.LastModified);
 
-        logger.FileDownloaded(item.Name, new FileInfo(destinationPath).Length);
+        if (logger.IsEnabled(LogLevel.Debug))
+        {
+            logger.FileDownloaded(item.Name, new FileInfo(destinationPath).Length);
+        }
+
         return destinationPath;
     }
 

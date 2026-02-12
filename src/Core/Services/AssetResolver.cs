@@ -140,7 +140,11 @@ public sealed partial class AssetResolver(ILogger<AssetResolver> logger) : IAsse
         await using var targetStream = File.Create(targetPath);
         await sourceStream.CopyToAsync(targetStream, cancellationToken);
 
-        LogCopiedAsset(key, entry.SourceType.ToString());
+        if (logger.IsEnabled(LogLevel.Debug))
+        {
+            var sourceTypeName = entry.SourceType.ToString();
+            LogCopiedAsset(key, sourceTypeName);
+        }
     }
 
     /// <inheritdoc />

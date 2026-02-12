@@ -333,7 +333,8 @@ public sealed partial class ConfigImageCommand(
 
         await configService.UpdateProjectConfigAsync(update, cancellationToken).ConfigureAwait(false);
 
-        LogImageConfigured(string.Join(", ", selectedFormats));
+        var formatList = string.Join(", ", selectedFormats);
+        LogImageConfigured(formatList);
         AnsiConsole.MarkupLine($"\n{OutputMarkers.Success} Image settings updated");
 
         // Show summary

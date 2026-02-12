@@ -135,7 +135,10 @@ public sealed class PluginManager(
             return false;
         }
 
-        logger.InstallingVersion(packageId, targetVersion.ToString());
+        if (logger.IsEnabled(LogLevel.Information))
+        {
+            logger.InstallingVersion(packageId, targetVersion.ToString());
+        }
 
         // Download package to temp file
         var tempFile = Path.GetTempFileName();
@@ -264,7 +267,10 @@ public sealed class PluginManager(
         var nuspec = await packageReader.GetNuspecAsync(cancellationToken);
         var identity = await packageReader.GetIdentityAsync(cancellationToken);
 
-        logger.ExtractingPackage(identity.Id, identity.Version.ToString());
+        if (logger.IsEnabled(LogLevel.Information))
+        {
+            logger.ExtractingPackage(identity.Id, identity.Version.ToString());
+        }
 
         // Extract lib/net10.0/*.dll files
         var libItems = await packageReader.GetLibItemsAsync(cancellationToken);
@@ -615,7 +621,10 @@ public sealed class PluginManager(
                     });
                 }
 
-                logger.SearchSourceCompleted(source.Name, packages.Count());
+                if (logger.IsEnabled(LogLevel.Debug))
+                {
+                    logger.SearchSourceCompleted(source.Name, packages.Count());
+                }
             }
             catch (Exception ex)
             {

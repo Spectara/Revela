@@ -186,7 +186,7 @@ public sealed partial class NetVipsImageProcessor(
         // STAR OPTIMIZATION: Load original ONCE, resize all sizes from it
         // Benchmark results (6846px original, 11 sizes, 3 formats):
         //   Strategy A (shrink-on-load per size): 32.81s
-        //   Strategy B (star from thumbnail):     30.09s  
+        //   Strategy B (star from thumbnail):     30.09s
         //   Strategy C (star from original):      28.90s ← Winner! 13% faster
         //
         // Since original size is ALWAYS included in sizes (for lightbox),
@@ -260,7 +260,7 @@ public sealed partial class NetVipsImageProcessor(
                 else
                 {
                     // Resize from original based on resize mode
-                    thumb = ResizeImage(original, size, originalWidth, originalHeight, options.ResizeMode);
+                    thumb = ResizeImage(original, size, options.ResizeMode);
                     thumbHeight = thumb.Height;
                 }
 
@@ -388,28 +388,25 @@ public sealed partial class NetVipsImageProcessor(
     /// </summary>
     /// <param name="source">Source image (already loaded in memory).</param>
     /// <param name="size">Target size in pixels.</param>
-    /// <param name="originalWidth">Original image width.</param>
-    /// <param name="originalHeight">Original image height.</param>
     /// <param name="resizeMode">Which dimension to constrain: "longest", "width", or "height".</param>
     /// <returns>Resized image (caller must dispose).</returns>
-    private static Image ResizeImage(Image source, int size, int originalWidth, int originalHeight, string resizeMode)
+    private static Image ResizeImage(Image source, int size, string resizeMode)
     {
         // ResizeMode determines how 'size' is interpreted:
         // - "longest" (default): size = longest side
         // - "width": size = exact width
         // - "height": size = exact height
+        //
+        // Using ThumbnailImage instead of Resize for correct alpha channel handling.
+        // See: https://github.com/libvips/libvips/issues/4588
 
-        var longestSide = Math.Max(originalWidth, originalHeight);
-
-        var scale = resizeMode.ToUpperInvariant() switch
+        return resizeMode.ToUpperInvariant() switch
         {
-            "WIDTH" => (double)size / originalWidth,
-            "HEIGHT" => (double)size / originalHeight,
-            // "LONGEST" (default)
-            _ => (double)size / longestSide
+            "WIDTH" => source.ThumbnailImage(size, height: int.MaxValue),
+            "HEIGHT" => source.ThumbnailImage(int.MaxValue, height: size),
+            // "LONGEST" (default) - ThumbnailImage constrains to longest side
+            _ => source.ThumbnailImage(size)
         };
-
-        return source.Resize(scale);
     }
 
     /// <summary>
@@ -950,8 +947,9 @@ public sealed partial class NetVipsImageProcessor(
 
         var signedHash = hash - 524288;
 
-        LogPlaceholderGenerated(logger, "csshash", signedHash.ToString(CultureInfo.InvariantCulture).Length);
-        return signedHash.ToString(CultureInfo.InvariantCulture);
+        var hashString = signedHash.ToString(CultureInfo.InvariantCulture);
+        LogPlaceholderGenerated(logger, "csshash", hashString.Length);
+        return hashString;
     }
 
     /// <summary>

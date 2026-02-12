@@ -64,7 +64,8 @@ public sealed partial class NavigationBuilder(ILogger<NavigationBuilder> logger)
             currentPath ?? string.Empty,
             sortDescending);
 
-        LogNavigationComplete(logger, CountItems(items));
+        var itemCount = CountItems(items);
+        LogNavigationComplete(logger, itemCount);
 
         return Task.FromResult<IReadOnlyList<NavigationItem>>(items);
     }

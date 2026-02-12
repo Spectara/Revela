@@ -142,7 +142,10 @@ public sealed partial class PluginLoader(
             catch (ReflectionTypeLoadException rtle)
             {
                 // Log detailed info for debugging
-                LogPluginReflectionLoadFailed(Path.GetFileName(dll), rtle.Message);
+                if (logger.IsEnabled(LogLevel.Debug))
+                {
+                    LogPluginReflectionLoadFailed(fileName, rtle.Message);
+                }
                 foreach (var ex in rtle.LoaderExceptions.Where(e => e != null).Take(3))
                 {
                     if (ex is FileNotFoundException fnf && !string.IsNullOrEmpty(fnf.FileName))
@@ -162,6 +165,7 @@ public sealed partial class PluginLoader(
 
     private void LoadPluginFromAssembly(string assemblyPath, bool useDefaultContext, PluginSource source)
     {
+        var assemblyFileName = Path.GetFileName(assemblyPath);
         Assembly assembly;
 
         if (useDefaultContext)
@@ -169,7 +173,10 @@ public sealed partial class PluginLoader(
             // Development mode: Load from default context (same as host)
             // This ensures all types are compatible (e.g., PanelStyles extension methods)
             assembly = AssemblyLoadContext.Default.LoadFromAssemblyPath(assemblyPath);
-            LogPluginContextCreated(Path.GetFileName(assemblyPath), "Default (development)");
+            if (logger.IsEnabled(LogLevel.Debug))
+            {
+                LogPluginContextCreated(assemblyFileName, "Default (development)");
+            }
         }
         else
         {
@@ -179,7 +186,10 @@ public sealed partial class PluginLoader(
             pluginContexts.Add(loadContext); // Keep context alive
 
             assembly = loadContext.LoadFromAssemblyPath(assemblyPath);
-            LogPluginContextCreated(Path.GetFileName(assemblyPath), loadContext.Name ?? "unnamed");
+            if (logger.IsEnabled(LogLevel.Debug))
+            {
+                LogPluginContextCreated(assemblyFileName, loadContext.Name ?? "unnamed");
+            }
         }
 
         var pluginTypes = assembly.GetTypes()
@@ -204,7 +214,10 @@ public sealed partial class PluginLoader(
             CheckSdkVersionCompatibility(assembly, plugin.Metadata.Name);
 
             loadedPlugins.Add(new LoadedPluginInfo(plugin, source));
-            LogPluginDiscovered(plugin.Metadata.Name, plugin.Metadata.Version, Path.GetFileName(assemblyPath));
+            if (logger.IsEnabled(LogLevel.Information))
+            {
+                LogPluginDiscovered(plugin.Metadata.Name, plugin.Metadata.Version, assemblyFileName);
+            }
         }
     }
 
