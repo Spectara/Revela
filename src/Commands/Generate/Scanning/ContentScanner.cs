@@ -163,7 +163,7 @@ public sealed partial class ContentScanner(
 
             var subdirName = Path.GetFileName(subdirectory);
 
-            // Skip folders starting with underscore (convention: _assets, _drafts, etc.)
+            // Skip folders starting with underscore (convention: _assets, _drafts, _static, etc.)
             if (subdirName.StartsWith('_'))
             {
                 // Special case: _images folder at root level - scan images but don't create galleries

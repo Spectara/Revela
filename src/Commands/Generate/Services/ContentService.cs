@@ -355,7 +355,7 @@ public sealed partial class ContentService(
 
         // Build a lookup for images by gallery path
         // Gallery path is the relative path to the directory containing the image
-        // Exclude shared images (_images) - they are only available via filters
+        // Exclude shared images (_images) - they are only available via filters and content images
         var imagesByPath = content.Images
             .Where(img => !img.Gallery.Equals(ProjectPaths.SharedImages, StringComparison.OrdinalIgnoreCase))
             .GroupBy(img => img.Gallery, StringComparer.OrdinalIgnoreCase)
@@ -387,6 +387,38 @@ public sealed partial class ContentService(
         // Create root node from home gallery
         var rootImages = imagesByPath.GetValueOrDefault(string.Empty) ?? [];
         var rootMarkdowns = markdownsByPath.GetValueOrDefault(string.Empty) ?? [];
+
+        // Build children: navigation entries + optional shared images node
+        var children = navigation.Select(nav => ConvertNavigationToEntry(nav, buildContext)).ToList();
+
+        // Add hidden _images node for shared images so they appear in the manifest tree.
+        // This ensures shared images are processed by the image pipeline and available
+        // via manifestRepository.Images for content image resolution.
+        var sharedImages = content.Images
+            .Where(img => img.Gallery.Equals(ProjectPaths.SharedImages, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+        if (sharedImages.Count > 0)
+        {
+            var sharedContent = sharedImages
+                .Where(img => imageMetadata.ContainsKey(img.RelativePath))
+                .Select(img => CreateImageContent(img, imageMetadata[img.RelativePath]))
+                .Cast<GalleryContent>()
+                .ToList();
+
+            if (sharedContent.Count > 0)
+            {
+                children.Add(new ManifestEntry
+                {
+                    Text = ProjectPaths.SharedImages,
+                    Slug = null,
+                    Path = ProjectPaths.SharedImages,
+                    Hidden = true,
+                    Content = sharedContent,
+                    Children = []
+                });
+            }
+        }
+
         var root = new ManifestEntry
         {
             Text = homeGallery?.Title ?? homeGallery?.Name ?? "Home",
@@ -401,7 +433,7 @@ public sealed partial class ContentService(
             Filter = homeGallery?.Filter,
             DataSources = homeGallery?.DataSources.ToDictionary(kvp => kvp.Key, kvp => kvp.Value) ?? [],
             Content = BuildContentListWithFilter(rootImages, rootMarkdowns, homeGallery?.Sort, homeGallery?.Filter, buildContext),
-            Children = [.. navigation.Select(nav => ConvertNavigationToEntry(nav, buildContext))]
+            Children = children
         };
 
         return root;

@@ -1018,3 +1018,25 @@ footer nav section a.active {
 footer nav section:has(> a.active) h3 a.active {
   color: hsl(var(--color-light-hsl));
 }
+
+/* ============================================
+   Content Images (from Markdown body)
+   ============================================ */
+.content-image {
+  display: block;
+  margin: var(--space-l) auto;
+  max-width: 100%;
+  border-radius: var(--space-2xs);
+  overflow: hidden;
+}
+
+.content-image img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+/* Breakout: wider than content column */
+.content-image.breakout {
+  max-width: min(56rem, 100vw - var(--space-l) * 2);
+}

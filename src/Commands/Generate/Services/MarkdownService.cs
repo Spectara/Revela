@@ -15,6 +15,11 @@ namespace Spectara.Revela.Commands.Generate.Services;
 /// <item>Tables - GitHub-flavored tables</item>
 /// <item>TaskLists - Checkbox lists</item>
 /// </list>
+/// <para>
+/// When a <see cref="ContentImageContext"/> is provided, image references
+/// (<c>![alt](path)</c>) are automatically transformed into responsive
+/// <c>&lt;picture&gt;</c> elements with AVIF/WebP/JPG srcset.
+/// </para>
 /// </remarks>
 public interface IMarkdownService
 {
@@ -24,6 +29,19 @@ public interface IMarkdownService
     /// <param name="markdown">The Markdown text to convert.</param>
     /// <returns>HTML representation of the Markdown.</returns>
     string ToHtml(string markdown);
+
+    /// <summary>
+    /// Converts Markdown text to HTML with content image resolution.
+    /// </summary>
+    /// <remarks>
+    /// Image references (<c>![alt](path)</c>) matching processed site images
+    /// are rendered as responsive <c>&lt;picture&gt;</c> elements.
+    /// Unresolved images and external URLs use standard <c>&lt;img&gt;</c> tags.
+    /// </remarks>
+    /// <param name="markdown">The Markdown text to convert.</param>
+    /// <param name="imageContext">Context for resolving image references to processed images.</param>
+    /// <returns>HTML representation of the Markdown with responsive images.</returns>
+    string ToHtml(string markdown, ContentImageContext imageContext);
 }
 
 /// <summary>
@@ -36,6 +54,7 @@ public sealed class MarkdownService : IMarkdownService
         .UseAutoIdentifiers()
         .UsePipeTables()
         .UseTaskLists()
+        .UseGenericAttributes()
         .Build();
 
     /// <inheritdoc/>
@@ -43,5 +62,23 @@ public sealed class MarkdownService : IMarkdownService
     {
         ArgumentNullException.ThrowIfNull(markdown);
         return Markdown.ToHtml(markdown, Pipeline);
+    }
+
+    /// <inheritdoc/>
+    public string ToHtml(string markdown, ContentImageContext imageContext)
+    {
+        ArgumentNullException.ThrowIfNull(markdown);
+        ArgumentNullException.ThrowIfNull(imageContext);
+
+        var pipeline = new MarkdownPipelineBuilder()
+            .UseAutoLinks()
+            .UseAutoIdentifiers()
+            .UsePipeTables()
+            .UseTaskLists()
+            .Use(new ContentImageExtension(imageContext))
+            .UseGenericAttributes()
+            .Build();
+
+        return Markdown.ToHtml(markdown, pipeline);
     }
 }

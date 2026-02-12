@@ -377,6 +377,39 @@ public sealed partial class RenderService(
         }
     }
 
+    /// <summary>
+    /// Builds a lookup of all processed images by normalized source path.
+    /// </summary>
+    /// <remarks>
+    /// Includes images from galleries (via <see cref="SiteModel.Images"/>) and
+    /// shared images from <c>_images/</c> (via manifest). This enables the
+    /// <see cref="ContentImageExtension"/> to resolve image references from
+    /// Markdown body content regardless of where the image is located.
+    /// </remarks>
+    private Dictionary<string, Image> BuildImageLookup(SiteModel model)
+    {
+        var lookup = new Dictionary<string, Image>(StringComparer.OrdinalIgnoreCase);
+
+        // Add gallery images (SourcePath = relative path like "Landscapes/sunset.jpg")
+        foreach (var image in model.Images)
+        {
+            var key = image.SourcePath.Replace('\\', '/');
+            lookup.TryAdd(key, image);
+        }
+
+        // Add shared images from manifest (_images/*)
+        // These aren't in any gallery but are processed by the image pipeline
+        foreach (var (sourcePath, imageContent) in manifestRepository.Images)
+        {
+            if (!lookup.ContainsKey(sourcePath))
+            {
+                lookup[sourcePath] = Image.FromManifestEntry(sourcePath, imageContent);
+            }
+        }
+
+        return lookup;
+    }
+
     #endregion
 
     #region Private Methods - Rendering
@@ -424,13 +457,23 @@ public sealed partial class RenderService(
         var stylesheets = assetResolver.GetStyleSheets();
         var scripts = assetResolver.GetScripts();
 
+        // Build lookup of ALL processed images by source path (for content image resolution).
+        // Includes gallery images (from model) and shared _images (from manifest).
+        var allImagesBySourcePath = BuildImageLookup(model);
+
         // Find root gallery (home page) - has empty Path
         var rootGallery = model.Galleries.FirstOrDefault(g => string.IsNullOrEmpty(g.Path));
 
         // Load root gallery metadata (body content, etc.)
         if (rootGallery is not null)
         {
-            var (_, _, _) = await LoadGalleryMetadataAsync(rootGallery, cancellationToken);
+            var rootImageBasePath = CalculateImageBasePath(config, "");
+            var rootImageContext = new ContentImageContext(
+                allImagesBySourcePath,
+                rootGallery.Path,
+                rootImageBasePath,
+                formats.Keys);
+            var (_, _, _) = await LoadGalleryMetadataAsync(rootGallery, rootImageContext, cancellationToken);
         }
 
         // Use root gallery images if available (may be filtered), otherwise all images
@@ -469,7 +512,12 @@ public sealed partial class RenderService(
             ct.ThrowIfCancellationRequested();
 
             // Load metadata from _index.md at render time (not stored in manifest)
-            var (customTemplate, dataSources, metadataBasePath) = await LoadGalleryMetadataAsync(gallery, ct);
+            var galleryImageContext = new ContentImageContext(
+                allImagesBySourcePath,
+                gallery.Path,
+                CalculateImageBasePath(config, UrlBuilder.CalculateBasePath(gallery.Slug)),
+                formats.Keys);
+            var (customTemplate, dataSources, metadataBasePath) = await LoadGalleryMetadataAsync(gallery, galleryImageContext, ct);
 
             var galleryImages = gallery.Images.ToList();
 
@@ -691,6 +739,7 @@ public sealed partial class RenderService(
     /// </remarks>
     private async Task<(string? Template, IReadOnlyDictionary<string, string> DataSources, string BasePath)> LoadGalleryMetadataAsync(
         Gallery gallery,
+        ContentImageContext imageContext,
         CancellationToken cancellationToken)
     {
         // Build path to _index.revela in source directory
@@ -704,10 +753,10 @@ public sealed partial class RenderService(
 
         var metadata = await revelaParser.ParseFileAsync(indexPath, cancellationToken);
 
-        // Convert raw body (Markdown) to HTML and set as gallery.Body
+        // Convert raw body (Markdown) to HTML with content image resolution
         if (metadata.RawBody is not null)
         {
-            gallery.Body = markdownService.ToHtml(metadata.RawBody);
+            gallery.Body = markdownService.ToHtml(metadata.RawBody, imageContext);
         }
 
         // Always set template (may be null - layout will use default "body/gallery")
