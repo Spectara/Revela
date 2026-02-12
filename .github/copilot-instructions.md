@@ -93,13 +93,15 @@ This is a **complete rewrite** of the original Bash-based revela project:
 
 ```
 src/
-├── Core/                     # Shared kernel (models, abstractions, plugin system)
-├── Commands/                 # CLI commands (Generate, Init, Plugins, Restore, Theme)
-├── Cli/                      # Entry point (.NET Tool)
+├── Core/                     # Shared kernel (services, plugin loading, configuration)
+├── Commands/                 # CLI commands (Generate, Clean, Config, Plugins, etc.)
+├── Cli/                      # Entry point, hosting, interactive mode
+├── Sdk/                      # SDK for plugin development (abstractions, models, services)
 ├── Plugins/
+│   ├── Plugin.Compress/      # Gzip/Brotli pre-compression
 │   ├── Plugin.Serve/         # Local development server
 │   ├── Plugin.Source.OneDrive/  # OneDrive shared folder source
-│   └── Plugin.Statistics/    # Statistics functionality
+│   └── Plugin.Statistics/    # EXIF statistics functionality
 └── Themes/
     ├── Theme.Lumina/         # Default photography portfolio theme
     └── Theme.Lumina.Statistics/  # Statistics extension for Lumina theme
@@ -107,15 +109,21 @@ tests/
 ├── Core.Tests/               # Unit tests for Core
 ├── Commands.Tests/           # Unit tests for Commands
 ├── IntegrationTests/         # Integration tests
+├── Plugin.Compress.Tests/    # Compression plugin tests
+├── Plugin.Serve.Tests/       # Serve plugin tests
 ├── Plugin.Source.OneDrive.Tests/  # OneDrive plugin tests
 ├── Plugin.Statistics.Tests/  # Statistics plugin tests
 └── Shared/                   # Shared test utilities
 ```
 
 ### Key Files
-- **Models:** `src/Core/Models/` - Domain entities
-- **Config:** `src/Core/Configuration/` - Configuration models
-- **Plugins:** `src/Core/PluginLoader.cs` + `PluginManager.cs`
+- **Plugin Abstractions:** `src/Sdk/Abstractions/` - IPlugin, IGenerateStep, IWizardStep, CommandDescriptor
+- **Models:** `src/Sdk/Models/Manifest/` - ImageContent, GalleryContent, ManifestMeta
+- **Config:** `src/Core/Configuration/` + `src/Sdk/Configuration/` - Configuration models
+- **Plugin Loading:** `src/Core/PluginLoader.cs` + `PluginManager.cs`
+- **Path Resolution:** `src/Sdk/Services/IPathResolver.cs` + `PathResolver.cs`
+- **Output Helpers:** `src/Sdk/Output/OutputMarkers.cs`, `src/Sdk/ProjectPaths.cs`
+- **CLI Hosting:** `src/Cli/Hosting/` - HostBuilderExtensions, ProjectResolver, InteractiveMenuService
 
 ---
 
@@ -188,7 +196,7 @@ return rootCommand.Parse(args).Invoke();
   ```
 - **Plugin Commands:** Automatic via `AddPlugins()` (registered in `UseRevelaCommands()`)
   ```csharp
-  builder.Services.AddPlugins(builder.Configuration);
+  builder.Services.AddPlugins(builder.Configuration, filteredArgs);
   ```
 
 **Reason:** All commands resolved from DI, unified registration via extension method
@@ -202,23 +210,63 @@ return rootCommand.Parse(args).Invoke();
 ```csharp
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using Spectara.Revela.Cli;
+using Spectara.Revela.Cli.Hosting;
 using Spectara.Revela.Commands;
+using Spectara.Revela.Core.Configuration;
+using Spectara.Revela.Sdk;
 
-// ✅ Use Host.CreateApplicationBuilder
-var builder = Host.CreateApplicationBuilder(args);
+// ✅ Standalone mode: Resolve project BEFORE building host
+var (projectPath, filteredArgs, shouldExit) = ProjectResolver.ResolveProject(args);
+if (shouldExit) return 1;
+
+// ✅ Detect interactive mode: no arguments AND interactive terminal
+var isInteractiveMode = filteredArgs.Length == 0
+    && !Console.IsInputRedirected
+    && !Console.IsOutputRedirected
+    && Environment.UserInteractive;
+
+// ✅ Create builder with correct ContentRootPath
+var settings = new HostApplicationBuilderSettings
+{
+    Args = filteredArgs,
+    ContentRootPath = projectPath ?? Directory.GetCurrentDirectory(),
+};
+var builder = Host.CreateApplicationBuilder(settings);
 
 // ✅ Pre-build: Load configuration and register services
-builder.AddRevelaConfiguration();
-builder.Services.AddRevelaCommands();
-builder.Services.AddPlugins(builder.Configuration);
+builder.AddRevelaConfiguration();       // revela.json → project.json → logging.json
+builder.Services.AddRevelaConfigSections(); // IOptions<T> for all config models
+builder.Services.AddRevelaCommands();    // All CLI commands
+builder.Services.AddInteractiveMode();   // Interactive menu system
+builder.Services.AddPlugins(builder.Configuration, filteredArgs);
+
+// Register ProjectEnvironment (runtime info about project location)
+builder.Services.AddOptions<ProjectEnvironment>()
+    .Configure<IHostEnvironment>((env, host) => env.Path = host.ContentRootPath);
 
 // ✅ Build host
 var host = builder.Build();
 
 // ✅ Post-build: Create CLI and execute
-return host.UseRevelaCommands().Parse(args).Invoke();
+var rootCommand = host.UseRevelaCommands();
+
+// If interactive mode, run menu directly
+if (isInteractiveMode)
+{
+    var interactiveService = host.Services.GetRequiredService<IInteractiveMenuService>();
+    interactiveService.RootCommand = rootCommand;
+    return await interactiveService.RunAsync(CancellationToken.None);
+}
+
+return await rootCommand.Parse(filteredArgs).InvokeAsync();
 ```
+
+**Key Components:**
+- **`ProjectResolver`:** Detects standalone mode, parses `--project` arg, resolves project path before host build
+- **`AddRevelaConfiguration()`:** Loads config chain: `revela.json` (global %APPDATA%) → `project.json` (local) → `logging.json`. Note: `site.json` is NOT loaded via IConfiguration — it's loaded dynamically by RenderService.
+- **`AddRevelaConfigSections()`:** Registers `IOptions<T>` for ProjectConfig, ThemeConfig, GenerateConfig, PathsConfig, etc. Also registers `IPathResolver`.
+- **`AddInteractiveMode()`:** Registers CommandOrderRegistry, CommandGroupRegistry, IInteractiveMenuService
+- **`ProjectEnvironment`:** Runtime info — `Path` (project dir), `IsInitialized` (project.json exists)
 
 #### Plugin Lifecycle - 4 Phases
 
@@ -243,8 +291,8 @@ public interface IPlugin
     //    Plugin receives built ServiceProvider for initialization
     void Initialize(IServiceProvider services);
     
-    // 4. GetCommands - Returns CLI commands for registration
-    IEnumerable<Command> GetCommands();
+    // 4. GetCommands - Returns CLI command descriptors for registration
+    IEnumerable<CommandDescriptor> GetCommands();
 }
 ```
 
@@ -257,6 +305,7 @@ public interface IPlugin
 public static IPluginContext AddPlugins(
     this IServiceCollection services,
     IConfigurationBuilder configuration,
+    string[] args,
     Action<PluginOptions>? configure = null)
 {
     // 1. Load plugin assemblies
@@ -312,20 +361,27 @@ public IPluginMetadata Metadata => new PluginMetadata
 };
 ```
 
-**Plugin returns CommandDescriptor with optional parent:**
+**Plugin returns CommandDescriptor with optional parent, order, and group:**
 ```csharp
+// CommandDescriptor is a record with 6 parameters:
+// record CommandDescriptor(Command, ParentCommand?, Order=50, Group?, RequiresProject=true, HideWhenProjectExists=false)
+
 public IEnumerable<CommandDescriptor> GetCommands()
 {
     // ✅ ParentCommand specified here, not in metadata!
     // "source" = registered under source (revela source onedrive)
     yield return new CommandDescriptor(
         new Command("onedrive", "OneDrive plugin"),
-        ParentCommand: "source");
+        ParentCommand: "source",
+        Order: 30,
+        Group: "Content");
     
     // null = registered at root level (revela mycommand)
+    // RequiresProject: false = available without project.json
     yield return new CommandDescriptor(
         new Command("sync", "Sync command"),
-        ParentCommand: null);
+        ParentCommand: null,
+        RequiresProject: false);
 }
 ```
 
@@ -423,11 +479,11 @@ public sealed class LoggingConfig
 
 #### **Program.cs loads config**
 ```csharp
-// Load optional logging.json from working directory
-builder.Configuration
-    .AddJsonFile("logging.json", optional: true, reloadOnChange: true)
-    .AddEnvironmentVariables(prefix: "REVELA__")
-    .AddCommandLine(args);
+// AddRevelaConfiguration() handles all config loading:
+// 1. revela.json (global - from %APPDATA%/Revela/)
+// 2. project.json (local - project-specific settings)
+// 3. logging.json (local - optional logging overrides)
+// Note: site.json is NOT loaded via IConfiguration — loaded by RenderService
 
 // Apply config OR defaults
 var loggingConfig = new LoggingConfig();
@@ -452,8 +508,10 @@ foreach (var (category, level) in loggingConfig.LogLevel)
 
 **Configuration Sources (in priority order):**
 1. C# Defaults (LoggingConfig.LogLevel property)
-2. `logging.json` (optional, working directory)
-3. Environment variables (`REVELA__LOGGING__LOGLEVEL__DEFAULT=Debug`)
+2. `revela.json` (global, from `%APPDATA%/Revela/`)
+3. `project.json` (local, project directory)
+4. `logging.json` (optional, project directory)
+5. Environment variables (`REVELA__LOGGING__LOGLEVEL__DEFAULT=Debug`)
 
 **Benefits:**
 - ✅ No appsettings.json needed (defaults in code)
@@ -1002,12 +1060,12 @@ public static class ServiceCollectionExtensions
 ## Dependencies
 
 ### Core Framework
-- `Microsoft.Extensions.Hosting` (10.0.1)
-- `Microsoft.Extensions.Configuration.Json` (10.0.1)
-- `Microsoft.Extensions.Logging` (10.0.1)
+- `Microsoft.Extensions.Hosting` (10.0.3)
+- `Microsoft.Extensions.Configuration.Json` (10.0.3)
+- `Microsoft.Extensions.Logging` (10.0.3)
 
 ### CLI
-- `System.CommandLine` (2.0.1) - **FINAL release, not beta!**
+- `System.CommandLine` (2.0.3) - **FINAL release, not beta!**
 - `Spectre.Console` (0.54.0) - Rich console output (progress bars, tables, panels)
 
 ### Image Processing
@@ -1016,23 +1074,32 @@ public static class ServiceCollectionExtensions
 
 ### Templating
 - `Scriban` (6.5.2)
-- `Markdig` (0.44.0)
+- `Markdig` (0.45.0)
 
 ### Logging
-- `Microsoft.Extensions.Logging` (10.0.1) - Built-in logging
-- `Microsoft.Extensions.Logging.Console` (10.0.1)
-- `Microsoft.Extensions.Logging.Debug` (10.0.1)
+- `Microsoft.Extensions.Logging` (10.0.3) - Built-in logging
+- `Microsoft.Extensions.Logging.Console` (10.0.3)
+- `Microsoft.Extensions.Logging.Debug` (10.0.3)
 
 ### Plugin Management
-- `NuGet.Protocol` (7.0.1)
-- `NuGet.Packaging` (7.0.1)
-- `NuGet.Configuration` (7.0.1)
+- `NuGet.Protocol` (7.3.0)
+- `NuGet.Packaging` (7.3.0)
+- `NuGet.Configuration` (7.3.0)
+
+### Deployment
+- `SSH.NET` (2025.1.0) - SSH/SFTP deployment
+
+### Build Tools
+- `Microsoft.SourceLink.GitHub` (10.0.102) - Source link for debugging
 
 ### Testing
-- `MSTest` (4.0.2) - Modern test framework with Microsoft.Testing.Platform
-- `MSTest.Analyzers` (4.0.2)
+- `MSTest` (4.1.0) - Modern test framework with Microsoft.Testing.Platform
+- `MSTest.Analyzers` (4.1.0)
 - `NSubstitute` (5.3.0) - Mocking framework (preferred over Moq due to security concerns)
 - `coverlet.collector` (6.0.4) - Code coverage
+
+### Benchmarking
+- `BenchmarkDotNet` (0.15.8) - Performance benchmarks
 
 **Note:** FluentAssertions was removed - use MSTest v4 built-in assertions instead!
 
@@ -1050,11 +1117,17 @@ dotnet build
 
 ### Test
 ```bash
-# MSTest v4 with Microsoft.Testing.Platform
-# Run as executables (recommended for .NET 10)
-dotnet run --project tests/Core.Tests
-dotnet run --project tests/IntegrationTests
-dotnet run --project tests/Plugin.Source.OneDrive.Tests
+# Run all tests
+dotnet test
+
+# Run specific test project
+dotnet test tests/Core.Tests
+dotnet test tests/Commands.Tests
+dotnet test tests/IntegrationTests
+dotnet test tests/Plugin.Compress.Tests
+dotnet test tests/Plugin.Serve.Tests
+dotnet test tests/Plugin.Source.OneDrive.Tests
+dotnet test tests/Plugin.Statistics.Tests
 ```
 
 ### Run CLI
@@ -1201,12 +1274,12 @@ dotnet run --project tests/Core.Tests
 
 ---
 
-**Last Updated:** 2026-01-13 (Session: Configurable Paths + IPathResolver)
+**Last Updated:** 2026-02-12 (Session: Comprehensive copilot-instructions review)
 
 **Key Learnings from Latest Sessions:**
-- ✅ Plugin ConfigureServices pattern (3-phase lifecycle)
+- ✅ Plugin ConfigureServices pattern (4-phase lifecycle)
 - ✅ Typed HttpClient for plugins
-- ✅ Parent Command declaration in metadata
+- ✅ Parent Command declaration in CommandDescriptor (not metadata)
 - ✅ ConfigurationBuilder + Data Annotations validation
 - ✅ Two-phase progress display (Scan + Download)
 - ✅ Parallel.ForEachAsync for I/O-bound operations
@@ -1233,6 +1306,15 @@ dotnet run --project tests/Core.Tests
 - ✅ **PathsConfig:** Configurable paths via project.json `paths` section
 - ✅ **ProjectPaths cleanup:** Source/Output constants removed - use IPathResolver
 - ✅ **TTY detection:** Graceful fallback when interactive mode lacks terminal
+- ✅ **LQIP Placeholders:** CSS-only low-quality image placeholders via CssHash
+- ✅ **Change Detection:** Manifest tracks LastModified + FileSize + SHA256 hash
+- ✅ **FormatQualities:** Quality settings tracked in manifest, auto-regenerate on change
+- ✅ **Setup Wizard:** RevelaWizard (first-time) + ProjectWizard (project-level)
+- ✅ **ConfigPathResolver:** Portable vs. AppData config resolution
+- ✅ **ProjectResolver:** Standalone mode project detection before host.Build()
+- ✅ **ProjectEnvironment:** Runtime project info (Path, IsInitialized)
+- ✅ **site.json:** NOT loaded via IConfiguration — loaded dynamically by RenderService
+- ✅ **Plugin.Compress:** Gzip/Brotli pre-compression (NOT part of generate all pipeline)
 
 **Template Context Variables:**
 - `site` - Site settings (title, author, description, copyright)
@@ -1243,6 +1325,7 @@ dotnet run --project tests/Core.Tests
 - `gallery` - Current gallery (title, body)
 - `images` - Array of Image objects
 - `image.sizes` - Per-image: available widths (filtered by original)
+- `image.placeholder` - Per-image: CSS-only LQIP hash string (if PlaceholderStrategy = CssHash)
 
 **Image Configuration (project.json):**
 ```json
