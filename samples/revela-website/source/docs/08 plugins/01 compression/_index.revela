@@ -101,17 +101,16 @@ output/
 | Cloudflare Pages | ❌ No | Compresses automatically |
 | AWS S3 + CloudFront | 🟡 Optional | CloudFront compresses, but pre-compressed is faster |
 | AWS S3 (direct) | ✅ Yes | No automatic compression |
-| nginx / Apache | ✅ Yes | Saves CPU, instant delivery |
-| Basic web hosting | ✅ Yes | Often no compression |
-| nginx | ✅ With `gzip_static on` |
+| nginx | ✅ Yes | Use `gzip_static on` for pre-compressed files |
 | Apache | ⚙️ Needs RewriteRule |
 
 ## Pipeline Order
 
-Compression runs **last** in the generate pipeline:
+Compression is **not** part of `revela generate all`. Run it separately after generating your site:
 
-```
-scan → statistics → pages → images → compress
+```bash
+revela generate all
+revela generate compress
 ```
 
 This ensures all content exists before compressing.

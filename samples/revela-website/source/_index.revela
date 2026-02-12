@@ -13,19 +13,21 @@ description = "A modern static site generator for photographers"
 
 **Built for photographers.** While other static site generators are designed for blogs and documentation, Revela focuses on what matters most: **showcasing your images beautifully**.
 
+**Single binary, zero dependencies.** No Node.js, no ImageMagick, no package managers. Download, unzip, run — on Windows, macOS, and Linux.
+
 <div class="features-grid">
 
 ### ⚡ Blazing Fast
-Optimized image processing with NetVips - 3-5× faster than ImageMagick. Incremental builds only regenerate what's changed.
+NetVips image processing — 3-5× faster than ImageMagick. Smart change detection only regenerates what's actually changed.
 
 ### 🖼️ Modern Formats
-Automatic AVIF, WebP, and JPEG generation. Responsive images with `<picture>` elements out of the box.
+Automatic AVIF, WebP, and JPEG generation. Responsive `<picture>` elements and LQIP placeholders — no JavaScript needed.
 
 ### 🎨 Beautiful Themes
-Minimalist gallery themes that put your photos front and center. Dark mode support included.
+Minimalist gallery themes that put your photos front and center. Dark mode, theme overrides, and customizable variables.
 
 ### 🔌 Extensible
-Plugin system for custom sources (OneDrive, cloud storage), statistics, and more.
+NuGet-based plugin system: OneDrive sync, EXIF statistics, Gzip/Brotli compression, local dev server, and more.
 
 </div>
 
@@ -43,15 +45,15 @@ Download the latest release for your platform:
 
 <p class="download-more"><a href="https://github.com/Spectara/Revela/releases">All downloads →</a></p>
 
-**2. Run Revela**
+**2. Run the Setup Wizard**
 
-Simply run `revela` without arguments to start the interactive mode:
+Run `revela` without arguments — the interactive setup wizard guides you through everything:
 
 ```bash
 revela
 ```
 
-The interactive menu guides you through creating a new project, generating your site, and more. For advanced usage via command line, see the [CLI Reference](docs/).
+It creates your project structure, configures your theme, and gets you ready to go. No config files to write manually.
 
 **3. Add your photos**
 
@@ -70,7 +72,7 @@ source/
 **4. Generate & Preview**
 
 ```bash
-revela generate
+revela generate all
 revela serve
 ```
 
@@ -80,11 +82,16 @@ Open `http://localhost:8080` and see your portfolio!
 
 | Feature | Description |
 |---------|-------------|
+| **AVIF, WebP, JPEG** | Modern image formats with configurable quality per format |
+| **LQIP Placeholders** | CSS-only low-quality image placeholders — no JavaScript |
 | **EXIF Extraction** | Automatic camera, lens, and settings metadata |
+| **Incremental Builds** | Smart change detection — only regenerate what's changed |
+| **Gzip & Brotli** | Static compression for fast delivery (via plugin) |
 | **Smart Sorting** | Sort by date, filename, or custom order |
-| **Incremental Builds** | Only regenerate changed images |
-| **Theme Overrides** | Customize any template without forking |
-| **Multiple Sources** | Local files, OneDrive, or custom plugins |
+| **Theme Overrides** | Customize any template or variable without forking |
+| **Multiple Sources** | Local files, OneDrive, or custom source plugins |
+| **Pure Static Output** | No server, no database, no tracking — just files. GDPR-friendly by default |
+| **Setup Wizard** | Interactive setup — no config files to write manually |
 | **Easy Deployment** | Works with GitHub Pages, Netlify, any web host |
 
 ## Join the Community
@@ -92,8 +99,8 @@ Open `http://localhost:8080` and see your portfolio!
 Revela is open source and actively developed. Contributions welcome!
 
 - 📖 [Documentation](docs/)
-- 🐛 [Report Issues](https://github.com/kirkone/Revela/issues)
-- 💬 [Discussions](https://github.com/kirkone/Revela/discussions)
+- 🐛 [Report Issues](https://github.com/Spectara/Revela/issues)
+- 💬 [Discussions](https://github.com/Spectara/Revela/discussions)
 
 ---
 

@@ -155,7 +155,7 @@ User completes the wizard steps.
 │                                              │
 │  Next steps:                                 │
 │    1. Add images to the source/ folder       │
-│    2. Run revela generate to build your site │
+│    2. Run revela generate all to build       │
 │    3. View your site in output/              │
 │                                              │
 │  Tip: Create subfolders in source/ to        │
@@ -333,11 +333,11 @@ D:\Revela\projects\MyPhotos\
 User selects "Serve" from TUI:
 
 ```
-🌐 Serving D:\Revela\projects\MyPhotos\output at http://localhost:5000
+🌐 Serving D:\Revela\projects\MyPhotos\output at http://localhost:8080
    Press Ctrl+C to stop
 ```
 
-User opens http://localhost:5000 in browser and reviews the website.
+User opens http://localhost:8080 in browser and reviews the website.
 
 ## Phase 6: Edit a Photo
 

@@ -162,16 +162,13 @@ Customize HTML output by editing `.revela` files:
 Modify styles in `Assets/styles.css`:
 
 ```css
-:root {
-    --primary: {{ theme.primary-color }};
-    --bg: {{ theme.background-color }};
-}
-
 .gallery {
     max-width: 1200px;
     margin: 0 auto;
 }
 ```
+
+> **Note:** CSS files are static assets — they are copied as-is, not processed through the template engine. Use `theme.json` variables for customizable design tokens, and reference them in your `.revela` templates.
 
 ---
 

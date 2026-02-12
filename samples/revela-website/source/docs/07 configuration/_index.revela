@@ -31,13 +31,18 @@ revela config site --title "My Portfolio" --author "John Doe"
     "source": "source",
     "output": "output"
   },
+  "project": {
+    "basePath": "/",
+    "language": "en"
+  },
   "theme": {
     "name": "Lumina"
   },
   "generate": {
     "images": {
-      "formats": { "webp": 85, "jpg": 90 },
-      "sizes": [640, 1024, 1920]
+      "webp": 85,
+      "jpg": 90,
+      "avif": 80
     },
     "sorting": {
       "galleries": "asc",
@@ -46,6 +51,8 @@ revela config site --title "My Portfolio" --author "John Doe"
   }
 }
 ```
+
+> **Note:** Image sizes are defined by the theme (in `theme.json`), not in `project.json`. Image format quality (`webp`, `jpg`, `avif`) are flat properties under `generate.images` — set to `0` to disable a format.
 
 ## Custom Paths
 

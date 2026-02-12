@@ -231,7 +231,7 @@ public interface IPlugin
     
     // 1. ConfigureConfiguration - Called BEFORE BuildServiceProvider
     //    Usually empty - framework handles JSON + ENV loading
-    //    NOTE: JSON files auto-loaded from plugins/*.json
+    //    NOTE: Plugin config loaded from project.json sections
     //    NOTE: ENV vars auto-loaded with SPECTARA__REVELA__ prefix
     void ConfigureConfiguration(IConfigurationBuilder configuration);
     
@@ -264,20 +264,13 @@ public static IPluginContext AddPlugins(
     pluginLoader.LoadPlugins();
     var plugins = pluginLoader.GetLoadedPlugins();
     
-    // 2. Auto-load all plugins/*.json config files
-    // JSON structure: { "Spectara.Revela.Plugin.X": { ... } }
-    var pluginsDir = Path.Combine(Directory.GetCurrentDirectory(), "plugins");
-    if (Directory.Exists(pluginsDir))
-    {
-        foreach (var jsonFile in Directory.GetFiles(pluginsDir, "*.json"))
-        {
-            configuration.AddJsonFile(jsonFile, optional: true, reloadOnChange: true);
-        }
-    }
+    // 2. Plugin config is loaded from project.json sections
+    // Each plugin uses its package ID as section name:
+    //   "Spectara.Revela.Plugin.Statistics": { "MaxEntriesPerCategory": 15 }
+    // project.json is already loaded by AddRevelaConfiguration()
     
-    // 3. Auto-load environment variables with global prefix
+    // 3. Environment variables with prefix override config
     // Allows: SPECTARA__REVELA__PLUGIN__SOURCE__ONEDRIVE__SHAREURL=https://...
-    configuration.AddEnvironmentVariables(prefix: "SPECTARA__REVELA__");
     
     // 4. Plugins may register additional config sources (optional)
     foreach (var plugin in plugins)
@@ -297,7 +290,7 @@ public static IPluginContext AddPlugins(
 ```
 
 **Benefits:**
-- ✅ **Configuration:** plugins/*.json, environment variables (SPECTARA__REVELA__*)
+- ✅ **Configuration:** project.json sections, environment variables (SPECTARA__REVELA__*)
 - ✅ **Logging:** Configuration-driven logging levels
 - ✅ **Dependency Injection:** Full DI container with all features
 - ✅ **IOptions:** Validation, hot-reload, fail-fast
@@ -470,8 +463,8 @@ foreach (var (category, level) in loggingConfig.LogLevel)
 
 ### 7. Plugin Configuration System
 
-**Framework auto-loads all `plugins/*.json` files before plugin initialization.**
-**Plugin filename convention:** Default = Package-ID (e.g., `Spectara.Revela.Plugin.Source.OneDrive.json`)
+**Plugin config is stored in `project.json` under the plugin's package ID as section name.**
+**Environment variables can override settings with the `SPECTARA__REVELA__` prefix.**
 
 #### **Step 1: Create Config Model**
 ```csharp
@@ -505,7 +498,7 @@ public sealed class MyPlugin : IPlugin
 {
     // ConfigureConfiguration - usually empty!
     // Framework handles all configuration loading:
-    // - JSON files: auto-loaded from plugins/*.json
+    // - project.json: plugin sections loaded automatically
     // - ENV vars: auto-loaded with SPECTARA__REVELA__ prefix
     public void ConfigureConfiguration(IConfigurationBuilder configuration)
     {
@@ -526,7 +519,7 @@ public sealed class MyPlugin : IPlugin
 }
 ```
 
-**Plugin config file: `plugins/Spectara.Revela.Plugin.MyPlugin.json`**
+**Plugin config section in `project.json`:**
 ```json
 {
   "Spectara.Revela.Plugin.MyPlugin": {
@@ -557,17 +550,12 @@ public sealed partial class MyCommand(
 
 **Configuration Hierarchy (merged in order):**
 1. C# Property Defaults (in Config class)
-2. `plugins/*.json` (auto-loaded by framework, filename = Package-ID)
+2. `project.json` section (e.g., `"Spectara.Revela.Plugin.MyPlugin": { ... }`)
 3. Environment variables: `SPECTARA__REVELA__PLUGIN__MYPLUGIN__*`
 4. CLI arguments (override in command)
 
-**Config Filename Convention:**
-- Default: `plugins/Spectara.Revela.Plugin.MyPlugin.json`
-- Custom: `revela source myplugin init --name custom-name.json`
-
 **Benefits:**
-- ✅ No filename conflicts (Package-ID is unique)
-- ✅ Framework auto-loads (plugins don't register JSON files)
+- ✅ All config in one file (project.json)
 - ✅ Hot-reload support (`IOptionsMonitor<T>`)
 - ✅ Multi-source config (JSON, ENV, CLI)
 - ✅ Data Annotations validation

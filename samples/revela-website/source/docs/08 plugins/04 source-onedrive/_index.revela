@@ -60,6 +60,9 @@ revela source onedrive sync --force
 
 # Remove local files that are no longer in OneDrive
 revela source onedrive sync --clean
+
+# Remove all local files and re-download from scratch
+revela source onedrive sync --clean-all
 ```
 
 ### Full Workflow

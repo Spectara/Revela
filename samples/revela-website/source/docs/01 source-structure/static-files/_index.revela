@@ -88,7 +88,7 @@ Create a theme override to include the favicon HTML.
 ### Step 3: Generate
 
 ```bash
-revela generate pages
+revela generate all
 ```
 
 ## Common Static Files

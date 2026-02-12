@@ -4,7 +4,7 @@ template = "docs"
 pinned = true
 +++
 
-After running `revela generate`, you have a complete static website in your `output/` folder. This guide shows you how to publish it online.
+After running `revela generate all`, you have a complete static website in your `output/` folder. This guide shows you how to publish it online.
 
 ## What Gets Generated?
 
@@ -120,7 +120,7 @@ Fast global CDN with generous free tier:
 
 Most hosts support custom domains. General steps:
 
-1. Buy a domain (Namecheap, Google Domains, etc.)
+1. Buy a domain (Namecheap, Squarespace Domains, etc.)
 2. Add a CNAME record pointing to your host:
    - GitHub Pages: `username.github.io`
    - Netlify: `your-site.netlify.app`
@@ -136,8 +136,8 @@ If your site is hosted at `example.com/photos/` instead of the root:
 ```json
 // project.json
 {
-  "site": {
-    "basepath": "/photos/"
+  "project": {
+    "basePath": "/photos/"
   }
 }
 ```
@@ -149,8 +149,8 @@ For large portfolios, consider hosting images separately on a CDN:
 ```json
 // project.json
 {
-  "site": {
-    "image_basepath": "https://cdn.example.com/images/"
+  "project": {
+    "imageBasePath": "https://cdn.example.com/images/"
   }
 }
 ```
