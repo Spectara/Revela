@@ -90,8 +90,8 @@ source/
 
 Der Unterstrich-Präfix ist wichtig:
 - `_images/` wird **nicht** als eigene Galerie gerendert
-- Bilder sind nur über Filter-Ausdrücke zugänglich
-- Du kannst jeden Namen verwenden: `_photos/`, `_pool/`, `_shared/`
+- Bilder sind über Filter-Ausdrücke und Content-Bilder (`![](pfad)`) zugänglich
+- Unterordner werden unterstützt: `_images/screenshots/`, `_images/portfolio/`
 
 ### Beispiel Front Matter
 

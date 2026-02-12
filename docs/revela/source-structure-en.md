@@ -90,8 +90,8 @@ source/
 
 The underscore prefix is significant:
 - `_images/` is **not** rendered as a gallery itself
-- Images are only accessible via filter expressions
-- You can use any name: `_photos/`, `_pool/`, `_shared/`
+- Images are accessible via filter expressions and content images (`![](path)`)
+- Subdirectories are supported: `_images/screenshots/`, `_images/portfolio/`
 
 ### Example Front Matter
 
