@@ -7,6 +7,69 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.0.1-beta.14] - 2026-02-12
+
+### Added
+- **LQIP Placeholders**: CSS-only low-quality image placeholders
+  - 20-bit integer encoding (~7 bytes per image)
+  - CSS-only decoding using `calc()`, `mod()`, `pow()` - no JavaScript needed
+  - 3×2 brightness grid with grayscale cells
+  - Dual-layer blend modes (hard-light + overlay) for smooth appearance
+  - Average color calculation in Oklab color space
+  - Configurable via `generate.images.placeholder` in project.json
+- **BenchmarkDotNet Benchmarks**: Image processing performance benchmarks
+  - ResizeStrategyBenchmark: StarFromOriginal vs ThumbnailPerSize vs ThumbnailThenResize
+  - FormatSequentialBenchmark: all-formats-per-image vs format-sequential processing
+  - New `benchmarks/` folder with dedicated configuration
+- **Documentation**: Complete plugin documentation section on website
+  - Plugin overview with install/manage/uninstall commands
+  - Statistics plugin: EXIF analysis, configuration, CLI reference
+  - Serve plugin: port configuration, verbose mode, workflow
+  - Source.OneDrive plugin: setup, sync commands, environment variables
+- **Documentation**: Comprehensive User Journey guide (17 phases)
+- **Tests**: ScanCachingTests for cache hit/miss conditions
+- **Tests**: ManifestServiceTests for config hash computation
+
+### Changed
+- **Image Processing**: Switch from `Resize()` to `ThumbnailImage()` for correct alpha channel handling
+  - Based on libvips maintainer recommendation (libvips/libvips#4588)
+  - Properly handles alpha premultiplication for transparent PNGs
+- **Image Processing**: "Star from Original" strategy - load once, resize all sizes
+  - 13% faster than previous shrink-on-load per size approach
+  - Remove unnecessary `CopyMemory()` call
+- **AVIF Threading**: Optimal (CPU/2) × (CPU/2) threading strategy
+  - Workers = ProcessorCount/2, NetVips.Concurrency = ProcessorCount/2
+  - ~50% fewer threads with similar performance, prevents system freeze
+- **Change Detection**: Replace hash-based detection with LastModified + FileSize
+  - Much faster: no SHA256 computation for unchanged files
+  - Scan metadata caching: skip NetVips reads for unchanged source files
+  - ScanConfigHash invalidates cache when placeholder/minDimensions change
+  - FormatQualities tracking: automatic regeneration when quality changes
+- **Progress Display**: Dynamic legend with format-specific colors
+  - JPG=green, WebP=blue, AVIF=magenta, PNG=cyan
+  - Only shows configured formats
+- **Image Sizes**: Updated defaults optimized for High-DPI displays
+  - `[160, 320, 480, 640, 720, 960, 1280, 1440, 1920, 2560]`
+- **Manifest Schema**: Simplified change tracking
+  - ImageContent: Replace Hash+ProcessedAt with LastModified
+  - ManifestMeta: Add ScanConfigHash and FormatQualities
+  - GalleryContent: Remove Hash (moved to MarkdownContent only)
+- **Dependencies**: Major package updates
+  - .NET SDK 10.0.102 → 10.0.103
+  - Microsoft.Extensions.* 10.0.2 → 10.0.3
+  - Microsoft.Extensions.Http.Resilience 10.2.0 → 10.3.0
+  - System.CommandLine 2.0.2 → 2.0.3
+  - Markdig 0.44.0 → 0.45.0
+  - NuGet.* 7.0.1 → 7.3.0
+  - MSTest 4.0.2 → 4.1.0
+  - Remove unused Hosting.Abstractions, Configuration.CommandLine packages
+
+### Fixed
+- **CA1873**: Add `IsEnabled()` guards for 15 logging performance warnings
+- **CA1508**: Fix false positives in ScanCachingTests
+
+## [0.0.1-beta.13] - 2026-01-12
+
 ### Added
 - **Clean Images Command**: Intelligently remove unused image files
   - Detects orphaned folders (deleted source images)
@@ -19,6 +82,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Adding a new size only generates that size
   - Progress display shows green ■ (new) vs gray ■ (skipped)
   - Processing order: largest sizes first for smoother progress display
+- **Plugin.Compress**: Static compression plugin (Gzip/Brotli)
+- **Setup Wizard**: Full/Custom installation modes
 - **Documentation**: New "Image Processing" page on website
 - **Documentation**: Number prefix sorting for galleries (e.g., `01 Weddings`, `02 Portraits`)
 
@@ -216,7 +281,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Plugin.Source.OneDrive (OneDrive Shared Folder Support)
 - Commands: generate, init, clean, theme, plugins, restore
 
-[Unreleased]: https://github.com/spectara/revela/compare/v0.0.1-beta.12...HEAD
+[Unreleased]: https://github.com/spectara/revela/compare/v0.0.1-beta.14...HEAD
+[0.0.1-beta.14]: https://github.com/spectara/revela/compare/v0.0.1-beta.13...v0.0.1-beta.14
+[0.0.1-beta.13]: https://github.com/spectara/revela/compare/v0.0.1-beta.12...v0.0.1-beta.13
 [0.0.1-beta.12]: https://github.com/spectara/revela/compare/v0.0.1-beta.10...v0.0.1-beta.12
 [0.0.1-beta.10]: https://github.com/spectara/revela/compare/v0.0.1-beta.8...v0.0.1-beta.10
 [0.0.1-beta.8]: https://github.com/spectara/revela/compare/v0.0.1-beta.7...v0.0.1-beta.8
