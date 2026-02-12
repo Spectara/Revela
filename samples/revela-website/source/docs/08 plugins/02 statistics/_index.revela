@@ -1,0 +1,141 @@
++++
+title = "Statistics"
+template = "docs"
++++
+
+The Statistics plugin analyzes **EXIF data** from your photos and generates statistics pages showing camera usage, lens preferences, aperture distribution, and more.
+
+<div class="features-grid">
+
+### 📷 EXIF Analysis
+
+Camera models, lenses, aperture, ISO, shutter speed, and focal lengths.
+
+### 📈 Visualizations
+
+Beautiful charts with the **Theme.Lumina.Statistics** extension.
+
+### 📅 Timeline
+
+See how your photography evolves over time, broken down by year.
+
+</div>
+
+## Installation
+
+The Statistics plugin has two parts:
+
+```bash
+# 1. The plugin (generates statistics data)
+revela plugin install Statistics
+
+# 2. The theme extension (renders charts) – recommended
+revela plugin install Theme.Lumina.Statistics
+```
+
+The plugin generates a `statistics.json` data file. The **Theme.Lumina.Statistics** extension turns that data into responsive Chart.js visualizations with dark/light mode support.
+
+> Without the theme extension, statistics data is still generated – but you'll need custom templates to display it.
+
+## Creating a Statistics Page
+
+```bash
+# Create a statistics page in your source
+revela create page statistics
+```
+
+This creates a page with the required frontmatter:
+
+```
++++
+title = "Statistics"
+template = "statistics"
+data = { statistics = "statistics.json" }
++++
+```
+
+The `data.statistics` field tells the plugin where to write the JSON data file.
+
+## Generating Statistics
+
+```bash
+# Generate statistics as part of the full pipeline
+revela generate all
+
+# Or run only the statistics step
+revela generate statistics
+```
+
+The pipeline order is: `scan → statistics → pages → images`. Statistics runs after scan (which collects EXIF data) and before pages (which renders the HTML).
+
+## What Gets Analyzed?
+
+| Category | Description | Example |
+|----------|-------------|---------|
+| **Cameras** | Camera body models | Sony ILCE-7M4, Canon EOS R5 |
+| **Lenses** | Lens models | Sony FE 35mm F1.4 GM |
+| **Focal Lengths** | Bucketed by range | 18-35mm, 35-70mm, 70-135mm |
+| **Apertures** | f-stop distribution | f/1.4-2.0, f/2.8-4.0 |
+| **ISO** | Sensitivity ranges | ISO 100-400, ISO 800-1600 |
+| **Shutter Speeds** | Exposure times | 1/500, 1/250, 1/60 |
+| **Timeline** | Photos per year | 2024: 120, 2023: 80 |
+
+Images without EXIF data are counted but excluded from category breakdowns.
+
+## Configuration
+
+Settings are stored in `project.json`:
+
+```json
+{
+  "Spectara.Revela.Plugin.Statistics": {
+    "MaxEntriesPerCategory": 15,
+    "SortByCount": true,
+    "MaxBarWidth": 100
+  }
+}
+```
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `MaxEntriesPerCategory` | `15` | Top N entries per category (0 = unlimited) |
+| `SortByCount` | `true` | Sort by count (descending) instead of alphabetically |
+| `MaxBarWidth` | `100` | Bar chart width percentage for HTML output |
+
+```bash
+# Configure interactively
+revela config statistics
+
+# Or set specific options
+revela config statistics --max-entries 20 --sort-by-count false
+```
+
+## Theme Extension
+
+**Theme.Lumina.Statistics** provides:
+
+- **Chart.js** bar charts for all categories
+- **Responsive** layout for mobile and desktop
+- **Dark/light mode** that follows the site theme
+- Summary cards with total images, cameras, and lenses
+
+Install it alongside the plugin:
+
+```bash
+revela plugin install Theme.Lumina.Statistics
+```
+
+## CLI Commands
+
+| Command | Description |
+|---------|-------------|
+| `revela create page statistics` | Create a statistics page in your source |
+| `revela generate statistics` | Generate statistics JSON |
+| `revela generate all` | Full pipeline (includes statistics) |
+| `revela clean statistics` | Remove generated statistics files |
+| `revela config statistics` | Configure plugin settings |
+
+## Requirements
+
+- Photos with EXIF data (JPG, TIFF – most cameras write EXIF by default)
+- Run `revela generate scan` first (or use `generate all`)

@@ -1,0 +1,94 @@
++++
+title = "Plugins"
+template = "docs"
+pinned = true
++++
+
+Revela's plugin system lets you extend your site with additional features. All official plugins are distributed as **NuGet packages** and installed with a single command.
+
+<div class="features-grid">
+
+### 📦 Compression
+
+Pre-compress HTML, CSS, and JS with Gzip and Brotli for 70-95% smaller files.
+
+### 📊 Statistics
+
+Analyze EXIF data from your photos – cameras, lenses, apertures, ISO, and timeline.
+
+### 🌐 Dev Server
+
+Preview your generated site locally during development.
+
+### ☁️ OneDrive Source
+
+Sync photos from OneDrive shared folders directly into your project.
+
+</div>
+
+## Official Plugins
+
+| Plugin | Package | Description |
+|--------|---------|-------------|
+| **Compression** | `Spectara.Revela.Plugin.Compress` | Pre-compress static files with Gzip and Brotli |
+| **Statistics** | `Spectara.Revela.Plugin.Statistics` | Generate EXIF statistics pages |
+| **Serve** | `Spectara.Revela.Plugin.Serve` | Local development server |
+| **OneDrive** | `Spectara.Revela.Plugin.Source.OneDrive` | Download photos from OneDrive shared folders |
+
+All `Spectara.Revela.*` packages are **verified and signed** by the Spectara organization.
+
+## Installing Plugins
+
+```bash
+# Install by short name
+revela plugin install Statistics
+
+# Or use full package ID
+revela plugin install Spectara.Revela.Plugin.Statistics
+
+# Install a specific version
+revela plugin install Statistics --version 1.2.0
+```
+
+## Managing Plugins
+
+```bash
+# List installed plugins
+revela plugin list
+
+# Remove a plugin
+revela plugin uninstall Statistics
+```
+
+## Configuration
+
+Plugins store their settings in `project.json`:
+
+```json
+{
+  "Spectara.Revela.Plugin.Statistics": {
+    "MaxEntriesPerCategory": 15,
+    "SortByCount": true
+  },
+  "Spectara.Revela.Plugin.Serve": {
+    "Port": 8080
+  }
+}
+```
+
+Settings can also be overridden with environment variables:
+
+```bash
+SPECTARA__REVELA__PLUGIN__SERVE__PORT=3000
+```
+
+## Community Plugins
+
+Revela supports third-party plugins from any NuGet source. Community plugins use their own package prefix:
+
+```bash
+# Install from custom NuGet feed
+revela plugin install MyPlugin --source https://my-feed.example.com/v3/index.json
+```
+
+> **Note:** Community plugins are not verified by Spectara. Install at your own risk.

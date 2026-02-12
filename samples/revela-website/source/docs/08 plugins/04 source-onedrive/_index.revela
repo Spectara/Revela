@@ -1,0 +1,134 @@
++++
+title = "OneDrive Source"
+template = "docs"
++++
+
+The OneDrive plugin lets you **sync photos from a shared OneDrive folder** directly into your Revela project. Share a folder on OneDrive, paste the link, and your photos are downloaded automatically.
+
+<div class="features-grid">
+
+### ☁️ Cloud Sync
+
+Download photos from any OneDrive shared folder link.
+
+### 📂 Folder Structure
+
+Preserves the original folder hierarchy as galleries.
+
+### ⚡ Smart Sync
+
+Only downloads new or changed files – skips what's already there.
+
+</div>
+
+## Installation
+
+```bash
+revela plugin install Source.OneDrive
+```
+
+## Setup
+
+```bash
+# Interactive setup (recommended)
+revela config onedrive
+```
+
+Or add the share URL directly to `project.json`:
+
+```json
+{
+  "Spectara.Revela.Plugin.Source.OneDrive": {
+    "ShareUrl": "https://1drv.ms/f/your-shared-folder-link"
+  }
+}
+```
+
+## Usage
+
+### Sync Photos
+
+```bash
+# Download new and changed files
+revela source onedrive sync
+
+# Preview what would be downloaded (no changes)
+revela source onedrive sync --dry-run
+
+# Force re-download all files
+revela source onedrive sync --force
+
+# Remove local files that are no longer in OneDrive
+revela source onedrive sync --clean
+```
+
+### Full Workflow
+
+```bash
+# 1. Install plugin
+revela plugin install Source.OneDrive
+
+# 2. Configure share link
+revela config onedrive
+
+# 3. Sync photos
+revela source onedrive sync
+
+# 4. Generate site
+revela generate all
+```
+
+## Configuration
+
+```json
+{
+  "Spectara.Revela.Plugin.Source.OneDrive": {
+    "ShareUrl": "https://1drv.ms/f/your-link",
+    "DefaultConcurrency": 4,
+    "IncludePatterns": ["*.jpg", "*.jpeg", "*.png", "*.tiff", "*.md"],
+    "ExcludePatterns": ["*.tmp"]
+  }
+}
+```
+
+| Option | Required | Default | Description |
+|--------|----------|---------|-------------|
+| `ShareUrl` | Yes | – | OneDrive shared folder URL |
+| `DefaultConcurrency` | No | `4` | Parallel downloads (increase for fast connections) |
+| `IncludePatterns` | No | All images + markdown | File patterns to include |
+| `ExcludePatterns` | No | None | File patterns to exclude |
+
+## Supported Link Formats
+
+- `https://1drv.ms/f/...` – short links
+- `https://onedrive.live.com/...` – full links
+
+Both public and organization-shared folders are supported.
+
+## Progress Display
+
+The plugin shows a two-phase progress display:
+
+1. **Scanning** – discovers files and folders with a spinner
+2. **Downloading** – progress bar with file count and remaining time
+
+```
+⠋ Scanning OneDrive folder...
+✓ Found 142 files in 8 folders
+
+Downloading (42/142) vacation/sunset.jpg  ━━━━━━━━━━━━━━━━━━  29%  ETA 02:15
+```
+
+## Environment Variables
+
+All settings can be overridden with environment variables:
+
+```bash
+SPECTARA__REVELA__PLUGIN__SOURCE__ONEDRIVE__SHAREURL=https://1drv.ms/f/...
+SPECTARA__REVELA__PLUGIN__SOURCE__ONEDRIVE__DEFAULTCONCURRENCY=8
+```
+
+## Requirements
+
+- OneDrive shared folder link (public or organization-shared)
+- Internet connection for syncing

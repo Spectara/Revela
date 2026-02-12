@@ -36,9 +36,9 @@ Extract and customize themes to match your style with variables and templates.
 
 Advanced project settings and configuration options.
 
-### 📦 Static Compression
+### 🧩 Plugins
 
-Pre-compress HTML, CSS, and JS with Gzip and Brotli for 70-95% smaller files.
+Extend Revela with compression, statistics, a dev server, and more.
 
 ### 🚀 Deployment
 

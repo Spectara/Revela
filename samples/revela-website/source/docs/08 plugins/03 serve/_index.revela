@@ -1,0 +1,115 @@
++++
+title = "Dev Server"
+template = "docs"
++++
+
+The Serve plugin starts a **local HTTP server** so you can preview your generated site during development.
+
+<div class="features-grid">
+
+### ⚡ Instant Preview
+
+Start a local server with a single command.
+
+### 🔍 Request Logging
+
+Verbose mode logs all HTTP requests for debugging.
+
+### 🛑 Graceful Shutdown
+
+Press Ctrl+C to stop and return to the interactive menu.
+
+</div>
+
+## Installation
+
+```bash
+revela plugin install Serve
+```
+
+## Usage
+
+```bash
+# Start server (default: port 8080)
+revela serve
+
+# Custom port
+revela serve --port 3000
+
+# Verbose mode (log all requests)
+revela serve --verbose
+```
+
+Then open `http://localhost:8080` in your browser.
+
+Press **Ctrl+C** to stop the server.
+
+## Configuration
+
+Settings are stored in `project.json`:
+
+```json
+{
+  "Spectara.Revela.Plugin.Serve": {
+    "Port": 8080,
+    "Verbose": false
+  }
+}
+```
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `Port` | `8080` | HTTP server port (1-65535) |
+| `Verbose` | `false` | Log all requests (not just errors) |
+
+```bash
+# Configure interactively
+revela config serve
+
+# Or set a specific option
+revela config serve --port 3000
+```
+
+## Output
+
+**Standard mode** – only shows errors:
+
+```
+🌐 Serving output/ at http://localhost:8080
+   Press Ctrl+C to stop
+
+⚠ 404: /favicon.ico
+```
+
+**Verbose mode** – logs every request:
+
+```
+🌐 Serving output/ at http://localhost:8080
+   Press Ctrl+C to stop
+
+GET /index.html 200
+GET /css/style.css 200
+GET /images/photo.avif 200
+⚠ 404: /favicon.ico
+```
+
+## Typical Workflow
+
+```bash
+# 1. Generate your site
+revela generate all
+
+# 2. Preview locally
+revela serve
+
+# 3. Make changes, regenerate, refresh browser
+revela generate all
+revela serve
+```
+
+## Features
+
+- **Zero dependencies** – uses .NET's built-in `HttpListener`
+- **Correct MIME types** – HTML, CSS, JS, JSON, AVIF, WebP, JPG, PNG, SVG, ICO
+- **404 logging** – missing files always shown, even in non-verbose mode
+- **CLI overrides** – `--port` and `--verbose` override `project.json` settings
