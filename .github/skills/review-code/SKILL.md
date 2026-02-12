@@ -1,6 +1,11 @@
+---
+name: review-code
+description: Reviews C# code against Revela project conventions, .editorconfig rules, and .NET 10 best practices. Covers naming, patterns, async, logging, DI, configuration, commands, testing, and code style. Use when reviewing code, suggesting improvements, or checking for convention violations in the Revela codebase.
+---
+
 # Code Review — Revela Project
 
-Review the provided code against Revela project conventions, .editorconfig rules, and .NET best practices.
+Review code against Revela project conventions, .editorconfig rules, and .NET best practices.
 Check each category and report issues found. Skip categories with no issues.
 
 ## 1. Naming Conventions (enforced by .editorconfig as warnings/errors)
