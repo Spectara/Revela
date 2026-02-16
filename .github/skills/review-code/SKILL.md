@@ -8,6 +8,11 @@ description: Reviews C# code against Revela project conventions, .editorconfig r
 Review code against Revela project conventions, .editorconfig rules, and .NET best practices.
 Check each category and report issues found. Skip categories with no issues.
 
+**General principle:** Always prefer the latest stable C# language features and .NET APIs over older patterns.
+This project targets the newest .NET and C# versions — there is no backward compatibility requirement.
+When reviewing, actively look for opportunities to modernize code using current language features,
+newer BCL APIs, and modern idioms. If an older pattern has a modern replacement, flag it.
+
 ## 1. Naming Conventions (enforced by .editorconfig as warnings/errors)
 
 - Private instance fields: `camelCase` — **NO underscore prefix!** (`logger`, not `_logger`)
@@ -20,7 +25,9 @@ Check each category and report issues found. Skip categories with no issues.
 - Parameters & locals: `camelCase`
 - **No public/protected fields** — use properties instead (enforced as error)
 
-## 2. C# 14 / .NET 10 Patterns
+## 2. Modern C# & .NET Patterns
+
+**Always use the newest C# language version and .NET APIs available.** Actively replace older patterns:
 
 - **File-scoped namespaces** — always (`namespace Spectara.Revela.Core;`)
 - **Primary constructors** for DI — preferred (suggestion level)
@@ -32,6 +39,10 @@ Check each category and report issues found. Skip categories with no issues.
 - **Pattern matching** — prefer `is`, `is not`, switch expressions (warning level)
 - **Index/range operators** — prefer `^1` and `..` syntax (warning level)
 - **Braces** — always required, even for single-line `if` (`csharp_prefer_braces = true:warning`)
+- **`FrozenDictionary`** — use for static readonly dictionaries that are never mutated (faster lookups)
+- **Modern BCL APIs** — prefer `Random.Shared`, `TimeProvider`, `Lock` (C# 13), `SearchValues`, `Regex.EnumerateMatches`, etc. over older equivalents
+- **Expression bodies** — use for single-expression methods and properties
+- When in doubt, check if there is a newer API or language feature that replaces older code
 
 ## 3. Boolean & Null Checking (Revela Custom Rule)
 
@@ -55,7 +66,17 @@ Check each category and report issues found. Skip categories with no issues.
 - All async methods must accept `CancellationToken cancellationToken = default`
 - Always pass `cancellationToken` to downstream calls
 - Async methods must have `Async` suffix
-- **No ConfigureAwait needed** — CA2007 is suppressed (application, not library)
+- **No `ConfigureAwait(false)`** — CA2007 is suppressed (application, not library). Find and remove all occurrences.
+- **Shutdown/wait loops** — never poll with `while + Task.Delay(100)`. Use `CancellationTokenSource.CreateLinkedTokenSource` + `Task.Delay(Timeout.Infinite, token)` instead:
+  ```csharp
+  // ❌ AVOID — CPU wakeups, 100ms latency
+  while (running) { await Task.Delay(100, CancellationToken.None); }
+
+  // ✅ PREFER — zero-CPU, instant response
+  using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+  try { await Task.Delay(Timeout.Infinite, cts.Token); }
+  catch (OperationCanceledException) { }
+  ```
 
 ## 5. Logging
 
@@ -100,7 +121,14 @@ Check each category and report issues found. Skip categories with no issues.
   - `OutputMarkers.Success` (green ✓), `OutputMarkers.Error` (red ✗)
   - `OutputMarkers.Warning` (yellow ⚠), `OutputMarkers.Info` (blue ℹ)
 - **Never** use raw Spectre markup for status symbols
-- Escape user data in Spectre markup: `[` → `[[`, `]` → `]]`
+- Escape user data in Spectre markup: use `Markup.Escape()` — **never** write custom escape methods
+  ```csharp
+  // ❌ DON'T — custom escape method
+  text.Replace("[", "[[").Replace("]", "]]");
+
+  // ✅ DO — built-in Spectre method
+  Markup.Escape(userInput)
+  ```
 
 ## 11. Paths
 
@@ -136,6 +164,32 @@ Check each category and report issues found. Skip categories with no issues.
 - No dead code — delete instead of commenting out
 - No `#pragma warning disable` without matching `#pragma warning restore`
 - **No general exception catching** — avoid `catch (Exception)` in business logic (CA1031)
+- **No swallowed exceptions** — always log/report, never empty `catch` blocks
+- **Thread-safety** — never use plain `bool` flags across threads. Use `volatile`, `CancellationTokenSource`, or `Interlocked`
+- **Verify all code paths are reachable and useful:**
+  - Trace every field, parameter, method, and class — is it actually used?
+  - Remove unused fields, methods, parameters, and imports (don't just suppress IDE0051/IDE0052)
+  - Check if helper methods duplicate functionality already in the framework or project (e.g. custom string escape vs. `Markup.Escape()`)
+  - Verify README/docs match actual code — remove documented features that don't exist
+  - Question every code path: if a branch can never be reached, remove it
+- **Async file I/O** — use `FileStream` with `useAsync: true` + `CopyToAsync` for large files, never `File.ReadAllBytes` + sync write:
+  ```csharp
+  // ❌ AVOID — loads entire file into memory, blocks thread
+  var bytes = File.ReadAllBytes(path);
+  stream.Write(bytes, 0, bytes.Length);
+
+  // ✅ PREFER — streaming, async, configurable buffer
+  await using var fs = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read, 65536, useAsync: true);
+  await fs.CopyToAsync(outputStream);
+  ```
+
+## 15. Documentation Consistency
+
+- **README matches code** — verify plugin/theme README documents only features that actually exist in code
+- **Website docs match code** — check `docs/plugins/`, `docs/revela/`, and `samples/revela-website/` for outdated info
+- **CLI options documented** — all `--option` flags in README must exist in the command definition
+- **Config examples valid** — JSON examples in docs must match actual config models (property names, types, defaults)
+- **Sample projects current** — samples should work with current codebase without errors
 
 ## Output Format
 
