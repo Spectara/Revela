@@ -3,8 +3,6 @@
 *,
 :after,
 :before {
-  -webkit-box-sizing: border-box;
-  -moz-box-sizing: border-box;
   box-sizing: border-box;
   margin: 0;
   padding: 0;
@@ -32,8 +30,11 @@ figcaption {
   --color-light-hsl: 0deg 0% 50%;
   --color-dark-hsl: 0deg 0% 10%;
   --color-background-hsl: 0deg 0% 100%;
+  --color: hsl(var(--color-hsl));
+  --color-light: hsl(var(--color-light-hsl));
+  --color-dark: hsl(var(--color-dark-hsl));
+  --color-bg: hsl(var(--color-background-hsl));
   --animation-time: 270ms;
-  --color-shadow: 0deg 0% 71%;
   /* @link https://utopia.fyi/type/calculator?c=320,12,1.2,900,16,1.25,5,0,&s=0.75|0.5|0.25,1.5|2|3|4|6,s-l&g=s,l,xl,12 */
   --font-size-0: clamp(0.75rem, 0.6121rem + 0.6897vw, 1rem);
   --font-size-1: clamp(0.9rem, 0.7069rem + 0.9655vw, 1.25rem);
@@ -55,19 +56,15 @@ figcaption {
   --breakout-max-width: 1240px;
   --breakout-size: calc((var(--breakout-max-width) - var(--content-max-width)) / 2);
   --grid-gap: var(--space-xs);
-}
 
-@media (prefers-color-scheme: dark) {
-  :root {
+  @media (prefers-color-scheme: dark) {
     --color-hsl: 0deg 0% 70%;
     --color-light-hsl: 0deg 0% 50%;
     --color-dark-hsl: 0deg 0% 90%;
     --color-background-hsl: 0deg 0% 0%;
   }
-}
 
-@media (prefers-reduced-motion: reduced) {
-  :root {
+  @media (prefers-reduced-motion: reduce) {
     --animation-time: 0ms;
   }
 }
@@ -118,38 +115,37 @@ html {
   scrollbar-gutter: stable;
   position: relative;
   height: 100dvh;
-}
 
-html:has(.nav-trigger:checked),
-html:has(.nav-trigger ~ #nav:focus-within),
-html:has(.gallery > article:focus) {
-  overflow: clip;
+  &:has(.nav-trigger:checked),
+  &:has(.nav-trigger ~ nav:focus-within),
+  &:has(.gallery > article:focus) {
+    overflow: clip;
+  }
 }
 
 body {
   font-family: ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
   font-weight: 200;
-  background-color: hsl(var(--color-background-hsl));
-  color: hsl(var(--color-hsl));
+  background-color: var(--color-bg);
+  color: var(--color);
   position: relative;
   display: grid;
   grid-template-columns: [full-width-start] minmax(var(--space-s), 1fr) [breakout-start] minmax(0, var(--breakout-size)) [content-start] min(100% - (var(--space-s) * 2), var(--content-max-width)) [content-end] minmax(0, var(--breakout-size)) [breakout-end] minmax(var(--space-s), 1fr) [full-width-end];
-  background-color: hsl(var(--color-background-hsl));
-}
 
-body:before {
-  content: " ";
-  height: 1px;
-  position: fixed;
-  top: 1px;
-  left: 1px;
-  z-index: 251;
-  background-color: hsl(var(--color-hsl)/0.3);
-  width: calc(100% - 2px);
-  scale: 0 1;
-  transform-origin: top left;
-  animation: scroll-watcher linear;
-  animation-timeline: scroll(block nearest);
+  &::before {
+    content: " ";
+    height: 1px;
+    position: fixed;
+    top: 1px;
+    left: 1px;
+    z-index: 251;
+    background-color: hsl(var(--color-hsl) / 0.3);
+    width: calc(100% - 2px);
+    scale: 0 1;
+    transform-origin: top left;
+    animation: scroll-watcher linear;
+    animation-timeline: scroll(block nearest);
+  }
 }
 
 @keyframes scroll-watcher {
@@ -160,7 +156,7 @@ body:before {
 
 .nav-trigger {
   position: fixed;
-  clip: rect(0, 0, 0, 0);
+  clip-path: inset(50%);
 }
 
 label[for=nav-trigger] {
@@ -173,37 +169,94 @@ label[for=nav-trigger] {
   transition-timing-function: ease-in-out;
   display: inline-flex;
   transform: rotate(-90deg);
-  color: hsl(var(--color-light-hsl));
+  color: var(--color-light);
+
+  &:hover {
+    color: var(--color-dark);
+  }
+
+  span {
+    transition: transform var(--animation-time) ease-in-out, opacity var(--animation-time) ease-in-out;
+
+    &:first-child {
+      display: none;
+    }
+  }
 }
 
-label[for=nav-trigger]:hover {
-  color: hsl(var(--color-dark-hsl));
-}
-
-label[for=nav-trigger] span {
-  transition: transform var(--animation-time) ease-in-out, opacity var(--animation-time) ease-in-out;
-}
-
-label[for=nav-trigger] span:first-child {
-  display: none;
-}
-
-.nav-trigger:has(~ #nav:focus-within)~* label[for=nav-trigger]>span:nth-child(2),
+/* Nav trigger animation states (cross-component) */
+.nav-trigger:has(~ nav:focus-within)~* label[for=nav-trigger]>span:nth-child(2),
 .nav-trigger:checked~* label[for=nav-trigger]>span:nth-child(2) {
   transform: translateX(40%) rotate(-135deg);
 }
 
-.nav-trigger:has(~ #nav:focus-within)~* label[for=nav-trigger]>span:nth-child(3),
+.nav-trigger:has(~ nav:focus-within)~* label[for=nav-trigger]>span:nth-child(3),
 .nav-trigger:checked~* label[for=nav-trigger]>span:nth-child(3) {
   opacity: 0;
 }
 
-.nav-trigger:has(~ #nav:focus-within)~* label[for=nav-trigger]>span:nth-child(4),
+.nav-trigger:has(~ nav:focus-within)~* label[for=nav-trigger]>span:nth-child(4),
 .nav-trigger:checked~* label[for=nav-trigger]>span:nth-child(4) {
   transform: translateX(-110%) translateY(5%) rotate(135deg);
 }
 
+/* Shared navigation section styles (body overlay + footer) */
+:is(body > nav, footer nav) section {
+  display: flex;
+  flex-direction: column;
+
+  h3 {
+    font-weight: 100;
+    font-size: var(--nav-font-size);
+    margin-bottom: var(--nav-heading-gap);
+  }
+
+  div {
+    display: flex;
+    flex-direction: column;
+
+    >span,
+    >a:first-child {
+      font-weight: 100;
+      font-size: var(--nav-font-size);
+      text-decoration: none;
+    }
+
+    >span {
+      color: hsl(var(--color-light-hsl) / 0.65);
+      cursor: default;
+    }
+
+    a:not(:first-child) {
+      margin-left: var(--space-l);
+    }
+  }
+
+  a {
+    font-weight: 100;
+    font-size: var(--nav-font-size);
+    text-decoration: none;
+    color: var(--color-light);
+    transition: color var(--animation-time) ease-in-out, border-bottom var(--animation-time) ease-in-out;
+
+    &:hover {
+      color: var(--color-dark);
+    }
+
+    &.active {
+      color: var(--color-dark);
+    }
+  }
+
+  /* Parent link should not look active when a child is active */
+  &:has(> a.active) h3 a.active {
+    color: var(--color-light);
+  }
+}
+
 body>nav {
+  --nav-font-size: var(--font-size-3);
+  --nav-heading-gap: var(--space-s);
   grid-column: full-width;
   position: fixed;
   height: 100dvh;
@@ -215,88 +268,30 @@ body>nav {
   align-content: center;
   justify-content: center;
   gap: var(--space-l);
-  transition-property: display, opacity;
-  transition-duration: var(--animation-time);
-  transition-timing-function: ease-in-out;
-  transform-style: ease-in-out;
-  transition-behavior: allow-discrete;
+  transition: display var(--animation-time) ease-in-out allow-discrete, opacity var(--animation-time) ease-in-out;
   opacity: 0;
-  background-color: hsl(var(--color-background-hsl)/0.8);
-  -webkit-backdrop-filter: saturate(180%) blur(2rem);
+  background-color: hsl(var(--color-background-hsl) / 0.8);
   backdrop-filter: saturate(180%) blur(2rem);
   padding-top: var(--space-3xl);
+
+  section {
+    a.active {
+      pointer-events: none;
+    }
+
+    &:has(> a.active) h3 a.active {
+      pointer-events: auto;
+    }
+  }
 }
 
-body>nav section {
-  display: flex;
-  flex-direction: column;
-  flex-wrap: nowrap;
-  justify-content: flex-start;
-  align-items: flex-start;
-}
-
-body>nav section h3 {
-  font-weight: 100;
-  font-size: var(--font-size-3);
-  margin-bottom: var(--space-s);
-}
-
-body>nav section div {
-  display: flex;
-  flex-direction: column;
-}
-
-body>nav section div>span,
-body>nav section div>a:first-child {
-  font-weight: 100;
-  font-size: var(--font-size-3);
-  text-decoration: none;
-}
-
-body>nav section div>span {
-  color: hsl(var(--color-light-hsl)/0.65);
-  cursor: default;
-}
-
-body>nav section div a:not(:first-child) {
-  margin-left: var(--space-l);
-}
-
-body>nav section a {
-  font-weight: 100;
-  font-size: var(--font-size-3);
-  text-decoration: none;
-  color: hsl(var(--color-light-hsl));
-  transition-property: color, border-bottom;
-  transition-duration: var(--animation-time);
-  transition-timing-function: ease-in-out;
-}
-
-body>nav section a:hover {
-  color: hsl(var(--color-dark-hsl));
-}
-
-body>nav section a.active {
-  color: hsl(var(--color-dark-hsl));
-  pointer-events: none;
-}
-
-/* Parent link should not look active when a child is active */
-body>nav section:has(> a.active) h3 a.active {
-  color: hsl(var(--color-light-hsl));
-  pointer-events: auto;
-}
-
+/* Nav visibility (cross-component) */
 body>nav:focus-within,
 .nav-trigger:checked~nav {
   display: flex;
   opacity: 1;
-}
 
-@starting-style {
-
-  body>nav:focus-within,
-  .nav-trigger:checked~nav {
+  @starting-style {
     opacity: 0;
   }
 }
@@ -307,142 +302,123 @@ header {
   align-items: center;
   grid-template-columns: inherit;
   z-index: 250;
-  background-color: hsl(var(--color-background-hsl));
+  background-color: var(--color-bg);
   position: sticky;
   top: 0;
   margin-top: var(--space-xl);
   padding-bottom: var(--space-xs);
   height: calc(var(--space-xl) + var(--space-xs));
-}
 
-header div {
-  grid-column: content;
-  display: flex;
-  gap: var(--space-s);
-  justify-content: space-between;
-  align-items: flex-end;
-  flex-wrap: wrap;
-}
+  div {
+    grid-column: content;
+    display: flex;
+    gap: var(--space-s);
+    justify-content: space-between;
+    align-items: flex-end;
+    flex-wrap: wrap;
 
-header div h2 {
-  font-size: var(--font-size-4);
-  letter-spacing: 0.1em;
-  font-weight: 100;
-  display: flex;
-  gap: var(--space-s);
-}
+    h2 {
+      font-size: var(--font-size-4);
+      letter-spacing: 0.1em;
+      font-weight: 100;
+      display: flex;
+      gap: var(--space-s);
+    }
 
-header div h2>* {
-  display: block;
-}
+    >form {
+      position: relative;
+      flex-grow: 1;
+      transition: width var(--animation-time) ease-in-out, opacity var(--animation-time) ease-in-out;
 
-header div>form {
-  position: relative;
-  flex-grow: 1;
-  transition-property: width, opacity;
-  transition-duration: var(--animation-time);
-  transition-timing-function: ease-in-out;
-}
+      input[type=search] {
+        all: unset;
+        font-size: var(--font-size-3);
+        font-weight: 100;
+        width: 100%;
+        transition: border-bottom var(--animation-time) ease-in-out, background-color var(--animation-time) ease-in-out;
+        border-bottom: solid 1px hsl(var(--color-hsl) / 0);
 
-header div>form input[type=search] {
-  all: unset;
-  background-color: none;
-  font-size: var(--font-size-3);
-  font-weight: 100;
-  border: none;
-  width: 100%;
-  transition-property: border-bottom, background-color;
-  transition-duration: var(--animation-time);
-  transition-timing-function: ease-in-out;
-  outline: none;
-  border-bottom: solid 1px hsl(var(--color-hsl)/0);
-  /* clears the ‘X’ from Chrome */
-}
+        &:focus,
+        &:not(:placeholder-shown) {
+          color: var(--color-light);
+          border-bottom: solid 1px hsl(var(--color-hsl) / 0.3);
+        }
 
-header div>form input[type=search]:focus,
-header div>form input[type=search]:not(:placeholder-shown) {
-  color: hsl(var(--color-light-hsl));
-  border-bottom: solid 1px hsl(var(--color-hsl)/0.3);
-}
+        &:not(:placeholder-shown):not(:focus) {
+          color: hsl(var(--color-light-hsl) / 0.5);
+          border-bottom: solid 1px hsl(var(--color-hsl) / 0.1);
+        }
 
-header div>form input[type=search]:not(:placeholder-shown):not(:focus) {
-  color: hsl(var(--color-light-hsl)/0.5);
-  border-bottom: solid 1px hsl(var(--color-hsl)/0.1);
-}
+        /* clears the 'X' from Chrome */
+        &::-webkit-search-decoration,
+        &::-webkit-search-cancel-button,
+        &::-webkit-search-results-button,
+        &::-webkit-search-results-decoration {
+          appearance: none;
+        }
+      }
 
-header div>form input[type=search]::-webkit-search-decoration,
-header div>form input[type=search]::-webkit-search-cancel-button,
-header div>form input[type=search]::-webkit-search-results-button,
-header div>form input[type=search]::-webkit-search-results-decoration {
-  appearance: none;
-}
+      >label,
+      >button {
+        all: unset;
+        cursor: pointer;
+        position: absolute;
+        width: var(--font-size-1);
+        right: 0;
+        top: 50%;
+        translate: 0 -35%;
+        color: var(--color-light);
+        opacity: 0;
+        pointer-events: none;
+        visibility: hidden;
+        transition: opacity var(--animation-time) ease-in-out, visibility var(--animation-time) ease-in-out allow-discrete, color var(--animation-time) ease-in-out;
 
-header div>form>label,
-header div>form>button {
-  all: unset;
-  cursor: pointer;
-  position: absolute;
-  width: var(--font-size-1);
-  right: 0;
-  top: 50%;
-  translate: 0 -35%;
-  color: hsl(var(--color-light-hsl));
-  opacity: 0;
-  pointer-events: none;
-  visibility: hidden;
-  transition-behavior: discrete;
-  transition-property: opacity, visibility, color;
-  transition-duration: var(--animation-time);
-  transition-timing-function: ease-in-out;
-}
+        &:hover {
+          color: var(--color-dark);
+        }
+      }
 
-header div>form>label:hover,
-header div>form>button:hover {
-  color: hsl(var(--color-dark-hsl));
-}
+      &:has(input[type=search]:placeholder-shown)>label,
+      &:has(input[type=search]:not(:placeholder-shown))>button {
+        opacity: 1;
+        pointer-events: all;
+        visibility: visible;
+      }
+    }
 
-header div>form:has(input[type=search]:placeholder-shown)>label,
-header div>form:has(input[type=search]:not(:placeholder-shown))>button {
-  opacity: 1;
-  pointer-events: all;
-  visibility: visible;
-}
+    nav {
+      display: flex;
+      justify-content: flex-end;
+      flex-wrap: wrap;
+      gap: var(--space-s);
+      font-size: var(--font-size-3);
+      opacity: 1;
+      transition: opacity var(--animation-time) ease-in-out;
+    }
 
-header div nav {
-  display: flex;
-  justify-content: flex-end;
-  flex-direction: row;
-  flex-wrap: wrap;
-  gap: var(--space-s);
-  font-size: var(--font-size-3);
-  opacity: 1;
-  transition-property: opacity;
-  transition-duration: var(--animation-time);
-  transition-timing-function: ease-in-out;
-}
+    a {
+      color: var(--color-light);
+      text-decoration: none;
+      border-bottom: solid 1px hsl(var(--color-hsl) / 0.1);
+      transition: color var(--animation-time) ease-in-out, border-bottom var(--animation-time) ease-in-out;
 
-header div a {
-  color: hsl(var(--color-light-hsl));
-  text-decoration: none;
-  border-bottom: solid 1px hsl(var(--color-hsl)/0.1);
-  transition-property: color, border-bottom;
-  transition-duration: var(--animation-time);
-  transition-timing-function: ease-in-out;
-}
+      &:hover {
+        color: var(--color-dark);
+        border-bottom: solid 1px hsl(var(--color-hsl) / 0.3);
+      }
+    }
 
-header div a:hover {
-  color: hsl(var(--color-dark-hsl));
-  border-bottom: solid 1px hsl(var(--color-hsl)/0.3);
-}
+    @media (width <=600px) {
 
-@media (width <=600px) {
-
-  header div nav,
-  header div form {
-    display: none;
+      nav,
+      form {
+        display: none;
+      }
+    }
   }
 }
 
+/* Nav open hides header nav/form (cross-component) */
 body>nav:focus-within~header nav,
 body>nav:focus-within~header form,
 .nav-trigger:checked~header nav,
@@ -453,372 +429,430 @@ body>nav:focus-within~header form,
 main {
   grid-column: content;
   margin-top: var(--space-2xl);
-}
 
-main>section>h1 {
-  margin: 0 calc(var(--space-s) * -1) var(--space-l) calc(var(--space-s) * -1);
-  padding: 0 var(--space-s);
-  font-size: var(--font-size-4);
-  letter-spacing: 0.1em;
-  font-weight: 100;
-  border-bottom: solid 1px hsl(var(--color-hsl)/0.3);
-  flex: 1 1 100%;
-}
+  >section {
+    > :is(h1, h2, h3, p, ul, pre, table, hr) {
+      flex: 1 1 100%;
+    }
 
-main>section>h2 {
-  margin: 0 calc(var(--space-s) * -1) var(--space-l) calc(var(--space-s) * -1);
-  padding: 0 var(--space-s);
-  font-size: var(--font-size-3);
-  letter-spacing: 0.1em;
-  font-weight: 100;
-  border-bottom: solid 1px hsl(var(--color-hsl)/0.3);
-  flex: 1 1 100%;
-}
+    > :is(p, ul, pre, table) {
+      margin-bottom: var(--space-m);
+    }
 
-main>section>h3 {
-  margin: 0 calc(var(--space-s) * -1) var(--space-l) calc(var(--space-s) * -1);
-  padding: 0 var(--space-s);
-  font-size: var(--font-size-2);
-  letter-spacing: 0.1em;
-  font-weight: 100;
-  border-bottom: solid 1px hsl(var(--color-hsl)/0.3);
-  flex: 1 1 100%;
-}
+    > :is(p, ul) {
+      font-size: var(--font-size-2);
+      letter-spacing: 0.02em;
+    }
 
-main>section>p {
-  margin-bottom: var(--space-m);
-  font-size: var(--font-size-2);
-  letter-spacing: 0.02em;
-  flex: 1 1 100%;
-}
+    > :is(h1, h2, h3) {
+      margin: 0 calc(var(--space-s) * -1) var(--space-l) calc(var(--space-s) * -1);
+      padding: 0 var(--space-s);
+      letter-spacing: 0.1em;
+      font-weight: 100;
+      border-bottom: solid 1px hsl(var(--color-hsl) / 0.3);
+    }
 
-main>section>ul {
-  margin-bottom: var(--space-m);
-  font-size: var(--font-size-2);
-  letter-spacing: 0.02em;
-  flex: 1 1 100%;
-  padding-left: var(--space-l);
-}
+    >h1 {
+      font-size: var(--font-size-4);
+    }
 
-main>section>pre {
-  margin-bottom: var(--space-m);
-  padding: var(--space-s);
-  background-color: hsl(var(--color-hsl)/0.05);
-  border-radius: var(--space-2xs);
-  overflow-x: auto;
-  flex: 1 1 100%;
-}
+    >h2 {
+      font-size: var(--font-size-3);
+    }
 
-main>section>pre code {
-  padding: 0;
-}
+    >h3 {
+      font-size: var(--font-size-2);
+    }
 
-main>section code {
-  font-family: ui-monospace, "Cascadia Code", "Source Code Pro", Menlo, Consolas, "DejaVu Sans Mono", monospace;
-  font-size: var(--font-size-1);
-  padding: var(--space-3xs) var(--space-2xs);
-}
+    >ul {
+      padding-left: var(--space-l);
+    }
 
-main>section>table {
-  width: 100%;
-  margin-bottom: var(--space-m);
-  font-size: var(--font-size-1);
-  letter-spacing: 0.02em;
-  flex: 1 1 100%;
-  border-collapse: collapse;
-  border-spacing: 0;
-}
+    >pre {
+      padding: var(--space-s);
+      background-color: hsl(var(--color-hsl) / 0.05);
+      border-radius: var(--space-2xs);
+      overflow-x: auto;
 
-main>section>table th,
-main>section>table td {
-  padding: var(--space-xs) var(--space-s);
-  text-align: left;
-  border-bottom: solid 1px hsl(var(--color-hsl)/0.2);
-  vertical-align: top;
-}
+      code {
+        padding: 0;
+      }
+    }
 
-main>section>table th {
-  font-weight: 400;
-  color: hsl(var(--color-dark-hsl));
-  border-bottom: solid 1px hsl(var(--color-hsl)/0.4);
-}
+    code {
+      font-family: ui-monospace, "Cascadia Code", "Source Code Pro", Menlo, Consolas, "DejaVu Sans Mono", monospace;
+      font-size: var(--font-size-1);
+      padding: var(--space-3xs) var(--space-2xs);
+    }
 
-main>section>table tr:hover td {
-  background-color: hsl(var(--color-hsl)/0.05);
-}
+    >table {
+      width: 100%;
+      font-size: var(--font-size-1);
+      letter-spacing: 0.02em;
+      border-collapse: collapse;
+      border-spacing: 0;
 
-main>section>hr {
-  border: none;
-  border-bottom: solid 1px hsl(var(--color-hsl)/0.3);
-  margin: var(--space-s) calc(var(--space-s) * -1);
-  flex: 1 1 100%;
-}
+      th,
+      td {
+        padding: var(--space-xs) var(--space-s);
+        text-align: left;
+        border-bottom: solid 1px hsl(var(--color-hsl) / 0.2);
+        vertical-align: top;
+      }
 
-main .gallery {
-  display: flex;
-  flex-wrap: wrap;
-  grid-gap: var(--grid-gap);
-  position: relative;
-  margin-bottom: var(--space-l);
-}
+      th {
+        font-weight: 400;
+        color: var(--color-dark);
+        border-bottom: solid 1px hsl(var(--color-hsl) / 0.4);
+      }
 
-main .gallery>h2 {
-  margin: 0 calc(var(--space-s) * -1) var(--space-m) calc(var(--space-s) * -1);
-  padding: 0 var(--space-s);
-  font-size: var(--font-size-3);
-  letter-spacing: 0.1em;
-  font-weight: 100;
-  border-bottom: solid 1px hsl(var(--color-hsl)/0.3);
-  background-color: hsl(var(--color-background-hsl));
-  position: relative;
-  outline: solid calc(var(--space-m)) hsl(var(--color-background-hsl));
-  box-shadow: 0px calc(var(--space-m) + var(--grid-gap)) 0 0 hsl(var(--color-background-hsl));
-  flex: 1 1 100%;
-}
+      tr:hover td {
+        background-color: hsl(var(--color-hsl) / 0.05);
+      }
+    }
 
-main .gallery>article {
-  flex-grow: calc(var(--width) * (500000000 / var(--height)));
-  flex-basis: calc(var(--space-s) * 18 * (var(--width) / var(--height)));
-  position: relative;
-  background-color: hsl(var(--color-background-hsl));
-  outline: solid var(--grid-gap) hsl(var(--color-background-hsl));
-  cursor: zoom-in;
-  display: flex;
-  justify-content: center;
-}
+    >hr {
+      border: none;
+      border-bottom: solid 1px hsl(var(--color-hsl) / 0.3);
+      margin: var(--space-s) calc(var(--space-s) * -1);
+    }
+  }
 
-main .gallery>article>picture {
-  aspect-ratio: var(--width)/calc(var(--height) * 2);
-  display: inline-block;
-  vertical-align: top;
-  margin-bottom: max(-100% / (var(--width) / var(--height)), max(-100dvh, var(--height) * -1px));
-}
+  .gallery {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--grid-gap);
+    position: relative;
+    margin-bottom: var(--space-l);
 
-/* CSS-only LQIP: Full implementation from leanrada.com
-   Uses dual-layer approach with hard-light + overlay blend modes
-   and quadratic interpolation for smooth bilinear-like blending */
-main .gallery>article[style*="--lqip:"]>picture::before {
-  content: "";
-  position: sticky;
-  top: calc(var(--space-xl) + var(--space-xs));
-  z-index: 0;
-  width: 100%;
-  aspect-ratio: var(--width) / var(--height);
-  margin-bottom: calc(-1 * (100% / (var(--width) / var(--height))));
-  display: block;
-  opacity: 0.8;
-  /* Layer order: 6× hard-light (full opacity), 6× overlay (50% opacity), 1× base color */
-  background-blend-mode:
-    hard-light, hard-light, hard-light, hard-light, hard-light, hard-light,
-    overlay, overlay, overlay, overlay, overlay, overlay,
-    normal;
-  background-image:
-    /* Hard-light layer: full opacity with quadratic falloff */
-    radial-gradient(50% 75% at 16.67% 25%,
-      rgb(from var(--lqip-ca-clr) r g b / 50%),
-      rgb(from var(--lqip-ca-clr) r g b / calc(50% - var(--lqip-stop10) / 2)) 10%,
-      rgb(from var(--lqip-ca-clr) r g b / calc(50% - var(--lqip-stop20) / 2)) 20%,
-      rgb(from var(--lqip-ca-clr) r g b / calc(50% - var(--lqip-stop30) / 2)) 30%,
-      rgb(from var(--lqip-ca-clr) r g b / calc(50% - var(--lqip-stop40) / 2)) 40%,
-      rgb(from var(--lqip-ca-clr) r g b / calc(var(--lqip-stop40) / 2)) 60%,
-      rgb(from var(--lqip-ca-clr) r g b / calc(var(--lqip-stop30) / 2)) 70%,
-      rgb(from var(--lqip-ca-clr) r g b / calc(var(--lqip-stop20) / 2)) 80%,
-      rgb(from var(--lqip-ca-clr) r g b / calc(var(--lqip-stop10) / 2)) 90%,
-      transparent),
-    radial-gradient(50% 75% at 83.33% 25%,
-      rgb(from var(--lqip-cc-clr) r g b / 50%),
-      rgb(from var(--lqip-cc-clr) r g b / calc(50% - var(--lqip-stop10) / 2)) 10%,
-      rgb(from var(--lqip-cc-clr) r g b / calc(50% - var(--lqip-stop20) / 2)) 20%,
-      rgb(from var(--lqip-cc-clr) r g b / calc(50% - var(--lqip-stop30) / 2)) 30%,
-      rgb(from var(--lqip-cc-clr) r g b / calc(50% - var(--lqip-stop40) / 2)) 40%,
-      rgb(from var(--lqip-cc-clr) r g b / calc(var(--lqip-stop40) / 2)) 60%,
-      rgb(from var(--lqip-cc-clr) r g b / calc(var(--lqip-stop30) / 2)) 70%,
-      rgb(from var(--lqip-cc-clr) r g b / calc(var(--lqip-stop20) / 2)) 80%,
-      rgb(from var(--lqip-cc-clr) r g b / calc(var(--lqip-stop10) / 2)) 90%,
-      transparent),
-    radial-gradient(50% 75% at 50% 25%,
-      rgb(from var(--lqip-cb-clr) r g b / 50%),
-      rgb(from var(--lqip-cb-clr) r g b / calc(50% - var(--lqip-stop10) / 2)) 10%,
-      rgb(from var(--lqip-cb-clr) r g b / calc(50% - var(--lqip-stop20) / 2)) 20%,
-      rgb(from var(--lqip-cb-clr) r g b / calc(50% - var(--lqip-stop30) / 2)) 30%,
-      rgb(from var(--lqip-cb-clr) r g b / calc(50% - var(--lqip-stop40) / 2)) 40%,
-      rgb(from var(--lqip-cb-clr) r g b / calc(var(--lqip-stop40) / 2)) 60%,
-      rgb(from var(--lqip-cb-clr) r g b / calc(var(--lqip-stop30) / 2)) 70%,
-      rgb(from var(--lqip-cb-clr) r g b / calc(var(--lqip-stop20) / 2)) 80%,
-      rgb(from var(--lqip-cb-clr) r g b / calc(var(--lqip-stop10) / 2)) 90%,
-      transparent),
-    radial-gradient(50% 75% at 16.67% 75%,
-      rgb(from var(--lqip-cd-clr) r g b / 50%),
-      rgb(from var(--lqip-cd-clr) r g b / calc(50% - var(--lqip-stop10) / 2)) 10%,
-      rgb(from var(--lqip-cd-clr) r g b / calc(50% - var(--lqip-stop20) / 2)) 20%,
-      rgb(from var(--lqip-cd-clr) r g b / calc(50% - var(--lqip-stop30) / 2)) 30%,
-      rgb(from var(--lqip-cd-clr) r g b / calc(50% - var(--lqip-stop40) / 2)) 40%,
-      rgb(from var(--lqip-cd-clr) r g b / calc(var(--lqip-stop40) / 2)) 60%,
-      rgb(from var(--lqip-cd-clr) r g b / calc(var(--lqip-stop30) / 2)) 70%,
-      rgb(from var(--lqip-cd-clr) r g b / calc(var(--lqip-stop20) / 2)) 80%,
-      rgb(from var(--lqip-cd-clr) r g b / calc(var(--lqip-stop10) / 2)) 90%,
-      transparent),
-    radial-gradient(50% 75% at 83.33% 75%,
-      rgb(from var(--lqip-cf-clr) r g b / 50%),
-      rgb(from var(--lqip-cf-clr) r g b / calc(50% - var(--lqip-stop10) / 2)) 10%,
-      rgb(from var(--lqip-cf-clr) r g b / calc(50% - var(--lqip-stop20) / 2)) 20%,
-      rgb(from var(--lqip-cf-clr) r g b / calc(50% - var(--lqip-stop30) / 2)) 30%,
-      rgb(from var(--lqip-cf-clr) r g b / calc(50% - var(--lqip-stop40) / 2)) 40%,
-      rgb(from var(--lqip-cf-clr) r g b / calc(var(--lqip-stop40) / 2)) 60%,
-      rgb(from var(--lqip-cf-clr) r g b / calc(var(--lqip-stop30) / 2)) 70%,
-      rgb(from var(--lqip-cf-clr) r g b / calc(var(--lqip-stop20) / 2)) 80%,
-      rgb(from var(--lqip-cf-clr) r g b / calc(var(--lqip-stop10) / 2)) 90%,
-      transparent),
-    radial-gradient(50% 75% at 50% 75%,
-      rgb(from var(--lqip-ce-clr) r g b / 50%),
-      rgb(from var(--lqip-ce-clr) r g b / calc(50% - var(--lqip-stop10) / 2)) 10%,
-      rgb(from var(--lqip-ce-clr) r g b / calc(50% - var(--lqip-stop20) / 2)) 20%,
-      rgb(from var(--lqip-ce-clr) r g b / calc(50% - var(--lqip-stop30) / 2)) 30%,
-      rgb(from var(--lqip-ce-clr) r g b / calc(50% - var(--lqip-stop40) / 2)) 40%,
-      rgb(from var(--lqip-ce-clr) r g b / calc(var(--lqip-stop40) / 2)) 60%,
-      rgb(from var(--lqip-ce-clr) r g b / calc(var(--lqip-stop30) / 2)) 70%,
-      rgb(from var(--lqip-ce-clr) r g b / calc(var(--lqip-stop20) / 2)) 80%,
-      rgb(from var(--lqip-ce-clr) r g b / calc(var(--lqip-stop10) / 2)) 90%,
-      transparent),
-    /* Overlay layer: full opacity gradients */
-    radial-gradient(50% 75% at 16.67% 25%,
-      var(--lqip-ca-clr),
-      rgb(from var(--lqip-ca-clr) r g b / calc(100% - var(--lqip-stop10))) 10%,
-      rgb(from var(--lqip-ca-clr) r g b / calc(100% - var(--lqip-stop20))) 20%,
-      rgb(from var(--lqip-ca-clr) r g b / calc(100% - var(--lqip-stop30))) 30%,
-      rgb(from var(--lqip-ca-clr) r g b / calc(100% - var(--lqip-stop40))) 40%,
-      rgb(from var(--lqip-ca-clr) r g b / calc(var(--lqip-stop40))) 60%,
-      rgb(from var(--lqip-ca-clr) r g b / calc(var(--lqip-stop30))) 70%,
-      rgb(from var(--lqip-ca-clr) r g b / calc(var(--lqip-stop20))) 80%,
-      rgb(from var(--lqip-ca-clr) r g b / calc(var(--lqip-stop10))) 90%,
-      transparent),
-    radial-gradient(50% 75% at 50% 25%,
-      var(--lqip-cb-clr),
-      rgb(from var(--lqip-cb-clr) r g b / calc(100% - var(--lqip-stop10))) 10%,
-      rgb(from var(--lqip-cb-clr) r g b / calc(100% - var(--lqip-stop20))) 20%,
-      rgb(from var(--lqip-cb-clr) r g b / calc(100% - var(--lqip-stop30))) 30%,
-      rgb(from var(--lqip-cb-clr) r g b / calc(100% - var(--lqip-stop40))) 40%,
-      rgb(from var(--lqip-cb-clr) r g b / calc(var(--lqip-stop40))) 60%,
-      rgb(from var(--lqip-cb-clr) r g b / calc(var(--lqip-stop30))) 70%,
-      rgb(from var(--lqip-cb-clr) r g b / calc(var(--lqip-stop20))) 80%,
-      rgb(from var(--lqip-cb-clr) r g b / calc(var(--lqip-stop10))) 90%,
-      transparent),
-    radial-gradient(50% 75% at 83.33% 25%,
-      var(--lqip-cc-clr),
-      rgb(from var(--lqip-cc-clr) r g b / calc(100% - var(--lqip-stop10))) 10%,
-      rgb(from var(--lqip-cc-clr) r g b / calc(100% - var(--lqip-stop20))) 20%,
-      rgb(from var(--lqip-cc-clr) r g b / calc(100% - var(--lqip-stop30))) 30%,
-      rgb(from var(--lqip-cc-clr) r g b / calc(100% - var(--lqip-stop40))) 40%,
-      rgb(from var(--lqip-cc-clr) r g b / calc(var(--lqip-stop40))) 60%,
-      rgb(from var(--lqip-cc-clr) r g b / calc(var(--lqip-stop30))) 70%,
-      rgb(from var(--lqip-cc-clr) r g b / calc(var(--lqip-stop20))) 80%,
-      rgb(from var(--lqip-cc-clr) r g b / calc(var(--lqip-stop10))) 90%,
-      transparent),
-    radial-gradient(50% 75% at 16.67% 75%,
-      var(--lqip-cd-clr),
-      rgb(from var(--lqip-cd-clr) r g b / calc(100% - var(--lqip-stop10))) 10%,
-      rgb(from var(--lqip-cd-clr) r g b / calc(100% - var(--lqip-stop20))) 20%,
-      rgb(from var(--lqip-cd-clr) r g b / calc(100% - var(--lqip-stop30))) 30%,
-      rgb(from var(--lqip-cd-clr) r g b / calc(100% - var(--lqip-stop40))) 40%,
-      rgb(from var(--lqip-cd-clr) r g b / calc(var(--lqip-stop40))) 60%,
-      rgb(from var(--lqip-cd-clr) r g b / calc(var(--lqip-stop30))) 70%,
-      rgb(from var(--lqip-cd-clr) r g b / calc(var(--lqip-stop20))) 80%,
-      rgb(from var(--lqip-cd-clr) r g b / calc(var(--lqip-stop10))) 90%,
-      transparent),
-    radial-gradient(50% 75% at 50% 75%,
-      var(--lqip-ce-clr),
-      rgb(from var(--lqip-ce-clr) r g b / calc(100% - var(--lqip-stop10))) 10%,
-      rgb(from var(--lqip-ce-clr) r g b / calc(100% - var(--lqip-stop20))) 20%,
-      rgb(from var(--lqip-ce-clr) r g b / calc(100% - var(--lqip-stop30))) 30%,
-      rgb(from var(--lqip-ce-clr) r g b / calc(100% - var(--lqip-stop40))) 40%,
-      rgb(from var(--lqip-ce-clr) r g b / calc(var(--lqip-stop40))) 60%,
-      rgb(from var(--lqip-ce-clr) r g b / calc(var(--lqip-stop30))) 70%,
-      rgb(from var(--lqip-ce-clr) r g b / calc(var(--lqip-stop20))) 80%,
-      rgb(from var(--lqip-ce-clr) r g b / calc(var(--lqip-stop10))) 90%,
-      transparent),
-    radial-gradient(50% 75% at 83.33% 75%,
-      var(--lqip-cf-clr),
-      rgb(from var(--lqip-cf-clr) r g b / calc(100% - var(--lqip-stop10))) 10%,
-      rgb(from var(--lqip-cf-clr) r g b / calc(100% - var(--lqip-stop20))) 20%,
-      rgb(from var(--lqip-cf-clr) r g b / calc(100% - var(--lqip-stop30))) 30%,
-      rgb(from var(--lqip-cf-clr) r g b / calc(100% - var(--lqip-stop40))) 40%,
-      rgb(from var(--lqip-cf-clr) r g b / calc(var(--lqip-stop40))) 60%,
-      rgb(from var(--lqip-cf-clr) r g b / calc(var(--lqip-stop30))) 70%,
-      rgb(from var(--lqip-cf-clr) r g b / calc(var(--lqip-stop20))) 80%,
-      rgb(from var(--lqip-cf-clr) r g b / calc(var(--lqip-stop10))) 90%,
-      transparent),
-    /* Base color layer */
-    linear-gradient(var(--lqip-base-clr), var(--lqip-base-clr));
-  background-size: calc(100% - 2px) calc(100% - 2px);
-  background-repeat: no-repeat;
-  background-position: center;
-}
+    >h2 {
+      margin-bottom: var(--space-m);
+      background-color: var(--color-bg);
+      position: relative;
+      outline: solid calc(var(--space-m)) var(--color-bg);
+      box-shadow: 0px calc(var(--space-m) + var(--grid-gap)) 0 0 var(--color-bg);
+    }
 
-main .gallery>article img {
-  max-width: 100%;
-  max-height: 100vh;
-  height: auto;
-  object-fit: contain;
-  margin: auto;
-  display: block;
-  position: sticky;
-  top: calc(var(--space-xl) + var(--space-xs));
-}
+    >article {
+      flex-grow: calc(var(--width) * (500000000 / var(--height)));
+      flex-basis: calc(var(--space-s) * 18 * (var(--width) / var(--height)));
+      position: relative;
+      background-color: var(--color-bg);
+      outline: solid var(--grid-gap) var(--color-bg);
+      cursor: zoom-in;
+      display: flex;
+      justify-content: center;
 
-main .gallery>article picture+aside {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  height: var(--space-m);
-  line-height: var(--space-m);
-  display: none;
-  justify-content: center;
-  flex-direction: row;
-  flex-wrap: wrap;
-  align-content: flex-end;
-  font-size: var(--font-size-0);
-  transition-property: display, opacity;
-  transition-duration: var(--animation-time);
-  transform-style: ease-in-out;
-  transition-behavior: allow-discrete;
-  opacity: 0;
-  z-index: 350;
-  cursor: default;
-}
+      >picture {
+        aspect-ratio: var(--width)/calc(var(--height) * 2);
+        margin-bottom: max(-100% / (var(--width) / var(--height)), max(-100dvh, var(--height) * -1px));
+      }
 
-main .gallery>article picture+aside p {
-  padding-inline: var(--space-2xs);
-}
+      /* CSS-only LQIP: Full implementation from leanrada.com
+         Uses dual-layer approach with hard-light + overlay blend modes
+         and quadratic interpolation for smooth bilinear-like blending */
+      &[style*="--lqip:"]>picture::before {
+        content: "";
+        position: sticky;
+        top: calc(var(--space-xl) + var(--space-xs));
+        z-index: 0;
+        width: 100%;
+        aspect-ratio: var(--width) / var(--height);
+        margin-bottom: calc(-1 * (100% / (var(--width) / var(--height))));
+        display: block;
+        opacity: 0.8;
+        /* Layer order: 6× hard-light (full opacity), 6× overlay (50% opacity), 1× base color */
+        background-blend-mode:
+          hard-light, hard-light, hard-light, hard-light, hard-light, hard-light,
+          overlay, overlay, overlay, overlay, overlay, overlay,
+          normal;
+        background-image:
+          /* Hard-light layer: full opacity with quadratic falloff */
+          radial-gradient(50% 75% at 16.67% 25%,
+            rgb(from var(--lqip-ca-clr) r g b / 50%),
+            rgb(from var(--lqip-ca-clr) r g b / calc(50% - var(--lqip-stop10) / 2)) 10%,
+            rgb(from var(--lqip-ca-clr) r g b / calc(50% - var(--lqip-stop20) / 2)) 20%,
+            rgb(from var(--lqip-ca-clr) r g b / calc(50% - var(--lqip-stop30) / 2)) 30%,
+            rgb(from var(--lqip-ca-clr) r g b / calc(50% - var(--lqip-stop40) / 2)) 40%,
+            rgb(from var(--lqip-ca-clr) r g b / calc(var(--lqip-stop40) / 2)) 60%,
+            rgb(from var(--lqip-ca-clr) r g b / calc(var(--lqip-stop30) / 2)) 70%,
+            rgb(from var(--lqip-ca-clr) r g b / calc(var(--lqip-stop20) / 2)) 80%,
+            rgb(from var(--lqip-ca-clr) r g b / calc(var(--lqip-stop10) / 2)) 90%,
+            transparent),
+          radial-gradient(50% 75% at 83.33% 25%,
+            rgb(from var(--lqip-cc-clr) r g b / 50%),
+            rgb(from var(--lqip-cc-clr) r g b / calc(50% - var(--lqip-stop10) / 2)) 10%,
+            rgb(from var(--lqip-cc-clr) r g b / calc(50% - var(--lqip-stop20) / 2)) 20%,
+            rgb(from var(--lqip-cc-clr) r g b / calc(50% - var(--lqip-stop30) / 2)) 30%,
+            rgb(from var(--lqip-cc-clr) r g b / calc(50% - var(--lqip-stop40) / 2)) 40%,
+            rgb(from var(--lqip-cc-clr) r g b / calc(var(--lqip-stop40) / 2)) 60%,
+            rgb(from var(--lqip-cc-clr) r g b / calc(var(--lqip-stop30) / 2)) 70%,
+            rgb(from var(--lqip-cc-clr) r g b / calc(var(--lqip-stop20) / 2)) 80%,
+            rgb(from var(--lqip-cc-clr) r g b / calc(var(--lqip-stop10) / 2)) 90%,
+            transparent),
+          radial-gradient(50% 75% at 50% 25%,
+            rgb(from var(--lqip-cb-clr) r g b / 50%),
+            rgb(from var(--lqip-cb-clr) r g b / calc(50% - var(--lqip-stop10) / 2)) 10%,
+            rgb(from var(--lqip-cb-clr) r g b / calc(50% - var(--lqip-stop20) / 2)) 20%,
+            rgb(from var(--lqip-cb-clr) r g b / calc(50% - var(--lqip-stop30) / 2)) 30%,
+            rgb(from var(--lqip-cb-clr) r g b / calc(50% - var(--lqip-stop40) / 2)) 40%,
+            rgb(from var(--lqip-cb-clr) r g b / calc(var(--lqip-stop40) / 2)) 60%,
+            rgb(from var(--lqip-cb-clr) r g b / calc(var(--lqip-stop30) / 2)) 70%,
+            rgb(from var(--lqip-cb-clr) r g b / calc(var(--lqip-stop20) / 2)) 80%,
+            rgb(from var(--lqip-cb-clr) r g b / calc(var(--lqip-stop10) / 2)) 90%,
+            transparent),
+          radial-gradient(50% 75% at 16.67% 75%,
+            rgb(from var(--lqip-cd-clr) r g b / 50%),
+            rgb(from var(--lqip-cd-clr) r g b / calc(50% - var(--lqip-stop10) / 2)) 10%,
+            rgb(from var(--lqip-cd-clr) r g b / calc(50% - var(--lqip-stop20) / 2)) 20%,
+            rgb(from var(--lqip-cd-clr) r g b / calc(50% - var(--lqip-stop30) / 2)) 30%,
+            rgb(from var(--lqip-cd-clr) r g b / calc(50% - var(--lqip-stop40) / 2)) 40%,
+            rgb(from var(--lqip-cd-clr) r g b / calc(var(--lqip-stop40) / 2)) 60%,
+            rgb(from var(--lqip-cd-clr) r g b / calc(var(--lqip-stop30) / 2)) 70%,
+            rgb(from var(--lqip-cd-clr) r g b / calc(var(--lqip-stop20) / 2)) 80%,
+            rgb(from var(--lqip-cd-clr) r g b / calc(var(--lqip-stop10) / 2)) 90%,
+            transparent),
+          radial-gradient(50% 75% at 83.33% 75%,
+            rgb(from var(--lqip-cf-clr) r g b / 50%),
+            rgb(from var(--lqip-cf-clr) r g b / calc(50% - var(--lqip-stop10) / 2)) 10%,
+            rgb(from var(--lqip-cf-clr) r g b / calc(50% - var(--lqip-stop20) / 2)) 20%,
+            rgb(from var(--lqip-cf-clr) r g b / calc(50% - var(--lqip-stop30) / 2)) 30%,
+            rgb(from var(--lqip-cf-clr) r g b / calc(50% - var(--lqip-stop40) / 2)) 40%,
+            rgb(from var(--lqip-cf-clr) r g b / calc(var(--lqip-stop40) / 2)) 60%,
+            rgb(from var(--lqip-cf-clr) r g b / calc(var(--lqip-stop30) / 2)) 70%,
+            rgb(from var(--lqip-cf-clr) r g b / calc(var(--lqip-stop20) / 2)) 80%,
+            rgb(from var(--lqip-cf-clr) r g b / calc(var(--lqip-stop10) / 2)) 90%,
+            transparent),
+          radial-gradient(50% 75% at 50% 75%,
+            rgb(from var(--lqip-ce-clr) r g b / 50%),
+            rgb(from var(--lqip-ce-clr) r g b / calc(50% - var(--lqip-stop10) / 2)) 10%,
+            rgb(from var(--lqip-ce-clr) r g b / calc(50% - var(--lqip-stop20) / 2)) 20%,
+            rgb(from var(--lqip-ce-clr) r g b / calc(50% - var(--lqip-stop30) / 2)) 30%,
+            rgb(from var(--lqip-ce-clr) r g b / calc(50% - var(--lqip-stop40) / 2)) 40%,
+            rgb(from var(--lqip-ce-clr) r g b / calc(var(--lqip-stop40) / 2)) 60%,
+            rgb(from var(--lqip-ce-clr) r g b / calc(var(--lqip-stop30) / 2)) 70%,
+            rgb(from var(--lqip-ce-clr) r g b / calc(var(--lqip-stop20) / 2)) 80%,
+            rgb(from var(--lqip-ce-clr) r g b / calc(var(--lqip-stop10) / 2)) 90%,
+            transparent),
+          /* Overlay layer: full opacity gradients */
+          radial-gradient(50% 75% at 16.67% 25%,
+            var(--lqip-ca-clr),
+            rgb(from var(--lqip-ca-clr) r g b / calc(100% - var(--lqip-stop10))) 10%,
+            rgb(from var(--lqip-ca-clr) r g b / calc(100% - var(--lqip-stop20))) 20%,
+            rgb(from var(--lqip-ca-clr) r g b / calc(100% - var(--lqip-stop30))) 30%,
+            rgb(from var(--lqip-ca-clr) r g b / calc(100% - var(--lqip-stop40))) 40%,
+            rgb(from var(--lqip-ca-clr) r g b / calc(var(--lqip-stop40))) 60%,
+            rgb(from var(--lqip-ca-clr) r g b / calc(var(--lqip-stop30))) 70%,
+            rgb(from var(--lqip-ca-clr) r g b / calc(var(--lqip-stop20))) 80%,
+            rgb(from var(--lqip-ca-clr) r g b / calc(var(--lqip-stop10))) 90%,
+            transparent),
+          radial-gradient(50% 75% at 50% 25%,
+            var(--lqip-cb-clr),
+            rgb(from var(--lqip-cb-clr) r g b / calc(100% - var(--lqip-stop10))) 10%,
+            rgb(from var(--lqip-cb-clr) r g b / calc(100% - var(--lqip-stop20))) 20%,
+            rgb(from var(--lqip-cb-clr) r g b / calc(100% - var(--lqip-stop30))) 30%,
+            rgb(from var(--lqip-cb-clr) r g b / calc(100% - var(--lqip-stop40))) 40%,
+            rgb(from var(--lqip-cb-clr) r g b / calc(var(--lqip-stop40))) 60%,
+            rgb(from var(--lqip-cb-clr) r g b / calc(var(--lqip-stop30))) 70%,
+            rgb(from var(--lqip-cb-clr) r g b / calc(var(--lqip-stop20))) 80%,
+            rgb(from var(--lqip-cb-clr) r g b / calc(var(--lqip-stop10))) 90%,
+            transparent),
+          radial-gradient(50% 75% at 83.33% 25%,
+            var(--lqip-cc-clr),
+            rgb(from var(--lqip-cc-clr) r g b / calc(100% - var(--lqip-stop10))) 10%,
+            rgb(from var(--lqip-cc-clr) r g b / calc(100% - var(--lqip-stop20))) 20%,
+            rgb(from var(--lqip-cc-clr) r g b / calc(100% - var(--lqip-stop30))) 30%,
+            rgb(from var(--lqip-cc-clr) r g b / calc(100% - var(--lqip-stop40))) 40%,
+            rgb(from var(--lqip-cc-clr) r g b / calc(var(--lqip-stop40))) 60%,
+            rgb(from var(--lqip-cc-clr) r g b / calc(var(--lqip-stop30))) 70%,
+            rgb(from var(--lqip-cc-clr) r g b / calc(var(--lqip-stop20))) 80%,
+            rgb(from var(--lqip-cc-clr) r g b / calc(var(--lqip-stop10))) 90%,
+            transparent),
+          radial-gradient(50% 75% at 16.67% 75%,
+            var(--lqip-cd-clr),
+            rgb(from var(--lqip-cd-clr) r g b / calc(100% - var(--lqip-stop10))) 10%,
+            rgb(from var(--lqip-cd-clr) r g b / calc(100% - var(--lqip-stop20))) 20%,
+            rgb(from var(--lqip-cd-clr) r g b / calc(100% - var(--lqip-stop30))) 30%,
+            rgb(from var(--lqip-cd-clr) r g b / calc(100% - var(--lqip-stop40))) 40%,
+            rgb(from var(--lqip-cd-clr) r g b / calc(var(--lqip-stop40))) 60%,
+            rgb(from var(--lqip-cd-clr) r g b / calc(var(--lqip-stop30))) 70%,
+            rgb(from var(--lqip-cd-clr) r g b / calc(var(--lqip-stop20))) 80%,
+            rgb(from var(--lqip-cd-clr) r g b / calc(var(--lqip-stop10))) 90%,
+            transparent),
+          radial-gradient(50% 75% at 50% 75%,
+            var(--lqip-ce-clr),
+            rgb(from var(--lqip-ce-clr) r g b / calc(100% - var(--lqip-stop10))) 10%,
+            rgb(from var(--lqip-ce-clr) r g b / calc(100% - var(--lqip-stop20))) 20%,
+            rgb(from var(--lqip-ce-clr) r g b / calc(100% - var(--lqip-stop30))) 30%,
+            rgb(from var(--lqip-ce-clr) r g b / calc(100% - var(--lqip-stop40))) 40%,
+            rgb(from var(--lqip-ce-clr) r g b / calc(var(--lqip-stop40))) 60%,
+            rgb(from var(--lqip-ce-clr) r g b / calc(var(--lqip-stop30))) 70%,
+            rgb(from var(--lqip-ce-clr) r g b / calc(var(--lqip-stop20))) 80%,
+            rgb(from var(--lqip-ce-clr) r g b / calc(var(--lqip-stop10))) 90%,
+            transparent),
+          radial-gradient(50% 75% at 83.33% 75%,
+            var(--lqip-cf-clr),
+            rgb(from var(--lqip-cf-clr) r g b / calc(100% - var(--lqip-stop10))) 10%,
+            rgb(from var(--lqip-cf-clr) r g b / calc(100% - var(--lqip-stop20))) 20%,
+            rgb(from var(--lqip-cf-clr) r g b / calc(100% - var(--lqip-stop30))) 30%,
+            rgb(from var(--lqip-cf-clr) r g b / calc(100% - var(--lqip-stop40))) 40%,
+            rgb(from var(--lqip-cf-clr) r g b / calc(var(--lqip-stop40))) 60%,
+            rgb(from var(--lqip-cf-clr) r g b / calc(var(--lqip-stop30))) 70%,
+            rgb(from var(--lqip-cf-clr) r g b / calc(var(--lqip-stop20))) 80%,
+            rgb(from var(--lqip-cf-clr) r g b / calc(var(--lqip-stop10))) 90%,
+            transparent),
+          /* Base color layer */
+          linear-gradient(var(--lqip-base-clr), var(--lqip-base-clr));
+        background-size: calc(100% - 2px) calc(100% - 2px);
+        background-repeat: no-repeat;
+        background-position: center;
+      }
 
-main .gallery>article figure {
-  display: none;
-  position: fixed;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  left: 0;
-  z-index: 300;
-  transition-property: display, opacity;
-  transition-duration: var(--animation-time);
-  transform-style: ease-in-out;
-  transition-behavior: allow-discrete;
-  opacity: 0;
-  justify-content: center;
-  align-items: center;
-  background-color: hsl(var(--color-background-hsl)/0.85);
-  -webkit-backdrop-filter: saturate(180%) blur(2rem);
-  backdrop-filter: saturate(180%) blur(2rem);
-  cursor: default;
-}
+      img {
+        max-width: 100%;
+        max-height: 100vh;
+        height: auto;
+        object-fit: contain;
+        margin: auto;
+        display: block;
+        position: sticky;
+        top: calc(var(--space-xl) + var(--space-xs));
+      }
 
-main .gallery>article figure::before {
-  content: " ";
-  position: fixed;
-  width: 10rem;
-  height: 2px;
-  background: linear-gradient(hsl(var(--color-light-hsl)/0.6) 0 0) left -25% top 0/20% 100% no-repeat hsl(var(--color-background-hsl)/0.4);
-  animation: ct7 1s infinite steps(6);
+      picture+aside {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        height: var(--space-m);
+        line-height: var(--space-m);
+        display: none;
+        justify-content: center;
+        flex-wrap: wrap;
+        align-content: flex-end;
+        font-size: var(--font-size-0);
+        transition: display var(--animation-time) allow-discrete, opacity var(--animation-time);
+        opacity: 0;
+        z-index: 350;
+        cursor: default;
+
+        p {
+          padding-inline: var(--space-2xs);
+        }
+      }
+
+      figure {
+        display: none;
+        position: fixed;
+        inset: 0;
+        z-index: 300;
+        transition: display var(--animation-time) allow-discrete, opacity var(--animation-time);
+        opacity: 0;
+        justify-content: center;
+        align-items: center;
+        background-color: hsl(var(--color-background-hsl) / 0.85);
+        backdrop-filter: saturate(180%) blur(2rem);
+        cursor: default;
+
+        &::before {
+          content: " ";
+          position: fixed;
+          width: 10rem;
+          height: 2px;
+          background: linear-gradient(hsl(var(--color-light-hsl) / 0.6) 0 0) left -25% top 0/20% 100% no-repeat hsl(var(--color-background-hsl) / 0.4);
+          animation: ct7 1s infinite steps(6);
+        }
+
+        >a {
+          position: absolute;
+          display: block;
+          text-indent: 100%;
+          white-space: nowrap;
+          overflow: hidden;
+          cursor: zoom-out;
+
+          &::after {
+            content: "+";
+            user-select: none;
+            position: fixed;
+            top: 0;
+            right: var(--space-2xs);
+            z-index: 1000;
+            color: var(--color);
+            cursor: pointer;
+            font-size: var(--font-size-5);
+            font-weight: 100;
+            text-indent: 0;
+            height: var(--font-size-5);
+            line-height: var(--font-size-5);
+            overflow: hidden;
+            transform: rotate(45deg);
+          }
+        }
+
+        img {
+          outline: none;
+          position: relative;
+          z-index: 190;
+          top: 0;
+          display: block;
+          width: auto;
+          height: auto;
+          max-width: 100dvw;
+          max-height: calc(100dvh - (var(--space-m) * 2));
+          box-shadow: 0px 0px var(--space-l) 0px var(--color-bg);
+        }
+      }
+
+      &:focus,
+      &:target {
+        >picture+aside {
+          display: flex;
+          opacity: 1;
+
+          @starting-style {
+            opacity: 0;
+          }
+        }
+
+        figure {
+          display: flex;
+          opacity: 1;
+
+          @starting-style {
+            opacity: 0;
+          }
+
+          &.zooming img {
+            transition: none;
+            transform: translate3d(var(--zoom-x), var(--zoom-y), 0) scale(var(--zoom-scale));
+            cursor: grab;
+          }
+
+          &.swiping img {
+            transform: translateY(var(--swipe-y, 0)) scale(var(--swipe-scale, 1));
+            transition: none;
+          }
+
+          &.dragging img {
+            cursor: grabbing;
+          }
+        }
+      }
+    }
+
+    &::after {
+      content: " ";
+      flex-grow: 1000000000;
+      background: var(--color-bg);
+      position: relative;
+      outline: solid var(--grid-gap) var(--color-bg);
+
+      @media (width <=600px) {
+        display: none;
+      }
+    }
+  }
 }
 
 @keyframes ct7 {
@@ -827,196 +861,38 @@ main .gallery>article figure::before {
   }
 }
 
-main .gallery>article figure>a {
-  position: absolute;
-  display: block;
-  text-indent: 100%;
-  white-space: nowrap;
-  overflow: hidden;
-  cursor: zoom-out;
-}
-
-main .gallery>article figure>a::after {
-  content: "+";
-  user-select: none;
-  position: fixed;
-  top: 0;
-  right: var(--space-2xs);
-  z-index: 1000;
-  color: hsl(var(--color-hsl));
-  cursor: pointer;
-  font-size: var(--font-size-5);
-  font-weight: 100;
-  text-indent: 0;
-  height: var(--font-size-5);
-  line-height: var(--font-size-5);
-  overflow: hidden;
-  transform: rotate(45deg);
-}
-
-main .gallery>article figure img {
-  outline: none;
-  position: relative;
-  z-index: 190;
-  top: 0;
-  display: block;
-  width: auto;
-  height: auto;
-  max-width: 100dvw;
-  max-height: calc(100dvh - (var(--space-m) * 2));
-  box-shadow: 0px 0px var(--space-l) 0px hsl(var(--color-background-hsl));
-}
-
-main .gallery>article:focus>picture+aside,
-main .gallery>article:target>picture+aside {
-  display: flex;
-  opacity: 1;
-}
-
-@starting-style {
-
-  main .gallery>article:focus>picture+aside,
-  main .gallery>article:target>picture+aside {
-    opacity: 0;
-  }
-}
-
-main .gallery>article:focus figure,
-main .gallery>article:target figure {
-  display: flex;
-  opacity: 1;
-}
-
-@starting-style {
-
-  main .gallery>article:focus figure,
-  main .gallery>article:target figure {
-    opacity: 0;
-  }
-}
-
-main .gallery>article:focus figure.zooming img,
-main .gallery>article:target figure.zooming img {
-  transition: none;
-  transform: translate3d(var(--zoom-x), var(--zoom-y), 0) scale(var(--zoom-scale));
-  -webkit-transform: translate3d(var(--zoom-x), var(--zoom-y), 0) scale(var(--zoom-scale));
-  cursor: grab;
-}
-
-main .gallery>article:focus figure.swiping img,
-main .gallery>article:target figure.swiping img {
-  transform: translateY(var(--swipe-y, 0)) scale(var(--swipe-scale, 1));
-  transition: none;
-}
-
-main .gallery>article:focus figure.dragging img,
-main .gallery>article:target figure.dragging img {
-  cursor: grabbing;
-}
-
-main .gallery:after {
-  content: " ";
-  flex-grow: 1000000000;
-  background: hsl(var(--color-background-hsl));
-  position: relative;
-  outline: solid var(--grid-gap) hsl(var(--color-background-hsl));
-}
-
-@media (width <=600px) {
-  main .gallery:after {
-    display: none;
-  }
-}
-
 footer {
   grid-column: breakout;
   display: flex;
   z-index: 100;
-  background: hsl(var(--color-background-hsl));
+  background: var(--color-bg);
   flex-direction: column;
   justify-content: space-between;
   align-items: center;
   height: calc(100dvh - var(--space-2xl) + 1px);
-  outline: solid var(--space-m) hsl(var(--color-background-hsl));
+  outline: solid var(--space-m) var(--color-bg);
   padding-top: var(--space-l);
-}
 
-footer div {
-  font-size: var(--font-size-1);
-  color: hsl(var(--color-light-hsl));
-}
+  div {
+    font-size: var(--font-size-1);
+    color: var(--color-light);
 
-footer div a {
-  color: inherit;
-  text-decoration: none;
-}
+    a {
+      color: inherit;
+      text-decoration: none;
+    }
+  }
 
-footer nav {
-  grid-column: content;
-  display: flex;
-  flex-direction: row;
-  flex-wrap: wrap;
-  align-content: flex-start;
-  justify-content: center;
-  gap: var(--space-m);
-}
-
-footer nav section {
-  display: flex;
-  flex-direction: column;
-  flex-wrap: nowrap;
-  justify-content: flex-start;
-  align-items: flex-start;
-}
-
-footer nav section h3 {
-  font-weight: 100;
-  font-size: var(--font-size-2);
-  margin-bottom: var(--space-xs);
-}
-
-footer nav section div {
-  display: flex;
-  flex-direction: column;
-}
-
-footer nav section div>span,
-footer nav section div>a:first-child {
-  font-weight: 100;
-  font-size: var(--font-size-2);
-  text-decoration: none;
-}
-
-footer nav section div>span {
-  color: hsl(var(--color-light-hsl)/0.65);
-  cursor: default;
-}
-
-footer nav section div a:not(:first-child) {
-  margin-left: var(--space-l);
-}
-
-footer nav section a {
-  font-weight: 100;
-  font-size: var(--font-size-2);
-  text-decoration: none;
-  color: hsl(var(--color-light-hsl));
-  transition-property: color, border-bottom;
-  transition-duration: var(--animation-time);
-  transition-timing-function: ease-in-out;
-}
-
-footer nav section a:hover {
-  color: hsl(var(--color-dark-hsl));
-}
-
-footer nav section a.active {
-  color: hsl(var(--color-dark-hsl));
-}
-
-/* Parent link should not look active when a child is active */
-footer nav section:has(> a.active) h3 a.active {
-  color: hsl(var(--color-light-hsl));
+  nav {
+    --nav-font-size: var(--font-size-2);
+    --nav-heading-gap: var(--space-xs);
+    grid-column: content;
+    display: flex;
+    flex-wrap: wrap;
+    align-content: flex-start;
+    justify-content: center;
+    gap: var(--space-m);
+  }
 }
 
 /* ============================================
@@ -1028,15 +904,15 @@ footer nav section:has(> a.active) h3 a.active {
   max-width: 100%;
   border-radius: var(--space-2xs);
   overflow: hidden;
-}
 
-.content-image img {
-  display: block;
-  width: 100%;
-  height: auto;
-}
+  img {
+    display: block;
+    width: 100%;
+    height: auto;
+  }
 
-/* Breakout: wider than content column */
-.content-image.breakout {
-  max-width: min(56rem, 100vw - var(--space-l) * 2);
+  /* Breakout: wider than content column */
+  &.breakout {
+    max-width: min(56rem, 100vw - var(--space-l) * 2);
+  }
 }
