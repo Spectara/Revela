@@ -9,15 +9,15 @@ The Statistics plugin analyzes **EXIF data** from your photos and generates stat
 
 ### 📷 EXIF Analysis
 
-Camera models, lenses, aperture, ISO, shutter speed, and focal lengths.
+Camera models, lenses, aperture, ISO, shutter speed, focal lengths, and orientation.
 
-### 📈 Visualizations
+### 📊 Dashboard
 
-Beautiful charts with the **Theme.Lumina.Statistics** extension.
+Pure-CSS bar charts with overview cards — no JavaScript required.
 
 ### 📅 Timeline
 
-See how your photography evolves over time, broken down by year.
+See how your photography evolves over time, broken down by year and month.
 
 </div>
 
@@ -33,7 +33,7 @@ revela plugin install Statistics
 revela plugin install Theme.Lumina.Statistics
 ```
 
-The plugin generates a `statistics.json` data file. The **Theme.Lumina.Statistics** extension turns that data into responsive Chart.js visualizations with dark/light mode support.
+The plugin generates a `statistics.json` data file. The **Theme.Lumina.Statistics** extension renders that data as a responsive dashboard with pure-CSS bar charts that inherit the Lumina color scheme.
 
 > Without the theme extension, statistics data is still generated – but you'll need custom templates to display it.
 
@@ -74,13 +74,15 @@ The pipeline order is: `scan → statistics → pages → images`. Statistics ru
 |----------|-------------|---------|
 | **Cameras** | Camera body models | Sony ILCE-7M4, Canon EOS R5 |
 | **Lenses** | Lens models | Sony FE 35mm F1.4 GM |
-| **Focal Lengths** | Bucketed by range | 18-35mm, 35-70mm, 70-135mm |
+| **Focal Lengths** | Bucketed by range | 18–35, 35–70, 70–135 |
 | **Apertures** | f-stop distribution | f/1.4-2.0, f/2.8-4.0 |
 | **ISO** | Sensitivity ranges | ISO 100-400, ISO 800-1600 |
-| **Shutter Speeds** | Exposure times | 1/500, 1/250, 1/60 |
+| **Shutter Speeds** | Exposure times | 1/500, 1/250, 2s |
+| **Orientation** | Image dimensions | Landscape, Portrait, Square |
 | **Timeline** | Photos per year | 2024: 120, 2023: 80 |
+| **Monthly** | Photos per month | January: 45, July: 82 |
 
-Images without EXIF data are counted but excluded from category breakdowns.
+Images without EXIF data are counted in the totals but excluded from category breakdowns.
 
 ## Configuration
 
@@ -90,17 +92,15 @@ Settings are stored in `project.json`:
 {
   "Spectara.Revela.Plugin.Statistics": {
     "MaxEntriesPerCategory": 15,
-    "SortByCount": true,
-    "MaxBarWidth": 100
+    "SortByCount": true
   }
 }
 ```
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `MaxEntriesPerCategory` | `15` | Top N entries per category (0 = unlimited) |
-| `SortByCount` | `true` | Sort by count (descending) instead of alphabetically |
-| `MaxBarWidth` | `100` | Bar chart width percentage for HTML output |
+| `MaxEntriesPerCategory` | `15` | Top N entries per category (0 = unlimited). Remaining entries are aggregated into "Other". |
+| `SortByCount` | `true` | Sort by count (descending) instead of natural order |
 
 ```bash
 # Configure interactively
@@ -112,12 +112,13 @@ revela config statistics --max-entries 20 --sort-by-count false
 
 ## Theme Extension
 
-**Theme.Lumina.Statistics** provides:
+**Theme.Lumina.Statistics** provides a single-page dashboard with:
 
-- **Chart.js** bar charts for all categories
-- **Responsive** layout for mobile and desktop
-- **Dark/light mode** that follows the site theme
-- Summary cards with total images, cameras, and lenses
+- **Overview cards** — Total images, galleries, cameras, and lenses at a glance
+- **Bar charts** for all 9 categories using pure CSS (no JavaScript)
+- **Responsive layout** — Grid adapts from mobile to desktop
+- **Dark/light mode** — Inherits Lumina's color scheme automatically
+- **Hover effects** — Bar highlight and count display on interaction
 
 Install it alongside the plugin:
 
@@ -129,7 +130,6 @@ revela plugin install Theme.Lumina.Statistics
 
 | Command | Description |
 |---------|-------------|
-| `revela create page statistics` | Create a statistics page in your source |
 | `revela generate statistics` | Generate statistics JSON |
 | `revela generate all` | Full pipeline (includes statistics) |
 | `revela clean statistics` | Remove generated statistics files |

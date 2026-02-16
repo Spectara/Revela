@@ -1,7 +1,7 @@
-<h3>Focal Length</h3>
+<h3>Focal Length (mm)</h3>
 <dl>
 {{ for item in statistics.focal_lengths }}
-    <dt data-count="{{ item.count }}">{{ item.value }}mm</dt>
+    <dt data-count="{{ item.count }}">{{ item.name }}</dt>
     <dd style="--percent: {{ item.percentage }}"></dd>
 {{ end }}
 </dl>

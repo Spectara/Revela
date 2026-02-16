@@ -1,6 +1,6 @@
-<h3>Aperture</h3>
+<h3>Photos by Month</h3>
 <dl>
-{{ for item in statistics.apertures }}
+{{ for item in statistics.images_by_month }}
     <dt data-count="{{ item.count }}">{{ item.name }}</dt>
     <dd style="--percent: {{ item.percentage }}"></dd>
 {{ end }}

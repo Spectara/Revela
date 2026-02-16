@@ -8,12 +8,8 @@ using Spectara.Revela.Sdk.Models.Manifest;
 namespace Spectara.Revela.Plugin.Statistics.Services;
 
 /// <summary>
-/// Aggregates EXIF data from manifest into statistics
+/// Aggregates EXIF data from manifest into statistics.
 /// </summary>
-/// <remarks>
-/// Uses non-generic ILogger to allow instantiation with any logger type.
-/// This enables lazy instantiation from StatsCommand without DI.
-/// </remarks>
 public sealed partial class StatisticsAggregator(
     IManifestRepository manifestRepository,
     IOptionsMonitor<StatisticsPluginConfig> config,
@@ -43,18 +39,18 @@ public sealed partial class StatisticsAggregator(
     /// </summary>
     private static readonly (double Min, double Max, string Label)[] FocalLengthBuckets =
     [
-        (0, 18, "10-18mm"),
-        (18, 35, "18-35mm"),
-        (35, 70, "35-70mm"),
-        (70, 135, "70-135mm"),
-        (135, 300, "135-300mm"),
-        (300, 10000, "300mm+")
+        (0, 18, "10–18"),
+        (18, 35, "18–35"),
+        (35, 70, "35–70"),
+        (70, 135, "70–135"),
+        (135, 300, "135–300"),
+        (300, 10000, "300+")
     ];
 
     /// <summary>
     /// ISO sensitivity ranges
     /// </summary>
-    private static readonly (int Min, int Max, string Label)[] IsoBuckets =
+    private static readonly (double Min, double Max, string Label)[] IsoBuckets =
     [
         (0, 100, "ISO 50-100"),
         (100, 400, "ISO 100-400"),
@@ -62,7 +58,7 @@ public sealed partial class StatisticsAggregator(
         (800, 1600, "ISO 800-1600"),
         (1600, 3200, "ISO 1600-3200"),
         (3200, 6400, "ISO 3200-6400"),
-        (6400, int.MaxValue, "ISO 6400+")
+        (6400, double.MaxValue, "ISO 6400+")
     ];
 
     #endregion
@@ -85,11 +81,11 @@ public sealed partial class StatisticsAggregator(
             TotalImages = images.Count,
             ImagesWithExif = imagesWithExif.Count,
             TotalGalleries = galleries,
-            CameraModels = AggregateExact(
+            Cameras = AggregateExact(
                 imagesWithExif,
                 i => FormatCameraModel(i.Exif!.Make, i.Exif!.Model),
                 settings),
-            LensModels = AggregateExact(
+            Lenses = AggregateExact(
                 imagesWithExif,
                 i => i.Exif!.LensModel,
                 settings),
@@ -103,12 +99,18 @@ public sealed partial class StatisticsAggregator(
                 i => i.Exif!.FNumber,
                 ApertureBuckets,
                 settings),
-            IsoValues = AggregateIsoBucketed(imagesWithExif, settings),
+            IsoValues = AggregateBucketed(
+                imagesWithExif,
+                i => i.Exif!.Iso,
+                IsoBuckets,
+                settings),
             ShutterSpeeds = AggregateExact(
                 imagesWithExif,
                 i => FormatShutterSpeed(i.Exif!.ExposureTime),
                 settings),
             ImagesByYear = AggregateByYear(imagesWithExif),
+            ImagesByMonth = AggregateByMonth(imagesWithExif),
+            Orientations = AggregateOrientation(images),
             GeneratedAt = DateTime.UtcNow
         };
     }
@@ -136,31 +138,29 @@ public sealed partial class StatisticsAggregator(
         (double Min, double Max, string Label)[] buckets,
         StatisticsPluginConfig settings)
     {
-        var values = images
-            .Select(selector)
-            .Where(v => v.HasValue)
-            .Select(v => v!.Value)
-            .ToList();
+        var bucketCounts = new int[buckets.Length];
+
+        foreach (var image in images)
+        {
+            var value = selector(image);
+            if (!value.HasValue)
+            {
+                continue;
+            }
+
+            var v = value.Value;
+            for (var i = 0; i < buckets.Length; i++)
+            {
+                if (v >= buckets[i].Min && v < buckets[i].Max)
+                {
+                    bucketCounts[i]++;
+                    break;
+                }
+            }
+        }
 
         var counts = buckets
-            .Select(b => (b.Label, Count: values.Count(v => v >= b.Min && v < b.Max)))
-            .Where(c => c.Count > 0)
-            .ToList();
-
-        return ApplySettingsAndCalculatePercent(counts, settings);
-    }
-
-    private static List<StatisticsEntry> AggregateIsoBucketed(
-        IEnumerable<ImageContent> images,
-        StatisticsPluginConfig settings)
-    {
-        var values = images
-            .Where(i => i.Exif?.Iso.HasValue == true)
-            .Select(i => i.Exif!.Iso!.Value)
-            .ToList();
-
-        var counts = IsoBuckets
-            .Select(b => (b.Label, Count: values.Count(v => v >= b.Min && v < b.Max)))
+            .Select((b, i) => (b.Label, Count: bucketCounts[i]))
             .Where(c => c.Count > 0)
             .ToList();
 
@@ -221,11 +221,47 @@ public sealed partial class StatisticsAggregator(
         [
             .. sorted.Select(c => new StatisticsEntry
             {
-                Label = c.Label,
+                Name = c.Label,
                 Count = c.Count,
-                Percent = maxCount > 0 ? (int)Math.Round(c.Count * 100.0 / maxCount) : 0
+                Percentage = maxCount > 0 ? (int)Math.Round(c.Count * 100.0 / maxCount) : 0
             })
         ];
+    }
+
+    private static readonly string[] MonthNames =
+    [
+        "January", "February", "March", "April", "May", "June",
+        "July", "August", "September", "October", "November", "December"
+    ];
+
+    private static List<StatisticsEntry> AggregateByMonth(IEnumerable<ImageContent> images)
+    {
+
+        var counts = images
+            .Where(i => i.DateTaken.HasValue)
+            .GroupBy(i => i.DateTaken!.Value.Month)
+            .ToDictionary(g => g.Key, g => g.Count());
+
+        // Always show all 12 months in order, even if zero
+        var sorted = MonthNames
+            .Select((name, index) => (Label: name, Count: counts.GetValueOrDefault(index + 1, 0)))
+            .Where(c => c.Count > 0)
+            .ToList();
+
+        return CalculatePercent(sorted);
+    }
+
+    private static List<StatisticsEntry> AggregateOrientation(IEnumerable<ImageContent> images)
+    {
+        var counts = images
+            .Where(i => i.Width > 0 && i.Height > 0)
+            .Select(i => i.Width > i.Height ? "Landscape" : i.Height > i.Width ? "Portrait" : "Square")
+            .GroupBy(o => o)
+            .Select(g => (Label: g.Key, Count: g.Count()))
+            .OrderByDescending(c => c.Count)
+            .ToList();
+
+        return CalculatePercent(counts);
     }
 
     #endregion

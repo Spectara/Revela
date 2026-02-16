@@ -24,13 +24,13 @@ public sealed class SiteStatistics
     /// Camera models and their usage count
     /// </summary>
     /// <example>{ "Sony ILCE-7M4": 142, "Canon EOS R5": 58 }</example>
-    public IReadOnlyList<StatisticsEntry> CameraModels { get; init; } = [];
+    public IReadOnlyList<StatisticsEntry> Cameras { get; init; } = [];
 
     /// <summary>
     /// Lens models and their usage count
     /// </summary>
     /// <example>{ "Sony FE 35mm F1.4 GM": 89, "Sony FE 85mm F1.4 GM": 67 }</example>
-    public IReadOnlyList<StatisticsEntry> LensModels { get; init; } = [];
+    public IReadOnlyList<StatisticsEntry> Lenses { get; init; } = [];
 
     /// <summary>
     /// Focal length distribution (bucketed by photography ranges)
@@ -63,20 +63,36 @@ public sealed class SiteStatistics
     public IReadOnlyList<StatisticsEntry> ImagesByYear { get; init; } = [];
 
     /// <summary>
+    /// Images per month (aggregated across all years)
+    /// </summary>
+    /// <example>{ "January": 45, "July": 82 }</example>
+    public IReadOnlyList<StatisticsEntry> ImagesByMonth { get; init; } = [];
+
+    /// <summary>
+    /// Image orientation distribution (Landscape, Portrait, Square)
+    /// </summary>
+    /// <example>{ "Landscape": 280, "Portrait": 120, "Square": 5 }</example>
+    public IReadOnlyList<StatisticsEntry> Orientations { get; init; } = [];
+
+    /// <summary>
     /// Generation timestamp
     /// </summary>
     public DateTime GeneratedAt { get; init; } = DateTime.UtcNow;
 }
 
 /// <summary>
-/// Single statistics entry with label, count and percentage
+/// Single statistics entry with name, count and percentage
 /// </summary>
-public sealed class StatisticsEntry
+/// <remarks>
+/// Percentage is relative to the maximum count in the category (0-100),
+/// used for bar chart width calculation. The highest count = 100%.
+/// </remarks>
+public sealed record StatisticsEntry
 {
     /// <summary>
-    /// Display label (e.g., "f/1.4-2.0", "Sony A7IV", "2024")
+    /// Display name (e.g., "f/1.4-2.0", "Sony A7IV", "2024")
     /// </summary>
-    public required string Label { get; init; }
+    public required string Name { get; init; }
 
     /// <summary>
     /// Number of images in this category
@@ -86,8 +102,5 @@ public sealed class StatisticsEntry
     /// <summary>
     /// Percentage relative to the maximum count in the category (0-100)
     /// </summary>
-    /// <remarks>
-    /// Used for bar chart width calculation. The highest count = 100%.
-    /// </remarks>
-    public required int Percent { get; init; }
+    public required int Percentage { get; init; }
 }

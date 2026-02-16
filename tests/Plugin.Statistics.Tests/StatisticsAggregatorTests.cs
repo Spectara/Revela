@@ -96,7 +96,7 @@ public sealed class StatisticsAggregatorTests
 
         // Assert
         Assert.HasCount(3, result.Apertures); // 3 different buckets
-        var bucket14 = result.Apertures.FirstOrDefault(a => a.Label == "f/1.4-2.0");
+        var bucket14 = result.Apertures.FirstOrDefault(a => a.Name == "f/1.4-2.0");
         Assert.IsNotNull(bucket14);
         Assert.AreEqual(2, bucket14.Count); // 1.4 and 1.8 both fall in 1.4-2.0
     }
@@ -120,10 +120,10 @@ public sealed class StatisticsAggregatorTests
 
         // Assert
         Assert.HasCount(4, result.FocalLengths);
-        Assert.IsTrue(result.FocalLengths.Any(f => f.Label == "18-35mm"));
-        Assert.IsTrue(result.FocalLengths.Any(f => f.Label == "35-70mm"));
-        Assert.IsTrue(result.FocalLengths.Any(f => f.Label == "70-135mm"));
-        Assert.IsTrue(result.FocalLengths.Any(f => f.Label == "135-300mm"));
+        Assert.IsTrue(result.FocalLengths.Any(f => f.Name == "18\u201335"));
+        Assert.IsTrue(result.FocalLengths.Any(f => f.Name == "35\u201370"));
+        Assert.IsTrue(result.FocalLengths.Any(f => f.Name == "70\u2013135"));
+        Assert.IsTrue(result.FocalLengths.Any(f => f.Name == "135\u2013300"));
     }
 
     [TestMethod]
@@ -145,7 +145,7 @@ public sealed class StatisticsAggregatorTests
         var result = aggregator.Aggregate();
 
         // Assert - f/2.8-4.0 should be first (3 occurrences vs 1)
-        Assert.AreEqual("f/2.8-4.0", result.Apertures[0].Label);
+        Assert.AreEqual("f/2.8-4.0", result.Apertures[0].Name);
         Assert.AreEqual(3, result.Apertures[0].Count);
     }
 
@@ -168,8 +168,8 @@ public sealed class StatisticsAggregatorTests
         var result = aggregator.Aggregate();
 
         // Assert - Should have 2 cameras + "Other"
-        Assert.HasCount(3, result.CameraModels);
-        Assert.IsTrue(result.CameraModels.Any(c => c.Label == "Other"));
+        Assert.HasCount(3, result.Cameras);
+        Assert.IsTrue(result.Cameras.Any(c => c.Name == "Other"));
     }
 
     [TestMethod]
@@ -192,10 +192,10 @@ public sealed class StatisticsAggregatorTests
         var result = aggregator.Aggregate();
 
         // Assert - A has 4 (100%), B has 2 (50%)
-        var cameraA = result.CameraModels.First(c => c.Label == "A");
-        var cameraB = result.CameraModels.First(c => c.Label == "B");
-        Assert.AreEqual(100, cameraA.Percent);
-        Assert.AreEqual(50, cameraB.Percent);
+        var cameraA = result.Cameras.First(c => c.Name == "A");
+        var cameraB = result.Cameras.First(c => c.Name == "B");
+        Assert.AreEqual(100, cameraA.Percentage);
+        Assert.AreEqual(50, cameraB.Percentage);
     }
 
     [TestMethod]
@@ -217,9 +217,97 @@ public sealed class StatisticsAggregatorTests
 
         // Assert
         Assert.HasCount(2, result.ImagesByYear);
-        Assert.IsTrue(result.ImagesByYear.Any(y => y.Label == "2024" && y.Count == 2));
-        Assert.IsTrue(result.ImagesByYear.Any(y => y.Label == "2023" && y.Count == 2));
+        Assert.IsTrue(result.ImagesByYear.Any(y => y.Name == "2024" && y.Count == 2));
+        Assert.IsTrue(result.ImagesByYear.Any(y => y.Name == "2023" && y.Count == 2));
         // Most recent year should be first
-        Assert.AreEqual("2024", result.ImagesByYear[0].Label);
+        Assert.AreEqual("2024", result.ImagesByYear[0].Name);
+    }
+
+    [TestMethod]
+    public void Aggregate_GroupsByMonth()
+    {
+        // Arrange
+        var images = new Dictionary<string, ImageContent>
+        {
+            ["img1.jpg"] = TestData.Image("img1.jpg", TestData.Exif(), dateTaken: new DateTime(2024, 1, 10)),
+            ["img2.jpg"] = TestData.Image("img2.jpg", TestData.Exif(), dateTaken: new DateTime(2024, 1, 20)),
+            ["img3.jpg"] = TestData.Image("img3.jpg", TestData.Exif(), dateTaken: new DateTime(2023, 7, 15)),
+            ["img4.jpg"] = TestData.Image("img4.jpg", TestData.Exif(), dateTaken: new DateTime(2024, 7, 1))
+        };
+        manifestRepository.Images.Returns(images);
+        var aggregator = new StatisticsAggregator(manifestRepository, config, logger);
+
+        // Act
+        var result = aggregator.Aggregate();
+
+        // Assert - January: 2, July: 2
+        Assert.HasCount(2, result.ImagesByMonth);
+        Assert.IsTrue(result.ImagesByMonth.Any(m => m.Name == "January" && m.Count == 2));
+        Assert.IsTrue(result.ImagesByMonth.Any(m => m.Name == "July" && m.Count == 2));
+    }
+
+    [TestMethod]
+    public void Aggregate_DetectsOrientation()
+    {
+        // Arrange
+        var images = new Dictionary<string, ImageContent>
+        {
+            ["landscape.jpg"] = TestData.Image("landscape.jpg", TestData.Exif(), width: 1920, height: 1080),
+            ["portrait.jpg"] = TestData.Image("portrait.jpg", TestData.Exif(), width: 1080, height: 1920),
+            ["square.jpg"] = TestData.Image("square.jpg", TestData.Exif(), width: 1000, height: 1000)
+        };
+        manifestRepository.Images.Returns(images);
+        var aggregator = new StatisticsAggregator(manifestRepository, config, logger);
+
+        // Act
+        var result = aggregator.Aggregate();
+
+        // Assert
+        Assert.HasCount(3, result.Orientations);
+        Assert.IsTrue(result.Orientations.Any(o => o.Name == "Landscape" && o.Count == 1));
+        Assert.IsTrue(result.Orientations.Any(o => o.Name == "Portrait" && o.Count == 1));
+        Assert.IsTrue(result.Orientations.Any(o => o.Name == "Square" && o.Count == 1));
+    }
+
+    [TestMethod]
+    public void Aggregate_SkipsZeroDimensionImages_ForOrientation()
+    {
+        // Arrange
+        var images = new Dictionary<string, ImageContent>
+        {
+            ["normal.jpg"] = TestData.Image("normal.jpg", TestData.Exif(), width: 1920, height: 1080),
+            ["nodim.jpg"] = TestData.Image("nodim.jpg", TestData.Exif(), width: 0, height: 0)
+        };
+        manifestRepository.Images.Returns(images);
+        var aggregator = new StatisticsAggregator(manifestRepository, config, logger);
+
+        // Act
+        var result = aggregator.Aggregate();
+
+        // Assert - only the normal image should be counted
+        Assert.HasCount(1, result.Orientations);
+        Assert.AreEqual("Landscape", result.Orientations[0].Name);
+    }
+
+    [TestMethod]
+    public void Aggregate_FormatsShutterSpeeds()
+    {
+        // Arrange
+        var images = new Dictionary<string, ImageContent>
+        {
+            ["fast.jpg"] = TestData.Image("fast.jpg", TestData.Exif(exposureTime: 1.0 / 500)),
+            ["fast2.jpg"] = TestData.Image("fast2.jpg", TestData.Exif(exposureTime: 1.0 / 500)),
+            ["slow.jpg"] = TestData.Image("slow.jpg", TestData.Exif(exposureTime: 2.0))
+        };
+        manifestRepository.Images.Returns(images);
+        var aggregator = new StatisticsAggregator(manifestRepository, config, logger);
+
+        // Act
+        var result = aggregator.Aggregate();
+
+        // Assert
+        Assert.HasCount(2, result.ShutterSpeeds);
+        Assert.IsTrue(result.ShutterSpeeds.Any(s => s.Name == "1/500" && s.Count == 2));
+        Assert.IsTrue(result.ShutterSpeeds.Any(s => s.Name == "2s" && s.Count == 1));
     }
 }

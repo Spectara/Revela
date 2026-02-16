@@ -49,7 +49,7 @@ public sealed partial class ConfigStatisticsCommand(
             var maxEntries = parseResult.GetValue(maxEntriesOption);
             var sortByCount = parseResult.GetValue(sortByCountOption);
 
-            return await ExecuteAsync(maxEntries, sortByCount, cancellationToken).ConfigureAwait(false);
+            return await ExecuteAsync(maxEntries, sortByCount, cancellationToken);
         });
 
         return command;
@@ -77,7 +77,7 @@ public sealed partial class ConfigStatisticsCommand(
             sortByCount = await AnsiConsole.ConfirmAsync(
                 "Sort by count (descending)?",
                 current.SortByCount,
-                cancellationToken).ConfigureAwait(false);
+                cancellationToken);
         }
         else
         {
@@ -99,7 +99,7 @@ public sealed partial class ConfigStatisticsCommand(
             [StatisticsPluginConfig.SectionName] = pluginConfig
         };
 
-        await configService.UpdateProjectConfigAsync(updates, cancellationToken).ConfigureAwait(false);
+        await configService.UpdateProjectConfigAsync(updates, cancellationToken);
 
         LogConfigSaved(logger, configService.ProjectConfigPath);
         AnsiConsole.MarkupLine($"\n{OutputMarkers.Success} Configuration saved to [cyan]project.json[/]");

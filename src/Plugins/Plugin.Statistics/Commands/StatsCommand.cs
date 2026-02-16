@@ -5,6 +5,7 @@ using Spectara.Revela.Plugin.Statistics.Services;
 using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Abstractions;
 using Spectara.Revela.Sdk.Models.Manifest;
+using Spectara.Revela.Sdk.Output;
 using Spectre.Console;
 
 namespace Spectara.Revela.Plugin.Statistics.Commands;
@@ -27,7 +28,7 @@ public sealed class StatsCommand(
     IOptions<ProjectEnvironment> projectEnvironment,
     StatisticsAggregator aggregator) : IGenerateStep
 {
-    private const string ManifestPath = ".cache/manifest.json";
+    private const string ManifestFileName = "manifest.json";
 
     /// <inheritdoc />
     public string Name => "statistics";
@@ -45,7 +46,7 @@ public sealed class StatsCommand(
     {
         var command = new Command("statistics", "Generate statistics JSON from EXIF data");
 
-        command.SetAction(async (parseResult, cancellationToken) => await ExecuteAsync(cancellationToken).ConfigureAwait(false));
+        command.SetAction(async (parseResult, cancellationToken) => await ExecuteAsync(cancellationToken));
 
         return command;
     }
@@ -56,7 +57,7 @@ public sealed class StatsCommand(
         var projectPath = projectEnvironment.Value.Path;
 
         // Check if manifest exists
-        var manifestFile = Path.Combine(projectPath, ManifestPath);
+        var manifestFile = Path.Combine(projectPath, ProjectPaths.Cache, ManifestFileName);
         if (!File.Exists(manifestFile))
         {
             ErrorPanels.ShowPrerequisiteError(
@@ -67,11 +68,11 @@ public sealed class StatsCommand(
         }
         // Load manifest
         logger.LoadingManifest();
-        await manifestRepository.LoadAsync(cancellationToken).ConfigureAwait(false);
+        await manifestRepository.LoadAsync(cancellationToken);
 
         if (manifestRepository.Images.Count == 0)
         {
-            AnsiConsole.MarkupLine("[yellow]Warning:[/] No images found in manifest.");
+            AnsiConsole.MarkupLine($"{OutputMarkers.Warning} No images found in manifest.");
             return 0;
         }
 
@@ -91,20 +92,20 @@ public sealed class StatsCommand(
         logger.GeneratingStats(statsPages.Count);
 
         var generatedCount = 0;
-        foreach (var page in statsPages)
+        foreach (var pagePath in statsPages)
         {
             // Aggregate statistics (TODO: filter by page metadata)
             var stats = aggregator.Aggregate();
 
-            // Calculate output path in {ProjectPaths.Cache}/{page.Path}/
-            // page.Path is already relative (e.g., "03 Pages\Statistics")
-            var cacheDir = Path.Combine(projectPath, ProjectPaths.Cache, page.Path);
+            // Calculate output path in {ProjectPaths.Cache}/{pagePath}/
+            // pagePath is already relative (e.g., "03 Pages\Statistics")
+            var cacheDir = Path.Combine(projectPath, ProjectPaths.Cache, pagePath);
             var jsonPath = Path.Combine(cacheDir, "statistics.json");
 
             // Write JSON data file
             Directory.CreateDirectory(cacheDir);
-            await JsonWriter.WriteAsync(jsonPath, stats, cancellationToken).ConfigureAwait(false);
-            logger.GeneratedJsonFile(page.Path, stats.TotalImages);
+            await JsonWriter.WriteAsync(jsonPath, stats, cancellationToken);
+            logger.GeneratedJsonFile(pagePath, stats.TotalImages);
 
             generatedCount++;
         }
@@ -133,13 +134,13 @@ public sealed class StatsCommand(
     /// 1. Explicit data source: data = { statistics: "statistics.json" }
     /// 2. Statistics template: template = "statistics/..." (uses extension data defaults)
     /// </remarks>
-    private static List<(string Path, string Slug)> FindStatisticsPages(ManifestEntry root)
+    private static List<string> FindStatisticsPages(ManifestEntry root)
     {
-        var results = new List<(string Path, string Slug)>();
+        var results = new List<string>();
         FindRecursive(root, results);
         return results;
 
-        static void FindRecursive(ManifestEntry node, List<(string Path, string Slug)> results)
+        static void FindRecursive(ManifestEntry node, List<string> results)
         {
             // Match explicit data source OR statistics template
             var hasStatisticsData = node.DataSources.ContainsKey("statistics");
@@ -147,7 +148,7 @@ public sealed class StatsCommand(
 
             if (hasStatisticsData || hasStatisticsTemplate)
             {
-                results.Add((node.Path, node.Slug ?? string.Empty));
+                results.Add(node.Path);
             }
 
             foreach (var child in node.Children)

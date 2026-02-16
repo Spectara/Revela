@@ -69,19 +69,22 @@ public static class TestData
     /// <param name="focalLength">Focal length in mm (defaults to 50).</param>
     /// <param name="model">Camera model (defaults to "Test Camera").</param>
     /// <param name="lensModel">Lens model.</param>
+    /// <param name="exposureTime">Exposure time in seconds.</param>
     /// <returns>A valid ExifData instance.</returns>
     public static ExifData Exif(
         double fNumber = 2.8,
         int iso = 100,
         double focalLength = 50,
         string model = "Test Camera",
-        string? lensModel = null) => new()
+        string? lensModel = null,
+        double? exposureTime = null) => new()
         {
             FNumber = fNumber,
             Iso = iso,
             FocalLength = focalLength,
             Model = model,
-            LensModel = lensModel ?? "Test Lens"
+            LensModel = lensModel ?? "Test Lens",
+            ExposureTime = exposureTime
         };
 
     #endregion

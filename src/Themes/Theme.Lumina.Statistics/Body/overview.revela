@@ -3,6 +3,7 @@
 
 <p class="stats-summary">
     <span><strong>{{ statistics.total_images }}</strong> Images</span>
+    <span><strong>{{ statistics.total_galleries }}</strong> Galleries</span>
     <span><strong>{{ statistics.cameras | array.size }}</strong> Cameras</span>
     <span><strong>{{ statistics.lenses | array.size }}</strong> Lenses</span>
 </p>
@@ -11,6 +12,10 @@
 {{ include 'statistics/lenses' statistics }}
 {{ include 'statistics/focal-lengths' statistics }}
 {{ include 'statistics/apertures' statistics }}
+{{ include 'statistics/shutter-speeds' statistics }}
 {{ include 'statistics/iso' statistics }}
+{{ include 'statistics/orientations' statistics }}
+{{ include 'statistics/timeline' statistics }}
+{{ include 'statistics/months' statistics }}
 
 </section>

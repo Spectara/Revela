@@ -45,10 +45,4 @@ public sealed class StatisticsPluginConfig
     /// Sort entries by count (descending) instead of by value
     /// </summary>
     public bool SortByCount { get; init; } = true;
-
-    /// <summary>
-    /// Maximum width of the bar chart (in characters for text mode, or percentage for HTML)
-    /// </summary>
-    [Range(10, 100, ErrorMessage = "MaxBarWidth must be between 10 and 100")]
-    public int MaxBarWidth { get; init; } = 100;
 }
