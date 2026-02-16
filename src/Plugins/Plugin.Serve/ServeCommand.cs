@@ -6,6 +6,7 @@ using Microsoft.Extensions.Options;
 
 using Spectara.Revela.Plugin.Serve.Configuration;
 using Spectara.Revela.Sdk;
+using Spectara.Revela.Sdk.Output;
 using Spectara.Revela.Sdk.Services;
 
 using Spectre.Console;
@@ -32,7 +33,7 @@ public sealed partial class ServeCommand(
             Description = "Port number (default: 8080)"
         };
 
-        var verboseOption = new Option<bool>("--verbose", "-v")
+        var verboseOption = new Option<bool?>("--verbose", "-v")
         {
             Description = "Log all requests (default: only 404 errors)"
         };
@@ -51,12 +52,12 @@ public sealed partial class ServeCommand(
         return command;
     }
 
-    private async Task<int> ServeAsync(int? portOverride, bool verboseOverride, CancellationToken cancellationToken)
+    private async Task<int> ServeAsync(int? portOverride, bool? verboseOverride, CancellationToken cancellationToken)
     {
         // Resolve configuration: CLI > Config > Default
         var config = serveConfig.CurrentValue;
         var port = portOverride ?? config.Port;
-        var verbose = verboseOverride || config.Verbose;
+        var verbose = verboseOverride ?? config.Verbose;
 
         // Output directory from resolved path (supports absolute paths in config)
         var fullOutputPath = pathResolver.OutputPath;
@@ -72,7 +73,7 @@ public sealed partial class ServeCommand(
         var indexPath = Path.Combine(fullOutputPath, "index.html");
         if (!File.Exists(indexPath))
         {
-            AnsiConsole.MarkupLine($"[yellow]Warning:[/] No index.html found in [cyan]{fullOutputPath}[/]");
+            AnsiConsole.MarkupLine($"{OutputMarkers.Warning} No index.html found in [cyan]{Markup.Escape(fullOutputPath)}[/]");
         }
 
         // Setup request logging callback
@@ -91,39 +92,32 @@ public sealed partial class ServeCommand(
                 AnsiConsole.MarkupLine(string.Format(
                     CultureInfo.InvariantCulture,
                     "[dim]GET[/] {0} [{1}]{2}[/]",
-                    EscapeMarkup(path),
+                    Markup.Escape(path),
                     color,
                     statusCode));
             }
             else if (statusCode == 404)
             {
                 // Only log 404s in normal mode
-                AnsiConsole.MarkupLine($"[yellow]⚠ 404:[/] {EscapeMarkup(path)}");
+                AnsiConsole.MarkupLine($"{OutputMarkers.Warning} [yellow]404:[/] {Markup.Escape(path)}");
             }
         }
 
-        // Track if we should keep running
-        var running = true;
+        // Create linked CancellationTokenSource for graceful shutdown
+        // Combines external cancellation (interactive menu) with Ctrl+C
+        using var shutdownCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
 
-        // Use CancellationToken for graceful shutdown (works in interactive menu)
-        using var registration = cancellationToken.Register(() =>
-        {
-            running = false;
-            AnsiConsole.MarkupLine("\n[yellow]Stopping server...[/]");
-        });
-
-        // Also handle Ctrl+C directly for non-interactive mode
+        // Handle Ctrl+C directly for non-interactive mode
         Console.CancelKeyPress += OnCancelKeyPress;
 
         void OnCancelKeyPress(object? sender, ConsoleCancelEventArgs e)
         {
             e.Cancel = true; // Prevent immediate termination
-            running = false;
-            AnsiConsole.MarkupLine("\n[yellow]Stopping server...[/]");
+            shutdownCts.Cancel();
         }
 
         // Create and start server
-        using var server = new StaticFileServer(fullOutputPath, port, RequestCallback);
+        await using var server = new StaticFileServer(fullOutputPath, port, RequestCallback);
         try
         {
             server.Start();
@@ -147,17 +141,23 @@ public sealed partial class ServeCommand(
 
         // Display server info
         AnsiConsole.WriteLine();
-        AnsiConsole.MarkupLine($"🌐 Serving [blue]{fullOutputPath}[/] at [link]http://localhost:{port}[/]");
+        AnsiConsole.MarkupLine($"🌐 Serving [blue]{Markup.Escape(fullOutputPath)}[/] at [link]http://localhost:{port}[/]");
         AnsiConsole.MarkupLine("[dim]   Press Ctrl+C to stop[/]");
         AnsiConsole.WriteLine();
 
         LogServerStarted(logger, fullOutputPath, port);
 
-        // Wait for cancellation
-        while (running && !cancellationToken.IsCancellationRequested)
+        // Wait for cancellation (zero-CPU, no polling)
+        try
         {
-            await Task.Delay(100, CancellationToken.None);
+            await Task.Delay(Timeout.Infinite, shutdownCts.Token);
         }
+        catch (OperationCanceledException)
+        {
+            // Expected — shutdown requested via Ctrl+C or external cancellation
+        }
+
+        AnsiConsole.MarkupLine("\n[yellow]Stopping server...[/]");
 
         // Cleanup event handler
         Console.CancelKeyPress -= OnCancelKeyPress;
@@ -165,16 +165,6 @@ public sealed partial class ServeCommand(
         // Server disposed automatically by using statement
         LogServerStopped(logger);
         return 0;
-    }
-
-    /// <summary>
-    /// Escape Spectre.Console markup characters in user data
-    /// </summary>
-    private static string EscapeMarkup(string text)
-    {
-        return text
-            .Replace("[", "[[", StringComparison.Ordinal)
-            .Replace("]", "]]", StringComparison.Ordinal);
     }
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Server started: {RootPath} on port {Port}")]

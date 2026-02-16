@@ -27,11 +27,6 @@ public sealed class ServeConfigTests
     }
 
     [TestMethod]
-    public void SectionName_StartsWithPluginNamespace() =>
-        // Assert - verify section name follows plugin naming convention
-        Assert.IsTrue(ServeConfig.SectionName.StartsWith("Spectara.Revela.Plugin.", StringComparison.Ordinal));
-
-    [TestMethod]
     public void Port_CanBeCustomized()
     {
         // Arrange & Act

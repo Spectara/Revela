@@ -13,7 +13,7 @@ public sealed class ServePlugin : IPlugin
     private IServiceProvider? services;
 
     /// <inheritdoc />
-    public IPluginMetadata Metadata => new PluginMetadata
+    public IPluginMetadata Metadata { get; } = new PluginMetadata
     {
         Name = "Serve",
         Version = "1.0.0",
@@ -32,11 +32,10 @@ public sealed class ServePlugin : IPlugin
     /// <inheritdoc />
     public void ConfigureServices(IServiceCollection services)
     {
-        // Register Plugin Configuration (IOptions pattern)
-        // Note: No ValidateDataAnnotations/ValidateOnStart - plugins may be installed but not configured.
-        // Validation happens in commands when config is actually needed.
+        // Register Plugin Configuration (IOptions pattern with validation)
         services.AddOptions<ServeConfig>()
-            .BindConfiguration(ServeConfig.SectionName);
+            .BindConfiguration(ServeConfig.SectionName)
+            .ValidateDataAnnotations();
 
         // Register Commands for Dependency Injection
         services.AddTransient<ServeCommand>();

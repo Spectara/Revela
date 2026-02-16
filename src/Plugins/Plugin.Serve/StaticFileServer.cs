@@ -1,3 +1,5 @@
+using System.Collections.Frozen;
+using System.Globalization;
 using System.Net;
 using System.Text;
 
@@ -8,19 +10,21 @@ namespace Spectara.Revela.Plugin.Serve;
 /// </summary>
 /// <remarks>
 /// Uses .NET's built-in HttpListener - no external dependencies required.
+/// Implements <see cref="IAsyncDisposable"/> for graceful shutdown of background tasks.
 /// </remarks>
-public sealed class StaticFileServer : IDisposable
+public sealed class StaticFileServer : IAsyncDisposable, IDisposable
 {
     private readonly string rootPath;
     private readonly HttpListener listener;
     private readonly Action<string, int>? requestCallback;
-    private bool isRunning;
-    private bool disposed;
+    private CancellationTokenSource? cts;
+    private Task? processingTask;
+    private int disposed;
 
     /// <summary>
     /// MIME type mappings for common static file extensions
     /// </summary>
-    private static readonly Dictionary<string, string> MimeTypes = new(StringComparer.OrdinalIgnoreCase)
+    private static readonly FrozenDictionary<string, string> MimeTypes = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
     {
         // HTML/Web
         [".html"] = "text/html; charset=utf-8",
@@ -54,7 +58,7 @@ public sealed class StaticFileServer : IDisposable
         [".pdf"] = "application/pdf",
         [".zip"] = "application/zip",
         [".map"] = "application/json"
-    };
+    }.ToFrozenDictionary(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>
     /// Creates a new static file server
@@ -67,7 +71,7 @@ public sealed class StaticFileServer : IDisposable
         this.rootPath = Path.GetFullPath(rootPath);
         this.requestCallback = requestCallback;
         listener = new HttpListener();
-        listener.Prefixes.Add($"http://localhost:{port}/");
+        listener.Prefixes.Add(string.Format(CultureInfo.InvariantCulture, "http://localhost:{0}/", port));
     }
 
     /// <summary>
@@ -76,11 +80,11 @@ public sealed class StaticFileServer : IDisposable
     /// <exception cref="HttpListenerException">Thrown when port is already in use</exception>
     public void Start()
     {
+        cts = new CancellationTokenSource();
         listener.Start();
-        isRunning = true;
 
-        // Start processing requests in background
-        _ = Task.Run(ProcessRequestsAsync);
+        // Start processing requests in background — awaited in DisposeAsync
+        processingTask = Task.Run(ProcessRequestsAsync);
     }
 
     /// <summary>
@@ -88,12 +92,12 @@ public sealed class StaticFileServer : IDisposable
     /// </summary>
     public void Stop()
     {
-        if (!isRunning)
+        if (cts is null or { IsCancellationRequested: true })
         {
             return;
         }
 
-        isRunning = false;
+        cts.Cancel();
 
         try
         {
@@ -110,19 +114,21 @@ public sealed class StaticFileServer : IDisposable
     /// </summary>
     private async Task ProcessRequestsAsync()
     {
-        while (isRunning)
+        var token = cts?.Token ?? CancellationToken.None;
+
+        while (cts is { IsCancellationRequested: false })
         {
             try
             {
-                var context = await listener.GetContextAsync().ConfigureAwait(false);
-                _ = Task.Run(() => HandleRequest(context));
+                var context = await listener.GetContextAsync();
+                _ = HandleRequestAsync(context, token);
             }
-            catch (HttpListenerException) when (!isRunning)
+            catch (HttpListenerException) when (cts is null or { IsCancellationRequested: true })
             {
                 // Expected when stopping - listener.Stop() causes GetContextAsync to throw
                 break;
             }
-            catch (ObjectDisposedException) when (!isRunning)
+            catch (ObjectDisposedException) when (cts is null or { IsCancellationRequested: true })
             {
                 // Expected when disposing
                 break;
@@ -133,7 +139,7 @@ public sealed class StaticFileServer : IDisposable
     /// <summary>
     /// Handle a single HTTP request
     /// </summary>
-    private void HandleRequest(HttpListenerContext context)
+    private async Task HandleRequestAsync(HttpListenerContext context, CancellationToken cancellationToken)
     {
         var request = context.Request;
         var response = context.Response;
@@ -164,13 +170,11 @@ public sealed class StaticFileServer : IDisposable
                 return;
             }
 
-            // Serve the file
+            // Serve the file with async streaming
             var extension = Path.GetExtension(requestedPath);
             var contentType = GetMimeType(extension);
-            var content = File.ReadAllBytes(requestedPath);
 
             response.ContentType = contentType;
-            response.ContentLength64 = content.Length;
             response.StatusCode = 200;
 
             // Add cache headers for assets (not HTML)
@@ -180,17 +184,41 @@ public sealed class StaticFileServer : IDisposable
                 response.Headers.Add("Cache-Control", "public, max-age=3600");
             }
 
-            response.OutputStream.Write(content, 0, content.Length);
+            await using var fileStream = new FileStream(
+                requestedPath, FileMode.Open, FileAccess.Read, FileShare.Read,
+                bufferSize: 65536, useAsync: true);
+            response.ContentLength64 = fileStream.Length;
+            await fileStream.CopyToAsync(response.OutputStream, cancellationToken);
+
             requestCallback?.Invoke(urlPath, 200);
+        }
+        catch (OperationCanceledException)
+        {
+            // Server shutting down during file transfer — expected
         }
         catch (Exception)
         {
-            SendError(response, 500, "Internal Server Error");
+            try
+            {
+                SendError(response, 500, "Internal Server Error");
+            }
+            catch (ObjectDisposedException)
+            {
+                // Response already closed
+            }
+
             requestCallback?.Invoke(request.Url?.LocalPath ?? "/", 500);
         }
         finally
         {
-            response.Close();
+            try
+            {
+                response.Close();
+            }
+            catch (ObjectDisposedException)
+            {
+                // Already closed
+            }
         }
     }
 
@@ -203,7 +231,7 @@ public sealed class StaticFileServer : IDisposable
         response.ContentType = "text/plain; charset=utf-8";
         var content = Encoding.UTF8.GetBytes(message);
         response.ContentLength64 = content.Length;
-        response.OutputStream.Write(content, 0, content.Length);
+        response.OutputStream.Write(content);
     }
 
     /// <summary>
@@ -211,24 +239,50 @@ public sealed class StaticFileServer : IDisposable
     /// </summary>
     /// <param name="extension">File extension including the dot (e.g., ".html")</param>
     /// <returns>MIME type string</returns>
-    public static string GetMimeType(string extension)
-    {
-        return MimeTypes.TryGetValue(extension, out var mimeType)
+    public static string GetMimeType(string extension) =>
+        MimeTypes.TryGetValue(extension, out var mimeType)
             ? mimeType
             : "application/octet-stream";
+
+    /// <inheritdoc />
+    public async ValueTask DisposeAsync()
+    {
+        if (Interlocked.Exchange(ref disposed, 1) is 1)
+        {
+            return;
+        }
+
+        Stop();
+
+        // Await background task for clean shutdown
+        if (processingTask is not null)
+        {
+            await processingTask;
+        }
+
+        cts?.Dispose();
+
+        try
+        {
+            listener.Close();
+        }
+        catch (ObjectDisposedException)
+        {
+            // Already disposed - ignore
+        }
     }
 
     /// <inheritdoc />
     public void Dispose()
     {
-        if (disposed)
+        if (Interlocked.Exchange(ref disposed, 1) is 1)
         {
             return;
         }
 
-        disposed = true;
-
         Stop();
+        processingTask?.Wait(TimeSpan.FromSeconds(2));
+        cts?.Dispose();
 
         try
         {

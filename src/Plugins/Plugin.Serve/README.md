@@ -5,6 +5,10 @@ Local HTTP server plugin for Revela - preview generated sites during development
 ## Installation
 
 ```bash
+# Install from NuGet
+revela plugin install Serve
+
+# Or with full package ID
 revela plugin install Spectara.Revela.Plugin.Serve
 ```
 
@@ -20,9 +24,6 @@ revela serve --port 3000
 # Verbose mode (log all requests)
 revela serve --verbose
 
-# Custom output directory
-revela serve --path dist
-
 # Combined
 revela serve -p 3000 -v
 ```
@@ -30,16 +31,6 @@ revela serve -p 3000 -v
 Press `Ctrl+C` to stop the server and return to the interactive menu.
 
 ## Setup
-
-### Initialize configuration
-
-```bash
-# Interactive
-revela init serve
-
-# Non-interactive
-revela init serve --port 3000 --verbose
-```
 
 ### Modify configuration
 

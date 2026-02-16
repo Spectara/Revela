@@ -50,7 +50,7 @@ public sealed partial class ConfigServeCommand(
             var port = parseResult.GetValue(portOption);
             var verbose = parseResult.GetValue(verboseOption);
 
-            return await ExecuteAsync(port, verbose, cancellationToken).ConfigureAwait(false);
+            return await ExecuteAsync(port, verbose, cancellationToken);
         });
 
         return command;
@@ -81,7 +81,7 @@ public sealed partial class ConfigServeCommand(
             verbose = await AnsiConsole.ConfirmAsync(
                 "Enable verbose logging (all requests)?",
                 current.Verbose,
-                cancellationToken).ConfigureAwait(false);
+                cancellationToken);
         }
         else
         {
@@ -103,7 +103,7 @@ public sealed partial class ConfigServeCommand(
             [ServeConfig.SectionName] = pluginConfig
         };
 
-        await configService.UpdateProjectConfigAsync(updates, cancellationToken).ConfigureAwait(false);
+        await configService.UpdateProjectConfigAsync(updates, cancellationToken);
 
         LogConfigSaved(logger, configService.ProjectConfigPath);
         AnsiConsole.MarkupLine($"\n{OutputMarkers.Success} Configuration saved to [cyan]project.json[/]");
