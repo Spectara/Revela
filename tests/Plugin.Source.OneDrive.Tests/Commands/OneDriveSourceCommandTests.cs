@@ -1,12 +1,25 @@
 using NSubstitute;
 using Spectara.Revela.Sdk.Services;
+using Spectara.Revela.Tests.Shared.Http;
 
 namespace Spectara.Revela.Plugin.Source.OneDrive.Tests.Commands;
 
 [TestClass]
 [TestCategory("Unit")]
-public sealed class OneDriveSourceCommandTests
+public sealed class OneDriveSourceCommandTests : IDisposable
 {
+    private readonly MockHttpMessageHandler mockHandler = new();
+    private readonly HttpClient httpClient;
+
+    public OneDriveSourceCommandTests() =>
+        httpClient = new HttpClient(mockHandler);
+
+    public void Dispose()
+    {
+        httpClient.Dispose();
+        mockHandler.Dispose();
+    }
+
     [TestMethod]
     public void Create_ShouldReturnSyncCommand()
     {
@@ -45,20 +58,15 @@ public sealed class OneDriveSourceCommandTests
         Assert.DoesNotContain("--debug", optionNames);
     }
 
-    private static OneDrive.Commands.OneDriveSourceCommand CreateCommand()
+    private OneDrive.Commands.OneDriveSourceCommand CreateCommand()
     {
         var commandLogger = Substitute.For<ILogger<OneDrive.Commands.OneDriveSourceCommand>>();
         var providerLogger = Substitute.For<ILogger<OneDrive.Providers.SharedLinkProvider>>();
-        var handler = new HttpClientHandler
-        {
-            CheckCertificateRevocationList = true
-        };
-        var httpClient = new HttpClient(handler);
         var provider = new OneDrive.Providers.SharedLinkProvider(httpClient, providerLogger);
         var pathResolver = Substitute.For<IPathResolver>();
         pathResolver.SourcePath.Returns(Path.GetTempPath());
-        var configMonitor = Substitute.For<Microsoft.Extensions.Options.IOptionsMonitor<OneDrive.Configuration.OneDrivePluginConfig>>();
-        configMonitor.CurrentValue.Returns(new OneDrive.Configuration.OneDrivePluginConfig());
+        var configMonitor = Substitute.For<Microsoft.Extensions.Options.IOptionsMonitor<Configuration.OneDrivePluginConfig>>();
+        configMonitor.CurrentValue.Returns(new Configuration.OneDrivePluginConfig());
 
         return new OneDrive.Commands.OneDriveSourceCommand(commandLogger, provider, pathResolver, configMonitor);
     }

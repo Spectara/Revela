@@ -29,7 +29,6 @@ Or add to `project.json`:
 {
   "Spectara.Revela.Plugin.Source.OneDrive": {
     "ShareUrl": "https://1drv.ms/f/your-shared-folder-link",
-    "OutputDirectory": "source",
     "DefaultConcurrency": 4
   }
 }
@@ -40,10 +39,11 @@ Or add to `project.json`:
 | Option | Required | Default | Description |
 |--------|----------|---------|-------------|
 | `ShareUrl` | Yes | - | OneDrive shared folder URL (1drv.ms or onedrive.live.com) |
-| `OutputDirectory` | No | `source` | Local directory for downloaded files |
 | `DefaultConcurrency` | No | `4` | Number of parallel downloads (increase for fast connections) |
 | `IncludePatterns` | No | `["*.jpg", "*.jpeg", ...]` | File patterns to include |
 | `ExcludePatterns` | No | `[]` | File patterns to exclude |
+
+Downloaded files are saved to the project's source directory (configured via `paths.source` in `project.json`).
 
 ## Usage
 
@@ -87,8 +87,11 @@ revela generate
 - ✅ Downloads from OneDrive shared folder links
 - ✅ Preserves folder structure
 - ✅ Progress bar with file count
-- ✅ Skips already downloaded files (by name)
+- ✅ Smart sync — skips unchanged files (by size and timestamp)
 - ✅ Supports nested folders
+- ✅ Dry-run mode for previewing changes
+- ✅ Orphan detection and cleanup
+- ✅ Automatic retry with exponential backoff
 
 ## Requirements
 

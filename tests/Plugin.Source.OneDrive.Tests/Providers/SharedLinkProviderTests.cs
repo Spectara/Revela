@@ -39,14 +39,12 @@ public sealed class SharedLinkProviderTests : IDisposable
     public async Task ListItemsAsync_WithEmptyFolder_ReturnsEmptyList()
     {
         // Arrange
-        var config = new OneDriveConfig { ShareUrl = "https://1drv.ms/f/s!example" };
-
         SetupBadgerTokenResponse();
         SetupActivationResponse("drive123", "folder123");
         SetupListItemsResponse([]);
 
         // Act
-        var result = await provider.ListItemsAsync(config);
+        var result = await provider.ListItemsAsync("https://1drv.ms/f/s!example");
 
         // Assert
         Assert.IsEmpty(result);
@@ -56,8 +54,6 @@ public sealed class SharedLinkProviderTests : IDisposable
     public async Task ListItemsAsync_WithSingleFile_ReturnsFile()
     {
         // Arrange
-        var config = new OneDriveConfig { ShareUrl = "https://1drv.ms/f/s!example" };
-
         SetupBadgerTokenResponse();
         SetupActivationResponse("drive123", "folder123");
         SetupListItemsResponse(
@@ -74,7 +70,7 @@ public sealed class SharedLinkProviderTests : IDisposable
         ]);
 
         // Act
-        var result = await provider.ListItemsAsync(config);
+        var result = await provider.ListItemsAsync("https://1drv.ms/f/s!example");
 
         // Assert
         Assert.HasCount(1, result);
@@ -88,8 +84,6 @@ public sealed class SharedLinkProviderTests : IDisposable
     public async Task ListItemsAsync_WithNestedFolders_RecursivelyListsItems()
     {
         // Arrange
-        var config = new OneDriveConfig { ShareUrl = "https://1drv.ms/f/s!example" };
-
         SetupBadgerTokenResponse();
         SetupActivationResponse("drive123", "folder123");
 
@@ -113,7 +107,7 @@ public sealed class SharedLinkProviderTests : IDisposable
         ]);
 
         // Act
-        var result = await provider.ListItemsAsync(config);
+        var result = await provider.ListItemsAsync("https://1drv.ms/f/s!example");
 
         // Assert
         Assert.HasCount(2, result);
@@ -125,7 +119,6 @@ public sealed class SharedLinkProviderTests : IDisposable
     public async Task ListItemsAsync_PreservesLastModifiedTimestamp()
     {
         // Arrange
-        var config = new OneDriveConfig { ShareUrl = "https://1drv.ms/f/s!example" };
         var expectedTime = new DateTime(2024, 3, 15, 12, 45, 30, DateTimeKind.Utc);
 
         SetupBadgerTokenResponse();
@@ -142,7 +135,7 @@ public sealed class SharedLinkProviderTests : IDisposable
         ]);
 
         // Act
-        var result = await provider.ListItemsAsync(config);
+        var result = await provider.ListItemsAsync("https://1drv.ms/f/s!example");
 
         // Assert
         Assert.AreEqual(expectedTime, result[0].LastModified);
@@ -152,8 +145,6 @@ public sealed class SharedLinkProviderTests : IDisposable
     public async Task ListItemsAsync_WithPagination_FetchesAllPages()
     {
         // Arrange
-        var config = new OneDriveConfig { ShareUrl = "https://1drv.ms/f/s!example" };
-
         SetupBadgerTokenResponse();
         SetupActivationResponse("drive123", "folder123");
 
@@ -177,7 +168,7 @@ public sealed class SharedLinkProviderTests : IDisposable
         );
 
         // Act
-        var result = await provider.ListItemsAsync(config);
+        var result = await provider.ListItemsAsync("https://1drv.ms/f/s!example");
 
         // Assert - should have all 4 files from both pages
         Assert.HasCount(4, result);
@@ -191,8 +182,6 @@ public sealed class SharedLinkProviderTests : IDisposable
     public async Task ListItemsAsync_WithPaginationInSubfolder_FetchesAllPagesRecursively()
     {
         // Arrange
-        var config = new OneDriveConfig { ShareUrl = "https://1drv.ms/f/s!example" };
-
         SetupBadgerTokenResponse();
         SetupActivationResponse("drive123", "folder123");
 
@@ -224,7 +213,7 @@ public sealed class SharedLinkProviderTests : IDisposable
         );
 
         // Act
-        var result = await provider.ListItemsAsync(config);
+        var result = await provider.ListItemsAsync("https://1drv.ms/f/s!example");
 
         // Assert - should have folder + 3 files from paginated subfolder
         Assert.HasCount(4, result);
@@ -385,8 +374,6 @@ public sealed class SharedLinkProviderTests : IDisposable
     public async Task ListItemsAsync_WhenBadgerTokenFails_ThrowsHttpRequestException()
     {
         // Arrange
-        var config = new OneDriveConfig { ShareUrl = "https://1drv.ms/f/s!example" };
-
         mockHandler.AddResponse(
             new Uri("https://api-badgerp.svc.ms/v1.0/token"),
             new HttpResponseMessage(HttpStatusCode.InternalServerError)
@@ -394,7 +381,7 @@ public sealed class SharedLinkProviderTests : IDisposable
 
         // Act & Assert
         await Assert.ThrowsExactlyAsync<HttpRequestException>(
-            async () => await provider.ListItemsAsync(config));
+            async () => await provider.ListItemsAsync("https://1drv.ms/f/s!example"));
     }
 
     [TestMethod]

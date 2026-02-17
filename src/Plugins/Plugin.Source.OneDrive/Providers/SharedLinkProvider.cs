@@ -19,29 +19,34 @@ namespace Spectara.Revela.Plugin.Source.OneDrive.Providers;
 /// </remarks>
 public sealed class SharedLinkProvider(
     HttpClient httpClient,
-    ILogger<SharedLinkProvider> logger) : IOneDriveProvider
+    ILogger<SharedLinkProvider> logger)
 {
     private const string BadgerAppId = "5cbed6ac-a083-4e14-b191-b4ba07653de2";
     private const string BadgerTokenUrl = "https://api-badgerp.svc.ms/v1.0/token";
     private const string OneDriveApiBaseUrl = "https://api.onedrive.com/v1.0";
 
-    /// <inheritdoc />
+    /// <summary>
+    /// Lists all items in the shared folder recursively
+    /// </summary>
+    /// <param name="shareUrl">OneDrive share URL</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1054:URI-like parameters should not be strings", Justification = "Share URLs with tokens don't always parse as valid System.Uri")]
     public async Task<IReadOnlyList<OneDriveItem>> ListItemsAsync(
-        OneDriveConfig config,
+        string shareUrl,
         CancellationToken cancellationToken = default
     )
     {
-        logger.ListingItems(config.ShareUrl);
+        logger.ListingItems(shareUrl);
 
         var token = await GetBadgerTokenAsync(cancellationToken);
 
         // Activate token and get share metadata (required for subfolder access)
-        var metadata = await ActivateBadgerTokenAsync(config.ShareUrl, token, cancellationToken);
+        var metadata = await ActivateBadgerTokenAsync(shareUrl, token, cancellationToken);
 
         List<OneDriveItem> items = [];
 
         // List items recursively from root
-        await ListItemsRecursiveAsync(config.ShareUrl, "", token, metadata, items, cancellationToken);
+        await ListItemsRecursiveAsync(shareUrl, "", token, metadata, items, cancellationToken);
 
         logger.ItemsListed(items.Count);
         return items;
@@ -85,7 +90,7 @@ public sealed class SharedLinkProvider(
             var response = await httpClient.SendAsync(request, cancellationToken);
             response.EnsureSuccessStatusCode();
 
-            var jsonResponse = await response.Content.ReadFromJsonAsync<JsonDocument>(cancellationToken: cancellationToken);
+            using var jsonResponse = await response.Content.ReadFromJsonAsync<JsonDocument>(cancellationToken: cancellationToken);
             if (jsonResponse is null)
             {
                 break;
@@ -132,7 +137,9 @@ public sealed class SharedLinkProvider(
         }
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// Downloads a file from OneDrive to local path
+    /// </summary>
     /// <remarks>
     /// Downloads use pre-signed CDN URLs (item.DownloadUrl) which are direct links to OneDrive's CDN.
     /// These URLs do NOT require the Badger token and do NOT count against OneDrive API rate limits.
@@ -222,7 +229,7 @@ public sealed class SharedLinkProvider(
         var response = await httpClient.SendAsync(request, cancellationToken);
         response.EnsureSuccessStatusCode();
 
-        var jsonResponse = await response.Content.ReadFromJsonAsync<JsonDocument>(cancellationToken: cancellationToken) ?? throw new InvalidOperationException("Failed to get share metadata");
+        using var jsonResponse = await response.Content.ReadFromJsonAsync<JsonDocument>(cancellationToken: cancellationToken) ?? throw new InvalidOperationException("Failed to get share metadata");
 
         // Extract driveId and folderId from metadata
         var driveId = jsonResponse.RootElement.TryGetProperty("parentReference", out var parentRef) &&

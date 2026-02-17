@@ -83,14 +83,13 @@ public sealed class OneDriveSourceCommand(
                 ShowFiles = parseResult.GetValue(showFilesOption)
             };
 
-            await ExecuteAsync(options, cancellationToken);
-            return 0;
+            return await ExecuteAsync(options, cancellationToken);
         });
 
         return command;
     }
 
-    private async Task ExecuteAsync(ExecutionOptions options, CancellationToken cancellationToken)
+    private async Task<int> ExecuteAsync(ExecutionOptions options, CancellationToken cancellationToken)
     {
         try
         {
@@ -106,16 +105,8 @@ public sealed class OneDriveSourceCommand(
             if (string.IsNullOrWhiteSpace(shareUrl))
             {
                 ShowMissingConfigError();
-                return;
+                return 1;
             }
-
-            // Build OneDriveConfig for provider
-            var downloadConfig = new OneDriveConfig
-            {
-                ShareUrl = shareUrl,
-                IncludePatterns = includePatterns,
-                ExcludePatterns = excludePatterns
-            };
 
             // Output to project's source directory
             var outputDirectory = pathResolver.SourcePath;
@@ -125,22 +116,22 @@ public sealed class OneDriveSourceCommand(
             var concurrency = currentConfig.DefaultConcurrency ?? DefaultConcurrency;
 
             AnsiConsole.MarkupLine("[blue]Downloading from OneDrive...[/]");
-            AnsiConsole.MarkupLine($"[dim]Share URL:[/] {downloadConfig.ShareUrl}");
-            AnsiConsole.MarkupLine($"[dim]Output:[/] {outputDirectory}");
+            AnsiConsole.MarkupLine($"[dim]Share URL:[/] {Markup.Escape(shareUrl)}");
+            AnsiConsole.MarkupLine($"[dim]Output:[/] {Markup.Escape(outputDirectory)}");
             AnsiConsole.MarkupLine($"[dim]Concurrency:[/] {concurrency} parallel downloads");
             AnsiConsole.WriteLine();
 
             // Phase 1: Scan OneDrive structure
             IReadOnlyList<OneDriveItem>? allItems = null;
+            var fileCount = 0;
+            var folderCount = 0;
             await AnsiConsole.Status()
                 .Spinner(Spinner.Known.Dots)
                 .StartAsync("[yellow]Scanning OneDrive folder structure...[/]", async ctx =>
                 {
-                    allItems = await provider.ListItemsAsync(downloadConfig, cancellationToken);
+                    allItems = await provider.ListItemsAsync(shareUrl, cancellationToken);
 
                     // Count files and folders in single pass
-                    var fileCount = 0;
-                    var folderCount = 0;
                     foreach (var item in allItems)
                     {
                         if (item.IsFolder)
@@ -162,9 +153,7 @@ public sealed class OneDriveSourceCommand(
                 throw new InvalidOperationException("Failed to scan OneDrive folder");
             }
 
-            // Count already done in Status block, reuse or recalculate
-            var (files, folders) = CountItemTypes(allItems);
-            AnsiConsole.MarkupLine($"{OutputMarkers.Success} Scan complete: {files} files, {folders} folders");
+            AnsiConsole.MarkupLine($"{OutputMarkers.Success} Scan complete: {fileCount} files, {folderCount} folders");
             AnsiConsole.WriteLine();
 
             // Phase 2: Analyze changes
@@ -173,7 +162,8 @@ public sealed class OneDriveSourceCommand(
             var analysis = DownloadAnalyzer.Analyze(
                 allItems,
                 outputDirectory,
-                downloadConfig,
+                includePatterns,
+                excludePatterns,
                 includeOrphans: options.Clean || options.CleanAll,
                 includeAllOrphans: options.CleanAll,
                 forceRefresh: options.ForceRefresh
@@ -190,14 +180,14 @@ public sealed class OneDriveSourceCommand(
                 {
                     AnsiConsole.MarkupLine("[dim]Add --clean to remove orphaned files.[/]");
                 }
-                return;
+                return 0;
             }
 
             // Handle orphaned files if --clean specified
             if ((options.Clean || options.CleanAll) && analysis.OrphanedFiles is not [])
             {
 #pragma warning disable CA2016 // Spectre.Console ConfirmAsync doesn't support CancellationToken
-                if (!await AnsiConsole.ConfirmAsync($"[yellow]Delete {analysis.OrphanedFiles.Count} orphaned file(s)?[/]").ConfigureAwait(false))
+                if (!await AnsiConsole.ConfirmAsync($"[yellow]Delete {analysis.OrphanedFiles.Count} orphaned file(s)?[/]"))
 #pragma warning restore CA2016
                 {
                     AnsiConsole.MarkupLine("[dim]Skipping cleanup.[/]");
@@ -216,7 +206,7 @@ public sealed class OneDriveSourceCommand(
             if (analysis.Statistics.TotalFilesToDownload == 0)
             {
                 AnsiConsole.MarkupLine($"{OutputMarkers.Success} All files are up to date!");
-                return;
+                return 0;
             }
 
             // Phase 3: Download files with progress
@@ -259,7 +249,7 @@ public sealed class OneDriveSourceCommand(
             // Success message
             var panel = new Panel(
                 $"[green]Downloaded {downloadedFiles.Count} file(s)![/]\n\n" +
-                $"[bold]Files saved to:[/] [cyan]{outputDirectory}[/]\n\n" +
+                $"[bold]Files saved to:[/] [cyan]{Markup.Escape(outputDirectory)}[/]\n\n" +
                 $"[dim]Statistics:[/]\n" +
                 $"  + New: {analysis.Statistics.NewFiles}\n" +
                 $"  ~ Updated: {analysis.Statistics.ModifiedFiles}\n" +
@@ -272,35 +262,33 @@ public sealed class OneDriveSourceCommand(
             .WithSuccessStyle();
 
             AnsiConsole.Write(panel);
+
+            return 0;
         }
-        catch (Exception ex)
+        catch (HttpRequestException ex)
         {
             ErrorPanels.ShowException(ex);
             logger.DownloadFailed(ex);
+            return 1;
         }
-    }
-
-    /// <summary>
-    /// Counts files and folders in a single pass
-    /// </summary>
-    private static (int files, int folders) CountItemTypes(IReadOnlyList<OneDriveItem> items)
-    {
-        var files = 0;
-        var folders = 0;
-
-        foreach (var item in items)
+        catch (InvalidOperationException ex)
         {
-            if (item.IsFolder)
-            {
-                folders++;
-            }
-            else
-            {
-                files++;
-            }
+            ErrorPanels.ShowException(ex);
+            logger.DownloadFailed(ex);
+            return 1;
         }
-
-        return (files, folders);
+        catch (IOException ex)
+        {
+            ErrorPanels.ShowException(ex);
+            logger.DownloadFailed(ex);
+            return 1;
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            ErrorPanels.ShowException(ex);
+            logger.DownloadFailed(ex);
+            return 1;
+        }
     }
 
     /// <summary>
@@ -363,7 +351,7 @@ public sealed class OneDriveSourceCommand(
         foreach (var item in items)
         {
             var (path, details) = selector(item);
-            table.AddRow($"[dim]{marker}[/] {path}", details);
+            table.AddRow($"[dim]{marker}[/] {Markup.Escape(path)}", Markup.Escape(details));
         }
 
         AnsiConsole.Write(table);
@@ -382,7 +370,7 @@ public sealed class OneDriveSourceCommand(
 
         foreach (var file in files)
         {
-            table.AddRow($"[dim]-[/] {file.Name}", FileSizeFormatter.Format(file.Length));
+            table.AddRow($"[dim]-[/] {Markup.Escape(file.Name)}", FileSizeFormatter.Format(file.Length));
         }
 
         AnsiConsole.Write(table);

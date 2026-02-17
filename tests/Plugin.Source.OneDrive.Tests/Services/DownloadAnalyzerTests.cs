@@ -33,10 +33,9 @@ public sealed class DownloadAnalyzerTests : IDisposable
         {
             CreateRemoteItem("photo.jpg", 1024)
         };
-        var config = CreateConfig();
 
         // Act
-        var result = DownloadAnalyzer.Analyze(remoteItems, tempDirectory, config);
+        var result = DownloadAnalyzer.Analyze(remoteItems, tempDirectory);
 
         // Assert
         Assert.HasCount(1, result.Items);
@@ -56,10 +55,9 @@ public sealed class DownloadAnalyzerTests : IDisposable
             CreateRemoteItem("photo2.jpg", 2048),
             CreateRemoteItem("photo3.jpg", 4096)
         };
-        var config = CreateConfig();
 
         // Act
-        var result = DownloadAnalyzer.Analyze(remoteItems, tempDirectory, config);
+        var result = DownloadAnalyzer.Analyze(remoteItems, tempDirectory);
 
         // Assert
         Assert.HasCount(3, result.Items);
@@ -80,10 +78,8 @@ public sealed class DownloadAnalyzerTests : IDisposable
         var remoteItem = CreateRemoteItem("photo.jpg", 1024, lastModified);
         CreateLocalFile("photo.jpg", 1024, lastModified);
 
-        var config = CreateConfig();
-
         // Act
-        var result = DownloadAnalyzer.Analyze([remoteItem], tempDirectory, config);
+        var result = DownloadAnalyzer.Analyze([remoteItem], tempDirectory);
 
         // Assert
         Assert.HasCount(1, result.Items);
@@ -103,10 +99,8 @@ public sealed class DownloadAnalyzerTests : IDisposable
         var remoteItem = CreateRemoteItem("photo.jpg", 1024, remoteTime);
         CreateLocalFile("photo.jpg", 1024, localTime);
 
-        var config = CreateConfig();
-
         // Act
-        var result = DownloadAnalyzer.Analyze([remoteItem], tempDirectory, config);
+        var result = DownloadAnalyzer.Analyze([remoteItem], tempDirectory);
 
         // Assert
         Assert.AreEqual(FileStatus.Unchanged, result.Items[0].Status);
@@ -124,10 +118,8 @@ public sealed class DownloadAnalyzerTests : IDisposable
         var remoteItem = CreateRemoteItem("photo.jpg", 2048, lastModified);
         CreateLocalFile("photo.jpg", 1024, lastModified); // Different size
 
-        var config = CreateConfig();
-
         // Act
-        var result = DownloadAnalyzer.Analyze([remoteItem], tempDirectory, config);
+        var result = DownloadAnalyzer.Analyze([remoteItem], tempDirectory);
 
         // Assert
         Assert.AreEqual(FileStatus.Modified, result.Items[0].Status);
@@ -147,10 +139,8 @@ public sealed class DownloadAnalyzerTests : IDisposable
         var remoteItem = CreateRemoteItem("photo.jpg", 1024, remoteTime);
         CreateLocalFile("photo.jpg", 1024, localTime); // Same size, different date
 
-        var config = CreateConfig();
-
         // Act
-        var result = DownloadAnalyzer.Analyze([remoteItem], tempDirectory, config);
+        var result = DownloadAnalyzer.Analyze([remoteItem], tempDirectory);
 
         // Assert
         Assert.AreEqual(FileStatus.Modified, result.Items[0].Status);
@@ -169,10 +159,8 @@ public sealed class DownloadAnalyzerTests : IDisposable
         var remoteItem = CreateRemoteItem("photo.jpg", 1024, lastModified);
         CreateLocalFile("photo.jpg", 1024, lastModified); // Would normally be unchanged
 
-        var config = CreateConfig();
-
         // Act
-        var result = DownloadAnalyzer.Analyze([remoteItem], tempDirectory, config, forceRefresh: true);
+        var result = DownloadAnalyzer.Analyze([remoteItem], tempDirectory, forceRefresh: true);
 
         // Assert
         Assert.AreEqual(FileStatus.Modified, result.Items[0].Status);
@@ -184,10 +172,9 @@ public sealed class DownloadAnalyzerTests : IDisposable
     {
         // Arrange
         var remoteItem = CreateRemoteItem("new-photo.jpg", 1024);
-        var config = CreateConfig();
 
         // Act
-        var result = DownloadAnalyzer.Analyze([remoteItem], tempDirectory, config, forceRefresh: true);
+        var result = DownloadAnalyzer.Analyze([remoteItem], tempDirectory, forceRefresh: true);
 
         // Assert
         Assert.AreEqual(FileStatus.New, result.Items[0].Status); // Still new, not modified
@@ -206,10 +193,9 @@ public sealed class DownloadAnalyzerTests : IDisposable
         {
             CreateRemoteItem("existing.jpg", 1024)
         };
-        var config = CreateConfig();
 
         // Act
-        var result = DownloadAnalyzer.Analyze(remoteItems, tempDirectory, config, includeOrphans: true);
+        var result = DownloadAnalyzer.Analyze(remoteItems, tempDirectory, includeOrphans: true);
 
         // Assert
         Assert.HasCount(1, result.OrphanedFiles);
@@ -226,10 +212,9 @@ public sealed class DownloadAnalyzerTests : IDisposable
         {
             CreateRemoteItem("existing.jpg", 1024)
         };
-        var config = CreateConfig();
 
         // Act
-        var result = DownloadAnalyzer.Analyze(remoteItems, tempDirectory, config, includeOrphans: false);
+        var result = DownloadAnalyzer.Analyze(remoteItems, tempDirectory, includeOrphans: false);
 
         // Assert
         Assert.IsEmpty(result.OrphanedFiles);
@@ -241,10 +226,9 @@ public sealed class DownloadAnalyzerTests : IDisposable
         // Arrange
         CreateLocalFile("image.jpg", 1024);     // Should be orphan
         CreateLocalFile("document.pdf", 2048);  // Should NOT be orphan (not filtered)
-        var config = CreateConfig();
 
         // Act (no remote files, so all local files are potentially orphans)
-        var result = DownloadAnalyzer.Analyze([], tempDirectory, config, includeOrphans: true);
+        var result = DownloadAnalyzer.Analyze([], tempDirectory, includeOrphans: true);
 
         // Assert
         Assert.HasCount(1, result.OrphanedFiles);
@@ -257,10 +241,9 @@ public sealed class DownloadAnalyzerTests : IDisposable
         // Arrange
         CreateLocalFile("image.jpg", 1024);
         CreateLocalFile("document.pdf", 2048);
-        var config = CreateConfig();
 
         // Act
-        var result = DownloadAnalyzer.Analyze([], tempDirectory, config, includeOrphans: true, includeAllOrphans: true);
+        var result = DownloadAnalyzer.Analyze([], tempDirectory, includeOrphans: true, includeAllOrphans: true);
 
         // Assert
         Assert.HasCount(2, result.OrphanedFiles);
@@ -279,10 +262,9 @@ public sealed class DownloadAnalyzerTests : IDisposable
             new() { Id = "1", Name = "Gallery", IsFolder = true, Size = 0, LastModified = DateTime.UtcNow },
             CreateRemoteItem("photo.jpg", 1024)
         };
-        var config = CreateConfig();
 
         // Act
-        var result = DownloadAnalyzer.Analyze(remoteItems, tempDirectory, config);
+        var result = DownloadAnalyzer.Analyze(remoteItems, tempDirectory);
 
         // Assert
         Assert.HasCount(1, result.Items);
@@ -313,10 +295,8 @@ public sealed class DownloadAnalyzerTests : IDisposable
         Directory.CreateDirectory(nestedDir);
         CreateLocalFile(Path.Combine("Gallery", "2024", "photo.jpg"), 1024, lastModified);
 
-        var config = CreateConfig();
-
         // Act
-        var result = DownloadAnalyzer.Analyze([remoteItem], tempDirectory, config);
+        var result = DownloadAnalyzer.Analyze([remoteItem], tempDirectory);
 
         // Assert
         Assert.AreEqual(FileStatus.Unchanged, result.Items[0].Status);
@@ -343,10 +323,8 @@ public sealed class DownloadAnalyzerTests : IDisposable
         CreateLocalFile("modified.jpg", 1500, now);  // Different size = modified
         CreateLocalFile("unchanged.jpg", 3000, now); // Same = unchanged
 
-        var config = CreateConfig();
-
         // Act
-        var result = DownloadAnalyzer.Analyze(remoteItems, tempDirectory, config);
+        var result = DownloadAnalyzer.Analyze(remoteItems, tempDirectory);
 
         // Assert
         Assert.AreEqual(1, result.Statistics.NewFiles);
@@ -391,14 +369,6 @@ public sealed class DownloadAnalyzerTests : IDisposable
         {
             File.SetLastWriteTimeUtc(fullPath, lastModified.Value);
         }
-    }
-
-    private static OneDriveConfig CreateConfig()
-    {
-        return new OneDriveConfig
-        {
-            ShareUrl = "https://1drv.ms/f/s!example"
-        };
     }
 
     #endregion

@@ -135,20 +135,6 @@ public static class TestData
 
     #endregion
 
-    #region OneDriveConfig
-
-    /// <summary>
-    /// Creates a default <see cref="OneDriveConfig"/> for testing.
-    /// </summary>
-    /// <param name="shareUrl">Share URL (defaults to test URL).</param>
-    /// <returns>A valid OneDriveConfig instance.</returns>
-    public static OneDriveConfig OneDriveConfig(string shareUrl = "https://1drv.ms/f/s!example") => new()
-    {
-        ShareUrl = shareUrl
-    };
-
-    #endregion
-
     #region DownloadStatistics
 
     /// <summary>

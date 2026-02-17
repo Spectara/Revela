@@ -8,7 +8,7 @@ namespace Spectara.Revela.Plugin.Source.OneDrive.Services;
 /// <summary>
 /// Analyzes local files vs OneDrive files to determine download actions
 /// </summary>
-public sealed partial class DownloadAnalyzer
+public sealed class DownloadAnalyzer
 {
     private const double LastModifiedToleranceSeconds = 5.0;
 
@@ -21,7 +21,8 @@ public sealed partial class DownloadAnalyzer
     /// </summary>
     /// <param name="remoteItems">Remote OneDrive items</param>
     /// <param name="destinationDirectory">Local destination directory</param>
-    /// <param name="config">OneDrive configuration (for filter patterns)</param>
+    /// <param name="includePatterns">File patterns to include (null = defaults)</param>
+    /// <param name="excludePatterns">File patterns to exclude</param>
     /// <param name="includeOrphans">Whether to detect orphaned files</param>
     /// <param name="includeAllOrphans">Whether to include all orphans (not just filtered)</param>
     /// <param name="forceRefresh">Force re-download all files, even if they appear unchanged</param>
@@ -29,7 +30,8 @@ public sealed partial class DownloadAnalyzer
     public static DownloadAnalysis Analyze(
         IReadOnlyList<OneDriveItem> remoteItems,
         string destinationDirectory,
-        OneDriveConfig config,
+        IReadOnlyList<string>? includePatterns = null,
+        IReadOnlyList<string>? excludePatterns = null,
         bool includeOrphans = false,
         bool includeAllOrphans = false,
         bool forceRefresh = false
@@ -58,24 +60,35 @@ public sealed partial class DownloadAnalyzer
 
         // Find orphaned files if requested
         var orphanedFiles = includeOrphans
-            ? FindOrphanedFiles(destinationDirectory, remoteItems, config, includeAllOrphans)
+            ? FindOrphanedFiles(destinationDirectory, remoteItems, includePatterns, excludePatterns, includeAllOrphans)
             : [];
 
-        // Calculate statistics
-        var downloadSize = items
-            .Where(i => i.Status is FileStatus.New or FileStatus.Modified)
-            .Sum(i => i.RemoteItem.Size);
+        // Calculate statistics in single pass
+        var newFiles = 0;
+        var modifiedFiles = 0;
+        var unchangedFiles = 0;
+        long downloadSize = 0;
 
-        var orphanedSize = orphanedFiles.Sum(f => f.Length);
+        foreach (var item in items)
+        {
+            _ = item.Status switch
+            {
+                FileStatus.New => (newFiles++, downloadSize += item.RemoteItem.Size),
+                FileStatus.Modified => (modifiedFiles++, downloadSize += item.RemoteItem.Size),
+                FileStatus.Unchanged => (unchangedFiles++, 0L),
+                FileStatus.Orphaned => (0, 0L),
+                _ => (0, 0L),
+            };
+        }
 
         var stats = new DownloadStatistics
         {
-            NewFiles = items.Count(i => i.Status == FileStatus.New),
-            ModifiedFiles = items.Count(i => i.Status == FileStatus.Modified),
-            UnchangedFiles = items.Count(i => i.Status == FileStatus.Unchanged),
+            NewFiles = newFiles,
+            ModifiedFiles = modifiedFiles,
+            UnchangedFiles = unchangedFiles,
             OrphanedFiles = orphanedFiles.Count,
             TotalDownloadSize = downloadSize,
-            TotalOrphanedSize = orphanedSize
+            TotalOrphanedSize = orphanedFiles.Sum(f => f.Length)
         };
 
         return new DownloadAnalysis
@@ -151,7 +164,8 @@ public sealed partial class DownloadAnalyzer
     private static IReadOnlyList<FileInfo> FindOrphanedFiles(
         string destinationDirectory,
         IReadOnlyList<OneDriveItem> remoteItems,
-        OneDriveConfig config,
+        IReadOnlyList<string>? includePatterns,
+        IReadOnlyList<string>? excludePatterns,
         bool includeAll
     )
     {
@@ -168,7 +182,7 @@ public sealed partial class DownloadAnalyzer
         // Filter by patterns if not includeAll
         var localFiles = includeAll
             ? allLocalFiles
-            : [.. allLocalFiles.Where(f => ShouldIncludeFile(f.Name, config.IncludePatterns, config.ExcludePatterns))];
+            : [.. allLocalFiles.Where(f => ShouldIncludeFile(f.Name, includePatterns, excludePatterns))];
 
         // Build set of remote file paths (relative, normalized to forward slashes)
         var remotePaths = new HashSet<string>(

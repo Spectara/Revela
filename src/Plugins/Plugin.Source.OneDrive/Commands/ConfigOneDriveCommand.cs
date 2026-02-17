@@ -45,7 +45,7 @@ public sealed partial class ConfigOneDriveCommand(
         {
             var shareUrl = parseResult.GetValue(shareUrlOption);
 
-            return await ExecuteAsync(shareUrl, cancellationToken).ConfigureAwait(false);
+            return await ExecuteAsync(shareUrl, cancellationToken);
         });
 
         return command;
@@ -127,7 +127,7 @@ public sealed partial class ConfigOneDriveCommand(
             [OneDrivePluginConfig.SectionName] = pluginConfig
         };
 
-        await configService.UpdateProjectConfigAsync(updates, cancellationToken).ConfigureAwait(false);
+        await configService.UpdateProjectConfigAsync(updates, cancellationToken);
 
         LogConfigSaved(logger, configService.ProjectConfigPath);
 
@@ -137,10 +137,10 @@ public sealed partial class ConfigOneDriveCommand(
         var panel = new Panel(
             $"[green]OneDrive source {action}![/]\n\n" +
             $"[bold]Configuration:[/] [cyan]project.json[/]\n" +
-            (string.IsNullOrEmpty(shareUrl) ? "" : $"[bold]Share URL:[/] [dim]{shareUrl}[/]\n") +
+            (string.IsNullOrEmpty(shareUrl) ? "" : $"[bold]Share URL:[/] [dim]{Markup.Escape(shareUrl)}[/]\n") +
             $"[bold]Output directory:[/] [cyan]{sourceDir}/[/]\n\n" +
             $"[bold]Next steps:[/]\n" +
-            $"1. Run [cyan]revela source onedrive download[/] to fetch files\n" +
+            $"1. Run [cyan]revela source onedrive sync[/] to fetch files\n" +
             $"2. Run [cyan]revela generate[/] to build your site")
             .WithHeader($"[bold green]{(isFirstTime ? "Created" : "Updated")}[/]")
             .WithSuccessStyle();
