@@ -1,6 +1,6 @@
 "use strict";
 /**
- * PinchZoom - Touch & Mouse Zoom/Pan für Bilder
+ * PinchZoom - Touch & Mouse Zoom/Pan for images
  * @module PinchZoom
  */
 // ==================== CONSTANTS ====================
@@ -65,17 +65,16 @@ class PinchZoom {
             this._handleZoomToggle(createPoint(event.clientX, event.clientY));
         };
         this._onMouseDown = (event) => {
-            var _a, _b;
             if (!this._isZoomed || !this._options.panEnabled || event.button !== 0)
                 return;
             event.preventDefault();
             this._isDragging = true;
-            (_a = this._figure) === null || _a === void 0 ? void 0 : _a.classList.add(CssClass.Dragging);
+            this._figure?.classList.add(CssClass.Dragging);
             this._panState = {
                 startPoint: createPoint(event.clientX, event.clientY),
                 startTranslate: createPoint(this._transform.x, this._transform.y)
             };
-            (_b = this._figure) === null || _b === void 0 ? void 0 : _b.classList.add(CssClass.Zooming);
+            this._figure?.classList.add(CssClass.Zooming);
         };
         this._onMouseMove = (event) => {
             if (!this._isDragging || !this._panState)
@@ -84,14 +83,13 @@ class PinchZoom {
             this._handlePan(createPoint(event.clientX, event.clientY));
         };
         this._onMouseUp = () => {
-            var _a, _b;
             if (!this._isDragging)
                 return;
             this._isDragging = false;
             this._panState = null;
-            (_a = this._figure) === null || _a === void 0 ? void 0 : _a.classList.remove(CssClass.Dragging);
+            this._figure?.classList.remove(CssClass.Dragging);
             if (!this._isZoomed) {
-                (_b = this._figure) === null || _b === void 0 ? void 0 : _b.classList.remove(CssClass.Zooming);
+                this._figure?.classList.remove(CssClass.Zooming);
                 this._resetTransform();
             }
         };
@@ -146,7 +144,6 @@ class PinchZoom {
             }
         };
         this._onTouchEnd = (event) => {
-            var _a;
             if (this._swipeState && event.touches.length === 0) {
                 this._handleSwipeEnd(event.changedTouches[0]);
                 return;
@@ -155,14 +152,14 @@ class PinchZoom {
             this._panState = null;
             this._swipeState = null;
             if (this._options.resetOnEnd || !this._isZoomed) {
-                (_a = this._figure) === null || _a === void 0 ? void 0 : _a.classList.remove(CssClass.Zooming);
+                this._figure?.classList.remove(CssClass.Zooming);
                 this._resetTransform();
             }
         };
         this._element = element;
         this._figure = element.closest("figure");
         this._article = element.closest("article");
-        this._options = Object.assign(Object.assign({}, DEFAULT_OPTIONS), options);
+        this._options = { ...DEFAULT_OPTIONS, ...options };
         this._attach();
     }
     // ==================== LIFECYCLE ====================
@@ -186,8 +183,7 @@ class PinchZoom {
         }
     }
     destroy() {
-        var _a;
-        (_a = this._abortController) === null || _a === void 0 ? void 0 : _a.abort();
+        this._abortController?.abort();
         this._abortController = null;
         this._resetTransform();
     }
@@ -212,7 +208,6 @@ class PinchZoom {
         return this._originalSize;
     }
     _handleSingleTouchStart(event, touch) {
-        var _a;
         const now = Date.now();
         const point = createPoint(touch.clientX, touch.clientY);
         // Double-Tap Check
@@ -224,23 +219,22 @@ class PinchZoom {
             return;
         }
         this._lastTapTime = now;
-        // Pan (wenn gezoomt)
+        // Pan (when zoomed)
         if (this._isZoomed && this._options.panEnabled) {
             event.preventDefault();
             this._panState = {
                 startPoint: point,
                 startTranslate: createPoint(this._transform.x, this._transform.y)
             };
-            (_a = this._figure) === null || _a === void 0 ? void 0 : _a.classList.add(CssClass.Zooming);
+            this._figure?.classList.add(CssClass.Zooming);
             return;
         }
-        // Swipe-Detection
+        // Swipe detection
         if (!this._isZoomed && this._options.swipeToClose) {
             this._swipeState = { startPoint: point, startTime: now };
         }
     }
     _handlePinchStart(event, touches) {
-        var _a;
         event.preventDefault();
         this._panState = null;
         this._swipeState = null;
@@ -256,10 +250,9 @@ class PinchZoom {
             initialTranslate: createPoint(this._transform.x, this._transform.y),
             initialCenter: getCenter(rect)
         };
-        (_a = this._figure) === null || _a === void 0 ? void 0 : _a.classList.add(CssClass.Zooming);
+        this._figure?.classList.add(CssClass.Zooming);
     }
     _handleSwipe(event, touch) {
-        var _a;
         const deltaY = touch.clientY - this._swipeState.startPoint.y;
         const deltaX = touch.clientX - this._swipeState.startPoint.x;
         if (Math.abs(deltaY) <= Math.abs(deltaX) || deltaY <= 0)
@@ -270,14 +263,18 @@ class PinchZoom {
         const offsetY = (1 - scale) * SWIPE_OFFSET_MULTIPLIER;
         this._element.style.setProperty(CssVariable.SwipeY, `${offsetY}px`);
         this._element.style.setProperty(CssVariable.SwipeScale, String(scale));
-        (_a = this._figure) === null || _a === void 0 ? void 0 : _a.classList.add(CssClass.Swiping);
+        this._figure?.classList.add(CssClass.Swiping);
     }
     _handlePan(currentPoint) {
         if (!this._panState)
             return;
         const { startPoint, startTranslate } = this._panState;
         const { width, height } = this._getOriginalSize();
-        this._transform = Object.assign(Object.assign({}, this._transform), { x: this._boundTranslate(startTranslate.x + currentPoint.x - startPoint.x, this._transform.scale, width), y: this._boundTranslate(startTranslate.y + currentPoint.y - startPoint.y, this._transform.scale, height) });
+        this._transform = {
+            ...this._transform,
+            x: this._boundTranslate(startTranslate.x + currentPoint.x - startPoint.x, this._transform.scale, width),
+            y: this._boundTranslate(startTranslate.y + currentPoint.y - startPoint.y, this._transform.scale, height)
+        };
         this._applyTransform();
     }
     _handlePinch(touches) {
@@ -297,24 +294,22 @@ class PinchZoom {
         this._applyTransform();
     }
     _handleSwipeEnd(touch) {
-        var _a, _b;
         const state = this._swipeState;
         const deltaY = touch.clientY - state.startPoint.y;
         const deltaX = touch.clientX - state.startPoint.x;
-        (_a = this._figure) === null || _a === void 0 ? void 0 : _a.classList.remove(CssClass.Swiping);
+        this._figure?.classList.remove(CssClass.Swiping);
         this._element.style.removeProperty(CssVariable.SwipeY);
         this._element.style.removeProperty(CssVariable.SwipeScale);
         if (deltaY > this._options.swipeThreshold &&
             Math.abs(deltaY) > Math.abs(deltaX)) {
-            (_b = this._article) === null || _b === void 0 ? void 0 : _b.blur();
+            this._article?.blur();
         }
         this._swipeState = null;
     }
     // ==================== ZOOM LOGIC ====================
     _handleZoomToggle(point) {
-        var _a, _b;
         if (this._isZoomed) {
-            (_a = this._figure) === null || _a === void 0 ? void 0 : _a.classList.remove(CssClass.Zooming);
+            this._figure?.classList.remove(CssClass.Zooming);
             this._resetTransform();
             return;
         }
@@ -329,16 +324,15 @@ class PinchZoom {
             x: this._boundTranslate(zoomOffset.x, targetScale, width),
             y: this._boundTranslate(zoomOffset.y, targetScale, height)
         };
-        (_b = this._figure) === null || _b === void 0 ? void 0 : _b.classList.add(CssClass.Zooming);
+        this._figure?.classList.add(CssClass.Zooming);
         this._applyTransform();
     }
     _updateZoomState() {
-        var _a, _b;
         if (this._isZoomed) {
-            (_a = this._figure) === null || _a === void 0 ? void 0 : _a.classList.add(CssClass.Zooming);
+            this._figure?.classList.add(CssClass.Zooming);
         }
         else {
-            (_b = this._figure) === null || _b === void 0 ? void 0 : _b.classList.remove(CssClass.Zooming);
+            this._figure?.classList.remove(CssClass.Zooming);
             this._resetTransform();
         }
     }
@@ -363,7 +357,7 @@ class PinchZoom {
 // ==================== PUBLIC API ====================
 const instances = new WeakMap();
 /**
- * Initialisiert PinchZoom für alle Elemente die dem Selektor entsprechen
+ * Initialize PinchZoom for all elements matching the selector
  */
 const initPinchZoom = (selector = "main .gallery article figure img", options = {}) => {
     document.querySelectorAll(selector).forEach((element) => {
@@ -373,11 +367,10 @@ const initPinchZoom = (selector = "main .gallery article figure img", options = 
     });
 };
 /**
- * Entfernt PinchZoom von einem Element
+ * Remove PinchZoom from an element
  */
 const destroyPinchZoom = (element) => {
-    var _a;
-    (_a = instances.get(element)) === null || _a === void 0 ? void 0 : _a.destroy();
+    instances.get(element)?.destroy();
     instances.delete(element);
 };
 // ==================== INIT ====================
@@ -394,7 +387,7 @@ if (document.readyState === "loading") {
 else {
     init();
 }
-// Global verfügbar machen (für CodePen / non-module Umgebung)
+// Expose globally (for CodePen / non-module environments)
 window.PinchZoom = {
     init: initPinchZoom,
     destroy: destroyPinchZoom

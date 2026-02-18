@@ -1,5 +1,5 @@
 {{~##
-  Recursive Navigation Template - Expose Theme
+  Recursive Navigation Template - Lumina Theme
 
   Structure:
   - Section with children: <section><h3>Title</h3>...children...</section>
@@ -29,9 +29,9 @@
 {{~ end ~}}
 </section>
 {{~ else ~}}
-{{~ # Top-level leaf = section with link (flat navigation) ~}}
+{{~ # Top-level leaf = section with heading link (consistent with branch sections) ~}}
 <section>
-  <a href="{{ basepath }}{{ item.url }}"{{ item.current ? ' class="active"' : '' }}>{{ item.text }}</a>
+  <h3><a href="{{ basepath }}{{ item.url }}"{{ item.current ? ' class="active"' : '' }}>{{ item.text }}</a></h3>
 </section>
 {{~ end ~}}
 {{~ else if item.children.size > 0 ~}}

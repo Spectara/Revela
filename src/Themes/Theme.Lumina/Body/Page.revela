@@ -9,7 +9,7 @@ Expects:
 - basepath: Relative path to root
 ##~}}
 {{~ # Page Content (rendered from _index.revela body using Markdig) ~}}
-<section class="page-content">
+<section>
     {{~ if gallery.title ~}}
     <h1>{{ gallery.title }}</h1>
     {{~ end ~}}

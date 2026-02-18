@@ -56,36 +56,20 @@ Edit `site.json` in your project root:
 }
 ```
 
-### Theme Options
-
-Edit `project.json`:
-
-```json
-{
-  "theme": {
-    "name": "Lumina",
-    "options": {
-      "accentColor": "#007bff",
-      "showExif": true,
-      "galleryColumns": 3
-    }
-  }
-}
-```
-
 ## Gallery Metadata
 
-Add `gallery.md` to any source folder:
+Add `_index.revela` to any source folder:
 
-```markdown
----
-title: Summer 2024
-date: 2024-08-15
-featured: true
----
+```
++++
+title = "Summer 2024"
+description = "Photos from my summer vacation in Italy."
++++
 
 Photos from my summer vacation in Italy.
 ```
+
+Supported frontmatter fields: `title`, `slug`, `description`, `hidden`, `pinned`, `template`, `sort`, `filter`.
 
 ## Extensions
 

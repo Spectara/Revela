@@ -8,14 +8,32 @@
     <span><strong>{{ statistics.lenses | array.size }}</strong> Lenses</span>
 </p>
 
+{{~ if statistics.cameras && statistics.cameras.size > 0 ~}}
 {{ include 'statistics/cameras' statistics }}
+{{~ end ~}}
+{{~ if statistics.lenses && statistics.lenses.size > 0 ~}}
 {{ include 'statistics/lenses' statistics }}
+{{~ end ~}}
+{{~ if statistics.focal_lengths && statistics.focal_lengths.size > 0 ~}}
 {{ include 'statistics/focal-lengths' statistics }}
+{{~ end ~}}
+{{~ if statistics.apertures && statistics.apertures.size > 0 ~}}
 {{ include 'statistics/apertures' statistics }}
+{{~ end ~}}
+{{~ if statistics.shutter_speeds && statistics.shutter_speeds.size > 0 ~}}
 {{ include 'statistics/shutter-speeds' statistics }}
+{{~ end ~}}
+{{~ if statistics.iso_values && statistics.iso_values.size > 0 ~}}
 {{ include 'statistics/iso' statistics }}
+{{~ end ~}}
+{{~ if statistics.orientations && statistics.orientations.size > 0 ~}}
 {{ include 'statistics/orientations' statistics }}
+{{~ end ~}}
+{{~ if statistics.images_by_year && statistics.images_by_year.size > 0 ~}}
 {{ include 'statistics/timeline' statistics }}
+{{~ end ~}}
+{{~ if statistics.images_by_month && statistics.images_by_month.size > 0 ~}}
 {{ include 'statistics/months' statistics }}
+{{~ end ~}}
 
 </section>

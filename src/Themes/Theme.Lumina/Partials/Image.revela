@@ -33,7 +33,7 @@ rendered size instead of viewport. Firefox/Safari fallback to 100vw.
             {{- image_basepath }}{{ image.url }}/{{ size }}.{{ format }} {{ actual_width }}w{{ !for.last ? " , " : "" }}
             {{~ end ~}}">
         {{~ end ~}}
-        <img alt="{{ alt_text }}" src="{{ image_basepath }}{{ image.url }}/640.jpg" sizes="auto"
+        <img alt="{{ alt_text }}" src="{{ image_basepath }}{{ image.url }}/640.{{ image_formats | array.last }}" sizes="auto"
             width="{{ image.width }}" height="{{ image.height }}" loading="lazy" decoding="async">
     </picture>
 
@@ -62,7 +62,7 @@ rendered size instead of viewport. Firefox/Safari fallback to 100vw.
             <source type="image/{{ format }}"
                 srcset="{{ image_basepath }}{{ image.url }}/{{ largest_size }}.{{ format }}">
             {{~ end ~}}
-            <img alt="{{ alt_text }}" src="{{ image_basepath }}{{ image.url }}/{{ largest_size }}.jpg"
+            <img alt="{{ alt_text }}" src="{{ image_basepath }}{{ image.url }}/{{ largest_size }}.{{ image_formats | array.last }}"
                 width="{{ image.width }}" height="{{ image.height }}" loading="lazy" decoding="async">
         </picture>
     </figure>

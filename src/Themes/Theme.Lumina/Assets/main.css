@@ -325,67 +325,6 @@ header {
       gap: var(--space-s);
     }
 
-    >form {
-      position: relative;
-      flex-grow: 1;
-      transition: width var(--animation-time) ease-in-out, opacity var(--animation-time) ease-in-out;
-
-      input[type=search] {
-        all: unset;
-        font-size: var(--font-size-3);
-        font-weight: 100;
-        width: 100%;
-        transition: border-bottom var(--animation-time) ease-in-out, background-color var(--animation-time) ease-in-out;
-        border-bottom: solid 1px hsl(var(--color-hsl) / 0);
-
-        &:focus,
-        &:not(:placeholder-shown) {
-          color: var(--color-light);
-          border-bottom: solid 1px hsl(var(--color-hsl) / 0.3);
-        }
-
-        &:not(:placeholder-shown):not(:focus) {
-          color: hsl(var(--color-light-hsl) / 0.5);
-          border-bottom: solid 1px hsl(var(--color-hsl) / 0.1);
-        }
-
-        /* clears the 'X' from Chrome */
-        &::-webkit-search-decoration,
-        &::-webkit-search-cancel-button,
-        &::-webkit-search-results-button,
-        &::-webkit-search-results-decoration {
-          appearance: none;
-        }
-      }
-
-      >label,
-      >button {
-        all: unset;
-        cursor: pointer;
-        position: absolute;
-        width: var(--font-size-1);
-        right: 0;
-        top: 50%;
-        translate: 0 -35%;
-        color: var(--color-light);
-        opacity: 0;
-        pointer-events: none;
-        visibility: hidden;
-        transition: opacity var(--animation-time) ease-in-out, visibility var(--animation-time) ease-in-out allow-discrete, color var(--animation-time) ease-in-out;
-
-        &:hover {
-          color: var(--color-dark);
-        }
-      }
-
-      &:has(input[type=search]:placeholder-shown)>label,
-      &:has(input[type=search]:not(:placeholder-shown))>button {
-        opacity: 1;
-        pointer-events: all;
-        visibility: visible;
-      }
-    }
-
     nav {
       display: flex;
       justify-content: flex-end;
@@ -410,19 +349,16 @@ header {
 
     @media (width <=600px) {
 
-      nav,
-      form {
+      nav {
         display: none;
       }
     }
   }
 }
 
-/* Nav open hides header nav/form (cross-component) */
+/* Nav open hides header nav (cross-component) */
 body>nav:focus-within~header nav,
-body>nav:focus-within~header form,
-.nav-trigger:checked~header nav,
-.nav-trigger:checked~header form {
+.nav-trigger:checked~header nav {
   opacity: 0;
 }
 

@@ -4,7 +4,7 @@ Main Layout Template - Lumina Theme
 Main layout for all pages, supports dynamic body templates.
 
 Expects:
-- site: { title, description, author, keywords, copyright }
+- site: { title, description, author, copyright }
 - gallery: { title, body?, template? }
 - nav_items: Array of NavigationItem for navigation
 - images: Array of ImageData for gallery (optional)
@@ -28,7 +28,6 @@ Body Template Selection:
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="description" content="{{ site.description }}">
     <meta name="author" content="{{ site.author }}">
-    <meta name="keywords" content="{{ site.keywords }}">
     {{~ include 'favicon' ~}}
     {{~ for css in stylesheets ~}}
     <link type="text/css" rel="stylesheet" media="all" href="{{ basepath }}_assets/{{ css }}">

@@ -13,7 +13,7 @@ Expects:
 ##~}}
 {{~ # Gallery Introduction (rendered from _index.revela body using Markdig) ~}}
 {{~ if gallery.body ~}}
-<section class="gallery-intro">
+<section>
     {{ gallery.body }}
 </section>
 {{~ end ~}}
