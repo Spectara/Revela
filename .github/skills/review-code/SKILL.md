@@ -39,9 +39,17 @@ newer BCL APIs, and modern idioms. If an older pattern has a modern replacement,
 - **Pattern matching** — prefer `is`, `is not`, switch expressions (warning level)
 - **Index/range operators** — prefer `^1` and `..` syntax (warning level)
 - **Braces** — always required, even for single-line `if` (`csharp_prefer_braces = true:warning`)
-- **`FrozenDictionary`** — use for static readonly dictionaries that are never mutated (faster lookups)
+- **Frozen collections** — use `FrozenDictionary` / `FrozenSet` for static readonly collections that are never mutated (faster lookups than `Dictionary` / `HashSet`)
 - **Modern BCL APIs** — prefer `Random.Shared`, `TimeProvider`, `Lock` (C# 13), `SearchValues`, `Regex.EnumerateMatches`, etc. over older equivalents
 - **Expression bodies** — use for single-expression methods and properties
+- **Method groups over passthrough lambdas** — when a lambda simply forwards all parameters to a method with an identical signature, use the method group directly:
+  ```csharp
+  // ❌ DON'T — redundant passthrough lambda
+  Register((a, b, c) => OnRegistered(a, b, c));
+
+  // ✅ DO — method group
+  Register(OnRegistered);
+  ```
 - When in doubt, check if there is a newer API or language feature that replaces older code
 
 ## 3. Boolean & Null Checking (Revela Custom Rule)
@@ -67,6 +75,18 @@ newer BCL APIs, and modern idioms. If an older pattern has a modern replacement,
 - Always pass `cancellationToken` to downstream calls
 - Async methods must have `Async` suffix
 - **No `ConfigureAwait(false)`** — CA2007 is suppressed (application, not library). Find and remove all occurrences.
+- **No fake-async** — never wrap synchronous code in `Task.FromResult()` with an `Async` suffix. If a method never awaits, make it synchronous:
+  ```csharp
+  // ❌ DON'T — fake async
+  public static Task<Result> DoWorkAsync(CancellationToken ct = default)
+  {
+      _ = ct;
+      return Task.FromResult(SyncWork());
+  }
+
+  // ✅ DO — synchronous method, no Async suffix
+  public static Result DoWork() => SyncWork();
+  ```
 - **Shutdown/wait loops** — never poll with `while + Task.Delay(100)`. Use `CancellationTokenSource.CreateLinkedTokenSource` + `Task.Delay(Timeout.Infinite, token)` instead:
   ```csharp
   // ❌ AVOID — CPU wakeups, 100ms latency
@@ -91,6 +111,7 @@ newer BCL APIs, and modern idioms. If an older pattern has a modern replacement,
 ## 6. String & Culture
 
 - **`StringComparison.Ordinal`** — always specify on `Contains()`, `Replace()`, `IndexOf()`, `StartsWith()`, `EndsWith()`
+- **Exception: char overloads** — `StartsWith(char)` and `EndsWith(char)` have no `StringComparison` parameter (char comparison is inherently ordinal). Using `StartsWith("-", StringComparison.Ordinal)` triggers CA1865 requiring the char overload. Use `StartsWith('-')` directly.
 - **`CultureInfo.InvariantCulture`** — for number/date formatting
 - **Prefer simplified interpolation** — `$"{x}"` not `$"{x.ToString()}"` (warning level)
 
@@ -129,6 +150,15 @@ newer BCL APIs, and modern idioms. If an older pattern has a modern replacement,
   // ✅ DO — built-in Spectre method
   Markup.Escape(userInput)
   ```
+- **Use `PanelStyles` extension methods** — never manually set `.Border(BoxBorder.Rounded).BorderStyle(...)`. Use `WithInfoStyle()`, `WithWarningStyle()`, `WithErrorStyle()`, `WithSuccessStyle()`, `WithStandardStyle()` from `Spectara.Revela.Sdk.PanelStyles`
+  ```csharp
+  // ❌ DON'T — manual panel styling
+  panel.Border(BoxBorder.Rounded).BorderStyle(new Style(Color.Cyan1));
+
+  // ✅ DO — consistent SDK styles
+  panel.WithInfoStyle();
+  ```
+- **Use `ErrorPanels`** for error/warning display — `ErrorPanels.ShowError(title, message)`, `ErrorPanels.ShowException(ex)`, `ErrorPanels.ShowWarning(title, message)` from `Spectara.Revela.Sdk`. Don't build custom error panels manually.
 
 ## 11. Paths
 
