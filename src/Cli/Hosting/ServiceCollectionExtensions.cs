@@ -16,7 +16,7 @@ internal static class ServiceCollectionExtensions
     {
         services.AddSingleton<CommandGroupRegistry>();
         services.AddSingleton<CommandOrderRegistry>();
-        services.AddTransient<CommandPromptBuilder>();
+        services.AddTransient<CommandExecutor>();
         services.AddTransient<IInteractiveMenuService, InteractiveMenuService>();
 
         // Note: Wizards are registered in Commands.ServiceCollectionExtensions.AddRevelaCommands()

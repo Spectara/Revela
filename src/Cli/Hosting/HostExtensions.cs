@@ -156,131 +156,96 @@ internal static class HostExtensions
     }
 
     /// <summary>
-    /// Registers order for subcommands based on command name.
-    /// Handles generate, clean, theme, plugin, and packages commands.
+    /// Subcommand order definitions for each parent command.
+    /// Maps parent command name → (subcommand name → order).
+    /// Unknown subcommands (e.g., from plugins) get <see cref="CommandOrderRegistry.DefaultOrder"/>.
+    /// </summary>
+    private static readonly Dictionary<string, Dictionary<string, int>> SubcommandOrders = new(StringComparer.Ordinal)
+    {
+        // Order within generate: all (0), scan (10), statistics (20-plugin), pages (30), images (40)
+        ["generate"] = new(StringComparer.Ordinal)
+        {
+            ["all"] = AllCommand.Order,
+            ["scan"] = 10,
+            ["pages"] = 30,
+            ["images"] = 40,
+        },
+        // Order within clean: all (0), output (10), images (15), cache (20), statistics (30-plugin)
+        ["clean"] = new(StringComparer.Ordinal)
+        {
+            ["all"] = CleanAllCommand.Order,
+            ["output"] = CleanOutputCommand.Order,
+            ["images"] = CleanImagesCommand.Order,
+            ["cache"] = CleanCacheCommand.Order,
+        },
+        // Order within theme: list (10), files (20), extract (30)
+        ["theme"] = new(StringComparer.Ordinal)
+        {
+            ["list"] = 10,
+            ["files"] = 20,
+            ["extract"] = 30,
+        },
+        // Order within plugin: list (10), install (20), uninstall (30)
+        ["plugin"] = new(StringComparer.Ordinal)
+        {
+            ["list"] = 10,
+            ["install"] = 20,
+            ["uninstall"] = 30,
+        },
+        // Order within packages: refresh (10), search (20)
+        ["packages"] = new(StringComparer.Ordinal)
+        {
+            ["refresh"] = 10,
+            ["search"] = 20,
+        },
+    };
+
+    /// <summary>
+    /// Registers order for subcommands based on command name using the <see cref="SubcommandOrders"/> lookup.
     /// </summary>
     private static void RegisterSubcommandOrders(Command command, CommandOrderRegistry orderRegistry)
     {
-        switch (command.Name)
+        if (!SubcommandOrders.TryGetValue(command.Name, out var orderLookup))
         {
-            case "generate":
-                RegisterGenerateSubcommandOrders(command, orderRegistry);
-                break;
-            case "clean":
-                RegisterCleanSubcommandOrders(command, orderRegistry);
-                break;
-            case "theme":
-                RegisterThemeSubcommandOrders(command, orderRegistry);
-                break;
-            case "plugin":
-                RegisterPluginSubcommandOrders(command, orderRegistry);
-                break;
-            case "packages":
-                RegisterPackagesSubcommandOrders(command, orderRegistry);
-                break;
-            default:
-                // Commands without special subcommand ordering (create, init, config, restore)
-                break;
+            return;
         }
-    }
 
-    /// <summary>
-    /// Registers order for subcommands of generate command.
-    /// </summary>
-    private static void RegisterGenerateSubcommandOrders(Command generateCmd, CommandOrderRegistry orderRegistry)
-    {
-        // Order within generate: all (0), scan (10), statistics (20-plugin), pages (30), images (40)
-        foreach (var sub in generateCmd.Subcommands)
+        foreach (var sub in command.Subcommands)
         {
-            var order = sub.Name switch
-            {
-                "all" => AllCommand.Order,
-                "scan" => 10,
-                "pages" => 30,
-                "images" => 40,
-                _ => CommandOrderRegistry.DefaultOrder
-            };
+            var order = orderLookup.TryGetValue(sub.Name, out var value) ? value : CommandOrderRegistry.DefaultOrder;
             orderRegistry.Register(sub, order);
         }
     }
 
     /// <summary>
-    /// Registers order for subcommands of clean command.
+    /// Config subcommand metadata: order, group, and project requirement.
+    /// Commands not listed here default to (DefaultOrder, null group, requiresProject: true).
     /// </summary>
-    private static void RegisterCleanSubcommandOrders(Command cleanCmd, CommandOrderRegistry orderRegistry)
-    {
-        // Order within clean: all (0), output (10), cache (20), statistics (30-plugin)
-        foreach (var sub in cleanCmd.Subcommands)
+    private static readonly Dictionary<string, (int Order, string? Group, bool RequiresProject)> ConfigSubcommandMeta =
+        new(StringComparer.Ordinal)
         {
-            var order = sub.Name switch
-            {
-                "all" => CleanAllCommand.Order,
-                "output" => CleanOutputCommand.Order,
-                "cache" => CleanCacheCommand.Order,
-                _ => CommandOrderRegistry.DefaultOrder
-            };
-            orderRegistry.Register(sub, order);
-        }
-    }
+            // Project group: core project settings
+            // "project" doesn't require project - it creates project.json
+            ["project"] = (10, CommandGroups.ConfigProject, false),
+            ["paths"] = (20, CommandGroups.ConfigProject, true),
+            ["theme"] = (30, CommandGroups.ConfigProject, true),
+            ["image"] = (40, CommandGroups.ConfigProject, true),
+            ["site"] = (50, CommandGroups.ConfigProject, true),
+            ["sorting"] = (60, CommandGroups.ConfigProject, true),
+
+            // Packages group: feed management (global, no project needed)
+            ["feed"] = (10, CommandGroups.ConfigPackages, false),
+
+            // Addons group: optional plugin features (require project)
+            ["serve"] = (10, CommandGroups.ConfigAddons, true),
+            ["statistics"] = (20, CommandGroups.ConfigAddons, true),
+
+            // Ungrouped: locations (global, no project needed)
+            ["locations"] = (90, null, false),
+        };
 
     /// <summary>
-    /// Registers order for subcommands of theme command.
-    /// </summary>
-    private static void RegisterThemeSubcommandOrders(Command themeCmd, CommandOrderRegistry orderRegistry)
-    {
-        // Order within theme: list (10), files (20), extract (30)
-        foreach (var sub in themeCmd.Subcommands)
-        {
-            var order = sub.Name switch
-            {
-                "list" => 10,
-                "files" => 20,
-                "extract" => 30,
-                _ => CommandOrderRegistry.DefaultOrder
-            };
-            orderRegistry.Register(sub, order);
-        }
-    }
-
-    /// <summary>
-    /// Registers order for subcommands of plugin command.
-    /// </summary>
-    private static void RegisterPluginSubcommandOrders(Command pluginCmd, CommandOrderRegistry orderRegistry)
-    {
-        // Order within plugin: list (10), install (20), uninstall (30)
-        foreach (var sub in pluginCmd.Subcommands)
-        {
-            var order = sub.Name switch
-            {
-                "list" => 10,
-                "install" => 20,
-                "uninstall" => 30,
-                _ => CommandOrderRegistry.DefaultOrder
-            };
-            orderRegistry.Register(sub, order);
-        }
-    }
-
-    /// <summary>
-    /// Registers order for subcommands of packages command.
-    /// </summary>
-    private static void RegisterPackagesSubcommandOrders(Command packagesCmd, CommandOrderRegistry orderRegistry)
-    {
-        // Order within packages: refresh (10), search (20)
-        foreach (var sub in packagesCmd.Subcommands)
-        {
-            var order = sub.Name switch
-            {
-                "refresh" => 10,
-                "search" => 20,
-                _ => CommandOrderRegistry.DefaultOrder
-            };
-            orderRegistry.Register(sub, order);
-        }
-    }
-
-    /// <summary>
-    /// Registers order and groups for subcommands of config command.
+    /// Registers order, groups, and project requirements for config subcommands.
     /// </summary>
     private static void RegisterConfigSubcommandOrders(
         Command configCmd,
@@ -295,33 +260,9 @@ internal static class HostExtensions
 
         foreach (var sub in configCmd.Subcommands)
         {
-            // Assign order, group, and project requirement based on command name
-            // Commands that don't require project: project, feed, locations (setup/global)
-            // Commands that require project: theme, image, site (need project.json)
-            var (order, group, requiresProject) = sub.Name switch
-            {
-                // Project group: core project settings
-                // "project" doesn't require project - it creates project.json
-                "project" => (10, CommandGroups.ConfigProject, false),
-                "paths" => (20, CommandGroups.ConfigProject, true),
-                "theme" => (30, CommandGroups.ConfigProject, true),
-                "image" => (40, CommandGroups.ConfigProject, true),
-                "site" => (50, CommandGroups.ConfigProject, true),
-                "sorting" => (60, CommandGroups.ConfigProject, true),
-
-                // Packages group: feed management (global, no project needed)
-                "feed" => (10, CommandGroups.ConfigPackages, false),
-
-                // Addons group: optional plugin features (require project)
-                "serve" => (10, CommandGroups.ConfigAddons, true),
-                "statistics" => (20, CommandGroups.ConfigAddons, true),
-
-                // Ungrouped: locations (global, no project needed)
-                "locations" => (90, null, false),
-
-                // Plugin commands default to requiring project
-                _ => (CommandOrderRegistry.DefaultOrder, null, true)
-            };
+            var (order, group, requiresProject) = ConfigSubcommandMeta.TryGetValue(sub.Name, out var meta)
+                ? meta
+                : (CommandOrderRegistry.DefaultOrder, null, true);
 
             orderRegistry.Register(sub, order);
             if (group is not null)

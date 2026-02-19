@@ -7,7 +7,7 @@ namespace Spectara.Revela.Cli.Hosting;
 /// <summary>
 /// Builds interactive prompts for command options and arguments.
 /// </summary>
-internal sealed partial class CommandPromptBuilder(ILogger<CommandPromptBuilder> logger)
+internal static class CommandPromptBuilder
 {
     /// <summary>
     /// Prompts the user for all arguments of a command.
@@ -119,7 +119,7 @@ internal sealed partial class CommandPromptBuilder(ILogger<CommandPromptBuilder>
     /// <param name="arguments">The collected argument values.</param>
     /// <param name="options">The collected option values.</param>
     /// <returns>The arguments array for Parse/Invoke.</returns>
-    public string[] BuildArgsArray(
+    public static string[] BuildArgsArray(
         IReadOnlyList<string> commandPath,
         IReadOnlyDictionary<Argument, object?> arguments,
         IReadOnlyDictionary<Option, object?> options)
@@ -182,8 +182,6 @@ internal sealed partial class CommandPromptBuilder(ILogger<CommandPromptBuilder>
             args.Add(value.ToString()!);
         }
 
-        var builtArgs = string.Join(" ", args);
-        LogBuiltArgs(logger, builtArgs);
         return [.. args];
     }
 
@@ -313,6 +311,4 @@ internal sealed partial class CommandPromptBuilder(ILogger<CommandPromptBuilder>
         return [.. values];
     }
 
-    [LoggerMessage(Level = LogLevel.Debug, Message = "Built args: {Args}")]
-    private static partial void LogBuiltArgs(ILogger logger, string args);
 }

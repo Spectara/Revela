@@ -100,12 +100,12 @@ internal static class ProjectResolver
             .PageSize(20)
             .WrapAround()
             .Mode(SelectionMode.Leaf)
-            .HighlightStyle(new Style(Color.Cyan1, decoration: Decoration.Bold))
+            .HighlightStyle(ConsoleUI.PromptBoldHighlightStyle)
             .AddChoiceGroup(projectsHeader, folderChoices)
             .AddChoiceGroup(setupHeader, newFolderChoice)
             .AddChoices(exitChoice);
 
-        prompt.DisabledStyle = new Style(Color.Grey);
+        prompt.DisabledStyle = ConsoleUI.GroupHeaderStyle;
 
         var selection = AnsiConsole.Prompt(prompt);
 
@@ -125,6 +125,49 @@ internal static class ProjectResolver
     }
 
     /// <summary>
+    /// Tries to match a --project/-p argument at the given index.
+    /// </summary>
+    /// <param name="args">Command line arguments.</param>
+    /// <param name="index">Current index in the args array.</param>
+    /// <param name="value">The project name value, if matched.</param>
+    /// <param name="consumed">Number of args consumed (1 for =style, 2 for space-separated).</param>
+    /// <returns>True if a project argument was matched at this index.</returns>
+    private static bool TryMatchProjectArg(string[] args, int index, out string? value, out int consumed)
+    {
+        var arg = args[index];
+
+        // --project=Name or -p=Name
+        if (arg.StartsWith("--project=", StringComparison.OrdinalIgnoreCase))
+        {
+            value = arg["--project=".Length..];
+            consumed = 1;
+            return true;
+        }
+
+        if (arg.StartsWith("-p=", StringComparison.OrdinalIgnoreCase))
+        {
+            value = arg["-p=".Length..];
+            consumed = 1;
+            return true;
+        }
+
+        // --project Name or -p Name
+        if ((arg.Equals("--project", StringComparison.OrdinalIgnoreCase) ||
+             arg.Equals("-p", StringComparison.OrdinalIgnoreCase)) &&
+            index + 1 < args.Length &&
+            !args[index + 1].StartsWith('-'))
+        {
+            value = args[index + 1];
+            consumed = 2;
+            return true;
+        }
+
+        value = null;
+        consumed = 0;
+        return false;
+    }
+
+    /// <summary>
     /// Parses --project or -p argument from command line
     /// </summary>
     /// <param name="args">Command line arguments</param>
@@ -133,26 +176,9 @@ internal static class ProjectResolver
     {
         for (var i = 0; i < args.Length; i++)
         {
-            var arg = args[i];
-
-            // --project=Name or -p=Name
-            if (arg.StartsWith("--project=", StringComparison.OrdinalIgnoreCase))
+            if (TryMatchProjectArg(args, i, out var value, out _))
             {
-                return arg["--project=".Length..];
-            }
-
-            if (arg.StartsWith("-p=", StringComparison.OrdinalIgnoreCase))
-            {
-                return arg["-p=".Length..];
-            }
-
-            // --project Name or -p Name
-            if ((arg.Equals("--project", StringComparison.OrdinalIgnoreCase) ||
-                 arg.Equals("-p", StringComparison.OrdinalIgnoreCase)) &&
-                i + 1 < args.Length &&
-                !args[i + 1].StartsWith('-'))
-            {
-                return args[i + 1];
+                return value;
             }
         }
 
@@ -170,26 +196,13 @@ internal static class ProjectResolver
 
         for (var i = 0; i < args.Length; i++)
         {
-            var arg = args[i];
-
-            // Skip --project=Name or -p=Name
-            if (arg.StartsWith("--project=", StringComparison.OrdinalIgnoreCase) ||
-                arg.StartsWith("-p=", StringComparison.OrdinalIgnoreCase))
+            if (TryMatchProjectArg(args, i, out _, out var consumed))
             {
+                i += consumed - 1; // -1 because for-loop increments
                 continue;
             }
 
-            // Skip --project Name or -p Name (both parts)
-            if ((arg.Equals("--project", StringComparison.OrdinalIgnoreCase) ||
-                 arg.Equals("-p", StringComparison.OrdinalIgnoreCase)) &&
-                i + 1 < args.Length &&
-                !args[i + 1].StartsWith('-'))
-            {
-                i++; // Skip the value too
-                continue;
-            }
-
-            result.Add(arg);
+            result.Add(args[i]);
         }
 
         return [.. result];
@@ -486,11 +499,11 @@ internal static class ProjectResolver
             .PageSize(20)
             .WrapAround()
             .Mode(SelectionMode.Leaf)
-            .HighlightStyle(new Style(Color.Cyan1, decoration: Decoration.Bold))
+            .HighlightStyle(ConsoleUI.PromptBoldHighlightStyle)
             .AddChoiceGroup("Setup", "Create new project folder")
             .AddChoices("Exit");
 
-        prompt.DisabledStyle = new Style(Color.Grey);
+        prompt.DisabledStyle = ConsoleUI.GroupHeaderStyle;
 
         var choice = AnsiConsole.Prompt(prompt);
 

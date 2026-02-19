@@ -15,6 +15,21 @@ namespace Spectara.Revela.Cli.Hosting;
 /// </remarks>
 internal static class ConsoleUI
 {
+    /// <summary>
+    /// Highlight style for simple selection prompts (cyan).
+    /// </summary>
+    internal static readonly Style PromptHighlightStyle = new(Color.Cyan1);
+
+    /// <summary>
+    /// Bold highlight style for grouped selection prompts (cyan + bold).
+    /// </summary>
+    internal static readonly Style PromptBoldHighlightStyle = new(Color.Cyan1, decoration: Decoration.Bold);
+
+    /// <summary>
+    /// Disabled/dimmed style for non-selectable group headers in selection prompts.
+    /// </summary>
+    internal static readonly Style GroupHeaderStyle = new(Color.Grey);
+
     private static readonly string[] LogoLines =
     [
         @"   ____                _       ",

@@ -6,7 +6,6 @@ using Spectara.Revela.Core.Configuration;
 using Spectara.Revela.Core.Services;
 using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Abstractions;
-using Spectara.Revela.Sdk.Output;
 
 using Spectre.Console;
 
@@ -20,7 +19,7 @@ namespace Spectara.Revela.Cli.Hosting;
 /// </summary>
 internal sealed partial class InteractiveMenuService(
     IOptions<ProjectEnvironment> projectEnvironment,
-    CommandPromptBuilder promptBuilder,
+    CommandExecutor commandExecutor,
     CommandGroupRegistry groupRegistry,
     CommandOrderRegistry orderRegistry,
     IOptionsMonitor<ProjectConfig> projectConfig,
@@ -78,11 +77,7 @@ internal sealed partial class InteractiveMenuService(
         ConsoleUI.ClearAndShowLogo();
         ConsoleUI.ShowFirstRunPanel();
 
-        var choice = AnsiConsole.Prompt(
-            new SelectionPrompt<string>()
-                .Title("[cyan]What would you like to do?[/]")
-                .HighlightStyle(new Style(Color.Cyan1))
-                .AddChoices(["Start Setup Wizard", "Skip (use menu instead)", "Exit"]));
+        var choice = PromptForAction("Start Setup Wizard");
 
         if (choice == "Exit")
         {
@@ -99,22 +94,14 @@ internal sealed partial class InteractiveMenuService(
                 return 0;
             }
 
-            // Exit code 0 = nothing installed, continue to menu
-            if (result == 0)
+            // Exit code != 0 = wizard failed or was cancelled
+            if (result != 0)
             {
-                bannerShown = true; // Don't show banner, wizard already showed welcome
-                return await RunMenuLoopAsync(cancellationToken);
+                ShowWizardIncompleteMessage("Setup");
             }
-
-            // Wizard failed or was cancelled - continue to menu
-            AnsiConsole.WriteLine();
-            AnsiConsole.MarkupLine("[yellow]Setup was not completed. Continuing to menu...[/]");
-            WaitForKeyPress();
         }
 
-        // User skipped or wizard failed - show normal menu
-        bannerShown = true; // Don't show banner again, we already showed first-run screen
-        return await RunMenuLoopAsync(cancellationToken);
+        return await ContinueToMenuAsync(cancellationToken);
     }
 
     private async Task<int> HandleNoProjectAsync(CancellationToken cancellationToken)
@@ -135,11 +122,7 @@ internal sealed partial class InteractiveMenuService(
         AnsiConsole.Write(panel);
         AnsiConsole.WriteLine();
 
-        var choice = AnsiConsole.Prompt(
-            new SelectionPrompt<string>()
-                .Title("[cyan]What would you like to do?[/]")
-                .HighlightStyle(new Style(Color.Cyan1))
-                .AddChoices(["Create New Project", "Skip (use menu instead)", "Exit"]));
+        var choice = PromptForAction("Create New Project");
 
         if (choice == "Exit")
         {
@@ -148,31 +131,33 @@ internal sealed partial class InteractiveMenuService(
 
         if (choice == "Create New Project")
         {
-            return await RunProjectWizardAsync(cancellationToken);
+            var result = await projectWizard.RunAsync(cancellationToken);
+
+            if (result != 0)
+            {
+                ShowWizardIncompleteMessage("Project creation");
+            }
         }
 
-        // User skipped or wizard failed - show normal menu
-        bannerShown = true; // Don't show banner again
-        return await RunMenuLoopAsync(cancellationToken);
+        return await ContinueToMenuAsync(cancellationToken);
     }
 
-    private async Task<int> RunProjectWizardAsync(CancellationToken cancellationToken)
+    /// <summary>
+    /// Shows a message when a wizard didn't complete successfully, then waits for key press.
+    /// </summary>
+    private static void ShowWizardIncompleteMessage(string wizardName)
     {
-        var result = await projectWizard.RunAsync(cancellationToken);
-
-        if (result == 0)
-        {
-            bannerShown = true; // Don't show banner, wizard already showed welcome
-            return await RunMenuLoopAsync(cancellationToken);
-        }
-
-        // Wizard failed or was cancelled - continue to menu
         AnsiConsole.WriteLine();
-        AnsiConsole.MarkupLine("[yellow]Project creation was not completed. Continuing to menu...[/]");
+        AnsiConsole.MarkupLine($"[yellow]{wizardName} was not completed. Continuing to menu...[/]");
         WaitForKeyPress();
+    }
 
-        // User skipped or wizard failed - show normal menu
-        bannerShown = true; // Don't show banner again
+    /// <summary>
+    /// Continues to the main menu loop, suppressing the welcome banner.
+    /// </summary>
+    private async Task<int> ContinueToMenuAsync(CancellationToken cancellationToken)
+    {
+        bannerShown = true;
         return await RunMenuLoopAsync(cancellationToken);
     }
 
@@ -266,47 +251,42 @@ internal sealed partial class InteractiveMenuService(
 
             var selection = AnsiConsole.Prompt(prompt);
 
-            switch (selection.Action)
+            if (selection.Action == MenuAction.Back)
             {
-                case MenuAction.Back:
-                    return new MenuResult(false, 0);
+                return new MenuResult(false, 0);
+            }
 
-                case MenuAction.Navigate:
-                    var subPath = new List<string>(commandPath) { selection.Command!.Name };
-                    var result = await NavigateToCommandAsync(selection.Command!, subPath, cancellationToken);
-                    if (result.ShouldExit)
-                    {
-                        return result;
-                    }
-
-                    break;
-
-                case MenuAction.Execute:
-                    var execPath = new List<string>(commandPath) { selection.Command!.Name };
-                    var execResult = await ExecuteCommandAsync(selection.Command!, execPath, cancellationToken);
-                    if (execResult.ShouldExit)
-                    {
-                        return execResult;
-                    }
-
-                    break;
-
-                case MenuAction.RunSetupWizard:
-                    var wizardResult = await RunSetupWizardAsync(cancellationToken);
-                    if (wizardResult.ShouldExit)
-                    {
-                        return wizardResult;
-                    }
-
-                    break;
-
-                case MenuAction.Exit:
-                default:
-                    break;
+            var result = await HandleMenuActionAsync(selection, commandPath, cancellationToken);
+            if (result.ShouldExit)
+            {
+                return result;
             }
         }
 
         return new MenuResult(false, 0);
+    }
+
+    /// <summary>
+    /// Dispatches a menu selection to the appropriate handler.
+    /// </summary>
+    private async Task<MenuResult> HandleMenuActionAsync(
+        MenuChoice selection,
+        List<string> commandPath,
+        CancellationToken cancellationToken)
+    {
+        if (selection.Action == MenuAction.RunSetupWizard)
+        {
+            return await RunSetupWizardAsync(cancellationToken);
+        }
+
+        var extendedPath = new List<string>(commandPath) { selection.Command!.Name };
+
+        return selection.Action switch
+        {
+            MenuAction.Navigate => await NavigateToCommandAsync(selection.Command!, extendedPath, cancellationToken),
+            MenuAction.Execute => await ExecuteCommandAsync(selection.Command!, extendedPath, cancellationToken),
+            MenuAction.Back or MenuAction.Exit or MenuAction.RunSetupWizard or _ => new MenuResult(false, 0),
+        };
     }
 
     private async Task<MenuResult> ExecuteCommandAsync(
@@ -314,98 +294,8 @@ internal sealed partial class InteractiveMenuService(
         List<string> commandPath,
         CancellationToken cancellationToken)
     {
-        // Special case: plugin uninstall is not available in interactive mode
-        if (IsPluginUninstall(commandPath))
-        {
-            ShowPluginUninstallWarning();
-            WaitForKeyPress();
-            return new MenuResult(false, 0);
-        }
-
-        var pathDisplay = string.Join(" ", commandPath);
-        AnsiConsole.WriteLine();
-        AnsiConsole.MarkupLine($"── [cyan]{Markup.Escape(pathDisplay)}[/] ──");
-        AnsiConsole.WriteLine();
-
-        // Prompt for arguments and options
-        var arguments = CommandPromptBuilder.PromptForArguments(command);
-        var options = CommandPromptBuilder.PromptForOptions(command);
-
-        // Build args array
-        var args = promptBuilder.BuildArgsArray(commandPath, arguments, options);
-
-        AnsiConsole.WriteLine();
-        AnsiConsole.MarkupLine($"[dim]Executing: revela {Markup.Escape(string.Join(" ", args))}[/]");
-        AnsiConsole.WriteLine();
-
-        // Create a linked token source that can be cancelled by Ctrl+C
-        // This allows long-running commands (like serve) to be stopped gracefully
-        using var commandCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-
-        // Setup Ctrl+C handler for this command execution
-        void OnCancelKeyPress(object? sender, ConsoleCancelEventArgs e)
-        {
-            e.Cancel = true; // Don't terminate the process
-            commandCts.Cancel();
-        }
-
-        Console.CancelKeyPress += OnCancelKeyPress;
-
-        // Execute the command
-        int exitCode;
-        try
-        {
-            var parseResult = RootCommand!.Parse(args);
-            exitCode = await parseResult.InvokeAsync(configuration: null, commandCts.Token);
-        }
-        catch (OperationCanceledException)
-        {
-            // Command was cancelled by Ctrl+C - this is expected
-            exitCode = 0;
-        }
-        catch (Exception ex)
-        {
-            LogCommandFailed(logger, pathDisplay, ex);
-            ErrorPanels.ShowException(ex);
-            exitCode = 1;
-        }
-        finally
-        {
-            Console.CancelKeyPress -= OnCancelKeyPress;
-        }
-
-        // Show result only for success (and not cancelled)
-        // Errors should be shown by the command itself using ErrorPanels
-        AnsiConsole.WriteLine();
-        if (exitCode == 0 && !commandCts.IsCancellationRequested)
-        {
-            AnsiConsole.MarkupLine($"{OutputMarkers.Success} Command completed successfully");
-        }
-
-        AnsiConsole.WriteLine();
+        var exitCode = await commandExecutor.ExecuteAsync(RootCommand!, command, commandPath, cancellationToken);
         return new MenuResult(false, exitCode);
-    }
-
-    private static bool IsPluginUninstall(List<string> commandPath) =>
-        commandPath.Count >= 2 &&
-        commandPath[0].Equals("plugin", StringComparison.OrdinalIgnoreCase) &&
-        commandPath[1].Equals("uninstall", StringComparison.OrdinalIgnoreCase);
-
-    private static void ShowPluginUninstallWarning()
-    {
-        AnsiConsole.WriteLine();
-
-        var panel = new Panel(
-            new Markup(
-                "[yellow]Plugin uninstall is not available in interactive mode.[/]\n\n" +
-                "The plugin assembly is loaded in memory and cannot be deleted.\n" +
-                "Please use the command line instead:\n\n" +
-                "[cyan]revela plugin uninstall <plugin-name>[/]"))
-            .WithHeader("[yellow]⚠ Not Available[/]")
-            .WithWarningStyle()
-            .Padding(1, 0);
-
-        AnsiConsole.Write(panel);
     }
 
     private static void WaitForKeyPress()
@@ -463,10 +353,10 @@ internal sealed partial class InteractiveMenuService(
             .PageSize(20)
             .WrapAround()
             .Mode(SelectionMode.Leaf)
-            .HighlightStyle(new Style(Color.Cyan1, decoration: Decoration.Bold));
+            .HighlightStyle(ConsoleUI.PromptBoldHighlightStyle);
 
         // Set disabled style for group headers (dimmed)
-        prompt.DisabledStyle = new Style(Color.Grey);
+        prompt.DisabledStyle = ConsoleUI.GroupHeaderStyle;
 
         // Add Back option if requested
         if (includeBack)
@@ -541,15 +431,24 @@ internal sealed partial class InteractiveMenuService(
     [LoggerMessage(Level = LogLevel.Information, Message = "Exiting interactive mode")]
     private static partial void LogExiting(ILogger logger);
 
+    /// <summary>
+    /// Prompts the user with a primary action, skip, and exit choices.
+    /// </summary>
+    /// <param name="primaryChoice">Label for the primary action (e.g. "Start Setup Wizard").</param>
+    /// <returns>The selected choice string.</returns>
+    private static string PromptForAction(string primaryChoice) =>
+        AnsiConsole.Prompt(
+            new SelectionPrompt<string>()
+                .Title("[cyan]What would you like to do?[/]")
+                .HighlightStyle(ConsoleUI.PromptHighlightStyle)
+                .AddChoices([primaryChoice, "Skip (use menu instead)", "Exit"]));
+
     private int ExitWithGoodbye()
     {
         LogExiting(logger);
         AnsiConsole.MarkupLine("\n[dim]Goodbye![/]");
         return 0;
     }
-
-    [LoggerMessage(Level = LogLevel.Error, Message = "Command '{CommandPath}' failed")]
-    private static partial void LogCommandFailed(ILogger logger, string commandPath, Exception ex);
 
     private readonly record struct MenuResult(bool ShouldExit, int ExitCode);
 }
