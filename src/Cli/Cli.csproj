@@ -15,6 +15,9 @@
 
     <!-- Application Icon (shown in Windows Explorer and taskbar) -->
     <ApplicationIcon>..\..\assets\revela.ico</ApplicationIcon>
+
+    <!-- Compress managed assemblies inside single-file bundle (Brotli) -->
+    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
   </PropertyGroup>
 
   <ItemGroup>
