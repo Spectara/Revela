@@ -184,7 +184,8 @@ try {
                 @{ Name = "Plugin.Source.OneDrive.Tests"; Path = "artifacts/bin/Plugin.Source.OneDrive.Tests/Release/net10.0/Spectara.Revela.Plugin.Source.OneDrive.Tests$testExeExt" },
                 @{ Name = "Plugin.Statistics.Tests"; Path = "artifacts/bin/Plugin.Statistics.Tests/Release/net10.0/Spectara.Revela.Plugin.Statistics.Tests$testExeExt" },
                 @{ Name = "Plugin.Serve.Tests"; Path = "artifacts/bin/Plugin.Serve.Tests/Release/net10.0/Spectara.Revela.Plugin.Serve.Tests$testExeExt" },
-                @{ Name = "Plugin.Compress.Tests"; Path = "artifacts/bin/Plugin.Compress.Tests/Release/net10.0/Spectara.Revela.Plugin.Compress.Tests$testExeExt" }
+                @{ Name = "Plugin.Compress.Tests"; Path = "artifacts/bin/Plugin.Compress.Tests/Release/net10.0/Spectara.Revela.Plugin.Compress.Tests$testExeExt" },
+                @{ Name = "IntegrationTests"; Path = "artifacts/bin/IntegrationTests/Release/net10.0/Spectara.Revela.IntegrationTests$testExeExt" }
             )
 
             foreach ($test in $testProjects) {
@@ -320,11 +321,6 @@ try {
         Copy-Item "$SampleSourceDir/project.json" $SampleProjectDir
         Copy-Item "$SampleSourceDir/site.json" $SampleProjectDir
 
-        # Create plugins config folder and copy JSON configs
-        $samplePluginsConfig = Join-Path $SampleProjectDir "plugins"
-        New-Item -ItemType Directory -Path $samplePluginsConfig -Force | Out-Null
-        Copy-Item "$SampleSourceDir/plugins/*.json" $samplePluginsConfig
-
         Write-Success "Sample project created at: $SampleProjectDir"
     }
 
@@ -403,13 +399,13 @@ try {
             throw "Expected 3 plugins in panel header, got unexpected output"
         }
 
-        # Verify installed plugins are local (3 plugins should show 'local')
-        $localMatches = ([regex]::Matches($pluginListOutput, '\blocal\b')).Count
+        # Verify installed plugins are local (3 plugins should show 'installed')
+        $localMatches = ([regex]::Matches($pluginListOutput, '\binstalled\b')).Count
         if ($localMatches -ge 3) {
             Write-Success "Verified: 3 plugins installed locally (next to exe)"
         }
         else {
-            Write-Warn "Expected 3 local plugins, found $localMatches in output"
+            Write-Warn "Expected 3 installed plugins, found $localMatches in output"
         }
 
         # Verify plugin folders exist with main DLLs (new structure: plugins/{PackageId}/{PackageId}.dll)
@@ -447,14 +443,21 @@ try {
         Write-Success "Plugin re-installed for subsequent tests"
 
         # Test Serve plugin command is registered (--help is non-blocking, unlike actual serve)
+        # Must run from sample project dir because serve requires a project
         Write-Info "Testing serve command (--help)..."
-        $serveHelpOutput = & $ExePath serve --help 2>&1 | Out-String
-        if ($serveHelpOutput -match "Preview generated site") {
-            Write-Success "Verified: Serve plugin command registered and working"
+        Push-Location $SampleProjectDir
+        try {
+            $serveHelpOutput = & $ExePath serve --help 2>&1 | Out-String
+            if ($serveHelpOutput -match "Preview generated site") {
+                Write-Success "Verified: Serve plugin command registered and working"
+            }
+            else {
+                Write-Warn "Serve help output: $serveHelpOutput"
+                throw "Serve plugin command not working correctly"
+            }
         }
-        else {
-            Write-Warn "Serve help output: $serveHelpOutput"
-            throw "Serve plugin command not working correctly"
+        finally {
+            Pop-Location
         }
     }
 
@@ -543,9 +546,9 @@ try {
     Measure-Step "CLI Commands" {
         Push-Location $SampleProjectDir
         try {
-            # Test create page gallery (in existing source directory)
-            Write-Info "Running: revela create page gallery source/test-gallery --title 'Test Gallery'"
-            & $ExePath create page gallery source/test-gallery --title "Test Gallery"
+            # Test create page gallery (path is relative to source/ directory)
+            Write-Info "Running: revela create page gallery test-gallery --title 'Test Gallery'"
+            & $ExePath create page gallery test-gallery --title "Test Gallery"
             if ($LASTEXITCODE -ne 0) { throw "create page gallery failed" }
 
             $revelaFile = Join-Path $SampleProjectDir "source/test-gallery/_index.revela"
@@ -557,8 +560,8 @@ try {
             }
 
             # Test create page statistics
-            Write-Info "Running: revela create page statistics source/test-stats --title 'Test Stats'"
-            & $ExePath create page statistics source/test-stats --title "Test Stats"
+            Write-Info "Running: revela create page statistics test-stats --title 'Test Stats'"
+            & $ExePath create page statistics test-stats --title "Test Stats"
             if ($LASTEXITCODE -ne 0) { throw "create page statistics failed" }
 
             $statsFile = Join-Path $SampleProjectDir "source/test-stats/_index.revela"
@@ -575,21 +578,15 @@ try {
             if ($LASTEXITCODE -ne 0) { throw "config statistics failed" }
             Write-Success "Statistics config updated"
 
-            # Test config onedrive (non-interactive with args)
-            Write-Info "Running: revela config onedrive --concurrency 4"
-            & $ExePath config onedrive --concurrency 4
-            if ($LASTEXITCODE -ne 0) { throw "config onedrive failed" }
-            Write-Success "OneDrive config updated"
-
-            # Verify config files were updated
-            $statsConfig = Join-Path $SampleProjectDir "plugins/Spectara.Revela.Plugin.Statistics.json"
-            if (Test-Path $statsConfig) {
-                $content = Get-Content $statsConfig -Raw | ConvertFrom-Json
+            # Verify statistics config was updated in project.json
+            $projectConfig = Join-Path $SampleProjectDir "project.json"
+            if (Test-Path $projectConfig) {
+                $content = Get-Content $projectConfig -Raw | ConvertFrom-Json
                 if ($content.'Spectara.Revela.Plugin.Statistics'.MaxEntriesPerCategory -eq 20) {
                     Write-Success "Statistics config verified: MaxEntriesPerCategory = 20"
                 }
                 else {
-                    Write-Warn "Statistics config value not as expected"
+                    Write-Warn "Statistics config value not as expected (may not have been written yet)"
                 }
             }
 

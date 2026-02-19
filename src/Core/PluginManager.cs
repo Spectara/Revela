@@ -415,7 +415,7 @@ public sealed class PluginManager(
             // Get or create plugins section
             if (!root.TryGetValue("plugins", out var pluginsElement))
             {
-                root["plugins"] = JsonSerializer.SerializeToElement(new Dictionary<string, string>());
+                pluginsElement = JsonSerializer.SerializeToElement(new Dictionary<string, string>());
             }
 
             var plugins = pluginsElement.Deserialize<Dictionary<string, string>>() ?? [];
