@@ -61,17 +61,6 @@ internal static class HostExtensions
         // Create root command
         var rootCommand = new RootCommand(description);
 
-        // Replace default HelpOption action with grouped help
-        for (var i = 0; i < rootCommand.Options.Count; i++)
-        {
-            if (rootCommand.Options[i] is HelpOption helpOption)
-            {
-                var defaultHelpAction = (HelpAction)helpOption.Action!;
-                helpOption.Action = new GroupedHelpAction(groupRegistry, orderRegistry, defaultHelpAction);
-                break;
-            }
-        }
-
         // Unified command registration callback
         void OnCommandRegistered(Command cmd, int order, string? group, bool requiresProject, bool hideWhenProjectExists)
         {
@@ -110,20 +99,17 @@ internal static class HostExtensions
         }
 
         // Plugin commands (same callback for unified handling)
-        plugins.RegisterCommands(
-            rootCommand,
-            (cmd, order, group, requiresProject, hideWhenProjectExists) =>
-                OnCommandRegistered(cmd, order, group, requiresProject, hideWhenProjectExists));
+        plugins.RegisterCommands(rootCommand, OnCommandRegistered);
 
         // Register config subcommand orders AFTER plugins have added their subcommands
-        var configCmd = rootCommand.Subcommands.FirstOrDefault(c => c.Name == "config");
+        var configCmd = rootCommand.Subcommands.FirstOrDefault(c => string.Equals(c.Name, "config", StringComparison.Ordinal));
         if (configCmd is not null)
         {
             RegisterConfigSubcommandOrders(configCmd, orderRegistry, groupRegistry);
         }
 
-        // Replace default help with grouped help output
-        ConfigureGroupedHelp(rootCommand, groupRegistry, orderRegistry);
+        // Replace default help with grouped help output for all commands
+        ConfigureGroupedHelpRecursive(rootCommand, groupRegistry, orderRegistry);
 
         // Set interactive mode handler for root command (no subcommand specified)
         rootCommand.SetAction(async (parseResult, cancellationToken) =>
@@ -136,16 +122,6 @@ internal static class HostExtensions
 
         return rootCommand;
     }
-
-    /// <summary>
-    /// Configures the root command to use grouped help output.
-    /// </summary>
-    private static void ConfigureGroupedHelp(
-        RootCommand rootCommand,
-        CommandGroupRegistry groupRegistry,
-        CommandOrderRegistry orderRegistry) =>
-        // Recursively configure grouped help for all commands with subcommands
-        ConfigureGroupedHelpRecursive(rootCommand, groupRegistry, orderRegistry);
 
     /// <summary>
     /// Recursively configures grouped help for a command and all its subcommands.

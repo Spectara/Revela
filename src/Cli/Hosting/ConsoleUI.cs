@@ -64,12 +64,12 @@ internal static class ConsoleUI
         if (!string.IsNullOrEmpty(projectName))
         {
             lines.Add(string.Empty);
-            lines.Add($"[blue]Project:[/] {projectName}");
+            lines.Add($"[blue]Project:[/] {Markup.Escape(projectName)}");
         }
         else if (!string.IsNullOrEmpty(folderName))
         {
             lines.Add(string.Empty);
-            lines.Add($"[dim]Directory:[/] {folderName}");
+            lines.Add($"[dim]Directory:[/] {Markup.Escape(folderName)}");
         }
 
         lines.Add(string.Empty);
@@ -93,45 +93,11 @@ internal static class ConsoleUI
                 "This appears to be your first time running Revela.\n" +
                 "The setup wizard will help you install themes and plugins."))
             .WithHeader("[cyan1]First Run[/]")
-            .Border(BoxBorder.Rounded)
-            .BorderStyle(new Style(Color.Cyan1))
+            .WithInfoStyle()
             .Padding(1, 0);
 
         AnsiConsole.Write(panel);
         AnsiConsole.WriteLine();
     }
 
-    /// <summary>
-    /// Displays a panel for when no project is configured in the current directory.
-    /// </summary>
-    public static void ShowNoProjectPanel()
-    {
-        var panel = new Panel(
-            new Markup(
-                "[bold]No Project Found[/]\n\n" +
-                "This directory does not contain a Revela project.\n" +
-                "Would you like to set one up?"))
-            .WithHeader("[cyan1]Setup Required[/]")
-            .Border(BoxBorder.Rounded)
-            .BorderStyle(new Style(Color.Cyan1))
-            .Padding(1, 0);
-
-        AnsiConsole.Write(panel);
-        AnsiConsole.WriteLine();
-    }
-
-    /// <summary>
-    /// Displays a goodbye message when exiting.
-    /// </summary>
-    public static void ShowGoodbye() => AnsiConsole.MarkupLine("[dim]Goodbye![/]");
-
-    /// <summary>
-    /// Shows a "press any key" prompt and waits for input.
-    /// </summary>
-    public static void WaitForKeyPress()
-    {
-        AnsiConsole.WriteLine();
-        AnsiConsole.MarkupLine("[dim]Press any key to continue...[/]");
-        Console.ReadKey(true);
-    }
 }

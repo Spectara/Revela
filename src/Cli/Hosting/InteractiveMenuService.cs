@@ -6,6 +6,7 @@ using Spectara.Revela.Core.Configuration;
 using Spectara.Revela.Core.Services;
 using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Abstractions;
+using Spectara.Revela.Sdk.Output;
 
 using Spectre.Console;
 
@@ -125,11 +126,10 @@ internal sealed partial class InteractiveMenuService(
         var panel = new Panel(
             new Markup(
                 $"[bold]No Project Found[/]\n\n" +
-                $"This directory ([cyan]{folderName}[/]) doesn't contain a Revela project.\n" +
+                $"This directory ([cyan]{Markup.Escape(folderName)}[/]) doesn't contain a Revela project.\n" +
                 "Would you like to create one?"))
             .WithHeader("[cyan1]Create Project[/]")
-            .Border(BoxBorder.Rounded)
-            .BorderStyle(new Style(Color.Cyan1))
+            .WithInfoStyle()
             .Padding(1, 0);
 
         AnsiConsole.Write(panel);
@@ -324,18 +324,18 @@ internal sealed partial class InteractiveMenuService(
 
         var pathDisplay = string.Join(" ", commandPath);
         AnsiConsole.WriteLine();
-        AnsiConsole.MarkupLine($"── [cyan]{pathDisplay}[/] ──");
+        AnsiConsole.MarkupLine($"── [cyan]{Markup.Escape(pathDisplay)}[/] ──");
         AnsiConsole.WriteLine();
 
         // Prompt for arguments and options
-        var arguments = await CommandPromptBuilder.PromptForArgumentsAsync(command, cancellationToken);
-        var options = await CommandPromptBuilder.PromptForOptionsAsync(command, cancellationToken);
+        var arguments = CommandPromptBuilder.PromptForArguments(command);
+        var options = CommandPromptBuilder.PromptForOptions(command);
 
         // Build args array
         var args = promptBuilder.BuildArgsArray(commandPath, arguments, options);
 
         AnsiConsole.WriteLine();
-        AnsiConsole.MarkupLine($"[dim]Executing: revela {string.Join(" ", args)}[/]");
+        AnsiConsole.MarkupLine($"[dim]Executing: revela {Markup.Escape(string.Join(" ", args))}[/]");
         AnsiConsole.WriteLine();
 
         // Create a linked token source that can be cancelled by Ctrl+C
@@ -379,7 +379,7 @@ internal sealed partial class InteractiveMenuService(
         AnsiConsole.WriteLine();
         if (exitCode == 0 && !commandCts.IsCancellationRequested)
         {
-            AnsiConsole.MarkupLine("[green]✓ Command completed successfully[/]");
+            AnsiConsole.MarkupLine($"{OutputMarkers.Success} Command completed successfully");
         }
 
         AnsiConsole.WriteLine();

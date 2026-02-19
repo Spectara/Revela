@@ -20,9 +20,11 @@ internal static class HostBuilderExtensions
     /// <list type="number">
     /// <item><b>revela.json</b> (global): User-wide defaults from %APPDATA%/Revela/</item>
     /// <item><b>project.json</b> (local): Project-specific settings</item>
-    /// <item><b>site.json</b> (local): Site metadata (title, author, etc.)</item>
     /// <item><b>logging.json</b> (local): Logging configuration</item>
     /// </list>
+    /// <para>
+    /// Note: site.json is NOT loaded via IConfiguration — it is loaded dynamically by RenderService.
+    /// </para>
     /// <para>
     /// This allows global defaults (themes, plugins, feeds) to be overridden per-project.
     /// Similar to NuGet.Config hierarchical loading.

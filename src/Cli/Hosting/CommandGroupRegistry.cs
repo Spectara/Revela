@@ -76,13 +76,6 @@ internal sealed class CommandGroupRegistry
     public int GetOrder(string name) => orderMap.TryGetValue(name, out var order) ? order : DefaultOrder;
 
     /// <summary>
-    /// Checks if a group is registered.
-    /// </summary>
-    /// <param name="name">The group name.</param>
-    /// <returns>True if the group exists.</returns>
-    public bool Exists(string name) => orderMap.ContainsKey(name);
-
-    /// <summary>
     /// Gets an existing group order or creates a new group with auto-incremented order.
     /// </summary>
     /// <param name="name">The group name.</param>
@@ -102,15 +95,4 @@ internal sealed class CommandGroupRegistry
         return order;
     }
 
-    /// <summary>
-    /// Gets all registered group names sorted by order.
-    /// </summary>
-    /// <returns>Group names in display order.</returns>
-    public IEnumerable<string> GetAllGroupsSorted()
-    {
-        return orderMap
-            .OrderBy(kvp => kvp.Value)
-            .ThenBy(kvp => kvp.Key, StringComparer.OrdinalIgnoreCase)
-            .Select(kvp => kvp.Key);
-    }
 }

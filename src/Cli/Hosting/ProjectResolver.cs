@@ -1,3 +1,4 @@
+using System.Collections.Frozen;
 using System.Text.Json;
 
 using Spectara.Revela.Core.Services;
@@ -261,7 +262,7 @@ internal static class ProjectResolver
     private static void ShowNotInProjectError(string cwd)
     {
         AnsiConsole.MarkupLine("[red]Error:[/] Not in a Revela project directory.");
-        AnsiConsole.MarkupLine($"[dim]Path: {cwd}[/]");
+        AnsiConsole.MarkupLine($"[dim]Path: {Markup.Escape(cwd)}[/]");
         AnsiConsole.WriteLine();
         AnsiConsole.MarkupLine("[blue]Options:[/]");
         AnsiConsole.MarkupLine("  • Run [cyan]revela[/] (no arguments) to initialize this folder");
@@ -276,8 +277,8 @@ internal static class ProjectResolver
     /// Note: Not all subcommands may work (e.g., 'config site' requires project).
     /// The interactive menu uses CommandDescriptor.RequiresProject for finer control.
     /// </remarks>
-    private static readonly HashSet<string> ProjectIndependentCommands = new(StringComparer.OrdinalIgnoreCase)
-    {
+    private static readonly FrozenSet<string> ProjectIndependentCommands = FrozenSet.ToFrozenSet(
+    [
         // Setup commands
         "init",
         "config",
@@ -293,7 +294,7 @@ internal static class ProjectResolver
         "-h",
         "-?",
         "--version"
-    };
+    ], StringComparer.OrdinalIgnoreCase);
 
     /// <summary>
     /// Checks if the command args start with a project-independent command
@@ -334,8 +335,8 @@ internal static class ProjectResolver
 
             if (!Directory.Exists(projectPath))
             {
-                AnsiConsole.MarkupLine($"[red]Error:[/] Project '[yellow]{projectName}[/]' not found.");
-                AnsiConsole.MarkupLine($"[dim]Path: {projectPath}[/]");
+                AnsiConsole.MarkupLine($"[red]Error:[/] Project '[yellow]{Markup.Escape(projectName)}[/]' not found.");
+                AnsiConsole.MarkupLine($"[dim]Path: {Markup.Escape(projectPath)}[/]");
                 return (null, filteredArgs, true);
             }
 
@@ -416,9 +417,9 @@ internal static class ProjectResolver
                 return string.IsNullOrWhiteSpace(name) ? null : name;
             }
         }
-        catch
+        catch (Exception)
         {
-            // Ignore parse errors, fall back to folder name
+            // JSON parse or I/O error — fall back to folder name
         }
 
         return null;
@@ -442,8 +443,7 @@ internal static class ProjectResolver
                     }
 
                     // Check for invalid path characters
-                    var invalidChars = Path.GetInvalidFileNameChars();
-                    if (name.Any(c => invalidChars.Contains(c)))
+                    if (name.AsSpan().IndexOfAny(Path.GetInvalidFileNameChars()) >= 0)
                     {
                         return ValidationResult.Error("[red]Name contains invalid characters[/]");
                     }
@@ -452,7 +452,7 @@ internal static class ProjectResolver
                     var targetPath = Path.Combine(ConfigPathResolver.ProjectsDirectory, name);
                     if (Directory.Exists(targetPath))
                     {
-                        return ValidationResult.Error($"[red]Folder '{name}' already exists[/]");
+                        return ValidationResult.Error($"[red]Folder '{Markup.Escape(name)}' already exists[/]");
                     }
 
                     return ValidationResult.Success();
@@ -463,7 +463,7 @@ internal static class ProjectResolver
         // Create the folder structure
         Directory.CreateDirectory(projectPath);
 
-        AnsiConsole.MarkupLine($"{OutputMarkers.Success} Project folder created: [cyan]{folderName}[/]");
+        AnsiConsole.MarkupLine($"{OutputMarkers.Success} Project folder created: [cyan]{Markup.Escape(folderName)}[/]");
         AnsiConsole.WriteLine();
 
         return projectPath;

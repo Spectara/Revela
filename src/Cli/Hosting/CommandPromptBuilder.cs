@@ -13,13 +13,9 @@ internal sealed partial class CommandPromptBuilder(ILogger<CommandPromptBuilder>
     /// Prompts the user for all arguments of a command.
     /// </summary>
     /// <param name="command">The command to prompt arguments for.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>Dictionary mapping arguments to their values.</returns>
-    public static Task<Dictionary<Argument, object?>> PromptForArgumentsAsync(
-        Command command,
-        CancellationToken cancellationToken = default)
+    public static Dictionary<Argument, object?> PromptForArguments(Command command)
     {
-        _ = cancellationToken;
         var results = new Dictionary<Argument, object?>();
 
         foreach (var argument in command.Arguments)
@@ -41,7 +37,7 @@ internal sealed partial class CommandPromptBuilder(ILogger<CommandPromptBuilder>
             results[argument] = value;
         }
 
-        return Task.FromResult(results);
+        return results;
     }
 
     /// <summary>
@@ -53,13 +49,9 @@ internal sealed partial class CommandPromptBuilder(ILogger<CommandPromptBuilder>
     /// If no boolean options exist, returns empty dictionary without prompting.
     /// </remarks>
     /// <param name="command">The command to prompt options for.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>Dictionary mapping options to their values.</returns>
-    public static Task<Dictionary<Option, object?>> PromptForOptionsAsync(
-        Command command,
-        CancellationToken cancellationToken = default)
+    public static Dictionary<Option, object?> PromptForOptions(Command command)
     {
-        _ = cancellationToken;
         var results = new Dictionary<Option, object?>();
 
         // Skip options prompt if command has only optional arguments
@@ -67,7 +59,7 @@ internal sealed partial class CommandPromptBuilder(ILogger<CommandPromptBuilder>
         var hasRequiredArguments = command.Arguments.Any(a => !a.Hidden && a.Arity.MinimumNumberOfValues > 0);
         if (!hasRequiredArguments && command.Arguments.Count > 0)
         {
-            return Task.FromResult(results);
+            return results;
         }
 
         // Collect only visible bool options (behavior flags)
@@ -78,7 +70,7 @@ internal sealed partial class CommandPromptBuilder(ILogger<CommandPromptBuilder>
         // No bool options → execute directly without prompts
         if (boolOptions.Count == 0)
         {
-            return Task.FromResult(results);
+            return results;
         }
 
         // Use multi-selection prompt for behavior flags
@@ -104,7 +96,7 @@ internal sealed partial class CommandPromptBuilder(ILogger<CommandPromptBuilder>
             results[choice.Option] = isSelected;
         }
 
-        return Task.FromResult(results);
+        return results;
     }
 
     /// <summary>

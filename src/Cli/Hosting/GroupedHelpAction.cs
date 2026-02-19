@@ -11,28 +11,11 @@ namespace Spectara.Revela.Cli.Hosting;
 /// Uses <see cref="CommandGroupRegistry"/> and <see cref="CommandOrderRegistry"/>
 /// to organize and sort commands in the help output, matching the interactive menu layout.
 /// </remarks>
-internal sealed class GroupedHelpAction : SynchronousCommandLineAction
+internal sealed class GroupedHelpAction(
+    CommandGroupRegistry groupRegistry,
+    CommandOrderRegistry orderRegistry,
+    HelpAction defaultHelp) : SynchronousCommandLineAction
 {
-    private readonly CommandGroupRegistry groupRegistry;
-    private readonly CommandOrderRegistry orderRegistry;
-    private readonly HelpAction defaultHelp;
-
-    /// <summary>
-    /// Initializes a new instance of the <see cref="GroupedHelpAction"/> class.
-    /// </summary>
-    /// <param name="groupRegistry">The group registry for group ordering.</param>
-    /// <param name="orderRegistry">The order registry for command sorting.</param>
-    /// <param name="defaultHelp">The default help action to wrap.</param>
-    public GroupedHelpAction(
-        CommandGroupRegistry groupRegistry,
-        CommandOrderRegistry orderRegistry,
-        HelpAction defaultHelp)
-    {
-        this.groupRegistry = groupRegistry;
-        this.orderRegistry = orderRegistry;
-        this.defaultHelp = defaultHelp;
-    }
-
     /// <inheritdoc />
     public override bool ClearsParseErrors => true;
 
@@ -153,12 +136,7 @@ internal sealed class GroupedHelpAction : SynchronousCommandLineAction
 
     private static string GetExecutableName()
     {
-        // Get the executable name without path and extension
         var name = Environment.ProcessPath;
-        if (string.IsNullOrEmpty(name))
-        {
-            return "revela";
-        }
-        return Path.GetFileNameWithoutExtension(name);
+        return string.IsNullOrEmpty(name) ? "revela" : Path.GetFileNameWithoutExtension(name);
     }
 }
