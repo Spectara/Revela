@@ -105,7 +105,15 @@ internal sealed class PluginLoadContext : AssemblyLoadContext
         return libraryPath != null ? LoadUnmanagedDllFromPath(libraryPath) : 0;
     }
 
-    private static bool IsSharedAssembly(string assemblyName)
+    /// <summary>
+    /// Determines whether an assembly should be loaded from the host (shared)
+    /// rather than from the plugin's own directory.
+    /// </summary>
+    /// <remarks>
+    /// SYNC: Keep rules in sync with Sdk/Build/Spectara.Revela.Sdk.targets
+    /// which excludes the same assemblies from plugin NuGet packages.
+    /// </remarks>
+    internal static bool IsSharedAssembly(string assemblyName)
     {
         // Exact match for third-party shared assemblies
         if (SharedAssemblies.Contains(assemblyName))

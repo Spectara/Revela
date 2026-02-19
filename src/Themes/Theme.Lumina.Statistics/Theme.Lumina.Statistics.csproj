@@ -10,25 +10,8 @@
     <PackageReleaseNotes>https://github.com/spectara/revela/blob/main/CHANGELOG.md</PackageReleaseNotes>
     <PackageType>RevelaTheme</PackageType>
 
-    <!-- Plugin Support: Copies all dependencies to output, generates complete .deps.json -->
-    <EnableDynamicLoading>true</EnableDynamicLoading>
-    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+    <!-- Theme packaging handled by Spectara.Revela.Sdk.targets -->
   </PropertyGroup>
-
-  <!-- Include all runtime dependencies in NuGet package (except Spectara.Revela.* which come from host) -->
-  <Target Name="IncludeAllDependencies" AfterTargets="Build">
-    <ItemGroup>
-      <!-- All dependency DLLs (exclude main DLL - SDK includes it, and Spectara.Revela.Sdk.dll - loaded from host) -->
-      <_PackageFiles Include="$(OutputPath)*.dll" Exclude="$(OutputPath)$(AssemblyName).dll;$(OutputPath)Spectara.Revela.Sdk.dll">
-        <PackagePath>lib/$(TargetFramework)/</PackagePath>
-        <BuildAction>None</BuildAction>
-      </_PackageFiles>
-      <_PackageFiles Include="$(OutputPath)$(AssemblyName).deps.json">
-        <PackagePath>lib/$(TargetFramework)/</PackagePath>
-        <BuildAction>None</BuildAction>
-      </_PackageFiles>
-    </ItemGroup>
-  </Target>
 
   <ItemGroup>
     <None Include="README.md" Pack="true" PackagePath="\" />

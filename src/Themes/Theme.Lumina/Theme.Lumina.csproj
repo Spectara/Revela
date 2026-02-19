@@ -10,8 +10,7 @@
     <PackageReleaseNotes>https://github.com/spectara/revela/blob/main/CHANGELOG.md</PackageReleaseNotes>
     <PackageType>RevelaTheme</PackageType>
 
-    <!-- Plugin Support: Copies all dependencies to output, generates complete .deps.json -->
-    <EnableDynamicLoading>true</EnableDynamicLoading>
+    <!-- Theme packaging handled by Spectara.Revela.Sdk.targets -->
   </PropertyGroup>
 
   <ItemGroup>

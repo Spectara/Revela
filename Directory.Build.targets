@@ -1,0 +1,13 @@
+<Project>
+  <!--
+    Import SDK plugin/theme build targets for local development.
+
+    When consumed as a NuGet package, the .targets file in build/ and
+    buildTransitive/ is auto-imported by NuGet. For local development
+    (ProjectReference to Sdk.csproj), this import ensures the same
+    targets are applied.
+  -->
+  <Import Project="$(MSBuildThisFileDirectory)src\Sdk\Build\Spectara.Revela.Sdk.targets"
+          Condition="Exists('$(MSBuildThisFileDirectory)src\Sdk\Build\Spectara.Revela.Sdk.targets')
+                     And ('$(PackageType)' == 'RevelaPlugin' Or '$(PackageType)' == 'RevelaTheme')" />
+</Project>
