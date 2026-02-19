@@ -12,7 +12,7 @@ namespace Spectara.Revela.Commands.Packages;
 /// 
 /// Feed configuration is under 'config feed'.
 /// </remarks>
-public sealed class PackagesCommand(
+internal sealed class PackagesCommand(
     RefreshCommand refreshCommand,
     SearchCommand searchCommand)
 {

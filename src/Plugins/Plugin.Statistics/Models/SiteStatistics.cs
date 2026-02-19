@@ -3,7 +3,7 @@ namespace Spectara.Revela.Plugin.Statistics.Models;
 /// <summary>
 /// Aggregated site statistics from EXIF data
 /// </summary>
-public sealed class SiteStatistics
+internal sealed class SiteStatistics
 {
     /// <summary>
     /// Total number of images in the library
@@ -87,7 +87,7 @@ public sealed class SiteStatistics
 /// Percentage is relative to the maximum count in the category (0-100),
 /// used for bar chart width calculation. The highest count = 100%.
 /// </remarks>
-public sealed record StatisticsEntry
+internal sealed record StatisticsEntry
 {
     /// <summary>
     /// Display name (e.g., "f/1.4-2.0", "Sony A7IV", "2024")

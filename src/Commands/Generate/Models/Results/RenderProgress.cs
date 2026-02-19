@@ -3,7 +3,7 @@ namespace Spectara.Revela.Commands.Generate.Models.Results;
 /// <summary>
 /// Progress during page rendering.
 /// </summary>
-public sealed class RenderProgress
+internal sealed class RenderProgress
 {
     /// <summary>Current page being rendered.</summary>
     public required string CurrentPage { get; init; }

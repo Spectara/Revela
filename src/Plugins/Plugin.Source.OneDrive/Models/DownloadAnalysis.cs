@@ -3,7 +3,7 @@ namespace Spectara.Revela.Plugin.Source.OneDrive.Models;
 /// <summary>
 /// Analysis result of comparing local files with OneDrive
 /// </summary>
-public sealed class DownloadAnalysis
+internal sealed class DownloadAnalysis
 {
     /// <summary>
     /// All items analyzed (New, Modified, Unchanged)

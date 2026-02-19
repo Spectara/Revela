@@ -18,7 +18,7 @@ namespace Spectara.Revela.Commands.Theme;
 /// Installs themes from the package index. Before running, use
 /// 'revela packages refresh' to update the index.
 /// </remarks>
-public sealed partial class ThemeInstallCommand(
+internal sealed partial class ThemeInstallCommand(
     ILogger<ThemeInstallCommand> logger,
     IPackageIndexService packageIndexService,
     PluginManager pluginManager)

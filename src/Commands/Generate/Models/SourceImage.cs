@@ -7,7 +7,7 @@ namespace Spectara.Revela.Commands.Generate.Models;
 /// Represents an image file discovered during content scanning,
 /// before any processing (resizing, format conversion) has occurred.
 /// </remarks>
-public sealed class SourceImage
+internal sealed class SourceImage
 {
     /// <summary>
     /// Full filesystem path to source image

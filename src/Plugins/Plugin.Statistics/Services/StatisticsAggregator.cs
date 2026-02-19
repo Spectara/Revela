@@ -10,7 +10,7 @@ namespace Spectara.Revela.Plugin.Statistics.Services;
 /// <summary>
 /// Aggregates EXIF data from manifest into statistics.
 /// </summary>
-public sealed partial class StatisticsAggregator(
+internal sealed partial class StatisticsAggregator(
     IManifestRepository manifestRepository,
     IOptionsMonitor<StatisticsPluginConfig> config,
     ILogger<StatisticsAggregator> logger)

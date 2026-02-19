@@ -11,7 +11,7 @@ namespace Spectara.Revela.Commands.Clean.Commands;
 /// <summary>
 /// Cleans the output directory.
 /// </summary>
-public sealed partial class CleanOutputCommand(
+internal sealed partial class CleanOutputCommand(
     ILogger<CleanOutputCommand> logger,
     IPathResolver pathResolver)
 {

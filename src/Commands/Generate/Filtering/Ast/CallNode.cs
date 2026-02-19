@@ -3,7 +3,7 @@ namespace Spectara.Revela.Commands.Generate.Filtering.Ast;
 /// <summary>
 /// Represents a function call (name(args)).
 /// </summary>
-public sealed class CallNode : FilterNode
+internal sealed class CallNode : FilterNode
 {
     /// <summary>
     /// Gets the function name.

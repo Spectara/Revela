@@ -15,7 +15,7 @@ namespace Spectara.Revela.Commands.Theme;
 /// Uninstalls themes from the local or global plugin directory.
 /// Themes are installed as plugin packages, so uninstall works the same way.
 /// </remarks>
-public sealed partial class ThemeUninstallCommand(
+internal sealed partial class ThemeUninstallCommand(
     ILogger<ThemeUninstallCommand> logger,
     PluginManager pluginManager)
 {

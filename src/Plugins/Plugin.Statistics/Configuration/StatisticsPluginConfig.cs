@@ -24,7 +24,7 @@ namespace Spectara.Revela.Plugin.Statistics.Configuration;
 /// SPECTARA__REVELA__PLUGIN__STATISTICS__MAXENTRIESPERCATEGORY=20
 /// SPECTARA__REVELA__PLUGIN__STATISTICS__SORTBYCOUNT=false
 /// </remarks>
-public sealed class StatisticsPluginConfig
+internal sealed class StatisticsPluginConfig
 {
     /// <summary>
     /// Configuration section name

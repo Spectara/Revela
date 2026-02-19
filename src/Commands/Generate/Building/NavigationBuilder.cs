@@ -32,7 +32,7 @@ namespace Spectara.Revela.Commands.Generate.Building;
 ///     └── *.jpg               → Gallery: "Portraits"
 /// </code>
 /// </remarks>
-public sealed partial class NavigationBuilder(ILogger<NavigationBuilder> logger)
+internal sealed partial class NavigationBuilder(ILogger<NavigationBuilder> logger)
 {
     /// <summary>
     /// Builds navigation tree from source directory

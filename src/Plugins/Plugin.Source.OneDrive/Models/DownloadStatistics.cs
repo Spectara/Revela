@@ -3,7 +3,7 @@ namespace Spectara.Revela.Plugin.Source.OneDrive.Models;
 /// <summary>
 /// Statistics about the download analysis
 /// </summary>
-public sealed class DownloadStatistics
+internal sealed class DownloadStatistics
 {
     /// <summary>
     /// Number of files that exist only on OneDrive (will be downloaded)

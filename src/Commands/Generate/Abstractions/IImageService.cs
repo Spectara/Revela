@@ -17,7 +17,7 @@ namespace Spectara.Revela.Commands.Generate.Abstractions;
 ///   <item><description>Skip unchanged images (hash-based caching)</description></item>
 /// </list>
 /// </remarks>
-public interface IImageService
+internal interface IImageService
 {
     /// <summary>
     /// Process images from manifest (resize, convert, extract EXIF).

@@ -7,7 +7,7 @@ namespace Spectara.Revela.Commands.Plugins;
 /// <summary>
 /// Extension methods for registering Plugins feature services.
 /// </summary>
-public static class ServiceCollectionExtensions
+internal static class ServiceCollectionExtensions
 {
     /// <summary>
     /// Adds Plugins feature services to the DI container.

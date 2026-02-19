@@ -8,7 +8,7 @@ namespace Spectara.Revela.Plugin.Statistics.Services;
 /// <summary>
 /// Writes statistics data as JSON file for template consumption
 /// </summary>
-public static class JsonWriter
+internal static class JsonWriter
 {
     private static readonly JsonSerializerOptions JsonOptions = new()
     {

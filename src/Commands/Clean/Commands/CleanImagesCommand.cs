@@ -33,7 +33,7 @@ namespace Spectara.Revela.Commands.Clean.Commands;
 /// reflects the current source directory state.
 /// </para>
 /// </remarks>
-public sealed partial class CleanImagesCommand(
+internal sealed partial class CleanImagesCommand(
     ILogger<CleanImagesCommand> logger,
     IPathResolver pathResolver,
     IManifestRepository manifestRepository,

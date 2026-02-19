@@ -7,7 +7,7 @@ namespace Spectara.Revela.Commands.Theme;
 /// <summary>
 /// Extension methods for registering Theme feature services.
 /// </summary>
-public static class ServiceCollectionExtensions
+internal static class ServiceCollectionExtensions
 {
     /// <summary>
     /// Adds Theme feature services to the DI container.

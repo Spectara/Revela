@@ -20,7 +20,7 @@ namespace Spectara.Revela.Commands.Generate.Filtering;
 /// <item><c>exif.raw.*</c> - Raw EXIF dictionary values</item>
 /// </list>
 /// </remarks>
-public sealed class FilterExpressionBuilder : IFilterNodeVisitor<Expression>
+internal sealed class FilterExpressionBuilder : IFilterNodeVisitor<Expression>
 {
     private readonly ParameterExpression parameter;
     private readonly string source;

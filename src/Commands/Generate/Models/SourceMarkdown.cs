@@ -7,7 +7,7 @@ namespace Spectara.Revela.Commands.Generate.Models;
 /// Markdown files (*.md) other than _index.md can be placed between images
 /// to add text content to galleries. The body is loaded at render time.
 /// </remarks>
-public sealed record SourceMarkdown
+internal sealed record SourceMarkdown
 {
     /// <summary>
     /// Full path to the markdown file.

@@ -20,7 +20,7 @@ namespace Spectara.Revela.Commands.Config.Site;
 /// When editing, existing values are used as defaults.
 /// </para>
 /// </remarks>
-public sealed partial class ConfigSiteCommand(
+internal sealed partial class ConfigSiteCommand(
     ILogger<ConfigSiteCommand> logger,
     IOptions<ProjectEnvironment> projectEnvironment,
     IOptionsMonitor<ThemeConfig> themeConfig,

@@ -17,7 +17,7 @@ namespace Spectara.Revela.Commands.Packages;
 /// Searches the cached package index (cache/packages.json).
 /// Run 'revela packages refresh' first to populate the index.
 /// </remarks>
-public sealed partial class SearchCommand(
+internal sealed partial class SearchCommand(
     ILogger<SearchCommand> logger)
 {
     private static readonly string IndexFilePath = Path.Combine(

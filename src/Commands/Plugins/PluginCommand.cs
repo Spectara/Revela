@@ -5,7 +5,7 @@ namespace Spectara.Revela.Commands.Plugins;
 /// <summary>
 /// Parent command for plugin management.
 /// </summary>
-public sealed class PluginCommand(
+internal sealed class PluginCommand(
     PluginListCommand listCommand,
     PluginInstallCommand installCommand,
     PluginUninstallCommand uninstallCommand)

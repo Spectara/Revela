@@ -16,7 +16,7 @@ namespace Spectara.Revela.Commands.Generate.Models;
 /// config classes like <see cref="Core.Configuration.GenerateConfig"/>.
 /// </para>
 /// </remarks>
-public sealed record RenderContext
+internal sealed record RenderContext
 {
     /// <summary>Project-level settings (name, base URL, language)</summary>
     public required RenderProjectSettings Project { get; init; }
@@ -34,7 +34,7 @@ public sealed record RenderContext
 /// <summary>
 /// Project settings for rendering context
 /// </summary>
-public sealed record RenderProjectSettings
+internal sealed record RenderProjectSettings
 {
     /// <summary>Project name used for identification</summary>
     public string Name { get; init; } = string.Empty;

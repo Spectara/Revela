@@ -19,7 +19,7 @@ namespace Spectara.Revela.Commands.Clean.Commands;
 /// Safety: NEVER deletes source files (source/, config/, *.json configs).
 /// </para>
 /// </remarks>
-public sealed class CleanCommand(
+internal sealed class CleanCommand(
     CleanAllCommand allCommand,
     CleanOutputCommand outputCommand,
     CleanImagesCommand imagesCommand,

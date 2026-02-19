@@ -3,7 +3,7 @@ namespace Spectara.Revela.Commands.Generate.Filtering.Ast;
 /// <summary>
 /// Represents a constant value (string, number, boolean, null).
 /// </summary>
-public sealed class ConstantNode : FilterNode
+internal sealed class ConstantNode : FilterNode
 {
     /// <summary>
     /// Gets the constant value.

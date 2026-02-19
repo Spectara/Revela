@@ -5,7 +5,7 @@ namespace Spectara.Revela.Commands.Restore;
 /// <summary>
 /// Extension methods for registering Restore feature services.
 /// </summary>
-public static class ServiceCollectionExtensions
+internal static class ServiceCollectionExtensions
 {
     /// <summary>
     /// Adds Restore feature services to the DI container.

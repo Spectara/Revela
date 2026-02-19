@@ -11,7 +11,7 @@ namespace Spectara.Revela.Commands.Config.Feed;
 /// <summary>
 /// Command to add a NuGet feed.
 /// </summary>
-public sealed partial class AddCommand(
+internal sealed partial class AddCommand(
     ILogger<AddCommand> logger)
 {
     /// <summary>

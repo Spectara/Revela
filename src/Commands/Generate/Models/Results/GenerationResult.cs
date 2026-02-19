@@ -3,7 +3,7 @@ namespace Spectara.Revela.Commands.Generate.Models.Results;
 /// <summary>
 /// Result of complete generation.
 /// </summary>
-public sealed class GenerationResult
+internal sealed class GenerationResult
 {
     /// <summary>Whether generation succeeded.</summary>
     public bool Success { get; init; }

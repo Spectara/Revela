@@ -20,7 +20,7 @@ namespace Spectara.Revela.Commands.Generate.Commands;
 /// Plugins can register additional steps at any order.
 /// </para>
 /// </remarks>
-public sealed partial class AllCommand(
+internal sealed partial class AllCommand(
     ILogger<AllCommand> logger,
     IEnumerable<IGenerateStep> generateSteps)
 {

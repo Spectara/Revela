@@ -19,7 +19,7 @@ namespace Spectara.Revela.Commands.Theme;
 ///
 /// The paths shown can be used directly with <c>revela theme extract --file</c>.
 /// </remarks>
-public sealed partial class ThemeFilesCommand(
+internal sealed partial class ThemeFilesCommand(
     IThemeResolver themeResolver,
     ITemplateResolver templateResolver,
     IAssetResolver assetResolver,

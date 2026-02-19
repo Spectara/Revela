@@ -20,7 +20,7 @@ namespace Spectara.Revela.Commands.Config.Project;
 /// Theme is configured separately via 'config theme'.
 /// Uses ConfigService for both create and update (no template needed).
 /// </remarks>
-public sealed partial class ConfigProjectCommand(
+internal sealed partial class ConfigProjectCommand(
     ILogger<ConfigProjectCommand> logger,
     IOptions<ProjectEnvironment> projectEnvironment,
     IConfigService configService)

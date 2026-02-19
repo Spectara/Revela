@@ -22,7 +22,7 @@ namespace Spectara.Revela.Commands.Packages;
 /// Scans all configured feeds (bundled, nuget.org, custom) and creates
 /// a local index at {ConfigDirectory}/packages.json for offline search capability.
 /// </remarks>
-public sealed partial class RefreshCommand(
+internal sealed partial class RefreshCommand(
     ILogger<RefreshCommand> logger,
     INuGetSourceManager nugetSourceManager,
     HttpClient httpClient)

@@ -3,7 +3,7 @@ namespace Spectara.Revela.Commands.Generate.Filtering.Ast;
 /// <summary>
 /// Base class for all filter expression AST nodes.
 /// </summary>
-public abstract class FilterNode
+internal abstract class FilterNode
 {
     /// <summary>
     /// Gets the position in the source where this node starts.
@@ -20,7 +20,7 @@ public abstract class FilterNode
 /// Visitor interface for filter AST nodes.
 /// </summary>
 /// <typeparam name="TResult">The type returned by the visitor.</typeparam>
-public interface IFilterNodeVisitor<out TResult>
+internal interface IFilterNodeVisitor<out TResult>
 {
     /// <summary>Visits a binary expression node.</summary>
     TResult Visit(BinaryNode node);

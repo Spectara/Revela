@@ -7,7 +7,7 @@ namespace Spectara.Revela.Commands.Clean.Commands;
 /// <summary>
 /// Cleans both output and cache directories.
 /// </summary>
-public sealed partial class CleanAllCommand(ILogger<CleanAllCommand> logger)
+internal sealed partial class CleanAllCommand(ILogger<CleanAllCommand> logger)
 {
     /// <summary>Order for this command (first in menu).</summary>
     public const int Order = 0;

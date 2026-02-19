@@ -33,7 +33,7 @@ namespace Spectara.Revela.Commands.Config.Images;
 /// </code>
 /// </para>
 /// </remarks>
-public sealed partial class ConfigImageCommand(
+internal sealed partial class ConfigImageCommand(
     ILogger<ConfigImageCommand> logger,
     IOptions<ProjectEnvironment> projectEnvironment,
     IOptionsMonitor<ThemeConfig> themeConfig,

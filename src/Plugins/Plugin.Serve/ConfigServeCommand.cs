@@ -21,7 +21,7 @@ namespace Spectara.Revela.Plugin.Serve;
 /// Usage: revela config serve [options]
 /// </para>
 /// </remarks>
-public sealed partial class ConfigServeCommand(
+internal sealed partial class ConfigServeCommand(
     ILogger<ConfigServeCommand> logger,
     IConfigService configService,
     IOptionsMonitor<ServeConfig> configMonitor)

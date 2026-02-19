@@ -12,7 +12,7 @@ namespace Spectara.Revela.Plugin.Compress.Commands;
 /// <summary>
 /// Cleans compressed files (.gz, .br) from the output directory.
 /// </summary>
-public sealed partial class CleanCompressCommand(
+internal sealed partial class CleanCompressCommand(
     ILogger<CleanCompressCommand> logger,
     IPathResolver pathResolver)
 {

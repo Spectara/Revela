@@ -19,7 +19,7 @@ namespace Spectara.Revela.Commands;
 /// <summary>
 /// Extension methods for registering all Revela command services.
 /// </summary>
-public static class ServiceCollectionExtensions
+internal static class ServiceCollectionExtensions
 {
     /// <summary>
     /// Adds all Revela command services to the DI container.

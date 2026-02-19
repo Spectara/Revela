@@ -3,7 +3,7 @@ namespace Spectara.Revela.Plugin.Source.OneDrive.Models;
 /// <summary>
 /// Represents a file to download with its sync status
 /// </summary>
-public sealed class DownloadItem
+internal sealed class DownloadItem
 {
     /// <summary>
     /// Remote OneDrive item

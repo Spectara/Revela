@@ -3,7 +3,7 @@ namespace Spectara.Revela.Commands.Generate.Models.Results;
 /// <summary>
 /// Progress during complete generation.
 /// </summary>
-public sealed class GenerationProgress
+internal sealed class GenerationProgress
 {
     /// <summary>Current phase (Scan, Images, Pages).</summary>
     public required GenerationPhase Phase { get; init; }
@@ -18,7 +18,7 @@ public sealed class GenerationProgress
 /// <summary>
 /// Generation phases.
 /// </summary>
-public enum GenerationPhase
+internal enum GenerationPhase
 {
     /// <summary>Scanning content.</summary>
     Scan,

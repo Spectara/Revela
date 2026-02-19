@@ -5,7 +5,7 @@ namespace Spectara.Revela.Commands.Packages;
 /// <summary>
 /// Extension methods for registering Packages feature services.
 /// </summary>
-public static class ServiceCollectionExtensions
+internal static class ServiceCollectionExtensions
 {
     /// <summary>
     /// Adds Packages feature services to the DI container.

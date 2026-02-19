@@ -10,7 +10,7 @@ namespace Spectara.Revela.Commands.Plugins;
 /// <summary>
 /// Handles 'revela plugin uninstall' command.
 /// </summary>
-public sealed partial class PluginUninstallCommand(
+internal sealed partial class PluginUninstallCommand(
     ILogger<PluginUninstallCommand> logger,
     PluginManager pluginManager)
 {

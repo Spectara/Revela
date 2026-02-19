@@ -8,7 +8,7 @@ namespace Spectara.Revela.Commands.Plugins;
 /// <summary>
 /// Handles 'revela plugin list' command.
 /// </summary>
-public sealed partial class PluginListCommand(
+internal sealed partial class PluginListCommand(
     ILogger<PluginListCommand> logger,
     IPluginContext pluginContext)
 {

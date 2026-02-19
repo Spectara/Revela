@@ -3,7 +3,7 @@ namespace Spectara.Revela.Commands.Generate.Filtering.Ast;
 /// <summary>
 /// Unary operators for filter expressions.
 /// </summary>
-public enum UnaryOperator
+internal enum UnaryOperator
 {
     /// <summary>Logical negation (not).</summary>
     Not
@@ -12,7 +12,7 @@ public enum UnaryOperator
 /// <summary>
 /// Represents a unary expression (op operand).
 /// </summary>
-public sealed class UnaryNode : FilterNode
+internal sealed class UnaryNode : FilterNode
 {
     /// <summary>
     /// Gets the operator.

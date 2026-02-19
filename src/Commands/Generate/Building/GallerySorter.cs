@@ -20,7 +20,7 @@ namespace Spectara.Revela.Commands.Generate.Building;
 ///   <item><description>"Events" → "Events" (no prefix)</description></item>
 /// </list>
 /// </remarks>
-public static partial class GallerySorter
+internal static partial class GallerySorter
 {
     /// <summary>
     /// Regex to extract display name from sort-prefixed folder names

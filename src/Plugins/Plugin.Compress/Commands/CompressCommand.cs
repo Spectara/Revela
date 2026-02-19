@@ -24,7 +24,7 @@ namespace Spectara.Revela.Plugin.Compress.Commands;
 /// Run explicitly with 'revela generate compress' when needed.
 /// </para>
 /// </remarks>
-public sealed partial class CompressCommand(
+internal sealed partial class CompressCommand(
     ILogger<CompressCommand> logger,
     IPathResolver pathResolver,
     CompressionService compressionService) : IGenerateStep

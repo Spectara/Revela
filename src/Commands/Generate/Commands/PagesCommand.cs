@@ -22,7 +22,7 @@ namespace Spectara.Revela.Commands.Generate.Commands;
 /// Usage: revela generate pages
 /// </para>
 /// </remarks>
-public sealed partial class PagesCommand(
+internal sealed partial class PagesCommand(
     ILogger<PagesCommand> logger,
     IRenderService renderService,
     IManifestRepository manifestRepository,

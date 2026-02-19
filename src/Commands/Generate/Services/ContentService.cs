@@ -30,7 +30,7 @@ namespace Spectara.Revela.Commands.Generate.Services;
 /// This allows calculating target sizes and provides complete manifest data upfront.
 /// </para>
 /// </remarks>
-public sealed partial class ContentService(
+internal sealed partial class ContentService(
     ContentScanner contentScanner,
     NavigationBuilder navigationBuilder,
     IManifestRepository manifestRepository,

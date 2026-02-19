@@ -3,7 +3,7 @@ namespace Spectara.Revela.Commands.Generate.Models.Results;
 /// <summary>
 /// Result of page rendering.
 /// </summary>
-public sealed class RenderResult
+internal sealed class RenderResult
 {
     /// <summary>Whether rendering succeeded.</summary>
     public bool Success { get; init; }

@@ -3,7 +3,7 @@ namespace Spectara.Revela.Commands.Generate.Models.Results;
 /// <summary>
 /// Progress during image processing.
 /// </summary>
-public sealed class ImageProgress
+internal sealed class ImageProgress
 {
     /// <summary>Number of images processed so far.</summary>
     public int Processed { get; init; }
@@ -24,7 +24,7 @@ public sealed class ImageProgress
 /// <summary>
 /// State of a single worker processing an image.
 /// </summary>
-public sealed class WorkerState
+internal sealed class WorkerState
 {
     /// <summary>Worker index (0-based).</summary>
     public int WorkerId { get; init; }
@@ -57,7 +57,7 @@ public sealed class WorkerState
 /// <summary>
 /// Result of processing a single variant.
 /// </summary>
-public enum VariantResult
+internal enum VariantResult
 {
     /// <summary>Variant was generated (new file) - JPG format.</summary>
     DoneJpg,

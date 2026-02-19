@@ -3,7 +3,7 @@ namespace Spectara.Revela.Plugin.Source.OneDrive.Models;
 /// <summary>
 /// Status of a file compared to remote OneDrive version
 /// </summary>
-public enum FileStatus
+internal enum FileStatus
 {
     /// <summary>
     /// File exists only on OneDrive (will be downloaded)

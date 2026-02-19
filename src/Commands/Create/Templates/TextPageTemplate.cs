@@ -14,7 +14,7 @@ namespace Spectara.Revela.Commands.Create.Templates;
 /// Usage: revela create page text source/about --title "About Me"
 /// </para>
 /// </remarks>
-public sealed class TextPageTemplate : IPageTemplate
+internal sealed class TextPageTemplate : IPageTemplate
 {
     /// <inheritdoc />
     public string Name => "text";

@@ -16,7 +16,7 @@ namespace Spectara.Revela.Commands.Generate.Filtering;
 /// <item>Punctuation: (, ), ., ,</item>
 /// </list>
 /// </remarks>
-public sealed class FilterLexer
+internal sealed class FilterLexer
 {
     private readonly string source;
     private int position;

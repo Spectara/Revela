@@ -16,7 +16,7 @@ namespace Spectara.Revela.Commands.Config;
 /// <summary>
 /// Extension methods for registering Config feature services.
 /// </summary>
-public static class ServiceCollectionExtensions
+internal static class ServiceCollectionExtensions
 {
     /// <summary>
     /// Adds Config feature services to the DI container.

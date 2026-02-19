@@ -28,7 +28,7 @@ namespace Spectara.Revela.Commands.Revela;
 /// - If all packages already installed: continues to menu
 /// </para>
 /// </remarks>
-public sealed partial class Wizard(
+internal sealed partial class Wizard(
     ILogger<Wizard> logger,
     RefreshCommand packagesRefreshCommand,
     ThemeInstallCommand themeInstallCommand,

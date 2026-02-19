@@ -26,7 +26,7 @@ namespace Spectara.Revela.Commands.Config;
 /// When invoked without subcommand, shows an interactive menu.
 /// Plugins can register subcommands under this parent.
 /// </remarks>
-public sealed class ConfigCommand(
+internal sealed class ConfigCommand(
     IConfigService configService,
     IOptionsMonitor<PackagesConfig> packagesConfig,
     ConfigProjectCommand projectCommand,

@@ -24,7 +24,7 @@ namespace Spectara.Revela.Commands.Generate.Commands;
 /// Usage: revela generate images [--force]
 /// </para>
 /// </remarks>
-public sealed partial class ImagesCommand(
+internal sealed partial class ImagesCommand(
     ILogger<ImagesCommand> logger,
     IImageService imageService,
     IManifestRepository manifestRepository,

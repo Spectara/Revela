@@ -11,7 +11,7 @@ namespace Spectara.Revela.Commands.Projects;
 /// This command is only registered when running in standalone mode
 /// (portable installation with projects/ directory).
 /// </remarks>
-public sealed class ProjectsCommand(
+internal sealed class ProjectsCommand(
     ProjectsListCommand listCommand,
     ProjectsCreateCommand createCommand,
     ProjectsDeleteCommand deleteCommand)

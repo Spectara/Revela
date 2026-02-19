@@ -13,7 +13,7 @@ namespace Spectara.Revela.Commands.Projects.Commands;
 /// <summary>
 /// Lists all project folders in standalone mode.
 /// </summary>
-public sealed partial class ProjectsListCommand(
+internal sealed partial class ProjectsListCommand(
     ILogger<ProjectsListCommand> logger,
     IOptions<ProjectEnvironment> projectEnvironment)
 {

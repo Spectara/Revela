@@ -16,7 +16,7 @@ namespace Spectara.Revela.Commands.Generate.Abstractions;
 ///   <item><description>Copy theme assets to output</description></item>
 /// </list>
 /// </remarks>
-public interface IRenderService
+internal interface IRenderService
 {
     /// <summary>
     /// Render HTML pages from manifest data.

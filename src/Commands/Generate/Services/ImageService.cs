@@ -22,7 +22,7 @@ namespace Spectara.Revela.Commands.Generate.Services;
 /// to skip unchanged images.
 /// </para>
 /// </remarks>
-public sealed partial class ImageService(
+internal sealed partial class ImageService(
     IImageProcessor imageProcessor,
     IManifestRepository manifestRepository,
     IImageSizesProvider imageSizesProvider,

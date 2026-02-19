@@ -13,7 +13,7 @@ namespace Spectara.Revela.Commands.Theme;
 /// - install: Install theme from NuGet package index
 /// - uninstall: Remove an installed theme
 /// </remarks>
-public sealed class ThemeCommand(
+internal sealed class ThemeCommand(
     ThemeListCommand listCommand,
     ThemeFilesCommand filesCommand,
     ThemeExtractCommand extractCommand,

@@ -11,7 +11,7 @@ namespace Spectara.Revela.Commands.Config.Feed;
 /// <summary>
 /// Command to remove a NuGet feed.
 /// </summary>
-public sealed partial class RemoveCommand(
+internal sealed partial class RemoveCommand(
     ILogger<RemoveCommand> logger,
     INuGetSourceManager nugetSourceManager)
 {

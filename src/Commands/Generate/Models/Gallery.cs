@@ -3,7 +3,7 @@ namespace Spectara.Revela.Commands.Generate.Models;
 /// <summary>
 /// Represents a gallery containing images
 /// </summary>
-public sealed class Gallery
+internal sealed class Gallery
 {
     /// <summary>
     /// Original filesystem path relative to source directory

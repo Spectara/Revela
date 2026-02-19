@@ -20,7 +20,7 @@ namespace Spectara.Revela.Plugin.Statistics.Commands;
 /// Usage: revela config statistics [options]
 /// </para>
 /// </remarks>
-public sealed partial class ConfigStatisticsCommand(
+internal sealed partial class ConfigStatisticsCommand(
     ILogger<ConfigStatisticsCommand> logger,
     IConfigService configService,
     IOptionsMonitor<StatisticsPluginConfig> configMonitor)

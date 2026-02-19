@@ -16,7 +16,7 @@ namespace Spectara.Revela.Commands.Generate.Abstractions;
 ///   <item><description>Update manifest with gallery/navigation data</description></item>
 /// </list>
 /// </remarks>
-public interface IContentService
+internal interface IContentService
 {
     /// <summary>
     /// Scan content directory and update manifest with galleries/navigation.

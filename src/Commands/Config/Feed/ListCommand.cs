@@ -11,7 +11,7 @@ namespace Spectara.Revela.Commands.Config.Feed;
 /// <summary>
 /// Command to list all NuGet feeds.
 /// </summary>
-public sealed partial class ListCommand(
+internal sealed partial class ListCommand(
     ILogger<ListCommand> logger,
     INuGetSourceManager nugetSourceManager)
 {

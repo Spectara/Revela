@@ -21,7 +21,7 @@ namespace Spectara.Revela.Commands.Generate.Services;
 /// <c>&lt;picture&gt;</c> elements with AVIF/WebP/JPG srcset.
 /// </para>
 /// </remarks>
-public interface IMarkdownService
+internal interface IMarkdownService
 {
     /// <summary>
     /// Converts Markdown text to HTML.
@@ -47,7 +47,7 @@ public interface IMarkdownService
 /// <summary>
 /// Markdig-based Markdown to HTML converter.
 /// </summary>
-public sealed class MarkdownService : IMarkdownService
+internal sealed class MarkdownService : IMarkdownService
 {
     private static readonly MarkdownPipeline Pipeline = new MarkdownPipelineBuilder()
         .UseAutoLinks()

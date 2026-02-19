@@ -17,7 +17,7 @@ namespace Spectara.Revela.Commands.Config.Theme;
 /// Shows available themes and allows selection.
 /// Validates that selected theme exists.
 /// </remarks>
-public sealed partial class ConfigThemeCommand(
+internal sealed partial class ConfigThemeCommand(
     ILogger<ConfigThemeCommand> logger,
     IOptions<ProjectEnvironment> projectEnvironment,
     IOptionsMonitor<ThemeConfig> themeConfig,

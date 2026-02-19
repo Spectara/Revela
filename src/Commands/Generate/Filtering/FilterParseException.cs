@@ -3,7 +3,9 @@ namespace Spectara.Revela.Commands.Generate.Filtering;
 /// <summary>
 /// Exception thrown when a filter expression cannot be parsed or evaluated.
 /// </summary>
-public sealed class FilterParseException : Exception
+#pragma warning disable CA1064 // Exceptions should be public - internal-only exception within Commands assembly
+internal sealed class FilterParseException : Exception
+#pragma warning restore CA1064
 {
     /// <summary>
     /// Gets the position in the filter expression where the error occurred.

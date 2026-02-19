@@ -15,7 +15,7 @@ namespace Spectara.Revela.Commands.Generate;
 /// <summary>
 /// Extension methods for registering Generate feature services.
 /// </summary>
-public static class ServiceCollectionExtensions
+internal static class ServiceCollectionExtensions
 {
     /// <summary>
     /// Adds Generate feature services to the DI container.

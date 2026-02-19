@@ -3,7 +3,7 @@ namespace Spectara.Revela.Commands.Generate.Filtering.Ast;
 /// <summary>
 /// Represents a property access (object.property or nested object.property.subProperty).
 /// </summary>
-public sealed class PropertyNode : FilterNode
+internal sealed class PropertyNode : FilterNode
 {
     /// <summary>
     /// Gets the property path segments.

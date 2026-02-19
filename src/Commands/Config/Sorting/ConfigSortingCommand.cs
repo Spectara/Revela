@@ -29,7 +29,7 @@ namespace Spectara.Revela.Commands.Config.Sorting;
 ///   <item><c>exif.raw.Rating</c> - Star rating (1-5)</item>
 /// </list>
 /// </remarks>
-public sealed class ConfigSortingCommand(IConfigService configService)
+internal sealed class ConfigSortingCommand(IConfigService configService)
 {
     /// <summary>
     /// Creates the command definition.

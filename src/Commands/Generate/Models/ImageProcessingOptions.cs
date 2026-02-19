@@ -5,7 +5,7 @@ namespace Spectara.Revela.Commands.Generate.Models;
 /// <summary>
 /// Image processing options
 /// </summary>
-public sealed class ImageProcessingOptions
+internal sealed class ImageProcessingOptions
 {
     /// <summary>
     /// Output formats with quality (1-100).

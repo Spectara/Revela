@@ -8,7 +8,7 @@ namespace Spectara.Revela.Commands.Config.Revela;
 /// <summary>
 /// Command to display configuration and plugin locations.
 /// </summary>
-public sealed partial class ConfigLocationsCommand(
+internal sealed partial class ConfigLocationsCommand(
     ILogger<ConfigLocationsCommand> logger)
 {
     /// <summary>

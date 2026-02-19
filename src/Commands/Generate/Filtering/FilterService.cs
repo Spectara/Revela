@@ -32,7 +32,7 @@ namespace Spectara.Revela.Commands.Generate.Filtering;
 /// exif.make == 'Canon' | sort exif.iso desc | limit 10
 /// </code>
 /// </remarks>
-public sealed class FilterService
+internal sealed class FilterService
 {
     /// <summary>
     /// Compiles a filter expression into a predicate.

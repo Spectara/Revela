@@ -12,7 +12,7 @@ namespace Spectara.Revela.Plugin.Serve;
 /// Uses .NET's built-in HttpListener - no external dependencies required.
 /// Implements <see cref="IAsyncDisposable"/> for graceful shutdown of background tasks.
 /// </remarks>
-public sealed class StaticFileServer : IAsyncDisposable, IDisposable
+internal sealed class StaticFileServer : IAsyncDisposable, IDisposable
 {
     private readonly string rootPath;
     private readonly HttpListener listener;

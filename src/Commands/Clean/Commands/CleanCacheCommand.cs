@@ -13,7 +13,7 @@ namespace Spectara.Revela.Commands.Clean.Commands;
 /// <summary>
 /// Cleans the cache directory.
 /// </summary>
-public sealed partial class CleanCacheCommand(
+internal sealed partial class CleanCacheCommand(
     ILogger<CleanCacheCommand> logger,
     IOptions<ProjectEnvironment> projectEnvironment)
 {

@@ -7,7 +7,7 @@ namespace Spectara.Revela.Commands.Projects;
 /// <summary>
 /// Extension methods for registering project management services.
 /// </summary>
-public static class ServiceCollectionExtensions
+internal static class ServiceCollectionExtensions
 {
     /// <summary>
     /// Adds project management commands to the service collection.

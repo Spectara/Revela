@@ -12,7 +12,7 @@ namespace Spectara.Revela.Commands.Generate.Abstractions;
 /// - Custom functions (url_for, format_date, etc.)
 /// - Partial/include support via themes
 /// </remarks>
-public interface ITemplateEngine
+internal interface ITemplateEngine
 {
     /// <summary>
     /// Set the theme for loading partials

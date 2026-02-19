@@ -33,7 +33,7 @@ public enum BinaryOperator
 /// <summary>
 /// Represents a binary expression (left op right).
 /// </summary>
-public sealed class BinaryNode : FilterNode
+internal sealed class BinaryNode : FilterNode
 {
     /// <summary>
     /// Gets the left operand.

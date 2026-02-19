@@ -8,7 +8,7 @@ namespace Spectara.Revela.Commands.Generate.Filtering;
 /// </summary>
 /// <param name="PropertyPath">The property path to sort by (e.g., ["dateTaken"] or ["exif", "iso"]).</param>
 /// <param name="Direction">The sort direction.</param>
-public sealed record SortClause(
+internal sealed record SortClause(
     IReadOnlyList<string> PropertyPath,
     SortDirection Direction)
 {
@@ -35,7 +35,7 @@ public sealed record SortClause(
 /// <param name="Predicate">The filter predicate AST, or null if "all" was specified.</param>
 /// <param name="Sort">Optional sort clause.</param>
 /// <param name="Limit">Optional limit on number of results.</param>
-public sealed record FilterQuery(
+internal sealed record FilterQuery(
     FilterNode? Predicate,
     SortClause? Sort,
     int? Limit)

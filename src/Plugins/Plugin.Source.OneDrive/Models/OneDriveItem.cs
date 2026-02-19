@@ -3,7 +3,7 @@ namespace Spectara.Revela.Plugin.Source.OneDrive.Models;
 /// <summary>
 /// Represents a file or folder item from OneDrive
 /// </summary>
-public sealed class OneDriveItem
+internal sealed class OneDriveItem
 {
     /// <summary>
     /// The item ID in OneDrive

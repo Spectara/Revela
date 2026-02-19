@@ -9,7 +9,7 @@ namespace Spectara.Revela.Commands.Generate.Models;
 /// This is the complete model passed to Scriban templates.
 /// Contains all data needed to render the site.
 /// </remarks>
-public sealed class SiteModel
+internal sealed class SiteModel
 {
     /// <summary>
     /// Site settings loaded dynamically from site.json.

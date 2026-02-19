@@ -3,7 +3,7 @@ namespace Spectara.Revela.Commands.Generate.Models.Results;
 /// <summary>
 /// Result of content scanning.
 /// </summary>
-public sealed class ContentResult
+internal sealed class ContentResult
 {
     /// <summary>Whether scanning succeeded.</summary>
     public bool Success { get; init; }

@@ -31,7 +31,7 @@ namespace Spectara.Revela.Commands.Project;
 /// After completion, the project is ready for adding images and generating the site.
 /// </para>
 /// </remarks>
-public sealed partial class Wizard(
+internal sealed partial class Wizard(
     ILogger<Wizard> logger,
     IOptions<ProjectEnvironment> projectEnvironment,
     ConfigProjectCommand configProjectCommand,

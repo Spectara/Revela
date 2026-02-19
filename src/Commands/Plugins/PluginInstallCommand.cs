@@ -18,7 +18,7 @@ namespace Spectara.Revela.Commands.Plugins;
 /// Installs plugins from NuGet. Before running, use 'revela packages refresh'
 /// to update the package index for better type validation.
 /// </remarks>
-public sealed partial class PluginInstallCommand(
+internal sealed partial class PluginInstallCommand(
     ILogger<PluginInstallCommand> logger,
     PluginManager pluginManager,
     IPackageIndexService packageIndexService)

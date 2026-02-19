@@ -3,7 +3,7 @@ namespace Spectara.Revela.Commands.Generate.Models.Results;
 /// <summary>
 /// Progress during content scanning.
 /// </summary>
-public sealed class ContentProgress
+internal sealed class ContentProgress
 {
     /// <summary>Current status message.</summary>
     public required string Status { get; init; }

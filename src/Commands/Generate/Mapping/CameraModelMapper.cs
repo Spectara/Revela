@@ -23,7 +23,7 @@ namespace Spectara.Revela.Commands.Generate.Mapping;
 /// }
 /// </code>
 /// </remarks>
-public sealed class CameraModelMapper
+internal sealed class CameraModelMapper
 {
     private readonly Dictionary<string, string> modelMappings;
     private readonly Dictionary<string, string> makeMappings;

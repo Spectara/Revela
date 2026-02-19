@@ -11,7 +11,7 @@ namespace Spectara.Revela.Commands.Generate.Models;
 /// - id: Unique identifier for HTML anchors (filename without extension)
 /// - url: Relative path to image variants (e.g., "photo1" -> images/photo1/640.jpg)
 /// </remarks>
-public sealed class Image
+internal sealed class Image
 {
     /// <summary>
     /// Full path to the source image file.
@@ -101,7 +101,7 @@ public sealed class Image
 /// <summary>
 /// Represents a processed variant of an image (different size/format)
 /// </summary>
-public sealed class ImageVariant
+internal sealed class ImageVariant
 {
     public required int Width { get; init; }
     public required int Height { get; init; }

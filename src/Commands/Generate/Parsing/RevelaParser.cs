@@ -35,7 +35,7 @@ namespace Spectara.Revela.Commands.Generate.Parsing;
 /// <item>Type-safe: booleans are <c>true</c>/<c>false</c>, not strings</item>
 /// </list>
 /// </remarks>
-public sealed partial class RevelaParser(ILogger<RevelaParser> logger)
+internal sealed partial class RevelaParser(ILogger<RevelaParser> logger)
 {
     /// <summary>
     /// The standard filename for directory metadata.

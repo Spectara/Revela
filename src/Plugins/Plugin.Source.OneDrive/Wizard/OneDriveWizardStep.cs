@@ -19,7 +19,7 @@ namespace Spectara.Revela.Plugin.Source.OneDrive.Wizard;
 /// configuration, ensuring consistency with manual configuration.
 /// </para>
 /// </remarks>
-public sealed class OneDriveWizardStep(
+internal sealed class OneDriveWizardStep(
     ConfigOneDriveCommand configCommand,
     IOptionsMonitor<OneDrivePluginConfig> configMonitor) : IWizardStep
 {

@@ -17,7 +17,7 @@ namespace Spectara.Revela.Plugin.Source.OneDrive.Providers;
 /// Uses C# 12 Primary Constructor - parameters are captured automatically.
 /// HttpClient is injected as a Typed Client (configured in OneDrivePlugin.ConfigureServices).
 /// </remarks>
-public sealed class SharedLinkProvider(
+internal sealed class SharedLinkProvider(
     HttpClient httpClient,
     ILogger<SharedLinkProvider> logger)
 {

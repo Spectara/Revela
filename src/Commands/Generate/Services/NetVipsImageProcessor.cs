@@ -33,7 +33,7 @@ namespace Spectara.Revela.Commands.Generate.Services;
 /// images in parallel from ImageService.
 /// </para>
 /// </remarks>
-public sealed partial class NetVipsImageProcessor(
+internal sealed partial class NetVipsImageProcessor(
     ILogger<NetVipsImageProcessor> logger,
     CameraModelMapper cameraModelMapper) : IImageProcessor
 {

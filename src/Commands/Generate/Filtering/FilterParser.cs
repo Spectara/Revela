@@ -28,7 +28,7 @@ namespace Spectara.Revela.Commands.Generate.Filtering;
 /// constant       → STRING | INTEGER | DECIMAL | "true" | "false" | "null"
 /// </code>
 /// </remarks>
-public sealed class FilterParser
+internal sealed class FilterParser
 {
     private readonly IReadOnlyList<Token> tokens;
     private readonly string source;

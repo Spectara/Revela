@@ -34,7 +34,7 @@ namespace Spectara.Revela.Plugin.Serve.Configuration;
 /// SPECTARA__REVELA__PLUGIN__SERVE__VERBOSE=true
 /// </code>
 /// </remarks>
-public sealed class ServeConfig
+internal sealed class ServeConfig
 {
     /// <summary>
     /// Configuration section name

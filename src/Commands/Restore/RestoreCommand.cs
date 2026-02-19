@@ -20,7 +20,7 @@ namespace Spectara.Revela.Commands.Restore;
 /// - Plugins from "plugins" section
 /// Uses PluginManager for installation.
 /// </remarks>
-public sealed partial class RestoreCommand(
+internal sealed partial class RestoreCommand(
     IDependencyScanner dependencyScanner,
     IThemeResolver themeResolver,
     IEnumerable<IPlugin> installedPlugins,

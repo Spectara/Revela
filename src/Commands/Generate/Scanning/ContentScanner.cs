@@ -16,7 +16,7 @@ namespace Spectara.Revela.Commands.Generate.Scanning;
 ///
 /// Creates a content tree representing the site structure.
 /// </remarks>
-public sealed partial class ContentScanner(
+internal sealed partial class ContentScanner(
     ILogger<ContentScanner> logger,
     RevelaParser revelaParser)
 {

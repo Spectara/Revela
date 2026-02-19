@@ -14,7 +14,7 @@ namespace Spectara.Revela.Commands.Projects.Commands;
 /// <summary>
 /// Deletes a project folder in standalone mode.
 /// </summary>
-public sealed partial class ProjectsDeleteCommand(
+internal sealed partial class ProjectsDeleteCommand(
     ILogger<ProjectsDeleteCommand> logger,
     IOptions<ProjectEnvironment> projectEnvironment)
 {

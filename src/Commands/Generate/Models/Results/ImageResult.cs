@@ -3,7 +3,7 @@ namespace Spectara.Revela.Commands.Generate.Models.Results;
 /// <summary>
 /// Result of image processing.
 /// </summary>
-public sealed class ImageResult
+internal sealed class ImageResult
 {
     /// <summary>Whether processing succeeded.</summary>
     public bool Success { get; init; }

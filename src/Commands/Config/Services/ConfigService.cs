@@ -18,7 +18,7 @@ namespace Spectara.Revela.Commands.Config.Services;
 /// - Pretty-printed output
 /// - Automatic IConfiguration reload and IOptionsMonitor cache invalidation after writes
 /// </remarks>
-public sealed partial class ConfigService(
+internal sealed partial class ConfigService(
     ILogger<ConfigService> logger,
     IConfiguration configuration,
     IOptions<ProjectEnvironment> projectEnvironment,

@@ -6,7 +6,7 @@ namespace Spectara.Revela.Plugin.Compress.Services;
 /// <summary>
 /// Compression statistics for a single format (Gzip or Brotli).
 /// </summary>
-public sealed record CompressionFormatStats
+internal sealed record CompressionFormatStats
 {
     /// <summary>Format name (e.g., "Gzip", "Brotli").</summary>
     public required string Format { get; init; }
@@ -29,7 +29,7 @@ public sealed record CompressionFormatStats
 /// <summary>
 /// Overall compression statistics.
 /// </summary>
-public sealed record CompressionStats
+internal sealed record CompressionStats
 {
     /// <summary>Gzip compression statistics.</summary>
     public CompressionFormatStats Gzip { get; } = new() { Format = "Gzip" };
@@ -54,7 +54,7 @@ public sealed record CompressionStats
 /// <item><see cref="BrotliStream"/> - RFC 7932 compliant</item>
 /// </list>
 /// </remarks>
-public sealed partial class CompressionService(ILogger<CompressionService> logger)
+internal sealed partial class CompressionService(ILogger<CompressionService> logger)
 {
     /// <summary>Minimum file size to compress (256 bytes).</summary>
     private const int MinFileSizeBytes = 256;

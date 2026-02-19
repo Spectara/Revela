@@ -27,7 +27,7 @@ namespace Spectara.Revela.Commands.Generate.Models;
 /// {{~ end ~}}
 /// </code>
 /// </remarks>
-public sealed class NavigationItem
+internal sealed class NavigationItem
 {
     /// <summary>
     /// Display text for the navigation item

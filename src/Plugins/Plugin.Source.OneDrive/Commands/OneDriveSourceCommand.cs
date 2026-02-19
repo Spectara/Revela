@@ -21,7 +21,7 @@ namespace Spectara.Revela.Plugin.Source.OneDrive.Commands;
 /// Configuration is injected via IOptionsMonitor for hot-reload support.
 /// Dependencies are injected at construction time, making the command fully testable.
 /// </remarks>
-public sealed class OneDriveSourceCommand(
+internal sealed class OneDriveSourceCommand(
     ILogger<OneDriveSourceCommand> logger,
     SharedLinkProvider provider,
     IPathResolver pathResolver,

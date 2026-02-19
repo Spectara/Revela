@@ -16,7 +16,7 @@ namespace Spectara.Revela.Plugin.Serve;
 /// <summary>
 /// Command to start a local HTTP server for previewing generated sites
 /// </summary>
-public sealed partial class ServeCommand(
+internal sealed partial class ServeCommand(
     ILogger<ServeCommand> logger,
     IPathResolver pathResolver,
     IOptionsMonitor<ServeConfig> serveConfig)

@@ -12,7 +12,7 @@ namespace Spectara.Revela.Tests.Shared;
 /// All methods return valid objects with sensible defaults.
 /// Override specific properties as needed for your test.
 /// </remarks>
-public static class TestData
+internal static class TestData
 {
     #region ImageContent
 

@@ -6,7 +6,7 @@ namespace Spectara.Revela.Commands.Restore;
 /// <summary>
 /// Represents a required dependency discovered from project configuration
 /// </summary>
-public sealed record RequiredDependency
+internal sealed record RequiredDependency
 {
     /// <summary>
     /// Package identifier (e.g., "Spectara.Revela.Plugin.Source.OneDrive")
@@ -27,7 +27,7 @@ public sealed record RequiredDependency
 /// <summary>
 /// Type of dependency
 /// </summary>
-public enum DependencyType
+internal enum DependencyType
 {
     /// <summary>Theme package</summary>
     Theme,
@@ -50,7 +50,7 @@ public enum DependencyType
 /// <item><b>plugins</b>: Installed plugin packages with versions</item>
 /// </list>
 /// </remarks>
-public interface IDependencyScanner
+internal interface IDependencyScanner
 {
     /// <summary>
     /// Get all required dependencies from configuration
@@ -62,7 +62,7 @@ public interface IDependencyScanner
 /// <summary>
 /// Default implementation of dependency scanner using IOptions
 /// </summary>
-public sealed partial class DependencyScanner(
+internal sealed partial class DependencyScanner(
     ILogger<DependencyScanner> logger,
     IOptionsMonitor<DependenciesConfig> options) : IDependencyScanner
 {

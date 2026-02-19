@@ -15,7 +15,7 @@ namespace Spectara.Revela.Commands.Config.Services;
 /// Returns: [("title", "My Site"), ("social.twitter", "@me")]
 /// </para>
 /// </remarks>
-public static class JsonPropertyExtractor
+internal static class JsonPropertyExtractor
 {
     /// <summary>
     /// Extracts all leaf properties from a JSON document.
@@ -160,4 +160,4 @@ public static class JsonPropertyExtractor
 /// </summary>
 /// <param name="Path">The dot-notation path (e.g., "social.twitter").</param>
 /// <param name="Value">The current value (empty string if not set).</param>
-public readonly record struct JsonProperty(string Path, string Value);
+internal readonly record struct JsonProperty(string Path, string Value);

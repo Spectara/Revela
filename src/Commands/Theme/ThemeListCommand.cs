@@ -18,7 +18,7 @@ namespace Spectara.Revela.Commands.Theme;
 /// 2. Installed theme plugins (built-in + plugins/)
 /// 3. Available themes from NuGet (with --online flag)
 /// </remarks>
-public sealed partial class ThemeListCommand(
+internal sealed partial class ThemeListCommand(
     IThemeResolver themeResolver,
     IPluginContext pluginContext,
     IOptions<ProjectEnvironment> projectEnvironment,

@@ -5,7 +5,7 @@ namespace Spectara.Revela.Commands.Config.Feed;
 /// <summary>
 /// Parent command for NuGet feed management.
 /// </summary>
-public sealed class FeedCommand(
+internal sealed class FeedCommand(
     ListCommand listCommand,
     AddCommand addCommand,
     RemoveCommand removeCommand)

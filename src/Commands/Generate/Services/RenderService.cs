@@ -24,7 +24,7 @@ namespace Spectara.Revela.Commands.Generate.Services;
 /// Copies theme assets to output directory.
 /// </para>
 /// </remarks>
-public sealed partial class RenderService(
+internal sealed partial class RenderService(
     Func<ITemplateEngine> templateEngineFactory,
     IThemeResolver themeResolver,
     ITemplateResolver templateResolver,

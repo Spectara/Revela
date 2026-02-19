@@ -29,7 +29,7 @@ namespace Spectara.Revela.Commands.Generate.Services;
 /// {{ end }}
 /// </code>
 /// </remarks>
-public sealed partial class ScribanTemplateEngine(
+internal sealed partial class ScribanTemplateEngine(
     ILogger<ScribanTemplateEngine> logger,
     IMarkdownService markdownService,
     ITemplateResolver templateResolver) : ITemplateEngine

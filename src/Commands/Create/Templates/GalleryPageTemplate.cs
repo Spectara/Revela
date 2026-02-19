@@ -17,7 +17,7 @@ namespace Spectara.Revela.Commands.Create.Templates;
 /// Advanced: revela create page gallery source/best --title "Best Shots" --sort "exif.raw.Rating:desc"
 /// </para>
 /// </remarks>
-public sealed class GalleryPageTemplate : IPageTemplate
+internal sealed class GalleryPageTemplate : IPageTemplate
 {
     /// <inheritdoc />
     public string Name => "gallery";

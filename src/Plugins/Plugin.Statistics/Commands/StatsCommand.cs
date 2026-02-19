@@ -22,7 +22,7 @@ namespace Spectara.Revela.Plugin.Statistics.Commands;
 /// Implements <see cref="IGenerateStep"/> for pipeline integration.
 /// </para>
 /// </remarks>
-public sealed class StatsCommand(
+internal sealed class StatsCommand(
     ILogger<StatsCommand> logger,
     IManifestRepository manifestRepository,
     IOptions<ProjectEnvironment> projectEnvironment,

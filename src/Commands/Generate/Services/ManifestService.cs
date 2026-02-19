@@ -30,7 +30,7 @@ namespace Spectara.Revela.Commands.Generate.Services;
 /// Cache directory is determined from project environment.
 /// </para>
 /// </remarks>
-public sealed partial class ManifestService(
+internal sealed partial class ManifestService(
     ILogger<ManifestService> logger,
     IOptions<ProjectEnvironment> projectEnvironment) : IManifestRepository
 {

@@ -21,7 +21,7 @@ namespace Spectara.Revela.Commands.Generate.Commands;
 /// Usage: revela generate scan
 /// </para>
 /// </remarks>
-public sealed partial class ScanCommand(
+internal sealed partial class ScanCommand(
     ILogger<ScanCommand> logger,
     IContentService contentService,
     IOptionsMonitor<ProjectConfig> projectConfig) : IGenerateStep

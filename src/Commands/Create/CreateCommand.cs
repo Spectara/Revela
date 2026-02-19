@@ -14,7 +14,7 @@ namespace Spectara.Revela.Commands.Create;
 ///
 /// Note: 'project' subcommand was removed. Use 'config project' or 'init' instead.
 /// </remarks>
-public sealed class CreateCommand(
+internal sealed class CreateCommand(
     CreatePageCommand pageCommand)
 {
     /// <summary>

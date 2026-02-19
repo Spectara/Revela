@@ -1,6 +1,7 @@
 using System.CommandLine;
 using System.Text.Json.Nodes;
 using Microsoft.Extensions.Options;
+using Spectara.Revela.Plugin.Source.OneDrive.Commands.Logging;
 using Spectara.Revela.Plugin.Source.OneDrive.Configuration;
 using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Abstractions;
@@ -21,7 +22,7 @@ namespace Spectara.Revela.Plugin.Source.OneDrive.Commands;
 /// Usage: revela config source onedrive [options]
 /// </para>
 /// </remarks>
-public sealed partial class ConfigOneDriveCommand(
+internal sealed class ConfigOneDriveCommand(
     ILogger<ConfigOneDriveCommand> logger,
     IConfigService configService,
     IOptionsMonitor<OneDrivePluginConfig> configMonitor,
@@ -129,7 +130,7 @@ public sealed partial class ConfigOneDriveCommand(
 
         await configService.UpdateProjectConfigAsync(updates, cancellationToken);
 
-        LogConfigSaved(logger, configService.ProjectConfigPath);
+        logger.ConfigSaved(configService.ProjectConfigPath);
 
         // Show success panel
         var action = isFirstTime ? "created" : "updated";
@@ -149,7 +150,4 @@ public sealed partial class ConfigOneDriveCommand(
 
         return 0;
     }
-
-    [LoggerMessage(Level = LogLevel.Information, Message = "OneDrive config saved to {Path}")]
-    private static partial void LogConfigSaved(ILogger logger, string path);
 }

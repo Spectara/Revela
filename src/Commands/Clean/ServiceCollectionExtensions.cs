@@ -7,7 +7,7 @@ namespace Spectara.Revela.Commands.Clean;
 /// <summary>
 /// Extension methods for registering Clean feature services.
 /// </summary>
-public static class ServiceCollectionExtensions
+internal static class ServiceCollectionExtensions
 {
     /// <summary>
     /// Adds Clean feature services to the DI container.

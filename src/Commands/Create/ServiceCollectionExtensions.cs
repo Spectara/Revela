@@ -7,7 +7,7 @@ namespace Spectara.Revela.Commands.Create;
 /// <summary>
 /// Extension methods for registering Create command services.
 /// </summary>
-public static class ServiceCollectionExtensions
+internal static class ServiceCollectionExtensions
 {
     /// <summary>
     /// Adds Create feature services to the service collection.

@@ -26,7 +26,7 @@ namespace Spectara.Revela.Commands.Config.Paths;
 /// <item>Direct deployment: Output directly to webserver directory</item>
 /// </list>
 /// </remarks>
-public sealed partial class ConfigPathsCommand(
+internal sealed partial class ConfigPathsCommand(
     ILogger<ConfigPathsCommand> logger,
     IOptions<ProjectEnvironment> projectEnvironment,
     IOptionsMonitor<PathsConfig> pathsConfig,

@@ -19,7 +19,7 @@ namespace Spectara.Revela.Commands.Generate.Models;
 /// Optional body content in Markdown or Scriban.
 /// </code>
 /// </remarks>
-public sealed class DirectoryMetadata
+internal sealed class DirectoryMetadata
 {
     /// <summary>
     /// Gets the display title for the directory.

@@ -8,7 +8,7 @@ namespace Spectara.Revela.Plugin.Source.OneDrive.Services;
 /// <summary>
 /// Analyzes local files vs OneDrive files to determine download actions
 /// </summary>
-public sealed class DownloadAnalyzer
+internal static class DownloadAnalyzer
 {
     private const double LastModifiedToleranceSeconds = 5.0;
 

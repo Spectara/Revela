@@ -19,7 +19,7 @@ namespace Spectara.Revela.Commands.Generate.Commands;
 /// To clean output/cache before generating, use: revela clean all
 /// </para>
 /// </remarks>
-public sealed class GenerateCommand(
+internal sealed class GenerateCommand(
     ScanCommand scanCommand,
     ImagesCommand imagesCommand,
     PagesCommand pagesCommand,

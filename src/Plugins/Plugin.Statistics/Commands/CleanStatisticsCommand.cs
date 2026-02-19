@@ -13,7 +13,7 @@ namespace Spectara.Revela.Plugin.Statistics.Commands;
 /// <summary>
 /// Cleans statistics JSON files from the cache directory.
 /// </summary>
-public sealed partial class CleanStatisticsCommand(
+internal sealed partial class CleanStatisticsCommand(
     ILogger<CleanStatisticsCommand> logger,
     IOptions<ProjectEnvironment> projectEnvironment)
 {

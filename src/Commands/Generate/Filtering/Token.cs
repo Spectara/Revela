@@ -93,7 +93,7 @@ public enum TokenType
 /// <param name="Type">The type of the token.</param>
 /// <param name="Value">The literal value of the token.</param>
 /// <param name="Position">The position in the source string where the token starts.</param>
-public readonly record struct Token(TokenType Type, string Value, int Position)
+internal readonly record struct Token(TokenType Type, string Value, int Position)
 {
     /// <summary>
     /// Creates an EOF token at the specified position.

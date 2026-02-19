@@ -14,7 +14,7 @@ namespace Spectara.Revela.Commands.Generate.Abstractions;
 /// - EXIF extraction
 /// - Quality control
 /// </remarks>
-public interface IImageProcessor
+internal interface IImageProcessor
 {
     /// <summary>
     /// Process a single image: resize, convert formats, extract EXIF
@@ -61,7 +61,7 @@ public interface IImageProcessor
 /// <summary>
 /// Image metadata extracted without full processing.
 /// </summary>
-public sealed class ImageMetadata
+internal sealed class ImageMetadata
 {
     /// <summary>Image width in pixels</summary>
     public required int Width { get; init; }

@@ -7,7 +7,7 @@ namespace Spectara.Revela.Commands.Generate;
 /// Centralizes the list of image extensions used throughout the generate feature.
 /// Used by content scanning and navigation building.
 /// </remarks>
-public static class SupportedImageExtensions
+internal static class SupportedImageExtensions
 {
     /// <summary>
     /// File extensions recognized as images (case-insensitive comparison required).

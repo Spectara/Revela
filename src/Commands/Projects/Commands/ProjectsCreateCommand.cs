@@ -10,7 +10,7 @@ namespace Spectara.Revela.Commands.Projects.Commands;
 /// <summary>
 /// Creates a new project folder in standalone mode.
 /// </summary>
-public sealed partial class ProjectsCreateCommand(
+internal sealed partial class ProjectsCreateCommand(
     ILogger<ProjectsCreateCommand> logger)
 {
     /// <summary>

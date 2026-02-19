@@ -18,7 +18,7 @@ namespace Spectara.Revela.Commands.Generate.Building;
 ///   <item><description>Removes consecutive hyphens</description></item>
 /// </list>
 /// </remarks>
-public static partial class UrlBuilder
+internal static partial class UrlBuilder
 {
     /// <summary>
     /// Characters to replace with hyphens in slugs

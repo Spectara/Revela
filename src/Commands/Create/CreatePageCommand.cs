@@ -27,7 +27,7 @@ namespace Spectara.Revela.Commands.Create;
 /// The path argument is required. Options are dynamically generated from template properties.
 /// </para>
 /// </remarks>
-public sealed partial class CreatePageCommand(
+internal sealed partial class CreatePageCommand(
     ILogger<CreatePageCommand> logger,
     IPathResolver pathResolver,
     IEnumerable<IPageTemplate> templates)
