@@ -19,7 +19,7 @@ using Spectara.Revela.Sdk.Abstractions;
 
 public class MyPlugin : IPlugin
 {
-    public IPluginMetadata Metadata => new PluginMetadata
+    public PluginMetadata Metadata => new()
     {
         Name = "My Plugin",
         Version = "1.0.0",
@@ -27,22 +27,13 @@ public class MyPlugin : IPlugin
         Author = "Your Name"
     };
 
-    public void ConfigureConfiguration(IConfigurationBuilder configuration)
-    {
-        // Optional: Add configuration sources
-    }
-
     public void ConfigureServices(IServiceCollection services)
     {
         // Register your services
     }
 
-    public void Initialize(IServiceProvider services)
-    {
-        // Initialize after DI container is built
-    }
-
-    public IEnumerable<CommandDescriptor> GetCommands()
+    // Optional: Override to provide CLI commands
+    public IEnumerable<CommandDescriptor> GetCommands(IServiceProvider services)
     {
         // Return your CLI commands
         yield break;
@@ -57,7 +48,7 @@ using Spectara.Revela.Sdk.Themes;
 
 public class MyTheme : EmbeddedThemePlugin
 {
-    public override IThemeMetadata Metadata => new ThemeMetadata
+    public override ThemeMetadata Metadata => new()
     {
         Name = "My Theme",
         Version = "1.0.0",

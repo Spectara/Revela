@@ -5,35 +5,19 @@ using Spectara.Revela.Sdk.Abstractions;
 namespace Spectara.Revela.Core;
 
 /// <summary>
-/// Internal implementation of IPluginContext
+/// Internal implementation of <see cref="IPluginContext"/>.
 /// </summary>
 internal sealed class PluginContext(IReadOnlyList<ILoadedPluginInfo> plugins, ILogger<PluginContext> logger) : IPluginContext
 {
     public IReadOnlyList<ILoadedPluginInfo> Plugins { get; } = plugins;
 
-    public void Initialize(IServiceProvider serviceProvider)
+    public void RegisterCommands(RootCommand rootCommand, IServiceProvider services, Action<Command, int, string?, bool, bool>? onCommandRegistered = null)
     {
         foreach (var pluginInfo in Plugins)
         {
             try
             {
-                pluginInfo.Plugin.Initialize(serviceProvider);
-                logger.PluginInitialized(pluginInfo.Plugin.Metadata.Name);
-            }
-            catch (Exception ex)
-            {
-                logger.PluginInitializationFailed(pluginInfo.Plugin.Metadata.Name, ex);
-            }
-        }
-    }
-
-    public void RegisterCommands(RootCommand rootCommand, Action<Command, int, string?, bool, bool>? onCommandRegistered = null)
-    {
-        foreach (var pluginInfo in Plugins)
-        {
-            try
-            {
-                foreach (var descriptor in pluginInfo.Plugin.GetCommands())
+                foreach (var descriptor in pluginInfo.Plugin.GetCommands(services))
                 {
                     RegisterCommand(rootCommand, pluginInfo.Plugin, descriptor, onCommandRegistered);
                 }

@@ -1,7 +1,6 @@
 using System.Reflection;
 using System.Text.Json;
 
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
 using Spectara.Revela.Sdk.Abstractions;
@@ -9,28 +8,17 @@ using Spectara.Revela.Sdk.Abstractions;
 namespace Spectara.Revela.Sdk.Themes;
 
 /// <summary>
-/// Base class for theme extensions with embedded resources
+/// Base class for theme extensions with embedded resources.
 /// </summary>
 /// <remarks>
-/// <para>
-/// This base class handles all the boilerplate for theme extensions:
-/// - Reads manifest.json from embedded resources for metadata and manifest
-/// - Implements GetFile(), ExtractToAsync()
-/// </para>
-/// <para>
-/// Extension authors only need to create a minimal derived class:
+/// Handles all the boilerplate for theme extensions:
+/// reads manifest.json, implements GetFile(), ExtractToAsync().
+///
+/// Extension authors only need a minimal derived class:
 /// <code>
 /// public sealed class LuminaStatisticsExtension()
 ///     : EmbeddedThemeExtension(typeof(LuminaStatisticsExtension).Assembly) { }
 /// </code>
-/// </para>
-/// <para>
-/// And provide a manifest.json file as embedded resource with:
-/// - name, version, description, author (metadata)
-/// - targetTheme (theme this extends, e.g., "Lumina")
-/// - partialPrefix (prefix for templates, e.g., "statistics")
-/// - variables (optional theme variables)
-/// </para>
 /// </remarks>
 public abstract class EmbeddedThemeExtension : IThemeExtension
 {
@@ -44,12 +32,12 @@ public abstract class EmbeddedThemeExtension : IThemeExtension
     private readonly Assembly assembly;
     private readonly string resourcePrefix;
     private readonly Lazy<ExtensionJsonConfig> config;
-    private readonly Lazy<EmbeddedExtensionMetadata> metadata;
+    private readonly Lazy<PluginMetadata> pluginMetadata;
 
     /// <summary>
-    /// Creates a new embedded theme extension
+    /// Creates a new embedded theme extension.
     /// </summary>
-    /// <param name="assembly">Assembly containing embedded resources</param>
+    /// <param name="assembly">Assembly containing embedded resources.</param>
     protected EmbeddedThemeExtension(Assembly assembly)
     {
         this.assembly = assembly;
@@ -58,11 +46,11 @@ public abstract class EmbeddedThemeExtension : IThemeExtension
         resourcePrefix = assembly.GetName().Name + ".";
 
         config = new Lazy<ExtensionJsonConfig>(LoadConfig);
-        metadata = new Lazy<EmbeddedExtensionMetadata>(() => CreateMetadata(config.Value));
+        pluginMetadata = new Lazy<PluginMetadata>(() => CreateMetadata(config.Value));
     }
 
     /// <inheritdoc />
-    public IPluginMetadata Metadata => metadata.Value;
+    public PluginMetadata Metadata => pluginMetadata.Value;
 
     /// <inheritdoc />
     public string TargetTheme => config.Value.TargetTheme ?? string.Empty;
@@ -92,35 +80,15 @@ public abstract class EmbeddedThemeExtension : IThemeExtension
     }
 
     /// <inheritdoc />
-    public void ConfigureConfiguration(IConfigurationBuilder configuration)
-    {
-        // Extensions don't add configuration
-    }
-
-    /// <inheritdoc />
     public void ConfigureServices(IServiceCollection services)
     {
         // Extensions don't register services
     }
 
     /// <inheritdoc />
-    public void Initialize(IServiceProvider services)
-    {
-        // Extensions don't need initialization
-    }
-
-    /// <inheritdoc />
-    public IEnumerable<CommandDescriptor> GetCommands()
-    {
-        // Extensions don't provide commands
-        yield break;
-    }
-
-    /// <inheritdoc />
     public Stream? GetFile(string relativePath)
     {
         // MSBuild always normalizes embedded resource names to forward slashes
-        // Try with prefix first, then without
         return assembly.GetManifestResourceStream(resourcePrefix + relativePath)
             ?? assembly.GetManifestResourceStream(relativePath);
     }
@@ -128,12 +96,10 @@ public abstract class EmbeddedThemeExtension : IThemeExtension
     /// <inheritdoc />
     public IEnumerable<string> GetAllFiles()
     {
-        // Get all resource names from the assembly
         return assembly.GetManifestResourceNames()
             .Where(name => !name.EndsWith(".cs", StringComparison.OrdinalIgnoreCase))
             .Select(name =>
             {
-                // Strip prefix if present
                 var relativeName = name.StartsWith(resourcePrefix, StringComparison.Ordinal)
                     ? name[resourcePrefix.Length..]
                     : name;
@@ -188,12 +154,9 @@ public abstract class EmbeddedThemeExtension : IThemeExtension
         await stream.CopyToAsync(fileStream, cancellationToken);
     }
 
-    private Stream? GetConfigStream()
-    {
-        // Try various patterns for manifest.json
-        return assembly.GetManifestResourceStream(resourcePrefix + ManifestFileName)
+    private Stream? GetConfigStream() =>
+        assembly.GetManifestResourceStream(resourcePrefix + ManifestFileName)
             ?? assembly.GetManifestResourceStream(ManifestFileName);
-    }
 
     private ExtensionJsonConfig LoadConfig()
     {
@@ -209,7 +172,7 @@ public abstract class EmbeddedThemeExtension : IThemeExtension
                 $"Failed to deserialize {ManifestFileName} in {assembly.GetName().Name}");
     }
 
-    private static EmbeddedExtensionMetadata CreateMetadata(ExtensionJsonConfig cfg) => new()
+    private static PluginMetadata CreateMetadata(ExtensionJsonConfig cfg) => new()
     {
         Name = cfg.Name ?? "Unknown",
         Version = cfg.Version ?? "1.0.0",
@@ -218,7 +181,7 @@ public abstract class EmbeddedThemeExtension : IThemeExtension
     };
 
     /// <summary>
-    /// Configuration model for manifest.json
+    /// Configuration model for manifest.json.
     /// </summary>
     private sealed class ExtensionJsonConfig
     {
@@ -233,25 +196,10 @@ public abstract class EmbeddedThemeExtension : IThemeExtension
     }
 
     /// <summary>
-    /// Template configuration with default data sources
+    /// Template configuration with default data sources.
     /// </summary>
     private sealed class TemplateConfig
     {
-        /// <summary>
-        /// Default data sources for this template.
-        /// Key = variable name, Value = default filename.
-        /// </summary>
         public Dictionary<string, string>? Data { get; init; }
     }
-}
-
-/// <summary>
-/// Metadata implementation for embedded theme extensions
-/// </summary>
-internal sealed class EmbeddedExtensionMetadata : IPluginMetadata
-{
-    public required string Name { get; init; }
-    public required string Version { get; init; }
-    public required string Description { get; init; }
-    public required string Author { get; init; }
 }

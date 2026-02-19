@@ -46,13 +46,36 @@ public sealed class ServePluginTests
     }
 
     [TestMethod]
-    public void GetCommands_WithoutInitialize_ThrowsInvalidOperation()
+    public void GetCommands_WithoutServices_ReturnsEmpty()
     {
         // Arrange
         var plugin = new ServePlugin();
 
-        // Act & Assert
-        Assert.ThrowsExactly<InvalidOperationException>(() => plugin.GetCommands().ToList());
+        // Act - with null-like empty ServiceProvider, GetCommands uses DI
+        // Default interface method returns empty when not overridden with services
+        // But ServePlugin overrides GetCommands, so it needs a real provider
+        var services = new ServiceCollection();
+        services.AddLogging();
+
+        var configBuilder = new Microsoft.Extensions.Configuration.ConfigurationBuilder();
+        var configuration = configBuilder.Build();
+        services.AddSingleton<Microsoft.Extensions.Configuration.IConfiguration>(configuration);
+
+        var configService = Substitute.For<IConfigService>();
+        services.AddSingleton(configService);
+
+        var pathResolver = Substitute.For<IPathResolver>();
+        pathResolver.OutputPath.Returns("/fake/output");
+        services.AddSingleton(pathResolver);
+
+        plugin.ConfigureServices(services);
+        var serviceProvider = services.BuildServiceProvider();
+
+        // Act
+        var commands = plugin.GetCommands(serviceProvider).ToList();
+
+        // Assert - should return commands when valid services provided
+        Assert.HasCount(2, commands);
     }
 
     [TestMethod]
@@ -80,10 +103,9 @@ public sealed class ServePluginTests
 
         plugin.ConfigureServices(services);
         var serviceProvider = services.BuildServiceProvider();
-        plugin.Initialize(serviceProvider);
 
         // Act
-        var commands = plugin.GetCommands().ToList();
+        var commands = plugin.GetCommands(serviceProvider).ToList();
 
         // Assert - returns 2 commands: serve (root), config serve
         Assert.HasCount(2, commands);

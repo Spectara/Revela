@@ -1,6 +1,4 @@
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-
 using Spectara.Revela.Plugin.Compress.Commands;
 using Spectara.Revela.Plugin.Compress.Services;
 using Spectara.Revela.Sdk.Abstractions;
@@ -21,23 +19,14 @@ namespace Spectara.Revela.Plugin.Compress;
 /// </remarks>
 public sealed class CompressPlugin : IPlugin
 {
-    private IServiceProvider? services;
-
     /// <inheritdoc />
-    public IPluginMetadata Metadata => new PluginMetadata
+    public PluginMetadata Metadata => new()
     {
         Name = "Static Compression",
         Version = "1.0.0",
         Description = "Compress static files with Gzip and Brotli",
         Author = "Spectara"
     };
-
-    /// <inheritdoc />
-    public void ConfigureConfiguration(IConfigurationBuilder configuration)
-    {
-        // No configuration needed - plugin uses sensible defaults.
-        // If loaded, compression is enabled. If not loaded, no compression.
-    }
 
     /// <inheritdoc />
     public void ConfigureServices(IServiceCollection services)
@@ -55,16 +44,8 @@ public sealed class CompressPlugin : IPlugin
     }
 
     /// <inheritdoc />
-    public void Initialize(IServiceProvider services) => this.services = services;
-
-    /// <inheritdoc />
-    public IEnumerable<CommandDescriptor> GetCommands()
+    public IEnumerable<CommandDescriptor> GetCommands(IServiceProvider services)
     {
-        if (services is null)
-        {
-            throw new InvalidOperationException("Plugin not initialized. Call Initialize() first.");
-        }
-
         // Resolve commands from DI container
         var compressCommand = services.GetRequiredService<CompressCommand>();
         var cleanCompressCommand = services.GetRequiredService<CleanCompressCommand>();

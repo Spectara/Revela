@@ -1,4 +1,3 @@
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Spectara.Revela.Plugin.Serve.Configuration;
 using Spectara.Revela.Sdk.Abstractions;
@@ -10,24 +9,14 @@ namespace Spectara.Revela.Plugin.Serve;
 /// </summary>
 public sealed class ServePlugin : IPlugin
 {
-    private IServiceProvider? services;
-
     /// <inheritdoc />
-    public IPluginMetadata Metadata { get; } = new PluginMetadata
+    public PluginMetadata Metadata { get; } = new()
     {
         Name = "Serve",
         Version = "1.0.0",
         Description = "Local HTTP server for previewing generated sites",
         Author = "Spectara"
     };
-
-    /// <inheritdoc />
-    public void ConfigureConfiguration(IConfigurationBuilder configuration)
-    {
-        // Nothing to do - plugin config is stored in project.json via IConfigService.
-        // Environment variables with SPECTARA__REVELA__ prefix are auto-loaded.
-        // Example ENV: SPECTARA__REVELA__PLUGIN__SERVE__PORT=3000
-    }
 
     /// <inheritdoc />
     public void ConfigureServices(IServiceCollection services)
@@ -43,16 +32,8 @@ public sealed class ServePlugin : IPlugin
     }
 
     /// <inheritdoc />
-    public void Initialize(IServiceProvider services) => this.services = services;
-
-    /// <inheritdoc />
-    public IEnumerable<CommandDescriptor> GetCommands()
+    public IEnumerable<CommandDescriptor> GetCommands(IServiceProvider services)
     {
-        if (services is null)
-        {
-            throw new InvalidOperationException("Plugin not initialized. Call Initialize() first.");
-        }
-
         // Resolve commands from DI container
         var serveCommand = services.GetRequiredService<ServeCommand>();
         var configCommand = services.GetRequiredService<ConfigServeCommand>();

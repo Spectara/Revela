@@ -1,5 +1,4 @@
 using System.CommandLine;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Http.Resilience;
 using Polly;
@@ -16,24 +15,14 @@ namespace Spectara.Revela.Plugin.Source.OneDrive;
 /// </summary>
 public sealed class OneDrivePlugin : IPlugin
 {
-    private IServiceProvider? services;
-
     /// <inheritdoc />
-    public IPluginMetadata Metadata => new PluginMetadata
+    public PluginMetadata Metadata => new()
     {
         Name = "Source OneDrive",
         Version = "1.0.0",
         Description = "Download images from OneDrive shared folders",
         Author = "Spectara"
     };
-
-    /// <inheritdoc />
-    public void ConfigureConfiguration(IConfigurationBuilder configuration)
-    {
-        // Nothing to do - plugin config is stored in project.json via IConfigService.
-        // Environment variables with SPECTARA__REVELA__ prefix are auto-loaded.
-        // Example ENV: SPECTARA__REVELA__PLUGIN__SOURCE__ONEDRIVE__SHAREURL=https://...
-    }
 
     /// <inheritdoc />
     public void ConfigureServices(IServiceCollection services)
@@ -88,16 +77,8 @@ public sealed class OneDrivePlugin : IPlugin
     }
 
     /// <inheritdoc />
-    public void Initialize(IServiceProvider services) => this.services = services;
-
-    /// <inheritdoc />
-    public IEnumerable<CommandDescriptor> GetCommands()
+    public IEnumerable<CommandDescriptor> GetCommands(IServiceProvider services)
     {
-        if (services is null)
-        {
-            throw new InvalidOperationException("Plugin not initialized. Call Initialize() first.");
-        }
-
         // Resolve commands from DI container
         var sourceCommand = services.GetRequiredService<OneDriveSourceCommand>();
         var configCommand = services.GetRequiredService<ConfigOneDriveCommand>();

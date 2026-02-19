@@ -43,16 +43,14 @@ All plugins must implement the `IPlugin` interface:
 ```csharp
 using System.CommandLine;
 using Microsoft.Extensions.DependencyInjection;
-using Spectara.Revela.Core.Abstractions;
+using Spectara.Revela.Sdk.Abstractions;
 
 namespace YourName.Revela.Plugin.Example;
 
 public class ExamplePlugin : IPlugin
 {
-    private IServiceProvider? _services;
-    
-    // PluginMetadata has: Name, Version, Description, Author (NO ParentCommand!)
-    public IPluginMetadata Metadata => new PluginMetadata
+    // PluginMetadata is a sealed record: Name, Version, Description, Author
+    public PluginMetadata Metadata => new()
     {
         Name = "Example",
         Version = "1.0.0",
@@ -60,7 +58,7 @@ public class ExamplePlugin : IPlugin
         Author = "Your Name"
     };
     
-    // 1. ConfigureServices - Register services BEFORE ServiceProvider is built
+    // REQUIRED: Register services BEFORE ServiceProvider is built
     public void ConfigureServices(IServiceCollection services)
     {
         // Register plugin-specific services
@@ -71,38 +69,18 @@ public class ExamplePlugin : IPlugin
         });
         
         services.AddSingleton<IMyService, MyService>();
+        services.AddTransient<ExampleCommand>();
     }
     
-    // 2. Initialize - Called AFTER ServiceProvider is built
-    public void Initialize(IServiceProvider services)
+    // OPTIONAL: Return CommandDescriptors (command + optional parent)
+    // IServiceProvider is passed as parameter — no field storage needed!
+    public IEnumerable<CommandDescriptor> GetCommands(IServiceProvider services)
     {
-        _services = services;
-        // Perform initialization that requires resolved services
-    }
-    
-    // 3. GetCommands - Return CommandDescriptors (command + optional parent)
-    public IEnumerable<CommandDescriptor> GetCommands()
-    {
-        if (_services == null)
-            throw new InvalidOperationException("Plugin not initialized");
+        var cmd = services.GetRequiredService<ExampleCommand>();
         
         // ParentCommand is specified here, NOT in PluginMetadata!
-        // null = root level, "init" = under init, "source" = under source, etc.
-        yield return new CommandDescriptor(CreateExampleCommand(), ParentCommand: null);
-    }
-    
-    private Command CreateExampleCommand()
-    {
-        var command = new Command("example", "Example command");
-        
-        command.SetAction(parseResult =>
-        {
-            var myService = _services.GetService<IMyService>();
-            myService?.DoSomething();
-            return 0;
-        });
-        
-        return command;
+        // null = root level, "source" = under source, etc.
+        yield return new CommandDescriptor(cmd.Create(), ParentCommand: null);
     }
 }
 ```
@@ -177,14 +155,13 @@ Revela expands short name to: `YourName.Revela.Plugin.Example`
 - Revela discovers plugins matching pattern: `*.Revela.Plugin.*.dll`
 - Plugin's `IPlugin` implementation is instantiated
 
-### 3. Plugin Initializes
+### 3. Plugin Loads and Registers Services
 
 ```csharp
-public void Initialize(IServiceProvider services)
+// Framework calls ConfigureServices before host.Build()
+public void ConfigureServices(IServiceCollection services)
 {
-    // Access DI container
-    var logger = services.GetService<ILogger<ExamplePlugin>>();
-    logger.LogInformation("Example plugin initialized");
+    services.AddTransient<ExampleCommand>();
 }
 ```
 
@@ -221,16 +198,17 @@ Example: `plugins/YourName.Revela.Plugin.Example.json`
 }
 ```
 
-### ConfigureConfiguration - Usually Empty
+### ConfigureConfiguration - Optional (Default: No-Op)
 
-Since JSON files and ENV vars are auto-loaded, plugins typically don't need to do anything:
+Since JSON files and ENV vars are auto-loaded, plugins typically don't need to override this.
+The default interface method provides a no-op implementation:
 
 ```csharp
+// Only override if you need custom config sources:
 public void ConfigureConfiguration(IConfigurationBuilder configuration)
 {
-    // Nothing to do - framework handles everything:
-    // - JSON files: auto-loaded from plugins/*.json
-    // - ENV vars: auto-loaded with SPECTARA__REVELA__ prefix
+    // Example: Add a custom JSON file
+    configuration.AddJsonFile("my-plugin-config.json", optional: true);
 }
 ```
 
@@ -380,10 +358,11 @@ public class ExamplePluginTests
     public void Plugin_ShouldProvideCommands()
     {
         var plugin = new ExamplePlugin();
-        var services = new ServiceCollection().BuildServiceProvider();
-        plugin.Initialize(services);
+        var services = new ServiceCollection();
+        plugin.ConfigureServices(services);
+        var serviceProvider = services.BuildServiceProvider();
         
-        var descriptors = plugin.GetCommands().ToList();
+        var descriptors = plugin.GetCommands(serviceProvider).ToList();
         
         Assert.IsNotEmpty(descriptors);
         Assert.IsTrue(descriptors.Exists(d => d.Command.Name == "example"));

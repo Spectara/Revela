@@ -314,9 +314,7 @@ Implement `IPlugin` interface:
 ```csharp
 public class MyPlugin : IPlugin
 {
-    private IServiceProvider? services;
-    
-    public IPluginMetadata Metadata => new PluginMetadata
+    public PluginMetadata Metadata => new()
     {
         Name = "My Plugin",
         Version = "1.0.0",
@@ -324,13 +322,7 @@ public class MyPlugin : IPlugin
         Author = "Your Name"
     };
     
-    // 1. ConfigureConfiguration - usually empty (framework auto-loads plugins/*.json)
-    public void ConfigureConfiguration(IConfigurationBuilder configuration)
-    {
-        // Nothing to do - framework handles JSON + ENV loading
-    }
-    
-    // 2. ConfigureServices - register services BEFORE ServiceProvider is built
+    // Register services BEFORE ServiceProvider is built
     public void ConfigureServices(IServiceCollection services)
     {
         services.AddHttpClient<MyHttpService>();
@@ -339,18 +331,14 @@ public class MyPlugin : IPlugin
             .ValidateDataAnnotations();
     }
     
-    // 3. Initialize - called AFTER ServiceProvider is built
-    public void Initialize(IServiceProvider services)
+    // Return CommandDescriptors (command + optional parent)
+    // IServiceProvider passed as parameter — no stored field needed
+    public IEnumerable<CommandDescriptor> GetCommands(IServiceProvider services)
     {
-        this.services = services;
-    }
-    
-    // 4. GetCommands - returns CommandDescriptor (command + optional parent)
-    public IEnumerable<CommandDescriptor> GetCommands()
-    {
+        var cmd = services.GetRequiredService<MyCmdCommand>();
         // ParentCommand: null = root level, "init" = under init, etc.
         yield return new CommandDescriptor(
-            new Command("mycmd", "My command"),
+            cmd.Create(),
             ParentCommand: null);  // revela mycmd
     }
 }

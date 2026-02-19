@@ -268,31 +268,35 @@ return await rootCommand.Parse(filteredArgs).InvokeAsync();
 - **`AddInteractiveMode()`:** Registers CommandOrderRegistry, CommandGroupRegistry, IInteractiveMenuService
 - **`ProjectEnvironment`:** Runtime info — `Path` (project dir), `IsInitialized` (project.json exists)
 
-#### Plugin Lifecycle - 4 Phases
+#### Plugin Lifecycle - 2 Required + 2 Optional Members
 
-**IMPORTANT:** Plugins have a specific initialization order!
+**Simplified plugin interface using Default Interface Methods:**
 
 ```csharp
 public interface IPlugin
 {
-    IPluginMetadata Metadata { get; }
+    // REQUIRED: Plugin identity (sealed record, not interface)
+    PluginMetadata Metadata { get; }
     
-    // 1. ConfigureConfiguration - Called BEFORE BuildServiceProvider
-    //    Usually empty - framework handles JSON + ENV loading
-    //    NOTE: Plugin config loaded from project.json sections
-    //    NOTE: ENV vars auto-loaded with SPECTARA__REVELA__ prefix
-    void ConfigureConfiguration(IConfigurationBuilder configuration);
-    
-    // 2. ConfigureServices - Called BEFORE BuildServiceProvider
-    //    Plugin registers services (HttpClient, Commands, IOptions)
+    // REQUIRED: Register services BEFORE ServiceProvider is built
     void ConfigureServices(IServiceCollection services);
     
-    // 3. Initialize - Called AFTER host.Build()
-    //    Plugin receives built ServiceProvider for initialization
-    void Initialize(IServiceProvider services);
+    // OPTIONAL: Add configuration sources (default: no-op)
+    //   Framework auto-loads project.json + ENV vars (SPECTARA__REVELA__*)
+    void ConfigureConfiguration(IConfigurationBuilder configuration) { }
     
-    // 4. GetCommands - Returns CLI command descriptors for registration
-    IEnumerable<CommandDescriptor> GetCommands();
+    // OPTIONAL: Return CLI command descriptors (default: empty)
+    //   IServiceProvider passed as parameter — no stored field needed
+    IEnumerable<CommandDescriptor> GetCommands(IServiceProvider services) => [];
+}
+
+// PluginMetadata is a sealed record (not an interface!)
+public sealed record PluginMetadata
+{
+    public required string Name { get; init; }
+    public required string Version { get; init; }
+    public string Description { get; init; } = string.Empty;
+    public string Author { get; init; } = "Unknown";
 }
 ```
 
@@ -302,57 +306,45 @@ public interface IPlugin
 
 ```csharp
 // Extension method handles all plugin lifecycle phases
-public static IPluginContext AddPlugins(
+// Returns void — IPluginContext is registered in DI and resolved later
+public static void AddPlugins(
     this IServiceCollection services,
     IConfigurationBuilder configuration,
     string[] args,
     Action<PluginOptions>? configure = null)
 {
     // 1. Load plugin assemblies
-    var pluginLoader = new PluginLoader(logger);
-    pluginLoader.LoadPlugins();
-    var plugins = pluginLoader.GetLoadedPlugins();
+    var plugins = LoadPlugins(options);
     
-    // 2. Plugin config is loaded from project.json sections
-    // Each plugin uses its package ID as section name:
-    //   "Spectara.Revela.Plugin.Statistics": { "MaxEntriesPerCategory": 15 }
-    // project.json is already loaded by AddRevelaConfiguration()
-    
-    // 3. Environment variables with prefix override config
-    // Allows: SPECTARA__REVELA__PLUGIN__SOURCE__ONEDRIVE__SHAREURL=https://...
-    
-    // 4. Plugins may register additional config sources (optional)
+    // 2. ConfigureConfiguration (optional, usually no-op)
+    //    ENV vars auto-loaded with SPECTARA__REVELA__ prefix
     foreach (var plugin in plugins)
-    {
         plugin.ConfigureConfiguration(configuration);
-    }
     
-    // 5. Plugins register services
+    // 3. ConfigureServices (required)
     foreach (var plugin in plugins)
-    {
         plugin.ConfigureServices(services);
-    }
     
-    // 6. Return context for Initialize() and RegisterCommands()
-    return new PluginContext(plugins);
+    // 4. Register IPluginContext in DI (resolved in UseRevelaCommands)
+    services.AddSingleton<IPluginContext>(sp =>
+        new PluginContext(plugins, sp.GetRequiredService<ILogger<PluginContext>>()));
 }
 ```
 
 **Benefits:**
+- ✅ **No Initialize() phase** — IServiceProvider passed directly to GetCommands()
+- ✅ **No PluginContextPlaceholder** — void return, real context in DI
 - ✅ **Configuration:** project.json sections, environment variables (SPECTARA__REVELA__*)
-- ✅ **Logging:** Configuration-driven logging levels
 - ✅ **Dependency Injection:** Full DI container with all features
 - ✅ **IOptions:** Validation, hot-reload, fail-fast
-- ✅ **Environment:** Development/Production/Staging support
-- ✅ **Clean Code:** 72% less code in Program.cs (130 lines → 36 lines)
 
 #### Parent Command Pattern
 
 Plugins specify **parent command** in `CommandDescriptor`, NOT in metadata:
 
 ```csharp
-// PluginMetadata has NO ParentCommand - only Name, Version, Description, Author
-public IPluginMetadata Metadata => new PluginMetadata
+// PluginMetadata is a sealed record — Name, Version, Description, Author
+public PluginMetadata Metadata => new()
 {
     Name = "Source OneDrive",
     Version = "1.0.0",
@@ -366,12 +358,15 @@ public IPluginMetadata Metadata => new PluginMetadata
 // CommandDescriptor is a record with 6 parameters:
 // record CommandDescriptor(Command, ParentCommand?, Order=50, Group?, RequiresProject=true, HideWhenProjectExists=false)
 
-public IEnumerable<CommandDescriptor> GetCommands()
+// IServiceProvider passed as parameter — no stored field needed!
+public IEnumerable<CommandDescriptor> GetCommands(IServiceProvider services)
 {
-    // ✅ ParentCommand specified here, not in metadata!
+    // ✅ Resolve commands directly from DI
+    var cmd = services.GetRequiredService<OneDriveSourceCommand>();
+    
     // "source" = registered under source (revela source onedrive)
     yield return new CommandDescriptor(
-        new Command("onedrive", "OneDrive plugin"),
+        cmd.Create(),
         ParentCommand: "source",
         Order: 30,
         Group: "Content");
@@ -550,18 +545,20 @@ public sealed class MyPluginConfig
 }
 ```
 
-#### **Step 2: Plugin Registers Config Sources (usually empty)**
+#### **Step 2: Plugin Registers IOptions**
 ```csharp
 public sealed class MyPlugin : IPlugin
 {
-    // ConfigureConfiguration - usually empty!
-    // Framework handles all configuration loading:
-    // - project.json: plugin sections loaded automatically
-    // - ENV vars: auto-loaded with SPECTARA__REVELA__ prefix
-    public void ConfigureConfiguration(IConfigurationBuilder configuration)
+    public PluginMetadata Metadata => new()
     {
-        // Nothing to do - framework handles everything
-    }
+        Name = "My Plugin",
+        Version = "1.0.0",
+        Description = "My plugin description",
+        Author = "Spectara"
+    };
+    
+    // ConfigureConfiguration is optional (default: no-op)
+    // Framework auto-loads project.json + ENV vars (SPECTARA__REVELA__*)
     
     // Register IOptions
     public void ConfigureServices(IServiceCollection services)

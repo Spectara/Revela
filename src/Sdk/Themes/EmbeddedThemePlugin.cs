@@ -1,29 +1,21 @@
 using System.Reflection;
 using System.Text.Json;
 
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
-
 using Spectara.Revela.Sdk.Abstractions;
 
 namespace Spectara.Revela.Sdk.Themes;
 
 /// <summary>
-/// Base class for theme plugins with embedded resources
+/// Base class for theme plugins with embedded resources.
 /// </summary>
 /// <remarks>
-/// This base class handles all the boilerplate for theme plugins:
-/// - Reads manifest.json from embedded resources for metadata and manifest
-/// - Implements GetFile(), GetAllFiles(), ExtractToAsync()
+/// Handles all the boilerplate for theme plugins:
+/// reads manifest.json from embedded resources, implements GetFile(), GetAllFiles(), ExtractToAsync().
 ///
-/// Theme authors only need to create a minimal derived class:
+/// Theme authors only need a minimal derived class:
 /// <code>
 /// public sealed class MyThemePlugin() : EmbeddedThemePlugin(typeof(MyThemePlugin).Assembly) { }
 /// </code>
-///
-/// And provide a manifest.json file as embedded resource with:
-/// - name, version, description, author (metadata)
-/// - templates.layout, partials, assets, variables (manifest)
 /// </remarks>
 public abstract class EmbeddedThemePlugin : IThemePlugin
 {
@@ -37,13 +29,13 @@ public abstract class EmbeddedThemePlugin : IThemePlugin
     private readonly Assembly assembly;
     private readonly string resourcePrefix;
     private readonly Lazy<ThemeJsonConfig> config;
-    private readonly Lazy<EmbeddedThemeMetadata> metadata;
+    private readonly Lazy<ThemeMetadata> themeMetadata;
     private readonly Lazy<ThemeManifest> manifest;
 
     /// <summary>
-    /// Creates a new embedded theme plugin
+    /// Creates a new embedded theme plugin.
     /// </summary>
-    /// <param name="assembly">Assembly containing embedded resources</param>
+    /// <param name="assembly">Assembly containing embedded resources.</param>
     protected EmbeddedThemePlugin(Assembly assembly)
     {
         this.assembly = assembly;
@@ -53,39 +45,20 @@ public abstract class EmbeddedThemePlugin : IThemePlugin
         resourcePrefix = assembly.GetName().Name + ".";
 
         config = new Lazy<ThemeJsonConfig>(LoadConfig);
-        metadata = new Lazy<EmbeddedThemeMetadata>(() => CreateMetadata(config.Value));
+        themeMetadata = new Lazy<ThemeMetadata>(() => CreateMetadata(config.Value));
         manifest = new Lazy<ThemeManifest>(() => CreateManifest(config.Value));
     }
 
     /// <inheritdoc />
-    IPluginMetadata IPlugin.Metadata => Metadata;
+    PluginMetadata IPlugin.Metadata => Metadata;
 
     /// <inheritdoc />
-    public IThemeMetadata Metadata => metadata.Value;
+    public ThemeMetadata Metadata => themeMetadata.Value;
 
     /// <inheritdoc />
-    public void ConfigureConfiguration(IConfigurationBuilder configuration)
-    {
-        // Themes don't add configuration
-    }
-
-    /// <inheritdoc />
-    public void ConfigureServices(IServiceCollection services)
+    public void ConfigureServices(Microsoft.Extensions.DependencyInjection.IServiceCollection services)
     {
         // Themes don't register services
-    }
-
-    /// <inheritdoc />
-    public void Initialize(IServiceProvider services)
-    {
-        // Themes don't need initialization
-    }
-
-    /// <inheritdoc />
-    public IEnumerable<CommandDescriptor> GetCommands()
-    {
-        // Themes don't provide commands
-        yield break;
     }
 
     /// <inheritdoc />
@@ -160,17 +133,14 @@ public abstract class EmbeddedThemePlugin : IThemePlugin
 
     /// <inheritdoc />
     public Stream? GetSiteTemplate() =>
-        // Load site.json from Configuration folder
         GetFile("Configuration/site.json");
 
     /// <inheritdoc />
     public Stream? GetImagesTemplate() =>
-        // Load images.json from Configuration folder
         GetFile("Configuration/images.json");
 
     private ThemeJsonConfig LoadConfig()
     {
-        // Try with prefix first (standard resource naming), then without (LogicalName override)
         var resourceNameWithPrefix = resourcePrefix + ManifestFileName;
         var stream = assembly.GetManifestResourceStream(resourceNameWithPrefix)
             ?? assembly.GetManifestResourceStream(ManifestFileName)
@@ -183,56 +153,36 @@ public abstract class EmbeddedThemePlugin : IThemePlugin
             $"Failed to parse {ManifestFileName} in {assembly.GetName().Name}");
     }
 
-    private static EmbeddedThemeMetadata CreateMetadata(ThemeJsonConfig config)
+    private static ThemeMetadata CreateMetadata(ThemeJsonConfig config) => new()
     {
-        return new EmbeddedThemeMetadata
-        {
-            Name = config.Name ?? throw new InvalidOperationException("Theme name is required in manifest.json"),
-            Version = config.Version ?? "1.0.0",
-            Description = config.Description ?? string.Empty,
-            Author = config.Author ?? "Unknown",
-            PreviewImageUri = ParseUri(config.PreviewImageUrl),
-            Tags = config.Tags ?? []
-        };
-    }
+        Name = config.Name ?? throw new InvalidOperationException("Theme name is required in manifest.json"),
+        Version = config.Version ?? "1.0.0",
+        Description = config.Description ?? string.Empty,
+        Author = config.Author ?? "Unknown",
+        PreviewImageUri = ParseUri(config.PreviewImageUrl),
+        Tags = config.Tags ?? []
+    };
 
-    private static ThemeManifest CreateManifest(ThemeJsonConfig config)
+    private static ThemeManifest CreateManifest(ThemeJsonConfig config) => new()
     {
-        return new ThemeManifest
-        {
-            LayoutTemplate = config.Templates?.Layout ?? "layout.revela",
-            Variables = config.Variables ?? []
-        };
-    }
+        LayoutTemplate = config.Templates?.Layout ?? "layout.revela",
+        Variables = config.Variables ?? []
+    };
 
-    private static Uri? ParseUri(string? url)
-    {
-        if (string.IsNullOrEmpty(url))
-        {
-            return null;
-        }
-
-        return new Uri(url, UriKind.RelativeOrAbsolute);
-    }
+    private static Uri? ParseUri(string? url) =>
+        string.IsNullOrEmpty(url) ? null : new Uri(url, UriKind.RelativeOrAbsolute);
 
     /// <summary>
-    /// Converts a resource name suffix to a file path
+    /// Converts a resource name suffix to a file path.
     /// </summary>
-    /// <remarks>
-    /// Resource names use dots as separators, but we need to determine
-    /// which dots are folder separators vs file extension.
-    /// Strategy: The last dot before a known extension is the extension separator.
-    /// </remarks>
     private static string ConvertResourceNameToPath(string resourceSuffix)
     {
-        // Find the file extension (last segment)
         var lastDot = resourceSuffix.LastIndexOf('.');
         if (lastDot < 0)
         {
             return resourceSuffix;
         }
 
-        // Everything before last dot: replace dots with path separator
         var pathPart = resourceSuffix[..lastDot].Replace('.', Path.DirectorySeparatorChar);
         var extension = resourceSuffix[lastDot..];
 
@@ -241,11 +191,8 @@ public abstract class EmbeddedThemePlugin : IThemePlugin
 }
 
 /// <summary>
-/// JSON configuration structure for theme.json
+/// JSON configuration structure for theme.json.
 /// </summary>
-/// <remarks>
-/// Shared by both EmbeddedThemePlugin and LocalThemeAdapter
-/// </remarks>
 internal sealed class ThemeJsonConfig
 {
     public string? Name { get; set; }
@@ -259,22 +206,9 @@ internal sealed class ThemeJsonConfig
 }
 
 /// <summary>
-/// Templates section in theme.json
+/// Templates section in theme.json.
 /// </summary>
 internal sealed class ThemeTemplatesConfig
 {
     public string? Layout { get; set; }
-}
-
-/// <summary>
-/// Metadata implementation for embedded themes
-/// </summary>
-internal sealed class EmbeddedThemeMetadata : IThemeMetadata
-{
-    public required string Name { get; init; }
-    public required string Version { get; init; }
-    public required string Description { get; init; }
-    public required string Author { get; init; }
-    public Uri? PreviewImageUri { get; init; }
-    public IReadOnlyList<string> Tags { get; init; } = [];
 }

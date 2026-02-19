@@ -21,13 +21,10 @@ namespace Spectara.Revela.Cli.Hosting;
 /// Core commands use the same CommandDescriptor pattern as plugins,
 /// enabling unified registration logic in HostExtensions.
 /// </remarks>
-internal sealed class CoreCommandProvider(IServiceProvider services)
+internal sealed class CoreCommandProvider : ICommandProvider
 {
-    /// <summary>
-    /// Gets all core command descriptors.
-    /// </summary>
-    /// <returns>Sequence of command descriptors for core commands.</returns>
-    public IEnumerable<CommandDescriptor> GetCommands()
+    /// <inheritdoc />
+    public IEnumerable<CommandDescriptor> GetCommands(IServiceProvider services)
     {
         // Build group: generate (10), clean (20) - require project
         var generateCommand = services.GetRequiredService<GenerateCommand>();

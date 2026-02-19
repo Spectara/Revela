@@ -43,9 +43,8 @@ internal static class HostExtensions
     {
         var services = host.Services;
 
-        // Get plugin context from DI and initialize
+        // Get plugin context from DI
         var plugins = services.GetRequiredService<IPluginContext>();
-        plugins.Initialize(services);
 
         // Get registries for interactive menu
         var groupRegistry = services.GetRequiredService<CommandGroupRegistry>();
@@ -83,8 +82,8 @@ internal static class HostExtensions
         }
 
         // Core commands (via CoreCommandProvider, same pattern as plugins)
-        var coreCommands = new CoreCommandProvider(services);
-        foreach (var descriptor in coreCommands.GetCommands())
+        var coreCommands = new CoreCommandProvider();
+        foreach (var descriptor in coreCommands.GetCommands(services))
         {
             rootCommand.Subcommands.Add(descriptor.Command);
             OnCommandRegistered(
@@ -99,7 +98,7 @@ internal static class HostExtensions
         }
 
         // Plugin commands (same callback for unified handling)
-        plugins.RegisterCommands(rootCommand, OnCommandRegistered);
+        plugins.RegisterCommands(rootCommand, services, OnCommandRegistered);
 
         // Register config subcommand orders AFTER plugins have added their subcommands
         var configCmd = rootCommand.Subcommands.FirstOrDefault(c => string.Equals(c.Name, "config", StringComparison.Ordinal));

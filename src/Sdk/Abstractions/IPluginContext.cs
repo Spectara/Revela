@@ -3,11 +3,11 @@ using System.CommandLine;
 namespace Spectara.Revela.Sdk.Abstractions;
 
 /// <summary>
-/// Context for managing loaded plugins
+/// Context for managing loaded plugins after host is built.
 /// </summary>
 /// <remarks>
-/// Returned by AddPlugins() extension method to allow plugin initialization
-/// and command registration after ServiceProvider is built.
+/// Resolved from DI after <c>host.Build()</c>.
+/// Provides access to loaded plugins and handles command registration.
 /// </remarks>
 public interface IPluginContext
 {
@@ -17,23 +17,14 @@ public interface IPluginContext
     IReadOnlyList<ILoadedPluginInfo> Plugins { get; }
 
     /// <summary>
-    /// Initialize all plugins with the built ServiceProvider
+    /// Register all plugin commands with the root command.
     /// </summary>
     /// <remarks>
-    /// Must be called after host.Build() so ServiceProvider is available.
-    /// Calls Initialize() on each plugin with error handling.
-    /// </remarks>
-    /// <param name="serviceProvider">Built service provider from host</param>
-    void Initialize(IServiceProvider serviceProvider);
-
-    /// <summary>
-    /// Register all plugin commands with the root command
-    /// </summary>
-    /// <remarks>
+    /// Calls <see cref="IPlugin.GetCommands"/> on each plugin with the built service provider.
     /// Handles parent command creation and duplicate detection.
-    /// Should be called after Initialize().
     /// </remarks>
-    /// <param name="rootCommand">Root command to register plugin commands under</param>
-    /// <param name="onCommandRegistered">Optional callback when a command is registered, receives command, order, optional group name, requiresProject flag, and hideWhenProjectExists flag.</param>
-    void RegisterCommands(RootCommand rootCommand, Action<Command, int, string?, bool, bool>? onCommandRegistered = null);
+    /// <param name="rootCommand">Root command to register plugin commands under.</param>
+    /// <param name="services">Built service provider for resolving commands from DI.</param>
+    /// <param name="onCommandRegistered">Optional callback when a command is registered.</param>
+    void RegisterCommands(RootCommand rootCommand, IServiceProvider services, Action<Command, int, string?, bool, bool>? onCommandRegistered = null);
 }

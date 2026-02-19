@@ -1,21 +1,21 @@
 namespace Spectara.Revela.Sdk.Abstractions;
 
 /// <summary>
-/// Theme plugin interface - extends IPlugin with theme-specific functionality
+/// Theme plugin interface — extends IPlugin with theme-specific functionality.
 /// </summary>
 /// <remarks>
 /// Theme plugins provide:
-/// - Template files (Layout.revela, Body/, Partials/)
-/// - Static assets (Assets/ folder - CSS, JS, fonts, images)
-/// - Theme configuration (variables in manifest.json)
+/// <list type="bullet">
+/// <item>Template files (Layout.revela, Body/, Partials/)</item>
+/// <item>Static assets (Assets/ folder — CSS, JS, fonts, images)</item>
+/// <item>Theme configuration (variables in manifest.json)</item>
+/// </list>
 ///
 /// Naming convention: Spectara.Revela.Theme.{Name}
 ///
 /// Usage in project.json:
 /// <code>
-/// {
-///   "theme": "Spectara.Revela.Theme.Lumina"
-/// }
+/// { "theme": "Spectara.Revela.Theme.Lumina" }
 /// </code>
 ///
 /// Theme plugins typically don't provide CLI commands, but can
@@ -24,198 +24,141 @@ namespace Spectara.Revela.Sdk.Abstractions;
 public interface IThemePlugin : IPlugin
 {
     /// <summary>
-    /// Theme-specific metadata
+    /// Theme-specific metadata with preview image and tags.
     /// </summary>
-    new IThemeMetadata Metadata { get; }
+    new ThemeMetadata Metadata { get; }
 
     /// <summary>
-    /// Get the theme manifest with template and asset information
+    /// Get the theme manifest with template and asset information.
     /// </summary>
     ThemeManifest GetManifest();
 
     /// <summary>
-    /// Get a file from the theme as a stream
+    /// Get a file from the theme as a stream.
     /// </summary>
-    /// <param name="relativePath">Relative path within the theme (e.g., "layout.revela")</param>
-    /// <returns>Stream with file contents, or null if not found</returns>
+    /// <param name="relativePath">Relative path within the theme (e.g., "layout.revela").</param>
+    /// <returns>Stream with file contents, or null if not found.</returns>
     Stream? GetFile(string relativePath);
 
     /// <summary>
-    /// Get all file paths in the theme
+    /// Get all file paths in the theme.
     /// </summary>
-    /// <returns>Enumerable of relative paths</returns>
+    /// <returns>Enumerable of relative paths.</returns>
     IEnumerable<string> GetAllFiles();
 
     /// <summary>
-    /// Extract all theme files to a directory
+    /// Extract all theme files to a directory.
     /// </summary>
-    /// <param name="targetDirectory">Directory to extract files to</param>
-    /// <param name="cancellationToken">Cancellation token</param>
+    /// <param name="targetDirectory">Directory to extract files to.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
     Task ExtractToAsync(string targetDirectory, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Get the site.json template for project initialization
+    /// Get the site.json template for project initialization.
     /// </summary>
     /// <remarks>
-    /// <para>
     /// Returns a Scriban template for generating site.json during <c>revela init</c>.
-    /// The template receives the same model as other init templates (site.title, site.author, etc.).
-    /// </para>
-    /// <para>
-    /// If the theme doesn't need site.json (no site.* variables in templates), return null.
-    /// The init command will skip site.json creation in that case.
-    /// </para>
+    /// If the theme doesn't need site.json, return null.
     /// </remarks>
-    /// <returns>Stream with template contents, or null if theme doesn't use site.json</returns>
+    /// <returns>Stream with template contents, or null if theme doesn't use site.json.</returns>
     Stream? GetSiteTemplate();
 
     /// <summary>
     /// Get the images configuration template for image processing setup.
     /// </summary>
     /// <remarks>
-    /// <para>
-    /// Returns recommended image formats and sizes based on the theme's layout.
-    /// Only the theme knows which image sizes make sense for its CSS breakpoints.
-    /// </para>
-    /// <para>
-    /// Expected JSON format:
-    /// <code>
-    /// {
-    ///   "formats": { "webp": 85, "jpg": 90 },
-    ///   "sizes": [160, 320, 480, 640, 720, 960, 1280, 1440, 1920, 2560]
-    /// }
-    /// </code>
-    /// Note: AVIF can be added for better compression, but encoding is ~10x slower.
-    /// </para>
-    /// <para>
+    /// Returns recommended image formats and sizes based on the theme's CSS breakpoints.
     /// If the theme doesn't provide this template, users must enter values manually.
-    /// </para>
     /// </remarks>
-    /// <returns>Stream with template contents, or null if theme doesn't provide defaults</returns>
+    /// <returns>Stream with template contents, or null if theme doesn't provide defaults.</returns>
     Stream? GetImagesTemplate();
 }
 
 /// <summary>
-/// Extended metadata for theme plugins
+/// Extended metadata for theme plugins — adds preview image and tags.
 /// </summary>
-public interface IThemeMetadata : IPluginMetadata
+/// <remarks>
+/// Inherits from <see cref="PluginMetadata"/> (which is a record),
+/// so it supports value equality, <c>with</c> expressions, and pattern matching.
+/// </remarks>
+public record ThemeMetadata : PluginMetadata
 {
-    /// <summary>
-    /// URL to preview image of the theme
-    /// </summary>
-    Uri? PreviewImageUri { get; }
+    /// <summary>URL to preview image of the theme.</summary>
+    public Uri? PreviewImageUri { get; init; }
 
-    /// <summary>
-    /// Theme tags for discovery (e.g., "minimal", "dark", "gallery")
-    /// </summary>
-    IReadOnlyList<string> Tags { get; }
+    /// <summary>Theme tags for discovery (e.g., "minimal", "dark", "gallery").</summary>
+    public IReadOnlyList<string> Tags { get; init; } = [];
 }
 
 /// <summary>
-/// Theme manifest describing available templates and assets
+/// Theme manifest describing available templates and assets.
 /// </summary>
 public sealed class ThemeManifest
 {
-    /// <summary>
-    /// Main layout template path
-    /// </summary>
+    /// <summary>Main layout template path.</summary>
     public required string LayoutTemplate { get; init; }
 
-    /// <summary>
-    /// Theme variables with default values
-    /// </summary>
+    /// <summary>Theme variables with default values.</summary>
     public IReadOnlyDictionary<string, string> Variables { get; init; } =
         new Dictionary<string, string>();
 }
 
 /// <summary>
-/// Theme extension plugin interface - extends a theme with plugin-specific templates and assets
+/// Theme extension plugin interface — extends a theme with plugin-specific templates and assets.
 /// </summary>
 /// <remarks>
 /// <para>
 /// Theme extensions provide templates and CSS for specific plugins, styled for a specific theme.
-/// This allows plugins to have beautiful, theme-consistent output without coupling.
 /// </para>
-///
 /// <para>
 /// Naming convention: Spectara.Revela.Theme.{ThemeName}.{PluginName}
 /// Example: Spectara.Revela.Theme.Lumina.Statistics
 /// </para>
-///
 /// <para>
-/// Discovery: Extensions are matched to themes by <see cref="TargetTheme"/> property,
-/// no NuGet dependency required. This allows third-party theme extensions.
-/// </para>
-///
-/// <para>
+/// Discovery: Extensions are matched to themes by <see cref="TargetTheme"/> property.
 /// Template access: Templates are available as "{PartialPrefix}/{name}" in Scriban.
-/// Example: {{ include 'statistics/chart' stats }}
 /// </para>
 /// </remarks>
 public interface IThemeExtension : IPlugin
 {
     /// <summary>
-    /// Name of the target theme (e.g., "Lumina")
-    /// </summary>
-    /// <remarks>
+    /// Name of the target theme (e.g., "Lumina").
     /// Matched case-insensitively against IThemePlugin.Metadata.Name.
-    /// Extension only activates when this theme is used.
-    /// </remarks>
+    /// </summary>
     string TargetTheme { get; }
 
     /// <summary>
-    /// Prefix for partial templates (e.g., "statistics")
-    /// </summary>
-    /// <remarks>
+    /// Prefix for partial templates (e.g., "statistics").
     /// Templates are accessed as "{PartialPrefix}/{name}" in Scriban.
-    /// Example: "statistics" → {{ include 'statistics/chart' }}
-    /// </remarks>
+    /// </summary>
     string PartialPrefix { get; }
 
     /// <summary>
-    /// Extension variables with default values
+    /// Extension variables with default values, merged with theme variables.
     /// </summary>
-    /// <remarks>
-    /// Variables are merged with theme variables and available in templates.
-    /// Extension variables can override theme variables with same name.
-    /// </remarks>
     IReadOnlyDictionary<string, string> Variables { get; }
 
     /// <summary>
-    /// Get default data sources for a template
+    /// Get default data sources for a template.
     /// </summary>
-    /// <remarks>
-    /// <para>
-    /// Extensions can define default data sources for their templates in manifest.json.
-    /// This allows users to simply specify <c>template = "body/statistics/overview"</c>
-    /// without explicitly declaring <c>data = { statistics: "statistics.json" }</c>.
-    /// </para>
-    /// <para>
-    /// The returned dictionary maps variable names to default filenames.
-    /// User-specified data sources in _index.revela override these defaults.
-    /// </para>
-    /// </remarks>
-    /// <param name="templateKey">Template key relative to extension (e.g., "body/overview")</param>
-    /// <returns>Dictionary of variable name → default filename, or empty if no defaults</returns>
+    /// <param name="templateKey">Template key relative to extension (e.g., "body/overview").</param>
+    /// <returns>Dictionary of variable name → default filename, or empty if no defaults.</returns>
     IReadOnlyDictionary<string, string> GetTemplateDataDefaults(string templateKey);
 
     /// <summary>
-    /// Get a file from the extension as a stream
+    /// Get a file from the extension as a stream.
     /// </summary>
-    /// <param name="relativePath">Relative path within the extension (e.g., "templates/chart.revela")</param>
-    /// <returns>Stream with file contents, or null if not found</returns>
+    /// <param name="relativePath">Relative path within the extension.</param>
+    /// <returns>Stream with file contents, or null if not found.</returns>
     Stream? GetFile(string relativePath);
 
     /// <summary>
-    /// Get all file paths in the extension
+    /// Get all file paths in the extension.
     /// </summary>
-    /// <returns>Enumerable of relative paths</returns>
     IEnumerable<string> GetAllFiles();
 
     /// <summary>
-    /// Extract all extension files to a directory
+    /// Extract all extension files to a directory.
     /// </summary>
-    /// <param name="targetDirectory">Directory to extract files to</param>
-    /// <param name="cancellationToken">Cancellation token</param>
     Task ExtractToAsync(string targetDirectory, CancellationToken cancellationToken = default);
 }

@@ -1,4 +1,3 @@
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Spectara.Revela.Plugin.Statistics.Commands;
 using Spectara.Revela.Plugin.Statistics.Configuration;
@@ -12,24 +11,14 @@ namespace Spectara.Revela.Plugin.Statistics;
 /// </summary>
 public sealed class StatisticsPlugin : IPlugin
 {
-    private IServiceProvider? services;
-
     /// <inheritdoc />
-    public IPluginMetadata Metadata => new PluginMetadata
+    public PluginMetadata Metadata => new()
     {
         Name = "Generate Statistics",
         Version = "1.0.0",
         Description = "Generate EXIF statistics pages for your photo library",
         Author = "Spectara"
     };
-
-    /// <inheritdoc />
-    public void ConfigureConfiguration(IConfigurationBuilder configuration)
-    {
-        // Nothing to do - plugin config is stored in project.json via IConfigService.
-        // Environment variables with SPECTARA__REVELA__ prefix are auto-loaded.
-        // Example ENV: SPECTARA__REVELA__PLUGIN__STATISTICS__OUTPUTPATH=source/stats
-    }
 
     /// <inheritdoc />
     public void ConfigureServices(IServiceCollection services)
@@ -57,16 +46,8 @@ public sealed class StatisticsPlugin : IPlugin
     }
 
     /// <inheritdoc />
-    public void Initialize(IServiceProvider services) => this.services = services;
-
-    /// <inheritdoc />
-    public IEnumerable<CommandDescriptor> GetCommands()
+    public IEnumerable<CommandDescriptor> GetCommands(IServiceProvider services)
     {
-        if (services is null)
-        {
-            throw new InvalidOperationException("Plugin not initialized. Call Initialize() first.");
-        }
-
         // Resolve commands from DI container
         var statsCommand = services.GetRequiredService<StatsCommand>();
         var cleanStatsCommand = services.GetRequiredService<CleanStatisticsCommand>();

@@ -4,75 +4,100 @@ using Microsoft.Extensions.DependencyInjection;
 namespace Spectara.Revela.Sdk.Abstractions;
 
 /// <summary>
-/// Plugin interface - all plugins must implement this
+/// Plugin interface — all plugins must implement this.
 /// </summary>
+/// <remarks>
+/// <para>
+/// Plugins have a simple 2-phase lifecycle:
+/// </para>
+/// <list type="number">
+/// <item><see cref="ConfigureConfiguration"/> — Register custom config sources (optional, default: no-op)</item>
+/// <item><see cref="ConfigureServices"/> — Register services with DI (required)</item>
+/// </list>
+/// <para>
+/// After the host is built, <see cref="GetCommands"/> is called with the built
+/// <see cref="IServiceProvider"/> so plugins can resolve commands from DI.
+/// </para>
+/// <example>
+/// <code>
+/// public sealed class MyPlugin : IPlugin
+/// {
+///     public PluginMetadata Metadata { get; } = new()
+///     {
+///         Name = "My Plugin",
+///         Version = "1.0.0",
+///         Description = "Does something useful"
+///     };
+///
+///     public void ConfigureServices(IServiceCollection services)
+///     {
+///         services.AddTransient&lt;MyCommand&gt;();
+///     }
+///
+///     public IEnumerable&lt;CommandDescriptor&gt; GetCommands(IServiceProvider services)
+///     {
+///         var cmd = services.GetRequiredService&lt;MyCommand&gt;();
+///         yield return new CommandDescriptor(cmd.Create(), Order: 10, Group: "Build");
+///     }
+/// }
+/// </code>
+/// </example>
+/// </remarks>
 public interface IPlugin
 {
-    IPluginMetadata Metadata { get; }
+    /// <summary>
+    /// Gets the plugin metadata (name, version, description, author).
+    /// </summary>
+    PluginMetadata Metadata { get; }
 
     /// <summary>
-    /// Configure plugin-specific configuration sources
+    /// Configure plugin-specific configuration sources (optional).
     /// </summary>
     /// <remarks>
-    /// Called BEFORE ConfigureServices to allow plugins to add their own config files.
-    /// Use this to register plugin-specific JSON files, environment variables, custom providers, etc.
-    /// Note: Plugin configs are typically stored in project.json via IConfigService.
-    /// Environment variables with SPECTARA__REVELA__ prefix are auto-loaded.
+    /// Called BEFORE <see cref="ConfigureServices"/> to allow plugins to add custom config files.
+    /// Most plugins don't need this — plugin configs are stored in project.json,
+    /// and environment variables with SPECTARA__REVELA__ prefix are auto-loaded.
     /// </remarks>
-    /// <param name="configuration">Configuration builder to add sources to</param>
-    void ConfigureConfiguration(IConfigurationBuilder configuration);
+    /// <param name="configuration">Configuration builder to add sources to.</param>
+    void ConfigureConfiguration(IConfigurationBuilder configuration)
+    {
+        // Default: no custom configuration sources needed
+    }
 
     /// <summary>
-    /// Configure services needed by this plugin
+    /// Configure services needed by this plugin.
     /// </summary>
     /// <remarks>
     /// Called BEFORE ServiceProvider is built.
-    /// Use this to register plugin-specific services like HttpClients, database contexts, etc.
+    /// Use this to register plugin-specific services like HttpClients, commands, IOptions, etc.
     /// </remarks>
-    /// <param name="services">The service collection to register services with</param>
+    /// <param name="services">The service collection to register services with.</param>
     void ConfigureServices(IServiceCollection services);
 
     /// <summary>
-    /// Initialize the plugin with the built ServiceProvider
+    /// Get commands provided by this plugin (optional).
     /// </summary>
     /// <remarks>
-    /// Called AFTER ServiceProvider is built.
-    /// Use this to perform initialization that requires resolved services.
+    /// Called AFTER ServiceProvider is built. Use <paramref name="services"/> to resolve
+    /// command instances from DI. Each <see cref="CommandDescriptor"/> specifies where
+    /// the command should be registered in the CLI tree:
+    /// <list type="bullet">
+    /// <item>ParentCommand = null → root level (e.g., "revela mycommand")</item>
+    /// <item>ParentCommand = "source" → nested (e.g., "revela source mycommand")</item>
+    /// </list>
     /// </remarks>
-    /// <param name="services">The service provider to resolve services from</param>
-    void Initialize(IServiceProvider services);
-
-    /// <summary>
-    /// Get commands provided by this plugin.
-    /// </summary>
-    /// <remarks>
-    /// Each CommandDescriptor specifies where the command should be registered:
-    /// - ParentCommand = null → registered at root level (e.g., "revela mycommand")
-    /// - ParentCommand = "init" → registered under init (e.g., "revela init mycommand")
-    /// - ParentCommand = "source" → registered under source (e.g., "revela source mycommand")
-    /// </remarks>
+    /// <param name="services">The built service provider to resolve commands from.</param>
     /// <returns>Command descriptors with optional parent command information.</returns>
-    IEnumerable<CommandDescriptor> GetCommands();
+    IEnumerable<CommandDescriptor> GetCommands(IServiceProvider services) => [];
 }
 
 /// <summary>
-/// Plugin metadata
-/// </summary>
-public interface IPluginMetadata
-{
-    string Name { get; }
-    string Version { get; }
-    string Description { get; }
-    string Author { get; }
-}
-
-/// <summary>
-/// Default implementation of <see cref="IPluginMetadata"/>
+/// Plugin metadata — name, version, description, and author.
 /// </summary>
 /// <remarks>
-/// Use this in plugins instead of creating your own implementation.
+/// Use directly in plugins:
 /// <code>
-/// public IPluginMetadata Metadata => new PluginMetadata
+/// public PluginMetadata Metadata { get; } = new()
 /// {
 ///     Name = "My Plugin",
 ///     Version = "1.0.0",
@@ -81,17 +106,17 @@ public interface IPluginMetadata
 /// };
 /// </code>
 /// </remarks>
-public sealed class PluginMetadata : IPluginMetadata
+public record PluginMetadata
 {
-    /// <inheritdoc />
+    /// <summary>Plugin display name.</summary>
     public required string Name { get; init; }
 
-    /// <inheritdoc />
+    /// <summary>Plugin version (semver).</summary>
     public required string Version { get; init; }
 
-    /// <inheritdoc />
+    /// <summary>Brief description of the plugin.</summary>
     public required string Description { get; init; }
 
-    /// <inheritdoc />
-    public required string Author { get; init; }
+    /// <summary>Plugin author or organization.</summary>
+    public string Author { get; init; } = "Unknown";
 }

@@ -1,6 +1,4 @@
 using System.Text.Json;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
 using Spectara.Revela.Sdk.Abstractions;
 
 namespace Spectara.Revela.Core.Themes;
@@ -30,7 +28,6 @@ public sealed class LocalThemeAdapter : IThemePlugin
     };
 
     private readonly ThemeManifest manifest;
-    private readonly LocalThemeMetadata metadata;
 
     /// <summary>
     /// Get the theme directory path
@@ -61,7 +58,7 @@ public sealed class LocalThemeAdapter : IThemePlugin
         var themeConfig = JsonSerializer.Deserialize<ThemeJsonConfig>(json, JsonOptions)
             ?? throw new InvalidOperationException("Failed to parse theme.json");
 
-        metadata = new LocalThemeMetadata
+        Metadata = new ThemeMetadata
         {
             Name = themeConfig.Name ?? Path.GetFileName(themeDirectory),
             Version = themeConfig.Version ?? "1.0.0",
@@ -92,34 +89,15 @@ public sealed class LocalThemeAdapter : IThemePlugin
     }
 
     /// <inheritdoc />
-    IPluginMetadata IPlugin.Metadata => Metadata;
+    PluginMetadata IPlugin.Metadata => Metadata;
 
     /// <inheritdoc />
-    public IThemeMetadata Metadata => metadata;
+    public ThemeMetadata Metadata { get; }
 
     /// <inheritdoc />
-    public void ConfigureConfiguration(IConfigurationBuilder configuration)
-    {
-        // Local themes don't add configuration
-    }
-
-    /// <inheritdoc />
-    public void ConfigureServices(IServiceCollection services)
+    public void ConfigureServices(Microsoft.Extensions.DependencyInjection.IServiceCollection services)
     {
         // Local themes don't register services
-    }
-
-    /// <inheritdoc />
-    public void Initialize(IServiceProvider services)
-    {
-        // Local themes don't need initialization
-    }
-
-    /// <inheritdoc />
-    public IEnumerable<CommandDescriptor> GetCommands()
-    {
-        // Themes don't provide commands
-        yield break;
     }
 
     /// <inheritdoc />
@@ -176,19 +154,6 @@ public sealed class LocalThemeAdapter : IThemePlugin
     public Stream? GetImagesTemplate() =>
         // Load images.json from Configuration folder
         GetFile("Configuration/images.json");
-}
-
-/// <summary>
-/// Metadata for local themes
-/// </summary>
-internal sealed class LocalThemeMetadata : IThemeMetadata
-{
-    public required string Name { get; init; }
-    public required string Version { get; init; }
-    public required string Description { get; init; }
-    public required string Author { get; init; }
-    public Uri? PreviewImageUri { get; init; }
-    public IReadOnlyList<string> Tags { get; init; } = [];
 }
 
 /// <summary>

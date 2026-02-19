@@ -1,16 +1,10 @@
 namespace Spectara.Revela.Core.Logging;
 
 /// <summary>
-/// High-performance logging for PluginContext using source-generated extension methods
+/// High-performance logging for PluginContext using source-generated extension methods.
 /// </summary>
 internal static partial class PluginContextLogging
 {
-    [LoggerMessage(Level = LogLevel.Information, Message = "Plugin '{PluginName}' initialized successfully")]
-    public static partial void PluginInitialized(this ILogger<PluginContext> logger, string pluginName);
-
-    [LoggerMessage(Level = LogLevel.Error, Message = "Failed to initialize plugin '{PluginName}'")]
-    public static partial void PluginInitializationFailed(this ILogger<PluginContext> logger, string pluginName, Exception exception);
-
     [LoggerMessage(Level = LogLevel.Error, Message = "Failed to register commands for plugin '{PluginName}'")]
     public static partial void CommandRegistrationFailed(this ILogger<PluginContext> logger, string pluginName, Exception exception);
 
