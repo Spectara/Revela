@@ -475,6 +475,49 @@ header {
 }
 
 /* ============================================
+   Terminal Mockup (video in simulated terminal chrome)
+   ============================================ */
+.terminal-mockup {
+  border-radius: 0.5rem;
+  border: solid 1px hsl(var(--code-background-hsl));
+  padding-top: 2.25rem;
+  position: relative;
+  background: hsl(var(--code-background-hsl));
+  margin: 2rem 0;
+
+  &::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2.25rem;
+    background: hsl(var(--code-background-hsl) / 0.8);
+    border-radius: 0.5rem 0.5rem 0 0;
+  }
+
+  &::after {
+    content: "";
+    position: absolute;
+    top: 0.75rem;
+    left: 0.875rem;
+    width: 0.75rem;
+    height: 0.75rem;
+    border-radius: 50%;
+    background: hsl(0deg 60% 50%);
+    box-shadow:
+      1.25rem 0 0 hsl(45deg 70% 50%),
+      2.5rem 0 0 hsl(120deg 50% 45%);
+  }
+
+  video {
+    display: block;
+    width: 100%;
+    border-radius: 0 0 0.5rem 0.5rem;
+  }
+}
+
+/* ============================================
    Browser Mockup (screenshot in simulated browser chrome)
    ============================================ */
 .content-image.browser-mockup {

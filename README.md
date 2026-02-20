@@ -50,12 +50,6 @@ Download from [Releases](https://github.com/spectara/revela/releases), extract, 
 
 **That's it!** The Setup Wizard guides you through the rest.
 
-<!-- 
-### Screenshot: Setup Wizard
-![Setup Wizard](assets/screenshots/setup-wizard.png)
-*First run: Install themes and plugins*
--->
-
 ### 2. Create Project
 
 The Project Wizard appears automatically and guides you through:
