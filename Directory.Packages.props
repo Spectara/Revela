@@ -28,7 +28,7 @@
     <PackageVersion Include="Spectre.Console" Version="0.54.0" />
   </ItemGroup>
   <ItemGroup Label="Template Engine">
-    <PackageVersion Include="Scriban" Version="6.5.2" />
+    <PackageVersion Include="Scriban" Version="6.5.3" />
   </ItemGroup>
   <ItemGroup Label="Markdown Parser">
     <PackageVersion Include="Markdig" Version="0.45.0" />
