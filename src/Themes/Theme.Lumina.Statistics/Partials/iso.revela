@@ -1,7 +1,0 @@
-<h3>ISO</h3>
-<dl>
-{{ for item in statistics.iso_values }}
-    <dt data-count="{{ item.count }}">{{ item.name }}</dt>
-    <dd style="--percent: {{ item.percentage }}"></dd>
-{{ end }}
-</dl>

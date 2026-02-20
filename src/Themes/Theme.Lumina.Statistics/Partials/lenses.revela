@@ -1,7 +1,0 @@
-<h3>Lenses</h3>
-<dl>
-{{ for lens in statistics.lenses }}
-    <dt data-count="{{ lens.count }}">{{ lens.name }}</dt>
-    <dd style="--percent: {{ lens.percentage }}"></dd>
-{{ end }}
-</dl>

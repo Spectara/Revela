@@ -73,9 +73,9 @@ public sealed partial class TemplateResolver(ILogger<TemplateResolver> logger) :
 
         return entry.SourceType switch
         {
-            TemplateSourceType.Local => File.OpenRead(entry.Path),
-            TemplateSourceType.Theme => theme!.GetFile(entry.Path),
-            TemplateSourceType.Extension => entry.Extension!.GetFile(entry.Path),
+            FileSourceType.Local => File.OpenRead(entry.Path),
+            FileSourceType.Theme => theme!.GetFile(entry.Path),
+            FileSourceType.Extension => entry.Extension!.GetFile(entry.Path),
             _ => null
         };
     }
@@ -113,7 +113,7 @@ public sealed partial class TemplateResolver(ILogger<TemplateResolver> logger) :
 
             var key = DeriveKeyFromPath(file);
             LogScannedTemplate(key, file);
-            templates[key] = new TemplateEntry(TemplateSourceType.Theme, file, null);
+            templates[key] = new TemplateEntry(FileSourceType.Theme, file, null);
             count++;
         }
 
@@ -134,7 +134,7 @@ public sealed partial class TemplateResolver(ILogger<TemplateResolver> logger) :
 
             // Extension key = prefix + filename (strip Body/Partials folders)
             var key = DeriveExtensionKey(prefix, file);
-            templates[key] = new TemplateEntry(TemplateSourceType.Extension, file, extension);
+            templates[key] = new TemplateEntry(FileSourceType.Extension, file, extension);
             count++;
         }
 
@@ -159,7 +159,7 @@ public sealed partial class TemplateResolver(ILogger<TemplateResolver> logger) :
             var key = DeriveKeyFromPath(relativePath);
             var isOverride = templates.ContainsKey(key);
 
-            templates[key] = new TemplateEntry(TemplateSourceType.Local, file, null);
+            templates[key] = new TemplateEntry(FileSourceType.Local, file, null);
 
             if (isOverride)
             {
@@ -304,13 +304,7 @@ public sealed partial class TemplateResolver(ILogger<TemplateResolver> logger) :
         return [.. templates.Select(kvp => new ResolvedFileInfo(
             kvp.Key,
             kvp.Value.Path,
-            kvp.Value.SourceType switch
-            {
-                TemplateSourceType.Theme => FileSourceType.Theme,
-                TemplateSourceType.Extension => FileSourceType.Extension,
-                TemplateSourceType.Local => FileSourceType.Local,
-                _ => FileSourceType.Theme
-            },
+            kvp.Value.SourceType,
             kvp.Value.Extension?.Metadata.Name))];
     }
 }
@@ -319,6 +313,6 @@ public sealed partial class TemplateResolver(ILogger<TemplateResolver> logger) :
 /// Internal entry for resolved templates.
 /// </summary>
 internal sealed record TemplateEntry(
-    TemplateSourceType SourceType,
+    FileSourceType SourceType,
     string Path,
     IThemeExtension? Extension);

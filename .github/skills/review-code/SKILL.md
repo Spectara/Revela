@@ -193,6 +193,14 @@ newer BCL APIs, and modern idioms. If an older pattern has a modern replacement,
 - XML docs required for public APIs
 - No dead code — delete instead of commenting out
 - No `#pragma warning disable` without matching `#pragma warning restore`
+- **Prefer clean implementation over suppression** — when a code analyzer flags a warning, fix the root cause instead of adding `#pragma warning disable` or `[SuppressMessage]`. Common fixes:
+  - CA2227 (collection setter): `Dictionary<K,V>` → `IReadOnlyDictionary<K,V>`
+  - CA1002 (generic list): `List<T>` → `IReadOnlyList<T>`
+  - CA1056 (URI string): `string? Url` → `Uri?` (STJ deserializes `Uri` natively)
+  - CA1819 (array property): `T[]` → `IReadOnlyList<T>`
+  - CA1849 (sync in async): use async API or restructure to avoid mixing sync/async
+  
+  Only suppress when no clean alternative exists (e.g., CA1054 for user-facing URI input strings).
 - **No general exception catching** — avoid `catch (Exception)` in business logic (CA1031)
 - **No swallowed exceptions** — always log/report, never empty `catch` blocks
 - **Thread-safety** — never use plain `bool` flags across threads. Use `volatile`, `CancellationTokenSource`, or `Interlocked`

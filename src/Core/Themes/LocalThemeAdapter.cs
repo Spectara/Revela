@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Spectara.Revela.Sdk.Abstractions;
+using Spectara.Revela.Sdk.Themes;
 
 namespace Spectara.Revela.Core.Themes;
 
@@ -22,11 +23,6 @@ namespace Spectara.Revela.Core.Themes;
 /// </remarks>
 public sealed class LocalThemeAdapter : IThemePlugin
 {
-    private static readonly JsonSerializerOptions JsonOptions = new()
-    {
-        PropertyNameCaseInsensitive = true
-    };
-
     private readonly ThemeManifest manifest;
 
     /// <summary>
@@ -55,7 +51,7 @@ public sealed class LocalThemeAdapter : IThemePlugin
 
         // Parse theme.json
         var json = File.ReadAllText(themeJsonPath);
-        var themeConfig = JsonSerializer.Deserialize<ThemeJsonConfig>(json, JsonOptions)
+        var themeConfig = JsonSerializer.Deserialize<ThemeJsonConfig>(json, ThemeJsonConfig.JsonOptions)
             ?? throw new InvalidOperationException("Failed to parse theme.json");
 
         Metadata = new ThemeMetadata
@@ -64,29 +60,18 @@ public sealed class LocalThemeAdapter : IThemePlugin
             Version = themeConfig.Version ?? "1.0.0",
             Description = themeConfig.Description ?? "Local theme",
             Author = themeConfig.Author ?? "Unknown",
-            PreviewImageUri = ParsePreviewUri(themeConfig.PreviewImageUrl),
+            PreviewImageUri = themeConfig.PreviewImage,
             Tags = themeConfig.Tags ?? []
         };
 
         manifest = new ThemeManifest
         {
             LayoutTemplate = themeConfig.Templates?.Layout ?? "layout.revela",
-
-            Variables = themeConfig.Variables?.ToDictionary(
-                kvp => kvp.Key,
-                kvp => kvp.Value) ?? []
+            Variables = themeConfig.Variables ?? new Dictionary<string, string>()
         };
     }
 
-    private static Uri? ParsePreviewUri(string? url)
-    {
-        if (string.IsNullOrEmpty(url))
-        {
-            return null;
-        }
 
-        return new Uri(url, UriKind.RelativeOrAbsolute);
-    }
 
     /// <inheritdoc />
     PluginMetadata IPlugin.Metadata => Metadata;
@@ -154,27 +139,4 @@ public sealed class LocalThemeAdapter : IThemePlugin
     public Stream? GetImagesTemplate() =>
         // Load images.json from Configuration folder
         GetFile("Configuration/images.json");
-}
-
-/// <summary>
-/// JSON configuration structure for theme.json
-/// </summary>
-internal sealed class ThemeJsonConfig
-{
-    public string? Name { get; set; }
-    public string? Version { get; set; }
-    public string? Description { get; set; }
-    public string? Author { get; set; }
-    public string? PreviewImageUrl { get; set; }
-    public List<string>? Tags { get; set; }
-    public ThemeTemplatesConfig? Templates { get; set; }
-    public Dictionary<string, string>? Variables { get; set; }
-}
-
-/// <summary>
-/// Templates section in theme.json
-/// </summary>
-internal sealed class ThemeTemplatesConfig
-{
-    public string? Layout { get; set; }
 }

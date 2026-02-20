@@ -1,7 +1,0 @@
-<h3>Timeline</h3>
-<dl>
-{{ for item in statistics.images_by_year }}
-    <dt data-count="{{ item.count }}">{{ item.name }}</dt>
-    <dd style="--percent: {{ item.percentage }}"></dd>
-{{ end }}
-</dl>

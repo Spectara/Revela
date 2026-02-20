@@ -1,0 +1,17 @@
+{{~##
+Bar Chart Partial - Lumina Statistics Extension
+
+Reusable bar chart component for statistics data.
+Used by overview.revela for all chart sections.
+
+Expects (passed as model context):
+- title: Chart heading text
+- items: Array of { name, count, percentage }
+##~}}
+<h3>{{ title }}</h3>
+<dl>
+{{~ for item in items ~}}
+    <dt data-count="{{ item.count }}">{{ item.name }}</dt>
+    <dd style="--percent: {{ item.percentage }}"></dd>
+{{~ end ~}}
+</dl>

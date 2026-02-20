@@ -1,5 +1,4 @@
 using System.Reflection;
-using System.Text.Json;
 
 using Microsoft.Extensions.DependencyInjection;
 
@@ -22,15 +21,7 @@ namespace Spectara.Revela.Sdk.Themes;
 /// </remarks>
 public abstract class EmbeddedThemeExtension : IThemeExtension
 {
-    private const string ManifestFileName = "manifest.json";
-
-    private static readonly JsonSerializerOptions JsonOptions = new()
-    {
-        PropertyNameCaseInsensitive = true
-    };
-
-    private readonly Assembly assembly;
-    private readonly string resourcePrefix;
+    private readonly EmbeddedResourceProvider resources;
     private readonly Lazy<ExtensionJsonConfig> config;
     private readonly Lazy<PluginMetadata> pluginMetadata;
 
@@ -40,12 +31,8 @@ public abstract class EmbeddedThemeExtension : IThemeExtension
     /// <param name="assembly">Assembly containing embedded resources.</param>
     protected EmbeddedThemeExtension(Assembly assembly)
     {
-        this.assembly = assembly;
-
-        // Determine resource prefix from assembly name
-        resourcePrefix = assembly.GetName().Name + ".";
-
-        config = new Lazy<ExtensionJsonConfig>(LoadConfig);
+        resources = new EmbeddedResourceProvider(assembly);
+        config = new Lazy<ExtensionJsonConfig>(resources.LoadManifest<ExtensionJsonConfig>);
         pluginMetadata = new Lazy<PluginMetadata>(() => CreateMetadata(config.Value));
     }
 
@@ -60,7 +47,7 @@ public abstract class EmbeddedThemeExtension : IThemeExtension
 
     /// <inheritdoc />
     public IReadOnlyDictionary<string, string> Variables =>
-        config.Value.Variables ?? [];
+        config.Value.Variables ?? new Dictionary<string, string>();
 
     /// <inheritdoc />
     public IReadOnlyDictionary<string, string> GetTemplateDataDefaults(string templateKey)
@@ -86,91 +73,16 @@ public abstract class EmbeddedThemeExtension : IThemeExtension
     }
 
     /// <inheritdoc />
-    public Stream? GetFile(string relativePath)
-    {
-        // MSBuild always normalizes embedded resource names to forward slashes
-        return assembly.GetManifestResourceStream(resourcePrefix + relativePath)
-            ?? assembly.GetManifestResourceStream(relativePath);
-    }
+    public Stream? GetFile(string relativePath) =>
+        resources.GetFile(relativePath);
 
     /// <inheritdoc />
-    public IEnumerable<string> GetAllFiles()
-    {
-        return assembly.GetManifestResourceNames()
-            .Where(name => !name.EndsWith(".cs", StringComparison.OrdinalIgnoreCase))
-            .Select(name =>
-            {
-                var relativeName = name.StartsWith(resourcePrefix, StringComparison.Ordinal)
-                    ? name[resourcePrefix.Length..]
-                    : name;
-
-                return relativeName;
-            });
-    }
+    public IEnumerable<string> GetAllFiles() =>
+        resources.GetAllFiles();
 
     /// <inheritdoc />
-    public async Task ExtractToAsync(string targetDirectory, CancellationToken cancellationToken = default)
-    {
-        Directory.CreateDirectory(targetDirectory);
-
-        // Extract manifest.json
-        var configStream = GetConfigStream();
-        if (configStream is not null)
-        {
-            await using (configStream)
-            {
-                var targetPath = Path.Combine(targetDirectory, ManifestFileName);
-                await using var fileStream = File.Create(targetPath);
-                await configStream.CopyToAsync(fileStream, cancellationToken);
-            }
-        }
-
-        // Extract all files from the extension
-        foreach (var file in GetAllFiles())
-        {
-            await ExtractResourceAsync(file, targetDirectory, cancellationToken);
-        }
-    }
-
-    private async Task ExtractResourceAsync(
-        string relativePath,
-        string targetDirectory,
-        CancellationToken cancellationToken)
-    {
-        using var stream = GetFile(relativePath);
-        if (stream is null)
-        {
-            return;
-        }
-
-        var targetPath = Path.Combine(targetDirectory, relativePath);
-        var targetDir = Path.GetDirectoryName(targetPath);
-        if (!string.IsNullOrEmpty(targetDir))
-        {
-            Directory.CreateDirectory(targetDir);
-        }
-
-        await using var fileStream = File.Create(targetPath);
-        await stream.CopyToAsync(fileStream, cancellationToken);
-    }
-
-    private Stream? GetConfigStream() =>
-        assembly.GetManifestResourceStream(resourcePrefix + ManifestFileName)
-            ?? assembly.GetManifestResourceStream(ManifestFileName);
-
-    private ExtensionJsonConfig LoadConfig()
-    {
-        using var stream = GetConfigStream()
-            ?? throw new InvalidOperationException(
-                $"Extension {assembly.GetName().Name} must have embedded {ManifestFileName}");
-
-        using var reader = new StreamReader(stream);
-        var json = reader.ReadToEnd();
-
-        return JsonSerializer.Deserialize<ExtensionJsonConfig>(json, JsonOptions)
-            ?? throw new InvalidOperationException(
-                $"Failed to deserialize {ManifestFileName} in {assembly.GetName().Name}");
-    }
+    public Task ExtractToAsync(string targetDirectory, CancellationToken cancellationToken = default) =>
+        resources.ExtractToAsync(targetDirectory, cancellationToken);
 
     private static PluginMetadata CreateMetadata(ExtensionJsonConfig cfg) => new()
     {
@@ -181,9 +93,9 @@ public abstract class EmbeddedThemeExtension : IThemeExtension
     };
 
     /// <summary>
-    /// Configuration model for manifest.json.
+    /// Configuration model for extension manifest.json.
     /// </summary>
-    private sealed class ExtensionJsonConfig
+    internal sealed class ExtensionJsonConfig
     {
         public string? Name { get; init; }
         public string? Version { get; init; }
@@ -191,15 +103,15 @@ public abstract class EmbeddedThemeExtension : IThemeExtension
         public string? Author { get; init; }
         public string? TargetTheme { get; init; }
         public string? PartialPrefix { get; init; }
-        public Dictionary<string, string>? Variables { get; init; }
-        public Dictionary<string, TemplateConfig>? Templates { get; init; }
+        public IReadOnlyDictionary<string, string>? Variables { get; init; }
+        public IReadOnlyDictionary<string, TemplateConfig>? Templates { get; init; }
     }
 
     /// <summary>
     /// Template configuration with default data sources.
     /// </summary>
-    private sealed class TemplateConfig
+    internal sealed class TemplateConfig
     {
-        public Dictionary<string, string>? Data { get; init; }
+        public IReadOnlyDictionary<string, string>? Data { get; init; }
     }
 }

@@ -1,7 +1,0 @@
-<h3>Camera Models</h3>
-<dl>
-{{ for camera in statistics.cameras }}
-    <dt data-count="{{ camera.count }}">{{ camera.name }}</dt>
-    <dd style="--percent: {{ camera.percentage }}"></dd>
-{{ end }}
-</dl>

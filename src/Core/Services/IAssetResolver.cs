@@ -71,18 +71,3 @@ public interface IAssetResolver
     /// <returns>List of resolved asset entries</returns>
     IReadOnlyList<ResolvedFileInfo> GetAllEntries();
 }
-
-/// <summary>
-/// Represents the source of a resolved asset.
-/// </summary>
-public enum AssetSourceType
-{
-    /// <summary>Asset from base theme</summary>
-    Theme,
-
-    /// <summary>Asset from theme extension</summary>
-    Extension,
-
-    /// <summary>Asset from local project override</summary>
-    Local
-}

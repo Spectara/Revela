@@ -1,3 +1,16 @@
+{{~##
+Statistics Overview Body Template - Lumina Statistics Extension
+
+Renders a statistics overview page with summary cards and bar charts.
+Uses the shared bar-chart partial for all chart sections.
+
+Expects:
+- statistics: Statistics data object with:
+  - total_images, total_galleries
+  - cameras, lenses, focal_lengths, apertures, shutter_speeds
+  - iso_values, orientations, images_by_year, images_by_month
+  Each array item has: name, count, percentage
+##~}}
 <section>
 <h2>Overview</h2>
 
@@ -9,31 +22,32 @@
 </p>
 
 {{~ if statistics.cameras && statistics.cameras.size > 0 ~}}
-{{ include 'statistics/cameras' statistics }}
+{{ include 'statistics/bar-chart' { title: "Camera Models", items: statistics.cameras } }}
 {{~ end ~}}
 {{~ if statistics.lenses && statistics.lenses.size > 0 ~}}
-{{ include 'statistics/lenses' statistics }}
+{{ include 'statistics/bar-chart' { title: "Lenses", items: statistics.lenses } }}
 {{~ end ~}}
 {{~ if statistics.focal_lengths && statistics.focal_lengths.size > 0 ~}}
-{{ include 'statistics/focal-lengths' statistics }}
+{{ include 'statistics/bar-chart' { title: "Focal Length (mm)", items: statistics.focal_lengths } }}
 {{~ end ~}}
 {{~ if statistics.apertures && statistics.apertures.size > 0 ~}}
-{{ include 'statistics/apertures' statistics }}
+{{ include 'statistics/bar-chart' { title: "Aperture", items: statistics.apertures } }}
 {{~ end ~}}
 {{~ if statistics.shutter_speeds && statistics.shutter_speeds.size > 0 ~}}
-{{ include 'statistics/shutter-speeds' statistics }}
+{{ include 'statistics/bar-chart' { title: "Shutter Speed", items: statistics.shutter_speeds } }}
 {{~ end ~}}
 {{~ if statistics.iso_values && statistics.iso_values.size > 0 ~}}
-{{ include 'statistics/iso' statistics }}
+{{ include 'statistics/bar-chart' { title: "ISO", items: statistics.iso_values } }}
 {{~ end ~}}
 {{~ if statistics.orientations && statistics.orientations.size > 0 ~}}
-{{ include 'statistics/orientations' statistics }}
+{{ include 'statistics/bar-chart' { title: "Orientation", items: statistics.orientations } }}
 {{~ end ~}}
 {{~ if statistics.images_by_year && statistics.images_by_year.size > 0 ~}}
-{{ include 'statistics/timeline' statistics }}
+{{ include 'statistics/bar-chart' { title: "Timeline", items: statistics.images_by_year } }}
 {{~ end ~}}
 {{~ if statistics.images_by_month && statistics.images_by_month.size > 0 ~}}
-{{ include 'statistics/months' statistics }}
+{{ include 'statistics/bar-chart' { title: "Photos by Month", items: statistics.images_by_month } }}
 {{~ end ~}}
 
 </section>
+

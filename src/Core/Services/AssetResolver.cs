@@ -170,7 +170,7 @@ public sealed partial class AssetResolver(ILogger<AssetResolver> logger) : IAsse
             }
 
             var key = DeriveKeyFromPath(file);
-            assets[key] = new AssetEntry(AssetSourceType.Theme, file, null);
+            assets[key] = new AssetEntry(FileSourceType.Theme, file, null);
             TrackOrderedAsset(key);
             count++;
         }
@@ -193,7 +193,7 @@ public sealed partial class AssetResolver(ILogger<AssetResolver> logger) : IAsse
 
             // Extension key = prefix + relative path within Assets/
             var key = DeriveExtensionKey(prefix, file);
-            assets[key] = new AssetEntry(AssetSourceType.Extension, file, extension);
+            assets[key] = new AssetEntry(FileSourceType.Extension, file, extension);
             TrackOrderedAsset(key);
             count++;
         }
@@ -212,7 +212,7 @@ public sealed partial class AssetResolver(ILogger<AssetResolver> logger) : IAsse
             var key = DeriveKeyFromLocalPath(relativePath);
             var isOverride = assets.ContainsKey(key);
 
-            assets[key] = new AssetEntry(AssetSourceType.Local, file, null);
+            assets[key] = new AssetEntry(FileSourceType.Local, file, null);
 
             if (isOverride)
             {
@@ -250,9 +250,9 @@ public sealed partial class AssetResolver(ILogger<AssetResolver> logger) : IAsse
     {
         return entry.SourceType switch
         {
-            AssetSourceType.Local => File.Exists(entry.Path) ? File.OpenRead(entry.Path) : null,
-            AssetSourceType.Theme => theme?.GetFile(entry.Path),
-            AssetSourceType.Extension => entry.Extension?.GetFile(entry.Path),
+            FileSourceType.Local => File.Exists(entry.Path) ? File.OpenRead(entry.Path) : null,
+            FileSourceType.Theme => theme?.GetFile(entry.Path),
+            FileSourceType.Extension => entry.Extension?.GetFile(entry.Path),
             _ => null
         };
     }
@@ -383,13 +383,7 @@ public sealed partial class AssetResolver(ILogger<AssetResolver> logger) : IAsse
         return [.. assets.Select(kvp => new ResolvedFileInfo(
             kvp.Key,
             kvp.Value.Path,
-            kvp.Value.SourceType switch
-            {
-                AssetSourceType.Theme => FileSourceType.Theme,
-                AssetSourceType.Extension => FileSourceType.Extension,
-                AssetSourceType.Local => FileSourceType.Local,
-                _ => FileSourceType.Theme
-            },
+            kvp.Value.SourceType,
             kvp.Value.Extension?.Metadata.Name))];
     }
 }
@@ -398,6 +392,6 @@ public sealed partial class AssetResolver(ILogger<AssetResolver> logger) : IAsse
 /// Internal entry for resolved assets.
 /// </summary>
 internal sealed record AssetEntry(
-    AssetSourceType SourceType,
+    FileSourceType SourceType,
     string Path,
     IThemeExtension? Extension);

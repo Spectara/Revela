@@ -89,18 +89,3 @@ public enum FileSourceType
     /// <summary>File from local project override</summary>
     Local
 }
-
-/// <summary>
-/// Represents the source of a resolved template.
-/// </summary>
-public enum TemplateSourceType
-{
-    /// <summary>Template from base theme</summary>
-    Theme,
-
-    /// <summary>Template from theme extension</summary>
-    Extension,
-
-    /// <summary>Template from local project override</summary>
-    Local
-}

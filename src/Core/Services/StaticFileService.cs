@@ -52,6 +52,20 @@ public sealed partial class StaticFileService(ILogger<StaticFileService> logger)
                 Directory.CreateDirectory(targetDir);
             }
 
+            // Skip if target is up to date (same size and newer)
+            if (File.Exists(targetFile))
+            {
+                var sourceInfo = new FileInfo(sourceFile);
+                var targetInfo = new FileInfo(targetFile);
+
+                if (sourceInfo.Length == targetInfo.Length
+                    && sourceInfo.LastWriteTimeUtc <= targetInfo.LastWriteTimeUtc)
+                {
+                    LogSkippedUnchangedFile(logger, relativePath);
+                    continue;
+                }
+            }
+
             // Copy file
             await CopyFileAsync(sourceFile, targetFile, cancellationToken);
             LogCopiedFile(logger, relativePath);
@@ -69,23 +83,32 @@ public sealed partial class StaticFileService(ILogger<StaticFileService> logger)
     {
         const int bufferSize = 81920; // 80KB buffer
 
-        await using var sourceStream = new FileStream(
-            sourceFile,
-            FileMode.Open,
-            FileAccess.Read,
-            FileShare.Read,
-            bufferSize,
-            FileOptions.Asynchronous | FileOptions.SequentialScan);
+        try
+        {
+            await using var sourceStream = new FileStream(
+                sourceFile,
+                FileMode.Open,
+                FileAccess.Read,
+                FileShare.Read,
+                bufferSize,
+                FileOptions.Asynchronous | FileOptions.SequentialScan);
 
-        await using var targetStream = new FileStream(
-            targetFile,
-            FileMode.Create,
-            FileAccess.Write,
-            FileShare.None,
-            bufferSize,
-            FileOptions.Asynchronous | FileOptions.WriteThrough);
+            await using var targetStream = new FileStream(
+                targetFile,
+                FileMode.Create,
+                FileAccess.Write,
+                FileShare.Read,
+                bufferSize,
+                FileOptions.Asynchronous | FileOptions.WriteThrough);
 
-        await sourceStream.CopyToAsync(targetStream, bufferSize, cancellationToken);
+            await sourceStream.CopyToAsync(targetStream, bufferSize, cancellationToken);
+        }
+        catch (IOException)
+        {
+            // Target may be locked (e.g. browser serving it). Use File.Copy which
+            // handles this more gracefully on Windows by replacing the file content.
+            File.Copy(sourceFile, targetFile, overwrite: true);
+        }
     }
 
     #region Logging
@@ -101,6 +124,9 @@ public sealed partial class StaticFileService(ILogger<StaticFileService> logger)
 
     [LoggerMessage(Level = LogLevel.Debug, Message = "Copied static file: {RelativePath}")]
     private static partial void LogCopiedFile(ILogger logger, string relativePath);
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Skipped unchanged static file: {RelativePath}")]
+    private static partial void LogSkippedUnchangedFile(ILogger logger, string relativePath);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Copied {Count} static files to output")]
     private static partial void LogCopiedStaticFiles(ILogger logger, int count);
