@@ -9,13 +9,13 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <None Include="README.md" Pack="true" PackagePath="\" />
+    <None Include="README.md" Pack="true" PackagePath="/" />
   </ItemGroup>
 
   <!-- MSBuild targets for plugin/theme projects - auto-imported via NuGet -->
   <ItemGroup>
-    <None Include="build\Spectara.Revela.Sdk.targets" Pack="true" PackagePath="build\" />
-    <None Include="build\Spectara.Revela.Sdk.targets" Pack="true" PackagePath="buildTransitive\" />
+    <None Include="build/Spectara.Revela.Sdk.targets" Pack="true" PackagePath="build/Spectara.Revela.Sdk.targets" />
+    <None Include="build/Spectara.Revela.Sdk.targets" Pack="true" PackagePath="buildTransitive/Spectara.Revela.Sdk.targets" />
   </ItemGroup>
 
   <ItemGroup>
