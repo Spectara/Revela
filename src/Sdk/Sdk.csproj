@@ -14,8 +14,8 @@
 
   <!-- MSBuild targets for plugin/theme projects - auto-imported via NuGet -->
   <ItemGroup>
-    <None Include="Build\Spectara.Revela.Sdk.targets" Pack="true" PackagePath="build\" />
-    <None Include="Build\Spectara.Revela.Sdk.targets" Pack="true" PackagePath="buildTransitive\" />
+    <None Include="build\Spectara.Revela.Sdk.targets" Pack="true" PackagePath="build\" />
+    <None Include="build\Spectara.Revela.Sdk.targets" Pack="true" PackagePath="buildTransitive\" />
   </ItemGroup>
 
   <ItemGroup>
