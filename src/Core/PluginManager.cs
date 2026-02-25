@@ -384,54 +384,74 @@ public sealed class PluginManager(
     }
 
     /// <summary>
-    /// Updates project.json in the current working directory by adding the installed plugin.
+    /// Modifies the plugins section of project.json using a transform function.
     /// </summary>
     /// <remarks>
     /// Silently skips if project.json doesn't exist (optional feature).
     /// Reads, modifies, and writes back with pretty-print formatting.
     /// </remarks>
-    private async Task UpdateProjectJsonAsync(string packageId, string version, CancellationToken cancellationToken)
+    /// <param name="transform">Function that modifies the plugins dictionary. Returns true if changes were made.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>True if project.json was modified.</returns>
+    private async Task<bool> ModifyProjectJsonPluginsAsync(
+        Func<Dictionary<string, string>, bool> transform,
+        CancellationToken cancellationToken)
     {
         var projectJsonPath = Path.Combine(projectEnvironment.Value.Path, "project.json");
         if (!File.Exists(projectJsonPath))
         {
-            // project.json is optional - don't log warning
-            return;
+            return false;
         }
 
+        var jsonText = await File.ReadAllTextAsync(projectJsonPath, cancellationToken);
+        var root = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(jsonText);
+        if (root is null)
+        {
+            return false;
+        }
+
+        if (!root.TryGetValue("plugins", out var pluginsElement))
+        {
+            pluginsElement = JsonSerializer.SerializeToElement(new Dictionary<string, string>());
+        }
+
+        var plugins = pluginsElement.Deserialize<Dictionary<string, string>>() ?? [];
+
+        if (!transform(plugins))
+        {
+            return false;
+        }
+
+        root["plugins"] = JsonSerializer.SerializeToElement(plugins);
+
+        await using var writeStream = File.Create(projectJsonPath);
+        await JsonSerializer.SerializeAsync(writeStream, root, MetadataJsonOptions, cancellationToken);
+        return true;
+    }
+
+    /// <summary>
+    /// Updates project.json in the current working directory by adding the installed plugin.
+    /// </summary>
+    /// <remarks>
+    /// Silently skips if project.json doesn't exist (optional feature).
+    /// </remarks>
+    private async Task UpdateProjectJsonAsync(string packageId, string version, CancellationToken cancellationToken)
+    {
         try
         {
-            // Read existing project.json
-            var jsonText = await File.ReadAllTextAsync(projectJsonPath, cancellationToken);
-            using var jsonDoc = JsonDocument.Parse(jsonText);
-
-            // Convert to mutable dictionary
-            var root = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(jsonText);
-            if (root is null)
+            if (await ModifyProjectJsonPluginsAsync(plugins =>
             {
-                return;
-            }
-
-            // Get or create plugins section
-            if (!root.TryGetValue("plugins", out var pluginsElement))
+                plugins[packageId] = version;
+                return true;
+            }, cancellationToken))
             {
-                pluginsElement = JsonSerializer.SerializeToElement(new Dictionary<string, string>());
+                var projectJsonPath = Path.Combine(projectEnvironment.Value.Path, "project.json");
+                logger.ProjectJsonUpdated(projectJsonPath, packageId, version);
             }
-
-            var plugins = pluginsElement.Deserialize<Dictionary<string, string>>() ?? [];
-            plugins[packageId] = version;
-
-            root["plugins"] = JsonSerializer.SerializeToElement(plugins);
-
-            // Write back with pretty-print
-            await using var writeStream = File.Create(projectJsonPath);
-            await JsonSerializer.SerializeAsync(writeStream, root, MetadataJsonOptions, cancellationToken);
-
-            logger.ProjectJsonUpdated(projectJsonPath, packageId, version);
         }
         catch (Exception ex)
         {
-            // Log warning but don't fail installation
+            var projectJsonPath = Path.Combine(projectEnvironment.Value.Path, "project.json");
             logger.ProjectJsonUpdateFailed(ex, projectJsonPath);
         }
     }
@@ -444,44 +464,27 @@ public sealed class PluginManager(
     /// </remarks>
     private async Task RemoveFromProjectJsonAsync(string packageId, CancellationToken cancellationToken)
     {
-        var projectJsonPath = Path.Combine(projectEnvironment.Value.Path, "project.json");
-        if (!File.Exists(projectJsonPath))
-        {
-            return;
-        }
-
         try
         {
-            // Read existing project.json
-            var jsonText = await File.ReadAllTextAsync(projectJsonPath, cancellationToken);
-            using var jsonDoc = JsonDocument.Parse(jsonText);
-
-            // Convert to mutable dictionary
-            var root = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(jsonText);
-            if (root is null || !root.TryGetValue("plugins", out var pluginsElement))
+            if (await ModifyProjectJsonPluginsAsync(plugins => plugins.Remove(packageId), cancellationToken))
             {
-                return;
-            }
-
-            var plugins = pluginsElement.Deserialize<Dictionary<string, string>>() ?? [];
-            if (plugins.Remove(packageId))
-            {
-                root["plugins"] = JsonSerializer.SerializeToElement(plugins);
-
-                // Write back with pretty-print
-                await using var writeStream = File.Create(projectJsonPath);
-                await JsonSerializer.SerializeAsync(writeStream, root, MetadataJsonOptions, cancellationToken);
-
+                var projectJsonPath = Path.Combine(projectEnvironment.Value.Path, "project.json");
                 logger.ProjectJsonPluginRemoved(projectJsonPath, packageId);
             }
         }
         catch (Exception ex)
         {
-            // Log warning but don't fail uninstallation
+            var projectJsonPath = Path.Combine(projectEnvironment.Value.Path, "project.json");
             logger.ProjectJsonRemoveFailed(ex, projectJsonPath, packageId);
         }
     }
 
+    /// <summary>
+    /// Updates a plugin to the latest version by reinstalling it.
+    /// </summary>
+    /// <param name="packageId">The NuGet package ID of the plugin to update.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>True if the update succeeded.</returns>
     public async Task<bool> UpdatePluginAsync(string packageId, CancellationToken cancellationToken = default)
     {
         logger.UpdatingPlugin(packageId);
@@ -490,6 +493,16 @@ public sealed class PluginManager(
         return await InstallAsync(packageId, version: null, source: null, cancellationToken);
     }
 
+    /// <summary>
+    /// Uninstalls a plugin by removing its files and project.json entry.
+    /// </summary>
+    /// <remarks>
+    /// Handles both new structure (plugins/{PackageId}/) and legacy (root DLL).
+    /// Plugin configuration files are preserved for potential reinstallation.
+    /// </remarks>
+    /// <param name="packageId">The NuGet package ID of the plugin to uninstall.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>True if the plugin was found and removed.</returns>
     public async Task<bool> UninstallPluginAsync(string packageId, CancellationToken cancellationToken = default)
     {
         try
@@ -558,7 +571,7 @@ public sealed class PluginManager(
         bool includePrerelease = false,
         CancellationToken cancellationToken = default)
     {
-        var results = new List<PackageSearchResult>();
+        List<PackageSearchResult> results = [];
         var sources = await nugetSourceManager.LoadSourcesAsync(cancellationToken);
 
         logger.SearchingPackages(searchTerm, sources.Count);
@@ -646,7 +659,7 @@ public sealed class PluginManager(
     /// </remarks>
     public static IEnumerable<(string Name, string Location)> ListInstalledPlugins()
     {
-        var results = new List<(string Name, string Location)>();
+        List<(string Name, string Location)> results = [];
         var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
         void ScanDirectory(string directory, string location)
@@ -695,7 +708,7 @@ public sealed class PluginManager(
     /// </remarks>
     private static List<string> InferPackageTypes(string packageId)
     {
-        var types = new List<string>();
+        List<string> types = [];
 
         if (packageId.Contains(".Theme.", StringComparison.OrdinalIgnoreCase))
         {

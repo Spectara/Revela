@@ -11,7 +11,7 @@ internal sealed class PluginContext(IReadOnlyList<ILoadedPluginInfo> plugins, IL
 {
     public IReadOnlyList<ILoadedPluginInfo> Plugins { get; } = plugins;
 
-    public void RegisterCommands(RootCommand rootCommand, IServiceProvider services, Action<Command, int, string?, bool, bool>? onCommandRegistered = null)
+    public void RegisterCommands(RootCommand rootCommand, IServiceProvider services, CommandRegisteredCallback? onCommandRegistered = null)
     {
         foreach (var pluginInfo in Plugins)
         {
@@ -29,7 +29,7 @@ internal sealed class PluginContext(IReadOnlyList<ILoadedPluginInfo> plugins, IL
         }
     }
 
-    private void RegisterCommand(RootCommand rootCommand, IPlugin plugin, CommandDescriptor descriptor, Action<Command, int, string?, bool, bool>? onCommandRegistered)
+    private void RegisterCommand(RootCommand rootCommand, IPlugin plugin, CommandDescriptor descriptor, CommandRegisteredCallback? onCommandRegistered)
     {
         var command = descriptor.Command;
         var parentPath = descriptor.ParentCommand;
@@ -66,7 +66,7 @@ internal sealed class PluginContext(IReadOnlyList<ILoadedPluginInfo> plugins, IL
     /// <summary>
     /// Gets or creates a parent command, supporting nested paths like "init source".
     /// </summary>
-    private static Command GetOrCreateParentCommand(RootCommand root, string parentPath, Action<Command, int, string?, bool, bool>? onCommandRegistered)
+    private static Command GetOrCreateParentCommand(RootCommand root, string parentPath, CommandRegisteredCallback? onCommandRegistered)
     {
         // Split path into segments: "init source" → ["init", "source"]
         var segments = parentPath.Split(' ', StringSplitOptions.RemoveEmptyEntries);

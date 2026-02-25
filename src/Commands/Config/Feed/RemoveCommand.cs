@@ -13,7 +13,8 @@ namespace Spectara.Revela.Commands.Config.Feed;
 /// </summary>
 internal sealed partial class RemoveCommand(
     ILogger<RemoveCommand> logger,
-    INuGetSourceManager nugetSourceManager)
+    INuGetSourceManager nugetSourceManager,
+    IGlobalConfigManager globalConfigManager)
 {
     /// <summary>
     /// Creates the CLI command.
@@ -67,13 +68,13 @@ internal sealed partial class RemoveCommand(
 
             LogRemovingFeed(logger, name);
 
-            var removed = await GlobalConfigManager.RemoveFeedAsync(name, cancellationToken);
+            var removed = await globalConfigManager.RemoveFeedAsync(name, cancellationToken);
 
             if (removed)
             {
                 AnsiConsole.MarkupLine($"{OutputMarkers.Success} Removed feed [cyan]{name}[/]");
                 AnsiConsole.WriteLine();
-                AnsiConsole.MarkupLine($"Config: [dim]{GlobalConfigManager.ConfigFilePath}[/]");
+                AnsiConsole.MarkupLine($"Config: [dim]{ConfigPathResolver.ConfigFilePath}[/]");
                 return 0;
             }
             else

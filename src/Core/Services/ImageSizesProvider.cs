@@ -40,17 +40,21 @@ public interface IImageSizesProvider
 /// Local themes read their images.json from themes/{name}/Configuration/images.json automatically.
 /// </para>
 /// </remarks>
-public sealed class ImageSizesProvider(
+public sealed partial class ImageSizesProvider(
     IOptionsMonitor<ThemeConfig> themeConfig,
     IOptions<Sdk.ProjectEnvironment> projectEnvironment,
-    IThemeResolver themeResolver) : IImageSizesProvider
+    IThemeResolver themeResolver,
+    ILogger<ImageSizesProvider> logger) : IImageSizesProvider
 {
-    private IReadOnlyList<int>? cachedSizes;
+    private ReadOnlyCollection<int>? cachedSizes;
     private string? cachedResizeMode;
+    private string? cachedThemeName;
 
     /// <inheritdoc />
     public IReadOnlyList<int> GetSizes()
     {
+        InvalidateCacheIfThemeChanged();
+
         // Return cached value if available
         if (cachedSizes is not null)
         {
@@ -62,6 +66,7 @@ public sealed class ImageSizesProvider(
         if (themeSizes is { Count: > 0 })
         {
             cachedSizes = themeSizes;
+            LogSizesLoaded(cachedSizes.Count);
             return cachedSizes;
         }
 
@@ -74,6 +79,8 @@ public sealed class ImageSizesProvider(
     /// <inheritdoc />
     public string GetResizeMode()
     {
+        InvalidateCacheIfThemeChanged();
+
         // Return cached value if available
         if (cachedResizeMode is not null)
         {
@@ -87,6 +94,22 @@ public sealed class ImageSizesProvider(
     }
 
     /// <summary>
+    /// Invalidates cached values when the theme name changes (hot-reload support).
+    /// </summary>
+    private void InvalidateCacheIfThemeChanged()
+    {
+        var currentThemeName = themeConfig.CurrentValue.Name;
+        if (cachedThemeName is not null && !string.Equals(cachedThemeName, currentThemeName, StringComparison.OrdinalIgnoreCase))
+        {
+            LogThemeChanged(cachedThemeName, currentThemeName ?? "default");
+            cachedSizes = null;
+            cachedResizeMode = null;
+        }
+
+        cachedThemeName = currentThemeName;
+    }
+
+    /// <summary>
     /// Load settings from resolved theme's GetImagesTemplate().
     /// </summary>
     private (ReadOnlyCollection<int>? Sizes, string? ResizeMode) TryLoadThemeSettings()
@@ -94,6 +117,7 @@ public sealed class ImageSizesProvider(
         var themeName = themeConfig.CurrentValue.Name;
         if (string.IsNullOrEmpty(themeName))
         {
+            LogNoThemeConfigured();
             return (null, null);
         }
 
@@ -101,12 +125,14 @@ public sealed class ImageSizesProvider(
         var theme = themeResolver.Resolve(themeName, projectPath);
         if (theme is null)
         {
+            LogThemeNotFound(themeName);
             return (null, null);
         }
 
         using var stream = theme.GetImagesTemplate();
         if (stream is null)
         {
+            LogNoImagesTemplate(themeName);
             return (null, null);
         }
 
@@ -121,7 +147,7 @@ public sealed class ImageSizesProvider(
             if (doc.RootElement.TryGetProperty("sizes", out var sizesElement) &&
                 sizesElement.ValueKind == JsonValueKind.Array)
             {
-                var sizesList = new List<int>();
+                List<int> sizesList = [];
                 foreach (var size in sizesElement.EnumerateArray())
                 {
                     if (size.TryGetInt32(out var value))
@@ -144,11 +170,29 @@ public sealed class ImageSizesProvider(
 
             return (sizes, resizeMode);
         }
-        catch (JsonException)
+        catch (JsonException ex)
         {
-            // Invalid JSON in theme
+            LogInvalidImagesJson(themeName, ex.Message);
         }
 
         return (null, null);
     }
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Loaded {Count} image sizes from theme configuration")]
+    private partial void LogSizesLoaded(int count);
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Theme changed from '{OldTheme}' to '{NewTheme}', invalidating image sizes cache")]
+    private partial void LogThemeChanged(string oldTheme, string newTheme);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "No theme configured for image sizes")]
+    private partial void LogNoThemeConfigured();
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Theme '{ThemeName}' not found for image sizes resolution")]
+    private partial void LogThemeNotFound(string themeName);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Theme '{ThemeName}' does not provide images.json configuration")]
+    private partial void LogNoImagesTemplate(string themeName);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Invalid images.json in theme '{ThemeName}': {Error}")]
+    private partial void LogInvalidImagesJson(string themeName, string error);
 }

@@ -33,7 +33,7 @@ public sealed partial class AssetResolver(ILogger<AssetResolver> logger) : IAsse
         ".js", ".mjs"
     };
 
-    private readonly Dictionary<string, AssetEntry> assets = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, ResolvedEntry> assets = new(StringComparer.OrdinalIgnoreCase);
     private readonly List<string> styleSheetOrder = [];
     private readonly List<string> scriptOrder = [];
 
@@ -126,7 +126,7 @@ public sealed partial class AssetResolver(ILogger<AssetResolver> logger) : IAsse
 
     private async Task CopyAssetAsync(
         string key,
-        AssetEntry entry,
+        ResolvedEntry entry,
         string targetPath,
         CancellationToken cancellationToken)
     {
@@ -170,7 +170,7 @@ public sealed partial class AssetResolver(ILogger<AssetResolver> logger) : IAsse
             }
 
             var key = DeriveKeyFromPath(file);
-            assets[key] = new AssetEntry(FileSourceType.Theme, file, null);
+            assets[key] = new ResolvedEntry(FileSourceType.Theme, file, null);
             TrackOrderedAsset(key);
             count++;
         }
@@ -193,7 +193,7 @@ public sealed partial class AssetResolver(ILogger<AssetResolver> logger) : IAsse
 
             // Extension key = prefix + relative path within Assets/
             var key = DeriveExtensionKey(prefix, file);
-            assets[key] = new AssetEntry(FileSourceType.Extension, file, extension);
+            assets[key] = new ResolvedEntry(FileSourceType.Extension, file, extension);
             TrackOrderedAsset(key);
             count++;
         }
@@ -212,7 +212,7 @@ public sealed partial class AssetResolver(ILogger<AssetResolver> logger) : IAsse
             var key = DeriveKeyFromLocalPath(relativePath);
             var isOverride = assets.ContainsKey(key);
 
-            assets[key] = new AssetEntry(FileSourceType.Local, file, null);
+            assets[key] = new ResolvedEntry(FileSourceType.Local, file, null);
 
             if (isOverride)
             {
@@ -246,7 +246,7 @@ public sealed partial class AssetResolver(ILogger<AssetResolver> logger) : IAsse
         }
     }
 
-    private Stream? GetAssetStream(AssetEntry entry)
+    private Stream? GetAssetStream(ResolvedEntry entry)
     {
         return entry.SourceType switch
         {
@@ -262,10 +262,6 @@ public sealed partial class AssetResolver(ILogger<AssetResolver> logger) : IAsse
     /// Assets/main.css → main.css
     /// Assets/fonts/inter.woff2 → fonts/inter.woff2
     /// </summary>
-    [System.Diagnostics.CodeAnalysis.SuppressMessage(
-        "Globalization",
-        "CA1308:Normalize strings to uppercase",
-        Justification = "Asset keys use lowercase by convention for web URLs")]
     private static string DeriveKeyFromPath(string path)
     {
         // Remove Assets/ prefix
@@ -292,10 +288,6 @@ public sealed partial class AssetResolver(ILogger<AssetResolver> logger) : IAsse
     /// Derives asset key for extension files.
     /// Assets/statistics.css + prefix "statistics" → statistics/statistics.css
     /// </summary>
-    [System.Diagnostics.CodeAnalysis.SuppressMessage(
-        "Globalization",
-        "CA1308:Normalize strings to uppercase",
-        Justification = "Asset keys use lowercase by convention for web URLs")]
     private static string DeriveExtensionKey(string prefix, string path)
     {
         // Get relative path within Assets/
@@ -308,10 +300,6 @@ public sealed partial class AssetResolver(ILogger<AssetResolver> logger) : IAsse
     /// <summary>
     /// Derives asset key from local file path.
     /// </summary>
-    [System.Diagnostics.CodeAnalysis.SuppressMessage(
-        "Globalization",
-        "CA1308:Normalize strings to uppercase",
-        Justification = "Asset keys use lowercase by convention for web URLs")]
     private static string DeriveKeyFromLocalPath(string relativePath)
     {
         // Normalize separators and lowercase
@@ -387,11 +375,3 @@ public sealed partial class AssetResolver(ILogger<AssetResolver> logger) : IAsse
             kvp.Value.Extension?.Metadata.Name))];
     }
 }
-
-/// <summary>
-/// Internal entry for resolved assets.
-/// </summary>
-internal sealed record AssetEntry(
-    FileSourceType SourceType,
-    string Path,
-    IThemeExtension? Extension);

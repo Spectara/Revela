@@ -12,7 +12,8 @@ namespace Spectara.Revela.Commands.Config.Feed;
 /// Command to add a NuGet feed.
 /// </summary>
 internal sealed partial class AddCommand(
-    ILogger<AddCommand> logger)
+    ILogger<AddCommand> logger,
+    IGlobalConfigManager globalConfigManager)
 {
     /// <summary>
     /// Creates the CLI command.
@@ -62,12 +63,12 @@ internal sealed partial class AddCommand(
 
             LogAddingFeed(logger, name, url);
 
-            await GlobalConfigManager.AddFeedAsync(name, url, cancellationToken);
+            await globalConfigManager.AddFeedAsync(name, url, cancellationToken);
 
             AnsiConsole.MarkupLine($"{OutputMarkers.Success} Added feed [cyan]{name}[/]");
             AnsiConsole.MarkupLine($"  URL: [dim]{url}[/]");
             AnsiConsole.WriteLine();
-            AnsiConsole.MarkupLine($"Config: [dim]{GlobalConfigManager.ConfigFilePath}[/]");
+            AnsiConsole.MarkupLine($"Config: [dim]{ConfigPathResolver.ConfigFilePath}[/]");
             AnsiConsole.WriteLine();
             AnsiConsole.MarkupLine("[dim]Run [cyan]revela packages refresh[/] to update the package index.[/]");
 

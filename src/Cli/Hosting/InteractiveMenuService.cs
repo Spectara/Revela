@@ -24,6 +24,7 @@ internal sealed partial class InteractiveMenuService(
     CommandOrderRegistry orderRegistry,
     IOptionsMonitor<ProjectConfig> projectConfig,
     IConfigService configService,
+    IGlobalConfigManager globalConfigManager,
     RevelaWizard revelaWizard,
     ProjectWizard projectWizard,
     ILogger<InteractiveMenuService> logger) : IInteractiveMenuService
@@ -56,7 +57,7 @@ internal sealed partial class InteractiveMenuService(
         }
 
         // Check if this is a fresh installation (no revela.json)
-        if (!GlobalConfigManager.ConfigFileExists())
+        if (!globalConfigManager.ConfigFileExists())
         {
             return await HandleFirstRunAsync(cancellationToken);
         }

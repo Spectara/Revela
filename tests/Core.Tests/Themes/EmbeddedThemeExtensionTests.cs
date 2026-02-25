@@ -12,28 +12,16 @@ public sealed class EmbeddedThemeExtensionTests
     private LuminaStatisticsExtension extension = null!;
 
     [TestInitialize]
-    public void Setup()
-    {
-        extension = new LuminaStatisticsExtension();
-    }
+    public void Setup() => extension = new LuminaStatisticsExtension();
 
     [TestMethod]
-    public void Metadata_ReturnsCorrectName()
-    {
-        Assert.AreEqual("Lumina Statistics", extension.Metadata.Name);
-    }
+    public void Metadata_ReturnsCorrectName() => Assert.AreEqual("Lumina Statistics", extension.Metadata.Name);
 
     [TestMethod]
-    public void TargetTheme_ReturnsLumina()
-    {
-        Assert.AreEqual("Lumina", extension.TargetTheme);
-    }
+    public void TargetTheme_ReturnsLumina() => Assert.AreEqual("Lumina", extension.TargetTheme);
 
     [TestMethod]
-    public void PartialPrefix_ReturnsStatistics()
-    {
-        Assert.AreEqual("statistics", extension.PartialPrefix);
-    }
+    public void PartialPrefix_ReturnsStatistics() => Assert.AreEqual("statistics", extension.PartialPrefix);
 
     [TestMethod]
     public void GetFile_ManifestJson_ReturnsStream()

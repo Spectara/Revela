@@ -181,7 +181,7 @@ internal sealed class ConfigCommand(
 
         table.AddRow("[cyan]Installation Type[/]", $"[green]{locationType}[/]");
         table.AddRow("[cyan]Config Directory[/]", $"[dim]{Core.Services.ConfigPathResolver.ConfigDirectory}[/]");
-        table.AddRow("[cyan]Config File[/]", $"[dim]{Core.Services.GlobalConfigManager.ConfigFilePath}[/]");
+        table.AddRow("[cyan]Config File[/]", $"[dim]{Core.Services.ConfigPathResolver.ConfigFilePath}[/]");
         table.AddRow("[cyan]Plugins (local)[/]", $"[dim]{Core.Services.ConfigPathResolver.LocalPluginDirectory}[/]");
 
         AnsiConsole.Write(table);

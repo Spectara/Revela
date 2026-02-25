@@ -74,7 +74,7 @@ internal sealed partial class ListCommand(
             }
 
             AnsiConsole.WriteLine();
-            AnsiConsole.MarkupLine($"Config: [dim]{GlobalConfigManager.ConfigFilePath}[/]");
+            AnsiConsole.MarkupLine($"Config: [dim]{ConfigPathResolver.ConfigFilePath}[/]");
 
             return 0;
         }

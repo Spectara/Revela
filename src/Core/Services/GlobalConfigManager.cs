@@ -4,7 +4,7 @@ using System.Text.Json.Serialization;
 namespace Spectara.Revela.Core.Services;
 
 /// <summary>
-/// Manages the global CLI configuration (revela.json)
+/// Manages the global CLI configuration (revela.json).
 /// </summary>
 /// <remarks>
 /// <para>
@@ -22,7 +22,7 @@ namespace Spectara.Revela.Core.Services;
 /// IOptionsMonitor&lt;FeedsConfig&gt;, IOptionsMonitor&lt;DependenciesConfig&gt;, etc.
 /// </para>
 /// </remarks>
-public static class GlobalConfigManager
+public sealed partial class GlobalConfigManager(ILogger<GlobalConfigManager> logger) : IGlobalConfigManager
 {
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -31,17 +31,18 @@ public static class GlobalConfigManager
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
     };
 
-    private static GlobalConfigFile? cachedConfig;
+    private GlobalConfigFile? cachedConfig;
+
+    /// <inheritdoc />
+    public string ConfigFilePath => ConfigPathResolver.ConfigFilePath;
+
+    /// <inheritdoc />
+    public bool ConfigFileExists() => File.Exists(ConfigFilePath);
 
     /// <summary>
-    /// Gets the path to the config file
+    /// Loads the global configuration file, creating defaults if not exists.
     /// </summary>
-    public static string ConfigFilePath => ConfigPathResolver.ConfigFilePath;
-
-    /// <summary>
-    /// Loads the global configuration file, creating defaults if not exists
-    /// </summary>
-    private static async Task<GlobalConfigFile> LoadFileAsync(CancellationToken cancellationToken = default)
+    private async Task<GlobalConfigFile> LoadFileAsync(CancellationToken cancellationToken = default)
     {
         if (cachedConfig is not null)
         {
@@ -52,7 +53,7 @@ public static class GlobalConfigManager
 
         if (!File.Exists(configPath))
         {
-            // Create default config
+            LogCreatingDefaultConfig(configPath);
             cachedConfig = new GlobalConfigFile();
             await SaveFileAsync(cachedConfig, cancellationToken);
             return cachedConfig;
@@ -62,10 +63,11 @@ public static class GlobalConfigManager
         {
             var json = await File.ReadAllTextAsync(configPath, cancellationToken);
             cachedConfig = JsonSerializer.Deserialize<GlobalConfigFile>(json, JsonOptions) ?? new GlobalConfigFile();
+            LogConfigLoaded(configPath);
         }
-        catch
+        catch (Exception ex)
         {
-            // Corrupted config - use defaults
+            LogConfigCorrupted(configPath, ex.Message);
             cachedConfig = new GlobalConfigFile();
         }
 
@@ -73,9 +75,9 @@ public static class GlobalConfigManager
     }
 
     /// <summary>
-    /// Saves the global configuration file
+    /// Saves the global configuration file.
     /// </summary>
-    private static async Task SaveFileAsync(GlobalConfigFile config, CancellationToken cancellationToken = default)
+    private async Task SaveFileAsync(GlobalConfigFile config, CancellationToken cancellationToken = default)
     {
         var configPath = ConfigFilePath;
 
@@ -92,22 +94,18 @@ public static class GlobalConfigManager
         cachedConfig = config;
     }
 
-    /// <summary>
-    /// Adds a feed to the configuration
-    /// </summary>
+    /// <inheritdoc />
 #pragma warning disable CA1054 // URI parameters should not be strings - supports both URLs and local paths
-    public static async Task AddFeedAsync(string name, string url, CancellationToken cancellationToken = default)
+    public async Task AddFeedAsync(string name, string url, CancellationToken cancellationToken = default)
 #pragma warning restore CA1054
     {
         var config = await LoadFileAsync(cancellationToken);
 
-        // Check for duplicate
         if (config.Packages.Feeds.ContainsKey(name))
         {
             throw new InvalidOperationException($"Feed '{name}' already exists");
         }
 
-        // Check reserved name
         if (name.Equals("nuget.org", StringComparison.OrdinalIgnoreCase))
         {
             throw new InvalidOperationException("Cannot add feed with reserved name 'nuget.org'");
@@ -117,11 +115,8 @@ public static class GlobalConfigManager
         await SaveFileAsync(config, cancellationToken);
     }
 
-    /// <summary>
-    /// Removes a feed from the configuration
-    /// </summary>
-    /// <returns>True if the feed was found and removed</returns>
-    public static async Task<bool> RemoveFeedAsync(string name, CancellationToken cancellationToken = default)
+    /// <inheritdoc />
+    public async Task<bool> RemoveFeedAsync(string name, CancellationToken cancellationToken = default)
     {
         if (name.Equals("nuget.org", StringComparison.OrdinalIgnoreCase))
         {
@@ -132,28 +127,23 @@ public static class GlobalConfigManager
 
         if (!config.Packages.Feeds.Remove(name))
         {
-            return false; // Not found
+            return false;
         }
 
         await SaveFileAsync(config, cancellationToken);
         return true;
     }
 
-    /// <summary>
-    /// Adds a theme to the global configuration
-    /// </summary>
-    public static async Task AddThemeAsync(string packageId, string version, CancellationToken cancellationToken = default)
+    /// <inheritdoc />
+    public async Task AddThemeAsync(string packageId, string version, CancellationToken cancellationToken = default)
     {
         var config = await LoadFileAsync(cancellationToken);
         config.Themes[packageId] = version;
         await SaveFileAsync(config, cancellationToken);
     }
 
-    /// <summary>
-    /// Removes a theme from the global configuration
-    /// </summary>
-    /// <returns>True if the theme was found and removed</returns>
-    public static async Task<bool> RemoveThemeAsync(string packageId, CancellationToken cancellationToken = default)
+    /// <inheritdoc />
+    public async Task<bool> RemoveThemeAsync(string packageId, CancellationToken cancellationToken = default)
     {
         var config = await LoadFileAsync(cancellationToken);
 
@@ -166,21 +156,16 @@ public static class GlobalConfigManager
         return true;
     }
 
-    /// <summary>
-    /// Adds a plugin to the global configuration
-    /// </summary>
-    public static async Task AddPluginAsync(string packageId, string version, CancellationToken cancellationToken = default)
+    /// <inheritdoc />
+    public async Task AddPluginAsync(string packageId, string version, CancellationToken cancellationToken = default)
     {
         var config = await LoadFileAsync(cancellationToken);
         config.Plugins[packageId] = version;
         await SaveFileAsync(config, cancellationToken);
     }
 
-    /// <summary>
-    /// Removes a plugin from the global configuration
-    /// </summary>
-    /// <returns>True if the plugin was found and removed</returns>
-    public static async Task<bool> RemovePluginAsync(string packageId, CancellationToken cancellationToken = default)
+    /// <inheritdoc />
+    public async Task<bool> RemovePluginAsync(string packageId, CancellationToken cancellationToken = default)
     {
         var config = await LoadFileAsync(cancellationToken);
 
@@ -193,44 +178,36 @@ public static class GlobalConfigManager
         return true;
     }
 
-    /// <summary>
-    /// Gets all installed themes from the global configuration.
-    /// </summary>
-    /// <returns>Dictionary of package ID to version.</returns>
-    public static async Task<IReadOnlyDictionary<string, string>> GetThemesAsync(CancellationToken cancellationToken = default)
+    /// <inheritdoc />
+    public async Task<IReadOnlyDictionary<string, string>> GetThemesAsync(CancellationToken cancellationToken = default)
     {
         var config = await LoadFileAsync(cancellationToken);
         return config.Themes;
     }
 
-    /// <summary>
-    /// Gets all installed plugins from the global configuration.
-    /// </summary>
-    /// <returns>Dictionary of package ID to version.</returns>
-    public static async Task<IReadOnlyDictionary<string, string>> GetPluginsAsync(CancellationToken cancellationToken = default)
+    /// <inheritdoc />
+    public async Task<IReadOnlyDictionary<string, string>> GetPluginsAsync(CancellationToken cancellationToken = default)
     {
         var config = await LoadFileAsync(cancellationToken);
         return config.Plugins;
     }
 
-    /// <summary>
-    /// Checks if the global config file exists.
-    /// </summary>
-    /// <returns>True if revela.json exists.</returns>
-    public static bool ConfigFileExists() => File.Exists(ConfigFilePath);
+    #region Logging
 
-    /// <summary>
-    /// Clears the cached configuration (for testing)
-    /// </summary>
-    public static void ClearCache() => cachedConfig = null;
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Creating default config at '{ConfigPath}'")]
+    private partial void LogCreatingDefaultConfig(string configPath);
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Loaded config from '{ConfigPath}'")]
+    private partial void LogConfigLoaded(string configPath);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Config file '{ConfigPath}' is corrupted ({Error}), using defaults")]
+    private partial void LogConfigCorrupted(string configPath, string error);
+
+    #endregion
 
     /// <summary>
     /// Internal file structure for revela.json serialization
     /// </summary>
-    /// <remarks>
-    /// This matches the JSON structure written to disk. For reading, use the
-    /// separate config classes via IOptionsMonitor (PackagesConfig, DependenciesConfig, etc.)
-    /// </remarks>
     private sealed class GlobalConfigFile
     {
         public PackagesSection Packages { get; init; } = new();

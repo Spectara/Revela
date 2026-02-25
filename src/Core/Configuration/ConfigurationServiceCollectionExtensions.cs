@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using Spectara.Revela.Core.Services;
 using Spectara.Revela.Sdk.Configuration;
 using Spectara.Revela.Sdk.Services;
 
@@ -36,7 +37,7 @@ public static class ConfigurationServiceCollectionExtensions
     /// </para>
     /// <para>
     /// For writing configuration changes (e.g., adding feeds), use
-    /// <see cref="Services.GlobalConfigManager"/> which writes to revela.json.
+    /// <see cref="IGlobalConfigManager"/> which writes to revela.json.
     /// </para>
     /// </remarks>
     /// <param name="services">The service collection.</param>
@@ -88,6 +89,9 @@ public static class ConfigurationServiceCollectionExtensions
         // Path resolver service (resolves relative paths against project root)
         // Uses IOptionsMonitor for hot-reload support during interactive sessions
         services.AddSingleton<IPathResolver, PathResolver>();
+
+        // Global config manager (revela.json read/write)
+        services.AddSingleton<IGlobalConfigManager, GlobalConfigManager>();
 
         // Note: ProjectEnvironment is registered in CLI (requires IHostEnvironment)
 

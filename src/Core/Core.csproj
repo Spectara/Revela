@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <Description>Core models, abstractions and plugin infrastructure for Expose</Description>
+    <Description>Core models, abstractions and plugin infrastructure for Revela</Description>
   </PropertyGroup>
 
   <ItemGroup>
@@ -21,10 +21,6 @@
     <PackageReference Include="NuGet.Protocol" />
     <PackageReference Include="NuGet.Packaging" />
     <PackageReference Include="NuGet.Configuration" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Folder Include="Models\" />
   </ItemGroup>
 
 </Project>

@@ -48,29 +48,12 @@ public interface IThemeResolver
 /// <summary>
 /// Default implementation of theme resolver
 /// </summary>
-public sealed partial class ThemeResolver : IThemeResolver
+public sealed partial class ThemeResolver(
+    IEnumerable<IThemePlugin> installedThemes,
+    IEnumerable<IThemeExtension> themeExtensions,
+    ILogger<ThemeResolver> logger) : IThemeResolver
 {
     private const string DefaultThemeName = "Lumina";
-
-    private readonly IEnumerable<IThemePlugin> installedThemes;
-    private readonly IEnumerable<IThemeExtension> themeExtensions;
-    private readonly ILogger<ThemeResolver> logger;
-
-    /// <summary>
-    /// Creates a new ThemeResolver
-    /// </summary>
-    /// <param name="installedThemes">Themes from plugin system</param>
-    /// <param name="themeExtensions">Theme extensions from plugin system</param>
-    /// <param name="logger">Logger instance</param>
-    public ThemeResolver(
-        IEnumerable<IThemePlugin> installedThemes,
-        IEnumerable<IThemeExtension> themeExtensions,
-        ILogger<ThemeResolver> logger)
-    {
-        this.installedThemes = installedThemes;
-        this.themeExtensions = themeExtensions;
-        this.logger = logger;
-    }
 
     /// <inheritdoc />
     public IReadOnlyList<IThemeExtension> GetExtensions(string themeName)
@@ -139,7 +122,7 @@ public sealed partial class ThemeResolver : IThemeResolver
     /// <inheritdoc />
     public IEnumerable<IThemePlugin> GetAvailableThemes(string projectPath)
     {
-        var themes = new List<IThemePlugin>();
+        List<IThemePlugin> themes = [];
         var seenNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
         // 1. Local themes (highest priority)

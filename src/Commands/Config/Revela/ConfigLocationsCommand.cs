@@ -30,7 +30,7 @@ internal sealed partial class ConfigLocationsCommand(
 
             table.AddRow("[cyan]Installation Type[/]", $"[green]{locationType}[/]");
             table.AddRow("[cyan]Config Directory[/]", $"[dim]{ConfigPathResolver.ConfigDirectory}[/]");
-            table.AddRow("[cyan]Config File[/]", $"[dim]{GlobalConfigManager.ConfigFilePath}[/]");
+            table.AddRow("[cyan]Config File[/]", $"[dim]{ConfigPathResolver.ConfigFilePath}[/]");
             table.AddRow("[cyan]Plugins (local)[/]", $"[dim]{ConfigPathResolver.LocalPluginDirectory}[/]");
             table.AddRow("[cyan]Plugins (global)[/]", $"[dim]{ConfigPathResolver.GlobalPluginDirectory}[/]");
 
@@ -38,7 +38,7 @@ internal sealed partial class ConfigLocationsCommand(
 
             // Show if config exists
             AnsiConsole.WriteLine();
-            if (File.Exists(GlobalConfigManager.ConfigFilePath))
+            if (File.Exists(ConfigPathResolver.ConfigFilePath))
             {
                 AnsiConsole.MarkupLine($"{OutputMarkers.Success} Configuration file exists");
             }

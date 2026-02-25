@@ -18,10 +18,15 @@ namespace Spectara.Revela.Core;
 /// Shared assemblies (IPlugin interface, Microsoft.Extensions.*) are resolved
 /// from the default context to enable cross-context communication.
 /// </remarks>
-internal sealed class PluginLoadContext : AssemblyLoadContext
+internal sealed class PluginLoadContext(string pluginPath)
+    : AssemblyLoadContext(name: Path.GetFileNameWithoutExtension(pluginPath), isCollectible: false)
 {
-    private readonly AssemblyDependencyResolver resolver;
-    private readonly string pluginDirectory;
+    private readonly AssemblyDependencyResolver resolver = new(pluginPath);
+
+    /// <summary>
+    /// Plugin directory contains main DLL and all dependencies.
+    /// </summary>
+    private readonly string pluginDirectory = Path.GetDirectoryName(pluginPath)!;
 
     /// <summary>
     /// Known shared assemblies that should be loaded from the host.
@@ -39,14 +44,6 @@ internal sealed class PluginLoadContext : AssemblyLoadContext
         // Spectre.Console for consistent UI
         "Spectre.Console"
     ];
-
-    public PluginLoadContext(string pluginPath) : base(name: Path.GetFileNameWithoutExtension(pluginPath), isCollectible: false)
-    {
-        resolver = new AssemblyDependencyResolver(pluginPath);
-
-        // Plugin directory contains main DLL and all dependencies
-        pluginDirectory = Path.GetDirectoryName(pluginPath)!;
-    }
 
     protected override Assembly? Load(AssemblyName assemblyName)
     {

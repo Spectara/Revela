@@ -23,7 +23,7 @@ public sealed partial class TemplateResolver(ILogger<TemplateResolver> logger) :
     private const string LayoutFileName = "Layout.revela";
     private const string RevelaExtension = ".revela";
 
-    private readonly Dictionary<string, TemplateEntry> templates = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, ResolvedEntry> templates = new(StringComparer.OrdinalIgnoreCase);
     private IThemePlugin? theme;
     private string? localThemePath;
     private bool isInitialized;
@@ -75,7 +75,7 @@ public sealed partial class TemplateResolver(ILogger<TemplateResolver> logger) :
         {
             FileSourceType.Local => File.OpenRead(entry.Path),
             FileSourceType.Theme => theme!.GetFile(entry.Path),
-            FileSourceType.Extension => entry.Extension!.GetFile(entry.Path),
+            FileSourceType.Extension => entry!.Extension!.GetFile(entry.Path),
             _ => null
         };
     }
@@ -113,7 +113,7 @@ public sealed partial class TemplateResolver(ILogger<TemplateResolver> logger) :
 
             var key = DeriveKeyFromPath(file);
             LogScannedTemplate(key, file);
-            templates[key] = new TemplateEntry(FileSourceType.Theme, file, null);
+            templates[key] = new ResolvedEntry(FileSourceType.Theme, file, null);
             count++;
         }
 
@@ -134,7 +134,7 @@ public sealed partial class TemplateResolver(ILogger<TemplateResolver> logger) :
 
             // Extension key = prefix + filename (strip Body/Partials folders)
             var key = DeriveExtensionKey(prefix, file);
-            templates[key] = new TemplateEntry(FileSourceType.Extension, file, extension);
+            templates[key] = new ResolvedEntry(FileSourceType.Extension, file, extension);
             count++;
         }
 
@@ -159,7 +159,7 @@ public sealed partial class TemplateResolver(ILogger<TemplateResolver> logger) :
             var key = DeriveKeyFromPath(relativePath);
             var isOverride = templates.ContainsKey(key);
 
-            templates[key] = new TemplateEntry(FileSourceType.Local, file, null);
+            templates[key] = new ResolvedEntry(FileSourceType.Local, file, null);
 
             if (isOverride)
             {
@@ -186,10 +186,6 @@ public sealed partial class TemplateResolver(ILogger<TemplateResolver> logger) :
     /// Body/Gallery.revela → body/gallery
     /// Partials/Navigation.revela → partials/navigation
     /// </remarks>
-    [System.Diagnostics.CodeAnalysis.SuppressMessage(
-        "Globalization",
-        "CA1308:Normalize strings to uppercase",
-        Justification = "Template keys use lowercase by convention - this is format conversion, not normalization")]
     private static string DeriveKeyFromPath(string path)
     {
         // Remove .revela extension
@@ -215,10 +211,6 @@ public sealed partial class TemplateResolver(ILogger<TemplateResolver> logger) :
     /// themes/Lumina/Partials/Statistics/overview.revela → partials/statistics/overview
     /// </para>
     /// </remarks>
-    [System.Diagnostics.CodeAnalysis.SuppressMessage(
-        "Globalization",
-        "CA1308:Normalize strings to uppercase",
-        Justification = "Template keys use lowercase by convention - this is format conversion, not normalization")]
     private static string DeriveExtensionKey(string prefix, string path)
     {
         // Get folder (Partials, Body) and filename without extension
@@ -235,10 +227,6 @@ public sealed partial class TemplateResolver(ILogger<TemplateResolver> logger) :
         return $"{folder}/{prefix}/{fileName}".ToLowerInvariant();
     }
 
-    [System.Diagnostics.CodeAnalysis.SuppressMessage(
-        "Globalization",
-        "CA1308:Normalize strings to uppercase",
-        Justification = "Template keys use lowercase by convention - this is format conversion, not normalization")]
     private static string NormalizeKey(string key)
     {
         // Remove .revela extension if present
@@ -308,11 +296,3 @@ public sealed partial class TemplateResolver(ILogger<TemplateResolver> logger) :
             kvp.Value.Extension?.Metadata.Name))];
     }
 }
-
-/// <summary>
-/// Internal entry for resolved templates.
-/// </summary>
-internal sealed record TemplateEntry(
-    FileSourceType SourceType,
-    string Path,
-    IThemeExtension? Extension);

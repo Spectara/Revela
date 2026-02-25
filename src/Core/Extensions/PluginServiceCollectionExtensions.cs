@@ -2,6 +2,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
 using Spectara.Revela.Core;
 using Spectara.Revela.Core.Configuration;
+using Spectara.Revela.Core.Logging;
 using Spectara.Revela.Sdk.Abstractions;
 
 namespace Microsoft.Extensions.DependencyInjection;
@@ -92,8 +93,6 @@ public static class PluginServiceCollectionExtensions
     {
         var logger = NullLogger<PluginLoader>.Instance;
 
-#pragma warning disable CA1848 // Use LoggerMessage delegates for performance (startup logging)
-
         // Auto-load environment variables with global prefix
         configuration.AddEnvironmentVariables(prefix: "SPECTARA__REVELA__");
 
@@ -106,7 +105,7 @@ public static class PluginServiceCollectionExtensions
             }
             catch (Exception ex)
             {
-                logger.LogError(ex, "Plugin '{Name}' failed to configure configuration", pluginInfo.Plugin.Metadata.Name);
+                logger.ConfigureConfigurationFailed(ex, pluginInfo.Plugin.Metadata.Name);
             }
         }
 
@@ -118,17 +117,14 @@ public static class PluginServiceCollectionExtensions
                 pluginInfo.Plugin.ConfigureServices(services);
                 if (logger.IsEnabled(LogLevel.Information))
                 {
-                    logger.LogInformation("Plugin '{Name}' v{Version} registered services",
-                        pluginInfo.Plugin.Metadata.Name, pluginInfo.Plugin.Metadata.Version);
+                    logger.PluginServicesRegistered(pluginInfo.Plugin.Metadata.Name, pluginInfo.Plugin.Metadata.Version);
                 }
             }
             catch (Exception ex)
             {
-                logger.LogError(ex, "Plugin '{Name}' failed to configure services", pluginInfo.Plugin.Metadata.Name);
+                logger.ConfigureServicesFailed(ex, pluginInfo.Plugin.Metadata.Name);
             }
         }
-
-#pragma warning restore CA1848
     }
 
     /// <summary>

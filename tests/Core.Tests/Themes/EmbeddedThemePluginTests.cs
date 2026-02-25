@@ -12,28 +12,16 @@ public sealed class EmbeddedThemePluginTests
     private LuminaThemePlugin plugin = null!;
 
     [TestInitialize]
-    public void Setup()
-    {
-        plugin = new LuminaThemePlugin();
-    }
+    public void Setup() => plugin = new LuminaThemePlugin();
 
     [TestMethod]
-    public void Metadata_ReturnsCorrectName()
-    {
-        Assert.AreEqual("Lumina", plugin.Metadata.Name);
-    }
+    public void Metadata_ReturnsCorrectName() => Assert.AreEqual("Lumina", plugin.Metadata.Name);
 
     [TestMethod]
-    public void Metadata_ReturnsVersion()
-    {
-        Assert.IsFalse(string.IsNullOrEmpty(plugin.Metadata.Version));
-    }
+    public void Metadata_ReturnsVersion() => Assert.IsFalse(string.IsNullOrEmpty(plugin.Metadata.Version));
 
     [TestMethod]
-    public void Metadata_HasTags()
-    {
-        Assert.IsNotEmpty(plugin.Metadata.Tags);
-    }
+    public void Metadata_HasTags() => Assert.IsNotEmpty(plugin.Metadata.Tags);
 
     [TestMethod]
     public void GetManifest_ReturnsLayoutTemplate()

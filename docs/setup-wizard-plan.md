@@ -61,7 +61,7 @@ revela                    ← Start without arguments
 - [Commands/Revela/Wizard.cs](../src/Commands/Revela/Wizard.cs) - Wizard orchestrator
 - [InteractiveMenuService.cs](../src/Cli/Hosting/InteractiveMenuService.cs) - First-run detection
 - [MenuChoice.cs](../src/Cli/Hosting/MenuChoice.cs) - `MenuAction.RunSetupWizard`
-- [GlobalConfigManager.cs](../src/Core/Services/GlobalConfigManager.cs) - `ConfigFileExists()`, `GetThemesAsync()`
+- [GlobalConfigManager.cs](../src/Core/Services/GlobalConfigManager.cs) - Implements `IGlobalConfigManager`: `ConfigFileExists()`, `GetThemesAsync()` (injected via DI)
 
 ### Automation (without Wizard)
 

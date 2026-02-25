@@ -25,15 +25,16 @@ namespace Spectara.Revela.Core.Services;
 /// </remarks>
 public sealed partial class NuGetSourceManager(
     ILogger<NuGetSourceManager> logger,
-    IOptionsMonitor<PackagesConfig> packagesConfig) : INuGetSourceManager
+    IOptionsMonitor<PackagesConfig> packagesConfig,
+    IGlobalConfigManager globalConfigManager) : INuGetSourceManager
 {
     /// <summary>
     /// Gets the path to the config file
     /// </summary>
     /// <remarks>
-    /// Delegates to GlobalConfigManager for consistent config location.
+    /// Delegates to <see cref="ConfigPathResolver"/> for consistent config location.
     /// </remarks>
-    public static string ConfigFilePath => GlobalConfigManager.ConfigFilePath;
+    public static string ConfigFilePath => ConfigPathResolver.ConfigFilePath;
 
     /// <summary>
     /// Gets the default NuGet.org source
@@ -48,49 +49,31 @@ public sealed partial class NuGetSourceManager(
     /// <inheritdoc/>
     public Task<List<NuGetSource>> LoadSourcesAsync(CancellationToken cancellationToken = default)
     {
-        var sources = new List<NuGetSource>();
+        var sourcesWithLocation = BuildSourceList();
+        var sources = sourcesWithLocation.ConvertAll(s => s.Source);
+        return Task.FromResult(sources);
+    }
+
+    /// <inheritdoc/>
+    public Task<List<(NuGetSource Source, string Location)>> GetAllSourcesWithLocationAsync(CancellationToken cancellationToken = default) =>
+        Task.FromResult(BuildSourceList());
+
+    /// <inheritdoc/>
+    public Task<List<NuGetSource>> GetAllSourcesAsync(CancellationToken cancellationToken = default) =>
+        LoadSourcesAsync(cancellationToken);
+
+    /// <summary>
+    /// Builds the unified source list from bundled packages, built-in defaults, and user configuration.
+    /// </summary>
+    private List<(NuGetSource Source, string Location)> BuildSourceList()
+    {
+        List<(NuGetSource Source, string Location)> sources = [];
 
         // Bundled packages directory (offline-first, highest priority)
         var bundledDir = PluginManager.BundledPackagesDirectory;
         if (Directory.Exists(bundledDir))
         {
             LogUsingBundledPackages(bundledDir);
-            sources.Add(new NuGetSource
-            {
-                Name = "bundled",
-                Url = bundledDir,
-                Enabled = true
-            });
-        }
-
-        // Built-in nuget.org
-        sources.Add(DefaultSource);
-
-        // User-configured feeds from revela.json (hot-reload via IOptionsMonitor)
-        var config = packagesConfig.CurrentValue;
-        foreach (var (name, url) in config.Feeds)
-        {
-            var resolvedUrl = ResolvePathIfRelative(url);
-            sources.Add(new NuGetSource
-            {
-                Name = name,
-                Url = resolvedUrl,
-                Enabled = true
-            });
-        }
-
-        return Task.FromResult(sources);
-    }
-
-    /// <inheritdoc/>
-    public async Task<List<(NuGetSource Source, string Location)>> GetAllSourcesWithLocationAsync(CancellationToken cancellationToken = default)
-    {
-        var sources = new List<(NuGetSource Source, string Location)>();
-
-        // Bundled packages directory
-        var bundledDir = PluginManager.BundledPackagesDirectory;
-        if (Directory.Exists(bundledDir))
-        {
             sources.Add((new NuGetSource
             {
                 Name = "bundled",
@@ -123,15 +106,8 @@ public sealed partial class NuGetSourceManager(
     }
 
     /// <inheritdoc/>
-    public async Task<List<NuGetSource>> GetAllSourcesAsync(CancellationToken cancellationToken = default)
-    {
-        var sourcesWithLocation = await GetAllSourcesWithLocationAsync(cancellationToken);
-        return [.. sourcesWithLocation.Select(s => s.Source)];
-    }
-
-    /// <inheritdoc/>
 #pragma warning disable CA1054 // URI parameters should not be strings - string required for user input
-    public Task AddSourceAsync(string name, string url, CancellationToken cancellationToken = default) => GlobalConfigManager.AddFeedAsync(name, url, cancellationToken);
+    public Task AddSourceAsync(string name, string url, CancellationToken cancellationToken = default) => globalConfigManager.AddFeedAsync(name, url, cancellationToken);
 #pragma warning restore CA1054
 
     /// <inheritdoc/>
@@ -142,7 +118,7 @@ public sealed partial class NuGetSourceManager(
             throw new InvalidOperationException("Cannot remove built-in source 'nuget.org'");
         }
 
-        return GlobalConfigManager.RemoveFeedAsync(name, cancellationToken);
+        return globalConfigManager.RemoveFeedAsync(name, cancellationToken);
     }
 
     /// <summary>

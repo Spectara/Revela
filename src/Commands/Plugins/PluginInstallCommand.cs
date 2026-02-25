@@ -21,7 +21,8 @@ namespace Spectara.Revela.Commands.Plugins;
 internal sealed partial class PluginInstallCommand(
     ILogger<PluginInstallCommand> logger,
     PluginManager pluginManager,
-    IPackageIndexService packageIndexService)
+    IPackageIndexService packageIndexService,
+    IGlobalConfigManager globalConfigManager)
 {
     /// <summary>
     /// Creates the command definition.
@@ -101,7 +102,7 @@ internal sealed partial class PluginInstallCommand(
         }
 
         // Get already installed plugins to filter them out
-        var installedPlugins = await GlobalConfigManager.GetPluginsAsync(cancellationToken);
+        var installedPlugins = await globalConfigManager.GetPluginsAsync(cancellationToken);
         var installedIds = installedPlugins.Keys.ToHashSet(StringComparer.OrdinalIgnoreCase);
 
         var availablePlugins = plugins.Where(p => !installedIds.Contains(p.Id)).ToList();
@@ -164,7 +165,7 @@ internal sealed partial class PluginInstallCommand(
         if (selectedPlugins.Count == 0)
         {
             // Check if all plugins are already installed
-            var installedPlugins = await GlobalConfigManager.GetPluginsAsync(cancellationToken);
+            var installedPlugins = await globalConfigManager.GetPluginsAsync(cancellationToken);
             if (installedPlugins.Count > 0)
             {
                 return new InstallResult([], [.. installedPlugins.Keys], []);
@@ -235,7 +236,7 @@ internal sealed partial class PluginInstallCommand(
         }
 
         // Get already installed plugins to filter them out
-        var installedPlugins = await GlobalConfigManager.GetPluginsAsync(cancellationToken);
+        var installedPlugins = await globalConfigManager.GetPluginsAsync(cancellationToken);
         var installedIds = installedPlugins.Keys.ToHashSet(StringComparer.OrdinalIgnoreCase);
 
         // Filter out already installed plugins
@@ -327,7 +328,7 @@ internal sealed partial class PluginInstallCommand(
             {
                 // Register plugin in global config (revela.json)
                 var installedVersion = version ?? packageEntry?.Version ?? "latest";
-                await GlobalConfigManager.AddPluginAsync(packageId, installedVersion, cancellationToken);
+                await globalConfigManager.AddPluginAsync(packageId, installedVersion, cancellationToken);
 
                 AnsiConsole.MarkupLine($"[green]Plugin '{packageId}' installed successfully.[/]");
                 AnsiConsole.MarkupLine("[dim]The plugin will be available after restarting revela.[/]");
@@ -360,7 +361,7 @@ internal sealed partial class PluginInstallCommand(
             return [];
         }
 
-        var installedPlugins = await GlobalConfigManager.GetPluginsAsync(cancellationToken);
+        var installedPlugins = await globalConfigManager.GetPluginsAsync(cancellationToken);
         var installedIds = installedPlugins.Keys.ToHashSet(StringComparer.OrdinalIgnoreCase);
 
         return [.. plugins.Where(p => !installedIds.Contains(p.Id))];

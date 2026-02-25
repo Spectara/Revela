@@ -19,13 +19,15 @@ public sealed class NuGetSourceManagerTests
 {
     private NuGetSourceManager service = null!;
     private IOptionsMonitor<PackagesConfig> packagesConfig = null!;
+    private IGlobalConfigManager globalConfigManager = null!;
 
     [TestInitialize]
     public void Setup()
     {
         packagesConfig = Substitute.For<IOptionsMonitor<PackagesConfig>>();
         packagesConfig.CurrentValue.Returns(new PackagesConfig());
-        service = new NuGetSourceManager(NullLogger<NuGetSourceManager>.Instance, packagesConfig);
+        globalConfigManager = Substitute.For<IGlobalConfigManager>();
+        service = new NuGetSourceManager(NullLogger<NuGetSourceManager>.Instance, packagesConfig, globalConfigManager);
     }
 
     #region Static Properties Tests

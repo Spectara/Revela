@@ -13,16 +13,10 @@ public sealed class EmbeddedResourceProviderTests
     private EmbeddedResourceProvider provider = null!;
 
     [TestInitialize]
-    public void Setup()
-    {
-        provider = new EmbeddedResourceProvider(typeof(LuminaThemePlugin).Assembly);
-    }
+    public void Setup() => provider = new EmbeddedResourceProvider(typeof(LuminaThemePlugin).Assembly);
 
     [TestMethod]
-    public void AssemblyName_ReturnsCorrectName()
-    {
-        Assert.AreEqual("Spectara.Revela.Theme.Lumina", provider.AssemblyName);
-    }
+    public void AssemblyName_ReturnsCorrectName() => Assert.AreEqual("Spectara.Revela.Theme.Lumina", provider.AssemblyName);
 
     [TestMethod]
     public void GetFile_ExistingFile_ReturnsStream()

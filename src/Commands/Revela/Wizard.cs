@@ -32,7 +32,8 @@ internal sealed partial class Wizard(
     ILogger<Wizard> logger,
     RefreshCommand packagesRefreshCommand,
     ThemeInstallCommand themeInstallCommand,
-    PluginInstallCommand pluginInstallCommand)
+    PluginInstallCommand pluginInstallCommand,
+    IGlobalConfigManager globalConfigManager)
 {
     /// <summary>
     /// Exit code indicating packages were installed and restart is required.
@@ -105,7 +106,7 @@ internal sealed partial class Wizard(
             // Must have at least one theme
             if (selectedThemes.Count == 0)
             {
-                var installedThemes = await GlobalConfigManager.GetThemesAsync(cancellationToken);
+                var installedThemes = await globalConfigManager.GetThemesAsync(cancellationToken);
                 if (installedThemes.Count == 0)
                 {
                     ShowNoThemesError();

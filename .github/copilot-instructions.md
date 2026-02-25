@@ -120,6 +120,7 @@ tests/
 - **Plugin Abstractions:** `src/Sdk/Abstractions/` - IPlugin, IGenerateStep, IWizardStep, CommandDescriptor
 - **Models:** `src/Sdk/Models/Manifest/` - ImageContent, GalleryContent, ManifestMeta
 - **Config:** `src/Core/Configuration/` + `src/Sdk/Configuration/` - Configuration models
+- **Global Config:** `src/Core/Services/IGlobalConfigManager.cs` + `GlobalConfigManager.cs` - revela.json read/write (DI singleton)
 - **Plugin Loading:** `src/Core/PluginLoader.cs` + `PluginManager.cs`
 - **Path Resolution:** `src/Sdk/Services/IPathResolver.cs` + `PathResolver.cs`
 - **Output Helpers:** `src/Sdk/Output/OutputMarkers.cs`, `src/Sdk/ProjectPaths.cs`
@@ -264,7 +265,7 @@ return await rootCommand.Parse(filteredArgs).InvokeAsync();
 **Key Components:**
 - **`ProjectResolver`:** Detects standalone mode, parses `--project` arg, resolves project path before host build
 - **`AddRevelaConfiguration()`:** Loads config chain: `revela.json` (global %APPDATA%) → `project.json` (local) → `logging.json`. Note: `site.json` is NOT loaded via IConfiguration — it's loaded dynamically by RenderService.
-- **`AddRevelaConfigSections()`:** Registers `IOptions<T>` for ProjectConfig, ThemeConfig, GenerateConfig, PathsConfig, etc. Also registers `IPathResolver`.
+- **`AddRevelaConfigSections()`:** Registers `IOptions<T>` for ProjectConfig, ThemeConfig, GenerateConfig, PathsConfig, etc. Also registers `IPathResolver` and `IGlobalConfigManager`.
 - **`AddInteractiveMode()`:** Registers CommandOrderRegistry, CommandGroupRegistry, IInteractiveMenuService
 - **`ProjectEnvironment`:** Runtime info — `Path` (project dir), `IsInitialized` (project.json exists)
 
@@ -1271,7 +1272,7 @@ dotnet run --project tests/Core.Tests
 
 ---
 
-**Last Updated:** 2026-02-12 (Session: Comprehensive copilot-instructions review)
+**Last Updated:** 2026-02-23 (Session: Core refactoring - DI GlobalConfigManager, GenerateConfig split, collection expressions)
 
 **Key Learnings from Latest Sessions:**
 - ✅ Plugin ConfigureServices pattern (4-phase lifecycle)

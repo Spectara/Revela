@@ -21,7 +21,8 @@ namespace Spectara.Revela.Commands.Theme;
 internal sealed partial class ThemeInstallCommand(
     ILogger<ThemeInstallCommand> logger,
     IPackageIndexService packageIndexService,
-    PluginManager pluginManager)
+    PluginManager pluginManager,
+    IGlobalConfigManager globalConfigManager)
 {
     /// <summary>
     /// Creates the command definition.
@@ -100,7 +101,7 @@ internal sealed partial class ThemeInstallCommand(
         }
 
         // Get already installed themes to filter them out
-        var installedThemes = await GlobalConfigManager.GetThemesAsync(cancellationToken);
+        var installedThemes = await globalConfigManager.GetThemesAsync(cancellationToken);
         var installedIds = installedThemes.Keys.ToHashSet(StringComparer.OrdinalIgnoreCase);
 
         var availableThemes = themes.Where(t => !installedIds.Contains(t.Id)).ToList();
@@ -163,7 +164,7 @@ internal sealed partial class ThemeInstallCommand(
         if (selectedThemes.Count == 0)
         {
             // Check if all themes are already installed
-            var installedThemes = await GlobalConfigManager.GetThemesAsync(cancellationToken);
+            var installedThemes = await globalConfigManager.GetThemesAsync(cancellationToken);
             if (installedThemes.Count > 0)
             {
                 return new InstallResult([], [.. installedThemes.Keys], []);
@@ -234,7 +235,7 @@ internal sealed partial class ThemeInstallCommand(
         }
 
         // Get already installed themes to filter them out
-        var installedThemes = await GlobalConfigManager.GetThemesAsync(cancellationToken);
+        var installedThemes = await globalConfigManager.GetThemesAsync(cancellationToken);
         var installedIds = installedThemes.Keys.ToHashSet(StringComparer.OrdinalIgnoreCase);
 
         // Filter out already installed themes
@@ -348,7 +349,7 @@ internal sealed partial class ThemeInstallCommand(
             {
                 // Register theme in global config (revela.json)
                 var installedVersion = version ?? packageEntry.Version;
-                await GlobalConfigManager.AddThemeAsync(packageId, installedVersion, cancellationToken);
+                await globalConfigManager.AddThemeAsync(packageId, installedVersion, cancellationToken);
 
                 AnsiConsole.MarkupLine($"{OutputMarkers.Success} Theme [cyan]{packageId}[/] installed successfully.");
                 AnsiConsole.MarkupLine("[dim]Configure with:[/] revela config theme select");
@@ -379,7 +380,7 @@ internal sealed partial class ThemeInstallCommand(
             return [];
         }
 
-        var installedThemes = await GlobalConfigManager.GetThemesAsync(cancellationToken);
+        var installedThemes = await globalConfigManager.GetThemesAsync(cancellationToken);
         var installedIds = installedThemes.Keys.ToHashSet(StringComparer.OrdinalIgnoreCase);
 
         return [.. themes.Where(t => !installedIds.Contains(t.Id))];
