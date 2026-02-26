@@ -23,11 +23,10 @@ public sealed class StatisticsPlugin : IPlugin
     /// <inheritdoc />
     public void ConfigureServices(IServiceCollection services)
     {
-        // Register Plugin Configuration (IOptions pattern)
-        // Note: No ValidateDataAnnotations/ValidateOnStart - plugins may be installed but not configured.
-        // Validation happens in commands when config is actually needed.
-        services.AddOptions<StatisticsPluginConfig>()
-            .BindConfiguration(StatisticsPluginConfig.SectionName);
+        // Register Plugin Configuration via SDK helper
+        // Binds to project.json section, validates DataAnnotations on access
+        // Note: No ValidateOnStart - plugin may be installed but not configured.
+        services.AddPluginConfig<StatisticsPluginConfig>();
 
         services.AddTransient<StatisticsAggregator>();
 

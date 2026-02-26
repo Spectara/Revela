@@ -27,12 +27,11 @@ public sealed class OneDrivePlugin : IPlugin
     /// <inheritdoc />
     public void ConfigureServices(IServiceCollection services)
     {
-        // Register Plugin Configuration (IOptions pattern)
-        // Binds to Plugins:Spectara.Revela.Plugin.Source.OneDrive section
-        // Note: No ValidateDataAnnotations/ValidateOnStart - plugins may be installed but not configured.
-        // Validation happens in commands when config is actually needed (e.g., DownloadCommand).
-        services.AddOptions<OneDrivePluginConfig>()
-            .BindConfiguration(OneDrivePluginConfig.SectionName);
+        // Register Plugin Configuration via SDK helper
+        // Binds to project.json section, validates DataAnnotations on access
+        // Note: No ValidateOnStart - plugin may be installed but not configured.
+        // Validation happens in commands when config is actually needed.
+        services.AddPluginConfig<OneDrivePluginConfig>();
 
         // Register Typed HttpClient for SharedLinkProvider with Resilience
         // Custom resilience handler: retry without verbose logging

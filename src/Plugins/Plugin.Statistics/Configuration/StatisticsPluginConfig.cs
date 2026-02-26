@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using Spectara.Revela.Sdk.Abstractions;
 
 namespace Spectara.Revela.Plugin.Statistics.Configuration;
 
@@ -24,12 +25,10 @@ namespace Spectara.Revela.Plugin.Statistics.Configuration;
 /// SPECTARA__REVELA__PLUGIN__STATISTICS__MAXENTRIESPERCATEGORY=20
 /// SPECTARA__REVELA__PLUGIN__STATISTICS__SORTBYCOUNT=false
 /// </remarks>
-internal sealed class StatisticsPluginConfig
+internal sealed class StatisticsPluginConfig : IPluginConfig
 {
-    /// <summary>
-    /// Configuration section name
-    /// </summary>
-    public const string SectionName = "Spectara.Revela.Plugin.Statistics";
+    /// <inheritdoc />
+    public static string SectionName => "Spectara.Revela.Plugin.Statistics";
 
     /// <summary>
     /// Maximum number of entries per category (e.g., top 15 apertures)

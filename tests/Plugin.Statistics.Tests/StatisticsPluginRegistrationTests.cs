@@ -15,12 +15,13 @@ namespace Spectara.Revela.Plugin.Statistics.Tests;
 public sealed class StatisticsPluginRegistrationTests
 {
     [TestMethod]
-    public void ConfigureServices_InvalidOptions_ShouldNotThrowAtStartup()
+    public void ConfigureServices_InvalidOptions_ShouldNotThrowAtStartupOrAccess()
     {
         // Arrange
-        // Note: ValidateDataAnnotations was removed from plugins.
-        // Plugins may be installed but not configured - validation happens in commands when config is needed.
-        // This test verifies that invalid config does NOT throw at startup anymore.
+        // AddPluginConfig<T>() does NOT enable ValidateDataAnnotations by default.
+        // Plugins may be installed but not yet configured — validation via IOptionsMonitor
+        // would crash the application on every config reload when required properties are missing.
+        // Plugins should validate in their commands when config is actually needed.
         var services = new ServiceCollection();
         services.AddLogging();
 
@@ -54,10 +55,10 @@ public sealed class StatisticsPluginRegistrationTests
 
         var optionsMonitor = provider.GetRequiredService<IOptionsMonitor<StatisticsPluginConfig>>();
 
-        // Act - should NOT throw
+        // Act - should NOT throw (no validation by default)
         var config = optionsMonitor.CurrentValue;
 
-        // Assert - config is bound without validation (value is clamped/handled by command)
+        // Assert - config is bound without validation (value is passed through as-is)
         Assert.AreEqual(150, config.MaxEntriesPerCategory);
     }
 

@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using Spectara.Revela.Sdk.Abstractions;
 
 namespace Spectara.Revela.Plugin.Source.OneDrive.Configuration;
 
@@ -25,16 +26,10 @@ namespace Spectara.Revela.Plugin.Source.OneDrive.Configuration;
 ///
 /// Downloaded files are saved to the project's source directory (paths.source config).
 /// </remarks>
-internal sealed class OneDrivePluginConfig
+internal sealed class OneDrivePluginConfig : IPluginConfig
 {
-    /// <summary>
-    /// Configuration section name
-    /// </summary>
-    /// <remarks>
-    /// Uses full package ID as key directly (no Plugins: prefix).
-    /// This allows direct mapping from JSON root key and ENV variables.
-    /// </remarks>
-    public const string SectionName = "Spectara.Revela.Plugin.Source.OneDrive";
+    /// <inheritdoc />
+    public static string SectionName => "Spectara.Revela.Plugin.Source.OneDrive";
 
     /// <summary>
     /// OneDrive shared folder URL

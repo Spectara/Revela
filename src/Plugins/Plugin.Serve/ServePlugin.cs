@@ -21,10 +21,9 @@ public sealed class ServePlugin : IPlugin
     /// <inheritdoc />
     public void ConfigureServices(IServiceCollection services)
     {
-        // Register Plugin Configuration (IOptions pattern with validation)
-        services.AddOptions<ServeConfig>()
-            .BindConfiguration(ServeConfig.SectionName)
-            .ValidateDataAnnotations();
+        // Register Plugin Configuration via SDK helper
+        // Binds to project.json section, validates DataAnnotations on access
+        services.AddPluginConfig<ServeConfig>();
 
         // Register Commands for Dependency Injection
         services.AddTransient<ServeCommand>();

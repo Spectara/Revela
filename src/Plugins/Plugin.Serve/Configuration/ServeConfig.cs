@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using Spectara.Revela.Sdk.Abstractions;
 
 namespace Spectara.Revela.Plugin.Serve.Configuration;
 
@@ -34,12 +35,10 @@ namespace Spectara.Revela.Plugin.Serve.Configuration;
 /// SPECTARA__REVELA__PLUGIN__SERVE__VERBOSE=true
 /// </code>
 /// </remarks>
-internal sealed class ServeConfig
+internal sealed class ServeConfig : IPluginConfig
 {
-    /// <summary>
-    /// Configuration section name
-    /// </summary>
-    public const string SectionName = "Spectara.Revela.Plugin.Serve";
+    /// <inheritdoc />
+    public static string SectionName => "Spectara.Revela.Plugin.Serve";
 
     /// <summary>
     /// Port number for the HTTP server
