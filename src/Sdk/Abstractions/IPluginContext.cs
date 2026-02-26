@@ -24,7 +24,7 @@ public interface IPluginContext
     /// <summary>
     /// All loaded plugins with their source information.
     /// </summary>
-    IReadOnlyList<ILoadedPluginInfo> Plugins { get; }
+    IReadOnlyList<LoadedPluginInfo> Plugins { get; }
 
     /// <summary>
     /// Register all plugin commands with the root command.

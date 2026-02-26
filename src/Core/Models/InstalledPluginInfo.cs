@@ -10,7 +10,7 @@ namespace Spectara.Revela.Core.Models;
 /// not to be confused with <see cref="Sdk.Abstractions.PluginMetadata"/> which
 /// represents runtime plugin identity.
 /// </remarks>
-public sealed class InstalledPluginInfo
+public sealed record InstalledPluginInfo
 {
     /// <summary>
     /// Package ID (e.g., Spectara.Revela.Plugin.Statistics)

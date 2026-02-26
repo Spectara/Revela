@@ -1,5 +1,4 @@
 using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Logging.Abstractions;
 using Spectara.Revela.Core;
 using Spectara.Revela.Core.Configuration;
 using Spectara.Revela.Core.Logging;
@@ -57,17 +56,32 @@ public static class PluginServiceCollectionExtensions
         var options = new PluginOptions();
         configure?.Invoke(options);
 
-        var plugins = LoadPlugins(options);
-        ConfigurePlugins(services, configuration, plugins);
+        using var loggerFactory = CreateBootstrapLoggerFactory();
+        var plugins = LoadPlugins(options, loggerFactory);
+        ConfigurePlugins(services, configuration, plugins, loggerFactory);
         RegisterPluginServices(services, plugins);
     }
 
     /// <summary>
+    /// Creates a minimal logger for the bootstrap phase (before DI is available).
+    /// </summary>
+    /// <remarks>
+    /// Uses a simple LoggerFactory without providers. The LoggerMessage source generator
+    /// still works (methods are no-ops when no provider is attached), but errors in
+    /// the <c>ConfigurePlugins</c> catch blocks are written to stderr to ensure
+    /// plugin failures are always visible.
+    /// </remarks>
+    private static ILoggerFactory CreateBootstrapLoggerFactory() =>
+        LoggerFactory.Create(_ => { });
+
+    /// <summary>
     /// Discovers and loads plugin assemblies from configured directories.
     /// </summary>
-    private static List<ILoadedPluginInfo> LoadPlugins(PluginOptions options)
+    private static List<LoadedPluginInfo> LoadPlugins(
+        PluginOptions options,
+        ILoggerFactory loggerFactory)
     {
-        var logger = NullLogger<PluginLoader>.Instance;
+        var logger = loggerFactory.CreateLogger<PluginLoader>();
         var pluginLoader = new PluginLoader(options, logger);
         pluginLoader.LoadPlugins();
         var plugins = pluginLoader.GetLoadedPlugins().ToList();
@@ -89,9 +103,10 @@ public static class PluginServiceCollectionExtensions
     private static void ConfigurePlugins(
         IServiceCollection services,
         IConfigurationBuilder configuration,
-        List<ILoadedPluginInfo> plugins)
+        List<LoadedPluginInfo> plugins,
+        ILoggerFactory loggerFactory)
     {
-        var logger = NullLogger<PluginLoader>.Instance;
+        var logger = loggerFactory.CreateLogger("Spectara.Revela.Core.PluginBootstrap");
 
         // Auto-load environment variables with global prefix
         configuration.AddEnvironmentVariables(prefix: "SPECTARA__REVELA__");
@@ -105,6 +120,9 @@ public static class PluginServiceCollectionExtensions
             }
             catch (Exception ex)
             {
+                // Write to stderr directly — bootstrap phase has no DI logger yet
+                Console.Error.WriteLine(
+                    $"Error: Plugin '{pluginInfo.Plugin.Metadata.Name}' failed to configure configuration: {ex.Message}");
                 logger.ConfigureConfigurationFailed(ex, pluginInfo.Plugin.Metadata.Name);
             }
         }
@@ -115,13 +133,12 @@ public static class PluginServiceCollectionExtensions
             try
             {
                 pluginInfo.Plugin.ConfigureServices(services);
-                if (logger.IsEnabled(LogLevel.Information))
-                {
-                    logger.PluginServicesRegistered(pluginInfo.Plugin.Metadata.Name, pluginInfo.Plugin.Metadata.Version);
-                }
             }
             catch (Exception ex)
             {
+                // Write to stderr directly — bootstrap phase has no DI logger yet
+                Console.Error.WriteLine(
+                    $"Error: Plugin '{pluginInfo.Plugin.Metadata.Name}' failed to configure services: {ex.Message}");
                 logger.ConfigureServicesFailed(ex, pluginInfo.Plugin.Metadata.Name);
             }
         }
@@ -132,7 +149,7 @@ public static class PluginServiceCollectionExtensions
     /// </summary>
     private static void RegisterPluginServices(
         IServiceCollection services,
-        List<ILoadedPluginInfo> plugins)
+        List<LoadedPluginInfo> plugins)
     {
         // Register all plugins for IEnumerable<IPlugin> injection
         foreach (var pluginInfo in plugins)

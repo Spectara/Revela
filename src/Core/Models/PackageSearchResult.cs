@@ -5,7 +5,7 @@ namespace Spectara.Revela.Core.Models;
 /// <summary>
 /// Represents a package found during NuGet search
 /// </summary>
-public sealed class PackageSearchResult
+public sealed record PackageSearchResult
 {
     /// <summary>
     /// Package ID (e.g., Spectara.Revela.Theme.Lumina)

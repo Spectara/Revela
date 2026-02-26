@@ -7,9 +7,9 @@ namespace Spectara.Revela.Core;
 /// <summary>
 /// Internal implementation of <see cref="IPluginContext"/>.
 /// </summary>
-internal sealed class PluginContext(IReadOnlyList<ILoadedPluginInfo> plugins, ILogger<PluginContext> logger) : IPluginContext
+internal sealed class PluginContext(IReadOnlyList<LoadedPluginInfo> plugins, ILogger<PluginContext> logger) : IPluginContext
 {
-    public IReadOnlyList<ILoadedPluginInfo> Plugins { get; } = plugins;
+    public IReadOnlyList<LoadedPluginInfo> Plugins { get; } = plugins;
 
     public void RegisterCommands(RootCommand rootCommand, IServiceProvider services, CommandRegisteredCallback? onCommandRegistered = null)
     {

@@ -19,7 +19,7 @@ namespace Spectara.Revela.Core;
 /// </remarks>
 public sealed partial class PluginLoader(
     PluginOptions options,
-    ILogger<PluginLoader>? logger = null)
+    ILogger<PluginLoader> logger)
 {
     /// <summary>
     /// Gets the plugin directory based on installation type.
@@ -30,15 +30,14 @@ public sealed partial class PluginLoader(
 
     private static readonly string ApplicationDirectory = AppContext.BaseDirectory;
 
-    private readonly ILogger<PluginLoader> logger = logger ?? Microsoft.Extensions.Logging.Abstractions.NullLogger<PluginLoader>.Instance;
     private readonly HashSet<string> loadedAssemblyPaths = new(StringComparer.OrdinalIgnoreCase);
-    private readonly List<ILoadedPluginInfo> loadedPlugins = [];
+    private readonly List<LoadedPluginInfo> loadedPlugins = [];
     private readonly List<AssemblyLoadContext> pluginContexts = []; // Keep contexts alive
 
     /// <summary>
     /// Gets the list of loaded plugins with their source information.
     /// </summary>
-    public IReadOnlyList<ILoadedPluginInfo> GetLoadedPlugins() => loadedPlugins.AsReadOnly();
+    public IReadOnlyList<LoadedPluginInfo> GetLoadedPlugins() => loadedPlugins.AsReadOnly();
 
     /// <summary>
     /// Gets all loaded theme extensions.

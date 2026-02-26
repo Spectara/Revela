@@ -22,7 +22,7 @@ internal sealed partial class ThemeListCommand(
     IThemeResolver themeResolver,
     IPluginContext pluginContext,
     IOptions<ProjectEnvironment> projectEnvironment,
-    PluginManager pluginManager)
+    PackageSearchService packageSearchService)
 {
     /// <summary>
     /// Creates the CLI command.
@@ -142,7 +142,7 @@ internal sealed partial class ThemeListCommand(
             .Spinner(Spinner.Known.Dots)
             .StartAsync("[yellow]Searching NuGet sources...[/]", async _ =>
             {
-                return await pluginManager.SearchPackagesAsync(
+                return await packageSearchService.SearchAsync(
                     "Spectara.Revela.Theme",
                     packageTypeFilter: "RevelaTheme",
                     includePrerelease: false,

@@ -1,33 +1,24 @@
-using System.IO.Compression;
-using System.Text.Json;
-using Microsoft.Extensions.Options;
 using NuGet.Configuration;
-using NuGet.Packaging;
-using NuGet.Packaging.Core;
 using NuGet.Protocol;
 using NuGet.Protocol.Core.Types;
 using NuGet.Versioning;
 using Spectara.Revela.Core.Logging;
-using Spectara.Revela.Core.Models;
 using Spectara.Revela.Core.Services;
-using Spectara.Revela.Sdk;
 
 namespace Spectara.Revela.Core;
 
 /// <summary>
-/// Manages plugin installation, updates and removal via NuGet
+/// Orchestrates plugin installation, updates, and removal via NuGet.
 /// </summary>
 /// <remarks>
-/// Uses C# 12 Primary Constructor pattern.
-/// Creates plugin directory automatically if it doesn't exist.
-/// Supports NuGet packages from feeds or local .nupkg files.
-/// Multi-source discovery tries all configured sources automatically.
-/// HttpClient is injected via Typed HttpClient pattern for proper pooling.
-/// INuGetSourceManager is injected for NuGet source resolution with relative path support.
+/// Delegates extraction to <see cref="NupkgExtractor"/>, project.json management
+/// to <see cref="PluginProjectService"/>, and search to <see cref="PackageSearchService"/>.
+/// HttpClient is injected via Typed HttpClient pattern for URL-based downloads.
 /// </remarks>
 public sealed class PluginManager(
     HttpClient httpClient,
-    IOptions<ProjectEnvironment> projectEnvironment,
+    NupkgExtractor extractor,
+    PluginProjectService projectService,
     ILogger<PluginManager> logger,
     INuGetSourceManager nugetSourceManager)
 {
@@ -52,11 +43,11 @@ public sealed class PluginManager(
     /// <summary>
     /// Installs a plugin from a package ID, local .nupkg file, or URL.
     /// </summary>
-    /// <param name="packageIdOrPath">Package ID (e.g., 'Spectara.Revela.Plugin.Statistics'), local .nupkg path, or HTTP(S) URL</param>
-    /// <param name="version">Specific version to install (only for package IDs)</param>
-    /// <param name="source">Custom NuGet source URL (null = use default nuget.org)</param>
-    /// <param name="cancellationToken">Cancellation token</param>
-    /// <returns>True if installation succeeded</returns>
+    /// <param name="packageIdOrPath">Package ID (e.g., 'Spectara.Revela.Plugin.Statistics'), local .nupkg path, or HTTP(S) URL.</param>
+    /// <param name="version">Specific version to install (only for package IDs).</param>
+    /// <param name="source">Custom NuGet source URL (null = use default nuget.org).</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>True if installation succeeded.</returns>
     public async Task<bool> InstallAsync(
         string packageIdOrPath,
         string? version = null,
@@ -73,7 +64,7 @@ public sealed class PluginManager(
             {
                 // Local .nupkg file
                 logger.InstallingFromFile(packageIdOrPath);
-                return await InstallFromNupkgFileAsync(packageIdOrPath, targetDir, Path.GetFullPath(packageIdOrPath), cancellationToken);
+                return await InstallFromNupkgAsync(packageIdOrPath, targetDir, Path.GetFullPath(packageIdOrPath), cancellationToken);
             }
             else if (Uri.TryCreate(packageIdOrPath, UriKind.Absolute, out var uri) &&
                      (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps))
@@ -108,6 +99,120 @@ public sealed class PluginManager(
         }
     }
 
+    /// <summary>
+    /// Updates a plugin to the latest version by reinstalling it.
+    /// </summary>
+    /// <param name="packageId">The NuGet package ID of the plugin to update.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>True if the update succeeded.</returns>
+    public async Task<bool> UpdatePluginAsync(string packageId, CancellationToken cancellationToken = default)
+    {
+        logger.UpdatingPlugin(packageId);
+        _ = await UninstallPluginAsync(packageId, cancellationToken);
+        return await InstallAsync(packageId, version: null, source: null, cancellationToken);
+    }
+
+    /// <summary>
+    /// Uninstalls a plugin by removing its files and project.json entry.
+    /// </summary>
+    /// <remarks>
+    /// Handles both new structure (plugins/{PackageId}/) and legacy (root DLL).
+    /// Plugin configuration files are preserved for potential reinstallation.
+    /// </remarks>
+    /// <param name="packageId">The NuGet package ID of the plugin to uninstall.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>True if the plugin was found and removed.</returns>
+    public async Task<bool> UninstallPluginAsync(string packageId, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            logger.UninstallingPlugin(packageId);
+
+            var pluginDir = PluginDirectory;
+            var found = false;
+
+            // Delete plugin subdirectory with all contents (main DLL + dependencies)
+            var pluginPath = Path.Combine(pluginDir, packageId);
+            if (Directory.Exists(pluginPath))
+            {
+                Directory.Delete(pluginPath, recursive: true);
+                found = true;
+            }
+
+            // Legacy: Also check for root DLL (old structure or development builds)
+            var dllPath = Path.Combine(pluginDir, $"{packageId}.dll");
+            if (File.Exists(dllPath))
+            {
+                File.Delete(dllPath);
+                found = true;
+            }
+
+            // Legacy: Delete .meta.json file in root (old structure)
+            var metaPath = Path.Combine(pluginDir, $"{packageId}.meta.json");
+            if (File.Exists(metaPath))
+            {
+                File.Delete(metaPath);
+            }
+
+            if (found)
+            {
+                await projectService.RemovePluginAsync(packageId, cancellationToken);
+                logger.PluginUninstalled(packageId);
+                return true;
+            }
+
+            logger.PluginNotFound(packageId);
+            return false;
+        }
+        catch (Exception ex)
+        {
+            logger.UninstallFailed(ex, packageId);
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Lists all installed plugins from the plugin directory.
+    /// </summary>
+    /// <remarks>
+    /// Plugins can be installed in two ways:
+    /// 1. Subdirectory: plugins/{PackageId}/{PackageId}.dll (with dependencies)
+    /// 2. Root DLL: plugins/{PackageId}.dll (development/legacy)
+    /// </remarks>
+    public static IEnumerable<(string Name, string Location)> ListInstalledPlugins()
+    {
+        List<(string Name, string Location)> results = [];
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        if (!Directory.Exists(PluginDirectory))
+        {
+            return results;
+        }
+
+        // Check subdirectories first (installed plugins)
+        foreach (var subDir in Directory.GetDirectories(PluginDirectory))
+        {
+            var folderName = Path.GetFileName(subDir);
+            var mainDll = Path.Combine(subDir, $"{folderName}.dll");
+            if (File.Exists(mainDll) && seen.Add(folderName))
+            {
+                results.Add((folderName, "installed"));
+            }
+        }
+
+        // Check root DLLs (development/legacy)
+        foreach (var dll in Directory.GetFiles(PluginDirectory, "*.dll", SearchOption.TopDirectoryOnly))
+        {
+            var name = Path.GetFileNameWithoutExtension(dll);
+            if (seen.Add(name))
+            {
+                results.Add((name, "installed"));
+            }
+        }
+
+        return results;
+    }
+
     private async Task<bool> InstallFromNuGetAsync(
         string packageId,
         string? version,
@@ -118,7 +223,6 @@ public sealed class PluginManager(
         var resource = await sourceRepo.GetResourceAsync<FindPackageByIdResource>(cancellationToken);
         using var cacheContext = new SourceCacheContext();
 
-        // Get all versions
         var versions = await resource.GetAllVersionsAsync(
             packageId,
             cacheContext,
@@ -161,8 +265,7 @@ public sealed class PluginManager(
                 }
             }
 
-            // Install from downloaded file - use source URL for metadata
-            return await InstallFromNupkgFileAsync(tempFile, targetDir, sourceRepo.PackageSource.Source, cancellationToken);
+            return await InstallFromNupkgAsync(tempFile, targetDir, sourceRepo.PackageSource.Source, cancellationToken);
         }
         finally
         {
@@ -173,36 +276,42 @@ public sealed class PluginManager(
         }
     }
 
-    /// <summary>
-    /// Resolves a source name to URL (checks revela.json feeds, falls back to treating as URL)
-    /// </summary>
-    private async Task<string> ResolveSourceAsync(string source, CancellationToken cancellationToken)
+    private async Task<bool> InstallFromUrlAsync(Uri url, string targetDir, CancellationToken cancellationToken)
     {
-        // Check if it's already a URL
-        if (Uri.TryCreate(source, UriKind.Absolute, out var uri) &&
-            (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps))
+        await using var stream = await httpClient.GetStreamAsync(url, cancellationToken);
+
+        var tempFile = Path.GetTempFileName();
+        try
         {
-            return source;
+            await using (var fileStream = File.Create(tempFile))
+            {
+                await stream.CopyToAsync(fileStream, cancellationToken);
+            }
+
+            return await InstallFromNupkgAsync(tempFile, targetDir, url.ToString(), cancellationToken);
         }
-
-        // Try to resolve as named source
-        var sources = await nugetSourceManager.GetAllSourcesAsync(cancellationToken);
-        var namedSource = sources.FirstOrDefault(s => s.Name.Equals(source, StringComparison.OrdinalIgnoreCase));
-
-        if (namedSource is not null)
+        finally
         {
-            logger.UsingNamedSource(source, namedSource.Url);
-            return namedSource.Url;
+            if (File.Exists(tempFile))
+            {
+                File.Delete(tempFile);
+            }
         }
-
-        // Fall back to treating as URL (will fail if invalid)
-        logger.SourceNotFoundTreatingAsUrl(source);
-        return source;
     }
 
-    /// <summary>
-    /// Tries to install from all configured sources until one succeeds
-    /// </summary>
+    private async Task<bool> InstallFromNupkgAsync(string nupkgPath, string targetDir, string installedFrom, CancellationToken cancellationToken)
+    {
+        var identity = await extractor.ExtractAsync(nupkgPath, targetDir, installedFrom, cancellationToken);
+        if (identity is null)
+        {
+            return false;
+        }
+
+        await projectService.AddPluginAsync(identity.Id, identity.Version.ToString(), cancellationToken);
+        logger.PluginInstalled(identity.Id);
+        return true;
+    }
+
     private async Task<bool> InstallFromMultipleSourcesAsync(
         string packageId,
         string? version,
@@ -228,498 +337,32 @@ public sealed class PluginManager(
             }
             catch
             {
-                // Continue to next source
                 logger.SourceFailed(source.Name);
             }
         }
 
-        // All sources failed
         logger.AllSourcesFailed(packageId);
         return false;
     }
 
-    private async Task<bool> InstallFromUrlAsync(Uri url, string targetDir, CancellationToken cancellationToken)
+    private async Task<string> ResolveSourceAsync(string source, CancellationToken cancellationToken)
     {
-        await using var stream = await httpClient.GetStreamAsync(url, cancellationToken);
-
-        var tempFile = Path.GetTempFileName();
-        try
+        if (Uri.TryCreate(source, UriKind.Absolute, out var uri) &&
+            (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps))
         {
-            await using (var fileStream = File.Create(tempFile))
-            {
-                await stream.CopyToAsync(fileStream, cancellationToken);
-            }
-
-            return await InstallFromNupkgFileAsync(tempFile, targetDir, url.ToString(), cancellationToken);
-        }
-        finally
-        {
-            if (File.Exists(tempFile))
-            {
-                File.Delete(tempFile);
-            }
-        }
-    }
-
-    private async Task<bool> InstallFromNupkgFileAsync(string nupkgPath, string targetDir, string installedFrom, CancellationToken cancellationToken)
-    {
-        using var packageReader = new PackageArchiveReader(nupkgPath);
-        var nuspec = await packageReader.GetNuspecAsync(cancellationToken);
-        var identity = await packageReader.GetIdentityAsync(cancellationToken);
-
-        if (logger.IsEnabled(LogLevel.Information))
-        {
-            logger.ExtractingPackage(identity.Id, identity.Version.ToString());
+            return source;
         }
 
-        // Extract lib/net10.0/*.dll files
-        var libItems = await packageReader.GetLibItemsAsync(cancellationToken);
-        var net10Group = libItems.FirstOrDefault(g => g.TargetFramework.Framework == ".NETCoreApp" && g.TargetFramework.Version.Major >= 10)
-                      ?? libItems.FirstOrDefault(g => g.TargetFramework.Framework == ".NETCoreApp");
+        var sources = await nugetSourceManager.GetAllSourcesAsync(cancellationToken);
+        var namedSource = sources.FirstOrDefault(s => s.Name.Equals(source, StringComparison.OrdinalIgnoreCase));
 
-        if (net10Group is null || !net10Group.Items.Any())
+        if (namedSource is not null)
         {
-            logger.NoCompatibleLibs(identity.Id);
-            return false;
+            logger.UsingNamedSource(source, namedSource.Url);
+            return namedSource.Url;
         }
 
-        var fileCount = 0;
-        using var archive = await Task.Run(() => ZipFile.OpenRead(nupkgPath), cancellationToken);
-
-        // All files go into plugins/{PackageId}/ subfolder
-        // This keeps main DLL and dependencies together for clean isolation
-        var pluginDir = Path.Combine(targetDir, identity.Id);
-        _ = Directory.CreateDirectory(pluginDir);
-
-        foreach (var item in net10Group.Items)
-        {
-            var entry = archive.GetEntry(item);
-            if (entry is null)
-            {
-                continue;
-            }
-
-            var fileName = Path.GetFileName(item);
-            var destPath = Path.Combine(pluginDir, fileName);
-
-            await using var entryStream = await Task.Run(() => entry.Open(), cancellationToken);
-            await using var fileStream = File.Create(destPath);
-            await entryStream.CopyToAsync(fileStream, cancellationToken);
-
-            logger.ExtractedFile(fileName, pluginDir);
-            fileCount++;
-        }
-
-        if (fileCount == 0)
-        {
-            logger.NoFilesExtracted(identity.Id);
-            return false;
-        }
-
-        // Create plugin.meta.json with metadata from .nuspec (in plugin subfolder)
-        await CreatePluginMetadataAsync(packageReader, identity, installedFrom, pluginDir, cancellationToken);
-
-        // Update project.json if it exists in current directory
-        await UpdateProjectJsonAsync(identity.Id, identity.Version.ToString(), cancellationToken);
-
-        logger.PluginInstalled(identity.Id, fileCount);
-        return true;
-    }
-
-    private static readonly JsonSerializerOptions MetadataJsonOptions = new()
-    {
-        WriteIndented = true,
-        DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
-    };
-
-    private async Task CreatePluginMetadataAsync(
-        PackageArchiveReader packageReader,
-        PackageIdentity identity,
-        string installedFrom,
-        string targetDir,
-        CancellationToken cancellationToken)
-    {
-        using var nuspecStream = await packageReader.GetNuspecAsync(cancellationToken);
-        var nuspecReader = new NuspecReader(nuspecStream);
-
-        // Parse authors
-        var authors = nuspecReader.GetAuthors()?.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-                     ?? [];
-
-        // Parse package types (e.g., RevelaPlugin, RevelaTheme)
-        var packageTypes = nuspecReader.GetPackageTypes()
-            .Select(pt => pt.Name)
-            .ToList();
-
-        // Parse dependencies
-        var dependencyGroups = await packageReader.GetPackageDependenciesAsync(cancellationToken);
-        var dependencies = dependencyGroups
-            .SelectMany(g => g.Packages)
-            .ToDictionary(d => d.Id, d => d.VersionRange.MinVersion?.ToString() ?? "*");
-
-        // Determine source type
-        var source = installedFrom.StartsWith("http", StringComparison.OrdinalIgnoreCase) ? "url"
-                   : File.Exists(installedFrom) ? "nupkg"
-                   : "nuget";
-
-        var metadata = new InstalledPluginInfo
-        {
-            Name = identity.Id,
-            Version = identity.Version.ToString(),
-            Source = source,
-            InstalledFrom = installedFrom,
-            InstalledAt = DateTime.UtcNow.ToString("O"),
-            Authors = authors,
-            Description = nuspecReader.GetDescription(),
-            Dependencies = dependencies,
-            PackageTypes = packageTypes
-        };
-
-        // Write to plugin.meta.json
-        var metadataPath = Path.Combine(targetDir, $"{identity.Id}.meta.json");
-        await using var fileStream = File.Create(metadataPath);
-        await JsonSerializer.SerializeAsync(fileStream, metadata, MetadataJsonOptions, cancellationToken);
-
-        logger.MetadataCreated(metadataPath);
-    }
-
-    /// <summary>
-    /// Modifies the plugins section of project.json using a transform function.
-    /// </summary>
-    /// <remarks>
-    /// Silently skips if project.json doesn't exist (optional feature).
-    /// Reads, modifies, and writes back with pretty-print formatting.
-    /// </remarks>
-    /// <param name="transform">Function that modifies the plugins dictionary. Returns true if changes were made.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns>True if project.json was modified.</returns>
-    private async Task<bool> ModifyProjectJsonPluginsAsync(
-        Func<Dictionary<string, string>, bool> transform,
-        CancellationToken cancellationToken)
-    {
-        var projectJsonPath = Path.Combine(projectEnvironment.Value.Path, "project.json");
-        if (!File.Exists(projectJsonPath))
-        {
-            return false;
-        }
-
-        var jsonText = await File.ReadAllTextAsync(projectJsonPath, cancellationToken);
-        var root = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(jsonText);
-        if (root is null)
-        {
-            return false;
-        }
-
-        if (!root.TryGetValue("plugins", out var pluginsElement))
-        {
-            pluginsElement = JsonSerializer.SerializeToElement(new Dictionary<string, string>());
-        }
-
-        var plugins = pluginsElement.Deserialize<Dictionary<string, string>>() ?? [];
-
-        if (!transform(plugins))
-        {
-            return false;
-        }
-
-        root["plugins"] = JsonSerializer.SerializeToElement(plugins);
-
-        await using var writeStream = File.Create(projectJsonPath);
-        await JsonSerializer.SerializeAsync(writeStream, root, MetadataJsonOptions, cancellationToken);
-        return true;
-    }
-
-    /// <summary>
-    /// Updates project.json in the current working directory by adding the installed plugin.
-    /// </summary>
-    /// <remarks>
-    /// Silently skips if project.json doesn't exist (optional feature).
-    /// </remarks>
-    private async Task UpdateProjectJsonAsync(string packageId, string version, CancellationToken cancellationToken)
-    {
-        try
-        {
-            if (await ModifyProjectJsonPluginsAsync(plugins =>
-            {
-                plugins[packageId] = version;
-                return true;
-            }, cancellationToken))
-            {
-                var projectJsonPath = Path.Combine(projectEnvironment.Value.Path, "project.json");
-                logger.ProjectJsonUpdated(projectJsonPath, packageId, version);
-            }
-        }
-        catch (Exception ex)
-        {
-            var projectJsonPath = Path.Combine(projectEnvironment.Value.Path, "project.json");
-            logger.ProjectJsonUpdateFailed(ex, projectJsonPath);
-        }
-    }
-
-    /// <summary>
-    /// Removes a plugin entry from project.json in the current working directory.
-    /// </summary>
-    /// <remarks>
-    /// Silently skips if project.json doesn't exist or plugin not in file.
-    /// </remarks>
-    private async Task RemoveFromProjectJsonAsync(string packageId, CancellationToken cancellationToken)
-    {
-        try
-        {
-            if (await ModifyProjectJsonPluginsAsync(plugins => plugins.Remove(packageId), cancellationToken))
-            {
-                var projectJsonPath = Path.Combine(projectEnvironment.Value.Path, "project.json");
-                logger.ProjectJsonPluginRemoved(projectJsonPath, packageId);
-            }
-        }
-        catch (Exception ex)
-        {
-            var projectJsonPath = Path.Combine(projectEnvironment.Value.Path, "project.json");
-            logger.ProjectJsonRemoveFailed(ex, projectJsonPath, packageId);
-        }
-    }
-
-    /// <summary>
-    /// Updates a plugin to the latest version by reinstalling it.
-    /// </summary>
-    /// <param name="packageId">The NuGet package ID of the plugin to update.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns>True if the update succeeded.</returns>
-    public async Task<bool> UpdatePluginAsync(string packageId, CancellationToken cancellationToken = default)
-    {
-        logger.UpdatingPlugin(packageId);
-        // Uninstall old version, install new version
-        _ = await UninstallPluginAsync(packageId, cancellationToken);
-        return await InstallAsync(packageId, version: null, source: null, cancellationToken);
-    }
-
-    /// <summary>
-    /// Uninstalls a plugin by removing its files and project.json entry.
-    /// </summary>
-    /// <remarks>
-    /// Handles both new structure (plugins/{PackageId}/) and legacy (root DLL).
-    /// Plugin configuration files are preserved for potential reinstallation.
-    /// </remarks>
-    /// <param name="packageId">The NuGet package ID of the plugin to uninstall.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns>True if the plugin was found and removed.</returns>
-    public async Task<bool> UninstallPluginAsync(string packageId, CancellationToken cancellationToken = default)
-    {
-        try
-        {
-            logger.UninstallingPlugin(packageId);
-
-            var pluginDir = PluginDirectory;
-            var found = false;
-
-            // Delete plugin subdirectory with all contents (main DLL + dependencies)
-            // New structure: plugins/{PackageId}/*.dll
-            var pluginPath = Path.Combine(pluginDir, packageId);
-            if (Directory.Exists(pluginPath))
-            {
-                Directory.Delete(pluginPath, recursive: true);
-                found = true;
-            }
-
-            // Legacy: Also check for root DLL (old structure or development builds)
-            var dllPath = Path.Combine(pluginDir, $"{packageId}.dll");
-            if (File.Exists(dllPath))
-            {
-                File.Delete(dllPath);
-                found = true;
-            }
-
-            // Legacy: Delete .meta.json file in root (old structure)
-            var metaPath = Path.Combine(pluginDir, $"{packageId}.meta.json");
-            if (File.Exists(metaPath))
-            {
-                File.Delete(metaPath);
-            }
-
-            // Note: Keep config file (*.json in plugins/ config folder) - user may want to reinstall with same settings
-
-            if (found)
-            {
-                // Remove from project.json if it exists
-                await RemoveFromProjectJsonAsync(packageId, cancellationToken);
-
-                logger.PluginUninstalled(packageId);
-                return true;
-            }
-
-            logger.PluginNotFound(packageId);
-            return false;
-        }
-        catch (Exception ex)
-        {
-            logger.UninstallFailed(ex, packageId);
-            return false;
-        }
-    }
-
-    /// <summary>
-    /// Searches all configured NuGet sources for packages matching the search term.
-    /// </summary>
-    /// <param name="searchTerm">Search term (e.g., "Spectara.Revela.Theme")</param>
-    /// <param name="packageTypeFilter">Filter by package type (e.g., "RevelaTheme", "RevelaPlugin")</param>
-    /// <param name="includePrerelease">Include prerelease versions</param>
-    /// <param name="cancellationToken">Cancellation token</param>
-    /// <returns>List of matching packages from all sources</returns>
-    public async Task<IReadOnlyList<PackageSearchResult>> SearchPackagesAsync(
-        string searchTerm,
-        string? packageTypeFilter = null,
-        bool includePrerelease = false,
-        CancellationToken cancellationToken = default)
-    {
-        List<PackageSearchResult> results = [];
-        var sources = await nugetSourceManager.LoadSourcesAsync(cancellationToken);
-
-        logger.SearchingPackages(searchTerm, sources.Count);
-
-        foreach (var source in sources)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-
-            try
-            {
-                var sourceRepo = Repository.Factory.GetCoreV3(new PackageSource(source.Url));
-                var searchResource = await sourceRepo.GetResourceAsync<PackageSearchResource>(cancellationToken);
-
-                if (searchResource is null)
-                {
-                    logger.SearchResourceNotAvailable(source.Name);
-                    continue;
-                }
-
-                var searchFilter = new SearchFilter(includePrerelease);
-                var packages = await searchResource.SearchAsync(
-                    searchTerm,
-                    searchFilter,
-                    skip: 0,
-                    take: 50,
-                    NuGet.Common.NullLogger.Instance,
-                    cancellationToken);
-
-                foreach (var package in packages)
-                {
-                    // Skip if already added from another source (prefer first source)
-                    if (results.Any(r => r.Id.Equals(package.Identity.Id, StringComparison.OrdinalIgnoreCase)))
-                    {
-                        continue;
-                    }
-
-                    // Infer package types from naming convention
-                    // Spectara.Revela.Theme.* -> RevelaTheme
-                    // Spectara.Revela.Plugin.* -> RevelaPlugin
-                    var packageTypes = InferPackageTypes(package.Identity.Id);
-
-                    // Apply package type filter if specified
-                    if (!string.IsNullOrEmpty(packageTypeFilter))
-                    {
-                        if (!packageTypes.Contains(packageTypeFilter, StringComparer.OrdinalIgnoreCase))
-                        {
-                            continue;
-                        }
-                    }
-
-                    results.Add(new PackageSearchResult
-                    {
-                        Id = package.Identity.Id,
-                        Version = package.Identity.Version.ToString(),
-                        Description = package.Description,
-                        Authors = package.Authors?.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries) ?? [],
-                        PackageTypes = packageTypes,
-                        SourceName = source.Name,
-                        DownloadCount = package.DownloadCount
-                    });
-                }
-
-                if (logger.IsEnabled(LogLevel.Debug))
-                {
-                    logger.SearchSourceCompleted(source.Name, packages.Count());
-                }
-            }
-            catch (Exception ex)
-            {
-                logger.SearchSourceFailed(source.Name, ex);
-            }
-        }
-
-        logger.SearchCompleted(searchTerm, results.Count);
-        return results;
-    }
-
-    /// <summary>
-    /// Lists all installed plugins from the plugin directory.
-    /// </summary>
-    /// <remarks>
-    /// Plugins can be installed in two ways:
-    /// 1. Subdirectory: plugins/{PackageId}/{PackageId}.dll (with dependencies)
-    /// 2. Root DLL: plugins/{PackageId}.dll (development/legacy)
-    /// </remarks>
-    public static IEnumerable<(string Name, string Location)> ListInstalledPlugins()
-    {
-        List<(string Name, string Location)> results = [];
-        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-
-        void ScanDirectory(string directory, string location)
-        {
-            if (!Directory.Exists(directory))
-            {
-                return;
-            }
-
-            // Check subdirectories first (installed plugins)
-            foreach (var subDir in Directory.GetDirectories(directory))
-            {
-                var folderName = Path.GetFileName(subDir);
-                var mainDll = Path.Combine(subDir, $"{folderName}.dll");
-                if (File.Exists(mainDll) && seen.Add(folderName))
-                {
-                    results.Add((folderName, location));
-                }
-            }
-
-            // Check root DLLs (development/legacy)
-            foreach (var dll in Directory.GetFiles(directory, "*.dll", SearchOption.TopDirectoryOnly))
-            {
-                var name = Path.GetFileNameWithoutExtension(dll);
-                if (seen.Add(name))
-                {
-                    results.Add((name, location));
-                }
-            }
-        }
-
-        ScanDirectory(PluginDirectory, "installed");
-
-        return results;
-    }
-
-    /// <summary>
-    /// Infers package types from naming convention.
-    /// </summary>
-    /// <remarks>
-    /// Used for search results where NuGet API doesn't return PackageTypes.
-    /// Real types are read from .nuspec during installation.
-    /// Naming convention:
-    /// - Spectara.Revela.Theme.* → RevelaTheme
-    /// - Spectara.Revela.Plugin.* → RevelaPlugin
-    /// </remarks>
-    private static List<string> InferPackageTypes(string packageId)
-    {
-        List<string> types = [];
-
-        if (packageId.Contains(".Theme.", StringComparison.OrdinalIgnoreCase))
-        {
-            types.Add("RevelaTheme");
-        }
-
-        if (packageId.Contains(".Plugin.", StringComparison.OrdinalIgnoreCase))
-        {
-            types.Add("RevelaPlugin");
-        }
-
-        return types;
+        logger.SourceNotFoundTreatingAsUrl(source);
+        return source;
     }
 }
