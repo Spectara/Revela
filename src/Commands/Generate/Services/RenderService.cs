@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Microsoft.Extensions.Options;
+using Scriban.Runtime;
 using Spectara.Revela.Commands.Generate.Abstractions;
 using Spectara.Revela.Commands.Generate.Building;
 using Spectara.Revela.Commands.Generate.Models;
@@ -957,19 +958,17 @@ internal sealed partial class RenderService(
     /// Converts a JsonElement to Scriban-compatible types.
     /// </summary>
     /// <remarks>
-    /// Scriban cannot access properties on JsonElement directly.
-    /// This method converts JSON to Dictionary/List structures that Scriban can traverse.
+    /// Scriban cannot access properties on plain Dictionary or JsonElement directly.
+    /// This method converts JSON to ScriptObject/ScriptArray structures that Scriban
+    /// can traverse with dot-notation (e.g., statistics.cameras).
     /// </remarks>
     private static object? ConvertJsonElement(JsonElement element)
     {
 #pragma warning disable IDE0072 // Populate switch - we handle all known values explicitly with a fallback
         return element.ValueKind switch
         {
-            JsonValueKind.Object => element.EnumerateObject()
-                .ToDictionary(p => p.Name, p => ConvertJsonElement(p.Value)),
-            JsonValueKind.Array => element.EnumerateArray()
-                .Select(ConvertJsonElement)
-                .ToList(),
+            JsonValueKind.Object => ConvertJsonObject(element),
+            JsonValueKind.Array => ConvertJsonArray(element),
             JsonValueKind.String => element.GetString(),
             JsonValueKind.Number when element.TryGetInt64(out var l) => l,
             JsonValueKind.Number => element.GetDouble(),
@@ -978,6 +977,34 @@ internal sealed partial class RenderService(
             _ => null, // Handles Null, Undefined, and any future values
         };
 #pragma warning restore IDE0072
+    }
+
+    /// <summary>
+    /// Converts a JSON object to a ScriptObject for Scriban template access.
+    /// </summary>
+    private static ScriptObject ConvertJsonObject(JsonElement element)
+    {
+        var obj = new ScriptObject();
+        foreach (var prop in element.EnumerateObject())
+        {
+            obj[prop.Name] = ConvertJsonElement(prop.Value);
+        }
+
+        return obj;
+    }
+
+    /// <summary>
+    /// Converts a JSON array to a ScriptArray for Scriban template access.
+    /// </summary>
+    private static ScriptArray ConvertJsonArray(JsonElement element)
+    {
+        var arr = new ScriptArray();
+        foreach (var item in element.EnumerateArray())
+        {
+            arr.Add(ConvertJsonElement(item));
+        }
+
+        return arr;
     }
 
     #endregion
