@@ -52,6 +52,10 @@ Expects:
 {{~ chart_title = "Orientation"; chart_items = statistics.orientations ~}}
 {{ include 'statistics/bar-chart' }}
 {{~ end ~}}
+{{~ if statistics.photo_heatmap && statistics.photo_heatmap.size > 0 ~}}
+{{~ chart_items = statistics.photo_heatmap; chart_years = statistics.heatmap_years ~}}
+{{ include 'statistics/heatmap' }}
+{{~ end ~}}
 {{~ if statistics.images_by_year && statistics.images_by_year.size > 0 ~}}
 {{~ chart_title = "Timeline"; chart_items = statistics.images_by_year ~}}
 {{ include 'statistics/bar-chart' }}

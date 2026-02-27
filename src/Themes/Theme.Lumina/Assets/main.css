@@ -26,14 +26,10 @@ figcaption {
 
 :root {
   color-scheme: light dark;
-  --color-hsl: 0deg 0% 40%;
-  --color-light-hsl: 0deg 0% 50%;
-  --color-dark-hsl: 0deg 0% 10%;
-  --color-background-hsl: 0deg 0% 100%;
-  --color: hsl(var(--color-hsl));
-  --color-light: hsl(var(--color-light-hsl));
-  --color-dark: hsl(var(--color-dark-hsl));
-  --color-bg: hsl(var(--color-background-hsl));
+  --color: light-dark(hsl(0 0% 40%), hsl(0 0% 70%));
+  --color-light: light-dark(hsl(0 0% 50%), hsl(0 0% 50%));
+  --color-dark: light-dark(hsl(0 0% 10%), hsl(0 0% 90%));
+  --color-bg: light-dark(hsl(0 0% 100%), hsl(0 0% 0%));
   --animation-time: 270ms;
   /* @link https://utopia.fyi/type/calculator?c=320,12,1.2,900,16,1.25,5,0,&s=0.75|0.5|0.25,1.5|2|3|4|6,s-l&g=s,l,xl,12 */
   --font-size-0: clamp(0.75rem, 0.6121rem + 0.6897vw, 1rem);
@@ -57,16 +53,32 @@ figcaption {
   --breakout-size: calc((var(--breakout-max-width) - var(--content-max-width)) / 2);
   --grid-gap: var(--space-xs);
 
-  @media (prefers-color-scheme: dark) {
-    --color-hsl: 0deg 0% 70%;
-    --color-light-hsl: 0deg 0% 50%;
-    --color-dark-hsl: 0deg 0% 90%;
-    --color-background-hsl: 0deg 0% 0%;
-  }
-
   @media (prefers-reduced-motion: reduce) {
     --animation-time: 0ms;
   }
+
+  @media (prefers-contrast: more) {
+    --color: light-dark(hsl(0 0% 20%), hsl(0 0% 85%));
+    --color-dark: light-dark(hsl(0 0% 0%), hsl(0 0% 100%));
+
+    body {
+      font-weight: 400;
+    }
+
+    h1,
+    h2,
+    h3,
+    h4,
+    h5,
+    h6 {
+      font-weight: 500;
+    }
+  }
+}
+
+/* Enable animated height: auto transitions */
+html {
+  interpolate-size: allow-keywords;
 }
 
 /* ============================================
@@ -139,7 +151,7 @@ body {
     top: 1px;
     left: 1px;
     z-index: 251;
-    background-color: hsl(var(--color-hsl) / 0.3);
+    background-color: color-mix(in srgb, var(--color) 30%, transparent);
     width: calc(100% - 2px);
     scale: 0 1;
     transform-origin: top left;
@@ -223,7 +235,7 @@ label[for=nav-trigger] {
     }
 
     >span {
-      color: hsl(var(--color-light-hsl) / 0.65);
+      color: color-mix(in srgb, var(--color-light) 65%, transparent);
       cursor: default;
     }
 
@@ -270,7 +282,7 @@ body>nav {
   gap: var(--space-l);
   transition: display var(--animation-time) ease-in-out allow-discrete, opacity var(--animation-time) ease-in-out;
   opacity: 0;
-  background-color: hsl(var(--color-background-hsl) / 0.8);
+  background-color: color-mix(in srgb, var(--color-bg) 80%, transparent);
   backdrop-filter: saturate(180%) blur(2rem);
   padding-top: var(--space-3xl);
 
@@ -338,12 +350,12 @@ header {
     a {
       color: var(--color-light);
       text-decoration: none;
-      border-bottom: solid 1px hsl(var(--color-hsl) / 0.1);
+      border-bottom: solid 1px color-mix(in srgb, var(--color) 10%, transparent);
       transition: color var(--animation-time) ease-in-out, border-bottom var(--animation-time) ease-in-out;
 
       &:hover {
         color: var(--color-dark);
-        border-bottom: solid 1px hsl(var(--color-hsl) / 0.3);
+        border-bottom: solid 1px color-mix(in srgb, var(--color) 30%, transparent);
       }
     }
 
@@ -385,7 +397,7 @@ main {
       padding: 0 var(--space-s);
       letter-spacing: 0.1em;
       font-weight: 100;
-      border-bottom: solid 1px hsl(var(--color-hsl) / 0.3);
+      border-bottom: solid 1px color-mix(in srgb, var(--color) 30%, transparent);
     }
 
     >h1 {
@@ -406,7 +418,7 @@ main {
 
     >pre {
       padding: var(--space-s);
-      background-color: hsl(var(--color-hsl) / 0.05);
+      background-color: color-mix(in srgb, var(--color) 5%, transparent);
       border-radius: var(--space-2xs);
       overflow-x: auto;
 
@@ -432,24 +444,24 @@ main {
       td {
         padding: var(--space-xs) var(--space-s);
         text-align: left;
-        border-bottom: solid 1px hsl(var(--color-hsl) / 0.2);
+        border-bottom: solid 1px color-mix(in srgb, var(--color) 20%, transparent);
         vertical-align: top;
       }
 
       th {
         font-weight: 400;
         color: var(--color-dark);
-        border-bottom: solid 1px hsl(var(--color-hsl) / 0.4);
+        border-bottom: solid 1px color-mix(in srgb, var(--color) 40%, transparent);
       }
 
       tr:hover td {
-        background-color: hsl(var(--color-hsl) / 0.05);
+        background-color: color-mix(in srgb, var(--color) 5%, transparent);
       }
     }
 
     >hr {
       border: none;
-      border-bottom: solid 1px hsl(var(--color-hsl) / 0.3);
+      border-bottom: solid 1px color-mix(in srgb, var(--color) 30%, transparent);
       margin: var(--space-s) calc(var(--space-s) * -1);
     }
   }
@@ -460,6 +472,7 @@ main {
     gap: var(--grid-gap);
     position: relative;
     margin-bottom: var(--space-l);
+    container-type: inline-size;
 
     >h2 {
       margin-bottom: var(--space-m);
@@ -686,7 +699,7 @@ main {
         opacity: 0;
         justify-content: center;
         align-items: center;
-        background-color: hsl(var(--color-background-hsl) / 0.85);
+        background-color: color-mix(in srgb, var(--color-bg) 85%, transparent);
         backdrop-filter: saturate(180%) blur(2rem);
         cursor: default;
 
@@ -695,7 +708,7 @@ main {
           position: fixed;
           width: 10rem;
           height: 2px;
-          background: linear-gradient(hsl(var(--color-light-hsl) / 0.6) 0 0) left -25% top 0/20% 100% no-repeat hsl(var(--color-background-hsl) / 0.4);
+          background: linear-gradient(color-mix(in srgb, var(--color-light) 60%, transparent) 0 0) left -25% top 0/20% 100% no-repeat color-mix(in srgb, var(--color-bg) 40%, transparent);
           animation: ct7 1s infinite steps(6);
         }
 

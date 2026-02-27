@@ -1,0 +1,53 @@
+{{~##
+Photo Activity Heatmap - Lumina Statistics Extension
+
+Displays a month × year grid showing photo activity intensity.
+Similar to GitHub's contribution graph but at monthly granularity.
+
+Expects variables set before include:
+- chart_items: Array of { year, month, count, level }
+  level is 0–4 (0=none, 1–4=quartile intensity)
+- chart_years: Array of years (descending)
+##~}}
+<h3>Photo Activity</h3>
+<div class="heatmap">
+    {{~ # Month labels header ~}}
+    <div class="heatmap-row heatmap-header">
+        <span class="heatmap-label"></span>
+        <span class="heatmap-month">Jan</span>
+        <span class="heatmap-month">Feb</span>
+        <span class="heatmap-month">Mar</span>
+        <span class="heatmap-month">Apr</span>
+        <span class="heatmap-month">May</span>
+        <span class="heatmap-month">Jun</span>
+        <span class="heatmap-month">Jul</span>
+        <span class="heatmap-month">Aug</span>
+        <span class="heatmap-month">Sep</span>
+        <span class="heatmap-month">Oct</span>
+        <span class="heatmap-month">Nov</span>
+        <span class="heatmap-month">Dec</span>
+    </div>
+
+    {{~ # One row per year ~}}
+    {{~ for year in chart_years ~}}
+    <div class="heatmap-row">
+        <span class="heatmap-label">{{ year }}</span>
+        {{~ for cell in chart_items ~}}
+        {{~ if cell.year == year ~}}
+        <span class="heatmap-cell lv-{{ cell.level }}" title="{{ cell.count }} photos">{{ if cell.count > 0 }}{{ cell.count }}{{ end }}</span>
+        {{~ end ~}}
+        {{~ end ~}}
+    </div>
+    {{~ end ~}}
+
+    {{~ # Legend ~}}
+    <div class="heatmap-legend">
+        <span>Less</span>
+        <span class="heatmap-cell lv-0"></span>
+        <span class="heatmap-cell lv-1"></span>
+        <span class="heatmap-cell lv-2"></span>
+        <span class="heatmap-cell lv-3"></span>
+        <span class="heatmap-cell lv-4"></span>
+        <span>More</span>
+    </div>
+</div>

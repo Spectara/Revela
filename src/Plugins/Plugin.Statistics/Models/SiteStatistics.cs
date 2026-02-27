@@ -69,6 +69,17 @@ internal sealed class SiteStatistics
     public IReadOnlyList<StatisticsEntry> ImagesByMonth { get; init; } = [];
 
     /// <summary>
+    /// Photo activity heatmap: month × year grid with intensity levels.
+    /// Sorted by year descending (most recent first), each year has 12 months.
+    /// </summary>
+    public IReadOnlyList<HeatmapCell> PhotoHeatmap { get; init; } = [];
+
+    /// <summary>
+    /// Distinct years present in the heatmap, descending order
+    /// </summary>
+    public IReadOnlyList<int> HeatmapYears { get; init; } = [];
+
+    /// <summary>
     /// Image orientation distribution (Landscape, Portrait, Square)
     /// </summary>
     /// <example>{ "Landscape": 280, "Portrait": 120, "Square": 5 }</example>

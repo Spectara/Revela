@@ -310,4 +310,107 @@ public sealed class StatisticsAggregatorTests
         Assert.IsTrue(result.ShutterSpeeds.Any(s => s.Name == "1/500" && s.Count == 2));
         Assert.IsTrue(result.ShutterSpeeds.Any(s => s.Name == "2s" && s.Count == 1));
     }
+
+    [TestMethod]
+    public void Aggregate_PhotoHeatmap_GroupsByYearAndMonth()
+    {
+        // Arrange
+        var images = new Dictionary<string, ImageContent>
+        {
+            ["jan1.jpg"] = TestData.Image("jan1.jpg", dateTaken: new DateTime(2024, 1, 10)),
+            ["jan2.jpg"] = TestData.Image("jan2.jpg", dateTaken: new DateTime(2024, 1, 20)),
+            ["mar1.jpg"] = TestData.Image("mar1.jpg", dateTaken: new DateTime(2024, 3, 5)),
+            ["old.jpg"] = TestData.Image("old.jpg", dateTaken: new DateTime(2023, 6, 15))
+        };
+        manifestRepository.Images.Returns(images);
+        var aggregator = new StatisticsAggregator(manifestRepository, config, logger);
+
+        // Act
+        var result = aggregator.Aggregate();
+
+        // Assert — 2 years × 12 months = 24 cells
+        Assert.HasCount(24, result.PhotoHeatmap);
+        Assert.HasCount(2, result.HeatmapYears);
+        Assert.AreEqual(2024, result.HeatmapYears[0]); // Descending
+        Assert.AreEqual(2023, result.HeatmapYears[1]);
+
+        // Check specific cells
+        var jan2024 = result.PhotoHeatmap.Single(c => c.Year == 2024 && c.Month == 1);
+        Assert.AreEqual(2, jan2024.Count);
+        Assert.IsTrue(jan2024.Level > 0);
+
+        var jun2023 = result.PhotoHeatmap.Single(c => c.Year == 2023 && c.Month == 6);
+        Assert.AreEqual(1, jun2023.Count);
+        Assert.IsTrue(jun2023.Level > 0);
+
+        // Empty months should have level 0
+        var feb2024 = result.PhotoHeatmap.Single(c => c.Year == 2024 && c.Month == 2);
+        Assert.AreEqual(0, feb2024.Count);
+        Assert.AreEqual(0, feb2024.Level);
+    }
+
+    [TestMethod]
+    public void Aggregate_PhotoHeatmap_EmptyWhenNoDateTaken()
+    {
+        // Arrange — images without DateTaken
+        var images = new Dictionary<string, ImageContent>
+        {
+            ["nodate.jpg"] = TestData.Image("nodate.jpg")
+        };
+        manifestRepository.Images.Returns(images);
+        var aggregator = new StatisticsAggregator(manifestRepository, config, logger);
+
+        // Act
+        var result = aggregator.Aggregate();
+
+        // Assert
+        Assert.IsEmpty(result.PhotoHeatmap);
+        Assert.IsEmpty(result.HeatmapYears);
+    }
+
+    [TestMethod]
+    public void Aggregate_PhotoHeatmap_LevelsAreQuartileBased()
+    {
+        // Arrange — create varied counts to test quartile distribution
+        var images = new Dictionary<string, ImageContent>();
+        var id = 0;
+
+        // Jan 2024: 1 photo (low)
+        images[$"img{id++}.jpg"] = TestData.Image($"img{id}.jpg", dateTaken: new DateTime(2024, 1, 1));
+
+        // Feb 2024: 5 photos (medium)
+        for (var i = 0; i < 5; i++)
+        {
+            images[$"img{id++}.jpg"] = TestData.Image($"img{id}.jpg", dateTaken: new DateTime(2024, 2, i + 1));
+        }
+
+        // Mar 2024: 10 photos (high)
+        for (var i = 0; i < 10; i++)
+        {
+            images[$"img{id++}.jpg"] = TestData.Image($"img{id}.jpg", dateTaken: new DateTime(2024, 3, i + 1));
+        }
+
+        // Apr 2024: 50 photos (very high)
+        for (var i = 0; i < 50; i++)
+        {
+            images[$"img{id++}.jpg"] = TestData.Image($"img{id}.jpg", dateTaken: new DateTime(2024, 4, (i % 28) + 1));
+        }
+
+        manifestRepository.Images.Returns(images);
+        var aggregator = new StatisticsAggregator(manifestRepository, config, logger);
+
+        // Act
+        var result = aggregator.Aggregate();
+
+        // Assert — April (highest count) should have the highest level
+        var apr = result.PhotoHeatmap.Single(c => c.Year == 2024 && c.Month == 4);
+        Assert.IsTrue(apr.Level >= 3, $"Expected level >= 3 for highest count, got {apr.Level}");
+
+        // Jan (lowest non-zero count) should have a lower level than April
+        var jan = result.PhotoHeatmap.Single(c => c.Year == 2024 && c.Month == 1);
+        Assert.IsTrue(jan.Level >= 1 && jan.Level <= apr.Level);
+
+        var may = result.PhotoHeatmap.Single(c => c.Year == 2024 && c.Month == 5);
+        Assert.AreEqual(0, may.Level);
+    }
 }

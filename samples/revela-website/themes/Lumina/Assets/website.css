@@ -12,21 +12,14 @@
    Accent Color Override
    ============================================ */
 :root {
-  --accent-hsl: 263deg 70% 30%;
-  --accent-light-hsl: 309deg 60% 50%;
-  --color-hsl: 0deg 0% 0%;
-  --color-light-hsl: 300deg 5% 5%;
-  --code-background-hsl: 220deg 20% 20%;
-  --code-color-hsl: 0deg 0% 88%;
+  --accent: light-dark(hsl(263 70% 30%), hsl(263 70% 70%));
+  --accent-light: light-dark(hsl(309 60% 50%), hsl(309 60% 50%));
+  --code-bg: light-dark(hsl(220 20% 20%), hsl(220 20% 15%));
+  --code-color: light-dark(hsl(0 0% 88%), hsl(0 0% 88%));
 
-  @media (prefers-color-scheme: dark) {
-    --accent-hsl: 263deg 70% 70%;
-    --accent-light-hsl: 309deg 60% 50%;
-    --color-hsl: 0deg 0% 100%;
-    --color-light-hsl: 300deg 5% 95%;
-    --code-background-hsl: 220deg 20% 15%;
-    --code-color-hsl: 0deg 0% 88%;
-  }
+  /* Override Lumina base colors for website (near-black text) */
+  --color: light-dark(hsl(0 0% 0%), hsl(0 0% 100%));
+  --color-light: light-dark(hsl(300 5% 5%), hsl(300 5% 95%));
 }
 
 /* ============================================
@@ -50,7 +43,7 @@ body {
 
   /* Scroll Indicator (Accent Color) */
   &::before {
-    background-color: hsl(var(--accent-hsl));
+    background-color: var(--accent);
   }
 }
 
@@ -58,12 +51,12 @@ body {
    Header Blur Effect
    ============================================ */
 header {
-  background-color: hsl(var(--color-background-hsl) / 0.3);
+  background-color: color-mix(in srgb, var(--color-bg) 30%, transparent);
   -webkit-backdrop-filter: saturate(180%) blur(2rem);
   backdrop-filter: saturate(180%) blur(2rem);
 
   div a {
-    border-bottom: solid 1px hsl(var(--color-hsl) / 0);
+    border-bottom: solid 1px transparent;
   }
 
   /* GitHub Icon */
@@ -84,11 +77,11 @@ header {
    ============================================ */
 :is(body > nav, footer nav) section a {
   &:hover {
-    color: hsl(var(--accent-light-hsl));
+    color: var(--accent-light);
   }
 
   &.active {
-    color: hsl(var(--accent-hsl));
+    color: var(--accent);
   }
 }
 
@@ -104,7 +97,7 @@ header {
     font-size: var(--font-size-4);
     letter-spacing: 0.1em;
     font-weight: 100;
-    border-bottom: solid 1px hsl(var(--color-hsl) / 0.3);
+    border-bottom: solid 1px color-mix(in srgb, var(--color) 30%, transparent);
   }
 
   h2 {
@@ -113,7 +106,7 @@ header {
     font-size: var(--font-size-3);
     letter-spacing: 0.1em;
     font-weight: 100;
-    border-bottom: solid 1px hsl(var(--color-hsl) / 0.3);
+    border-bottom: solid 1px color-mix(in srgb, var(--color) 30%, transparent);
   }
 
   h3 {
@@ -122,7 +115,7 @@ header {
     font-size: var(--font-size-2);
     letter-spacing: 0.1em;
     font-weight: 100;
-    border-bottom: solid 1px hsl(var(--color-hsl) / 0.3);
+    border-bottom: solid 1px color-mix(in srgb, var(--color) 30%, transparent);
   }
 
   p {
@@ -144,26 +137,26 @@ header {
   }
 
   a {
-    color: hsl(var(--accent-hsl));
+    color: var(--accent);
     text-decoration: none;
-    border-bottom: solid 1px hsl(var(--accent-hsl) / 0.3);
+    border-bottom: solid 1px color-mix(in srgb, var(--accent) 30%, transparent);
     transition-property: color, border-bottom;
     transition-duration: var(--animation-time);
 
     &:hover {
-      color: hsl(var(--accent-light-hsl));
-      border-bottom-color: hsl(var(--accent-hsl) / 0.5);
+      color: var(--accent-light);
+      border-bottom-color: color-mix(in srgb, var(--accent) 50%, transparent);
     }
   }
 
   hr {
     border: none;
-    border-bottom: solid 1px hsl(var(--color-hsl) / 0.3);
+    border-bottom: solid 1px color-mix(in srgb, var(--color) 30%, transparent);
     margin: var(--space-l) calc(var(--space-s) * -1);
   }
 
   strong {
-    color: hsl(var(--color-dark-hsl));
+    color: var(--color-dark);
     font-weight: 400;
   }
 }
@@ -181,13 +174,13 @@ header {
   :is(pre, pre[class*="language-"]) {
     margin-bottom: var(--space-m);
     padding: var(--space-s);
-    background-color: hsl(var(--code-background-hsl));
+    background-color: var(--code-bg);
     border-radius: var(--space-2xs);
     overflow-x: auto;
   }
 
   :is(pre code, code[class*="language-"]) {
-    color: hsl(var(--code-color-hsl));
+    color: var(--code-color);
     padding: 0;
   }
 
@@ -204,25 +197,25 @@ header {
   td {
     padding: var(--space-xs) var(--space-s);
     text-align: left;
-    border-bottom: solid 1px hsl(var(--color-hsl) / 0.2);
+    border-bottom: solid 1px color-mix(in srgb, var(--color) 20%, transparent);
     vertical-align: top;
   }
 
   th {
     font-weight: 400;
-    color: hsl(var(--color-dark-hsl));
-    border-bottom: solid 1px hsl(var(--color-hsl) / 0.4);
+    color: var(--color-dark);
+    border-bottom: solid 1px color-mix(in srgb, var(--color) 40%, transparent);
   }
 
   tr:hover td {
-    background-color: hsl(var(--color-hsl) / 0.05);
+    background-color: color-mix(in srgb, var(--color) 5%, transparent);
   }
 
   blockquote {
     margin: 1.5rem 0;
     padding: 1rem 1.25rem;
-    border-left: 4px solid hsl(var(--accent-hsl));
-    background: hsl(var(--accent-hsl) / 0.08);
+    border-left: 4px solid var(--accent);
+    background: color-mix(in srgb, var(--accent) 8%, transparent);
     border-radius: 0 0.5rem 0.5rem 0;
 
     p {
@@ -234,11 +227,11 @@ header {
     }
 
     strong {
-      color: hsl(var(--accent-hsl));
+      color: var(--accent);
     }
 
     @media (prefers-color-scheme: dark) {
-      background: hsl(var(--accent-hsl) / 0.12);
+      background: color-mix(in srgb, var(--accent) 12%, transparent);
     }
   }
 }
@@ -275,7 +268,7 @@ header {
 
 .hero-subtitle {
   font-size: var(--font-size-2);
-  color: hsl(var(--color-light-hsl));
+  color: var(--color-light);
   margin-bottom: var(--space-xl);
 }
 
@@ -309,7 +302,7 @@ header {
     font-weight: 400;
     text-transform: uppercase;
     letter-spacing: 0.1em;
-    color: hsl(var(--color-light-hsl));
+    color: var(--color-light);
     margin-bottom: var(--space-xs);
   }
 
@@ -327,18 +320,18 @@ header {
   a {
     display: block;
     font-size: var(--font-size-1);
-    color: hsl(var(--color-light-hsl));
+    color: var(--color-light);
     text-decoration: none;
     padding: var(--space-3xs) 0;
     transition-property: color;
     transition-duration: var(--animation-time);
 
     &:hover {
-      color: hsl(var(--accent-light-hsl));
+      color: var(--accent-light);
     }
 
     &.active {
-      color: hsl(var(--accent-hsl));
+      color: var(--accent);
     }
   }
 }
@@ -351,7 +344,7 @@ header {
     font-size: var(--font-size-4);
     letter-spacing: 0.1em;
     font-weight: 100;
-    border-bottom: solid 1px hsl(var(--color-hsl) / 0.3);
+    border-bottom: solid 1px color-mix(in srgb, var(--color) 30%, transparent);
     padding-bottom: var(--space-xs);
   }
 
@@ -383,12 +376,12 @@ header {
   }
 
   a {
-    color: hsl(var(--accent-hsl));
+    color: var(--accent);
     text-decoration: none;
-    border-bottom: solid 1px hsl(var(--accent-hsl) / 0.3);
+    border-bottom: solid 1px color-mix(in srgb, var(--accent) 30%, transparent);
 
     &:hover {
-      color: hsl(var(--accent-light-hsl));
+      color: var(--accent-light);
     }
   }
 
@@ -417,14 +410,14 @@ header {
     letter-spacing: 0.1em;
     text-decoration: none;
     background: transparent;
-    color: hsl(var(--accent-hsl));
-    border-bottom: 1px solid hsl(var(--accent-hsl) / 0.5);
+    color: var(--accent);
+    border-bottom: 1px solid color-mix(in srgb, var(--accent) 50%, transparent);
     transition-property: border-color, color;
     transition-duration: var(--animation-time);
 
     &:hover {
-      color: hsl(var(--accent-light-hsl));
-      border-color: hsl(var(--accent-light-hsl));
+      color: var(--accent-light);
+      border-color: var(--accent-light);
     }
   }
 }
@@ -439,14 +432,14 @@ header {
 
   a {
     font-size: var(--font-size-1);
-    color: hsl(var(--color-light-hsl));
+    color: var(--color-light);
     text-decoration: none;
     letter-spacing: 0.05em;
     transition-property: color;
     transition-duration: var(--animation-time);
 
     &:hover {
-      color: hsl(var(--accent-hsl));
+      color: var(--accent);
     }
   }
 }
@@ -470,7 +463,7 @@ header {
   p {
     margin: 0;
     font-size: var(--font-size-1);
-    color: hsl(var(--color-light-hsl));
+    color: var(--color-light);
   }
 }
 
@@ -479,10 +472,10 @@ header {
    ============================================ */
 .terminal-mockup {
   border-radius: 0.5rem;
-  border: solid 1px hsl(var(--code-background-hsl));
+  border: solid 1px var(--code-bg);
   padding-top: 2.25rem;
   position: relative;
-  background: hsl(var(--code-background-hsl));
+  background: var(--code-bg);
   margin: 2rem 0;
 
   &::before {
@@ -492,7 +485,7 @@ header {
     left: 0;
     right: 0;
     height: 2.25rem;
-    background: hsl(var(--code-background-hsl) / 0.8);
+    background: color-mix(in srgb, var(--code-bg) 80%, transparent);
     border-radius: 0.5rem 0.5rem 0 0;
   }
 
@@ -522,10 +515,10 @@ header {
    ============================================ */
 .content-image.browser-mockup {
   border-radius: 0.5rem;
-  border: solid 1px hsl(var(--code-background-hsl));
+  border: solid 1px var(--code-bg);
   padding-top: 2.25rem;
   position: relative;
-  background: hsl(var(--code-background-hsl));
+  background: var(--code-bg);
 
   &::before {
     content: "";
@@ -534,7 +527,7 @@ header {
     left: 0;
     right: 0;
     height: 2.25rem;
-    background: hsl(var(--code-background-hsl) / 0.8);
+    background: color-mix(in srgb, var(--code-bg) 80%, transparent);
     border-radius: 0.5rem 0.5rem 0 0;
   }
 

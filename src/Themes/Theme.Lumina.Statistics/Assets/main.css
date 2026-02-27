@@ -17,13 +17,13 @@
     align-items: center;
     gap: var(--space-3xs);
     padding: var(--space-m) var(--space-s);
-    border: 1px solid hsl(var(--color-hsl) / 0.15);
+    border: 1px solid color-mix(in srgb, var(--color) 15%, transparent);
     border-radius: var(--space-3xs);
     color: var(--color-light);
     transition: border-color var(--animation-time) ease;
 
     &:hover {
-      border-color: hsl(var(--color-hsl) / 0.4);
+      border-color: color-mix(in srgb, var(--color) 40%, transparent);
     }
   }
 
@@ -42,7 +42,7 @@ section h3 {
   margin-top: var(--space-xl);
   margin-bottom: var(--space-s);
   padding-bottom: var(--space-3xs);
-  border-bottom: 1px solid hsl(var(--color-hsl) / 0.15);
+  border-bottom: 1px solid color-mix(in srgb, var(--color) 15%, transparent);
 }
 
 /* Bar charts using dl/dt/dd (partial templates) */
@@ -67,7 +67,7 @@ section dl {
     }
 
     &:hover {
-      color: hsl(var(--color-hsl) / 1);
+      color: var(--color);
     }
   }
 
@@ -76,14 +76,14 @@ section dl {
     margin: var(--space-3xs) 0 0 0;
     border-radius: 2px;
     overflow: hidden;
-    background: hsl(var(--color-hsl) / 0.08);
+    background: color-mix(in srgb, var(--color) 8%, transparent);
 
     &::after {
       content: "";
       display: block;
       height: 100%;
       width: calc(var(--percent, 0) * 1%);
-      background: hsl(var(--color-hsl) / 0.5);
+      background: color-mix(in srgb, var(--color) 50%, transparent);
       border-radius: 2px;
     }
   }
@@ -91,7 +91,7 @@ section dl {
 
 /* Hover: highlight bar + brighten fill */
 section dl dt:hover+dd::after {
-  background: hsl(var(--color-hsl) / 0.7);
+  background: color-mix(in srgb, var(--color) 70%, transparent);
 }
 
 /* Responsive: tighter spacing on small screens */
@@ -107,5 +107,96 @@ section dl dt:hover+dd::after {
     strong {
       font-size: var(--font-size-3);
     }
+  }
+}
+
+/* ==========================================================================
+   Photo Activity Heatmap
+   ========================================================================== */
+
+.heatmap {
+  margin: 0 0 var(--space-l);
+}
+
+/* Grid rows */
+.heatmap-row {
+  display: grid;
+  grid-template-columns: 4ch repeat(12, 1fr);
+  gap: 3px;
+  margin-bottom: 3px;
+}
+
+/* Year label */
+.heatmap-label {
+  font-size: var(--font-size--1);
+  color: var(--color-light);
+  font-variant-numeric: tabular-nums;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding-right: var(--space-3xs);
+}
+
+/* Month header labels */
+.heatmap-header .heatmap-month {
+  font-size: var(--font-size--2);
+  color: var(--color-light);
+  text-align: center;
+  padding-bottom: var(--space-3xs);
+}
+
+/* Cells */
+.heatmap-cell {
+  aspect-ratio: 1;
+  border-radius: 2px;
+  font-size: var(--font-size--2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: transparent;
+  transition:
+    background var(--animation-time) ease,
+    color var(--animation-time) ease;
+
+  &:hover {
+    color: var(--color);
+    outline: 1px solid color-mix(in srgb, var(--color) 40%, transparent);
+    outline-offset: -1px;
+  }
+}
+
+/* Intensity levels — monochrome, theme-consistent */
+.heatmap-cell.lv-0 { background: color-mix(in srgb, var(--color) 5%, transparent); }
+.heatmap-cell.lv-1 { background: color-mix(in srgb, var(--color) 15%, transparent); }
+.heatmap-cell.lv-2 { background: color-mix(in srgb, var(--color) 30%, transparent); }
+.heatmap-cell.lv-3 { background: color-mix(in srgb, var(--color) 50%, transparent); }
+.heatmap-cell.lv-4 { background: color-mix(in srgb, var(--color) 75%, transparent); }
+
+/* Legend */
+.heatmap-legend {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 3px;
+  margin-top: var(--space-xs);
+  font-size: var(--font-size--2);
+  color: var(--color-light);
+
+  .heatmap-cell {
+    width: 12px;
+    height: 12px;
+  }
+}
+
+/* Responsive: remove text from cells, tighter grid */
+@media (width <= 480px) {
+  .heatmap-row {
+    grid-template-columns: 3ch repeat(12, 1fr);
+    gap: 2px;
+    margin-bottom: 2px;
+  }
+
+  .heatmap-cell:hover {
+    color: transparent;
   }
 }

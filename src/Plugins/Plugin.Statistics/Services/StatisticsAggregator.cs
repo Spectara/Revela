@@ -110,6 +110,8 @@ internal sealed partial class StatisticsAggregator(
                 settings),
             ImagesByYear = AggregateByYear(imagesWithExif),
             ImagesByMonth = AggregateByMonth(imagesWithExif),
+            PhotoHeatmap = AggregateHeatmap(images, out var heatmapYears),
+            HeatmapYears = heatmapYears,
             Orientations = AggregateOrientation(images),
             GeneratedAt = DateTime.UtcNow
         };
@@ -249,6 +251,75 @@ internal sealed partial class StatisticsAggregator(
             .ToList();
 
         return CalculatePercent(sorted);
+    }
+
+    /// <summary>
+    /// Build a month × year heatmap grid with quartile-based intensity levels.
+    /// Uses DateTaken from all images (not just EXIF), sorted by year descending.
+    /// </summary>
+    private static List<HeatmapCell> AggregateHeatmap(
+        List<ImageContent> images,
+        out List<int> years)
+    {
+        var imagesWithDate = images.Where(i => i.DateTaken.HasValue).ToList();
+
+        if (imagesWithDate.Count == 0)
+        {
+            years = [];
+            return [];
+        }
+
+        // Group by (year, month)
+        var monthlyCounts = imagesWithDate
+            .GroupBy(i => (i.DateTaken!.Value.Year, i.DateTaken!.Value.Month))
+            .ToDictionary(g => g.Key, g => g.Count());
+
+        // Determine year range
+        var minYear = monthlyCounts.Keys.Min(k => k.Year);
+        var maxYear = monthlyCounts.Keys.Max(k => k.Year);
+        years = [.. Enumerable.Range(minYear, maxYear - minYear + 1).Reverse()];
+
+        // Find max count for quartile calculation (excluding zeros)
+        var nonZeroCounts = monthlyCounts.Values.Where(c => c > 0).ToList();
+        if (nonZeroCounts.Count == 0)
+        {
+            years = [];
+            return [];
+        }
+
+        // Quartile boundaries for levels 1–4
+        var sorted = nonZeroCounts.Order().ToList();
+        var q1 = sorted[sorted.Count / 4];
+        var q2 = sorted[sorted.Count / 2];
+        var q3 = sorted[sorted.Count * 3 / 4];
+
+        // Build grid: years descending, 12 months each
+        var cells = new List<HeatmapCell>();
+        foreach (var year in years)
+        {
+            for (var month = 1; month <= 12; month++)
+            {
+                var count = monthlyCounts.GetValueOrDefault((year, month), 0);
+                var level = count switch
+                {
+                    0 => 0,
+                    _ when count <= q1 => 1,
+                    _ when count <= q2 => 2,
+                    _ when count <= q3 => 3,
+                    _ => 4
+                };
+
+                cells.Add(new HeatmapCell
+                {
+                    Year = year,
+                    Month = month,
+                    Count = count,
+                    Level = level
+                });
+            }
+        }
+
+        return cells;
     }
 
     private static List<StatisticsEntry> AggregateOrientation(IEnumerable<ImageContent> images)
