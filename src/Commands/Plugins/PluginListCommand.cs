@@ -21,7 +21,7 @@ internal sealed partial class PluginListCommand(
 
         command.SetAction(async (_, cancellationToken) =>
         {
-            await ExecuteAsync(cancellationToken).ConfigureAwait(false);
+            await ExecuteAsync(cancellationToken);
             return 0;
         });
 
@@ -57,8 +57,8 @@ internal sealed partial class PluginListCommand(
                 var metadata = pluginInfo.Plugin.Metadata;
                 var sourceMarkup = GetSourceMarkup(pluginInfo.Source);
 
-                content.Add($"[green]+[/] [bold green]{EscapeMarkup(metadata.Name)}[/] [dim]v{metadata.Version}[/] {sourceMarkup}");
-                content.Add($"   [dim]{EscapeMarkup(metadata.Description)}[/]");
+                content.Add($"[green]+[/] [bold green]{Markup.Escape(metadata.Name)}[/] [dim]v{metadata.Version}[/] {sourceMarkup}");
+                content.Add($"   [dim]{Markup.Escape(metadata.Description)}[/]");
                 content.Add("");
             }
 
@@ -92,13 +92,6 @@ internal sealed partial class PluginListCommand(
         PluginSource.Local => "[green]installed[/]",
         _ => "[dim]unknown[/]"
     };
-
-    private static string EscapeMarkup(string text)
-    {
-        return text
-            .Replace("[", "[[", StringComparison.Ordinal)
-            .Replace("]", "]]", StringComparison.Ordinal);
-    }
 
     [LoggerMessage(Level = LogLevel.Debug, Message = "Listing loaded plugins")]
     private partial void LogListingPlugins();

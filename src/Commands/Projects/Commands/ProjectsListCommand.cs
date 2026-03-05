@@ -74,10 +74,10 @@ internal sealed partial class ProjectsListCommand(
             var isConfigured = File.Exists(projectFile);
 
             var nameMarkup = isCurrent
-                ? $"[bold green]{EscapeMarkup(displayName)}[/]"
-                : EscapeMarkup(displayName);
+                ? $"[bold green]{Markup.Escape(displayName)}[/]"
+                : Markup.Escape(displayName);
 
-            var folderMarkup = $"[dim]{EscapeMarkup(folderName)}[/]";
+            var folderMarkup = $"[dim]{Markup.Escape(folderName)}[/]";
 
             var statusMarkup = isCurrent
                 ? "[green]● active[/]"
@@ -145,10 +145,6 @@ internal sealed partial class ProjectsListCommand(
 
         return null;
     }
-
-    private static string EscapeMarkup(string text) =>
-        text.Replace("[", "[[", StringComparison.Ordinal)
-            .Replace("]", "]]", StringComparison.Ordinal);
 
     [LoggerMessage(Level = LogLevel.Debug, Message = "Listing projects")]
     private static partial void LogListingProjects(ILogger logger);

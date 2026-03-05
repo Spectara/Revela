@@ -122,7 +122,7 @@ internal sealed partial class ThemeExtractCommand(
         {
             ErrorPanels.ShowError(
                 "Theme Not Found",
-                $"[yellow]Theme '{EscapeMarkup(themeName)}' not found.[/]\n\n" +
+                $"[yellow]Theme '{Markup.Escape(themeName)}' not found.[/]\n\n" +
                 "Run [cyan]revela theme list[/] to see available themes.");
             return 1;
         }
@@ -224,7 +224,7 @@ internal sealed partial class ThemeExtractCommand(
         {
             ErrorPanels.ShowError(
                 "No Match",
-                $"[yellow]No files match '{EscapeMarkup(filePath)}'[/]\n\n" +
+                $"[yellow]No files match '{Markup.Escape(filePath)}'[/]\n\n" +
                 "Run [cyan]revela theme files[/] to see available files.");
             return 1;
         }
@@ -236,7 +236,7 @@ internal sealed partial class ThemeExtractCommand(
             AnsiConsole.MarkupLine("[yellow]The following files are already local overrides:[/]");
             foreach (var (entry, _, _) in localFiles)
             {
-                AnsiConsole.MarkupLine($"  • [cyan]{EscapeMarkup(entry.Key)}[/]");
+                AnsiConsole.MarkupLine($"  • [cyan]{Markup.Escape(entry.Key)}[/]");
             }
             AnsiConsole.MarkupLine("");
 
@@ -270,7 +270,7 @@ internal sealed partial class ThemeExtractCommand(
             AnsiConsole.MarkupLine("[yellow]The following files already exist:[/]");
             foreach (var file in existingFiles)
             {
-                AnsiConsole.MarkupLine($"  • [cyan]{EscapeMarkup(file)}[/]");
+                AnsiConsole.MarkupLine($"  • [cyan]{Markup.Escape(file)}[/]");
             }
             AnsiConsole.MarkupLine("");
 
@@ -296,7 +296,7 @@ internal sealed partial class ThemeExtractCommand(
             });
 
         // Success panel
-        var fileList = string.Join("\n", extractedFiles.Select(f => $"  [green]+[/] [cyan]{EscapeMarkup(f)}[/]"));
+        var fileList = string.Join("\n", extractedFiles.Select(f => $"  [green]+[/] [cyan]{Markup.Escape(f)}[/]"));
         var panel = new Panel($"{fileList}\n\n" +
                             "[dim]These files will now override the embedded theme files.[/]")
             .WithHeader("[bold green]Success[/]")
@@ -514,7 +514,7 @@ internal sealed partial class ThemeExtractCommand(
         {
             ErrorPanels.ShowError(
                 "Theme Not Found",
-                $"[yellow]Theme '{EscapeMarkup(sourceName)}' not found.[/]\n\n" +
+                $"[yellow]Theme '{Markup.Escape(sourceName)}' not found.[/]\n\n" +
                 "Run [cyan]revela theme list[/] to see available themes.");
             return 1;
         }
@@ -620,10 +620,10 @@ internal sealed partial class ThemeExtractCommand(
             ? $"\n[bold]Extensions:[/] {string.Join(", ", extractedExtensions)}"
             : "";
 
-        var panel = new Panel($"[green]Theme '{EscapeMarkup(themeName)}' extracted![/]\n\n" +
-                            $"[bold]Location:[/] [cyan]themes/{EscapeMarkup(themeName)}/[/]{extensionsInfo}\n\n" +
+        var panel = new Panel($"[green]Theme '{Markup.Escape(themeName)}' extracted![/]\n\n" +
+                            $"[bold]Location:[/] [cyan]themes/{Markup.Escape(themeName)}/[/]{extensionsInfo}\n\n" +
                             "[bold]Next steps:[/]\n" +
-                            $"1. Edit [cyan]themes/{EscapeMarkup(themeName)}/[/] to customize\n" +
+                            $"1. Edit [cyan]themes/{Markup.Escape(themeName)}/[/] to customize\n" +
                             "2. Run [cyan]revela generate[/] to see changes\n" +
                             "3. Your local theme takes priority over installed themes")
             .WithHeader("[bold green]Success[/]")
@@ -650,13 +650,6 @@ internal sealed partial class ThemeExtractCommand(
         var updatedJson = System.Text.RegularExpressions.Regex.Replace(json, pattern, replacement);
 
         File.WriteAllText(manifestPath, updatedJson);
-    }
-
-    private static string EscapeMarkup(string text)
-    {
-        return text
-            .Replace("[", "[[", StringComparison.Ordinal)
-            .Replace("]", "]]", StringComparison.Ordinal);
     }
 
     /// <summary>
@@ -748,7 +741,7 @@ internal sealed partial class ThemeExtractCommand(
         {
             ErrorPanels.ShowError(
                 "Theme Not Found",
-                $"[yellow]Theme '{EscapeMarkup(sourceName)}' not found.[/]\n\n" +
+                $"[yellow]Theme '{Markup.Escape(sourceName)}' not found.[/]\n\n" +
                 "Run [cyan]revela theme list[/] to see available themes.");
             return 1;
         }
@@ -766,7 +759,7 @@ internal sealed partial class ThemeExtractCommand(
         {
             ErrorPanels.ShowError(
                 "No Files Found",
-                $"[yellow]Theme '{EscapeMarkup(sourceName)}' has no extractable files.[/]");
+                $"[yellow]Theme '{Markup.Escape(sourceName)}' has no extractable files.[/]");
             return 1;
         }
 
@@ -828,9 +821,9 @@ internal sealed partial class ThemeExtractCommand(
 
             if (existingFiles.Count > 0)
             {
-                AnsiConsole.MarkupLine($"[yellow]Some files already exist in themes/{EscapeMarkup(targetThemeName)}/[/]");
+                AnsiConsole.MarkupLine($"[yellow]Some files already exist in themes/{Markup.Escape(targetThemeName)}/[/]");
 
-                var overwrite = await AnsiConsole.ConfirmAsync("Overwrite existing files?", defaultValue: false, cancellationToken).ConfigureAwait(false);
+                var overwrite = await AnsiConsole.ConfirmAsync("Overwrite existing files?", defaultValue: false, cancellationToken);
                 if (!overwrite)
                 {
                     AnsiConsole.MarkupLine("[dim]Extraction cancelled.[/]");
@@ -871,14 +864,14 @@ internal sealed partial class ThemeExtractCommand(
 
                 if (sourceStream is null)
                 {
-                    AnsiConsole.MarkupLine($"[yellow]⚠[/] File not found: {EscapeMarkup(file.Path)}");
+                    AnsiConsole.MarkupLine($"[yellow]⚠[/] File not found: {Markup.Escape(file.Path)}");
                     continue;
                 }
 
                 using (sourceStream)
                 {
                     using var targetStream = File.Create(targetPath);
-                    await sourceStream.CopyToAsync(targetStream, cancellationToken).ConfigureAwait(false);
+                    await sourceStream.CopyToAsync(targetStream, cancellationToken);
                 }
 
                 extractedCount++;
@@ -886,12 +879,12 @@ internal sealed partial class ThemeExtractCommand(
             }
             catch (Exception ex)
             {
-                AnsiConsole.MarkupLine($"[red]✗[/] Failed to extract {EscapeMarkup(file.Path)}: {EscapeMarkup(ex.Message)}");
+                AnsiConsole.MarkupLine($"[red]✗[/] Failed to extract {Markup.Escape(file.Path)}: {Markup.Escape(ex.Message)}");
             }
         }
 
         AnsiConsole.WriteLine();
-        AnsiConsole.MarkupLine($"[green]✓[/] Extracted [cyan]{extractedCount}[/] file(s) to [cyan]themes/{EscapeMarkup(targetThemeName)}/[/]");
+        AnsiConsole.MarkupLine($"[green]✓[/] Extracted [cyan]{extractedCount}[/] file(s) to [cyan]themes/{Markup.Escape(targetThemeName)}/[/]");
 
         return 0;
     }

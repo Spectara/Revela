@@ -41,7 +41,7 @@ internal sealed partial class ConfigThemeCommand(
         command.SetAction(async (parseResult, cancellationToken) =>
         {
             var theme = parseResult.GetValue(themeOption);
-            return await ExecuteAsync(theme, cancellationToken).ConfigureAwait(false);
+            return await ExecuteAsync(theme, cancellationToken);
         });
 
         return command;
@@ -130,7 +130,7 @@ internal sealed partial class ConfigThemeCommand(
         {
             ["theme"] = new JsonObject { ["name"] = selectedTheme }
         };
-        await configService.UpdateProjectConfigAsync(update, cancellationToken).ConfigureAwait(false);
+        await configService.UpdateProjectConfigAsync(update, cancellationToken);
 
         // Note: ConfigService automatically invalidates IOptionsMonitor caches after write
 

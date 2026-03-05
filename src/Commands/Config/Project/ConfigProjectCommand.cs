@@ -49,7 +49,7 @@ internal sealed partial class ConfigProjectCommand(
             var name = parseResult.GetValue(nameOption);
             var url = parseResult.GetValue(urlOption);
 
-            return await ExecuteAsync(name, url, cancellationToken).ConfigureAwait(false);
+            return await ExecuteAsync(name, url, cancellationToken);
         });
 
         return command;
@@ -72,7 +72,7 @@ internal sealed partial class ConfigProjectCommand(
         var isFirstTime = !configService.IsProjectInitialized();
 
         // Get current config (or empty for new project)
-        var current = await configService.ReadProjectConfigAsync(cancellationToken).ConfigureAwait(false);
+        var current = await configService.ReadProjectConfigAsync(cancellationToken);
 
         // Determine if interactive mode (no arguments provided)
         var isInteractive = nameArg is null && urlArg is null;
@@ -121,7 +121,7 @@ internal sealed partial class ConfigProjectCommand(
             LogInitializingProject(name);
         }
 
-        await configService.UpdateProjectConfigAsync(update, cancellationToken).ConfigureAwait(false);
+        await configService.UpdateProjectConfigAsync(update, cancellationToken);
 
         if (isFirstTime)
         {

@@ -54,7 +54,7 @@ internal sealed partial class ConfigService(
 
         try
         {
-            var json = await File.ReadAllTextAsync(ProjectConfigPath, cancellationToken).ConfigureAwait(false);
+            var json = await File.ReadAllTextAsync(ProjectConfigPath, cancellationToken);
             return JsonNode.Parse(json)?.AsObject();
         }
         catch (JsonException ex)
@@ -67,13 +67,13 @@ internal sealed partial class ConfigService(
     /// <inheritdoc />
     public async Task UpdateProjectConfigAsync(JsonObject updates, CancellationToken cancellationToken = default)
     {
-        var existing = await ReadProjectConfigAsync(cancellationToken).ConfigureAwait(false) ?? [];
+        var existing = await ReadProjectConfigAsync(cancellationToken) ?? [];
 
         // Deep merge updates into existing
         DeepMerge(existing, updates);
 
         var json = existing.ToJsonString(JsonOptions);
-        await File.WriteAllTextAsync(ProjectConfigPath, json, cancellationToken).ConfigureAwait(false);
+        await File.WriteAllTextAsync(ProjectConfigPath, json, cancellationToken);
 
         // Force IConfiguration to reload from file immediately (don't wait for FileSystemWatcher)
         // Then invalidate IOptionsMonitor caches so CurrentValue returns fresh data
@@ -119,7 +119,7 @@ internal sealed partial class ConfigService(
 
         try
         {
-            var json = await File.ReadAllTextAsync(SiteConfigPath, cancellationToken).ConfigureAwait(false);
+            var json = await File.ReadAllTextAsync(SiteConfigPath, cancellationToken);
             return JsonNode.Parse(json)?.AsObject();
         }
         catch (JsonException ex)

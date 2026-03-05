@@ -65,7 +65,7 @@ internal sealed partial class CleanImagesCommand(
         command.SetAction(async (parseResult, cancellationToken) =>
         {
             var dryRun = parseResult.GetValue(dryRunOption);
-            return await ExecuteAsync(dryRun, cancellationToken).ConfigureAwait(false);
+            return await ExecuteAsync(dryRun, cancellationToken);
         });
 
         return command;
@@ -76,7 +76,7 @@ internal sealed partial class CleanImagesCommand(
         cancellationToken.ThrowIfCancellationRequested();
 
         // Load manifest first
-        await manifestRepository.LoadAsync(cancellationToken).ConfigureAwait(false);
+        await manifestRepository.LoadAsync(cancellationToken);
 
         // Check if images directory exists
         if (!Directory.Exists(ImagesPath))

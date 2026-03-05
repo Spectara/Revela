@@ -105,9 +105,7 @@ internal sealed partial class PagesCommand(
 
                         task.Value = p.Rendered;
 
-                        var safeName = p.CurrentPage
-                            .Replace("[", "[[", StringComparison.Ordinal)
-                            .Replace("]", "]]", StringComparison.Ordinal);
+                        var safeName = Markup.Escape(p.CurrentPage);
 
                         task.Description = $"[green]Rendering[/] {safeName}";
                     });

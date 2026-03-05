@@ -126,12 +126,12 @@ internal sealed partial class CompressionService(ILogger<CompressionService> log
                 }
 
                 // Read original content once
-                var content = await File.ReadAllBytesAsync(filePath, ct).ConfigureAwait(false);
+                var content = await File.ReadAllBytesAsync(filePath, ct);
                 var originalSize = content.Length;
 
                 // Compress with both formats
-                var gzipSize = await CompressGzipAsync(filePath, content, ct).ConfigureAwait(false);
-                var brotliSize = await CompressBrotliAsync(filePath, content, ct).ConfigureAwait(false);
+                var gzipSize = await CompressGzipAsync(filePath, content, ct);
+                var brotliSize = await CompressBrotliAsync(filePath, content, ct);
 
                 // Update statistics (thread-safe)
                 lock (lockObj)
@@ -148,7 +148,7 @@ internal sealed partial class CompressionService(ILogger<CompressionService> log
                 }
 
                 progress?.Report((processedCount, files.Count, Path.GetFileName(filePath)));
-            }).ConfigureAwait(false);
+            });
 
         LogCompressionComplete(logger, stats.TotalFiles, stats.SkippedCount);
 
@@ -164,12 +164,12 @@ internal sealed partial class CompressionService(ILogger<CompressionService> log
 
         await using var outputStream = File.Create(gzipPath);
         await using var gzipStream = new GZipStream(outputStream, GzipLevel);
-        await gzipStream.WriteAsync(content, ct).ConfigureAwait(false);
-        await gzipStream.FlushAsync(ct).ConfigureAwait(false);
+        await gzipStream.WriteAsync(content, ct);
+        await gzipStream.FlushAsync(ct);
 
         // Need to close streams to get accurate file size
-        await gzipStream.DisposeAsync().ConfigureAwait(false);
-        await outputStream.DisposeAsync().ConfigureAwait(false);
+        await gzipStream.DisposeAsync();
+        await outputStream.DisposeAsync();
 
         var size = new FileInfo(gzipPath).Length;
         LogCompressedFile(logger, "Gzip", filePath, content.Length, size);
@@ -188,12 +188,12 @@ internal sealed partial class CompressionService(ILogger<CompressionService> log
 
         // Set Brotli quality to maximum (11)
         // Note: BrotliStream uses CompressionLevel enum, SmallestSize = quality 11
-        await brotliStream.WriteAsync(content, ct).ConfigureAwait(false);
-        await brotliStream.FlushAsync(ct).ConfigureAwait(false);
+        await brotliStream.WriteAsync(content, ct);
+        await brotliStream.FlushAsync(ct);
 
         // Need to close streams to get accurate file size
-        await brotliStream.DisposeAsync().ConfigureAwait(false);
-        await outputStream.DisposeAsync().ConfigureAwait(false);
+        await brotliStream.DisposeAsync();
+        await outputStream.DisposeAsync();
 
         var size = new FileInfo(brotliPath).Length;
         LogCompressedFile(logger, "Brotli", filePath, content.Length, size);

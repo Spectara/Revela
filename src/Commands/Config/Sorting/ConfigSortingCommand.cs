@@ -67,7 +67,7 @@ internal sealed class ConfigSortingCommand(IConfigService configService)
             var direction = parseResult.GetValue(directionOption);
             var fallback = parseResult.GetValue(fallbackOption);
 
-            return await ExecuteAsync(galleries, field, direction, fallback, cancellationToken).ConfigureAwait(false);
+            return await ExecuteAsync(galleries, field, direction, fallback, cancellationToken);
         });
 
         return command;
@@ -96,11 +96,11 @@ internal sealed class ConfigSortingCommand(IConfigService configService)
             !string.IsNullOrEmpty(fallbackArg))
         {
             return await ExecuteNonInteractiveAsync(galleriesArg, fieldArg, directionArg, fallbackArg, cancellationToken)
-                .ConfigureAwait(false);
+                ;
         }
 
         // Interactive mode
-        return await ExecuteInteractiveAsync(cancellationToken).ConfigureAwait(false);
+        return await ExecuteInteractiveAsync(cancellationToken);
     }
 
     /// <summary>
@@ -169,7 +169,7 @@ internal sealed class ConfigSortingCommand(IConfigService configService)
         }
 
         updates["generate"] = new JsonObject { ["sorting"] = sorting };
-        await configService.UpdateProjectConfigAsync(updates, cancellationToken).ConfigureAwait(false);
+        await configService.UpdateProjectConfigAsync(updates, cancellationToken);
         AnsiConsole.MarkupLine($"{OutputMarkers.Success} Sorting configuration updated");
 
         return 0;
@@ -180,7 +180,7 @@ internal sealed class ConfigSortingCommand(IConfigService configService)
     /// </summary>
     private async Task<int> ExecuteInteractiveAsync(CancellationToken cancellationToken)
     {
-        var projectConfig = await configService.ReadProjectConfigAsync(cancellationToken).ConfigureAwait(false);
+        var projectConfig = await configService.ReadProjectConfigAsync(cancellationToken);
 
         // Read current values
         var generate = projectConfig?["generate"]?.AsObject();
@@ -245,7 +245,7 @@ internal sealed class ConfigSortingCommand(IConfigService configService)
         var useFallback = await AnsiConsole.ConfirmAsync(
             $"[cyan]Configure fallback field?[/] [dim](used when {imageField} is empty)[/]",
             defaultValue: false,
-            cancellationToken).ConfigureAwait(false);
+            cancellationToken);
 
         var fallbackField = currentFallback;
         if (useFallback)
@@ -280,7 +280,7 @@ internal sealed class ConfigSortingCommand(IConfigService configService)
         AnsiConsole.Write(panel);
         AnsiConsole.WriteLine();
 
-        var confirmed = await AnsiConsole.ConfirmAsync("[cyan]Save this configuration?[/]", defaultValue: true, cancellationToken).ConfigureAwait(false);
+        var confirmed = await AnsiConsole.ConfirmAsync("[cyan]Save this configuration?[/]", defaultValue: true, cancellationToken);
         if (!confirmed)
         {
             AnsiConsole.MarkupLine($"{OutputMarkers.Warning} Configuration not saved");
@@ -292,7 +292,7 @@ internal sealed class ConfigSortingCommand(IConfigService configService)
             ["generate"] = new JsonObject { ["sorting"] = newSorting }
         };
 
-        await configService.UpdateProjectConfigAsync(updates, cancellationToken).ConfigureAwait(false);
+        await configService.UpdateProjectConfigAsync(updates, cancellationToken);
         AnsiConsole.MarkupLine($"{OutputMarkers.Success} Sorting configuration saved");
 
         return 0;

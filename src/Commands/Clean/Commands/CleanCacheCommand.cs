@@ -30,7 +30,7 @@ internal sealed partial class CleanCacheCommand(
     {
         var command = new Command("cache", "Clean cache directory (.cache)");
 
-        command.SetAction(async (parseResult, cancellationToken) => await ExecuteAsync(cancellationToken).ConfigureAwait(false));
+        command.SetAction(async (parseResult, cancellationToken) => await ExecuteAsync(cancellationToken));
 
         return command;
     }

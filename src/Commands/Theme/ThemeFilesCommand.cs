@@ -44,7 +44,7 @@ internal sealed partial class ThemeFilesCommand(
         command.SetAction(async (parseResult, cancellationToken) =>
         {
             var themeName = parseResult.GetValue(themeOption);
-            await ExecuteAsync(themeName, cancellationToken).ConfigureAwait(false);
+            await ExecuteAsync(themeName, cancellationToken);
             return 0;
         });
 
@@ -73,7 +73,7 @@ internal sealed partial class ThemeFilesCommand(
         {
             ErrorPanels.ShowError(
                 "Theme Not Found",
-                $"[yellow]Theme '{EscapeMarkup(themeName)}' not found.[/]\n\n" +
+                $"[yellow]Theme '{Markup.Escape(themeName)}' not found.[/]\n\n" +
                 "Run [cyan]revela theme list[/] to see available themes.");
             return Task.CompletedTask;
         }
@@ -110,7 +110,7 @@ internal sealed partial class ThemeFilesCommand(
             cancellationToken.ThrowIfCancellationRequested();
             var sourceDisplay = FormatSource(entry, themeName, extensionColorMap);
             templatesTable.AddRow(
-                $"[cyan]{EscapeMarkup(entry.Key)}.revela[/]",
+                $"[cyan]{Markup.Escape(entry.Key)}.revela[/]",
                 sourceDisplay);
         }
 
@@ -126,7 +126,7 @@ internal sealed partial class ThemeFilesCommand(
         {
             cancellationToken.ThrowIfCancellationRequested();
             configTable.AddRow(
-                $"[cyan]{EscapeMarkup(path)}[/]",
+                $"[cyan]{Markup.Escape(path)}[/]",
                 source);
         }
 
@@ -143,14 +143,14 @@ internal sealed partial class ThemeFilesCommand(
             cancellationToken.ThrowIfCancellationRequested();
             var sourceDisplay = FormatSource(entry, themeName, extensionColorMap);
             assetsTable.AddRow(
-                $"[cyan]{EscapeMarkup(entry.Key)}[/]",
+                $"[cyan]{Markup.Escape(entry.Key)}[/]",
                 sourceDisplay);
         }
 
         // Panel header with extension names (colored)
         var extensionNames = extensions.Select(e => e.Metadata.Name).ToList();
         var coloredExtensions = extensionNames
-            .Select(name => $"[{extensionColorMap[name]}]{EscapeMarkup(name)}[/]");
+            .Select(name => $"[{extensionColorMap[name]}]{Markup.Escape(name)}[/]");
         var extensionInfo = extensionNames.Count > 0
             ? " + " + string.Join(", ", coloredExtensions)
             : string.Empty;
@@ -168,7 +168,7 @@ internal sealed partial class ThemeFilesCommand(
         grid.AddRow(assetsTable);
 
         var panel = new Panel(grid)
-            .WithHeader($"[bold]Theme Files[/] [dim]([/][{ThemeColor}]{EscapeMarkup(themeName)}[/]{extensionInfo}[dim])[/]")
+            .WithHeader($"[bold]Theme Files[/] [dim]([/][{ThemeColor}]{Markup.Escape(themeName)}[/]{extensionInfo}[dim])[/]")
             .WithInfoStyle();
         panel.Padding = new Padding(1, 0, 1, 0);
 
@@ -176,10 +176,10 @@ internal sealed partial class ThemeFilesCommand(
         AnsiConsole.MarkupLine($"\n[dim]Total:[/] {templateEntries.Count} templates, {configEntries.Count} config files, {assetEntries.Count} assets");
 
         // Build legend with colored extension names
-        var legendParts = new List<string> { $"[{ThemeColor}]{EscapeMarkup(themeName)}[/] = Theme" };
+        var legendParts = new List<string> { $"[{ThemeColor}]{Markup.Escape(themeName)}[/] = Theme" };
         foreach (var name in extensionNames)
         {
-            legendParts.Add($"[{extensionColorMap[name]}]{EscapeMarkup(name)}[/] = Extension");
+            legendParts.Add($"[{extensionColorMap[name]}]{Markup.Escape(name)}[/] = Extension");
         }
         legendParts.Add("[green]Local[/] = Override");
         AnsiConsole.MarkupLine($"[dim]Source:[/] {string.Join(", ", legendParts)}");
@@ -197,11 +197,11 @@ internal sealed partial class ThemeFilesCommand(
     {
         return entry.Source switch
         {
-            FileSourceType.Theme => $"[{ThemeColor}]{EscapeMarkup(themeName)}[/]",
+            FileSourceType.Theme => $"[{ThemeColor}]{Markup.Escape(themeName)}[/]",
             FileSourceType.Extension when entry.ExtensionName is not null &&
                 extensionColorMap.TryGetValue(entry.ExtensionName, out var color)
-                => $"[{color}]{EscapeMarkup(entry.ExtensionName)}[/]",
-            FileSourceType.Extension => $"[blue]{EscapeMarkup(entry.ExtensionName ?? "Extension")}[/]",
+                => $"[{color}]{Markup.Escape(entry.ExtensionName)}[/]",
+            FileSourceType.Extension => $"[blue]{Markup.Escape(entry.ExtensionName ?? "Extension")}[/]",
             FileSourceType.Local => "[green]Local[/]",
             _ => "[dim]Unknown[/]"
         };
@@ -227,11 +227,11 @@ internal sealed partial class ThemeFilesCommand(
             {
                 // Use lowercase for consistency
                 var key = "configuration/" + normalized["Configuration/".Length..];
-                entries[key] = $"[{ThemeColor}]{EscapeMarkup(themeName)}[/]";
+                entries[key] = $"[{ThemeColor}]{Markup.Escape(themeName)}[/]";
             }
             else if (normalized.Equals("manifest.json", StringComparison.OrdinalIgnoreCase))
             {
-                entries["manifest.json"] = $"[{ThemeColor}]{EscapeMarkup(themeName)}[/]";
+                entries["manifest.json"] = $"[{ThemeColor}]{Markup.Escape(themeName)}[/]";
             }
         }
 
@@ -247,11 +247,11 @@ internal sealed partial class ThemeFilesCommand(
                 if (normalized.StartsWith("Configuration/", StringComparison.OrdinalIgnoreCase))
                 {
                     var key = "configuration/" + normalized["Configuration/".Length..];
-                    entries[key] = $"[{color}]{EscapeMarkup(extName)}[/]";
+                    entries[key] = $"[{color}]{Markup.Escape(extName)}[/]";
                 }
                 else if (normalized.Equals("manifest.json", StringComparison.OrdinalIgnoreCase))
                 {
-                    entries["manifest.json"] = $"[{color}]{EscapeMarkup(extName)}[/]";
+                    entries["manifest.json"] = $"[{color}]{Markup.Escape(extName)}[/]";
                 }
             }
         }
@@ -275,13 +275,6 @@ internal sealed partial class ThemeFilesCommand(
         }
 
         return [.. entries.Select(kvp => (kvp.Key, kvp.Value))];
-    }
-
-    private static string EscapeMarkup(string text)
-    {
-        return text
-            .Replace("[", "[[", StringComparison.Ordinal)
-            .Replace("]", "]]", StringComparison.Ordinal);
     }
 
     [LoggerMessage(Level = LogLevel.Debug, Message = "Listing files for theme '{ThemeName}' with {ExtensionCount} extension(s)")]

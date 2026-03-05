@@ -166,11 +166,25 @@ section dl dt:hover+dd::after {
 }
 
 /* Intensity levels — monochrome, theme-consistent */
-.heatmap-cell.lv-0 { background: color-mix(in srgb, var(--color) 5%, transparent); }
-.heatmap-cell.lv-1 { background: color-mix(in srgb, var(--color) 15%, transparent); }
-.heatmap-cell.lv-2 { background: color-mix(in srgb, var(--color) 30%, transparent); }
-.heatmap-cell.lv-3 { background: color-mix(in srgb, var(--color) 50%, transparent); }
-.heatmap-cell.lv-4 { background: color-mix(in srgb, var(--color) 75%, transparent); }
+.heatmap-cell.lv-0 {
+  background: color-mix(in srgb, var(--color) 5%, transparent);
+}
+
+.heatmap-cell.lv-1 {
+  background: color-mix(in srgb, var(--color) 15%, transparent);
+}
+
+.heatmap-cell.lv-2 {
+  background: color-mix(in srgb, var(--color) 30%, transparent);
+}
+
+.heatmap-cell.lv-3 {
+  background: color-mix(in srgb, var(--color) 50%, transparent);
+}
+
+.heatmap-cell.lv-4 {
+  background: color-mix(in srgb, var(--color) 75%, transparent);
+}
 
 /* Legend */
 .heatmap-legend {
@@ -189,7 +203,7 @@ section dl dt:hover+dd::after {
 }
 
 /* Responsive: remove text from cells, tighter grid */
-@media (width <= 480px) {
+@media (width <=480px) {
   .heatmap-row {
     grid-template-columns: 3ch repeat(12, 1fr);
     gap: 2px;

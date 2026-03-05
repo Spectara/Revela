@@ -77,11 +77,11 @@ internal sealed partial class CreatePageCommand(
             // Interactive mode if path not provided
             if (string.IsNullOrEmpty(path))
             {
-                return await ExecuteInteractiveAsync(template, cancellationToken).ConfigureAwait(false);
+                return await ExecuteInteractiveAsync(template, cancellationToken);
             }
 
             var values = ExtractValues(parseResult, optionsMap);
-            return await GeneratePageAsync(template, path, values, cancellationToken).ConfigureAwait(false);
+            return await GeneratePageAsync(template, path, values, cancellationToken);
         });
 
         return command;
@@ -128,14 +128,14 @@ internal sealed partial class CreatePageCommand(
 
         // Confirm
         var confirmed = await AnsiConsole.ConfirmAsync("[cyan]Create this page?[/]", defaultValue: true, cancellationToken)
-            .ConfigureAwait(false);
+            ;
         if (!confirmed)
         {
             AnsiConsole.MarkupLine($"{OutputMarkers.Warning} Cancelled");
             return 1;
         }
 
-        return await GeneratePageAsync(template, path, values, cancellationToken).ConfigureAwait(false);
+        return await GeneratePageAsync(template, path, values, cancellationToken);
     }
 
     /// <summary>
@@ -304,7 +304,7 @@ internal sealed partial class CreatePageCommand(
         var frontmatter = GenerateFrontmatter(template, values);
 
         // Write file
-        await File.WriteAllTextAsync(revelaPath, frontmatter, cancellationToken).ConfigureAwait(false);
+        await File.WriteAllTextAsync(revelaPath, frontmatter, cancellationToken);
 
         LogPageCreated(logger, revelaPath, template.DisplayName);
         AnsiConsole.MarkupLine($"{OutputMarkers.Success} Created [cyan]{revelaPath}[/]");

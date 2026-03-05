@@ -136,16 +136,16 @@ internal sealed partial class RefreshCommand(
                 {
                     try
                     {
-                        var archive = await ZipFile.OpenReadAsync(nupkgPath, cancellationToken).ConfigureAwait(false);
-                        await using (archive.ConfigureAwait(false))
+                        var archive = await ZipFile.OpenReadAsync(nupkgPath, cancellationToken);
+                        await using (archive)
                         {
                             var nuspecEntry = archive.Entries.FirstOrDefault(e =>
                                 e.Name.EndsWith(".nuspec", StringComparison.OrdinalIgnoreCase));
 
                             if (nuspecEntry is not null)
                             {
-                                var stream = await nuspecEntry.OpenAsync(cancellationToken).ConfigureAwait(false);
-                                await using (stream.ConfigureAwait(false))
+                                var stream = await nuspecEntry.OpenAsync(cancellationToken);
+                                await using (stream)
                                 {
                                     var reader = new NuspecReader(stream);
 

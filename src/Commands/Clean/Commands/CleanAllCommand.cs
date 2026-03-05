@@ -22,7 +22,7 @@ internal sealed partial class CleanAllCommand(ILogger<CleanAllCommand> logger)
     {
         var command = new Command("all", "Clean output and cache (full clean)");
 
-        command.SetAction(async (parseResult, cancellationToken) => await ExecuteAsync(command, cancellationToken).ConfigureAwait(false));
+        command.SetAction(async (parseResult, cancellationToken) => await ExecuteAsync(command, cancellationToken));
 
         return command;
     }
@@ -74,7 +74,7 @@ internal sealed partial class CleanAllCommand(ILogger<CleanAllCommand> logger)
 
             var args = new[] { parent.Name, subcommand.Name };
             var parseResult = root.Parse(args);
-            var exitCode = await parseResult.InvokeAsync(configuration: null, cancellationToken).ConfigureAwait(false);
+            var exitCode = await parseResult.InvokeAsync(configuration: null, cancellationToken);
 
             if (exitCode != 0)
             {

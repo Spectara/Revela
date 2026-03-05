@@ -58,7 +58,7 @@ internal sealed class ConfigCommand(
         command.Subcommands.Add(locationsCommand.Create());
 
         // Default action: interactive menu
-        command.SetAction(async (_, cancellationToken) => await ExecuteInteractiveAsync(cancellationToken).ConfigureAwait(false));
+        command.SetAction(async (_, cancellationToken) => await ExecuteInteractiveAsync(cancellationToken));
 
         return command;
     }
@@ -119,14 +119,14 @@ internal sealed class ConfigCommand(
 
             var result = choice.Id switch
             {
-                "theme" => await themeCommand.ExecuteAsync(null, cancellationToken).ConfigureAwait(false),
-                "site" => await siteCommand.ExecuteAsync(cancellationToken).ConfigureAwait(false),
-                "image" => await imageCommand.ExecuteAsync(null, cancellationToken).ConfigureAwait(false),
-                "sorting" => await sortingCommand.ExecuteAsync(null, null, null, null, cancellationToken).ConfigureAwait(false),
-                "paths" => await pathsCommand.ExecuteInteractiveAsync(cancellationToken).ConfigureAwait(false),
+                "theme" => await themeCommand.ExecuteAsync(null, cancellationToken),
+                "site" => await siteCommand.ExecuteAsync(cancellationToken),
+                "image" => await imageCommand.ExecuteAsync(null, cancellationToken),
+                "sorting" => await sortingCommand.ExecuteAsync(null, null, null, null, cancellationToken),
+                "paths" => await pathsCommand.ExecuteInteractiveAsync(cancellationToken),
                 "feed" => ExecuteFeedMenu(packagesConfig.CurrentValue),
                 "locations" => ExecutePathCommand(),
-                "show" => await ExecuteShowAsync(cancellationToken).ConfigureAwait(false),
+                "show" => await ExecuteShowAsync(cancellationToken),
                 _ => 0
             };
 
@@ -190,8 +190,8 @@ internal sealed class ConfigCommand(
 
     private async Task<int> ExecuteShowAsync(CancellationToken cancellationToken)
     {
-        var projectConfig = await configService.ReadProjectConfigAsync(cancellationToken).ConfigureAwait(false);
-        var siteConfig = await configService.ReadSiteConfigAsync(cancellationToken).ConfigureAwait(false);
+        var projectConfig = await configService.ReadProjectConfigAsync(cancellationToken);
+        var siteConfig = await configService.ReadSiteConfigAsync(cancellationToken);
 
         if (projectConfig is not null)
         {

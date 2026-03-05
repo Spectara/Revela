@@ -49,7 +49,7 @@ internal sealed partial class CompressCommand(
         var command = new Command("compress", "Compress static files with Gzip and Brotli");
 
         command.SetAction(async (parseResult, cancellationToken) =>
-            await ExecuteAsync(cancellationToken).ConfigureAwait(false));
+            await ExecuteAsync(cancellationToken));
 
         return command;
     }
@@ -94,20 +94,17 @@ internal sealed partial class CompressCommand(
                     }
                     task.Value = report.current;
 
-                    // Escape Spectre markup in filenames
-                    var safeName = report.fileName
-                        .Replace("[", "[[", StringComparison.Ordinal)
-                        .Replace("]", "]]", StringComparison.Ordinal);
+                    var safeName = Markup.Escape(report.fileName);
 
                     task.Description = $"[green]Compressing[/] ({report.current}/{report.total}) {safeName}";
                 });
 
                 stats = await compressionService.CompressDirectoryAsync(outputPath, progress, cancellationToken)
-                    .ConfigureAwait(false);
+                    ;
 
                 task.Value = task.MaxValue;
                 task.Description = "[green]Compression complete[/]";
-            }).ConfigureAwait(false);
+            });
 
         if (stats is null || stats.TotalFiles == 0)
         {

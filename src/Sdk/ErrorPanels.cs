@@ -144,7 +144,7 @@ public static class ErrorPanels
     /// <param name="hint">Optional hint for how to resolve the issue.</param>
     public static void ShowException(Exception ex, string? hint = null)
     {
-        var content = $"[yellow]{EscapeMarkup(ex.Message)}[/]";
+        var content = $"[yellow]{Markup.Escape(ex.Message)}[/]";
 
         if (!string.IsNullOrWhiteSpace(hint))
         {
@@ -186,7 +186,7 @@ public static class ErrorPanels
     /// <param name="hint">Optional hint for next steps.</param>
     public static void ShowFileExistsError(string path, string? hint = null)
     {
-        var content = $"[yellow]File already exists:[/] [cyan]{EscapeMarkup(path)}[/]";
+        var content = $"[yellow]File already exists:[/] [cyan]{Markup.Escape(path)}[/]";
 
         if (!string.IsNullOrWhiteSpace(hint))
         {
@@ -207,7 +207,7 @@ public static class ErrorPanels
     /// <param name="prerequisiteCommand">Optional command to create the directory.</param>
     public static void ShowDirectoryNotFoundError(string path, string? prerequisiteCommand = null)
     {
-        var content = $"[yellow]Directory not found:[/] [cyan]{EscapeMarkup(path)}[/]";
+        var content = $"[yellow]Directory not found:[/] [cyan]{Markup.Escape(path)}[/]";
 
         if (!string.IsNullOrWhiteSpace(prerequisiteCommand))
         {
@@ -264,7 +264,7 @@ public static class ErrorPanels
     /// <param name="additionalHints">Optional additional solution hints (e.g., for installed plugins).</param>
     public static void ShowSourceDirectoryNotFoundError(string path, IEnumerable<string>? additionalHints = null)
     {
-        var content = $"[yellow]Source directory not found:[/] [cyan]{EscapeMarkup(path)}[/]\n\n" +
+        var content = $"[yellow]Source directory not found:[/] [cyan]{Markup.Escape(path)}[/]\n\n" +
             "[bold]Solutions:[/]\n" +
             "  • Add your images to the [cyan]source/[/] folder\n" +
             "  • Run [cyan]revela init[/] to set up a new project";
@@ -284,10 +284,4 @@ public static class ErrorPanels
         AnsiConsole.Write(panel);
     }
 
-    /// <summary>
-    /// Escapes Spectre markup characters in user-provided text.
-    /// </summary>
-    private static string EscapeMarkup(string text) =>
-        text.Replace("[", "[[", StringComparison.Ordinal)
-            .Replace("]", "]]", StringComparison.Ordinal);
 }

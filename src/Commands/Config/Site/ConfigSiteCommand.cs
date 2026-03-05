@@ -35,7 +35,7 @@ internal sealed partial class ConfigSiteCommand(
         var command = new Command("site", "Configure site settings (site.json)");
 
         command.SetAction(async (_, cancellationToken) =>
-            await ExecuteAsync(cancellationToken).ConfigureAwait(false));
+            await ExecuteAsync(cancellationToken));
 
         return command;
     }
@@ -96,13 +96,13 @@ internal sealed partial class ConfigSiteCommand(
 
         // Read template for structure
         using var reader = new StreamReader(siteTemplateStream);
-        var templateJson = await reader.ReadToEndAsync(cancellationToken).ConfigureAwait(false);
+        var templateJson = await reader.ReadToEndAsync(cancellationToken);
 
         // Get current values (from existing file or empty from template)
         string sourceJson;
         if (isEditMode)
         {
-            sourceJson = await File.ReadAllTextAsync(siteConfigPath, cancellationToken).ConfigureAwait(false);
+            sourceJson = await File.ReadAllTextAsync(siteConfigPath, cancellationToken);
             LogEditingExisting(logger, siteConfigPath);
         }
         else
@@ -125,7 +125,7 @@ internal sealed partial class ConfigSiteCommand(
 
         // Build final JSON using template structure
         var finalJson = JsonPropertyExtractor.BuildJson(templateJson, values);
-        await File.WriteAllTextAsync(siteConfigPath, finalJson, cancellationToken).ConfigureAwait(false);
+        await File.WriteAllTextAsync(siteConfigPath, finalJson, cancellationToken);
 
         LogSavedSiteConfig(logger, siteConfigPath);
 

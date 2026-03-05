@@ -28,7 +28,7 @@ internal sealed partial class CleanOutputCommand(
     {
         var command = new Command("output", "Clean output directory (generated HTML/images)");
 
-        command.SetAction(async (parseResult, cancellationToken) => await ExecuteAsync(cancellationToken).ConfigureAwait(false));
+        command.SetAction(async (parseResult, cancellationToken) => await ExecuteAsync(cancellationToken));
 
         return command;
     }

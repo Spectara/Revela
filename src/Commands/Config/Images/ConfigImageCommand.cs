@@ -64,7 +64,7 @@ internal sealed partial class ConfigImageCommand(
         {
             var formats = parseResult.GetValue(formatsOption);
 
-            return await ExecuteAsync(formats, cancellationToken).ConfigureAwait(false);
+            return await ExecuteAsync(formats, cancellationToken);
         });
 
         return command;
@@ -105,11 +105,11 @@ internal sealed partial class ConfigImageCommand(
         if (!string.IsNullOrEmpty(formatsArg))
         {
             return await ExecuteNonInteractiveAsync(formatsArg, themeDefaults, cancellationToken)
-                .ConfigureAwait(false);
+                ;
         }
 
         // Interactive mode
-        return await ExecuteInteractiveAsync(themeDefaults, cancellationToken).ConfigureAwait(false);
+        return await ExecuteInteractiveAsync(themeDefaults, cancellationToken);
     }
 
     /// <summary>
@@ -175,7 +175,7 @@ internal sealed partial class ConfigImageCommand(
         CancellationToken cancellationToken)
     {
         // Read current config
-        var current = await configService.ReadProjectConfigAsync(cancellationToken).ConfigureAwait(false);
+        var current = await configService.ReadProjectConfigAsync(cancellationToken);
         var currentFormats = GetCurrentFormats(current);
 
         // Determine defaults: current > theme > fallback
@@ -242,7 +242,7 @@ internal sealed partial class ConfigImageCommand(
             }
         };
 
-        await configService.UpdateProjectConfigAsync(update, cancellationToken).ConfigureAwait(false);
+        await configService.UpdateProjectConfigAsync(update, cancellationToken);
 
         var formatList = string.Join(", ", formats.Select(f => f.Value > 0 ? $"{f.Key}:{f.Value}" : $"{f.Key}:disabled"));
         LogImageConfigured(formatList);
@@ -256,7 +256,7 @@ internal sealed partial class ConfigImageCommand(
         AnsiConsole.MarkupLine("[cyan]Configure image processing[/]\n");
 
         // Read current config
-        var current = await configService.ReadProjectConfigAsync(cancellationToken).ConfigureAwait(false);
+        var current = await configService.ReadProjectConfigAsync(cancellationToken);
         var currentFormats = GetCurrentFormats(current);
 
         // Determine defaults: current > theme
@@ -331,7 +331,7 @@ internal sealed partial class ConfigImageCommand(
             }
         };
 
-        await configService.UpdateProjectConfigAsync(update, cancellationToken).ConfigureAwait(false);
+        await configService.UpdateProjectConfigAsync(update, cancellationToken);
 
         var formatList = string.Join(", ", selectedFormats);
         LogImageConfigured(formatList);

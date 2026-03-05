@@ -57,7 +57,7 @@ internal sealed partial class ConfigPathsCommand(
             var source = parseResult.GetValue(sourceOption);
             var output = parseResult.GetValue(outputOption);
 
-            return await ExecuteAsync(source, output, cancellationToken).ConfigureAwait(false);
+            return await ExecuteAsync(source, output, cancellationToken);
         });
 
         return command;
@@ -160,7 +160,7 @@ internal sealed partial class ConfigPathsCommand(
             }
         };
 
-        await configService.UpdateProjectConfigAsync(updates, cancellationToken).ConfigureAwait(false);
+        await configService.UpdateProjectConfigAsync(updates, cancellationToken);
 
         // Create default directories (only if using defaults, not custom paths)
         EnsureDefaultDirectoriesExist(source, output, defaults);

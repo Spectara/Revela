@@ -194,10 +194,7 @@ internal sealed partial class RestoreCommand(
             foreach (var (dep, error) in installFailed)
             {
                 var shortName = GetShortName(dep);
-                // Escape Spectre markup in error message
-                var safeError = error
-                    .Replace("[", "[[", StringComparison.Ordinal)
-                    .Replace("]", "]]", StringComparison.Ordinal);
+                var safeError = Markup.Escape(error);
                 AnsiConsole.MarkupLine($"  [red]-[/] {shortName}: [dim]{safeError}[/]");
             }
             AnsiConsole.WriteLine();

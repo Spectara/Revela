@@ -41,7 +41,7 @@ internal sealed partial class ThemeListCommand(
         command.SetAction(async (parseResult, cancellationToken) =>
         {
             var online = parseResult.GetValue(onlineOption);
-            await ExecuteAsync(online, cancellationToken).ConfigureAwait(false);
+            await ExecuteAsync(online, cancellationToken);
             return 0;
         });
 
@@ -79,7 +79,7 @@ internal sealed partial class ThemeListCommand(
         // Show online themes if requested
         if (includeOnline)
         {
-            await ShowOnlineThemesAsync(themes, cancellationToken).ConfigureAwait(false);
+            await ShowOnlineThemesAsync(themes, cancellationToken);
         }
     }
 
@@ -99,12 +99,12 @@ internal sealed partial class ThemeListCommand(
             var sourceIcon = isLocal ? "[blue]*[/]" : "[green]+[/]";
             var sourceMarkup = GetSourceMarkup(metadata.Name, pluginSources, isLocal);
 
-            content.Add($"{sourceIcon} [bold green]{EscapeMarkup(metadata.Name)}[/] [dim]v{metadata.Version}[/] {sourceMarkup}");
-            content.Add($"   [dim]{EscapeMarkup(metadata.Description)}[/]");
+            content.Add($"{sourceIcon} [bold green]{Markup.Escape(metadata.Name)}[/] [dim]v{metadata.Version}[/] {sourceMarkup}");
+            content.Add($"   [dim]{Markup.Escape(metadata.Description)}[/]");
 
             if (isLocal)
             {
-                content.Add($"   [blue]Source: themes/{EscapeMarkup(metadata.Name)}/[/]");
+                content.Add($"   [blue]Source: themes/{Markup.Escape(metadata.Name)}/[/]");
             }
 
             // Show extensions for this theme
@@ -112,7 +112,7 @@ internal sealed partial class ThemeListCommand(
             foreach (var ext in extensions)
             {
                 var extSourceMarkup = GetSourceMarkup(ext.Metadata.Name, pluginSources, isLocal: false);
-                content.Add($"   [dim]└─[/] [cyan]{EscapeMarkup(ext.Metadata.Name)}[/] [dim]v{ext.Metadata.Version}[/] {extSourceMarkup}");
+                content.Add($"   [dim]└─[/] [cyan]{Markup.Escape(ext.Metadata.Name)}[/] [dim]v{ext.Metadata.Version}[/] {extSourceMarkup}");
             }
 
             content.Add("");
@@ -146,8 +146,8 @@ internal sealed partial class ThemeListCommand(
                     "Spectara.Revela.Theme",
                     packageTypeFilter: "RevelaTheme",
                     includePrerelease: false,
-                    cancellationToken).ConfigureAwait(false);
-            }).ConfigureAwait(false);
+                    cancellationToken);
+            });
 
         if (onlineThemes.Count == 0)
         {
@@ -174,11 +174,11 @@ internal sealed partial class ThemeListCommand(
             var isInstalled = installedNames.Contains(themeName);
             var statusIcon = isInstalled ? OutputMarkers.Success : "[dim]○[/]";
 
-            content.Add($"{statusIcon} [bold]{EscapeMarkup(themeName)}[/] [dim]v{theme.Version}[/] [dim]({theme.SourceName})[/]");
+            content.Add($"{statusIcon} [bold]{Markup.Escape(themeName)}[/] [dim]v{theme.Version}[/] [dim]({theme.SourceName})[/]");
 
             if (!string.IsNullOrEmpty(theme.Description))
             {
-                content.Add($"   [dim]{EscapeMarkup(theme.Description)}[/]");
+                content.Add($"   [dim]{Markup.Escape(theme.Description)}[/]");
             }
 
             if (!isInstalled)
@@ -241,11 +241,5 @@ internal sealed partial class ThemeListCommand(
             : packageId;
     }
 
-    private static string EscapeMarkup(string text)
-    {
-        return text
-            .Replace("[", "[[", StringComparison.Ordinal)
-            .Replace("]", "]]", StringComparison.Ordinal);
-    }
 }
 

@@ -27,7 +27,7 @@ internal sealed partial class CleanCompressCommand(
         var command = new Command("compress", "Clean compressed files (.gz, .br) from output");
 
         command.SetAction(async (parseResult, cancellationToken) =>
-            await ExecuteAsync(cancellationToken).ConfigureAwait(false));
+            await ExecuteAsync(cancellationToken));
 
         return command;
     }

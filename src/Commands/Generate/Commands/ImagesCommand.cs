@@ -156,9 +156,7 @@ internal sealed partial class ImagesCommand(
                     AnsiConsole.MarkupLine($"[yellow]⚠ {result.Warnings.Count} warning(s) during processing:[/]");
                     foreach (var warning in result.Warnings.Take(5))
                     {
-                        var safeWarning = warning
-                            .Replace("[", "[[", StringComparison.Ordinal)
-                            .Replace("]", "]]", StringComparison.Ordinal);
+                        var safeWarning = Markup.Escape(warning);
                         AnsiConsole.MarkupLine($"  [dim]• {safeWarning}[/]");
                     }
 
@@ -248,9 +246,7 @@ internal sealed partial class ImagesCommand(
             else
             {
                 // Escape Spectre markup in filename
-                var safeName = worker.ImageName?
-                    .Replace("[", "[[", StringComparison.Ordinal)
-                    .Replace("]", "]]", StringComparison.Ordinal) ?? "";
+                var safeName = Markup.Escape(worker.ImageName ?? "");
 
                 // Build variant symbols from VariantResults list (ordered)
                 // Format colors: JPG=green, WebP=blue, AVIF=magenta, PNG=cyan
