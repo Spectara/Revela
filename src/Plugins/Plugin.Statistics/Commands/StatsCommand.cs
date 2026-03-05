@@ -1,6 +1,5 @@
 using System.CommandLine;
 using Microsoft.Extensions.Options;
-using Spectara.Revela.Plugin.Statistics.Commands.Logging;
 using Spectara.Revela.Plugin.Statistics.Services;
 using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Abstractions;
@@ -22,7 +21,7 @@ namespace Spectara.Revela.Plugin.Statistics.Commands;
 /// Implements <see cref="IGenerateStep"/> for pipeline integration.
 /// </para>
 /// </remarks>
-internal sealed class StatsCommand(
+internal sealed partial class StatsCommand(
     ILogger<StatsCommand> logger,
     IManifestRepository manifestRepository,
     IOptions<ProjectEnvironment> projectEnvironment,
@@ -67,7 +66,7 @@ internal sealed class StatsCommand(
             return 1;
         }
         // Load manifest
-        logger.LoadingManifest();
+        LogLoadingManifest();
         await manifestRepository.LoadAsync(cancellationToken);
 
         if (manifestRepository.Images.Count == 0)
@@ -89,7 +88,7 @@ internal sealed class StatsCommand(
             return 0;
         }
 
-        logger.GeneratingStats(statsPages.Count);
+        LogGeneratingStats(statsPages.Count);
 
         var generatedCount = 0;
         foreach (var pagePath in statsPages)
@@ -105,7 +104,7 @@ internal sealed class StatsCommand(
             // Write JSON data file
             Directory.CreateDirectory(cacheDir);
             await JsonWriter.WriteAsync(jsonPath, stats, cancellationToken);
-            logger.GeneratedJsonFile(pagePath, stats.TotalImages);
+            LogGeneratedJsonFile(pagePath, stats.TotalImages);
 
             generatedCount++;
         }
@@ -157,5 +156,14 @@ internal sealed class StatsCommand(
             }
         }
     }
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Loading manifest...")]
+    private partial void LogLoadingManifest();
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Generating statistics for {Count} pages")]
+    private partial void LogGeneratingStats(int count);
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Generated statistics JSON for {Path} ({Count} images)")]
+    private partial void LogGeneratedJsonFile(string path, int count);
 }
 

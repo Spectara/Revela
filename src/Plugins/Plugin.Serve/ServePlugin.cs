@@ -23,7 +23,7 @@ public sealed class ServePlugin : IPlugin
     {
         // Register Plugin Configuration via SDK helper
         // Binds to project.json section, validates DataAnnotations on access
-        services.AddPluginConfig<ServeConfig>();
+        services.AddPluginConfig<ServePluginConfig>();
 
         // Register Commands for Dependency Injection
         services.AddTransient<ServeCommand>();

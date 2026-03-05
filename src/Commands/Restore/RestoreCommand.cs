@@ -100,12 +100,12 @@ internal sealed partial class RestoreCommand(
 
             if (isInstalled)
             {
-                AnsiConsole.MarkupLine($"  [green]+[/] {typeLabel} [white]{shortName}[/]");
+                AnsiConsole.MarkupLine($"  {OutputMarkers.Success} {typeLabel} [white]{shortName}[/]");
                 installed.Add(dep);
             }
             else
             {
-                AnsiConsole.MarkupLine($"  [red]-[/] {typeLabel} [white]{shortName}[/] - [yellow]missing[/]");
+                AnsiConsole.MarkupLine($"  {OutputMarkers.Error} {typeLabel} [white]{shortName}[/] - [yellow]missing[/]");
                 missing.Add(dep);
             }
         }
@@ -195,7 +195,7 @@ internal sealed partial class RestoreCommand(
             {
                 var shortName = GetShortName(dep);
                 var safeError = Markup.Escape(error);
-                AnsiConsole.MarkupLine($"  [red]-[/] {shortName}: [dim]{safeError}[/]");
+                AnsiConsole.MarkupLine($"  {OutputMarkers.Error} {shortName}: [dim]{safeError}[/]");
             }
             AnsiConsole.WriteLine();
             AnsiConsole.MarkupLine($"{OutputMarkers.Warning} Run with increased log level for details: [blue]revela restore --loglevel Debug[/]");

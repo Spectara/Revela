@@ -24,7 +24,7 @@ namespace Spectara.Revela.Plugin.Serve;
 internal sealed partial class ConfigServeCommand(
     ILogger<ConfigServeCommand> logger,
     IConfigService configService,
-    IOptionsMonitor<ServeConfig> configMonitor)
+    IOptionsMonitor<ServePluginConfig> configMonitor)
 {
     /// <summary>
     /// Creates the command definition.
@@ -100,7 +100,7 @@ internal sealed partial class ConfigServeCommand(
         // Wrap with plugin section name and update project.json
         var updates = new JsonObject
         {
-            [ServeConfig.SectionName] = pluginConfig
+            [ServePluginConfig.SectionName] = pluginConfig
         };
 
         await configService.UpdateProjectConfigAsync(updates, cancellationToken);

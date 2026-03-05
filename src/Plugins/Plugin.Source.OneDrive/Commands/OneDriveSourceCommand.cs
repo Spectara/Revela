@@ -1,6 +1,5 @@
 using System.CommandLine;
 using Microsoft.Extensions.Options;
-using Spectara.Revela.Plugin.Source.OneDrive.Commands.Logging;
 using Spectara.Revela.Plugin.Source.OneDrive.Configuration;
 using Spectara.Revela.Plugin.Source.OneDrive.Formatting;
 using Spectara.Revela.Plugin.Source.OneDrive.Models;
@@ -21,7 +20,7 @@ namespace Spectara.Revela.Plugin.Source.OneDrive.Commands;
 /// Configuration is injected via IOptionsMonitor for hot-reload support.
 /// Dependencies are injected at construction time, making the command fully testable.
 /// </remarks>
-internal sealed class OneDriveSourceCommand(
+internal sealed partial class OneDriveSourceCommand(
     ILogger<OneDriveSourceCommand> logger,
     SharedLinkProvider provider,
     IPathResolver pathResolver,
@@ -115,7 +114,7 @@ internal sealed class OneDriveSourceCommand(
             // Most users never need to change this - sensible default works for typical home internet
             var concurrency = currentConfig.DefaultConcurrency ?? DefaultConcurrency;
 
-            AnsiConsole.MarkupLine("[blue]Downloading from OneDrive...[/]");
+            AnsiConsole.MarkupLine($"{OutputMarkers.Info} Downloading from OneDrive...");
             AnsiConsole.MarkupLine($"[dim]Share URL:[/] {Markup.Escape(shareUrl)}");
             AnsiConsole.MarkupLine($"[dim]Output:[/] {Markup.Escape(outputDirectory)}");
             AnsiConsole.MarkupLine($"[dim]Concurrency:[/] {concurrency} parallel downloads");
@@ -157,7 +156,7 @@ internal sealed class OneDriveSourceCommand(
             AnsiConsole.WriteLine();
 
             // Phase 2: Analyze changes
-            AnsiConsole.MarkupLine("[blue]Analyzing changes...[/]");
+            AnsiConsole.MarkupLine($"{OutputMarkers.Info} Analyzing changes...");
 
             var analysis = DownloadAnalyzer.Analyze(
                 allItems,
@@ -268,25 +267,25 @@ internal sealed class OneDriveSourceCommand(
         catch (HttpRequestException ex)
         {
             ErrorPanels.ShowException(ex);
-            logger.DownloadFailed(ex);
+            LogDownloadFailed(ex);
             return 1;
         }
         catch (InvalidOperationException ex)
         {
             ErrorPanels.ShowException(ex);
-            logger.DownloadFailed(ex);
+            LogDownloadFailed(ex);
             return 1;
         }
         catch (IOException ex)
         {
             ErrorPanels.ShowException(ex);
-            logger.DownloadFailed(ex);
+            LogDownloadFailed(ex);
             return 1;
         }
         catch (UnauthorizedAccessException ex)
         {
             ErrorPanels.ShowException(ex);
-            logger.DownloadFailed(ex);
+            LogDownloadFailed(ex);
             return 1;
         }
     }
@@ -463,5 +462,8 @@ internal sealed class OneDriveSourceCommand(
             "  2. Set environment variable: [cyan]SPECTARA__REVELA__PLUGIN__SOURCE__ONEDRIVE__SHAREURL[/]\n" +
             "  3. Provide [cyan]--share-url[/] parameter");
     }
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "Download failed")]
+    private partial void LogDownloadFailed(Exception exception);
 }
 

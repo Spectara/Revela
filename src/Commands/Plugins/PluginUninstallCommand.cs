@@ -2,6 +2,7 @@ using System.CommandLine;
 
 using Spectara.Revela.Core;
 using Spectara.Revela.Sdk;
+using Spectara.Revela.Sdk.Output;
 
 using Spectre.Console;
 
@@ -61,19 +62,19 @@ internal sealed partial class PluginUninstallCommand(
                 return 0;
             }
 
-            AnsiConsole.MarkupLine($"[blue]Uninstalling plugin:[/] [cyan]{packageId}[/]");
+            AnsiConsole.MarkupLine($"{OutputMarkers.Info} Uninstalling plugin: [cyan]{packageId}[/]");
             LogUninstallingPlugin(packageId);
 
             var success = await pluginManager.UninstallPluginAsync(packageId, cancellationToken: cancellationToken);
 
             if (success)
             {
-                AnsiConsole.MarkupLine($"[green]Plugin '{packageId}' uninstalled successfully.[/]");
+                AnsiConsole.MarkupLine($"{OutputMarkers.Success} Plugin [cyan]{packageId}[/] uninstalled successfully.");
                 return 0;
             }
             else
             {
-                AnsiConsole.MarkupLine($"[yellow]Plugin '{packageId}' not found.[/]");
+                AnsiConsole.MarkupLine($"{OutputMarkers.Warning} Plugin [cyan]{packageId}[/] not found.");
                 return 1;
             }
         }

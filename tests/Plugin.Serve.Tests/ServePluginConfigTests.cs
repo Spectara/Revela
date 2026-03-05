@@ -4,13 +4,13 @@ namespace Spectara.Revela.Plugin.Serve.Tests;
 
 [TestClass]
 [TestCategory("Unit")]
-public sealed class ServeConfigTests
+public sealed class ServePluginConfigTests
 {
     [TestMethod]
     public void DefaultPort_Is8080()
     {
         // Arrange & Act
-        var config = new ServeConfig();
+        var config = new ServePluginConfig();
 
         // Assert
         Assert.AreEqual(8080, config.Port);
@@ -20,7 +20,7 @@ public sealed class ServeConfigTests
     public void DefaultVerbose_IsFalse()
     {
         // Arrange & Act
-        var config = new ServeConfig();
+        var config = new ServePluginConfig();
 
         // Assert
         Assert.IsFalse(config.Verbose);
@@ -30,7 +30,7 @@ public sealed class ServeConfigTests
     public void Port_CanBeCustomized()
     {
         // Arrange & Act
-        var config = new ServeConfig { Port = 3000 };
+        var config = new ServePluginConfig { Port = 3000 };
 
         // Assert
         Assert.AreEqual(3000, config.Port);
@@ -40,7 +40,7 @@ public sealed class ServeConfigTests
     public void Verbose_CanBeEnabled()
     {
         // Arrange & Act
-        var config = new ServeConfig { Verbose = true };
+        var config = new ServePluginConfig { Verbose = true };
 
         // Assert
         Assert.IsTrue(config.Verbose);

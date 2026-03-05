@@ -6,6 +6,7 @@ using Spectara.Revela.Commands.Generate.Models.Results;
 using Spectara.Revela.Core.Configuration;
 using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Abstractions;
+using Spectara.Revela.Sdk.Output;
 using Spectre.Console;
 using Spectre.Console.Rendering;
 using IManifestRepository = Spectara.Revela.Sdk.Abstractions.IManifestRepository;
@@ -153,7 +154,7 @@ internal sealed partial class ImagesCommand(
                 if (result.Warnings.Count > 0)
                 {
                     AnsiConsole.WriteLine();
-                    AnsiConsole.MarkupLine($"[yellow]⚠ {result.Warnings.Count} warning(s) during processing:[/]");
+                    AnsiConsole.MarkupLine($"{OutputMarkers.Warning} {result.Warnings.Count} warning(s) during processing:");
                     foreach (var warning in result.Warnings.Take(5))
                     {
                         var safeWarning = Markup.Escape(warning);

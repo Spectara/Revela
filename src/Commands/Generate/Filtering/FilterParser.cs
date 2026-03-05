@@ -41,8 +41,11 @@ internal sealed class FilterParser
     /// <param name="source">The original source string (for error messages).</param>
     public FilterParser(IReadOnlyList<Token> tokens, string source)
     {
-        this.tokens = tokens ?? throw new ArgumentNullException(nameof(tokens));
-        this.source = source ?? throw new ArgumentNullException(nameof(source));
+        ArgumentNullException.ThrowIfNull(tokens);
+        ArgumentNullException.ThrowIfNull(source);
+
+        this.tokens = tokens;
+        this.source = source;
     }
 
     /// <summary>

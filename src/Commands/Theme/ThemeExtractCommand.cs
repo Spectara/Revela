@@ -4,6 +4,7 @@ using Spectara.Revela.Core.Configuration;
 using Spectara.Revela.Core.Services;
 using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Abstractions;
+using Spectara.Revela.Sdk.Output;
 using Spectre.Console;
 
 namespace Spectara.Revela.Commands.Theme;
@@ -864,7 +865,7 @@ internal sealed partial class ThemeExtractCommand(
 
                 if (sourceStream is null)
                 {
-                    AnsiConsole.MarkupLine($"[yellow]⚠[/] File not found: {Markup.Escape(file.Path)}");
+                    AnsiConsole.MarkupLine($"{OutputMarkers.Warning} File not found: {Markup.Escape(file.Path)}");
                     continue;
                 }
 
@@ -879,12 +880,12 @@ internal sealed partial class ThemeExtractCommand(
             }
             catch (Exception ex)
             {
-                AnsiConsole.MarkupLine($"[red]✗[/] Failed to extract {Markup.Escape(file.Path)}: {Markup.Escape(ex.Message)}");
+                AnsiConsole.MarkupLine($"{OutputMarkers.Error} Failed to extract {Markup.Escape(file.Path)}: {Markup.Escape(ex.Message)}");
             }
         }
 
         AnsiConsole.WriteLine();
-        AnsiConsole.MarkupLine($"[green]✓[/] Extracted [cyan]{extractedCount}[/] file(s) to [cyan]themes/{Markup.Escape(targetThemeName)}/[/]");
+        AnsiConsole.MarkupLine($"{OutputMarkers.Success} Extracted [cyan]{extractedCount}[/] file(s) to [cyan]themes/{Markup.Escape(targetThemeName)}/[/]");
 
         return 0;
     }

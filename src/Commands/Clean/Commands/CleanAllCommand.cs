@@ -1,5 +1,7 @@
 using System.CommandLine;
 
+using Spectara.Revela.Sdk.Output;
+
 using Spectre.Console;
 
 namespace Spectara.Revela.Commands.Clean.Commands;
@@ -84,7 +86,7 @@ internal sealed partial class CleanAllCommand(ILogger<CleanAllCommand> logger)
         }
 
         AnsiConsole.WriteLine();
-        AnsiConsole.MarkupLine("[green]✓ All clean operations completed[/]");
+        AnsiConsole.MarkupLine($"{OutputMarkers.Success} All clean operations completed");
 
         return 0;
     }

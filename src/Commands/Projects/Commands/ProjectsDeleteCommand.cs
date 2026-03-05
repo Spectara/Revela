@@ -53,7 +53,7 @@ internal sealed partial class ProjectsDeleteCommand(
 
         if (!Directory.Exists(projectsDir))
         {
-            AnsiConsole.MarkupLine("[yellow]No projects directory found.[/]");
+            AnsiConsole.MarkupLine($"{OutputMarkers.Warning} No projects directory found.");
             return;
         }
 
@@ -61,7 +61,7 @@ internal sealed partial class ProjectsDeleteCommand(
 
         if (projects.Count == 0)
         {
-            AnsiConsole.MarkupLine("[yellow]No project folders found.[/]");
+            AnsiConsole.MarkupLine($"{OutputMarkers.Warning} No project folders found.");
             return;
         }
 
@@ -93,7 +93,7 @@ internal sealed partial class ProjectsDeleteCommand(
 
         if (project == default)
         {
-            AnsiConsole.MarkupLine($"[red]Project folder '{folderName}' not found.[/]");
+            AnsiConsole.MarkupLine($"{OutputMarkers.Error} Project folder '{folderName}' not found.");
             return;
         }
 
@@ -103,7 +103,7 @@ internal sealed partial class ProjectsDeleteCommand(
 
         if (isCurrentProject)
         {
-            AnsiConsole.MarkupLine("[yellow]⚠ Warning:[/] This is the currently active project!");
+            AnsiConsole.MarkupLine($"{OutputMarkers.Warning} This is the currently active project!");
             AnsiConsole.MarkupLine("[yellow]  Revela will exit after deletion.[/]");
             AnsiConsole.WriteLine();
         }
@@ -139,7 +139,7 @@ internal sealed partial class ProjectsDeleteCommand(
         }
         catch (Exception ex)
         {
-            AnsiConsole.MarkupLine($"[red]Failed to delete:[/] {ex.Message}");
+            AnsiConsole.MarkupLine($"{OutputMarkers.Error} Failed to delete: {Markup.Escape(ex.Message)}");
         }
     }
 

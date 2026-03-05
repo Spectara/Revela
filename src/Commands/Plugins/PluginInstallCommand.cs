@@ -330,13 +330,13 @@ internal sealed partial class PluginInstallCommand(
                 var installedVersion = version ?? packageEntry?.Version ?? "latest";
                 await globalConfigManager.AddPluginAsync(packageId, installedVersion, cancellationToken);
 
-                AnsiConsole.MarkupLine($"[green]Plugin '{packageId}' installed successfully.[/]");
+                AnsiConsole.MarkupLine($"{OutputMarkers.Success} Plugin [cyan]{packageId}[/] installed successfully.");
                 AnsiConsole.MarkupLine("[dim]The plugin will be available after restarting revela.[/]");
                 return 0;
             }
             else
             {
-                AnsiConsole.MarkupLine($"[red]Failed to install plugin '{packageId}'[/]");
+                AnsiConsole.MarkupLine($"{OutputMarkers.Error} Failed to install plugin [cyan]{packageId}[/]");
                 return 1;
             }
         }

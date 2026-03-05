@@ -19,7 +19,7 @@ namespace Spectara.Revela.Plugin.Serve;
 internal sealed partial class ServeCommand(
     ILogger<ServeCommand> logger,
     IPathResolver pathResolver,
-    IOptionsMonitor<ServeConfig> serveConfig)
+    IOptionsMonitor<ServePluginConfig> serveConfig)
 {
     /// <summary>
     /// Create the serve command

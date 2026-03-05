@@ -78,7 +78,7 @@ internal sealed partial class ThemeUninstallCommand(
                 return 0;
             }
 
-            AnsiConsole.MarkupLine($"[blue]Uninstalling theme:[/] [cyan]{packageId}[/]");
+            AnsiConsole.MarkupLine($"{OutputMarkers.Info} Uninstalling theme: [cyan]{packageId}[/]");
             LogUninstallingTheme(logger, packageId);
 
             var success = await pluginManager.UninstallPluginAsync(packageId, cancellationToken: cancellationToken);

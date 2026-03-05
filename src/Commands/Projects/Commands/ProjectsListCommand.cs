@@ -5,6 +5,7 @@ using Microsoft.Extensions.Options;
 
 using Spectara.Revela.Core.Services;
 using Spectara.Revela.Sdk;
+using Spectara.Revela.Sdk.Output;
 
 using Spectre.Console;
 
@@ -47,7 +48,7 @@ internal sealed partial class ProjectsListCommand(
 
         if (!Directory.Exists(projectsDir))
         {
-            AnsiConsole.MarkupLine("[yellow]No projects directory found.[/]");
+            AnsiConsole.MarkupLine($"{OutputMarkers.Warning} No projects directory found.");
             return;
         }
 
@@ -55,7 +56,7 @@ internal sealed partial class ProjectsListCommand(
 
         if (projects.Count == 0)
         {
-            AnsiConsole.MarkupLine("[yellow]No project folders found.[/]");
+            AnsiConsole.MarkupLine($"{OutputMarkers.Warning} No project folders found.");
             AnsiConsole.MarkupLine($"[dim]Projects directory: {projectsDir}[/]");
             return;
         }

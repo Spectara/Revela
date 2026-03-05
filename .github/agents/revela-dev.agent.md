@@ -1,7 +1,7 @@
 ---
 name: Revela Dev
 description: "Revela .NET 10 static site generator development agent. Use for: implementing features, fixing bugs, adding commands/plugins/services, writing tests, reviewing code, refactoring, and any development work on the Revela codebase. Knows System.CommandLine 2.0, NetVips, Scriban, plugin architecture, IPathResolver, and all project conventions."
-tools: [read, edit, search, execute, agent, todo, web]
+tools: [vscode/getProjectSetupInfo, vscode/installExtension, vscode/memory, vscode/newWorkspace, vscode/runCommand, vscode/vscodeAPI, vscode/extensions, vscode/askQuestions, execute/runNotebookCell, execute/testFailure, execute/getTerminalOutput, execute/awaitTerminal, execute/killTerminal, execute/runTask, execute/createAndRunTask, execute/runTests, execute/runInTerminal, read/getNotebookSummary, read/problems, read/readFile, read/terminalSelection, read/terminalLastCommand, read/getTaskOutput, agent/runSubagent, edit/createDirectory, edit/createFile, edit/createJupyterNotebook, edit/editFiles, edit/editNotebook, edit/rename, search/changes, search/codebase, search/fileSearch, search/listDirectory, search/searchResults, search/textSearch, search/searchSubagent, search/usages, web/fetch, web/githubRepo, todo]
 model: ['Claude Opus 4.6 (copilot)', 'Claude Sonnet 4 (copilot)']
 ---
 

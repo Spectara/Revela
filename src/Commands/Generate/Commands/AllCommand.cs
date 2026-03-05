@@ -2,6 +2,7 @@ using System.CommandLine;
 using System.Diagnostics;
 
 using Spectara.Revela.Sdk.Abstractions;
+using Spectara.Revela.Sdk.Output;
 
 using Spectre.Console;
 
@@ -87,7 +88,7 @@ internal sealed partial class AllCommand(
         }
 
         stopwatch.Stop();
-        AnsiConsole.MarkupLine($"[green]✓ Pipeline completed in {stopwatch.Elapsed.TotalSeconds:F2}s[/]");
+        AnsiConsole.MarkupLine($"{OutputMarkers.Success} Pipeline completed in {stopwatch.Elapsed.TotalSeconds:F2}s");
         LogPipelineComplete(logger, stopwatch.Elapsed.TotalSeconds);
 
         return 0;
