@@ -162,6 +162,10 @@ public sealed class TestProject : IDisposable
                 {
                     name = "Lumina",
                     images = new { sizes = new List<int> { 320, 640, 1280, 1920 } }
+                },
+                generate = new
+                {
+                    images = new { avif = 80, webp = 85, jpg = 90 }
                 }
             };
             File.WriteAllText(
@@ -192,6 +196,7 @@ public sealed class TestProject : IDisposable
         private readonly string galleryPath;
         private readonly List<(string name, int width, int height)> images = [];
         private readonly List<(string name, int width, int height, ExifOptions exif)> realImages = [];
+        private readonly List<GalleryBuilder> subGalleries = [];
         private string? markdownContent;
 
         internal GalleryBuilder(string sourcePath, string name) => galleryPath = Path.Combine(sourcePath, name);
@@ -234,6 +239,19 @@ public sealed class TestProject : IDisposable
             var exif = ExifOptions.Create();
             configureExif?.Invoke(exif);
             realImages.Add((filename, width, height, exif));
+            return this;
+        }
+
+        /// <summary>
+        /// Adds a nested sub-gallery (subdirectory within this gallery).
+        /// </summary>
+        /// <param name="name">Sub-gallery directory name.</param>
+        /// <param name="configure">Optional sub-gallery configuration.</param>
+        public GalleryBuilder AddSubGallery(string name, Action<GalleryBuilder>? configure = null)
+        {
+            var sub = new GalleryBuilder(galleryPath, name);
+            configure?.Invoke(sub);
+            subGalleries.Add(sub);
             return this;
         }
 
@@ -288,6 +306,12 @@ public sealed class TestProject : IDisposable
                     width,
                     height,
                     exif);
+            }
+
+            // Build nested sub-galleries
+            foreach (var sub in subGalleries)
+            {
+                sub.Build();
             }
         }
 
