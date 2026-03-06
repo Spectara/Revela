@@ -1,6 +1,6 @@
 using Spectara.Revela.Core.Configuration;
 
-namespace Spectara.Revela.Core.Tests;
+namespace Spectara.Revela.Core.Tests.Configuration;
 
 [TestClass]
 [TestCategory("Unit")]

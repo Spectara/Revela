@@ -1,6 +1,6 @@
 using Spectara.Revela.Commands.Generate.Building;
 
-namespace Spectara.Revela.Commands.Tests;
+namespace Spectara.Revela.Commands.Tests.Generate.Building;
 
 /// <summary>
 /// Tests for GallerySorter natural sorting functionality

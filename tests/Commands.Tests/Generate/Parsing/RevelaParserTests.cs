@@ -1,7 +1,7 @@
 using Spectara.Revela.Commands.Generate.Models;
 using Spectara.Revela.Commands.Generate.Parsing;
 
-namespace Spectara.Revela.Commands.Tests;
+namespace Spectara.Revela.Commands.Tests.Generate.Parsing;
 
 [TestClass]
 [TestCategory("Unit")]

@@ -2,7 +2,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Spectara.Revela.Commands.Generate;
 using Spectara.Revela.Commands.Generate.Abstractions;
 
-namespace Spectara.Revela.Commands.Tests;
+namespace Spectara.Revela.Commands.Tests.Generate;
 
 [TestClass]
 [TestCategory("Unit")]

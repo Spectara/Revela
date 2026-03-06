@@ -3,7 +3,7 @@ using NSubstitute;
 using Spectara.Revela.Commands.Generate.Services;
 using Spectara.Revela.Core.Services;
 
-namespace Spectara.Revela.Commands.Tests;
+namespace Spectara.Revela.Commands.Tests.Generate.Services;
 
 [TestClass]
 [TestCategory("Unit")]
