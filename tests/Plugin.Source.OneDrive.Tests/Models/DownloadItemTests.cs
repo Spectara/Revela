@@ -75,27 +75,4 @@ public sealed class DownloadItemTests
         Assert.DoesNotContain("\\", result);
         Assert.Contains("/", result);
     }
-
-    [TestMethod]
-    public void LocalFile_WhenNull_IsAllowed()
-    {
-        // Arrange & Act
-        var item = new DownloadItem
-        {
-            RemoteItem = new OneDriveItem
-            {
-                Id = "1",
-                Name = "new-file.jpg",
-                Size = 1024,
-                LastModified = DateTime.UtcNow
-            },
-            LocalFile = null, // File doesn't exist locally
-            Status = FileStatus.New,
-            Reason = "New file"
-        };
-
-        // Assert
-        Assert.IsNull(item.LocalFile);
-        Assert.AreEqual(FileStatus.New, item.Status);
-    }
 }

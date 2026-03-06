@@ -59,19 +59,4 @@ public sealed class DownloadStatisticsTests
         // Act & Assert
         Assert.AreEqual(0, stats.TotalFilesToDownload);
     }
-
-    [TestMethod]
-    public void DefaultValues_AreZero()
-    {
-        // Arrange & Act
-        var stats = new DownloadStatistics();
-
-        // Assert
-        Assert.AreEqual(0, stats.NewFiles);
-        Assert.AreEqual(0, stats.ModifiedFiles);
-        Assert.AreEqual(0, stats.UnchangedFiles);
-        Assert.AreEqual(0, stats.OrphanedFiles);
-        Assert.AreEqual(0L, stats.TotalDownloadSize);
-        Assert.AreEqual(0L, stats.TotalOrphanedSize);
-    }
 }

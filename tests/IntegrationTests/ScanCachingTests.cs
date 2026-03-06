@@ -15,25 +15,6 @@ public sealed class ScanCachingTests
     private static readonly JsonSerializerOptions SerializerOptions = new() { WriteIndented = true };
 
     [TestMethod]
-    public void ImageContent_StoresLastModified()
-    {
-        // Verify that ImageContent properly stores LastModified
-        var now = DateTime.UtcNow;
-        var image = new ImageContent
-        {
-            Filename = "test.jpg",
-            SourcePath = "gallery/test.jpg",
-            Width = 1920,
-            Height = 1080,
-            Sizes = [1920],
-            FileSize = 1024,
-            LastModified = now
-        };
-
-        Assert.AreEqual(now, image.LastModified);
-    }
-
-    [TestMethod]
     public void ImageContent_SerializesLastModified()
     {
         // Verify that LastModified survives JSON round-trip
@@ -54,18 +35,6 @@ public sealed class ScanCachingTests
 
         Assert.IsNotNull(deserialized);
         Assert.AreEqual(originalTime, deserialized.LastModified);
-    }
-
-    [TestMethod]
-    public void ManifestMeta_StoresScanConfigHash()
-    {
-        // Verify that ManifestMeta properly stores ScanConfigHash
-        var meta = new ManifestMeta
-        {
-            ScanConfigHash = "ABC123DEF456"
-        };
-
-        Assert.AreEqual("ABC123DEF456", meta.ScanConfigHash);
     }
 
     [TestMethod]

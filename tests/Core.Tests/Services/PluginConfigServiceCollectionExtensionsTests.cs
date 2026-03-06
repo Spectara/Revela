@@ -105,6 +105,27 @@ public sealed class PluginConfigServiceCollectionExtensionsTests
         Assert.AreEqual("Default", options.Value.Name);
     }
 
+    [TestMethod]
+    public void AddPluginConfig_WithValidation_InvalidConfig_ThrowsOnAccess()
+    {
+        // Arrange: Config with empty Name (violates [Required])
+        var services = new ServiceCollection();
+        var config = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                [$"{TestPluginConfig.SectionName}:Name"] = ""
+            }!)
+            .Build();
+        services.AddSingleton<IConfiguration>(config);
+
+        services.AddPluginConfig<TestPluginConfig>(opts => opts.ValidateDataAnnotations = true);
+        var provider = services.BuildServiceProvider();
+
+        // Assert: Accessing invalid config throws OptionsValidationException
+        var options = provider.GetRequiredService<IOptions<TestPluginConfig>>();
+        Assert.ThrowsExactly<OptionsValidationException>(() => options.Value);
+    }
+
     /// <summary>
     /// Test plugin config for verifying AddPluginConfig behavior.
     /// </summary>

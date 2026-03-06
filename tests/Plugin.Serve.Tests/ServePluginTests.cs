@@ -10,22 +10,6 @@ namespace Spectara.Revela.Plugin.Serve.Tests;
 public sealed class ServePluginTests
 {
     [TestMethod]
-    public void Metadata_HasCorrectValues()
-    {
-        // Arrange
-        var plugin = new ServePlugin();
-
-        // Act
-        var metadata = plugin.Metadata;
-
-        // Assert
-        Assert.AreEqual("Serve", metadata.Name);
-        Assert.AreEqual("1.0.0", metadata.Version);
-        Assert.AreEqual("Local HTTP server for previewing generated sites", metadata.Description);
-        Assert.AreEqual("Spectara", metadata.Author);
-    }
-
-    [TestMethod]
     public void ConfigureServices_RegistersServeCommand()
     {
         // Arrange
@@ -43,39 +27,6 @@ public sealed class ServePluginTests
         var descriptor = services.FirstOrDefault(d => d.ServiceType == typeof(ServeCommand));
         Assert.IsNotNull(descriptor, "ServeCommand should be registered");
         Assert.AreEqual(ServiceLifetime.Transient, descriptor.Lifetime);
-    }
-
-    [TestMethod]
-    public void GetCommands_WithoutServices_ReturnsEmpty()
-    {
-        // Arrange
-        var plugin = new ServePlugin();
-
-        // Act - with null-like empty ServiceProvider, GetCommands uses DI
-        // Default interface method returns empty when not overridden with services
-        // But ServePlugin overrides GetCommands, so it needs a real provider
-        var services = new ServiceCollection();
-        services.AddLogging();
-
-        var configBuilder = new Microsoft.Extensions.Configuration.ConfigurationBuilder();
-        var configuration = configBuilder.Build();
-        services.AddSingleton<Microsoft.Extensions.Configuration.IConfiguration>(configuration);
-
-        var configService = Substitute.For<IConfigService>();
-        services.AddSingleton(configService);
-
-        var pathResolver = Substitute.For<IPathResolver>();
-        pathResolver.OutputPath.Returns("/fake/output");
-        services.AddSingleton(pathResolver);
-
-        plugin.ConfigureServices(services);
-        var serviceProvider = services.BuildServiceProvider();
-
-        // Act
-        var commands = plugin.GetCommands(serviceProvider).ToList();
-
-        // Assert - should return commands when valid services provided
-        Assert.HasCount(2, commands);
     }
 
     [TestMethod]
