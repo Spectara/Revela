@@ -21,9 +21,7 @@
   <ItemGroup>
     <PackageReference Include="MSTest" />
     <PackageReference Include="MSTest.Analyzers" />
-    <PackageReference Include="NSubstitute" />
-    <PackageReference Include="coverlet.collector" />
-  </ItemGroup>
+    <PackageReference Include="NSubstitute" />  </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Plugins\Plugin.Source.OneDrive\Plugin.Source.OneDrive.csproj" />

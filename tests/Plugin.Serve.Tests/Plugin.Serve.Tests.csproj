@@ -24,9 +24,7 @@
     <PackageReference Include="Microsoft.Extensions.Options" />
     <PackageReference Include="MSTest" />
     <PackageReference Include="MSTest.Analyzers" />
-    <PackageReference Include="NSubstitute" />
-    <PackageReference Include="coverlet.collector" />
-  </ItemGroup>
+    <PackageReference Include="NSubstitute" />  </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Plugins\Plugin.Serve\Plugin.Serve.csproj" />

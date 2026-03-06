@@ -23,9 +23,7 @@
   <ItemGroup>
     <PackageReference Include="MSTest" />
     <PackageReference Include="MSTest.Analyzers" />
-    <PackageReference Include="NSubstitute" />
-    <PackageReference Include="coverlet.collector" />
-  </ItemGroup>
+    <PackageReference Include="NSubstitute" />  </ItemGroup>
 
   <ItemGroup>
     <Using Include="Microsoft.VisualStudio.TestTools.UnitTesting" />

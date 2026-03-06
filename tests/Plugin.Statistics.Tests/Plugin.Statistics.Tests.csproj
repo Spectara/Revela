@@ -22,9 +22,7 @@
     <PackageReference Include="Microsoft.Extensions.Telemetry.Abstractions" />
     <PackageReference Include="MSTest" />
     <PackageReference Include="MSTest.Analyzers" />
-    <PackageReference Include="NSubstitute" />
-    <PackageReference Include="coverlet.collector" />
-  </ItemGroup>
+    <PackageReference Include="NSubstitute" />  </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Plugins\Plugin.Statistics\Plugin.Statistics.csproj" />

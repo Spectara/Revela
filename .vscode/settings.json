@@ -1,6 +1,5 @@
 {
     "dotnet.defaultSolution": "Spectara.Revela.slnx",
-    "dotnet.unitTests.runSettingsPath": "coverage.runsettings",
     "omnisharp.enableEditorConfigSupport": true,
     "editor.formatOnSave": true,
     "[csharp]": {
