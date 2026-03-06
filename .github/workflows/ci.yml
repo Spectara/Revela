@@ -54,7 +54,7 @@ jobs:
         run: dotnet build --no-restore -c Release
 
       - name: Run Tests
-        run: dotnet test --no-build -c Release --report-trx --results-directory ./TestResults --coverage --coverage-output-format cobertura
+        run: dotnet test --no-build -c Release --report-trx --results-directory ./TestResults --coverage --coverage-settings coverage.config --coverage-output-format cobertura
 
       - name: Upload Test Results
         if: always()
