@@ -150,7 +150,7 @@ newer BCL APIs, and modern idioms. If an older pattern has a modern replacement,
   // ✅ DO — built-in Spectre method
   Markup.Escape(userInput)
   ```
-- **Use `PanelStyles` extension methods** — never manually set `.Border(BoxBorder.Rounded).BorderStyle(...)`. Use `WithInfoStyle()`, `WithWarningStyle()`, `WithErrorStyle()`, `WithSuccessStyle()`, `WithStandardStyle()` from `Spectara.Revela.Sdk.PanelStyles`
+- **Use `PanelStyles` extension methods** — never manually set `.Border(BoxBorder.Rounded).BorderStyle(...)`. Use `WithInfoStyle()`, `WithWarningStyle()`, `WithErrorStyle()`, `WithSuccessStyle()` from `Spectara.Revela.Sdk.PanelStyles`
   ```csharp
   // ❌ DON'T — manual panel styling
   panel.Border(BoxBorder.Rounded).BorderStyle(new Style(Color.Cyan1));

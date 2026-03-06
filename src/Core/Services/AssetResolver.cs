@@ -88,17 +88,6 @@ public sealed partial class AssetResolver(ILogger<AssetResolver> logger) : IAsse
     }
 
     /// <inheritdoc />
-    public IReadOnlyList<string> GetOtherAssets()
-    {
-        EnsureInitialized();
-        return assets
-            .Where(kvp => !IsCss(kvp.Key) && !IsJs(kvp.Key))
-            .Select(kvp => kvp.Key)
-            .ToList()
-            .AsReadOnly();
-    }
-
-    /// <inheritdoc />
     public async Task CopyToOutputAsync(string outputDirectory, CancellationToken cancellationToken = default)
     {
         EnsureInitialized();
@@ -145,16 +134,6 @@ public sealed partial class AssetResolver(ILogger<AssetResolver> logger) : IAsse
             var sourceTypeName = entry.SourceType.ToString();
             LogCopiedAsset(key, sourceTypeName);
         }
-    }
-
-    /// <inheritdoc />
-    public IReadOnlyDictionary<string, string> GetResolvedAssets()
-    {
-        EnsureInitialized();
-
-        return assets.ToDictionary(
-            kvp => kvp.Key,
-            kvp => $"{kvp.Value.SourceType}: {kvp.Value.Path}");
     }
 
     private void ScanTheme(IThemePlugin theme)

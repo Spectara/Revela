@@ -8,18 +8,6 @@ namespace Spectara.Revela.Sdk;
 public static class PanelStyles
 {
     /// <summary>
-    /// Applies standard styling to a panel.
-    /// </summary>
-    /// <param name="panel">The panel to style.</param>
-    /// <returns>The styled panel for chaining.</returns>
-    public static Panel WithStandardStyle(this Panel panel)
-    {
-        panel.Border = BoxBorder.Rounded;
-        panel.BorderColor(Color.Cyan);
-        return panel;
-    }
-
-    /// <summary>
     /// Applies success styling to a panel (green border).
     /// </summary>
     /// <param name="panel">The panel to style.</param>

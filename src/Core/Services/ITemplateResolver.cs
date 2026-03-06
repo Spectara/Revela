@@ -37,25 +37,6 @@ public interface ITemplateResolver
     Stream? GetTemplate(string key);
 
     /// <summary>
-    /// Gets the layout template path.
-    /// </summary>
-    /// <returns>Path to layout template (convention: Layout.revela)</returns>
-    string GetLayoutPath();
-
-    /// <summary>
-    /// Gets all resolved template keys for debugging/logging.
-    /// </summary>
-    /// <returns>Dictionary of key → source description</returns>
-    IReadOnlyDictionary<string, string> GetResolvedTemplates();
-
-    /// <summary>
-    /// Checks if a template exists.
-    /// </summary>
-    /// <param name="key">Template key to check</param>
-    /// <returns>True if template exists in any source</returns>
-    bool HasTemplate(string key);
-
-    /// <summary>
     /// Gets all resolved template entries with full source information.
     /// </summary>
     /// <returns>List of resolved template entries</returns>

@@ -47,23 +47,11 @@ public interface IAssetResolver
     IReadOnlyList<string> GetScripts();
 
     /// <summary>
-    /// Gets all other assets (fonts, icons, images).
-    /// </summary>
-    /// <returns>List of asset paths relative to _assets/</returns>
-    IReadOnlyList<string> GetOtherAssets();
-
-    /// <summary>
     /// Copies all resolved assets to the output directory.
     /// </summary>
     /// <param name="outputDirectory">Output directory path</param>
     /// <param name="cancellationToken">Cancellation token</param>
     Task CopyToOutputAsync(string outputDirectory, CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Gets all resolved assets for debugging/logging.
-    /// </summary>
-    /// <returns>Dictionary of asset path → source description</returns>
-    IReadOnlyDictionary<string, string> GetResolvedAssets();
 
     /// <summary>
     /// Gets all resolved asset entries with full source information.

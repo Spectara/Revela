@@ -1,6 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
 using Spectara.Revela.Core.Services;
-using Spectara.Revela.Sdk.Abstractions;
 
 namespace Spectara.Revela.Commands.Theme;
 
@@ -26,25 +25,6 @@ internal static class ServiceCollectionExtensions
         services.AddTransient<ThemeInstallCommand>();
         services.AddTransient<ThemeUninstallCommand>();
         services.AddTransient<ThemeCommand>();
-
-        return services;
-    }
-
-    /// <summary>
-    /// Registers theme plugins with the DI container.
-    /// </summary>
-    /// <remarks>
-    /// This should be called after plugins are loaded to register
-    /// theme plugins for injection into ThemeResolver.
-    /// </remarks>
-    public static IServiceCollection AddThemePlugins(
-        this IServiceCollection services,
-        IEnumerable<IThemePlugin> themePlugins)
-    {
-        foreach (var theme in themePlugins)
-        {
-            services.AddSingleton(theme);
-        }
 
         return services;
     }

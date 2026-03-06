@@ -80,26 +80,6 @@ public sealed partial class TemplateResolver(ILogger<TemplateResolver> logger) :
         };
     }
 
-    /// <inheritdoc />
-    public string GetLayoutPath() => LayoutFileName;
-
-    /// <inheritdoc />
-    public IReadOnlyDictionary<string, string> GetResolvedTemplates()
-    {
-        EnsureInitialized();
-
-        return templates.ToDictionary(
-            kvp => kvp.Key,
-            kvp => $"{kvp.Value.SourceType}: {kvp.Value.Path}");
-    }
-
-    /// <inheritdoc />
-    public bool HasTemplate(string key)
-    {
-        EnsureInitialized();
-        return templates.ContainsKey(NormalizeKey(key));
-    }
-
     private void ScanTheme(IThemePlugin theme)
     {
         var count = 0;
