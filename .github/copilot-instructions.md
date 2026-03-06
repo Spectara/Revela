@@ -59,33 +59,22 @@ This is a **complete rewrite** of the original Bash-based revela project:
 
 ## Code Style & Conventions
 
-### General
-- **Language:** C# 14
-- **Framework:** .NET 10
-- **Namespaces:** File-scoped (`namespace Spectara.Revela.Core.Models;`)
-- **Nullable:** Enabled globally
-- **Async:** Always use `async/await`, include `CancellationToken`
+> **Detailed coding standards are in the Revela Dev agent** (`.github/agents/revela-dev.agent.md`).
+> Below is a quick reference of the most important conventions.
 
 ### Naming
 - **Private instance fields:** `camelCase` (NO underscore!)
-- **Const fields:** `PascalCase`
-- **Static readonly fields:** `PascalCase`
-- **Public members:** `PascalCase`
 - **Async methods:** `MethodNameAsync` (Async suffix)
-- **Interfaces:** `IInterfaceName` (I prefix)
-- **Local constants:** `camelCase`
-- **Parameters & locals:** `camelCase`
+- **File-scoped namespaces:** Always
 
-### Patterns
-- **Configuration:** Options Pattern (`IOptions<T>`)
-- **Logging:** `ILogger<T>` (Microsoft.Extensions.Logging)
-- **DI:** Constructor injection with Primary Constructors (C# 12)
-- **Commands:** Instance classes with DI (System.CommandLine 2.0 API)
-
-### Code Quality
-- **XML docs:** Required for public APIs
-- **Tests:** MSTest v4 + NSubstitute (built-in assertions)
-- **Warnings:** Treat as errors (TreatWarningsAsErrors=true)
+### Key Rules
+- **`var` everywhere** — never spell out the type
+- **`StringComparison.Ordinal`** — always specify on string methods
+- **`CultureInfo.InvariantCulture`** — always for formatting
+- **LoggerMessage source generator** — never string interpolation in log calls
+- **Primary constructors** for DI
+- **Sealed classes** by default
+- **`TreatWarningsAsErrors=true`** — fix root causes, don't suppress
 
 ---
 
@@ -887,6 +876,7 @@ Location: `tests/{ProjectName}.Tests/`
 namespace Spectara.Revela.Core.Tests;
 
 [TestClass]
+[TestCategory("Unit")]
 public sealed class MyServiceTests
 {
     [TestMethod]
@@ -930,155 +920,6 @@ public sealed class MyServiceTests
 - **UrlBuilder.ToSlug()** lowercases all names → output paths are always lowercase
 - **File path assertions**: Use lowercase slugs, not original gallery names (`"landscapes"` not `"Landscapes"`)
 - **Linux CI is case-sensitive** — tests that pass on Windows may fail on Ubuntu
-```
-
-### Testing Internal Classes
-
-**Use `InternalsVisibleTo` for testing internal classes:**
-
-```csharp
-// src/Plugins/Plugin.Source.OneDrive/AssemblyInfo.cs
-using System.Runtime.CompilerServices;
-
-[assembly: InternalsVisibleTo("Spectara.Revela.Plugin.Source.OneDrive.Tests")]
-```
-
-**Important:** Use the full assembly name (with `Spectara.Revela.` prefix)!
-
-### MSTest v4 Assertion Patterns
-
-**Use modern MSTest v4 assertions instead of classic patterns:**
-
-```csharp
-// ❌ DON'T - Classic patterns (trigger MSTEST0037 warning)
-Assert.AreEqual(0, list.Count);
-Assert.AreEqual(3, list.Count);
-Assert.IsTrue(list.Count > 0);
-Assert.IsTrue(text.Contains("foo"));
-Assert.IsFalse(text.Contains("bar"));
-
-// ✅ DO - MSTest v4 assertions (clearer intent, better error messages)
-Assert.IsEmpty(list);
-Assert.HasCount(3, list);
-Assert.IsNotEmpty(list);
-Assert.Contains("foo", text);
-Assert.DoesNotContain("bar", text);
-```
-
-**Available MSTest v4 Collection Assertions:**
-- `Assert.IsEmpty(collection)` - Collection has no elements
-- `Assert.IsNotEmpty(collection)` - Collection has at least one element
-- `Assert.HasCount(expected, collection)` - Collection has exact count
-- `Assert.Contains(expected, collection)` - Collection contains element
-- `Assert.DoesNotContain(expected, collection)` - Collection doesn't contain element
-
-**String Assertions:**
-- `Assert.Contains(substring, text)` - String contains substring
-- `Assert.DoesNotContain(substring, text)` - String doesn't contain substring
-
-### HTTP Mocking Pattern
-
-**For testing services with HttpClient:**
-
-```csharp
-public sealed class MockHttpMessageHandler : HttpMessageHandler
-{
-    private readonly Dictionary<Uri, HttpResponseMessage> responses = [];
-
-    public void AddResponse(Uri uri, HttpResponseMessage response) =>
-        responses[uri] = response;
-
-    protected override Task<HttpResponseMessage> SendAsync(
-        HttpRequestMessage request,
-        CancellationToken cancellationToken)
-    {
-        if (responses.TryGetValue(request.RequestUri!, out var response))
-            return Task.FromResult(response);
-        return Task.FromResult(new HttpResponseMessage(HttpStatusCode.NotFound));
-    }
-}
-
-// Usage in test:
-var handler = new MockHttpMessageHandler();
-handler.AddResponse(new Uri("https://api.example.com/data"), 
-    new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent("{}") });
-
-var httpClient = new HttpClient(handler);
-var service = new MyService(httpClient, logger);
-```
-
-### Culture-Independent Formatting
-
-**Always use `CultureInfo.InvariantCulture` for consistent output:**
-
-```csharp
-// ❌ DON'T - Culture-dependent (1,5 vs 1.5)
-return $"{value:0.##} MB";
-
-// ✅ DO - Culture-independent
-return string.Format(CultureInfo.InvariantCulture, "{0:0.##} MB", value);
-```
-
-### Console Output Standards
-
-**Use `OutputMarkers` from `Spectara.Revela.Sdk.Output` for consistent console feedback:**
-
-```csharp
-using Spectara.Revela.Sdk.Output;
-
-// Success: completed actions, successful operations
-AnsiConsole.MarkupLine($"{OutputMarkers.Success} Operation completed");
-// Output: ✓ Operation completed (green)
-
-// Error: failed operations, validation errors
-AnsiConsole.MarkupLine($"{OutputMarkers.Error} Failed to process file");
-// Output: ✗ Failed to process file (red)
-
-// Warning: skipped items, potential issues, non-critical problems
-AnsiConsole.MarkupLine($"{OutputMarkers.Warning} File already exists");
-// Output: ⚠ File already exists (yellow)
-
-// Info: informational messages, hints, neutral status updates
-AnsiConsole.MarkupLine($"{OutputMarkers.Info} Processing 5 items...");
-// Output: ℹ Processing 5 items... (blue)
-```
-
-**Available Constants:**
-| Constant | Symbol | Color | Use For |
-|----------|--------|-------|---------|
-| `OutputMarkers.Success` | ✓ | Green | Completed actions, passed validation |
-| `OutputMarkers.Error` | ✗ | Red | Failed operations, errors |
-| `OutputMarkers.Warning` | ⚠ | Yellow | Skipped items, potential issues |
-| `OutputMarkers.Info` | ℹ | Blue | Informational messages, hints |
-
-**❌ DON'T use raw markup strings:**
-```csharp
-// ❌ DON'T - Inconsistent symbols
-AnsiConsole.MarkupLine("[green]OK[/] Done");
-AnsiConsole.MarkupLine("[red]x[/] Failed");
-AnsiConsole.MarkupLine("[yellow]![/] Warning");
-
-// ✅ DO - Use OutputMarkers
-AnsiConsole.MarkupLine($"{OutputMarkers.Success} Done");
-AnsiConsole.MarkupLine($"{OutputMarkers.Error} Failed");
-AnsiConsole.MarkupLine($"{OutputMarkers.Warning} Warning");
-```
-
-### Registering Services
-Location: `src/Commands/{FeatureName}/Extensions/` or `src/Core/Extensions/`
-
-```csharp
-namespace Spectara.Revela.Commands.MyFeature;
-
-public static class ServiceCollectionExtensions
-{
-    public static IServiceCollection AddMyFeature(this IServiceCollection services)
-    {
-        services.AddScoped<IMyService, MyService>();
-        return services;
-    }
-}
-```
 
 ---
 
@@ -1296,55 +1137,6 @@ dotnet run --project tests/Core.Tests
 - Reference existing patterns in codebase
 - Consider backward compatibility
 - Think about testability
-
----
-
-**Last Updated:** 2026-03-06 (Session: Test infrastructure, coverage migration, test quality audit)
-
-**Key Learnings from Latest Sessions:**
-- ✅ Plugin ConfigureServices pattern (4-phase lifecycle)
-- ✅ Typed HttpClient for plugins
-- ✅ Parent Command declaration in CommandDescriptor (not metadata)
-- ✅ ConfigurationBuilder + Data Annotations validation
-- ✅ Two-phase progress display (Scan + Download)
-- ✅ Parallel.ForEachAsync for I/O-bound operations
-- ✅ LoggingConfig with defaults (no appsettings.json needed)
-- ✅ InternalsVisibleTo for testing internal classes
-- ✅ CultureInfo.InvariantCulture for consistent formatting
-- ✅ MockHttpMessageHandler for HTTP testing
-- ✅ MSTest v4 built-in assertions (HasCount, IsEmpty, Contains, etc.)
-- ✅ FluentAssertions removed - use MSTest v4 assertions only
-- ✅ **Template Context:** `image_formats` is global, `image.sizes` is per-image
-- ✅ **Manifest optimization:** Formats removed from ImageContent (redundant)
-- ✅ **Template simplification:** No local variables needed, direct property access
-- ✅ **Parallel image processing:** 5× speedup with Parallel.ForEachAsync
-- ✅ **LibVips thread-safety:** Safe for independent images, no global lock needed
-- ✅ **NetVips Cache.Max = 0:** Disable cache for batch processing (saves memory)
-- ✅ **Format-specific quality:** AVIF:80, WebP:85, JPG:90 (22% smaller files)
-- ✅ **AVIF support:** AV1 compression via Heifsave with ForeignHeifCompression.Av1
-- ✅ **Interactive CLI:** Menu-driven interface when running without arguments
-- ✅ **`generate all` command:** Explicit pipeline execution (scan → statistics → pages → images)
-- ✅ **`clean` subcommands:** all, output, cache, statistics (no more flags)
-- ✅ **CommandOrderRegistry:** Controls menu order in interactive mode
-- ✅ **Debug builds:** Plugins as project references, no DLL copying needed
-- ✅ **IPathResolver:** Dynamic path resolution for source/output directories
-- ✅ **PathsConfig:** Configurable paths via project.json `paths` section
-- ✅ **ProjectPaths cleanup:** Source/Output constants removed - use IPathResolver
-- ✅ **TTY detection:** Graceful fallback when interactive mode lacks terminal
-- ✅ **LQIP Placeholders:** CSS-only low-quality image placeholders via CssHash
-- ✅ **Change Detection:** Manifest tracks LastModified + FileSize + SHA256 hash
-- ✅ **FormatQualities:** Quality settings tracked in manifest, auto-regenerate on change
-- ✅ **Setup Wizard:** RevelaWizard (first-time) + ProjectWizard (project-level)
-- ✅ **ConfigPathResolver:** Portable vs. AppData config resolution
-- ✅ **ProjectResolver:** Standalone mode project detection before host.Build()
-- ✅ **ProjectEnvironment:** Runtime project info (Path, IsInitialized)
-- ✅ **site.json:** NOT loaded via IConfiguration — loaded dynamically by RenderService
-- ✅ **Plugin.Compress:** Gzip/Brotli pre-compression (NOT part of generate all pipeline)
-- ✅ **Test Infrastructure:** TestProject + RevelaTestHost + TestImageGenerator in tests/Shared/Fixtures/
-- ✅ **Microsoft Code Coverage:** Replaced coverlet.collector — use `--coverage` flag, settings in `coverage.config`
-- ✅ **coverage.config:** Precision filters — excludes Command.Create(), Plugin lifecycle, ServiceCollectionExtensions, auto-properties
-- ✅ **Test Quality:** No C#/framework tests — only test OUR decisions. Default-value and computed-property tests are valid.
-- ✅ **Cross-Platform Paths:** UrlBuilder.ToSlug() lowercases everything — use lowercase in test assertions
 
 **Template Context Variables:**
 - `site` - Site settings (title, author, description, copyright)
