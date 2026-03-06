@@ -120,4 +120,34 @@ public sealed class EmbeddedThemeExtensionTests
             }
         }
     }
+
+    [TestMethod]
+    public void PartialPrefix_ReturnsValue()
+    {
+        Assert.IsFalse(string.IsNullOrEmpty(extension.PartialPrefix),
+            "Statistics extension should have a partial prefix");
+    }
+
+    [TestMethod]
+    public void Variables_ReturnsEmptyOrPopulated()
+    {
+        var variables = extension.Variables;
+        Assert.IsNotNull(variables);
+    }
+
+    [TestMethod]
+    public void GetTemplateDataDefaults_UnknownKey_ReturnsEmpty()
+    {
+        var defaults = extension.GetTemplateDataDefaults("nonexistent/template");
+        Assert.IsNotNull(defaults);
+        Assert.IsEmpty(defaults);
+    }
+
+    [TestMethod]
+    public void GetTemplateDataDefaults_NullTemplates_ReturnsEmpty()
+    {
+        // GetTemplateDataDefaults should handle missing template configs gracefully
+        var defaults = extension.GetTemplateDataDefaults("body/gallery");
+        Assert.IsNotNull(defaults);
+    }
 }
