@@ -85,6 +85,7 @@ Follow these rules strictly — they are enforced by .editorconfig as warnings/e
 - HTTP mocking: `MockHttpMessageHandler` pattern
 - Test naming: `MethodName_Condition_ExpectedResult`
 - **Coverage**: Microsoft Code Coverage (`--coverage`), NOT Coverlet. Settings in `coverage.config`
+- **`coverage.config`**: Maintains precision filters for what IS and ISN'T measured. When adding new ServiceCollectionExtensions, Commands with `Create()` methods, or Plugin lifecycle methods, check if `coverage.config` Functions/Sources excludes need updating. The goal: only measure code where WE make decisions, not framework wiring.
 
 ### Test Strategy (Three Layers)
 - **Unit Tests**: Pure logic, no I/O — Filtering, Parsing, Building, Formatting
