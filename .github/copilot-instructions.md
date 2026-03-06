@@ -905,6 +905,33 @@ public sealed class MyServiceTests
 }
 ```
 
+### Test Strategy (Three Layers)
+- **Unit Tests**: Pure logic, no I/O — Filtering, Parsing, Building, Formatting
+- **Integration Tests**: Real filesystem via `TestProject` + `RevelaTestHost` fixtures
+- **E2E Tests**: Full pipeline (scan → render → images) with `TestImageGenerator` for real JPEGs
+
+### Test Infrastructure (`tests/Shared/Fixtures/`)
+- **`TestProject`**: Fluent builder for temp project dirs — `TestProject.Create(p => p.AddGallery(...))`
+- **`RevelaTestHost`**: Builds real DI container with `IOptions<T>` from project.json
+- **`TestImageGenerator`**: Creates real JPEG images with EXIF via NetVips — `TestImageGenerator.CreateJpeg(path, exif: ...)`
+- **`GalleryBuilder.AddRealImage()`**: Combines TestProject + TestImageGenerator for E2E tests
+- **`GalleryBuilder.AddImage()`**: 4-byte JPEG stub for fast scan tests (no real pixels)
+
+### Test Quality Rules — What NOT to Test
+- **No C# language tests**: Don't assert that a property returns the value you just set
+- **No framework tests**: Don't verify `IOptions<T>` resolves (that's Microsoft's job)
+- **No hardcoded string tests**: Don't assert `metadata.Name == "Serve"` (tautology)
+- **No duplicate tests**: If two tests have identical logic, keep the one with better assertions
+- **Every test MUST have a meaningful assertion** — no "call and hope it doesn't throw"
+- **Default-value tests ARE valid**: They prevent accidental changes to config defaults
+- **Computed property tests ARE valid**: `TotalFiles = New + Modified` is our logic
+
+### Cross-Platform Testing
+- **UrlBuilder.ToSlug()** lowercases all names → output paths are always lowercase
+- **File path assertions**: Use lowercase slugs, not original gallery names (`"landscapes"` not `"Landscapes"`)
+- **Linux CI is case-sensitive** — tests that pass on Windows may fail on Ubuntu
+```
+
 ### Testing Internal Classes
 
 **Use `InternalsVisibleTo` for testing internal classes:**
@@ -1094,7 +1121,7 @@ public static class ServiceCollectionExtensions
 - `MSTest` (4.1.0) - Modern test framework with Microsoft.Testing.Platform
 - `MSTest.Analyzers` (4.1.0)
 - `NSubstitute` (5.3.0) - Mocking framework (preferred over Moq due to security concerns)
-- `coverlet.collector` (6.0.4) - Code coverage
+- Microsoft Code Coverage (built-in with MSTest 4.1) - `--coverage` flag, settings in `coverage.config`
 
 ### Benchmarking
 - `BenchmarkDotNet` (0.15.8) - Performance benchmarks
@@ -1272,7 +1299,7 @@ dotnet run --project tests/Core.Tests
 
 ---
 
-**Last Updated:** 2026-02-23 (Session: Core refactoring - DI GlobalConfigManager, GenerateConfig split, collection expressions)
+**Last Updated:** 2026-03-06 (Session: Test infrastructure, coverage migration, test quality audit)
 
 **Key Learnings from Latest Sessions:**
 - ✅ Plugin ConfigureServices pattern (4-phase lifecycle)
@@ -1313,6 +1340,11 @@ dotnet run --project tests/Core.Tests
 - ✅ **ProjectEnvironment:** Runtime project info (Path, IsInitialized)
 - ✅ **site.json:** NOT loaded via IConfiguration — loaded dynamically by RenderService
 - ✅ **Plugin.Compress:** Gzip/Brotli pre-compression (NOT part of generate all pipeline)
+- ✅ **Test Infrastructure:** TestProject + RevelaTestHost + TestImageGenerator in tests/Shared/Fixtures/
+- ✅ **Microsoft Code Coverage:** Replaced coverlet.collector — use `--coverage` flag, settings in `coverage.config`
+- ✅ **coverage.config:** Precision filters — excludes Command.Create(), Plugin lifecycle, ServiceCollectionExtensions, auto-properties
+- ✅ **Test Quality:** No C#/framework tests — only test OUR decisions. Default-value and computed-property tests are valid.
+- ✅ **Cross-Platform Paths:** UrlBuilder.ToSlug() lowercases everything — use lowercase in test assertions
 
 **Template Context Variables:**
 - `site` - Site settings (title, author, description, copyright)
