@@ -111,11 +111,12 @@ public sealed class GenerateAllEndToEndTests
         Assert.IsTrue(File.Exists(indexHtml),
             "Root index.html should be generated");
 
-        var landscapesHtml = Path.Combine(project.OutputPath, "Landscapes", "index.html");
+        // Slugs are lowercase (UrlBuilder.ToSlug lowercases all names)
+        var landscapesHtml = Path.Combine(project.OutputPath, "landscapes", "index.html");
         Assert.IsTrue(File.Exists(landscapesHtml),
             "Landscapes gallery page should be generated");
 
-        var portraitsHtml = Path.Combine(project.OutputPath, "Portraits", "index.html");
+        var portraitsHtml = Path.Combine(project.OutputPath, "portraits", "index.html");
         Assert.IsTrue(File.Exists(portraitsHtml),
             "Portraits gallery page should be generated");
 
