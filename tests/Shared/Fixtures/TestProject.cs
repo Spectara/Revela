@@ -191,24 +191,49 @@ public sealed class TestProject : IDisposable
     {
         private readonly string galleryPath;
         private readonly List<(string name, int width, int height)> images = [];
+        private readonly List<(string name, int width, int height, ExifOptions exif)> realImages = [];
         private string? markdownContent;
 
         internal GalleryBuilder(string sourcePath, string name) => galleryPath = Path.Combine(sourcePath, name);
 
         /// <summary>
-        /// Adds a test image to the gallery.
+        /// Adds a test image stub to the gallery (minimal 4-byte JPEG).
         /// </summary>
         /// <remarks>
         /// Creates a minimal valid JPEG file (not a real image, but enough
         /// for scanning and metadata tests). For image processing tests
-        /// that need real pixels, use TestDataHelper.RequireTestImage.
+        /// that need real pixels and EXIF, use <see cref="AddRealImage"/>.
         /// </remarks>
         /// <param name="filename">Image filename (e.g., "sunset.jpg").</param>
-        /// <param name="width">Reported width (stored in filename pattern, not EXIF).</param>
-        /// <param name="height">Reported height (stored in filename pattern, not EXIF).</param>
+        /// <param name="width">Reported width (not embedded in file).</param>
+        /// <param name="height">Reported height (not embedded in file).</param>
         public GalleryBuilder AddImage(string filename = "test.jpg", int width = 1920, int height = 1080)
         {
             images.Add((filename, width, height));
+            return this;
+        }
+
+        /// <summary>
+        /// Adds a real JPEG image with actual pixels and EXIF metadata.
+        /// </summary>
+        /// <remarks>
+        /// Uses NetVips to generate a gradient image with embedded EXIF data.
+        /// Use this when testing image processing, EXIF extraction, resize,
+        /// or format conversion.
+        /// </remarks>
+        /// <param name="filename">Image filename (e.g., "sunset.jpg").</param>
+        /// <param name="width">Image width in pixels.</param>
+        /// <param name="height">Image height in pixels.</param>
+        /// <param name="configureExif">Optional EXIF configuration.</param>
+        public GalleryBuilder AddRealImage(
+            string filename = "photo.jpg",
+            int width = 1920,
+            int height = 1080,
+            Action<ExifOptions>? configureExif = null)
+        {
+            var exif = ExifOptions.Create();
+            configureExif?.Invoke(exif);
+            realImages.Add((filename, width, height, exif));
             return this;
         }
 
@@ -249,10 +274,20 @@ public sealed class TestProject : IDisposable
                     markdownContent);
             }
 
-            // Create minimal JPEG files
+            // Create minimal JPEG stubs (fast, for scan tests)
             foreach (var (name, _, _) in images)
             {
                 CreateMinimalJpeg(Path.Combine(galleryPath, name));
+            }
+
+            // Create real JPEG images with pixels and EXIF (for processing tests)
+            foreach (var (name, width, height, exif) in realImages)
+            {
+                TestImageGenerator.CreateJpeg(
+                    Path.Combine(galleryPath, name),
+                    width,
+                    height,
+                    exif);
             }
         }
 
