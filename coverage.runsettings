@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Coverage configuration for Revela test runs.
+  
+  Filters coverage to only include Revela source assemblies,
+  excluding test projects, shared test utilities, and benchmarks.
+  
+  Usage:
+    dotnet test --collect:"XPlat Code Coverage" --settings coverage.runsettings
+    
+  VS Code:
+    Set "dotnet.unitTests.runSettingsPath": "coverage.runsettings" in settings.json
+    
+  References:
+    https://github.com/coverlet-coverage/coverlet/blob/master/Documentation/VSTestIntegration.md
+-->
+<RunSettings>
+  <DataCollectionRunSettings>
+    <DataCollectors>
+      <DataCollector friendlyName="XPlat code coverage">
+        <Configuration>
+          <!-- Assembly filter syntax: [Assembly-Filter]Type-Filter -->
+          <!-- Only measure Revela source assemblies -->
+          <Include>[Spectara.Revela.*]*,[revela]*</Include>
+
+          <!-- Exclude test assemblies -->
+          <Exclude>[*.Tests]*,[Spectara.Revela.Tests.Shared]*,[Spectara.Revela.IntegrationTests]*</Exclude>
+
+          <!-- Exclude types with these attributes -->
+          <ExcludeByAttribute>ExcludeFromCodeCoverage,GeneratedCodeAttribute,CompilerGeneratedAttribute</ExcludeByAttribute>
+
+          <!-- Exclude auto-generated source files -->
+          <ExcludeByFile>**/*.g.cs</ExcludeByFile>
+
+          <!-- Skip auto-properties (get; set; with no logic) -->
+          <SkipAutoProps>true</SkipAutoProps>
+
+          <!-- Cobertura format for CI/report tools -->
+          <Format>cobertura</Format>
+
+          <!-- Deterministic paths for CI -->
+          <DeterministicReport>true</DeterministicReport>
+        </Configuration>
+      </DataCollector>
+    </DataCollectors>
+  </DataCollectionRunSettings>
+</RunSettings>
