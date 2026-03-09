@@ -200,7 +200,7 @@ header {
     padding: 0;
   }
 
-  :not(pre) > code {
+  :not(pre)>code {
     background: light-dark(oklch(0.94 0.01 260 / 0.8), oklch(0.23 0.02 260 / 0.6));
     border: 1px solid var(--glass-border);
     border-radius: 0.25rem;
