@@ -92,3 +92,17 @@ revela plugin install MyPlugin --source https://my-feed.example.com/v3/index.jso
 ```
 
 > **Note:** Community plugins are not verified by Spectara. Install at your own risk.
+
+## Restoring Dependencies
+
+After cloning a project, updating Revela, or sharing your project with someone else, use `restore` to install all required themes and plugins:
+
+```bash
+# Install missing themes and plugins
+revela restore
+
+# Check only (don't install)
+revela restore --check
+```
+
+Revela reads the `theme`, `themes`, and `plugins` sections from your configuration and installs anything that's missing.

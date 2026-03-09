@@ -26,14 +26,14 @@ revela config site --title "My Portfolio" --author "John Doe"
 
 ```json
 {
-  "name": "my-portfolio",
+  "project": {
+    "name": "my-portfolio",
+    "basePath": "/",
+    "language": "en"
+  },
   "paths": {
     "source": "source",
     "output": "output"
-  },
-  "project": {
-    "basePath": "/",
-    "language": "en"
   },
   "theme": {
     "name": "Lumina"
@@ -136,6 +136,7 @@ After `revela generate all`, your site is immediately live—no file copying nee
 | `revela config image` | Image formats and quality |
 | `revela config sorting` | Gallery and image sort order |
 | `revela config feed` | NuGet package sources |
+| `revela config locations` | Show configuration file paths |
 
 ## Site Metadata
 

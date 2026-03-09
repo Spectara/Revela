@@ -1,0 +1,142 @@
++++
+title = "Installation"
+template = "docs"
+pinned = true
++++
+
+Revela runs on **Windows**, **macOS**, and **Linux**. Choose the installation method that suits you best.
+
+## Option 1: Standalone (Recommended)
+
+Download, extract, run. No prerequisites needed.
+
+### Windows (x64)
+
+```bash
+# Download and extract
+curl -L https://github.com/Spectara/Revela/releases/latest/download/revela-standalone-win-x64.zip -o revela.zip
+Expand-Archive revela.zip -DestinationPath D:\Revela
+```
+
+Or simply download the `.zip` from [GitHub Releases](https://github.com/Spectara/Revela/releases), right-click → Extract All.
+
+### macOS (Apple Silicon)
+
+```bash
+curl -L https://github.com/Spectara/Revela/releases/latest/download/revela-standalone-osx-arm64.tar.gz | tar xz
+chmod +x revela
+```
+
+### Linux (x64)
+
+```bash
+curl -L https://github.com/Spectara/Revela/releases/latest/download/revela-standalone-linux-x64.tar.gz | tar xz
+chmod +x revela
+```
+
+### Standalone Directory Structure
+
+After extraction, your directory looks like this:
+
+```
+D:\Revela\
+├── revela.exe          # The executable
+├── revela.json         # Global configuration (created on first run)
+├── packages/           # Installed themes & plugins
+└── projects/           # Your projects (one folder per site)
+    └── MyPhotos/
+        ├── project.json
+        ├── site.json
+        ├── source/
+        └── output/
+```
+
+**Key feature:** In standalone mode, Revela manages multiple projects in the `projects/` folder. Double-click `revela.exe` to start the interactive menu with project selection.
+
+---
+
+## Option 2: .NET Global Tool
+
+If you have the [.NET SDK](https://dotnet.microsoft.com/download) installed (version 10 or later):
+
+```bash
+dotnet tool install -g Spectara.Revela
+```
+
+### Update
+
+```bash
+dotnet tool update -g Spectara.Revela
+```
+
+### Usage
+
+Navigate to your project directory and run commands directly:
+
+```bash
+cd ~/my-photography-website
+revela generate all
+```
+
+### Differences from Standalone
+
+| Feature | Standalone | .NET Global Tool |
+|---------|-----------|-----------------|
+| **Prerequisites** | None | .NET 10 SDK |
+| **Projects** | Multiple (managed in `projects/`) | One per directory |
+| **Config location** | Next to `revela.exe` | `%APPDATA%/Revela/` |
+| **Project selection** | Interactive menu | Navigate to project dir |
+| **`revela projects`** | Available | Not available |
+| **Interactive mode** | Double-click exe | Run `revela` without args |
+
+---
+
+## First Run
+
+After installation, run `revela` without arguments:
+
+```bash
+revela
+```
+
+On first run, the **Setup Wizard** starts automatically:
+
+1. **Install themes and plugins** — Full or custom installation
+2. **Create a project** — Folder name and settings
+3. **Ready to go** — Add photos and generate
+
+See the [User Journey](../00%20user-journey/) for a complete walkthrough.
+
+---
+
+## Verifying Installation
+
+```bash
+revela --version
+```
+
+Check where Revela stores its configuration:
+
+```bash
+revela config locations
+```
+
+---
+
+## Updating
+
+### Standalone
+
+Download the latest release and replace `revela.exe`. Your `revela.json`, `packages/`, and `projects/` folders are preserved.
+
+### .NET Global Tool
+
+```bash
+dotnet tool update -g Spectara.Revela
+```
+
+After updating, restore your dependencies:
+
+```bash
+revela restore
+```

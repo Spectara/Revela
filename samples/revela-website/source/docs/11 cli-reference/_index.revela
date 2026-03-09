@@ -1,0 +1,201 @@
++++
+title = "CLI Reference"
+template = "docs"
+pinned = true
++++
+
+Complete reference of all Revela commands. Commands are organized by function.
+
+> **Tip:** Run any command with `--help` for detailed usage information.
+> Run `revela` without arguments for the interactive menu.
+
+---
+
+## Global Options
+
+| Option | Alias | Description |
+|--------|-------|-------------|
+| `--project` | `-p` | Project name or path (standalone mode) |
+| `--version` | | Show version information |
+| `--help` | `-h` | Show help |
+
+---
+
+## Generate (Build)
+
+Build your site from source content.
+
+```bash
+revela generate all                  # Full pipeline: scan → statistics → pages → images
+revela generate scan                 # Scan content and update manifest
+revela generate pages                # Render HTML pages from manifest
+revela generate images               # Process images from manifest
+revela generate images --force       # Force regenerate all images (ignore cache)
+```
+
+### Plugin Generate Steps
+
+```bash
+revela generate statistics           # Generate EXIF statistics (Statistics plugin)
+revela generate compress             # Pre-compress static files (Compress plugin)
+```
+
+> **Note:** `generate all` runs `scan → statistics → pages → images`. Compression is **not** included — run `generate compress` separately.
+
+---
+
+## Clean
+
+Remove generated files.
+
+```bash
+revela clean all                     # Clean everything
+revela clean output                  # Clean output directory
+revela clean images                  # Clean orphaned/unused image files
+revela clean images --dry-run        # Preview what would be deleted
+revela clean cache                   # Clean manifest cache
+```
+
+### Plugin Clean Steps
+
+```bash
+revela clean statistics              # Clean statistics cache
+revela clean compress                # Clean compressed files (.gz, .br)
+```
+
+---
+
+## Create
+
+Create new pages in your project.
+
+```bash
+revela create page gallery vacation --title "Summer Vacation"
+revela create page text about --title "About Me"
+revela create page statistics stats --title "Photo Statistics"
+```
+
+### Options
+
+| Option | Alias | Description |
+|--------|-------|-------------|
+| `--title` | `-t` | Page title |
+| `--description` | `-d` | Description (for SEO) |
+| `--sort` | `-s` | Sort override (gallery only) |
+| `--hidden` | | Hide from navigation |
+| `--slug` | | Custom URL segment |
+
+Run without the path argument for **interactive mode**:
+
+```bash
+revela create page gallery           # Interactive prompts for all options
+```
+
+---
+
+## Config
+
+Configure project settings interactively or directly.
+
+```bash
+revela config                        # Interactive configuration menu
+revela config project                # Project name and URL
+revela config theme                  # Select site theme
+revela config site                   # Site metadata (title, author, description)
+revela config paths                  # Source and output directories
+revela config image                  # Image formats and quality
+revela config sorting                # Gallery and image sort order
+revela config feed                   # NuGet package sources
+revela config locations              # Show configuration file paths
+```
+
+### Plugin Config Commands
+
+```bash
+revela config serve                  # Dev server settings (Serve plugin)
+revela config statistics             # Statistics settings (Statistics plugin)
+revela config onedrive               # OneDrive share URL (OneDrive plugin)
+```
+
+---
+
+## Theme
+
+Manage themes.
+
+```bash
+revela theme list                    # List installed themes
+revela theme install Lumina          # Install a theme
+revela theme uninstall Lumina        # Remove a theme
+revela theme files                   # List files in active theme
+revela theme files --theme Lumina    # List files in specific theme
+revela theme extract Lumina          # Extract theme for customization
+revela theme extract Lumina --file Body/Gallery.revela  # Extract specific file
+revela theme extract Lumina --force  # Overwrite existing files
+```
+
+---
+
+## Plugin
+
+Manage plugins.
+
+```bash
+revela plugin list                   # List installed plugins
+revela plugin install Statistics     # Install by short name
+revela plugin install Spectara.Revela.Plugin.Statistics  # Install by full ID
+revela plugin install Statistics --version 1.2.0         # Specific version
+revela plugin uninstall Statistics   # Remove a plugin
+```
+
+---
+
+## Serve (Plugin)
+
+Start a local development server.
+
+```bash
+revela serve                         # Start server (default port 8080)
+revela serve --port 3000             # Custom port
+revela serve --verbose               # Log all HTTP requests
+```
+
+---
+
+## Source (Plugin)
+
+Sync content from external sources.
+
+```bash
+revela source onedrive sync          # Sync from OneDrive shared folder
+revela source onedrive sync --dry-run    # Preview changes
+revela source onedrive sync --force      # Force re-download all files
+revela source onedrive sync --clean      # Remove files no longer in OneDrive
+revela source onedrive sync --clean-all  # Remove ALL local files and re-download
+```
+
+---
+
+## Restore
+
+Restore project dependencies (themes and plugins) from configuration.
+
+```bash
+revela restore                       # Install missing dependencies
+revela restore --check               # Check only (don't install)
+```
+
+Useful after cloning a project or updating Revela. Reads the `theme`, `themes`, and `plugins` sections from your configuration and installs anything that's missing.
+
+---
+
+## Projects (Standalone Only)
+
+Manage multiple projects. Only available in standalone/portable mode.
+
+```bash
+revela projects list                 # List all projects
+revela projects create               # Create a new project (interactive)
+revela projects delete               # Delete a project (with confirmation)
+revela projects delete MyPhotos      # Delete specific project
+```

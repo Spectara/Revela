@@ -1000,7 +1000,7 @@ dotnet test tests/Plugin.Statistics.Tests
 ```bash
 dotnet run --project src/Cli -- --help
 cd samples/filter-demo && dotnet run --project ../../src/Cli -- generate all
-cd samples/filter-demo && dotnet run --project ../../src/Cli -- source onedrive download
+cd samples/filter-demo && dotnet run --project ../../src/Cli -- source onedrive sync
 ```
 
 ### Package as Tool

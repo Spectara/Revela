@@ -8,7 +8,7 @@ This document describes the complete lifecycle of a Revela project from the pers
 
 > **Setup:** This guide assumes **Windows** with the **Standalone** version of Revela (no .NET SDK required). Paths use Windows conventions (`D:\Revela\`). For other platforms or the .NET Tool version, see [Installation](../installation).
 >
-> This guide uses the **interactive TUI** (double-click `revela.exe`). All actions can also be performed via CLI commands - see [CLI Reference](../../getting-started/cli-reference).
+> This guide uses the **interactive TUI** (double-click `revela.exe`). All actions can also be performed via CLI commands - see [CLI Reference](../cli-reference).
 
 ## Phase 1: First Run (Installing Revela)
 
