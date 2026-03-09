@@ -2,64 +2,67 @@
    Aurora Theme Customization for Lumina
 
    Project-level overrides for revela.website
-   - Purple accent color
-   - Hero section
-   - Page content styles
-   - Docs layout with sidebar
+   Glassmorphism with accent colors from logo gradient.
+   Pure CSS, no JavaScript.
+
+   Modern CSS features used:
+   - oklch() — perceptually uniform color space
+   - light-dark() — automatic theme adaptation
+   - color-mix(in oklch) — perceptual color blending
+   - backdrop-filter — frosted glass panels
+   - border-image — gradient underlines
    ============================================ */
 
 /* ============================================
-   Accent Color Override
+   Design Tokens (OKLCH)
    ============================================ */
 :root {
-  --accent: light-dark(hsl(263 70% 30%), hsl(263 70% 70%));
-  --accent-light: light-dark(hsl(309 60% 50%), hsl(309 60% 50%));
-  --code-bg: light-dark(hsl(220 20% 20%), hsl(220 20% 15%));
-  --code-color: light-dark(hsl(0 0% 88%), hsl(0 0% 88%));
+  --accent: light-dark(oklch(0.40 0.14 260), oklch(0.72 0.13 220));
+  --accent-light: light-dark(oklch(0.47 0.20 290), oklch(0.72 0.14 205));
+  --accent-glow: light-dark(oklch(0.46 0.15 260), oklch(0.70 0.13 220));
+  --code-bg: light-dark(oklch(0.94 0.01 260), oklch(0.23 0.02 260));
+  --code-color: light-dark(oklch(0.28 0.02 260), oklch(0.91 0 0));
+  --glass-bg: light-dark(oklch(0.98 0.005 260 / 0.5), oklch(0.17 0.02 260 / 0.4));
+  --glass-border: color-mix(in oklch, var(--accent-glow) 15%, transparent);
+  --glass-shadow: color-mix(in oklch, var(--accent-glow) 8%, transparent);
 
-  /* Override Lumina base colors for website (near-black text) */
-  --color: light-dark(hsl(0 0% 0%), hsl(0 0% 100%));
-  --color-light: light-dark(hsl(300 5% 5%), hsl(300 5% 95%));
+  /* Override Lumina base colors for website */
+  --color: light-dark(oklch(0 0 0), oklch(1 0 0));
+  --color-light: light-dark(oklch(0.44 0.02 255), oklch(0.76 0.01 255));
 }
 
 /* ============================================
-   Background Gradient (Logo-inspired)
+   Background Gradient
    ============================================ */
 body {
   background-image: radial-gradient(ellipse 100% 60% at 50% -10%,
-      hsl(220deg 50% 60% / 0.20) 0%,
-      hsl(280deg 60% 65% / 0.15) 40%,
-      hsl(340deg 70% 70% / 0.08) 70%,
+      light-dark(oklch(0.64 0.10 255 / 0.20), oklch(0.37 0.08 255 / 0.25)) 0%,
+      light-dark(oklch(0.64 0.16 310 / 0.15), oklch(0.43 0.15 310 / 0.15)) 40%,
+      light-dark(oklch(0.72 0.12 10 / 0.08), oklch(0.56 0.16 10 / 0.08)) 70%,
       transparent 100%);
   background-attachment: fixed;
 
-  @media (prefers-color-scheme: dark) {
-    background-image: radial-gradient(ellipse 100% 60% at 50% -10%,
-        hsl(220deg 50% 30% / 0.25) 0%,
-        hsl(280deg 60% 40% / 0.15) 40%,
-        hsl(340deg 70% 50% / 0.08) 70%,
-        transparent 100%);
-  }
-
-  /* Scroll Indicator (Accent Color) */
+  /* Scroll Indicator */
   &::before {
     background-color: var(--accent);
+    box-shadow: 0 0 6px var(--accent-glow);
   }
 }
 
 /* ============================================
-   Header Blur Effect
+   Header — Frosted glass with accent border
    ============================================ */
 header {
-  background-color: color-mix(in srgb, var(--color-bg) 30%, transparent);
+  background-color: color-mix(in oklch, var(--color-bg) 30%, transparent);
   -webkit-backdrop-filter: saturate(180%) blur(2rem);
   backdrop-filter: saturate(180%) blur(2rem);
+  border-bottom: 1px solid var(--glass-border);
+  box-shadow: 0 1px 15px var(--glass-shadow);
 
   div a {
     border-bottom: solid 1px transparent;
   }
 
-  /* GitHub Icon */
   .github-link {
     display: flex;
     align-items: center;
@@ -86,7 +89,7 @@ header {
 }
 
 /* ============================================
-   Page Content (body/page template)
+   Page Content
    ============================================ */
 .page-content {
   margin-bottom: var(--space-2xl);
@@ -97,7 +100,7 @@ header {
     font-size: var(--font-size-4);
     letter-spacing: 0.1em;
     font-weight: 100;
-    border-bottom: solid 1px color-mix(in srgb, var(--color) 30%, transparent);
+    border-bottom: solid 1px color-mix(in oklch, var(--color) 30%, transparent);
   }
 
   h2 {
@@ -106,7 +109,10 @@ header {
     font-size: var(--font-size-3);
     letter-spacing: 0.1em;
     font-weight: 100;
-    border-bottom: solid 1px color-mix(in srgb, var(--color) 30%, transparent);
+    border-image: linear-gradient(90deg,
+        color-mix(in oklch, var(--accent-glow) 50%, transparent) 0%,
+        color-mix(in oklch, var(--accent-light) 20%, transparent) 60%,
+        transparent 100%) 1;
   }
 
   h3 {
@@ -115,7 +121,9 @@ header {
     font-size: var(--font-size-2);
     letter-spacing: 0.1em;
     font-weight: 100;
-    border-bottom: solid 1px color-mix(in srgb, var(--color) 30%, transparent);
+    border-image: linear-gradient(90deg,
+        color-mix(in oklch, var(--accent-glow) 30%, transparent) 0%,
+        transparent 60%) 1;
   }
 
   p {
@@ -139,20 +147,26 @@ header {
   a {
     color: var(--accent);
     text-decoration: none;
-    border-bottom: solid 1px color-mix(in srgb, var(--accent) 30%, transparent);
+    border-bottom: solid 1px color-mix(in oklch, var(--accent) 30%, transparent);
     transition-property: color, border-bottom;
     transition-duration: var(--animation-time);
 
     &:hover {
       color: var(--accent-light);
-      border-bottom-color: color-mix(in srgb, var(--accent) 50%, transparent);
+      border-bottom-color: color-mix(in oklch, var(--accent) 50%, transparent);
     }
   }
 
   hr {
     border: none;
-    border-bottom: solid 1px color-mix(in srgb, var(--color) 30%, transparent);
+    border-bottom: solid 1px transparent;
     margin: var(--space-l) calc(var(--space-s) * -1);
+    border-image: linear-gradient(90deg,
+        transparent 0%,
+        color-mix(in oklch, var(--accent-glow) 40%, transparent) 20%,
+        color-mix(in oklch, var(--accent-light) 25%, transparent) 50%,
+        color-mix(in oklch, var(--accent-glow) 40%, transparent) 80%,
+        transparent 100%) 1;
   }
 
   strong {
@@ -175,13 +189,21 @@ header {
     margin-bottom: var(--space-m);
     padding: var(--space-s);
     background-color: var(--code-bg);
+    border: 1px solid var(--glass-border);
     border-radius: var(--space-2xs);
+    box-shadow: 0 2px 12px color-mix(in oklch, var(--color) 10%, transparent);
     overflow-x: auto;
   }
 
   :is(pre code, code[class*="language-"]) {
     color: var(--code-color);
     padding: 0;
+  }
+
+  :not(pre) > code {
+    background: light-dark(oklch(0.94 0.01 260 / 0.8), oklch(0.23 0.02 260 / 0.6));
+    border: 1px solid var(--glass-border);
+    border-radius: 0.25rem;
   }
 
   table {
@@ -197,26 +219,32 @@ header {
   td {
     padding: var(--space-xs) var(--space-s);
     text-align: left;
-    border-bottom: solid 1px color-mix(in srgb, var(--color) 20%, transparent);
+    border-bottom: solid 1px color-mix(in oklch, var(--color) 20%, transparent);
     vertical-align: top;
   }
 
   th {
     font-weight: 400;
     color: var(--color-dark);
-    border-bottom: solid 1px color-mix(in srgb, var(--color) 40%, transparent);
+    border-image: linear-gradient(90deg,
+        color-mix(in oklch, var(--accent-glow) 35%, transparent) 0%,
+        color-mix(in oklch, var(--accent-light) 15%, transparent) 60%,
+        transparent 100%) 1;
   }
 
   tr:hover td {
-    background-color: color-mix(in srgb, var(--color) 5%, transparent);
+    background-color: color-mix(in oklch, var(--accent-glow) 4%, transparent);
   }
 
   blockquote {
     margin: 1.5rem 0;
     padding: 1rem 1.25rem;
-    border-left: 4px solid var(--accent);
-    background: color-mix(in srgb, var(--accent) 8%, transparent);
+    border-left: 4px solid color-mix(in oklch, var(--accent-glow) 60%, transparent);
+    background: color-mix(in oklch, var(--accent) 8%, transparent);
     border-radius: 0 0.5rem 0.5rem 0;
+    -webkit-backdrop-filter: blur(0.5rem);
+    backdrop-filter: blur(0.5rem);
+    box-shadow: 0 0 12px var(--glass-shadow);
 
     p {
       margin: 0;
@@ -229,15 +257,11 @@ header {
     strong {
       color: var(--accent);
     }
-
-    @media (prefers-color-scheme: dark) {
-      background: color-mix(in srgb, var(--accent) 12%, transparent);
-    }
   }
 }
 
 /* ============================================
-   Hero Section (body/home template)
+   Hero Section
    ============================================ */
 .hero {
   grid-column: breakout;
@@ -255,7 +279,7 @@ header {
 }
 
 .hero-logo {
-  width: 200px;
+  width: calc(var(--font-size-5) * 5.5);
   height: auto;
 }
 
@@ -264,6 +288,11 @@ header {
   letter-spacing: 0.1em;
   font-weight: 100;
   margin-bottom: var(--space-m);
+  color: light-dark(oklch(0.23 0.04 260), oklch(1 0 0));
+  text-shadow:
+    0 0 10px color-mix(in oklch, var(--accent-glow) 50%, transparent),
+    0 0 30px color-mix(in oklch, var(--accent-glow) 25%, transparent),
+    0 0 60px color-mix(in oklch, var(--accent-light) 12%, transparent);
 }
 
 .hero-subtitle {
@@ -273,7 +302,94 @@ header {
 }
 
 /* ============================================
-   Docs Layout (body/docs template)
+   CTA Buttons — Glass style
+   ============================================ */
+.cta-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-m);
+  justify-content: center;
+  margin-bottom: var(--space-2xl);
+
+  a {
+    padding: var(--space-xs) var(--space-l);
+    font-size: var(--font-size-1);
+    font-weight: 100;
+    letter-spacing: 0.1em;
+    text-decoration: none;
+    background: var(--glass-bg);
+    color: var(--accent);
+    border: 1px solid var(--glass-border);
+    border-radius: 0.5rem;
+    -webkit-backdrop-filter: blur(1rem);
+    backdrop-filter: blur(1rem);
+    transition-property: border-color, color, box-shadow;
+    transition-duration: var(--animation-time);
+
+    &:hover {
+      color: var(--accent-light);
+      border-color: color-mix(in oklch, var(--accent-glow) 40%, transparent);
+      box-shadow:
+        0 0 20px color-mix(in oklch, var(--accent-glow) 15%, transparent),
+        inset 0 0 20px color-mix(in oklch, var(--accent-glow) 3%, transparent);
+    }
+  }
+}
+
+/* ============================================
+   Download More Link
+   ============================================ */
+.download-more {
+  text-align: center;
+  margin-top: var(--space-s);
+  margin-bottom: var(--space-xl);
+
+  a {
+    font-size: var(--font-size-1);
+    color: var(--color-light);
+    text-decoration: none;
+    letter-spacing: 0.05em;
+    transition-property: color;
+    transition-duration: var(--animation-time);
+
+    &:hover {
+      color: var(--accent);
+    }
+  }
+}
+
+/* ============================================
+   Features Grid — Frosted glass panel
+   ============================================ */
+.features-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: var(--space-l);
+  margin: var(--space-xl) 0;
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: 0.75rem;
+  padding: var(--space-l);
+  -webkit-backdrop-filter: blur(1rem);
+  backdrop-filter: blur(1rem);
+
+  h3 {
+    margin: 0 0 var(--space-xs) 0 !important;
+    padding: 0 !important;
+    font-size: var(--font-size-2) !important;
+    border-bottom: none !important;
+    border-image: none !important;
+  }
+
+  p {
+    margin: 0;
+    font-size: var(--font-size-1);
+    color: var(--color-light);
+  }
+}
+
+/* ============================================
+   Docs Layout
    ============================================ */
 .docs-layout {
   display: grid;
@@ -292,9 +408,15 @@ header {
   height: fit-content;
   max-height: calc(100dvh - var(--space-xl) - var(--space-xs) - var(--space-2xl));
   overflow-y: auto;
+  border-right: 1px solid var(--glass-border);
+  padding-right: var(--space-s);
 
   @media (width <=768px) {
     position: unset;
+    border-right: none;
+    border-bottom: 1px solid var(--glass-border);
+    padding-right: 0;
+    padding-bottom: var(--space-m);
   }
 
   h4 {
@@ -323,7 +445,7 @@ header {
     color: var(--color-light);
     text-decoration: none;
     padding: var(--space-3xs) 0;
-    transition-property: color;
+    transition-property: color, text-shadow;
     transition-duration: var(--animation-time);
 
     &:hover {
@@ -332,6 +454,7 @@ header {
 
     &.active {
       color: var(--accent);
+      text-shadow: 0 0 10px color-mix(in oklch, var(--accent-glow) 25%, transparent);
     }
   }
 }
@@ -344,8 +467,11 @@ header {
     font-size: var(--font-size-4);
     letter-spacing: 0.1em;
     font-weight: 100;
-    border-bottom: solid 1px color-mix(in srgb, var(--color) 30%, transparent);
     padding-bottom: var(--space-xs);
+    border-image: linear-gradient(90deg,
+        color-mix(in oklch, var(--accent-glow) 40%, transparent) 0%,
+        color-mix(in oklch, var(--accent-light) 15%, transparent) 60%,
+        transparent 100%) 1;
   }
 
   h2 {
@@ -378,14 +504,13 @@ header {
   a {
     color: var(--accent);
     text-decoration: none;
-    border-bottom: solid 1px color-mix(in srgb, var(--accent) 30%, transparent);
+    border-bottom: solid 1px color-mix(in oklch, var(--accent) 30%, transparent);
 
     &:hover {
       color: var(--accent-light);
     }
   }
 
-  /* Override shared code style with smaller size */
   code {
     font-family: ui-monospace, "Cascadia Code", "Source Code Pro", Menlo, Consolas, monospace;
     font-size: var(--font-size-0);
@@ -394,89 +519,18 @@ header {
 }
 
 /* ============================================
-   CTA Buttons
-   ============================================ */
-.cta-buttons {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-m);
-  justify-content: center;
-  margin-bottom: var(--space-2xl);
-
-  a {
-    padding: var(--space-xs) var(--space-l);
-    font-size: var(--font-size-1);
-    font-weight: 100;
-    letter-spacing: 0.1em;
-    text-decoration: none;
-    background: transparent;
-    color: var(--accent);
-    border-bottom: 1px solid color-mix(in srgb, var(--accent) 50%, transparent);
-    transition-property: border-color, color;
-    transition-duration: var(--animation-time);
-
-    &:hover {
-      color: var(--accent-light);
-      border-color: var(--accent-light);
-    }
-  }
-}
-
-/* ============================================
-   Download More Link
-   ============================================ */
-.download-more {
-  text-align: center;
-  margin-top: var(--space-s);
-  margin-bottom: var(--space-xl);
-
-  a {
-    font-size: var(--font-size-1);
-    color: var(--color-light);
-    text-decoration: none;
-    letter-spacing: 0.05em;
-    transition-property: color;
-    transition-duration: var(--animation-time);
-
-    &:hover {
-      color: var(--accent);
-    }
-  }
-}
-
-/* ============================================
-   Features Grid
-   ============================================ */
-.features-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: var(--space-l);
-  margin: var(--space-xl) 0;
-
-  h3 {
-    margin: 0 0 var(--space-xs) 0 !important;
-    padding: 0 !important;
-    font-size: var(--font-size-2) !important;
-    border-bottom: none !important;
-  }
-
-  p {
-    margin: 0;
-    font-size: var(--font-size-1);
-    color: var(--color-light);
-  }
-}
-
-/* ============================================
-   Terminal Mockup (video in simulated terminal chrome)
+   Terminal Mockup
    ============================================ */
 .terminal-mockup {
   border-radius: 0.5rem;
-  border: solid 1px var(--code-bg);
+  border: solid 1px color-mix(in oklch, var(--accent-glow) 20%, var(--code-bg));
   padding-top: 2.25rem;
   position: relative;
   background: var(--code-bg);
   margin: 2rem 0;
+  box-shadow:
+    0 0 25px var(--glass-shadow),
+    0 4px 20px color-mix(in oklch, var(--color) 15%, transparent);
 
   &::before {
     content: "";
@@ -485,7 +539,7 @@ header {
     left: 0;
     right: 0;
     height: 2.25rem;
-    background: color-mix(in srgb, var(--code-bg) 80%, transparent);
+    background: color-mix(in oklch, var(--code-bg) 80%, transparent);
     border-radius: 0.5rem 0.5rem 0 0;
   }
 
@@ -497,10 +551,10 @@ header {
     width: 0.75rem;
     height: 0.75rem;
     border-radius: 50%;
-    background: hsl(0deg 60% 50%);
+    background: oklch(0.55 0.17 25);
     box-shadow:
-      1.25rem 0 0 hsl(45deg 70% 50%),
-      2.5rem 0 0 hsl(120deg 50% 45%);
+      1.25rem 0 0 oklch(0.74 0.14 80),
+      2.5rem 0 0 oklch(0.62 0.15 145);
   }
 
   video {
@@ -511,14 +565,17 @@ header {
 }
 
 /* ============================================
-   Browser Mockup (screenshot in simulated browser chrome)
+   Browser Mockup
    ============================================ */
 .content-image.browser-mockup {
   border-radius: 0.5rem;
-  border: solid 1px var(--code-bg);
+  border: solid 1px color-mix(in oklch, var(--accent-glow) 20%, var(--code-bg));
   padding-top: 2.25rem;
   position: relative;
   background: var(--code-bg);
+  box-shadow:
+    0 0 25px var(--glass-shadow),
+    0 4px 20px color-mix(in oklch, var(--color) 15%, transparent);
 
   &::before {
     content: "";
@@ -527,11 +584,10 @@ header {
     left: 0;
     right: 0;
     height: 2.25rem;
-    background: color-mix(in srgb, var(--code-bg) 80%, transparent);
+    background: color-mix(in oklch, var(--code-bg) 80%, transparent);
     border-radius: 0.5rem 0.5rem 0 0;
   }
 
-  /* Traffic light dots */
   &::after {
     content: "";
     position: absolute;
@@ -540,10 +596,10 @@ header {
     width: 0.75rem;
     height: 0.75rem;
     border-radius: 50%;
-    background: hsl(0deg 60% 50%);
+    background: oklch(0.55 0.17 25);
     box-shadow:
-      1.25rem 0 0 hsl(45deg 70% 50%),
-      2.5rem 0 0 hsl(120deg 50% 45%);
+      1.25rem 0 0 oklch(0.74 0.14 80),
+      2.5rem 0 0 oklch(0.62 0.15 145);
   }
 
   img {
@@ -552,7 +608,7 @@ header {
 }
 
 /* ============================================
-   Footer (transparent for gradient background)
+   Footer
    ============================================ */
 footer {
   background: unset;
