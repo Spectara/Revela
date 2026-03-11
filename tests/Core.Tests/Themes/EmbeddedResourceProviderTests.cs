@@ -1,5 +1,5 @@
 using Spectara.Revela.Sdk.Themes;
-using Spectara.Revela.Theme.Lumina;
+using Spectara.Revela.Themes.Lumina;
 
 namespace Spectara.Revela.Core.Tests.Themes;
 
@@ -16,7 +16,7 @@ public sealed class EmbeddedResourceProviderTests
     public void Setup() => provider = new EmbeddedResourceProvider(typeof(LuminaThemePlugin).Assembly);
 
     [TestMethod]
-    public void AssemblyName_ReturnsCorrectName() => Assert.AreEqual("Spectara.Revela.Theme.Lumina", provider.AssemblyName);
+    public void AssemblyName_ReturnsCorrectName() => Assert.AreEqual("Spectara.Revela.Themes.Lumina", provider.AssemblyName);
 
     [TestMethod]
     public void GetFile_ExistingFile_ReturnsStream()

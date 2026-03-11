@@ -11,7 +11,7 @@ namespace Spectara.Revela.Core.Services;
 /// Theme resolution order:
 /// 1. Local theme folder (project/themes/{name}/)
 /// 2. Installed theme plugins
-/// 3. Default bundled theme (Theme.Lumina)
+/// 3. Default bundled theme (Lumina)
 /// </remarks>
 public interface IThemeResolver
 {

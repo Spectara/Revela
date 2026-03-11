@@ -76,12 +76,12 @@ Revela/
 │   ├── Cli/                      # CLI entry point
 │   ├── Sdk/                      # SDK for plugin development
 │   ├── Plugins/                  # Official plugins
-│   │   ├── Plugin.Serve/         # Local development server
-│   │   ├── Plugin.Source.OneDrive/
-│   │   └── Plugin.Statistics/
+│   │   ├── Serve/         # Local development server
+│   │   ├── Source.OneDrive/
+│   │   └── Statistics/
 │   └── Themes/                   # Built-in themes
-│       ├── Theme.Lumina/
-│       └── Theme.Lumina.Statistics/
+│       ├── Lumina/
+│       └── Lumina.Statistics/
 │
 ├── tests/                        # Test projects
 │   ├── Core.Tests/

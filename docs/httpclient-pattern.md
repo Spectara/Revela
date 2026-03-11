@@ -73,7 +73,7 @@ private static async Task ExecuteAsync(IServiceProvider services)
 ### Program.cs Registration
 
 ```csharp
-services.AddHttpClient<Spectara.Revela.Plugin.Source.OneDrive.Providers.SharedLinkProvider>(client =>
+services.AddHttpClient<Spectara.Revela.Plugins.Source.OneDrive.Providers.SharedLinkProvider>(client =>
 {
     client.Timeout = TimeSpan.FromMinutes(5); // Large file downloads
     client.DefaultRequestHeaders.Add("User-Agent", "Revela/1.0 (Static Site Generator)");

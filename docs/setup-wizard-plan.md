@@ -69,8 +69,8 @@ Advanced users can bypass the wizard:
 
 ```bash
 revela packages refresh
-revela theme install Spectara.Revela.Theme.Lumina
-revela plugin install Spectara.Revela.Plugin.Serve
+revela theme install Spectara.Revela.Themes.Lumina
+revela plugin install Spectara.Revela.Plugins.Serve
 ```
 
 ---

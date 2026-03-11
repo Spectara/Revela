@@ -20,11 +20,11 @@
         │   └── cli-reference.md
         └── packages/           (local NuGet feed with all packages)
             ├── Spectara.Revela.Sdk.{version}.nupkg
-            ├── Spectara.Revela.Theme.Lumina.{version}.nupkg
-            ├── Spectara.Revela.Theme.Lumina.Statistics.{version}.nupkg
-            ├── Spectara.Revela.Plugin.Statistics.{version}.nupkg
-            ├── Spectara.Revela.Plugin.Source.OneDrive.{version}.nupkg
-            └── Spectara.Revela.Plugin.Serve.{version}.nupkg
+            ├── Spectara.Revela.Themes.Lumina.{version}.nupkg
+            ├── Spectara.Revela.Themes.Lumina.Statistics.{version}.nupkg
+            ├── Spectara.Revela.Plugins.Statistics.{version}.nupkg
+            ├── Spectara.Revela.Plugins.Source.OneDrive.{version}.nupkg
+            └── Spectara.Revela.Plugins.Serve.{version}.nupkg
 
 .PARAMETER Version
     Version number for the build (default: 0.0.0-test)
@@ -183,12 +183,12 @@ try {
 
         $packages = @(
             "src/Sdk/Sdk.csproj",
-            "src/Themes/Theme.Lumina/Theme.Lumina.csproj",
-            "src/Themes/Theme.Lumina.Statistics/Theme.Lumina.Statistics.csproj",
-            "src/Plugins/Plugin.Statistics/Plugin.Statistics.csproj",
-            "src/Plugins/Plugin.Source.OneDrive/Plugin.Source.OneDrive.csproj",
-            "src/Plugins/Plugin.Serve/Plugin.Serve.csproj",
-            "src/Plugins/Plugin.Compress/Plugin.Compress.csproj"
+            "src/Themes/Lumina/Lumina.csproj",
+            "src/Themes/Lumina.Statistics/Lumina.Statistics.csproj",
+            "src/Plugins/Statistics/Statistics.csproj",
+            "src/Plugins/Source.OneDrive/Source.OneDrive.csproj",
+            "src/Plugins/Serve/Serve.csproj",
+            "src/Plugins/Compress/Compress.csproj"
         )
 
         foreach ($proj in $packages) {

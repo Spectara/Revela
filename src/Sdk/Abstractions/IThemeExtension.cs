@@ -8,8 +8,8 @@ namespace Spectara.Revela.Sdk.Abstractions;
 /// Theme extensions provide templates and CSS for specific plugins, styled for a specific theme.
 /// </para>
 /// <para>
-/// Naming convention: Spectara.Revela.Theme.{ThemeName}.{PluginName}
-/// Example: Spectara.Revela.Theme.Lumina.Statistics
+/// Naming convention: Spectara.Revela.Themes.{ThemeName}.{PluginName}
+/// Example: Spectara.Revela.Themes.Lumina.Statistics
 /// </para>
 /// <para>
 /// Discovery: Extensions are matched to themes by <see cref="TargetTheme"/> property.

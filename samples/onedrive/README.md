@@ -4,13 +4,13 @@ This sample demonstrates using the OneDrive Source Plugin to download images fro
 
 ## Configuration
 
-### `plugins/Spectara.Revela.Plugin.Source.OneDrive.json`
+### `plugins/Spectara.Revela.Plugins.Source.OneDrive.json`
 
 Contains the OneDrive share link configuration:
 
 ```json
 {
-  "Spectara.Revela.Plugin.Source.OneDrive": {
+  "Spectara.Revela.Plugins.Source.OneDrive": {
     "ShareUrl": "https://1drv.ms/f/..."
   }
 }
@@ -68,7 +68,7 @@ After running both commands:
 ```
 onedrive/
 ├── plugins/
-│   └── Spectara.Revela.Plugin.Source.OneDrive.json
+│   └── Spectara.Revela.Plugins.Source.OneDrive.json
 ├── project.json        # Project settings
 ├── site.json           # Site metadata
 ├── source/             # Downloaded images (gitignored)

@@ -27,7 +27,7 @@ public sealed class GlobalDefaultsConfig
     /// </summary>
     /// <remarks>
     /// Can be a short name (e.g., "Lumina") or full package ID
-    /// (e.g., "Spectara.Revela.Theme.Lumina").
+    /// (e.g., "Spectara.Revela.Themes.Lumina").
     /// </remarks>
     public string Theme { get; init; } = "Lumina";
 }

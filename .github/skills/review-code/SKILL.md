@@ -127,7 +127,7 @@ newer BCL APIs, and modern idioms. If an older pattern has a modern replacement,
 - Use `IOptions<T>` / `IOptionsMonitor<T>` pattern
 - Config models: `sealed class` with `public const string SectionName`
 - Use `DataAnnotations` for validation + `ValidateOnStart()`
-- Plugin config: section name = full package ID (`Spectara.Revela.Plugin.X`)
+- Plugin config: section name = full package ID (`Spectara.Revela.Plugins.X`)
 
 ## 9. Commands (System.CommandLine 2.0)
 

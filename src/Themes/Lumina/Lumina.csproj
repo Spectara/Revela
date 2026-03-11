@@ -1,0 +1,56 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <Description>Revela Theme - Elegant photography portfolio design</Description>
+    <AssemblyName>Spectara.Revela.Themes.Lumina</AssemblyName>
+    <RootNamespace>Spectara.Revela.Themes.Lumina</RootNamespace>
+    <PackageId>Spectara.Revela.Themes.Lumina</PackageId>
+    <PackageTags>revela;theme;lumina;photography;gallery;lightbox</PackageTags>
+    <PackageIcon>icon.png</PackageIcon>
+    <PackageReleaseNotes>https://github.com/spectara/revela/blob/main/CHANGELOG.md</PackageReleaseNotes>
+    <PackageType>RevelaTheme</PackageType>
+
+    <!-- Theme packaging handled by Spectara.Revela.Sdk.targets -->
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="README.md" Pack="true" PackagePath="/" />
+    <None Include="../../../assets/revela_100.png" Pack="true" PackagePath="icon.png" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Embed manifest.json as resource -->
+    <EmbeddedResource Include="manifest.json">
+      <LogicalName>manifest.json</LogicalName>
+    </EmbeddedResource>
+    <!-- Embed configuration templates -->
+    <EmbeddedResource Include="Configuration\**\*.json">
+      <LogicalName>Configuration\%(RecursiveDir)%(Filename)%(Extension)</LogicalName>
+    </EmbeddedResource>
+    <!-- Embed layout template (convention: always Layout.revela in root) -->
+    <EmbeddedResource Include="Layout.revela">
+      <LogicalName>Layout.revela</LogicalName>
+    </EmbeddedResource>
+    <!-- Embed body templates (page content) -->
+    <EmbeddedResource Include="Body\**\*.revela">
+      <LogicalName>Body\%(RecursiveDir)%(Filename)%(Extension)</LogicalName>
+    </EmbeddedResource>
+    <!-- Embed partial templates (reusable components) -->
+    <EmbeddedResource Include="Partials\**\*.revela">
+      <LogicalName>Partials\%(RecursiveDir)%(Filename)%(Extension)</LogicalName>
+    </EmbeddedResource>
+    <!-- Embed CSS/JS assets with Assets/ prefix for consistent export structure -->
+    <EmbeddedResource Include="Assets\**\*">
+      <LogicalName>Assets\%(RecursiveDir)%(Filename)%(Extension)</LogicalName>
+    </EmbeddedResource>
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Reference to host Sdk - NOT copied to output (loaded from host) -->
+    <ProjectReference Include="..\..\Sdk\Sdk.csproj">
+      <Private>false</Private>
+      <ExcludeAssets>runtime</ExcludeAssets>
+    </ProjectReference>
+  </ItemGroup>
+
+</Project>

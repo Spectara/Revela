@@ -1,6 +1,6 @@
 # Serve Plugin
 
-**Package:** `Spectara.Revela.Plugin.Serve`  
+**Package:** `Spectara.Revela.Plugins.Serve`  
 **Version:** 1.0.0  
 **Author:** Spectara
 
@@ -15,7 +15,7 @@ The Serve plugin provides a local HTTP server for previewing generated sites dur
 revela plugin install Serve
 
 # Or with full package ID
-revela plugin install Spectara.Revela.Plugin.Serve
+revela plugin install Spectara.Revela.Plugins.Serve
 ```
 
 ## Usage
@@ -64,7 +64,7 @@ Plugin configuration is stored in `project.json`:
 
 ```json
 {
-  "Spectara.Revela.Plugin.Serve": {
+  "Spectara.Revela.Plugins.Serve": {
     "Port": 8080,
     "Verbose": false
   }

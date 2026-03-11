@@ -114,19 +114,19 @@ Revela/
 │   ├── Commands/                 # CLI commands (Generate, Init, Plugins, Restore, Theme)
 │   ├── Cli/                      # CLI entry point
 │   ├── Plugins/                  # Optional plugins
-│   │   ├── Plugin.Serve/
-│   │   ├── Plugin.Source.OneDrive/
-│   │   └── Plugin.Statistics/
+│   │   ├── Serve/
+│   │   ├── Source.OneDrive/
+│   │   └── Statistics/
 │   └── Themes/                   # Built-in themes
-│       ├── Theme.Lumina/
-│       └── Theme.Lumina.Statistics/
+│       ├── Lumina/
+│       └── Lumina.Statistics/
 │
 ├── tests/                        # Test projects
 │   ├── Core.Tests/
 │   ├── Commands.Tests/
 │   ├── IntegrationTests/
-│   ├── Plugin.Source.OneDrive.Tests/
-│   ├── Plugin.Statistics.Tests/
+│   ├── Source.OneDrive.Tests/
+│   ├── Statistics.Tests/
 │   └── Shared/
 │
 ├── docs/                         # Documentation

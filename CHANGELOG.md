@@ -108,7 +108,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Adding a new size only generates that size
   - Progress display shows green ■ (new) vs gray ■ (skipped)
   - Processing order: largest sizes first for smoother progress display
-- **Plugin.Compress**: Static compression plugin (Gzip/Brotli)
+- **Compress**: Static compression plugin (Gzip/Brotli)
 - **Setup Wizard**: Full/Custom installation modes
 - **Documentation**: New "Image Processing" page on website
 - **Documentation**: Number prefix sorting for galleries (e.g., `01 Weddings`, `02 Portraits`)
@@ -117,7 +117,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **NavigationBuilder**: URL slugs now correctly strip number prefixes (was including `01-` in URLs)
 - **Documentation**: Fixed incorrect JSON format examples (`formats` wrapper removed)
 - **Documentation**: Plugin naming consistency (`Source.OneDrive` instead of `OneDrive`)
-- **CI/CD**: Added missing Plugin.Compress to all workflows and scripts
+- **CI/CD**: Added missing Compress to all workflows and scripts
 
 ## [0.0.1-beta.12] - 2026-01-12
 
@@ -199,7 +199,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - **Setup Wizard**: Interactive assistant for new projects
 - **Packages Command**: Package index with NuGet packageTypes support
-- **Plugin.Serve**: Local HTTP server for site preview
+- **Serve**: Local HTTP server for site preview
 - **Spectara.Revela.Sdk**: Separate SDK package for plugin development
 - Unified command registration with CommandDescriptor
 - Context-aware interactive menu
@@ -266,7 +266,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - Test Infrastructure: SharedTestDataHelper und MockHttpMessageHandler
-- Plugin.Statistics.Tests: Unit Tests für StatisticsAggregator
+- Statistics.Tests: Unit Tests für StatisticsAggregator
 - TestData Factory für konsistente Test-Daten
 - IntegrationTests Placeholder-Struktur
 
@@ -282,13 +282,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Deutsche Anleitung für Fotografen ([docs/getting-started-de.md](docs/getting-started-de.md))
 - Theme Extension Support mit CSS-Loading für Plugins
-- Statistics-Plugin Styling für Theme.Lumina
+- Statistics-Plugin Styling für Lumina
 - Data Sources und Custom Templates für Frontmatter
-- Plugin.Statistics für erweiterte Galerie-Statistiken
-- Theme.Lumina.Statistics als Theme-Erweiterung
+- Statistics für erweiterte Galerie-Statistiken
+- Lumina.Statistics als Theme-Erweiterung
 
 ### Changed
-- Theme.Expose umbenannt zu Theme.Lumina
+- Theme.Expose umbenannt zu Lumina
 - Migration von .sln zu .slnx Format (Visual Studio 2022 17.10+)
 - Code Quality Verbesserungen und Cleanup
 
@@ -303,8 +303,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Image Processing mit NetVips (AVIF, WebP, JPG)
 - Scriban Template Engine
 - Plugin System (NuGet-basiert)
-- Theme.Lumina (Standard-Theme)
-- Plugin.Source.OneDrive (OneDrive Shared Folder Support)
+- Lumina (Standard-Theme)
+- Source.OneDrive (OneDrive Shared Folder Support)
 - Commands: generate, init, clean, theme, plugins, restore
 
 [Unreleased]: https://github.com/spectara/revela/compare/v0.0.1-beta.15...HEAD

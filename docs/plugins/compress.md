@@ -1,6 +1,6 @@
 # Static Compression Plugin
 
-**Package:** `Spectara.Revela.Plugin.Compress`  
+**Package:** `Spectara.Revela.Plugins.Compress`  
 **Version:** 1.0.0  
 **Author:** Spectara
 
@@ -41,7 +41,7 @@ Modern web servers (nginx, Apache, Caddy) can automatically serve pre-compressed
 revela plugin install Compress
 
 # Or with full package ID
-revela plugin install Spectara.Revela.Plugin.Compress
+revela plugin install Spectara.Revela.Plugins.Compress
 ```
 
 ## Usage

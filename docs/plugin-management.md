@@ -12,14 +12,14 @@ Revela uses **NuGet packages** for plugin distribution and version management.
 
 ### Official Plugins (Verified by Spectara)
 
-All plugins with the `Spectara.Revela.Plugin.*` prefix are officially maintained and verified by Spectara.
+All plugins with the `Spectara.Revela.Plugins.*` prefix are officially maintained and verified by Spectara.
 
 | Plugin | Package ID | Description |
 |--------|------------|-------------|
-| **Compress** | `Spectara.Revela.Plugin.Compress` | Pre-compress static files with Gzip/Brotli |
-| **Serve** | `Spectara.Revela.Plugin.Serve` | Local development server with live preview |
-| **Statistics** | `Spectara.Revela.Plugin.Statistics` | Image count, sizes, and analytics |
-| **OneDrive** | `Spectara.Revela.Plugin.Source.OneDrive` | Import photos from OneDrive shared folders |
+| **Compress** | `Spectara.Revela.Plugins.Compress` | Pre-compress static files with Gzip/Brotli |
+| **Serve** | `Spectara.Revela.Plugins.Serve` | Local development server with live preview |
+| **Statistics** | `Spectara.Revela.Plugins.Statistics` | Image count, sizes, and analytics |
+| **OneDrive** | `Spectara.Revela.Plugins.Source.OneDrive` | Import photos from OneDrive shared folders |
 
 **Security:** The `Spectara` prefix is **reserved on NuGet.org** and can only be used by the Spectara organization. This ensures that all `Spectara.Revela.*` packages are authentic and trustworthy.
 
@@ -42,13 +42,13 @@ Community plugins use their own prefix and are maintained by third-party develop
 revela plugin install Source.OneDrive
 
 # Or use full package ID
-revela plugin install Spectara.Revela.Plugin.Source.OneDrive
+revela plugin install Spectara.Revela.Plugins.Source.OneDrive
 
 # Install specific version
 revela plugin install Source.OneDrive --version 1.2.0
 
 # Install from local .nupkg file
-revela plugin install ./path/to/Spectara.Revela.Plugin.Source.OneDrive.1.0.0.nupkg
+revela plugin install ./path/to/Spectara.Revela.Plugins.Source.OneDrive.1.0.0.nupkg
 
 # Install from custom source (e.g., GitHub Packages)
 revela plugin install Source.OneDrive --source github
@@ -108,8 +108,8 @@ Plugins are tracked in `project.json`:
   "name": "My Photography Site",
   "theme": "Lumina",
   "plugins": {
-    "Spectara.Revela.Plugin.Source.OneDrive": "1.2.0",
-    "Spectara.Revela.Plugin.Statistics": "1.0.0"
+    "Spectara.Revela.Plugins.Source.OneDrive": "1.2.0",
+    "Spectara.Revela.Plugins.Statistics": "1.0.0"
   }
 }
 ```
@@ -136,7 +136,7 @@ revela restore
 # Create package using .csproj properties
 dotnet pack -c Release -o ./nupkgs
 
-# Output: Spectara.Revela.Plugin.MyPlugin.1.0.0.nupkg
+# Output: Spectara.Revela.Plugins.MyPlugin.1.0.0.nupkg
 ```
 
 ### Project Configuration (.csproj)
@@ -150,7 +150,7 @@ Add NuGet package metadata to your plugin's `.csproj`:
     <OutputType>Library</OutputType>
     
     <!-- NuGet Package Metadata -->
-    <PackageId>Spectara.Revela.Plugin.MyPlugin</PackageId>
+    <PackageId>Spectara.Revela.Plugins.MyPlugin</PackageId>
     <Version>1.0.0</Version>
     <Authors>Your Name</Authors>
     <Description>Description of your plugin</Description>
@@ -219,7 +219,7 @@ Test your plugin package before publishing:
 dotnet pack -c Release -o ./nupkgs
 
 # Install from local .nupkg file
-revela plugin install ./nupkgs/Spectara.Revela.Plugin.MyPlugin.1.0.0.nupkg
+revela plugin install ./nupkgs/Spectara.Revela.Plugins.MyPlugin.1.0.0.nupkg
 
 # Or install from local directory as source
 revela plugin install MyPlugin --source ./nupkgs
@@ -236,14 +236,14 @@ revela plugin install MyPlugin --source ./nupkgs
 
 3. **Publish package:**
 ```bash
-dotnet nuget push ./nupkgs/Spectara.Revela.Plugin.MyPlugin.1.0.0.nupkg \
+dotnet nuget push ./nupkgs/Spectara.Revela.Plugins.MyPlugin.1.0.0.nupkg \
   --source https://api.nuget.org/v3/index.json \
   --api-key YOUR_API_KEY
 ```
 
 4. **Verify on NuGet.org:**
    - Package appears within 5-10 minutes
-   - Check: https://www.nuget.org/packages/Spectara.Revela.Plugin.MyPlugin
+   - Check: https://www.nuget.org/packages/Spectara.Revela.Plugins.MyPlugin
 
 ### Publishing to GitHub Packages
 
@@ -274,7 +274,7 @@ dotnet nuget push ./nupkgs/*.nupkg \
 
 ```csharp
 // ✅ CORRECT - Official plugins
-namespace Spectara.Revela.Plugin.MyPlugin;
+namespace Spectara.Revela.Plugins.MyPlugin;
 
 // ✅ CORRECT - Community plugins
 namespace YourName.Revela.Plugin.MyPlugin;
@@ -294,7 +294,7 @@ namespace MyCompany.SomeOther.Plugin;
 revela plugin install Source.OneDrive  # ✅ Correct
 
 # Check if package exists on NuGet.org
-# Visit: https://www.nuget.org/packages/Spectara.Revela.Plugin.Source.OneDrive
+# Visit: https://www.nuget.org/packages/Spectara.Revela.Plugins.Source.OneDrive
 ```
 
 ### "Failed to install" error

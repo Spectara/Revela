@@ -39,7 +39,7 @@ Add a **web-based UI plugin** using Blazor Server to make Revela accessible to p
 
 **Goal:** CLI launches browser with basic working UI
 
-- [ ] Create `src/Plugins/Plugin.UI.Web/` project
+- [ ] Create `src/Plugins/UI.Web/` project
   - [ ] Implement `UIWebPlugin : IPlugin`
   - [ ] Register Blazor services (`AddRazorComponents`, `AddInteractiveServerComponents`)
   - [ ] Create `WebCommand` with `--port` and `--no-browser` options
@@ -131,7 +131,7 @@ Add a **web-based UI plugin** using Blazor Server to make Revela accessible to p
 ## 📁 Project Structure
 
 ```
-src/Plugins/Plugin.UI.Web/
+src/Plugins/UI.Web/
 ├── Plugin.UI.Web.csproj
 ├── UIWebPlugin.cs              # IPlugin implementation
 ├── Commands/
@@ -239,10 +239,10 @@ src/Plugins/Plugin.UI.Web/
 
 ```bash
 # Create plugin project
-dotnet new razorcomponents -n Plugin.UI.Web -o src/Plugins/Plugin.UI.Web
+dotnet new razorcomponents -n Plugin.UI.Web -o src/Plugins/UI.Web
 
 # Add project references
-cd src/Plugins/Plugin.UI.Web
+cd src/Plugins/UI.Web
 dotnet add reference ../../Core/Core.csproj
 dotnet add reference ../../Commands/Commands.csproj
 

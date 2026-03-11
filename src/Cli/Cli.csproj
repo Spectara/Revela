@@ -27,12 +27,12 @@
 
   <!-- Development-only: Plugins included for debugging, NOT shipped in Release -->
   <ItemGroup Condition="'$(Configuration)' == 'Debug'">
-    <ProjectReference Include="..\Plugins\Plugin.Compress\Plugin.Compress.csproj" />
-    <ProjectReference Include="..\Plugins\Plugin.Serve\Plugin.Serve.csproj" />
-    <ProjectReference Include="..\Plugins\Plugin.Source.OneDrive\Plugin.Source.OneDrive.csproj" />
-    <ProjectReference Include="..\Plugins\Plugin.Statistics\Plugin.Statistics.csproj" />
-    <ProjectReference Include="..\Themes\Theme.Lumina\Theme.Lumina.csproj" />
-    <ProjectReference Include="..\Themes\Theme.Lumina.Statistics\Theme.Lumina.Statistics.csproj" />
+    <ProjectReference Include="..\Plugins\Compress\Compress.csproj" />
+    <ProjectReference Include="..\Plugins\Serve\Serve.csproj" />
+    <ProjectReference Include="..\Plugins\Source.OneDrive\Source.OneDrive.csproj" />
+    <ProjectReference Include="..\Plugins\Statistics\Statistics.csproj" />
+    <ProjectReference Include="..\Themes\Lumina\Lumina.csproj" />
+    <ProjectReference Include="..\Themes\Lumina.Statistics\Lumina.Statistics.csproj" />
   </ItemGroup>
 
   <ItemGroup>

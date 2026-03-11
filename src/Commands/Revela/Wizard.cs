@@ -205,7 +205,7 @@ internal sealed partial class Wizard(
 
         foreach (var theme in availableThemes)
         {
-            var shortName = theme.Id.Replace("Spectara.Revela.Theme.", "", StringComparison.Ordinal);
+            var shortName = theme.Id.Replace("Spectara.Revela.Themes.", "", StringComparison.Ordinal);
             var choice = $"{theme.Id}|[cyan]Theme:[/] {shortName} [dim]- {Truncate(theme.Description, 40)}[/]";
             themeChoices.Add(choice);
             allChoices.Add(choice);
@@ -213,7 +213,7 @@ internal sealed partial class Wizard(
 
         foreach (var plugin in availablePlugins)
         {
-            var shortName = plugin.Id.Replace("Spectara.Revela.Plugin.", "", StringComparison.Ordinal);
+            var shortName = plugin.Id.Replace("Spectara.Revela.Plugins.", "", StringComparison.Ordinal);
             var choice = $"{plugin.Id}|[blue]Plugin:[/] {shortName} [dim]- {Truncate(plugin.Description, 40)}[/]";
             pluginChoices.Add(choice);
             allChoices.Add(choice);
@@ -377,7 +377,7 @@ internal sealed partial class Wizard(
                 lines.Add("[bold]Installed themes:[/]");
                 foreach (var theme in themeResult.Installed)
                 {
-                    var shortName = theme.Replace("Spectara.Revela.Theme.", "", StringComparison.Ordinal);
+                    var shortName = theme.Replace("Spectara.Revela.Themes.", "", StringComparison.Ordinal);
                     lines.Add($"  [cyan]•[/] {shortName}");
                 }
 
@@ -389,7 +389,7 @@ internal sealed partial class Wizard(
                 lines.Add("[bold]Installed plugins:[/]");
                 foreach (var plugin in pluginResult.Installed)
                 {
-                    var shortName = plugin.Replace("Spectara.Revela.Plugin.", "", StringComparison.Ordinal);
+                    var shortName = plugin.Replace("Spectara.Revela.Plugins.", "", StringComparison.Ordinal);
                     lines.Add($"  [cyan]•[/] {shortName}");
                 }
 

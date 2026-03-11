@@ -136,8 +136,8 @@ internal sealed partial class SearchCommand(
 
                 // Shorten package ID for display
                 var shortId = package.Id
-                    .Replace("Spectara.Revela.Theme.", "", StringComparison.Ordinal)
-                    .Replace("Spectara.Revela.Plugin.", "", StringComparison.Ordinal);
+                    .Replace("Spectara.Revela.Themes.", "", StringComparison.Ordinal)
+                    .Replace("Spectara.Revela.Plugins.", "", StringComparison.Ordinal);
 
                 var description = package.Description.Length > 40
                     ? package.Description[..37] + "..."

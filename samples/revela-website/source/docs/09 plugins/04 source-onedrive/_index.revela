@@ -38,7 +38,7 @@ Or add the share URL directly to `project.json`:
 
 ```json
 {
-  "Spectara.Revela.Plugin.Source.OneDrive": {
+  "Spectara.Revela.Plugins.Source.OneDrive": {
     "ShareUrl": "https://1drv.ms/f/your-shared-folder-link"
   }
 }
@@ -85,7 +85,7 @@ revela generate all
 
 ```json
 {
-  "Spectara.Revela.Plugin.Source.OneDrive": {
+  "Spectara.Revela.Plugins.Source.OneDrive": {
     "ShareUrl": "https://1drv.ms/f/your-link",
     "DefaultConcurrency": 4,
     "IncludePatterns": ["*.jpg", "*.jpeg", "*.png", "*.tiff", "*.md"],

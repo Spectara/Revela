@@ -18,7 +18,7 @@ namespace Spectara.Revela.Commands.Theme;
 ///   revela theme extract Lumina MyTheme   → themes/MyTheme/ (renamed)
 ///   revela theme extract --file Body/Gallery.revela → themes/Lumina/Body/Gallery.revela
 ///   revela theme extract --file Partials/ → themes/Lumina/Partials/* (folder)
-///   revela theme extract Lumina --extensions → also extracts Theme.Lumina.* extensions
+///   revela theme extract Lumina --extensions → also extracts Lumina.* extensions
 /// </remarks>
 internal sealed partial class ThemeExtractCommand(
     IThemeResolver themeResolver,

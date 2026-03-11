@@ -11,11 +11,11 @@ namespace Spectara.Revela.Sdk.Abstractions;
 /// <item>Theme configuration (variables in manifest.json)</item>
 /// </list>
 ///
-/// Naming convention: Spectara.Revela.Theme.{Name}
+/// Naming convention: Spectara.Revela.Themes.{Name}
 ///
 /// Usage in project.json:
 /// <code>
-/// { "theme": "Spectara.Revela.Theme.Lumina" }
+/// { "theme": "Spectara.Revela.Themes.Lumina" }
 /// </code>
 ///
 /// Theme plugins typically don't provide CLI commands, but can

@@ -9,7 +9,7 @@ namespace Spectara.Revela.Commands.Restore;
 internal sealed record RequiredDependency
 {
     /// <summary>
-    /// Package identifier (e.g., "Spectara.Revela.Plugin.Source.OneDrive")
+    /// Package identifier (e.g., "Spectara.Revela.Plugins.Source.OneDrive")
     /// </summary>
     public required string PackageId { get; init; }
 
@@ -66,8 +66,8 @@ internal sealed partial class DependencyScanner(
     ILogger<DependencyScanner> logger,
     IOptionsMonitor<DependenciesConfig> options) : IDependencyScanner
 {
-    private const string ThemePackagePrefix = "Spectara.Revela.Theme.";
-    private const string PluginPackagePrefix = "Spectara.Revela.Plugin.";
+    private const string ThemePackagePrefix = "Spectara.Revela.Themes.";
+    private const string PluginPackagePrefix = "Spectara.Revela.Plugins.";
 
     /// <inheritdoc />
     public IReadOnlyList<RequiredDependency> GetDependencies()
@@ -173,10 +173,10 @@ internal sealed partial class DependencyScanner(
     [LoggerMessage(Level = LogLevel.Information, Message = "Found plugin '{PackageId}' version '{Version}'")]
     private partial void LogPluginFound(string packageId, string? version);
 
-    [LoggerMessage(Level = LogLevel.Warning, Message = "Invalid theme package ID '{PackageId}' (expected 'Spectara.Revela.Theme.*')")]
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Invalid theme package ID '{PackageId}' (expected 'Spectara.Revela.Themes.*')")]
     private partial void LogInvalidThemePackageId(string packageId);
 
-    [LoggerMessage(Level = LogLevel.Warning, Message = "Invalid plugin package ID '{PackageId}' (expected 'Spectara.Revela.Plugin.*')")]
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Invalid plugin package ID '{PackageId}' (expected 'Spectara.Revela.Plugins.*')")]
     private partial void LogInvalidPluginPackageId(string packageId);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Found {Count} dependency(ies)")]

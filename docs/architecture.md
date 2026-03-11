@@ -58,9 +58,9 @@ Revela/
 │   │   └── Program.cs            # Host + Commands
 │   │
 │   └── Spectara.Revela.Plugins/           # Optional Plugins
-│       ├── Plugin.Serve/
-│       ├── Plugin.Source.OneDrive/
-│       └── Plugin.Statistics/
+│       ├── Serve/
+│       ├── Source.OneDrive/
+│       └── Statistics/
 │
 └── tests/
 ```
@@ -175,13 +175,13 @@ Spectara.Revela.json → ExposeConfig → IOptions<ExposeConfig>
 
 ```
 %APPDATA%/Revela/plugins/
-└── Spectara.Revela.Plugin.Deploy/
-    ├── Spectara.Revela.Plugin.Deploy.dll
+└── Spectara.Revela.Plugins.Deploy/
+    ├── Spectara.Revela.Plugins.Deploy.dll
     └── dependencies...
 ```
 
 **Discovery process:**
-1. Scan plugin directory for `Spectara.Revela.Plugin.*.dll`
+1. Scan plugin directory for `Spectara.Revela.Plugins.*.dll`
 2. Load assemblies
 3. Find types implementing `IPlugin`
 4. Instantiate and register commands
@@ -226,7 +226,7 @@ User runs: revela generate -p mysite
 User runs: revela plugin install Source.OneDrive
 
 1. Name Transformation
-   Source.OneDrive → Spectara.Revela.Plugin.Source.OneDrive
+   Source.OneDrive → Spectara.Revela.Plugins.Source.OneDrive
 
 2. Multi-Source Discovery
    Try configured NuGet sources in order:
@@ -251,7 +251,7 @@ User runs: revela plugin install Source.OneDrive
 
 6. Update project.json
    Add plugin to "plugins" dictionary:
-   "Spectara.Revela.Plugin.Source.OneDrive": "1.0.0"
+   "Spectara.Revela.Plugins.Source.OneDrive": "1.0.0"
 
 7. Success
    Plugin available immediately (no restart needed)

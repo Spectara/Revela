@@ -12,13 +12,13 @@ namespace Spectara.Revela.Sdk.Abstractions;
 /// <para>
 /// The <see cref="SectionName"/> property provides the configuration section key
 /// used to bind settings from project.json and environment variables.
-/// Convention: use the full package ID (e.g., "Spectara.Revela.Plugin.MyPlugin").
+/// Convention: use the full package ID (e.g., "Spectara.Revela.Plugins.MyPlugin").
 /// </para>
 /// <example>
 /// <code>
 /// internal sealed class MyPluginConfig : IPluginConfig
 /// {
-///     public static string SectionName => "Spectara.Revela.Plugin.MyPlugin";
+///     public static string SectionName => "Spectara.Revela.Plugins.MyPlugin";
 ///
 ///     [Range(1, 100)]
 ///     public int MaxItems { get; init; } = 10;

@@ -1,4 +1,4 @@
-using Spectara.Revela.Plugin.Source.OneDrive.Models;
+using Spectara.Revela.Plugins.Source.OneDrive.Models;
 using Spectara.Revela.Sdk.Models;
 using Spectara.Revela.Sdk.Models.Manifest;
 

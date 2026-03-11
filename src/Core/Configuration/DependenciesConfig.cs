@@ -19,15 +19,15 @@ namespace Spectara.Revela.Core.Configuration;
 /// <code>
 /// // revela.json (global)
 /// {
-///   "themes": { "Spectara.Revela.Theme.Lumina": "1.0.0" },
-///   "plugins": { "Spectara.Revela.Plugin.Statistics": "1.0.0" }
+///   "themes": { "Spectara.Revela.Themes.Lumina": "1.0.0" },
+///   "plugins": { "Spectara.Revela.Plugins.Statistics": "1.0.0" }
 /// }
 ///
 /// // project.json (local)
 /// {
 ///   "theme": "Lumina",
-///   "themes": { "Spectara.Revela.Theme.Lumina": "2.0.0" },  // overrides global
-///   "plugins": { "Spectara.Revela.Plugin.Source.OneDrive": "1.0.0" }  // extends
+///   "themes": { "Spectara.Revela.Themes.Lumina": "2.0.0" },  // overrides global
+///   "plugins": { "Spectara.Revela.Plugins.Source.OneDrive": "1.0.0" }  // extends
 /// }
 /// </code>
 /// </example>
@@ -44,7 +44,7 @@ public sealed class DependenciesConfig
     /// </summary>
     /// <remarks>
     /// This determines which theme is used for rendering.
-    /// Can be a short name (auto-prefixed with "Spectara.Revela.Theme.")
+    /// Can be a short name (auto-prefixed with "Spectara.Revela.Themes.")
     /// or a full package ID.
     /// </remarks>
     public string? Theme { get; init; }
@@ -53,7 +53,7 @@ public sealed class DependenciesConfig
     /// Installed theme packages with versions
     /// </summary>
     /// <remarks>
-    /// Key: Full package ID (e.g., "Spectara.Revela.Theme.Lumina")
+    /// Key: Full package ID (e.g., "Spectara.Revela.Themes.Lumina")
     /// Value: Version string (e.g., "1.0.0") or null for latest
     /// </remarks>
     public Dictionary<string, string?> Themes { get; init; } = [];
@@ -62,7 +62,7 @@ public sealed class DependenciesConfig
     /// Installed plugin packages with versions
     /// </summary>
     /// <remarks>
-    /// Key: Full package ID (e.g., "Spectara.Revela.Plugin.Statistics")
+    /// Key: Full package ID (e.g., "Spectara.Revela.Plugins.Statistics")
     /// Value: Version string (e.g., "1.0.0") or null for latest
     /// </remarks>
     public Dictionary<string, string?> Plugins { get; init; } = [];

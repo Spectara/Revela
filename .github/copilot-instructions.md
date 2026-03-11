@@ -87,21 +87,21 @@ src/
 ├── Cli/                      # Entry point, hosting, interactive mode
 ├── Sdk/                      # SDK for plugin development (abstractions, models, services)
 ├── Plugins/
-│   ├── Plugin.Compress/      # Gzip/Brotli pre-compression
-│   ├── Plugin.Serve/         # Local development server
-│   ├── Plugin.Source.OneDrive/  # OneDrive shared folder source
-│   └── Plugin.Statistics/    # EXIF statistics functionality
+│   ├── Compress/      # Gzip/Brotli pre-compression
+│   ├── Serve/         # Local development server
+│   ├── Source.OneDrive/  # OneDrive shared folder source
+│   └── Statistics/    # EXIF statistics functionality
 └── Themes/
-    ├── Theme.Lumina/         # Default photography portfolio theme
-    └── Theme.Lumina.Statistics/  # Statistics extension for Lumina theme
+    ├── Lumina/         # Default photography portfolio theme
+    └── Lumina.Statistics/  # Statistics extension for Lumina theme
 tests/
 ├── Core.Tests/               # Unit tests for Core
 ├── Commands.Tests/           # Unit tests for Commands
 ├── IntegrationTests/         # Integration tests
-├── Plugin.Compress.Tests/    # Compression plugin tests
-├── Plugin.Serve.Tests/       # Serve plugin tests
-├── Plugin.Source.OneDrive.Tests/  # OneDrive plugin tests
-├── Plugin.Statistics.Tests/  # Statistics plugin tests
+├── Compress.Tests/    # Compression plugin tests
+├── Serve.Tests/       # Serve plugin tests
+├── Source.OneDrive.Tests/  # OneDrive plugin tests
+├── Statistics.Tests/  # Statistics plugin tests
 └── Shared/                   # Shared test utilities
 ```
 
@@ -511,10 +511,10 @@ foreach (var (category, level) in loggingConfig.LogLevel)
 
 #### **Step 1: Create Config Model**
 ```csharp
-// src/Plugins/Plugin.{Name}/Configuration/{PluginName}Config.cs
+// src/Plugins/{Name}/Configuration/{PluginName}Config.cs
 using System.ComponentModel.DataAnnotations;
 
-namespace Spectara.Revela.Plugin.{Name}.Configuration;
+namespace Spectara.Revela.Plugins.{Name}.Configuration;
 
 public sealed class MyPluginConfig
 {
@@ -525,7 +525,7 @@ public sealed class MyPluginConfig
     /// Format: {FullPackageId} (no Plugins: prefix)
     /// This allows direct mapping from JSON root key and ENV variables.
     /// </remarks>
-    public const string SectionName = "Spectara.Revela.Plugin.MyPlugin";
+    public const string SectionName = "Spectara.Revela.Plugins.MyPlugin";
     
     [Required(ErrorMessage = "ApiUrl is required")]
     [Url(ErrorMessage = "Must be a valid URL")]
@@ -567,7 +567,7 @@ public sealed class MyPlugin : IPlugin
 **Plugin config section in `project.json`:**
 ```json
 {
-  "Spectara.Revela.Plugin.MyPlugin": {
+  "Spectara.Revela.Plugins.MyPlugin": {
     "ApiUrl": "https://api.example.com",
     "Timeout": 60
   }
@@ -595,7 +595,7 @@ public sealed partial class MyCommand(
 
 **Configuration Hierarchy (merged in order):**
 1. C# Property Defaults (in Config class)
-2. `project.json` section (e.g., `"Spectara.Revela.Plugin.MyPlugin": { ... }`)
+2. `project.json` section (e.g., `"Spectara.Revela.Plugins.MyPlugin": { ... }`)
 3. Environment variables: `SPECTARA__REVELA__PLUGIN__MYPLUGIN__*`
 4. CLI arguments (override in command)
 
@@ -773,7 +773,7 @@ public sealed class MyModel
 ```
 
 ### Adding a New Command
-Location: `src/Commands/{FeatureName}/` or `src/Plugins/Plugin.*/Commands/`
+Location: `src/Commands/{FeatureName}/` or `src/Plugins/*/Commands/`
 
 **MODERN PATTERN (with DI):**
 ```csharp
@@ -990,10 +990,10 @@ dotnet test
 dotnet test tests/Core.Tests
 dotnet test tests/Commands.Tests
 dotnet test tests/IntegrationTests
-dotnet test tests/Plugin.Compress.Tests
-dotnet test tests/Plugin.Serve.Tests
-dotnet test tests/Plugin.Source.OneDrive.Tests
-dotnet test tests/Plugin.Statistics.Tests
+dotnet test tests/Plugins/Compress.Tests
+dotnet test tests/Plugins/Serve.Tests
+dotnet test tests/Source.OneDrive.Tests
+dotnet test tests/Plugins/Statistics.Tests
 ```
 
 ### Run CLI

@@ -76,7 +76,7 @@
   </ItemGroup>
 
   <ItemGroup Label="InternalsVisibleTo - Test Projects">
-    <InternalsVisibleTo Include="$(MSBuildProjectName).Tests" />
+    <InternalsVisibleTo Include="$(AssemblyName).Tests" />
   </ItemGroup>
 
   <ItemGroup Label="Global Usings">

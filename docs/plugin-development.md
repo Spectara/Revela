@@ -10,14 +10,14 @@ Revela supports extensibility through a NuGet-based plugin system.
 
 ### Official Plugins (Spectara-Maintained)
 
-**Package Prefix:** `Spectara.Revela.Plugin.*`
+**Package Prefix:** `Spectara.Revela.Plugins.*`
 
 - ✅ Maintained by Spectara team
 - ✅ Verified and trusted
 - ✅ Official support
 - ✅ Regular updates
 
-**Example:** `Spectara.Revela.Plugin.Deploy`
+**Example:** `Spectara.Revela.Plugins.Deploy`
 
 ### Community Plugins
 
@@ -504,8 +504,8 @@ Contact Spectara team to discuss official plugin development.
 
 ### Reference Implementations
 
-- [Spectara.Revela.Plugin.Deploy](https://github.com/spectara/revela-plugin-deploy) - SSH/SFTP deployment
-- [Spectara.Revela.Plugin.Source.OneDrive](https://github.com/spectara/revela-plugin-source-onedrive) - OneDrive sync
+- [Spectara.Revela.Plugins.Deploy](https://github.com/spectara/revela-plugin-deploy) - SSH/SFTP deployment
+- [Spectara.Revela.Plugins.Source.OneDrive](https://github.com/spectara/revela-plugin-source-onedrive) - OneDrive sync
 
 ---
 

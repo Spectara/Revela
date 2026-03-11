@@ -19,7 +19,7 @@
     <ProjectReference Include="..\..\src\Cli\Cli.csproj" />
     <ProjectReference Include="..\..\src\Core\Core.csproj" />
     <ProjectReference Include="..\..\src\Commands\Commands.csproj" />
-    <ProjectReference Include="..\..\src\Themes\Theme.Lumina\Theme.Lumina.csproj" />
+    <ProjectReference Include="..\..\src\Themes\Lumina\Lumina.csproj" />
     <ProjectReference Include="..\Shared\Shared.csproj" />
   </ItemGroup>
 

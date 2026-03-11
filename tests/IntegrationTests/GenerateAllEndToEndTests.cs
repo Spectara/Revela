@@ -4,7 +4,7 @@ using Spectara.Revela.Commands.Generate.Abstractions;
 using Spectara.Revela.Commands.Generate.Models.Results;
 using Spectara.Revela.Sdk.Abstractions;
 using Spectara.Revela.Tests.Shared.Fixtures;
-using Spectara.Revela.Theme.Lumina;
+using Spectara.Revela.Themes.Lumina;
 
 namespace Spectara.Revela.IntegrationTests;
 

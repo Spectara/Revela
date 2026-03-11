@@ -33,7 +33,7 @@ internal sealed partial class ThemeInstallCommand(
 
         var nameArgument = new Argument<string?>("name")
         {
-            Description = "Theme name (e.g., 'Lumina' for Spectara.Revela.Theme.Lumina)",
+            Description = "Theme name (e.g., 'Lumina' for Spectara.Revela.Themes.Lumina)",
             Arity = ArgumentArity.ZeroOrOne
         };
         command.Arguments.Add(nameArgument);
@@ -298,11 +298,11 @@ internal sealed partial class ThemeInstallCommand(
         try
         {
             // Convert short name to full package ID
-            // Examples: "Lumina" → "Spectara.Revela.Theme.Lumina"
-            //           "Spectara.Revela.Theme.Lumina" → unchanged
+            // Examples: "Lumina" → "Spectara.Revela.Themes.Lumina"
+            //           "Spectara.Revela.Themes.Lumina" → unchanged
             var packageId = name.StartsWith("Spectara.Revela.", StringComparison.OrdinalIgnoreCase)
                 ? name
-                : $"Spectara.Revela.Theme.{name}";
+                : $"Spectara.Revela.Themes.{name}";
 
             // Check if package is in the index
             var packageEntry = await packageIndexService.FindPackageAsync(packageId, cancellationToken);

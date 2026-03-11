@@ -1,6 +1,6 @@
 # Statistics Plugin
 
-**Package:** `Spectara.Revela.Plugin.Statistics`  
+**Package:** `Spectara.Revela.Plugins.Statistics`  
 **Version:** 1.0.0  
 **Author:** Spectara
 
@@ -8,7 +8,7 @@
 
 The Statistics plugin analyzes EXIF data from your photo library and generates statistics pages showing camera usage, lens preferences, exposure settings, and a timeline.
 
-It produces a `statistics.json` file that is consumed by the theme extension **Theme.Lumina.Statistics** to render interactive Chart.js visualizations.
+It produces a `statistics.json` file that is consumed by the theme extension **Lumina.Statistics** to render interactive Chart.js visualizations.
 
 ## Installation
 
@@ -17,7 +17,7 @@ It produces a `statistics.json` file that is consumed by the theme extension **T
 revela plugin install Statistics
 
 # Theme extension (Chart.js visualizations) – recommended
-revela plugin install Theme.Lumina.Statistics
+revela plugin install Lumina.Statistics
 ```
 
 ## How It Works
@@ -62,11 +62,11 @@ revela config statistics --sort-by-count false
 
 ## Configuration
 
-**Section:** `Spectara.Revela.Plugin.Statistics`
+**Section:** `Spectara.Revela.Plugins.Statistics`
 
 ```json
 {
-  "Spectara.Revela.Plugin.Statistics": {
+  "Spectara.Revela.Plugins.Statistics": {
     "MaxEntriesPerCategory": 15,
     "SortByCount": true,
     "MaxBarWidth": 100
@@ -185,7 +185,7 @@ Continuous values are grouped into predefined ranges:
 
 Shutter speeds and camera/lens models use exact values (no bucketing).
 
-## Theme Extension: Theme.Lumina.Statistics
+## Theme Extension: Lumina.Statistics
 
 The theme extension provides Scriban templates and CSS/JS assets for rendering statistics:
 
@@ -195,7 +195,7 @@ The theme extension provides Scriban templates and CSS/JS assets for rendering s
 - Summary cards (total images, cameras, lenses)
 
 ```bash
-revela plugin install Theme.Lumina.Statistics
+revela plugin install Lumina.Statistics
 ```
 
 Without the theme extension, the JSON data is still generated but no HTML visualization is rendered. Custom themes can consume `statistics.json` directly.
@@ -204,7 +204,7 @@ Without the theme extension, the JSON data is still generated but no HTML visual
 
 - Revela CLI v1.0.0 or later
 - Photos with EXIF data (JPG, TIFF – most cameras write EXIF by default)
-- Optional: Theme.Lumina.Statistics for Chart.js visualizations
+- Optional: Lumina.Statistics for Chart.js visualizations
 
 ## See Also
 

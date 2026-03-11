@@ -50,7 +50,7 @@ Settings are stored in `project.json`:
 
 ```json
 {
-  "Spectara.Revela.Plugin.Serve": {
+  "Spectara.Revela.Plugins.Serve": {
     "Port": 8080,
     "Verbose": false
   }

@@ -85,7 +85,7 @@ public static class ErrorPanels
     /// Shows an error panel when no items are found (e.g., no themes installed).
     /// </summary>
     /// <param name="what">What was not found (e.g., "themes").</param>
-    /// <param name="installCommand">The command to install (e.g., "theme install Spectara.Revela.Theme.Lumina").</param>
+    /// <param name="installCommand">The command to install (e.g., "theme install Spectara.Revela.Themes.Lumina").</param>
     /// <param name="listCommand">Optional command to list available items (e.g., "theme list --online").</param>
     public static void ShowNothingInstalledError(
         string what,

@@ -289,13 +289,13 @@ internal sealed partial class PluginInstallCommand(
         try
         {
             // Convert short name to full package ID
-            // Examples: "OneDrive" → "Spectara.Revela.Plugin.OneDrive"
-            //           "Source.OneDrive" → "Spectara.Revela.Plugin.Source.OneDrive"
-            //           "Spectara.Revela.Plugin.OneDrive" → unchanged
-            //           "Spectara.Revela.Theme.Lumina.Statistics" → unchanged
+            // Examples: "OneDrive" → "Spectara.Revela.Plugins.OneDrive"
+            //           "Source.OneDrive" → "Spectara.Revela.Plugins.Source.OneDrive"
+            //           "Spectara.Revela.Plugins.OneDrive" → unchanged
+            //           "Spectara.Revela.Themes.Lumina.Statistics" → unchanged
             var packageId = name.StartsWith("Spectara.Revela.", StringComparison.OrdinalIgnoreCase)
                 ? name
-                : $"Spectara.Revela.Plugin.{name}";
+                : $"Spectara.Revela.Plugins.{name}";
 
             // Check package type in index (if available)
             var packageEntry = await packageIndexService.FindPackageAsync(packageId, cancellationToken);

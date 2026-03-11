@@ -67,7 +67,7 @@ jobs:
       - name: Install theme from bundled packages
         run: |
           ./revela packages refresh
-          ./revela theme install Spectara.Revela.Theme.Lumina
+          ./revela theme install Spectara.Revela.Themes.Lumina
 
       - name: Generate website
         run: |

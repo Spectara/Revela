@@ -49,12 +49,12 @@ internal sealed partial class PluginUninstallCommand(
         try
         {
             // Convert short name to full package ID
-            // Examples: "OneDrive" → "Spectara.Revela.Plugin.OneDrive"
-            //           "Spectara.Revela.Plugin.OneDrive" → unchanged
-            //           "Spectara.Revela.Theme.Lumina.Statistics" → unchanged
+            // Examples: "OneDrive" → "Spectara.Revela.Plugins.OneDrive"
+            //           "Spectara.Revela.Plugins.OneDrive" → unchanged
+            //           "Spectara.Revela.Themes.Lumina.Statistics" → unchanged
             var packageId = name.StartsWith("Spectara.Revela.", StringComparison.OrdinalIgnoreCase)
                 ? name
-                : $"Spectara.Revela.Plugin.{name}";
+                : $"Spectara.Revela.Plugins.{name}";
 
             if (!skipConfirm && !await AnsiConsole.ConfirmAsync($"[yellow]Uninstall plugin '{packageId}'?[/]", defaultValue: false, cancellationToken))
             {

@@ -30,10 +30,10 @@ The Statistics plugin has two parts:
 revela plugin install Statistics
 
 # 2. The theme extension (renders charts) – recommended
-revela plugin install Theme.Lumina.Statistics
+revela plugin install Lumina.Statistics
 ```
 
-The plugin generates a `statistics.json` data file. The **Theme.Lumina.Statistics** extension renders that data as a responsive dashboard with pure-CSS bar charts that inherit the Lumina color scheme.
+The plugin generates a `statistics.json` data file. The **Lumina.Statistics** extension renders that data as a responsive dashboard with pure-CSS bar charts that inherit the Lumina color scheme.
 
 > Without the theme extension, statistics data is still generated – but you'll need custom templates to display it.
 
@@ -90,7 +90,7 @@ Settings are stored in `project.json`:
 
 ```json
 {
-  "Spectara.Revela.Plugin.Statistics": {
+  "Spectara.Revela.Plugins.Statistics": {
     "MaxEntriesPerCategory": 15,
     "SortByCount": true
   }
@@ -112,7 +112,7 @@ revela config statistics --max-entries 20 --sort-by-count false
 
 ## Theme Extension
 
-**Theme.Lumina.Statistics** provides a single-page dashboard with:
+**Lumina.Statistics** provides a single-page dashboard with:
 
 - **Overview cards** — Total images, galleries, cameras, and lenses at a glance
 - **Bar charts** for all 9 categories using pure CSS (no JavaScript)
@@ -123,7 +123,7 @@ revela config statistics --max-entries 20 --sort-by-count false
 Install it alongside the plugin:
 
 ```bash
-revela plugin install Theme.Lumina.Statistics
+revela plugin install Lumina.Statistics
 ```
 
 ## CLI Commands

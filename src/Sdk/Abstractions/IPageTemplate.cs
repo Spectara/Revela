@@ -41,7 +41,7 @@ public interface IPageTemplate
     string TemplateName { get; }
 
     /// <summary>
-    /// Gets the configuration section name for plugin settings (e.g., "Spectara.Revela.Plugin.Statistics").
+    /// Gets the configuration section name for plugin settings (e.g., "Spectara.Revela.Plugins.Statistics").
     /// </summary>
     /// <remarks>
     /// Used to auto-detect the plugin JSON filename: <c>{ConfigSectionName}.json</c>

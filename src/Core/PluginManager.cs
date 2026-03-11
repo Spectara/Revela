@@ -43,7 +43,7 @@ public sealed class PluginManager(
     /// <summary>
     /// Installs a plugin from a package ID, local .nupkg file, or URL.
     /// </summary>
-    /// <param name="packageIdOrPath">Package ID (e.g., 'Spectara.Revela.Plugin.Statistics'), local .nupkg path, or HTTP(S) URL.</param>
+    /// <param name="packageIdOrPath">Package ID (e.g., 'Spectara.Revela.Plugins.Statistics'), local .nupkg path, or HTTP(S) URL.</param>
     /// <param name="version">Specific version to install (only for package IDs).</param>
     /// <param name="source">Custom NuGet source URL (null = use default nuget.org).</param>
     /// <param name="cancellationToken">Cancellation token.</param>

@@ -13,7 +13,7 @@ namespace Spectara.Revela.Core.Models;
 public sealed record InstalledPluginInfo
 {
     /// <summary>
-    /// Package ID (e.g., Spectara.Revela.Plugin.Statistics)
+    /// Package ID (e.g., Spectara.Revela.Plugins.Statistics)
     /// </summary>
     [JsonPropertyName("name")]
     public required string Name { get; init; }

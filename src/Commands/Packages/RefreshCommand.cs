@@ -244,8 +244,8 @@ internal sealed partial class RefreshCommand(
     /// </summary>
     /// <remarks>
     /// Fallback when packageTypes is not available in API response.
-    /// - Spectara.Revela.Theme.* → RevelaTheme
-    /// - Spectara.Revela.Plugin.* → RevelaPlugin
+    /// - Spectara.Revela.Themes.* → RevelaTheme
+    /// - Spectara.Revela.Plugins.* → RevelaPlugin
     /// </remarks>
     private static List<string> InferPackageTypes(string packageId)
     {

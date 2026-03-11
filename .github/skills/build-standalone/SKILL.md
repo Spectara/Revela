@@ -36,12 +36,12 @@ playground/standalone-full-20260212-143000/
 │   └── cli-reference.md
 └── packages/                               # Local NuGet feed (-Full only)
     ├── Spectara.Revela.Sdk.{version}.nupkg
-    ├── Spectara.Revela.Theme.Lumina.{version}.nupkg
-    ├── Spectara.Revela.Theme.Lumina.Statistics.{version}.nupkg
-    ├── Spectara.Revela.Plugin.Statistics.{version}.nupkg
-    ├── Spectara.Revela.Plugin.Source.OneDrive.{version}.nupkg
-    ├── Spectara.Revela.Plugin.Serve.{version}.nupkg
-    └── Spectara.Revela.Plugin.Compress.{version}.nupkg
+    ├── Spectara.Revela.Themes.Lumina.{version}.nupkg
+    ├── Spectara.Revela.Themes.Lumina.Statistics.{version}.nupkg
+    ├── Spectara.Revela.Plugins.Statistics.{version}.nupkg
+    ├── Spectara.Revela.Plugins.Source.OneDrive.{version}.nupkg
+    ├── Spectara.Revela.Plugins.Serve.{version}.nupkg
+    └── Spectara.Revela.Plugins.Compress.{version}.nupkg
 ```
 
 ## Common Usage

@@ -1,4 +1,4 @@
-using Spectara.Revela.Theme.Lumina;
+using Spectara.Revela.Themes.Lumina;
 
 namespace Spectara.Revela.Core.Tests.Themes;
 

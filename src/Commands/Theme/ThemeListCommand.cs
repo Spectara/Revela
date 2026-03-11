@@ -68,7 +68,7 @@ internal sealed partial class ThemeListCommand(
         {
             ErrorPanels.ShowNothingInstalledError(
                 "themes",
-                "theme install Spectara.Revela.Theme.Lumina",
+                "theme install Spectara.Revela.Themes.Lumina",
                 "theme list --online");
         }
         else
@@ -232,10 +232,10 @@ internal sealed partial class ThemeListCommand(
     /// <summary>
     /// Extracts the theme name from a package ID.
     /// </summary>
-    /// <example>Spectara.Revela.Theme.Lumina → Lumina</example>
+    /// <example>Spectara.Revela.Themes.Lumina → Lumina</example>
     private static string ExtractThemeName(string packageId)
     {
-        const string prefix = "Spectara.Revela.Theme.";
+        const string prefix = "Spectara.Revela.Themes.";
         return packageId.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)
             ? packageId[prefix.Length..]
             : packageId;

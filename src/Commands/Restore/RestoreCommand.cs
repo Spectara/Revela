@@ -218,7 +218,7 @@ internal sealed partial class RestoreCommand(
     private bool IsPluginInstalled(RequiredDependency dep)
     {
         // Check if plugin is loaded by matching package ID patterns
-        // Package ID: "Spectara.Revela.Plugin.Source.OneDrive"
+        // Package ID: "Spectara.Revela.Plugins.Source.OneDrive"
         // Plugin Name: "OneDrive Source"
 
         return installedPlugins.Any(p =>
@@ -237,7 +237,7 @@ internal sealed partial class RestoreCommand(
             }
 
             // Check if the last parts of package ID match the plugin name parts
-            // "Spectara.Revela.Plugin.Source.OneDrive" should match "OneDrive Source"
+            // "Spectara.Revela.Plugins.Source.OneDrive" should match "OneDrive Source"
             var packageParts = dep.PackageId.Split('.');
             var nameParts = p.Metadata.Name.Split(' ');
 
@@ -258,8 +258,8 @@ internal sealed partial class RestoreCommand(
     private static string GetShortName(RequiredDependency dep)
     {
         // Extract short name from package ID
-        // "Spectara.Revela.Plugin.Source.OneDrive" → "OneDrive Source" or just last part
-        // "Spectara.Revela.Theme.Lumina" → "Lumina"
+        // "Spectara.Revela.Plugins.Source.OneDrive" → "OneDrive Source" or just last part
+        // "Spectara.Revela.Themes.Lumina" → "Lumina"
 
         var parts = dep.PackageId.Split('.');
         if (parts.Length >= 2)
@@ -272,7 +272,7 @@ internal sealed partial class RestoreCommand(
 
             if (dep.Type == DependencyType.Plugin && parts.Length > 4)
             {
-                // "Spectara.Revela.Plugin.Source.OneDrive" → "OneDrive"
+                // "Spectara.Revela.Plugins.Source.OneDrive" → "OneDrive"
                 return parts[^1];
             }
         }

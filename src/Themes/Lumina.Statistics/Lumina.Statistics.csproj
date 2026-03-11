@@ -1,0 +1,48 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <Description>Revela Theme Extension - Statistics display for Lumina theme</Description>
+    <AssemblyName>Spectara.Revela.Themes.Lumina.Statistics</AssemblyName>
+    <RootNamespace>Spectara.Revela.Themes.Lumina.Statistics</RootNamespace>
+    <PackageId>Spectara.Revela.Themes.Lumina.Statistics</PackageId>
+    <PackageTags>revela;theme;lumina;statistics;exif;charts</PackageTags>
+    <PackageIcon>icon.png</PackageIcon>
+    <PackageReleaseNotes>https://github.com/spectara/revela/blob/main/CHANGELOG.md</PackageReleaseNotes>
+    <PackageType>RevelaTheme</PackageType>
+
+    <!-- Theme packaging handled by Spectara.Revela.Sdk.targets -->
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="README.md" Pack="true" PackagePath="/" />
+    <None Include="../../../assets/revela_100.png" Pack="true" PackagePath="icon.png" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Embed manifest.json as resource -->
+    <EmbeddedResource Include="manifest.json">
+      <LogicalName>manifest.json</LogicalName>
+    </EmbeddedResource>
+    <!-- Embed Body templates with Body/ prefix (full-page templates with data requirements) -->
+    <EmbeddedResource Include="Body\**\*">
+      <LogicalName>Body\%(RecursiveDir)%(Filename)%(Extension)</LogicalName>
+    </EmbeddedResource>
+    <!-- Embed Partials templates with Partials/ prefix (reusable components) -->
+    <EmbeddedResource Include="Partials\**\*">
+      <LogicalName>Partials\%(RecursiveDir)%(Filename)%(Extension)</LogicalName>
+    </EmbeddedResource>
+    <!-- Embed CSS files with Assets/ prefix -->
+    <EmbeddedResource Include="Assets\**\*">
+      <LogicalName>Assets\%(RecursiveDir)%(Filename)%(Extension)</LogicalName>
+    </EmbeddedResource>
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Reference to host Sdk - NOT copied to output (loaded from host) -->
+    <ProjectReference Include="..\..\Sdk\Sdk.csproj">
+      <Private>false</Private>
+      <ExcludeAssets>runtime</ExcludeAssets>
+    </ProjectReference>
+  </ItemGroup>
+
+</Project>

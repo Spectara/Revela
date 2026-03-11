@@ -76,7 +76,7 @@ internal sealed partial class ConfigThemeCommand(
         {
             ErrorPanels.ShowNothingInstalledError(
                 "themes",
-                "theme install Spectara.Revela.Theme.Lumina",
+                "theme install Spectara.Revela.Themes.Lumina",
                 "theme list --online");
             return 1;
         }

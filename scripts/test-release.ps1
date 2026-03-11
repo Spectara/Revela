@@ -181,10 +181,10 @@ try {
             $testProjects = @(
                 @{ Name = "Core.Tests"; Path = "artifacts/bin/Core.Tests/Release/net10.0/Spectara.Revela.Core.Tests$testExeExt" },
                 @{ Name = "Commands.Tests"; Path = "artifacts/bin/Commands.Tests/Release/net10.0/Spectara.Revela.Commands.Tests$testExeExt" },
-                @{ Name = "Plugin.Source.OneDrive.Tests"; Path = "artifacts/bin/Plugin.Source.OneDrive.Tests/Release/net10.0/Spectara.Revela.Plugin.Source.OneDrive.Tests$testExeExt" },
-                @{ Name = "Plugin.Statistics.Tests"; Path = "artifacts/bin/Plugin.Statistics.Tests/Release/net10.0/Spectara.Revela.Plugin.Statistics.Tests$testExeExt" },
-                @{ Name = "Plugin.Serve.Tests"; Path = "artifacts/bin/Plugin.Serve.Tests/Release/net10.0/Spectara.Revela.Plugin.Serve.Tests$testExeExt" },
-                @{ Name = "Plugin.Compress.Tests"; Path = "artifacts/bin/Plugin.Compress.Tests/Release/net10.0/Spectara.Revela.Plugin.Compress.Tests$testExeExt" },
+                @{ Name = "Source.OneDrive.Tests"; Path = "artifacts/bin/Source.OneDrive.Tests/Release/net10.0/Spectara.Revela.Plugins.Source.OneDrive.Tests$testExeExt" },
+                @{ Name = "Statistics.Tests"; Path = "artifacts/bin/Statistics.Tests/Release/net10.0/Spectara.Revela.Plugins.Statistics.Tests$testExeExt" },
+                @{ Name = "Serve.Tests"; Path = "artifacts/bin/Serve.Tests/Release/net10.0/Spectara.Revela.Plugins.Serve.Tests$testExeExt" },
+                @{ Name = "Compress.Tests"; Path = "artifacts/bin/Compress.Tests/Release/net10.0/Spectara.Revela.Plugins.Compress.Tests$testExeExt" },
                 @{ Name = "IntegrationTests"; Path = "artifacts/bin/IntegrationTests/Release/net10.0/Spectara.Revela.IntegrationTests$testExeExt" }
             )
 
@@ -237,21 +237,21 @@ try {
     # ========================================================================
     Write-Step "Step 5: Build NuGet Packages"
     Measure-Step "NuGet Packages" {
-        # Theme.Lumina (goes next to CLI - bundled with release)
-        Write-Info "Building Theme.Lumina..."
-        dotnet build src/Themes/Theme.Lumina/Theme.Lumina.csproj `
+        # Lumina (goes next to CLI - bundled with release)
+        Write-Info "Building Lumina..."
+        dotnet build src/Themes/Lumina/Lumina.csproj `
             -c Release -r $RuntimeIdentifier -p:Version=$Version --verbosity quiet
-        if ($LASTEXITCODE -ne 0) { throw "Theme.Lumina build failed" }
+        if ($LASTEXITCODE -ne 0) { throw "Lumina build failed" }
 
-        Copy-Item "artifacts/bin/Theme.Lumina/Release/net10.0/$RuntimeIdentifier/Spectara.Revela.Theme.Lumina.dll" $CliDir
-        Write-Success "Theme.Lumina bundled with CLI"
+        Copy-Item "artifacts/bin/Lumina/Release/net10.0/$RuntimeIdentifier/Spectara.Revela.Themes.Lumina.dll" $CliDir
+        Write-Success "Lumina bundled with CLI"
 
-        # Pack Theme.Lumina (for online theme list test)
-        Write-Info "Packing Theme.Lumina..."
-        dotnet pack src/Themes/Theme.Lumina/Theme.Lumina.csproj `
+        # Pack Lumina (for online theme list test)
+        Write-Info "Packing Lumina..."
+        dotnet pack src/Themes/Lumina/Lumina.csproj `
             -c Release -o $PluginsDir -p:PackageVersion=$Version --verbosity quiet
-        if ($LASTEXITCODE -ne 0) { throw "Theme.Lumina pack failed" }
-        Write-Success "Theme.Lumina packed"
+        if ($LASTEXITCODE -ne 0) { throw "Lumina pack failed" }
+        Write-Success "Lumina packed"
 
         # Pack SDK (for third-party plugin/theme developers)
         Write-Info "Packing Sdk..."
@@ -260,40 +260,40 @@ try {
         if ($LASTEXITCODE -ne 0) { throw "Sdk pack failed" }
         Write-Success "Sdk packed"
 
-        # Pack Plugin.Source.OneDrive
-        Write-Info "Packing Plugin.Source.OneDrive..."
-        dotnet pack src/Plugins/Plugin.Source.OneDrive/Plugin.Source.OneDrive.csproj `
+        # Pack Source.OneDrive
+        Write-Info "Packing Source.OneDrive..."
+        dotnet pack src/Plugins/Source.OneDrive/Source.OneDrive.csproj `
             -c Release -o $PluginsDir -p:PackageVersion=$Version --verbosity quiet
         if ($LASTEXITCODE -ne 0) { throw "OneDrive plugin pack failed" }
-        Write-Success "Plugin.Source.OneDrive packed"
+        Write-Success "Source.OneDrive packed"
 
-        # Pack Plugin.Statistics
-        Write-Info "Packing Plugin.Statistics..."
-        dotnet pack src/Plugins/Plugin.Statistics/Plugin.Statistics.csproj `
+        # Pack Statistics
+        Write-Info "Packing Statistics..."
+        dotnet pack src/Plugins/Statistics/Statistics.csproj `
             -c Release -o $PluginsDir -p:PackageVersion=$Version --verbosity quiet
         if ($LASTEXITCODE -ne 0) { throw "Statistics plugin pack failed" }
-        Write-Success "Plugin.Statistics packed"
+        Write-Success "Statistics packed"
 
-        # Pack Plugin.Serve (live preview server)
-        Write-Info "Packing Plugin.Serve..."
-        dotnet pack src/Plugins/Plugin.Serve/Plugin.Serve.csproj `
+        # Pack Serve (live preview server)
+        Write-Info "Packing Serve..."
+        dotnet pack src/Plugins/Serve/Serve.csproj `
             -c Release -o $PluginsDir -p:PackageVersion=$Version --verbosity quiet
         if ($LASTEXITCODE -ne 0) { throw "Serve plugin pack failed" }
-        Write-Success "Plugin.Serve packed"
+        Write-Success "Serve packed"
 
-        # Pack Plugin.Compress (static file pre-compression)
-        Write-Info "Packing Plugin.Compress..."
-        dotnet pack src/Plugins/Plugin.Compress/Plugin.Compress.csproj `
+        # Pack Compress (static file pre-compression)
+        Write-Info "Packing Compress..."
+        dotnet pack src/Plugins/Compress/Compress.csproj `
             -c Release -o $PluginsDir -p:PackageVersion=$Version --verbosity quiet
         if ($LASTEXITCODE -ne 0) { throw "Compress plugin pack failed" }
-        Write-Success "Plugin.Compress packed"
+        Write-Success "Compress packed"
 
-        # Pack Theme.Lumina.Statistics
-        Write-Info "Packing Theme.Lumina.Statistics..."
-        dotnet pack src/Themes/Theme.Lumina.Statistics/Theme.Lumina.Statistics.csproj `
+        # Pack Lumina.Statistics
+        Write-Info "Packing Lumina.Statistics..."
+        dotnet pack src/Themes/Lumina.Statistics/Lumina.Statistics.csproj `
             -c Release -o $PluginsDir -p:PackageVersion=$Version --verbosity quiet
-        if ($LASTEXITCODE -ne 0) { throw "Theme.Lumina.Statistics pack failed" }
-        Write-Success "Theme.Lumina.Statistics packed"
+        if ($LASTEXITCODE -ne 0) { throw "Lumina.Statistics pack failed" }
+        Write-Success "Lumina.Statistics packed"
 
         # List SDK package (for developers)
         Write-Info "SDK package (nuget/):"
@@ -333,28 +333,28 @@ try {
         Push-Location $SampleProjectDir
         try {
             # Install OneDrive Plugin from local NuGet feed
-            Write-Info "Installing Plugin.Source.OneDrive..."
+            Write-Info "Installing Source.OneDrive..."
             & $ExePath plugin install Source.OneDrive --version $Version --source $PluginsDir
             if ($LASTEXITCODE -ne 0) { throw "OneDrive plugin installation failed" }
-            Write-Success "Plugin.Source.OneDrive installed"
+            Write-Success "Source.OneDrive installed"
 
             # Install Statistics Plugin
-            Write-Info "Installing Plugin.Statistics..."
+            Write-Info "Installing Statistics..."
             & $ExePath plugin install Statistics --version $Version --source $PluginsDir
             if ($LASTEXITCODE -ne 0) { throw "Statistics plugin installation failed" }
-            Write-Success "Plugin.Statistics installed"
+            Write-Success "Statistics installed"
 
-            # Install Theme.Lumina.Statistics Extension
-            Write-Info "Installing Theme.Lumina.Statistics..."
-            & $ExePath plugin install Spectara.Revela.Theme.Lumina.Statistics --version $Version --source $PluginsDir
-            if ($LASTEXITCODE -ne 0) { throw "Theme.Lumina.Statistics installation failed" }
-            Write-Success "Theme.Lumina.Statistics installed"
+            # Install Lumina.Statistics Extension
+            Write-Info "Installing Lumina.Statistics..."
+            & $ExePath plugin install Spectara.Revela.Themes.Lumina.Statistics --version $Version --source $PluginsDir
+            if ($LASTEXITCODE -ne 0) { throw "Lumina.Statistics installation failed" }
+            Write-Success "Lumina.Statistics installed"
 
             # Install Serve Plugin (live preview server)
-            Write-Info "Installing Plugin.Serve..."
+            Write-Info "Installing Serve..."
             & $ExePath plugin install Serve --version $Version --source $PluginsDir
             if ($LASTEXITCODE -ne 0) { throw "Serve plugin installation failed" }
-            Write-Success "Plugin.Serve installed"
+            Write-Success "Serve installed"
 
             # Verify plugins are installed in correct directory (local, next to exe)
             # This validates the "GitHub Release" scenario: user extracts ZIP, runs exe, installs plugins
@@ -410,10 +410,10 @@ try {
 
         # Verify plugin folders exist with main DLLs (new structure: plugins/{PackageId}/{PackageId}.dll)
         $expectedPlugins = @(
-            "Spectara.Revela.Plugin.Source.OneDrive",
-            "Spectara.Revela.Plugin.Statistics",
-            "Spectara.Revela.Plugin.Serve",
-            "Spectara.Revela.Theme.Lumina.Statistics"
+            "Spectara.Revela.Plugins.Source.OneDrive",
+            "Spectara.Revela.Plugins.Statistics",
+            "Spectara.Revela.Plugins.Serve",
+            "Spectara.Revela.Themes.Lumina.Statistics"
         )
         foreach ($pluginName in $expectedPlugins) {
             $pluginFolder = Join-Path $localPluginsDir $pluginName
@@ -430,7 +430,7 @@ try {
         if ($LASTEXITCODE -ne 0) { throw "Plugin uninstall command failed" }
 
         # Verify plugin folder was actually removed
-        $statisticsFolder = Join-Path $localPluginsDir "Spectara.Revela.Plugin.Statistics"
+        $statisticsFolder = Join-Path $localPluginsDir "Spectara.Revela.Plugins.Statistics"
         if (Test-Path $statisticsFolder) {
             throw "Plugin uninstall failed - folder still exists (probably locked by AssemblyLoadContext)"
         }
@@ -438,7 +438,7 @@ try {
 
         # Re-install for subsequent tests
         Write-Info "Re-installing Statistics plugin..."
-        & $ExePath plugin install Spectara.Revela.Plugin.Statistics --source $PluginsDir
+        & $ExePath plugin install Spectara.Revela.Plugins.Statistics --source $PluginsDir
         if ($LASTEXITCODE -ne 0) { throw "Plugin re-install failed" }
         Write-Success "Plugin re-installed for subsequent tests"
 
@@ -490,8 +490,8 @@ try {
             $themeOnlineOutput = & $ExePath theme list --online 2>&1 | Out-String
             Write-Info $themeOnlineOutput
 
-            # Should find Theme.Lumina from local NuGet feed
-            if ($themeOnlineOutput -match "Spectara.Revela.Theme.Lumina" -or $themeOnlineOutput -match "Available from NuGet") {
+            # Should find Lumina from local NuGet feed
+            if ($themeOnlineOutput -match "Spectara.Revela.Themes.Lumina" -or $themeOnlineOutput -match "Available from NuGet") {
                 Write-Success "Theme list --online works (searched NuGet sources)"
             }
             else {
@@ -582,7 +582,7 @@ try {
             $projectConfig = Join-Path $SampleProjectDir "project.json"
             if (Test-Path $projectConfig) {
                 $content = Get-Content $projectConfig -Raw | ConvertFrom-Json
-                if ($content.'Spectara.Revela.Plugin.Statistics'.MaxEntriesPerCategory -eq 20) {
+                if ($content.'Spectara.Revela.Plugins.Statistics'.MaxEntriesPerCategory -eq 20) {
                     Write-Success "Statistics config verified: MaxEntriesPerCategory = 20"
                 }
                 else {
@@ -782,7 +782,7 @@ try {
             # Check for extension assets
             $extensionDir = Join-Path $assetsDir "lumina-statistics"
             if (Test-Path $extensionDir) {
-                Write-Success "Theme.Lumina.Statistics assets included"
+                Write-Success "Lumina.Statistics assets included"
             }
         }
 

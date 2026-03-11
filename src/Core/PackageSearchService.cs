@@ -115,8 +115,8 @@ public sealed class PackageSearchService(
     /// Used for search results where NuGet API doesn't return PackageTypes.
     /// Real types are read from .nuspec during installation.
     /// Naming convention:
-    /// - Spectara.Revela.Theme.* → RevelaTheme
-    /// - Spectara.Revela.Plugin.* → RevelaPlugin
+    /// - Spectara.Revela.Themes.* → RevelaTheme
+    /// - Spectara.Revela.Plugins.* → RevelaPlugin
     /// </remarks>
     internal static List<string> InferPackageTypes(string packageId)
     {

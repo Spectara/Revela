@@ -132,7 +132,7 @@ Install via the Setup Wizard or manually:
 | **Source.OneDrive** | Import from OneDrive shared folders |
 
 ```bash
-revela plugin install Spectara.Revela.Plugin.Serve
+revela plugin install Spectara.Revela.Plugins.Serve
 ```
 
 **[Plugin Management Guide →](https://revela.website/docs/)**

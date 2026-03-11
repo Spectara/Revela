@@ -17,7 +17,7 @@ public sealed class PluginUninstallCommandTests
         var packageId = TransformPackageName(shortName);
 
         // Assert
-        Assert.AreEqual("Spectara.Revela.Plugin.OneDrive", packageId);
+        Assert.AreEqual("Spectara.Revela.Plugins.OneDrive", packageId);
     }
 
     [TestMethod]
@@ -30,33 +30,33 @@ public sealed class PluginUninstallCommandTests
         var packageId = TransformPackageName(shortName);
 
         // Assert
-        Assert.AreEqual("Spectara.Revela.Plugin.Source.OneDrive", packageId);
+        Assert.AreEqual("Spectara.Revela.Plugins.Source.OneDrive", packageId);
     }
 
     [TestMethod]
     public void TransformFullPluginName_NoTransformation()
     {
         // Arrange
-        var fullName = "Spectara.Revela.Plugin.Source.OneDrive";
+        var fullName = "Spectara.Revela.Plugins.Source.OneDrive";
 
         // Act
         var packageId = TransformPackageName(fullName);
 
         // Assert
-        Assert.AreEqual("Spectara.Revela.Plugin.Source.OneDrive", packageId);
+        Assert.AreEqual("Spectara.Revela.Plugins.Source.OneDrive", packageId);
     }
 
     [TestMethod]
     public void TransformFullThemeName_NoTransformation()
     {
         // Arrange - Theme names should NOT get Plugin. prefix added
-        var fullName = "Spectara.Revela.Theme.Lumina.Statistics";
+        var fullName = "Spectara.Revela.Themes.Lumina.Statistics";
 
         // Act
         var packageId = TransformPackageName(fullName);
 
         // Assert - Should remain unchanged (not get double prefix)
-        Assert.AreEqual("Spectara.Revela.Theme.Lumina.Statistics", packageId);
+        Assert.AreEqual("Spectara.Revela.Themes.Lumina.Statistics", packageId);
     }
 
     /// <summary>
@@ -68,6 +68,6 @@ public sealed class PluginUninstallCommandTests
         // Names starting with "Spectara.Revela." are treated as full package IDs
         return name.StartsWith("Spectara.Revela.", StringComparison.OrdinalIgnoreCase)
             ? name
-            : $"Spectara.Revela.Plugin.{name}";
+            : $"Spectara.Revela.Plugins.{name}";
     }
 }

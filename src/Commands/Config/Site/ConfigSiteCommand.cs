@@ -79,7 +79,7 @@ internal sealed partial class ConfigSiteCommand(
             ErrorPanels.ShowError(
                 "Theme Not Found",
                 $"[yellow]Theme '{themeName}' is not installed.[/]\n\n" +
-                "[bold]Install it:[/] [cyan]revela plugin install Spectara.Revela.Theme.{themeName}[/]");
+                "[bold]Install it:[/] [cyan]revela plugin install Spectara.Revela.Themes.{themeName}[/]");
             return 1;
         }
 

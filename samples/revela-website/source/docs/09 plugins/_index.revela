@@ -30,10 +30,10 @@ Sync photos from OneDrive shared folders directly into your project.
 
 | Plugin | Package | Description |
 |--------|---------|-------------|
-| **Compression** | `Spectara.Revela.Plugin.Compress` | Pre-compress static files with Gzip and Brotli |
-| **Statistics** | `Spectara.Revela.Plugin.Statistics` | Generate EXIF statistics pages |
-| **Serve** | `Spectara.Revela.Plugin.Serve` | Local development server |
-| **OneDrive** | `Spectara.Revela.Plugin.Source.OneDrive` | Download photos from OneDrive shared folders |
+| **Compression** | `Spectara.Revela.Plugins.Compress` | Pre-compress static files with Gzip and Brotli |
+| **Statistics** | `Spectara.Revela.Plugins.Statistics` | Generate EXIF statistics pages |
+| **Serve** | `Spectara.Revela.Plugins.Serve` | Local development server |
+| **OneDrive** | `Spectara.Revela.Plugins.Source.OneDrive` | Download photos from OneDrive shared folders |
 
 All `Spectara.Revela.*` packages are **verified and signed** by the Spectara organization.
 
@@ -44,7 +44,7 @@ All `Spectara.Revela.*` packages are **verified and signed** by the Spectara org
 revela plugin install Statistics
 
 # Or use full package ID
-revela plugin install Spectara.Revela.Plugin.Statistics
+revela plugin install Spectara.Revela.Plugins.Statistics
 
 # Install a specific version
 revela plugin install Statistics --version 1.2.0
@@ -66,11 +66,11 @@ Plugins store their settings in `project.json`:
 
 ```json
 {
-  "Spectara.Revela.Plugin.Statistics": {
+  "Spectara.Revela.Plugins.Statistics": {
     "MaxEntriesPerCategory": 15,
     "SortByCount": true
   },
-  "Spectara.Revela.Plugin.Serve": {
+  "Spectara.Revela.Plugins.Serve": {
     "Port": 8080
   }
 }

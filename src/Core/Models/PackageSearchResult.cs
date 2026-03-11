@@ -8,7 +8,7 @@ namespace Spectara.Revela.Core.Models;
 public sealed record PackageSearchResult
 {
     /// <summary>
-    /// Package ID (e.g., Spectara.Revela.Theme.Lumina)
+    /// Package ID (e.g., Spectara.Revela.Themes.Lumina)
     /// </summary>
     [JsonPropertyName("id")]
     public required string Id { get; init; }
