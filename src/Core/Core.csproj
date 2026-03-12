@@ -2,6 +2,7 @@
 
   <PropertyGroup>
     <Description>Core models, abstractions and plugin infrastructure for Revela</Description>
+    <IsPackable>false</IsPackable>
   </PropertyGroup>
 
   <ItemGroup>

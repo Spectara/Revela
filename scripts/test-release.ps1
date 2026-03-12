@@ -7,8 +7,10 @@
     1. Build & Test all projects
     2. Publish CLI as self-contained executable
     3. Build all plugins and themes
-    4. Integration test with real data (OneDrive sample)
-    5. Validate generated output
+    4. Integration test with showcase sample (offline, Git-tracked)
+    5. Test generate all, clean, compress, idempotency
+    6. Test .NET Tool package install/uninstall
+    7. Optionally test OneDrive sync with real download
 
 .PARAMETER Version
     Version number for the test build (default: 0.0.0-test)
@@ -16,8 +18,8 @@
 .PARAMETER SkipTests
     Skip running unit tests (faster iteration)
 
-.PARAMETER SkipDownload
-    Skip OneDrive sync (use existing source files)
+.PARAMETER IncludeOneDrive
+    Also test OneDrive sync (requires network + valid share URL)
 
 .PARAMETER KeepArtifacts
     Don't clean up artifacts after test
@@ -27,11 +29,15 @@
 
 .EXAMPLE
     .\scripts\test-release.ps1
-    # Full test with default settings
+    # Full test with showcase sample (offline)
 
 .EXAMPLE
-    .\scripts\test-release.ps1 -SkipTests -SkipDownload
-    # Quick iteration: skip tests, use existing source files
+    .\scripts\test-release.ps1 -SkipTests
+    # Quick iteration: skip unit tests
+
+.EXAMPLE
+    .\scripts\test-release.ps1 -IncludeOneDrive
+    # Full test including OneDrive download
 
 .EXAMPLE
     .\scripts\test-release.ps1 -Version "1.0.0-beta.1" -KeepArtifacts
@@ -42,7 +48,7 @@
 param(
     [string]$Version = "0.0.0-test",
     [switch]$SkipTests,
-    [switch]$SkipDownload,
+    [switch]$IncludeOneDrive,
     [switch]$KeepArtifacts,
     [string]$RuntimeIdentifier
 )
@@ -77,7 +83,8 @@ $NuGetDir = Join-Path $TestDir "nuget"
 $PluginsDir = Join-Path $TestDir "plugins"
 $ToolDir = Join-Path $TestDir "tool"
 $SampleProjectDir = Join-Path $TestDir "sample"
-$SampleSourceDir = Join-Path $RepoRoot "samples/onedrive"
+$ShowcaseDir = Join-Path $RepoRoot "samples/showcase"
+$OneDriveDir = Join-Path $RepoRoot "samples/onedrive"
 
 # Determine runtime identifier and executable name
 # Note: $IsWindows, $IsMacOS, $IsLinux are automatic variables in PowerShell Core 6+
@@ -128,7 +135,7 @@ Write-Host ""
 Write-Info "Version:    $Version"
 Write-Info "Runtime:    $RuntimeIdentifier"
 Write-Info "Skip Tests: $SkipTests"
-Write-Info "Skip Download: $SkipDownload"
+Write-Info "OneDrive:   $IncludeOneDrive"
 Write-Info "Keep Artifacts: $KeepArtifacts"
 Write-Info "Repo Root:  $RepoRoot"
 
@@ -235,10 +242,10 @@ try {
     # ========================================================================
     # STEP 5: Build NuGet Packages (like CI pipeline)
     # ========================================================================
-    Write-Step "Step 5: Build NuGet Packages"
+    Write-Step "Step 5: Pack NuGet Packages"
     Measure-Step "NuGet Packages" {
         # Lumina (goes next to CLI - bundled with release)
-        Write-Info "Building Lumina..."
+        Write-Info "Building Lumina for $RuntimeIdentifier..."
         dotnet build src/Themes/Lumina/Lumina.csproj `
             -c Release -r $RuntimeIdentifier -p:Version=$Version --verbosity quiet
         if ($LASTEXITCODE -ne 0) { throw "Lumina build failed" }
@@ -246,54 +253,25 @@ try {
         Copy-Item "artifacts/bin/Lumina/Release/net10.0/$RuntimeIdentifier/Spectara.Revela.Themes.Lumina.dll" $CliDir
         Write-Success "Lumina bundled with CLI"
 
-        # Pack Lumina (for online theme list test)
-        Write-Info "Packing Lumina..."
-        dotnet pack src/Themes/Lumina/Lumina.csproj `
-            -c Release -o $PluginsDir -p:PackageVersion=$Version --verbosity quiet
-        if ($LASTEXITCODE -ne 0) { throw "Lumina pack failed" }
-        Write-Success "Lumina packed"
+        # Pack all packages from existing build output (no rebuild!)
+        $packTargets = @(
+            @{ Name = "Lumina";             Proj = "src/Themes/Lumina/Lumina.csproj";                                 Out = $PluginsDir },
+            @{ Name = "Lumina.Statistics";  Proj = "src/Themes/Lumina.Statistics/Lumina.Statistics.csproj";           Out = $PluginsDir },
+            @{ Name = "Sdk";                Proj = "src/Sdk/Sdk.csproj";                                             Out = $NuGetDir },
+            @{ Name = "Source.OneDrive";    Proj = "src/Plugins/Source.OneDrive/Source.OneDrive.csproj";             Out = $PluginsDir },
+            @{ Name = "Statistics";         Proj = "src/Plugins/Statistics/Statistics.csproj";                       Out = $PluginsDir },
+            @{ Name = "Serve";              Proj = "src/Plugins/Serve/Serve.csproj";                                 Out = $PluginsDir },
+            @{ Name = "Compress";           Proj = "src/Plugins/Compress/Compress.csproj";                           Out = $PluginsDir }
+        )
 
-        # Pack SDK (for third-party plugin/theme developers)
-        Write-Info "Packing Sdk..."
-        dotnet pack src/Sdk/Sdk.csproj `
-            -c Release -o $NuGetDir -p:PackageVersion=$Version --verbosity quiet
-        if ($LASTEXITCODE -ne 0) { throw "Sdk pack failed" }
-        Write-Success "Sdk packed"
-
-        # Pack Source.OneDrive
-        Write-Info "Packing Source.OneDrive..."
-        dotnet pack src/Plugins/Source.OneDrive/Source.OneDrive.csproj `
-            -c Release -o $PluginsDir -p:PackageVersion=$Version --verbosity quiet
-        if ($LASTEXITCODE -ne 0) { throw "OneDrive plugin pack failed" }
-        Write-Success "Source.OneDrive packed"
-
-        # Pack Statistics
-        Write-Info "Packing Statistics..."
-        dotnet pack src/Plugins/Statistics/Statistics.csproj `
-            -c Release -o $PluginsDir -p:PackageVersion=$Version --verbosity quiet
-        if ($LASTEXITCODE -ne 0) { throw "Statistics plugin pack failed" }
-        Write-Success "Statistics packed"
-
-        # Pack Serve (live preview server)
-        Write-Info "Packing Serve..."
-        dotnet pack src/Plugins/Serve/Serve.csproj `
-            -c Release -o $PluginsDir -p:PackageVersion=$Version --verbosity quiet
-        if ($LASTEXITCODE -ne 0) { throw "Serve plugin pack failed" }
-        Write-Success "Serve packed"
-
-        # Pack Compress (static file pre-compression)
-        Write-Info "Packing Compress..."
-        dotnet pack src/Plugins/Compress/Compress.csproj `
-            -c Release -o $PluginsDir -p:PackageVersion=$Version --verbosity quiet
-        if ($LASTEXITCODE -ne 0) { throw "Compress plugin pack failed" }
-        Write-Success "Compress packed"
-
-        # Pack Lumina.Statistics
-        Write-Info "Packing Lumina.Statistics..."
-        dotnet pack src/Themes/Lumina.Statistics/Lumina.Statistics.csproj `
-            -c Release -o $PluginsDir -p:PackageVersion=$Version --verbosity quiet
-        if ($LASTEXITCODE -ne 0) { throw "Lumina.Statistics pack failed" }
-        Write-Success "Lumina.Statistics packed"
+        foreach ($target in $packTargets) {
+            Write-Info "Packing $($target.Name)..."
+            dotnet pack $target.Proj `
+                -c Release -o $target.Out -p:PackageVersion=$Version `
+                --no-build --no-restore --verbosity quiet
+            if ($LASTEXITCODE -ne 0) { throw "$($target.Name) pack failed" }
+            Write-Success "$($target.Name) packed"
+        }
 
         # List SDK package (for developers)
         Write-Info "SDK package (nuget/):"
@@ -317,11 +295,13 @@ try {
     Measure-Step "Integration Setup" {
         New-Item -ItemType Directory -Path $SampleProjectDir -Force | Out-Null
 
-        # Copy project files from onedrive sample (without source - will be downloaded or copied later)
-        Copy-Item "$SampleSourceDir/project.json" $SampleProjectDir
-        Copy-Item "$SampleSourceDir/site.json" $SampleProjectDir
+        # Copy showcase sample (Git-tracked, includes source images)
+        Copy-Item "$ShowcaseDir/project.json" $SampleProjectDir
+        Copy-Item "$ShowcaseDir/site.json" $SampleProjectDir
+        Copy-Item "$ShowcaseDir/source" $SampleProjectDir -Recurse
 
-        Write-Success "Sample project created at: $SampleProjectDir"
+        $fileCount = (Get-ChildItem "$SampleProjectDir/source" -Recurse -File).Count
+        Write-Success "Sample project created with $fileCount source files"
     }
 
     # ========================================================================
@@ -504,20 +484,25 @@ try {
     }
 
     # ========================================================================
-    # STEP 7d: Get Source Content (OneDrive Sync or Copy)
+    # STEP 7d: OneDrive Sync (optional, requires network)
     # ========================================================================
-    if (-not $SkipDownload) {
-        Write-Step "Step 7d: OneDrive Sync"
+    if ($IncludeOneDrive) {
+        Write-Step "Step 7d: OneDrive Sync Test"
         Measure-Step "OneDrive Sync" {
+            # Create a separate project for OneDrive test
+            $oneDriveProjectDir = Join-Path $TestDir "onedrive-test"
+            New-Item -ItemType Directory -Path $oneDriveProjectDir -Force | Out-Null
+            Copy-Item "$OneDriveDir/project.json" $oneDriveProjectDir
+            Copy-Item "$OneDriveDir/site.json" $oneDriveProjectDir
+
             Write-Info "Running: revela source onedrive sync"
-            Push-Location $SampleProjectDir
+            Push-Location $oneDriveProjectDir
             try {
                 & $ExePath source onedrive sync
                 if ($LASTEXITCODE -ne 0) { throw "OneDrive sync failed" }
                 Write-Success "OneDrive sync completed"
 
-                # Show downloaded files
-                $sourceDir = Join-Path $SampleProjectDir "source"
+                $sourceDir = Join-Path $oneDriveProjectDir "source"
                 if (Test-Path $sourceDir) {
                     $fileCount = (Get-ChildItem $sourceDir -Recurse -File).Count
                     Write-Info "Downloaded $fileCount files to source/"
@@ -529,14 +514,8 @@ try {
         }
     }
     else {
-        Write-Step "Step 7d: Copy Source [OneDrive SKIPPED]"
-        Measure-Step "Copy Source" {
-            # Copy existing source files from sample
-            Copy-Item "$SampleSourceDir/source" $SampleProjectDir -Recurse
-            $sourceDir = Join-Path $SampleProjectDir "source"
-            $fileCount = (Get-ChildItem $sourceDir -Recurse -File).Count
-            Write-Success "Copied $fileCount source files from sample"
-        }
+        Write-Step "Step 7d: OneDrive Sync [SKIPPED]"
+        Write-Info "Use -IncludeOneDrive to test OneDrive sync (requires network)"
     }
 
     # ========================================================================
@@ -608,21 +587,16 @@ try {
     }
 
     # ========================================================================
-    # STEP 8: Generate - Scan & Images
+    # STEP 8: Generate All (primary user command)
     # ========================================================================
-    Write-Step "Step 8: Scan Content & Process Images"
-    Measure-Step "Scan & Images" {
+    Write-Step "Step 8: Generate All"
+    Measure-Step "Generate All" {
         Push-Location $SampleProjectDir
         try {
-            Write-Info "Running: revela generate scan"
-            & $ExePath generate scan
-            if ($LASTEXITCODE -ne 0) { throw "Scan failed" }
-            Write-Success "Content scanned, manifest created"
-
-            Write-Info "Running: revela generate images"
-            & $ExePath generate images
-            if ($LASTEXITCODE -ne 0) { throw "Image processing failed" }
-            Write-Success "Images processed"
+            Write-Info "Running: revela generate all"
+            & $ExePath generate all
+            if ($LASTEXITCODE -ne 0) { throw "generate all failed" }
+            Write-Success "Full pipeline completed (scan → statistics → pages → images)"
         }
         finally {
             Pop-Location
@@ -630,75 +604,9 @@ try {
     }
 
     # ========================================================================
-    # STEP 9: Generate Statistics (Plugin Integration Test)
+    # STEP 9: Validate Output
     # ========================================================================
-    Write-Step "Step 9: Generate Statistics (Plugin Integration Test)"
-    Measure-Step "Statistics" {
-        Write-Info "Running: revela generate statistics"
-        Push-Location $SampleProjectDir
-        try {
-            # Run statistics command - this tests that the plugin is correctly loaded
-            $statsOutput = & $ExePath generate statistics 2>&1 | Out-String
-            if ($LASTEXITCODE -ne 0) {
-                Write-Err "Statistics output: $statsOutput"
-                throw "Statistics generation failed"
-            }
-            Write-Success "Statistics generated"
-
-            # Verify plugin was loaded and executed by checking statistics.json files
-            # Statistics are stored per-page in .cache/{page-path}/statistics.json
-            $statsFiles = Get-ChildItem -Path (Join-Path $SampleProjectDir ".cache") -Recurse -Filter "statistics.json" -ErrorAction SilentlyContinue
-            if ($statsFiles -and $statsFiles.Count -gt 0) {
-                Write-Success "Statistics files found: $($statsFiles.Count) page(s)"
-
-                # Check first statistics file for expected categories
-                $firstStatsFile = $statsFiles | Select-Object -First 1
-                $statsData = Get-Content $firstStatsFile.FullName -Raw | ConvertFrom-Json
-
-                $statsCategories = @()
-                if ($statsData.PSObject.Properties['cameras']) { $statsCategories += "cameras" }
-                if ($statsData.PSObject.Properties['lenses']) { $statsCategories += "lenses" }
-                if ($statsData.PSObject.Properties['apertures']) { $statsCategories += "apertures" }
-                if ($statsData.PSObject.Properties['years']) { $statsCategories += "years" }
-                if ($statsData.PSObject.Properties['months']) { $statsCategories += "months" }
-
-                if ($statsCategories.Count -gt 0) {
-                    Write-Success "Statistics categories: $($statsCategories -join ', ')"
-                }
-                else {
-                    Write-Warn "No statistics categories found (may be expected if no EXIF data)"
-                }
-            }
-            else {
-                Write-Warn "No statistics files found (plugin may have no data to process)"
-            }
-        }
-        finally {
-            Pop-Location
-        }
-    }
-
-    # ========================================================================
-    # STEP 10: Generate Pages (includes Statistics page)
-    # ========================================================================
-    Write-Step "Step 10: Render Pages"
-    Measure-Step "Pages" {
-        Write-Info "Running: revela generate pages"
-        Push-Location $SampleProjectDir
-        try {
-            & $ExePath generate pages
-            if ($LASTEXITCODE -ne 0) { throw "Page rendering failed" }
-            Write-Success "Pages rendered (including Statistics)"
-        }
-        finally {
-            Pop-Location
-        }
-    }
-
-    # ========================================================================
-    # STEP 11: Validate Output
-    # ========================================================================
-    Write-Step "Step 11: Validate Output"
+    Write-Step "Step 9: Validate Output"
     Measure-Step "Validate" {
         $outputDir = Join-Path $SampleProjectDir "output"
 
@@ -707,7 +615,6 @@ try {
         }
 
         # Check for expected files
-        # Note: CSS/JS assets are in _assets/ directory (theme asset system)
         $expectedFiles = @(
             @{ Path = "index.html"; Description = "Homepage" },
             @{ Path = "_assets/main.css"; Description = "Theme CSS" }
@@ -735,8 +642,9 @@ try {
             Write-Warn "Images directory not found"
         }
 
-        # Check gallery directories
-        $galleryDirs = @(Get-ChildItem $outputDir -Directory | Where-Object { $_.Name -ne "images" })
+        # Check gallery directories (exclude special dirs)
+        $specialDirs = @("images", "_assets", "test-gallery", "test-stats")
+        $galleryDirs = @(Get-ChildItem $outputDir -Directory | Where-Object { $_.Name -notin $specialDirs })
         if ($galleryDirs.Count -gt 0) {
             Write-Success "Gallery directories: $($galleryDirs.Count)"
             foreach ($dir in $galleryDirs) {
@@ -746,40 +654,21 @@ try {
         }
 
         # Check statistics page
-        $statsPage = Join-Path $outputDir "pages/statistics/index.html"
-        if (Test-Path $statsPage) {
-            $statsContent = Get-Content $statsPage -Raw
-            $statsChecks = @()
-            if ($statsContent -match "statistics") { $statsChecks += "statistics keyword" }
-            if ($statsContent -match "chart|Chart") { $statsChecks += "chart elements" }
-            if ($statsContent -match "camera|Camera") { $statsChecks += "camera data" }
-            if ($statsContent -match "lens|Lens") { $statsChecks += "lens data" }
-
-            if ($statsChecks.Count -ge 2) {
-                Write-Success "Statistics page generated with: $($statsChecks -join ', ')"
-            }
-            else {
-                Write-Warn "Statistics page found but content may be incomplete"
-            }
+        $statsPages = Get-ChildItem $outputDir -Recurse -Filter "index.html" |
+            Where-Object { $_.Directory.Name -eq "06-statistics" -or $_.Directory.Name -eq "test-stats" }
+        if ($statsPages) {
+            Write-Success "Statistics page found: $($statsPages[0].Directory.Name)/index.html"
         }
         else {
-            # Also check test-stats directory (created by test)
-            $testStatsPage = Join-Path $outputDir "test-stats/index.html"
-            if (Test-Path $testStatsPage) {
-                Write-Success "Test statistics page found at: test-stats/index.html"
-            }
-            else {
-                Write-Warn "Statistics page not found (optional - requires statistics source page)"
-            }
+            Write-Warn "Statistics page not found (optional)"
         }
 
-        # Check _assets directory (scan-based asset system)
+        # Check _assets directory
         $assetsDir = Join-Path $outputDir "_assets"
         if (Test-Path $assetsDir) {
             $assetFiles = Get-ChildItem $assetsDir -Recurse -File
             Write-Success "_assets/ directory: $($assetFiles.Count) files"
 
-            # Check for extension assets
             $extensionDir = Join-Path $assetsDir "lumina-statistics"
             if (Test-Path $extensionDir) {
                 Write-Success "Lumina.Statistics assets included"
@@ -806,6 +695,104 @@ try {
     }
 
     # ========================================================================
+    # STEP 10: Compress (Plugin Integration Test)
+    # ========================================================================
+    Write-Step "Step 10: Compress Plugin Test"
+    Measure-Step "Compress" {
+        Push-Location $SampleProjectDir
+        try {
+            # Install Compress plugin
+            Write-Info "Installing Compress plugin..."
+            & $ExePath plugin install Compress --version $Version --source $PluginsDir
+            if ($LASTEXITCODE -ne 0) { throw "Compress plugin installation failed" }
+            Write-Success "Compress plugin installed"
+
+            # Run compression
+            Write-Info "Running: revela generate compress"
+            & $ExePath generate compress
+            if ($LASTEXITCODE -ne 0) { throw "generate compress failed" }
+            Write-Success "Compression completed"
+
+            # Verify compressed files exist
+            $outputDir = Join-Path $SampleProjectDir "output"
+            $gzFiles = @(Get-ChildItem $outputDir -Recurse -Filter "*.gz")
+            $brFiles = @(Get-ChildItem $outputDir -Recurse -Filter "*.br")
+            if ($gzFiles.Count -gt 0 -or $brFiles.Count -gt 0) {
+                Write-Success "Compressed files: $($gzFiles.Count) .gz, $($brFiles.Count) .br"
+            }
+            else {
+                Write-Warn "No compressed files found (may need compressible content)"
+            }
+
+            # Test clean compress
+            Write-Info "Running: revela clean compress"
+            & $ExePath clean compress
+            if ($LASTEXITCODE -ne 0) { throw "clean compress failed" }
+
+            $gzAfterClean = @(Get-ChildItem $outputDir -Recurse -Filter "*.gz")
+            $brAfterClean = @(Get-ChildItem $outputDir -Recurse -Filter "*.br")
+            if ($gzAfterClean.Count -eq 0 -and $brAfterClean.Count -eq 0) {
+                Write-Success "clean compress removed all compressed files"
+            }
+            else {
+                Write-Warn "Some compressed files remain after clean"
+            }
+        }
+        finally {
+            Pop-Location
+        }
+    }
+
+    # ========================================================================
+    # STEP 11: Clean & Regenerate (Idempotency Test)
+    # ========================================================================
+    Write-Step "Step 11: Clean & Regenerate (Idempotency)"
+    Measure-Step "Idempotency" {
+        Push-Location $SampleProjectDir
+        try {
+            # Clean everything
+            Write-Info "Running: revela clean all"
+            & $ExePath clean all
+            if ($LASTEXITCODE -ne 0) { throw "clean all failed" }
+
+            $outputDir = Join-Path $SampleProjectDir "output"
+            $cacheDir = Join-Path $SampleProjectDir ".cache"
+            if (-not (Test-Path $outputDir) -or (Get-ChildItem $outputDir -Recurse -File -ErrorAction SilentlyContinue).Count -eq 0) {
+                Write-Success "clean all removed output"
+            }
+            else {
+                Write-Warn "Output directory not fully cleaned"
+            }
+
+            # Regenerate from scratch
+            Write-Info "Running: revela generate all (second run after clean)"
+            & $ExePath generate all
+            if ($LASTEXITCODE -ne 0) { throw "generate all (second run) failed" }
+            Write-Success "Second generate all succeeded"
+
+            # Verify output exists again
+            $indexPath = Join-Path $outputDir "index.html"
+            if (Test-Path $indexPath) {
+                Write-Success "Idempotency verified: output regenerated after clean"
+            }
+            else {
+                throw "Idempotency failed: index.html not found after regeneration"
+            }
+
+            # Third run without clean (should be a no-op / fast)
+            Write-Info "Running: revela generate all (third run, no clean - incremental)"
+            $sw = [System.Diagnostics.Stopwatch]::StartNew()
+            & $ExePath generate all
+            $sw.Stop()
+            if ($LASTEXITCODE -ne 0) { throw "generate all (third run) failed" }
+            Write-Success "Third run completed in $($sw.Elapsed.ToString('mm\:ss\.fff')) (incremental)"
+        }
+        finally {
+            Pop-Location
+        }
+    }
+
+    # ========================================================================
     # STEP 12: Test .NET Tool Package
     # ========================================================================
     Write-Step "Step 12: Test .NET Tool Package"
@@ -816,8 +803,10 @@ try {
         dotnet pack src/Cli/Cli.csproj `
             -c Release `
             -o $ToolDir `
+            -p:Version=$Version `
             -p:PackageVersion=$Version `
             -p:IncludeSymbols=false `
+            --no-restore `
             --verbosity quiet
         if ($LASTEXITCODE -ne 0) { throw "Pack failed" }
         Write-Success "CLI packed to NuGet package"
@@ -845,7 +834,14 @@ try {
         Write-Info "Testing tool command..."
         $versionOutput = & revela --version 2>&1
         if ($LASTEXITCODE -ne 0) { throw "Tool command failed: $versionOutput" }
-        Write-Success "Tool executable: $versionOutput"
+
+        # Verify version matches what we packed
+        if ($versionOutput -match "^$([regex]::Escape($Version))") {
+            Write-Success "Version matches: $versionOutput"
+        }
+        else {
+            Write-Warn "Version mismatch: expected $Version, got $versionOutput"
+        }
 
         Write-Info "Testing plugin list..."
         $pluginOutput = & revela plugin list 2>&1
@@ -862,7 +858,7 @@ try {
     }
 
     # ========================================================================
-    # STEP 14: Summary
+    # STEP 13: Summary
     # ========================================================================
     Write-Banner "Release Test Complete"
 

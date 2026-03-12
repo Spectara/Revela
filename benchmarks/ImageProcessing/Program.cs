@@ -1,6 +1,6 @@
 using BenchmarkDotNet.Running;
 
-namespace ImageProcessing.Benchmarks;
+namespace Spectara.Revela.Benchmarks.ImageProcessing;
 
 public class Program
 {

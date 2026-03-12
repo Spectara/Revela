@@ -2,7 +2,7 @@ using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Jobs;
 using NetVips;
 
-namespace ImageProcessing.Benchmarks;
+namespace Spectara.Revela.Benchmarks.ImageProcessing;
 
 /// <summary>
 /// Benchmark comparing resize strategies for batch image processing.
@@ -12,7 +12,7 @@ namespace ImageProcessing.Benchmarks;
 /// - ThumbnailPerSize: Image.Thumbnail() for each size (re-reads from disk each time)
 /// - ThumbnailThenResize: Thumbnail to largest, then ThumbnailImage() for smaller
 /// </summary>
-[SimpleJob(RuntimeMoniker.Net90)]
+[SimpleJob(RuntimeMoniker.Net10_0)]
 [MemoryDiagnoser]
 [RankColumn]
 public class ResizeStrategyBenchmark

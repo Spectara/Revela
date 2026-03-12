@@ -603,7 +603,7 @@ themes/my-theme/
 - **Auto-restore** - `revela restore` installs missing plugins from project.json
 - **Multi-source** - Support for private feeds, GitHub Packages
 - **Metadata** - .nuspec provides authors, description, dependencies
-- **3-stage release** - GitHub Release → GitHub Packages (auto) → NuGet.org (approval)
+- **2-stage release** - GitHub Release (auto) → NuGet.org (approval gate)
 
 ### ADR-004: System.CommandLine 2.0.0
 **Status:** Accepted  

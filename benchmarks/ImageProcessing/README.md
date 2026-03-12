@@ -28,7 +28,7 @@ Compares resize strategies for generating multiple image sizes:
 
 | Strategy | Description |
 |----------|-------------|
-| **StarFromOriginal** | Load original once with `NewFromFile()`, call `Resize()` for each size |
+| **StarFromOriginal** | Load original once with `NewFromFile()`, call `ThumbnailImage()` for each size |
 | **ThumbnailPerSize** | Call `Image.Thumbnail()` for each size (libvips recommended) |
 | **ThumbnailThenResize** | `Thumbnail()` to largest size, then `Resize()` for smaller |
 

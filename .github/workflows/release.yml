@@ -1,11 +1,19 @@
-# Release Workflow
+# Release Pipeline
 # Triggered by pushing a version tag (v0.0.1, v1.0.0, etc.)
-# Builds native executables for all platforms and creates a GitHub Release
+#
+# Pipeline stages:
+#   validate → packages → build → sign → release → publish-nuget
+#
+# "Build once, ship the artifact" — packages are built once in the
+# packages stage and reused for signing, GitHub Release, and NuGet.org.
+#
+# The publish-nuget stage requires manual approval via the "nuget-org"
+# GitHub Environment before pushing to NuGet.org.
 #
 # Release contents:
 # - Core: CLI executable only (downloads plugins from NuGet.org)
 # - Full: CLI executable + all plugins/themes as bundled NuGet packages
-# - Plugins/Themes as separate NuGet packages
+# - NuGet packages: CLI tool, SDK, plugins, themes
 
 name: Release
 
@@ -102,11 +110,15 @@ jobs:
       - name: Restore
         run: dotnet restore
 
+      - name: Build
+        run: dotnet build -c Release --no-restore -p:Version=${{ needs.validate.outputs.version }}
+
       - name: Pack Lumina
         run: |
           dotnet pack src/Themes/Lumina/Lumina.csproj \
             -c Release \
             -o ./nupkgs \
+            --no-build --no-restore \
             -p:PackageVersion=${{ needs.validate.outputs.version }} \
             -p:IncludeSymbols=false
 
@@ -115,6 +127,7 @@ jobs:
           dotnet pack src/Themes/Lumina.Statistics/Lumina.Statistics.csproj \
             -c Release \
             -o ./nupkgs \
+            --no-build --no-restore \
             -p:PackageVersion=${{ needs.validate.outputs.version }} \
             -p:IncludeSymbols=false
 
@@ -123,6 +136,7 @@ jobs:
           dotnet pack src/Plugins/Statistics/Statistics.csproj \
             -c Release \
             -o ./nupkgs \
+            --no-build --no-restore \
             -p:PackageVersion=${{ needs.validate.outputs.version }} \
             -p:IncludeSymbols=false
 
@@ -131,6 +145,7 @@ jobs:
           dotnet pack src/Plugins/Source.OneDrive/Source.OneDrive.csproj \
             -c Release \
             -o ./nupkgs \
+            --no-build --no-restore \
             -p:PackageVersion=${{ needs.validate.outputs.version }} \
             -p:IncludeSymbols=false
 
@@ -139,6 +154,7 @@ jobs:
           dotnet pack src/Plugins/Serve/Serve.csproj \
             -c Release \
             -o ./nupkgs \
+            --no-build --no-restore \
             -p:PackageVersion=${{ needs.validate.outputs.version }} \
             -p:IncludeSymbols=false
 
@@ -147,6 +163,7 @@ jobs:
           dotnet pack src/Plugins/Compress/Compress.csproj \
             -c Release \
             -o ./nupkgs \
+            --no-build --no-restore \
             -p:PackageVersion=${{ needs.validate.outputs.version }} \
             -p:IncludeSymbols=false
 
@@ -155,6 +172,17 @@ jobs:
           dotnet pack src/Sdk/Sdk.csproj \
             -c Release \
             -o ./nupkgs \
+            --no-build --no-restore \
+            -p:PackageVersion=${{ needs.validate.outputs.version }} \
+            -p:IncludeSymbols=false
+
+      - name: Pack CLI Tool
+        run: |
+          dotnet pack src/Cli/Cli.csproj \
+            -c Release \
+            -o ./nupkgs \
+            --no-restore \
+            -p:Version=${{ needs.validate.outputs.version }} \
             -p:PackageVersion=${{ needs.validate.outputs.version }} \
             -p:IncludeSymbols=false
 
@@ -489,3 +517,83 @@ jobs:
             artifacts/**/SHA256SUMS
             artifacts/**/*.sig
             artifacts/**/*.crt
+
+  # Publish NuGet packages (requires manual approval)
+  publish-nuget:
+    name: Publish to NuGet.org
+    needs: [validate, packages, release]
+    # Only publish on tag push (after release is created)
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    # Requires manual approval via GitHub Environment
+    environment: nuget-org
+    permissions:
+      contents: read
+    steps:
+      - name: Download NuGet packages
+        uses: actions/download-artifact@v4
+        with:
+          name: nupkgs
+          path: ./nupkgs
+
+      - name: List packages
+        run: ls -lh ./nupkgs/
+
+      - name: Verify packages
+        run: |
+          VERSION=${{ needs.validate.outputs.version }}
+          EXPECTED=(
+            "Spectara.Revela.${VERSION}.nupkg"
+            "Spectara.Revela.Sdk.${VERSION}.nupkg"
+            "Spectara.Revela.Plugins.Source.OneDrive.${VERSION}.nupkg"
+            "Spectara.Revela.Plugins.Statistics.${VERSION}.nupkg"
+            "Spectara.Revela.Plugins.Serve.${VERSION}.nupkg"
+            "Spectara.Revela.Plugins.Compress.${VERSION}.nupkg"
+            "Spectara.Revela.Themes.Lumina.${VERSION}.nupkg"
+            "Spectara.Revela.Themes.Lumina.Statistics.${VERSION}.nupkg"
+          )
+          MISSING=0
+          for pkg in "${EXPECTED[@]}"; do
+            if [ ! -f "./nupkgs/$pkg" ]; then
+              echo "❌ Missing: $pkg"
+              MISSING=$((MISSING + 1))
+            else
+              echo "✅ Found: $pkg"
+            fi
+          done
+          if [ $MISSING -gt 0 ]; then
+            echo "❌ $MISSING package(s) missing!"
+            exit 1
+          fi
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Publish to NuGet.org
+        run: |
+          dotnet nuget push "./nupkgs/*.nupkg" \
+            --source https://api.nuget.org/v3/index.json \
+            --api-key ${{ secrets.NUGET_API_KEY }} \
+            --skip-duplicate
+        env:
+          NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
+
+      - name: Summary
+        run: |
+          VERSION=${{ needs.validate.outputs.version }}
+          echo "### ✅ Published to NuGet.org" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Version:** ${VERSION}" >> $GITHUB_STEP_SUMMARY
+          echo "**Packages:**" >> $GITHUB_STEP_SUMMARY
+          echo "- **Spectara.Revela** (CLI Tool)" >> $GITHUB_STEP_SUMMARY
+          echo "- Spectara.Revela.Sdk" >> $GITHUB_STEP_SUMMARY
+          echo "- Spectara.Revela.Plugins.Source.OneDrive" >> $GITHUB_STEP_SUMMARY
+          echo "- Spectara.Revela.Plugins.Statistics" >> $GITHUB_STEP_SUMMARY
+          echo "- Spectara.Revela.Plugins.Serve" >> $GITHUB_STEP_SUMMARY
+          echo "- Spectara.Revela.Plugins.Compress" >> $GITHUB_STEP_SUMMARY
+          echo "- Spectara.Revela.Themes.Lumina" >> $GITHUB_STEP_SUMMARY
+          echo "- Spectara.Revela.Themes.Lumina.Statistics" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Source:** Same artifacts from build stage (no rebuild)" >> $GITHUB_STEP_SUMMARY

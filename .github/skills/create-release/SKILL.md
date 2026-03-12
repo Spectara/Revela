@@ -62,14 +62,13 @@ git push origin main --tags
 
 The release pipeline (`.github/workflows/release.yml`) handles everything after the tag push:
 1. **Validate** — Version format and ordering
-2. **Packages** — Build NuGet packages (plugins + themes + SDK)
+2. **Packages** — Build and pack NuGet packages (CLI tool + plugins + themes + SDK)
 3. **Build** — Native executables for 5 platforms (win-x64, linux-x64, linux-arm64, osx-x64, osx-arm64)
 4. **Sign** — Keyless cosign signatures + SHA256SUMS
 5. **Release** — Create GitHub Release with all artifacts
+6. **Publish NuGet** — Push to NuGet.org (requires `nuget-org` environment approval)
 
 Additional workflows triggered after release:
-- `publish-nuget.yml` — Publish packages to NuGet.org
-- `publish-github-packages.yml` — Publish to GitHub Packages
 - `deploy-website.yml` — Deploy revela.website
 
 ## Checklist

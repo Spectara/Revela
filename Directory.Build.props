@@ -8,7 +8,8 @@
     <!-- Automatically prepend "Spectara.Revela." to all assembly and namespace names -->
     <!-- This allows shorter project/folder names while maintaining proper namespaces -->
     <!-- Example: Project "Core" becomes "Spectara.Revela.Core" -->
-    <AssemblyName>Spectara.Revela.$(MSBuildProjectName)</AssemblyName>
+    <RevelaNamespacePrefix>Spectara.Revela</RevelaNamespacePrefix>
+    <AssemblyName>$(RevelaNamespacePrefix).$(MSBuildProjectName)</AssemblyName>
     <RootNamespace>$(AssemblyName)</RootNamespace>
   </PropertyGroup>
 

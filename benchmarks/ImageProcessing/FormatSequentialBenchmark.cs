@@ -2,7 +2,7 @@ using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Jobs;
 using NetVips;
 
-namespace ImageProcessing.Benchmarks;
+namespace Spectara.Revela.Benchmarks.ImageProcessing;
 
 /// <summary>
 /// Benchmark comparing format-sequential vs all-formats-per-image processing.
@@ -11,7 +11,7 @@ namespace ImageProcessing.Benchmarks;
 /// - AllFormatsPerImage: Current approach - process all formats for each image before moving on
 /// - FormatSequential: Process all images for JPG, then all for WebP, then all for AVIF
 /// </summary>
-[SimpleJob(RuntimeMoniker.Net90, iterationCount: 3, warmupCount: 1)]
+[SimpleJob(RuntimeMoniker.Net10_0, iterationCount: 3, warmupCount: 1)]
 [MemoryDiagnoser]
 [RankColumn]
 public class FormatSequentialBenchmark

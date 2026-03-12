@@ -1,6 +1,6 @@
-# Filter Demo Sample
+# Showcase Sample
 
-Demonstrates **virtual galleries** using filter expressions and the shared `_images/` folder.
+Demonstrates Revela features: **virtual galleries** with filter expressions, shared `_images/` folder, EXIF statistics, and nested gallery structures.
 
 ## Features Demonstrated
 
@@ -21,7 +21,7 @@ Demonstrates **virtual galleries** using filter expressions and the shared `_ima
 
 ```powershell
 # From repository root
-$outDir = "samples/filter-demo/source/_images"
+$outDir = "samples/showcase/source/_images"
 
 # Canon images
 pwsh scripts/generate-test-image.ps1 -OutPath "$outDir/canon-landscape-001.jpg" -Width 1920 -Height 1280 -CameraMake Canon -CameraModel "EOS R5" -ISO 100
@@ -51,7 +51,7 @@ Or use any existing JPEG images with EXIF data.
 ### 2. Generate the Site
 
 ```bash
-cd samples/filter-demo
+cd samples/showcase
 revela generate scan
 revela generate images
 revela generate pages
@@ -98,7 +98,7 @@ not contains(filename, 'draft')
 ## Project Structure
 
 ```
-filter-demo/
+showcase/
 ├── project.json              # Project config
 ├── site.json                 # Site metadata
 ├── source/

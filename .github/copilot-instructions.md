@@ -999,8 +999,8 @@ dotnet test tests/Plugins/Statistics.Tests
 ### Run CLI
 ```bash
 dotnet run --project src/Cli -- --help
-cd samples/filter-demo && dotnet run --project ../../src/Cli -- generate all
-cd samples/filter-demo && dotnet run --project ../../src/Cli -- source onedrive sync
+cd samples/showcase && dotnet run --project ../../src/Cli -- generate all
+cd samples/showcase && dotnet run --project ../../src/Cli -- source onedrive sync
 ```
 
 ### Package as Tool
@@ -1061,7 +1061,7 @@ dotnet outdated
 # If updates found:
 # 1. Inform user about available updates
 # 2. Categorize by severity (Patch/Minor/Major)
-# 3. Recommend update strategy (see .github/DEPENDENCY_MANAGEMENT.md)
+# 3. Recommend update strategy
 # 4. Highlight security-critical updates
 ```
 
@@ -1075,7 +1075,7 @@ dotnet outdated
 **Automated Checks:**
 - Weekly GitHub Action runs every Monday 6:00 UTC
 - Creates GitHub Issues for available updates
-- See `.github/workflows/dependency-update-check.yml`
+- Dependabot creates PRs automatically (`.github/dependabot.yml`)
 
 **Manual Update Commands:**
 ```bash
@@ -1173,5 +1173,4 @@ dotnet run --project tests/Core.Tests
 
 **For detailed architecture, see:** `docs/architecture.md`  
 **For development status, see:** `DEVELOPMENT.md`  
-**For dependency management, see:** `.github/DEPENDENCY_MANAGEMENT.md`  
 **For HttpClient patterns, see:** `docs/httpclient-pattern.md`
