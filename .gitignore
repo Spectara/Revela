@@ -486,9 +486,9 @@ $RECYCLE.BIN/
 *.swp
 
 # Revela specific
-# Temporary test directories (created during development)
-test-*/
-*-test/
+# Temporary test directories (created during development, root level only)
+/test-*/
+/*-test/
 
 # Sample projects - exclude generated output and cache
 samples/**/output/
