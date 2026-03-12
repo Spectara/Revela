@@ -48,7 +48,7 @@ dotnet test
 dotnet test --verbosity normal
 
 # Run specific test project
-dotnet test tests/Core.Tests
+dotnet test tests/Core
 ```
 
 ### Run CLI Locally
@@ -61,7 +61,7 @@ dotnet run --project src/Cli -- --help
 dotnet run --project src/Cli
 
 # Generate a sample site
-dotnet run --project src/Cli -- generate all -p ./samples/subdirectory
+dotnet run --project src/Cli -- generate all -p ./samples/showcase
 ```
 
 ---
@@ -84,9 +84,9 @@ Revela/
 │       └── Lumina.Statistics/
 │
 ├── tests/                        # Test projects
-│   ├── Core.Tests/
-│   ├── Commands.Tests/
-│   ├── IntegrationTests/
+│   ├── Core/
+│   ├── Commands/
+│   ├── Integration/
 │   └── Shared/                   # Shared test utilities
 │
 ├── docs/                         # Documentation
@@ -174,7 +174,7 @@ dotnet format
 dotnet test
 
 # Specific project
-dotnet test tests/Core.Tests
+dotnet test tests/Core
 
 # With coverage
 dotnet test --collect:"XPlat Code Coverage"
@@ -263,7 +263,7 @@ All package versions are defined in `Directory.Packages.props`:
 2. Set `Cli` as startup project
 3. Configure arguments:
    - Right-click `Cli` → Properties → Debug → Command line arguments
-   - Example: `generate all -p ../samples/subdirectory`
+   - Example: `generate all -p ../samples/showcase`
 
 ### VS Code
 

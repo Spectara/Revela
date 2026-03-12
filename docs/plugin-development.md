@@ -457,25 +457,24 @@ jobs:
 2. Push a tag: `git tag v1.0.0 && git push --tags`
 3. Workflow automatically creates release and publishes to NuGet.org
 
-### Option 3: GitHub Packages + NuGet.org (Recommended)
+### Option 3: NuGet.org with Approval Gate (Recommended)
 
-Multi-stage release for better testing:
+2-stage release for safe publishing:
 
 ```yaml
 # Stage 1: GitHub Release (on tag push)
-# - Creates GitHub Release with .nupkg
-# Stage 2: GitHub Packages (auto)
-# - Publishes to GitHub Packages for testing
-# Stage 3: NuGet.org (manual approval)
-# - Requires approval via GitHub Environment
+# - Builds, signs, creates GitHub Release with .nupkg
+# Stage 2: NuGet.org (manual approval)
+# - Requires approval via GitHub Environment "nuget-org"
+# - Publishes the same artifacts (no rebuild)
 
 # See: docs/plugin-management.md for complete workflow example
 ```
 
 **Benefits:**
-- Test on GitHub Packages before public release
 - Manual approval gate for NuGet.org
-- Rollback possible (GitHub Packages only)
+- Same artifacts that were built and signed get published (no rebuild)
+- Pre-release versions (`-beta.1`) are never auto-installed
 
 ### 4. Announce Your Plugin
 

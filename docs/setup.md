@@ -61,7 +61,7 @@ dotnet test --verbosity normal
 dotnet run --project src/Cli -- --help
 
 # Generate site
-dotnet run --project src/Cli -- generate -p ./samples/subdirectory
+dotnet run --project src/Cli -- generate -p ./samples/showcase
 
 # Plugin commands
 dotnet run --project src/Cli -- plugins list
@@ -87,7 +87,7 @@ dotnet format --verify-no-changes
 2. Set `Cli` as startup project
 3. Configure command-line arguments:
    - Right-click `Cli` → Properties → Debug
-   - Add arguments: `generate -p samples/subdirectory`
+   - Add arguments: `generate -p samples/showcase`
 
 ### Visual Studio Code
 
@@ -122,11 +122,10 @@ Revela/
 │       └── Lumina.Statistics/
 │
 ├── tests/                        # Test projects
-│   ├── Core.Tests/
-│   ├── Commands.Tests/
-│   ├── IntegrationTests/
-│   ├── Source.OneDrive.Tests/
-│   ├── Statistics.Tests/
+│   ├── Core/
+│   ├── Commands/
+│   ├── Integration/
+│   ├── Plugins/
 │   └── Shared/
 │
 ├── docs/                         # Documentation
@@ -134,9 +133,9 @@ Revela/
 │   └── setup.md (this file)
 │
 ├── samples/                      # Example projects
-│   ├── subdirectory/
-│   ├── cdn/
-│   └── onedrive/
+│   ├── showcase/
+│   ├── onedrive/
+│   └── revela-website/
 │
 ├── artifacts/                    # Build output (gitignored)
 │   ├── bin/
