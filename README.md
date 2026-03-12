@@ -114,7 +114,7 @@ Your browser opens automatically with a live preview.
 |--------|----------|---------|
 | **Standalone** | Most users | [Download ZIP](https://github.com/spectara/revela/releases) |
 | **.NET Tool** | Developers | `dotnet tool install -g Spectara.Revela` |
-| **From Source** | Contributors | See [Development Guide](docs/development.md) |
+| **From Source** | Contributors | See [Setup Guide](docs/setup.md) |
 
 **[Detailed Installation Guide →](https://revela.website/docs/)**
 
@@ -162,7 +162,7 @@ dotnet build
 dotnet run --project src/Cli
 ```
 
-**[Development Guide →](docs/development.md)**
+**[Setup Guide →](docs/setup.md)**
 
 ---
 

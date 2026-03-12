@@ -155,7 +155,7 @@ dotnet pack src/Cli -c Release
 dotnet tool install -g --add-source ./artifacts/packages Spectara.Revela
 ```
 
-See [Development Guide](development.md) for more details.
+See [Setup Guide](setup.md) for more details.
 
 ---
 
@@ -277,4 +277,4 @@ xattr -d com.apple.quarantine /path/to/revela
 
 - [Getting Started Guide](getting-started/en.md) - Create your first photo site
 - [Plugin Management](plugin-management.md) - Extend Revela with plugins
-- [Development Guide](development.md) - Contribute to Revela
+- [Setup Guide](setup.md) - Contribute to Revela

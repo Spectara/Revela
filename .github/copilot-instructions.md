@@ -1045,7 +1045,7 @@ dotnet format
 ## Context for AI Assistants
 
 ### When Starting New Conversation
-1. Read `DEVELOPMENT.md` for current status
+1. Read `docs/setup.md` for development setup
 2. Read `docs/architecture.md` for design decisions
 3. Check open files in IDE for current work
 4. **CHECK FOR DEPENDENCY UPDATES** - Run `dotnet outdated` proactively
@@ -1172,5 +1172,4 @@ dotnet run --project tests/Core
 ```
 
 **For detailed architecture, see:** `docs/architecture.md`  
-**For development status, see:** `DEVELOPMENT.md`  
 **For HttpClient patterns, see:** `docs/httpclient-pattern.md`
