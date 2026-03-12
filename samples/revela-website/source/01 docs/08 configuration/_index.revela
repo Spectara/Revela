@@ -1,7 +1,6 @@
 +++
 title = "Configuration"
 template = "docs"
-pinned = true
 +++
 
 Revela stores all project settings in `project.json`. This file is created automatically when you initialize a project with `revela config project`.

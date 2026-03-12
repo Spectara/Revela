@@ -1,7 +1,6 @@
 +++
 title = "Deployment"
 template = "docs"
-pinned = true
 +++
 
 After running `revela generate all`, you have a complete static website in your `output/` folder. This guide shows you how to publish it online.

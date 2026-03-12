@@ -1,7 +1,6 @@
 +++
 title = "CLI Reference"
 template = "docs"
-pinned = true
 +++
 
 Complete reference of all Revela commands. Commands are organized by function.

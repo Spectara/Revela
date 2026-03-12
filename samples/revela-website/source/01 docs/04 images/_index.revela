@@ -1,7 +1,6 @@
 +++
 title = "Image Processing"
 template = "docs"
-pinned = true
 +++
 
 Revela automatically processes your images into optimized web formats. This page covers configuration, incremental updates, and cleanup.

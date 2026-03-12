@@ -1,7 +1,6 @@
 +++
 title = "Plugins"
 template = "docs"
-pinned = true
 +++
 
 Revela's plugin system lets you extend your site with additional features. All official plugins are distributed as **NuGet packages** and installed with a single command.
