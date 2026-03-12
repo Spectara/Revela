@@ -1,7 +1,7 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 
-[assembly: InternalsVisibleTo("Spectara.Revela.Core.Tests")]
+[assembly: InternalsVisibleTo("Spectara.Revela.Tests.Core")]
 
 // Template/Asset keys use lowercase by convention for web URLs.
 // ToLowerInvariant() is format conversion, not normalization.

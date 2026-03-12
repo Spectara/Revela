@@ -77,7 +77,7 @@
   </ItemGroup>
 
   <ItemGroup Label="InternalsVisibleTo - Test Projects">
-    <InternalsVisibleTo Include="$(AssemblyName).Tests" />
+    <InternalsVisibleTo Include="$(RevelaNamespacePrefix).Tests.$(MSBuildProjectName)" />
   </ItemGroup>
 
   <ItemGroup Label="Global Usings">

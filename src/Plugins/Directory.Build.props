@@ -1,0 +1,9 @@
+<Project>
+  <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)../'))" />
+  <!-- Insert "Plugins" segment: {Prefix}.{ProjectName} → {Prefix}.Plugins.{ProjectName} -->
+  <PropertyGroup>
+    <AssemblyName>$(RevelaNamespacePrefix).Plugins.$(MSBuildProjectName)</AssemblyName>
+    <RootNamespace>$(AssemblyName)</RootNamespace>
+    <PackageId>$(AssemblyName)</PackageId>
+  </PropertyGroup>
+</Project>

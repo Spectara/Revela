@@ -2,8 +2,6 @@
 
 <PropertyGroup>
   <Description>Revela Plugin - OneDrive shared folder source</Description>
-  <AssemblyName>Spectara.Revela.Plugins.Source.OneDrive</AssemblyName>
-  <PackageId>Spectara.Revela.Plugins.Source.OneDrive</PackageId>
   <PackageTags>revela;plugin;source;onedrive;shared</PackageTags>
   <PackageIcon>icon.png</PackageIcon>
   <PackageReleaseNotes>https://github.com/spectara/revela/blob/main/CHANGELOG.md</PackageReleaseNotes>

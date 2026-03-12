@@ -2,8 +2,6 @@
 
   <PropertyGroup>
     <Description>Revela Plugin - Compress static files with Gzip and Brotli</Description>
-    <AssemblyName>Spectara.Revela.Plugins.Compress</AssemblyName>
-    <PackageId>Spectara.Revela.Plugins.Compress</PackageId>
     <PackageTags>revela;plugin;compress;gzip;brotli;static</PackageTags>
     <PackageIcon>icon.png</PackageIcon>
     <PackageReleaseNotes>https://github.com/spectara/revela/blob/main/CHANGELOG.md</PackageReleaseNotes>

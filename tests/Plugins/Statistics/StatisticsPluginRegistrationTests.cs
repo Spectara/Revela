@@ -1,0 +1,107 @@
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
+using NSubstitute;
+using Spectara.Revela.Plugins.Statistics.Commands;
+using Spectara.Revela.Plugins.Statistics.Configuration;
+using Spectara.Revela.Plugins.Statistics.Services;
+using Spectara.Revela.Sdk.Abstractions;
+using Spectara.Revela.Sdk.Models.Manifest;
+
+namespace Spectara.Revela.Tests.Plugins.Statistics;
+
+[TestClass]
+[TestCategory("Unit")]
+public sealed class StatisticsPluginRegistrationTests
+{
+    [TestMethod]
+    public void ConfigureServices_InvalidOptions_ShouldNotThrowAtStartupOrAccess()
+    {
+        // Arrange
+        // AddPluginConfig<T>() does NOT enable ValidateDataAnnotations by default.
+        // Plugins may be installed but not yet configured — validation via IOptionsMonitor
+        // would crash the application on every config reload when required properties are missing.
+        // Plugins should validate in their commands when config is actually needed.
+        var services = new ServiceCollection();
+        services.AddLogging();
+
+        var manifestRepository = Substitute.For<IManifestRepository>();
+        manifestRepository.Images.Returns(new Dictionary<string, ImageContent>());
+        manifestRepository.Root.Returns((ManifestEntry?)null);
+
+        services.AddSingleton(manifestRepository);
+
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                [$"{StatisticsPluginConfig.SectionName}:MaxEntriesPerCategory"] = "150" // Invalid: > 100
+            }!)
+            .Build();
+
+        services.AddSingleton<IConfiguration>(configuration);
+
+        // Add mock IConfigService (required by ConfigStatisticsCommand)
+        var configService = Substitute.For<IConfigService>();
+        services.AddSingleton(configService);
+
+        var plugin = new StatisticsPlugin();
+        plugin.ConfigureServices(services);
+
+        var provider = services.BuildServiceProvider(new ServiceProviderOptions
+        {
+            ValidateOnBuild = true,
+            ValidateScopes = true
+        });
+
+        var optionsMonitor = provider.GetRequiredService<IOptionsMonitor<StatisticsPluginConfig>>();
+
+        // Act - should NOT throw (no validation by default)
+        var config = optionsMonitor.CurrentValue;
+
+        // Assert - config is bound without validation (value is passed through as-is)
+        Assert.AreEqual(150, config.MaxEntriesPerCategory);
+    }
+
+    [TestMethod]
+    public void ConfigureServices_ShouldResolveStatsCommandAndAggregator()
+    {
+        // Arrange
+        var services = new ServiceCollection();
+        services.AddLogging();
+
+        var manifestRepository = Substitute.For<IManifestRepository>();
+        manifestRepository.Images.Returns(new Dictionary<string, ImageContent>());
+        manifestRepository.Root.Returns(new ManifestEntry
+        {
+            Text = "Root",
+            Path = "root",
+            DataSources = []
+        });
+
+        services.AddSingleton(manifestRepository);
+
+        var configuration = new ConfigurationBuilder().Build();
+        services.AddSingleton<IConfiguration>(configuration);
+
+        // Add mock IConfigService (required by ConfigStatisticsCommand)
+        var configService = Substitute.For<IConfigService>();
+        services.AddSingleton(configService);
+
+        var plugin = new StatisticsPlugin();
+        plugin.ConfigureServices(services);
+
+        var provider = services.BuildServiceProvider(new ServiceProviderOptions
+        {
+            ValidateOnBuild = true,
+            ValidateScopes = true
+        });
+
+        // Act
+        var aggregator = provider.GetRequiredService<StatisticsAggregator>();
+        var command = provider.GetRequiredService<StatsCommand>();
+
+        // Assert
+        Assert.IsNotNull(aggregator);
+        Assert.IsNotNull(command);
+    }
+}

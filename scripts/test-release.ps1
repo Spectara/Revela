@@ -186,13 +186,13 @@ try {
             $testExeExt = if ($isWindowsOS) { ".exe" } else { "" }
 
             $testProjects = @(
-                @{ Name = "Core.Tests"; Path = "artifacts/bin/Core.Tests/Release/net10.0/Spectara.Revela.Core.Tests$testExeExt" },
-                @{ Name = "Commands.Tests"; Path = "artifacts/bin/Commands.Tests/Release/net10.0/Spectara.Revela.Commands.Tests$testExeExt" },
-                @{ Name = "Source.OneDrive.Tests"; Path = "artifacts/bin/Source.OneDrive.Tests/Release/net10.0/Spectara.Revela.Plugins.Source.OneDrive.Tests$testExeExt" },
-                @{ Name = "Statistics.Tests"; Path = "artifacts/bin/Statistics.Tests/Release/net10.0/Spectara.Revela.Plugins.Statistics.Tests$testExeExt" },
-                @{ Name = "Serve.Tests"; Path = "artifacts/bin/Serve.Tests/Release/net10.0/Spectara.Revela.Plugins.Serve.Tests$testExeExt" },
-                @{ Name = "Compress.Tests"; Path = "artifacts/bin/Compress.Tests/Release/net10.0/Spectara.Revela.Plugins.Compress.Tests$testExeExt" },
-                @{ Name = "IntegrationTests"; Path = "artifacts/bin/IntegrationTests/Release/net10.0/Spectara.Revela.IntegrationTests$testExeExt" }
+                @{ Name = "Core"; Path = "artifacts/bin/Core/Release/net10.0/Spectara.Revela.Tests.Core$testExeExt" },
+                @{ Name = "Commands"; Path = "artifacts/bin/Commands/Release/net10.0/Spectara.Revela.Tests.Commands$testExeExt" },
+                @{ Name = "Source.OneDrive"; Path = "artifacts/bin/Source.OneDrive/Release/net10.0/Spectara.Revela.Tests.Plugins.Source.OneDrive$testExeExt" },
+                @{ Name = "Statistics"; Path = "artifacts/bin/Statistics/Release/net10.0/Spectara.Revela.Tests.Plugins.Statistics$testExeExt" },
+                @{ Name = "Serve"; Path = "artifacts/bin/Serve/Release/net10.0/Spectara.Revela.Tests.Plugins.Serve$testExeExt" },
+                @{ Name = "Compress"; Path = "artifacts/bin/Compress/Release/net10.0/Spectara.Revela.Tests.Plugins.Compress$testExeExt" },
+                @{ Name = "Integration"; Path = "artifacts/bin/Integration/Release/net10.0/Spectara.Revela.Tests.Integration$testExeExt" }
             )
 
             foreach ($test in $testProjects) {

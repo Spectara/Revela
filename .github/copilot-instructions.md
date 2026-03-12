@@ -95,13 +95,13 @@ src/
     ├── Lumina/         # Default photography portfolio theme
     └── Lumina.Statistics/  # Statistics extension for Lumina theme
 tests/
-├── Core.Tests/               # Unit tests for Core
-├── Commands.Tests/           # Unit tests for Commands
-├── IntegrationTests/         # Integration tests
-├── Compress.Tests/    # Compression plugin tests
-├── Serve.Tests/       # Serve plugin tests
-├── Source.OneDrive.Tests/  # OneDrive plugin tests
-├── Statistics.Tests/  # Statistics plugin tests
+├── Core/               # Unit tests for Core
+├── Commands/           # Unit tests for Commands
+├── Integration/         # Integration tests
+├── Compress/    # Compression plugin tests
+├── Serve/       # Serve plugin tests
+├── Source.OneDrive/  # OneDrive plugin tests
+├── Statistics/  # Statistics plugin tests
 └── Shared/                   # Shared test utilities
 ```
 
@@ -873,7 +873,7 @@ public sealed partial class MyService : IMyService
 Location: `tests/{ProjectName}.Tests/`
 
 ```csharp
-namespace Spectara.Revela.Core.Tests;
+namespace Spectara.Revela.Tests.Core;
 
 [TestClass]
 [TestCategory("Unit")]
@@ -987,13 +987,13 @@ dotnet build
 dotnet test
 
 # Run specific test project
-dotnet test tests/Core.Tests
-dotnet test tests/Commands.Tests
-dotnet test tests/IntegrationTests
-dotnet test tests/Plugins/Compress.Tests
-dotnet test tests/Plugins/Serve.Tests
-dotnet test tests/Source.OneDrive.Tests
-dotnet test tests/Plugins/Statistics.Tests
+dotnet test tests/Core
+dotnet test tests/Commands
+dotnet test tests/Integration
+dotnet test tests/Plugins/Compress
+dotnet test tests/Plugins/Serve
+dotnet test tests/Plugins/Source.OneDrive
+dotnet test tests/Plugins/Statistics
 ```
 
 ### Run CLI
@@ -1093,7 +1093,7 @@ dotnet outdated -u:prompt
 ```bash
 dotnet restore
 dotnet build
-dotnet run --project tests/Core.Tests
+dotnet run --project tests/Core
 ```
 
 **Documentation:** See `.github/DEPENDENCY_MANAGEMENT.md` for full details

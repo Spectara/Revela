@@ -1,5 +1,5 @@
 using System.Runtime.CompilerServices;
 
-[assembly: InternalsVisibleTo("Spectara.Revela.Plugins.Source.OneDrive.Tests")]
-[assembly: InternalsVisibleTo("Spectara.Revela.Shared")]
+[assembly: InternalsVisibleTo("Spectara.Revela.Tests.Plugins.Source.OneDrive")]
+[assembly: InternalsVisibleTo("Spectara.Revela.Tests.Shared")]
 [assembly: InternalsVisibleTo("DynamicProxyGenAssembly2")]

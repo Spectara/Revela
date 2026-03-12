@@ -2,8 +2,6 @@
 
   <PropertyGroup>
     <Description>Revela Plugin - Local HTTP server for previewing generated sites</Description>
-    <AssemblyName>Spectara.Revela.Plugins.Serve</AssemblyName>
-    <PackageId>Spectara.Revela.Plugins.Serve</PackageId>
     <PackageTags>revela;plugin;serve;preview;development;http;server</PackageTags>
     <PackageIcon>icon.png</PackageIcon>
     <PackageReleaseNotes>https://github.com/spectara/revela/blob/main/CHANGELOG.md</PackageReleaseNotes>

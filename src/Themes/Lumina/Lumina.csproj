@@ -2,9 +2,6 @@
 
   <PropertyGroup>
     <Description>Revela Theme - Elegant photography portfolio design</Description>
-    <AssemblyName>Spectara.Revela.Themes.Lumina</AssemblyName>
-    <RootNamespace>Spectara.Revela.Themes.Lumina</RootNamespace>
-    <PackageId>Spectara.Revela.Themes.Lumina</PackageId>
     <PackageTags>revela;theme;lumina;photography;gallery;lightbox</PackageTags>
     <PackageIcon>icon.png</PackageIcon>
     <PackageReleaseNotes>https://github.com/spectara/revela/blob/main/CHANGELOG.md</PackageReleaseNotes>

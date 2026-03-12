@@ -1,0 +1,17 @@
+<Project>
+  <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)../'))" />
+
+  <!-- Override namespace: insert "Tests" before the project name -->
+  <!-- Base sets: {Prefix}.{ProjectName} → we want: {Prefix}.Tests.{ProjectName} -->
+  <PropertyGroup>
+    <AssemblyName>$(RevelaNamespacePrefix).Tests.$(MSBuildProjectName)</AssemblyName>
+    <RootNamespace>$(AssemblyName)</RootNamespace>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <!-- Avoid output path collision with src/ projects that share the same project name -->
+  <PropertyGroup>
+    <BaseOutputPath>$(MSBuildThisFileDirectory)../artifacts/bin/Tests.$(MSBuildProjectName)/</BaseOutputPath>
+    <BaseIntermediateOutputPath>$(MSBuildThisFileDirectory)../artifacts/obj/Tests.$(MSBuildProjectName)/</BaseIntermediateOutputPath>
+  </PropertyGroup>
+</Project>

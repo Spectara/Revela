@@ -2,8 +2,6 @@
 
   <PropertyGroup>
     <Description>Revela Plugin - Generates EXIF statistics pages</Description>
-    <AssemblyName>Spectara.Revela.Plugins.Statistics</AssemblyName>
-    <PackageId>Spectara.Revela.Plugins.Statistics</PackageId>
     <PackageTags>revela;plugin;statistics;exif;photography</PackageTags>
     <PackageIcon>icon.png</PackageIcon>
     <PackageReleaseNotes>https://github.com/spectara/revela/blob/main/CHANGELOG.md</PackageReleaseNotes>
