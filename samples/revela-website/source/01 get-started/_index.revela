@@ -5,3 +5,17 @@ pinned = true
 +++
 
 Everything you need to get your first Revela site up and running.
+
+<div class="features-grid">
+
+### ⬇️ Installation
+
+Download and install Revela on Windows, macOS, or Linux — standalone executable or .NET global tool.
+
+### 🚀 User Journey
+
+Step-by-step walkthrough from first launch to your published portfolio.
+
+</div>
+
+Ready to dive deeper? Check out the [Docs](../docs/) for detailed guides on source structure, themes, plugins, and more.
