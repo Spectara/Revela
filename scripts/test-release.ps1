@@ -168,10 +168,26 @@ try {
         if ($LASTEXITCODE -ne 0) { throw "Restore failed" }
         Write-Success "Restore completed"
 
-        Write-Info "Running dotnet build..."
+        Write-Info "Running dotnet build (solution)..."
         dotnet build -c Release --no-restore --verbosity quiet
         if ($LASTEXITCODE -ne 0) { throw "Build failed" }
-        Write-Success "Build completed"
+        Write-Success "Solution build completed"
+
+        # Plugins/Themes are Debug-only in Cli.csproj, build them separately in Release
+        $extraProjects = @(
+            "src/Plugins/Compress/Compress.csproj",
+            "src/Plugins/Serve/Serve.csproj",
+            "src/Plugins/Source.OneDrive/Source.OneDrive.csproj",
+            "src/Plugins/Statistics/Statistics.csproj",
+            "src/Themes/Lumina/Lumina.csproj",
+            "src/Themes/Lumina.Statistics/Lumina.Statistics.csproj"
+        )
+        Write-Info "Building plugins and themes (Release)..."
+        foreach ($proj in $extraProjects) {
+            dotnet build $proj -c Release --no-restore --verbosity quiet
+            if ($LASTEXITCODE -ne 0) { throw "Build failed: $proj" }
+        }
+        Write-Success "All projects built"
     }
 
     # ========================================================================
