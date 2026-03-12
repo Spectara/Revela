@@ -457,6 +457,14 @@ header {
       text-shadow: 0 0 10px color-mix(in oklch, var(--accent-glow) 25%, transparent);
     }
   }
+
+  .container-label {
+    display: block;
+    font-size: var(--font-size-1);
+    color: color-mix(in srgb, var(--color-light) 65%, transparent);
+    padding: var(--space-3xs) 0;
+    cursor: default;
+  }
 }
 
 .docs-content {

@@ -16,11 +16,19 @@ Expects:
 {{~ if item.active || item.text == gallery.title ~}}
 {{~ for child in item.children }}
                 <li>
+{{~ if child.url ~}}
                     <a href="{{ basepath }}{{ child.url }}"{{ if child.current }} class="active"{{ end }}>{{ child.text }}</a>
+{{~ else ~}}
+                    <span class="container-label">{{ child.text }}</span>
+{{~ end ~}}
 {{~ if child.children ~}}
                     <ul>
 {{~ for grandchild in child.children ~}}
+{{~ if grandchild.url ~}}
                         <li><a href="{{ basepath }}{{ grandchild.url }}"{{ if grandchild.current }} class="active"{{ end }}>{{ grandchild.text }}</a></li>
+{{~ else ~}}
+                        <li><span class="container-label">{{ grandchild.text }}</span></li>
+{{~ end ~}}
 {{~ end ~}}
                     </ul>
 {{~ end ~}}
