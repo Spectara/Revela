@@ -10,6 +10,8 @@ Real websites built with Revela. See what's possible.
 
 ## photo.kirk.one
 
+![A photography portfolio built with Revela and the Lumina theme](screenshots/example-website.jpg){.browser-mockup}
+
 A personal photography portfolio showcasing landscapes, events, and street photography.
 
 **Features used:** Multiple galleries, nested categories, EXIF statistics, OneDrive sync, custom sorting

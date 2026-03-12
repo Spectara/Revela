@@ -11,6 +11,7 @@
    - color-mix(in oklch) — perceptual color blending
    - backdrop-filter — frosted glass panels
    - border-image — gradient underlines
+   - :has() — parent selectors for layout detection
    ============================================ */
 
 /* ============================================
@@ -63,7 +64,8 @@ header {
     border-bottom: solid 1px transparent;
   }
 
-  .github-link {
+  /* GitHub icon link */
+  nav a:last-child {
     display: flex;
     align-items: center;
     opacity: 0.7;
@@ -89,9 +91,47 @@ header {
 }
 
 /* ============================================
-   Page Content
+   Hero Section (home page: main > section)
    ============================================ */
-.page-content {
+main > section:first-child {
+  grid-column: breakout;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  min-height: 50vh;
+  padding: var(--space-2xl) var(--space-s);
+  max-width: var(--content-max-width);
+
+  img {
+    width: calc(var(--font-size-5) * 5.5);
+    height: auto;
+  }
+
+  h1 {
+    font-size: calc(var(--font-size-5) * 2);
+    letter-spacing: 0.1em;
+    font-weight: 100;
+    margin-bottom: var(--space-m);
+    color: light-dark(oklch(0.23 0.04 260), oklch(1 0 0));
+    text-shadow:
+      0 0 10px color-mix(in oklch, var(--accent-glow) 50%, transparent),
+      0 0 30px color-mix(in oklch, var(--accent-glow) 25%, transparent),
+      0 0 60px color-mix(in oklch, var(--accent-light) 12%, transparent);
+  }
+
+  p {
+    font-size: var(--font-size-2);
+    color: var(--color-light);
+    margin-bottom: var(--space-xl);
+  }
+}
+
+/* ============================================
+   Article Content (home + standalone pages)
+   ============================================ */
+main > article {
   margin-bottom: var(--space-2xl);
 
   h1 {
@@ -176,9 +216,9 @@ header {
 }
 
 /* ============================================
-   Shared Styles (page + docs)
+   Shared Styles (article content everywhere)
    ============================================ */
-:is(.page-content, .docs-content) {
+main article {
   code {
     font-family: ui-monospace, "Cascadia Code", "Source Code Pro", Menlo, Consolas, "DejaVu Sans Mono", monospace;
     font-size: var(--font-size-1);
@@ -261,48 +301,7 @@ header {
 }
 
 /* ============================================
-   Hero Section
-   ============================================ */
-.hero {
-  grid-column: breakout;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  text-align: center;
-  min-height: 50vh;
-  padding: var(--space-2xl) var(--space-s);
-}
-
-.hero-content {
-  max-width: var(--content-max-width);
-}
-
-.hero-logo {
-  width: calc(var(--font-size-5) * 5.5);
-  height: auto;
-}
-
-.hero-title {
-  font-size: calc(var(--font-size-5) * 2);
-  letter-spacing: 0.1em;
-  font-weight: 100;
-  margin-bottom: var(--space-m);
-  color: light-dark(oklch(0.23 0.04 260), oklch(1 0 0));
-  text-shadow:
-    0 0 10px color-mix(in oklch, var(--accent-glow) 50%, transparent),
-    0 0 30px color-mix(in oklch, var(--accent-glow) 25%, transparent),
-    0 0 60px color-mix(in oklch, var(--accent-light) 12%, transparent);
-}
-
-.hero-subtitle {
-  font-size: var(--font-size-2);
-  color: var(--color-light);
-  margin-bottom: var(--space-xl);
-}
-
-/* ============================================
-   CTA Buttons — Glass style
+   CTA Buttons — Glass style (used in markdown)
    ============================================ */
 .cta-buttons {
   display: flex;
@@ -359,7 +358,7 @@ header {
 }
 
 /* ============================================
-   Features Grid — Frosted glass panel
+   Features Grid — Frosted glass panel (used in markdown)
    ============================================ */
 .features-grid {
   display: grid;
@@ -389,9 +388,9 @@ header {
 }
 
 /* ============================================
-   Docs Layout
+   Docs Layout — Detected via main:has(> aside)
    ============================================ */
-.docs-layout {
+main:has(> aside) {
   display: grid;
   grid-template-columns: 200px 1fr;
   gap: var(--space-m);
@@ -402,7 +401,7 @@ header {
   }
 }
 
-.docs-sidebar {
+main > aside {
   position: sticky;
   top: calc(var(--space-xl) + var(--space-xs) + var(--space-l));
   height: fit-content;
@@ -417,15 +416,6 @@ header {
     border-bottom: 1px solid var(--glass-border);
     padding-right: 0;
     padding-bottom: var(--space-m);
-  }
-
-  h4 {
-    font-size: var(--font-size-0);
-    font-weight: 400;
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-    color: var(--color-light);
-    margin-bottom: var(--space-xs);
   }
 
   ul {
@@ -458,7 +448,8 @@ header {
     }
   }
 
-  .container-label {
+  /* Container labels (non-clickable group headers) */
+  li > span {
     display: block;
     font-size: var(--font-size-1);
     color: color-mix(in srgb, var(--color-light) 65%, transparent);
@@ -467,7 +458,8 @@ header {
   }
 }
 
-.docs-content {
+/* Docs article content (when aside is present) */
+main:has(> aside) > article {
   min-width: 0;
 
   h1 {

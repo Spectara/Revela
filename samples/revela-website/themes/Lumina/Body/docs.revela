@@ -8,43 +8,41 @@ Expects:
 - gallery: { title, body }
 - nav_items: Array of NavigationItem for sidebar
 ##~}}
-<div class="docs-layout">
-    <aside class="docs-sidebar">
-        <nav>
-            <ul>
+<aside>
+    <nav>
+        <ul>
 {{~ for item in nav_items ~}}
 {{~ if item.active || item.text == gallery.title ~}}
 {{~ for child in item.children }}
-                <li>
+            <li>
 {{~ if child.url ~}}
-                    <a href="{{ basepath }}{{ child.url }}"{{ if child.current }} class="active"{{ end }}>{{ child.text }}</a>
+                <a href="{{ basepath }}{{ child.url }}"{{ if child.current }} class="active"{{ end }}>{{ child.text }}</a>
 {{~ else ~}}
-                    <span class="container-label">{{ child.text }}</span>
+                <span>{{ child.text }}</span>
 {{~ end ~}}
 {{~ if child.children ~}}
-                    <ul>
+                <ul>
 {{~ for grandchild in child.children ~}}
 {{~ if grandchild.url ~}}
-                        <li><a href="{{ basepath }}{{ grandchild.url }}"{{ if grandchild.current }} class="active"{{ end }}>{{ grandchild.text }}</a></li>
+                    <li><a href="{{ basepath }}{{ grandchild.url }}"{{ if grandchild.current }} class="active"{{ end }}>{{ grandchild.text }}</a></li>
 {{~ else ~}}
-                        <li><span class="container-label">{{ grandchild.text }}</span></li>
+                    <li><span>{{ grandchild.text }}</span></li>
 {{~ end ~}}
 {{~ end ~}}
-                    </ul>
+                </ul>
 {{~ end ~}}
-                </li>
+            </li>
 {{~ end ~}}
 {{~ end ~}}
 {{~ end ~}}
-            </ul>
-        </nav>
-    </aside>
-    <article class="docs-content">
+        </ul>
+    </nav>
+</aside>
+<article>
 {{~ if gallery.title ~}}
-        <h1>{{ gallery.title }}</h1>
+    <h1>{{ gallery.title }}</h1>
 {{~ end ~}}
 {{~ if gallery.body ~}}
 {{ gallery.body }}
 {{~ end ~}}
-    </article>
-</div>
+</article>
