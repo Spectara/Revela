@@ -5,7 +5,7 @@ description = "A modern static site generator for photographers"
 +++
 
 <div class="cta-buttons">
-  <a href="docs/">Get Started</a>
+  <a href="get-started/">Get Started</a>
   <a href="https://github.com/Spectara/Revela">View on GitHub</a>
 </div>
 
@@ -39,7 +39,7 @@ NuGet-based plugin system: OneDrive sync, EXIF statistics, Gzip/Brotli compressi
   </video>
 </div>
 
-See real websites built with Revela on the [Showcase](showcase/) page.
+See real websites built with Revela on the [Showcase](pages/showcase/) page.
 
 ## Quick Start
 
