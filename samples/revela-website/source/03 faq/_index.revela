@@ -52,7 +52,13 @@ Yes. Place files in your project's `themes/Lumina/` folder to override any templ
 
 ### Can I create my own theme from scratch?
 
-Yes, themes are NuGet packages that contain Scriban templates and assets. See the [Plugin Development Guide](https://github.com/Spectara/Revela/blob/main/docs/plugin-development.md) for details.
+Yes — there are three approaches depending on how far you want to go:
+
+1. **Customize an existing theme** — Place override files in your project's `themes/Lumina/` folder. Only the files you change are needed, everything else comes from the base theme. This is how [revela.website](showcase/) is built. See [Theme Customization](docs/themes/).
+
+2. **Create a theme from scratch** — Put your Scriban templates directly in `themes/MyTheme/` in your project folder and set `"name": "MyTheme"` in `project.json`. No NuGet package needed — Revela loads themes from the local folder first.
+
+3. **Distribute as NuGet package** — For sharing themes with others, package your theme as a NuGet package with `PackageType=RevelaTheme`. Users install it with `revela theme install`.
 
 ---
 
