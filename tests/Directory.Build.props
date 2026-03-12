@@ -1,5 +1,5 @@
 <Project>
-  <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)../'))" />
+  <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)..'))" />
 
   <!-- Override namespace: insert "Tests" before the project name -->
   <!-- Base sets: {Prefix}.{ProjectName} → we want: {Prefix}.Tests.{ProjectName} -->

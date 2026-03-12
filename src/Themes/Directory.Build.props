@@ -1,5 +1,5 @@
 <Project>
-  <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)../'))" />
+  <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)..'))" />
   <!-- Insert "Themes" segment: {Prefix}.{ProjectName} → {Prefix}.Themes.{ProjectName} -->
   <PropertyGroup>
     <AssemblyName>$(RevelaNamespacePrefix).Themes.$(MSBuildProjectName)</AssemblyName>
