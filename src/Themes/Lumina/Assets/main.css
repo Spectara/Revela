@@ -245,7 +245,15 @@ label[for=nav-trigger] {
       cursor: default;
     }
 
-    a:not(:first-child) {
+    /* Indent all children after a container heading (span) */
+    >span ~ a,
+    >span ~ div {
+      margin-left: var(--space-l);
+    }
+
+    /* Indent children after a link heading (branch with URL) */
+    >a:first-child ~ a,
+    >a:first-child ~ div {
       margin-left: var(--space-l);
     }
   }
