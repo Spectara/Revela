@@ -77,6 +77,12 @@ public sealed class ManifestEntry
     public bool Pinned { get; init; }
 
     /// <summary>
+    /// Whether this item is a container (navigation group) that does not generate a page.
+    /// </summary>
+    [JsonPropertyName("container")]
+    public bool Container { get; init; }
+
+    /// <summary>
     /// Optional custom template for rendering (e.g., "statistics/overview").
     /// </summary>
     [JsonPropertyName("template")]

@@ -113,8 +113,8 @@ internal sealed partial class NavigationBuilder(ILogger<NavigationBuilder> logge
             // Check if directory contains images
             var hasImages = HasImages(subdir);
 
-            // A page exists if it has images OR has _index.md (text-only page)
-            var isPage = hasImages || hasIndexFile;
+            // A page exists if it has images OR has _index.revela (but not containers)
+            var isPage = (hasImages || hasIndexFile) && !metadata.Container;
 
             // Recursively get children
             var children = BuildNavigationRecursive(

@@ -53,6 +53,16 @@ internal sealed class DirectoryMetadata
     public bool Pinned { get; init; }
 
     /// <summary>
+    /// Gets a value indicating whether this directory is a container (navigation group) only.
+    /// </summary>
+    /// <remarks>
+    /// Container directories provide metadata (title, description) for navigation
+    /// but do not generate an output page. Use this for grouping child pages
+    /// without creating an empty parent page.
+    /// </remarks>
+    public bool Container { get; init; }
+
+    /// <summary>
     /// Gets the template type for rendering.
     /// </summary>
     /// <remarks>
@@ -122,7 +132,7 @@ internal sealed class DirectoryMetadata
     /// Gets a value indicating whether any metadata was found.
     /// </summary>
     public bool HasMetadata => Title is not null || Slug is not null || Description is not null ||
-                               Hidden || Body is not null || Template is not null || Sort is not null ||
+                               Hidden || Container || Body is not null || Template is not null || Sort is not null ||
                                Filter is not null || DataSources.Count > 0;
 
     /// <summary>

@@ -529,6 +529,7 @@ internal sealed partial class ContentService(
             Featured = gallery?.Featured ?? false,
             Hidden = navItem.Hidden,
             Pinned = navItem.Pinned,
+            Container = navItem.Url is null && navItem.Children.Count > 0,
             Template = gallery?.Template,
             Filter = gallery?.Filter,
             DataSources = gallery?.DataSources.ToDictionary(kvp => kvp.Key, kvp => kvp.Value) ?? [],
