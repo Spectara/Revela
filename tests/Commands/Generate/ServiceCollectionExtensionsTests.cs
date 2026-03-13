@@ -13,7 +13,7 @@ public sealed class ServiceCollectionExtensionsTests
     {
         var services = new ServiceCollection();
         services.AddLogging();
-        Spectara.Revela.Commands.Generate.ServiceCollectionExtensions.AddGenerateFeature(services);
+        ServiceCollectionExtensions.AddGenerateFeature(services);
 
         var descriptor = services.First(d => d.ServiceType == typeof(ITemplateEngine));
         Assert.AreEqual(ServiceLifetime.Transient, descriptor.Lifetime);
