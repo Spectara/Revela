@@ -109,43 +109,51 @@ footer {
 
 ### Homepage (home.revela)
 
-Create `themes/Lumina/Body/home.revela` for a custom hero section:
+Create `themes/Lumina/Body/home.revela` for a custom hero section. No classes needed — CSS targets elements via `main > section`:
 
 ```html
-<section class="hero">
-    <div class="hero-content">
-        <img src="{{ basepath }}revela.png" class="hero-logo" />
-        <h1 class="hero-title">{{ site.title }}</h1>
-        <p class="hero-subtitle">{{ site.description }}</p>
-        <div class="hero-cta">
-            <a href="{{ basepath }}docs/" class="cta-primary">Get Started</a>
-            <a href="https://github.com/Spectara/Revela" class="cta-secondary">View on GitHub</a>
-        </div>
-    </div>
+<section>
+    <img src="{{ basepath }}revela.svg" alt="Revela" />
+    <h1>{{ gallery.title ?? site.title }}</h1>
+    <p>{{ gallery.description ?? site.description }}</p>
 </section>
+
+{{~ if gallery.body ~}}
+<article>
 {{ gallery.body }}
+</article>
+{{~ end ~}}
 ```
 
 Use it in your page with `template = "home"` in the frontmatter.
 
 ### Documentation (docs.revela)
 
-For pages with sidebar navigation, create `themes/Lumina/Body/docs.revela`:
+For pages with sidebar navigation, create `themes/Lumina/Body/docs.revela`. The `<aside>` and `<article>` are direct children of `<main>` — CSS detects the layout via `main:has(> aside)`:
 
 ```html
-<article class="docs-layout">
-    <aside class="docs-sidebar">
-        <nav>
-            {{~ for item in nav_items ~}}
-            {{~ if item.url | string.starts_with "docs/" ~}}
-            <a href="{{ basepath }}{{ item.url }}"{{ if item.active }} class="active"{{ end }}>{{ item.text }}</a>
-            {{~ end ~}}
-            {{~ end ~}}
-        </nav>
-    </aside>
-    <div class="docs-content">
-        {{ gallery.body }}
-    </div>
+<aside>
+    <nav>
+        <ul>
+{{~ for item in nav_items ~}}
+{{~ if item.active ~}}
+{{~ for child in item.children }}
+            <li>
+{{~ if child.url ~}}
+                <a href="{{ basepath }}{{ child.url }}">{{ child.text }}</a>
+{{~ else ~}}
+                <span>{{ child.text }}</span>
+{{~ end ~}}
+            </li>
+{{~ end ~}}
+{{~ end ~}}
+{{~ end ~}}
+        </ul>
+    </nav>
+</aside>
+<article>
+    <h1>{{ gallery.title }}</h1>
+    {{ gallery.body }}
 </article>
 ```
 
@@ -160,32 +168,35 @@ Instead of copying the entire Layout, override just the `HeaderNavigation` parti
 Create `themes/Lumina/Partials/HeaderNavigation.revela`:
 
 ```html
-{{~ for item in nav_items ~}}
+{{~ func render_pinned(items) ~}}
+{{~ for item in items ~}}
 {{~ if item.pinned ~}}
-<a href="{{ basepath }}{{ item.url }}"{{ if item.active }} class="active"{{ end }}>{{ item.text }}</a>
+<a href="{{ basepath }}{{ item.url }}">{{ item.text }}</a>
+{{~ end ~}}
+{{~ if item.children ~}}
+{{~ render_pinned item.children ~}}
 {{~ end ~}}
 {{~ end ~}}
-<a href="https://github.com/Spectara/Revela" title="View on GitHub" class="github-link">
+{{~ end ~}}
+{{~ render_pinned nav_items ~}}
+<a href="https://github.com/Spectara/Revela" title="View on GitHub">
     <svg viewBox="0 0 16 16" width="20" height="20" fill="currentColor">
         <path d="M8 0c4.42 0 8 3.58 8 8a8.013 8.013 0 0 1-5.45 7.59..."></path>
     </svg>
 </a>
 ```
 
-The SVG uses `fill="currentColor"` to match the text color automatically.
-
-Style it with:
+The SVG uses `fill="currentColor"` to match the text color automatically. No class needed — CSS targets the last link in `header nav`:
 
 ```css
-header .github-link {
-  display: flex;
-  align-items: center;
-  opacity: 0.7;
-  transition: opacity var(--animation-time);
-}
+header {
+  & nav a:last-child {
+    opacity: 0.7;
+    transition: opacity var(--animation-time);
 
-header .github-link:hover {
-  opacity: 1;
+    svg { vertical-align: middle; }
+    &:hover { opacity: 1; }
+  }
 }
 ```
 

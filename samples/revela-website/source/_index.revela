@@ -4,10 +4,10 @@ template = "home"
 description = "A modern static site generator for photographers"
 +++
 
-<div class="cta-buttons">
+<nav>
   <a href="get-started/">Get Started</a>
   <a href="https://github.com/Spectara/Revela">View on GitHub</a>
-</div>
+</nav>
 
 ## Why Revela?
 
@@ -47,13 +47,13 @@ See real websites built with Revela on the [Showcase](pages/showcase/) page.
 
 Download the latest release for your platform:
 
-<div class="cta-buttons">
+<nav>
   <a href="__DOWNLOAD_URL_WIN_X64__">Windows x64</a>
   <a href="__DOWNLOAD_URL_OSX_ARM64__">macOS Apple Silicon</a>
   <a href="__DOWNLOAD_URL_LINUX_X64__">Linux x64</a>
-</div>
+</nav>
 
-<p class="download-more"><a href="https://github.com/Spectara/Revela/releases">All downloads →</a></p>
+<p><a href="https://github.com/Spectara/Revela/releases">All downloads →</a></p>
 
 **2. Run the Setup Wizard**
 

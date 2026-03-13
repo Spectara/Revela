@@ -65,11 +65,14 @@ header {
   }
 
   /* GitHub icon link */
-  nav a:last-child {
-    display: flex;
-    align-items: center;
+  & nav a:last-child {
     opacity: 0.7;
     transition: opacity var(--animation-time);
+
+    svg {
+      height: .8em;
+      margin-bottom: -1px;
+    }
 
     &:hover {
       opacity: 1;
@@ -93,7 +96,7 @@ header {
 /* ============================================
    Hero Section (home page: main > section)
    ============================================ */
-main > section:first-child {
+main>section:first-child {
   grid-column: breakout;
   display: flex;
   flex-direction: column;
@@ -131,7 +134,7 @@ main > section:first-child {
 /* ============================================
    Article Content (home + standalone pages)
    ============================================ */
-main > article {
+main>article {
   margin-bottom: var(--space-2xl);
 
   h1 {
@@ -301,9 +304,9 @@ main article {
 }
 
 /* ============================================
-   CTA Buttons — Glass style (used in markdown)
+   CTA Buttons — Glass style (nav elements in article content)
    ============================================ */
-.cta-buttons {
+main article nav {
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-m);
@@ -336,9 +339,9 @@ main article {
 }
 
 /* ============================================
-   Download More Link
+   Download More Link (centered link after CTA nav)
    ============================================ */
-.download-more {
+main article nav+p {
   text-align: center;
   margin-top: var(--space-s);
   margin-bottom: var(--space-xl);
@@ -401,7 +404,7 @@ main:has(> aside) {
   }
 }
 
-main > aside {
+main>aside {
   position: sticky;
   top: calc(var(--space-xl) + var(--space-xs) + var(--space-l));
   height: fit-content;
@@ -449,7 +452,7 @@ main > aside {
   }
 
   /* Container labels (non-clickable group headers) */
-  li > span {
+  li>span {
     display: block;
     font-size: var(--font-size-1);
     color: color-mix(in srgb, var(--color-light) 65%, transparent);
@@ -459,7 +462,7 @@ main > aside {
 }
 
 /* Docs article content (when aside is present) */
-main:has(> aside) > article {
+main:has(> aside)>article {
   min-width: 0;
 
   h1 {
