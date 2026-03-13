@@ -36,7 +36,7 @@
 }
 
 /* Section headings */
-section h3 {
+main section h3 {
   font-weight: 100;
   font-size: var(--font-size-2);
   margin-top: var(--space-xl);
@@ -46,7 +46,7 @@ section h3 {
 }
 
 /* Bar charts using dl/dt/dd (partial templates) */
-section dl {
+main section dl {
   display: block;
   margin: 0 0 var(--space-l) 0;
 
@@ -90,7 +90,7 @@ section dl {
 }
 
 /* Hover: highlight bar + brighten fill */
-section dl dt:hover+dd::after {
+main section dl dt:hover+dd::after {
   background: color-mix(in srgb, var(--color) 70%, transparent);
 }
 
