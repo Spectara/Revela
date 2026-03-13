@@ -7,6 +7,61 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.0.1-beta.16] - 2026-03-13
+
+### Added
+- **CLI: `--project/-p` path support**: Use `-p path/to/project` to specify a project directory
+  without `cd`. Works in both Tool Mode (paths) and Standalone Mode (names or paths)
+- **Statistics: Photo Activity Heatmap**: Calendar-style visualization showing when photos
+  were taken, with color-coded intensity per day
+- **SDK: `AddPluginConfig<T>()`**: Simplified one-line plugin configuration registration
+  with validation and hot-reload support
+- **Navigation: Container nodes**: New `container = true` frontmatter property for
+  navigation-only nodes that group child pages without their own content
+- **Website**: FAQ page, Docs overview page, Showcase page, glassmorphism redesign with
+  neon logo, demo video on homepage
+
+### Changed
+- **Statistics Plugin**: Complete overhaul with pure-CSS dashboard (no JavaScript),
+  restructured charts and layout
+- **Plugin System**: Simplified `IPlugin` interface using default interface methods —
+  `ConfigureConfiguration` and `GetCommands` are now optional with sensible defaults
+- **Plugin Architecture**: Extracted `PluginManager` into focused service classes,
+  extracted `IGlobalConfigManager` interface
+- **Theme System**: Simplified with shared abstractions, modernized Lumina CSS with
+  nesting and custom properties
+- **Namespaces**: Unified conventions via `Directory.Build.props` — automatic
+  `Spectara.Revela.*` prefix for all projects
+- **Project Layout**: Renamed plugin/theme folders and namespaces for consistency
+- **Code Quality**: Comprehensive code reviews across CLI, Serve, OneDrive, Lumina,
+  and Statistics — restricted type visibility, extracted helpers, reduced duplication
+- **Single-file bundle**: Enabled Brotli compression for smaller executable
+- **Code Coverage**: Migrated from coverlet.collector to Microsoft Code Coverage
+
+### Fixed
+- **Linux Compatibility**: Forward slashes in NuGet `PackagePath`, case-sensitive
+  `Build/` → `build/` rename, lowercase slugs in test assertions
+- **Statistics**: Bar charts not rendering data, scoped CSS selectors to main content
+- **Theme**: Nav scrollbar hidden behind sticky header
+- **Build**: Plugins/themes now built in Release mode for pack step
+- **Website**: Duplicate FAQ/Docs navigation entries, broken links, container labels
+  clickable in sidebar
+
+### Dependencies
+- Microsoft.Extensions.* 10.0.3 → 10.0.5
+- Microsoft.Extensions.Http.Resilience 10.3.0 → 10.4.0
+- System.CommandLine 2.0.3 → 2.0.5
+- Scriban 6.5.2 → 6.5.7
+- Markdig 0.45.0 → 1.1.1
+
+### Testing
+- Full E2E pipeline integration tests (scan → render → images)
+- Nested galleries and incremental build tests
+- NetVips-based `TestImageGenerator` for real JPEG creation in tests
+- `ConfigService` and `ManifestService` integration tests
+- Improved SDK test coverage toward 100%
+- Restructured test projects with shared infrastructure
+
 ## [0.0.1-beta.15] - 2026-02-12
 
 ### Added
