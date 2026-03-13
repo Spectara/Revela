@@ -1,0 +1,55 @@
++++
+title = "Docs"
+template = "docs"
+pinned = true
++++
+
+Welcome to the Revela documentation. Here you'll find everything you need to create beautiful photo galleries.
+
+<div class="features-grid">
+
+### ⬇️ Installation
+
+Download and install Revela on Windows, macOS, or Linux.
+
+### 📁 Source Structure
+
+Learn how to organize your photos with traditional galleries, filter galleries, or a hybrid approach.
+
+### 📄 Creating Pages
+
+Use CLI commands to quickly create gallery, text, and statistics pages.
+
+### 🖼️ Image Processing
+
+Configure image formats, sizes, and use incremental generation.
+
+### 📊 Sorting
+
+Configure how galleries and images are sorted, with per-gallery overrides.
+
+### 🔍 Filter Galleries
+
+Create dynamic galleries that automatically select images based on EXIF data, filename, or date.
+
+### 🎨 Theme Customization
+
+Extract and customize themes to match your style with variables and templates.
+
+### ⚙️ Configuration
+
+Advanced project settings and configuration options.
+
+### 🧩 Plugins
+
+Extend Revela with compression, statistics, a dev server, and more.
+
+### 🚀 Deployment
+
+Publish your portfolio online - GitHub Pages, Netlify, or your own server.
+
+### 💻 CLI Reference
+
+Complete reference of all commands and options.
+
+</div>

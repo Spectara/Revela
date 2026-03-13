@@ -1,0 +1,101 @@
++++
+title = "FAQ"
+template = "page"
+pinned = true
++++
+
+## General
+
+### What is Revela?
+
+Revela is a static site generator built specifically for photographers. It takes your photos and generates a fast, beautiful portfolio website — no database, no server, just HTML and optimized images.
+
+### Do I need programming experience?
+
+No. Revela has an interactive setup wizard that guides you through creating your first site. You'll need to be comfortable with basic file management (creating folders, copying files), but no coding is required.
+
+### What platforms does Revela run on?
+
+Windows, macOS, and Linux. Native executables are available for all platforms — no runtime installation needed.
+
+### Does Revela require Node.js, Ruby, or Python?
+
+No. Revela is a standalone .NET application. The only requirement is the executable itself (standalone download) or the .NET 10 SDK (dotnet tool installation).
+
+---
+
+## Images
+
+### What image formats does Revela generate?
+
+Revela generates **AVIF**, **WebP**, and **JPEG** — modern formats for maximum compression with fallbacks for older browsers. Each image is generated in multiple sizes for responsive loading.
+
+### How many sizes are generated per image?
+
+By default, up to 10 sizes: 160, 320, 480, 640, 720, 960, 1280, 1440, 1920, and 2560 pixels wide. Sizes larger than the original are skipped automatically.
+
+### How fast is image processing?
+
+Revela uses **NetVips** (libvips), one of the fastest image processing libraries available. Processing is parallelized and incremental — only new or changed images are processed. A typical portfolio with 100 photos processes in under a minute.
+
+### What EXIF data is preserved?
+
+By default, EXIF data is **stripped** from generated images (for privacy and file size). The original EXIF data is read during scanning for statistics, sorting, and filtering — but not embedded in the output.
+
+---
+
+## Themes
+
+### Can I customize the built-in theme?
+
+Yes. Place files in your project's `themes/Lumina/` folder to override any template, partial, or asset from the built-in theme. Only the files you change need to be in your project — everything else comes from the theme package. See [Theme Customization](docs/themes/) for details.
+
+### Can I create my own theme from scratch?
+
+Yes — there are three approaches depending on how far you want to go:
+
+1. **Customize an existing theme** — Place override files in your project's `themes/Lumina/` folder. Only the files you change are needed, everything else comes from the base theme. This is how [revela.website](showcase/) is built. See [Theme Customization](docs/themes/).
+
+2. **Create a theme from scratch** — Put your Scriban templates directly in `themes/MyTheme/` in your project folder and set `"name": "MyTheme"` in `project.json`. No NuGet package needed — Revela loads themes from the local folder first.
+
+3. **Distribute as NuGet package** — For sharing themes with others, package your theme as a NuGet package with `PackageType=RevelaTheme`. Users install it with `revela theme install`.
+
+---
+
+## Hosting & Deployment
+
+### Where can I host my Revela site?
+
+Anywhere that serves static files: **GitHub Pages**, **Netlify**, **Cloudflare Pages**, **Vercel**, **Amazon S3**, or any traditional web hosting. Revela generates plain HTML — no server-side processing needed.
+
+### How large is a typical generated site?
+
+It depends on your images and quality settings. A portfolio with 50 photos at default settings produces roughly 150-300 MB of optimized images plus a few hundred KB of HTML/CSS. With Brotli pre-compression (Compress plugin), the HTML/CSS portion shrinks by ~85%.
+
+### Can I use a CDN for images?
+
+Yes. Configure `image_basepath` in `site.json` to point to your CDN URL. Revela will generate HTML that references images from the CDN instead of relative paths.
+
+---
+
+## Plugins
+
+### How do I install plugins?
+
+```bash
+revela plugin install Statistics
+revela plugin install Serve
+```
+
+Plugins are distributed as NuGet packages and installed with a single command.
+
+### What plugins are available?
+
+- **Compress** — Pre-compress output with Gzip and Brotli
+- **Statistics** — Generate EXIF statistics pages (cameras, lenses, apertures)
+- **Serve** — Local development server with live preview
+- **Source OneDrive** — Sync photos from OneDrive shared folders
+
+### Can I write my own plugin?
+
+Yes. Install the `Spectara.Revela.Sdk` NuGet package and implement the `IPlugin` interface. See the [Plugin Development Guide](https://github.com/Spectara/Revela/blob/main/docs/plugin-development.md).
