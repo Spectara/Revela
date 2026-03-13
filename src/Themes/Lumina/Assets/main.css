@@ -52,6 +52,7 @@ figcaption {
   --breakout-max-width: 1240px;
   --breakout-size: calc((var(--breakout-max-width) - var(--content-max-width)) / 2);
   --grid-gap: var(--space-xs);
+  --header-height: calc(var(--space-xl) + var(--space-xs));
 
   @media (prefers-reduced-motion: reduce) {
     --animation-time: 0ms;
@@ -166,6 +167,30 @@ body {
   }
 }
 
+/* Nav backdrop (fullscreen, behind nav & header, toggled via checkbox) */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 199;
+  background-color: color-mix(in srgb, var(--color-bg) 80%, transparent);
+  -webkit-backdrop-filter: saturate(180%) blur(2rem);
+  backdrop-filter: saturate(180%) blur(2rem);
+  opacity: 0;
+  transition: display var(--animation-time) ease-in-out allow-discrete, opacity var(--animation-time) ease-in-out;
+  display: none;
+}
+
+body:has(.nav-trigger:checked)::after,
+body:has(.nav-trigger ~ nav:focus-within)::after {
+  display: block;
+  opacity: 1;
+
+  @starting-style {
+    opacity: 0;
+  }
+}
+
 .nav-trigger {
   position: fixed;
   clip-path: inset(50%);
@@ -221,6 +246,8 @@ label[for=nav-trigger] {
     font-weight: 100;
     font-size: var(--nav-font-size);
     margin-bottom: var(--nav-heading-gap);
+    padding-bottom: var(--space-3xs);
+    border-bottom: 1px solid color-mix(in srgb, var(--color) 15%, transparent);
 
     /* Container headings (no link) are visually muted */
     &:not(:has(a)) {
@@ -246,14 +273,14 @@ label[for=nav-trigger] {
     }
 
     /* Indent all children after a container heading (span) */
-    >span ~ a,
-    >span ~ div {
+    >span~a,
+    >span~div {
       margin-left: var(--space-l);
     }
 
     /* Indent children after a link heading (branch with URL) */
-    >a:first-child ~ a,
-    >a:first-child ~ div {
+    >a:first-child~a,
+    >a:first-child~div {
       margin-left: var(--space-l);
     }
   }
@@ -285,22 +312,30 @@ body>nav {
   --nav-heading-gap: var(--space-s);
   grid-column: full-width;
   position: fixed;
-  height: 100dvh;
+  top: var(--header-height);
+  top: anchor(--header bottom);
+  bottom: 0;
   width: 100dvw;
   z-index: 200;
   display: none;
   flex-direction: row;
   flex-wrap: wrap;
-  align-content: center;
+  align-content: flex-start;
   justify-content: center;
   gap: var(--space-l);
   transition: display var(--animation-time) ease-in-out allow-discrete, opacity var(--animation-time) ease-in-out;
   opacity: 0;
-  background-color: color-mix(in srgb, var(--color-bg) 80%, transparent);
-  backdrop-filter: saturate(180%) blur(2rem);
-  padding-top: var(--space-3xl);
+  background: transparent;
+  padding-top: var(--space-s);
+  padding-inline: var(--space-l);
+  padding-bottom: var(--space-l);
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+  overscroll-behavior: none;
 
   section {
+    flex: 0 0 auto;
+
     a.active {
       pointer-events: none;
     }
@@ -323,6 +358,7 @@ body>nav:focus-within,
 }
 
 header {
+  anchor-name: --header;
   grid-column: full-width;
   display: grid;
   align-items: center;
@@ -333,14 +369,14 @@ header {
   top: 0;
   margin-top: var(--space-xl);
   padding-bottom: var(--space-xs);
-  height: calc(var(--space-xl) + var(--space-xs));
+  height: var(--header-height);
 
   div {
     grid-column: content;
     display: flex;
     gap: var(--space-s);
     justify-content: space-between;
-    align-items: flex-end;
+    align-items: baseline;
     flex-wrap: wrap;
 
     h2 {
@@ -356,7 +392,7 @@ header {
       justify-content: flex-end;
       flex-wrap: wrap;
       gap: var(--space-s);
-      font-size: var(--font-size-3);
+      font-size: var(--font-size-2);
       opacity: 1;
       transition: opacity var(--animation-time) ease-in-out;
     }
@@ -382,7 +418,7 @@ header {
   }
 }
 
-/* Nav open hides header nav (cross-component) */
+/* Nav open: hide header nav (cross-component) */
 body>nav:focus-within~header nav,
 .nav-trigger:checked~header nav {
   opacity: 0;
