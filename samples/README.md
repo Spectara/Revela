@@ -21,11 +21,13 @@ onedrive/
 
 **Usage:**
 ```bash
+cd samples/onedrive
+
 # Sync images from OneDrive share
-revela source onedrive sync -p samples/onedrive
+revela source onedrive sync
 
 # Generate site
-revela generate -p samples/onedrive
+revela generate all
 ```
 
 > **Note:** The `source/` and `output/` folders are excluded from Git.

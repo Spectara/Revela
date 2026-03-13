@@ -60,8 +60,12 @@ dotnet test --verbosity normal
 # Show help
 dotnet run --project src/Cli -- --help
 
-# Generate site
-dotnet run --project src/Cli -- generate -p ./samples/showcase
+# Generate site (use -p to specify project path)
+dotnet run --project src/Cli -- -p samples/showcase generate all
+
+# Or cd into project directory first
+cd samples/showcase
+dotnet run --project ../../src/Cli -- generate all
 
 # Plugin commands
 dotnet run --project src/Cli -- plugins list
@@ -87,7 +91,8 @@ dotnet format --verify-no-changes
 2. Set `Cli` as startup project
 3. Configure command-line arguments:
    - Right-click `Cli` → Properties → Debug
-   - Add arguments: `generate -p samples/showcase`
+   - Set working directory to a sample project (e.g., `samples/showcase`)
+   - Add arguments: `generate all`
 
 ### Visual Studio Code
 
@@ -178,7 +183,7 @@ dotnet tool install -g --add-source ./artifacts/packages Spectara.Revela
 
 ```bash
 revela --help
-revela generate -p path/to/site
+revela -p path/to/site generate all
 ```
 
 ### Publish to NuGet.org

@@ -222,10 +222,10 @@ internal static class ProjectResolver
         var filteredArgs = RemoveProjectArguments(args);
         var hasCommands = filteredArgs.Length > 0;
 
-        // Tool-Mode: use current directory
+        // Tool-Mode: use current directory (or --project path)
         if (!ConfigPathResolver.IsStandaloneMode)
         {
-            return ResolveToolMode(filteredArgs, hasCommands);
+            return ResolveToolMode(args, filteredArgs, hasCommands);
         }
 
         // Standalone-Mode: use projects/ directory
@@ -236,14 +236,23 @@ internal static class ProjectResolver
     /// Resolves project in Tool-Mode (global dotnet tool)
     /// </summary>
     private static (string? ProjectPath, string[] FilteredArgs, bool ShouldExit) ResolveToolMode(
+        string[] originalArgs,
         string[] filteredArgs,
         bool hasCommands)
     {
+        // Check if --project/-p was specified
+        var projectArg = ParseProjectArgument(originalArgs);
+
+        if (projectArg is not null)
+        {
+            return ResolveProjectPath(projectArg, filteredArgs);
+        }
+
         var cwd = Directory.GetCurrentDirectory();
-        var projectFile = Path.Combine(cwd, "project.json");
+        var cwdProjectFile = Path.Combine(cwd, "project.json");
 
         // CWD has project.json - use it
-        if (File.Exists(projectFile))
+        if (File.Exists(cwdProjectFile))
         {
             return (null, filteredArgs, false);
         }
@@ -280,6 +289,31 @@ internal static class ProjectResolver
         AnsiConsole.MarkupLine("[blue]Options:[/]");
         AnsiConsole.MarkupLine("  • Run [cyan]revela[/] (no arguments) to initialize this folder");
         AnsiConsole.MarkupLine("  • Run [cyan]cd path/to/project[/] to switch to an existing project");
+    }
+
+    /// <summary>
+    /// Resolves a --project/-p value as a filesystem path.
+    /// Used by both Tool Mode (always) and Standalone Mode (when value looks like a path).
+    /// </summary>
+    private static (string? ProjectPath, string[] FilteredArgs, bool ShouldExit) ResolveProjectPath(
+        string pathValue,
+        string[] filteredArgs)
+    {
+        var projectPath = Path.GetFullPath(pathValue);
+
+        if (!Directory.Exists(projectPath))
+        {
+            AnsiConsole.MarkupLine($"[red]Error:[/] Project directory not found: [yellow]{Markup.Escape(projectPath)}[/]");
+            return (null, filteredArgs, true);
+        }
+
+        if (!File.Exists(Path.Combine(projectPath, "project.json")))
+        {
+            AnsiConsole.MarkupLine($"[red]Error:[/] No project.json found in: [yellow]{Markup.Escape(projectPath)}[/]");
+            return (null, filteredArgs, true);
+        }
+
+        return (projectPath, filteredArgs, false);
     }
 
     /// <summary>
@@ -344,6 +378,15 @@ internal static class ProjectResolver
         // --project specified
         if (projectName is not null)
         {
+            // If it looks like a path (contains separator or is rooted), resolve as path
+            if (projectName.Contains(Path.DirectorySeparatorChar, StringComparison.Ordinal)
+                || projectName.Contains(Path.AltDirectorySeparatorChar, StringComparison.Ordinal)
+                || Path.IsPathRooted(projectName))
+            {
+                return ResolveProjectPath(projectName, filteredArgs);
+            }
+
+            // Otherwise resolve as project name in projects/ directory
             var projectPath = Path.Combine(ConfigPathResolver.ProjectsDirectory, projectName);
 
             if (!Directory.Exists(projectPath))

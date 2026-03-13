@@ -193,7 +193,7 @@ Spectara.Revela.json → ExposeConfig → IOptions<ExposeConfig>
 ### Site Generation Flow
 
 ```
-User runs: revela generate -p mysite
+User runs: revela generate all
 
 1. Load Configuration
    project.json + site.json → RevelaConfig
