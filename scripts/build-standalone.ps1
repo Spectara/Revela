@@ -186,7 +186,7 @@ try {
             "src/Themes/Lumina/Lumina.csproj",
             "src/Themes/Lumina.Statistics/Lumina.Statistics.csproj",
             "src/Plugins/Statistics/Statistics.csproj",
-            "src/Plugins/Source.OneDrive/Source.OneDrive.csproj",
+            "src/Plugins/Source/OneDrive/OneDrive.csproj",
             "src/Plugins/Serve/Serve.csproj",
             "src/Plugins/Compress/Compress.csproj"
         )

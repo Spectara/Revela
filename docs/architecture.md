@@ -59,7 +59,8 @@ Revela/
 │   │
 │   └── Spectara.Revela.Plugins/           # Optional Plugins
 │       ├── Serve/
-│       ├── Source.OneDrive/
+│       ├── Source/
+│       │   └── OneDrive/
 │       └── Statistics/
 │
 └── tests/

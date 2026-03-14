@@ -29,9 +29,10 @@
   <ItemGroup Condition="'$(Configuration)' == 'Debug'">
     <ProjectReference Include="..\Plugins\Compress\Compress.csproj" />
     <ProjectReference Include="..\Plugins\Serve\Serve.csproj" />
-    <ProjectReference Include="..\Plugins\Source.OneDrive\Source.OneDrive.csproj" />
+    <ProjectReference Include="..\Plugins\Source\OneDrive\OneDrive.csproj" />
     <ProjectReference Include="..\Plugins\Statistics\Statistics.csproj" />
     <ProjectReference Include="..\Plugins\Calendar\Calendar.csproj" />
+    <ProjectReference Include="..\Plugins\Source\Calendar\Calendar.csproj" />
     <ProjectReference Include="..\Themes\Lumina\Lumina.csproj" />
     <ProjectReference Include="..\Themes\Lumina.Statistics\Lumina.Statistics.csproj" />
   </ItemGroup>

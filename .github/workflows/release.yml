@@ -127,7 +127,7 @@ jobs:
         run: dotnet build src/Plugins/Statistics/Statistics.csproj -c Release --no-restore -p:Version=${{ env.VERSION }}
 
       - name: Build Source.OneDrive
-        run: dotnet build src/Plugins/Source.OneDrive/Source.OneDrive.csproj -c Release --no-restore -p:Version=${{ env.VERSION }}
+        run: dotnet build src/Plugins/Source/OneDrive/OneDrive.csproj -c Release --no-restore -p:Version=${{ env.VERSION }}
 
       - name: Build Serve
         run: dotnet build src/Plugins/Serve/Serve.csproj -c Release --no-restore -p:Version=${{ env.VERSION }}
@@ -157,7 +157,7 @@ jobs:
         run: dotnet pack src/Plugins/Statistics/Statistics.csproj -c Release -o ./nupkgs --no-build --no-restore -p:PackageVersion=${{ env.VERSION }} -p:IncludeSymbols=false
 
       - name: Pack Source.OneDrive
-        run: dotnet pack src/Plugins/Source.OneDrive/Source.OneDrive.csproj -c Release -o ./nupkgs --no-build --no-restore -p:PackageVersion=${{ env.VERSION }} -p:IncludeSymbols=false
+        run: dotnet pack src/Plugins/Source/OneDrive/OneDrive.csproj -c Release -o ./nupkgs --no-build --no-restore -p:PackageVersion=${{ env.VERSION }} -p:IncludeSymbols=false
 
       - name: Pack Serve
         run: dotnet pack src/Plugins/Serve/Serve.csproj -c Release -o ./nupkgs --no-build --no-restore -p:PackageVersion=${{ env.VERSION }} -p:IncludeSymbols=false

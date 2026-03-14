@@ -50,9 +50,10 @@
   </PropertyGroup>
 
   <PropertyGroup Label="Build Output">
-    <BaseOutputPath>$(MSBuildThisFileDirectory)artifacts\bin\$(MSBuildProjectName)\</BaseOutputPath>
-    <BaseIntermediateOutputPath>$(MSBuildThisFileDirectory)artifacts\obj\$(MSBuildProjectName)\</BaseIntermediateOutputPath>
-    <PackageOutputPath>$(MSBuildThisFileDirectory)artifacts\packages\</PackageOutputPath>
+    <_ArtifactsRoot>$(MSBuildThisFileDirectory)artifacts\</_ArtifactsRoot>
+    <BaseOutputPath>$(_ArtifactsRoot)bin\$(MSBuildProjectName)\</BaseOutputPath>
+    <BaseIntermediateOutputPath>$(_ArtifactsRoot)obj\$(MSBuildProjectName)\</BaseIntermediateOutputPath>
+    <PackageOutputPath>$(_ArtifactsRoot)packages\</PackageOutputPath>
   </PropertyGroup>
 
   <PropertyGroup Label="Documentation">

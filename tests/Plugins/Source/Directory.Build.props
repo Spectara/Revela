@@ -1,0 +1,13 @@
+<Project>
+  <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)..'))" />
+  <!-- Insert "Source" segment: {Prefix}.Tests.Plugins.{ProjectName} → {Prefix}.Tests.Plugins.Source.{ProjectName} -->
+  <PropertyGroup>
+    <AssemblyName>$(RevelaNamespacePrefix).Tests.Plugins.Source.$(MSBuildProjectName)</AssemblyName>
+    <RootNamespace>$(AssemblyName)</RootNamespace>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <BaseOutputPath>$(_ArtifactsRoot)bin\Tests.Source.$(MSBuildProjectName)\</BaseOutputPath>
+    <BaseIntermediateOutputPath>$(_ArtifactsRoot)obj\Tests.Source.$(MSBuildProjectName)\</BaseIntermediateOutputPath>
+  </PropertyGroup>
+</Project>

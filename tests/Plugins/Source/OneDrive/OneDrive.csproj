@@ -23,8 +23,8 @@
     <PackageReference Include="NSubstitute" />  </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\..\src\Plugins\Source.OneDrive\Source.OneDrive.csproj" />
-    <ProjectReference Include="..\..\Shared\Shared.csproj" />
+    <ProjectReference Include="..\..\..\..\src\Plugins\Source\OneDrive\OneDrive.csproj" />
+    <ProjectReference Include="..\..\..\Shared\Shared.csproj" />
   </ItemGroup>
 
 </Project>

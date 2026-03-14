@@ -24,7 +24,8 @@ Spectara.Revela/
 │   │   ├── Directory.Build.props   # Inserts "Plugins" namespace segment
 │   │   ├── Compress/
 │   │   ├── Serve/
-│   │   ├── Source.OneDrive/
+│   │   ├── Source/
+│   │   │   └── OneDrive/
 │   │   └── Statistics/
 │   └── Themes/
 │       ├── Directory.Build.props   # Inserts "Themes" namespace segment
@@ -41,7 +42,8 @@ Spectara.Revela/
 │       ├── Directory.Build.props   # Inserts "Tests.Plugins" namespace segment
 │       ├── Compress/
 │       ├── Serve/
-│       ├── Source.OneDrive/
+│       ├── Source/
+│       │   └── OneDrive/
 │       └── Statistics/
 │
 ├── benchmarks/                     # Performance benchmarks

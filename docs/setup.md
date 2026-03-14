@@ -120,7 +120,8 @@ Revela/
 │   ├── Cli/                      # CLI entry point
 │   ├── Plugins/                  # Optional plugins
 │   │   ├── Serve/
-│   │   ├── Source.OneDrive/
+│   │   ├── Source/
+│   │   │   └── OneDrive/
 │   │   └── Statistics/
 │   └── Themes/                   # Built-in themes
 │       ├── Lumina/

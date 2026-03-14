@@ -9,9 +9,8 @@
     <IsPackable>false</IsPackable>
   </PropertyGroup>
 
-  <!-- Avoid output path collision with src/ projects that share the same project name -->
   <PropertyGroup>
-    <BaseOutputPath>$(MSBuildThisFileDirectory)../artifacts/bin/Tests.$(MSBuildProjectName)/</BaseOutputPath>
-    <BaseIntermediateOutputPath>$(MSBuildThisFileDirectory)../artifacts/obj/Tests.$(MSBuildProjectName)/</BaseIntermediateOutputPath>
+    <BaseOutputPath>$(_ArtifactsRoot)bin\Tests.$(MSBuildProjectName)\</BaseOutputPath>
+    <BaseIntermediateOutputPath>$(_ArtifactsRoot)obj\Tests.$(MSBuildProjectName)\</BaseIntermediateOutputPath>
   </PropertyGroup>
 </Project>

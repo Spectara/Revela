@@ -10,9 +10,10 @@
     <Folder Name="/Plugins/">
       <Project Path="src/Plugins/Compress/Compress.csproj" />
       <Project Path="src/Plugins/Serve/Serve.csproj" />
-      <Project Path="src/Plugins/Source.OneDrive/Source.OneDrive.csproj" />
+      <Project Path="src/Plugins/Source/OneDrive/OneDrive.csproj" />
       <Project Path="src/Plugins/Statistics/Statistics.csproj" />
       <Project Path="src/Plugins/Calendar/Calendar.csproj" />
+      <Project Path="src/Plugins/Source/Calendar/Calendar.csproj" />
     </Folder>
     <Folder Name="/Themes/">
       <Project Path="src/Themes/Lumina/Lumina.csproj" />
@@ -26,9 +27,10 @@
     <Folder Name="/Plugins/">
       <Project Path="tests/Plugins/Compress/Compress.csproj" />
       <Project Path="tests/Plugins/Serve/Serve.csproj" />
-      <Project Path="tests/Plugins/Source.OneDrive/Source.OneDrive.csproj" />
+      <Project Path="tests/Plugins/Source/OneDrive/OneDrive.csproj" />
       <Project Path="tests/Plugins/Statistics/Statistics.csproj" />
       <Project Path="tests/Plugins/Calendar/Calendar.csproj" />
+      <Project Path="tests/Plugins/Source/Calendar/Calendar.csproj" />
     </Folder>
     <Project Path="tests/Shared/Shared.csproj" />
   </Folder>

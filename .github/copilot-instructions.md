@@ -89,7 +89,8 @@ src/
 ├── Plugins/
 │   ├── Compress/      # Gzip/Brotli pre-compression
 │   ├── Serve/         # Local development server
-│   ├── Source.OneDrive/  # OneDrive shared folder source
+│   ├── Source/
+│   │   └── OneDrive/  # OneDrive shared folder source
 │   └── Statistics/    # EXIF statistics functionality
 └── Themes/
     ├── Lumina/         # Default photography portfolio theme
@@ -100,7 +101,8 @@ tests/
 ├── Integration/         # Integration tests
 ├── Compress/    # Compression plugin tests
 ├── Serve/       # Serve plugin tests
-├── Source.OneDrive/  # OneDrive plugin tests
+├── Source/
+│   └── OneDrive/  # OneDrive plugin tests
 ├── Statistics/  # Statistics plugin tests
 └── Shared/                   # Shared test utilities
 ```
@@ -992,7 +994,7 @@ dotnet test tests/Commands
 dotnet test tests/Integration
 dotnet test tests/Plugins/Compress
 dotnet test tests/Plugins/Serve
-dotnet test tests/Plugins/Source.OneDrive
+dotnet test tests/Plugins/Source/OneDrive
 dotnet test tests/Plugins/Statistics
 ```
 

@@ -177,7 +177,7 @@ try {
         $extraProjects = @(
             "src/Plugins/Compress/Compress.csproj",
             "src/Plugins/Serve/Serve.csproj",
-            "src/Plugins/Source.OneDrive/Source.OneDrive.csproj",
+            "src/Plugins/Source/OneDrive/OneDrive.csproj",
             "src/Plugins/Statistics/Statistics.csproj",
             "src/Themes/Lumina/Lumina.csproj",
             "src/Themes/Lumina.Statistics/Lumina.Statistics.csproj"
@@ -204,7 +204,7 @@ try {
             $testProjects = @(
                 @{ Name = "Core"; Path = "artifacts/bin/Core/Release/net10.0/Spectara.Revela.Tests.Core$testExeExt" },
                 @{ Name = "Commands"; Path = "artifacts/bin/Commands/Release/net10.0/Spectara.Revela.Tests.Commands$testExeExt" },
-                @{ Name = "Source.OneDrive"; Path = "artifacts/bin/Source.OneDrive/Release/net10.0/Spectara.Revela.Tests.Plugins.Source.OneDrive$testExeExt" },
+                @{ Name = "Source.OneDrive"; Path = "artifacts/bin/Tests.Source.OneDrive/Release/net10.0/Spectara.Revela.Tests.Plugins.Source.OneDrive$testExeExt" },
                 @{ Name = "Statistics"; Path = "artifacts/bin/Statistics/Release/net10.0/Spectara.Revela.Tests.Plugins.Statistics$testExeExt" },
                 @{ Name = "Serve"; Path = "artifacts/bin/Serve/Release/net10.0/Spectara.Revela.Tests.Plugins.Serve$testExeExt" },
                 @{ Name = "Compress"; Path = "artifacts/bin/Compress/Release/net10.0/Spectara.Revela.Tests.Plugins.Compress$testExeExt" },
@@ -274,7 +274,7 @@ try {
             @{ Name = "Lumina";             Proj = "src/Themes/Lumina/Lumina.csproj";                                 Out = $PluginsDir },
             @{ Name = "Lumina.Statistics";  Proj = "src/Themes/Lumina.Statistics/Lumina.Statistics.csproj";           Out = $PluginsDir },
             @{ Name = "Sdk";                Proj = "src/Sdk/Sdk.csproj";                                             Out = $NuGetDir },
-            @{ Name = "Source.OneDrive";    Proj = "src/Plugins/Source.OneDrive/Source.OneDrive.csproj";             Out = $PluginsDir },
+            @{ Name = "Source.OneDrive";    Proj = "src/Plugins/Source/OneDrive/OneDrive.csproj";                   Out = $PluginsDir },
             @{ Name = "Statistics";         Proj = "src/Plugins/Statistics/Statistics.csproj";                       Out = $PluginsDir },
             @{ Name = "Serve";              Proj = "src/Plugins/Serve/Serve.csproj";                                 Out = $PluginsDir },
             @{ Name = "Compress";           Proj = "src/Plugins/Compress/Compress.csproj";                           Out = $PluginsDir }

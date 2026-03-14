@@ -12,12 +12,12 @@
 
   <ItemGroup>
     <None Include="README.md" Pack="true" PackagePath="/" />
-    <None Include="../../../assets/revela_100.png" Pack="true" PackagePath="icon.png" />
+    <None Include="../../../../assets/revela_100.png" Pack="true" PackagePath="icon.png" />
   </ItemGroup>
 
   <ItemGroup>
     <!-- Reference to host Sdk - NOT copied to output (loaded from host) -->
-    <ProjectReference Include="..\..\Sdk\Sdk.csproj">
+    <ProjectReference Include="..\..\..\Sdk\Sdk.csproj">
       <Private>false</Private>
       <ExcludeAssets>runtime</ExcludeAssets>
     </ProjectReference>

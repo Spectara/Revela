@@ -1,4 +1,7 @@
 using NSubstitute;
+using Spectara.Revela.Plugins.Source.OneDrive.Commands;
+using Spectara.Revela.Plugins.Source.OneDrive.Configuration;
+using Spectara.Revela.Plugins.Source.OneDrive.Providers;
 using Spectara.Revela.Sdk.Services;
 using Spectara.Revela.Tests.Shared.Http;
 
@@ -58,16 +61,16 @@ public sealed class OneDriveSourceCommandTests : IDisposable
         Assert.DoesNotContain("--debug", optionNames);
     }
 
-    private OneDrive.Commands.OneDriveSourceCommand CreateCommand()
+    private OneDriveSourceCommand CreateCommand()
     {
-        var commandLogger = Substitute.For<ILogger<OneDrive.Commands.OneDriveSourceCommand>>();
-        var providerLogger = Substitute.For<ILogger<OneDrive.Providers.SharedLinkProvider>>();
-        var provider = new OneDrive.Providers.SharedLinkProvider(httpClient, providerLogger);
+        var commandLogger = Substitute.For<ILogger<OneDriveSourceCommand>>();
+        var providerLogger = Substitute.For<ILogger<SharedLinkProvider>>();
+        var provider = new SharedLinkProvider(httpClient, providerLogger);
         var pathResolver = Substitute.For<IPathResolver>();
         pathResolver.SourcePath.Returns(Path.GetTempPath());
-        var configMonitor = Substitute.For<Microsoft.Extensions.Options.IOptionsMonitor<Configuration.OneDrivePluginConfig>>();
-        configMonitor.CurrentValue.Returns(new Configuration.OneDrivePluginConfig());
+        var configMonitor = Substitute.For<Microsoft.Extensions.Options.IOptionsMonitor<OneDrivePluginConfig>>();
+        configMonitor.CurrentValue.Returns(new OneDrivePluginConfig());
 
-        return new OneDrive.Commands.OneDriveSourceCommand(commandLogger, provider, pathResolver, configMonitor);
+        return new OneDriveSourceCommand(commandLogger, provider, pathResolver, configMonitor);
     }
 }
