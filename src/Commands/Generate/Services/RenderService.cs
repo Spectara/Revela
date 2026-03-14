@@ -551,6 +551,7 @@ internal sealed partial class RenderService(
                     {
                         ["site"] = model.Site,
                         ["gallery"] = gallery,
+                        ["content"] = gallery.Body ?? string.Empty,
                         ["nav_items"] = galleryNavigation,
                         ["basepath"] = basepath,
                         ["image_basepath"] = galleryImageBasePath,
