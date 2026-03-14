@@ -195,7 +195,7 @@ jobs:
           subject-path: ./nupkgs/*.nupkg
 
       - name: Upload NuGet packages
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: nupkgs
           path: ./nupkgs/*.nupkg
@@ -341,14 +341,14 @@ jobs:
           subject-path: revela-${{ matrix.rid }}-full.*
 
       - name: Upload Core artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ${{ matrix.rid }}-core
           path: revela-${{ matrix.rid }}-core.*
           retention-days: 1
 
       - name: Upload Full artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ${{ matrix.rid }}-full
           path: revela-${{ matrix.rid }}-full.*
@@ -427,7 +427,7 @@ jobs:
             ../signatures/SHA256SUMS
 
       - name: Upload signatures and checksums
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: signatures
           path: signatures/**
