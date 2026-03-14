@@ -113,6 +113,18 @@ jobs:
       - name: Build
         run: dotnet build -c Release --no-restore -p:Version=${{ needs.validate.outputs.version }}
 
+      - name: Rebuild plugins and themes in Release
+        run: |
+          # Solution build may produce Debug output for plugins/themes when test
+          # projects reference them as ProjectReference (MSBuild parallelism).
+          # Rebuild explicitly in Release to ensure correct output paths for pack.
+          dotnet build src/Themes/Lumina/Lumina.csproj -c Release --no-restore -p:Version=${{ needs.validate.outputs.version }}
+          dotnet build src/Themes/Lumina.Statistics/Lumina.Statistics.csproj -c Release --no-restore -p:Version=${{ needs.validate.outputs.version }}
+          dotnet build src/Plugins/Statistics/Statistics.csproj -c Release --no-restore -p:Version=${{ needs.validate.outputs.version }}
+          dotnet build src/Plugins/Source.OneDrive/Source.OneDrive.csproj -c Release --no-restore -p:Version=${{ needs.validate.outputs.version }}
+          dotnet build src/Plugins/Serve/Serve.csproj -c Release --no-restore -p:Version=${{ needs.validate.outputs.version }}
+          dotnet build src/Plugins/Compress/Compress.csproj -c Release --no-restore -p:Version=${{ needs.validate.outputs.version }}
+
       - name: Pack Lumina
         run: |
           dotnet pack src/Themes/Lumina/Lumina.csproj \
