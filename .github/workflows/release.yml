@@ -190,7 +190,7 @@ jobs:
         run: ls -lh ./nupkgs/
 
       - name: Attest build provenance
-        uses: actions/attest-build-provenance@v1
+        uses: actions/attest-build-provenance@v4
         with:
           subject-path: ./nupkgs/*.nupkg
 
@@ -331,12 +331,12 @@ jobs:
 
       # === Attestation & Upload ===
       - name: Attest Core build provenance
-        uses: actions/attest-build-provenance@v1
+        uses: actions/attest-build-provenance@v4
         with:
           subject-path: revela-${{ matrix.rid }}-core.*
 
       - name: Attest Full build provenance
-        uses: actions/attest-build-provenance@v1
+        uses: actions/attest-build-provenance@v4
         with:
           subject-path: revela-${{ matrix.rid }}-full.*
 
