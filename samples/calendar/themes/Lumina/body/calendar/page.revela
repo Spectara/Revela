@@ -1,0 +1,36 @@
+{{ content }}
+
+<div class="calendar-legend">
+  <span class="legend-free">{{ calendar.labels.free }}</span>
+  {{ if calendar.labels.arrive }}<span class="legend-arrive">{{ calendar.labels.arrive }}</span>{{ end }}
+  {{ if calendar.labels.depart }}<span class="legend-depart">{{ calendar.labels.depart }}</span>{{ end }}
+  <span class="legend-booked">{{ calendar.labels.booked }}</span>
+</div>
+
+<div class="calendar-grid">
+{{ for month in calendar.months }}
+  <div class="calendar-month">
+    <h3>{{ month.name }}</h3>
+    <table>
+      <thead>
+        <tr>
+          {{ for name in calendar.day_names }}<th>{{ name }}</th>{{ end }}
+        </tr>
+      </thead>
+      <tbody>
+      {{ for week in month.weeks }}
+        <tr>
+        {{ for day in week }}
+          {{ if day.number == 0 }}
+          <td></td>
+          {{ else }}
+          <td class="{{ day.css }}">{{ day.number }}</td>
+          {{ end }}
+        {{ end }}
+        </tr>
+      {{ end }}
+      </tbody>
+    </table>
+  </div>
+{{ end }}
+</div>

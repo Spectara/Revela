@@ -8,6 +8,12 @@ namespace Spectara.Revela.Plugins.Calendar.Models;
 public sealed class CalendarData
 {
     /// <summary>
+    /// Abbreviated weekday names (Mon-Sun) in the configured locale.
+    /// </summary>
+    [JsonPropertyName("day_names")]
+    public IReadOnlyList<string> DayNames { get; init; } = [];
+
+    /// <summary>
     /// Localized label strings for template rendering.
     /// </summary>
     [JsonPropertyName("labels")]

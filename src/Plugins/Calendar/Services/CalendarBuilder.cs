@@ -41,6 +41,7 @@ internal static class CalendarBuilder
 
         return new CalendarData
         {
+            DayNames = GetDayNames(culture),
             Labels = labels,
             Months = months
         };
@@ -183,4 +184,18 @@ internal static class CalendarBuilder
     }
 
     private static readonly CalendarDay EmptyDay = new() { Number = 0 };
+
+    /// <summary>
+    /// Gets abbreviated weekday names (Mon-Sun) for the given culture.
+    /// </summary>
+    private static string[] GetDayNames(CultureInfo culture)
+    {
+        var abbreviated = culture.DateTimeFormat.AbbreviatedDayNames;
+        // .NET order: Sun=0, Mon=1, ..., Sat=6 → rotate to Mon-Sun
+        return
+        [
+            abbreviated[1], abbreviated[2], abbreviated[3],
+            abbreviated[4], abbreviated[5], abbreviated[6], abbreviated[0]
+        ];
+    }
 }

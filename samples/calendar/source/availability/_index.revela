@@ -1,7 +1,7 @@
 +++
 title = "Verfügbarkeit"
 template = "calendar/page"
-data.calendar = "calendar.json"
+data = { calendar: "calendar.json" }
 
 calendar.source = "bookings.ics"
 calendar.mode = "nights"

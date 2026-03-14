@@ -88,11 +88,21 @@ internal sealed partial class RevelaParser(ILogger<RevelaParser> logger)
         }
 
         // Evaluate frontmatter to extract variables
+        // Wrapped in try/catch because plugin-specific dot-notation fields
+        // (e.g., calendar.source = "x") throw ScriptRuntimeException when the
+        // parent object doesn't exist. We extract what we can from partial results.
         var context = new TemplateContext();
 
         if (template.Page.FrontMatter is not null)
         {
-            context.Evaluate(template.Page.FrontMatter);
+            try
+            {
+                context.Evaluate(template.Page.FrontMatter);
+            }
+            catch (Scriban.Syntax.ScriptRuntimeException)
+            {
+                // Partial evaluation — known fields assigned before the error are still available
+            }
         }
 
         // Extract metadata from evaluated context using ScriptObject
