@@ -1,4 +1,6 @@
-{{ content }}
+<section>
+{{ page_content }}
+</section>
 
 <div class="calendar-legend">
   <span class="legend-free">{{ calendar.labels.free }}</span>

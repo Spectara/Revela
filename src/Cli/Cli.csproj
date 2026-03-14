@@ -35,6 +35,7 @@
     <ProjectReference Include="..\Plugins\Source\Calendar\Calendar.csproj" />
     <ProjectReference Include="..\Themes\Lumina\Lumina.csproj" />
     <ProjectReference Include="..\Themes\Lumina.Statistics\Lumina.Statistics.csproj" />
+    <ProjectReference Include="..\Themes\Lumina.Calendar\Lumina.Calendar.csproj" />
   </ItemGroup>
 
   <ItemGroup>

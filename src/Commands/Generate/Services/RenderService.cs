@@ -542,6 +542,9 @@ internal sealed partial class RenderService(
                 galleryImages,
                 ct);
 
+            // Save original markdown body before custom template rendering overwrites it
+            var pageContent = gallery.Body ?? string.Empty;
+
             if (customTemplate is not null && resolvedData.Count > 0)
             {
                 var contentTemplate = LoadTemplate($"{customTemplate}.revela");
@@ -551,7 +554,6 @@ internal sealed partial class RenderService(
                     {
                         ["site"] = model.Site,
                         ["gallery"] = gallery,
-                        ["content"] = gallery.Body ?? string.Empty,
                         ["nav_items"] = galleryNavigation,
                         ["basepath"] = basepath,
                         ["image_basepath"] = galleryImageBasePath,
@@ -577,6 +579,7 @@ internal sealed partial class RenderService(
             {
                 ["site"] = model.Site,
                 ["gallery"] = gallery,
+                ["page_content"] = pageContent,
                 ["images"] = customTemplate is not null ? [] : galleryImages,
                 ["nav_items"] = galleryNavigation,
                 ["basepath"] = basepath,

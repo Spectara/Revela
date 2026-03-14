@@ -18,6 +18,7 @@
     <Folder Name="/Themes/">
       <Project Path="src/Themes/Lumina/Lumina.csproj" />
       <Project Path="src/Themes/Lumina.Statistics/Lumina.Statistics.csproj" />
+      <Project Path="src/Themes/Lumina.Calendar/Lumina.Calendar.csproj" />
     </Folder>
   </Folder>
   <Folder Name="/tests/">
