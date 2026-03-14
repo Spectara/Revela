@@ -23,6 +23,9 @@
             ├── Spectara.Revela.Themes.Lumina.{version}.nupkg
             ├── Spectara.Revela.Themes.Lumina.Statistics.{version}.nupkg
             ├── Spectara.Revela.Plugins.Statistics.{version}.nupkg
+            ├── Spectara.Revela.Plugins.Calendar.{version}.nupkg
+            ├── Spectara.Revela.Plugins.Source.Calendar.{version}.nupkg
+            ├── Spectara.Revela.Themes.Lumina.Calendar.{version}.nupkg
             ├── Spectara.Revela.Plugins.Source.OneDrive.{version}.nupkg
             └── Spectara.Revela.Plugins.Serve.{version}.nupkg
 
@@ -186,6 +189,9 @@ try {
             "src/Themes/Lumina/Lumina.csproj",
             "src/Themes/Lumina.Statistics/Lumina.Statistics.csproj",
             "src/Plugins/Statistics/Statistics.csproj",
+            "src/Plugins/Calendar/Calendar.csproj",
+            "src/Plugins/Source/Calendar/Calendar.csproj",
+            "src/Themes/Lumina.Calendar/Lumina.Calendar.csproj",
             "src/Plugins/Source/OneDrive/OneDrive.csproj",
             "src/Plugins/Serve/Serve.csproj",
             "src/Plugins/Compress/Compress.csproj"

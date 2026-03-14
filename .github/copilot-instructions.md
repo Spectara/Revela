@@ -87,21 +87,26 @@ src/
 ├── Cli/                      # Entry point, hosting, interactive mode
 ├── Sdk/                      # SDK for plugin development (abstractions, models, services)
 ├── Plugins/
+│   ├── Calendar/      # Calendar/timeline functionality
 │   ├── Compress/      # Gzip/Brotli pre-compression
 │   ├── Serve/         # Local development server
 │   ├── Source/
+│   │   ├── Calendar/  # Calendar source plugin
 │   │   └── OneDrive/  # OneDrive shared folder source
 │   └── Statistics/    # EXIF statistics functionality
 └── Themes/
     ├── Lumina/         # Default photography portfolio theme
+    ├── Lumina.Calendar/    # Calendar extension for Lumina theme
     └── Lumina.Statistics/  # Statistics extension for Lumina theme
 tests/
 ├── Core/               # Unit tests for Core
 ├── Commands/           # Unit tests for Commands
 ├── Integration/         # Integration tests
+├── Calendar/    # Calendar plugin tests
 ├── Compress/    # Compression plugin tests
 ├── Serve/       # Serve plugin tests
 ├── Source/
+│   ├── Calendar/  # Calendar source plugin tests
 │   └── OneDrive/  # OneDrive plugin tests
 ├── Statistics/  # Statistics plugin tests
 └── Shared/                   # Shared test utilities

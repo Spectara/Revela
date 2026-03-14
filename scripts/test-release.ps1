@@ -179,6 +179,9 @@ try {
             "src/Plugins/Serve/Serve.csproj",
             "src/Plugins/Source/OneDrive/OneDrive.csproj",
             "src/Plugins/Statistics/Statistics.csproj",
+            "src/Plugins/Calendar/Calendar.csproj",
+            "src/Plugins/Source/Calendar/Calendar.csproj",
+            "src/Themes/Lumina.Calendar/Lumina.Calendar.csproj",
             "src/Themes/Lumina/Lumina.csproj",
             "src/Themes/Lumina.Statistics/Lumina.Statistics.csproj"
         )
@@ -206,6 +209,8 @@ try {
                 @{ Name = "Commands"; Path = "artifacts/bin/Commands/Release/net10.0/Spectara.Revela.Tests.Commands$testExeExt" },
                 @{ Name = "Source.OneDrive"; Path = "artifacts/bin/Tests.Source.OneDrive/Release/net10.0/Spectara.Revela.Tests.Plugins.Source.OneDrive$testExeExt" },
                 @{ Name = "Statistics"; Path = "artifacts/bin/Statistics/Release/net10.0/Spectara.Revela.Tests.Plugins.Statistics$testExeExt" },
+                @{ Name = "Calendar"; Path = "artifacts/bin/Tests.Calendar/Release/net10.0/Spectara.Revela.Tests.Plugins.Calendar$testExeExt" },
+                @{ Name = "Source.Calendar"; Path = "artifacts/bin/Tests.Source.Calendar/Release/net10.0/Spectara.Revela.Tests.Plugins.Source.Calendar$testExeExt" },
                 @{ Name = "Serve"; Path = "artifacts/bin/Serve/Release/net10.0/Spectara.Revela.Tests.Plugins.Serve$testExeExt" },
                 @{ Name = "Compress"; Path = "artifacts/bin/Compress/Release/net10.0/Spectara.Revela.Tests.Plugins.Compress$testExeExt" },
                 @{ Name = "Integration"; Path = "artifacts/bin/Integration/Release/net10.0/Spectara.Revela.Tests.Integration$testExeExt" }
@@ -276,6 +281,9 @@ try {
             @{ Name = "Sdk";                Proj = "src/Sdk/Sdk.csproj";                                             Out = $NuGetDir },
             @{ Name = "Source.OneDrive";    Proj = "src/Plugins/Source/OneDrive/OneDrive.csproj";                   Out = $PluginsDir },
             @{ Name = "Statistics";         Proj = "src/Plugins/Statistics/Statistics.csproj";                       Out = $PluginsDir },
+            @{ Name = "Calendar";           Proj = "src/Plugins/Calendar/Calendar.csproj";                           Out = $PluginsDir },
+            @{ Name = "Source.Calendar";    Proj = "src/Plugins/Source/Calendar/Calendar.csproj";                    Out = $PluginsDir },
+            @{ Name = "Lumina.Calendar";    Proj = "src/Themes/Lumina.Calendar/Lumina.Calendar.csproj";              Out = $PluginsDir },
             @{ Name = "Serve";              Proj = "src/Plugins/Serve/Serve.csproj";                                 Out = $PluginsDir },
             @{ Name = "Compress";           Proj = "src/Plugins/Compress/Compress.csproj";                           Out = $PluginsDir }
         )
@@ -408,6 +416,9 @@ try {
         $expectedPlugins = @(
             "Spectara.Revela.Plugins.Source.OneDrive",
             "Spectara.Revela.Plugins.Statistics",
+            "Spectara.Revela.Plugins.Calendar",
+            "Spectara.Revela.Plugins.Source.Calendar",
+            "Spectara.Revela.Themes.Lumina.Calendar",
             "Spectara.Revela.Plugins.Serve",
             "Spectara.Revela.Themes.Lumina.Statistics"
         )

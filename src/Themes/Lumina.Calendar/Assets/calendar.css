@@ -3,131 +3,127 @@
    ============================================ */
 
 .calendar-legend {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-xs, 0.5rem) var(--space-m, 1rem);
-  justify-content: center;
-  font-size: var(--font-size-0, 0.75rem);
-  color: var(--color-light, gray);
-  margin-bottom: var(--space-l, 1.5rem);
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-xs, 0.5rem) var(--space-m, 1rem);
+    justify-content: center;
+    font-size: var(--font-size-0, 0.75rem);
+    color: var(--color-light, gray);
+    margin-bottom: var(--space-l, 1.5rem);
 }
 
 .calendar-legend span::before {
-  content: "";
-  display: inline-block;
-  width: 0.8em;
-  height: 0.8em;
-  border-radius: 2px;
-  margin-right: 0.3em;
-  vertical-align: middle;
+    content: "";
+    display: inline-block;
+    width: 0.8em;
+    height: 0.8em;
+    border-radius: 2px;
+    margin-right: 0.3em;
+    vertical-align: middle;
 }
 
 .calendar-legend .legend-free::before {
-  background: color-mix(in oklab, currentColor 20%, transparent);
+    background: color-mix(in oklab, currentColor 20%, transparent);
 }
 
 .calendar-legend .legend-arrive::before {
-  background: linear-gradient(to bottom right, color-mix(in oklab, currentColor 20%, transparent) 50%, color-mix(in oklab, currentColor 60%, transparent) 50%);
+    background: linear-gradient(to bottom right, color-mix(in oklab, currentColor 20%, transparent) 50%, color-mix(in oklab, currentColor 60%, transparent) 50%);
 }
 
 .calendar-legend .legend-depart::before {
-  background: linear-gradient(to bottom right, color-mix(in oklab, currentColor 60%, transparent) 50%, color-mix(in oklab, currentColor 20%, transparent) 50%);
+    background: linear-gradient(to bottom right, color-mix(in oklab, currentColor 60%, transparent) 50%, color-mix(in oklab, currentColor 20%, transparent) 50%);
 }
 
 .calendar-legend .legend-booked::before {
-  background: color-mix(in oklab, currentColor 60%, transparent);
+    background: color-mix(in oklab, currentColor 60%, transparent);
 }
 
 /* Grid Layout */
 
 .calendar-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-  gap: var(--space-xl, 2rem) var(--space-l, 1.5rem);
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: var(--space-xl, 2rem) var(--space-l, 1.5rem);
 }
 
 /* Month */
 
 .calendar-month h3 {
-  text-align: center;
-  font-size: var(--font-size-1, 1rem);
-  font-weight: 200;
-  letter-spacing: 0.1em;
-  margin: 0 0 var(--space-s, 0.75rem) 0;
-  padding: 0;
-  border: none;
+    text-align: center;
+    font-size: var(--font-size-1, 1rem);
+    font-weight: 200;
+    letter-spacing: 0.1em;
+    margin: 0 0 var(--space-s, 0.75rem) 0;
+    padding: 0;
+    border: none;
 }
 
 .calendar-month h3::after {
-  display: none;
+    display: none;
 }
 
 /* Table */
 
 .calendar-month table {
-  width: 100%;
-  border-collapse: separate;
-  border-spacing: 2px;
-  table-layout: fixed;
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 2px;
+    table-layout: fixed;
 }
 
 .calendar-month th {
-  font-size: var(--font-size-0, 0.75rem);
-  font-weight: 200;
-  letter-spacing: 0.05em;
-  color: var(--color-light, gray);
-  text-align: center;
-  padding: var(--space-3xs, 0.2rem) 0;
+    font-size: var(--font-size-0, 0.75rem);
+    font-weight: 200;
+    letter-spacing: 0.05em;
+    color: var(--color-light, gray);
+    text-align: center;
+    padding: var(--space-3xs, 0.2rem) 0;
 }
 
 .calendar-month td {
-  text-align: center;
-  padding: var(--space-3xs, 0.2rem);
-  font-size: var(--font-size-0, 0.75rem);
-  font-weight: 200;
-  border-radius: 2px;
+    text-align: center;
+    padding: var(--space-3xs, 0.2rem);
+    font-size: var(--font-size-0, 0.75rem);
+    font-weight: 200;
+    border-radius: 2px;
 }
 
 /* Day States */
 
 .calendar-month td.free {
-  background: color-mix(in oklab, currentColor 5%, transparent);
+    background: color-mix(in oklab, currentColor 5%, transparent);
 }
 
 .calendar-month td.booked {
-  background: color-mix(in oklab, currentColor 25%, transparent);
+    background: color-mix(in oklab, currentColor 25%, transparent);
 }
 
 .calendar-month td.arrive {
-  background: linear-gradient(
-    to bottom right,
-    color-mix(in oklab, currentColor 5%, transparent) 50%,
-    color-mix(in oklab, currentColor 25%, transparent) 50%
-  );
+    background: linear-gradient(to bottom right,
+            color-mix(in oklab, currentColor 5%, transparent) 50%,
+            color-mix(in oklab, currentColor 25%, transparent) 50%);
 }
 
 .calendar-month td.depart {
-  background: linear-gradient(
-    to bottom right,
-    color-mix(in oklab, currentColor 25%, transparent) 50%,
-    color-mix(in oklab, currentColor 5%, transparent) 50%
-  );
+    background: linear-gradient(to bottom right,
+            color-mix(in oklab, currentColor 25%, transparent) 50%,
+            color-mix(in oklab, currentColor 5%, transparent) 50%);
 }
 
 .calendar-month td.past {
-  opacity: 0.25;
+    opacity: 0.25;
 }
 
 .calendar-month td.today {
-  font-weight: 400;
-  outline: 1px solid currentColor;
-  outline-offset: -1px;
+    font-weight: 400;
+    outline: 1px solid currentColor;
+    outline-offset: -1px;
 }
 
 /* Responsive */
 
 @media (max-width: 600px) {
-  .calendar-grid {
-    grid-template-columns: 1fr;
-  }
+    .calendar-grid {
+        grid-template-columns: 1fr;
+    }
 }

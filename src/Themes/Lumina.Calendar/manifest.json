@@ -1,15 +1,15 @@
 {
-  "name": "Lumina Calendar",
-  "version": "1.0.0",
-  "description": "Availability calendar extension for the Lumina theme",
-  "author": "Spectara",
-  "targetTheme": "Lumina",
-  "partialPrefix": "calendar",
-  "templates": {
-    "calendar/page": {
-      "data": {
-        "calendar": "calendar.json"
-      }
+    "name": "Lumina Calendar",
+    "version": "1.0.0",
+    "description": "Availability calendar extension for the Lumina theme",
+    "author": "Spectara",
+    "targetTheme": "Lumina",
+    "partialPrefix": "calendar",
+    "templates": {
+        "calendar/page": {
+            "data": {
+                "calendar": "calendar.json"
+            }
+        }
     }
-  }
 }
