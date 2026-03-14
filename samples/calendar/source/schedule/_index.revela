@@ -1,0 +1,14 @@
++++
+title = "Schedule"
+template = "calendar/page"
+data.calendar = "calendar.json"
+
+calendar.source = "bookings.ics"
+calendar.mode = "days"
+calendar.months = 6
+calendar.labels.booked = "Booked"
+calendar.labels.free = "Available"
++++
+## Booking Schedule
+
+Days marked as booked are not available for new sessions.

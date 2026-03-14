@@ -1,0 +1,17 @@
++++
+title = "Verfügbarkeit"
+template = "calendar/page"
+data.calendar = "calendar.json"
+
+calendar.source = "bookings.ics"
+calendar.mode = "nights"
+calendar.months = 12
+calendar.locale = "de"
+calendar.labels.booked = "belegt"
+calendar.labels.free = "frei"
+calendar.labels.arrive = "Anreise"
+calendar.labels.depart = "Abreise"
++++
+## Belegungskalender
+
+Grüne Tage sind frei buchbar. Die Diagonalen zeigen An- und Abreisetage.

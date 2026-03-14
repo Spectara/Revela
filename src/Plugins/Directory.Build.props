@@ -6,4 +6,10 @@
     <RootNamespace>$(AssemblyName)</RootNamespace>
     <PackageId>$(AssemblyName)</PackageId>
   </PropertyGroup>
+
+  <!-- Override InternalsVisibleTo: test projects for plugins have "Tests.Plugins" segment -->
+  <ItemGroup>
+    <InternalsVisibleTo Remove="$(RevelaNamespacePrefix).Tests.$(MSBuildProjectName)" />
+    <InternalsVisibleTo Include="$(RevelaNamespacePrefix).Tests.Plugins.$(MSBuildProjectName)" />
+  </ItemGroup>
 </Project>
