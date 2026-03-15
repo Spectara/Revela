@@ -94,6 +94,7 @@ your-project/
 │       │   ├── Gallery.revela
 │       │   └── Page.revela
 │       └── Partials/              # Partial templates
+│           ├── ContentImage.revela  # Required: renders ![alt](path) in Markdown
 │           ├── Navigation.revela
 │           └── Image.revela
 ├── source/

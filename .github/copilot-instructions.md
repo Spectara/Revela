@@ -1151,10 +1151,31 @@ dotnet run --project tests/Core
 - `image_basepath` - Path/URL to images (can be CDN URL)
 - `image_formats` - Global: ["avif", "webp", "jpg"] (same for all images)
 - `nav_items` - Navigation tree with active state
-- `gallery` - Current gallery (title, body)
-- `images` - Array of Image objects
+- `gallery` - Current gallery (title, body, cover_image, template)
+- `gallery.cover_image` - Resolved cover Image object (from `cover` frontmatter, null if not set)
+- `page_content` - Original markdown body as HTML (same as gallery.body)
+- `images` - Array of Image objects (available for all templates including custom ones)
 - `image.sizes` - Per-image: available widths (filtered by original)
 - `image.placeholder` - Per-image: CSS-only LQIP hash string (if PlaceholderStrategy = CssHash)
+
+**Template Functions:**
+- `find_image "path"` - Resolve any image by path → Image object or null (3-step lookup)
+- `url_for "path"` - Generate page URL
+- `asset_url "path"` - Generate asset URL
+- `image_url "file" width "format"` - Generate image variant URL
+- `format_date date "format"` - Format date
+- `format_filesize bytes` - Format file size
+- `format_exif_exposure value` - Format exposure time
+- `format_exif_aperture value` - Format aperture
+- `markdown "text"` - Render Markdown to HTML
+
+**Content Image Template (required for all themes):**
+Every theme must include `Partials/ContentImage.revela` which renders `![alt](path)` in Markdown.
+Variables: `image`, `alt`, `classes`, `image_basepath`, `image_formats`.
+
+**Sitemap Generation:**
+`generate pages` automatically creates `sitemap.xml` when `baseUrl` is configured in project.json.
+Skipped with info log when `baseUrl` is not set (sitemaps require absolute URLs).
 
 **Image Configuration (project.json):**
 ```json

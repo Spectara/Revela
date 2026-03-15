@@ -20,6 +20,18 @@ A personal photography portfolio showcasing landscapes, events, and street photo
 
 ---
 
+## Alpenstrasse 8
+
+![A holiday apartment website built with Revela and a custom Panorama theme](screenshots/alpenstrasse.jpg){.browser-mockup}
+
+A holiday apartment in Dresden with availability calendar, panorama cover image, and responsive gallery.
+
+**Features used:** Custom theme (Panorama), Calendar plugin, cover images, `find_image` for responsive logo, CSS-only lightbox
+
+[Visit Alpenstrasse 8 →](https://alpenstrasse.github.io/Website/)  |  [View source on GitHub →](https://github.com/Alpenstrasse/Website)
+
+---
+
 ## revela.website
 
 The site you're looking at right now — built with Revela itself.

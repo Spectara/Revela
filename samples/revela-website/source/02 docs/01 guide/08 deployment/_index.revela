@@ -12,6 +12,7 @@ Revela creates a fully self-contained static website:
 ```
 output/
 ├── index.html          # Your homepage
+├── sitemap.xml         # Search engine sitemap (if baseUrl configured)
 ├── gallery/
 │   └── index.html      # A gallery page
 ├── images/             # Optimized images (AVIF, WebP, JPG)
@@ -20,6 +21,22 @@ output/
 ```
 
 **No server-side processing needed!** Any web host that serves HTML files will work.
+
+## Sitemap
+
+Revela automatically generates a `sitemap.xml` for search engine indexing. To enable it,
+add `baseUrl` to your `project.json`:
+
+```json
+{
+  "project": {
+    "baseUrl": "https://your-domain.com"
+  }
+}
+```
+
+The sitemap includes all pages with `<lastmod>` dates. Without `baseUrl`, the sitemap is
+skipped (sitemaps require absolute URLs).
 
 ## Hosting Options
 

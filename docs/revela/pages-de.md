@@ -165,12 +165,14 @@ Der Wizard führt dich durch alle Optionen:
 | `hidden` | `true` = nicht in Navigation (aber per URL erreichbar) |
 | `slug` | Überschreibt URL-Segment (nur letztes Segment) |
 | `template` | Body-Template (Standard: `gallery` oder `page`) |
+| `cover` | Cover-Bild Pfad (siehe [Cover-Bilder](#cover-bilder)) |
 
 ### Nur Galerie-Seiten
 
 | Feld | Beschreibung |
 |------|--------------|
 | `sort` | Bild-Sortierung überschreiben (z.B. `dateTaken:asc`) |
+| `filter` | Filter-Ausdruck zur Bildauswahl (siehe [Filterung](filtering-de.md)) |
 
 ### Nur Statistik-Seiten
 
@@ -198,6 +200,59 @@ Verschachtelte Pfade werden unterstützt:
 revela create page gallery "2024/summer/italy" --title "Italien 2024"
 # Erstellt: source/2024/summer/italy/_index.revela
 ```
+
+## Cover-Bilder
+
+Jede Seite kann ein Cover-Bild als Hero-Banner haben (abhängig von Theme-Unterstützung):
+
+```toml
++++
+title = "Meine Galerie"
+cover = "panorama.jpg"
++++
+```
+
+### Pfad-Auflösung
+
+Cover-Bilder verwenden die gleiche 3-Schritt-Auflösung wie [Content-Bilder](source-structure-de.md):
+
+1. **Galerie-lokal** — Bild im selben Ordner wie `_index.revela`
+2. **Geteilte Bilder** — Bild aus dem `_images/` Ordner
+3. **Exakter Pfad** — Vollständiger Pfad inkl. `_images/` Präfix
+
+### Beispiele
+
+```toml
+# Bild im selben Ordner
+cover = "hero.jpg"
+
+# Aus dem geteilten _images/ Ordner
+cover = "headers/landscape.jpg"
+
+# Expliziter _images/ Pfad
+cover = "_images/banners/main.jpg"
+```
+
+### Template-Verwendung
+
+Das Cover-Bild steht als vollständiges Image-Objekt zur Verfügung:
+
+```scriban
+{{~ if gallery.cover_image ~}}
+<picture>
+  {{~ for format in image_formats ~}}
+  <source type="image/{{ format }}" srcset="
+    {{~ for size in gallery.cover_image.sizes ~}}
+    {{ image_basepath }}{{ gallery.cover_image.url }}/{{ size }}.{{ format }} {{ size }}w
+    {{~ end ~}}">
+  {{~ end ~}}
+  <img src="{{ image_basepath }}{{ gallery.cover_image.url }}/{{ gallery.cover_image.sizes | array.last }}.jpg"
+       alt="{{ gallery.title }}" loading="eager">
+</picture>
+{{~ end ~}}
+```
+
+Eigenschaften: `url`, `width`, `height`, `sizes` (Array verfügbarer Breiten), `exif`, `placeholder`.
 
 ## Tipps
 

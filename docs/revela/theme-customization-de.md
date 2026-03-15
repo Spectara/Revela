@@ -79,6 +79,7 @@ dein-projekt/
 │       │   ├── Gallery.revela
 │       │   └── Page.revela
 │       ├── Partials/              # Partial-Templates
+│       │   ├── ContentImage.revela  # Pflicht: Markdown-Bild-Rendering
 │       │   ├── Navigation.revela
 │       │   └── Image.revela
 │       └── Configuration/         # Theme-Konfiguration
@@ -87,6 +88,50 @@ dein-projekt/
 ├── source/                        # Deine Fotos
 ├── project.json
 └── site.json
+```
+
+## Pflicht-Templates
+
+Jedes Theme **muss** `Partials/ContentImage.revela` enthalten. Dieses Template rendert Bilder
+aus dem Markdown-Body (`![alt](pfad)` Syntax).
+
+### Template-Variablen
+
+| Variable | Typ | Beschreibung |
+|----------|-----|--------------|
+| `image` | Image | Bild-Objekt (url, width, height, sizes, placeholder, exif) |
+| `alt` | string | Alt-Text aus dem Markdown |
+| `classes` | string[] | CSS-Klassen aus `{.class}` Syntax |
+| `image_basepath` | string | Basispfad zu den Bild-Varianten |
+| `image_formats` | string[] | Aktive Formate (z.B. `["avif", "webp", "jpg"]`) |
+
+### Minimales Beispiel
+
+```scriban
+{{~ if !image.sizes || image.sizes.size == 0; ret; end ~}}
+<picture class="content-image{{ for cls in classes }} {{ cls }}{{ end }}">
+{{~ for format in image_formats ~}}
+  <source type="image/{{ format }}" srcset="
+    {{~ for size in image.sizes ~}}
+    {{ image_basepath }}{{ image.url }}/{{ size }}.{{ format }} {{ size }}w{{ if !for.last }},{{ end }}
+    {{~ end ~}}">
+{{~ end ~}}
+  <img src="{{ image_basepath }}{{ image.url }}/{{ image.sizes | array.last }}.jpg"
+       alt="{{ alt }}" loading="lazy" decoding="async">
+</picture>
+```
+
+### Mit Lightbox
+
+Themes können Lightbox-Funktionalität hinzufügen:
+
+```scriban
+{{~ largest_size = image.sizes | array.last ~}}
+<a href="{{ image_basepath }}{{ image.url }}/{{ largest_size }}.jpg" class="lightbox">
+  <picture class="content-image{{ for cls in classes }} {{ cls }}{{ end }}">
+    ...
+  </picture>
+</a>
 ```
 
 ## Anpassungsmöglichkeiten

@@ -150,12 +150,34 @@ The wizard guides you through all options:
 | `hidden` | `true` = not in navigation (but accessible via URL) |
 | `slug` | Overrides URL segment (last segment only) |
 | `template` | Body template (default: `gallery` or `page`) |
+| `cover` | Cover image path (relative to gallery or `_images/`) |
 
 ### Gallery Pages Only
 
 | Field | Description |
 |-------|-------------|
 | `sort` | Override image sorting (e.g., `dateTaken:asc`) |
+| `filter` | Filter expression to select images |
+
+---
+
+## Cover Images
+
+Any page can display a cover/hero image:
+
+```toml
++++
+title = "My Gallery"
+cover = "panorama.jpg"
++++
+```
+
+The cover uses the same path resolution as content images:
+- `cover = "hero.jpg"` — Image in the same folder
+- `cover = "headers/banner.jpg"` — From `_images/` folder
+
+In templates, the cover is available as `{{ gallery.cover_image }}` — a full Image object
+with `url`, `width`, `height`, `sizes`. Returns `null` when not set.
 
 ---
 

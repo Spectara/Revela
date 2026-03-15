@@ -165,12 +165,14 @@ The wizard guides you through all options:
 | `hidden` | `true` = not in navigation (but accessible via URL) |
 | `slug` | Overrides URL segment (last segment only) |
 | `template` | Body template (default: `gallery` or `page`) |
+| `cover` | Cover image path (see [Cover Images](#cover-images)) |
 
 ### Gallery Pages Only
 
 | Field | Description |
 |-------|-------------|
 | `sort` | Override image sorting (e.g., `dateTaken:asc`) |
+| `filter` | Filter expression to select images (see [Filtering](filtering-en.md)) |
 
 ### Statistics Pages Only
 
@@ -198,6 +200,59 @@ Nested paths are supported:
 revela create page gallery "2024/summer/italy" --title "Italy 2024"
 # Creates: source/2024/summer/italy/_index.revela
 ```
+
+## Cover Images
+
+Any page can have a cover image displayed as a hero banner (depending on theme support):
+
+```toml
++++
+title = "My Gallery"
+cover = "panorama.jpg"
++++
+```
+
+### Path Resolution
+
+Cover images use the same 3-step resolution as [content images](source-structure-en.md):
+
+1. **Gallery-local** — Image in the same directory as `_index.revela`
+2. **Shared images** — Image from `_images/` folder
+3. **Exact path** — Full path including `_images/` prefix
+
+### Examples
+
+```toml
+# Image in the same folder
+cover = "hero.jpg"
+
+# From shared _images/ folder
+cover = "headers/landscape.jpg"
+
+# Explicit _images/ path
+cover = "_images/banners/main.jpg"
+```
+
+### Template Usage
+
+The cover image is available as a full Image object:
+
+```scriban
+{{~ if gallery.cover_image ~}}
+<picture>
+  {{~ for format in image_formats ~}}
+  <source type="image/{{ format }}" srcset="
+    {{~ for size in gallery.cover_image.sizes ~}}
+    {{ image_basepath }}{{ gallery.cover_image.url }}/{{ size }}.{{ format }} {{ size }}w
+    {{~ end ~}}">
+  {{~ end ~}}
+  <img src="{{ image_basepath }}{{ gallery.cover_image.url }}/{{ gallery.cover_image.sizes | array.last }}.jpg"
+       alt="{{ gallery.title }}" loading="eager">
+</picture>
+{{~ end ~}}
+```
+
+Properties: `url`, `width`, `height`, `sizes` (array of available widths), `exif`, `placeholder`.
 
 ## Tips
 
