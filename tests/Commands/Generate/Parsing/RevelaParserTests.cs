@@ -284,4 +284,58 @@ public sealed class RevelaParserTests
         // Assert
         Assert.AreEqual(expected, actual);
     }
+
+    [TestMethod]
+    public void Parse_CoverField_ExtractsCover()
+    {
+        // Arrange
+        var content = """
+            +++
+            title = "Landscapes"
+            cover = "sunset.jpg"
+            +++
+            """;
+
+        // Act
+        var result = RevelaParser.Parse(content);
+
+        // Assert
+        Assert.AreEqual("Landscapes", result.Title);
+        Assert.AreEqual("sunset.jpg", result.Cover);
+    }
+
+    [TestMethod]
+    public void Parse_CoverWithPath_ExtractsFullPath()
+    {
+        // Arrange
+        var content = """
+            +++
+            title = "Page"
+            cover = "_images/header/banner.jpg"
+            +++
+            """;
+
+        // Act
+        var result = RevelaParser.Parse(content);
+
+        // Assert
+        Assert.AreEqual("_images/header/banner.jpg", result.Cover);
+    }
+
+    [TestMethod]
+    public void Parse_NoCover_ReturnsNull()
+    {
+        // Arrange
+        var content = """
+            +++
+            title = "No Cover"
+            +++
+            """;
+
+        // Act
+        var result = RevelaParser.Parse(content);
+
+        // Assert
+        Assert.IsNull(result.Cover);
+    }
 }

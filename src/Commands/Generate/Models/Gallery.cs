@@ -71,9 +71,22 @@ internal sealed class Gallery
     public IReadOnlyDictionary<string, string> DataSources { get; init; } = new Dictionary<string, string>();
 
     /// <summary>
-    /// Optional cover image filename.
+    /// Cover image path from frontmatter (relative to gallery or _images/).
     /// </summary>
+    /// <remarks>
+    /// <para>Set from frontmatter: <c>cover = "sunset.jpg"</c></para>
+    /// <para>Resolved to an Image object at render time via <see cref="CoverImage"/>.</para>
+    /// </remarks>
     public string? Cover { get; init; }
+
+    /// <summary>
+    /// Resolved cover image object (available in templates as <c>gallery.cover_image</c>).
+    /// </summary>
+    /// <remarks>
+    /// Resolved at render time from <see cref="Cover"/> path using the same
+    /// 3-step lookup as content images: gallery-local → _images/ → exact match.
+    /// </remarks>
+    public Image? CoverImage { get; set; }
 
     /// <summary>
     /// Sort override for images in this gallery.

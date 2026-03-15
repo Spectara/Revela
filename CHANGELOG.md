@@ -7,6 +7,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.0.1-beta.17] - 2026-03-15
+
+### Added
+- **Cover Image**: New `cover` frontmatter field for gallery/page cover images
+  - Path resolution identical to Markdown content images (gallery-local → `_images/` → exact match)
+  - Available in templates as `{{ gallery.cover_image }}` (full Image object with url, sizes, width, height)
+  - Example: `cover = "panorama/panorama.jpg"`
+- **`find_image` Template Function**: Resolve any image from the project in templates
+  - Same 3-step lookup as Markdown content images
+  - Returns full Image object: `{{ find_image "logo.jpg" }}` → url, sizes, width, height
+  - Returns `null` if image not found
+- **Content Image Template**: Markdown body images (`![alt](path)`) now rendered via
+  Scriban template `Partials/ContentImage.revela` instead of hardcoded C#
+  - Every theme must include this template (no fallback)
+  - Themes can customize for lightbox, styling, etc.
+  - Template variables: `image`, `alt`, `classes`, `image_basepath`, `image_formats`
+- **Sitemap Generation**: Automatic `sitemap.xml` during `generate pages`
+  - Requires `baseUrl` in project.json (`"project": { "baseUrl": "https://..." }`)
+  - Includes all pages with `<lastmod>` (gallery date or build date)
+  - Skipped with info log when `baseUrl` is not configured
+
+### Changed
+- **Custom Templates**: Now receive `{{ images }}` array (previously empty for custom templates)
+- **Content Image Rendering**: Removed ~80 lines of C# HTML generation code, replaced by
+  theme-owned Scriban template
+
+### Fixed
+- **Body Duplication**: Fixed duplicate body text on pages with custom templates
+  (e.g., Calendar plugin). Removed redundant pre-rendering step that caused
+  `{{ gallery.body }}` and `{{ page_content }}` to both contain the same content
+- **Website**: Showcase screenshot too small due to overly broad CSS selector
+  targeting all images in hero section
+
 ## [0.0.1-beta.16] - 2026-03-13
 
 ### Added
@@ -362,7 +395,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Source.OneDrive (OneDrive Shared Folder Support)
 - Commands: generate, init, clean, theme, plugins, restore
 
-[Unreleased]: https://github.com/spectara/revela/compare/v0.0.1-beta.15...HEAD
+[Unreleased]: https://github.com/spectara/revela/compare/v0.0.1-beta.17...HEAD
+[0.0.1-beta.17]: https://github.com/spectara/revela/compare/v0.0.1-beta.16...v0.0.1-beta.17
+[0.0.1-beta.16]: https://github.com/spectara/revela/compare/v0.0.1-beta.15...v0.0.1-beta.16
 [0.0.1-beta.15]: https://github.com/spectara/revela/compare/v0.0.1-beta.14...v0.0.1-beta.15
 [0.0.1-beta.14]: https://github.com/spectara/revela/compare/v0.0.1-beta.13...v0.0.1-beta.14
 [0.0.1-beta.13]: https://github.com/spectara/revela/compare/v0.0.1-beta.12...v0.0.1-beta.13

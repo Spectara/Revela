@@ -107,7 +107,7 @@ main>section:first-child {
   padding: var(--space-2xl) var(--space-s);
   max-width: var(--content-max-width);
 
-  img {
+  img[alt="Revela"] {
     width: calc(var(--font-size-5) * 5.5);
     height: auto;
   }

@@ -1,4 +1,7 @@
 {
+  "project": {
+    "baseUrl": "https://revela.website"
+  },
   "theme": {
     "name": "Lumina"
   },

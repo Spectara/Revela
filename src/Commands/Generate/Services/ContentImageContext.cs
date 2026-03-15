@@ -33,8 +33,13 @@ namespace Spectara.Revela.Commands.Generate.Services;
 /// <param name="ImageFormats">
 /// Active image formats in priority order (e.g., ["avif", "webp", "jpg"]).
 /// </param>
+/// <param name="RenderContentImage">
+/// Delegate to render a content image via theme template (Partials/ContentImage.revela).
+/// Parameters: (Image image, string alt, List&lt;string&gt;? classes) → HTML string.
+/// </param>
 internal sealed record ContentImageContext(
     IReadOnlyDictionary<string, Image> ImagesBySourcePath,
     string GalleryPath,
     string ImageBasePath,
-    IEnumerable<string> ImageFormats);
+    IEnumerable<string> ImageFormats,
+    Func<Image, string, List<string>?, string> RenderContentImage);

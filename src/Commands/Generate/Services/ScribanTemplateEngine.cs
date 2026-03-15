@@ -4,7 +4,9 @@ using Scriban;
 using Scriban.Parsing;
 using Scriban.Runtime;
 using Spectara.Revela.Commands.Generate.Abstractions;
+using Spectara.Revela.Commands.Generate.Models;
 using Spectara.Revela.Core.Services;
+using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Abstractions;
 
 namespace Spectara.Revela.Commands.Generate.Services;
@@ -36,6 +38,7 @@ internal sealed partial class ScribanTemplateEngine(
 {
     private readonly ConcurrentDictionary<string, Template> compiledTemplates = new();
     private IThemePlugin? currentTheme;
+    private IReadOnlyDictionary<string, Image>? imageLookup;
 
     /// <summary>
     /// Converts PascalCase member names to lowercase for Scriban templates
@@ -108,6 +111,12 @@ internal sealed partial class ScribanTemplateEngine(
             LogExtensionSet(logger, ext.Metadata.Name, ext.PartialPrefix);
         }
     }
+
+    /// <summary>
+    /// Set the image lookup for the <c>image</c> template function.
+    /// </summary>
+    public void SetImageLookup(IReadOnlyDictionary<string, Image> imagesBySourcePath) =>
+        imageLookup = imagesBySourcePath;
 
     /// <summary>
     /// Render template content with data model
@@ -365,6 +374,7 @@ internal sealed partial class ScribanTemplateEngine(
         scriptObject.Import("format_exif_exposure", new Func<double?, string>(FormatExifExposure));
         scriptObject.Import("format_exif_aperture", new Func<double?, string>(FormatExifAperture));
         scriptObject.Import("markdown", new Func<string?, string>(Markdown));
+        scriptObject.Import("find_image", new Func<string, Image?>(path => ResolveImageForTemplate(path, scriptObject)));
 
         context.PushGlobal(scriptObject);
 
@@ -522,6 +532,62 @@ internal sealed partial class ScribanTemplateEngine(
         }
 
         return markdownService.ToHtml(text);
+    }
+
+    /// <summary>
+    /// Resolve an image path for the <c>image</c> template function.
+    /// </summary>
+    /// <remarks>
+    /// Uses the same 3-step lookup as content images in Markdown:
+    /// <list type="number">
+    /// <item>Gallery-local: <c>{gallery.path}/{path}</c></item>
+    /// <item>Shared images: <c>_images/{path}</c></item>
+    /// <item>Exact match: <c>{path}</c> as-is</item>
+    /// </list>
+    /// </remarks>
+    private Image? ResolveImageForTemplate(string imagePath, ScriptObject scriptObject)
+    {
+        if (imageLookup is null)
+        {
+            return null;
+        }
+
+        var normalizedPath = imagePath.Replace('\\', '/');
+
+        // Get gallery path from the model (may be null for non-gallery contexts)
+        var galleryPath = string.Empty;
+        if (scriptObject.TryGetValue("gallery", out var galleryObj) && galleryObj is ScriptObject galleryScript)
+        {
+            if (galleryScript.TryGetValue("path", out var pathObj) && pathObj is string path)
+            {
+                galleryPath = path;
+            }
+        }
+
+        // 1. Gallery-local
+        if (!string.IsNullOrEmpty(galleryPath))
+        {
+            var localPath = $"{galleryPath}/{normalizedPath}";
+            if (imageLookup.TryGetValue(localPath, out var localImage))
+            {
+                return localImage;
+            }
+        }
+
+        // 2. Shared images: _images/{path}
+        var sharedPath = $"{ProjectPaths.SharedImages}/{normalizedPath}";
+        if (imageLookup.TryGetValue(sharedPath, out var sharedImage))
+        {
+            return sharedImage;
+        }
+
+        // 3. Exact match
+        if (imageLookup.TryGetValue(normalizedPath, out var exactImage))
+        {
+            return exactImage;
+        }
+
+        return null;
     }
 
     /// <summary>

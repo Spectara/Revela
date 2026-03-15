@@ -23,7 +23,7 @@ public sealed class ContentImageTests
         {
             ["Landscapes/sunset.jpg"] = CreateImage("sunset", 1920, 1080, [320, 640, 1280, 1920])
         };
-        var context = new ContentImageContext(images, "Landscapes", "../images/", Formats);
+        var context = CreateContext(images, "Landscapes", "../images/");
 
         // Act
         var html = service.ToHtml("![Beautiful Sunset](sunset.jpg)", context);
@@ -33,8 +33,8 @@ public sealed class ContentImageTests
         Assert.Contains("image/avif", html);
         Assert.Contains("image/webp", html);
         Assert.Contains("image/jpeg", html);
-        Assert.Contains("../images/sunset/320.avif", html);
-        Assert.Contains("../images/sunset/1920.avif", html);
+        Assert.Contains("sunset/320.avif", html);
+        Assert.Contains("sunset/1920.avif", html);
         Assert.Contains("alt=\"Beautiful Sunset\"", html);
         Assert.Contains("width=\"1920\"", html);
         Assert.Contains("height=\"1080\"", html);
@@ -51,14 +51,14 @@ public sealed class ContentImageTests
         {
             ["_images/screenshots/wizard.jpg"] = CreateImage("wizard", 1280, 800, [320, 640, 1280])
         };
-        var context = new ContentImageContext(images, "docs/getting-started", "../images/", Formats);
+        var context = CreateContext(images, "docs/getting-started", "../images/");
 
         // Act
         var html = service.ToHtml("![Setup Wizard](screenshots/wizard.jpg)", context);
 
         // Assert — should resolve via _images/ prefix
         Assert.Contains("<picture class=\"content-image\"", html);
-        Assert.Contains("../images/wizard/", html);
+        Assert.Contains("wizard/", html);
         Assert.Contains("alt=\"Setup Wizard\"", html);
     }
 
@@ -71,14 +71,14 @@ public sealed class ContentImageTests
         {
             ["_images/screenshots/hero.jpg"] = CreateImage("hero", 1920, 1080, [320, 640, 1920])
         };
-        var context = new ContentImageContext(images, "", "images/", Formats);
+        var context = CreateContext(images, "", "images/");
 
         // Act
         var html = service.ToHtml("![Hero](_images/screenshots/hero.jpg)", context);
 
         // Assert
         Assert.Contains("<picture class=\"content-image\"", html);
-        Assert.Contains("images/hero/", html);
+        Assert.Contains("hero/", html);
     }
 
     [TestMethod]
@@ -91,7 +91,7 @@ public sealed class ContentImageTests
             ["Landscapes/photo.jpg"] = CreateImage("photo", 1920, 1080, [320, 640, 1920]),
             ["_images/photo.jpg"] = CreateImage("photo", 800, 600, [320, 640])
         };
-        var context = new ContentImageContext(images, "Landscapes", "../images/", Formats);
+        var context = CreateContext(images, "Landscapes", "../images/");
 
         // Act
         var html = service.ToHtml("![Photo](photo.jpg)", context);
@@ -107,7 +107,7 @@ public sealed class ContentImageTests
         // Arrange
         var service = new MarkdownService();
         var images = new Dictionary<string, Image>(StringComparer.OrdinalIgnoreCase);
-        var context = new ContentImageContext(images, "", "images/", Formats);
+        var context = CreateContext(images, "", "images/");
 
         // Act
         var html = service.ToHtml("![Logo](https://example.com/logo.png)", context);
@@ -124,7 +124,7 @@ public sealed class ContentImageTests
         // Arrange
         var service = new MarkdownService();
         var images = new Dictionary<string, Image>(StringComparer.OrdinalIgnoreCase);
-        var context = new ContentImageContext(images, "docs", "images/", Formats);
+        var context = CreateContext(images, "docs", "images/");
 
         // Act
         var html = service.ToHtml("![Missing](nonexistent.jpg)", context);
@@ -143,7 +143,7 @@ public sealed class ContentImageTests
         {
             ["_images/photo.jpg"] = CreateImage("photo", 1920, 1080, [320, 640])
         };
-        var context = new ContentImageContext(images, "", "images/", Formats);
+        var context = CreateContext(images, "", "images/");
 
         // Act — regular link (not image!) should not be affected
         var html = service.ToHtml("[Click here](photo.jpg)", context);
@@ -162,7 +162,7 @@ public sealed class ContentImageTests
         {
             ["_images/screenshots/wizard.jpg"] = CreateImage("wizard", 1280, 800, [320, 640, 1280])
         };
-        var context = new ContentImageContext(images, "docs", "../images/", Formats);
+        var context = CreateContext(images, "docs", "../images/");
 
         var markdown = """
             # Getting Started
@@ -192,7 +192,7 @@ public sealed class ContentImageTests
         {
             ["_images/portrait.jpg"] = CreateImage("portrait", 1080, 1920, [320, 640, 1280])
         };
-        var context = new ContentImageContext(images, "", "images/", Formats);
+        var context = CreateContext(images, "", "images/");
 
         // Act
         var html = service.ToHtml("![Portrait](portrait.jpg)", context);
@@ -221,7 +221,7 @@ public sealed class ContentImageTests
         {
             ["Gallery/photo.jpg"] = image
         };
-        var context = new ContentImageContext(images, "Gallery", "images/", Formats);
+        var context = CreateContext(images, "Gallery", "images/");
 
         // Act
         var html = service.ToHtml("![Photo](photo.jpg)", context);
@@ -239,7 +239,7 @@ public sealed class ContentImageTests
         {
             ["_images/tiny.jpg"] = CreateImage("tiny", 50, 50, [])
         };
-        var context = new ContentImageContext(images, "", "images/", Formats);
+        var context = CreateContext(images, "", "images/");
 
         // Act
         var html = service.ToHtml("![Tiny](tiny.jpg)", context);
@@ -257,14 +257,14 @@ public sealed class ContentImageTests
         {
             ["_images/docs/setup/step1.jpg"] = CreateImage("step1", 1280, 720, [320, 640, 1280])
         };
-        var context = new ContentImageContext(images, "getting-started", "../images/", Formats);
+        var context = CreateContext(images, "getting-started", "../images/");
 
         // Act
         var html = service.ToHtml("![Step 1](docs/setup/step1.jpg)", context);
 
         // Assert
         Assert.Contains("<picture class=\"content-image\"", html);
-        Assert.Contains("../images/step1/", html);
+        Assert.Contains("step1/", html);
     }
 
     #endregion
@@ -280,7 +280,7 @@ public sealed class ContentImageTests
         {
             ["_images/screenshot.jpg"] = CreateImage("screenshot", 1920, 1080, [320, 640, 1920])
         };
-        var context = new ContentImageContext(images, "", "images/", Formats);
+        var context = CreateContext(images, "", "images/");
 
         // Act — {.browser-mockup} adds a CSS class
         var html = service.ToHtml("![Screenshot](screenshot.jpg){.browser-mockup}", context);
@@ -299,7 +299,7 @@ public sealed class ContentImageTests
         {
             ["_images/hero.jpg"] = CreateImage("hero", 1920, 1080, [320, 640, 1920])
         };
-        var context = new ContentImageContext(images, "", "images/", Formats);
+        var context = CreateContext(images, "", "images/");
 
         // Act — multiple classes
         var html = service.ToHtml("![Hero](hero.jpg){.browser-mockup .breakout}", context);
@@ -317,7 +317,7 @@ public sealed class ContentImageTests
         {
             ["_images/photo.jpg"] = CreateImage("photo", 1920, 1080, [320, 640])
         };
-        var context = new ContentImageContext(images, "", "images/", Formats);
+        var context = CreateContext(images, "", "images/");
 
         // Act — no {.class} suffix
         var html = service.ToHtml("![Photo](photo.jpg)", context);
@@ -358,6 +358,45 @@ public sealed class ContentImageTests
         Height = height,
         Sizes = sizes
     };
+
+    /// <summary>
+    /// Test render delegate that produces minimal but verifiable HTML.
+    /// Mirrors key attributes from the production ContentImage.revela template.
+    /// </summary>
+    private static string TestRenderContentImage(Image image, string alt, List<string>? classes)
+    {
+        var classAttr = "content-image";
+        if (classes is { Count: > 0 })
+        {
+            classAttr += " " + string.Join(" ", classes);
+        }
+
+        var placeholder = image.Placeholder is not null ? $" style=\"--lqip:{image.Placeholder}\"" : "";
+        var isLandscape = image.Width >= image.Height;
+
+        var srcsetParts = new List<string>();
+        foreach (var size in image.Sizes)
+        {
+            var w = isLandscape ? size : (int)Math.Floor((double)size * image.Width / image.Height);
+            srcsetParts.Add(FormattableString.Invariant($"{image.Url}/{size}.jpg {w}w"));
+        }
+
+        return $"<picture class=\"{classAttr}\"{placeholder}>" +
+               $"<source type=\"image/avif\" srcset=\"{string.Join(", ", srcsetParts.Select(s => s.Replace(".jpg", ".avif", StringComparison.Ordinal)))}\">" +
+               $"<source type=\"image/webp\" srcset=\"{string.Join(", ", srcsetParts.Select(s => s.Replace(".jpg", ".webp", StringComparison.Ordinal)))}\">" +
+               $"<source type=\"image/jpeg\" srcset=\"{string.Join(", ", srcsetParts)}\">" +
+               $"<img alt=\"{alt}\" width=\"{image.Width}\" height=\"{image.Height}\" loading=\"lazy\">" +
+               $"</picture>";
+    }
+
+    /// <summary>
+    /// Creates a ContentImageContext with a test render delegate.
+    /// </summary>
+    private static ContentImageContext CreateContext(
+        Dictionary<string, Image> images,
+        string galleryPath,
+        string imageBasePath) =>
+        new(images, galleryPath, imageBasePath, Formats, TestRenderContentImage);
 
     #endregion
 }

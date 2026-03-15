@@ -1,4 +1,3 @@
-using System.Globalization;
 using System.Text;
 using Markdig;
 using Markdig.Renderers;
@@ -102,8 +101,9 @@ internal sealed class ContentImageRenderer : HtmlObjectRenderer<LinkInline>
         var altText = GetAltText(link);
         var extraClasses = link.TryGetAttributes()?.Classes;
 
-        // Generate <picture> element
-        WritePictureElement(renderer, image, altText, extraClasses);
+        // Render via theme template (Partials/ContentImage.revela)
+        var html = context.RenderContentImage(image, altText, extraClasses);
+        renderer.Write(html);
     }
 
     /// <summary>
@@ -140,104 +140,6 @@ internal sealed class ContentImageRenderer : HtmlObjectRenderer<LinkInline>
         return null;
     }
 
-    /// <summary>
-    /// Generates a responsive <c>&lt;picture&gt;</c> element with format sources and srcset.
-    /// </summary>
-    private void WritePictureElement(HtmlRenderer renderer, Image image, string altText, List<string>? extraClasses = null)
-    {
-        var basePath = context.ImageBasePath;
-        var formats = context.ImageFormats;
-        var isLandscape = image.Width >= image.Height;
-        var largestSize = image.Sizes[^1];
-        var escapedAlt = EscapeHtmlAttribute(altText);
-
-        renderer.Write("<picture class=\"content-image");
-        if (extraClasses is { Count: > 0 })
-        {
-            foreach (var cls in extraClasses)
-            {
-                renderer.Write(" ");
-                renderer.Write(cls);
-            }
-        }
-
-        renderer.Write("\"");
-        if (image.Placeholder is not null)
-        {
-            renderer.Write(" style=\"--lqip:");
-            renderer.Write(image.Placeholder);
-            renderer.Write("\"");
-        }
-
-        renderer.WriteLine(">");
-
-        // <source> per format with responsive srcset
-        foreach (var format in formats)
-        {
-            renderer.Write("  <source type=\"");
-            renderer.Write(GetMimeType(format));
-            renderer.Write("\" srcset=\"");
-            WriteSrcset(renderer, image, basePath, format, isLandscape);
-            renderer.WriteLine("\">");
-        }
-
-        // <img> fallback (largest JPG size)
-        var fallbackFormat = "jpg";
-        var fallbackSize = Math.Min(largestSize, 1280);
-        // Pick the closest available size for the fallback
-        var actualFallback = image.Sizes.LastOrDefault(s => s <= fallbackSize);
-        if (actualFallback == 0)
-        {
-            actualFallback = image.Sizes[0];
-        }
-
-        renderer.Write("  <img src=\"");
-        renderer.Write(basePath);
-        renderer.Write(image.Url);
-        renderer.Write("/");
-        renderer.Write(actualFallback.ToString(CultureInfo.InvariantCulture));
-        renderer.Write(".");
-        renderer.Write(fallbackFormat);
-        renderer.Write("\" alt=\"");
-        renderer.Write(escapedAlt);
-        renderer.Write("\" width=\"");
-        renderer.Write(image.Width.ToString(CultureInfo.InvariantCulture));
-        renderer.Write("\" height=\"");
-        renderer.Write(image.Height.ToString(CultureInfo.InvariantCulture));
-        renderer.WriteLine("\" loading=\"lazy\" decoding=\"async\">");
-
-        renderer.WriteLine("</picture>");
-    }
-
-    /// <summary>
-    /// Writes srcset attribute value with all available sizes for a format.
-    /// </summary>
-    private static void WriteSrcset(HtmlRenderer renderer, Image image, string basePath, string format, bool isLandscape)
-    {
-        for (var i = 0; i < image.Sizes.Count; i++)
-        {
-            var size = image.Sizes[i];
-            var actualWidth = isLandscape
-                ? size
-                : (int)Math.Floor((double)size * image.Width / image.Height);
-
-            if (i > 0)
-            {
-                renderer.Write(", ");
-            }
-
-            renderer.Write(basePath);
-            renderer.Write(image.Url);
-            renderer.Write("/");
-            renderer.Write(size.ToString(CultureInfo.InvariantCulture));
-            renderer.Write(".");
-            renderer.Write(format);
-            renderer.Write(" ");
-            renderer.Write(actualWidth.ToString(CultureInfo.InvariantCulture));
-            renderer.Write("w");
-        }
-    }
-
     private static string GetAltText(LinkInline link)
     {
         var sb = new StringBuilder();
@@ -256,21 +158,4 @@ internal sealed class ContentImageRenderer : HtmlObjectRenderer<LinkInline>
         url.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
         url.StartsWith("https://", StringComparison.OrdinalIgnoreCase) ||
         url.StartsWith("//", StringComparison.Ordinal);
-
-    private static string GetMimeType(string format) => format switch
-    {
-        "avif" => "image/avif",
-        "webp" => "image/webp",
-        "jpg" => "image/jpeg",
-        "jpeg" => "image/jpeg",
-        "png" => "image/png",
-        "gif" => "image/gif",
-        _ => $"image/{format}"
-    };
-
-    private static string EscapeHtmlAttribute(string value) =>
-        value.Replace("&", "&amp;", StringComparison.Ordinal)
-             .Replace("\"", "&quot;", StringComparison.Ordinal)
-             .Replace("<", "&lt;", StringComparison.Ordinal)
-             .Replace(">", "&gt;", StringComparison.Ordinal);
 }

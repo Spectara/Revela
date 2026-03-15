@@ -101,6 +101,18 @@ internal sealed class DirectoryMetadata
     public string? Filter { get; init; }
 
     /// <summary>
+    /// Gets the cover image path relative to the gallery directory or _images/.
+    /// </summary>
+    /// <remarks>
+    /// <para>Path resolution follows the same rules as Markdown content images:</para>
+    /// <list type="bullet">
+    /// <item><c>sunset.jpg</c> - Image in the same gallery directory</item>
+    /// <item><c>_images/header/banner.jpg</c> - Image from shared _images/ folder</item>
+    /// </list>
+    /// </remarks>
+    public string? Cover { get; init; }
+
+    /// <summary>
     /// Gets the data sources for template rendering.
     /// </summary>
     /// <remarks>
@@ -133,7 +145,7 @@ internal sealed class DirectoryMetadata
     /// </summary>
     public bool HasMetadata => Title is not null || Slug is not null || Description is not null ||
                                Hidden || Container || Body is not null || Template is not null || Sort is not null ||
-                               Filter is not null || DataSources.Count > 0;
+                               Filter is not null || Cover is not null || DataSources.Count > 0;
 
     /// <summary>
     /// Gets an empty metadata instance.

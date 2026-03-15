@@ -44,6 +44,7 @@ internal sealed partial class RenderService(
     /// <summary>Current theme extensions (set during rendering)</summary>
     private IReadOnlyList<IThemeExtension> currentExtensions = [];
     private IThemePlugin? currentTheme;
+    private IReadOnlyDictionary<string, Image>? currentImageLookup;
 
     /// <summary>Gets full path to source directory (supports hot-reload)</summary>
     private string SourcePath => pathResolver.SourcePath;
@@ -61,6 +62,11 @@ internal sealed partial class RenderService(
         var engine = templateEngineFactory();
         engine.SetTheme(currentTheme);
         engine.SetExtensions(currentExtensions);
+        if (currentImageLookup is not null)
+        {
+            engine.SetImageLookup(currentImageLookup);
+        }
+
         return engine;
     }
 
@@ -163,6 +169,20 @@ internal sealed partial class RenderService(
 
             // Copy static files (source/_static/ → output/)
             await staticFileService.CopyStaticFilesAsync(SourcePath, OutputPath, cancellationToken);
+
+            // Generate sitemap.xml (requires absolute BaseUrl)
+            if (!string.IsNullOrEmpty(config.Project.BaseUrl))
+            {
+                var sitemap = SitemapGenerator.Generate(siteModel, config.Project.BaseUrl, config.Project.BasePath);
+                await File.WriteAllTextAsync(
+                    Path.Combine(OutputPath, "sitemap.xml"),
+                    sitemap,
+                    cancellationToken);
+            }
+            else
+            {
+                LogSitemapSkipped(logger);
+            }
 
             progress?.Report(new RenderProgress
             {
@@ -461,6 +481,16 @@ internal sealed partial class RenderService(
         // Build lookup of ALL processed images by source path (for content image resolution).
         // Includes gallery images (from model) and shared _images (from manifest).
         var allImagesBySourcePath = BuildImageLookup(model);
+        currentImageLookup = allImagesBySourcePath;
+
+        // Set image lookup on the main engine for the image() template function
+        engine.SetImageLookup(allImagesBySourcePath);
+
+        // Load content image template for Markdown body images (theme-customizable)
+        var contentImageTemplate = LoadTemplate("partials/contentimage.revela")
+            ?? throw new InvalidOperationException(
+                "Theme is missing required template 'Partials/ContentImage.revela'. " +
+                "This template renders ![alt](path) images in Markdown body content.");
 
         // Find root gallery (home page) - has empty Path
         var rootGallery = model.Galleries.FirstOrDefault(g => string.IsNullOrEmpty(g.Path));
@@ -473,7 +503,8 @@ internal sealed partial class RenderService(
                 allImagesBySourcePath,
                 rootGallery.Path,
                 rootImageBasePath,
-                formats.Keys);
+                formats.Keys,
+                CreateContentImageRenderer(engine, contentImageTemplate, rootImageBasePath, formats.Keys));
             var (_, _, _) = await LoadGalleryMetadataAsync(rootGallery, rootImageContext, cancellationToken);
         }
 
@@ -517,7 +548,8 @@ internal sealed partial class RenderService(
                 allImagesBySourcePath,
                 gallery.Path,
                 CalculateImageBasePath(config, UrlBuilder.CalculateBasePath(gallery.Slug)),
-                formats.Keys);
+                formats.Keys,
+                CreateContentImageRenderer(renderEngine, contentImageTemplate, CalculateImageBasePath(config, UrlBuilder.CalculateBasePath(gallery.Slug)), formats.Keys));
             var (customTemplate, dataSources, metadataBasePath) = await LoadGalleryMetadataAsync(gallery, galleryImageContext, ct);
 
             var galleryImages = gallery.Images.ToList();
@@ -542,36 +574,9 @@ internal sealed partial class RenderService(
                 galleryImages,
                 ct);
 
-            // Save original markdown body before custom template rendering overwrites it
+            // Preserve original markdown body as page_content for custom body templates.
+            // Custom templates can use either {{ page_content }} or {{ gallery.body }}.
             var pageContent = gallery.Body ?? string.Empty;
-
-            if (customTemplate is not null && resolvedData.Count > 0)
-            {
-                var contentTemplate = LoadTemplate($"{customTemplate}.revela");
-                if (contentTemplate is not null)
-                {
-                    var baseModel = new Dictionary<string, object?>
-                    {
-                        ["site"] = model.Site,
-                        ["gallery"] = gallery,
-                        ["nav_items"] = galleryNavigation,
-                        ["basepath"] = basepath,
-                        ["image_basepath"] = galleryImageBasePath,
-                        ["image_formats"] = formats.Keys,
-                        ["theme"] = themeVariables,
-                        ["images"] = galleryImages
-                    };
-
-                    foreach (var (key, value) in resolvedData)
-                    {
-                        ct.ThrowIfCancellationRequested();
-                        baseModel[key] = value;
-                    }
-
-                    var renderedContent = renderEngine.Render(contentTemplate, baseModel);
-                    gallery.Body = renderedContent;
-                }
-            }
 
             gallery.Body ??= string.Empty;
 
@@ -580,7 +585,7 @@ internal sealed partial class RenderService(
                 ["site"] = model.Site,
                 ["gallery"] = gallery,
                 ["page_content"] = pageContent,
-                ["images"] = customTemplate is not null ? [] : galleryImages,
+                ["images"] = galleryImages,
                 ["nav_items"] = galleryNavigation,
                 ["basepath"] = basepath,
                 ["image_basepath"] = galleryImageBasePath,
@@ -764,12 +769,77 @@ internal sealed partial class RenderService(
             gallery.Body = markdownService.ToHtml(metadata.RawBody, imageContext);
         }
 
+        // Resolve cover image path to Image object using same lookup as content images
+        if (metadata.Cover is not null)
+        {
+            gallery.CoverImage = ResolveImageByPath(metadata.Cover, imageContext);
+        }
+
         // Always set template (may be null - layout will use default "body/gallery")
         gallery.Template = metadata.Template;
 
         // Return template info and data sources for custom template processing
         return (metadata.Template, metadata.DataSources, basePath);
     }
+
+    /// <summary>
+    /// Resolves an image path (from frontmatter) to an Image object.
+    /// </summary>
+    /// <remarks>
+    /// Uses the same 3-step lookup as content images in Markdown:
+    /// <list type="number">
+    /// <item>Gallery-local: <c>{GalleryPath}/{path}</c></item>
+    /// <item>Shared images: <c>_images/{path}</c></item>
+    /// <item>Exact match: <c>{path}</c> as-is</item>
+    /// </list>
+    /// </remarks>
+    private static Image? ResolveImageByPath(string imagePath, ContentImageContext imageContext)
+    {
+        var normalizedPath = imagePath.Replace('\\', '/');
+
+        // 1. Gallery-local
+        if (!string.IsNullOrEmpty(imageContext.GalleryPath))
+        {
+            var localPath = $"{imageContext.GalleryPath}/{normalizedPath}";
+            if (imageContext.ImagesBySourcePath.TryGetValue(localPath, out var localImage))
+            {
+                return localImage;
+            }
+        }
+
+        // 2. Shared images: _images/{path}
+        var sharedPath = $"{ProjectPaths.SharedImages}/{normalizedPath}";
+        if (imageContext.ImagesBySourcePath.TryGetValue(sharedPath, out var sharedImage))
+        {
+            return sharedImage;
+        }
+
+        // 3. Exact match
+        if (imageContext.ImagesBySourcePath.TryGetValue(normalizedPath, out var exactImage))
+        {
+            return exactImage;
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Creates a delegate that renders content images via a theme template.
+    /// </summary>
+    /// <returns>Render delegate, or null if no content image template is available.</returns>
+    private static Func<Image, string, List<string>?, string> CreateContentImageRenderer(
+        ITemplateEngine engine,
+        string template,
+        string imageBasePath,
+        IEnumerable<string> imageFormats) =>
+        (image, alt, classes) => engine.Render(template, new Dictionary<string, object?>
+        {
+            ["image"] = image,
+            ["alt"] = alt,
+            ["classes"] = classes ?? [],
+            ["image_basepath"] = imageBasePath,
+            ["image_formats"] = imageFormats
+        });
 
     /// <summary>
     /// Gets default data sources from theme extensions for a template.
@@ -1020,6 +1090,9 @@ internal sealed partial class RenderService(
 
     [LoggerMessage(Level = LogLevel.Error, Message = "Page generation failed")]
     private static partial void LogPagesGenerationFailed(ILogger logger, Exception exception);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Sitemap skipped: set 'baseUrl' in project.json for sitemap.xml generation")]
+    private static partial void LogSitemapSkipped(ILogger logger);
 
     #endregion
 }

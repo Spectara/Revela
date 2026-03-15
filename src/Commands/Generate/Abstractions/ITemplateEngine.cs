@@ -1,3 +1,4 @@
+using Spectara.Revela.Commands.Generate.Models;
 using Spectara.Revela.Sdk.Abstractions;
 
 namespace Spectara.Revela.Commands.Generate.Abstractions;
@@ -25,6 +26,16 @@ internal interface ITemplateEngine
     /// </summary>
     /// <param name="extensions">Theme extensions that match the current theme</param>
     void SetExtensions(IReadOnlyList<IThemeExtension> extensions);
+
+    /// <summary>
+    /// Set the image lookup for the <c>image</c> template function.
+    /// </summary>
+    /// <remarks>
+    /// Must be called before rendering. The lookup contains all processed images
+    /// (gallery + shared _images/) keyed by normalized source path.
+    /// </remarks>
+    /// <param name="imagesBySourcePath">All processed images keyed by source path</param>
+    void SetImageLookup(IReadOnlyDictionary<string, Image> imagesBySourcePath);
 
     /// <summary>
     /// Render template content with data model

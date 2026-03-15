@@ -109,6 +109,7 @@ internal sealed partial class ContentScanner(
                 Template = directoryMetadata.Template,
                 Sort = directoryMetadata.Sort,
                 Filter = directoryMetadata.Filter,
+                Cover = directoryMetadata.Cover,
                 DataSources = directoryMetadata.DataSources,
                 Images = []
             };
