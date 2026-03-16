@@ -1,0 +1,26 @@
++++
+title = "Showcase"
+template = "docs"
+pinned = true
++++
+
+Real websites built with Revela — from photography portfolios to holiday apartments to documentation sites. Each showcase explores how Revela's features are used in practice.
+
+## What You'll Find
+
+Each showcase page covers:
+
+- **What the site does** — Purpose and target audience
+- **Which features are used** — Themes, plugins, configuration
+- **How it's built** — Template structure, custom CSS, interesting details
+- **Source code** — Links to GitHub repos so you can explore the code
+
+## Submit Your Site
+
+Built something with Revela? We'd love to feature it!
+
+[Open an issue on GitHub](https://github.com/Spectara/Revela/issues/new?title=Showcase%20submission&labels=showcase) with:
+
+- A link to your site
+- A screenshot
+- A brief description of which Revela features you used

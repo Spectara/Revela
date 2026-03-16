@@ -1,0 +1,110 @@
++++
+title = "revela.website"
+template = "docs"
++++
+
+The site you're looking at right now — built with Revela itself. It demonstrates that Revela works beyond photography, powering documentation sites with the same template engine and page system.
+
+[View source on GitHub →](https://github.com/Spectara/Revela/tree/main/samples/revela-website)
+
+---
+
+## Features Used
+
+| Feature | How It's Used |
+|---------|---------------|
+| **Theme Overrides** | Local Lumina overrides in `themes/Lumina/` for docs layout |
+| **Custom Body Templates** | `docs.revela` with sidebar navigation, `home.revela` with hero |
+| **Content Images** | Screenshots in Markdown body with `{.browser-mockup}` CSS class |
+| **Static Files** | Syntax highlighting CSS (Prism.js) via `_static/` |
+| **Nested Navigation** | Three-level docs hierarchy (Guide → Topics → Pages) |
+| **Container Nodes** | "Guide" and "Reference" are navigation-only groups |
+| **Pinned Navigation** | Key pages pinned to the sticky header |
+| **Sitemap** | Automatic `sitemap.xml` via `baseUrl` configuration |
+
+## Site Structure
+
+```
+source/
+├── _index.revela               # Homepage (template = "home")
+├── _images/
+│   └── screenshots/            # Content images for showcase/docs
+├── _static/
+│   └── prism.css               # Syntax highlighting
+├── 01 get-started/
+│   ├── 01 installation/
+│   └── 02 user-journey/
+├── 02 docs/
+│   ├── 01 guide/               # Container node (no own page)
+│   │   ├── 01 source-structure/
+│   │   ├── 02 pages/
+│   │   ├── ...
+│   │   └── 08 deployment/
+│   ├── 02 plugins/
+│   │   ├── compression/
+│   │   ├── statistics/
+│   │   └── serve/
+│   └── 03 reference/           # Container node
+│       └── cli-reference/
+└── 02 pages/
+    ├── 01 showcase/            # This page!
+    ├── 02 faq/
+    └── 03 about/
+```
+
+## Custom Templates
+
+### Docs Template
+
+The `docs.revela` body template adds a sidebar with hierarchical navigation specific to the docs section:
+
+```scriban
+<aside>
+  <nav>
+    {{~ for section in nav_items ~}}
+    <ul>
+      <li>{{ section.text }}
+        <ul>
+          {{~ for child in section.children ~}}
+          <li><a href="...">{{ child.text }}</a></li>
+          {{~ end ~}}
+        </ul>
+      </li>
+    </ul>
+    {{~ end ~}}
+  </nav>
+</aside>
+<article>
+  {{ gallery.body }}
+</article>
+```
+
+### Home Template
+
+The homepage uses a custom `home.revela` template with a hero section, feature grid, and animated logo.
+
+## Theme Overrides
+
+Instead of a fully custom theme, this site overrides specific Lumina files:
+
+```
+themes/Lumina/
+├── Assets/
+│   ├── website.css             # Additional styles (hero, docs sidebar, code blocks)
+│   └── prism.js                # Syntax highlighting
+├── Body/
+│   ├── docs.revela             # Docs layout with sidebar
+│   └── home.revela             # Homepage with hero + features
+└── Partials/
+    └── Favicon.revela          # Custom favicon
+```
+
+Only the files that differ from the default Lumina theme are present — everything else falls through to the installed theme.
+
+## What Makes It Interesting
+
+- **Docs site, not photos** — Same engine, completely different use case
+- **Selective theme overrides** — Only override what you need, inherit the rest
+- **Content images with CSS classes** — `{.browser-mockup}` adds browser chrome to screenshots
+- **Container navigation** — Guide/Reference sections group pages without generating empty parent pages
+- **Real-world complexity** — 25+ pages across multiple nested levels

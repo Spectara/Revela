@@ -1,0 +1,71 @@
++++
+title = "photo.kirk.one"
+template = "docs"
++++
+
+![A photography portfolio built with Revela and the Lumina theme](screenshots/example-website.jpg){.browser-mockup}
+
+A personal photography portfolio showcasing landscapes, events, and street photography — built with Revela and the default Lumina theme.
+
+[Visit photo.kirk.one →](https://photo.kirk.one/)
+
+---
+
+## Features Used
+
+| Feature | How It's Used |
+|---------|---------------|
+| **Lumina Theme** | Default theme with dark design and CSS-only lightbox |
+| **Multiple Galleries** | Organized by year and category (landscapes, events, street) |
+| **Nested Categories** | Hierarchical navigation with nested gallery folders |
+| **EXIF Statistics** | Statistics page showing camera/lens usage across all photos |
+| **OneDrive Sync** | Photos synced from OneDrive shared folder |
+| **Custom Sorting** | Galleries sorted by date taken, rating, or filename |
+| **Image Optimization** | AVIF, WebP, and JPEG variants with responsive srcset |
+
+## Site Structure
+
+```
+source/
+├── _images/                    # Shared image pool
+├── 01 2024/
+│   ├── 01 Landscapes/
+│   ├── 02 Events/
+│   └── 03 Street/
+├── 02 2023/
+│   └── ...
+├── about/
+│   └── _index.revela           # About page (template = "page")
+└── stats/
+    └── _index.revela           # Statistics (template = "statistics/overview")
+```
+
+## Key Configuration
+
+```json
+{
+  "project": {
+    "baseUrl": "https://photo.kirk.one"
+  },
+  "theme": {
+    "name": "Lumina",
+    "images": {
+      "sizes": [160, 320, 480, 640, 720, 960, 1280, 1440, 1920, 2560]
+    }
+  },
+  "generate": {
+    "images": {
+      "avif": 80,
+      "webp": 85,
+      "jpg": 90
+    }
+  }
+}
+```
+
+## What Makes It Interesting
+
+- **Pure photography site** — Demonstrates Revela's core use case: fast, beautiful photo galleries
+- **No custom theme needed** — The default Lumina theme handles everything
+- **Automatic EXIF overlay** — Hover over any image to see camera settings
+- **CSS-only lightbox** — Click/focus on any image for a full-screen view, no JavaScript needed
