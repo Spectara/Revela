@@ -5,7 +5,7 @@ using Spectara.Revela.Sdk.Output;
 
 using Spectre.Console;
 
-namespace Spectara.Revela.Commands.Projects.Commands;
+namespace Spectara.Revela.Plugins.Projects.Commands;
 
 /// <summary>
 /// Creates a new project folder in standalone mode.

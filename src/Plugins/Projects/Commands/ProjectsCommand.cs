@@ -1,8 +1,6 @@
 using System.CommandLine;
 
-using Spectara.Revela.Commands.Projects.Commands;
-
-namespace Spectara.Revela.Commands.Projects;
+namespace Spectara.Revela.Plugins.Projects.Commands;
 
 /// <summary>
 /// Parent command for project management in standalone mode.

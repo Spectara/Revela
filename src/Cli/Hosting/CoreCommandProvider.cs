@@ -2,10 +2,10 @@ using Microsoft.Extensions.DependencyInjection;
 using Spectara.Revela.Commands.Config;
 using Spectara.Revela.Commands.Packages;
 using Spectara.Revela.Commands.Plugins;
-using Spectara.Revela.Commands.Projects;
 using Spectara.Revela.Commands.Restore;
 using Spectara.Revela.Core.Services;
 using Spectara.Revela.Plugins.Generate.Commands;
+using Spectara.Revela.Plugins.Projects.Commands;
 using Spectara.Revela.Plugins.Theme.Commands;
 using Spectara.Revela.Sdk.Abstractions;
 

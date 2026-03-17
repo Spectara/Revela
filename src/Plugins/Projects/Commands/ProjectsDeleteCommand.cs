@@ -9,7 +9,7 @@ using Spectara.Revela.Sdk.Output;
 
 using Spectre.Console;
 
-namespace Spectara.Revela.Commands.Projects.Commands;
+namespace Spectara.Revela.Plugins.Projects.Commands;
 
 /// <summary>
 /// Deletes a project folder in standalone mode.

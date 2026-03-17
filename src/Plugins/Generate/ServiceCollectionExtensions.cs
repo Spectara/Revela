@@ -6,6 +6,7 @@ using Spectara.Revela.Plugins.Generate.Infrastructure;
 using Spectara.Revela.Plugins.Generate.Services;
 using Spectara.Revela.Plugins.Generate.Templates;
 using Spectara.Revela.Sdk.Abstractions;
+using Spectara.Revela.Sdk.Abstractions.Engine;
 using IManifestRepository = Spectara.Revela.Sdk.Abstractions.IManifestRepository;
 
 namespace Spectara.Revela.Plugins.Generate;
@@ -48,6 +49,9 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IContentService, ContentService>();
         services.AddSingleton<IImageService, ImageService>();
         services.AddTransient<IRenderService, RenderService>();
+
+        // Engine facade (public API for MCP, GUI, and other plugins)
+        services.AddTransient<IRevelaEngine, RevelaEngine>();
 
         // Commands (thin CLI wrappers) - also registered as IGenerateStep
         services.AddTransient<AllCommand>();

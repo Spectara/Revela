@@ -2,7 +2,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Spectara.Revela.Commands.Config;
 using Spectara.Revela.Commands.Packages;
 using Spectara.Revela.Commands.Plugins;
-using Spectara.Revela.Commands.Projects;
 using Spectara.Revela.Commands.Restore;
 using Spectara.Revela.Core.Services;
 using Spectara.Revela.Plugins.Generate;
@@ -41,11 +40,11 @@ internal static class ServiceCollectionExtensions
         // Feature commands
         // Generate Plugin handles: generate, clean, create, config images/sorting/paths
         // Theme Plugin handles: theme, config theme
+        // Projects Plugin handles: projects
         services.AddGenerateFeature();
         services.AddConfigFeature();
         services.AddPackagesFeature();
         services.AddPluginsFeature();
-        services.AddProjectsFeature();
         services.AddRestoreFeature();
 
         return services;

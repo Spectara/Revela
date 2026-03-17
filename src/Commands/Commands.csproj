@@ -9,6 +9,7 @@
     <ProjectReference Include="..\Core\Core.csproj" />
     <ProjectReference Include="..\Plugins\Generate\Generate.csproj" />
     <ProjectReference Include="..\Plugins\Theme\Theme.csproj" />
+    <ProjectReference Include="..\Plugins\Projects\Projects.csproj" />
   </ItemGroup>
 
   <ItemGroup>
