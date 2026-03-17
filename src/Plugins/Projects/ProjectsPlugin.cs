@@ -31,6 +31,17 @@ public sealed class ProjectsPlugin : IPlugin
     /// <inheritdoc />
     public IEnumerable<CommandDescriptor> GetCommands(IServiceProvider services)
     {
-        yield break;
+        // Projects only available in standalone mode
+        if (!Core.Services.ConfigPathResolver.IsStandaloneMode)
+        {
+            yield break;
+        }
+
+        var projectsCommand = services.GetRequiredService<ProjectsCommand>();
+        yield return new CommandDescriptor(
+            projectsCommand.Create(),
+            Order: 5,
+            Group: "Setup",
+            RequiresProject: false);
     }
 }

@@ -1,8 +1,7 @@
 using Spectara.Revela.Commands.Packages;
-using Spectara.Revela.Commands.Plugins;
+using Spectara.Revela.Core;
 using Spectara.Revela.Core.Models;
 using Spectara.Revela.Core.Services;
-using Spectara.Revela.Plugins.Theme.Commands;
 using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Output;
 using Spectre.Console;
@@ -13,25 +12,15 @@ namespace Spectara.Revela.Commands.Revela;
 /// Setup wizard for first-time Revela configuration.
 /// </summary>
 /// <remarks>
-/// <para>
-/// The wizard is triggered automatically when revela.json doesn't exist
-/// (fresh installation). It offers two modes:
-/// </para>
-/// <list type="bullet">
-/// <item><b>Full Installation (recommended):</b> Installs all available themes and plugins</item>
-/// <item><b>Custom Installation:</b> User selects specific packages to install</item>
-/// </list>
-/// <para>
-/// After completion:
-/// - If packages were installed: exits for plugin reload
-/// - If all packages already installed: continues to menu
-/// </para>
+/// Uses <see cref="IPackageIndexService"/> to discover available themes and plugins,
+/// and <see cref="PluginManager"/> directly for installation (bypasses type checks
+/// in PluginInstallCommand so both themes and plugins can be installed).
 /// </remarks>
 internal sealed partial class Wizard(
     ILogger<Wizard> logger,
+    IPackageIndexService packageIndexService,
     RefreshCommand packagesRefreshCommand,
-    ThemeInstallCommand themeInstallCommand,
-    PluginInstallCommand pluginInstallCommand,
+    PluginManager pluginManager,
     IGlobalConfigManager globalConfigManager)
 {
     /// <summary>
@@ -68,9 +57,9 @@ internal sealed partial class Wizard(
             return 1;
         }
 
-        // Get available packages
-        var availableThemes = await themeInstallCommand.GetAvailableThemesAsync(cancellationToken);
-        var availablePlugins = await pluginInstallCommand.GetAvailablePluginsAsync(cancellationToken);
+        // Get available packages directly from package index (no plugin dependency)
+        var availableThemes = await packageIndexService.SearchByTypeAsync("RevelaTheme", cancellationToken);
+        var availablePlugins = await packageIndexService.SearchByTypeAsync("RevelaPlugin", cancellationToken);
 
         var totalAvailable = availableThemes.Count + availablePlugins.Count;
 
@@ -94,8 +83,8 @@ internal sealed partial class Wizard(
             AnsiConsole.MarkupLine("[cyan]Installing all packages...[/]");
             AnsiConsole.WriteLine();
 
-            themeResult = await themeInstallCommand.InstallAllAsync(showRestartNotice: false, cancellationToken);
-            pluginResult = await pluginInstallCommand.InstallAllAsync(showRestartNotice: false, cancellationToken);
+            themeResult = await InstallThemesAsync(availableThemes, cancellationToken);
+            pluginResult = await InstallPackagesAsync(availablePlugins, cancellationToken);
         }
         else
         {
@@ -116,12 +105,12 @@ internal sealed partial class Wizard(
             // Install selected packages
             themeResult = await InstallSelectedAsync(
                 selectedThemes,
-                themeInstallCommand.ExecuteAsync,
+                InstallThemeAsync,
                 cancellationToken);
 
             pluginResult = await InstallSelectedAsync(
                 selectedPlugins,
-                pluginInstallCommand.ExecuteFromNuGetAsync,
+                InstallPackageAsync,
                 cancellationToken);
         }
 
@@ -308,6 +297,101 @@ internal sealed partial class Wizard(
         }
 
         return new InstallResult(installed, [], failed);
+    }
+
+    /// <summary>
+    /// Installs all available themes using PluginManager directly.
+    /// </summary>
+    private async Task<InstallResult> InstallThemesAsync(
+        IReadOnlyList<PackageIndexEntry> themes,
+        CancellationToken cancellationToken)
+    {
+        if (themes.Count == 0)
+        {
+            return InstallResult.Empty;
+        }
+
+        var installed = new List<string>();
+        var failed = new List<string>();
+
+        foreach (var theme in themes)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var result = await InstallThemeAsync(theme.Id, null, null, cancellationToken);
+            if (result == 0)
+            {
+                installed.Add(theme.Id);
+            }
+            else
+            {
+                failed.Add(theme.Id);
+            }
+        }
+
+        return new InstallResult(installed, [], failed);
+    }
+
+    /// <summary>
+    /// Installs all available plugins using PluginManager directly.
+    /// </summary>
+    private async Task<InstallResult> InstallPackagesAsync(
+        IReadOnlyList<PackageIndexEntry> packages,
+        CancellationToken cancellationToken)
+    {
+        if (packages.Count == 0)
+        {
+            return InstallResult.Empty;
+        }
+
+        var installed = new List<string>();
+        var failed = new List<string>();
+
+        foreach (var package in packages)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var result = await InstallPackageAsync(package.Id, null, null, cancellationToken);
+            if (result == 0)
+            {
+                installed.Add(package.Id);
+            }
+            else
+            {
+                failed.Add(package.Id);
+            }
+        }
+
+        return new InstallResult(installed, [], failed);
+    }
+
+    /// <summary>
+    /// Installs a single theme: NuGet install + register in global config.
+    /// </summary>
+    private async Task<int> InstallThemeAsync(
+        string packageId,
+        string? version,
+        string? source,
+        CancellationToken cancellationToken)
+    {
+        var success = await pluginManager.InstallAsync(packageId, version, source, cancellationToken);
+        if (success)
+        {
+            await globalConfigManager.AddThemeAsync(packageId, version ?? "latest", cancellationToken);
+        }
+
+        return success ? 0 : 1;
+    }
+
+    /// <summary>
+    /// Installs a single plugin via PluginManager.
+    /// </summary>
+    private async Task<int> InstallPackageAsync(
+        string packageId,
+        string? version,
+        string? source,
+        CancellationToken cancellationToken)
+    {
+        var success = await pluginManager.InstallAsync(packageId, version, source, cancellationToken);
+        return success ? 0 : 1;
     }
 
     private static string Truncate(string? text, int maxLength)

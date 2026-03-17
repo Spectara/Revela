@@ -39,6 +39,17 @@ public sealed class ThemePlugin : IPlugin
     /// <inheritdoc />
     public IEnumerable<CommandDescriptor> GetCommands(IServiceProvider services)
     {
-        yield break;
+        var themeCommand = services.GetRequiredService<ThemeCommand>();
+        yield return new CommandDescriptor(
+            themeCommand.Create(),
+            Order: 10,
+            Group: "Addons",
+            RequiresProject: false);
+
+        var configThemeCommand = services.GetRequiredService<ConfigThemeCommand>();
+        yield return new CommandDescriptor(
+            configThemeCommand.Create(),
+            ParentCommand: "config",
+            Order: 20);
     }
 }

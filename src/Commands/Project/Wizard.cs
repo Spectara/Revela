@@ -1,8 +1,7 @@
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Spectara.Revela.Commands.Config.Project;
 using Spectara.Revela.Commands.Config.Site;
-using Spectara.Revela.Plugins.Generate.Commands;
-using Spectara.Revela.Plugins.Theme.Commands;
 using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Abstractions;
 using Spectara.Revela.Sdk.Output;
@@ -16,25 +15,15 @@ namespace Spectara.Revela.Commands.Project;
 /// <remarks>
 /// <para>
 /// The wizard is triggered when project.json doesn't exist in the current directory.
-/// It orchestrates existing config commands to:
-/// </para>
-/// <list type="number">
-/// <item>Configure project settings (name, URL)</item>
-/// <item>Select a theme from installed themes</item>
-/// <item>Configure site metadata (title, author, etc.)</item>
-/// <item>Optionally configure plugin-provided steps (OneDrive, etc.)</item>
-/// </list>
-/// <para>
-/// After completion, the project is ready for adding images and generating the site.
+/// It uses IServiceProvider to resolve plugin commands at runtime, enabling
+/// graceful degradation when plugins are not installed.
 /// </para>
 /// </remarks>
 internal sealed partial class Wizard(
     ILogger<Wizard> logger,
+    IServiceProvider serviceProvider,
     IOptions<ProjectEnvironment> projectEnvironment,
     ConfigProjectCommand configProjectCommand,
-    ConfigPathsCommand configPathsCommand,
-    ConfigThemeCommand configThemeCommand,
-    ConfigImageCommand configImageCommand,
     ConfigSiteCommand configSiteCommand,
     IEnumerable<IWizardStep> wizardSteps)
 {
@@ -61,43 +50,67 @@ internal sealed partial class Wizard(
             return 1;
         }
 
-        // Step 2: Configure directory paths
+        // Step 2: Configure directory paths (from Generate Plugin, optional)
         AnsiConsole.WriteLine();
         AnsiConsole.MarkupLine("[cyan]━━━ Step 2/5: Directory Paths ━━━[/]");
         AnsiConsole.MarkupLine("[dim]Configure source and output directories (defaults work for most users).[/]");
         AnsiConsole.WriteLine();
 
-        var pathsResult = await configPathsCommand.ExecuteAsync(null, null, cancellationToken);
-        if (pathsResult != 0)
+        var configPathsCommand = serviceProvider.GetService<Spectara.Revela.Plugins.Generate.Commands.ConfigPathsCommand>();
+        if (configPathsCommand is not null)
         {
-            ShowStepFailedError("paths configuration");
-            return 1;
+            var pathsResult = await configPathsCommand.ExecuteAsync(null, null, cancellationToken);
+            if (pathsResult != 0)
+            {
+                ShowStepFailedError("paths configuration");
+                return 1;
+            }
+        }
+        else
+        {
+            AnsiConsole.MarkupLine($"{OutputMarkers.Info} Paths configuration not available (Generate plugin not installed)");
         }
 
-        // Step 3: Select theme
+        // Step 3: Select theme (from Theme Plugin, optional)
         AnsiConsole.WriteLine();
         AnsiConsole.MarkupLine("[cyan]━━━ Step 3/5: Select Theme ━━━[/]");
         AnsiConsole.MarkupLine("[dim]Choose a theme for your site.[/]");
         AnsiConsole.WriteLine();
 
-        var themeResult = await configThemeCommand.ExecuteAsync(null, cancellationToken);
-        if (themeResult != 0)
+        var configThemeCommand = serviceProvider.GetService<Spectara.Revela.Plugins.Theme.Commands.ConfigThemeCommand>();
+        if (configThemeCommand is not null)
         {
-            ShowStepFailedError("theme selection");
-            return 1;
+            var themeResult = await configThemeCommand.ExecuteAsync(null, cancellationToken);
+            if (themeResult != 0)
+            {
+                ShowStepFailedError("theme selection");
+                return 1;
+            }
+        }
+        else
+        {
+            AnsiConsole.MarkupLine($"{OutputMarkers.Info} Theme configuration not available (Theme plugin not installed)");
         }
 
-        // Step 4: Configure image settings (uses theme defaults)
+        // Step 4: Configure image settings (from Generate Plugin, optional)
         AnsiConsole.WriteLine();
         AnsiConsole.MarkupLine("[cyan]━━━ Step 4/5: Image Settings ━━━[/]");
         AnsiConsole.MarkupLine("[dim]Configure output formats and sizes for your images.[/]");
         AnsiConsole.WriteLine();
 
-        var imageResult = await configImageCommand.ExecuteAsync(null, cancellationToken);
-        if (imageResult != 0)
+        var configImageCommand = serviceProvider.GetService<Spectara.Revela.Plugins.Generate.Commands.ConfigImageCommand>();
+        if (configImageCommand is not null)
         {
-            ShowStepFailedError("image configuration");
-            return 1;
+            var imageResult = await configImageCommand.ExecuteAsync(null, cancellationToken);
+            if (imageResult != 0)
+            {
+                ShowStepFailedError("image configuration");
+                return 1;
+            }
+        }
+        else
+        {
+            AnsiConsole.MarkupLine($"{OutputMarkers.Info} Image configuration not available (Generate plugin not installed)");
         }
 
         // Step 5: Configure site metadata
@@ -105,8 +118,6 @@ internal sealed partial class Wizard(
         AnsiConsole.MarkupLine("[cyan]━━━ Step 5/5: Site Metadata ━━━[/]");
         AnsiConsole.MarkupLine("[dim]Configure your site title, author, and other metadata.[/]");
         AnsiConsole.WriteLine();
-
-        // IOptionsMonitor cache was invalidated by ConfigThemeCommand, so theme is available
         var siteResult = await configSiteCommand.ExecuteAsync(cancellationToken);
         if (siteResult != 0)
         {
