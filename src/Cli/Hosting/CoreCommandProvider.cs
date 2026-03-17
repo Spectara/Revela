@@ -4,9 +4,9 @@ using Spectara.Revela.Commands.Packages;
 using Spectara.Revela.Commands.Plugins;
 using Spectara.Revela.Commands.Projects;
 using Spectara.Revela.Commands.Restore;
-using Spectara.Revela.Commands.Theme;
 using Spectara.Revela.Core.Services;
 using Spectara.Revela.Plugins.Generate.Commands;
+using Spectara.Revela.Plugins.Theme.Commands;
 using Spectara.Revela.Sdk.Abstractions;
 
 namespace Spectara.Revela.Cli.Hosting;

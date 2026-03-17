@@ -1,6 +1,6 @@
 using System.CommandLine;
 
-namespace Spectara.Revela.Commands.Theme;
+namespace Spectara.Revela.Plugins.Theme.Commands;
 
 /// <summary>
 /// Parent command for theme management.

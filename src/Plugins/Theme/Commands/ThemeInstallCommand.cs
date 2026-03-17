@@ -9,7 +9,7 @@ using Spectara.Revela.Sdk.Output;
 
 using Spectre.Console;
 
-namespace Spectara.Revela.Commands.Theme;
+namespace Spectara.Revela.Plugins.Theme.Commands;
 
 /// <summary>
 /// Handles 'revela theme install' command.

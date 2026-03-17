@@ -1,11 +1,10 @@
 using Spectara.Revela.Commands.Packages;
 using Spectara.Revela.Commands.Plugins;
-using Spectara.Revela.Commands.Theme;
 using Spectara.Revela.Core.Models;
 using Spectara.Revela.Core.Services;
+using Spectara.Revela.Plugins.Theme.Commands;
 using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Output;
-
 using Spectre.Console;
 
 namespace Spectara.Revela.Commands.Revela;

@@ -1,8 +1,8 @@
 using Microsoft.Extensions.Options;
 using Spectara.Revela.Commands.Config.Project;
 using Spectara.Revela.Commands.Config.Site;
-using Spectara.Revela.Commands.Config.Theme;
 using Spectara.Revela.Plugins.Generate.Commands;
+using Spectara.Revela.Plugins.Theme.Commands;
 using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Abstractions;
 using Spectara.Revela.Sdk.Output;

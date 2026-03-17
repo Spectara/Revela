@@ -23,6 +23,7 @@
   </Folder>
   <Folder Name="/src/Plugins/">
     <Project Path="src/Plugins/Generate/Generate.csproj" />
+    <Project Path="src/Plugins/Theme/Theme.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Core/Core.csproj" />

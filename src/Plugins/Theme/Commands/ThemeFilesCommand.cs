@@ -6,7 +6,7 @@ using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Abstractions;
 using Spectre.Console;
 
-namespace Spectara.Revela.Commands.Theme;
+namespace Spectara.Revela.Plugins.Theme.Commands;
 
 /// <summary>
 /// Command to list all theme files with source information.

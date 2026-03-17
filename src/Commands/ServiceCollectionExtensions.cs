@@ -4,7 +4,6 @@ using Spectara.Revela.Commands.Packages;
 using Spectara.Revela.Commands.Plugins;
 using Spectara.Revela.Commands.Projects;
 using Spectara.Revela.Commands.Restore;
-using Spectara.Revela.Commands.Theme;
 using Spectara.Revela.Core.Services;
 using Spectara.Revela.Plugins.Generate;
 
@@ -32,18 +31,22 @@ internal static class ServiceCollectionExtensions
         // Shared services
         services.AddSingleton<IPackageIndexService, PackageIndexService>();
 
+        // Theme infrastructure (needed by Generate Plugin — will be loaded via Theme Plugin in final state)
+        services.AddSingleton<IThemeResolver, ThemeResolver>();
+
         // Wizards
         services.AddTransient<RevelaWizard>();
         services.AddTransient<ProjectWizard>();
 
-        // Feature commands (Generate Plugin handles: generate, clean, create, config images/sorting/paths)
+        // Feature commands
+        // Generate Plugin handles: generate, clean, create, config images/sorting/paths
+        // Theme Plugin handles: theme, config theme
         services.AddGenerateFeature();
         services.AddConfigFeature();
         services.AddPackagesFeature();
         services.AddPluginsFeature();
         services.AddProjectsFeature();
         services.AddRestoreFeature();
-        services.AddThemeFeature();
 
         return services;
     }
