@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Spectara.Revela.Commands.Config;
 using Spectara.Revela.Commands.Packages;
 using Spectara.Revela.Commands.Plugins;
@@ -30,17 +31,18 @@ internal static class ServiceCollectionExtensions
         // Shared services
         services.AddSingleton<IPackageIndexService, PackageIndexService>();
 
-        // Theme infrastructure (needed by Generate Plugin — will be loaded via Theme Plugin in final state)
-        services.AddSingleton<IThemeResolver, ThemeResolver>();
+        // IThemeResolver fallback — normally registered by Theme Plugin,
+        // but needed when plugins aren't loaded (e.g., integration tests)
+        services.TryAddSingleton<IThemeResolver, ThemeResolver>();
 
         // Wizards
         services.AddTransient<RevelaWizard>();
         services.AddTransient<ProjectWizard>();
 
-        // Feature commands
-        // Generate Plugin handles: generate, clean, create, config images/sorting/paths
-        // Theme Plugin handles: theme, config theme
-        // Projects Plugin handles: projects
+        // Host commands (plugins register their own via ConfigureServices + GetCommands)
+        // Generate Plugin: generate, clean, create, config images/sorting/paths + IThemeResolver
+        // Theme Plugin: theme, config theme
+        // Projects Plugin: projects
         services.AddGenerateFeature();
         services.AddConfigFeature();
         services.AddPackagesFeature();
