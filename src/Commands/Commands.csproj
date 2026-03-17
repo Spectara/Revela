@@ -1,34 +1,27 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <Description>CLI commands for Revela (Generate, Init, Plugin Management, etc.)</Description>
+    <Description>Host commands for Revela (Config, Plugin Management, Packages, Restore)</Description>
     <IsPackable>false</IsPackable>
   </PropertyGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\Core\Core.csproj" />
+    <!-- Plugin references needed during migration (Wizards call plugin commands) -->
     <ProjectReference Include="..\Plugins\Generate\Generate.csproj" />
     <ProjectReference Include="..\Plugins\Theme\Theme.csproj" />
     <ProjectReference Include="..\Plugins\Projects\Projects.csproj" />
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Markdig" />
     <PackageReference Include="Microsoft.Extensions.Configuration.Binder" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
     <PackageReference Include="Microsoft.Extensions.Http" />
     <PackageReference Include="Microsoft.Extensions.Http.Resilience" />
-    <PackageReference Include="NetVips" />
-    <PackageReference Include="NetVips.Native" />
-    <PackageReference Include="Scriban" />
     <PackageReference Include="Spectre.Console" />
     <PackageReference Include="System.CommandLine" />
   </ItemGroup>
 
-  <ItemGroup>
-    <!-- Embed scaffolding templates as resources for Init feature -->
-    <EmbeddedResource Include="Init\Templates\**\*" />
-  </ItemGroup>
 
 </Project>
 
