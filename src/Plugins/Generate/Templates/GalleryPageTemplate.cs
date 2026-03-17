@@ -1,6 +1,6 @@
 using Spectara.Revela.Sdk.Abstractions;
 
-namespace Spectara.Revela.Commands.Create.Templates;
+namespace Spectara.Revela.Plugins.Generate.Templates;
 
 /// <summary>
 /// Core page template for creating gallery pages.

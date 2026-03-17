@@ -1,20 +1,15 @@
 using System.CommandLine;
-
 using Microsoft.Extensions.Options;
-
 using Spectara.Revela.Commands.Config.Feed;
-using Spectara.Revela.Commands.Config.Images;
-using Spectara.Revela.Commands.Config.Paths;
 using Spectara.Revela.Commands.Config.Project;
 using Spectara.Revela.Commands.Config.Revela;
 using Spectara.Revela.Commands.Config.Site;
-using Spectara.Revela.Commands.Config.Sorting;
 using Spectara.Revela.Commands.Config.Theme;
 using Spectara.Revela.Core.Configuration;
+using Spectara.Revela.Plugins.Generate.Commands;
 using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Abstractions;
 using Spectara.Revela.Sdk.Output;
-
 using Spectre.Console;
 
 namespace Spectara.Revela.Commands.Config;

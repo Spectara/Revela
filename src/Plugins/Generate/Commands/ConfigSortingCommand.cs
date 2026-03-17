@@ -8,7 +8,7 @@ using Spectara.Revela.Sdk.Output;
 
 using Spectre.Console;
 
-namespace Spectara.Revela.Commands.Config.Sorting;
+namespace Spectara.Revela.Plugins.Generate.Commands;
 
 /// <summary>
 /// Command to configure sorting settings for galleries and images.

@@ -1,7 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
-using Spectara.Revela.Commands.Clean;
 using Spectara.Revela.Commands.Config;
-using Spectara.Revela.Commands.Create;
 using Spectara.Revela.Commands.Packages;
 using Spectara.Revela.Commands.Plugins;
 using Spectara.Revela.Commands.Projects;
@@ -9,6 +7,7 @@ using Spectara.Revela.Commands.Restore;
 using Spectara.Revela.Commands.Theme;
 using Spectara.Revela.Core.Services;
 using Spectara.Revela.Plugins.Generate;
+
 using ProjectWizard = Spectara.Revela.Commands.Project.Wizard;
 using RevelaWizard = Spectara.Revela.Commands.Revela.Wizard;
 
@@ -37,11 +36,9 @@ internal static class ServiceCollectionExtensions
         services.AddTransient<RevelaWizard>();
         services.AddTransient<ProjectWizard>();
 
-        // Feature commands
-        services.AddCleanFeature();
-        services.AddConfigFeature();
-        services.AddCreateFeature();
+        // Feature commands (Generate Plugin handles: generate, clean, create, config images/sorting/paths)
         services.AddGenerateFeature();
+        services.AddConfigFeature();
         services.AddPackagesFeature();
         services.AddPluginsFeature();
         services.AddProjectsFeature();

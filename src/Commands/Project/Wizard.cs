@@ -1,14 +1,11 @@
 using Microsoft.Extensions.Options;
-
-using Spectara.Revela.Commands.Config.Images;
-using Spectara.Revela.Commands.Config.Paths;
 using Spectara.Revela.Commands.Config.Project;
 using Spectara.Revela.Commands.Config.Site;
 using Spectara.Revela.Commands.Config.Theme;
+using Spectara.Revela.Plugins.Generate.Commands;
 using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Abstractions;
 using Spectara.Revela.Sdk.Output;
-
 using Spectre.Console;
 
 namespace Spectara.Revela.Commands.Project;

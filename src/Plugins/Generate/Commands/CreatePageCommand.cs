@@ -10,7 +10,7 @@ using Spectara.Revela.Sdk.Services;
 
 using Spectre.Console;
 
-namespace Spectara.Revela.Commands.Create;
+namespace Spectara.Revela.Plugins.Generate.Commands;
 
 /// <summary>
 /// Command for creating _index.revela files from page templates.

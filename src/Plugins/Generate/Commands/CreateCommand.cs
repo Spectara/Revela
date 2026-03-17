@@ -1,6 +1,6 @@
 using System.CommandLine;
 
-namespace Spectara.Revela.Commands.Create;
+namespace Spectara.Revela.Plugins.Generate.Commands;
 
 /// <summary>
 /// Parent command for content creation operations.

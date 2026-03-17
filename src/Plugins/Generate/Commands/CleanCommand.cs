@@ -1,6 +1,6 @@
 using System.CommandLine;
 
-namespace Spectara.Revela.Commands.Clean.Commands;
+namespace Spectara.Revela.Plugins.Generate.Commands;
 
 /// <summary>
 /// Parent command for clean operations.

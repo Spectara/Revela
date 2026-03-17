@@ -10,7 +10,7 @@ using Spectara.Revela.Sdk.Abstractions;
 using Spectara.Revela.Sdk.Output;
 using Spectre.Console;
 
-namespace Spectara.Revela.Commands.Config.Images;
+namespace Spectara.Revela.Plugins.Generate.Commands;
 
 /// <summary>
 /// Command to configure image processing settings.

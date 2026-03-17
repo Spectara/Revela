@@ -1,6 +1,6 @@
 using Spectara.Revela.Sdk.Abstractions;
 
-namespace Spectara.Revela.Commands.Create.Templates;
+namespace Spectara.Revela.Plugins.Generate.Templates;
 
 /// <summary>
 /// Page template for creating text-only pages without gallery.

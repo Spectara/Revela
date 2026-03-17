@@ -4,6 +4,7 @@ using Spectara.Revela.Plugins.Generate.Abstractions;
 using Spectara.Revela.Plugins.Generate.Commands;
 using Spectara.Revela.Plugins.Generate.Infrastructure;
 using Spectara.Revela.Plugins.Generate.Services;
+using Spectara.Revela.Plugins.Generate.Templates;
 using Spectara.Revela.Sdk.Abstractions;
 using IManifestRepository = Spectara.Revela.Sdk.Abstractions.IManifestRepository;
 
@@ -59,6 +60,24 @@ public static class ServiceCollectionExtensions
         services.AddTransient<IGenerateStep, ScanCommand>();
         services.AddTransient<IGenerateStep, PagesCommand>();
         services.AddTransient<IGenerateStep, ImagesCommand>();
+
+        // Clean commands
+        services.AddTransient<CleanCommand>();
+        services.AddTransient<CleanAllCommand>();
+        services.AddTransient<CleanOutputCommand>();
+        services.AddTransient<CleanImagesCommand>();
+        services.AddTransient<CleanCacheCommand>();
+
+        // Create commands + page templates
+        services.AddTransient<CreateCommand>();
+        services.AddTransient<CreatePageCommand>();
+        services.AddSingleton<IPageTemplate, GalleryPageTemplate>();
+        services.AddSingleton<IPageTemplate, TextPageTemplate>();
+
+        // Config commands (generate-related)
+        services.AddTransient<ConfigImageCommand>();
+        services.AddTransient<ConfigSortingCommand>();
+        services.AddTransient<ConfigPathsCommand>();
 
         return services;
     }

@@ -1,13 +1,10 @@
 using Microsoft.Extensions.DependencyInjection;
 
 using Spectara.Revela.Commands.Config.Feed;
-using Spectara.Revela.Commands.Config.Images;
-using Spectara.Revela.Commands.Config.Paths;
 using Spectara.Revela.Commands.Config.Project;
 using Spectara.Revela.Commands.Config.Revela;
 using Spectara.Revela.Commands.Config.Services;
 using Spectara.Revela.Commands.Config.Site;
-using Spectara.Revela.Commands.Config.Sorting;
 using Spectara.Revela.Commands.Config.Theme;
 using Spectara.Revela.Sdk.Abstractions;
 
@@ -40,14 +37,7 @@ internal static class ServiceCollectionExtensions
         // Site commands
         services.AddTransient<ConfigSiteCommand>();
 
-        // Image commands
-        services.AddTransient<ConfigImageCommand>();
-
-        // Sorting commands
-        services.AddTransient<ConfigSortingCommand>();
-
-        // Paths commands
-        services.AddTransient<ConfigPathsCommand>();
+        // Image, Sorting, Paths commands are now in Generate Plugin
 
         // Feed commands (NuGet sources)
         services.AddTransient<FeedCommand>();

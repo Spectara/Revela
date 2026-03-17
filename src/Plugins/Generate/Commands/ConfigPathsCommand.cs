@@ -11,7 +11,7 @@ using Spectara.Revela.Sdk.Services;
 
 using Spectre.Console;
 
-namespace Spectara.Revela.Commands.Config.Paths;
+namespace Spectara.Revela.Plugins.Generate.Commands;
 
 /// <summary>
 /// Command to configure source and output directory paths.

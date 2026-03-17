@@ -10,7 +10,7 @@ using Spectara.Revela.Sdk.Services;
 
 using Spectre.Console;
 
-namespace Spectara.Revela.Commands.Clean.Commands;
+namespace Spectara.Revela.Plugins.Generate.Commands;
 
 /// <summary>
 /// Intelligently cleans unused image files from the output directory.

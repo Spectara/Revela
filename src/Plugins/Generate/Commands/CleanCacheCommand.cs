@@ -1,32 +1,34 @@
 using System.CommandLine;
 using System.Globalization;
 
+using Microsoft.Extensions.Options;
+
+using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Output;
-using Spectara.Revela.Sdk.Services;
 
 using Spectre.Console;
 
-namespace Spectara.Revela.Commands.Clean.Commands;
+namespace Spectara.Revela.Plugins.Generate.Commands;
 
 /// <summary>
-/// Cleans the output directory.
+/// Cleans the cache directory.
 /// </summary>
-internal sealed partial class CleanOutputCommand(
-    ILogger<CleanOutputCommand> logger,
-    IPathResolver pathResolver)
+internal sealed partial class CleanCacheCommand(
+    ILogger<CleanCacheCommand> logger,
+    IOptions<ProjectEnvironment> projectEnvironment)
 {
     /// <summary>Order for this command in menu.</summary>
-    public const int Order = 10;
+    public const int Order = 20;
 
-    /// <summary>Gets full path to output directory (supports hot-reload).</summary>
-    private string OutputPath => pathResolver.OutputPath;
+    /// <summary>Gets full path to cache directory.</summary>
+    private string CachePath => Path.Combine(projectEnvironment.Value.Path, ProjectPaths.Cache);
 
     /// <summary>
     /// Creates the CLI command.
     /// </summary>
     public Command Create()
     {
-        var command = new Command("output", "Clean output directory (generated HTML/images)");
+        var command = new Command("cache", "Clean cache directory (.cache)");
 
         command.SetAction(async (parseResult, cancellationToken) => await ExecuteAsync(cancellationToken));
 
@@ -38,30 +40,30 @@ internal sealed partial class CleanOutputCommand(
         cancellationToken.ThrowIfCancellationRequested();
 
         // Nothing to clean - exit silently (goal already achieved)
-        if (!Directory.Exists(OutputPath))
+        if (!Directory.Exists(CachePath))
         {
             return Task.FromResult(0);
         }
 
-        var target = AnalyzeDirectory(OutputPath);
+        var target = AnalyzeDirectory(CachePath);
 
         try
         {
-            Directory.Delete(OutputPath, recursive: true);
+            Directory.Delete(CachePath, recursive: true);
             LogDirectoryDeleted(logger, target.Path, target.FileCount);
 
-            AnsiConsole.MarkupLine($"{OutputMarkers.Success} Deleted [cyan]{OutputPath}[/] ({target.FileCount} files, {FormatSize(target.TotalSize)})");
+            AnsiConsole.MarkupLine($"{OutputMarkers.Success} Deleted [cyan]{ProjectPaths.Cache}/[/] ({target.FileCount} files, {FormatSize(target.TotalSize)})");
         }
         catch (IOException ex)
         {
-            LogDeleteFailed(logger, OutputPath, ex);
-            AnsiConsole.MarkupLine($"{OutputMarkers.Error} Failed to delete {OutputPath}: {ex.Message}");
+            LogDeleteFailed(logger, CachePath, ex);
+            AnsiConsole.MarkupLine($"{OutputMarkers.Error} Failed to delete {ProjectPaths.Cache}: {ex.Message}");
             return Task.FromResult(1);
         }
         catch (UnauthorizedAccessException ex)
         {
-            LogDeleteFailed(logger, OutputPath, ex);
-            AnsiConsole.MarkupLine($"{OutputMarkers.Error} Access denied: {OutputPath}");
+            LogDeleteFailed(logger, CachePath, ex);
+            AnsiConsole.MarkupLine($"{OutputMarkers.Error} Access denied: {ProjectPaths.Cache}");
             return Task.FromResult(1);
         }
 
@@ -90,8 +92,3 @@ internal sealed partial class CleanOutputCommand(
     [LoggerMessage(Level = LogLevel.Error, Message = "Failed to delete {Path}")]
     private static partial void LogDeleteFailed(ILogger logger, string path, Exception exception);
 }
-
-/// <summary>
-/// Information about a directory to be cleaned.
-/// </summary>
-internal sealed record CleanTarget(string Path, int FileCount, long TotalSize);

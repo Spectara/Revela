@@ -4,7 +4,7 @@ using Spectara.Revela.Sdk.Output;
 
 using Spectre.Console;
 
-namespace Spectara.Revela.Commands.Clean.Commands;
+namespace Spectara.Revela.Plugins.Generate.Commands;
 
 /// <summary>
 /// Cleans both output and cache directories.

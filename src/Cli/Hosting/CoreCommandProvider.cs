@@ -1,13 +1,12 @@
 using Microsoft.Extensions.DependencyInjection;
-using Spectara.Revela.Commands.Clean.Commands;
 using Spectara.Revela.Commands.Config;
-using Spectara.Revela.Commands.Create;
 using Spectara.Revela.Commands.Packages;
 using Spectara.Revela.Commands.Plugins;
 using Spectara.Revela.Commands.Projects;
 using Spectara.Revela.Commands.Restore;
 using Spectara.Revela.Commands.Theme;
 using Spectara.Revela.Core.Services;
+using Spectara.Revela.Plugins.Generate.Commands;
 using Spectara.Revela.Sdk.Abstractions;
 
 namespace Spectara.Revela.Cli.Hosting;
@@ -25,7 +24,7 @@ internal sealed class CoreCommandProvider : ICommandProvider
     public IEnumerable<CommandDescriptor> GetCommands(IServiceProvider services)
     {
         // Build group: generate (10), clean (20) - require project
-        var generateCommand = services.GetRequiredService<Plugins.Generate.Commands.GenerateCommand>();
+        var generateCommand = services.GetRequiredService<GenerateCommand>();
         yield return new CommandDescriptor(
             generateCommand.Create(),
             ParentCommand: null,

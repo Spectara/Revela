@@ -4,7 +4,7 @@ using System.CommandLine.Help;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
-using Spectara.Revela.Commands.Clean.Commands;
+using Spectara.Revela.Plugins.Generate.Commands;
 using Spectara.Revela.Sdk.Abstractions;
 
 namespace Spectara.Revela.Cli.Hosting;
