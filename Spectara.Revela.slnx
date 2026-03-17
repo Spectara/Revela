@@ -21,6 +21,9 @@
       <Project Path="src/Themes/Lumina.Calendar/Lumina.Calendar.csproj" />
     </Folder>
   </Folder>
+  <Folder Name="/src/Plugins/">
+    <Project Path="src/Plugins/Generate/Generate.csproj" />
+  </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Core/Core.csproj" />
     <Project Path="tests/Commands/Commands.csproj" />
