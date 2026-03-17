@@ -119,4 +119,26 @@ public record PluginMetadata
 
     /// <summary>Plugin author or organization.</summary>
     public string Author { get; init; } = "Unknown";
+
+    /// <summary>
+    /// Plugin package IDs that MUST be installed for this plugin to work.
+    /// The host validates these before loading the plugin.
+    /// </summary>
+    /// <example>
+    /// <code>
+    /// RequiredPlugins = ["Spectara.Revela.Plugins.Generate"]
+    /// </code>
+    /// </example>
+    public IReadOnlyList<string> RequiredPlugins { get; init; } = [];
+
+    /// <summary>
+    /// Plugin package IDs that this plugin optionally extends.
+    /// Extension commands are only registered if the parent plugin is present.
+    /// </summary>
+    /// <example>
+    /// <code>
+    /// ExtendsPlugins = ["Spectara.Revela.Plugins.Clean"]
+    /// </code>
+    /// </example>
+    public IReadOnlyList<string> ExtendsPlugins { get; init; } = [];
 }
