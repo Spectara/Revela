@@ -175,6 +175,9 @@ try {
 
         # Plugins/Themes are Debug-only in Cli.csproj, build them separately in Release
         $extraProjects = @(
+            "src/Plugins/Generate/Generate.csproj",
+            "src/Plugins/Theme/Theme.csproj",
+            "src/Plugins/Projects/Projects.csproj",
             "src/Plugins/Compress/Compress.csproj",
             "src/Plugins/Serve/Serve.csproj",
             "src/Plugins/Source/OneDrive/OneDrive.csproj",
@@ -276,7 +279,10 @@ try {
 
         # Pack all packages from existing build output (no rebuild!)
         $packTargets = @(
-            @{ Name = "Lumina";             Proj = "src/Themes/Lumina/Lumina.csproj";                                 Out = $PluginsDir },
+            @{ Name = "Generate";          Proj = "src/Plugins/Generate/Generate.csproj";                           Out = $PluginsDir },
+            @{ Name = "Theme";             Proj = "src/Plugins/Theme/Theme.csproj";                                 Out = $PluginsDir },
+            @{ Name = "Projects";          Proj = "src/Plugins/Projects/Projects.csproj";                           Out = $PluginsDir },
+            @{ Name = "Lumina";            Proj = "src/Themes/Lumina/Lumina.csproj";                                 Out = $PluginsDir },
             @{ Name = "Lumina.Statistics";  Proj = "src/Themes/Lumina.Statistics/Lumina.Statistics.csproj";           Out = $PluginsDir },
             @{ Name = "Sdk";                Proj = "src/Sdk/Sdk.csproj";                                             Out = $NuGetDir },
             @{ Name = "Source.OneDrive";    Proj = "src/Plugins/Source/OneDrive/OneDrive.csproj";                   Out = $PluginsDir },
