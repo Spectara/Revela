@@ -1,5 +1,5 @@
-using Spectara.Revela.Commands.Generate.Services;
 using Spectara.Revela.Core.Configuration;
+using Spectara.Revela.Plugins.Generate.Services;
 
 namespace Spectara.Revela.Tests.Commands.Generate.Services;
 

@@ -1,13 +1,11 @@
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using NSubstitute;
-using Spectara.Revela.Commands.Generate.Abstractions;
-using Spectara.Revela.Commands.Generate.Building;
-using Spectara.Revela.Commands.Generate.Parsing;
-using Spectara.Revela.Commands.Generate.Scanning;
-using Spectara.Revela.Commands.Generate.Services;
 using Spectara.Revela.Core.Configuration;
 using Spectara.Revela.Core.Services;
+using Spectara.Revela.Plugins.Generate.Abstractions;
+using Spectara.Revela.Plugins.Generate.Infrastructure;
+using Spectara.Revela.Plugins.Generate.Services;
 using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Abstractions;
 using Spectara.Revela.Sdk.Models.Manifest;

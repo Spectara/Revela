@@ -10,6 +10,14 @@
     <!-- Plugin packaging handled by Spectara.Revela.Sdk.targets -->
   </PropertyGroup>
 
+  <!-- InternalsVisibleTo for test projects and host (during migration) -->
+  <ItemGroup>
+    <InternalsVisibleTo Include="$(RevelaNamespacePrefix).Tests.Commands" />
+    <InternalsVisibleTo Include="$(RevelaNamespacePrefix).Tests.Integration" />
+    <InternalsVisibleTo Include="revela" />
+    <InternalsVisibleTo Include="DynamicProxyGenAssembly2" />
+  </ItemGroup>
+
   <ItemGroup>
     <None Include="README.md" Pack="true" PackagePath="/" />
     <None Include="../../../assets/revela_100.png" Pack="true" PackagePath="icon.png" />
@@ -18,6 +26,12 @@
   <ItemGroup>
     <!-- Reference to host Sdk - NOT copied to output (loaded from host) -->
     <ProjectReference Include="..\..\Sdk\Sdk.csproj">
+      <Private>false</Private>
+      <ExcludeAssets>runtime</ExcludeAssets>
+    </ProjectReference>
+    <!-- Core reference needed for ITemplateResolver, IAssetResolver, etc. -->
+    <!-- TODO: Move these interfaces to SDK when Commands project is fully dissolved -->
+    <ProjectReference Include="..\..\Core\Core.csproj">
       <Private>false</Private>
       <ExcludeAssets>runtime</ExcludeAssets>
     </ProjectReference>

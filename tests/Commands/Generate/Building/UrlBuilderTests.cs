@@ -1,4 +1,4 @@
-using Spectara.Revela.Commands.Generate.Building;
+using Spectara.Revela.Plugins.Generate.Infrastructure;
 
 namespace Spectara.Revela.Tests.Commands.Generate.Building;
 

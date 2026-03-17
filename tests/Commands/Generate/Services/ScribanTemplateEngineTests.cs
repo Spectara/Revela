@@ -1,7 +1,7 @@
 using System.Globalization;
 using NSubstitute;
-using Spectara.Revela.Commands.Generate.Services;
 using Spectara.Revela.Core.Services;
+using Spectara.Revela.Plugins.Generate.Services;
 
 namespace Spectara.Revela.Tests.Commands.Generate.Services;
 

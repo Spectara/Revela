@@ -5,7 +5,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
 using Spectara.Revela.Commands.Clean.Commands;
-using Spectara.Revela.Commands.Generate.Commands;
 using Spectara.Revela.Sdk.Abstractions;
 
 namespace Spectara.Revela.Cli.Hosting;
@@ -164,7 +163,7 @@ internal static class HostExtensions
         // Order within generate: all (0), scan (10), statistics (20-plugin), pages (30), images (40)
         ["generate"] = new(StringComparer.Ordinal)
         {
-            ["all"] = AllCommand.Order,
+            ["all"] = 0,
             ["scan"] = 10,
             ["pages"] = 30,
             ["images"] = 40,

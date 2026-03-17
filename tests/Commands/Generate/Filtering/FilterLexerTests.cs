@@ -1,6 +1,6 @@
 using System.Globalization;
 
-using Spectara.Revela.Commands.Generate.Filtering;
+using Spectara.Revela.Plugins.Generate.Filtering;
 
 namespace Spectara.Revela.Tests.Commands.Generate.Filtering;
 
