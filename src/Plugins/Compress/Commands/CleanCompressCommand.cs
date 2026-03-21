@@ -2,6 +2,7 @@ using System.CommandLine;
 using System.Globalization;
 
 using Spectara.Revela.Sdk;
+using Spectara.Revela.Sdk.Abstractions;
 using Spectara.Revela.Sdk.Output;
 using Spectara.Revela.Sdk.Services;
 
@@ -14,10 +15,19 @@ namespace Spectara.Revela.Plugins.Compress.Commands;
 /// </summary>
 internal sealed partial class CleanCompressCommand(
     ILogger<CleanCompressCommand> logger,
-    IPathResolver pathResolver)
+    IPathResolver pathResolver) : ICleanStep
 {
-    /// <summary>Order for this command in clean menu.</summary>
-    public const int Order = 40;
+    /// <inheritdoc />
+    public string Name => "compress";
+
+    /// <inheritdoc />
+    public string Description => "Clean compressed files (.gz, .br) from output";
+
+    /// <inheritdoc />
+    int ICleanStep.Order => 400;
+
+    /// <summary>Order for this command in menu.</summary>
+    public const int MenuOrder = 40;
 
     /// <summary>
     /// Creates the CLI command.
@@ -32,7 +42,7 @@ internal sealed partial class CleanCompressCommand(
         return command;
     }
 
-    private Task<int> ExecuteAsync(CancellationToken cancellationToken)
+    public Task<int> ExecuteAsync(CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
 

@@ -1,6 +1,7 @@
 using System.CommandLine;
 using System.Globalization;
 
+using Spectara.Revela.Sdk.Abstractions;
 using Spectara.Revela.Sdk.Output;
 using Spectara.Revela.Sdk.Services;
 
@@ -13,10 +14,16 @@ namespace Spectara.Revela.Plugins.Generate.Commands;
 /// </summary>
 internal sealed partial class CleanOutputCommand(
     ILogger<CleanOutputCommand> logger,
-    IPathResolver pathResolver)
+    IPathResolver pathResolver) : ICleanStep
 {
-    /// <summary>Order for this command in menu.</summary>
-    public const int Order = 10;
+    /// <inheritdoc />
+    public string Name => "output";
+
+    /// <inheritdoc />
+    public string Description => "Clean output directory (generated HTML/images)";
+
+    /// <inheritdoc />
+    int ICleanStep.Order => CleanStepOrder.Output;
 
     /// <summary>Gets full path to output directory (supports hot-reload).</summary>
     private string OutputPath => pathResolver.OutputPath;
@@ -33,7 +40,7 @@ internal sealed partial class CleanOutputCommand(
         return command;
     }
 
-    private Task<int> ExecuteAsync(CancellationToken cancellationToken)
+    public Task<int> ExecuteAsync(CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
 

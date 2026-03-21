@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Diagnostics;
 using Microsoft.Extensions.Options;
 using Spectara.Revela.Core.Configuration;
 using Spectara.Revela.Core.Services;
@@ -49,7 +50,7 @@ internal sealed partial class ImageService(
         IProgress<ImageProgress>? progress = null,
         CancellationToken cancellationToken = default)
     {
-        var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+        var stopwatch = Stopwatch.StartNew();
 
         try
         {
@@ -107,7 +108,7 @@ internal sealed partial class ImageService(
             var imagesToProcess = new List<(string SourcePath, string ManifestKey, IReadOnlyList<int> Sizes, IReadOnlyList<(int Size, string Format)>? MissingVariants, string? ExistingPlaceholder, int Width, int Height)>();
             var cachedCount = 0;
 
-            var selectionStopwatch = System.Diagnostics.Stopwatch.StartNew();
+            var selectionStopwatch = Stopwatch.StartNew();
 
             var outputImagesDirectory = Path.Combine(OutputPath, ImageDirectory);
 

@@ -4,6 +4,7 @@ using System.Globalization;
 using Microsoft.Extensions.Options;
 
 using Spectara.Revela.Sdk;
+using Spectara.Revela.Sdk.Abstractions;
 using Spectara.Revela.Sdk.Output;
 
 using Spectre.Console;
@@ -15,10 +16,16 @@ namespace Spectara.Revela.Plugins.Generate.Commands;
 /// </summary>
 internal sealed partial class CleanCacheCommand(
     ILogger<CleanCacheCommand> logger,
-    IOptions<ProjectEnvironment> projectEnvironment)
+    IOptions<ProjectEnvironment> projectEnvironment) : ICleanStep
 {
-    /// <summary>Order for this command in menu.</summary>
-    public const int Order = 20;
+    /// <inheritdoc />
+    public string Name => "cache";
+
+    /// <inheritdoc />
+    public string Description => "Clean cache directory (.cache)";
+
+    /// <inheritdoc />
+    int ICleanStep.Order => CleanStepOrder.Cache;
 
     /// <summary>Gets full path to cache directory.</summary>
     private string CachePath => Path.Combine(projectEnvironment.Value.Path, ProjectPaths.Cache);
@@ -35,7 +42,7 @@ internal sealed partial class CleanCacheCommand(
         return command;
     }
 
-    private Task<int> ExecuteAsync(CancellationToken cancellationToken)
+    public Task<int> ExecuteAsync(CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
 

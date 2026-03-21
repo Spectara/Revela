@@ -50,17 +50,54 @@ internal sealed class PluginContext(IReadOnlyList<LoadedPluginInfo> plugins, ILo
         else
         {
             // No parent - register directly under root
-            if (rootCommand.Subcommands.Any(sc => sc.Name == command.Name))
+            var existing = rootCommand.Subcommands.FirstOrDefault(sc => sc.Name == command.Name);
+            if (existing is not null)
             {
-                logger.DuplicateRootCommand(plugin.Metadata.Name, command.Name);
+                // An auto-created parent may already exist (created by another plugin's
+                // ParentCommand reference). Merge the plugin's subcommands into it so
+                // the real command's subcommands aren't lost.
+                MergeSubcommands(existing, command);
+
+                // Update metadata on the existing command (the auto-created parent had
+                // default group/order; the plugin's descriptor has the real values)
+                onCommandRegistered?.Invoke(existing, descriptor.Order, descriptor.Group, descriptor.RequiresProject, descriptor.HideWhenProjectExists, descriptor.IsSequentialStep);
                 return;
             }
-
-            rootCommand.Subcommands.Add(command);
+            else
+            {
+                rootCommand.Subcommands.Add(command);
+            }
         }
 
-        // Notify caller about registered command with its order, group, project requirement, and hide flag
-        onCommandRegistered?.Invoke(command, descriptor.Order, descriptor.Group, descriptor.RequiresProject, descriptor.HideWhenProjectExists);
+        // Notify caller about registered command with its metadata
+        onCommandRegistered?.Invoke(command, descriptor.Order, descriptor.Group, descriptor.RequiresProject, descriptor.HideWhenProjectExists, descriptor.IsSequentialStep);
+    }
+
+    /// <summary>
+    /// Merges subcommands from a plugin's command into an existing auto-created parent.
+    /// </summary>
+    /// <remarks>
+    /// When plugin A registers <c>ParentCommand: "generate"</c> before plugin B registers
+    /// its own <c>generate</c> root command, an empty parent is auto-created. This method
+    /// transfers plugin B's subcommands into the existing parent without losing plugin A's
+    /// subcommands that were already added.
+    /// </remarks>
+    private static void MergeSubcommands(Command existing, Command incoming)
+    {
+        // Take the real description from the plugin's command (auto-created parents
+        // have generic descriptions like "generate commands")
+        if (!string.IsNullOrEmpty(incoming.Description))
+        {
+            existing.Description = incoming.Description;
+        }
+
+        foreach (var sub in incoming.Subcommands)
+        {
+            if (!existing.Subcommands.Any(s => s.Name == sub.Name))
+            {
+                existing.Subcommands.Add(sub);
+            }
+        }
     }
 
     /// <summary>
@@ -86,7 +123,7 @@ internal sealed class PluginContext(IReadOnlyList<LoadedPluginInfo> plugins, ILo
                 var (description, order, group, requiresProject, hideWhenProjectExists) = GetCommandInfo(segment);
                 var newCommand = new Command(segment, description);
                 current.Subcommands.Add(newCommand);
-                onCommandRegistered?.Invoke(newCommand, order, group, requiresProject, hideWhenProjectExists);
+                onCommandRegistered?.Invoke(newCommand, order, group, requiresProject, hideWhenProjectExists, isSequentialStep: false);
                 current = newCommand;
             }
         }

@@ -10,7 +10,8 @@ namespace Spectara.Revela.Sdk.Abstractions;
 /// <param name="group">Optional group name for categorization.</param>
 /// <param name="requiresProject">Whether the command requires a project context.</param>
 /// <param name="hideWhenProjectExists">Whether to hide the command when a project exists.</param>
-public delegate void CommandRegisteredCallback(Command command, int order, string? group, bool requiresProject, bool hideWhenProjectExists);
+/// <param name="isSequentialStep">Whether this command is a sequential pipeline step (included in "all").</param>
+public delegate void CommandRegisteredCallback(Command command, int order, string? group, bool requiresProject, bool hideWhenProjectExists, bool isSequentialStep);
 
 /// <summary>
 /// Context for managing loaded plugins after host is built.

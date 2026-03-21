@@ -1,5 +1,6 @@
 using System.CommandLine;
 
+using Spectara.Revela.Sdk.Abstractions;
 using Spectara.Revela.Sdk.Output;
 
 using Spectre.Console;
@@ -7,82 +8,72 @@ using Spectre.Console;
 namespace Spectara.Revela.Plugins.Generate.Commands;
 
 /// <summary>
-/// Cleans both output and cache directories.
+/// Executes all registered clean steps in order.
 /// </summary>
-internal sealed partial class CleanAllCommand(ILogger<CleanAllCommand> logger)
+/// <remarks>
+/// Orchestrates all registered <see cref="ICleanStep"/> implementations
+/// in order. Each step handles its own console output.
+/// Plugins can register additional steps at any order.
+/// </remarks>
+internal sealed partial class CleanAllCommand(
+    ILogger<CleanAllCommand> logger,
+    IEnumerable<ICleanStep> cleanSteps)
 {
     /// <summary>Order for this command (first in menu).</summary>
     public const int Order = 0;
-
-    /// <summary>Execution order for subcommands.</summary>
-    private static readonly string[] ExecutionOrder = ["output", "cache"];
 
     /// <summary>
     /// Creates the CLI command.
     /// </summary>
     public Command Create()
     {
-        var command = new Command("all", "Clean output and cache (full clean)");
+        var stepNames = string.Join(" → ", cleanSteps.OrderBy(s => s.Order).Select(s => s.Name));
+        var description = stepNames.Length > 0
+            ? $"Clean all ({stepNames})"
+            : "Clean all generated files";
 
-        command.SetAction(async (parseResult, cancellationToken) => await ExecuteAsync(command, cancellationToken));
+        var command = new Command("all", description);
+
+        command.SetAction(async (_, cancellationToken) => await ExecuteAsync(cancellationToken));
 
         return command;
     }
 
-    private async Task<int> ExecuteAsync(Command allCommand, CancellationToken cancellationToken)
+    /// <summary>
+    /// Executes all clean steps in order.
+    /// </summary>
+    public async Task<int> ExecuteAsync(CancellationToken cancellationToken = default)
     {
-        var parent = allCommand.Parents.OfType<Command>().FirstOrDefault();
-        if (parent is null)
+        var steps = cleanSteps.OrderBy(s => s.Order).ToList();
+
+        if (steps.Count == 0)
         {
-            LogNoParentCommand(logger);
-            return 1;
-        }
-
-        // Get all sibling subcommands, excluding 'all' itself, in execution order
-        var subcommandsByName = parent.Subcommands
-            .Where(cmd => cmd.Name != "all")
-            .ToDictionary(cmd => cmd.Name, StringComparer.OrdinalIgnoreCase);
-
-        var orderedSubcommands = new List<Command>();
-        foreach (var name in ExecutionOrder)
-        {
-            if (subcommandsByName.Remove(name, out var cmd))
-            {
-                orderedSubcommands.Add(cmd);
-            }
-        }
-
-        orderedSubcommands.AddRange(subcommandsByName.Values);
-
-        if (orderedSubcommands.Count == 0)
-        {
-            AnsiConsole.MarkupLine("[yellow]No subcommands to execute.[/]");
+            AnsiConsole.MarkupLine("[yellow]No clean steps registered.[/]");
             return 0;
         }
 
-        AnsiConsole.MarkupLine("[blue]Cleaning all generated files...[/]");
+        var pipelineNames = string.Join(" → ", steps.Select(s => s.Name));
+        AnsiConsole.MarkupLine($"[blue]Pipeline:[/] [dim]{pipelineNames}[/]");
         AnsiConsole.WriteLine();
 
-        foreach (var subcommand in orderedSubcommands)
+        LogPipelineStart(logger, steps.Count);
+
+        var stepNumber = 1;
+
+        foreach (var step in steps)
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            // Find root command
-            var root = parent;
-            while (root.Parents.OfType<Command>().FirstOrDefault() is { } grandparent)
+            AnsiConsole.MarkupLine($"[cyan]━━━ Step {stepNumber}/{steps.Count}: {Markup.Escape(step.Name)} ━━━[/]");
+
+            var result = await step.ExecuteAsync(cancellationToken);
+            if (result != 0)
             {
-                root = grandparent;
+                LogStepFailed(logger, step.Name, result);
+                return result;
             }
 
-            var args = new[] { parent.Name, subcommand.Name };
-            var parseResult = root.Parse(args);
-            var exitCode = await parseResult.InvokeAsync(configuration: null, cancellationToken);
-
-            if (exitCode != 0)
-            {
-                LogSubcommandFailed(logger, subcommand.Name, exitCode);
-                return exitCode;
-            }
+            stepNumber++;
         }
 
         AnsiConsole.WriteLine();
@@ -91,9 +82,9 @@ internal sealed partial class CleanAllCommand(ILogger<CleanAllCommand> logger)
         return 0;
     }
 
-    [LoggerMessage(Level = LogLevel.Error, Message = "No parent command found for 'all'")]
-    private static partial void LogNoParentCommand(ILogger logger);
+    [LoggerMessage(Level = LogLevel.Information, Message = "Starting clean pipeline with {Count} step(s)")]
+    private static partial void LogPipelineStart(ILogger logger, int count);
 
-    [LoggerMessage(Level = LogLevel.Error, Message = "Subcommand '{Name}' failed with exit code {ExitCode}")]
-    private static partial void LogSubcommandFailed(ILogger logger, string name, int exitCode);
+    [LoggerMessage(Level = LogLevel.Error, Message = "Clean step '{Name}' failed with exit code {ExitCode}")]
+    private static partial void LogStepFailed(ILogger logger, string name, int exitCode);
 }

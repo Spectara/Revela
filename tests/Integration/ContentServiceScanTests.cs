@@ -1,6 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Spectara.Revela.Commands;
 using Spectara.Revela.Core.Services;
+using Spectara.Revela.Plugins.Generate;
 using Spectara.Revela.Plugins.Generate.Abstractions;
 using Spectara.Revela.Tests.Shared.Fixtures;
 
@@ -17,6 +18,7 @@ public sealed class ContentServiceScanTests
     private static void AddServices(IServiceCollection services)
     {
         services.AddRevelaCommands();
+        services.AddGenerateFeature();
 
         // Override IImageSizesProvider since we don't have a real theme installed
         services.AddSingleton<IImageSizesProvider>(new TestImageSizesProvider());

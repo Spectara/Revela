@@ -1,4 +1,3 @@
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Spectara.Revela.Commands.Config.Project;
 using Spectara.Revela.Commands.Config.Site;
@@ -15,13 +14,16 @@ namespace Spectara.Revela.Commands.Project;
 /// <remarks>
 /// <para>
 /// The wizard is triggered when project.json doesn't exist in the current directory.
-/// It uses IServiceProvider to resolve plugin commands at runtime, enabling
-/// graceful degradation when plugins are not installed.
+/// It runs required <see cref="IWizardStep"/> implementations from plugins in Order sequence,
+/// then offers optional steps as checkboxes.
+/// </para>
+/// <para>
+/// This approach keeps the host completely decoupled from plugin types.
+/// Plugins register their wizard steps via DI, and the wizard discovers them at runtime.
 /// </para>
 /// </remarks>
 internal sealed partial class Wizard(
     ILogger<Wizard> logger,
-    IServiceProvider serviceProvider,
     IOptions<ProjectEnvironment> projectEnvironment,
     ConfigProjectCommand configProjectCommand,
     ConfigSiteCommand configSiteCommand,
@@ -37,9 +39,24 @@ internal sealed partial class Wizard(
         LogStartingWizard(logger);
         ShowWelcomeScreen();
 
-        // Step 1: Configure project (creates project.json)
+        // Collect required and optional steps from plugins
+        var requiredSteps = wizardSteps
+            .Where(s => s.IsRequired && s.ShouldPrompt())
+            .OrderBy(s => s.Order)
+            .ToList();
+
+        var optionalSteps = wizardSteps
+            .Where(s => !s.IsRequired && s.ShouldPrompt())
+            .OrderBy(s => s.Order)
+            .ToList();
+
+        // Total steps = 1 (project) + required plugin steps + 1 (site)
+        var totalSteps = 2 + requiredSteps.Count;
+        var currentStep = 1;
+
+        // Step 1: Configure project (creates project.json) — always host-owned
         AnsiConsole.WriteLine();
-        AnsiConsole.MarkupLine("[cyan]━━━ Step 1/5: Project Settings ━━━[/]");
+        AnsiConsole.MarkupLine($"[cyan]━━━ Step {currentStep}/{totalSteps}: Project Settings ━━━[/]");
         AnsiConsole.MarkupLine("[dim]Configure your project name and base URL.[/]");
         AnsiConsole.WriteLine();
 
@@ -50,74 +67,32 @@ internal sealed partial class Wizard(
             return 1;
         }
 
-        // Step 2: Configure directory paths (from Generate Plugin, optional)
-        AnsiConsole.WriteLine();
-        AnsiConsole.MarkupLine("[cyan]━━━ Step 2/5: Directory Paths ━━━[/]");
-        AnsiConsole.MarkupLine("[dim]Configure source and output directories (defaults work for most users).[/]");
-        AnsiConsole.WriteLine();
+        currentStep++;
 
-        var configPathsCommand = serviceProvider.GetService<Spectara.Revela.Plugins.Generate.Commands.ConfigPathsCommand>();
-        if (configPathsCommand is not null)
+        // Required plugin steps (paths, theme, images — in Order sequence)
+        foreach (var step in requiredSteps)
         {
-            var pathsResult = await configPathsCommand.ExecuteAsync(null, null, cancellationToken);
-            if (pathsResult != 0)
+            AnsiConsole.WriteLine();
+            AnsiConsole.MarkupLine($"[cyan]━━━ Step {currentStep}/{totalSteps}: {Markup.Escape(step.Name)} ━━━[/]");
+            AnsiConsole.MarkupLine($"[dim]{Markup.Escape(step.Description)}.[/]");
+            AnsiConsole.WriteLine();
+
+            var result = await step.ExecuteAsync(cancellationToken);
+            if (result != 0)
             {
-                ShowStepFailedError("paths configuration");
+                ShowStepFailedError(step.Name);
                 return 1;
             }
-        }
-        else
-        {
-            AnsiConsole.MarkupLine($"{OutputMarkers.Info} Paths configuration not available (Generate plugin not installed)");
+
+            currentStep++;
         }
 
-        // Step 3: Select theme (from Theme Plugin, optional)
+        // Last required step: Configure site metadata — always host-owned
         AnsiConsole.WriteLine();
-        AnsiConsole.MarkupLine("[cyan]━━━ Step 3/5: Select Theme ━━━[/]");
-        AnsiConsole.MarkupLine("[dim]Choose a theme for your site.[/]");
-        AnsiConsole.WriteLine();
-
-        var configThemeCommand = serviceProvider.GetService<Spectara.Revela.Plugins.Theme.Commands.ConfigThemeCommand>();
-        if (configThemeCommand is not null)
-        {
-            var themeResult = await configThemeCommand.ExecuteAsync(null, cancellationToken);
-            if (themeResult != 0)
-            {
-                ShowStepFailedError("theme selection");
-                return 1;
-            }
-        }
-        else
-        {
-            AnsiConsole.MarkupLine($"{OutputMarkers.Info} Theme configuration not available (Theme plugin not installed)");
-        }
-
-        // Step 4: Configure image settings (from Generate Plugin, optional)
-        AnsiConsole.WriteLine();
-        AnsiConsole.MarkupLine("[cyan]━━━ Step 4/5: Image Settings ━━━[/]");
-        AnsiConsole.MarkupLine("[dim]Configure output formats and sizes for your images.[/]");
-        AnsiConsole.WriteLine();
-
-        var configImageCommand = serviceProvider.GetService<Spectara.Revela.Plugins.Generate.Commands.ConfigImageCommand>();
-        if (configImageCommand is not null)
-        {
-            var imageResult = await configImageCommand.ExecuteAsync(null, cancellationToken);
-            if (imageResult != 0)
-            {
-                ShowStepFailedError("image configuration");
-                return 1;
-            }
-        }
-        else
-        {
-            AnsiConsole.MarkupLine($"{OutputMarkers.Info} Image configuration not available (Generate plugin not installed)");
-        }
-
-        // Step 5: Configure site metadata
-        AnsiConsole.WriteLine();
-        AnsiConsole.MarkupLine("[cyan]━━━ Step 5/5: Site Metadata ━━━[/]");
+        AnsiConsole.MarkupLine($"[cyan]━━━ Step {currentStep}/{totalSteps}: Site Metadata ━━━[/]");
         AnsiConsole.MarkupLine("[dim]Configure your site title, author, and other metadata.[/]");
         AnsiConsole.WriteLine();
+
         var siteResult = await configSiteCommand.ExecuteAsync(cancellationToken);
         if (siteResult != 0)
         {
@@ -125,8 +100,8 @@ internal sealed partial class Wizard(
             return 1;
         }
 
-        // Optional: Run plugin-provided wizard steps
-        await RunOptionalWizardStepsAsync(cancellationToken);
+        // Optional: Run plugin-provided optional wizard steps
+        await RunOptionalWizardStepsAsync(optionalSteps, cancellationToken);
 
         // Done - show summary
         ShowCompletionSummary();
@@ -137,16 +112,12 @@ internal sealed partial class Wizard(
     }
 
     /// <summary>
-    /// Prompts the user to optionally run plugin-provided wizard steps.
+    /// Runs optional plugin-provided wizard steps as checkboxes.
     /// </summary>
-    private async Task RunOptionalWizardStepsAsync(CancellationToken cancellationToken)
+    private static async Task RunOptionalWizardStepsAsync(
+        List<IWizardStep> availableSteps,
+        CancellationToken cancellationToken)
     {
-        // Get available wizard steps that should be prompted
-        var availableSteps = wizardSteps
-            .Where(step => step.ShouldPrompt())
-            .OrderBy(step => step.Order)
-            .ToList();
-
         if (availableSteps.Count == 0)
         {
             return;

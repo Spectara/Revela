@@ -1,7 +1,9 @@
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 using Spectara.Revela.Core.Services;
 using Spectara.Revela.Plugins.Theme.Commands;
+using Spectara.Revela.Plugins.Theme.Wizard;
 using Spectara.Revela.Sdk.Abstractions;
 
 namespace Spectara.Revela.Plugins.Theme;
@@ -23,17 +25,20 @@ public sealed class ThemePlugin : IPlugin
     /// <inheritdoc />
     public void ConfigureServices(IServiceCollection services)
     {
-        // Theme infrastructure
-        services.AddSingleton<IThemeResolver, ThemeResolver>();
+        // Theme infrastructure (TryAdd for idempotent registration)
+        services.TryAddSingleton<IThemeResolver, ThemeResolver>();
 
         // Commands
-        services.AddTransient<ThemeCommand>();
-        services.AddTransient<ThemeListCommand>();
-        services.AddTransient<ThemeFilesCommand>();
-        services.AddTransient<ThemeExtractCommand>();
-        services.AddTransient<ThemeInstallCommand>();
-        services.AddTransient<ThemeUninstallCommand>();
-        services.AddTransient<ConfigThemeCommand>();
+        services.TryAddTransient<ThemeCommand>();
+        services.TryAddTransient<ThemeListCommand>();
+        services.TryAddTransient<ThemeFilesCommand>();
+        services.TryAddTransient<ThemeExtractCommand>();
+        services.TryAddTransient<ThemeInstallCommand>();
+        services.TryAddTransient<ThemeUninstallCommand>();
+        services.TryAddTransient<ConfigThemeCommand>();
+
+        // Wizard steps (project setup)
+        services.TryAddEnumerable(ServiceDescriptor.Transient<IWizardStep, ThemeWizardStep>());
     }
 
     /// <inheritdoc />

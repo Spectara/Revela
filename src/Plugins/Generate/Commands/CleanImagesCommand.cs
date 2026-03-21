@@ -38,10 +38,19 @@ internal sealed partial class CleanImagesCommand(
     IPathResolver pathResolver,
     IManifestRepository manifestRepository,
     IOptionsMonitor<GenerateConfig> generateConfig,
-    IOptionsMonitor<ThemeConfig> themeConfig)
+    IOptionsMonitor<ThemeConfig> themeConfig) : ICleanStep
 {
+    /// <inheritdoc />
+    public string Name => "images";
+
+    /// <inheritdoc />
+    public string Description => "Clean unused image files (orphaned, wrong sizes/formats)";
+
+    /// <inheritdoc />
+    int ICleanStep.Order => CleanStepOrder.Images;
+
     /// <summary>Order for this command in menu (between output=10 and cache=20).</summary>
-    public const int Order = 15;
+    public const int MenuOrder = 15;
 
     /// <summary>Images subdirectory within output.</summary>
     private const string ImagesDirectory = "images";
@@ -70,6 +79,10 @@ internal sealed partial class CleanImagesCommand(
 
         return command;
     }
+
+    /// <inheritdoc />
+    public Task<int> ExecuteAsync(CancellationToken cancellationToken) =>
+        ExecuteAsync(dryRun: false, cancellationToken);
 
     private async Task<int> ExecuteAsync(bool dryRun, CancellationToken cancellationToken)
     {

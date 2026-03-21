@@ -35,7 +35,12 @@ internal sealed partial class AllCommand(
     /// </summary>
     public Command Create()
     {
-        var command = new Command("all", "Execute full pipeline (scan → statistics → pages → images)");
+        var stepNames = string.Join(" → ", generateSteps.OrderBy(s => s.Order).Select(s => s.Name));
+        var description = stepNames.Length > 0
+            ? $"Execute full pipeline ({stepNames})"
+            : "Execute full pipeline";
+
+        var command = new Command("all", description);
 
         command.SetAction(async (_, cancellationToken) => await ExecuteAsync(cancellationToken));
 

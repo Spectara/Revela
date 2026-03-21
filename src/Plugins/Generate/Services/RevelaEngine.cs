@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Spectara.Revela.Plugins.Generate.Abstractions;
 using Spectara.Revela.Plugins.Generate.Models.Results;
 using Spectara.Revela.Sdk.Abstractions.Engine;
@@ -116,7 +117,7 @@ internal sealed partial class RevelaEngine(
         CancellationToken cancellationToken)
     {
         LogGenerateAllStarted(logger);
-        var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+        var stopwatch = Stopwatch.StartNew();
 
         // Phase 1: Scan
         progress?.Report(new GenerateProgress { StepName = "Scan", CurrentStep = 0, TotalSteps = 3 });

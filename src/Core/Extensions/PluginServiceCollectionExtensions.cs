@@ -58,6 +58,7 @@ public static class PluginServiceCollectionExtensions
 
         using var loggerFactory = CreateBootstrapLoggerFactory();
         var plugins = LoadPlugins(options, loggerFactory);
+        ValidatePluginDependencies(plugins, loggerFactory);
         ConfigurePlugins(services, configuration, plugins, loggerFactory);
         RegisterPluginServices(services, plugins);
     }
@@ -95,6 +96,71 @@ public static class PluginServiceCollectionExtensions
         }
 
         return plugins;
+    }
+
+    /// <summary>
+    /// Validates plugin dependencies and removes plugins with unmet requirements.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Checks <see cref="PluginMetadata.RequiredPlugins"/> for each plugin.
+    /// If any required plugin is not loaded, the dependent plugin is removed with an error.
+    /// </para>
+    /// <para>
+    /// <see cref="PluginMetadata.ExtendsPlugins"/> are informational only —
+    /// extension commands are skipped at registration time if the parent plugin is absent.
+    /// </para>
+    /// </remarks>
+    private static void ValidatePluginDependencies(
+        List<LoadedPluginInfo> plugins,
+        ILoggerFactory loggerFactory)
+    {
+        var logger = loggerFactory.CreateLogger("Spectara.Revela.Core.PluginBootstrap");
+        var loadedNames = new HashSet<string>(
+            plugins.Select(p => p.Plugin.Metadata.Name),
+            StringComparer.OrdinalIgnoreCase);
+
+        // Multiple passes to handle transitive dependencies
+        bool removedAny;
+        do
+        {
+            removedAny = false;
+            for (var i = plugins.Count - 1; i >= 0; i--)
+            {
+                var plugin = plugins[i].Plugin;
+                var missing = plugin.Metadata.RequiredPlugins
+                    .Where(req => !loadedNames.Contains(req))
+                    .ToList();
+
+                if (missing.Count > 0)
+                {
+                    var missingList = string.Join(", ", missing);
+                    Console.Error.WriteLine(
+                        $"Error: Plugin '{plugin.Metadata.Name}' requires [{missingList}] but they are not installed. Plugin will not be loaded.");
+                    logger.PluginDependencyMissing(plugin.Metadata.Name, missingList);
+
+                    loadedNames.Remove(plugin.Metadata.Name);
+                    plugins.RemoveAt(i);
+                    removedAny = true;
+                }
+            }
+        }
+        while (removedAny);
+
+        // Log info for optional extensions with missing targets
+        foreach (var pluginInfo in plugins)
+        {
+            var plugin = pluginInfo.Plugin;
+            var missingExtensions = plugin.Metadata.ExtendsPlugins
+                .Where(ext => !loadedNames.Contains(ext))
+                .ToList();
+
+            if (missingExtensions.Count > 0)
+            {
+                var extList = string.Join(", ", missingExtensions);
+                logger.PluginExtensionTargetMissing(plugin.Metadata.Name, extList);
+            }
+        }
     }
 
     /// <summary>

@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Text.Json;
 using Microsoft.Extensions.Options;
 using Scriban.Runtime;
@@ -97,7 +98,7 @@ internal sealed partial class RenderService(
         IProgress<RenderProgress>? progress = null,
         CancellationToken cancellationToken = default)
     {
-        var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+        var stopwatch = Stopwatch.StartNew();
 
         try
         {

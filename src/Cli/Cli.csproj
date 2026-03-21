@@ -47,6 +47,10 @@
     <PackageReference Include="Microsoft.Extensions.Logging.Debug" />
     <PackageReference Include="System.CommandLine" />
     <PackageReference Include="Spectre.Console" />
+    <!-- Native image processing library — must be in the host for single-file publish.
+         Generate plugin uses NetVips managed wrapper, but the native DLL must be
+         extracted from the single-file bundle by the host at runtime. -->
+    <PackageReference Include="NetVips.Native" />
   </ItemGroup>
 
   <PropertyGroup Label="Package Icon">

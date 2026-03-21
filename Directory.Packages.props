@@ -28,14 +28,14 @@
     <PackageVersion Include="Spectre.Console" Version="0.54.0" />
   </ItemGroup>
   <ItemGroup Label="Template Engine">
-    <PackageVersion Include="Scriban" Version="6.5.7" />
+    <PackageVersion Include="Scriban" Version="6.6.0" />
   </ItemGroup>
   <ItemGroup Label="Markdown Parser">
     <PackageVersion Include="Markdig" Version="1.1.1" />
   </ItemGroup>
   <ItemGroup Label="Image Processing">
     <PackageVersion Include="NetVips" Version="3.2.0" />
-    <PackageVersion Include="NetVips.Native" Version="8.18.0" />
+    <PackageVersion Include="NetVips.Native" Version="8.18.1" />
   </ItemGroup>
   <ItemGroup Label="Plugin Management">
     <PackageVersion Include="NuGet.Protocol" Version="7.3.0" />

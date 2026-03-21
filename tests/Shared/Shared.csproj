@@ -16,6 +16,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\Core\Core.csproj" />
     <ProjectReference Include="..\..\src\Commands\Commands.csproj" />
+    <ProjectReference Include="..\..\src\Plugins\Generate\Generate.csproj" />
     <ProjectReference Include="..\..\src\Plugins\Source\OneDrive\OneDrive.csproj" />
   </ItemGroup>
 

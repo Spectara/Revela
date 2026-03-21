@@ -23,6 +23,7 @@ internal sealed class CommandOrderRegistry
     private readonly Dictionary<Command, string> groupMap = [];
     private readonly HashSet<Command> noProjectRequired = [];
     private readonly HashSet<Command> hideWhenProjectExists = [];
+    private readonly HashSet<Command> pipelineSteps = [];
 
     /// <summary>
     /// Registers the display order for a command.
@@ -71,6 +72,19 @@ internal sealed class CommandOrderRegistry
     /// <param name="command">The command to check.</param>
     /// <returns>True if the command should be hidden when project exists.</returns>
     public bool ShouldHideWhenProjectExists(Command command) => hideWhenProjectExists.Contains(command);
+
+    /// <summary>
+    /// Marks a command as a pipeline step (included in "all" command).
+    /// </summary>
+    /// <param name="command">The pipeline step command.</param>
+    public void RegisterPipelineStep(Command command) => pipelineSteps.Add(command);
+
+    /// <summary>
+    /// Gets whether a command is a pipeline step.
+    /// </summary>
+    /// <param name="command">The command to check.</param>
+    /// <returns>True if the command is a pipeline step.</returns>
+    public bool IsPipelineStep(Command command) => pipelineSteps.Contains(command);
 
     /// <summary>
     /// Gets the display order for a command.

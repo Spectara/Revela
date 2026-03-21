@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Microsoft.Extensions.Options;
 using Spectara.Revela.Core.Configuration;
 using Spectara.Revela.Core.Services;
@@ -51,7 +52,7 @@ internal sealed partial class ContentService(
         IProgress<ContentProgress>? progress = null,
         CancellationToken cancellationToken = default)
     {
-        var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+        var stopwatch = Stopwatch.StartNew();
 
         try
         {

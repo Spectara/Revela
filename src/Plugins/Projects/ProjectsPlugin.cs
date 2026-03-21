@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 using Spectara.Revela.Plugins.Projects.Commands;
 using Spectara.Revela.Sdk.Abstractions;
@@ -22,10 +23,10 @@ public sealed class ProjectsPlugin : IPlugin
     /// <inheritdoc />
     public void ConfigureServices(IServiceCollection services)
     {
-        services.AddTransient<ProjectsCommand>();
-        services.AddTransient<ProjectsListCommand>();
-        services.AddTransient<ProjectsCreateCommand>();
-        services.AddTransient<ProjectsDeleteCommand>();
+        services.TryAddTransient<ProjectsCommand>();
+        services.TryAddTransient<ProjectsListCommand>();
+        services.TryAddTransient<ProjectsCreateCommand>();
+        services.TryAddTransient<ProjectsDeleteCommand>();
     }
 
     /// <inheritdoc />

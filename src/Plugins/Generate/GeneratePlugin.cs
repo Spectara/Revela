@@ -19,28 +19,82 @@ public sealed class GeneratePlugin : IPlugin
     };
 
     /// <inheritdoc />
-    public void ConfigureServices(IServiceCollection services)
-    {
-        // Services will be registered here as code is migrated from Commands
-    }
+    public void ConfigureServices(IServiceCollection services) => services.AddGenerateFeature();
 
     /// <inheritdoc />
     public IEnumerable<CommandDescriptor> GetCommands(IServiceProvider services)
     {
-        var generateCommand = services.GetRequiredService<Commands.GenerateCommand>();
+        // Generate parent command
         yield return new CommandDescriptor(
-            generateCommand.Create(),
+            Commands.GenerateCommand.Create(),
             Order: 10,
             Group: "Build",
             RequiresProject: true);
 
-        var cleanCommand = services.GetRequiredService<Commands.CleanCommand>();
+        // Generate pipeline steps (IsSequentialStep → included in "all" command)
+        var allCommand = services.GetRequiredService<Commands.AllCommand>();
         yield return new CommandDescriptor(
-            cleanCommand.Create(),
+            allCommand.Create(),
+            ParentCommand: "generate",
+            Order: 0);
+
+        var scanCommand = services.GetRequiredService<Commands.ScanCommand>();
+        yield return new CommandDescriptor(
+            scanCommand.Create(),
+            ParentCommand: "generate",
+            Order: 10,
+            IsSequentialStep: true);
+
+        var pagesCommand = services.GetRequiredService<Commands.PagesCommand>();
+        yield return new CommandDescriptor(
+            pagesCommand.Create(),
+            ParentCommand: "generate",
+            Order: 30,
+            IsSequentialStep: true);
+
+        var imagesCommand = services.GetRequiredService<Commands.ImagesCommand>();
+        yield return new CommandDescriptor(
+            imagesCommand.Create(),
+            ParentCommand: "generate",
+            Order: 40,
+            IsSequentialStep: true);
+
+        // Clean parent command
+        yield return new CommandDescriptor(
+            Commands.CleanCommand.Create(),
             Order: 20,
             Group: "Build",
             RequiresProject: true);
 
+        // Clean pipeline steps (IsSequentialStep → included in "all" command)
+        var cleanAllCommand = services.GetRequiredService<Commands.CleanAllCommand>();
+        yield return new CommandDescriptor(
+            cleanAllCommand.Create(),
+            ParentCommand: "clean",
+            Order: 0);
+
+        var cleanOutputCommand = services.GetRequiredService<Commands.CleanOutputCommand>();
+        yield return new CommandDescriptor(
+            cleanOutputCommand.Create(),
+            ParentCommand: "clean",
+            Order: 10,
+            IsSequentialStep: true);
+
+        var cleanImagesCommand = services.GetRequiredService<Commands.CleanImagesCommand>();
+        yield return new CommandDescriptor(
+            cleanImagesCommand.Create(),
+            ParentCommand: "clean",
+            Order: 15,
+            IsSequentialStep: true);
+
+        var cleanCacheCommand = services.GetRequiredService<Commands.CleanCacheCommand>();
+        yield return new CommandDescriptor(
+            cleanCacheCommand.Create(),
+            ParentCommand: "clean",
+            Order: 20,
+            IsSequentialStep: true);
+
+        // Create command
         var createCommand = services.GetRequiredService<Commands.CreateCommand>();
         yield return new CommandDescriptor(
             createCommand.Create(),

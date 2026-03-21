@@ -9,29 +9,29 @@ using Spectara.Revela.Sdk.Output;
 
 using Spectre.Console;
 
-namespace Spectara.Revela.Plugins.Statistics.Commands;
+namespace Spectara.Revela.Plugins.Calendar.Commands;
 
 /// <summary>
-/// Cleans statistics JSON files from the cache directory.
+/// Cleans calendar JSON files from the cache directory.
 /// </summary>
-internal sealed partial class CleanStatisticsCommand(
-    ILogger<CleanStatisticsCommand> logger,
+internal sealed partial class CleanCalendarCommand(
+    ILogger<CleanCalendarCommand> logger,
     IOptions<ProjectEnvironment> projectEnvironment) : ICleanStep
 {
     /// <inheritdoc />
-    public string Name => "statistics";
+    public string Name => "calendar";
 
     /// <inheritdoc />
-    public string Description => "Clean statistics JSON files from cache";
+    public string Description => "Clean calendar JSON files from cache";
 
     /// <inheritdoc />
-    int ICleanStep.Order => 300;
+    int ICleanStep.Order => 350;
 
     /// <summary>Order for this command in menu.</summary>
-    public const int MenuOrder = 30;
+    public const int MenuOrder = 35;
 
-    /// <summary>Statistics JSON filename.</summary>
-    private const string StatisticsFileName = "statistics.json";
+    /// <summary>Calendar JSON filename.</summary>
+    private const string CalendarFileName = "calendar.json";
 
     /// <summary>Gets full path to cache directory.</summary>
     private string CachePath => Path.Combine(projectEnvironment.Value.Path, ProjectPaths.Cache);
@@ -41,37 +41,35 @@ internal sealed partial class CleanStatisticsCommand(
     /// </summary>
     public Command Create()
     {
-        var command = new Command("statistics", "Clean statistics JSON files from cache");
+        var command = new Command("calendar", "Clean calendar JSON files from cache");
 
         command.SetAction(async (parseResult, cancellationToken) => await ExecuteAsync(cancellationToken));
 
         return command;
     }
 
+    /// <inheritdoc />
     public Task<int> ExecuteAsync(CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
-        // If cache doesn't exist, nothing to clean - exit silently
-        // (this is expected when running after 'clean cache' or 'clean all')
         if (!Directory.Exists(CachePath))
         {
             return Task.FromResult(0);
         }
 
-        // Find all statistics.json files in .cache
-        var statsFiles = Directory.GetFiles(CachePath, StatisticsFileName, SearchOption.AllDirectories);
+        var calendarFiles = Directory.GetFiles(CachePath, CalendarFileName, SearchOption.AllDirectories);
 
-        if (statsFiles.Length == 0)
+        if (calendarFiles.Length == 0)
         {
-            AnsiConsole.MarkupLine("[dim]No statistics.json files found in cache[/]");
+            AnsiConsole.MarkupLine("[dim]No calendar.json files found in cache[/]");
             return Task.FromResult(0);
         }
 
         var deletedCount = 0;
         long totalSize = 0;
 
-        foreach (var file in statsFiles)
+        foreach (var file in calendarFiles)
         {
             cancellationToken.ThrowIfCancellationRequested();
 
@@ -97,7 +95,7 @@ internal sealed partial class CleanStatisticsCommand(
 
         if (deletedCount > 0)
         {
-            AnsiConsole.MarkupLine($"{OutputMarkers.Success} Deleted [cyan]{deletedCount}[/] statistics.json file(s) ({FormatSize(totalSize)})");
+            AnsiConsole.MarkupLine($"{OutputMarkers.Success} Deleted [cyan]{deletedCount}[/] calendar.json file(s) ({FormatSize(totalSize)})");
         }
 
         return Task.FromResult(0);
@@ -107,10 +105,10 @@ internal sealed partial class CleanStatisticsCommand(
     {
         < 1024 => string.Format(CultureInfo.InvariantCulture, "{0} B", bytes),
         < 1024 * 1024 => string.Format(CultureInfo.InvariantCulture, "{0:0.#} KB", bytes / 1024.0),
-        _ => string.Format(CultureInfo.InvariantCulture, "{0:0.#} MB", bytes / (1024.0 * 1024.0))
+        _ => string.Format(CultureInfo.InvariantCulture, "{0:0.#} MB", bytes / (1024.0 * 1024.0)),
     };
 
-    [LoggerMessage(Level = LogLevel.Debug, Message = "Deleted statistics file: {Path}")]
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Deleted calendar file: {Path}")]
     private static partial void LogFileDeleted(ILogger logger, string path);
 
     [LoggerMessage(Level = LogLevel.Error, Message = "Failed to delete {Path}")]

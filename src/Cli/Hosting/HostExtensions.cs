@@ -4,7 +4,6 @@ using System.CommandLine.Help;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
-using Spectara.Revela.Plugins.Generate.Commands;
 using Spectara.Revela.Sdk.Abstractions;
 
 namespace Spectara.Revela.Cli.Hosting;
@@ -60,7 +59,7 @@ internal static class HostExtensions
         var rootCommand = new RootCommand(description);
 
         // Unified command registration callback
-        void OnCommandRegistered(Command cmd, int order, string? group, bool requiresProject, bool hideWhenProjectExists)
+        void OnCommandRegistered(Command cmd, int order, string? group, bool requiresProject, bool hideWhenProjectExists, bool isSequentialStep)
         {
             orderRegistry.Register(cmd, order);
             if (!string.IsNullOrEmpty(group))
@@ -78,6 +77,11 @@ internal static class HostExtensions
             {
                 orderRegistry.RegisterHideWhenProjectExists(cmd);
             }
+
+            if (isSequentialStep)
+            {
+                orderRegistry.RegisterPipelineStep(cmd);
+            }
         }
 
         // Core commands (via CoreCommandProvider, same pattern as plugins)
@@ -90,14 +94,22 @@ internal static class HostExtensions
                 descriptor.Order,
                 descriptor.Group,
                 descriptor.RequiresProject,
-                descriptor.HideWhenProjectExists);
-
-            // Register subcommand orders for commands with special handling
-            RegisterSubcommandOrders(descriptor.Command, orderRegistry);
+                descriptor.HideWhenProjectExists,
+                descriptor.IsSequentialStep);
         }
 
         // Plugin commands (same callback for unified handling)
         plugins.RegisterCommands(rootCommand, services, OnCommandRegistered);
+
+        // Register subcommand orders for ALL commands (core + plugin-provided)
+        // This must happen AFTER plugins have registered and merged their commands
+        foreach (var cmd in rootCommand.Subcommands)
+        {
+            RegisterSubcommandOrders(cmd, orderRegistry);
+        }
+
+        // Pipeline step markers are now registered via IsSequentialStep on CommandDescriptor
+        // (handled in OnCommandRegistered callback above — no DI lookup needed)
 
         // Register config subcommand orders AFTER plugins have added their subcommands
         var configCmd = rootCommand.Subcommands.FirstOrDefault(c => string.Equals(c.Name, "config", StringComparison.Ordinal));
@@ -160,21 +172,26 @@ internal static class HostExtensions
     /// </summary>
     private static readonly Dictionary<string, Dictionary<string, int>> SubcommandOrders = new(StringComparer.Ordinal)
     {
-        // Order within generate: all (0), scan (10), statistics (20-plugin), pages (30), images (40)
+        // Order within generate: all (0), scan (10), statistics (20), calendar (25), pages (30), images (40), compress (50)
         ["generate"] = new(StringComparer.Ordinal)
         {
             ["all"] = 0,
             ["scan"] = 10,
+            ["statistics"] = 20,
+            ["calendar"] = 25,
             ["pages"] = 30,
             ["images"] = 40,
+            ["compress"] = 50,
         },
-        // Order within clean: all (0), output (10), images (15), cache (20), statistics (30-plugin)
+        // Order within clean: all (0), output (10), images (15), cache (20), statistics (30-plugin), compress (40-plugin)
         ["clean"] = new(StringComparer.Ordinal)
         {
-            ["all"] = CleanAllCommand.Order,
-            ["output"] = CleanOutputCommand.Order,
-            ["images"] = CleanImagesCommand.Order,
-            ["cache"] = CleanCacheCommand.Order,
+            ["all"] = 0,
+            ["output"] = 10,
+            ["images"] = 15,
+            ["cache"] = 20,
+            ["statistics"] = 30,
+            ["compress"] = 40,
         },
         // Order within theme: list (10), files (20), extract (30)
         ["theme"] = new(StringComparer.Ordinal)

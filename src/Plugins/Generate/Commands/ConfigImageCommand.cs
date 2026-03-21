@@ -270,13 +270,12 @@ internal sealed partial class ConfigImageCommand(
             .InstructionsText("[grey](Press [blue]<space>[/] to toggle, [green]<enter>[/] to accept)[/]")
             .AddChoices(formatChoices);
 
-        // Pre-select from defaults (if available)
-        if (defaultFormats is not null)
+        // Pre-select: use current config or theme defaults, fall back to jpg-only for new projects
+        // (avif/webp are expensive to encode — let users opt in)
+        var preselected = defaultFormats ?? new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase) { ["jpg"] = 90 };
+        foreach (var format in preselected.Keys)
         {
-            foreach (var format in defaultFormats.Keys)
-            {
-                prompt.Select(format);
-            }
+            prompt.Select(format);
         }
 
         var selectedFormats = AnsiConsole.Prompt(prompt);

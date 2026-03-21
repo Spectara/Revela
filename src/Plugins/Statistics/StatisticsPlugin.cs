@@ -40,6 +40,9 @@ public sealed class StatisticsPlugin : IPlugin
         // Register StatsCommand as IGenerateStep for pipeline orchestration
         services.AddTransient<IGenerateStep, StatsCommand>();
 
+        // Register CleanStatisticsCommand as ICleanStep for clean pipeline
+        services.AddTransient<ICleanStep, CleanStatisticsCommand>();
+
         // Register Page Template for init commands
         services.AddSingleton<IPageTemplate, StatsPageTemplate>();
     }
@@ -54,11 +57,11 @@ public sealed class StatisticsPlugin : IPlugin
 
         // Register stats command → revela generate statistics
         // Order 20 places it between scan (10) and pages (30) in interactive menu
-        yield return new CommandDescriptor(statsCommand.Create(), ParentCommand: "generate", Order: 20);
+        yield return new CommandDescriptor(statsCommand.Create(), ParentCommand: "generate", Order: 20, IsSequentialStep: true);
 
         // Register clean statistics command → revela clean statistics
         // Order 30 places it after output (10) and cache (20) in interactive menu
-        yield return new CommandDescriptor(cleanStatsCommand.Create(), ParentCommand: "clean", Order: CleanStatisticsCommand.Order);
+        yield return new CommandDescriptor(cleanStatsCommand.Create(), ParentCommand: "clean", Order: CleanStatisticsCommand.MenuOrder, IsSequentialStep: true);
 
         // Register config command → revela config statistics
         yield return new CommandDescriptor(configCommand.Create(), ParentCommand: "config");

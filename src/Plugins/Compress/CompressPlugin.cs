@@ -38,6 +38,9 @@ public sealed class CompressPlugin : IPlugin
         services.AddTransient<CompressCommand>();
         services.AddTransient<CleanCompressCommand>();
 
+        // Register CleanCompressCommand as ICleanStep for clean pipeline
+        services.AddTransient<ICleanStep, CleanCompressCommand>();
+
         // Note: CompressCommand is NOT registered as IGenerateStep
         // Pre-compression requires server configuration (nginx gzip_static, etc.)
         // Users who need it can run 'revela generate compress' explicitly
@@ -62,6 +65,7 @@ public sealed class CompressPlugin : IPlugin
         yield return new CommandDescriptor(
             cleanCompressCommand.Create(),
             ParentCommand: "clean",
-            Order: CleanCompressCommand.Order);
+            Order: CleanCompressCommand.MenuOrder,
+            IsSequentialStep: true);
     }
 }

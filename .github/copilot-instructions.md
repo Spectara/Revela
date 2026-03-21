@@ -287,8 +287,8 @@ public interface IPlugin
     IEnumerable<CommandDescriptor> GetCommands(IServiceProvider services) => [];
 }
 
-// PluginMetadata is a sealed record (not an interface!)
-public sealed record PluginMetadata
+// PluginMetadata is a record (not sealed — ThemeMetadata inherits from it)
+public record PluginMetadata
 {
     public required string Name { get; init; }
     public required string Version { get; init; }
@@ -340,7 +340,8 @@ public static void AddPlugins(
 Plugins specify **parent command** in `CommandDescriptor`, NOT in metadata:
 
 ```csharp
-// PluginMetadata is a sealed record — Name, Version, Description, Author
+// PluginMetadata is a record — Name, Version, Description, Author
+// (not sealed: ThemeMetadata extends it with PreviewImageUri, Tags)
 public PluginMetadata Metadata => new()
 {
     Name = "Source OneDrive",
