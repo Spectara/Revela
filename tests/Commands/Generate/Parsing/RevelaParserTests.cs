@@ -1,5 +1,5 @@
-using Spectara.Revela.Plugins.Generate.Infrastructure;
-using Spectara.Revela.Plugins.Generate.Models;
+using Spectara.Revela.Plugins.Core.Generate.Infrastructure;
+using Spectara.Revela.Plugins.Core.Generate.Models;
 
 namespace Spectara.Revela.Tests.Commands.Generate.Parsing;
 

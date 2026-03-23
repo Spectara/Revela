@@ -457,9 +457,9 @@ Packages:
   Spectara.Revela.Sdk                           ← plugin developer SDK
 
 Plugins (tag: revela-plugin):
-  Spectara.Revela.Plugins.Generate              ← core generation
-  Spectara.Revela.Plugins.Theme                 ← theme management
-  Spectara.Revela.Plugins.Projects              ← project management
+  Spectara.Revela.Plugins.Core.Generate           ← core generation
+  Spectara.Revela.Plugins.Core.Theme               ← theme management
+  Spectara.Revela.Plugins.Core.Projects             ← project management
   Spectara.Revela.Plugins.Setup                 ← interactive wizard (optional)
   Spectara.Revela.Plugins.Serve                 ← dev server
   Spectara.Revela.Plugins.Compress              ← gzip/brotli
@@ -556,7 +556,7 @@ ExtendsPlugins missing   → Plugin loads, extension commands skipped, info log
 public PluginMetadata Metadata => new()
 {
     Name = "Statistics",
-    RequiredPlugins = ["Spectara.Revela.Plugins.Generate"],
+    RequiredPlugins = ["Spectara.Revela.Plugins.Core.Generate"],
     ExtendsPlugins = ["Spectara.Revela.Plugins.Clean",
                       "Spectara.Revela.Plugins.Config"]
 };

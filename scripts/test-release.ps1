@@ -175,9 +175,9 @@ try {
 
         # Plugins/Themes are Debug-only in Cli.csproj, build them separately in Release
         $extraProjects = @(
-            "src/Plugins/Generate/Generate.csproj",
-            "src/Plugins/Theme/Theme.csproj",
-            "src/Plugins/Projects/Projects.csproj",
+            "src/Plugins/Core/Generate/Generate.csproj",
+            "src/Plugins/Core/Theme/Theme.csproj",
+            "src/Plugins/Core/Projects/Projects.csproj",
             "src/Plugins/Compress/Compress.csproj",
             "src/Plugins/Serve/Serve.csproj",
             "src/Plugins/Source/OneDrive/OneDrive.csproj",
@@ -279,9 +279,9 @@ try {
 
         # Pack all packages from existing build output (no rebuild!)
         $packTargets = @(
-            @{ Name = "Generate";          Proj = "src/Plugins/Generate/Generate.csproj";                           Out = $PluginsDir },
-            @{ Name = "Theme";             Proj = "src/Plugins/Theme/Theme.csproj";                                 Out = $PluginsDir },
-            @{ Name = "Projects";          Proj = "src/Plugins/Projects/Projects.csproj";                           Out = $PluginsDir },
+            @{ Name = "Generate";          Proj = "src/Plugins/Core/Generate/Generate.csproj";                      Out = $PluginsDir },
+            @{ Name = "Theme";             Proj = "src/Plugins/Core/Theme/Theme.csproj";                            Out = $PluginsDir },
+            @{ Name = "Projects";          Proj = "src/Plugins/Core/Projects/Projects.csproj";                      Out = $PluginsDir },
             @{ Name = "Lumina";            Proj = "src/Themes/Lumina/Lumina.csproj";                                 Out = $PluginsDir },
             @{ Name = "Lumina.Statistics";  Proj = "src/Themes/Lumina.Statistics/Lumina.Statistics.csproj";           Out = $PluginsDir },
             @{ Name = "Sdk";                Proj = "src/Sdk/Sdk.csproj";                                             Out = $NuGetDir },
@@ -343,20 +343,20 @@ try {
         Push-Location $SampleProjectDir
         try {
             # Install core plugins (new in v2: Generate, Theme, Projects are plugins now)
-            Write-Info "Installing Generate..."
-            & $ExePath plugin install Generate --version $Version --source $PluginsDir
+            Write-Info "Installing Core.Generate..."
+            & $ExePath plugin install Core.Generate --version $Version --source $PluginsDir
             if ($LASTEXITCODE -ne 0) { throw "Generate plugin installation failed" }
-            Write-Success "Generate installed"
+            Write-Success "Core.Generate installed"
 
-            Write-Info "Installing Theme..."
-            & $ExePath plugin install Theme --version $Version --source $PluginsDir
+            Write-Info "Installing Core.Theme..."
+            & $ExePath plugin install Core.Theme --version $Version --source $PluginsDir
             if ($LASTEXITCODE -ne 0) { throw "Theme plugin installation failed" }
-            Write-Success "Theme installed"
+            Write-Success "Core.Theme installed"
 
-            Write-Info "Installing Projects..."
-            & $ExePath plugin install Projects --version $Version --source $PluginsDir
+            Write-Info "Installing Core.Projects..."
+            & $ExePath plugin install Core.Projects --version $Version --source $PluginsDir
             if ($LASTEXITCODE -ne 0) { throw "Projects plugin installation failed" }
-            Write-Success "Projects installed"
+            Write-Success "Core.Projects installed"
 
             # Install addon plugins
             Write-Info "Installing Source.OneDrive..."
@@ -452,9 +452,9 @@ try {
 
         # Verify plugin folders exist with main DLLs (new structure: plugins/{PackageId}/{PackageId}.dll)
         $expectedPlugins = @(
-            "Spectara.Revela.Plugins.Generate",
-            "Spectara.Revela.Plugins.Theme",
-            "Spectara.Revela.Plugins.Projects",
+            "Spectara.Revela.Plugins.Core.Generate",
+            "Spectara.Revela.Plugins.Core.Theme",
+            "Spectara.Revela.Plugins.Core.Projects",
             "Spectara.Revela.Plugins.Source.OneDrive",
             "Spectara.Revela.Plugins.Statistics",
             "Spectara.Revela.Plugins.Calendar",

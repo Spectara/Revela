@@ -1,6 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
-using Spectara.Revela.Plugins.Generate;
-using Spectara.Revela.Plugins.Generate.Abstractions;
+using Spectara.Revela.Plugins.Core.Generate;
+using Spectara.Revela.Plugins.Core.Generate.Abstractions;
 
 namespace Spectara.Revela.Tests.Commands.Generate;
 

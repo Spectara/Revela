@@ -186,9 +186,9 @@ try {
 
         $packages = @(
             "src/Sdk/Sdk.csproj",
-            "src/Plugins/Generate/Generate.csproj",
-            "src/Plugins/Theme/Theme.csproj",
-            "src/Plugins/Projects/Projects.csproj",
+            "src/Plugins/Core/Generate/Generate.csproj",
+            "src/Plugins/Core/Theme/Theme.csproj",
+            "src/Plugins/Core/Projects/Projects.csproj",
             "src/Themes/Lumina/Lumina.csproj",
             "src/Themes/Lumina.Statistics/Lumina.Statistics.csproj",
             "src/Plugins/Statistics/Statistics.csproj",

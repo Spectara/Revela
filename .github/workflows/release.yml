@@ -118,13 +118,13 @@ jobs:
         run: dotnet build src/Cli/Cli.csproj -c Release --no-restore -p:Version=${{ env.VERSION }}
 
       - name: Build Generate
-        run: dotnet build src/Plugins/Generate/Generate.csproj -c Release --no-restore -p:Version=${{ env.VERSION }}
+        run: dotnet build src/Plugins/Core/Generate/Generate.csproj -c Release --no-restore -p:Version=${{ env.VERSION }}
 
       - name: Build Theme
-        run: dotnet build src/Plugins/Theme/Theme.csproj -c Release --no-restore -p:Version=${{ env.VERSION }}
+        run: dotnet build src/Plugins/Core/Theme/Theme.csproj -c Release --no-restore -p:Version=${{ env.VERSION }}
 
       - name: Build Projects
-        run: dotnet build src/Plugins/Projects/Projects.csproj -c Release --no-restore -p:Version=${{ env.VERSION }}
+        run: dotnet build src/Plugins/Core/Projects/Projects.csproj -c Release --no-restore -p:Version=${{ env.VERSION }}
 
       - name: Build Lumina
         run: dotnet build src/Themes/Lumina/Lumina.csproj -c Release --no-restore -p:Version=${{ env.VERSION }}
@@ -166,13 +166,13 @@ jobs:
 
       # Pack NuGet packages from Release build output
       - name: Pack Generate
-        run: dotnet pack src/Plugins/Generate/Generate.csproj -c Release -o ./nupkgs --no-build --no-restore -p:PackageVersion=${{ env.VERSION }} -p:IncludeSymbols=false
+        run: dotnet pack src/Plugins/Core/Generate/Generate.csproj -c Release -o ./nupkgs --no-build --no-restore -p:PackageVersion=${{ env.VERSION }} -p:IncludeSymbols=false
 
       - name: Pack Theme
-        run: dotnet pack src/Plugins/Theme/Theme.csproj -c Release -o ./nupkgs --no-build --no-restore -p:PackageVersion=${{ env.VERSION }} -p:IncludeSymbols=false
+        run: dotnet pack src/Plugins/Core/Theme/Theme.csproj -c Release -o ./nupkgs --no-build --no-restore -p:PackageVersion=${{ env.VERSION }} -p:IncludeSymbols=false
 
       - name: Pack Projects
-        run: dotnet pack src/Plugins/Projects/Projects.csproj -c Release -o ./nupkgs --no-build --no-restore -p:PackageVersion=${{ env.VERSION }} -p:IncludeSymbols=false
+        run: dotnet pack src/Plugins/Core/Projects/Projects.csproj -c Release -o ./nupkgs --no-build --no-restore -p:PackageVersion=${{ env.VERSION }} -p:IncludeSymbols=false
 
       - name: Pack Lumina
         run: dotnet pack src/Themes/Lumina/Lumina.csproj -c Release -o ./nupkgs --no-build --no-restore -p:PackageVersion=${{ env.VERSION }} -p:IncludeSymbols=false

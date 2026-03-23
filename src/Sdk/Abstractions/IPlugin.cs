@@ -108,7 +108,7 @@ public interface IPlugin
 /// </remarks>
 public record PluginMetadata
 {
-    /// <summary>Fully qualified plugin package ID (e.g., "Spectara.Revela.Plugins.Generate").</summary>
+    /// <summary>Fully qualified plugin package ID (e.g., "Spectara.Revela.Plugins.Core.Generate").</summary>
     /// <remarks>
     /// Used for dependency resolution (<see cref="RequiredPlugins"/>, <see cref="ExtendsPlugins"/>)
     /// and duplicate detection. Must be globally unique.
@@ -133,7 +133,7 @@ public record PluginMetadata
     /// </summary>
     /// <example>
     /// <code>
-    /// RequiredPlugins = ["Spectara.Revela.Plugins.Generate"]
+    /// RequiredPlugins = ["Spectara.Revela.Plugins.Core.Generate"]
     /// </code>
     /// </example>
     public IReadOnlyList<string> RequiredPlugins { get; init; } = [];
@@ -144,7 +144,7 @@ public record PluginMetadata
     /// </summary>
     /// <example>
     /// <code>
-    /// ExtendsPlugins = ["Spectara.Revela.Plugins.Generate"]
+    /// ExtendsPlugins = ["Spectara.Revela.Plugins.Core.Generate"]
     /// </code>
     /// </example>
     public IReadOnlyList<string> ExtendsPlugins { get; init; } = [];
