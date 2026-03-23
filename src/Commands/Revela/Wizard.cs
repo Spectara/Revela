@@ -73,6 +73,14 @@ internal sealed partial class Wizard(
         // Show setup mode selection
         var mode = PromptSetupMode(availableThemes.Count, availablePlugins.Count);
 
+        // Core plugins are always installed — not user-selectable
+        var corePlugins = availablePlugins
+            .Where(p => p.Id.Contains(".Plugins.Core.", StringComparison.Ordinal))
+            .ToList();
+        var optionalPlugins = availablePlugins
+            .Where(p => !p.Id.Contains(".Plugins.Core.", StringComparison.Ordinal))
+            .ToList();
+
         InstallResult themeResult;
         InstallResult pluginResult;
 
@@ -88,8 +96,13 @@ internal sealed partial class Wizard(
         }
         else
         {
-            // Custom installation - show combined multi-select
-            var (selectedThemes, selectedPlugins) = PromptCustomSelection(availableThemes, availablePlugins);
+            // Custom installation — core plugins auto-installed, user selects the rest
+            if (corePlugins.Count > 0)
+            {
+                ShowCorePluginsInfo(corePlugins);
+            }
+
+            var (selectedThemes, selectedPlugins) = PromptCustomSelection(availableThemes, optionalPlugins);
 
             // Must have at least one theme
             if (selectedThemes.Count == 0)
@@ -102,16 +115,25 @@ internal sealed partial class Wizard(
                 }
             }
 
-            // Install selected packages
+            // Always install core plugins first
+            var coreResult = await InstallPackagesAsync(corePlugins, cancellationToken);
+
+            // Install user-selected packages
             themeResult = await InstallSelectedAsync(
                 selectedThemes,
                 InstallThemeAsync,
                 cancellationToken);
 
-            pluginResult = await InstallSelectedAsync(
+            var optionalResult = await InstallSelectedAsync(
                 selectedPlugins,
                 InstallPackageAsync,
                 cancellationToken);
+
+            // Merge core + optional plugin results
+            pluginResult = new InstallResult(
+                [.. coreResult.Installed, .. optionalResult.Installed],
+                [.. coreResult.AlreadyInstalled, .. optionalResult.AlreadyInstalled],
+                [.. coreResult.Failed, .. optionalResult.Failed]);
         }
 
         // Determine if restart is needed
@@ -211,23 +233,9 @@ internal sealed partial class Wizard(
             .PageSize(15)
             .Required(false)
             .HighlightStyle(new Style(Color.Cyan1))
-            .InstructionsText("[dim](↑↓ navigate, Space toggle, a=all, Enter confirm)[/]");
-
-        // Add themes group
-        if (themeChoices.Count > 0)
-        {
-            prompt.AddChoiceGroup(
-                "[yellow]── Themes ──[/]",
-                [.. themeChoices.Select(c => c.Split('|')[1])]);
-        }
-
-        // Add plugins group
-        if (pluginChoices.Count > 0)
-        {
-            prompt.AddChoiceGroup(
-                "[yellow]── Plugins ──[/]",
-                [.. pluginChoices.Select(c => c.Split('|')[1])]);
-        }
+            .InstructionsText("[dim](↑↓ navigate, Space toggle, a=all, Enter confirm)[/]")
+            .AddChoices([.. themeChoices.Select(c => c.Split('|')[1])])
+            .AddChoices([.. pluginChoices.Select(c => c.Split('|')[1])]);
 
         // Pre-select all items
         foreach (var choice in allChoices)
@@ -243,18 +251,12 @@ internal sealed partial class Wizard(
 
         foreach (var selection in selections)
         {
-            // Skip group headers
-            if (selection.Contains("── Themes ──", StringComparison.Ordinal) || selection.Contains("── Plugins ──", StringComparison.Ordinal))
-            {
-                continue;
-            }
-
             // Find the original choice to get the package ID
             var originalChoice = allChoices.FirstOrDefault(c => c.Split('|')[1] == selection);
             if (originalChoice is not null)
             {
                 var packageId = originalChoice.Split('|')[0];
-                if (packageId.Contains(".Theme.", StringComparison.Ordinal))
+                if (packageId.Contains(".Themes.", StringComparison.Ordinal))
                 {
                     selectedThemes.Add(packageId);
                 }
@@ -391,6 +393,21 @@ internal sealed partial class Wizard(
     {
         var success = await pluginManager.InstallAsync(packageId, version, source, cancellationToken);
         return success ? 0 : 1;
+    }
+
+    private static void ShowCorePluginsInfo(List<PackageIndexEntry> corePlugins)
+    {
+        AnsiConsole.WriteLine();
+
+        var lines = new List<string> { "[bold]Core plugins[/] [dim](always installed):[/]", "" };
+        foreach (var plugin in corePlugins)
+        {
+            var shortName = plugin.Id.Replace("Spectara.Revela.Plugins.Core.", "", StringComparison.Ordinal);
+            lines.Add($"  [green]✓[/] {Markup.Escape(shortName)} [dim]- {Markup.Escape(Truncate(plugin.Description, 50))}[/]");
+        }
+
+        AnsiConsole.MarkupLine(string.Join("\n", lines));
+        AnsiConsole.WriteLine();
     }
 
     private static string Truncate(string? text, int maxLength)
