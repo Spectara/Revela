@@ -37,7 +37,6 @@ internal sealed partial class Wizard(
     public async Task<int> RunAsync(CancellationToken cancellationToken = default)
     {
         LogStartingWizard(logger);
-        ShowWelcomeScreen();
 
         // Collect required and optional steps from plugins
         var requiredSteps = wizardSteps
@@ -49,6 +48,8 @@ internal sealed partial class Wizard(
             .Where(s => !s.IsRequired && s.ShouldPrompt())
             .OrderBy(s => s.Order)
             .ToList();
+
+        ShowWelcomeScreen(requiredSteps);
 
         // Total steps = 1 (project) + required plugin steps + 1 (site)
         var totalSteps = 2 + requiredSteps.Count;
@@ -165,7 +166,7 @@ internal sealed partial class Wizard(
         }
     }
 
-    private static void ShowWelcomeScreen()
+    private static void ShowWelcomeScreen(List<IWizardStep> requiredSteps)
     {
         AnsiConsole.Clear();
 
@@ -185,18 +186,27 @@ internal sealed partial class Wizard(
 
         AnsiConsole.WriteLine();
 
+        // Build step list dynamically from discovered wizard steps
+        var stepNum = 1;
+        var stepsMarkup = $"  [cyan]{stepNum}.[/] Project settings (name, URL)\n";
+        stepNum++;
+
+        foreach (var step in requiredSteps)
+        {
+            stepsMarkup += $"  [cyan]{stepNum}.[/] {Markup.Escape(step.Name)}\n";
+            stepNum++;
+        }
+
+        stepsMarkup += $"  [cyan]{stepNum}.[/] Site metadata (title, author)";
+
         var panel = new Panel(
             new Markup(
                 "[bold]Create a New Revela Project[/]\n\n" +
                 "This wizard will help you set up a new photo gallery:\n" +
-                "  [cyan]1.[/] Project settings (name, URL)\n" +
-                "  [cyan]2.[/] Select a theme\n" +
-                "  [cyan]3.[/] Image settings (formats, sizes)\n" +
-                "  [cyan]4.[/] Site metadata (title, author)\n\n" +
+                stepsMarkup + "\n\n" +
                 "[dim]You can change these settings later via:[/] revela config"))
             .WithHeader("[cyan1]New Project[/]")
-            .Border(BoxBorder.Rounded)
-            .BorderStyle(new Style(Color.Cyan1))
+            .WithInfoStyle()
             .Padding(1, 0);
 
         AnsiConsole.Write(panel);
@@ -229,8 +239,7 @@ internal sealed partial class Wizard(
 
         var panel = new Panel(new Markup(string.Join("\n", lines)))
             .WithHeader("[green]Complete[/]")
-            .Border(BoxBorder.Rounded)
-            .BorderStyle(new Style(Color.Green))
+            .WithSuccessStyle()
             .Padding(1, 0);
 
         AnsiConsole.Write(panel);

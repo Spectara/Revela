@@ -16,6 +16,7 @@ public sealed class ThemePlugin : IPlugin
     /// <inheritdoc />
     public PluginMetadata Metadata { get; } = new()
     {
+        Id = "Spectara.Revela.Plugins.Theme",
         Name = "Theme",
         Version = "1.0.0",
         Description = "Theme management (list, install, extract, inspect)",
@@ -55,6 +56,7 @@ public sealed class ThemePlugin : IPlugin
         yield return new CommandDescriptor(
             configThemeCommand.Create(),
             ParentCommand: "config",
-            Order: 20);
+            Order: 20,
+            Group: "Project");
     }
 }

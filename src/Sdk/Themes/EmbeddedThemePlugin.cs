@@ -72,6 +72,7 @@ public abstract class EmbeddedThemePlugin : IThemePlugin
 
     private static ThemeMetadata CreateMetadata(ThemeJsonConfig config) => new()
     {
+        Id = $"Spectara.Revela.Themes.{config.Name ?? "Unknown"}",
         Name = config.Name ?? throw new InvalidOperationException("Theme name is required in manifest.json"),
         Version = config.Version ?? "1.0.0",
         Description = config.Description ?? string.Empty,

@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 using Spectara.Revela.Plugins.Calendar.Commands;
 using Spectara.Revela.Sdk.Abstractions;
@@ -18,6 +19,7 @@ public sealed class CalendarPlugin : IPlugin
     /// <inheritdoc />
     public PluginMetadata Metadata => new()
     {
+        Id = "Spectara.Revela.Plugins.Calendar",
         Name = "Calendar",
         Version = "1.0.0",
         Description = "Generate availability calendars from iCal data",
@@ -27,17 +29,17 @@ public sealed class CalendarPlugin : IPlugin
     /// <inheritdoc />
     public void ConfigureServices(IServiceCollection services)
     {
-        services.AddTransient<CalendarGenerateStep>();
-        services.AddTransient<CleanCalendarCommand>();
+        services.TryAddTransient<CalendarGenerateStep>();
+        services.TryAddTransient<CleanCalendarCommand>();
 
         // Register as IGenerateStep for pipeline orchestration
-        services.AddTransient<IGenerateStep, CalendarGenerateStep>();
+        services.TryAddEnumerable(ServiceDescriptor.Transient<IGenerateStep, CalendarGenerateStep>());
 
         // Register as ICleanStep for clean pipeline
-        services.AddTransient<ICleanStep, CleanCalendarCommand>();
+        services.TryAddEnumerable(ServiceDescriptor.Transient<ICleanStep, CleanCalendarCommand>());
 
         // Register page template for 'revela create page calendar'
-        services.AddSingleton<IPageTemplate, CalendarPageTemplate>();
+        services.TryAddEnumerable(ServiceDescriptor.Singleton<IPageTemplate, CalendarPageTemplate>());
     }
 
     /// <inheritdoc />

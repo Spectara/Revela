@@ -151,8 +151,7 @@ internal sealed partial class Wizard(
                 "This wizard will help you install themes and plugins.\n\n" +
                 "[dim]You can re-run this wizard later via:[/] Addons → wizard"))
             .WithHeader("[cyan1]Setup[/]")
-            .Border(BoxBorder.Rounded)
-            .BorderStyle(new Style(Color.Cyan1))
+            .WithInfoStyle()
             .Padding(1, 0);
 
         AnsiConsole.Write(panel);
@@ -434,8 +433,7 @@ internal sealed partial class Wizard(
 
         var panel = new Panel(new Markup(string.Join("\n", lines)))
             .WithHeader("[green]Complete[/]")
-            .Border(BoxBorder.Rounded)
-            .BorderStyle(new Style(Color.Green))
+            .WithSuccessStyle()
             .Padding(1, 0);
 
         AnsiConsole.Write(panel);
@@ -483,8 +481,7 @@ internal sealed partial class Wizard(
 
             var panel = new Panel(new Markup(string.Join("\n", lines)))
                 .WithHeader("[green]Complete[/]")
-                .Border(BoxBorder.Rounded)
-                .BorderStyle(new Style(Color.Green))
+                .WithSuccessStyle()
                 .Padding(1, 0);
 
             AnsiConsole.Write(panel);
@@ -505,8 +502,7 @@ internal sealed partial class Wizard(
 
             var panel = new Panel(new Markup(string.Join("\n", lines)))
                 .WithHeader("[green]Complete[/]")
-                .Border(BoxBorder.Rounded)
-                .BorderStyle(new Style(Color.Green))
+                .WithSuccessStyle()
                 .Padding(1, 0);
 
             AnsiConsole.Write(panel);

@@ -54,9 +54,11 @@ public sealed class LocalThemeAdapter : IThemePlugin
         var themeConfig = JsonSerializer.Deserialize<ThemeJsonConfig>(json, ThemeJsonConfig.JsonOptions)
             ?? throw new InvalidOperationException("Failed to parse theme.json");
 
+        var themeName = themeConfig.Name ?? Path.GetFileName(themeDirectory);
         Metadata = new ThemeMetadata
         {
-            Name = themeConfig.Name ?? Path.GetFileName(themeDirectory),
+            Id = $"Spectara.Revela.Themes.{themeName}",
+            Name = themeName,
             Version = themeConfig.Version ?? "1.0.0",
             Description = themeConfig.Description ?? "Local theme",
             Author = themeConfig.Author ?? "Unknown",

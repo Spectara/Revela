@@ -108,7 +108,14 @@ public interface IPlugin
 /// </remarks>
 public record PluginMetadata
 {
-    /// <summary>Plugin display name.</summary>
+    /// <summary>Fully qualified plugin package ID (e.g., "Spectara.Revela.Plugins.Generate").</summary>
+    /// <remarks>
+    /// Used for dependency resolution (<see cref="RequiredPlugins"/>, <see cref="ExtendsPlugins"/>)
+    /// and duplicate detection. Must be globally unique.
+    /// </remarks>
+    public required string Id { get; init; }
+
+    /// <summary>Plugin display name (short, human-readable).</summary>
     public required string Name { get; init; }
 
     /// <summary>Plugin version (semver).</summary>
@@ -121,7 +128,7 @@ public record PluginMetadata
     public string Author { get; init; } = "Unknown";
 
     /// <summary>
-    /// Plugin package IDs that MUST be installed for this plugin to work.
+    /// Fully qualified plugin IDs (<see cref="Id"/>) that MUST be installed for this plugin to work.
     /// The host validates these before loading the plugin.
     /// </summary>
     /// <example>
@@ -132,12 +139,12 @@ public record PluginMetadata
     public IReadOnlyList<string> RequiredPlugins { get; init; } = [];
 
     /// <summary>
-    /// Plugin package IDs that this plugin optionally extends.
-    /// Extension commands are only registered if the parent plugin is present.
+    /// Fully qualified plugin IDs (<see cref="Id"/>) that this plugin optionally extends.
+    /// Extension commands are only registered if the target plugin is present.
     /// </summary>
     /// <example>
     /// <code>
-    /// ExtendsPlugins = ["Spectara.Revela.Plugins.Clean"]
+    /// ExtendsPlugins = ["Spectara.Revela.Plugins.Generate"]
     /// </code>
     /// </example>
     public IReadOnlyList<string> ExtendsPlugins { get; init; } = [];

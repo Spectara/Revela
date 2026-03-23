@@ -59,7 +59,7 @@ internal sealed class PluginLoadContext(string pluginPath)
         {
             // First, check if already loaded in any context
             var alreadyLoaded = AppDomain.CurrentDomain.GetAssemblies()
-                .FirstOrDefault(a => a.GetName().Name == name);
+                .FirstOrDefault(a => string.Equals(a.GetName().Name, name, StringComparison.Ordinal));
 
             if (alreadyLoaded != null)
             {

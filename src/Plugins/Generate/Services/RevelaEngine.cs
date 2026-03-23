@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using Spectara.Revela.Plugins.Generate.Abstractions;
 using Spectara.Revela.Plugins.Generate.Models.Results;
+using Spectara.Revela.Sdk.Abstractions;
 using Spectara.Revela.Sdk.Abstractions.Engine;
 using Spectara.Revela.Sdk.Models.Engine;
 
@@ -10,11 +11,23 @@ namespace Spectara.Revela.Plugins.Generate.Services;
 /// Default implementation of <see cref="IRevelaEngine"/>.
 /// Delegates to the internal content, render, and image services.
 /// </summary>
+/// <remarks>
+/// <para>
+/// Individual methods (ScanAsync, GeneratePagesAsync, GenerateImagesAsync) use
+/// the internal services directly and return rich result types.
+/// </para>
+/// <para>
+/// <see cref="GenerateAllAsync"/> iterates ALL registered <see cref="IGenerateStep"/>
+/// implementations in order — identical behavior to the CLI <c>generate all</c> command.
+/// This ensures plugin steps (Statistics, Calendar) are included in the pipeline.
+/// </para>
+/// </remarks>
 internal sealed partial class RevelaEngine(
     ILogger<RevelaEngine> logger,
     IContentService contentService,
     IRenderService renderService,
-    IImageService imageService) : IRevelaEngine
+    IImageService imageService,
+    IEnumerable<IGenerateStep> generateSteps) : IRevelaEngine
 {
     /// <inheritdoc />
     public async Task<ScanResult> ScanAsync(
@@ -112,57 +125,60 @@ internal sealed partial class RevelaEngine(
     }
 
     /// <inheritdoc />
+    /// <remarks>
+    /// Runs ALL registered <see cref="IGenerateStep"/> implementations in Order sequence,
+    /// identical to the CLI <c>generate all</c> command. This ensures plugin steps
+    /// (Statistics, Calendar, etc.) are included in the pipeline.
+    /// </remarks>
     public async Task<GenerateResult> GenerateAllAsync(
         IProgress<GenerateProgress>? progress,
         CancellationToken cancellationToken)
     {
-        LogGenerateAllStarted(logger);
+        var steps = generateSteps.OrderBy(s => s.Order).ToList();
+
+        if (steps.Count == 0)
+        {
+            return new GenerateResult
+            {
+                Success = false,
+                Duration = TimeSpan.Zero,
+                ErrorMessage = "No pipeline steps registered",
+            };
+        }
+
+        LogGenerateAllStarted(logger, steps.Count);
         var stopwatch = Stopwatch.StartNew();
 
-        // Phase 1: Scan
-        progress?.Report(new GenerateProgress { StepName = "Scan", CurrentStep = 0, TotalSteps = 3 });
-        var scanResult = await ScanAsync(null, cancellationToken);
-        if (!scanResult.Success)
+        for (var i = 0; i < steps.Count; i++)
         {
-            return new GenerateResult
+            var step = steps[i];
+            progress?.Report(new GenerateProgress
             {
-                Success = false,
-                Scan = scanResult,
-                Duration = stopwatch.Elapsed,
-                ErrorMessage = scanResult.ErrorMessage,
-            };
-        }
+                StepName = step.Name,
+                CurrentStep = i,
+                TotalSteps = steps.Count,
+            });
 
-        // Phase 2: Pages
-        progress?.Report(new GenerateProgress { StepName = "Pages", CurrentStep = 1, TotalSteps = 3 });
-        var pagesResult = await GeneratePagesAsync(null, cancellationToken);
-        if (!pagesResult.Success)
-        {
-            return new GenerateResult
+            var exitCode = await step.ExecuteAsync(cancellationToken);
+            if (exitCode != 0)
             {
-                Success = false,
-                Scan = scanResult,
-                Pages = pagesResult,
-                Duration = stopwatch.Elapsed,
-                ErrorMessage = pagesResult.ErrorMessage,
-            };
+                LogStepFailed(logger, step.Name, exitCode);
+                return new GenerateResult
+                {
+                    Success = false,
+                    Duration = stopwatch.Elapsed,
+                    ErrorMessage = $"Step '{step.Name}' failed with exit code {exitCode}",
+                };
+            }
         }
-
-        // Phase 3: Images
-        progress?.Report(new GenerateProgress { StepName = "Images", CurrentStep = 2, TotalSteps = 3 });
-        var imagesResult = await GenerateImagesAsync(false, null, cancellationToken);
 
         stopwatch.Stop();
         LogGenerateAllCompleted(logger, stopwatch.Elapsed);
 
         return new GenerateResult
         {
-            Success = imagesResult.Success,
-            Scan = scanResult,
-            Pages = pagesResult,
-            Images = imagesResult,
+            Success = true,
             Duration = stopwatch.Elapsed,
-            ErrorMessage = imagesResult.ErrorMessage,
         };
     }
 
@@ -184,8 +200,11 @@ internal sealed partial class RevelaEngine(
     [LoggerMessage(Level = LogLevel.Information, Message = "Engine: Images completed — {ProcessedCount} processed, {SkippedCount} skipped in {Duration}")]
     private static partial void LogImagesCompleted(ILogger logger, int processedCount, int skippedCount, TimeSpan duration);
 
-    [LoggerMessage(Level = LogLevel.Information, Message = "Engine: Starting full generation pipeline")]
-    private static partial void LogGenerateAllStarted(ILogger logger);
+    [LoggerMessage(Level = LogLevel.Information, Message = "Engine: Starting full generation pipeline with {StepCount} step(s)")]
+    private static partial void LogGenerateAllStarted(ILogger logger, int stepCount);
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "Engine: Pipeline step '{StepName}' failed with exit code {ExitCode}")]
+    private static partial void LogStepFailed(ILogger logger, string stepName, int exitCode);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Engine: Full pipeline completed in {Duration}")]
     private static partial void LogGenerateAllCompleted(ILogger logger, TimeSpan duration);

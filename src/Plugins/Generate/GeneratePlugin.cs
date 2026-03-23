@@ -12,6 +12,7 @@ public sealed class GeneratePlugin : IPlugin
     /// <inheritdoc />
     public PluginMetadata Metadata { get; } = new()
     {
+        Id = "Spectara.Revela.Plugins.Generate",
         Name = "Generate",
         Version = "1.0.0",
         Description = "Core site generation pipeline (scan, render, images)",
@@ -107,18 +108,21 @@ public sealed class GeneratePlugin : IPlugin
         yield return new CommandDescriptor(
             configImageCommand.Create(),
             ParentCommand: "config",
-            Order: 40);
+            Order: 40,
+            Group: "Project");
 
         var configSortingCommand = services.GetRequiredService<Commands.ConfigSortingCommand>();
         yield return new CommandDescriptor(
             configSortingCommand.Create(),
             ParentCommand: "config",
-            Order: 50);
+            Order: 50,
+            Group: "Project");
 
         var configPathsCommand = services.GetRequiredService<Commands.ConfigPathsCommand>();
         yield return new CommandDescriptor(
             configPathsCommand.Create(),
             ParentCommand: "config",
-            Order: 30);
+            Order: 30,
+            Group: "Project");
     }
 }

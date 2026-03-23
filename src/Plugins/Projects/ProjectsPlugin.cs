@@ -14,6 +14,7 @@ public sealed class ProjectsPlugin : IPlugin
     /// <inheritdoc />
     public PluginMetadata Metadata { get; } = new()
     {
+        Id = "Spectara.Revela.Plugins.Projects",
         Name = "Projects",
         Version = "1.0.0",
         Description = "Project management (list, create, delete)",

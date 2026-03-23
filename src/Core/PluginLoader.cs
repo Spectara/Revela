@@ -203,7 +203,7 @@ public sealed partial class PluginLoader(
                 continue;
             }
 
-            if (loadedPlugins.Any(p => p.Plugin.Metadata.Name == plugin.Metadata.Name))
+            if (loadedPlugins.Any(p => string.Equals(p.Plugin.Metadata.Id, plugin.Metadata.Id, StringComparison.OrdinalIgnoreCase)))
             {
                 LogPluginDuplicate(plugin.Metadata.Name, assemblyPath);
                 continue;
@@ -231,7 +231,7 @@ public sealed partial class PluginLoader(
     private void CheckSdkVersionCompatibility(Assembly pluginAssembly, string pluginName)
     {
         var pluginSdkRef = pluginAssembly.GetReferencedAssemblies()
-            .FirstOrDefault(a => a.Name == "Spectara.Revela.Sdk");
+            .FirstOrDefault(a => string.Equals(a.Name, "Spectara.Revela.Sdk", StringComparison.Ordinal));
 
         if (pluginSdkRef?.Version is null)
         {

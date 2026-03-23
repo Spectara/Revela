@@ -157,7 +157,7 @@ internal sealed partial class CreatePageCommand(
         }
 
         // String properties with selection options (like sort)
-        if (property.Name == "sort")
+        if (string.Equals(property.Name, "sort", StringComparison.Ordinal))
         {
             return PromptForSort();
         }

@@ -39,7 +39,7 @@ internal sealed class PluginContext(IReadOnlyList<LoadedPluginInfo> plugins, ILo
             // Plugin wants a parent command (supports nested paths like "init source")
             var parentCmd = GetOrCreateParentCommand(rootCommand, parentPath, onCommandRegistered);
 
-            if (parentCmd.Subcommands.Any(sc => sc.Name == command.Name))
+            if (parentCmd.Subcommands.Any(sc => string.Equals(sc.Name, command.Name, StringComparison.Ordinal)))
             {
                 logger.DuplicateSubcommand(plugin.Metadata.Name, command.Name, parentPath);
                 return;
@@ -50,7 +50,7 @@ internal sealed class PluginContext(IReadOnlyList<LoadedPluginInfo> plugins, ILo
         else
         {
             // No parent - register directly under root
-            var existing = rootCommand.Subcommands.FirstOrDefault(sc => sc.Name == command.Name);
+            var existing = rootCommand.Subcommands.FirstOrDefault(sc => string.Equals(sc.Name, command.Name, StringComparison.Ordinal));
             if (existing is not null)
             {
                 // An auto-created parent may already exist (created by another plugin's
@@ -60,7 +60,7 @@ internal sealed class PluginContext(IReadOnlyList<LoadedPluginInfo> plugins, ILo
 
                 // Update metadata on the existing command (the auto-created parent had
                 // default group/order; the plugin's descriptor has the real values)
-                onCommandRegistered?.Invoke(existing, descriptor.Order, descriptor.Group, descriptor.RequiresProject, descriptor.HideWhenProjectExists, descriptor.IsSequentialStep);
+                onCommandRegistered?.Invoke(existing, descriptor);
                 return;
             }
             else
@@ -70,7 +70,7 @@ internal sealed class PluginContext(IReadOnlyList<LoadedPluginInfo> plugins, ILo
         }
 
         // Notify caller about registered command with its metadata
-        onCommandRegistered?.Invoke(command, descriptor.Order, descriptor.Group, descriptor.RequiresProject, descriptor.HideWhenProjectExists, descriptor.IsSequentialStep);
+        onCommandRegistered?.Invoke(command, descriptor);
     }
 
     /// <summary>
@@ -93,7 +93,7 @@ internal sealed class PluginContext(IReadOnlyList<LoadedPluginInfo> plugins, ILo
 
         foreach (var sub in incoming.Subcommands)
         {
-            if (!existing.Subcommands.Any(s => s.Name == sub.Name))
+            if (!existing.Subcommands.Any(s => string.Equals(s.Name, sub.Name, StringComparison.Ordinal)))
             {
                 existing.Subcommands.Add(sub);
             }
@@ -112,7 +112,7 @@ internal sealed class PluginContext(IReadOnlyList<LoadedPluginInfo> plugins, ILo
 
         foreach (var segment in segments)
         {
-            var existing = current.Subcommands.FirstOrDefault(c => c.Name == segment);
+            var existing = current.Subcommands.FirstOrDefault(c => string.Equals(c.Name, segment, StringComparison.Ordinal));
             if (existing is not null)
             {
                 current = existing;
@@ -123,7 +123,12 @@ internal sealed class PluginContext(IReadOnlyList<LoadedPluginInfo> plugins, ILo
                 var (description, order, group, requiresProject, hideWhenProjectExists) = GetCommandInfo(segment);
                 var newCommand = new Command(segment, description);
                 current.Subcommands.Add(newCommand);
-                onCommandRegistered?.Invoke(newCommand, order, group, requiresProject, hideWhenProjectExists, isSequentialStep: false);
+                onCommandRegistered?.Invoke(newCommand, new CommandDescriptor(
+                    newCommand,
+                    Order: order,
+                    Group: group,
+                    RequiresProject: requiresProject,
+                    HideWhenProjectExists: hideWhenProjectExists));
                 current = newCommand;
             }
         }

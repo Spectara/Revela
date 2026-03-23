@@ -6,12 +6,8 @@ namespace Spectara.Revela.Sdk.Abstractions;
 /// Callback invoked when a command is registered during plugin command registration.
 /// </summary>
 /// <param name="command">The registered command.</param>
-/// <param name="order">Display order for interactive menu.</param>
-/// <param name="group">Optional group name for categorization.</param>
-/// <param name="requiresProject">Whether the command requires a project context.</param>
-/// <param name="hideWhenProjectExists">Whether to hide the command when a project exists.</param>
-/// <param name="isSequentialStep">Whether this command is a sequential pipeline step (included in "all").</param>
-public delegate void CommandRegisteredCallback(Command command, int order, string? group, bool requiresProject, bool hideWhenProjectExists, bool isSequentialStep);
+/// <param name="descriptor">The command descriptor with order, group, and metadata.</param>
+public delegate void CommandRegisteredCallback(Command command, CommandDescriptor descriptor);
 
 /// <summary>
 /// Context for managing loaded plugins after host is built.

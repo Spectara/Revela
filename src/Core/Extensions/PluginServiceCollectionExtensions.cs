@@ -116,8 +116,10 @@ public static class PluginServiceCollectionExtensions
         ILoggerFactory loggerFactory)
     {
         var logger = loggerFactory.CreateLogger("Spectara.Revela.Core.PluginBootstrap");
-        var loadedNames = new HashSet<string>(
-            plugins.Select(p => p.Plugin.Metadata.Name),
+
+        // Use fully qualified Id for dependency matching (not display Name)
+        var loadedIds = new HashSet<string>(
+            plugins.Select(p => p.Plugin.Metadata.Id),
             StringComparer.OrdinalIgnoreCase);
 
         // Multiple passes to handle transitive dependencies
@@ -129,7 +131,7 @@ public static class PluginServiceCollectionExtensions
             {
                 var plugin = plugins[i].Plugin;
                 var missing = plugin.Metadata.RequiredPlugins
-                    .Where(req => !loadedNames.Contains(req))
+                    .Where(req => !loadedIds.Contains(req))
                     .ToList();
 
                 if (missing.Count > 0)
@@ -139,7 +141,7 @@ public static class PluginServiceCollectionExtensions
                         $"Error: Plugin '{plugin.Metadata.Name}' requires [{missingList}] but they are not installed. Plugin will not be loaded.");
                     logger.PluginDependencyMissing(plugin.Metadata.Name, missingList);
 
-                    loadedNames.Remove(plugin.Metadata.Name);
+                    loadedIds.Remove(plugin.Metadata.Id);
                     plugins.RemoveAt(i);
                     removedAny = true;
                 }
@@ -152,7 +154,7 @@ public static class PluginServiceCollectionExtensions
         {
             var plugin = pluginInfo.Plugin;
             var missingExtensions = plugin.Metadata.ExtendsPlugins
-                .Where(ext => !loadedNames.Contains(ext))
+                .Where(ext => !loadedIds.Contains(ext))
                 .ToList();
 
             if (missingExtensions.Count > 0)

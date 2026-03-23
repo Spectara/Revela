@@ -95,7 +95,7 @@ public sealed class ManifestServiceLifecycleTests
     }
 
     [TestMethod]
-    public async Task SetImage_UpdatesExistingEntry()
+    public void SetImage_UpdatesExistingEntry()
     {
         using var project = TestProject.Create();
         using var host = RevelaTestHost.Build(project.RootPath, s => { s.AddRevelaCommands(); s.AddGenerateFeature(); });
@@ -148,7 +148,7 @@ public sealed class ManifestServiceLifecycleTests
     }
 
     [TestMethod]
-    public async Task RemoveImage_RemovesFromManifest()
+    public void RemoveImage_RemovesFromManifest()
     {
         using var project = TestProject.Create();
         using var host = RevelaTestHost.Build(project.RootPath, s => { s.AddRevelaCommands(); s.AddGenerateFeature(); });
