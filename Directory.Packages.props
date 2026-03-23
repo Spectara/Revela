@@ -35,7 +35,7 @@
   </ItemGroup>
   <ItemGroup Label="Image Processing">
     <PackageVersion Include="NetVips" Version="3.2.0" />
-    <PackageVersion Include="NetVips.Native" Version="8.18.0" />
+    <PackageVersion Include="NetVips.Native" Version="8.18.1" />
   </ItemGroup>
   <ItemGroup Label="Plugin Management">
     <PackageVersion Include="NuGet.Protocol" Version="7.3.0" />
