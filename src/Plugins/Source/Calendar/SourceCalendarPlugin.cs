@@ -53,7 +53,6 @@ public sealed class SourceCalendarPlugin : IPlugin
         yield return new CommandDescriptor(
             calendarCommand,
             ParentCommand: "source",
-            Order: 30,
-            Group: "Content");
+            Order: 30);
     }
 }

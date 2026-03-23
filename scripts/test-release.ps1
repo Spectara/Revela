@@ -342,7 +342,23 @@ try {
     Measure-Step "Install Plugins" {
         Push-Location $SampleProjectDir
         try {
-            # Install OneDrive Plugin from local NuGet feed
+            # Install core plugins (new in v2: Generate, Theme, Projects are plugins now)
+            Write-Info "Installing Generate..."
+            & $ExePath plugin install Generate --version $Version --source $PluginsDir
+            if ($LASTEXITCODE -ne 0) { throw "Generate plugin installation failed" }
+            Write-Success "Generate installed"
+
+            Write-Info "Installing Theme..."
+            & $ExePath plugin install Theme --version $Version --source $PluginsDir
+            if ($LASTEXITCODE -ne 0) { throw "Theme plugin installation failed" }
+            Write-Success "Theme installed"
+
+            Write-Info "Installing Projects..."
+            & $ExePath plugin install Projects --version $Version --source $PluginsDir
+            if ($LASTEXITCODE -ne 0) { throw "Projects plugin installation failed" }
+            Write-Success "Projects installed"
+
+            # Install addon plugins
             Write-Info "Installing Source.OneDrive..."
             & $ExePath plugin install Source.OneDrive --version $Version --source $PluginsDir
             if ($LASTEXITCODE -ne 0) { throw "OneDrive plugin installation failed" }
@@ -365,6 +381,22 @@ try {
             & $ExePath plugin install Serve --version $Version --source $PluginsDir
             if ($LASTEXITCODE -ne 0) { throw "Serve plugin installation failed" }
             Write-Success "Serve installed"
+
+            # Install Calendar plugins
+            Write-Info "Installing Calendar..."
+            & $ExePath plugin install Calendar --version $Version --source $PluginsDir
+            if ($LASTEXITCODE -ne 0) { throw "Calendar plugin installation failed" }
+            Write-Success "Calendar installed"
+
+            Write-Info "Installing Source.Calendar..."
+            & $ExePath plugin install Source.Calendar --version $Version --source $PluginsDir
+            if ($LASTEXITCODE -ne 0) { throw "Source.Calendar plugin installation failed" }
+            Write-Success "Source.Calendar installed"
+
+            Write-Info "Installing Lumina.Calendar..."
+            & $ExePath plugin install Spectara.Revela.Themes.Lumina.Calendar --version $Version --source $PluginsDir
+            if ($LASTEXITCODE -ne 0) { throw "Lumina.Calendar installation failed" }
+            Write-Success "Lumina.Calendar installed"
 
             # Verify plugins are installed in correct directory (local, next to exe)
             # This validates the "GitHub Release" scenario: user extracts ZIP, runs exe, installs plugins
@@ -398,35 +430,38 @@ try {
     Measure-Step "Plugin Verify" {
         $localPluginsDir = Join-Path $CliDir "plugins"
 
-        # Verify correct number of plugins loaded (3 functional plugins: OneDrive + Statistics + Serve)
-        # Themes (Lumina, Lumina Statistics) are now shown in 'theme list' instead
+        # Verify correct number of plugins loaded (8 functional plugins)
+        # Themes (Lumina, Lumina.Statistics, Lumina.Calendar) are shown in 'theme list' instead
         $pluginListOutput = & $ExePath plugin list 2>&1 | Out-String
-        if ($pluginListOutput -match "Installed Plugins.*\(3\)") {
-            Write-Success "Verified: 3 plugins loaded (OneDrive + Statistics + Serve)"
+        if ($pluginListOutput -match "Installed Plugins.*\(8\)") {
+            Write-Success "Verified: 8 plugins loaded"
         }
         else {
             Write-Warn "Plugin list output: $pluginListOutput"
-            throw "Expected 3 plugins in panel header, got unexpected output"
+            throw "Expected 8 plugins in panel header, got unexpected output"
         }
 
-        # Verify installed plugins are local (3 plugins should show 'installed')
+        # Verify installed plugins are local (8 plugins should show 'installed')
         $localMatches = ([regex]::Matches($pluginListOutput, '\binstalled\b')).Count
-        if ($localMatches -ge 3) {
-            Write-Success "Verified: 3 plugins installed locally (next to exe)"
+        if ($localMatches -ge 8) {
+            Write-Success "Verified: 8 plugins installed locally (next to exe)"
         }
         else {
-            Write-Warn "Expected 3 installed plugins, found $localMatches in output"
+            Write-Warn "Expected 8 installed plugins, found $localMatches in output"
         }
 
         # Verify plugin folders exist with main DLLs (new structure: plugins/{PackageId}/{PackageId}.dll)
         $expectedPlugins = @(
+            "Spectara.Revela.Plugins.Generate",
+            "Spectara.Revela.Plugins.Theme",
+            "Spectara.Revela.Plugins.Projects",
             "Spectara.Revela.Plugins.Source.OneDrive",
             "Spectara.Revela.Plugins.Statistics",
             "Spectara.Revela.Plugins.Calendar",
             "Spectara.Revela.Plugins.Source.Calendar",
-            "Spectara.Revela.Themes.Lumina.Calendar",
             "Spectara.Revela.Plugins.Serve",
-            "Spectara.Revela.Themes.Lumina.Statistics"
+            "Spectara.Revela.Themes.Lumina.Statistics",
+            "Spectara.Revela.Themes.Lumina.Calendar"
         )
         foreach ($pluginName in $expectedPlugins) {
             $pluginFolder = Join-Path $localPluginsDir $pluginName
