@@ -1,4 +1,4 @@
-using Spectara.Revela.Commands.Generate.Filtering;
+using Spectara.Revela.Plugins.Core.Generate.Filtering;
 using Spectara.Revela.Sdk.Models;
 using Spectara.Revela.Sdk.Models.Manifest;
 

@@ -27,6 +27,9 @@
 
   <!-- Development-only: Plugins included for debugging, NOT shipped in Release -->
   <ItemGroup Condition="'$(Configuration)' == 'Debug'">
+    <ProjectReference Include="..\Plugins\Core\Generate\Generate.csproj" />
+    <ProjectReference Include="..\Plugins\Core\Theme\Theme.csproj" />
+    <ProjectReference Include="..\Plugins\Core\Projects\Projects.csproj" />
     <ProjectReference Include="..\Plugins\Compress\Compress.csproj" />
     <ProjectReference Include="..\Plugins\Serve\Serve.csproj" />
     <ProjectReference Include="..\Plugins\Source\OneDrive\OneDrive.csproj" />
@@ -44,6 +47,10 @@
     <PackageReference Include="Microsoft.Extensions.Logging.Debug" />
     <PackageReference Include="System.CommandLine" />
     <PackageReference Include="Spectre.Console" />
+    <!-- Native image processing library — must be in the host for single-file publish.
+         Generate plugin uses NetVips managed wrapper, but the native DLL must be
+         extracted from the single-file bundle by the host at runtime. -->
+    <PackageReference Include="NetVips.Native" />
   </ItemGroup>
 
   <PropertyGroup Label="Package Icon">

@@ -86,6 +86,7 @@ public abstract class EmbeddedThemeExtension : IThemeExtension
 
     private static PluginMetadata CreateMetadata(ExtensionJsonConfig cfg) => new()
     {
+        Id = $"Spectara.Revela.Themes.{cfg.Name ?? "Unknown"}",
         Name = cfg.Name ?? "Unknown",
         Version = cfg.Version ?? "1.0.0",
         Description = cfg.Description ?? "",

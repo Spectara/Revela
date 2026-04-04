@@ -25,6 +25,7 @@ internal sealed partial class InteractiveMenuService(
     IOptionsMonitor<ProjectConfig> projectConfig,
     IConfigService configService,
     IGlobalConfigManager globalConfigManager,
+    IPluginContext pluginContext,
     RevelaWizard revelaWizard,
     ProjectWizard projectWizard,
     ILogger<InteractiveMenuService> logger) : IInteractiveMenuService
@@ -57,7 +58,8 @@ internal sealed partial class InteractiveMenuService(
         }
 
         // Check if this is a fresh installation (no revela.json)
-        if (!globalConfigManager.ConfigFileExists())
+        // Skip if plugins are already loaded (development mode via ProjectReferences)
+        if (!globalConfigManager.ConfigFileExists() && pluginContext.Plugins.Count == 0)
         {
             return await HandleFirstRunAsync(cancellationToken);
         }
@@ -244,9 +246,14 @@ internal sealed partial class InteractiveMenuService(
         while (!cancellationToken.IsCancellationRequested)
         {
             var pathDisplay = string.Join(" → ", commandPath);
+
+            // Add pipeline legend if this parent has pipeline steps
+            var hasPipelineSteps = parent.Subcommands.Any(c => orderRegistry.IsPipelineStep(c));
+            var legend = hasPipelineSteps ? "\n[dim]  [cyan]●[/] = included in [bold]all[/][/]" : "";
+
             var prompt = BuildGroupedSelectionPrompt(
                 parent.Subcommands,
-                $"\n[cyan]{pathDisplay}[/] - [dim]Select a command:[/]",
+                $"\n[cyan]{pathDisplay}[/] - [dim]Select a command:[/]{legend}",
                 includeBack: true,
                 includeExit: false);
 
@@ -370,6 +377,12 @@ internal sealed partial class InteractiveMenuService(
         var grouped = orderRegistry.GetGroupedCommands(filteredCommands, groupRegistry);
         var hasGroups = grouped.Any(g => g.GroupName is not null);
 
+        // Calculate column width from longest command name (+ 2 for " →" arrow)
+        var allCommands = grouped.SelectMany(g => g.Commands).ToList();
+        var nameWidth = allCommands.Count > 0
+            ? allCommands.Max(c => c.Name.Length + (c.Subcommands.Any(s => !s.Hidden) ? 2 : 0)) + 2
+            : 0;
+
         if (hasGroups)
         {
             // Add each group with its commands
@@ -385,12 +398,12 @@ internal sealed partial class InteractiveMenuService(
                 {
                     // Create group header as MenuChoice (will be non-selectable due to Leaf mode)
                     var groupChoice = new MenuChoice(groupName, Action: MenuAction.Navigate);
-                    var commandChoices = groupCommands.Select(MenuChoice.FromCommand).ToList();
+                    var commandChoices = groupCommands.Select(c => MenuChoice.FromCommand(c, orderRegistry.IsPipelineStep(c), nameWidth)).ToList();
 
                     // Add Wizard to the Addons group (as last item)
                     if (includeSetupWizard && groupName == CommandGroups.Addons)
                     {
-                        commandChoices.Add(MenuChoice.Wizard);
+                        commandChoices.Add(MenuChoice.CreateWizard(nameWidth));
                     }
 
                     prompt.AddChoiceGroup(groupChoice, [.. commandChoices]);
@@ -400,7 +413,7 @@ internal sealed partial class InteractiveMenuService(
                     // Ungrouped commands - add directly
                     foreach (var cmd in groupCommands)
                     {
-                        prompt.AddChoice(MenuChoice.FromCommand(cmd));
+                        prompt.AddChoice(MenuChoice.FromCommand(cmd, orderRegistry.IsPipelineStep(cmd), nameWidth));
                     }
                 }
             }
@@ -410,7 +423,7 @@ internal sealed partial class InteractiveMenuService(
             // No groups - just add sorted commands
             foreach (var cmd in orderRegistry.Sort(commands))
             {
-                prompt.AddChoice(MenuChoice.FromCommand(cmd));
+                prompt.AddChoice(MenuChoice.FromCommand(cmd, orderRegistry.IsPipelineStep(cmd), nameWidth));
             }
         }
 

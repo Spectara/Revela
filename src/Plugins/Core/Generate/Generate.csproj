@@ -1,0 +1,61 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <Description>Revela Plugin - Core site generation pipeline (scan, render pages, process images)</Description>
+    <PackageTags>revela;plugin;generate;scan;render;images;core;tier-bundled;category-core</PackageTags>
+    <PackageIcon>icon.png</PackageIcon>
+    <PackageReleaseNotes>https://github.com/spectara/revela/blob/main/CHANGELOG.md</PackageReleaseNotes>
+    <PackageType>RevelaPlugin</PackageType>
+
+    <!-- Plugin packaging handled by Spectara.Revela.Sdk.targets -->
+  </PropertyGroup>
+
+  <!-- InternalsVisibleTo for test projects and host (during migration) -->
+  <ItemGroup>
+    <InternalsVisibleTo Include="$(RevelaNamespacePrefix).Tests.Commands" />
+    <InternalsVisibleTo Include="$(RevelaNamespacePrefix).Tests.Integration" />
+    <InternalsVisibleTo Include="$(RevelaNamespacePrefix).Commands" />
+    <InternalsVisibleTo Include="revela" />
+    <InternalsVisibleTo Include="DynamicProxyGenAssembly2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="README.md" Pack="true" PackagePath="/" />
+    <None Include="../../../../assets/revela_100.png" Pack="true" PackagePath="icon.png" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Reference to host Sdk - NOT copied to output (loaded from host) -->
+    <ProjectReference Include="..\..\..\Sdk\Sdk.csproj">
+      <Private>false</Private>
+      <ExcludeAssets>runtime</ExcludeAssets>
+    </ProjectReference>
+    <!-- Core reference needed for ITemplateResolver, IAssetResolver, etc. -->
+    <!-- TODO: Move these interfaces to SDK when Commands project is fully dissolved -->
+    <ProjectReference Include="..\..\..\Core\Core.csproj">
+      <Private>false</Private>
+      <ExcludeAssets>runtime</ExcludeAssets>
+    </ProjectReference>
+  </ItemGroup>
+
+  <ItemGroup Label="Image Processing">
+    <PackageReference Include="NetVips" />
+    <PackageReference Include="NetVips.Native" />
+  </ItemGroup>
+
+  <ItemGroup Label="Templating">
+    <PackageReference Include="Scriban" />
+    <PackageReference Include="Markdig" />
+  </ItemGroup>
+
+  <ItemGroup Label="Framework">
+    <PackageReference Include="Microsoft.Extensions.Configuration" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Binder" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
+    <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" />
+    <PackageReference Include="Microsoft.Extensions.Options.DataAnnotations" />
+    <PackageReference Include="Spectre.Console" />
+    <PackageReference Include="System.CommandLine" />
+  </ItemGroup>
+
+</Project>

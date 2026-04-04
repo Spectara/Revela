@@ -1,0 +1,20 @@
+<Project>
+  <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)..'))" />
+  <!-- Insert "Core" segment: {Prefix}.Plugins.{ProjectName} → {Prefix}.Plugins.Core.{ProjectName} -->
+  <PropertyGroup>
+    <AssemblyName>$(RevelaNamespacePrefix).Plugins.Core.$(MSBuildProjectName)</AssemblyName>
+    <RootNamespace>$(AssemblyName)</RootNamespace>
+    <PackageId>$(AssemblyName)</PackageId>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <BaseOutputPath>$(_ArtifactsRoot)bin\Core.$(MSBuildProjectName)\</BaseOutputPath>
+    <BaseIntermediateOutputPath>$(_ArtifactsRoot)obj\Core.$(MSBuildProjectName)\</BaseIntermediateOutputPath>
+  </PropertyGroup>
+
+  <!-- Override InternalsVisibleTo for Core plugin test projects -->
+  <ItemGroup>
+    <InternalsVisibleTo Remove="@(InternalsVisibleTo)" />
+    <InternalsVisibleTo Include="$(RevelaNamespacePrefix).Tests.Plugins.Core.$(MSBuildProjectName)" />
+  </ItemGroup>
+</Project>

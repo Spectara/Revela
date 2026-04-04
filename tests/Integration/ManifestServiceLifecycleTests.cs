@@ -1,5 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using Spectara.Revela.Commands;
+using Spectara.Revela.Plugins.Core.Generate;
 using Spectara.Revela.Sdk.Abstractions;
 using Spectara.Revela.Sdk.Models.Manifest;
 using Spectara.Revela.Tests.Shared.Fixtures;
@@ -18,7 +19,7 @@ public sealed class ManifestServiceLifecycleTests
     public async Task LoadAsync_NoManifest_StartsEmpty()
     {
         using var project = TestProject.Create();
-        using var host = RevelaTestHost.Build(project.RootPath, s => s.AddRevelaCommands());
+        using var host = RevelaTestHost.Build(project.RootPath, s => { s.AddRevelaCommands(); s.AddGenerateFeature(); });
 
         var manifest = host.Services.GetRequiredService<IManifestRepository>();
 
@@ -32,7 +33,7 @@ public sealed class ManifestServiceLifecycleTests
     public async Task SaveAndLoad_RoundTrip_PreservesData()
     {
         using var project = TestProject.Create();
-        using var host = RevelaTestHost.Build(project.RootPath, s => s.AddRevelaCommands());
+        using var host = RevelaTestHost.Build(project.RootPath, s => { s.AddRevelaCommands(); s.AddGenerateFeature(); });
 
         var manifest = host.Services.GetRequiredService<IManifestRepository>();
 
@@ -69,7 +70,7 @@ public sealed class ManifestServiceLifecycleTests
         await manifest.SaveAsync();
 
         // Create a fresh host to simulate restart
-        using var host2 = RevelaTestHost.Build(project.RootPath, s => s.AddRevelaCommands());
+        using var host2 = RevelaTestHost.Build(project.RootPath, s => { s.AddRevelaCommands(); s.AddGenerateFeature(); });
         var manifest2 = host2.Services.GetRequiredService<IManifestRepository>();
 
         await manifest2.LoadAsync();
@@ -94,10 +95,10 @@ public sealed class ManifestServiceLifecycleTests
     }
 
     [TestMethod]
-    public async Task SetImage_UpdatesExistingEntry()
+    public void SetImage_UpdatesExistingEntry()
     {
         using var project = TestProject.Create();
-        using var host = RevelaTestHost.Build(project.RootPath, s => s.AddRevelaCommands());
+        using var host = RevelaTestHost.Build(project.RootPath, s => { s.AddRevelaCommands(); s.AddGenerateFeature(); });
 
         var manifest = host.Services.GetRequiredService<IManifestRepository>();
 
@@ -147,10 +148,10 @@ public sealed class ManifestServiceLifecycleTests
     }
 
     [TestMethod]
-    public async Task RemoveImage_RemovesFromManifest()
+    public void RemoveImage_RemovesFromManifest()
     {
         using var project = TestProject.Create();
-        using var host = RevelaTestHost.Build(project.RootPath, s => s.AddRevelaCommands());
+        using var host = RevelaTestHost.Build(project.RootPath, s => { s.AddRevelaCommands(); s.AddGenerateFeature(); });
 
         var manifest = host.Services.GetRequiredService<IManifestRepository>();
 
@@ -200,7 +201,7 @@ public sealed class ManifestServiceLifecycleTests
     public async Task FormatQualities_SavedAndLoaded()
     {
         using var project = TestProject.Create();
-        using var host = RevelaTestHost.Build(project.RootPath, s => s.AddRevelaCommands());
+        using var host = RevelaTestHost.Build(project.RootPath, s => { s.AddRevelaCommands(); s.AddGenerateFeature(); });
 
         var manifest = host.Services.GetRequiredService<IManifestRepository>();
 
@@ -215,7 +216,7 @@ public sealed class ManifestServiceLifecycleTests
         await manifest.SaveAsync();
 
         // Reload
-        using var host2 = RevelaTestHost.Build(project.RootPath, s => s.AddRevelaCommands());
+        using var host2 = RevelaTestHost.Build(project.RootPath, s => { s.AddRevelaCommands(); s.AddGenerateFeature(); });
         var manifest2 = host2.Services.GetRequiredService<IManifestRepository>();
         await manifest2.LoadAsync();
 

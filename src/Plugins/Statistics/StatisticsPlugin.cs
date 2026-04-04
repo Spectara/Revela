@@ -1,4 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+
 using Spectara.Revela.Plugins.Statistics.Commands;
 using Spectara.Revela.Plugins.Statistics.Configuration;
 using Spectara.Revela.Plugins.Statistics.Services;
@@ -14,6 +16,7 @@ public sealed class StatisticsPlugin : IPlugin
     /// <inheritdoc />
     public PluginMetadata Metadata => new()
     {
+        Id = "Spectara.Revela.Plugins.Statistics",
         Name = "Generate Statistics",
         Version = "1.0.0",
         Description = "Generate EXIF statistics pages for your photo library",
@@ -28,20 +31,23 @@ public sealed class StatisticsPlugin : IPlugin
         // Note: No ValidateOnStart - plugin may be installed but not configured.
         services.AddPluginConfig<StatisticsPluginConfig>();
 
-        services.AddTransient<StatisticsAggregator>();
+        services.TryAddTransient<StatisticsAggregator>();
 
         // JsonWriter remains static, no DI needed.
 
         // Register Commands for Dependency Injection
-        services.AddTransient<StatsCommand>();
-        services.AddTransient<CleanStatisticsCommand>();
-        services.AddTransient<ConfigStatisticsCommand>();
+        services.TryAddTransient<StatsCommand>();
+        services.TryAddTransient<CleanStatisticsCommand>();
+        services.TryAddTransient<ConfigStatisticsCommand>();
 
         // Register StatsCommand as IGenerateStep for pipeline orchestration
-        services.AddTransient<IGenerateStep, StatsCommand>();
+        services.TryAddEnumerable(ServiceDescriptor.Transient<IGenerateStep, StatsCommand>());
+
+        // Register CleanStatisticsCommand as ICleanStep for clean pipeline
+        services.TryAddEnumerable(ServiceDescriptor.Transient<ICleanStep, CleanStatisticsCommand>());
 
         // Register Page Template for init commands
-        services.AddSingleton<IPageTemplate, StatsPageTemplate>();
+        services.TryAddEnumerable(ServiceDescriptor.Singleton<IPageTemplate, StatsPageTemplate>());
     }
 
     /// <inheritdoc />
@@ -54,13 +60,13 @@ public sealed class StatisticsPlugin : IPlugin
 
         // Register stats command → revela generate statistics
         // Order 20 places it between scan (10) and pages (30) in interactive menu
-        yield return new CommandDescriptor(statsCommand.Create(), ParentCommand: "generate", Order: 20);
+        yield return new CommandDescriptor(statsCommand.Create(), ParentCommand: "generate", Order: 20, IsSequentialStep: true);
 
         // Register clean statistics command → revela clean statistics
         // Order 30 places it after output (10) and cache (20) in interactive menu
-        yield return new CommandDescriptor(cleanStatsCommand.Create(), ParentCommand: "clean", Order: CleanStatisticsCommand.Order);
+        yield return new CommandDescriptor(cleanStatsCommand.Create(), ParentCommand: "clean", Order: CleanStatisticsCommand.MenuOrder, IsSequentialStep: true);
 
         // Register config command → revela config statistics
-        yield return new CommandDescriptor(configCommand.Create(), ParentCommand: "config");
+        yield return new CommandDescriptor(configCommand.Create(), ParentCommand: "config", Group: "Addons");
     }
 }

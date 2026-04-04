@@ -33,6 +33,12 @@ namespace Spectara.Revela.Sdk.Abstractions;
 /// Useful for one-time setup commands like "init" that shouldn't be shown
 /// after initial project setup. Default is false.
 /// </param>
+/// <param name="IsSequentialStep">
+/// Whether this command is a sequential step in a pipeline.
+/// Used by the interactive menu to display pipeline step markers (●)
+/// and by the "all" command to discover steps to run in Order sequence.
+/// Default is false.
+/// </param>
 /// <example>
 /// <code>
 /// // Register under "init" parent: revela init onedrive
@@ -47,6 +53,10 @@ namespace Spectara.Revela.Sdk.Abstractions;
 /// // Init command: show without project, hide when project exists
 /// new CommandDescriptor(initCmd, null, Order: 5, Group: "Setup",
 ///     RequiresProject: false, HideWhenProjectExists: true)
+///
+/// // Sequential step: part of a pipeline that supports "all"
+/// new CommandDescriptor(scanCmd, "generate", Order: 10,
+///     IsSequentialStep: true)
 /// </code>
 /// </example>
 public sealed record CommandDescriptor(
@@ -55,4 +65,5 @@ public sealed record CommandDescriptor(
     int Order = 50,
     string? Group = null,
     bool RequiresProject = true,
-    bool HideWhenProjectExists = false);
+    bool HideWhenProjectExists = false,
+    bool IsSequentialStep = false);

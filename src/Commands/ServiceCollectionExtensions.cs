@@ -1,14 +1,9 @@
 using Microsoft.Extensions.DependencyInjection;
-
-using Spectara.Revela.Commands.Clean;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Spectara.Revela.Commands.Config;
-using Spectara.Revela.Commands.Create;
-using Spectara.Revela.Commands.Generate;
 using Spectara.Revela.Commands.Packages;
 using Spectara.Revela.Commands.Plugins;
-using Spectara.Revela.Commands.Projects;
 using Spectara.Revela.Commands.Restore;
-using Spectara.Revela.Commands.Theme;
 using Spectara.Revela.Core.Services;
 
 using ProjectWizard = Spectara.Revela.Commands.Project.Wizard;
@@ -25,30 +20,36 @@ internal static class ServiceCollectionExtensions
     /// Adds all Revela command services to the DI container.
     /// </summary>
     /// <remarks>
-    /// This is the pre-build phase that registers all services needed for CLI commands.
+    /// <para>
+    /// This is the pre-build phase that registers host-owned services and commands.
+    /// Plugin services (Generate, Theme, Projects) are registered by their respective
+    /// plugins via <c>IPlugin.ConfigureServices</c> through the plugin loader.
+    /// </para>
+    /// <para>
     /// Use HostExtensions.UseRevelaCommands() to activate commands post-build.
+    /// </para>
     /// </remarks>
     /// <param name="services">The service collection.</param>
     /// <returns>The service collection for chaining.</returns>
     public static IServiceCollection AddRevelaCommands(this IServiceCollection services)
     {
         // Shared services
-        services.AddSingleton<IPackageIndexService, PackageIndexService>();
+        services.TryAddSingleton<IPackageIndexService, PackageIndexService>();
+
+        // IThemeResolver fallback — registered by Theme Plugin via TryAddSingleton,
+        // but needed when plugins aren't loaded (e.g., integration tests)
+        services.TryAddSingleton<IThemeResolver, ThemeResolver>();
 
         // Wizards
         services.AddTransient<RevelaWizard>();
         services.AddTransient<ProjectWizard>();
 
-        // Feature commands
-        services.AddCleanFeature();
+        // Host-owned commands only (Config, Packages, Plugins, Restore)
+        // Plugin commands are registered by plugins via ConfigureServices + GetCommands
         services.AddConfigFeature();
-        services.AddCreateFeature();
-        services.AddGenerateFeature();
         services.AddPackagesFeature();
         services.AddPluginsFeature();
-        services.AddProjectsFeature();
         services.AddRestoreFeature();
-        services.AddThemeFeature();
 
         return services;
     }

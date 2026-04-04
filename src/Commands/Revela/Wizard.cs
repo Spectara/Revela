@@ -1,11 +1,9 @@
 using Spectara.Revela.Commands.Packages;
-using Spectara.Revela.Commands.Plugins;
-using Spectara.Revela.Commands.Theme;
+using Spectara.Revela.Core;
 using Spectara.Revela.Core.Models;
 using Spectara.Revela.Core.Services;
 using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Output;
-
 using Spectre.Console;
 
 namespace Spectara.Revela.Commands.Revela;
@@ -14,25 +12,15 @@ namespace Spectara.Revela.Commands.Revela;
 /// Setup wizard for first-time Revela configuration.
 /// </summary>
 /// <remarks>
-/// <para>
-/// The wizard is triggered automatically when revela.json doesn't exist
-/// (fresh installation). It offers two modes:
-/// </para>
-/// <list type="bullet">
-/// <item><b>Full Installation (recommended):</b> Installs all available themes and plugins</item>
-/// <item><b>Custom Installation:</b> User selects specific packages to install</item>
-/// </list>
-/// <para>
-/// After completion:
-/// - If packages were installed: exits for plugin reload
-/// - If all packages already installed: continues to menu
-/// </para>
+/// Uses <see cref="IPackageIndexService"/> to discover available themes and plugins,
+/// and <see cref="PluginManager"/> directly for installation (bypasses type checks
+/// in PluginInstallCommand so both themes and plugins can be installed).
 /// </remarks>
 internal sealed partial class Wizard(
     ILogger<Wizard> logger,
+    IPackageIndexService packageIndexService,
     RefreshCommand packagesRefreshCommand,
-    ThemeInstallCommand themeInstallCommand,
-    PluginInstallCommand pluginInstallCommand,
+    PluginManager pluginManager,
     IGlobalConfigManager globalConfigManager)
 {
     /// <summary>
@@ -69,9 +57,9 @@ internal sealed partial class Wizard(
             return 1;
         }
 
-        // Get available packages
-        var availableThemes = await themeInstallCommand.GetAvailableThemesAsync(cancellationToken);
-        var availablePlugins = await pluginInstallCommand.GetAvailablePluginsAsync(cancellationToken);
+        // Get available packages directly from package index (no plugin dependency)
+        var availableThemes = await packageIndexService.SearchByTypeAsync("RevelaTheme", cancellationToken);
+        var availablePlugins = await packageIndexService.SearchByTypeAsync("RevelaPlugin", cancellationToken);
 
         var totalAvailable = availableThemes.Count + availablePlugins.Count;
 
@@ -85,6 +73,14 @@ internal sealed partial class Wizard(
         // Show setup mode selection
         var mode = PromptSetupMode(availableThemes.Count, availablePlugins.Count);
 
+        // Core plugins are always installed — not user-selectable
+        var corePlugins = availablePlugins
+            .Where(p => p.Id.Contains(".Plugins.Core.", StringComparison.Ordinal))
+            .ToList();
+        var optionalPlugins = availablePlugins
+            .Where(p => !p.Id.Contains(".Plugins.Core.", StringComparison.Ordinal))
+            .ToList();
+
         InstallResult themeResult;
         InstallResult pluginResult;
 
@@ -95,13 +91,18 @@ internal sealed partial class Wizard(
             AnsiConsole.MarkupLine("[cyan]Installing all packages...[/]");
             AnsiConsole.WriteLine();
 
-            themeResult = await themeInstallCommand.InstallAllAsync(showRestartNotice: false, cancellationToken);
-            pluginResult = await pluginInstallCommand.InstallAllAsync(showRestartNotice: false, cancellationToken);
+            themeResult = await InstallThemesAsync(availableThemes, cancellationToken);
+            pluginResult = await InstallPackagesAsync(availablePlugins, cancellationToken);
         }
         else
         {
-            // Custom installation - show combined multi-select
-            var (selectedThemes, selectedPlugins) = PromptCustomSelection(availableThemes, availablePlugins);
+            // Custom installation — core plugins auto-installed, user selects the rest
+            if (corePlugins.Count > 0)
+            {
+                ShowCorePluginsInfo(corePlugins);
+            }
+
+            var (selectedThemes, selectedPlugins) = PromptCustomSelection(availableThemes, optionalPlugins);
 
             // Must have at least one theme
             if (selectedThemes.Count == 0)
@@ -114,16 +115,25 @@ internal sealed partial class Wizard(
                 }
             }
 
-            // Install selected packages
+            // Always install core plugins first
+            var coreResult = await InstallPackagesAsync(corePlugins, cancellationToken);
+
+            // Install user-selected packages
             themeResult = await InstallSelectedAsync(
                 selectedThemes,
-                themeInstallCommand.ExecuteAsync,
+                InstallThemeAsync,
                 cancellationToken);
 
-            pluginResult = await InstallSelectedAsync(
+            var optionalResult = await InstallSelectedAsync(
                 selectedPlugins,
-                pluginInstallCommand.ExecuteFromNuGetAsync,
+                InstallPackageAsync,
                 cancellationToken);
+
+            // Merge core + optional plugin results
+            pluginResult = new InstallResult(
+                [.. coreResult.Installed, .. optionalResult.Installed],
+                [.. coreResult.AlreadyInstalled, .. optionalResult.AlreadyInstalled],
+                [.. coreResult.Failed, .. optionalResult.Failed]);
         }
 
         // Determine if restart is needed
@@ -163,8 +173,7 @@ internal sealed partial class Wizard(
                 "This wizard will help you install themes and plugins.\n\n" +
                 "[dim]You can re-run this wizard later via:[/] Addons → wizard"))
             .WithHeader("[cyan1]Setup[/]")
-            .Border(BoxBorder.Rounded)
-            .BorderStyle(new Style(Color.Cyan1))
+            .WithInfoStyle()
             .Padding(1, 0);
 
         AnsiConsole.Write(panel);
@@ -224,23 +233,9 @@ internal sealed partial class Wizard(
             .PageSize(15)
             .Required(false)
             .HighlightStyle(new Style(Color.Cyan1))
-            .InstructionsText("[dim](↑↓ navigate, Space toggle, a=all, Enter confirm)[/]");
-
-        // Add themes group
-        if (themeChoices.Count > 0)
-        {
-            prompt.AddChoiceGroup(
-                "[yellow]── Themes ──[/]",
-                [.. themeChoices.Select(c => c.Split('|')[1])]);
-        }
-
-        // Add plugins group
-        if (pluginChoices.Count > 0)
-        {
-            prompt.AddChoiceGroup(
-                "[yellow]── Plugins ──[/]",
-                [.. pluginChoices.Select(c => c.Split('|')[1])]);
-        }
+            .InstructionsText("[dim](↑↓ navigate, Space toggle, a=all, Enter confirm)[/]")
+            .AddChoices([.. themeChoices.Select(c => c.Split('|')[1])])
+            .AddChoices([.. pluginChoices.Select(c => c.Split('|')[1])]);
 
         // Pre-select all items
         foreach (var choice in allChoices)
@@ -256,18 +251,12 @@ internal sealed partial class Wizard(
 
         foreach (var selection in selections)
         {
-            // Skip group headers
-            if (selection.Contains("── Themes ──", StringComparison.Ordinal) || selection.Contains("── Plugins ──", StringComparison.Ordinal))
-            {
-                continue;
-            }
-
             // Find the original choice to get the package ID
             var originalChoice = allChoices.FirstOrDefault(c => c.Split('|')[1] == selection);
             if (originalChoice is not null)
             {
                 var packageId = originalChoice.Split('|')[0];
-                if (packageId.Contains(".Theme.", StringComparison.Ordinal))
+                if (packageId.Contains(".Themes.", StringComparison.Ordinal))
                 {
                     selectedThemes.Add(packageId);
                 }
@@ -311,6 +300,116 @@ internal sealed partial class Wizard(
         return new InstallResult(installed, [], failed);
     }
 
+    /// <summary>
+    /// Installs all available themes using PluginManager directly.
+    /// </summary>
+    private async Task<InstallResult> InstallThemesAsync(
+        IReadOnlyList<PackageIndexEntry> themes,
+        CancellationToken cancellationToken)
+    {
+        if (themes.Count == 0)
+        {
+            return InstallResult.Empty;
+        }
+
+        var installed = new List<string>();
+        var failed = new List<string>();
+
+        foreach (var theme in themes)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var result = await InstallThemeAsync(theme.Id, null, null, cancellationToken);
+            if (result == 0)
+            {
+                installed.Add(theme.Id);
+            }
+            else
+            {
+                failed.Add(theme.Id);
+            }
+        }
+
+        return new InstallResult(installed, [], failed);
+    }
+
+    /// <summary>
+    /// Installs all available plugins using PluginManager directly.
+    /// </summary>
+    private async Task<InstallResult> InstallPackagesAsync(
+        IReadOnlyList<PackageIndexEntry> packages,
+        CancellationToken cancellationToken)
+    {
+        if (packages.Count == 0)
+        {
+            return InstallResult.Empty;
+        }
+
+        var installed = new List<string>();
+        var failed = new List<string>();
+
+        foreach (var package in packages)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var result = await InstallPackageAsync(package.Id, null, null, cancellationToken);
+            if (result == 0)
+            {
+                installed.Add(package.Id);
+            }
+            else
+            {
+                failed.Add(package.Id);
+            }
+        }
+
+        return new InstallResult(installed, [], failed);
+    }
+
+    /// <summary>
+    /// Installs a single theme: NuGet install + register in global config.
+    /// </summary>
+    private async Task<int> InstallThemeAsync(
+        string packageId,
+        string? version,
+        string? source,
+        CancellationToken cancellationToken)
+    {
+        var success = await pluginManager.InstallAsync(packageId, version, source, cancellationToken);
+        if (success)
+        {
+            await globalConfigManager.AddThemeAsync(packageId, version ?? "latest", cancellationToken);
+        }
+
+        return success ? 0 : 1;
+    }
+
+    /// <summary>
+    /// Installs a single plugin via PluginManager.
+    /// </summary>
+    private async Task<int> InstallPackageAsync(
+        string packageId,
+        string? version,
+        string? source,
+        CancellationToken cancellationToken)
+    {
+        var success = await pluginManager.InstallAsync(packageId, version, source, cancellationToken);
+        return success ? 0 : 1;
+    }
+
+    private static void ShowCorePluginsInfo(List<PackageIndexEntry> corePlugins)
+    {
+        AnsiConsole.WriteLine();
+
+        var lines = new List<string> { "[bold]Core plugins[/] [dim](always installed):[/]", "" };
+        foreach (var plugin in corePlugins)
+        {
+            var shortName = plugin.Id.Replace("Spectara.Revela.Plugins.Core.", "", StringComparison.Ordinal);
+            lines.Add($"  [green]✓[/] {Markup.Escape(shortName)} [dim]- {Markup.Escape(Truncate(plugin.Description, 50))}[/]");
+        }
+
+        AnsiConsole.MarkupLine(string.Join("\n", lines));
+        AnsiConsole.WriteLine();
+    }
+
     private static string Truncate(string? text, int maxLength)
     {
         if (string.IsNullOrEmpty(text))
@@ -351,8 +450,7 @@ internal sealed partial class Wizard(
 
         var panel = new Panel(new Markup(string.Join("\n", lines)))
             .WithHeader("[green]Complete[/]")
-            .Border(BoxBorder.Rounded)
-            .BorderStyle(new Style(Color.Green))
+            .WithSuccessStyle()
             .Padding(1, 0);
 
         AnsiConsole.Write(panel);
@@ -400,8 +498,7 @@ internal sealed partial class Wizard(
 
             var panel = new Panel(new Markup(string.Join("\n", lines)))
                 .WithHeader("[green]Complete[/]")
-                .Border(BoxBorder.Rounded)
-                .BorderStyle(new Style(Color.Green))
+                .WithSuccessStyle()
                 .Padding(1, 0);
 
             AnsiConsole.Write(panel);
@@ -422,8 +519,7 @@ internal sealed partial class Wizard(
 
             var panel = new Panel(new Markup(string.Join("\n", lines)))
                 .WithHeader("[green]Complete[/]")
-                .Border(BoxBorder.Rounded)
-                .BorderStyle(new Style(Color.Green))
+                .WithSuccessStyle()
                 .Padding(1, 0);
 
             AnsiConsole.Write(panel);

@@ -4,6 +4,7 @@ using System.Globalization;
 using Microsoft.Extensions.Options;
 
 using Spectara.Revela.Sdk;
+using Spectara.Revela.Sdk.Abstractions;
 using Spectara.Revela.Sdk.Output;
 
 using Spectre.Console;
@@ -15,10 +16,19 @@ namespace Spectara.Revela.Plugins.Statistics.Commands;
 /// </summary>
 internal sealed partial class CleanStatisticsCommand(
     ILogger<CleanStatisticsCommand> logger,
-    IOptions<ProjectEnvironment> projectEnvironment)
+    IOptions<ProjectEnvironment> projectEnvironment) : ICleanStep
 {
+    /// <inheritdoc />
+    public string Name => "statistics";
+
+    /// <inheritdoc />
+    public string Description => "Clean statistics JSON files from cache";
+
+    /// <inheritdoc />
+    int ICleanStep.Order => 300;
+
     /// <summary>Order for this command in menu.</summary>
-    public const int Order = 30;
+    public const int MenuOrder = 30;
 
     /// <summary>Statistics JSON filename.</summary>
     private const string StatisticsFileName = "statistics.json";
@@ -38,7 +48,7 @@ internal sealed partial class CleanStatisticsCommand(
         return command;
     }
 
-    private Task<int> ExecuteAsync(CancellationToken cancellationToken)
+    public Task<int> ExecuteAsync(CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
 

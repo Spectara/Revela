@@ -70,15 +70,21 @@ public abstract class EmbeddedThemePlugin : IThemePlugin
     public Stream? GetImagesTemplate() =>
         GetFile("Configuration/images.json");
 
-    private static ThemeMetadata CreateMetadata(ThemeJsonConfig config) => new()
+    private static ThemeMetadata CreateMetadata(ThemeJsonConfig config)
     {
-        Name = config.Name ?? throw new InvalidOperationException("Theme name is required in manifest.json"),
-        Version = config.Version ?? "1.0.0",
-        Description = config.Description ?? string.Empty,
-        Author = config.Author ?? "Unknown",
-        PreviewImageUri = config.PreviewImage,
-        Tags = config.Tags ?? []
-    };
+        var themeName = config.Name ?? throw new InvalidOperationException("Theme name is required in manifest.json");
+
+        return new ThemeMetadata
+        {
+            Id = $"Spectara.Revela.Themes.{themeName}",
+            Name = themeName,
+            Version = config.Version ?? "1.0.0",
+            Description = config.Description ?? string.Empty,
+            Author = config.Author ?? "Unknown",
+            PreviewImageUri = config.PreviewImage,
+            Tags = config.Tags ?? []
+        };
+    }
 
     private static ThemeManifest CreateManifest(ThemeJsonConfig config) => new()
     {

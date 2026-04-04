@@ -1,4 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+
 using Spectara.Revela.Plugins.Compress.Commands;
 using Spectara.Revela.Plugins.Compress.Services;
 using Spectara.Revela.Sdk.Abstractions;
@@ -22,6 +24,7 @@ public sealed class CompressPlugin : IPlugin
     /// <inheritdoc />
     public PluginMetadata Metadata => new()
     {
+        Id = "Spectara.Revela.Plugins.Compress",
         Name = "Static Compression",
         Version = "1.0.0",
         Description = "Compress static files with Gzip and Brotli",
@@ -32,11 +35,14 @@ public sealed class CompressPlugin : IPlugin
     public void ConfigureServices(IServiceCollection services)
     {
         // Register compression service
-        services.AddTransient<CompressionService>();
+        services.TryAddTransient<CompressionService>();
 
         // Register commands
-        services.AddTransient<CompressCommand>();
-        services.AddTransient<CleanCompressCommand>();
+        services.TryAddTransient<CompressCommand>();
+        services.TryAddTransient<CleanCompressCommand>();
+
+        // Register CleanCompressCommand as ICleanStep for clean pipeline
+        services.TryAddEnumerable(ServiceDescriptor.Transient<ICleanStep, CleanCompressCommand>());
 
         // Note: CompressCommand is NOT registered as IGenerateStep
         // Pre-compression requires server configuration (nginx gzip_static, etc.)
@@ -62,6 +68,7 @@ public sealed class CompressPlugin : IPlugin
         yield return new CommandDescriptor(
             cleanCompressCommand.Create(),
             ParentCommand: "clean",
-            Order: CleanCompressCommand.Order);
+            Order: CleanCompressCommand.MenuOrder,
+            IsSequentialStep: true);
     }
 }

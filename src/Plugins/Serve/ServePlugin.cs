@@ -12,6 +12,7 @@ public sealed class ServePlugin : IPlugin
     /// <inheritdoc />
     public PluginMetadata Metadata { get; } = new()
     {
+        Id = "Spectara.Revela.Plugins.Serve",
         Name = "Serve",
         Version = "1.0.0",
         Description = "Local HTTP server for previewing generated sites",
@@ -52,6 +53,7 @@ public sealed class ServePlugin : IPlugin
         yield return new CommandDescriptor(
             configCommand.Create(),
             ParentCommand: "config",
+            Group: "Addons",
             RequiresProject: false);
     }
 }

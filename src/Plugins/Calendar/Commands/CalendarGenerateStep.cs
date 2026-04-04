@@ -37,7 +37,7 @@ internal sealed partial class CalendarGenerateStep(
     public string Description => "Generate availability calendar from iCal data";
 
     /// <inheritdoc />
-    public int Order => 150;
+    public int Order => 250;
 
     /// <summary>
     /// Creates the CLI command for standalone execution.

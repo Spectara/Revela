@@ -21,6 +21,7 @@ public sealed class SourceCalendarPlugin : IPlugin
     /// <inheritdoc />
     public PluginMetadata Metadata => new()
     {
+        Id = "Spectara.Revela.Plugins.Source.Calendar",
         Name = "Source Calendar",
         Version = "1.0.0",
         Description = "Fetch iCal feeds for calendar data",
@@ -52,7 +53,6 @@ public sealed class SourceCalendarPlugin : IPlugin
         yield return new CommandDescriptor(
             calendarCommand,
             ParentCommand: "source",
-            Order: 30,
-            Group: "Content");
+            Order: 30);
     }
 }

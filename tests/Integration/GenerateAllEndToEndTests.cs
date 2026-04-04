@@ -1,7 +1,8 @@
 using Microsoft.Extensions.DependencyInjection;
 using Spectara.Revela.Commands;
-using Spectara.Revela.Commands.Generate.Abstractions;
-using Spectara.Revela.Commands.Generate.Models.Results;
+using Spectara.Revela.Plugins.Core.Generate;
+using Spectara.Revela.Plugins.Core.Generate.Abstractions;
+using Spectara.Revela.Plugins.Core.Generate.Models.Results;
 using Spectara.Revela.Sdk.Abstractions;
 using Spectara.Revela.Tests.Shared.Fixtures;
 using Spectara.Revela.Themes.Lumina;
@@ -73,6 +74,7 @@ public sealed class GenerateAllEndToEndTests
         using var host = RevelaTestHost.Build(project.RootPath, services =>
         {
             services.AddRevelaCommands();
+            services.AddGenerateFeature();
             services.AddSingleton<IThemePlugin>(new LuminaThemePlugin());
         });
 
@@ -170,6 +172,7 @@ public sealed class GenerateAllEndToEndTests
         using var host = RevelaTestHost.Build(project.RootPath, services =>
         {
             services.AddRevelaCommands();
+            services.AddGenerateFeature();
             services.AddSingleton<IThemePlugin>(new LuminaThemePlugin());
         });
 
@@ -225,6 +228,7 @@ public sealed class GenerateAllEndToEndTests
         using var host = RevelaTestHost.Build(project.RootPath, services =>
         {
             services.AddRevelaCommands();
+            services.AddGenerateFeature();
             services.AddSingleton<IThemePlugin>(new LuminaThemePlugin());
         });
 

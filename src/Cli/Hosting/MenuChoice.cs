@@ -26,27 +26,37 @@ internal sealed record MenuChoice(
     /// <summary>
     /// Creates a "wizard" menu choice for the Addons group.
     /// </summary>
-    public static MenuChoice Wizard => new("wizard  [dim]Install themes and plugins[/]", Action: MenuAction.RunSetupWizard);
+    /// <param name="nameColumnWidth">Width to pad the name column to for alignment.</param>
+    public static MenuChoice CreateWizard(int nameColumnWidth = 0)
+    {
+        var paddedName = nameColumnWidth > 0 ? "wizard".PadRight(nameColumnWidth) : "wizard";
+        return new($"{paddedName}   [dim]Install themes and plugins[/]", Action: MenuAction.RunSetupWizard);
+    }
 
     /// <summary>
     /// Creates a menu choice from a command.
     /// </summary>
     /// <param name="cmd">The command to create a choice for.</param>
+    /// <param name="isPipelineStep">Whether this command is a pipeline step (shown with marker).</param>
+    /// <param name="nameColumnWidth">Width to pad the name column to for alignment.</param>
     /// <returns>A menu choice with the command's name and description.</returns>
-    public static MenuChoice FromCommand(Command cmd)
+    public static MenuChoice FromCommand(Command cmd, bool isPipelineStep = false, int nameColumnWidth = 0)
     {
         var hasVisibleSubcommands = cmd.Subcommands.Any(c => !c.Hidden);
         var arrow = hasVisibleSubcommands ? " →" : "";
+        var nameWithArrow = $"{cmd.Name}{arrow}";
+        var paddedName = nameColumnWidth > 0 ? nameWithArrow.PadRight(nameColumnWidth) : nameWithArrow;
+        var marker = isPipelineStep ? "[dim cyan]●[/]  " : "   ";
 
         var description = string.IsNullOrWhiteSpace(cmd.Description)
             ? string.Empty
-            : $"  [dim]{cmd.Description}[/]";
+            : $"[dim]{cmd.Description}[/]";
 
         var action = hasVisibleSubcommands
             ? MenuAction.Navigate
             : MenuAction.Execute;
 
-        return new MenuChoice($"{cmd.Name}{arrow}{description}", cmd, action);
+        return new MenuChoice($"{paddedName}{marker}{description}", cmd, action);
     }
 
     /// <inheritdoc />

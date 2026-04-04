@@ -1,11 +1,10 @@
+using System.Collections.Frozen;
 using System.CommandLine;
 using System.CommandLine.Help;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
-using Spectara.Revela.Commands.Clean.Commands;
-using Spectara.Revela.Commands.Generate.Commands;
 using Spectara.Revela.Sdk.Abstractions;
 
 namespace Spectara.Revela.Cli.Hosting;
@@ -61,23 +60,28 @@ internal static class HostExtensions
         var rootCommand = new RootCommand(description);
 
         // Unified command registration callback
-        void OnCommandRegistered(Command cmd, int order, string? group, bool requiresProject, bool hideWhenProjectExists)
+        void OnCommandRegistered(Command cmd, CommandDescriptor desc)
         {
-            orderRegistry.Register(cmd, order);
-            if (!string.IsNullOrEmpty(group))
+            orderRegistry.Register(cmd, desc.Order);
+            if (!string.IsNullOrEmpty(desc.Group))
             {
-                groupRegistry.GetOrCreate(group);
-                orderRegistry.RegisterGroup(cmd, group);
+                groupRegistry.GetOrCreate(desc.Group);
+                orderRegistry.RegisterGroup(cmd, desc.Group);
             }
 
-            if (!requiresProject)
+            if (!desc.RequiresProject)
             {
                 orderRegistry.RegisterNoProjectRequired(cmd);
             }
 
-            if (hideWhenProjectExists)
+            if (desc.HideWhenProjectExists)
             {
                 orderRegistry.RegisterHideWhenProjectExists(cmd);
+            }
+
+            if (desc.IsSequentialStep)
+            {
+                orderRegistry.RegisterPipelineStep(cmd);
             }
         }
 
@@ -86,19 +90,21 @@ internal static class HostExtensions
         foreach (var descriptor in coreCommands.GetCommands(services))
         {
             rootCommand.Subcommands.Add(descriptor.Command);
-            OnCommandRegistered(
-                descriptor.Command,
-                descriptor.Order,
-                descriptor.Group,
-                descriptor.RequiresProject,
-                descriptor.HideWhenProjectExists);
-
-            // Register subcommand orders for commands with special handling
-            RegisterSubcommandOrders(descriptor.Command, orderRegistry);
+            OnCommandRegistered(descriptor.Command, descriptor);
         }
 
         // Plugin commands (same callback for unified handling)
         plugins.RegisterCommands(rootCommand, services, OnCommandRegistered);
+
+        // Register subcommand orders for ALL commands (core + plugin-provided)
+        // This must happen AFTER plugins have registered and merged their commands
+        foreach (var cmd in rootCommand.Subcommands)
+        {
+            RegisterSubcommandOrders(cmd, orderRegistry);
+        }
+
+        // Pipeline step markers are now registered via IsSequentialStep on CommandDescriptor
+        // (handled in OnCommandRegistered callback above — no DI lookup needed)
 
         // Register config subcommand orders AFTER plugins have added their subcommands
         var configCmd = rootCommand.Subcommands.FirstOrDefault(c => string.Equals(c.Name, "config", StringComparison.Ordinal));
@@ -155,49 +161,38 @@ internal static class HostExtensions
     }
 
     /// <summary>
-    /// Subcommand order definitions for each parent command.
+    /// Subcommand order definitions for host-internal parent commands.
     /// Maps parent command name → (subcommand name → order).
     /// Unknown subcommands (e.g., from plugins) get <see cref="CommandOrderRegistry.DefaultOrder"/>.
     /// </summary>
-    private static readonly Dictionary<string, Dictionary<string, int>> SubcommandOrders = new(StringComparer.Ordinal)
-    {
-        // Order within generate: all (0), scan (10), statistics (20-plugin), pages (30), images (40)
-        ["generate"] = new(StringComparer.Ordinal)
+    /// <remarks>
+    /// Only contains orders for commands added internally by a parent's Create() method.
+    /// Plugin commands (generate/*, clean/*) set their own order via CommandDescriptor.
+    /// </remarks>
+    private static readonly FrozenDictionary<string, FrozenDictionary<string, int>> SubcommandOrders =
+        new Dictionary<string, FrozenDictionary<string, int>>(StringComparer.Ordinal)
         {
-            ["all"] = AllCommand.Order,
-            ["scan"] = 10,
-            ["pages"] = 30,
-            ["images"] = 40,
-        },
-        // Order within clean: all (0), output (10), images (15), cache (20), statistics (30-plugin)
-        ["clean"] = new(StringComparer.Ordinal)
-        {
-            ["all"] = CleanAllCommand.Order,
-            ["output"] = CleanOutputCommand.Order,
-            ["images"] = CleanImagesCommand.Order,
-            ["cache"] = CleanCacheCommand.Order,
-        },
-        // Order within theme: list (10), files (20), extract (30)
-        ["theme"] = new(StringComparer.Ordinal)
-        {
-            ["list"] = 10,
-            ["files"] = 20,
-            ["extract"] = 30,
-        },
-        // Order within plugin: list (10), install (20), uninstall (30)
-        ["plugin"] = new(StringComparer.Ordinal)
-        {
-            ["list"] = 10,
-            ["install"] = 20,
-            ["uninstall"] = 30,
-        },
-        // Order within packages: refresh (10), search (20)
-        ["packages"] = new(StringComparer.Ordinal)
-        {
-            ["refresh"] = 10,
-            ["search"] = 20,
-        },
-    };
+            // Order within theme: list (10), files (20), extract (30)
+            ["theme"] = new Dictionary<string, int>(StringComparer.Ordinal)
+            {
+                ["list"] = 10,
+                ["files"] = 20,
+                ["extract"] = 30,
+            }.ToFrozenDictionary(StringComparer.Ordinal),
+            // Order within plugin: list (10), install (20), uninstall (30)
+            ["plugin"] = new Dictionary<string, int>(StringComparer.Ordinal)
+            {
+                ["list"] = 10,
+                ["install"] = 20,
+                ["uninstall"] = 30,
+            }.ToFrozenDictionary(StringComparer.Ordinal),
+            // Order within packages: refresh (10), search (20)
+            ["packages"] = new Dictionary<string, int>(StringComparer.Ordinal)
+            {
+                ["refresh"] = 10,
+                ["search"] = 20,
+            }.ToFrozenDictionary(StringComparer.Ordinal),
+        }.ToFrozenDictionary(StringComparer.Ordinal);
 
     /// <summary>
     /// Registers order for subcommands based on command name using the <see cref="SubcommandOrders"/> lookup.
@@ -217,35 +212,33 @@ internal static class HostExtensions
     }
 
     /// <summary>
-    /// Config subcommand metadata: order, group, and project requirement.
-    /// Commands not listed here default to (DefaultOrder, null group, requiresProject: true).
+    /// Config subcommand metadata for host-owned commands only.
+    /// Plugin config commands set their own Group/Order/RequiresProject via <see cref="CommandDescriptor"/>.
+    /// Commands not listed here and without plugin metadata get defaults (DefaultOrder, null group, requiresProject: true).
     /// </summary>
-    private static readonly Dictionary<string, (int Order, string? Group, bool RequiresProject)> ConfigSubcommandMeta =
-        new(StringComparer.Ordinal)
+    private static readonly FrozenDictionary<string, (int Order, string? Group, bool RequiresProject)> ConfigSubcommandMeta =
+        new Dictionary<string, (int Order, string? Group, bool RequiresProject)>(StringComparer.Ordinal)
         {
-            // Project group: core project settings
+            // Project group: core project settings (host-owned, added in ConfigCommand.Create())
             // "project" doesn't require project - it creates project.json
             ["project"] = (10, CommandGroups.ConfigProject, false),
-            ["paths"] = (20, CommandGroups.ConfigProject, true),
-            ["theme"] = (30, CommandGroups.ConfigProject, true),
-            ["image"] = (40, CommandGroups.ConfigProject, true),
             ["site"] = (50, CommandGroups.ConfigProject, true),
-            ["sorting"] = (60, CommandGroups.ConfigProject, true),
 
-            // Packages group: feed management (global, no project needed)
+            // Packages group: feed management (host-owned, global, no project needed)
             ["feed"] = (10, CommandGroups.ConfigPackages, false),
 
-            // Addons group: optional plugin features (require project)
-            ["serve"] = (10, CommandGroups.ConfigAddons, true),
-            ["statistics"] = (20, CommandGroups.ConfigAddons, true),
-
-            // Ungrouped: locations (global, no project needed)
+            // Ungrouped: locations (host-owned, global, no project needed)
             ["locations"] = (90, null, false),
-        };
+        }.ToFrozenDictionary(StringComparer.Ordinal);
 
     /// <summary>
-    /// Registers order, groups, and project requirements for config subcommands.
+    /// Registers metadata for config subcommands.
     /// </summary>
+    /// <remarks>
+    /// Host-owned commands (project, site, feed, locations) get their metadata from <see cref="ConfigSubcommandMeta"/>.
+    /// Plugin commands already have order/group/requiresProject set via <see cref="CommandDescriptor"/>
+    /// and <c>OnCommandRegistered</c> — they are skipped here to avoid overriding plugin values.
+    /// </remarks>
     private static void RegisterConfigSubcommandOrders(
         Command configCmd,
         CommandOrderRegistry orderRegistry,
@@ -259,6 +252,13 @@ internal static class HostExtensions
 
         foreach (var sub in configCmd.Subcommands)
         {
+            // Skip commands that already have a group (set by plugins via CommandDescriptor)
+            if (orderRegistry.GetGroup(sub) is not null)
+            {
+                continue;
+            }
+
+            // Only host-owned commands need metadata from the dict
             var (order, group, requiresProject) = ConfigSubcommandMeta.TryGetValue(sub.Name, out var meta)
                 ? meta
                 : (CommandOrderRegistry.DefaultOrder, null, true);

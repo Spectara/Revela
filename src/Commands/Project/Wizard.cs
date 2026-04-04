@@ -1,14 +1,9 @@
 using Microsoft.Extensions.Options;
-
-using Spectara.Revela.Commands.Config.Images;
-using Spectara.Revela.Commands.Config.Paths;
 using Spectara.Revela.Commands.Config.Project;
 using Spectara.Revela.Commands.Config.Site;
-using Spectara.Revela.Commands.Config.Theme;
 using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Abstractions;
 using Spectara.Revela.Sdk.Output;
-
 using Spectre.Console;
 
 namespace Spectara.Revela.Commands.Project;
@@ -19,25 +14,18 @@ namespace Spectara.Revela.Commands.Project;
 /// <remarks>
 /// <para>
 /// The wizard is triggered when project.json doesn't exist in the current directory.
-/// It orchestrates existing config commands to:
+/// It runs required <see cref="IWizardStep"/> implementations from plugins in Order sequence,
+/// then offers optional steps as checkboxes.
 /// </para>
-/// <list type="number">
-/// <item>Configure project settings (name, URL)</item>
-/// <item>Select a theme from installed themes</item>
-/// <item>Configure site metadata (title, author, etc.)</item>
-/// <item>Optionally configure plugin-provided steps (OneDrive, etc.)</item>
-/// </list>
 /// <para>
-/// After completion, the project is ready for adding images and generating the site.
+/// This approach keeps the host completely decoupled from plugin types.
+/// Plugins register their wizard steps via DI, and the wizard discovers them at runtime.
 /// </para>
 /// </remarks>
 internal sealed partial class Wizard(
     ILogger<Wizard> logger,
     IOptions<ProjectEnvironment> projectEnvironment,
     ConfigProjectCommand configProjectCommand,
-    ConfigPathsCommand configPathsCommand,
-    ConfigThemeCommand configThemeCommand,
-    ConfigImageCommand configImageCommand,
     ConfigSiteCommand configSiteCommand,
     IEnumerable<IWizardStep> wizardSteps)
 {
@@ -49,11 +37,27 @@ internal sealed partial class Wizard(
     public async Task<int> RunAsync(CancellationToken cancellationToken = default)
     {
         LogStartingWizard(logger);
-        ShowWelcomeScreen();
 
-        // Step 1: Configure project (creates project.json)
+        // Collect required and optional steps from plugins
+        var requiredSteps = wizardSteps
+            .Where(s => s.IsRequired && s.ShouldPrompt())
+            .OrderBy(s => s.Order)
+            .ToList();
+
+        var optionalSteps = wizardSteps
+            .Where(s => !s.IsRequired && s.ShouldPrompt())
+            .OrderBy(s => s.Order)
+            .ToList();
+
+        ShowWelcomeScreen(requiredSteps);
+
+        // Total steps = 1 (project) + required plugin steps + 1 (site)
+        var totalSteps = 2 + requiredSteps.Count;
+        var currentStep = 1;
+
+        // Step 1: Configure project (creates project.json) — always host-owned
         AnsiConsole.WriteLine();
-        AnsiConsole.MarkupLine("[cyan]━━━ Step 1/5: Project Settings ━━━[/]");
+        AnsiConsole.MarkupLine($"[cyan]━━━ Step {currentStep}/{totalSteps}: Project Settings ━━━[/]");
         AnsiConsole.MarkupLine("[dim]Configure your project name and base URL.[/]");
         AnsiConsole.WriteLine();
 
@@ -64,52 +68,32 @@ internal sealed partial class Wizard(
             return 1;
         }
 
-        // Step 2: Configure directory paths
-        AnsiConsole.WriteLine();
-        AnsiConsole.MarkupLine("[cyan]━━━ Step 2/5: Directory Paths ━━━[/]");
-        AnsiConsole.MarkupLine("[dim]Configure source and output directories (defaults work for most users).[/]");
-        AnsiConsole.WriteLine();
+        currentStep++;
 
-        var pathsResult = await configPathsCommand.ExecuteAsync(null, null, cancellationToken);
-        if (pathsResult != 0)
+        // Required plugin steps (paths, theme, images — in Order sequence)
+        foreach (var step in requiredSteps)
         {
-            ShowStepFailedError("paths configuration");
-            return 1;
+            AnsiConsole.WriteLine();
+            AnsiConsole.MarkupLine($"[cyan]━━━ Step {currentStep}/{totalSteps}: {Markup.Escape(step.Name)} ━━━[/]");
+            AnsiConsole.MarkupLine($"[dim]{Markup.Escape(step.Description)}.[/]");
+            AnsiConsole.WriteLine();
+
+            var result = await step.ExecuteAsync(cancellationToken);
+            if (result != 0)
+            {
+                ShowStepFailedError(step.Name);
+                return 1;
+            }
+
+            currentStep++;
         }
 
-        // Step 3: Select theme
+        // Last required step: Configure site metadata — always host-owned
         AnsiConsole.WriteLine();
-        AnsiConsole.MarkupLine("[cyan]━━━ Step 3/5: Select Theme ━━━[/]");
-        AnsiConsole.MarkupLine("[dim]Choose a theme for your site.[/]");
-        AnsiConsole.WriteLine();
-
-        var themeResult = await configThemeCommand.ExecuteAsync(null, cancellationToken);
-        if (themeResult != 0)
-        {
-            ShowStepFailedError("theme selection");
-            return 1;
-        }
-
-        // Step 4: Configure image settings (uses theme defaults)
-        AnsiConsole.WriteLine();
-        AnsiConsole.MarkupLine("[cyan]━━━ Step 4/5: Image Settings ━━━[/]");
-        AnsiConsole.MarkupLine("[dim]Configure output formats and sizes for your images.[/]");
-        AnsiConsole.WriteLine();
-
-        var imageResult = await configImageCommand.ExecuteAsync(null, cancellationToken);
-        if (imageResult != 0)
-        {
-            ShowStepFailedError("image configuration");
-            return 1;
-        }
-
-        // Step 5: Configure site metadata
-        AnsiConsole.WriteLine();
-        AnsiConsole.MarkupLine("[cyan]━━━ Step 5/5: Site Metadata ━━━[/]");
+        AnsiConsole.MarkupLine($"[cyan]━━━ Step {currentStep}/{totalSteps}: Site Metadata ━━━[/]");
         AnsiConsole.MarkupLine("[dim]Configure your site title, author, and other metadata.[/]");
         AnsiConsole.WriteLine();
 
-        // IOptionsMonitor cache was invalidated by ConfigThemeCommand, so theme is available
         var siteResult = await configSiteCommand.ExecuteAsync(cancellationToken);
         if (siteResult != 0)
         {
@@ -117,8 +101,8 @@ internal sealed partial class Wizard(
             return 1;
         }
 
-        // Optional: Run plugin-provided wizard steps
-        await RunOptionalWizardStepsAsync(cancellationToken);
+        // Optional: Run plugin-provided optional wizard steps
+        await RunOptionalWizardStepsAsync(optionalSteps, cancellationToken);
 
         // Done - show summary
         ShowCompletionSummary();
@@ -129,16 +113,12 @@ internal sealed partial class Wizard(
     }
 
     /// <summary>
-    /// Prompts the user to optionally run plugin-provided wizard steps.
+    /// Runs optional plugin-provided wizard steps as checkboxes.
     /// </summary>
-    private async Task RunOptionalWizardStepsAsync(CancellationToken cancellationToken)
+    private static async Task RunOptionalWizardStepsAsync(
+        List<IWizardStep> availableSteps,
+        CancellationToken cancellationToken)
     {
-        // Get available wizard steps that should be prompted
-        var availableSteps = wizardSteps
-            .Where(step => step.ShouldPrompt())
-            .OrderBy(step => step.Order)
-            .ToList();
-
         if (availableSteps.Count == 0)
         {
             return;
@@ -186,7 +166,7 @@ internal sealed partial class Wizard(
         }
     }
 
-    private static void ShowWelcomeScreen()
+    private static void ShowWelcomeScreen(List<IWizardStep> requiredSteps)
     {
         AnsiConsole.Clear();
 
@@ -206,18 +186,27 @@ internal sealed partial class Wizard(
 
         AnsiConsole.WriteLine();
 
+        // Build step list dynamically from discovered wizard steps
+        var stepNum = 1;
+        var stepsMarkup = $"  [cyan]{stepNum}.[/] Project settings (name, URL)\n";
+        stepNum++;
+
+        foreach (var step in requiredSteps)
+        {
+            stepsMarkup += $"  [cyan]{stepNum}.[/] {Markup.Escape(step.Name)}\n";
+            stepNum++;
+        }
+
+        stepsMarkup += $"  [cyan]{stepNum}.[/] Site metadata (title, author)";
+
         var panel = new Panel(
             new Markup(
                 "[bold]Create a New Revela Project[/]\n\n" +
                 "This wizard will help you set up a new photo gallery:\n" +
-                "  [cyan]1.[/] Project settings (name, URL)\n" +
-                "  [cyan]2.[/] Select a theme\n" +
-                "  [cyan]3.[/] Image settings (formats, sizes)\n" +
-                "  [cyan]4.[/] Site metadata (title, author)\n\n" +
+                stepsMarkup + "\n\n" +
                 "[dim]You can change these settings later via:[/] revela config"))
             .WithHeader("[cyan1]New Project[/]")
-            .Border(BoxBorder.Rounded)
-            .BorderStyle(new Style(Color.Cyan1))
+            .WithInfoStyle()
             .Padding(1, 0);
 
         AnsiConsole.Write(panel);
@@ -250,8 +239,7 @@ internal sealed partial class Wizard(
 
         var panel = new Panel(new Markup(string.Join("\n", lines)))
             .WithHeader("[green]Complete[/]")
-            .Border(BoxBorder.Rounded)
-            .BorderStyle(new Style(Color.Green))
+            .WithSuccessStyle()
             .Padding(1, 0);
 
         AnsiConsole.Write(panel);

@@ -38,6 +38,7 @@
   <!-- ================================================================== -->
   <Target Name="_RevelaIncludePluginDependencies"
           AfterTargets="Build"
+          BeforeTargets="GenerateNuspec"
           Condition="'$(PackageType)' == 'RevelaPlugin' Or '$(PackageType)' == 'RevelaTheme'">
 
     <ItemGroup>

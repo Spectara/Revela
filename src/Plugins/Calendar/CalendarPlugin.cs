@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 using Spectara.Revela.Plugins.Calendar.Commands;
 using Spectara.Revela.Sdk.Abstractions;
@@ -18,6 +19,7 @@ public sealed class CalendarPlugin : IPlugin
     /// <inheritdoc />
     public PluginMetadata Metadata => new()
     {
+        Id = "Spectara.Revela.Plugins.Calendar",
         Name = "Calendar",
         Version = "1.0.0",
         Description = "Generate availability calendars from iCal data",
@@ -27,10 +29,17 @@ public sealed class CalendarPlugin : IPlugin
     /// <inheritdoc />
     public void ConfigureServices(IServiceCollection services)
     {
-        services.AddTransient<CalendarGenerateStep>();
+        services.TryAddTransient<CalendarGenerateStep>();
+        services.TryAddTransient<CleanCalendarCommand>();
 
         // Register as IGenerateStep for pipeline orchestration
-        services.AddTransient<IGenerateStep, CalendarGenerateStep>();
+        services.TryAddEnumerable(ServiceDescriptor.Transient<IGenerateStep, CalendarGenerateStep>());
+
+        // Register as ICleanStep for clean pipeline
+        services.TryAddEnumerable(ServiceDescriptor.Transient<ICleanStep, CleanCalendarCommand>());
+
+        // Register page template for 'revela create page calendar'
+        services.TryAddEnumerable(ServiceDescriptor.Singleton<IPageTemplate, CalendarPageTemplate>());
     }
 
     /// <inheritdoc />
@@ -42,6 +51,15 @@ public sealed class CalendarPlugin : IPlugin
         yield return new CommandDescriptor(
             calendarCommand.Create(),
             ParentCommand: "generate",
-            Order: 15);
+            Order: 15,
+            IsSequentialStep: true);
+
+        // Register: revela clean calendar
+        var cleanCalendarCommand = services.GetRequiredService<CleanCalendarCommand>();
+        yield return new CommandDescriptor(
+            cleanCalendarCommand.Create(),
+            ParentCommand: "clean",
+            Order: CleanCalendarCommand.MenuOrder,
+            IsSequentialStep: true);
     }
 }

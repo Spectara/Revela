@@ -1,5 +1,6 @@
 using System.CommandLine;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Http.Resilience;
 using Polly;
 using Spectara.Revela.Plugins.Source.OneDrive.Commands;
@@ -18,6 +19,7 @@ public sealed class OneDrivePlugin : IPlugin
     /// <inheritdoc />
     public PluginMetadata Metadata => new()
     {
+        Id = "Spectara.Revela.Plugins.Source.OneDrive",
         Name = "Source OneDrive",
         Version = "1.0.0",
         Description = "Download images from OneDrive shared folders",
@@ -72,7 +74,7 @@ public sealed class OneDrivePlugin : IPlugin
         services.AddTransient<ConfigOneDriveCommand>();
 
         // Register Wizard Step (for project setup wizard integration)
-        services.AddTransient<IWizardStep, OneDriveWizardStep>();
+        services.TryAddEnumerable(ServiceDescriptor.Transient<IWizardStep, OneDriveWizardStep>());
     }
 
     /// <inheritdoc />
