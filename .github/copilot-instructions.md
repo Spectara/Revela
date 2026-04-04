@@ -83,10 +83,14 @@ This is a **complete rewrite** of the original Bash-based revela project:
 ```
 src/
 ├── Core/                     # Shared kernel (services, plugin loading, configuration)
-├── Commands/                 # CLI commands (Generate, Clean, Config, Plugins, etc.)
+├── Commands/                 # CLI commands (Config, Packages, Plugins, Restore — host-owned only)
 ├── Cli/                      # Entry point, hosting, interactive mode
 ├── Sdk/                      # SDK for plugin development (abstractions, models, services)
 ├── Plugins/
+│   ├── Core/
+│   │   ├── Generate/  # Core generate pipeline (scan, pages, images, clean)
+│   │   ├── Theme/     # Theme management (install, list, extract)
+│   │   └── Projects/  # Project management (create, list, delete)
 │   ├── Calendar/      # Calendar/timeline functionality
 │   ├── Compress/      # Gzip/Brotli pre-compression
 │   ├── Serve/         # Local development server
@@ -113,14 +117,17 @@ tests/
 ```
 
 ### Key Files
-- **Plugin Abstractions:** `src/Sdk/Abstractions/` - IPlugin, IGenerateStep, IWizardStep, CommandDescriptor
+- **Plugin Abstractions:** `src/Sdk/Abstractions/` - IPlugin, IGenerateStep, ICleanStep, IWizardStep, CommandDescriptor
+- **Engine Facade:** `src/Sdk/Abstractions/Engine/IRevelaEngine.cs` - High-level generation API
 - **Models:** `src/Sdk/Models/Manifest/` - ImageContent, GalleryContent, ManifestMeta
+- **Engine Models:** `src/Sdk/Models/Engine/` - ScanResult, PagesResult, ImagesResult, GenerateResult
 - **Config:** `src/Core/Configuration/` + `src/Sdk/Configuration/` - Configuration models
 - **Global Config:** `src/Core/Services/IGlobalConfigManager.cs` + `GlobalConfigManager.cs` - revela.json read/write (DI singleton)
 - **Plugin Loading:** `src/Core/PluginLoader.cs` + `PluginManager.cs`
+- **Plugin Extensions:** `src/Core/Extensions/PluginServiceCollectionExtensions.cs` - AddPlugins lifecycle
 - **Path Resolution:** `src/Sdk/Services/IPathResolver.cs` + `PathResolver.cs`
 - **Output Helpers:** `src/Sdk/Output/OutputMarkers.cs`, `src/Sdk/ProjectPaths.cs`
-- **CLI Hosting:** `src/Cli/Hosting/` - HostBuilderExtensions, ProjectResolver, InteractiveMenuService
+- **CLI Hosting:** `src/Cli/Hosting/` - CoreCommandProvider, HostExtensions, ProjectResolver, InteractiveMenuService
 
 ---
 
@@ -187,16 +194,13 @@ return rootCommand.Parse(args).Invoke();
 ```
 
 **Command Registration Pattern:**
-- **Core Commands:** Registered via `UseRevelaCommands()` extension
+- **Host Commands:** Registered via `AddRevelaCommands()` — only host-owned commands (Config, Packages, Plugins, Restore)
+- **Plugin Commands:** Registered via `AddPlugins()` → `IPlugin.ConfigureServices()` + `IPlugin.GetCommands()`
+- **Core Features:** Generate, Theme, and Projects commands come from Core plugins, NOT from the host
   ```csharp
-  return host.UseRevelaCommands().Parse(args).Invoke();
+  builder.Services.AddRevelaCommands();    // Host-owned commands only
+  builder.Services.AddPlugins(builder.Configuration, filteredArgs); // All plugin commands
   ```
-- **Plugin Commands:** Automatic via `AddPlugins()` (registered in `UseRevelaCommands()`)
-  ```csharp
-  builder.Services.AddPlugins(builder.Configuration, filteredArgs);
-  ```
-
-**Reason:** All commands resolved from DI, unified registration via extension method
 
 ### 4. Plugin System with Host.CreateApplicationBuilder
 
@@ -290,10 +294,13 @@ public interface IPlugin
 // PluginMetadata is a record (not sealed — ThemeMetadata inherits from it)
 public record PluginMetadata
 {
+    public required string Id { get; init; }           // Fully qualified package ID (e.g., "Spectara.Revela.Plugins.Serve")
     public required string Name { get; init; }
     public required string Version { get; init; }
-    public string Description { get; init; } = string.Empty;
+    public required string Description { get; init; }
     public string Author { get; init; } = "Unknown";
+    public IReadOnlyList<string> RequiredPlugins { get; init; } = [];  // Plugin IDs that must be loaded
+    public IReadOnlyList<string> ExtendsPlugins { get; init; } = [];   // Plugin IDs this extends (soft dependency)
 }
 ```
 
@@ -313,16 +320,20 @@ public static void AddPlugins(
     // 1. Load plugin assemblies
     var plugins = LoadPlugins(options);
     
-    // 2. ConfigureConfiguration (optional, usually no-op)
+    // 2. Validate plugin dependencies (RequiredPlugins, ExtendsPlugins)
+    ValidatePluginDependencies(plugins, loggerFactory);
+    
+    // 3. ConfigureConfiguration (optional, usually no-op)
     //    ENV vars auto-loaded with SPECTARA__REVELA__ prefix
     foreach (var plugin in plugins)
         plugin.ConfigureConfiguration(configuration);
     
-    // 3. ConfigureServices (required)
+    // 4. ConfigureServices (required)
+    //    Plugins use TryAdd* for idempotent registration
     foreach (var plugin in plugins)
         plugin.ConfigureServices(services);
     
-    // 4. Register IPluginContext in DI (resolved in UseRevelaCommands)
+    // 5. Register IPluginContext in DI (resolved in UseRevelaCommands)
     services.AddSingleton<IPluginContext>(sp =>
         new PluginContext(plugins, sp.GetRequiredService<ILogger<PluginContext>>()));
 }
@@ -331,6 +342,8 @@ public static void AddPlugins(
 **Benefits:**
 - ✅ **No Initialize() phase** — IServiceProvider passed directly to GetCommands()
 - ✅ **No PluginContextPlaceholder** — void return, real context in DI
+- ✅ **Dependency validation** — RequiredPlugins/ExtendsPlugins checked at startup
+- ✅ **Idempotent registration** — Plugins use TryAdd* to avoid conflicts
 - ✅ **Configuration:** project.json sections, environment variables (SPECTARA__REVELA__*)
 - ✅ **Dependency Injection:** Full DI container with all features
 - ✅ **IOptions:** Validation, hot-reload, fail-fast
@@ -340,10 +353,11 @@ public static void AddPlugins(
 Plugins specify **parent command** in `CommandDescriptor`, NOT in metadata:
 
 ```csharp
-// PluginMetadata is a record — Name, Version, Description, Author
+// PluginMetadata is a record — Id, Name, Version, Description, Author
 // (not sealed: ThemeMetadata extends it with PreviewImageUri, Tags)
 public PluginMetadata Metadata => new()
 {
+    Id = "Spectara.Revela.Plugins.Source.OneDrive",
     Name = "Source OneDrive",
     Version = "1.0.0",
     Description = "OneDrive shared folder source",
@@ -353,8 +367,8 @@ public PluginMetadata Metadata => new()
 
 **Plugin returns CommandDescriptor with optional parent, order, and group:**
 ```csharp
-// CommandDescriptor is a record with 6 parameters:
-// record CommandDescriptor(Command, ParentCommand?, Order=50, Group?, RequiresProject=true, HideWhenProjectExists=false)
+// CommandDescriptor is a record with 7 parameters:
+// record CommandDescriptor(Command, ParentCommand?, Order=50, Group?, RequiresProject=true, HideWhenProjectExists=false, IsSequentialStep=false)
 
 // IServiceProvider passed as parameter — no stored field needed!
 public IEnumerable<CommandDescriptor> GetCommands(IServiceProvider services)
@@ -368,6 +382,14 @@ public IEnumerable<CommandDescriptor> GetCommands(IServiceProvider services)
         ParentCommand: "source",
         Order: 30,
         Group: "Content");
+    
+    // Pipeline step: IsSequentialStep marks it for "all" command discovery
+    yield return new CommandDescriptor(
+        scanCmd.Create(),
+        ParentCommand: "generate",
+        Order: 10,
+        Group: "Build",
+        IsSequentialStep: true);
     
     // null = registered at root level (revela mycommand)
     // RequiresProject: false = available without project.json
@@ -934,26 +956,26 @@ public sealed class MyServiceTests
 ## Dependencies
 
 ### Core Framework
-- `Microsoft.Extensions.Hosting` (10.0.3)
-- `Microsoft.Extensions.Configuration.Json` (10.0.3)
-- `Microsoft.Extensions.Logging` (10.0.3)
+- `Microsoft.Extensions.Hosting` (10.0.5)
+- `Microsoft.Extensions.Configuration.Json` (10.0.5)
+- `Microsoft.Extensions.Logging` (10.0.5)
 
 ### CLI
-- `System.CommandLine` (2.0.3) - **FINAL release, not beta!**
-- `Spectre.Console` (0.54.0) - Rich console output (progress bars, tables, panels)
+- `System.CommandLine` (2.0.5) - **FINAL release, not beta!**
+- `Spectre.Console` (0.55.0) - Rich console output (progress bars, tables, panels)
 
 ### Image Processing
 - `NetVips` (3.2.0)
-- `NetVips.Native` (8.18.0)
+- `NetVips.Native` (8.18.2)
 
 ### Templating
-- `Scriban` (6.5.2)
-- `Markdig` (0.45.0)
+- `Scriban` (7.0.6) - **v7 added nullable annotations + AOT support**
+- `Markdig` (1.1.2)
 
 ### Logging
-- `Microsoft.Extensions.Logging` (10.0.3) - Built-in logging
-- `Microsoft.Extensions.Logging.Console` (10.0.3)
-- `Microsoft.Extensions.Logging.Debug` (10.0.3)
+- `Microsoft.Extensions.Logging` (10.0.5) - Built-in logging
+- `Microsoft.Extensions.Logging.Console` (10.0.5)
+- `Microsoft.Extensions.Logging.Debug` (10.0.5)
 
 ### Plugin Management
 - `NuGet.Protocol` (7.3.0)
