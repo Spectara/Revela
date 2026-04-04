@@ -60,22 +60,29 @@ internal static class FrontmatterReader
 
         // Pre-seed nested objects so Scriban can assign into them
         // (e.g., calendar.source = "..." requires calendar to exist as an object)
-        var global = (ScriptObject)context.CurrentGlobal;
+        if (context.CurrentGlobal is not ScriptObject global)
+        {
+            return null;
+        }
+
         global["calendar"] = new ScriptObject
         {
             ["labels"] = new ScriptObject()
         };
         global["data"] = new ScriptObject();
 
-        if (template.Page.FrontMatter is not null)
+        if (template.Page?.FrontMatter is not null)
         {
             context.Evaluate(template.Page.FrontMatter);
         }
 
         // Re-read global after evaluation
-        global = (ScriptObject)context.CurrentGlobal;
+        if (context.CurrentGlobal is not ScriptObject updatedGlobal)
+        {
+            return null;
+        }
 
-        if (!global.TryGetValue("calendar", out var calendarValue) || calendarValue is not ScriptObject calendarObj)
+        if (!updatedGlobal.TryGetValue("calendar", out var calendarValue) || calendarValue is not ScriptObject calendarObj)
         {
             return null;
         }

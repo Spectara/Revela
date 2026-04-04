@@ -93,7 +93,7 @@ internal sealed partial class RevelaParser(ILogger<RevelaParser> logger)
         // parent object doesn't exist. We extract what we can from partial results.
         var context = new TemplateContext();
 
-        if (template.Page.FrontMatter is not null)
+        if (template.Page?.FrontMatter is not null)
         {
             try
             {
@@ -106,8 +106,10 @@ internal sealed partial class RevelaParser(ILogger<RevelaParser> logger)
         }
 
         // Extract metadata from evaluated context using ScriptObject
-        // CurrentGlobal returns IScriptObject, but it's actually ScriptObject at runtime
-        var global = (ScriptObject)context.CurrentGlobal;
+        if (context.CurrentGlobal is not ScriptObject global)
+        {
+            return DirectoryMetadata.Empty;
+        }
 
         var title = GetStringValue(global, "title");
         var slug = GetStringValue(global, "slug");

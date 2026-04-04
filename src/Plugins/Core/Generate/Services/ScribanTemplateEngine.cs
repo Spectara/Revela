@@ -735,7 +735,7 @@ internal sealed partial class TemplateResolverLoader(
     /// <summary>
     /// Async version of Load (required by interface)
     /// </summary>
-    public ValueTask<string> LoadAsync(TemplateContext context, SourceSpan callerSpan, string templatePath) =>
+    public ValueTask<string?> LoadAsync(TemplateContext context, SourceSpan callerSpan, string templatePath) =>
         new(Load(context, callerSpan, templatePath));
 
     [LoggerMessage(Level = LogLevel.Debug, Message = "Loading template: {TemplatePath}")]
