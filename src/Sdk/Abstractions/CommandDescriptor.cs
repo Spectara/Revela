@@ -35,8 +35,8 @@ namespace Spectara.Revela.Sdk.Abstractions;
 /// </param>
 /// <param name="IsSequentialStep">
 /// Whether this command is a sequential step in a pipeline.
-/// When two or more commands under the same parent have this set to true,
-/// the host auto-generates an "all" subcommand that runs them in Order sequence.
+/// Used by the interactive menu to display pipeline step markers (●)
+/// and by the "all" command to discover steps to run in Order sequence.
 /// Default is false.
 /// </param>
 /// <example>

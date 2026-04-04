@@ -126,9 +126,18 @@ internal sealed partial class RevelaEngine(
 
     /// <inheritdoc />
     /// <remarks>
+    /// <para>
     /// Runs ALL registered <see cref="IGenerateStep"/> implementations in Order sequence,
     /// identical to the CLI <c>generate all</c> command. This ensures plugin steps
     /// (Statistics, Calendar, etc.) are included in the pipeline.
+    /// </para>
+    /// <para>
+    /// Note: This method delegates to <see cref="IGenerateStep"/> implementations which
+    /// currently write directly to the console via Spectre.Console. The individual result
+    /// properties (Scan, Pages, Images) are not populated because plugin steps (Statistics,
+    /// Calendar) don't map to those three phases. This is intentional — for rich per-phase
+    /// results, use the individual methods (ScanAsync, GeneratePagesAsync, GenerateImagesAsync).
+    /// </para>
     /// </remarks>
     public async Task<GenerateResult> GenerateAllAsync(
         IProgress<GenerateProgress>? progress,
