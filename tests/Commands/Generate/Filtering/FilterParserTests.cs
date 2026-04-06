@@ -1,6 +1,6 @@
-using Spectara.Revela.Core.Configuration;
 using Spectara.Revela.Plugins.Core.Generate.Filtering;
 using Spectara.Revela.Plugins.Core.Generate.Filtering.Ast;
+using Spectara.Revela.Sdk.Configuration;
 
 namespace Spectara.Revela.Tests.Commands.Generate.Filtering;
 

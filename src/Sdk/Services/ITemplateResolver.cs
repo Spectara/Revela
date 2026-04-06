@@ -1,6 +1,6 @@
 using Spectara.Revela.Sdk.Abstractions;
 
-namespace Spectara.Revela.Core.Services;
+namespace Spectara.Revela.Sdk.Services;
 
 /// <summary>
 /// Resolves templates from multiple sources with priority-based override support.

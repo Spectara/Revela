@@ -1,10 +1,10 @@
 using System.Collections.Concurrent;
 using System.Globalization;
 using NetVips;
-using Spectara.Revela.Core.Configuration;
 using Spectara.Revela.Plugins.Core.Generate.Abstractions;
 using Spectara.Revela.Plugins.Core.Generate.Infrastructure;
 using Spectara.Revela.Plugins.Core.Generate.Models;
+using Spectara.Revela.Sdk.Configuration;
 using Spectara.Revela.Sdk.Models;
 using Image = NetVips.Image;
 

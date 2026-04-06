@@ -1,8 +1,8 @@
 using System.Reflection;
 using System.Runtime.Loader;
-using Spectara.Revela.Core.Configuration;
 using Spectara.Revela.Core.Services;
 using Spectara.Revela.Sdk.Abstractions;
+using Spectara.Revela.Sdk.Configuration;
 
 namespace Spectara.Revela.Core;
 

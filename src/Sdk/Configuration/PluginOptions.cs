@@ -1,6 +1,6 @@
 using System.Collections.ObjectModel;
 
-namespace Spectara.Revela.Core.Configuration;
+namespace Spectara.Revela.Sdk.Configuration;
 
 /// <summary>
 /// Options for plugin loading behavior.

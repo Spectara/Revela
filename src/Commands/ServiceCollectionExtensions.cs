@@ -5,6 +5,7 @@ using Spectara.Revela.Commands.Packages;
 using Spectara.Revela.Commands.Plugins;
 using Spectara.Revela.Commands.Restore;
 using Spectara.Revela.Core.Services;
+using Spectara.Revela.Sdk.Services;
 
 using ProjectWizard = Spectara.Revela.Commands.Project.Wizard;
 using RevelaWizard = Spectara.Revela.Commands.Revela.Wizard;

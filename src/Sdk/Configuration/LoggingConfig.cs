@@ -1,4 +1,4 @@
-namespace Spectara.Revela.Core.Configuration;
+namespace Spectara.Revela.Sdk.Configuration;
 
 /// <summary>
 /// Logging configuration with sensible defaults for CLI tools

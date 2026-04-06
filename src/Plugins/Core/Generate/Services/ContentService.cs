@@ -1,6 +1,5 @@
 using System.Diagnostics;
 using Microsoft.Extensions.Options;
-using Spectara.Revela.Core.Configuration;
 using Spectara.Revela.Core.Services;
 using Spectara.Revela.Plugins.Core.Generate.Abstractions;
 using Spectara.Revela.Plugins.Core.Generate.Filtering;
@@ -8,6 +7,7 @@ using Spectara.Revela.Plugins.Core.Generate.Infrastructure;
 using Spectara.Revela.Plugins.Core.Generate.Models;
 using Spectara.Revela.Plugins.Core.Generate.Models.Results;
 using Spectara.Revela.Sdk;
+using Spectara.Revela.Sdk.Configuration;
 using Spectara.Revela.Sdk.Models;
 using Spectara.Revela.Sdk.Models.Manifest;
 using Spectara.Revela.Sdk.Services;

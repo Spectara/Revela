@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Spectara.Revela.Core.Configuration;
 using Spectara.Revela.Sdk;
+using Spectara.Revela.Sdk.Configuration;
 
 namespace Spectara.Revela.Tests.Shared.Fixtures;
 
@@ -53,6 +54,7 @@ public static class RevelaTestHost
 
         // Register all config sections (IOptions<T>)
         builder.Services.AddRevelaConfigSections();
+        builder.Services.AddCoreServices();
 
         // Register ProjectEnvironment
         builder.Services.AddOptions<ProjectEnvironment>()

@@ -3,9 +3,9 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.Extensions.Options;
-using Spectara.Revela.Core.Configuration;
 using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Abstractions;
+using Spectara.Revela.Sdk.Configuration;
 using Spectara.Revela.Sdk.Models.Manifest;
 
 namespace Spectara.Revela.Plugins.Core.Generate.Services;

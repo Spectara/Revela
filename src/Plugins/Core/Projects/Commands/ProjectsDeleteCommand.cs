@@ -1,12 +1,9 @@
 using System.CommandLine;
 using System.Text.Json;
-
 using Microsoft.Extensions.Options;
-
 using Spectara.Revela.Core.Services;
 using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Output;
-
 using Spectre.Console;
 
 namespace Spectara.Revela.Plugins.Core.Projects.Commands;

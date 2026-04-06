@@ -1,9 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
-using Spectara.Revela.Core.Services;
-using Spectara.Revela.Sdk.Configuration;
 using Spectara.Revela.Sdk.Services;
 
-namespace Spectara.Revela.Core.Configuration;
+namespace Spectara.Revela.Sdk.Configuration;
 
 /// <summary>
 /// Extension methods for registering configuration sections.
@@ -90,9 +88,7 @@ public static class ConfigurationServiceCollectionExtensions
         // Uses IOptionsMonitor for hot-reload support during interactive sessions
         services.AddSingleton<IPathResolver, PathResolver>();
 
-        // Global config manager (revela.json read/write)
-        services.AddSingleton<IGlobalConfigManager, GlobalConfigManager>();
-
+        // Note: IGlobalConfigManager is registered by Core (requires Core.Services.GlobalConfigManager)
         // Note: ProjectEnvironment is registered in CLI (requires IHostEnvironment)
 
         return services;

@@ -1,13 +1,10 @@
 using System.CommandLine;
 using System.Globalization;
-
 using Microsoft.Extensions.Options;
-
-using Spectara.Revela.Core.Configuration;
 using Spectara.Revela.Sdk.Abstractions;
+using Spectara.Revela.Sdk.Configuration;
 using Spectara.Revela.Sdk.Output;
 using Spectara.Revela.Sdk.Services;
-
 using Spectre.Console;
 
 namespace Spectara.Revela.Plugins.Core.Generate.Commands;
