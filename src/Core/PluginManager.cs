@@ -78,6 +78,19 @@ public sealed class PluginManager(
                 {
                     // file:///path/to/plugin.nupkg → treat as local path
                     var filePath = uri.LocalPath;
+
+                    if (!File.Exists(filePath))
+                    {
+                        logger.LocalPackageNotFound(filePath);
+                        return false;
+                    }
+
+                    if (!filePath.EndsWith(".nupkg", StringComparison.OrdinalIgnoreCase))
+                    {
+                        logger.LocalPackageNotNupkg(filePath);
+                        return false;
+                    }
+
                     logger.InstallingFromFile(filePath);
                     return await InstallFromNupkgAsync(filePath, targetDir, filePath, cancellationToken);
                 }
