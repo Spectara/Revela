@@ -158,7 +158,7 @@ internal sealed partial class ConfigImageCommand(
 
             if (formats.Count > 0 || sizes.Length > 0)
             {
-                return new ImageDefaults(formats, sizes);
+                return new ImageDefaults(formats.Count > 0 ? formats : null, sizes);
             }
         }
         catch (JsonException)
@@ -259,23 +259,40 @@ internal sealed partial class ConfigImageCommand(
         var current = await configService.ReadProjectConfigAsync(cancellationToken);
         var currentFormats = GetCurrentFormats(current);
 
-        // Determine defaults: current > theme
+        // Determine quality defaults: current > theme > global defaults
         var defaultFormats = currentFormats ?? themeDefaults?.Formats ?? DefaultFormatQualities;
 
-        // Format selection
+        // Format selection with descriptions
+        var formatDescriptions = new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["jpg"] = "jpg  [dim]— great quality, works everywhere[/]",
+            ["webp"] = "webp [dim]— sharper at same file size, all modern browsers[/]",
+            ["avif"] = "avif [dim]— best quality per byte, very slow to generate[/]"
+        };
         var formatChoices = new[] { "jpg", "webp", "avif" };
         var prompt = new MultiSelectionPrompt<string>()
             .Title("Select output formats (deselect to disable):")
             .PageSize(5)
+            .UseConverter(f => formatDescriptions.GetValueOrDefault(f, f))
             .InstructionsText("[grey](Press [blue]<space>[/] to toggle, [green]<enter>[/] to accept)[/]")
             .AddChoices(formatChoices);
 
         // Pre-select: use current config or theme defaults, fall back to jpg-only for new projects
         // (avif/webp are expensive to encode — let users opt in)
-        var preselected = defaultFormats ?? new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase) { ["jpg"] = 90 };
-        foreach (var format in preselected.Keys)
+        var preselected = currentFormats ?? themeDefaults?.Formats;
+        if (preselected is not null)
         {
-            prompt.Select(format);
+            foreach (var (format, quality) in preselected)
+            {
+                if (quality > 0)
+                {
+                    prompt.Select(format);
+                }
+            }
+        }
+        else
+        {
+            prompt.Select("jpg");
         }
 
         var selectedFormats = AnsiConsole.Prompt(prompt);
@@ -286,15 +303,16 @@ internal sealed partial class ConfigImageCommand(
             selectedFormats = ["jpg"];
         }
 
-        // Quality per format - use current config value or recommended defaults
+        // Quality per format - use current/theme config or global defaults
         var formats = new Dictionary<string, int>();
         foreach (var format in selectedFormats)
         {
-            // Priority: current config (if > 0) > recommended defaults
-            var configuredQuality = currentFormats?.GetValueOrDefault(format) ?? 0;
-            var defaultQuality = configuredQuality > 0
-                ? configuredQuality
-                : DefaultFormatQualities.GetValueOrDefault(format, 85);
+            var defaultQuality = defaultFormats.GetValueOrDefault(format, DefaultFormatQualities.GetValueOrDefault(format, 85));
+            // Skip disabled formats (quality 0) — use global default instead
+            if (defaultQuality <= 0)
+            {
+                defaultQuality = DefaultFormatQualities.GetValueOrDefault(format, 85);
+            }
 
             var quality = AnsiConsole.Prompt(
                 new TextPrompt<int>($"Quality for [green]{format.ToUpperInvariant()}[/] (1-100):")
@@ -416,6 +434,7 @@ internal sealed partial class ConfigImageCommand(
     /// <remarks>
     /// Only formats are used as defaults for quality values.
     /// Sizes are informational only (managed by theme).
+    /// Formats is null when the theme has no format configuration.
     /// </remarks>
-    private sealed record ImageDefaults(Dictionary<string, int> Formats, int[] Sizes);
+    private sealed record ImageDefaults(Dictionary<string, int>? Formats, int[] Sizes);
 }
