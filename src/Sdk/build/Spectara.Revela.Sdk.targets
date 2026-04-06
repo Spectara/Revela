@@ -15,7 +15,7 @@
   Shared assembly convention:
     - Spectara.Revela.*           → always shared (host provides SDK, Core, Commands)
     - System.CommandLine          → shared (CLI integration contract)
-    - Spectre.Console             → shared (UI contract)
+    - Spectre.Console*            → shared (UI contract, includes Spectre.Console.dll and extensions)
     - Microsoft.Extensions.*      → shared (framework plumbing)
       EXCEPT: *Http*, *Resilience*, *Telemetry*, *Compliance*,
               *ExceptionSummarization*, *AmbientMetadata*,

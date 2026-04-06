@@ -35,6 +35,12 @@ internal static partial class PluginManagerLogging
     [LoggerMessage(Level = LogLevel.Information, Message = "Installing plugin from file: {FilePath}")]
     public static partial void InstallingFromFile(this ILogger<PluginManager> logger, string filePath);
 
+    [LoggerMessage(Level = LogLevel.Error, Message = "Local plugin package file was not found: {FilePath}")]
+    public static partial void LocalPackageNotFound(this ILogger<PluginManager> logger, string filePath);
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "Local plugin package must be a .nupkg file: {FilePath}")]
+    public static partial void LocalPackageNotNupkg(this ILogger<PluginManager> logger, string filePath);
+
     [LoggerMessage(Level = LogLevel.Information, Message = "Installing plugin from URL: {Url}")]
     public static partial void InstallingFromUrl(this ILogger<PluginManager> logger, string url);
 
