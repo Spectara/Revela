@@ -18,31 +18,43 @@ namespace Spectara.Revela.Core;
 /// Shared assemblies (IPlugin interface, Microsoft.Extensions.*) are resolved
 /// from the default context to enable cross-context communication.
 /// </remarks>
-internal sealed class PluginLoadContext(string pluginPath)
-    : AssemblyLoadContext(name: Path.GetFileNameWithoutExtension(pluginPath), isCollectible: false)
+internal sealed class PluginLoadContext : AssemblyLoadContext
 {
-    private readonly AssemblyDependencyResolver resolver = new(pluginPath);
+    private readonly AssemblyDependencyResolver resolver;
 
     /// <summary>
     /// Plugin directory contains main DLL and all dependencies.
     /// </summary>
-    private readonly string pluginDirectory = Path.GetDirectoryName(pluginPath)!;
+    private readonly string pluginDirectory;
+
+    public PluginLoadContext(string pluginPath)
+        : base(name: Path.GetFileNameWithoutExtension(pluginPath), isCollectible: false)
+    {
+        resolver = new AssemblyDependencyResolver(pluginPath);
+        pluginDirectory = Path.GetDirectoryName(pluginPath)!;
+    }
 
     /// <summary>
-    /// Known shared assemblies that should be loaded from the host.
+    /// Known shared assemblies that should be loaded from the host (exact match).
     /// </summary>
     /// <remarks>
+    /// <para>
     /// These assemblies define contracts between host and plugins.
-    /// Loading them from the plugin would break type compatibility.
-    /// Note: Spectara.Revela.* and Microsoft.Extensions.* are handled by convention in IsSharedAssembly().
+    /// Loading them from the plugin directory would break type compatibility.
+    /// </para>
+    /// <para>
+    /// Additional shared assemblies are detected by naming convention in <see cref="IsSharedAssembly"/>:
+    /// <c>Spectara.Revela.*</c>, <c>Microsoft.Extensions.*</c>, <c>Spectre.Console.*</c>.
+    /// </para>
+    /// <para>
+    /// <b>SYNC:</b> These rules must match the exclusion filters in
+    /// <c>src/Sdk/build/Spectara.Revela.Sdk.targets</c> (target <c>_RevelaIncludePluginDependencies</c>).
+    /// </para>
     /// </remarks>
     private static readonly HashSet<string> SharedAssemblies =
     [
         // System.CommandLine for CLI integration
-        "System.CommandLine",
-
-        // Spectre.Console for consistent UI
-        "Spectre.Console"
+        "System.CommandLine"
     ];
 
     protected override Assembly? Load(AssemblyName assemblyName)
@@ -57,25 +69,7 @@ internal sealed class PluginLoadContext(string pluginPath)
         // This ensures IPlugin from plugin == IPlugin from host
         if (IsSharedAssembly(name))
         {
-            // First, check if already loaded in any context
-            var alreadyLoaded = AppDomain.CurrentDomain.GetAssemblies()
-                .FirstOrDefault(a => string.Equals(a.GetName().Name, name, StringComparison.Ordinal));
-
-            if (alreadyLoaded != null)
-            {
-                return alreadyLoaded;
-            }
-
-            // For single-file publish, try to load from default context
-            try
-            {
-                return Default.LoadFromAssemblyName(assemblyName);
-            }
-            catch
-            {
-                // If not found, return null to let the framework try
-                return null;
-            }
+            return LoadFromHost(assemblyName, name);
         }
 
         // Try resolver first (for NuGet-style layouts)
@@ -96,6 +90,32 @@ internal sealed class PluginLoadContext(string pluginPath)
         return null;
     }
 
+    /// <summary>
+    /// Loads an assembly from the host (default context or already-loaded assemblies).
+    /// </summary>
+    private static Assembly? LoadFromHost(AssemblyName assemblyName, string name)
+    {
+        // First, check if already loaded in any context
+        var alreadyLoaded = AppDomain.CurrentDomain.GetAssemblies()
+            .FirstOrDefault(a => string.Equals(a.GetName().Name, name, StringComparison.Ordinal));
+
+        if (alreadyLoaded is not null)
+        {
+            return alreadyLoaded;
+        }
+
+        // For single-file publish, try to load from default context
+        try
+        {
+            return Default.LoadFromAssemblyName(assemblyName);
+        }
+        catch
+        {
+            // If not found, return null to let the framework try
+            return null;
+        }
+    }
+
     protected override nint LoadUnmanagedDll(string unmanagedDllName)
     {
         var libraryPath = resolver.ResolveUnmanagedDllToPath(unmanagedDllName);
@@ -114,6 +134,12 @@ internal sealed class PluginLoadContext(string pluginPath)
     {
         // Exact match for third-party shared assemblies
         if (SharedAssemblies.Contains(assemblyName))
+        {
+            return true;
+        }
+
+        // Spectre.Console.* are always shared (UI contract)
+        if (assemblyName.StartsWith("Spectre.Console", StringComparison.Ordinal))
         {
             return true;
         }

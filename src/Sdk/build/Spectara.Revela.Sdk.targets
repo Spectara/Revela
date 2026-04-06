@@ -52,7 +52,7 @@
       <_PackageFiles Include="@(_RevelaAllDependencyDlls)"
                      Condition="!$([System.String]::new('%(Filename)').StartsWith('Spectara.Revela.'))
                                 And '%(Filename)' != 'System.CommandLine'
-                                And '%(Filename)' != 'Spectre.Console'
+                                And !$([System.String]::new('%(Filename)').StartsWith('Spectre.Console'))
                                 And (
                                   !$([System.String]::new('%(Filename)').StartsWith('Microsoft.Extensions.'))
                                   Or $([System.String]::new('%(Filename)').Contains('Http'))

@@ -57,7 +57,7 @@ public sealed class NupkgExtractor(ILogger<NupkgExtractor> logger)
         }
 
         var fileCount = 0;
-        using var archive = await Task.Run(() => ZipFile.OpenRead(nupkgPath), cancellationToken);
+        using var archive = await ZipFile.OpenReadAsync(nupkgPath, cancellationToken);
 
         // All files go into plugins/{PackageId}/ subfolder
         // This keeps main DLL and dependencies together for clean isolation
@@ -75,8 +75,14 @@ public sealed class NupkgExtractor(ILogger<NupkgExtractor> logger)
             var fileName = Path.GetFileName(item);
             var destPath = Path.Combine(pluginDir, fileName);
 
-            await using var entryStream = await Task.Run(() => entry.Open(), cancellationToken);
-            await using var fileStream = File.Create(destPath);
+            await using var entryStream = await entry.OpenAsync(cancellationToken);
+            await using var fileStream = new FileStream(
+                destPath,
+                FileMode.Create,
+                FileAccess.Write,
+                FileShare.None,
+                bufferSize: 65536,
+                useAsync: true);
             await entryStream.CopyToAsync(fileStream, cancellationToken);
 
             logger.ExtractedFile(fileName, pluginDir);

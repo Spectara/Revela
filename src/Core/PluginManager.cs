@@ -66,14 +66,24 @@ public sealed class PluginManager(
                 logger.InstallingFromFile(packageIdOrPath);
                 return await InstallFromNupkgAsync(packageIdOrPath, targetDir, Path.GetFullPath(packageIdOrPath), cancellationToken);
             }
-            else if (Uri.TryCreate(packageIdOrPath, UriKind.Absolute, out var uri) &&
-                     (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps))
+            else if (Uri.TryCreate(packageIdOrPath, UriKind.Absolute, out var uri))
             {
-                // URL to .nupkg
-                logger.InstallingFromUrl(packageIdOrPath);
-                return await InstallFromUrlAsync(uri, targetDir, cancellationToken);
+                if (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps)
+                {
+                    // URL to .nupkg
+                    logger.InstallingFromUrl(packageIdOrPath);
+                    return await InstallFromUrlAsync(uri, targetDir, cancellationToken);
+                }
+                else if (uri.Scheme == Uri.UriSchemeFile)
+                {
+                    // file:///path/to/plugin.nupkg → treat as local path
+                    var filePath = uri.LocalPath;
+                    logger.InstallingFromFile(filePath);
+                    return await InstallFromNupkgAsync(filePath, targetDir, filePath, cancellationToken);
+                }
             }
-            else
+
+            // Fall through: treat as NuGet package ID
             {
                 // Package ID from NuGet feed
                 logger.InstallingPlugin(packageIdOrPath);

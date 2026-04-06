@@ -22,6 +22,7 @@ public sealed class PluginLoadContextTests
     [TestMethod]
     [DataRow("System.CommandLine")]
     [DataRow("Spectre.Console")]
+    [DataRow("Spectre.Console.Ansi")]
     public void IsSharedAssembly_ExplicitSharedThirdParty_ReturnsTrue(string assemblyName) =>
         Assert.IsTrue(PluginLoadContext.IsSharedAssembly(assemblyName));
 

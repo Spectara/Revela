@@ -22,7 +22,7 @@ namespace Spectara.Revela.Plugins.Compress;
 public sealed class CompressPlugin : IPlugin
 {
     /// <inheritdoc />
-    public PluginMetadata Metadata => new()
+    public PluginMetadata Metadata { get; } = new()
     {
         Id = "Spectara.Revela.Plugins.Compress",
         Name = "Static Compression",

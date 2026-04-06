@@ -1,5 +1,10 @@
 <Project>
   <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)..'))" />
+
+  <!-- Import SDK.targets manually — Core plugins use ProjectReference not PackageReference,
+       so the .targets from the SDK NuGet package are not auto-imported -->
+  <Import Project="$(MSBuildThisFileDirectory)..\..\Sdk\build\Spectara.Revela.Sdk.targets" />
+
   <!-- Insert "Core" segment: {Prefix}.Plugins.{ProjectName} → {Prefix}.Plugins.Core.{ProjectName} -->
   <PropertyGroup>
     <AssemblyName>$(RevelaNamespacePrefix).Plugins.Core.$(MSBuildProjectName)</AssemblyName>
