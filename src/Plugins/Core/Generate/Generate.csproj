@@ -7,6 +7,10 @@
     <PackageReleaseNotes>https://github.com/spectara/revela/blob/main/CHANGELOG.md</PackageReleaseNotes>
     <PackageType>RevelaPlugin</PackageType>
 
+    <!-- Ensure all package dependencies are copied to output -->
+    <!-- Required because Core ProjectReference uses Private=false which breaks transitive copy -->
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+
     <!-- Plugin packaging handled by Spectara.Revela.Sdk.targets -->
   </PropertyGroup>
 

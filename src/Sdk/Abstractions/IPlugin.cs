@@ -54,9 +54,20 @@ public interface IPlugin
     /// Configure plugin-specific configuration sources (optional).
     /// </summary>
     /// <remarks>
-    /// Called BEFORE <see cref="ConfigureServices"/> to allow plugins to add custom config files.
-    /// Most plugins don't need this — plugin configs are stored in project.json,
-    /// and environment variables with SPECTARA__REVELA__ prefix are auto-loaded.
+    /// <para>
+    /// Called BEFORE <see cref="ConfigureServices"/>. Override only if your plugin needs
+    /// custom configuration sources beyond what the framework provides automatically:
+    /// </para>
+    /// <list type="bullet">
+    /// <item>project.json section: <c>"Spectara.Revela.Plugins.YourPlugin": { ... }</c></item>
+    /// <item>Environment variables with <c>SPECTARA__REVELA__</c> prefix, where the remaining
+    /// key path matches the full section name using <c>__</c> as separator, e.g.:
+    /// <c>SPECTARA__REVELA__SPECTARA.REVELA.PLUGINS.YOURPLUGIN__SETTINGNAME=value</c></item>
+    /// </list>
+    /// <para>
+    /// Examples of when to override: loading config from a plugin-specific file,
+    /// connecting to an external configuration service, or adding computed defaults.
+    /// </para>
     /// </remarks>
     /// <param name="configuration">Configuration builder to add sources to.</param>
     void ConfigureConfiguration(IConfigurationBuilder configuration)

@@ -19,7 +19,7 @@ namespace Spectara.Revela.Plugins.Source.Calendar;
 public sealed class SourceCalendarPlugin : IPlugin
 {
     /// <inheritdoc />
-    public PluginMetadata Metadata => new()
+    public PluginMetadata Metadata { get; } = new()
     {
         Id = "Spectara.Revela.Plugins.Source.Calendar",
         Name = "Source Calendar",

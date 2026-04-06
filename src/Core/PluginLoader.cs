@@ -140,15 +140,14 @@ public sealed partial class PluginLoader(
             }
             catch (ReflectionTypeLoadException rtle)
             {
-                // Log detailed info for debugging
-                if (logger.IsEnabled(LogLevel.Debug))
-                {
-                    LogPluginReflectionLoadFailed(fileName, rtle.Message);
-                }
+                // Write to stderr directly — bootstrap phase has no console logger
+                Console.Error.WriteLine(
+                    $"Error: Plugin '{fileName}' failed to load: {rtle.Message}");
                 foreach (var ex in rtle.LoaderExceptions.Where(e => e != null).Take(3))
                 {
                     if (ex is FileNotFoundException fnf && !string.IsNullOrEmpty(fnf.FileName))
                     {
+                        Console.Error.WriteLine($"  Missing dependency: {fnf.FileName}");
                         LogMissingDependency(fnf.FileName);
                     }
                 }
@@ -157,6 +156,9 @@ public sealed partial class PluginLoader(
             }
             catch (Exception ex)
             {
+                // Write to stderr directly — bootstrap phase has no console logger
+                Console.Error.WriteLine(
+                    $"Error: Plugin '{fileName}' failed to load: {ex.Message}");
                 LogPluginLoadFailed(ex, dll);
             }
         }

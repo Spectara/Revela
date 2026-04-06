@@ -42,7 +42,15 @@ public sealed class PluginOptions
     public bool EnableVerboseLogging { get; set; }
 
     /// <summary>
-    /// Plugin assembly patterns to exclude (e.g., "*.Tests.dll").
+    /// Plugin assembly filename patterns to exclude during discovery.
     /// </summary>
+    /// <remarks>
+    /// Supports leading wildcard patterns only:
+    /// <list type="bullet">
+    /// <item><c>*.Tests.dll</c> — excludes test assemblies</item>
+    /// <item><c>*.Mock.dll</c> — excludes mock assemblies</item>
+    /// </list>
+    /// Complex patterns like <c>*.Tests.*.dll</c> or trailing wildcards are not supported.
+    /// </remarks>
     public Collection<string> ExcludePatterns { get; } = [];
 }
