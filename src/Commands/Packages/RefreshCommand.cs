@@ -3,14 +3,11 @@ using System.IO.Compression;
 using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-
 using NuGet.Packaging;
-
 using Spectara.Revela.Core.Models;
 using Spectara.Revela.Core.Services;
 using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Output;
-
 using Spectre.Console;
 
 namespace Spectara.Revela.Commands.Packages;

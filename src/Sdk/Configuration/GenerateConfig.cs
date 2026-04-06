@@ -1,4 +1,4 @@
-namespace Spectara.Revela.Core.Configuration;
+namespace Spectara.Revela.Sdk.Configuration;
 
 /// <summary>
 /// Generate output configuration
@@ -10,7 +10,7 @@ namespace Spectara.Revela.Core.Configuration;
 /// </para>
 /// <para>
 /// Note: Source and output paths are configured in the "paths" section
-/// (see <see cref="Sdk.Configuration.PathsConfig"/>).
+/// (see <see cref="PathsConfig"/>).
 /// </para>
 /// <para>
 /// Global defaults in revela.json can be overridden per-project.

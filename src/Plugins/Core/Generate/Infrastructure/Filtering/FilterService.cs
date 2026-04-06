@@ -1,7 +1,7 @@
 using System.Linq.Expressions;
 using System.Reflection;
 
-using Spectara.Revela.Core.Configuration;
+using Spectara.Revela.Sdk.Configuration;
 using Spectara.Revela.Sdk.Models;
 using Spectara.Revela.Sdk.Models.Manifest;
 

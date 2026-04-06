@@ -13,7 +13,7 @@ namespace Spectara.Revela.Plugins.Core.Generate.Models;
 /// </para>
 /// <para>
 /// For section-based configuration (generate, dependencies), use the proper
-/// config classes like <see cref="Revela.Core.Configuration.GenerateConfig"/>.
+/// config classes like <see cref="Sdk.Configuration.GenerateConfig"/>.
 /// </para>
 /// </remarks>
 internal sealed record RenderContext

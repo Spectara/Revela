@@ -1,5 +1,5 @@
-using Spectara.Revela.Core.Configuration;
 using Spectara.Revela.Plugins.Core.Generate.Models;
+using Spectara.Revela.Sdk.Configuration;
 using Spectara.Revela.Sdk.Models;
 
 namespace Spectara.Revela.Plugins.Core.Generate.Abstractions;

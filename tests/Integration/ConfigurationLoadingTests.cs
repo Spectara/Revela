@@ -1,6 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
-using Spectara.Revela.Core.Configuration;
 using Spectara.Revela.Sdk.Configuration;
 using Spectara.Revela.Tests.Shared.Fixtures;
 

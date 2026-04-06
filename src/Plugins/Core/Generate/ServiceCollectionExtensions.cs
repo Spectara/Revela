@@ -9,6 +9,7 @@ using Spectara.Revela.Plugins.Core.Generate.Templates;
 using Spectara.Revela.Plugins.Core.Generate.Wizard;
 using Spectara.Revela.Sdk.Abstractions;
 using Spectara.Revela.Sdk.Abstractions.Engine;
+using Spectara.Revela.Sdk.Services;
 using IManifestRepository = Spectara.Revela.Sdk.Abstractions.IManifestRepository;
 
 namespace Spectara.Revela.Plugins.Core.Generate;

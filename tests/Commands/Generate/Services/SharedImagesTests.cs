@@ -1,13 +1,13 @@
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using NSubstitute;
-using Spectara.Revela.Core.Configuration;
 using Spectara.Revela.Core.Services;
 using Spectara.Revela.Plugins.Core.Generate.Abstractions;
 using Spectara.Revela.Plugins.Core.Generate.Infrastructure;
 using Spectara.Revela.Plugins.Core.Generate.Services;
 using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Abstractions;
+using Spectara.Revela.Sdk.Configuration;
 using Spectara.Revela.Sdk.Models.Manifest;
 using Spectara.Revela.Sdk.Services;
 

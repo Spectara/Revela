@@ -1,7 +1,7 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
-using Spectara.Revela.Core.Configuration;
 using Spectara.Revela.Core.Services;
+using Spectara.Revela.Sdk.Configuration;
 
 namespace Spectara.Revela.Cli.Hosting;
 

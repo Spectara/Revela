@@ -1,5 +1,5 @@
 using Microsoft.Extensions.Options;
-using Spectara.Revela.Core.Configuration;
+using Spectara.Revela.Sdk.Configuration;
 
 namespace Spectara.Revela.Commands.Restore;
 

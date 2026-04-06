@@ -1,6 +1,5 @@
 using System.Collections.Frozen;
 using System.Text.Json;
-
 using Spectara.Revela.Core.Services;
 using Spectara.Revela.Sdk.Output;
 using Spectre.Console;

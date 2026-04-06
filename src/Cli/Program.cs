@@ -5,6 +5,7 @@ using Spectara.Revela.Cli.Hosting;
 using Spectara.Revela.Commands;
 using Spectara.Revela.Core.Configuration;
 using Spectara.Revela.Sdk;
+using Spectara.Revela.Sdk.Configuration;
 
 // Enable UTF-8 output for proper Unicode/emoji rendering
 Console.OutputEncoding = Encoding.UTF8;
@@ -40,6 +41,7 @@ var builder = Host.CreateApplicationBuilder(settings);
 // ✅ Pre-build: Load configuration and register services
 builder.AddRevelaConfiguration();
 builder.Services.AddRevelaConfigSections();
+builder.Services.AddCoreServices();
 builder.Services.AddRevelaCommands();
 builder.Services.AddInteractiveMode();
 builder.Services.AddPlugins(builder.Configuration, filteredArgs);

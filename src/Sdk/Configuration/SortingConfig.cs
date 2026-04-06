@@ -1,4 +1,4 @@
-namespace Spectara.Revela.Core.Configuration;
+namespace Spectara.Revela.Sdk.Configuration;
 
 /// <summary>
 /// Sorting configuration for galleries and images

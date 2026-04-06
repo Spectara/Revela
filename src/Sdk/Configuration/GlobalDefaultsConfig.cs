@@ -1,4 +1,4 @@
-namespace Spectara.Revela.Core.Configuration;
+namespace Spectara.Revela.Sdk.Configuration;
 
 /// <summary>
 /// Default settings for new projects (from revela.json)

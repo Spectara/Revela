@@ -1,4 +1,4 @@
-namespace Spectara.Revela.Core.Configuration;
+namespace Spectara.Revela.Sdk.Configuration;
 
 /// <summary>
 /// Configuration for package management (NuGet feeds, cache settings)

@@ -1,7 +1,7 @@
 using Microsoft.Extensions.Options;
-using Spectara.Revela.Core.Configuration;
 using Spectara.Revela.Core.Models;
-
+using Spectara.Revela.Sdk.Configuration;
+using Spectara.Revela.Sdk.Services;
 namespace Spectara.Revela.Core.Services;
 
 /// <summary>

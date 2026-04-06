@@ -30,8 +30,8 @@
       <Private>false</Private>
       <ExcludeAssets>runtime</ExcludeAssets>
     </ProjectReference>
-    <!-- Core reference needed for ITemplateResolver, IAssetResolver, etc. -->
-    <!-- TODO: Move these interfaces to SDK when Commands project is fully dissolved -->
+    <!-- Core reference needed for service implementations (AssetResolver, TemplateResolver, etc.) -->
+    <!-- Interfaces and config types are in SDK; only implementation registrations need Core -->
     <ProjectReference Include="..\..\..\Core\Core.csproj">
       <Private>false</Private>
       <ExcludeAssets>runtime</ExcludeAssets>

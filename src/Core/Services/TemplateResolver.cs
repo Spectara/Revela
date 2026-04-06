@@ -1,6 +1,7 @@
 using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Abstractions;
 
+using Spectara.Revela.Sdk.Services;
 namespace Spectara.Revela.Core.Services;
 
 /// <summary>
