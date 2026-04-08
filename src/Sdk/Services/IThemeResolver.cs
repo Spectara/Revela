@@ -19,21 +19,21 @@ public interface IThemeResolver
     /// <param name="themeName">Theme name (null = default)</param>
     /// <param name="projectPath">Project path for local theme lookup</param>
     /// <returns>Resolved theme plugin or null if not found</returns>
-    IThemePlugin? Resolve(string? themeName, string projectPath);
+    ITheme? Resolve(string? themeName, string projectPath);
 
     /// <summary>
     /// Resolve an installed theme by name, ignoring local themes
     /// </summary>
     /// <param name="themeName">Theme name (null = default)</param>
     /// <returns>Installed theme plugin or null if not found</returns>
-    IThemePlugin? ResolveInstalled(string? themeName);
+    ITheme? ResolveInstalled(string? themeName);
 
     /// <summary>
     /// Get all available themes
     /// </summary>
     /// <param name="projectPath">Project path for local theme lookup</param>
     /// <returns>All available themes (local + installed + default)</returns>
-    IEnumerable<IThemePlugin> GetAvailableThemes(string projectPath);
+    IEnumerable<ITheme> GetAvailableThemes(string projectPath);
 
     /// <summary>
     /// Get theme extensions for a specific theme

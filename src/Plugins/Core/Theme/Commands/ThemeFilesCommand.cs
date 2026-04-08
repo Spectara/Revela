@@ -211,7 +211,7 @@ internal sealed partial class ThemeFilesCommand(
     /// Gets configuration files from theme and extensions with source information.
     /// </summary>
     private static List<(string Path, string Source)> GetConfigurationEntries(
-        IThemePlugin theme,
+        ITheme theme,
         IReadOnlyList<IThemeExtension> extensions,
         string projectPath,
         string themeName,

@@ -5,18 +5,21 @@ using Spectara.Revela.Sdk.Abstractions;
 namespace Spectara.Revela.Sdk.Themes;
 
 /// <summary>
-/// Base class for theme plugins with embedded resources.
+/// Base class for NuGet-based theme plugins with embedded resources.
 /// </summary>
 /// <remarks>
 /// Handles all the boilerplate for theme plugins:
 /// reads manifest.json from embedded resources, implements GetFile(), GetAllFiles(), ExtractToAsync().
+///
+/// Implements both <see cref="IPlugin"/> (for discovery by PluginLoader) and
+/// <see cref="ITheme"/> (for theme content access by consumers).
 ///
 /// Theme authors only need a minimal derived class:
 /// <code>
 /// public sealed class MyThemePlugin() : EmbeddedThemePlugin(typeof(MyThemePlugin).Assembly) { }
 /// </code>
 /// </remarks>
-public abstract class EmbeddedThemePlugin : IThemePlugin
+public abstract class EmbeddedThemePlugin : IPlugin, ITheme
 {
     private readonly EmbeddedResourceProvider resources;
     private readonly Lazy<ThemeJsonConfig> config;

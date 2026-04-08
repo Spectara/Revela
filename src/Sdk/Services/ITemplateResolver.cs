@@ -27,7 +27,7 @@ public interface ITemplateResolver
     /// <param name="theme">The base theme plugin</param>
     /// <param name="extensions">Theme extensions to include</param>
     /// <param name="projectPath">Project path for local overrides</param>
-    void Initialize(IThemePlugin theme, IReadOnlyList<IThemeExtension> extensions, string projectPath);
+    void Initialize(ITheme theme, IReadOnlyList<IThemeExtension> extensions, string projectPath);
 
     /// <summary>
     /// Gets a template by its key.

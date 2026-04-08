@@ -5,11 +5,13 @@ using Spectara.Revela.Sdk.Themes;
 namespace Spectara.Revela.Core.Themes;
 
 /// <summary>
-/// Adapts a local directory to the IThemePlugin interface
+/// Adapts a local directory to the ITheme interface
 /// </summary>
 /// <remarks>
 /// Allows using themes from local folders (e.g., project/themes/my-theme/)
 /// without requiring them to be packaged as NuGet plugins.
+/// Does not implement <see cref="IPlugin"/> — local themes are not discovered
+/// by the plugin loader.
 ///
 /// Structure expected:
 /// <code>
@@ -21,7 +23,7 @@ namespace Spectara.Revela.Core.Themes;
 /// └── Partials/        # Partial templates (Navigation.revela, Image.revela)
 /// </code>
 /// </remarks>
-public sealed class LocalThemeAdapter : IThemePlugin
+public sealed class LocalThemeAdapter : ITheme
 {
     private readonly ThemeManifest manifest;
 
@@ -73,19 +75,8 @@ public sealed class LocalThemeAdapter : IThemePlugin
         };
     }
 
-
-
-    /// <inheritdoc />
-    PluginMetadata IPlugin.Metadata => Metadata;
-
     /// <inheritdoc />
     public ThemeMetadata Metadata { get; }
-
-    /// <inheritdoc />
-    public void ConfigureServices(Microsoft.Extensions.DependencyInjection.IServiceCollection services)
-    {
-        // Local themes don't register services
-    }
 
     /// <inheritdoc />
     public ThemeManifest GetManifest() => manifest;

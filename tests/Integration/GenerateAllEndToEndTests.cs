@@ -75,7 +75,7 @@ public sealed class GenerateAllEndToEndTests
         {
             services.AddRevelaCommands();
             services.AddGenerateFeature();
-            services.AddSingleton<IThemePlugin>(new LuminaThemePlugin());
+            services.AddSingleton<ITheme>(new LuminaThemePlugin());
         });
 
         var contentService = host.Services.GetRequiredService<IContentService>();
@@ -83,7 +83,7 @@ public sealed class GenerateAllEndToEndTests
         var imageService = host.Services.GetRequiredService<IImageService>();
 
         // Configure render service with Lumina theme
-        var themePlugin = host.Services.GetRequiredService<IThemePlugin>();
+        var themePlugin = host.Services.GetRequiredService<ITheme>();
         renderService.SetTheme(themePlugin);
         renderService.SetExtensions([]);
 
@@ -173,14 +173,14 @@ public sealed class GenerateAllEndToEndTests
         {
             services.AddRevelaCommands();
             services.AddGenerateFeature();
-            services.AddSingleton<IThemePlugin>(new LuminaThemePlugin());
+            services.AddSingleton<ITheme>(new LuminaThemePlugin());
         });
 
         var contentService = host.Services.GetRequiredService<IContentService>();
         var renderService = host.Services.GetRequiredService<IRenderService>();
         var imageService = host.Services.GetRequiredService<IImageService>();
 
-        var themePlugin = host.Services.GetRequiredService<IThemePlugin>();
+        var themePlugin = host.Services.GetRequiredService<ITheme>();
         renderService.SetTheme(themePlugin);
         renderService.SetExtensions([]);
 
@@ -229,14 +229,14 @@ public sealed class GenerateAllEndToEndTests
         {
             services.AddRevelaCommands();
             services.AddGenerateFeature();
-            services.AddSingleton<IThemePlugin>(new LuminaThemePlugin());
+            services.AddSingleton<ITheme>(new LuminaThemePlugin());
         });
 
         var contentService = host.Services.GetRequiredService<IContentService>();
         var renderService = host.Services.GetRequiredService<IRenderService>();
         var imageService = host.Services.GetRequiredService<IImageService>();
 
-        var themePlugin = host.Services.GetRequiredService<IThemePlugin>();
+        var themePlugin = host.Services.GetRequiredService<ITheme>();
         renderService.SetTheme(themePlugin);
         renderService.SetExtensions([]);
 

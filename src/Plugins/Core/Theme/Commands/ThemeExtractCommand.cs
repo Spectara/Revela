@@ -352,7 +352,7 @@ internal sealed partial class ThemeExtractCommand(
         bool isAsset,
         bool isConfig,
         string targetPath,
-        IThemePlugin theme,
+        ITheme theme,
         IReadOnlyList<IThemeExtension> extensions,
         CancellationToken cancellationToken)
     {
@@ -391,7 +391,7 @@ internal sealed partial class ThemeExtractCommand(
         ResolvedFileInfo entry,
         bool isAsset,
         bool isConfig,
-        IThemePlugin theme,
+        ITheme theme,
         IReadOnlyList<IThemeExtension> extensions)
     {
         if (isConfig)
@@ -435,7 +435,7 @@ internal sealed partial class ThemeExtractCommand(
     /// Includes manifest.json and Configuration/*.json files.
     /// </summary>
     private static List<ResolvedFileInfo> GetConfigurationEntries(
-        IThemePlugin theme,
+        ITheme theme,
         IReadOnlyList<IThemeExtension> extensions)
     {
         var entries = new Dictionary<string, ResolvedFileInfo>(StringComparer.OrdinalIgnoreCase);
@@ -687,7 +687,7 @@ internal sealed partial class ThemeExtractCommand(
         return selection.Name;
     }
 
-    private string GetThemeSource(IThemePlugin theme)
+    private string GetThemeSource(ITheme theme)
     {
         // Look up source from plugin context
         var pluginInfo = pluginContext.Plugins
@@ -895,7 +895,7 @@ internal sealed partial class ThemeExtractCommand(
     /// Extension files are shown with their target path: Category/{ExtName}/file
     /// </summary>
     private static List<(string Path, string Category, FileSourceType SourceType, int ExtensionIndex)> GetThemeAndExtensionFiles(
-        IThemePlugin theme,
+        ITheme theme,
         IReadOnlyList<IThemeExtension> extensions)
     {
         var files = new List<(string Path, string Category, FileSourceType SourceType, int ExtensionIndex)>();

@@ -25,12 +25,12 @@ public sealed partial class TemplateResolver(ILogger<TemplateResolver> logger) :
     private const string RevelaExtension = ".revela";
 
     private readonly Dictionary<string, ResolvedEntry> templates = new(StringComparer.OrdinalIgnoreCase);
-    private IThemePlugin? theme;
+    private ITheme? theme;
     private string? localThemePath;
     private bool isInitialized;
 
     /// <inheritdoc />
-    public void Initialize(IThemePlugin theme, IReadOnlyList<IThemeExtension> extensions, string projectPath)
+    public void Initialize(ITheme theme, IReadOnlyList<IThemeExtension> extensions, string projectPath)
     {
         this.theme = theme;
         templates.Clear();
@@ -81,7 +81,7 @@ public sealed partial class TemplateResolver(ILogger<TemplateResolver> logger) :
         };
     }
 
-    private void ScanTheme(IThemePlugin theme)
+    private void ScanTheme(ITheme theme)
     {
         var count = 0;
 

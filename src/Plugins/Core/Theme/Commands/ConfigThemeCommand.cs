@@ -140,7 +140,7 @@ internal sealed partial class ConfigThemeCommand(
         return 0;
     }
 
-    private string GetThemeSource(IThemePlugin theme)
+    private string GetThemeSource(ITheme theme)
     {
         // Check for local themes first
         var typeName = theme.GetType().Name;

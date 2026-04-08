@@ -19,7 +19,7 @@ internal interface ITemplateEngine
     /// Set the theme for loading partials
     /// </summary>
     /// <param name="theme">Theme plugin to load partials from</param>
-    void SetTheme(IThemePlugin? theme);
+    void SetTheme(ITheme? theme);
 
     /// <summary>
     /// Set the theme extensions for loading extension partials

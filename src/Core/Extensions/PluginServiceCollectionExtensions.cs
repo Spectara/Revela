@@ -226,7 +226,7 @@ public static class PluginServiceCollectionExtensions
         }
 
         // Register theme plugins for IThemeResolver
-        foreach (var plugin in plugins.Select(p => p.Plugin).OfType<IThemePlugin>())
+        foreach (var plugin in plugins.Select(p => p.Plugin).OfType<ITheme>())
         {
             services.AddSingleton(plugin);
         }

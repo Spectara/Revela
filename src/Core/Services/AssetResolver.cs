@@ -38,12 +38,12 @@ public sealed partial class AssetResolver(ILogger<AssetResolver> logger) : IAsse
     private readonly List<string> styleSheetOrder = [];
     private readonly List<string> scriptOrder = [];
 
-    private IThemePlugin? theme;
+    private ITheme? theme;
     private string? localThemePath;
     private bool isInitialized;
 
     /// <inheritdoc />
-    public void Initialize(IThemePlugin theme, IReadOnlyList<IThemeExtension> extensions, string projectPath)
+    public void Initialize(ITheme theme, IReadOnlyList<IThemeExtension> extensions, string projectPath)
     {
         this.theme = theme;
         assets.Clear();
@@ -137,7 +137,7 @@ public sealed partial class AssetResolver(ILogger<AssetResolver> logger) : IAsse
         }
     }
 
-    private void ScanTheme(IThemePlugin theme)
+    private void ScanTheme(ITheme theme)
     {
         var count = 0;
 

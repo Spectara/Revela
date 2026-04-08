@@ -37,7 +37,7 @@ internal sealed partial class PluginListCommand(
 
             // Filter out themes and theme extensions (shown in 'theme list' instead)
             var loadedPlugins = pluginContext.Plugins
-                .Where(p => p.Plugin is not IThemePlugin and not IThemeExtension)
+                .Where(p => p.Plugin is not ITheme and not IThemeExtension)
                 .ToList();
 
             if (loadedPlugins.Count == 0)

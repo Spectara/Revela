@@ -145,7 +145,7 @@ internal sealed class PluginLoadContext : AssemblyLoadContext
         }
 
         // Spectara.Revela.* are always shared (Sdk, Core, Commands)
-        // This ensures IPlugin, IThemePlugin etc. are the same type in host and plugins
+        // This ensures IPlugin, ITheme etc. are the same type in host and plugins
         if (assemblyName.StartsWith("Spectara.Revela.", StringComparison.Ordinal))
         {
             return true;

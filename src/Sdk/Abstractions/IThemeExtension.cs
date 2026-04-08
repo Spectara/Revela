@@ -20,7 +20,7 @@ public interface IThemeExtension : IPlugin
 {
     /// <summary>
     /// Name of the target theme (e.g., "Lumina").
-    /// Matched case-insensitively against IThemePlugin.Metadata.Name.
+    /// Matched case-insensitively against ITheme.Metadata.Name.
     /// </summary>
     string TargetTheme { get; }
 

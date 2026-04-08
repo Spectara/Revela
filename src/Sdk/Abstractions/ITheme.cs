@@ -1,32 +1,26 @@
 namespace Spectara.Revela.Sdk.Abstractions;
 
 /// <summary>
-/// Theme plugin interface — extends IPlugin with theme-specific functionality.
+/// Theme interface — provides templates, assets, and configuration.
 /// </summary>
 /// <remarks>
-/// Theme plugins provide:
+/// Themes provide:
 /// <list type="bullet">
 /// <item>Template files (Layout.revela, Body/, Partials/)</item>
 /// <item>Static assets (Assets/ folder — CSS, JS, fonts, images)</item>
 /// <item>Theme configuration (variables in manifest.json)</item>
 /// </list>
 ///
-/// Naming convention: Spectara.Revela.Themes.{Name}
-///
-/// Usage in project.json:
-/// <code>
-/// { "theme": "Spectara.Revela.Themes.Lumina" }
-/// </code>
-///
-/// Theme plugins typically don't provide CLI commands, but can
-/// register custom Scriban template functions.
+/// NuGet-based themes additionally implement <see cref="IPlugin"/> for
+/// discovery and lifecycle management. Local themes (from project/themes/)
+/// implement only this interface.
 /// </remarks>
-public interface IThemePlugin : IPlugin
+public interface ITheme
 {
     /// <summary>
     /// Theme-specific metadata with preview image and tags.
     /// </summary>
-    new ThemeMetadata Metadata { get; }
+    ThemeMetadata Metadata { get; }
 
     /// <summary>
     /// Get the theme manifest with template and asset information.

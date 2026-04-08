@@ -21,7 +21,7 @@ public interface IThemeVariablesProvider
     /// </summary>
     /// <param name="theme">The resolved theme plugin (may be a local theme adapter).</param>
     /// <returns>Dictionary of variable name to value.</returns>
-    IReadOnlyDictionary<string, string> GetVariables(IThemePlugin? theme);
+    IReadOnlyDictionary<string, string> GetVariables(ITheme? theme);
 }
 
 /// <summary>
@@ -31,7 +31,7 @@ public sealed partial class ThemeVariablesProvider(
     ILogger<ThemeVariablesProvider> logger) : IThemeVariablesProvider
 {
     /// <inheritdoc />
-    public IReadOnlyDictionary<string, string> GetVariables(IThemePlugin? theme)
+    public IReadOnlyDictionary<string, string> GetVariables(ITheme? theme)
     {
         var themeVariables = theme?.GetManifest().Variables;
         if (themeVariables is not null && themeVariables.Count > 0)

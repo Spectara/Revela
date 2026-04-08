@@ -9,7 +9,7 @@ namespace Spectara.Revela.Core.Services;
 /// Default implementation of theme resolver
 /// </summary>
 public sealed partial class ThemeResolver(
-    IEnumerable<IThemePlugin> installedThemes,
+    IEnumerable<ITheme> installedThemes,
     IEnumerable<IThemeExtension> themeExtensions,
     ILogger<ThemeResolver> logger) : IThemeResolver
 {
@@ -31,7 +31,7 @@ public sealed partial class ThemeResolver(
     }
 
     /// <inheritdoc />
-    public IThemePlugin? Resolve(string? themeName, string projectPath)
+    public ITheme? Resolve(string? themeName, string projectPath)
     {
         var name = string.IsNullOrEmpty(themeName) ? DefaultThemeName : themeName;
         LogResolvingTheme(logger, name);
@@ -60,7 +60,7 @@ public sealed partial class ThemeResolver(
     }
 
     /// <inheritdoc />
-    public IThemePlugin? ResolveInstalled(string? themeName)
+    public ITheme? ResolveInstalled(string? themeName)
     {
         var name = string.IsNullOrEmpty(themeName) ? DefaultThemeName : themeName;
         LogResolvingTheme(logger, name);
@@ -80,9 +80,9 @@ public sealed partial class ThemeResolver(
     }
 
     /// <inheritdoc />
-    public IEnumerable<IThemePlugin> GetAvailableThemes(string projectPath)
+    public IEnumerable<ITheme> GetAvailableThemes(string projectPath)
     {
-        List<IThemePlugin> themes = [];
+        List<ITheme> themes = [];
         var seenNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
         // 1. Local themes (highest priority)
@@ -138,7 +138,7 @@ public sealed partial class ThemeResolver(
         }
     }
 
-    private IEnumerable<IThemePlugin> GetLocalThemes(string projectPath)
+    private IEnumerable<ITheme> GetLocalThemes(string projectPath)
     {
         var themesPath = Path.Combine(projectPath, ProjectPaths.Themes);
         if (!Directory.Exists(themesPath))
@@ -154,7 +154,7 @@ public sealed partial class ThemeResolver(
                 continue;
             }
 
-            IThemePlugin? theme = null;
+            ITheme? theme = null;
             try
             {
                 theme = new LocalThemeAdapter(themeDir);

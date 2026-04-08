@@ -57,7 +57,7 @@ internal sealed partial class ThemeListCommand(
 
         // Build source lookup from plugin context
         var pluginSources = pluginContext.Plugins
-            .Where(p => p.Plugin is IThemePlugin or IThemeExtension)
+            .Where(p => p.Plugin is ITheme or IThemeExtension)
             .ToDictionary(
                 p => p.Plugin.Metadata.Name,
                 p => p.Source,
@@ -84,7 +84,7 @@ internal sealed partial class ThemeListCommand(
     }
 
     private void ShowInstalledThemes(
-        List<IThemePlugin> themes,
+        List<ITheme> themes,
         Dictionary<string, PluginSource> pluginSources,
         CancellationToken cancellationToken)
     {
@@ -134,7 +134,7 @@ internal sealed partial class ThemeListCommand(
         AnsiConsole.MarkupLine("[dim]Tip:[/] Use [cyan]revela theme extract <name>[/] to customize a theme");
     }
 
-    private async Task ShowOnlineThemesAsync(List<IThemePlugin> installedThemes, CancellationToken cancellationToken)
+    private async Task ShowOnlineThemesAsync(List<ITheme> installedThemes, CancellationToken cancellationToken)
     {
         AnsiConsole.MarkupLine("");
 
@@ -223,7 +223,7 @@ internal sealed partial class ThemeListCommand(
         return "[dim]installed[/]";
     }
 
-    private static bool IsLocalTheme(IThemePlugin theme)
+    private static bool IsLocalTheme(ITheme theme)
     {
         var typeName = theme.GetType().Name;
         return typeName.Contains("LocalThemeAdapter", StringComparison.Ordinal);

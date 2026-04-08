@@ -42,7 +42,7 @@ internal sealed partial class RenderService(
 {
     /// <summary>Current theme extensions (set during rendering)</summary>
     private IReadOnlyList<IThemeExtension> currentExtensions = [];
-    private IThemePlugin? currentTheme;
+    private ITheme? currentTheme;
     private IReadOnlyDictionary<string, Image>? currentImageLookup;
 
     /// <summary>Gets full path to source directory (supports hot-reload)</summary>
@@ -70,7 +70,7 @@ internal sealed partial class RenderService(
     }
 
     /// <inheritdoc />
-    public void SetTheme(IThemePlugin? theme) => currentTheme = theme;
+    public void SetTheme(ITheme? theme) => currentTheme = theme;
 
     /// <inheritdoc />
     public void SetExtensions(IReadOnlyList<IThemeExtension> extensions) => currentExtensions = extensions;
@@ -438,7 +438,7 @@ internal sealed partial class RenderService(
         ITemplateEngine engine,
         SiteModel model,
         RenderContext config,
-        IThemePlugin? theme,
+        ITheme? theme,
         IProgress<RenderProgress>? progress,
         CancellationToken cancellationToken)
     {

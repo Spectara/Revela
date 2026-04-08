@@ -37,7 +37,7 @@ internal sealed partial class ScribanTemplateEngine(
     ITemplateResolver templateResolver) : ITemplateEngine
 {
     private readonly ConcurrentDictionary<string, Template> compiledTemplates = new();
-    private IThemePlugin? currentTheme;
+    private ITheme? currentTheme;
     private IReadOnlyDictionary<string, Image>? imageLookup;
 
     /// <summary>
@@ -88,7 +88,7 @@ internal sealed partial class ScribanTemplateEngine(
     /// Set the theme for loading partials
     /// </summary>
     /// <param name="theme">Theme plugin to load partials from</param>
-    public void SetTheme(IThemePlugin? theme)
+    public void SetTheme(ITheme? theme)
     {
         currentTheme = theme;
         if (theme is not null)

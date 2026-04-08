@@ -32,7 +32,7 @@ internal interface IRenderService
     /// Set the theme for template loading and rendering.
     /// </summary>
     /// <param name="theme">Theme plugin to use for templates and assets.</param>
-    void SetTheme(IThemePlugin? theme);
+    void SetTheme(ITheme? theme);
 
     /// <summary>
     /// Set the theme extensions for loading extension partials and stylesheets.
