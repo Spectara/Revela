@@ -8,9 +8,12 @@
     2. Publish CLI as self-contained executable
     3. Build all plugins and themes
     4. Integration test with showcase sample (offline, Git-tracked)
-    5. Test generate all, clean, compress, idempotency
-    6. Test .NET Tool package install/uninstall
-    7. Optionally test OneDrive sync with real download
+    5. Test plugin install/uninstall/verify, theme list/files/extract
+    6. Test CLI commands (create, config, restore)
+    7. Test generate all + individual pipeline steps (scan, pages, images)
+    8. Test clean (all + individual), compress, idempotency
+    9. Test .NET Tool package install/uninstall
+    10. Optionally test OneDrive sync with real download
 
 .PARAMETER Version
     Version number for the test build (default: 0.0.0-test)
@@ -208,15 +211,15 @@ try {
             $testExeExt = if ($isWindowsOS) { ".exe" } else { "" }
 
             $testProjects = @(
-                @{ Name = "Core"; Path = "artifacts/bin/Core/Release/net10.0/Spectara.Revela.Tests.Core$testExeExt" },
-                @{ Name = "Commands"; Path = "artifacts/bin/Commands/Release/net10.0/Spectara.Revela.Tests.Commands$testExeExt" },
+                @{ Name = "Core"; Path = "artifacts/bin/Tests.Core/Release/net10.0/Spectara.Revela.Tests.Core$testExeExt" },
+                @{ Name = "Commands"; Path = "artifacts/bin/Tests.Commands/Release/net10.0/Spectara.Revela.Tests.Commands$testExeExt" },
                 @{ Name = "Source.OneDrive"; Path = "artifacts/bin/Tests.Source.OneDrive/Release/net10.0/Spectara.Revela.Tests.Plugins.Source.OneDrive$testExeExt" },
-                @{ Name = "Statistics"; Path = "artifacts/bin/Statistics/Release/net10.0/Spectara.Revela.Tests.Plugins.Statistics$testExeExt" },
+                @{ Name = "Statistics"; Path = "artifacts/bin/Tests.Statistics/Release/net10.0/Spectara.Revela.Tests.Plugins.Statistics$testExeExt" },
                 @{ Name = "Calendar"; Path = "artifacts/bin/Tests.Calendar/Release/net10.0/Spectara.Revela.Tests.Plugins.Calendar$testExeExt" },
                 @{ Name = "Source.Calendar"; Path = "artifacts/bin/Tests.Source.Calendar/Release/net10.0/Spectara.Revela.Tests.Plugins.Source.Calendar$testExeExt" },
-                @{ Name = "Serve"; Path = "artifacts/bin/Serve/Release/net10.0/Spectara.Revela.Tests.Plugins.Serve$testExeExt" },
-                @{ Name = "Compress"; Path = "artifacts/bin/Compress/Release/net10.0/Spectara.Revela.Tests.Plugins.Compress$testExeExt" },
-                @{ Name = "Integration"; Path = "artifacts/bin/Integration/Release/net10.0/Spectara.Revela.Tests.Integration$testExeExt" }
+                @{ Name = "Serve"; Path = "artifacts/bin/Tests.Serve/Release/net10.0/Spectara.Revela.Tests.Plugins.Serve$testExeExt" },
+                @{ Name = "Compress"; Path = "artifacts/bin/Tests.Compress/Release/net10.0/Spectara.Revela.Tests.Plugins.Compress$testExeExt" },
+                @{ Name = "Integration"; Path = "artifacts/bin/Tests.Integration/Release/net10.0/Spectara.Revela.Tests.Integration$testExeExt" }
             )
 
             foreach ($test in $testProjects) {
@@ -261,6 +264,17 @@ try {
 
         $exeSize = (Get-Item $ExePath).Length / 1MB
         Write-Success "CLI published: $ExeName ($([math]::Round($exeSize, 1)) MB)"
+
+        # Verify --version works for standalone CLI
+        Write-Info "Testing standalone --version..."
+        $standaloneVersion = & $ExePath --version 2>&1
+        if ($LASTEXITCODE -ne 0) { throw "Standalone --version failed: $standaloneVersion" }
+        if ($standaloneVersion -match '\d+\.\d+\.\d+') {
+            Write-Success "Standalone --version: $standaloneVersion"
+        }
+        else {
+            Write-Warn "Unexpected --version output: $standaloneVersion"
+        }
     }
 
     # ========================================================================
@@ -655,6 +669,84 @@ try {
     }
 
     # ========================================================================
+    # STEP 7f: Test Theme & Restore Commands
+    # ========================================================================
+    Write-Step "Step 7f: Test Theme & Restore Commands"
+    Measure-Step "Theme & Restore" {
+        Push-Location $SampleProjectDir
+        try {
+            # Test restore --check (validates all dependencies are present)
+            Write-Info "Running: revela restore --check"
+            $restoreOutput = & $ExePath restore --check 2>&1 | Out-String
+            if ($LASTEXITCODE -ne 0) { throw "restore --check failed" }
+            Write-Success "restore --check passed"
+
+            # Test theme files (shows all template/asset sources)
+            Write-Info "Running: revela theme files"
+            $themeFilesOutput = & $ExePath theme files 2>&1 | Out-String
+            if ($LASTEXITCODE -ne 0) { throw "theme files failed" }
+            if ($themeFilesOutput -match "Body" -or $themeFilesOutput -match "Partials") {
+                Write-Success "theme files shows template listing"
+            }
+            else {
+                Write-Warn "theme files output may be incomplete: $themeFilesOutput"
+            }
+
+            # Test theme extract (extract a single file to themes/ directory)
+            Write-Info "Running: revela theme extract Lumina --file Partials/ --force"
+            & $ExePath theme extract Lumina --file "Partials/" --force
+            if ($LASTEXITCODE -ne 0) { throw "theme extract failed" }
+
+            $themesDir = Join-Path $SampleProjectDir "themes"
+            if (Test-Path $themesDir) {
+                $extractedFiles = @(Get-ChildItem $themesDir -Recurse -File)
+                if ($extractedFiles.Count -gt 0) {
+                    Write-Success "theme extract created $($extractedFiles.Count) files in themes/"
+                }
+                else {
+                    Write-Warn "theme extract created folder but no files"
+                }
+            }
+            else {
+                throw "themes/ directory not created by theme extract"
+            }
+
+            # Test create page text
+            Write-Info "Running: revela create page text about --title 'About Me'"
+            & $ExePath create page text about --title "About Me"
+            if ($LASTEXITCODE -ne 0) { throw "create page text failed" }
+
+            $textFile = Join-Path $SampleProjectDir "source/about/_index.revela"
+            if (Test-Path $textFile) {
+                $textContent = Get-Content $textFile -Raw
+                if ($textContent -match 'template\s*=\s*"page"') {
+                    Write-Success "Text page created with correct template"
+                }
+                else {
+                    Write-Warn "Text page created but template may differ"
+                }
+            }
+            else {
+                throw "Text page file not created"
+            }
+
+            # Test config feed list (verify local-test feed from Step 7c is visible)
+            Write-Info "Running: revela config feed list"
+            $feedListOutput = & $ExePath config feed list 2>&1 | Out-String
+            if ($LASTEXITCODE -ne 0) { throw "config feed list failed" }
+            if ($feedListOutput -match "local-test") {
+                Write-Success "config feed list shows local-test feed"
+            }
+            else {
+                Write-Warn "local-test feed not visible in feed list"
+            }
+        }
+        finally {
+            Pop-Location
+        }
+    }
+
+    # ========================================================================
     # STEP 8: Generate All (primary user command)
     # ========================================================================
     Write-Step "Step 8: Generate All"
@@ -711,7 +803,7 @@ try {
         }
 
         # Check gallery directories (exclude special dirs)
-        $specialDirs = @("images", "_assets", "test-gallery", "test-stats")
+        $specialDirs = @("images", "_assets", "test-gallery", "test-stats", "about")
         $galleryDirs = @(Get-ChildItem $outputDir -Directory | Where-Object { $_.Name -notin $specialDirs })
         if ($galleryDirs.Count -gt 0) {
             Write-Success "Gallery directories: $($galleryDirs.Count)"
@@ -740,6 +832,11 @@ try {
             $extensionDir = Join-Path $assetsDir "lumina-statistics"
             if (Test-Path $extensionDir) {
                 Write-Success "Lumina.Statistics assets included"
+            }
+
+            $calendarExtDir = Join-Path $assetsDir "lumina-calendar"
+            if (Test-Path $calendarExtDir) {
+                Write-Success "Lumina.Calendar assets included"
             }
         }
 
@@ -854,6 +951,101 @@ try {
             $sw.Stop()
             if ($LASTEXITCODE -ne 0) { throw "generate all (third run) failed" }
             Write-Success "Third run completed in $($sw.Elapsed.ToString('mm\:ss\.fff')) (incremental)"
+        }
+        finally {
+            Pop-Location
+        }
+    }
+
+    # ========================================================================
+    # STEP 11b: Individual Pipeline Steps (isolation test)
+    # ========================================================================
+    Write-Step "Step 11b: Individual Pipeline Steps"
+    Measure-Step "Pipeline Steps" {
+        Push-Location $SampleProjectDir
+        try {
+            # Clean everything first to test individual steps in order
+            Write-Info "Cleaning output for individual step test..."
+            & $ExePath clean all
+            if ($LASTEXITCODE -ne 0) { throw "clean all (pre-step-test) failed" }
+
+            # Test generate scan (creates manifest)
+            Write-Info "Running: revela generate scan"
+            & $ExePath generate scan
+            if ($LASTEXITCODE -ne 0) { throw "generate scan failed" }
+
+            $cacheDir = Join-Path $SampleProjectDir ".cache"
+            if (Test-Path $cacheDir) {
+                Write-Success "generate scan created cache"
+            }
+            else {
+                throw "generate scan did not create .cache/"
+            }
+
+            # Test generate statistics (must run before pages — templates reference stats data)
+            Write-Info "Running: revela generate statistics"
+            & $ExePath generate statistics
+            if ($LASTEXITCODE -ne 0) { throw "generate statistics failed" }
+            Write-Success "generate statistics completed"
+
+            # Test generate pages (renders HTML from manifest)
+            Write-Info "Running: revela generate pages"
+            & $ExePath generate pages
+            if ($LASTEXITCODE -ne 0) { throw "generate pages failed" }
+
+            $outputDir = Join-Path $SampleProjectDir "output"
+            $indexPath = Join-Path $outputDir "index.html"
+            if (Test-Path $indexPath) {
+                Write-Success "generate pages created HTML output"
+            }
+            else {
+                throw "generate pages did not create index.html"
+            }
+
+            # Test generate images (processes and resizes images)
+            Write-Info "Running: revela generate images"
+            & $ExePath generate images
+            if ($LASTEXITCODE -ne 0) { throw "generate images failed" }
+
+            $imagesDir = Join-Path $outputDir "images"
+            if (Test-Path $imagesDir) {
+                $imageCount = (Get-ChildItem $imagesDir -Recurse -File).Count
+                Write-Success "generate images created $imageCount image files"
+            }
+            else {
+                throw "generate images did not create images/ directory"
+            }
+
+            # Test individual clean steps
+            Write-Info "Running: revela clean images"
+            & $ExePath clean images
+            if ($LASTEXITCODE -ne 0) { throw "clean images failed" }
+            if (-not (Test-Path $imagesDir) -or (Get-ChildItem $imagesDir -Recurse -File -ErrorAction SilentlyContinue).Count -eq 0) {
+                Write-Success "clean images removed image files"
+            }
+            else {
+                Write-Warn "clean images may not have removed all files"
+            }
+
+            Write-Info "Running: revela clean output"
+            & $ExePath clean output
+            if ($LASTEXITCODE -ne 0) { throw "clean output failed" }
+
+            Write-Info "Running: revela clean cache"
+            & $ExePath clean cache
+            if ($LASTEXITCODE -ne 0) { throw "clean cache failed" }
+            if (-not (Test-Path $cacheDir) -or (Get-ChildItem $cacheDir -Recurse -File -ErrorAction SilentlyContinue).Count -eq 0) {
+                Write-Success "clean cache removed cache files"
+            }
+            else {
+                Write-Warn "clean cache may not have removed all files"
+            }
+
+            # Restore output for subsequent steps
+            Write-Info "Running: revela generate all (restore for subsequent steps)"
+            & $ExePath generate all
+            if ($LASTEXITCODE -ne 0) { throw "generate all (restore) failed" }
+            Write-Success "Individual pipeline steps all working correctly"
         }
         finally {
             Pop-Location
