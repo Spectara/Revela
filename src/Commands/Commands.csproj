@@ -1,12 +1,15 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <Description>Host commands for Revela (Config, Plugin Management, Packages, Restore)</Description>
+    <Description>Host commands for Revela (Config, Plugin Management, Packages, Restore, Generate, Theme, Projects)</Description>
     <IsPackable>false</IsPackable>
   </PropertyGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\Core\Core.csproj" />
+    <ProjectReference Include="..\Features\Generate\Generate.csproj" />
+    <ProjectReference Include="..\Features\Theme\Theme.csproj" />
+    <ProjectReference Include="..\Features\Projects\Projects.csproj" />
   </ItemGroup>
 
   <ItemGroup>

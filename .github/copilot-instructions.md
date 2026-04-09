@@ -82,12 +82,13 @@ This is a **complete rewrite** of the original Bash-based revela project:
 
 ```
 src/
-├── Core/                     # Shared kernel (services, plugin loading, configuration)
-├── Commands/                 # CLI commands (Config, Packages, Plugins, Restore — host-owned only)
+├── Core/                     # Shared kernel (services, package loading, configuration)
+├── Commands/                 # CLI commands — host-owned (Config, Packages, Plugins, Restore)
+│                             # Also references Core features (Generate, Theme, Projects)
 ├── Cli/                      # Entry point, hosting, interactive mode
 ├── Sdk/                      # SDK for plugin development (abstractions, models, services)
 ├── Plugins/
-│   ├── Core/
+│   ├── Core/                 # Core features — always built into CLI (NOT plugin-loaded)
 │   │   ├── Generate/  # Core generate pipeline (scan, pages, images, clean)
 │   │   ├── Theme/     # Theme management (install, list, extract)
 │   │   └── Projects/  # Project management (create, list, delete)
@@ -123,8 +124,8 @@ tests/
 - **Engine Models:** `src/Sdk/Models/Engine/` - ScanResult, PagesResult, ImagesResult, GenerateResult
 - **Config:** `src/Core/Configuration/` + `src/Sdk/Configuration/` - Configuration models
 - **Global Config:** `src/Core/Services/IGlobalConfigManager.cs` + `GlobalConfigManager.cs` - revela.json read/write (DI singleton)
-- **Plugin Loading:** `src/Core/PluginLoader.cs` + `PluginManager.cs`
-- **Plugin Extensions:** `src/Core/Extensions/PluginServiceCollectionExtensions.cs` - AddPlugins lifecycle
+- **Package Loading:** `src/Core/PackageLoader.cs` + `PackageManager.cs`
+- **Package Registration:** `src/Core/Extensions/PackageServiceCollectionExtensions.cs` - AddPackages lifecycle
 - **Path Resolution:** `src/Sdk/Services/IPathResolver.cs` + `PathResolver.cs`
 - **Output Helpers:** `src/Sdk/Output/OutputMarkers.cs`, `src/Sdk/ProjectPaths.cs`
 - **CLI Hosting:** `src/Cli/Hosting/` - CoreCommandProvider, HostExtensions, ProjectResolver, InteractiveMenuService
@@ -194,12 +195,12 @@ return rootCommand.Parse(args).Invoke();
 ```
 
 **Command Registration Pattern:**
-- **Host Commands:** Registered via `AddRevelaCommands()` — only host-owned commands (Config, Packages, Plugins, Restore)
-- **Plugin Commands:** Registered via `AddPlugins()` → `IPlugin.ConfigureServices()` + `IPlugin.GetCommands()`
-- **Core Features:** Generate, Theme, and Projects commands come from Core plugins, NOT from the host
+- **Host Commands:** Registered via `AddRevelaCommands()` — all host-owned commands + Core features
+- **Plugin Commands:** Registered via `AddPackages()` → `IPlugin.ConfigureServices()` + `IPlugin.GetCommands()`
+- **Core Features:** Generate, Theme, and Projects are NOT plugins — registered directly in `AddRevelaCommands()`
   ```csharp
-  builder.Services.AddRevelaCommands();    // Host-owned commands only
-  builder.Services.AddPlugins(builder.Configuration, filteredArgs); // All plugin commands
+  builder.Services.AddRevelaCommands();    // Host-owned commands + Core features (Generate, Theme, Projects)
+  builder.Services.AddPackages(builder.Configuration, filteredArgs); // External plugin commands only
   ```
 
 ### 4. Plugin System with Host.CreateApplicationBuilder
@@ -239,7 +240,7 @@ builder.AddRevelaConfiguration();       // revela.json → project.json → logg
 builder.Services.AddRevelaConfigSections(); // IOptions<T> for all config models
 builder.Services.AddRevelaCommands();    // All CLI commands
 builder.Services.AddInteractiveMode();   // Interactive menu system
-builder.Services.AddPlugins(builder.Configuration, filteredArgs);
+builder.Services.AddPackages(builder.Configuration, filteredArgs);
 
 // Register ProjectEnvironment (runtime info about project location)
 builder.Services.AddOptions<ProjectEnvironment>()
@@ -274,44 +275,50 @@ return await rootCommand.Parse(filteredArgs).InvokeAsync();
 **Simplified plugin interface using Default Interface Methods:**
 
 ```csharp
-public interface IPlugin
+// Base: all packages share PackageMetadata
+interface IPackage { PackageMetadata Metadata { get; } }
+
+// Plugins: services + commands
+interface IPlugin : IPackage
 {
-    // REQUIRED: Plugin identity (sealed record, not interface)
-    PluginMetadata Metadata { get; }
-    
-    // REQUIRED: Register services BEFORE ServiceProvider is built
     void ConfigureServices(IServiceCollection services);
-    
-    // OPTIONAL: Add configuration sources (default: no-op)
-    //   Framework auto-loads project.json + ENV vars (SPECTARA__REVELA__*)
-    void ConfigureConfiguration(IConfigurationBuilder configuration) { }
-    
-    // OPTIONAL: Return CLI command descriptors (default: empty)
-    //   IServiceProvider passed as parameter — no stored field needed
-    IEnumerable<CommandDescriptor> GetCommands(IServiceProvider services) => [];
+    void ConfigureConfiguration(IConfigurationBuilder config) { }
+    IEnumerable<CommandDescriptor> GetCommands(IServiceProvider sp) => [];
 }
 
-// PluginMetadata is a record (not sealed — ThemeMetadata inherits from it)
-public record PluginMetadata
+// Themes: templates + assets (NO ConfigureServices, NO GetCommands)
+interface ITheme : IPackage
 {
-    public required string Id { get; init; }           // Fully qualified package ID (e.g., "Spectara.Revela.Plugins.Serve")
+    string? Prefix { get; }          // null = base theme, "statistics" = extension
+    string? TargetTheme { get; }     // null = standalone, "Lumina" = extends Lumina
+    ThemeManifest Manifest { get; }
+    Stream? GetFile(string path);
+    IEnumerable<string> GetAllFiles();
+}
+
+// Unified metadata for all packages
+public record PackageMetadata
+{
+    public required string Id { get; init; }
     public required string Name { get; init; }
     public required string Version { get; init; }
     public required string Description { get; init; }
     public string Author { get; init; } = "Unknown";
-    public IReadOnlyList<string> RequiredPlugins { get; init; } = [];  // Plugin IDs that must be loaded
-    public IReadOnlyList<string> ExtendsPlugins { get; init; } = [];   // Plugin IDs this extends (soft dependency)
+    public IReadOnlyList<string> RequiredPackages { get; init; } = [];
+    public IReadOnlyList<string> ExtendsPackages { get; init; } = [];
+    public Uri? PreviewImageUri { get; init; };
+    public IReadOnlyList<string> Tags { get; init; } = [];
 }
 ```
 
-#### AddPlugins() Extension Method
+#### AddPackages() Extension Method
 
 **Automatic Plugin Lifecycle Management:**
 
 ```csharp
 // Extension method handles all plugin lifecycle phases
-// Returns void — IPluginContext is registered in DI and resolved later
-public static void AddPlugins(
+// Returns void — IPackageContext is registered in DI and resolved later
+public static void AddPackages(
     this IServiceCollection services,
     IConfigurationBuilder configuration,
     string[] args,
@@ -333,9 +340,9 @@ public static void AddPlugins(
     foreach (var plugin in plugins)
         plugin.ConfigureServices(services);
     
-    // 5. Register IPluginContext in DI (resolved in UseRevelaCommands)
-    services.AddSingleton<IPluginContext>(sp =>
-        new PluginContext(plugins, sp.GetRequiredService<ILogger<PluginContext>>()));
+    // 5. Register IPackageContext in DI (resolved in UseRevelaCommands)
+    services.AddSingleton<IPackageContext>(sp =>
+        new PackageContext(plugins, sp.GetRequiredService<ILogger<PackageContext>>()));
 }
 ```
 
@@ -353,9 +360,8 @@ public static void AddPlugins(
 Plugins specify **parent command** in `CommandDescriptor`, NOT in metadata:
 
 ```csharp
-// PluginMetadata is a record — Id, Name, Version, Description, Author
-// (not sealed: ThemeMetadata extends it with PreviewImageUri, Tags)
-public PluginMetadata Metadata => new()
+// PackageMetadata is a unified record for plugins and themes
+public PackageMetadata Metadata => new()
 {
     Id = "Spectara.Revela.Plugins.Source.OneDrive",
     Name = "Source OneDrive",
@@ -569,7 +575,7 @@ public sealed class MyPluginConfig
 ```csharp
 public sealed class MyPlugin : IPlugin
 {
-    public PluginMetadata Metadata => new()
+    public PackageMetadata Metadata => new()
     {
         Name = "My Plugin",
         Version = "1.0.0",
@@ -1224,3 +1230,4 @@ Skipped with info log when `baseUrl` is not set (sitemaps require absolute URLs)
 
 **For detailed architecture, see:** `docs/architecture.md`  
 **For HttpClient patterns, see:** `docs/httpclient-pattern.md`
+

@@ -1,6 +1,6 @@
 using System.Globalization;
 using NSubstitute;
-using Spectara.Revela.Plugins.Core.Generate.Services;
+using Spectara.Revela.Features.Generate.Services;
 using Spectara.Revela.Sdk.Services;
 
 namespace Spectara.Revela.Tests.Commands.Generate.Services;
@@ -57,3 +57,4 @@ public sealed class ScribanTemplateEngineTests
         }
     }
 }
+

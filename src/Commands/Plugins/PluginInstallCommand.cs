@@ -19,7 +19,7 @@ namespace Spectara.Revela.Commands.Plugins;
 /// </remarks>
 internal sealed partial class PluginInstallCommand(
     ILogger<PluginInstallCommand> logger,
-    PluginManager pluginManager,
+    PackageManager pluginManager,
     IPackageIndexService packageIndexService,
     IGlobalConfigManager globalConfigManager)
 {

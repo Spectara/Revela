@@ -1,6 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using Spectara.Revela.Commands;
-using Spectara.Revela.Plugins.Core.Generate;
+using Spectara.Revela.Features.Generate;
 using Spectara.Revela.Sdk.Abstractions;
 using Spectara.Revela.Sdk.Models.Manifest;
 using Spectara.Revela.Tests.Shared.Fixtures;
@@ -226,3 +226,4 @@ public sealed class ManifestServiceLifecycleTests
         Assert.AreEqual(90, manifest2.FormatQualities["jpg"]);
     }
 }
+

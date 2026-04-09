@@ -17,14 +17,14 @@ public sealed class PluginLoadContextTests
     [DataRow("Spectara.Revela.Core")]
     [DataRow("Spectara.Revela.Commands")]
     public void IsSharedAssembly_RevelaAssemblies_ReturnsTrue(string assemblyName) =>
-        Assert.IsTrue(PluginLoadContext.IsSharedAssembly(assemblyName));
+        Assert.IsTrue(PackageLoadContext.IsSharedAssembly(assemblyName));
 
     [TestMethod]
     [DataRow("System.CommandLine")]
     [DataRow("Spectre.Console")]
     [DataRow("Spectre.Console.Ansi")]
     public void IsSharedAssembly_ExplicitSharedThirdParty_ReturnsTrue(string assemblyName) =>
-        Assert.IsTrue(PluginLoadContext.IsSharedAssembly(assemblyName));
+        Assert.IsTrue(PackageLoadContext.IsSharedAssembly(assemblyName));
 
     [TestMethod]
     [DataRow("Microsoft.Extensions.Options")]
@@ -38,7 +38,7 @@ public sealed class PluginLoadContextTests
     [DataRow("Microsoft.Extensions.Options.ConfigurationExtensions")]
     [DataRow("Microsoft.Extensions.Options.DataAnnotations")]
     public void IsSharedAssembly_MicrosoftExtensions_ReturnsTrue(string assemblyName) =>
-        Assert.IsTrue(PluginLoadContext.IsSharedAssembly(assemblyName));
+        Assert.IsTrue(PackageLoadContext.IsSharedAssembly(assemblyName));
 
     [TestMethod]
     [DataRow("Microsoft.Extensions.Http")]
@@ -51,7 +51,7 @@ public sealed class PluginLoadContextTests
     [DataRow("Microsoft.Extensions.AutoActivation")]
     [DataRow("Microsoft.Extensions.ObjectPool")]
     public void IsSharedAssembly_PluginSpecificMicrosoftExtensions_ReturnsFalse(string assemblyName) =>
-        Assert.IsFalse(PluginLoadContext.IsSharedAssembly(assemblyName));
+        Assert.IsFalse(PackageLoadContext.IsSharedAssembly(assemblyName));
 
     [TestMethod]
     [DataRow("Markdig")]
@@ -64,5 +64,5 @@ public sealed class PluginLoadContextTests
     [DataRow("SSH.NET")]
     [DataRow("SomeCustomLibrary")]
     public void IsSharedAssembly_ThirdPartyLibraries_ReturnsFalse(string assemblyName) =>
-        Assert.IsFalse(PluginLoadContext.IsSharedAssembly(assemblyName));
+        Assert.IsFalse(PackageLoadContext.IsSharedAssembly(assemblyName));
 }

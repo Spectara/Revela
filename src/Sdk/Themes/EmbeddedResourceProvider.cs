@@ -7,8 +7,7 @@ namespace Spectara.Revela.Sdk.Themes;
 /// Helper for working with embedded resources in theme assemblies.
 /// </summary>
 /// <remarks>
-/// Provides consistent resource access for both <see cref="EmbeddedThemePlugin"/>
-/// and <see cref="EmbeddedThemeExtension"/>. Handles:
+/// Provides consistent resource access for <see cref="EmbeddedTheme"/>. Handles:
 /// <list type="bullet">
 /// <item>Resource prefix calculation from assembly name</item>
 /// <item>Cross-platform path resolution (forward/backslash variants)</item>

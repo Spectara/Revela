@@ -8,7 +8,7 @@ namespace Spectara.Revela.Core.Services;
 /// </summary>
 /// <remarks>
 /// The theme is already resolved by <see cref="IThemeResolver"/> with priority:
-/// 1. Local theme folder (project/themes/{name}/) - via LocalThemeAdapter
+/// 1. Local theme folder (project/themes/{name}/) - via LocalThemeProvider
 /// 2. Installed theme plugins
 /// 3. Default bundled theme
 ///
@@ -33,7 +33,7 @@ public sealed partial class ThemeVariablesProvider(
     /// <inheritdoc />
     public IReadOnlyDictionary<string, string> GetVariables(ITheme? theme)
     {
-        var themeVariables = theme?.GetManifest().Variables;
+        var themeVariables = theme?.Manifest.Variables;
         if (themeVariables is not null && themeVariables.Count > 0)
         {
             LogUsingThemeVariables(logger, theme!.Metadata.Name, themeVariables.Count);
@@ -50,3 +50,5 @@ public sealed partial class ThemeVariablesProvider(
     [LoggerMessage(Level = LogLevel.Debug, Message = "No theme variables found")]
     private static partial void LogNoVariablesFound(ILogger logger);
 }
+
+

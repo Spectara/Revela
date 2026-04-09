@@ -4,8 +4,8 @@
   "description": "Statistics charts extension for the Lumina theme",
   "author": "Spectara",
   "targetTheme": "Lumina",
-  "partialPrefix": "statistics",
-  "templates": {
+  "prefix": "statistics",
+  "templateDefaults": {
     "statistics/overview": {
       "data": {
         "statistics": "statistics.json"

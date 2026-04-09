@@ -14,7 +14,7 @@ namespace Spectara.Revela.Plugins.Statistics;
 public sealed class StatisticsPlugin : IPlugin
 {
     /// <inheritdoc />
-    public PluginMetadata Metadata { get; } = new()
+    public PackageMetadata Metadata { get; } = new()
     {
         Id = "Spectara.Revela.Plugins.Statistics",
         Name = "Generate Statistics",

@@ -7,18 +7,6 @@ namespace Spectara.Revela.Core.Services;
 /// <summary>
 /// Resolves templates by scanning theme, extensions, and local overrides.
 /// </summary>
-/// <remarks>
-/// <para>
-/// Scans all sources once at initialization and builds a merged template dictionary.
-/// Local overrides take priority over extensions, which take priority over theme.
-/// </para>
-/// <para>
-/// Key derivation conventions (all sources use same pattern):
-/// - Theme: path relative to theme root → body/gallery, partials/navigation
-/// - Extension: folder + prefix + filename → partials/statistics/overview
-/// - Local: path relative to themes/{ThemeName}/ → partials/statistics/overview
-/// </para>
-/// </remarks>
 public sealed partial class TemplateResolver(ILogger<TemplateResolver> logger) : ITemplateResolver
 {
     private const string LayoutFileName = "Layout.revela";
@@ -30,7 +18,7 @@ public sealed partial class TemplateResolver(ILogger<TemplateResolver> logger) :
     private bool isInitialized;
 
     /// <inheritdoc />
-    public void Initialize(ITheme theme, IReadOnlyList<IThemeExtension> extensions, string projectPath)
+    public void Initialize(ITheme theme, IReadOnlyList<ITheme> extensions, string projectPath)
     {
         this.theme = theme;
         templates.Clear();
@@ -101,9 +89,9 @@ public sealed partial class TemplateResolver(ILogger<TemplateResolver> logger) :
         LogScannedTheme(theme.Metadata.Name, count);
     }
 
-    private void ScanExtension(IThemeExtension extension)
+    private void ScanExtension(ITheme extension)
     {
-        var prefix = extension.PartialPrefix;
+        var prefix = extension.Prefix ?? string.Empty;
         var count = 0;
 
         foreach (var file in extension.GetAllFiles())

@@ -1,8 +1,8 @@
 using Microsoft.Extensions.DependencyInjection;
 using Spectara.Revela.Commands;
-using Spectara.Revela.Plugins.Core.Generate;
-using Spectara.Revela.Plugins.Core.Generate.Abstractions;
-using Spectara.Revela.Plugins.Core.Generate.Models.Results;
+using Spectara.Revela.Features.Generate;
+using Spectara.Revela.Features.Generate.Abstractions;
+using Spectara.Revela.Features.Generate.Models.Results;
 using Spectara.Revela.Sdk.Abstractions;
 using Spectara.Revela.Tests.Shared.Fixtures;
 using Spectara.Revela.Themes.Lumina;
@@ -75,7 +75,7 @@ public sealed class GenerateAllEndToEndTests
         {
             services.AddRevelaCommands();
             services.AddGenerateFeature();
-            services.AddSingleton<ITheme>(new LuminaThemePlugin());
+            services.AddSingleton<ITheme>(new LuminaTheme());
         });
 
         var contentService = host.Services.GetRequiredService<IContentService>();
@@ -173,7 +173,7 @@ public sealed class GenerateAllEndToEndTests
         {
             services.AddRevelaCommands();
             services.AddGenerateFeature();
-            services.AddSingleton<ITheme>(new LuminaThemePlugin());
+            services.AddSingleton<ITheme>(new LuminaTheme());
         });
 
         var contentService = host.Services.GetRequiredService<IContentService>();
@@ -229,7 +229,7 @@ public sealed class GenerateAllEndToEndTests
         {
             services.AddRevelaCommands();
             services.AddGenerateFeature();
-            services.AddSingleton<ITheme>(new LuminaThemePlugin());
+            services.AddSingleton<ITheme>(new LuminaTheme());
         });
 
         var contentService = host.Services.GetRequiredService<IContentService>();
@@ -259,3 +259,5 @@ public sealed class GenerateAllEndToEndTests
             $"Second run should process same or fewer images (first: {firstRun.ProcessedCount}, second: {secondRun.ProcessedCount})");
     }
 }
+
+

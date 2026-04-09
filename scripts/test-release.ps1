@@ -176,11 +176,9 @@ try {
         if ($LASTEXITCODE -ne 0) { throw "Build failed" }
         Write-Success "Solution build completed"
 
-        # Plugins/Themes are Debug-only in Cli.csproj, build them separately in Release
+        # External plugins/themes are Debug-only in Cli.csproj, build them separately in Release
+        # Core features (Generate, Theme, Projects) are always built via Commands.csproj
         $extraProjects = @(
-            "src/Plugins/Core/Generate/Generate.csproj",
-            "src/Plugins/Core/Theme/Theme.csproj",
-            "src/Plugins/Core/Projects/Projects.csproj",
             "src/Plugins/Compress/Compress.csproj",
             "src/Plugins/Serve/Serve.csproj",
             "src/Plugins/Source/OneDrive/OneDrive.csproj",
@@ -292,18 +290,16 @@ try {
         Write-Success "Lumina bundled with CLI"
 
         # Pack all packages from existing build output (no rebuild!)
+        # Core features (Generate, Theme, Projects) are no longer packaged — they're built into the CLI
         $packTargets = @(
-            @{ Name = "Generate";          Proj = "src/Plugins/Core/Generate/Generate.csproj";                      Out = $PluginsDir },
-            @{ Name = "Theme";             Proj = "src/Plugins/Core/Theme/Theme.csproj";                            Out = $PluginsDir },
-            @{ Name = "Projects";          Proj = "src/Plugins/Core/Projects/Projects.csproj";                      Out = $PluginsDir },
             @{ Name = "Lumina";            Proj = "src/Themes/Lumina/Lumina.csproj";                                 Out = $PluginsDir },
             @{ Name = "Lumina.Statistics";  Proj = "src/Themes/Lumina.Statistics/Lumina.Statistics.csproj";           Out = $PluginsDir },
+            @{ Name = "Lumina.Calendar";    Proj = "src/Themes/Lumina.Calendar/Lumina.Calendar.csproj";              Out = $PluginsDir },
             @{ Name = "Sdk";                Proj = "src/Sdk/Sdk.csproj";                                             Out = $NuGetDir },
             @{ Name = "Source.OneDrive";    Proj = "src/Plugins/Source/OneDrive/OneDrive.csproj";                   Out = $PluginsDir },
             @{ Name = "Statistics";         Proj = "src/Plugins/Statistics/Statistics.csproj";                       Out = $PluginsDir },
             @{ Name = "Calendar";           Proj = "src/Plugins/Calendar/Calendar.csproj";                           Out = $PluginsDir },
             @{ Name = "Source.Calendar";    Proj = "src/Plugins/Source/Calendar/Calendar.csproj";                    Out = $PluginsDir },
-            @{ Name = "Lumina.Calendar";    Proj = "src/Themes/Lumina.Calendar/Lumina.Calendar.csproj";              Out = $PluginsDir },
             @{ Name = "Serve";              Proj = "src/Plugins/Serve/Serve.csproj";                                 Out = $PluginsDir },
             @{ Name = "Compress";           Proj = "src/Plugins/Compress/Compress.csproj";                           Out = $PluginsDir }
         )
@@ -356,21 +352,7 @@ try {
     Measure-Step "Install Plugins" {
         Push-Location $SampleProjectDir
         try {
-            # Install core plugins (new in v2: Generate, Theme, Projects are plugins now)
-            Write-Info "Installing Core.Generate..."
-            & $ExePath plugin install Core.Generate --version $Version --source $PluginsDir
-            if ($LASTEXITCODE -ne 0) { throw "Generate plugin installation failed" }
-            Write-Success "Core.Generate installed"
-
-            Write-Info "Installing Core.Theme..."
-            & $ExePath plugin install Core.Theme --version $Version --source $PluginsDir
-            if ($LASTEXITCODE -ne 0) { throw "Theme plugin installation failed" }
-            Write-Success "Core.Theme installed"
-
-            Write-Info "Installing Core.Projects..."
-            & $ExePath plugin install Core.Projects --version $Version --source $PluginsDir
-            if ($LASTEXITCODE -ne 0) { throw "Projects plugin installation failed" }
-            Write-Success "Core.Projects installed"
+            # Core features (Generate, Theme, Projects) are built into the CLI — no install needed
 
             # Install addon plugins
             Write-Info "Installing Source.OneDrive..."
@@ -455,20 +437,18 @@ try {
             throw "Expected 8 plugins in panel header, got unexpected output"
         }
 
-        # Verify installed plugins are local (8 plugins should show 'installed')
+        # Verify installed plugins are local (5 plugins + 2 theme extensions should show 'installed')
         $localMatches = ([regex]::Matches($pluginListOutput, '\binstalled\b')).Count
-        if ($localMatches -ge 8) {
-            Write-Success "Verified: 8 plugins installed locally (next to exe)"
+        if ($localMatches -ge 5) {
+            Write-Success "Verified: 5+ packages installed locally (next to exe)"
         }
         else {
-            Write-Warn "Expected 8 installed plugins, found $localMatches in output"
+            Write-Warn "Expected 5+ installed packages, found $localMatches in output"
         }
 
         # Verify plugin folders exist with main DLLs (new structure: plugins/{PackageId}/{PackageId}.dll)
+        # Core features (Generate, Theme, Projects) are built into the CLI — no plugin folder needed
         $expectedPlugins = @(
-            "Spectara.Revela.Plugins.Core.Generate",
-            "Spectara.Revela.Plugins.Core.Theme",
-            "Spectara.Revela.Plugins.Core.Projects",
             "Spectara.Revela.Plugins.Source.OneDrive",
             "Spectara.Revela.Plugins.Statistics",
             "Spectara.Revela.Plugins.Calendar",

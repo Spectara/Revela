@@ -1,4 +1,4 @@
-using Spectara.Revela.Plugins.Core.Generate.Infrastructure;
+using Spectara.Revela.Features.Generate.Infrastructure;
 
 namespace Spectara.Revela.Tests.Commands.Generate.Building;
 
@@ -209,3 +209,4 @@ public sealed class UrlBuilderTests
 
     #endregion
 }
+

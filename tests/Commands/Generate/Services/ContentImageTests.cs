@@ -1,5 +1,5 @@
-using Spectara.Revela.Plugins.Core.Generate.Models;
-using Spectara.Revela.Plugins.Core.Generate.Services;
+using Spectara.Revela.Features.Generate.Models;
+using Spectara.Revela.Features.Generate.Services;
 
 namespace Spectara.Revela.Tests.Commands.Generate.Services;
 
@@ -400,3 +400,4 @@ public sealed class ContentImageTests
 
     #endregion
 }
+

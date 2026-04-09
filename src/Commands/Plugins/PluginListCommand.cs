@@ -10,7 +10,7 @@ namespace Spectara.Revela.Commands.Plugins;
 /// </summary>
 internal sealed partial class PluginListCommand(
     ILogger<PluginListCommand> logger,
-    IPluginContext pluginContext)
+    IPackageContext packageContext)
 {
     /// <summary>
     /// Creates the command definition.
@@ -35,10 +35,8 @@ internal sealed partial class PluginListCommand(
             cancellationToken.ThrowIfCancellationRequested();
             LogListingPlugins();
 
-            // Filter out themes and theme extensions (shown in 'theme list' instead)
-            var loadedPlugins = pluginContext.Plugins
-                .Where(p => p.Plugin is not ITheme and not IThemeExtension)
-                .ToList();
+            // Plugins and themes are discovered separately — no filtering needed
+            var loadedPlugins = packageContext.Plugins.ToList();
 
             if (loadedPlugins.Count == 0)
             {
@@ -86,10 +84,10 @@ internal sealed partial class PluginListCommand(
         return Task.CompletedTask;
     }
 
-    private static string GetSourceMarkup(PluginSource source) => source switch
+    private static string GetSourceMarkup(PackageSource source) => source switch
     {
-        PluginSource.Bundled => "[magenta]bundled[/]",
-        PluginSource.Local => "[green]installed[/]",
+        PackageSource.Bundled => "[magenta]bundled[/]",
+        PackageSource.Local => "[green]installed[/]",
         _ => "[dim]unknown[/]"
     };
 
@@ -99,4 +97,9 @@ internal sealed partial class PluginListCommand(
     [LoggerMessage(Level = LogLevel.Error, Message = "Failed to list plugins")]
     private partial void LogError(Exception exception);
 }
+
+
+
+
+
 

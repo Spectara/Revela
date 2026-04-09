@@ -44,7 +44,7 @@ builder.Services.AddRevelaConfigSections();
 builder.Services.AddCoreServices();
 builder.Services.AddRevelaCommands();
 builder.Services.AddInteractiveMode();
-builder.Services.AddPlugins(builder.Configuration, filteredArgs);
+builder.Services.AddPackages(builder.Configuration, filteredArgs);
 
 // Register ProjectEnvironment (runtime info about project location)
 builder.Services.AddOptions<ProjectEnvironment>()

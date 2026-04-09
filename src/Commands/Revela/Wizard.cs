@@ -14,14 +14,14 @@ namespace Spectara.Revela.Commands.Revela;
 /// </summary>
 /// <remarks>
 /// Uses <see cref="IPackageIndexService"/> to discover available themes and plugins,
-/// and <see cref="PluginManager"/> directly for installation (bypasses type checks
+/// and <see cref="PackageManager"/> directly for installation (bypasses type checks
 /// in PluginInstallCommand so both themes and plugins can be installed).
 /// </remarks>
 internal sealed partial class Wizard(
     ILogger<Wizard> logger,
     IPackageIndexService packageIndexService,
     RefreshCommand packagesRefreshCommand,
-    PluginManager pluginManager,
+    PackageManager pluginManager,
     IGlobalConfigManager globalConfigManager)
 {
     /// <summary>
@@ -403,7 +403,7 @@ internal sealed partial class Wizard(
         var lines = new List<string> { "[bold]Core plugins[/] [dim](always installed):[/]", "" };
         foreach (var plugin in corePlugins)
         {
-            var shortName = plugin.Id.Replace("Spectara.Revela.Plugins.Core.", "", StringComparison.Ordinal);
+            var shortName = plugin.Id.Replace("Spectara.Revela.Features.", "", StringComparison.Ordinal);
             lines.Add($"  [green]✓[/] {Markup.Escape(shortName)} [dim]- {Markup.Escape(Truncate(plugin.Description, 50))}[/]");
         }
 
@@ -537,3 +537,4 @@ internal sealed partial class Wizard(
     [LoggerMessage(Level = LogLevel.Information, Message = "Setup wizard completed: {ThemesInstalled} themes, {PluginsInstalled} plugins installed")]
     private static partial void LogWizardCompleted(ILogger logger, int themesInstalled, int pluginsInstalled);
 }
+

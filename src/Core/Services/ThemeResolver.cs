@@ -6,20 +6,20 @@ using Spectara.Revela.Sdk.Services;
 namespace Spectara.Revela.Core.Services;
 
 /// <summary>
-/// Default implementation of theme resolver
+/// Default implementation of theme resolver.
 /// </summary>
 public sealed partial class ThemeResolver(
     IEnumerable<ITheme> installedThemes,
-    IEnumerable<IThemeExtension> themeExtensions,
     ILogger<ThemeResolver> logger) : IThemeResolver
 {
     private const string DefaultThemeName = "Lumina";
 
     /// <inheritdoc />
-    public IReadOnlyList<IThemeExtension> GetExtensions(string themeName)
+    public IReadOnlyList<ITheme> GetExtensions(string themeName)
     {
-        var extensions = themeExtensions
-            .Where(e => e.TargetTheme.Equals(themeName, StringComparison.OrdinalIgnoreCase))
+        var extensions = installedThemes
+            .Where(t => t.TargetTheme is not null
+                && t.TargetTheme.Equals(themeName, StringComparison.OrdinalIgnoreCase))
             .ToList();
 
         if (extensions.Count > 0)
@@ -44,9 +44,10 @@ public sealed partial class ThemeResolver(
             return localTheme;
         }
 
-        // 2. Check installed plugins
+        // 2. Check installed themes (base themes only — Prefix is null)
         var installedTheme = installedThemes.FirstOrDefault(
-            t => t.Metadata.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
+            t => t.Prefix is null
+                && t.Metadata.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
 
         if (installedTheme is not null)
         {
@@ -65,9 +66,9 @@ public sealed partial class ThemeResolver(
         var name = string.IsNullOrEmpty(themeName) ? DefaultThemeName : themeName;
         LogResolvingTheme(logger, name);
 
-        // Only check installed plugins, ignore local themes
         var installedTheme = installedThemes.FirstOrDefault(
-            t => t.Metadata.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
+            t => t.Prefix is null
+                && t.Metadata.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
 
         if (installedTheme is not null)
         {
@@ -93,8 +94,8 @@ public sealed partial class ThemeResolver(
             seenNames.Add(theme.Metadata.Name);
         }
 
-        // 2. Installed plugins (skip duplicates)
-        foreach (var theme in installedThemes)
+        // 2. Installed base themes only (skip duplicates, skip extensions)
+        foreach (var theme in installedThemes.Where(t => t.Prefix is null))
         {
             if (!seenNames.Contains(theme.Metadata.Name))
             {
@@ -106,7 +107,7 @@ public sealed partial class ThemeResolver(
         return themes;
     }
 
-    private LocalThemeAdapter? TryResolveLocalTheme(string themeName, string projectPath)
+    private LocalThemeProvider? TryResolveLocalTheme(string themeName, string projectPath)
     {
         var themesPath = Path.Combine(projectPath, ProjectPaths.Themes);
         if (!Directory.Exists(themesPath))
@@ -129,7 +130,7 @@ public sealed partial class ThemeResolver(
 
         try
         {
-            return new LocalThemeAdapter(themePath);
+            return new LocalThemeProvider(themePath);
         }
         catch (Exception ex)
         {
@@ -157,7 +158,7 @@ public sealed partial class ThemeResolver(
             ITheme? theme = null;
             try
             {
-                theme = new LocalThemeAdapter(themeDir);
+                theme = new LocalThemeProvider(themeDir);
             }
             catch (Exception ex)
             {
@@ -192,3 +193,5 @@ public sealed partial class ThemeResolver(
     [LoggerMessage(Level = LogLevel.Debug, Message = "Found {Count} extension(s) for theme '{ThemeName}'")]
     private static partial void LogFoundExtensions(ILogger logger, string themeName, int count);
 }
+
+

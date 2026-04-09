@@ -1,6 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
-using Spectara.Revela.Plugins.Core.Generate;
-using Spectara.Revela.Plugins.Core.Generate.Abstractions;
+using Spectara.Revela.Features.Generate;
+using Spectara.Revela.Features.Generate.Abstractions;
 
 namespace Spectara.Revela.Tests.Commands.Generate;
 
@@ -43,3 +43,4 @@ public sealed class ServiceCollectionExtensionsTests
         Assert.IsNotNull(engine);
     }
 }
+

@@ -43,7 +43,7 @@ internal static class HostExtensions
         var services = host.Services;
 
         // Get plugin context from DI
-        var plugins = services.GetRequiredService<IPluginContext>();
+        var plugins = services.GetRequiredService<IPackageContext>();
 
         // Get registries for interactive menu
         var groupRegistry = services.GetRequiredService<CommandGroupRegistry>();
@@ -85,12 +85,12 @@ internal static class HostExtensions
             }
         }
 
-        // Core commands (via CoreCommandProvider, same pattern as plugins)
+        // Core commands (via CoreCommandProvider — uses same registration as plugins
+        // to handle ParentCommand, duplicate detection, and subcommand merging)
         var coreCommands = new CoreCommandProvider();
         foreach (var descriptor in coreCommands.GetCommands(services))
         {
-            rootCommand.Subcommands.Add(descriptor.Command);
-            OnCommandRegistered(descriptor.Command, descriptor);
+            RegisterDescriptor(rootCommand, descriptor, OnCommandRegistered);
         }
 
         // Plugin commands (same callback for unified handling)
@@ -126,6 +126,90 @@ internal static class HostExtensions
         });
 
         return rootCommand;
+    }
+
+    /// <summary>
+    /// Registers a command descriptor, handling ParentCommand routing.
+    /// </summary>
+    private static void RegisterDescriptor(
+        RootCommand rootCommand,
+        CommandDescriptor descriptor,
+        CommandRegisteredCallback onCommandRegistered)
+    {
+        var command = descriptor.Command;
+        var parentPath = descriptor.ParentCommand;
+
+        if (!string.IsNullOrEmpty(parentPath))
+        {
+            // Find or create parent, add as subcommand
+            var parent = FindOrCreateParent(rootCommand, parentPath, onCommandRegistered);
+            if (!parent.Subcommands.Any(sc => string.Equals(sc.Name, command.Name, StringComparison.Ordinal)))
+            {
+                parent.Subcommands.Add(command);
+            }
+        }
+        else
+        {
+            // Root-level command — merge if auto-created parent already exists
+            var existing = rootCommand.Subcommands.FirstOrDefault(
+                sc => string.Equals(sc.Name, command.Name, StringComparison.Ordinal));
+
+            if (existing is not null)
+            {
+                // Transfer subcommands from new into existing
+                if (!string.IsNullOrEmpty(command.Description))
+                {
+                    existing.Description = command.Description;
+                }
+
+                foreach (var sub in command.Subcommands)
+                {
+                    if (!existing.Subcommands.Any(s => string.Equals(s.Name, sub.Name, StringComparison.Ordinal)))
+                    {
+                        existing.Subcommands.Add(sub);
+                    }
+                }
+
+                onCommandRegistered(existing, descriptor);
+                return;
+            }
+
+            rootCommand.Subcommands.Add(command);
+        }
+
+        onCommandRegistered(command, descriptor);
+    }
+
+    /// <summary>
+    /// Finds an existing command by path or creates empty parents as needed.
+    /// </summary>
+    private static Command FindOrCreateParent(
+        RootCommand root,
+        string parentPath,
+        CommandRegisteredCallback onCommandRegistered)
+    {
+        var segments = parentPath.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        Command current = root;
+
+        foreach (var segment in segments)
+        {
+            var existing = current.Subcommands.FirstOrDefault(
+                c => string.Equals(c.Name, segment, StringComparison.Ordinal));
+
+            if (existing is not null)
+            {
+                current = existing;
+            }
+            else
+            {
+                var newCommand = new Command(segment, $"{segment} commands");
+                current.Subcommands.Add(newCommand);
+                onCommandRegistered(newCommand, new CommandDescriptor(newCommand));
+                current = newCommand;
+            }
+        }
+
+        return current;
     }
 
     /// <summary>

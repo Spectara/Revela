@@ -7,12 +7,12 @@
     <Project Path="src/Core/Core.csproj" />
     <Project Path="src/Commands/Commands.csproj" />
     <Project Path="src/Cli/Cli.csproj" />
+    <Folder Name="/Features/">
+      <Project Path="src/Features/Generate/Generate.csproj" />
+      <Project Path="src/Features/Projects/Projects.csproj" />
+      <Project Path="src/Features/Theme/Theme.csproj" />
+    </Folder>
     <Folder Name="/Plugins/">
-      <Folder Name="/Core/">
-        <Project Path="src/Plugins/Core/Generate/Generate.csproj" />
-        <Project Path="src/Plugins/Core/Projects/Projects.csproj" />
-        <Project Path="src/Plugins/Core/Theme/Theme.csproj" />
-      </Folder>
       <Project Path="src/Plugins/Compress/Compress.csproj" />
       <Project Path="src/Plugins/Serve/Serve.csproj" />
       <Project Path="src/Plugins/Source/OneDrive/OneDrive.csproj" />

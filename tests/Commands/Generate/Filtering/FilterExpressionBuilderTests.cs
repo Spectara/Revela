@@ -1,4 +1,4 @@
-using Spectara.Revela.Plugins.Core.Generate.Filtering;
+using Spectara.Revela.Features.Generate.Filtering;
 using Spectara.Revela.Sdk.Models;
 using Spectara.Revela.Sdk.Models.Manifest;
 
@@ -352,3 +352,4 @@ public sealed class FilterExpressionBuilderTests
         Assert.Contains("2 arguments", ex.Message);
     }
 }
+

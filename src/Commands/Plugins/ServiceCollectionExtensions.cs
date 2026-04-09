@@ -28,7 +28,7 @@ internal static class ServiceCollectionExtensions
 
         // PluginManager from Core with Typed HttpClient
         // Standard resilience handler provides: retry (3x), circuit breaker, timeout
-        services.AddHttpClient<PluginManager>(client =>
+        services.AddHttpClient<PackageManager>(client =>
         {
             client.Timeout = TimeSpan.FromMinutes(10); // ZIP downloads can be large
             client.DefaultRequestHeaders.Add("User-Agent", "Revela-PluginManager/1.0");

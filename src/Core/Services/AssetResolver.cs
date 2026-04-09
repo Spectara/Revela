@@ -43,7 +43,7 @@ public sealed partial class AssetResolver(ILogger<AssetResolver> logger) : IAsse
     private bool isInitialized;
 
     /// <inheritdoc />
-    public void Initialize(ITheme theme, IReadOnlyList<IThemeExtension> extensions, string projectPath)
+    public void Initialize(ITheme theme, IReadOnlyList<ITheme> extensions, string projectPath)
     {
         this.theme = theme;
         assets.Clear();
@@ -158,9 +158,9 @@ public sealed partial class AssetResolver(ILogger<AssetResolver> logger) : IAsse
         LogScannedTheme(theme.Metadata.Name, count);
     }
 
-    private void ScanExtension(IThemeExtension extension)
+    private void ScanExtension(ITheme extension)
     {
-        var prefix = extension.PartialPrefix;
+        var prefix = extension.Prefix ?? string.Empty;
         var count = 0;
 
         foreach (var file in extension.GetAllFiles())

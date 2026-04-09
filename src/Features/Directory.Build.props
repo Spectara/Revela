@@ -1,0 +1,23 @@
+<Project>
+  <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)..'))" />
+
+  <!-- SDK.targets is imported by Directory.Build.targets (root) for PackageType=RevelaPlugin -->
+
+  <!-- Core features: {Prefix}.Features.{ProjectName} -->
+  <PropertyGroup>
+    <AssemblyName>$(RevelaNamespacePrefix).Features.$(MSBuildProjectName)</AssemblyName>
+    <RootNamespace>$(AssemblyName)</RootNamespace>
+    <PackageId>$(AssemblyName)</PackageId>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <BaseOutputPath>$(_ArtifactsRoot)bin\Core.$(MSBuildProjectName)\</BaseOutputPath>
+    <BaseIntermediateOutputPath>$(_ArtifactsRoot)obj\Core.$(MSBuildProjectName)\</BaseIntermediateOutputPath>
+  </PropertyGroup>
+
+  <!-- Override InternalsVisibleTo for feature test projects -->
+  <ItemGroup>
+    <InternalsVisibleTo Remove="@(InternalsVisibleTo)" />
+    <InternalsVisibleTo Include="$(RevelaNamespacePrefix).Tests.Features.$(MSBuildProjectName)" />
+  </ItemGroup>
+</Project>

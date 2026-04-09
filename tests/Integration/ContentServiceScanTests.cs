@@ -1,8 +1,8 @@
 using Microsoft.Extensions.DependencyInjection;
 using Spectara.Revela.Commands;
 using Spectara.Revela.Core.Services;
-using Spectara.Revela.Plugins.Core.Generate;
-using Spectara.Revela.Plugins.Core.Generate.Abstractions;
+using Spectara.Revela.Features.Generate;
+using Spectara.Revela.Features.Generate.Abstractions;
 using Spectara.Revela.Tests.Shared.Fixtures;
 
 namespace Spectara.Revela.Tests.Integration;
@@ -135,3 +135,4 @@ public sealed class ContentServiceScanTests
         public string GetResizeMode() => "longest";
     }
 }
+

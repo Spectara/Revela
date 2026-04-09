@@ -3,16 +3,16 @@ using Spectara.Revela.Themes.Lumina;
 namespace Spectara.Revela.Tests.Core.Themes;
 
 /// <summary>
-/// Unit tests for <see cref="Sdk.Themes.EmbeddedThemePlugin"/> via <see cref="LuminaThemePlugin"/>
+/// Unit tests for <see cref="Sdk.Themes.EmbeddedTheme"/> via <see cref="LuminaTheme"/>
 /// </summary>
 [TestClass]
 [TestCategory("Unit")]
 public sealed class EmbeddedThemePluginTests
 {
-    private LuminaThemePlugin plugin = null!;
+    private LuminaTheme plugin = null!;
 
     [TestInitialize]
-    public void Setup() => plugin = new LuminaThemePlugin();
+    public void Setup() => plugin = new LuminaTheme();
 
     [TestMethod]
     public void Metadata_ReturnsCorrectName() => Assert.AreEqual("Lumina", plugin.Metadata.Name);
@@ -27,7 +27,7 @@ public sealed class EmbeddedThemePluginTests
     public void GetManifest_ReturnsLayoutTemplate()
     {
         // Arrange & Act
-        var manifest = plugin.GetManifest();
+        var manifest = plugin.Manifest;
 
         // Assert
         Assert.IsFalse(string.IsNullOrEmpty(manifest.LayoutTemplate));
@@ -37,7 +37,7 @@ public sealed class EmbeddedThemePluginTests
     public void GetManifest_ReturnsVariables()
     {
         // Arrange & Act
-        var manifest = plugin.GetManifest();
+        var manifest = plugin.Manifest;
 
         // Assert
         Assert.IsNotNull(manifest.Variables);
@@ -105,13 +105,13 @@ public sealed class EmbeddedThemePluginTests
     }
 
     [TestMethod]
-    public void PluginMetadata_IPlugin_Metadata_IsThemeMetadata()
+    public void Metadata_ViaIPackage_ReturnsPackageMetadata()
     {
-        // Arrange & Act — access via IPlugin interface
-        var pluginMetadata = ((Sdk.Abstractions.IPlugin)plugin).Metadata;
+        // Arrange & Act — access via IPackage interface
+        var metadata = plugin.Metadata;
 
         // Assert
-        Assert.AreEqual("Lumina", pluginMetadata.Name);
+        Assert.AreEqual("Lumina", metadata.Name);
     }
 
     [TestMethod]
@@ -139,3 +139,4 @@ public sealed class EmbeddedThemePluginTests
         }
     }
 }
+

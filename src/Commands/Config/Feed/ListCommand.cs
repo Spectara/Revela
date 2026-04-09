@@ -61,7 +61,7 @@ internal sealed partial class ListCommand(
             AnsiConsole.MarkupLine($"Total: [cyan]{sources.Count}[/] feed(s)");
 
             // Show bundled packages info if exists
-            var bundledDir = PluginManager.BundledPackagesDirectory;
+            var bundledDir = PackageManager.BundledPackagesDirectory;
             if (Directory.Exists(bundledDir))
             {
                 var nupkgCount = Directory.GetFiles(bundledDir, "*.nupkg").Length;

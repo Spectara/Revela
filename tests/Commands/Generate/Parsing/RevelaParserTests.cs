@@ -1,5 +1,5 @@
-using Spectara.Revela.Plugins.Core.Generate.Infrastructure;
-using Spectara.Revela.Plugins.Core.Generate.Models;
+using Spectara.Revela.Features.Generate.Infrastructure;
+using Spectara.Revela.Features.Generate.Models;
 
 namespace Spectara.Revela.Tests.Commands.Generate.Parsing;
 
@@ -339,3 +339,4 @@ public sealed class RevelaParserTests
         Assert.IsNull(result.Cover);
     }
 }
+

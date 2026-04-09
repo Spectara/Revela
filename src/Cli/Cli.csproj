@@ -25,11 +25,9 @@
     <ProjectReference Include="..\Commands\Commands.csproj" />
   </ItemGroup>
 
-  <!-- Development-only: Plugins included for debugging, NOT shipped in Release -->
+  <!-- Development-only: External plugins and themes for debugging, NOT shipped in Release.
+       Core features (Generate, Theme, Projects) are always available via Commands.csproj. -->
   <ItemGroup Condition="'$(Configuration)' == 'Debug'">
-    <ProjectReference Include="..\Plugins\Core\Generate\Generate.csproj" />
-    <ProjectReference Include="..\Plugins\Core\Theme\Theme.csproj" />
-    <ProjectReference Include="..\Plugins\Core\Projects\Projects.csproj" />
     <ProjectReference Include="..\Plugins\Compress\Compress.csproj" />
     <ProjectReference Include="..\Plugins\Serve\Serve.csproj" />
     <ProjectReference Include="..\Plugins\Source\OneDrive\OneDrive.csproj" />

@@ -186,15 +186,12 @@ try {
 
         $packages = @(
             "src/Sdk/Sdk.csproj",
-            "src/Plugins/Core/Generate/Generate.csproj",
-            "src/Plugins/Core/Theme/Theme.csproj",
-            "src/Plugins/Core/Projects/Projects.csproj",
             "src/Themes/Lumina/Lumina.csproj",
             "src/Themes/Lumina.Statistics/Lumina.Statistics.csproj",
+            "src/Themes/Lumina.Calendar/Lumina.Calendar.csproj",
             "src/Plugins/Statistics/Statistics.csproj",
             "src/Plugins/Calendar/Calendar.csproj",
             "src/Plugins/Source/Calendar/Calendar.csproj",
-            "src/Themes/Lumina.Calendar/Lumina.Calendar.csproj",
             "src/Plugins/Source/OneDrive/OneDrive.csproj",
             "src/Plugins/Serve/Serve.csproj",
             "src/Plugins/Compress/Compress.csproj"

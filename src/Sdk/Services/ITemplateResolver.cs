@@ -5,41 +5,21 @@ namespace Spectara.Revela.Sdk.Services;
 /// <summary>
 /// Resolves templates from multiple sources with priority-based override support.
 /// </summary>
-/// <remarks>
-/// <para>
-/// Resolution priority (highest first):
-/// 1. Local project overrides (themes/{ThemeName}/)
-/// 2. Theme extensions (by partialPrefix)
-/// 3. Base theme (embedded resources)
-/// </para>
-/// <para>
-/// Key derivation:
-/// - Theme: Body/Gallery.revela → body/gallery
-/// - Extension: Partials/Cameras.revela + prefix "statistics" → statistics/cameras
-/// - Local: Body/Gallery.revela → body/gallery (overrides theme)
-/// </para>
-/// </remarks>
 public interface ITemplateResolver
 {
     /// <summary>
     /// Initializes the resolver by scanning all template sources.
     /// </summary>
-    /// <param name="theme">The base theme plugin</param>
-    /// <param name="extensions">Theme extensions to include</param>
-    /// <param name="projectPath">Project path for local overrides</param>
-    void Initialize(ITheme theme, IReadOnlyList<IThemeExtension> extensions, string projectPath);
+    void Initialize(ITheme theme, IReadOnlyList<ITheme> extensions, string projectPath);
 
     /// <summary>
     /// Gets a template by its key.
     /// </summary>
-    /// <param name="key">Template key (e.g., "body/gallery", "statistics/overview")</param>
-    /// <returns>Template content as stream, or null if not found</returns>
     Stream? GetTemplate(string key);
 
     /// <summary>
     /// Gets all resolved template entries with full source information.
     /// </summary>
-    /// <returns>List of resolved template entries</returns>
     IReadOnlyList<ResolvedFileInfo> GetAllEntries();
 }
 

@@ -4,8 +4,8 @@
     "description": "Availability calendar extension for the Lumina theme",
     "author": "Spectara",
     "targetTheme": "Lumina",
-    "partialPrefix": "calendar",
-    "templates": {
+    "prefix": "calendar",
+    "templateDefaults": {
         "calendar/page": {
             "data": {
                 "calendar": "calendar.json"

@@ -24,7 +24,7 @@ internal sealed partial class RestoreCommand(
     IDependencyScanner dependencyScanner,
     IThemeResolver themeResolver,
     IEnumerable<IPlugin> installedPlugins,
-    PluginManager pluginManager,
+    PackageManager pluginManager,
     IOptions<ProjectEnvironment> projectEnvironment,
     ILogger<RestoreCommand> logger)
 {
@@ -283,3 +283,5 @@ internal sealed partial class RestoreCommand(
     [LoggerMessage(Level = LogLevel.Information, Message = "Restoring dependencies for {ProjectPath}")]
     private partial void LogRestoring(string projectPath);
 }
+
+

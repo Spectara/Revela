@@ -1,4 +1,4 @@
-using Spectara.Revela.Plugins.Core.Generate.Services;
+using Spectara.Revela.Features.Generate.Services;
 using Spectara.Revela.Sdk.Configuration;
 
 namespace Spectara.Revela.Tests.Commands.Generate.Services;
@@ -152,3 +152,4 @@ public sealed class ManifestServiceTests
 
     #endregion
 }
+

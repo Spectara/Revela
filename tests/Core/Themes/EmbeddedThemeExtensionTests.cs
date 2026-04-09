@@ -3,7 +3,7 @@ using Spectara.Revela.Themes.Lumina.Statistics;
 namespace Spectara.Revela.Tests.Core.Themes;
 
 /// <summary>
-/// Unit tests for <see cref="Sdk.Themes.EmbeddedThemeExtension"/> via <see cref="LuminaStatisticsExtension"/>
+/// Unit tests for <see cref="Sdk.Themes.EmbeddedTheme"/> via <see cref="LuminaStatisticsExtension"/>
 /// </summary>
 [TestClass]
 [TestCategory("Unit")]
@@ -21,7 +21,7 @@ public sealed class EmbeddedThemeExtensionTests
     public void TargetTheme_ReturnsLumina() => Assert.AreEqual("Lumina", extension.TargetTheme);
 
     [TestMethod]
-    public void PartialPrefix_ReturnsStatistics() => Assert.AreEqual("statistics", extension.PartialPrefix);
+    public void PartialPrefix_ReturnsStatistics() => Assert.AreEqual("statistics", extension.Prefix);
 
     [TestMethod]
     public void GetFile_ManifestJson_ReturnsStream()
@@ -124,14 +124,14 @@ public sealed class EmbeddedThemeExtensionTests
     [TestMethod]
     public void PartialPrefix_ReturnsValue()
     {
-        Assert.IsFalse(string.IsNullOrEmpty(extension.PartialPrefix),
+        Assert.IsFalse(string.IsNullOrEmpty(extension.Prefix),
             "Statistics extension should have a partial prefix");
     }
 
     [TestMethod]
-    public void Variables_ReturnsEmptyOrPopulated()
+    public void Manifest_Variables_ReturnsEmptyOrPopulated()
     {
-        var variables = extension.Variables;
+        var variables = extension.Manifest.Variables;
         Assert.IsNotNull(variables);
     }
 
@@ -151,3 +151,4 @@ public sealed class EmbeddedThemeExtensionTests
         Assert.IsNotNull(defaults);
     }
 }
+

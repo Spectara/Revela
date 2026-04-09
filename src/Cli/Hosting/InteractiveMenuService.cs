@@ -21,7 +21,7 @@ internal sealed partial class InteractiveMenuService(
     IOptionsMonitor<ProjectConfig> projectConfig,
     IConfigService configService,
     IGlobalConfigManager globalConfigManager,
-    IPluginContext pluginContext,
+    IPackageContext packageContext,
     RevelaWizard revelaWizard,
     ProjectWizard projectWizard,
     ILogger<InteractiveMenuService> logger) : IInteractiveMenuService
@@ -55,7 +55,7 @@ internal sealed partial class InteractiveMenuService(
 
         // Check if this is a fresh installation (no revela.json)
         // Skip if plugins are already loaded (development mode via ProjectReferences)
-        if (!globalConfigManager.ConfigFileExists() && pluginContext.Plugins.Count == 0)
+        if (!globalConfigManager.ConfigFileExists() && packageContext.Plugins.Count == 0)
         {
             return await HandleFirstRunAsync(cancellationToken);
         }
@@ -462,3 +462,6 @@ internal sealed partial class InteractiveMenuService(
 
     private readonly record struct MenuResult(bool ShouldExit, int ExitCode);
 }
+
+
+

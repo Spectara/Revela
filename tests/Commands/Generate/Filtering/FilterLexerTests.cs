@@ -1,6 +1,6 @@
 using System.Globalization;
 
-using Spectara.Revela.Plugins.Core.Generate.Filtering;
+using Spectara.Revela.Features.Generate.Filtering;
 
 namespace Spectara.Revela.Tests.Commands.Generate.Filtering;
 
@@ -301,3 +301,4 @@ public sealed class FilterLexerTests
         Assert.Contains("Unexpected character", ex.Message);
     }
 }
+

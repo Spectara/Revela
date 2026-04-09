@@ -7,7 +7,7 @@ namespace Spectara.Revela.Core.Models;
 /// </summary>
 /// <remarks>
 /// This class represents plugin installation information (persisted to JSON),
-/// not to be confused with <see cref="Sdk.Abstractions.PluginMetadata"/> which
+/// not to be confused with <see cref="Sdk.Abstractions.PackageMetadata"/> which
 /// represents runtime plugin identity.
 /// </remarks>
 public sealed record InstalledPluginInfo

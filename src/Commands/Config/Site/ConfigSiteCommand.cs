@@ -280,3 +280,5 @@ internal sealed partial class ConfigSiteCommand(
     [LoggerMessage(Level = LogLevel.Information, Message = "Saved site.json at {Path}")]
     private static partial void LogSavedSiteConfig(ILogger logger, string path);
 }
+
+

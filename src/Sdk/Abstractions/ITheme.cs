@@ -1,69 +1,86 @@
 namespace Spectara.Revela.Sdk.Abstractions;
 
 /// <summary>
-/// Theme interface — provides templates, assets, and configuration.
+/// Theme provider interface — provides templates, assets, and configuration.
 /// </summary>
 /// <remarks>
-/// Themes provide:
+/// <para>
+/// Replaces the previous <c>ITheme</c> + <c>IThemeExtension</c> split.
+/// A single interface handles both base themes and extensions:
+/// </para>
 /// <list type="bullet">
-/// <item>Template files (Layout.revela, Body/, Partials/)</item>
-/// <item>Static assets (Assets/ folder — CSS, JS, fonts, images)</item>
-/// <item>Theme configuration (variables in manifest.json)</item>
+/// <item><see cref="Prefix"/> = null → base theme</item>
+/// <item><see cref="Prefix"/> = "statistics" → extension scoped under that prefix</item>
 /// </list>
-///
-/// NuGet-based themes additionally implement <see cref="IPlugin"/> for
-/// discovery and lifecycle management. Local themes (from project/themes/)
-/// implement only this interface.
+/// <para>
+/// <see cref="TargetTheme"/> indicates which theme an extension targets.
+/// Base themes have <c>TargetTheme = null</c>.
+/// </para>
 /// </remarks>
-public interface ITheme
+public interface ITheme : IPackage
 {
     /// <summary>
-    /// Theme-specific metadata with preview image and tags.
+    /// Prefix for extension templates, or null for base themes.
     /// </summary>
-    ThemeMetadata Metadata { get; }
+    /// <remarks>
+    /// Extensions provide templates under <c>partials/{Prefix}/</c> and assets under <c>{Prefix}/</c>.
+    /// Base themes have null prefix — their files live at the root.
+    /// </remarks>
+    string? Prefix { get; }
 
     /// <summary>
-    /// Get the theme manifest with template and asset information.
+    /// Name of the target theme this extends, or null for standalone themes.
     /// </summary>
-    ThemeManifest GetManifest();
+    /// <remarks>
+    /// Matched case-insensitively against other themes' <see cref="PackageMetadata.Name"/>.
+    /// </remarks>
+    string? TargetTheme { get; }
+
+    /// <summary>
+    /// Theme manifest with layout template path and variables.
+    /// </summary>
+    ThemeManifest Manifest { get; }
 
     /// <summary>
     /// Get a file from the theme as a stream.
     /// </summary>
-    /// <param name="relativePath">Relative path within the theme (e.g., "layout.revela").</param>
+    /// <param name="relativePath">Relative path within the theme (e.g., "Layout.revela").</param>
     /// <returns>Stream with file contents, or null if not found.</returns>
     Stream? GetFile(string relativePath);
 
     /// <summary>
     /// Get all file paths in the theme.
     /// </summary>
-    /// <returns>Enumerable of relative paths.</returns>
     IEnumerable<string> GetAllFiles();
 
     /// <summary>
     /// Extract all theme files to a directory.
     /// </summary>
-    /// <param name="targetDirectory">Directory to extract files to.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
     Task ExtractToAsync(string targetDirectory, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Get the site.json template for project initialization.
     /// </summary>
-    /// <remarks>
-    /// Returns a Scriban template for generating site.json during <c>revela init</c>.
-    /// If the theme doesn't need site.json, return null.
-    /// </remarks>
-    /// <returns>Stream with template contents, or null if theme doesn't use site.json.</returns>
-    Stream? GetSiteTemplate();
+    /// <returns>Stream with template contents, or null if not provided.</returns>
+    Stream? GetSiteTemplate() => null;
 
     /// <summary>
     /// Get the images configuration template for image processing setup.
     /// </summary>
-    /// <remarks>
-    /// Returns recommended image formats and sizes based on the theme's CSS breakpoints.
-    /// If the theme doesn't provide this template, users must enter values manually.
-    /// </remarks>
-    /// <returns>Stream with template contents, or null if theme doesn't provide defaults.</returns>
-    Stream? GetImagesTemplate();
+    /// <returns>Stream with template contents, or null if not provided.</returns>
+    Stream? GetImagesTemplate() => null;
+
+    /// <summary>
+    /// Get default data sources for a template (used by extensions).
+    /// </summary>
+    /// <param name="templateKey">Template key relative to extension prefix.</param>
+    /// <returns>Dictionary of variable name → default filename, or empty.</returns>
+    IReadOnlyDictionary<string, string> GetTemplateDataDefaults(string templateKey) =>
+        EmptyDataDefaults;
+
+    /// <summary>
+    /// Shared empty dictionary to avoid per-call allocation.
+    /// </summary>
+    private static readonly IReadOnlyDictionary<string, string> EmptyDataDefaults =
+        new Dictionary<string, string>();
 }

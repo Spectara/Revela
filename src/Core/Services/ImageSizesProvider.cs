@@ -33,7 +33,7 @@ public interface IImageSizesProvider
 /// The theme is already resolved by <see cref="IThemeResolver"/> with priority:
 /// </para>
 /// <list type="number">
-///   <item>Local theme folder (project/themes/{name}/) - via LocalThemeAdapter</item>
+///   <item>Local theme folder (project/themes/{name}/) - via LocalThemeProvider</item>
 ///   <item>Installed theme plugins</item>
 ///   <item>Default bundled theme</item>
 /// </list>
@@ -197,3 +197,5 @@ public sealed partial class ImageSizesProvider(
     [LoggerMessage(Level = LogLevel.Warning, Message = "Invalid images.json in theme '{ThemeName}': {Error}")]
     private partial void LogInvalidImagesJson(string themeName, string error);
 }
+
+

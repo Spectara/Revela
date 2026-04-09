@@ -6,11 +6,11 @@ using Spectara.Revela.Sdk.Themes;
 namespace Spectara.Revela.Tests.Core.Themes;
 
 /// <summary>
-/// Unit tests for <see cref="LocalThemeAdapter"/>
+/// Unit tests for <see cref="LocalThemeProvider"/>
 /// </summary>
 [TestClass]
 [TestCategory("Unit")]
-public sealed class LocalThemeAdapterTests
+public sealed class LocalThemeProviderTests
 {
     private string tempDirectory = null!;
 
@@ -37,7 +37,7 @@ public sealed class LocalThemeAdapterTests
         var themeDir = CreateThemeDirectory("MyTheme");
 
         // Act
-        var adapter = new LocalThemeAdapter(themeDir);
+        var adapter = new LocalThemeProvider(themeDir);
 
         // Assert
         Assert.AreEqual("MyTheme", adapter.Metadata.Name);
@@ -52,7 +52,7 @@ public sealed class LocalThemeAdapterTests
 
         // Act & Assert
         Assert.ThrowsExactly<DirectoryNotFoundException>(
-            () => new LocalThemeAdapter(nonExistent));
+            () => new LocalThemeProvider(nonExistent));
     }
 
     [TestMethod]
@@ -64,7 +64,7 @@ public sealed class LocalThemeAdapterTests
 
         // Act & Assert
         Assert.ThrowsExactly<FileNotFoundException>(
-            () => new LocalThemeAdapter(emptyDir));
+            () => new LocalThemeProvider(emptyDir));
     }
 
     [TestMethod]
@@ -74,8 +74,8 @@ public sealed class LocalThemeAdapterTests
         var themeDir = CreateThemeDirectory("TestTheme", layout: "Custom.revela");
 
         // Act
-        var adapter = new LocalThemeAdapter(themeDir);
-        var manifest = adapter.GetManifest();
+        var adapter = new LocalThemeProvider(themeDir);
+        var manifest = adapter.Manifest;
 
         // Assert
         Assert.AreEqual("Custom.revela", manifest.LayoutTemplate);
@@ -88,8 +88,8 @@ public sealed class LocalThemeAdapterTests
         var themeDir = CreateThemeDirectory("TestTheme");
 
         // Act
-        var adapter = new LocalThemeAdapter(themeDir);
-        var manifest = adapter.GetManifest();
+        var adapter = new LocalThemeProvider(themeDir);
+        var manifest = adapter.Manifest;
 
         // Assert
         Assert.AreEqual("layout.revela", manifest.LayoutTemplate);
@@ -103,8 +103,8 @@ public sealed class LocalThemeAdapterTests
             variables: new Dictionary<string, string> { ["credits"] = "test credits" });
 
         // Act
-        var adapter = new LocalThemeAdapter(themeDir);
-        var manifest = adapter.GetManifest();
+        var adapter = new LocalThemeProvider(themeDir);
+        var manifest = adapter.Manifest;
 
         // Assert
         Assert.Contains("credits", manifest.Variables.Keys);
@@ -119,7 +119,7 @@ public sealed class LocalThemeAdapterTests
         File.WriteAllText(Path.Combine(themeDir, "Layout.revela"), "<html></html>");
 
         // Act
-        var adapter = new LocalThemeAdapter(themeDir);
+        var adapter = new LocalThemeProvider(themeDir);
         using var stream = adapter.GetFile("Layout.revela");
 
         // Assert
@@ -133,7 +133,7 @@ public sealed class LocalThemeAdapterTests
         var themeDir = CreateThemeDirectory("TestTheme");
 
         // Act
-        var adapter = new LocalThemeAdapter(themeDir);
+        var adapter = new LocalThemeProvider(themeDir);
         var stream = adapter.GetFile("does-not-exist.revela");
 
         // Assert
@@ -151,7 +151,7 @@ public sealed class LocalThemeAdapterTests
         File.WriteAllText(Path.Combine(assetsDir, "main.css"), "body {}");
 
         // Act
-        var adapter = new LocalThemeAdapter(themeDir);
+        var adapter = new LocalThemeProvider(themeDir);
         var files = adapter.GetAllFiles().ToList();
 
         // Assert
@@ -169,7 +169,7 @@ public sealed class LocalThemeAdapterTests
         File.WriteAllText(Path.Combine(themeDir, "Layout.revela"), "<html></html>");
 
         // Act
-        var adapter = new LocalThemeAdapter(themeDir);
+        var adapter = new LocalThemeProvider(themeDir);
         var files = adapter.GetAllFiles().ToList();
 
         // Assert
@@ -187,7 +187,7 @@ public sealed class LocalThemeAdapterTests
         File.WriteAllText(Path.Combine(configDir, "site.json"), "{}");
 
         // Act
-        var adapter = new LocalThemeAdapter(themeDir);
+        var adapter = new LocalThemeProvider(themeDir);
         using var stream = adapter.GetSiteTemplate();
 
         // Assert
@@ -201,7 +201,7 @@ public sealed class LocalThemeAdapterTests
         var themeDir = CreateThemeDirectory("TestTheme");
 
         // Act
-        var adapter = new LocalThemeAdapter(themeDir);
+        var adapter = new LocalThemeProvider(themeDir);
         var stream = adapter.GetSiteTemplate();
 
         // Assert
@@ -215,7 +215,7 @@ public sealed class LocalThemeAdapterTests
         var themeDir = CreateThemeDirectory("TestTheme");
 
         // Act
-        var adapter = new LocalThemeAdapter(themeDir);
+        var adapter = new LocalThemeProvider(themeDir);
 
         // Assert
         Assert.AreEqual(themeDir, adapter.ThemeDirectory);
@@ -230,7 +230,7 @@ public sealed class LocalThemeAdapterTests
         var outputDir = Path.Combine(tempDirectory, "output");
 
         // Act
-        var adapter = new LocalThemeAdapter(themeDir);
+        var adapter = new LocalThemeProvider(themeDir);
         await adapter.ExtractToAsync(outputDir);
 
         // Assert
@@ -266,3 +266,4 @@ public sealed class LocalThemeAdapterTests
         return themeDir;
     }
 }
+
