@@ -5,9 +5,6 @@
     "rollForward": "latestMinor",
     "allowPrerelease": false
   },
-  "msbuild-sdks": {
-    "Microsoft.Build.NoTargets": "3.7.134"
-  },
   "test": {
     "runner": "Microsoft.Testing.Platform"
   }
