@@ -22,7 +22,7 @@ internal sealed partial class CalendarGenerateStep(
     ILogger<CalendarGenerateStep> logger,
     IManifestRepository manifestRepository,
     IOptions<ProjectEnvironment> projectEnvironment,
-    IPathResolver pathResolver) : IGenerateStep
+    IPathResolver pathResolver) : IPipelineStep
 {
     private const string ManifestFileName = "manifest.json";
     private const string CalendarJsonFileName = "calendar.json";
@@ -30,14 +30,84 @@ internal sealed partial class CalendarGenerateStep(
 
     private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = true };
 
-    /// <inheritdoc />
-    public string Name => "calendar";
+    // ── IPipelineStep (service-level, no UI) ──
 
-    /// <inheritdoc />
-    public string Description => "Generate availability calendar from iCal data";
+    string IPipelineStep.Category => PipelineCategories.Generate;
 
-    /// <inheritdoc />
-    public int Order => 250;
+    string IPipelineStep.Name => "calendar";
+
+
+    async Task<PipelineStepResult> IPipelineStep.ExecuteAsync(CancellationToken cancellationToken)
+    {
+        var projectPath = projectEnvironment.Value.Path;
+        var sourcePath = pathResolver.SourcePath;
+
+        var manifestFile = Path.Combine(projectPath, ProjectPaths.Cache, ManifestFileName);
+        if (!File.Exists(manifestFile))
+        {
+            return PipelineStepResult.Fail("Manifest not found — run scan first");
+        }
+
+        await manifestRepository.LoadAsync(cancellationToken);
+
+        var root = manifestRepository.Root ?? throw new InvalidOperationException("Manifest root is null after loading");
+        var calendarPages = FindCalendarPages(root);
+
+        if (calendarPages.Count == 0)
+        {
+            return PipelineStepResult.Ok();
+        }
+
+        var today = DateOnly.FromDateTime(DateTime.Today);
+
+        foreach (var pagePath in calendarPages)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            var indexPath = Path.Combine(sourcePath, pagePath, IndexFileName);
+            if (!File.Exists(indexPath))
+            {
+                continue;
+            }
+
+            var indexContent = await File.ReadAllTextAsync(indexPath, cancellationToken);
+            var pageConfig = FrontmatterReader.Read(indexContent);
+            if (pageConfig is null)
+            {
+                continue;
+            }
+
+            var icsPath = Path.Combine(sourcePath, pagePath, pageConfig.Source);
+            if (!File.Exists(icsPath))
+            {
+                continue;
+            }
+
+            var icsContent = await File.ReadAllTextAsync(icsPath, cancellationToken);
+            var bookings = ICalParser.Parse(icsContent);
+
+            var labels = pageConfig.Labels ?? new CalendarLabels();
+            CultureInfo? culture = null;
+            if (pageConfig.Locale is not null)
+            {
+                try
+                { culture = CultureInfo.GetCultureInfo(pageConfig.Locale); }
+                catch (CultureNotFoundException) { /* use invariant */ }
+            }
+
+            var calendarData = CalendarBuilder.Build(bookings, pageConfig.Months, today, pageConfig.Mode, labels, culture);
+
+            var cacheDir = Path.Combine(projectPath, ProjectPaths.Cache, pagePath);
+            var jsonPath = Path.Combine(cacheDir, CalendarJsonFileName);
+            Directory.CreateDirectory(cacheDir);
+            var json = JsonSerializer.Serialize(calendarData, JsonOptions);
+            await File.WriteAllTextAsync(jsonPath, json, cancellationToken);
+        }
+
+        return PipelineStepResult.Ok();
+    }
+
+    // ── CLI command ──
 
     /// <summary>
     /// Creates the CLI command for standalone execution.

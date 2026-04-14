@@ -15,19 +15,42 @@ namespace Spectara.Revela.Plugins.Compress.Commands;
 /// </summary>
 internal sealed partial class CleanCompressCommand(
     ILogger<CleanCompressCommand> logger,
-    IPathResolver pathResolver) : ICleanStep
+    IPathResolver pathResolver) : IPipelineStep
 {
-    /// <inheritdoc />
-    public string Name => "compress";
+    // ── IPipelineStep (service-level, no UI) ──
 
-    /// <inheritdoc />
-    public string Description => "Clean compressed files (.gz, .br) from output";
+    string IPipelineStep.Category => PipelineCategories.Clean;
 
-    /// <inheritdoc />
-    int ICleanStep.Order => 400;
+    string IPipelineStep.Name => "compress";
 
-    /// <summary>Order for this command in menu.</summary>
-    public const int MenuOrder = 40;
+
+    Task<PipelineStepResult> IPipelineStep.ExecuteAsync(CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        var outputPath = pathResolver.OutputPath;
+        if (!Directory.Exists(outputPath))
+        {
+            return Task.FromResult(PipelineStepResult.Ok());
+        }
+
+        var gzipFiles = Directory.GetFiles(outputPath, "*.gz", SearchOption.AllDirectories);
+        var brotliFiles = Directory.GetFiles(outputPath, "*.br", SearchOption.AllDirectories);
+
+        foreach (var file in gzipFiles.Concat(brotliFiles))
+        {
+            try
+            { File.Delete(file); }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                LogDeleteFailed(logger, file, ex);
+            }
+        }
+
+        return Task.FromResult(PipelineStepResult.Ok());
+    }
+
+    // ── CLI command ──
 
     /// <summary>
     /// Creates the CLI command.

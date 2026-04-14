@@ -50,7 +50,7 @@ Public API for ALL plugins — stable contract.
 src/Sdk/
 ├── Abstractions/               ← Existing (unchanged)
 │   ├── IPlugin.cs
-│   ├── IGenerateStep.cs
+│   ├── IPipelineStep.cs
 │   ├── IPageTemplate.cs
 │   ├── IManifestRepository.cs
 │   ├── IConfigService.cs
@@ -199,15 +199,14 @@ src/Plugins/
 │   │   ├── SitemapGenerator.cs
 │   │   └── ContentImageExtension.cs (Markdig extension)
 │   ├── Commands/
-│   │   ├── ScanCommand.cs          (CLI UI + IGenerateStep)
-│   │   ├── PagesCommand.cs         (CLI UI + IGenerateStep)
-│   │   ├── ImagesCommand.cs        (CLI UI + IGenerateStep)
-│   │   ├── AllCommand.cs           (pipeline orchestrator)
+│   │   ├── ScanCommand.cs          (CLI UI + IPipelineStep)
+│   │   ├── PagesCommand.cs         (CLI UI + IPipelineStep)
+│   │   ├── ImagesCommand.cs        (CLI UI + IPipelineStep)
 │   │   ├── GenerateCommand.cs      (parent command)
 │   │   ├── CreatePageCommand.cs    (revela create page)
-│   │   ├── CleanOutputCommand.cs   (ParentCommand: "clean", IsSequentialStep)
-│   │   ├── CleanCacheCommand.cs    (ParentCommand: "clean", IsSequentialStep)
-│   │   ├── CleanImagesCommand.cs   (ParentCommand: "clean", IsSequentialStep)
+│   │   ├── CleanOutputCommand.cs   (IPipelineStep, ParentCommand: "clean", IsSequentialStep)
+│   │   ├── CleanCacheCommand.cs    (IPipelineStep, ParentCommand: "clean", IsSequentialStep)
+│   │   ├── CleanImagesCommand.cs   (IPipelineStep, ParentCommand: "clean", IsSequentialStep)
 │   │   ├── ConfigGenerateCommand.cs (ParentCommand: "config")
 │   │   ├── ConfigImageCommand.cs   (ParentCommand: "config")
 │   │   ├── ConfigSortingCommand.cs (ParentCommand: "config")
@@ -499,7 +498,7 @@ public sealed record CommandDescriptor(
     string? Group = null,
     bool RequiresProject = true,
     bool HideWhenProjectExists = false,
-    bool IsSequentialStep = false    // ← NEW
+    bool IsSequentialStep = false
 );
 ```
 
@@ -514,6 +513,38 @@ revela deploy all        → ✅ if a deploy plugin registers sequential steps
 ```
 
 **New categories don't need host changes.** A third-party deploy plugin just registers commands with `ParentCommand: "deploy"` and `IsSequentialStep: true`.
+
+### Two execution paths for pipeline steps
+
+Commands that are pipeline steps implement `IPipelineStep` via explicit interface implementation.
+This provides two parallel execution paths:
+
+| Path | Mechanism | UI |
+|------|-----------|-----|
+| **CLI** `revela generate all` | `IsSequentialStep` → auto-generated "all" command | Spectre.Console (progress bars, panels) |
+| **Engine/MCP** `IRevelaEngine.GenerateAllAsync()` | `IEnumerable<IPipelineStep>` via DI | None — pure service logic |
+
+```csharp
+// Single class, two execution paths
+internal sealed class ScanCommand(...) : IPipelineStep
+{
+    // Service path (explicit, no UI) — used by IRevelaEngine
+    string IPipelineStep.Category => PipelineCategories.Generate;
+    string IPipelineStep.Name => "scan";
+    int IPipelineStep.Order => PipelineOrder.Scan;
+    async Task<PipelineStepResult> IPipelineStep.ExecuteAsync(CancellationToken ct)
+    {
+        var result = await contentService.ScanAsync(progress: null, ct);
+        return result.Success ? PipelineStepResult.Ok() : PipelineStepResult.Fail(result.ErrorMessage);
+    }
+
+    // CLI path (public, with UI) — invoked by auto-generated "all" command
+    public async Task<int> ExecuteAsync(CancellationToken ct) { /* Spectre.Console UI */ }
+}
+
+// DI registration
+services.TryAddEnumerable(ServiceDescriptor.Transient<IPipelineStep, ScanCommand>());
+```
 
 ---
 

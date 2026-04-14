@@ -19,7 +19,7 @@ namespace Spectara.Revela.Features.Generate.Commands;
 /// <remarks>
 /// <para>
 /// Thin CLI wrapper that delegates to <see cref="IImageService.ProcessAsync"/>.
-/// Implements <see cref="IGenerateStep"/> for pipeline orchestration.
+/// Implements <see cref="IPipelineStep"/> for programmatic pipeline execution (MCP/GUI).
 /// </para>
 /// <para>
 /// Usage: revela generate images [--force]
@@ -29,17 +29,24 @@ internal sealed partial class ImagesCommand(
     ILogger<ImagesCommand> logger,
     IImageService imageService,
     IManifestRepository manifestRepository,
-    IOptionsMonitor<ProjectConfig> projectConfig) : IGenerateStep
+    IOptionsMonitor<ProjectConfig> projectConfig) : IPipelineStep
 {
-    /// <inheritdoc />
-    public string Name => "images";
+    // ── IPipelineStep (service-level, no UI) ──
 
-    /// <inheritdoc />
-    public string Description => "Process images from manifest";
+    string IPipelineStep.Category => PipelineCategories.Generate;
 
-    /// <inheritdoc />
-    public int Order => GenerateStepOrder.Images;
+    string IPipelineStep.Name => "images";
 
+
+    async Task<PipelineStepResult> IPipelineStep.ExecuteAsync(CancellationToken cancellationToken)
+    {
+        var result = await imageService.ProcessAsync(new ProcessImagesOptions(), progress: null, cancellationToken);
+        return result.Success
+            ? PipelineStepResult.Ok()
+            : PipelineStepResult.Fail(result.ErrorMessage ?? "Image processing failed");
+    }
+
+    // ── CLI command ──
     /// <summary>
     /// Creates the CLI command.
     /// </summary>

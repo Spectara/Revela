@@ -1,11 +1,15 @@
 using System.Collections.Frozen;
 using System.CommandLine;
 using System.CommandLine.Help;
+using System.Diagnostics;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
 using Spectara.Revela.Sdk.Abstractions;
+using Spectara.Revela.Sdk.Output;
+
+using Spectre.Console;
 
 namespace Spectara.Revela.Cli.Hosting;
 
@@ -48,6 +52,7 @@ internal static class HostExtensions
         // Get registries for interactive menu
         var groupRegistry = services.GetRequiredService<CommandGroupRegistry>();
         var orderRegistry = services.GetRequiredService<CommandOrderRegistry>();
+        var pipelineOrderProvider = services.GetRequiredService<PipelineStepOrderProvider>();
 
         // Register well-known groups with display order
         // Build first (most used), then Content, Setup, Addons
@@ -82,6 +87,13 @@ internal static class HostExtensions
             if (desc.IsSequentialStep)
             {
                 orderRegistry.RegisterPipelineStep(cmd);
+
+                // Store order for engine/MCP pipeline execution
+                // ParentCommand = category (e.g., "generate", "clean")
+                if (!string.IsNullOrEmpty(desc.ParentCommand))
+                {
+                    pipelineOrderProvider.Register(desc.ParentCommand, cmd.Name, desc.Order);
+                }
             }
         }
 
@@ -96,15 +108,16 @@ internal static class HostExtensions
         // Plugin commands (same callback for unified handling)
         plugins.RegisterCommands(rootCommand, services, OnCommandRegistered);
 
+        // Auto-generate "all" subcommands for parents with ≥2 IsSequentialStep children
+        // Uses CommandDescriptor.Order (stored in PipelineStepOrderProvider) as single source of truth
+        AutoGenerateAllCommands(rootCommand, orderRegistry, pipelineOrderProvider);
+
         // Register subcommand orders for ALL commands (core + plugin-provided)
         // This must happen AFTER plugins have registered and merged their commands
         foreach (var cmd in rootCommand.Subcommands)
         {
             RegisterSubcommandOrders(cmd, orderRegistry);
         }
-
-        // Pipeline step markers are now registered via IsSequentialStep on CommandDescriptor
-        // (handled in OnCommandRegistered callback above — no DI lookup needed)
 
         // Register config subcommand orders AFTER plugins have added their subcommands
         var configCmd = rootCommand.Subcommands.FirstOrDefault(c => string.Equals(c.Name, "config", StringComparison.Ordinal));
@@ -242,6 +255,107 @@ internal static class HostExtensions
         {
             ConfigureGroupedHelpRecursive(sub, groupRegistry, orderRegistry);
         }
+    }
+
+    /// <summary>
+    /// Scans parent commands for ≥2 IsSequentialStep children and auto-generates
+    /// an "all" subcommand that runs them in Order sequence.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Step ordering uses <see cref="CommandDescriptor.Order"/> as the single source of truth,
+    /// stored in <see cref="PipelineStepOrderProvider"/> during command registration.
+    /// Both CLI "all" and Engine "GenerateAllAsync" use the same provider.
+    /// </para>
+    /// <para>
+    /// Third-party plugins can create new pipeline categories without host changes —
+    /// just set <see cref="CommandDescriptor.IsSequentialStep"/> and implement
+    /// <see cref="IPipelineStep"/>.
+    /// </para>
+    /// </remarks>
+    private static void AutoGenerateAllCommands(
+        RootCommand rootCommand,
+        CommandOrderRegistry orderRegistry,
+        PipelineStepOrderProvider pipelineOrderProvider)
+    {
+        foreach (var parent in rootCommand.Subcommands)
+        {
+            var pipelineSteps = parent.Subcommands
+                .Where(orderRegistry.IsPipelineStep)
+                .ToList();
+
+            if (pipelineSteps.Count < 2)
+            {
+                continue;
+            }
+
+            // Skip if "all" already exists (e.g., manually registered)
+            if (parent.Subcommands.Any(c => string.Equals(c.Name, "all", StringComparison.Ordinal)))
+            {
+                continue;
+            }
+
+            // Sort by CommandDescriptor.Order (stored in PipelineStepOrderProvider)
+            var category = parent.Name;
+            var orderedSteps = pipelineSteps
+                .OrderBy(cmd => pipelineOrderProvider.GetOrder(category, cmd.Name))
+                .ThenBy(cmd => cmd.Name, StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            var allCommand = CreatePipelineAllCommand(orderedSteps);
+            parent.Subcommands.Add(allCommand);
+            orderRegistry.Register(allCommand, 0); // "all" is always first
+        }
+    }
+
+    /// <summary>
+    /// Creates an "all" command that executes pipeline steps in order.
+    /// </summary>
+    private static Command CreatePipelineAllCommand(List<Command> steps)
+    {
+        var stepNames = string.Join(" → ", steps.Select(s => s.Name));
+        var description = $"Execute full pipeline ({stepNames})";
+
+        var command = new Command("all", description);
+
+        command.SetAction(async (parseResult, cancellationToken) =>
+        {
+            AnsiConsole.MarkupLine($"[blue]Pipeline:[/] {stepNames}");
+            AnsiConsole.WriteLine();
+
+            var stopwatch = Stopwatch.StartNew();
+            var stepNumber = 1;
+
+            foreach (var step in steps)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+
+                AnsiConsole.MarkupLine($"[cyan]━━━ Step {stepNumber}/{steps.Count}: {Markup.Escape(step.Name)} ━━━[/]");
+                if (!string.IsNullOrEmpty(step.Description))
+                {
+                    AnsiConsole.MarkupLine($"[dim]{Markup.Escape(step.Description)}[/]");
+                }
+
+                AnsiConsole.WriteLine();
+
+                var exitCode = await step.Parse([]).InvokeAsync(configuration: null, cancellationToken);
+
+                if (exitCode != 0)
+                {
+                    return exitCode;
+                }
+
+                AnsiConsole.WriteLine();
+                stepNumber++;
+            }
+
+            stopwatch.Stop();
+            AnsiConsole.MarkupLine($"{OutputMarkers.Success} Pipeline completed in {stopwatch.Elapsed.TotalSeconds:F2}s");
+
+            return 0;
+        });
+
+        return command;
     }
 
     /// <summary>

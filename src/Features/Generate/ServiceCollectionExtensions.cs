@@ -57,28 +57,25 @@ public static class ServiceCollectionExtensions
         // Engine facade (public API for MCP, GUI, and other plugins)
         services.TryAddTransient<IRevelaEngine, RevelaEngine>();
 
-        // Commands (thin CLI wrappers)
-        services.TryAddTransient<AllCommand>();
+        // Commands (thin CLI wrappers + IPipelineStep implementations)
         services.TryAddTransient<ScanCommand>();
         services.TryAddTransient<ImagesCommand>();
         services.TryAddTransient<PagesCommand>();
 
-        // Register commands as generate steps for pipeline orchestration
-        // (IGenerateStep is multi-registration — TryAddEnumerable prevents duplicates)
-        services.TryAddEnumerable(ServiceDescriptor.Transient<IGenerateStep, ScanCommand>());
-        services.TryAddEnumerable(ServiceDescriptor.Transient<IGenerateStep, PagesCommand>());
-        services.TryAddEnumerable(ServiceDescriptor.Transient<IGenerateStep, ImagesCommand>());
+        // Register commands as pipeline steps for engine orchestration
+        services.TryAddEnumerable(ServiceDescriptor.Transient<IPipelineStep, ScanCommand>());
+        services.TryAddEnumerable(ServiceDescriptor.Transient<IPipelineStep, PagesCommand>());
+        services.TryAddEnumerable(ServiceDescriptor.Transient<IPipelineStep, ImagesCommand>());
 
         // Clean commands
-        services.TryAddTransient<CleanAllCommand>();
         services.TryAddTransient<CleanOutputCommand>();
         services.TryAddTransient<CleanImagesCommand>();
         services.TryAddTransient<CleanCacheCommand>();
 
-        // Register clean commands as clean steps for pipeline orchestration
-        services.TryAddEnumerable(ServiceDescriptor.Transient<ICleanStep, CleanOutputCommand>());
-        services.TryAddEnumerable(ServiceDescriptor.Transient<ICleanStep, CleanImagesCommand>());
-        services.TryAddEnumerable(ServiceDescriptor.Transient<ICleanStep, CleanCacheCommand>());
+        // Register clean commands as pipeline steps
+        services.TryAddEnumerable(ServiceDescriptor.Transient<IPipelineStep, CleanOutputCommand>());
+        services.TryAddEnumerable(ServiceDescriptor.Transient<IPipelineStep, CleanImagesCommand>());
+        services.TryAddEnumerable(ServiceDescriptor.Transient<IPipelineStep, CleanCacheCommand>());
 
         // Create commands + page templates
         services.TryAddTransient<CreateCommand>();

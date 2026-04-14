@@ -32,11 +32,9 @@ public sealed class CalendarPlugin : IPlugin
         services.TryAddTransient<CalendarGenerateStep>();
         services.TryAddTransient<CleanCalendarCommand>();
 
-        // Register as IGenerateStep for pipeline orchestration
-        services.TryAddEnumerable(ServiceDescriptor.Transient<IGenerateStep, CalendarGenerateStep>());
-
-        // Register as ICleanStep for clean pipeline
-        services.TryAddEnumerable(ServiceDescriptor.Transient<ICleanStep, CleanCalendarCommand>());
+        // Register as pipeline steps for engine orchestration
+        services.TryAddEnumerable(ServiceDescriptor.Transient<IPipelineStep, CalendarGenerateStep>());
+        services.TryAddEnumerable(ServiceDescriptor.Transient<IPipelineStep, CleanCalendarCommand>());
 
         // Register page template for 'revela create page calendar'
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IPageTemplate, CalendarPageTemplate>());
@@ -51,7 +49,7 @@ public sealed class CalendarPlugin : IPlugin
         yield return new CommandDescriptor(
             calendarCommand.Create(),
             ParentCommand: "generate",
-            Order: 15,
+            Order: PipelineOrder.Calendar,
             IsSequentialStep: true);
 
         // Register: revela clean calendar
@@ -59,7 +57,7 @@ public sealed class CalendarPlugin : IPlugin
         yield return new CommandDescriptor(
             cleanCalendarCommand.Create(),
             ParentCommand: "clean",
-            Order: CleanCalendarCommand.MenuOrder,
+            Order: 350,
             IsSequentialStep: true);
     }
 }

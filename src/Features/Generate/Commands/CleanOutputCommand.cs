@@ -14,17 +14,38 @@ namespace Spectara.Revela.Features.Generate.Commands;
 /// </summary>
 internal sealed partial class CleanOutputCommand(
     ILogger<CleanOutputCommand> logger,
-    IPathResolver pathResolver) : ICleanStep
+    IPathResolver pathResolver) : IPipelineStep
 {
-    /// <inheritdoc />
-    public string Name => "output";
+    // ── IPipelineStep (service-level, no UI) ──
 
-    /// <inheritdoc />
-    public string Description => "Clean output directory (generated HTML/images)";
+    string IPipelineStep.Category => PipelineCategories.Clean;
 
-    /// <inheritdoc />
-    int ICleanStep.Order => CleanStepOrder.Output;
+    string IPipelineStep.Name => "output";
 
+
+    Task<PipelineStepResult> IPipelineStep.ExecuteAsync(CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        if (!Directory.Exists(OutputPath))
+        {
+            return Task.FromResult(PipelineStepResult.Ok());
+        }
+
+        try
+        {
+            Directory.Delete(OutputPath, recursive: true);
+            LogDirectoryDeleted(logger, OutputPath, 0);
+            return Task.FromResult(PipelineStepResult.Ok());
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            LogDeleteFailed(logger, OutputPath, ex);
+            return Task.FromResult(PipelineStepResult.Fail($"Failed to delete {OutputPath}: {ex.Message}"));
+        }
+    }
+
+    // ── CLI command ──
     /// <summary>Gets full path to output directory (supports hot-reload).</summary>
     private string OutputPath => pathResolver.OutputPath;
 

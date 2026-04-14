@@ -118,7 +118,7 @@ tests/
 ```
 
 ### Key Files
-- **Plugin Abstractions:** `src/Sdk/Abstractions/` - IPlugin, IGenerateStep, ICleanStep, IWizardStep, CommandDescriptor
+- **Plugin Abstractions:** `src/Sdk/Abstractions/` - IPlugin, IPipelineStep, IWizardStep, CommandDescriptor
 - **Engine Facade:** `src/Sdk/Abstractions/Engine/IRevelaEngine.cs` - High-level generation API
 - **Models:** `src/Sdk/Models/Manifest/` - ImageContent, GalleryContent, ManifestMeta
 - **Engine Models:** `src/Sdk/Models/Engine/` - ScanResult, PagesResult, ImagesResult, GenerateResult
@@ -389,7 +389,8 @@ public IEnumerable<CommandDescriptor> GetCommands(IServiceProvider services)
         Order: 30,
         Group: "Content");
     
-    // Pipeline step: IsSequentialStep marks it for "all" command discovery
+    // Pipeline step: IsSequentialStep marks it for CLI "all" command discovery.
+    // Also implement IPipelineStep for engine/MCP execution (pure service, no UI).
     yield return new CommandDescriptor(
         scanCmd.Create(),
         ParentCommand: "generate",

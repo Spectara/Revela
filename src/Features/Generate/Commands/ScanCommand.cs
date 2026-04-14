@@ -15,7 +15,7 @@ namespace Spectara.Revela.Features.Generate.Commands;
 /// <remarks>
 /// <para>
 /// Thin CLI wrapper that delegates to <see cref="IContentService.ScanAsync"/>.
-/// Implements <see cref="IGenerateStep"/> for pipeline orchestration.
+/// Implements <see cref="IPipelineStep"/> for programmatic pipeline execution (MCP/GUI).
 /// </para>
 /// <para>
 /// Usage: revela generate scan
@@ -24,17 +24,24 @@ namespace Spectara.Revela.Features.Generate.Commands;
 internal sealed partial class ScanCommand(
     ILogger<ScanCommand> logger,
     IContentService contentService,
-    IOptionsMonitor<ProjectConfig> projectConfig) : IGenerateStep
+    IOptionsMonitor<ProjectConfig> projectConfig) : IPipelineStep
 {
-    /// <inheritdoc />
-    public string Name => "scan";
+    // ── IPipelineStep (service-level, no UI) ──
 
-    /// <inheritdoc />
-    public string Description => "Scan content and update manifest";
+    string IPipelineStep.Category => PipelineCategories.Generate;
 
-    /// <inheritdoc />
-    public int Order => GenerateStepOrder.Scan;
+    string IPipelineStep.Name => "scan";
 
+
+    async Task<PipelineStepResult> IPipelineStep.ExecuteAsync(CancellationToken cancellationToken)
+    {
+        var result = await contentService.ScanAsync(progress: null, cancellationToken);
+        return result.Success
+            ? PipelineStepResult.Ok()
+            : PipelineStepResult.Fail(result.ErrorMessage ?? "Scan failed");
+    }
+
+    // ── CLI command ──
     /// <summary>
     /// Creates the CLI command.
     /// </summary>
@@ -54,9 +61,6 @@ internal sealed partial class ScanCommand(
     /// <summary>
     /// Executes the scan command.
     /// </summary>
-    /// <remarks>
-    /// Public to allow orchestration by <see cref="AllCommand"/>.
-    /// </remarks>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>Exit code (0 = success).</returns>
     public async Task<int> ExecuteAsync(CancellationToken cancellationToken)

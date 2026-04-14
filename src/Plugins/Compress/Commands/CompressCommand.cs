@@ -3,7 +3,6 @@ using System.Globalization;
 
 using Spectara.Revela.Plugins.Compress.Services;
 using Spectara.Revela.Sdk;
-using Spectara.Revela.Sdk.Abstractions;
 using Spectara.Revela.Sdk.Output;
 using Spectara.Revela.Sdk.Services;
 
@@ -27,20 +26,8 @@ namespace Spectara.Revela.Plugins.Compress.Commands;
 internal sealed partial class CompressCommand(
     ILogger<CompressCommand> logger,
     IPathResolver pathResolver,
-    CompressionService compressionService) : IGenerateStep
+    CompressionService compressionService)
 {
-    /// <summary>Order for compress step - runs after images (400).</summary>
-    public const int StepOrder = 500;
-
-    /// <inheritdoc />
-    public string Name => "compress";
-
-    /// <inheritdoc />
-    public string Description => "Compress static files (Gzip/Brotli)";
-
-    /// <inheritdoc />
-    public int Order => StepOrder;
-
     /// <summary>
     /// Creates the CLI command.
     /// </summary>

@@ -16,25 +16,45 @@ namespace Spectara.Revela.Plugins.Calendar.Commands;
 /// </summary>
 internal sealed partial class CleanCalendarCommand(
     ILogger<CleanCalendarCommand> logger,
-    IOptions<ProjectEnvironment> projectEnvironment) : ICleanStep
+    IOptions<ProjectEnvironment> projectEnvironment) : IPipelineStep
 {
-    /// <inheritdoc />
-    public string Name => "calendar";
-
-    /// <inheritdoc />
-    public string Description => "Clean calendar JSON files from cache";
-
-    /// <inheritdoc />
-    int ICleanStep.Order => 350;
-
-    /// <summary>Order for this command in menu.</summary>
-    public const int MenuOrder = 35;
-
     /// <summary>Calendar JSON filename.</summary>
     private const string CalendarFileName = "calendar.json";
 
     /// <summary>Gets full path to cache directory.</summary>
     private string CachePath => Path.Combine(projectEnvironment.Value.Path, ProjectPaths.Cache);
+
+    // ── IPipelineStep (service-level, no UI) ──
+
+    string IPipelineStep.Category => PipelineCategories.Clean;
+
+    string IPipelineStep.Name => "calendar";
+
+
+    Task<PipelineStepResult> IPipelineStep.ExecuteAsync(CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        if (!Directory.Exists(CachePath))
+        {
+            return Task.FromResult(PipelineStepResult.Ok());
+        }
+
+        var calendarFiles = Directory.GetFiles(CachePath, CalendarFileName, SearchOption.AllDirectories);
+        foreach (var file in calendarFiles)
+        {
+            try
+            { File.Delete(file); }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                LogDeleteFailed(logger, file, ex);
+            }
+        }
+
+        return Task.FromResult(PipelineStepResult.Ok());
+    }
+
+    // ── CLI command ──
 
     /// <summary>
     /// Creates the CLI command.

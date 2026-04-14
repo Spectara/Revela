@@ -35,19 +35,49 @@ internal sealed partial class CleanImagesCommand(
     IPathResolver pathResolver,
     IManifestRepository manifestRepository,
     IOptionsMonitor<GenerateConfig> generateConfig,
-    IOptionsMonitor<ThemeConfig> themeConfig) : ICleanStep
+    IOptionsMonitor<ThemeConfig> themeConfig) : IPipelineStep
 {
-    /// <inheritdoc />
-    public string Name => "images";
+    // ── IPipelineStep (service-level, no UI) ──
 
-    /// <inheritdoc />
-    public string Description => "Clean unused image files (orphaned, wrong sizes/formats)";
+    string IPipelineStep.Category => PipelineCategories.Clean;
 
-    /// <inheritdoc />
-    int ICleanStep.Order => CleanStepOrder.Images;
+    string IPipelineStep.Name => "images";
 
-    /// <summary>Order for this command in menu (between output=10 and cache=20).</summary>
-    public const int MenuOrder = 15;
+
+    async Task<PipelineStepResult> IPipelineStep.ExecuteAsync(CancellationToken cancellationToken)
+    {
+        await manifestRepository.LoadAsync(cancellationToken);
+
+        if (!Directory.Exists(ImagesPath))
+        {
+            return PipelineStepResult.Ok();
+        }
+
+        var activeFormats = generateConfig.CurrentValue.Images.GetActiveFormats();
+        if (activeFormats.Count == 0)
+        {
+            return PipelineStepResult.Fail("No image formats configured");
+        }
+
+        var validImageNames = BuildValidImageNames();
+        if (validImageNames.Count == 0)
+        {
+            return PipelineStepResult.Fail("Manifest contains no images — run scan first");
+        }
+
+        var configuredSizes = themeConfig.CurrentValue.Images.Sizes;
+        var analysis = AnalyzeImagesDirectory(validImageNames, activeFormats.Keys, configuredSizes, cancellationToken);
+
+        if (analysis.IsEmpty)
+        {
+            return PipelineStepResult.Ok();
+        }
+
+        PerformCleanup(analysis, cancellationToken);
+        return PipelineStepResult.Ok();
+    }
+
+    // ── CLI command ──
 
     /// <summary>Images subdirectory within output.</summary>
     private const string ImagesDirectory = "images";

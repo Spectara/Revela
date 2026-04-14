@@ -41,12 +41,9 @@ public sealed class CompressPlugin : IPlugin
         services.TryAddTransient<CompressCommand>();
         services.TryAddTransient<CleanCompressCommand>();
 
-        // Register CleanCompressCommand as ICleanStep for clean pipeline
-        services.TryAddEnumerable(ServiceDescriptor.Transient<ICleanStep, CleanCompressCommand>());
-
-        // Note: CompressCommand is NOT registered as IGenerateStep
-        // Pre-compression requires server configuration (nginx gzip_static, etc.)
-        // Users who need it can run 'revela generate compress' explicitly
+        // Register clean step as pipeline step for engine orchestration
+        // Note: CompressCommand is NOT a pipeline step — pre-compression is opt-in
+        services.TryAddEnumerable(ServiceDescriptor.Transient<IPipelineStep, CleanCompressCommand>());
     }
 
     /// <inheritdoc />
@@ -57,18 +54,17 @@ public sealed class CompressPlugin : IPlugin
         var cleanCompressCommand = services.GetRequiredService<CleanCompressCommand>();
 
         // Register compress command → revela generate compress
-        // Order 50 places it after images (40) in interactive menu
+        // After images (400) — compress runs on generated output
         yield return new CommandDescriptor(
             compressCommand.Create(),
             ParentCommand: "generate",
-            Order: 50);
+            Order: 500);
 
         // Register clean compress command → revela clean compress
-        // Order 40 places it after statistics (30) in interactive menu
         yield return new CommandDescriptor(
             cleanCompressCommand.Create(),
             ParentCommand: "clean",
-            Order: CleanCompressCommand.MenuOrder,
+            Order: 400,
             IsSequentialStep: true);
     }
 }

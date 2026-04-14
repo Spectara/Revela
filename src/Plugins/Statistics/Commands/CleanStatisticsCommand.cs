@@ -16,25 +16,45 @@ namespace Spectara.Revela.Plugins.Statistics.Commands;
 /// </summary>
 internal sealed partial class CleanStatisticsCommand(
     ILogger<CleanStatisticsCommand> logger,
-    IOptions<ProjectEnvironment> projectEnvironment) : ICleanStep
+    IOptions<ProjectEnvironment> projectEnvironment) : IPipelineStep
 {
-    /// <inheritdoc />
-    public string Name => "statistics";
-
-    /// <inheritdoc />
-    public string Description => "Clean statistics JSON files from cache";
-
-    /// <inheritdoc />
-    int ICleanStep.Order => 300;
-
-    /// <summary>Order for this command in menu.</summary>
-    public const int MenuOrder = 30;
-
     /// <summary>Statistics JSON filename.</summary>
     private const string StatisticsFileName = "statistics.json";
 
     /// <summary>Gets full path to cache directory.</summary>
     private string CachePath => Path.Combine(projectEnvironment.Value.Path, ProjectPaths.Cache);
+
+    // ── IPipelineStep (service-level, no UI) ──
+
+    string IPipelineStep.Category => PipelineCategories.Clean;
+
+    string IPipelineStep.Name => "statistics";
+
+
+    Task<PipelineStepResult> IPipelineStep.ExecuteAsync(CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        if (!Directory.Exists(CachePath))
+        {
+            return Task.FromResult(PipelineStepResult.Ok());
+        }
+
+        var statsFiles = Directory.GetFiles(CachePath, StatisticsFileName, SearchOption.AllDirectories);
+        foreach (var file in statsFiles)
+        {
+            try
+            { File.Delete(file); }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                LogDeleteFailed(logger, file, ex);
+            }
+        }
+
+        return Task.FromResult(PipelineStepResult.Ok());
+    }
+
+    // ── CLI command ──
 
     /// <summary>
     /// Creates the CLI command.

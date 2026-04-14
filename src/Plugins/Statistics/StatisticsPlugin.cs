@@ -40,11 +40,9 @@ public sealed class StatisticsPlugin : IPlugin
         services.TryAddTransient<CleanStatisticsCommand>();
         services.TryAddTransient<ConfigStatisticsCommand>();
 
-        // Register StatsCommand as IGenerateStep for pipeline orchestration
-        services.TryAddEnumerable(ServiceDescriptor.Transient<IGenerateStep, StatsCommand>());
-
-        // Register CleanStatisticsCommand as ICleanStep for clean pipeline
-        services.TryAddEnumerable(ServiceDescriptor.Transient<ICleanStep, CleanStatisticsCommand>());
+        // Register as pipeline steps for engine orchestration
+        services.TryAddEnumerable(ServiceDescriptor.Transient<IPipelineStep, StatsCommand>());
+        services.TryAddEnumerable(ServiceDescriptor.Transient<IPipelineStep, CleanStatisticsCommand>());
 
         // Register Page Template for init commands
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IPageTemplate, StatsPageTemplate>());
@@ -59,12 +57,10 @@ public sealed class StatisticsPlugin : IPlugin
         var configCommand = services.GetRequiredService<ConfigStatisticsCommand>();
 
         // Register stats command → revela generate statistics
-        // Order 20 places it between scan (10) and pages (30) in interactive menu
-        yield return new CommandDescriptor(statsCommand.Create(), ParentCommand: "generate", Order: 20, IsSequentialStep: true);
+        yield return new CommandDescriptor(statsCommand.Create(), ParentCommand: "generate", Order: PipelineOrder.Statistics, IsSequentialStep: true);
 
         // Register clean statistics command → revela clean statistics
-        // Order 30 places it after output (10) and cache (20) in interactive menu
-        yield return new CommandDescriptor(cleanStatsCommand.Create(), ParentCommand: "clean", Order: CleanStatisticsCommand.MenuOrder, IsSequentialStep: true);
+        yield return new CommandDescriptor(cleanStatsCommand.Create(), ParentCommand: "clean", Order: 300, IsSequentialStep: true);
 
         // Register config command → revela config statistics
         yield return new CommandDescriptor(configCommand.Create(), ParentCommand: "config", Group: "Addons");

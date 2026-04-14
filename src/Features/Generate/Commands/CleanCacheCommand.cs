@@ -16,17 +16,38 @@ namespace Spectara.Revela.Features.Generate.Commands;
 /// </summary>
 internal sealed partial class CleanCacheCommand(
     ILogger<CleanCacheCommand> logger,
-    IOptions<ProjectEnvironment> projectEnvironment) : ICleanStep
+    IOptions<ProjectEnvironment> projectEnvironment) : IPipelineStep
 {
-    /// <inheritdoc />
-    public string Name => "cache";
+    // ── IPipelineStep (service-level, no UI) ──
 
-    /// <inheritdoc />
-    public string Description => "Clean cache directory (.cache)";
+    string IPipelineStep.Category => PipelineCategories.Clean;
 
-    /// <inheritdoc />
-    int ICleanStep.Order => CleanStepOrder.Cache;
+    string IPipelineStep.Name => "cache";
 
+
+    Task<PipelineStepResult> IPipelineStep.ExecuteAsync(CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        if (!Directory.Exists(CachePath))
+        {
+            return Task.FromResult(PipelineStepResult.Ok());
+        }
+
+        try
+        {
+            Directory.Delete(CachePath, recursive: true);
+            LogDirectoryDeleted(logger, CachePath, 0);
+            return Task.FromResult(PipelineStepResult.Ok());
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            LogDeleteFailed(logger, CachePath, ex);
+            return Task.FromResult(PipelineStepResult.Fail($"Failed to delete cache: {ex.Message}"));
+        }
+    }
+
+    // ── CLI command ──
     /// <summary>Gets full path to cache directory.</summary>
     private string CachePath => Path.Combine(projectEnvironment.Value.Path, ProjectPaths.Cache);
 

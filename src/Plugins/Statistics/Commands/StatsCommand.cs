@@ -13,30 +13,61 @@ namespace Spectara.Revela.Plugins.Statistics.Commands;
 /// Command to generate statistics page from manifest EXIF data.
 /// </summary>
 /// <remarks>
-/// <para>
 /// Output: Creates statistics.json in .cache/{page.Path}/.
 /// The actual rendering is done by the theme extension (Lumina.Statistics).
-/// </para>
-/// <para>
-/// Implements <see cref="IGenerateStep"/> for pipeline integration.
-/// </para>
 /// </remarks>
 internal sealed partial class StatsCommand(
     ILogger<StatsCommand> logger,
     IManifestRepository manifestRepository,
     IOptions<ProjectEnvironment> projectEnvironment,
-    StatisticsAggregator aggregator) : IGenerateStep
+    StatisticsAggregator aggregator) : IPipelineStep
 {
     private const string ManifestFileName = "manifest.json";
 
-    /// <inheritdoc />
-    public string Name => "statistics";
+    // ── IPipelineStep (service-level, no UI) ──
 
-    /// <inheritdoc />
-    public string Description => "Generate statistics from EXIF data";
+    string IPipelineStep.Category => PipelineCategories.Generate;
 
-    /// <inheritdoc />
-    public int Order => GenerateStepOrder.Statistics;
+    string IPipelineStep.Name => "statistics";
+
+
+    async Task<PipelineStepResult> IPipelineStep.ExecuteAsync(CancellationToken cancellationToken)
+    {
+        var projectPath = projectEnvironment.Value.Path;
+        var manifestFile = Path.Combine(projectPath, ProjectPaths.Cache, ManifestFileName);
+        if (!File.Exists(manifestFile))
+        {
+            return PipelineStepResult.Fail("Manifest not found — run scan first");
+        }
+
+        await manifestRepository.LoadAsync(cancellationToken);
+
+        if (manifestRepository.Images.Count == 0)
+        {
+            return PipelineStepResult.Ok();
+        }
+
+        var root = manifestRepository.Root ?? throw new InvalidOperationException("Manifest root is null after loading");
+        var statsPages = FindStatisticsPages(root);
+
+        if (statsPages.Count == 0)
+        {
+            return PipelineStepResult.Ok();
+        }
+
+        foreach (var pagePath in statsPages)
+        {
+            var stats = aggregator.Aggregate();
+            var cacheDir = Path.Combine(projectPath, ProjectPaths.Cache, pagePath);
+            var jsonPath = Path.Combine(cacheDir, "statistics.json");
+            Directory.CreateDirectory(cacheDir);
+            await JsonWriter.WriteAsync(jsonPath, stats, cancellationToken);
+        }
+
+        return PipelineStepResult.Ok();
+    }
+
+    // ── CLI command ──
 
     /// <summary>
     /// Create the command

@@ -7,7 +7,6 @@ using Spectara.Revela.Features.Generate.Commands;
 using Spectara.Revela.Features.Projects.Commands;
 using Spectara.Revela.Features.Theme.Commands;
 using Spectara.Revela.Sdk.Abstractions;
-
 namespace Spectara.Revela.Cli.Hosting;
 
 /// <summary>
@@ -27,31 +26,25 @@ internal sealed class CoreCommandProvider : ICommandProvider
             Group: CommandGroups.Build,
             RequiresProject: true);
 
-        var allCommand = services.GetRequiredService<AllCommand>();
-        yield return new CommandDescriptor(
-            allCommand.Create(),
-            ParentCommand: "generate",
-            Order: 0);
-
         var scanCommand = services.GetRequiredService<ScanCommand>();
         yield return new CommandDescriptor(
             scanCommand.Create(),
             ParentCommand: "generate",
-            Order: 10,
+            Order: PipelineOrder.Scan,
             IsSequentialStep: true);
 
         var pagesCommand = services.GetRequiredService<PagesCommand>();
         yield return new CommandDescriptor(
             pagesCommand.Create(),
             ParentCommand: "generate",
-            Order: 30,
+            Order: PipelineOrder.Pages,
             IsSequentialStep: true);
 
         var imagesCommand = services.GetRequiredService<ImagesCommand>();
         yield return new CommandDescriptor(
             imagesCommand.Create(),
             ParentCommand: "generate",
-            Order: 40,
+            Order: PipelineOrder.Images,
             IsSequentialStep: true);
 
         yield return new CommandDescriptor(
@@ -60,31 +53,25 @@ internal sealed class CoreCommandProvider : ICommandProvider
             Group: CommandGroups.Build,
             RequiresProject: true);
 
-        var cleanAllCommand = services.GetRequiredService<CleanAllCommand>();
-        yield return new CommandDescriptor(
-            cleanAllCommand.Create(),
-            ParentCommand: "clean",
-            Order: 0);
-
         var cleanOutputCommand = services.GetRequiredService<CleanOutputCommand>();
         yield return new CommandDescriptor(
             cleanOutputCommand.Create(),
             ParentCommand: "clean",
-            Order: 10,
+            Order: CleanPipelineOrder.Output,
             IsSequentialStep: true);
 
         var cleanImagesCommand = services.GetRequiredService<CleanImagesCommand>();
         yield return new CommandDescriptor(
             cleanImagesCommand.Create(),
             ParentCommand: "clean",
-            Order: 15,
+            Order: CleanPipelineOrder.Images,
             IsSequentialStep: true);
 
         var cleanCacheCommand = services.GetRequiredService<CleanCacheCommand>();
         yield return new CommandDescriptor(
             cleanCacheCommand.Create(),
             ParentCommand: "clean",
-            Order: 20,
+            Order: CleanPipelineOrder.Cache,
             IsSequentialStep: true);
 
         // ── Content group ──

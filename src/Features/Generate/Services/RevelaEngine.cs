@@ -17,9 +17,10 @@ namespace Spectara.Revela.Features.Generate.Services;
 /// the internal services directly and return rich result types.
 /// </para>
 /// <para>
-/// <see cref="GenerateAllAsync"/> iterates ALL registered <see cref="IGenerateStep"/>
-/// implementations in order — identical behavior to the CLI <c>generate all</c> command.
-/// This ensures plugin steps (Statistics, Calendar) are included in the pipeline.
+/// <see cref="GenerateAllAsync"/> discovers ALL registered <see cref="IPipelineStep"/>
+/// implementations with category "generate" and runs them sorted by
+/// <see cref="IPipelineStepOrderProvider"/> (single source of truth from
+/// <see cref="CommandDescriptor.Order"/>).
 /// </para>
 /// </remarks>
 internal sealed partial class RevelaEngine(
@@ -27,7 +28,8 @@ internal sealed partial class RevelaEngine(
     IContentService contentService,
     IRenderService renderService,
     IImageService imageService,
-    IEnumerable<IGenerateStep> generateSteps) : IRevelaEngine
+    IEnumerable<IPipelineStep> pipelineSteps,
+    IPipelineStepOrderProvider stepOrderProvider) : IRevelaEngine
 {
     /// <inheritdoc />
     public async Task<ScanResult> ScanAsync(
@@ -126,24 +128,20 @@ internal sealed partial class RevelaEngine(
 
     /// <inheritdoc />
     /// <remarks>
-    /// <para>
-    /// Runs ALL registered <see cref="IGenerateStep"/> implementations in Order sequence,
-    /// identical to the CLI <c>generate all</c> command. This ensures plugin steps
-    /// (Statistics, Calendar, etc.) are included in the pipeline.
-    /// </para>
-    /// <para>
-    /// Note: This method delegates to <see cref="IGenerateStep"/> implementations which
-    /// currently write directly to the console via Spectre.Console. The individual result
-    /// properties (Scan, Pages, Images) are not populated because plugin steps (Statistics,
-    /// Calendar) don't map to those three phases. This is intentional — for rich per-phase
-    /// results, use the individual methods (ScanAsync, GeneratePagesAsync, GenerateImagesAsync).
-    /// </para>
+    /// Discovers ALL registered <see cref="IPipelineStep"/> implementations with
+    /// category "generate" and runs them sorted by <see cref="IPipelineStepOrderProvider"/>.
+    /// This includes both core steps (scan, pages, images) and plugin steps
+    /// (Statistics, Calendar) — no console output, pure service execution.
     /// </remarks>
     public async Task<GenerateResult> GenerateAllAsync(
         IProgress<GenerateProgress>? progress,
         CancellationToken cancellationToken)
     {
-        var steps = generateSteps.OrderBy(s => s.Order).ToList();
+        var steps = pipelineSteps
+            .Where(s => string.Equals(s.Category, PipelineCategories.Generate, StringComparison.Ordinal))
+            .OrderBy(s => stepOrderProvider.GetOrder(s.Category, s.Name))
+            .ThenBy(s => s.Name, StringComparer.OrdinalIgnoreCase)
+            .ToList();
 
         if (steps.Count == 0)
         {
@@ -168,15 +166,15 @@ internal sealed partial class RevelaEngine(
                 TotalSteps = steps.Count,
             });
 
-            var exitCode = await step.ExecuteAsync(cancellationToken);
-            if (exitCode != 0)
+            var stepResult = await step.ExecuteAsync(cancellationToken);
+            if (!stepResult.Success)
             {
-                LogStepFailed(logger, step.Name, exitCode);
+                LogStepFailed(logger, step.Name, stepResult.ErrorMessage ?? "Unknown error");
                 return new GenerateResult
                 {
                     Success = false,
                     Duration = stopwatch.Elapsed,
-                    ErrorMessage = $"Step '{step.Name}' failed with exit code {exitCode}",
+                    ErrorMessage = $"Step '{step.Name}' failed: {stepResult.ErrorMessage}",
                 };
             }
         }
@@ -212,8 +210,8 @@ internal sealed partial class RevelaEngine(
     [LoggerMessage(Level = LogLevel.Information, Message = "Engine: Starting full generation pipeline with {StepCount} step(s)")]
     private static partial void LogGenerateAllStarted(ILogger logger, int stepCount);
 
-    [LoggerMessage(Level = LogLevel.Error, Message = "Engine: Pipeline step '{StepName}' failed with exit code {ExitCode}")]
-    private static partial void LogStepFailed(ILogger logger, string stepName, int exitCode);
+    [LoggerMessage(Level = LogLevel.Error, Message = "Engine: Pipeline step '{StepName}' failed: {ErrorMessage}")]
+    private static partial void LogStepFailed(ILogger logger, string stepName, string errorMessage);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Engine: Full pipeline completed in {Duration}")]
     private static partial void LogGenerateAllCompleted(ILogger logger, TimeSpan duration);
