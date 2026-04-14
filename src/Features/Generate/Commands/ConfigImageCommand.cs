@@ -37,7 +37,7 @@ internal sealed partial class ConfigImageCommand(
     ILogger<ConfigImageCommand> logger,
     IOptions<ProjectEnvironment> projectEnvironment,
     IOptionsMonitor<ThemeConfig> themeConfig,
-    IThemeResolver themeResolver,
+    IThemeRegistry themeRegistry,
     IConfigService configService)
 {
     private static readonly Dictionary<string, int> DefaultFormatQualities = new(StringComparer.OrdinalIgnoreCase)
@@ -118,7 +118,7 @@ internal sealed partial class ConfigImageCommand(
     private ImageDefaults? LoadThemeDefaults(string themeName)
     {
         var projectPath = projectEnvironment.Value.Path;
-        var theme = themeResolver.Resolve(themeName, projectPath);
+        var theme = themeRegistry.Resolve(themeName, projectPath);
 
         if (theme is null)
         {

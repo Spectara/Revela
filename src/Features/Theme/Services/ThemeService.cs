@@ -13,7 +13,7 @@ namespace Spectara.Revela.Features.Theme.Services;
 /// UI-free — all formatting is done by the consuming command or MCP tool.
 /// </summary>
 internal sealed partial class ThemeService(
-    IThemeResolver themeResolver,
+    IThemeRegistry themeRegistry,
     ITemplateResolver templateResolver,
     IAssetResolver assetResolver,
     IPackageContext packageContext,
@@ -33,7 +33,7 @@ internal sealed partial class ThemeService(
         bool includeOnline = false,
         CancellationToken cancellationToken = default)
     {
-        var themes = themeResolver.GetAvailableThemes(ProjectPath).ToList();
+        var themes = themeRegistry.GetAvailableThemes(ProjectPath).ToList();
         var themeSources = BuildSourceLookup();
 
         var installed = themes.Select(t => ToThemeInfo(t, themeSources)).ToList();
@@ -67,10 +67,10 @@ internal sealed partial class ThemeService(
     public ThemeInfoResult GetCurrentTheme()
     {
         var themeName = themeConfig.CurrentValue.Name ?? "Lumina";
-        var theme = themeResolver.Resolve(themeName, ProjectPath);
+        var theme = themeRegistry.Resolve(themeName, ProjectPath);
         var source = GetThemeSource(theme);
         var extensions = theme is not null
-            ? themeResolver.GetExtensions(themeName)
+            ? themeRegistry.GetExtensions(themeName)
                 .Select(e => ToExtensionInfo(e))
                 .ToList()
             : [];
@@ -110,7 +110,7 @@ internal sealed partial class ThemeService(
     public ThemeFilesResult GetFiles(string? themeName = null)
     {
         var name = themeName ?? themeConfig.CurrentValue.Name ?? "Lumina";
-        var theme = themeResolver.Resolve(name, ProjectPath);
+        var theme = themeRegistry.Resolve(name, ProjectPath);
 
         if (theme is null)
         {
@@ -122,7 +122,7 @@ internal sealed partial class ThemeService(
             };
         }
 
-        var extensions = themeResolver.GetExtensions(name);
+        var extensions = themeRegistry.GetExtensions(name);
         templateResolver.Initialize(theme, extensions, ProjectPath);
         assetResolver.Initialize(theme, extensions, ProjectPath);
 
@@ -159,8 +159,8 @@ internal sealed partial class ThemeService(
         var targetPath = Path.Combine(themesFolder, themeName);
 
         // Prefer installed theme (user wants a fresh copy from original)
-        var sourceTheme = themeResolver.ResolveInstalled(sourceName)
-                          ?? themeResolver.Resolve(sourceName, ProjectPath);
+        var sourceTheme = themeRegistry.ResolveInstalled(sourceName)
+                          ?? themeRegistry.Resolve(sourceName, ProjectPath);
 
         if (sourceTheme is null)
         {
@@ -200,7 +200,7 @@ internal sealed partial class ThemeService(
 
         // Extract extensions
         var extractedExtensions = new List<string>();
-        var extensions = themeResolver.GetExtensions(sourceName);
+        var extensions = themeRegistry.GetExtensions(sourceName);
 
         foreach (var extension in extensions)
         {
@@ -255,7 +255,7 @@ internal sealed partial class ThemeService(
         CancellationToken cancellationToken = default)
     {
         var currentThemeName = themeConfig.CurrentValue.Name ?? "Lumina";
-        var theme = themeResolver.Resolve(currentThemeName, ProjectPath);
+        var theme = themeRegistry.Resolve(currentThemeName, ProjectPath);
 
         if (theme is null)
         {
@@ -266,7 +266,7 @@ internal sealed partial class ThemeService(
             };
         }
 
-        var extensions = themeResolver.GetExtensions(currentThemeName);
+        var extensions = themeRegistry.GetExtensions(currentThemeName);
         templateResolver.Initialize(theme, extensions, ProjectPath);
         assetResolver.Initialize(theme, extensions, ProjectPath);
 
@@ -404,7 +404,7 @@ internal sealed partial class ThemeService(
     private ThemeInfo ToThemeInfo(ITheme theme, Dictionary<string, PackageSource> sources)
     {
         var isLocal = !sources.ContainsKey(theme.Metadata.Name);
-        var extensions = themeResolver.GetExtensions(theme.Metadata.Name)
+        var extensions = themeRegistry.GetExtensions(theme.Metadata.Name)
             .Select(e => ToExtensionInfo(e))
             .ToList();
 

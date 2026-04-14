@@ -20,7 +20,7 @@ public static class ServiceCollectionExtensions
     public static IServiceCollection AddThemeFeature(this IServiceCollection services)
     {
         // Theme infrastructure
-        services.TryAddSingleton<IThemeResolver, ThemeResolver>();
+        services.TryAddSingleton<IThemeRegistry, ThemeRegistry>();
 
         // Theme service (UI-free, used by CLI commands, MCP, GUI)
         services.TryAddTransient<IThemeService, ThemeService>();

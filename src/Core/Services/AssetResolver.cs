@@ -38,14 +38,12 @@ public sealed partial class AssetResolver(ILogger<AssetResolver> logger) : IAsse
     private readonly List<string> styleSheetOrder = [];
     private readonly List<string> scriptOrder = [];
 
-    private ITheme? theme;
     private string? localThemePath;
     private bool isInitialized;
 
     /// <inheritdoc />
     public void Initialize(ITheme theme, IReadOnlyList<ITheme> extensions, string projectPath)
     {
-        this.theme = theme;
         assets.Clear();
         styleSheetOrder.Clear();
         scriptOrder.Clear();
@@ -150,7 +148,7 @@ public sealed partial class AssetResolver(ILogger<AssetResolver> logger) : IAsse
             }
 
             var key = DeriveKeyFromPath(file);
-            assets[key] = new ResolvedEntry(FileSourceType.Theme, file, null);
+            assets[key] = new ResolvedEntry(FileSourceType.Theme, file, null, () => theme.GetFile(file));
             TrackOrderedAsset(key);
             count++;
         }
@@ -173,7 +171,7 @@ public sealed partial class AssetResolver(ILogger<AssetResolver> logger) : IAsse
 
             // Extension key = prefix + relative path within Assets/
             var key = DeriveExtensionKey(prefix, file);
-            assets[key] = new ResolvedEntry(FileSourceType.Extension, file, extension);
+            assets[key] = new ResolvedEntry(FileSourceType.Extension, file, extension, () => extension.GetFile(file));
             TrackOrderedAsset(key);
             count++;
         }
@@ -192,7 +190,9 @@ public sealed partial class AssetResolver(ILogger<AssetResolver> logger) : IAsse
             var key = DeriveKeyFromLocalPath(relativePath);
             var isOverride = assets.ContainsKey(key);
 
-            assets[key] = new ResolvedEntry(FileSourceType.Local, file, null);
+            assets[key] = new ResolvedEntry(
+                FileSourceType.Local, file, null,
+                () => File.Exists(file) ? File.OpenRead(file) : null);
 
             if (isOverride)
             {
@@ -226,16 +226,7 @@ public sealed partial class AssetResolver(ILogger<AssetResolver> logger) : IAsse
         }
     }
 
-    private Stream? GetAssetStream(ResolvedEntry entry)
-    {
-        return entry.SourceType switch
-        {
-            FileSourceType.Local => File.Exists(entry.Path) ? File.OpenRead(entry.Path) : null,
-            FileSourceType.Theme => theme?.GetFile(entry.Path),
-            FileSourceType.Extension => entry.Extension?.GetFile(entry.Path),
-            _ => null
-        };
-    }
+    private static Stream? GetAssetStream(ResolvedEntry entry) => entry.StreamFactory();
 
     /// <summary>
     /// Derives asset key from theme file path.

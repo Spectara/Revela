@@ -10,5 +10,5 @@ public sealed class ThemeManifest
 
     /// <summary>Theme variables with default values.</summary>
     public IReadOnlyDictionary<string, string> Variables { get; init; } =
-        new Dictionary<string, string>();
+        System.Collections.Frozen.FrozenDictionary<string, string>.Empty;
 }

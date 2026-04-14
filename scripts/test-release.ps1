@@ -511,6 +511,7 @@ try {
         Push-Location $SampleProjectDir
         try {
             # Test theme list (shows installed/built-in themes)
+            # Verifies Issue #32: themes appear in 'theme list', NOT in 'plugin list'
             Write-Info "Running: revela theme list"
             $themeListOutput = & $ExePath theme list 2>&1 | Out-String
             if ($themeListOutput -match "Lumina") {
@@ -518,6 +519,14 @@ try {
             }
             else {
                 throw "Built-in Lumina theme not found in theme list"
+            }
+
+            # Verify theme extensions appear under their parent theme
+            if ($themeListOutput -match "Statistics" -and $themeListOutput -match "Calendar") {
+                Write-Success "Theme extensions (Statistics, Calendar) visible in theme list"
+            }
+            else {
+                Write-Warn "Theme extensions may not be visible in theme list output"
             }
 
             # Test theme list --online (searches NuGet sources)
@@ -672,7 +681,7 @@ try {
                 Write-Warn "theme files output may be incomplete: $themeFilesOutput"
             }
 
-            # Test theme extract (extract a single file to themes/ directory)
+            # Test theme extract selective (extract a single file to themes/ directory)
             Write-Info "Running: revela theme extract Lumina --file Partials/ --force"
             & $ExePath theme extract Lumina --file "Partials/" --force
             if ($LASTEXITCODE -ne 0) { throw "theme extract failed" }
@@ -689,6 +698,33 @@ try {
             }
             else {
                 throw "themes/ directory not created by theme extract"
+            }
+
+            # Clean up selective extract for full extract test
+            if (Test-Path $themesDir) { Remove-Item $themesDir -Recurse -Force }
+
+            # Test full theme extract (verifies Issue #32: extensions extracted to subfolders)
+            Write-Info "Running: revela theme extract Lumina --force (full with extensions)"
+            & $ExePath theme extract Lumina --force
+            if ($LASTEXITCODE -ne 0) { throw "theme full extract failed" }
+
+            $luminaDir = Join-Path $themesDir "Lumina"
+            if (Test-Path $luminaDir) {
+                $allFiles = @(Get-ChildItem $luminaDir -Recurse -File)
+                Write-Success "Full theme extract: $($allFiles.Count) files in themes/Lumina/"
+
+                # Verify extension files are in correct subfolders (Issue #32: extensions extractable)
+                $hasStatisticsFolder = Get-ChildItem $luminaDir -Directory -Recurse | Where-Object { $_.Name -eq "Statistics" }
+                $hasCalendarFolder = Get-ChildItem $luminaDir -Directory -Recurse | Where-Object { $_.Name -eq "Calendar" }
+                if ($hasStatisticsFolder -and $hasCalendarFolder) {
+                    Write-Success "Extension subfolders present: Statistics/, Calendar/"
+                }
+                else {
+                    Write-Warn "Extension subfolders may be missing (Statistics=$($null -ne $hasStatisticsFolder), Calendar=$($null -ne $hasCalendarFolder))"
+                }
+            }
+            else {
+                throw "themes/Lumina/ not created by full extract"
             }
 
             # Test create page text

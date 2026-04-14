@@ -14,7 +14,7 @@ namespace Spectara.Revela.Features.Theme.Commands;
 /// </summary>
 internal sealed partial class ThemeFilesCommand(
     IThemeService themeService,
-    IThemeResolver themeResolver,
+    IThemeRegistry themeRegistry,
     IOptions<ProjectEnvironment> projectEnvironment,
     IOptionsMonitor<ThemeConfig> themeConfig,
     ILogger<ThemeFilesCommand> logger)
@@ -72,8 +72,8 @@ internal sealed partial class ThemeFilesCommand(
         }
 
         // Get extensions for color map and config entries
-        var extensions = themeResolver.GetExtensions(themeName);
-        var theme = themeResolver.Resolve(themeName, projectPath);
+        var extensions = themeRegistry.GetExtensions(themeName);
+        var theme = themeRegistry.Resolve(themeName, projectPath);
 
         // Build extension color map
         var extensionColorMap = extensions

@@ -103,7 +103,7 @@ public sealed partial class PackageLoader(
             {
                 Console.Error.WriteLine(
                     $"Error: Plugin '{fileName}' failed to load: {rtle.Message}");
-                foreach (var ex in rtle.LoaderExceptions.Where(e => e != null).Take(3))
+                foreach (var ex in rtle.LoaderExceptions.Where(e => e is not null).Take(3))
                 {
                     if (ex is FileNotFoundException fnf && !string.IsNullOrEmpty(fnf.FileName))
                     {

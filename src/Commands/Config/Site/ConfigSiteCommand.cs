@@ -25,7 +25,7 @@ internal sealed partial class ConfigSiteCommand(
     IOptions<ProjectEnvironment> projectEnvironment,
     IOptionsMonitor<ThemeConfig> themeConfig,
     IConfigService configService,
-    IThemeResolver themeResolver)
+    IThemeRegistry themeRegistry)
 {
     /// <summary>
     /// Creates the command definition.
@@ -70,7 +70,7 @@ internal sealed partial class ConfigSiteCommand(
 
         // Get the configured theme
         var projectPath = projectEnvironment.Value.Path;
-        var availableThemes = themeResolver.GetAvailableThemes(projectPath).ToList();
+        var availableThemes = themeRegistry.GetAvailableThemes(projectPath).ToList();
         var selectedTheme = availableThemes.FirstOrDefault(t =>
             t.Metadata.Name.Equals(themeName, StringComparison.OrdinalIgnoreCase));
 

@@ -32,7 +32,7 @@ internal static class ServiceCollectionExtensions
     {
         // Shared services
         services.TryAddSingleton<IPackageIndexService, PackageIndexService>();
-        services.TryAddSingleton<IThemeResolver, ThemeResolver>();
+        services.TryAddSingleton<IThemeRegistry, ThemeRegistry>();
 
         // Wizards
         services.AddTransient<RevelaWizard>();

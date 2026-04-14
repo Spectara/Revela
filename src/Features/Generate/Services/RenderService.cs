@@ -26,7 +26,7 @@ namespace Spectara.Revela.Features.Generate.Services;
 /// </remarks>
 internal sealed partial class RenderService(
     Func<ITemplateEngine> templateEngineFactory,
-    IThemeResolver themeResolver,
+    IThemeRegistry themeRegistry,
     ITemplateResolver templateResolver,
     IAssetResolver assetResolver,
     IStaticFileService staticFileService,
@@ -117,11 +117,11 @@ internal sealed partial class RenderService(
             var config = LoadConfiguration();
 
             // Resolve theme and extensions
-            var theme = themeResolver.Resolve(config.ThemeName, projectEnvironment.Value.Path);
+            var theme = themeRegistry.Resolve(config.ThemeName, projectEnvironment.Value.Path);
             SetTheme(theme);
 
             // Get theme extensions matching this theme
-            var extensions = themeResolver.GetExtensions(config.ThemeName);
+            var extensions = themeRegistry.GetExtensions(config.ThemeName);
             SetExtensions(extensions);
 
             // Initialize template resolver (scans theme, extensions, local overrides)

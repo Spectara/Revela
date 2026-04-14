@@ -7,7 +7,7 @@ namespace Spectara.Revela.Core.Services;
 /// Provides theme variables from the resolved theme.
 /// </summary>
 /// <remarks>
-/// The theme is already resolved by <see cref="IThemeResolver"/> with priority:
+/// The theme is already resolved by <see cref="IThemeRegistry"/> with priority:
 /// 1. Local theme folder (project/themes/{name}/) - via LocalThemeProvider
 /// 2. Installed theme plugins
 /// 3. Default bundled theme

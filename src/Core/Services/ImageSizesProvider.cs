@@ -30,7 +30,7 @@ public interface IImageSizesProvider
 /// </summary>
 /// <remarks>
 /// <para>
-/// The theme is already resolved by <see cref="IThemeResolver"/> with priority:
+/// The theme is already resolved by <see cref="IThemeRegistry"/> with priority:
 /// </para>
 /// <list type="number">
 ///   <item>Local theme folder (project/themes/{name}/) - via LocalThemeProvider</item>
@@ -44,7 +44,7 @@ public interface IImageSizesProvider
 public sealed partial class ImageSizesProvider(
     IOptionsMonitor<ThemeConfig> themeConfig,
     IOptions<Sdk.ProjectEnvironment> projectEnvironment,
-    IThemeResolver themeResolver,
+    IThemeRegistry themeRegistry,
     ILogger<ImageSizesProvider> logger) : IImageSizesProvider
 {
     private ReadOnlyCollection<int>? cachedSizes;
@@ -123,7 +123,7 @@ public sealed partial class ImageSizesProvider(
         }
 
         var projectPath = projectEnvironment.Value.Path;
-        var theme = themeResolver.Resolve(themeName, projectPath);
+        var theme = themeRegistry.Resolve(themeName, projectPath);
         if (theme is null)
         {
             LogThemeNotFound(themeName);

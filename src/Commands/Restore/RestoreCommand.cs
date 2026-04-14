@@ -22,7 +22,7 @@ namespace Spectara.Revela.Commands.Restore;
 /// </remarks>
 internal sealed partial class RestoreCommand(
     IDependencyScanner dependencyScanner,
-    IThemeResolver themeResolver,
+    IThemeRegistry themeRegistry,
     IEnumerable<IPlugin> installedPlugins,
     PackageManager pluginManager,
     IOptions<ProjectEnvironment> projectEnvironment,
@@ -211,7 +211,7 @@ internal sealed partial class RestoreCommand(
         var themeName = GetShortName(dep);
 
         // Check if theme is available (local or installed)
-        var theme = themeResolver.Resolve(themeName, projectPath);
+        var theme = themeRegistry.Resolve(themeName, projectPath);
         return theme != null;
     }
 

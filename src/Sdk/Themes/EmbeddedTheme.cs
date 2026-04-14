@@ -80,7 +80,8 @@ public abstract class EmbeddedTheme : ITheme
         Prefix is null ? GetFile("Configuration/images.json") : null;
 
     /// <inheritdoc />
-    private static readonly IReadOnlyDictionary<string, string> EmptyDefaults = new Dictionary<string, string>();
+    private static readonly IReadOnlyDictionary<string, string> EmptyDefaults =
+        System.Collections.Frozen.FrozenDictionary<string, string>.Empty;
 
     /// <inheritdoc />
     public IReadOnlyDictionary<string, string> GetTemplateDataDefaults(string templateKey)

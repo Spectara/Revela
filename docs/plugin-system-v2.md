@@ -63,7 +63,7 @@ src/Sdk/
 │
 ├── Services/                   ← Existing + MOVED from Core
 │   ├── IPathResolver.cs
-│   ├── IThemeResolver.cs       ← MOVED from Core (plugins need it)
+│   ├── IThemeRegistry.cs       ← MOVED from Core (plugins need it)
 │   ├── IAssetResolver.cs       ← MOVED from Core
 │   ├── ITemplateResolver.cs    ← MOVED from Core
 │   ├── IStaticFileService.cs   ← MOVED from Core
@@ -100,7 +100,7 @@ must move to SDK so plugins can use them:
 
 | Interface | Current Location | Used By |
 |-----------|-----------------|--------|
-| `IThemeResolver` | Core/Services | Generate Plugin, Theme Plugin |
+| `IThemeRegistry` | Core/Services | Generate Plugin, Theme Plugin |
 | `IAssetResolver` | Core/Services | Generate Plugin |
 | `ITemplateResolver` | Core/Services | Generate Plugin |
 | `IStaticFileService` | Core/Services | Generate Plugin |
@@ -310,7 +310,7 @@ Plugins that need to trigger generation use `IRevelaEngine` from the SDK.
 
 | Interface | Why Plugins Need It |
 |-----------|--------------------|
-| `IThemeResolver` | Generate Plugin resolves theme packages |
+| `IThemeRegistry` | Generate Plugin resolves theme packages |
 | `IAssetResolver` | Generate Plugin copies CSS/JS/assets |
 | `ITemplateResolver` | Generate Plugin finds template files |
 | `IStaticFileService` | Generate Plugin copies static files |
@@ -672,7 +672,7 @@ ViewModel.GalleryCount = result.GalleryCount;
 
 | Step | What | Files | Risk |
 |------|------|-------|------|
-| 1.1 | Move Core interfaces to SDK (IThemeResolver, IAssetResolver, ITemplateResolver, IStaticFileService, IGlobalConfigManager) | ~10 files | Medium — namespace changes across codebase |
+| 1.1 | Move Core interfaces to SDK (IThemeRegistry, IAssetResolver, ITemplateResolver, IStaticFileService, IGlobalConfigManager) | ~10 files | Medium — namespace changes across codebase |
 | 1.2 | Create Engine result/progress types in SDK | ~7 new files | Low — additive |
 | 1.3 | Create `IRevelaEngine` interface in SDK | 1 new file | Low — additive |
 | 1.4 | Add `IsSequentialStep` to CommandDescriptor | 1 file | Low — additive, default false |

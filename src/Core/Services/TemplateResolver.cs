@@ -1,7 +1,7 @@
 using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Abstractions;
-
 using Spectara.Revela.Sdk.Services;
+
 namespace Spectara.Revela.Core.Services;
 
 /// <summary>
@@ -13,14 +13,12 @@ public sealed partial class TemplateResolver(ILogger<TemplateResolver> logger) :
     private const string RevelaExtension = ".revela";
 
     private readonly Dictionary<string, ResolvedEntry> templates = new(StringComparer.OrdinalIgnoreCase);
-    private ITheme? theme;
     private string? localThemePath;
     private bool isInitialized;
 
     /// <inheritdoc />
     public void Initialize(ITheme theme, IReadOnlyList<ITheme> extensions, string projectPath)
     {
-        this.theme = theme;
         templates.Clear();
 
         var themeName = theme.Metadata.Name;
@@ -60,13 +58,7 @@ public sealed partial class TemplateResolver(ILogger<TemplateResolver> logger) :
             return null;
         }
 
-        return entry.SourceType switch
-        {
-            FileSourceType.Local => File.OpenRead(entry.Path),
-            FileSourceType.Theme => theme!.GetFile(entry.Path),
-            FileSourceType.Extension => entry!.Extension!.GetFile(entry.Path),
-            _ => null
-        };
+        return entry.StreamFactory();
     }
 
     private void ScanTheme(ITheme theme)
@@ -82,7 +74,7 @@ public sealed partial class TemplateResolver(ILogger<TemplateResolver> logger) :
 
             var key = DeriveKeyFromPath(file);
             LogScannedTemplate(key, file);
-            templates[key] = new ResolvedEntry(FileSourceType.Theme, file, null);
+            templates[key] = new ResolvedEntry(FileSourceType.Theme, file, null, () => theme.GetFile(file));
             count++;
         }
 
@@ -103,7 +95,7 @@ public sealed partial class TemplateResolver(ILogger<TemplateResolver> logger) :
 
             // Extension key = prefix + filename (strip Body/Partials folders)
             var key = DeriveExtensionKey(prefix, file);
-            templates[key] = new ResolvedEntry(FileSourceType.Extension, file, extension);
+            templates[key] = new ResolvedEntry(FileSourceType.Extension, file, extension, () => extension.GetFile(file));
             count++;
         }
 
@@ -128,7 +120,7 @@ public sealed partial class TemplateResolver(ILogger<TemplateResolver> logger) :
             var key = DeriveKeyFromPath(relativePath);
             var isOverride = templates.ContainsKey(key);
 
-            templates[key] = new ResolvedEntry(FileSourceType.Local, file, null);
+            templates[key] = new ResolvedEntry(FileSourceType.Local, file, null, () => File.OpenRead(file));
 
             if (isOverride)
             {

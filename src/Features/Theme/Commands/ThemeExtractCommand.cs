@@ -14,15 +14,14 @@ namespace Spectara.Revela.Features.Theme.Commands;
 /// </summary>
 /// <remarks>
 /// Usage:
-///   revela theme extract Lumina           → themes/Lumina/ (full extraction)
+///   revela theme extract Lumina           → themes/Lumina/ (full extraction + extensions)
 ///   revela theme extract Lumina MyTheme   → themes/MyTheme/ (renamed)
 ///   revela theme extract --file Body/Gallery.revela → themes/Lumina/Body/Gallery.revela
 ///   revela theme extract --file Partials/ → themes/Lumina/Partials/* (folder)
-///   revela theme extract Lumina --extensions → also extracts Lumina.* extensions
 /// </remarks>
 internal sealed partial class ThemeExtractCommand(
     IThemeService themeService,
-    IThemeResolver themeResolver,
+    IThemeRegistry themeRegistry,
     ITemplateResolver templateResolver,
     IAssetResolver assetResolver,
     IOptions<ProjectEnvironment> projectEnvironment,
@@ -118,7 +117,7 @@ internal sealed partial class ThemeExtractCommand(
         }
 
         // Resolve theme
-        var theme = themeResolver.Resolve(themeName, projectPath);
+        var theme = themeRegistry.Resolve(themeName, projectPath);
         if (theme is null)
         {
             ErrorPanels.ShowError(
@@ -129,7 +128,7 @@ internal sealed partial class ThemeExtractCommand(
         }
 
         // Get extensions
-        var extensions = themeResolver.GetExtensions(themeName);
+        var extensions = themeRegistry.GetExtensions(themeName);
 
         // Initialize resolvers
         templateResolver.Initialize(theme, extensions, projectPath);
@@ -508,8 +507,8 @@ internal sealed partial class ThemeExtractCommand(
 
         // For extract: always prefer installed theme (user wants fresh copy from original)
         // Fall back to local only if installed theme not found
-        var sourceTheme = themeResolver.ResolveInstalled(sourceName)
-                          ?? themeResolver.Resolve(sourceName, projectPath);
+        var sourceTheme = themeRegistry.ResolveInstalled(sourceName)
+                          ?? themeRegistry.Resolve(sourceName, projectPath);
 
         if (sourceTheme is null)
         {
@@ -555,7 +554,7 @@ internal sealed partial class ThemeExtractCommand(
 
         // Extract extensions into category subfolders (Partials/<ExtName>/, Assets/<ExtName>/)
         var extractedExtensions = new List<string>();
-        var extensions = themeResolver.GetExtensions(sourceName);
+        var extensions = themeRegistry.GetExtensions(sourceName);
         if (extensions.Count > 0)
         {
             await AnsiConsole.Status()
@@ -723,8 +722,8 @@ internal sealed partial class ThemeExtractCommand(
         var projectPath = projectEnvironment.Value.Path;
 
         // Resolve theme
-        var sourceTheme = themeResolver.ResolveInstalled(sourceName)
-                          ?? themeResolver.Resolve(sourceName, projectPath);
+        var sourceTheme = themeRegistry.ResolveInstalled(sourceName)
+                          ?? themeRegistry.Resolve(sourceName, projectPath);
 
         if (sourceTheme is null)
         {
@@ -736,7 +735,7 @@ internal sealed partial class ThemeExtractCommand(
         }
 
         // Get extensions for this theme
-        var extensions = themeResolver.GetExtensions(sourceName);
+        var extensions = themeRegistry.GetExtensions(sourceName);
 
         // Get all available files from theme and extensions
         var allFiles = GetThemeAndExtensionFiles(sourceTheme, extensions)
