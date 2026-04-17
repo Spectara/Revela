@@ -1,3 +1,4 @@
+using System.Collections.Frozen;
 using Microsoft.Extensions.Options;
 using Spectara.Revela.Sdk.Configuration;
 
@@ -31,7 +32,7 @@ internal sealed class CameraModelMapper
     /// <summary>
     /// Default Sony ILCE to α series mappings
     /// </summary>
-    private static readonly Dictionary<string, string> DefaultModelMappings = new(StringComparer.OrdinalIgnoreCase)
+    private static readonly FrozenDictionary<string, string> DefaultModelMappings = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
     {
         // α 7 series (full frame, general purpose)
         ["ILCE-7M4"] = "α 7 IV",
@@ -72,12 +73,12 @@ internal sealed class CameraModelMapper
         ["ZV-E10M2"] = "ZV-E10 II",
         ["ZV-E10"] = "ZV-E10",
         ["ZV-E1"] = "ZV-E1"
-    };
+    }.ToFrozenDictionary(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>
     /// Default manufacturer name normalizations
     /// </summary>
-    private static readonly Dictionary<string, string> DefaultMakeMappings = new(StringComparer.OrdinalIgnoreCase)
+    private static readonly FrozenDictionary<string, string> DefaultMakeMappings = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
     {
         ["SONY"] = "Sony",
         ["CANON"] = "Canon",
@@ -99,7 +100,7 @@ internal sealed class CameraModelMapper
         ["SAMSUNG"] = "Samsung",
         ["Google"] = "Google",
         ["HUAWEI"] = "Huawei"
-    };
+    }.ToFrozenDictionary(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>
     /// Create mapper with default mappings and optional custom config

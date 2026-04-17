@@ -1,4 +1,5 @@
 using System.CommandLine;
+using System.Text.RegularExpressions;
 using Microsoft.Extensions.Options;
 using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Abstractions;
@@ -648,12 +649,14 @@ internal sealed partial class ThemeExtractCommand(
         var json = File.ReadAllText(manifestPath);
 
         // Simple regex replacement for "name": "..."
-        var pattern = "\"name\"\\s*:\\s*\"[^\"]*\"";
         var replacement = $"\"name\": \"{newName}\"";
-        var updatedJson = System.Text.RegularExpressions.Regex.Replace(json, pattern, replacement);
+        var updatedJson = ThemeNamePattern().Replace(json, replacement);
 
         File.WriteAllText(manifestPath, updatedJson);
     }
+
+    [GeneratedRegex(@"""name""\s*:\s*""[^""]*""")]
+    private static partial Regex ThemeNamePattern();
 
     /// <summary>
     /// Prompts the user to select a theme for extraction.

@@ -219,7 +219,7 @@ internal sealed partial class ContentService(
         CancellationToken cancellationToken)
     {
         var metadata = new Dictionary<string, ImageMetadata>(StringComparer.OrdinalIgnoreCase);
-        var metadataLock = new object();
+        var metadataLock = new Lock();
         var processedCount = 0;
         var cachedCount = 0;
         var newCount = 0;

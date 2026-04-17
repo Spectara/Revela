@@ -12,22 +12,10 @@ namespace Spectara.Revela.Sdk.Services;
 /// Paths are resolved dynamically on each access, so configuration
 /// changes during a session are immediately reflected.
 /// </remarks>
-public sealed class PathResolver : IPathResolver
+public sealed class PathResolver(
+    IOptions<ProjectEnvironment> projectEnvironment,
+    IOptionsMonitor<PathsConfig> pathsConfig) : IPathResolver
 {
-    private readonly IOptions<ProjectEnvironment> projectEnvironment;
-    private readonly IOptionsMonitor<PathsConfig> pathsConfig;
-
-    /// <summary>
-    /// Initializes a new instance of the <see cref="PathResolver"/> class.
-    /// </summary>
-    public PathResolver(
-        IOptions<ProjectEnvironment> projectEnvironment,
-        IOptionsMonitor<PathsConfig> pathsConfig)
-    {
-        this.projectEnvironment = projectEnvironment;
-        this.pathsConfig = pathsConfig;
-    }
-
     /// <inheritdoc />
     public string SourcePath => ResolvePath(pathsConfig.CurrentValue.Source);
 

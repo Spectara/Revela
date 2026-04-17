@@ -257,7 +257,7 @@ internal sealed partial class ImageService(
             var processedCount = 0;
             var totalFilesCreated = 0;
             var totalSizeBytes = 0L;
-            var manifestLock = new object();
+            var manifestLock = new Lock();
 
             // Track which worker is processing each image
             var workerAssignments = new ConcurrentDictionary<int, int>(); // taskId -> workerId

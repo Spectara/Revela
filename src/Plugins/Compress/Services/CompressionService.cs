@@ -1,3 +1,4 @@
+using System.Collections.Frozen;
 using System.Globalization;
 using System.IO.Compression;
 
@@ -63,7 +64,7 @@ internal sealed partial class CompressionService(ILogger<CompressionService> log
     private const CompressionLevel GzipLevel = CompressionLevel.SmallestSize;
 
     /// <summary>File extensions to compress.</summary>
-    private static readonly HashSet<string> CompressibleExtensions = new(StringComparer.OrdinalIgnoreCase)
+    private static readonly FrozenSet<string> CompressibleExtensions = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
     {
         ".html",
         ".css",
@@ -71,7 +72,7 @@ internal sealed partial class CompressionService(ILogger<CompressionService> log
         ".json",
         ".svg",
         ".xml"
-    };
+    }.ToFrozenSet(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>
     /// Compresses all eligible files in a directory.
@@ -101,7 +102,7 @@ internal sealed partial class CompressionService(ILogger<CompressionService> log
         LogFoundFiles(logger, files.Count, outputPath);
 
         var processedCount = 0;
-        var lockObj = new object();
+        var lockObj = new Lock();
 
         await Parallel.ForEachAsync(
             files,

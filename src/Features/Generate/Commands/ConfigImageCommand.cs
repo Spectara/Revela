@@ -1,3 +1,4 @@
+using System.Collections.Frozen;
 using System.CommandLine;
 using System.Globalization;
 using System.Text.Json;
@@ -40,12 +41,12 @@ internal sealed partial class ConfigImageCommand(
     IThemeRegistry themeRegistry,
     IConfigService configService)
 {
-    private static readonly Dictionary<string, int> DefaultFormatQualities = new(StringComparer.OrdinalIgnoreCase)
+    private static readonly FrozenDictionary<string, int> DefaultFormatQualities = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase)
     {
         ["jpg"] = 90,
         ["webp"] = 85,
         ["avif"] = 80
-    };
+    }.ToFrozenDictionary(StringComparer.OrdinalIgnoreCase);
     /// <summary>
     /// Creates the command definition.
     /// </summary>
@@ -179,8 +180,8 @@ internal sealed partial class ConfigImageCommand(
         var currentFormats = GetCurrentFormats(current);
 
         // Determine defaults: current > theme > fallback
-        var defaultFormats = currentFormats
-            ?? themeDefaults?.Formats
+        var defaultFormats = (IReadOnlyDictionary<string, int>?)currentFormats
+            ?? (IReadOnlyDictionary<string, int>?)themeDefaults?.Formats
             ?? DefaultFormatQualities;
 
         // Parse formats (format or format:quality or format:0 to disable)
@@ -260,7 +261,7 @@ internal sealed partial class ConfigImageCommand(
         var currentFormats = GetCurrentFormats(current);
 
         // Determine quality defaults: current > theme > global defaults
-        var defaultFormats = currentFormats ?? themeDefaults?.Formats ?? DefaultFormatQualities;
+        var defaultFormats = (IReadOnlyDictionary<string, int>?)currentFormats ?? (IReadOnlyDictionary<string, int>?)themeDefaults?.Formats ?? DefaultFormatQualities;
 
         // Format selection with descriptions
         var formatDescriptions = new Dictionary<string, string>(StringComparer.Ordinal)

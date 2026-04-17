@@ -1,3 +1,4 @@
+using System.Collections.Frozen;
 using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Abstractions;
 using Spectara.Revela.Sdk.Services;
@@ -24,15 +25,15 @@ public sealed partial class AssetResolver(ILogger<AssetResolver> logger) : IAsse
     private const string AssetsFolderName = "Assets";
     private const string OutputAssetsFolderName = "_assets";
 
-    private static readonly HashSet<string> CssExtensions = new(StringComparer.OrdinalIgnoreCase)
+    private static readonly FrozenSet<string> CssExtensions = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
     {
         ".css"
-    };
+    }.ToFrozenSet(StringComparer.OrdinalIgnoreCase);
 
-    private static readonly HashSet<string> JsExtensions = new(StringComparer.OrdinalIgnoreCase)
+    private static readonly FrozenSet<string> JsExtensions = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
     {
         ".js", ".mjs"
-    };
+    }.ToFrozenSet(StringComparer.OrdinalIgnoreCase);
 
     private readonly Dictionary<string, ResolvedEntry> assets = new(StringComparer.OrdinalIgnoreCase);
     private readonly List<string> styleSheetOrder = [];

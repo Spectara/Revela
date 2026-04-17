@@ -1,3 +1,4 @@
+using System.Collections.Frozen;
 using System.Linq.Expressions;
 using System.Reflection;
 
@@ -28,7 +29,7 @@ internal sealed class FilterExpressionBuilder : IFilterNodeVisitor<Expression>
     /// <summary>
     /// Supported functions and their implementations.
     /// </summary>
-    private static readonly Dictionary<string, Func<FilterExpressionBuilder, CallNode, Expression>> Functions = new(StringComparer.OrdinalIgnoreCase)
+    private static readonly FrozenDictionary<string, Func<FilterExpressionBuilder, CallNode, Expression>> Functions = new Dictionary<string, Func<FilterExpressionBuilder, CallNode, Expression>>(StringComparer.OrdinalIgnoreCase)
     {
         ["year"] = (b, n) => b.BuildDatePartFunction(n, "Year"),
         ["month"] = (b, n) => b.BuildDatePartFunction(n, "Month"),
@@ -38,7 +39,7 @@ internal sealed class FilterExpressionBuilder : IFilterNodeVisitor<Expression>
         ["ends_with"] = (b, n) => b.BuildStringFunction(n, "EndsWith"),
         ["lower"] = (b, n) => b.BuildToLowerFunction(n),
         ["upper"] = (b, n) => b.BuildToUpperFunction(n)
-    };
+    }.ToFrozenDictionary(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>
     /// Initializes a new instance of the <see cref="FilterExpressionBuilder"/> class.

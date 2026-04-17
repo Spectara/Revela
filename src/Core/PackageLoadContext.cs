@@ -1,3 +1,4 @@
+using System.Collections.Frozen;
 using System.Reflection;
 using System.Runtime.Loader;
 
@@ -51,11 +52,11 @@ internal sealed class PackageLoadContext : AssemblyLoadContext
     /// <c>src/Sdk/build/Spectara.Revela.Sdk.targets</c> (target <c>_RevelaIncludePluginDependencies</c>).
     /// </para>
     /// </remarks>
-    private static readonly HashSet<string> SharedAssemblies =
-    [
+    private static readonly FrozenSet<string> SharedAssemblies = new string[]
+    {
         // System.CommandLine for CLI integration
         "System.CommandLine"
-    ];
+    }.ToFrozenSet();
 
     protected override Assembly? Load(AssemblyName assemblyName)
     {

@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Collections.Frozen;
 using System.Globalization;
 using NetVips;
 using Spectara.Revela.Features.Generate.Abstractions;
@@ -479,8 +480,8 @@ internal sealed partial class NetVipsImageProcessor(
     /// These fields are extracted into the Raw dictionary for sorting, filtering,
     /// and display purposes. Only fields with non-empty values are included.
     /// </remarks>
-    private static readonly HashSet<string> UsefulExifFields =
-    [
+    private static readonly FrozenSet<string> UsefulExifFields = new string[]
+    {
         // Exposure and metering
         "ExposureProgram",      // 0=Unknown, 1=Manual, 2=Program, 3=Aperture Priority, etc.
         "ExposureMode",         // 0=Auto, 1=Manual, 2=Auto bracket
@@ -526,7 +527,7 @@ internal sealed partial class NetVipsImageProcessor(
 
         // Software
         "Software",             // Processing software
-    ];
+    }.ToFrozenSet();
 
     /// <summary>
     /// Extract additional EXIF fields into a dictionary.
