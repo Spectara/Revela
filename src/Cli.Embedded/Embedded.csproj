@@ -1,0 +1,51 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <Description>Revela - Embedded build with all plugins statically linked (debug &amp; AOT)</Description>
+
+    <!-- Override AssemblyName to get 'revela' executable -->
+    <AssemblyName>revela</AssemblyName>
+
+    <!-- Application Icon -->
+    <ApplicationIcon>..\..\assets\revela.ico</ApplicationIcon>
+  </PropertyGroup>
+
+  <!-- Share Hosting code from Cli project (HostBootstrap, InteractiveMode, etc.) -->
+  <ItemGroup>
+    <Compile Include="..\Cli\Hosting\**\*.cs" LinkBase="Hosting" />
+  </ItemGroup>
+
+  <!-- Core + Commands (same as Cli) -->
+  <ItemGroup>
+    <ProjectReference Include="..\Core\Core.csproj" />
+    <ProjectReference Include="..\Commands\Commands.csproj" />
+  </ItemGroup>
+
+  <!-- All plugins statically referenced (no dynamic loading needed) -->
+  <ItemGroup>
+    <ProjectReference Include="..\Plugins\Compress\Compress.csproj" />
+    <ProjectReference Include="..\Plugins\Serve\Serve.csproj" />
+    <ProjectReference Include="..\Plugins\Source\OneDrive\OneDrive.csproj" />
+    <ProjectReference Include="..\Plugins\Statistics\Statistics.csproj" />
+    <ProjectReference Include="..\Plugins\Calendar\Calendar.csproj" />
+    <ProjectReference Include="..\Plugins\Source\Calendar\Calendar.csproj" />
+  </ItemGroup>
+
+  <!-- All themes statically referenced -->
+  <ItemGroup>
+    <ProjectReference Include="..\Themes\Lumina\Lumina.csproj" />
+    <ProjectReference Include="..\Themes\Lumina.Statistics\Lumina.Statistics.csproj" />
+    <ProjectReference Include="..\Themes\Lumina.Calendar\Lumina.Calendar.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Hosting" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Console" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Debug" />
+    <PackageReference Include="System.CommandLine" />
+    <PackageReference Include="Spectre.Console" />
+    <PackageReference Include="NetVips.Native" />
+  </ItemGroup>
+
+</Project>

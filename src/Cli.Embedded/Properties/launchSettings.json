@@ -1,0 +1,37 @@
+{
+  "$schema": "http://json.schemastore.org/launchsettings.json",
+  "profiles": {
+    "Interactive": {
+      "commandName": "Project",
+      "commandLineArgs": "",
+      "workingDirectory": "$(SolutionDir)samples\\onedrive",
+      "environmentVariables": {
+        "DOTNET_ENVIRONMENT": "Development"
+      }
+    },
+    "Revela Help": {
+      "commandName": "Project",
+      "commandLineArgs": "--help",
+      "workingDirectory": "$(SolutionDir)debug",
+      "environmentVariables": {
+        "DOTNET_ENVIRONMENT": "Development"
+      }
+    },
+    "Plugin List": {
+      "commandName": "Project",
+      "commandLineArgs": "plugin list",
+      "workingDirectory": "$(SolutionDir)debug",
+      "environmentVariables": {
+        "DOTNET_ENVIRONMENT": "Development"
+      }
+    },
+    "Generate All (Showcase)": {
+      "commandName": "Project",
+      "commandLineArgs": "generate all",
+      "workingDirectory": "$(SolutionDir)samples\\showcase",
+      "environmentVariables": {
+        "DOTNET_ENVIRONMENT": "Development"
+      }
+    }
+  }
+}

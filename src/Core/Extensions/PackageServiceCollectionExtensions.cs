@@ -2,7 +2,6 @@ using Microsoft.Extensions.Configuration;
 using Spectara.Revela.Core;
 using Spectara.Revela.Core.Logging;
 using Spectara.Revela.Sdk.Abstractions;
-using Spectara.Revela.Sdk.Configuration;
 
 namespace Microsoft.Extensions.DependencyInjection;
 
@@ -14,11 +13,15 @@ public static class PackageServiceCollectionExtensions
     /// <summary>
     /// Loads and registers plugins and themes with the service collection.
     /// </summary>
+    /// <param name="services">The service collection.</param>
+    /// <param name="packageSource">Source that provides plugins and themes.</param>
+    /// <param name="configuration">The configuration builder for plugin configuration.</param>
+    /// <param name="args">CLI arguments (used to detect package management commands).</param>
     public static void AddPackages(
         this IServiceCollection services,
+        IPackageSource packageSource,
         IConfigurationBuilder configuration,
-        string[] args,
-        Action<PackageOptions>? configure = null)
+        string[] args)
     {
         if (IsPackageManagementCommand(args))
         {
@@ -30,11 +33,10 @@ public static class PackageServiceCollectionExtensions
             return;
         }
 
-        var options = new PackageOptions();
-        configure?.Invoke(options);
+        var plugins = packageSource.LoadPlugins().ToList();
+        var themes = packageSource.LoadThemes().ToList();
 
         using var loggerFactory = CreateBootstrapLoggerFactory();
-        var (plugins, themes) = LoadPackages(options, loggerFactory);
         ValidatePluginDependencies(plugins, loggerFactory);
         ConfigurePlugins(services, configuration, plugins, loggerFactory);
         RegisterServices(services, plugins, themes);
@@ -42,28 +44,6 @@ public static class PackageServiceCollectionExtensions
 
     private static ILoggerFactory CreateBootstrapLoggerFactory() =>
         LoggerFactory.Create(_ => { });
-
-    private static (List<LoadedPluginInfo> Plugins, List<LoadedThemeInfo> Themes) LoadPackages(
-        PackageOptions options,
-        ILoggerFactory loggerFactory)
-    {
-        var logger = loggerFactory.CreateLogger<PackageLoader>();
-        var loader = new PackageLoader(options, logger);
-        loader.Load();
-
-        var plugins = loader.GetLoadedPlugins().ToList();
-        var themes = loader.GetLoadedThemes().ToList();
-
-        if (options.RequirePlugins && plugins.Count == 0)
-        {
-            throw new InvalidOperationException(
-                "No plugins found and RequirePlugins=true. " +
-                "Ensure plugins are either built with the application (ProjectReference) " +
-                "or installed in the user plugin directory.");
-        }
-
-        return (plugins, themes);
-    }
 
     private static void ValidatePluginDependencies(
         List<LoadedPluginInfo> plugins,
