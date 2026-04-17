@@ -85,7 +85,9 @@ src/
 ├── Core/                     # Shared kernel (services, package loading, configuration)
 ├── Commands/                 # CLI commands — host-owned (Config, Packages, Plugins, Restore)
 │                             # Also references Core features (Generate, Theme, Projects)
-├── Cli/                      # Entry point, hosting, interactive mode
+├── Cli/                      # Entry point (dynamic plugin loading via DiskPackageSource)
+├── Cli.Embedded/             # Entry point (static plugin references via EmbeddedPackageSource)
+│                             # → Default for debugging, all plugins/themes built in
 ├── Sdk/                      # SDK for plugin development (abstractions, models, services)
 ├── Plugins/
 │   ├── Core/                 # Core features — always built into CLI (NOT plugin-loaded)
@@ -124,11 +126,12 @@ tests/
 - **Engine Models:** `src/Sdk/Models/Engine/` - ScanResult, PagesResult, ImagesResult, GenerateResult
 - **Config:** `src/Core/Configuration/` + `src/Sdk/Configuration/` - Configuration models
 - **Global Config:** `src/Core/Services/IGlobalConfigManager.cs` + `GlobalConfigManager.cs` - revela.json read/write (DI singleton)
-- **Package Loading:** `src/Core/PackageLoader.cs` + `PackageManager.cs`
+- **Package Source:** `src/Sdk/Abstractions/IPackageSource.cs` - Plugin/theme loading abstraction
+- **Package Loading:** `src/Core/PackageLoader.cs` + `DiskPackageSource.cs` (runtime discovery)
 - **Package Registration:** `src/Core/Extensions/PackageServiceCollectionExtensions.cs` - AddPackages lifecycle
 - **Path Resolution:** `src/Sdk/Services/IPathResolver.cs` + `PathResolver.cs`
 - **Output Helpers:** `src/Sdk/Output/OutputMarkers.cs`, `src/Sdk/ProjectPaths.cs`
-- **CLI Hosting:** `src/Cli/Hosting/` - CoreCommandProvider, HostExtensions, ProjectResolver, InteractiveMenuService
+- **CLI Hosting:** `src/Cli/Hosting/` - HostBootstrap, CoreCommandProvider, HostExtensions, ProjectResolver, InteractiveMenuService
 
 ---
 
@@ -199,76 +202,110 @@ return rootCommand.Parse(args).Invoke();
 - **Plugin Commands:** Registered via `AddPackages()` → `IPlugin.ConfigureServices()` + `IPlugin.GetCommands()`
 - **Core Features:** Generate, Theme, and Projects are NOT plugins — registered directly in `AddRevelaCommands()`
   ```csharp
-  builder.Services.AddRevelaCommands();    // Host-owned commands + Core features (Generate, Theme, Projects)
-  builder.Services.AddPackages(builder.Configuration, filteredArgs); // External plugin commands only
+  // All setup in HostBootstrap.ConfigureRevela():
+  builder.Services.AddRevelaCommands();       // Host-owned commands + Core features
+  builder.Services.AddPackages(packageSource, builder.Configuration, filteredArgs);
+  // packageSource = DiskPackageSource (Cli) or EmbeddedPackageSource (Cli.Embedded)
   ```
 
 ### 4. Plugin System with Host.CreateApplicationBuilder
 
-**MODERN PATTERN:** Use `Host.CreateApplicationBuilder` for full .NET hosting features!
+**MODERN PATTERN:** Two entry points sharing a common bootstrap via `HostBootstrap`.
 
-#### Complete Program.cs Example
+#### Two Entry Points — One Shared Bootstrap
 
 ```csharp
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
-using Spectara.Revela.Cli.Hosting;
-using Spectara.Revela.Commands;
-using Spectara.Revela.Core.Configuration;
-using Spectara.Revela.Sdk;
-
-// ✅ Standalone mode: Resolve project BEFORE building host
+// Cli/Program.cs — Dynamic plugin loading (~10 lines)
 var (projectPath, filteredArgs, shouldExit) = ProjectResolver.ResolveProject(args);
 if (shouldExit) return 1;
 
-// ✅ Detect interactive mode: no arguments AND interactive terminal
-var isInteractiveMode = filteredArgs.Length == 0
-    && !Console.IsInputRedirected
-    && !Console.IsOutputRedirected
-    && Environment.UserInteractive;
-
-// ✅ Create builder with correct ContentRootPath
 var settings = new HostApplicationBuilderSettings
 {
     Args = filteredArgs,
     ContentRootPath = projectPath ?? Directory.GetCurrentDirectory(),
 };
 var builder = Host.CreateApplicationBuilder(settings);
+builder.ConfigureRevela(filteredArgs, new DiskPackageSource());
+return await builder.Build().RunRevelaAsync(filteredArgs);
+```
 
-// ✅ Pre-build: Load configuration and register services
-builder.AddRevelaConfiguration();       // revela.json → project.json → logging.json
-builder.Services.AddRevelaConfigSections(); // IOptions<T> for all config models
-builder.Services.AddRevelaCommands();    // All CLI commands
-builder.Services.AddInteractiveMode();   // Interactive menu system
-builder.Services.AddPackages(builder.Configuration, filteredArgs);
+```csharp
+// Cli.Embedded/Program.cs — Static plugin references (~10 lines, same structure)
+var (projectPath, filteredArgs, shouldExit) = ProjectResolver.ResolveProject(args);
+if (shouldExit) return 1;
 
-// Register ProjectEnvironment (runtime info about project location)
-builder.Services.AddOptions<ProjectEnvironment>()
-    .Configure<IHostEnvironment>((env, host) => env.Path = host.ContentRootPath);
-
-// ✅ Build host
-var host = builder.Build();
-
-// ✅ Post-build: Create CLI and execute
-var rootCommand = host.UseRevelaCommands();
-
-// If interactive mode, run menu directly
-if (isInteractiveMode)
+var settings = new HostApplicationBuilderSettings
 {
-    var interactiveService = host.Services.GetRequiredService<IInteractiveMenuService>();
-    interactiveService.RootCommand = rootCommand;
-    return await interactiveService.RunAsync(CancellationToken.None);
+    Args = filteredArgs,
+    ContentRootPath = projectPath ?? Directory.GetCurrentDirectory(),
+};
+var builder = Host.CreateApplicationBuilder(settings);
+builder.ConfigureRevela(filteredArgs, new EmbeddedPackageSource());
+return await builder.Build().RunRevelaAsync(filteredArgs);
+```
+
+**The only difference is the `IPackageSource` parameter.** Everything else is shared in `HostBootstrap`.
+
+#### HostBootstrap — Shared Setup
+
+```csharp
+// Cli/Hosting/HostBootstrap.cs (shared via Compile Include in Cli.Embedded)
+internal static class HostBootstrap
+{
+    public static HostApplicationBuilder ConfigureRevela(
+        this HostApplicationBuilder builder, string[] filteredArgs, IPackageSource packageSource)
+    {
+        builder.AddRevelaConfiguration();       // revela.json → project.json → logging.json
+        builder.Services.AddRevelaConfigSections(); // IOptions<T> for all config models
+        builder.Services.AddCoreServices();      // GlobalConfigManager etc.
+        builder.Services.AddRevelaCommands();    // All CLI commands
+        builder.Services.AddInteractiveMode();   // Interactive menu system
+        builder.Services.AddPackages(packageSource, builder.Configuration, filteredArgs);
+        // + ProjectEnvironment registration
+        return builder;
+    }
+
+    public static async Task<int> RunRevelaAsync(this IHost host, string[] filteredArgs)
+    {
+        // Creates CLI, detects interactive mode, executes
+    }
+}
+```
+
+#### IPackageSource — Plugin Loading Abstraction
+
+```csharp
+// Sdk: Interface
+public interface IPackageSource
+{
+    IReadOnlyList<LoadedPluginInfo> LoadPlugins();
+    IReadOnlyList<LoadedThemeInfo> LoadThemes();
 }
 
-return await rootCommand.Parse(filteredArgs).InvokeAsync();
+// Core: Dynamic loading (for dotnet tool / standalone release)
+public sealed class DiskPackageSource : IPackageSource { /* PackageLoader wrapper */ }
+
+// Cli.Embedded: Static references (for debugging / AOT build)
+internal sealed class EmbeddedPackageSource : IPackageSource
+{
+    public IReadOnlyList<LoadedPluginInfo> LoadPlugins() =>
+    [
+        new(new CompressPlugin(), PackageSource.Bundled),
+        new(new ServePlugin(), PackageSource.Bundled),
+        // ... all 6 plugins
+    ];
+}
 ```
 
 **Key Components:**
+- **`HostBootstrap`:** Shared setup in `ConfigureRevela()` + `RunRevelaAsync()` — no code drift possible
 - **`ProjectResolver`:** Detects standalone mode, parses `--project` arg, resolves project path before host build
 - **`AddRevelaConfiguration()`:** Loads config chain: `revela.json` (global %APPDATA%) → `project.json` (local) → `logging.json`. Note: `site.json` is NOT loaded via IConfiguration — it's loaded dynamically by RenderService.
 - **`AddRevelaConfigSections()`:** Registers `IOptions<T>` for ProjectConfig, ThemeConfig, GenerateConfig, PathsConfig, etc. Also registers `IPathResolver` and `IGlobalConfigManager`.
 - **`AddInteractiveMode()`:** Registers CommandOrderRegistry, CommandGroupRegistry, IInteractiveMenuService
 - **`ProjectEnvironment`:** Runtime info — `Path` (project dir), `IsInitialized` (project.json exists)
+
+**Debugging:** Use `Cli.Embedded` as startup project — all plugins available, breakpoints work everywhere.
 
 #### Plugin Lifecycle - 2 Required + 2 Optional Members
 
@@ -313,19 +350,19 @@ public record PackageMetadata
 
 #### AddPackages() Extension Method
 
-**Automatic Plugin Lifecycle Management:**
+**Plugin lifecycle managed by `AddPackages()`, using `IPackageSource` for plugin discovery:**
 
 ```csharp
 // Extension method handles all plugin lifecycle phases
-// Returns void — IPackageContext is registered in DI and resolved later
 public static void AddPackages(
     this IServiceCollection services,
+    IPackageSource packageSource,
     IConfigurationBuilder configuration,
-    string[] args,
-    Action<PluginOptions>? configure = null)
+    string[] args)
 {
-    // 1. Load plugin assemblies
-    var plugins = LoadPlugins(options);
+    // 1. Load plugins/themes from source (disk or embedded)
+    var plugins = packageSource.LoadPlugins().ToList();
+    var themes = packageSource.LoadThemes().ToList();
     
     // 2. Validate plugin dependencies (RequiredPlugins, ExtendsPlugins)
     ValidatePluginDependencies(plugins, loggerFactory);
@@ -342,7 +379,7 @@ public static void AddPackages(
     
     // 5. Register IPackageContext in DI (resolved in UseRevelaCommands)
     services.AddSingleton<IPackageContext>(sp =>
-        new PackageContext(plugins, sp.GetRequiredService<ILogger<PackageContext>>()));
+        new PackageContext(plugins, themes, sp.GetRequiredService<ILogger<PackageContext>>()));
 }
 ```
 

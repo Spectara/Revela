@@ -88,9 +88,9 @@ dotnet format --verify-no-changes
 ### Visual Studio 2022
 
 1. Open `Spectara.Revela.slnx`
-2. Set `Cli` as startup project
+2. Set `Cli.Embedded` as startup project (all plugins built in, breakpoints everywhere)
 3. Configure command-line arguments:
-   - Right-click `Cli` → Properties → Debug
+   - Right-click `Cli.Embedded` → Properties → Debug
    - Set working directory to a sample project (e.g., `samples/showcase`)
    - Add arguments: `generate all`
 
@@ -100,12 +100,12 @@ dotnet format --verify-no-changes
 2. Install extensions:
    - C# Dev Kit
    - .NET Install Tool
-3. Use tasks (`.vscode/tasks.json` if created)
+3. Debug configurations in `.vscode/launch.json` use `Cli.Embedded` by default
 
 ### Rider
 
 1. Open `Spectara.Revela.slnx`
-2. Set `Cli` as startup project
+2. Set `Cli.Embedded` as startup project
 3. Edit run configuration to add arguments
 
 ---
@@ -117,7 +117,8 @@ Revela/
 ├── src/                          # Source code
 │   ├── Core/                     # Shared kernel (models, abstractions, plugin system)
 │   ├── Commands/                 # CLI commands (Generate, Init, Plugins, Restore, Theme)
-│   ├── Cli/                      # CLI entry point
+│   ├── Cli/                      # CLI entry point (dynamic plugin loading)
+│   ├── Cli.Embedded/             # CLI entry point (all plugins statically linked)
 │   ├── Plugins/                  # Optional plugins
 │   │   ├── Serve/
 │   │   ├── Source/

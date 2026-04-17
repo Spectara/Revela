@@ -54,8 +54,12 @@ Revela/
 │   │   ├── Restore/              # Dependency restore
 │   │   └── Theme/                # Theme management
 │   │
-│   ├── Spectara.Revela.Cli/               # CLI Entry Point
-│   │   └── Program.cs            # Host + Commands
+│   ├── Spectara.Revela.Cli/               # CLI Entry Point (dynamic loading)
+│   │   ├── Hosting/              # HostBootstrap, InteractiveMenu, ProjectResolver
+│   │   └── Program.cs            # DiskPackageSource → HostBootstrap
+│   │
+│   ├── Spectara.Revela.Cli.Embedded/      # CLI Entry Point (static linking)
+│   │   └── Program.cs            # EmbeddedPackageSource → HostBootstrap
 │   │
 │   └── Spectara.Revela.Plugins/           # Optional Plugins
 │       ├── Serve/
@@ -125,9 +129,9 @@ Revela/
 - Easy to maintain
 
 **Implementation:**
-- Plugins stored in `%APPDATA%/Revela/plugins/`
-- Discovered via reflection
-- Loaded at startup
+- Plugins loaded via `IPackageSource` abstraction
+- `DiskPackageSource`: runtime discovery from disk (dotnet tool / standalone)
+- `EmbeddedPackageSource`: statically linked (debugging / AOT build)
 - Commands automatically registered
 
 ### 3. Why NetVips over ImageSharp?
