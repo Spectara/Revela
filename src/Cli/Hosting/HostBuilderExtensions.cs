@@ -72,7 +72,7 @@ internal static class HostBuilderExtensions
         // Defaults are Warning to keep console clean (Spectre.Console progress bars)
         // Users can override via logging.json for debugging
         var loggingConfig = new LoggingConfig();
-        builder.Configuration.GetSection(LoggingConfig.SectionName).Bind(loggingConfig);
+        builder.Configuration.GetSection("Logging").Bind(loggingConfig);
 
         foreach (var (category, level) in loggingConfig.LogLevel)
         {

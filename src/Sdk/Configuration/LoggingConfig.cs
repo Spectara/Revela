@@ -1,3 +1,5 @@
+using Spectara.Revela.Sdk.Abstractions;
+
 namespace Spectara.Revela.Sdk.Configuration;
 
 /// <summary>
@@ -30,13 +32,9 @@ namespace Spectara.Revela.Sdk.Configuration;
 /// }
 /// </code>
 /// </remarks>
+[RevelaConfig("Logging", ValidateDataAnnotations = false, ValidateOnStart = false)]
 public sealed class LoggingConfig
 {
-    /// <summary>
-    /// Configuration section name (standard .NET logging section)
-    /// </summary>
-    public const string SectionName = "Logging";
-
     /// <summary>
     /// Log levels per category
     /// </summary>

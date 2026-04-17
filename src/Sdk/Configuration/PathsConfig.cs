@@ -1,3 +1,5 @@
+using Spectara.Revela.Sdk.Abstractions;
+
 namespace Spectara.Revela.Sdk.Configuration;
 
 /// <summary>
@@ -46,13 +48,9 @@ namespace Spectara.Revela.Sdk.Configuration;
 /// </code>
 /// </example>
 /// </remarks>
+[RevelaConfig("paths", ValidateDataAnnotations = false, ValidateOnStart = false)]
 public sealed class PathsConfig
 {
-    /// <summary>
-    /// Configuration section name.
-    /// </summary>
-    public const string SectionName = "paths";
-
     /// <summary>
     /// Source directory containing images to process.
     /// </summary>

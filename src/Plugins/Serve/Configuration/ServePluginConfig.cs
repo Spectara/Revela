@@ -35,9 +35,12 @@ namespace Spectara.Revela.Plugins.Serve.Configuration;
 /// SPECTARA__REVELA__PLUGIN__SERVE__VERBOSE=true
 /// </code>
 /// </remarks>
-internal sealed class ServePluginConfig : IPluginConfig
+[RevelaConfig("Spectara.Revela.Plugins.Serve")]
+internal sealed class ServePluginConfig
 {
-    /// <inheritdoc />
+    /// <summary>
+    /// Configuration section name in project.json.
+    /// </summary>
     public static string SectionName => "Spectara.Revela.Plugins.Serve";
 
     /// <summary>

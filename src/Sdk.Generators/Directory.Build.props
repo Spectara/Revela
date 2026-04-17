@@ -1,0 +1,10 @@
+<Project>
+  <!-- Override parent Directory.Build.props for netstandard2.0 Source Generator -->
+  <!-- Import parent properties for versioning, output paths, etc. -->
+  <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)../'))" />
+
+  <!-- Remove global usings that are incompatible with netstandard2.0 -->
+  <ItemGroup>
+    <Using Remove="Microsoft.Extensions.Logging" />
+  </ItemGroup>
+</Project>

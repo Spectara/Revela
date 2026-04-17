@@ -43,46 +43,12 @@ public static class ConfigurationServiceCollectionExtensions
     public static IServiceCollection AddRevelaConfigSections(
         this IServiceCollection services)
     {
-        // All configs use BindConfiguration for proper hot-reload support.
-        // BindConfiguration registers IOptionsChangeTokenSource which enables
-        // IOptionsMonitor to automatically refresh when configuration files change.
+        // All configs use [RevelaConfig] attribute — the Source Generator creates
+        // individual Add{ConfigName}() methods and a combined AddAllRevelaConfigs().
+        // BindConfiguration provides hot-reload via IOptionsMonitor.
         // Configuration is merged from multiple JSON files (revela.json → project.json → logging.json).
-        // Later sources override earlier sources for the same section.
         // Note: site.json is NOT loaded via IOptions - it's loaded dynamically by RenderService.
-
-        // Core sections
-        services.AddOptions<ProjectConfig>()
-            .BindConfiguration(ProjectConfig.SectionName);
-
-        services.AddOptions<ThemeConfig>()
-            .BindConfiguration(ThemeConfig.SectionName);
-
-        services.AddOptions<GenerateConfig>()
-            .BindConfiguration(GenerateConfig.SectionName);
-
-        services.AddOptions<DependenciesConfig>()
-            .BindConfiguration(DependenciesConfig.SectionName);
-
-        // Global settings
-        services.AddOptions<GlobalSettingsConfig>()
-            .BindConfiguration(GlobalSettingsConfig.SectionName);
-
-        services.AddOptions<GlobalDefaultsConfig>()
-            .BindConfiguration(GlobalDefaultsConfig.SectionName);
-
-        // Package management (NuGet feeds)
-        // Standard binding works: { "packages": { "feeds": {...} } } maps to PackagesConfig.Feeds
-        services.AddOptions<PackagesConfig>()
-            .BindConfiguration(PackagesConfig.SectionName);
-
-        // Logging
-        services.AddOptions<LoggingConfig>()
-            .BindConfiguration(LoggingConfig.SectionName);
-
-        // Paths (source/output directories)
-        // Allows absolute paths or paths relative to project root
-        services.AddOptions<PathsConfig>()
-            .BindConfiguration(PathsConfig.SectionName);
+        services.AddAllRevelaConfigs();
 
         // Path resolver service (resolves relative paths against project root)
         // Uses IOptionsMonitor for hot-reload support during interactive sessions

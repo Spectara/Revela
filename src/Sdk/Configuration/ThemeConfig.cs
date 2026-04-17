@@ -1,3 +1,5 @@
+using Spectara.Revela.Sdk.Abstractions;
+
 namespace Spectara.Revela.Sdk.Configuration;
 
 /// <summary>
@@ -32,13 +34,9 @@ namespace Spectara.Revela.Sdk.Configuration;
 /// </code>
 /// </example>
 /// </remarks>
+[RevelaConfig("theme", ValidateDataAnnotations = false, ValidateOnStart = false)]
 public sealed class ThemeConfig
 {
-    /// <summary>
-    /// Configuration section name.
-    /// </summary>
-    public const string SectionName = "theme";
-
     /// <summary>
     /// Name of the theme to use (e.g., "Lumina").
     /// </summary>

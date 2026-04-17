@@ -7,9 +7,12 @@ namespace Spectara.Revela.Plugins.Source.Calendar.Configuration;
 /// <summary>
 /// Configuration for the Source.Calendar plugin.
 /// </summary>
-internal sealed class SourceCalendarConfig : IPluginConfig
+[RevelaConfig("Spectara.Revela.Plugins.Source.Calendar")]
+internal sealed class SourceCalendarConfig
 {
-    /// <inheritdoc />
+    /// <summary>
+    /// Configuration section name in project.json.
+    /// </summary>
     public static string SectionName => "Spectara.Revela.Plugins.Source.Calendar";
 
     /// <summary>

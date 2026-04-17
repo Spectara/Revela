@@ -53,6 +53,8 @@
     <PackageVersion Include="BenchmarkDotNet" Version="0.15.8" />
   </ItemGroup>
   <ItemGroup Label="Code Analysis">
+    <PackageVersion Include="Microsoft.CodeAnalysis.CSharp" Version="4.14.0" />
+    <PackageVersion Include="Microsoft.CodeAnalysis.Analyzers" Version="3.11.0" />
     <!-- Microsoft.CodeAnalysis.NetAnalyzers - Official .NET Code Analyzers -->
     <!-- https://learn.microsoft.com/en-us/dotnet/fundamentals/code-analysis/overview -->
     <!--

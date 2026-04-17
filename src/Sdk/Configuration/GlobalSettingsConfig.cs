@@ -1,3 +1,5 @@
+using Spectara.Revela.Sdk.Abstractions;
+
 namespace Spectara.Revela.Sdk.Configuration;
 
 /// <summary>
@@ -13,13 +15,9 @@ namespace Spectara.Revela.Sdk.Configuration;
 /// }
 /// </code>
 /// </remarks>
+[RevelaConfig("settings", ValidateDataAnnotations = false, ValidateOnStart = false)]
 public sealed class GlobalSettingsConfig
 {
-    /// <summary>
-    /// Configuration section name
-    /// </summary>
-    public const string SectionName = "settings";
-
     /// <summary>
     /// Whether to check for updates on startup
     /// </summary>

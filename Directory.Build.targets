@@ -10,4 +10,17 @@
   <Import Project="$(MSBuildThisFileDirectory)src\Sdk\Build\Spectara.Revela.Sdk.targets"
           Condition="Exists('$(MSBuildThisFileDirectory)src\Sdk\Build\Spectara.Revela.Sdk.targets')
                      And ('$(PackageType)' == 'RevelaPlugin' Or '$(PackageType)' == 'RevelaTheme')" />
+
+  <!--
+    Source Generator for [RevelaConfig] attribute.
+    Registered globally so ALL projects that use [RevelaConfig] get the generated code.
+    The generator project itself is excluded (it targets netstandard2.0).
+  -->
+  <ItemGroup Condition="'$(TargetFramework)' != 'netstandard2.0'
+                         And '$(MSBuildProjectName)' != 'Sdk.Generators'">
+    <ProjectReference Include="$(MSBuildThisFileDirectory)src\Sdk.Generators\Sdk.Generators.csproj"
+                      OutputItemType="Analyzer"
+                      ReferenceOutputAssembly="false"
+                      SetTargetFramework="TargetFramework=netstandard2.0" />
+  </ItemGroup>
 </Project>

@@ -1,5 +1,7 @@
 using System.Diagnostics.CodeAnalysis;
 
+using Spectara.Revela.Sdk.Abstractions;
+
 namespace Spectara.Revela.Sdk.Configuration;
 
 /// <summary>
@@ -24,13 +26,9 @@ namespace Spectara.Revela.Sdk.Configuration;
 /// </code>
 /// </example>
 /// </remarks>
+[RevelaConfig("project", ValidateDataAnnotations = false, ValidateOnStart = false)]
 public sealed class ProjectConfig
 {
-    /// <summary>
-    /// Configuration section name
-    /// </summary>
-    public const string SectionName = "project";
-
     /// <summary>
     /// Project name used for identification
     /// </summary>

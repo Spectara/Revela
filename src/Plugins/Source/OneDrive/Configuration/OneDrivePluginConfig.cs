@@ -26,9 +26,12 @@ namespace Spectara.Revela.Plugins.Source.OneDrive.Configuration;
 ///
 /// Downloaded files are saved to the project's source directory (paths.source config).
 /// </remarks>
-internal sealed class OneDrivePluginConfig : IPluginConfig
+[RevelaConfig("Spectara.Revela.Plugins.Source.OneDrive")]
+internal sealed class OneDrivePluginConfig
 {
-    /// <inheritdoc />
+    /// <summary>
+    /// Configuration section name in project.json.
+    /// </summary>
     public static string SectionName => "Spectara.Revela.Plugins.Source.OneDrive";
 
     /// <summary>

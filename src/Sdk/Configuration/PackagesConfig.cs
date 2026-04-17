@@ -1,3 +1,5 @@
+using Spectara.Revela.Sdk.Abstractions;
+
 namespace Spectara.Revela.Sdk.Configuration;
 
 /// <summary>
@@ -28,13 +30,9 @@ namespace Spectara.Revela.Sdk.Configuration;
 /// </code>
 /// </example>
 /// </remarks>
+[RevelaConfig("packages", ValidateDataAnnotations = false, ValidateOnStart = false)]
 public sealed class PackagesConfig
 {
-    /// <summary>
-    /// Configuration section name
-    /// </summary>
-    public const string SectionName = "packages";
-
     /// <summary>
     /// Configured NuGet feeds (Key = Name, Value = URL)
     /// </summary>

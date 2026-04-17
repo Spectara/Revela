@@ -1,3 +1,5 @@
+using Spectara.Revela.Sdk.Abstractions;
+
 namespace Spectara.Revela.Sdk.Configuration;
 
 /// <summary>
@@ -45,13 +47,9 @@ namespace Spectara.Revela.Sdk.Configuration;
 /// </code>
 /// </example>
 /// </remarks>
+[RevelaConfig("generate", ValidateDataAnnotations = false, ValidateOnStart = false)]
 public sealed class GenerateConfig
 {
-    /// <summary>
-    /// Configuration section name
-    /// </summary>
-    public const string SectionName = "generate";
-
     /// <summary>
     /// Sorting settings for galleries and images
     /// </summary>

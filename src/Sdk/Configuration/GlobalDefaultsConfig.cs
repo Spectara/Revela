@@ -1,3 +1,5 @@
+using Spectara.Revela.Sdk.Abstractions;
+
 namespace Spectara.Revela.Sdk.Configuration;
 
 /// <summary>
@@ -15,13 +17,9 @@ namespace Spectara.Revela.Sdk.Configuration;
 /// }
 /// </code>
 /// </remarks>
+[RevelaConfig("defaults", ValidateDataAnnotations = false, ValidateOnStart = false)]
 public sealed class GlobalDefaultsConfig
 {
-    /// <summary>
-    /// Configuration section name in JSON files
-    /// </summary>
-    public const string SectionName = "defaults";
-
     /// <summary>
     /// Default theme for new projects
     /// </summary>
