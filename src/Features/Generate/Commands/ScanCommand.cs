@@ -33,7 +33,7 @@ internal sealed partial class ScanCommand(
     string IPipelineStep.Name => "scan";
 
 
-    async Task<PipelineStepResult> IPipelineStep.ExecuteAsync(CancellationToken cancellationToken)
+    async ValueTask<PipelineStepResult> IPipelineStep.ExecuteAsync(CancellationToken cancellationToken)
     {
         var result = await contentService.ScanAsync(progress: null, cancellationToken);
         return result.Success

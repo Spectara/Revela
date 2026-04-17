@@ -16,7 +16,8 @@ namespace Spectara.Revela.Commands.Packages;
 /// Run 'revela packages refresh' first to populate the index.
 /// </remarks>
 internal sealed partial class SearchCommand(
-    ILogger<SearchCommand> logger)
+    ILogger<SearchCommand> logger,
+    TimeProvider timeProvider)
 {
     private static readonly string IndexFilePath = Path.Combine(
         ConfigPathResolver.ConfigDirectory, "cache", "packages.json");
@@ -73,7 +74,7 @@ internal sealed partial class SearchCommand(
             }
 
             // Check if index is outdated (older than 7 days)
-            var age = DateTime.UtcNow - index.LastUpdated;
+            var age = timeProvider.GetUtcNow().UtcDateTime - index.LastUpdated;
             if (age.TotalDays > 7)
             {
                 AnsiConsole.MarkupLine($"{OutputMarkers.Warning} Package index is {age.Days} days old.");

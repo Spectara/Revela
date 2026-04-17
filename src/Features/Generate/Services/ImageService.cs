@@ -30,6 +30,7 @@ internal sealed partial class ImageService(
     IOptions<ProjectEnvironment> projectEnvironment,
     IPathResolver pathResolver,
     IOptionsMonitor<GenerateConfig> generateOptions,
+    TimeProvider timeProvider,
     ILogger<ImageService> logger) : IImageService
 {
     /// <summary>Image output directory within output folder</summary>
@@ -237,7 +238,7 @@ internal sealed partial class ImageService(
                 // Still save format qualities even when nothing to process
                 // This initializes the qualities on first run or after manifest reset
                 manifestRepository.SetFormatQualities(formats);
-                manifestRepository.LastImagesProcessed = DateTime.UtcNow;
+                manifestRepository.LastImagesProcessed = timeProvider.GetUtcNow().UtcDateTime;
                 await manifestRepository.SaveAsync(cancellationToken);
                 stopwatch.Stop();
 
@@ -426,7 +427,7 @@ internal sealed partial class ImageService(
 
             // Save manifest with updated format qualities
             manifestRepository.SetFormatQualities(formats);
-            manifestRepository.LastImagesProcessed = DateTime.UtcNow;
+            manifestRepository.LastImagesProcessed = timeProvider.GetUtcNow().UtcDateTime;
             await manifestRepository.SaveAsync(cancellationToken);
 
             // Final progress - all workers idle but keep row count stable

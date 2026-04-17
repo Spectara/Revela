@@ -23,25 +23,25 @@ internal sealed partial class CleanOutputCommand(
     string IPipelineStep.Name => "output";
 
 
-    Task<PipelineStepResult> IPipelineStep.ExecuteAsync(CancellationToken cancellationToken)
+    ValueTask<PipelineStepResult> IPipelineStep.ExecuteAsync(CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
         if (!Directory.Exists(OutputPath))
         {
-            return Task.FromResult(PipelineStepResult.Ok());
+            return new ValueTask<PipelineStepResult>(PipelineStepResult.Ok());
         }
 
         try
         {
             Directory.Delete(OutputPath, recursive: true);
             LogDirectoryDeleted(logger, OutputPath, 0);
-            return Task.FromResult(PipelineStepResult.Ok());
+            return new ValueTask<PipelineStepResult>(PipelineStepResult.Ok());
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
             LogDeleteFailed(logger, OutputPath, ex);
-            return Task.FromResult(PipelineStepResult.Fail($"Failed to delete {OutputPath}: {ex.Message}"));
+            return new ValueTask<PipelineStepResult>(PipelineStepResult.Fail($"Failed to delete {OutputPath}: {ex.Message}"));
         }
     }
 

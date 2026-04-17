@@ -37,7 +37,7 @@ internal sealed partial class CalendarGenerateStep(
     string IPipelineStep.Name => "calendar";
 
 
-    async Task<PipelineStepResult> IPipelineStep.ExecuteAsync(CancellationToken cancellationToken)
+    async ValueTask<PipelineStepResult> IPipelineStep.ExecuteAsync(CancellationToken cancellationToken)
     {
         var projectPath = projectEnvironment.Value.Path;
         var sourcePath = pathResolver.SourcePath;

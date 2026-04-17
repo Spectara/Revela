@@ -38,7 +38,7 @@ internal sealed partial class ImagesCommand(
     string IPipelineStep.Name => "images";
 
 
-    async Task<PipelineStepResult> IPipelineStep.ExecuteAsync(CancellationToken cancellationToken)
+    async ValueTask<PipelineStepResult> IPipelineStep.ExecuteAsync(CancellationToken cancellationToken)
     {
         var result = await imageService.ProcessAsync(new ProcessImagesOptions(), progress: null, cancellationToken);
         return result.Success

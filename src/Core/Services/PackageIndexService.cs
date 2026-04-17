@@ -7,7 +7,7 @@ namespace Spectara.Revela.Core.Services;
 /// <summary>
 /// Service for loading and searching the local package index.
 /// </summary>
-public sealed class PackageIndexService : IPackageIndexService
+public sealed class PackageIndexService(TimeProvider timeProvider) : IPackageIndexService
 {
     private PackageIndex? cachedIndex;
     private DateTime? lastLoadTime;
@@ -21,7 +21,7 @@ public sealed class PackageIndexService : IPackageIndexService
     {
         // Return cached if loaded within last minute
         if (cachedIndex is not null && lastLoadTime.HasValue &&
-            DateTime.UtcNow - lastLoadTime.Value < TimeSpan.FromMinutes(1))
+            timeProvider.GetUtcNow().UtcDateTime - lastLoadTime.Value < TimeSpan.FromMinutes(1))
         {
             return cachedIndex;
         }
@@ -35,7 +35,7 @@ public sealed class PackageIndexService : IPackageIndexService
         {
             var json = await File.ReadAllTextAsync(IndexFilePath, cancellationToken);
             cachedIndex = JsonSerializer.Deserialize(json, PackageIndexJsonContext.Default.PackageIndex);
-            lastLoadTime = DateTime.UtcNow;
+            lastLoadTime = timeProvider.GetUtcNow().UtcDateTime;
             return cachedIndex;
         }
         catch (JsonException)
@@ -85,12 +85,12 @@ public sealed class PackageIndexService : IPackageIndexService
         {
             if (cachedIndex is not null)
             {
-                return DateTime.UtcNow - cachedIndex.LastUpdated;
+                return timeProvider.GetUtcNow().UtcDateTime - cachedIndex.LastUpdated;
             }
 
             // Read just the lastUpdated field without full parsing
             var fileInfo = new FileInfo(IndexFilePath);
-            return DateTime.UtcNow - fileInfo.LastWriteTimeUtc;
+            return timeProvider.GetUtcNow().UtcDateTime - fileInfo.LastWriteTimeUtc;
         }
         catch
         {

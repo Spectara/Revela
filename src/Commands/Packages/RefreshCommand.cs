@@ -22,7 +22,8 @@ namespace Spectara.Revela.Commands.Packages;
 internal sealed partial class RefreshCommand(
     ILogger<RefreshCommand> logger,
     INuGetSourceManager nugetSourceManager,
-    HttpClient httpClient)
+    HttpClient httpClient,
+    TimeProvider timeProvider)
 {
     private static readonly string IndexFilePath = Path.Combine(
         ConfigPathResolver.ConfigDirectory, "packages.json");
@@ -95,7 +96,7 @@ internal sealed partial class RefreshCommand(
             // Save index (ConfigDirectory is ensured to exist by ConfigPathResolver)
             var index = new PackageIndex
             {
-                LastUpdated = DateTime.UtcNow,
+                LastUpdated = timeProvider.GetUtcNow().UtcDateTime,
                 Packages = uniquePackages
             };
 

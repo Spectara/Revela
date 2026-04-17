@@ -31,7 +31,7 @@ internal sealed partial class StatsCommand(
     string IPipelineStep.Name => "statistics";
 
 
-    async Task<PipelineStepResult> IPipelineStep.ExecuteAsync(CancellationToken cancellationToken)
+    async ValueTask<PipelineStepResult> IPipelineStep.ExecuteAsync(CancellationToken cancellationToken)
     {
         var projectPath = projectEnvironment.Value.Path;
         var manifestFile = Path.Combine(projectPath, ProjectPaths.Cache, ManifestFileName);

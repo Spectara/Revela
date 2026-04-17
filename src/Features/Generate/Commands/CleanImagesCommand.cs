@@ -44,7 +44,7 @@ internal sealed partial class CleanImagesCommand(
     string IPipelineStep.Name => "images";
 
 
-    async Task<PipelineStepResult> IPipelineStep.ExecuteAsync(CancellationToken cancellationToken)
+    async ValueTask<PipelineStepResult> IPipelineStep.ExecuteAsync(CancellationToken cancellationToken)
     {
         await manifestRepository.LoadAsync(cancellationToken);
 

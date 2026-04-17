@@ -38,6 +38,7 @@ internal sealed partial class RenderService(
     IOptionsMonitor<ProjectConfig> projectConfig,
     IOptionsMonitor<GenerateConfig> options,
     IOptionsMonitor<ThemeConfig> themeConfig,
+    TimeProvider timeProvider,
     ILogger<RenderService> logger) : IRenderService
 {
     /// <summary>Current theme extensions (set during rendering)</summary>
@@ -153,7 +154,7 @@ internal sealed partial class RenderService(
                 Galleries = galleries,
                 Navigation = navigation,
                 Images = allImages,
-                BuildDate = DateTime.UtcNow
+                BuildDate = timeProvider.GetUtcNow().UtcDateTime
             };
 
             // Render templates

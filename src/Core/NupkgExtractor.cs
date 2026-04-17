@@ -15,7 +15,7 @@ namespace Spectara.Revela.Core;
 /// Each plugin is installed into its own subdirectory for isolation.
 /// Metadata is persisted as {PackageId}.meta.json alongside the DLLs.
 /// </remarks>
-public sealed class NupkgExtractor(ILogger<NupkgExtractor> logger)
+public sealed class NupkgExtractor(ILogger<NupkgExtractor> logger, TimeProvider timeProvider)
 {
     private static readonly JsonSerializerOptions MetadataJsonOptions = new()
     {
@@ -138,7 +138,7 @@ public sealed class NupkgExtractor(ILogger<NupkgExtractor> logger)
             Version = identity.Version.ToString(),
             Source = source,
             InstalledFrom = installedFrom,
-            InstalledAt = DateTime.UtcNow.ToString("O"),
+            InstalledAt = timeProvider.GetUtcNow().UtcDateTime.ToString("O"),
             Authors = authors,
             Description = nuspecReader.GetDescription(),
             Dependencies = dependencies,

@@ -24,14 +24,14 @@ internal sealed partial class CleanCompressCommand(
     string IPipelineStep.Name => "compress";
 
 
-    Task<PipelineStepResult> IPipelineStep.ExecuteAsync(CancellationToken cancellationToken)
+    ValueTask<PipelineStepResult> IPipelineStep.ExecuteAsync(CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
         var outputPath = pathResolver.OutputPath;
         if (!Directory.Exists(outputPath))
         {
-            return Task.FromResult(PipelineStepResult.Ok());
+            return new ValueTask<PipelineStepResult>(PipelineStepResult.Ok());
         }
 
         var gzipFiles = Directory.GetFiles(outputPath, "*.gz", SearchOption.AllDirectories);
@@ -47,7 +47,7 @@ internal sealed partial class CleanCompressCommand(
             }
         }
 
-        return Task.FromResult(PipelineStepResult.Ok());
+        return new ValueTask<PipelineStepResult>(PipelineStepResult.Ok());
     }
 
     // ── CLI command ──

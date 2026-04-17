@@ -51,7 +51,7 @@ public interface IPipelineStep
     /// </remarks>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>Result indicating success or failure.</returns>
-    Task<PipelineStepResult> ExecuteAsync(CancellationToken cancellationToken = default);
+    ValueTask<PipelineStepResult> ExecuteAsync(CancellationToken cancellationToken = default);
 }
 
 /// <summary>

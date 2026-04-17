@@ -13,6 +13,7 @@ namespace Spectara.Revela.Plugins.Statistics.Services;
 internal sealed partial class StatisticsAggregator(
     IManifestRepository manifestRepository,
     IOptionsMonitor<StatisticsPluginConfig> config,
+    TimeProvider timeProvider,
     ILogger<StatisticsAggregator> logger)
 {
     #region Bucket Definitions
@@ -113,7 +114,7 @@ internal sealed partial class StatisticsAggregator(
             PhotoHeatmap = AggregateHeatmap(images, out var heatmapYears),
             HeatmapYears = heatmapYears,
             Orientations = AggregateOrientation(images),
-            GeneratedAt = DateTime.UtcNow
+            GeneratedAt = timeProvider.GetUtcNow().UtcDateTime
         };
     }
 

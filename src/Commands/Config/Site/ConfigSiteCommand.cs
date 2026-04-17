@@ -25,7 +25,8 @@ internal sealed partial class ConfigSiteCommand(
     IOptions<ProjectEnvironment> projectEnvironment,
     IOptionsMonitor<ThemeConfig> themeConfig,
     IConfigService configService,
-    IThemeRegistry themeRegistry)
+    IThemeRegistry themeRegistry,
+    TimeProvider timeProvider)
 {
     /// <summary>
     /// Creates the command definition.
@@ -121,7 +122,7 @@ internal sealed partial class ConfigSiteCommand(
         var projectName = projectEnvironment.Value.FolderName;
 
         // Collect values via interactive prompts
-        var values = CollectValues(properties, isEditMode, projectName);
+        var values = CollectValues(properties, isEditMode, projectName, timeProvider);
 
         // Build final JSON using template structure
         var finalJson = JsonPropertyExtractor.BuildJson(templateJson, values);
@@ -141,10 +142,11 @@ internal sealed partial class ConfigSiteCommand(
     private static Dictionary<string, string> CollectValues(
         IReadOnlyList<JsonProperty> properties,
         bool isEditMode,
-        string projectName)
+        string projectName,
+        TimeProvider timeProvider)
     {
         var values = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-        var year = DateTime.Now.Year.ToString(CultureInfo.InvariantCulture);
+        var year = timeProvider.GetUtcNow().Year.ToString(CultureInfo.InvariantCulture);
 
         var action = isEditMode ? "Edit" : "Configure";
         AnsiConsole.MarkupLine($"[cyan]{action} site settings[/]\n");

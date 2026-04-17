@@ -35,7 +35,7 @@ internal sealed partial class PagesCommand(
     string IPipelineStep.Name => "pages";
 
 
-    async Task<PipelineStepResult> IPipelineStep.ExecuteAsync(CancellationToken cancellationToken)
+    async ValueTask<PipelineStepResult> IPipelineStep.ExecuteAsync(CancellationToken cancellationToken)
     {
         var result = await renderService.RenderAsync(progress: null, cancellationToken);
         return result.Success

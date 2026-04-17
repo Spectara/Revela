@@ -31,13 +31,13 @@ internal sealed partial class CleanStatisticsCommand(
     string IPipelineStep.Name => "statistics";
 
 
-    Task<PipelineStepResult> IPipelineStep.ExecuteAsync(CancellationToken cancellationToken)
+    ValueTask<PipelineStepResult> IPipelineStep.ExecuteAsync(CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
         if (!Directory.Exists(CachePath))
         {
-            return Task.FromResult(PipelineStepResult.Ok());
+            return new ValueTask<PipelineStepResult>(PipelineStepResult.Ok());
         }
 
         var statsFiles = Directory.GetFiles(CachePath, StatisticsFileName, SearchOption.AllDirectories);
@@ -51,7 +51,7 @@ internal sealed partial class CleanStatisticsCommand(
             }
         }
 
-        return Task.FromResult(PipelineStepResult.Ok());
+        return new ValueTask<PipelineStepResult>(PipelineStepResult.Ok());
     }
 
     // ── CLI command ──

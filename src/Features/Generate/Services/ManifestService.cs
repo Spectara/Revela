@@ -32,7 +32,8 @@ namespace Spectara.Revela.Features.Generate.Services;
 /// </remarks>
 internal sealed partial class ManifestService(
     ILogger<ManifestService> logger,
-    IOptions<ProjectEnvironment> projectEnvironment) : IManifestRepository
+    IOptions<ProjectEnvironment> projectEnvironment,
+    TimeProvider timeProvider) : IManifestRepository
 {
     private const string ManifestFileName = "manifest.json";
     private const string CacheDirectoryName = ".cache";
@@ -223,7 +224,7 @@ internal sealed partial class ManifestService(
         var tempPath = manifestPath + ".tmp";
 
         // Update timestamp
-        manifest.Meta.LastUpdated = DateTime.UtcNow;
+        manifest.Meta.LastUpdated = timeProvider.GetUtcNow().UtcDateTime;
 
         try
         {

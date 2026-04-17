@@ -324,7 +324,8 @@ public sealed class SharedImagesTests : IDisposable
         var projectEnv = new ProjectEnvironment { Path = tempDir };
         var manifestRepo = new ManifestService(
             NullLogger<ManifestService>.Instance,
-            Options.Create(projectEnv));
+            Options.Create(projectEnv),
+            TimeProvider.System);
 
         // Mock: IImageProcessor returns dummy metadata for any image
         var imageProcessor = Substitute.For<IImageProcessor>();
@@ -359,6 +360,7 @@ public sealed class SharedImagesTests : IDisposable
             sizesProvider,
             pathResolver,
             optionsMonitor,
+            TimeProvider.System,
             NullLogger<ContentService>.Instance);
 
         return (service, manifestRepo);

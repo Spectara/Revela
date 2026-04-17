@@ -36,6 +36,7 @@ internal sealed partial class ContentService(
     IImageSizesProvider imageSizesProvider,
     IPathResolver pathResolver,
     IOptionsMonitor<GenerateConfig> generateOptions,
+    TimeProvider timeProvider,
     ILogger<ContentService> logger) : IContentService
 {
     /// <summary>Gets full path to source directory (supports hot-reload)</summary>
@@ -155,7 +156,7 @@ internal sealed partial class ContentService(
             manifestRepository.SetRoot(root);
             manifestRepository.ConfigHash = configHash;
             manifestRepository.ScanConfigHash = scanConfigHash;
-            manifestRepository.LastScanned = DateTime.UtcNow;
+            manifestRepository.LastScanned = timeProvider.GetUtcNow().UtcDateTime;
 
             // Save manifest
             await manifestRepository.SaveAsync(cancellationToken);

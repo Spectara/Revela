@@ -21,6 +21,9 @@ public static class CoreServiceCollectionExtensions
         // Global config manager (revela.json read/write)
         services.AddSingleton<IGlobalConfigManager, GlobalConfigManager>();
 
+        // TimeProvider for testable time abstractions (DateTime.UtcNow replacement)
+        services.AddSingleton(TimeProvider.System);
+
         return services;
     }
 }
