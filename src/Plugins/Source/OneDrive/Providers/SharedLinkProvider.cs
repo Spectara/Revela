@@ -90,7 +90,8 @@ internal sealed class SharedLinkProvider(
             var response = await httpClient.SendAsync(request, cancellationToken);
             response.EnsureSuccessStatusCode();
 
-            using var jsonResponse = await response.Content.ReadFromJsonAsync<JsonDocument>(cancellationToken: cancellationToken);
+            using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
+            using var jsonResponse = await JsonDocument.ParseAsync(stream, cancellationToken: cancellationToken);
             if (jsonResponse is null)
             {
                 break;
@@ -198,11 +199,11 @@ internal sealed class SharedLinkProvider(
     {
         logger.RequestingBadgerToken();
 
-        var requestBody = new { appId = BadgerAppId };
-        var response = await httpClient.PostAsJsonAsync(BadgerTokenUrl, requestBody, cancellationToken);
+        var requestBody = new BadgerTokenRequest { AppId = BadgerAppId };
+        var response = await httpClient.PostAsJsonAsync(BadgerTokenUrl, requestBody, OneDriveJsonContext.Default.BadgerTokenRequest, cancellationToken);
         response.EnsureSuccessStatusCode();
 
-        var tokenResponse = await response.Content.ReadFromJsonAsync<BadgerTokenResponse>(cancellationToken: cancellationToken);
+        var tokenResponse = await response.Content.ReadFromJsonAsync(OneDriveJsonContext.Default.BadgerTokenResponse, cancellationToken: cancellationToken);
         if (tokenResponse?.Token is null)
         {
             throw new InvalidOperationException("Failed to obtain Badger token");
@@ -229,7 +230,8 @@ internal sealed class SharedLinkProvider(
         var response = await httpClient.SendAsync(request, cancellationToken);
         response.EnsureSuccessStatusCode();
 
-        using var jsonResponse = await response.Content.ReadFromJsonAsync<JsonDocument>(cancellationToken: cancellationToken) ?? throw new InvalidOperationException("Failed to get share metadata");
+        using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
+        using var jsonResponse = await JsonDocument.ParseAsync(stream, cancellationToken: cancellationToken) ?? throw new InvalidOperationException("Failed to get share metadata");
 
         // Extract driveId and folderId from metadata
         var driveId = jsonResponse.RootElement.TryGetProperty("parentReference", out var parentRef) &&
@@ -352,9 +354,17 @@ internal sealed class SharedLinkProvider(
     }
 
     /// <summary>
+    /// Badger token request model
+    /// </summary>
+    internal sealed class BadgerTokenRequest
+    {
+        public string? AppId { get; set; }
+    }
+
+    /// <summary>
     /// Badger token response model
     /// </summary>
-    private sealed class BadgerTokenResponse
+    internal sealed class BadgerTokenResponse
     {
         public string? Token { get; set; }
     }

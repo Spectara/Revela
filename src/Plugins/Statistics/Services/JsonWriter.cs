@@ -1,5 +1,4 @@
 using System.Text.Json;
-using System.Text.Json.Serialization;
 
 using Spectara.Revela.Plugins.Statistics.Models;
 
@@ -10,13 +9,6 @@ namespace Spectara.Revela.Plugins.Statistics.Services;
 /// </summary>
 internal static class JsonWriter
 {
-    private static readonly JsonSerializerOptions JsonOptions = new()
-    {
-        WriteIndented = true,
-        PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
-        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
-    };
-
     /// <summary>
     /// Write statistics as JSON file
     /// </summary>
@@ -28,7 +20,7 @@ internal static class JsonWriter
         SiteStatistics statistics,
         CancellationToken cancellationToken = default)
     {
-        var json = JsonSerializer.Serialize(statistics, JsonOptions);
+        var json = JsonSerializer.Serialize(statistics, StatisticsJsonContext.Default.SiteStatistics);
         await File.WriteAllTextAsync(filePath, json, cancellationToken);
     }
 }

@@ -133,7 +133,9 @@ public sealed class EmbeddedResourceProvider
             ?? throw new InvalidOperationException(
                 $"{AssemblyName} is missing embedded resource '{ManifestFileName}'");
 
+#pragma warning disable IL2026 // Type is preserved via ThemeJsonContext source generator
         var result = JsonSerializer.Deserialize<T>(stream, ThemeJsonConfig.JsonOptions);
+#pragma warning restore IL2026
 
         return result ?? throw new InvalidOperationException(
             $"Failed to parse {ManifestFileName} in {AssemblyName}");

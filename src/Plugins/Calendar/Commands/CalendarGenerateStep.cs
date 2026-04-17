@@ -28,8 +28,6 @@ internal sealed partial class CalendarGenerateStep(
     private const string CalendarJsonFileName = "calendar.json";
     private const string IndexFileName = "_index.revela";
 
-    private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = true };
-
     // ── IPipelineStep (service-level, no UI) ──
 
     string IPipelineStep.Category => PipelineCategories.Generate;
@@ -100,7 +98,7 @@ internal sealed partial class CalendarGenerateStep(
             var cacheDir = Path.Combine(projectPath, ProjectPaths.Cache, pagePath);
             var jsonPath = Path.Combine(cacheDir, CalendarJsonFileName);
             Directory.CreateDirectory(cacheDir);
-            var json = JsonSerializer.Serialize(calendarData, JsonOptions);
+            var json = JsonSerializer.Serialize(calendarData, CalendarJsonContext.Default.CalendarData);
             await File.WriteAllTextAsync(jsonPath, json, cancellationToken);
         }
 
@@ -222,7 +220,7 @@ internal sealed partial class CalendarGenerateStep(
             var jsonPath = Path.Combine(cacheDir, CalendarJsonFileName);
 
             Directory.CreateDirectory(cacheDir);
-            var json = JsonSerializer.Serialize(calendarData, JsonOptions);
+            var json = JsonSerializer.Serialize(calendarData, CalendarJsonContext.Default.CalendarData);
             await File.WriteAllTextAsync(jsonPath, json, cancellationToken);
 
             LogGeneratedJson(pagePath, calendarData.Months.Count);

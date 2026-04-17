@@ -6,6 +6,9 @@
     <PackageId>Spectara.Revela.Sdk</PackageId>
     <PackageTags>revela;sdk;plugin;theme;photography;static-site-generator</PackageTags>
     <PackageReadmeFile>README.md</PackageReadmeFile>
+    <!-- Sdk must be trimmable for AOT-compatible plugins -->
+    <IsTrimmable>true</IsTrimmable>
+    <EnableTrimAnalyzer>true</EnableTrimAnalyzer>
   </PropertyGroup>
 
   <ItemGroup>

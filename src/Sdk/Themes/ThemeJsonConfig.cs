@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace Spectara.Revela.Sdk.Themes;
 
@@ -50,9 +51,17 @@ public sealed class ThemeJsonConfig
     /// <summary>Shared JSON serialization options for theme config files.</summary>
     public static readonly JsonSerializerOptions JsonOptions = new()
     {
-        PropertyNameCaseInsensitive = true
+        PropertyNameCaseInsensitive = true,
+        TypeInfoResolverChain = { ThemeJsonContext.Default }
     };
 }
+
+/// <summary>
+/// Source-generated JSON serializer context for theme configuration types.
+/// </summary>
+[JsonSerializable(typeof(ThemeJsonConfig))]
+[JsonSourceGenerationOptions(PropertyNameCaseInsensitive = true)]
+internal sealed partial class ThemeJsonContext : JsonSerializerContext;
 
 /// <summary>
 /// Templates section in theme configuration.

@@ -5,6 +5,9 @@
     <AssemblyName>$(RevelaNamespacePrefix).Plugins.$(MSBuildProjectName)</AssemblyName>
     <RootNamespace>$(AssemblyName)</RootNamespace>
     <PackageId>$(AssemblyName)</PackageId>
+    <!-- Plugins must be trimmable for AOT compatibility -->
+    <IsTrimmable>true</IsTrimmable>
+    <EnableTrimAnalyzer>true</EnableTrimAnalyzer>
   </PropertyGroup>
 
   <!-- Override InternalsVisibleTo: test projects for plugins have "Tests.Plugins" segment -->
