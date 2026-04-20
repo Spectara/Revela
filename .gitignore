@@ -206,8 +206,9 @@ PublishScripts/
 **/[Pp]ackages/*
 # except build/, which is used as an MSBuild target.
 !**/[Pp]ackages/build/
-# except src/Commands/Packages/ which is our Packages command implementation
-!src/Commands/Packages/
+# except src/Features/Packages/ which is our Packages feature project
+!src/Features/Packages/
+!src/Features/Packages/**
 # Uncomment if necessary however generally it will be regenerated when needed
 #!**/[Pp]ackages/repositories.config
 # NuGet v3's project.json files produces more ignorable files
