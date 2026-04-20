@@ -1,9 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Spectara.Revela.Commands.Config;
-using Spectara.Revela.Commands.Packages;
-using Spectara.Revela.Commands.Plugins;
-using Spectara.Revela.Commands.Restore;
 using Spectara.Revela.Core.Services;
 using Spectara.Revela.Features.Generate;
 using Spectara.Revela.Features.Projects;
@@ -11,7 +8,6 @@ using Spectara.Revela.Features.Theme;
 using Spectara.Revela.Sdk.Services;
 
 using ProjectWizard = Spectara.Revela.Commands.Project.Wizard;
-using RevelaWizard = Spectara.Revela.Commands.Revela.Wizard;
 
 namespace Spectara.Revela.Commands;
 
@@ -24,8 +20,10 @@ internal static class ServiceCollectionExtensions
     /// Adds all Revela command services to the DI container.
     /// </summary>
     /// <remarks>
-    /// Registers both host-owned commands (Config, Packages, Plugins, Restore)
-    /// and core features (Generate, Theme, Projects) directly.
+    /// Registers host-owned commands (Config) and core features (Generate, Theme, Projects).
+    /// Package management commands (Packages, Plugins, Restore) are registered separately
+    /// via <c>AddPackageManagement()</c> in the Packages feature — only loaded by <c>Cli</c>,
+    /// not by <c>Cli.Embedded</c>.
     /// External plugins are loaded separately via <c>AddPlugins()</c>.
     /// </remarks>
     public static IServiceCollection AddRevelaCommands(this IServiceCollection services)
@@ -34,15 +32,11 @@ internal static class ServiceCollectionExtensions
         services.TryAddSingleton<IPackageIndexService, PackageIndexService>();
         services.TryAddSingleton<IThemeRegistry, ThemeRegistry>();
 
-        // Wizards
-        services.AddTransient<RevelaWizard>();
+        // Wizards (project wizard — setup wizard is in Packages feature)
         services.AddTransient<ProjectWizard>();
 
-        // Host-owned commands (Config, Packages, Plugins, Restore)
+        // Host-owned commands
         services.AddConfigFeature();
-        services.AddPackagesFeature();
-        services.AddPluginsFeature();
-        services.AddRestoreFeature();
 
         // Core features — always available, not plugin-loaded
         services.AddGenerateFeature();
@@ -52,5 +46,4 @@ internal static class ServiceCollectionExtensions
         return services;
     }
 }
-
 

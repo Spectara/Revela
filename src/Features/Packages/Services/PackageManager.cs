@@ -1,9 +1,11 @@
-using NuGet.Configuration;
 using NuGet.Protocol;
 using NuGet.Protocol.Core.Types;
 using NuGet.Versioning;
 using Spectara.Revela.Core.Logging;
 using Spectara.Revela.Core.Services;
+using Spectara.Revela.Sdk.Abstractions;
+
+using NuGetPackageSource = NuGet.Configuration.PackageSource;
 
 namespace Spectara.Revela.Core;
 
@@ -20,7 +22,7 @@ public sealed class PackageManager(
     NupkgExtractor extractor,
     PluginProjectService projectService,
     ILogger<PackageManager> logger,
-    INuGetSourceManager nugetSourceManager)
+    INuGetSourceManager nugetSourceManager) : IPackageInstaller
 {
     /// <summary>
     /// Gets the bundled packages directory (next to executable).
@@ -29,7 +31,7 @@ public sealed class PackageManager(
     /// Used as a local NuGet feed for offline-first installation.
     /// Contains .nupkg files bundled with the application.
     /// </remarks>
-    public static string BundledPackagesDirectory => Path.Combine(AppContext.BaseDirectory, "packages");
+    public static string BundledPackagesDirectory => ConfigPathResolver.BundledPackagesDirectory;
 
     /// <summary>
     /// Gets the plugin directory based on installation type.
@@ -43,13 +45,13 @@ public sealed class PackageManager(
     /// <summary>
     /// Installs a plugin from a package ID, local .nupkg file, or URL.
     /// </summary>
-    /// <param name="packageIdOrPath">Package ID (e.g., 'Spectara.Revela.Plugins.Statistics'), local .nupkg path, or HTTP(S) URL.</param>
+    /// <param name="packageId">Package ID (e.g., 'Spectara.Revela.Plugins.Statistics'), local .nupkg path, or HTTP(S) URL.</param>
     /// <param name="version">Specific version to install (only for package IDs).</param>
     /// <param name="source">Custom NuGet source URL (null = use default nuget.org).</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>True if installation succeeded.</returns>
     public async Task<bool> InstallAsync(
-        string packageIdOrPath,
+        string packageId,
         string? version = null,
         string? source = null,
         CancellationToken cancellationToken = default)
@@ -60,18 +62,18 @@ public sealed class PackageManager(
             _ = Directory.CreateDirectory(targetDir);
 
             // Detect installation type
-            if (File.Exists(packageIdOrPath) && packageIdOrPath.EndsWith(".nupkg", StringComparison.OrdinalIgnoreCase))
+            if (File.Exists(packageId) && packageId.EndsWith(".nupkg", StringComparison.OrdinalIgnoreCase))
             {
                 // Local .nupkg file
-                logger.InstallingFromFile(packageIdOrPath);
-                return await InstallFromNupkgAsync(packageIdOrPath, targetDir, Path.GetFullPath(packageIdOrPath), cancellationToken);
+                logger.InstallingFromFile(packageId);
+                return await InstallFromNupkgAsync(packageId, targetDir, Path.GetFullPath(packageId), cancellationToken);
             }
-            else if (Uri.TryCreate(packageIdOrPath, UriKind.Absolute, out var uri))
+            else if (Uri.TryCreate(packageId, UriKind.Absolute, out var uri))
             {
                 if (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps)
                 {
                     // URL to .nupkg
-                    logger.InstallingFromUrl(packageIdOrPath);
+                    logger.InstallingFromUrl(packageId);
                     return await InstallFromUrlAsync(uri, targetDir, cancellationToken);
                 }
                 else if (uri.Scheme == Uri.UriSchemeFile)
@@ -99,25 +101,25 @@ public sealed class PackageManager(
             // Fall through: treat as NuGet package ID
             {
                 // Package ID from NuGet feed
-                logger.InstallingPlugin(packageIdOrPath);
+                logger.InstallingPlugin(packageId);
 
                 if (source is not null)
                 {
                     // Explicit source - try named source or treat as URL
                     var sourceUrl = await ResolveSourceAsync(source, cancellationToken);
-                    var sourceRepo = Repository.Factory.GetCoreV3(new PackageSource(sourceUrl));
-                    return await InstallFromNuGetAsync(packageIdOrPath, version, sourceRepo, targetDir, cancellationToken);
+                    var sourceRepo = Repository.Factory.GetCoreV3(new NuGetPackageSource(sourceUrl));
+                    return await InstallFromNuGetAsync(packageId, version, sourceRepo, targetDir, cancellationToken);
                 }
                 else
                 {
                     // No explicit source - try all configured sources
-                    return await InstallFromMultipleSourcesAsync(packageIdOrPath, version, targetDir, cancellationToken);
+                    return await InstallFromMultipleSourcesAsync(packageId, version, targetDir, cancellationToken);
                 }
             }
         }
         catch (Exception ex)
         {
-            logger.InstallFailed(ex, packageIdOrPath);
+            logger.InstallFailed(ex, packageId);
             return false;
         }
     }
@@ -202,6 +204,11 @@ public sealed class PackageManager(
     /// 1. Subdirectory: plugins/{PackageId}/{PackageId}.dll (with dependencies)
     /// 2. Root DLL: plugins/{PackageId}.dll (development/legacy)
     /// </remarks>
+
+    /// <inheritdoc />
+    Task<bool> IPackageInstaller.UninstallAsync(string packageId, CancellationToken cancellationToken) =>
+        UninstallPluginAsync(packageId, cancellationToken);
+
     public static IEnumerable<(string Name, string Location)> ListInstalledPlugins()
     {
         List<(string Name, string Location)> results = [];
@@ -349,7 +356,7 @@ public sealed class PackageManager(
             try
             {
                 logger.TryingSource(source.Name, source.Url);
-                var sourceRepo = Repository.Factory.GetCoreV3(new PackageSource(source.Url));
+                var sourceRepo = Repository.Factory.GetCoreV3(new NuGetPackageSource(source.Url));
                 var success = await InstallFromNuGetAsync(packageId, version, sourceRepo, targetDir, cancellationToken);
 
                 if (success)

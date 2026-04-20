@@ -1,3 +1,4 @@
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Spectara.Revela.Cli.Hosting;
 using Spectara.Revela.Core;
@@ -19,5 +20,8 @@ var settings = new HostApplicationBuilderSettings
 
 var builder = Host.CreateApplicationBuilder(settings);
 builder.ConfigureRevela(filteredArgs, new DiskPackageSource());
+
+// NuGet-based package management (install, search, restore) — only in dynamic CLI
+builder.Services.AddPackageManagement();
 
 return await builder.Build().RunRevelaAsync(filteredArgs);

@@ -3,6 +3,7 @@ using Spectara.Revela.Core;
 using Spectara.Revela.Core.Models;
 using Spectara.Revela.Core.Services;
 using Spectara.Revela.Sdk;
+using Spectara.Revela.Sdk.Abstractions;
 using Spectara.Revela.Sdk.Output;
 using Spectara.Revela.Sdk.Services;
 using Spectre.Console;
@@ -22,7 +23,7 @@ internal sealed partial class Wizard(
     IPackageIndexService packageIndexService,
     RefreshCommand packagesRefreshCommand,
     PackageManager pluginManager,
-    IGlobalConfigManager globalConfigManager)
+    IGlobalConfigManager globalConfigManager) : ISetupWizard
 {
     /// <summary>
     /// Exit code indicating packages were installed and restart is required.

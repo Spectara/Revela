@@ -56,6 +56,15 @@ public static class ConfigPathResolver
     public static string LocalPluginDirectory => Path.Combine(ConfigDirectory, "plugins");
 
     /// <summary>
+    /// Gets the bundled packages directory (next to executable).
+    /// </summary>
+    /// <remarks>
+    /// Used as a local NuGet feed for offline-first installation.
+    /// Contains .nupkg files bundled with the application.
+    /// </remarks>
+    public static string BundledPackagesDirectory => Path.Combine(AppContext.BaseDirectory, "packages");
+
+    /// <summary>
     /// Gets the global plugin directory (always in AppData)
     /// </summary>
     public static string GlobalPluginDirectory => Path.Combine(AppDataDirectory, "plugins");

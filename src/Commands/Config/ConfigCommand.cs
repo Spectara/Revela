@@ -1,5 +1,4 @@
 using System.CommandLine;
-using Spectara.Revela.Commands.Config.Feed;
 using Spectara.Revela.Commands.Config.Project;
 using Spectara.Revela.Commands.Config.Revela;
 using Spectara.Revela.Commands.Config.Site;
@@ -13,7 +12,8 @@ namespace Spectara.Revela.Commands.Config;
 /// Parent command for configuration management.
 /// </summary>
 /// <remarks>
-/// Only registers host-owned subcommands (project, site, feed, locations).
+/// Only registers host-owned subcommands (project, site, locations).
+/// Feed commands are registered by <c>PackagesCommandProvider</c> (only in Cli).
 /// Plugin config commands (theme, image, sorting, paths) are registered by
 /// their respective plugins via <c>ParentCommand: "config"</c>.
 /// </remarks>
@@ -21,7 +21,6 @@ internal sealed class ConfigCommand(
     IConfigService configService,
     ConfigProjectCommand projectCommand,
     ConfigSiteCommand siteCommand,
-    FeedCommand feedCommand,
     ConfigLocationsCommand locationsCommand)
 {
     /// <summary>
@@ -32,11 +31,11 @@ internal sealed class ConfigCommand(
         var command = new Command("config", "Configure project settings");
 
         // Host-owned subcommands only
+        // Feed subcommands are added by PackagesCommandProvider via ParentCommand: "config"
         // Plugin subcommands (theme, image, sorting, paths) are added
         // automatically by the host via ParentCommand: "config"
         command.Subcommands.Add(projectCommand.Create());
         command.Subcommands.Add(siteCommand.Create());
-        command.Subcommands.Add(feedCommand.Create());
         command.Subcommands.Add(locationsCommand.Create());
 
         // Default action: show current config (interactive menu removed — use CLI subcommands)

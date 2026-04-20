@@ -17,6 +17,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Core\Core.csproj" />
+    <ProjectReference Include="..\..\src\Features\Packages\Packages.csproj" />
     <ProjectReference Include="..\..\src\Themes\Lumina\Lumina.csproj" />
     <ProjectReference Include="..\..\src\Themes\Lumina.Statistics\Lumina.Statistics.csproj" />
     <ProjectReference Include="..\Shared\Shared.csproj" />

@@ -11,6 +11,7 @@
     <Project Path="src/Cli.Embedded/Embedded.csproj" />
     <Folder Name="/Features/">
       <Project Path="src/Features/Generate/Generate.csproj" />
+      <Project Path="src/Features/Packages/Packages.csproj" />
       <Project Path="src/Features/Projects/Projects.csproj" />
       <Project Path="src/Features/Theme/Theme.csproj" />
     </Folder>

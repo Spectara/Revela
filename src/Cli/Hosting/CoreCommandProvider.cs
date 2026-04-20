@@ -1,8 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
 using Spectara.Revela.Commands.Config;
-using Spectara.Revela.Commands.Packages;
-using Spectara.Revela.Commands.Plugins;
-using Spectara.Revela.Commands.Restore;
 using Spectara.Revela.Features.Generate.Commands;
 using Spectara.Revela.Features.Projects.Commands;
 using Spectara.Revela.Features.Theme.Commands;
@@ -109,26 +106,8 @@ internal sealed class CoreCommandProvider : ICommandProvider
             Group: CommandGroups.Addons,
             RequiresProject: false);
 
-        var restoreCommand = services.GetRequiredService<RestoreCommand>();
-        yield return new CommandDescriptor(
-            restoreCommand.Create(),
-            Order: 5,
-            Group: CommandGroups.Addons,
-            RequiresProject: true);
-
-        var pluginCommand = services.GetRequiredService<PluginCommand>();
-        yield return new CommandDescriptor(
-            pluginCommand.Create(),
-            Order: 20,
-            Group: CommandGroups.Addons,
-            RequiresProject: false);
-
-        var packagesCommand = services.GetRequiredService<PackagesCommand>();
-        yield return new CommandDescriptor(
-            packagesCommand.Create(),
-            Order: 30,
-            Group: CommandGroups.Addons,
-            RequiresProject: false);
+        // Restore, Plugin, and Packages commands are provided by PackagesCommandProvider
+        // (only available in Cli, not in Cli.Embedded)
 
         // ── Config subcommands (from Generate + Theme) ──
         var configImageCommand = services.GetRequiredService<ConfigImageCommand>();

@@ -1,6 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
 
-using Spectara.Revela.Commands.Config.Feed;
 using Spectara.Revela.Commands.Config.Project;
 using Spectara.Revela.Commands.Config.Revela;
 using Spectara.Revela.Commands.Config.Services;
@@ -36,11 +35,7 @@ internal static class ServiceCollectionExtensions
         // Site commands
         services.AddTransient<ConfigSiteCommand>();
 
-        // Feed commands (NuGet sources)
-        services.AddTransient<FeedCommand>();
-        services.AddTransient<ListCommand>();
-        services.AddTransient<AddCommand>();
-        services.AddTransient<RemoveCommand>();
+        // Feed commands registered by Packages feature (AddPackageManagement)
 
         // Revela commands (global config)
         services.AddTransient<ConfigLocationsCommand>();

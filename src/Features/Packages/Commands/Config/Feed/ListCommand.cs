@@ -1,5 +1,4 @@
 using System.CommandLine;
-using Spectara.Revela.Core;
 using Spectara.Revela.Core.Services;
 using Spectara.Revela.Sdk;
 using Spectre.Console;
@@ -61,7 +60,7 @@ internal sealed partial class ListCommand(
             AnsiConsole.MarkupLine($"Total: [cyan]{sources.Count}[/] feed(s)");
 
             // Show bundled packages info if exists
-            var bundledDir = PackageManager.BundledPackagesDirectory;
+            var bundledDir = ConfigPathResolver.BundledPackagesDirectory;
             if (Directory.Exists(bundledDir))
             {
                 var nupkgCount = Directory.GetFiles(bundledDir, "*.nupkg").Length;

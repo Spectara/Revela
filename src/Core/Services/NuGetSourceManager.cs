@@ -70,7 +70,7 @@ public sealed partial class NuGetSourceManager(
         List<(NuGetSource Source, string Location)> sources = [];
 
         // Bundled packages directory (offline-first, highest priority)
-        var bundledDir = PackageManager.BundledPackagesDirectory;
+        var bundledDir = ConfigPathResolver.BundledPackagesDirectory;
         if (Directory.Exists(bundledDir))
         {
             LogUsingBundledPackages(bundledDir);

@@ -1,5 +1,4 @@
 using Microsoft.Extensions.Options;
-using Spectara.Revela.Core;
 using Spectara.Revela.Core.Services;
 using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Abstractions;
@@ -17,7 +16,7 @@ internal sealed partial class ThemeService(
     ITemplateResolver templateResolver,
     IAssetResolver assetResolver,
     IPackageContext packageContext,
-    PackageManager packageManager,
+    IEnumerable<IPackageInstaller> packageInstallers,
     IPackageIndexService packageIndexService,
     IConfigService configService,
     IOptions<ProjectEnvironment> projectEnvironment,
@@ -91,9 +90,16 @@ internal sealed partial class ThemeService(
         string? source = null,
         CancellationToken cancellationToken = default)
     {
+        var installer = packageInstallers.FirstOrDefault();
+        if (installer is null)
+        {
+            LogPackageInstallerNotAvailable(logger);
+            return false;
+        }
+
         var packageId = EnsureFullPackageId(name);
         LogInstalling(logger, packageId);
-        return await packageManager.InstallAsync(packageId, version, source, cancellationToken);
+        return await installer.InstallAsync(packageId, version, source, cancellationToken);
     }
 
     /// <inheritdoc />
@@ -101,9 +107,16 @@ internal sealed partial class ThemeService(
         string name,
         CancellationToken cancellationToken = default)
     {
+        var installer = packageInstallers.FirstOrDefault();
+        if (installer is null)
+        {
+            LogPackageInstallerNotAvailable(logger);
+            return false;
+        }
+
         var packageId = EnsureFullPackageId(name);
         LogUninstalling(logger, packageId);
-        return await packageManager.UninstallPluginAsync(packageId, cancellationToken: cancellationToken);
+        return await installer.UninstallAsync(packageId, cancellationToken);
     }
 
     /// <inheritdoc />
@@ -470,6 +483,9 @@ internal sealed partial class ThemeService(
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Uninstalling theme: {PackageId}")]
     private static partial void LogUninstalling(ILogger logger, string packageId);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Package installer not available — theme install/uninstall requires the Packages feature")]
+    private static partial void LogPackageInstallerNotAvailable(ILogger logger);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Active theme changed to: {ThemeName}")]
     private static partial void LogThemeChanged(ILogger logger, string themeName);

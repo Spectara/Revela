@@ -19,9 +19,6 @@
     <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" />
     <PackageReference Include="Microsoft.Extensions.Options.DataAnnotations" />
     <PackageReference Include="System.CommandLine" />
-    <PackageReference Include="NuGet.Protocol" />
-    <PackageReference Include="NuGet.Packaging" />
-    <PackageReference Include="NuGet.Configuration" />
   </ItemGroup>
 
 </Project>

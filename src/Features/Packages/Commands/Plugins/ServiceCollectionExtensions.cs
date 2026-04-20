@@ -1,6 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Spectara.Revela.Core;
 using Spectara.Revela.Core.Services;
+using Spectara.Revela.Sdk.Abstractions;
 
 namespace Spectara.Revela.Commands.Plugins;
 
@@ -34,6 +35,9 @@ internal static class ServiceCollectionExtensions
             client.DefaultRequestHeaders.Add("User-Agent", "Revela-PluginManager/1.0");
         })
         .AddStandardResilienceHandler();
+
+        // Register IPackageInstaller abstraction (used by ThemeService)
+        services.AddTransient<IPackageInstaller>(sp => sp.GetRequiredService<PackageManager>());
 
         // Commands
         services.AddTransient<PluginListCommand>();

@@ -158,7 +158,7 @@ internal sealed partial class RestoreCommand(
                         {
                             // Install plugin or theme using PluginManager
                             var success = await pluginManager.InstallAsync(
-                                packageIdOrPath: dep.PackageId,
+                                packageId: dep.PackageId,
                                 version: dep.Version,
                                 source: null, // Use default NuGet.org
                                 cancellationToken: ct);

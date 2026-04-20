@@ -105,6 +105,16 @@ internal static class HostExtensions
             RegisterDescriptor(rootCommand, descriptor, OnCommandRegistered);
         }
 
+        // Additional command providers from DI (e.g., PackagesCommandProvider in Cli only)
+        var additionalProviders = services.GetServices<ICommandProvider>();
+        foreach (var provider in additionalProviders)
+        {
+            foreach (var descriptor in provider.GetCommands(services))
+            {
+                RegisterDescriptor(rootCommand, descriptor, OnCommandRegistered);
+            }
+        }
+
         // Plugin commands (same callback for unified handling)
         plugins.RegisterCommands(rootCommand, services, OnCommandRegistered);
 

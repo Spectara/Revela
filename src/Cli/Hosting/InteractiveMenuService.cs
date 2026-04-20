@@ -6,7 +6,6 @@ using Spectara.Revela.Sdk.Configuration;
 using Spectara.Revela.Sdk.Services;
 using Spectre.Console;
 using ProjectWizard = Spectara.Revela.Commands.Project.Wizard;
-using RevelaWizard = Spectara.Revela.Commands.Revela.Wizard;
 
 namespace Spectara.Revela.Cli.Hosting;
 
@@ -22,7 +21,7 @@ internal sealed partial class InteractiveMenuService(
     IConfigService configService,
     IGlobalConfigManager globalConfigManager,
     IPackageContext packageContext,
-    RevelaWizard revelaWizard,
+    IEnumerable<ISetupWizard> setupWizards,
     ProjectWizard projectWizard,
     ILogger<InteractiveMenuService> logger) : IInteractiveMenuService
 {
@@ -76,6 +75,13 @@ internal sealed partial class InteractiveMenuService(
         ConsoleUI.ClearAndShowLogo();
         ConsoleUI.ShowFirstRunPanel();
 
+        var wizard = setupWizards.FirstOrDefault();
+        if (wizard is null)
+        {
+            // No setup wizard available (embedded mode) — skip to menu
+            return await ContinueToMenuAsync(cancellationToken);
+        }
+
         var choice = PromptForAction("Start Setup Wizard");
 
         if (choice == "Exit")
@@ -85,10 +91,10 @@ internal sealed partial class InteractiveMenuService(
 
         if (choice == "Start Setup Wizard")
         {
-            var result = await revelaWizard.RunAsync(cancellationToken);
+            var result = await wizard.RunAsync(cancellationToken);
 
             // Exit code 2 = packages installed, restart required
-            if (result == RevelaWizard.ExitCodeRestartRequired)
+            if (result == ISetupWizard.ExitCodeRestartRequired)
             {
                 return 0;
             }
@@ -215,10 +221,16 @@ internal sealed partial class InteractiveMenuService(
 
     private async Task<MenuResult> RunSetupWizardAsync(CancellationToken cancellationToken)
     {
-        var result = await revelaWizard.RunAsync(cancellationToken);
+        var wizard = setupWizards.FirstOrDefault();
+        if (wizard is null)
+        {
+            return new MenuResult(false, 0);
+        }
+
+        var result = await wizard.RunAsync(cancellationToken);
 
         // Exit code 2 = packages installed, restart required
-        if (result == RevelaWizard.ExitCodeRestartRequired)
+        if (result == ISetupWizard.ExitCodeRestartRequired)
         {
             return new MenuResult(true, 0);
         }
