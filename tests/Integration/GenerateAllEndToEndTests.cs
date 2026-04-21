@@ -258,6 +258,66 @@ public sealed class GenerateAllEndToEndTests
         Assert.IsTrue(secondRun.ProcessedCount <= firstRun.ProcessedCount,
             $"Second run should process same or fewer images (first: {firstRun.ProcessedCount}, second: {secondRun.ProcessedCount})");
     }
+
+    [TestMethod]
+    public async Task GenerateAll_DuplicateFilenames_CreatesDistinctOutputPaths()
+    {
+        // Arrange: Two galleries with the same image filename (e.g., camera numbering "001.jpg")
+        using var project = TestProject.Create(p => p
+            .WithSiteJson(new { title = "Duplicate Test", author = "Test" })
+            .AddGallery("Gallery A", g => g
+                .AddRealImage("001.jpg", 1920, 1080, exif => exif
+                    .WithCamera("Canon", "EOS R5")))
+            .AddGallery("Gallery B", g => g
+                .AddRealImage("001.jpg", 2560, 1440, exif => exif
+                    .WithCamera("Sony", "A7R V"))));
+
+        using var host = RevelaTestHost.Build(project.RootPath, services =>
+        {
+            services.AddRevelaCommands();
+            services.AddGenerateFeature();
+            services.AddSingleton<ITheme>(new LuminaTheme());
+        });
+
+        var contentService = host.Services.GetRequiredService<IContentService>();
+        var renderService = host.Services.GetRequiredService<IRenderService>();
+        var imageService = host.Services.GetRequiredService<IImageService>();
+
+        var themePlugin = host.Services.GetRequiredService<ITheme>();
+        renderService.SetTheme(themePlugin);
+        renderService.SetExtensions([]);
+
+        // Act
+        var scanResult = await contentService.ScanAsync();
+        Assert.IsTrue(scanResult.Success, $"Scan failed: {scanResult.ErrorMessage}");
+
+        var renderResult = await renderService.RenderAsync();
+        Assert.IsTrue(renderResult.Success, $"Render failed: {renderResult.ErrorMessage}");
+
+        var imageResult = await imageService.ProcessAsync(new ProcessImagesOptions());
+        Assert.IsTrue(imageResult.Success, $"Images failed: {imageResult.ErrorMessage}");
+
+        // Assert: Both images should be processed (not overwritten)
+        Assert.AreEqual(2, scanResult.ImageCount,
+            "Should find 2 images (one per gallery)");
+
+        // Assert: Distinct output directories for each image
+        var imagesDir = Path.Combine(project.OutputPath, "images");
+        var galleryADir = Path.Combine(imagesDir, "gallery-a", "001");
+        var galleryBDir = Path.Combine(imagesDir, "gallery-b", "001");
+
+        Assert.IsTrue(Directory.Exists(galleryADir),
+            $"Gallery A image directory should exist at: gallery-a/001");
+        Assert.IsTrue(Directory.Exists(galleryBDir),
+            $"Gallery B image directory should exist at: gallery-b/001");
+
+        // Assert: Both directories contain image variants
+        var galleryAFiles = Directory.GetFiles(galleryADir).Length;
+        var galleryBFiles = Directory.GetFiles(galleryBDir).Length;
+
+        Assert.IsTrue(galleryAFiles > 0,
+            "Gallery A should have image variants");
+        Assert.IsTrue(galleryBFiles > 0,
+            "Gallery B should have image variants");
+    }
 }
-
-

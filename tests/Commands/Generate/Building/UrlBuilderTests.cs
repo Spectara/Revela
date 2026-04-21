@@ -208,5 +208,68 @@ public sealed class UrlBuilderTests
     }
 
     #endregion
+
+    #region ToImageSlug Tests
+
+    [TestMethod]
+    public void ToImageSlug_WithGalleryPath_ShouldIncludeSlugifiedGallery()
+    {
+        var result = UrlBuilder.ToImageSlug("01 Events/Fireworks/029081.jpg");
+
+        Assert.AreEqual("events/fireworks/029081", result);
+    }
+
+    [TestMethod]
+    public void ToImageSlug_WithSharedImages_ShouldStripPrefix()
+    {
+        var result = UrlBuilder.ToImageSlug("_images/canon-landscape-001.jpg");
+
+        Assert.AreEqual("canon-landscape-001", result);
+    }
+
+    [TestMethod]
+    public void ToImageSlug_WithSharedImagesSubfolder_ShouldPreserveSubfolder()
+    {
+        var result = UrlBuilder.ToImageSlug("_images/landscapes/mountain-sunrise.jpg");
+
+        Assert.AreEqual("landscapes/mountain-sunrise", result);
+    }
+
+    [TestMethod]
+    public void ToImageSlug_WithRootLevelImage_ShouldReturnSlugifiedFilename()
+    {
+        var result = UrlBuilder.ToImageSlug("023051.jpg");
+
+        Assert.AreEqual("023051", result);
+    }
+
+    [TestMethod]
+    public void ToImageSlug_WithDeepNesting_ShouldSlugifyAllSegments()
+    {
+        var result = UrlBuilder.ToImageSlug("02 Miscellaneous/Gallery 2/029081.jpg");
+
+        Assert.AreEqual("miscellaneous/gallery-2/029081", result);
+    }
+
+    [TestMethod]
+    public void ToImageSlug_WithBackslashes_ShouldNormalize()
+    {
+        var result = UrlBuilder.ToImageSlug("01 Events\\Fireworks\\029081.jpg");
+
+        Assert.AreEqual("events/fireworks/029081", result);
+    }
+
+    [TestMethod]
+    public void ToImageSlug_DuplicateFilenames_ProduceDifferentSlugs()
+    {
+        var slug1 = UrlBuilder.ToImageSlug("01 Events/Fireworks/029081.jpg");
+        var slug2 = UrlBuilder.ToImageSlug("02 Miscellaneous/Gallery 2/029081.jpg");
+
+        Assert.AreNotEqual(slug1, slug2);
+        Assert.AreEqual("events/fireworks/029081", slug1);
+        Assert.AreEqual("miscellaneous/gallery-2/029081", slug2);
+    }
+
+    #endregion
 }
 

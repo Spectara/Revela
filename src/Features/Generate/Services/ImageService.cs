@@ -3,6 +3,7 @@ using System.Diagnostics;
 using Microsoft.Extensions.Options;
 using Spectara.Revela.Core.Services;
 using Spectara.Revela.Features.Generate.Abstractions;
+using Spectara.Revela.Features.Generate.Infrastructure;
 using Spectara.Revela.Features.Generate.Models;
 using Spectara.Revela.Features.Generate.Models.Results;
 using Spectara.Revela.Sdk;
@@ -106,7 +107,7 @@ internal sealed partial class ImageService(
             manifestRepository.RemoveOrphans(uniqueSourcePaths);
 
             // Determine which images need processing
-            var imagesToProcess = new List<(string SourcePath, string ManifestKey, IReadOnlyList<int> Sizes, IReadOnlyList<(int Size, string Format)>? MissingVariants, string? ExistingPlaceholder, int Width, int Height)>();
+            var imagesToProcess = new List<(string SourcePath, string ManifestKey, string ImageSlug, IReadOnlyList<int> Sizes, IReadOnlyList<(int Size, string Format)>? MissingVariants, string? ExistingPlaceholder, int Width, int Height)>();
             var cachedCount = 0;
 
             var selectionStopwatch = Stopwatch.StartNew();
@@ -127,7 +128,7 @@ internal sealed partial class ImageService(
 
                 var manifestKey = imagePath.Replace('\\', '/');
                 var existingEntry = manifestRepository.GetImage(manifestKey);
-                var imageName = Path.GetFileNameWithoutExtension(existingEntry?.Filename ?? Path.GetFileNameWithoutExtension(fullPath));
+                var imageName = UrlBuilder.ToImageSlug(manifestKey);
 
                 // Get sizes from manifest (calculated during scan)
                 var manifestSizes = existingEntry?.Sizes ?? [];
@@ -148,12 +149,12 @@ internal sealed partial class ImageService(
                 if (options.Force)
                 {
                     // Force: regenerate everything
-                    imagesToProcess.Add((fullPath, manifestKey, manifestSizes, null, existingPlaceholder, width, height));
+                    imagesToProcess.Add((fullPath, manifestKey, imageName, manifestSizes, null, existingPlaceholder, width, height));
                 }
                 else if (!sourceUnchanged)
                 {
                     // Source changed or never processed: regenerate everything
-                    imagesToProcess.Add((fullPath, manifestKey, manifestSizes, null, existingPlaceholder, width, height));
+                    imagesToProcess.Add((fullPath, manifestKey, imageName, manifestSizes, null, existingPlaceholder, width, height));
                 }
                 else
                 {
@@ -163,7 +164,7 @@ internal sealed partial class ImageService(
                     var missingVariants = GetMissingVariants(outputImagesDirectory, imageName, manifestSizes, formats, formatsWithQualityChange);
                     if (missingVariants.Count > 0)
                     {
-                        imagesToProcess.Add((fullPath, manifestKey, manifestSizes, missingVariants, existingPlaceholder, width, height));
+                        imagesToProcess.Add((fullPath, manifestKey, imageName, manifestSizes, missingVariants, existingPlaceholder, width, height));
                     }
                     else
                     {
@@ -176,7 +177,7 @@ internal sealed partial class ImageService(
             LogSelectionCompleted(logger, uniqueSourcePaths.Count, imagesToProcess.Count, cachedCount, selectionStopwatch.Elapsed);
 
             long plannedVariants = 0;
-            foreach (var (_, _, manifestSizes, missingVariants, _, _, _) in imagesToProcess)
+            foreach (var (_, _, _, manifestSizes, missingVariants, _, _, _) in imagesToProcess)
             {
                 if (missingVariants != null)
                 {
@@ -273,7 +274,7 @@ internal sealed partial class ImageService(
                 },
                 async (item, ct) =>
                 {
-                    var (sourcePath, manifestKey, manifestSizes, missingVariants, existingPlaceholder, width, height) = item;
+                    var (sourcePath, manifestKey, imageSlug, manifestSizes, missingVariants, existingPlaceholder, width, height) = item;
 
                     // Assign a worker ID to this task
                     var taskId = Environment.CurrentManagedThreadId;
@@ -322,6 +323,7 @@ internal sealed partial class ImageService(
                             Sizes = sizesToGenerate,
                             VariantsToGenerate = missingVariants,  // null = all, list = incremental
                             OutputDirectory = outputImagesDirectory,
+                            ImageSlug = imageSlug,
                             CacheDirectory = cacheDirectory,
                             ResizeMode = imageSizesProvider.GetResizeMode(),
                             Placeholder = ImageSettings.Placeholder,
@@ -543,7 +545,7 @@ internal sealed partial class ImageService(
             return missing;
         }
 
-        var imageDirectory = Path.Combine(outputDirectory, imageName);
+        var imageDirectory = Path.Combine(outputDirectory, imageName.Replace('/', Path.DirectorySeparatorChar));
 
         // If image directory doesn't exist, all variants are missing
         if (!Directory.Exists(imageDirectory))

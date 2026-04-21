@@ -1,3 +1,4 @@
+using Spectara.Revela.Features.Generate.Infrastructure;
 using Spectara.Revela.Sdk.Models;
 using Spectara.Revela.Sdk.Models.Manifest;
 
@@ -9,7 +10,7 @@ namespace Spectara.Revela.Features.Generate.Models;
 /// <remarks>
 /// Properties are named to match template expectations (Lumina theme):
 /// - id: Unique identifier for HTML anchors (filename without extension)
-/// - url: Relative path to image variants (e.g., "photo1" -> images/photo1/640.jpg)
+/// - url: Relative path to image variants (e.g., "events/fireworks/029081" -> images/events/fireworks/029081/640.jpg)
 /// </remarks>
 internal sealed class Image
 {
@@ -24,6 +25,17 @@ internal sealed class Image
     public required string FileName { get; init; }
 
     /// <summary>
+    /// Slugified path including gallery context for unique image output.
+    /// </summary>
+    /// <remarks>
+    /// Derived from <see cref="SourcePath"/> via <see cref="UrlBuilder.ToImageSlug"/>.
+    /// Includes gallery directory segments to prevent filename collisions
+    /// across galleries (e.g., "events/fireworks/029081").
+    /// For shared <c>_images/</c>, the prefix is stripped (e.g., "canon-landscape-001").
+    /// </remarks>
+    public required string ImageSlug { get; init; }
+
+    /// <summary>
     /// Unique identifier for HTML anchors and lightbox targets
     /// </summary>
     /// <remarks>
@@ -36,12 +48,12 @@ internal sealed class Image
     /// Relative path segment for image variants
     /// </summary>
     /// <remarks>
-    /// Used in templates to construct paths like: {{ resource_path }}{{ image.url }}/640.jpg
-    /// The template combines this with resource_path (e.g., "images/") and variant size.
-    /// This is NOT a full URI - it's a path segment (e.g., "photo1").
+    /// Used in templates to construct paths like: {{ image_basepath }}{{ image.url }}/640.jpg
+    /// Includes gallery path to prevent collisions (e.g., "events/fireworks/029081").
+    /// This is NOT a full URI - it's a path segment.
     /// </remarks>
 #pragma warning disable CA1056 // URI-like properties should not be strings - this is a path segment, not a URI
-    public string Url => FileName;
+    public string Url => ImageSlug;
 #pragma warning restore CA1056
 
     public required int Width { get; init; }
@@ -87,6 +99,7 @@ internal sealed class Image
         {
             SourcePath = sourcePath,
             FileName = Path.GetFileNameWithoutExtension(entry.Filename),
+            ImageSlug = UrlBuilder.ToImageSlug(sourcePath),
             Width = entry.Width,
             Height = entry.Height,
             FileSize = entry.FileSize,

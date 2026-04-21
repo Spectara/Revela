@@ -279,7 +279,7 @@ internal sealed partial class NetVipsImageProcessor(
                         {
                             var variant = await SaveVariantAsync(
                                 thumb,
-                                inputPath,
+                                options.ImageSlug,
                                 options.OutputDirectory,
                                 format,
                                 size,
@@ -317,6 +317,7 @@ internal sealed partial class NetVipsImageProcessor(
         {
             SourcePath = inputPath,
             FileName = Path.GetFileNameWithoutExtension(inputPath),
+            ImageSlug = options.ImageSlug,
             Width = width,
             Height = height,
             Variants = variants,
@@ -758,22 +759,21 @@ internal sealed partial class NetVipsImageProcessor(
     /// Save image variant to disk
     /// </summary>
     /// <remarks>
-    /// Output structure matches Lumina theme expectations:
-    /// images/{fileName}/{width}.{format}
-    /// e.g., images/photo1/640.jpg
+    /// Output structure: images/{imageSlug}/{width}.{format}
+    /// e.g., images/events/fireworks/029081/640.jpg
+    /// The imageSlug includes the gallery path to avoid filename collisions.
     /// </remarks>
     private Task<ImageVariant> SaveVariantAsync(
         Image image,
-        string originalPath,
+        string imageSlug,
         string outputDirectory,
         string format,
         int width,
         int height,
         int quality)
     {
-        // Build output path: images/{fileName}/{width}.{format}
-        var fileName = Path.GetFileNameWithoutExtension(originalPath);
-        var imageDirectory = Path.Combine(outputDirectory, fileName);
+        // Build output path: images/{imageSlug}/{width}.{format}
+        var imageDirectory = Path.Combine(outputDirectory, imageSlug.Replace('/', Path.DirectorySeparatorChar));
         var outputFileName = $"{width}.{format}";
         var outputPath = Path.Combine(imageDirectory, outputFileName);
 
