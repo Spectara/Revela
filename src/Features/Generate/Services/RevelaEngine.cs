@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using Spectara.Revela.Features.Generate.Abstractions;
+using Spectara.Revela.Features.Generate.Models;
 using Spectara.Revela.Features.Generate.Models.Results;
 using Spectara.Revela.Sdk.Abstractions;
 using Spectara.Revela.Sdk.Abstractions.Engine;
@@ -102,7 +103,7 @@ internal sealed partial class RevelaEngine(
         var options = new ProcessImagesOptions { Force = force };
         var internalProgress = progress is null
             ? null
-            : new Progress<ImageProgress>(p => progress.Report(new ImagesProgress
+            : new SynchronousProgress<ImageProgress>(p => progress.Report(new ImagesProgress
             {
                 Processed = p.Processed,
                 Total = p.Total,

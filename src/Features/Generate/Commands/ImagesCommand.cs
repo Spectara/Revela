@@ -2,6 +2,7 @@ using System.CommandLine;
 using System.Globalization;
 using Microsoft.Extensions.Options;
 using Spectara.Revela.Features.Generate.Abstractions;
+using Spectara.Revela.Features.Generate.Models;
 using Spectara.Revela.Features.Generate.Models.Results;
 using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Abstractions;
@@ -117,7 +118,10 @@ internal sealed partial class ImagesCommand(
                 .AutoClear(false)
                 .StartAsync(async ctx =>
                 {
-                    var progress = new Progress<ImageProgress>(p => ctx.UpdateTarget(RenderProgress(p)));
+                    // Use synchronous IProgress to avoid lost updates.
+                    // Progress<T> dispatches via ThreadPool, causing the last
+                    // updates per image to be lost before Live() renders them.
+                    var progress = new SynchronousProgress<ImageProgress>(p => ctx.UpdateTarget(RenderProgress(p)));
 
                     return await imageService.ProcessAsync(options, progress, cancellationToken);
                 });

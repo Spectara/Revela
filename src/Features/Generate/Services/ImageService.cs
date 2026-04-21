@@ -398,10 +398,8 @@ internal sealed partial class ImageService(
                     Interlocked.Add(ref totalFilesCreated, filesCreated);
                     Interlocked.Add(ref totalSizeBytes, imageSize);
 
-                    // Mark worker as idle
-                    workerStates[workerId] = new WorkerState { WorkerId = workerId };
-
-                    // Report final progress for this image
+                    // Report progress with completed image (all squares filled).
+                    // With SynchronousProgress this renders immediately before the idle reset.
                     progress?.Report(new ImageProgress
                     {
                         Processed = currentProcessed,
@@ -410,6 +408,10 @@ internal sealed partial class ImageService(
                         Formats = formatNames,
                         Workers = [.. workerStates.Values.OrderBy(w => w.WorkerId)]
                     });
+
+                    // Mark worker as idle — clears the completed row.
+                    // Safe because SynchronousProgress already rendered the completed state above.
+                    workerStates[workerId] = new WorkerState { WorkerId = workerId };
 
                     // Thread-safe manifest update - update placeholder if changed
                     lock (manifestLock)
@@ -432,7 +434,12 @@ internal sealed partial class ImageService(
             manifestRepository.LastImagesProcessed = timeProvider.GetUtcNow().UtcDateTime;
             await manifestRepository.SaveAsync(cancellationToken);
 
-            // Final progress - all workers idle but keep row count stable
+            // Final progress - mark all workers idle for clean final display
+            for (var i = 0; i < workerCount; i++)
+            {
+                workerStates[i] = new WorkerState { WorkerId = i };
+            }
+
             progress?.Report(new ImageProgress
             {
                 Processed = processedCount,
