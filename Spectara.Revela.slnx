@@ -8,7 +8,7 @@
     <Project Path="src/Core/Core.csproj" />
     <Project Path="src/Commands/Commands.csproj" />
     <Project Path="src/Cli/Cli.csproj" />
-    <Project Path="src/Cli.Embedded/Embedded.csproj" />
+    <Project Path="src/Cli.Embedded/Cli.Embedded.csproj" />
     <Folder Name="/Features/">
       <Project Path="src/Features/Generate/Generate.csproj" />
       <Project Path="src/Features/Packages/Packages.csproj" />
