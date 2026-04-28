@@ -59,7 +59,9 @@ jobs:
         run: dotnet test --no-build -c Release --report-trx --results-directory ./TestResults --coverage --coverage-settings coverage.config --coverage-output-format cobertura
 
       # Smoke-test: ensure Cli.Embedded publishes as self-contained single file
-      # This catches issues with statically linked plugins/themes early
+      # This catches issues with statically linked plugins/themes early.
+      # No --no-restore: publish needs to restore RID-specific assets (the
+      # earlier `dotnet restore` step ran without a RID).
       - name: Publish Cli.Embedded (smoke test)
         run: |
           dotnet publish src/Cli.Embedded/Cli.Embedded.csproj \
@@ -69,8 +71,7 @@ jobs:
             -p:IncludeNativeLibrariesForSelfExtract=true \
             -p:DebugType=none \
             -p:DebugSymbols=false \
-            -o ./publish-embedded \
-            --no-restore
+            -o ./publish-embedded
         shell: bash
 
       - name: Upload Test Results
