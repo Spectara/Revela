@@ -58,6 +58,21 @@ jobs:
       - name: Run Tests
         run: dotnet test --no-build -c Release --report-trx --results-directory ./TestResults --coverage --coverage-settings coverage.config --coverage-output-format cobertura
 
+      # Smoke-test: ensure Cli.Embedded publishes as self-contained single file
+      # This catches issues with statically linked plugins/themes early
+      - name: Publish Cli.Embedded (smoke test)
+        run: |
+          dotnet publish src/Cli.Embedded/Cli.Embedded.csproj \
+            -c Release \
+            --self-contained \
+            -p:PublishSingleFile=true \
+            -p:IncludeNativeLibrariesForSelfExtract=true \
+            -p:DebugType=none \
+            -p:DebugSymbols=false \
+            -o ./publish-embedded \
+            --no-restore
+        shell: bash
+
       - name: Upload Test Results
         if: always()
         uses: actions/upload-artifact@v7
