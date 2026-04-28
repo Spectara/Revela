@@ -2,13 +2,17 @@
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <Description>Revela - Embedded build with all plugins statically linked (debug &amp; AOT)</Description>
+    <Description>Revela - Standalone build with core plugins statically linked (no NuGet plugin management)</Description>
 
     <!-- Override AssemblyName to get 'revela' executable -->
     <AssemblyName>revela</AssemblyName>
 
     <!-- Application Icon -->
     <ApplicationIcon>..\..\assets\revela.ico</ApplicationIcon>
+
+    <!-- Compress managed assemblies inside single-file bundle (Brotli).
+         Only in Release single-file publish to keep Debug builds fast. -->
+    <EnableCompressionInSingleFile Condition="'$(Configuration)' == 'Release' And '$(PublishSingleFile)' == 'true'">true</EnableCompressionInSingleFile>
   </PropertyGroup>
 
   <!-- Share Hosting code from Cli project (HostBootstrap, InteractiveMode, etc.) -->

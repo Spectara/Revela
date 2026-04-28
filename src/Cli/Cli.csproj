@@ -16,8 +16,9 @@
     <!-- Application Icon (shown in Windows Explorer and taskbar) -->
     <ApplicationIcon>..\..\assets\revela.ico</ApplicationIcon>
 
-    <!-- Compress managed assemblies inside single-file bundle (Brotli) -->
-    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+    <!-- Compress managed assemblies inside single-file bundle (Brotli).
+         Only in Release single-file publish to keep Debug builds fast. -->
+    <EnableCompressionInSingleFile Condition="'$(Configuration)' == 'Release' And '$(PublishSingleFile)' == 'true'">true</EnableCompressionInSingleFile>
   </PropertyGroup>
 
   <ItemGroup>

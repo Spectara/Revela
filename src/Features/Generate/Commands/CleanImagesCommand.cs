@@ -1,6 +1,7 @@
 using System.CommandLine;
 using System.Globalization;
 using Microsoft.Extensions.Options;
+using Spectara.Revela.Features.Generate.Infrastructure;
 using Spectara.Revela.Sdk.Abstractions;
 using Spectara.Revela.Sdk.Configuration;
 using Spectara.Revela.Sdk.Output;
@@ -174,17 +175,20 @@ internal sealed partial class CleanImagesCommand(
     }
 
     /// <summary>
-    /// Builds a set of valid image folder names from the manifest.
+    /// Builds a set of valid image slugs from the manifest.
     /// </summary>
+    /// <remarks>
+    /// Slugs include gallery path (e.g., "events/fireworks/029081") to match
+    /// the nested output directory structure.
+    /// </remarks>
     private HashSet<string> BuildValidImageNames()
     {
         var names = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
-        foreach (var image in manifestRepository.Images.Values)
+        foreach (var (sourcePath, _) in manifestRepository.Images)
         {
-            // Image folder name is the filename without extension
-            var folderName = Path.GetFileNameWithoutExtension(image.Filename);
-            names.Add(folderName);
+            var slug = UrlBuilder.ToImageSlug(sourcePath);
+            names.Add(slug);
         }
 
         LogValidImagesFound(logger, names.Count);
@@ -195,7 +199,7 @@ internal sealed partial class CleanImagesCommand(
     /// Analyzes the images directory to find files that should be cleaned.
     /// </summary>
     private CleanAnalysis AnalyzeImagesDirectory(
-        HashSet<string> validImageNames,
+        HashSet<string> validImageSlugs,
         IEnumerable<string> activeFormats,
         IReadOnlyList<int> configuredSizes,
         CancellationToken cancellationToken)
@@ -207,32 +211,34 @@ internal sealed partial class CleanImagesCommand(
         var activeFormatSet = new HashSet<string>(activeFormats, StringComparer.OrdinalIgnoreCase);
         var configuredSizeSet = new HashSet<int>(configuredSizes);
 
-        // Build lookup for per-image sizes (includes original size)
+        // Build lookup for per-image sizes using slugs (includes original size)
         var imageSizesLookup = manifestRepository.Images.ToDictionary(
-            kvp => Path.GetFileNameWithoutExtension(kvp.Value.Filename),
+            kvp => UrlBuilder.ToImageSlug(kvp.Key),
             kvp => new HashSet<int>(kvp.Value.Sizes),
             StringComparer.OrdinalIgnoreCase);
 
-        foreach (var imageDir in Directory.EnumerateDirectories(ImagesPath))
+        // Find leaf image directories (contain {size}.{format} files, no subdirectories with images)
+        foreach (var leafDir in FindLeafImageDirectories(ImagesPath))
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            var folderName = Path.GetFileName(imageDir);
+            // Compute relative slug from the images base path
+            var relativePath = Path.GetRelativePath(ImagesPath, leafDir).Replace('\\', '/');
 
             // Check if this folder is orphaned (not in manifest)
-            if (!validImageNames.Contains(folderName))
+            if (!validImageSlugs.Contains(relativePath))
             {
-                var (fileCount, totalSize) = GetDirectoryStats(imageDir);
-                orphanedFolders.Add(new CleanItem(imageDir, totalSize, fileCount, IsDirectory: true));
-                LogOrphanedFolder(logger, folderName);
+                var (fileCount, totalSize) = GetDirectoryStats(leafDir);
+                orphanedFolders.Add(new CleanItem(leafDir, totalSize, fileCount, IsDirectory: true));
+                LogOrphanedFolder(logger, relativePath);
                 continue;
             }
 
             // Get allowed sizes for this specific image
-            var allowedSizes = imageSizesLookup.GetValueOrDefault(folderName) ?? configuredSizeSet;
+            var allowedSizes = imageSizesLookup.GetValueOrDefault(relativePath) ?? configuredSizeSet;
 
             // Check individual files in non-orphaned folders
-            foreach (var file in Directory.EnumerateFiles(imageDir))
+            foreach (var file in Directory.EnumerateFiles(leafDir))
             {
                 cancellationToken.ThrowIfCancellationRequested();
 
@@ -267,6 +273,34 @@ internal sealed partial class CleanImagesCommand(
         }
 
         return new CleanAnalysis(orphanedFolders, unusedSizeFiles, unusedFormatFiles);
+    }
+
+    /// <summary>
+    /// Finds leaf image directories that contain variant files ({size}.{format}).
+    /// </summary>
+    /// <remarks>
+    /// A leaf directory is one that contains files matching the pattern {number}.{ext}
+    /// (e.g., "640.jpg", "1920.avif"). This handles both flat and nested gallery structures.
+    /// </remarks>
+    private static IEnumerable<string> FindLeafImageDirectories(string imagesPath)
+    {
+        if (!Directory.Exists(imagesPath))
+        {
+            yield break;
+        }
+
+        foreach (var dir in Directory.EnumerateDirectories(imagesPath, "*", SearchOption.AllDirectories))
+        {
+            // A leaf directory contains image variant files (e.g., 640.jpg)
+            // and has no subdirectories containing variants themselves
+            var hasVariantFiles = Directory.EnumerateFiles(dir)
+                .Any(f => int.TryParse(Path.GetFileNameWithoutExtension(f), out _));
+
+            if (hasVariantFiles)
+            {
+                yield return dir;
+            }
+        }
     }
 
     /// <summary>

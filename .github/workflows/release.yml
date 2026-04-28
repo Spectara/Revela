@@ -350,6 +350,63 @@ jobs:
             tar -czvf ../revela-${{ matrix.rid }}-full.tar.gz ${{ matrix.exe }} start-revela.sh packages getting-started
           fi
 
+      # === Standalone Release (Cli.Embedded) ===
+      # All plugins/themes statically linked into a single binary.
+      # No NuGet plugin management — perfect for users who want a turn-key tool.
+      - name: Publish Cli.Embedded (Standalone)
+        shell: bash
+        run: |
+          dotnet publish src/Cli.Embedded/Cli.Embedded.csproj \
+            -c Release \
+            -r ${{ matrix.rid }} \
+            --self-contained \
+            -p:PublishSingleFile=true \
+            -p:IncludeNativeLibrariesForSelfExtract=true \
+            -p:DebugType=none \
+            -p:DebugSymbols=false \
+            -p:Version=${{ needs.validate.outputs.version }} \
+            -o ./publish-standalone
+
+      - name: Copy documentation (Standalone)
+        run: |
+          mkdir -p ./publish-standalone/getting-started
+          cp docs/getting-started/*.md ./publish-standalone/getting-started/
+        shell: bash
+
+      - name: Copy launcher script - Standalone (Linux/macOS)
+        if: matrix.os != 'windows-latest'
+        run: |
+          if [[ "${{ matrix.rid }}" == osx-* ]]; then
+            cp scripts/launchers/start-revela.command "./publish-standalone/Start Revela.command"
+            chmod +x "./publish-standalone/Start Revela.command"
+          else
+            cp scripts/launchers/start-revela.sh ./publish-standalone/start-revela.sh
+            chmod +x ./publish-standalone/start-revela.sh
+          fi
+        shell: bash
+
+      - name: Clean up XML docs (Standalone)
+        run: rm -f ./publish-standalone/*.xml
+        shell: bash
+
+      - name: Package Standalone (Windows)
+        if: matrix.os == 'windows-latest'
+        run: |
+          cd publish-standalone
+          Compress-Archive -Path ${{ matrix.exe }}, getting-started -DestinationPath ../revela-${{ matrix.rid }}-standalone.zip
+        shell: pwsh
+
+      - name: Package Standalone (Linux/macOS)
+        if: matrix.os != 'windows-latest'
+        run: |
+          cd publish-standalone
+          chmod +x ${{ matrix.exe }}
+          if [[ "${{ matrix.rid }}" == osx-* ]]; then
+            tar -czvf ../revela-${{ matrix.rid }}-standalone.tar.gz ${{ matrix.exe }} "Start Revela.command" getting-started
+          else
+            tar -czvf ../revela-${{ matrix.rid }}-standalone.tar.gz ${{ matrix.exe }} start-revela.sh getting-started
+          fi
+
       # === Attestation & Upload ===
       - name: Attest Core build provenance
         uses: actions/attest-build-provenance@v4
@@ -360,6 +417,11 @@ jobs:
         uses: actions/attest-build-provenance@v4
         with:
           subject-path: revela-${{ matrix.rid }}-full.*
+
+      - name: Attest Standalone build provenance
+        uses: actions/attest-build-provenance@v4
+        with:
+          subject-path: revela-${{ matrix.rid }}-standalone.*
 
       - name: Upload Core artifact
         uses: actions/upload-artifact@v7
@@ -373,6 +435,13 @@ jobs:
         with:
           name: ${{ matrix.rid }}-full
           path: revela-${{ matrix.rid }}-full.*
+          retention-days: 1
+
+      - name: Upload Standalone artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ matrix.rid }}-standalone
+          path: revela-${{ matrix.rid }}-standalone.*
           retention-days: 1
 
   # Keyless signing + checksums (cosign)
@@ -484,8 +553,21 @@ jobs:
           cat << EOF > release-notes.md
           ## Downloads
 
-          ### 🚀 Full Release (recommended)
-          All themes and plugins included - ready to use immediately.
+          ### 🚀 Standalone Release (recommended)
+          All-in-one binary — just download and run. Perfect for photographers who want
+          to focus on their work without worrying about plugin management.
+
+          | Platform | Download |
+          |----------|----------|
+          | Windows x64 | [revela-win-x64-standalone.zip](${BASE_URL}/revela-win-x64-standalone.zip) |
+          | Linux x64 | [revela-linux-x64-standalone.tar.gz](${BASE_URL}/revela-linux-x64-standalone.tar.gz) |
+          | Linux ARM64 | [revela-linux-arm64-standalone.tar.gz](${BASE_URL}/revela-linux-arm64-standalone.tar.gz) |
+          | macOS Intel | [revela-osx-x64-standalone.tar.gz](${BASE_URL}/revela-osx-x64-standalone.tar.gz) |
+          | macOS Apple Silicon | [revela-osx-arm64-standalone.tar.gz](${BASE_URL}/revela-osx-arm64-standalone.tar.gz) |
+
+          ### 🎁 Full Release
+          For users who want modularity — themes and plugins as separate NuGet packages
+          you can update individually or extend with third-party plugins.
 
           | Platform | Download |
           |----------|----------|
@@ -495,8 +577,12 @@ jobs:
           | macOS Intel | [revela-osx-x64-full.tar.gz](${BASE_URL}/revela-osx-x64-full.tar.gz) |
           | macOS Apple Silicon | [revela-osx-arm64-full.tar.gz](${BASE_URL}/revela-osx-arm64-full.tar.gz) |
 
-          ### 📦 Core Release
-          Minimal download (~15MB). Install plugins/themes via \`revela plugin install\`.
+          ### 🧰 Core Release
+          Minimal download (~15MB). Designed to install plugins/themes from NuGet.org via
+          \`revela plugin install\` — but plugins are not yet published there.
+
+          For now, you'd need to provide plugins via a local NuGet feed or download them
+          manually from this release. **Most users want the Standalone or Full release.**
 
           | Platform | Download |
           |----------|----------|

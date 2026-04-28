@@ -71,10 +71,18 @@ internal static class HostBuilderExtensions
         // Apply logging configuration with sensible defaults
         // Defaults are Warning to keep console clean (Spectre.Console progress bars)
         // Users can override via logging.json for debugging
-        var loggingConfig = new LoggingConfig();
-        builder.Configuration.GetSection("Logging").Bind(loggingConfig);
+        // Read IConfiguration directly instead of Bind() to avoid IL2026 trimming warning
+        var logLevels = new LoggingConfig().LogLevel;
 
-        foreach (var (category, level) in loggingConfig.LogLevel)
+        foreach (var child in builder.Configuration.GetSection("Logging:LogLevel").GetChildren())
+        {
+            if (child.Value is not null)
+            {
+                logLevels[child.Key] = child.Value;
+            }
+        }
+
+        foreach (var (category, level) in logLevels)
         {
             if (Enum.TryParse<LogLevel>(level, ignoreCase: true, out var logLevel))
             {

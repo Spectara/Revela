@@ -24,6 +24,16 @@ internal sealed class ImageProcessingOptions
     public required string OutputDirectory { get; init; }
 
     /// <summary>
+    /// Slugified path segment for image output folder.
+    /// </summary>
+    /// <remarks>
+    /// Includes gallery path to avoid collisions between images with the same
+    /// filename in different galleries (e.g., "events/fireworks/029081").
+    /// Used instead of deriving folder name from filename alone.
+    /// </remarks>
+    public required string ImageSlug { get; init; }
+
+    /// <summary>
     /// Optional cache directory for incremental builds
     /// </summary>
     public string? CacheDirectory { get; init; }

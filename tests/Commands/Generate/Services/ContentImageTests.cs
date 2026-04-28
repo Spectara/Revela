@@ -212,6 +212,7 @@ public sealed class ContentImageTests
         {
             SourcePath = "photo.jpg",
             FileName = "photo",
+            ImageSlug = "photo",
             Width = 1920,
             Height = 1080,
             Sizes = [320, 640],
@@ -354,6 +355,7 @@ public sealed class ContentImageTests
     {
         SourcePath = $"{name}.jpg",
         FileName = name,
+        ImageSlug = name,
         Width = width,
         Height = height,
         Sizes = sizes

@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Text;
 using System.Text.RegularExpressions;
+using Spectara.Revela.Sdk;
 
 namespace Spectara.Revela.Features.Generate.Infrastructure;
 
@@ -81,6 +82,56 @@ internal static partial class UrlBuilder
 
         // 7. Trim leading/trailing hyphens
         return final.Trim('-');
+    }
+
+    /// <summary>
+    /// Converts an image source path to a slugified output path segment.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Each path segment is individually slugified using <see cref="ToSlug"/>.
+    /// The file extension is removed. The <c>_images/</c> prefix is stripped
+    /// so that shared images remain in a flat structure.
+    /// </para>
+    /// </remarks>
+    /// <param name="sourcePath">Relative source path (e.g., "01 Events/Fireworks/029081.jpg")</param>
+    /// <returns>Slugified path without extension (e.g., "events/fireworks/029081")</returns>
+    /// <example>
+    /// <code>
+    /// ToImageSlug("01 Events/Fireworks/029081.jpg")       // → "events/fireworks/029081"
+    /// ToImageSlug("_images/canon-landscape-001.jpg")      // → "canon-landscape-001"
+    /// ToImageSlug("_images/landscapes/mountain.jpg")      // → "landscapes/mountain"
+    /// ToImageSlug("023051.jpg")                           // → "023051"
+    /// </code>
+    /// </example>
+    public static string ToImageSlug(string sourcePath)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(sourcePath);
+
+        var normalized = sourcePath.Replace('\\', '/');
+
+        // Strip _images/ prefix — shared images stay flat
+        if (normalized.StartsWith(ProjectPaths.SharedImages + "/", StringComparison.OrdinalIgnoreCase))
+        {
+            normalized = normalized[(ProjectPaths.SharedImages.Length + 1)..];
+        }
+
+        // Remove file extension
+        var withoutExtension = Path.GetFileNameWithoutExtension(normalized);
+        var directory = Path.GetDirectoryName(normalized)?.Replace('\\', '/');
+
+        if (string.IsNullOrEmpty(directory))
+        {
+            // Root-level image: just slugify the filename
+            return ToSlug(withoutExtension);
+        }
+
+        // Slugify each directory segment, then append slugified filename
+        var segments = directory.Split('/', StringSplitOptions.RemoveEmptyEntries);
+        var slugParts = segments.Select(ToSlug).ToList();
+        slugParts.Add(ToSlug(withoutExtension));
+
+        return string.Join("/", slugParts);
     }
 
     /// <summary>
