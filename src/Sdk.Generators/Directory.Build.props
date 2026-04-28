@@ -9,6 +9,15 @@
          consumer builds, causing CS2012 file-in-use errors on Windows CI.
          Source generators are tiny so the cold-start cost is negligible. -->
     <UseSharedCompilation>false</UseSharedCompilation>
+
+    <!-- Enables F5 debugging of the generator from Visual Studio. -->
+    <IsRoslynComponent>true</IsRoslynComponent>
+
+    <!-- Activates RS1035/RS1041 analyzer rules that catch banned APIs
+         (File.IO, Process.Start, etc.) in source-generator code at compile time.
+         Matches the pattern used by Microsoft's own generators
+         (System.Text.Json, LoggerMessage, Configuration.Binder). -->
+    <EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
   </PropertyGroup>
 
   <!-- Remove global usings that are incompatible with netstandard2.0 -->
