@@ -31,9 +31,14 @@ public interface IGlobalConfigManager
     /// <summary>
     /// Adds a feed to the configuration.
     /// </summary>
-#pragma warning disable CA1054 // URI parameters should not be strings - supports both URLs and local paths
+    /// <remarks>
+    /// <paramref name="url"/> is <see cref="string"/> because NuGet feeds can be either
+    /// remote HTTP URLs (<c>https://api.nuget.org/v3/index.json</c>) or local filesystem
+    /// paths (<c>./packages</c>) — a heterogeneous mix that <see cref="Uri"/> would
+    /// awkwardly conflate.
+    /// </remarks>
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1054:URI-like parameters should not be strings", Justification = "NuGet feed URL can be local path OR remote URL")]
     Task AddFeedAsync(string name, string url, CancellationToken cancellationToken = default);
-#pragma warning restore CA1054
 
     /// <summary>
     /// Removes a feed from the configuration.

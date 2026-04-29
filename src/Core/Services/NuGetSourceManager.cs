@@ -106,9 +106,7 @@ public sealed partial class NuGetSourceManager(
     }
 
     /// <inheritdoc/>
-#pragma warning disable CA1054 // URI parameters should not be strings - string required for user input
     public Task AddSourceAsync(string name, string url, CancellationToken cancellationToken = default) => globalConfigManager.AddFeedAsync(name, url, cancellationToken);
-#pragma warning restore CA1054
 
     /// <inheritdoc/>
     public Task<bool> RemoveSourceAsync(string name, CancellationToken cancellationToken = default)

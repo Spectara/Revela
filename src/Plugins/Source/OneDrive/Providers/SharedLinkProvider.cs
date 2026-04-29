@@ -30,7 +30,6 @@ internal sealed class SharedLinkProvider(
     /// </summary>
     /// <param name="shareUrl">OneDrive share URL</param>
     /// <param name="cancellationToken">Cancellation token</param>
-    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1054:URI-like parameters should not be strings", Justification = "Share URLs with tokens don't always parse as valid System.Uri")]
     public async Task<IReadOnlyList<OneDriveItem>> ListItemsAsync(
         string shareUrl,
         CancellationToken cancellationToken = default

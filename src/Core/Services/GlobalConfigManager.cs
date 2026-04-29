@@ -96,9 +96,8 @@ public sealed partial class GlobalConfigManager(ILogger<GlobalConfigManager> log
     }
 
     /// <inheritdoc />
-#pragma warning disable CA1054 // URI parameters should not be strings - supports both URLs and local paths
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1054:URI-like parameters should not be strings", Justification = "NuGet feed URL can be local path OR remote URL")]
     public async Task AddFeedAsync(string name, string url, CancellationToken cancellationToken = default)
-#pragma warning restore CA1054
     {
         var config = await LoadFileAsync(cancellationToken);
 

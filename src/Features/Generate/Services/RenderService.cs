@@ -171,9 +171,9 @@ internal sealed partial class RenderService(
             await staticFileService.CopyStaticFilesAsync(SourcePath, OutputPath, cancellationToken);
 
             // Generate sitemap.xml (requires absolute BaseUrl)
-            if (!string.IsNullOrEmpty(config.Project.BaseUrl))
+            if (config.Project.BaseUrl is not null)
             {
-                var sitemap = SitemapGenerator.Generate(siteModel, config.Project.BaseUrl, config.Project.BasePath);
+                var sitemap = SitemapGenerator.Generate(siteModel, config.Project.BaseUrl.ToString(), config.Project.BasePath);
                 await File.WriteAllTextAsync(
                     Path.Combine(OutputPath, "sitemap.xml"),
                     sitemap,
@@ -236,7 +236,7 @@ internal sealed partial class RenderService(
             Project = new RenderProjectSettings
             {
                 Name = !string.IsNullOrEmpty(project.Name) ? project.Name : "Revela Site",
-                BaseUrl = !string.IsNullOrEmpty(project.BaseUrl) ? project.BaseUrl : "https://example.com",
+                BaseUrl = project.BaseUrl?.ToString() ?? "https://example.com",
                 Language = !string.IsNullOrEmpty(project.Language) ? project.Language : "en",
                 ImageBasePath = project.ImageBasePath,
                 BasePath = NormalizeBasePath(project.BasePath)

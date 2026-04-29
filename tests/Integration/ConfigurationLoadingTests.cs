@@ -35,7 +35,7 @@ public sealed class ConfigurationLoadingTests
 
         // Assert
         Assert.AreEqual("My Portfolio", config.Name);
-        Assert.AreEqual("https://photos.example.com", config.BaseUrl);
+        Assert.AreEqual(new Uri("https://photos.example.com"), config.BaseUrl);
         Assert.AreEqual("de", config.Language);
     }
 

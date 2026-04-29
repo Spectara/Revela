@@ -38,12 +38,11 @@ internal sealed class OneDrivePluginConfig
     /// OneDrive shared folder URL
     /// </summary>
     /// <remarks>
-    /// CA1056 suppressed: ShareUrl must remain string for compatibility with configuration binding.
-    /// OneDrive URLs often include share tokens that don't parse as valid URIs.
+    /// OneDrive URLs often include share tokens that don't parse as valid <see cref="Uri"/>,
+    /// so this is kept as <see cref="string"/> for compatibility with configuration binding.
     /// </remarks>
     [Required(ErrorMessage = "ShareUrl is required. Set via config file, environment variable, or --share-url parameter.")]
     [Url(ErrorMessage = "ShareUrl must be a valid URL")]
-    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1056:URI properties should not be strings", Justification = "Share URLs with tokens don't parse as System.Uri")]
     public string ShareUrl { get; init; } = string.Empty;
 
     /// <summary>

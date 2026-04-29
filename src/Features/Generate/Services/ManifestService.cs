@@ -65,7 +65,7 @@ internal sealed partial class ManifestService(
     /// <inheritdoc />
     public void SetRoot(ManifestEntry root)
     {
-        manifest.Root = root;
+        manifest = manifest with { Root = root };
         RebuildImageCache();
     }
 
@@ -83,6 +83,12 @@ internal sealed partial class ManifestService(
     /// <inheritdoc />
     public void SetImage(string sourcePath, ImageContent entry)
     {
+        if (manifest.Root is null)
+        {
+            LogImageNodeNotFound(logger, sourcePath);
+            return;
+        }
+
         // Find the node that should contain this image (based on path prefix)
         var node = FindNodeForImage(sourcePath);
         if (node is null)
@@ -91,45 +97,45 @@ internal sealed partial class ManifestService(
             return;
         }
 
-        // Check if image already exists in node
-        var existingIndex = node.Content
-            .Select((c, i) => (Content: c, Index: i))
-            .Where(x => x.Content is ImageContent)
-            .FirstOrDefault(x => GetImageSourcePath(node.Path, x.Content) == sourcePath)
-            .Index;
-
-        // FirstOrDefault returns 0 for Index if not found, so we need to check separately
+        // Build new content list (replace existing image or append new)
         var existingImage = node.Content.OfType<ImageContent>()
             .FirstOrDefault(img => GetImageSourcePath(node.Path, img) == sourcePath);
 
-        if (existingImage is not null)
-        {
-            var actualIndex = node.Content.IndexOf(existingImage);
-            node.Content[actualIndex] = entry;
-        }
-        else
-        {
-            node.Content.Add(entry);
-        }
+        var newContent = existingImage is not null
+            ? node.Content.Select(c => ReferenceEquals(c, existingImage) ? entry : c).ToList()
+            : [.. node.Content, entry];
 
-        // Update cache
-        imageCache[sourcePath] = (entry, node);
+        // Build new immutable node and update tree
+        var newNode = node with { Content = newContent };
+        var newRoot = ReplaceNodeInTree(manifest.Root, node, newNode);
+        manifest = manifest with { Root = newRoot };
+
+        // Rebuild cache to reflect new node references
+        RebuildImageCache();
     }
 
     /// <inheritdoc />
     public bool RemoveImage(string sourcePath)
     {
-        if (!imageCache.TryGetValue(sourcePath, out var cached))
+        if (manifest.Root is null || !imageCache.TryGetValue(sourcePath, out var cached))
         {
             return false;
         }
 
-        // Remove from node
-        var removed = cached.Node.Content.Remove(cached.Entry);
+        // Build new content list without the removed entry
+        var newContent = cached.Node.Content.Where(c => !ReferenceEquals(c, cached.Entry)).ToList();
+        if (newContent.Count == cached.Node.Content.Count)
+        {
+            return false;
+        }
 
-        // Remove from cache
-        imageCache.Remove(sourcePath);
-        return removed;
+        var newNode = cached.Node with { Content = newContent };
+        var newRoot = ReplaceNodeInTree(manifest.Root, cached.Node, newNode);
+        manifest = manifest with { Root = newRoot };
+
+        // Rebuild cache
+        RebuildImageCache();
+        return true;
     }
 
     #endregion
@@ -140,35 +146,36 @@ internal sealed partial class ManifestService(
     public string ConfigHash
     {
         get => manifest.Meta.ConfigHash;
-        set => manifest.Meta.ConfigHash = value;
+        set => manifest = manifest with { Meta = manifest.Meta with { ConfigHash = value } };
     }
 
     /// <inheritdoc />
     public string ScanConfigHash
     {
         get => manifest.Meta.ScanConfigHash;
-        set => manifest.Meta.ScanConfigHash = value;
+        set => manifest = manifest with { Meta = manifest.Meta with { ScanConfigHash = value } };
     }
 
     /// <inheritdoc />
     public DateTime? LastScanned
     {
         get => manifest.Meta.LastScanned;
-        set => manifest.Meta.LastScanned = value;
+        set => manifest = manifest with { Meta = manifest.Meta with { LastScanned = value } };
     }
 
     /// <inheritdoc />
     public DateTime? LastImagesProcessed
     {
         get => manifest.Meta.LastImagesProcessed;
-        set => manifest.Meta.LastImagesProcessed = value;
+        set => manifest = manifest with { Meta = manifest.Meta with { LastImagesProcessed = value } };
     }
 
     /// <inheritdoc />
     public IReadOnlyDictionary<string, int> FormatQualities => manifest.Meta.FormatQualities;
 
     /// <inheritdoc />
-    public void SetFormatQualities(IReadOnlyDictionary<string, int> qualities) => manifest.Meta.FormatQualities = new Dictionary<string, int>(qualities);
+    public void SetFormatQualities(IReadOnlyDictionary<string, int> qualities) =>
+        manifest = manifest with { Meta = manifest.Meta with { FormatQualities = new Dictionary<string, int>(qualities) } };
 
     #endregion
 
@@ -224,7 +231,7 @@ internal sealed partial class ManifestService(
         var tempPath = manifestPath + ".tmp";
 
         // Update timestamp
-        manifest.Meta.LastUpdated = timeProvider.GetUtcNow().UtcDateTime;
+        manifest = manifest with { Meta = manifest.Meta with { LastUpdated = timeProvider.GetUtcNow().UtcDateTime } };
 
         try
         {
@@ -368,6 +375,37 @@ internal sealed partial class ManifestService(
         }
 
         return null;
+    }
+
+    /// <summary>
+    /// Replace a node in the tree with a new (immutable) version, returning a new tree root.
+    /// </summary>
+    /// <remarks>
+    /// Uses reference equality to find the target node — works because the caller
+    /// already located <paramref name="oldNode"/> via <see cref="FindNodeByPath"/>.
+    /// All ancestors are rebuilt with <c>with</c>-expressions to maintain immutability.
+    /// </remarks>
+    private static ManifestEntry ReplaceNodeInTree(ManifestEntry root, ManifestEntry oldNode, ManifestEntry newNode)
+    {
+        if (ReferenceEquals(root, oldNode))
+        {
+            return newNode;
+        }
+
+        // Recurse into children, rebuilding the path to the changed node
+        for (var i = 0; i < root.Children.Count; i++)
+        {
+            var child = root.Children[i];
+            var newChild = ReplaceNodeInTree(child, oldNode, newNode);
+            if (!ReferenceEquals(newChild, child))
+            {
+                var newChildren = root.Children.ToList();
+                newChildren[i] = newChild;
+                return root with { Children = newChildren };
+            }
+        }
+
+        return root; // unchanged subtree
     }
 
     /// <summary>

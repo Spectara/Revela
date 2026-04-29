@@ -14,12 +14,17 @@ public sealed class NuGetSource
     public required string Name { get; init; }
 
     /// <summary>
-    /// NuGet v3 API URL (stored as string for JSON serialization)
+    /// NuGet source URL or local filesystem path.
     /// </summary>
+    /// <remarks>
+    /// Stored as <see cref="string"/> because NuGet sources can be either remote
+    /// HTTP URLs (<c>https://api.nuget.org/v3/index.json</c>) or local filesystem
+    /// paths (<c>./packages</c>) — a heterogeneous mix that <see cref="Uri"/> would
+    /// awkwardly conflate.
+    /// </remarks>
     [JsonPropertyName("url")]
-#pragma warning disable CA1056 // URI properties should not be strings - required for JSON serialization
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1056:URI-like properties should not be strings", Justification = "NuGet source can be local path OR remote URL")]
     public required string Url { get; init; }
-#pragma warning restore CA1056
 
     /// <summary>
     /// Whether this source is enabled

@@ -421,10 +421,10 @@ internal sealed partial class ContentService(
         var root = new ManifestEntry
         {
             Text = homeGallery?.Title ?? homeGallery?.Name ?? "Home",
-            Slug = string.Empty,
-            Path = string.Empty,
+            Slug = RelativePath.Empty,
+            Path = RelativePath.Empty,
             Description = homeGallery?.Description,
-            Cover = homeGallery?.Cover,
+            Cover = RelativePath.FromNullable(homeGallery?.Cover),
             Date = homeGallery?.Date,
             Featured = homeGallery?.Featured ?? false,
             Hidden = false,
@@ -520,10 +520,10 @@ internal sealed partial class ContentService(
         return new ManifestEntry
         {
             Text = navItem.Text,
-            Slug = navItem.Url,
+            Slug = RelativePath.FromNullable(navItem.Url),
             Path = gallery?.Path ?? BuildPathFromNavigation(navItem),
             Description = navItem.Description ?? gallery?.Description,
-            Cover = gallery?.Cover,
+            Cover = RelativePath.FromNullable(gallery?.Cover),
             Date = gallery?.Date,
             Featured = gallery?.Featured ?? false,
             Hidden = navItem.Hidden,

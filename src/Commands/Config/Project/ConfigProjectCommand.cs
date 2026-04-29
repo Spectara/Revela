@@ -62,12 +62,10 @@ internal sealed partial class ConfigProjectCommand(
     /// <param name="urlArg">Optional base URL (string for CLI input, may be empty).</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>Exit code.</returns>
-#pragma warning disable CA1054 // URI-like parameters should not be strings - CLI input may be empty or invalid
     public async Task<int> ExecuteAsync(
         string? nameArg,
         string? urlArg,
         CancellationToken cancellationToken)
-#pragma warning restore CA1054
     {
         var isFirstTime = !configService.IsProjectInitialized();
 

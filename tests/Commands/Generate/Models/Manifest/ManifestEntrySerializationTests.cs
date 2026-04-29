@@ -50,7 +50,7 @@ public sealed class ManifestEntrySerializationTests
             Text = "Test Gallery",
             Path = "test/path",
             Template = null,
-            DataSources = []
+            DataSources = new Dictionary<string, string>()
         };
 
         // Act
@@ -69,7 +69,7 @@ public sealed class ManifestEntrySerializationTests
             Text = "Test Gallery",
             Path = "test/path",
             Template = null,
-            DataSources = []
+            DataSources = new Dictionary<string, string>()
         };
 
         // Act

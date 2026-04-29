@@ -50,11 +50,10 @@ internal sealed class Image
     /// <remarks>
     /// Used in templates to construct paths like: {{ image_basepath }}{{ image.url }}/640.jpg
     /// Includes gallery path to prevent collisions (e.g., "events/fireworks/029081").
-    /// This is NOT a full URI - it's a path segment.
+    /// This is NOT a full URI — it's a path segment.
+    /// Typed as <see cref="RelativePath"/> to distinguish from real URLs (avoids CA1056).
     /// </remarks>
-#pragma warning disable CA1056 // URI-like properties should not be strings - this is a path segment, not a URI
-    public string Url => ImageSlug;
-#pragma warning restore CA1056
+    public RelativePath Url => ImageSlug;
 
     public required int Width { get; init; }
     public required int Height { get; init; }

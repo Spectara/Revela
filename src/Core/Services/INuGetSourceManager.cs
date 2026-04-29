@@ -33,11 +33,12 @@ public interface INuGetSourceManager
     /// Adds a new NuGet source
     /// </summary>
     /// <remarks>
-    /// The URL is stored as-is (relative paths remain relative for portability).
+    /// The URL is stored as-is. NuGet sources can be either remote HTTP URLs
+    /// (<c>https://api.nuget.org/v3/index.json</c>) or local filesystem paths
+    /// (<c>./packages</c>) — relative paths remain relative for portability.
     /// </remarks>
-#pragma warning disable CA1054 // URI parameters should not be strings - string required for user input
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1054:URI-like parameters should not be strings", Justification = "NuGet source URL can be local path OR remote URL")]
     Task AddSourceAsync(string name, string url, CancellationToken cancellationToken = default);
-#pragma warning restore CA1054
 
     /// <summary>
     /// Removes a NuGet source

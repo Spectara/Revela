@@ -1,4 +1,3 @@
-using System.Diagnostics.CodeAnalysis;
 using System.Text.Json;
 
 namespace Spectara.Revela.Features.Generate.Models;
@@ -40,7 +39,6 @@ internal sealed record RenderProjectSettings
     public string Name { get; init; } = string.Empty;
 
     /// <summary>Base URL for the generated site (e.g., "https://example.com")</summary>
-    [SuppressMessage("Design", "CA1056:URI-like properties should not be strings", Justification = "Configuration value from JSON")]
     public string BaseUrl { get; init; } = string.Empty;
 
     /// <summary>Primary language code (e.g., "en", "de")</summary>
@@ -51,7 +49,6 @@ internal sealed record RenderProjectSettings
     /// Use absolute URL for CDN (e.g., "https://cdn.example.com/images/").
     /// When null, uses relative paths (e.g., "images/" or "../images/").
     /// </summary>
-    [SuppressMessage("Design", "CA1056:URI-like properties should not be strings", Justification = "Can be relative path or absolute URL")]
     public string? ImageBasePath { get; init; }
 
     /// <summary>

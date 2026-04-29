@@ -12,20 +12,26 @@ namespace Spectara.Revela.Sdk.Models.Manifest;
 /// </para>
 /// <para>
 /// Enables:
-/// - Skip unchanged images (hash comparison)
-/// - Provide gallery/navigation data without re-scanning
-/// - Dynamic srcset based on actually generated sizes
-/// - EXIF data caching (replaces separate ExifCache)
+/// <list type="bullet">
+///   <item><description>Skip unchanged images (hash comparison)</description></item>
+///   <item><description>Provide gallery/navigation data without re-scanning</description></item>
+///   <item><description>Dynamic srcset based on actually generated sizes</description></item>
+///   <item><description>EXIF data caching (replaces separate ExifCache)</description></item>
+/// </list>
 /// </para>
-/// <para>Location: .cache/manifest.json</para>
+/// <para>Location: <c>.cache/manifest.json</c></para>
+/// <para>
+/// <b>Immutable:</b> all properties are <c>init</c>-only. To update the manifest,
+/// use the <c>with</c> expression to produce a modified copy.
+/// </para>
 /// </remarks>
-public sealed class ImageManifest
+public sealed record ImageManifest
 {
     /// <summary>
     /// Manifest metadata for version and configuration tracking.
     /// </summary>
     [JsonPropertyName("_meta")]
-    public ManifestMeta Meta { get; set; } = new();
+    public ManifestMeta Meta { get; init; } = new();
 
     /// <summary>
     /// Root node of the site tree (home page).
@@ -35,5 +41,5 @@ public sealed class ImageManifest
     /// Galleries with images have a non-null slug, branch nodes have null slug.
     /// </remarks>
     [JsonPropertyName("root")]
-    public ManifestEntry? Root { get; set; }
+    public ManifestEntry? Root { get; init; }
 }
