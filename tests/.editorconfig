@@ -1,6 +1,9 @@
-# Here are all the settings for the test projects
+# Test-project overrides for the root .editorconfig.
+# Test method names use underscores by convention: `MethodName_Condition_ExpectedResult`.
 
 [*.cs]
 
+# https://learn.microsoft.com/dotnet/fundamentals/code-analysis/quality-rules/ca1707
 # CA1707: Identifiers should not contain underscores
+# Reason: Test methods follow `MethodName_Condition_ExpectedResult` naming
 dotnet_diagnostic.CA1707.severity = none

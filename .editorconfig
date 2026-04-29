@@ -1,9 +1,14 @@
 # ==============================================================================
 # FILE:        .editorconfig
 # CREATED:     2025-11-20
-# UPDATED:     2025-11-20
+# UPDATED:     2026-04-29 — Added C# 14 + .NET 10 rules, missing CA rules,
+#                            section cleanup, doc links
 # RESPONSIBLE: Kirsten Kluge / Spectara
 # PROJECTS:    .NET 10, C# 14, Revela Static Site Generator
+# ==============================================================================
+#
+# Note: TreatWarningsAsErrors=true (Directory.Build.props) means every `warning`
+#       severity here will FAIL the build. Severities are deliberate.
 # ==============================================================================
 
 # ===== COMMON SETTINGS =====
@@ -118,18 +123,24 @@ dotnet_style_prefer_is_null_check_over_reference_equality_method = true:warning
 # https://learn.microsoft.com/dotnet/fundamentals/code-analysis/style-rules/operator-placement
 dotnet_style_operator_placement_when_wrapping = end_of_line:warning
 
-# https://learn.microsoft.com/dotnet/fundamentals/code-analysis/style-rules/ca1716
+# https://learn.microsoft.com/dotnet/fundamentals/code-analysis/quality-rules/ca1716
+# CA1716: Identifiers should not match keywords (in any .NET language)
+# Reason: Prevents accidentally choosing names that conflict with VB/F# keywords.
+# Excluded: "Shared" (legitimate test fixture name)
 dotnet_diagnostic.CA1716.severity = warning
 dotnet_diagnostic.CA1716.excluded_symbol_names = Shared
 
+# https://learn.microsoft.com/dotnet/fundamentals/code-analysis/quality-rules/ca1031
 # CA1031: Do not catch general exception types
 # Reason: Top-level handlers need to catch all exceptions
 dotnet_diagnostic.CA1031.severity = suggestion
 
+# https://learn.microsoft.com/dotnet/fundamentals/code-analysis/quality-rules/ca1062
 # CA1062: Validate arguments of public methods
 # Reason: Nullable reference types (C# 14) handle this validation
 dotnet_diagnostic.CA1062.severity = suggestion
 
+# https://learn.microsoft.com/dotnet/fundamentals/code-analysis/quality-rules/ca2007
 # CA2007: Consider calling ConfigureAwait on the awaited task
 # Reason: Not needed in applications (only libraries), .NET 10 handles this
 dotnet_diagnostic.CA2007.severity = none
@@ -226,17 +237,134 @@ dotnet_diagnostic.IDE0200.severity = silent
 csharp_style_prefer_top_level_statements = true:silent
 dotnet_diagnostic.IDE0210.severity = silent
 
-# ===== UNNECESSARY CODE RULES =====
+# https://learn.microsoft.com/dotnet/fundamentals/code-analysis/style-rules/ide0300
+# Use collection expressions (C# 12) — `[]` instead of `new List<>()` / `Array.Empty<>()`
+dotnet_style_prefer_collection_expression = when_types_loosely_match:warning
+dotnet_diagnostic.IDE0300.severity = warning
+dotnet_diagnostic.IDE0301.severity = warning
+dotnet_diagnostic.IDE0302.severity = warning
+dotnet_diagnostic.IDE0303.severity = warning
+dotnet_diagnostic.IDE0304.severity = warning
+dotnet_diagnostic.IDE0305.severity = warning
+
+# https://learn.microsoft.com/dotnet/fundamentals/code-analysis/style-rules/ide0270
+# Null check can be simplified (use `??` instead of `is null + throw`) — C# 11+
+csharp_style_prefer_null_check_over_type_check = true:warning
+dotnet_diagnostic.IDE0270.severity = warning
+
+# https://learn.microsoft.com/dotnet/fundamentals/code-analysis/style-rules/ide0330
+# Prefer System.Threading.Lock over object lock (C# 13 / .NET 9+)
+csharp_prefer_system_threading_lock = true:warning
+dotnet_diagnostic.IDE0330.severity = warning
+
+# ===== .NET 10 / C# 14 PERFORMANCE & API RULES =====
+
+# https://learn.microsoft.com/dotnet/fundamentals/code-analysis/quality-rules/ca1311
+# CA1311: Specify a culture for ToLower/ToUpper
+# Reason: Aligns with our InvariantCulture convention
+dotnet_diagnostic.CA1311.severity = warning
+
+# https://learn.microsoft.com/dotnet/fundamentals/code-analysis/quality-rules/ca1851
+# CA1851: Possible multiple enumerations of IEnumerable
+# Reason: Performance — avoid silent re-enumeration
+dotnet_diagnostic.CA1851.severity = warning
+
+# https://learn.microsoft.com/dotnet/fundamentals/code-analysis/quality-rules/ca1852
+# CA1852: Seal internal types
+# Reason: Aligns with our "sealed by default" convention
+dotnet_diagnostic.CA1852.severity = warning
+
+# https://learn.microsoft.com/dotnet/fundamentals/code-analysis/quality-rules/ca1859
+# CA1859: Use concrete types when possible for improved performance
+# Reason: Helps DI internals and hot paths
+dotnet_diagnostic.CA1859.severity = suggestion
+
+# https://learn.microsoft.com/dotnet/fundamentals/code-analysis/quality-rules/ca1860
+# CA1860: Avoid using `Enumerable.Any()` extension method
+# Reason: `.Count > 0` / `.Length > 0` is faster on collections
+dotnet_diagnostic.CA1860.severity = warning
+
+# https://learn.microsoft.com/dotnet/fundamentals/code-analysis/quality-rules/ca1865
+# https://learn.microsoft.com/dotnet/fundamentals/code-analysis/quality-rules/ca1866
+# https://learn.microsoft.com/dotnet/fundamentals/code-analysis/quality-rules/ca1867
+# CA1865/CA1866/CA1867: Use char overload of StartsWith/EndsWith/IndexOf
+# Reason: Faster than string overload for single-char checks
+# Aligns with our convention: `StartsWith('-')` not `StartsWith("-", StringComparison.Ordinal)`
+dotnet_diagnostic.CA1865.severity = warning
+dotnet_diagnostic.CA1866.severity = warning
+dotnet_diagnostic.CA1867.severity = warning
+
+# https://learn.microsoft.com/dotnet/fundamentals/code-analysis/quality-rules/ca1869
+# CA1869: Cache and reuse `JsonSerializerOptions` instances
+# Reason: We have many JSON configs (project.json, site.json, manifest.json) — caching matters
+dotnet_diagnostic.CA1869.severity = warning
+
+# https://learn.microsoft.com/dotnet/fundamentals/code-analysis/quality-rules/ca1873
+# CA1873: Avoid potentially expensive logging
+# Reason: Enforces our LoggerMessage source generator convention
+# (warns when logger.LogInformation($"...") interpolation is used)
+dotnet_diagnostic.CA1873.severity = warning
+
+# https://learn.microsoft.com/dotnet/fundamentals/code-analysis/quality-rules/ca2264
+# CA2264: Do not pass a non-nullable value to ArgumentNullException.ThrowIfNull
+# Reason: Modern null-check pattern (.NET 8+)
+dotnet_diagnostic.CA2264.severity = warning
+
+# ===== TYPE & API SAFETY (referenced by Copilot conventions) =====
+# These rules are explicitly mentioned in .github/copilot-instructions.md
+# under "Code Quality — Fix, Don't Suppress". Enforced as warnings to make
+# the convention machine-checked, not just documented.
+
+# https://learn.microsoft.com/dotnet/fundamentals/code-analysis/quality-rules/ca1054
+# CA1054: URI parameters should not be strings
+# Reason: Use `Uri?` for URL parameters — System.Text.Json deserializes Uri natively
+dotnet_diagnostic.CA1054.severity = warning
+
+# https://learn.microsoft.com/dotnet/fundamentals/code-analysis/quality-rules/ca1055
+# CA1055: URI return values should not be strings
+dotnet_diagnostic.CA1055.severity = warning
+
+# https://learn.microsoft.com/dotnet/fundamentals/code-analysis/quality-rules/ca1056
+# CA1056: URI properties should not be strings
+# Reason: Use `Uri?` for URL properties
+dotnet_diagnostic.CA1056.severity = warning
+
+# https://learn.microsoft.com/dotnet/fundamentals/code-analysis/quality-rules/ca1002
+# CA1002: Do not expose generic lists
+# Reason: Expose `IReadOnlyList<T>` instead of `List<T>` from public APIs
+dotnet_diagnostic.CA1002.severity = warning
+
+# https://learn.microsoft.com/dotnet/fundamentals/code-analysis/quality-rules/ca2227
+# CA2227: Collection properties should be read-only
+# Reason: `IReadOnlyDictionary<K,V>` / `IReadOnlyList<T>` instead of mutable setter
+dotnet_diagnostic.CA2227.severity = warning
+
+# https://learn.microsoft.com/dotnet/fundamentals/code-analysis/quality-rules/ca1819
+# CA1819: Properties should not return arrays
+# Reason: Use `IReadOnlyList<T>` — array properties allow mutation of internal state
+dotnet_diagnostic.CA1819.severity = warning
+
+# ===== UNNECESSARY CODE DETECTION =====
+# Rules that flag dead code: unused parameters, unread values,
+# stale #pragma suppressions, and ignored return values.
 
 [*.{cs,csx,cake,vb,vbx}]
-# https://learn.microsoft.com/dotnet/fundamentals/code-analysis/style-rules/unnecessary-code-rules
+# https://learn.microsoft.com/dotnet/fundamentals/code-analysis/style-rules/ide0060
+# IDE0060: Remove unused parameters
 dotnet_code_quality_unused_parameters = all:warning
+
+# https://learn.microsoft.com/dotnet/fundamentals/code-analysis/style-rules/ide0079
+# IDE0079: Remove stale `#pragma warning disable` / `[SuppressMessage]` that no longer suppress anything
 dotnet_remove_unnecessary_suppression_exclusions = none:warning
 
 [*.{cs,csx,cake}]
-# https://learn.microsoft.com/dotnet/fundamentals/code-analysis/style-rules/unnecessary-code-rules
+# https://learn.microsoft.com/dotnet/fundamentals/code-analysis/style-rules/ide0058
+# IDE0058: Expression value is never used (e.g. `int.Parse(s);` — should be `_ = int.Parse(s);`)
 csharp_style_unused_value_expression_statement_preference = discard_variable:suggestion
 dotnet_diagnostic.IDE0058.severity = suggestion
+
+# https://learn.microsoft.com/dotnet/fundamentals/code-analysis/style-rules/ide0059
+# IDE0059: Unnecessary value assignment (variable assigned but never read)
 csharp_style_unused_value_assignment_preference = discard_variable:suggestion
 dotnet_diagnostic.IDE0059.severity = suggestion
 
@@ -295,8 +423,39 @@ csharp_space_between_square_brackets = false
 csharp_preserve_single_line_statements = false
 csharp_preserve_single_line_blocks = true
 
-# https://learn.microsoft.com/dotnet/fundamentals/code-analysis/style-rules/formatting-rules#namespace-options
+# ===== NAMESPACE STYLE =====
+
+[*.{cs,csx,cake}]
+# https://learn.microsoft.com/dotnet/fundamentals/code-analysis/style-rules/ide0161
+# IDE0161: Use file-scoped namespace declarations (C# 10+)
+# Reason: Reduces nesting, matches modern Microsoft sample code style
 csharp_style_namespace_declarations = file_scoped:warning
+dotnet_diagnostic.IDE0161.severity = warning
+
+# ===== BOOLEAN & NULL CHECKING (Revela Custom Convention) =====
+# Documentation-only — no automatic .editorconfig rule available.
+# Enforced via code review and the `review-code` skill.
+#
+# CRITICAL: Use explicit pattern matching instead of the `!` operator.
+# Reason: The `!` operator is overloaded in modern C#:
+#   1. Logical negation:        if (!condition)
+#   2. Null-forgiving operator: var x = value!;
+#   3. Pattern negation:        if (x is not null)
+# This ambiguity creates confusion and potential bugs.
+#
+# ✅ PREFER (explicit pattern matching):
+#   - if (value is true) { }
+#   - if (value is false) { }
+#   - if (value is not true) { }    // false OR null (for bool?)
+#   - if (value is null) { }
+#   - if (value is not null) { }
+#
+# ❌ AVOID (ambiguous `!` operator):
+#   - if (!value) { }               // Hard to distinguish from null-forgiving
+#   - if (value != null) { }        // Use 'is not null' instead
+#
+# Note: `!` is still allowed for null-forgiving operator when unavoidable:
+#   var name = person.Name!;        // Compiler hint — this is safe
 
 # ===== .NET NAMING RULES =====
 
@@ -339,37 +498,6 @@ dotnet_naming_rule.private_instance_fields_must_be_camel_case.symbols = private_
 dotnet_naming_rule.private_instance_fields_must_be_camel_case.style = camel_case_style
 dotnet_naming_rule.private_instance_fields_must_be_camel_case.severity = warning
 
-# ===== BOOLEAN & NULL CHECKING STYLE (Revela Custom Rule) =====
-
-# CRITICAL: Use explicit pattern matching instead of ! operator
-# Reason: The ! operator is overloaded in modern C#:
-#   1. Logical negation: if (!condition)
-#   2. Null-forgiving operator: var x = value!;
-#   3. Pattern negation: if (x is not null)
-# This ambiguity creates confusion and potential bugs.
-#
-# ✅ PREFER (explicit pattern matching):
-#   - if (value is true) { }
-#   - if (value is false) { }
-#   - if (value is not true) { }    // false OR null (for bool?)
-#   - if (value is null) { }
-#   - if (value is not null) { }
-#
-# ❌ AVOID (ambiguous ! operator):
-#   - if (!value) { }               // Hard to distinguish from null-forgiving
-#   - if (value != null) { }        // Use 'is not null' instead
-#
-# Benefits:
-#   - Clarity: Explicit intent, no ambiguity
-#   - Safety: Works correctly with nullable types (bool?, string?)
-#   - Consistency: Uniform pattern matching syntax
-#   - Readability: "is false" is clearer than "!"
-#
-# Note: ! is still allowed for null-forgiving operator when unavoidable:
-#   var name = person.Name!;  // Compiler hint - this is safe
-#
-# Enforcement: Code Review (no automatic rule available in .editorconfig)
-
 # Public/Protected fields disallowed (use properties!)
 dotnet_naming_symbols.public_protected_fields.applicable_accessibilities = public, protected, protected_internal
 dotnet_naming_symbols.public_protected_fields.applicable_kinds = field
@@ -377,11 +505,17 @@ dotnet_naming_rule.public_protected_fields_disallowed.symbols = public_protected
 dotnet_naming_rule.public_protected_fields_disallowed.style = pascal_case_style
 dotnet_naming_rule.public_protected_fields_disallowed.severity = error
 
-# Types (class, struct, enum, interface) → PascalCase
-dotnet_naming_symbols.types.applicable_kinds = class, struct, enum, delegate, event, method, property
+# Types (class, struct, enum, delegate) → PascalCase
+dotnet_naming_symbols.types.applicable_kinds = class, struct, enum, delegate
 dotnet_naming_rule.types_must_be_pascal_case.symbols = types
 dotnet_naming_rule.types_must_be_pascal_case.style = pascal_case_style
 dotnet_naming_rule.types_must_be_pascal_case.severity = warning
+
+# Members (method, property, event) → PascalCase
+dotnet_naming_symbols.members.applicable_kinds = method, property, event
+dotnet_naming_rule.members_must_be_pascal_case.symbols = members
+dotnet_naming_rule.members_must_be_pascal_case.style = pascal_case_style
+dotnet_naming_rule.members_must_be_pascal_case.severity = warning
 
 # Interfaces → IPascalCase
 dotnet_naming_symbols.interfaces.applicable_kinds = interface

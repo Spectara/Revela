@@ -27,8 +27,9 @@ newer BCL APIs, and modern idioms. If an older pattern has a modern replacement,
 
 ## 2. Modern C# & .NET Patterns
 
-**Always use the newest C# language version and .NET APIs available.** Actively replace older patterns:
+**Always use the newest C# language version and .NET APIs available.** This project targets **.NET 10 + C# 14**. Actively replace older patterns:
 
+### Core language style
 - **File-scoped namespaces** — always (`namespace Spectara.Revela.Core;`)
 - **Primary constructors** for DI — preferred (suggestion level)
 - **Collection expressions** — use `[]` not `new List<>()` or `Array.Empty<>()`
@@ -39,8 +40,6 @@ newer BCL APIs, and modern idioms. If an older pattern has a modern replacement,
 - **Pattern matching** — prefer `is`, `is not`, switch expressions (warning level)
 - **Index/range operators** — prefer `^1` and `..` syntax (warning level)
 - **Braces** — always required, even for single-line `if` (`csharp_prefer_braces = true:warning`)
-- **Frozen collections** — use `FrozenDictionary` / `FrozenSet` for static readonly collections that are never mutated (faster lookups than `Dictionary` / `HashSet`)
-- **Modern BCL APIs** — prefer `Random.Shared`, `TimeProvider`, `Lock` (C# 13), `SearchValues`, `Regex.EnumerateMatches`, etc. over older equivalents
 - **Expression bodies** — use for single-expression methods and properties
 - **Method groups over passthrough lambdas** — when a lambda simply forwards all parameters to a method with an identical signature, use the method group directly:
   ```csharp
@@ -50,7 +49,43 @@ newer BCL APIs, and modern idioms. If an older pattern has a modern replacement,
   // ✅ DO — method group
   Register(OnRegistered);
   ```
-- When in doubt, check if there is a newer API or language feature that replaces older code
+
+### C# 14 features (flag opportunities)
+- **`field` keyword** — replace manual backing fields when only adding a guard/transform in the setter:
+  ```csharp
+  // ❌ OLD
+  private string name = "";
+  public string Name { get => name; set => name = value ?? throw new ArgumentNullException(nameof(value)); }
+  // ✅ C# 14
+  public string Name { get; set => field = value ?? throw new ArgumentNullException(nameof(value)); }
+  ```
+- **`extension` blocks** — for static extension methods, static extension properties, and instance extension properties (replaces the older `this`-parameter-only static extension method pattern when you need more than just methods).
+- **Null-conditional assignment** — `obj?.Prop = value`, `obj?.Field += 1`. Replaces `if (obj is not null) obj.Prop = value;`.
+- **`nameof` with unbound generics** — `nameof(List<>)`. Useful in diagnostic/error messages.
+- **Implicit `Span<T>` / `ReadOnlySpan<T>` conversions** — `string` and `T[]` flow into span parameters without explicit `.AsSpan()`. Prefer span-based BCL overloads in hot paths.
+- **Lambda parameter modifiers without types** — `(text, out result) => int.TryParse(text, out result)`. The `params` modifier still requires explicit types.
+- **Partial constructors and events** — needed by source generators; not common in handwritten code.
+
+### Modern BCL APIs (.NET 9 / .NET 10 — replace older equivalents)
+- **`System.Threading.Lock`** instead of `lock(new object())` — IDE0330 enforces this.
+  ```csharp
+  // ❌ OLD
+  private readonly object gate = new();
+  // ✅ C# 13 / .NET 9
+  private readonly Lock gate = new();
+  ```
+- **`Random.Shared`** instead of `new Random()`.
+- **`TimeProvider`** instead of `DateTime.UtcNow` in code that needs to be testable.
+- **`SearchValues<T>`** for repeated `IndexOfAny` over a fixed character set.
+- **`Regex.EnumerateMatches`** instead of `Regex.Matches` (zero-alloc).
+- **`FrozenDictionary` / `FrozenSet`** for static readonly lookups never mutated after init.
+- **`params` collections (C# 13)** — `params Span<int>`, `params IEnumerable<T>` instead of `params T[]`.
+- **`OrderedDictionary<TKey, TValue>`** with `TryAdd(key, value, out int index)` (.NET 10).
+- **Async ZIP APIs (.NET 10)** — `ZipFile.ExtractToDirectoryAsync`, `ZipArchive.CreateAsync`, `ZipArchiveEntry.OpenAsync`. Flag any `ZipFile.ExtractToDirectory` (sync) in async contexts — especially in the Compress plugin.
+- **`CompareOptions.NumericOrdering` (.NET 10)** — for natural sort (`"file2"` before `"file10"`).
+- **`JsonSerializerOptions.AllowDuplicateProperties = false` (.NET 10)** — set explicitly when parsing config files for stricter validation.
+
+When in doubt, check if there is a newer API or language feature that replaces older code.
 
 ## 3. Boolean & Null Checking (Revela Custom Rule)
 
