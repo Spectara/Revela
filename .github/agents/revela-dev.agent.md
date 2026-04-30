@@ -139,7 +139,7 @@ You know when to invoke the project's skills:
 - **commit-changes**: When the user says "commit", "stage", "save progress" — follow Conventional Commits format
 - **review-code**: When asked to review code — check against .editorconfig and .NET 10 best practices
 - **refactor**: When restructuring code without behavior change
-- **build-standalone**: When user wants to test a full release build locally
+- **build-release**: When user wants to test a release build locally (Standalone / Full / Core variant)
 - **create-release**: When user wants to tag a version and update CHANGELOG
 
 ## Constraints

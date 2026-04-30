@@ -13,6 +13,9 @@ on:
       - '**.md'
       - 'docs/**'
       - 'samples/**'
+      - 'assets/**'
+      - '.github/ISSUE_TEMPLATE/**'
+      - '.github/dependabot.yml'
   pull_request:
     branches:
       - main
@@ -21,7 +24,15 @@ on:
       - '**.md'
       - 'docs/**'
       - 'samples/**'
+      - 'assets/**'
+      - '.github/ISSUE_TEMPLATE/**'
+      - '.github/dependabot.yml'
   workflow_dispatch:
+
+# Cancel previous runs on the same branch / PR when a new commit comes in
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
   DOTNET_NOLOGO: true
@@ -39,17 +50,22 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
 
+      # `cache: true` enables NuGet package caching keyed on packages.lock.json
+      # / Directory.Packages.props. Saves ~30–60s per job after the first run.
       - name: Setup .NET
         uses: actions/setup-dotnet@v5
         with:
           global-json-file: global.json
+          cache: true
+          cache-dependency-path: '**/Directory.Packages.props'
 
       - name: Restore
         run: dotnet restore
 
+      # `dotnet build-server shutdown` releases stale MSBuild/Roslyn worker
+      # processes from a previous job — required to avoid intermittent file
+      # locking errors on the hosted runners.
       - name: Build
         run: |
           dotnet build-server shutdown
@@ -69,8 +85,7 @@ jobs:
             --self-contained \
             -p:PublishSingleFile=true \
             -p:IncludeNativeLibrariesForSelfExtract=true \
-            -p:DebugType=none \
-            -p:DebugSymbols=false \
+            -p:DebugType=embedded \
             -o ./publish-embedded
         shell: bash
 
@@ -82,10 +97,3 @@ jobs:
           path: |
             ./TestResults/**/*.trx
             ./artifacts/bin/**/TestResults/**/*.cobertura.xml
-
-      - name: Test Summary
-        if: always()
-        run: |
-          echo "### Test Results (${{ matrix.os }})" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "Test results uploaded as artifacts." >> $GITHUB_STEP_SUMMARY

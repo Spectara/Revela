@@ -62,13 +62,16 @@ dotnet publish src/Cli -c Release -r osx-arm64 --self-contained
 
 This runs the full release pipeline: build, pack, plugin install, generate, compress, clean, idempotency check, and dotnet tool install.
 
-### Build Standalone Bundle
+### Build Release Bundle
 
 ```bash
-./scripts/build-standalone.ps1
+./scripts/build-release.ps1
 ```
 
-Creates a self-contained release with all plugins and themes bundled.
+Builds local release bundles that mirror the GitHub release pipeline output.
+Three variants: `Standalone` (self-contained, all plugins linked statically),
+`Full` (CLI + all plugins as `.nupkg` for `revela plugin install`), and `Core`
+(CLI only). Use `-Variant Standalone|Full|Core|All` to pick.
 
 ---
 

@@ -11,8 +11,9 @@
 # GitHub Environment before pushing to NuGet.org.
 #
 # Release contents:
-# - Core: CLI executable only (downloads plugins from NuGet.org)
-# - Full: CLI executable + all plugins/themes as bundled NuGet packages
+# - Standalone: CLI executable with all plugins/themes statically linked
+# - Full:       CLI executable + all plugins/themes as bundled NuGet packages
+# - Core:       CLI executable only (downloads plugins from NuGet.org)
 # - NuGet packages: CLI tool, SDK, plugins, themes
 
 name: Release
@@ -108,50 +109,48 @@ jobs:
         uses: actions/setup-dotnet@v5
         with:
           global-json-file: global.json
+          cache: true
+          cache-dependency-path: '**/Directory.Packages.props'
 
       - name: Restore
         run: dotnet restore
 
       # Build src projects explicitly in Release (no solution build to avoid
-      # test ProjectReference conflicts with MSBuild parallelism)
-      - name: Build CLI
-        run: dotnet build src/Cli/Cli.csproj -c Release --no-restore -p:Version=${{ env.VERSION }}
-
-      - name: Build Generate
-        run: dotnet build src/Plugins/Core/Generate/Generate.csproj -c Release --no-restore -p:Version=${{ env.VERSION }}
-
-      - name: Build Theme
-        run: dotnet build src/Plugins/Core/Theme/Theme.csproj -c Release --no-restore -p:Version=${{ env.VERSION }}
-
-      - name: Build Projects
-        run: dotnet build src/Plugins/Core/Projects/Projects.csproj -c Release --no-restore -p:Version=${{ env.VERSION }}
-
-      - name: Build Lumina
-        run: dotnet build src/Themes/Lumina/Lumina.csproj -c Release --no-restore -p:Version=${{ env.VERSION }}
-
-      - name: Build Lumina.Statistics
-        run: dotnet build src/Themes/Lumina.Statistics/Lumina.Statistics.csproj -c Release --no-restore -p:Version=${{ env.VERSION }}
-
-      - name: Build Statistics
-        run: dotnet build src/Plugins/Statistics/Statistics.csproj -c Release --no-restore -p:Version=${{ env.VERSION }}
-
-      - name: Build Source.OneDrive
-        run: dotnet build src/Plugins/Source/OneDrive/OneDrive.csproj -c Release --no-restore -p:Version=${{ env.VERSION }}
-
-      - name: Build Calendar
-        run: dotnet build src/Plugins/Calendar/Calendar.csproj -c Release --no-restore -p:Version=${{ env.VERSION }}
-
-      - name: Build Source.Calendar
-        run: dotnet build src/Plugins/Source/Calendar/Calendar.csproj -c Release --no-restore -p:Version=${{ env.VERSION }}
-
-      - name: Build Lumina.Calendar
-        run: dotnet build src/Themes/Lumina.Calendar/Lumina.Calendar.csproj -c Release --no-restore -p:Version=${{ env.VERSION }}
-
-      - name: Build Serve
-        run: dotnet build src/Plugins/Serve/Serve.csproj -c Release --no-restore -p:Version=${{ env.VERSION }}
-
-      - name: Build Compress
-        run: dotnet build src/Plugins/Compress/Compress.csproj -c Release --no-restore -p:Version=${{ env.VERSION }}
+      # test ProjectReference conflicts with MSBuild parallelism).
+      #
+      # `DebugType=embedded` keeps symbol info inside each DLL (no separate
+      # .pdb files). This makes the build output stable across later
+      # `dotnet publish` calls (which would otherwise strip PDBs and break
+      # `dotnet pack --no-build` with NU5026), and stack traces from the
+      # released binaries still show file/line numbers.
+      - name: Build all projects
+        run: |
+          set -euo pipefail
+          PROJECTS=(
+            src/Sdk/Sdk.csproj
+            src/Cli/Cli.csproj
+            src/Features/Generate/Generate.csproj
+            src/Features/Theme/Theme.csproj
+            src/Features/Projects/Projects.csproj
+            src/Features/Packages/Packages.csproj
+            src/Themes/Lumina/Lumina.csproj
+            src/Themes/Lumina.Statistics/Lumina.Statistics.csproj
+            src/Themes/Lumina.Calendar/Lumina.Calendar.csproj
+            src/Plugins/Statistics/Statistics.csproj
+            src/Plugins/Calendar/Calendar.csproj
+            src/Plugins/Source/Calendar/Calendar.csproj
+            src/Plugins/Source/OneDrive/OneDrive.csproj
+            src/Plugins/Serve/Serve.csproj
+            src/Plugins/Compress/Compress.csproj
+          )
+          for proj in "${PROJECTS[@]}"; do
+            echo "::group::Build $proj"
+            dotnet build "$proj" \
+              -c Release --no-restore \
+              -p:Version=${{ env.VERSION }} \
+              -p:DebugType=embedded
+            echo "::endgroup::"
+          done
 
       # Run tests against Release-built src projects
       - name: Build Tests
@@ -164,48 +163,37 @@ jobs:
       - name: Run Tests
         run: dotnet test --no-restore --no-build -c Release
 
-      # Pack NuGet packages from Release build output
-      - name: Pack Generate
-        run: dotnet pack src/Plugins/Core/Generate/Generate.csproj -c Release -o ./nupkgs --no-build --no-restore -p:PackageVersion=${{ env.VERSION }} -p:IncludeSymbols=false
-
-      - name: Pack Theme
-        run: dotnet pack src/Plugins/Core/Theme/Theme.csproj -c Release -o ./nupkgs --no-build --no-restore -p:PackageVersion=${{ env.VERSION }} -p:IncludeSymbols=false
-
-      - name: Pack Projects
-        run: dotnet pack src/Plugins/Core/Projects/Projects.csproj -c Release -o ./nupkgs --no-build --no-restore -p:PackageVersion=${{ env.VERSION }} -p:IncludeSymbols=false
-
-      - name: Pack Lumina
-        run: dotnet pack src/Themes/Lumina/Lumina.csproj -c Release -o ./nupkgs --no-build --no-restore -p:PackageVersion=${{ env.VERSION }} -p:IncludeSymbols=false
-
-      - name: Pack Lumina.Statistics
-        run: dotnet pack src/Themes/Lumina.Statistics/Lumina.Statistics.csproj -c Release -o ./nupkgs --no-build --no-restore -p:PackageVersion=${{ env.VERSION }} -p:IncludeSymbols=false
-
-      - name: Pack Statistics
-        run: dotnet pack src/Plugins/Statistics/Statistics.csproj -c Release -o ./nupkgs --no-build --no-restore -p:PackageVersion=${{ env.VERSION }} -p:IncludeSymbols=false
-
-      - name: Pack Source.OneDrive
-        run: dotnet pack src/Plugins/Source/OneDrive/OneDrive.csproj -c Release -o ./nupkgs --no-build --no-restore -p:PackageVersion=${{ env.VERSION }} -p:IncludeSymbols=false
-
-      - name: Pack Calendar
-        run: dotnet pack src/Plugins/Calendar/Calendar.csproj -c Release -o ./nupkgs --no-build --no-restore -p:PackageVersion=${{ env.VERSION }} -p:IncludeSymbols=false
-
-      - name: Pack Source.Calendar
-        run: dotnet pack src/Plugins/Source/Calendar/Calendar.csproj -c Release -o ./nupkgs --no-build --no-restore -p:PackageVersion=${{ env.VERSION }} -p:IncludeSymbols=false
-
-      - name: Pack Lumina.Calendar
-        run: dotnet pack src/Themes/Lumina.Calendar/Lumina.Calendar.csproj -c Release -o ./nupkgs --no-build --no-restore -p:PackageVersion=${{ env.VERSION }} -p:IncludeSymbols=false
-
-      - name: Pack Serve
-        run: dotnet pack src/Plugins/Serve/Serve.csproj -c Release -o ./nupkgs --no-build --no-restore -p:PackageVersion=${{ env.VERSION }} -p:IncludeSymbols=false
-
-      - name: Pack Compress
-        run: dotnet pack src/Plugins/Compress/Compress.csproj -c Release -o ./nupkgs --no-build --no-restore -p:PackageVersion=${{ env.VERSION }} -p:IncludeSymbols=false
-
-      - name: Pack SDK
-        run: dotnet pack src/Sdk/Sdk.csproj -c Release -o ./nupkgs --no-build --no-restore -p:PackageVersion=${{ env.VERSION }} -p:IncludeSymbols=false
-
-      - name: Pack CLI Tool
-        run: dotnet pack src/Cli/Cli.csproj -c Release -o ./nupkgs --no-restore -p:Version=${{ env.VERSION }} -p:PackageVersion=${{ env.VERSION }} -p:IncludeSymbols=false
+      # Pack NuGet packages from Release build output. `IncludeSymbols=false`
+      # is implicit since the build above used DebugType=embedded.
+      - name: Pack all NuGet packages
+        run: |
+          set -euo pipefail
+          # SDK first, CLI tool last (CLI is .NET tool — different layout)
+          PACK_PROJECTS=(
+            src/Sdk/Sdk.csproj
+            src/Features/Generate/Generate.csproj
+            src/Features/Theme/Theme.csproj
+            src/Features/Projects/Projects.csproj
+            src/Themes/Lumina/Lumina.csproj
+            src/Themes/Lumina.Statistics/Lumina.Statistics.csproj
+            src/Themes/Lumina.Calendar/Lumina.Calendar.csproj
+            src/Plugins/Statistics/Statistics.csproj
+            src/Plugins/Calendar/Calendar.csproj
+            src/Plugins/Source/Calendar/Calendar.csproj
+            src/Plugins/Source/OneDrive/OneDrive.csproj
+            src/Plugins/Serve/Serve.csproj
+            src/Plugins/Compress/Compress.csproj
+            src/Cli/Cli.csproj
+          )
+          for proj in "${PACK_PROJECTS[@]}"; do
+            echo "::group::Pack $proj"
+            dotnet pack "$proj" \
+              -c Release -o ./nupkgs --no-build --no-restore \
+              -p:PackageVersion=${{ env.VERSION }} \
+              -p:Version=${{ env.VERSION }} \
+              -p:DebugType=embedded
+            echo "::endgroup::"
+          done
 
       - name: List NuGet packages
         run: ls -lh ./nupkgs/
@@ -259,6 +247,8 @@ jobs:
         uses: actions/setup-dotnet@v5
         with:
           global-json-file: global.json
+          cache: true
+          cache-dependency-path: '**/Directory.Packages.props'
 
       - name: Restore
         run: dotnet restore
@@ -272,8 +262,7 @@ jobs:
             --self-contained \
             -p:PublishSingleFile=true \
             -p:IncludeNativeLibrariesForSelfExtract=true \
-            -p:DebugType=none \
-            -p:DebugSymbols=false \
+            -p:DebugType=embedded \
             -p:Version=${{ needs.validate.outputs.version }} \
             -o ./publish
 
@@ -281,6 +270,10 @@ jobs:
         run: |
           mkdir -p ./publish/getting-started
           cp docs/getting-started/*.md ./publish/getting-started/
+        shell: bash
+
+      - name: Clean up XML docs
+        run: rm -f ./publish/*.xml
         shell: bash
 
       - name: Copy launcher script (Linux/macOS)
@@ -362,8 +355,7 @@ jobs:
             --self-contained \
             -p:PublishSingleFile=true \
             -p:IncludeNativeLibrariesForSelfExtract=true \
-            -p:DebugType=none \
-            -p:DebugSymbols=false \
+            -p:DebugType=embedded \
             -p:Version=${{ needs.validate.outputs.version }} \
             -o ./publish-standalone
 
@@ -682,7 +674,7 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@v5
         with:
-          dotnet-version: '10.0.x'
+          global-json-file: global.json
 
       - name: Publish to NuGet.org
         run: |

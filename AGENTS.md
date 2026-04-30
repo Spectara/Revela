@@ -31,7 +31,7 @@ Quick orientation for AI coding agents (GitHub Copilot, Claude, Cursor, etc.) wo
 | `samples/` | `revela-website`, `showcase`, `onedrive`, `calendar` — runnable example projects |
 | `docs/` | Architecture, plugin development, setup, getting started |
 | `benchmarks/` | BenchmarkDotNet projects |
-| `scripts/` | `build-standalone.ps1`, `test-release.ps1` |
+| `scripts/` | `build-release.ps1`, `test-release.ps1` |
 
 ## Custom Agents (use these!)
 
@@ -46,7 +46,7 @@ Quick orientation for AI coding agents (GitHub Copilot, Claude, Cursor, etc.) wo
 | Skill | Purpose |
 |-------|---------|
 | `build-sample` | Build sample projects (`revela-website`, `showcase`, `onedrive`) with local CLI |
-| `build-standalone` | Local self-contained release build (`scripts/build-standalone.ps1`) |
+| `build-release` | Local release build — Standalone, Full, or Core variant (`scripts/build-release.ps1`) |
 | `commit-changes` | Conventional Commits — wait for explicit user request |
 | `create-release` | Bump version, update `CHANGELOG.md`, tag |
 | `refactor` | Surgical refactors without behavior change |
