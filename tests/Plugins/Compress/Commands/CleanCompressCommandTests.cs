@@ -48,14 +48,6 @@ public sealed class CleanCompressCommandTests
     }
 
     [TestMethod]
-    public void Order_Is40()
-    {
-        // CleanCompressCommand should run after statistics (30) in clean menu
-        var order = CleanCompressCommand.Order;
-        Assert.AreEqual(40, order);
-    }
-
-    [TestMethod]
     public async Task Execute_DeletesGzipFiles()
     {
         // Arrange

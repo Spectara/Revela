@@ -29,7 +29,7 @@ public sealed class StatisticsAggregatorTests
     {
         // Arrange
         manifestRepository.Images.Returns(new Dictionary<string, ImageContent>());
-        var aggregator = new StatisticsAggregator(manifestRepository, config, logger);
+        var aggregator = new StatisticsAggregator(manifestRepository, config, TimeProvider.System, logger);
 
         // Act
         var result = aggregator.Aggregate();
@@ -47,7 +47,7 @@ public sealed class StatisticsAggregatorTests
         // Arrange
         var images = TestData.Images(10);
         manifestRepository.Images.Returns(images);
-        var aggregator = new StatisticsAggregator(manifestRepository, config, logger);
+        var aggregator = new StatisticsAggregator(manifestRepository, config, TimeProvider.System, logger);
 
         // Act
         var result = aggregator.Aggregate();
@@ -67,7 +67,7 @@ public sealed class StatisticsAggregatorTests
             ["img3.jpg"] = TestData.Image("img3.jpg", exif: null) // No EXIF
         };
         manifestRepository.Images.Returns(images);
-        var aggregator = new StatisticsAggregator(manifestRepository, config, logger);
+        var aggregator = new StatisticsAggregator(manifestRepository, config, TimeProvider.System, logger);
 
         // Act
         var result = aggregator.Aggregate();
@@ -89,7 +89,7 @@ public sealed class StatisticsAggregatorTests
             ["img4.jpg"] = TestData.Image("img4.jpg", TestData.Exif(fNumber: 4.0)) // Falls into f/2.8-4.0 bucket
         };
         manifestRepository.Images.Returns(images);
-        var aggregator = new StatisticsAggregator(manifestRepository, config, logger);
+        var aggregator = new StatisticsAggregator(manifestRepository, config, TimeProvider.System, logger);
 
         // Act
         var result = aggregator.Aggregate();
@@ -113,7 +113,7 @@ public sealed class StatisticsAggregatorTests
             ["img4.jpg"] = TestData.Image("img4.jpg", TestData.Exif(focalLength: 200))  // 135-300mm
         };
         manifestRepository.Images.Returns(images);
-        var aggregator = new StatisticsAggregator(manifestRepository, config, logger);
+        var aggregator = new StatisticsAggregator(manifestRepository, config, TimeProvider.System, logger);
 
         // Act
         var result = aggregator.Aggregate();
@@ -139,7 +139,7 @@ public sealed class StatisticsAggregatorTests
             ["img4.jpg"] = TestData.Image("img4.jpg", TestData.Exif(fNumber: 2.8))   // f/2.8-4.0 bucket
         };
         manifestRepository.Images.Returns(images);
-        var aggregator = new StatisticsAggregator(manifestRepository, config, logger);
+        var aggregator = new StatisticsAggregator(manifestRepository, config, TimeProvider.System, logger);
 
         // Act
         var result = aggregator.Aggregate();
@@ -162,7 +162,7 @@ public sealed class StatisticsAggregatorTests
             ["img4.jpg"] = TestData.Image("img4.jpg", TestData.Exif(model: "Camera C"))
         };
         manifestRepository.Images.Returns(images);
-        var aggregator = new StatisticsAggregator(manifestRepository, config, logger);
+        var aggregator = new StatisticsAggregator(manifestRepository, config, TimeProvider.System, logger);
 
         // Act
         var result = aggregator.Aggregate();
@@ -186,7 +186,7 @@ public sealed class StatisticsAggregatorTests
             ["img6.jpg"] = TestData.Image("img6.jpg", TestData.Exif(model: "B"))
         };
         manifestRepository.Images.Returns(images);
-        var aggregator = new StatisticsAggregator(manifestRepository, config, logger);
+        var aggregator = new StatisticsAggregator(manifestRepository, config, TimeProvider.System, logger);
 
         // Act
         var result = aggregator.Aggregate();
@@ -210,7 +210,7 @@ public sealed class StatisticsAggregatorTests
             ["img4.jpg"] = TestData.Image("img4.jpg", TestData.Exif(), dateTaken: new DateTime(2023, 1, 1))
         };
         manifestRepository.Images.Returns(images);
-        var aggregator = new StatisticsAggregator(manifestRepository, config, logger);
+        var aggregator = new StatisticsAggregator(manifestRepository, config, TimeProvider.System, logger);
 
         // Act
         var result = aggregator.Aggregate();
@@ -235,7 +235,7 @@ public sealed class StatisticsAggregatorTests
             ["img4.jpg"] = TestData.Image("img4.jpg", TestData.Exif(), dateTaken: new DateTime(2024, 7, 1))
         };
         manifestRepository.Images.Returns(images);
-        var aggregator = new StatisticsAggregator(manifestRepository, config, logger);
+        var aggregator = new StatisticsAggregator(manifestRepository, config, TimeProvider.System, logger);
 
         // Act
         var result = aggregator.Aggregate();
@@ -257,7 +257,7 @@ public sealed class StatisticsAggregatorTests
             ["square.jpg"] = TestData.Image("square.jpg", TestData.Exif(), width: 1000, height: 1000)
         };
         manifestRepository.Images.Returns(images);
-        var aggregator = new StatisticsAggregator(manifestRepository, config, logger);
+        var aggregator = new StatisticsAggregator(manifestRepository, config, TimeProvider.System, logger);
 
         // Act
         var result = aggregator.Aggregate();
@@ -279,7 +279,7 @@ public sealed class StatisticsAggregatorTests
             ["nodim.jpg"] = TestData.Image("nodim.jpg", TestData.Exif(), width: 0, height: 0)
         };
         manifestRepository.Images.Returns(images);
-        var aggregator = new StatisticsAggregator(manifestRepository, config, logger);
+        var aggregator = new StatisticsAggregator(manifestRepository, config, TimeProvider.System, logger);
 
         // Act
         var result = aggregator.Aggregate();
@@ -300,7 +300,7 @@ public sealed class StatisticsAggregatorTests
             ["slow.jpg"] = TestData.Image("slow.jpg", TestData.Exif(exposureTime: 2.0))
         };
         manifestRepository.Images.Returns(images);
-        var aggregator = new StatisticsAggregator(manifestRepository, config, logger);
+        var aggregator = new StatisticsAggregator(manifestRepository, config, TimeProvider.System, logger);
 
         // Act
         var result = aggregator.Aggregate();
@@ -323,7 +323,7 @@ public sealed class StatisticsAggregatorTests
             ["old.jpg"] = TestData.Image("old.jpg", dateTaken: new DateTime(2023, 6, 15))
         };
         manifestRepository.Images.Returns(images);
-        var aggregator = new StatisticsAggregator(manifestRepository, config, logger);
+        var aggregator = new StatisticsAggregator(manifestRepository, config, TimeProvider.System, logger);
 
         // Act
         var result = aggregator.Aggregate();
@@ -358,7 +358,7 @@ public sealed class StatisticsAggregatorTests
             ["nodate.jpg"] = TestData.Image("nodate.jpg")
         };
         manifestRepository.Images.Returns(images);
-        var aggregator = new StatisticsAggregator(manifestRepository, config, logger);
+        var aggregator = new StatisticsAggregator(manifestRepository, config, TimeProvider.System, logger);
 
         // Act
         var result = aggregator.Aggregate();
@@ -397,7 +397,7 @@ public sealed class StatisticsAggregatorTests
         }
 
         manifestRepository.Images.Returns(images);
-        var aggregator = new StatisticsAggregator(manifestRepository, config, logger);
+        var aggregator = new StatisticsAggregator(manifestRepository, config, TimeProvider.System, logger);
 
         // Act
         var result = aggregator.Aggregate();

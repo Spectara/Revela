@@ -18,7 +18,6 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
-    <PackageReference Include="Microsoft.Extensions.Telemetry.Abstractions" />
     <PackageReference Include="MSTest" />
     <PackageReference Include="MSTest.Analyzers" />
     <PackageReference Include="NSubstitute" />  </ItemGroup>

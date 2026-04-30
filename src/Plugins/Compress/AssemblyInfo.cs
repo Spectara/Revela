@@ -1,4 +1,4 @@
 using System.Runtime.CompilerServices;
 
-[assembly: InternalsVisibleTo("Spectara.Revela.Plugins.Compress.Tests")]
+[assembly: InternalsVisibleTo("Spectara.Revela.Tests.Plugins.Compress")]
 [assembly: InternalsVisibleTo("DynamicProxyGenAssembly2")]

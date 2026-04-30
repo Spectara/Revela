@@ -2,6 +2,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using NSubstitute;
+using Spectara.Revela.Plugins.Statistics;
 using Spectara.Revela.Plugins.Statistics.Commands;
 using Spectara.Revela.Plugins.Statistics.Configuration;
 using Spectara.Revela.Plugins.Statistics.Services;
@@ -15,13 +16,13 @@ namespace Spectara.Revela.Tests.Plugins.Statistics;
 public sealed class StatisticsPluginRegistrationTests
 {
     [TestMethod]
-    public void ConfigureServices_InvalidOptions_ShouldNotThrowAtStartupOrAccess()
+    public void ConfigureServices_InvalidOptions_ThrowsOnAccess()
     {
         // Arrange
-        // AddPluginConfig<T>() does NOT enable ValidateDataAnnotations by default.
-        // Plugins may be installed but not yet configured — validation via IOptionsMonitor
-        // would crash the application on every config reload when required properties are missing.
-        // Plugins should validate in their commands when config is actually needed.
+        // The [RevelaConfig] source generator enables ValidateDataAnnotations by default,
+        // so accessing IOptionsMonitor<T>.CurrentValue with invalid options throws.
+        // Validation is deferred to first access (not StartupValidation), so plugins
+        // can be installed but unconfigured without crashing the host.
         var services = new ServiceCollection();
         services.AddLogging();
 
@@ -30,6 +31,7 @@ public sealed class StatisticsPluginRegistrationTests
         manifestRepository.Root.Returns((ManifestEntry?)null);
 
         services.AddSingleton(manifestRepository);
+        services.AddSingleton(TimeProvider.System);
 
         var configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
@@ -55,11 +57,9 @@ public sealed class StatisticsPluginRegistrationTests
 
         var optionsMonitor = provider.GetRequiredService<IOptionsMonitor<StatisticsPluginConfig>>();
 
-        // Act - should NOT throw (no validation by default)
-        var config = optionsMonitor.CurrentValue;
-
-        // Assert - config is bound without validation (value is passed through as-is)
-        Assert.AreEqual(150, config.MaxEntriesPerCategory);
+        // Act + Assert — first access triggers DataAnnotations validation, which throws.
+        var ex = Assert.ThrowsExactly<OptionsValidationException>(() => _ = optionsMonitor.CurrentValue);
+        Assert.Contains("MaxEntriesPerCategory", ex.Message);
     }
 
     [TestMethod]
@@ -75,10 +75,11 @@ public sealed class StatisticsPluginRegistrationTests
         {
             Text = "Root",
             Path = "root",
-            DataSources = []
+            DataSources = new Dictionary<string, string>()
         });
 
         services.AddSingleton(manifestRepository);
+        services.AddSingleton(TimeProvider.System);
 
         var configuration = new ConfigurationBuilder().Build();
         services.AddSingleton<IConfiguration>(configuration);
