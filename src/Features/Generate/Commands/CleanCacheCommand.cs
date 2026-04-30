@@ -85,7 +85,7 @@ internal sealed partial class CleanCacheCommand(
         catch (IOException ex)
         {
             LogDeleteFailed(logger, CachePath, ex);
-            AnsiConsole.MarkupLine($"{OutputMarkers.Error} Failed to delete {ProjectPaths.Cache}: {ex.Message}");
+            AnsiConsole.MarkupLine($"{OutputMarkers.Error} Failed to delete {ProjectPaths.Cache}: {Markup.Escape(ex.Message)}");
             return Task.FromResult(1);
         }
         catch (UnauthorizedAccessException ex)

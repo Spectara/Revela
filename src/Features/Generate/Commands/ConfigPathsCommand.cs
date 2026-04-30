@@ -99,10 +99,10 @@ internal sealed partial class ConfigPathsCommand(
             AnsiConsole.MarkupLine("[cyan]Configure source and output paths[/]\n");
 
             // Show current values
-            AnsiConsole.MarkupLine($"[dim]Current source:[/] {current.Source}");
-            AnsiConsole.MarkupLine($"[dim]  → Resolves to:[/] {pathResolver.SourcePath}");
-            AnsiConsole.MarkupLine($"[dim]Current output:[/] {current.Output}");
-            AnsiConsole.MarkupLine($"[dim]  → Resolves to:[/] {pathResolver.OutputPath}");
+            AnsiConsole.MarkupLine($"[dim]Current source:[/] {Markup.Escape(current.Source)}");
+            AnsiConsole.MarkupLine($"[dim]  → Resolves to:[/] {Markup.Escape(pathResolver.SourcePath)}");
+            AnsiConsole.MarkupLine($"[dim]Current output:[/] {Markup.Escape(current.Output)}");
+            AnsiConsole.MarkupLine($"[dim]  → Resolves to:[/] {Markup.Escape(pathResolver.OutputPath)}");
             AnsiConsole.WriteLine();
 
             // Prompt for source path
@@ -145,8 +145,8 @@ internal sealed partial class ConfigPathsCommand(
             EnsureDefaultDirectoriesExist(source, output, defaults);
 
             AnsiConsole.MarkupLine($"{OutputMarkers.Info} Using default paths");
-            AnsiConsole.MarkupLine($"  [dim]Source:[/] {source}");
-            AnsiConsole.MarkupLine($"  [dim]Output:[/] {output}");
+            AnsiConsole.MarkupLine($"  [dim]Source:[/] {Markup.Escape(source)}");
+            AnsiConsole.MarkupLine($"  [dim]Output:[/] {Markup.Escape(output)}");
             return 0;
         }
 
@@ -177,13 +177,13 @@ internal sealed partial class ConfigPathsCommand(
             : Path.GetFullPath(Path.Combine(projectPath, output));
 
         AnsiConsole.MarkupLine($"{OutputMarkers.Success} Paths configured");
-        AnsiConsole.MarkupLine($"  [dim]Source:[/] {source} → [cyan]{resolvedSource}[/]");
-        AnsiConsole.MarkupLine($"  [dim]Output:[/] {output} → [cyan]{resolvedOutput}[/]");
+        AnsiConsole.MarkupLine($"  [dim]Source:[/] {Markup.Escape(source)} → [cyan]{Markup.Escape(resolvedSource)}[/]");
+        AnsiConsole.MarkupLine($"  [dim]Output:[/] {Markup.Escape(output)} → [cyan]{Markup.Escape(resolvedOutput)}[/]");
 
         // Warn if source directory doesn't exist (for custom paths that user provided)
         if (!Directory.Exists(resolvedSource))
         {
-            AnsiConsole.MarkupLine($"\n{OutputMarkers.Warning} Source directory does not exist yet: [dim]{resolvedSource}[/]");
+            AnsiConsole.MarkupLine($"\n{OutputMarkers.Warning} Source directory does not exist yet: [dim]{Markup.Escape(resolvedSource)}[/]");
         }
 
         return 0;

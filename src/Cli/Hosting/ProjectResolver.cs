@@ -461,6 +461,7 @@ internal static class ProjectResolver
     {
         try
         {
+            // Sync IO: bootstrap path — ResolveProject runs before host build, no async context yet.
             var json = File.ReadAllText(projectFilePath);
             using var doc = JsonDocument.Parse(json);
 

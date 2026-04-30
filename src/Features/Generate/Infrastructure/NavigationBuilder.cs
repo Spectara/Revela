@@ -45,38 +45,38 @@ internal sealed partial class NavigationBuilder(ILogger<NavigationBuilder> logge
         "Design",
         "CA1054:URI-like parameters should not be strings",
         Justification = "currentPath is a relative path segment, not a full URI")]
-    public Task<IReadOnlyList<NavigationItem>> BuildAsync(
+    public async Task<IReadOnlyList<NavigationItem>> BuildAsync(
         string sourceDirectory,
         string? currentPath = null,
         bool sortDescending = false,
         CancellationToken cancellationToken = default)
     {
-        _ = cancellationToken; // Reserved for future async operations
-
         ArgumentException.ThrowIfNullOrWhiteSpace(sourceDirectory);
 
         LogBuildingNavigation(logger, sourceDirectory);
 
-        var items = BuildNavigationRecursive(
+        var items = await BuildNavigationRecursiveAsync(
             new DirectoryInfo(sourceDirectory),
             pathSegments: [],
             currentPath ?? string.Empty,
-            sortDescending);
+            sortDescending,
+            cancellationToken);
 
         var itemCount = CountItems(items);
         LogNavigationComplete(logger, itemCount);
 
-        return Task.FromResult<IReadOnlyList<NavigationItem>>(items);
+        return items;
     }
 
     /// <summary>
     /// Recursively builds navigation from directory structure
     /// </summary>
-    private List<NavigationItem> BuildNavigationRecursive(
+    private async Task<List<NavigationItem>> BuildNavigationRecursiveAsync(
         DirectoryInfo directory,
         List<string> pathSegments,
         string currentPath,
-        bool sortDescending)
+        bool sortDescending,
+        CancellationToken cancellationToken)
     {
         if (!directory.Exists)
         {
@@ -94,11 +94,13 @@ internal sealed partial class NavigationBuilder(ILogger<NavigationBuilder> logge
 
         foreach (var subdir in subdirectories)
         {
+            cancellationToken.ThrowIfCancellationRequested();
+
             // Load metadata from _index.revela if present
             var indexPath = Path.Combine(subdir.FullName, RevelaParser.IndexFileName);
             var hasIndexFile = File.Exists(indexPath);
             var metadata = hasIndexFile
-                ? RevelaParser.Parse(File.ReadAllText(indexPath))
+                ? RevelaParser.Parse(await File.ReadAllTextAsync(indexPath, cancellationToken))
                 : DirectoryMetadata.Empty;
 
             // Use metadata title or extract from folder name
@@ -116,11 +118,12 @@ internal sealed partial class NavigationBuilder(ILogger<NavigationBuilder> logge
             var isPage = (hasImages || hasIndexFile) && !metadata.Container;
 
             // Recursively get children
-            var children = BuildNavigationRecursive(
+            var children = await BuildNavigationRecursiveAsync(
                 subdir,
                 newPathSegments,
                 currentPath,
-                sortDescending);
+                sortDescending,
+                cancellationToken);
 
             // Determine if this item is active
             var isActive = !string.IsNullOrEmpty(currentPath) &&

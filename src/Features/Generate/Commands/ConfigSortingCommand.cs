@@ -123,7 +123,7 @@ internal sealed class ConfigSortingCommand(IConfigService configService)
             var direction = ParseDirection(galleriesArg);
             if (direction is null)
             {
-                AnsiConsole.MarkupLine($"{OutputMarkers.Error} Invalid gallery direction: {galleriesArg}. Use 'asc' or 'desc'.");
+                AnsiConsole.MarkupLine($"{OutputMarkers.Error} Invalid gallery direction: {Markup.Escape(galleriesArg)}. Use 'asc' or 'desc'.");
                 return 1;
             }
 
@@ -146,7 +146,7 @@ internal sealed class ConfigSortingCommand(IConfigService configService)
                 var direction = ParseDirection(directionArg);
                 if (direction is null)
                 {
-                    AnsiConsole.MarkupLine($"{OutputMarkers.Error} Invalid image direction: {directionArg}. Use 'asc' or 'desc'.");
+                    AnsiConsole.MarkupLine($"{OutputMarkers.Error} Invalid image direction: {Markup.Escape(directionArg)}. Use 'asc' or 'desc'.");
                     return 1;
                 }
 

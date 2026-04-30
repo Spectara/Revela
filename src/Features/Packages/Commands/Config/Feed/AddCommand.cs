@@ -64,10 +64,10 @@ internal sealed partial class AddCommand(
 
             await globalConfigManager.AddFeedAsync(name, url, cancellationToken);
 
-            AnsiConsole.MarkupLine($"{OutputMarkers.Success} Added feed [cyan]{name}[/]");
-            AnsiConsole.MarkupLine($"  URL: [dim]{url}[/]");
+            AnsiConsole.MarkupLine($"{OutputMarkers.Success} Added feed [cyan]{Markup.Escape(name)}[/]");
+            AnsiConsole.MarkupLine($"  URL: [dim]{Markup.Escape(url)}[/]");
             AnsiConsole.WriteLine();
-            AnsiConsole.MarkupLine($"Config: [dim]{ConfigPathResolver.ConfigFilePath}[/]");
+            AnsiConsole.MarkupLine($"Config: [dim]{Markup.Escape(ConfigPathResolver.ConfigFilePath)}[/]");
             AnsiConsole.WriteLine();
             AnsiConsole.MarkupLine("[dim]Run [cyan]revela packages refresh[/] to update the package index.[/]");
 
@@ -75,7 +75,7 @@ internal sealed partial class AddCommand(
         }
         catch (InvalidOperationException ex)
         {
-            AnsiConsole.MarkupLine($"[yellow]WARNING[/] {ex.Message}");
+            AnsiConsole.MarkupLine($"[yellow]WARNING[/] {Markup.Escape(ex.Message)}");
             return 1;
         }
         catch (Exception ex)

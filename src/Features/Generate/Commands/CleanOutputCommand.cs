@@ -78,18 +78,18 @@ internal sealed partial class CleanOutputCommand(
             Directory.Delete(OutputPath, recursive: true);
             LogDirectoryDeleted(logger, target.Path, target.FileCount);
 
-            AnsiConsole.MarkupLine($"{OutputMarkers.Success} Deleted [cyan]{OutputPath}[/] ({target.FileCount} files, {FormatSize(target.TotalSize)})");
+            AnsiConsole.MarkupLine($"{OutputMarkers.Success} Deleted [cyan]{Markup.Escape(OutputPath)}[/] ({target.FileCount} files, {FormatSize(target.TotalSize)})");
         }
         catch (IOException ex)
         {
             LogDeleteFailed(logger, OutputPath, ex);
-            AnsiConsole.MarkupLine($"{OutputMarkers.Error} Failed to delete {OutputPath}: {ex.Message}");
+            AnsiConsole.MarkupLine($"{OutputMarkers.Error} Failed to delete {Markup.Escape(OutputPath)}: {Markup.Escape(ex.Message)}");
             return Task.FromResult(1);
         }
         catch (UnauthorizedAccessException ex)
         {
             LogDeleteFailed(logger, OutputPath, ex);
-            AnsiConsole.MarkupLine($"{OutputMarkers.Error} Access denied: {OutputPath}");
+            AnsiConsole.MarkupLine($"{OutputMarkers.Error} Access denied: {Markup.Escape(OutputPath)}");
             return Task.FromResult(1);
         }
 

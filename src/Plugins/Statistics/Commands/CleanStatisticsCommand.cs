@@ -106,12 +106,12 @@ internal sealed partial class CleanStatisticsCommand(
             catch (IOException ex)
             {
                 LogDeleteFailed(logger, file, ex);
-                AnsiConsole.MarkupLine($"{OutputMarkers.Error} Failed to delete {file}: {ex.Message}");
+                AnsiConsole.MarkupLine($"{OutputMarkers.Error} Failed to delete {Markup.Escape(file)}: {Markup.Escape(ex.Message)}");
             }
             catch (UnauthorizedAccessException ex)
             {
                 LogDeleteFailed(logger, file, ex);
-                AnsiConsole.MarkupLine($"{OutputMarkers.Error} Access denied: {file}");
+                AnsiConsole.MarkupLine($"{OutputMarkers.Error} Access denied: {Markup.Escape(file)}");
             }
         }
 

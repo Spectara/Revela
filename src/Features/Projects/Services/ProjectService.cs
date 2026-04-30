@@ -97,6 +97,7 @@ internal sealed partial class ProjectService(
     {
         try
         {
+            // Sync IO: IProjectService.List() is a sync API; tiny project.json files (<1KB).
             var json = File.ReadAllText(projectJsonPath);
             using var doc = JsonDocument.Parse(json);
 

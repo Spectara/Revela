@@ -5,7 +5,9 @@ namespace Spectara.Revela.Plugins.Source.OneDrive.Providers.Logging;
 /// </summary>
 internal static partial class SharedLinkProviderLogging
 {
-    [LoggerMessage(Level = LogLevel.Information, Message = "Listing items from OneDrive share: {shareUrl}")]
+    // OneDrive share URLs (https://1drv.ms/f/s!ABC123…) embed an account-scoped
+    // resource identifier. Logged at Debug only to avoid leaking it into default-verbosity logs.
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Listing items from OneDrive share: {shareUrl}")]
     public static partial void ListingItems(this ILogger<SharedLinkProvider> logger, string shareUrl);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Listed {count} items from OneDrive")]

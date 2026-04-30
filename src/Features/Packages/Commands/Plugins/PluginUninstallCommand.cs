@@ -62,19 +62,19 @@ internal sealed partial class PluginUninstallCommand(
                 return 0;
             }
 
-            AnsiConsole.MarkupLine($"{OutputMarkers.Info} Uninstalling plugin: [cyan]{packageId}[/]");
+            AnsiConsole.MarkupLine($"{OutputMarkers.Info} Uninstalling plugin: [cyan]{Markup.Escape(packageId)}[/]");
             LogUninstallingPlugin(packageId);
 
             var success = await pluginManager.UninstallPluginAsync(packageId, cancellationToken: cancellationToken);
 
             if (success)
             {
-                AnsiConsole.MarkupLine($"{OutputMarkers.Success} Plugin [cyan]{packageId}[/] uninstalled successfully.");
+                AnsiConsole.MarkupLine($"{OutputMarkers.Success} Plugin [cyan]{Markup.Escape(packageId)}[/] uninstalled successfully.");
                 return 0;
             }
             else
             {
-                AnsiConsole.MarkupLine($"{OutputMarkers.Warning} Plugin [cyan]{packageId}[/] not found.");
+                AnsiConsole.MarkupLine($"{OutputMarkers.Warning} Plugin [cyan]{Markup.Escape(packageId)}[/] not found.");
                 return 1;
             }
         }

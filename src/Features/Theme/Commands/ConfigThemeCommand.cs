@@ -104,14 +104,14 @@ internal sealed partial class ConfigThemeCommand(
 
         if (selectedTheme.Equals(current.ThemeName, StringComparison.OrdinalIgnoreCase))
         {
-            AnsiConsole.MarkupLine($"[dim]Theme unchanged:[/] [green]{selectedTheme}[/]");
+            AnsiConsole.MarkupLine($"[dim]Theme unchanged:[/] [green]{Markup.Escape(selectedTheme)}[/]");
             return 0;
         }
 
         await themeService.SetActiveThemeAsync(selectedTheme, cancellationToken);
 
         LogThemeChanged(current.ThemeName, selectedTheme);
-        AnsiConsole.MarkupLine($"{OutputMarkers.Success} Theme set to: [bold]{selectedTheme}[/]");
+        AnsiConsole.MarkupLine($"{OutputMarkers.Success} Theme set to: [bold]{Markup.Escape(selectedTheme)}[/]");
         return 0;
     }
 

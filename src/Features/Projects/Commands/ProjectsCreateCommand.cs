@@ -80,7 +80,7 @@ internal sealed partial class ProjectsCreateCommand(
 
         Directory.CreateDirectory(projectPath);
 
-        AnsiConsole.MarkupLine($"{OutputMarkers.Success} Project folder created: [cyan]{folderName}[/]");
+        AnsiConsole.MarkupLine($"{OutputMarkers.Success} Project folder created: [cyan]{Markup.Escape(folderName)}[/]");
 
         return projectPath;
     }

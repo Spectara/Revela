@@ -1,6 +1,8 @@
 using System.Net;
 using System.Net.Sockets;
 
+using Spectara.Revela.Plugins.Serve;
+
 namespace Spectara.Revela.Tests.Plugins.Serve;
 
 [TestClass]
@@ -86,6 +88,84 @@ public sealed class StaticFileServerTests
             var mimeType = StaticFileServer.GetMimeType(ext);
             Assert.AreNotEqual("application/octet-stream", mimeType, $"Extension '{ext}' should have a registered MIME type");
         }
+    }
+
+    // ── TryResolveSafePath: directory traversal protection ────────────────
+
+    [TestMethod]
+    public void TryResolveSafePath_PlainFile_IsAllowed()
+    {
+        var root = Path.GetFullPath(Path.Combine(Path.GetTempPath(), "rev-serve-root"));
+
+        var allowed = StaticFileServer.TryResolveSafePath(root, "/index.html", out var resolved);
+
+        Assert.IsTrue(allowed);
+        Assert.AreEqual(Path.Combine(root, "index.html"), resolved);
+    }
+
+    [TestMethod]
+    public void TryResolveSafePath_NestedFile_IsAllowed()
+    {
+        var root = Path.GetFullPath(Path.Combine(Path.GetTempPath(), "rev-serve-root"));
+
+        var allowed = StaticFileServer.TryResolveSafePath(root, "/sub/dir/page.html", out _);
+
+        Assert.IsTrue(allowed);
+    }
+
+    [TestMethod]
+    public void TryResolveSafePath_ParentTraversal_IsRejected()
+    {
+        var root = Path.GetFullPath(Path.Combine(Path.GetTempPath(), "rev-serve-root"));
+
+        var allowed = StaticFileServer.TryResolveSafePath(root, "/../etc/passwd", out _);
+
+        Assert.IsFalse(allowed);
+    }
+
+    [TestMethod]
+    public void TryResolveSafePath_SiblingDirectoryWithSharedPrefix_IsRejected()
+    {
+        // The historical bug: rootPath = "<tmp>\site" and a sibling "<tmp>\siteother\"
+        // would pass a naive StartsWith(rootPath, …) check.
+        var root = Path.GetFullPath(Path.Combine(Path.GetTempPath(), "rev-serve-site"));
+
+        var allowed = StaticFileServer.TryResolveSafePath(root, "/../rev-serve-siteother/secret.txt", out _);
+
+        Assert.IsFalse(allowed);
+    }
+
+    [TestMethod]
+    public void TryResolveSafePath_DeepTraversalEscape_IsRejected()
+    {
+        var root = Path.GetFullPath(Path.Combine(Path.GetTempPath(), "rev-serve-root"));
+
+        var allowed = StaticFileServer.TryResolveSafePath(root, "/../../../../../../../../etc/passwd", out _);
+
+        Assert.IsFalse(allowed);
+    }
+
+    [TestMethod]
+    public void TryResolveSafePath_RootPath_IsAllowed()
+    {
+        var root = Path.GetFullPath(Path.Combine(Path.GetTempPath(), "rev-serve-root"));
+
+        var allowed = StaticFileServer.TryResolveSafePath(root, "/", out var resolved);
+
+        Assert.IsTrue(allowed);
+        Assert.AreEqual(root, resolved);
+    }
+
+    [TestMethod]
+    public void TryResolveSafePath_TraversalThatLandsBackInsideRoot_IsAllowed()
+    {
+        // /sub/../index.html resolves back to /index.html, which is inside root.
+        var root = Path.GetFullPath(Path.Combine(Path.GetTempPath(), "rev-serve-root"));
+
+        var allowed = StaticFileServer.TryResolveSafePath(root, "/sub/../index.html", out var resolved);
+
+        Assert.IsTrue(allowed);
+        Assert.AreEqual(Path.Combine(root, "index.html"), resolved);
     }
 
     [TestMethod]

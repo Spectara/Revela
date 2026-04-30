@@ -79,7 +79,7 @@ internal sealed partial class ThemeExtractCommand(
             // If no source argument, show interactive selection
             if (string.IsNullOrEmpty(source))
             {
-                source = PromptForThemeSelection();
+                source = await PromptForThemeSelectionAsync(cancellationToken);
                 if (source is null)
                 {
                     return 1; // User cancelled or no themes available
@@ -550,7 +550,7 @@ internal sealed partial class ThemeExtractCommand(
         // Update theme.json with new name if different
         if (targetName is not null && !targetName.Equals(sourceName, StringComparison.OrdinalIgnoreCase))
         {
-            UpdateThemeName(targetPath, targetName);
+            await UpdateThemeNameAsync(targetPath, targetName, cancellationToken);
         }
 
         // Extract extensions into category subfolders (Partials/<ExtName>/, Assets/<ExtName>/)
@@ -638,7 +638,7 @@ internal sealed partial class ThemeExtractCommand(
         return 0;
     }
 
-    private static void UpdateThemeName(string themePath, string newName)
+    private static async Task UpdateThemeNameAsync(string themePath, string newName, CancellationToken cancellationToken)
     {
         var manifestPath = Path.Combine(themePath, "manifest.json");
         if (!File.Exists(manifestPath))
@@ -646,13 +646,13 @@ internal sealed partial class ThemeExtractCommand(
             return;
         }
 
-        var json = File.ReadAllText(manifestPath);
+        var json = await File.ReadAllTextAsync(manifestPath, cancellationToken);
 
         // Simple regex replacement for "name": "..."
         var replacement = $"\"name\": \"{newName}\"";
         var updatedJson = ThemeNamePattern().Replace(json, replacement);
 
-        File.WriteAllText(manifestPath, updatedJson);
+        await File.WriteAllTextAsync(manifestPath, updatedJson, cancellationToken);
     }
 
     [GeneratedRegex(@"""name""\s*:\s*""[^""]*""")]
@@ -662,9 +662,9 @@ internal sealed partial class ThemeExtractCommand(
     /// Prompts the user to select a theme for extraction.
     /// </summary>
     /// <returns>The selected theme name, or null if cancelled or no themes available.</returns>
-    private string? PromptForThemeSelection()
+    private async Task<string?> PromptForThemeSelectionAsync(CancellationToken cancellationToken)
     {
-        var listResult = themeService.ListAsync().GetAwaiter().GetResult();
+        var listResult = await themeService.ListAsync(cancellationToken: cancellationToken);
 
         if (listResult.Installed.Count == 0)
         {

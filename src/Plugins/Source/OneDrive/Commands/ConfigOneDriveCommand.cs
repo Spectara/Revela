@@ -5,6 +5,7 @@ using Spectara.Revela.Plugins.Source.OneDrive.Configuration;
 using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Abstractions;
 using Spectara.Revela.Sdk.Configuration;
+using Spectara.Revela.Sdk.Validation;
 using Spectre.Console;
 
 namespace Spectara.Revela.Plugins.Source.OneDrive.Commands;
@@ -93,15 +94,23 @@ internal sealed partial class ConfigOneDriveCommand(
                             return ValidationResult.Success(); // Allow empty for now
                         }
 
-                        if (!url.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+                        if (!Uri.TryCreate(url, UriKind.Absolute, out var uri))
                         {
-                            return ValidationResult.Error("[red]URL must start with https://[/]");
+                            return ValidationResult.Error("[red]Not a valid URL[/]");
                         }
 
-                        if (!url.Contains("1drv.ms", StringComparison.OrdinalIgnoreCase) &&
-                            !url.Contains("onedrive.live.com", StringComparison.OrdinalIgnoreCase))
+                        if (!UrlSafety.IsSafeOutboundUrl(uri))
                         {
-                            return ValidationResult.Error("[red]Must be a valid OneDrive share URL[/]");
+                            return ValidationResult.Error(
+                                "[red]URL must use https and may not point to loopback, private, or link-local addresses[/]");
+                        }
+
+                        // Host-equality check (Contains accepts attacker.com/?fake=1drv.ms)
+                        if (!string.Equals(uri.Host, "1drv.ms", StringComparison.OrdinalIgnoreCase) &&
+                            !string.Equals(uri.Host, "onedrive.live.com", StringComparison.OrdinalIgnoreCase))
+                        {
+                            return ValidationResult.Error(
+                                "[red]Host must be 1drv.ms or onedrive.live.com[/]");
                         }
 
                         return ValidationResult.Success();

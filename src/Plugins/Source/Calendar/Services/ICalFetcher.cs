@@ -1,3 +1,5 @@
+using Spectara.Revela.Sdk.Validation;
+
 namespace Spectara.Revela.Plugins.Source.Calendar.Services;
 
 /// <summary>
@@ -16,9 +18,20 @@ internal sealed partial class ICalFetcher(
     /// <returns>Number of bytes written.</returns>
     public async Task<long> FetchAsync(string url, string outputPath, CancellationToken cancellationToken = default)
     {
-        LogFetching(url);
+        if (!Uri.TryCreate(url, UriKind.Absolute, out var uri)
+            || !UrlSafety.IsSafeOutboundUrl(uri, allowHttp: true))
+        {
+            throw new InvalidOperationException(
+                $"iCal URL '{url}' is not a safe outbound target. " +
+                "URLs must use http(s) and not point to loopback, private, or link-local addresses.");
+        }
 
-        using var response = await httpClient.GetAsync(new Uri(url), cancellationToken);
+        // Information: host only — iCal feed URLs frequently embed auth tokens in query strings
+        // (Booking.com, Airbnb personal feeds, etc.). Full URL stays at Debug for diagnostics.
+        LogFetchingHost(uri.Host);
+        LogFetchingUrl(url);
+
+        using var response = await httpClient.GetAsync(uri, cancellationToken);
         response.EnsureSuccessStatusCode();
 
         var directory = Path.GetDirectoryName(outputPath);
@@ -39,8 +52,11 @@ internal sealed partial class ICalFetcher(
         return bytesWritten;
     }
 
-    [LoggerMessage(Level = LogLevel.Information, Message = "Fetching iCal feed: {Url}")]
-    private partial void LogFetching(string url);
+    [LoggerMessage(Level = LogLevel.Information, Message = "Fetching iCal feed from {Host}")]
+    private partial void LogFetchingHost(string host);
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Fetching iCal feed: {Url}")]
+    private partial void LogFetchingUrl(string url);
 
     [LoggerMessage(Level = LogLevel.Debug, Message = "Saved iCal feed to {Path} ({Bytes} bytes)")]
     private partial void LogFetched(string path, long bytes);

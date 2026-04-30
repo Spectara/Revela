@@ -1,6 +1,7 @@
 using System.CommandLine;
 
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 using Spectara.Revela.Plugins.Source.Calendar.Commands;
 using Spectara.Revela.Plugins.Source.Calendar.Configuration;
@@ -40,7 +41,7 @@ public sealed class SourceCalendarPlugin : IPlugin
             client.DefaultRequestHeaders.Add("User-Agent", "Revela/1.0 (Static Site Generator)");
         });
 
-        services.AddTransient<CalendarFetchCommand>();
+        services.TryAddTransient<CalendarFetchCommand>();
     }
 
     /// <inheritdoc />

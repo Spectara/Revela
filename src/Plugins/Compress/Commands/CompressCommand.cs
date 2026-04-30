@@ -49,7 +49,7 @@ internal sealed partial class CompressCommand(
         // Check if output directory exists
         if (!Directory.Exists(outputPath))
         {
-            AnsiConsole.MarkupLine($"{OutputMarkers.Warning} Output directory does not exist: [dim]{outputPath}[/]");
+            AnsiConsole.MarkupLine($"{OutputMarkers.Warning} Output directory does not exist: [dim]{Markup.Escape(outputPath)}[/]");
             AnsiConsole.MarkupLine("[dim]Run [cyan]revela generate pages[/] first to create output files.[/]");
             return 0;
         }

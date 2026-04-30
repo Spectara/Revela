@@ -153,9 +153,8 @@ internal sealed class StaticFileServer : IAsyncDisposable, IDisposable
                 urlPath += "index.html";
             }
 
-            // Security: Prevent directory traversal attacks
-            var requestedPath = Path.GetFullPath(Path.Combine(rootPath, urlPath.TrimStart('/')));
-            if (!requestedPath.StartsWith(rootPath, StringComparison.OrdinalIgnoreCase))
+            // Security: Prevent directory traversal attacks.
+            if (!TryResolveSafePath(rootPath, urlPath, out var requestedPath))
             {
                 SendError(response, 403, "Forbidden");
                 requestCallback?.Invoke(urlPath, 403);
@@ -243,6 +242,31 @@ internal sealed class StaticFileServer : IAsyncDisposable, IDisposable
         MimeTypes.TryGetValue(extension, out var mimeType)
             ? mimeType
             : "application/octet-stream";
+
+    /// <summary>
+    /// Resolves a request URL path against a root directory, rejecting any attempt
+    /// to escape the root via parent traversal (..), absolute paths, or sibling
+    /// directories that share a name prefix with the root.
+    /// </summary>
+    /// <param name="rootPath">Absolute root directory (already canonicalized).</param>
+    /// <param name="urlPath">Decoded URL local path (e.g., "/index.html").</param>
+    /// <param name="resolvedPath">The full filesystem path inside the root, when allowed.</param>
+    /// <returns><c>true</c> if the path is safely inside <paramref name="rootPath"/>.</returns>
+    internal static bool TryResolveSafePath(string rootPath, string urlPath, out string resolvedPath)
+    {
+        resolvedPath = Path.GetFullPath(Path.Combine(rootPath, urlPath.TrimStart('/')));
+
+        // GetRelativePath returns a path starting with ".." for any escape,
+        // and an absolute path when the target lives on a different volume.
+        var relative = Path.GetRelativePath(rootPath, resolvedPath);
+        if (relative.StartsWith("..", StringComparison.Ordinal)
+            || Path.IsPathRooted(relative))
+        {
+            return false;
+        }
+
+        return true;
+    }
 
     /// <inheritdoc />
     public async ValueTask DisposeAsync()

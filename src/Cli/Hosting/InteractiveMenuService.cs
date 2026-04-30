@@ -153,7 +153,7 @@ internal sealed partial class InteractiveMenuService(
     private static void ShowWizardIncompleteMessage(string wizardName)
     {
         AnsiConsole.WriteLine();
-        AnsiConsole.MarkupLine($"[yellow]{wizardName} was not completed. Continuing to menu...[/]");
+        AnsiConsole.MarkupLine($"[yellow]{Markup.Escape(wizardName)} was not completed. Continuing to menu...[/]");
         WaitForKeyPress();
     }
 

@@ -74,18 +74,18 @@ internal sealed partial class ThemeUninstallCommand(
                 return 0;
             }
 
-            AnsiConsole.MarkupLine($"{OutputMarkers.Info} Uninstalling theme: [cyan]{packageId}[/]");
+            AnsiConsole.MarkupLine($"{OutputMarkers.Info} Uninstalling theme: [cyan]{Markup.Escape(packageId)}[/]");
             LogUninstallingTheme(logger, packageId);
 
             var success = await themeService.UninstallAsync(packageId, cancellationToken);
 
             if (success)
             {
-                AnsiConsole.MarkupLine($"{OutputMarkers.Success} Theme [cyan]{packageId}[/] uninstalled successfully.");
+                AnsiConsole.MarkupLine($"{OutputMarkers.Success} Theme [cyan]{Markup.Escape(packageId)}[/] uninstalled successfully.");
                 return 0;
             }
 
-            AnsiConsole.MarkupLine($"{OutputMarkers.Warning} Theme [cyan]{packageId}[/] not found.");
+            AnsiConsole.MarkupLine($"{OutputMarkers.Warning} Theme [cyan]{Markup.Escape(packageId)}[/] not found.");
             return 1;
         }
         catch (Exception ex)

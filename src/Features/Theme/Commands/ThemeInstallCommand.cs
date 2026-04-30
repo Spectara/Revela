@@ -247,7 +247,7 @@ internal sealed partial class ThemeInstallCommand(
             AnsiConsole.MarkupLine("[green]Already installed:[/]");
             foreach (var themeId in installedThemes.Keys)
             {
-                AnsiConsole.MarkupLine($"  {OutputMarkers.Success} {themeId}");
+                AnsiConsole.MarkupLine($"  {OutputMarkers.Success} {Markup.Escape(themeId)}");
             }
 
             AnsiConsole.WriteLine();
@@ -312,7 +312,7 @@ internal sealed partial class ThemeInstallCommand(
                     return 1;
                 }
 
-                AnsiConsole.MarkupLine($"{OutputMarkers.Error} Package [cyan]{packageId}[/] not found in index.");
+                AnsiConsole.MarkupLine($"{OutputMarkers.Error} Package [cyan]{Markup.Escape(packageId)}[/] not found in index.");
                 AnsiConsole.MarkupLine("  Run [cyan]revela packages refresh[/] to update the index.");
                 return 1;
             }
@@ -320,14 +320,14 @@ internal sealed partial class ThemeInstallCommand(
             // Validate package type
             if (!packageEntry.Types.Contains("RevelaTheme", StringComparer.OrdinalIgnoreCase))
             {
-                AnsiConsole.MarkupLine($"{OutputMarkers.Error} Package [cyan]{packageId}[/] is not a theme.");
-                AnsiConsole.MarkupLine($"  Package types: {string.Join(", ", packageEntry.Types)}");
+                AnsiConsole.MarkupLine($"{OutputMarkers.Error} Package [cyan]{Markup.Escape(packageId)}[/] is not a theme.");
+                AnsiConsole.MarkupLine($"  Package types: {Markup.Escape(string.Join(", ", packageEntry.Types))}");
                 AnsiConsole.MarkupLine("  Use [cyan]revela plugin install[/] for plugins.");
                 return 1;
             }
 
-            var sourceInfo = source is not null ? $" from [dim]{source}[/]" : "";
-            AnsiConsole.MarkupLine($"[blue]Installing theme:[/] [cyan]{packageId}[/]{sourceInfo}");
+            var sourceInfo = source is not null ? $" from [dim]{Markup.Escape(source)}[/]" : "";
+            AnsiConsole.MarkupLine($"[blue]Installing theme:[/] [cyan]{Markup.Escape(packageId)}[/]{sourceInfo}");
             LogInstallingTheme(logger, packageId, version, source);
 
             var success = await AnsiConsole.Status()
@@ -345,7 +345,7 @@ internal sealed partial class ThemeInstallCommand(
                 var installedVersion = version ?? packageEntry.Version;
                 await globalConfigManager.AddThemeAsync(packageId, installedVersion, cancellationToken);
 
-                AnsiConsole.MarkupLine($"{OutputMarkers.Success} Theme [cyan]{packageId}[/] installed successfully.");
+                AnsiConsole.MarkupLine($"{OutputMarkers.Success} Theme [cyan]{Markup.Escape(packageId)}[/] installed successfully.");
                 AnsiConsole.MarkupLine("[dim]Configure with:[/] revela config theme select");
                 return 0;
             }

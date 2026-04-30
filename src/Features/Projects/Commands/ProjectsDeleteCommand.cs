@@ -90,7 +90,7 @@ internal sealed partial class ProjectsDeleteCommand(
 
         if (project == default)
         {
-            AnsiConsole.MarkupLine($"{OutputMarkers.Error} Project folder '{folderName}' not found.");
+            AnsiConsole.MarkupLine($"{OutputMarkers.Error} Project folder '{Markup.Escape(folderName)}' not found.");
             return;
         }
 
@@ -107,12 +107,12 @@ internal sealed partial class ProjectsDeleteCommand(
 
         // Show what will be deleted
         AnsiConsole.MarkupLine($"[red]This will permanently delete:[/]");
-        AnsiConsole.MarkupLine($"  [cyan]{project.Path}[/]");
+        AnsiConsole.MarkupLine($"  [cyan]{Markup.Escape(project.Path)}[/]");
         AnsiConsole.WriteLine();
 
         // Confirmation prompt - must type project folder name
         var confirmation = AnsiConsole.Prompt(
-            new TextPrompt<string>($"[red]Type '{project.FolderName}' to confirm deletion:[/]")
+            new TextPrompt<string>($"[red]Type '{Markup.Escape(project.FolderName)}' to confirm deletion:[/]")
                 .AllowEmpty());
 
         if (!confirmation.Equals(project.FolderName, StringComparison.Ordinal))
@@ -126,7 +126,7 @@ internal sealed partial class ProjectsDeleteCommand(
         try
         {
             Directory.Delete(project.Path, recursive: true);
-            AnsiConsole.MarkupLine($"{OutputMarkers.Success} Deleted project folder: [cyan]{project.FolderName}[/]");
+            AnsiConsole.MarkupLine($"{OutputMarkers.Success} Deleted project folder: [cyan]{Markup.Escape(project.FolderName)}[/]");
 
             if (isCurrentProject)
             {
@@ -174,6 +174,7 @@ internal sealed partial class ProjectsDeleteCommand(
     {
         try
         {
+            // Sync IO: helper for sync directory enumeration; tiny project.json files.
             var json = File.ReadAllText(projectFilePath);
             using var doc = JsonDocument.Parse(json);
 

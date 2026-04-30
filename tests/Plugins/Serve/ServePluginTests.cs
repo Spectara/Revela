@@ -1,5 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using NSubstitute;
+using Spectara.Revela.Plugins.Serve;
 using Spectara.Revela.Sdk.Abstractions;
 using Spectara.Revela.Sdk.Services;
 

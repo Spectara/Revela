@@ -149,19 +149,19 @@ internal sealed partial class Wizard(
         foreach (var step in selectedSteps.OrderBy(s => s.Order))
         {
             AnsiConsole.WriteLine();
-            AnsiConsole.MarkupLine($"[cyan]━━━ {step.Name} ━━━[/]");
-            AnsiConsole.MarkupLine($"[dim]{step.Description}[/]");
+            AnsiConsole.MarkupLine($"[cyan]━━━ {Markup.Escape(step.Name)} ━━━[/]");
+            AnsiConsole.MarkupLine($"[dim]{Markup.Escape(step.Description)}[/]");
             AnsiConsole.WriteLine();
 
             var result = await step.ExecuteAsync(cancellationToken);
             if (result != 0)
             {
-                AnsiConsole.MarkupLine($"{OutputMarkers.Warning} {step.Name} configuration was not completed.");
+                AnsiConsole.MarkupLine($"{OutputMarkers.Warning} {Markup.Escape(step.Name)} configuration was not completed.");
                 AnsiConsole.MarkupLine($"[dim]You can configure it later via: revela config[/]");
             }
             else
             {
-                AnsiConsole.MarkupLine($"{OutputMarkers.Success} {step.Name} configured");
+                AnsiConsole.MarkupLine($"{OutputMarkers.Success} {Markup.Escape(step.Name)} configured");
             }
         }
     }
@@ -215,7 +215,7 @@ internal sealed partial class Wizard(
     private static void ShowStepFailedError(string step)
     {
         AnsiConsole.WriteLine();
-        AnsiConsole.MarkupLine($"{OutputMarkers.Error} Failed to complete {step}.");
+        AnsiConsole.MarkupLine($"{OutputMarkers.Error} Failed to complete {Markup.Escape(step)}.");
         AnsiConsole.MarkupLine("[dim]Please try again or use individual config commands.[/]");
     }
 

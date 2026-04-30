@@ -208,7 +208,7 @@ internal sealed partial class ThemeService(
         // Update theme.json name if renamed
         if (targetName is not null && !targetName.Equals(sourceName, StringComparison.OrdinalIgnoreCase))
         {
-            UpdateThemeName(targetPath, targetName);
+            await UpdateThemeNameAsync(targetPath, targetName, cancellationToken);
         }
 
         // Extract extensions
@@ -386,7 +386,7 @@ internal sealed partial class ThemeService(
             parts.Select(p => p.Length > 0 ? char.ToUpperInvariant(p[0]) + p[1..] : p));
     }
 
-    private static void UpdateThemeName(string themePath, string newName)
+    private static async Task UpdateThemeNameAsync(string themePath, string newName, CancellationToken cancellationToken)
     {
         var manifestPath = Path.Combine(themePath, "manifest.json");
         if (!File.Exists(manifestPath))
@@ -394,13 +394,16 @@ internal sealed partial class ThemeService(
             return;
         }
 
-        var json = System.Text.Json.JsonSerializer.Deserialize<System.Text.Json.Nodes.JsonObject>(
-            File.ReadAllText(manifestPath));
+        var manifestJson = await File.ReadAllTextAsync(manifestPath, cancellationToken);
+        var json = System.Text.Json.JsonSerializer.Deserialize<System.Text.Json.Nodes.JsonObject>(manifestJson);
 
         if (json is not null)
         {
             json["name"] = newName;
-            File.WriteAllText(manifestPath, json.ToJsonString(new System.Text.Json.JsonSerializerOptions { WriteIndented = true }));
+            await File.WriteAllTextAsync(
+                manifestPath,
+                json.ToJsonString(new System.Text.Json.JsonSerializerOptions { WriteIndented = true }),
+                cancellationToken);
         }
     }
 

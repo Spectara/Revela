@@ -54,7 +54,7 @@ internal sealed partial class ProjectsListCommand(
         if (projects.Count == 0)
         {
             AnsiConsole.MarkupLine($"{OutputMarkers.Warning} No project folders found.");
-            AnsiConsole.MarkupLine($"[dim]Projects directory: {projectsDir}[/]");
+            AnsiConsole.MarkupLine($"[dim]Projects directory: {Markup.Escape(projectsDir)}[/]");
             return;
         }
 
@@ -88,7 +88,7 @@ internal sealed partial class ProjectsListCommand(
 
         AnsiConsole.Write(table);
         AnsiConsole.WriteLine();
-        AnsiConsole.MarkupLine($"[dim]Projects directory: {projectsDir}[/]");
+        AnsiConsole.MarkupLine($"[dim]Projects directory: {Markup.Escape(projectsDir)}[/]");
     }
 
     private static IReadOnlyList<(string FolderName, string Path, string DisplayName)> GetProjectFolders()
@@ -125,6 +125,7 @@ internal sealed partial class ProjectsListCommand(
     {
         try
         {
+            // Sync IO: helper for sync directory enumeration; tiny project.json files.
             var json = File.ReadAllText(projectFilePath);
             using var doc = JsonDocument.Parse(json);
 

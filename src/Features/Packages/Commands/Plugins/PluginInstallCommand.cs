@@ -253,7 +253,7 @@ internal sealed partial class PluginInstallCommand(
             AnsiConsole.MarkupLine("[green]Already installed:[/]");
             foreach (var pluginId in installedPlugins.Keys)
             {
-                AnsiConsole.MarkupLine($"  {OutputMarkers.Success} {pluginId}");
+                AnsiConsole.MarkupLine($"  {OutputMarkers.Success} {Markup.Escape(pluginId)}");
             }
 
             AnsiConsole.WriteLine();
@@ -304,14 +304,14 @@ internal sealed partial class PluginInstallCommand(
                 if (packageEntry.Types.Contains("RevelaTheme", StringComparer.OrdinalIgnoreCase) &&
                     !packageEntry.Types.Contains("RevelaPlugin", StringComparer.OrdinalIgnoreCase))
                 {
-                    AnsiConsole.MarkupLine($"{OutputMarkers.Error} Package [cyan]{packageId}[/] is a theme, not a plugin.");
+                    AnsiConsole.MarkupLine($"{OutputMarkers.Error} Package [cyan]{Markup.Escape(packageId)}[/] is a theme, not a plugin.");
                     AnsiConsole.MarkupLine("  Use [cyan]revela theme install[/] for themes.");
                     return 1;
                 }
             }
 
-            var sourceInfo = source is not null ? $" from [dim]{source}[/]" : "";
-            AnsiConsole.MarkupLine($"[blue]Installing plugin:[/] [cyan]{packageId}[/]{sourceInfo}");
+            var sourceInfo = source is not null ? $" from [dim]{Markup.Escape(source)}[/]" : "";
+            AnsiConsole.MarkupLine($"[blue]Installing plugin:[/] [cyan]{Markup.Escape(packageId)}[/]{sourceInfo}");
             LogInstallingPlugin(packageId, version, source);
 
             var success = await AnsiConsole.Status()
@@ -329,13 +329,13 @@ internal sealed partial class PluginInstallCommand(
                 var installedVersion = version ?? packageEntry?.Version ?? "latest";
                 await globalConfigManager.AddPluginAsync(packageId, installedVersion, cancellationToken);
 
-                AnsiConsole.MarkupLine($"{OutputMarkers.Success} Plugin [cyan]{packageId}[/] installed successfully.");
+                AnsiConsole.MarkupLine($"{OutputMarkers.Success} Plugin [cyan]{Markup.Escape(packageId)}[/] installed successfully.");
                 AnsiConsole.MarkupLine("[dim]The plugin will be available after restarting revela.[/]");
                 return 0;
             }
             else
             {
-                AnsiConsole.MarkupLine($"{OutputMarkers.Error} Failed to install plugin [cyan]{packageId}[/]");
+                AnsiConsole.MarkupLine($"{OutputMarkers.Error} Failed to install plugin [cyan]{Markup.Escape(packageId)}[/]");
                 return 1;
             }
         }

@@ -115,7 +115,7 @@ internal sealed partial class RenderService(
             }
 
             // Load configuration
-            var config = LoadConfiguration();
+            var config = await LoadConfigurationAsync(cancellationToken);
 
             // Resolve theme and extensions
             var theme = themeRegistry.Resolve(config.ThemeName, projectEnvironment.Value.Path);
@@ -219,7 +219,7 @@ internal sealed partial class RenderService(
 
     #region Private Methods - Configuration
 
-    private RenderContext LoadConfiguration()
+    private async Task<RenderContext> LoadConfigurationAsync(CancellationToken cancellationToken)
     {
         var project = projectConfig.CurrentValue;
 
@@ -241,7 +241,7 @@ internal sealed partial class RenderService(
                 ImageBasePath = project.ImageBasePath,
                 BasePath = NormalizeBasePath(project.BasePath)
             },
-            Site = LoadSiteJson(),
+            Site = await LoadSiteJsonAsync(cancellationToken),
             ThemeName = themeName
         };
     }
@@ -250,7 +250,7 @@ internal sealed partial class RenderService(
     /// Load site.json directly as JsonElement for dynamic template access.
     /// </summary>
     /// <returns>JsonElement with site properties, or null if site.json doesn't exist.</returns>
-    private JsonElement? LoadSiteJson()
+    private async Task<JsonElement?> LoadSiteJsonAsync(CancellationToken cancellationToken)
     {
         var siteJsonPath = Path.Combine(projectEnvironment.Value.Path, "site.json");
         if (!File.Exists(siteJsonPath))
@@ -260,7 +260,7 @@ internal sealed partial class RenderService(
 
         try
         {
-            var json = File.ReadAllText(siteJsonPath);
+            var json = await File.ReadAllTextAsync(siteJsonPath, cancellationToken);
             return JsonDocument.Parse(json).RootElement.Clone();
         }
         catch (JsonException)

@@ -66,9 +66,9 @@ public sealed class OneDrivePlugin : IPlugin
 
         // Note: DownloadAnalyzer is static, no DI registration needed
 
-        // Register Commands for Dependency Injection
-        services.AddTransient<OneDriveSourceCommand>();
-        services.AddTransient<ConfigOneDriveCommand>();
+        // Register Commands for Dependency Injection (idempotent)
+        services.TryAddTransient<OneDriveSourceCommand>();
+        services.TryAddTransient<ConfigOneDriveCommand>();
 
         // Register Wizard Step (for project setup wizard integration)
         services.TryAddEnumerable(ServiceDescriptor.Transient<IWizardStep, OneDriveWizardStep>());
