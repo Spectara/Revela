@@ -91,7 +91,7 @@ Configuration values are resolved in this order (highest priority first):
 
 - **Zero dependencies** — Uses .NET built-in `HttpListener`
 - **Correct MIME types** — Supports HTML, CSS, JS, JSON, AVIF, WebP, JPG, PNG, SVG, fonts, and more
-- **Security** — Directory traversal protection
+- **Security** — Directory traversal protection (validates request paths against the configured root via [`StaticFileServer.TryResolveSafePath`](../../src/Plugins/Serve/StaticFileServer.cs))
 - **404 logging** — Shows missing files by default
 - **Verbose mode** — Log all requests with color-coded status codes for debugging
 - **Cache headers** — Asset files served with `Cache-Control: public, max-age=3600` (HTML excluded)

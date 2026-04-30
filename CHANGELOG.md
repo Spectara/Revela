@@ -7,6 +7,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+
+- **Path traversal hardening in dev server** — `revela serve` now uses `Path.GetRelativePath` to validate request paths, rejecting sibling directories that share a name prefix with the configured root (previously a naive `StartsWith` check could be bypassed). 7 new unit tests cover the vector. ([#53](https://github.com/Spectara/Revela/issues/53))
+- **SSRF guardrails for source plugins** — New `Spectara.Revela.Sdk.Validation.UrlSafety` helper validates outbound URLs before HTTP requests. Rejects loopback, RFC 1918 private, RFC 6598 CGN, link-local (incl. cloud metadata IP `169.254.169.254`), IPv6 link-local/site-local/ULA, multicast, and IPv4-mapped loopback. Now used by Source.Calendar (iCal feeds) and Source.OneDrive (share URLs). 40 new unit tests. Plugin authors building source plugins should adopt this — see [`docs/httpclient-pattern.md`](docs/httpclient-pattern.md#url-validation-ssrf-prevention). ([#58](https://github.com/Spectara/Revela/issues/58))
+- **Sensitive URLs no longer logged at Information level** — OneDrive share URLs (which contain account-scoped resource IDs) and iCal feed URLs (which often carry auth tokens in query strings) are now logged at Debug. iCal logs the host at Information for diagnostics. ([#57](https://github.com/Spectara/Revela/issues/57))
+- **Markup escaping for user input** — All `Spectre.Console` `MarkupLine` calls now wrap user-controlled strings (package IDs, theme names, project paths, file paths, exception messages) in `Markup.Escape` to prevent display corruption. ([#61](https://github.com/Spectara/Revela/issues/61))
+
+### Documentation
+
+- **New `docs/security-model.md`** — comprehensive threat model: trust assumptions, what Revela protects against, what it explicitly does NOT (raw HTML in markdown, EXIF GPS, third-party theme review), plugin trust model, and upgrade paths.
+- **`MarkdownService` trust model documented** — Inline XML doc explains why `.DisableHtml()` is deliberately not called (Markdig itself states it's not a sanitizer; same trust model as Jekyll, Eleventy, MkDocs, Astro, Zola). ([#60](https://github.com/Spectara/Revela/issues/60))
+- **Plugin trust model documented** — Same model as `dotnet tool install`: trust at install time, no hash-pinning between install and load. Explains why author-signing isn't pursued (NuGet certificate lock-in via NU3038/NU3018). Documents existing free verification paths (`dotnet nuget verify` for nuget.org, `gh attestation verify` for GitHub releases). ([#55](https://github.com/Spectara/Revela/issues/55))
+- **`docs/plugin-development.md`, `docs/httpclient-pattern.md`, `.github/copilot-instructions.md`** updated with `TryAddTransient` (was `AddTransient`) and `UrlSafety` guidance for plugin authors.
+
+### Changed
+
+- **Genuinely-async file IO** — `NavigationBuilder.BuildAsync` is now actually async (was wrapping sync code in `Task.FromResult`); `RenderService.LoadConfigurationAsync`/`LoadSiteJsonAsync`, `ThemeService.UpdateThemeNameAsync`, and `ThemeExtractCommand.UpdateThemeNameAsync`/`PromptForThemeSelectionAsync` use async file IO with `CancellationToken` plumbing. ([#56](https://github.com/Spectara/Revela/issues/56), [#59](https://github.com/Spectara/Revela/issues/59))
+- **Plugin command registration uses `TryAddTransient`** — Serve, Source.OneDrive, and Source.Calendar plugins now register commands idempotently. ([#54](https://github.com/Spectara/Revela/issues/54))
+- **OneDrive URL validation tightened** — Host equality check (`uri.Host == "1drv.ms"`) replaces substring match (`url.Contains("1drv.ms")`), which previously accepted `https://attacker.com/?fake=1drv.ms`.
+
+### Fixed
+
+- **Plugin test projects build again** — `InternalsVisibleTo` mismatches in Compress and Serve `AssemblyInfo.cs` files were silently breaking ~163 tests; stale `Microsoft.Extensions.Telemetry.Abstractions` reference (NU1010) in Compress and Statistics test csprojs; 16 `StatisticsAggregator` constructor calls updated for new `TimeProvider` parameter; obsolete `CleanCompressCommand.Order` test removed.
+
+### Removed
+
+- **Dead `TestDataHelper` infrastructure** — referenced a non-existent `test-data/` directory and was unused. Real test infrastructure lives in `tests/Shared/Fixtures/`.
+
+### Build
+
+- Bumped MSTest from 4.2.1 to 4.2.2 (patch).
+
 ## [0.0.1-beta.17] - 2026-03-15
 
 ### Added

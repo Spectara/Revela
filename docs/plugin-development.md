@@ -69,7 +69,7 @@ public class ExamplePlugin : IPlugin
         });
         
         services.AddSingleton<IMyService, MyService>();
-        services.AddTransient<ExampleCommand>();
+        services.TryAddTransient<ExampleCommand>(); // TryAdd* keeps registration idempotent
     }
     
     // OPTIONAL: Return CommandDescriptors (command + optional parent)
@@ -161,7 +161,7 @@ Revela expands short name to: `YourName.Revela.Plugin.Example`
 // Framework calls ConfigureServices before host.Build()
 public void ConfigureServices(IServiceCollection services)
 {
-    services.AddTransient<ExampleCommand>();
+    services.TryAddTransient<ExampleCommand>(); // idempotent
 }
 ```
 

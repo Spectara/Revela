@@ -901,8 +901,8 @@ public sealed partial class MyCommand(
 
 **Registration in Plugin/Feature:**
 ```csharp
-// In ConfigureServices:
-services.AddTransient<MyCommand>();
+// In ConfigureServices (use TryAdd* for plugin services to keep registration idempotent):
+services.TryAddTransient<MyCommand>();
 
 // In GetCommands:
 var cmd = serviceProvider.GetRequiredService<MyCommand>();

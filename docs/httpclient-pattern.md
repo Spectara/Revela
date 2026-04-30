@@ -105,6 +105,50 @@ var provider = (SharedLinkProvider?)services.GetService(typeof(SharedLinkProvide
 
 ---
 
+## URL Validation (SSRF Prevention)
+
+If your plugin fetches **user-supplied URLs** (OneDrive shares, iCal feeds, RSS, etc.), validate them via `UrlSafety` from `Spectara.Revela.Sdk.Validation` **before** the HTTP request. Otherwise a malicious or careless URL can target the host's loopback interface, internal network, or cloud metadata services.
+
+```csharp
+using Spectara.Revela.Sdk.Validation;
+
+internal sealed partial class MyFetcher(HttpClient httpClient, ILogger<MyFetcher> logger)
+{
+    public async Task FetchAsync(string url, CancellationToken ct)
+    {
+        if (!Uri.TryCreate(url, UriKind.Absolute, out var uri)
+            || !UrlSafety.IsSafeOutboundUrl(uri, allowHttp: false))
+        {
+            throw new InvalidOperationException(
+                $"URL '{url}' is not a safe outbound target. " +
+                "URLs must use https and not point to loopback, private, or link-local addresses.");
+        }
+
+        using var response = await httpClient.GetAsync(uri, ct);
+        // ...
+    }
+}
+```
+
+**`UrlSafety.IsSafeOutboundUrl` rejects:**
+
+- Non-HTTPS schemes (pass `allowHttp: true` only for legacy protocols like iCal)
+- Loopback (`127.0.0.0/8`, `::1`, `localhost`)
+- RFC 1918 private (`10/8`, `172.16/12`, `192.168/16`)
+- RFC 6598 carrier-grade NAT (`100.64/10`)
+- Link-local (`169.254/16` — including the AWS / Azure metadata IP `169.254.169.254`)
+- IPv6 link-local, site-local, ULA (`fc00::/7`), multicast
+- IPv4-mapped IPv6 loopback (`::ffff:127.0.0.1`)
+- Hostnames pointing at `localhost`
+
+Hostnames pointing to public DNS-resolvable domains pass — DNS resolution happens later in `HttpClient`. For full protection, also configure outbound firewall rules at deployment level.
+
+If you need to validate just the host (e.g. in a Spectre prompt), use `UrlSafety.IsSafeOutboundHost(uri.Host)`.
+
+See [`docs/security-model.md`](security-model.md) for the full threat model.
+
+---
+
 ## Advanced Configuration
 
 ### Handler Lifetime
