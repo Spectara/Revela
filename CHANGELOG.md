@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.0.1-beta.18] - 2026-05-02
+
 ### Security
 
 - **Path traversal hardening in dev server** — `revela serve` now uses `Path.GetRelativePath` to validate request paths, rejecting sibling directories that share a name prefix with the configured root (previously a naive `StartsWith` check could be bypassed). 7 new unit tests cover the vector. ([#53](https://github.com/Spectara/Revela/issues/53))
@@ -428,7 +430,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Source.OneDrive (OneDrive Shared Folder Support)
 - Commands: generate, init, clean, theme, plugins, restore
 
-[Unreleased]: https://github.com/spectara/revela/compare/v0.0.1-beta.17...HEAD
+[Unreleased]: https://github.com/spectara/revela/compare/v0.0.1-beta.18...HEAD
+[0.0.1-beta.18]: https://github.com/spectara/revela/compare/v0.0.1-beta.17...v0.0.1-beta.18
 [0.0.1-beta.17]: https://github.com/spectara/revela/compare/v0.0.1-beta.16...v0.0.1-beta.17
 [0.0.1-beta.16]: https://github.com/spectara/revela/compare/v0.0.1-beta.15...v0.0.1-beta.16
 [0.0.1-beta.15]: https://github.com/spectara/revela/compare/v0.0.1-beta.14...v0.0.1-beta.15
