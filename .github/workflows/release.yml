@@ -127,12 +127,7 @@ jobs:
       # `dotnet pack --no-build` with NU5026), and stack traces from the
       # released binaries still show file/line numbers.
       - name: Build
-        # Build the source generator first to avoid a Windows-hosted-runner
-        # race where multiple consumer projects build it in parallel and
-        # CS2012 the generator DLL while it's being written. Harmless on Linux.
-        run: |
-          dotnet build src/Sdk.Generators/Sdk.Generators.csproj -c Release --no-restore -p:Version=${{ env.VERSION }}
-          dotnet build Spectara.Revela.slnx -c Release --no-restore -p:Version=${{ env.VERSION }} -p:DebugType=embedded
+        run: dotnet build Spectara.Revela.slnx -c Release --no-restore -p:Version=${{ env.VERSION }} -p:DebugType=embedded
 
       - name: Test
         run: dotnet test --solution Spectara.Revela.slnx -c Release --no-build --no-restore
@@ -182,9 +177,6 @@ jobs:
             exe: revela
           - os: ubuntu-latest
             rid: linux-arm64
-            exe: revela
-          - os: macos-latest
-            rid: osx-x64
             exe: revela
           - os: macos-latest
             rid: osx-arm64
@@ -505,7 +497,6 @@ jobs:
           | Windows x64 | [revela-win-x64-standalone.zip](${BASE_URL}/revela-win-x64-standalone.zip) |
           | Linux x64 | [revela-linux-x64-standalone.tar.gz](${BASE_URL}/revela-linux-x64-standalone.tar.gz) |
           | Linux ARM64 | [revela-linux-arm64-standalone.tar.gz](${BASE_URL}/revela-linux-arm64-standalone.tar.gz) |
-          | macOS Intel | [revela-osx-x64-standalone.tar.gz](${BASE_URL}/revela-osx-x64-standalone.tar.gz) |
           | macOS Apple Silicon | [revela-osx-arm64-standalone.tar.gz](${BASE_URL}/revela-osx-arm64-standalone.tar.gz) |
 
           ### 🎁 Full Release
@@ -517,7 +508,6 @@ jobs:
           | Windows x64 | [revela-win-x64-full.zip](${BASE_URL}/revela-win-x64-full.zip) |
           | Linux x64 | [revela-linux-x64-full.tar.gz](${BASE_URL}/revela-linux-x64-full.tar.gz) |
           | Linux ARM64 | [revela-linux-arm64-full.tar.gz](${BASE_URL}/revela-linux-arm64-full.tar.gz) |
-          | macOS Intel | [revela-osx-x64-full.tar.gz](${BASE_URL}/revela-osx-x64-full.tar.gz) |
           | macOS Apple Silicon | [revela-osx-arm64-full.tar.gz](${BASE_URL}/revela-osx-arm64-full.tar.gz) |
 
           ### 🧰 Core Release
@@ -532,7 +522,6 @@ jobs:
           | Windows x64 | [revela-win-x64-core.zip](${BASE_URL}/revela-win-x64-core.zip) |
           | Linux x64 | [revela-linux-x64-core.tar.gz](${BASE_URL}/revela-linux-x64-core.tar.gz) |
           | Linux ARM64 | [revela-linux-arm64-core.tar.gz](${BASE_URL}/revela-linux-arm64-core.tar.gz) |
-          | macOS Intel | [revela-osx-x64-core.tar.gz](${BASE_URL}/revela-osx-x64-core.tar.gz) |
           | macOS Apple Silicon | [revela-osx-arm64-core.tar.gz](${BASE_URL}/revela-osx-arm64-core.tar.gz) |
 
           ### 🔌 Individual Packages (NuGet)
