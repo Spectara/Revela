@@ -159,6 +159,12 @@ jobs:
           dotnet build tests/Core/Core.csproj -c Release --no-restore --no-dependencies -p:Version=${{ env.VERSION }}
           dotnet build tests/Commands/Commands.csproj -c Release --no-restore --no-dependencies -p:Version=${{ env.VERSION }}
           dotnet build tests/Integration/Integration.csproj -c Release --no-restore --no-dependencies -p:Version=${{ env.VERSION }}
+          dotnet build tests/Plugins/Compress/Compress.csproj -c Release --no-restore --no-dependencies -p:Version=${{ env.VERSION }}
+          dotnet build tests/Plugins/Serve/Serve.csproj -c Release --no-restore --no-dependencies -p:Version=${{ env.VERSION }}
+          dotnet build tests/Plugins/Statistics/Statistics.csproj -c Release --no-restore --no-dependencies -p:Version=${{ env.VERSION }}
+          dotnet build tests/Plugins/Calendar/Calendar.csproj -c Release --no-restore --no-dependencies -p:Version=${{ env.VERSION }}
+          dotnet build tests/Plugins/Source/OneDrive/OneDrive.csproj -c Release --no-restore --no-dependencies -p:Version=${{ env.VERSION }}
+          dotnet build tests/Plugins/Source/Calendar/Calendar.csproj -c Release --no-restore --no-dependencies -p:Version=${{ env.VERSION }}
 
       - name: Run Tests
         run: dotnet test --no-restore --no-build -c Release
