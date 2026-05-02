@@ -35,19 +35,19 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
-      - name: Download latest Revela release
+      - name: Download latest Revela release (Standalone)
         uses: robinraju/release-downloader@v1
         id: download-release
         with:
           repository: Spectara/Revela
           latest: true
           preRelease: true
-          fileName: "revela-linux-x64-full.tar.gz"
+          fileName: "revela-linux-x64-standalone.tar.gz"
           out-file-path: ./revela-download
 
       - name: Extract Revela
         run: |
-          tar -xzf ./revela-download/revela-linux-x64-full.tar.gz
+          tar -xzf ./revela-download/revela-linux-x64-standalone.tar.gz
           chmod +x ./revela
 
       - name: Replace download placeholders with actual release URLs
@@ -80,11 +80,6 @@ jobs:
           echo "   Full Windows:       ${BASE_URL}/revela-win-x64-full.zip"
           echo "   Full macOS:         ${BASE_URL}/revela-osx-arm64-full.tar.gz"
           echo "   Full Linux:         ${BASE_URL}/revela-linux-x64-full.tar.gz"
-
-      - name: Install theme from bundled packages
-        run: |
-          ./revela packages refresh
-          ./revela theme install Spectara.Revela.Themes.Lumina
 
       - name: Generate website
         run: |
