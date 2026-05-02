@@ -4,7 +4,7 @@ template = "home"
 description = "A modern static site generator for photographers"
 +++
 
-<nav>
+<nav class="cta">
   <a href="get-started/">Get Started</a>
   <a href="https://github.com/Spectara/Revela">View on GitHub</a>
 </nav>
@@ -41,13 +41,15 @@ NuGet-based plugin system: OneDrive sync, EXIF statistics, Gzip/Brotli compressi
 
 See real websites built with Revela on the [Showcase](showcase/) page.
 
+> **Real-world score:** [photo.kirk.one](https://photo.kirk.one) (built with Revela) hits **100 / 100 / 100 / 100** in Lighthouse — Performance, Accessibility, Best Practices, SEO. First Contentful Paint 0.2 s, Largest Contentful Paint 0.3 s, zero blocking time, zero layout shift.
+
 ## Quick Start
 
 **1. Download Revela**
 
 The **Standalone** edition is a single binary with everything built in — no .NET SDK, no plugin install, just download and run:
 
-<nav>
+<nav class="cta">
   <a href="__DOWNLOAD_URL_WIN_X64_STANDALONE__">Windows x64</a>
   <a href="__DOWNLOAD_URL_OSX_ARM64_STANDALONE__">macOS Apple Silicon</a>
   <a href="__DOWNLOAD_URL_LINUX_X64_STANDALONE__">Linux x64</a>

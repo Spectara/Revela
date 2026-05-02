@@ -14,7 +14,7 @@ A single executable with the default theme and all built-in plugins (compression
 
 **Pick this if:** you just want to publish a photography portfolio.
 
-<nav>
+<nav class="cta">
   <a href="__DOWNLOAD_URL_WIN_X64_STANDALONE__">Windows x64 (.zip)</a>
   <a href="__DOWNLOAD_URL_OSX_ARM64_STANDALONE__">macOS Apple Silicon (.tar.gz)</a>
   <a href="__DOWNLOAD_URL_LINUX_X64_STANDALONE__">Linux x64 (.tar.gz)</a>
@@ -30,7 +30,7 @@ The same executable as Standalone, but bundled with a local NuGet feed of every 
 
 **Pick this if:** you want to add or build custom plugins, or you prefer a smaller running footprint with plugins loaded on demand.
 
-<nav>
+<nav class="cta">
   <a href="__DOWNLOAD_URL_WIN_X64_FULL__">Windows x64 (.zip)</a>
   <a href="__DOWNLOAD_URL_OSX_ARM64_FULL__">macOS Apple Silicon (.tar.gz)</a>
   <a href="__DOWNLOAD_URL_LINUX_X64_FULL__">Linux x64 (.tar.gz)</a>

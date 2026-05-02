@@ -304,9 +304,12 @@ main article {
 }
 
 /* ============================================
-   CTA Buttons — Glass style (nav elements in article content)
+   CTA Buttons — Glass style for download/action navs.
+   Use `<nav class="cta">` in any page (home, page, docs) — the rule
+   no longer depends on a specific template wrapping the nav in <article>.
    ============================================ */
-main article nav {
+main nav.cta,
+main article nav.cta {
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-m);
@@ -339,9 +342,10 @@ main article nav {
 }
 
 /* ============================================
-   Download More Link (centered link after CTA nav)
+   Centered link after a CTA nav (e.g. 'All downloads →').
    ============================================ */
-main article nav+p {
+main nav.cta+p,
+main article nav.cta+p {
   text-align: center;
   margin-top: var(--space-s);
   margin-bottom: var(--space-xl);

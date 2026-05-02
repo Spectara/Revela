@@ -1,0 +1,18 @@
+{{~##
+Page Body Template (revela.website override).
+
+The base Lumina Page template wraps content in <section>, which collides
+with the homepage hero's `main>section:first-child` selector and ends up
+centered. Wrap content in <article> instead — same convention as
+home.revela and docs.revela — so the standard `main article` typography
+rules apply (left-aligned text, proper spacing, table styling, etc.).
+
+Expects:
+- gallery: { title, body }
+##~}}
+<article>
+    {{~ if gallery.title ~}}
+    <h1>{{ gallery.title }}</h1>
+    {{~ end ~}}
+    {{~ gallery.body ~}}
+</article>
