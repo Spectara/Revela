@@ -1,6 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
+    <IsPackable>true</IsPackable>
     <Description>Revela Plugin - Availability calendar from iCal data</Description>
     <PackageTags>revela;plugin;calendar;ical;availability;booking</PackageTags>
     <PackageIcon>icon.png</PackageIcon>

@@ -1,6 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
+    <IsPackable>true</IsPackable>
     <Description>Revela Theme Extension - Statistics display for Lumina theme</Description>
     <PackageTags>revela;theme;lumina;statistics;exif;charts</PackageTags>
     <PackageIcon>icon.png</PackageIcon>

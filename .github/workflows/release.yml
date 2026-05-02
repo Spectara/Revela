@@ -115,103 +115,25 @@ jobs:
       - name: Restore
         run: dotnet restore
 
-      # Build src projects explicitly in Release (no solution build to avoid
-      # test ProjectReference conflicts with MSBuild parallelism).
+      # Standard 3-step pipeline (build → test → pack) per Microsoft's
+      # GitHub Actions guidance. `IsPackable` is set per-project in csproj
+      # (default false in Directory.Build.props, true on the 14 published
+      # projects), so `dotnet pack` against the solution emits exactly the
+      # right packages.
       #
       # `DebugType=embedded` keeps symbol info inside each DLL (no separate
-      # .pdb files). This makes the build output stable across later
+      # .pdb files). This stabilises the build output across the later
       # `dotnet publish` calls (which would otherwise strip PDBs and break
       # `dotnet pack --no-build` with NU5026), and stack traces from the
       # released binaries still show file/line numbers.
-      - name: Build all projects
-        run: |
-          set -euo pipefail
-          PROJECTS=(
-            src/Sdk/Sdk.csproj
-            src/Cli/Cli.csproj
-            src/Features/Generate/Generate.csproj
-            src/Features/Theme/Theme.csproj
-            src/Features/Projects/Projects.csproj
-            src/Features/Packages/Packages.csproj
-            src/Themes/Lumina/Lumina.csproj
-            src/Themes/Lumina.Statistics/Lumina.Statistics.csproj
-            src/Themes/Lumina.Calendar/Lumina.Calendar.csproj
-            src/Plugins/Statistics/Statistics.csproj
-            src/Plugins/Calendar/Calendar.csproj
-            src/Plugins/Source/Calendar/Calendar.csproj
-            src/Plugins/Source/OneDrive/OneDrive.csproj
-            src/Plugins/Serve/Serve.csproj
-            src/Plugins/Compress/Compress.csproj
-          )
-          for proj in "${PROJECTS[@]}"; do
-            echo "::group::Build $proj"
-            dotnet build "$proj" \
-              -c Release --no-restore \
-              -p:Version=${{ env.VERSION }} \
-              -p:DebugType=embedded
-            echo "::endgroup::"
-          done
+      - name: Build
+        run: dotnet build Spectara.Revela.slnx -c Release --no-restore -p:Version=${{ env.VERSION }} -p:DebugType=embedded
 
-      # Run tests against Release-built src projects
-      - name: Build Tests
-        run: |
-          dotnet build tests/Shared/Shared.csproj -c Release --no-restore --no-dependencies -p:Version=${{ env.VERSION }}
-          dotnet build tests/Core/Core.csproj -c Release --no-restore --no-dependencies -p:Version=${{ env.VERSION }}
-          dotnet build tests/Commands/Commands.csproj -c Release --no-restore --no-dependencies -p:Version=${{ env.VERSION }}
-          dotnet build tests/Integration/Integration.csproj -c Release --no-restore --no-dependencies -p:Version=${{ env.VERSION }}
-          dotnet build tests/Plugins/Compress/Compress.csproj -c Release --no-restore --no-dependencies -p:Version=${{ env.VERSION }}
-          dotnet build tests/Plugins/Serve/Serve.csproj -c Release --no-restore --no-dependencies -p:Version=${{ env.VERSION }}
-          dotnet build tests/Plugins/Statistics/Statistics.csproj -c Release --no-restore --no-dependencies -p:Version=${{ env.VERSION }}
-          dotnet build tests/Plugins/Calendar/Calendar.csproj -c Release --no-restore --no-dependencies -p:Version=${{ env.VERSION }}
-          dotnet build tests/Plugins/Source/OneDrive/OneDrive.csproj -c Release --no-restore --no-dependencies -p:Version=${{ env.VERSION }}
-          dotnet build tests/Plugins/Source/Calendar/Calendar.csproj -c Release --no-restore --no-dependencies -p:Version=${{ env.VERSION }}
+      - name: Test
+        run: dotnet test --solution Spectara.Revela.slnx -c Release --no-build --no-restore
 
-      - name: Run Tests
-        run: dotnet test --no-restore --no-build -c Release
-
-      # Pack NuGet packages from Release build output. `IncludeSymbols=false`
-      # is implicit since the build above used DebugType=embedded.
-      - name: Pack all NuGet packages
-        run: |
-          set -euo pipefail
-          # SDK first, CLI tool last (CLI is .NET tool — different layout)
-          PACK_PROJECTS=(
-            src/Sdk/Sdk.csproj
-            src/Features/Generate/Generate.csproj
-            src/Features/Theme/Theme.csproj
-            src/Features/Projects/Projects.csproj
-            src/Themes/Lumina/Lumina.csproj
-            src/Themes/Lumina.Statistics/Lumina.Statistics.csproj
-            src/Themes/Lumina.Calendar/Lumina.Calendar.csproj
-            src/Plugins/Statistics/Statistics.csproj
-            src/Plugins/Calendar/Calendar.csproj
-            src/Plugins/Source/Calendar/Calendar.csproj
-            src/Plugins/Source/OneDrive/OneDrive.csproj
-            src/Plugins/Serve/Serve.csproj
-            src/Plugins/Compress/Compress.csproj
-          )
-          for proj in "${PACK_PROJECTS[@]}"; do
-            echo "::group::Pack $proj"
-            dotnet pack "$proj" \
-              -c Release -o ./nupkgs --no-build --no-restore \
-              -p:PackageVersion=${{ env.VERSION }} \
-              -p:Version=${{ env.VERSION }} \
-              -p:DebugType=embedded
-            echo "::endgroup::"
-          done
-
-          # CLI tool packed without --no-build: PackAsTool triggers an internal
-          # publish step, and with --no-build the SDK 10.0.203 emits a spurious
-          # NU5017 ("no dependencies nor content") for the second pack target
-          # even though the tool .nupkg is created successfully.
-          # Letting pack run its own incremental build avoids the double-pack.
-          echo "::group::Pack src/Cli/Cli.csproj (tool)"
-          dotnet pack src/Cli/Cli.csproj \
-            -c Release -o ./nupkgs --no-restore \
-            -p:PackageVersion=${{ env.VERSION }} \
-            -p:Version=${{ env.VERSION }} \
-            -p:DebugType=embedded
-          echo "::endgroup::"
+      - name: Pack
+        run: dotnet pack Spectara.Revela.slnx -c Release --no-build --no-restore -o ./nupkgs -p:PackageVersion=${{ env.VERSION }} -p:Version=${{ env.VERSION }} -p:DebugType=embedded
 
       - name: List NuGet packages
         run: ls -lh ./nupkgs/

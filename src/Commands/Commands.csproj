@@ -2,7 +2,6 @@
 
   <PropertyGroup>
     <Description>Host commands for Revela (Config, Plugin Management, Packages, Restore, Generate, Theme, Projects)</Description>
-    <IsPackable>false</IsPackable>
   </PropertyGroup>
 
   <ItemGroup>

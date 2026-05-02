@@ -1,6 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
+    <IsPackable>true</IsPackable>
     <Description>SDK for building Revela plugins and themes. Provides interfaces, models, and base classes for plugin and theme development.</Description>
     <AssemblyName>Spectara.Revela.Sdk</AssemblyName>
     <PackageId>Spectara.Revela.Sdk</PackageId>

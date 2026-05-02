@@ -1,6 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
+    <IsPackable>true</IsPackable>
     <Description>Revela Theme - Elegant photography portfolio design</Description>
     <PackageTags>revela;theme;lumina;photography;gallery;lightbox</PackageTags>
     <PackageIcon>icon.png</PackageIcon>

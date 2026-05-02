@@ -7,7 +7,6 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>disable</ImplicitUsings>
     <Description>Source generator for automatic IOptions config registration in Revela</Description>
-    <IsPackable>false</IsPackable>
     <!-- Required for source generators -->
     <EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
     <!-- Disable code analysis rules that don't apply to netstandard2.0 generators -->

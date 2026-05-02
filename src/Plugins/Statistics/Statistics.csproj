@@ -1,6 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
+    <IsPackable>true</IsPackable>
     <Description>Revela Plugin - Generates EXIF statistics pages</Description>
     <PackageTags>revela;plugin;statistics;exif;photography</PackageTags>
     <PackageIcon>icon.png</PackageIcon>

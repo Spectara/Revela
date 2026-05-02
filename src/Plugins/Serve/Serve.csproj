@@ -1,6 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
+    <IsPackable>true</IsPackable>
     <Description>Revela Plugin - Local HTTP server for previewing generated sites</Description>
     <PackageTags>revela;plugin;serve;preview;development;http;server</PackageTags>
     <PackageIcon>icon.png</PackageIcon>

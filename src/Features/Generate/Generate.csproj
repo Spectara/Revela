@@ -1,6 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
+    <IsPackable>true</IsPackable>
     <Description>Revela Plugin - Core site generation pipeline (scan, render pages, process images)</Description>
     <PackageTags>revela;plugin;generate;scan;render;images;core;tier-bundled;category-core</PackageTags>
     <PackageIcon>icon.png</PackageIcon>

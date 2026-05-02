@@ -22,6 +22,11 @@
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
     <EnableNETAnalyzers>true</EnableNETAnalyzers>
     <AnalysisLevel>latest-all</AnalysisLevel>
+    <!-- Default: nothing is packaged. Each project that should produce a NuGet
+         package must opt in with <IsPackable>true</IsPackable> in its csproj.
+         This lets `dotnet pack` walk the whole solution at once and only emit
+         the right packages — no per-project bash loops in CI required. -->
+    <IsPackable>false</IsPackable>
   </PropertyGroup>
 
   <PropertyGroup Label="Testing Platform (.NET 10+)">
@@ -57,7 +62,14 @@
 
   <PropertyGroup Label="Documentation">
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
-    <NoWarn>$(NoWarn);CS1591</NoWarn>
+    <!-- CS1591: missing XML doc comment — too noisy for a pre-1.0 codebase.
+         IDE0005: 'using directive is unnecessary' — IDE0005 has a long-standing
+         false-positive against source-generated extension methods (e.g. our
+         [RevelaConfig] generator emits AddXxxConfig() in the *.Configuration
+         namespace, but the analyzer doesn't see the generated source on the
+         Pack target's compilation pass and flags the using as unused). See
+         https://github.com/dotnet/roslyn/issues/41640. -->
+    <NoWarn>$(NoWarn);CS1591;IDE0005</NoWarn>
   </PropertyGroup>
 
   <PropertyGroup Label="Deterministic Builds">

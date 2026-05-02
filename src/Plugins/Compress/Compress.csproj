@@ -1,6 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
+    <IsPackable>true</IsPackable>
     <Description>Revela Plugin - Compress static files with Gzip and Brotli</Description>
     <PackageTags>revela;plugin;compress;gzip;brotli;static</PackageTags>
     <PackageIcon>icon.png</PackageIcon>

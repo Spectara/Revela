@@ -1,6 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
+    <IsPackable>true</IsPackable>
     <Description>Revela Plugin - Project management (list, create, delete projects)</Description>
     <PackageTags>revela;plugin;projects;management;tier-bundled;category-core</PackageTags>
     <PackageIcon>icon.png</PackageIcon>
