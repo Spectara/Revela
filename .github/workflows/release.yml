@@ -138,12 +138,13 @@ jobs:
         run: dotnet test --solution Spectara.Revela.slnx -c Release --no-build --no-restore
 
       - name: Pack
-        # No --no-build: SDK 10.0.203 has a CI-only NU5017 bug where the
-        # PackAsTool target on src/Cli/Cli.csproj produces a spurious second
-        # empty library nupkg when packing with --no-build. Letting pack run
-        # its own incremental build avoids the double-pack. Reproduces only
-        # on hosted runners; local pack with --no-build works fine.
-        run: dotnet pack Spectara.Revela.slnx -c Release --no-restore -o ./nupkgs -p:PackageVersion=${{ env.VERSION }} -p:Version=${{ env.VERSION }} -p:DebugType=embedded
+        # IncludeSymbols=false: avoid generating .snupkg files. The CI run
+        # without this produced .snupkg for every library project AND
+        # NU5017 on Cli (PackAsTool). Symbol generation conflicts with
+        # PackAsTool — testing if disabling .snupkg fixes the double-pack.
+        # DebugType=embedded already keeps line/file info inside each DLL,
+        # so we don't lose stack-trace fidelity by skipping .snupkg.
+        run: dotnet pack Spectara.Revela.slnx -c Release --no-restore -o ./nupkgs -p:PackageVersion=${{ env.VERSION }} -p:Version=${{ env.VERSION }} -p:DebugType=embedded -p:IncludeSymbols=false
 
       - name: List NuGet packages
         run: ls -lh ./nupkgs/
