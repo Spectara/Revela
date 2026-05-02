@@ -53,10 +53,7 @@ The **Standalone** edition is a single binary with everything built in — no .N
   <a href="__DOWNLOAD_URL_LINUX_X64_STANDALONE__">Linux x64</a>
 </nav>
 
-<p>
-  <a href="pages/downloads/">All downloads & installation options →</a><br>
-  <small>Need to add custom plugins or use the .NET global tool? <a href="pages/downloads/">See the modular install →</a></small>
-</p>
+<p><a href="pages/downloads/">Other platforms, modular install, or .NET global tool →</a></p>
 
 **2. Run the Setup Wizard**
 
