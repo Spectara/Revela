@@ -109,8 +109,10 @@ Open `http://localhost:8080` and see your portfolio!
 Revela is open source and actively developed. Contributions welcome!
 
 - 📖 [Documentation](docs/)
-- 🐛 [Report Issues](https://github.com/Spectara/Revela/issues)
-- 💬 [Discussions](https://github.com/Spectara/Revela/discussions)
+- 🐛 [Report a bug](https://github.com/Spectara/Revela/issues/new?template=bug-report.yml)
+- ✨ [Request a feature](https://github.com/Spectara/Revela/issues/new?template=feature-request.yml)
+- 🖼️ [Submit your site to the Showcase](https://github.com/Spectara/Revela/issues/new?template=showcase-submission.yml)
+- 💬 [Ask a question or chat](https://github.com/Spectara/Revela/discussions)
 
 ---
 

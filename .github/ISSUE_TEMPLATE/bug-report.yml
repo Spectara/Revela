@@ -1,0 +1,102 @@
+name: 🐛 Bug Report
+description: Something Revela does (or doesn't) that you think is broken.
+title: "[Bug] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to file a bug! 🐛
+        A clear repro saves a lot of back-and-forth — please fill in as much as you can.
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: What happened?
+      description: A short, clear description of the bug. One or two sentences is fine.
+      placeholder: "Running `revela generate all` against a folder with .HEIC images crashes with..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: repro
+    attributes:
+      label: How can we reproduce it?
+      description: |
+        Step-by-step. The smaller the example the better — ideally a fresh project.
+        Include the commands you ran, the files involved, and any relevant config snippets.
+      placeholder: |
+        1. `revela project create my-test`
+        2. Drop a single .HEIC file into `my-test/source/`
+        3. Run `revela generate all`
+        4. See error: ...
+      render: markdown
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect to happen?
+      placeholder: "The .HEIC file should be converted to JPEG and added to the gallery."
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Console output / stack trace
+      description: |
+        Paste the full error output. Run with `--verbose` if the default output isn't telling.
+        Don't worry about formatting — we'll fence it.
+      render: shell
+
+  - type: input
+    id: revela_version
+    attributes:
+      label: Revela version
+      description: Output of `revela --version`.
+      placeholder: "0.0.1-beta.18+abcd1234"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: edition
+    attributes:
+      label: Which edition are you running?
+      options:
+        - Standalone (single-file binary)
+        - Full (single binary + plugin manager)
+        - .NET global tool
+        - Built from source
+    validations:
+      required: true
+
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      options:
+        - Windows
+        - macOS
+        - Linux
+        - Other
+    validations:
+      required: true
+
+  - type: input
+    id: theme
+    attributes:
+      label: Theme + plugins (optional)
+      description: Theme name and any plugins involved in the bug.
+      placeholder: "Lumina + Statistics + Source.OneDrive"
+
+  - type: checkboxes
+    id: confirm
+    attributes:
+      label: Checklist
+      options:
+        - label: I searched [existing issues](https://github.com/Spectara/Revela/issues?q=is%3Aissue) and didn't find a duplicate.
+          required: true
+        - label: I'm running the latest release (or built from `main`).
+          required: true

@@ -1,0 +1,50 @@
+name: ✨ Feature Request
+description: Suggest a new feature or improvement.
+title: "[Feature] "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for suggesting an idea! ✨
+        Before opening a feature request please skim the
+        [open enhancements](https://github.com/Spectara/Revela/issues?q=is%3Aissue+label%3Aenhancement)
+        in case it's already there.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem are you trying to solve?
+      description: Start with the use case, not the solution. What were you doing when you wished Revela had this?
+      placeholder: "I have ~3000 photos shot over a holiday and want a single page that groups them by day with the date as a heading..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposed
+    attributes:
+      label: Proposed solution
+      description: How would you like Revela to solve this? CLI command? Theme template? New plugin? Be as concrete as you like.
+      placeholder: "A new `--group-by date` flag for `generate pages` that..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives you've considered (optional)
+      description: Other ways you've tried to achieve this — workarounds, other tools, etc.
+
+  - type: dropdown
+    id: scope
+    attributes:
+      label: Where do you think this fits?
+      options:
+        - Core CLI (built-in feature)
+        - Plugin (optional)
+        - Theme
+        - Source (image input)
+        - Documentation
+        - Not sure
+    validations:
+      required: true
