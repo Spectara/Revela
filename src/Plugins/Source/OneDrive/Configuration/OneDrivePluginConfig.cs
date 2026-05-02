@@ -38,11 +38,18 @@ internal sealed class OneDrivePluginConfig
     /// OneDrive shared folder URL
     /// </summary>
     /// <remarks>
+    /// <para>
     /// OneDrive URLs often include share tokens that don't parse as valid <see cref="Uri"/>,
     /// so this is kept as <see cref="string"/> for compatibility with configuration binding.
+    /// </para>
+    /// <para>
+    /// Not annotated with <c>[Required]</c>/<c>[Url]</c>: the wizard and <c>ConfigOneDriveCommand</c>
+    /// read the current value (via <c>IOptionsMonitor</c>) before the user sets it, which would
+    /// otherwise throw <see cref="Microsoft.Extensions.Options.OptionsValidationException"/>.
+    /// Required-and-safe validation lives at the actual call site (<c>OneDriveSourceCommand</c>
+    /// and the interactive prompt's <c>UrlSafety</c> check).
+    /// </para>
     /// </remarks>
-    [Required(ErrorMessage = "ShareUrl is required. Set via config file, environment variable, or --share-url parameter.")]
-    [Url(ErrorMessage = "ShareUrl must be a valid URL")]
     public string ShareUrl { get; init; } = string.Empty;
 
     /// <summary>
