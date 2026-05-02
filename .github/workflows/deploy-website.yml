@@ -87,10 +87,24 @@ jobs:
           ../../revela generate all
 
       - name: Deploy to Revela.Website
-        uses: peaceiris/actions-gh-pages@v4
-        with:
-          personal_token: ${{ secrets.WEBSITE_DEPLOY_TOKEN }}
-          external_repository: Spectara/Revela.Website
-          publish_branch: main
-          publish_dir: ./samples/revela-website/output
-          commit_message: "Deploy from ${{ github.repository }}@${{ github.sha }}"
+        # Direct git push instead of peaceiris/actions-gh-pages@v4: that
+        # action is unmaintained (last release April 2024, still on Node.js
+        # 20 — deprecated by GitHub Actions starting June 2026). The action
+        # was only thin sugar over `git push`; doing it inline is two extra
+        # lines and removes the deprecation warning + a third-party
+        # dependency on a credentialed action.
+        env:
+          DEPLOY_TOKEN: ${{ secrets.WEBSITE_DEPLOY_TOKEN }}
+        run: |
+          set -euo pipefail
+          PUBLISH_DIR=./samples/revela-website/output
+          TARGET_REPO=Spectara/Revela.Website
+          TARGET_BRANCH=main
+
+          cd "$PUBLISH_DIR"
+          git init -q -b "$TARGET_BRANCH"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -q -m "Deploy from ${{ github.repository }}@${{ github.sha }}"
+          git push -qf "https://x-access-token:${DEPLOY_TOKEN}@github.com/${TARGET_REPO}.git" "HEAD:$TARGET_BRANCH"
