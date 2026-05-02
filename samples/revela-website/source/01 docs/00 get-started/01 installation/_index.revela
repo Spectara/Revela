@@ -13,7 +13,7 @@ Download, extract, run. No prerequisites needed.
 
 ```bash
 # Download and extract
-curl -L https://github.com/Spectara/Revela/releases/latest/download/revela-standalone-win-x64.zip -o revela.zip
+curl -L https://github.com/Spectara/Revela/releases/latest/download/revela-win-x64-standalone.zip -o revela.zip
 Expand-Archive revela.zip -DestinationPath D:\Revela
 ```
 
@@ -22,14 +22,14 @@ Or simply download the `.zip` from [GitHub Releases](https://github.com/Spectara
 ### macOS (Apple Silicon)
 
 ```bash
-curl -L https://github.com/Spectara/Revela/releases/latest/download/revela-standalone-osx-arm64.tar.gz | tar xz
+curl -L https://github.com/Spectara/Revela/releases/latest/download/revela-osx-arm64-standalone.tar.gz | tar xz
 chmod +x revela
 ```
 
 ### Linux (x64)
 
 ```bash
-curl -L https://github.com/Spectara/Revela/releases/latest/download/revela-standalone-linux-x64.tar.gz | tar xz
+curl -L https://github.com/Spectara/Revela/releases/latest/download/revela-linux-x64-standalone.tar.gz | tar xz
 chmod +x revela
 ```
 

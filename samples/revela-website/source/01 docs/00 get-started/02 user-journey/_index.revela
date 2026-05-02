@@ -12,7 +12,7 @@ This document describes the complete lifecycle of a Revela project from the pers
 
 ## Phase 1: First Run (Installing Revela)
 
-1. User downloads `revela-standalone-win-x64.zip` from [GitHub Releases](https://github.com/Spectara/Revela/releases)
+1. User downloads `revela-win-x64-standalone.zip` from [GitHub Releases](https://github.com/Spectara/Revela/releases)
 2. User extracts to `D:\Revela\`
 3. User double-clicks `revela.exe`
 

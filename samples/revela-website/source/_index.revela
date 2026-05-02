@@ -45,15 +45,18 @@ See real websites built with Revela on the [Showcase](pages/showcase/) page.
 
 **1. Download Revela**
 
-Download the latest release for your platform:
+The **Standalone** edition is a single binary with everything built in — no .NET SDK, no plugin install, just download and run:
 
 <nav>
-  <a href="__DOWNLOAD_URL_WIN_X64__">Windows x64</a>
-  <a href="__DOWNLOAD_URL_OSX_ARM64__">macOS Apple Silicon</a>
-  <a href="__DOWNLOAD_URL_LINUX_X64__">Linux x64</a>
+  <a href="__DOWNLOAD_URL_WIN_X64_STANDALONE__">Windows x64</a>
+  <a href="__DOWNLOAD_URL_OSX_ARM64_STANDALONE__">macOS Apple Silicon</a>
+  <a href="__DOWNLOAD_URL_LINUX_X64_STANDALONE__">Linux x64</a>
 </nav>
 
-<p><a href="https://github.com/Spectara/Revela/releases">All downloads →</a></p>
+<p>
+  <a href="pages/downloads/">All downloads & installation options →</a><br>
+  <small>Need to add custom plugins or use the .NET global tool? <a href="pages/downloads/">See the modular install →</a></small>
+</p>
 
 **2. Run the Setup Wizard**
 

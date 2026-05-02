@@ -1,0 +1,74 @@
++++
+title = "Downloads"
+template = "page"
+pinned = true
+description = "Download Revela for Windows, macOS, or Linux — Standalone, Full, or .NET global tool."
++++
+
+Revela ships in three editions. **Standalone** covers what most people need; pick another only if you have a specific reason.
+
+---
+
+## Standalone <small>— recommended</small>
+
+A single executable with the default theme and all built-in plugins (compression, dev server, OneDrive sync, EXIF statistics, calendar) baked in. No .NET SDK, no plugin downloads, no internet connection required after the initial download.
+
+**Pick this if:** you just want to publish a photography portfolio.
+
+<nav>
+  <a href="__DOWNLOAD_URL_WIN_X64_STANDALONE__">Windows x64 (.zip)</a>
+  <a href="__DOWNLOAD_URL_OSX_ARM64_STANDALONE__">macOS Apple Silicon (.tar.gz)</a>
+  <a href="__DOWNLOAD_URL_LINUX_X64_STANDALONE__">Linux x64 (.tar.gz)</a>
+</nav>
+
+<p><small>Other architectures (Linux ARM64, macOS Intel, Windows ARM64) are available on the <a href="https://github.com/Spectara/Revela/releases">GitHub Releases</a> page.</small></p>
+
+---
+
+## Full <small>— modular, with plugin manager</small>
+
+The same executable as Standalone, but bundled with a local NuGet feed of every official plugin and theme as separate packages. Lets you install, update, and remove plugins individually with `revela plugin install`/`uninstall`. Useful if you want to keep the binary small, ship custom plugins, or mix and match themes.
+
+**Pick this if:** you want to add or build custom plugins, or you prefer a smaller running footprint with plugins loaded on demand.
+
+<nav>
+  <a href="__DOWNLOAD_URL_WIN_X64_FULL__">Windows x64 (.zip)</a>
+  <a href="__DOWNLOAD_URL_OSX_ARM64_FULL__">macOS Apple Silicon (.tar.gz)</a>
+  <a href="__DOWNLOAD_URL_LINUX_X64_FULL__">Linux x64 (.tar.gz)</a>
+</nav>
+
+<p><small><a href="https://github.com/Spectara/Revela/releases">All Full downloads →</a></small></p>
+
+---
+
+## .NET Global Tool <small>— for developers</small>
+
+If you already have the [.NET 10 SDK](https://dotnet.microsoft.com/download) installed, the cleanest install is via NuGet:
+
+```bash
+dotnet tool install -g Spectara.Revela
+```
+
+Update later with:
+
+```bash
+dotnet tool update -g Spectara.Revela
+```
+
+**Pick this if:** you already use .NET and want Revela on your `PATH` without a separate download.
+
+---
+
+## Which one should I pick?
+
+| | **Standalone** | **Full** | **.NET Tool** |
+|---|---|---|---|
+| Prerequisites | none | none | .NET 10 SDK |
+| Download size | smallest | larger | smallest |
+| Built-in plugins | all (fixed) | all (removable) | core only |
+| Custom plugins | ❌ | ✅ | ✅ |
+| Auto-update | manual | manual | `dotnet tool update` |
+
+When in doubt: **Standalone**.
+
+For the full installation walkthrough — including first run, project layout, and the setup wizard — see the [Installation guide](../../docs/get-started/installation/).

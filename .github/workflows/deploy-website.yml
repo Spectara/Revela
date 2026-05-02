@@ -55,15 +55,31 @@ jobs:
           VERSION="${{ steps.download-release.outputs.tag_name }}"
           BASE_URL="https://github.com/Spectara/Revela/releases/download/${VERSION}"
 
-          # Replace placeholders in _index.revela
-          sed -i "s|__DOWNLOAD_URL_WIN_X64__|${BASE_URL}/revela-win-x64-full.zip|g" samples/revela-website/source/_index.revela
-          sed -i "s|__DOWNLOAD_URL_OSX_ARM64__|${BASE_URL}/revela-osx-arm64-full.tar.gz|g" samples/revela-website/source/_index.revela
-          sed -i "s|__DOWNLOAD_URL_LINUX_X64__|${BASE_URL}/revela-linux-x64-full.tar.gz|g" samples/revela-website/source/_index.revela
+          # Files containing download placeholders
+          FILES=(
+            "samples/revela-website/source/_index.revela"
+            "samples/revela-website/source/03 pages/03 downloads/_index.revela"
+          )
+
+          # Standalone (recommended — homepage + downloads page)
+          for f in "${FILES[@]}"; do
+            sed -i "s|__DOWNLOAD_URL_WIN_X64_STANDALONE__|${BASE_URL}/revela-win-x64-standalone.zip|g" "$f"
+            sed -i "s|__DOWNLOAD_URL_OSX_ARM64_STANDALONE__|${BASE_URL}/revela-osx-arm64-standalone.tar.gz|g" "$f"
+            sed -i "s|__DOWNLOAD_URL_LINUX_X64_STANDALONE__|${BASE_URL}/revela-linux-x64-standalone.tar.gz|g" "$f"
+          done
+
+          # Full (modular — downloads page only)
+          sed -i "s|__DOWNLOAD_URL_WIN_X64_FULL__|${BASE_URL}/revela-win-x64-full.zip|g" "samples/revela-website/source/03 pages/03 downloads/_index.revela"
+          sed -i "s|__DOWNLOAD_URL_OSX_ARM64_FULL__|${BASE_URL}/revela-osx-arm64-full.tar.gz|g" "samples/revela-website/source/03 pages/03 downloads/_index.revela"
+          sed -i "s|__DOWNLOAD_URL_LINUX_X64_FULL__|${BASE_URL}/revela-linux-x64-full.tar.gz|g" "samples/revela-website/source/03 pages/03 downloads/_index.revela"
 
           echo "✅ Updated download links to version ${VERSION}"
-          echo "   Windows: ${BASE_URL}/revela-win-x64-full.zip"
-          echo "   macOS:   ${BASE_URL}/revela-osx-arm64-full.tar.gz"
-          echo "   Linux:   ${BASE_URL}/revela-linux-x64-full.tar.gz"
+          echo "   Standalone Windows: ${BASE_URL}/revela-win-x64-standalone.zip"
+          echo "   Standalone macOS:   ${BASE_URL}/revela-osx-arm64-standalone.tar.gz"
+          echo "   Standalone Linux:   ${BASE_URL}/revela-linux-x64-standalone.tar.gz"
+          echo "   Full Windows:       ${BASE_URL}/revela-win-x64-full.zip"
+          echo "   Full macOS:         ${BASE_URL}/revela-osx-arm64-full.tar.gz"
+          echo "   Full Linux:         ${BASE_URL}/revela-linux-x64-full.tar.gz"
 
       - name: Install theme from bundled packages
         run: |
