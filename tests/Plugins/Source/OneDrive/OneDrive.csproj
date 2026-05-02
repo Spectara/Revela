@@ -5,7 +5,6 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <IsPackable>false</IsPackable>
-    <IsTestProject>true</IsTestProject>
 
     <!-- MSTest v4 with Microsoft.Testing.Platform -->
     <EnableMSTestRunner>true</EnableMSTestRunner>
