@@ -29,6 +29,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **OneDrive wizard crash on first project setup** — running the new-project wizard with the OneDrive source plugin installed but not yet configured threw an unhandled exception instead of prompting for the share URL. The wizard now correctly detects the empty configuration and walks you through setting it up.
 - **Plugin test projects build again** — `InternalsVisibleTo` mismatches in Compress and Serve `AssemblyInfo.cs` files were silently breaking ~163 tests; stale `Microsoft.Extensions.Telemetry.Abstractions` reference (NU1010) in Compress and Statistics test csprojs; 16 `StatisticsAggregator` constructor calls updated for new `TimeProvider` parameter; obsolete `CleanCompressCommand.Order` test removed.
 
 ### Removed
