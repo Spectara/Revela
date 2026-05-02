@@ -97,19 +97,13 @@ if (-not $RuntimeIdentifier) {
 $ExeName = if ($RuntimeIdentifier -like 'win-*') { 'revela.exe' } else { 'revela' }
 
 # --------------------------------------------------------------------------
-# Plugin/Theme inventory — keep in sync with .github/workflows/release.yml
+# Build/Pack inventory is no longer hardcoded here.
+# - `dotnet build Spectara.Revela.slnx` walks the whole solution.
+# - `dotnet pack` emits packages for every csproj with <IsPackable>true</IsPackable>
+#   (default false in Directory.Build.props; opted in by Sdk, Cli tool,
+#   all Plugins, all Themes, and Features.{Generate,Theme,Projects}).
+# Adding a new plugin = single <IsPackable>true</IsPackable> line in its csproj.
 # --------------------------------------------------------------------------
-$PluginProjects = @(
-    @{ Name = 'Lumina';            Proj = 'src/Themes/Lumina/Lumina.csproj' }
-    @{ Name = 'Lumina.Statistics'; Proj = 'src/Themes/Lumina.Statistics/Lumina.Statistics.csproj' }
-    @{ Name = 'Lumina.Calendar';   Proj = 'src/Themes/Lumina.Calendar/Lumina.Calendar.csproj' }
-    @{ Name = 'Statistics';        Proj = 'src/Plugins/Statistics/Statistics.csproj' }
-    @{ Name = 'Calendar';          Proj = 'src/Plugins/Calendar/Calendar.csproj' }
-    @{ Name = 'Source.Calendar';   Proj = 'src/Plugins/Source/Calendar/Calendar.csproj' }
-    @{ Name = 'Source.OneDrive';   Proj = 'src/Plugins/Source/OneDrive/OneDrive.csproj' }
-    @{ Name = 'Serve';             Proj = 'src/Plugins/Serve/Serve.csproj' }
-    @{ Name = 'Compress';          Proj = 'src/Plugins/Compress/Compress.csproj' }
-)
 
 $VariantsToBuild = if ($Variant -eq 'All') {
     @('Standalone', 'Full')
@@ -129,13 +123,11 @@ Write-Info "Output:     artifacts/releases/{variant}-$Timestamp/"
 Push-Location $RepoRoot
 try {
     # ----------------------------------------------------------------------
-    # Restore + per-project Release build.
+    # Restore + solution-wide Release build.
     #
-    # NOTE: `dotnet build Solution.slnx -c Release` does NOT reliably build
-    # every dependency in Release — when test projects (Debug by default)
-    # build a plugin/theme first, MSBuild's node reuse may reuse the Debug
-    # output for the Release-mode CLI build. The GH release workflow and
-    # test-release.ps1 work around this by building each project explicitly.
+    # The historical per-project loop was needed to work around an MSBuild
+    # parallelism bug that produced Debug output for plugins/themes when
+    # tests referenced them. Fixed in SDK 10.0.203 — solution build is fine.
     # ----------------------------------------------------------------------
     if (-not $SkipBuild) {
         Write-Step 'Restoring NuGet packages'
@@ -143,35 +135,17 @@ try {
         if ($LASTEXITCODE -ne 0) { throw 'Restore failed' }
         Write-Success 'Restore completed'
 
-        Write-Step 'Building required projects (Release)'
-
-        $buildProjects = @(
-            'src/Sdk/Sdk.csproj'
-            'src/Features/Generate/Generate.csproj'
-            'src/Features/Theme/Theme.csproj'
-            'src/Features/Projects/Projects.csproj'
-            'src/Features/Packages/Packages.csproj'
-            'src/Cli/Cli.csproj'
-        ) + ($PluginProjects | ForEach-Object { $_.Proj })
-
-        if ($VariantsToBuild -contains 'Standalone') {
-            $buildProjects += 'src/Cli.Embedded/Cli.Embedded.csproj'
-        }
-
+        Write-Step 'Building solution (Release)'
         # `-p:DebugType=embedded` keeps debug info inside the DLL itself —
         # no separate .pdb files. This makes the build output stable across
         # later `dotnet publish` calls (which would otherwise strip PDBs and
         # break `dotnet pack --no-build` with NU5026).
-        foreach ($proj in $buildProjects) {
-            $name = [IO.Path]::GetFileNameWithoutExtension($proj)
-            Write-Info "Building $name..."
-            dotnet build $proj -c Release --no-restore `
-                -p:Version=$Version `
-                -p:DebugType=embedded `
-                --verbosity quiet
-            if ($LASTEXITCODE -ne 0) { throw "Build failed: $proj" }
-        }
-        Write-Success 'All projects built'
+        dotnet build Spectara.Revela.slnx -c Release --no-restore `
+            -p:Version=$Version `
+            -p:DebugType=embedded `
+            --verbosity quiet
+        if ($LASTEXITCODE -ne 0) { throw 'Build failed' }
+        Write-Success 'Solution built'
     } else {
         Write-Step 'Skipping build (-SkipBuild)'
     }
@@ -251,6 +225,10 @@ try {
         # ------------------------------------------------------------------
         # Full variant — pack plugins/themes/SDK into packages/
         #
+        # `IsPackable` is set per-project in csproj (default false in
+        # Directory.Build.props, true on the 14 published projects), so a
+        # solution-wide pack emits exactly the right packages.
+        #
         # Safe with `--no-build` because the Release build above used
         # `DebugType=embedded` (no separate .pdb files — see NU5026).
         # ------------------------------------------------------------------
@@ -260,20 +238,14 @@ try {
 
             Write-Step 'Packing NuGet packages (plugins, themes, SDK, CLI tool)'
 
-            $packTargets = @(
-                @{ Name = 'Sdk';      Proj = 'src/Sdk/Sdk.csproj' }
-                @{ Name = 'CLI Tool'; Proj = 'src/Cli/Cli.csproj' }
-            ) + $PluginProjects
-
-            foreach ($pkg in $packTargets) {
-                dotnet pack $pkg.Proj `
-                    -c Release -o $packagesDir `
-                    -p:PackageVersion=$Version `
-                    -p:IncludeSymbols=false `
-                    -p:DebugType=embedded `
-                    --no-build --no-restore --verbosity quiet
-                if ($LASTEXITCODE -ne 0) { throw "Pack failed for $($pkg.Name)" }
-            }
+            dotnet pack Spectara.Revela.slnx `
+                -c Release -o $packagesDir `
+                -p:PackageVersion=$Version `
+                -p:Version=$Version `
+                -p:IncludeSymbols=false `
+                -p:DebugType=embedded `
+                --no-build --no-restore --verbosity quiet
+            if ($LASTEXITCODE -ne 0) { throw 'Pack failed' }
 
             $pkgFiles = Get-ChildItem $packagesDir -Filter '*.nupkg'
             Write-Success "Packed $($pkgFiles.Count) NuGet packages"

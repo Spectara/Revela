@@ -171,30 +171,10 @@ try {
         if ($LASTEXITCODE -ne 0) { throw "Restore failed" }
         Write-Success "Restore completed"
 
-        Write-Info "Running dotnet build (solution)..."
-        dotnet build -c Release --no-restore --verbosity quiet
+        Write-Info "Running dotnet build (solution, Release)..."
+        dotnet build Spectara.Revela.slnx -c Release --no-restore --verbosity quiet
         if ($LASTEXITCODE -ne 0) { throw "Build failed" }
-        Write-Success "Solution build completed"
-
-        # External plugins/themes are Debug-only in Cli.csproj, build them separately in Release
-        # Core features (Generate, Theme, Projects) are always built via Commands.csproj
-        $extraProjects = @(
-            "src/Plugins/Compress/Compress.csproj",
-            "src/Plugins/Serve/Serve.csproj",
-            "src/Plugins/Source/OneDrive/OneDrive.csproj",
-            "src/Plugins/Statistics/Statistics.csproj",
-            "src/Plugins/Calendar/Calendar.csproj",
-            "src/Plugins/Source/Calendar/Calendar.csproj",
-            "src/Themes/Lumina.Calendar/Lumina.Calendar.csproj",
-            "src/Themes/Lumina/Lumina.csproj",
-            "src/Themes/Lumina.Statistics/Lumina.Statistics.csproj"
-        )
-        Write-Info "Building plugins and themes (Release)..."
-        foreach ($proj in $extraProjects) {
-            dotnet build $proj -c Release --no-restore --verbosity quiet
-            if ($LASTEXITCODE -ne 0) { throw "Build failed: $proj" }
-        }
-        Write-Success "All projects built"
+        Write-Success "Solution built"
     }
 
     # ========================================================================
@@ -203,33 +183,12 @@ try {
     if (-not $SkipTests) {
         Write-Step "Step 3: Run Tests"
         Measure-Step "Tests" {
-            # .NET 10 uses Microsoft.Testing.Platform - run tests as executables
-            # Determine executable extension based on OS
-            # Test executables use CURRENT OS extension (tests run locally, not cross-compiled)
-            $testExeExt = if ($isWindowsOS) { ".exe" } else { "" }
-
-            $testProjects = @(
-                @{ Name = "Core"; Path = "artifacts/bin/Tests.Core/Release/net10.0/Spectara.Revela.Tests.Core$testExeExt" },
-                @{ Name = "Commands"; Path = "artifacts/bin/Tests.Commands/Release/net10.0/Spectara.Revela.Tests.Commands$testExeExt" },
-                @{ Name = "Source.OneDrive"; Path = "artifacts/bin/Tests.Source.OneDrive/Release/net10.0/Spectara.Revela.Tests.Plugins.Source.OneDrive$testExeExt" },
-                @{ Name = "Statistics"; Path = "artifacts/bin/Tests.Statistics/Release/net10.0/Spectara.Revela.Tests.Plugins.Statistics$testExeExt" },
-                @{ Name = "Calendar"; Path = "artifacts/bin/Tests.Calendar/Release/net10.0/Spectara.Revela.Tests.Plugins.Calendar$testExeExt" },
-                @{ Name = "Source.Calendar"; Path = "artifacts/bin/Tests.Source.Calendar/Release/net10.0/Spectara.Revela.Tests.Plugins.Source.Calendar$testExeExt" },
-                @{ Name = "Serve"; Path = "artifacts/bin/Tests.Serve/Release/net10.0/Spectara.Revela.Tests.Plugins.Serve$testExeExt" },
-                @{ Name = "Compress"; Path = "artifacts/bin/Tests.Compress/Release/net10.0/Spectara.Revela.Tests.Plugins.Compress$testExeExt" },
-                @{ Name = "Integration"; Path = "artifacts/bin/Tests.Integration/Release/net10.0/Spectara.Revela.Tests.Integration$testExeExt" }
-            )
-
-            foreach ($test in $testProjects) {
-                $exePath = Join-Path $RepoRoot $test.Path
-                if (-not (Test-Path $exePath)) {
-                    throw "Test executable not found: $($test.Path). Run build first."
-                }
-                Write-Info "Testing $($test.Name)..."
-                & $exePath --no-progress
-                if ($LASTEXITCODE -ne 0) { throw "Tests failed for $($test.Name)" }
-                Write-Success "$($test.Name) passed"
-            }
+            # `--solution` is required for the new MTP-based dotnet test to
+            # discover plugin test projects (without it only Core/Commands/
+            # Integration are exercised — 168 plugin tests are silently skipped).
+            dotnet test --solution Spectara.Revela.slnx -c Release --no-build --no-restore
+            if ($LASTEXITCODE -ne 0) { throw "Tests failed" }
+            Write-Success "All tests passed"
         }
     }
     else {
@@ -289,29 +248,32 @@ try {
         Copy-Item "artifacts/bin/Lumina/Release/net10.0/$RuntimeIdentifier/Spectara.Revela.Themes.Lumina.dll" $CliDir
         Write-Success "Lumina bundled with CLI"
 
-        # Pack all packages from existing build output (no rebuild!)
-        # Core features (Generate, Theme, Projects) are no longer packaged — they're built into the CLI
-        $packTargets = @(
-            @{ Name = "Lumina";            Proj = "src/Themes/Lumina/Lumina.csproj";                                 Out = $PluginsDir },
-            @{ Name = "Lumina.Statistics";  Proj = "src/Themes/Lumina.Statistics/Lumina.Statistics.csproj";           Out = $PluginsDir },
-            @{ Name = "Lumina.Calendar";    Proj = "src/Themes/Lumina.Calendar/Lumina.Calendar.csproj";              Out = $PluginsDir },
-            @{ Name = "Sdk";                Proj = "src/Sdk/Sdk.csproj";                                             Out = $NuGetDir },
-            @{ Name = "Source.OneDrive";    Proj = "src/Plugins/Source/OneDrive/OneDrive.csproj";                   Out = $PluginsDir },
-            @{ Name = "Statistics";         Proj = "src/Plugins/Statistics/Statistics.csproj";                       Out = $PluginsDir },
-            @{ Name = "Calendar";           Proj = "src/Plugins/Calendar/Calendar.csproj";                           Out = $PluginsDir },
-            @{ Name = "Source.Calendar";    Proj = "src/Plugins/Source/Calendar/Calendar.csproj";                    Out = $PluginsDir },
-            @{ Name = "Serve";              Proj = "src/Plugins/Serve/Serve.csproj";                                 Out = $PluginsDir },
-            @{ Name = "Compress";           Proj = "src/Plugins/Compress/Compress.csproj";                           Out = $PluginsDir }
-        )
+        # Pack everything from the existing Release build (no rebuild). The
+        # solution-wide pack respects each csproj's <IsPackable>, so exactly
+        # the right 14 packages are produced — no hardcoded list to maintain.
+        Write-Info "Packing all NuGet packages (solution-wide)..."
+        $packStaging = Join-Path $TestDir "pack-staging"
+        if (Test-Path $packStaging) { Remove-Item $packStaging -Recurse -Force }
+        New-Item -ItemType Directory -Path $packStaging -Force | Out-Null
 
-        foreach ($target in $packTargets) {
-            Write-Info "Packing $($target.Name)..."
-            dotnet pack $target.Proj `
-                -c Release -o $target.Out -p:PackageVersion=$Version `
-                --no-build --no-restore --verbosity quiet
-            if ($LASTEXITCODE -ne 0) { throw "$($target.Name) pack failed" }
-            Write-Success "$($target.Name) packed"
+        dotnet pack Spectara.Revela.slnx `
+            -c Release -o $packStaging -p:PackageVersion=$Version `
+            --no-build --no-restore --verbosity quiet
+        if ($LASTEXITCODE -ne 0) { throw "Pack failed" }
+
+        # Sort packages into the two layout-specific dirs the integration
+        # tests below expect:
+        #   - SDK    -> nuget/   (consumed by plugin authors)
+        #   - others -> plugins/ (consumed by `revela plugin install`)
+        Get-ChildItem $packStaging -Filter "*.nupkg" | ForEach-Object {
+            if ($_.Name -like "Spectara.Revela.Sdk.*") {
+                Move-Item $_.FullName $NuGetDir -Force
+            } else {
+                Move-Item $_.FullName $PluginsDir -Force
+            }
         }
+        Remove-Item $packStaging -Recurse -Force
+        Write-Success "Packages produced"
 
         # List SDK package (for developers)
         Write-Info "SDK package (nuget/):"

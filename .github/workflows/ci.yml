@@ -69,10 +69,13 @@ jobs:
       - name: Build
         run: |
           dotnet build-server shutdown
-          dotnet build --no-restore -c Release
+          dotnet build Spectara.Revela.slnx --no-restore -c Release
 
       - name: Run Tests
-        run: dotnet test --no-build -c Release --report-trx --results-directory ./TestResults --coverage --coverage-settings coverage.config --coverage-output-format cobertura
+        # `--solution` is required for the new MTP-based dotnet test to
+        # discover plugin test projects (without it only Core/Commands/
+        # Integration are exercised — 168 plugin tests are silently skipped).
+        run: dotnet test --solution Spectara.Revela.slnx --no-build -c Release --report-trx --results-directory ./TestResults --coverage --coverage-settings coverage.config --coverage-output-format cobertura
 
       # Smoke-test: ensure Cli.Embedded publishes as self-contained single file
       # This catches issues with statically linked plugins/themes early.
