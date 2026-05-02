@@ -127,13 +127,23 @@ jobs:
       # `dotnet pack --no-build` with NU5026), and stack traces from the
       # released binaries still show file/line numbers.
       - name: Build
-        run: dotnet build Spectara.Revela.slnx -c Release --no-restore -p:Version=${{ env.VERSION }} -p:DebugType=embedded
+        # Build the source generator first to avoid a Windows-hosted-runner
+        # race where multiple consumer projects build it in parallel and
+        # CS2012 the generator DLL while it's being written. Harmless on Linux.
+        run: |
+          dotnet build src/Sdk.Generators/Sdk.Generators.csproj -c Release --no-restore -p:Version=${{ env.VERSION }}
+          dotnet build Spectara.Revela.slnx -c Release --no-restore -p:Version=${{ env.VERSION }} -p:DebugType=embedded
 
       - name: Test
         run: dotnet test --solution Spectara.Revela.slnx -c Release --no-build --no-restore
 
       - name: Pack
-        run: dotnet pack Spectara.Revela.slnx -c Release --no-build --no-restore -o ./nupkgs -p:PackageVersion=${{ env.VERSION }} -p:Version=${{ env.VERSION }} -p:DebugType=embedded
+        # No --no-build: SDK 10.0.203 has a CI-only NU5017 bug where the
+        # PackAsTool target on src/Cli/Cli.csproj produces a spurious second
+        # empty library nupkg when packing with --no-build. Letting pack run
+        # its own incremental build avoids the double-pack. Reproduces only
+        # on hosted runners; local pack with --no-build works fine.
+        run: dotnet pack Spectara.Revela.slnx -c Release --no-restore -o ./nupkgs -p:PackageVersion=${{ env.VERSION }} -p:Version=${{ env.VERSION }} -p:DebugType=embedded
 
       - name: List NuGet packages
         run: ls -lh ./nupkgs/

@@ -67,8 +67,12 @@ jobs:
       # processes from a previous job — required to avoid intermittent file
       # locking errors on the hosted runners.
       - name: Build
+        # Build the source generator first to avoid a Windows-hosted-runner
+        # race where multiple consumer projects build it in parallel and
+        # CS2012 the generator DLL while it's being written.
         run: |
           dotnet build-server shutdown
+          dotnet build src/Sdk.Generators/Sdk.Generators.csproj --no-restore -c Release
           dotnet build Spectara.Revela.slnx --no-restore -c Release
 
       - name: Run Tests
