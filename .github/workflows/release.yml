@@ -189,7 +189,6 @@ jobs:
             src/Plugins/Source/OneDrive/OneDrive.csproj
             src/Plugins/Serve/Serve.csproj
             src/Plugins/Compress/Compress.csproj
-            src/Cli/Cli.csproj
           )
           for proj in "${PACK_PROJECTS[@]}"; do
             echo "::group::Pack $proj"
@@ -200,6 +199,19 @@ jobs:
               -p:DebugType=embedded
             echo "::endgroup::"
           done
+
+          # CLI tool packed without --no-build: PackAsTool triggers an internal
+          # publish step, and with --no-build the SDK 10.0.203 emits a spurious
+          # NU5017 ("no dependencies nor content") for the second pack target
+          # even though the tool .nupkg is created successfully.
+          # Letting pack run its own incremental build avoids the double-pack.
+          echo "::group::Pack src/Cli/Cli.csproj (tool)"
+          dotnet pack src/Cli/Cli.csproj \
+            -c Release -o ./nupkgs --no-restore \
+            -p:PackageVersion=${{ env.VERSION }} \
+            -p:Version=${{ env.VERSION }} \
+            -p:DebugType=embedded
+          echo "::endgroup::"
 
       - name: List NuGet packages
         run: ls -lh ./nupkgs/
