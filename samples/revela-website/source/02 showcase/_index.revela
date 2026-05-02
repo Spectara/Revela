@@ -19,8 +19,6 @@ Each showcase page covers:
 
 Built something with Revela? We'd love to feature it!
 
-[Open an issue on GitHub](https://github.com/Spectara/Revela/issues/new?title=Showcase%20submission&labels=showcase) with:
+[Submit your site →](https://github.com/Spectara/Revela/issues/new?template=showcase-submission.yml)
 
-- A link to your site
-- A screenshot
-- A brief description of which Revela features you used
+The form walks you through everything we need — site name, URL, which Revela features you used, an optional screenshot link.

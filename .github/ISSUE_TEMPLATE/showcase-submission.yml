@@ -1,0 +1,94 @@
+name: 🖼️ Showcase Submission
+description: Submit your site built with Revela for the public showcase.
+title: "[Showcase] "
+labels: ["showcase"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## Show off your Revela site! 🖼️
+        Built something with Revela? We'd love to feature it on
+        [revela.website/showcase](https://revela.website/showcase/).
+        Fill in the form and we'll review your submission.
+
+  - type: input
+    id: site_name
+    attributes:
+      label: Site Name
+      placeholder: "e.g., My Photography Portfolio"
+    validations:
+      required: true
+
+  - type: input
+    id: site_url
+    attributes:
+      label: Site URL
+      description: Where can people see the live site?
+      placeholder: "https://your-site.example.com"
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: About the site
+      description: A few sentences about what the site does and who it's for.
+      placeholder: "What kind of content does it host? Who is it for?"
+    validations:
+      required: true
+
+  - type: textarea
+    id: features_used
+    attributes:
+      label: Which Revela features did you use?
+      description: |
+        Mention themes, plugins, customisations — whatever's interesting.
+        Don't worry about being exhaustive; this just helps us write the showcase entry.
+      placeholder: |
+        - Theme: Lumina (with custom overrides for X)
+        - Plugins: Statistics, Serve, Compress
+        - Custom CSS for hero section
+        - OneDrive source for images
+    validations:
+      required: true
+
+  - type: input
+    id: source_url
+    attributes:
+      label: Source repository (optional)
+      description: If your site is open source, link to the repo so others can learn from it.
+      placeholder: "https://github.com/you/your-site"
+
+  - type: input
+    id: screenshot_url
+    attributes:
+      label: Screenshot URL (optional)
+      description: A direct link to a screenshot. If omitted we'll grab one ourselves.
+      placeholder: "https://your-site.example.com/screenshot.png"
+
+  - type: input
+    id: author
+    attributes:
+      label: Your Name
+      placeholder: "e.g., Jane Photographer"
+    validations:
+      required: true
+
+  - type: input
+    id: author_link
+    attributes:
+      label: Your link (optional)
+      description: Personal site, GitHub profile, social media — whatever you'd like us to credit.
+      placeholder: "https://github.com/janephoto"
+
+  - type: checkboxes
+    id: confirm
+    attributes:
+      label: Checklist
+      options:
+        - label: The site is live and publicly reachable
+          required: true
+        - label: I built this site (or have permission from whoever did)
+          required: true
+        - label: I'm okay with a screenshot being shown on revela.website
+          required: true
