@@ -10,6 +10,13 @@ name: Deploy Website
 #   - workflow_run: deploys after a successful Release workflow
 #   - workflow_dispatch: manual deploy for content-only fixes (typos,
 #     links, sponsor updates) without cutting a new release
+#
+# Mechanism: GitHub-native Pages deployment via actions/deploy-pages.
+# Pages source for this repo must be set to "GitHub Actions" in the
+# repo Settings → Pages, with custom domain `revela.website`. The
+# `_static/CNAME` file in the website source ensures the custom domain
+# survives every deploy. The `_static/.nojekyll` file disables Jekyll
+# post-processing so files starting with `_` are served as-is.
 on:
   # Automatically deploy after a successful release
   workflow_run:
@@ -19,10 +26,17 @@ on:
   # Manual trigger — used for content-only fixes between releases
   workflow_dispatch:
 
-# Only one website deployment at a time
+# Only one concurrent Pages deployment. Don't cancel an in-flight deploy
+# (Pages backend dislikes that); queue the next one instead.
 concurrency:
-  group: website-deploy
-  cancel-in-progress: true
+  group: pages
+  cancel-in-progress: false
+
+# Minimum permissions required by actions/deploy-pages.
+permissions:
+  contents: read
+  pages: write
+  id-token: write
 
 env:
   DOTNET_NOLOGO: true
@@ -30,8 +44,8 @@ env:
   DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
 
 jobs:
-  deploy:
-    name: Generate & Deploy
+  build:
+    name: Generate Website
     runs-on: ubuntu-latest
     # Skip if triggered by a failed release workflow
     if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
@@ -45,6 +59,9 @@ jobs:
         with:
           repository: Spectara/Revela
           latest: true
+          # Until 1.0 we publish pre-releases. Switch this to `false`
+          # once stable releases exist so the live site only follows
+          # production-grade builds.
           preRelease: true
           fileName: "revela-linux-x64-standalone.tar.gz"
           out-file-path: ./revela-download
@@ -78,37 +95,34 @@ jobs:
           sed -i "s|__DOWNLOAD_URL_LINUX_X64_FULL__|${BASE_URL}/revela-linux-x64-full.tar.gz|g" "samples/revela-website/source/03 pages/03 downloads/_index.revela"
 
           echo "✅ Updated download links to version ${VERSION}"
-          echo "   Standalone Windows: ${BASE_URL}/revela-win-x64-standalone.zip"
-          echo "   Standalone macOS:   ${BASE_URL}/revela-osx-arm64-standalone.tar.gz"
-          echo "   Standalone Linux:   ${BASE_URL}/revela-linux-x64-standalone.tar.gz"
-          echo "   Full Windows:       ${BASE_URL}/revela-win-x64-full.zip"
-          echo "   Full macOS:         ${BASE_URL}/revela-osx-arm64-full.tar.gz"
-          echo "   Full Linux:         ${BASE_URL}/revela-linux-x64-full.tar.gz"
 
       - name: Generate website
         run: |
           cd samples/revela-website
           ../../revela generate all
 
-      - name: Deploy to Revela.Website
-        # Direct git push instead of peaceiris/actions-gh-pages@v4: that
-        # action is unmaintained (last release April 2024, still on Node.js
-        # 20 — deprecated by GitHub Actions starting June 2026). The action
-        # was only thin sugar over `git push`; doing it inline is two extra
-        # lines and removes the deprecation warning + a third-party
-        # dependency on a credentialed action.
-        env:
-          DEPLOY_TOKEN: ${{ secrets.WEBSITE_DEPLOY_TOKEN }}
+      - name: Verify Pages markers exist in output
+        # Belt-and-braces: if CNAME is ever lost, Pages drops the custom
+        # domain. Cheaper to fail the workflow here than to debug DNS.
         run: |
-          set -euo pipefail
-          PUBLISH_DIR=./samples/revela-website/output
-          TARGET_REPO=Spectara/Revela.Website
-          TARGET_BRANCH=main
+          set -e
+          test -f samples/revela-website/output/CNAME || { echo "❌ CNAME missing in output"; exit 1; }
+          test -f samples/revela-website/output/.nojekyll || { echo "❌ .nojekyll missing in output"; exit 1; }
+          echo "✅ CNAME + .nojekyll present"
 
-          cd "$PUBLISH_DIR"
-          git init -q -b "$TARGET_BRANCH"
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add -A
-          git commit -q -m "Deploy from ${{ github.repository }}@${{ github.sha }}"
-          git push -qf "https://x-access-token:${DEPLOY_TOKEN}@github.com/${TARGET_REPO}.git" "HEAD:$TARGET_BRANCH"
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: samples/revela-website/output
+
+  deploy:
+    name: Deploy to GitHub Pages
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v5
