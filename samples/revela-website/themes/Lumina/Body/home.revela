@@ -1,15 +1,21 @@
 {{~##
-Home Body Template - Landing Page
+Home Body Template — Landing Page (revela.website override)
 
-Renders a hero section for the homepage.
+The hero <h1> is hardcoded to 'Revela' on purpose: it's the site's brand,
+not a page title. Letting it fall back to gallery.title or site.title
+worked, but conflated 'what's the page called' with 'what's the brand',
+which made the tab title (<title>) and the manifest navigation noisy
+(Home -> 'Revela', /faq/ -> 'Revela', etc.). With the hero fixed, the
+rest of the title-resolution chain is free to do the boring, correct
+'{site.title} - {page.title}' thing.
 
 Expects:
 - site: { title, description }
-- gallery: { title, body }
+- gallery: { title, body, description? }
 ##~}}
 <section>
     <img src="{{ basepath }}revela.svg" alt="Revela" />
-    <h1>{{ gallery.title ?? site.title }}</h1>
+    <h1>Revela</h1>
     <p>{{ gallery.description ?? site.description }}</p>
 </section>
 
