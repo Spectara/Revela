@@ -38,8 +38,8 @@ internal sealed record RenderProjectSettings
     /// <summary>Project name used for identification</summary>
     public string Name { get; init; } = string.Empty;
 
-    /// <summary>Base URL for the generated site (e.g., "https://example.com")</summary>
-    public string BaseUrl { get; init; } = string.Empty;
+    /// <summary>Base URL for the generated site (e.g., "https://example.com"). Null when not configured — disables features that require absolute URLs (sitemap.xml).</summary>
+    public string? BaseUrl { get; init; }
 
     /// <summary>Primary language code (e.g., "en", "de")</summary>
     public string Language { get; init; } = "en";
