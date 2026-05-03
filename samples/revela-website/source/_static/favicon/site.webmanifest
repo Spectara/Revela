@@ -1,7 +1,7 @@
 {
   "name": "Revela",
   "short_name": "Revela",
-  "description": "A modern static site generator for photographers",
+  "description": "Reveal your stories through beautiful portfolios — fast, beautiful output, no quality trade-offs.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",
