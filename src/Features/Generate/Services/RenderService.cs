@@ -173,7 +173,7 @@ internal sealed partial class RenderService(
             // Generate sitemap.xml (requires absolute BaseUrl)
             if (config.Project.BaseUrl is not null)
             {
-                var sitemap = SitemapGenerator.Generate(siteModel, config.Project.BaseUrl, config.Project.BasePath);
+                var sitemap = SitemapGenerator.Generate(siteModel, config.Project.BaseUrl.ToString(), config.Project.BasePath);
                 await File.WriteAllTextAsync(
                     Path.Combine(OutputPath, "sitemap.xml"),
                     sitemap,
@@ -236,7 +236,7 @@ internal sealed partial class RenderService(
             Project = new RenderProjectSettings
             {
                 Name = !string.IsNullOrEmpty(project.Name) ? project.Name : "Revela Site",
-                BaseUrl = project.BaseUrl?.ToString().TrimEnd('/'),
+                BaseUrl = project.BaseUrl?.ToString() ?? "https://example.com",
                 Language = !string.IsNullOrEmpty(project.Language) ? project.Language : "en",
                 ImageBasePath = project.ImageBasePath,
                 BasePath = NormalizeBasePath(project.BasePath)
@@ -525,9 +525,6 @@ internal sealed partial class RenderService(
                 basepath = indexBasePath,
                 image_basepath = indexImageBasePath,
                 image_formats = formats.Keys,
-                base_url = config.Project.BaseUrl,
-                current_url = BuildAbsoluteUrl(config.Project.BaseUrl, config.Project.BasePath, string.Empty),
-                image_base_url = BuildAbsoluteImageBaseUrl(config),
                 theme = themeVariables,
                 stylesheets,
                 scripts
@@ -593,9 +590,6 @@ internal sealed partial class RenderService(
                 ["basepath"] = basepath,
                 ["image_basepath"] = galleryImageBasePath,
                 ["image_formats"] = formats.Keys,
-                ["base_url"] = config.Project.BaseUrl,
-                ["current_url"] = BuildAbsoluteUrl(config.Project.BaseUrl, config.Project.BasePath, gallery.Slug),
-                ["image_base_url"] = BuildAbsoluteImageBaseUrl(config),
                 ["theme"] = themeVariables,
                 ["stylesheets"] = stylesheets,
                 ["scripts"] = scripts
@@ -698,52 +692,6 @@ internal sealed partial class RenderService(
             return config.Project.ImageBasePath;
         }
         return $"{basepath}images/";
-    }
-
-    /// <summary>
-    /// Builds an absolute URL for the current page (e.g., for og:url).
-    /// Returns null when BaseUrl is not configured \u2014 templates use this as a gate.
-    /// </summary>
-    private static string? BuildAbsoluteUrl(string? baseUrl, string basePath, string slug)
-    {
-        if (string.IsNullOrEmpty(baseUrl))
-        {
-            return null;
-        }
-
-        var path = basePath.TrimEnd('/');
-        if (!string.IsNullOrEmpty(slug))
-        {
-            path += "/" + slug.Trim('/');
-        }
-        if (!path.EndsWith('/'))
-        {
-            path += "/";
-        }
-        return baseUrl.TrimEnd('/') + path;
-    }
-
-    /// <summary>
-    /// Builds an absolute base URL for image variants (e.g., for og:image).
-    /// Returns the configured CDN URL when set, otherwise constructs from BaseUrl.
-    /// Returns null when BaseUrl is not configured.
-    /// </summary>
-    private static string? BuildAbsoluteImageBaseUrl(RenderContext config)
-    {
-        // CDN configured \u2014 use as-is when absolute
-        if (!string.IsNullOrEmpty(config.Project.ImageBasePath)
-            && (config.Project.ImageBasePath.StartsWith("http://", StringComparison.OrdinalIgnoreCase)
-                || config.Project.ImageBasePath.StartsWith("https://", StringComparison.OrdinalIgnoreCase)))
-        {
-            return config.Project.ImageBasePath.TrimEnd('/') + "/";
-        }
-
-        if (string.IsNullOrEmpty(config.Project.BaseUrl))
-        {
-            return null;
-        }
-
-        return config.Project.BaseUrl.TrimEnd('/') + config.Project.BasePath + "images/";
     }
 
     /// <summary>
