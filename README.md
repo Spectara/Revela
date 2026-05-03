@@ -16,6 +16,8 @@ Modern static site generator for photographers, built with .NET 10.
 
 [Getting Started](https://revela.website/docs/) · [Download](https://github.com/spectara/revela/releases) · [GitHub](https://github.com/spectara/revela)
 
+![Revela interactive menu](assets/screenshots/tui-main.png)
+
 </div>
 
 ---
@@ -59,11 +61,7 @@ The Project Wizard appears automatically and guides you through:
 3. **Image settings** — Formats and sizes
 4. **Site metadata** — Title, author, copyright
 
-<!-- 
-### Screenshot: Project Wizard
-![Project Wizard](assets/screenshots/project-wizard.png)
-*4-step project creation*
--->
+<!-- Project Wizard screenshot — TODO add when captured -->
 
 ### 3. Add Photos
 
@@ -83,11 +81,7 @@ source/
 
 Select **generate** → **all** from the menu:
 
-<!-- 
-### Screenshot: Generate Progress
-![Generate](assets/screenshots/generate-progress.png)
-*Progress bar during generation*
--->
+<!-- Generate progress screenshot — TODO add when captured -->
 
 ```
 Processing images [████████████████████] 100% 47/47
