@@ -177,8 +177,10 @@ public static class PackageServiceCollectionExtensions
         var command = args[0];
         var subcommand = args[1];
 
-        // "plugin list" and "theme list" are safe (read-only)
-        if (subcommand.Equals("list", StringComparison.OrdinalIgnoreCase))
+        // Read-only subcommands need packages loaded (e.g., to read installed themes/plugins)
+        if (subcommand.Equals("list", StringComparison.OrdinalIgnoreCase)
+            || subcommand.Equals("extract", StringComparison.OrdinalIgnoreCase)
+            || subcommand.Equals("info", StringComparison.OrdinalIgnoreCase))
         {
             return false;
         }
