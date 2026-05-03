@@ -1,6 +1,6 @@
 <div align="center">
 
-![Revela](assets/revela_200.png)
+<img src="assets/revela_original.svg" alt="Revela" width="200">
 
 # Revela
 
