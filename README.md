@@ -23,24 +23,19 @@ Modern static site generator for photographers, built with .NET 10.
 ---
 
 > [!NOTE]
-> **🚧 Beta Release**
-> 
-> Revela is ready for testing! Features working:
-> Setup Wizard • Project Wizard • Image Processing • Plugin System • Local Dev Server
->
-> **[Download Latest Release →](https://github.com/spectara/revela/releases)**
+> **Beta** · active development, breaking changes possible. Versioned releases are available from [GitHub Releases](https://github.com/spectara/revela/releases).
 
 ---
 
 ## ✨ Features
 
-- **🖼️ Smart Image Processing** — WebP, JPG (AVIF optional) with responsive sizes
-- **🧙 Interactive Wizards** — No command line knowledge required
-- **📁 Multi-Project** — Manage multiple portfolios from one installation
-- **🔌 Plugin System** — Extend with Compress, OneDrive, Statistics, Dev Server
-- **🎨 Themeable** — Customizable templates with Scriban
-- **⚡ Fast** — Powered by libvips, parallel processing
-- **📱 Responsive** — Works on phone, tablet, desktop
+- **🖼️ Modern Image Formats** — JPEG by default, AVIF and WebP available with one config flag (off by default because they're CPU-heavy to encode). Responsive sizes and CSS-only LQIP placeholders included.
+- **🧙 Interactive Wizards** — Project setup, theme picker, plugin install — no manual config files.
+- **📁 Multi-Project** — Manage multiple portfolios from one installation.
+- **🔌 Plugin System** — Compress, Serve, Statistics, Calendar, Source.OneDrive, Source.Calendar.
+- **🎨 Themes** — Lumina (+ Statistics and Calendar extensions). Customize via overrides instead of forking.
+- **⚡ Fast** — Powered by libvips (NetVips), parallel processing, change detection.
+- **📊 Lighthouse-friendly** — [photo.kirk.one](https://photo.kirk.one) (built with Revela) scores 100/100/100/100 with FCP 0.2 s, LCP 0.3 s, zero blocking time, zero layout shift.
 
 ---
 
@@ -48,20 +43,21 @@ Modern static site generator for photographers, built with .NET 10.
 
 ### 1. Download & Run
 
-Download from [Releases](https://github.com/spectara/revela/releases), extract, and double-click `revela.exe`.
+Grab the [Standalone build](https://revela.website/pages/downloads/) for your platform from the [Releases](https://github.com/spectara/revela/releases) page — a single self-contained binary, no .NET SDK needed.
 
-**That's it!** The Setup Wizard guides you through the rest.
+- **Windows:** unzip and double-click `revela.exe`
+- **macOS / Linux:** extract and run `./revela` (or use the included launcher script)
 
-### 2. Create Project
+The interactive wizard walks you through the rest.
 
-The Project Wizard appears automatically and guides you through:
+### 2. Create a Project
+
+The project wizard appears automatically and asks for:
 
 1. **Project settings** — Name and URL
 2. **Theme selection** — Choose your look
-3. **Image settings** — Formats and sizes
+3. **Image settings** — Default is JPEG only (AVIF and WebP can be flipped on later in `project.json`)
 4. **Site metadata** — Title, author, copyright
-
-<!-- Project Wizard screenshot — TODO add when captured -->
 
 ### 3. Add Photos
 
@@ -79,9 +75,7 @@ source/
 
 ### 4. Generate
 
-Select **generate** → **all** from the menu:
-
-<!-- Generate progress screenshot — TODO add when captured -->
+Select **generate** → **all** from the menu (or run `revela generate all`):
 
 ```
 Processing images [████████████████████] 100% 47/47
@@ -92,44 +86,45 @@ Rendering pages   [████████████████████]
 
 ### 5. Preview
 
-With the Serve plugin installed:
-
 ```bash
 revela serve
 ```
 
-Your browser opens automatically with a live preview.
+Opens your browser with a live preview. The Serve plugin ships built-in with the Standalone build; for the modular Full / .NET Tool builds, install it once with `revela plugin install Spectara.Revela.Plugins.Serve`.
 
 ---
 
 ## 📦 Installation Options
 
-| Method | Best For | Command |
-|--------|----------|---------|
-| **Standalone** | Most users | [Download ZIP](https://github.com/spectara/revela/releases) |
-| **.NET Tool** | Developers | `dotnet tool install -g Spectara.Revela` |
+| Method | Best For | Where |
+|--------|----------|-------|
+| **Standalone** | Most users — single binary, all plugins built in | [Download](https://revela.website/pages/downloads/) |
+| **Full** | Want to add custom plugins, manage them via NuGet | [Download](https://revela.website/pages/downloads/) |
+| **.NET Tool** | You already have the .NET 10 SDK | `dotnet tool install -g Spectara.Revela` |
 | **From Source** | Contributors | See [Setup Guide](docs/setup.md) |
 
-**[Detailed Installation Guide →](https://revela.website/docs/)**
+**[Detailed Installation Guide →](https://revela.website/docs/get-started/installation/)**
 
 ---
 
 ## 🔌 Official Plugins
 
-Install via the Setup Wizard or manually:
+Standalone has all of these built in. Full / .NET Tool installs them on demand:
 
 | Plugin | Description |
 |--------|-------------|
 | **Compress** | Pre-compress static files with Gzip/Brotli |
 | **Serve** | Local dev server with live preview |
-| **Statistics** | Image count, sizes, analytics |
+| **Statistics** | EXIF statistics page (camera bodies, lenses, focal lengths) |
+| **Calendar** | Calendar/timeline pages built from gallery dates |
 | **Source.OneDrive** | Import from OneDrive shared folders |
+| **Source.Calendar** | Import events from iCal feeds |
 
 ```bash
 revela plugin install Spectara.Revela.Plugins.Serve
 ```
 
-**[Plugin Management Guide →](https://revela.website/docs/)**
+And three theme packages: **Lumina** (default), **Lumina.Statistics**, **Lumina.Calendar**.
 
 ---
 
@@ -137,15 +132,13 @@ revela plugin install Spectara.Revela.Plugins.Serve
 
 Visit **[revela.website/docs](https://revela.website/docs/)** for the full documentation:
 
-- **[Source Structure](https://revela.website/docs/source-structure/)** — Organize photos with galleries or filters
-- **[Filter Galleries](https://revela.website/docs/filtering/)** — Dynamic galleries with EXIF queries
-- **[Sorting](https://revela.website/docs/sorting/)** — Configure image and gallery order
-- **[Creating Pages](https://revela.website/docs/pages/)** — Gallery, text, and statistics pages
-- **[Theme Customization](https://revela.website/docs/themes/)** — Extract and customize themes
+- **[Source Structure](https://revela.website/docs/guide/source-structure/)** — Organize photos with galleries or filters
+- **[Filter Galleries](https://revela.website/docs/guide/filtering/)** — Dynamic galleries with EXIF queries
+- **[Sorting](https://revela.website/docs/guide/sorting/)** — Configure image and gallery order
+- **[Creating Pages](https://revela.website/docs/guide/pages/)** — Gallery, text, and statistics pages
+- **[Theme Customization](https://revela.website/docs/guide/themes/)** — Extract and customize themes
 
 **Offline/GitHub:** [docs/](docs/) folder contains the same documentation in Markdown.
-
----
 
 ## 🛠️ For Developers
 
@@ -170,10 +163,11 @@ Contributions welcome! Please open an [issue](https://github.com/spectara/revela
 
 ## 🙏 Acknowledgments
 
-- [Expose](https://github.com/kirkone/Expose) — Original inspiration
-- [libvips](https://www.libvips.org/) — Image processing
-- [Scriban](https://github.com/scriban/scriban) — Templates
-- [CSS-only LQIP](https://leanrada.com/notes/css-only-lqip/) — Blur placeholder technique by Lean Rada
+- [Expose](https://github.com/Jack000/Expose) by Jack Rugile — the original Bash-based static gallery generator that started this whole idea
+- [Expose (fork)](https://github.com/kirkone/Expose) — the predecessor of this project, also Bash-based
+- [libvips](https://www.libvips.org/) — image processing
+- [Scriban](https://github.com/scriban/scriban) — templates
+- [CSS-only LQIP](https://leanrada.com/notes/css-only-lqip/) — blur placeholder technique by Lean Rada
 
 ---
 
