@@ -6,7 +6,7 @@
 
 **Reveal your stories through beautiful portfolios**
 
-Modern static site generator for photographers, built with .NET 10.
+Modern static site generator for photographers — fast, beautiful output, no quality trade-offs. Built with .NET 10.
 
 [![CI](https://github.com/spectara/revela/actions/workflows/ci.yml/badge.svg)](https://github.com/spectara/revela/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
