@@ -10,6 +10,7 @@ This directory hosts all automation used to build, test, sign, and ship Revela. 
 | --- | --- | --- | --- |
 | CI | [`ci.yml`](ci.yml) | Push/PR to `main` or `develop`, manual dispatch | Multi-OS build (Windows/Linux/macOS), run all tests, pack CLI/plugins/themes for verification. |
 | Release | [`release.yml`](release.yml) | `v*` tag push or manual dispatch | Validate version, build binaries + NuGet packages, sign with cosign, create GitHub Release, publish to NuGet.org (with approval). |
+| Deploy Website | [`deploy-website.yml`](deploy-website.yml) | After successful Release run, or manual dispatch | Generate `samples/revela-website` against the latest release binary and push to `Spectara/Revela.Website`. Content-only fixes between releases use `workflow_dispatch`. |
 | Dependency Updates | [Dependabot](../dependabot.yml) | Weekly (Monday), automatic | Creates PRs for outdated NuGet packages and GitHub Actions. |
 
 > **Note**
