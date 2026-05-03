@@ -40,7 +40,7 @@ public sealed class LocalThemeProvider : ITheme
 
         // Parse theme.json
         var json = File.ReadAllText(themeJsonPath);
-        var themeConfig = JsonSerializer.Deserialize<ThemeJsonConfig>(json, ThemeJsonConfig.JsonOptions)
+        var themeConfig = JsonSerializer.Deserialize(json, ThemeJsonConfig.JsonTypeInfo)
             ?? throw new InvalidOperationException("Failed to parse theme.json");
 
         var themeName = themeConfig.Name ?? Path.GetFileName(themeDirectory);

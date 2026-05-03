@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using Microsoft.Extensions.Options;
 using Spectara.Revela.Core.Logging;
 using Spectara.Revela.Sdk;
@@ -16,11 +17,7 @@ public sealed class PluginProjectService(
     IOptions<ProjectEnvironment> projectEnvironment,
     ILogger<PluginProjectService> logger)
 {
-    private static readonly JsonSerializerOptions JsonOptions = new()
-    {
-        WriteIndented = true,
-        DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
-    };
+    private static readonly JsonSerializerOptions WriteOptions = new() { WriteIndented = true };
 
     /// <summary>
     /// Adds or updates a plugin entry in project.json.
@@ -88,28 +85,41 @@ public sealed class PluginProjectService(
         }
 
         var jsonText = await File.ReadAllTextAsync(projectJsonPath, cancellationToken);
-        var root = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(jsonText);
-        if (root is null)
+        if (JsonNode.Parse(jsonText) is not JsonObject root)
         {
             return false;
         }
 
-        if (!root.TryGetValue("plugins", out var pluginsElement))
+        // Extract current plugins map (string -> string)
+        var plugins = new Dictionary<string, string>(StringComparer.Ordinal);
+        if (root["plugins"] is JsonObject existingPlugins)
         {
-            pluginsElement = JsonSerializer.SerializeToElement(new Dictionary<string, string>());
+            foreach (var (key, value) in existingPlugins)
+            {
+                if (value is JsonValue jv && jv.TryGetValue<string>(out var version))
+                {
+                    plugins[key] = version;
+                }
+            }
         }
-
-        var plugins = pluginsElement.Deserialize<Dictionary<string, string>>() ?? [];
 
         if (!transform(plugins))
         {
             return false;
         }
 
-        root["plugins"] = JsonSerializer.SerializeToElement(plugins);
+        // Rebuild plugins object from modified map
+        var newPluginsObj = new JsonObject();
+        foreach (var (key, value) in plugins)
+        {
+            newPluginsObj[key] = value;
+        }
+        root["plugins"] = newPluginsObj;
 
-        await using var writeStream = File.Create(projectJsonPath);
-        await JsonSerializer.SerializeAsync(writeStream, root, JsonOptions, cancellationToken);
+        await File.WriteAllTextAsync(
+            projectJsonPath,
+            root.ToJsonString(WriteOptions),
+            cancellationToken);
         return true;
     }
 }

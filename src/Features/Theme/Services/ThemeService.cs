@@ -395,7 +395,7 @@ internal sealed partial class ThemeService(
         }
 
         var manifestJson = await File.ReadAllTextAsync(manifestPath, cancellationToken);
-        var json = System.Text.Json.JsonSerializer.Deserialize<System.Text.Json.Nodes.JsonObject>(manifestJson);
+        var json = System.Text.Json.Nodes.JsonNode.Parse(manifestJson) as System.Text.Json.Nodes.JsonObject;
 
         if (json is not null)
         {

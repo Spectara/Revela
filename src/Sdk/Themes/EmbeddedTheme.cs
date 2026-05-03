@@ -42,7 +42,7 @@ public abstract class EmbeddedTheme : ITheme
     protected EmbeddedTheme(Assembly assembly)
     {
         resources = new EmbeddedResourceProvider(assembly);
-        config = new Lazy<ThemeJsonConfig>(resources.LoadManifest<ThemeJsonConfig>);
+        config = new Lazy<ThemeJsonConfig>(resources.LoadManifest);
         packageMetadata = new Lazy<PackageMetadata>(() => CreateMetadata(config.Value));
         manifest = new Lazy<ThemeManifest>(() => CreateManifest(config.Value));
     }

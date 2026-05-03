@@ -38,13 +38,6 @@ internal sealed partial class ManifestService(
     private const string ManifestFileName = "manifest.json";
     private const string CacheDirectoryName = ".cache";
 
-    private static readonly JsonSerializerOptions JsonOptions = new()
-    {
-        WriteIndented = true,
-        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-        DefaultIgnoreCondition = JsonIgnoreCondition.Never  // Always serialize all properties
-    };
-
     private ImageManifest manifest = new();
 
     /// <summary>
@@ -198,7 +191,7 @@ internal sealed partial class ManifestService(
         try
         {
             var json = await File.ReadAllTextAsync(manifestPath, cancellationToken);
-            var loaded = JsonSerializer.Deserialize<ImageManifest>(json, JsonOptions);
+            var loaded = JsonSerializer.Deserialize(json, ManifestJsonContext.Default.ImageManifest);
 
             if (loaded is null)
             {
@@ -236,7 +229,7 @@ internal sealed partial class ManifestService(
         try
         {
             // Write to temp file first
-            var json = JsonSerializer.Serialize(manifest, JsonOptions);
+            var json = JsonSerializer.Serialize(manifest, ManifestJsonContext.Default.ImageManifest);
             await File.WriteAllTextAsync(tempPath, json, cancellationToken);
 
             // Atomic rename
@@ -508,4 +501,14 @@ internal sealed partial class ManifestService(
 
     #endregion
 }
+
+/// <summary>
+/// Source-generated JSON serializer context for the image manifest cache file.
+/// </summary>
+[JsonSerializable(typeof(ImageManifest))]
+[JsonSourceGenerationOptions(
+    WriteIndented = true,
+    PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase,
+    DefaultIgnoreCondition = JsonIgnoreCondition.Never)]
+internal sealed partial class ManifestJsonContext : JsonSerializerContext;
 

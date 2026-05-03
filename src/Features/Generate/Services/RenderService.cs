@@ -1020,8 +1020,8 @@ internal sealed partial class RenderService(
             if (File.Exists(cachePath))
             {
                 var json = await File.ReadAllTextAsync(cachePath, cancellationToken);
-                var jsonElement = JsonSerializer.Deserialize<JsonElement>(json);
-                return ConvertJsonElement(jsonElement);
+                using var document = JsonDocument.Parse(json);
+                return ConvertJsonElement(document.RootElement);
             }
         }
 

@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Text.Json.Serialization.Metadata;
 
 namespace Spectara.Revela.Sdk.Themes;
 
@@ -54,6 +55,9 @@ public sealed class ThemeJsonConfig
         PropertyNameCaseInsensitive = true,
         TypeInfoResolverChain = { ThemeJsonContext.Default }
     };
+
+    /// <summary>Trim-safe typed metadata for source-generated deserialization.</summary>
+    public static JsonTypeInfo<ThemeJsonConfig> JsonTypeInfo => ThemeJsonContext.Default.ThemeJsonConfig;
 }
 
 /// <summary>

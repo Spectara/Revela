@@ -1,5 +1,6 @@
 using System.IO.Compression;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using NuGet.Packaging;
 using NuGet.Packaging.Core;
 using Spectara.Revela.Core.Logging;
@@ -17,11 +18,6 @@ namespace Spectara.Revela.Core;
 /// </remarks>
 public sealed class NupkgExtractor(ILogger<NupkgExtractor> logger, TimeProvider timeProvider)
 {
-    private static readonly JsonSerializerOptions MetadataJsonOptions = new()
-    {
-        WriteIndented = true,
-        DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
-    };
 
     /// <summary>
     /// Extracts a .nupkg file to the target directory and creates metadata.
@@ -148,8 +144,17 @@ public sealed class NupkgExtractor(ILogger<NupkgExtractor> logger, TimeProvider 
         // Write to plugin.meta.json
         var metadataPath = Path.Combine(targetDir, $"{identity.Id}.meta.json");
         await using var fileStream = File.Create(metadataPath);
-        await JsonSerializer.SerializeAsync(fileStream, metadata, MetadataJsonOptions, cancellationToken);
+        await JsonSerializer.SerializeAsync(fileStream, metadata, InstalledPluginInfoJsonContext.Default.InstalledPluginInfo, cancellationToken);
 
         logger.MetadataCreated(metadataPath);
     }
 }
+
+/// <summary>
+/// Source-generated JSON serializer context for installed plugin metadata files.
+/// </summary>
+[JsonSerializable(typeof(InstalledPluginInfo))]
+[JsonSourceGenerationOptions(
+    WriteIndented = true,
+    DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull)]
+internal sealed partial class InstalledPluginInfoJsonContext : JsonSerializerContext;

@@ -25,13 +25,6 @@ namespace Spectara.Revela.Core.Services;
 /// </remarks>
 public sealed partial class GlobalConfigManager(ILogger<GlobalConfigManager> logger) : IGlobalConfigManager
 {
-    private static readonly JsonSerializerOptions JsonOptions = new()
-    {
-        WriteIndented = true,
-        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
-    };
-
     private GlobalConfigFile? cachedConfig;
 
     /// <inheritdoc />
@@ -63,7 +56,7 @@ public sealed partial class GlobalConfigManager(ILogger<GlobalConfigManager> log
         try
         {
             var json = await File.ReadAllTextAsync(configPath, cancellationToken);
-            cachedConfig = JsonSerializer.Deserialize<GlobalConfigFile>(json, JsonOptions) ?? new GlobalConfigFile();
+            cachedConfig = JsonSerializer.Deserialize(json, GlobalConfigJsonContext.Default.GlobalConfigFile) ?? new GlobalConfigFile();
             LogConfigLoaded(configPath);
         }
         catch (Exception ex)
@@ -89,7 +82,7 @@ public sealed partial class GlobalConfigManager(ILogger<GlobalConfigManager> log
             _ = Directory.CreateDirectory(dir);
         }
 
-        var json = JsonSerializer.Serialize(config, JsonOptions);
+        var json = JsonSerializer.Serialize(config, GlobalConfigJsonContext.Default.GlobalConfigFile);
         await File.WriteAllTextAsync(configPath, json, cancellationToken);
 
         cachedConfig = config;
@@ -208,7 +201,7 @@ public sealed partial class GlobalConfigManager(ILogger<GlobalConfigManager> log
     /// <summary>
     /// Internal file structure for revela.json serialization
     /// </summary>
-    private sealed class GlobalConfigFile
+    internal sealed class GlobalConfigFile
     {
         public PackagesSection Packages { get; init; } = new();
         public LoggingSection Logging { get; init; } = new();
@@ -239,3 +232,13 @@ public sealed partial class GlobalConfigManager(ILogger<GlobalConfigManager> log
         }
     }
 }
+
+/// <summary>
+/// Source-generated JSON serializer context for the global revela.json file.
+/// </summary>
+[JsonSerializable(typeof(GlobalConfigManager.GlobalConfigFile))]
+[JsonSourceGenerationOptions(
+    WriteIndented = true,
+    PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase,
+    DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull)]
+internal sealed partial class GlobalConfigJsonContext : JsonSerializerContext;

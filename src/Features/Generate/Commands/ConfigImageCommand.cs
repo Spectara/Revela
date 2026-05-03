@@ -134,8 +134,7 @@ internal sealed partial class ConfigImageCommand(
 
         try
         {
-            var json = JsonSerializer.Deserialize<JsonObject>(stream);
-            if (json is null)
+            if (JsonNode.Parse(stream) is not JsonObject json)
             {
                 return null;
             }

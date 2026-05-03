@@ -124,18 +124,15 @@ public sealed class EmbeddedResourceProvider
     /// <summary>
     /// Loads and deserializes the manifest.json from embedded resources.
     /// </summary>
-    /// <typeparam name="T">Type to deserialize into.</typeparam>
-    /// <returns>Deserialized manifest object.</returns>
+    /// <returns>Deserialized <see cref="ThemeJsonConfig"/>.</returns>
     /// <exception cref="InvalidOperationException">If manifest.json is missing or invalid.</exception>
-    public T LoadManifest<T>() where T : class
+    public ThemeJsonConfig LoadManifest()
     {
         using var stream = GetFile(ManifestFileName)
             ?? throw new InvalidOperationException(
                 $"{AssemblyName} is missing embedded resource '{ManifestFileName}'");
 
-#pragma warning disable IL2026 // Type is preserved via ThemeJsonContext source generator
-        var result = JsonSerializer.Deserialize<T>(stream, ThemeJsonConfig.JsonOptions);
-#pragma warning restore IL2026
+        var result = JsonSerializer.Deserialize(stream, ThemeJsonConfig.JsonTypeInfo);
 
         return result ?? throw new InvalidOperationException(
             $"Failed to parse {ManifestFileName} in {AssemblyName}");

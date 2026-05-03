@@ -119,7 +119,7 @@ public sealed class EmbeddedResourceProviderTests
     public void LoadManifest_ValidManifest_ReturnsConfig()
     {
         // Arrange & Act
-        var config = provider.LoadManifest<ThemeJsonConfig>();
+        var config = provider.LoadManifest();
 
         // Assert
         Assert.IsNotNull(config);
