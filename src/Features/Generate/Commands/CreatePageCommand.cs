@@ -1,6 +1,5 @@
 using System.CommandLine;
 using System.Globalization;
-using System.Reflection;
 using System.Text;
 
 using Spectara.Revela.Sdk;
@@ -211,33 +210,32 @@ internal sealed partial class CreatePageCommand(
 
     private static Option CreateOptionFromProperty(TemplateProperty property)
     {
-        // Create Option<T> dynamically based on property type
-        var optionType = typeof(Option<>).MakeGenericType(property.Type);
+        // Trim-safe: explicit switch over the supported template property types.
+        // Adding a new type here is intentional — the set is closed by design.
+        var name = property.Aliases[0];
+        var aliases = property.Aliases.Count > 1 ? [.. property.Aliases.Skip(1)] : Array.Empty<string>();
 
-        // System.CommandLine 2.0: Constructor Option<T>(string name, params string[] aliases)
-        // The name is the first alias (e.g., "--title"), additional aliases (e.g., "-t") are optional
-        Option option;
-        if (property.Aliases.Count == 1)
+        return property.Type switch
         {
-            // Only name, no aliases: use single-parameter constructor
-            option = (Option)Activator.CreateInstance(optionType, property.Aliases[0])!;
-        }
-        else
-        {
-            // Name + aliases: pass all remaining aliases as params array
-            var aliases = property.Aliases.Skip(1).ToArray();
-            option = (Option)Activator.CreateInstance(optionType, property.Aliases[0], aliases)!;
-        }
+            Type t when t == typeof(string) => CreateTypedOption<string>(name, aliases, property),
+            Type t when t == typeof(int) => CreateTypedOption<int>(name, aliases, property),
+            Type t when t == typeof(bool) => CreateTypedOption<bool>(name, aliases, property),
+            _ => throw new NotSupportedException(
+                $"Template property '{property.Name}' uses unsupported type '{property.Type}'. " +
+                "Supported types: string, int, bool. Add a new branch in CreatePageCommand.CreateOptionFromProperty to extend.")
+        };
+    }
 
-        // Set Description property via reflection
-        var descProperty = optionType.GetProperty("Description");
-        descProperty?.SetValue(option, property.Description);
-
-        // Set DefaultValue if provided
-        if (property.DefaultValue != null)
+    private static Option<T> CreateTypedOption<T>(string name, string[] aliases, TemplateProperty property)
+    {
+        var option = new Option<T>(name, aliases)
         {
-            var defaultValueProperty = optionType.GetProperty("DefaultValue");
-            defaultValueProperty?.SetValue(option, property.DefaultValue);
+            Description = property.Description
+        };
+
+        if (property.DefaultValue is T typedDefault)
+        {
+            option.DefaultValueFactory = _ => typedDefault;
         }
 
         return option;
@@ -251,24 +249,15 @@ internal sealed partial class CreatePageCommand(
 
         foreach (var (property, option) in optionsMap)
         {
-            // Use reflection to call generic GetValue<T>(Option<T>) method
-            var getValueMethod = typeof(ParseResult)
-                .GetMethods(BindingFlags.Public | BindingFlags.Instance)
-                .Where(m => m.Name == "GetValue" && m.IsGenericMethodDefinition)
-                .FirstOrDefault(m =>
-                {
-                    var parameters = m.GetParameters();
-                    return parameters.Length == 1 &&
-                           parameters[0].ParameterType.IsGenericType &&
-                           parameters[0].ParameterType.GetGenericTypeDefinition() == typeof(Option<>);
-                });
-
-            if (getValueMethod != null)
+            // Trim-safe: explicit switch matches CreateOptionFromProperty's supported types.
+            values[property.Name] = property.Type switch
             {
-                var genericMethod = getValueMethod.MakeGenericMethod(property.Type);
-                var value = genericMethod.Invoke(parseResult, [option]);
-                values[property.Name] = value;
-            }
+                Type t when t == typeof(string) => parseResult.GetValue((Option<string>)option),
+                Type t when t == typeof(int) => parseResult.GetValue((Option<int>)option),
+                Type t when t == typeof(bool) => parseResult.GetValue((Option<bool>)option),
+                _ => throw new NotSupportedException(
+                    $"Template property '{property.Name}' uses unsupported type '{property.Type}'.")
+            };
         }
 
         return values;
