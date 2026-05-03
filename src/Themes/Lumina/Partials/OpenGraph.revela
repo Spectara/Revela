@@ -1,0 +1,62 @@
+{{~##
+Open Graph meta tags for link previews on social/chat platforms.
+
+Renders nothing when base_url is not configured (absolute URLs are required
+by all consumers — Discord, Slack, Mastodon, Bluesky, LinkedIn, iMessage,
+WhatsApp, Facebook, X, …).
+
+Per-tag fallback chain:
+  og:title       gallery.title → site.title
+  og:description gallery.description → site.description → omit
+  og:image       gallery.cover_image → site.og_image (absolute URL) → omit
+  og:url         current_url (always present when base_url is set)
+  og:site_name   site.title → omit
+  og:locale      site.locale → omit
+  og:type        "article" for galleries, "website" for index
+
+To override per-page, set frontmatter title/description/cover.
+To override the default image site-wide, add "og_image" to site.json
+(absolute URL like "https://example.com/social-card.jpg").
+##~}}
+{{~ if !base_url; ret; end ~}}
+
+{{~ # --- Resolve values ----------------------------------------------------- ~}}
+{{~ og_title       = gallery.title ?? site.title ~}}
+{{~ og_description = gallery.description ?? site.description ~}}
+{{~ og_type        = (gallery && gallery.slug && gallery.slug.size > 0) ? 'article' : 'website' ~}}
+
+{{~ # Image: prefer page cover, fall back to site-wide og_image ~}}
+{{~ og_image_url = '' ~}}
+{{~ if gallery.cover_image && gallery.cover_image.sizes && gallery.cover_image.sizes.size > 0 && image_base_url ~}}
+    {{~ # Pick the largest size <= 1280 (close to OG-recommended 1200) ~}}
+    {{~ og_size = 0 ~}}
+    {{~ for size in gallery.cover_image.sizes ~}}
+        {{~ if size <= 1280 && size > og_size; og_size = size; end ~}}
+    {{~ end ~}}
+    {{~ if og_size == 0; og_size = gallery.cover_image.sizes[0]; end ~}}
+    {{~ og_image_url = image_base_url + gallery.cover_image.url + '/' + og_size + '.jpg' ~}}
+{{~ else if site.og_image ~}}
+    {{~ og_image_url = site.og_image ~}}
+{{~ end ~}}
+
+{{~ # --- Render --------------------------------------------------------------- ~}}
+<meta property="og:type" content="{{ og_type }}">
+{{~ if og_title && og_title.size > 0 ~}}
+<meta property="og:title" content="{{ og_title | html.escape }}">
+{{~ end ~}}
+{{~ if og_description && og_description.size > 0 ~}}
+<meta property="og:description" content="{{ og_description | html.escape }}">
+{{~ end ~}}
+<meta property="og:url" content="{{ current_url }}">
+{{~ if og_image_url && og_image_url.size > 0 ~}}
+<meta property="og:image" content="{{ og_image_url }}">
+{{~ if gallery.cover_image && gallery.cover_image.title ~}}
+<meta property="og:image:alt" content="{{ gallery.cover_image.title | html.escape }}">
+{{~ end ~}}
+{{~ end ~}}
+{{~ if site.title && site.title.size > 0 ~}}
+<meta property="og:site_name" content="{{ site.title | html.escape }}">
+{{~ end ~}}
+{{~ if site.locale && site.locale.size > 0 ~}}
+<meta property="og:locale" content="{{ site.locale }}">
+{{~ end ~}}

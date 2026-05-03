@@ -28,6 +28,7 @@ Body Template Selection:
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="description" content="{{ gallery.description ?? site.description }}">
     <meta name="author" content="{{ site.author }}">
+    {{~ include 'opengraph' ~}}
     {{~ include 'favicon' ~}}
     {{~ for css in stylesheets ~}}
     <link type="text/css" rel="stylesheet" media="all" href="{{ basepath }}_assets/{{ css }}">
