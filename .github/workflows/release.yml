@@ -7,8 +7,10 @@
 # "Build once, ship the artifact" — packages are built once in the
 # packages stage and reused for signing, GitHub Release, and NuGet.org.
 #
-# The publish-nuget stage requires manual approval via the "nuget-org"
-# GitHub Environment before pushing to NuGet.org.
+# The publish-nuget stage is currently DISABLED (`if: false`) until
+# NuGet.org publishing is fully set up. When re-enabled, it requires
+# manual approval via the "nuget-org" GitHub Environment before
+# pushing to NuGet.org.
 #
 # Release contents:
 # - Standalone: CLI executable with all plugins/themes statically linked
@@ -561,11 +563,16 @@ jobs:
             artifacts/**/*.crt
 
   # Publish NuGet packages (requires manual approval)
+  #
+  # Disabled until NuGet.org publishing is fully set up (API key, package
+  # ownership, package validation). Re-enable by removing the `if: false`
+  # below — the existing `nuget-org` GitHub Environment will then gate
+  # the run with manual approval as designed.
   publish-nuget:
     name: Publish to NuGet.org
     needs: [validate, packages, release]
-    # Only publish on tag push (after release is created)
-    if: github.event_name == 'push'
+    # Disabled — flip to `github.event_name == 'push'` once ready.
+    if: false
     runs-on: ubuntu-latest
     # Requires manual approval via GitHub Environment
     environment: nuget-org
