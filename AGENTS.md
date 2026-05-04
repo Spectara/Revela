@@ -23,7 +23,7 @@ Quick orientation for AI coding agents (GitHub Copilot, Claude, Cursor, etc.) wo
 | `src/Sdk/` | Public abstractions for plugin/theme authors (`IPlugin`, `ITheme`, `IRevelaEngine`, `IPathResolver`) |
 | `src/Core/` | Shared kernel — services, package loading, configuration |
 | `src/Commands/` | Host-owned CLI commands (`Config`, `Packages`, `Plugins`, `Restore`) |
-| `src/Features/` | **Always built-in features**: `Generate`, `Theme`, `Projects` (NOT plugin-loaded) |
+| `src/Features/` | **Always built-in features**: `Generate`, `Theme` (NOT plugin-loaded) |
 | `src/Plugins/` | External plugins: `Compress`, `Serve`, `Statistics`, `Calendar`, `Source/OneDrive`, `Source/Calendar` |
 | `src/Themes/` | Themes: `Lumina` (base), `Lumina.Calendar`, `Lumina.Statistics` (extensions) |
 | `src/Sdk.Generators/` | Roslyn source generators (e.g. `[RevelaConfig]`) |

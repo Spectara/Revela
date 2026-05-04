@@ -246,13 +246,6 @@ src/Plugins/
 │       ├── ThemeUninstallCommand.cs
 │       └── ConfigThemeCommand.cs   (ParentCommand: "config")
 │
-├── Projects/                   ← Project management
-│   ├── ProjectsPlugin.cs
-│   └── Commands/
-│       ├── ProjectsListCommand.cs
-│       ├── ProjectsCreateCommand.cs
-│       └── ProjectsDeleteCommand.cs
-│
 ├── Serve/                      ← Dev server (existing, unchanged)
 ├── Compress/                   ← Gzip/Brotli (existing, unchanged)
 ├── Statistics/                 ← EXIF stats (existing, unchanged)
@@ -269,7 +262,6 @@ src/Plugins/
 |--------|---------------------------------|
 | **Generate** | NetVips, NetVips.Native, Scriban, Markdig, Spectre.Console |
 | **Theme** | Spectre.Console, Http |
-| **Projects** | Spectre.Console |
 | **Serve** | (HTTP server libs) |
 | **Compress** | (none beyond .NET) |
 | **Statistics** | Spectre.Console |
@@ -326,7 +318,6 @@ src/Cli/
 ├── Program.cs                  ← Entry point
 ├── Hosting/
 │   ├── HostBuilderExtensions.cs  ← Config loading, DI setup
-│   ├── ProjectResolver.cs       ← --project arg parsing
 │   ├── InteractiveMenuService.cs ← Interactive mode
 │   ├── RevelaWizard.cs           ← First-run setup (global)
 │   └── ProjectWizard.cs          ← Project creation wizard

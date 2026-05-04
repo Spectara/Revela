@@ -84,7 +84,7 @@ This is a **complete rewrite** of the original Bash-based revela project:
 src/
 ├── Core/                     # Shared kernel (services, package loading, configuration)
 ├── Commands/                 # CLI commands — host-owned (Config, Packages, Plugins, Restore)
-│                             # Also references Core features (Generate, Theme, Projects)
+│                             # Also references Core features (Generate, Theme)
 ├── Cli/                      # Entry point (dynamic plugin loading via DiskPackageSource)
 ├── Cli.Embedded/             # Entry point (static plugin references via EmbeddedPackageSource)
 │                             # → Default for debugging, all plugins/themes built in
@@ -131,7 +131,7 @@ tests/
 - **Package Registration:** `src/Core/Extensions/PackageServiceCollectionExtensions.cs` - AddPackages lifecycle
 - **Path Resolution:** `src/Sdk/Services/IPathResolver.cs` + `PathResolver.cs`
 - **Output Helpers:** `src/Sdk/Output/OutputMarkers.cs`, `src/Sdk/ProjectPaths.cs`
-- **CLI Hosting:** `src/Cli/Hosting/` - HostBootstrap, CoreCommandProvider, HostExtensions, ProjectResolver, InteractiveMenuService
+- **CLI Hosting:** `src/Cli/Hosting/` - HostBootstrap, CoreCommandProvider, HostExtensions, InteractiveMenuService
 
 ---
 
@@ -200,11 +200,11 @@ return rootCommand.Parse(args).Invoke();
 **Command Registration Pattern:**
 - **Host Commands:** Registered via `AddRevelaCommands()` — all host-owned commands + Core features
 - **Plugin Commands:** Registered via `AddPackages()` → `IPlugin.ConfigureServices()` + `IPlugin.GetCommands()`
-- **Core Features:** Generate, Theme, and Projects are NOT plugins — registered directly in `AddRevelaCommands()`
+- **Core Features:** Generate and Theme are NOT plugins — registered directly in `AddRevelaCommands()`
   ```csharp
   // All setup in HostBootstrap.ConfigureRevela():
   builder.Services.AddRevelaCommands();       // Host-owned commands + Core features
-  builder.Services.AddPackages(packageSource, builder.Configuration, filteredArgs);
+  builder.Services.AddPackages(packageSource, builder.Configuration, args);
   // packageSource = DiskPackageSource (Cli) or EmbeddedPackageSource (Cli.Embedded)
   ```
 
@@ -216,32 +216,25 @@ return rootCommand.Parse(args).Invoke();
 
 ```csharp
 // Cli/Program.cs — Dynamic plugin loading (~10 lines)
-var (projectPath, filteredArgs, shouldExit) = ProjectResolver.ResolveProject(args);
-if (shouldExit) return 1;
-
-var settings = new HostApplicationBuilderSettings
+var builder = Host.CreateApplicationBuilder(new HostApplicationBuilderSettings
 {
-    Args = filteredArgs,
-    ContentRootPath = projectPath ?? Directory.GetCurrentDirectory(),
-};
-var builder = Host.CreateApplicationBuilder(settings);
-builder.ConfigureRevela(filteredArgs, new DiskPackageSource());
-return await builder.Build().RunRevelaAsync(filteredArgs);
+    Args = args,
+    ContentRootPath = Directory.GetCurrentDirectory(),
+});
+builder.ConfigureRevela(args, new DiskPackageSource());
+builder.Services.AddPackageManagement();
+return await builder.Build().RunRevelaAsync(args);
 ```
 
 ```csharp
 // Cli.Embedded/Program.cs — Static plugin references (~10 lines, same structure)
-var (projectPath, filteredArgs, shouldExit) = ProjectResolver.ResolveProject(args);
-if (shouldExit) return 1;
-
-var settings = new HostApplicationBuilderSettings
+var builder = Host.CreateApplicationBuilder(new HostApplicationBuilderSettings
 {
-    Args = filteredArgs,
-    ContentRootPath = projectPath ?? Directory.GetCurrentDirectory(),
-};
-var builder = Host.CreateApplicationBuilder(settings);
-builder.ConfigureRevela(filteredArgs, new EmbeddedPackageSource());
-return await builder.Build().RunRevelaAsync(filteredArgs);
+    Args = args,
+    ContentRootPath = Directory.GetCurrentDirectory(),
+});
+builder.ConfigureRevela(args, new EmbeddedPackageSource());
+return await builder.Build().RunRevelaAsync(args);
 ```
 
 **The only difference is the `IPackageSource` parameter.** Everything else is shared in `HostBootstrap`.
@@ -299,11 +292,10 @@ internal sealed class EmbeddedPackageSource : IPackageSource
 
 **Key Components:**
 - **`HostBootstrap`:** Shared setup in `ConfigureRevela()` + `RunRevelaAsync()` — no code drift possible
-- **`ProjectResolver`:** Detects standalone mode, parses `--project` arg, resolves project path before host build
+- **`ProjectEnvironment`:** Runtime info — `Path` (project dir = CWD), `IsInitialized` (project.json exists)
 - **`AddRevelaConfiguration()`:** Loads config chain: `revela.json` (global %APPDATA%) → `project.json` (local) → `logging.json`. Note: `site.json` is NOT loaded via IConfiguration — it's loaded dynamically by RenderService.
 - **`AddRevelaConfigSections()`:** Registers `IOptions<T>` for ProjectConfig, ThemeConfig, GenerateConfig, PathsConfig, etc. Also registers `IPathResolver` and `IGlobalConfigManager`.
 - **`AddInteractiveMode()`:** Registers CommandOrderRegistry, CommandGroupRegistry, IInteractiveMenuService
-- **`ProjectEnvironment`:** Runtime info — `Path` (project dir), `IsInitialized` (project.json exists)
 
 **Debugging:** Use `Cli.Embedded` as startup project — all plugins available, breakpoints work everywhere.
 

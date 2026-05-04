@@ -34,12 +34,10 @@ Nach dem Entpacken hast du folgende Dateien:
 ```
 C:\Revela\
 ├── revela.exe                          ← Das Hauptprogramm
-├── projects/                           ← Hier werden deine Projekte sein
-│   └── (leer)
 └── getting-started/                    ← Anleitungen (mehrsprachig)
     ├── README.md
-    ├── de.md                           ← Deutsch
-    └── en.md                           ← English
+    ├── getting-started-de.md           ← Deutsch
+    └── getting-started-en.md           ← English
 ```
 
 ### Schritt 1.2: Revela starten
@@ -106,35 +104,9 @@ Bitte starte Revela neu, um die neuen Pakete zu laden.
 
 ---
 
-## 3. Projekt-Ordner auswählen oder erstellen
+## 3. Projekt-Assistent (Erster Start)
 
-Nach dem Setup-Assistenten (und Neustart) siehst du den **Projekt-Auswahl**-Bildschirm:
-
-```
-Select a project folder:
-
-Projects
-  (noch keine Projekte)
-Setup
-  Create new project folder
-Exit
-```
-
-### Schritt 3.1: Projekt-Ordner erstellen
-
-1. Wähle **Create new project folder**
-2. Gib einen Namen für dein Projekt ein (z.B. "MeineFotos", "Hochzeit2025")
-3. Der Ordner wird unter `C:\Revela\projects\MeineFotos\` erstellt
-
-**Tipp:** Verwende aussagekräftige Namen - du kannst mehrere Projekte für verschiedene Foto-Sammlungen haben!
-
-Nach dem Erstellen des Ordners startet Revela neu und öffnet dein neues Projekt.
-
----
-
-## 4. Projekt-Assistent (Erstes Mal im Projekt)
-
-Wenn du einen Projekt-Ordner zum ersten Mal betrittst (keine `project.json`), erscheint automatisch der **Projekt-Assistent**.
+Wenn du Revela das erste Mal startest (oder in einem Verzeichnis ohne `project.json`), erscheint automatisch der **Projekt-Assistent**.
 
 ### Was du siehst
 
@@ -153,7 +125,7 @@ Wenn du einen Projekt-Ordner zum ersten Mal betrittst (keine `project.json`), er
 └─────────────────────────────────────────────────────────────┘
 ```
 
-### Schritt 4.1: Projekt-Einstellungen
+### Schritt 3.1: Projekt-Einstellungen
 
 Gib deine Projektdetails ein:
 
@@ -161,11 +133,11 @@ Gib deine Projektdetails ein:
 - **Basis-URL:** Deine Website-Adresse (z.B. "https://fotos.beispiel.de")
   - Leer lassen, wenn du sie noch nicht weißt
 
-### Schritt 4.2: Theme auswählen
+### Schritt 3.2: Theme auswählen
 
 Wähle ein Theme aus deinen installierten Themes. Wenn du nur Lumina installiert hast, wird es automatisch ausgewählt.
 
-### Schritt 4.3: Bild-Einstellungen
+### Schritt 3.3: Bild-Einstellungen
 
 Konfiguriere, wie deine Bilder verarbeitet werden sollen:
 
@@ -177,7 +149,7 @@ Konfiguriere, wie deine Bilder verarbeitet werden sollen:
 
 **Tipp für Geschwindigkeit:** AVIF bietet die beste Kompression, braucht aber länger. Für einen schnellen ersten Test kannst du AVIF deaktivieren und nur WebP und JPG behalten.
 
-### Schritt 4.4: Website-Metadaten
+### Schritt 3.4: Website-Metadaten
 
 Gib Informationen über deine Website ein:
 
@@ -187,36 +159,33 @@ Gib Informationen über deine Website ein:
 
 ### Nach dem Assistenten
 
-Der Assistent erstellt diese Dateien und Ordner in deinem Projekt:
+Der Assistent erstellt diese Dateien und Ordner direkt neben `revela.exe`:
 
 ```
 C:\Revela\
 ├── revela.exe
-├── revela.json                         ← Revela-Konfiguration
-├── packages/                           ← Installierte Themes & Plugins
-│   └── ...
-└── projects/
-    └── MeineFotos/                     ← Dein Projekt-Ordner
-        ├── project.json                ← Projekt-Einstellungen
-        ├── site.json                   ← Website-Metadaten
-        ├── source/                     ← Hier kommen deine Fotos rein
-        │   └── (leer)
-        ├── output/                     ← Hier landet die fertige Website
-        │   └── (leer)
-        └── cache/                      ← Bild-Cache
-            └── (leer)
+├── project.json                         ← Projekt-Einstellungen
+├── site.json                            ← Website-Metadaten
+├── source/                              ← Hier kommen deine Fotos rein
+│   └── (leer)
+├── output/                              ← Hier landet die fertige Website
+│   └── (leer)
+└── .cache/                              ← Bild-Cache
+    └── (leer)
 ```
+
+Mit der Full-Variante kommen zusätzlich `revela.json`, `plugins/` und `themes/` für installierte Pakete dazu.
 
 ---
 
-## 5. Fotos hinzufügen
+## 4. Fotos hinzufügen
 
-### Schritt 5.1: Galerien als Ordner anlegen
+### Schritt 4.1: Galerien als Ordner anlegen
 
 Erstelle im `source`-Ordner Unterordner für deine Galerien. Die Ordnernamen werden zu Galerie-Titeln:
 
 ```
-C:\Revela\projects\MeineFotos\source\
+C:\Revela\source\
 ├── 01 Hochzeiten/
 │   ├── foto1.jpg
 │   ├── foto2.jpg
@@ -241,7 +210,7 @@ C:\Revela\projects\MeineFotos\source\
       └── 02 Firmenfeier Müller AG/
   ```
 
-### Schritt 5.2: Galerie-Beschreibung hinzufügen (Optional)
+### Schritt 4.2: Galerie-Beschreibung hinzufügen (Optional)
 
 Um den Titel einer Galerie anzupassen oder eine Beschreibung hinzuzufügen:
 
@@ -259,7 +228,7 @@ Revela erstellt automatisch eine `_index.revela`-Datei in der Galerie:
 
 Der Text unter den Metadaten erscheint als Einleitungstext auf der Galerie-Seite.
 
-### Schritt 5.3: Reine Textseiten erstellen (Optional)
+### Schritt 4.3: Reine Textseiten erstellen (Optional)
 
 Für Seiten ohne Galerie (About, Kontakt, Impressum):
 
@@ -269,9 +238,9 @@ Für Seiten ohne Galerie (About, Kontakt, Impressum):
 
 ---
 
-## 6. Website generieren
+## 5. Website generieren
 
-### Schritt 6.1: Website generieren
+### Schritt 5.1: Website generieren
 
 1. Doppelklicke `revela.exe` um das Menü zu öffnen
 2. Wähle **generate**
@@ -295,7 +264,7 @@ Rendering pages   [████████████████████]
 ✓ Generation complete!
 ```
 
-### Schritt 6.2: Nur Teile neu generieren (Optional)
+### Schritt 5.2: Nur Teile neu generieren (Optional)
 
 Im **generate**-Untermenü kannst du einzelne Schritte auswählen:
 
@@ -311,9 +280,9 @@ Im **generate**-Untermenü kannst du einzelne Schritte auswählen:
 
 ---
 
-## 7. Vorschau & Hochladen
+## 6. Vorschau & Hochladen
 
-### Schritt 7.1: Lokale Vorschau (mit Serve-Plugin)
+### Schritt 6.1: Lokale Vorschau (mit Serve-Plugin)
 
 Wenn du das **Serve**-Plugin installiert hast:
 
@@ -321,23 +290,23 @@ Wenn du das **Serve**-Plugin installiert hast:
 2. Dein Browser öffnet sich automatisch mit deiner Seite
 3. Drücke **Strg+C** im Terminal um den Server zu stoppen
 
-### Schritt 7.2: Dateien direkt öffnen
+### Schritt 6.2: Dateien direkt öffnen
 
 Ohne das Serve-Plugin kannst du die Dateien direkt öffnen:
 
-1. Gehe im Windows Explorer zu `C:\Revela\projects\MeineFotos\output\`
+1. Gehe im Windows Explorer zu `C:\Revela\output\`
 2. Doppelklicke auf `index.html`
 3. Die Website öffnet sich in deinem Browser
 
 **Hinweis:** Einige Funktionen (wie Lazy Loading) funktionieren besser mit einem echten Server.
 
-### Schritt 7.3: Auf Webserver hochladen
+### Schritt 6.3: Auf Webserver hochladen
 
 Um deine Website online zu stellen, lade den kompletten Inhalt des `output`-Ordners auf deinen Webserver per FTP, SFTP oder den Dateimanager deines Hosting-Anbieters.
 
 ---
 
-## 8. Menü-Übersicht
+## 7. Menü-Übersicht
 
 ### Hauptmenü
 
@@ -369,83 +338,36 @@ Um deine Website online zu stellen, lade den kompletten Inhalt des `output`-Ordn
 | **serve** | *(direkt)* | Lokalen Vorschau-Server starten |
 | | | *(erfordert Serve-Plugin)* |
 
-### Setup-Gruppe (Standalone-Modus)
-
-| Option | Beschreibung |
-|--------|--------------|
-| **projects** | Projekt-Ordner verwalten (list, create, delete) |
-
 ### Addons-Gruppe
 
 | Option | Beschreibung |
 |--------|--------------|
-| **wizard** | Revela Setup-Assistenten erneut starten |
+| **wizard** | Revela Setup-Assistenten erneut starten (nur Full-Release) |
 
 ---
 
-## 9. Mit mehreren Projekten arbeiten
+## 8. Mit mehreren Sites arbeiten
 
-Revela unterstützt mehrere Projekte im Standalone-Modus. Jedes Projekt hat seinen eigenen Ordner mit separaten `source/`, `output/` und `cache/` Verzeichnissen.
-
-### Zwischen Projekten wechseln
-
-1. Doppelklicke `revela.exe`
-2. Der Projekt-Auswahl-Bildschirm zeigt alle deine Projekte:
-   ```
-   Select a project folder:
-   
-   Projects
-     > MeineFotos
-       Hochzeit2025
-       Landschaften (not configured)
-   Setup
-     Create new project folder
-   Exit
-   ```
-3. Wähle das Projekt, mit dem du arbeiten möchtest
-
-**Hinweis:** Projekte mit "(not configured)" haben noch keine `project.json` - der Projekt-Assistent wird gestartet, wenn du sie auswählst.
-
-### Projekte verwalten
-
-Vom Hauptmenü aus gehe zu **Setup** → **projects**:
-
-| Option | Beschreibung |
-|--------|--------------|
-| **list** | Alle Projekt-Ordner mit Status anzeigen |
-| **create** | Neuen Projekt-Ordner erstellen |
-| **delete** | Projekt-Ordner löschen (mit Bestätigung) |
-
-### Projekt-Struktur
+Revela behandelt jeden Ordner als eine Site. Für mehrere Sites legst du einfach mehrere Ordner an — entweder kopierst du den ganzen Revela-Ordner pro Site, oder du hältst eine Revela-Installation in deinem `PATH` und legst Site-Ordner daneben an.
 
 ```
-C:\Revela\
-├── revela.exe
-├── revela.json                    ← Globale Konfiguration (geteilt)
-├── packages/                      ← Themes & Plugins (geteilt)
-└── projects/
-    ├── MeineFotos/                ← Projekt 1
-    │   ├── project.json
-    │   ├── site.json
-    │   ├── source/
-    │   ├── output/
-    │   └── cache/
-    └── Hochzeit2025/              ← Projekt 2
-        ├── project.json
-        ├── site.json
-        ├── source/
-        ├── output/
-        └── cache/
+C:\Sites\
+├── revela.exe                      ← geteilt (oder im PATH)
+├── MeineFotos\
+│   ├── project.json
+│   ├── source\
+│   └── output\
+└── Hochzeit2025\
+    ├── project.json
+    ├── source\
+    └── output\
 ```
 
-**Vorteile:**
-- Separate Foto-Sammlungen in verschiedenen Projekten
-- Jedes Projekt kann unterschiedliche Einstellungen haben (Theme, Bildgrößen)
-- Geteilte Pakete - einmal installieren, überall nutzen
+Um zwischen Sites zu wechseln, öffne einfach einen anderen Ordner. Per `cd` (im Terminal) oder Datei-Manager.
 
 ---
 
-## 10. Konfigurationsdateien
+## 9. Konfigurationsdateien
 
 ### project.json
 
@@ -513,7 +435,7 @@ Globale Revela-Konfiguration (im Revela-Ordner):
 
 ---
 
-## 11. Häufige Probleme
+## 10. Häufige Probleme
 
 ### "Das Menü erscheint nicht" oder "Fenster schließt sich sofort"
 
@@ -568,7 +490,7 @@ source/
 
 ---
 
-## 12. Nächste Schritte
+## 11. Nächste Schritte
 
 Wenn deine Website funktioniert:
 

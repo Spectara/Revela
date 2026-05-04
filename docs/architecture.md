@@ -55,7 +55,7 @@ Revela/
 │   │   └── Theme/                # Theme management
 │   │
 │   ├── Spectara.Revela.Cli/               # CLI Entry Point (dynamic loading)
-│   │   ├── Hosting/              # HostBootstrap, InteractiveMenu, ProjectResolver
+│   │   └── Hosting/              # HostBootstrap, InteractiveMenu
 │   │   └── Program.cs            # DiskPackageSource → HostBootstrap
 │   │
 │   ├── Spectara.Revela.Cli.Embedded/      # CLI Entry Point (static linking)

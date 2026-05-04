@@ -31,12 +31,12 @@ internal static class HostBootstrap
     /// Configures the Revela host with all services, configuration, and commands.
     /// </summary>
     /// <param name="builder">The host application builder.</param>
-    /// <param name="filteredArgs">CLI arguments (after --project removal).</param>
+    /// <param name="args">CLI arguments.</param>
     /// <param name="packageSource">Source for loading plugins and themes.</param>
     /// <returns>The builder for chaining.</returns>
     public static HostApplicationBuilder ConfigureRevela(
         this HostApplicationBuilder builder,
-        string[] filteredArgs,
+        string[] args,
         IPackageSource packageSource)
     {
         // Enable UTF-8 output for proper Unicode/emoji rendering
@@ -48,7 +48,7 @@ internal static class HostBootstrap
         builder.Services.AddCoreServices();
         builder.Services.AddRevelaCommands();
         builder.Services.AddInteractiveMode();
-        builder.Services.AddPackages(packageSource, builder.Configuration, filteredArgs);
+        builder.Services.AddPackages(packageSource, builder.Configuration, args);
 
         // Register ProjectEnvironment (runtime info about project location)
         builder.Services.AddOptions<ProjectEnvironment>()
@@ -61,14 +61,14 @@ internal static class HostBootstrap
     /// Runs the Revela CLI from a built host.
     /// </summary>
     /// <param name="host">The built host with all services registered.</param>
-    /// <param name="filteredArgs">CLI arguments to parse and execute.</param>
+    /// <param name="args">CLI arguments to parse and execute.</param>
     /// <returns>The exit code.</returns>
-    public static async Task<int> RunRevelaAsync(this IHost host, string[] filteredArgs)
+    public static async Task<int> RunRevelaAsync(this IHost host, string[] args)
     {
         var rootCommand = host.UseRevelaCommands();
 
         // Detect interactive mode: no arguments AND interactive terminal
-        var isInteractiveMode = filteredArgs.Length == 0
+        var isInteractiveMode = args.Length == 0
             && !Console.IsInputRedirected
             && !Console.IsOutputRedirected
             && Environment.UserInteractive;
@@ -80,6 +80,6 @@ internal static class HostBootstrap
             return await interactiveService.RunAsync(CancellationToken.None);
         }
 
-        return await rootCommand.Parse(filteredArgs).InvokeAsync();
+        return await rootCommand.Parse(args).InvokeAsync();
     }
 }

@@ -1,14 +1,13 @@
 using Microsoft.Extensions.DependencyInjection;
 using Spectara.Revela.Commands.Config;
 using Spectara.Revela.Features.Generate.Commands;
-using Spectara.Revela.Features.Projects.Commands;
 using Spectara.Revela.Features.Theme.Commands;
 using Spectara.Revela.Sdk.Abstractions;
 namespace Spectara.Revela.Cli.Hosting;
 
 /// <summary>
 /// Provides all host-owned command descriptors for unified registration.
-/// Includes core features (Generate, Theme, Projects) and management commands.
+/// Includes core features (Generate, Theme) and management commands.
 /// External plugins register commands via <see cref="IPlugin.GetCommands"/>.
 /// </summary>
 internal sealed class CoreCommandProvider : ICommandProvider
@@ -86,17 +85,6 @@ internal sealed class CoreCommandProvider : ICommandProvider
             Order: 10,
             Group: CommandGroups.Setup,
             RequiresProject: false);
-
-        // Projects (standalone mode only)
-        if (Core.Services.ConfigPathResolver.IsStandaloneMode)
-        {
-            var projectsCommand = services.GetRequiredService<ProjectsCommand>();
-            yield return new CommandDescriptor(
-                projectsCommand.Create(),
-                Order: 5,
-                Group: CommandGroups.Setup,
-                RequiresProject: false);
-        }
 
         // ── Addons group ──
         var themeCommand = services.GetRequiredService<ThemeCommand>();

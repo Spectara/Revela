@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.0.1-beta.19] - 2026-05-04
+
+### Removed
+
+- **Multi-project / standalone-mode feature** — the `projects/`-folder convention, `--project` argument, `revela projects list/create/delete` commands, and interactive folder-picker on startup are gone. Revela now follows the convention of every other static site generator: **the current working directory is the project**. Multiple sites? Use multiple folders. ~1,640 lines of production code removed; no tests affected. ([#67](https://github.com/Spectara/Revela/issues/67))
+
+### Changed
+
+- **`Cli.Embedded` no longer shows the setup wizard menu entry** — the wizard is provided by the Full release only (it manages NuGet packages, which Embedded doesn't have). The menu now hides the entry automatically when no `ISetupWizard` is registered.
+- **JSON serialization migrated to source-generated contexts** — `Core` and `Features` now use `JsonSerializerContext`s for `revela.json`, `.cache/manifest.json`, plugin `.meta.json` files, and theme manifests. Eliminates the IL2026 trim warnings and prepares the codebase for AOT/trimmed publishing. ([#45](https://github.com/Spectara/Revela/issues/45))
+- **`CreatePageCommand` no longer uses reflection** — replaced `MakeGenericType` / `Activator.CreateInstance` / `MakeGenericMethod` with an explicit `string`/`int`/`bool` type-switch. Removes the codebase's only IL2060 trim warning and prevents a runtime crash under `PublishTrimmed`. ([#46](https://github.com/Spectara/Revela/issues/46))
+- **Documentation simplified** — `docs/getting-started/getting-started-{en,de}.md` and `docs/getting-started/cli-reference.md` updated for the new "site = CWD" model. The "Working with multiple projects" section was replaced by a short note on using multiple folders.
+
+### Fixed
+
+- **`sitemap.xml` no longer contains fake `https://example.com` URLs** — `RenderProjectSettings.BaseUrl` is now `string?`, so the existing `is not null` gate at the sitemap site actually works. Without `baseUrl` configured, the sitemap is now correctly skipped (as the existing `LogSitemapSkipped` info message already promised).
+- **`theme extract` and `theme info` work in standalone builds** — these read-only commands no longer skip package loading, so bundled themes (e.g. Lumina) are visible to them. ([#33](https://github.com/Spectara/Revela/issues/33))
+
 ## [0.0.1-beta.18] - 2026-05-02
 
 ### Security
@@ -430,7 +448,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Source.OneDrive (OneDrive Shared Folder Support)
 - Commands: generate, init, clean, theme, plugins, restore
 
-[Unreleased]: https://github.com/spectara/revela/compare/v0.0.1-beta.18...HEAD
+[Unreleased]: https://github.com/spectara/revela/compare/v0.0.1-beta.19...HEAD
+[0.0.1-beta.19]: https://github.com/spectara/revela/compare/v0.0.1-beta.18...v0.0.1-beta.19
 [0.0.1-beta.18]: https://github.com/spectara/revela/compare/v0.0.1-beta.17...v0.0.1-beta.18
 [0.0.1-beta.17]: https://github.com/spectara/revela/compare/v0.0.1-beta.16...v0.0.1-beta.17
 [0.0.1-beta.16]: https://github.com/spectara/revela/compare/v0.0.1-beta.15...v0.0.1-beta.16

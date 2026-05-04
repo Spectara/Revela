@@ -4,111 +4,41 @@ Command-line reference for advanced users, automation, and CI/CD integration.
 
 ---
 
-## Operating Modes
+## How Revela locates your project
 
-Revela has two operating modes depending on how it's installed:
-
-### Standalone Mode (Portable)
-
-When running `revela.exe` from a folder with a `projects/` subdirectory.
-
-```
-C:\Revela\
-├── revela.exe          ← Run from here
-├── projects/           ← Multi-project support
-│   ├── MyPhotos/
-│   └── Wedding2025/
-└── packages/
-```
-
-**Characteristics:**
-- Multiple projects in `projects/` folder
-- Requires `--project` for CLI commands
-- Interactive mode shows project selection
-- `projects` command available in menu
-
-### Tool Mode (dotnet tool)
-
-When installed as a global .NET tool: `dotnet tool install -g Spectara.Revela`
+**Revela always treats the current working directory as the project.** There is no `--project` argument and no multi-project container; one folder = one site.
 
 ```bash
-cd ~/photos/my-portfolio
+cd /path/to/my-portfolio
 revela generate all
 ```
 
-**Characteristics:**
-- Single project per directory (like git)
-- Uses current working directory
-- No `--project` argument needed
-- No `projects` command
+This applies to every distribution:
+
+- **Standalone (single binary):** unzip, double-click `revela.exe` — the directory containing the exe becomes the project. On macOS/Linux use the included `Start Revela.command` / `start-revela.sh` launchers so the working directory is set correctly.
+- **Full release:** same as Standalone, plus the bundled `packages/` feed and the setup wizard for installing themes/plugins.
+- **dotnet tool (`dotnet tool install -g Spectara.Revela`):** add `revela` to your `PATH`, `cd` into a project folder, run `revela`.
+
+Multiple sites? Use folders. Either copy the whole Revela directory once per site, or keep one Revela installation in your `PATH` and create a separate folder per site.
 
 ---
 
 ## Command Syntax
 
-### Standalone Mode
-
 ```bash
-# Interactive mode (project selection)
-revela
-
-# Specify project for CLI commands
-revela --project <name> <command> [options]
-revela -p <name> <command> [options]
-
-# Project-independent commands (no --project needed)
-revela plugin list
-revela packages refresh
-revela projects list
-```
-
-### Tool Mode
-
-```bash
-# Run in project directory
+# Run inside a project directory
 cd /path/to/project
 revela <command> [options]
 
-# Interactive mode
+# Interactive menu (no arguments)
 revela
-```
-
----
-
-## Project Argument (Standalone Only)
-
-The `--project` (or `-p`) argument specifies which project to use:
-
-```bash
-# Long form
-revela --project MyPhotos generate all
-
-# Short form
-revela -p MyPhotos generate all
-
-# With equals sign
-revela --project=MyPhotos generate all
-revela -p=Wedding2025 clean all
-```
-
-**Error handling:**
-
-```bash
-# Missing --project for project-requiring command
-$ revela generate all
-Error: No project specified.
-Use --project <name> or run without arguments for interactive mode.
-
-Available project folders:
-  • MyPhotos
-  • Wedding2025
 ```
 
 ---
 
 ## Project-Independent Commands
 
-These commands work without a project context:
+These commands work without a `project.json` in the current directory:
 
 | Command | Description |
 |---------|-------------|
@@ -119,9 +49,6 @@ These commands work without a project context:
 | `theme install` | Install a theme |
 | `packages list` | List all available packages |
 | `packages refresh` | Update package index |
-| `projects list` | List project folders (standalone only) |
-| `projects create` | Create project folder (standalone only) |
-| `projects delete` | Delete project folder (standalone only) |
 | `wizard` | Run setup wizard |
 | `--help` | Show help |
 | `--version` | Show version |
@@ -245,16 +172,6 @@ revela packages list      # List available packages
 revela packages refresh   # Update package index
 ```
 
-### projects (Standalone only)
-
-Manage project folders.
-
-```bash
-revela projects list      # List all projects with status
-revela projects create    # Create new project folder
-revela projects delete    # Delete project folder
-```
-
 ---
 
 ## Exit Codes
@@ -272,11 +189,13 @@ revela projects delete    # Delete project folder
 ### Batch Processing (PowerShell)
 
 ```powershell
-# Generate all projects
-$projects = @("MyPhotos", "Wedding2025", "Landscapes")
-foreach ($project in $projects) {
-    Write-Host "Generating $project..."
-    revela -p $project generate all
+# Generate multiple sites
+$sites = @("C:\Sites\MyPhotos", "C:\Sites\Wedding2025", "C:\Sites\Landscapes")
+foreach ($site in $sites) {
+    Write-Host "Generating $site..."
+    Push-Location $site
+    revela generate all
+    Pop-Location
 }
 ```
 
@@ -285,12 +204,14 @@ foreach ($project in $projects) {
 ```powershell
 # Regenerate pages when templates change
 $watcher = New-Object System.IO.FileSystemWatcher
-$watcher.Path = "C:\Revela\packages\themes\Lumina"
+$watcher.Path = "C:\Sites\MyPhotos\themes\Lumina"
 $watcher.Filter = "*.html"
 $watcher.EnableRaisingEvents = $true
 
 Register-ObjectEvent $watcher Changed -Action {
-    revela -p MyPhotos generate pages
+    Push-Location "C:\Sites\MyPhotos"
+    revela generate pages
+    Pop-Location
 }
 ```
 
@@ -302,32 +223,30 @@ name: Generate Site
 on:
   push:
     paths:
-      - 'projects/MyPhotos/source/**'
+      - 'source/**'
 
 jobs:
   build:
-    runs-on: windows-latest
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '10.0.x'
-      
+
       - name: Install Revela
         run: dotnet tool install -g Spectara.Revela
-      
+
       - name: Generate Site
-        run: |
-          cd projects/MyPhotos
-          revela generate all
-      
+        run: revela generate all
+
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
           name: website
-          path: projects/MyPhotos/output/
+          path: output/
 ```
 
 ### Docker
@@ -359,29 +278,16 @@ RUN revela generate all
 **Example:**
 ```bash
 # Enable debug logging
-REVELA__LOGGING__LOGLEVEL__DEFAULT=Debug revela -p MyPhotos generate all
+REVELA__LOGGING__LOGLEVEL__DEFAULT=Debug revela generate all
 ```
 
 ---
 
 ## Troubleshooting
 
-### "No project specified" Error
-
-**Cause:** Running a project-requiring command without `--project` in standalone mode.
-
-**Solution:**
-```bash
-# Add --project
-revela --project MyPhotos generate all
-
-# Or use interactive mode
-revela
-```
-
 ### "Not in a Revela project directory" Error
 
-**Cause:** Running in tool mode outside a project folder.
+**Cause:** Running a command outside a project folder (no `project.json` in the current directory).
 
 **Solution:**
 ```bash

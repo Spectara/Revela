@@ -204,7 +204,7 @@ internal sealed partial class InteractiveMenuService(
         var prompt = BuildGroupedSelectionPrompt(
             RootCommand!.Subcommands,
             string.Empty,
-            includeSetupWizard: true);
+            includeSetupWizard: setupWizards.Any());
 
         var selection = AnsiConsole.Prompt(prompt);
 

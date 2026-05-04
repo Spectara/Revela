@@ -2,22 +2,12 @@ using Microsoft.Extensions.Hosting;
 using Spectara.Revela.Cli.Embedded;
 using Spectara.Revela.Cli.Hosting;
 
-// Resolve project BEFORE building host (standalone mode: --project or interactive selection)
-var (projectPath, filteredArgs, shouldExit) = ProjectResolver.ResolveProject(args);
-
-if (shouldExit)
+var builder = Host.CreateApplicationBuilder(new HostApplicationBuilderSettings
 {
-    return 1;
-}
+    Args = args,
+    ContentRootPath = Directory.GetCurrentDirectory(),
+});
 
-// Create builder with correct ContentRootPath
-var settings = new HostApplicationBuilderSettings
-{
-    Args = filteredArgs,
-    ContentRootPath = projectPath ?? Directory.GetCurrentDirectory(),
-};
+builder.ConfigureRevela(args, new EmbeddedPackageSource());
 
-var builder = Host.CreateApplicationBuilder(settings);
-builder.ConfigureRevela(filteredArgs, new EmbeddedPackageSource());
-
-return await builder.Build().RunRevelaAsync(filteredArgs);
+return await builder.Build().RunRevelaAsync(args);
