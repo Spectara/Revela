@@ -346,7 +346,23 @@ internal sealed partial class ScribanTemplateEngine(
             // Disable loop limit (default 1000) - our templates are trusted, not user-provided
             // Large galleries with nested loops (images × formats × sizes) easily exceed 1000
             // See: https://github.com/scriban/scriban/blob/master/doc/runtime.md#safe-runtime
-            LoopLimit = 0
+            LoopLimit = 0,
+
+            // Disable output size limit (default 1 MiB / 1048576). Per Scriban docs:
+            // "Caps string materialization and rendered output growth. Scriban truncates
+            //  output with ... when the limit is reached. Set to 0 to disable the limit."
+            // https://scriban.github.io/docs/runtime/safe-runtime/
+            // Large galleries (~200 images × multiple formats × srcset sizes) easily
+            // exceed 1 MiB of HTML per page, producing silently truncated output.
+            LimitToString = 0,
+
+            // Surface runtime exceptions to the logger and re-throw instead of allowing
+            // Scriban to silently abort rendering and return truncated output.
+            RenderRuntimeException = ex =>
+            {
+                LogScribanRuntimeException(logger, ex.Message, ex.Span.FileName ?? "(template)", ex.Span.Start.Line, ex.Span.Start.Column);
+                throw ex;
+            }
         };
 
         // Set up template loader for partials if theme is set
@@ -602,6 +618,9 @@ internal sealed partial class ScribanTemplateEngine(
     // High-performance logging with LoggerMessage source generator
     [LoggerMessage(Level = LogLevel.Error, Message = "Template rendering failed")]
     private static partial void LogRenderingFailed(ILogger logger, Exception exception);
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "Scriban runtime exception: {Message} at {File}:{Line}:{Column}")]
+    private static partial void LogScribanRuntimeException(ILogger logger, string message, string file, int line, int column);
 
     [LoggerMessage(Level = LogLevel.Debug, Message = "Rendering template: {Path}")]
     private static partial void LogRenderingTemplate(ILogger logger, string path);

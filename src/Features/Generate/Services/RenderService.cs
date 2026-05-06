@@ -530,6 +530,7 @@ internal sealed partial class RenderService(
                 scripts
             });
 
+        WarnIfHtmlTruncated(indexHtml, "index.html");
         await File.WriteAllTextAsync(
             Path.Combine(OutputPath, "index.html"),
             indexHtml,
@@ -605,6 +606,7 @@ internal sealed partial class RenderService(
             var galleryOutputPath = Path.Combine(OutputPath, gallery.Slug);
             Directory.CreateDirectory(galleryOutputPath);
 
+            WarnIfHtmlTruncated(galleryHtml, $"{gallery.Slug.TrimEnd('/')}/index.html");
             await File.WriteAllTextAsync(
                 Path.Combine(galleryOutputPath, "index.html"),
                 galleryHtml,
@@ -1083,6 +1085,29 @@ internal sealed partial class RenderService(
 
     #endregion
 
+    /// <summary>
+    /// Sanity-check rendered HTML for silent truncation. Emits a warning if the
+    /// output does not end with the expected closing tag, which can indicate that
+    /// the template engine aborted rendering mid-document (e.g. exceeded a
+    /// runtime output limit).
+    /// </summary>
+    private void WarnIfHtmlTruncated(string html, string outputPath)
+    {
+        if (string.IsNullOrEmpty(html))
+        {
+            LogHtmlTruncated(logger, outputPath, 0, "(empty)");
+            return;
+        }
+
+        var trimmed = html.AsSpan().TrimEnd();
+        if (!trimmed.EndsWith("</html>", StringComparison.OrdinalIgnoreCase))
+        {
+            var tailLength = Math.Min(60, trimmed.Length);
+            var tail = trimmed[^tailLength..].ToString();
+            LogHtmlTruncated(logger, outputPath, html.Length, tail);
+        }
+    }
+
     #region Logging
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Generated {Count} pages")]
@@ -1093,6 +1118,9 @@ internal sealed partial class RenderService(
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Sitemap skipped: set 'baseUrl' in project.json for sitemap.xml generation")]
     private static partial void LogSitemapSkipped(ILogger logger);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Rendered HTML for {OutputPath} appears truncated ({Length} bytes, ends with: {Tail}). The page does not close with </html> — check for template runtime limits or rendering errors.")]
+    private static partial void LogHtmlTruncated(ILogger logger, string outputPath, int length, string tail);
 
     #endregion
 }
