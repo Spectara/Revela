@@ -1,4 +1,5 @@
 using Spectara.Revela.Features.Generate.Models;
+using Spectara.Revela.Features.Generate.Models.Results;
 using Spectara.Revela.Sdk.Configuration;
 using Spectara.Revela.Sdk.Models;
 
@@ -21,13 +22,13 @@ internal interface IImageProcessor
     /// </summary>
     /// <param name="inputPath">Path to the source image</param>
     /// <param name="options">Processing options (sizes, formats, quality)</param>
-    /// <param name="onVariantSaved">Callback invoked after each variant is saved (skipped: true if from cache, format: jpg/webp/avif/png)</param>
+    /// <param name="onVariantProgress">Callback invoked for each variant lifecycle event (Started before encode, Done after write, Skipped from cache). Format: jpg/webp/avif/png.</param>
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>Processed image with variants and EXIF data</returns>
     Task<Image> ProcessImageAsync(
         string inputPath,
         ImageProcessingOptions options,
-        Action<bool, string>? onVariantSaved = null,
+        Action<VariantState, string>? onVariantProgress = null,
         CancellationToken cancellationToken = default);
 
     /// <summary>

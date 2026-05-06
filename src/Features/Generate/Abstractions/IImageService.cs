@@ -36,13 +36,13 @@ internal interface IImageService
     /// </summary>
     /// <param name="inputPath">Path to source image.</param>
     /// <param name="options">Processing options (sizes, formats, quality).</param>
-    /// <param name="onVariantSaved">Callback invoked after each variant is saved (skipped: true if from cache, format: jpg/webp/avif/png).</param>
+    /// <param name="onVariantProgress">Callback invoked for each variant lifecycle event (Started/Done/Skipped). Format: jpg/webp/avif/png.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>Processed image with all variants.</returns>
     Task<Image> ProcessImageAsync(
         string inputPath,
         ImageProcessingOptions options,
-        Action<bool, string>? onVariantSaved = null,
+        Action<VariantState, string>? onVariantProgress = null,
         CancellationToken cancellationToken = default);
 }
 

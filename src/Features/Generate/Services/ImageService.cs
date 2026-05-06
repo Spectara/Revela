@@ -282,9 +282,10 @@ internal sealed partial class ImageService(
 
                     // Use sizes from manifest (calculated during scan with original width)
                     // Fall back to config sizes if manifest sizes are empty (shouldn't happen)
-                    // Sort descending: largest first (heavy work first, then quick small sizes)
+                    // Sort ascending: smallest first so the user sees the progress display
+                    // fill up immediately. The largest variant (slowest encode) runs last.
                     var sizesToGenerate = (manifestSizes.Count > 0 ? manifestSizes : sizes)
-                        .OrderByDescending(s => s)
+                        .OrderBy(s => s)
                         .ToList();
 
                     // Calculate total variants for this image
@@ -331,32 +332,40 @@ internal sealed partial class ImageService(
                             Width = width,
                             Height = height
                         },
-                        onVariantSaved: (skipped, format) =>
+                        onVariantProgress: (state, format) =>
                         {
-                            // Track result in order and update counters
-                            if (skipped)
+                            // Track result in order and update counters.
+                            // Started → append InProgress placeholder.
+                            // Done    → replace trailing InProgress with the Done* variant.
+                            // Skipped → replace trailing InProgress (rare) or append Skipped.
+                            lock (variantResults)
                             {
-                                Interlocked.Increment(ref variantsSkipped);
-                                lock (variantResults)
+                                switch (state)
                                 {
-                                    variantResults.Add(VariantResult.Skipped);
-                                }
-                            }
-                            else
-                            {
-                                Interlocked.Increment(ref variantsDone);
-                                lock (variantResults)
-                                {
-                                    // Map format to specific Done variant for colored display
-                                    var result = format.ToUpperInvariant() switch
-                                    {
-                                        "JPG" or "JPEG" => VariantResult.DoneJpg,
-                                        "WEBP" => VariantResult.DoneWebp,
-                                        "AVIF" => VariantResult.DoneAvif,
-                                        "PNG" => VariantResult.DonePng,
-                                        _ => VariantResult.DoneOther
-                                    };
-                                    variantResults.Add(result);
+                                    case VariantState.Started:
+                                        variantResults.Add(VariantResult.InProgress);
+                                        break;
+
+                                    case VariantState.Done:
+                                        Interlocked.Increment(ref variantsDone);
+                                        var doneResult = format.ToUpperInvariant() switch
+                                        {
+                                            "JPG" or "JPEG" => VariantResult.DoneJpg,
+                                            "WEBP" => VariantResult.DoneWebp,
+                                            "AVIF" => VariantResult.DoneAvif,
+                                            "PNG" => VariantResult.DonePng,
+                                            _ => VariantResult.DoneOther
+                                        };
+                                        ReplaceLastInProgressOrAppend(variantResults, doneResult);
+                                        break;
+
+                                    case VariantState.Skipped:
+                                        Interlocked.Increment(ref variantsSkipped);
+                                        ReplaceLastInProgressOrAppend(variantResults, VariantResult.Skipped);
+                                        break;
+
+                                    default:
+                                        throw new InvalidOperationException($"Unknown {nameof(VariantState)}: {state}");
                                 }
                             }
 
@@ -486,10 +495,29 @@ internal sealed partial class ImageService(
     public async Task<Image> ProcessImageAsync(
         string inputPath,
         ImageProcessingOptions options,
-        Action<bool, string>? onVariantSaved = null,
-        CancellationToken cancellationToken = default) => await imageProcessor.ProcessImageAsync(inputPath, options, onVariantSaved, cancellationToken);
+        Action<VariantState, string>? onVariantProgress = null,
+        CancellationToken cancellationToken = default) => await imageProcessor.ProcessImageAsync(inputPath, options, onVariantProgress, cancellationToken);
 
     #region Private Helpers
+
+    /// <summary>
+    /// Replace the last <see cref="VariantResult.InProgress"/> entry with the given final state.
+    /// If no InProgress placeholder is present (e.g. cache-skip without a Started event),
+    /// the final state is appended instead. Caller must hold the list's lock.
+    /// </summary>
+    private static void ReplaceLastInProgressOrAppend(List<VariantResult> results, VariantResult finalState)
+    {
+        for (var i = results.Count - 1; i >= 0; i--)
+        {
+            if (results[i] == VariantResult.InProgress)
+            {
+                results[i] = finalState;
+                return;
+            }
+        }
+
+        results.Add(finalState);
+    }
 
     /// <summary>
     /// Collect all image source paths from the unified tree.

@@ -5,6 +5,7 @@ using NetVips;
 using Spectara.Revela.Features.Generate.Abstractions;
 using Spectara.Revela.Features.Generate.Infrastructure;
 using Spectara.Revela.Features.Generate.Models;
+using Spectara.Revela.Features.Generate.Models.Results;
 using Spectara.Revela.Sdk.Configuration;
 using Spectara.Revela.Sdk.Models;
 using Image = NetVips.Image;
@@ -110,7 +111,7 @@ internal sealed partial class NetVipsImageProcessor(
     public Task<Models.Image> ProcessImageAsync(
         string inputPath,
         ImageProcessingOptions options,
-        Action<bool, string>? onVariantSaved = null,
+        Action<VariantState, string>? onVariantProgress = null,
         CancellationToken cancellationToken = default)
     {
         if (!File.Exists(inputPath))
@@ -121,7 +122,7 @@ internal sealed partial class NetVipsImageProcessor(
         // Ensure NetVips is configured for parallel processing
         EnsureNetVipsInitialized();
 
-        return ProcessImageInternalAsync(inputPath, options, onVariantSaved, cancellationToken);
+        return ProcessImageInternalAsync(inputPath, options, onVariantProgress, cancellationToken);
     }
 
     /// <summary>
@@ -130,7 +131,7 @@ internal sealed partial class NetVipsImageProcessor(
     private async Task<Models.Image> ProcessImageInternalAsync(
         string inputPath,
         ImageProcessingOptions options,
-        Action<bool, string>? onVariantSaved,
+        Action<VariantState, string>? onVariantProgress,
         CancellationToken cancellationToken)
     {
         // Suppress unused parameter warning - kept for future use and API consistency
@@ -156,11 +157,14 @@ internal sealed partial class NetVipsImageProcessor(
 
         // Use sizes from options (already includes original width from scan phase)
         // Filter to only sizes <= longest side (in case config changed)
-        // Sort DESCENDING: largest first for pyramid resize optimization
+        // Sort ASCENDING: smallest first so the user sees progress immediately
+        // (the largest variant is also the slowest encode; running it last keeps the
+        // progress display moving from the start instead of stalling on size #1).
+        // The star-from-original strategy below is order-independent — see comment there.
         var longestSide = Math.Max(width, height);
         var sizesToGenerate = options.Sizes
             .Where(s => s <= longestSide)
-            .OrderByDescending(s => s)
+            .OrderBy(s => s)
             .ToList();
 
         // Incremental mode: only generate specific variants
@@ -202,10 +206,11 @@ internal sealed partial class NetVipsImageProcessor(
         // - Multiple Resize() calls from same source work fine
         // - Only Thumbnail() (sequential access) would need CopyMemory()
 
-        // Find the largest size we need to generate (may not be first if incremental mode)
+        // Find the largest size we need to generate (drives the single full-res load).
+        // sizesToGenerate is sorted ascending → Last() is the biggest.
         var largestNeededSize = isIncrementalMode
             ? sizesToGenerate.Where(s => formatsPerSize.ContainsKey(s)).DefaultIfEmpty(0).Max()
-            : sizesToGenerate.FirstOrDefault(); // Already sorted descending
+            : sizesToGenerate.LastOrDefault();
 
         // If nothing to generate, just report skips
         if (largestNeededSize == 0)
@@ -214,7 +219,7 @@ internal sealed partial class NetVipsImageProcessor(
             {
                 foreach (var (format, _) in options.Formats)
                 {
-                    onVariantSaved?.Invoke(true, format);
+                    onVariantProgress?.Invoke(VariantState.Skipped, format);
                 }
             }
         }
@@ -240,7 +245,7 @@ internal sealed partial class NetVipsImageProcessor(
                 {
                     foreach (var (format, _) in options.Formats)
                     {
-                        onVariantSaved?.Invoke(true, format);
+                        onVariantProgress?.Invoke(VariantState.Skipped, format);
                     }
 
                     continue;
@@ -277,6 +282,9 @@ internal sealed partial class NetVipsImageProcessor(
 
                         if (needsGeneration)
                         {
+                            // Announce work-in-progress before the (potentially slow) encode/write
+                            onVariantProgress?.Invoke(VariantState.Started, format);
+
                             var variant = await SaveVariantAsync(
                                 thumb,
                                 options.ImageSlug,
@@ -287,11 +295,11 @@ internal sealed partial class NetVipsImageProcessor(
                                 quality);
 
                             variants.Add(variant);
-                            onVariantSaved?.Invoke(false, format);
+                            onVariantProgress?.Invoke(VariantState.Done, format);
                         }
                         else
                         {
-                            onVariantSaved?.Invoke(true, format);
+                            onVariantProgress?.Invoke(VariantState.Skipped, format);
                         }
                     }
                 }

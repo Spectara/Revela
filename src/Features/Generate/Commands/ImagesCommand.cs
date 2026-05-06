@@ -214,7 +214,7 @@ internal sealed partial class ImagesCommand(
     /// <remarks>
     /// Format like original Bash Expose script:
     /// <code>
-    /// Legend: ■ jpg  ■ webp  ■ avif  ■ cached  □ pending
+    /// Legend: ■ jpg  ■ webp  ■ avif  ▣ working  ■ cached  □ pending
     ///
     /// 029081.jpg ■ ■ ■ □ □ □
     /// 029088.jpg ■ ■ □ □ □ □
@@ -233,6 +233,7 @@ internal sealed partial class ImagesCommand(
             legendParts.Add($"[{color}]■[/] {format}");
         }
 
+        legendParts.Add("[yellow]▣[/] working");
         legendParts.Add("[dim]■[/] cached");
         legendParts.Add("[dim]□[/] pending");
 
@@ -262,7 +263,7 @@ internal sealed partial class ImagesCommand(
 
                 // Build variant symbols from VariantResults list (ordered)
                 // Format colors: JPG=green, WebP=blue, AVIF=magenta, PNG=cyan
-                // ■ = done (colored by format), ■ = skipped (dim), □ = pending
+                // ▣ = in progress (yellow), ■ = done (colored by format), ■ = skipped (dim), □ = pending
                 var symbols = new List<string>();
 
                 // First: show completed variants in their actual order
@@ -270,6 +271,7 @@ internal sealed partial class ImagesCommand(
                 {
                     var symbol = result switch
                     {
+                        VariantResult.InProgress => "[yellow]▣[/]",
                         VariantResult.DoneJpg => "[green]■[/]",
                         VariantResult.DoneWebp => "[blue]■[/]",
                         VariantResult.DoneAvif => "[fuchsia]■[/]",

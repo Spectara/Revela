@@ -59,6 +59,9 @@ internal sealed class WorkerState
 /// </summary>
 internal enum VariantResult
 {
+    /// <summary>Variant is currently being generated (encode in progress).</summary>
+    InProgress,
+
     /// <summary>Variant was generated (new file) - JPG format.</summary>
     DoneJpg,
 
@@ -75,6 +78,21 @@ internal enum VariantResult
     DoneOther,
 
     /// <summary>Variant was skipped (already exists).</summary>
+    Skipped
+}
+
+/// <summary>
+/// Lifecycle state reported by the image processor for each variant slot.
+/// </summary>
+internal enum VariantState
+{
+    /// <summary>Encode is starting for this variant.</summary>
+    Started,
+
+    /// <summary>Variant was generated and written to disk.</summary>
+    Done,
+
+    /// <summary>Variant was skipped (already exists in cache).</summary>
     Skipped
 }
 
