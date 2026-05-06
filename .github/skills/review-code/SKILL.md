@@ -161,7 +161,7 @@ When in doubt, check if there is a newer API or language feature that replaces o
 
 - Use `IOptions<T>` / `IOptionsMonitor<T>` pattern
 - Config models: `sealed class` with `public const string SectionName`
-- Use `DataAnnotations` for validation + `ValidateOnStart()`
+- Use `DataAnnotations` for validation (lazy; `ValidateOnStart()` is not used)
 - Plugin config: section name = full package ID (`Spectara.Revela.Plugins.X`)
 
 ## 9. Commands (System.CommandLine 2.0)

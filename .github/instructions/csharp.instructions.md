@@ -94,7 +94,7 @@ These rules apply to every `.cs` file. They are enforced by `.editorconfig` (war
 
 ## Configuration
 - `IOptions<T>` / `IOptionsMonitor<T>` with `[RevelaConfig]` attribute (source generator handles registration).
-- Use `DataAnnotations` for validation + `ValidateOnStart()`.
+- Use `DataAnnotations` for validation (lazy via `ValidateDataAnnotations()`; `ValidateOnStart()` is not used — config values are produced at runtime).
 
 ## Paths
 - **Never hardcode `"source"` or `"output"`** — inject `IPathResolver` and use `SourcePath` / `OutputPath`.

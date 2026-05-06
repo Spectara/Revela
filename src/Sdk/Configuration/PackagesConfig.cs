@@ -30,7 +30,7 @@ namespace Spectara.Revela.Sdk.Configuration;
 /// </code>
 /// </example>
 /// </remarks>
-[RevelaConfig("packages", ValidateDataAnnotations = false, ValidateOnStart = false)]
+[RevelaConfig("packages", ValidateDataAnnotations = false)]
 public sealed class PackagesConfig
 {
     /// <summary>

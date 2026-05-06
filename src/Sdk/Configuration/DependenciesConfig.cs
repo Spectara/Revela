@@ -34,7 +34,7 @@ namespace Spectara.Revela.Sdk.Configuration;
 /// </code>
 /// </example>
 /// </remarks>
-[RevelaConfig("dependencies", ValidateDataAnnotations = false, ValidateOnStart = false)]
+[RevelaConfig("dependencies", ValidateDataAnnotations = false)]
 public sealed class DependenciesConfig
 {
     /// <summary>

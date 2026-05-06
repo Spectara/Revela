@@ -500,7 +500,7 @@ public class MyService
 #### **LoggingConfig with Defaults**
 ```csharp
 // src/Sdk/Configuration/LoggingConfig.cs
-[RevelaConfig("Logging", ValidateDataAnnotations = false, ValidateOnStart = false)]
+[RevelaConfig("Logging", ValidateDataAnnotations = false)]
 public sealed class LoggingConfig
 {
     // ✅ Defaults in C# Properties (Warning to keep console clean)
@@ -624,7 +624,8 @@ public sealed class MyPlugin : IPlugin
     public void ConfigureServices(IServiceCollection services)
     {
         // Generated extension method — handles BindConfiguration,
-        // ValidateDataAnnotations, and ValidateOnStart automatically
+        // ValidateDataAnnotations (lazy on first .Value access)
+        // automatically
         services.AddMyPluginConfig();
         
         // Register other services...

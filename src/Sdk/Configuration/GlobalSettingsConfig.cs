@@ -15,7 +15,7 @@ namespace Spectara.Revela.Sdk.Configuration;
 /// }
 /// </code>
 /// </remarks>
-[RevelaConfig("settings", ValidateDataAnnotations = false, ValidateOnStart = false)]
+[RevelaConfig("settings", ValidateDataAnnotations = false)]
 public sealed class GlobalSettingsConfig
 {
     /// <summary>

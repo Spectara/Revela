@@ -70,20 +70,12 @@ public sealed class ConfigRegistrationGenerator : IIncrementalGenerator
 
         // Get named arguments
         var validateDataAnnotations = true;
-        var validateOnStart = true;
 
         foreach (var named in attribute.NamedArguments)
         {
-            switch (named.Key)
+            if (named.Key == "ValidateDataAnnotations")
             {
-                case "ValidateDataAnnotations":
-                    validateDataAnnotations = (bool)(named.Value.Value ?? true);
-                    break;
-                case "ValidateOnStart":
-                    validateOnStart = (bool)(named.Value.Value ?? true);
-                    break;
-                default:
-                    break;
+                validateDataAnnotations = (bool)(named.Value.Value ?? true);
             }
         }
 
@@ -93,7 +85,6 @@ public sealed class ConfigRegistrationGenerator : IIncrementalGenerator
             symbol.ToDisplayString(),
             sectionName!,
             validateDataAnnotations,
-            validateOnStart,
             symbol.DeclaredAccessibility);
     }
 
@@ -122,12 +113,6 @@ public sealed class ConfigRegistrationGenerator : IIncrementalGenerator
         {
             sb.AppendLine();
             sb.Append("            .ValidateDataAnnotations()");
-        }
-
-        if (info.ValidateOnStart)
-        {
-            sb.AppendLine();
-            sb.Append("            .ValidateOnStart()");
         }
 
         sb.AppendLine(";");
@@ -190,7 +175,6 @@ public sealed class ConfigRegistrationGenerator : IIncrementalGenerator
             string fullTypeName,
             string sectionName,
             bool validateDataAnnotations,
-            bool validateOnStart,
             Accessibility accessibility)
         {
             Namespace = ns;
@@ -198,7 +182,6 @@ public sealed class ConfigRegistrationGenerator : IIncrementalGenerator
             FullTypeName = fullTypeName;
             SectionName = sectionName;
             ValidateDataAnnotations = validateDataAnnotations;
-            ValidateOnStart = validateOnStart;
             Accessibility = accessibility;
         }
 
@@ -207,7 +190,6 @@ public sealed class ConfigRegistrationGenerator : IIncrementalGenerator
         public string FullTypeName { get; }
         public string SectionName { get; }
         public bool ValidateDataAnnotations { get; }
-        public bool ValidateOnStart { get; }
         public Accessibility Accessibility { get; }
     }
 }

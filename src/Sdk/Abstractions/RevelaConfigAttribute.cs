@@ -35,10 +35,9 @@ public sealed class RevelaConfigAttribute(string sectionName) : Attribute
     /// <summary>
     /// Whether to call <c>ValidateDataAnnotations()</c>. Default: <c>true</c>.
     /// </summary>
+    /// <remarks>
+    /// Validation runs lazily on first <c>IOptions&lt;T&gt;.Value</c> access — not at startup,
+    /// because most config values are produced at runtime (wizards, CLI args, generated sections).
+    /// </remarks>
     public bool ValidateDataAnnotations { get; init; } = true;
-
-    /// <summary>
-    /// Whether to call <c>ValidateOnStart()</c>. Default: <c>true</c>.
-    /// </summary>
-    public bool ValidateOnStart { get; init; } = true;
 }

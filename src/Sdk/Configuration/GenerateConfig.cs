@@ -47,7 +47,7 @@ namespace Spectara.Revela.Sdk.Configuration;
 /// </code>
 /// </example>
 /// </remarks>
-[RevelaConfig("generate", ValidateDataAnnotations = false, ValidateOnStart = false)]
+[RevelaConfig("generate", ValidateDataAnnotations = false)]
 public sealed class GenerateConfig
 {
     /// <summary>

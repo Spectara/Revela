@@ -32,7 +32,7 @@ namespace Spectara.Revela.Sdk.Configuration;
 /// }
 /// </code>
 /// </remarks>
-[RevelaConfig("Logging", ValidateDataAnnotations = false, ValidateOnStart = false)]
+[RevelaConfig("Logging", ValidateDataAnnotations = false)]
 public sealed class LoggingConfig
 {
     /// <summary>

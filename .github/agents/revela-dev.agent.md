@@ -71,7 +71,7 @@ Follow these rules strictly — they are enforced by .editorconfig as warnings/e
 ### DI & Configuration
 - Constructor injection via primary constructors — no `IServiceProvider` in business logic
 - **HttpClient**: Typed Client pattern via `services.AddHttpClient<T>()`
-- **IOptions<T>** / **IOptionsMonitor<T>** with `ValidateDataAnnotations()` + `ValidateOnStart()`
+- **IOptions<T>** / **IOptionsMonitor<T>** with `ValidateDataAnnotations()` (lazy — `ValidateOnStart` is intentionally not used; config values are produced at runtime via wizards/CLI)
 
 ### Console Output
 - Use `OutputMarkers.Success/Error/Warning/Info` from `Spectara.Revela.Sdk.Output`

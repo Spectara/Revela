@@ -231,8 +231,7 @@ public void ConfigureServices(IServiceCollection services)
 {
     services.AddOptions<ExampleConfig>()
         .BindConfiguration(ExampleConfig.SectionName)
-        .ValidateDataAnnotations()
-        .ValidateOnStart();  // Fail-fast at startup
+        .ValidateDataAnnotations();  // Lazy validation on first .Value access
 }
 ```
 
