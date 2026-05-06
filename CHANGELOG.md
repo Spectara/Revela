@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.0.1-beta.20] - 2026-05-06
+
+### Fixed
+
+- **Silent HTML truncation on large galleries** — Scriban's `TemplateContext.LimitToString` defaults to 1 MiB and silently truncates rendered output with `...` when exceeded. Galleries with ~150+ images and full responsive image markup (3 formats × ~10 srcset sizes) easily exceed this limit, producing pages that ended mid-document with no error. The template engine now sets `LimitToString = 0` per Scriban's official safe-runtime guidance for trusted templates, and wires `RenderRuntimeException` to the logger so future Scriban runtime errors surface instead of being swallowed.
+
+### Changed
+
+- **`RenderService` warns on truncated HTML output** — a sanity check now logs a warning when a rendered page does not end with `</html>`, catching any future regression regardless of source.
+
+
 ## [0.0.1-beta.19] - 2026-05-04
 
 ### Removed
@@ -448,7 +459,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Source.OneDrive (OneDrive Shared Folder Support)
 - Commands: generate, init, clean, theme, plugins, restore
 
-[Unreleased]: https://github.com/spectara/revela/compare/v0.0.1-beta.19...HEAD
+[Unreleased]: https://github.com/spectara/revela/compare/v0.0.1-beta.20...HEAD
+[0.0.1-beta.20]: https://github.com/spectara/revela/compare/v0.0.1-beta.19...v0.0.1-beta.20
 [0.0.1-beta.19]: https://github.com/spectara/revela/compare/v0.0.1-beta.18...v0.0.1-beta.19
 [0.0.1-beta.18]: https://github.com/spectara/revela/compare/v0.0.1-beta.17...v0.0.1-beta.18
 [0.0.1-beta.17]: https://github.com/spectara/revela/compare/v0.0.1-beta.16...v0.0.1-beta.17
