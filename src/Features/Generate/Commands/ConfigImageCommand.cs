@@ -200,8 +200,9 @@ internal sealed partial class ConfigImageCommand(
                 continue;
             }
 
-            // Normalize to lowercase for JSON keys
-#pragma warning disable CA1308
+            // Normalize to lowercase for JSON keys (image format keys like "avif", "webp", "jpg"
+            // are required to be lowercase by both the config schema and downstream consumers).
+#pragma warning disable CA1308 // Lowercase required by JSON config schema, not for display/comparison.
             var normalizedFormat = formatName.ToLowerInvariant();
 #pragma warning restore CA1308
 

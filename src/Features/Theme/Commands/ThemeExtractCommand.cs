@@ -363,9 +363,10 @@ internal sealed partial class ThemeExtractCommand(
             Directory.CreateDirectory(targetDir);
         }
 
-        // Get source stream based on entry source
-        // CA2000 is a false positive - stream is disposed in finally block via DisposeAsync
-#pragma warning disable CA2000
+        // Get source stream based on entry source.
+        // CA2000 false positive: ownership transfers to the caller and the stream is
+        // disposed in the finally block below via DisposeAsync.
+#pragma warning disable CA2000 // Stream ownership transferred; disposed in finally below.
         var sourceStream = GetSourceStream(entry, isAsset, isConfig, theme, extensions);
 #pragma warning restore CA2000
 
