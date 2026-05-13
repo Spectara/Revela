@@ -22,4 +22,7 @@ internal static partial class NupkgExtractorLogging
 
     [LoggerMessage(Level = LogLevel.Debug, Message = "Created metadata file: {MetadataPath}")]
     public static partial void MetadataCreated(this ILogger<NupkgExtractor> logger, string metadataPath);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Skipped suspicious nupkg entry with unsafe path: {EntryName}")]
+    public static partial void SkippedSuspiciousEntry(this ILogger<NupkgExtractor> logger, string entryName);
 }

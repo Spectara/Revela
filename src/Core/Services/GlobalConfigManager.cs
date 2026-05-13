@@ -85,6 +85,21 @@ public sealed partial class GlobalConfigManager(ILogger<GlobalConfigManager> log
         var json = JsonSerializer.Serialize(config, GlobalConfigJsonContext.Default.GlobalConfigFile);
         await File.WriteAllTextAsync(configPath, json, cancellationToken);
 
+        // On Unix-like systems, restrict the global config to the owner only.
+        // The file currently does not store live secrets, but it can grow to contain
+        // feed URLs / installed packages — keep it private by default.
+        if (!OperatingSystem.IsWindows())
+        {
+            try
+            {
+                File.SetUnixFileMode(configPath, UnixFileMode.UserRead | UnixFileMode.UserWrite);
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or PlatformNotSupportedException)
+            {
+                LogUnixModeFailed(configPath, ex.Message);
+            }
+        }
+
         cachedConfig = config;
     }
 
@@ -195,6 +210,9 @@ public sealed partial class GlobalConfigManager(ILogger<GlobalConfigManager> log
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Config file '{ConfigPath}' is corrupted ({Error}), using defaults")]
     private partial void LogConfigCorrupted(string configPath, string error);
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Could not restrict permissions on '{ConfigPath}' ({Error})")]
+    private partial void LogUnixModeFailed(string configPath, string error);
 
     #endregion
 

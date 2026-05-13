@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Security;
 using System.Text;
 using Spectara.Revela.Features.Generate.Models;
 
@@ -48,10 +49,10 @@ internal static class SitemapGenerator
     {
         sb.AppendLine("  <url>");
         sb.Append("    <loc>");
-        sb.Append(loc);
+        sb.Append(SecurityElement.Escape(loc));
         sb.AppendLine("</loc>");
         sb.Append("    <lastmod>");
-        sb.Append(lastmod);
+        sb.Append(SecurityElement.Escape(lastmod));
         sb.AppendLine("</lastmod>");
         sb.AppendLine("  </url>");
     }

@@ -92,21 +92,41 @@ public sealed class LocalThemeProvider : ITheme
 
     /// <inheritdoc />
     public IEnumerable<string> GetAllFiles() =>
-        Directory.EnumerateFiles(ThemeDirectory, "*", SearchOption.AllDirectories)
+        // Skip reparse points (symlinks, junctions) so a planted symlink in the theme
+        // directory cannot leak unrelated files outside ThemeDirectory.
+        Directory.EnumerateFiles(
+                ThemeDirectory,
+                "*",
+                new EnumerationOptions
+                {
+                    RecurseSubdirectories = true,
+                    AttributesToSkip = FileAttributes.ReparsePoint
+                })
             .Select(path => Path.GetRelativePath(ThemeDirectory, path))
             .Where(path => !path.Equals("theme.json", StringComparison.OrdinalIgnoreCase));
 
     /// <inheritdoc />
     public async Task ExtractToAsync(string targetDirectory, CancellationToken cancellationToken = default)
     {
+        var rootFull = Path.GetFullPath(targetDirectory);
+
         foreach (var relativePath in GetAllFiles())
         {
             cancellationToken.ThrowIfCancellationRequested();
 
             var sourcePath = Path.Combine(ThemeDirectory, relativePath);
-            var targetPath = Path.Combine(targetDirectory, relativePath);
-            var targetDir = Path.GetDirectoryName(targetPath);
+            var targetPath = Path.GetFullPath(Path.Combine(rootFull, relativePath));
 
+            // Defense-in-depth: even though GetAllFiles() already filters reparse points,
+            // verify the resolved target stays inside targetDirectory before we write.
+            var rel = Path.GetRelativePath(rootFull, targetPath);
+            if (rel.StartsWith("..", StringComparison.Ordinal) || Path.IsPathRooted(rel))
+            {
+                throw new InvalidOperationException(
+                    $"Refusing to extract theme entry with unsafe path: '{relativePath}'.");
+            }
+
+            var targetDir = Path.GetDirectoryName(targetPath);
             if (!string.IsNullOrEmpty(targetDir))
             {
                 Directory.CreateDirectory(targetDir);

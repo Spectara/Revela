@@ -1,4 +1,6 @@
+using System.Globalization;
 using System.Net.Http.Json;
+using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using Spectara.Revela.Plugins.Source.OneDrive.Models;
@@ -35,7 +37,10 @@ internal sealed class SharedLinkProvider(
         CancellationToken cancellationToken = default
     )
     {
-        logger.ListingItems(shareUrl);
+        if (logger.IsEnabled(LogLevel.Debug))
+        {
+            logger.ListingItems(RedactShareUrl(shareUrl));
+        }
 
         var token = await GetBadgerTokenAsync(cancellationToken);
 
@@ -331,7 +336,7 @@ internal sealed class SharedLinkProvider(
 
         var lastModified = element.TryGetProperty("fileSystemInfo", out var fileSystemInfoElement) &&
                            fileSystemInfoElement.TryGetProperty("lastModifiedDateTime", out var modifiedElement)
-            ? DateTime.Parse(modifiedElement.GetString()!, System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.AdjustToUniversal | System.Globalization.DateTimeStyles.AssumeUniversal)
+            ? DateTime.Parse(modifiedElement.GetString()!, CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal | DateTimeStyles.AssumeUniversal)
             : DateTime.UtcNow;
 
         var mimeType = element.TryGetProperty("file", out var fileElement) &&
@@ -366,6 +371,28 @@ internal sealed class SharedLinkProvider(
     internal sealed class BadgerTokenResponse
     {
         public string? Token { get; set; }
+    }
+
+    /// <summary>
+    /// Returns a redacted form of a OneDrive share URL safe to log.
+    /// Format: <c>{host}/#{sha256-prefix}</c> — preserves enough info for correlation
+    /// without exposing the share token (which acts as a bearer credential).
+    /// </summary>
+    internal static string RedactShareUrl(string? shareUrl)
+    {
+        if (string.IsNullOrWhiteSpace(shareUrl))
+        {
+            return "<empty>";
+        }
+
+        var hash = Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(shareUrl)))[..8];
+
+        if (Uri.TryCreate(shareUrl, UriKind.Absolute, out var uri))
+        {
+            return string.Create(CultureInfo.InvariantCulture, $"{uri.Host}/#{hash}");
+        }
+
+        return string.Create(CultureInfo.InvariantCulture, $"<unparseable>/#{hash}");
     }
 
     /// <summary>

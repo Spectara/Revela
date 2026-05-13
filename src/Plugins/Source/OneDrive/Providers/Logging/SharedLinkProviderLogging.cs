@@ -6,9 +6,11 @@ namespace Spectara.Revela.Plugins.Source.OneDrive.Providers.Logging;
 internal static partial class SharedLinkProviderLogging
 {
     // OneDrive share URLs (https://1drv.ms/f/s!ABC123…) embed an account-scoped
-    // resource identifier. Logged at Debug only to avoid leaking it into default-verbosity logs.
-    [LoggerMessage(Level = LogLevel.Debug, Message = "Listing items from OneDrive share: {shareUrl}")]
-    public static partial void ListingItems(this ILogger<SharedLinkProvider> logger, string shareUrl);
+    // resource identifier that effectively acts as a bearer credential. Even at Debug
+    // verbosity we only log a redacted form (host + short hash) to avoid leaking the
+    // share token into log files or aggregators.
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Listing items from OneDrive share: {shareRef}")]
+    public static partial void ListingItems(this ILogger<SharedLinkProvider> logger, string shareRef);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Listed {count} items from OneDrive")]
     public static partial void ItemsListed(this ILogger<SharedLinkProvider> logger, int count);

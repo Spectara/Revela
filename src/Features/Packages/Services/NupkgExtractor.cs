@@ -60,6 +60,8 @@ public sealed class NupkgExtractor(ILogger<NupkgExtractor> logger, TimeProvider 
         var pluginDir = Path.Combine(targetDir, identity.Id);
         _ = Directory.CreateDirectory(pluginDir);
 
+        var pluginDirFull = Path.GetFullPath(pluginDir);
+
         foreach (var item in targetGroup.Items)
         {
             var entry = archive.GetEntry(item);
@@ -68,8 +70,23 @@ public sealed class NupkgExtractor(ILogger<NupkgExtractor> logger, TimeProvider 
                 continue;
             }
 
+            // Defense-in-depth against ZipSlip: even though we already strip the path with
+            // Path.GetFileName, refuse anything that decodes to an absolute or escaping path
+            // before composing destPath.
             var fileName = Path.GetFileName(item);
-            var destPath = Path.Combine(pluginDir, fileName);
+            if (string.IsNullOrEmpty(fileName) || fileName.Contains("..", StringComparison.Ordinal) || Path.IsPathRooted(fileName))
+            {
+                logger.SkippedSuspiciousEntry(item);
+                continue;
+            }
+
+            var destPath = Path.GetFullPath(Path.Combine(pluginDirFull, fileName));
+            var rel = Path.GetRelativePath(pluginDirFull, destPath);
+            if (rel.StartsWith("..", StringComparison.Ordinal) || Path.IsPathRooted(rel))
+            {
+                logger.SkippedSuspiciousEntry(item);
+                continue;
+            }
 
             await using var entryStream = await entry.OpenAsync(cancellationToken);
             await using var fileStream = new FileStream(

@@ -436,7 +436,13 @@ internal sealed partial class OneDriveSourceCommand(
             },
             async (item, ct) =>
             {
-                var destinationPath = Path.Combine(destinationDirectory, item.RelativePath);
+                if (!TryResolveSafeDestination(destinationDirectory, item.RelativePath, out var destinationPath))
+                {
+                    LogPathTraversalRejected(item.RelativePath);
+                    throw new InvalidOperationException(
+                        $"Refusing to download item with unsafe path: '{item.RelativePath}'. " +
+                        "The remote name attempts to escape the destination directory.");
+                }
 
                 // Download file first
                 var downloadedPath = await provider.DownloadFileAsync(item.RemoteItem, destinationPath, ct);
@@ -465,5 +471,36 @@ internal sealed partial class OneDriveSourceCommand(
 
     [LoggerMessage(Level = LogLevel.Error, Message = "Download failed")]
     private partial void LogDownloadFailed(Exception exception);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Rejected OneDrive item with unsafe relative path: {relativePath}")]
+    private partial void LogPathTraversalRejected(string relativePath);
+
+    /// <summary>
+    /// Resolves the remote relative path against the destination directory and rejects
+    /// any attempt to escape the destination via parent traversal, absolute paths, or
+    /// alternate volumes. Mirrors <c>StaticFileServer.TryResolveSafePath</c>.
+    /// </summary>
+    internal static bool TryResolveSafeDestination(string destinationDirectory, string relativePath, out string resolvedPath)
+    {
+        // Normalize separators so a backslash on Linux can't slip past Path.GetRelativePath.
+        var normalized = (relativePath ?? string.Empty).Replace('\\', '/');
+
+        if (normalized.Length == 0 || Path.IsPathRooted(normalized))
+        {
+            resolvedPath = string.Empty;
+            return false;
+        }
+
+        var rootFull = Path.GetFullPath(destinationDirectory);
+        resolvedPath = Path.GetFullPath(Path.Combine(rootFull, normalized));
+
+        var relative = Path.GetRelativePath(rootFull, resolvedPath);
+        if (relative.StartsWith("..", StringComparison.Ordinal) || Path.IsPathRooted(relative))
+        {
+            return false;
+        }
+
+        return true;
+    }
 }
 
