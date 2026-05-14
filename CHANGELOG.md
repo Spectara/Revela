@@ -15,7 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- **`revela --version` is now human-readable and host-kind aware** — the System.CommandLine default action is replaced with a renderer that prints `revela 1.0.0 (.NET 10.0.7)` (or `… — embedded build` for the standalone variant). Identical to the first line of `revela info`, so both surfaces report the same identifier. ([#23](https://github.com/Spectara/Revela/issues/23))
+- **`revela --version` is now human-readable and host-kind aware** — the System.CommandLine default action is replaced with a renderer that prints `revela 1.0.0 (.NET 10.0.7)` (or `… — embedded build` for the embedded variant). Identical to the first line of `revela info`, so both surfaces report the same identifier. ([#23](https://github.com/Spectara/Revela/issues/23))
 - **Welcome panel slimmed down** — the ASCII-art Revela logo is removed from interactive startup (it was off-brand vs. the actual aperture wordmark and added ~6 lines of friction on every menu render). The welcome panel header is now `Revela`; the redundant `Version` line and the `Modern static site generator for photographers` tagline are gone. Version data lives in `revela info` (canonical for both CLI and TUI users). The first-run panel is unchanged. ([#23](https://github.com/Spectara/Revela/issues/23))
 
 ### Fixed
