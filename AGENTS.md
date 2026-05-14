@@ -39,7 +39,13 @@ Quick orientation for AI coding agents (GitHub Copilot, Claude, Cursor, etc.) wo
 |-------|----------------|
 | **Revela Dev** | Implementation work — features, bug fixes, commands, plugins, services, tests, refactoring. Knows all conventions. |
 | **Revela Reviewer** | Architecture / security / performance reviews. Read-only audit with structured report. |
+| **Spike Analyst** | New feature ideas — interactive analysis (problem sharpening, prior-art research, MVP carving, trade-off matrix). Read-only. Hands off to Dev when build is approved. |
 | **Explore** | Read-only codebase exploration when chaining many searches. Safe to call in parallel. |
+| **Pattern Finder** | Subagent — finds canonical existing examples (plugin, command, config, HttpClient, etc.) to mirror. Dispatched by Dev before new implementations. |
+| **Convention Sentry** | Subagent — anti-pattern scanner returning JSON findings. Dispatched by Reviewer in Phase 3. |
+| **Plugin Auditor** | Subagent — single-plugin convention audit. Dispatched by Reviewer in Phase 2, one per plugin in parallel. |
+| **Test Doctor** | Subagent — test-quality audit (FluentAssertions/Moq, missing assertions, MSTest patterns). Dispatched by Reviewer in Phase 3 for `tests/`. |
+| **Security Scout** | Subagent — OWASP-aligned security scan (secrets, vulnerable deps, path traversal, SSRF, crypto). Dispatched by Reviewer in Phase 4. |
 
 ## Skills (`.github/skills/`)
 
@@ -49,7 +55,6 @@ Quick orientation for AI coding agents (GitHub Copilot, Claude, Cursor, etc.) wo
 | `build-release` | Local release build — Standalone, Full, or Core variant (`scripts/build-release.ps1`) |
 | `commit-changes` | Conventional Commits — wait for explicit user request |
 | `create-release` | Bump version, update `CHANGELOG.md`, tag |
-| `refactor` | Surgical refactors without behavior change |
 | `review-code` | Per-file code review against `.editorconfig` and conventions |
 | `test-release` | End-to-end release pipeline test (`scripts/test-release.ps1`) |
 

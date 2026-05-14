@@ -1,6 +1,8 @@
 ---
 name: test-release
 description: Runs the end-to-end release pipeline test using scripts/test-release.ps1. Tests build, pack, plugin install, generate all, compress, clean, idempotency, and dotnet tool install. Use when the user wants to test a release, verify the pipeline, check packaging, or validate before publishing.
+argument-hint: "[--SkipTests] [--IncludeOneDrive] [--Version 0.0.0-test]"
+context: fork
 ---
 
 # Test Release Pipeline — Revela Project

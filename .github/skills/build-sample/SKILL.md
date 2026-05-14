@@ -1,6 +1,7 @@
 ---
 name: build-sample
 description: Builds a sample project (revela-website, showcase, onedrive) using the local CLI. Use when the user wants to build a sample, generate a site, test output, preview the website, or regenerate pages/images.
+argument-hint: "[sample-name] [generate|clean] [step]"
 ---
 
 # Build Sample Project — Revela Project

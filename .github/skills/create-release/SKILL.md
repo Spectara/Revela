@@ -1,6 +1,7 @@
 ---
 name: create-release
 description: Creates a new Revela release by updating CHANGELOG.md, committing changes, and creating a git tag. Use when the user asks to create a release, prepare a release, bump the version, or tag a new version.
+argument-hint: "[version e.g. 0.5.0 or 0.5.0-beta.1]"
 ---
 
 # Create Release — Revela Project

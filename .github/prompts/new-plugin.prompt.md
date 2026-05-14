@@ -1,5 +1,6 @@
 ---
-mode: agent
+agent: Revela Dev
+argument-hint: "[plugin-name]"
 description: "Scaffold a new Revela plugin — project, csproj, plugin class, command, config, tests"
 ---
 

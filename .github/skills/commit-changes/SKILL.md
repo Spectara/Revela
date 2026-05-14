@@ -1,6 +1,8 @@
 ---
 name: commit-changes
 description: Creates git commits with comprehensive, Conventional Commits-formatted messages. Use when the user asks to commit, stage changes, save progress, or create a commit message. Ensures consistent, descriptive commit messages following project conventions.
+argument-hint: "[optional scope or context hint]"
+disable-model-invocation: true
 ---
 
 # Commit Changes — Revela Project

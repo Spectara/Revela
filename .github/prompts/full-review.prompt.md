@@ -1,11 +1,11 @@
 ---
-mode: agent
+agent: Revela Reviewer
 description: "Run a multi-phase deep review of the Revela codebase (architecture → quality → security → performance)"
 ---
 
 # Full Codebase Review
 
-Switch to (or invoke) the **Revela Reviewer** agent and execute a complete five-phase review.
+Execute a complete five-phase review using the **Revela Reviewer** persona (auto-routed via the `agent:` frontmatter).
 
 ## Phases (run in order — each phase blocks on the previous)
 

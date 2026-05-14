@@ -1,6 +1,7 @@
 ---
 name: review-code
 description: Reviews C# code against Revela project conventions, .editorconfig rules, and .NET 10 best practices. Covers naming, patterns, async, logging, DI, configuration, commands, testing, and code style. Use when reviewing code, suggesting improvements, or checking for convention violations in the Revela codebase.
+argument-hint: "[file-path or scope]"
 ---
 
 # Code Review — Revela Project

@@ -1,5 +1,6 @@
 ---
-mode: agent
+agent: Revela Dev
+argument-hint: "[version]"
 description: "Generate CHANGELOG.md entries from git commits since the last release tag"
 ---
 

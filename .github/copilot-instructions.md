@@ -1,80 +1,23 @@
-# GitHub Copilot - Revela Context
+# GitHub Copilot — Revela
 
-**Purpose:** Help GitHub Copilot understand this project better in future sessions.
+> **Detailed conventions live in scoped instruction files** under [`.github/instructions/`](./instructions/).
+> They auto-apply via `applyTo:` globs. This file is the always-on baseline only — keep it short.
 
 ---
 
 ## Project Overview
 
-**Website:** https://revela.website
+**Revela** ([revela.website](https://revela.website)) is a **.NET 10 / C# 14** static site generator for photographers. It is a complete rewrite of the original Bash project [`Expose`](https://github.com/kirkone/Expose) — same output, modern internals.
 
-**Revela** is a modern static site generator for photographers, built with .NET 10.
-
-This is a **complete rewrite** of the original Bash-based revela project:
-- **Original Project:** https://github.com/kirkone/Expose
-- **Original Language:** Bash/Shell scripts
-- **New Implementation:** .NET 10 / C# 14
-
-### Migration Goals
-- **Keep the same output** - Generated sites should look identical
-- **Improve performance** - NetVips is 3-5× faster than the original
-- **Add extensibility** - Plugin system for optional features
-- **Cross-platform** - Works on Windows, Linux, macOS
-- **Modern tooling** - .NET ecosystem, IDE support
-
-### Key Characteristics
-- **Target:** Photographers wanting fast, beautiful portfolio sites
-- **Focus:** Performance (large images), simplicity, extensibility
-- **Architecture:** Vertical Slice + Plugin System
-- **Technology:** .NET 10, NetVips, Scriban, System.CommandLine 2.0
-- **Status:** Pre-release, no public users yet
-
-### Breaking Changes Policy
-> ⚠️ **No backward compatibility required!**
-> 
-> This project has **no users yet**. Feel free to:
-> - Rename classes, methods, properties without migration
-> - Change configuration formats (JSON structure, property names)
-> - Restructure folders and namespaces
-> - Remove deprecated code immediately
-> - Change CLI command names and options
-> 
-> **Don't waste time on:** Migration scripts, deprecation warnings, or compatibility layers.
-> **Focus on:** Clean design, best practices, and getting it right the first time.
-
-### Differences from Original
 | Aspect | Original (Bash) | Revela |
-|--------|-----------------|------------|
-| **Config** | Bash variables | JSON + IConfiguration |
-| **Templates** | Mustache-Light (regex) | Scriban (full-featured) |
-| **Markdown** | Perl script | Markdig (C#) |
-| **Images** | VIPS CLI | NetVips (library) |
-| **EXIF** | ExifTool CLI | NetVips built-in |
-| **Plugins** | ❌ None | ✅ NuGet-based |
-| **GUI** | ❌ None | ✅ Planned (WPF/MAUI) |
+|--------|-----------------|--------|
+| Templates | Mustache-Light (regex) | Scriban |
+| Markdown | Perl | Markdig |
+| Images | VIPS CLI | NetVips |
+| EXIF | ExifTool | NetVips built-in |
+| Plugins | ❌ | ✅ NuGet-based |
 
-**Important:** The output (HTML, images) should look the same, but the internal structure and files can differ!
-
----
-
-## Code Style & Conventions
-
-> **Detailed coding standards are in the Revela Dev agent** (`.github/agents/revela-dev.agent.md`).
-> Below is a quick reference of the most important conventions.
-
-### Naming
-- **Private instance fields:** `camelCase` (NO underscore!)
-- **Async methods:** `MethodNameAsync` (Async suffix)
-- **File-scoped namespaces:** Always
-
-### Key Rules
-- **`var` everywhere** — never spell out the type
-- **`StringComparison.Ordinal`** — always specify on string methods
-- **`CultureInfo.InvariantCulture`** — always for formatting
-- **LoggerMessage source generator** — never string interpolation in log calls
-- **Primary constructors** for DI
-- **Sealed classes** by default
-- **`TreatWarningsAsErrors=true`** — fix root causes, don't suppress
+**Status:** Pre-release — **no users, no backward compatibility required.** Rename, restructure, refactor freely. No migration scripts, no deprecation warnings.
 
 ---
 
@@ -82,1187 +25,147 @@ This is a **complete rewrite** of the original Bash-based revela project:
 
 ```
 src/
-├── Core/                     # Shared kernel (services, package loading, configuration)
-├── Commands/                 # CLI commands — host-owned (Config, Packages, Plugins, Restore)
-│                             # Also references Core features (Generate, Theme)
-├── Cli/                      # Entry point (dynamic plugin loading via DiskPackageSource)
-├── Cli.Embedded/             # Entry point (static plugin references via EmbeddedPackageSource)
-│                             # → Default for debugging, all plugins/themes built in
-├── Sdk/                      # SDK for plugin development (abstractions, models, services)
-├── Plugins/
-│   ├── Core/                 # Core features — always built into CLI (NOT plugin-loaded)
-│   │   ├── Generate/  # Core generate pipeline (scan, pages, images, clean)
-│   │   ├── Theme/     # Theme management (install, list, extract)
-│   │   └── Projects/  # Project management (create, list, delete)
-│   ├── Calendar/      # Calendar/timeline functionality
-│   ├── Compress/      # Gzip/Brotli pre-compression
-│   ├── Serve/         # Local development server
-│   ├── Source/
-│   │   ├── Calendar/  # Calendar source plugin
-│   │   └── OneDrive/  # OneDrive shared folder source
-│   └── Statistics/    # EXIF statistics functionality
-└── Themes/
-    ├── Lumina/         # Default photography portfolio theme
-    ├── Lumina.Calendar/    # Calendar extension for Lumina theme
-    └── Lumina.Statistics/  # Statistics extension for Lumina theme
-tests/
-├── Core/               # Unit tests for Core
-├── Commands/           # Unit tests for Commands
-├── Integration/         # Integration tests
-├── Calendar/    # Calendar plugin tests
-├── Compress/    # Compression plugin tests
-├── Serve/       # Serve plugin tests
-├── Source/
-│   ├── Calendar/  # Calendar source plugin tests
-│   └── OneDrive/  # OneDrive plugin tests
-├── Statistics/  # Statistics plugin tests
-└── Shared/                   # Shared test utilities
+├── Sdk/              # Public abstractions for plugin/theme authors
+├── Sdk.Generators/   # Roslyn source generators ([RevelaConfig], etc.)
+├── Core/             # Shared kernel — services, package loading, configuration
+├── Commands/         # Host-owned CLI commands (Config, Packages, Plugins, Restore)
+├── Features/         # Always built-in (Generate, Theme, Projects) — NOT plugins
+├── Plugins/          # External plugins (Calendar, Compress, Serve, Source/*, Statistics)
+├── Themes/           # Lumina (base) + Lumina.Calendar, Lumina.Statistics (extensions)
+├── Cli/              # Entry point — dynamic plugin loading (DiskPackageSource)
+└── Cli.Embedded/     # Entry point — static plugin refs (EmbeddedPackageSource) ← F5 debug
+tests/                # Mirrors src/ + Shared (fixtures)
+samples/              # revela-website, showcase, onedrive, calendar
+benchmarks/           # BenchmarkDotNet projects
+docs/                 # Architecture, plugin dev, setup
+scripts/              # build-release.ps1, test-release.ps1
 ```
 
-### Key Files
-- **Plugin Abstractions:** `src/Sdk/Abstractions/` - IPlugin, IPipelineStep, IWizardStep, CommandDescriptor
-- **Engine Facade:** `src/Sdk/Abstractions/Engine/IRevelaEngine.cs` - High-level generation API
-- **Models:** `src/Sdk/Models/Manifest/` - ImageContent, GalleryContent, ManifestMeta
-- **Engine Models:** `src/Sdk/Models/Engine/` - ScanResult, PagesResult, ImagesResult, GenerateResult
-- **Config:** `src/Core/Configuration/` + `src/Sdk/Configuration/` - Configuration models
-- **Global Config:** `src/Core/Services/IGlobalConfigManager.cs` + `GlobalConfigManager.cs` - revela.json read/write (DI singleton)
-- **Package Source:** `src/Sdk/Abstractions/IPackageSource.cs` - Plugin/theme loading abstraction
-- **Package Loading:** `src/Core/PackageLoader.cs` + `DiskPackageSource.cs` (runtime discovery)
-- **Package Registration:** `src/Core/Extensions/PackageServiceCollectionExtensions.cs` - AddPackages lifecycle
-- **Path Resolution:** `src/Sdk/Services/IPathResolver.cs` + `PathResolver.cs`
-- **Output Helpers:** `src/Sdk/Output/OutputMarkers.cs`, `src/Sdk/ProjectPaths.cs`
-- **CLI Hosting:** `src/Cli/Hosting/` - HostBootstrap, CoreCommandProvider, HostExtensions, InteractiveMenuService
+**Two entry points, one bootstrap:** `Cli` and `Cli.Embedded` differ only in their `IPackageSource`. All shared setup lives in `src/Cli/Hosting/HostBootstrap.cs`.
 
 ---
 
-## Important Implementation Details
-
-### 1. Image Processing (NetVips)
-```csharp
-// NetVips is our image processor
-using NetVips;
-
-var image = Image.NewFromFile(path);
-var resized = image.ThumbnailImage(width);
-resized.WriteToFile(output);
-```
-
-### 2. Template Engine (Scriban)
-```csharp
-// Scriban for templates
-using Scriban;
-
-var template = Template.Parse(content);
-var result = template.Render(model);
-```
-
-### 3. CLI Commands (System.CommandLine 2.0)
-
-**IMPORTANT:** System.CommandLine 2.0 API is different from beta versions!
-
-```csharp
-// ✅ CORRECT - System.CommandLine 2.0 API
-using System.CommandLine;
-
-// Create command
-var command = new Command("mycommand", "Description of command");
-
-// Create option with aliases
-var option = new Option<string>("--name", "-n")
-{
-    Description = "Option description",
-    Required = false  // Optional: make required
-};
-
-// Add option to command
-command.Options.Add(option);
-
-// Set action handler
-command.SetAction(parseResult =>
-{
-    var value = parseResult.GetValue(option);
-    
-    // Execute logic
-    Console.WriteLine($"Value: {value}");
-    
-    return 0; // Exit code
-});
-
-// Add subcommands
-command.Subcommands.Add(subCommand);
-
-// Parse and invoke
-var rootCommand = new RootCommand("Description");
-rootCommand.Subcommands.Add(command);
-return rootCommand.Parse(args).Invoke();
-```
-
-**Command Registration Pattern:**
-- **Host Commands:** Registered via `AddRevelaCommands()` — all host-owned commands + Core features
-- **Plugin Commands:** Registered via `AddPackages()` → `IPlugin.ConfigureServices()` + `IPlugin.GetCommands()`
-- **Core Features:** Generate and Theme are NOT plugins — registered directly in `AddRevelaCommands()`
-  ```csharp
-  // All setup in HostBootstrap.ConfigureRevela():
-  builder.Services.AddRevelaCommands();       // Host-owned commands + Core features
-  builder.Services.AddPackages(packageSource, builder.Configuration, args);
-  // packageSource = DiskPackageSource (Cli) or EmbeddedPackageSource (Cli.Embedded)
-  ```
-
-### 4. Plugin System with Host.CreateApplicationBuilder
-
-**MODERN PATTERN:** Two entry points sharing a common bootstrap via `HostBootstrap`.
-
-#### Two Entry Points — One Shared Bootstrap
-
-```csharp
-// Cli/Program.cs — Dynamic plugin loading (~10 lines)
-var builder = Host.CreateApplicationBuilder(new HostApplicationBuilderSettings
-{
-    Args = args,
-    ContentRootPath = Directory.GetCurrentDirectory(),
-});
-builder.ConfigureRevela(args, new DiskPackageSource());
-builder.Services.AddPackageManagement();
-return await builder.Build().RunRevelaAsync(args);
-```
-
-```csharp
-// Cli.Embedded/Program.cs — Static plugin references (~10 lines, same structure)
-var builder = Host.CreateApplicationBuilder(new HostApplicationBuilderSettings
-{
-    Args = args,
-    ContentRootPath = Directory.GetCurrentDirectory(),
-});
-builder.ConfigureRevela(args, new EmbeddedPackageSource());
-return await builder.Build().RunRevelaAsync(args);
-```
-
-**The only difference is the `IPackageSource` parameter.** Everything else is shared in `HostBootstrap`.
-
-#### HostBootstrap — Shared Setup
-
-```csharp
-// Cli/Hosting/HostBootstrap.cs (shared via Compile Include in Cli.Embedded)
-internal static class HostBootstrap
-{
-    public static HostApplicationBuilder ConfigureRevela(
-        this HostApplicationBuilder builder, string[] filteredArgs, IPackageSource packageSource)
-    {
-        builder.AddRevelaConfiguration();       // revela.json → project.json → logging.json
-        builder.Services.AddRevelaConfigSections(); // IOptions<T> for all config models
-        builder.Services.AddCoreServices();      // GlobalConfigManager etc.
-        builder.Services.AddRevelaCommands();    // All CLI commands
-        builder.Services.AddInteractiveMode();   // Interactive menu system
-        builder.Services.AddPackages(packageSource, builder.Configuration, filteredArgs);
-        // + ProjectEnvironment registration
-        return builder;
-    }
-
-    public static async Task<int> RunRevelaAsync(this IHost host, string[] filteredArgs)
-    {
-        // Creates CLI, detects interactive mode, executes
-    }
-}
-```
-
-#### IPackageSource — Plugin Loading Abstraction
-
-```csharp
-// Sdk: Interface
-public interface IPackageSource
-{
-    IReadOnlyList<LoadedPluginInfo> LoadPlugins();
-    IReadOnlyList<LoadedThemeInfo> LoadThemes();
-}
-
-// Core: Dynamic loading (for dotnet tool / standalone release)
-public sealed class DiskPackageSource : IPackageSource { /* PackageLoader wrapper */ }
-
-// Cli.Embedded: Static references (for debugging / AOT build)
-internal sealed class EmbeddedPackageSource : IPackageSource
-{
-    public IReadOnlyList<LoadedPluginInfo> LoadPlugins() =>
-    [
-        new(new CompressPlugin(), PackageSource.Bundled),
-        new(new ServePlugin(), PackageSource.Bundled),
-        // ... all 6 plugins
-    ];
-}
-```
-
-**Key Components:**
-- **`HostBootstrap`:** Shared setup in `ConfigureRevela()` + `RunRevelaAsync()` — no code drift possible
-- **`ProjectEnvironment`:** Runtime info — `Path` (project dir = CWD), `IsInitialized` (project.json exists)
-- **`AddRevelaConfiguration()`:** Loads config chain: `revela.json` (global %APPDATA%) → `project.json` (local) → `logging.json`. Note: `site.json` is NOT loaded via IConfiguration — it's loaded dynamically by RenderService.
-- **`AddRevelaConfigSections()`:** Registers `IOptions<T>` for ProjectConfig, ThemeConfig, GenerateConfig, PathsConfig, etc. Also registers `IPathResolver` and `IGlobalConfigManager`.
-- **`AddInteractiveMode()`:** Registers CommandOrderRegistry, CommandGroupRegistry, IInteractiveMenuService
-
-**Debugging:** Use `Cli.Embedded` as startup project — all plugins available, breakpoints work everywhere.
-
-#### Plugin Lifecycle - 2 Required + 2 Optional Members
-
-**Simplified plugin interface using Default Interface Methods:**
-
-```csharp
-// Base: all packages share PackageMetadata
-interface IPackage { PackageMetadata Metadata { get; } }
-
-// Plugins: services + commands
-interface IPlugin : IPackage
-{
-    void ConfigureServices(IServiceCollection services);
-    void ConfigureConfiguration(IConfigurationBuilder config) { }
-    IEnumerable<CommandDescriptor> GetCommands(IServiceProvider sp) => [];
-}
-
-// Themes: templates + assets (NO ConfigureServices, NO GetCommands)
-interface ITheme : IPackage
-{
-    string? Prefix { get; }          // null = base theme, "statistics" = extension
-    string? TargetTheme { get; }     // null = standalone, "Lumina" = extends Lumina
-    ThemeManifest Manifest { get; }
-    Stream? GetFile(string path);
-    IEnumerable<string> GetAllFiles();
-}
-
-// Unified metadata for all packages
-public record PackageMetadata
-{
-    public required string Id { get; init; }
-    public required string Name { get; init; }
-    public required string Version { get; init; }
-    public required string Description { get; init; }
-    public string Author { get; init; } = "Unknown";
-    public IReadOnlyList<string> RequiredPackages { get; init; } = [];
-    public IReadOnlyList<string> ExtendsPackages { get; init; } = [];
-    public Uri? PreviewImageUri { get; init; };
-    public IReadOnlyList<string> Tags { get; init; } = [];
-}
-```
-
-#### AddPackages() Extension Method
-
-**Plugin lifecycle managed by `AddPackages()`, using `IPackageSource` for plugin discovery:**
-
-```csharp
-// Extension method handles all plugin lifecycle phases
-public static void AddPackages(
-    this IServiceCollection services,
-    IPackageSource packageSource,
-    IConfigurationBuilder configuration,
-    string[] args)
-{
-    // 1. Load plugins/themes from source (disk or embedded)
-    var plugins = packageSource.LoadPlugins().ToList();
-    var themes = packageSource.LoadThemes().ToList();
-    
-    // 2. Validate plugin dependencies (RequiredPlugins, ExtendsPlugins)
-    ValidatePluginDependencies(plugins, loggerFactory);
-    
-    // 3. ConfigureConfiguration (optional, usually no-op)
-    //    ENV vars auto-loaded with SPECTARA__REVELA__ prefix
-    foreach (var plugin in plugins)
-        plugin.ConfigureConfiguration(configuration);
-    
-    // 4. ConfigureServices (required)
-    //    Plugins use TryAdd* for idempotent registration
-    foreach (var plugin in plugins)
-        plugin.ConfigureServices(services);
-    
-    // 5. Register IPackageContext in DI (resolved in UseRevelaCommands)
-    services.AddSingleton<IPackageContext>(sp =>
-        new PackageContext(plugins, themes, sp.GetRequiredService<ILogger<PackageContext>>()));
-}
-```
-
-**Benefits:**
-- ✅ **No Initialize() phase** — IServiceProvider passed directly to GetCommands()
-- ✅ **No PluginContextPlaceholder** — void return, real context in DI
-- ✅ **Dependency validation** — RequiredPlugins/ExtendsPlugins checked at startup
-- ✅ **Idempotent registration** — Plugins use TryAdd* to avoid conflicts
-- ✅ **Configuration:** project.json sections, environment variables (SPECTARA__REVELA__*)
-- ✅ **Dependency Injection:** Full DI container with all features
-- ✅ **IOptions:** Validation, hot-reload, fail-fast
-
-#### Parent Command Pattern
-
-Plugins specify **parent command** in `CommandDescriptor`, NOT in metadata:
-
-```csharp
-// PackageMetadata is a unified record for plugins and themes
-public PackageMetadata Metadata => new()
-{
-    Id = "Spectara.Revela.Plugins.Source.OneDrive",
-    Name = "Source OneDrive",
-    Version = "1.0.0",
-    Description = "OneDrive shared folder source",
-    Author = "Spectara"
-};
-```
-
-**Plugin returns CommandDescriptor with optional parent, order, and group:**
-```csharp
-// CommandDescriptor is a record with 7 parameters:
-// record CommandDescriptor(Command, ParentCommand?, Order=50, Group?, RequiresProject=true, HideWhenProjectExists=false, IsSequentialStep=false)
-
-// IServiceProvider passed as parameter — no stored field needed!
-public IEnumerable<CommandDescriptor> GetCommands(IServiceProvider services)
-{
-    // ✅ Resolve commands directly from DI
-    var cmd = services.GetRequiredService<OneDriveSourceCommand>();
-    
-    // "source" = registered under source (revela source onedrive)
-    yield return new CommandDescriptor(
-        cmd.Create(),
-        ParentCommand: "source",
-        Order: 30,
-        Group: "Content");
-    
-    // Pipeline step: IsSequentialStep marks it for CLI "all" command discovery.
-    // Also implement IPipelineStep for engine/MCP execution (pure service, no UI).
-    yield return new CommandDescriptor(
-        scanCmd.Create(),
-        ParentCommand: "generate",
-        Order: 10,
-        Group: "Build",
-        IsSequentialStep: true);
-    
-    // null = registered at root level (revela mycommand)
-    // RequiresProject: false = available without project.json
-    yield return new CommandDescriptor(
-        new Command("sync", "Sync command"),
-        ParentCommand: null,
-        RequiresProject: false);
-}
-```
-
-**Program.cs creates parent automatically:**
-- Checks if parent exists
-- Creates if missing
-- Detects duplicate commands
-- Result: `revela source onedrive download`
-
-### 5. HttpClient Pattern (Microsoft Best Practice)
-
-**ALWAYS use Typed Client pattern for plugins!**
-
-```csharp
-// Plugin.ConfigureServices() - Register Typed HttpClient
-public void ConfigureServices(IServiceCollection services)
-{
-    services.AddHttpClient<SharedLinkProvider>(client =>
-    {
-        client.Timeout = TimeSpan.FromMinutes(5);
-        client.DefaultRequestHeaders.Add("User-Agent", "Revela/1.0");
-    });
-}
-
-// Service Constructor - Direct HttpClient injection
-public SharedLinkProvider(HttpClient httpClient, ILogger<SharedLinkProvider> logger)
-{
-    this.httpClient = httpClient;  // ✅ Pre-configured by plugin!
-    this.logger = logger;
-}
-```
-
-**Why Typed Client?**
-- ✅ Type-safe - Compiler checks dependencies
-- ✅ Configured per service - Each plugin has own config
-- ✅ Connection pooling - Automatic handler reuse
-- ✅ Testable - Easy to mock HttpClient
-- ✅ Microsoft recommended pattern
-
-**❌ DON'T:**
-```csharp
-// DON'T: Manual HttpClient creation
-using var client = new HttpClient();  // ❌ Socket exhaustion!
-
-// DON'T: IHttpClientFactory in Typed Client
-public MyService(IHttpClientFactory factory)  // ❌ Defeats purpose!
-{
-    _httpClient = factory.CreateClient();
-}
-
-// DON'T: Cache HttpClient in Singleton
-[Singleton]
-public class MyService
-{
-    private readonly HttpClient _client;  // ❌ Captive dependency!
-}
-```
-
-**See:** `docs/httpclient-pattern.md` for complete guide
-
-### 6. Logging Configuration
-
-**Logging uses defaults in code with optional user override:**
-
-#### **LoggingConfig with Defaults**
-```csharp
-// src/Sdk/Configuration/LoggingConfig.cs
-[RevelaConfig("Logging", ValidateDataAnnotations = false)]
-public sealed class LoggingConfig
-{
-    // ✅ Defaults in C# Properties (Warning to keep console clean)
-    public Dictionary<string, string> LogLevel { get; init; } = new()
-    {
-        ["Default"] = "Warning",
-        ["Spectara.Revela"] = "Warning",
-        ["Microsoft"] = "Warning",
-        ["System"] = "Warning"
-    };
-}
-```
-
-#### **Optional logging.json (Working Directory)**
-```json
-// D:\MyPhotos\logging.json (optional - for debugging)
-{
-  "Logging": {
-    "LogLevel": {
-      "Default": "Information",
-      "Spectara.Revela": "Debug"
-    }
-  }
-}
-```
-
-#### **Program.cs loads config**
-```csharp
-// AddRevelaConfiguration() handles all config loading:
-// 1. revela.json (global - from %APPDATA%/Revela/)
-// 2. project.json (local - project-specific settings)
-// 3. logging.json (local - optional logging overrides)
-// Note: site.json is NOT loaded via IConfiguration — loaded by RenderService
-
-// Apply config OR defaults
-var loggingConfig = new LoggingConfig();
-builder.Configuration.GetSection("Logging").Bind(loggingConfig);
-
-// Configure logging
-foreach (var (category, level) in loggingConfig.LogLevel)
-{
-    if (Enum.TryParse<LogLevel>(level, ignoreCase: true, out var logLevel))
-    {
-        if (category == "Default")
-        {
-            builder.Logging.SetMinimumLevel(logLevel);
-        }
-        else
-        {
-            builder.Logging.AddFilter(category, logLevel);
-        }
-    }
-}
-```
-
-**Configuration Sources (in priority order):**
-1. C# Defaults (LoggingConfig.LogLevel property)
-2. `revela.json` (global, from `%APPDATA%/Revela/`)
-3. `project.json` (local, project directory)
-4. `logging.json` (optional, project directory)
-5. Environment variables (`REVELA__LOGGING__LOGLEVEL__DEFAULT=Debug`)
-
-**Benefits:**
-- ✅ No appsettings.json needed (defaults in code)
-- ✅ Optional user override (logging.json)
-- ✅ Environment variables support
-- ✅ Perfect for Global Tools (ContentRoot = Working Directory)
-
-### 7. Plugin Configuration System
-
-**Plugin config is stored in `project.json` under the plugin's package ID as section name.**
-**Environment variables can override settings with the `SPECTARA__REVELA__` prefix.**
-
-#### **Step 1: Create Config Model**
-```csharp
-// src/Plugins/{Name}/Configuration/{PluginName}Config.cs
-using System.ComponentModel.DataAnnotations;
-using Spectara.Revela.Sdk.Abstractions;
-
-namespace Spectara.Revela.Plugins.{Name}.Configuration;
-
-/// <summary>
-/// Configuration section name - uses full package ID directly
-/// </summary>
-/// <remarks>
-/// Format: {FullPackageId} (no Plugins: prefix)
-/// This allows direct mapping from JSON root key and ENV variables.
-/// </remarks>
-[RevelaConfig("Spectara.Revela.Plugins.MyPlugin")]
-public sealed class MyPluginConfig
-{
-    /// <summary>
-    /// Configuration section name for use in config-writing commands.
-    /// </summary>
-    public static string SectionName => "Spectara.Revela.Plugins.MyPlugin";
-    
-    [Required(ErrorMessage = "ApiUrl is required")]
-    [Url(ErrorMessage = "Must be a valid URL")]
-    public string ApiUrl { get; init; } = string.Empty;
-    
-    public int Timeout { get; init; } = 30;
-}
-```
-
-#### **Step 2: Plugin Registers IOptions**
-```csharp
-public sealed class MyPlugin : IPlugin
-{
-    public PackageMetadata Metadata => new()
-    {
-        Name = "My Plugin",
-        Version = "1.0.0",
-        Description = "My plugin description",
-        Author = "Spectara"
-    };
-    
-    // ConfigureConfiguration is optional (default: no-op)
-    // Framework auto-loads project.json + ENV vars (SPECTARA__REVELA__*)
-    
-    // Register IOptions (generated by [RevelaConfig] source generator)
-    public void ConfigureServices(IServiceCollection services)
-    {
-        // Generated extension method — handles BindConfiguration,
-        // ValidateDataAnnotations (lazy on first .Value access)
-        // automatically
-        services.AddMyPluginConfig();
-        
-        // Register other services...
-    }
-}
-```
-
-**Plugin config section in `project.json`:**
-```json
-{
-  "Spectara.Revela.Plugins.MyPlugin": {
-    "ApiUrl": "https://api.example.com",
-    "Timeout": 60
-  }
-}
-```
-
-#### **Step 3: Commands Use IOptions**
-```csharp
-public sealed partial class MyCommand(
-    ILogger<MyCommand> logger,
-    IOptionsMonitor<MyPluginConfig> config)  // Injected config!
-{
-    private async Task ExecuteAsync(string? urlOverride)
-    {
-        // Get current config (hot-reload support)
-        var current = config.CurrentValue;
-        
-        // CLI overrides config
-        var url = urlOverride ?? current.ApiUrl;
-        
-        // Use config values...
-    }
-}
-```
-
-**Configuration Hierarchy (merged in order):**
-1. C# Property Defaults (in Config class)
-2. `project.json` section (e.g., `"Spectara.Revela.Plugins.MyPlugin": { ... }`)
-3. Environment variables: `SPECTARA__REVELA__PLUGIN__MYPLUGIN__*`
-4. CLI arguments (override in command)
-
-**Benefits:**
-- ✅ All config in one file (project.json)
-- ✅ Hot-reload support (`IOptionsMonitor<T>`)
-- ✅ Multi-source config (JSON, ENV, CLI)
-- ✅ Data Annotations validation
-- ✅ Fail-fast at startup
-- ✅ Zero boilerplate — `[RevelaConfig]` source generator handles registration
-- ✅ Fail-fast at startup
-
-### 8. Progress Display (Spectre.Console)
-
-**Two-Phase Progress Pattern (Scan + Download):**
-
-```csharp
-// Phase 1: Scan with Status Spinner
-await AnsiConsole.Status()
-    .Spinner(Spinner.Known.Dots)
-    .StartAsync("[yellow]Scanning...[/]", async ctx =>
-    {
-        var items = await ScanAsync();
-        ctx.Status($"[green]✓[/] Found {items.Count} items");
-        await Task.Delay(500); // Brief pause to show result
-    });
-
-// Phase 2: Download with Progress Bar
-await AnsiConsole.Progress()
-    .AutoClear(false)
-    .Columns(
-        new TaskDescriptionColumn(),
-        new ProgressBarColumn(),
-        new PercentageColumn(),
-        new RemainingTimeColumn(),
-        new SpinnerColumn()
-    )
-    .StartAsync(async ctx =>
-    {
-        var task = ctx.AddTask("[green]Downloading[/]");
-        task.IsIndeterminate = true; // Until total known
-        
-        var progress = new Progress<(int current, int total, string name)>(report =>
-        {
-            if (task.IsIndeterminate && report.total > 0)
-            {
-                task.IsIndeterminate = false;
-                task.MaxValue = report.total;
-            }
-            task.Value = report.current;
-            
-            // Escape Spectre markup in user data!
-            var safeName = report.name
-                .Replace("[", "[[", StringComparison.Ordinal)
-                .Replace("]", "]]", StringComparison.Ordinal);
-            
-            task.Description = $"[green]Downloading[/] ({report.current}/{report.total}) {safeName}";
-        });
-        
-        await DownloadAsync(progress);
-    });
-```
-
-**Why Two Phases?**
-- Phase 1 (Scan) - Total unknown, use spinner
-- Phase 2 (Download) - Total known, show progress bar
-- Brief pause after scan to show result before starting download
-
-### 9. Token/Auth Caching
-
-**Simple caching pattern (single-threaded command execution):**
-
-```csharp
-private string? cachedToken;
-private DateTime tokenExpiry = DateTime.MinValue;
-
-private async Task<string> GetTokenAsync(CancellationToken ct)
-{
-    // Return cached if valid
-    if (cachedToken != null && DateTime.UtcNow < tokenExpiry)
-    {
-        LogUsingCachedToken(logger);
-        return cachedToken;
-    }
-    
-    // Fetch new token
-    LogRequestingToken(logger);
-    var token = await FetchNewTokenAsync(ct);
-    
-    cachedToken = token;
-    tokenExpiry = DateTime.UtcNow.AddDays(6);  // Token valid for 7 days
-    
-    return cachedToken;
-}
-```
-
-**Important:** No lock needed if:
-- Token fetched **once** per command execution
-- Passed as parameter through recursive calls
-- Downloads use pre-authenticated URLs (no token needed)
-
-**Example Flow:**
-```csharp
-// 1. Scan phase - get token once
-var token = await GetTokenAsync(cancellationToken);
-await ScanAsync(shareUrl, token, cancellationToken);  // Pass as param
-
-// 2. Download phase - no token needed
-await DownloadAsync(item.DownloadUrl);  // Pre-authenticated URL
-```
-
-### 10. Path Resolution (IPathResolver)
-
-**IMPORTANT:** Never hardcode "source" or "output" paths! Use `IPathResolver`.
-
-#### Why IPathResolver?
-Users can configure custom paths in `project.json`:
-```json
-{
-  "paths": {
-    "source": "D:\\OneDrive\\Photos",
-    "output": "/var/www/html"
-  }
-}
-```
-
-#### Usage Pattern
-```csharp
-// ✅ CORRECT - Inject IPathResolver
-public sealed class MyService(IPathResolver pathResolver)
-{
-    public void Process()
-    {
-        var sourcePath = pathResolver.SourcePath;  // Resolves to configured path
-        var outputPath = pathResolver.OutputPath;  // Supports relative & absolute
-    }
-}
-
-// ❌ WRONG - Hardcoded paths
-var sourcePath = Path.Combine(projectPath, "source");  // Ignores user config!
-```
-
-#### Path Resolution Logic
-- **Relative paths:** Resolved against project root (e.g., "source" → "D:\MyProject\source")
-- **Absolute paths:** Used directly (e.g., "D:\OneDrive\Photos" → "D:\OneDrive\Photos")
-- **Hot-reload:** Uses `IOptionsMonitor<PathsConfig>` - changes apply without restart
-
-#### ProjectPaths Constants
-`ProjectPaths` contains ONLY non-configurable paths:
-- `ProjectPaths.Cache` → ".cache"
-- `ProjectPaths.Themes` → "themes"  
-- `ProjectPaths.Plugins` → "plugins"
-- `ProjectPaths.SharedImages` → "_images"
-- `ProjectPaths.Static` → "_static"
-
-**❌ `ProjectPaths.Source` and `ProjectPaths.Output` were REMOVED!**
-Use `IPathResolver.SourcePath` and `IPathResolver.OutputPath` instead.
+## Custom Agents & Skills (use these!)
+
+| Agent (`.github/agents/`) | When |
+|---------------------------|------|
+| **Revela Dev** | All implementation work — features, fixes, tests, refactoring |
+| **Revela Reviewer** | Read-only audits — architecture, security, performance, conventions |
+| **Spike Analyst** | New feature ideas — sharpens problem, weighs trade-offs, compares prior art, produces decision-ready spike report (read-only) |
+| **Explore** | Fast read-only codebase exploration (subagent — call in parallel) |
+| **Pattern Finder** | Subagent — finds 2-3 canonical examples to mirror; dispatched by Dev before implementing something new |
+| **Convention Sentry** | Subagent — anti-pattern scanner (underscore fields, log interpolation, missing `StringComparison`, hardcoded paths) |
+| **Plugin Auditor** | Subagent — single-plugin lifecycle/convention check; dispatch one per plugin in parallel |
+| **Test Doctor** | Subagent — test-quality auditor (FluentAssertions/Moq leftovers, missing assertions, tautologies) |
+| **Security Scout** | Subagent — OWASP scanner (secrets, vulnerable packages, path traversal, SSRF, weak crypto) |
+
+| Skill (`.github/skills/`) | Purpose |
+|---------------------------|---------|
+| `build-sample` | Build sample projects with local CLI |
+| `build-release` | Local release build (`scripts/build-release.ps1`) |
+| `commit-changes` | Conventional Commits — wait for explicit user request |
+| `create-release` | Bump version, update CHANGELOG, tag |
+| `review-code` | Per-file code review against conventions |
+| `test-release` | End-to-end release pipeline test |
+
+| Instructions file | Scope |
+|-------------------|-------|
+| [`csharp.instructions.md`](./instructions/csharp.instructions.md) | All `*.cs` — naming, async, logging, modern C# |
+| [`tests.instructions.md`](./instructions/tests.instructions.md) | `tests/**/*.cs` — MSTest v4, NSubstitute, fixtures |
+| [`plugins.instructions.md`](./instructions/plugins.instructions.md) | `src/Plugins/**` — plugin lifecycle, CommandDescriptor |
+| [`themes.instructions.md`](./instructions/themes.instructions.md) | `src/Themes/**` — Scriban templates, manifest, partials |
+
+| Prompt file | Invocation |
+|-------------|------------|
+| `/full-review` | Multi-phase deep review → routes to Revela Reviewer |
+| `/new-plugin` | Scaffold a new plugin → routes to Revela Dev |
+| `/new-theme` | Scaffold a new theme → routes to Revela Dev |
+| `/release-notes` | Generate CHANGELOG entries from commits |
 
 ---
 
-## Common Tasks
+## Hard Rules — Top 10 (most frequent agent mistakes)
 
-### Adding a New Model
-Location: `src/Core/Models/` or `src/Sdk/Models/`
+These are enforced by `.editorconfig` (warnings → errors via `TreatWarningsAsErrors=true`). Full details in [`csharp.instructions.md`](./instructions/csharp.instructions.md).
 
-```csharp
-namespace Spectara.Revela.Core.Models;
-
-/// <summary>
-/// Description of the model
-/// </summary>
-public sealed class MyModel
-{
-    public required string Name { get; init; }
-    public List<Item> Items { get; init; } = [];
-}
-```
-
-### Adding a New Command
-Location: `src/Commands/{FeatureName}/` or `src/Plugins/*/Commands/`
-
-**MODERN PATTERN (with DI):**
-```csharp
-namespace Spectara.Revela.Commands.MyFeature;
-
-/// <summary>
-/// Command implementation with Dependency Injection
-/// </summary>
-/// <remarks>
-/// Uses C# 12 Primary Constructor for DI.
-/// Dependencies are explicitly visible and fully testable.
-/// </remarks>
-public sealed partial class MyCommand(
-    ILogger<MyCommand> logger,
-    IMyService myService)
-{
-    public Command Create()
-    {
-        var command = new Command("mycommand", "Description");
-        
-        var option = new Option<string>("--name", "-n")
-        {
-            Description = "Name option"
-        };
-        command.Options.Add(option);
-        
-        command.SetAction(async parseResult =>
-        {
-            var name = parseResult.GetValue(option);
-            await ExecuteAsync(name);
-            return 0;
-        });
-        
-        return command;
-    }
-    
-    private async Task ExecuteAsync(string? name)
-    {
-        LogExecuting(logger, name ?? "default");
-        await myService.ProcessAsync(name);
-    }
-    
-    [LoggerMessage(Level = LogLevel.Information, Message = "Executing with name: {Name}")]
-    private static partial void LogExecuting(ILogger logger, string name);
-}
-```
-
-**Registration in Plugin/Feature:**
-```csharp
-// In ConfigureServices (use TryAdd* for plugin services to keep registration idempotent):
-services.TryAddTransient<MyCommand>();
-
-// In GetCommands:
-var cmd = serviceProvider.GetRequiredService<MyCommand>();
-yield return cmd.Create();
-```
-
-**Benefits:**
-- ✅ Explicit dependencies (visible in constructor)
-- ✅ Fully testable (mock dependencies)
-- ✅ No IServiceProvider in methods
-- ✅ Type-safe with Primary Constructor
-
-### Adding a New Service
-Location: `src/Core/Services/`
-
-```csharp
-namespace Spectara.Revela.Core.Services;
-
-public interface IMyService
-{
-    Task DoSomethingAsync(int count, CancellationToken cancellationToken = default);
-}
-
-public sealed partial class MyService : IMyService
-{
-    private readonly ILogger<MyService> logger;
-    
-    public MyService(ILogger<MyService> logger)
-    {
-        this.logger = logger;
-    }
-    
-    public async Task DoSomethingAsync(int count, CancellationToken cancellationToken = default)
-    {
-        LogProcessingStarted(logger, count);
-        await Task.CompletedTask;
-    }
-    
-    // High-performance logging (LoggerMessage source generator)
-    [LoggerMessage(Level = LogLevel.Information, Message = "Processing {Count} items")]
-    private static partial void LogProcessingStarted(ILogger logger, int count);
-}
-```
-
-### Adding Tests
-Location: `tests/{ProjectName}.Tests/`
-
-```csharp
-namespace Spectara.Revela.Tests.Core;
-
-[TestClass]
-[TestCategory("Unit")]
-public sealed class MyServiceTests
-{
-    [TestMethod]
-    public async Task DoSomethingAsync_ShouldProcessItems()
-    {
-        // Arrange
-        var logger = Substitute.For<ILogger<MyService>>();
-        var service = new MyService(logger);
-        
-        // Act
-        await service.DoSomethingAsync(10);
-        
-        // Assert (using MSTest built-in assertions)
-        Assert.AreEqual(expected, result);
-    }
-}
-```
-
-### Test Strategy (Three Layers)
-- **Unit Tests**: Pure logic, no I/O — Filtering, Parsing, Building, Formatting
-- **Integration Tests**: Real filesystem via `TestProject` + `RevelaTestHost` fixtures
-- **E2E Tests**: Full pipeline (scan → render → images) with `TestImageGenerator` for real JPEGs
-
-### Test Infrastructure (`tests/Shared/Fixtures/`)
-- **`TestProject`**: Fluent builder for temp project dirs — `TestProject.Create(p => p.AddGallery(...))`
-- **`RevelaTestHost`**: Builds real DI container with `IOptions<T>` from project.json
-- **`TestImageGenerator`**: Creates real JPEG images with EXIF via NetVips — `TestImageGenerator.CreateJpeg(path, exif: ...)`
-- **`GalleryBuilder.AddRealImage()`**: Combines TestProject + TestImageGenerator for E2E tests
-- **`GalleryBuilder.AddImage()`**: 4-byte JPEG stub for fast scan tests (no real pixels)
-
-### Test Quality Rules — What NOT to Test
-- **No C# language tests**: Don't assert that a property returns the value you just set
-- **No framework tests**: Don't verify `IOptions<T>` resolves (that's Microsoft's job)
-- **No hardcoded string tests**: Don't assert `metadata.Name == "Serve"` (tautology)
-- **No duplicate tests**: If two tests have identical logic, keep the one with better assertions
-- **Every test MUST have a meaningful assertion** — no "call and hope it doesn't throw"
-- **Default-value tests ARE valid**: They prevent accidental changes to config defaults
-- **Computed property tests ARE valid**: `TotalFiles = New + Modified` is our logic
-
-### Cross-Platform Testing
-- **UrlBuilder.ToSlug()** lowercases all names → output paths are always lowercase
-- **File path assertions**: Use lowercase slugs, not original gallery names (`"landscapes"` not `"Landscapes"`)
-- **Linux CI is case-sensitive** — tests that pass on Windows may fail on Ubuntu
+1. **`var` everywhere** — never spell out the type.
+2. **Private fields = `camelCase`** — NO underscore prefix.
+3. **`StringComparison.Ordinal`** on every string method (except char overloads like `StartsWith('-')`).
+4. **`CultureInfo.InvariantCulture`** on every formatting call.
+5. **`LoggerMessage` source generator** — never `logger.LogInformation($"...")`.
+6. **Never hardcode `"source"` / `"output"`** — inject `IPathResolver`.
+7. **System.CommandLine 2.0 final API** — NOT beta. `new Option<T>("--name", "-n")`, `command.SetAction(...)`.
+8. **No `ConfigureAwait(false)`** — CA2007 is suppressed (this is an app, not a library).
+9. **Fix root cause, don't suppress** — convert `List<T>` → `IReadOnlyList<T>`, `string url` → `Uri?`, etc.
+10. **`Markup.Escape(input)`** for Spectre output — never custom escaping.
 
 ---
 
-## Dependencies
+## Build / Test / Format
 
-### Core Framework
-- `Microsoft.Extensions.Hosting` (10.0.5)
-- `Microsoft.Extensions.Configuration.Json` (10.0.5)
-- `Microsoft.Extensions.Logging` (10.0.5)
+```pwsh
+dotnet build                                # full solution
+dotnet test                                 # all tests
+dotnet test tests/Core                      # one project
+dotnet format                               # auto-fix style
+dotnet format --verify-no-changes           # CI gate — MUST pass before commit
 
-### CLI
-- `System.CommandLine` (2.0.5) - **FINAL release, not beta!**
-- `Spectre.Console` (0.55.0) - Rich console output (progress bars, tables, panels)
+# Run CLI against a sample
+cd samples/showcase ; dotnet run --project ../../src/Cli -- generate all
+```
 
-### Image Processing
-- `NetVips` (3.2.0)
-- `NetVips.Native` (8.18.2)
-
-### Templating
-- `Scriban` (7.0.6) - **v7 added nullable annotations + AOT support**
-- `Markdig` (1.1.2)
-
-### Logging
-- `Microsoft.Extensions.Logging` (10.0.5) - Built-in logging
-- `Microsoft.Extensions.Logging.Console` (10.0.5)
-- `Microsoft.Extensions.Logging.Debug` (10.0.5)
-
-### Plugin Management
-- `NuGet.Protocol` (7.3.0)
-- `NuGet.Packaging` (7.3.0)
-- `NuGet.Configuration` (7.3.0)
-
-### Deployment
-- `SSH.NET` (2025.1.0) - SSH/SFTP deployment
-
-### Build Tools
-- `Microsoft.SourceLink.GitHub` (10.0.102) - Source link for debugging
-
-### Testing
-- `MSTest` (4.1.0) - Modern test framework with Microsoft.Testing.Platform
-- `MSTest.Analyzers` (4.1.0)
-- `NSubstitute` (5.3.0) - Mocking framework (preferred over Moq due to security concerns)
-- Microsoft Code Coverage (built-in with MSTest 4.1) - `--coverage` flag, settings in `coverage.config`
-
-### Benchmarking
-- `BenchmarkDotNet` (0.15.8) - Performance benchmarks
-
-**Note:** FluentAssertions was removed - use MSTest v4 built-in assertions instead!
-
-**Note:** All versions centrally managed in `Directory.Packages.props`
+**Mandatory post-edit gate:** `dotnet build` → relevant `dotnet test` → `dotnet format --verify-no-changes`.
 
 ---
 
-## Build & Test
+## Architecture Quick Reference
 
-### Build
-```bash
-dotnet restore
-dotnet build
-```
+### Plugin lifecycle (4 phases)
+1. **Discovery** — `IPackageSource.LoadPlugins()` (Disk or Embedded)
+2. **`ConfigureConfiguration`** *(optional)* — usually no-op; ENV vars auto-loaded with `SPECTARA__REVELA__` prefix
+3. **`ConfigureServices`** *(required)* — register services, options, HttpClients (use `TryAdd*` for idempotency)
+4. **`GetCommands(IServiceProvider)`** *(optional)* — yield `CommandDescriptor` records
 
-### Test
-```bash
-# Run all tests
-dotnet test
+### Configuration chain (merged in order)
+1. C# property defaults
+2. `revela.json` (global, `%APPDATA%/Revela/`)
+3. `project.json` (local, project root)
+4. `logging.json` (optional, project root)
+5. Environment variables (`SPECTARA__REVELA__*`)
+6. CLI arguments
 
-# Run specific test project
-dotnet test tests/Core
-dotnet test tests/Commands
-dotnet test tests/Integration
-dotnet test tests/Plugins/Compress
-dotnet test tests/Plugins/Serve
-dotnet test tests/Plugins/Source/OneDrive
-dotnet test tests/Plugins/Statistics
-```
+> **Note:** `site.json` is NOT loaded via `IConfiguration` — it's loaded dynamically by `RenderService`.
 
-### Run CLI
-```bash
-dotnet run --project src/Cli -- --help
-cd samples/showcase && dotnet run --project ../../src/Cli -- generate all
-cd samples/showcase && dotnet run --project ../../src/Cli -- source onedrive sync
-```
+### Path resolution
+- **Configurable paths** (`source`, `output`) → inject `IPathResolver`
+- **Fixed paths** (`Cache`, `Themes`, `Plugins`, `SharedImages`, `Static`) → `ProjectPaths` constants
 
-### Package as Tool
-```bash
-dotnet pack src/Cli -c Release
-dotnet tool install -g --add-source ./artifacts/packages Revela
-```
+### HttpClient
+Always **Typed Client pattern** — `services.AddHttpClient<MyService>()` then inject `HttpClient` directly. Never `new HttpClient()`, never `IHttpClientFactory` inside a typed client.
 
-### Code Formatting (IMPORTANT!)
-
-**Run `dotnet format` before committing to ensure consistent code style!**
-
-```bash
-# Check for formatting issues (CI/pre-commit)
-dotnet format --verify-no-changes
-
-# Auto-fix all formatting issues
-dotnet format
-```
-
-**Common issues fixed by `dotnet format`:**
-- **IMPORTS:** Using directives not sorted alphabetically
-- **IDE0001:** Name can be simplified (redundant namespace qualifiers)
-- **IDE0022:** Use expression body for method
-- **IDE0053:** Use expression body for lambda expression
-- **IDE0055:** Formatting issues (indentation, spacing)
-
-**When to run:**
-- ✅ Before every commit
-- ✅ After large refactoring
-- ✅ When CI fails with format errors
-- ✅ At session start to check codebase health
-
-**Pragma Guidelines:**
-- ❌ Don't suppress warnings for unused code - remove the code instead
-- ❌ Don't suppress IDE0005 (unused usings) - remove the usings
-- ✅ Legitimate suppressions: CA1054 (URI strings for user input), CA2000 (complex ownership)
-- ✅ Always include `#pragma warning restore` after `#pragma warning disable`
+### Template context (Scriban)
+- **Global** — `image_formats`, `site`, `basepath`, `image_basepath`, `nav_items`
+- **Per page** — `gallery`, `page_content`, `images`
+- **Per image** — `sizes`, `placeholder`
+- **Functions** — `find_image`, `url_for`, `asset_url`, `image_url`, `format_date`, `format_filesize`, `markdown`
 
 ---
 
-## Context for AI Assistants
+## Session Startup (Revela Dev agent does this automatically)
 
-### When Starting New Conversation
-1. Read `docs/setup.md` for development setup
-2. Read `docs/architecture.md` for design decisions
-3. Check open files in IDE for current work
-4. **CHECK FOR DEPENDENCY UPDATES** - Run `dotnet outdated` proactively
-5. **CHECK CODE FORMATTING** - Run `dotnet format --verify-no-changes`
+When starting a new conversation, run these in parallel and report only issues:
 
-### Dependency Management (IMPORTANT!)
-**Always check for package updates at session start!**
+1. `dotnet format --verify-no-changes` — style violations?
+2. `dotnet outdated` — outdated/vulnerable packages?
+3. `dotnet build` — clean state?
 
-```bash
-# Check for outdated packages
-dotnet outdated
+---
 
-# If updates found:
-# 1. Inform user about available updates
-# 2. Categorize by severity (Patch/Minor/Major)
-# 3. Recommend update strategy
-# 4. Highlight security-critical updates
-```
+## Documentation
 
-**Update Strategy:**
-- ✅ **Patch Updates (x.x.X)** - Always safe, recommend immediate update
-- 🟡 **Minor Updates (x.X.x)** - Usually safe, recommend with testing
-- 🔴 **Major Updates (X.x.x)** - Breaking changes possible, recommend careful review
-
-**Security Updates:** ALWAYS highlight and recommend immediate action!
-
-**Automated Checks:**
-- Weekly GitHub Action runs every Monday 6:00 UTC
-- Creates GitHub Issues for available updates
-- Dependabot creates PRs automatically (`.github/dependabot.yml`)
-
-**Manual Update Commands:**
-```bash
-# Safe updates (patch only)
-dotnet outdated -u --version-lock Major
-
-# Patch + Minor updates
-dotnet outdated -u --version-lock Minor
-
-# Interactive selection
-dotnet outdated -u:prompt
-```
-
-**After Updates:**
-```bash
-dotnet restore
-dotnet build
-dotnet run --project tests/Core
-```
-
-**Documentation:** See `.github/DEPENDENCY_MANAGEMENT.md` for full details
-
-### Code Style Rules (IMPORTANT!)
-
-**EditorConfig Decisions:**
-- **using directive placement:** `outside_namespace:warning` (Microsoft C# 10 Standard)
-  ```csharp
-  // ✅ CORRECT
-  using System;
-  using Spectre.Console;
-  
-  namespace Spectara.Revela.Commands.Init;
-  
-  public class MyCommand { }
-  ```
-- **File-scoped namespaces:** Required (`csharp_style_namespace_declarations = file_scoped:warning`)
-- **Reason:** Microsoft C# 10+ best practice, cleaner with file-scoped namespaces
-
-**Code Analysis - Microsoft Only:**
-- **Microsoft.CodeAnalysis.NetAnalyzers:** Built-in via .NET SDK (1000+ CA-Rules)
-- **NO third-party analyzers:** StyleCop, Roslynator removed (not maintained, beta packages)
-- **Configuration:** 
-  - `EnableNETAnalyzers=true`
-  - `AnalysisLevel=latest-all` 
-  - `EnforceCodeStyleInBuild=true`
-- **Fine-tuning:** `.editorconfig` with `dotnet_diagnostic.CAxxxx.severity`
-
-### When Generating Code
-- Follow .editorconfig rules (especially `using` placement!)
-- Use file-scoped namespaces (always!)
-- Add XML documentation
-- Include cancellation token parameters
-- Use primary constructors where appropriate (C# 14)
-- Prefer collection expressions `[]` over `new List<>()`
-- **Use LoggerMessage source generator** for high-performance logging (mark class `partial`)
-
-### When Suggesting Changes
-- Explain WHY (architecture/performance/maintainability)
-- Reference existing patterns in codebase
-- Consider backward compatibility
-- Think about testability
-
-**Template Context Variables:**
-- `site` - Site settings (title, author, description, copyright)
-- `basepath` - Relative path to root ("", "../", "/photos/")
-- `image_basepath` - Path/URL to images (can be CDN URL)
-- `image_formats` - Global: ["avif", "webp", "jpg"] (same for all images)
-- `nav_items` - Navigation tree with active state
-- `gallery` - Current gallery (title, body, cover_image, template)
-- `gallery.cover_image` - Resolved cover Image object (from `cover` frontmatter, null if not set)
-- `page_content` - Original markdown body as HTML (same as gallery.body)
-- `images` - Array of Image objects (available for all templates including custom ones)
-- `image.sizes` - Per-image: available widths (filtered by original)
-- `image.placeholder` - Per-image: CSS-only LQIP hash string (if PlaceholderStrategy = CssHash)
-
-**Template Functions:**
-- `find_image "path"` - Resolve any image by path → Image object or null (3-step lookup)
-- `url_for "path"` - Generate page URL
-- `asset_url "path"` - Generate asset URL
-- `image_url "file" width "format"` - Generate image variant URL
-- `format_date date "format"` - Format date
-- `format_filesize bytes` - Format file size
-- `format_exif_exposure value` - Format exposure time
-- `format_exif_aperture value` - Format aperture
-- `markdown "text"` - Render Markdown to HTML
-
-**Content Image Template (required for all themes):**
-Every theme must include `Partials/ContentImage.revela` which renders `![alt](path)` in Markdown.
-Variables: `image`, `alt`, `classes`, `image_basepath`, `image_formats`.
-
-**Sitemap Generation:**
-`generate pages` automatically creates `sitemap.xml` when `baseUrl` is configured in project.json.
-Skipped with info log when `baseUrl` is not set (sitemaps require absolute URLs).
-
-**Image Configuration (project.json):**
-```json
-{
-  "paths": {
-    "source": "D:\\OneDrive\\Photos",
-    "output": "dist"
-  },
-  "theme": {
-    "images": {
-      "sizes": [160, 320, 480, 640, 720, 960, 1280, 1440, 1920, 2560]
-    }
-  },
-  "generate": {
-    "images": {
-      "avif": 80,
-      "webp": 85,
-      "jpg": 90
-    }
-  }
-}
-```
-
-**For detailed architecture, see:** `docs/architecture.md`  
-**For HttpClient patterns, see:** `docs/httpclient-pattern.md`
-
+- Architecture: [`docs/architecture.md`](../docs/architecture.md)
+- Plugin development: [`docs/plugin-development.md`](../docs/plugin-development.md)
+- Plugin system v2: [`docs/plugin-system-v2.md`](../docs/plugin-system-v2.md)
+- HttpClient pattern: [`docs/httpclient-pattern.md`](../docs/httpclient-pattern.md)
+- Subagent patterns: [`docs/subagent-patterns.md`](../docs/subagent-patterns.md)
+- Project structure: [`docs/project-structure.md`](../docs/project-structure.md)

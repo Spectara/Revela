@@ -4,5 +4,18 @@
     "editor.formatOnSave": true,
     "[csharp]": {
         "editor.defaultFormatter": "ms-dotnettools.csharp"
+    },
+    "chat.promptFilesRecommendations": {
+        "full-review": true,
+        "new-plugin": true,
+        "new-theme": true,
+        "release-notes": true
+    },
+    "chat.tools.terminal.autoApprove": {
+        "dotnet format": true,
+        "dotnet list": true,
+        "dotnet outdated": true,
+        "dotnet build": true,
+        "dotnet test": true
     }
 }

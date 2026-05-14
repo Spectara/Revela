@@ -1,6 +1,8 @@
 ---
 name: build-release
 description: Builds a local Revela release for testing using scripts/build-release.ps1. Mirrors the GitHub release pipeline output — produces Standalone or Full variants. Use when the user wants to build a release locally, test packaging, create a self-contained executable, verify what end users would download, or validate the release before publishing.
+argument-hint: "[Standalone|Full|All] [--Version 0.0.0-test]"
+context: fork
 ---
 
 # Build Release — Revela Project

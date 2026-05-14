@@ -1,5 +1,6 @@
 ---
-mode: agent
+agent: Revela Dev
+argument-hint: "[theme-name]"
 description: "Scaffold a new Revela theme or theme extension — manifest, layouts, partials, assets"
 ---
 
