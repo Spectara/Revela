@@ -1,5 +1,3 @@
-using System.Reflection;
-
 using Spectara.Revela.Sdk;
 
 using Spectre.Console;
@@ -30,68 +28,42 @@ internal static class ConsoleUI
     /// </summary>
     internal static readonly Style GroupHeaderStyle = new(Color.Grey);
 
-    private static readonly string[] LogoLines =
-    [
-        @"   ____                _       ",
-        @"  |  _ \ _____   _____| | __ _ ",
-        @"  | |_) / _ \ \ / / _ \ |/ _` |",
-        @"  |  _ <  __/\ V /  __/ | (_| |",
-        @"  |_| \_\___| \_/ \___|_|\__,_|",
-    ];
+    /// <summary>
+    /// Clears the console (no banner).
+    /// </summary>
+    /// <remarks>
+    /// Version data is no longer shown at startup — use <c>revela info</c>
+    /// (CLI) or the <c>Info</c> menu group (TUI) for version and host details.
+    /// </remarks>
+    public static void ClearConsole() => AnsiConsole.Clear();
 
     /// <summary>
-    /// Clears the console and displays the Revela ASCII logo.
+    /// Displays a compact welcome panel with optional project context.
     /// </summary>
-    public static void ClearAndShowLogo()
-    {
-        AnsiConsole.Clear();
-        ShowLogo();
-    }
-
-    /// <summary>
-    /// Displays the Revela ASCII logo.
-    /// </summary>
-    public static void ShowLogo()
-    {
-        foreach (var line in LogoLines)
-        {
-            AnsiConsole.MarkupLine("[cyan1]" + line + "[/]");
-        }
-
-        AnsiConsole.WriteLine();
-    }
-
-    /// <summary>
-    /// Displays a welcome panel with version and optional project context.
-    /// </summary>
-    /// <param name="projectName">Project name to display (null for no project context)</param>
-    /// <param name="folderName">Folder name to display when no project name is set</param>
+    /// <param name="projectName">Project name to display (null for no project context).</param>
+    /// <param name="folderName">Folder name to display when no project name is set.</param>
     public static void ShowWelcomePanel(string? projectName = null, string? folderName = null)
     {
-        var version = Assembly.GetEntryAssembly()?.GetName().Version?.ToString(3) ?? "1.0.0";
-
-        var lines = new List<string>
-        {
-            $"[bold]Version {version}[/]",
-            "[dim]Modern static site generator for photographers[/]"
-        };
+        var lines = new List<string>();
 
         if (!string.IsNullOrEmpty(projectName))
         {
-            lines.Add(string.Empty);
             lines.Add($"[blue]Project:[/] {Markup.Escape(projectName)}");
         }
         else if (!string.IsNullOrEmpty(folderName))
         {
-            lines.Add(string.Empty);
             lines.Add($"[dim]Directory:[/] {Markup.Escape(folderName)}");
         }
 
-        lines.Add(string.Empty);
+        if (lines.Count > 0)
+        {
+            lines.Add(string.Empty);
+        }
+
         lines.Add("[blue]Navigate with[/] [bold]↑↓[/][blue], select with[/] [bold]Enter[/]");
 
         var panel = new Panel(new Markup(string.Join("\n", lines)))
-            .WithHeader("[cyan1]Welcome[/]")
+            .WithHeader("[cyan1]Revela[/]")
             .WithInfoStyle();
 
         AnsiConsole.Write(panel);

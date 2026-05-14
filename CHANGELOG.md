@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **`revela info` command tree** — new diagnostic command tree exposing version data and installed packages. `revela info` (default action) prints a Revela summary panel; `revela info plugins` lists all installed plugins with version and source; `revela info themes` lists themes with the active one marked. Plugins/themes can contribute per-package detail subcommands by registering with `ParentCommand: "info plugins"` / `"info themes"` (read-only diagnostic convention documented in `plugins.instructions.md`). ([#23](https://github.com/Spectara/Revela/issues/23))
+- **`IBuildInfo` SDK service** — new `Spectara.Revela.Sdk.Hosting.IBuildInfo` interface (with `HostKind` enum: `Standalone` / `Embedded`) exposes the immutable build-time identity of the running host. Single source of truth for `--version`, `revela info`, and any plugin that needs to branch on host kind (e.g. self-update plugins hiding themselves in embedded builds). Detected via `Revela.HostKind` assembly metadata attribute set in `Cli.Embedded.csproj` — sidesteps the `AssemblyName="revela"` collision that makes name-based detection impossible. ([#23](https://github.com/Spectara/Revela/issues/23))
+- **`CommandDescriptor.InlineInMenu` + `InlineDefaultActionLabel`** — opt-in fields that flatten a parent command's inline appearance in the interactive menu while leaving CLI behavior unchanged. Used by `revela info` to render `Info → Revela / Plugins → / Themes →` instead of `Info → info → …`. Default `false`, zero impact on existing descriptors. ([#23](https://github.com/Spectara/Revela/issues/23))
+
+### Changed
+
+- **`revela --version` is now human-readable and host-kind aware** — the System.CommandLine default action is replaced with a renderer that prints `revela 1.0.0 (.NET 10.0.7)` (or `… — embedded build` for the standalone variant). Identical to the first line of `revela info`, so both surfaces report the same identifier. ([#23](https://github.com/Spectara/Revela/issues/23))
+- **Welcome panel slimmed down** — the ASCII-art Revela logo is removed from interactive startup (it was off-brand vs. the actual aperture wordmark and added ~6 lines of friction on every menu render). The welcome panel header is now `Revela`; the redundant `Version` line and the `Modern static site generator for photographers` tagline are gone. Version data lives in `revela info` (canonical for both CLI and TUI users). The first-run panel is unchanged. ([#23](https://github.com/Spectara/Revela/issues/23))
+
+### Fixed
+
+- **Inlined-parent menu entries dispatched to the wrong command** — clicking an inlined subcommand in the interactive main menu (e.g. `Plugins` under `Info`) built the args path from the leaf name only (`["plugins"]`) instead of the absolute path (`["info","plugins"]`), producing an `Unrecognized command or argument` error from System.CommandLine. The top-level menu now routes `Navigate`/`Execute` selections through the same dispatcher as nested menus, honoring `MenuChoice.CommandPathOverride`. ([#23](https://github.com/Spectara/Revela/issues/23))
+
 ## [0.0.1-beta.20] - 2026-05-06
 
 ### Fixed
