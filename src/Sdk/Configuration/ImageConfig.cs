@@ -103,7 +103,7 @@ public sealed class ImageConfig
     /// This is intentionally a method, not a property, because it creates a new
     /// dictionary on each call based on the current quality values.
     /// </remarks>
-#pragma warning disable CA1024 // Use properties where appropriate
+#pragma warning disable CA1024 // Method, not property: allocates a new Dictionary on every call (filtering Avif/Webp/Jpg by quality > 0). A property would mislead callers into expecting cheap, cached access.
     public IReadOnlyDictionary<string, int> GetActiveFormats()
 #pragma warning restore CA1024
     {
