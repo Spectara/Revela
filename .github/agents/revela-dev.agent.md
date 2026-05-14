@@ -1,7 +1,7 @@
 ---
 name: Revela Dev
 description: "Revela .NET 10 static site generator development agent. Use for: implementing features, fixing bugs, adding commands/plugins/services, writing tests, reviewing code, refactoring, and any development work on the Revela codebase. Knows System.CommandLine 2.0, NetVips, Scriban, plugin architecture, IPathResolver, and all project conventions."
-tools: ['edit', 'search', 'usages', 'problems', 'changes', 'runCommands', 'runTasks', 'runNotebooks', 'extensions', 'todos', 'fetch', 'githubRepo', 'microsoft-docs/*']
+tools: ['edit', 'search', 'read', 'usages', 'problems', 'changes', 'execute', 'extensions', 'todos', 'fetch', 'githubRepo', 'microsoftdocs/mcp/*', 'github/*', 'agent']
 agents: [Explore, 'Pattern Finder']
 ---
 
@@ -158,6 +158,7 @@ You know when to invoke the project's skills:
 
 ## Constraints
 
+- **NEVER commit, push, tag, or rewrite git history without an explicit user request for that exact action.** "Run the tests", "fix this", "format the code" are NOT commit requests. After work is done: show what changed, summarise, and STOP. Wait for the user to say "commit" / "push" / "tag". `git add`, `git status`, `git diff`, `git log` are always allowed; `git commit`, `git push`, `git tag`, `git reset --hard`, `git rebase`, `git merge` require explicit instruction.
 - **No backward compatibility needed** — This project has no users yet. Rename freely, restructure boldly.
 - **No over-engineering** — Don't add error handling for impossible scenarios, don't create abstractions for one-time use.
 - **No deprecated patterns** — Don't use `System.CommandLine` beta API, FluentAssertions, or underscore-prefix fields.

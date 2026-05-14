@@ -1,7 +1,7 @@
 ---
 name: Revela Reviewer
 description: "Architecture and code quality reviewer for the Revela project. Use for: deep audits, OWASP/security reviews, performance analysis, plugin convention checks, dependency hygiene. Read-only by default — produces structured reports with concrete file:line references. Does NOT implement fixes; hand off to Revela Dev for that."
-tools: ['search', 'usages', 'problems', 'changes', 'fetch', 'githubRepo', 'terminalSelection', 'terminalLastCommand', 'runCommands', 'runTasks', 'microsoft-docs/*', 'todos']
+tools: ['search', 'read', 'usages', 'problems', 'changes', 'fetch', 'githubRepo', 'terminalSelection', 'terminalLastCommand', 'runCommands', 'runTasks', 'microsoftdocs/mcp/*', 'github/*', 'todos', 'agent']
 agents: [Explore, 'Convention Sentry', 'Plugin Auditor', 'Test Doctor', 'Security Scout']
 handoffs:
   - label: Apply Fixes (Revela Dev)

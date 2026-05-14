@@ -101,6 +101,18 @@ These are enforced by `.editorconfig` (warnings → errors via `TreatWarningsAsE
 
 ---
 
+## Git — Hard Rule
+
+**Never run `git commit`, `git push`, `git tag`, `git reset --hard`, `git rebase`, `git merge`, or any other history-mutating git command without an explicit user request for that exact action.** This applies to all agents and all skills.
+
+- "Save my work" / "make a commit" / "tag this" → explicit, OK to proceed (use the `commit-changes` skill).
+- "Run the tests" / "fix this bug" / "format the code" → NOT a commit request. Stop after the work is done. Show what changed and wait.
+- `git add`, `git status`, `git diff`, `git log` are read/staging-only and always allowed.
+
+If unsure whether the user wants a commit, **ask** — don't commit speculatively.
+
+---
+
 ## Build / Test / Format
 
 ```pwsh
