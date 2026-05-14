@@ -39,6 +39,20 @@ namespace Spectara.Revela.Sdk.Abstractions;
 /// and by the "all" command to discover steps to run in Order sequence.
 /// Default is false.
 /// </param>
+/// <param name="InlineInMenu">
+/// When true, the interactive menu does NOT render this command as a single
+/// entry. Instead it renders the command's default action as a virtual entry
+/// (labeled by <see cref="InlineDefaultActionLabel"/>) followed by each of
+/// the command's visible subcommands directly under the group label. The CLI
+/// surface is unchanged. Only meaningful when the command has subcommands and
+/// is registered directly under root (with a <see cref="Group"/>).
+/// Default is false.
+/// </param>
+/// <param name="InlineDefaultActionLabel">
+/// Display label for the virtual default-action entry generated when
+/// <see cref="InlineInMenu"/> is true. Required when <see cref="InlineInMenu"/>
+/// is true; ignored otherwise.
+/// </param>
 /// <example>
 /// <code>
 /// // Register under "init" parent: revela init onedrive
@@ -57,6 +71,11 @@ namespace Spectara.Revela.Sdk.Abstractions;
 /// // Sequential step: part of a pipeline that supports "all"
 /// new CommandDescriptor(scanCmd, "generate", Order: 10,
 ///     IsSequentialStep: true)
+///
+/// // Inline a parent command flat under its group (e.g. info → Revela / Plugins → / Themes →)
+/// new CommandDescriptor(infoCmd, Order: 10, Group: "Info",
+///     RequiresProject: false,
+///     InlineInMenu: true, InlineDefaultActionLabel: "Revela")
 /// </code>
 /// </example>
 public sealed record CommandDescriptor(
@@ -66,4 +85,6 @@ public sealed record CommandDescriptor(
     string? Group = null,
     bool RequiresProject = true,
     bool HideWhenProjectExists = false,
-    bool IsSequentialStep = false);
+    bool IsSequentialStep = false,
+    bool InlineInMenu = false,
+    string? InlineDefaultActionLabel = null);

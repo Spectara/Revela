@@ -1,6 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Spectara.Revela.Commands.Config;
+using Spectara.Revela.Commands.Info;
 using Spectara.Revela.Core.Services;
 using Spectara.Revela.Features.Generate;
 using Spectara.Revela.Features.Theme;
@@ -19,7 +20,7 @@ internal static class ServiceCollectionExtensions
     /// Adds all Revela command services to the DI container.
     /// </summary>
     /// <remarks>
-    /// Registers host-owned commands (Config) and core features (Generate, Theme).
+    /// Registers host-owned commands (Config, Info) and core features (Generate, Theme).
     /// Package management commands (Packages, Plugins, Restore) are registered separately
     /// via <c>AddPackageManagement()</c> in the Packages feature — only loaded by <c>Cli</c>,
     /// not by <c>Cli.Embedded</c>.
@@ -36,6 +37,11 @@ internal static class ServiceCollectionExtensions
 
         // Host-owned commands
         services.AddConfigFeature();
+
+        // Info commands (always available, in both Cli and Cli.Embedded)
+        services.AddTransient<InfoCommand>();
+        services.AddTransient<InfoPluginsCommand>();
+        services.AddTransient<InfoThemesCommand>();
 
         // Core features — always available, not plugin-loaded
         services.AddGenerateFeature();
