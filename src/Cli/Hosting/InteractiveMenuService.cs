@@ -72,7 +72,7 @@ internal sealed partial class InteractiveMenuService(
 
     private async Task<int> HandleFirstRunAsync(CancellationToken cancellationToken)
     {
-        ConsoleUI.ClearAndShowLogo();
+        ConsoleUI.ClearConsole();
         ConsoleUI.ShowFirstRunPanel();
 
         var wizard = setupWizards.FirstOrDefault();
@@ -111,7 +111,7 @@ internal sealed partial class InteractiveMenuService(
 
     private async Task<int> HandleNoProjectAsync(CancellationToken cancellationToken)
     {
-        ConsoleUI.ClearAndShowLogo();
+        ConsoleUI.ClearConsole();
 
         var folderName = projectEnvironment.Value.FolderName;
 
@@ -175,7 +175,7 @@ internal sealed partial class InteractiveMenuService(
 
         bannerShown = true;
 
-        ConsoleUI.ClearAndShowLogo();
+        ConsoleUI.ClearConsole();
 
         // Show project name if initialized, otherwise show folder name
         var projectName = projectConfig.CurrentValue.Name;
@@ -208,14 +208,15 @@ internal sealed partial class InteractiveMenuService(
 
         var selection = AnsiConsole.Prompt(prompt);
 
+        // Top-level dispatch: Exit/Back/Wizard handled here; Navigate/Execute
+        // delegate to HandleMenuActionAsync so CommandPathOverride from inlined
+        // entries (e.g. "Plugins" → ["info","plugins"]) is honored.
         return selection.Action switch
         {
             MenuAction.Exit => new MenuResult(true, 0),
             MenuAction.Back => new MenuResult(false, 0),
-            MenuAction.Navigate => await NavigateToCommandAsync(selection.Command!, [selection.Command!.Name], cancellationToken),
-            MenuAction.Execute => await ExecuteCommandAsync(selection.Command!, [selection.Command!.Name], cancellationToken),
             MenuAction.RunSetupWizard => await RunSetupWizardAsync(cancellationToken),
-            _ => new MenuResult(false, 0),
+            MenuAction.Navigate or MenuAction.Execute or _ => await HandleMenuActionAsync(selection, [], cancellationToken),
         };
     }
 
@@ -295,7 +296,9 @@ internal sealed partial class InteractiveMenuService(
             return await RunSetupWizardAsync(cancellationToken);
         }
 
-        var extendedPath = new List<string>(commandPath) { selection.Command!.Name };
+        var extendedPath = selection.CommandPathOverride is not null
+            ? [.. selection.CommandPathOverride]
+            : new List<string>(commandPath) { selection.Command!.Name };
 
         return selection.Action switch
         {
@@ -388,7 +391,7 @@ internal sealed partial class InteractiveMenuService(
         // Calculate column width from longest command name (+ 2 for " →" arrow)
         var allCommands = grouped.SelectMany(g => g.Commands).ToList();
         var nameWidth = allCommands.Count > 0
-            ? allCommands.Max(c => c.Name.Length + (c.Subcommands.Any(s => !s.Hidden) ? 2 : 0)) + 2
+            ? allCommands.Max(c => MaxRenderedNameLength(c)) + 2
             : 0;
 
         if (hasGroups)
@@ -406,7 +409,11 @@ internal sealed partial class InteractiveMenuService(
                 {
                     // Create group header as MenuChoice (will be non-selectable due to Leaf mode)
                     var groupChoice = new MenuChoice(groupName, Action: MenuAction.Navigate);
-                    var commandChoices = groupCommands.Select(c => MenuChoice.FromCommand(c, orderRegistry.IsPipelineStep(c), nameWidth)).ToList();
+                    var commandChoices = new List<MenuChoice>();
+                    foreach (var cmd in groupCommands)
+                    {
+                        AddGroupCommandChoices(commandChoices, cmd, nameWidth);
+                    }
 
                     // Add Wizard to the Addons group (as last item)
                     if (includeSetupWizard && groupName == CommandGroups.Addons)
@@ -421,7 +428,7 @@ internal sealed partial class InteractiveMenuService(
                     // Ungrouped commands - add directly
                     foreach (var cmd in groupCommands)
                     {
-                        prompt.AddChoice(MenuChoice.FromCommand(cmd, orderRegistry.IsPipelineStep(cmd), nameWidth));
+                        AddUngroupedCommandChoices(prompt, cmd, nameWidth);
                     }
                 }
             }
@@ -442,6 +449,91 @@ internal sealed partial class InteractiveMenuService(
         }
 
         return prompt;
+    }
+
+    /// <summary>
+    /// Adds menu choices for a command appearing in a grouped section.
+    /// Inlined parents are expanded into a virtual default-action entry plus
+    /// each visible subcommand (with absolute path overrides).
+    /// </summary>
+    private void AddGroupCommandChoices(List<MenuChoice> choices, Command cmd, int nameWidth)
+    {
+        if (TryAddInlined(cmd, nameWidth, choices.Add))
+        {
+            return;
+        }
+        choices.Add(MenuChoice.FromCommand(cmd, orderRegistry.IsPipelineStep(cmd), nameWidth));
+    }
+
+    /// <summary>
+    /// Adds menu choices for an ungrouped command (rare).
+    /// Inlined parents behave the same way as in grouped sections.
+    /// </summary>
+    private void AddUngroupedCommandChoices(SelectionPrompt<MenuChoice> prompt, Command cmd, int nameWidth)
+    {
+        if (TryAddInlined(cmd, nameWidth, choice => prompt.AddChoice(choice)))
+        {
+            return;
+        }
+        prompt.AddChoice(MenuChoice.FromCommand(cmd, orderRegistry.IsPipelineStep(cmd), nameWidth));
+    }
+
+    private bool TryAddInlined(Command cmd, int nameWidth, Action<MenuChoice> add)
+    {
+        var label = orderRegistry.GetInlineDefaultActionLabel(cmd);
+        if (label is null)
+        {
+            return false;
+        }
+
+        // Virtual default-action entry: label runs the parent without subcommand
+        add(MenuChoice.CreateInlinedDefaultAction(cmd, label, nameWidth));
+
+        // Each visible subcommand that itself has at least one visible sub-subcommand
+        // (extension entries registered via ParentCommand: "<parent> <sub>").
+        // Subcommands without any extension are skipped — the parent's default
+        // action already covers their content (e.g. count/list summary).
+        // Absolute path override (parent + sub) ensures correct CLI dispatch.
+        foreach (var sub in cmd.Subcommands
+            .Where(IsInlinableSub)
+            .OrderBy(orderRegistry.GetOrder)
+            .ThenBy(s => s.Name, StringComparer.OrdinalIgnoreCase))
+        {
+            add(MenuChoice.FromCommand(
+                sub,
+                orderRegistry.IsPipelineStep(sub),
+                nameWidth,
+                commandPathOverride: [cmd.Name, sub.Name]));
+        }
+        return true;
+    }
+
+    private static bool IsInlinableSub(Command sub) =>
+        !sub.Hidden && sub.Subcommands.Any(s => !s.Hidden);
+
+    /// <summary>
+    /// Computes the rendered name length used for column alignment, accounting
+    /// for the inline expansion of parents into a default-action label plus
+    /// subcommand entries (each with the " →" arrow when navigable).
+    /// </summary>
+    private int MaxRenderedNameLength(Command cmd)
+    {
+        var label = orderRegistry.GetInlineDefaultActionLabel(cmd);
+        if (label is null)
+        {
+            return cmd.Name.Length + (cmd.Subcommands.Any(s => !s.Hidden) ? 2 : 0);
+        }
+
+        var max = label.Length;
+        foreach (var sub in cmd.Subcommands.Where(IsInlinableSub))
+        {
+            var len = sub.Name.Length + 2; // always navigable when shown
+            if (len > max)
+            {
+                max = len;
+            }
+        }
+        return max;
     }
 
     [LoggerMessage(Level = LogLevel.Error, Message = "RootCommand not set")]

@@ -24,6 +24,7 @@ internal sealed class CommandOrderRegistry
     private readonly HashSet<Command> noProjectRequired = [];
     private readonly HashSet<Command> hideWhenProjectExists = [];
     private readonly HashSet<Command> pipelineSteps = [];
+    private readonly Dictionary<Command, string> inlinedParents = [];
 
     /// <summary>
     /// Registers the display order for a command.
@@ -85,6 +86,33 @@ internal sealed class CommandOrderRegistry
     /// <param name="command">The command to check.</param>
     /// <returns>True if the command is a pipeline step.</returns>
     public bool IsPipelineStep(Command command) => pipelineSteps.Contains(command);
+
+    /// <summary>
+    /// Marks a command as an inlined parent for the interactive menu.
+    /// </summary>
+    /// <remarks>
+    /// Inlined parents are not rendered as a single navigable entry. Instead
+    /// the menu renders a virtual entry for the command's default action
+    /// (labeled by <paramref name="defaultActionLabel"/>) and lists the
+    /// command's visible subcommands directly under the same group label.
+    /// CLI behavior is unaffected.
+    /// </remarks>
+    /// <param name="command">The parent command to render inline.</param>
+    /// <param name="defaultActionLabel">Display label for the virtual default-action entry.</param>
+    public void RegisterInlinedParent(Command command, string defaultActionLabel) =>
+        inlinedParents[command] = defaultActionLabel;
+
+    /// <summary>
+    /// Gets whether a command is registered as an inlined parent.
+    /// </summary>
+    public bool IsInlinedParent(Command command) => inlinedParents.ContainsKey(command);
+
+    /// <summary>
+    /// Gets the display label for an inlined parent's default-action entry,
+    /// or <c>null</c> if the command is not registered as inlined.
+    /// </summary>
+    public string? GetInlineDefaultActionLabel(Command command) =>
+        inlinedParents.TryGetValue(command, out var label) ? label : null;
 
     /// <summary>
     /// Gets the display order for a command.

@@ -60,6 +60,7 @@ internal static class HostExtensions
         groupRegistry.Register(CommandGroups.Content, 20);
         groupRegistry.Register(CommandGroups.Setup, 30);
         groupRegistry.Register(CommandGroups.Addons, 40);
+        groupRegistry.Register(CommandGroups.Info, 90);
 
         // Create root command
         var rootCommand = new RootCommand(description);
@@ -94,6 +95,17 @@ internal static class HostExtensions
                 {
                     pipelineOrderProvider.Register(desc.ParentCommand, cmd.Name, desc.Order);
                 }
+            }
+
+            if (desc.InlineInMenu)
+            {
+                if (string.IsNullOrEmpty(desc.InlineDefaultActionLabel))
+                {
+                    throw new InvalidOperationException(
+                        $"Command '{cmd.Name}' has InlineInMenu=true but no InlineDefaultActionLabel. " +
+                        "Provide a label for the virtual default-action menu entry.");
+                }
+                orderRegistry.RegisterInlinedParent(cmd, desc.InlineDefaultActionLabel);
             }
         }
 

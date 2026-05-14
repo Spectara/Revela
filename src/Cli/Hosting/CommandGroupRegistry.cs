@@ -19,6 +19,9 @@ internal static class CommandGroups
     /// <summary>Plugin addons and optional features.</summary>
     public const string Addons = "Addons";
 
+    /// <summary>Diagnostic / about commands (main menu, bottom).</summary>
+    public const string Info = "Info";
+
     // Config submenu groups
 
     /// <summary>Core project configuration commands (config submenu).</summary>

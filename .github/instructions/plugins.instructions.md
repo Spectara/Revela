@@ -56,12 +56,37 @@ public sealed class MyFeaturePlugin : IPlugin
 | Param | Meaning |
 |-------|---------|
 | `Command` | The `System.CommandLine.Command` instance (from `MyCommand.Create()`) |
-| `ParentCommand` | `null` = root level, `"source"`/`"generate"`/etc. = subcommand. Parent created automatically if missing. |
+| `ParentCommand` | `null` = root level, `"source"`/`"generate"`/etc. = subcommand. Parent created automatically if missing. **Multi-level paths supported** (`"info plugins"` → `revela info plugins <name>`). |
 | `Order` | Sort order within parent (default 50; lower = earlier) |
 | `Group` | Display group label in interactive menu |
 | `RequiresProject` | `false` = available without `project.json` (e.g. `init`, `setup`) |
 | `HideWhenProjectExists` | `true` = hidden inside a project (e.g. setup wizards) |
 | `IsSequentialStep` | `true` = picked up by CLI `generate all` discovery. Pair with `IPipelineStep` for engine/MCP. |
+| `InlineInMenu` | Host-only flag (`info` command tree). Plugins should not need this. |
+| `InlineDefaultActionLabel` | Required when `InlineInMenu = true`. Plugins should not need this. |
+
+## `info` Subcommands — Convention for Plugins
+Plugins **may** contribute one read-only diagnostic subcommand under
+`revela info plugins <plugin-name>` by registering with
+`ParentCommand: "info plugins"`. This is opt-in; nothing breaks if you skip it.
+
+```csharp
+yield return new CommandDescriptor(
+    myInfoCommand.Create(),
+    ParentCommand: "info plugins",
+    Order: 10);
+```
+
+Hard rules for `info` subcommands:
+- **Read-only.** No prompts, no writes, no network calls that mutate state.
+- **Compact.** Output sized for bug-report copy-paste — typically a single
+  Spectre `Panel` with key/value lines. No tables that scroll.
+- **Fast.** No long-running work; user expects a tap-and-read response.
+- **Safe without context.** Must not crash when invoked without an active
+  project (e.g. report "no project loaded" instead of throwing).
+- **No side effects on cache, auth, or files.** This is diagnostics, not
+  troubleshooting tooling. Use a dedicated `doctor` or `check` command if
+  you need active probing.
 
 ## Plugin Configuration
 1. Create config class with `[RevelaConfig("Spectara.Revela.Plugins.MyFeature")]` — full package ID is the JSON section name.
