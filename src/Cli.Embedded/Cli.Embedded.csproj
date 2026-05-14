@@ -20,6 +20,13 @@
     <Compile Include="..\Cli\Hosting\**\*.cs" LinkBase="Hosting" />
   </ItemGroup>
 
+  <!-- Marker read at runtime by BuildInfo to expose HostKind = Embedded
+       (both Cli and Cli.Embedded produce 'revela' as AssemblyName, so
+       assembly-name-based detection is impossible). -->
+  <ItemGroup>
+    <AssemblyMetadata Include="Revela.HostKind" Value="Embedded" />
+  </ItemGroup>
+
   <!-- Core + Commands (same as Cli) -->
   <ItemGroup>
     <ProjectReference Include="..\Core\Core.csproj" />
