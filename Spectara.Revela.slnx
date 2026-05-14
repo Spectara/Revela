@@ -33,6 +33,7 @@
   <Folder Name="/tests/">
     <Project Path="tests/Core/Core.csproj" />
     <Project Path="tests/Commands/Commands.csproj" />
+    <Project Path="tests/Cli/Cli.csproj" />
     <Project Path="tests/Integration/Integration.csproj" />
     <Project Path="tests/Shared/Shared.csproj" />
   </Folder>

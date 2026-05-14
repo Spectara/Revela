@@ -1,11 +1,16 @@
+using System.CommandLine;
+using System.CommandLine.Invocation;
+using System.CommandLine.Parsing;
 using System.Text;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Spectara.Revela.Commands;
 using Spectara.Revela.Core.Configuration;
 using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Abstractions;
 using Spectara.Revela.Sdk.Configuration;
+using Spectara.Revela.Sdk.Hosting;
 
 namespace Spectara.Revela.Cli.Hosting;
 
@@ -50,6 +55,11 @@ internal static class HostBootstrap
         builder.Services.AddInteractiveMode();
         builder.Services.AddPackages(packageSource, builder.Configuration, args);
 
+        // Build identity (HostKind, Version, Framework, ...) — single source
+        // of truth for `--version` and `revela info`. Idempotent registration
+        // so tests can override.
+        builder.Services.TryAddSingleton<IBuildInfo, BuildInfo>();
+
         // Register ProjectEnvironment (runtime info about project location)
         builder.Services.AddOptions<ProjectEnvironment>()
             .Configure<IHostEnvironment>((env, host) => env.Path = host.ContentRootPath);
@@ -67,6 +77,13 @@ internal static class HostBootstrap
     {
         var rootCommand = host.UseRevelaCommands();
 
+        // Replace System.CommandLine's default --version action with one that
+        // prints the human-readable, host-kind-aware identifier. Same string
+        // is used as the first line of `revela info`.
+        var buildInfo = host.Services.GetRequiredService<IBuildInfo>();
+        var versionOption = rootCommand.Options.OfType<VersionOption>().FirstOrDefault();
+        versionOption?.Action = new BuildInfoVersionAction(buildInfo);
+
         // Detect interactive mode: no arguments AND interactive terminal
         var isInteractiveMode = args.Length == 0
             && !Console.IsInputRedirected
@@ -81,5 +98,20 @@ internal static class HostBootstrap
         }
 
         return await rootCommand.Parse(args).InvokeAsync();
+    }
+
+    /// <summary>
+    /// Synchronous <c>--version</c> action that prints
+    /// <see cref="IBuildInfo.FormatVersionLine"/>.
+    /// </summary>
+    private sealed class BuildInfoVersionAction(IBuildInfo buildInfo) : SynchronousCommandLineAction
+    {
+        public override bool ClearsParseErrors => true;
+
+        public override int Invoke(ParseResult parseResult)
+        {
+            parseResult.InvocationConfiguration.Output.WriteLine(buildInfo.FormatVersionLine());
+            return 0;
+        }
     }
 }
