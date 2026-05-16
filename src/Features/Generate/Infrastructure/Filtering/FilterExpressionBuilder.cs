@@ -142,6 +142,10 @@ internal sealed class FilterExpressionBuilder : IFilterNodeVisitor<Expression>
     /// <inheritdoc />
     public Expression Visit(ConstantNode node) => Expression.Constant(node.Value, node.Value?.GetType() ?? typeof(object));
 
+    [UnconditionalSuppressMessage(
+        "Trimming",
+        "IL2026:Members attributed with RequiresUnreferencedCode may break when trimming",
+        Justification = "Expression.Property is called with compile-time literal names on ImageContent/ExifData (whose public properties are preserved via class-level [DynamicallyAccessedMembers]) and on IReadOnlyDictionary<string,string>.")]
     private Expression BuildPropertyAccess(IReadOnlyList<string> path, int position)
     {
         Expression current = parameter;
@@ -252,6 +256,10 @@ internal sealed class FilterExpressionBuilder : IFilterNodeVisitor<Expression>
         return Expression.Default(type);
     }
 
+    [UnconditionalSuppressMessage(
+        "Trimming",
+        "IL2026:Members attributed with RequiresUnreferencedCode may break when trimming",
+        Justification = "Expression.Property is called with compile-time literal names ('HasValue', 'Value') on Nullable<DateTime>, plus DateTime built-in part properties (Year, Month, Day, ...). All targets are framework intrinsics preserved by the runtime.")]
     private Expression BuildDatePartFunction(CallNode node, string partName)
     {
         if (node.Arguments.Count != 1)
@@ -430,6 +438,10 @@ internal sealed class FilterExpressionBuilder : IFilterNodeVisitor<Expression>
         return Expression.Equal(left, right);
     }
 
+    [UnconditionalSuppressMessage(
+        "Trimming",
+        "IL2026:Members attributed with RequiresUnreferencedCode may break when trimming",
+        Justification = "Expression.Property is called with compile-time literal names ('HasValue', 'Value') on Nullable<T> — a framework intrinsic preserved by the runtime.")]
     private static Expression BuildNullSafeComparison(
         Expression left,
         Expression right,

@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using Scriban;
 using Scriban.Parsing;
@@ -54,7 +55,7 @@ internal sealed partial class ScribanTemplateEngine(
     /// Convert PascalCase property names to snake_case for Scriban templates.
     /// Example: Sizes → sizes
     /// </summary>
-    [System.Diagnostics.CodeAnalysis.SuppressMessage(
+    [SuppressMessage(
         "Globalization",
         "CA1308:Normalize strings to uppercase",
         Justification = "Scriban templates require lowercase property names - this is format conversion, not normalization")]
@@ -334,6 +335,39 @@ internal sealed partial class ScribanTemplateEngine(
     /// <summary>
     /// Create Scriban context with custom functions and template loader
     /// </summary>
+    /// <remarks>
+    /// <para>
+    /// This method calls <c>ScriptObject.Import</c> overloads that Scriban
+    /// annotates with <see cref="RequiresUnreferencedCodeAttribute"/> (10×
+    /// IL2026). Both flavors are trim-safe in our usage:
+    /// </para>
+    /// <list type="bullet">
+    /// <item>
+    /// <c>Import(model)</c> — <paramref name="model"/> is always a
+    /// <see cref="IDictionary{TKey, TValue}"/> built in
+    /// <c>RenderService</c>. Scriban iterates dictionary entries directly
+    /// (no property reflection), so trimming cannot remove anything the
+    /// runtime needs.
+    /// </item>
+    /// <item>
+    /// <c>Import(name, delegate)</c> — each delegate wraps a static method
+    /// of this class with a fully-known signature. The trimmer keeps those
+    /// methods because they are referenced via <c>new Func&lt;...&gt;(Method)</c>.
+    /// Scriban's <c>DynamicCustomFunction</c> uses
+    /// <see cref="System.Reflection.MethodInfo"/> from the delegate at
+    /// runtime, which works against the preserved metadata.
+    /// </item>
+    /// </list>
+    /// <para>
+    /// Suppressed at method scope rather than per-call: every call site here
+    /// shares the same justification, and extracting nine local helpers would
+    /// be pure noise.
+    /// </para>
+    /// </remarks>
+    [UnconditionalSuppressMessage(
+        "Trimming",
+        "IL2026:Members attributed with RequiresUnreferencedCode may break when trimming",
+        Justification = "Scriban.Import on a Dictionary takes the entry-iteration path (no reflection); delegate imports wrap static methods preserved via Func<> references.")]
     private TemplateContext CreateScriptContext(object model)
     {
         var context = new TemplateContext
@@ -679,7 +713,7 @@ internal sealed partial class TemplateResolverLoader(
     /// {{ include 'navigation' }} instead of {{ include 'partials/navigation' }}
     /// </para>
     /// </remarks>
-    [System.Diagnostics.CodeAnalysis.SuppressMessage(
+    [SuppressMessage(
         "Globalization",
         "CA1308:Normalize strings to uppercase",
         Justification = "Template keys use lowercase by convention - this is format conversion, not normalization")]
