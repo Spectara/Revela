@@ -502,3 +502,6 @@ playground/
 
 # GitHub Copilot temp files
 .github/copilot-vs/
+
+# C# DevKit / Roslyn language service cache
+*.lscache
