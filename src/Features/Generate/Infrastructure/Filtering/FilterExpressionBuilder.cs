@@ -373,6 +373,10 @@ internal sealed class FilterExpressionBuilder : IFilterNodeVisitor<Expression>
         );
     }
 
+    [UnconditionalSuppressMessage(
+        "AOT",
+        "IL3050:Calling members annotated with 'RequiresDynamicCodeAttribute' may break functionality when AOT compiling",
+        Justification = "Nullable<T> is a built-in generic with only a struct constraint; the runtime supports all value-type instantiations without on-the-fly code generation.")]
     private (Expression left, Expression right) UnifyTypes(Expression left, Expression right, BinaryNode node)
     {
         // If types already match, no conversion needed
