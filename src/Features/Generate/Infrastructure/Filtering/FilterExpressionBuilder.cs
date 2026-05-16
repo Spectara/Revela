@@ -1,4 +1,5 @@
 using System.Collections.Frozen;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq.Expressions;
 using System.Reflection;
 
@@ -186,8 +187,7 @@ internal sealed class FilterExpressionBuilder : IFilterNodeVisitor<Expression>
             }
 
             // Find property (case-insensitive)
-            var property = currentType.GetProperty(segment,
-                BindingFlags.Public | BindingFlags.Instance | BindingFlags.IgnoreCase)
+            var property = LookupProperty(currentType, segment)
                 ?? throw CreateError($"Unknown property '{string.Join(".", path.Take(i + 1))}'", position);
 
             current = Expression.Property(current, property);
@@ -215,6 +215,27 @@ internal sealed class FilterExpressionBuilder : IFilterNodeVisitor<Expression>
 
         return current;
     }
+
+    /// <summary>
+    /// Looks up a public instance property on <paramref name="type"/> by name (case-insensitive).
+    /// </summary>
+    /// <remarks>
+    /// Trim-safe: <paramref name="type"/> walks the chain starting at
+    /// <see cref="ImageContent"/>, then <see cref="ExifData"/>, then primitive
+    /// leaves. Both root types carry a class-level
+    /// <see cref="DynamicallyAccessedMembersAttribute"/> annotation that
+    /// preserves their public properties at trim time. The analyzer cannot see
+    /// this through <see cref="PropertyInfo.PropertyType"/>, so the warning is
+    /// suppressed here at minimum scope.
+    /// </remarks>
+    [UnconditionalSuppressMessage(
+        "Trimming",
+        "IL2070:'this' argument does not satisfy 'DynamicallyAccessedMembersAttribute' in call to target method. The parameter of method does not have matching annotations.",
+        Justification = "ImageContent and ExifData carry class-level [DynamicallyAccessedMembers(PublicProperties)]; navigation only walks these types and primitive leaves.")]
+    private static PropertyInfo? LookupProperty(Type type, string segment)
+        => type.GetProperty(
+            segment,
+            BindingFlags.Public | BindingFlags.Instance | BindingFlags.IgnoreCase);
 
     /// <summary>
     /// Gets a default value expression for the given type.

@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Linq.Expressions;
 using System.Reflection;
 
@@ -190,7 +191,7 @@ internal sealed class FilterService
                 }
 
                 var type = current.GetType();
-                var property = type.GetProperty(segment, BindingFlags.Public | BindingFlags.Instance | BindingFlags.IgnoreCase);
+                var property = LookupProperty(type, segment);
 
                 if (property is null)
                 {
@@ -215,6 +216,27 @@ internal sealed class FilterService
             return current;
         };
     }
+
+    /// <summary>
+    /// Looks up a public instance property on <paramref name="type"/> by name (case-insensitive).
+    /// </summary>
+    /// <remarks>
+    /// Trim-safe: the only types ever passed in are <see cref="ImageContent"/>,
+    /// <see cref="ExifData"/>, primitive leaf values, or <see cref="IReadOnlyDictionary{TKey, TValue}"/>.
+    /// Both <c>ImageContent</c> and <c>ExifData</c> carry a class-level
+    /// <see cref="DynamicallyAccessedMembersAttribute"/> annotation that
+    /// preserves their public properties at trim time. The analyzer cannot see
+    /// this through the <c>object?</c> static type of the navigating local, so
+    /// the warning is suppressed here at minimum scope.
+    /// </remarks>
+    [UnconditionalSuppressMessage(
+        "Trimming",
+        "IL2070:'this' argument does not satisfy 'DynamicallyAccessedMembersAttribute' in call to target method. The parameter of method does not have matching annotations.",
+        Justification = "ImageContent and ExifData carry class-level [DynamicallyAccessedMembers(PublicProperties)]; navigation only walks these types and primitive leaves.")]
+    private static PropertyInfo? LookupProperty(Type type, string segment)
+        => type.GetProperty(
+            segment,
+            BindingFlags.Public | BindingFlags.Instance | BindingFlags.IgnoreCase);
 
     /// <summary>
     /// Gets a maximum value for sorting nulls to end in ascending order.

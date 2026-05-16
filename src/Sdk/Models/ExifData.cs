@@ -13,6 +13,8 @@ namespace Spectara.Revela.Sdk.Models;
 /// to keep the manifest compact.
 /// </para>
 /// </remarks>
+[System.Diagnostics.CodeAnalysis.DynamicallyAccessedMembers(
+    System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.PublicProperties)]
 public sealed class ExifData
 {
     /// <summary>Camera manufacturer (e.g., "Canon", "Nikon", "Sony")</summary>

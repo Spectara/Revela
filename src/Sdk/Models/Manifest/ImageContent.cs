@@ -5,6 +5,8 @@ namespace Spectara.Revela.Sdk.Models.Manifest;
 /// <summary>
 /// Content item representing an image file.
 /// </summary>
+[System.Diagnostics.CodeAnalysis.DynamicallyAccessedMembers(
+    System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.PublicProperties)]
 public sealed record ImageContent : GalleryContent
 {
     /// <summary>
