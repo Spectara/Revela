@@ -1,9 +1,11 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Spectara.Revela.Core.Configuration;
 using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Configuration;
+using Spectara.Revela.Sdk.Hosting;
 
 namespace Spectara.Revela.Tests.Shared.Fixtures;
 
@@ -56,6 +58,9 @@ public static class RevelaTestHost
         builder.Services.AddRevelaConfigSections();
         builder.Services.AddCoreServices();
 
+        // Default IBuildInfo for tests — overridable via configure callback.
+        builder.Services.TryAddSingleton<IBuildInfo>(new TestBuildInfo());
+
         // Register ProjectEnvironment
         builder.Services.AddOptions<ProjectEnvironment>()
             .Configure<IHostEnvironment>((env, host) => env.Path = host.ContentRootPath);
@@ -64,5 +69,16 @@ public static class RevelaTestHost
         configure?.Invoke(builder.Services);
 
         return builder.Build();
+    }
+
+    private sealed class TestBuildInfo : IBuildInfo
+    {
+        public HostKind Kind => HostKind.Standalone;
+        public string Version => "0.0.0-test";
+        public string InformationalVersion => "0.0.0-test";
+        public string Framework => ".NET 10.0";
+        public string Configuration => "Debug";
+        public string RuntimeIdentifier => "test";
+        public string FormatVersionLine() => "revela 0.0.0-test (test)";
     }
 }

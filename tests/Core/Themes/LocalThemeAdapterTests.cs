@@ -96,22 +96,6 @@ public sealed class LocalThemeProviderTests
     }
 
     [TestMethod]
-    public void GetManifest_WithVariables_ReturnsVariables()
-    {
-        // Arrange
-        var themeDir = CreateThemeDirectory("TestTheme",
-            variables: new Dictionary<string, string> { ["credits"] = "test credits" });
-
-        // Act
-        var adapter = new LocalThemeProvider(themeDir);
-        var manifest = adapter.Manifest;
-
-        // Assert
-        Assert.Contains("credits", manifest.Variables.Keys);
-        Assert.AreEqual("test credits", manifest.Variables["credits"]);
-    }
-
-    [TestMethod]
     public void GetFile_ExistingFile_ReturnsStream()
     {
         // Arrange
@@ -240,8 +224,7 @@ public sealed class LocalThemeProviderTests
 
     private string CreateThemeDirectory(
         string name,
-        string? layout = null,
-        Dictionary<string, string>? variables = null)
+        string? layout = null)
     {
         var themeDir = Path.Combine(tempDirectory, name);
         Directory.CreateDirectory(themeDir);
@@ -251,8 +234,7 @@ public sealed class LocalThemeProviderTests
             Name = name,
             Version = "1.0.0",
             Description = $"Test theme {name}",
-            Author = "Test",
-            Variables = variables
+            Author = "Test"
         };
 
         if (layout is not null)

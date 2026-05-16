@@ -129,13 +129,6 @@ public sealed class EmbeddedThemeExtensionTests
     }
 
     [TestMethod]
-    public void Manifest_Variables_ReturnsEmptyOrPopulated()
-    {
-        var variables = extension.Manifest.Variables;
-        Assert.IsNotNull(variables);
-    }
-
-    [TestMethod]
     public void GetTemplateDataDefaults_UnknownKey_ReturnsEmpty()
     {
         var defaults = extension.GetTemplateDataDefaults("nonexistent/template");

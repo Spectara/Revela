@@ -106,24 +106,26 @@ your-project/
 
 ## Customization Options
 
-### Theme Variables (theme.json)
+### Visual Design (CSS Custom Properties)
 
-Modify colors, fonts, and other design tokens:
+Lumina exposes design tokens as native CSS Custom Properties in
+`Assets/main.css`. To change colors, spacing, or typography, extract the
+stylesheet and edit the properties directly:
 
-```json
-{
-  "name": "Lumina",
-  "version": "1.0.0",
-  "variables": {
-    "primary-color": "#2563eb",
-    "background-color": "#ffffff",
-    "text-color": "#1f2937",
-    "font-family": "Inter, sans-serif"
-  }
+```bash
+revela theme extract Lumina --file Assets/main.css
+```
+
+```css
+:root {
+  --color: light-dark(hsl(0 0% 40%), hsl(0 0% 70%));
+  --color-bg: light-dark(hsl(0 0% 100%), hsl(0 0% 0%));
+  --content-max-width: 900px;
 }
 ```
 
-Variables are available in templates as `{{ theme.primary-color }}`.
+This uses the browser-native standard — `light-dark()` for automatic dark mode,
+`clamp()` for fluid spacing, no JSON or template edits required.
 
 ### Templates
 
@@ -200,17 +202,15 @@ revela generate all
 ### 2. Customize Colors
 
 ```bash
-# Extract only theme.json
-revela theme extract Lumina --file theme.json
+# Extract the main stylesheet
+revela theme extract Lumina --file Assets/main.css
 ```
 
-Edit `themes/Lumina/theme.json`:
-```json
-{
-  "variables": {
-    "primary-color": "#dc2626",
-    "background-color": "#0f172a"
-  }
+Edit `themes/Lumina/Assets/main.css`:
+```css
+:root {
+  --color: light-dark(hsl(0 0% 20%), hsl(0 0% 80%));
+  --color-bg: light-dark(hsl(40 30% 98%), hsl(220 15% 8%));
 }
 ```
 

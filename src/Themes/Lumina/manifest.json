@@ -12,8 +12,5 @@
   ],
   "templates": {
     "layout": "Layout.revela"
-  },
-  "variables": {
-    "credits": "powered by Revela"
   }
 }

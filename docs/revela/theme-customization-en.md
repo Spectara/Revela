@@ -5,7 +5,7 @@
 Revela allows you to customize themes without modifying the original theme files. You can:
 - **Extract a theme** to your project for full customization
 - **Override specific files** (templates, assets, configuration)
-- **Modify theme variables** (colors, fonts, sizes)
+- **Tweak visual design** by editing the CSS Custom Properties in the theme's stylesheet
 
 ## How It Works
 
@@ -70,7 +70,7 @@ After extraction, your theme folder looks like this:
 your-project/
 ├── themes/
 │   └── Lumina/                    # Your customized theme
-│       ├── theme.json             # Theme manifest & variables
+│       ├── manifest.json          # Theme manifest (name, version, templates)
 │       ├── layout.revela          # Main layout template
 │       ├── Assets/                # CSS, JS, fonts, images
 │       │   ├── styles.css
@@ -136,25 +136,43 @@ Themes can add lightbox functionality by wrapping the image:
 
 ## Customization Options
 
-### Theme Variables (theme.json)
+### Visual Design (CSS Custom Properties)
 
-Modify colors, fonts, and other design tokens:
+Lumina (and any theme following the same convention) exposes its design tokens as
+native CSS Custom Properties in `Assets/main.css`. To customize colors, spacing,
+or typography, extract the stylesheet and edit the properties directly:
 
-```json
-{
-  "name": "Lumina",
-  "version": "1.0.0",
-  "variables": {
-    "primary-color": "#2563eb",
-    "background-color": "#ffffff",
-    "text-color": "#1f2937",
-    "font-family": "Inter, sans-serif",
-    "border-radius": "0.5rem"
-  }
+```bash
+revela theme extract Lumina --file Assets/main.css
+```
+
+Then edit `themes/Lumina/Assets/main.css`:
+
+```css
+:root {
+  --color: light-dark(hsl(0 0% 40%), hsl(0 0% 70%));
+  --color-bg: light-dark(hsl(0 0% 100%), hsl(0 0% 0%));
+  --space-m: clamp(1.125rem, 0.9181rem + 1.0345vw, 1.5rem);
+  --content-max-width: 900px;
+  /* ... */
 }
 ```
 
-Variables are available in templates as `{{ theme.primary-color }}`.
+This is the standard CSS approach — it supports automatic dark mode
+(`light-dark()`), fluid spacing (`clamp()`), and runtime cascading. No JSON or
+template edits required.
+
+### Footer Text
+
+Footer attribution comes from `site.copyright` in `site.json`. The theme renders
+whatever you put there — set it to your studio name, leave it blank, or add
+your own attributions:
+
+```json
+{
+  "copyright": "© 2026 Jane Doe Photography"
+}
+```
 
 ### Templates
 
@@ -170,7 +188,7 @@ Customize HTML output by editing `.revela` files:
     <link rel="stylesheet" href="{{ basepath }}{{ css }}">
     {{ end }}
 </head>
-<body style="background: {{ theme.background-color }}">
+<body>
     {{ include 'navigation' }}
     {{ body }}
 </body>
@@ -194,19 +212,8 @@ Customize HTML output by editing `.revela` files:
 
 ### Assets (CSS/JS)
 
-Modify styles in `Assets/styles.css`:
-
-```css
-:root {
-    --primary: {{ theme.primary-color }};
-    --bg: {{ theme.background-color }};
-}
-
-.gallery {
-    max-width: 1200px;
-    margin: 0 auto;
-}
-```
+CSS files are static assets — they are copied as-is, not processed through the
+template engine. Edit them directly after extraction.
 
 ### Image Sizes (Configuration/images.json)
 
@@ -315,17 +322,15 @@ revela generate all
 ### 2. Customize Colors
 
 ```bash
-# Extract only theme.json
-revela theme extract Lumina --file theme.json
+# Extract the main stylesheet
+revela theme extract Lumina --file Assets/main.css
 ```
 
-Edit `themes/Lumina/theme.json`:
-```json
-{
-  "variables": {
-    "primary-color": "#dc2626",
-    "background-color": "#0f172a"
-  }
+Edit `themes/Lumina/Assets/main.css`:
+```css
+:root {
+  --color: light-dark(hsl(0 0% 20%), hsl(0 0% 80%));
+  --color-bg: light-dark(hsl(40 30% 98%), hsl(220 15% 8%));
 }
 ```
 
@@ -376,5 +381,5 @@ revela theme files --theme Lumina
 1. **Start small** - Extract only what you need to change
 2. **Version control** - Commit your `themes/` folder
 3. **Update carefully** - When the base theme updates, your overrides remain
-4. **Use variables** - Prefer theme variables over hardcoded values
+4. **Prefer CSS Custom Properties** - For visual changes edit the CSS tokens in `Assets/main.css` rather than touching templates
 5. **Test incrementally** - Run `revela serve` to preview changes live

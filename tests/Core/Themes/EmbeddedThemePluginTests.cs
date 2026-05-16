@@ -34,17 +34,6 @@ public sealed class EmbeddedThemePluginTests
     }
 
     [TestMethod]
-    public void GetManifest_ReturnsVariables()
-    {
-        // Arrange & Act
-        var manifest = plugin.Manifest;
-
-        // Assert
-        Assert.IsNotNull(manifest.Variables);
-        Assert.Contains("credits", manifest.Variables.Keys);
-    }
-
-    [TestMethod]
     public void GetFile_Layout_ReturnsStream()
     {
         // Arrange & Act

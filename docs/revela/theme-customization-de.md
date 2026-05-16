@@ -5,7 +5,7 @@
 Revela ermöglicht die Anpassung von Themes, ohne die Original-Dateien zu verändern. Du kannst:
 - **Ein Theme extrahieren** in dein Projekt für vollständige Anpassung
 - **Einzelne Dateien überschreiben** (Templates, Assets, Konfiguration)
-- **Theme-Variablen ändern** (Farben, Schriften, Größen)
+- **Visuelles Design anpassen** durch Editieren der CSS Custom Properties im Theme-Stylesheet
 
 ## Wie es funktioniert
 
@@ -70,7 +70,7 @@ Nach der Extraktion sieht dein Theme-Ordner so aus:
 dein-projekt/
 ├── themes/
 │   └── Lumina/                    # Dein angepasstes Theme
-│       ├── theme.json             # Theme-Manifest & Variablen
+│       ├── manifest.json          # Theme-Manifest (Name, Version, Templates)
 │       ├── layout.revela          # Haupt-Layout-Template
 │       ├── Assets/                # CSS, JS, Schriften, Bilder
 │       │   ├── styles.css
@@ -136,25 +136,44 @@ Themes können Lightbox-Funktionalität hinzufügen:
 
 ## Anpassungsmöglichkeiten
 
-### Theme-Variablen (theme.json)
+### Visuelles Design (CSS Custom Properties)
 
-Ändere Farben, Schriften und andere Design-Tokens:
+Lumina (und jedes Theme, das derselben Konvention folgt) exponiert seine
+Design-Tokens als native CSS Custom Properties in `Assets/main.css`. Um Farben,
+Abstände oder Typografie anzupassen, extrahiere das Stylesheet und editiere die
+Properties direkt:
 
-```json
-{
-  "name": "Lumina",
-  "version": "1.0.0",
-  "variables": {
-    "primary-color": "#2563eb",
-    "background-color": "#ffffff",
-    "text-color": "#1f2937",
-    "font-family": "Inter, sans-serif",
-    "border-radius": "0.5rem"
-  }
+```bash
+revela theme extract Lumina --file Assets/main.css
+```
+
+Dann bearbeite `themes/Lumina/Assets/main.css`:
+
+```css
+:root {
+  --color: light-dark(hsl(0 0% 40%), hsl(0 0% 70%));
+  --color-bg: light-dark(hsl(0 0% 100%), hsl(0 0% 0%));
+  --space-m: clamp(1.125rem, 0.9181rem + 1.0345vw, 1.5rem);
+  --content-max-width: 900px;
+  /* ... */
 }
 ```
 
-Variablen sind in Templates als `{{ theme.primary-color }}` verfügbar.
+Das ist der Standard-CSS-Ansatz — er unterstützt automatischen Dark Mode
+(`light-dark()`), fluides Spacing (`clamp()`) und Runtime-Kaskadierung. Keine
+JSON- oder Template-Änderungen nötig.
+
+### Footer-Text
+
+Der Footer-Hinweis kommt aus `site.copyright` in `site.json`. Das Theme rendert
+genau das, was dort steht — setze deinen Studio-Namen, lasse es leer oder ergänze
+eigene Hinweise:
+
+```json
+{
+  "copyright": "© 2026 Jane Doe Photography"
+}
+```
 
 ### Templates
 
@@ -170,7 +189,7 @@ Passe die HTML-Ausgabe durch Bearbeiten der `.revela`-Dateien an:
     <link rel="stylesheet" href="{{ basepath }}{{ css }}">
     {{ end }}
 </head>
-<body style="background: {{ theme.background-color }}">
+<body>
     {{ include 'navigation' }}
     {{ body }}
 </body>
@@ -194,19 +213,8 @@ Passe die HTML-Ausgabe durch Bearbeiten der `.revela`-Dateien an:
 
 ### Assets (CSS/JS)
 
-Ändere Styles in `Assets/styles.css`:
-
-```css
-:root {
-    --primary: {{ theme.primary-color }};
-    --bg: {{ theme.background-color }};
-}
-
-.gallery {
-    max-width: 1200px;
-    margin: 0 auto;
-}
-```
+CSS-Dateien sind statische Assets — sie werden 1:1 kopiert und nicht durch die
+Template-Engine verarbeitet. Editiere sie direkt nach der Extraktion.
 
 ### Bildgrößen (Configuration/images.json)
 
@@ -315,17 +323,15 @@ revela generate all
 ### 2. Farben anpassen
 
 ```bash
-# Nur theme.json extrahieren
-revela theme extract Lumina --file theme.json
+# Haupt-Stylesheet extrahieren
+revela theme extract Lumina --file Assets/main.css
 ```
 
-Bearbeite `themes/Lumina/theme.json`:
-```json
-{
-  "variables": {
-    "primary-color": "#dc2626",
-    "background-color": "#0f172a"
-  }
+Bearbeite `themes/Lumina/Assets/main.css`:
+```css
+:root {
+  --color: light-dark(hsl(0 0% 20%), hsl(0 0% 80%));
+  --color-bg: light-dark(hsl(40 30% 98%), hsl(220 15% 8%));
 }
 ```
 

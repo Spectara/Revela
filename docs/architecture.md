@@ -503,7 +503,7 @@ template/
 #### New Theme Structure
 ```
 themes/my-theme/
-├── theme.json           # Theme manifest (name, version, variables)
+├── theme.json           # Theme manifest (name, version, templates)
 ├── Layout.revela        # Main layout template
 ├── Assets/              # Static assets (auto-scanned)
 │   ├── main.css

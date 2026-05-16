@@ -151,6 +151,6 @@ These are not functions but variables available in all templates:
 | `image_basepath` | string | Path/URL to image variants |
 | `image_formats` | string[] | Active formats (`["avif", "webp", "jpg"]`) |
 | `page_content` | string | Original Markdown body as HTML |
-| `theme` | object | Theme variables from `theme.json` |
+| `revela` | object | Build info — currently exposes `revela.version` |
 | `stylesheets` | string[] | CSS filenames |
 | `scripts` | string[] | JS filenames |

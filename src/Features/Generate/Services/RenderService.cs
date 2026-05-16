@@ -9,6 +9,7 @@ using Spectara.Revela.Features.Generate.Models.Results;
 using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Abstractions;
 using Spectara.Revela.Sdk.Configuration;
+using Spectara.Revela.Sdk.Hosting;
 using Spectara.Revela.Sdk.Models.Manifest;
 using Spectara.Revela.Sdk.Services;
 using IManifestRepository = Spectara.Revela.Sdk.Abstractions.IManifestRepository;
@@ -38,6 +39,7 @@ internal sealed partial class RenderService(
     IOptionsMonitor<ProjectConfig> projectConfig,
     IOptionsMonitor<GenerateConfig> options,
     IOptionsMonitor<ThemeConfig> themeConfig,
+    IBuildInfo buildInfo,
     TimeProvider timeProvider,
     ILogger<RenderService> logger) : IRenderService
 {
@@ -471,7 +473,7 @@ internal sealed partial class RenderService(
         var indexNavigation = SetActiveState(model.Navigation, string.Empty);
         var indexBasePath = CalculateSiteBasePath(config, "");
         var indexImageBasePath = CalculateImageBasePath(config, "");
-        var themeVariables = theme?.Manifest.Variables ?? new Dictionary<string, string>();
+        var revelaInfo = new { version = buildInfo.InformationalVersion };
         var formats = ImageSettings.GetActiveFormats();
 
         // Get assets from resolver
@@ -525,7 +527,7 @@ internal sealed partial class RenderService(
                 basepath = indexBasePath,
                 image_basepath = indexImageBasePath,
                 image_formats = formats.Keys,
-                theme = themeVariables,
+                revela = revelaInfo,
                 stylesheets,
                 scripts
             });
@@ -591,7 +593,7 @@ internal sealed partial class RenderService(
                 ["basepath"] = basepath,
                 ["image_basepath"] = galleryImageBasePath,
                 ["image_formats"] = formats.Keys,
-                ["theme"] = themeVariables,
+                ["revela"] = revelaInfo,
                 ["stylesheets"] = stylesheets,
                 ["scripts"] = scripts
             };
