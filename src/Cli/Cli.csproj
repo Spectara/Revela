@@ -20,6 +20,12 @@
     <!-- Compress managed assemblies inside single-file bundle (Brotli).
          Only in Release single-file publish to keep Debug builds fast. -->
     <EnableCompressionInSingleFile Condition="'$(Configuration)' == 'Release' And '$(PublishSingleFile)' == 'true'">true</EnableCompressionInSingleFile>
+
+    <!-- Explicitly NOT trim/AOT compatible: this host loads 3rd-party plugins
+         dynamically via DiskPackageSource and cannot know at build time which
+         types they will reflect on. The trim/AOT target is Cli.Embedded, which
+         statically links a fixed set of plugins. -->
+    <IsTrimmable>false</IsTrimmable>
   </PropertyGroup>
 
   <ItemGroup>

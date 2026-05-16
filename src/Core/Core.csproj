@@ -2,6 +2,8 @@
 
   <PropertyGroup>
     <Description>Core models, abstractions and plugin infrastructure for Revela</Description>
+    <!-- Trim/AOT analyzers — Core is statically linked into Cli.Embedded (AOT target). -->
+    <IsAotCompatible>true</IsAotCompatible>
   </PropertyGroup>
 
   <ItemGroup>

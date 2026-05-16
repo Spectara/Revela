@@ -2,6 +2,8 @@
 
   <PropertyGroup>
     <Description>Host commands for Revela (Config, Plugin Management, Packages, Restore, Generate, Theme)</Description>
+    <!-- Trim/AOT analyzers — Commands is statically linked into Cli.Embedded (AOT target). -->
+    <IsAotCompatible>true</IsAotCompatible>
   </PropertyGroup>
 
   <ItemGroup>

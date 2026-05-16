@@ -12,6 +12,9 @@
     <!-- Required because Core ProjectReference uses Private=false which breaks transitive copy -->
     <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
 
+    <!-- Trim/AOT analyzers — Generate is statically linked into Cli.Embedded (AOT target). -->
+    <IsAotCompatible>true</IsAotCompatible>
+
     <!-- Plugin packaging handled by Spectara.Revela.Sdk.targets -->
   </PropertyGroup>
 

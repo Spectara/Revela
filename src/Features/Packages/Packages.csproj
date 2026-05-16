@@ -3,6 +3,11 @@
   <PropertyGroup>
     <Description>Revela - NuGet package management (install, search, restore, plugin lifecycle)</Description>
     <IsPackable>false</IsPackable>
+    <!-- Explicitly NOT trim/AOT compatible: PackageLoader uses
+         AssemblyLoadContext.LoadFromAssemblyPath to load 3rd-party plugins at
+         runtime. This is structurally incompatible with trimming. This project
+         is referenced only by Cli (dynamic host), NEVER by Cli.Embedded. -->
+    <IsTrimmable>false</IsTrimmable>
   </PropertyGroup>
 
   <ItemGroup>

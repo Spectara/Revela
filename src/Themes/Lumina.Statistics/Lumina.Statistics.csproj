@@ -8,6 +8,9 @@
     <PackageReleaseNotes>https://github.com/spectara/revela/blob/main/CHANGELOG.md</PackageReleaseNotes>
     <PackageType>RevelaTheme</PackageType>
 
+    <!-- Trim/AOT analyzers — statically linked into Cli.Embedded (AOT target). -->
+    <IsAotCompatible>true</IsAotCompatible>
+
     <!-- Theme packaging handled by Spectara.Revela.Sdk.targets -->
   </PropertyGroup>
 

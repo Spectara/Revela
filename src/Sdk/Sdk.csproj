@@ -7,9 +7,12 @@
     <PackageId>Spectara.Revela.Sdk</PackageId>
     <PackageTags>revela;sdk;plugin;theme;photography;static-site-generator</PackageTags>
     <PackageReadmeFile>README.md</PackageReadmeFile>
-    <!-- Sdk must be trimmable for AOT-compatible plugins -->
-    <IsTrimmable>true</IsTrimmable>
-    <EnableTrimAnalyzer>true</EnableTrimAnalyzer>
+    <!-- Sdk must be trim- and AOT-safe so it can be consumed by Cli.Embedded
+         (static AOT host) and by 3rd-party plugin authors who want to publish
+         trimmed/AOT-compatible plugins. Setting IsAotCompatible=true also
+         enables IsTrimmable, EnableTrimAnalyzer, EnableSingleFileAnalyzer and
+         EnableAotAnalyzer (see https://learn.microsoft.com/dotnet/core/deploying/native-aot/#aot-compatibility-analyzers). -->
+    <IsAotCompatible>true</IsAotCompatible>
   </PropertyGroup>
 
   <ItemGroup>

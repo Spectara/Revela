@@ -7,6 +7,9 @@
     <PackageIcon>icon.png</PackageIcon>
     <PackageReleaseNotes>https://github.com/spectara/revela/blob/main/CHANGELOG.md</PackageReleaseNotes>
     <PackageType>RevelaPlugin</PackageType>
+
+    <!-- Trim/AOT analyzers — statically linked into Cli.Embedded (AOT target). -->
+    <IsAotCompatible>true</IsAotCompatible>
   </PropertyGroup>
 
   <ItemGroup>
