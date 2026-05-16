@@ -1,4 +1,5 @@
 using Spectara.Revela.Features.Generate.Infrastructure;
+using Spectara.Revela.Sdk.Abstractions;
 using Spectara.Revela.Sdk.Models;
 using Spectara.Revela.Sdk.Models.Manifest;
 
@@ -12,6 +13,7 @@ namespace Spectara.Revela.Features.Generate.Models;
 /// - id: Unique identifier for HTML anchors (filename without extension)
 /// - url: Relative path to image variants (e.g., "events/fireworks/029081" -> images/events/fireworks/029081/640.jpg)
 /// </remarks>
+[RevelaTemplateModel]
 internal sealed class Image
 {
     /// <summary>
@@ -113,6 +115,7 @@ internal sealed class Image
 /// <summary>
 /// Represents a processed variant of an image (different size/format)
 /// </summary>
+[RevelaTemplateModel]
 internal sealed class ImageVariant
 {
     public required int Width { get; init; }

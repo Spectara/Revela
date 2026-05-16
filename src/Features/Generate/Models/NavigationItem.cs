@@ -1,3 +1,5 @@
+using Spectara.Revela.Sdk.Abstractions;
+
 namespace Spectara.Revela.Features.Generate.Models;
 
 /// <summary>
@@ -27,6 +29,7 @@ namespace Spectara.Revela.Features.Generate.Models;
 /// {{~ end ~}}
 /// </code>
 /// </remarks>
+[RevelaTemplateModel]
 internal sealed class NavigationItem
 {
     /// <summary>

@@ -12,6 +12,7 @@ using Spectara.Revela.Sdk.Configuration;
 using Spectara.Revela.Sdk.Hosting;
 using Spectara.Revela.Sdk.Models.Manifest;
 using Spectara.Revela.Sdk.Services;
+using Spectara.Revela.Sdk.TemplateModels;
 using IManifestRepository = Spectara.Revela.Sdk.Abstractions.IManifestRepository;
 
 namespace Spectara.Revela.Features.Generate.Services;
@@ -473,7 +474,7 @@ internal sealed partial class RenderService(
         var indexNavigation = SetActiveState(model.Navigation, string.Empty);
         var indexBasePath = CalculateSiteBasePath(config, "");
         var indexImageBasePath = CalculateImageBasePath(config, "");
-        var revelaInfo = new { version = buildInfo.InformationalVersion };
+        var revelaInfo = buildInfo.ToScriptObject();
         var formats = ImageSettings.GetActiveFormats();
 
         // Get assets from resolver
@@ -517,19 +518,19 @@ internal sealed partial class RenderService(
 
         var indexHtml = engine.Render(
             indexTemplate,
-            new
+            new Dictionary<string, object?>
             {
-                site = model.Site,
-                gallery = rootGallery,
-                galleries = model.Galleries,
-                images = indexImages,
-                nav_items = indexNavigation,
-                basepath = indexBasePath,
-                image_basepath = indexImageBasePath,
-                image_formats = formats.Keys,
-                revela = revelaInfo,
-                stylesheets,
-                scripts
+                ["site"] = model.Site,
+                ["gallery"] = rootGallery?.ToScriptObject(),
+                ["galleries"] = model.Galleries.ToScriptArray(),
+                ["images"] = indexImages.ToScriptArray(),
+                ["nav_items"] = indexNavigation.ToScriptArray(),
+                ["basepath"] = indexBasePath,
+                ["image_basepath"] = indexImageBasePath,
+                ["image_formats"] = formats.Keys,
+                ["revela"] = revelaInfo,
+                ["stylesheets"] = stylesheets,
+                ["scripts"] = scripts,
             });
 
         WarnIfHtmlTruncated(indexHtml, "index.html");
@@ -586,10 +587,10 @@ internal sealed partial class RenderService(
             var layoutModel = new Dictionary<string, object?>
             {
                 ["site"] = model.Site,
-                ["gallery"] = gallery,
+                ["gallery"] = gallery.ToScriptObject(),
                 ["page_content"] = pageContent,
-                ["images"] = galleryImages,
-                ["nav_items"] = galleryNavigation,
+                ["images"] = galleryImages.ToScriptArray(),
+                ["nav_items"] = galleryNavigation.ToScriptArray(),
                 ["basepath"] = basepath,
                 ["image_basepath"] = galleryImageBasePath,
                 ["image_formats"] = formats.Keys,
@@ -838,7 +839,7 @@ internal sealed partial class RenderService(
         IEnumerable<string> imageFormats) =>
         (image, alt, classes) => engine.Render(template, new Dictionary<string, object?>
         {
-            ["image"] = image,
+            ["image"] = image.ToScriptObject(),
             ["alt"] = alt,
             ["classes"] = classes ?? [],
             ["image_basepath"] = imageBasePath,

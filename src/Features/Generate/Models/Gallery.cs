@@ -1,8 +1,11 @@
+using Spectara.Revela.Sdk.Abstractions;
+
 namespace Spectara.Revela.Features.Generate.Models;
 
 /// <summary>
 /// Represents a gallery containing images
 /// </summary>
+[RevelaTemplateModel]
 internal sealed class Gallery
 {
     /// <summary>

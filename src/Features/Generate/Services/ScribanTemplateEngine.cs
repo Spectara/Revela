@@ -407,9 +407,29 @@ internal sealed partial class ScribanTemplateEngine(
 
         var scriptObject = new ScriptObject();
 
-        // Import model as global variables
-        // MemberRenamer handles the PascalCase → lowercase conversion
-        scriptObject.Import(model);
+        // Import model as global variables.
+        // Trim-safe explicit copy for dictionaries: Scriban's Import(object) uses
+        // reflection to detect IDictionary<string, object?> and dispatch to entry
+        // iteration. That reflection-based dispatch breaks under PublishTrimmed —
+        // the trimmer cannot prove the interface check is reachable. We do the
+        // copy ourselves so trimming never sees a reflection path on the model
+        // container. Values inside the dictionary are already trim-safe
+        // (primitives, ScriptObject from [RevelaTemplateModel] codegen, JsonElement).
+        if (model is IDictionary<string, object?> dict)
+        {
+            foreach (var (key, value) in dict)
+            {
+                scriptObject[key] = value;
+            }
+        }
+        else
+        {
+            scriptObject.Import(model);
+        }
+
+        // Convert any JsonElement values in the model to Scriban-compatible types
+        // This is needed for custom templates that use data: field with JSON files
+        ConvertJsonElementsInScriptObject(scriptObject);
 
         // Convert any JsonElement values in the model to Scriban-compatible types
         // This is needed for custom templates that use data: field with JSON files
