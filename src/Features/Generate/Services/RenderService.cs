@@ -120,6 +120,22 @@ internal sealed partial class RenderService(
             // Load configuration
             var config = await LoadConfigurationAsync(cancellationToken);
 
+            // Pre-check: site.json is required for templates (provides site.title, etc.).
+            // Detect missing file early and return a friendly error instead of letting
+            // Scriban fail later with "Cannot get the member site.title for a null object".
+            var siteJsonPath = Path.Combine(projectEnvironment.Value.Path, "site.json");
+            if (!File.Exists(siteJsonPath))
+            {
+                return new RenderResult
+                {
+                    Success = false,
+                    ErrorMessage =
+                        $"site.json not found at '{siteJsonPath}'. " +
+                        "Run 'revela config site' to create it from the theme template, " +
+                        "or copy site.json from your project source."
+                };
+            }
+
             // Resolve theme and extensions
             var theme = themeRegistry.Resolve(config.ThemeName, projectEnvironment.Value.Path);
             SetTheme(theme);

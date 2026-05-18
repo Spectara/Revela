@@ -1,5 +1,6 @@
 using System.CommandLine;
 using Microsoft.Extensions.Options;
+using Spectara.Revela.Commands.Config.Site;
 using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Abstractions;
 using Spectara.Revela.Sdk.Configuration;
@@ -23,6 +24,7 @@ internal sealed partial class InteractiveMenuService(
     IPackageContext packageContext,
     IEnumerable<ISetupWizard> setupWizards,
     ProjectWizard projectWizard,
+    ConfigSiteCommand configSiteCommand,
     ILogger<InteractiveMenuService> logger) : IInteractiveMenuService
 {
     private bool bannerShown;
@@ -63,6 +65,14 @@ internal sealed partial class InteractiveMenuService(
         if (!configService.IsProjectInitialized())
         {
             return await HandleNoProjectAsync(cancellationToken);
+        }
+
+        // project.json exists but site.json is missing — guide the user to
+        // finish setup instead of letting generate fail later with a Scriban
+        // "site.title for a null object" error.
+        if (!configService.IsSiteConfigured())
+        {
+            return await HandleNoSiteAsync(cancellationToken);
         }
 
         ShowWelcomeBanner();
@@ -141,6 +151,46 @@ internal sealed partial class InteractiveMenuService(
             if (result != 0)
             {
                 ShowWizardIncompleteMessage("Project creation");
+            }
+        }
+
+        return await ContinueToMenuAsync(cancellationToken);
+    }
+
+    private async Task<int> HandleNoSiteAsync(CancellationToken cancellationToken)
+    {
+        ConsoleUI.ClearConsole();
+
+        var folderName = projectEnvironment.Value.FolderName;
+
+        var panel = new Panel(
+            new Markup(
+                "[bold]Site Configuration Missing[/]\n\n" +
+                $"This project ([cyan]{Markup.Escape(folderName)}[/]) has a [cyan]project.json[/] " +
+                "but no [cyan]site.json[/].\n" +
+                "Site settings (title, description, etc.) are required to generate pages.\n\n" +
+                "Would you like to configure them now?"))
+            .WithHeader("[cyan1]Configure Site[/]")
+            .WithInfoStyle()
+            .Padding(1, 0);
+
+        AnsiConsole.Write(panel);
+        AnsiConsole.WriteLine();
+
+        var choice = PromptForAction("Configure Site Now");
+
+        if (choice == "Exit")
+        {
+            return ExitWithGoodbye();
+        }
+
+        if (choice == "Configure Site Now")
+        {
+            var result = await configSiteCommand.ExecuteAsync(cancellationToken);
+
+            if (result != 0)
+            {
+                ShowWizardIncompleteMessage("Site configuration");
             }
         }
 
