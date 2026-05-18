@@ -133,11 +133,16 @@ jobs:
           # Sanity assertions: templates rendered + images processed.
           test -f output/index.html
           test -d output/galleries
-          # At least one generated image variant (webp or jpg) must exist.
-          if ! find output -type f \( -name '*.webp' -o -name '*.jpg' \) | grep -q .; then
+          # Count generated image variants (must be > 0). Use a counted file
+          # check rather than `find | grep -q .` which gets SIGPIPE-burned
+          # under GitHub Actions' `set -eo pipefail` default and produces a
+          # spurious failure even when the pipeline output is correct.
+          imgcount=$(find output -type f \( -name '*.webp' -o -name '*.jpg' \) | wc -l)
+          if [ "$imgcount" -eq 0 ]; then
             echo "❌ No image variants produced — image pipeline likely broken under AOT"
             exit 1
           fi
+          echo "✓ $imgcount image variants produced (expected: ~228)"
         shell: bash
 
       - name: Upload Test Results
