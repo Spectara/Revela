@@ -96,7 +96,7 @@ internal sealed partial class ConfigStatisticsCommand(
         // Wrap with plugin section name and update project.json
         var updates = new JsonObject
         {
-            [StatisticsPluginConfig.SectionName] = pluginConfig
+            [StatisticsPluginConfig.Section] = pluginConfig
         };
 
         await configService.UpdateProjectConfigAsync(updates, cancellationToken);

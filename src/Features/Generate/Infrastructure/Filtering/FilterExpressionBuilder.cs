@@ -42,6 +42,14 @@ internal sealed class FilterExpressionBuilder : IFilterNodeVisitor<Expression>
         ["upper"] = (b, n) => b.BuildToUpperFunction(n)
     }.ToFrozenDictionary(StringComparer.OrdinalIgnoreCase);
 
+    // Statically cached reflection for the exif.raw.* dictionary access path.
+    // Looked up once via the typed `nameof` expression \u2014 the AOT/trim analyzer
+    // can prove the targets are reachable and preserve them.
+    private static readonly PropertyInfo ExifProperty = typeof(ImageContent).GetProperty(nameof(ImageContent.Exif))!;
+    private static readonly PropertyInfo RawProperty = typeof(ExifData).GetProperty(nameof(ExifData.Raw))!;
+    private static readonly MethodInfo RawContainsKeyMethod = typeof(IReadOnlyDictionary<string, string>).GetMethod(nameof(IReadOnlyDictionary<,>.ContainsKey))!;
+    private static readonly MethodInfo RawGetItemMethod = typeof(IReadOnlyDictionary<string, string>).GetMethod("get_Item")!;
+
     /// <summary>
     /// Initializes a new instance of the <see cref="FilterExpressionBuilder"/> class.
     /// </summary>
@@ -145,7 +153,7 @@ internal sealed class FilterExpressionBuilder : IFilterNodeVisitor<Expression>
     [UnconditionalSuppressMessage(
         "Trimming",
         "IL2026:Members attributed with RequiresUnreferencedCode may break when trimming",
-        Justification = "Expression.Property is called with compile-time literal names on ImageContent/ExifData (whose public properties are preserved via class-level [DynamicallyAccessedMembers]) and on IReadOnlyDictionary<string,string>.")]
+        Justification = "Expression.Property uses only PropertyInfo overloads (no string-based lookup). LookupProperty navigates ImageContent/ExifData via class-level [DynamicallyAccessedMembers(PublicProperties)].")]
     private Expression BuildPropertyAccess(IReadOnlyList<string> path, int position)
     {
         Expression current = parameter;
@@ -161,20 +169,16 @@ internal sealed class FilterExpressionBuilder : IFilterNodeVisitor<Expression>
                 path.Count > 1 && path[i - 2].Equals("exif", StringComparison.OrdinalIgnoreCase))
             {
                 // Build dictionary access: exif.Raw["key"]
+                // Use cached PropertyInfo/MethodInfo (no string-based reflection
+                // — Expression.Property(_, string) is annotated RequiresUnreferencedCode
+                // and breaks under PublishAot for non-DAM-annotated targets).
                 var dictKey = segment;
-                var getValueMethod = typeof(IReadOnlyDictionary<string, string>)
-                    .GetMethod("get_Item")!;
-
-                // Build: img.Exif != null && img.Exif.Raw != null && img.Exif.Raw.ContainsKey(key) ? img.Exif.Raw[key] : null
-                var exifProp = Expression.Property(parameter, "Exif");
-                var rawProp = Expression.Property(exifProp, "Raw");
+                var exifProp = Expression.Property(parameter, ExifProperty);
+                var rawProp = Expression.Property(exifProp, RawProperty);
                 var keyConst = Expression.Constant(dictKey);
 
-                var containsMethod = typeof(IReadOnlyDictionary<string, string>)
-                    .GetMethod("ContainsKey")!;
-
-                var containsCall = Expression.Call(rawProp, containsMethod, keyConst);
-                var getValue = Expression.Call(rawProp, getValueMethod, keyConst);
+                var containsCall = Expression.Call(rawProp, RawContainsKeyMethod, keyConst);
+                var getValue = Expression.Call(rawProp, RawGetItemMethod, keyConst);
 
                 // Null-safe access
                 return Expression.Condition(
@@ -256,10 +260,6 @@ internal sealed class FilterExpressionBuilder : IFilterNodeVisitor<Expression>
         return Expression.Default(type);
     }
 
-    [UnconditionalSuppressMessage(
-        "Trimming",
-        "IL2026:Members attributed with RequiresUnreferencedCode may break when trimming",
-        Justification = "Expression.Property is called with compile-time literal names ('HasValue', 'Value') on Nullable<DateTime>, plus DateTime built-in part properties (Year, Month, Day, ...). All targets are framework intrinsics preserved by the runtime.")]
     private Expression BuildDatePartFunction(CallNode node, string partName)
     {
         if (node.Arguments.Count != 1)
@@ -269,11 +269,13 @@ internal sealed class FilterExpressionBuilder : IFilterNodeVisitor<Expression>
 
         var dateExpr = node.Arguments[0].Accept(this);
 
-        // Handle DateTime? by accessing .Value
+        // Handle DateTime? by unwrapping the underlying value
         if (dateExpr.Type == typeof(DateTime?))
         {
-            var hasValue = Expression.Property(dateExpr, "HasValue");
-            var value = Expression.Property(dateExpr, "Value");
+            // nullable.HasValue ≡ (nullable != null)  — AOT-safe (no string lookup).
+            var hasValue = Expression.NotEqual(dateExpr, Expression.Constant(null, typeof(DateTime?)));
+            // nullable.Value ≡ (T)nullable           — AOT-safe (no string lookup).
+            var value = Expression.Convert(dateExpr, typeof(DateTime));
             var partProperty = typeof(DateTime).GetProperty(partName)!;
             var part = Expression.Property(value, partProperty);
 
@@ -442,18 +444,16 @@ internal sealed class FilterExpressionBuilder : IFilterNodeVisitor<Expression>
         return Expression.Equal(left, right);
     }
 
-    [UnconditionalSuppressMessage(
-        "Trimming",
-        "IL2026:Members attributed with RequiresUnreferencedCode may break when trimming",
-        Justification = "Expression.Property is called with compile-time literal names ('HasValue', 'Value') on Nullable<T> — a framework intrinsic preserved by the runtime.")]
     private static Expression BuildNullSafeComparison(
         Expression left,
         Expression right,
         Func<Expression, Expression, Expression> comparison)
     {
         // For nullable types, return false if either side is null
-        var leftNullable = Nullable.GetUnderlyingType(left.Type) is not null;
-        var rightNullable = Nullable.GetUnderlyingType(right.Type) is not null;
+        var leftUnderlying = Nullable.GetUnderlyingType(left.Type);
+        var rightUnderlying = Nullable.GetUnderlyingType(right.Type);
+        var leftNullable = leftUnderlying is not null;
+        var rightNullable = rightUnderlying is not null;
 
         if (!leftNullable && !rightNullable)
         {
@@ -461,20 +461,26 @@ internal sealed class FilterExpressionBuilder : IFilterNodeVisitor<Expression>
         }
 
         // Build: left.HasValue && right.HasValue && comparison(left.Value, right.Value)
+        // Implemented with AOT-safe Expression primitives:
+        //   nullable.HasValue ≡ (nullable != null)
+        //   nullable.Value    ≡ (T)nullable
+        // Neither uses string-based property lookup (Expression.Property(_, "...")
+        // is annotated [RequiresUnreferencedCode] and breaks under PublishAot on
+        // Nullable<T> instantiations whose metadata is trimmed away).
         var conditions = new List<Expression>();
 
         if (leftNullable)
         {
-            conditions.Add(Expression.Property(left, "HasValue"));
+            conditions.Add(Expression.NotEqual(left, Expression.Constant(null, left.Type)));
         }
 
         if (rightNullable)
         {
-            conditions.Add(Expression.Property(right, "HasValue"));
+            conditions.Add(Expression.NotEqual(right, Expression.Constant(null, right.Type)));
         }
 
-        var leftValue = leftNullable ? Expression.Property(left, "Value") : left;
-        var rightValue = rightNullable ? Expression.Property(right, "Value") : right;
+        var leftValue = leftNullable ? Expression.Convert(left, leftUnderlying!) : left;
+        var rightValue = rightNullable ? Expression.Convert(right, rightUnderlying!) : right;
 
         var compareExpr = comparison(leftValue, rightValue);
 

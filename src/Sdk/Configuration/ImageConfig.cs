@@ -36,7 +36,7 @@ public sealed class ImageConfig
     /// Recommended quality: 80-90. Set to 0 to disable.
     /// Default is 0 - user must explicitly configure via 'revela config image'.
     /// </remarks>
-    public int Webp { get; init; }
+    public int Webp { get; set; }
 
     /// <summary>
     /// JPEG quality (1-100). Set to 0 to disable JPEG output.
@@ -46,7 +46,7 @@ public sealed class ImageConfig
     /// Recommended quality: 85-95. Set to 0 to disable.
     /// Default is 0 - user must explicitly configure via 'revela config image'.
     /// </remarks>
-    public int Jpg { get; init; }
+    public int Jpg { get; set; }
 
     /// <summary>
     /// AVIF quality (1-100). Set to 0 to disable AVIF output.
@@ -56,7 +56,7 @@ public sealed class ImageConfig
     /// Recommended quality: 75-85. Set to 0 to disable.
     /// Default is 0 - user must explicitly configure via 'revela config image'.
     /// </remarks>
-    public int Avif { get; init; }
+    public int Avif { get; set; }
 
     /// <summary>
     /// Optional maximum degree of parallelism for image processing.
@@ -65,7 +65,7 @@ public sealed class ImageConfig
     /// When null, defaults to <c>Environment.ProcessorCount - 2</c> to leave headroom.
     /// Set to 1 to process images sequentially on low-memory systems.
     /// </remarks>
-    public int? MaxDegreeOfParallelism { get; init; }
+    public int? MaxDegreeOfParallelism { get; set; }
 
     /// <summary>
     /// Minimum image width in pixels. Images narrower than this are skipped during scan.
@@ -74,7 +74,7 @@ public sealed class ImageConfig
     /// Useful for filtering out preview/thumbnail files that some programs or phones
     /// place alongside the actual photos. Set to 0 to disable filtering (default).
     /// </remarks>
-    public int MinWidth { get; init; }
+    public int MinWidth { get; set; }
 
     /// <summary>
     /// Minimum image height in pixels. Images shorter than this are skipped during scan.
@@ -83,7 +83,7 @@ public sealed class ImageConfig
     /// Useful for filtering out preview/thumbnail files. Combined with <see cref="MinWidth"/>,
     /// images failing either threshold are skipped. Set to 0 to disable filtering (default).
     /// </remarks>
-    public int MinHeight { get; init; }
+    public int MinHeight { get; set; }
 
     /// <summary>
     /// Placeholder image settings for lazy loading
@@ -93,7 +93,7 @@ public sealed class ImageConfig
     /// Default strategy is <see cref="PlaceholderStrategy.CssHash"/> - a compact integer (~7 bytes).
     /// Set to <c>None</c> to disable placeholders.
     /// </remarks>
-    public PlaceholderConfig Placeholder { get; init; } = new();
+    public PlaceholderConfig Placeholder { get; set; } = new();
 
     /// <summary>
     /// Gets the active formats (quality > 0) as a dictionary.

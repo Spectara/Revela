@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using Microsoft.Extensions.Options;
 using Spectara.Revela.Sdk.Abstractions;
 
 namespace Spectara.Revela.Plugins.Serve.Configuration;
@@ -39,9 +40,14 @@ namespace Spectara.Revela.Plugins.Serve.Configuration;
 internal sealed class ServePluginConfig
 {
     /// <summary>
-    /// Configuration section name in project.json.
+    /// Configuration section name. Matches the <c>[RevelaConfig]</c> attribute
+    /// argument; passed to <c>BindConfiguration</c> at registration time.
+    /// Hand-written because the .NET Configuration Binding Source Generator
+    /// only intercepts call sites where the section argument is statically
+    /// resolvable from user-written source (constants emitted from another
+    /// source generator are invisible to it).
     /// </summary>
-    public static string SectionName => "Spectara.Revela.Plugins.Serve";
+    public const string Section = "Spectara.Revela.Plugins.Serve";
 
     /// <summary>
     /// Port number for the HTTP server
@@ -51,7 +57,7 @@ internal sealed class ServePluginConfig
     /// with a suggestion to use the --port option.
     /// </remarks>
     [Range(1, 65535, ErrorMessage = "Port must be between 1 and 65535")]
-    public int Port { get; init; } = 8080;
+    public int Port { get; set; } = 8080;
 
     /// <summary>
     /// Enable verbose logging (all HTTP requests)
@@ -60,5 +66,14 @@ internal sealed class ServePluginConfig
     /// When false (default), only 404 errors are shown.
     /// When true, all requests are logged with their status codes.
     /// </remarks>
-    public bool Verbose { get; init; }
+    public bool Verbose { get; set; }
 }
+
+/// <summary>
+/// Trim/AOT-safe <see cref="IValidateOptions{TOptions}"/> implementation for
+/// <see cref="ServePluginConfig"/>. The body is emitted by the
+/// <c>Microsoft.Extensions.Options</c> source generator from the
+/// <c>DataAnnotations</c> on the config type.
+/// </summary>
+[OptionsValidator]
+internal sealed partial class ServePluginConfigValidator : IValidateOptions<ServePluginConfig>;

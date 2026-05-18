@@ -133,7 +133,7 @@ internal sealed partial class ConfigOneDriveCommand(
         // Wrap with plugin section name and update project.json
         var updates = new JsonObject
         {
-            [OneDrivePluginConfig.SectionName] = pluginConfig
+            [OneDrivePluginConfig.Section] = pluginConfig
         };
 
         await configService.UpdateProjectConfigAsync(updates, cancellationToken);

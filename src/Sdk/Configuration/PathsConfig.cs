@@ -52,13 +52,18 @@ namespace Spectara.Revela.Sdk.Configuration;
 public sealed class PathsConfig
 {
     /// <summary>
+    /// Configuration section name. Matches the <c>[RevelaConfig]</c> attribute
+    /// argument; passed to <c>BindConfiguration</c> at registration time.
+    /// </summary>
+    public const string Section = "paths";
+    /// <summary>
     /// Source directory containing images to process.
     /// </summary>
     /// <remarks>
     /// Can be relative to project root or an absolute path.
     /// Use absolute paths for cloud-synced folders (OneDrive, Dropbox, iCloud).
     /// </remarks>
-    public string Source { get; init; } = "source";
+    public string Source { get; set; } = "source";
 
     /// <summary>
     /// Output directory for generated site files.
@@ -67,5 +72,5 @@ public sealed class PathsConfig
     /// Can be relative to project root or an absolute path.
     /// Use absolute paths for direct webserver deployment.
     /// </remarks>
-    public string Output { get; init; } = "output";
+    public string Output { get; set; } = "output";
 }

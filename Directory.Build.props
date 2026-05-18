@@ -62,22 +62,19 @@
 
   <PropertyGroup Label="Documentation">
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
-    <!-- CS1591: missing XML doc comment — too noisy for a pre-1.0 codebase.
-         IDE0005: 'using directive is unnecessary' — IDE0005 has a long-standing
-         false-positive against source-generated extension methods (e.g. our
-         [RevelaConfig] generator emits AddXxxConfig() in the *.Configuration
-         namespace, but the analyzer doesn't see the generated source on the
-         Pack target's compilation pass and flags the using as unused). See
-         https://github.com/dotnet/roslyn/issues/41640. -->
-    <NoWarn>$(NoWarn);CS1591;IDE0005</NoWarn>
+    <!-- CS1591: missing XML doc comment — too noisy for a pre-1.0 codebase. -->
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
   </PropertyGroup>
 
   <PropertyGroup Label="Trim/AOT Configuration Binding">
-    <!-- Trim/AOT-safe configuration binding. Enables the .NET source generator
-         that replaces reflection-based IConfiguration.Bind/Get/Configure with
-         compile-time interceptors. Required for the [RevelaConfig]-generated
-         BindConfiguration<T> calls to be safe under PublishTrimmed/PublishAot.
-         See: https://learn.microsoft.com/dotnet/core/extensions/configuration-generator -->
+    <!-- Trim/AOT-safe configuration binding. Enables the .NET Configuration
+         Binding Source Generator (CBSG), which intercepts BindConfiguration/
+         Bind/Get/Configure call sites in USER-WRITTEN source and replaces them
+         with a typed binder at compile time. Reflection-free, trim-safe,
+         AOT-ready. Calls emitted from another source generator are invisible
+         to CBSG — which is why the [RevelaConfig] generator deliberately
+         leaves the BindConfiguration call to the consumer.
+         Docs: https://learn.microsoft.com/dotnet/core/extensions/configuration-generator -->
     <EnableConfigurationBindingGenerator>true</EnableConfigurationBindingGenerator>
   </PropertyGroup>
 

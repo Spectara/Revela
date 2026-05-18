@@ -30,9 +30,14 @@ namespace Spectara.Revela.Sdk.Configuration;
 public sealed class ProjectConfig
 {
     /// <summary>
+    /// Configuration section name. Matches the <c>[RevelaConfig]</c> attribute
+    /// argument; passed to <c>BindConfiguration</c> at registration time.
+    /// </summary>
+    public const string Section = "project";
+    /// <summary>
     /// Project name used for identification
     /// </summary>
-    public string Name { get; init; } = string.Empty;
+    public string Name { get; set; } = string.Empty;
 
     /// <summary>
     /// Base URL for the generated site (e.g., "https://example.com").
@@ -42,12 +47,12 @@ public sealed class ProjectConfig
     /// Stored as <see cref="Uri"/> for type safety — System.Text.Json and IConfiguration
     /// both bind <c>Uri</c> natively from string values via the built-in TypeConverter.
     /// </remarks>
-    public Uri? BaseUrl { get; init; }
+    public Uri? BaseUrl { get; set; }
 
     /// <summary>
     /// Primary language code (e.g., "en", "de")
     /// </summary>
-    public string Language { get; init; } = "en";
+    public string Language { get; set; } = "en";
 
     /// <summary>
     /// Base path/URL for image references in generated HTML.
@@ -64,7 +69,7 @@ public sealed class ProjectConfig
     /// <see cref="Uri"/> would awkwardly conflate.
     /// </remarks>
     [SuppressMessage("Design", "CA1056:URI-like properties should not be strings", Justification = "Can be relative path OR absolute CDN URL")]
-    public string? ImageBasePath { get; init; }
+    public string? ImageBasePath { get; set; }
 
     /// <summary>
     /// Base path for subdirectory hosting (e.g., "/photos/" for hosting at example.com/photos/).
@@ -75,5 +80,5 @@ public sealed class ProjectConfig
     /// Root hosting: "/" → href="main.css"
     /// Subdirectory: "/photos/" → href="/photos/main.css"
     /// </example>
-    public string BasePath { get; init; } = "/";
+    public string BasePath { get; set; } = "/";
 }

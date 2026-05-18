@@ -13,6 +13,25 @@
     <!-- Compress managed assemblies inside single-file bundle (Brotli).
          Only in Release single-file publish to keep Debug builds fast. -->
     <EnableCompressionInSingleFile Condition="'$(Configuration)' == 'Release' And '$(PublishSingleFile)' == 'true'">true</EnableCompressionInSingleFile>
+
+    <!-- Trim/AOT-safe configuration binding is established (CBSG intercepts
+         user-source BindConfiguration; ValidateDataAnnotations is replaced by
+         [OptionsValidator]). All libraries linked into this host are marked
+         IsAotCompatible (which implies IsTrimmable + analyzers).
+         Issue #50, Phase 3b. -->
+    <PublishTrimmed>true</PublishTrimmed>
+    <TrimMode>full</TrimMode>
+
+    <!-- Native AOT. The embedded host is always AOT-published — there's no
+         use case for a JIT build of this project (Cli is the dynamic host
+         when JIT/runtime-plugin-loading is needed). AOT requires a
+         platform-native toolchain at publish time:
+           Linux:   gcc + binutils (objcopy)
+           Windows: MSVC + Windows SDK
+           macOS:   Xcode Command Line Tools
+         See: https://learn.microsoft.com/dotnet/core/deploying/native-aot/#prerequisites
+         `dotnet build` does NOT require the toolchain (only `dotnet publish`). -->
+    <PublishAot>true</PublishAot>
   </PropertyGroup>
 
   <!-- Share Hosting code from Cli project (HostBootstrap, InteractiveMode, etc.) -->

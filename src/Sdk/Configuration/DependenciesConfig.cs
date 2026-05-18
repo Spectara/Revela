@@ -38,6 +38,11 @@ namespace Spectara.Revela.Sdk.Configuration;
 public sealed class DependenciesConfig
 {
     /// <summary>
+    /// Configuration section name. Matches the <c>[RevelaConfig]</c> attribute
+    /// argument; passed to <c>BindConfiguration</c> at registration time.
+    /// </summary>
+    public const string Section = "dependencies";
+    /// <summary>
     /// Active theme name (short name like "Lumina" or full package ID)
     /// </summary>
     /// <remarks>
@@ -45,7 +50,7 @@ public sealed class DependenciesConfig
     /// Can be a short name (auto-prefixed with "Spectara.Revela.Themes.")
     /// or a full package ID.
     /// </remarks>
-    public string? Theme { get; init; }
+    public string? Theme { get; set; }
 
     /// <summary>
     /// Installed theme packages with versions
@@ -54,7 +59,7 @@ public sealed class DependenciesConfig
     /// Key: Full package ID (e.g., "Spectara.Revela.Themes.Lumina")
     /// Value: Version string (e.g., "1.0.0") or null for latest
     /// </remarks>
-    public Dictionary<string, string?> Themes { get; init; } = [];
+    public Dictionary<string, string?> Themes { get; } = [];
 
     /// <summary>
     /// Installed plugin packages with versions
@@ -63,5 +68,5 @@ public sealed class DependenciesConfig
     /// Key: Full package ID (e.g., "Spectara.Revela.Plugins.Statistics")
     /// Value: Version string (e.g., "1.0.0") or null for latest
     /// </remarks>
-    public Dictionary<string, string?> Plugins { get; init; } = [];
+    public Dictionary<string, string?> Plugins { get; } = [];
 }

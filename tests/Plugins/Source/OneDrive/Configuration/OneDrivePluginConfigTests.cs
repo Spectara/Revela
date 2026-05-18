@@ -28,7 +28,9 @@ public sealed class OneDrivePluginConfigTests
         var configuration = new ConfigurationBuilder().Build();
         var services = new ServiceCollection();
         services.AddSingleton<IConfiguration>(configuration);
-        services.AddOneDrivePluginConfig();
+        services.AddOptions<OneDrivePluginConfig>()
+            .BindConfiguration(OneDrivePluginConfig.Section)
+            .ValidateDataAnnotations();
 
         using var provider = services.BuildServiceProvider();
         var monitor = provider.GetRequiredService<IOptionsMonitor<OneDrivePluginConfig>>();
@@ -48,12 +50,14 @@ public sealed class OneDrivePluginConfigTests
         var configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
-                [$"{OneDrivePluginConfig.SectionName}:ShareUrl"] = "https://1drv.ms/f/abc",
+                [$"{OneDrivePluginConfig.Section}:ShareUrl"] = "https://1drv.ms/f/abc",
             })
             .Build();
         var services = new ServiceCollection();
         services.AddSingleton<IConfiguration>(configuration);
-        services.AddOneDrivePluginConfig();
+        services.AddOptions<OneDrivePluginConfig>()
+            .BindConfiguration(OneDrivePluginConfig.Section)
+            .ValidateDataAnnotations();
 
         using var provider = services.BuildServiceProvider();
         var monitor = provider.GetRequiredService<IOptionsMonitor<OneDrivePluginConfig>>();

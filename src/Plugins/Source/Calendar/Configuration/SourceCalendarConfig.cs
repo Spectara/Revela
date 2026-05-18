@@ -11,14 +11,14 @@ namespace Spectara.Revela.Plugins.Source.Calendar.Configuration;
 internal sealed class SourceCalendarConfig
 {
     /// <summary>
-    /// Configuration section name in project.json.
+    /// Configuration section name. Matches the <c>[RevelaConfig]</c> attribute
+    /// argument; passed to <c>BindConfiguration</c> at registration time.
     /// </summary>
-    public static string SectionName => "Spectara.Revela.Plugins.Source.Calendar";
-
+    public const string Section = "Spectara.Revela.Plugins.Source.Calendar";
     /// <summary>
     /// Named iCal feeds to fetch. Key = feed name, Value = feed configuration.
     /// </summary>
-    public Dictionary<string, FeedConfig> Feeds { get; init; } = [];
+    public Dictionary<string, FeedConfig> Feeds { get; } = [];
 }
 
 /// <summary>
@@ -30,11 +30,11 @@ internal sealed class FeedConfig
     /// URL of the iCal feed.
     /// </summary>
     [Required(ErrorMessage = "Feed URL is required")]
-    public string Url { get; init; } = string.Empty;
+    public string Url { get; set; } = string.Empty;
 
     /// <summary>
     /// Output path relative to the source directory (e.g. "availability/bookings.ics").
     /// </summary>
     [Required(ErrorMessage = "Output path is required")]
-    public string Output { get; init; } = string.Empty;
+    public string Output { get; set; } = string.Empty;
 }

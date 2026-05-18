@@ -1,26 +1,35 @@
 namespace Spectara.Revela.Sdk.Abstractions;
 
 /// <summary>
-/// Marks a configuration class for automatic <c>IOptions&lt;T&gt;</c> registration.
+/// Marks a configuration class as a Revela options type. The attribute is a
+/// documentation marker only — there is no source generator behind it.
 /// </summary>
 /// <remarks>
 /// <para>
-/// The Revela Source Generator creates an extension method to register this config:
-/// <c>services.Add{ClassName}()</c> which calls <c>AddOptions&lt;T&gt;().BindConfiguration(sectionName)</c>.
-/// </para>
-/// <para>
-/// Example:
+/// Plugin/SDK authors add a <c>public const string Section = "..."</c> on the
+/// class with the same value as the attribute argument and use it when
+/// registering the options. The hand-written const is required because the
+/// .NET Configuration Binding Source Generator only intercepts call sites
+/// where the section argument is statically resolvable from user-written
+/// source. Constants emitted from another source generator are invisible
+/// to CBSG, which would silently fall back to the reflection binder and
+/// break under <c>PublishTrimmed</c> / <c>PublishAot</c>.
 /// </para>
 /// <code>
 /// [RevelaConfig("Spectara.Revela.Plugins.MyPlugin")]
-/// public sealed class MyPluginConfig
+/// internal sealed class MyPluginConfig
 /// {
-///     [Required] public string ApiUrl { get; init; } = string.Empty;
-///     public int Timeout { get; init; } = 30;
+///     public const string Section = "Spectara.Revela.Plugins.MyPlugin";
+///
+///     [Required] public string ApiUrl { get; set; } = string.Empty;
+///     public int Timeout { get; set; } = 30;
 /// }
 ///
-/// // Generated extension method (auto-generated, in same assembly):
-/// // services.AddMyPluginConfig();
+/// // In IPlugin.ConfigureServices:
+/// services.AddOptions&lt;MyPluginConfig&gt;()
+///     .BindConfiguration(MyPluginConfig.Section);
+/// services.AddSingleton&lt;IValidateOptions&lt;MyPluginConfig&gt;,
+///     MyPluginConfigValidator&gt;();   // trim/AOT-safe DataAnnotations
 /// </code>
 /// </remarks>
 /// <param name="sectionName">The configuration section name (e.g., "project" or "Spectara.Revela.Plugins.MyPlugin").</param>
@@ -28,7 +37,9 @@ namespace Spectara.Revela.Sdk.Abstractions;
 public sealed class RevelaConfigAttribute(string sectionName) : Attribute
 {
     /// <summary>
-    /// The configuration section name.
+    /// The configuration section name. Mirror this value in a hand-written
+    /// <c>public const string Section</c> on the annotated class for use with
+    /// <c>BindConfiguration</c>.
     /// </summary>
     public string SectionName { get; } = sectionName;
 

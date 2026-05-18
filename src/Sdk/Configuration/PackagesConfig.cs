@@ -34,6 +34,11 @@ namespace Spectara.Revela.Sdk.Configuration;
 public sealed class PackagesConfig
 {
     /// <summary>
+    /// Configuration section name. Matches the <c>[RevelaConfig]</c> attribute
+    /// argument; passed to <c>BindConfiguration</c> at registration time.
+    /// </summary>
+    public const string Section = "packages";
+    /// <summary>
     /// Configured NuGet feeds (Key = Name, Value = URL)
     /// </summary>
     /// <remarks>
@@ -45,5 +50,5 @@ public sealed class PackagesConfig
     /// Relative paths are resolved relative to the config file location.
     /// </para>
     /// </remarks>
-    public Dictionary<string, string> Feeds { get; init; } = [];
+    public Dictionary<string, string> Feeds { get; } = [];
 }

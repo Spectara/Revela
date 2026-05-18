@@ -11,7 +11,7 @@ public sealed class RenderConfig
     /// <remarks>
     /// Default is false; set to true to speed up rendering on multi-core machines.
     /// </remarks>
-    public bool Parallel { get; init; }
+    public bool Parallel { get; set; }
 
     /// <summary>
     /// Optional maximum degree of parallelism.
@@ -19,5 +19,5 @@ public sealed class RenderConfig
     /// <remarks>
     /// When null, uses the default from ParallelOptions (Environment.ProcessorCount).
     /// </remarks>
-    public int? MaxDegreeOfParallelism { get; init; }
+    public int? MaxDegreeOfParallelism { get; set; }
 }

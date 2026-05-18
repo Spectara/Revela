@@ -6,11 +6,14 @@
     Produces one or both release variants exactly as published on
     GitHub Releases (https://github.com/spectara/revela/releases):
 
-      • Standalone — Cli.Embedded single-file binary with everything baked in
+      • Standalone — Cli.Embedded native AOT binary with everything baked in
                      (no plugin management). Recommended for end users.
+                     Requires a platform-native toolchain at publish time
+                     (gcc/clang on Linux, MSVC on Windows, Xcode CLT on macOS).
       • Full       — Cli single-file binary + every plugin/theme as .nupkg in
                      packages/. Modular: install/update individual packages
                      via `revela plugin install` against the local feed.
+                     Pure managed (no native toolchain prerequisite).
 
     Each variant is published into a timestamped folder under
     artifacts/releases/. Files mirror the GitHub release ZIP/TAR contents
@@ -97,6 +100,22 @@ if (-not $RuntimeIdentifier) {
 $ExeName = if ($RuntimeIdentifier -like 'win-*') { 'revela.exe' } else { 'revela' }
 
 # --------------------------------------------------------------------------
+# Native toolchain pre-flight (required for Standalone = Native AOT).
+# --------------------------------------------------------------------------
+function Test-NativeToolchain {
+    if ($isWindowsOS) {
+        # AOT on Windows requires MSVC (link.exe / cl.exe). Both are absent
+        # from PATH in a plain PowerShell session even when Visual Studio is
+        # installed — you need a Developer Command Prompt / Developer
+        # PowerShell, or to have vcvarsall.bat applied to the current shell.
+        return ($null -ne (Get-Command link.exe -ErrorAction SilentlyContinue)) -or
+               ($null -ne (Get-Command cl.exe -ErrorAction SilentlyContinue))
+    }
+    return ($null -ne (Get-Command gcc -ErrorAction SilentlyContinue)) -or
+           ($null -ne (Get-Command clang -ErrorAction SilentlyContinue))
+}
+
+# --------------------------------------------------------------------------
 # Build/Pack inventory is no longer hardcoded here.
 # - `dotnet build Spectara.Revela.slnx` walks the whole solution.
 # - `dotnet pack` emits packages for every csproj with <IsPackable>true</IsPackable>
@@ -109,6 +128,18 @@ $VariantsToBuild = if ($Variant -eq 'All') {
     @('Standalone', 'Full')
 } else {
     @($Variant)
+}
+
+# Pre-flight: Standalone needs a native toolchain (AOT publish).
+if ('Standalone' -in $VariantsToBuild -and -not (Test-NativeToolchain)) {
+    $installHint = if ($isWindowsOS) {
+        'Run this script from "Developer PowerShell for VS 2022" (so link.exe is on PATH), or install "Desktop development with C++" via the Visual Studio Installer.'
+    } elseif ($IsMacOS) {
+        'Run: xcode-select --install'
+    } else {
+        'Install gcc + binutils via your package manager (e.g. `sudo pacman -S gcc binutils` on Arch, `sudo apt install build-essential` on Debian/Ubuntu).'
+    }
+    throw "Standalone variant publishes Native AOT and requires a native toolchain (gcc/clang on Linux, MSVC on Windows, Xcode CLT on macOS). $installHint See: https://learn.microsoft.com/dotnet/core/deploying/native-aot/#prerequisites"
 }
 
 # --------------------------------------------------------------------------
@@ -170,30 +201,63 @@ try {
         }
 
         # ------------------------------------------------------------------
-        # Publish self-contained single-file binary.
+        # Publish.
         #
-        # `DebugType=embedded` keeps symbol info inside each DLL (no .pdb
-        # files) so stack traces in the released binary still show file/line
-        # numbers. Costs ~350 KB / 0.7% in the bundle vs. stripping them
-        # entirely — a worthwhile tradeoff for a tool that may need user
-        # bug reports.
+        # Standalone (Cli.Embedded) — Native AOT. Emits a native ELF/PE/Mach-O
+        # plus the NetVips native library (libvips.so.42 / libvips-42.dll /
+        # libvips.42.dylib) alongside it. No managed DLLs, no JIT, no .NET
+        # runtime bundled (the AOT binary IS the runtime). DebugType=none
+        # + StripSymbols strips both managed PDBs and the native .dbg
+        # companion that ILCompiler emits next to the binary.
+        #
+        # Full (Cli) — Trimmed self-extracting single-file bundle. Managed
+        # code with JIT. DebugType=embedded keeps symbol info inside each DLL
+        # (no .pdb files) so stack traces still show file/line numbers and
+        # `dotnet pack --no-build` doesn't hit NU5026 (~350 KB / 0.7% cost).
         # ------------------------------------------------------------------
         Write-Step "Publishing $project"
-        dotnet publish $project `
-            -c Release `
-            -r $RuntimeIdentifier `
-            --self-contained `
-            -p:PublishSingleFile=true `
-            -p:IncludeNativeLibrariesForSelfExtract=true `
-            -p:DebugType=embedded `
-            -p:Version=$Version `
-            -o $outputDir `
-            --verbosity quiet
+
+        $publishArgs = @(
+            $project,
+            '-c', 'Release',
+            '-r', $RuntimeIdentifier,
+            '--self-contained',
+            "-p:Version=$Version",
+            '-o', $outputDir,
+            '--verbosity', 'quiet'
+        )
+
+        if ($v -eq 'Standalone') {
+            $publishArgs += @(
+                '-p:DebugType=none',
+                '-p:DebugSymbols=false',
+                '-p:StripSymbols=true'
+            )
+        } else {
+            $publishArgs += @(
+                '-p:PublishSingleFile=true',
+                '-p:IncludeNativeLibrariesForSelfExtract=true',
+                '-p:DebugType=embedded'
+            )
+        }
+
+        dotnet publish @publishArgs
         if ($LASTEXITCODE -ne 0) { throw "Publish failed for $project" }
 
-        # Strip XML doc files (not needed at runtime)
+        # Strip XML doc files (not needed at runtime).
         Get-ChildItem $outputDir -Filter '*.xml' -File `
             | Remove-Item -Force -ErrorAction SilentlyContinue
+
+        # AOT-only cleanup: managed PDB stubs + per-platform native debug
+        # companion files (Linux .dbg, macOS .dwarf, Windows native .pdb —
+        # both Windows AOT and managed builds share the .pdb extension, so
+        # the *.pdb sweep covers both).
+        if ($v -eq 'Standalone') {
+            foreach ($pattern in '*.pdb', '*.dbg', '*.dwarf') {
+                Get-ChildItem $outputDir -Filter $pattern -File `
+                    | Remove-Item -Force -ErrorAction SilentlyContinue
+            }
+        }
 
         if (-not (Test-Path $exePath)) {
             throw "Expected executable not found: $exePath"

@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using Microsoft.Extensions.Options;
 using Spectara.Revela.Sdk.Abstractions;
 
 namespace Spectara.Revela.Plugins.Source.OneDrive.Configuration;
@@ -30,10 +31,10 @@ namespace Spectara.Revela.Plugins.Source.OneDrive.Configuration;
 internal sealed class OneDrivePluginConfig
 {
     /// <summary>
-    /// Configuration section name in project.json.
+    /// Configuration section name. Matches the <c>[RevelaConfig]</c> attribute
+    /// argument; passed to <c>BindConfiguration</c> at registration time.
     /// </summary>
-    public static string SectionName => "Spectara.Revela.Plugins.Source.OneDrive";
-
+    public const string Section = "Spectara.Revela.Plugins.Source.OneDrive";
     /// <summary>
     /// OneDrive shared folder URL
     /// </summary>
@@ -45,27 +46,36 @@ internal sealed class OneDrivePluginConfig
     /// <para>
     /// Not annotated with <c>[Required]</c>/<c>[Url]</c>: the wizard and <c>ConfigOneDriveCommand</c>
     /// read the current value (via <c>IOptionsMonitor</c>) before the user sets it, which would
-    /// otherwise throw <see cref="Microsoft.Extensions.Options.OptionsValidationException"/>.
+    /// otherwise throw <see cref="OptionsValidationException"/>.
     /// Required-and-safe validation lives at the actual call site (<c>OneDriveSourceCommand</c>
     /// and the interactive prompt's <c>UrlSafety</c> check).
     /// </para>
     /// </remarks>
-    public string ShareUrl { get; init; } = string.Empty;
+    public string ShareUrl { get; set; } = string.Empty;
 
     /// <summary>
     /// Default number of parallel downloads (auto-detected based on CPU cores if not specified)
     /// </summary>
     [Range(1, 100, ErrorMessage = "DefaultConcurrency must be between 1 and 100")]
-    public int? DefaultConcurrency { get; init; }
+    public int? DefaultConcurrency { get; set; }
 
     /// <summary>
     /// File patterns to include (e.g., "*.jpg", "*.png")
     /// If null or empty, smart defaults are used: all images (via MIME type) and markdown files
     /// </summary>
-    public IReadOnlyList<string>? IncludePatterns { get; init; }
+    public IReadOnlyList<string>? IncludePatterns { get; set; }
 
     /// <summary>
     /// File patterns to exclude (e.g., "*.tmp", "*.bak")
     /// </summary>
-    public IReadOnlyList<string>? ExcludePatterns { get; init; }
+    public IReadOnlyList<string>? ExcludePatterns { get; set; }
 }
+
+/// <summary>
+/// Trim/AOT-safe <see cref="IValidateOptions{TOptions}"/> implementation for
+/// <see cref="OneDrivePluginConfig"/>. The body is emitted by the
+/// <c>Microsoft.Extensions.Options</c> source generator from the
+/// <c>DataAnnotations</c> on the config type.
+/// </summary>
+[OptionsValidator]
+internal sealed partial class OneDrivePluginConfigValidator : IValidateOptions<OneDrivePluginConfig>;

@@ -174,10 +174,19 @@ jobs:
           - os: windows-latest
             rid: win-x64
             exe: revela.exe
+          # Native arm64 Windows runner (GA 2025) — covers Copilot+ PCs and
+          # Snapdragon X devices. NetVips.Native.win-arm64 ships the libvips
+          # bundle for this RID, so the standalone variant works out of the box.
+          - os: windows-11-arm
+            rid: win-arm64
+            exe: revela.exe
           - os: ubuntu-latest
             rid: linux-x64
             exe: revela
-          - os: ubuntu-latest
+          # Native arm64 Linux runner (GA since 2025) — avoids the
+          # gcc-aarch64-linux-gnu cross-toolchain dance Native AOT would
+          # otherwise need from an x64 host.
+          - os: ubuntu-24.04-arm
             rid: linux-arm64
             exe: revela
           - os: macos-latest
@@ -222,7 +231,7 @@ jobs:
         shell: bash
 
       - name: Copy launcher script (Linux/macOS)
-        if: matrix.os != 'windows-latest'
+        if: ${{ !startsWith(matrix.rid, 'win-') }}
         run: |
           # Copy launcher script that sets CWD to script directory
           # This fixes double-click behavior on macOS/Linux where CWD defaults to HOME
@@ -243,14 +252,14 @@ jobs:
 
       # === Core Release ===
       - name: Package Core (Windows)
-        if: matrix.os == 'windows-latest'
+        if: ${{ startsWith(matrix.rid, 'win-') }}
         run: |
           cd publish
           Compress-Archive -Path ${{ matrix.exe }}, getting-started -DestinationPath ../revela-${{ matrix.rid }}-core.zip
         shell: pwsh
 
       - name: Package Core (Linux/macOS)
-        if: matrix.os != 'windows-latest'
+        if: ${{ !startsWith(matrix.rid, 'win-') }}
         run: |
           cd publish
           chmod +x ${{ matrix.exe }}
@@ -272,14 +281,14 @@ jobs:
         shell: bash
 
       - name: Package Full (Windows)
-        if: matrix.os == 'windows-latest'
+        if: ${{ startsWith(matrix.rid, 'win-') }}
         run: |
           cd publish
           Compress-Archive -Path ${{ matrix.exe }}, packages, getting-started -DestinationPath ../revela-${{ matrix.rid }}-full.zip
         shell: pwsh
 
       - name: Package Full (Linux/macOS)
-        if: matrix.os != 'windows-latest'
+        if: ${{ !startsWith(matrix.rid, 'win-') }}
         run: |
           cd publish
           if [[ "${{ matrix.rid }}" == osx-* ]]; then
@@ -289,18 +298,24 @@ jobs:
           fi
 
       # === Standalone Release (Cli.Embedded) ===
-      # All plugins/themes statically linked into a single binary.
-      # No NuGet plugin management — perfect for users who want a turn-key tool.
-      - name: Publish Cli.Embedded (Standalone)
+      # Native AOT — all plugins/themes statically linked, all managed code
+      # AOT-compiled into a single native executable. No NuGet plugin
+      # management, no JIT, no .NET runtime bundled (the AOT binary IS the
+      # runtime). The NetVips native library (libvips.so.42 / libvips-42.dll
+      # / libvips.42.dylib) ships alongside as a separate file (NetVips loads
+      # it via P/Invoke — cannot be bundled into the AOT binary).
+      # Cli.Embedded.csproj has <PublishAot>true</PublishAot> unconditional;
+      # every hosted runner has its native toolchain pre-installed.
+      - name: Publish Cli.Embedded (Standalone — Native AOT)
         shell: bash
         run: |
           dotnet publish src/Cli.Embedded/Cli.Embedded.csproj \
             -c Release \
             -r ${{ matrix.rid }} \
             --self-contained \
-            -p:PublishSingleFile=true \
-            -p:IncludeNativeLibrariesForSelfExtract=true \
-            -p:DebugType=embedded \
+            -p:DebugType=none \
+            -p:DebugSymbols=false \
+            -p:StripSymbols=true \
             -p:Version=${{ needs.validate.outputs.version }} \
             -o ./publish-standalone
 
@@ -311,7 +326,7 @@ jobs:
         shell: bash
 
       - name: Copy launcher script - Standalone (Linux/macOS)
-        if: matrix.os != 'windows-latest'
+        if: ${{ !startsWith(matrix.rid, 'win-') }}
         run: |
           if [[ "${{ matrix.rid }}" == osx-* ]]; then
             cp scripts/launchers/start-revela.command "./publish-standalone/Start Revela.command"
@@ -322,26 +337,35 @@ jobs:
           fi
         shell: bash
 
-      - name: Clean up XML docs (Standalone)
-        run: rm -f ./publish-standalone/*.xml
+      # Strip XML doc files + per-platform debug companions left over from
+      # AOT publish (managed .pdb stubs, Linux .dbg, macOS .dwarf, Windows
+      # native .pdb — the *.pdb sweep covers managed + Windows native).
+      - name: Clean up AOT debug artefacts (Standalone)
         shell: bash
+        run: |
+          rm -f ./publish-standalone/*.xml \
+                ./publish-standalone/*.pdb \
+                ./publish-standalone/*.dbg \
+                ./publish-standalone/*.dwarf
 
       - name: Package Standalone (Windows)
-        if: matrix.os == 'windows-latest'
+        if: ${{ startsWith(matrix.rid, 'win-') }}
         run: |
           cd publish-standalone
-          Compress-Archive -Path ${{ matrix.exe }}, getting-started -DestinationPath ../revela-${{ matrix.rid }}-standalone.zip
+          # Include the libvips-42.dll native dependency alongside the AOT exe
+          Compress-Archive -Path ${{ matrix.exe }}, libvips-42.dll, getting-started -DestinationPath ../revela-${{ matrix.rid }}-standalone.zip
         shell: pwsh
 
       - name: Package Standalone (Linux/macOS)
-        if: matrix.os != 'windows-latest'
+        if: ${{ !startsWith(matrix.rid, 'win-') }}
         run: |
           cd publish-standalone
           chmod +x ${{ matrix.exe }}
+          # Include the libvips native dependency alongside the AOT binary
           if [[ "${{ matrix.rid }}" == osx-* ]]; then
-            tar -czvf ../revela-${{ matrix.rid }}-standalone.tar.gz ${{ matrix.exe }} "Start Revela.command" getting-started
+            tar -czvf ../revela-${{ matrix.rid }}-standalone.tar.gz ${{ matrix.exe }} libvips.42.dylib "Start Revela.command" getting-started
           else
-            tar -czvf ../revela-${{ matrix.rid }}-standalone.tar.gz ${{ matrix.exe }} start-revela.sh getting-started
+            tar -czvf ../revela-${{ matrix.rid }}-standalone.tar.gz ${{ matrix.exe }} libvips.so.42 start-revela.sh getting-started
           fi
 
       # === Attestation & Upload ===
@@ -497,6 +521,7 @@ jobs:
           | Platform | Download |
           |----------|----------|
           | Windows x64 | [revela-win-x64-standalone.zip](${BASE_URL}/revela-win-x64-standalone.zip) |
+          | Windows ARM64 | [revela-win-arm64-standalone.zip](${BASE_URL}/revela-win-arm64-standalone.zip) |
           | Linux x64 | [revela-linux-x64-standalone.tar.gz](${BASE_URL}/revela-linux-x64-standalone.tar.gz) |
           | Linux ARM64 | [revela-linux-arm64-standalone.tar.gz](${BASE_URL}/revela-linux-arm64-standalone.tar.gz) |
           | macOS Apple Silicon | [revela-osx-arm64-standalone.tar.gz](${BASE_URL}/revela-osx-arm64-standalone.tar.gz) |
@@ -508,6 +533,7 @@ jobs:
           | Platform | Download |
           |----------|----------|
           | Windows x64 | [revela-win-x64-full.zip](${BASE_URL}/revela-win-x64-full.zip) |
+          | Windows ARM64 | [revela-win-arm64-full.zip](${BASE_URL}/revela-win-arm64-full.zip) |
           | Linux x64 | [revela-linux-x64-full.tar.gz](${BASE_URL}/revela-linux-x64-full.tar.gz) |
           | Linux ARM64 | [revela-linux-arm64-full.tar.gz](${BASE_URL}/revela-linux-arm64-full.tar.gz) |
           | macOS Apple Silicon | [revela-osx-arm64-full.tar.gz](${BASE_URL}/revela-osx-arm64-full.tar.gz) |
@@ -522,6 +548,7 @@ jobs:
           | Platform | Download |
           |----------|----------|
           | Windows x64 | [revela-win-x64-core.zip](${BASE_URL}/revela-win-x64-core.zip) |
+          | Windows ARM64 | [revela-win-arm64-core.zip](${BASE_URL}/revela-win-arm64-core.zip) |
           | Linux x64 | [revela-linux-x64-core.tar.gz](${BASE_URL}/revela-linux-x64-core.tar.gz) |
           | Linux ARM64 | [revela-linux-arm64-core.tar.gz](${BASE_URL}/revela-linux-arm64-core.tar.gz) |
           | macOS Apple Silicon | [revela-osx-arm64-core.tar.gz](${BASE_URL}/revela-osx-arm64-core.tar.gz) |

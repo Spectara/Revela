@@ -93,8 +93,11 @@ These rules apply to every `.cs` file. They are enforced by `.editorconfig` (war
 - Plugin services should use `TryAdd*` for idempotent registration.
 
 ## Configuration
-- `IOptions<T>` / `IOptionsMonitor<T>` with `[RevelaConfig]` attribute (source generator handles registration).
-- Use `DataAnnotations` for validation (lazy via `ValidateDataAnnotations()`; `ValidateOnStart()` is not used — config values are produced at runtime).
+- `IOptions<T>` / `IOptionsMonitor<T>` with `[RevelaConfig]` attribute (a documentation marker).
+- Config class is `sealed class` (NOT `partial`, NOT `init`-only). Add a hand-written `public const string Section = "...";` matching the attribute argument — the .NET Configuration Binding Source Generator only intercepts call sites where the section name is statically resolvable from user source.
+- Property accessors: `{ get; set; }` (CBSG silently skips `init`-only). Collection properties getter-only with initializer (`Dictionary<,> X { get; } = [];`).
+- Register from user code so CBSG can intercept: `services.AddOptions<T>().BindConfiguration(T.Section)`.
+- Validation: empty `[OptionsValidator]`-marked partial class implementing `IValidateOptions<T>` (trim/AOT-safe via the `Microsoft.Extensions.Options` source generator). Do NOT call `OptionsBuilder.ValidateDataAnnotations()` (reflection-based, IL2026)—the analyzer escalates it to an error.
 
 ## Paths
 - **Never hardcode `"source"` or `"output"`** — inject `IPathResolver` and use `SourcePath` / `OutputPath`.

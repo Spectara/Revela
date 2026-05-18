@@ -36,7 +36,7 @@ public sealed class SortingConfig
     /// (1, 2, 10 instead of 1, 10, 2). Sort prefixes like "01 Events" are
     /// stripped for display but used for ordering.
     /// </remarks>
-    public SortDirection Galleries { get; init; } = SortDirection.Asc;
+    public SortDirection Galleries { get; set; } = SortDirection.Asc;
 
     /// <summary>
     /// Image sort configuration within galleries.
@@ -50,7 +50,7 @@ public sealed class SortingConfig
     /// +++
     /// </code>
     /// </remarks>
-    public ImageSortConfig Images { get; init; } = new();
+    public ImageSortConfig Images { get; set; } = new();
 }
 
 /// <summary>
@@ -96,12 +96,12 @@ public sealed class ImageSortConfig
     /// <remarks>
     /// Use dot notation for nested properties: "exif.focalLength", "exif.raw.Rating".
     /// </remarks>
-    public string Field { get; init; } = "dateTaken";
+    public string Field { get; set; } = "dateTaken";
 
     /// <summary>
     /// Sort direction.
     /// </summary>
-    public SortDirection Direction { get; init; } = SortDirection.Desc;
+    public SortDirection Direction { get; set; } = SortDirection.Desc;
 
     /// <summary>
     /// Fallback field when primary field is null/missing.
@@ -109,5 +109,5 @@ public sealed class ImageSortConfig
     /// <remarks>
     /// Uses same direction as primary sort.
     /// </remarks>
-    public string Fallback { get; init; } = "filename";
+    public string Fallback { get; set; } = "filename";
 }

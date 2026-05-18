@@ -36,13 +36,18 @@ namespace Spectara.Revela.Sdk.Configuration;
 public sealed class LoggingConfig
 {
     /// <summary>
+    /// Configuration section name. Matches the <c>[RevelaConfig]</c> attribute
+    /// argument; passed to <c>BindConfiguration</c> at registration time.
+    /// </summary>
+    public const string Section = "Logging";
+    /// <summary>
     /// Log levels per category
     /// </summary>
     /// <remarks>
     /// Keys are category names (namespace prefixes), values are log level names.
     /// "Default" is the fallback for categories not explicitly configured.
     /// </remarks>
-    public Dictionary<string, string> LogLevel { get; init; } = new()
+    public Dictionary<string, string> LogLevel { get; } = new()
     {
         ["Default"] = "Warning",
         ["Spectara.Revela"] = "Warning",

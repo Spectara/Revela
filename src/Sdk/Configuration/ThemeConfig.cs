@@ -38,14 +38,19 @@ namespace Spectara.Revela.Sdk.Configuration;
 public sealed class ThemeConfig
 {
     /// <summary>
+    /// Configuration section name. Matches the <c>[RevelaConfig]</c> attribute
+    /// argument; passed to <c>BindConfiguration</c> at registration time.
+    /// </summary>
+    public const string Section = "theme";
+    /// <summary>
     /// Name of the theme to use (e.g., "Lumina").
     /// </summary>
-    public string Name { get; init; } = string.Empty;
+    public string Name { get; set; } = string.Empty;
 
     /// <summary>
     /// Image settings from theme (sizes for responsive breakpoints).
     /// </summary>
-    public ThemeImagesConfig Images { get; init; } = new();
+    public ThemeImagesConfig Images { get; set; } = new();
 }
 
 /// <summary>
@@ -70,7 +75,7 @@ public sealed class ThemeImagesConfig
     /// These match the theme's CSS breakpoints. Empty means use theme defaults.
     /// The value represents the dimension specified by <see cref="ResizeMode"/>.
     /// </remarks>
-    public IReadOnlyList<int> Sizes { get; init; } = [];
+    public IReadOnlyList<int> Sizes { get; set; } = [];
 
     /// <summary>
     /// Which dimension to use for resizing images.
@@ -83,5 +88,5 @@ public sealed class ThemeImagesConfig
     /// - "height": Size applies to height (all images same height).
     ///   Best for filmstrip/carousel layouts.
     /// </remarks>
-    public string ResizeMode { get; init; } = "longest";
+    public string ResizeMode { get; set; } = "longest";
 }

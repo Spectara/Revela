@@ -14,8 +14,8 @@ Does NOT create a git tag or GitHub release — for local testing only.
 
 | Variant | Source | Contents | Size |
 |---------|--------|----------|------|
-| **Standalone** | `Cli.Embedded` | Single-file EXE — every plugin/theme statically linked. No `plugin` command. | ~47 MB |
-| **Full** | `Cli` + `packages/` | Single-file EXE + all `.nupkg` files as local NuGet feed. Modular: `revela plugin install <name>`. | ~130 MB |
+| **Standalone** | `Cli.Embedded` | **Native AOT** binary + `libvips` native dep (loaded via P/Invoke). All plugins/themes statically linked, no `plugin` command. Requires a platform-native toolchain at publish time (gcc/clang on Linux, MSVC on Windows, Xcode CLT on macOS). | ~36 MB (20 MB exe + 17 MB libvips) |
+| **Full** | `Cli` + `packages/` | Single-file EXE + all `.nupkg` files as local NuGet feed. Modular: `revela plugin install <name>`. Pure managed (no native toolchain prereq). | ~130 MB |
 
 > The GitHub release pipeline also produces a **Core** variant (`Cli` only, expects plugins from NuGet.org).
 > It is omitted here because plugins are not published to NuGet.org yet — a Core build would have no theme and fail at `generate`.
@@ -43,8 +43,9 @@ Does NOT create a git tag or GitHub release — for local testing only.
 `artifacts/releases/{variant}-{timestamp}/`
 
 ```
-standalone-20260501-002132/         (Standalone — Cli.Embedded)
-├── revela.exe
+standalone-20260501-002132/         (Standalone — Cli.Embedded, Native AOT)
+├── revela.exe                       (or `revela` on Linux/macOS)
+├── libvips-42.dll                   (or libvips.so.42 / libvips.42.dylib)
 └── getting-started/
     ├── README.md
     ├── cli-reference.md
@@ -74,9 +75,13 @@ On Linux/macOS each variant also gets a launcher script (`start-revela.sh` or `S
 
 1. **Per-project Release builds**: The script builds each plugin/theme/feature project explicitly with `dotnet build -c Release`, NOT via `dotnet build Solution.slnx -c Release`. Solution-level builds can produce Debug output for plugin projects when test projects are pulled in via dependency graph (MSBuild node reuse quirk). The GitHub workflow does the same.
 
-2. **`DebugType=embedded`**: Both build and pack use `-p:DebugType=embedded` so symbol info lands inside each DLL instead of separate `.pdb` files. Avoids NU5026 ("PDB not found") when `dotnet pack --no-build` runs after `dotnet publish` (which strips PDBs from the shared `artifacts/bin/`). Stack traces still show file/line info because the symbols travel with the assembly.
+2. **`DebugType=embedded`** (Full only): Both build and pack use `-p:DebugType=embedded` so symbol info lands inside each DLL instead of separate `.pdb` files. Avoids NU5026 ("PDB not found") when `dotnet pack --no-build` runs after `dotnet publish` (which strips PDBs from the shared `artifacts/bin/`). Stack traces still show file/line info because the symbols travel with the assembly.
 
-3. **Smoke test**: After publishing, the script runs `revela --version` to verify the binary actually executes (catches single-file-bundle issues early). Skipped automatically when cross-compiling.
+3. **`DebugType=none` + `StripSymbols=true`** (Standalone/AOT only): AOT publish emits a native binary plus a separate debug companion (`.dbg` on Linux, `.dwarf` on macOS, `.pdb` on Windows). The script strips them post-publish to keep the release lean. Managed PDBs and XML docs are also swept.
+
+4. **Native toolchain pre-flight** (Standalone only): The script aborts with an actionable install hint if `gcc`/`clang`/`link.exe` is missing on PATH — catches the missing-toolchain case before `dotnet publish` produces a cryptic NETSDK1144.
+
+5. **Smoke test**: After publishing, the script runs `revela --version` to verify the binary actually executes (catches AOT/single-file-bundle issues early). Skipped automatically when cross-compiling.
 
 ## Quick Verification
 

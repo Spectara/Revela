@@ -100,7 +100,7 @@ internal sealed partial class ConfigServeCommand(
         // Wrap with plugin section name and update project.json
         var updates = new JsonObject
         {
-            [ServePluginConfig.SectionName] = pluginConfig
+            [ServePluginConfig.Section] = pluginConfig
         };
 
         await configService.UpdateProjectConfigAsync(updates, cancellationToken);

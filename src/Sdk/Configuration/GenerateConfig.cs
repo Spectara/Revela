@@ -51,22 +51,27 @@ namespace Spectara.Revela.Sdk.Configuration;
 public sealed class GenerateConfig
 {
     /// <summary>
+    /// Configuration section name. Matches the <c>[RevelaConfig]</c> attribute
+    /// argument; passed to <c>BindConfiguration</c> at registration time.
+    /// </summary>
+    public const string Section = "generate";
+    /// <summary>
     /// Sorting settings for galleries and images
     /// </summary>
-    public SortingConfig Sorting { get; init; } = new();
+    public SortingConfig Sorting { get; set; } = new();
 
     /// <summary>
     /// Image processing settings
     /// </summary>
-    public ImageConfig Images { get; init; } = new();
+    public ImageConfig Images { get; set; } = new();
 
     /// <summary>
     /// Rendering settings
     /// </summary>
-    public RenderConfig Render { get; init; } = new();
+    public RenderConfig Render { get; set; } = new();
 
     /// <summary>
     /// Camera model transformation settings
     /// </summary>
-    public CameraConfig Cameras { get; init; } = new();
+    public CameraConfig Cameras { get; set; } = new();
 }

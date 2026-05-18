@@ -81,19 +81,63 @@ jobs:
         # Integration are exercised — 168 plugin tests are silently skipped).
         run: dotnet test --solution Spectara.Revela.slnx --no-build -c Release --report-trx --results-directory ./TestResults --coverage --coverage-settings coverage.config --coverage-output-format cobertura
 
-      # Smoke-test: ensure Cli.Embedded publishes as self-contained single file
-      # This catches issues with statically linked plugins/themes early.
-      # No --no-restore: publish needs to restore RID-specific assets (the
-      # earlier `dotnet restore` step ran without a RID).
-      - name: Publish Cli.Embedded (smoke test)
+      # AOT regression canary — Cli.Embedded.csproj has <PublishAot>true</PublishAot>
+      # unconditional, so this catches any reflection-based pattern that slips
+      # in (CBSG, [OptionsValidator], typed Expression trees, etc.). Trim/AOT
+      # analyzer warnings escalate to errors via TreatWarningsAsErrors=true.
+      # Runs on all three OS runners: every runner has its native toolchain
+      # pre-installed (gcc on ubuntu, MSVC on windows, Xcode CLT on macos).
+      # No --no-restore: publish needs to restore RID-specific runtime assets.
+      - name: Publish Cli.Embedded — AOT (smoke test)
         run: |
           dotnet publish src/Cli.Embedded/Cli.Embedded.csproj \
             -c Release \
             --self-contained \
-            -p:PublishSingleFile=true \
-            -p:IncludeNativeLibrariesForSelfExtract=true \
-            -p:DebugType=embedded \
+            -p:DebugType=none \
+            -p:DebugSymbols=false \
+            -p:StripSymbols=true \
             -o ./publish-embedded
+        shell: bash
+
+      - name: Smoke test — run AOT binary
+        run: |
+          cd publish-embedded
+          if [[ "${{ matrix.os }}" == windows-* ]]; then
+            ./revela.exe --version
+          else
+            chmod +x ./revela
+            ./revela --version
+          fi
+        shell: bash
+
+      # Integration smoke: render the showcase sample end-to-end with the
+      # AOT binary. This is the canary that catches AOT regressions which
+      # --version cannot — every layer is exercised:
+      #   • CBSG-bound config (showcase project.json → IOptions<T>)
+      #   • Scriban template render via [RevelaTemplateModel] projections
+      #   • Filter expression trees (showcase uses exif.iso >= 3200,
+      #     year(dateTaken) == 2024, etc. — covers Nullable<T>/DateTime paths)
+      #   • NetVips P/Invoke under AOT (libvips image processing)
+      #   • Manifest JSON roundtrip (incremental cache)
+      #   • Statistics plugin aggregation
+      # ~10–20 s on hosted runners (1.3 s warm locally on the AOT binary).
+      - name: Integration smoke — generate samples/showcase
+        run: |
+          cd samples/showcase
+          rm -rf output cache
+          if [[ "${{ matrix.os }}" == windows-* ]]; then
+            ../../publish-embedded/revela.exe generate all
+          else
+            ../../publish-embedded/revela generate all
+          fi
+          # Sanity assertions: templates rendered + images processed.
+          test -f output/index.html
+          test -d output/galleries
+          # At least one generated image variant (webp or jpg) must exist.
+          if ! find output -type f \( -name '*.webp' -o -name '*.jpg' \) | grep -q .; then
+            echo "❌ No image variants produced — image pipeline likely broken under AOT"
+            exit 1
+          fi
         shell: bash
 
       - name: Upload Test Results

@@ -70,5 +70,5 @@ public sealed class PlaceholderConfig
     ///   <item><c>csshash</c> - CSS-only LQIP hash (~7 bytes, default)</item>
     /// </list>
     /// </remarks>
-    public PlaceholderStrategy Strategy { get; init; } = PlaceholderStrategy.CssHash;
+    public PlaceholderStrategy Strategy { get; set; } = PlaceholderStrategy.CssHash;
 }

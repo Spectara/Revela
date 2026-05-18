@@ -161,8 +161,10 @@ When in doubt, check if there is a newer API or language feature that replaces o
 ## 8. Configuration
 
 - Use `IOptions<T>` / `IOptionsMonitor<T>` pattern
-- Config models: `sealed class` with `public const string SectionName`
-- Use `DataAnnotations` for validation (lazy; `ValidateOnStart()` is not used)
+- Config models: `sealed class` (non-`partial`, non-`init`) with hand-written `public const string Section` matching the `[RevelaConfig("section")]` attribute argument
+- Property accessors: `{ get; set; }` (NOT `init` — CBSG silently skips `init`-only); collection properties getter-only with initializer (`Dictionary<,> X { get; } = [];`)
+- Register from user code so CBSG can intercept: `services.AddOptions<T>().BindConfiguration(T.Section)`
+- Validation: empty `[OptionsValidator]`-marked partial class implementing `IValidateOptions<T>` (trim/AOT-safe via the `Microsoft.Extensions.Options` source generator). Do NOT call `OptionsBuilder.ValidateDataAnnotations()` (reflection-based, IL2026)
 - Plugin config: section name = full package ID (`Spectara.Revela.Plugins.X`)
 
 ## 9. Commands (System.CommandLine 2.0)

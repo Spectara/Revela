@@ -43,12 +43,25 @@ public static class ConfigurationServiceCollectionExtensions
     public static IServiceCollection AddRevelaConfigSections(
         this IServiceCollection services)
     {
-        // All configs use [RevelaConfig] attribute — the Source Generator creates
-        // individual Add{ConfigName}() methods and a combined AddAllRevelaConfigs().
-        // BindConfiguration provides hot-reload via IOptionsMonitor.
+        // Each AddOptions<T>().BindConfiguration(T.Section) call MUST stay in
+        // user-written source so the .NET Configuration Binding Source Generator
+        // (EnableConfigurationBindingGenerator=true) can intercept the call site
+        // and emit a trim/AOT-safe typed binder. Each Section constant is
+        // hand-written on the config class (the source generator's output is
+        // invisible to CBSG, which would silently fall back to the reflection
+        // binder and break under PublishTrimmed).
         // Configuration is merged from multiple JSON files (revela.json → project.json → logging.json).
-        // Note: site.json is NOT loaded via IOptions - it's loaded dynamically by RenderService.
-        services.AddAllRevelaConfigs();
+        // Hot-reload is provided by BindConfiguration via IOptionsMonitor.
+        // Note: site.json is NOT loaded via IOptions — it's loaded dynamically by RenderService.
+        services.AddOptions<PackagesConfig>().BindConfiguration(PackagesConfig.Section);
+        services.AddOptions<DependenciesConfig>().BindConfiguration(DependenciesConfig.Section);
+        services.AddOptions<GlobalDefaultsConfig>().BindConfiguration(GlobalDefaultsConfig.Section);
+        services.AddOptions<GlobalSettingsConfig>().BindConfiguration(GlobalSettingsConfig.Section);
+        services.AddOptions<LoggingConfig>().BindConfiguration(LoggingConfig.Section);
+        services.AddOptions<ProjectConfig>().BindConfiguration(ProjectConfig.Section);
+        services.AddOptions<ThemeConfig>().BindConfiguration(ThemeConfig.Section);
+        services.AddOptions<GenerateConfig>().BindConfiguration(GenerateConfig.Section);
+        services.AddOptions<PathsConfig>().BindConfiguration(PathsConfig.Section);
 
         // Path resolver service (resolves relative paths against project root)
         // Uses IOptionsMonitor for hot-reload support during interactive sessions

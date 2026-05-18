@@ -28,6 +28,12 @@
   <ItemGroup>
     <!-- Minimal dependencies - abstractions only! -->
     <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" />
+    <!-- Bundles the .NET Configuration Binding Source Generator (CBSG)
+         analyzer; CBSG intercepts the BindConfiguration calls inside
+         AddRevelaConfigSections and emits a trim/AOT-safe typed binder.
+         The runtime reflection-based binder shipped in the same package is
+         unused after interception and trimmed away by ILLink. -->
+    <PackageReference Include="Microsoft.Extensions.Configuration.Binder" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
     <PackageReference Include="Microsoft.Extensions.Options" />

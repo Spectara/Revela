@@ -19,10 +19,11 @@ public sealed class StatisticsPluginRegistrationTests
     public void ConfigureServices_InvalidOptions_ThrowsOnAccess()
     {
         // Arrange
-        // The [RevelaConfig] source generator enables ValidateDataAnnotations by default,
-        // so accessing IOptionsMonitor<T>.CurrentValue with invalid options throws.
-        // Validation is deferred to first access (not StartupValidation), so plugins
-        // can be installed but unconfigured without crashing the host.
+        // StatisticsPlugin registers a trim/AOT-safe [OptionsValidator]-generated
+        // IValidateOptions<StatisticsPluginConfig> alongside the options;
+        // accessing IOptionsMonitor<T>.CurrentValue with invalid values
+        // triggers DataAnnotations validation on first access (not at startup,
+        // so plugins can be installed-but-unconfigured without crashing).
         var services = new ServiceCollection();
         services.AddLogging();
 
@@ -36,7 +37,7 @@ public sealed class StatisticsPluginRegistrationTests
         var configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
-                [$"{StatisticsPluginConfig.SectionName}:MaxEntriesPerCategory"] = "150" // Invalid: > 100
+                [$"{StatisticsPluginConfig.Section}:MaxEntriesPerCategory"] = "150" // Invalid: > 100
             }!)
             .Build();
 
