@@ -68,10 +68,11 @@ public sealed class BuildInfoTests
     public void DetectHostKind_CliEmbeddedAssembly_ReturnsEmbedded()
     {
         // Locate Cli.Embedded's revela.dll relative to this test assembly.
-        // Layout: artifacts/bin/Tests.Cli/Debug/net10.0/  →  ../../../Cli.Embedded/Debug/net10.0/revela.dll
+        // Layout: artifacts/bin/Tests.Cli/{Config}/net10.0/  →  ../../../Cli.Embedded/{Config}/net10.0/revela.dll
         var testAsmDir = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location)!;
+        var configuration = Path.GetFileName(Path.GetDirectoryName(testAsmDir))!;
         var embeddedDll = Path.GetFullPath(Path.Combine(
-            testAsmDir, "..", "..", "..", "Cli.Embedded", "Debug", "net10.0", "revela.dll"));
+            testAsmDir, "..", "..", "..", "Cli.Embedded", configuration, "net10.0", "revela.dll"));
 
         if (!File.Exists(embeddedDll))
         {
