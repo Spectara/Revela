@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Spectara.Revela.Sdk.Abstractions;
+using Spectara.Revela.Sdk.Json;
 using Spectara.Revela.Sdk.Themes;
 
 namespace Spectara.Revela.Core.Themes;
@@ -38,9 +39,10 @@ public sealed class LocalThemeProvider : ITheme
             throw new FileNotFoundException("theme.json not found in theme directory", themeJsonPath);
         }
 
-        // Parse theme.json
+        // Parse theme.json (JSONC: line/block comments and trailing commas are tolerated).
         var json = File.ReadAllText(themeJsonPath);
-        var themeConfig = JsonSerializer.Deserialize(json, ThemeJsonConfig.JsonTypeInfo)
+        using var document = JsonDocument.Parse(json, RevelaJsonOptions.LenientDocument);
+        var themeConfig = document.RootElement.Deserialize(ThemeJsonConfig.JsonTypeInfo)
             ?? throw new InvalidOperationException("Failed to parse theme.json");
 
         var themeName = themeConfig.Name ?? Path.GetFileName(themeDirectory);

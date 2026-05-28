@@ -53,6 +53,38 @@ revela config site --title "My Portfolio" --author "John Doe"
 
 > **Note:** Image sizes are defined by the theme (in `theme.json`), not in `project.json`. Image format quality (`webp`, `jpg`, `avif`) are flat properties under `generate.images` — set to `0` to disable a format.
 
+## JSONC: Comments and Trailing Commas
+
+Every Revela configuration file accepts a slightly relaxed JSON dialect — commonly called **JSONC**. You can use:
+
+- **Line comments** — `// like this`
+- **Block comments** — `/* like this */`
+- **Trailing commas** at the end of objects and arrays
+
+```jsonc
+{
+  "theme": {
+    "name": "Lumina"
+  },
+  "generate": {
+    "images": {
+      // Quality per format (0 disables that format)
+      "webp": 85,
+      "jpg": 90,
+      "avif": 80,
+    },
+  },
+}
+```
+
+This applies to `project.json`, `site.json`, `theme.json`, `images.json`, and the global `revela.json` (in `%APPDATA%/Revela/` on Windows or `~/.config/Revela/` on Linux/macOS).
+
+> **Heads up:** When Revela rewrites one of these files for you — for example `revela plugins add <id>` or any `revela config` command — comments and your original formatting are **not preserved**. The file is reserialised as pretty-printed JSON. This matches how tools like `npm` and `dotnet user-secrets` behave. If you keep important comments in a file, prefer editing it manually.
+
+### Editor support
+
+VS Code in the Revela source tree treats every `*.json` file as JSONC. If you author your own project in another editor and see lint warnings on `//` comments, associate `project.json` / `site.json` with the JSONC language.
+
 ## Custom Paths
 
 By default, Revela uses a `source/` folder for your images and `output/` for the generated site. You can customize these paths for advanced workflows.

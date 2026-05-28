@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
+using Spectara.Revela.Sdk.Json;
 using Spectara.Revela.Sdk.Services;
 namespace Spectara.Revela.Core.Services;
 
@@ -56,7 +57,8 @@ public sealed partial class GlobalConfigManager(ILogger<GlobalConfigManager> log
         try
         {
             var json = await File.ReadAllTextAsync(configPath, cancellationToken);
-            cachedConfig = JsonSerializer.Deserialize(json, GlobalConfigJsonContext.Default.GlobalConfigFile) ?? new GlobalConfigFile();
+            using var document = JsonDocument.Parse(json, RevelaJsonOptions.LenientDocument);
+            cachedConfig = document.RootElement.Deserialize(GlobalConfigJsonContext.Default.GlobalConfigFile) ?? new GlobalConfigFile();
             LogConfigLoaded(configPath);
         }
         catch (Exception ex)

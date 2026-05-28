@@ -3,6 +3,7 @@ using System.Text.Json.Nodes;
 using Microsoft.Extensions.Options;
 using Spectara.Revela.Core.Logging;
 using Spectara.Revela.Sdk;
+using Spectara.Revela.Sdk.Json;
 
 namespace Spectara.Revela.Core;
 
@@ -17,7 +18,9 @@ public sealed class PluginProjectService(
     IOptions<ProjectEnvironment> projectEnvironment,
     ILogger<PluginProjectService> logger)
 {
-    private static readonly JsonSerializerOptions WriteOptions = new() { WriteIndented = true };
+    // Read tolerates JSONC (comments, trailing commas); writes are pretty-printed but
+    // do NOT preserve comments or original formatting. See docs/configuration.md.
+    private static readonly JsonSerializerOptions WriteOptions = RevelaJsonOptions.Write;
 
     /// <summary>
     /// Adds or updates a plugin entry in project.json.
@@ -85,7 +88,7 @@ public sealed class PluginProjectService(
         }
 
         var jsonText = await File.ReadAllTextAsync(projectJsonPath, cancellationToken);
-        if (JsonNode.Parse(jsonText) is not JsonObject root)
+        if (JsonNode.Parse(jsonText, nodeOptions: null, RevelaJsonOptions.LenientDocument) is not JsonObject root)
         {
             return false;
         }

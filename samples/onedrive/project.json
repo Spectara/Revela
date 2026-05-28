@@ -22,6 +22,10 @@
     }
   },
   "Spectara.Revela.Plugins.Source.OneDrive": {
+    // INTENTIONAL: This OneDrive share link is public by design.
+    // It was created specifically as a demo/sample dataset for Revela
+    // and contains only sample photos meant to be shared publicly.
+    // Secret scanners may flag it — this is a false positive.
     "ShareUrl": "https://1drv.ms/f/c/90362b8badfb304c/IgAJ09BVc-BeQJ2A7C4iK3r2ASwhRVRLojLQbLOoZHTwGgk",
     "DefaultConcurrency": 8
   }

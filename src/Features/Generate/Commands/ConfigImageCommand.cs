@@ -7,6 +7,7 @@ using Microsoft.Extensions.Options;
 using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Abstractions;
 using Spectara.Revela.Sdk.Configuration;
+using Spectara.Revela.Sdk.Json;
 using Spectara.Revela.Sdk.Output;
 using Spectara.Revela.Sdk.Services;
 using Spectre.Console;
@@ -134,7 +135,7 @@ internal sealed partial class ConfigImageCommand(
 
         try
         {
-            if (JsonNode.Parse(stream) is not JsonObject json)
+            if (JsonNode.Parse(stream, nodeOptions: null, RevelaJsonOptions.LenientDocument) is not JsonObject json)
             {
                 return null;
             }

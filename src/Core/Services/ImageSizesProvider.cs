@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.Text.Json;
 using Microsoft.Extensions.Options;
 using Spectara.Revela.Sdk.Configuration;
+using Spectara.Revela.Sdk.Json;
 
 using Spectara.Revela.Sdk.Services;
 namespace Spectara.Revela.Core.Services;
@@ -139,7 +140,7 @@ public sealed partial class ImageSizesProvider(
 
         try
         {
-            using var doc = JsonDocument.Parse(stream);
+            using var doc = JsonDocument.Parse(stream, RevelaJsonOptions.LenientDocument);
 
             // images.json format: { "sizes": [...], "resizeMode": "longest" }
             ReadOnlyCollection<int>? sizes = null;

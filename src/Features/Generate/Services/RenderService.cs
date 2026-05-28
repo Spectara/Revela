@@ -10,6 +10,7 @@ using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Abstractions;
 using Spectara.Revela.Sdk.Configuration;
 using Spectara.Revela.Sdk.Hosting;
+using Spectara.Revela.Sdk.Json;
 using Spectara.Revela.Sdk.Models.Manifest;
 using Spectara.Revela.Sdk.Services;
 using Spectara.Revela.Sdk.TemplateModels;
@@ -280,7 +281,7 @@ internal sealed partial class RenderService(
         try
         {
             var json = await File.ReadAllTextAsync(siteJsonPath, cancellationToken);
-            return JsonDocument.Parse(json).RootElement.Clone();
+            return JsonDocument.Parse(json, RevelaJsonOptions.LenientDocument).RootElement.Clone();
         }
         catch (JsonException)
         {

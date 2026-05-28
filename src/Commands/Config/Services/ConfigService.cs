@@ -5,6 +5,7 @@ using Microsoft.Extensions.Options;
 using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Abstractions;
 using Spectara.Revela.Sdk.Configuration;
+using Spectara.Revela.Sdk.Json;
 
 namespace Spectara.Revela.Commands.Config.Services;
 
@@ -55,7 +56,7 @@ internal sealed partial class ConfigService(
         try
         {
             var json = await File.ReadAllTextAsync(ProjectConfigPath, cancellationToken);
-            return JsonNode.Parse(json)?.AsObject();
+            return JsonNode.Parse(json, nodeOptions: null, RevelaJsonOptions.LenientDocument)?.AsObject();
         }
         catch (JsonException ex)
         {
@@ -120,7 +121,7 @@ internal sealed partial class ConfigService(
         try
         {
             var json = await File.ReadAllTextAsync(SiteConfigPath, cancellationToken);
-            return JsonNode.Parse(json)?.AsObject();
+            return JsonNode.Parse(json, nodeOptions: null, RevelaJsonOptions.LenientDocument)?.AsObject();
         }
         catch (JsonException ex)
         {

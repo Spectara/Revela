@@ -17,5 +17,8 @@
         "dotnet outdated": true,
         "dotnet build": true,
         "dotnet test": true
+    },
+    "files.associations": {
+        "*.json": "jsonc"
     }
 }
