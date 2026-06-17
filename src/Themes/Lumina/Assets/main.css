@@ -251,7 +251,7 @@ label[for=nav-trigger] {
 
     /* Container headings (no link) are visually muted */
     &:not(:has(a)) {
-      color: color-mix(in srgb, var(--color-light) 65%, transparent);
+      color: color-mix(in srgb, var(--color-light) 85%, transparent);
       cursor: default;
     }
   }
@@ -268,7 +268,7 @@ label[for=nav-trigger] {
     }
 
     >span {
-      color: color-mix(in srgb, var(--color-light) 65%, transparent);
+      color: color-mix(in srgb, var(--color-light) 85%, transparent);
       cursor: default;
     }
 

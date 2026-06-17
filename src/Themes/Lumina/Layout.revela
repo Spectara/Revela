@@ -92,9 +92,9 @@ Body Template Selection:
         </div>
     </footer>
 
-    {{~ # Scripts ~}}
+    {{~ # Scripts (deferred — non-render-blocking, keeps them off the critical request chain) ~}}
     {{~ for js in scripts ~}}
-    <script src="{{ basepath }}_assets/{{ js }}"></script>
+    <script src="{{ basepath }}_assets/{{ js }}" defer></script>
     {{~ end ~}}
 </body>
 
