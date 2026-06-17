@@ -1,0 +1,39 @@
++++
+title = "For Photographers"
+template = "docs"
+pinned = true
++++
+
+This path is for the portfolio workflow: install Revela, create your first project, organize your photos, and publish the site.
+
+<div class="features-grid">
+
+### ⬇️ Installation
+
+Start with the installation and first-run flow: [Installation](../00%20get-started/01%20installation/)
+
+### 🚀 First Project
+
+Follow the complete user journey: [User Journey](../00%20get-started/02%20user-journey/)
+
+### 📁 Organize Photos
+
+Learn how galleries and pages are structured: [Source Structure](../01%20guide/01%20source-structure/)
+
+### 🎨 Customize the Look
+
+Theme customization is shared across both paths, so it stays easy to find here as well: [Theme Customization](../01%20guide/06%20themes/)
+
+### 🚀 Publish
+
+Deploy your site when it is ready: [Deployment](../01%20guide/08%20deployment/)
+
+</div>
+
+## Also Useful from the General Docs
+
+- [Configuration](../01%20guide/07%20configuration/)
+- [Plugins](../02%20plugins/)
+- [CLI Reference](../03%20reference/01%20cli-reference/)
+
+This keeps the full documentation set available, while giving photographers a focused starting point.

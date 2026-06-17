@@ -6,50 +6,35 @@ pinned = true
 
 Welcome to the Revela documentation. Here you'll find everything you need to create beautiful photo galleries.
 
+Use the role paths below for the most relevant starting point, and keep the shared guides in the general docs section for the full documentation set.
+
 <div class="features-grid">
 
-### ⬇️ Installation
+### 👩‍🎨 For Photographers
 
-Download and install Revela on Windows, macOS, or Linux.
+Start with the setup and portfolio workflow you use to publish your work.
 
-### 📁 Source Structure
+### 🧑‍💻 For Developers
 
-Learn how to organize your photos with traditional galleries, filter galleries, or a hybrid approach.
+Start here when you want to extend, customize, or automate Revela.
 
-### 📄 Creating Pages
+### 📚 General Docs
 
-Use CLI commands to quickly create gallery, text, and statistics pages.
-
-### 🖼️ Image Processing
-
-Configure image formats, sizes, and use incremental generation.
-
-### 📊 Sorting
-
-Configure how galleries and images are sorted, with per-gallery overrides.
-
-### 🔍 Filter Galleries
-
-Create dynamic galleries that automatically select images based on EXIF data, filename, or date.
-
-### 🎨 Theme Customization
-
-Extract and customize themes to match your style with variables and templates.
-
-### ⚙️ Configuration
-
-Advanced project settings and configuration options.
-
-### 🧩 Plugins
-
-Extend Revela with compression, statistics, a dev server, and more.
-
-### 🚀 Deployment
-
-Publish your portfolio online - GitHub Pages, Netlify, or your own server.
-
-### 💻 CLI Reference
-
-Complete reference of all commands and options.
+Shared topics such as themes, plugins, configuration, and CLI reference stay available from one place.
 
 </div>
+
+## Role Paths
+
+- [For Photographers](00%20photographers/)
+- [For Developers](01%20developers/)
+- [General Docs](01%20guide/)
+
+## Shared Topics
+
+The full documentation set is still available through the existing guide, plugin, and reference sections:
+
+- [Theme Customization](01%20guide/06%20themes/)
+- [Plugins](02%20plugins/)
+- [Configuration](01%20guide/07%20configuration/)
+- [CLI Reference](03%20reference/01%20cli-reference/)

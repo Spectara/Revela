@@ -1,0 +1,41 @@
++++
+title = "For Developers"
+template = "docs"
+pinned = true
++++
+
+This path is for setup, automation, and extending Revela from the command line, from the codebase, or through plugins and themes.
+
+<div class="features-grid">
+
+### ⚙️ Setup & Install
+
+Start with the installation and CLI basics: [Installation](../00%20get-started/01%20installation/)
+
+### 🧰 CLI & Configuration
+
+Use the command reference and configuration docs: [CLI Reference](../03%20reference/01%20cli-reference/), [Configuration](../01%20guide/07%20configuration/)
+
+### 🧩 Plugins
+
+See how to install and manage extensions: [Plugins](../02%20plugins/)
+
+### 🎨 Themes
+
+Theme customization is also relevant for developers who want to override templates and assets: [Theme Customization](../01%20guide/06%20themes/)
+
+### 📚 Full Reference
+
+The general docs section remains the main hub for the complete documentation set.
+
+</div>
+
+## Shared Topics from the Photographer Path
+
+The same material is intentionally reachable from this role path too:
+
+- [Source Structure](../01%20guide/01%20source-structure/)
+- [Theme Customization](../01%20guide/06%20themes/)
+- [Deployment](../01%20guide/08%20deployment/)
+
+This keeps the role-specific entry points while preserving the full docs catalog.
