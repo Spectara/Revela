@@ -7,6 +7,7 @@ using Spectara.Revela.Features.Generate.Models.Results;
 using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Abstractions;
 using Spectara.Revela.Sdk.Configuration;
+using Spectara.Revela.Sdk.Hosting;
 using Spectara.Revela.Sdk.Output;
 using Spectre.Console;
 using Spectre.Console.Rendering;
@@ -30,6 +31,7 @@ internal sealed partial class ImagesCommand(
     ILogger<ImagesCommand> logger,
     IImageService imageService,
     IManifestRepository manifestRepository,
+    IConsoleCapabilities consoleCapabilities,
     IOptionsMonitor<ProjectConfig> projectConfig) : IPipelineStep
 {
     // ── IPipelineStep (service-level, no UI) ──
@@ -114,17 +116,24 @@ internal sealed partial class ImagesCommand(
             // Empty line before progress display
             AnsiConsole.WriteLine();
 
-            var result = await AnsiConsole.Live(new Text("Initializing..."))
-                .AutoClear(false)
-                .StartAsync(async ctx =>
-                {
-                    // Use synchronous IProgress to avoid lost updates.
-                    // Progress<T> dispatches via ThreadPool, causing the last
-                    // updates per image to be lost before Live() renders them.
-                    var progress = new SynchronousProgress<ImageProgress>(p => ctx.UpdateTarget(RenderProgress(p)));
+            // The live progress display hides the terminal cursor, which throws
+            // an IOException on a non-interactive console (redirected output, CI,
+            // Docker, no TTY). Unlike Status()/Progress(), the low-level Live()
+            // primitive has no built-in non-interactive fallback, so gate it on
+            // the shared console-capability check and run plainly otherwise.
+            var result = consoleCapabilities.CanRenderLive
+                ? await AnsiConsole.Live(new Text("Initializing..."))
+                    .AutoClear(false)
+                    .StartAsync(async ctx =>
+                    {
+                        // Use synchronous IProgress to avoid lost updates.
+                        // Progress<T> dispatches via ThreadPool, causing the last
+                        // updates per image to be lost before Live() renders them.
+                        var progress = new SynchronousProgress<ImageProgress>(p => ctx.UpdateTarget(RenderProgress(p)));
 
-                    return await imageService.ProcessAsync(options, progress, cancellationToken);
-                });
+                        return await imageService.ProcessAsync(options, progress, cancellationToken);
+                    })
+                : await imageService.ProcessAsync(options, progress: null, cancellationToken);
 
             if (result.Success)
             {

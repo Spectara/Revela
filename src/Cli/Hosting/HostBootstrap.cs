@@ -59,6 +59,12 @@ internal static class HostBootstrap
         // so tests can override.
         builder.Services.TryAddSingleton<IBuildInfo, BuildInfo>();
 
+        // Console capabilities — single source of truth for "is this an
+        // interactive terminal?". Consumed by the interactive-menu launch and
+        // by any command/plugin that renders live output. Idempotent so tests
+        // can substitute a fake.
+        builder.Services.TryAddSingleton<IConsoleCapabilities, ConsoleCapabilities>();
+
         // Register ProjectEnvironment (runtime info about project location)
         builder.Services.AddOptions<ProjectEnvironment>()
             .Configure<IHostEnvironment>((env, host) => env.Path = host.ContentRootPath);
@@ -83,11 +89,9 @@ internal static class HostBootstrap
         var versionOption = rootCommand.Options.OfType<VersionOption>().FirstOrDefault();
         versionOption?.Action = new BuildInfoVersionAction(buildInfo);
 
-        // Detect interactive mode: no arguments AND interactive terminal
-        var isInteractiveMode = args.Length == 0
-            && !Console.IsInputRedirected
-            && !Console.IsOutputRedirected
-            && Environment.UserInteractive;
+        // Detect interactive mode: no arguments AND an interactive terminal.
+        var consoleCapabilities = host.Services.GetRequiredService<IConsoleCapabilities>();
+        var isInteractiveMode = args.Length == 0 && consoleCapabilities.IsInteractive;
 
         if (isInteractiveMode)
         {
