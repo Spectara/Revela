@@ -19,7 +19,7 @@ public sealed class PluginProjectService(
     ILogger<PluginProjectService> logger)
 {
     // Read tolerates JSONC (comments, trailing commas); writes are pretty-printed but
-    // do NOT preserve comments or original formatting. See docs/configuration.md.
+    // do NOT preserve comments or original formatting. See https://revela.website/docs/guide/configuration/.
     private static readonly JsonSerializerOptions WriteOptions = RevelaJsonOptions.Write;
 
     /// <summary>

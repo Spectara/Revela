@@ -11,7 +11,7 @@ namespace Spectara.Revela.Sdk.Json;
 /// comments and trailing commas are tolerated when reading.
 ///
 /// Note: comments and original formatting are NOT preserved when Revela writes a file
-/// back (e.g. <c>revela plugins add</c>). See docs/configuration.md.
+/// back (e.g. <c>revela plugin install</c>). See https://revela.website/docs/guide/configuration/.
 /// </remarks>
 public static class RevelaJsonOptions
 {
