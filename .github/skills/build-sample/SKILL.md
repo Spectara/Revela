@@ -19,17 +19,20 @@ Build one of the sample projects using the local development CLI.
 ## Commands
 
 ```powershell
-# Full build (scan → statistics → pages → images)
-dotnet run --project src/Cli -- -p samples/<name> generate all
+# From the sample project directory
+cd samples/<name>
+dotnet run --project ../../src/Cli.Embedded -- generate all
 
 # Individual steps
-dotnet run --project src/Cli -- -p samples/<name> generate scan
-dotnet run --project src/Cli -- -p samples/<name> generate pages
-dotnet run --project src/Cli -- -p samples/<name> generate images
+cd samples/<name>
+dotnet run --project ../../src/Cli.Embedded -- generate scan
+dotnet run --project ../../src/Cli.Embedded -- generate pages
+dotnet run --project ../../src/Cli.Embedded -- generate images
 
 # Clean and rebuild
-dotnet run --project src/Cli -- -p samples/<name> clean all
-dotnet run --project src/Cli -- -p samples/<name> generate all
+cd samples/<name>
+dotnet run --project ../../src/Cli.Embedded -- clean all
+dotnet run --project ../../src/Cli.Embedded -- generate all
 ```
 
 ## Default Sample
@@ -43,7 +46,7 @@ Output is in `samples/<name>/output/`.
 
 ## Important
 
-- Always run from the **repository root** (`d:\Work\GitHub\Revela`)
-- The `-p` flag accepts a relative path to the sample project
-- If the build fails with "Not in a Revela project directory", check that the path is correct
-- The `--no-build` flag skips dotnet compilation (use after first build for speed)
+- Run the command from the sample project directory (`samples/<name>`) — the CLI resolves the project from the current working directory.
+- The current CLI build does not support a `-p` project-path flag.
+- If the build fails with "Not in a Revela project directory", check that you are inside the sample project folder.
+- The `--no-build` flag skips dotnet compilation (use after first build for speed).

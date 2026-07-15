@@ -10,9 +10,9 @@ Revela is a modern static site generator built specifically for photographers wh
 
 Revela started as a complete rewrite of [Expose](https://github.com/kirkone/Expose), a Bash-based static site generator I created years ago. While Expose worked well, it had limitations: slow image processing, platform dependencies, and no extensibility.
 
-In 2025, I decided to rebuild it from scratch using .NET — bringing modern tooling, blazing-fast image processing with libvips, and a plugin architecture that makes it easy to extend.
+In 2025, I decided to rebuild it from scratch using .NET. That brought modern tooling, blazing-fast image processing with libvips, and a plugin architecture that makes it easy to extend.
 
-The name "Revela" comes from the Spanish/Portuguese word meaning "to reveal" — fitting for a tool that helps photographers reveal their work to the world.
+The name "Revela" comes from the Spanish and Portuguese word meaning "to reveal", which feels fitting for a tool that helps photographers reveal their work to the world.
 
 ## Philosophy
 
@@ -20,7 +20,7 @@ The name "Revela" comes from the Spanish/Portuguese word meaning "to reveal" —
 
 **Performance matters.** Your visitors shouldn't wait for images to load. Revela generates optimized images in multiple sizes and modern formats (AVIF, WebP) automatically.
 
-**Your photos, your way.** Organize by date, by project, by camera — Revela adapts to your workflow, not the other way around.
+**Your photos, your way.** Organize by date, by project, or by camera. Revela adapts to your workflow, not the other way around.
 
 ## Open Source
 

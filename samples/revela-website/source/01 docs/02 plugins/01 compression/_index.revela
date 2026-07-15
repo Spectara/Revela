@@ -125,3 +125,32 @@ The plugin uses **maximum compression** for smallest files:
 | Brotli | 11 (max) | Modern browsers (95%+) |
 
 Files under **256 bytes** are skipped – compression overhead exceeds savings.
+
+## Server Configuration
+
+Pre-compressed files only help if your server serves them. Point your server at the `.gz` / `.br` files:
+
+### nginx
+
+```nginx
+gzip_static on;
+brotli_static on;   # requires the ngx_brotli module
+```
+
+### Apache
+
+```apache
+# Serve .br to Brotli-capable browsers
+RewriteCond %{HTTP:Accept-Encoding} br
+RewriteCond %{REQUEST_FILENAME}.br -f
+RewriteRule ^(.*)$ $1.br [L]
+
+# Serve .gz to Gzip-capable browsers
+RewriteCond %{HTTP:Accept-Encoding} gzip
+RewriteCond %{REQUEST_FILENAME}.gz -f
+RewriteRule ^(.*)$ $1.gz [L]
+```
+
+### Caddy / GitHub Pages / Netlify / Cloudflare Pages
+
+These serve pre-compressed files automatically – no configuration needed.

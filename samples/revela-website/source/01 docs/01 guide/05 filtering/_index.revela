@@ -86,6 +86,9 @@ filter = "not exif.make == 'Canon'"
 **Precedence:** `and` binds tighter than `or`. Use parentheses to change order:
 
 ```toml
+# Evaluated as: a or (b and c)
+filter = "exif.make == 'Canon' or exif.make == 'Sony' and exif.iso >= 800"
+
 # Evaluated as: (a or b) and c
 filter = "(exif.make == 'Canon' or exif.make == 'Sony') and exif.iso >= 800"
 ```
@@ -99,10 +102,12 @@ filter = "(exif.make == 'Canon' or exif.make == 'Sony') and exif.iso >= 800"
 | Property | Type | Description |
 |----------|------|-------------|
 | `filename` | string | Image filename (e.g., `photo-001.jpg`) |
+| `sourcePath` | string | Path within the source directory |
 | `width` | int | Image width in pixels |
 | `height` | int | Image height in pixels |
 | `fileSize` | long | File size in bytes |
-| `dateTaken` | DateTime | Date photo was taken |
+| `dateTaken` | DateTime | Date the photo was taken |
+| `lastModified` | DateTime | File last-modified timestamp |
 
 ### EXIF Properties
 
@@ -117,6 +122,9 @@ Access via `exif.` prefix:
 | `exif.exposureTime` | double | Shutter speed in seconds |
 | `exif.iso` | int | ISO sensitivity |
 | `exif.focalLength` | int | Focal length in mm |
+| `exif.dateTaken` | DateTime | Capture date/time from EXIF |
+| `exif.gpsLatitude` | double? | GPS latitude (if present) |
+| `exif.gpsLongitude` | double? | GPS longitude (if present) |
 
 ### Raw EXIF Access
 
@@ -148,6 +156,7 @@ filter = "exif.raw.Rating >= 4"
 | `starts_with(str, prefix)` | Check prefix | `starts_with(filename, 'IMG_')` |
 | `ends_with(str, suffix)` | Check suffix | `ends_with(filename, '-edit.jpg')` |
 | `lower(str)` | To lowercase | `lower(exif.make) == 'canon'` |
+| `upper(str)` | To uppercase | `upper(exif.make) == 'CANON'` |
 
 ---
 
@@ -192,6 +201,35 @@ filter = "all | limit 5"
 # 10 newest photos
 filter = "all | sort dateTaken desc | limit 10"
 ```
+
+---
+
+## Literal Values
+
+### Strings
+
+Single or double quotes both work:
+
+```toml
+filter = "filename == 'test.jpg'"
+filter = "filename == \"test.jpg\""
+```
+
+### Numbers
+
+```toml
+filter = "exif.iso == 800"       # Integer
+filter = "exif.fNumber == 2.8"   # Decimal
+```
+
+### Booleans & Null
+
+```toml
+filter = "exif.gpsLatitude != null"  # Has GPS data
+filter = "exif.lensModel == null"    # No lens info
+```
+
+`true` and `false` are also valid literals.
 
 ---
 
@@ -256,3 +294,24 @@ filter = "exif.make == 'Canon'"
 sort = "dateTaken:desc"
 +++
 ```
+
+---
+
+## Error Handling
+
+Invalid expressions fail the build with a position-aware message and a caret pointing at the problem:
+
+```
+Filter error: Expected expression, got ')'
+
+  exif.make == ( )
+              ^
+```
+
+Run `revela generate scan` to validate your filters before a full generation.
+
+## See Also
+
+- [Sorting](../sorting/): order images within any gallery
+- [Pages](../pages/): gallery, text, and statistics pages
+- [Source Structure](../source-structure/): where `_images/` fits in

@@ -1,14 +1,14 @@
 +++
 title = "Downloads"
 template = "page"
-description = "Download Revela for Windows, macOS, or Linux — Standalone, Full, or .NET global tool."
+description = "Download Revela for Windows, macOS, or Linux: Standalone, Full, or .NET global tool."
 +++
 
 Revela ships in three editions. **Standalone** covers what most people need; pick another only if you have a specific reason.
 
 ---
 
-## Standalone <small>— recommended</small>
+## Standalone <small>(recommended)</small>
 
 A single executable with the default theme and all built-in plugins (compression, dev server, OneDrive sync, EXIF statistics, calendar) baked in. No .NET SDK, no plugin downloads, no internet connection required after the initial download.
 
@@ -24,7 +24,7 @@ A single executable with the default theme and all built-in plugins (compression
 
 ---
 
-## Full <small>— modular, with plugin manager</small>
+## Full <small>(modular, with plugin manager)</small>
 
 The same executable as Standalone, but bundled with a local NuGet feed of every official plugin and theme as separate packages. Lets you install, update, and remove plugins individually with `revela plugin install`/`uninstall`. Useful if you want to keep the binary small, ship custom plugins, or mix and match themes.
 
@@ -40,7 +40,7 @@ The same executable as Standalone, but bundled with a local NuGet feed of every 
 
 ---
 
-## .NET Global Tool <small>— for developers</small>
+## .NET Global Tool <small>(for developers)</small>
 
 If you already have the [.NET 10 SDK](https://dotnet.microsoft.com/download) installed, the cleanest install is via NuGet:
 
@@ -70,4 +70,4 @@ dotnet tool update -g Spectara.Revela
 
 When in doubt: **Standalone**.
 
-For the full installation walkthrough — including first run, project layout, and the setup wizard — see the [Installation guide](../../docs/get-started/installation/).
+For the full installation walkthrough, including first run, project layout, and the setup wizard, see the [Installation guide](../../docs/get-started/installation/).

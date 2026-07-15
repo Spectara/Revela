@@ -262,7 +262,7 @@ When in doubt, check if there is a newer API or language feature that replaces o
 ## 15. Documentation Consistency
 
 - **README matches code** — verify plugin/theme README documents only features that actually exist in code
-- **Website docs match code** — check `docs/plugins/`, `docs/revela/`, and `samples/revela-website/` for outdated info
+- **Website docs match code** — product docs live in `samples/revela-website/source/01 docs/`; check those pages against the code for outdated info
 - **CLI options documented** — all `--option` flags in README must exist in the command definition
 - **Config examples valid** — JSON examples in docs must match actual config models (property names, types, defaults)
 - **Sample projects current** — samples should work with current codebase without errors

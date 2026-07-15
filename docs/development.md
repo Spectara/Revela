@@ -4,7 +4,7 @@ Guide for contributors who want to build, test, and develop Revela.
 
 > For initial setup (prerequisites, clone, build, IDE configuration), see [Setup & Build Instructions](setup.md).
 > For project layout and namespace conventions, see [Project Structure](project-structure.md).
-> For plugin development, see [Plugin Development Guide](plugin-development.md).
+> For plugin development, see [Plugin Development](plugin-development.md).
 
 ---
 

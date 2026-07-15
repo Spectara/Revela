@@ -45,16 +45,10 @@ Does NOT create a git tag or GitHub release — for local testing only.
 ```
 standalone-20260501-002132/         (Standalone — Cli.Embedded, Native AOT)
 ├── revela.exe                       (or `revela` on Linux/macOS)
-├── libvips-42.dll                   (or libvips.so.42 / libvips.42.dylib)
-└── getting-started/
-    ├── README.md
-    ├── cli-reference.md
-    ├── getting-started-de.md
-    └── getting-started-en.md
+└── libvips-42.dll                   (or libvips.so.42 / libvips.42.dylib)
 
 full-20260501-002132/               (Full — Cli + packages/)
 ├── revela.exe
-├── getting-started/...
 └── packages/
     ├── Spectara.Revela.{version}.nupkg                       (CLI tool)
     ├── Spectara.Revela.Sdk.{version}.nupkg

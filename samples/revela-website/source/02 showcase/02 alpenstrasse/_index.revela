@@ -5,7 +5,7 @@ template = "docs"
 
 ![Holiday apartment website built with Revela and a custom Panorama theme](screenshots/alpenstrasse.jpg){.browser-mockup}
 
-A holiday apartment in Dresden-Oberloschwitz with panoramic views — built with a custom Panorama theme, the Calendar plugin for availability, and responsive image handling throughout.
+A holiday apartment in Dresden-Oberloschwitz with panoramic views. It's built with a custom Panorama theme, the Calendar plugin for availability, and responsive image handling throughout.
 
 [Visit Alpenstrasse 8 →](https://alpenstrasse.github.io/Website/)  |  [View source on GitHub →](https://github.com/Alpenstrasse/Website)
 
@@ -21,7 +21,7 @@ A holiday apartment in Dresden-Oberloschwitz with panoramic views — built with
 | **`find_image`** | Responsive logo loaded from `_images/` via template function |
 | **Gallery on Homepage** | Three photos displayed with flex-flow layout and CSS-only lightbox |
 | **Content Image Template** | Custom `Partials/ContentImage.revela` for Markdown images |
-| **Multiple Page Types** | Prices, sights, directions, contact — each with unique layout |
+| **Multiple Page Types** | Prices, sights, directions, contact, each with its own layout |
 
 ## Site Structure
 
@@ -47,7 +47,7 @@ source/
 
 ## Custom Theme: Panorama
 
-The Panorama theme is a local theme in the project's `themes/` folder — no NPM packages or build tools needed:
+The Panorama theme is a local theme in the project's `themes/` folder, so there are no NPM packages or build tools needed:
 
 ```
 themes/Panorama/
@@ -94,7 +94,7 @@ The logo is stored in `_images/logo.jpg` and resolved via `find_image`:
 {{~ end ~}}
 ```
 
-This gives the logo AVIF/WebP/JPG variants and responsive sizing — no hardcoded paths.
+This gives the logo AVIF/WebP/JPG variants and responsive sizing, with no hardcoded paths.
 
 ### Gallery with Lightbox
 
@@ -126,11 +126,11 @@ calendar.locale = "de"
 Der Kalender zeigt die aktuelle Belegung unserer Ferienwohnung.
 ```
 
-The body text comes from `{{ page_content }}` — separate from the calendar rendering.
+The body text comes from `{{ page_content }}`, kept separate from the calendar rendering.
 
 ## What Makes It Interesting
 
-- **Not a photo site** — Shows Revela works beyond photography portfolios
-- **Custom theme without build tools** — Plain CSS and Scriban templates
-- **Real booking integration** — Calendar synced from live ICS feed
-- **Every new Revela feature tested here first** — Cover images, `find_image`, content image templates all originated from this project's needs
+- **Not a photo site**: shows Revela works beyond photography portfolios
+- **Custom theme without build tools**: plain CSS and Scriban templates
+- **Real booking integration**: calendar synced from a live ICS feed
+- **Every new Revela feature tested here first**: cover images, `find_image`, and content image templates all grew out of this project's needs

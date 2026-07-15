@@ -70,6 +70,15 @@ revela config serve
 revela config serve --port 3000
 ```
 
+Both commands also accept the short aliases `-p` (port) and `-v` (verbose), and the settings can be supplied as environment variables:
+
+```bash
+SPECTARA__REVELA__PLUGIN__SERVE__PORT=3000
+SPECTARA__REVELA__PLUGIN__SERVE__VERBOSE=true
+```
+
+Values are resolved in order: CLI arguments → environment variables → `project.json` → defaults.
+
 ## Output
 
 **Standard mode** – only shows errors:

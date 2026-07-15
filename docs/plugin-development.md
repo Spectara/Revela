@@ -1,193 +1,140 @@
-# Plugin Development Guide
+# Plugin Development
 
-## Creating Plugins for Revela
+A practical guide to building, configuring, testing, and publishing a Revela plugin.
 
-Revela supports extensibility through a NuGet-based plugin system.
-
----
-
-## 🔐 Official vs. Community Plugins
-
-### Official Plugins (Spectara-Maintained)
-
-**Package Prefix:** `Spectara.Revela.Plugins.*`
-
-- ✅ Maintained by Spectara team
-- ✅ Verified and trusted
-- ✅ Official support
-- ✅ Regular updates
-
-**Example:** `Spectara.Revela.Plugins.Deploy`
-
-### Community Plugins
-
-**Package Prefix:** `YourName.Revela.Plugin.*` or `YourOrg.Revela.Plugin.*`
-
-- ⚠️ Maintained by community developers
-- ⚠️ Not officially verified
-- ⚠️ Install at your own risk
-- ⚠️ Support by plugin author
-
-**Example:** `JohnDoe.Revela.Plugin.AWS`
-
-**Important:** The `Spectara` prefix is **reserved** on NuGet.org and cannot be used by third parties.
+> For the *why* behind the plugin system (architecture, layers, what stays internal), see [Plugin System](plugin-system-v2.md).
+> For the security rationale behind URL validation and trust, see [Security Model](security-model.md).
 
 ---
 
-## 🏗️ Plugin Architecture
+## What a plugin is
 
-### IPlugin Interface
+Revela is extensible through a **NuGet-based plugin system**. A plugin is a small .NET library that implements `IPlugin`, registers its services, and optionally contributes CLI commands.
 
-All plugins must implement the `IPlugin` interface:
+- **Implement `IPlugin`** — metadata, service registration, and commands in one class.
+- **Config via `IOptions`** — JSON and environment variables are auto-loaded for you.
+- **Ship on NuGet** — pack and publish; users install with `revela plugin install`.
+
+---
+
+## Naming & trust
+
+| Audience | Package prefix | Notes |
+|----------|----------------|-------|
+| **Official** | `Spectara.Revela.Plugins.*` | Reserved on NuGet.org, Spectara only |
+| **Community** | `YourName.Revela.Plugin.*` | Your own prefix; install at your own risk |
+
+> The `Spectara` prefix is reserved on NuGet.org and cannot be used by third parties.
+
+The package **name** is only a convention. Revela detects a plugin from the `<PackageType>RevelaPlugin</PackageType>` marker in your project file (see the `.csproj` below), not from the ID. Pick any prefix you control; including a `.Revela.Plugin.` (or `.Revela.Plugins.`) segment also helps Revela classify your package in `revela plugin search` results before it is installed.
+
+---
+
+## The `IPlugin` class
+
+A plugin implements `IPlugin` from `Spectara.Revela.Sdk.Abstractions`:
 
 ```csharp
 using System.CommandLine;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Spectara.Revela.Sdk.Abstractions;
 
 namespace YourName.Revela.Plugin.Example;
 
-public class ExamplePlugin : IPlugin
+public sealed class ExamplePlugin : IPlugin
 {
-    // PluginMetadata is a sealed record: Name, Version, Description, Author
     public PluginMetadata Metadata => new()
     {
         Name = "Example",
         Version = "1.0.0",
         Description = "Example plugin for Revela",
-        Author = "Your Name"
+        Author = "Your Name",
     };
-    
-    // REQUIRED: Register services BEFORE ServiceProvider is built
+
+    // REQUIRED: register services before the host is built.
+    // Use TryAdd* so registration stays idempotent.
     public void ConfigureServices(IServiceCollection services)
     {
-        // Register plugin-specific services
-        services.AddHttpClient<MyHttpService>(client =>
-        {
-            client.BaseAddress = new Uri("https://api.example.com");
-            client.Timeout = TimeSpan.FromSeconds(30);
-        });
-        
-        services.AddSingleton<IMyService, MyService>();
-        services.TryAddTransient<ExampleCommand>(); // TryAdd* keeps registration idempotent
+        services.AddHttpClient<ExampleService>();
+        services.TryAddTransient<ExampleCommand>();
     }
-    
-    // OPTIONAL: Return CommandDescriptors (command + optional parent)
-    // IServiceProvider is passed as parameter — no field storage needed!
+
+    // OPTIONAL: yield the commands this plugin contributes.
+    // The IServiceProvider is passed in; no field storage needed.
     public IEnumerable<CommandDescriptor> GetCommands(IServiceProvider services)
     {
-        var cmd = services.GetRequiredService<ExampleCommand>();
-        
-        // ParentCommand is specified here, NOT in PluginMetadata!
-        // null = root level, "source" = under source, etc.
-        yield return new CommandDescriptor(cmd.Create(), ParentCommand: null);
+        var command = services.GetRequiredService<ExampleCommand>();
+
+        // ParentCommand decides where the command sits:
+        // null = root, "generate" = a pipeline step, "source" = under source, …
+        yield return new CommandDescriptor(command.Create(), ParentCommand: null);
     }
 }
 ```
 
+The plugin lifecycle has four phases: **discovery** → `ConfigureConfiguration` (optional) → `ConfigureServices` (required) → `GetCommands` (optional).
+
 ---
 
-## 📦 Plugin Project Structure
+## Project setup
 
 ```
 YourName.Revela.Plugin.Example/
 ├── YourName.Revela.Plugin.Example.csproj
 ├── ExamplePlugin.cs
-├── Commands/
-│   ├── ExampleCommand.cs
-│   └── ExampleInitCommand.cs
-├── Templates/
-│   └── config.json            # Embedded as resource
+├── Commands/ExampleCommand.cs
 └── README.md
 ```
-
----
-
-## 🎯 Plugin .csproj Configuration
 
 ```xml
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
-    
-    <!-- Package Metadata -->
+
     <PackageId>YourName.Revela.Plugin.Example</PackageId>
+    <PackageType>RevelaPlugin</PackageType>
     <Version>1.0.0</Version>
     <Authors>Your Name</Authors>
     <Description>Example plugin for Revela</Description>
     <PackageTags>revela;plugin;example</PackageTags>
-    <PackageProjectUrl>https://github.com/yourname/revela-plugin-example</PackageProjectUrl>
-    <RepositoryUrl>https://github.com/yourname/revela-plugin-example</RepositoryUrl>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
   </PropertyGroup>
 
   <ItemGroup>
-    <!-- Reference Revela.Core for abstractions -->
-    <PackageReference Include="Spectara.Revela.Core" Version="1.0.0" />
-    
-    <!-- System.CommandLine for CLI -->
-    <PackageReference Include="System.CommandLine" Version="2.0.1" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <!-- Embed template files as resources -->
-    <EmbeddedResource Include="Templates\**\*" />
+    <!-- Public plugin/theme abstractions (IPlugin, CommandDescriptor, …) -->
+    <PackageReference Include="Spectara.Revela.Sdk" Version="1.0.0" />
+    <PackageReference Include="System.CommandLine" Version="2.0.8" />
   </ItemGroup>
 </Project>
 ```
 
 ---
 
-## 🚀 Plugin Workflow
+## Configuration
 
-### 1. User Installs Plugin
+Revela auto-loads plugin configuration before your plugin initializes, pulling from `project.json` (and any `plugins/*.json`) plus environment variables prefixed `SPECTARA__REVELA__`. You usually don't override `ConfigureConfiguration` at all.
 
-```bash
-revela plugin install yourname.example
-```
-
-Revela expands short name to: `YourName.Revela.Plugin.Example`
-
-### 2. Plugin is Loaded
-
-- Plugin DLL is downloaded to `%APPDATA%/Revela/plugins/`
-- Revela discovers plugins matching pattern: `*.Revela.Plugin.*.dll`
-- Plugin's `IPlugin` implementation is instantiated
-
-### 3. Plugin Loads and Registers Services
+Bind a strongly-typed options class whose section name is your package ID:
 
 ```csharp
-// Framework calls ConfigureServices before host.Build()
-public void ConfigureServices(IServiceCollection services)
+public sealed class ExampleConfig
 {
-    services.TryAddTransient<ExampleCommand>(); // idempotent
+    public const string SectionName = "YourName.Revela.Plugin.Example";
+
+    [Required]
+    public string ApiUrl { get; init; } = string.Empty;
+    public int Timeout { get; init; } = 30;
 }
+
+// in ConfigureServices
+services.AddOptions<ExampleConfig>()
+    .BindConfiguration(ExampleConfig.SectionName)
+    .ValidateDataAnnotations();
 ```
 
-### 4. Commands are Registered
-
-Plugin commands are added to Revela's CLI:
-
-```bash
-revela example --help
-```
-
----
-
-## 💾 Plugin Configuration
-
-### Framework Auto-Load
-
-The Revela framework automatically loads:
-1. All `plugins/*.json` files from the working directory
-2. Environment variables with prefix `SPECTARA__REVELA__`
-
-This happens **before** plugin initialization, so plugins don't need to register config sources.
-
-**Default filename:** Use the full Package-ID to avoid conflicts.
-
-Example: `plugins/YourName.Revela.Plugin.Example.json`
+Inject it with `IOptionsMonitor<ExampleConfig>` and read `.CurrentValue`. Users configure it in `project.json`:
 
 ```json
 {
@@ -198,315 +145,190 @@ Example: `plugins/YourName.Revela.Plugin.Example.json`
 }
 ```
 
-### ConfigureConfiguration - Optional (Default: No-Op)
+---
 
-Since JSON files and ENV vars are auto-loaded, plugins typically don't need to override this.
-The default interface method provides a no-op implementation:
+## Making HTTP calls (the typed-client pattern)
 
-```csharp
-// Only override if you need custom config sources:
-public void ConfigureConfiguration(IConfigurationBuilder configuration)
-{
-    // Example: Add a custom JSON file
-    configuration.AddJsonFile("my-plugin-config.json", optional: true);
-}
-```
+If your plugin makes HTTP calls (syncing from a cloud source, fetching a feed, calling an API), use the **typed client** pattern, which is the approach Microsoft recommends. It gives you connection pooling, DNS-aware handler rotation, per-service configuration, and easy testing.
 
-### Using IOptions Pattern
+### Register a typed client
+
+Register the client in your plugin's `ConfigureServices`. Configure the timeout and headers once:
 
 ```csharp
-// Config model - SectionName = Package-ID (no prefix)
-public sealed class ExampleConfig
-{
-    public const string SectionName = "YourName.Revela.Plugin.Example";
-    
-    [Required]
-    public string ApiUrl { get; init; } = string.Empty;
-    
-    public int Timeout { get; init; } = 30;
-}
-
-// In ConfigureServices
 public void ConfigureServices(IServiceCollection services)
 {
-    services.AddOptions<ExampleConfig>()
-        .BindConfiguration(ExampleConfig.SectionName)
-        .ValidateDataAnnotations();  // Lazy validation on first .Value access
+    services.AddHttpClient<ExampleService>(client =>
+    {
+        client.Timeout = TimeSpan.FromMinutes(5);
+        client.BaseAddress = new Uri("https://api.example.com");
+        client.DefaultRequestHeaders.Add("User-Agent", "Revela/1.0");
+    });
 }
 ```
 
-### Environment Variables
+### Inject `HttpClient` directly
 
-ENV vars are mapped using double-underscore as separator:
-
-```bash
-# For config section "YourName.Revela.Plugin.Example"
-SPECTARA__REVELA__YOURNAME_REVELA_PLUGIN_EXAMPLE__APIURL=https://...
-```
-
-### Providing Config Templates
-
-Plugins can include embedded config templates:
+The typed client injects a ready-configured `HttpClient` straight into your service, with no `IHttpClientFactory` needed:
 
 ```csharp
-// In plugin's init command
-public class ExampleInitCommand
+internal sealed class ExampleService(HttpClient httpClient, ILogger<ExampleService> logger)
 {
-    private const string DefaultFileName = "YourName.Revela.Plugin.Example.json";
-    
-    private static void Execute(string? customName)
+    public async Task<string> GetDataAsync(CancellationToken cancellationToken)
     {
-        var fileName = string.IsNullOrWhiteSpace(customName)
-            ? DefaultFileName
-            : customName.EndsWith(".json", StringComparison.OrdinalIgnoreCase)
-                ? customName
-                : $"{customName}.json";
-        
-        var assembly = typeof(ExamplePlugin).Assembly;
-        using var stream = assembly.GetManifestResourceStream(
-            "YourName.Revela.Plugin.Example.Templates.config.json");
-        
-        if (stream == null)
-            throw new FileNotFoundException("Config template not found");
-        
-        Directory.CreateDirectory("plugins");
-        using var fileStream = File.Create(Path.Combine("plugins", fileName));
-        stream.CopyTo(fileStream);
-        
-        Console.WriteLine($"✨ Example plugin configured: plugins/{fileName}");
+        using var response = await httpClient.GetAsync("/api/endpoint", cancellationToken);
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadAsStringAsync(cancellationToken);
     }
 }
 ```
 
-### Loading Config
+Then resolve the service from DI inside your command. Keep services **transient** so each run gets a fresh, properly managed `HttpClient`.
 
-Config is automatically loaded via IOptions. Simply inject it:
+### Validate user-supplied URLs (SSRF prevention)
+
+If your plugin fetches **user-supplied URLs** (OneDrive shares, iCal feeds, RSS…), validate them with `UrlSafety` from `Spectara.Revela.Sdk.Validation` **before** the request. Otherwise a malicious URL could target the host's loopback interface, internal network, or a cloud metadata service.
 
 ```csharp
-public class ExampleCommand(IOptionsMonitor<ExampleConfig> config)
+using Spectara.Revela.Sdk.Validation;
+
+internal sealed class ExampleFetcher(HttpClient httpClient)
 {
-    public void Execute()
+    public async Task FetchAsync(string url, CancellationToken cancellationToken)
     {
-        var current = config.CurrentValue;
-        Console.WriteLine($"API URL: {current.ApiUrl}");
+        if (!Uri.TryCreate(url, UriKind.Absolute, out var uri)
+            || !UrlSafety.IsSafeOutboundUrl(uri, allowHttp: false))
+        {
+            throw new InvalidOperationException(
+                $"URL '{url}' is not a safe outbound target.");
+        }
+
+        using var response = await httpClient.GetAsync(uri, cancellationToken);
+        // …
     }
 }
 ```
 
----
+`UrlSafety.IsSafeOutboundUrl(uri, allowHttp: false)` rejects non-HTTPS schemes, loopback, private/CGN ranges, link-local (including the cloud metadata IP), and more. For the full rejection list and the reasoning behind it, see [Security Model → What Revela protects against](security-model.md). To validate just a host string (for example in a prompt), use `UrlSafety.IsSafeOutboundHost(uri.Host)`.
 
-## 📚 Best Practices
+### Advanced
 
-### ✅ DO
+```csharp
+services.AddHttpClient<ExampleService>(client => { /* … */ })
+    .SetHandlerLifetime(TimeSpan.FromMinutes(10));   // default is 2 minutes
+```
 
-- ✅ Use your own NuGet prefix (`YourName.Revela.Plugin.*`)
-- ✅ Implement `IPlugin` interface
-- ✅ Provide an `init` command to create config files
-- ✅ Include XML documentation
-- ✅ Add a README with usage instructions
-- ✅ Version your plugin semantically (SemVer)
-- ✅ Test with different Revela versions
-
-### ❌ DON'T
-
-- ❌ Use `Spectara` prefix (reserved!)
-- ❌ Access Revela internals (use abstractions only)
-- ❌ Assume specific directory structures
-- ❌ Hard-code paths
-- ❌ Skip error handling
-- ❌ Forget to document your plugin
+You can also chain `.AddPolicyHandler(...)` for retries or `.ConfigurePrimaryHttpMessageHandler(...)` for custom handler settings.
 
 ---
 
-## 🧪 Testing Your Plugin
+## Testing
 
-### Local Testing
-
-1. Build your plugin:
-   ```bash
-   dotnet build -c Release
-   ```
-
-2. Copy DLL to Revela plugins directory:
-   ```bash
-   copy bin/Release/net10.0/YourName.Revela.Plugin.Example.dll %APPDATA%/Revela/plugins/
-   ```
-
-3. Test with Revela:
-   ```bash
-   revela plugin list
-   revela example --help
-   ```
-
-### Unit Testing
+Plugin tests live alongside the plugin and use **MSTest v4 + NSubstitute**:
 
 ```csharp
 [TestClass]
-public class ExamplePluginTests
+public sealed class ExamplePluginTests
 {
     [TestMethod]
-    public void Plugin_ShouldHaveCorrectMetadata()
+    public void Plugin_exposes_metadata()
     {
         var plugin = new ExamplePlugin();
-        
+
         Assert.AreEqual("Example", plugin.Metadata.Name);
-        Assert.AreEqual("1.0.0", plugin.Metadata.Version);
     }
-    
+
     [TestMethod]
-    public void Plugin_ShouldProvideCommands()
+    public void Plugin_contributes_commands()
     {
         var plugin = new ExamplePlugin();
         var services = new ServiceCollection();
         plugin.ConfigureServices(services);
-        var serviceProvider = services.BuildServiceProvider();
-        
-        var descriptors = plugin.GetCommands(serviceProvider).ToList();
-        
+
+        var descriptors = plugin.GetCommands(services.BuildServiceProvider()).ToList();
+
         Assert.IsNotEmpty(descriptors);
-        Assert.IsTrue(descriptors.Exists(d => d.Command.Name == "example"));
     }
+}
+```
+
+For HTTP code, mock the transport, not the typed client, by injecting a fake handler:
+
+```csharp
+[TestMethod]
+public async Task GetDataAsync_returns_payload()
+{
+    var handler = new MockHttpMessageHandler();
+    handler.When("https://api.example.com/*")
+        .Respond("application/json", "{\"data\":\"test\"}");
+
+    var service = new ExampleService(handler.ToHttpClient(), Substitute.For<ILogger<ExampleService>>());
+
+    var result = await service.GetDataAsync(CancellationToken.None);
+
+    Assert.Contains("test", result);
 }
 ```
 
 ---
 
-## 📦 Publishing Your Plugin
+## Packaging & publishing
 
-### Option 1: Manual Publishing
-
-#### 1. Pack Your Plugin
+Pack the plugin and test it locally before publishing:
 
 ```bash
 dotnet pack -c Release -o ./nupkgs
-```
 
-#### 2. Test Locally
-
-```bash
-# Install from local package
+# Install the local package into Revela
 revela plugin install ./nupkgs/YourName.Revela.Plugin.Example.1.0.0.nupkg
-
-# Test in a sample project
-cd /path/to/test-project
-revela generate
 ```
 
-#### 3. Publish to NuGet.org
+Publish to NuGet.org:
 
 ```bash
 dotnet nuget push ./nupkgs/YourName.Revela.Plugin.Example.*.nupkg \
-  --api-key YOUR_NUGET_API_KEY \
-  --source https://api.nuget.org/v3/index.json
+  --source https://api.nuget.org/v3/index.json \
+  --api-key YOUR_NUGET_API_KEY
 ```
 
-**Get NuGet API Key:**
-- Go to https://www.nuget.org/account/apikeys
-- Create new key with "Push" permission
-- Store securely (GitHub Secrets recommended)
-
-### Option 2: Automated GitHub Actions
-
-Create `.github/workflows/release.yml` for automated releases:
+Or automate it with GitHub Actions on a tag push:
 
 ```yaml
 name: Release Plugin
-
 on:
   push:
-    tags:
-      - 'v*'
-
+    tags: ['v*']
 jobs:
   release:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v4
+      - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '10.0.x'
-      
-      - name: Extract version
-        id: version
-        run: echo "version=${GITHUB_REF_NAME#v}" >> $GITHUB_OUTPUT
-      
-      - name: Pack
-        run: |
-          dotnet pack -c Release -o ./nupkgs \
-            -p:PackageVersion=${{ steps.version.outputs.version }}
-      
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
-        with:
-          files: ./nupkgs/*.nupkg
-          generate_release_notes: true
-      
-      - name: Publish to NuGet.org
-        run: |
-          dotnet nuget push "./nupkgs/*.nupkg" \
-            --source https://api.nuget.org/v3/index.json \
-            --api-key ${{ secrets.NUGET_API_KEY }} \
-            --skip-duplicate
+      - run: dotnet pack -c Release -o ./nupkgs -p:PackageVersion=${GITHUB_REF_NAME#v}
+      - run: dotnet nuget push "./nupkgs/*.nupkg" --source https://api.nuget.org/v3/index.json --api-key ${{ secrets.NUGET_API_KEY }} --skip-duplicate
 ```
 
-**Setup:**
-1. Add `NUGET_API_KEY` secret to GitHub repository settings
-2. Push a tag: `git tag v1.0.0 && git push --tags`
-3. Workflow automatically creates release and publishes to NuGet.org
-
-### Option 3: NuGet.org with Approval Gate (Recommended)
-
-2-stage release for safe publishing:
-
-```yaml
-# Stage 1: GitHub Release (on tag push)
-# - Builds, signs, creates GitHub Release with .nupkg
-# Stage 2: NuGet.org (manual approval)
-# - Requires approval via GitHub Environment "nuget-org"
-# - Publishes the same artifacts (no rebuild)
-
-# See: docs/plugin-management.md for complete workflow example
-```
-
-**Benefits:**
-- Manual approval gate for NuGet.org
-- Same artifacts that were built and signed get published (no rebuild)
-- Pre-release versions (`-beta.1`) are never auto-installed
-
-### 4. Announce Your Plugin
-
-- Add to [Community Plugins Wiki](https://github.com/spectara/revela/wiki/Community-Plugins)
-- Share on social media with `#Revela` hashtag
-- Create GitHub repository with examples
-- Add README with installation instructions
+> Store your NuGet API key as a repository secret (`NUGET_API_KEY`), never in source.
 
 ---
 
-## 🆘 Support
+## Best practices
 
-### For Plugin Development Questions
-
-- 📖 [Documentation](https://revela.website/docs)
-- 💬 [GitHub Discussions](https://github.com/spectara/revela/discussions)
-- 🐛 [Report Issues](https://github.com/spectara/revela/issues)
-
-### For Official Plugin Proposals
-
-Contact Spectara team to discuss official plugin development.
-
----
-
-## 📄 Example Plugins
-
-### Reference Implementations
-
-- [Spectara.Revela.Plugins.Deploy](https://github.com/spectara/revela-plugin-deploy) - SSH/SFTP deployment
-- [Spectara.Revela.Plugins.Source.OneDrive](https://github.com/spectara/revela-plugin-source-onedrive) - OneDrive sync
+- ✅ Use your own package prefix (`YourName.Revela.Plugin.*`).
+- ✅ Depend only on `Spectara.Revela.Sdk` abstractions, never on Revela internals.
+- ✅ Use `TryAdd*` in `ConfigureServices` to stay idempotent.
+- ✅ Version with SemVer; pre-release tags (`-beta.1`) are never auto-installed.
+- ✅ Validate every user-supplied URL with `UrlSafety` before fetching.
+- ❌ Don't use the reserved `Spectara` prefix.
+- ❌ Don't `new HttpClient()` (socket exhaustion) or cache it in a singleton (stale DNS).
+- ❌ Don't hardcode paths or assume a specific directory layout.
 
 ---
 
-**Happy Plugin Development!** 🎉
+## See also
 
-Built with ❤️ by the Spectara community
+- [Plugin System](plugin-system-v2.md) — architecture and design of the plugin system
+- [Security Model](security-model.md) — trust assumptions and URL-safety rationale
+- [Development Guide](development.md) — building and testing Revela itself

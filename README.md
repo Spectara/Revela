@@ -141,6 +141,15 @@ Visit **[revela.website/docs](https://revela.website/docs/)** for the full docum
 
 ## 🛠️ For Developers
 
+Want to build a plugin, create a theme, or understand how Revela works internally? The **[developer documentation](docs/)** lives right here in the repo, next to the code:
+
+- **[Plugin Development](docs/plugin-development.md)** — build, configure, test, and publish a plugin
+- **[Plugin System](docs/plugin-system-v2.md)** — architecture and design
+- **[Security Model](docs/security-model.md)** — trust assumptions and URL-safety guardrails
+- **[Architecture](docs/architecture.md)** · **[Project Structure](docs/project-structure.md)** · **[Development Guide](docs/development.md)**
+
+Build from source:
+
 ```bash
 git clone https://github.com/spectara/revela.git
 cd revela

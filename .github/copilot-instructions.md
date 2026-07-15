@@ -51,6 +51,7 @@ scripts/              # build-release.ps1, test-release.ps1
 |---------------------------|------|
 | **Revela Dev** | All implementation work — features, fixes, tests, refactoring |
 | **Revela Reviewer** | Read-only audits — architecture, security, performance, conventions |
+| **Revela Docs** | Website documentation — write/maintain product docs, persona paths (#86), migrate docs/ → website, keep docs in sync with code |
 | **Spike Analyst** | New feature ideas — sharpens problem, weighs trade-offs, compares prior art, produces decision-ready spike report (read-only) |
 | **Explore** | Fast read-only codebase exploration (subagent — call in parallel) |
 | **Pattern Finder** | Subagent — finds 2-3 canonical examples to mirror; dispatched by Dev before implementing something new |
@@ -176,8 +177,8 @@ When starting a new conversation, run these in parallel and report only issues:
 ## Documentation
 
 - Architecture: [`docs/architecture.md`](../docs/architecture.md)
-- Plugin development: [`docs/plugin-development.md`](../docs/plugin-development.md)
+- Plugin development: [revela.website/docs/developers/plugin-development](https://revela.website/docs/developers/plugin-development/)
 - Plugin system v2: [`docs/plugin-system-v2.md`](../docs/plugin-system-v2.md)
-- HttpClient pattern: [`docs/httpclient-pattern.md`](../docs/httpclient-pattern.md)
+- HttpClient pattern: [revela.website/docs/developers/httpclient-pattern](https://revela.website/docs/developers/httpclient-pattern/)
 - Subagent patterns: [`docs/subagent-patterns.md`](../docs/subagent-patterns.md)
 - Project structure: [`docs/project-structure.md`](../docs/project-structure.md)

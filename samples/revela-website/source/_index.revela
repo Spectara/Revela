@@ -1,11 +1,11 @@
 +++
 title = "Home"
 template = "home"
-description = "Reveal your stories through beautiful portfolios — fast, beautiful output, no quality trade-offs."
+description = "Reveal your stories through beautiful portfolios that load fast, with no quality trade-offs."
 +++
 
 <nav class="cta">
-  <a href="get-started/">Get Started</a>
+  <a href="docs/get-started/installation/">Get Started</a>
   <a href="https://github.com/Spectara/Revela">View on GitHub</a>
 </nav>
 
@@ -13,15 +13,15 @@ description = "Reveal your stories through beautiful portfolios — fast, beauti
 
 **Built for photographers.** While other static site generators are designed for blogs and documentation, Revela focuses on what matters most: **showcasing your images beautifully**.
 
-**Single binary, zero dependencies.** No Node.js, no ImageMagick, no package managers. Download, unzip, run — on Windows, macOS, and Linux.
+**Single binary, zero dependencies.** No Node.js, no ImageMagick, no package managers. Just download, unzip, and run on Windows, macOS, and Linux.
 
 <div class="features-grid">
 
 ### ⚡ Blazing Fast
-NetVips image processing — 3-5× faster than ImageMagick. Smart change detection only regenerates what's actually changed.
+NetVips image processing runs 3-5× faster than ImageMagick, and smart change detection only regenerates what actually changed.
 
 ### 🖼️ Modern Formats
-Automatic AVIF, WebP, and JPEG generation. Responsive `<picture>` elements and LQIP placeholders — no JavaScript needed.
+Automatic AVIF, WebP, and JPEG generation. Responsive `<picture>` elements and LQIP placeholders, with no JavaScript needed.
 
 ### 🎨 Beautiful Themes
 Minimalist gallery themes that put your photos front and center. Dark mode, theme overrides, and customizable variables.
@@ -41,13 +41,13 @@ NuGet-based plugin system: OneDrive sync, EXIF statistics, Gzip/Brotli compressi
 
 See real websites built with Revela on the [Showcase](showcase/) page.
 
-> **Real-world score:** [photo.kirk.one](https://photo.kirk.one) (built with Revela) hits **100 / 100 / 100 / 100** in Lighthouse — Performance, Accessibility, Best Practices, SEO. First Contentful Paint 0.2 s, Largest Contentful Paint 0.3 s, zero blocking time, zero layout shift.
+> **Real-world score:** [photo.kirk.one](https://photo.kirk.one) (built with Revela) hits **100 / 100 / 100 / 100** in Lighthouse across Performance, Accessibility, Best Practices, and SEO. First Contentful Paint 0.2 s, Largest Contentful Paint 0.3 s, zero blocking time, zero layout shift.
 
 ## Quick Start
 
 **1. Download Revela**
 
-The **Standalone** edition is a single binary with everything built in — no .NET SDK, no plugin install, just download and run:
+The **Standalone** edition is a single binary with everything built in: no .NET SDK, no plugin install, just download and run.
 
 <nav class="cta">
   <a href="__DOWNLOAD_URL_WIN_X64_STANDALONE__">Windows x64</a>
@@ -59,7 +59,7 @@ The **Standalone** edition is a single binary with everything built in — no .N
 
 **2. Run the Setup Wizard**
 
-Run `revela` without arguments — the interactive setup wizard guides you through everything:
+Just run `revela` without any arguments, and the interactive setup wizard walks you through everything:
 
 ```bash
 revela
@@ -95,15 +95,15 @@ Open `http://localhost:8080` and see your portfolio!
 | Feature | Description |
 |---------|-------------|
 | **AVIF, WebP, JPEG** | Modern image formats with configurable quality per format |
-| **LQIP Placeholders** | CSS-only low-quality image placeholders — no JavaScript |
+| **LQIP Placeholders** | CSS-only low-quality image placeholders, no JavaScript needed |
 | **EXIF Extraction** | Automatic camera, lens, and settings metadata |
-| **Incremental Builds** | Smart change detection — only regenerate what's changed |
+| **Incremental Builds** | Smart change detection, so only changed files regenerate |
 | **Gzip & Brotli** | Static compression for fast delivery (via plugin) |
 | **Smart Sorting** | Sort by date, filename, or custom order |
 | **Theme Overrides** | Customize any template or variable without forking |
 | **Multiple Sources** | Local files, OneDrive, or custom source plugins |
-| **Pure Static Output** | No server, no database, no tracking — just files. GDPR-friendly by default |
-| **Setup Wizard** | Interactive setup — no config files to write manually |
+| **Pure Static Output** | No server, no database, no tracking, just files. GDPR-friendly by default |
+| **Setup Wizard** | Interactive setup, no config files to write by hand |
 | **Easy Deployment** | Works with GitHub Pages, Netlify, any web host |
 
 ## Join the Community
@@ -118,4 +118,4 @@ Revela is open source and actively developed. Contributions welcome!
 
 ---
 
-*This website is built with Revela. Curious how? [See how we built it →](docs/themes/website-example/)*
+*This website is built with Revela. Curious how? [See how we built it →](docs/guide/themes/website-example/)*

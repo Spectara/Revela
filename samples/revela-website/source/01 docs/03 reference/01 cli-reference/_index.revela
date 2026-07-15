@@ -39,7 +39,7 @@ revela generate statistics           # Generate EXIF statistics (Statistics plug
 revela generate compress             # Pre-compress static files (Compress plugin)
 ```
 
-> **Note:** `generate all` runs `scan → statistics → pages → images`. Compression is **not** included — run `generate compress` separately.
+> **Note:** `generate all` runs `scan → statistics → pages → images`. Compression is **not** included, so run `generate compress` separately.
 
 ---
 
@@ -198,3 +198,81 @@ revela projects create               # Create a new project (interactive)
 revela projects delete               # Delete a project (with confirmation)
 revela projects delete MyPhotos      # Delete specific project
 ```
+
+---
+
+## Exit Codes
+
+| Code | Meaning |
+|------|---------|
+| `0` | Success |
+| `1` | Error, check the output |
+| `2` | Restart required: the setup wizard installed packages, so re-run your command |
+
+Handy for scripting: treat any non-zero code as a failure, and re-run once on `2`.
+
+---
+
+## Automation & CI
+
+Revela runs headless wherever the .NET tool is available. Generated output lands in `output/`.
+
+### GitHub Actions
+
+```yaml
+name: Build site
+on:
+  push:
+    paths: ['source/**']
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - run: dotnet tool install -g Spectara.Revela
+      - run: revela restore        # install themes/plugins the project needs
+      - run: revela generate all
+      - uses: actions/upload-artifact@v4
+        with:
+          name: website
+          path: output/
+```
+
+### Docker
+
+```dockerfile
+FROM mcr.microsoft.com/dotnet/sdk:10.0
+RUN dotnet tool install -g Spectara.Revela
+ENV PATH="${PATH}:/root/.dotnet/tools"
+WORKDIR /project
+COPY . .
+RUN revela restore && revela generate all
+# Site is in /project/output/
+```
+
+> Pin a version for reproducible builds: `dotnet tool install -g Spectara.Revela --version <x.y.z>`.
+
+---
+
+## Tab Completion (optional)
+
+Revela is built on System.CommandLine, so your shell can tab-complete commands, subcommands, options, and enum values. It's a one-time setup per machine and shell (bash, zsh, PowerShell, but not `cmd.exe`):
+
+1. Install the `dotnet-suggest` global tool:
+
+   ```bash
+   dotnet tool install -g dotnet-suggest
+   ```
+
+2. Add the `dotnet-suggest` shim to your shell profile. See [Microsoft's tab-completion guide](https://learn.microsoft.com/dotnet/standard/commandline/tab-completion) for the exact snippet for bash, zsh, or PowerShell.
+
+3. Register the Revela executable:
+
+   ```bash
+   dotnet-suggest register --command-path /path/to/revela
+   ```
+
+Restart your shell. Now `revela gen<Tab>` expands to `generate`, and `revela generate <Tab>` lists `all`, `scan`, `pages`, `images`, and the installed plugin steps.

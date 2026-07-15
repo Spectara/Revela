@@ -181,7 +181,6 @@ the project's `SECURITY.md` (or open a private security advisory in the reposito
 
 - [`docs/architecture.md`](architecture.md) — overall system design
 - [`docs/plugin-system-v2.md`](plugin-system-v2.md) — plugin loading architecture
-- [`docs/plugin-development.md`](plugin-development.md) — how to write plugins (incl. URL safety guidance)
-- [`docs/httpclient-pattern.md`](httpclient-pattern.md) — typed HttpClient + SSRF guardrails for plugin authors
+- [Plugin Development](plugin-development.md) — how to write plugins (incl. URL safety guidance)
 - [`src/Sdk/Validation/UrlSafety.cs`](../src/Sdk/Validation/UrlSafety.cs) — SSRF guardrails source
 - [`src/Plugins/Serve/StaticFileServer.cs`](../src/Plugins/Serve/StaticFileServer.cs) — dev-server path-traversal protection

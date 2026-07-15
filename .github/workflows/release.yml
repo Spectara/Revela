@@ -220,12 +220,6 @@ jobs:
             -p:Version=${{ needs.validate.outputs.version }} \
             -o ./publish
 
-      - name: Copy documentation
-        run: |
-          mkdir -p ./publish/getting-started
-          cp docs/getting-started/*.md ./publish/getting-started/
-        shell: bash
-
       - name: Clean up XML docs
         run: rm -f ./publish/*.xml
         shell: bash
@@ -255,7 +249,7 @@ jobs:
         if: ${{ startsWith(matrix.rid, 'win-') }}
         run: |
           cd publish
-          Compress-Archive -Path ${{ matrix.exe }}, getting-started -DestinationPath ../revela-${{ matrix.rid }}-core.zip
+          Compress-Archive -Path ${{ matrix.exe }} -DestinationPath ../revela-${{ matrix.rid }}-core.zip
         shell: pwsh
 
       - name: Package Core (Linux/macOS)
@@ -264,9 +258,9 @@ jobs:
           cd publish
           chmod +x ${{ matrix.exe }}
           if [[ "${{ matrix.rid }}" == osx-* ]]; then
-            tar -czvf ../revela-${{ matrix.rid }}-core.tar.gz ${{ matrix.exe }} "Start Revela.command" getting-started
+            tar -czvf ../revela-${{ matrix.rid }}-core.tar.gz ${{ matrix.exe }} "Start Revela.command"
           else
-            tar -czvf ../revela-${{ matrix.rid }}-core.tar.gz ${{ matrix.exe }} start-revela.sh getting-started
+            tar -czvf ../revela-${{ matrix.rid }}-core.tar.gz ${{ matrix.exe }} start-revela.sh
           fi
 
       # === Full Release ===
@@ -284,7 +278,7 @@ jobs:
         if: ${{ startsWith(matrix.rid, 'win-') }}
         run: |
           cd publish
-          Compress-Archive -Path ${{ matrix.exe }}, packages, getting-started -DestinationPath ../revela-${{ matrix.rid }}-full.zip
+          Compress-Archive -Path ${{ matrix.exe }}, packages -DestinationPath ../revela-${{ matrix.rid }}-full.zip
         shell: pwsh
 
       - name: Package Full (Linux/macOS)
@@ -292,9 +286,9 @@ jobs:
         run: |
           cd publish
           if [[ "${{ matrix.rid }}" == osx-* ]]; then
-            tar -czvf ../revela-${{ matrix.rid }}-full.tar.gz ${{ matrix.exe }} "Start Revela.command" packages getting-started
+            tar -czvf ../revela-${{ matrix.rid }}-full.tar.gz ${{ matrix.exe }} "Start Revela.command" packages
           else
-            tar -czvf ../revela-${{ matrix.rid }}-full.tar.gz ${{ matrix.exe }} start-revela.sh packages getting-started
+            tar -czvf ../revela-${{ matrix.rid }}-full.tar.gz ${{ matrix.exe }} start-revela.sh packages
           fi
 
       # === Standalone Release (Cli.Embedded) ===
@@ -318,12 +312,6 @@ jobs:
             -p:StripSymbols=true \
             -p:Version=${{ needs.validate.outputs.version }} \
             -o ./publish-standalone
-
-      - name: Copy documentation (Standalone)
-        run: |
-          mkdir -p ./publish-standalone/getting-started
-          cp docs/getting-started/*.md ./publish-standalone/getting-started/
-        shell: bash
 
       - name: Copy launcher script - Standalone (Linux/macOS)
         if: ${{ !startsWith(matrix.rid, 'win-') }}
@@ -353,7 +341,7 @@ jobs:
         run: |
           cd publish-standalone
           # Include the libvips-42.dll native dependency alongside the AOT exe
-          Compress-Archive -Path ${{ matrix.exe }}, libvips-42.dll, getting-started -DestinationPath ../revela-${{ matrix.rid }}-standalone.zip
+          Compress-Archive -Path ${{ matrix.exe }}, libvips-42.dll -DestinationPath ../revela-${{ matrix.rid }}-standalone.zip
         shell: pwsh
 
       - name: Package Standalone (Linux/macOS)
@@ -363,9 +351,9 @@ jobs:
           chmod +x ${{ matrix.exe }}
           # Include the libvips native dependency alongside the AOT binary
           if [[ "${{ matrix.rid }}" == osx-* ]]; then
-            tar -czvf ../revela-${{ matrix.rid }}-standalone.tar.gz ${{ matrix.exe }} libvips.42.dylib "Start Revela.command" getting-started
+            tar -czvf ../revela-${{ matrix.rid }}-standalone.tar.gz ${{ matrix.exe }} libvips.42.dylib "Start Revela.command"
           else
-            tar -czvf ../revela-${{ matrix.rid }}-standalone.tar.gz ${{ matrix.exe }} libvips.so.42 start-revela.sh getting-started
+            tar -czvf ../revela-${{ matrix.rid }}-standalone.tar.gz ${{ matrix.exe }} libvips.so.42 start-revela.sh
           fi
 
       # === Attestation & Upload ===

@@ -395,6 +395,60 @@ main article nav.cta+p {
 }
 
 /* ============================================
+   Path Cards — full-area clickable role cards
+   ============================================ */
+.path-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: var(--space-m);
+  margin: var(--space-xl) 0;
+}
+
+.path-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  padding: var(--space-l);
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: 0.75rem;
+  text-decoration: none;
+  color: inherit;
+  -webkit-backdrop-filter: blur(1rem);
+  backdrop-filter: blur(1rem);
+  transition-property: transform, border-color, box-shadow;
+  transition-duration: var(--animation-time);
+}
+
+.path-card:hover,
+.path-card:focus-visible {
+  transform: translateY(-2px);
+  border-color: var(--accent);
+  box-shadow: 0 10px 30px -12px var(--accent-glow);
+  outline: none;
+}
+
+.path-card .path-title {
+  font-size: var(--font-size-2);
+  font-weight: 600;
+}
+
+.path-card .arrow {
+  display: inline-block;
+  transition: transform var(--animation-time);
+}
+
+.path-card:hover .arrow,
+.path-card:focus-visible .arrow {
+  transform: translateX(0.25rem);
+}
+
+.path-card .path-desc {
+  font-size: var(--font-size-1);
+  color: var(--color-light);
+}
+
+/* ============================================
    Docs Layout — Detected via main:has(> aside)
    ============================================ */
 main:has(> aside) {

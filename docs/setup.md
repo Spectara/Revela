@@ -60,12 +60,12 @@ dotnet test --verbosity normal
 # Show help
 dotnet run --project src/Cli -- --help
 
-# Generate site (use -p to specify project path)
-dotnet run --project src/Cli -- -p samples/showcase generate all
-
-# Or cd into project directory first
+# Generate site from the sample project directory
 cd samples/showcase
-dotnet run --project ../../src/Cli -- generate all
+dotnet run --project ../../src/Cli.Embedded -- generate all
+
+# The CLI resolves the current working directory as the Revela project root;
+# there is currently no `-p` project-path option in this build.
 
 # Plugin commands
 dotnet run --project src/Cli -- plugins list

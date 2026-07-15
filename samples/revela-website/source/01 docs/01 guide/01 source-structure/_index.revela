@@ -148,3 +148,52 @@ template = "page"
 
 Select a camera brand below.
 ```
+
+### Nested Filter Galleries
+
+Filter galleries can be nested under plain `page` containers for deep, browsable hierarchies:
+
+```
+source/
+├── _images/
+├── gear/
+│   ├── _index.revela          # template = "page" (no images)
+│   ├── cameras/
+│   │   ├── _index.revela      # template = "page"
+│   │   ├── canon/
+│   │   │   └── _index.revela  # filter = "exif.make == 'Canon'"
+│   │   └── sony/
+│   │       └── _index.revela  # filter = "exif.make == 'Sony'"
+│   └── lenses/
+│       ├── _index.revela      # template = "page"
+│       ├── wide/
+│       │   └── _index.revela  # filter = "exif.focalLength <= 35"
+│       └── tele/
+│           └── _index.revela  # filter = "exif.focalLength >= 85"
+```
+
+---
+
+## Migration Tips
+
+### From Traditional to Filter
+
+1. Create an `_images/` folder
+2. Move images from galleries into `_images/`
+3. Add `filter = "..."` to each gallery's `_index.revela`
+4. Make sure images have the EXIF data or naming convention your filters rely on
+
+### Adding Filter Galleries to an Existing Site
+
+1. Create an `_images/` folder
+2. Copy (or move) the images you want cross-referenced
+3. Create new filter gallery folders with an `_index.revela`
+4. Leave your traditional galleries unchanged
+
+---
+
+## See Also
+
+- [Filter Galleries](../filtering/): complete filter syntax reference
+- [Sorting](../sorting/): image and gallery sorting
+- [Creating Pages](../pages/): page types and templates

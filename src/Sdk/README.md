@@ -63,8 +63,8 @@ public class MyTheme : EmbeddedThemePlugin
 
 ## Documentation
 
-- [Plugin Development Guide](https://github.com/spectara/revela/blob/main/docs/plugin-development.md)
-- [Theme Development Guide](https://github.com/spectara/revela/blob/main/docs/theme-development.md)
+- [Plugin Development Guide](https://revela.website/docs/developers/plugin-development/)
+- [Theme Customization Guide](https://revela.website/docs/guide/themes/)
 
 ## License
 

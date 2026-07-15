@@ -13,7 +13,7 @@ Camera models, lenses, aperture, ISO, shutter speed, focal lengths, and orientat
 
 ### 📊 Dashboard
 
-Pure-CSS bar charts with overview cards — no JavaScript required.
+Pure-CSS bar charts with overview cards, no JavaScript required.
 
 ### 📅 Timeline
 
@@ -29,13 +29,13 @@ The Statistics plugin has two parts:
 # 1. The plugin (generates statistics data)
 revela plugin install Statistics
 
-# 2. The theme extension (renders charts) – recommended
+# 2. The theme extension (renders charts), recommended
 revela plugin install Lumina.Statistics
 ```
 
 The plugin generates a `statistics.json` data file. The **Lumina.Statistics** extension renders that data as a responsive dashboard with pure-CSS bar charts that inherit the Lumina color scheme.
 
-> Without the theme extension, statistics data is still generated – but you'll need custom templates to display it.
+> Without the theme extension, statistics data is still generated, but you'll need custom templates to display it.
 
 ## Creating a Statistics Page
 
@@ -44,17 +44,19 @@ The plugin generates a `statistics.json` data file. The **Lumina.Statistics** ex
 revela create page statistics
 ```
 
-This creates a page with the required frontmatter:
+This creates a page with the statistics template:
 
-```
+```toml
 +++
-title = "Statistics"
-template = "statistics"
-data = { statistics = "statistics.json" }
+title = "Photo Statistics"
+description = "EXIF statistics from your photo library"
+template = "statistics/overview"
 +++
 ```
 
-The `data.statistics` field tells the plugin where to write the JSON data file.
+The plugin treats any page whose `template` starts with `statistics/` as a statistics page: it aggregates EXIF data from the manifest and writes a data file to `.cache/<page-path>/statistics.json` for the theme to render.
+
+> **Advanced:** instead of the statistics template, you can point an existing page at a data file explicitly with a `data.statistics` front-matter field.
 
 ## Generating Statistics
 
@@ -110,15 +112,22 @@ revela config statistics
 revela config statistics --max-entries 20 --sort-by-count false
 ```
 
+The same settings can be supplied as environment variables:
+
+```bash
+SPECTARA__REVELA__PLUGIN__STATISTICS__MAXENTRIESPERCATEGORY=20
+SPECTARA__REVELA__PLUGIN__STATISTICS__SORTBYCOUNT=false
+```
+
 ## Theme Extension
 
 **Lumina.Statistics** provides a single-page dashboard with:
 
-- **Overview cards** — Total images, galleries, cameras, and lenses at a glance
+- **Overview cards**: total images, galleries, cameras, and lenses at a glance
 - **Bar charts** for all 9 categories using pure CSS (no JavaScript)
-- **Responsive layout** — Grid adapts from mobile to desktop
-- **Dark/light mode** — Inherits Lumina's color scheme automatically
-- **Hover effects** — Bar highlight and count display on interaction
+- **Responsive layout**: the grid adapts from mobile to desktop
+- **Dark/light mode**: inherits Lumina's color scheme automatically
+- **Hover effects**: bar highlight and count display on interaction
 
 Install it alongside the plugin:
 

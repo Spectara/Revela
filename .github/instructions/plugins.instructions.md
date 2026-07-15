@@ -175,10 +175,12 @@ public MyApiClient(HttpClient httpClient, ILogger<MyApiClient> logger) { ... }
 ## Progress Display (Spectre.Console)
 Two-phase pattern: `AnsiConsole.Status()` for unknown totals (scan), `AnsiConsole.Progress()` for known totals (download). Always escape user data with `Markup.Escape()`.
 
+`Status()` and `Progress()` fall back automatically on a non-interactive console. The low-level `AnsiConsole.Live()` primitive does **not** — it hides the cursor unconditionally and throws on redirected output / no TTY (CI, Docker, pipes). If you use `Live()`, inject `IConsoleCapabilities` and gate it on `CanRenderLive`, running plainly otherwise. Never call raw `Live()` unguarded.
+
 ## Plugin Tests
 Test project lives at `tests/Plugins/<Name>/` and references the plugin project. Use `Substitute.For<HttpMessageHandler>()` or the `MockHttpMessageHandler` pattern for HTTP. Use `TestProject` fixture for filesystem tests.
 
 ## Reference
-- Full plugin guide: [`docs/plugin-development.md`](../../docs/plugin-development.md)
+- Full plugin guide: [revela.website/docs/developers/plugin-development](https://revela.website/docs/developers/plugin-development/)
 - Plugin system v2: [`docs/plugin-system-v2.md`](../../docs/plugin-system-v2.md)
-- HttpClient pattern: [`docs/httpclient-pattern.md`](../../docs/httpclient-pattern.md)
+- HttpClient pattern: [revela.website/docs/developers/httpclient-pattern](https://revela.website/docs/developers/httpclient-pattern/)

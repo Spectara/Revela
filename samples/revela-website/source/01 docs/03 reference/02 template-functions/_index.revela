@@ -1,0 +1,177 @@
++++
+title = "Template Functions"
+template = "docs"
++++
+
+Revela themes are [Scriban](https://github.com/scriban/scriban) templates (`.revela` files). Every template has access to the built-in functions below for URLs, images, date/EXIF formatting, and Markdown. For where these are used, see [Theme Customization](../../guide/themes/).
+
+<div class="features-grid">
+
+### 🖼️ Images
+
+`find_image`, `image_url`: resolve images and build variant URLs.
+
+### 🔗 URLs
+
+`url_for`, `asset_url`: generate page and asset links.
+
+### 📅 Formatting
+
+`format_date`, `format_filesize`, `format_exif_*`: human-readable values.
+
+### 📝 Content
+
+`markdown`: render Markdown to HTML.
+
+</div>
+
+---
+
+## Image Functions
+
+### `find_image`
+
+Resolve an image from the project by path. Uses the same 3-step lookup as Markdown content images.
+
+```scriban
+{{~ logo = find_image "logo.jpg" ~}}
+{{~ if logo ~}}
+<img src="{{ image_basepath }}{{ logo.url }}/640.jpg"
+     width="{{ logo.width }}" height="{{ logo.height }}">
+{{~ end ~}}
+```
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `path` | string | Image path (relative to gallery, `_images/`, or exact) |
+
+**Returns** an `Image` object (or `null` if not found). Resolution order:
+
+1. Gallery-local: `{current gallery path}/{path}`
+2. Shared images: `_images/{path}`
+3. Exact match: `{path}` as-is
+
+The `Image` object exposes `url`, `width`, `height`, `sizes`, `file_size`, `date_taken`, `exif`, `title`, `description`, `tags`, and `placeholder`.
+
+### `image_url`
+
+Build a URL for a specific image variant (size + format).
+
+```scriban
+{{ image_url "photo.jpg" 1920 "webp" }}
+```
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `fileName` | string | Image filename |
+| `width` | int | Target width |
+| `format` | string | `"avif"`, `"webp"`, or `"jpg"` |
+
+**Returns** `/images/{name}-{width}w.{format}`, e.g. `/images/photo-1920w.webp`.
+
+---
+
+## URL Functions
+
+### `url_for`
+
+Generate a URL for a page or gallery.
+
+```scriban
+{{ url_for "gallery/vacation" }}
+```
+
+**Returns** `/{path}/index.html`, e.g. `/gallery/vacation/index.html`.
+
+### `asset_url`
+
+Generate a URL for a theme asset (CSS, JS).
+
+```scriban
+{{ asset_url "css/style.css" }}
+```
+
+**Returns** `/assets/{path}`, e.g. `/assets/css/style.css`.
+
+---
+
+## Formatting Functions
+
+### `format_date`
+
+Format a date with a custom format string.
+
+```scriban
+{{ format_date image.date_taken "yyyy-MM-dd" }}
+{{ format_date image.date_taken "MMMM yyyy" }}
+```
+
+### `format_filesize`
+
+Format a byte count as a human-readable string.
+
+```scriban
+{{ format_filesize image.file_size }}
+```
+
+**Returns** e.g. `"2.4 MB"`, `"340 KB"`.
+
+### `format_exif_exposure`
+
+Format an exposure time as photography notation.
+
+```scriban
+{{ format_exif_exposure image.exif.exposure_time }}
+```
+
+**Returns** e.g. `"1/500s"`, `"0.5s"`, `"10s"` (or `"N/A"` when unset).
+
+### `format_exif_aperture`
+
+Format an aperture (f-number) as photography notation.
+
+```scriban
+{{ format_exif_aperture image.exif.f_number }}
+```
+
+**Returns** e.g. `"f/2.8"`, `"f/11"` (or `"N/A"` when unset).
+
+---
+
+## Content Functions
+
+### `markdown`
+
+Convert Markdown text to HTML. Works as a function or a filter.
+
+```scriban
+{{ "**bold** text" | markdown }}
+```
+
+**Returns** `<p><strong>bold</strong> text</p>`.
+
+---
+
+## Template Variables
+
+These values (not functions) are available in templates:
+
+| Variable | Type | Description |
+|----------|------|-------------|
+| `site` | object | Site settings from `site.json` |
+| `gallery` | Gallery | Current page (`title`, `body`, `cover_image`, `template`) |
+| `galleries` | Gallery[] | Child galleries (home page only) |
+| `images` | Image[] | Images for the current gallery |
+| `nav_items` | NavItem[] | Navigation tree with active state |
+| `basepath` | string | Relative path to the site root |
+| `image_basepath` | string | Path/URL to image variants |
+| `image_formats` | string[] | Active formats (`["avif", "webp", "jpg"]`) |
+| `page_content` | string | Rendered Markdown body (gallery pages) |
+| `stylesheets` | string[] | Theme CSS filenames |
+| `scripts` | string[] | Theme JS filenames |
+| `revela` | object | Build info: `revela.version`, `revela.kind`, `revela.framework`, `revela.configuration` |
+
+## See Also
+
+- [Theme Customization](../../guide/themes/): where templates and the required `ContentImage.revela` partial live
+- [Source Structure](../../guide/source-structure/): how galleries and images map into templates

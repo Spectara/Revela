@@ -109,7 +109,7 @@ footer {
 
 ### Homepage (home.revela)
 
-Create `themes/Lumina/Body/home.revela` for a custom hero section. No classes needed — CSS targets elements via `main > section`:
+Create `themes/Lumina/Body/home.revela` for a custom hero section. No classes needed, since CSS targets elements via `main > section`:
 
 ```html
 <section>
@@ -129,7 +129,7 @@ Use it in your page with `template = "home"` in the frontmatter.
 
 ### Documentation (docs.revela)
 
-For pages with sidebar navigation, create `themes/Lumina/Body/docs.revela`. The `<aside>` and `<article>` are direct children of `<main>` — CSS detects the layout via `main:has(> aside)`:
+For pages with sidebar navigation, create `themes/Lumina/Body/docs.revela`. The `<aside>` and `<article>` are direct children of `<main>`, so CSS detects the layout via `main:has(> aside)`:
 
 ```html
 <aside>
@@ -186,7 +186,7 @@ Create `themes/Lumina/Partials/HeaderNavigation.revela`:
 </a>
 ```
 
-The SVG uses `fill="currentColor"` to match the text color automatically. No class needed — CSS targets the last link in `header nav`:
+The SVG uses `fill="currentColor"` to match the text color automatically. No class needed, since CSS targets the last link in `header nav`:
 
 ```css
 header {

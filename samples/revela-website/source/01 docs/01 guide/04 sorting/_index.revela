@@ -53,6 +53,7 @@ Configure sorting in `project.json`:
 | `exif.model` | Camera model |
 | `exif.lensModel` | Lens model |
 | `exif.raw.Rating` | Star rating (1-5) |
+| `exif.raw.Copyright` | Copyright field |
 | `exif.raw.{FieldName}` | Any EXIF field from Raw dictionary |
 
 ---
@@ -95,6 +96,15 @@ sort = "dateTaken:asc"
 +++
 
 Photos in chronological order (oldest first).
+```
+
+```toml
++++
+title = "Latest Work"
+sort = "dateTaken:desc"
++++
+
+Most recent photos first.
 ```
 
 ---

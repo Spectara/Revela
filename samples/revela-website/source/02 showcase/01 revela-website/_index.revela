@@ -3,7 +3,7 @@ title = "revela.website"
 template = "docs"
 +++
 
-The site you're looking at right now — built with Revela itself. It demonstrates that Revela works beyond photography, powering documentation sites with the same template engine and page system.
+The site you're looking at right now, built with Revela itself. It shows that Revela works well beyond photography, powering documentation sites with the same template engine and page system.
 
 [View source on GitHub →](https://github.com/Spectara/Revela/tree/main/samples/revela-website)
 
@@ -99,12 +99,12 @@ themes/Lumina/
     └── Favicon.revela          # Custom favicon
 ```
 
-Only the files that differ from the default Lumina theme are present — everything else falls through to the installed theme.
+Only the files that differ from the default Lumina theme are present. Everything else falls through to the installed theme.
 
 ## What Makes It Interesting
 
-- **Docs site, not photos** — Same engine, completely different use case
-- **Selective theme overrides** — Only override what you need, inherit the rest
-- **Content images with CSS classes** — `{.browser-mockup}` adds browser chrome to screenshots
-- **Container navigation** — Guide/Reference sections group pages without generating empty parent pages
-- **Real-world complexity** — 25+ pages across multiple nested levels
+- **Docs site, not photos**: the same engine, a completely different use case
+- **Selective theme overrides**: override only what you need and inherit the rest
+- **Content images with CSS classes**: `{.browser-mockup}` adds browser chrome to screenshots
+- **Container navigation**: Guide and Reference group pages without generating empty parent pages
+- **Real-world complexity**: 25+ pages across multiple nested levels

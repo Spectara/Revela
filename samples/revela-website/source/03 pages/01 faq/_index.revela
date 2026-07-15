@@ -8,7 +8,7 @@ pinned = true
 
 ### What is Revela?
 
-Revela is a static site generator built specifically for photographers. It takes your photos and generates a fast, beautiful portfolio website — no database, no server, just HTML and optimized images.
+Revela is a static site generator built specifically for photographers. It takes your photos and generates a fast, beautiful portfolio website with no database and no server, just HTML and optimized images.
 
 ### Do I need programming experience?
 
@@ -16,7 +16,7 @@ No. Revela has an interactive setup wizard that guides you through creating your
 
 ### What platforms does Revela run on?
 
-Windows, macOS, and Linux. Native executables are available for all platforms — no runtime installation needed.
+Windows, macOS, and Linux. Native executables are available for all platforms, so there's no runtime installation needed.
 
 ### Does Revela require Node.js, Ruby, or Python?
 
@@ -28,7 +28,7 @@ No. Revela is a standalone .NET application. The only requirement is the executa
 
 ### What image formats does Revela generate?
 
-Revela generates **AVIF**, **WebP**, and **JPEG** — modern formats for maximum compression with fallbacks for older browsers. Each image is generated in multiple sizes for responsive loading.
+Revela generates **AVIF**, **WebP**, and **JPEG**: modern formats for maximum compression, with fallbacks for older browsers. Each image is generated in multiple sizes for responsive loading.
 
 ### How many sizes are generated per image?
 
@@ -36,11 +36,11 @@ By default, up to 10 sizes: 160, 320, 480, 640, 720, 960, 1280, 1440, 1920, and 
 
 ### How fast is image processing?
 
-Revela uses **NetVips** (libvips), one of the fastest image processing libraries available. Processing is parallelized and incremental — only new or changed images are processed. A typical portfolio with 100 photos processes in under a minute.
+Revela uses **NetVips** (libvips), one of the fastest image processing libraries available. Processing is parallelized and incremental, so only new or changed images are processed. A typical portfolio with 100 photos processes in under a minute.
 
 ### What EXIF data is preserved?
 
-By default, EXIF data is **stripped** from generated images (for privacy and file size). The original EXIF data is read during scanning for statistics, sorting, and filtering — but not embedded in the output.
+By default, EXIF data is **stripped** from generated images (for privacy and file size). The original EXIF data is read during scanning for statistics, sorting, and filtering, but it isn't embedded in the output.
 
 ---
 
@@ -48,17 +48,17 @@ By default, EXIF data is **stripped** from generated images (for privacy and fil
 
 ### Can I customize the built-in theme?
 
-Yes. Place files in your project's `themes/Lumina/` folder to override any template, partial, or asset from the built-in theme. Only the files you change need to be in your project — everything else comes from the theme package. See [Theme Customization](docs/themes/) for details.
+Yes. Place files in your project's `themes/Lumina/` folder to override any template, partial, or asset from the built-in theme. Only the files you change need to live in your project, and everything else comes from the theme package. See [Theme Customization](../../docs/guide/themes/) for details.
 
 ### Can I create my own theme from scratch?
 
-Yes — there are three approaches depending on how far you want to go:
+Yes. There are three approaches, depending on how far you want to go:
 
-1. **Customize an existing theme** — Place override files in your project's `themes/Lumina/` folder. Only the files you change are needed, everything else comes from the base theme. This is how [revela.website](showcase/) is built. See [Theme Customization](docs/themes/).
+1. **Customize an existing theme.** Place override files in your project's `themes/Lumina/` folder. Only the files you change are needed, and everything else comes from the base theme. This is how [revela.website](../../showcase/) is built. See [Theme Customization](../../docs/guide/themes/).
 
-2. **Create a theme from scratch** — Put your Scriban templates directly in `themes/MyTheme/` in your project folder and set `"name": "MyTheme"` in `project.json`. No NuGet package needed — Revela loads themes from the local folder first.
+2. **Create a theme from scratch.** Put your Scriban templates directly in `themes/MyTheme/` in your project folder and set `"name": "MyTheme"` in `project.json`. No NuGet package needed, since Revela loads themes from the local folder first.
 
-3. **Distribute as NuGet package** — For sharing themes with others, package your theme as a NuGet package with `PackageType=RevelaTheme`. Users install it with `revela theme install`.
+3. **Distribute as a NuGet package.** To share themes with others, package your theme as a NuGet package with `PackageType=RevelaTheme`. Users install it with `revela theme install`.
 
 ---
 
@@ -66,7 +66,7 @@ Yes — there are three approaches depending on how far you want to go:
 
 ### Where can I host my Revela site?
 
-Anywhere that serves static files: **GitHub Pages**, **Netlify**, **Cloudflare Pages**, **Vercel**, **Amazon S3**, or any traditional web hosting. Revela generates plain HTML — no server-side processing needed.
+Anywhere that serves static files: **GitHub Pages**, **Netlify**, **Cloudflare Pages**, **Vercel**, **Amazon S3**, or any traditional web hosting. Revela generates plain HTML, so there's no server-side processing needed.
 
 ### How large is a typical generated site?
 
@@ -91,10 +91,10 @@ Plugins are distributed as NuGet packages and installed with a single command.
 
 ### What plugins are available?
 
-- **Compress** — Pre-compress output with Gzip and Brotli
-- **Statistics** — Generate EXIF statistics pages (cameras, lenses, apertures)
-- **Serve** — Local development server with live preview
-- **Source OneDrive** — Sync photos from OneDrive shared folders
+- **Compress**: pre-compress output with Gzip and Brotli
+- **Statistics**: generate EXIF statistics pages (cameras, lenses, apertures)
+- **Serve**: local development server with live preview
+- **Source OneDrive**: sync photos from OneDrive shared folders
 
 ### Can I write my own plugin?
 

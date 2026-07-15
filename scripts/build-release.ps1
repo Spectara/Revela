@@ -188,11 +188,9 @@ try {
 
         $outputDir = Join-Path $RepoRoot "artifacts/releases/$($v.ToLowerInvariant())-$Timestamp"
         $exePath   = Join-Path $outputDir $ExeName
-        $docsDir   = Join-Path $outputDir 'getting-started'
 
         if (Test-Path $outputDir) { Remove-Item $outputDir -Recurse -Force }
         New-Item -ItemType Directory -Path $outputDir -Force | Out-Null
-        New-Item -ItemType Directory -Path $docsDir -Force | Out-Null
 
         $project = if ($v -eq 'Standalone') {
             'src/Cli.Embedded/Cli.Embedded.csproj'
@@ -277,14 +275,6 @@ try {
             Copy-Item $src (Join-Path $outputDir 'start-revela.sh')
             Write-Success "Copied 'start-revela.sh' (Linux launcher)"
         }
-
-        # ------------------------------------------------------------------
-        # Documentation
-        # ------------------------------------------------------------------
-        Write-Step 'Copying getting-started/*.md'
-        Copy-Item 'docs/getting-started/*.md' $docsDir
-        $docCount = (Get-ChildItem $docsDir -Filter '*.md').Count
-        Write-Success "Copied $docCount documentation files"
 
         # ------------------------------------------------------------------
         # Full variant — pack plugins/themes/SDK into packages/

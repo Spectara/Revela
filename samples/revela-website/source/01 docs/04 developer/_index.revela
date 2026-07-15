@@ -1,0 +1,14 @@
++++
+title = "Developer?"
+template = "docs"
++++
+
+Want to build a plugin, create a theme from scratch, or dig into how Revela works under the hood?
+
+The developer documentation — architecture, the plugin system, the security model, build and setup instructions — lives right next to the code, where it stays current with every change.
+
+<nav class="cta">
+  <a href="https://github.com/Spectara/Revela/tree/main/docs">Developer Docs on GitHub →</a>
+</nav>
+
+New contributors are always welcome. See you in the repo! 👋

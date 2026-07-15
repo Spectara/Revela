@@ -5,7 +5,7 @@ template = "docs"
 
 ![A photography portfolio built with Revela and the Lumina theme](screenshots/example-website.jpg){.browser-mockup}
 
-A personal photography portfolio showcasing landscapes, events, and street photography — built with Revela and the default Lumina theme.
+A personal photography portfolio showcasing landscapes, events, and street photography, built with Revela and the default Lumina theme.
 
 [Visit photo.kirk.one →](https://photo.kirk.one/)
 
@@ -65,7 +65,7 @@ source/
 
 ## What Makes It Interesting
 
-- **Pure photography site** — Demonstrates Revela's core use case: fast, beautiful photo galleries
-- **No custom theme needed** — The default Lumina theme handles everything
-- **Automatic EXIF overlay** — Hover over any image to see camera settings
-- **CSS-only lightbox** — Click/focus on any image for a full-screen view, no JavaScript needed
+- **Pure photography site**: Revela's core use case, fast and beautiful photo galleries
+- **No custom theme needed**: the default Lumina theme handles everything
+- **Automatic EXIF overlay**: hover over any image to see its camera settings
+- **CSS-only lightbox**: click or focus any image for a full-screen view, no JavaScript needed

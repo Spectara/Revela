@@ -100,11 +100,11 @@ revela
 
 On first run, the **Setup Wizard** starts automatically:
 
-1. **Install themes and plugins** — Full or custom installation
-2. **Create a project** — Folder name and settings
-3. **Ready to go** — Add photos and generate
+1. **Install themes and plugins**: full or custom installation
+2. **Create a project**: folder name and settings
+3. **Ready to go**: add photos and generate
 
-See the [User Journey](../00%20user-journey/) for a complete walkthrough.
+See the [User Journey](../user-journey/) for a complete walkthrough.
 
 ---
 
@@ -138,4 +138,35 @@ After updating, restore your dependencies:
 
 ```bash
 revela restore
+```
+
+---
+
+## Troubleshooting
+
+### `revela: command not found`
+
+Revela isn't on your `PATH`.
+
+- **Windows**: add the folder containing `revela.exe` to your `Path` environment variable.
+- **macOS / Linux**: create a symlink (`sudo ln -s /path/to/revela /usr/local/bin/revela`) or add the folder to your `PATH`.
+
+### `Permission denied` (macOS / Linux)
+
+The binary isn't executable yet:
+
+```bash
+chmod +x /path/to/revela
+```
+
+### Windows SmartScreen warning
+
+The executable isn't code-signed yet. Click **More info → Run anyway**.
+
+### macOS "cannot be opened because the developer cannot be verified"
+
+Allow it once under **System Settings → Privacy & Security → Open Anyway**, or clear the quarantine flag from the terminal:
+
+```bash
+xattr -d com.apple.quarantine /path/to/revela
 ```

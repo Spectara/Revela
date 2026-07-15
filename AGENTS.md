@@ -39,6 +39,7 @@ Quick orientation for AI coding agents (GitHub Copilot, Claude, Cursor, etc.) wo
 |-------|----------------|
 | **Revela Dev** | Implementation work — features, bug fixes, commands, plugins, services, tests, refactoring. Knows all conventions. |
 | **Revela Reviewer** | Architecture / security / performance reviews. Read-only audit with structured report. |
+| **Revela Docs** | Website documentation — write/maintain product docs, persona paths (#86), migrate `docs/` → website, keep docs in sync with code. Writes docs only; hands off C# to Revela Dev. |
 | **Spike Analyst** | New feature ideas — interactive analysis (problem sharpening, prior-art research, MVP carving, trade-off matrix). Read-only. Hands off to Dev when build is approved. |
 | **Explore** | Read-only codebase exploration when chaining many searches. Safe to call in parallel. |
 | **Pattern Finder** | Subagent — finds canonical existing examples (plugin, command, config, HttpClient, etc.) to mirror. Dispatched by Dev before new implementations. |
@@ -145,8 +146,8 @@ Each subagent is stateless — give it a precise task and tell it exactly what t
 ## Documentation
 
 - Architecture: [`docs/architecture.md`](docs/architecture.md)
-- HttpClient pattern: [`docs/httpclient-pattern.md`](docs/httpclient-pattern.md)
-- Plugin development: [`docs/plugin-development.md`](docs/plugin-development.md)
+- HttpClient pattern: [revela.website/docs/developers/httpclient-pattern](https://revela.website/docs/developers/httpclient-pattern/)
+- Plugin development: [revela.website/docs/developers/plugin-development](https://revela.website/docs/developers/plugin-development/)
 - Plugin system v2: [`docs/plugin-system-v2.md`](docs/plugin-system-v2.md)
 - Project structure: [`docs/project-structure.md`](docs/project-structure.md)
 - **Subagent patterns**: [`docs/subagent-patterns.md`](docs/subagent-patterns.md) — how to use parallel subagents for reviews
