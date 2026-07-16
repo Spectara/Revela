@@ -497,6 +497,9 @@ samples/**/output/
 samples/**/images/
 samples/**/.cache/
 
+# Homepage photo strip - synced from OneDrive (full-res), not committed
+samples/revela-website/source/_images/home/
+
 # Local playground folder for testing from scratch
 playground/
 

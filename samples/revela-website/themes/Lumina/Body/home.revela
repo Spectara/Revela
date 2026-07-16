@@ -24,3 +24,12 @@ Expects:
 {{ gallery.body }}
 </article>
 {{~ end ~}}
+
+{{~ # Photo strip — homepage gallery (images selected via filter in _index.revela frontmatter) ~}}
+{{~ if images && images.size > 0 ~}}
+<section class="gallery">
+    {{~ for image in images ~}}
+    {{~ include 'image' image ~}}
+    {{~ end ~}}
+</section>
+{{~ end ~}}

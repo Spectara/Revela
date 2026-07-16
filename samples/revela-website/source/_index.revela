@@ -2,6 +2,7 @@
 title = "Home"
 template = "home"
 description = "Reveal your stories through beautiful portfolios that load fast, with no quality trade-offs."
+filter = "contains(sourcePath, '_images/home/')"
 +++
 
 <nav class="cta">
@@ -31,91 +32,10 @@ NuGet-based plugin system: OneDrive sync, EXIF statistics, Gzip/Brotli compressi
 
 </div>
 
-## See it in action
+## Noticeably faster
 
-<div class="terminal-mockup">
-  <video autoplay loop muted playsinline>
-    <source src="demo.mp4" type="video/mp4">
-  </video>
-</div>
+**Your images load in 0.2 seconds, not 3.** No loading spinner, no bounce. And because Revela produces perfectly optimized, static code, Google ranks you higher and every visitor sees your work instantly.
 
-See real websites built with Revela on the [Showcase](showcase/) page.
+> **Proof:** [photo.kirk.one](https://photo.kirk.one) scores **100 / 100 / 100 / 100** on Google Lighthouse (Performance · Accessibility · Best Practices · SEO) — First Contentful Paint 0.2 s, zero layout shift.
 
-> **Real-world score:** [photo.kirk.one](https://photo.kirk.one) (built with Revela) hits **100 / 100 / 100 / 100** in Lighthouse across Performance, Accessibility, Best Practices, and SEO. First Contentful Paint 0.2 s, Largest Contentful Paint 0.3 s, zero blocking time, zero layout shift.
-
-## Quick Start
-
-**1. Download Revela**
-
-The **Standalone** edition is a single binary with everything built in: no .NET SDK, no plugin install, just download and run.
-
-<nav class="cta">
-  <a href="__DOWNLOAD_URL_WIN_X64_STANDALONE__">Windows x64</a>
-  <a href="__DOWNLOAD_URL_OSX_ARM64_STANDALONE__">macOS Apple Silicon</a>
-  <a href="__DOWNLOAD_URL_LINUX_X64_STANDALONE__">Linux x64</a>
-</nav>
-
-<p><a href="pages/downloads/">Other platforms, modular install, or .NET global tool →</a></p>
-
-**2. Run the Setup Wizard**
-
-Just run `revela` without any arguments, and the interactive setup wizard walks you through everything:
-
-```bash
-revela
-```
-
-It creates your project structure, configures your theme, and gets you ready to go. No config files to write manually.
-
-**3. Add your photos**
-
-Drop your images into the `source/` folder and organize them into galleries:
-
-```
-source/
-├── _index.revela        # Homepage
-├── Landscapes/
-│   ├── _index.revela    # Gallery metadata
-│   └── sunset.jpg
-└── Portraits/
-    └── portrait-01.jpg
-```
-
-**4. Generate & Preview**
-
-```bash
-revela generate all
-revela serve
-```
-
-Open `http://localhost:8080` and see your portfolio!
-
-## Features
-
-| Feature | Description |
-|---------|-------------|
-| **AVIF, WebP, JPEG** | Modern image formats with configurable quality per format |
-| **LQIP Placeholders** | CSS-only low-quality image placeholders, no JavaScript needed |
-| **EXIF Extraction** | Automatic camera, lens, and settings metadata |
-| **Incremental Builds** | Smart change detection, so only changed files regenerate |
-| **Gzip & Brotli** | Static compression for fast delivery (via plugin) |
-| **Smart Sorting** | Sort by date, filename, or custom order |
-| **Theme Overrides** | Customize any template or variable without forking |
-| **Multiple Sources** | Local files, OneDrive, or custom source plugins |
-| **Pure Static Output** | No server, no database, no tracking, just files. GDPR-friendly by default |
-| **Setup Wizard** | Interactive setup, no config files to write by hand |
-| **Easy Deployment** | Works with GitHub Pages, Netlify, any web host |
-
-## Join the Community
-
-Revela is open source and actively developed. Contributions welcome!
-
-- 📖 [Documentation](docs/)
-- 🐛 [Report a bug](https://github.com/Spectara/Revela/issues/new?template=bug-report.yml)
-- ✨ [Request a feature](https://github.com/Spectara/Revela/issues/new?template=feature-request.yml)
-- 🖼️ [Submit your site to the Showcase](https://github.com/Spectara/Revela/issues/new?template=showcase-submission.yml)
-- 💬 [Ask a question or chat](https://github.com/Spectara/Revela/discussions)
-
----
-
-*This website is built with Revela. Curious how? [See how we built it →](docs/guide/themes/website-example/)*
+## Eight images say more than a thousand words?

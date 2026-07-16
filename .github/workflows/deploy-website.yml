@@ -96,6 +96,17 @@ jobs:
 
           echo "✅ Updated download links to version ${VERSION}"
 
+      - name: Sync homepage photos from OneDrive
+        # The homepage photo strip lives in a public OneDrive share (see
+        # ShareUrl in samples/revela-website/project.json), not in git —
+        # the full-res originals are gitignored. Pull them in before
+        # generating so the deployed homepage gallery isn't empty.
+        # NOTE: never pass --clean here; it would treat committed docs
+        # images as orphans and delete them.
+        run: |
+          cd samples/revela-website
+          ../../revela source onedrive sync
+
       - name: Generate website
         run: |
           cd samples/revela-website

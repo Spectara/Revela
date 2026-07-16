@@ -675,3 +675,21 @@ footer {
   background: unset;
   outline: unset;
 }
+
+/* On pages with a photo gallery (home), the gallery's sticky-reveal effect
+   relies on the footer's solid backdrop to cover the last images as they
+   scroll up. Restore it only there so content pages keep the glass look. */
+main:has(.gallery)+footer {
+  background: var(--color-bg);
+  grid-column: full-width;
+  border-top: 1px solid var(--glass-border);
+  box-shadow: 0 1px 15px var(--glass-shadow);
+  margin-top: var(--space-m);
+}
+
+/* Clip the gallery's sticky-reveal overflow and give it a solid backdrop so
+   the last images don't bleed past the section on the gradient background. */
+main .gallery {
+  overflow-y: clip;
+  outline: solid var(--space-m) var(--color-bg);
+}
