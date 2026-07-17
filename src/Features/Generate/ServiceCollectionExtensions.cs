@@ -54,15 +54,20 @@ public static class ServiceCollectionExtensions
         services.TryAddSingleton<IImageService, ImageService>();
         services.TryAddTransient<IRenderService, RenderService>();
 
+        // Structural validation (shared by `check` and generate Phase 0)
+        services.TryAddSingleton<ISiteValidator, ValidationService>();
+
         // Engine facade (public API for MCP, GUI, and other plugins)
         services.TryAddTransient<IRevelaEngine, RevelaEngine>();
 
         // Commands (thin CLI wrappers + IPipelineStep implementations)
+        services.TryAddTransient<ValidateCommand>();
         services.TryAddTransient<ScanCommand>();
         services.TryAddTransient<ImagesCommand>();
         services.TryAddTransient<PagesCommand>();
 
         // Register commands as pipeline steps for engine orchestration
+        services.TryAddEnumerable(ServiceDescriptor.Transient<IPipelineStep, ValidateCommand>());
         services.TryAddEnumerable(ServiceDescriptor.Transient<IPipelineStep, ScanCommand>());
         services.TryAddEnumerable(ServiceDescriptor.Transient<IPipelineStep, PagesCommand>());
         services.TryAddEnumerable(ServiceDescriptor.Transient<IPipelineStep, ImagesCommand>());

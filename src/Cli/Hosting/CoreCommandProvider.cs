@@ -23,6 +23,22 @@ internal sealed class CoreCommandProvider : ICommandProvider
             Group: CommandGroups.Build,
             RequiresProject: true);
 
+        var validateCommand = services.GetRequiredService<ValidateCommand>();
+
+        // Standalone `check` command (structural validation without generating).
+        yield return new CommandDescriptor(
+            validateCommand.Create(),
+            Order: 15,
+            Group: CommandGroups.Build,
+            RequiresProject: true);
+
+        // Same validation wired as the (hidden) first step of `generate all`.
+        yield return new CommandDescriptor(
+            validateCommand.CreateStep(),
+            ParentCommand: "generate",
+            Order: PipelineOrder.Validate,
+            IsSequentialStep: true);
+
         var scanCommand = services.GetRequiredService<ScanCommand>();
         yield return new CommandDescriptor(
             scanCommand.Create(),
