@@ -345,6 +345,18 @@ internal static class HostExtensions
             AnsiConsole.MarkupLine($"[blue]Pipeline:[/] {stepNames}");
             AnsiConsole.WriteLine();
 
+            // Opt out of System.CommandLine's default exception handler for the
+            // nested per-step invokes. Otherwise a configuration validation failure
+            // (e.g. a stray project.language — see #75) thrown inside a step would be
+            // caught here, printed as a raw stack trace, and turned into exit code 1
+            // before the top-level handler (HostBootstrap / CommandExecutor) could
+            // render the friendly configuration-problem panel. Letting it propagate
+            // routes it through the same panel + exit-code-2 path as a direct command.
+            var stepInvocation = new InvocationConfiguration
+            {
+                EnableDefaultExceptionHandler = false,
+            };
+
             var stopwatch = Stopwatch.StartNew();
             var stepNumber = 1;
 
@@ -360,7 +372,7 @@ internal static class HostExtensions
 
                 AnsiConsole.WriteLine();
 
-                var exitCode = await step.Parse([]).InvokeAsync(configuration: null, cancellationToken);
+                var exitCode = await step.Parse([]).InvokeAsync(stepInvocation, cancellationToken);
 
                 if (exitCode != 0)
                 {
