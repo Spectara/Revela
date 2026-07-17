@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using Spectara.Revela.Sdk.Services;
 
 namespace Spectara.Revela.Sdk.Configuration;
@@ -25,10 +26,13 @@ public static class ConfigurationServiceCollectionExtensions
     /// <item><see cref="ThemeConfig"/> - theme section</item>
     /// <item><see cref="GenerateConfig"/> - generate section</item>
     /// <item><see cref="PathsConfig"/> - paths section (source/output directories)</item>
+    /// <item><see cref="SiteCoreConfig"/> - site section (validated site.json identity core)</item>
     /// </list>
     /// <para>
-    /// Note: site.json is loaded dynamically by RenderService, not via IOptions.
-    /// This allows themes to define custom properties without a fixed schema.
+    /// Note: only the validated identity core of site.json (<see cref="SiteCoreConfig"/>)
+    /// is bound via IOptions. The remaining theme-specific properties are loaded
+    /// dynamically by RenderService as a JsonElement, so themes can define custom
+    /// properties without a fixed schema.
     /// </para>
     /// <para>
     /// All configs support hot-reload via <c>IOptionsMonitor&lt;T&gt;</c>.
@@ -52,7 +56,8 @@ public static class ConfigurationServiceCollectionExtensions
         // binder and break under PublishTrimmed).
         // Configuration is merged from multiple JSON files (revela.json → project.json → logging.json).
         // Hot-reload is provided by BindConfiguration via IOptionsMonitor.
-        // Note: site.json is NOT loaded via IOptions — it's loaded dynamically by RenderService.
+        // Note: only site.json's identity core (SiteCoreConfig) is bound via IOptions;
+        // its theme-specific tail is loaded dynamically by RenderService.
         services.AddOptions<PackagesConfig>().BindConfiguration(PackagesConfig.Section);
         services.AddOptions<DependenciesConfig>().BindConfiguration(DependenciesConfig.Section);
         services.AddOptions<GlobalDefaultsConfig>().BindConfiguration(GlobalDefaultsConfig.Section);
@@ -62,6 +67,16 @@ public static class ConfigurationServiceCollectionExtensions
         services.AddOptions<ThemeConfig>().BindConfiguration(ThemeConfig.Section);
         services.AddOptions<GenerateConfig>().BindConfiguration(GenerateConfig.Section);
         services.AddOptions<PathsConfig>().BindConfiguration(PathsConfig.Section);
+
+        // site.json's validated identity core. site.json is added to configuration
+        // (re-keyed under the "site" section) by AddSiteJson; the dynamic JsonElement
+        // tail is still loaded separately by RenderService for theme-specific props.
+        services.AddOptions<SiteCoreConfig>().BindConfiguration(SiteCoreConfig.Section);
+        services.AddSingleton<IValidateOptions<SiteCoreConfig>, SiteCoreConfigValidator>();
+
+        // Breaking change (#75): 'language' moved to site.json. Fail loudly if it is
+        // still present in the project.json "project" section instead of ignoring it.
+        services.AddSingleton<IValidateOptions<ProjectConfig>, ProjectConfigLanguageValidator>();
 
         // Path resolver service (resolves relative paths against project root)
         // Uses IOptionsMonitor for hot-reload support during interactive sessions
