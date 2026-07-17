@@ -8,6 +8,7 @@ using Spectara.Revela.Plugins.Calendar.Models;
 using Spectara.Revela.Plugins.Calendar.Services;
 using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Abstractions;
+using Spectara.Revela.Sdk.Configuration;
 using Spectara.Revela.Sdk.Models.Manifest;
 using Spectara.Revela.Sdk.Services;
 
@@ -22,6 +23,7 @@ internal sealed partial class CalendarGenerateStep(
     ILogger<CalendarGenerateStep> logger,
     IManifestRepository manifestRepository,
     IOptions<ProjectEnvironment> projectEnvironment,
+    IOptions<SiteCoreConfig> siteCoreConfig,
     IPathResolver pathResolver) : IPipelineStep
 {
     private const string ManifestFileName = "manifest.json";
@@ -85,11 +87,15 @@ internal sealed partial class CalendarGenerateStep(
             var bookings = ICalParser.Parse(icsContent);
 
             var labels = pageConfig.Labels ?? new CalendarLabels();
+
+            // Default the locale to the site language (site.json) when not set per-page,
+            // so e.g. German sites get German month names out of the box.
+            var locale = pageConfig.Locale ?? siteCoreConfig.Value.Language;
             CultureInfo? culture = null;
-            if (pageConfig.Locale is not null)
+            if (!string.IsNullOrEmpty(locale))
             {
                 try
-                { culture = CultureInfo.GetCultureInfo(pageConfig.Locale); }
+                { culture = CultureInfo.GetCultureInfo(locale); }
                 catch (CultureNotFoundException) { /* use invariant */ }
             }
 
@@ -198,17 +204,18 @@ internal sealed partial class CalendarGenerateStep(
             // Resolve labels (page overrides > defaults)
             var labels = pageConfig.Labels ?? new CalendarLabels();
 
-            // Resolve locale
+            // Resolve locale (page override > site language default)
+            var locale = pageConfig.Locale ?? siteCoreConfig.Value.Language;
             CultureInfo? culture = null;
-            if (pageConfig.Locale is not null)
+            if (!string.IsNullOrEmpty(locale))
             {
                 try
                 {
-                    culture = CultureInfo.GetCultureInfo(pageConfig.Locale);
+                    culture = CultureInfo.GetCultureInfo(locale);
                 }
                 catch (CultureNotFoundException)
                 {
-                    LogInvalidLocale(pageConfig.Locale, pagePath);
+                    LogInvalidLocale(locale, pagePath);
                 }
             }
 
