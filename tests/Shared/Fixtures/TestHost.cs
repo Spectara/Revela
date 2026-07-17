@@ -54,6 +54,12 @@ public static class RevelaTestHost
             optional: true,
             reloadOnChange: false);
 
+        // Load site.json (re-keyed under the "site" section for SiteCoreConfig)
+        builder.Configuration.AddSiteJson(
+            Path.Combine(projectPath, "site.json"),
+            optional: true,
+            reloadOnChange: false);
+
         // Register all config sections (IOptions<T>)
         builder.Services.AddRevelaConfigSections();
         builder.Services.AddCoreServices();

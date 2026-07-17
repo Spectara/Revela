@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
+using Spectara.Revela.Core.Configuration;
 using Spectara.Revela.Core.Services;
 using Spectara.Revela.Sdk.Configuration;
 
@@ -23,7 +24,8 @@ internal static class HostBuilderExtensions
     /// <item><b>logging.json</b> (local): Logging configuration</item>
     /// </list>
     /// <para>
-    /// Note: site.json is NOT loaded via IConfiguration — it is loaded dynamically by RenderService.
+    /// Note: site.json's identity core is loaded via <c>AddSiteJson</c> (re-keyed under
+    /// the "site" section); its theme-specific tail is still read dynamically by RenderService.
     /// </para>
     /// <para>
     /// This allows global defaults (themes, plugins, feeds) to be overridden per-project.
@@ -58,8 +60,14 @@ internal static class HostBuilderExtensions
             reloadOnChange: true
         );
 
-        // Note: site.json is NOT loaded via IConfiguration.
-        // It's loaded dynamically by RenderService to support theme-specific schemas.
+        // Note: site.json is loaded via a dedicated source (AddSiteJson) that re-keys
+        // its identity core under the "site" section for SiteCoreConfig. Its
+        // theme-specific tail is still read dynamically by RenderService.
+        builder.Configuration.AddSiteJson(
+            Path.Combine(projectDirectory, "site.json"),
+            optional: true,
+            reloadOnChange: true
+        );
 
         // 3. Load logging.json (logging config - can override global logging settings)
         builder.Configuration.AddJsonFile(
