@@ -4,6 +4,7 @@ using System.Text;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Options;
 using Spectara.Revela.Commands;
 using Spectara.Revela.Core.Configuration;
 using Spectara.Revela.Sdk;
@@ -93,14 +94,27 @@ internal static class HostBootstrap
         var consoleCapabilities = host.Services.GetRequiredService<IConsoleCapabilities>();
         var isInteractiveMode = args.Length == 0 && consoleCapabilities.IsInteractive;
 
-        if (isInteractiveMode)
+        // Guard both invocation paths: configuration is validated lazily on first
+        // IOptions/IOptionsMonitor access inside a command, so an invalid value
+        // (e.g. a stray project.language — see #75) surfaces as an
+        // OptionsValidationException here. Render it as a clean, styled panel with
+        // no stack trace and exit with code 2 instead of crashing.
+        try
         {
-            var interactiveService = host.Services.GetRequiredService<IInteractiveMenuService>();
-            interactiveService.RootCommand = rootCommand;
-            return await interactiveService.RunAsync(CancellationToken.None);
-        }
+            if (isInteractiveMode)
+            {
+                var interactiveService = host.Services.GetRequiredService<IInteractiveMenuService>();
+                interactiveService.RootCommand = rootCommand;
+                return await interactiveService.RunAsync(CancellationToken.None);
+            }
 
-        return await rootCommand.Parse(args).InvokeAsync();
+            return await rootCommand.Parse(args).InvokeAsync();
+        }
+        catch (OptionsValidationException ex)
+        {
+            ErrorPanels.ShowConfigurationProblem(ex.Failures);
+            return 2;
+        }
     }
 
     /// <summary>
