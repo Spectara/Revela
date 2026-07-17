@@ -87,17 +87,7 @@ internal sealed partial class CalendarGenerateStep(
             var bookings = ICalParser.Parse(icsContent);
 
             var labels = pageConfig.Labels ?? new CalendarLabels();
-
-            // Default the locale to the site language (site.json) when not set per-page,
-            // so e.g. German sites get German month names out of the box.
-            var locale = pageConfig.Locale ?? siteCoreConfig.Value.Language;
-            CultureInfo? culture = null;
-            if (!string.IsNullOrEmpty(locale))
-            {
-                try
-                { culture = CultureInfo.GetCultureInfo(locale); }
-                catch (CultureNotFoundException) { /* use invariant */ }
-            }
+            var culture = ResolveCulture(pageConfig, siteCoreConfig.Value);
 
             var calendarData = CalendarBuilder.Build(bookings, pageConfig.Months, today, pageConfig.Mode, labels, culture);
 
@@ -206,17 +196,10 @@ internal sealed partial class CalendarGenerateStep(
 
             // Resolve locale (page override > site language default)
             var locale = pageConfig.Locale ?? siteCoreConfig.Value.Language;
-            CultureInfo? culture = null;
-            if (!string.IsNullOrEmpty(locale))
+            var culture = ResolveCulture(pageConfig, siteCoreConfig.Value);
+            if (culture is null)
             {
-                try
-                {
-                    culture = CultureInfo.GetCultureInfo(locale);
-                }
-                catch (CultureNotFoundException)
-                {
-                    LogInvalidLocale(locale, pagePath);
-                }
+                LogInvalidLocale(locale, pagePath);
             }
 
             // Build calendar data
@@ -246,6 +229,31 @@ internal sealed partial class CalendarGenerateStep(
         AnsiConsole.Write(panel);
 
         return 0;
+    }
+
+    /// <summary>
+    /// Resolves the <see cref="CultureInfo"/> for a calendar page: the per-page
+    /// <c>calendar.locale</c> when set, otherwise the site language from
+    /// <c>site.json</c> (which defaults to <c>"en"</c>). Returns <see langword="null"/>
+    /// when the resolved locale is not a valid culture, so the caller can fall back
+    /// to the invariant culture.
+    /// </summary>
+    /// <param name="pageConfig">The per-page calendar configuration.</param>
+    /// <param name="siteCoreConfig">The validated site identity core.</param>
+    internal static CultureInfo? ResolveCulture(
+        CalendarPageConfig pageConfig,
+        SiteCoreConfig siteCoreConfig)
+    {
+        var locale = pageConfig.Locale ?? siteCoreConfig.Language;
+
+        try
+        {
+            return CultureInfo.GetCultureInfo(locale);
+        }
+        catch (CultureNotFoundException)
+        {
+            return null;
+        }
     }
 
     private static List<string> FindCalendarPages(ManifestEntry root)
