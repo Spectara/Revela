@@ -159,6 +159,39 @@ public static class ErrorPanels
     }
 
     /// <summary>
+    /// Shows an error panel for invalid configuration values, listing each
+    /// failure in plain language with no stack trace.
+    /// </summary>
+    /// <remarks>
+    /// Used at the CLI boundary to turn a configuration validation failure
+    /// (e.g. a stray setting in <c>project.json</c>) into a photographer-readable
+    /// message instead of a raw .NET exception dump.
+    /// </remarks>
+    /// <param name="problems">The human-readable validation failure messages.</param>
+    public static void ShowConfigurationProblem(IEnumerable<string> problems)
+    {
+        var lines = problems
+            .Where(problem => !string.IsNullOrWhiteSpace(problem))
+            .Select(problem => $"  • [yellow]{Markup.Escape(problem)}[/]")
+            .ToList();
+
+        var body = lines.Count > 0
+            ? string.Join("\n", lines)
+            : "  • [yellow]A configuration value is not valid.[/]";
+
+        var content =
+            "Revela can't continue because your project configuration isn't valid:\n\n" +
+            body +
+            "\n\n[dim]Fix the setting in your project.json (or site.json), then run the command again.[/]";
+
+        var panel = new Panel(content)
+            .WithHeader("[bold red]Configuration problem[/]")
+            .WithErrorStyle();
+
+        AnsiConsole.Write(panel);
+    }
+
+    /// <summary>
     /// Shows an error panel when a validation fails.
     /// </summary>
     /// <param name="message">The validation error message.</param>
