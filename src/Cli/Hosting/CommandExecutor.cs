@@ -1,5 +1,7 @@
 using System.CommandLine;
 
+using Microsoft.Extensions.Options;
+
 using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Output;
 
@@ -69,13 +71,28 @@ internal sealed partial class CommandExecutor(
         int exitCode;
         try
         {
+            // Opt out of System.CommandLine's default exception handler so config
+            // validation failures (and other errors) reach the catch blocks below
+            // and are rendered as friendly panels instead of raw stack traces.
+            var invocationConfiguration = new InvocationConfiguration
+            {
+                EnableDefaultExceptionHandler = false,
+            };
+
             var parseResult = rootCommand.Parse(args);
-            exitCode = await parseResult.InvokeAsync(configuration: null, commandCts.Token);
+            exitCode = await parseResult.InvokeAsync(invocationConfiguration, commandCts.Token);
         }
         catch (OperationCanceledException)
         {
             // Command was cancelled by Ctrl+C - this is expected
             exitCode = 0;
+        }
+        catch (OptionsValidationException ex)
+        {
+            // A configuration value is invalid (e.g. a stray project.language — #75).
+            // Show the same friendly panel as the non-interactive path.
+            ErrorPanels.ShowConfigurationProblem(ex.Failures);
+            exitCode = 2;
         }
         catch (Exception ex)
         {

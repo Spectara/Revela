@@ -94,6 +94,15 @@ internal static class HostBootstrap
         var consoleCapabilities = host.Services.GetRequiredService<IConsoleCapabilities>();
         var isInteractiveMode = args.Length == 0 && consoleCapabilities.IsInteractive;
 
+        // Opt out of System.CommandLine's default exception handler so we can turn
+        // a configuration validation failure into a friendly panel ourselves.
+        // Otherwise it would swallow the exception, print a raw stack trace, and
+        // return 1 before our catch below could run.
+        var invocationConfiguration = new InvocationConfiguration
+        {
+            EnableDefaultExceptionHandler = false,
+        };
+
         // Guard both invocation paths: configuration is validated lazily on first
         // IOptions/IOptionsMonitor access inside a command, so an invalid value
         // (e.g. a stray project.language — see #75) surfaces as an
@@ -108,12 +117,25 @@ internal static class HostBootstrap
                 return await interactiveService.RunAsync(CancellationToken.None);
             }
 
-            return await rootCommand.Parse(args).InvokeAsync();
+            return await rootCommand.Parse(args).InvokeAsync(invocationConfiguration);
         }
         catch (OptionsValidationException ex)
         {
             ErrorPanels.ShowConfigurationProblem(ex.Failures);
             return 2;
+        }
+        catch (OperationCanceledException)
+        {
+            // Cancellation (Ctrl+C) — nothing to report; mirror the previous exit code.
+            return 1;
+        }
+        catch (Exception ex)
+        {
+            // Preserve System.CommandLine's former default-handler behaviour for any
+            // other unexpected error now that we've opted out of it: write the
+            // details to stderr and return exit code 1.
+            await Console.Error.WriteLineAsync($"Unhandled exception: {ex}");
+            return 1;
         }
     }
 
