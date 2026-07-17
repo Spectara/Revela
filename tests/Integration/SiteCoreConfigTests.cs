@@ -88,4 +88,22 @@ public sealed class SiteCoreConfigTests
         var ex = Assert.ThrowsExactly<OptionsValidationException>(() => _ = options.Value);
         Assert.Contains("site.json", ex.Message, StringComparison.OrdinalIgnoreCase);
     }
+
+    [TestMethod]
+    public void ProjectConfig_WithEmptyLanguage_FailsBecauseKeyExists()
+    {
+        // Arrange: detection is by key presence, so even an empty value must fail —
+        // a non-empty-value check would let "language": "" slip through silently.
+        using var project = TestProject.Create(p => p
+            .WithProjectJson(new
+            {
+                project = new { name = "My Portfolio", language = "" }
+            }));
+        using var host = RevelaTestHost.Build(project.RootPath);
+
+        // Act + Assert
+        var options = host.Services.GetRequiredService<IOptions<ProjectConfig>>();
+        var ex = Assert.ThrowsExactly<OptionsValidationException>(() => _ = options.Value);
+        Assert.Contains("site.json", ex.Message, StringComparison.OrdinalIgnoreCase);
+    }
 }

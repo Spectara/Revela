@@ -15,8 +15,10 @@ namespace Spectara.Revela.Sdk.Configuration;
 /// points at <c>site.json</c>.
 /// </para>
 /// <para>
-/// It inspects the raw configuration key directly (trim/AOT-safe — no reflection)
+/// It inspects the raw configuration keys directly (trim/AOT-safe — no reflection)
 /// because <see cref="ProjectConfig"/> no longer has a <c>Language</c> property to bind.
+/// Detection is by key <em>presence</em>, so even an empty or null value
+/// (<c>"language": ""</c>) is rejected.
 /// </para>
 /// </remarks>
 /// <param name="configuration">The application configuration.</param>
@@ -26,8 +28,12 @@ internal sealed class ProjectConfigLanguageValidator(IConfiguration configuratio
     /// <inheritdoc />
     public ValidateOptionsResult Validate(string? name, ProjectConfig options)
     {
-        var language = configuration[$"{ProjectConfig.Section}:language"];
-        if (!string.IsNullOrEmpty(language))
+        var hasLanguage = configuration
+            .GetSection(ProjectConfig.Section)
+            .GetChildren()
+            .Any(child => child.Key.Equals("language", StringComparison.OrdinalIgnoreCase));
+
+        if (hasLanguage)
         {
             return ValidateOptionsResult.Fail(
                 "'language' has moved from project.json to site.json. " +
