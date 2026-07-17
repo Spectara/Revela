@@ -95,6 +95,9 @@ public static class PipelineCategories
 /// </summary>
 public static class PipelineOrder
 {
+    /// <summary>Structural validation (50) — runs first as Phase 0 of the generate pipeline.</summary>
+    public const int Validate = 50;
+
     /// <summary>Content scanning (100).</summary>
     public const int Scan = 100;
 

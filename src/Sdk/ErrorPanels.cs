@@ -192,6 +192,80 @@ public static class ErrorPanels
     }
 
     /// <summary>
+    /// Shows a single panel grouping validation findings by severity (errors, warnings,
+    /// hints), reusing the configuration-problem panel look.
+    /// </summary>
+    /// <remarks>
+    /// The panel border reflects the highest severity present: red when any error exists,
+    /// yellow when only warnings do, cyan when only hints. Errors block the build; warnings
+    /// and hints are surfaced but do not. Each message is plain text and is escaped here.
+    /// </remarks>
+    /// <param name="errors">Blocking problems (empty when none).</param>
+    /// <param name="warnings">Non-blocking, questionable items (empty when none).</param>
+    /// <param name="hints">Friendly, informational notes (empty when none).</param>
+    public static void ShowValidationReport(
+        IReadOnlyList<string> errors,
+        IReadOnlyList<string> warnings,
+        IReadOnlyList<string> hints)
+    {
+        var sections = new List<string>();
+
+        if (errors.Count > 0)
+        {
+            sections.Add(FormatSection($"Errors ({errors.Count}) — must be fixed:", errors, "red"));
+        }
+
+        if (warnings.Count > 0)
+        {
+            sections.Add(FormatSection($"Warnings ({warnings.Count}) — build still runs:", warnings, "yellow"));
+        }
+
+        if (hints.Count > 0)
+        {
+            sections.Add(FormatSection($"Hints ({hints.Count}):", hints, "blue"));
+        }
+
+        if (sections.Count == 0)
+        {
+            return;
+        }
+
+        var content = string.Join("\n\n", sections);
+
+        Panel panel;
+        if (errors.Count > 0)
+        {
+            content += "\n\n[dim]Fix the errors above, then run the command again.[/]";
+            panel = new Panel(content)
+                .WithHeader("[bold red]Check found problems[/]")
+                .WithErrorStyle();
+        }
+        else if (warnings.Count > 0)
+        {
+            panel = new Panel(content)
+                .WithHeader("[bold yellow]Check: warnings[/]")
+                .WithWarningStyle();
+        }
+        else
+        {
+            panel = new Panel(content)
+                .WithHeader("[bold cyan]Check: hints[/]")
+                .WithInfoStyle();
+        }
+
+        AnsiConsole.Write(panel);
+    }
+
+    private static string FormatSection(string heading, IReadOnlyList<string> items, string color)
+    {
+        var lines = items
+            .Where(item => !string.IsNullOrWhiteSpace(item))
+            .Select(item => $"  • [{color}]{Markup.Escape(item)}[/]");
+
+        return $"[bold]{heading}[/]\n" + string.Join("\n", lines);
+    }
+
+    /// <summary>
     /// Shows an error panel when a validation fails.
     /// </summary>
     /// <param name="message">The validation error message.</param>
