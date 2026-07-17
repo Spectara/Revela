@@ -24,8 +24,7 @@ public sealed class ConfigurationLoadingTests
                 project = new
                 {
                     name = "My Portfolio",
-                    baseUrl = "https://photos.example.com",
-                    language = "de"
+                    baseUrl = "https://photos.example.com"
                 }
             }));
         using var host = RevelaTestHost.Build(project.RootPath);
@@ -36,7 +35,6 @@ public sealed class ConfigurationLoadingTests
         // Assert
         Assert.AreEqual("My Portfolio", config.Name);
         Assert.AreEqual(new Uri("https://photos.example.com"), config.BaseUrl);
-        Assert.AreEqual("de", config.Language);
     }
 
     [TestMethod]
@@ -52,7 +50,7 @@ public sealed class ConfigurationLoadingTests
 
         // Assert: Defaults should apply
         Assert.AreEqual(string.Empty, config.Name);
-        Assert.AreEqual("en", config.Language);
+        Assert.AreEqual("/", config.BasePath);
     }
 
     [TestMethod]

@@ -39,6 +39,7 @@ internal sealed partial class RenderService(
     IOptions<ProjectEnvironment> projectEnvironment,
     IPathResolver pathResolver,
     IOptionsMonitor<ProjectConfig> projectConfig,
+    IOptionsMonitor<SiteCoreConfig> siteCoreConfig,
     IOptionsMonitor<GenerateConfig> options,
     IOptionsMonitor<ThemeConfig> themeConfig,
     IBuildInfo buildInfo,
@@ -243,6 +244,10 @@ internal sealed partial class RenderService(
     {
         var project = projectConfig.CurrentValue;
 
+        // Site identity core (title, language, …) from site.json. Accessing it here
+        // triggers validation — a site.json missing a required 'title' fails at load.
+        var site = siteCoreConfig.CurrentValue;
+
         // Get theme name from ThemeConfig (IOptions pattern)
         // Fallback to "Lumina" if not configured
         var themeName = themeConfig.CurrentValue.Name;
@@ -257,7 +262,7 @@ internal sealed partial class RenderService(
             {
                 Name = !string.IsNullOrEmpty(project.Name) ? project.Name : "Revela Site",
                 BaseUrl = project.BaseUrl?.ToString().TrimEnd('/'),
-                Language = !string.IsNullOrEmpty(project.Language) ? project.Language : "en",
+                Language = !string.IsNullOrEmpty(site.Language) ? site.Language : "en",
                 ImageBasePath = project.ImageBasePath,
                 BasePath = NormalizeBasePath(project.BasePath)
             },

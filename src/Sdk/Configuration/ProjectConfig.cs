@@ -19,7 +19,6 @@ namespace Spectara.Revela.Sdk.Configuration;
 ///   "project": {
 ///     "name": "My Portfolio",
 ///     "baseUrl": "https://photos.example.com",
-///     "language": "en",
 ///     "basePath": "/"
 ///   }
 /// }
@@ -48,11 +47,6 @@ public sealed class ProjectConfig
     /// both bind <c>Uri</c> natively from string values via the built-in TypeConverter.
     /// </remarks>
     public Uri? BaseUrl { get; set; }
-
-    /// <summary>
-    /// Primary language code (e.g., "en", "de")
-    /// </summary>
-    public string Language { get; set; } = "en";
 
     /// <summary>
     /// Base path/URL for image references in generated HTML.

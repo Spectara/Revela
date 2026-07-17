@@ -114,7 +114,7 @@ public sealed class ConfigServiceTests
         using var project = TestProject.Create(p => p
             .WithProjectJson(new
             {
-                project = new { name = "Original", language = "en" },
+                project = new { name = "Original", baseUrl = "https://example.com" },
                 theme = new { name = "Lumina" }
             }));
         using var host = RevelaTestHost.Build(project.RootPath, s => s.AddRevelaCommands());
@@ -132,7 +132,7 @@ public sealed class ConfigServiceTests
         var config = await configService.ReadProjectConfigAsync();
         Assert.IsNotNull(config);
         Assert.AreEqual("Updated Name", config["project"]?["name"]?.GetValue<string>());
-        Assert.AreEqual("en", config["project"]?["language"]?.GetValue<string>(),
+        Assert.AreEqual("https://example.com", config["project"]?["baseUrl"]?.GetValue<string>(),
             "Existing fields should be preserved during merge");
         Assert.AreEqual("Lumina", config["theme"]?["name"]?.GetValue<string>(),
             "Unrelated sections should be preserved");
