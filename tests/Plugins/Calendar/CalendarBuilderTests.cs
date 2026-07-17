@@ -1,7 +1,9 @@
 using System.Globalization;
 
+using Spectara.Revela.Plugins.Calendar.Commands;
 using Spectara.Revela.Plugins.Calendar.Models;
 using Spectara.Revela.Plugins.Calendar.Services;
+using Spectara.Revela.Sdk.Configuration;
 
 namespace Spectara.Revela.Tests.Calendar;
 
@@ -151,6 +153,45 @@ public sealed class CalendarBuilderTests
 
         Assert.IsTrue(result.Months[0].Name.StartsWith('M'));
         Assert.IsTrue(result.Months[0].Name.Contains("2026", StringComparison.Ordinal));
+    }
+
+    [TestMethod]
+    public void ResolveCulture_WithoutPageLocale_UsesSiteLanguage()
+    {
+        var pageConfig = new CalendarPageConfig
+        {
+            Source = "calendar.ics"
+        };
+        var siteConfig = new SiteCoreConfig
+        {
+            Title = "Test Site",
+            Language = "de"
+        };
+
+        var culture = CalendarGenerateStep.ResolveCulture(pageConfig, siteConfig);
+
+        Assert.IsNotNull(culture);
+        Assert.AreEqual("de", culture.TwoLetterISOLanguageName);
+    }
+
+    [TestMethod]
+    public void ResolveCulture_WithPageLocale_UsesPageOverride()
+    {
+        var pageConfig = new CalendarPageConfig
+        {
+            Source = "calendar.ics",
+            Locale = "fr"
+        };
+        var siteConfig = new SiteCoreConfig
+        {
+            Title = "Test Site",
+            Language = "de"
+        };
+
+        var culture = CalendarGenerateStep.ResolveCulture(pageConfig, siteConfig);
+
+        Assert.IsNotNull(culture);
+        Assert.AreEqual("fr", culture.TwoLetterISOLanguageName);
     }
 
     [TestMethod]
