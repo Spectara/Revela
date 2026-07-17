@@ -145,6 +145,13 @@ Inject it with `IOptionsMonitor<ExampleConfig>` and read `.CurrentValue`. Users 
 }
 ```
 
+### Which config source for which use case?
+
+- Own plugin config (e.g. `calendar.locale`): `[RevelaConfig("my.plugin")]` + `IOptions<MyPluginConfig>`
+- Build/hosting settings (base URL, subpath, output path): `IOptions<ProjectConfig>`
+- Site identity (title, description, author, language): `IOptions<SiteCoreConfig>`
+- Theme-specific site properties: not from plugins — that's theme territory
+
 ---
 
 ## Making HTTP calls (the typed-client pattern)
