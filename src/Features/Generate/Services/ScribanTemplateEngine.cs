@@ -28,7 +28,7 @@ namespace Spectara.Revela.Features.Generate.Services;
 /// &lt;h1&gt;{{ site.title }}&lt;/h1&gt;
 /// {{ include 'navigation' nav_items }}
 /// {{ for image in images }}
-///   &lt;img src="{{ image.url }}" alt="{{ image.title }}" /&gt;
+///   &lt;img src="{{ variant_url(image, 640, 'jpg') }}" alt="{{ image.title }}" /&gt;
 /// {{ end }}
 /// </code>
 /// </remarks>
@@ -435,10 +435,17 @@ internal sealed partial class ScribanTemplateEngine(
         // This is needed for custom templates that use data: field with JSON files
         ConvertJsonElementsInScriptObject(scriptObject);
 
+        // Capture the per-render link context so URL helpers own all basepath /
+        // baseUrl knowledge (templates never concatenate paths themselves).
+        var basePath = GetStringValue(scriptObject, "basepath");
+        var assetsBasePath = GetStringValue(scriptObject, "assets_basepath");
+        var baseUrl = GetStringValue(scriptObject, "base_url");
+
         // Register custom functions
-        scriptObject.Import("url_for", new Func<string, string>(UrlFor));
+        scriptObject.Import("page_url", new Func<object?, string?>(target => PageUrl(target, basePath)));
+        scriptObject.Import("absolute_url", new Func<object?, string>(target => AbsoluteUrl(target, baseUrl)));
+        scriptObject.Import("variant_url", new Func<object?, int, string, string>((image, size, format) => VariantUrl(image, size, format, assetsBasePath)));
         scriptObject.Import("asset_url", new Func<string, string>(AssetUrl));
-        scriptObject.Import("image_url", new Func<string, int, string, string>(ImageUrl));
         scriptObject.Import("format_date", new Func<DateTime, string, string>(FormatDate));
         scriptObject.Import("format_filesize", new Func<long, string>(FormatFileSize));
         scriptObject.Import("format_exif_exposure", new Func<double?, string>(FormatExifExposure));
@@ -454,21 +461,120 @@ internal sealed partial class ScribanTemplateEngine(
     // Custom template functions
 
     /// <summary>
-    /// Generate URL for a page/gallery
+    /// Reads a string-valued global from the render model, or an empty string when absent.
     /// </summary>
-    /// <example>{{ url_for "gallery/vacation" }} → /gallery/vacation/index.html</example>
-    private static string UrlFor(string path)
+    private static string GetStringValue(ScriptObject scriptObject, string key) =>
+        scriptObject.TryGetValue(key, out var value) && value is string text ? text : string.Empty;
+
+    /// <summary>
+    /// Site-root-relative page URL for a link target, resolved against the current
+    /// page's base path. Polymorphic: accepts an <see cref="Image"/>, <see cref="Gallery"/>,
+    /// <see cref="NavigationItem"/>, their Scriban projections, or a raw slug string.
+    /// </summary>
+    /// <remarks>
+    /// Returns <c>null</c> for a navigation item that has no page (a section
+    /// header), so templates can branch on <c>{{ if page_url(item) }}</c>
+    /// (Scriban treats an empty string as truthy, but <c>null</c> as falsy).
+    /// </remarks>
+    /// <example>{{ page_url(gallery) }} → /events/fireworks/</example>
+    private static string? PageUrl(object? target, string basePath)
+    {
+        var path = ResolveTargetPath(target);
+        return path.Length == 0 ? null : basePath + path;
+    }
+
+    /// <summary>
+    /// Absolute URL (including host from <c>baseUrl</c>) for a link target. Same
+    /// polymorphism as <see cref="PageUrl"/>. Intended for Open Graph, RSS, sitemap
+    /// and JSON-LD output.
+    /// </summary>
+    /// <remarks>
+    /// When <c>baseUrl</c> is unset the root-relative form is returned instead of
+    /// throwing, consistent with the check hint that absolute URLs are skipped
+    /// without a configured base URL.
+    /// </remarks>
+    /// <example>{{ absolute_url(gallery) }} → https://example.com/events/fireworks/</example>
+    private static string AbsoluteUrl(object? target, string baseUrl)
+    {
+        var rootRelative = "/" + ResolveTargetPath(target);
+        return baseUrl.Length == 0 ? rootRelative : baseUrl + rootRelative;
+    }
+
+    /// <summary>
+    /// Asset URL for a specific image variant (size and format), resolved against
+    /// the current page's asset base path (relative directory or CDN URL).
+    /// </summary>
+    /// <example>{{ variant_url(image, 640, 'jpg') }} → ../images/events/fireworks/029081/640.jpg</example>
+    private static string VariantUrl(object? image, int size, string format, string assetsBasePath)
+    {
+        var slug = ResolveImageSlug(image);
+        return $"{assetsBasePath}{slug}/{size.ToString(CultureInfo.InvariantCulture)}.{format}";
+    }
+
+    /// <summary>
+    /// Resolves the site-relative page path (no host, no per-page base path) for a
+    /// link target. Empty string when the target has no page.
+    /// </summary>
+    private static string ResolveTargetPath(object? target) => target switch
+    {
+        null => string.Empty,
+        Image image => ImagePagePath(image.Slug),
+        Gallery gallery => NormalizeDirectory(gallery.Slug),
+        NavigationItem item => NormalizeDirectory(item.Url),
+        string slug => NormalizeDirectory(slug),
+        ScriptObject so => ResolveTargetPathFromScriptObject(so),
+        _ => string.Empty
+    };
+
+    private static string ResolveTargetPathFromScriptObject(ScriptObject so)
+    {
+        // Image projection carries width/height; distinguish it from a Gallery that
+        // also exposes a slug so image links get their dedicated /image/ prefix.
+        if (so.ContainsKey("width") && so.ContainsKey("height") && so.TryGetValue("slug", out var imageSlug))
+        {
+            return ImagePagePath(imageSlug as string ?? string.Empty);
+        }
+
+        if (so.TryGetValue("slug", out var slug))
+        {
+            return NormalizeDirectory(slug as string);
+        }
+
+        if (so.TryGetValue("url", out var url))
+        {
+            return NormalizeDirectory(url as string);
+        }
+
+        return string.Empty;
+    }
+
+    private static string ResolveImageSlug(object? image) => image switch
+    {
+        Image typed => typed.Slug.Trim('/').Replace('\\', '/'),
+        string slug => slug.Trim('/').Replace('\\', '/'),
+        ScriptObject so when so.TryGetValue("slug", out var slug) => (slug as string ?? string.Empty).Trim('/').Replace('\\', '/'),
+        _ => string.Empty
+    };
+
+    private static string ImagePagePath(string slug)
+    {
+        var normalized = slug.Trim('/').Replace('\\', '/');
+        return normalized.Length == 0 ? string.Empty : $"image/{normalized}/";
+    }
+
+    /// <summary>
+    /// Normalizes a slug/path segment to a directory-style path: forward slashes,
+    /// no leading slash, exactly one trailing slash. Empty input yields empty output.
+    /// </summary>
+    private static string NormalizeDirectory(string? path)
     {
         if (string.IsNullOrWhiteSpace(path))
         {
-            return "/";
+            return string.Empty;
         }
 
-        // Normalize path
-        path = path.Trim('/').Replace('\\', '/');
-
-        // Add index.html
-        return $"/{path}/index.html";
+        var normalized = path.Replace('\\', '/').Trim('/');
+        return normalized.Length == 0 ? string.Empty : normalized + "/";
     }
 
     /// <summary>
@@ -484,21 +590,6 @@ internal sealed partial class ScribanTemplateEngine(
 
         path = path.Trim('/').Replace('\\', '/');
         return $"/assets/{path}";
-    }
-
-    /// <summary>
-    /// Generate URL for image variant (specific size and format)
-    /// </summary>
-    /// <example>{{ image_url "photo.jpg" 1920 "webp" }} → /images/photo-1920w.webp</example>
-    private static string ImageUrl(string fileName, int width, string format)
-    {
-        if (string.IsNullOrWhiteSpace(fileName))
-        {
-            return "/images/";
-        }
-
-        var nameWithoutExtension = Path.GetFileNameWithoutExtension(fileName);
-        return $"/images/{nameWithoutExtension}-{width}w.{format}";
     }
 
     /// <summary>

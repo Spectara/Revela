@@ -14,17 +14,19 @@ Expects:
 {{~ for item in nav_items ~}}
 {{~ if item.active || item.text == gallery.title ~}}
 {{~ for child in item.children }}
+{{~ child_link = page_url(child) ~}}
             <li>
-{{~ if child.url ~}}
-                <a href="{{ basepath }}{{ child.url }}"{{ if child.current }} class="active"{{ end }}>{{ child.text }}</a>
+{{~ if child_link ~}}
+                <a href="{{ child_link }}"{{ if child.current }} class="active"{{ end }}>{{ child.text }}</a>
 {{~ else ~}}
                 <span>{{ child.text }}</span>
 {{~ end ~}}
 {{~ if child.children ~}}
                 <ul>
 {{~ for grandchild in child.children ~}}
-{{~ if grandchild.url ~}}
-                    <li><a href="{{ basepath }}{{ grandchild.url }}"{{ if grandchild.current }} class="active"{{ end }}>{{ grandchild.text }}</a></li>
+{{~ grandchild_link = page_url(grandchild) ~}}
+{{~ if grandchild_link ~}}
+                    <li><a href="{{ grandchild_link }}"{{ if grandchild.current }} class="active"{{ end }}>{{ grandchild.text }}</a></li>
 {{~ else ~}}
                     <li><span>{{ grandchild.text }}</span></li>
 {{~ end ~}}

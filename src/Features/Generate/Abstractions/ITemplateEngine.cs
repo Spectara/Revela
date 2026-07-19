@@ -10,7 +10,7 @@ namespace Spectara.Revela.Features.Generate.Abstractions;
 /// Implementations handle:
 /// - Template parsing and compilation
 /// - Variable substitution with data models
-/// - Custom functions (url_for, format_date, etc.)
+/// - Custom functions (page_url, format_date, etc.)
 /// - Partial/include support via themes
 /// </remarks>
 internal interface ITemplateEngine

@@ -7,24 +7,19 @@ namespace Spectara.Revela.Features.Generate.Models;
 /// </summary>
 /// <remarks>
 /// <para>
-/// Navigation structure is derived from properties in Scriban templates:
-/// </para>
-/// <list type="bullet">
-///   <item><description>Column: <c>!url &amp;&amp; children.size > 0</c> - Section header without link</description></item>
-///   <item><description>Branch: <c>children.size > 0</c> - Category with children (may have link)</description></item>
-///   <item><description>Leaf: <c>children.size == 0</c> - Simple link without children</description></item>
-/// </list>
-/// <para>
-/// Example Scriban template usage:
+/// Navigation structure is derived from properties in Scriban templates. Links are
+/// built with the <c>page_url(item)</c> helper, which returns an empty string for
+/// items without a page (section headers), so templates branch on its result:
 /// </para>
 /// <code>
 /// {{~ func render_item(item) ~}}
-///   {{~ if !item.url &amp;&amp; item.children.size > 0 ~}}
+///   {{~ link = page_url(item) ~}}
+///   {{~ if !link &amp;&amp; item.children.size > 0 ~}}
 ///     &lt;section&gt;{{ item.text }}...&lt;/section&gt;
 ///   {{~ else if item.children.size > 0 ~}}
 ///     &lt;div&gt;{{ item.text }}...&lt;/div&gt;
 ///   {{~ else ~}}
-///     &lt;a href="{{ item.url }}"&gt;{{ item.text }}&lt;/a&gt;
+///     &lt;a href="{{ link }}"&gt;{{ item.text }}&lt;/a&gt;
 ///   {{~ end ~}}
 /// {{~ end ~}}
 /// </code>
@@ -38,20 +33,21 @@ internal sealed class NavigationItem
     public required string Text { get; init; }
 
     /// <summary>
-    /// URL path for the navigation item (null for items without pages)
+    /// Target path segment for the navigation item (null for items without pages).
     /// </summary>
     /// <remarks>
-    /// This is a relative path string, not a System.Uri, because:
+    /// This is a context-free relative path segment (identity), not a System.Uri and
+    /// not a ready-to-use link. It is consumed by the <c>page_url</c>/<c>absolute_url</c>
+    /// template helpers, which own all base-path/base-URL knowledge:
     /// <list type="bullet">
-    ///   <item><description>Templates use string interpolation with basepath</description></item>
     ///   <item><description>Paths are relative (e.g., "gallery/2024/")</description></item>
-    ///   <item><description>Simplifies template syntax: {{ item.url }}</description></item>
+    ///   <item><description>Templates never concatenate it directly; they call <c>page_url(item)</c></description></item>
     /// </list>
     /// </remarks>
     [System.Diagnostics.CodeAnalysis.SuppressMessage(
         "Design",
         "CA1056:URI-like properties should not be strings",
-        Justification = "Template engine requires string paths for interpolation with basepath")]
+        Justification = "Identity path segment consumed by page_url/absolute_url helpers, not a URL")]
     public string? Url { get; init; }
 
     /// <summary>

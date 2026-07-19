@@ -7,7 +7,7 @@ Adds GitHub icon after pinned navigation items.
 {{~ func render_pinned(items) ~}}
 {{~ for item in items ~}}
 {{~ if item.pinned ~}}
-<a href="{{ basepath }}{{ item.url }}"{{ if item.active }} class="active"{{ end }}>{{ item.text }}</a>
+<a href="{{ page_url(item) }}"{{ if item.active }} class="active"{{ end }}>{{ item.text }}</a>
 {{~ end ~}}
 {{~ if item.children ~}}
 {{~ render_pinned item.children ~}}
