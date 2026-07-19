@@ -303,6 +303,84 @@ public sealed class SiteValidatorTests
         Assert.IsTrue(imageResult.Success, $"Images failed: {imageResult.ErrorMessage}");
     }
 
+    [TestMethod]
+    public async Task ValidateAsync_PluginValidatorError_SurfacedAndBlocksBuild()
+    {
+        // Arrange: an otherwise-clean project plus a plugin validator that reports an error.
+        using var project = TestProject.Create(p => p
+            .WithProjectJson(new
+            {
+                project = new { name = "Plugin", baseUrl = "https://example.com" },
+                theme = new { name = "Lumina" },
+            })
+            .WithSiteJson(new { title = "Plugin Site", author = "Test" })
+            .AddGallery("Landscapes", g => g.AddImage("sunset.jpg")));
+
+        var pluginError = ValidationDiagnostic.Error("Plugin precondition failed", file: "data.ics");
+        using var host = RevelaTestHost.Build(project.RootPath, services =>
+        {
+            AddServices(services);
+            services.AddSingleton<IValidator>(new FakeValidator([pluginError]));
+        });
+
+        var validator = host.Services.GetRequiredService<ISiteValidator>();
+        var step = GetCheckStep(host.Services);
+
+        // Act
+        var diagnostics = await validator.ValidateAsync();
+        var result = await step.ExecuteAsync();
+
+        // Assert — the plugin diagnostic joins the host's collect-all report and blocks Phase 0.
+        Assert.IsTrue(
+            diagnostics.Any(d => d.Severity == ValidationSeverity.Error
+                && d.Message.Contains("Plugin precondition failed", StringComparison.Ordinal)),
+            "Plugin diagnostic should appear in the collect-all report.");
+        Assert.IsFalse(result.Success, "A plugin error must block Phase 0 (exit 2 semantics).");
+    }
+
+    [TestMethod]
+    public async Task ValidateAsync_PluginValidatorWarningOnly_SurfacedButDoesNotBlock()
+    {
+        // Arrange: a plugin validator that reports only a warning and a hint.
+        using var project = TestProject.Create(p => p
+            .WithProjectJson(new
+            {
+                project = new { name = "Plugin", baseUrl = "https://example.com" },
+                theme = new { name = "Lumina" },
+            })
+            .WithSiteJson(new { title = "Plugin Site", author = "Test" })
+            .AddGallery("Landscapes", g => g.AddImage("sunset.jpg")));
+
+        var warning = ValidationDiagnostic.Warning("Plugin note");
+        var hint = ValidationDiagnostic.Hint("Plugin hint");
+        using var host = RevelaTestHost.Build(project.RootPath, services =>
+        {
+            AddServices(services);
+            services.AddSingleton<IValidator>(new FakeValidator([warning, hint]));
+        });
+
+        var validator = host.Services.GetRequiredService<ISiteValidator>();
+        var step = GetCheckStep(host.Services);
+
+        // Act
+        var diagnostics = await validator.ValidateAsync();
+        var result = await step.ExecuteAsync();
+
+        // Assert — the note is surfaced, but nothing blocks the build (exit 0 semantics).
+        Assert.IsTrue(
+            diagnostics.Any(d => d.Severity == ValidationSeverity.Warning
+                && d.Message.Contains("Plugin note", StringComparison.Ordinal)),
+            "Plugin warning should appear in the collect-all report.");
+        Assert.IsEmpty(diagnostics.Where(d => d.Severity == ValidationSeverity.Error));
+        Assert.IsTrue(result.Success);
+    }
+
+    private sealed class FakeValidator(IReadOnlyList<ValidationDiagnostic> diagnostics) : IValidator
+    {
+        public ValueTask<IReadOnlyList<ValidationDiagnostic>> ValidateAsync(CancellationToken cancellationToken = default) =>
+            ValueTask.FromResult(diagnostics);
+    }
+
     private sealed class NonInteractiveConsole : IConsoleCapabilities
     {
         public bool IsInteractive => false;
