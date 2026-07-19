@@ -29,6 +29,7 @@ internal sealed partial class ValidationService(
     IOptionsMonitor<ThemeConfig> themeConfig,
     IOptionsMonitor<ProjectConfig> projectConfig,
     IOptionsMonitor<SiteCoreConfig> siteConfig,
+    IEnumerable<IValidator> pluginValidators,
     ILogger<ValidationService> logger) : ISiteValidator
 {
     private const string ContentImagePartialKey = "partials/contentimage.revela";
@@ -52,6 +53,12 @@ internal sealed partial class ValidationService(
         }
 
         AddBaseUrlHint(diagnostics);
+
+        foreach (var pluginValidator in pluginValidators)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            diagnostics.AddRange(await pluginValidator.ValidateAsync(cancellationToken));
+        }
 
         LogValidationCompleted(logger, diagnostics.Count);
         return diagnostics;
