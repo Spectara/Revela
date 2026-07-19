@@ -138,9 +138,10 @@ For pages with sidebar navigation, create `themes/Lumina/Body/docs.revela`. The 
 {{~ for item in nav_items ~}}
 {{~ if item.active ~}}
 {{~ for child in item.children }}
+{{~ child_link = page_url(child) }}
             <li>
-{{~ if child.url ~}}
-                <a href="{{ basepath }}{{ child.url }}">{{ child.text }}</a>
+{{~ if child_link ~}}
+                <a href="{{ child_link }}">{{ child.text }}</a>
 {{~ else ~}}
                 <span>{{ child.text }}</span>
 {{~ end ~}}
@@ -171,7 +172,7 @@ Create `themes/Lumina/Partials/HeaderNavigation.revela`:
 {{~ func render_pinned(items) ~}}
 {{~ for item in items ~}}
 {{~ if item.pinned ~}}
-<a href="{{ basepath }}{{ item.url }}">{{ item.text }}</a>
+<a href="{{ page_url(item) }}">{{ item.text }}</a>
 {{~ end ~}}
 {{~ if item.children ~}}
 {{~ render_pinned item.children ~}}

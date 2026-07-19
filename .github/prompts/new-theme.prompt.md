@@ -43,11 +43,11 @@ Use the **Revela Dev** agent for implementation. Follow [`.github/instructions/t
 ## Template Context Reference
 
 Available in every template (see [`themes.instructions.md`](../instructions/themes.instructions.md)):
-- `site`, `basepath`, `image_basepath`, `image_formats`, `nav_items`
+- `site`, `basepath`, `assets_basepath`, `base_url`, `image_formats`, `nav_items`
 - `gallery` (with `title`, `body`, `cover_image`, `template`)
 - `images` array with per-image `sizes` and `placeholder`
 
-Built-in functions: `find_image`, `url_for`, `asset_url`, `image_url`, `format_date`, `format_filesize`, `markdown`.
+Built-in functions: `find_image`, `page_url`, `absolute_url`, `asset_url`, `variant_url`, `format_date`, `format_filesize`, `markdown`.
 
 ## Validation Gate
 - `dotnet build` — must succeed

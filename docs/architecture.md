@@ -536,7 +536,7 @@ themes/my-theme/
 ```html
 {{ site.title }}
 {{ for image in images }}
-  <img src="{{ image.url }}" alt="{{ image.title }}">
+  <img src="{{ variant_url(image, 640, 'jpg') }}" alt="{{ image.title }}">
 {{ end }}
 ```
 
@@ -638,7 +638,8 @@ Templates receive the following context variables from `RenderService`:
 |----------|------|-------------|
 | `site` | `SiteSettings` | Site metadata (title, author, description, copyright) |
 | `basepath` | `string` | Relative path to site root (e.g., `""`, `"../"`, `"/photos/"`) |
-| `image_basepath` | `string` | Path/URL to image folder (can be absolute CDN URL) |
+| `assets_basepath` | `string` | Path/URL to image (asset) folder (can be absolute CDN URL) |
+| `base_url` | `string?` | Absolute site host from `project.baseUrl` (null when unset); used by `absolute_url` |
 | `image_formats` | `string[]` | Global list of image formats `["avif", "webp", "jpg"]` |
 | `nav_items` | `NavigationItem[]` | Navigation tree with active state |
 
@@ -657,7 +658,7 @@ Used in templates as `image.{property}`:
 | Property | Type | Description |
 |----------|------|-------------|
 | `id` | `string` | HTML anchor ID (filename without extension) |
-| `url` | `string` | Path segment for variants (e.g., `"photo1"`) |
+| `slug` | `string` | Path segment identifying the variants (e.g., `"photo1"`); build URLs with `variant_url` |
 | `width` | `int` | Original width in pixels |
 | `height` | `int` | Original height in pixels |
 | `sizes` | `int[]` | Available widths for srcset (per-image, filtered by actual width) |
@@ -673,11 +674,29 @@ Used in templates as `image.{property}`:
   {{~ for format in image_formats ~}}
   <source
     type="image/{{ format }}"
-    srcset="{{~ for size in image.sizes ~}}{{ image_basepath }}{{ image.url }}/{{ size }}.{{ format }} {{ size }}w{{~ if !for.last ~}}, {{~ end ~}}{{~ end ~}}">
+    srcset="{{~ for size in image.sizes ~}}{{ variant_url(image, size, format) }} {{ size }}w{{~ if !for.last ~}}, {{~ end ~}}{{~ end ~}}">
   {{~ end ~}}
-  <img src="{{ image_basepath }}{{ image.url }}/{{ image.sizes[0] }}.jpg">
+  <img src="{{ variant_url(image, image.sizes[0], 'jpg') }}">
 </picture>
 ```
+
+### Template Authoring Cheat Sheet
+
+**Rule of thumb (#74):** *Properties = identity* (context-free, serialisable — e.g. `image.slug`,
+`gallery.slug`). *Helpers = rendering/linking* — they own all `basepath` / `base_url` /
+asset-prefix knowledge. **Never concatenate paths in templates; always go through a helper.**
+
+| Helper | Purpose | Example |
+|--------|---------|---------|
+| `page_url(target)` | Site-relative page URL. Polymorphic: `Image`, `Gallery`, `NavigationItem`, or slug string. Returns `null` for a pageless nav item (branch on it). | `{{ page_url(gallery) }}` → `/events/fireworks/` |
+| `absolute_url(target)` | Absolute URL (host from `baseUrl`) for OG/RSS/sitemap/JSON-LD. Falls back to a root-relative path when `baseUrl` is unset. | `{{ absolute_url(gallery) }}` |
+| `variant_url(image, size, format)` | Asset URL for one image variant (size + format). | `{{ variant_url(image, 640, 'jpg') }}` |
+| `asset_url(path)` | URL for a static asset (CSS/JS). | `{{ asset_url('css/site.css') }}` |
+| `find_image(path)` | Resolve an `Image` by source path (gallery-local → `_images/` → exact). | `{{ find_image('cover.jpg') }}` |
+| `format_date` / `format_filesize` / `format_exif_*` | Value formatting. | `{{ format_date(image.date_taken, 'yyyy-MM-dd') }}` |
+| `markdown(text)` | Render Markdown to HTML. | `{{ markdown(gallery.body) }}` |
+
+`basepath` remains available for raw links such as `{{ basepath }}_assets/…` and `{{ basepath }}_static/…`.
 
 ---
 

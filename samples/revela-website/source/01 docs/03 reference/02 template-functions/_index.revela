@@ -9,11 +9,11 @@ Revela themes are [Scriban](https://github.com/scriban/scriban) templates (`.rev
 
 ### 🖼️ Images
 
-`find_image`, `image_url`: resolve images and build variant URLs.
+`find_image`, `variant_url`: resolve images and build variant URLs.
 
 ### 🔗 URLs
 
-`url_for`, `asset_url`: generate page and asset links.
+`page_url`, `absolute_url`, `asset_url`: generate page, absolute, and asset links.
 
 ### 📅 Formatting
 
@@ -36,7 +36,7 @@ Resolve an image from the project by path. Uses the same 3-step lookup as Markdo
 ```scriban
 {{~ logo = find_image "logo.jpg" ~}}
 {{~ if logo ~}}
-<img src="{{ image_basepath }}{{ logo.url }}/640.jpg"
+<img src="{{ variant_url(logo, 640, 'jpg') }}"
      width="{{ logo.width }}" height="{{ logo.height }}">
 {{~ end ~}}
 ```
@@ -51,37 +51,48 @@ Resolve an image from the project by path. Uses the same 3-step lookup as Markdo
 2. Shared images: `_images/{path}`
 3. Exact match: `{path}` as-is
 
-The `Image` object exposes `url`, `width`, `height`, `sizes`, `file_size`, `date_taken`, `exif`, `title`, `description`, `tags`, and `placeholder`.
+The `Image` object exposes `slug`, `width`, `height`, `sizes`, `file_size`, `date_taken`, `exif`, `title`, `description`, `tags`, and `placeholder`.
 
-### `image_url`
+### `variant_url`
 
-Build a URL for a specific image variant (size + format).
+Build a URL for a specific image variant (size + format), resolved against the current page's asset base path.
 
 ```scriban
-{{ image_url "photo.jpg" 1920 "webp" }}
+{{ variant_url(image, 1920, "webp") }}
 ```
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
-| `fileName` | string | Image filename |
-| `width` | int | Target width |
+| `image` | Image | Image object (e.g. from `images` or `find_image`) |
+| `size` | int | Target width |
 | `format` | string | `"avif"`, `"webp"`, or `"jpg"` |
 
-**Returns** `/images/{name}-{width}w.{format}`, e.g. `/images/photo-1920w.webp`.
+**Returns** `{assets_basepath}{image.slug}/{size}.{format}`, e.g. `../images/events/fireworks/029081/1920.webp`.
 
 ---
 
 ## URL Functions
 
-### `url_for`
+### `page_url`
 
-Generate a URL for a page or gallery.
+Generate a URL for a page. Polymorphic — accepts an `Image`, `Gallery`, `NavigationItem`, or a slug string. Returns `null` for a navigation item that has no page (a section header), so templates can branch on it.
 
 ```scriban
-{{ url_for "gallery/vacation" }}
+{{ page_url(gallery) }}
+{{ page_url("gallery/vacation") }}
 ```
 
-**Returns** `/{path}/index.html`, e.g. `/gallery/vacation/index.html`.
+**Returns** a site-relative URL, e.g. `/gallery/vacation/` (relative to the current page's base path).
+
+### `absolute_url`
+
+Generate an absolute URL (including host from `project.baseUrl`) for Open Graph, RSS, sitemap, or JSON-LD. Same polymorphism as `page_url`. When `baseUrl` is unset it returns the root-relative form instead of failing.
+
+```scriban
+{{ absolute_url(gallery) }}
+```
+
+**Returns** e.g. `https://example.com/gallery/vacation/` (or `/gallery/vacation/` without `baseUrl`).
 
 ### `asset_url`
 
@@ -164,7 +175,8 @@ These values (not functions) are available in templates:
 | `images` | Image[] | Images for the current gallery |
 | `nav_items` | NavItem[] | Navigation tree with active state |
 | `basepath` | string | Relative path to the site root |
-| `image_basepath` | string | Path/URL to image variants |
+| `assets_basepath` | string | Path/URL to image variants |
+| `base_url` | string? | Absolute site host from `project.baseUrl` (null when unset) |
 | `image_formats` | string[] | Active formats (`["avif", "webp", "jpg"]`) |
 | `page_content` | string | Rendered Markdown body (gallery pages) |
 | `stylesheets` | string[] | Theme CSS filenames |

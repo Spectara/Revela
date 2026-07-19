@@ -157,10 +157,10 @@ cd samples/showcase ; dotnet run --project ../../src/Cli -- generate all
 Always **Typed Client pattern** — `services.AddHttpClient<MyService>()` then inject `HttpClient` directly. Never `new HttpClient()`, never `IHttpClientFactory` inside a typed client.
 
 ### Template context (Scriban)
-- **Global** — `image_formats`, `site`, `basepath`, `image_basepath`, `nav_items`
+- **Global** — `image_formats`, `site`, `basepath`, `assets_basepath`, `base_url`, `nav_items`
 - **Per page** — `gallery`, `page_content`, `images`
 - **Per image** — `sizes`, `placeholder`
-- **Functions** — `find_image`, `url_for`, `asset_url`, `image_url`, `format_date`, `format_filesize`, `markdown`
+- **Functions** — `find_image`, `page_url`, `absolute_url`, `asset_url`, `variant_url`, `format_date`, `format_filesize`, `markdown`
 
 ---
 

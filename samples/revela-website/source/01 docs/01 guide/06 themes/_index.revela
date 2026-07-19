@@ -166,10 +166,10 @@ Variables available inside it:
 
 | Variable | Type | Description |
 |----------|------|-------------|
-| `image` | Image | Image object (`url`, `width`, `height`, `sizes`, `placeholder`, `exif`) |
+| `image` | Image | Image object (`slug`, `width`, `height`, `sizes`, `placeholder`, `exif`) |
 | `alt` | string | Alt text from Markdown |
 | `classes` | string[] | CSS classes from `{.class}` syntax |
-| `image_basepath` | string | Base path to image variants |
+| `assets_basepath` | string | Base path to image variants |
 | `image_formats` | string[] | Active formats, e.g. `["avif", "webp", "jpg"]` |
 
 Minimal implementation:
@@ -180,10 +180,10 @@ Minimal implementation:
 {{~ for format in image_formats ~}}
   <source type="image/{{ format }}" srcset="
     {{~ for size in image.sizes ~}}
-    {{ image_basepath }}{{ image.url }}/{{ size }}.{{ format }} {{ size }}w{{ if !for.last }},{{ end }}
+    {{ variant_url(image, size, format) }} {{ size }}w{{ if !for.last }},{{ end }}
     {{~ end ~}}">
 {{~ end ~}}
-  <img src="{{ image_basepath }}{{ image.url }}/{{ image.sizes | array.last }}.jpg"
+  <img src="{{ variant_url(image, image.sizes | array.last, 'jpg') }}"
        alt="{{ alt }}" loading="lazy" decoding="async">
 </picture>
 ```
@@ -196,7 +196,7 @@ Templates are Scriban `.revela` files. The main ones:
 - `Body/Gallery.revela`: gallery page content
 - `Body/Page.revela`: text or landing page content
 
-Every template receives a model with `site`, `gallery`, `images`, `nav_items`, `basepath`, `image_basepath`, and `image_formats`, plus helper functions such as `url_for`, `asset_url`, `image_url`, `format_date`, and `markdown`. Never hardcode paths; use `asset_url` / `url_for` / `image_url` so the site works at any base path.
+Every template receives a model with `site`, `gallery`, `images`, `nav_items`, `basepath`, `assets_basepath`, `base_url`, and `image_formats`, plus helper functions such as `page_url`, `asset_url`, `variant_url`, `format_date`, and `markdown`. Never hardcode paths; use `asset_url` / `page_url` / `variant_url` so the site works at any base path.
 
 ## Image Sizes: `Configuration/images.json`
 

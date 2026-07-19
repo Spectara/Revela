@@ -74,7 +74,7 @@ It depends on your images and quality settings. A portfolio with 50 photos at de
 
 ### Can I use a CDN for images?
 
-Yes. Configure `image_basepath` in `site.json` to point to your CDN URL. Revela will generate HTML that references images from the CDN instead of relative paths.
+Yes. Configure `assetsBasePath` in `project.json` to point to your CDN URL. Revela will generate HTML that references images from the CDN instead of relative paths.
 
 ---
 

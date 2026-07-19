@@ -166,7 +166,7 @@ For large portfolios, consider hosting images separately on a CDN:
 // project.json
 {
   "project": {
-    "imageBasePath": "https://cdn.example.com/images/"
+    "assetsBasePath": "https://cdn.example.com/images/"
   }
 }
 ```

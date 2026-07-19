@@ -39,7 +39,7 @@ public sealed class LuminaTheme : EmbeddedTheme  // base class for NuGet themes
 |----------|---------|
 | `site` | Site settings from `site.json` (title, author, description, copyright, baseUrl) |
 | `basepath` | Relative path to root (`""`, `"../"`, `"../../"`) |
-| `image_basepath` | Path/URL to images (CDN-aware) |
+| `assets_basepath` | Path/URL to image assets (CDN-aware) |
 | `image_formats` | Global formats: `["avif", "webp", "jpg"]` (same for all images) |
 | `nav_items` | Navigation tree with active state |
 | `gallery` | Current gallery: `title`, `body`, `cover_image`, `template` |
@@ -51,9 +51,10 @@ public sealed class LuminaTheme : EmbeddedTheme  // base class for NuGet themes
 | Function | Returns |
 |----------|---------|
 | `find_image "path"` | Resolve any image — returns `Image` or null |
-| `url_for "path"` | Generate page URL |
+| `page_url(target)` | Page URL for an `Image`/`Gallery`/`NavigationItem`/slug (null for pageless nav) |
+| `absolute_url(target)` | Absolute URL (host from `baseUrl`) for OG/RSS/sitemap; root-relative fallback |
 | `asset_url "path"` | Generate asset URL |
-| `image_url "file" width "format"` | Generate image variant URL |
+| `variant_url(image, size, format)` | Generate image variant URL |
 | `format_date date "format"` | Format date |
 | `format_filesize bytes` | Human-readable size |
 | `format_exif_exposure value` | "1/250s" |
@@ -63,7 +64,7 @@ public sealed class LuminaTheme : EmbeddedTheme  // base class for NuGet themes
 ## ContentImage.revela (mandatory)
 Every theme must implement this partial — it's invoked for every `![alt](path)` in Markdown:
 ```scriban
-{{- # variables: image, alt, classes, image_basepath, image_formats -}}
+{{- # variables: image, alt, classes, assets_basepath, image_formats -}}
 <picture class="{{ classes }}">
   {{ for fmt in image_formats }}
     <source type="image/{{ fmt }}" srcset="..." />
@@ -94,4 +95,4 @@ Generated automatically by `generate pages` when `site.baseUrl` is set. Themes d
 Themes are usually tested via E2E generation tests (`tests/Integration`). Key checks:
 - Required partials present (`ContentImage.revela`).
 - Manifest valid (deserializes, version present).
-- No hardcoded paths in templates (use `url_for`, `asset_url`, `image_url`).
+- No hardcoded paths in templates (use `page_url`, `asset_url`, `variant_url`).
