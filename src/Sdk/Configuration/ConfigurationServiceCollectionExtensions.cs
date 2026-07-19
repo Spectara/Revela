@@ -78,6 +78,10 @@ public static class ConfigurationServiceCollectionExtensions
         // still present in the project.json "project" section instead of ignoring it.
         services.AddSingleton<IValidateOptions<ProjectConfig>, ProjectConfigLanguageValidator>();
 
+        // Breaking change (#76): basePath is a subdirectory prefix, not a host. Reject
+        // absolute-URL basePath values with a hint pointing at baseUrl for the host.
+        services.AddSingleton<IValidateOptions<ProjectConfig>, ProjectConfigBasePathValidator>();
+
         // Path resolver service (resolves relative paths against project root)
         // Uses IOptionsMonitor for hot-reload support during interactive sessions
         services.AddSingleton<IPathResolver, PathResolver>();
