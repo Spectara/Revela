@@ -38,6 +38,10 @@ public sealed class CalendarPlugin : IPlugin
 
         // Register page template for 'revela create page calendar'
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IPageTemplate, CalendarPageTemplate>());
+
+        // Contribute a generate-precondition check to 'revela check' / generate Phase 0:
+        // referenced local calendar files must be present and parseable.
+        services.TryAddEnumerable(ServiceDescriptor.Transient<IValidator, CalendarDataValidator>());
     }
 
     /// <inheritdoc />
