@@ -91,6 +91,46 @@ public sealed class ConfigErrorExitCodeTests
         Assert.DoesNotContain("Configuration problem", output, StringComparison.Ordinal);
     }
 
+    [TestMethod]
+    public async Task RunRevelaAsync_ProjectJsonWithAbsoluteUrlBasePath_ExitsWithCode2AndPointsToBaseUrl()
+    {
+        // Arrange: basePath is a subdirectory prefix, not a host (#76). An absolute
+        // URL must fail with a friendly hint pointing at baseUrl.
+        using var project = TestProject.Create(p => p
+            .WithProjectJson(new
+            {
+                project = new { name = "My Portfolio", basePath = "https://cdn.example.com" }
+            }));
+
+        // Act
+        var (exitCode, output) = await RunCliAsync(project.RootPath, ["generate", "scan"]);
+
+        // Assert
+        Assert.AreEqual(2, exitCode);
+        Assert.Contains("Configuration problem", output, StringComparison.Ordinal);
+        Assert.Contains("baseUrl", output, StringComparison.Ordinal);
+        Assert.DoesNotContain("OptionsValidationException", output, StringComparison.Ordinal);
+        Assert.DoesNotContain("   at ", output, StringComparison.Ordinal);
+    }
+
+    [TestMethod]
+    public async Task RunRevelaAsync_ProjectJsonWithSubdirectoryBasePath_DoesNotReportConfigProblem()
+    {
+        // Arrange: a valid subdirectory basePath (#76) must pass validation.
+        using var project = TestProject.Create(p => p
+            .WithProjectJson(new
+            {
+                project = new { name = "My Portfolio", basePath = "/photos/" }
+            }));
+
+        // Act
+        var (exitCode, output) = await RunCliAsync(project.RootPath, ["generate", "scan"]);
+
+        // Assert
+        Assert.AreNotEqual(2, exitCode);
+        Assert.DoesNotContain("Configuration problem", output, StringComparison.Ordinal);
+    }
+
     private static async Task<(int ExitCode, string Output)> RunCliAsync(string projectPath, string[] args)
     {
         var originalConsole = AnsiConsole.Console;
