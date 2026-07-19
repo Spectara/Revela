@@ -265,7 +265,7 @@ internal sealed partial class RenderService(
                 Name = !string.IsNullOrEmpty(project.Name) ? project.Name : "Revela Site",
                 BaseUrl = project.BaseUrl?.ToString().TrimEnd('/'),
                 Language = !string.IsNullOrEmpty(site.Language) ? site.Language : "en",
-                ImageBasePath = project.ImageBasePath,
+                AssetsBasePath = project.AssetsBasePath,
                 BasePath = NormalizeBasePath(project.BasePath)
             },
             Site = await LoadSiteJsonAsync(cancellationToken),
@@ -497,7 +497,7 @@ internal sealed partial class RenderService(
 
         var indexNavigation = SetActiveState(model.Navigation, string.Empty);
         var indexBasePath = CalculateSiteBasePath(config, "");
-        var indexImageBasePath = CalculateImageBasePath(config, "");
+        var indexAssetsBasePath = CalculateAssetsBasePath(config, "");
         var revelaInfo = buildInfo.ToScriptObject();
         var formats = ImageSettings.GetActiveFormats();
 
@@ -525,13 +525,13 @@ internal sealed partial class RenderService(
         // Load root gallery metadata (body content, etc.)
         if (rootGallery is not null)
         {
-            var rootImageBasePath = CalculateImageBasePath(config, "");
+            var rootAssetsBasePath = CalculateAssetsBasePath(config, "");
             var rootImageContext = new ContentImageContext(
                 allImagesBySourcePath,
                 rootGallery.Path,
-                rootImageBasePath,
+                rootAssetsBasePath,
                 formats.Keys,
-                CreateContentImageRenderer(engine, contentImageTemplate, rootImageBasePath, formats.Keys));
+                CreateContentImageRenderer(engine, contentImageTemplate, rootAssetsBasePath, formats.Keys));
             var (_, _, _) = await LoadGalleryMetadataAsync(rootGallery, rootImageContext, cancellationToken);
         }
 
@@ -550,7 +550,7 @@ internal sealed partial class RenderService(
                 ["images"] = indexImages.ToScriptArray(),
                 ["nav_items"] = indexNavigation.ToScriptArray(),
                 ["basepath"] = indexBasePath,
-                ["image_basepath"] = indexImageBasePath,
+                ["assets_basepath"] = indexAssetsBasePath,
                 ["image_formats"] = formats.Keys,
                 ["revela"] = revelaInfo,
                 ["stylesheets"] = stylesheets,
@@ -575,9 +575,9 @@ internal sealed partial class RenderService(
             var galleryImageContext = new ContentImageContext(
                 allImagesBySourcePath,
                 gallery.Path,
-                CalculateImageBasePath(config, UrlBuilder.CalculateBasePath(gallery.Slug)),
+                CalculateAssetsBasePath(config, UrlBuilder.CalculateBasePath(gallery.Slug)),
                 formats.Keys,
-                CreateContentImageRenderer(renderEngine, contentImageTemplate, CalculateImageBasePath(config, UrlBuilder.CalculateBasePath(gallery.Slug)), formats.Keys));
+                CreateContentImageRenderer(renderEngine, contentImageTemplate, CalculateAssetsBasePath(config, UrlBuilder.CalculateBasePath(gallery.Slug)), formats.Keys));
             var (customTemplate, dataSources, metadataBasePath) = await LoadGalleryMetadataAsync(gallery, galleryImageContext, ct);
 
             var galleryImages = gallery.Images.ToList();
@@ -585,7 +585,7 @@ internal sealed partial class RenderService(
             var relativeBasePath = UrlBuilder.CalculateBasePath(gallery.Slug);
             var basepath = CalculateSiteBasePath(config, relativeBasePath);
             var galleryNavigation = SetActiveState(model.Navigation, gallery.Slug);
-            var galleryImageBasePath = CalculateImageBasePath(config, relativeBasePath);
+            var galleryAssetsBasePath = CalculateAssetsBasePath(config, relativeBasePath);
 
             var effectiveDataSources = dataSources;
             if (dataSources.Count == 0 && customTemplate is not null)
@@ -616,7 +616,7 @@ internal sealed partial class RenderService(
                 ["images"] = galleryImages.ToScriptArray(),
                 ["nav_items"] = galleryNavigation.ToScriptArray(),
                 ["basepath"] = basepath,
-                ["image_basepath"] = galleryImageBasePath,
+                ["assets_basepath"] = galleryAssetsBasePath,
                 ["image_formats"] = formats.Keys,
                 ["revela"] = revelaInfo,
                 ["stylesheets"] = stylesheets,
@@ -714,11 +714,11 @@ internal sealed partial class RenderService(
         return config.Project.BasePath;
     }
 
-    private static string CalculateImageBasePath(RenderContext config, string basepath)
+    private static string CalculateAssetsBasePath(RenderContext config, string basepath)
     {
-        if (!string.IsNullOrEmpty(config.Project.ImageBasePath))
+        if (!string.IsNullOrEmpty(config.Project.AssetsBasePath))
         {
-            return config.Project.ImageBasePath;
+            return config.Project.AssetsBasePath;
         }
         return $"{basepath}images/";
     }
@@ -859,14 +859,14 @@ internal sealed partial class RenderService(
     private static Func<Image, string, List<string>?, string> CreateContentImageRenderer(
         ITemplateEngine engine,
         string template,
-        string imageBasePath,
+        string assetsBasePath,
         IEnumerable<string> imageFormats) =>
         (image, alt, classes) => engine.Render(template, new Dictionary<string, object?>
         {
             ["image"] = image.ToScriptObject(),
             ["alt"] = alt,
             ["classes"] = classes ?? [],
-            ["image_basepath"] = imageBasePath,
+            ["assets_basepath"] = assetsBasePath,
             ["image_formats"] = imageFormats
         });
 

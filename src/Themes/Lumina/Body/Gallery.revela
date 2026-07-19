@@ -8,7 +8,7 @@ Expects:
 - gallery: { title, body? }
 - images: Array of ImageData
 - image_formats: Array of format strings ["avif", "webp", "jpg"]
-- image_basepath: Path/URL to image resources
+- assets_basepath: Path/URL to image resources
 - basepath: Relative path to root (for navigation)
 ##~}}
 {{~ # Gallery Introduction (rendered from _index.revela body using Markdig) ~}}

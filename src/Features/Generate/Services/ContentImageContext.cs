@@ -27,7 +27,7 @@ namespace Spectara.Revela.Features.Generate.Services;
 /// Relative filesystem path of the current gallery (e.g., "docs/getting-started").
 /// Empty string for root.
 /// </param>
-/// <param name="ImageBasePath">
+/// <param name="AssetsBasePath">
 /// Base URL path to the images directory (e.g., "../images/" or CDN URL).
 /// </param>
 /// <param name="ImageFormats">
@@ -40,7 +40,7 @@ namespace Spectara.Revela.Features.Generate.Services;
 internal sealed record ContentImageContext(
     IReadOnlyDictionary<string, Image> ImagesBySourcePath,
     string GalleryPath,
-    string ImageBasePath,
+    string AssetsBasePath,
     IEnumerable<string> ImageFormats,
     Func<Image, string, List<string>?, string> RenderContentImage);
 

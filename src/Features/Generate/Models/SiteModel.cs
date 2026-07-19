@@ -18,7 +18,7 @@ internal sealed class SiteModel
     public JsonElement? Site { get; init; }
 
     /// <summary>
-    /// Project settings (name, baseUrl, basePath, imageBasePath)
+    /// Project settings (name, baseUrl, basePath, assetsBasePath)
     /// </summary>
     public required RenderProjectSettings Project { get; init; }
 

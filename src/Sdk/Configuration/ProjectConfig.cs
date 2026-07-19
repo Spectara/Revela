@@ -1,5 +1,3 @@
-using System.Diagnostics.CodeAnalysis;
-
 using Spectara.Revela.Sdk.Abstractions;
 
 namespace Spectara.Revela.Sdk.Configuration;
@@ -49,7 +47,7 @@ public sealed class ProjectConfig
     public Uri? BaseUrl { get; set; }
 
     /// <summary>
-    /// Base path/URL for image references in generated HTML.
+    /// Base path/URL for asset (image variant) references in generated HTML.
     /// Use absolute URL for CDN (e.g., "https://cdn.example.com/images/").
     /// When null, uses relative paths (e.g., "images/" or "../images/").
     /// </summary>
@@ -62,8 +60,7 @@ public sealed class ProjectConfig
     /// a relative directory name or an absolute CDN URL — a heterogeneous mix that
     /// <see cref="Uri"/> would awkwardly conflate.
     /// </remarks>
-    [SuppressMessage("Design", "CA1056:URI-like properties should not be strings", Justification = "Can be relative path OR absolute CDN URL")]
-    public string? ImageBasePath { get; set; }
+    public string? AssetsBasePath { get; set; }
 
     /// <summary>
     /// Base path for subdirectory hosting (e.g., "/photos/" for hosting at example.com/photos/).

@@ -9,7 +9,7 @@ Expects:
 - nav_items: Array of NavigationItem for navigation
 - images: Array of ImageData for gallery (optional)
 - basepath: Relative path to root
-- image_basepath: Path/URL to image resources (can be absolute CDN URL)
+- assets_basepath: Path/URL to image resources (can be absolute CDN URL)
 - image_formats: Array of format strings ["avif", "webp", "jpg"]
 - stylesheets: Array of CSS paths relative to _assets/
 - scripts: Array of JS paths relative to _assets/

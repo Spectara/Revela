@@ -397,8 +397,8 @@ public sealed class ContentImageTests
     private static ContentImageContext CreateContext(
         Dictionary<string, Image> images,
         string galleryPath,
-        string imageBasePath) =>
-        new(images, galleryPath, imageBasePath, Formats, TestRenderContentImage);
+        string assetsBasePath) =>
+        new(images, galleryPath, assetsBasePath, Formats, TestRenderContentImage);
 
     #endregion
 }
