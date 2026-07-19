@@ -1,7 +1,7 @@
-namespace Spectara.Revela.Features.Generate.Abstractions;
+namespace Spectara.Revela.Sdk.Abstractions;
 
 /// <summary>
-/// Severity of a <see cref="ValidationDiagnostic"/> produced by <see cref="ISiteValidator"/>.
+/// Severity of a <see cref="ValidationDiagnostic"/> produced by a validator.
 /// </summary>
 /// <remarks>
 /// Only <see cref="Error"/> blocks a build (exit code 2). <see cref="Warning"/> and
