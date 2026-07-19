@@ -7,7 +7,7 @@ Renders a gallery article with responsive images:
 - Lightbox (on focus/click)
 
 Context variables:
-- image: ImageData { id, url, width, height, title?, exif?, sizes, placeholder? }
+- image: ImageData { id, slug, width, height, title?, exif?, sizes, placeholder? }
 - image_basepath: path/URL to image folder (can be CDN URL)
 - image_formats: available formats ["avif", "webp", "jpg"]
 
@@ -30,10 +30,10 @@ rendered size instead of viewport. Firefox/Safari fallback to 100vw.
         <source type="image/{{ format }}" sizes="auto" srcset="
             {{~ for size in image.sizes ~}}
             {{~ actual_width = is_landscape ? size : ((size * image.width / image.height) | math.floor) ~}}
-            {{- image_basepath }}{{ image.url }}/{{ size }}.{{ format }} {{ actual_width }}w{{ !for.last ? " , " : "" }}
+            {{- image_basepath }}{{ image.slug }}/{{ size }}.{{ format }} {{ actual_width }}w{{ !for.last ? " , " : "" }}
             {{~ end ~}}">
         {{~ end ~}}
-        <img alt="{{ alt_text }}" src="{{ image_basepath }}{{ image.url }}/640.{{ image_formats | array.last }}" sizes="auto"
+        <img alt="{{ alt_text }}" src="{{ image_basepath }}{{ image.slug }}/640.{{ image_formats | array.last }}" sizes="auto"
             width="{{ image.width }}" height="{{ image.height }}" loading="lazy" decoding="async">
     </picture>
 
@@ -60,9 +60,9 @@ rendered size instead of viewport. Firefox/Safari fallback to 100vw.
         <picture>
             {{~ for format in image_formats ~}}
             <source type="image/{{ format }}"
-                srcset="{{ image_basepath }}{{ image.url }}/{{ largest_size }}.{{ format }}">
+                srcset="{{ image_basepath }}{{ image.slug }}/{{ largest_size }}.{{ format }}">
             {{~ end ~}}
-            <img alt="{{ alt_text }}" src="{{ image_basepath }}{{ image.url }}/{{ largest_size }}.{{ image_formats | array.last }}"
+            <img alt="{{ alt_text }}" src="{{ image_basepath }}{{ image.slug }}/{{ largest_size }}.{{ image_formats | array.last }}"
                 width="{{ image.width }}" height="{{ image.height }}" loading="lazy" decoding="async">
         </picture>
     </figure>

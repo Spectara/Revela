@@ -11,7 +11,8 @@ namespace Spectara.Revela.Features.Generate.Models;
 /// <remarks>
 /// Properties are named to match template expectations (Lumina theme):
 /// - id: Unique identifier for HTML anchors (filename without extension)
-/// - url: Relative path to image variants (e.g., "events/fireworks/029081" -> images/events/fireworks/029081/640.jpg)
+/// - slug: Relative path segment identifying the image variants (e.g., "events/fireworks/029081").
+///   URLs are built from it via the <c>variant_url</c> template helper, never by concatenation.
 /// </remarks>
 [RevelaTemplateModel]
 internal sealed class Image
@@ -27,15 +28,17 @@ internal sealed class Image
     public required string FileName { get; init; }
 
     /// <summary>
-    /// Slugified path including gallery context for unique image output.
+    /// Slugified path segment including gallery context for unique image output.
     /// </summary>
     /// <remarks>
     /// Derived from <see cref="SourcePath"/> via <see cref="UrlBuilder.ToImageSlug"/>.
     /// Includes gallery directory segments to prevent filename collisions
     /// across galleries (e.g., "events/fireworks/029081").
     /// For shared <c>_images/</c>, the prefix is stripped (e.g., "canon-landscape-001").
+    /// This is identity only — a context-free path segment, never a full URL.
+    /// URLs to the variants are built via the <c>variant_url</c> template helper.
     /// </remarks>
-    public required string ImageSlug { get; init; }
+    public required string Slug { get; init; }
 
     /// <summary>
     /// Unique identifier for HTML anchors and lightbox targets
@@ -45,17 +48,6 @@ internal sealed class Image
     /// Used in templates as: id="{{ image.id }}"
     /// </remarks>
     public string Id => FileName;
-
-    /// <summary>
-    /// Relative path segment for image variants
-    /// </summary>
-    /// <remarks>
-    /// Used in templates to construct paths like: {{ image_basepath }}{{ image.url }}/640.jpg
-    /// Includes gallery path to prevent collisions (e.g., "events/fireworks/029081").
-    /// This is NOT a full URI — it's a path segment.
-    /// Typed as <see cref="RelativePath"/> to distinguish from real URLs (avoids CA1056).
-    /// </remarks>
-    public RelativePath Url => ImageSlug;
 
     public required int Width { get; init; }
     public required int Height { get; init; }
@@ -100,7 +92,7 @@ internal sealed class Image
         {
             SourcePath = sourcePath,
             FileName = Path.GetFileNameWithoutExtension(entry.Filename),
-            ImageSlug = UrlBuilder.ToImageSlug(sourcePath),
+            Slug = UrlBuilder.ToImageSlug(sourcePath),
             Width = entry.Width,
             Height = entry.Height,
             FileSize = entry.FileSize,

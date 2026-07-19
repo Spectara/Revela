@@ -212,7 +212,7 @@ public sealed class ContentImageTests
         {
             SourcePath = "photo.jpg",
             FileName = "photo",
-            ImageSlug = "photo",
+            Slug = "photo",
             Width = 1920,
             Height = 1080,
             Sizes = [320, 640],
@@ -355,7 +355,7 @@ public sealed class ContentImageTests
     {
         SourcePath = $"{name}.jpg",
         FileName = name,
-        ImageSlug = name,
+        Slug = name,
         Width = width,
         Height = height,
         Sizes = sizes
@@ -380,7 +380,7 @@ public sealed class ContentImageTests
         foreach (var size in image.Sizes)
         {
             var w = isLandscape ? size : (int)Math.Floor((double)size * image.Width / image.Height);
-            srcsetParts.Add(FormattableString.Invariant($"{image.Url}/{size}.jpg {w}w"));
+            srcsetParts.Add(FormattableString.Invariant($"{image.Slug}/{size}.jpg {w}w"));
         }
 
         return $"<picture class=\"{classAttr}\"{placeholder}>" +

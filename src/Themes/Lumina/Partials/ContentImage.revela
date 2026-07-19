@@ -5,7 +5,7 @@ Renders a responsive <picture> element for images in Markdown body content.
 This template is called by the Markdown image renderer for ![alt](path) syntax.
 
 Context variables:
-- image: ImageData { url, width, height, sizes, placeholder? }
+- image: ImageData { slug, width, height, sizes, placeholder? }
 - alt: Alt text from Markdown
 - classes: Optional CSS classes from Markdown generic attributes {.class}
 - image_basepath: Path/URL to image folder
@@ -25,9 +25,9 @@ Context variables:
   <source type="image/{{ format }}" srcset="
     {{~ for size in image.sizes ~}}
     {{~ actual_width = is_landscape ? size : ((size * image.width / image.height) | math.floor) ~}}
-    {{- image_basepath }}{{ image.url }}/{{ size }}.{{ format }} {{ actual_width }}w{{ if !for.last }}, {{ end }}
+    {{- image_basepath }}{{ image.slug }}/{{ size }}.{{ format }} {{ actual_width }}w{{ if !for.last }}, {{ end }}
     {{~ end ~}}">
 {{~ end ~}}
-  <img src="{{ image_basepath }}{{ image.url }}/{{ actual_fallback }}.jpg" alt="{{ alt }}"
+  <img src="{{ image_basepath }}{{ image.slug }}/{{ actual_fallback }}.jpg" alt="{{ alt }}"
        width="{{ image.width }}" height="{{ image.height }}" loading="lazy" decoding="async">
 </picture>

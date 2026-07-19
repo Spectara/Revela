@@ -325,7 +325,7 @@ internal sealed partial class NetVipsImageProcessor(
         {
             SourcePath = inputPath,
             FileName = Path.GetFileNameWithoutExtension(inputPath),
-            ImageSlug = options.ImageSlug,
+            Slug = options.ImageSlug,
             Width = width,
             Height = height,
             Variants = variants,
