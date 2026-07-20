@@ -29,6 +29,43 @@ namespace Spectara.Revela.Tests.Integration;
 public sealed class GenerateAllEndToEndTests
 {
     [TestMethod]
+    public async Task GenerateAll_RootOnlySite_CountsIndexExactlyOnce()
+    {
+        // Arrange: a site with no galleries — only the root index page (#99 regression)
+        using var project = TestProject.Create(p => p
+            .WithProjectJson(new
+            {
+                project = new { name = "Root Only" },
+                theme = new { name = "Lumina" }
+            })
+            .WithSiteJson(new { title = "Root Only", author = "Test" }));
+
+        using var host = RevelaTestHost.Build(project.RootPath, services =>
+        {
+            services.AddRevelaCommands();
+            services.AddGenerateFeature();
+            services.AddSingleton<ITheme>(new LuminaTheme());
+        });
+
+        var contentService = host.Services.GetRequiredService<IContentService>();
+        var renderService = host.Services.GetRequiredService<IRenderService>();
+        var themePlugin = host.Services.GetRequiredService<ITheme>();
+        renderService.SetTheme(themePlugin);
+        renderService.SetExtensions([]);
+
+        // Act
+        var scanResult = await contentService.ScanAsync();
+        Assert.IsTrue(scanResult.Success, $"Scan should succeed: {scanResult.ErrorMessage}");
+
+        var renderResult = await renderService.RenderAsync();
+
+        // Assert: the root index page contributes exactly one to the count
+        Assert.IsTrue(renderResult.Success, $"Render should succeed: {renderResult.ErrorMessage}");
+        Assert.AreEqual(1, renderResult.PageCount,
+            "A root-only site renders exactly one page (the index, counted once — see #99)");
+    }
+
+    [TestMethod]
     public async Task GenerateAll_WithTestImages_ProducesHtmlAndImages()
     {
         // Arrange: Create a realistic project structure with real images
@@ -98,7 +135,8 @@ public sealed class GenerateAllEndToEndTests
         // Step 2: Render HTML pages
         var renderResult = await renderService.RenderAsync();
         Assert.IsTrue(renderResult.Success, $"Render should succeed: {renderResult.ErrorMessage}");
-        Assert.IsTrue(renderResult.PageCount > 0, "Should generate at least 1 page");
+        Assert.AreEqual(3, renderResult.PageCount,
+            "Root index + landscapes + portraits = exactly 3 pages (index counted once, see #99)");
 
         // Step 3: Process images
         var imageResult = await imageService.ProcessAsync(new ProcessImagesOptions());

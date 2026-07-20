@@ -578,7 +578,6 @@ internal sealed partial class RenderService(
         pageCount++;
 
         var galleriesToRender = model.Galleries.Where(g => !string.IsNullOrEmpty(g.Path)).ToList();
-        pageCount++; // index rendered
 
         async Task RenderGalleryAsync(Gallery gallery, ITemplateEngine renderEngine, CancellationToken ct)
         {
