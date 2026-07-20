@@ -320,4 +320,163 @@ public sealed class GenerateAllEndToEndTests
         Assert.IsTrue(galleryBFiles > 0,
             "Gallery B should have image variants");
     }
+
+    [TestMethod]
+    public async Task GeneratePages_InlineGallery_RendersMidContentAndSuppressesTrailingGrid()
+    {
+        // Arrange
+        using var project = TestProject.Create(p => p
+            .WithSiteJson(new { title = "Inline Gallery Test", author = "Test" })
+            .AddGallery("Inline Gallery", g => g
+                .AddRealImage("first.jpg", 1920, 1080)
+                .AddRealImage("second.jpg", 1920, 1080))
+            .AddGallery("Default Gallery", g => g
+                .AddRealImage("default.jpg", 1920, 1080)));
+
+        await File.WriteAllTextAsync(
+            Path.Combine(project.SourcePath, "Inline Gallery", "_index.revela"),
+            "Before inline gallery.\n\n[[gallery]]\n\nAfter inline gallery.");
+        await File.WriteAllTextAsync(
+            Path.Combine(project.SourcePath, "Default Gallery", "_index.revela"),
+            "Default gallery body.");
+
+        using var host = RevelaTestHost.Build(project.RootPath, services =>
+        {
+            services.AddRevelaCommands();
+            services.AddGenerateFeature();
+            services.AddSingleton<ITheme>(new LuminaTheme());
+        });
+
+        var contentService = host.Services.GetRequiredService<IContentService>();
+        var renderService = host.Services.GetRequiredService<IRenderService>();
+        var theme = host.Services.GetRequiredService<ITheme>();
+        renderService.SetTheme(theme);
+        renderService.SetExtensions([]);
+
+        // Act
+        var scanResult = await contentService.ScanAsync();
+        var renderResult = await renderService.RenderAsync();
+
+        // Assert
+        Assert.IsTrue(scanResult.Success, $"Scan failed: {scanResult.ErrorMessage}");
+        Assert.IsTrue(renderResult.Success, $"Render failed: {renderResult.ErrorMessage}");
+
+        var inlineHtml = await File.ReadAllTextAsync(
+            Path.Combine(project.OutputPath, "inline-gallery", "index.html"));
+        var beforePosition = inlineHtml.IndexOf("Before inline gallery.", StringComparison.Ordinal);
+        var gridPosition = inlineHtml.IndexOf("<section class=\"gallery\">", StringComparison.Ordinal);
+        var afterPosition = inlineHtml.IndexOf("After inline gallery.", StringComparison.Ordinal);
+
+        Assert.IsTrue(beforePosition < gridPosition, "Inline grid should render after preceding content.");
+        Assert.IsTrue(gridPosition < afterPosition, "Inline grid should render before following content.");
+        Assert.AreEqual(1, CountOccurrences(inlineHtml, "<section class=\"gallery\">"),
+            "Inline page must not render the automatic trailing grid.");
+        Assert.DoesNotContain("[[gallery]]", inlineHtml);
+
+        var defaultHtml = await File.ReadAllTextAsync(
+            Path.Combine(project.OutputPath, "default-gallery", "index.html"));
+        Assert.AreEqual(1, CountOccurrences(defaultHtml, "<section class=\"gallery\">"),
+            "A page without a token must retain its automatic trailing grid.");
+    }
+
+    [TestMethod]
+    public async Task GeneratePages_ThemeWithoutGalleryGrid_OnlyFailsWhenTokenIsPresent()
+    {
+        // Arrange: first prove a no-token page remains unaffected.
+        using var noTokenProject = TestProject.Create(p => p
+            .WithSiteJson(new { title = "No Token", author = "Test" })
+            .AddGallery("Gallery", g => g.AddRealImage("photo.jpg", 1920, 1080)));
+        await File.WriteAllTextAsync(
+            Path.Combine(noTokenProject.SourcePath, "Gallery", "_index.revela"),
+            "Body without an inline gallery.");
+
+        using var noTokenHost = RevelaTestHost.Build(noTokenProject.RootPath, services =>
+        {
+            services.AddRevelaCommands();
+            services.AddGenerateFeature();
+            services.AddSingleton<ITheme>(new ThemeWithoutGalleryGrid());
+        });
+        var noTokenContentService = noTokenHost.Services.GetRequiredService<IContentService>();
+        var noTokenRenderService = noTokenHost.Services.GetRequiredService<IRenderService>();
+        await noTokenContentService.ScanAsync();
+
+        // Act
+        var noTokenResult = await noTokenRenderService.RenderAsync();
+
+        // Assert
+        Assert.IsTrue(noTokenResult.Success, noTokenResult.ErrorMessage);
+
+        // Arrange: the same theme with an inline token must require the missing partial.
+        using var tokenProject = TestProject.Create(p => p
+            .WithSiteJson(new { title = "With Token", author = "Test" })
+            .AddGallery("Gallery", g => g.AddRealImage("photo.jpg", 1920, 1080)));
+        var sourcePath = Path.Combine(tokenProject.SourcePath, "Gallery", "_index.revela");
+        await File.WriteAllTextAsync(sourcePath, "Before.\n\n[[gallery]]");
+
+        using var tokenHost = RevelaTestHost.Build(tokenProject.RootPath, services =>
+        {
+            services.AddRevelaCommands();
+            services.AddGenerateFeature();
+            services.AddSingleton<ITheme>(new ThemeWithoutGalleryGrid());
+        });
+        var tokenContentService = tokenHost.Services.GetRequiredService<IContentService>();
+        var tokenRenderService = tokenHost.Services.GetRequiredService<IRenderService>();
+        await tokenContentService.ScanAsync();
+
+        // Act
+        var tokenResult = await tokenRenderService.RenderAsync();
+
+        // Assert
+        Assert.IsFalse(tokenResult.Success);
+        Assert.IsNotNull(tokenResult.ErrorMessage);
+        Assert.Contains($"{sourcePath}:3:", tokenResult.ErrorMessage);
+        Assert.Contains("Partials/GalleryGrid.revela", tokenResult.ErrorMessage);
+    }
+
+    private static int CountOccurrences(string value, string search)
+    {
+        var count = 0;
+        var startIndex = 0;
+
+        while ((startIndex = value.IndexOf(search, startIndex, StringComparison.Ordinal)) >= 0)
+        {
+            count++;
+            startIndex += search.Length;
+        }
+
+        return count;
+    }
+
+    private sealed class ThemeWithoutGalleryGrid : ITheme
+    {
+        private const string GalleryGridPath = "Partials/GalleryGrid.revela";
+        private readonly LuminaTheme inner = new();
+
+        public PackageMetadata Metadata => inner.Metadata;
+
+        public string? Prefix => inner.Prefix;
+
+        public string? TargetTheme => inner.TargetTheme;
+
+        public ThemeManifest Manifest => inner.Manifest;
+
+        public Stream? GetFile(string relativePath) =>
+            IsGalleryGrid(relativePath) ? null : inner.GetFile(relativePath);
+
+        public IEnumerable<string> GetAllFiles() =>
+            inner.GetAllFiles().Where(file => !IsGalleryGrid(file));
+
+        public Task ExtractToAsync(string targetDirectory, CancellationToken cancellationToken = default) =>
+            inner.ExtractToAsync(targetDirectory, cancellationToken);
+
+        public Stream? GetSiteTemplate() => inner.GetSiteTemplate();
+
+        public Stream? GetImagesTemplate() => inner.GetImagesTemplate();
+
+        public IReadOnlyDictionary<string, string> GetTemplateDataDefaults(string templateKey) =>
+            inner.GetTemplateDataDefaults(templateKey);
+
+        private static bool IsGalleryGrid(string path) =>
+            path.Replace('\\', '/').Equals(GalleryGridPath, StringComparison.OrdinalIgnoreCase);
+    }
 }

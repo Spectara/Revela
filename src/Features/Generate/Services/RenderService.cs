@@ -510,6 +510,9 @@ internal sealed partial class RenderService(
         var allImagesBySourcePath = BuildImageLookup(model);
         currentImageLookup = allImagesBySourcePath;
 
+        // Global filterable image pool (all site images) for inline-gallery [[gallery: <filter>]] tokens.
+        var imageContentsBySourcePath = manifestRepository.Images;
+
         // Set image lookup on the main engine for the image() template function
         engine.SetImageLookup(allImagesBySourcePath);
 
@@ -526,12 +529,21 @@ internal sealed partial class RenderService(
         if (rootGallery is not null)
         {
             var rootAssetsBasePath = CalculateAssetsBasePath(config, "");
+            var rootSourcePath = GetGallerySourcePath(rootGallery);
             var rootImageContext = new ContentImageContext(
                 allImagesBySourcePath,
                 rootGallery.Path,
                 rootAssetsBasePath,
                 formats.Keys,
-                CreateContentImageRenderer(engine, contentImageTemplate, rootAssetsBasePath, formats.Keys));
+                CreateContentImageRenderer(engine, contentImageTemplate, rootAssetsBasePath, formats.Keys),
+                filterExpression => GalleryImageResolver.Resolve(imageContentsBySourcePath, filterExpression),
+                CreateGalleryBlockContext(
+                    rootGallery,
+                    rootGallery.Images,
+                    engine,
+                    rootAssetsBasePath,
+                    formats.Keys,
+                    rootSourcePath));
             var (_, _, _) = await LoadGalleryMetadataAsync(rootGallery, rootImageContext, cancellationToken);
         }
 
@@ -573,12 +585,22 @@ internal sealed partial class RenderService(
             ct.ThrowIfCancellationRequested();
 
             // Load metadata from _index.md at render time (not stored in manifest)
+            var contentAssetsBasePath = CalculateAssetsBasePath(config, UrlBuilder.CalculateBasePath(gallery.Slug));
+            var gallerySourcePath = GetGallerySourcePath(gallery);
             var galleryImageContext = new ContentImageContext(
                 allImagesBySourcePath,
                 gallery.Path,
-                CalculateAssetsBasePath(config, UrlBuilder.CalculateBasePath(gallery.Slug)),
+                contentAssetsBasePath,
                 formats.Keys,
-                CreateContentImageRenderer(renderEngine, contentImageTemplate, CalculateAssetsBasePath(config, UrlBuilder.CalculateBasePath(gallery.Slug)), formats.Keys));
+                CreateContentImageRenderer(renderEngine, contentImageTemplate, contentAssetsBasePath, formats.Keys),
+                filterExpression => GalleryImageResolver.Resolve(imageContentsBySourcePath, filterExpression),
+                CreateGalleryBlockContext(
+                    gallery,
+                    gallery.Images,
+                    renderEngine,
+                    contentAssetsBasePath,
+                    formats.Keys,
+                    gallerySourcePath));
             var (customTemplate, dataSources, metadataBasePath) = await LoadGalleryMetadataAsync(gallery, galleryImageContext, ct);
 
             var galleryImages = gallery.Images.ToList();
@@ -873,6 +895,51 @@ internal sealed partial class RenderService(
         });
 
     /// <summary>
+    /// Creates the page-local context that renders inline-gallery <c>[[gallery]]</c> blocks.
+    /// </summary>
+    /// <remarks>
+    /// The grid template (<c>Partials/GalleryGrid.revela</c>) is loaded lazily on first use so that
+    /// themes without inline galleries are unaffected. A missing template raises a source-located error.
+    /// </remarks>
+    private GalleryBlockContext CreateGalleryBlockContext(
+        Gallery gallery,
+        IReadOnlyList<Image> pageImages,
+        ITemplateEngine engine,
+        string assetsBasePath,
+        IEnumerable<string> imageFormats,
+        string sourcePath)
+    {
+        string? galleryGridTemplate = null;
+
+        string GetGalleryGridTemplate(int line) =>
+            galleryGridTemplate ??= LoadTemplate("partials/gallerygrid.revela")
+                ?? throw new InvalidOperationException(
+                    $"{sourcePath}:{line}: theme is missing required template 'Partials/GalleryGrid.revela'. " +
+                    "This template renders [[gallery]] blocks in Markdown body content.");
+
+        string RenderGalleryGrid(IReadOnlyList<Image> images, int line) =>
+            engine.Render(
+                GetGalleryGridTemplate(line),
+                new Dictionary<string, object?>
+                {
+                    ["images"] = images.ToScriptArray(),
+                    ["assets_basepath"] = assetsBasePath,
+                    ["image_formats"] = imageFormats
+                });
+
+        return new GalleryBlockContext(
+            sourcePath,
+            pageImages,
+            line => _ = GetGalleryGridTemplate(line),
+            RenderGalleryGrid,
+            () => gallery.HasInlineGalleries = true,
+            warning => LogInlineGalleryWarning(logger, warning));
+    }
+
+    private string GetGallerySourcePath(Gallery gallery) =>
+        Path.Combine(SourcePath, gallery.Path, RevelaParser.IndexFileName);
+
+    /// <summary>
     /// Gets default data sources from theme extensions for a template.
     /// </summary>
     /// <remarks>
@@ -1150,6 +1217,9 @@ internal sealed partial class RenderService(
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Rendered HTML for {OutputPath} appears truncated ({Length} bytes, ends with: {Tail}). The page does not close with </html> — check for template runtime limits or rendering errors.")]
     private static partial void LogHtmlTruncated(ILogger logger, string outputPath, int length, string tail);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "{Warning}")]
+    private static partial void LogInlineGalleryWarning(ILogger logger, string warning);
 
     #endregion
 }

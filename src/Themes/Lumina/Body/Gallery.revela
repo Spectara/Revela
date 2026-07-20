@@ -18,8 +18,8 @@ Expects:
 </section>
 {{~ end ~}}
 
-{{~ # Image Gallery Grid ~}}
-{{~ if images && images.size > 0 ~}}
+{{~ # Image Gallery Grid (suppressed when the body places its own [[gallery]] blocks) ~}}
+{{~ if !gallery.has_inline_galleries && images && images.size > 0 ~}}
 <section class="gallery">
     <h2>{{ gallery.title }}</h2>
     {{~ for image in images ~}}

@@ -50,6 +50,15 @@ internal sealed class Gallery
     public string? Body { get; set; }
 
     /// <summary>
+    /// Whether the rendered Markdown body contains at least one inline-gallery block.
+    /// </summary>
+    /// <remarks>
+    /// Set at render time when a <c>[[gallery]]</c> token is present. Themes gate the
+    /// trailing image grid on this flag so that inline galleries replace the default grid.
+    /// </remarks>
+    public bool HasInlineGalleries { get; set; }
+
+    /// <summary>
     /// Custom body template name from frontmatter.
     /// </summary>
     /// <remarks>
