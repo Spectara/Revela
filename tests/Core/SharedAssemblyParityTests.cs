@@ -199,30 +199,49 @@ public sealed class SharedAssemblyParityTests
 
     private static void RunDotnetMsBuild(string projectFile)
     {
-        var startInfo = new ProcessStartInfo("dotnet")
+        // The packaging target is deterministic, but spawning `dotnet msbuild` while the full test
+        // suite runs many test hosts in parallel can transiently fail on process/node contention.
+        // Disable node reuse and retry a bounded number of times so the parity check is not flaky.
+        const int maxAttempts = 3;
+        var lastOutput = string.Empty;
+        var lastExit = 0;
+
+        for (var attempt = 1; attempt <= maxAttempts; attempt++)
         {
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            UseShellExecute = false,
-            WorkingDirectory = Path.GetDirectoryName(projectFile),
-        };
-        startInfo.ArgumentList.Add("msbuild");
-        startInfo.ArgumentList.Add(projectFile);
-        startInfo.ArgumentList.Add("/t:DumpPackageFiles");
-        startInfo.ArgumentList.Add("/nologo");
-        startInfo.ArgumentList.Add("/v:quiet");
+            var startInfo = new ProcessStartInfo("dotnet")
+            {
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                WorkingDirectory = Path.GetDirectoryName(projectFile),
+            };
+            startInfo.ArgumentList.Add("msbuild");
+            startInfo.ArgumentList.Add(projectFile);
+            startInfo.ArgumentList.Add("/t:DumpPackageFiles");
+            startInfo.ArgumentList.Add("/nologo");
+            startInfo.ArgumentList.Add("/v:quiet");
+            startInfo.ArgumentList.Add("/nodeReuse:false");
 
-        using var process = Process.Start(startInfo)
-            ?? throw new InvalidOperationException("Failed to start 'dotnet msbuild'.");
+            using var process = Process.Start(startInfo)
+                ?? throw new InvalidOperationException("Failed to start 'dotnet msbuild'.");
 
-        var standardOutput = process.StandardOutput.ReadToEnd();
-        var standardError = process.StandardError.ReadToEnd();
-        process.WaitForExit();
+            var standardOutput = process.StandardOutput.ReadToEnd();
+            var standardError = process.StandardError.ReadToEnd();
+            process.WaitForExit();
+
+            if (process.ExitCode == 0)
+            {
+                return;
+            }
+
+            lastExit = process.ExitCode;
+            lastOutput = standardOutput + Environment.NewLine + standardError;
+        }
 
         Assert.AreEqual(
             0,
-            process.ExitCode,
-            $"'dotnet msbuild' failed (exit {process.ExitCode}):{Environment.NewLine}{standardOutput}{Environment.NewLine}{standardError}");
+            lastExit,
+            $"'dotnet msbuild' failed after {maxAttempts} attempts (exit {lastExit}):{Environment.NewLine}{lastOutput}");
     }
 
     private static string RepoRoot([CallerFilePath] string thisFilePath = "") =>
