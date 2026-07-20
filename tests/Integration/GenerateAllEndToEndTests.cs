@@ -189,6 +189,85 @@ public sealed class GenerateAllEndToEndTests
     }
 
     [TestMethod]
+    public async Task GenerateAll_CollidingGalleryFolders_ScanFailsAndWritesNoOutput()
+    {
+        // Arrange: "01 Events" and "02 Events" both normalize to the slug "events", and each
+        // holds a "photo.jpg" — so both the gallery page and the image variants would target the
+        // same output paths. The scan must reject this before anything is written (#97).
+        using var project = TestProject.Create(p => p
+            .WithProjectJson(new
+            {
+                project = new { name = "Colliding" },
+                theme = new { name = "Lumina" }
+            })
+            .WithSiteJson(new { title = "Colliding Site", author = "Test" })
+            .AddGallery("01 Events", g => g.AddImage("photo.jpg"))
+            .AddGallery("02 Events", g => g.AddImage("photo.jpg")));
+
+        using var host = RevelaTestHost.Build(project.RootPath, services =>
+        {
+            services.AddRevelaCommands();
+            services.AddGenerateFeature();
+            services.AddSingleton<ITheme>(new LuminaTheme());
+        });
+
+        var contentService = host.Services.GetRequiredService<IContentService>();
+
+        // Act: the scan step is the gate — it must fail before rendering.
+        var scanResult = await contentService.ScanAsync();
+
+        // Assert: scan failed and the error names the slug plus every conflicting source path.
+        Assert.IsFalse(scanResult.Success, "Scan must fail when two galleries collide to one slug.");
+        Assert.IsNotNull(scanResult.ErrorMessage);
+        Assert.Contains("events", scanResult.ErrorMessage);
+        Assert.Contains("01 Events", scanResult.ErrorMessage);
+        Assert.Contains("02 Events", scanResult.ErrorMessage);
+
+        // Assert: nothing was written — no gallery page could silently overwrite another.
+        var writtenHtml = Directory.Exists(project.OutputPath)
+            ? Directory.EnumerateFiles(project.OutputPath, "*.html", SearchOption.AllDirectories).ToList()
+            : [];
+        Assert.IsEmpty(writtenHtml, "A failed scan must not write any output.");
+    }
+
+    [TestMethod]
+    public async Task GenerateAll_GalleryNameNormalizingToEmptySlug_ScanFails()
+    {
+        // Arrange: a folder whose name consists only of removed characters → empty slug,
+        // which would collide with the site root (#97).
+        using var project = TestProject.Create(p => p
+            .WithProjectJson(new
+            {
+                project = new { name = "Empty Slug" },
+                theme = new { name = "Lumina" }
+            })
+            .WithSiteJson(new { title = "Empty Slug Site", author = "Test" })
+            .AddGallery("!!!", g => g.AddImage("photo.jpg")));
+
+        using var host = RevelaTestHost.Build(project.RootPath, services =>
+        {
+            services.AddRevelaCommands();
+            services.AddGenerateFeature();
+            services.AddSingleton<ITheme>(new LuminaTheme());
+        });
+
+        var contentService = host.Services.GetRequiredService<IContentService>();
+
+        // Act
+        var scanResult = await contentService.ScanAsync();
+
+        // Assert
+        Assert.IsFalse(scanResult.Success, "Scan must fail on an empty gallery slug.");
+        Assert.IsNotNull(scanResult.ErrorMessage);
+        Assert.Contains("!!!", scanResult.ErrorMessage);
+
+        var writtenHtml = Directory.Exists(project.OutputPath)
+            ? Directory.EnumerateFiles(project.OutputPath, "*.html", SearchOption.AllDirectories).ToList()
+            : [];
+        Assert.IsEmpty(writtenHtml, "A failed scan must not write any output.");
+    }
+
+    [TestMethod]
     public async Task GenerateAll_NestedGalleries_ProducesCorrectStructure()
     {
         // Arrange: Project with nested gallery structure (like OneDrive sample)
