@@ -18,7 +18,13 @@ internal enum SlugConflictKind
     ImageCollision,
 
     /// <summary>An image file normalizes to an empty output path.</summary>
-    ImageEmpty
+    ImageEmpty,
+
+    /// <summary>Two or more distinct source images resolve to the same <c>/photo/</c> page route.</summary>
+    PhotoCollision,
+
+    /// <summary>A gallery, static, or generated route collides with the reserved <c>/photo/</c> namespace.</summary>
+    PhotoRouteCollision
 }
 
 /// <summary>
@@ -68,6 +74,19 @@ internal sealed record SlugConflict(
                 builder.Append("These image files normalize to an empty output path:");
                 AppendSources(builder);
                 builder.Append("Rename them so each image produces a non-empty output path.");
+                break;
+
+            case SlugConflictKind.PhotoCollision:
+                builder.Append(CultureInfo.InvariantCulture, $"Photo page route '/{Slug}/' is produced by multiple source images:");
+                AppendSources(builder);
+                builder.Append("Rename one of these files so each published photo gets a unique canonical URL. " +
+                    "Revela never auto-suffixes photo routes.");
+                break;
+
+            case SlugConflictKind.PhotoRouteCollision:
+                builder.Append(CultureInfo.InvariantCulture, $"Route '/{Slug}/' collides with the reserved '/photo/' output namespace:");
+                AppendSources(builder);
+                builder.Append("Rename the gallery/static route so it does not start with 'photo/'.");
                 break;
 
             default:

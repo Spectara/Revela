@@ -529,7 +529,7 @@ internal sealed partial class ScribanTemplateEngine(
     private static string ResolveTargetPathFromScriptObject(ScriptObject so)
     {
         // Image projection carries width/height; distinguish it from a Gallery that
-        // also exposes a slug so image links get their dedicated /image/ prefix.
+        // also exposes a slug so image links get their dedicated /photo/ prefix.
         if (so.ContainsKey("width") && so.ContainsKey("height") && so.TryGetValue("slug", out var imageSlug))
         {
             return ImagePagePath(imageSlug as string ?? string.Empty);
@@ -559,7 +559,7 @@ internal sealed partial class ScribanTemplateEngine(
     private static string ImagePagePath(string slug)
     {
         var normalized = slug.Trim('/').Replace('\\', '/');
-        return normalized.Length == 0 ? string.Empty : $"image/{normalized}/";
+        return normalized.Length == 0 ? string.Empty : $"photo/{normalized}/";
     }
 
     /// <summary>

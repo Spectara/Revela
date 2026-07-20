@@ -90,7 +90,7 @@ public sealed class ScribanTemplateEngineTests
 
         var result = engine.Render("{{ page_url(image) }}", Model(("basepath", "/"), ("image", image)));
 
-        Assert.AreEqual("/image/blubb/peng/", result.Trim());
+        Assert.AreEqual("/photo/blubb/peng/", result.Trim());
     }
 
     [TestMethod]

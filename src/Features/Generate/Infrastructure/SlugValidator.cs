@@ -103,6 +103,63 @@ internal static class SlugValidator
     }
 
     /// <summary>
+    /// Finds every photo-page route conflict before any output is written: two distinct source
+    /// images resolving to the same <c>/photo/{slug}/</c> page, and gallery/static routes that
+    /// collide with the reserved <c>/photo/</c> namespace. Never auto-suffixes.
+    /// </summary>
+    public static IReadOnlyList<SlugConflict> FindPhotoConflicts(
+        IReadOnlyList<PhotoPage> photoPages,
+        IReadOnlyList<Gallery> galleries)
+    {
+        var conflicts = new List<SlugConflict>();
+
+        // 1. Distinct source images that would overwrite each other under /photo/.
+        var slugGroups = photoPages
+            .GroupBy(page => page.Slug, StringComparer.Ordinal)
+            .OrderBy(group => group.Key, StringComparer.Ordinal);
+
+        foreach (var group in slugGroups)
+        {
+            var sources = group
+                .Select(page => page.Image.SourcePath.Replace('\\', '/'))
+                .Distinct(StringComparer.Ordinal)
+                .OrderBy(path => path, StringComparer.Ordinal)
+                .ToList();
+
+            if (sources.Count > 1)
+            {
+                conflicts.Add(new SlugConflict(SlugConflictKind.PhotoCollision, $"photo/{group.Key}", sources));
+            }
+        }
+
+        // 2. Gallery routes colliding with the reserved /photo/ namespace or a specific page.
+        var photoRoutes = new HashSet<string>(
+            photoPages.Select(page => $"photo/{page.Slug}"),
+            StringComparer.OrdinalIgnoreCase);
+
+        foreach (var gallery in galleries)
+        {
+            var route = gallery.Slug.TrimEnd('/');
+            if (route.Length == 0)
+            {
+                continue;
+            }
+
+            var collidesWithNamespace =
+                route.Equals("photo", StringComparison.OrdinalIgnoreCase) ||
+                route.StartsWith("photo/", StringComparison.OrdinalIgnoreCase) ||
+                photoRoutes.Contains(route);
+
+            if (collidesWithNamespace)
+            {
+                conflicts.Add(new SlugConflict(SlugConflictKind.PhotoRouteCollision, route, [gallery.Path]));
+            }
+        }
+
+        return conflicts;
+    }
+
+    /// <summary>
     /// Builds a single, actionable scan-error message that aggregates every conflict.
     /// </summary>
     public static string FormatScanError(IReadOnlyList<SlugConflict> conflicts)
@@ -111,6 +168,24 @@ internal static class SlugValidator
             ? "Scan aborted: 1 slug conflict would overwrite generated output."
             : $"Scan aborted: {conflicts.Count} slug conflicts would overwrite generated output.";
 
+        return FormatConflicts(conflicts, header);
+    }
+
+    /// <summary>
+    /// Builds a single, actionable render-error message for photo-route conflicts detected
+    /// before any output is written.
+    /// </summary>
+    public static string FormatPhotoRouteError(IReadOnlyList<SlugConflict> conflicts)
+    {
+        var header = conflicts.Count == 1
+            ? "Render aborted: 1 photo-page route conflict would overwrite generated output."
+            : $"Render aborted: {conflicts.Count} photo-page route conflicts would overwrite generated output.";
+
+        return FormatConflicts(conflicts, header);
+    }
+
+    private static string FormatConflicts(IReadOnlyList<SlugConflict> conflicts, string header)
+    {
         var separator = Environment.NewLine + Environment.NewLine;
         return header + separator + string.Join(separator, conflicts.Select(conflict => conflict.Describe()));
     }
