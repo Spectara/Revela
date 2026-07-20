@@ -59,6 +59,65 @@ public static class TestImageGenerator
     }
 
     /// <summary>
+    /// Creates a real JPEG whose pixels are stored sideways/upside-down and whose EXIF
+    /// Orientation tag instructs viewers how to rotate it upright.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The stored pixels carry an asymmetric marker (a bright red block in the top-left
+    /// corner over a dark-blue background), so the visual orientation is detectable both
+    /// by the swapped width/height (Orientation 6/8) and by which corner ends up red.
+    /// </para>
+    /// <para>
+    /// Use this to exercise the orientation-normalisation pipeline (see #98): after
+    /// <c>Autorot()</c> every variant must be physically upright and free of the tag.
+    /// </para>
+    /// </remarks>
+    /// <param name="path">Output file path.</param>
+    /// <param name="orientation">EXIF Orientation value (e.g. 3, 6, 8).</param>
+    /// <param name="width">Stored (pre-rotation) width in pixels.</param>
+    /// <param name="height">Stored (pre-rotation) height in pixels.</param>
+    /// <param name="quality">JPEG quality (1-100, default 95 to keep the marker crisp).</param>
+    public static void CreateOrientedJpeg(
+        string path,
+        int orientation,
+        int width = 1600,
+        int height = 1000,
+        int quality = 95)
+    {
+        var dir = Path.GetDirectoryName(path);
+        if (!string.IsNullOrEmpty(dir))
+        {
+            Directory.CreateDirectory(dir);
+        }
+
+        using var stored = CreateCornerMarkerImage(width, height);
+
+        // Set the libvips orientation header field; JPEG save (keep = all by default)
+        // writes it out as the EXIF Orientation tag that Autorot() reads back.
+        using var tagged = stored.Mutate(m => m.Set(GValue.GIntType, "orientation", orientation));
+        tagged.Jpegsave(path, q: quality);
+    }
+
+    /// <summary>
+    /// Creates an asymmetric RGB image: a bright red block in the top-left corner over a
+    /// dark-blue background, so any 90/180/270-degree rotation is detectable.
+    /// </summary>
+    private static Image CreateCornerMarkerImage(int width, int height)
+    {
+        // Solid dark-blue background (3-band uchar sRGB).
+        var background = (Image.Black(width, height, bands: 3) + new double[] { 20, 30, 120 })
+            .Cast(Enums.BandFormat.Uchar);
+
+        // Bright red marker over the top-left ~40% — asymmetric on both axes.
+        var markerWidth = Math.Max(1, width * 2 / 5);
+        var markerHeight = Math.Max(1, height * 2 / 5);
+
+        return background.Mutate(m =>
+            m.DrawRect([230.0, 20.0, 20.0], 0, 0, markerWidth, markerHeight, fill: true));
+    }
+
+    /// <summary>
     /// Creates a visually distinct test image with a colour gradient.
     /// </summary>
     private static Image CreateGradientImage(int width, int height)

@@ -196,6 +196,7 @@ public sealed class TestProject : IDisposable
         private readonly string galleryPath;
         private readonly List<(string name, int width, int height)> images = [];
         private readonly List<(string name, int width, int height, ExifOptions exif)> realImages = [];
+        private readonly List<(string name, int orientation, int width, int height)> orientedImages = [];
         private readonly List<GalleryBuilder> subGalleries = [];
         private string? markdownContent;
 
@@ -239,6 +240,28 @@ public sealed class TestProject : IDisposable
             var exif = ExifOptions.Create();
             configureExif?.Invoke(exif);
             realImages.Add((filename, width, height, exif));
+            return this;
+        }
+
+        /// <summary>
+        /// Adds a real JPEG whose EXIF Orientation tag differs from its stored pixels.
+        /// </summary>
+        /// <remarks>
+        /// Generates an asymmetric image (red top-left marker) tagged with the given EXIF
+        /// Orientation via <see cref="TestImageGenerator.CreateOrientedJpeg"/>. Use this to
+        /// verify orientation normalisation across scan and image processing (see #98).
+        /// </remarks>
+        /// <param name="filename">Image filename (e.g., "rotated.jpg").</param>
+        /// <param name="orientation">EXIF Orientation value (e.g., 3, 6, 8).</param>
+        /// <param name="width">Stored (pre-rotation) width in pixels.</param>
+        /// <param name="height">Stored (pre-rotation) height in pixels.</param>
+        public GalleryBuilder AddOrientedImage(
+            string filename,
+            int orientation,
+            int width = 1600,
+            int height = 1000)
+        {
+            orientedImages.Add((filename, orientation, width, height));
             return this;
         }
 
@@ -306,6 +329,16 @@ public sealed class TestProject : IDisposable
                     width,
                     height,
                     exif);
+            }
+
+            // Create oriented JPEGs (asymmetric pixels + EXIF Orientation tag)
+            foreach (var (name, orientation, width, height) in orientedImages)
+            {
+                TestImageGenerator.CreateOrientedJpeg(
+                    Path.Combine(galleryPath, name),
+                    orientation,
+                    width,
+                    height);
             }
 
             // Build nested sub-galleries
