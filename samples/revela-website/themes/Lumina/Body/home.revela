@@ -25,8 +25,8 @@ Expects:
 </article>
 {{~ end ~}}
 
-{{~ # Photo strip — homepage gallery (images selected via filter in _index.revela frontmatter) ~}}
-{{~ if images && images.size > 0 ~}}
+{{~ # Photo strip — only when the body has NO inline [[gallery]] token (backward compat) ~}}
+{{~ if images && images.size > 0 && !gallery.has_inline_galleries ~}}
 <section class="gallery">
     {{~ for image in images ~}}
     {{~ include 'image' image ~}}

@@ -10,6 +10,8 @@ filter = "contains(sourcePath, '_images/home/')"
   <a href="https://github.com/Spectara/Revela">View on GitHub</a>
 </nav>
 
+[[gallery]]
+
 ## Why Revela?
 
 **Built for photographers.** While other static site generators are designed for blogs and documentation, Revela focuses on what matters most: **showcasing your images beautifully**.
@@ -37,5 +39,3 @@ NuGet-based plugin system: OneDrive sync, EXIF statistics, Gzip/Brotli compressi
 **Your images load in 0.2 seconds, not 3.** No loading spinner, no bounce. And because Revela produces perfectly optimized, static code, Google ranks you higher and every visitor sees your work instantly.
 
 > **Proof:** [photo.kirk.one](https://photo.kirk.one) scores **100 / 100 / 100 / 100** on Google Lighthouse (Performance · Accessibility · Best Practices · SEO) — First Contentful Paint 0.2 s, zero layout shift.
-
-## Eight images say more than a thousand words?

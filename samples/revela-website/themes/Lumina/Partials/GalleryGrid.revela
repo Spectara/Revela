@@ -1,0 +1,17 @@
+{{~##
+Inline Gallery Grid - Lumina Theme
+
+Renders images at a [[gallery]] token position in Markdown content.
+Delegates each image to the shared `image` partial so it inherits the same
+responsive markup and URL helpers as the trailing gallery grid.
+
+Expects:
+- images: Array of ImageData
+- image_formats: Array of format strings ["avif", "webp", "jpg"]
+- assets_basepath: Path/URL to image resources
+##~}}
+<section class="gallery">
+    {{~ for image in images ~}}
+    {{~ include 'image' image ~}}
+    {{~ end ~}}
+</section>
