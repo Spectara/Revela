@@ -99,6 +99,33 @@ public sealed class UrlBuilderTests
             UrlBuilder.ToSlug(null!));
     }
 
+    [TestMethod]
+    public void ToSlug_OnlyRemovedCharacters_ProducesEmptySlug()
+    {
+        // A name consisting solely of removed characters normalizes to an empty slug (#97).
+        var result = UrlBuilder.ToSlug("!!!");
+
+        Assert.AreEqual(string.Empty, result);
+    }
+
+    [TestMethod]
+    public void ToSlug_SortPrefixVariantsOfSameName_CollideToSameSlug()
+    {
+        // Non-injective normalization: distinct folder names produce the same slug (#97).
+        var first = UrlBuilder.ToSlug("01 Events");
+        var second = UrlBuilder.ToSlug("02 Events");
+
+        Assert.AreEqual(first, second);
+        Assert.AreEqual("events", first);
+    }
+
+    [TestMethod]
+    public void ToSlug_DiacriticVariants_CollideToSameSlug()
+    {
+        // "Café" and "Cafe" both fold to "cafe" (#97).
+        Assert.AreEqual(UrlBuilder.ToSlug("Cafe"), UrlBuilder.ToSlug("Café"));
+    }
+
     #endregion
 
     #region BuildPath Tests
@@ -268,6 +295,25 @@ public sealed class UrlBuilderTests
         Assert.AreNotEqual(slug1, slug2);
         Assert.AreEqual("events/fireworks/029081", slug1);
         Assert.AreEqual("miscellaneous/gallery-2/029081", slug2);
+    }
+
+    [TestMethod]
+    public void ToImageSlug_SameFilenameUnderCollidingGalleries_ProduceSameSlug()
+    {
+        // When gallery names fold to the same slug, the image output paths collide too (#97).
+        var slug1 = UrlBuilder.ToImageSlug("01 Events/photo.jpg");
+        var slug2 = UrlBuilder.ToImageSlug("02 Events/photo.jpg");
+
+        Assert.AreEqual(slug1, slug2);
+        Assert.AreEqual("events/photo", slug1);
+    }
+
+    [TestMethod]
+    public void ToImageSlug_RootImageOnlyRemovedCharacters_ProducesEmptyOutputPath()
+    {
+        var result = UrlBuilder.ToImageSlug("!!!.jpg");
+
+        Assert.AreEqual(string.Empty, result);
     }
 
     #endregion
