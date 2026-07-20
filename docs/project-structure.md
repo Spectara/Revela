@@ -17,19 +17,25 @@ Spectara.Revela/
 │
 ├── src/                            # Production code
 │   ├── Sdk/                        # Plugin/theme development SDK
-│   ├── Core/                       # Shared kernel (services, plugin loading)
-│   ├── Commands/                   # CLI commands (Generate, Init, etc.)
-│   ├── Cli/                        # Entry point, hosting
+│   ├── Sdk.Generators/             # Roslyn source generators
+│   ├── Core/                       # Shared kernel (services, package loading)
+│   ├── Commands/                   # Host-owned CLI commands (Config, Info, Packages, …)
+│   ├── Features/                   # Always built-in features (Generate, Packages, Theme)
+│   ├── Cli/                        # Entry point, hosting (dynamic plugin loading)
+│   ├── Cli.Embedded/               # Entry point (static plugin references)
 │   ├── Plugins/
 │   │   ├── Directory.Build.props   # Inserts "Plugins" namespace segment
+│   │   ├── Calendar/
 │   │   ├── Compress/
 │   │   ├── Serve/
 │   │   ├── Source/
-│   │   │   └── OneDrive/
+│   │   │   ├── OneDrive/
+│   │   │   └── Calendar/
 │   │   └── Statistics/
 │   └── Themes/
 │       ├── Directory.Build.props   # Inserts "Themes" namespace segment
 │       ├── Lumina/
+│       ├── Lumina.Calendar/
 │       └── Lumina.Statistics/
 │
 ├── tests/                          # Test code
@@ -53,6 +59,7 @@ Spectara.Revela/
 ├── samples/                        # Example projects (not in solution)
 │   ├── showcase/                   # Feature demo (Git-tracked test images)
 │   ├── onedrive/                   # Real-world OneDrive source
+│   ├── calendar/                   # Calendar source + theme extension demo
 │   └── revela-website/             # Project homepage (theme customization example)
 │
 ├── scripts/                        # Build & test automation
