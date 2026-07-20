@@ -68,6 +68,30 @@ internal sealed partial class ImageService(
                 };
             }
 
+            // A photo-less project (e.g. a calendar-only site) has no images to
+            // process. Treat that as a successful no-op instead of failing on the
+            // "no formats configured" guard below — a valid site may have zero images.
+            var allImagePaths = CollectImagePaths(manifestRepository.Root);
+            var uniqueSourcePaths = allImagePaths.ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+            if (uniqueSourcePaths.Count == 0)
+            {
+                manifestRepository.RemoveOrphans(uniqueSourcePaths);
+                manifestRepository.LastImagesProcessed = timeProvider.GetUtcNow().UtcDateTime;
+                await manifestRepository.SaveAsync(cancellationToken);
+                stopwatch.Stop();
+
+                return new ImageResult
+                {
+                    Success = true,
+                    ProcessedCount = 0,
+                    SkippedCount = 0,
+                    FilesCreated = 0,
+                    TotalSize = 0,
+                    Duration = stopwatch.Elapsed
+                };
+            }
+
             // Check if formats are configured
             var formats = ImageSettings.GetActiveFormats();
             if (formats.Count == 0)
@@ -96,14 +120,7 @@ internal sealed partial class ImageService(
                 }
             }
 
-            // Collect all unique image paths from the root tree
-            // Note: The tree may contain duplicate paths (e.g., filtered images on homepage
-            // that also exist in their original gallery). We use a HashSet to ensure each
-            // image is only processed/counted once.
-            var allImagePaths = CollectImagePaths(manifestRepository.Root);
-            var uniqueSourcePaths = allImagePaths.ToHashSet(StringComparer.OrdinalIgnoreCase);
-
-            // Remove orphaned entries
+            // Remove orphaned entries (unique paths were collected above)
             manifestRepository.RemoveOrphans(uniqueSourcePaths);
 
             // Determine which images need processing

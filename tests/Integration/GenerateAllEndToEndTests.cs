@@ -29,6 +29,47 @@ namespace Spectara.Revela.Tests.Integration;
 public sealed class GenerateAllEndToEndTests
 {
     [TestMethod]
+    public async Task GenerateAll_ImagelessSite_ImageStepIsSuccessfulNoOp()
+    {
+        // Arrange: a photo-less site (e.g. calendar-only) with no galleries, no images,
+        // and no image formats configured. The image step must be a successful no-op
+        // rather than failing the build on the "no formats configured" guard.
+        using var project = TestProject.Create(p => p
+            .WithProjectJson(new
+            {
+                project = new { name = "Imageless" },
+                theme = new { name = "Lumina" }
+            })
+            .WithSiteJson(new { title = "Imageless", author = "Test" }));
+
+        using var host = RevelaTestHost.Build(project.RootPath, services =>
+        {
+            services.AddRevelaCommands();
+            services.AddGenerateFeature();
+            services.AddSingleton<ITheme>(new LuminaTheme());
+        });
+
+        var contentService = host.Services.GetRequiredService<IContentService>();
+        var renderService = host.Services.GetRequiredService<IRenderService>();
+        var imageService = host.Services.GetRequiredService<IImageService>();
+        var themePlugin = host.Services.GetRequiredService<ITheme>();
+        renderService.SetTheme(themePlugin);
+        renderService.SetExtensions([]);
+
+        // Act
+        var scanResult = await contentService.ScanAsync();
+        Assert.IsTrue(scanResult.Success, $"Scan should succeed: {scanResult.ErrorMessage}");
+        await renderService.RenderAsync();
+        var imageResult = await imageService.ProcessAsync(new ProcessImagesOptions());
+
+        // Assert: no images to process → success with zero processed, no error
+        Assert.IsTrue(imageResult.Success,
+            $"Image step must succeed on an image-less site, not fail: {imageResult.ErrorMessage}");
+        Assert.AreEqual(0, imageResult.ProcessedCount, "No images means nothing processed");
+        Assert.IsNull(imageResult.ErrorMessage, "Image-less site must not surface an error");
+    }
+
+    [TestMethod]
     public async Task GenerateAll_RootOnlySite_CountsIndexExactlyOnce()
     {
         // Arrange: a site with no galleries — only the root index page (#99 regression)
