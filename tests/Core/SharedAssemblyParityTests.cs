@@ -75,23 +75,22 @@ public sealed class SharedAssemblyParityTests
 
     /// <summary>
     /// Filenames the REAL packaging target decided to include in the plugin package
-    /// (i.e. the assemblies it considers plugin-specific / not host-provided).
+    /// (i.e. the assemblies it considers plugin-specific / not host-provided). Computed once by
+    /// invoking the actual SDK target on first access.
     /// </summary>
-    private static FrozenSet<string> packagedNames = [];
-
-    [ClassInitialize]
-    public static void RunRealPackagingTarget(TestContext context) =>
-        packagedNames = EvaluatePackagingTarget(RepresentativeAssemblyNames);
+    private static readonly Lazy<FrozenSet<string>> PackagedNames =
+        new(() => EvaluatePackagingTarget(RepresentativeAssemblyNames));
 
     [TestMethod]
     public void RuntimeAndPackagingPolicies_AgreeForEveryRepresentativeAssembly()
     {
+        var packaged = PackagedNames.Value;
         var mismatches = new List<string>();
 
         foreach (var name in RepresentativeAssemblyNames)
         {
             var sharedAtRuntime = PackageLoadContext.IsSharedAssembly(name);
-            var excludedFromPackage = !packagedNames.Contains(name);
+            var excludedFromPackage = !packaged.Contains(name);
 
             if (sharedAtRuntime != excludedFromPackage)
             {
@@ -125,7 +124,7 @@ public sealed class SharedAssemblyParityTests
             PackageLoadContext.IsSharedAssembly(assemblyName),
             $"{assemblyName} must be shared at runtime.");
         Assert.IsFalse(
-            packagedNames.Contains(assemblyName),
+            PackagedNames.Value.Contains(assemblyName),
             $"{assemblyName} must be EXCLUDED from the plugin package (shared by the host).");
     }
 
