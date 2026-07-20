@@ -9,8 +9,12 @@
   3. Inclusion of .deps.json for runtime dependency resolution
 
   SYNC: The shared assembly exclusion rules MUST match
-        PluginLoadContext.IsSharedAssembly() in Spectara.Revela.Core.
-        See: src/Core/PluginLoadContext.cs
+        PackageLoadContext.IsSharedAssembly() in Spectara.Revela.Core.
+        See: src/Features/Packages/Services/PackageLoadContext.cs
+        Parity is guarded by SharedAssemblyParityTests (tests/Core). When introducing a new
+        shared or plugin-specific category, update BOTH this filter and IsSharedAssembly(), then
+        add a representative assembly name to that test's probe list — the single place that
+        drives coverage.
 
   Shared assembly convention:
     - Spectara.Revela.*           → always shared (host provides SDK, Core, Commands)

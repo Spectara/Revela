@@ -50,6 +50,10 @@ internal sealed class PackageLoadContext : AssemblyLoadContext
     /// <para>
     /// <b>SYNC:</b> These rules must match the exclusion filters in
     /// <c>src/Sdk/build/Spectara.Revela.Sdk.targets</c> (target <c>_RevelaIncludePluginDependencies</c>).
+    /// Parity between this predicate and that target is guarded by
+    /// <c>SharedAssemblyParityTests</c> (tests/Core). When introducing a new shared or
+    /// plugin-specific category, update BOTH this method and the .targets filter, then add a
+    /// representative assembly name to that test's probe list — the single place that drives coverage.
     /// </para>
     /// </remarks>
     private static readonly FrozenSet<string> SharedAssemblies = new string[]
