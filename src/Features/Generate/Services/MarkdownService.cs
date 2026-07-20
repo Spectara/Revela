@@ -96,12 +96,19 @@ internal sealed class MarkdownService : IMarkdownService
         ArgumentNullException.ThrowIfNull(markdown);
         ArgumentNullException.ThrowIfNull(imageContext);
 
-        var pipeline = new MarkdownPipelineBuilder()
+        var pipelineBuilder = new MarkdownPipelineBuilder()
             .UseAutoLinks()
             .UseAutoIdentifiers()
             .UsePipeTables()
             .UseTaskLists()
-            .Use(new ContentImageExtension(imageContext))
+            .Use(new ContentImageExtension(imageContext));
+
+        if (imageContext.GalleryBlocks is not null)
+        {
+            pipelineBuilder.Use(new GalleryBlockExtension(imageContext.GalleryBlocks.SourcePath, imageContext));
+        }
+
+        var pipeline = pipelineBuilder
             .UseGenericAttributes()
             .Build();
 
