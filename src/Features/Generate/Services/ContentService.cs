@@ -121,6 +121,21 @@ internal sealed partial class ContentService(
             // Scan content
             var content = await contentScanner.ScanAsync(SourcePath, cancellationToken);
 
+            // Reject empty or colliding normalized slugs before touching metadata, the
+            // manifest, or any output — distinct sources must not overwrite each other (#97).
+            if (content.SlugConflicts.Count > 0)
+            {
+                var slugError = SlugValidator.FormatScanError(content.SlugConflicts);
+                LogSlugConflicts(logger, content.SlugConflicts.Count);
+                stopwatch.Stop();
+                return new ContentResult
+                {
+                    Success = false,
+                    ErrorMessage = slugError,
+                    Duration = stopwatch.Elapsed
+                };
+            }
+
             progress?.Report(new ContentProgress
             {
                 Status = "Reading image metadata...",
@@ -859,6 +874,9 @@ internal sealed partial class ContentService(
 
     [LoggerMessage(Level = LogLevel.Error, Message = "Scan failed")]
     private static partial void LogScanFailed(ILogger logger, Exception exception);
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "Scan rejected: {ConflictCount} slug conflict(s) would overwrite generated output")]
+    private static partial void LogSlugConflicts(ILogger logger, int conflictCount);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Failed to read metadata for {ImagePath}")]
     private static partial void LogMetadataReadFailed(ILogger logger, string imagePath, Exception exception);

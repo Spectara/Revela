@@ -33,13 +33,18 @@ internal sealed partial class ContentScanner(
         // Scan root directory
         await ScanDirectoryAsync(sourceDirectory, string.Empty, images, markdowns, galleries, cancellationToken);
 
+        // Detect empty or colliding normalized output slugs across everything we enumerated.
+        // The scan step fails on these before any rendering — see ContentService.ScanAsync.
+        var slugConflicts = SlugValidator.FindConflicts(galleries, images);
+
         LogScanComplete(logger, images.Count, galleries.Count);
 
         return new ContentTree
         {
             Images = images,
             Markdowns = markdowns,
-            Galleries = galleries
+            Galleries = galleries,
+            SlugConflicts = slugConflicts
         };
     }
 
