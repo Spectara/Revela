@@ -1,7 +1,6 @@
 using System.Collections.Frozen;
 using System.Diagnostics;
 using System.Globalization;
-using System.Runtime.CompilerServices;
 using Spectara.Revela.Core;
 
 namespace Spectara.Revela.Tests.Core;
@@ -244,6 +243,25 @@ public sealed class SharedAssemblyParityTests
             $"'dotnet msbuild' failed after {maxAttempts} attempts (exit {lastExit}):{Environment.NewLine}{lastOutput}");
     }
 
-    private static string RepoRoot([CallerFilePath] string thisFilePath = "") =>
-        Path.GetFullPath(Path.Combine(Path.GetDirectoryName(thisFilePath)!, "..", ".."));
+    private static string RepoRoot()
+    {
+        // Walk up from the test assembly location until the repo root is found.
+        // Do NOT use [CallerFilePath]: deterministic CI builds map it to a
+        // synthetic path (e.g. "/_/...") that does not exist at runtime, so the
+        // real SDK targets file could not be located on the build servers.
+        var dir = AppContext.BaseDirectory;
+        while (dir is not null)
+        {
+            if (File.Exists(Path.Combine(dir, "src", "Sdk", "build", "Spectara.Revela.Sdk.targets")))
+            {
+                return dir;
+            }
+
+            dir = Path.GetDirectoryName(dir);
+        }
+
+        throw new InvalidOperationException(
+            "Could not locate the repository root (searched upward from " +
+            $"'{AppContext.BaseDirectory}' for src/Sdk/build/Spectara.Revela.Sdk.targets).");
+    }
 }
