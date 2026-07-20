@@ -217,7 +217,7 @@ internal sealed partial class RenderService(
             // Generate sitemap.xml (requires absolute BaseUrl)
             if (config.Project.BaseUrl is not null)
             {
-                var sitemap = SitemapGenerator.Generate(siteModel, config.Project.BaseUrl, config.Project.BasePath);
+                var sitemap = SitemapGenerator.Generate(siteModel, config.Project.BaseUrl, config.Project.BasePath, photoPages);
                 await File.WriteAllTextAsync(
                     Path.Combine(OutputPath, "sitemap.xml"),
                     sitemap,

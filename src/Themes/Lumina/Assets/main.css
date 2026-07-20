@@ -128,12 +128,26 @@ html {
   scrollbar-gutter: stable;
   position: relative;
   height: 100dvh;
+  /* Root background so the cross-document view-transition crossfade has no flash. */
+  background-color: var(--color-bg);
 
   &:has(.nav-trigger:checked),
-  &:has(.nav-trigger ~ nav:focus-within),
-  &:has(.gallery > article:focus) {
+  &:has(.nav-trigger ~ nav:focus-within) {
     overflow: clip;
   }
+}
+
+/* Cross-document view transitions (#77): a short root crossfade only — no per-image
+   named transitions. Honors prefers-reduced-motion via --animation-time (0ms). Browsers
+   without support fall back to ordinary document navigation. */
+@view-transition {
+  navigation: auto;
+}
+
+::view-transition-group(root),
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: var(--animation-time);
 }
 
 body {
@@ -538,11 +552,16 @@ main {
       position: relative;
       background-color: var(--color-bg);
       outline: solid var(--grid-gap) var(--color-bg);
-      cursor: zoom-in;
       display: flex;
       justify-content: center;
 
-      >picture {
+      /* The thumbnail is wrapped in a link to the photo page; keep the link out of
+         the River Flow layout so the sticky picture geometry is preserved (#77). */
+      >a {
+        display: contents;
+      }
+
+      picture {
         aspect-ratio: var(--width)/calc(var(--height) * 2);
         margin-bottom: max(-100% / (var(--width) / var(--height)), max(-100dvh, var(--height) * -1px));
       }
@@ -550,7 +569,7 @@ main {
       /* CSS-only LQIP: Full implementation from leanrada.com
          Uses dual-layer approach with hard-light + overlay blend modes
          and quadratic interpolation for smooth bilinear-like blending */
-      &[style*="--lqip:"]>picture::before {
+      &[style*="--lqip:"] picture::before {
         content: "";
         position: sticky;
         top: calc(var(--space-xl) + var(--space-xs));
@@ -718,125 +737,10 @@ main {
         top: calc(var(--space-xl) + var(--space-xs));
       }
 
-      picture+aside {
-        position: fixed;
-        bottom: 0;
-        left: 0;
-        right: 0;
-        height: var(--space-m);
-        line-height: var(--space-m);
-        display: none;
-        justify-content: center;
-        flex-wrap: wrap;
-        align-content: flex-end;
-        font-size: var(--font-size-0);
-        transition: display var(--animation-time) allow-discrete, opacity var(--animation-time);
-        opacity: 0;
-        z-index: 350;
-        cursor: default;
-
-        p {
-          padding-inline: var(--space-2xs);
-        }
-      }
-
-      figure {
-        display: none;
-        position: fixed;
-        inset: 0;
-        z-index: 300;
-        transition: display var(--animation-time) allow-discrete, opacity var(--animation-time);
-        opacity: 0;
-        justify-content: center;
-        align-items: center;
-        background-color: color-mix(in srgb, var(--color-bg) 85%, transparent);
-        backdrop-filter: saturate(180%) blur(2rem);
-        cursor: default;
-
-        &::before {
-          content: " ";
-          position: fixed;
-          width: 10rem;
-          height: 2px;
-          background: linear-gradient(color-mix(in srgb, var(--color-light) 60%, transparent) 0 0) left -25% top 0/20% 100% no-repeat color-mix(in srgb, var(--color-bg) 40%, transparent);
-          animation: ct7 1s infinite steps(6);
-        }
-
-        >a {
-          position: absolute;
-          display: block;
-          text-indent: 100%;
-          white-space: nowrap;
-          overflow: hidden;
-          cursor: zoom-out;
-
-          &::after {
-            content: "+";
-            user-select: none;
-            position: fixed;
-            top: 0;
-            right: var(--space-2xs);
-            z-index: 1000;
-            color: var(--color);
-            cursor: pointer;
-            font-size: var(--font-size-5);
-            font-weight: 100;
-            text-indent: 0;
-            height: var(--font-size-5);
-            line-height: var(--font-size-5);
-            overflow: hidden;
-            transform: rotate(45deg);
-          }
-        }
-
-        img {
-          outline: none;
-          position: relative;
-          z-index: 190;
-          top: 0;
-          display: block;
-          width: auto;
-          height: auto;
-          max-width: 100dvw;
-          max-height: calc(100dvh - (var(--space-m) * 2));
-          box-shadow: 0px 0px var(--space-l) 0px var(--color-bg);
-        }
-      }
-
-      &:focus,
-      &:target {
-        >picture+aside {
-          display: flex;
-          opacity: 1;
-
-          @starting-style {
-            opacity: 0;
-          }
-        }
-
-        figure {
-          display: flex;
-          opacity: 1;
-
-          @starting-style {
-            opacity: 0;
-          }
-
-          &.zooming img {
-            transition: none;
-            transform: translate3d(var(--zoom-x), var(--zoom-y), 0) scale(var(--zoom-scale));
-            cursor: grab;
-          }
-
-          &.swiping img {
-            transform: translateY(var(--swipe-y, 0)) scale(var(--swipe-scale, 1));
-            transition: none;
-          }
-
-          &.dragging img {
-            cursor: grabbing;
-          }
-        }
+      /* Visible focus treatment on the linked thumbnail (#77). */
+      &:has(> a:focus-visible) img {
+        outline: 3px solid var(--color);
+        outline-offset: 2px;
       }
     }
 
@@ -851,12 +755,6 @@ main {
         display: none;
       }
     }
-  }
-}
-
-@keyframes ct7 {
-  100% {
-    background-position: right -25% top 0;
   }
 }
 
@@ -914,4 +812,102 @@ footer {
   &.breakout {
     max-width: min(56rem, 100vw - var(--space-l) * 2);
   }
+}
+
+/* ==================== Photo page (#77) ==================== */
+/* Standalone, image-led page: a sticky hero stage with the detail section scrolling
+   over it. No site header/overlay, no JavaScript. */
+body.photo-page {
+  display: block;
+}
+
+.photo {
+  position: relative;
+}
+
+.photo-stage {
+  position: sticky;
+  top: 0;
+  height: 100dvh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.photo-stage picture {
+  display: contents;
+}
+
+.photo-stage img {
+  max-width: 100vw;
+  max-height: 100dvh;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+}
+
+.photo-detail {
+  position: relative;
+  z-index: 1;
+  background-color: var(--color-bg);
+  min-height: 100dvh;
+  max-width: var(--content-max-width);
+  margin-inline: auto;
+  padding: var(--space-l) var(--space-s);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-l);
+}
+
+/* Navigation: one block per gallery context. The #ctx-* fragment selects the active
+   context via :target; direct navigation (no fragment) and unknown/stale fragments fall
+   back to the primary context. DOM order is previous, up, next. */
+.photo-nav {
+  display: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-s);
+}
+
+.photo-nav:target {
+  display: flex;
+}
+
+.photo-detail:not(:has(.photo-nav:target)) .photo-nav.primary {
+  display: flex;
+}
+
+.photo-nav .photo-up {
+  font-weight: 400;
+  text-align: center;
+}
+
+.photo-exif {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--space-2xs) var(--space-s);
+  margin: 0;
+}
+
+.photo-exif dt {
+  color: var(--color-light);
+}
+
+.photo-exif dd {
+  margin: 0;
+}
+
+.photo-memberships h2 {
+  font-size: var(--font-size-1);
+  margin-bottom: var(--space-s);
+}
+
+.photo-memberships ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-s);
 }

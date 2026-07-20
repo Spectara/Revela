@@ -1,3 +1,4 @@
+using Spectara.Revela.Features.Generate.Infrastructure;
 using Spectara.Revela.Features.Generate.Models;
 using Spectara.Revela.Features.Generate.Services;
 
@@ -110,6 +111,45 @@ public sealed class SitemapGeneratorTests
         // Assert — no double slash
         Assert.Contains("<loc>https://example.com/</loc>", xml);
         Assert.DoesNotContain("https://example.com//", xml);
+    }
+
+    [TestMethod]
+    public void Generate_WithPhotoPages_IncludesEachOnceWithoutFragment()
+    {
+        // Arrange — one shared image in two eligible galleries → one photo page, two contexts.
+        var image = new Image
+        {
+            SourcePath = "_images/ocean.jpg",
+            FileName = "ocean",
+            Slug = UrlBuilder.ToImageSlug("_images/ocean.jpg"),
+            Width = 100,
+            Height = 100
+        };
+        var galleries = new[]
+        {
+            new Gallery { Path = "canon", Slug = "canon/", Name = "Canon", Title = "Canon", Images = [image] },
+            new Gallery { Path = "sony", Slug = "sony/", Name = "Sony", Title = "Sony", Images = [image] }
+        };
+        var photoPages = PhotoPageCatalog.Build(galleries);
+
+        var model = new SiteModel
+        {
+            Project = new RenderProjectSettings { Name = "test" },
+            Galleries = galleries,
+            Navigation = [],
+            Images = [image],
+            BuildDate = new DateTime(2026, 3, 15, 0, 0, 0, DateTimeKind.Utc)
+        };
+
+        // Act
+        var xml = SitemapGenerator.Generate(model, "https://example.com", "/", photoPages);
+
+        // Assert — the photo appears exactly once, canonical route, no context fragment.
+        Assert.Contains("<loc>https://example.com/photo/ocean/</loc>", xml);
+        Assert.DoesNotContain("#ctx-", xml);
+
+        var occurrences = xml.Split("/photo/ocean/").Length - 1;
+        Assert.AreEqual(1, occurrences, "The photo must be listed exactly once.");
     }
 }
 
