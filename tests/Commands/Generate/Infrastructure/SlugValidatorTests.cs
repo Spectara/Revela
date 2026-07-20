@@ -220,7 +220,7 @@ public sealed class SlugValidatorTests
     {
         SourcePath = "/src/" + relativePath,
         RelativePath = relativePath,
-        FileName = System.IO.Path.GetFileName(relativePath),
+        FileName = Path.GetFileName(relativePath),
         FileSize = 4,
         LastModified = DateTime.UnixEpoch,
         Gallery = string.Empty

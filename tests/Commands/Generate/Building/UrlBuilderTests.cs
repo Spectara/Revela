@@ -123,7 +123,10 @@ public sealed class UrlBuilderTests
     public void ToSlug_DiacriticVariants_CollideToSameSlug()
     {
         // "Café" and "Cafe" both fold to "cafe" (#97).
-        Assert.AreEqual(UrlBuilder.ToSlug("Cafe"), UrlBuilder.ToSlug("Café"));
+        var withDiacritic = UrlBuilder.ToSlug("Café");
+        var withoutDiacritic = UrlBuilder.ToSlug("Cafe");
+
+        Assert.AreEqual(withoutDiacritic, withDiacritic);
     }
 
     #endregion
