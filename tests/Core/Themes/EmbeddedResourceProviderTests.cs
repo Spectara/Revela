@@ -97,11 +97,9 @@ public sealed class EmbeddedResourceProviderTests
         // Arrange & Act
         var files = provider.GetAllFiles().ToList();
 
-        // Assert
+        // Assert — Lumina ships CSS assets; it intentionally requires no JavaScript (#77).
         Assert.IsTrue(files.Any(f =>
             f.EndsWith(".css", StringComparison.OrdinalIgnoreCase)));
-        Assert.IsTrue(files.Any(f =>
-            f.EndsWith(".js", StringComparison.OrdinalIgnoreCase)));
     }
 
     [TestMethod]

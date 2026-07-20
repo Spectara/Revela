@@ -1,0 +1,106 @@
+{{~##
+Photo Page Body - Lumina Theme (#77)
+
+A standalone, image-led photo page served at /photo/{slug}/. Unlike gallery pages it has
+no site header or overlay-menu trigger and requires no JavaScript. It stays useful when
+opened directly (no fragment / no referrer): the primary context is shown by default and an
+unknown/stale #ctx-* fragment falls back to it via CSS (:target + :has).
+
+Template contract:
+- photo: { image, slug, anchor, title, primary_context, contexts }
+- image: ImageData { id, slug, width, height, title?, exif?, sizes, placeholder? }
+- contexts: PhotoContext[] { gallery_slug, label, context_id, is_physical, previous_photo?, next_photo? }
+- primary_context: PhotoContext
+- site, base_url, basepath, assets_basepath, image_formats, stylesheets, scripts, revela
+- helpers: page_url, absolute_url, variant_url
+##~}}
+{{~ largest_size = image.sizes | array.last ~}}
+{{~ is_landscape = image.width >= image.height ~}}
+{{~ alt_text = image.title ?? '' ~}}
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>{{ photo.title }}{{ site.title ? ' - ' + site.title : '' }}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    {{~ if alt_text != '' ~}}
+    <meta name="description" content="{{ alt_text }}">
+    {{~ end ~}}
+    <meta name="generator" content="Revela {{ revela.version }}">
+    <link rel="canonical" href="{{ absolute_url(image) }}">
+    {{~ include 'favicon' ~}}
+    {{~ for css in stylesheets ~}}
+    <link type="text/css" rel="stylesheet" media="all" href="{{ basepath }}_assets/{{ css }}">
+    {{~ end ~}}
+</head>
+
+<body class="photo-page">
+    <main class="photo">
+        {{~ # --- Sticky, image-led first viewport --- ~}}
+        <div class="photo-stage">
+            <picture>
+                {{~ for format in image_formats ~}}
+                <source type="image/{{ format }}" sizes="100vw" srcset="
+                    {{~ for size in image.sizes ~}}
+                    {{~ actual_width = is_landscape ? size : ((size * image.width / image.height) | math.floor) ~}}
+                    {{- assets_basepath }}{{ image.slug }}/{{ size }}.{{ format }} {{ actual_width }}w{{ !for.last ? " , " : "" }}
+                    {{~ end ~}}">
+                {{~ end ~}}
+                <img alt="{{ alt_text }}" src="{{ assets_basepath }}{{ image.slug }}/{{ largest_size }}.{{ image_formats | array.last }}"
+                    width="{{ image.width }}" height="{{ image.height }}" decoding="async"
+                    {{~ if image.placeholder }} style="--lqip:{{ image.placeholder }};"{{ end ~}}>
+            </picture>
+        </div>
+
+        {{~ # --- Detail section scrolls over the sticky photo --- ~}}
+        <section class="photo-detail">
+            {{~ # Navigation: one block per context, selected by #ctx-* (:target), primary by default ~}}
+            {{~ for ctx in contexts ~}}
+            {{~ up_href = ctx.gallery_slug == '' ? basepath : page_url(ctx.gallery_slug) ~}}
+            <nav class="photo-nav{{ ctx.context_id == primary_context.context_id ? ' primary' : '' }}" id="ctx-{{ ctx.context_id }}" aria-label="{{ ctx.label }}">
+                {{~ if ctx.previous_photo ~}}
+                <a class="photo-prev" rel="prev" href="{{ page_url(ctx.previous_photo) }}#ctx-{{ ctx.context_id }}">Previous</a>
+                {{~ else ~}}
+                <span class="photo-prev" aria-hidden="true"></span>
+                {{~ end ~}}
+                <a class="photo-up" href="{{ up_href }}#{{ photo.anchor }}">Back to {{ ctx.label }}</a>
+                {{~ if ctx.next_photo ~}}
+                <a class="photo-next" rel="next" href="{{ page_url(ctx.next_photo) }}#ctx-{{ ctx.context_id }}">Next</a>
+                {{~ else ~}}
+                <span class="photo-next" aria-hidden="true"></span>
+                {{~ end ~}}
+            </nav>
+            {{~ end ~}}
+
+            {{~ # EXIF details below navigation ~}}
+            {{~ if image.exif ~}}
+            <dl class="photo-exif">
+                {{~ if image.exif.f_number ~}}<dt>Aperture</dt><dd>f/{{ image.exif.f_number }}</dd>{{~ end ~}}
+                {{~ if image.exif.exposure_time ~}}<dt>Shutter</dt><dd>{{ format_exif_exposure(image.exif.exposure_time) }}</dd>{{~ end ~}}
+                {{~ if image.exif.iso ~}}<dt>ISO</dt><dd>{{ image.exif.iso }}</dd>{{~ end ~}}
+                {{~ if image.exif.focal_length ~}}<dt>Focal length</dt><dd>{{ image.exif.focal_length }}mm</dd>{{~ end ~}}
+                {{~ if image.exif.lens_model ~}}<dt>Lens</dt><dd>{{ image.exif.lens_model }}</dd>{{~ end ~}}
+                {{~ if image.exif.model ~}}<dt>Camera</dt><dd>{{ image.exif.model }}</dd>{{~ end ~}}
+            </dl>
+            {{~ end ~}}
+
+            {{~ # Eligible gallery/collection memberships below EXIF ~}}
+            <section class="photo-memberships">
+                <h2>Appears in</h2>
+                <ul>
+                    {{~ for ctx in contexts ~}}
+                    {{~ member_href = ctx.gallery_slug == '' ? basepath : page_url(ctx.gallery_slug) ~}}
+                    <li><a href="{{ member_href }}#{{ photo.anchor }}">{{ ctx.label }}</a></li>
+                    {{~ end ~}}
+                </ul>
+            </section>
+        </section>
+    </main>
+
+    {{~ for js in scripts ~}}
+    <script src="{{ basepath }}_assets/{{ js }}" defer></script>
+    {{~ end ~}}
+</body>
+
+</html>

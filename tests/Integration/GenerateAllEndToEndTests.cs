@@ -135,8 +135,8 @@ public sealed class GenerateAllEndToEndTests
         // Step 2: Render HTML pages
         var renderResult = await renderService.RenderAsync();
         Assert.IsTrue(renderResult.Success, $"Render should succeed: {renderResult.ErrorMessage}");
-        Assert.AreEqual(3, renderResult.PageCount,
-            "Root index + landscapes + portraits = exactly 3 pages (index counted once, see #99)");
+        Assert.AreEqual(6, renderResult.PageCount,
+            "Root index + 2 galleries + 3 photo pages = 6 (index counted once, see #99/#77)");
 
         // Step 3: Process images
         var imageResult = await imageService.ProcessAsync(new ProcessImagesOptions());
@@ -186,6 +186,23 @@ public sealed class GenerateAllEndToEndTests
         var cssFiles = Directory.EnumerateFiles(assetsDir, "*.css", SearchOption.AllDirectories).ToList();
         Assert.IsTrue(cssFiles.Count > 0,
             "Theme CSS files should be copied to output");
+
+        // Assert: photo pages (#77) — one canonical page per published source image.
+        var sunsetPhoto = Path.Combine(project.OutputPath, "photo", "landscapes", "sunset", "index.html");
+        Assert.IsTrue(File.Exists(sunsetPhoto), "Photo page for sunset.jpg should be generated");
+
+        var sunsetPhotoContent = await File.ReadAllTextAsync(sunsetPhoto);
+        Assert.Contains("/photo/landscapes/sunset/", sunsetPhotoContent);
+        Assert.Contains("rel=\"canonical\"", sunsetPhotoContent);
+        // up returns to the originating gallery occurrence via the #photo-* anchor.
+        Assert.Contains("#photo-landscapes-sunset", sunsetPhotoContent);
+        // no wraparound: the first image in the gallery has a next but no previous link.
+        Assert.Contains("photo/landscapes/mountain/", sunsetPhotoContent);
+
+        // Assert: the Lumina gallery no longer emits an inline lightbox figure (#77).
+        Assert.IsFalse(landscapesContent.Contains("<figure", StringComparison.Ordinal),
+            "Gallery markup must not contain the removed inline lightbox figure");
+        Assert.Contains("/photo/landscapes/sunset/", landscapesContent);
     }
 
     [TestMethod]

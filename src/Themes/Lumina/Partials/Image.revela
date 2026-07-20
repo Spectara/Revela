@@ -1,15 +1,17 @@
 {{~##
 Image Article Template - Lumina Theme
 
-Renders a gallery article with responsive images:
-- Thumbnail with srcset + sizes="auto" (Chrome 126+)
-- EXIF overlay (on hover)
-- Lightbox (on focus/click)
+Renders a gallery article: a responsive River Flow thumbnail wrapped in an ordinary
+internal link to the photo page (#77). The old inline lightbox figure, EXIF overlay,
+:target state and per-image zoom have been removed — opening an image now navigates to
+its canonical /photo/{slug}/ page.
 
 Context variables:
-- image: ImageData { id, slug, width, height, title?, exif?, sizes, placeholder? }
+- image: ImageData { id, slug, width, height, title?, sizes, placeholder? }
 - assets_basepath: path/URL to image folder (can be CDN URL)
 - image_formats: available formats ["avif", "webp", "jpg"]
+- gallery: current gallery (global) — used for the navigation context fragment.
+  Absent for inline [[gallery]] grids, which are not contexts in this MVP.
 
 Note: sizes="auto" requires loading="lazy" - browser uses actual
 rendered size instead of viewport. Firefox/Safari fallback to 100vw.
@@ -19,52 +21,28 @@ rendered size instead of viewport. Firefox/Safari fallback to 100vw.
 {{~ if !image.sizes || image.sizes.size == 0; ret; end ~}}
 
 {{~ # Variables ~}}
-{{~ largest_size = image.sizes | array.last ~}}
 {{~ alt_text = image.title ?? '' ~}}
 {{~ is_landscape = image.width >= image.height ~}}
+{{~ anchor_id = 'photo-' + (image.slug | string.replace '/' '-') ~}}
+{{~ photo_href = page_url(image) ~}}
+{{~ if gallery ~}}
+{{~ context_id = gallery.slug == '' ? 'home' : (gallery.slug | string.replace '/' '-') ~}}
+{{~ photo_href = photo_href + '#ctx-' + context_id ~}}
+{{~ end ~}}
 
-<article tabindex="0" id="{{ image.id }}" style="--width:{{ image.width }}; --height:{{ image.height }};{{~ if image.placeholder ~}} --lqip:{{ image.placeholder }};{{~ end ~}}">
-    {{~ # --- Thumbnail (sizes="auto" for smart loading) --- ~}}
-    <picture>
-        {{~ for format in image_formats ~}}
-        <source type="image/{{ format }}" sizes="auto" srcset="
-            {{~ for size in image.sizes ~}}
-            {{~ actual_width = is_landscape ? size : ((size * image.width / image.height) | math.floor) ~}}
-            {{- assets_basepath }}{{ image.slug }}/{{ size }}.{{ format }} {{ actual_width }}w{{ !for.last ? " , " : "" }}
-            {{~ end ~}}">
-        {{~ end ~}}
-        <img alt="{{ alt_text }}" src="{{ assets_basepath }}{{ image.slug }}/640.{{ image_formats | array.last }}" sizes="auto"
-            width="{{ image.width }}" height="{{ image.height }}" loading="lazy" decoding="async">
-    </picture>
-
-    {{~ # --- EXIF Overlay (on hover) --- ~}}
-    {{~ if image.exif ~}}
-    <aside>
-        <p>
-            {{~ image.exif.f_number ? "f/" + image.exif.f_number + " " : "" ~}}
-            {{~ image.exif.exposure_time ? format_exif_exposure(image.exif.exposure_time) + " " : "" ~}}
-            {{~ image.exif.iso ? "ISO " + image.exif.iso + " " : "" ~}}
-            {{~ image.exif.focal_length ? image.exif.focal_length + "mm" : "" ~}}
-        </p>
-        <p>
-            {{~ image.exif.lens_model ?? "" ~}}
-            {{~ image.exif.model ? " on " + image.exif.model : "" ~}}
-        </p>
-    </aside>
-    {{~ end ~}}
-
-    {{~ # --- Lightbox (on focus/click) --- ~}}
-    {{~ # Always load largest size - user can zoom in ~}}
-    <figure>
-        <a href="#" tabindex="-1" title="close">close</a>
+<article id="{{ anchor_id }}" style="--width:{{ image.width }}; --height:{{ image.height }};{{~ if image.placeholder ~}} --lqip:{{ image.placeholder }};{{~ end ~}}">
+    {{~ # --- Thumbnail wrapped in a link to the photo page (sizes="auto" for smart loading) --- ~}}
+    <a href="{{ photo_href }}"{{ alt_text == '' ? ' aria-label="View photo ' + image.id + '"' : '' }}>
         <picture>
             {{~ for format in image_formats ~}}
-            <source type="image/{{ format }}"
-                srcset="{{ assets_basepath }}{{ image.slug }}/{{ largest_size }}.{{ format }}">
+            <source type="image/{{ format }}" sizes="auto" srcset="
+                {{~ for size in image.sizes ~}}
+                {{~ actual_width = is_landscape ? size : ((size * image.width / image.height) | math.floor) ~}}
+                {{- assets_basepath }}{{ image.slug }}/{{ size }}.{{ format }} {{ actual_width }}w{{ !for.last ? " , " : "" }}
+                {{~ end ~}}">
             {{~ end ~}}
-            <img alt="{{ alt_text }}" src="{{ assets_basepath }}{{ image.slug }}/{{ largest_size }}.{{ image_formats | array.last }}"
+            <img alt="{{ alt_text }}" src="{{ assets_basepath }}{{ image.slug }}/640.{{ image_formats | array.last }}" sizes="auto"
                 width="{{ image.width }}" height="{{ image.height }}" loading="lazy" decoding="async">
         </picture>
-    </figure>
-
+    </a>
 </article>

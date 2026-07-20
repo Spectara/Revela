@@ -3,7 +3,7 @@
   <PropertyGroup>
     <IsPackable>true</IsPackable>
     <Description>Revela Theme - Elegant photography portfolio design</Description>
-    <PackageTags>revela;theme;lumina;photography;gallery;lightbox</PackageTags>
+    <PackageTags>revela;theme;lumina;photography;gallery;photo-pages</PackageTags>
     <PackageIcon>icon.png</PackageIcon>
     <PackageReleaseNotes>https://github.com/spectara/revela/blob/main/CHANGELOG.md</PackageReleaseNotes>
     <PackageType>RevelaTheme</PackageType>

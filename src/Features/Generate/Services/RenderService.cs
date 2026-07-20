@@ -180,9 +180,30 @@ internal sealed partial class RenderService(
                 BuildDate = timeProvider.GetUtcNow().UtcDateTime
             };
 
+            // Build the photo-page catalog when the theme resolves Body/Photo.revela.
+            // Validation runs here — before any output is written — so a route collision
+            // aborts the whole render with an actionable, source-listing message.
+            var photoTemplate = LoadTemplate("body/photo.revela");
+            IReadOnlyList<PhotoPage> photoPages = [];
+            if (photoTemplate is not null)
+            {
+                photoPages = PhotoPageCatalog.Build(galleries);
+
+                var photoConflicts = SlugValidator.FindPhotoConflicts(photoPages, galleries);
+                if (photoConflicts.Count > 0)
+                {
+                    return new RenderResult
+                    {
+                        Success = false,
+                        ErrorMessage = SlugValidator.FormatPhotoRouteError(photoConflicts),
+                        Duration = stopwatch.Elapsed
+                    };
+                }
+            }
+
             // Render templates
             var engine = CreateAndConfigureEngine();
-            var pageCount = await RenderSiteAsync(engine, siteModel, config, theme, progress, cancellationToken);
+            var pageCount = await RenderSiteAsync(engine, siteModel, config, theme, photoPages, photoTemplate, progress, cancellationToken);
 
             // Copy assets (theme, extensions, local overrides)
             if (theme is not null)
@@ -467,6 +488,8 @@ internal sealed partial class RenderService(
         SiteModel model,
         RenderContext config,
         ITheme? theme,
+        IReadOnlyList<PhotoPage> photoPages,
+        string? photoTemplate,
         IProgress<RenderProgress>? progress,
         CancellationToken cancellationToken)
     {
@@ -690,6 +713,73 @@ internal sealed partial class RenderService(
             foreach (var gallery in galleriesToRender)
             {
                 await RenderGalleryAsync(gallery, engine, cancellationToken);
+            }
+        }
+
+        // Photo pages (#77): one canonical page per eligible source image, rendered after the
+        // gallery loop so every Gallery.Images list is final. Body/Photo.revela is a standalone
+        // document (no site header/overlay-menu). Counted into pageCount alongside index + galleries.
+        async Task RenderPhotoPageAsync(PhotoPage page, string template, ITemplateEngine renderEngine, CancellationToken ct)
+        {
+            ct.ThrowIfCancellationRequested();
+
+            var pagePath = $"photo/{page.Slug}/";
+            var relativeBasePath = UrlBuilder.CalculateBasePath(pagePath);
+            var photoBasePath = CalculateSiteBasePath(config, relativeBasePath);
+            var photoAssetsBasePath = CalculateAssetsBasePath(config, relativeBasePath);
+
+            var photoModel = new Dictionary<string, object?>
+            {
+                ["site"] = model.Site,
+                ["photo"] = page.ToScriptObject(),
+                ["image"] = page.Image.ToScriptObject(),
+                ["contexts"] = page.Contexts.ToScriptArray(),
+                ["primary_context"] = page.PrimaryContext.ToScriptObject(),
+                ["basepath"] = photoBasePath,
+                ["assets_basepath"] = photoAssetsBasePath,
+                ["base_url"] = config.Project.BaseUrl,
+                ["image_formats"] = formats.Keys,
+                ["revela"] = revelaInfo,
+                ["stylesheets"] = stylesheets,
+                ["scripts"] = scripts
+            };
+
+            var photoHtml = renderEngine.Render(template, photoModel);
+
+            var photoOutputPath = Path.Combine(OutputPath, "photo", page.Slug.Replace('/', Path.DirectorySeparatorChar));
+            Directory.CreateDirectory(photoOutputPath);
+
+            WarnIfHtmlTruncated(photoHtml, $"photo/{page.Slug}/index.html");
+            await File.WriteAllTextAsync(
+                Path.Combine(photoOutputPath, "index.html"),
+                photoHtml,
+                ct);
+
+            Interlocked.Increment(ref pageCount);
+        }
+
+        if (photoTemplate is not null && photoPages.Count > 0)
+        {
+            if (RenderSettings.Parallel)
+            {
+                var parallelOptions = new ParallelOptions
+                {
+                    MaxDegreeOfParallelism = RenderSettings.MaxDegreeOfParallelism ?? -1,
+                    CancellationToken = cancellationToken
+                };
+
+                await Parallel.ForEachAsync(photoPages, parallelOptions, async (page, ct) =>
+                {
+                    var renderEngine = CreateAndConfigureEngine();
+                    await RenderPhotoPageAsync(page, photoTemplate, renderEngine, ct);
+                });
+            }
+            else
+            {
+                foreach (var page in photoPages)
+                {
+                    await RenderPhotoPageAsync(page, photoTemplate, engine, cancellationToken);
+                }
             }
         }
 
