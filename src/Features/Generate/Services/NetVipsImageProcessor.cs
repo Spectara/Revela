@@ -226,7 +226,15 @@ internal sealed partial class NetVipsImageProcessor(
         else
         {
             // Load full original ONCE - benchmarking shows this is faster than Thumbnail(originalWidth)
-            using var original = Image.NewFromFile(inputPath);
+            using var loaded = Image.NewFromFile(inputPath);
+
+            // Normalize EXIF orientation once at the single load point that feeds BOTH the
+            // direct largest-size save path and every resized variant (see #98). After Autorot
+            // the pixels are physically upright and the orientation tag is removed, so all
+            // downstream paths — including the original-size output saved with ForeignKeep.None —
+            // are upright and no longer depend on an orientation tag. Autorot swaps width/height
+            // for Orientation 6/8, matching the upright dimensions recorded during the scan.
+            using var original = loaded.Autorot();
 
             var originalWidth = original.Width;
             var originalHeight = original.Height;
@@ -368,7 +376,12 @@ internal sealed partial class NetVipsImageProcessor(
         var needsPlaceholder = placeholderConfig?.Strategy is PlaceholderStrategy.CssHash;
         var accessMode = needsPlaceholder ? Enums.Access.Random : Enums.Access.Sequential;
 
-        using var image = Image.NewFromFile(inputPath, access: accessMode);
+        using var loaded = Image.NewFromFile(inputPath, access: accessMode);
+
+        // Normalize EXIF orientation once so the scanned dimensions (and any placeholder)
+        // describe the visually UPRIGHT image, consistent with the variants produced later
+        // (see #98). Autorot swaps width/height for Orientation 6/8 and removes the tag.
+        using var image = loaded.Autorot();
 
         var width = image.Width;
         var height = image.Height;
