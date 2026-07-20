@@ -83,7 +83,16 @@ If any of those apply to you, the current Revela renderer is not enough. The upg
 
 ### Stale image EXIF / GPS data in published images
 
-Image processing preserves EXIF metadata. If your source photos contain GPS coordinates of your home, that GPS data ends up in the published image. Strip it before rendering if that matters to you.
+**Published image variants are stripped of all embedded metadata** — EXIF, XMP, ICC profiles, and GPS coordinates. The image writer saves every variant with `keep: ForeignKeep.None` for JPEG, WebP, AVIF, and PNG (see [`NetVipsImageProcessor.SaveImage`](../src/Features/Generate/Services/NetVipsImageProcessor.cs), the `Jpegsave`/`Webpsave`/`Heifsave`/`Pngsave` calls), so the GPS coordinates of your home do **not** leak into the rendered site.
+
+Distinguish two separate things:
+
+- **Manifest EXIF extraction (read-only):** Revela reads EXIF from your source photos into the in-memory `ImageManifest` (see `ExtractExifData` in the same file) so camera settings can be shown in templates and aggregated by the Statistics plugin. GPS latitude/longitude are among the fields read. This data lives in the manifest and is surfaced only if your theme chooses to render it.
+- **Published variant metadata (stripped):** The resized/re-encoded files written to the output folder carry no embedded metadata at all.
+
+Since #98 the loader also calls `Autorot()` before stripping, so orientation is baked into the pixels rather than left in a now-removed EXIF tag.
+
+If your theme deliberately renders GPS from the manifest and you do not want coordinates published, omit them in your theme templates — the embedded file metadata is already gone.
 
 ### Third-party theme review
 
@@ -166,14 +175,16 @@ If you publish Revela plugins to nuget.org and want consumers to verify they cam
 
 ### Stripping image EXIF
 
-Add a NetVips post-processing step that removes EXIF before writing the variant. Open an issue if you want this as a built-in option.
+Already done — published variants are written with `ForeignKeep.None` (see [Stale image EXIF / GPS data in published images](#stale-image-exif--gps-data-in-published-images)). Only the in-memory manifest retains EXIF, for display and statistics. No extra step is needed to keep metadata out of the output files.
 
 ---
 
 ## Reporting a security issue
 
-Please **do not** open public GitHub issues for security vulnerabilities. Instead, see
-the project's `SECURITY.md` (or open a private security advisory in the repository).
+Please **do not** open public GitHub issues for security vulnerabilities. Instead,
+follow the private reporting route in the repository's [`SECURITY.md`](../SECURITY.md) —
+use GitHub's **Report a vulnerability** button on the
+[Security tab](https://github.com/Spectara/Revela/security) to open a private advisory.
 
 ---
 
