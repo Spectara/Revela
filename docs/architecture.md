@@ -40,35 +40,46 @@ Revela follows **Vertical Slice Architecture** combined with a **Plugin System**
 ```
 Revela/
 ├── src/
-│   ├── Spectara.Revela.Core/              # Shared Kernel
-│   │   ├── Models/               # Domain models
-│   │   ├── Configuration/        # Config models
-│   │   ├── Abstractions/         # Interfaces
-│   │   ├── PluginLoader.cs       # Plugin discovery
-│   │   └── PluginManager.cs      # Plugin management
+│   ├── Sdk/                     # Public abstractions for plugin/theme authors
+│   │   ├── Abstractions/        # IPlugin, IPackageSource, IPathResolver, …
+│   │   ├── Configuration/       # Bound options (ProjectConfig, SiteCoreConfig, …)
+│   │   └── Validation/          # UrlSafety (SSRF guardrails), …
 │   │
-│   ├── Spectara.Revela.Commands/          # CLI Commands (Vertical Slices)
-│   │   ├── Generate/             # Site generation command
-│   │   ├── Init/                 # Project initialization
-│   │   ├── Plugins/              # Plugin management
-│   │   ├── Restore/              # Dependency restore
-│   │   └── Theme/                # Theme management
+│   ├── Sdk.Generators/          # Roslyn source generators ([RevelaTemplateModel], …)
 │   │
-│   ├── Spectara.Revela.Cli/               # CLI Entry Point (dynamic loading)
-│   │   └── Hosting/              # HostBootstrap, InteractiveMenu
-│   │   └── Program.cs            # DiskPackageSource → HostBootstrap
+│   ├── Core/                    # Shared kernel — services, package loading, config wiring
 │   │
-│   ├── Spectara.Revela.Cli.Embedded/      # CLI Entry Point (static linking)
-│   │   └── Program.cs            # EmbeddedPackageSource → HostBootstrap
+│   ├── Commands/                # Host-owned CLI commands (Config, Info, Packages, …)
 │   │
-│   └── Spectara.Revela.Plugins/           # Optional Plugins
-│       ├── Serve/
-│       ├── Source/
-│       │   └── OneDrive/
-│       └── Statistics/
+│   ├── Features/                # Always built-in features (NOT plugins)
+│   │   ├── Generate/            # Site generation (scan, render, NetVipsImageProcessor)
+│   │   ├── Packages/            # DiskPackageSource + package management
+│   │   └── Theme/               # Theme management
+│   │
+│   ├── Plugins/                 # External plugins (NuGet-loaded)
+│   │   ├── Calendar/
+│   │   ├── Compress/
+│   │   ├── Serve/
+│   │   ├── Source/
+│   │   │   ├── OneDrive/
+│   │   │   └── Calendar/
+│   │   └── Statistics/
+│   │
+│   ├── Themes/                  # Lumina (base) + Lumina.Calendar, Lumina.Statistics
+│   │
+│   ├── Cli/                     # Entry point — dynamic plugin loading (DiskPackageSource)
+│   │   └── Hosting/             # HostBootstrap (shared), HostBuilderExtensions, menus
+│   │
+│   └── Cli.Embedded/            # Entry point — static plugin refs (EmbeddedPackageSource)
 │
-└── tests/
+└── tests/                       # Mirrors src/ + Shared (fixtures)
 ```
+
+**Two entry points, one bootstrap.** `Cli` and `Cli.Embedded` differ only in their
+`IPackageSource` implementation — all shared setup lives in
+[`src/Cli/Hosting/HostBootstrap.cs`](../src/Cli/Hosting/HostBootstrap.cs)
+(`ConfigureRevela`). `Cli` uses `DiskPackageSource` (runtime discovery); `Cli.Embedded`
+uses `EmbeddedPackageSource` (statically referenced plugins, AOT-friendly, F5 debug).
 
 ---
 
@@ -158,38 +169,62 @@ Revela/
 
 ### 5. Configuration Strategy
 
-**Pattern:** Options Pattern + JSON
+**Pattern:** Options Pattern + layered JSON
 
-```json
-Spectara.Revela.json → ExposeConfig → IOptions<ExposeConfig>
-```
+Configuration is merged from multiple JSON files plus environment variables and CLI
+arguments. Each config section binds to a strongly-typed options class in
+[`src/Sdk/Configuration/`](../src/Sdk/Configuration/) (e.g. `ProjectConfig`,
+`SiteCoreConfig`, `GenerateConfig`) via
+`services.AddOptions<T>().BindConfiguration(T.Section)`.
 
 **Benefits:**
 - Strongly-typed
-- Validated
+- Validated (`IValidateOptions<T>` validators)
 - Testable
-- IDE support
+- Hot-reload via `IOptionsMonitor<T>`
 
-**Override hierarchy:**
-1. `Spectara.Revela.json` (base)
-2. `Spectara.Revela.{Environment}.json` (override)
-3. Environment variables
-4. Command-line arguments (highest priority)
+**Override hierarchy** (later sources win — see
+[`HostBuilderExtensions.AddRevelaConfiguration`](../src/Cli/Hosting/HostBuilderExtensions.cs)
+and `ConfigurePlugins` in
+[`PackageServiceCollectionExtensions`](../src/Core/Extensions/PackageServiceCollectionExtensions.cs)):
 
-### 6. Plugin Discovery
+1. C# property defaults on the config classes
+2. `revela.json` — global user-wide defaults (`%APPDATA%/Revela/`)
+3. `project.json` — project-local settings
+4. `site.json` — added via `AddSiteJson` (re-keyed under the `site` section)
+5. `logging.json` — optional, project-local logging overrides
+6. Environment variables (prefix `SPECTARA__REVELA__`)
+7. Command-line arguments (highest priority)
+
+**The `site.json` split.** Only the *identity core* of `site.json` (`SiteCoreConfig`:
+title, description, language, …) is bound via `IOptions`. The remaining
+theme-specific properties are **not** modelled as options — `RenderService` loads them
+dynamically as a `JsonElement`, so themes can define custom properties without a fixed
+schema. Configurable filesystem paths (`source`, `output`) resolve through
+`IPathResolver`; fixed paths (`Cache`, `Themes`, `Plugins`, …) come from `ProjectPaths`.
+
+### 6. Package & Plugin Discovery
+
+Plugins and themes are loaded through the `IPackageSource` abstraction, chosen by the
+entry point:
+
+- `DiskPackageSource` — discovers packages from disk (application directory + the user
+  plugin directory `%APPDATA%/Revela/plugins`). Used by `Cli`.
+- `EmbeddedPackageSource` — returns statically referenced plugin/theme assemblies. Used
+  by `Cli.Embedded` (AOT-friendly, F5 debugging).
 
 ```
 %APPDATA%/Revela/plugins/
-└── Spectara.Revela.Plugins.Deploy/
-    ├── Spectara.Revela.Plugins.Deploy.dll
+└── Spectara.Revela.Plugins.Source.OneDrive/
+    ├── Spectara.Revela.Plugins.Source.OneDrive.dll
     └── dependencies...
 ```
 
 **Discovery process:**
-1. Scan plugin directory for `Spectara.Revela.Plugins.*.dll`
-2. Load assemblies
-3. Find types implementing `IPlugin`
-4. Instantiate and register commands
+1. `IPackageSource.LoadPlugins()` returns the available `LoadedPluginInfo` set
+2. Each `IPlugin` runs `ConfigureConfiguration` (optional) then `ConfigureServices`
+3. After the host is built, `GetCommands(IServiceProvider)` yields `CommandDescriptor`s
+4. Commands are registered into the System.CommandLine tree
 
 ---
 
@@ -201,7 +236,7 @@ Spectara.Revela.json → ExposeConfig → IOptions<ExposeConfig>
 User runs: revela generate all
 
 1. Load Configuration
-   project.json + site.json → RevelaConfig
+   revela.json → project.json → site.json → env → args (typed options)
 
 2. Discover Content
    content/ → Images + Markdown
@@ -390,9 +425,11 @@ public class CustomProcessor : IImageProcessor
 
 ### 3. EXIF Data
 
-- Sanitized before rendering
-- No script injection possible
-- GPS coordinates optional
+- **Read** into the in-memory `ImageManifest` for display and statistics
+- **Stripped** from every published variant — the writer saves with
+  `keep: ForeignKeep.None` (JPEG/WebP/AVIF/PNG), removing EXIF, XMP, ICC, and GPS
+- No embedded metadata (including home GPS coordinates) leaks into the output files
+- See [`docs/security-model.md`](security-model.md) for the full rationale
 
 ---
 
@@ -458,10 +495,12 @@ Spectara.Revela.sh
 
 #### New (.NET)
 ```
-expose
-├── Spectara.Revela.json            # Structured JSON config
+project root
+├── revela.json            # Global user-wide defaults (%APPDATA%/Revela/)
+├── project.json           # Project-local settings (typed options)
+├── site.json              # Site identity + theme-specific properties
 ├── themes/
-│   └── *.html             # Scriban templates (full-featured)
+│   └── *.revela           # Scriban templates (full-featured)
 ├── NetVips (library)      # In-process image processing
 ├── Markdig (library)      # Native C# markdown
 └── output/
@@ -480,7 +519,7 @@ expose
 
 | Feature | Original | New |
 |---------|----------|-----|
-| **Config** | `config.sh` (Bash vars) | `Spectara.Revela.json` (typed) |
+| **Config** | `config.sh` (Bash vars) | `revela.json` / `project.json` / `site.json` (typed) |
 | **Templates** | Regex-based Mustache | Scriban (full Liquid) |
 | **Images** | VIPS CLI (external) | NetVips (in-process) |
 | **EXIF** | ExifTool CLI | NetVips native |
@@ -544,7 +583,7 @@ themes/my-theme/
 
 1. **Keep original project** - Don't delete Bash version yet
 2. **Copy content/** - Same folder structure works
-3. **Migrate config** - Convert `config.sh` → `Spectara.Revela.json`
+3. **Migrate config** - Convert `config.sh` → `project.json` / `site.json`
 4. **Migrate theme** - Convert Mustache → Scriban templates
 5. **Compare output** - Ensure HTML is equivalent
 6. **Switch over** - Once satisfied, use .NET version
