@@ -5,6 +5,7 @@ using Spectara.Revela.Plugins.Source.OneDrive.Configuration;
 using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Abstractions;
 using Spectara.Revela.Sdk.Configuration;
+using Spectara.Revela.Sdk.Configuration.Keys;
 using Spectara.Revela.Sdk.Validation;
 using Spectre.Console;
 
@@ -127,13 +128,13 @@ internal sealed partial class ConfigOneDriveCommand(
 
         if (!string.IsNullOrEmpty(shareUrl))
         {
-            pluginConfig["ShareUrl"] = shareUrl;
+            pluginConfig[OneDrivePluginConfigKeys.ShareUrl] = shareUrl;
         }
 
         // Wrap with plugin section name and update project.json
         var updates = new JsonObject
         {
-            [OneDrivePluginConfig.Section] = pluginConfig
+            [OneDrivePluginConfigKeys.Section] = pluginConfig
         };
 
         await configService.UpdateProjectConfigAsync(updates, cancellationToken);

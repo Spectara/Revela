@@ -4,6 +4,7 @@ using System.Text.Json.Nodes;
 using Microsoft.Extensions.Options;
 using Spectara.Revela.Plugins.Serve.Configuration;
 using Spectara.Revela.Sdk.Abstractions;
+using Spectara.Revela.Sdk.Configuration.Keys;
 using Spectara.Revela.Sdk.Output;
 using Spectre.Console;
 
@@ -93,14 +94,14 @@ internal sealed partial class ConfigServeCommand(
         // Build plugin config object
         var pluginConfig = new JsonObject
         {
-            ["Port"] = port,
-            ["Verbose"] = verbose
+            [ServePluginConfigKeys.Port] = port,
+            [ServePluginConfigKeys.Verbose] = verbose
         };
 
         // Wrap with plugin section name and update project.json
         var updates = new JsonObject
         {
-            [ServePluginConfig.Section] = pluginConfig
+            [ServePluginConfigKeys.Section] = pluginConfig
         };
 
         await configService.UpdateProjectConfigAsync(updates, cancellationToken);
