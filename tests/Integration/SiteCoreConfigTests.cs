@@ -58,17 +58,28 @@ public sealed class SiteCoreConfigTests
     }
 
     [TestMethod]
-    public void SiteCoreConfig_MissingTitle_FailsValidation()
+    public void SiteCoreConfig_MissingTitle_DoesNotThrowOnAccess()
     {
-        // Arrange: site.json without the required title.
+        // Regression guard for the new-project wizard crash: site.json is written
+        // incrementally (the title is collected in the LAST wizard step), so any
+        // consumer that reads the config mid-wizard — via the change-token reload
+        // that IOptionsMonitor fires — must observe an empty title without a
+        // top-level [Required] blowing up as an unhandled OptionsValidationException.
+        // The missing-title requirement lives at the call site (revela check), not
+        // on the model. Mirrors OneDrivePluginConfigTests.CurrentValue_WithoutConfiguredShareUrl_DoesNotThrow.
+
+        // Arrange: site.json without a title.
         using var project = TestProject.Create(p => p
             .WithSiteJson(new { author = "Jane Doe" }));
         using var host = RevelaTestHost.Build(project.RootPath);
 
-        // Act + Assert
-        var options = host.Services.GetRequiredService<IOptions<SiteCoreConfig>>();
-        var ex = Assert.ThrowsExactly<OptionsValidationException>(() => _ = options.Value);
-        Assert.Contains("title", ex.Message, StringComparison.OrdinalIgnoreCase);
+        // Act
+        var config = host.Services.GetRequiredService<IOptions<SiteCoreConfig>>().Value;
+
+        // Assert — empty-string default, no validation explosion.
+        Assert.IsNotNull(config);
+        Assert.AreEqual(string.Empty, config.Title);
+        Assert.AreEqual("Jane Doe", config.Author);
     }
 
     [TestMethod]

@@ -73,6 +73,16 @@ internal sealed partial class ValidationService(
     {
         CollectConfigFailures(diagnostics, () => _ = projectConfig.CurrentValue);
         CollectConfigFailures(diagnostics, () => _ = siteConfig.CurrentValue);
+
+        // SiteCoreConfig.Title carries no [Required] annotation (site.json is written
+        // incrementally by the wizard/CLI, so the model must not throw mid-write). The
+        // required-title check therefore lives here, at the call site.
+        if (string.IsNullOrWhiteSpace(siteConfig.CurrentValue.Title))
+        {
+            diagnostics.Add(ValidationDiagnostic.Error(
+                "site.json must define a 'title'.",
+                hint: "Set \"title\" in site.json (or run 'revela config site')."));
+        }
     }
 
     private static void CollectConfigFailures(List<ValidationDiagnostic> diagnostics, Action access)

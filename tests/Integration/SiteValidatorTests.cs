@@ -177,6 +177,35 @@ public sealed class SiteValidatorTests
     }
 
     [TestMethod]
+    public async Task ValidateAsync_MissingSiteTitle_ReportsErrorWithoutThrowing()
+    {
+        // Arrange: site.json without a title. The requirement moved off the model
+        // (SiteCoreConfig.Title is no longer [Required], so the wizard can write
+        // site.json incrementally) onto the `check` call site, which must still
+        // surface a missing title as a blocking error.
+        using var project = TestProject.Create(p => p
+            .WithProjectJson(new
+            {
+                project = new { name = "NoTitle", baseUrl = "https://example.com" },
+                theme = new { name = "Lumina" },
+            })
+            .WithSiteJson(new { author = "Test" })
+            .AddGallery("Landscapes", g => g.AddImage("sunset.jpg")));
+        using var host = RevelaTestHost.Build(project.RootPath, AddServices);
+
+        var validator = host.Services.GetRequiredService<ISiteValidator>();
+
+        // Act
+        var diagnostics = await validator.ValidateAsync();
+
+        // Assert
+        Assert.IsTrue(
+            diagnostics.Any(d => d.Severity == ValidationSeverity.Error
+                && d.Message.Contains("title", StringComparison.OrdinalIgnoreCase)),
+            "Expected a blocking error about the missing site title.");
+    }
+
+    [TestMethod]
     public async Task ValidateAsync_StrayProjectLanguage_ReportsErrorWithoutThrowing()
     {
         // Arrange: 'language' belongs in site.json now (#75); leaving it in project.json

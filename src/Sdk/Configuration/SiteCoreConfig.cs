@@ -1,7 +1,3 @@
-using System.ComponentModel.DataAnnotations;
-
-using Microsoft.Extensions.Options;
-
 using Spectara.Revela.Sdk.Abstractions;
 
 namespace Spectara.Revela.Sdk.Configuration;
@@ -53,9 +49,17 @@ public sealed class SiteCoreConfig
     public const string Section = "site";
 
     /// <summary>
-    /// Site title. Required — a <c>site.json</c> without a title fails validation at load.
+    /// Site title.
     /// </summary>
-    [Required(AllowEmptyStrings = false, ErrorMessage = "site.json must define a 'title'.")]
+    /// <remarks>
+    /// Not annotated with <c>[Required]</c>: <c>site.json</c> is written incrementally
+    /// (the new-project wizard collects the title in its final step), so consumers read
+    /// this config — via the change-token reload that <c>IOptionsMonitor</c> fires — before
+    /// the user has supplied a title. A top-level <c>[Required]</c> would throw
+    /// <c>OptionsValidationException</c> from inside that callback and crash the wizard.
+    /// The required-title check lives at the call site instead (<c>revela check</c> /
+    /// <c>ValidationService</c>), mirroring <c>OneDrivePluginConfig.ShareUrl</c>.
+    /// </remarks>
     public string Title { get; set; } = string.Empty;
 
     /// <summary>
@@ -79,12 +83,3 @@ public sealed class SiteCoreConfig
     /// </summary>
     public string Language { get; set; } = "en";
 }
-
-/// <summary>
-/// Trim/AOT-safe <see cref="IValidateOptions{TOptions}"/> implementation for
-/// <see cref="SiteCoreConfig"/>. The body is emitted by the
-/// <c>Microsoft.Extensions.Options</c> source generator from the
-/// <c>DataAnnotations</c> on the config type.
-/// </summary>
-[OptionsValidator]
-public sealed partial class SiteCoreConfigValidator : IValidateOptions<SiteCoreConfig>;

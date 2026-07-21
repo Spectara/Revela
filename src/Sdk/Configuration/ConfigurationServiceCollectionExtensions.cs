@@ -71,8 +71,11 @@ public static class ConfigurationServiceCollectionExtensions
         // site.json's validated identity core. site.json is added to configuration
         // (re-keyed under the "site" section) by AddSiteJson; the dynamic JsonElement
         // tail is still loaded separately by RenderService for theme-specific props.
+        // Note: SiteCoreConfig carries no top-level [Required] annotations — site.json is
+        // written incrementally (wizard/CLI), so required-field checks (e.g. a missing
+        // title) live at the call site (ValidationService / `revela check`), not on the
+        // model, to avoid crashing consumers that read the config mid-write.
         services.AddOptions<SiteCoreConfig>().BindConfiguration(SiteCoreConfig.Section);
-        services.AddSingleton<IValidateOptions<SiteCoreConfig>, SiteCoreConfigValidator>();
 
         // Breaking change (#75): 'language' moved to site.json. Fail loudly if it is
         // still present in the project.json "project" section instead of ignoring it.
