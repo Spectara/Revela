@@ -5,7 +5,6 @@ using Microsoft.Extensions.Options;
 
 using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Abstractions;
-using Spectara.Revela.Sdk.Configuration;
 using Spectara.Revela.Sdk.Output;
 
 using Spectre.Console;
@@ -93,7 +92,7 @@ internal sealed partial class ConfigProjectCommand(
             AnsiConsole.MarkupLine("[dim]Your website address, e.g. https://photos.example.com (leave empty if unknown)[/]");
             url = AnsiConsole.Prompt(
                 new TextPrompt<string>("Base URL:")
-                    .DefaultValue(ReadBaseUrl(current) ?? string.Empty)
+                    .DefaultValue(current?["project"]?["baseUrl"]?.GetValue<string>() ?? string.Empty)
                     .AllowEmpty());
         }
         else
@@ -101,7 +100,7 @@ internal sealed partial class ConfigProjectCommand(
             // Use provided arguments, fall back to current values or defaults
             name = nameArg ?? current?["project"]?["name"]?.GetValue<string>()
                 ?? projectEnvironment.Value.FolderName;
-            url = urlArg ?? ReadBaseUrl(current) ?? "";
+            url = urlArg ?? current?["project"]?["baseUrl"]?.GetValue<string>() ?? "";
         }
 
         // Create or update project configuration using ConfigService.
@@ -148,19 +147,6 @@ internal sealed partial class ConfigProjectCommand(
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Initializing project '{ProjectName}'")]
     private partial void LogInitializingProject(string projectName);
-
-    /// <summary>
-    /// Reads the currently configured base URL, falling back to the legacy <c>"url"</c> key.
-    /// </summary>
-    /// <remarks>
-    /// Projects written by an earlier build stored the base URL under <c>project.url</c>, but
-    /// <see cref="ProjectConfig.BaseUrl"/> binds from <c>project.baseUrl</c> (a #76 rename artifact).
-    /// This silently migrates the legacy value on read so an existing project keeps its URL on the
-    /// next <c>config project</c> run. Only <c>baseUrl</c> is ever written back.
-    /// </remarks>
-    private static string? ReadBaseUrl(JsonObject? current) =>
-        current?["project"]?["baseUrl"]?.GetValue<string>()
-        ?? current?["project"]?["url"]?.GetValue<string>();
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Project configured: name='{Name}'")]
     private partial void LogProjectConfigured(string name);

@@ -13,9 +13,10 @@ using Spectara.Revela.Themes.Lumina;
 namespace Spectara.Revela.Tests.Integration;
 
 /// <summary>
-/// Integration tests for <see cref="ConfigProjectCommand"/> and the drift bug where the
-/// command wrote/read the base URL under the legacy <c>"url"</c> key while
-/// <see cref="ProjectConfig.BaseUrl"/> binds from <c>"baseUrl"</c> (a #76 rename artifact).
+/// Integration tests for <see cref="ConfigProjectCommand"/>, guarding the drift bug where the
+/// command wrote/read the base URL under a <c>"url"</c> key while
+/// <see cref="ProjectConfig.BaseUrl"/> binds from <c>"baseUrl"</c> (a #76 rename artifact). The
+/// command now writes and reads <c>"baseUrl"</c> so the value actually reaches the bound config.
 /// </summary>
 [TestClass]
 [TestCategory("Integration")]
@@ -74,31 +75,6 @@ public sealed class ConfigProjectCommandTests
         Assert.IsFalse(
             written.Contains("\"baseUrl\"", StringComparison.Ordinal),
             "An empty base URL must not be persisted as an empty 'baseUrl'.");
-    }
-
-    [TestMethod]
-    public async Task ExecuteAsync_LegacyUrlKey_MigratedToBaseUrlOnReconfigure()
-    {
-        // Arrange: an existing project written by the buggy version stores the URL under
-        // the legacy "url" key. Re-running `config project` without --url must preserve it.
-        using var project = TestProject.Create(p => p
-            .WithProjectJson(new
-            {
-                project = new { name = "Legacy", url = "https://legacy.example.com" },
-                theme = new { name = "Lumina" },
-            }));
-        using var host = RevelaTestHost.Build(project.RootPath, s => s.AddRevelaCommands());
-
-        var command = host.Services.GetRequiredService<ConfigProjectCommand>();
-
-        // Act: reconfigure the name only; the legacy URL should be carried forward.
-        var exitCode = await command.ExecuteAsync("Legacy Renamed", urlArg: null, CancellationToken.None);
-
-        // Assert
-        Assert.AreEqual(0, exitCode);
-        var config = host.Services.GetRequiredService<IOptionsMonitor<ProjectConfig>>().CurrentValue;
-        Assert.IsNotNull(config.BaseUrl);
-        Assert.AreEqual("https://legacy.example.com/", config.BaseUrl.ToString());
     }
 
     [TestMethod]
