@@ -7,6 +7,7 @@ using Microsoft.Extensions.Options;
 using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Abstractions;
 using Spectara.Revela.Sdk.Configuration;
+using Spectara.Revela.Sdk.Configuration.Keys;
 using Spectara.Revela.Sdk.Json;
 using Spectara.Revela.Sdk.Output;
 using Spectara.Revela.Sdk.Services;
@@ -44,9 +45,9 @@ internal sealed partial class ConfigImageCommand(
 {
     private static readonly FrozenDictionary<string, int> DefaultFormatQualities = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase)
     {
-        ["jpg"] = 90,
-        ["webp"] = 85,
-        ["avif"] = 80
+        [ImageConfigKeys.Jpg] = 90,
+        [ImageConfigKeys.Webp] = 85,
+        [ImageConfigKeys.Avif] = 80
     }.ToFrozenDictionary(StringComparer.OrdinalIgnoreCase);
     /// <summary>
     /// Creates the command definition.
@@ -185,7 +186,7 @@ internal sealed partial class ConfigImageCommand(
             ?? DefaultFormatQualities;
 
         // Parse formats (format or format:quality or format:0 to disable)
-        var validFormats = new HashSet<string>(["avif", "webp", "jpg"], StringComparer.OrdinalIgnoreCase);
+        var validFormats = new HashSet<string>([ImageConfigKeys.Avif, ImageConfigKeys.Webp, ImageConfigKeys.Jpg], StringComparer.OrdinalIgnoreCase);
         var formats = new Dictionary<string, int>();
 
         var entries = formatsArg.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
@@ -238,9 +239,9 @@ internal sealed partial class ConfigImageCommand(
 
         var update = new JsonObject
         {
-            ["generate"] = new JsonObject
+            [GenerateConfigKeys.Section] = new JsonObject
             {
-                ["images"] = imagesObj
+                [GenerateConfigKeys.Images] = imagesObj
             }
         };
 
@@ -267,11 +268,11 @@ internal sealed partial class ConfigImageCommand(
         // Format selection with descriptions
         var formatDescriptions = new Dictionary<string, string>(StringComparer.Ordinal)
         {
-            ["jpg"] = "jpg  [dim]— great quality, works everywhere[/]",
-            ["webp"] = "webp [dim]— sharper at same file size, all modern browsers[/]",
-            ["avif"] = "avif [dim]— best quality per byte, very slow to generate[/]"
+            [ImageConfigKeys.Jpg] = "jpg  [dim]— great quality, works everywhere[/]",
+            [ImageConfigKeys.Webp] = "webp [dim]— sharper at same file size, all modern browsers[/]",
+            [ImageConfigKeys.Avif] = "avif [dim]— best quality per byte, very slow to generate[/]"
         };
-        var formatChoices = new[] { "jpg", "webp", "avif" };
+        var formatChoices = new[] { ImageConfigKeys.Jpg, ImageConfigKeys.Webp, ImageConfigKeys.Avif };
         var prompt = new MultiSelectionPrompt<string>()
             .Title("Select output formats (deselect to disable):")
             .PageSize(5)
@@ -294,7 +295,7 @@ internal sealed partial class ConfigImageCommand(
         }
         else
         {
-            prompt.Select("jpg");
+            prompt.Select(ImageConfigKeys.Jpg);
         }
 
         var selectedFormats = AnsiConsole.Prompt(prompt);
@@ -302,7 +303,7 @@ internal sealed partial class ConfigImageCommand(
         if (selectedFormats.Count == 0)
         {
             AnsiConsole.MarkupLine("[yellow]Warning:[/] At least one format required. Using JPG.");
-            selectedFormats = ["jpg"];
+            selectedFormats = [ImageConfigKeys.Jpg];
         }
 
         // Quality per format - use current/theme config or global defaults
@@ -344,9 +345,9 @@ internal sealed partial class ConfigImageCommand(
 
         var update = new JsonObject
         {
-            ["generate"] = new JsonObject
+            [GenerateConfigKeys.Section] = new JsonObject
             {
-                ["images"] = imagesObj
+                [GenerateConfigKeys.Images] = imagesObj
             }
         };
 
@@ -389,7 +390,7 @@ internal sealed partial class ConfigImageCommand(
     /// </remarks>
     private static Dictionary<string, int>? GetCurrentFormats(JsonObject? config)
     {
-        var imagesNode = config?["generate"]?["images"];
+        var imagesNode = config?[GenerateConfigKeys.Section]?[GenerateConfigKeys.Images];
         if (imagesNode is null)
         {
             return null;
@@ -398,7 +399,7 @@ internal sealed partial class ConfigImageCommand(
         var result = new Dictionary<string, int>();
 
         // Try new flat format first (webp, jpg, avif as direct properties)
-        var validFormats = new HashSet<string>(["avif", "webp", "jpg"], StringComparer.OrdinalIgnoreCase);
+        var validFormats = new HashSet<string>([ImageConfigKeys.Avif, ImageConfigKeys.Webp, ImageConfigKeys.Jpg], StringComparer.OrdinalIgnoreCase);
 
         if (imagesNode is JsonObject imagesObj)
         {

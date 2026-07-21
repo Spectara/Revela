@@ -6,6 +6,7 @@ using Microsoft.Extensions.Options;
 using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Abstractions;
 using Spectara.Revela.Sdk.Configuration;
+using Spectara.Revela.Sdk.Configuration.Keys;
 using Spectara.Revela.Sdk.Output;
 using Spectara.Revela.Sdk.Services;
 
@@ -153,10 +154,10 @@ internal sealed partial class ConfigPathsCommand(
         // Update config using deep merge
         var updates = new JsonObject
         {
-            ["paths"] = new JsonObject
+            [PathsConfigKeys.Section] = new JsonObject
             {
-                ["source"] = source,
-                ["output"] = output
+                [PathsConfigKeys.Source] = source,
+                [PathsConfigKeys.Output] = output
             }
         };
 

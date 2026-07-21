@@ -5,6 +5,7 @@ using Microsoft.Extensions.Options;
 
 using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Abstractions;
+using Spectara.Revela.Sdk.Configuration.Keys;
 using Spectara.Revela.Sdk.Output;
 
 using Spectre.Console;
@@ -83,7 +84,7 @@ internal sealed partial class ConfigProjectCommand(
             AnsiConsole.MarkupLine($"[cyan]{action} project settings[/]\n");
 
             // Default name from current directory
-            var defaultName = current?["project"]?["name"]?.GetValue<string>()
+            var defaultName = current?[ProjectConfigKeys.Section]?[ProjectConfigKeys.Name]?.GetValue<string>()
                 ?? projectEnvironment.Value.FolderName;
             name = AnsiConsole.Prompt(
                 new TextPrompt<string>("Project name:")
@@ -92,15 +93,15 @@ internal sealed partial class ConfigProjectCommand(
             AnsiConsole.MarkupLine("[dim]Your website address, e.g. https://photos.example.com (leave empty if unknown)[/]");
             url = AnsiConsole.Prompt(
                 new TextPrompt<string>("Base URL:")
-                    .DefaultValue(current?["project"]?["baseUrl"]?.GetValue<string>() ?? string.Empty)
+                    .DefaultValue(current?[ProjectConfigKeys.Section]?[ProjectConfigKeys.BaseUrl]?.GetValue<string>() ?? string.Empty)
                     .AllowEmpty());
         }
         else
         {
             // Use provided arguments, fall back to current values or defaults
-            name = nameArg ?? current?["project"]?["name"]?.GetValue<string>()
+            name = nameArg ?? current?[ProjectConfigKeys.Section]?[ProjectConfigKeys.Name]?.GetValue<string>()
                 ?? projectEnvironment.Value.FolderName;
-            url = urlArg ?? current?["project"]?["baseUrl"]?.GetValue<string>() ?? "";
+            url = urlArg ?? current?[ProjectConfigKeys.Section]?[ProjectConfigKeys.BaseUrl]?.GetValue<string>() ?? "";
         }
 
         // Create or update project configuration using ConfigService.
@@ -108,17 +109,17 @@ internal sealed partial class ConfigProjectCommand(
         // omitted entirely (mirrors ConfigOneDriveCommand) rather than persisting "baseUrl": "".
         var projectSection = new JsonObject
         {
-            ["name"] = name
+            [ProjectConfigKeys.Name] = name
         };
 
         if (!string.IsNullOrWhiteSpace(url))
         {
-            projectSection["baseUrl"] = url;
+            projectSection[ProjectConfigKeys.BaseUrl] = url;
         }
 
         var update = new JsonObject
         {
-            ["project"] = projectSection
+            [ProjectConfigKeys.Section] = projectSection
         };
 
         // For new projects, log initialization

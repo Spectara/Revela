@@ -3,6 +3,7 @@ using Spectara.Revela.Core.Services;
 using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Abstractions;
 using Spectara.Revela.Sdk.Configuration;
+using Spectara.Revela.Sdk.Configuration.Keys;
 using Spectara.Revela.Sdk.Services;
 
 namespace Spectara.Revela.Features.Theme.Services;
@@ -154,7 +155,7 @@ internal sealed partial class ThemeService(
     {
         var update = new System.Text.Json.Nodes.JsonObject
         {
-            ["theme"] = new System.Text.Json.Nodes.JsonObject { ["name"] = themeName }
+            [ThemeConfigKeys.Section] = new System.Text.Json.Nodes.JsonObject { [ThemeConfigKeys.Name] = themeName }
         };
         await configService.UpdateProjectConfigAsync(update, cancellationToken);
         LogThemeChanged(logger, themeName);

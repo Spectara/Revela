@@ -4,6 +4,7 @@ using System.Text.Json.Nodes;
 
 using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Abstractions;
+using Spectara.Revela.Sdk.Configuration.Keys;
 using Spectara.Revela.Sdk.Output;
 
 using Spectre.Console;
@@ -127,7 +128,7 @@ internal sealed class ConfigSortingCommand(IConfigService configService)
                 return 1;
             }
 
-            sorting["galleries"] = direction;
+            sorting[SortingConfigKeys.Galleries] = direction;
             hasChanges = true;
         }
 
@@ -138,7 +139,7 @@ internal sealed class ConfigSortingCommand(IConfigService configService)
 
             if (!string.IsNullOrEmpty(fieldArg))
             {
-                images["field"] = fieldArg;
+                images[ImageSortConfigKeys.Field] = fieldArg;
             }
 
             if (!string.IsNullOrEmpty(directionArg))
@@ -150,15 +151,15 @@ internal sealed class ConfigSortingCommand(IConfigService configService)
                     return 1;
                 }
 
-                images["direction"] = direction;
+                images[ImageSortConfigKeys.Direction] = direction;
             }
 
             if (!string.IsNullOrEmpty(fallbackArg))
             {
-                images["fallback"] = fallbackArg;
+                images[ImageSortConfigKeys.Fallback] = fallbackArg;
             }
 
-            sorting["images"] = images;
+            sorting[SortingConfigKeys.Images] = images;
             hasChanges = true;
         }
 
@@ -168,7 +169,7 @@ internal sealed class ConfigSortingCommand(IConfigService configService)
             return 0;
         }
 
-        updates["generate"] = new JsonObject { ["sorting"] = sorting };
+        updates[GenerateConfigKeys.Section] = new JsonObject { [GenerateConfigKeys.Sorting] = sorting };
         await configService.UpdateProjectConfigAsync(updates, cancellationToken);
         AnsiConsole.MarkupLine($"{OutputMarkers.Success} Sorting configuration updated");
 
@@ -183,13 +184,13 @@ internal sealed class ConfigSortingCommand(IConfigService configService)
         var projectConfig = await configService.ReadProjectConfigAsync(cancellationToken);
 
         // Read current values
-        var generate = projectConfig?["generate"]?.AsObject();
-        var sorting = generate?["sorting"]?.AsObject();
-        var currentGalleries = sorting?["galleries"]?.GetValue<string>() ?? "asc";
-        var imagesObj = sorting?["images"]?.AsObject();
-        var currentField = imagesObj?["field"]?.GetValue<string>() ?? "dateTaken";
-        var currentDirection = imagesObj?["direction"]?.GetValue<string>() ?? "desc";
-        var currentFallback = imagesObj?["fallback"]?.GetValue<string>() ?? "filename";
+        var generate = projectConfig?[GenerateConfigKeys.Section]?.AsObject();
+        var sorting = generate?[GenerateConfigKeys.Sorting]?.AsObject();
+        var currentGalleries = sorting?[SortingConfigKeys.Galleries]?.GetValue<string>() ?? "asc";
+        var imagesObj = sorting?[SortingConfigKeys.Images]?.AsObject();
+        var currentField = imagesObj?[ImageSortConfigKeys.Field]?.GetValue<string>() ?? "dateTaken";
+        var currentDirection = imagesObj?[ImageSortConfigKeys.Direction]?.GetValue<string>() ?? "desc";
+        var currentFallback = imagesObj?[ImageSortConfigKeys.Fallback]?.GetValue<string>() ?? "filename";
 
         AnsiConsole.Write(new Rule("[cyan]Sorting Configuration[/]").RuleStyle("grey"));
         AnsiConsole.WriteLine();
@@ -259,12 +260,12 @@ internal sealed class ConfigSortingCommand(IConfigService configService)
         // Build update object
         var newSorting = new JsonObject
         {
-            ["galleries"] = galleriesDirection,
-            ["images"] = new JsonObject
+            [SortingConfigKeys.Galleries] = galleriesDirection,
+            [SortingConfigKeys.Images] = new JsonObject
             {
-                ["field"] = imageField,
-                ["direction"] = imageDirection,
-                ["fallback"] = fallbackField
+                [ImageSortConfigKeys.Field] = imageField,
+                [ImageSortConfigKeys.Direction] = imageDirection,
+                [ImageSortConfigKeys.Fallback] = fallbackField
             }
         };
 
@@ -289,7 +290,7 @@ internal sealed class ConfigSortingCommand(IConfigService configService)
 
         var updates = new JsonObject
         {
-            ["generate"] = new JsonObject { ["sorting"] = newSorting }
+            [GenerateConfigKeys.Section] = new JsonObject { [GenerateConfigKeys.Sorting] = newSorting }
         };
 
         await configService.UpdateProjectConfigAsync(updates, cancellationToken);
