@@ -88,6 +88,14 @@ public static class PipelineCategories
 
     /// <summary>Cleanup pipeline (output → images → cache → plugin data).</summary>
     public const string Clean = "clean";
+
+    /// <summary>Structural checks (config → structure → theme → content → slugs → plugins).</summary>
+    /// <remarks>
+    /// Checks are surfaced under the <c>check</c> command group and the bespoke
+    /// <c>check all</c> aggregator. They are never <see cref="IPipelineStep"/>, so they
+    /// do not participate in <c>generate all</c>.
+    /// </remarks>
+    public const string Check = "check";
 }
 
 /// <summary>
@@ -127,6 +135,36 @@ public static class CleanPipelineOrder
 
     /// <summary>Clean cache directory (200).</summary>
     public const int Cache = 200;
+}
+
+/// <summary>
+/// Standard menu-ordering constants for <c>check</c> sub-commands.
+/// </summary>
+/// <remarks>
+/// These order the host-wrapped <c>check &lt;name&gt;</c> entries (and their <c>●</c>
+/// markers) in the interactive menu. They are display order only — checks are not
+/// generate pipeline steps. Plugin checks that do not match a known name fall back to
+/// <see cref="Plugin"/>.
+/// </remarks>
+public static class CheckPipelineOrder
+{
+    /// <summary>Configuration check (100).</summary>
+    public const int Config = 100;
+
+    /// <summary>Project-structure check (200).</summary>
+    public const int Structure = 200;
+
+    /// <summary>Theme check (300).</summary>
+    public const int Theme = 300;
+
+    /// <summary>Content &amp; metadata check (400).</summary>
+    public const int Content = 400;
+
+    /// <summary>Gallery-URL (slug) check (500).</summary>
+    public const int Slugs = 500;
+
+    /// <summary>Fallback order for plugin-contributed checks (900).</summary>
+    public const int Plugin = 900;
 }
 
 /// <summary>

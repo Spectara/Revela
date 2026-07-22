@@ -25,13 +25,6 @@ internal sealed class CoreCommandProvider : ICommandProvider
 
         var validateCommand = services.GetRequiredService<ValidateCommand>();
 
-        // Standalone `check` command (structural validation without generating).
-        yield return new CommandDescriptor(
-            validateCommand.Create(),
-            Order: 15,
-            Group: CommandGroups.Build,
-            RequiresProject: true);
-
         // Same validation wired as the (hidden) first step of `generate all`.
         yield return new CommandDescriptor(
             validateCommand.CreateStep(),
@@ -103,6 +96,35 @@ internal sealed class CoreCommandProvider : ICommandProvider
             Group: CommandGroups.Setup,
             RequiresProject: false);
 
+        // `check` command group (structural validation without generating), next to config.
+        var checkCommand = services.GetRequiredService<CheckCommand>();
+        yield return new CommandDescriptor(
+            checkCommand.CreateParent(),
+            Order: 20,
+            Group: CommandGroups.Setup,
+            RequiresProject: true);
+
+        // Bespoke collect-all `check all` (unified report, aggregate exit 2). Registered
+        // explicitly so the host does NOT auto-generate a fail-fast `all` for this group.
+        yield return new CommandDescriptor(
+            checkCommand.CreateAll(),
+            ParentCommand: "check",
+            Order: 0,
+            RequiresProject: true);
+
+        // Host-wrap every registered ICheck (host + plugin) as `check <name>`. Plugins do
+        // not hand-write these — they only register the ICheck. Each is a sequential step so
+        // it shows the `●` "included in all" marker in the interactive menu.
+        foreach (var check in services.GetServices<ICheck>())
+        {
+            yield return new CommandDescriptor(
+                checkCommand.CreateUnit(check),
+                ParentCommand: "check",
+                Order: CheckOrder(check.Name),
+                IsSequentialStep: true,
+                RequiresProject: true);
+        }
+
         // ── Addons group ──
         var themeCommand = services.GetRequiredService<ThemeCommand>();
         yield return new CommandDescriptor(
@@ -165,5 +187,19 @@ internal sealed class CoreCommandProvider : ICommandProvider
             Order: 20,
             Group: "Project");
     }
+
+    /// <summary>
+    /// Maps a check name to its interactive-menu order. Unknown (plugin) checks fall back
+    /// to <see cref="CheckPipelineOrder.Plugin"/>.
+    /// </summary>
+    private static int CheckOrder(string name) => name switch
+    {
+        "config" => CheckPipelineOrder.Config,
+        "structure" => CheckPipelineOrder.Structure,
+        "theme" => CheckPipelineOrder.Theme,
+        "content" => CheckPipelineOrder.Content,
+        "slugs" => CheckPipelineOrder.Slugs,
+        _ => CheckPipelineOrder.Plugin,
+    };
 }
 

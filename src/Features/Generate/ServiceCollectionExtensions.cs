@@ -69,6 +69,7 @@ public static class ServiceCollectionExtensions
         services.TryAddTransient<IRevelaEngine, RevelaEngine>();
 
         // Commands (thin CLI wrappers + IPipelineStep implementations)
+        services.TryAddTransient<CheckCommand>();
         services.TryAddTransient<ValidateCommand>();
         services.TryAddTransient<ScanCommand>();
         services.TryAddTransient<ImagesCommand>();
