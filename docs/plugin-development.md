@@ -151,6 +151,24 @@ Inject it with `IOptionsMonitor<ExampleConfig>` and read `.CurrentValue`. Users 
 - Site identity (title, description, author, language): `IOptions<SiteCoreConfig>`
 - Theme-specific site properties: not from plugins — that's theme territory
 
+### Persisting config from a CLI command
+
+If your plugin contributes a `config <plugin>` command, persist the user's settings by building a `JsonObject` and calling `IConfigService.UpdateProjectConfigAsync(...)`. It deep-merges into `project.json` (a `null` value deletes a key), so wrap your values under your plugin's section name and include only non-default values. Keys are the camelCase of your config POCO's property names:
+
+```csharp
+var settings = new JsonObject();
+if (!string.IsNullOrEmpty(apiUrl))
+    settings["apiUrl"] = apiUrl;            // key = camelCase of the ExampleConfig.ApiUrl property
+
+var updates = new JsonObject
+{
+    [ExampleConfig.SectionName] = settings  // wrap under your plugin's section
+};
+await configService.UpdateProjectConfigAsync(updates, cancellationToken);
+```
+
+> **Note:** You may notice compile-safe `<Poco>Keys` constants (and a `Spectara.Revela.Sdk.Configuration.Keys` namespace) in Revela's own plugin source. Those are an internal build-time convenience produced by a source generator that ships only inside the Revela repo — it is **not** part of the `Spectara.Revela.Sdk` NuGet package. In an external plugin, just use plain string keys that match your section and property names (the `[RevelaConfigKeys]` attribute does nothing without that unshipped generator).
+
 ---
 
 ## Making HTTP calls (the typed-client pattern)
