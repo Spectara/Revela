@@ -3,7 +3,9 @@ using Spectara.Revela.Commands;
 using Spectara.Revela.Core.Services;
 using Spectara.Revela.Features.Generate;
 using Spectara.Revela.Features.Generate.Abstractions;
+using Spectara.Revela.Sdk.Abstractions;
 using Spectara.Revela.Tests.Shared.Fixtures;
+using Spectara.Revela.Themes.Lumina;
 
 namespace Spectara.Revela.Tests.Integration;
 
@@ -19,6 +21,9 @@ public sealed class ContentServiceScanTests
     {
         services.AddRevelaCommands();
         services.AddGenerateFeature();
+
+        // Register a base theme so the scan step's theme pre-check resolves.
+        services.AddSingleton<ITheme>(new LuminaTheme());
 
         // Override IImageSizesProvider since we don't have a real theme installed
         services.AddSingleton<IImageSizesProvider>(new TestImageSizesProvider());

@@ -7,6 +7,7 @@ using Spectara.Revela.Cli.Hosting;
 using Spectara.Revela.Core.Services;
 using Spectara.Revela.Sdk.Abstractions;
 using Spectara.Revela.Tests.Shared.Fixtures;
+using Spectara.Revela.Themes.Lumina;
 
 using Spectre.Console;
 
@@ -153,6 +154,10 @@ public sealed class ConfigErrorExitCodeTests
             });
 
             builder.ConfigureRevela(args, new EmptyPackageSource());
+
+            // A resolvable base theme so the scan step's theme pre-check passes and the
+            // pipeline reaches the ProjectConfig validator — the behaviour under test.
+            builder.Services.AddSingleton<ITheme>(new LuminaTheme());
 
             // Stub image sizes so `generate scan` completes without a real theme —
             // the point under test is the ProjectConfig validator firing during the

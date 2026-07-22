@@ -342,6 +342,12 @@ public sealed class SharedImagesTests : IDisposable
         var sizesProvider = Substitute.For<IImageSizesProvider>();
         sizesProvider.GetSizes().Returns([320, 640, 1280, 1920]);
 
+        // Mock: theme resolves (scan pre-check requires an installed theme)
+        var themeRegistry = Substitute.For<IThemeRegistry>();
+        themeRegistry.Resolve(Arg.Any<string>(), Arg.Any<string>()).Returns(Substitute.For<ITheme>());
+        var themeConfigMonitor = Substitute.For<IOptionsMonitor<ThemeConfig>>();
+        themeConfigMonitor.CurrentValue.Returns(new ThemeConfig());
+
         // Mock: IPathResolver returns our temp source directory
         var pathResolver = Substitute.For<IPathResolver>();
         pathResolver.SourcePath.Returns(sourceDir);
@@ -359,6 +365,9 @@ public sealed class SharedImagesTests : IDisposable
             imageProcessor,
             sizesProvider,
             pathResolver,
+            themeRegistry,
+            Options.Create(projectEnv),
+            themeConfigMonitor,
             optionsMonitor,
             TimeProvider.System,
             NullLogger<ContentService>.Instance);

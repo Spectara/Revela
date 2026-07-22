@@ -35,6 +35,9 @@ internal sealed partial class ContentService(
     IImageProcessor imageProcessor,
     IImageSizesProvider imageSizesProvider,
     IPathResolver pathResolver,
+    IThemeRegistry themeRegistry,
+    IOptions<ProjectEnvironment> projectEnvironment,
+    IOptionsMonitor<ThemeConfig> themeConfig,
     IOptionsMonitor<GenerateConfig> generateOptions,
     TimeProvider timeProvider,
     ILogger<ContentService> logger) : IContentService
@@ -64,6 +67,24 @@ internal sealed partial class ContentService(
                 {
                     Success = false,
                     ErrorMessage = $"Source directory not found: {SourcePath}"
+                };
+            }
+
+            // Pre-check: the configured theme is not installed. Without it the scan
+            // cannot resolve image sizes (imageSizesProvider.GetSizes() would throw).
+            // Fail early with the same actionable message the pages step reports
+            // instead of leaking a raw stack trace through the generic catch below.
+            var themeName = string.IsNullOrEmpty(themeConfig.CurrentValue.Name) ? "Lumina" : themeConfig.CurrentValue.Name;
+            var theme = themeRegistry.Resolve(themeName, projectEnvironment.Value.Path);
+            if (theme is null)
+            {
+                return new ContentResult
+                {
+                    Success = false,
+                    ErrorMessage =
+                        $"Theme '{themeName}' is not installed. " +
+                        $"Run 'revela theme install {themeName}' (or pick an installed theme " +
+                        "with 'revela config theme'). Run 'revela check' to diagnose your project."
                 };
             }
 

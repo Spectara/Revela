@@ -6,6 +6,7 @@ using Spectara.Revela.Features.Generate.Abstractions;
 using Spectara.Revela.Features.Generate.Models.Results;
 using Spectara.Revela.Sdk.Abstractions;
 using Spectara.Revela.Tests.Shared.Fixtures;
+using Spectara.Revela.Themes.Lumina;
 using Image = NetVips.Image;
 
 namespace Spectara.Revela.Tests.Integration;
@@ -51,6 +52,7 @@ public sealed class OrientationRegressionTests
         {
             services.AddRevelaCommands();
             services.AddGenerateFeature();
+            services.AddSingleton<ITheme>(new LuminaTheme());
             services.AddSingleton<IImageSizesProvider>(new FixedSizesProvider([320, 640]));
         });
 
