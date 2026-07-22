@@ -5,6 +5,7 @@ using Spectara.Revela.Features.Generate.Abstractions;
 using Spectara.Revela.Features.Generate.Commands;
 using Spectara.Revela.Features.Generate.Infrastructure;
 using Spectara.Revela.Features.Generate.Services;
+using Spectara.Revela.Features.Generate.Services.Checks;
 using Spectara.Revela.Features.Generate.Templates;
 using Spectara.Revela.Features.Generate.Wizard;
 using Spectara.Revela.Sdk.Abstractions;
@@ -54,8 +55,15 @@ public static class ServiceCollectionExtensions
         services.TryAddSingleton<IImageService, ImageService>();
         services.TryAddTransient<IRenderService, RenderService>();
 
-        // Structural validation (shared by `check` and generate Phase 0)
-        services.TryAddSingleton<ISiteValidator, ValidationService>();
+        // Structural checks (host units) — order here is the collect-all report order.
+        services.TryAddEnumerable(ServiceDescriptor.Transient<ICheck, ConfigCheck>());
+        services.TryAddEnumerable(ServiceDescriptor.Transient<ICheck, StructureCheck>());
+        services.TryAddEnumerable(ServiceDescriptor.Transient<ICheck, ThemeCheck>());
+        services.TryAddEnumerable(ServiceDescriptor.Transient<ICheck, ContentCheck>());
+        services.TryAddEnumerable(ServiceDescriptor.Transient<ICheck, SlugsCheck>());
+
+        // Aggregator shared by `check` and generate Phase 0.
+        services.TryAddSingleton<ISiteValidator, CheckService>();
 
         // Engine facade (public API for MCP, GUI, and other plugins)
         services.TryAddTransient<IRevelaEngine, RevelaEngine>();
