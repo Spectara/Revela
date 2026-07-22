@@ -1,4 +1,3 @@
-using System.Collections.Concurrent;
 using System.Diagnostics;
 using Microsoft.Extensions.Options;
 using Spectara.Revela.Core.Services;
@@ -233,23 +232,7 @@ internal sealed partial class ImageService(
                 LogUsingConfiguredParallelism(logger, workerCount);
             }
 
-            // Thread-safe worker state storage for progress display
-            var workerStates = new ConcurrentDictionary<int, WorkerState>();
-            for (var i = 0; i < workerCount; i++)
-            {
-                workerStates[i] = new WorkerState { WorkerId = i };
-            }
-
-            // Report initial progress
             var formatNames = formats.Keys.ToList();
-            progress?.Report(new ImageProgress
-            {
-                Processed = 0,
-                Total = imagesToProcess.Count,
-                Skipped = cachedCount,
-                Formats = formatNames,
-                Workers = [.. workerStates.Values.OrderBy(w => w.WorkerId)]
-            });
 
             if (imagesToProcess.Count == 0)
             {
@@ -273,14 +256,41 @@ internal sealed partial class ImageService(
 
             // Process images in parallel with limited worker pool
             var cacheDirectory = Path.Combine(projectEnvironment.Value.Path, ProjectPaths.Cache);
-            var processedCount = 0;
             var totalFilesCreated = 0;
             var totalSizeBytes = 0L;
             var manifestLock = new Lock();
 
-            // Track which worker is processing each image
-            var workerAssignments = new ConcurrentDictionary<int, int>(); // taskId -> workerId
-            var nextWorkerId = 0;
+            // Lock-free shared counters that the encode workers update. A single
+            // reporting path turns them into immutable snapshots for the UI — the
+            // workers never render or take a render lock (the old worker grid did,
+            // rebuilt per variant, which serialised every worker).
+            var progressState = new ImageProgressState(imagesToProcess.Count, formatNames);
+
+            // Rolling rate/ETA from a recent-time window: AVIF and JPG throughput
+            // differ ~17×, so a naive average would promise a completion time the run
+            // can never keep. Only touched from ReportProgress, serialised by rateLock.
+            var rate = new ProgressRate(TimeSpan.FromSeconds(60));
+            var rateLock = new Lock();
+
+            void ReportProgress()
+            {
+                if (progress is null)
+                {
+                    return;
+                }
+
+                double perMinute;
+                TimeSpan? eta;
+                lock (rateLock)
+                {
+                    perMinute = rate.PerMinute ?? 0d;
+                    eta = rate.Estimate(progressState.Total - progressState.Processed);
+                }
+
+                progress.Report(progressState.Snapshot(stopwatch.Elapsed, perMinute, eta));
+            }
+
+            ReportProgress();
 
             await Parallel.ForEachAsync(
                 imagesToProcess,
@@ -293,163 +303,91 @@ internal sealed partial class ImageService(
                 {
                     var (sourcePath, manifestKey, imageSlug, manifestSizes, missingVariants, existingPlaceholder, width, height) = item;
 
-                    // Assign a worker ID to this task
-                    var taskId = Environment.CurrentManagedThreadId;
-                    var workerId = workerAssignments.GetOrAdd(taskId, _ => Interlocked.Increment(ref nextWorkerId) - 1) % workerCount;
-
-                    // Use sizes from manifest (calculated during scan with original width)
-                    // Fall back to config sizes if manifest sizes are empty (shouldn't happen)
-                    // Sort ascending: smallest first so the user sees the progress display
-                    // fill up immediately. The largest variant (slowest encode) runs last.
+                    // Use sizes from manifest (calculated during scan with original width).
+                    // Fall back to config sizes if manifest sizes are empty (shouldn't happen).
+                    // Sort ascending: smallest first so the display fills up immediately;
+                    // the largest variant (slowest encode) runs last.
                     var sizesToGenerate = (manifestSizes.Count > 0 ? manifestSizes : sizes)
                         .OrderBy(s => s)
                         .ToList();
 
-                    // Calculate total variants for this image
-                    // In incremental mode: total = all possible, but only missing will be generated
-                    var variantsTotal = sizesToGenerate.Count * formats.Count;
-                    var variantsDone = 0;
-                    var variantsSkipped = 0;
-                    var variantResults = new List<VariantResult>();
+                    progressState.WorkerStarted();
+                    ReportProgress();
 
-                    // Update worker state: starting new image
-                    workerStates[workerId] = new WorkerState
+                    try
                     {
-                        WorkerId = workerId,
-                        ImageName = Path.GetFileName(sourcePath),
-                        VariantsTotal = variantsTotal,
-                        VariantsDone = 0,
-                        VariantsSkipped = 0,
-                        VariantResults = []
-                    };
-
-                    // Report progress with updated worker state
-                    progress?.Report(new ImageProgress
-                    {
-                        Processed = processedCount,
-                        Total = imagesToProcess.Count,
-                        Skipped = cachedCount,
-                        Formats = formatNames,
-                        Workers = [.. workerStates.Values.OrderBy(w => w.WorkerId)]
-                    });
-
-                    var image = await imageProcessor.ProcessImageAsync(
-                        sourcePath,
-                        new ImageProcessingOptions
-                        {
-                            Formats = formats,
-                            Sizes = sizesToGenerate,
-                            VariantsToGenerate = missingVariants,  // null = all, list = incremental
-                            OutputDirectory = outputImagesDirectory,
-                            ImageSlug = imageSlug,
-                            CacheDirectory = cacheDirectory,
-                            ResizeMode = imageSizesProvider.GetResizeMode(),
-                            Placeholder = ImageSettings.Placeholder,
-                            ExistingPlaceholder = existingPlaceholder,
-                            Width = width,
-                            Height = height
-                        },
-                        onVariantProgress: (state, format) =>
-                        {
-                            // Track result in order and update counters.
-                            // Started → append InProgress placeholder.
-                            // Done    → replace trailing InProgress with the Done* variant.
-                            // Skipped → replace trailing InProgress (rare) or append Skipped.
-                            lock (variantResults)
+                        var image = await imageProcessor.ProcessImageAsync(
+                            sourcePath,
+                            new ImageProcessingOptions
+                            {
+                                Formats = formats,
+                                Sizes = sizesToGenerate,
+                                VariantsToGenerate = missingVariants,  // null = all, list = incremental
+                                OutputDirectory = outputImagesDirectory,
+                                ImageSlug = imageSlug,
+                                CacheDirectory = cacheDirectory,
+                                ResizeMode = imageSizesProvider.GetResizeMode(),
+                                Placeholder = ImageSettings.Placeholder,
+                                ExistingPlaceholder = existingPlaceholder,
+                                Width = width,
+                                Height = height
+                            },
+                            // O(1), lock-free per-variant bookkeeping. No rendering and no
+                            // display-state allocation — this runs tens of thousands of times.
+                            onVariantProgress: (state, format) =>
                             {
                                 switch (state)
                                 {
                                     case VariantState.Started:
-                                        variantResults.Add(VariantResult.InProgress);
                                         break;
 
                                     case VariantState.Done:
-                                        Interlocked.Increment(ref variantsDone);
-                                        var doneResult = format.ToUpperInvariant() switch
-                                        {
-                                            "JPG" or "JPEG" => VariantResult.DoneJpg,
-                                            "WEBP" => VariantResult.DoneWebp,
-                                            "AVIF" => VariantResult.DoneAvif,
-                                            "PNG" => VariantResult.DonePng,
-                                            _ => VariantResult.DoneOther
-                                        };
-                                        ReplaceLastInProgressOrAppend(variantResults, doneResult);
+                                        progressState.VariantDone(format);
                                         break;
 
                                     case VariantState.Skipped:
-                                        Interlocked.Increment(ref variantsSkipped);
-                                        ReplaceLastInProgressOrAppend(variantResults, VariantResult.Skipped);
+                                        progressState.VariantSkipped();
                                         break;
 
                                     default:
                                         throw new InvalidOperationException($"Unknown {nameof(VariantState)}: {state}");
                                 }
-                            }
+                            },
+                            ct);
 
-                            // Update worker state with results list
-                            List<VariantResult> resultsCopy;
-                            lock (variantResults)
-                            {
-                                resultsCopy = [.. variantResults];
-                            }
+                        // Count files created (actual variants) and accumulate size
+                        var filesCreated = image.Variants.Count;
+                        var imageSize = image.Variants.Sum(v => v.Size);
 
-                            workerStates[workerId] = new WorkerState
-                            {
-                                WorkerId = workerId,
-                                ImageName = Path.GetFileName(sourcePath),
-                                VariantsTotal = variantsTotal,
-                                VariantsDone = variantsDone,
-                                VariantsSkipped = variantsSkipped,
-                                VariantResults = resultsCopy
-                            };
+                        var currentProcessed = progressState.ImageCompleted();
+                        Interlocked.Add(ref totalFilesCreated, filesCreated);
+                        Interlocked.Add(ref totalSizeBytes, imageSize);
 
-                            // Report progress
-                            progress?.Report(new ImageProgress
-                            {
-                                Processed = processedCount,
-                                Total = imagesToProcess.Count,
-                                Skipped = cachedCount,
-                                Formats = formatNames,
-                                Workers = [.. workerStates.Values.OrderBy(w => w.WorkerId)]
-                            });
-                        },
-                        ct);
-
-                    // Count files created (actual variants) and accumulate size
-                    var filesCreated = image.Variants.Count;
-                    var imageSize = image.Variants.Sum(v => v.Size);
-
-                    // Thread-safe updates
-                    var currentProcessed = Interlocked.Increment(ref processedCount);
-                    Interlocked.Add(ref totalFilesCreated, filesCreated);
-                    Interlocked.Add(ref totalSizeBytes, imageSize);
-
-                    // Report progress with completed image (all squares filled).
-                    // With SynchronousProgress this renders immediately before the idle reset.
-                    progress?.Report(new ImageProgress
-                    {
-                        Processed = currentProcessed,
-                        Total = imagesToProcess.Count,
-                        Skipped = cachedCount,
-                        Formats = formatNames,
-                        Workers = [.. workerStates.Values.OrderBy(w => w.WorkerId)]
-                    });
-
-                    // Mark worker as idle — clears the completed row.
-                    // Safe because SynchronousProgress already rendered the completed state above.
-                    workerStates[workerId] = new WorkerState { WorkerId = workerId };
-
-                    // Thread-safe manifest update - update placeholder if changed
-                    lock (manifestLock)
-                    {
-                        var existingEntry = manifestRepository.GetImage(manifestKey);
-                        if (existingEntry != null && existingEntry.Placeholder != image.Placeholder)
+                        // Feed the rolling rate from the reporting path (serialised) and
+                        // report a cheap snapshot — per finished image, not per variant.
+                        lock (rateLock)
                         {
-                            manifestRepository.SetImage(manifestKey, existingEntry with
-                            {
-                                Placeholder = image.Placeholder
-                            });
+                            rate.Record(stopwatch.Elapsed, currentProcessed);
                         }
+
+                        ReportProgress();
+
+                        // Thread-safe manifest update - update placeholder if changed
+                        lock (manifestLock)
+                        {
+                            var existingEntry = manifestRepository.GetImage(manifestKey);
+                            if (existingEntry != null && existingEntry.Placeholder != image.Placeholder)
+                            {
+                                manifestRepository.SetImage(manifestKey, existingEntry with
+                                {
+                                    Placeholder = image.Placeholder
+                                });
+                            }
+                        }
+                    }
+                    finally
+                    {
+                        progressState.WorkerFinished();
                     }
                 });
 
@@ -460,22 +398,10 @@ internal sealed partial class ImageService(
             manifestRepository.LastImagesProcessed = timeProvider.GetUtcNow().UtcDateTime;
             await manifestRepository.SaveAsync(cancellationToken);
 
-            // Final progress - mark all workers idle for clean final display
-            for (var i = 0; i < workerCount; i++)
-            {
-                workerStates[i] = new WorkerState { WorkerId = i };
-            }
+            // Final snapshot at 100% for a clean end state before the summary panel.
+            ReportProgress();
 
-            progress?.Report(new ImageProgress
-            {
-                Processed = processedCount,
-                Total = imagesToProcess.Count,
-                Skipped = cachedCount,
-                Formats = formatNames,
-                Workers = [.. workerStates.Values.OrderBy(w => w.WorkerId)]
-            });
-
-            LogImagesProcessed(logger, processedCount);
+            LogImagesProcessed(logger, progressState.Processed);
             stopwatch.Stop();
 
             // Collect warnings from image processor
@@ -484,7 +410,7 @@ internal sealed partial class ImageService(
             return new ImageResult
             {
                 Success = true,
-                ProcessedCount = processedCount,
+                ProcessedCount = progressState.Processed,
                 SkippedCount = cachedCount,
                 FilesCreated = totalFilesCreated,
                 TotalSize = totalSizeBytes,
@@ -516,25 +442,6 @@ internal sealed partial class ImageService(
         CancellationToken cancellationToken = default) => await imageProcessor.ProcessImageAsync(inputPath, options, onVariantProgress, cancellationToken);
 
     #region Private Helpers
-
-    /// <summary>
-    /// Replace the last <see cref="VariantResult.InProgress"/> entry with the given final state.
-    /// If no InProgress placeholder is present (e.g. cache-skip without a Started event),
-    /// the final state is appended instead. Caller must hold the list's lock.
-    /// </summary>
-    private static void ReplaceLastInProgressOrAppend(List<VariantResult> results, VariantResult finalState)
-    {
-        for (var i = results.Count - 1; i >= 0; i--)
-        {
-            if (results[i] == VariantResult.InProgress)
-            {
-                results[i] = finalState;
-                return;
-            }
-        }
-
-        results.Add(finalState);
-    }
 
     /// <summary>
     /// Collect all image source paths from the unified tree.
