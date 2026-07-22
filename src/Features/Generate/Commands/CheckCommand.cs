@@ -36,7 +36,7 @@ internal sealed partial class CheckCommand(
     /// </summary>
     public Command CreateParent()
     {
-        var command = new Command("check", "Check your project for problems before generating");
+        var command = new Command("check", "Check your project for problems");
         command.SetAction((parseResult, cancellationToken) =>
         {
             _ = parseResult;
