@@ -39,9 +39,10 @@ public sealed class CalendarPlugin : IPlugin
         // Register page template for 'revela create page calendar'
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IPageTemplate, CalendarPageTemplate>());
 
-        // Contribute a generate-precondition check to 'revela check' / generate Phase 0:
-        // referenced local calendar files must be present and parseable.
-        services.TryAddEnumerable(ServiceDescriptor.Transient<IValidator, CalendarDataValidator>());
+        // Contribute a generate-precondition check to 'revela check' (as 'check calendar')
+        // and the 'check all' report: referenced local calendar files must be present and
+        // parseable. The host auto-wraps this ICheck — the plugin adds no command.
+        services.TryAddEnumerable(ServiceDescriptor.Transient<ICheck, CalendarDataCheck>());
     }
 
     /// <inheritdoc />

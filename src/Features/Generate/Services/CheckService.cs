@@ -8,9 +8,8 @@ using Spectara.Revela.Sdk.Services;
 namespace Spectara.Revela.Features.Generate.Services;
 
 /// <summary>
-/// Aggregates every registered <see cref="ICheck"/> (and, for now, legacy plugin
-/// <see cref="IValidator"/>s) into the single collect-all report that backs the standalone
-/// <c>revela check</c> command.
+/// Aggregates every registered <see cref="ICheck"/> into the single collect-all report
+/// that backs the standalone <c>revela check</c> command.
 /// </summary>
 /// <remarks>
 /// The source is scanned at most once per run: the shared <see cref="ContentTree"/> is
@@ -20,7 +19,6 @@ namespace Spectara.Revela.Features.Generate.Services;
 /// </remarks>
 internal sealed partial class CheckService(
     IEnumerable<ICheck> checks,
-    IEnumerable<IValidator> pluginValidators,
     ContentScanner contentScanner,
     IPathResolver pathResolver,
     ILogger<CheckService> logger) : ISiteValidator
@@ -66,12 +64,6 @@ internal sealed partial class CheckService(
             {
                 diagnostics.AddRange(await check.ValidateAsync(cancellationToken));
             }
-        }
-
-        foreach (var pluginValidator in pluginValidators)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            diagnostics.AddRange(await pluginValidator.ValidateAsync(cancellationToken));
         }
 
         LogValidationCompleted(logger, diagnostics.Count);

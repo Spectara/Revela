@@ -333,9 +333,9 @@ public sealed class SiteValidatorTests
     }
 
     [TestMethod]
-    public async Task ValidateAsync_PluginValidatorError_SurfacedAndBlocksBuild()
+    public async Task ValidateAsync_PluginCheckError_SurfacedAndBlocksBuild()
     {
-        // Arrange: an otherwise-clean project plus a plugin validator that reports an error.
+        // Arrange: an otherwise-clean project plus a plugin check that reports an error.
         using var project = TestProject.Create(p => p
             .WithProjectJson(new
             {
@@ -349,7 +349,7 @@ public sealed class SiteValidatorTests
         using var host = RevelaTestHost.Build(project.RootPath, services =>
         {
             AddServices(services);
-            services.AddSingleton<IValidator>(new FakeValidator([pluginError]));
+            services.AddSingleton<ICheck>(new FakeCheck([pluginError]));
         });
 
         var validator = host.Services.GetRequiredService<ISiteValidator>();
@@ -368,9 +368,9 @@ public sealed class SiteValidatorTests
     }
 
     [TestMethod]
-    public async Task ValidateAsync_PluginValidatorWarningOnly_SurfacedButDoesNotBlock()
+    public async Task ValidateAsync_PluginCheckWarningOnly_SurfacedButDoesNotBlock()
     {
-        // Arrange: a plugin validator that reports only a warning and a hint.
+        // Arrange: a plugin check that reports only a warning and a hint.
         using var project = TestProject.Create(p => p
             .WithProjectJson(new
             {
@@ -385,7 +385,7 @@ public sealed class SiteValidatorTests
         using var host = RevelaTestHost.Build(project.RootPath, services =>
         {
             AddServices(services);
-            services.AddSingleton<IValidator>(new FakeValidator([warning, hint]));
+            services.AddSingleton<ICheck>(new FakeCheck([warning, hint]));
         });
 
         var validator = host.Services.GetRequiredService<ISiteValidator>();
@@ -404,8 +404,12 @@ public sealed class SiteValidatorTests
         Assert.IsTrue(result.Success);
     }
 
-    private sealed class FakeValidator(IReadOnlyList<ValidationDiagnostic> diagnostics) : IValidator
+    private sealed class FakeCheck(IReadOnlyList<ValidationDiagnostic> diagnostics) : ICheck
     {
+        public string Name => "fake";
+
+        public string Title => "Fake check";
+
         public ValueTask<IReadOnlyList<ValidationDiagnostic>> ValidateAsync(CancellationToken cancellationToken = default) =>
             ValueTask.FromResult(diagnostics);
     }

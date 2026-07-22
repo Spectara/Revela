@@ -5,24 +5,31 @@ using Spectara.Revela.Sdk.Services;
 namespace Spectara.Revela.Plugins.Calendar;
 
 /// <summary>
-/// Validates the <c>generate</c> precondition that every calendar page's referenced local
+/// Checks the <c>generate</c> precondition that every calendar page's referenced local
 /// calendar data file is present and parseable, before the pipeline reaches the calendar step.
 /// </summary>
 /// <remarks>
 /// <para>
 /// The calendar plugin renders a page from a local <c>.ics</c> file during <c>generate</c>. If a
 /// page references a file that is missing or not a valid iCalendar object, the calendar step would
-/// silently skip it and produce a broken (empty) calendar. This validator surfaces that up front.
+/// silently skip it and produce a broken (empty) calendar. This check surfaces that up front,
+/// contributing to <c>revela check</c> (as <c>check calendar</c>) and the <c>check all</c> report.
 /// </para>
 /// <para>
 /// Scope: this checks the <em>local generate input</em> only. It deliberately does not look at the
 /// feed URL — fetching the feed is <c>sync</c>/<c>fetch</c>'s concern, not <c>generate</c>'s.
 /// </para>
 /// </remarks>
-internal sealed class CalendarDataValidator(IPathResolver pathResolver) : IValidator
+internal sealed class CalendarDataCheck(IPathResolver pathResolver) : ICheck
 {
     private const string IndexFileName = "_index.revela";
     private const string CalendarMarker = "BEGIN:VCALENDAR";
+
+    /// <inheritdoc />
+    public string Name => "calendar";
+
+    /// <inheritdoc />
+    public string Title => "Calendar data";
 
     /// <inheritdoc />
     public async ValueTask<IReadOnlyList<ValidationDiagnostic>> ValidateAsync(CancellationToken cancellationToken = default)

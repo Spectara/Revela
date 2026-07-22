@@ -8,7 +8,7 @@ namespace Spectara.Revela.Tests.Calendar;
 
 [TestClass]
 [TestCategory("Unit")]
-public sealed class CalendarDataValidatorTests
+public sealed class CalendarDataCheckTests
 {
     private const string ValidIcs =
         "BEGIN:VCALENDAR\r\n" +
@@ -73,11 +73,11 @@ public sealed class CalendarDataValidatorTests
         Assert.IsEmpty(diagnostics);
     }
 
-    private static CalendarDataValidator CreateValidator(TempSource source)
+    private static CalendarDataCheck CreateValidator(TempSource source)
     {
         var pathResolver = Substitute.For<IPathResolver>();
         pathResolver.SourcePath.Returns(source.Path);
-        return new CalendarDataValidator(pathResolver);
+        return new CalendarDataCheck(pathResolver);
     }
 
     private sealed class TempSource : IDisposable
