@@ -608,6 +608,67 @@ public sealed class GenerateAllEndToEndTests
         Assert.Contains("Partials/GalleryGrid.revela", tokenResult.ErrorMessage);
     }
 
+    [TestMethod]
+    public async Task RenderAsync_ProgressReports_CountPhotoPagesAndReachOneHundredPercent()
+    {
+        // Arrange: one gallery with multiple real images so the render produces photo pages (#77),
+        // which dominate the output. The progress bar must count them — not just the galleries.
+        using var project = TestProject.Create(p => p
+            .WithProjectJson(new
+            {
+                project = new { name = "Progress" },
+                theme = new { name = "Lumina" }
+            })
+            .WithSiteJson(new { title = "Progress", author = "Test" })
+            .AddGallery("Photos", g => g
+                .AddRealImage("one.jpg", 1280, 720)
+                .AddRealImage("two.jpg", 1280, 720)
+                .AddRealImage("three.jpg", 1280, 720)));
+
+        using var host = RevelaTestHost.Build(project.RootPath, services =>
+        {
+            services.AddRevelaCommands();
+            services.AddGenerateFeature();
+            services.AddSingleton<ITheme>(new LuminaTheme());
+        });
+
+        var contentService = host.Services.GetRequiredService<IContentService>();
+        var renderService = host.Services.GetRequiredService<IRenderService>();
+        var themePlugin = host.Services.GetRequiredService<ITheme>();
+        renderService.SetTheme(themePlugin);
+        renderService.SetExtensions([]);
+
+        var scanResult = await contentService.ScanAsync();
+        Assert.IsTrue(scanResult.Success, $"Scan should succeed: {scanResult.ErrorMessage}");
+
+        var recorder = new RecordingProgress();
+
+        // Act
+        var renderResult = await renderService.RenderAsync(recorder);
+
+        // Assert: index + 1 gallery + 3 photo pages = 5 (photo pages are the majority of output).
+        Assert.IsTrue(renderResult.Success, $"Render should succeed: {renderResult.ErrorMessage}");
+        Assert.AreEqual(5, renderResult.PageCount, "index + 1 gallery + 3 photo pages");
+        var reports = recorder.Reports;
+        Assert.IsTrue(reports.Count > 0, "Render must report progress");
+
+        // Every reported Total must equal the REAL total (galleries + photo pages + index),
+        // never the gallery-only count that pinned the bar at 100% too early.
+        var distinctTotals = reports.Select(r => r.Total).Distinct().ToList();
+        Assert.HasCount(1, distinctTotals);
+        Assert.AreEqual(renderResult.PageCount, distinctTotals[0],
+            "Reported Total must match the final page count, not the gallery count");
+
+        // Photo-page rendering DOES report progress: the bar reaches 100% only at the end.
+        var maxRendered = reports.Max(r => r.Rendered);
+        Assert.AreEqual(renderResult.PageCount, maxRendered,
+            "Progress must reach the total (photo pages report progress too)");
+
+        // The bar must never overshoot.
+        Assert.IsTrue(reports.All(r => r.Rendered <= r.Total),
+            "Rendered must never exceed Total");
+    }
+
     private static int CountOccurrences(string value, string search)
     {
         var count = 0;
@@ -620,6 +681,32 @@ public sealed class GenerateAllEndToEndTests
         }
 
         return count;
+    }
+
+    private sealed class RecordingProgress : IProgress<RenderProgress>
+    {
+        private readonly Lock gate = new();
+        private readonly List<RenderProgress> reports = [];
+
+        // Photo pages report from Parallel.ForEachAsync, so Report is called concurrently.
+        public IReadOnlyList<RenderProgress> Reports
+        {
+            get
+            {
+                lock (gate)
+                {
+                    return [.. reports];
+                }
+            }
+        }
+
+        public void Report(RenderProgress value)
+        {
+            lock (gate)
+            {
+                reports.Add(value);
+            }
+        }
     }
 
     private sealed class ThemeWithoutGalleryGrid : ITheme

@@ -188,13 +188,6 @@ internal sealed partial class RenderService(
             var galleries = ReconstructGalleries(manifestRepository.Root);
             var navigation = ReconstructNavigation(manifestRepository.Root);
 
-            progress?.Report(new RenderProgress
-            {
-                CurrentPage = "Preparing...",
-                Rendered = 0,
-                Total = galleries.Count // Galleries already includes root as home
-            });
-
             // Build site model
             var allImages = new List<Image>();
             FlattenImages(galleries, allImages);
@@ -230,9 +223,28 @@ internal sealed partial class RenderService(
                 }
             }
 
+            // Report the real total up front: index (always 1) + sub-galleries + one photo page
+            // per eligible image (#77). Photo pages are the bulk of output, so counting them here
+            // keeps the progress bar honest instead of hitting 100% after just the galleries.
+            progress?.Report(new RenderProgress
+            {
+                CurrentPage = "Preparing...",
+                Rendered = 0,
+                Total = 1 + galleries.Count(g => !string.IsNullOrEmpty(g.Path)) + photoPages.Count
+            });
+
             // Render templates
             var engine = CreateAndConfigureEngine();
             var pageCount = await RenderSiteAsync(engine, siteModel, config, theme, photoPages, photoTemplate, progress, cancellationToken);
+
+            // Post-render work (assets, static files, sitemap) runs after the last page report.
+            // Surface a clear label so the final stretch is not a frozen, unlabelled 100% bar.
+            progress?.Report(new RenderProgress
+            {
+                CurrentPage = "Finalizing (assets, sitemap)…",
+                Rendered = pageCount,
+                Total = pageCount
+            });
 
             // Copy assets (theme, extensions, local overrides)
             await assetResolver.CopyToOutputAsync(OutputPath, cancellationToken);
@@ -534,7 +546,13 @@ internal sealed partial class RenderService(
             ?? GetDefaultGalleryTemplate();
 
         var pageCount = 0;
-        var totalPages = model.Galleries.Count; // Galleries already includes root as home
+
+        // Real total = index (always written once) + sub-galleries + one photo page per eligible
+        // image (#77). When a root gallery exists it stands in for the index page, so this matches
+        // the final pageCount exactly — the progress bar reaches 100% only when the last page is
+        // written, and never overshoots.
+        var galleriesToRenderCount = model.Galleries.Count(g => !string.IsNullOrEmpty(g.Path));
+        var totalPages = 1 + galleriesToRenderCount + photoPages.Count;
 
         // Render index page
         progress?.Report(new RenderProgress
@@ -781,7 +799,16 @@ internal sealed partial class RenderService(
                 photoHtml,
                 ct);
 
-            Interlocked.Increment(ref pageCount);
+            // Capture the incremented value into a local so the report is parallel-safe: the photo
+            // loop runs under Parallel.ForEachAsync. Progress<T> marshals callbacks and PagesCommand
+            // only assigns task.Value = Rendered, so out-of-order reports are fine.
+            var rendered = Interlocked.Increment(ref pageCount);
+            progress?.Report(new RenderProgress
+            {
+                CurrentPage = $"photo/{page.Slug}/index.html",
+                Rendered = rendered,
+                Total = totalPages
+            });
         }
 
         if (photoTemplate is not null && photoPages.Count > 0)
