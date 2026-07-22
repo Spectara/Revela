@@ -192,6 +192,45 @@ public static class ErrorPanels
     }
 
     /// <summary>
+    /// Shows an error panel when a configuration <em>file</em> can't be parsed because
+    /// it contains a JSON syntax error (e.g. junk before the JSON), naming the offending
+    /// file and, when known, the location of the problem.
+    /// </summary>
+    /// <remarks>
+    /// Used at the CLI boundary to turn an eager configuration-load failure
+    /// (<c>revela.json</c> / <c>project.json</c> / <c>site.json</c> / <c>logging.json</c>)
+    /// into a photographer-readable message instead of a raw .NET exception dump. Mirrors
+    /// the look and escaping of <see cref="ShowConfigurationProblem"/>.
+    /// </remarks>
+    /// <param name="path">Path (or friendly phrase) identifying the malformed file.</param>
+    /// <param name="line">Zero-based line number reported by the JSON parser, if known.</param>
+    /// <param name="position">Zero-based byte position within the line, if known.</param>
+    public static void ShowConfigFileError(string path, long? line, long? position)
+    {
+        var content =
+            $"Revela can't read your configuration file: [cyan]{Markup.Escape(path)}[/].\n\n";
+
+        if (line is { } lineNumber)
+        {
+            content += position is { } columnNumber
+                ? $"There's a JSON syntax error near line {lineNumber + 1}, column {columnNumber + 1}."
+                : $"There's a JSON syntax error near line {lineNumber + 1}.";
+        }
+        else
+        {
+            content += "There's a JSON syntax error in the file.";
+        }
+
+        content += "\n\n[dim]Fix the file and run the command again.[/]";
+
+        var panel = new Panel(content)
+            .WithHeader("[bold red]Configuration problem[/]")
+            .WithErrorStyle();
+
+        AnsiConsole.Write(panel);
+    }
+
+    /// <summary>
     /// Shows a single panel grouping validation findings by severity (errors, warnings,
     /// hints), reusing the configuration-problem panel look.
     /// </summary>

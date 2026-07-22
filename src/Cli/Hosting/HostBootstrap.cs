@@ -1,6 +1,7 @@
 using System.CommandLine;
 using System.CommandLine.Invocation;
 using System.Text;
+using System.Text.Json;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
@@ -32,6 +33,84 @@ namespace Spectara.Revela.Cli.Hosting;
 /// </remarks>
 internal static class HostBootstrap
 {
+    /// <summary>
+    /// Builds and runs the Revela host inside a single guarded region so that a
+    /// malformed configuration file surfaces as a friendly panel with exit code 2
+    /// instead of a raw unhandled exception.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Configuration files are added to a <see cref="Microsoft.Extensions.Configuration.ConfigurationManager"/>
+    /// during <see cref="ConfigureRevela"/>, which loads them <b>eagerly</b>. A syntax error in
+    /// <c>revela.json</c>, <c>project.json</c>, <c>site.json</c> or <c>logging.json</c> therefore
+    /// throws while the host is still being constructed — <em>before</em> the guarded region inside
+    /// <see cref="RunRevelaAsync"/>. Wrapping <c>create builder → ConfigureRevela → build → run</c>
+    /// in one <c>try</c> lets both entry points handle build-time and run-time config errors uniformly.
+    /// </para>
+    /// <para>
+    /// The catch is deliberately narrow: only an <see cref="InvalidDataException"/> whose base
+    /// exception is a <see cref="JsonException"/> (the shape thrown by the JSON configuration
+    /// providers) is turned into a panel. Any other construction error still surfaces as before.
+    /// </para>
+    /// </remarks>
+    /// <param name="args">CLI arguments.</param>
+    /// <param name="packageSource">Source for loading plugins and themes.</param>
+    /// <param name="contentRootPath">
+    /// Project directory used as the host content root. Defaults to
+    /// <see cref="Directory.GetCurrentDirectory"/> when <see langword="null"/>.
+    /// </param>
+    /// <param name="configureExtra">
+    /// Optional host-specific configuration applied after <see cref="ConfigureRevela"/> and before
+    /// <c>Build()</c> (e.g. the dynamic CLI registers NuGet package management here).
+    /// </param>
+    /// <returns>The process exit code.</returns>
+    public static async Task<int> RunAsync(
+        string[] args,
+        IPackageSource packageSource,
+        string? contentRootPath = null,
+        Action<HostApplicationBuilder>? configureExtra = null)
+    {
+        try
+        {
+            var builder = Host.CreateApplicationBuilder(new HostApplicationBuilderSettings
+            {
+                Args = args,
+                ContentRootPath = contentRootPath ?? Directory.GetCurrentDirectory(),
+            });
+
+            builder.ConfigureRevela(args, packageSource);
+            configureExtra?.Invoke(builder);
+
+            return await builder.Build().RunRevelaAsync(args);
+        }
+        catch (InvalidDataException ex) when (ex.GetBaseException() is JsonException jsonException)
+        {
+            var path = ExtractConfigFilePath(ex.Message);
+            ErrorPanels.ShowConfigFileError(path, jsonException.LineNumber, jsonException.BytePositionInLine);
+            return 2;
+        }
+    }
+
+    /// <summary>
+    /// Extracts the file path from the framework message
+    /// <c>"Failed to load configuration from file '{path}'."</c> by reading the substring
+    /// between the single quotes, falling back to a generic phrase when it can't be found.
+    /// </summary>
+    private static string ExtractConfigFilePath(string message)
+    {
+        var start = message.IndexOf('\'', StringComparison.Ordinal);
+        if (start >= 0)
+        {
+            var end = message.IndexOf('\'', start + 1);
+            if (end > start + 1)
+            {
+                return message[(start + 1)..end];
+            }
+        }
+
+        return "one of your configuration files";
+    }
+
     /// <summary>
     /// Configures the Revela host with all services, configuration, and commands.
     /// </summary>
