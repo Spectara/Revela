@@ -80,6 +80,10 @@ internal sealed partial class CalendarGenerateStep(
             var icsPath = Path.Combine(sourcePath, pagePath, pageConfig.Source);
             if (!File.Exists(icsPath))
             {
+                // Missing local calendar data is not fatal to the whole build: skip this
+                // page with a friendly log. 'revela check' (check calendar) surfaces it up
+                // front so the photographer can fix it before generating.
+                LogMissingCalendarFile(pageConfig.Source, pagePath);
                 continue;
             }
 
@@ -278,6 +282,9 @@ internal sealed partial class CalendarGenerateStep(
             }
         }
     }
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Calendar page '{Path}' references a missing calendar file '{Source}' — skipping. Run 'revela check' to diagnose.")]
+    private partial void LogMissingCalendarFile(string source, string path);
 
     [LoggerMessage(Level = LogLevel.Debug, Message = "Loading manifest...")]
     private partial void LogLoadingManifest();

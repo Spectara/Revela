@@ -70,13 +70,11 @@ public static class ServiceCollectionExtensions
 
         // Commands (thin CLI wrappers + IPipelineStep implementations)
         services.TryAddTransient<CheckCommand>();
-        services.TryAddTransient<ValidateCommand>();
         services.TryAddTransient<ScanCommand>();
         services.TryAddTransient<ImagesCommand>();
         services.TryAddTransient<PagesCommand>();
 
         // Register commands as pipeline steps for engine orchestration
-        services.TryAddEnumerable(ServiceDescriptor.Transient<IPipelineStep, ValidateCommand>());
         services.TryAddEnumerable(ServiceDescriptor.Transient<IPipelineStep, ScanCommand>());
         services.TryAddEnumerable(ServiceDescriptor.Transient<IPipelineStep, PagesCommand>());
         services.TryAddEnumerable(ServiceDescriptor.Transient<IPipelineStep, ImagesCommand>());

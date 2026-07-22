@@ -140,20 +140,49 @@ internal sealed partial class RenderService(
                 };
             }
 
+            // Pre-check: site.json exists but defines no title. Templates render
+            // `{{ site.title }}` as null and Scriban fails with a cryptic
+            // "member site.title for a null object". Fail early with a clear message.
+            // (SiteCoreConfig.Title is no longer [Required] — the wizard writes site.json
+            // incrementally — so the check lives here at the render call site.)
+            if (string.IsNullOrWhiteSpace(siteCoreConfig.CurrentValue.Title))
+            {
+                return new RenderResult
+                {
+                    Success = false,
+                    ErrorMessage =
+                        "site.json is missing a 'title'. " +
+                        "Set \"title\" in site.json (or run 'revela config site'). " +
+                        "Run 'revela check' to diagnose your project."
+                };
+            }
+
             // Resolve theme and extensions
             var theme = themeRegistry.Resolve(config.ThemeName, projectEnvironment.Value.Path);
             SetTheme(theme);
+
+            // Pre-check: the configured theme is not installed. Without it the renderer
+            // cannot resolve the layout/partials the site depends on. Fail early with a
+            // clear, actionable message instead of producing broken output.
+            if (theme is null)
+            {
+                return new RenderResult
+                {
+                    Success = false,
+                    ErrorMessage =
+                        $"Theme '{config.ThemeName}' is not installed. " +
+                        $"Run 'revela theme install {config.ThemeName}' (or pick an installed theme " +
+                        "with 'revela config theme'). Run 'revela check' to diagnose your project."
+                };
+            }
 
             // Get theme extensions matching this theme
             var extensions = themeRegistry.GetExtensions(config.ThemeName);
             SetExtensions(extensions);
 
             // Initialize template resolver (scans theme, extensions, local overrides)
-            if (theme is not null)
-            {
-                templateResolver.Initialize(theme, extensions, projectEnvironment.Value.Path);
-                assetResolver.Initialize(theme, extensions, projectEnvironment.Value.Path);
-            }
+            templateResolver.Initialize(theme, extensions, projectEnvironment.Value.Path);
+            assetResolver.Initialize(theme, extensions, projectEnvironment.Value.Path);
 
             // Reconstruct galleries and navigation from unified root
             var galleries = ReconstructGalleries(manifestRepository.Root);
@@ -206,10 +235,7 @@ internal sealed partial class RenderService(
             var pageCount = await RenderSiteAsync(engine, siteModel, config, theme, photoPages, photoTemplate, progress, cancellationToken);
 
             // Copy assets (theme, extensions, local overrides)
-            if (theme is not null)
-            {
-                await assetResolver.CopyToOutputAsync(OutputPath, cancellationToken);
-            }
+            await assetResolver.CopyToOutputAsync(OutputPath, cancellationToken);
 
             // Copy static files (source/_static/ → output/)
             await staticFileService.CopyStaticFilesAsync(SourcePath, OutputPath, cancellationToken);

@@ -3,7 +3,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Spectara.Revela.Commands;
 using Spectara.Revela.Features.Generate;
 using Spectara.Revela.Features.Generate.Abstractions;
-using Spectara.Revela.Features.Generate.Commands;
 using Spectara.Revela.Features.Generate.Models.Results;
 using Spectara.Revela.Sdk.Abstractions;
 using Spectara.Revela.Sdk.Abstractions.Engine;
@@ -38,9 +37,6 @@ public sealed class SiteValidatorTests
         services.AddSingleton<IPipelineStepOrderProvider>(new TestStepOrderProvider());
     }
 
-    private static IPipelineStep GetCheckStep(IServiceProvider services) =>
-        services.GetRequiredService<ValidateCommand>();
-
     [TestMethod]
     public async Task ValidateAsync_GoodProject_ReportsNoErrors()
     {
@@ -62,29 +58,6 @@ public sealed class SiteValidatorTests
 
         // Assert
         Assert.IsEmpty(diagnostics.Where(d => d.Severity == ValidationSeverity.Error));
-    }
-
-    [TestMethod]
-    public async Task ValidateAsync_GoodProject_PipelineStepSucceeds()
-    {
-        // Arrange
-        using var project = TestProject.Create(p => p
-            .WithProjectJson(new
-            {
-                project = new { name = "Good", baseUrl = "https://example.com" },
-                theme = new { name = "Lumina" },
-            })
-            .WithSiteJson(new { title = "Good Site", author = "Test" })
-            .AddGallery("Landscapes", g => g.AddImage("sunset.jpg")));
-        using var host = RevelaTestHost.Build(project.RootPath, AddServices);
-
-        var step = GetCheckStep(host.Services);
-
-        // Act
-        var result = await step.ExecuteAsync();
-
-        // Assert — no errors means the build is allowed to proceed (exit 0 semantics).
-        Assert.IsTrue(result.Success);
     }
 
     [TestMethod]
@@ -125,30 +98,6 @@ public sealed class SiteValidatorTests
     }
 
     [TestMethod]
-    public async Task ValidateAsync_SlugCollision_PipelineStepFails()
-    {
-        // Arrange
-        using var project = TestProject.Create(p => p
-            .WithProjectJson(new
-            {
-                project = new { name = "Bad", baseUrl = "https://example.com" },
-                theme = new { name = "Lumina" },
-            })
-            .WithSiteJson(new { title = "Bad Site", author = "Test" })
-            .AddGallery("01 Events", g => g.AddImage("a.jpg"))
-            .AddGallery("Events", g => g.AddImage("b.jpg")));
-        using var host = RevelaTestHost.Build(project.RootPath, AddServices);
-
-        var step = GetCheckStep(host.Services);
-
-        // Act
-        var result = await step.ExecuteAsync();
-
-        // Assert — an error blocks the build (exit 2 semantics).
-        Assert.IsFalse(result.Success);
-    }
-
-    [TestMethod]
     public async Task ValidateAsync_EmptySource_WarnsButDoesNotBlock()
     {
         // Arrange: source exists (created by TestProject) but has no galleries/content.
@@ -162,18 +111,15 @@ public sealed class SiteValidatorTests
         using var host = RevelaTestHost.Build(project.RootPath, AddServices);
 
         var validator = host.Services.GetRequiredService<ISiteValidator>();
-        var step = GetCheckStep(host.Services);
 
         // Act
         var diagnostics = await validator.ValidateAsync();
-        var result = await step.ExecuteAsync();
 
-        // Assert — a warning is surfaced, but the build still proceeds (exit 0).
+        // Assert — a warning is surfaced, but nothing blocks the build (no errors).
         Assert.IsTrue(
             diagnostics.Any(d => d.Severity == ValidationSeverity.Warning),
             "Expected an empty-source warning.");
         Assert.IsEmpty(diagnostics.Where(d => d.Severity == ValidationSeverity.Error));
-        Assert.IsTrue(result.Success);
     }
 
     [TestMethod]
@@ -260,10 +206,11 @@ public sealed class SiteValidatorTests
     }
 
     [TestMethod]
-    public async Task GenerateAll_WithSlugCollision_AbortsAtCheckBeforeImages()
+    public async Task GenerateAll_WithSlugCollision_AbortsBeforeImages()
     {
-        // Arrange: a project that fails validation; if check is truly Phase 0, the
-        // expensive image step never runs.
+        // Arrange: two galleries whose slugs collide. Validation is no longer a hidden
+        // phase, but the scan step still fails on a slug conflict before any rendering,
+        // so the expensive image step never runs.
         using var project = TestProject.Create(p => p
             .WithProjectJson(new
             {
@@ -280,23 +227,21 @@ public sealed class SiteValidatorTests
         // Act
         var result = await engine.GenerateAllAsync(progress: null, CancellationToken.None);
 
-        // Assert — pipeline aborted at the check step, before images.
-        Assert.IsFalse(result.Success, "Pipeline should abort on validation errors.");
+        // Assert — pipeline aborted before images.
+        Assert.IsFalse(result.Success, "Pipeline should abort on a slug collision.");
         Assert.IsNotNull(result.ErrorMessage);
-        Assert.Contains("check", result.ErrorMessage, StringComparison.OrdinalIgnoreCase);
 
         var imagesDir = Path.Combine(project.OutputPath, "images");
         Assert.IsFalse(
             Directory.Exists(imagesDir) && Directory.EnumerateFiles(imagesDir, "*", SearchOption.AllDirectories).Any(),
-            "Image processing must not have run when validation failed.");
+            "Image processing must not have run when the pipeline aborted.");
     }
 
     [TestMethod]
-    public async Task GenerateAll_ValidProject_ChecksFirstThenBuilds()
+    public async Task GenerateAll_ValidProject_Builds()
     {
-        // Arrange: a clean project. Run the check step first (Phase 0), then the rest of
-        // the pipeline in order (mirrors the real generate-all sequence, without relying
-        // on the order provider that the host populates at command-registration time).
+        // Arrange: a clean project. Run the pipeline in order (scan → render → images);
+        // there is no longer a hidden check phase.
         using var project = TestProject.Create(p => p
             .WithProjectJson(new
             {
@@ -310,7 +255,6 @@ public sealed class SiteValidatorTests
                 .AddRealImage("sunset.jpg", 640, 480)));
         using var host = RevelaTestHost.Build(project.RootPath, AddServices);
 
-        var check = GetCheckStep(host.Services);
         var contentService = host.Services.GetRequiredService<IContentService>();
         var renderService = host.Services.GetRequiredService<IRenderService>();
         var imageService = host.Services.GetRequiredService<IImageService>();
@@ -318,10 +262,7 @@ public sealed class SiteValidatorTests
         renderService.SetTheme(host.Services.GetRequiredService<ITheme>());
         renderService.SetExtensions([]);
 
-        // Act — Phase 0: check must pass before anything expensive happens.
-        var checkResult = await check.ExecuteAsync();
-        Assert.IsTrue(checkResult.Success, "Check should pass for a clean project.");
-
+        // Act
         var scanResult = await contentService.ScanAsync();
         var renderResult = await renderService.RenderAsync();
         var imageResult = await imageService.ProcessAsync(new ProcessImagesOptions());
@@ -353,18 +294,15 @@ public sealed class SiteValidatorTests
         });
 
         var validator = host.Services.GetRequiredService<ISiteValidator>();
-        var step = GetCheckStep(host.Services);
 
         // Act
         var diagnostics = await validator.ValidateAsync();
-        var result = await step.ExecuteAsync();
 
-        // Assert — the plugin diagnostic joins the host's collect-all report and blocks Phase 0.
+        // Assert — the plugin diagnostic joins the host's collect-all report.
         Assert.IsTrue(
             diagnostics.Any(d => d.Severity == ValidationSeverity.Error
                 && d.Message.Contains("Plugin precondition failed", StringComparison.Ordinal)),
             "Plugin diagnostic should appear in the collect-all report.");
-        Assert.IsFalse(result.Success, "A plugin error must block Phase 0 (exit 2 semantics).");
     }
 
     [TestMethod]
@@ -389,19 +327,16 @@ public sealed class SiteValidatorTests
         });
 
         var validator = host.Services.GetRequiredService<ISiteValidator>();
-        var step = GetCheckStep(host.Services);
 
         // Act
         var diagnostics = await validator.ValidateAsync();
-        var result = await step.ExecuteAsync();
 
-        // Assert — the note is surfaced, but nothing blocks the build (exit 0 semantics).
+        // Assert — the note is surfaced, but nothing blocks the build (no errors).
         Assert.IsTrue(
             diagnostics.Any(d => d.Severity == ValidationSeverity.Warning
                 && d.Message.Contains("Plugin note", StringComparison.Ordinal)),
             "Plugin warning should appear in the collect-all report.");
         Assert.IsEmpty(diagnostics.Where(d => d.Severity == ValidationSeverity.Error));
-        Assert.IsTrue(result.Success);
     }
 
     private sealed class FakeCheck(IReadOnlyList<ValidationDiagnostic> diagnostics) : ICheck
@@ -425,7 +360,6 @@ public sealed class SiteValidatorTests
     {
         public int GetOrder(string category, string name) => name switch
         {
-            "check" => PipelineOrder.Validate,
             "scan" => PipelineOrder.Scan,
             "pages" => PipelineOrder.Pages,
             "images" => PipelineOrder.Images,

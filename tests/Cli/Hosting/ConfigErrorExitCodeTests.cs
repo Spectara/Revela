@@ -51,9 +51,10 @@ public sealed class ConfigErrorExitCodeTests
     [TestMethod]
     public async Task RunRevelaAsync_GenerateAllPipeline_WithStrayLanguage_ExitsWithCode2AndNoStackTrace()
     {
-        // Arrange: `generate all` now runs `check` as its first phase, which collects the
-        // stray project.language (#75) alongside any other structural problems and renders
-        // them in one report — still exit 2, still no leaked stack trace.
+        // Arrange: `generate all` no longer runs a hidden check phase. The stray
+        // project.language (#75) is surfaced lazily the first time a pipeline step touches
+        // the invalid ProjectConfig, rendered as the friendly configuration-problem panel —
+        // still exit 2, still no leaked stack trace.
         using var project = TestProject.Create(p => p
             .WithProjectJson(new
             {
@@ -63,9 +64,9 @@ public sealed class ConfigErrorExitCodeTests
         // Act
         var (exitCode, output) = await RunCliAsync(project.RootPath, ["generate", "all"]);
 
-        // Assert: surfaced by the phase-0 check report, exit 2, no raw exception or stack trace.
+        // Assert: surfaced by the configuration-problem panel, exit 2, no raw exception.
         Assert.AreEqual(2, exitCode);
-        Assert.Contains("Check found problems", output, StringComparison.Ordinal);
+        Assert.Contains("Configuration problem", output, StringComparison.Ordinal);
         Assert.Contains("language", output, StringComparison.Ordinal);
         Assert.Contains("site.json", output, StringComparison.Ordinal);
         Assert.DoesNotContain("OptionsValidationException", output, StringComparison.Ordinal);

@@ -340,23 +340,11 @@ internal static class HostExtensions
 
         var command = new Command("all", description);
 
-        // Unadvertised escape hatch: skip the structural validation phase (the "check"
-        // step) when a caller knowingly wants to bypass it. Only meaningful for pipelines
-        // that include a validation step (generate); a no-op elsewhere.
-        var skipValidateOption = new Option<bool>("--skip-validate")
-        {
-            Description = "Skip the pre-generate validation phase.",
-            Hidden = true,
-        };
-        command.Options.Add(skipValidateOption);
-
         command.SetAction(async (parseResult, cancellationToken) =>
         {
-            var effectiveSteps = parseResult.GetValue(skipValidateOption)
-                ? [.. steps.Where(s => !string.Equals(s.Name, "check", StringComparison.Ordinal))]
-                : steps;
+            _ = parseResult;
 
-            AnsiConsole.MarkupLine($"[blue]Pipeline:[/] {string.Join(" → ", effectiveSteps.Select(s => s.Name))}");
+            AnsiConsole.MarkupLine($"[blue]Pipeline:[/] {string.Join(" → ", steps.Select(s => s.Name))}");
             AnsiConsole.WriteLine();
 
             // Opt out of System.CommandLine's default exception handler for the
@@ -374,11 +362,11 @@ internal static class HostExtensions
             var stopwatch = Stopwatch.StartNew();
             var stepNumber = 1;
 
-            foreach (var step in effectiveSteps)
+            foreach (var step in steps)
             {
                 cancellationToken.ThrowIfCancellationRequested();
 
-                AnsiConsole.MarkupLine($"[cyan]━━━ Step {stepNumber}/{effectiveSteps.Count}: {Markup.Escape(step.Name)} ━━━[/]");
+                AnsiConsole.MarkupLine($"[cyan]━━━ Step {stepNumber}/{steps.Count}: {Markup.Escape(step.Name)} ━━━[/]");
                 if (!string.IsNullOrEmpty(step.Description))
                 {
                     AnsiConsole.MarkupLine($"[dim]{Markup.Escape(step.Description)}[/]");
@@ -390,6 +378,10 @@ internal static class HostExtensions
 
                 if (exitCode != 0)
                 {
+                    // A step failed with a non-zero exit. Validation is no longer a hidden
+                    // phase of the pipeline, so point the user at the diagnostic command.
+                    AnsiConsole.WriteLine();
+                    AnsiConsole.MarkupLine("[dim]Run [cyan]revela check[/] to diagnose your project.[/]");
                     return exitCode;
                 }
 

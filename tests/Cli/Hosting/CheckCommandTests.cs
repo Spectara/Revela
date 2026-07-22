@@ -58,6 +58,12 @@ public sealed class CheckCommandTests
         var allCommand = check.Subcommands.Single(c => string.Equals(c.Name, "all", StringComparison.Ordinal));
         Assert.IsTrue(orderRegistry.IsPipelineStep(configUnit), "check config should be an included-in-all step.");
         Assert.IsFalse(orderRegistry.IsPipelineStep(allCommand), "check all is the aggregator, not a step.");
+
+        // There is no longer a hidden `generate check` phase-0 step.
+        var generate = rootCommand.Subcommands.Single(c => string.Equals(c.Name, "generate", StringComparison.Ordinal));
+        Assert.IsFalse(
+            generate.Subcommands.Any(c => string.Equals(c.Name, "check", StringComparison.Ordinal)),
+            "generate must not expose a hidden 'check' step.");
     }
 
     [TestMethod]
