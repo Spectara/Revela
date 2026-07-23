@@ -83,13 +83,17 @@ internal sealed partial class NetVipsImageProcessor(
                 }
             });
 
-            // Optimize thread pool size: (CPU/2) × (CPU/2) strategy
-            // - Workers (in ImageService): CPU/2 parallel image processing tasks
-            // - Concurrency (here): CPU/2 libvips threads for resize/decode operations
-            // This balances parallelism with thread overhead, especially important
-            // because AVIF (libaom) spawns its own threads per encoder instance.
-            // Benchmarks show this reduces thread count by ~30% with equal performance.
-            NetVips.NetVips.Concurrency = Math.Max(1, Environment.ProcessorCount / 2);
+            // Thread strategy: many image-workers × a small per-image libvips concurrency.
+            // - Workers (in ImageService): CPU/2 images processed in parallel.
+            // - Concurrency (here): libvips threads PER image (also caps libaom's internal
+            //   AVIF-encoder threads, see kleisauke/net-vips#272).
+            // Benchmarks (Ryzen 16C/32T, AVIF+WebP+JPG) show libaom stops scaling past ~8
+            // threads, so a per-image concurrency of CPU/2 (=16 here) just oversubscribes:
+            // W16×C8 = 209s vs W16×C16 = 220s. We therefore cap concurrency at libaom's
+            // effective ceiling (~8) instead of scaling it with the core count. On small
+            // machines (≤8 threads) this collapses to the core count, which avoids the
+            // opposite failure — concurrency=1 starves libaom and halves throughput.
+            NetVips.NetVips.Concurrency = Math.Clamp(Environment.ProcessorCount, 1, 8);
 
             netVipsInitialized = true;
         }
