@@ -18,6 +18,19 @@ public interface IAssetResolver
     IReadOnlyList<string> GetStyleSheets();
 
     /// <summary>
+    /// Gets the CSS files that apply to a given page-type scope, in order.
+    /// </summary>
+    /// <param name="scope">
+    /// Page scope token (e.g. <c>index</c>, <c>gallery</c>, <c>photo</c>, or a plugin
+    /// prefix such as <c>statistics</c>). When null, all stylesheets are returned.
+    /// </param>
+    /// <remarks>
+    /// A stylesheet is included when it has no scope declaration, declares the
+    /// <c>all</c> token, or declares the requested <paramref name="scope"/>.
+    /// </remarks>
+    IReadOnlyList<string> GetStyleSheets(string? scope);
+
+    /// <summary>
     /// Gets all JS files in order.
     /// </summary>
     IReadOnlyList<string> GetScripts();

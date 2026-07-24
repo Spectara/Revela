@@ -39,6 +39,12 @@ public sealed partial class AssetResolver(ILogger<AssetResolver> logger) : IAsse
     private readonly List<string> styleSheetOrder = [];
     private readonly List<string> scriptOrder = [];
 
+    // css asset key -> declared scope tokens (lowercased). A key absent from this
+    // map has no declaration and therefore loads on every page (backward compatible).
+    private readonly Dictionary<string, string[]> styleSheetScopes = new(StringComparer.OrdinalIgnoreCase);
+
+    private const string AllScope = "all";
+
     private string? localThemePath;
     private bool isInitialized;
 
@@ -48,6 +54,7 @@ public sealed partial class AssetResolver(ILogger<AssetResolver> logger) : IAsse
         assets.Clear();
         styleSheetOrder.Clear();
         scriptOrder.Clear();
+        styleSheetScopes.Clear();
 
         var themeName = theme.Metadata.Name;
         localThemePath = Path.Combine(projectPath, ProjectPaths.Themes, themeName, AssetsFolderName);
@@ -78,6 +85,41 @@ public sealed partial class AssetResolver(ILogger<AssetResolver> logger) : IAsse
     {
         EnsureInitialized();
         return styleSheetOrder.AsReadOnly();
+    }
+
+    /// <inheritdoc />
+    public IReadOnlyList<string> GetStyleSheets(string? scope)
+    {
+        EnsureInitialized();
+
+        if (string.IsNullOrEmpty(scope))
+        {
+            return styleSheetOrder.AsReadOnly();
+        }
+
+        var result = new List<string>(styleSheetOrder.Count);
+        foreach (var css in styleSheetOrder)
+        {
+            // Undeclared stylesheets load everywhere; declared ones must list "all"
+            // or the requested scope token.
+            if (!styleSheetScopes.TryGetValue(css, out var scopes))
+            {
+                result.Add(css);
+                continue;
+            }
+
+            foreach (var declared in scopes)
+            {
+                if (declared.Equals(AllScope, StringComparison.OrdinalIgnoreCase)
+                    || declared.Equals(scope, StringComparison.OrdinalIgnoreCase))
+                {
+                    result.Add(css);
+                    break;
+                }
+            }
+        }
+
+        return result.AsReadOnly();
     }
 
     /// <inheritdoc />
@@ -154,6 +196,8 @@ public sealed partial class AssetResolver(ILogger<AssetResolver> logger) : IAsse
             count++;
         }
 
+        RegisterStyleSheetScopes(theme, prefix: null);
+
         LogScannedTheme(theme.Metadata.Name, count);
     }
 
@@ -177,7 +221,42 @@ public sealed partial class AssetResolver(ILogger<AssetResolver> logger) : IAsse
             count++;
         }
 
+        RegisterStyleSheetScopes(extension, prefix);
+
         LogScannedExtension(extension.Metadata.Name, prefix, count);
+    }
+
+    /// <summary>
+    /// Records page-type scope declarations from a theme/extension manifest.
+    /// The declared stylesheet path is resolved to the same asset key produced by
+    /// <see cref="DeriveKeyFromPath"/> / <see cref="DeriveExtensionKey"/> so it lines
+    /// up with <see cref="styleSheetOrder"/>. A declaration with no scope tokens loads
+    /// everywhere (stored as the <c>all</c> token).
+    /// </summary>
+    private void RegisterStyleSheetScopes(ITheme theme, string? prefix)
+    {
+        var declarations = theme.Manifest.Stylesheets;
+        if (declarations is null)
+        {
+            return;
+        }
+
+        foreach (var declaration in declarations)
+        {
+            if (string.IsNullOrWhiteSpace(declaration.Path))
+            {
+                continue;
+            }
+
+            var relativeKey = DeriveKeyFromPath(declaration.Path);
+            var key = string.IsNullOrEmpty(prefix) ? relativeKey : $"{prefix}/{relativeKey}".ToLowerInvariant();
+
+            var scopes = declaration.Scope is { Count: > 0 }
+                ? declaration.Scope.Select(s => s.Trim()).Where(s => s.Length > 0).ToArray()
+                : [AllScope];
+
+            styleSheetScopes[key] = scopes.Length > 0 ? scopes : [AllScope];
+        }
     }
 
     private void ScanLocalOverrides(string localPath)

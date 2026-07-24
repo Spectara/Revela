@@ -568,8 +568,12 @@ internal sealed partial class RenderService(
         var revelaInfo = buildInfo.ToScriptObject();
         var formats = ImageSettings.GetActiveFormats();
 
-        // Get assets from resolver
-        var stylesheets = assetResolver.GetStyleSheets();
+        // Get assets from resolver. Stylesheets are resolved per page-type scope so a
+        // photo-only or plugin-only sheet does not bloat unrelated pages; undeclared
+        // sheets still load everywhere (see AssetResolver.GetStyleSheets(scope)).
+        // The index scope is resolved below once the root gallery's template is known
+        // (a plugin-templated homepage must still get that plugin's CSS).
+        var photoStylesheets = assetResolver.GetStyleSheets("photo");
         var scripts = assetResolver.GetScripts();
 
         // Build lookup of ALL processed images by source path (for content image resolution).
@@ -592,6 +596,11 @@ internal sealed partial class RenderService(
         // Find root gallery (home page) - has empty Path
         var rootGallery = model.Galleries.FirstOrDefault(g => string.IsNullOrEmpty(g.Path));
 
+        // The homepage defaults to the "index" scope, but a plugin-templated homepage
+        // (e.g. a calendar landing page with template "calendar/page") must still get
+        // that plugin's CSS — derive the scope from the root template like galleries do.
+        var indexScope = "index";
+
         // Load root gallery metadata (body content, etc.)
         if (rootGallery is not null)
         {
@@ -611,8 +620,11 @@ internal sealed partial class RenderService(
                     rootAssetsBasePath,
                     formats.Keys,
                     rootSourcePath));
-            var (_, _, _) = await LoadGalleryMetadataAsync(rootGallery, rootImageContext, cancellationToken);
+            var (rootTemplate, _, _) = await LoadGalleryMetadataAsync(rootGallery, rootImageContext, cancellationToken);
+            indexScope = ScopeFromTemplate(rootTemplate, "index");
         }
+
+        var indexStylesheets = assetResolver.GetStyleSheets(indexScope);
 
         // Use root gallery images if available (may be filtered), otherwise all images
         var indexImages = rootGallery?.Images.Count > 0
@@ -633,7 +645,7 @@ internal sealed partial class RenderService(
                 ["base_url"] = config.Project.BaseUrl,
                 ["image_formats"] = formats.Keys,
                 ["revela"] = revelaInfo,
-                ["stylesheets"] = stylesheets,
+                ["stylesheets"] = indexStylesheets,
                 ["scripts"] = scripts,
             });
 
@@ -668,6 +680,13 @@ internal sealed partial class RenderService(
                     formats.Keys,
                     gallerySourcePath));
             var (customTemplate, dataSources, metadataBasePath) = await LoadGalleryMetadataAsync(gallery, galleryImageContext, ct);
+
+            // Page scope for stylesheet filtering: a plugin template like
+            // "statistics/overview" scopes to its prefix ("statistics"); a plain
+            // gallery scopes to "gallery".
+            var galleryScope = ScopeFromTemplate(customTemplate, "gallery");
+
+            var galleryStylesheets = assetResolver.GetStyleSheets(galleryScope);
 
             var galleryImages = gallery.Images.ToList();
 
@@ -709,7 +728,7 @@ internal sealed partial class RenderService(
                 ["base_url"] = config.Project.BaseUrl,
                 ["image_formats"] = formats.Keys,
                 ["revela"] = revelaInfo,
-                ["stylesheets"] = stylesheets,
+                ["stylesheets"] = galleryStylesheets,
                 ["scripts"] = scripts
             };
 
@@ -784,7 +803,7 @@ internal sealed partial class RenderService(
                 ["base_url"] = config.Project.BaseUrl,
                 ["image_formats"] = formats.Keys,
                 ["revela"] = revelaInfo,
-                ["stylesheets"] = stylesheets,
+                ["stylesheets"] = photoStylesheets,
                 ["scripts"] = scripts
             };
 
@@ -878,6 +897,22 @@ internal sealed partial class RenderService(
             return relativeBasePath;
         }
         return config.Project.BasePath;
+    }
+
+    /// <summary>
+    /// Derives the stylesheet page-type scope token from a page's template.
+    /// A plugin template like "statistics/overview" scopes to its prefix
+    /// ("statistics"); a null/empty or prefix-less template uses <paramref name="fallback"/>.
+    /// </summary>
+    private static string ScopeFromTemplate(string? template, string fallback)
+    {
+        if (string.IsNullOrEmpty(template))
+        {
+            return fallback;
+        }
+
+        var slashIndex = template.IndexOf('/', StringComparison.Ordinal);
+        return slashIndex > 0 ? template[..slashIndex] : fallback;
     }
 
     private static string CalculateAssetsBasePath(RenderContext config, string basepath)

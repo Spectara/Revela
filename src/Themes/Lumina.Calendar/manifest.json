@@ -11,5 +11,8 @@
                 "calendar": "calendar.json"
             }
         }
-    }
+    },
+    "stylesheets": [
+        { "path": "calendar.css", "scope": ["calendar"] }
+    ]
 }

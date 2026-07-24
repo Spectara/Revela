@@ -11,5 +11,8 @@
         "statistics": "statistics.json"
       }
     }
-  }
+  },
+  "stylesheets": [
+    { "path": "main.css", "scope": ["statistics"] }
+  ]
 }

@@ -46,6 +46,13 @@ public sealed class ThemeJsonConfig
     /// <summary>Default data sources for extension templates.</summary>
     public IReadOnlyDictionary<string, TemplateDataConfig>? TemplateDefaults { get; set; }
 
+    /// <summary>
+    /// Optional stylesheet page-type scope declarations. Each entry restricts a
+    /// stylesheet to the listed scope tokens; omitting the field (or a stylesheet)
+    /// keeps the load-everywhere default.
+    /// </summary>
+    public IReadOnlyList<Abstractions.StylesheetDeclaration>? Stylesheets { get; set; }
+
     /// <summary>Shared JSON serialization options for theme config files.</summary>
     public static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -61,6 +68,7 @@ public sealed class ThemeJsonConfig
 /// Source-generated JSON serializer context for theme configuration types.
 /// </summary>
 [JsonSerializable(typeof(ThemeJsonConfig))]
+[JsonSerializable(typeof(Abstractions.StylesheetDeclaration))]
 [JsonSourceGenerationOptions(PropertyNameCaseInsensitive = true)]
 internal sealed partial class ThemeJsonContext : JsonSerializerContext;
 

@@ -118,6 +118,7 @@ public abstract class EmbeddedTheme : ITheme
 
     private static ThemeManifest CreateManifest(ThemeJsonConfig config) => new()
     {
-        LayoutTemplate = config.Templates?.Layout ?? "layout.revela"
+        LayoutTemplate = config.Templates?.Layout ?? "layout.revela",
+        Stylesheets = config.Stylesheets
     };
 }

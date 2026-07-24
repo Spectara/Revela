@@ -12,5 +12,9 @@
   ],
   "templates": {
     "layout": "Layout.revela"
-  }
+  },
+  "stylesheets": [
+    { "path": "main.css" },
+    { "path": "photo.css", "scope": ["photo"] }
+  ]
 }

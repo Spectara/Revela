@@ -59,7 +59,8 @@ public sealed class LocalThemeProvider : ITheme
 
         Manifest = new ThemeManifest
         {
-            LayoutTemplate = themeConfig.Templates?.Layout ?? "layout.revela"
+            LayoutTemplate = themeConfig.Templates?.Layout ?? "layout.revela",
+            Stylesheets = themeConfig.Stylesheets
         };
 
         // Local themes are always base themes (no prefix, no target)
