@@ -15,6 +15,11 @@ Demonstrates Revela features: **virtual galleries** with filter expressions, sha
    - `04 Portraits/` - `filter = "height > width"` (dimension-based)
    - `05 Night Photos/` - `filter = "exif.iso >= 3200"` (numeric EXIF)
 
+3. **Photo Viewer Modes**
+   - `Canon Photos` - `photo_viewer = "lightbox"` opens an inline viewer
+   - `Sony Photos` - `photo_viewer = "none"` intentionally renders non-interactive photos
+   - `Landscapes` - `photo_viewer = "page"` opens canonical photo pages
+
 ## Setup
 
 ### 1. Generate Test Images (Windows only)

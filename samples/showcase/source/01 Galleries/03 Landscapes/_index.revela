@@ -2,6 +2,7 @@
 title = "Landscapes"
 description = "All wide-angle landscape photos (aspect ratio >= 1.4)"
 filter = "width > height"
+photo_viewer = "page"
 +++
 
 # Landscapes
@@ -13,5 +14,7 @@ width > height
 ```
 
 This demonstrates dimension-based filtering.
+
+**Photo viewer:** Dedicated page. Select a photo to open its canonical URL with previous, next, and return navigation.
 
 **Expected:** 8 images (all landscape orientation)

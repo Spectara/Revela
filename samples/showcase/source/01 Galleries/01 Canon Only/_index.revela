@@ -2,6 +2,7 @@
 title = "Canon Photos"
 description = "All photos taken with Canon cameras"
 filter = "exif.make == 'Canon'"
+photo_viewer = "lightbox"
 +++
 
 # Canon Photos
@@ -13,5 +14,7 @@ exif.make == 'Canon'
 ```
 
 Demonstrates camera manufacturer filtering via EXIF data.
+
+**Photo viewer:** Inline lightbox. Select a photo to inspect it without leaving this gallery.
 
 **Expected:** 6 images (all Canon cameras)
