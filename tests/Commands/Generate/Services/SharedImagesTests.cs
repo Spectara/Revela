@@ -7,6 +7,7 @@ using Spectara.Revela.Features.Generate.Infrastructure;
 using Spectara.Revela.Features.Generate.Services;
 using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Abstractions;
+using Spectara.Revela.Sdk.Artifacts;
 using Spectara.Revela.Sdk.Configuration;
 using Spectara.Revela.Sdk.Models.Manifest;
 using Spectara.Revela.Sdk.Services;
@@ -369,10 +370,23 @@ public sealed class SharedImagesTests : IDisposable
             Options.Create(projectEnv),
             themeConfigMonitor,
             optionsMonitor,
+            new SuccessfulArtifactLifecycle(),
             TimeProvider.System,
             NullLogger<ContentService>.Instance);
 
         return (service, manifestRepo);
+    }
+
+    private sealed class SuccessfulArtifactLifecycle : IArtifactLifecycle
+    {
+        public ValueTask<ArtifactInvalidationResult> PrepareToReplaceAsync(
+            ArtifactId artifact,
+            CancellationToken cancellationToken = default)
+        {
+            _ = artifact;
+            cancellationToken.ThrowIfCancellationRequested();
+            return new ValueTask<ArtifactInvalidationResult>(ArtifactInvalidationResult.Ok());
+        }
     }
 
     #endregion

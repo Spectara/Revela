@@ -6,6 +6,7 @@ using Spectara.Revela.Features.Generate.Infrastructure;
 using Spectara.Revela.Features.Generate.Models;
 using Spectara.Revela.Features.Generate.Models.Results;
 using Spectara.Revela.Sdk;
+using Spectara.Revela.Sdk.Artifacts;
 using Spectara.Revela.Sdk.Configuration;
 using Spectara.Revela.Sdk.Models.Manifest;
 using Spectara.Revela.Sdk.Services;
@@ -30,6 +31,7 @@ internal sealed partial class ImageService(
     IOptions<ProjectEnvironment> projectEnvironment,
     IPathResolver pathResolver,
     IOptionsMonitor<GenerateConfig> generateOptions,
+    IArtifactLifecycle artifactLifecycle,
     TimeProvider timeProvider,
     ILogger<ImageService> logger) : IImageService
 {
@@ -250,6 +252,19 @@ internal sealed partial class ImageService(
                     SkippedCount = cachedCount,
                     FilesCreated = 0,
                     TotalSize = 0,
+                    Duration = stopwatch.Elapsed
+                };
+            }
+
+            var invalidationResult = await artifactLifecycle.PrepareToReplaceAsync(
+                CoreArtifacts.ProcessedImages,
+                cancellationToken);
+            if (!invalidationResult.Success)
+            {
+                return new ImageResult
+                {
+                    Success = false,
+                    ErrorMessage = invalidationResult.ErrorMessage,
                     Duration = stopwatch.Elapsed
                 };
             }

@@ -7,6 +7,7 @@ using Spectara.Revela.Features.Generate.Infrastructure;
 using Spectara.Revela.Features.Generate.Models;
 using Spectara.Revela.Features.Generate.Models.Results;
 using Spectara.Revela.Sdk;
+using Spectara.Revela.Sdk.Artifacts;
 using Spectara.Revela.Sdk.Configuration;
 using Spectara.Revela.Sdk.Models;
 using Spectara.Revela.Sdk.Models.Manifest;
@@ -39,6 +40,7 @@ internal sealed partial class ContentService(
     IOptions<ProjectEnvironment> projectEnvironment,
     IOptionsMonitor<ThemeConfig> themeConfig,
     IOptionsMonitor<GenerateConfig> generateOptions,
+    IArtifactLifecycle artifactLifecycle,
     TimeProvider timeProvider,
     ILogger<ContentService> logger) : IContentService
 {
@@ -187,6 +189,19 @@ internal sealed partial class ContentService(
 
             // Build unified root node with metadata
             var root = BuildRoot(content, navigation, imageMetadata);
+
+            var invalidationResult = await artifactLifecycle.PrepareToReplaceAsync(
+                CoreArtifacts.Manifest,
+                cancellationToken);
+            if (!invalidationResult.Success)
+            {
+                return new ContentResult
+                {
+                    Success = false,
+                    ErrorMessage = invalidationResult.ErrorMessage,
+                    Duration = stopwatch.Elapsed
+                };
+            }
 
             // Update manifest
             manifestRepository.SetRoot(root);

@@ -8,6 +8,7 @@ using Spectara.Revela.Features.Generate.Models;
 using Spectara.Revela.Features.Generate.Models.Results;
 using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Abstractions;
+using Spectara.Revela.Sdk.Artifacts;
 using Spectara.Revela.Sdk.Configuration;
 using Spectara.Revela.Sdk.Hosting;
 using Spectara.Revela.Sdk.Json;
@@ -46,6 +47,7 @@ internal sealed partial class RenderService(
     IOptionsMonitor<ThemeConfig> themeConfig,
     IBuildInfo buildInfo,
     TimeProvider timeProvider,
+    IArtifactLifecycle artifactLifecycle,
     ILogger<RenderService> logger) : IRenderService
 {
     /// <summary>Current theme extensions (set during rendering)</summary>
@@ -251,6 +253,19 @@ internal sealed partial class RenderService(
 
             // Copy static files (source/_static/ → output/)
             await staticFileService.CopyStaticFilesAsync(SourcePath, OutputPath, cancellationToken);
+            var invalidationResult = await artifactLifecycle.PrepareToReplaceAsync(
+                CoreArtifacts.RenderedSite,
+                cancellationToken);
+            if (!invalidationResult.Success)
+            {
+                return new RenderResult
+                {
+                    Success = false,
+                    ErrorMessage = invalidationResult.ErrorMessage,
+                    Duration = stopwatch.Elapsed
+                };
+            }
+
 
             // Generate sitemap.xml (requires absolute BaseUrl)
             if (config.Project.BaseUrl is not null)
