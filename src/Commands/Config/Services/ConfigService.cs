@@ -1,3 +1,4 @@
+using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Microsoft.Extensions.Configuration;
@@ -74,7 +75,38 @@ internal sealed partial class ConfigService(
         DeepMerge(existing, updates);
 
         var json = existing.ToJsonString(JsonOptions);
-        await File.WriteAllTextAsync(ProjectConfigPath, json, cancellationToken);
+        var directory = Path.GetDirectoryName(ProjectConfigPath)
+            ?? throw new InvalidOperationException("Project configuration path has no parent directory.");
+        var tempPath = Path.Combine(
+            directory,
+            $".{Path.GetFileName(ProjectConfigPath)}.{Guid.NewGuid():N}.tmp");
+
+        try
+        {
+            await using (var stream = new FileStream(
+                tempPath,
+                FileMode.CreateNew,
+                FileAccess.Write,
+                FileShare.None,
+                bufferSize: 4096,
+                FileOptions.Asynchronous))
+            await using (var writer = new StreamWriter(stream, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false)))
+            {
+                await writer.WriteAsync(json.AsMemory(), cancellationToken);
+                await writer.FlushAsync(cancellationToken);
+                await stream.FlushAsync(cancellationToken);
+            }
+
+            cancellationToken.ThrowIfCancellationRequested();
+            File.Move(tempPath, ProjectConfigPath, overwrite: true);
+        }
+        finally
+        {
+            if (File.Exists(tempPath))
+            {
+                File.Delete(tempPath);
+            }
+        }
 
         // Force IConfiguration to reload from file immediately (don't wait for FileSystemWatcher)
         // Then invalidate IOptionsMonitor caches so CurrentValue returns fresh data
