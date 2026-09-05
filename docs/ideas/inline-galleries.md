@@ -1,7 +1,8 @@
-# Spike (WIP): Inline-Galerien im Markdown-Content
+# Spike: Inline-Galerien im Markdown-Content
 
-> **Status:** Design-/Analyse-Notiz, KEINE Implementierung. Ablageort provisorisch
-> (`docs/ideas/`) — später sauber einsortieren (evtl. GitHub-Issue oder Kommentar zu #77).
+> **Status:** Implementiert. Diese Datei bleibt als historischer Design Record erhalten.
+> Die dauerhafte Nutzer- und Theme-Dokumentation steht in
+> [`docs/inline-galleries.md`](../inline-galleries.md).
 > Zusammengetragen 2026-07-17 aus: erstem Design-Entwurf, zwei Review-Runden mit dem
 > `spike-analyst`-Agent (read-only, gegen echten Code), und der Verzahnung mit Issues #75/#76/#77.
 
@@ -192,6 +193,12 @@ Mittelweg: Warnung „matched 0 photos" beim Build.
 `[[gallery]]` als Layout in Custom-Body-Seiten (`Page.revela`, Doku) erlaubt (rendert Bilder),
 erzeugt dort aber KEINE #77-Kontexte/Photo-Pages (deckt #77s Eligibility-Gate: effektives
 Template = default gallery body). Kein Blockieren des Renderings in Doku-Seiten.
+
+> **Nachfolgeentscheidung (2026-08-27):** D6 beschreibt weiterhin den implementierten
+> Zwischenstand, soll aber durch einen expliziten Photo-Viewer-Vertrag ersetzt werden. Themes
+> deklarieren die unterstützten Modi `page`, `lightbox` und/oder `none`; Theme, Projekt und Seite
+> bestimmen den effektiven Modus ohne Ableitung aus dem Body-Template. Siehe
+> [`docs/inline-galleries.md`](../inline-galleries.md#photo-viewer-architecture).
 
 ### D7 — MVP-Schnitt
 MVP: Block-Parser + `[[gallery]]` / `[[gallery: <filter>]]`; Trailing-Grid via
