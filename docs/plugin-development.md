@@ -19,10 +19,10 @@ Revela is extensible through a **NuGet-based plugin system**. A plugin is a smal
 
 ## Naming & trust
 
-| Audience | Package prefix | Notes |
-|----------|----------------|-------|
-| **Official** | `Spectara.Revela.Plugins.*` | Reserved on NuGet.org, Spectara only |
-| **Community** | `YourName.Revela.Plugin.*` | Your own prefix; install at your own risk |
+| Audience      | Package prefix              | Notes                                     |
+| ------------- | --------------------------- | ----------------------------------------- |
+| **Official**  | `Spectara.Revela.Plugins.*` | Reserved on NuGet.org, Spectara only      |
+| **Community** | `YourName.Revela.Plugin.*`  | Your own prefix; install at your own risk |
 
 > The `Spectara` prefix is reserved on NuGet.org and cannot be used by third parties.
 
@@ -74,6 +74,84 @@ public sealed class ExamplePlugin : IPlugin
 ```
 
 The plugin lifecycle has four phases: **discovery** → `ConfigureConfiguration` (optional) → `ConfigureServices` (required) → `GetCommands` (optional).
+
+---
+
+## Derived output artifacts
+
+Plugins that create files derived from generated output must declare and invalidate
+those artifacts. Revela invokes registered invalidators before an input artifact is
+replaced, including through direct CLI commands and `IRevelaEngine` calls.
+
+Artifact IDs are case-sensitive and use a namespaced `owner/name` form. Revela's
+built-in roots are published by `CoreArtifacts`. A plugin publishes IDs for its own
+artifacts from its package so dependent plugins can reference the same typed value.
+
+```csharp
+using Spectara.Revela.Sdk.Artifacts;
+
+public static class ExampleArtifacts
+{
+    public static ArtifactId SearchIndex { get; } =
+        new("yourname.example/search-index");
+}
+
+internal sealed class SearchIndexInvalidator : IArtifactInvalidator
+{
+    public ArtifactId Artifact => ExampleArtifacts.SearchIndex;
+
+    public IReadOnlyCollection<ArtifactId> DependsOn { get; } =
+        [CoreArtifacts.RenderedSite];
+
+    public async ValueTask<ArtifactInvalidationResult> InvalidateAsync(
+        CancellationToken cancellationToken = default)
+    {
+        // Delete every file owned by SearchIndex. Return failure if cleanup is incomplete.
+        await DeleteIndexAsync(cancellationToken);
+        return ArtifactInvalidationResult.Ok();
+    }
+}
+```
+
+Register the invalidator as an enumerable service:
+
+```csharp
+services.TryAddEnumerable(
+    ServiceDescriptor.Transient<IArtifactInvalidator, SearchIndexInvalidator>());
+```
+
+Registration does not intercept arbitrary plugin writes. Before replacing an artifact,
+the producer must first protect downstream consumers and then remove its own previous
+artifact completely:
+
+```csharp
+var preparation = await artifactLifecycle.PrepareToReplaceAsync(
+    ExampleArtifacts.SearchIndex,
+    cancellationToken);
+if (!preparation.Success)
+{
+    return preparation;
+}
+
+var cleanup = await searchIndexInvalidator.InvalidateAsync(cancellationToken);
+if (!cleanup.Success)
+{
+    return cleanup;
+}
+
+await WriteSearchIndexAsync(cancellationToken);
+```
+
+Cleanup failure must abort the write. This guarantees that a successful producer run
+never mixes files from different artifact versions.
+
+Dependencies are invalidated transitively, from the furthest dependent artifact back
+to the artifact being replaced. Missing dependencies, duplicate artifact owners, and
+cycles stop generation with an error.
+
+Changing the installed or enabled plugin set is an explicit consistency boundary.
+After installing, removing, or disabling a plugin, run `revela clean all` before
+generating again; Revela does not persist ownership metadata for unloaded plugins.
 
 ---
 
