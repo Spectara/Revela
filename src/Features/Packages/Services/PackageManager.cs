@@ -251,6 +251,12 @@ public sealed class PackageManager(
         CancellationToken cancellationToken)
     {
         var resource = await sourceRepo.GetResourceAsync<FindPackageByIdResource>(cancellationToken);
+        if (resource is null)
+        {
+            logger.PackageNotFound(packageId);
+            return false;
+        }
+
         using var cacheContext = new SourceCacheContext();
 
         var versions = await resource.GetAllVersionsAsync(
