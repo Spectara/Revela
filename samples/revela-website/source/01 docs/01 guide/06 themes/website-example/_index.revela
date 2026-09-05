@@ -31,26 +31,52 @@ revela-website/
 
 ---
 
-## Custom Stylesheets
+## Custom Assets
 
 ### site.json
 
-Register additional CSS files in `site.json`:
+Register project-owned CSS and JavaScript files in `site.json`:
 
 ```json
 {
   "title": "Revela",
   "stylesheets": [
     "website.css",
-    "prism.css"
+    {
+      "path": "prism.css",
+      "scope": ["docs"]
+    }
   ],
   "scripts": [
-    "prism.js"
+    {
+      "path": "prism.js",
+      "scope": ["docs"]
+    }
   ]
 }
 ```
 
-These files are loaded from `themes/Lumina/Assets/` after the base theme's `main.css`.
+The files live in `themes/Lumina/Assets/`. A string entry is shorthand for an asset that
+loads on every page. Use an object to restrict an asset to one or more scopes.
+
+| Scope | Matches |
+|-------|---------|
+| `index` | Root page without an explicit template |
+| `gallery` | Gallery page without an explicit template |
+| `home`, `page`, `docs` | The exact `template` value |
+| `photo` | Canonical photo pages |
+| `lightbox` | Pages whose resolved photo viewer is `lightbox` |
+| `statistics`, `calendar` | Plugin templates such as `statistics/overview` or `calendar/page` |
+| `all` | Every page |
+
+An object without `scope` is equivalent to `scope: ["all"]`. Assets that exist in the
+local `Assets/` directory but are not declared in `site.json` are copied to `_assets`, but
+are not linked or executed automatically. This keeps ownership explicit and prevents an
+unrelated page from loading project-specific CSS or JavaScript.
+
+Theme and extension packages use the same `path` + `scope` declarations in their
+`manifest.json`. Plugin template prefixes remain isolated: an asset scoped to `statistics`
+does not load on `calendar`, `docs`, or `photo` pages.
 
 ### Accent Color
 

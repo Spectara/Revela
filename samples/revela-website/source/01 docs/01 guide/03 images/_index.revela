@@ -39,6 +39,15 @@ These sizes are optimized for High-DPI displays (1.5x, 2x scaling).
 
 Plus the **original width** for full-resolution lightbox view.
 
+## Detail View Zoom
+
+Canonical photo pages and Lightbox images support two-finger pinch zoom, double-tap on touch
+screens, double-click with a mouse, and dragging while zoomed. Zoom is limited by the available
+source resolution and resets when a Lightbox closes or switches images.
+
+Mouse-wheel zoom and swipe-to-close are intentionally not enabled, so vertical scrolling to
+photo metadata remains predictable.
+
 ## Generating Images
 
 ```bash

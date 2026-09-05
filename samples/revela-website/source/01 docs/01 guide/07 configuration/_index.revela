@@ -193,6 +193,31 @@ This separation allows you to:
 - Keep personal branding in `site.json`
 - Use different site metadata for staging/production
 
+## Page-Scoped Assets
+
+Project-specific CSS and JavaScript files live under `themes/{theme-name}/Assets/` and are
+declared in `site.json`. Use a string for an asset needed everywhere, or an object to limit it
+to page, template, feature, or plugin scopes:
+
+```json
+{
+  "stylesheets": [
+    "website.css",
+    { "path": "prism.css", "scope": ["docs"] }
+  ],
+  "scripts": [
+    { "path": "prism.js", "scope": ["docs"] }
+  ]
+}
+```
+
+Common scopes are `index`, `gallery`, `photo`, exact template names such as `docs`, and
+plugin prefixes such as `statistics` or `calendar`. The `lightbox` feature scope is applied
+only when the current page resolves to the Lightbox photo viewer.
+
+Assets without a declaration are still copied to `_assets`, but are not added to generated
+HTML. See [revela.website](../themes/website-example/) for the complete customization example.
+
 ## Where Settings Come From
 
 Revela merges configuration from several sources. Later sources override earlier ones:

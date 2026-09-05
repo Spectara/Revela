@@ -3,6 +3,7 @@ title = "Home"
 template = "home"
 description = "Reveal your stories through beautiful portfolios that load fast, with no quality trade-offs."
 filter = "contains(sourcePath, '_images/home/')"
+photo_viewer = "lightbox"
 +++
 
 <nav class="cta">

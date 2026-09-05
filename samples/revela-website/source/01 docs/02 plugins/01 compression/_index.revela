@@ -41,6 +41,10 @@ revela generate compress
 > **Note:** Compression runs separately, not as part of `generate all`.
 > Your server must be configured to serve pre-compressed files.
 
+The local `revela serve` preview server automatically negotiates existing `.br` and `.gz`
+variants using the browser's `Accept-Encoding` header. Production servers still need their
+equivalent static Brotli/Gzip configuration.
+
 ### Remove Compressed Files
 
 ```bash

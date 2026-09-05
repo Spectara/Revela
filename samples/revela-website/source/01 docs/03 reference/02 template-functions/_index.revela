@@ -179,9 +179,14 @@ These values (not functions) are available in templates:
 | `base_url` | string? | Absolute site host from `project.baseUrl` (null when unset) |
 | `image_formats` | string[] | Active formats (`["avif", "webp", "jpg"]`) |
 | `page_content` | string | Rendered Markdown body (gallery pages) |
-| `stylesheets` | string[] | Theme CSS filenames |
-| `scripts` | string[] | Theme JS filenames |
+| `stylesheets` | string[] | CSS filenames resolved for the current template, plugin, and feature scopes |
+| `scripts` | string[] | JS filenames resolved for the current template, plugin, and feature scopes |
 | `revela` | object | Build info: `revela.version`, `revela.kind`, `revela.framework`, `revela.configuration` |
+
+`stylesheets` and `scripts` are already filtered before the template is rendered. Templates
+should emit the provided filenames in order; they do not need to inspect page scopes or asset
+configuration themselves. Canonical photo pages receive only the scoped image zoom script;
+Lightbox pages receive both dialog behavior and image zoom scripts.
 
 ## See Also
 

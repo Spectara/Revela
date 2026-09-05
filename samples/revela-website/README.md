@@ -19,6 +19,7 @@ themes/Lumina/
 │   └── docs.revela              # Custom documentation page layout (new)
 └── Partials/
     ├── Favicon.revela           # Custom favicon partial (replaces default)
+    ├── GalleryGrid.revela       # Homepage inline-gallery presentation
     └── HeaderNavigation.revela  # Custom navigation (replaces default)
 ```
 
@@ -27,7 +28,8 @@ themes/Lumina/
 - **Override body templates** — `home.revela` replaces the default homepage with a landing page design
 - **Add new page types** — `docs.revela` is a layout for documentation pages (not in the base theme)
 - **Override partials** — `Favicon.revela` and `HeaderNavigation.revela` replace specific UI components
-- **Add custom assets** — CSS/JS files referenced via `site.json` stylesheets/scripts arrays
+- **Style inline galleries** — `GalleryGrid.revela` customizes the homepage `[[gallery]]` block
+- **Add custom assets** — CSS/JS files referenced via `site.json`, with optional page scopes
 - **No theme fork needed** — Only the changed files are in the project, the rest comes from the theme package
 
 ## Usage

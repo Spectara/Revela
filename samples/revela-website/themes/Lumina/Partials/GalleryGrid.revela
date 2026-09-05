@@ -2,16 +2,23 @@
 Inline Gallery Grid - Lumina Theme
 
 Renders images at a [[gallery]] token position in Markdown content.
-Delegates each image to the shared `image` partial so it inherits the same
-responsive markup and URL helpers as the trailing gallery grid.
+Delegates each occurrence to the shared `image` partial so it inherits the same
+responsive markup and explicit photo-link availability as the trailing gallery grid.
 
 Expects:
-- images: Array of ImageData
+- occurrences: Array of { image, viewer_mode, context_id, context_label, occurrence_id, previous_occurrence_id?, next_occurrence_id? }
 - image_formats: Array of format strings ["avif", "webp", "jpg"]
 - assets_basepath: Path/URL to image resources
 ##~}}
 <section class="gallery">
-    {{~ for image in images ~}}
+    {{~ for occurrence in occurrences ~}}
+    {{~ image = occurrence.image ~}}
+    {{~ viewer_mode = occurrence.viewer_mode ~}}
+    {{~ context_id = occurrence.context_id ~}}
+    {{~ context_label = occurrence.context_label ~}}
+    {{~ occurrence_id = occurrence.occurrence_id ~}}
+    {{~ previous_occurrence_id = occurrence.previous_occurrence_id ~}}
+    {{~ next_occurrence_id = occurrence.next_occurrence_id ~}}
     {{~ include 'image' image ~}}
     {{~ end ~}}
 </section>
