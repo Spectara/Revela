@@ -60,6 +60,8 @@ internal sealed class StaticFileServer : IAsyncDisposable, IDisposable
         [".map"] = "application/json"
     }.ToFrozenDictionary(StringComparer.OrdinalIgnoreCase);
 
+    private static readonly string[] PreferredEncodings = ["br", "gzip"];
+
     /// <summary>
     /// Creates a new static file server
     /// </summary>
@@ -143,9 +145,18 @@ internal sealed class StaticFileServer : IAsyncDisposable, IDisposable
     {
         var request = context.Request;
         var response = context.Response;
+        var isHead = request.HttpMethod.Equals("HEAD", StringComparison.OrdinalIgnoreCase);
 
         try
         {
+            if (!isHead && !request.HttpMethod.Equals("GET", StringComparison.OrdinalIgnoreCase))
+            {
+                response.Headers.Add("Allow", "GET, HEAD");
+                SendError(response, 405, "Method Not Allowed");
+                requestCallback?.Invoke(request.Url?.LocalPath ?? "/", 405);
+                return;
+            }
+
             // Get requested path, default to index.html
             var urlPath = request.Url?.LocalPath ?? "/";
             if (urlPath.EndsWith('/'))
@@ -156,7 +167,7 @@ internal sealed class StaticFileServer : IAsyncDisposable, IDisposable
             // Security: Prevent directory traversal attacks.
             if (!TryResolveSafePath(rootPath, urlPath, out var requestedPath))
             {
-                SendError(response, 403, "Forbidden");
+                SendError(response, 403, "Forbidden", writeBody: !isHead);
                 requestCallback?.Invoke(urlPath, 403);
                 return;
             }
@@ -164,17 +175,29 @@ internal sealed class StaticFileServer : IAsyncDisposable, IDisposable
             // Check if file exists
             if (!File.Exists(requestedPath))
             {
-                SendError(response, 404, "Not Found");
+                SendError(response, 404, "Not Found", writeBody: !isHead);
                 requestCallback?.Invoke(urlPath, 404);
                 return;
             }
 
-            // Serve the file with async streaming
+            // Serve a pre-compressed sibling when the client accepts it.
             var extension = Path.GetExtension(requestedPath);
             var contentType = GetMimeType(extension);
+            var (servedPath, contentEncoding) = ResolveEncodedPath(requestedPath, request.Headers["Accept-Encoding"]);
 
             response.ContentType = contentType;
             response.StatusCode = 200;
+
+            if (contentEncoding is not null)
+            {
+                response.Headers.Add("Content-Encoding", contentEncoding);
+            }
+
+            if (IsCurrentEncodedVariant(requestedPath, ".br") ||
+                IsCurrentEncodedVariant(requestedPath, ".gz"))
+            {
+                response.Headers.Add("Vary", "Accept-Encoding");
+            }
 
             // Add cache headers for assets (not HTML)
             if (!extension.Equals(".html", StringComparison.OrdinalIgnoreCase) &&
@@ -184,10 +207,13 @@ internal sealed class StaticFileServer : IAsyncDisposable, IDisposable
             }
 
             await using var fileStream = new FileStream(
-                requestedPath, FileMode.Open, FileAccess.Read, FileShare.Read,
+                servedPath, FileMode.Open, FileAccess.Read, FileShare.Read,
                 bufferSize: 65536, useAsync: true);
             response.ContentLength64 = fileStream.Length;
-            await fileStream.CopyToAsync(response.OutputStream, cancellationToken);
+            if (!isHead)
+            {
+                await fileStream.CopyToAsync(response.OutputStream, cancellationToken);
+            }
 
             requestCallback?.Invoke(urlPath, 200);
         }
@@ -199,7 +225,7 @@ internal sealed class StaticFileServer : IAsyncDisposable, IDisposable
         {
             try
             {
-                SendError(response, 500, "Internal Server Error");
+                SendError(response, 500, "Internal Server Error", writeBody: !isHead);
             }
             catch (ObjectDisposedException)
             {
@@ -224,13 +250,20 @@ internal sealed class StaticFileServer : IAsyncDisposable, IDisposable
     /// <summary>
     /// Send an error response
     /// </summary>
-    private static void SendError(HttpListenerResponse response, int statusCode, string message)
+    private static void SendError(
+        HttpListenerResponse response,
+        int statusCode,
+        string message,
+        bool writeBody = true)
     {
         response.StatusCode = statusCode;
         response.ContentType = "text/plain; charset=utf-8";
         var content = Encoding.UTF8.GetBytes(message);
         response.ContentLength64 = content.Length;
-        response.OutputStream.Write(content);
+        if (writeBody)
+        {
+            response.OutputStream.Write(content);
+        }
     }
 
     /// <summary>
@@ -242,6 +275,80 @@ internal sealed class StaticFileServer : IAsyncDisposable, IDisposable
         MimeTypes.TryGetValue(extension, out var mimeType)
             ? mimeType
             : "application/octet-stream";
+
+    internal static (string path, string? encoding) ResolveEncodedPath(
+        string requestedPath,
+        string? acceptEncoding)
+    {
+        if (string.IsNullOrWhiteSpace(acceptEncoding))
+        {
+            return (requestedPath, null);
+        }
+
+        var qualityByEncoding = acceptEncoding
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Select(ParseEncoding)
+            .GroupBy(item => item.encoding, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(
+                group => group.Key,
+                group => group.Max(item => item.quality),
+                StringComparer.OrdinalIgnoreCase);
+
+        string? selectedEncoding = null;
+        var selectedQuality = 0d;
+        foreach (var encoding in PreferredEncodings)
+        {
+            var quality = qualityByEncoding.GetValueOrDefault(
+                encoding,
+                qualityByEncoding.GetValueOrDefault("*"));
+            var suffix = encoding.Equals("gzip", StringComparison.Ordinal) ? ".gz" : ".br";
+            if (quality > selectedQuality && IsCurrentEncodedVariant(requestedPath, suffix))
+            {
+                selectedEncoding = encoding;
+                selectedQuality = quality;
+            }
+        }
+
+        if (selectedEncoding is null)
+        {
+            return (requestedPath, null);
+        }
+
+        var selectedSuffix = selectedEncoding.Equals("gzip", StringComparison.Ordinal) ? ".gz" : ".br";
+        return (requestedPath + selectedSuffix, selectedEncoding);
+    }
+
+    private static bool IsCurrentEncodedVariant(string requestedPath, string suffix)
+    {
+        var encodedPath = requestedPath + suffix;
+        return File.Exists(encodedPath) &&
+            File.GetLastWriteTimeUtc(encodedPath) >= File.GetLastWriteTimeUtc(requestedPath);
+    }
+
+    private static (string encoding, double quality) ParseEncoding(string value)
+    {
+        var parts = value.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        var quality = 1d;
+
+        foreach (var parameter in parts.Skip(1))
+        {
+            if (!parameter.StartsWith("q=", StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            if (!double.TryParse(
+                    parameter[2..],
+                    NumberStyles.AllowDecimalPoint,
+                    CultureInfo.InvariantCulture,
+                    out quality))
+            {
+                quality = 0;
+            }
+        }
+
+        return (parts[0], Math.Clamp(quality, 0, 1));
+    }
 
     /// <summary>
     /// Resolves a request URL path against a root directory, rejecting any attempt

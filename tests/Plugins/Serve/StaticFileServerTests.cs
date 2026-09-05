@@ -1,6 +1,6 @@
+using System.IO.Compression;
 using System.Net;
 using System.Net.Sockets;
-
 using Spectara.Revela.Plugins.Serve;
 
 namespace Spectara.Revela.Tests.Plugins.Serve;
@@ -9,6 +9,8 @@ namespace Spectara.Revela.Tests.Plugins.Serve;
 [TestCategory("Unit")]
 public sealed class StaticFileServerTests
 {
+    private static readonly string[] AllowedMethods = ["GET", "HEAD"];
+
     /// <summary>
     /// Build a URI for the local test server
     /// </summary>
@@ -166,6 +168,199 @@ public sealed class StaticFileServerTests
 
         Assert.IsTrue(allowed);
         Assert.AreEqual(Path.Combine(root, "index.html"), resolved);
+    }
+
+    [TestMethod]
+    [DataRow("br, gzip", ".br", "br")]
+    [DataRow("gzip, br;q=0.5", ".gz", "gzip")]
+    [DataRow("br;q=0, gzip", ".gz", "gzip")]
+    [DataRow("*;q=0.5", ".br", "br")]
+    [DataRow("identity", "", null)]
+    public void ResolveEncodedPath_AcceptEncoding_SelectsBestAvailableVariant(
+        string acceptEncoding,
+        string expectedSuffix,
+        string? expectedEncoding)
+    {
+        var tempFile = Path.Combine(Path.GetTempPath(), $"revela-encoding-{Guid.NewGuid():N}.html");
+        File.WriteAllText(tempFile, "content");
+        File.WriteAllText(tempFile + ".gz", "gzip");
+        File.WriteAllText(tempFile + ".br", "brotli");
+
+        try
+        {
+            var (path, encoding) = StaticFileServer.ResolveEncodedPath(tempFile, acceptEncoding);
+
+            Assert.AreEqual(tempFile + expectedSuffix, path);
+            Assert.AreEqual(expectedEncoding, encoding);
+        }
+        finally
+        {
+            File.Delete(tempFile);
+            File.Delete(tempFile + ".gz");
+            File.Delete(tempFile + ".br");
+        }
+    }
+
+    [TestMethod]
+    public void ResolveEncodedPath_PrecompressedVariantIsOlderThanOriginal_ReturnsOriginal()
+    {
+        var tempFile = Path.Combine(Path.GetTempPath(), $"revela-encoding-{Guid.NewGuid():N}.css");
+        var compressedFile = tempFile + ".br";
+        File.WriteAllText(tempFile, "current");
+        File.WriteAllText(compressedFile, "stale");
+        var currentTimestamp = DateTime.UtcNow;
+        File.SetLastWriteTimeUtc(compressedFile, currentTimestamp.AddMinutes(-1));
+        File.SetLastWriteTimeUtc(tempFile, currentTimestamp);
+
+        try
+        {
+            var (path, encoding) = StaticFileServer.ResolveEncodedPath(tempFile, "br");
+
+            Assert.AreEqual(tempFile, path);
+            Assert.IsNull(encoding);
+        }
+        finally
+        {
+            File.Delete(tempFile);
+            File.Delete(compressedFile);
+        }
+    }
+
+    [TestMethod]
+    [TestCategory("Integration")]
+    public async Task Server_PrecompressedBrotli_ReturnsEncodedContentWithOriginalMimeType()
+    {
+        var tempDir = Path.Combine(Path.GetTempPath(), $"revela-serve-test-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(tempDir);
+        var filePath = Path.Combine(tempDir, "style.css");
+        const string expectedContent = "body { color: red; }";
+        await File.WriteAllTextAsync(filePath, expectedContent);
+        await WriteCompressedAsync(filePath + ".br", expectedContent, useBrotli: true);
+
+        try
+        {
+            var port = GetAvailablePort();
+            await using var server = new StaticFileServer(tempDir, port);
+            server.Start();
+            using var client = new HttpClient();
+            using var request = new HttpRequestMessage(HttpMethod.Get, LocalUri(port, "/style.css"));
+            request.Headers.AcceptEncoding.ParseAdd("br");
+
+            using var response = await client.SendAsync(request);
+            await using var compressed = await response.Content.ReadAsStreamAsync();
+            await using var brotli = new BrotliStream(compressed, CompressionMode.Decompress);
+            using var reader = new StreamReader(brotli);
+            var content = await reader.ReadToEndAsync();
+
+            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+            CollectionAssert.Contains(response.Content.Headers.ContentEncoding.ToList(), "br");
+            CollectionAssert.Contains(response.Headers.Vary.ToList(), "Accept-Encoding");
+            Assert.AreEqual("text/css; charset=utf-8", response.Content.Headers.ContentType?.ToString());
+            Assert.AreEqual(expectedContent, content);
+        }
+        finally
+        {
+            Directory.Delete(tempDir, recursive: true);
+        }
+    }
+
+    [TestMethod]
+    [TestCategory("Integration")]
+    public async Task Server_HeadRequest_ReturnsEncodedHeadersWithoutBody()
+    {
+        var tempDir = Path.Combine(Path.GetTempPath(), $"revela-serve-test-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(tempDir);
+        var filePath = Path.Combine(tempDir, "index.html");
+        const string content = "<html><body>Index</body></html>";
+        await File.WriteAllTextAsync(filePath, content);
+        await WriteCompressedAsync(filePath + ".gz", content, useBrotli: false);
+
+        try
+        {
+            var port = GetAvailablePort();
+            await using var server = new StaticFileServer(tempDir, port);
+            server.Start();
+            using var client = new HttpClient();
+            using var request = new HttpRequestMessage(HttpMethod.Head, LocalUri(port));
+            request.Headers.AcceptEncoding.ParseAdd("gzip");
+
+            using var response = await client.SendAsync(request);
+            var body = await response.Content.ReadAsByteArrayAsync();
+
+            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+            CollectionAssert.Contains(response.Content.Headers.ContentEncoding.ToList(), "gzip");
+            CollectionAssert.Contains(response.Headers.Vary.ToList(), "Accept-Encoding");
+            Assert.AreEqual(new FileInfo(filePath + ".gz").Length, response.Content.Headers.ContentLength);
+            Assert.IsEmpty(body);
+        }
+        finally
+        {
+            Directory.Delete(tempDir, recursive: true);
+        }
+    }
+
+    [TestMethod]
+    [TestCategory("Integration")]
+    public async Task Server_HeadRequestForMissingFile_Returns404WithoutBody()
+    {
+        var tempDir = Path.Combine(Path.GetTempPath(), $"revela-serve-test-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(tempDir);
+
+        try
+        {
+            var port = GetAvailablePort();
+            await using var server = new StaticFileServer(tempDir, port);
+            server.Start();
+            using var client = new HttpClient();
+            using var request = new HttpRequestMessage(HttpMethod.Head, LocalUri(port, "/missing.html"));
+
+            using var response = await client.SendAsync(request);
+            var body = await response.Content.ReadAsByteArrayAsync();
+
+            Assert.AreEqual(HttpStatusCode.NotFound, response.StatusCode);
+            Assert.IsEmpty(body);
+        }
+        finally
+        {
+            Directory.Delete(tempDir, recursive: true);
+        }
+    }
+
+    [TestMethod]
+    [TestCategory("Integration")]
+    public async Task Server_UnsupportedMethod_Returns405WithAllowHeader()
+    {
+        var tempDir = Path.Combine(Path.GetTempPath(), $"revela-serve-test-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(tempDir);
+        await File.WriteAllTextAsync(Path.Combine(tempDir, "index.html"), "content");
+
+        try
+        {
+            var port = GetAvailablePort();
+            await using var server = new StaticFileServer(tempDir, port);
+            server.Start();
+            using var client = new HttpClient();
+            using var request = new HttpRequestMessage(HttpMethod.Post, LocalUri(port));
+
+            using var response = await client.SendAsync(request);
+
+            Assert.AreEqual(HttpStatusCode.MethodNotAllowed, response.StatusCode);
+            CollectionAssert.AreEquivalent(AllowedMethods, response.Content.Headers.Allow.ToList());
+        }
+        finally
+        {
+            Directory.Delete(tempDir, recursive: true);
+        }
+    }
+
+    private static async Task WriteCompressedAsync(string path, string content, bool useBrotli)
+    {
+        await using var output = File.Create(path);
+        await using Stream compression = useBrotli
+            ? new BrotliStream(output, CompressionLevel.SmallestSize)
+            : new GZipStream(output, CompressionLevel.SmallestSize);
+        await using var writer = new StreamWriter(compression);
+        await writer.WriteAsync(content);
     }
 
     [TestMethod]
