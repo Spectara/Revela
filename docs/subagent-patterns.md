@@ -1,6 +1,6 @@
 # Parallel Subagent Patterns for Revela
 
-How to use AI subagents (`runSubagent`) to keep the main conversation lean and audit large parts of the codebase in parallel.
+How to use AI subagents (`runSubagent`) to keep the main conversation lean, investigate bounded questions, implement isolated slices, and audit large parts of the codebase in parallel.
 
 > **Audience:** AI agents working on Revela (Copilot, Claude, etc.) and humans configuring agent workflows.
 
@@ -8,10 +8,10 @@ How to use AI subagents (`runSubagent`) to keep the main conversation lean and a
 
 The main conversation has finite context. Every `read_file`, `grep_search`, and `semantic_search` adds tokens. A full review can easily blow past 100K tokens before any actual analysis happens.
 
-**Subagents fix this** by:
+**Subagents help** by:
 - Running in their own context window
 - Returning only the **structured result** (not all the searches it took to get there)
-- Running **in parallel** — three subagents finish in the time of one
+- Running **in parallel** when independent and read-only — three audits finish in the time of one
 - Being **stateless** — no risk of cross-contamination between tasks
 
 ## When to Use
@@ -19,15 +19,19 @@ The main conversation has finite context. Every `read_file`, `grep_search`, and 
 | Use a subagent when... | Use the main agent when... |
 |------------------------|---------------------------|
 | Task needs many file reads / searches | Task is conversational ("what does this do?") |
-| Task is read-only (audit, list, find, count) | Task involves writing code |
+| Task is read-only (audit, list, find, count) | Architecture or product behavior is still undecided |
+| One write slice has explicit files and acceptance | Changes share files, contracts, or integration decisions |
 | Task can be precisely specified up front | Task is iterative / needs back-and-forth |
 | Result fits in one structured response | Result needs streaming or progressive refinement |
 
-## The Three Built-in Agents
+## Core Agents
 
 | Agent | Best for |
 |-------|----------|
 | **`Explore`** | Read-only codebase exploration. Specify thoroughness: `quick` / `medium` / `thorough`. |
+| **`Revela Scout MAI`** | One bounded existing behavior: owning code path, hypothesis, falsifying check, and minimal change scope. |
+| **`Pattern Finder`** | Two or three canonical Revela examples before implementing a new abstraction. |
+| **`Revela Worker MAI`** | One decided implementation slice with explicit allowed files and one focused acceptance check. |
 | **`Revela Dev`** | Heavy implementation work that needs the full project context. |
 | **`Revela Reviewer`** | Read-only audits with structured reports. Already orchestrates its own subagents. |
 
@@ -80,7 +84,37 @@ Main agent: Join on class_name, find any commands not registered in any descript
 (orphans) and any descriptors registering non-existent commands (broken).
 ```
 
-## Pattern 4: Sample-Driven Review
+## Pattern 4: Scout + Bounded Worker
+
+Use this when the behavior is known but its owning code path is not. Keep orchestration and the final repository gate in Revela Dev.
+
+```text
+Step 1 — Revela Scout MAI:
+  "Trace why package search reports an empty result when one configured feed fails.
+   Start from PackageSearchService and return the owning code path, one hypothesis,
+   the cheapest falsifying test, and at most five files in the proposed scope."
+
+Step 2 — Revela Dev decides the behavior and sends one Worker assignment:
+  Goal: Distinguish a healthy empty package search from feed failure.
+  Allowed Scope:
+    - src/Features/Packages/Services/PackageSearchService.cs
+    - src/Features/Packages/Models/PackageSearchOutcome.cs
+    - tests/Core/Services/PackageSearchServiceTests.cs
+  Do Not Change:
+    - Public package-source contracts
+    - CLI command names or output unrelated to search status
+  Acceptance:
+    - dotnet test tests/Core --filter FullyQualifiedName~PackageSearchServiceTests
+  Return:
+    - Changed files, local decision, exact test result, and residual risks.
+
+Step 3 — Revela Dev integrates the result and runs the mandatory full post-edit gate.
+Step 4 — Revela Reviewer independently checks the integrated change when warranted.
+```
+
+The Worker must refuse an assignment missing any of `Goal`, `Allowed Scope`, `Do Not Change`, `Acceptance`, or `Return`. Never run Workers concurrently when their files or contracts overlap.
+
+## Pattern 5: Sample-Driven Review
 
 Don't audit everything — sample, then expand if hits found.
 
@@ -119,7 +153,8 @@ RETURN: <exact format expected>
 
 - ❌ **Don't run subagents sequentially when they're independent.** Always batch parallel calls in one tool-call block.
 - ❌ **Don't ask a subagent to "review everything".** Give it one precise task. Vague prompts = vague results.
-- ❌ **Don't use a subagent for code writing if multi-step coordination is needed.** Subagents are stateless — the main agent should do the writing.
+- ❌ **Don't give a Worker unresolved architecture or multi-step coordination.** Revela Dev decides behavior, integrates slices, and owns the final gate.
+- ❌ **Don't run Workers in parallel on overlapping files or shared contracts.** Parallelism is the default only for independent read-only work.
 - ❌ **Don't forget to specify the return format.** Otherwise you'll get prose and have to re-parse it.
 - ❌ **Don't make subagents read each other's output.** They can't — each is stateless. The main agent joins results.
 

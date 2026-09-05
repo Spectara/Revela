@@ -43,6 +43,8 @@ Quick orientation for AI coding agents (GitHub Copilot, Claude, Cursor, etc.) wo
 | **Spike Analyst** | New feature ideas — interactive analysis (problem sharpening, prior-art research, MVP carving, trade-off matrix). Read-only. Hands off to Dev when build is approved. |
 | **Explore** | Read-only codebase exploration when chaining many searches. Safe to call in parallel. |
 | **Pattern Finder** | Subagent — finds canonical existing examples (plugin, command, config, HttpClient, etc.) to mirror. Dispatched by Dev before new implementations. |
+| **Revela Scout MAI** | Internal read-only subagent — locates the owning code path, one falsifiable hypothesis, and the cheapest focused check for a bounded bug or behavior. |
+| **Revela Worker MAI** | Internal implementation subagent — changes one explicitly bounded file set and runs one exact acceptance check. Dev retains integration and the final gate. |
 | **Convention Sentry** | Subagent — anti-pattern scanner returning JSON findings. Dispatched by Reviewer in Phase 3. |
 | **Plugin Auditor** | Subagent — single-plugin convention audit. Dispatched by Reviewer in Phase 2, one per plugin in parallel. |
 | **Test Doctor** | Subagent — test-quality audit (FluentAssertions/Moq, missing assertions, MSTest patterns). Dispatched by Reviewer in Phase 3 for `tests/`. |

@@ -55,6 +55,8 @@ scripts/              # build-release.ps1, test-release.ps1
 | **Spike Analyst** | New feature ideas — sharpens problem, weighs trade-offs, compares prior art, produces decision-ready spike report (read-only) |
 | **Explore** | Fast read-only codebase exploration (subagent — call in parallel) |
 | **Pattern Finder** | Subagent — finds 2-3 canonical examples to mirror; dispatched by Dev before implementing something new |
+| **Revela Scout MAI** | Internal read-only subagent — finds the owning code path, one hypothesis, and one focused falsifying check for a bounded existing behavior |
+| **Revela Worker MAI** | Internal implementation subagent — changes only an explicit allowed scope and runs one exact acceptance check; Dev owns integration and the final gate |
 | **Convention Sentry** | Subagent — anti-pattern scanner (underscore fields, log interpolation, missing `StringComparison`, hardcoded paths) |
 | **Plugin Auditor** | Subagent — single-plugin lifecycle/convention check; dispatch one per plugin in parallel |
 | **Test Doctor** | Subagent — test-quality auditor (FluentAssertions/Moq leftovers, missing assertions, tautologies) |
