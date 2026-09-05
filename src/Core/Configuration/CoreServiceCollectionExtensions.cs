@@ -1,6 +1,8 @@
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 using Spectara.Revela.Core.Services;
+using Spectara.Revela.Sdk.Artifacts;
 using Spectara.Revela.Sdk.Services;
 
 namespace Spectara.Revela.Core.Configuration;
@@ -23,6 +25,9 @@ public static class CoreServiceCollectionExtensions
 
         // TimeProvider for testable time abstractions (DateTime.UtcNow replacement)
         services.AddSingleton(TimeProvider.System);
+
+        // Generated artifact dependency coordination
+        services.TryAddTransient<IArtifactLifecycle, ArtifactLifecycle>();
 
         return services;
     }
