@@ -3,6 +3,7 @@ using System.IO.Compression;
 using Microsoft.Extensions.Logging.Abstractions;
 
 using Spectara.Revela.Plugins.Compress.Services;
+using Spectara.Revela.Tests.Shared.Fixtures;
 
 namespace Spectara.Revela.Tests.Plugins.Compress.Services;
 
@@ -147,6 +148,8 @@ public sealed class CompressionServiceTests
         var smallContent = "<html></html>";
         var smallPath = Path.Combine(testDirectory, "small.html");
         await File.WriteAllTextAsync(smallPath, smallContent);
+        await File.WriteAllTextAsync(smallPath + ".gz", "stale");
+        await File.WriteAllTextAsync(smallPath + ".br", "stale");
 
         // Act
         var stats = await service.CompressDirectoryAsync(testDirectory);
@@ -156,6 +159,33 @@ public sealed class CompressionServiceTests
         Assert.AreEqual(1, stats.SkippedCount);
         Assert.IsFalse(File.Exists(smallPath + ".gz"), "Small file should not be compressed");
         Assert.IsFalse(File.Exists(smallPath + ".br"), "Small file should not be compressed");
+    }
+
+    [TestMethod]
+    public async Task CompressDirectoryAsync_DirectoryLinkLeavesOutput_PreservesExternalSidecars()
+    {
+        var externalDirectory = testDirectory + "-external";
+        var linkPath = Path.Combine(testDirectory, "linked");
+        Directory.CreateDirectory(externalDirectory);
+        var externalFile = Path.Combine(externalDirectory, "small.html");
+        await File.WriteAllTextAsync(externalFile, "<html></html>");
+        await File.WriteAllTextAsync(externalFile + ".gz", "external");
+        await File.WriteAllTextAsync(externalFile + ".br", "external");
+        DirectoryLinkTestHelper.Create(linkPath, externalDirectory);
+
+        try
+        {
+            var stats = await service.CompressDirectoryAsync(testDirectory);
+
+            Assert.AreEqual(0, stats.TotalFiles);
+            Assert.IsTrue(File.Exists(externalFile + ".gz"));
+            Assert.IsTrue(File.Exists(externalFile + ".br"));
+        }
+        finally
+        {
+            DirectoryLinkTestHelper.Delete(linkPath);
+            Directory.Delete(externalDirectory, recursive: true);
+        }
     }
 
     [TestMethod]

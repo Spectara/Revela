@@ -89,7 +89,14 @@ internal sealed partial class CompressionService(ILogger<CompressionService> log
         var stats = new CompressionStats();
 
         // Find all compressible files
-        var files = Directory.EnumerateFiles(outputPath, "*.*", SearchOption.AllDirectories)
+        var files = Directory.EnumerateFiles(
+                outputPath,
+                "*.*",
+                new EnumerationOptions
+                {
+                    RecurseSubdirectories = true,
+                    AttributesToSkip = FileAttributes.ReparsePoint
+                })
             .Where(f => CompressibleExtensions.Contains(Path.GetExtension(f)))
             .ToList();
 
@@ -118,6 +125,9 @@ internal sealed partial class CompressionService(ILogger<CompressionService> log
                 // Skip small files
                 if (fileInfo.Length < MinFileSizeBytes)
                 {
+                    File.Delete(filePath + ".gz");
+                    File.Delete(filePath + ".br");
+
                     lock (lockObj)
                     {
                         stats.SkippedCount++;

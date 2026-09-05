@@ -6,6 +6,7 @@ using Spectara.Revela.Plugins.Statistics.Commands;
 using Spectara.Revela.Plugins.Statistics.Configuration;
 using Spectara.Revela.Plugins.Statistics.Services;
 using Spectara.Revela.Sdk.Abstractions;
+using Spectara.Revela.Sdk.Artifacts;
 
 namespace Spectara.Revela.Plugins.Statistics;
 
@@ -39,6 +40,7 @@ public sealed class StatisticsPlugin : IPlugin
         services.AddSingleton<IValidateOptions<StatisticsPluginConfig>, StatisticsPluginConfigValidator>();
 
         services.TryAddTransient<StatisticsAggregator>();
+        services.TryAddTransient<StatisticsDataInvalidator>();
 
         // JsonWriter remains static, no DI needed.
 
@@ -46,6 +48,9 @@ public sealed class StatisticsPlugin : IPlugin
         services.TryAddTransient<StatsCommand>();
         services.TryAddTransient<CleanStatisticsCommand>();
         services.TryAddTransient<ConfigStatisticsCommand>();
+
+        services.TryAddEnumerable(
+            ServiceDescriptor.Transient<IArtifactInvalidator, StatisticsDataInvalidator>());
 
         // Register as pipeline steps for engine orchestration
         services.TryAddEnumerable(ServiceDescriptor.Transient<IPipelineStep, StatsCommand>());

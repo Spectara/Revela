@@ -3,6 +3,7 @@ using System.Globalization;
 
 using Spectara.Revela.Plugins.Compress.Services;
 using Spectara.Revela.Sdk;
+using Spectara.Revela.Sdk.Artifacts;
 using Spectara.Revela.Sdk.Output;
 using Spectara.Revela.Sdk.Services;
 
@@ -26,7 +27,9 @@ namespace Spectara.Revela.Plugins.Compress.Commands;
 internal sealed partial class CompressCommand(
     ILogger<CompressCommand> logger,
     IPathResolver pathResolver,
-    CompressionService compressionService)
+    CompressionService compressionService,
+    IArtifactLifecycle artifactLifecycle,
+    CompressedSiteInvalidator compressedSiteInvalidator)
 {
     /// <summary>
     /// Creates the CLI command.
@@ -52,6 +55,26 @@ internal sealed partial class CompressCommand(
             AnsiConsole.MarkupLine($"{OutputMarkers.Warning} Output directory does not exist: [dim]{Markup.Escape(outputPath)}[/]");
             AnsiConsole.MarkupLine("[dim]Run [cyan]revela generate pages[/] first to create output files.[/]");
             return 0;
+        }
+
+        var preparationResult = await artifactLifecycle.PrepareToReplaceAsync(
+            CompressArtifacts.PrecompressedSite,
+            cancellationToken);
+        if (!preparationResult.Success)
+        {
+            ErrorPanels.ShowError(
+                "Compression Invalidation Failed",
+                $"[yellow]{Markup.Escape(preparationResult.ErrorMessage ?? "Unknown error")}[/]");
+            return 1;
+        }
+
+        var cleanupResult = await compressedSiteInvalidator.InvalidateAsync(cancellationToken);
+        if (!cleanupResult.Success)
+        {
+            ErrorPanels.ShowError(
+                "Compression Cleanup Failed",
+                $"[yellow]{Markup.Escape(cleanupResult.ErrorMessage ?? "Unknown error")}[/]");
+            return 1;
         }
 
         LogStartingCompression(logger, outputPath);

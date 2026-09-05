@@ -3,6 +3,7 @@ using Microsoft.Extensions.Options;
 using Spectara.Revela.Plugins.Statistics.Services;
 using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Abstractions;
+using Spectara.Revela.Sdk.Artifacts;
 using Spectara.Revela.Sdk.Models.Manifest;
 using Spectara.Revela.Sdk.Output;
 using Spectre.Console;
@@ -20,7 +21,9 @@ internal sealed partial class StatsCommand(
     ILogger<StatsCommand> logger,
     IManifestRepository manifestRepository,
     IOptions<ProjectEnvironment> projectEnvironment,
-    StatisticsAggregator aggregator) : IPipelineStep
+    StatisticsAggregator aggregator,
+    IArtifactLifecycle artifactLifecycle,
+    StatisticsDataInvalidator statisticsDataInvalidator) : IPipelineStep
 {
     private const string ManifestFileName = "manifest.json";
 
@@ -41,6 +44,22 @@ internal sealed partial class StatsCommand(
         }
 
         await manifestRepository.LoadAsync(cancellationToken);
+
+        var invalidationResult = await artifactLifecycle.PrepareToReplaceAsync(
+            StatisticsArtifacts.Data,
+            cancellationToken);
+        if (!invalidationResult.Success)
+        {
+            return PipelineStepResult.Fail(
+                invalidationResult.ErrorMessage ?? "Statistics artifact invalidation failed");
+        }
+
+        var cleanupResult = await statisticsDataInvalidator.InvalidateAsync(cancellationToken);
+        if (!cleanupResult.Success)
+        {
+            return PipelineStepResult.Fail(
+                cleanupResult.ErrorMessage ?? "Statistics artifact cleanup failed");
+        }
 
         if (manifestRepository.Images.Count == 0)
         {
@@ -99,6 +118,26 @@ internal sealed partial class StatsCommand(
         // Load manifest
         LogLoadingManifest();
         await manifestRepository.LoadAsync(cancellationToken);
+
+        var invalidationResult = await artifactLifecycle.PrepareToReplaceAsync(
+            StatisticsArtifacts.Data,
+            cancellationToken);
+        if (!invalidationResult.Success)
+        {
+            ErrorPanels.ShowError(
+                "Statistics Invalidation Failed",
+                $"[yellow]{Markup.Escape(invalidationResult.ErrorMessage ?? "Unknown error")}[/]");
+            return 1;
+        }
+
+        var cleanupResult = await statisticsDataInvalidator.InvalidateAsync(cancellationToken);
+        if (!cleanupResult.Success)
+        {
+            ErrorPanels.ShowError(
+                "Statistics Cleanup Failed",
+                $"[yellow]{Markup.Escape(cleanupResult.ErrorMessage ?? "Unknown error")}[/]");
+            return 1;
+        }
 
         if (manifestRepository.Images.Count == 0)
         {

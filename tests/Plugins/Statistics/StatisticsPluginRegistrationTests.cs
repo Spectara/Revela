@@ -7,6 +7,7 @@ using Spectara.Revela.Plugins.Statistics.Commands;
 using Spectara.Revela.Plugins.Statistics.Configuration;
 using Spectara.Revela.Plugins.Statistics.Services;
 using Spectara.Revela.Sdk.Abstractions;
+using Spectara.Revela.Sdk.Artifacts;
 using Spectara.Revela.Sdk.Models.Manifest;
 
 namespace Spectara.Revela.Tests.Plugins.Statistics;
@@ -15,6 +16,20 @@ namespace Spectara.Revela.Tests.Plugins.Statistics;
 [TestCategory("Unit")]
 public sealed class StatisticsPluginRegistrationTests
 {
+    [TestMethod]
+    public void ConfigureServices_RegistersStatisticsDataInvalidator()
+    {
+        var services = new ServiceCollection();
+        var plugin = new StatisticsPlugin();
+
+        plugin.ConfigureServices(services);
+
+        var descriptor = services.SingleOrDefault(item =>
+            item.ServiceType == typeof(IArtifactInvalidator));
+        Assert.IsNotNull(descriptor);
+        Assert.AreEqual(typeof(StatisticsDataInvalidator), descriptor.ImplementationType);
+    }
+
     [TestMethod]
     public void ConfigureServices_InvalidOptions_ThrowsOnAccess()
     {
@@ -33,6 +48,7 @@ public sealed class StatisticsPluginRegistrationTests
 
         services.AddSingleton(manifestRepository);
         services.AddSingleton(TimeProvider.System);
+        services.AddSingleton(Substitute.For<IArtifactLifecycle>());
 
         var configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
@@ -81,6 +97,7 @@ public sealed class StatisticsPluginRegistrationTests
 
         services.AddSingleton(manifestRepository);
         services.AddSingleton(TimeProvider.System);
+        services.AddSingleton(Substitute.For<IArtifactLifecycle>());
 
         var configuration = new ConfigurationBuilder().Build();
         services.AddSingleton<IConfiguration>(configuration);

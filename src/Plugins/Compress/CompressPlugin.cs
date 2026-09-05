@@ -4,6 +4,7 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Spectara.Revela.Plugins.Compress.Commands;
 using Spectara.Revela.Plugins.Compress.Services;
 using Spectara.Revela.Sdk.Abstractions;
+using Spectara.Revela.Sdk.Artifacts;
 
 namespace Spectara.Revela.Plugins.Compress;
 
@@ -36,10 +37,15 @@ public sealed class CompressPlugin : IPlugin
     {
         // Register compression service
         services.TryAddTransient<CompressionService>();
+        services.TryAddTransient<CompressedSiteInvalidator>();
 
         // Register commands
         services.TryAddTransient<CompressCommand>();
         services.TryAddTransient<CleanCompressCommand>();
+
+        // Invalidate pre-compressed sidecars before the rendered site changes.
+        services.TryAddEnumerable(
+            ServiceDescriptor.Transient<IArtifactInvalidator, CompressedSiteInvalidator>());
 
         // Register clean step as pipeline step for engine orchestration
         // Note: CompressCommand is NOT a pipeline step — pre-compression is opt-in
