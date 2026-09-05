@@ -24,6 +24,10 @@ public sealed class EmbeddedThemeExtensionTests
     public void PartialPrefix_ReturnsStatistics() => Assert.AreEqual("statistics", extension.Prefix);
 
     [TestMethod]
+    public void GetManifest_ReturnsNullPhotoViewerCapabilities() =>
+        Assert.IsNull(extension.Manifest.PhotoViewer);
+
+    [TestMethod]
     public void GetFile_ManifestJson_ReturnsStream()
     {
         // Arrange & Act

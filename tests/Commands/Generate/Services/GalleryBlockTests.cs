@@ -94,17 +94,23 @@ public sealed class GalleryBlockTests
     }
 
     [TestMethod]
-    public void Parse_MalformedToken_RemainsParagraphText()
+    [DataRow("[[gallery filename == 'photo.jpg']]")]
+    [DataRow("[[gallery filename == 'photo.jpg'")]
+    public void Parse_MalformedStandaloneToken_ThrowsSourceLocatedError(string token)
     {
         // Arrange
         var pipeline = CreatePipeline();
+        var markdown = $"Intro\n\n{token}";
 
         // Act
-        var document = Markdown.Parse("[[gallery filename == 'photo.jpg']]", pipeline);
+        var exception = Assert.ThrowsExactly<GalleryBlockParseException>(() => Markdown.Parse(markdown, pipeline));
 
         // Assert
-        Assert.IsEmpty(document.Descendants<GalleryBlock>());
-        Assert.HasCount(1, document.Descendants<ParagraphBlock>());
+        Assert.AreEqual(SourcePath, exception.SourcePath);
+        Assert.AreEqual(3, exception.Line);
+        Assert.AreEqual(token, exception.FilterExpression);
+        Assert.AreEqual(0, exception.FilterPosition);
+        Assert.Contains(token, exception.Message);
     }
 
     [TestMethod]
@@ -123,6 +129,7 @@ public sealed class GalleryBlockTests
         Assert.AreEqual("filename ==", exception.FilterExpression);
         Assert.IsTrue(exception.FilterPosition >= 0);
         Assert.Contains($"{SourcePath}:3:", exception.Message);
+        Assert.Contains("filename ==", exception.Message);
         Assert.Contains("position", exception.Message, StringComparison.OrdinalIgnoreCase);
     }
 

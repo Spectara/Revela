@@ -28,7 +28,7 @@ internal sealed class GalleryBlockParseException : InvalidOperationException
         string filterExpression,
         FilterParseException innerException)
         : base(
-            $"{sourcePath}:{line}: invalid inline gallery filter at position {innerException.Position}: {innerException.Message}",
+            $"{sourcePath}:{line}: invalid inline gallery filter expression '{filterExpression}' at position {innerException.Position}: {WithoutPosition(innerException)}",
             innerException)
     {
         SourcePath = sourcePath;
@@ -44,4 +44,12 @@ internal sealed class GalleryBlockParseException : InvalidOperationException
     public string FilterExpression { get; } = string.Empty;
 
     public int FilterPosition { get; }
+
+    private static string WithoutPosition(FilterParseException exception)
+    {
+        var suffix = $" at position {exception.Position}";
+        return exception.Message.EndsWith(suffix, StringComparison.Ordinal)
+            ? exception.Message[..^suffix.Length]
+            : exception.Message;
+    }
 }

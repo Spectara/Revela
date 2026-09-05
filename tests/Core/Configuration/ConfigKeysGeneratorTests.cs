@@ -75,6 +75,7 @@ public sealed class ConfigKeysGeneratorTests
     {
         Assert.AreEqual("theme", Actual(ThemeConfigKeys.Section));
         Assert.AreEqual("name", Actual(ThemeConfigKeys.Name));
+        Assert.AreEqual("photoViewer", Actual(ThemeConfigKeys.PhotoViewer));
         Assert.AreEqual("images", Actual(ThemeConfigKeys.Images));
     }
 }

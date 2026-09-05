@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
+using System.Net;
 using Scriban;
 using Scriban.Parsing;
 using Scriban.Runtime;
@@ -450,6 +451,7 @@ internal sealed partial class ScribanTemplateEngine(
         scriptObject.Import("format_filesize", new Func<long, string>(FormatFileSize));
         scriptObject.Import("format_exif_exposure", new Func<double?, string>(FormatExifExposure));
         scriptObject.Import("format_exif_aperture", new Func<double?, string>(FormatExifAperture));
+        scriptObject.Import("html_escape", new Func<object?, string>(HtmlEscape));
         scriptObject.Import("markdown", new Func<string?, string>(Markdown));
         scriptObject.Import("find_image", new Func<string, Image?>(path => ResolveImageForTemplate(path, scriptObject)));
 
@@ -465,6 +467,9 @@ internal sealed partial class ScribanTemplateEngine(
     /// </summary>
     private static string GetStringValue(ScriptObject scriptObject, string key) =>
         scriptObject.TryGetValue(key, out var value) && value is string text ? text : string.Empty;
+
+    private static string HtmlEscape(object? value) =>
+        WebUtility.HtmlEncode(Convert.ToString(value, CultureInfo.InvariantCulture) ?? string.Empty);
 
     /// <summary>
     /// Site-root-relative page URL for a link target, resolved against the current

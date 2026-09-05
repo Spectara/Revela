@@ -109,6 +109,8 @@ internal sealed class FilterService
     /// </summary>
     /// <param name="images">The images to process.</param>
     /// <param name="filterExpression">The filter expression string (may include sort and limit).</param>
+    /// <param name="pageSort">Optional page sort override in <c>field[:direction]</c> format.</param>
+    /// <param name="globalSort">Optional global image sort configuration.</param>
     /// <returns>Filtered, sorted, and limited images.</returns>
     /// <exception cref="FilterParseException">Thrown when the filter expression is invalid.</exception>
     /// <example>
@@ -120,7 +122,11 @@ internal sealed class FilterService
     /// var result = FilterService.ApplyQuery(images, "all | sort filename");
     /// </code>
     /// </example>
-    public static IEnumerable<ImageContent> ApplyQuery(IEnumerable<ImageContent> images, string filterExpression)
+    public static IEnumerable<ImageContent> ApplyQuery(
+        IEnumerable<ImageContent> images,
+        string filterExpression,
+        string? pageSort = null,
+        ImageSortConfig? globalSort = null)
     {
         ArgumentNullException.ThrowIfNull(images);
         ArgumentException.ThrowIfNullOrWhiteSpace(filterExpression);
@@ -137,10 +143,19 @@ internal sealed class FilterService
             result = result.Where(predicate);
         }
 
-        // Step 2: Sort (if specified)
+        // Step 2: Select one effective sort and apply a stable filename tie-breaker
         if (query.Sort is not null)
         {
             result = ApplySort(result, query.Sort);
+        }
+        else if (globalSort is not null)
+        {
+            var (sort, fallbackPropertyPath) = CreateConfiguredSort(pageSort, globalSort);
+            result = ApplySort(result, sort, fallbackPropertyPath);
+        }
+        else
+        {
+            result = result.OrderBy(image => image.Filename, StringComparer.OrdinalIgnoreCase);
         }
 
         // Step 3: Limit (if specified)
@@ -155,7 +170,10 @@ internal sealed class FilterService
     /// <summary>
     /// Applies sorting to images based on a sort clause.
     /// </summary>
-    private static IEnumerable<ImageContent> ApplySort(IEnumerable<ImageContent> images, SortClause sort)
+    private static IEnumerable<ImageContent> ApplySort(
+        IEnumerable<ImageContent> images,
+        SortClause sort,
+        IReadOnlyList<string>? fallbackPropertyPath = null)
     {
         // Convert to list for multiple enumerations if needed
         var imageList = images as IList<ImageContent> ?? [.. images];
@@ -167,12 +185,58 @@ internal sealed class FilterService
 
         // Create sort key selector
         var keySelector = CreateSortKeySelector(sort.PropertyPath);
+        var fallbackSelector = fallbackPropertyPath is null
+            ? null
+            : CreateSortKeySelector(fallbackPropertyPath);
+
+        object? SelectKey(ImageContent image)
+        {
+            var key = keySelector(image);
+            return key is null or "" ? fallbackSelector?.Invoke(image) : key;
+        }
 
         // Apply sort with null handling (nulls go to end)
-        return sort.Direction == SortDirection.Asc
-            ? imageList.OrderBy(img => keySelector(img) ?? GetMaxValue(sort.PropertyPath), NullSafeComparer.Instance)
-            : imageList.OrderByDescending(img => keySelector(img) ?? GetMinValue(sort.PropertyPath), NullSafeComparer.Instance);
+        var sorted = sort.Direction == SortDirection.Asc
+            ? imageList.OrderBy(
+                image => SelectKey(image) ?? GetMaxValue(sort.PropertyPath),
+                NullSafeComparer.Instance)
+            : imageList.OrderByDescending(
+                image => SelectKey(image) ?? GetMinValue(sort.PropertyPath),
+                NullSafeComparer.Instance);
+
+        return sorted.ThenBy(image => image.Filename, StringComparer.OrdinalIgnoreCase);
     }
+
+    private static (SortClause Sort, IReadOnlyList<string> FallbackPropertyPath) CreateConfiguredSort(
+        string? pageSort,
+        ImageSortConfig globalSort)
+    {
+        var field = globalSort.Field;
+        var direction = globalSort.Direction;
+
+        if (!string.IsNullOrEmpty(pageSort))
+        {
+            var parts = pageSort.Split(':', 2);
+            field = parts[0];
+
+            if (parts.Length > 1)
+            {
+                direction = parts[1].ToUpperInvariant() switch
+                {
+                    "ASC" => SortDirection.Asc,
+                    "DESC" => SortDirection.Desc,
+                    _ => direction
+                };
+            }
+        }
+
+        return (
+            new SortClause(SplitPropertyPath(field), direction),
+            SplitPropertyPath(globalSort.Fallback));
+    }
+
+    private static IReadOnlyList<string> SplitPropertyPath(string propertyPath) =>
+        propertyPath.Split('.', StringSplitOptions.RemoveEmptyEntries);
 
     /// <summary>
     /// Creates a function that extracts the sort key from an image.

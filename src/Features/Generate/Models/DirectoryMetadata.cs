@@ -113,6 +113,11 @@ internal sealed class DirectoryMetadata
     public string? Cover { get; init; }
 
     /// <summary>
+    /// Gets the raw photo viewer override from the <c>photo_viewer</c> frontmatter field.
+    /// </summary>
+    public string? PhotoViewer { get; init; }
+
+    /// <summary>
     /// Gets the data sources for template rendering.
     /// </summary>
     /// <remarks>
@@ -145,7 +150,7 @@ internal sealed class DirectoryMetadata
     /// </summary>
     public bool HasMetadata => Title is not null || Slug is not null || Description is not null ||
                                Hidden || Container || Body is not null || Template is not null || Sort is not null ||
-                               Filter is not null || Cover is not null || DataSources.Count > 0;
+                               Filter is not null || Cover is not null || PhotoViewer is not null || DataSources.Count > 0;
 
     /// <summary>
     /// Gets an empty metadata instance.

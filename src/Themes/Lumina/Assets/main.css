@@ -26,9 +26,15 @@ figcaption {
 
 :root {
   color-scheme: light dark;
-  --color: light-dark(hsl(0 0% 40%), hsl(0 0% 70%));
-  --color-light: light-dark(hsl(0 0% 50%), hsl(0 0% 50%));
-  --color-dark: light-dark(hsl(0 0% 10%), hsl(0 0% 90%));
+  --lumina-color: light-dark(hsl(0 0% 40%), hsl(0 0% 70%));
+  --lumina-color-light: light-dark(hsl(0 0% 50%), hsl(0 0% 50%));
+  --lumina-color-dark: light-dark(hsl(0 0% 10%), hsl(0 0% 90%));
+  --color: var(--lumina-color);
+  --color-light: var(--lumina-color-light);
+  --color-dark: var(--lumina-color-dark);
+  --photo-color: var(--lumina-color);
+  --photo-color-light: var(--lumina-color-light);
+  --photo-color-dark: var(--lumina-color-dark);
   --color-bg: light-dark(hsl(0 0% 100%), hsl(0 0% 0%));
   --animation-time: 270ms;
   /* @link https://utopia.fyi/type/calculator?c=320,12,1.2,900,16,1.25,5,0,&s=0.75|0.5|0.25,1.5|2|3|4|6,s-l&g=s,l,xl,12 */
@@ -128,26 +134,7 @@ html {
   scrollbar-gutter: stable;
   position: relative;
   height: 100dvh;
-  /* Root background so the cross-document view-transition crossfade has no flash. */
   background-color: var(--color-bg);
-
-  &:has(.nav-trigger:checked),
-  &:has(.nav-trigger ~ nav:focus-within) {
-    overflow: clip;
-  }
-}
-
-/* Cross-document view transitions (#77): a short root crossfade only — no per-image
-   named transitions. Honors prefers-reduced-motion via --animation-time (0ms). Browsers
-   without support fall back to ordinary document navigation. */
-@view-transition {
-  navigation: auto;
-}
-
-::view-transition-group(root),
-::view-transition-old(root),
-::view-transition-new(root) {
-  animation-duration: var(--animation-time);
 }
 
 body {
@@ -175,52 +162,40 @@ body {
   }
 }
 
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 @keyframes scroll-watcher {
   to {
     scale: 1 1;
   }
 }
 
-/* Nav backdrop (fullscreen, behind nav & header, toggled via checkbox) */
-body::after {
-  content: '';
-  position: fixed;
-  inset: 0;
-  z-index: 199;
-  background-color: color-mix(in srgb, var(--color-bg) 80%, transparent);
-  -webkit-backdrop-filter: saturate(180%) blur(2rem);
-  backdrop-filter: saturate(180%) blur(2rem);
-  opacity: 0;
-  transition: display var(--animation-time) ease-in-out allow-discrete, opacity var(--animation-time) ease-in-out;
-  display: none;
-}
-
-body:has(.nav-trigger:checked)::after,
-body:has(.nav-trigger ~ nav:focus-within)::after {
-  display: block;
-  opacity: 1;
-
-  @starting-style {
-    opacity: 0;
-  }
-}
-
-.nav-trigger {
-  position: fixed;
-  clip-path: inset(50%);
-}
-
-label[for=nav-trigger] {
+header button[popovertarget="site-menu"] {
   white-space: nowrap;
   cursor: pointer;
   user-select: none;
   -webkit-tap-highlight-color: transparent;
+  padding: 0;
+  border: 0;
+  color: var(--color-light);
+  background: transparent;
+  font: inherit;
   transition-property: transform, color, border-bottom;
   transition-duration: var(--animation-time);
   transition-timing-function: ease-in-out;
   display: inline-flex;
+  translate: 0 .1em;
   transform: rotate(-90deg);
-  color: var(--color-light);
 
   &:hover {
     color: var(--color-dark);
@@ -228,31 +203,24 @@ label[for=nav-trigger] {
 
   span {
     transition: transform var(--animation-time) ease-in-out, opacity var(--animation-time) ease-in-out;
-
-    &:first-child {
-      display: none;
-    }
   }
 }
 
-/* Nav trigger animation states (cross-component) */
-.nav-trigger:has(~ nav:focus-within)~* label[for=nav-trigger]>span:nth-child(2),
-.nav-trigger:checked~* label[for=nav-trigger]>span:nth-child(2) {
+/* Nav trigger animation states (cross-component). */
+#site-menu:popover-open~header button[popovertarget="site-menu"]>span:nth-child(2) {
   transform: translateX(40%) rotate(-135deg);
 }
 
-.nav-trigger:has(~ nav:focus-within)~* label[for=nav-trigger]>span:nth-child(3),
-.nav-trigger:checked~* label[for=nav-trigger]>span:nth-child(3) {
+#site-menu:popover-open~header button[popovertarget="site-menu"]>span:nth-child(3) {
   opacity: 0;
 }
 
-.nav-trigger:has(~ nav:focus-within)~* label[for=nav-trigger]>span:nth-child(4),
-.nav-trigger:checked~* label[for=nav-trigger]>span:nth-child(4) {
+#site-menu:popover-open~header button[popovertarget="site-menu"]>span:nth-child(4) {
   transform: translateX(-110%) translateY(5%) rotate(135deg);
 }
 
 /* Shared navigation section styles (body overlay + footer) */
-:is(body > nav, footer nav) section {
+:is(#site-menu, body > footer nav) section {
   display: flex;
   flex-direction: column;
 
@@ -321,15 +289,22 @@ label[for=nav-trigger] {
   }
 }
 
-body>nav {
+#site-menu {
   --nav-font-size: var(--font-size-3);
   --nav-heading-gap: var(--space-s);
   grid-column: full-width;
   position: fixed;
+  inset-inline: 0;
   top: var(--header-height);
   top: anchor(--header bottom);
   bottom: 0;
   width: 100dvw;
+  height: auto;
+  block-size: auto;
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  border: 0;
   z-index: 200;
   display: none;
   flex-direction: row;
@@ -337,9 +312,9 @@ body>nav {
   align-content: flex-start;
   justify-content: center;
   gap: var(--space-l);
-  transition: display var(--animation-time) ease-in-out allow-discrete, opacity var(--animation-time) ease-in-out;
-  opacity: 0;
-  background: transparent;
+  background-color: color-mix(in srgb, var(--color-bg) 80%, transparent);
+  -webkit-backdrop-filter: saturate(180%) blur(2rem);
+  backdrop-filter: saturate(180%) blur(2rem);
   padding-top: var(--space-s);
   padding-inline: var(--space-l);
   padding-bottom: var(--space-l);
@@ -360,15 +335,9 @@ body>nav {
   }
 }
 
-/* Nav visibility (cross-component) */
-body>nav:focus-within,
-.nav-trigger:checked~nav {
+/* Nav visibility (cross-component). */
+#site-menu:popover-open {
   display: flex;
-  opacity: 1;
-
-  @starting-style {
-    opacity: 0;
-  }
 }
 
 header {
@@ -408,7 +377,6 @@ header {
       gap: var(--space-s);
       font-size: var(--font-size-2);
       opacity: 1;
-      transition: opacity var(--animation-time) ease-in-out;
     }
 
     a {
@@ -433,9 +401,10 @@ header {
 }
 
 /* Nav open: hide header nav (cross-component) */
-body>nav:focus-within~header nav,
-.nav-trigger:checked~header nav {
+#site-menu:popover-open~header nav {
   opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
 }
 
 main {
@@ -549,6 +518,7 @@ main {
     >article {
       flex-grow: calc(var(--width) * (500000000 / var(--height)));
       flex-basis: calc(var(--space-s) * 18 * (var(--width) / var(--height)));
+      min-width: 0;
       position: relative;
       background-color: var(--color-bg);
       outline: solid var(--grid-gap) var(--color-bg);
@@ -561,7 +531,10 @@ main {
         display: contents;
       }
 
-      picture {
+      >picture,
+      >a>picture {
+        width: 100%;
+        min-width: 0;
         aspect-ratio: var(--width)/calc(var(--height) * 2);
         margin-bottom: max(-100% / (var(--width) / var(--height)), max(-100dvh, var(--height) * -1px));
       }
@@ -569,7 +542,9 @@ main {
       /* CSS-only LQIP: Full implementation from leanrada.com
          Uses dual-layer approach with hard-light + overlay blend modes
          and quadratic interpolation for smooth bilinear-like blending */
-      &[style*="--lqip:"] picture::before {
+      :where(&[style*="--lqip:"]>picture::before,
+        &[style*="--lqip:"]>a>picture::before,
+        [data-lqip]) {
         content: "";
         position: sticky;
         top: calc(var(--space-xl) + var(--space-xs));
@@ -726,7 +701,8 @@ main {
         background-position: center;
       }
 
-      img {
+      >picture>img,
+      >a>picture>img {
         max-width: 100%;
         max-height: 100vh;
         height: auto;
@@ -742,6 +718,21 @@ main {
         outline: 3px solid var(--color);
         outline-offset: 2px;
       }
+
+      >button[aria-haspopup="dialog"][command="show-modal"] {
+        position: absolute;
+        inset: 0;
+        z-index: 1;
+        border: 0;
+        background: transparent;
+        cursor: zoom-in;
+      }
+
+      &:has(>button[aria-haspopup="dialog"][command="show-modal"]:focus-visible) img {
+        outline: 3px solid var(--color);
+        outline-offset: 2px;
+      }
+
     }
 
     &::after {
@@ -758,7 +749,274 @@ main {
   }
 }
 
-footer {
+/* Shared canonical photo and lightbox article structure. */
+:where(body.photo-page > main > article, dialog.photo-lightbox > article) {
+  --color: var(--photo-color);
+  --color-light: var(--photo-color-light);
+  --color-dark: var(--photo-color-dark);
+  position: relative;
+  inline-size: 100%;
+  container-type: inline-size;
+  color: var(--color);
+
+  >picture {
+    position: sticky;
+    inset-block-start: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    inline-size: 100%;
+    block-size: calc(100dvh - var(--space-xl));
+    margin: 0;
+    aspect-ratio: auto;
+    overflow: hidden;
+    opacity: 1;
+    background-size:
+      min(100%, calc((100dvh - var(--space-xl)) * var(--width) / var(--height))) min(100%, calc(100cqi * var(--height) / var(--width)));
+
+    >img {
+      position: relative;
+      z-index: 1;
+      inline-size: auto;
+      max-inline-size: 100%;
+      block-size: auto;
+      max-block-size: 100%;
+      margin: auto;
+      object-fit: contain;
+      user-select: none;
+      -webkit-user-drag: none;
+      cursor: zoom-in;
+
+      &[data-zoomed] {
+        transition: none;
+        transform: translate3d(var(--zoom-x), var(--zoom-y), 0) scale(var(--zoom-scale));
+        cursor: grab;
+      }
+
+      &[data-dragging] {
+        cursor: grabbing;
+      }
+    }
+  }
+
+  >section {
+    position: relative;
+    z-index: 2;
+    inline-size: 100%;
+    background: transparent;
+    border-block-start: 1px solid color-mix(in oklch, var(--color) 18%, transparent);
+    box-shadow: 0 -0.5rem 1.5rem color-mix(in oklch, black 18%, transparent);
+
+    &::before {
+      content: "";
+      position: absolute;
+      z-index: -1;
+      inset: 0;
+      background: color-mix(in oklch, var(--color-bg) 65%, transparent);
+      -webkit-backdrop-filter: saturate(180%) blur(2rem);
+      backdrop-filter: saturate(180%) blur(2rem);
+    }
+
+    >nav {
+      block-size: var(--space-xl);
+      border-block-end: 1px solid color-mix(in oklch, var(--color) 14%, transparent);
+    }
+
+    >aside.photo-metadata,
+    >footer {
+      inline-size: min(100%, var(--content-max-width));
+      margin-inline: auto;
+      padding: var(--space-s);
+    }
+
+    >aside.photo-metadata {
+      >p {
+        display: flex;
+        flex-wrap: wrap;
+        margin: 0;
+
+        >span+span::before {
+          content: "·";
+          padding-inline: 0.55em;
+          color: var(--color-light);
+        }
+      }
+
+      >p+p {
+        margin-block-start: var(--space-2xs);
+      }
+    }
+
+    >footer {
+      display: flex;
+      flex-flow: row wrap;
+      align-items: baseline;
+      justify-content: flex-start;
+      gap: var(--space-2xs) var(--space-xs);
+      block-size: auto;
+      min-block-size: 0;
+      padding-block-start: var(--space-xs);
+      border-block-start: 1px solid color-mix(in oklch, var(--color) 14%, transparent);
+      outline: 0;
+      background: transparent;
+      font-size: var(--font-size-0);
+
+      >strong {
+        color: var(--color-light);
+        font-weight: inherit;
+      }
+    }
+
+    @media (width <=600px) {
+
+      >aside.photo-metadata,
+      >footer {
+        padding-inline: var(--space-xs);
+      }
+
+      >aside.photo-metadata>p>span+span::before {
+        padding-inline: 0.35em;
+      }
+    }
+  }
+}
+
+:where(dialog.photo-lightbox > button[command="close"], body.photo-page [data-photo-return]) {
+  display: grid;
+  inline-size: 2.75rem;
+  block-size: 2.75rem;
+  padding: 0;
+  place-items: center;
+  border: 0;
+  border-radius: 0;
+  color: rgb(255 255 255 / 92%);
+  background: transparent;
+  font-family: inherit;
+  font-size: 2rem;
+  font-weight: 100;
+  line-height: 1;
+  text-decoration: none;
+  text-shadow: 0 1px 2px rgb(0 0 0 / 60%);
+  cursor: pointer;
+
+  &:hover {
+    color: white;
+  }
+
+  &:focus-visible {
+    color: white;
+    outline: 2px solid color-mix(in oklch, var(--color) 55%, transparent);
+    outline-offset: -2px;
+  }
+}
+
+:where([data-photo-previous], [data-photo-next])>span {
+  box-sizing: border-box;
+  display: block;
+  inline-size: 0.65rem;
+  block-size: 0.65rem;
+  border-block-start: 1px solid currentColor;
+  border-inline-end: 1px solid currentColor;
+  color: rgb(255 255 255 / 92%);
+  filter: drop-shadow(0 1px 2px rgb(0 0 0 / 60%));
+  font-size: 0;
+}
+
+[data-photo-previous]>span {
+  transform: rotate(-135deg);
+}
+
+[data-photo-next]>span {
+  transform: rotate(45deg);
+}
+
+:where([data-photo-previous], [data-photo-next]):is(:hover, :focus-visible)>span {
+  color: white;
+}
+
+[data-photo-label] {
+  display: block;
+  line-height: 1;
+}
+
+dialog.photo-lightbox {
+  inline-size: 100dvw;
+  max-inline-size: none;
+  block-size: 100dvh;
+  max-block-size: none;
+  border: 0;
+  padding: 0;
+  color: var(--color);
+  background: transparent;
+  overflow-y: auto;
+  scrollbar-color: color-mix(in oklch, var(--color) 62%, transparent) color-mix(in oklch, var(--color) 8%, transparent);
+
+  &::backdrop {
+    background: color-mix(in srgb, var(--color-bg) 80%, transparent);
+    -webkit-backdrop-filter: saturate(180%) blur(2rem);
+    backdrop-filter: saturate(180%) blur(2rem);
+  }
+
+  >button[command="close"] {
+    position: sticky;
+    z-index: 3;
+    inset-block-start: 0;
+    inset-inline-end: auto;
+    margin-block-end: -2.75rem;
+    margin-inline-start: auto;
+  }
+
+  >article>section>nav {
+    display: grid;
+    grid-template-columns: 3rem minmax(0, 1fr) 3rem;
+    align-items: center;
+
+    >button {
+      inline-size: 3rem;
+      block-size: var(--space-xl);
+      padding: 0;
+      border: 0;
+      color: inherit;
+      background: transparent;
+      font-size: 1.75rem;
+      cursor: pointer;
+
+      &:focus-visible {
+        outline: 3px solid var(--color-dark);
+        outline-offset: -3px;
+      }
+    }
+
+    >:nth-child(2) {
+      overflow: hidden;
+      padding-inline: var(--space-xs);
+      text-align: center;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    >:last-child {
+      justify-self: end;
+    }
+  }
+}
+
+html:where(:has(body > #site-menu)) {
+  overflow: hidden;
+  scrollbar-gutter: auto;
+}
+
+body:where(:has(> #site-menu)) {
+  height: 100dvh;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+}
+
+body:where(:has(> #site-menu:popover-open), :has(dialog[data-lightbox][open])) {
+  overflow: hidden;
+}
+
+body>footer {
   grid-column: breakout;
   display: flex;
   z-index: 100;
@@ -813,4 +1071,3 @@ footer {
     max-width: min(56rem, 100vw - var(--space-l) * 2);
   }
 }
-

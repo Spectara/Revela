@@ -20,7 +20,7 @@ Body Template Selection:
 - Extension templates: "statistics/overview" etc.
 ##~}}
 <!DOCTYPE html>
-<html lang="en">
+<html lang="{{ html_escape (site.language ?? 'en') }}">
 
 <head>
     <meta charset="UTF-8">
@@ -36,11 +36,8 @@ Body Template Selection:
 </head>
 
 <body>
-    {{~ # Navigation Toggle (CSS-only Hamburger Menu) ~}}
-    <input type="checkbox" id="nav-trigger" class="nav-trigger">
-
     {{~ # Main Navigation (Fullscreen Overlay) ~}}
-    <nav>
+    <nav id="site-menu" popover="auto">
         {{~ include 'navigation' nav_items ~}}
     </nav>
 
@@ -48,12 +45,12 @@ Body Template Selection:
     <header>
         <div>
             <h2>
-                <label for="nav-trigger" title="Menu">
-                    <span>Menu</span>
-                    <span>i</span>
-                    <span>i</span>
-                    <span>i</span>
-                </label>
+                <button type="button" popovertarget="site-menu" title="Menu">
+                    <span class="visually-hidden">Menu</span>
+                    <span aria-hidden="true">i</span>
+                    <span aria-hidden="true">i</span>
+                    <span aria-hidden="true">i</span>
+                </button>
                 {{~ # basepath is empty string at root, "../" for galleries, or "/photos/" for subdirectory hosting ~}}
                 <a href="{{ basepath == '' ? '.' : basepath }}">{{ site.title }}</a>
             </h2>

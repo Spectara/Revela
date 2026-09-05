@@ -338,5 +338,23 @@ public sealed class RevelaParserTests
         // Assert
         Assert.IsNull(result.Cover);
     }
+
+    [TestMethod]
+    public void Parse_PhotoViewerField_ExtractsRawValueAndMarksMetadataPresent()
+    {
+        // Arrange
+        var content = """
+            +++
+            photo_viewer = "LiGhTbOx"
+            +++
+            """;
+
+        // Act
+        var result = RevelaParser.Parse(content);
+
+        // Assert
+        Assert.IsTrue(result.HasMetadata);
+        Assert.AreEqual("LiGhTbOx", result.PhotoViewer);
+    }
 }
 

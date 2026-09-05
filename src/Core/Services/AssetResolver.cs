@@ -1,6 +1,8 @@
 using System.Collections.Frozen;
+using System.Text.Json;
 using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Abstractions;
+using Spectara.Revela.Sdk.Json;
 using Spectara.Revela.Sdk.Services;
 
 namespace Spectara.Revela.Core.Services;
@@ -39,9 +41,9 @@ public sealed partial class AssetResolver(ILogger<AssetResolver> logger) : IAsse
     private readonly List<string> styleSheetOrder = [];
     private readonly List<string> scriptOrder = [];
 
-    // css asset key -> declared scope tokens (lowercased). A key absent from this
-    // map has no declaration and therefore loads on every page (backward compatible).
-    private readonly Dictionary<string, string[]> styleSheetScopes = new(StringComparer.OrdinalIgnoreCase);
+    // Asset key -> declared scope tokens (lowercased). Assets without a declaration
+    // remain available for copying and inspection but are not linked on scoped pages.
+    private readonly Dictionary<string, string[]> assetScopes = new(StringComparer.OrdinalIgnoreCase);
 
     private const string AllScope = "all";
 
@@ -54,7 +56,7 @@ public sealed partial class AssetResolver(ILogger<AssetResolver> logger) : IAsse
         assets.Clear();
         styleSheetOrder.Clear();
         scriptOrder.Clear();
-        styleSheetScopes.Clear();
+        assetScopes.Clear();
 
         var themeName = theme.Metadata.Name;
         localThemePath = Path.Combine(projectPath, ProjectPaths.Themes, themeName, AssetsFolderName);
@@ -76,35 +78,39 @@ public sealed partial class AssetResolver(ILogger<AssetResolver> logger) : IAsse
             ScanLocalOverrides(localThemePath);
         }
 
+        RegisterProjectAssetScopes(projectPath);
+
         isInitialized = true;
         LogInitialized(assets.Count, styleSheetOrder.Count, scriptOrder.Count);
     }
 
     /// <inheritdoc />
-    public IReadOnlyList<string> GetStyleSheets()
-    {
-        EnsureInitialized();
-        return styleSheetOrder.AsReadOnly();
-    }
+    public IReadOnlyList<string> GetStyleSheets() => GetScopedAssets(styleSheetOrder, scope: null);
 
     /// <inheritdoc />
-    public IReadOnlyList<string> GetStyleSheets(string? scope)
+    public IReadOnlyList<string> GetStyleSheets(string? scope) => GetScopedAssets(styleSheetOrder, scope);
+
+    /// <inheritdoc />
+    public IReadOnlyList<string> GetScripts() => GetScopedAssets(scriptOrder, scope: null);
+
+    /// <inheritdoc />
+    public IReadOnlyList<string> GetScripts(string? scope) => GetScopedAssets(scriptOrder, scope);
+
+    private IReadOnlyList<string> GetScopedAssets(List<string> assetOrder, string? scope)
     {
         EnsureInitialized();
 
         if (string.IsNullOrEmpty(scope))
         {
-            return styleSheetOrder.AsReadOnly();
+            return assetOrder.AsReadOnly();
         }
 
-        var result = new List<string>(styleSheetOrder.Count);
-        foreach (var css in styleSheetOrder)
+        var result = new List<string>(assetOrder.Count);
+        foreach (var asset in assetOrder)
         {
-            // Undeclared stylesheets load everywhere; declared ones must list "all"
-            // or the requested scope token.
-            if (!styleSheetScopes.TryGetValue(css, out var scopes))
+            // Scoped page rendering is explicit: undeclared assets are not linked.
+            if (!assetScopes.TryGetValue(asset, out var scopes))
             {
-                result.Add(css);
                 continue;
             }
 
@@ -113,20 +119,13 @@ public sealed partial class AssetResolver(ILogger<AssetResolver> logger) : IAsse
                 if (declared.Equals(AllScope, StringComparison.OrdinalIgnoreCase)
                     || declared.Equals(scope, StringComparison.OrdinalIgnoreCase))
                 {
-                    result.Add(css);
+                    result.Add(asset);
                     break;
                 }
             }
         }
 
         return result.AsReadOnly();
-    }
-
-    /// <inheritdoc />
-    public IReadOnlyList<string> GetScripts()
-    {
-        EnsureInitialized();
-        return scriptOrder.AsReadOnly();
     }
 
     /// <inheritdoc />
@@ -196,7 +195,7 @@ public sealed partial class AssetResolver(ILogger<AssetResolver> logger) : IAsse
             count++;
         }
 
-        RegisterStyleSheetScopes(theme, prefix: null);
+        RegisterAssetScopes(theme, prefix: null);
 
         LogScannedTheme(theme.Metadata.Name, count);
     }
@@ -221,21 +220,28 @@ public sealed partial class AssetResolver(ILogger<AssetResolver> logger) : IAsse
             count++;
         }
 
-        RegisterStyleSheetScopes(extension, prefix);
+        RegisterAssetScopes(extension, prefix);
 
         LogScannedExtension(extension.Metadata.Name, prefix, count);
     }
 
     /// <summary>
     /// Records page-type scope declarations from a theme/extension manifest.
-    /// The declared stylesheet path is resolved to the same asset key produced by
+    /// The declared asset path is resolved to the same asset key produced by
     /// <see cref="DeriveKeyFromPath"/> / <see cref="DeriveExtensionKey"/> so it lines
-    /// up with <see cref="styleSheetOrder"/>. A declaration with no scope tokens loads
+    /// up with the corresponding asset order. A declaration with no scope tokens loads
     /// everywhere (stored as the <c>all</c> token).
     /// </summary>
-    private void RegisterStyleSheetScopes(ITheme theme, string? prefix)
+    private void RegisterAssetScopes(ITheme theme, string? prefix)
     {
-        var declarations = theme.Manifest.Stylesheets;
+        RegisterAssetScopes(theme.Manifest.Stylesheets, prefix);
+        RegisterAssetScopes(theme.Manifest.Scripts, prefix);
+    }
+
+    private void RegisterAssetScopes(
+        IReadOnlyList<AssetDeclaration>? declarations,
+        string? prefix)
+    {
         if (declarations is null)
         {
             return;
@@ -255,8 +261,92 @@ public sealed partial class AssetResolver(ILogger<AssetResolver> logger) : IAsse
                 ? declaration.Scope.Select(s => s.Trim()).Where(s => s.Length > 0).ToArray()
                 : [AllScope];
 
-            styleSheetScopes[key] = scopes.Length > 0 ? scopes : [AllScope];
+            assetScopes[key] = scopes.Length > 0 ? scopes : [AllScope];
         }
+    }
+
+    private void RegisterProjectAssetScopes(string projectPath)
+    {
+        var siteJsonPath = Path.Combine(projectPath, "site.json");
+        if (!File.Exists(siteJsonPath))
+        {
+            return;
+        }
+
+        try
+        {
+            using var document = JsonDocument.Parse(
+                File.ReadAllText(siteJsonPath),
+                RevelaJsonOptions.LenientDocument);
+            RegisterProjectAssetScopes(document.RootElement, "stylesheets");
+            RegisterProjectAssetScopes(document.RootElement, "scripts");
+        }
+        catch (JsonException)
+        {
+            // site.json validation is owned by the render pipeline.
+        }
+    }
+
+    private void RegisterProjectAssetScopes(JsonElement root, string propertyName)
+    {
+        if (!TryGetProperty(root, propertyName, out var entries)
+            || entries.ValueKind is not JsonValueKind.Array)
+        {
+            return;
+        }
+
+        var declarations = new List<AssetDeclaration>();
+        foreach (var entry in entries.EnumerateArray())
+        {
+            if (entry.ValueKind is JsonValueKind.String)
+            {
+                declarations.Add(new AssetDeclaration { Path = entry.GetString() });
+                continue;
+            }
+
+            if (entry.ValueKind is not JsonValueKind.Object
+                || !TryGetProperty(entry, "path", out var pathElement)
+                || pathElement.ValueKind is not JsonValueKind.String)
+            {
+                continue;
+            }
+
+            IReadOnlyList<string>? scopes = null;
+            if (TryGetProperty(entry, "scope", out var scopeElement)
+                && scopeElement.ValueKind is JsonValueKind.Array)
+            {
+                scopes =
+                [
+                    .. scopeElement.EnumerateArray()
+                        .Where(value => value.ValueKind is JsonValueKind.String)
+                        .Select(value => value.GetString())
+                        .OfType<string>()
+                ];
+            }
+
+            declarations.Add(new AssetDeclaration
+            {
+                Path = pathElement.GetString(),
+                Scope = scopes
+            });
+        }
+
+        RegisterAssetScopes(declarations, prefix: null);
+    }
+
+    private static bool TryGetProperty(JsonElement element, string name, out JsonElement value)
+    {
+        foreach (var property in element.EnumerateObject())
+        {
+            if (property.Name.Equals(name, StringComparison.OrdinalIgnoreCase))
+            {
+                value = property.Value;
+                return true;
+            }
+        }
+
+        value = default;
+        return false;
     }
 
     private void ScanLocalOverrides(string localPath)

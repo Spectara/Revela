@@ -1,7 +1,10 @@
 using Microsoft.Extensions.Options;
 
+using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Abstractions;
 using Spectara.Revela.Sdk.Configuration;
+using Spectara.Revela.Sdk.Models;
+using Spectara.Revela.Sdk.Services;
 
 namespace Spectara.Revela.Features.Generate.Services.Checks;
 
@@ -11,7 +14,10 @@ namespace Spectara.Revela.Features.Generate.Services.Checks;
 /// </summary>
 internal sealed class ConfigCheck(
     IOptionsMonitor<ProjectConfig> projectConfig,
-    IOptionsMonitor<SiteCoreConfig> siteConfig) : ICheck
+    IOptionsMonitor<SiteCoreConfig> siteConfig,
+    IOptionsMonitor<ThemeConfig> themeConfig,
+    IThemeRegistry themeRegistry,
+    IOptions<ProjectEnvironment> projectEnvironment) : ICheck
 {
     /// <inheritdoc />
     public string Name => "config";
@@ -26,6 +32,7 @@ internal sealed class ConfigCheck(
 
         CollectConfigFailures(diagnostics, () => _ = projectConfig.CurrentValue);
         CollectConfigFailures(diagnostics, () => _ = siteConfig.CurrentValue);
+        var validThemeConfig = CollectConfigFailures(diagnostics, () => _ = themeConfig.CurrentValue);
 
         // SiteCoreConfig.Title carries no [Required] annotation (site.json is written
         // incrementally by the wizard/CLI, so the model must not throw mid-write). The
@@ -39,14 +46,20 @@ internal sealed class ConfigCheck(
 
         AddBaseUrlHint(diagnostics);
 
+        if (validThemeConfig)
+        {
+            AddPhotoViewerDiagnostics(diagnostics);
+        }
+
         return new ValueTask<IReadOnlyList<ValidationDiagnostic>>(diagnostics);
     }
 
-    private static void CollectConfigFailures(List<ValidationDiagnostic> diagnostics, Action access)
+    private static bool CollectConfigFailures(List<ValidationDiagnostic> diagnostics, Action access)
     {
         try
         {
             access();
+            return true;
         }
         catch (OptionsValidationException ex)
         {
@@ -56,8 +69,41 @@ internal sealed class ConfigCheck(
                     failure,
                     hint: "Fix the setting in project.json (or site.json), then run the command again."));
             }
+
+            return false;
         }
     }
+
+    private void AddPhotoViewerDiagnostics(List<ValidationDiagnostic> diagnostics)
+    {
+        var config = themeConfig.CurrentValue;
+        if (config.PhotoViewer is not { } viewer)
+        {
+            return;
+        }
+
+        var themeName = string.IsNullOrWhiteSpace(config.Name) ? "Lumina" : config.Name;
+        var theme = themeRegistry.Resolve(themeName, projectEnvironment.Value.Path);
+        if (theme is null || theme.Manifest.PhotoViewer?.Supported.Contains(viewer) is true)
+        {
+            return;
+        }
+
+        var supported = theme.Manifest.PhotoViewer is null
+            ? "none"
+            : string.Join(", ", theme.Manifest.PhotoViewer.Supported.Select(Canonical));
+        diagnostics.Add(ValidationDiagnostic.Error(
+            $"Unsupported project.json key theme.photoViewer value '{Canonical(viewer)}' for theme '{themeName}'. Supported modes: {supported}.",
+            hint: "Choose a supported value or remove theme.photoViewer to use the theme default."));
+    }
+
+    private static string Canonical(PhotoViewerMode mode) => mode switch
+    {
+        PhotoViewerMode.Page => "page",
+        PhotoViewerMode.Lightbox => "lightbox",
+        PhotoViewerMode.None => "none",
+        _ => mode.ToString()
+    };
 
     /// <summary>
     /// Adds a friendly, non-blocking hint when no absolute base URL is configured, since

@@ -13,8 +13,36 @@
   "templates": {
     "layout": "Layout.revela"
   },
+  "photoViewers": [
+    "page",
+    "lightbox",
+    "none"
+  ],
+  "defaultPhotoViewer": "page",
   "stylesheets": [
-    { "path": "main.css" },
-    { "path": "photo.css", "scope": ["photo"] }
+    {
+      "path": "main.css"
+    },
+    {
+      "path": "photo.css",
+      "scope": [
+        "photo"
+      ]
+    }
+  ],
+  "scripts": [
+    {
+      "path": "lightbox.js",
+      "scope": [
+        "lightbox"
+      ]
+    },
+    {
+      "path": "zoom.js",
+      "scope": [
+        "photo",
+        "lightbox"
+      ]
+    }
   ]
 }

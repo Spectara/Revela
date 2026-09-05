@@ -15,10 +15,10 @@ namespace Spectara.Revela.Features.Generate.Models;
 internal sealed class PhotoContext
 {
     /// <summary>
-    /// Output slug of the gallery this membership belongs to (e.g. <c>"landscapes/"</c>);
+    /// Output route of the gallery this membership belongs to (e.g. <c>"landscapes/"</c>);
     /// empty string for the site root gallery.
     /// </summary>
-    public required string GallerySlug { get; init; }
+    public required string Route { get; init; }
 
     /// <summary>
     /// Human-readable gallery label (title or folder name) shown in the memberships list.
@@ -32,6 +32,11 @@ internal sealed class PhotoContext
     /// <c>id="ctx-{ContextId}"</c> block selected via <c>:target</c>.
     /// </summary>
     public required string ContextId { get; init; }
+
+    /// <summary>
+    /// Stable gallery-side anchor for this exact image occurrence.
+    /// </summary>
+    public required string Anchor { get; init; }
 
     /// <summary>
     /// Whether this context is the physical gallery whose folder contains the source file

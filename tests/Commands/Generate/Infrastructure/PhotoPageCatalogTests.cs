@@ -1,5 +1,6 @@
 using Spectara.Revela.Features.Generate.Infrastructure;
 using Spectara.Revela.Features.Generate.Models;
+using Spectara.Revela.Sdk.Models;
 
 namespace Spectara.Revela.Tests.Commands.Generate.Infrastructure;
 
@@ -12,6 +13,83 @@ namespace Spectara.Revela.Tests.Commands.Generate.Infrastructure;
 public sealed class PhotoPageCatalogTests
 {
     [TestMethod]
+    public void Build_BareBlockAlongsideBaseMembership_DoesNotDuplicateContext()
+    {
+        var image = Img("Gallery/photo.jpg");
+        var gallery = Gal("Gallery", null, image);
+        var memberships = new[] { new PhotoMembership(gallery, gallery.Images, null, PhotoViewerMode.Page) };
+
+        var pages = PhotoPageCatalog.Build(memberships);
+
+        var context = pages.Single().Contexts.Single();
+        Assert.AreEqual("gallery", context.ContextId);
+        Assert.AreEqual("photo-gallery-photo", context.Anchor);
+    }
+
+    [TestMethod]
+    public void Build_FilteredMembership_PreservesFrozenImageOrderForNavigation()
+    {
+        var first = Img("_images/first.jpg");
+        var second = Img("_images/second.jpg");
+        var third = Img("_images/third.jpg");
+        var gallery = Gal("Featured", null);
+        IReadOnlyList<PhotoMembership> memberships =
+            [new PhotoMembership(gallery, [third, first, second], 1, PhotoViewerMode.Page)];
+
+        var pages = PhotoPageCatalog.Build(memberships);
+
+        var context = pages.Single(page => page.Slug == "first").Contexts.Single();
+        Assert.AreEqual("third", context.PreviousPhoto!.Slug);
+        Assert.AreEqual("second", context.NextPhoto!.Slug);
+        Assert.AreEqual("featured-grid-1", context.ContextId);
+        Assert.AreEqual("grid-1-photo-first", context.Anchor);
+    }
+
+    [TestMethod]
+    public void Build_FilteredOnlySharedImage_CreatesCanonicalPage()
+    {
+        var image = Img("_images/filtered-only.jpg");
+        var gallery = Gal("Featured", null);
+        IReadOnlyList<PhotoMembership> memberships =
+            [new PhotoMembership(gallery, [image], 1, PhotoViewerMode.Page)];
+
+        var page = PhotoPageCatalog.Build(memberships).Single();
+
+        Assert.AreEqual("filtered-only", page.Slug);
+        Assert.AreEqual("featured/", page.PrimaryContext.Route);
+    }
+
+    [TestMethod]
+    public void Build_OverlappingFilteredMemberships_UseDistinctContextIdsAndAnchors()
+    {
+        var image = Img("_images/shared.jpg");
+        var gallery = Gal("Featured", null);
+        IReadOnlyList<PhotoMembership> memberships =
+        [
+            new PhotoMembership(gallery, [image], 1, PhotoViewerMode.Page),
+            new PhotoMembership(gallery, [image], 2, PhotoViewerMode.Page)
+        ];
+
+        var contexts = PhotoPageCatalog.Build(memberships).Single().Contexts;
+
+        Assert.HasCount(2, contexts);
+        Assert.AreEqual("featured-grid-1", contexts[0].ContextId);
+        Assert.AreEqual("grid-1-photo-shared", contexts[0].Anchor);
+        Assert.AreEqual("featured-grid-2", contexts[1].ContextId);
+        Assert.AreEqual("grid-2-photo-shared", contexts[1].Anchor);
+    }
+
+    [TestMethod]
+    public void Build_CustomBodyWithoutMemberships_ContributesNoPageOrContext()
+    {
+        IReadOnlyList<PhotoMembership> memberships = [];
+
+        var pages = PhotoPageCatalog.Build(memberships);
+
+        Assert.IsEmpty(pages);
+    }
+
+    [TestMethod]
     public void Build_SameSharedImageInTwoFilterGalleries_ProducesOnePageWithTwoOrderedContexts()
     {
         var shared = Img("_images/ocean.jpg");
@@ -21,13 +99,13 @@ public sealed class PhotoPageCatalogTests
             Gal("02 Sony", null, shared)
         };
 
-        var pages = PhotoPageCatalog.Build(galleries);
+        var pages = PhotoPageCatalog.Build(BaseMemberships(galleries));
 
         var page = pages.Single();
         Assert.AreEqual("ocean", page.Slug);
         Assert.HasCount(2, page.Contexts);
-        Assert.AreEqual("canon/", page.Contexts[0].GallerySlug);
-        Assert.AreEqual("sony/", page.Contexts[1].GallerySlug);
+        Assert.AreEqual("canon/", page.Contexts[0].Route);
+        Assert.AreEqual("sony/", page.Contexts[1].Route);
     }
 
     [TestMethod]
@@ -38,7 +116,7 @@ public sealed class PhotoPageCatalogTests
         var c = Img("_images/c.jpg");
         var galleries = new[] { Gal("Set", null, a, b, c) };
 
-        var pages = PhotoPageCatalog.Build(galleries);
+        var pages = PhotoPageCatalog.Build(BaseMemberships(galleries));
 
         var middle = pages.Single(p => p.Slug == "b");
         var context = middle.Contexts.Single();
@@ -54,7 +132,7 @@ public sealed class PhotoPageCatalogTests
         var c = Img("_images/c.jpg");
         var galleries = new[] { Gal("Set", null, a, b, c) };
 
-        var pages = PhotoPageCatalog.Build(galleries);
+        var pages = PhotoPageCatalog.Build(BaseMemberships(galleries));
 
         var first = pages.Single(p => p.Slug == "a").Contexts.Single();
         var last = pages.Single(p => p.Slug == "c").Contexts.Single();
@@ -75,10 +153,10 @@ public sealed class PhotoPageCatalogTests
             Gal("Landscapes", null, physical)
         };
 
-        var pages = PhotoPageCatalog.Build(galleries);
+        var pages = PhotoPageCatalog.Build(BaseMemberships(galleries));
 
         var page = pages.Single();
-        Assert.AreEqual("landscapes/", page.PrimaryContext.GallerySlug);
+        Assert.AreEqual("landscapes/", page.PrimaryContext.Route);
         Assert.IsTrue(page.PrimaryContext.IsPhysical);
     }
 
@@ -92,41 +170,40 @@ public sealed class PhotoPageCatalogTests
             Gal("02 Sony", null, shared)
         };
 
-        var pages = PhotoPageCatalog.Build(galleries);
+        var pages = PhotoPageCatalog.Build(BaseMemberships(galleries));
 
-        Assert.AreEqual("canon/", pages.Single().PrimaryContext.GallerySlug);
+        Assert.AreEqual("canon/", pages.Single().PrimaryContext.Route);
     }
 
     [TestMethod]
-    public void Build_CustomTemplateGallery_ProducesNoPageOrContext()
+    public void Build_NoneMembership_ProducesNoPageOrContext()
     {
         var shared = Img("_images/ocean.jpg");
-        var galleries = new[]
-        {
-            Gal("Statistics", "statistics/overview", shared),
-            Gal("Page", "page", shared)
-        };
+        IReadOnlyList<PhotoMembership> memberships =
+        [
+            new(Gal("Statistics", "statistics/overview", shared), [shared], null, PhotoViewerMode.None)
+        ];
 
-        var pages = PhotoPageCatalog.Build(galleries);
+        var pages = PhotoPageCatalog.Build(PageMemberships(memberships));
 
         Assert.IsEmpty(pages);
     }
 
     [TestMethod]
-    public void Build_ImageInBothCustomAndDefaultGallery_PageHasOnlyEligibleContext()
+    public void Build_SameImageInPageAndNoneMemberships_PageHasOnlyPageContext()
     {
         var shared = Img("_images/ocean.jpg");
-        var galleries = new[]
-        {
-            Gal("Canon", null, shared),
-            Gal("Statistics", "statistics/overview", shared)
-        };
+        IReadOnlyList<PhotoMembership> memberships =
+        [
+            new(Gal("Canon", null, shared), [shared], null, PhotoViewerMode.Page),
+            new(Gal("Statistics", "statistics/overview", shared), [shared], null, PhotoViewerMode.None)
+        ];
 
-        var pages = PhotoPageCatalog.Build(galleries);
+        var pages = PhotoPageCatalog.Build(PageMemberships(memberships));
 
         var page = pages.Single();
         var context = page.Contexts.Single();
-        Assert.AreEqual("canon/", context.GallerySlug);
+        Assert.AreEqual("canon/", context.Route);
     }
 
     [TestMethod]
@@ -135,7 +212,7 @@ public sealed class PhotoPageCatalogTests
         var shared = Img("_images/ocean.jpg");
         var galleries = new[] { Gal(string.Empty, null, shared) };
 
-        var pages = PhotoPageCatalog.Build(galleries);
+        var pages = PhotoPageCatalog.Build(BaseMemberships(galleries));
 
         Assert.AreEqual("home", pages.Single().Contexts.Single().ContextId);
     }
@@ -146,29 +223,20 @@ public sealed class PhotoPageCatalogTests
         var image = Img("Landscapes/ocean-sunset.jpg");
         var galleries = new[] { Gal("Landscapes", null, image) };
 
-        var pages = PhotoPageCatalog.Build(galleries);
+        var pages = PhotoPageCatalog.Build(BaseMemberships(galleries));
 
-        Assert.AreEqual("photo-landscapes-ocean-sunset", pages.Single().Anchor);
+        Assert.AreEqual("photo-landscapes-ocean-sunset", pages.Single().Contexts.Single().Anchor);
     }
 
     [TestMethod]
-    public void IsEligible_DefaultBodies_AreEligible()
-    {
-        Assert.IsTrue(PhotoPageCatalog.IsEligible(Gal("A", null)));
-        Assert.IsTrue(PhotoPageCatalog.IsEligible(Gal("A", "gallery")));
-        Assert.IsTrue(PhotoPageCatalog.IsEligible(Gal("A", "body/gallery")));
-    }
+    public void BaseContextId_NonRootGallery_TrimsAndReplacesSeparators() =>
+        Assert.AreEqual("trips-italy", PhotoPageCatalog.BaseContextId("trips/italy/"));
 
-    [TestMethod]
-    public void IsEligible_CustomBodies_AreNotEligible()
-    {
-        Assert.IsFalse(PhotoPageCatalog.IsEligible(Gal("A", "page")));
-        Assert.IsFalse(PhotoPageCatalog.IsEligible(Gal("A", "statistics/overview")));
-    }
+    private static IReadOnlyList<PhotoMembership> BaseMemberships(IEnumerable<Gallery> galleries) =>
+        [.. galleries.Select(gallery => new PhotoMembership(gallery, gallery.Images, null, PhotoViewerMode.Page))];
 
-    [TestMethod]
-    public void ContextId_NonRootGallery_ReplacesSeparators() =>
-        Assert.AreEqual("trips-italy-", PhotoPageCatalog.ContextId("trips/italy/"));
+    private static IReadOnlyList<PhotoMembership> PageMemberships(IEnumerable<PhotoMembership> memberships) =>
+        [.. memberships.Where(membership => membership.ViewerMode is PhotoViewerMode.Page)];
 
     private static Image Img(string sourcePath) => new()
     {

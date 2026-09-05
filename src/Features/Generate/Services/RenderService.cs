@@ -12,6 +12,7 @@ using Spectara.Revela.Sdk.Artifacts;
 using Spectara.Revela.Sdk.Configuration;
 using Spectara.Revela.Sdk.Hosting;
 using Spectara.Revela.Sdk.Json;
+using Spectara.Revela.Sdk.Models;
 using Spectara.Revela.Sdk.Models.Manifest;
 using Spectara.Revela.Sdk.Services;
 #pragma warning disable IDE0005 // Using directive is unnecessary — namespace holds source-generated extension methods the analyzer cannot see.
@@ -46,8 +47,8 @@ internal sealed partial class RenderService(
     IOptionsMonitor<GenerateConfig> options,
     IOptionsMonitor<ThemeConfig> themeConfig,
     IBuildInfo buildInfo,
-    TimeProvider timeProvider,
     IArtifactLifecycle artifactLifecycle,
+    TimeProvider timeProvider,
     ILogger<RenderService> logger) : IRenderService
 {
     /// <summary>Current theme extensions (set during rendering)</summary>
@@ -186,6 +187,20 @@ internal sealed partial class RenderService(
             templateResolver.Initialize(theme, extensions, projectEnvironment.Value.Path);
             assetResolver.Initialize(theme, extensions, projectEnvironment.Value.Path);
 
+            var photoTemplate = LoadTemplate("body/photo.revela");
+            if (theme.Manifest.PhotoViewer?.Supported.Contains(PhotoViewerMode.Page) is true
+                && photoTemplate is null)
+            {
+                return new RenderResult
+                {
+                    Success = false,
+                    ErrorMessage =
+                        $"Theme '{config.ThemeName}' supports the 'page' photo viewer but is missing " +
+                        "'Body/Photo.revela'. Add the template or remove 'page' from the theme's supported photo viewers.",
+                    Duration = stopwatch.Elapsed
+                };
+            }
+
             // Reconstruct galleries and navigation from unified root
             var galleries = ReconstructGalleries(manifestRepository.Root);
             var navigation = ReconstructNavigation(manifestRepository.Root);
@@ -204,14 +219,27 @@ internal sealed partial class RenderService(
                 BuildDate = timeProvider.GetUtcNow().UtcDateTime
             };
 
+            // Inline-gallery selections and metadata affect catalog eligibility and must be final
+            // before photo pages are built. Preparation is sequential and performs no rendering.
+            var allImagesBySourcePath = BuildImageLookup(siteModel);
+            currentImageLookup = allImagesBySourcePath;
+            var preparedGalleryMetadata = await PrepareGalleryMetadataAsync(
+                galleries,
+                allImagesBySourcePath,
+                manifestRepository.Images,
+                theme.Manifest,
+                config.ThemeName,
+                cancellationToken);
+            var photoMemberships = BuildPhotoMemberships(galleries, preparedGalleryMetadata);
+
             // Build the photo-page catalog when the theme resolves Body/Photo.revela.
             // Validation runs here — before any output is written — so a route collision
             // aborts the whole render with an actionable, source-listing message.
-            var photoTemplate = LoadTemplate("body/photo.revela");
             IReadOnlyList<PhotoPage> photoPages = [];
             if (photoTemplate is not null)
             {
-                photoPages = PhotoPageCatalog.Build(galleries);
+                photoPages = PhotoPageCatalog.Build(
+                    [.. photoMemberships.Where(membership => membership.ViewerMode is PhotoViewerMode.Page)]);
 
                 var photoConflicts = SlugValidator.FindPhotoConflicts(photoPages, galleries);
                 if (photoConflicts.Count > 0)
@@ -223,6 +251,19 @@ internal sealed partial class RenderService(
                         Duration = stopwatch.Elapsed
                     };
                 }
+            }
+
+            var invalidationResult = await artifactLifecycle.PrepareToReplaceAsync(
+                CoreArtifacts.RenderedSite,
+                cancellationToken);
+            if (!invalidationResult.Success)
+            {
+                return new RenderResult
+                {
+                    Success = false,
+                    ErrorMessage = invalidationResult.ErrorMessage,
+                    Duration = stopwatch.Elapsed
+                };
             }
 
             // Report the real total up front: index (always 1) + sub-galleries + one photo page
@@ -237,7 +278,18 @@ internal sealed partial class RenderService(
 
             // Render templates
             var engine = CreateAndConfigureEngine();
-            var pageCount = await RenderSiteAsync(engine, siteModel, config, theme, photoPages, photoTemplate, progress, cancellationToken);
+            var pageCount = await RenderSiteAsync(
+                engine,
+                siteModel,
+                config,
+                theme,
+                photoPages,
+                photoTemplate,
+                preparedGalleryMetadata,
+                photoMemberships,
+                allImagesBySourcePath,
+                progress,
+                cancellationToken);
 
             // Post-render work (assets, static files, sitemap) runs after the last page report.
             // Surface a clear label so the final stretch is not a frozen, unlabelled 100% bar.
@@ -253,19 +305,6 @@ internal sealed partial class RenderService(
 
             // Copy static files (source/_static/ → output/)
             await staticFileService.CopyStaticFilesAsync(SourcePath, OutputPath, cancellationToken);
-            var invalidationResult = await artifactLifecycle.PrepareToReplaceAsync(
-                CoreArtifacts.RenderedSite,
-                cancellationToken);
-            if (!invalidationResult.Success)
-            {
-                return new RenderResult
-                {
-                    Success = false,
-                    ErrorMessage = invalidationResult.ErrorMessage,
-                    Duration = stopwatch.Elapsed
-                };
-            }
-
 
             // Generate sitemap.xml (requires absolute BaseUrl)
             if (config.Project.BaseUrl is not null)
@@ -543,6 +582,9 @@ internal sealed partial class RenderService(
         ITheme? theme,
         IReadOnlyList<PhotoPage> photoPages,
         string? photoTemplate,
+        IReadOnlyDictionary<Gallery, PreparedGalleryMetadata> preparedGalleryMetadata,
+        IReadOnlyList<PhotoMembership> photoMemberships,
+        IReadOnlyDictionary<string, Image> allImagesBySourcePath,
         IProgress<RenderProgress>? progress,
         CancellationToken cancellationToken)
     {
@@ -584,20 +626,11 @@ internal sealed partial class RenderService(
         var formats = ImageSettings.GetActiveFormats();
 
         // Get assets from resolver. Stylesheets are resolved per page-type scope so a
-        // photo-only or plugin-only sheet does not bloat unrelated pages; undeclared
-        // sheets still load everywhere (see AssetResolver.GetStyleSheets(scope)).
+        // photo-only, template-only, or plugin-only assets do not bloat unrelated pages.
         // The index scope is resolved below once the root gallery's template is known
         // (a plugin-templated homepage must still get that plugin's CSS).
         var photoStylesheets = assetResolver.GetStyleSheets("photo");
-        var scripts = assetResolver.GetScripts();
-
-        // Build lookup of ALL processed images by source path (for content image resolution).
-        // Includes gallery images (from model) and shared _images (from manifest).
-        var allImagesBySourcePath = BuildImageLookup(model);
-        currentImageLookup = allImagesBySourcePath;
-
-        // Global filterable image pool (all site images) for inline-gallery [[gallery: <filter>]] tokens.
-        var imageContentsBySourcePath = manifestRepository.Images;
+        var photoScripts = assetResolver.GetScripts("photo");
 
         // Set image lookup on the main engine for the image() template function
         engine.SetImageLookup(allImagesBySourcePath);
@@ -615,36 +648,44 @@ internal sealed partial class RenderService(
         // (e.g. a calendar landing page with template "calendar/page") must still get
         // that plugin's CSS — derive the scope from the root template like galleries do.
         var indexScope = "index";
+        var indexViewerMode = PhotoViewerMode.None;
 
         // Load root gallery metadata (body content, etc.)
         if (rootGallery is not null)
         {
             var rootAssetsBasePath = CalculateAssetsBasePath(config, "");
-            var rootSourcePath = GetGallerySourcePath(rootGallery);
+            var rootMetadata = preparedGalleryMetadata[rootGallery];
+            var rootMemberships = photoMemberships
+                .Where(membership => ReferenceEquals(membership.Gallery, rootGallery))
+                .ToList();
             var rootImageContext = new ContentImageContext(
                 allImagesBySourcePath,
                 rootGallery.Path,
                 rootAssetsBasePath,
                 formats.Keys,
                 CreateContentImageRenderer(engine, contentImageTemplate, rootAssetsBasePath, formats.Keys),
-                filterExpression => GalleryImageResolver.Resolve(imageContentsBySourcePath, filterExpression),
                 CreateGalleryBlockContext(
-                    rootGallery,
-                    rootGallery.Images,
+                    rootMetadata.PreparedBlocks,
                     engine,
                     rootAssetsBasePath,
+                    indexBasePath,
                     formats.Keys,
-                    rootSourcePath));
-            var (rootTemplate, _, _) = await LoadGalleryMetadataAsync(rootGallery, rootImageContext, cancellationToken);
-            indexScope = ScopeFromTemplate(rootTemplate, "index");
+                    rootMetadata.SourcePath,
+                    rootMemberships));
+            RenderPreparedGalleryBody(rootGallery, rootMetadata, rootImageContext);
+            indexScope = ScopeFromTemplate(rootMetadata.Template, "index");
+            indexViewerMode = rootMetadata.PhotoViewerMode;
         }
 
         var indexStylesheets = assetResolver.GetStyleSheets(indexScope);
+        var indexScripts = GetPageScripts(indexScope, indexViewerMode);
 
         // Use root gallery images if available (may be filtered), otherwise all images
         var indexImages = rootGallery?.Images.Count > 0
             ? rootGallery.Images
             : model.Images;
+        var rootBaseMembership = photoMemberships.FirstOrDefault(membership =>
+            ReferenceEquals(membership.Gallery, rootGallery) && membership.GridNumber is null);
 
         var indexHtml = engine.Render(
             indexTemplate,
@@ -654,6 +695,9 @@ internal sealed partial class RenderService(
                 ["gallery"] = rootGallery?.ToScriptObject(),
                 ["galleries"] = model.Galleries.ToScriptArray(),
                 ["images"] = indexImages.ToScriptArray(),
+                ["occurrences"] = rootBaseMembership is null
+                    ? Array.Empty<object>()
+                    : BuildOccurrences(rootBaseMembership).ToScriptArray(),
                 ["nav_items"] = indexNavigation.ToScriptArray(),
                 ["basepath"] = indexBasePath,
                 ["assets_basepath"] = indexAssetsBasePath,
@@ -661,7 +705,7 @@ internal sealed partial class RenderService(
                 ["image_formats"] = formats.Keys,
                 ["revela"] = revelaInfo,
                 ["stylesheets"] = indexStylesheets,
-                ["scripts"] = scripts,
+                ["scripts"] = indexScripts
             });
 
         WarnIfHtmlTruncated(indexHtml, "index.html");
@@ -677,48 +721,52 @@ internal sealed partial class RenderService(
         {
             ct.ThrowIfCancellationRequested();
 
-            // Load metadata from _index.md at render time (not stored in manifest)
             var contentAssetsBasePath = CalculateAssetsBasePath(config, UrlBuilder.CalculateBasePath(gallery.Slug));
-            var gallerySourcePath = GetGallerySourcePath(gallery);
+            var metadata = preparedGalleryMetadata[gallery];
+            var galleryMemberships = photoMemberships
+                .Where(membership => ReferenceEquals(membership.Gallery, gallery))
+                .ToList();
+            var relativeBasePath = UrlBuilder.CalculateBasePath(gallery.Slug);
+            var basepath = CalculateSiteBasePath(config, relativeBasePath);
             var galleryImageContext = new ContentImageContext(
                 allImagesBySourcePath,
                 gallery.Path,
                 contentAssetsBasePath,
                 formats.Keys,
                 CreateContentImageRenderer(renderEngine, contentImageTemplate, contentAssetsBasePath, formats.Keys),
-                filterExpression => GalleryImageResolver.Resolve(imageContentsBySourcePath, filterExpression),
                 CreateGalleryBlockContext(
-                    gallery,
-                    gallery.Images,
+                    metadata.PreparedBlocks,
                     renderEngine,
                     contentAssetsBasePath,
+                    basepath,
                     formats.Keys,
-                    gallerySourcePath));
-            var (customTemplate, dataSources, metadataBasePath) = await LoadGalleryMetadataAsync(gallery, galleryImageContext, ct);
+                    metadata.SourcePath,
+                    galleryMemberships));
+            RenderPreparedGalleryBody(gallery, metadata, galleryImageContext);
 
             // Page scope for stylesheet filtering: a plugin template like
             // "statistics/overview" scopes to its prefix ("statistics"); a plain
             // gallery scopes to "gallery".
-            var galleryScope = ScopeFromTemplate(customTemplate, "gallery");
+            var galleryScope = ScopeFromTemplate(metadata.Template, "gallery");
 
             var galleryStylesheets = assetResolver.GetStyleSheets(galleryScope);
+            var galleryScripts = GetPageScripts(galleryScope, metadata.PhotoViewerMode);
 
             var galleryImages = gallery.Images.ToList();
+            var baseMembership = galleryMemberships.FirstOrDefault(membership => membership.GridNumber is null);
 
-            var relativeBasePath = UrlBuilder.CalculateBasePath(gallery.Slug);
-            var basepath = CalculateSiteBasePath(config, relativeBasePath);
             var galleryNavigation = SetActiveState(model.Navigation, gallery.Slug);
             var galleryAssetsBasePath = CalculateAssetsBasePath(config, relativeBasePath);
 
-            var effectiveDataSources = dataSources;
-            if (dataSources.Count == 0 && customTemplate is not null)
+            var effectiveDataSources = metadata.DataSources;
+            if (metadata.DataSources.Count == 0 && metadata.Template is not null)
             {
-                effectiveDataSources = GetExtensionDataDefaults(customTemplate);
+                effectiveDataSources = GetExtensionDataDefaults(metadata.Template);
             }
 
             var resolvedData = await ResolveDataSourcesAsync(
                 effectiveDataSources,
-                metadataBasePath,
+                metadata.BasePath,
                 projectEnvironment.Value.Path,
                 SourcePath,
                 model.Galleries,
@@ -737,6 +785,9 @@ internal sealed partial class RenderService(
                 ["gallery"] = gallery.ToScriptObject(),
                 ["page_content"] = pageContent,
                 ["images"] = galleryImages.ToScriptArray(),
+                ["occurrences"] = baseMembership is null
+                    ? Array.Empty<object>()
+                    : BuildOccurrences(baseMembership).ToScriptArray(),
                 ["nav_items"] = galleryNavigation.ToScriptArray(),
                 ["basepath"] = basepath,
                 ["assets_basepath"] = galleryAssetsBasePath,
@@ -744,7 +795,7 @@ internal sealed partial class RenderService(
                 ["image_formats"] = formats.Keys,
                 ["revela"] = revelaInfo,
                 ["stylesheets"] = galleryStylesheets,
-                ["scripts"] = scripts
+                ["scripts"] = galleryScripts
             };
 
             foreach (var (key, value) in resolvedData)
@@ -819,7 +870,7 @@ internal sealed partial class RenderService(
                 ["image_formats"] = formats.Keys,
                 ["revela"] = revelaInfo,
                 ["stylesheets"] = photoStylesheets,
-                ["scripts"] = scripts
+                ["scripts"] = photoScripts
             };
 
             var photoHtml = renderEngine.Render(template, photoModel);
@@ -915,9 +966,10 @@ internal sealed partial class RenderService(
     }
 
     /// <summary>
-    /// Derives the stylesheet page-type scope token from a page's template.
-    /// A plugin template like "statistics/overview" scopes to its prefix
-    /// ("statistics"); a null/empty or prefix-less template uses <paramref name="fallback"/>.
+    /// Derives the asset scope token from a page's template. A namespaced template
+    /// like "statistics/overview" scopes to its prefix ("statistics"); a plain
+    /// template like "docs" uses its full name. Only a null/empty template uses
+    /// <paramref name="fallback"/>.
     /// </summary>
     private static string ScopeFromTemplate(string? template, string fallback)
     {
@@ -927,7 +979,23 @@ internal sealed partial class RenderService(
         }
 
         var slashIndex = template.IndexOf('/', StringComparison.Ordinal);
-        return slashIndex > 0 ? template[..slashIndex] : fallback;
+        return slashIndex > 0 ? template[..slashIndex] : template;
+    }
+
+    private IReadOnlyList<string> GetPageScripts(string scope, PhotoViewerMode viewerMode)
+    {
+        var scripts = assetResolver.GetScripts(scope);
+        if (viewerMode is not PhotoViewerMode.Lightbox)
+        {
+            return scripts;
+        }
+
+        return
+        [
+            .. scripts,
+            .. assetResolver.GetScripts("lightbox")
+                .Where(script => !scripts.Contains(script, StringComparer.OrdinalIgnoreCase))
+        ];
     }
 
     private static string CalculateAssetsBasePath(RenderContext config, string basepath)
@@ -986,45 +1054,173 @@ internal sealed partial class RenderService(
         key.Equals("gallery", StringComparison.OrdinalIgnoreCase);
 
     /// <summary>
-    /// Loads metadata from _index.revela for a gallery at render time.
+    /// Loads and prepares metadata from every gallery before photo-page catalog construction.
     /// </summary>
     /// <remarks>
-    /// Returns template name, data sources dictionary, and base path.
-    /// When template is set (e.g., "statistics/overview"), the page uses a custom template.
+    /// Preparation parses inline-gallery blocks and freezes their selected image occurrences.
     /// </remarks>
-    private async Task<(string? Template, IReadOnlyDictionary<string, string> DataSources, string BasePath)> LoadGalleryMetadataAsync(
-        Gallery gallery,
-        ContentImageContext imageContext,
+    private async Task<IReadOnlyDictionary<Gallery, PreparedGalleryMetadata>> PrepareGalleryMetadataAsync(
+        IReadOnlyList<Gallery> galleries,
+        IReadOnlyDictionary<string, Image> imagesBySourcePath,
+        IReadOnlyDictionary<string, ImageContent> imageContentsBySourcePath,
+        ThemeManifest themeManifest,
+        string themeName,
         CancellationToken cancellationToken)
     {
-        // Build path to _index.revela in source directory
-        var indexPath = Path.Combine(SourcePath, gallery.Path, RevelaParser.IndexFileName);
-        var basePath = Path.GetDirectoryName(indexPath)!;
-
-        if (!File.Exists(indexPath))
+        var prepared = new Dictionary<Gallery, PreparedGalleryMetadata>();
+        foreach (var gallery in galleries)
         {
-            return (null, new Dictionary<string, string>(), basePath);
+            cancellationToken.ThrowIfCancellationRequested();
+
+            var sourcePath = GetGallerySourcePath(gallery);
+            var basePath = Path.GetDirectoryName(sourcePath)!;
+            if (!File.Exists(sourcePath))
+            {
+                var missingFileViewerMode = PhotoViewerResolver.Resolve(
+                    null,
+                    themeConfig.CurrentValue.PhotoViewer,
+                    themeManifest,
+                    sourcePath,
+                    themeName);
+                gallery.HasInlineGalleries = false;
+                prepared.Add(
+                    gallery,
+                    new PreparedGalleryMetadata(
+                        sourcePath,
+                        null,
+                        gallery.Template,
+                        gallery.DataSources,
+                        basePath,
+                        PreparedGalleryBlocks.Empty,
+                        missingFileViewerMode));
+                continue;
+            }
+
+            var metadata = await revelaParser.ParseFileAsync(sourcePath, cancellationToken);
+            var viewerMode = PhotoViewerResolver.Resolve(
+                metadata.PhotoViewer,
+                themeConfig.CurrentValue.PhotoViewer,
+                themeManifest,
+                sourcePath,
+                themeName);
+            var rawBody = metadata.RawBody;
+            var preparedBlocks = rawBody is null
+                ? PreparedGalleryBlocks.Empty
+                : markdownService.PrepareGalleryBlocks(
+                    rawBody,
+                    sourcePath,
+                    gallery.Images,
+                    filterExpression => GalleryImageResolver.Resolve(
+                        imageContentsBySourcePath,
+                        filterExpression,
+                        metadata.Sort,
+                        options.CurrentValue.Sorting.Images));
+
+            gallery.HasInlineGalleries = preparedBlocks.Count > 0;
+            gallery.Template = metadata.Template;
+
+            if (metadata.Cover is not null)
+            {
+                gallery.CoverImage = ResolveImageByPath(metadata.Cover, gallery.Path, imagesBySourcePath);
+            }
+
+            prepared.Add(
+                gallery,
+                new PreparedGalleryMetadata(
+                    sourcePath,
+                    rawBody,
+                    metadata.Template,
+                    metadata.DataSources,
+                    basePath,
+                    preparedBlocks,
+                    viewerMode));
         }
 
-        var metadata = await revelaParser.ParseFileAsync(indexPath, cancellationToken);
+        return prepared;
+    }
 
-        // Convert raw body (Markdown) to HTML with content image resolution
+    private static IReadOnlyList<PhotoMembership> BuildPhotoMemberships(
+        IReadOnlyList<Gallery> galleries,
+        IReadOnlyDictionary<Gallery, PreparedGalleryMetadata> preparedGalleryMetadata)
+    {
+        var memberships = new List<PhotoMembership>();
+        foreach (var gallery in galleries)
+        {
+            var metadata = preparedGalleryMetadata[gallery];
+            var blocks = metadata.PreparedBlocks.Blocks.Values.ToList();
+            var hasBareBlock = blocks.Any(block => block.GridNumber is null && block.Images.Count > 0);
+            var hasTrailingGrid = blocks.Count == 0 && IsDefaultGalleryBody(metadata.Template);
+
+            if ((hasBareBlock || hasTrailingGrid) && gallery.Images.Count > 0)
+            {
+                memberships.Add(new PhotoMembership(gallery, gallery.Images, null, metadata.PhotoViewerMode));
+            }
+
+            var filteredBlocks = blocks
+                .Where(block => block.GridNumber is not null && block.Images.Count > 0)
+                .OrderBy(block => block.GridNumber);
+            memberships.AddRange(filteredBlocks.Select(block =>
+                new PhotoMembership(gallery, block.Images, block.GridNumber, metadata.PhotoViewerMode)));
+        }
+
+        return memberships;
+    }
+
+    private static bool IsDefaultGalleryBody(string? template) =>
+        template is null
+        || template.Equals("gallery", StringComparison.OrdinalIgnoreCase)
+        || template.Equals("body/gallery", StringComparison.OrdinalIgnoreCase);
+
+    private static IReadOnlyList<GalleryImageOccurrence> BuildOccurrences(
+        PhotoMembership membership,
+        int? bareRenderOrdinal = null)
+    {
+        var occurrences = new List<GalleryImageOccurrence>(membership.Images.Count);
+        var contextLabel = !string.IsNullOrWhiteSpace(membership.Gallery.Title)
+            ? membership.Gallery.Title
+            : membership.Gallery.Name;
+        for (var index = 0; index < membership.Images.Count; index++)
+        {
+            var image = membership.Images[index];
+            occurrences.Add(new GalleryImageOccurrence(
+                image,
+                ViewerModeValue(membership.ViewerMode),
+                PhotoPageCatalog.ContextId(membership),
+                contextLabel,
+                OccurrenceId(image.Slug, membership.GridNumber, bareRenderOrdinal),
+                index > 0
+                    ? OccurrenceId(membership.Images[index - 1].Slug, membership.GridNumber, bareRenderOrdinal)
+                    : null,
+                index < membership.Images.Count - 1
+                    ? OccurrenceId(membership.Images[index + 1].Slug, membership.GridNumber, bareRenderOrdinal)
+                    : null));
+        }
+
+        return occurrences;
+    }
+
+    private static string OccurrenceId(string imageSlug, int? gridNumber, int? bareRenderOrdinal) =>
+        bareRenderOrdinal is null
+            ? PhotoPageCatalog.Anchor(imageSlug, gridNumber)
+            : $"bare-{bareRenderOrdinal.Value}-{PhotoPageCatalog.Anchor(imageSlug, null)}";
+
+    private static string ViewerModeValue(PhotoViewerMode viewerMode) => viewerMode switch
+    {
+        PhotoViewerMode.Page => "page",
+        PhotoViewerMode.Lightbox => "lightbox",
+        PhotoViewerMode.None => "none",
+        _ => throw new ArgumentOutOfRangeException(nameof(viewerMode), viewerMode, null)
+    };
+
+    private void RenderPreparedGalleryBody(
+        Gallery gallery,
+        PreparedGalleryMetadata metadata,
+        ContentImageContext imageContext)
+    {
         if (metadata.RawBody is not null)
         {
             gallery.Body = markdownService.ToHtml(metadata.RawBody, imageContext);
         }
-
-        // Resolve cover image path to Image object using same lookup as content images
-        if (metadata.Cover is not null)
-        {
-            gallery.CoverImage = ResolveImageByPath(metadata.Cover, imageContext);
-        }
-
-        // Always set template (may be null - layout will use default "body/gallery")
-        gallery.Template = metadata.Template;
-
-        // Return template info and data sources for custom template processing
-        return (metadata.Template, metadata.DataSources, basePath);
     }
 
     /// <summary>
@@ -1038,15 +1234,18 @@ internal sealed partial class RenderService(
     /// <item>Exact match: <c>{path}</c> as-is</item>
     /// </list>
     /// </remarks>
-    private static Image? ResolveImageByPath(string imagePath, ContentImageContext imageContext)
+    private static Image? ResolveImageByPath(
+        string imagePath,
+        string galleryPath,
+        IReadOnlyDictionary<string, Image> imagesBySourcePath)
     {
         var normalizedPath = imagePath.Replace('\\', '/');
 
         // 1. Gallery-local
-        if (!string.IsNullOrEmpty(imageContext.GalleryPath))
+        if (!string.IsNullOrEmpty(galleryPath))
         {
-            var localPath = $"{imageContext.GalleryPath}/{normalizedPath}";
-            if (imageContext.ImagesBySourcePath.TryGetValue(localPath, out var localImage))
+            var localPath = $"{galleryPath}/{normalizedPath}";
+            if (imagesBySourcePath.TryGetValue(localPath, out var localImage))
             {
                 return localImage;
             }
@@ -1054,13 +1253,13 @@ internal sealed partial class RenderService(
 
         // 2. Shared images: _images/{path}
         var sharedPath = $"{ProjectPaths.SharedImages}/{normalizedPath}";
-        if (imageContext.ImagesBySourcePath.TryGetValue(sharedPath, out var sharedImage))
+        if (imagesBySourcePath.TryGetValue(sharedPath, out var sharedImage))
         {
             return sharedImage;
         }
 
         // 3. Exact match
-        if (imageContext.ImagesBySourcePath.TryGetValue(normalizedPath, out var exactImage))
+        if (imagesBySourcePath.TryGetValue(normalizedPath, out var exactImage))
         {
             return exactImage;
         }
@@ -1094,12 +1293,13 @@ internal sealed partial class RenderService(
     /// themes without inline galleries are unaffected. A missing template raises a source-located error.
     /// </remarks>
     private GalleryBlockContext CreateGalleryBlockContext(
-        Gallery gallery,
-        IReadOnlyList<Image> pageImages,
+        PreparedGalleryBlocks preparedBlocks,
         ITemplateEngine engine,
         string assetsBasePath,
+        string basePath,
         IEnumerable<string> imageFormats,
-        string sourcePath)
+        string sourcePath,
+        IReadOnlyList<PhotoMembership> memberships)
     {
         string? galleryGridTemplate = null;
 
@@ -1109,27 +1309,42 @@ internal sealed partial class RenderService(
                     $"{sourcePath}:{line}: theme is missing required template 'Partials/GalleryGrid.revela'. " +
                     "This template renders [[gallery]] blocks in Markdown body content.");
 
-        string RenderGalleryGrid(IReadOnlyList<Image> images, int line) =>
-            engine.Render(
+        string RenderGalleryGrid(PreparedGalleryBlock preparedBlock, int line)
+        {
+            var membership = memberships.Single(candidate =>
+                candidate.GridNumber == preparedBlock.GridNumber);
+            var occurrences = BuildOccurrences(membership, preparedBlock.BareRenderOrdinal);
+
+            return engine.Render(
                 GetGalleryGridTemplate(line),
                 new Dictionary<string, object?>
                 {
-                    ["images"] = images.ToScriptArray(),
+                    ["occurrences"] = occurrences.ToScriptArray(),
                     ["assets_basepath"] = assetsBasePath,
+                    ["basepath"] = basePath,
                     ["image_formats"] = imageFormats
                 });
+        }
 
         return new GalleryBlockContext(
             sourcePath,
-            pageImages,
+            preparedBlocks,
             line => _ = GetGalleryGridTemplate(line),
             RenderGalleryGrid,
-            () => gallery.HasInlineGalleries = true,
             warning => LogInlineGalleryWarning(logger, warning));
     }
 
     private string GetGallerySourcePath(Gallery gallery) =>
         Path.Combine(SourcePath, gallery.Path, RevelaParser.IndexFileName);
+
+    private sealed record PreparedGalleryMetadata(
+        string SourcePath,
+        string? RawBody,
+        string? Template,
+        IReadOnlyDictionary<string, string> DataSources,
+        string BasePath,
+        PreparedGalleryBlocks PreparedBlocks,
+        PhotoViewerMode PhotoViewerMode);
 
     /// <summary>
     /// Gets default data sources from theme extensions for a template.

@@ -1,17 +1,19 @@
 {{~##
 Image Article Template - Lumina Theme
 
-Renders a gallery article: a responsive River Flow thumbnail wrapped in an ordinary
-internal link to the photo page (#77). The old inline lightbox figure, EXIF overlay,
-:target state and per-image zoom have been removed — opening an image now navigates to
-its canonical /photo/{slug}/ page.
+Renders a responsive River Flow thumbnail. Page mode links to the canonical photo page,
+lightbox mode adds a progressively enhanced dialog, and none mode remains static.
 
 Context variables:
 - image: ImageData { id, slug, width, height, title?, sizes, placeholder? }
 - assets_basepath: path/URL to image folder (can be CDN URL)
 - image_formats: available formats ["avif", "webp", "jpg"]
-- gallery: current gallery (global) — used for the navigation context fragment.
-  Absent for inline [[gallery]] grids, which are not contexts in this MVP.
+- viewer_mode: lowercase viewer mode
+- context_id: context fragment for this occurrence
+- context_label: human-readable gallery context for this occurrence
+- occurrence_id: anchor id for this occurrence
+- previous_occurrence_id: previous occurrence anchor, if any
+- next_occurrence_id: next occurrence anchor, if any
 
 Note: sizes="auto" requires loading="lazy" - browser uses actual
 rendered size instead of viewport. Firefox/Safari fallback to 100vw.
@@ -23,26 +25,41 @@ rendered size instead of viewport. Firefox/Safari fallback to 100vw.
 {{~ # Variables ~}}
 {{~ alt_text = image.title ?? '' ~}}
 {{~ is_landscape = image.width >= image.height ~}}
-{{~ anchor_id = 'photo-' + (image.slug | string.replace '/' '-') ~}}
+{{~ should_link_to_photo_page = viewer_mode == 'page' ~}}
+{{~ should_render_lightbox = viewer_mode == 'lightbox' ~}}
+{{~ if should_render_lightbox ~}}
+{{~ lightbox_id = 'lightbox-' + occurrence_id ~}}
+{{~ lightbox_trigger_id = 'lightbox-trigger-' + occurrence_id ~}}
+{{~ end ~}}
+{{~ if should_link_to_photo_page ~}}
 {{~ photo_href = page_url(image) ~}}
-{{~ if gallery ~}}
-{{~ context_id = gallery.slug == '' ? 'home' : (gallery.slug | string.replace '/' '-') ~}}
+{{~ if context_id ~}}
 {{~ photo_href = photo_href + '#ctx-' + context_id ~}}
 {{~ end ~}}
+{{~ end ~}}
 
-<article id="{{ anchor_id }}" style="--width:{{ image.width }}; --height:{{ image.height }};{{~ if image.placeholder ~}} --lqip:{{ image.placeholder }};{{~ end ~}}">
-    {{~ # --- Thumbnail wrapped in a link to the photo page (sizes="auto" for smart loading) --- ~}}
-    <a href="{{ photo_href }}"{{ alt_text == '' ? ' aria-label="View photo ' + image.id + '"' : '' }}>
+<article id="{{ html_escape occurrence_id }}" style="--width:{{ html_escape image.width }}; --height:{{ html_escape image.height }};{{~ if image.placeholder ~}} --lqip:{{ html_escape image.placeholder }};{{~ end ~}}">
+    {{~ if should_link_to_photo_page ~}}
+    <a href="{{ html_escape photo_href }}"{{~ if alt_text == '' }} aria-label="View photo {{ html_escape image.id }}"{{ end }}>
+    {{~ end ~}}
         <picture>
             {{~ for format in image_formats ~}}
-            <source type="image/{{ format }}" sizes="auto" srcset="
+            <source type="image/{{ html_escape format }}" sizes="auto" srcset="
                 {{~ for size in image.sizes ~}}
                 {{~ actual_width = is_landscape ? size : ((size * image.width / image.height) | math.floor) ~}}
-                {{- assets_basepath }}{{ image.slug }}/{{ size }}.{{ format }} {{ actual_width }}w{{ !for.last ? " , " : "" }}
+                {{- html_escape assets_basepath }}{{ html_escape image.slug }}/{{ html_escape size }}.{{ html_escape format }} {{ html_escape actual_width }}w{{ !for.last ? " , " : "" }}
                 {{~ end ~}}">
             {{~ end ~}}
-            <img alt="{{ alt_text }}" src="{{ assets_basepath }}{{ image.slug }}/640.{{ image_formats | array.last }}" sizes="auto"
-                width="{{ image.width }}" height="{{ image.height }}" loading="lazy" decoding="async">
+            <img alt="{{ html_escape alt_text }}" src="{{ html_escape assets_basepath }}{{ html_escape image.slug }}/640.{{ html_escape (image_formats | array.last) }}" sizes="auto"
+                width="{{ html_escape image.width }}" height="{{ html_escape image.height }}" loading="lazy" decoding="async">
         </picture>
+    {{~ if should_link_to_photo_page ~}}
     </a>
+    {{~ end ~}}
+    {{~ if should_render_lightbox ~}}
+    <button id="{{ html_escape lightbox_trigger_id }}" type="button" aria-haspopup="dialog"
+        aria-controls="{{ html_escape lightbox_id }}" aria-label="{{~ if alt_text != '' }}{{ html_escape alt_text }}{{ else }}View photo {{ html_escape image.id }}{{ end }}"
+        commandfor="{{ html_escape lightbox_id }}" command="show-modal"></button>
+    {{~ include 'photolightbox' image ~}}
+    {{~ end ~}}
 </article>

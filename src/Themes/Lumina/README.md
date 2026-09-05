@@ -9,7 +9,8 @@ The default photography portfolio theme for [Revela](https://github.com/spectara
 - 🎨 **Clean, Minimal Design** - Focus on your photos
 - 📱 **Fully Responsive** - Works on all devices
 - 🖼️ **Canonical Photo Pages** - Every published photo gets its own `/photo/{slug}/` page
-- ⚡ **Fast Loading** - Optimized CSS, lazy loading images, no JavaScript required
+- 🔎 **Flexible Photo Viewers** - Choose photo pages, an accessible lightbox, or static images
+- ⚡ **Fast Loading** - Optimized CSS, lazy loading images, and page-scoped JavaScript enhancements
 - 🌙 **Dark Mode Ready** - Respects system preferences
 - 🔍 **SEO Optimized** - Proper meta tags and structure
 
@@ -69,7 +70,53 @@ description = "Photos from my summer vacation in Italy."
 Photos from my summer vacation in Italy.
 ```
 
-Supported frontmatter fields: `title`, `slug`, `description`, `hidden`, `pinned`, `template`, `sort`, `filter`.
+Supported frontmatter fields: `title`, `slug`, `description`, `hidden`, `pinned`, `template`, `sort`, `filter`, `photo_viewer`.
+
+## Photo Viewer
+
+Lumina supports three photo viewer modes:
+
+- `page` (default): link each published occurrence to its canonical photo page.
+- `lightbox`: open a native, keyboard-accessible in-page dialog.
+- `none`: render static responsive images.
+
+Set a project-wide override in `project.json`:
+
+```json
+{
+  "theme": {
+    "name": "Lumina",
+    "photoViewer": "lightbox"
+  }
+}
+```
+
+Override an individual page or gallery in `_index.revela`:
+
+```text
++++
+photo_viewer = "none"
++++
+```
+
+Page overrides win over the project setting, which wins over Lumina's default. The selected body
+template does not affect the viewer.
+
+## Inline Galleries
+
+Place a responsive gallery inside an `_index.revela` Markdown body with a standalone token:
+
+```text
+[[gallery]]
+
+[[gallery: width > height | sort dateTaken desc | limit 6]]
+```
+
+The bare token uses the page image set. A filtered token selects globally and creates its own
+viewer context. Custom body templates use the same explicit viewer setting as default gallery
+pages. See the repository's
+[inline gallery documentation](../../../docs/inline-galleries.md) for syntax, ordering, errors,
+and the theme partial contract.
 
 ## Extensions
 

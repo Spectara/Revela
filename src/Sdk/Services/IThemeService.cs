@@ -1,4 +1,5 @@
 using Spectara.Revela.Sdk.Abstractions;
+using Spectara.Revela.Sdk.Models;
 
 namespace Spectara.Revela.Sdk.Services;
 
@@ -45,10 +46,10 @@ public interface IThemeService
     ThemeFilesResult GetFiles(string? themeName = null);
 
     /// <summary>
-    /// Switches the active theme in project.json.
+    /// Atomically updates the active theme and project photo viewer override.
     /// </summary>
-    Task SetActiveThemeAsync(
-        string themeName,
+    Task<ThemeUpdateResult> UpdateAsync(
+        ThemeUpdateRequest request,
         CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -106,6 +107,9 @@ public sealed class ThemeInfo
 
     /// <summary>Extensions targeting this theme.</summary>
     public IReadOnlyList<ThemeExtensionInfo> Extensions { get; init; } = [];
+
+    /// <summary>Photo viewer capabilities declared by the resolved base theme.</summary>
+    public PhotoViewerCapabilities? PhotoViewerCapabilities { get; init; }
 }
 
 /// <summary>
@@ -157,6 +161,35 @@ public sealed class ThemeInfoResult
 
     /// <summary>Extensions for this theme.</summary>
     public IReadOnlyList<ThemeExtensionInfo> Extensions { get; init; } = [];
+
+    /// <summary>Photo viewer capabilities declared by the resolved base theme.</summary>
+    public PhotoViewerCapabilities? PhotoViewerCapabilities { get; init; }
+}
+
+/// <summary>
+/// Describes an atomic project theme configuration update.
+/// </summary>
+/// <param name="ThemeName">Optional target theme; null keeps the current theme.</param>
+/// <param name="PhotoViewer">Optional viewer override; null leaves the override unchanged.</param>
+/// <param name="ClearPhotoViewer">Whether to remove the project viewer override.</param>
+public sealed record ThemeUpdateRequest(
+    string? ThemeName = null,
+    PhotoViewerMode? PhotoViewer = null,
+    bool ClearPhotoViewer = false);
+
+/// <summary>
+/// Result of an atomic project theme configuration update.
+/// </summary>
+public sealed class ThemeUpdateResult
+{
+    /// <summary>Whether the update was written.</summary>
+    public required bool Success { get; init; }
+
+    /// <summary>The resolved target theme name.</summary>
+    public required string ThemeName { get; init; }
+
+    /// <summary>Error message when validation rejected the update.</summary>
+    public string? ErrorMessage { get; init; }
 }
 
 /// <summary>

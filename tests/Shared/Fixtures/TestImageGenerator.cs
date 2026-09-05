@@ -161,6 +161,12 @@ public static class TestImageGenerator
             image = image.Mutate(m => m.Set(GValue.GStrType, "exif-ifd0-Model", exif.CameraModel));
         }
 
+        if (!string.IsNullOrEmpty(exif.ImageDescription))
+        {
+            image = image.Mutate(m =>
+                m.Set(GValue.GStrType, "exif-ifd0-ImageDescription", exif.ImageDescription));
+        }
+
         if (exif.Iso.HasValue)
         {
             image = image.Mutate(m =>
@@ -239,6 +245,9 @@ public sealed class ExifOptions
     /// <summary>Camera model (e.g., "EOS R5", "ILCE-7M4").</summary>
     public string? CameraModel { get; private set; }
 
+    /// <summary>Short image description.</summary>
+    public string? ImageDescription { get; private set; }
+
     /// <summary>ISO sensitivity (e.g., 100, 400, 3200).</summary>
     public int? Iso { get; private set; }
 
@@ -265,6 +274,13 @@ public sealed class ExifOptions
     {
         CameraMake = make;
         CameraModel = model;
+        return this;
+    }
+
+    /// <summary>Sets the short image description.</summary>
+    public ExifOptions WithDescription(string description)
+    {
+        ImageDescription = description;
         return this;
     }
 

@@ -3,6 +3,7 @@ using Microsoft.Extensions.Options;
 using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Abstractions;
 using Spectara.Revela.Sdk.Configuration;
+using Spectara.Revela.Sdk.Models;
 using Spectara.Revela.Sdk.Services;
 
 namespace Spectara.Revela.Features.Generate.Services.Checks;
@@ -18,6 +19,7 @@ internal sealed class ThemeCheck(
     IOptionsMonitor<ThemeConfig> themeConfig) : ICheck
 {
     private const string ContentImagePartialKey = "partials/contentimage.revela";
+    private const string PhotoTemplateKey = "body/photo.revela";
 
     /// <inheritdoc />
     public string Name => "theme";
@@ -63,6 +65,14 @@ internal sealed class ThemeCheck(
             diagnostics.Add(ValidationDiagnostic.Error(
                 $"Theme '{themeName}' is missing the required partial 'Partials/ContentImage.revela'.",
                 hint: "This partial renders images in Markdown body content — reinstall the theme."));
+        }
+
+        if (theme.Manifest.PhotoViewer?.Supported.Contains(PhotoViewerMode.Page) is true
+            && !TemplateExists(PhotoTemplateKey))
+        {
+            diagnostics.Add(ValidationDiagnostic.Error(
+                $"Theme '{themeName}' supports the 'page' photo viewer but is missing 'Body/Photo.revela'.",
+                hint: "Add the photo page template or remove 'page' from the theme's supported photo viewers."));
         }
 
         return new ValueTask<IReadOnlyList<ValidationDiagnostic>>(diagnostics);

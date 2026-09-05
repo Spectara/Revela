@@ -1,4 +1,5 @@
 using Spectara.Revela.Features.Generate.Services;
+using Spectara.Revela.Sdk.Configuration;
 using Spectara.Revela.Sdk.Models;
 using Spectara.Revela.Sdk.Models.Manifest;
 
@@ -51,6 +52,58 @@ public sealed class GalleryImageResolverTests
         // Assert
         Assert.AreEqual("dated.jpg", result[0].SourcePath);
         Assert.AreEqual("undated.jpg", result[1].SourcePath);
+    }
+
+    [TestMethod]
+    public void Resolve_LimitWithoutPipeSort_HonorsPageSortBeforeLimit()
+    {
+        // Arrange
+        var images = new Dictionary<string, ImageContent>
+        {
+            ["first.jpg"] = CreateImage("first.jpg", "Canon", new DateTime(2024, 1, 1)),
+            ["second.jpg"] = CreateImage("second.jpg", "Canon", new DateTime(2026, 1, 1)),
+            ["third.jpg"] = CreateImage("third.jpg", "Canon", new DateTime(2025, 1, 1))
+        };
+        var globalSort = new ImageSortConfig
+        {
+            Field = "filename",
+            Direction = SortDirection.Asc,
+            Fallback = "filename"
+        };
+
+        // Act
+        var result = GalleryImageResolver.Resolve(images, "all | limit 2", "dateTaken:desc", globalSort);
+
+        // Assert
+        Assert.AreEqual("second.jpg", result[0].SourcePath);
+        Assert.AreEqual("third.jpg", result[1].SourcePath);
+    }
+
+    [TestMethod]
+    public void Resolve_ImageDescriptionMetadata_PreservesDescriptionForRendering()
+    {
+        var images = new Dictionary<string, ImageContent>
+        {
+            ["described.jpg"] = new ImageContent
+            {
+                Filename = "described.jpg",
+                Width = 1920,
+                Height = 1080,
+                Sizes = [320, 640, 1280],
+                Exif = new ExifData
+                {
+                    Raw = new Dictionary<string, string>
+                    {
+                        ["ImageDescription"] = "Evening light"
+                    }
+                }
+            }
+        };
+
+        var result = GalleryImageResolver.Resolve(images, "all");
+
+        Assert.HasCount(1, result);
+        Assert.AreEqual("Evening light", result[0].Description);
     }
 
     private static ImageContent CreateImage(string filename, string make, DateTime? dateTaken) => new()

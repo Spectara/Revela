@@ -1,5 +1,6 @@
 using Spectara.Revela.Features.Generate.Filtering;
 using Spectara.Revela.Features.Generate.Models;
+using Spectara.Revela.Sdk.Configuration;
 using Spectara.Revela.Sdk.Models.Manifest;
 
 namespace Spectara.Revela.Features.Generate.Services;
@@ -14,7 +15,9 @@ internal static class GalleryImageResolver
     /// </summary>
     public static IReadOnlyList<Image> Resolve(
         IReadOnlyDictionary<string, ImageContent> imageContentsBySourcePath,
-        string filterExpression)
+        string filterExpression,
+        string? pageSort = null,
+        ImageSortConfig? globalSort = null)
     {
         ArgumentNullException.ThrowIfNull(imageContentsBySourcePath);
         ArgumentException.ThrowIfNullOrWhiteSpace(filterExpression);
@@ -26,7 +29,7 @@ internal static class GalleryImageResolver
         }
 
         return [.. FilterService
-            .ApplyQuery(imageContentsBySourcePath.Values, filterExpression)
+            .ApplyQuery(imageContentsBySourcePath.Values, filterExpression, pageSort, globalSort)
             .Select(imageContent => Image.FromManifestEntry(sourcePaths[imageContent], imageContent))];
     }
 }

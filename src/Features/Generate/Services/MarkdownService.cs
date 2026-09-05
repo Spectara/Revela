@@ -1,4 +1,8 @@
+using System.Collections.Frozen;
 using Markdig;
+using Markdig.Syntax;
+using Spectara.Revela.Features.Generate.Filtering;
+using Spectara.Revela.Features.Generate.Models;
 
 namespace Spectara.Revela.Features.Generate.Services;
 
@@ -23,6 +27,15 @@ namespace Spectara.Revela.Features.Generate.Services;
 /// </remarks>
 internal interface IMarkdownService
 {
+    /// <summary>
+    /// Parses and resolves inline-gallery blocks before page catalog construction.
+    /// </summary>
+    PreparedGalleryBlocks PrepareGalleryBlocks(
+        string markdown,
+        string sourcePath,
+        IReadOnlyList<Image> pageImages,
+        Func<string, IReadOnlyList<Image>> resolveGalleryImages);
+
     /// <summary>
     /// Converts Markdown text to HTML.
     /// </summary>
@@ -83,6 +96,67 @@ internal sealed class MarkdownService : IMarkdownService
         // Raw HTML intentionally allowed — see class XML doc above.
         .Build();
 
+    /// <inheritdoc />
+    public PreparedGalleryBlocks PrepareGalleryBlocks(
+        string markdown,
+        string sourcePath,
+        IReadOnlyList<Image> pageImages,
+        Func<string, IReadOnlyList<Image>> resolveGalleryImages)
+    {
+        ArgumentNullException.ThrowIfNull(markdown);
+        ArgumentException.ThrowIfNullOrWhiteSpace(sourcePath);
+        ArgumentNullException.ThrowIfNull(pageImages);
+        ArgumentNullException.ThrowIfNull(resolveGalleryImages);
+
+        var pipeline = CreatePipelineBuilder()
+            .Use(new GalleryBlockExtension(sourcePath))
+            .UseGenericAttributes()
+            .Build();
+        var document = Markdown.Parse(markdown, pipeline);
+        var blocks = new Dictionary<GalleryBlockId, PreparedGalleryBlock>();
+        var bareBlockCount = 0;
+        var filteredBlockCount = 0;
+
+        foreach (var block in document.Descendants<GalleryBlock>())
+        {
+            var isDuplicateBare = false;
+            IReadOnlyList<Image> images;
+            if (block.FilterExpression is null)
+            {
+                bareBlockCount++;
+                isDuplicateBare = bareBlockCount > 1;
+                images = [.. pageImages];
+            }
+            else
+            {
+                filteredBlockCount++;
+                try
+                {
+                    images = [.. resolveGalleryImages(block.FilterExpression)];
+                }
+                catch (FilterParseException ex)
+                {
+                    throw new GalleryBlockParseException(
+                        sourcePath,
+                        block.Line + 1,
+                        block.FilterExpression,
+                        ex);
+                }
+            }
+
+            blocks.Add(
+                new GalleryBlockId(block.Line, block.Column),
+                new PreparedGalleryBlock(
+                    images,
+                    isDuplicateBare,
+                    block.FilterExpression,
+                    block.FilterExpression is null ? null : filteredBlockCount,
+                    block.FilterExpression is null ? bareBlockCount : null));
+        }
+
+        return new PreparedGalleryBlocks(blocks.ToFrozenDictionary());
+    }
+
     /// <inheritdoc/>
     public string ToHtml(string markdown)
     {
@@ -96,11 +170,7 @@ internal sealed class MarkdownService : IMarkdownService
         ArgumentNullException.ThrowIfNull(markdown);
         ArgumentNullException.ThrowIfNull(imageContext);
 
-        var pipelineBuilder = new MarkdownPipelineBuilder()
-            .UseAutoLinks()
-            .UseAutoIdentifiers()
-            .UsePipeTables()
-            .UseTaskLists()
+        var pipelineBuilder = CreatePipelineBuilder()
             .Use(new ContentImageExtension(imageContext));
 
         if (imageContext.GalleryBlocks is not null)
@@ -114,5 +184,11 @@ internal sealed class MarkdownService : IMarkdownService
 
         return Markdown.ToHtml(markdown, pipeline);
     }
+
+    private static MarkdownPipelineBuilder CreatePipelineBuilder() => new MarkdownPipelineBuilder()
+        .UseAutoLinks()
+        .UseAutoIdentifiers()
+        .UsePipeTables()
+        .UseTaskLists();
 }
 

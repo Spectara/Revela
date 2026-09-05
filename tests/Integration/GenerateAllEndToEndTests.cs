@@ -4,6 +4,7 @@ using Spectara.Revela.Features.Generate;
 using Spectara.Revela.Features.Generate.Abstractions;
 using Spectara.Revela.Features.Generate.Models.Results;
 using Spectara.Revela.Sdk.Abstractions;
+using Spectara.Revela.Sdk.Artifacts;
 using Spectara.Revela.Tests.Shared.Fixtures;
 using Spectara.Revela.Themes.Lumina;
 
@@ -28,6 +29,39 @@ namespace Spectara.Revela.Tests.Integration;
 [TestCategory("E2E")]
 public sealed class GenerateAllEndToEndTests
 {
+    [TestMethod]
+    public async Task RenderAsync_DerivedArtifactInvalidationFails_DoesNotWriteOutput()
+    {
+        using var project = TestProject.Create(p => p
+            .WithProjectJson(new
+            {
+                project = new { name = "Invalidation Failure" },
+                theme = new { name = "Lumina" }
+            })
+            .WithSiteJson(new { title = "Invalidation Failure", author = "Test" }));
+
+        using var host = RevelaTestHost.Build(project.RootPath, services =>
+        {
+            services.AddRevelaCommands();
+            services.AddGenerateFeature();
+            services.AddSingleton<ITheme>(new LuminaTheme());
+            services.AddSingleton<IArtifactInvalidator, FailingRenderedSiteDependent>();
+        });
+
+        var contentService = host.Services.GetRequiredService<IContentService>();
+        var renderService = host.Services.GetRequiredService<IRenderService>();
+        renderService.SetTheme(host.Services.GetRequiredService<ITheme>());
+        renderService.SetExtensions([]);
+
+        var scanResult = await contentService.ScanAsync();
+        var renderResult = await renderService.RenderAsync();
+
+        Assert.IsTrue(scanResult.Success, $"Scan should succeed: {scanResult.ErrorMessage}");
+        Assert.IsFalse(renderResult.Success);
+        StringAssert.Contains(renderResult.ErrorMessage, "locked sidecar", StringComparison.Ordinal);
+        Assert.IsFalse(File.Exists(Path.Combine(project.OutputPath, "index.html")));
+    }
+
     [TestMethod]
     public async Task GenerateAll_ImagelessSite_ImageStepIsSuccessfulNoOp()
     {
@@ -67,6 +101,21 @@ public sealed class GenerateAllEndToEndTests
             $"Image step must succeed on an image-less site, not fail: {imageResult.ErrorMessage}");
         Assert.AreEqual(0, imageResult.ProcessedCount, "No images means nothing processed");
         Assert.IsNull(imageResult.ErrorMessage, "Image-less site must not surface an error");
+    }
+
+    private sealed class FailingRenderedSiteDependent : IArtifactInvalidator
+    {
+        public ArtifactId Artifact { get; } = new("example/failing-derived-site");
+
+        public IReadOnlyCollection<ArtifactId> DependsOn { get; } = [CoreArtifacts.RenderedSite];
+
+        public ValueTask<ArtifactInvalidationResult> InvalidateAsync(
+            CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return new ValueTask<ArtifactInvalidationResult>(
+                ArtifactInvalidationResult.Fail("locked sidecar"));
+        }
     }
 
     [TestMethod]
@@ -123,6 +172,7 @@ public sealed class GenerateAllEndToEndTests
             .WithSiteJson(new
             {
                 title = "Test Portfolio",
+                language = "de",
                 author = "Test Author",
                 copyright = "2025 Test",
                 description = "E2E test site"
@@ -131,6 +181,7 @@ public sealed class GenerateAllEndToEndTests
                 .WithMarkdown("# Landscapes\n\nBeautiful scenery from around the world.")
                 .AddRealImage("sunset.jpg", 1920, 1080, exif => exif
                     .WithCamera("Canon", "EOS R5")
+                    .WithDescription("Golden sunset")
                     .WithIso(100)
                     .WithAperture(8.0)
                     .WithFocalLength(24)
@@ -203,8 +254,16 @@ public sealed class GenerateAllEndToEndTests
 
         // Assert: HTML content
         var landscapesContent = await File.ReadAllTextAsync(landscapesHtml);
+        Assert.Contains("<html lang=\"de\">", landscapesContent);
         Assert.IsTrue(landscapesContent.Contains("Landscapes", StringComparison.Ordinal),
             "Gallery page should contain gallery title");
+        Assert.Contains("<nav id=\"site-menu\" popover=\"auto\">", landscapesContent);
+        Assert.Contains("<button type=\"button\" popovertarget=\"site-menu\"", landscapesContent);
+        Assert.Contains("<span class=\"visually-hidden\">Menu</span>", landscapesContent);
+        Assert.AreEqual(3, CountOccurrences(landscapesContent, "<span aria-hidden=\"true\">i</span>"));
+        Assert.DoesNotContain("aria-label=\"Menu\"", landscapesContent);
+        Assert.DoesNotContain("type=\"checkbox\"", landscapesContent);
+        Assert.DoesNotContain("nav-trigger", landscapesContent);
 
         // Assert: Image variants generated
         var imagesDir = Path.Combine(project.OutputPath, "images");
@@ -233,12 +292,50 @@ public sealed class GenerateAllEndToEndTests
         Assert.IsTrue(File.Exists(sunsetPhoto), "Photo page for sunset.jpg should be generated");
 
         var sunsetPhotoContent = await File.ReadAllTextAsync(sunsetPhoto);
+        Assert.Contains("<html lang=\"de\">", sunsetPhotoContent);
+        Assert.Contains("<meta name=\"description\" content=\"E2E test site\">", sunsetPhotoContent);
+        Assert.Contains("fetchpriority=\"high\" decoding=\"async\">", sunsetPhotoContent);
         Assert.Contains("/photo/landscapes/sunset/", sunsetPhotoContent);
         Assert.Contains("rel=\"canonical\"", sunsetPhotoContent);
         // up returns to the originating gallery occurrence via the #photo-* anchor.
         Assert.Contains("#photo-landscapes-sunset", sunsetPhotoContent);
         // no wraparound: the first image in the gallery has a next but no previous link.
         Assert.Contains("photo/landscapes/mountain/", sunsetPhotoContent);
+        var mountainPhotoContent = await File.ReadAllTextAsync(
+            Path.Combine(project.OutputPath, "photo", "landscapes", "mountain", "index.html"));
+        var landscapePhotoContent = sunsetPhotoContent + mountainPhotoContent;
+        Assert.Contains("aria-label=\"Previous photo in Landscapes\"><span aria-hidden=\"true\">&lsaquo;</span></a>", landscapePhotoContent);
+        Assert.Contains("aria-label=\"Next photo in Landscapes\"><span aria-hidden=\"true\">&rsaquo;</span></a>", landscapePhotoContent);
+        Assert.Contains("aria-hidden=\"true\"></span>", landscapePhotoContent);
+        Assert.Contains("data-photo-return rel=\"up\"", sunsetPhotoContent);
+        Assert.Contains("aria-label=\"Return to Landscapes\">&times;</a>", sunsetPhotoContent);
+        Assert.Contains("<span data-photo-label>Golden sunset</span>", sunsetPhotoContent);
+        Assert.Contains("<span>Landscapes</span>", sunsetPhotoContent);
+        Assert.DoesNotContain(">Landscapes</a>", sunsetPhotoContent);
+        var normalizedSunsetPhoto = NormalizeLineEndings(sunsetPhotoContent);
+        Assert.Contains("<body class=\"photo-page\">\n    <main>\n        <article style=", normalizedSunsetPhoto);
+        Assert.Contains("--lqip:", sunsetPhotoContent);
+        Assert.Contains(" data-lqip>", sunsetPhotoContent);
+        Assert.DoesNotContain("sizes=\"100vw\"", sunsetPhotoContent);
+        Assert.Contains("/1920.avif\">", sunsetPhotoContent);
+        Assert.Contains("</picture>\n            <section>\n                <nav class=\"photo-nav\"", normalizedSunsetPhoto);
+        Assert.AreEqual(1, CountOccurrences(sunsetPhotoContent, "<nav class=\"photo-nav\""));
+        Assert.Contains("<div id=\"ctx-landscapes\" data-primary>", sunsetPhotoContent);
+        Assert.AreEqual(1, CountOccurrences(sunsetPhotoContent, "data-photo-return rel=\"up\""));
+        Assert.Contains("<aside class=\"photo-metadata\">", sunsetPhotoContent);
+        Assert.Contains("<aside class=\"photo-metadata\">\n    <p>", normalizedSunsetPhoto);
+        Assert.Contains("<footer>\n                    <strong>Tags:</strong>", normalizedSunsetPhoto);
+        AssertRetiredPhotoClassesAreAbsent(sunsetPhotoContent);
+        Assert.DoesNotContain("photo-stage", sunsetPhotoContent);
+        Assert.DoesNotContain("photo-detail", sunsetPhotoContent);
+        Assert.DoesNotContain("photo-memberships", sunsetPhotoContent);
+        Assert.DoesNotContain("Appears in", sunsetPhotoContent);
+        Assert.DoesNotContain("photo-metadata-file", sunsetPhotoContent);
+        Assert.DoesNotContain("Date taken", sunsetPhotoContent);
+        Assert.DoesNotContain("Dimensions", sunsetPhotoContent);
+        Assert.DoesNotContain("File size", sunsetPhotoContent);
+        Assert.Contains("_assets/zoom.js", sunsetPhotoContent);
+        Assert.DoesNotContain("_assets/lightbox.js", sunsetPhotoContent);
 
         // Assert: the Lumina gallery no longer emits an inline lightbox figure (#77).
         Assert.IsFalse(landscapesContent.Contains("<figure", StringComparison.Ordinal),
@@ -552,6 +649,417 @@ public sealed class GenerateAllEndToEndTests
             Path.Combine(project.OutputPath, "default-gallery", "index.html"));
         Assert.AreEqual(1, CountOccurrences(defaultHtml, "<section class=\"gallery\">"),
             "A page without a token must retain its automatic trailing grid.");
+        Assert.HasCount(1, ExtractPhotoHrefs(defaultHtml));
+        Assert.IsTrue(File.Exists(
+            Path.Combine(project.OutputPath, "photo", "default-gallery", "default", "index.html")));
+
+        var inlinePhotoHtml = await File.ReadAllTextAsync(
+            Path.Combine(project.OutputPath, "photo", "inline-gallery", "first", "index.html"));
+        Assert.AreEqual(1, CountOccurrences(inlinePhotoHtml, "id=\"ctx-inline-gallery\""),
+            "Duplicate bare blocks must share one base membership context.");
+    }
+
+    [TestMethod]
+    public async Task GeneratePages_InlineGalleryFilteredSharedImage_CreatesLinkedPhotoPage()
+    {
+        using var project = TestProject.Create(p => p
+            .WithSiteJson(new { title = "Filtered Inline Gallery", author = "Test" })
+            .AddGallery("Filtered", g => g
+                .WithMarkdown("[[gallery: filename == 'shared.jpg']]")
+                .AddRealImage("local.jpg", 1920, 1080)));
+        TestImageGenerator.CreateJpeg(
+            Path.Combine(project.SourcePath, "_images", "shared.jpg"),
+            1920,
+            1080);
+        await File.WriteAllTextAsync(
+            Path.Combine(project.SourcePath, "Filtered", "_index.revela"),
+            "[[gallery: filename == 'shared.jpg']]");
+
+        using var host = RevelaTestHost.Build(project.RootPath, services =>
+        {
+            services.AddRevelaCommands();
+            services.AddGenerateFeature();
+            services.AddSingleton<ITheme>(new LuminaTheme());
+        });
+
+        var contentService = host.Services.GetRequiredService<IContentService>();
+        var renderService = host.Services.GetRequiredService<IRenderService>();
+        renderService.SetTheme(host.Services.GetRequiredService<ITheme>());
+        renderService.SetExtensions([]);
+
+        var scanResult = await contentService.ScanAsync();
+        var renderResult = await renderService.RenderAsync();
+
+        Assert.IsTrue(scanResult.Success, $"Scan failed: {scanResult.ErrorMessage}");
+        Assert.IsTrue(renderResult.Success, $"Render failed: {renderResult.ErrorMessage}");
+        var galleryHtml = await File.ReadAllTextAsync(
+            Path.Combine(project.OutputPath, "filtered", "index.html"));
+        var href = ExtractPhotoHrefs(galleryHtml).Single();
+        Assert.EndsWith("photo/shared/#ctx-filtered-grid-1", href);
+        Assert.IsTrue(File.Exists(
+            Path.Combine(project.OutputPath, "photo", "shared", "index.html")));
+        Assert.IsFalse(File.Exists(
+            Path.Combine(project.OutputPath, "photo", "filtered-local", "index.html")),
+            "A suppressed base grid must not create hidden photo pages.");
+    }
+
+    [TestMethod]
+    public async Task GeneratePages_OverlappingFilteredInlineGalleryBlocks_UseDistinctOccurrenceLinks()
+    {
+        using var project = TestProject.Create(p => p
+            .WithSiteJson(new { title = "Overlapping Inline Galleries", author = "Test" })
+            .AddGallery("Featured", g => g
+                .WithMarkdown(
+                    "[[gallery: filename == 'shared.jpg']]\n\n[[gallery: filename == 'shared.jpg']]")
+                .AddRealImage("local.jpg", 1920, 1080)));
+        TestImageGenerator.CreateJpeg(
+            Path.Combine(project.SourcePath, "_images", "shared.jpg"),
+            1920,
+            1080);
+        await File.WriteAllTextAsync(
+            Path.Combine(project.SourcePath, "Featured", "_index.revela"),
+            "[[gallery: filename == 'shared.jpg']]\n\n[[gallery: filename == 'shared.jpg']]");
+
+        using var host = RevelaTestHost.Build(project.RootPath, services =>
+        {
+            services.AddRevelaCommands();
+            services.AddGenerateFeature();
+            services.AddSingleton<ITheme>(new LuminaTheme());
+        });
+
+        var contentService = host.Services.GetRequiredService<IContentService>();
+        var renderService = host.Services.GetRequiredService<IRenderService>();
+        renderService.SetTheme(host.Services.GetRequiredService<ITheme>());
+        renderService.SetExtensions([]);
+
+        var scanResult = await contentService.ScanAsync();
+        var renderResult = await renderService.RenderAsync();
+
+        Assert.IsTrue(scanResult.Success, $"Scan failed: {scanResult.ErrorMessage}");
+        Assert.IsTrue(renderResult.Success, $"Render failed: {renderResult.ErrorMessage}");
+        var galleryHtml = await File.ReadAllTextAsync(
+            Path.Combine(project.OutputPath, "featured", "index.html"));
+        Assert.AreEqual(1, CountOccurrences(galleryHtml, "id=\"grid-1-photo-shared\""));
+        Assert.AreEqual(1, CountOccurrences(galleryHtml, "id=\"grid-2-photo-shared\""));
+        var hrefs = ExtractPhotoHrefs(galleryHtml);
+        Assert.IsTrue(hrefs.Any(href => href.EndsWith("#ctx-featured-grid-1", StringComparison.Ordinal)));
+        Assert.IsTrue(hrefs.Any(href => href.EndsWith("#ctx-featured-grid-2", StringComparison.Ordinal)));
+
+        var photoHtml = await File.ReadAllTextAsync(
+            Path.Combine(project.OutputPath, "photo", "shared", "index.html"));
+        Assert.Contains("featured/#grid-1-photo-shared", photoHtml);
+        Assert.Contains("featured/#grid-2-photo-shared", photoHtml);
+    }
+
+    [TestMethod]
+    public async Task GeneratePages_CustomBodyInlineGallery_CreatesLinkedPhotoPage()
+    {
+        // Arrange
+        using var project = TestProject.Create(p => p
+            .WithSiteJson(new { title = "Custom Page", author = "Test" })
+            .AddGallery("Custom Page", g => g.AddRealImage("first.jpg", 1920, 1080)));
+
+        await File.WriteAllTextAsync(
+            Path.Combine(project.SourcePath, "Custom Page", "_index.revela"),
+            "+++\ntemplate = \"page\"\n+++\n\n[[gallery]]");
+
+        using var host = RevelaTestHost.Build(project.RootPath, services =>
+        {
+            services.AddRevelaCommands();
+            services.AddGenerateFeature();
+            services.AddSingleton<ITheme>(new LuminaTheme());
+        });
+
+        var contentService = host.Services.GetRequiredService<IContentService>();
+        var renderService = host.Services.GetRequiredService<IRenderService>();
+        var theme = host.Services.GetRequiredService<ITheme>();
+        renderService.SetTheme(theme);
+        renderService.SetExtensions([]);
+
+        // Act
+        var scanResult = await contentService.ScanAsync();
+        var renderResult = await renderService.RenderAsync();
+
+        // Assert
+        Assert.IsTrue(scanResult.Success, $"Scan failed: {scanResult.ErrorMessage}");
+        Assert.IsTrue(renderResult.Success, $"Render failed: {renderResult.ErrorMessage}");
+
+        var pageHtml = await File.ReadAllTextAsync(
+            Path.Combine(project.OutputPath, "custom-page", "index.html"));
+        Assert.Contains("<section class=\"gallery\">", pageHtml);
+        Assert.Contains("<picture>", pageHtml);
+
+        var photoHrefs = ExtractPhotoHrefs(pageHtml);
+        foreach (var photoHref in photoHrefs)
+        {
+            var route = photoHref.Split('#')[0].TrimStart('/');
+            var targetPath = Path.GetFullPath(Path.Combine(
+                project.OutputPath,
+                "custom-page",
+                route.Replace('/', Path.DirectorySeparatorChar),
+                "index.html"));
+            Assert.IsTrue(File.Exists(targetPath), $"Photo link '{photoHref}' has no generated target.");
+        }
+
+        Assert.HasCount(1, photoHrefs);
+        Assert.IsTrue(File.Exists(
+            Path.Combine(project.OutputPath, "photo", "custom-page", "first", "index.html")));
+    }
+
+    [TestMethod]
+    public async Task GeneratePages_CustomBodyWithoutInlineGallery_CreatesNoPhotoPage()
+    {
+        using var project = TestProject.Create(p => p
+            .WithSiteJson(new { title = "Custom Page", author = "Test" })
+            .AddGallery("Custom Page", g => g.AddRealImage("first.jpg", 1920, 1080)));
+        await File.WriteAllTextAsync(
+            Path.Combine(project.SourcePath, "Custom Page", "_index.revela"),
+            "+++\ntemplate = \"page\"\n+++\n\nNo inline gallery.");
+
+        using var host = RevelaTestHost.Build(project.RootPath, services =>
+        {
+            services.AddRevelaCommands();
+            services.AddGenerateFeature();
+            services.AddSingleton<ITheme>(new LuminaTheme());
+        });
+        var contentService = host.Services.GetRequiredService<IContentService>();
+        var renderService = host.Services.GetRequiredService<IRenderService>();
+        renderService.SetTheme(host.Services.GetRequiredService<ITheme>());
+        renderService.SetExtensions([]);
+
+        var scanResult = await contentService.ScanAsync();
+        var renderResult = await renderService.RenderAsync();
+
+        Assert.IsTrue(scanResult.Success, scanResult.ErrorMessage);
+        Assert.IsTrue(renderResult.Success, renderResult.ErrorMessage);
+        var pageHtml = await File.ReadAllTextAsync(
+            Path.Combine(project.OutputPath, "custom-page", "index.html"));
+        Assert.IsEmpty(ExtractPhotoHrefs(pageHtml));
+        Assert.IsFalse(File.Exists(
+            Path.Combine(project.OutputPath, "photo", "custom-page", "first", "index.html")));
+    }
+
+    [TestMethod]
+    public async Task GeneratePages_PhotoViewerNone_DefaultAndCustomInlineRenderStaticPictures()
+    {
+        using var project = TestProject.Create(p => p
+            .WithSiteJson(new { title = "No Viewer", author = "Test" })
+            .AddGallery("Default", g => g.AddRealImage("first.jpg", 1920, 1080))
+            .AddGallery("Custom", g => g.AddRealImage("second.jpg", 1920, 1080)));
+        await File.WriteAllTextAsync(
+            Path.Combine(project.SourcePath, "Default", "_index.revela"),
+            "+++\nphoto_viewer = \"none\"\n+++\n\n[[gallery]]");
+        await File.WriteAllTextAsync(
+            Path.Combine(project.SourcePath, "Custom", "_index.revela"),
+            "+++\ntemplate = \"page\"\nphoto_viewer = \"none\"\n+++\n\n[[gallery]]");
+
+        using var host = RevelaTestHost.Build(project.RootPath, services =>
+        {
+            services.AddRevelaCommands();
+            services.AddGenerateFeature();
+            services.AddSingleton<ITheme>(new LuminaTheme());
+        });
+        var contentService = host.Services.GetRequiredService<IContentService>();
+        var renderService = host.Services.GetRequiredService<IRenderService>();
+        renderService.SetTheme(host.Services.GetRequiredService<ITheme>());
+        renderService.SetExtensions([]);
+
+        var scanResult = await contentService.ScanAsync();
+        var renderResult = await renderService.RenderAsync();
+
+        Assert.IsTrue(scanResult.Success, scanResult.ErrorMessage);
+        Assert.IsTrue(renderResult.Success, renderResult.ErrorMessage);
+        foreach (var gallerySlug in new[] { "default", "custom" })
+        {
+            var html = await File.ReadAllTextAsync(
+                Path.Combine(project.OutputPath, gallerySlug, "index.html"));
+            Assert.Contains("<picture>", html);
+            Assert.IsEmpty(ExtractPhotoHrefs(html));
+            Assert.DoesNotContain("aria-haspopup=\"dialog\"", html);
+            Assert.DoesNotContain("<dialog", html);
+            Assert.DoesNotContain("_assets/lightbox.js", html);
+            Assert.DoesNotContain("_assets/zoom.js", html);
+        }
+
+        Assert.IsFalse(Directory.Exists(Path.Combine(project.OutputPath, "photo")));
+    }
+
+    [TestMethod]
+    public async Task GeneratePages_PhotoViewerLightbox_RendersProgressiveDialogsWithoutPhotoPages()
+    {
+        using var project = TestProject.Create(p => p
+            .WithSiteJson(new { title = "Lightbox Viewer", author = "Test" })
+            .AddGallery("Default", g => g
+                .AddRealImage("first.jpg", 1920, 1080, exif => exif.WithIso(200).WithDescription("Evening light"))
+                .AddRealImage("second.jpg", 1920, 1080, exif => exif.WithIso(200))
+                .AddRealImage("third.jpg", 1920, 1080, exif => exif.WithIso(200)))
+            .AddGallery("Custom", g => g.AddRealImage("custom.jpg", 1920, 1080, exif => exif.WithIso(200))));
+        await File.WriteAllTextAsync(
+            Path.Combine(project.SourcePath, "Default", "_index.revela"),
+            "+++\nphoto_viewer = \"lightbox\"\n+++\n");
+        await File.WriteAllTextAsync(
+            Path.Combine(project.SourcePath, "Custom", "_index.revela"),
+            "+++\ntemplate = \"page\"\nphoto_viewer = \"lightbox\"\n+++\n\n[[gallery]]");
+
+        using var host = RevelaTestHost.Build(project.RootPath, services =>
+        {
+            services.AddRevelaCommands();
+            services.AddGenerateFeature();
+            services.AddSingleton<ITheme>(new LuminaTheme());
+        });
+        var contentService = host.Services.GetRequiredService<IContentService>();
+        var renderService = host.Services.GetRequiredService<IRenderService>();
+        renderService.SetTheme(host.Services.GetRequiredService<ITheme>());
+        renderService.SetExtensions([]);
+
+        var scanResult = await contentService.ScanAsync();
+        var renderResult = await renderService.RenderAsync();
+
+        Assert.IsTrue(scanResult.Success, scanResult.ErrorMessage);
+        Assert.IsTrue(renderResult.Success, renderResult.ErrorMessage);
+        foreach (var gallerySlug in new[] { "default", "custom" })
+        {
+            var html = await File.ReadAllTextAsync(
+                Path.Combine(project.OutputPath, gallerySlug, "index.html"));
+            var normalizedHtml = NormalizeLineEndings(html);
+            var expectedCount = gallerySlug == "default" ? 3 : 1;
+            var dialogIds = ExtractAttributeValues(html, "<dialog id=\"");
+            var targets = ExtractAttributeValues(html, "data-lightbox-target=\"");
+            var commandTargets = ExtractAttributeValues(html, "commandfor=\"");
+            var controls = ExtractAttributeValues(html, "aria-controls=\"");
+            Assert.AreEqual(expectedCount, CountOccurrences(html, "type=\"button\" aria-haspopup=\"dialog\""));
+            Assert.AreEqual(expectedCount, CountOccurrences(html, "class=\"photo-lightbox\" data-lightbox"));
+            Assert.AreEqual((expectedCount * 2) - 2, CountOccurrences(html, "data-lightbox-target=\"lightbox-"));
+            Assert.AreEqual((expectedCount * 2) - 2, CountOccurrences(html, "type=\"button\" hidden aria-controls=\"lightbox-"));
+            Assert.AreEqual(expectedCount, CountOccurrences(html, "command=\"show-modal\""));
+            Assert.AreEqual(expectedCount, CountOccurrences(html, "command=\"close\""));
+            Assert.AreEqual(expectedCount, CountOccurrences(html, "closedby=\"any\""));
+            Assert.DoesNotContain("hidden></button>", html);
+            Assert.AreEqual(expectedCount, dialogIds.Distinct().Count());
+            Assert.AreEqual(targets.Count + expectedCount, controls.Count);
+            Assert.IsTrue(targets.All(dialogIds.Contains), "Every lightbox target must resolve to a dialog.");
+            Assert.IsTrue(commandTargets.All(dialogIds.Contains), "Every declarative dialog command must resolve to a dialog.");
+            Assert.IsTrue(controls.All(dialogIds.Contains), "Every aria-controls value must resolve to a dialog.");
+            Assert.AreEqual(expectedCount, CountOccurrences(normalizedHtml,
+                "command=\"close\" aria-label=\"Close photo\">&times;</button>\n    <article style="));
+            Assert.AreEqual(expectedCount, CountOccurrences(html, "<picture data-lqip>"));
+            Assert.DoesNotContain("sizes=\"100vw\"", html);
+            Assert.AreEqual(expectedCount, CountOccurrences(normalizedHtml,
+                "</picture>\n        <section>\n            <nav aria-label=\"Photo navigation\">"));
+            Assert.AreEqual(expectedCount, CountOccurrences(html, "<aside class=\"photo-metadata\">"));
+            Assert.AreEqual(expectedCount, CountOccurrences(normalizedHtml,
+                "<footer>\n                <strong>Tags:</strong>"));
+            Assert.AreEqual(expectedCount, CountOccurrences(html, "loading=\"lazy\" fetchpriority=\"low\" decoding=\"async\""));
+            Assert.AreEqual(expectedCount,
+                CountOccurrences(html, $">{char.ToUpperInvariant(gallerySlug[0])}{gallerySlug[1..]}</span>"));
+            AssertRetiredPhotoClassesAreAbsent(html);
+            Assert.DoesNotContain("photo-lightbox-stage", html);
+            Assert.DoesNotContain("photo-metadata-file", html);
+            Assert.IsEmpty(ExtractPhotoHrefs(html));
+            Assert.Contains("_assets/lightbox.js", html);
+            Assert.Contains("_assets/zoom.js", html);
+            var expectedDisplayLabel = gallerySlug == "default" ? "Evening light" : "custom";
+            Assert.Contains($">{expectedDisplayLabel}</span>", html);
+        }
+
+        var defaultHtml = await File.ReadAllTextAsync(
+            Path.Combine(project.OutputPath, "default", "index.html"));
+        Assert.AreEqual(2, CountOccurrences(defaultHtml, "aria-label=\"Previous photo\""));
+        Assert.AreEqual(2, CountOccurrences(defaultHtml, "aria-label=\"Next photo\""));
+        Assert.AreEqual(2, CountOccurrences(defaultHtml, "<span aria-hidden=\"true\"></span>"));
+        Assert.IsFalse(Directory.Exists(Path.Combine(project.OutputPath, "photo")));
+    }
+
+    [TestMethod]
+    public async Task GeneratePages_PhotoViewerLightboxRepeatedBareInlineGallery_UsesUniqueLocalNavigationIds()
+    {
+        using var project = TestProject.Create(p => p
+            .WithSiteJson(new { title = "Repeated Lightbox Viewer", author = "Test" })
+            .AddGallery("Repeated", g => g
+                .AddRealImage("first.jpg", 1920, 1080)
+                .AddRealImage("second.jpg", 1920, 1080)));
+        await File.WriteAllTextAsync(
+            Path.Combine(project.SourcePath, "Repeated", "_index.revela"),
+            "+++\ntemplate = \"page\"\nphoto_viewer = \"lightbox\"\n+++\n\n[[gallery]]\n\n[[gallery]]");
+
+        using var host = RevelaTestHost.Build(project.RootPath, services =>
+        {
+            services.AddRevelaCommands();
+            services.AddGenerateFeature();
+            services.AddSingleton<ITheme>(new LuminaTheme());
+        });
+        var contentService = host.Services.GetRequiredService<IContentService>();
+        var renderService = host.Services.GetRequiredService<IRenderService>();
+        renderService.SetTheme(host.Services.GetRequiredService<ITheme>());
+        renderService.SetExtensions([]);
+
+        var scanResult = await contentService.ScanAsync();
+        var renderResult = await renderService.RenderAsync();
+
+        Assert.IsTrue(scanResult.Success, scanResult.ErrorMessage);
+        Assert.IsTrue(renderResult.Success, renderResult.ErrorMessage);
+        var html = await File.ReadAllTextAsync(
+            Path.Combine(project.OutputPath, "repeated", "index.html"));
+        var ids = ExtractAttributeValues(html, " id=\"");
+        var dialogIds = ExtractAttributeValues(html, "<dialog id=\"");
+        var targets = ExtractAttributeValues(html, "data-lightbox-target=\"");
+        var commandTargets = ExtractAttributeValues(html, "commandfor=\"");
+
+        Assert.AreEqual(ids.Count, ids.Distinct(StringComparer.Ordinal).Count());
+        Assert.HasCount(4, dialogIds);
+        Assert.IsTrue(targets.All(dialogIds.Contains), "Every trigger and navigation target must resolve to a dialog.");
+        Assert.IsTrue(commandTargets.All(dialogIds.Contains), "Every declarative dialog command must resolve to a dialog.");
+        Assert.AreEqual(2, targets.Count(target => target.StartsWith("lightbox-bare-1-", StringComparison.Ordinal)));
+        Assert.AreEqual(2, targets.Count(target => target.StartsWith("lightbox-bare-2-", StringComparison.Ordinal)));
+        Assert.AreEqual(4, commandTargets.Count(target => target.StartsWith("lightbox-bare-1-", StringComparison.Ordinal)));
+        Assert.AreEqual(4, commandTargets.Count(target => target.StartsWith("lightbox-bare-2-", StringComparison.Ordinal)));
+    }
+
+    [TestMethod]
+    public async Task GeneratePages_PhotoViewerMixedModes_PhotoPageContainsOnlyPageContext()
+    {
+        using var project = TestProject.Create(p => p
+            .WithSiteJson(new { title = "Mixed Viewer", author = "Test" })
+            .AddGallery("Page Viewer", g => g.AddRealImage("local.jpg", 1920, 1080))
+            .AddGallery("None Viewer", g => g.AddRealImage("local.jpg", 1920, 1080)));
+        TestImageGenerator.CreateJpeg(
+            Path.Combine(project.SourcePath, "_images", "shared.jpg"),
+            1920,
+            1080);
+        await File.WriteAllTextAsync(
+            Path.Combine(project.SourcePath, "Page Viewer", "_index.revela"),
+            "[[gallery: filename == 'shared.jpg']]");
+        await File.WriteAllTextAsync(
+            Path.Combine(project.SourcePath, "None Viewer", "_index.revela"),
+            "+++\nphoto_viewer = \"none\"\n+++\n\n[[gallery: filename == 'shared.jpg']]");
+
+        using var host = RevelaTestHost.Build(project.RootPath, services =>
+        {
+            services.AddRevelaCommands();
+            services.AddGenerateFeature();
+            services.AddSingleton<ITheme>(new LuminaTheme());
+        });
+        var contentService = host.Services.GetRequiredService<IContentService>();
+        var renderService = host.Services.GetRequiredService<IRenderService>();
+        renderService.SetTheme(host.Services.GetRequiredService<ITheme>());
+        renderService.SetExtensions([]);
+
+        var scanResult = await contentService.ScanAsync();
+        var renderResult = await renderService.RenderAsync();
+
+        Assert.IsTrue(scanResult.Success, scanResult.ErrorMessage);
+        Assert.IsTrue(renderResult.Success, renderResult.ErrorMessage);
+        var pageGalleryHtml = await File.ReadAllTextAsync(
+            Path.Combine(project.OutputPath, "page-viewer", "index.html"));
+        var noneGalleryHtml = await File.ReadAllTextAsync(
+            Path.Combine(project.OutputPath, "none-viewer", "index.html"));
+        Assert.HasCount(1, ExtractPhotoHrefs(pageGalleryHtml));
+        Assert.IsEmpty(ExtractPhotoHrefs(noneGalleryHtml));
+
+        var photoHtml = await File.ReadAllTextAsync(
+            Path.Combine(project.OutputPath, "photo", "shared", "index.html"));
+        Assert.Contains("id=\"ctx-page-viewer-grid-1\"", photoHtml);
+        Assert.DoesNotContain("ctx-none-viewer-grid-1", photoHtml);
     }
 
     [TestMethod]
@@ -669,6 +1177,38 @@ public sealed class GenerateAllEndToEndTests
             "Rendered must never exceed Total");
     }
 
+    [TestMethod]
+    public async Task RenderAsync_ThemeWithoutPhotoTemplateSupportingPage_FailsBeforeHtmlWrite()
+    {
+        using var project = TestProject.Create(p => p
+            .WithProjectJson(new
+            {
+                project = new { name = "Missing Photo Template" },
+                theme = new { name = "Lumina" }
+            })
+            .WithSiteJson(new { title = "Missing Photo Template", author = "Test" })
+            .AddGallery("Photos", gallery => gallery.AddRealImage("one.jpg", 1280, 720)));
+
+        using var host = RevelaTestHost.Build(project.RootPath, services =>
+        {
+            services.AddRevelaCommands();
+            services.AddGenerateFeature();
+            services.AddSingleton<ITheme>(new ThemeWithoutPhotoTemplate());
+        });
+
+        var contentService = host.Services.GetRequiredService<IContentService>();
+        var renderService = host.Services.GetRequiredService<IRenderService>();
+        var scanResult = await contentService.ScanAsync();
+        Assert.IsTrue(scanResult.Success, scanResult.ErrorMessage);
+
+        var renderResult = await renderService.RenderAsync();
+
+        Assert.IsFalse(renderResult.Success);
+        Assert.IsNotNull(renderResult.ErrorMessage);
+        Assert.Contains("Body/Photo.revela", renderResult.ErrorMessage, StringComparison.Ordinal);
+        Assert.IsFalse(Directory.Exists(project.OutputPath));
+    }
+
     private static int CountOccurrences(string value, string search)
     {
         var count = 0;
@@ -681,6 +1221,90 @@ public sealed class GenerateAllEndToEndTests
         }
 
         return count;
+    }
+
+    private static string NormalizeLineEndings(string value) =>
+        value.Replace("\r\n", "\n", StringComparison.Ordinal);
+
+    private static void AssertRetiredPhotoClassesAreAbsent(string html)
+    {
+        var retiredClasses = new[]
+        {
+            "photo-article",
+            "photo-picture",
+            "photo-sheet",
+            "photo-nav-context",
+            "primary",
+            "photo-prev",
+            "photo-up",
+            "photo-next",
+            "photo-tags",
+            "photo-tags-label",
+            "photo-tag-context",
+            "photo-metadata-line",
+            "photo-metadata-exposure",
+            "photo-metadata-equipment",
+            "lightbox-trigger",
+            "photo-lightbox-close",
+            "photo-lightbox-article",
+            "photo-lightbox-controls",
+            "photo-lightbox-prev",
+            "photo-lightbox-next",
+            "photo-lightbox-context"
+        };
+
+        foreach (var retiredClass in retiredClasses)
+        {
+            Assert.DoesNotContain($"class=\"{retiredClass}", html);
+        }
+    }
+
+    private static IReadOnlyList<string> ExtractPhotoHrefs(string html)
+    {
+        const string hrefPrefix = "href=\"";
+        var hrefs = new List<string>();
+        var searchIndex = 0;
+
+        while ((searchIndex = html.IndexOf(hrefPrefix, searchIndex, StringComparison.Ordinal)) >= 0)
+        {
+            var valueStart = searchIndex + hrefPrefix.Length;
+            var valueEnd = html.IndexOf('"', valueStart);
+            if (valueEnd < 0)
+            {
+                break;
+            }
+
+            var href = html[valueStart..valueEnd];
+            if (href.Contains("photo/", StringComparison.Ordinal))
+            {
+                hrefs.Add(href);
+            }
+
+            searchIndex = valueEnd + 1;
+        }
+
+        return hrefs;
+    }
+
+    private static IReadOnlyList<string> ExtractAttributeValues(string html, string prefix)
+    {
+        var values = new List<string>();
+        var searchIndex = 0;
+
+        while ((searchIndex = html.IndexOf(prefix, searchIndex, StringComparison.Ordinal)) >= 0)
+        {
+            var valueStart = searchIndex + prefix.Length;
+            var valueEnd = html.IndexOf('"', valueStart);
+            if (valueEnd < 0)
+            {
+                break;
+            }
+
+            values.Add(html[valueStart..valueEnd]);
+            searchIndex = valueEnd + 1;
+        }
+
+        return values;
     }
 
     private sealed class RecordingProgress : IProgress<RenderProgress>
@@ -740,5 +1364,38 @@ public sealed class GenerateAllEndToEndTests
 
         private static bool IsGalleryGrid(string path) =>
             path.Replace('\\', '/').Equals(GalleryGridPath, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private sealed class ThemeWithoutPhotoTemplate : ITheme
+    {
+        private const string PhotoTemplatePath = "Body/Photo.revela";
+        private readonly LuminaTheme inner = new();
+
+        public PackageMetadata Metadata => inner.Metadata;
+
+        public string? Prefix => inner.Prefix;
+
+        public string? TargetTheme => inner.TargetTheme;
+
+        public ThemeManifest Manifest => inner.Manifest;
+
+        public Stream? GetFile(string relativePath) =>
+            IsPhotoTemplate(relativePath) ? null : inner.GetFile(relativePath);
+
+        public IEnumerable<string> GetAllFiles() =>
+            inner.GetAllFiles().Where(file => !IsPhotoTemplate(file));
+
+        public Task ExtractToAsync(string targetDirectory, CancellationToken cancellationToken = default) =>
+            inner.ExtractToAsync(targetDirectory, cancellationToken);
+
+        public Stream? GetSiteTemplate() => inner.GetSiteTemplate();
+
+        public Stream? GetImagesTemplate() => inner.GetImagesTemplate();
+
+        public IReadOnlyDictionary<string, string> GetTemplateDataDefaults(string templateKey) =>
+            inner.GetTemplateDataDefaults(templateKey);
+
+        private static bool IsPhotoTemplate(string path) =>
+            path.Replace('\\', '/').Equals(PhotoTemplatePath, StringComparison.OrdinalIgnoreCase);
     }
 }

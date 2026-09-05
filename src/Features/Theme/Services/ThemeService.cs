@@ -1,9 +1,11 @@
+using System.Text.Json.Nodes;
 using Microsoft.Extensions.Options;
 using Spectara.Revela.Core.Services;
 using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Abstractions;
 using Spectara.Revela.Sdk.Configuration;
 using Spectara.Revela.Sdk.Configuration.Keys;
+using Spectara.Revela.Sdk.Models;
 using Spectara.Revela.Sdk.Services;
 
 namespace Spectara.Revela.Features.Theme.Services;
@@ -66,7 +68,7 @@ internal sealed partial class ThemeService(
     /// <inheritdoc />
     public ThemeInfoResult GetCurrentTheme()
     {
-        var themeName = themeConfig.CurrentValue.Name ?? "Lumina";
+        var themeName = NormalizeThemeName(themeConfig.CurrentValue.Name);
         var theme = themeRegistry.Resolve(themeName, ProjectPath);
         var source = GetThemeSource(theme);
         var extensions = theme is not null
@@ -80,7 +82,8 @@ internal sealed partial class ThemeService(
             ThemeName = themeName,
             Theme = theme,
             Source = source,
-            Extensions = extensions
+            Extensions = extensions,
+            PhotoViewerCapabilities = theme?.Manifest.PhotoViewer
         };
     }
 
@@ -123,7 +126,7 @@ internal sealed partial class ThemeService(
     /// <inheritdoc />
     public ThemeFilesResult GetFiles(string? themeName = null)
     {
-        var name = themeName ?? themeConfig.CurrentValue.Name ?? "Lumina";
+        var name = NormalizeThemeName(themeName ?? themeConfig.CurrentValue.Name);
         var theme = themeRegistry.Resolve(name, ProjectPath);
 
         if (theme is null)
@@ -149,16 +152,70 @@ internal sealed partial class ThemeService(
     }
 
     /// <inheritdoc />
-    public async Task SetActiveThemeAsync(
-        string themeName,
+    public async Task<ThemeUpdateResult> UpdateAsync(
+        ThemeUpdateRequest request,
         CancellationToken cancellationToken = default)
     {
-        var update = new System.Text.Json.Nodes.JsonObject
+        ArgumentNullException.ThrowIfNull(request);
+
+        if (request.PhotoViewer is not null && request.ClearPhotoViewer)
         {
-            [ThemeConfigKeys.Section] = new System.Text.Json.Nodes.JsonObject { [ThemeConfigKeys.Name] = themeName }
-        };
+            return new ThemeUpdateResult
+            {
+                Success = false,
+                ThemeName = request.ThemeName ?? themeConfig.CurrentValue.Name ?? "Lumina",
+                ErrorMessage = "A photo viewer override cannot be set and cleared in the same update."
+            };
+        }
+
+        var current = themeConfig.CurrentValue;
+        var themeName = request.ThemeName ?? current.Name;
+        if (string.IsNullOrWhiteSpace(themeName))
+        {
+            themeName = "Lumina";
+        }
+
+        var theme = themeRegistry.Resolve(themeName, ProjectPath);
+        if (theme is null)
+        {
+            return FailedUpdate(themeName, $"Theme '{themeName}' is not installed.");
+        }
+
+        var retainedViewer = request.ClearPhotoViewer ? null : request.PhotoViewer ?? current.PhotoViewer;
+        var capabilities = theme.Manifest.PhotoViewer;
+        if (retainedViewer is { } viewer && capabilities?.Supported.Contains(viewer) is not true)
+        {
+            var supported = capabilities is null ? "none" : FormatSupported(capabilities.Supported);
+            return FailedUpdate(
+                themeName,
+                $"Theme '{themeName}' does not support photo viewer mode '{Canonical(viewer)}'. Supported modes: {supported}.");
+        }
+
+        var themeUpdate = new JsonObject();
+        if (request.ThemeName is not null)
+        {
+            themeUpdate[ThemeConfigKeys.Name] = themeName;
+        }
+
+        if (request.ClearPhotoViewer)
+        {
+            themeUpdate["photoViewer"] = null;
+        }
+        else if (request.PhotoViewer is { } newViewer)
+        {
+            themeUpdate["photoViewer"] = Canonical(newViewer);
+        }
+
+        if (themeUpdate.Count == 0)
+        {
+            return new ThemeUpdateResult { Success = true, ThemeName = themeName };
+        }
+
+        var update = new JsonObject { [ThemeConfigKeys.Section] = themeUpdate };
         await configService.UpdateProjectConfigAsync(update, cancellationToken);
         LogThemeChanged(logger, themeName);
+
+        return new ThemeUpdateResult { Success = true, ThemeName = themeName };
     }
 
     /// <inheritdoc />
@@ -396,7 +453,7 @@ internal sealed partial class ThemeService(
         }
 
         var manifestJson = await File.ReadAllTextAsync(manifestPath, cancellationToken);
-        var json = System.Text.Json.Nodes.JsonNode.Parse(manifestJson) as System.Text.Json.Nodes.JsonObject;
+        var json = JsonNode.Parse(manifestJson) as JsonObject;
 
         if (json is not null)
         {
@@ -430,9 +487,31 @@ internal sealed partial class ThemeService(
             Metadata = theme.Metadata,
             IsLocal = isLocal,
             Source = isLocal ? null : sources.GetValueOrDefault(theme.Metadata.Name),
-            Extensions = extensions
+            Extensions = extensions,
+            PhotoViewerCapabilities = theme.Manifest.PhotoViewer
         };
     }
+
+    private static ThemeUpdateResult FailedUpdate(string themeName, string errorMessage) => new()
+    {
+        Success = false,
+        ThemeName = themeName,
+        ErrorMessage = errorMessage
+    };
+
+    private static string FormatSupported(IReadOnlyList<PhotoViewerMode> supported) =>
+        string.Join(", ", supported.Select(Canonical));
+
+    private static string NormalizeThemeName(string? themeName) =>
+        string.IsNullOrWhiteSpace(themeName) ? "Lumina" : themeName;
+
+    private static string Canonical(PhotoViewerMode mode) => mode switch
+    {
+        PhotoViewerMode.Page => "page",
+        PhotoViewerMode.Lightbox => "lightbox",
+        PhotoViewerMode.None => "none",
+        _ => mode.ToString()
+    };
 
     private ThemeExtensionInfo ToExtensionInfo(ITheme extension)
     {

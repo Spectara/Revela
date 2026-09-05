@@ -163,6 +163,18 @@ public sealed class ScribanTemplateEngineTests
         Assert.AreEqual("/events/fireworks/", result.Trim());
     }
 
+    [TestMethod]
+    public void HtmlEscape_WithHostileAttributeValue_EncodesMarkupCharacters()
+    {
+        var engine = CreateEngine();
+
+        var result = engine.Render(
+            "<img alt=\"{{ html_escape value }}\">",
+            Model(("value", "photo\" & <script>")));
+
+        Assert.AreEqual("<img alt=\"photo&quot; &amp; &lt;script&gt;\">", result.Trim());
+    }
+
     private static Dictionary<string, object?> Model(params (string Key, object? Value)[] entries)
     {
         var model = new Dictionary<string, object?>();

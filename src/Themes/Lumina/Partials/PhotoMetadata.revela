@@ -1,0 +1,26 @@
+{{~##
+Shared concept metadata for canonical photo pages and lightbox dialogs.
+##~}}
+{{~ has_exposure = image.exif && (image.exif.f_number || image.exif.exposure_time || image.exif.iso || image.exif.focal_length) ~}}
+{{~ has_equipment = image.exif && (image.exif.lens_model || image.exif.make || image.exif.model) ~}}
+{{~ if has_exposure || has_equipment ~}}
+<aside class="photo-metadata">
+    {{~ if has_exposure ~}}
+    <p>
+        {{~ if image.exif.f_number ~}}<span><span class="visually-hidden">Aperture </span>{{ format_exif_aperture image.exif.f_number }}</span>{{~ end ~}}
+        {{~ if image.exif.exposure_time ~}}<span><span class="visually-hidden">Shutter </span>{{ format_exif_exposure image.exif.exposure_time }}</span>{{~ end ~}}
+        {{~ if image.exif.iso ~}}<span>ISO {{ html_escape image.exif.iso }}</span>{{~ end ~}}
+        {{~ if image.exif.focal_length ~}}<span><span class="visually-hidden">Focal length </span>{{ html_escape image.exif.focal_length }} mm</span>{{~ end ~}}
+    </p>
+    {{~ end ~}}
+    {{~ if has_equipment ~}}
+    <p>
+        {{~ if image.exif.lens_model ~}}
+        <span>{{ html_escape image.exif.lens_model }}{{~ if image.exif.make || image.exif.model }} on {{ html_escape image.exif.make }}{{ image.exif.make && image.exif.model ? " " : "" }}{{ html_escape image.exif.model }}{{ end }}</span>
+        {{~ else if image.exif.make || image.exif.model ~}}
+        <span>{{ html_escape image.exif.make }}{{ image.exif.make && image.exif.model ? " " : "" }}{{ html_escape image.exif.model }}</span>
+        {{~ end ~}}
+    </p>
+    {{~ end ~}}
+</aside>
+{{~ end ~}}

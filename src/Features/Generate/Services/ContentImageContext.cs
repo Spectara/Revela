@@ -37,10 +37,6 @@ namespace Spectara.Revela.Features.Generate.Services;
 /// Delegate to render a content image via theme template (Partials/ContentImage.revela).
 /// Parameters: (Image image, string alt, List&lt;string&gt;? classes) → HTML string.
 /// </param>
-/// <param name="ResolveGalleryImages">
-/// Resolves a filter expression against the global manifest image pool and returns ordered
-/// render images. Supplied only when inline-gallery parsing is enabled.
-/// </param>
 /// <param name="GalleryBlocks">
 /// Optional page-local context for inline-gallery (<c>[[gallery]]</c>) parsing and rendering.
 /// </param>
@@ -50,6 +46,5 @@ internal sealed record ContentImageContext(
     string AssetsBasePath,
     IEnumerable<string> ImageFormats,
     Func<Image, string, List<string>?, string> RenderContentImage,
-    Func<string, IReadOnlyList<Image>>? ResolveGalleryImages = null,
     GalleryBlockContext? GalleryBlocks = null);
 

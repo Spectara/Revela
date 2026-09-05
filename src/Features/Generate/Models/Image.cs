@@ -98,6 +98,7 @@ internal sealed class Image
             FileSize = entry.FileSize,
             DateTaken = entry.DateTaken ?? DateTime.MinValue,
             Exif = entry.Exif,
+            Description = entry.Exif?.Raw?.GetValueOrDefault("ImageDescription"),
             Sizes = entry.Sizes,
             Placeholder = entry.Placeholder
         };

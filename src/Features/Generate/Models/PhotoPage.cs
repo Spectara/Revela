@@ -30,12 +30,6 @@ internal sealed class PhotoPage
     public required string Slug { get; init; }
 
     /// <summary>
-    /// Stable gallery-side anchor id (e.g. <c>"photo-landscapes-ocean-sunset"</c>) that the
-    /// <c>up</c> link targets so navigation returns to the originating gallery occurrence.
-    /// </summary>
-    public required string Anchor { get; init; }
-
-    /// <summary>
     /// Deterministic document title: the image title when available, otherwise a filename/slug
     /// fallback. Guarantees a unique, non-empty <c>&lt;title&gt;</c> per page.
     /// </summary>

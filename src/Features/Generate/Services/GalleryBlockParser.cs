@@ -32,7 +32,7 @@ internal sealed class GalleryBlockParser : BlockParser
             return BlockState.None;
         }
 
-        var line = processor.Line.ToString().TrimEnd();
+        var line = processor.Line.ToString().Trim();
         string? filterExpression;
 
         if (line.Equals(BareToken, StringComparison.Ordinal))
@@ -47,6 +47,12 @@ internal sealed class GalleryBlockParser : BlockParser
         }
         else
         {
+            if (line.StartsWith("[[gallery", StringComparison.Ordinal))
+            {
+                var innerException = new FilterParseException("Malformed inline gallery token", 0);
+                throw new GalleryBlockParseException(sourcePath, processor.LineIndex + 1, line, innerException);
+            }
+
             return BlockState.None;
         }
 

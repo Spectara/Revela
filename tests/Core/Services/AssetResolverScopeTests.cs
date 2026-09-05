@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging.Abstractions;
 using Spectara.Revela.Core.Services;
+using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Abstractions;
 
 namespace Spectara.Revela.Tests.Core.Services;
@@ -36,19 +37,21 @@ public sealed class AssetResolverScopeTests
         name: "Lumina",
         prefix: null,
         targetTheme: null,
-        files: ["Assets/main.css", "Assets/photo.css"],
+        files: ["Assets/main.css", "Assets/photo.css", "Assets/lightbox.js"],
         stylesheets:
         [
-            new StylesheetDeclaration { Path = "main.css" },                       // no scope => all
-            new StylesheetDeclaration { Path = "photo.css", Scope = ["photo"] }
-        ]);
+            new AssetDeclaration { Path = "main.css" },                       // no scope => all
+            new AssetDeclaration { Path = "photo.css", Scope = ["photo"] }
+        ],
+        scripts: [new AssetDeclaration { Path = "lightbox.js", Scope = ["lightbox"] }]);
 
     private static FakeTheme StatisticsExtension() => new(
         name: "Lumina Statistics",
         prefix: "statistics",
         targetTheme: "Lumina",
-        files: ["Assets/main.css"],
-        stylesheets: [new StylesheetDeclaration { Path = "main.css", Scope = ["statistics"] }]);
+        files: ["Assets/main.css", "Assets/main.js"],
+        stylesheets: [new AssetDeclaration { Path = "main.css", Scope = ["statistics"] }],
+        scripts: [new AssetDeclaration { Path = "main.js", Scope = ["statistics"] }]);
 
     [TestMethod]
     public void PhotoScope_IncludesMainAndPhoto_ExcludesStatistics()
@@ -61,6 +64,7 @@ public sealed class AssetResolverScopeTests
         CollectionAssert.Contains(css.ToList(), "main.css");
         CollectionAssert.Contains(css.ToList(), "photo.css");
         CollectionAssert.DoesNotContain(css.ToList(), "statistics/main.css");
+        CollectionAssert.DoesNotContain(resolver.GetScripts("photo").ToList(), "statistics/main.js");
     }
 
     [TestMethod]
@@ -74,6 +78,7 @@ public sealed class AssetResolverScopeTests
         CollectionAssert.Contains(css.ToList(), "main.css");
         CollectionAssert.Contains(css.ToList(), "statistics/main.css");
         CollectionAssert.DoesNotContain(css.ToList(), "photo.css");
+        CollectionAssert.Contains(resolver.GetScripts("statistics").ToList(), "statistics/main.js");
     }
 
     [TestMethod]
@@ -103,21 +108,71 @@ public sealed class AssetResolverScopeTests
     }
 
     [TestMethod]
-    public void UndeclaredStylesheet_LoadsOnEveryScope()
+    public void UndeclaredAssets_AreNotLinkedOnScopedPages()
     {
-        // Extension with a CSS file but NO stylesheet declarations => backward-compatible "load everywhere".
         var legacyExtension = new FakeTheme(
             name: "Legacy",
             prefix: "legacy",
             targetTheme: "Lumina",
-            files: ["Assets/legacy.css"],
-            stylesheets: null);
+            files: ["Assets/legacy.css", "Assets/legacy.js"],
+            stylesheets: null,
+            scripts: null);
 
         var resolver = CreateResolver();
         resolver.Initialize(BaseTheme(), [legacyExtension], tempProject);
 
-        CollectionAssert.Contains(resolver.GetStyleSheets("photo").ToList(), "legacy/legacy.css");
-        CollectionAssert.Contains(resolver.GetStyleSheets("index").ToList(), "legacy/legacy.css");
+        CollectionAssert.DoesNotContain(resolver.GetStyleSheets("photo").ToList(), "legacy/legacy.css");
+        CollectionAssert.DoesNotContain(resolver.GetStyleSheets("index").ToList(), "legacy/legacy.css");
+        CollectionAssert.DoesNotContain(resolver.GetScripts("photo").ToList(), "legacy/legacy.js");
+        CollectionAssert.DoesNotContain(resolver.GetScripts("index").ToList(), "legacy/legacy.js");
+    }
+
+    [TestMethod]
+    public void ProjectAssetScopes_ApplyToNewLocalAssets()
+    {
+        var localAssets = Path.Combine(tempProject, ProjectPaths.Themes, "Lumina", "Assets");
+        Directory.CreateDirectory(localAssets);
+        File.WriteAllText(Path.Combine(localAssets, "prism.css"), "code {}");
+        File.WriteAllText(Path.Combine(localAssets, "prism.js"), "Prism.highlightAll();");
+        File.WriteAllText(Path.Combine(localAssets, "website.css"), "body {}");
+        File.WriteAllText(Path.Combine(localAssets, "website.js"), "console.log('website');");
+        File.WriteAllText(
+                Path.Combine(tempProject, "site.json"),
+                              /*lang=json*/
+                              """
+                        {
+                            // Strings remain global for backward compatibility.
+                            "stylesheets": [
+                                "website.css",
+                                {
+                                    "path": "prism.css",
+                                    "scope": ["docs",],
+                                },
+                            ],
+                            "scripts": [
+                                "website.js",
+                                {
+                                    "path": "prism.js",
+                                    "scope": ["docs",],
+                                },
+                            ],
+                        }
+                        """);
+        var resolver = CreateResolver();
+        resolver.Initialize(BaseTheme(), [], tempProject);
+
+        CollectionAssert.Contains(resolver.GetStyleSheets("docs").ToList(), "prism.css");
+        CollectionAssert.DoesNotContain(resolver.GetStyleSheets("index").ToList(), "prism.css");
+        CollectionAssert.DoesNotContain(resolver.GetStyleSheets("gallery").ToList(), "prism.css");
+        CollectionAssert.DoesNotContain(resolver.GetStyleSheets("photo").ToList(), "prism.css");
+        CollectionAssert.Contains(resolver.GetStyleSheets("photo").ToList(), "website.css");
+        CollectionAssert.Contains(resolver.GetScripts("docs").ToList(), "prism.js");
+        CollectionAssert.DoesNotContain(resolver.GetScripts("index").ToList(), "prism.js");
+        CollectionAssert.DoesNotContain(resolver.GetScripts("gallery").ToList(), "prism.js");
+        CollectionAssert.DoesNotContain(resolver.GetScripts("photo").ToList(), "prism.js");
+        CollectionAssert.Contains(resolver.GetScripts("photo").ToList(), "website.js");
+        CollectionAssert.DoesNotContain(resolver.GetScripts("photo").ToList(), "lightbox.js");
+        CollectionAssert.Contains(resolver.GetScripts("lightbox").ToList(), "lightbox.js");
     }
 
     private sealed class FakeTheme(
@@ -125,7 +180,8 @@ public sealed class AssetResolverScopeTests
         string? prefix,
         string? targetTheme,
         IReadOnlyList<string> files,
-        IReadOnlyList<StylesheetDeclaration>? stylesheets) : ITheme
+        IReadOnlyList<AssetDeclaration>? stylesheets,
+        IReadOnlyList<AssetDeclaration>? scripts) : ITheme
     {
         private readonly IReadOnlyList<string> files = files;
 
@@ -143,7 +199,8 @@ public sealed class AssetResolverScopeTests
         public ThemeManifest Manifest { get; } = new()
         {
             LayoutTemplate = "Layout.revela",
-            Stylesheets = stylesheets
+            Stylesheets = stylesheets,
+            Scripts = scripts
         };
 
         public Stream? GetFile(string relativePath) =>

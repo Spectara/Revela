@@ -1,4 +1,5 @@
 using Spectara.Revela.Sdk.Abstractions;
+using Spectara.Revela.Sdk.Models;
 
 namespace Spectara.Revela.Sdk.Configuration;
 
@@ -46,6 +47,11 @@ public sealed class ThemeConfig
     /// Name of the theme to use (e.g., "Lumina").
     /// </summary>
     public string Name { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Project-wide photo viewer override. When unset, the theme default is used.
+    /// </summary>
+    public PhotoViewerMode? PhotoViewer { get; set; }
 
     /// <summary>
     /// Image settings from theme (sizes for responsive breakpoints).

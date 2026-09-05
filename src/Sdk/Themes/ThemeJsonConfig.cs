@@ -2,6 +2,9 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Text.Json.Serialization.Metadata;
 
+using Spectara.Revela.Sdk.Abstractions;
+using Spectara.Revela.Sdk.Models;
+
 namespace Spectara.Revela.Sdk.Themes;
 
 /// <summary>
@@ -48,10 +51,22 @@ public sealed class ThemeJsonConfig
 
     /// <summary>
     /// Optional stylesheet page-type scope declarations. Each entry restricts a
-    /// stylesheet to the listed scope tokens; omitting the field (or a stylesheet)
-    /// keeps the load-everywhere default.
+    /// stylesheet to the listed scope tokens; omitting a scope loads the declared
+    /// stylesheet on every page.
     /// </summary>
-    public IReadOnlyList<Abstractions.StylesheetDeclaration>? Stylesheets { get; set; }
+    public IReadOnlyList<AssetDeclaration>? Stylesheets { get; set; }
+
+    /// <summary>
+    /// Optional script page-type scope declarations. Uses the same scope tokens
+    /// and load-everywhere default as <see cref="Stylesheets"/>.
+    /// </summary>
+    public IReadOnlyList<AssetDeclaration>? Scripts { get; set; }
+
+    /// <summary>Photo viewer modes supported by a base theme.</summary>
+    public IReadOnlyList<string>? PhotoViewers { get; set; }
+
+    /// <summary>Default photo viewer mode for a base theme.</summary>
+    public string? DefaultPhotoViewer { get; set; }
 
     /// <summary>Shared JSON serialization options for theme config files.</summary>
     public static readonly JsonSerializerOptions JsonOptions = new()
@@ -62,13 +77,99 @@ public sealed class ThemeJsonConfig
 
     /// <summary>Trim-safe typed metadata for source-generated deserialization.</summary>
     public static JsonTypeInfo<ThemeJsonConfig> JsonTypeInfo => ThemeJsonContext.Default.ThemeJsonConfig;
+
+    /// <summary>
+    /// Projects this JSON configuration into a validated runtime theme manifest.
+    /// </summary>
+    public ThemeManifest CreateManifest() => new()
+    {
+        LayoutTemplate = Templates?.Layout ?? "layout.revela",
+        Stylesheets = Stylesheets,
+        Scripts = Scripts,
+        PhotoViewer = CreatePhotoViewerCapabilities()
+    };
+
+    private PhotoViewerCapabilities? CreatePhotoViewerCapabilities()
+    {
+        if (TargetTheme is not null)
+        {
+            if (PhotoViewers is not null)
+            {
+                throw new InvalidOperationException(
+                    "Theme extension field 'photoViewers' must be absent.");
+            }
+
+            if (DefaultPhotoViewer is not null)
+            {
+                throw new InvalidOperationException(
+                    "Theme extension field 'defaultPhotoViewer' must be absent.");
+            }
+
+            return null;
+        }
+
+        if (PhotoViewers is null)
+        {
+            throw new InvalidOperationException("Base theme field 'photoViewers' is required.");
+        }
+
+        if (PhotoViewers.Count == 0)
+        {
+            throw new InvalidOperationException("Base theme field 'photoViewers' must be non-empty.");
+        }
+
+        if (DefaultPhotoViewer is null)
+        {
+            throw new InvalidOperationException("Base theme field 'defaultPhotoViewer' is required.");
+        }
+
+        var supported = new List<PhotoViewerMode>(PhotoViewers.Count);
+        var uniqueModes = new HashSet<PhotoViewerMode>();
+
+        foreach (var value in PhotoViewers)
+        {
+            if (!Enum.TryParse<PhotoViewerMode>(value, ignoreCase: true, out var mode)
+                || !Enum.IsDefined(mode))
+            {
+                throw new InvalidOperationException(
+                    $"Base theme field 'photoViewers' contains unknown value '{value}'.");
+            }
+
+            if (!uniqueModes.Add(mode))
+            {
+                throw new InvalidOperationException(
+                    $"Base theme field 'photoViewers' contains duplicate value '{value}'.");
+            }
+
+            supported.Add(mode);
+        }
+
+        if (!Enum.TryParse<PhotoViewerMode>(DefaultPhotoViewer, ignoreCase: true, out var defaultMode)
+            || !Enum.IsDefined(defaultMode))
+        {
+            throw new InvalidOperationException(
+                $"Base theme field 'defaultPhotoViewer' contains unknown value '{DefaultPhotoViewer}'.");
+        }
+
+        if (!uniqueModes.Contains(defaultMode))
+        {
+            throw new InvalidOperationException(
+                $"Base theme field 'defaultPhotoViewer' value '{DefaultPhotoViewer}' is not listed in 'photoViewers'.");
+        }
+
+        return new PhotoViewerCapabilities
+        {
+            Supported = supported,
+            Default = defaultMode
+        };
+    }
 }
 
 /// <summary>
 /// Source-generated JSON serializer context for theme configuration types.
 /// </summary>
 [JsonSerializable(typeof(ThemeJsonConfig))]
-[JsonSerializable(typeof(Abstractions.StylesheetDeclaration))]
+[JsonSerializable(typeof(AssetDeclaration))]
 [JsonSourceGenerationOptions(PropertyNameCaseInsensitive = true)]
 internal sealed partial class ThemeJsonContext : JsonSerializerContext;
 

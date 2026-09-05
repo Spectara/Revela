@@ -1,6 +1,7 @@
 using System.Text.Json;
 
 using Spectara.Revela.Core.Themes;
+using Spectara.Revela.Sdk.Models;
 using Spectara.Revela.Sdk.Themes;
 
 namespace Spectara.Revela.Tests.Core.Themes;
@@ -68,6 +69,28 @@ public sealed class LocalThemeProviderTests
     }
 
     [TestMethod]
+    [DataRow("Lumina", null)]
+    [DataRow(null, "calendar")]
+    [DataRow("Lumina", "calendar")]
+    public void Constructor_ExtensionMetadata_ThrowsThemeJsonDiagnostic(
+        string? targetTheme,
+        string? prefix)
+    {
+        var themeDir = CreateThemeDirectory(
+            "TestTheme",
+            configure: config =>
+            {
+                config.TargetTheme = targetTheme;
+                config.Prefix = prefix;
+            });
+
+        var exception = Assert.ThrowsExactly<InvalidOperationException>(
+            () => new LocalThemeProvider(themeDir));
+
+        StringAssert.Contains(exception.Message, "theme.json", StringComparison.Ordinal);
+    }
+
+    [TestMethod]
     public void GetManifest_ReturnsLayoutTemplate()
     {
         // Arrange
@@ -93,6 +116,122 @@ public sealed class LocalThemeProviderTests
 
         // Assert
         Assert.AreEqual("layout.revela", manifest.LayoutTemplate);
+    }
+
+    [TestMethod]
+    public void GetManifest_CaseInsensitivePhotoViewerValues_MapsCapabilities()
+    {
+        // Arrange
+        var themeDir = CreateThemeDirectory(
+            "TestTheme",
+            configure: config =>
+            {
+                config.PhotoViewers = ["PAGE", "LightBox", "none"];
+                config.DefaultPhotoViewer = "pAgE";
+            });
+
+        // Act
+        var photoViewer = new LocalThemeProvider(themeDir).Manifest.PhotoViewer;
+
+        // Assert
+        Assert.IsNotNull(photoViewer);
+        CollectionAssert.AreEqual(
+            new[] { PhotoViewerMode.Page, PhotoViewerMode.Lightbox, PhotoViewerMode.None },
+            photoViewer.Supported.ToArray());
+        Assert.AreEqual(PhotoViewerMode.Page, photoViewer.Default);
+    }
+
+    [TestMethod]
+    public void GetManifest_SupportedPhotoViewers_CannotBeMutatedByDowncast()
+    {
+        var themeDir = CreateThemeDirectory("TestTheme");
+
+        var supported = new LocalThemeProvider(themeDir).Manifest.PhotoViewer?.Supported;
+
+        Assert.IsNotNull(supported);
+        Assert.IsFalse(supported is List<PhotoViewerMode>);
+        var mutableView = Assert.IsInstanceOfType<IList<PhotoViewerMode>>(supported);
+        Assert.ThrowsExactly<NotSupportedException>(() => mutableView[0] = PhotoViewerMode.None);
+    }
+
+    [TestMethod]
+    [DataRow(true, false, "photoViewers")]
+    [DataRow(false, true, "defaultPhotoViewer")]
+    public void CreateManifest_BaseThemeMissingViewerField_ThrowsClearError(
+        bool omitPhotoViewers,
+        bool omitDefaultPhotoViewer,
+        string expectedField)
+    {
+        // Arrange
+        var config = CreateThemeConfig("TestTheme");
+        config.PhotoViewers = omitPhotoViewers ? null : config.PhotoViewers;
+        config.DefaultPhotoViewer = omitDefaultPhotoViewer ? null : config.DefaultPhotoViewer;
+
+        // Act
+        var exception = Assert.ThrowsExactly<InvalidOperationException>(config.CreateManifest);
+
+        // Assert
+        StringAssert.Contains(exception.Message, expectedField, StringComparison.Ordinal);
+    }
+
+    [TestMethod]
+    public void CreateManifest_EmptyPhotoViewers_ThrowsClearError()
+    {
+        var config = CreateThemeConfig("TestTheme");
+        config.PhotoViewers = [];
+
+        var exception = Assert.ThrowsExactly<InvalidOperationException>(config.CreateManifest);
+
+        StringAssert.Contains(exception.Message, "photoViewers", StringComparison.Ordinal);
+        StringAssert.Contains(exception.Message, "non-empty", StringComparison.Ordinal);
+    }
+
+    [TestMethod]
+    public void CreateManifest_DuplicatePhotoViewer_ThrowsClearError()
+    {
+        var config = CreateThemeConfig("TestTheme");
+        config.PhotoViewers = ["page", "PAGE"];
+
+        var exception = Assert.ThrowsExactly<InvalidOperationException>(config.CreateManifest);
+
+        StringAssert.Contains(exception.Message, "photoViewers", StringComparison.Ordinal);
+        StringAssert.Contains(exception.Message, "PAGE", StringComparison.Ordinal);
+    }
+
+    [TestMethod]
+    public void CreateManifest_UnknownPhotoViewer_ThrowsClearError()
+    {
+        var config = CreateThemeConfig("TestTheme");
+        config.PhotoViewers = ["carousel"];
+
+        var exception = Assert.ThrowsExactly<InvalidOperationException>(config.CreateManifest);
+
+        StringAssert.Contains(exception.Message, "photoViewers", StringComparison.Ordinal);
+        StringAssert.Contains(exception.Message, "carousel", StringComparison.Ordinal);
+    }
+
+    [TestMethod]
+    public void CreateManifest_UnsupportedDefaultPhotoViewer_ThrowsClearError()
+    {
+        var config = CreateThemeConfig("TestTheme");
+        config.PhotoViewers = ["page"];
+        config.DefaultPhotoViewer = "lightbox";
+
+        var exception = Assert.ThrowsExactly<InvalidOperationException>(config.CreateManifest);
+
+        StringAssert.Contains(exception.Message, "defaultPhotoViewer", StringComparison.Ordinal);
+        StringAssert.Contains(exception.Message, "lightbox", StringComparison.Ordinal);
+    }
+
+    [TestMethod]
+    public void CreateManifest_ExtensionDeclaringPhotoViewerFields_ThrowsClearError()
+    {
+        var config = CreateThemeConfig("TestTheme");
+        config.TargetTheme = "Lumina";
+
+        var exception = Assert.ThrowsExactly<InvalidOperationException>(config.CreateManifest);
+
+        StringAssert.Contains(exception.Message, "photoViewers", StringComparison.Ordinal);
     }
 
     [TestMethod]
@@ -224,28 +363,35 @@ public sealed class LocalThemeProviderTests
 
     private string CreateThemeDirectory(
         string name,
-        string? layout = null)
+        string? layout = null,
+        Action<ThemeJsonConfig>? configure = null)
     {
         var themeDir = Path.Combine(tempDirectory, name);
         Directory.CreateDirectory(themeDir);
 
-        var themeConfig = new ThemeJsonConfig
-        {
-            Name = name,
-            Version = "1.0.0",
-            Description = $"Test theme {name}",
-            Author = "Test"
-        };
+        var themeConfig = CreateThemeConfig(name);
 
         if (layout is not null)
         {
             themeConfig.Templates = new ThemeTemplatesConfig { Layout = layout };
         }
 
+        configure?.Invoke(themeConfig);
+
         var json = JsonSerializer.Serialize(themeConfig, ThemeJsonConfig.JsonOptions);
         File.WriteAllText(Path.Combine(themeDir, "theme.json"), json);
 
         return themeDir;
     }
+
+    private static ThemeJsonConfig CreateThemeConfig(string name) => new()
+    {
+        Name = name,
+        Version = "1.0.0",
+        Description = $"Test theme {name}",
+        Author = "Test",
+        PhotoViewers = ["page", "lightbox", "none"],
+        DefaultPhotoViewer = "page"
+    };
 }
 

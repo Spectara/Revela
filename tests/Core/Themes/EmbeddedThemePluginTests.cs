@@ -1,3 +1,4 @@
+using Spectara.Revela.Sdk.Models;
 using Spectara.Revela.Themes.Lumina;
 
 namespace Spectara.Revela.Tests.Core.Themes;
@@ -31,6 +32,20 @@ public sealed class EmbeddedThemePluginTests
 
         // Assert
         Assert.IsFalse(string.IsNullOrEmpty(manifest.LayoutTemplate));
+    }
+
+    [TestMethod]
+    public void GetManifest_ReturnsPhotoViewerCapabilities()
+    {
+        // Arrange & Act
+        var photoViewer = plugin.Manifest.PhotoViewer;
+
+        // Assert
+        Assert.IsNotNull(photoViewer);
+        CollectionAssert.AreEqual(
+            new[] { PhotoViewerMode.Page, PhotoViewerMode.Lightbox, PhotoViewerMode.None },
+            photoViewer.Supported.ToArray());
+        Assert.AreEqual(PhotoViewerMode.Page, photoViewer.Default);
     }
 
     [TestMethod]

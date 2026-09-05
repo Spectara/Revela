@@ -45,6 +45,13 @@ public sealed class LocalThemeProvider : ITheme
         var themeConfig = document.RootElement.Deserialize(ThemeJsonConfig.JsonTypeInfo)
             ?? throw new InvalidOperationException("Failed to parse theme.json");
 
+        if (!string.IsNullOrWhiteSpace(themeConfig.TargetTheme)
+            || !string.IsNullOrWhiteSpace(themeConfig.Prefix))
+        {
+            throw new InvalidOperationException(
+                "Local theme.json must describe a base theme; extension fields 'targetTheme' and 'prefix' must be absent or blank.");
+        }
+
         var themeName = themeConfig.Name ?? Path.GetFileName(themeDirectory);
         Metadata = new PackageMetadata
         {
@@ -57,11 +64,7 @@ public sealed class LocalThemeProvider : ITheme
             Tags = themeConfig.Tags ?? []
         };
 
-        Manifest = new ThemeManifest
-        {
-            LayoutTemplate = themeConfig.Templates?.Layout ?? "layout.revela",
-            Stylesheets = themeConfig.Stylesheets
-        };
+        Manifest = themeConfig.CreateManifest();
 
         // Local themes are always base themes (no prefix, no target)
         Prefix = null;

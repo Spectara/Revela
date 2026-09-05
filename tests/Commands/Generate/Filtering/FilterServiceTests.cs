@@ -1,4 +1,5 @@
 using Spectara.Revela.Features.Generate.Filtering;
+using Spectara.Revela.Sdk.Configuration;
 using Spectara.Revela.Sdk.Models;
 using Spectara.Revela.Sdk.Models.Manifest;
 
@@ -256,6 +257,163 @@ public sealed class FilterServiceTests
         Assert.IsNotNull(error);
         // Should contain the original filter and point to the error position
         Assert.Contains("filename", error);
+    }
+
+    [TestMethod]
+    public void ApplyQuery_ExplicitSort_OverridesPageAndGlobalSort()
+    {
+        // Arrange
+        var images = new[]
+        {
+            CreateTestImage("alpha.jpg", new DateTime(2024, 1, 1), iso: 100),
+            CreateTestImage("bravo.jpg", new DateTime(2025, 1, 1), iso: 400),
+            CreateTestImage("charlie.jpg", new DateTime(2026, 1, 1), iso: 200)
+        };
+        var globalSort = new ImageSortConfig
+        {
+            Field = "dateTaken",
+            Direction = SortDirection.Desc,
+            Fallback = "filename"
+        };
+
+        // Act
+        var result = FilterService.ApplyQuery(
+            images,
+            "all | sort exif.iso asc",
+            "filename:desc",
+            globalSort).ToList();
+
+        // Assert
+        Assert.AreEqual("alpha.jpg", result[0].Filename);
+        Assert.AreEqual("charlie.jpg", result[1].Filename);
+        Assert.AreEqual("bravo.jpg", result[2].Filename);
+    }
+
+    [TestMethod]
+    public void ApplyQuery_PageSort_OverridesGlobalSortAndUsesGlobalDirectionForInvalidDirection()
+    {
+        // Arrange
+        var images = new[]
+        {
+            CreateTestImage("alpha.jpg", new DateTime(2024, 1, 1), iso: 100),
+            CreateTestImage("bravo.jpg", new DateTime(2026, 1, 1), iso: 400),
+            CreateTestImage("charlie.jpg", new DateTime(2025, 1, 1), iso: 200)
+        };
+        var globalSort = new ImageSortConfig
+        {
+            Field = "dateTaken",
+            Direction = SortDirection.Desc,
+            Fallback = "filename"
+        };
+
+        // Act
+        var result = FilterService.ApplyQuery(images, "all", "exif.iso:sideways", globalSort).ToList();
+
+        // Assert
+        Assert.AreEqual("bravo.jpg", result[0].Filename);
+        Assert.AreEqual("charlie.jpg", result[1].Filename);
+        Assert.AreEqual("alpha.jpg", result[2].Filename);
+    }
+
+    [TestMethod]
+    public void ApplyQuery_GlobalSort_UsesConfiguredFallback()
+    {
+        // Arrange
+        var images = new[]
+        {
+            CreateTestImage("charlie.jpg", iso: null),
+            CreateTestImage("alpha.jpg", iso: null),
+            CreateTestImage("bravo.jpg", iso: 200)
+        };
+        var globalSort = new ImageSortConfig
+        {
+            Field = "exif.iso",
+            Direction = SortDirection.Asc,
+            Fallback = "filename"
+        };
+
+        // Act
+        var result = FilterService.ApplyQuery(images, "all", null, globalSort).ToList();
+
+        // Assert
+        Assert.AreEqual("bravo.jpg", result[0].Filename);
+        Assert.AreEqual("alpha.jpg", result[1].Filename);
+        Assert.AreEqual("charlie.jpg", result[2].Filename);
+    }
+
+    [TestMethod]
+    public void ApplyQuery_EqualSortKeys_UsesFilenameTieBreaker()
+    {
+        // Arrange
+        var images = new[]
+        {
+            CreateTestImage("charlie.jpg", iso: 200),
+            CreateTestImage("alpha.jpg", iso: 200),
+            CreateTestImage("bravo.jpg", iso: 200)
+        };
+
+        // Act
+        var result = FilterService.ApplyQuery(images, "all | sort exif.iso desc").ToList();
+
+        // Assert
+        Assert.AreEqual("alpha.jpg", result[0].Filename);
+        Assert.AreEqual("bravo.jpg", result[1].Filename);
+        Assert.AreEqual("charlie.jpg", result[2].Filename);
+    }
+
+    [TestMethod]
+    public void ApplyQuery_Limit_AppliesAfterEffectiveSort()
+    {
+        // Arrange
+        var images = new[]
+        {
+            CreateTestImage("alpha.jpg", new DateTime(2024, 1, 1)),
+            CreateTestImage("bravo.jpg", new DateTime(2026, 1, 1)),
+            CreateTestImage("charlie.jpg", new DateTime(2025, 1, 1))
+        };
+        var globalSort = new ImageSortConfig
+        {
+            Field = "dateTaken",
+            Direction = SortDirection.Desc,
+            Fallback = "filename"
+        };
+
+        // Act
+        var result = FilterService.ApplyQuery(images, "all | limit 2", null, globalSort).ToList();
+
+        // Assert
+        Assert.AreEqual("bravo.jpg", result[0].Filename);
+        Assert.AreEqual("charlie.jpg", result[1].Filename);
+    }
+
+    [TestMethod]
+    public void ApplyQuery_ExplicitSortWithNullValues_PutsNullsLastWithoutConfiguredFallback()
+    {
+        // Arrange
+        var images = new[]
+        {
+            new ImageContent
+            {
+                Filename = "undated.jpg",
+                Width = 1920,
+                Height = 1080,
+                Sizes = [1920]
+            },
+            CreateTestImage("dated.jpg", new DateTime(2024, 1, 1))
+        };
+        var globalSort = new ImageSortConfig
+        {
+            Field = "filename",
+            Direction = SortDirection.Desc,
+            Fallback = "filename"
+        };
+
+        // Act
+        var result = FilterService.ApplyQuery(images, "all | sort dateTaken desc", null, globalSort).ToList();
+
+        // Assert
+        Assert.AreEqual("dated.jpg", result[0].Filename);
+        Assert.AreEqual("undated.jpg", result[1].Filename);
     }
 }
 

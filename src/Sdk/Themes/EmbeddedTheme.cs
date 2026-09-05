@@ -44,7 +44,7 @@ public abstract class EmbeddedTheme : ITheme
         resources = new EmbeddedResourceProvider(assembly);
         config = new Lazy<ThemeJsonConfig>(resources.LoadManifest);
         packageMetadata = new Lazy<PackageMetadata>(() => CreateMetadata(config.Value));
-        manifest = new Lazy<ThemeManifest>(() => CreateManifest(config.Value));
+        manifest = new Lazy<ThemeManifest>(() => config.Value.CreateManifest());
     }
 
     /// <inheritdoc />
@@ -116,9 +116,4 @@ public abstract class EmbeddedTheme : ITheme
         };
     }
 
-    private static ThemeManifest CreateManifest(ThemeJsonConfig config) => new()
-    {
-        LayoutTemplate = config.Templates?.Layout ?? "layout.revela",
-        Stylesheets = config.Stylesheets
-    };
 }

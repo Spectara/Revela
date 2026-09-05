@@ -1,18 +1,13 @@
 using Spectara.Revela.Features.Generate.Models;
+using Spectara.Revela.Sdk.Models;
 
 namespace Spectara.Revela.Features.Generate.Infrastructure;
 
 /// <summary>
 /// Builds the render-time photo-page catalog: one <see cref="PhotoPage"/> per unique
-/// published source image, aggregated from every eligible gallery membership.
+/// published source image, aggregated from every page-viewer membership.
 /// </summary>
 /// <remarks>
-/// <para>
-/// A gallery is eligible when it is rendered (visible) and uses the effective default gallery
-/// body (<see cref="Gallery.Template"/> is <c>null</c> or resolves to <c>body/gallery</c>).
-/// Galleries with custom bodies (<c>body/page</c>, <c>statistics/overview</c>, the home body,
-/// …) neither create photo pages nor become contexts.
-/// </para>
 /// <para>
 /// Occurrences are grouped by normalized <see cref="Image.SourcePath"/> using
 /// ordinal-ignore-case comparison. Context order follows the gallery's final rendered image
@@ -23,22 +18,27 @@ namespace Spectara.Revela.Features.Generate.Infrastructure;
 internal static class PhotoPageCatalog
 {
     /// <summary>
-    /// Builds photo pages from the reconstructed galleries. Galleries must already carry their
-    /// final <see cref="Gallery.Images"/> order.
+    /// Builds page-viewer base memberships for callers without prepared rendering metadata.
     /// </summary>
-    /// <param name="galleries">All galleries in stable site/navigation order (root first).</param>
-    /// <returns>One page per unique eligible source image, in first-occurrence order.</returns>
-    public static IReadOnlyList<PhotoPage> Build(IReadOnlyList<Gallery> galleries)
-    {
-        var eligible = galleries.Where(IsEligible).ToList();
+    public static IReadOnlyList<PhotoPage> Build(IReadOnlyList<Gallery> galleries) =>
+        Build(
+            [.. galleries.Select(gallery =>
+                new PhotoMembership(gallery, gallery.Images, null, PhotoViewerMode.Page))]);
 
+    /// <summary>
+    /// Builds photo pages from explicit gallery memberships with frozen image order.
+    /// </summary>
+    /// <param name="memberships">Page-viewer memberships in stable document order.</param>
+    /// <returns>One page per unique source image, in first-occurrence order.</returns>
+    public static IReadOnlyList<PhotoPage> Build(IReadOnlyList<PhotoMembership> memberships)
+    {
         // Preserve first-occurrence order while grouping every membership by source identity.
         var order = new List<string>();
         var groups = new Dictionary<string, List<Occurrence>>(StringComparer.OrdinalIgnoreCase);
 
-        foreach (var gallery in eligible)
+        foreach (var membership in memberships)
         {
-            var images = gallery.Images;
+            var images = membership.Images;
             for (var index = 0; index < images.Count; index++)
             {
                 var image = images[index];
@@ -53,7 +53,7 @@ internal static class PhotoPageCatalog
 
                 var previous = index > 0 ? images[index - 1] : null;
                 var next = index < images.Count - 1 ? images[index + 1] : null;
-                list.Add(new Occurrence(gallery, image, previous, next));
+                list.Add(new Occurrence(membership, image, previous, next));
             }
         }
 
@@ -67,10 +67,11 @@ internal static class PhotoPageCatalog
             var contexts = occurrences
                 .Select(occurrence => new PhotoContext
                 {
-                    GallerySlug = occurrence.Gallery.Slug,
-                    Label = GalleryLabel(occurrence.Gallery),
-                    ContextId = ContextId(occurrence.Gallery.Slug),
-                    IsPhysical = IsPhysical(occurrence.Gallery, occurrence.Image),
+                    Route = occurrence.Membership.Gallery.Slug,
+                    Label = GalleryLabel(occurrence.Membership.Gallery),
+                    ContextId = ContextId(occurrence.Membership),
+                    Anchor = Anchor(occurrence.Image.Slug, occurrence.Membership.GridNumber),
+                    IsPhysical = IsPhysical(occurrence.Membership.Gallery, occurrence.Image),
                     PreviousPhoto = occurrence.Previous,
                     NextPhoto = occurrence.Next
                 })
@@ -82,7 +83,6 @@ internal static class PhotoPageCatalog
             {
                 Image = identity,
                 Slug = identity.Slug,
-                Anchor = GalleryAnchor(identity.Slug),
                 Title = PageTitle(identity),
                 PrimaryContext = primary,
                 Contexts = contexts
@@ -93,28 +93,38 @@ internal static class PhotoPageCatalog
     }
 
     /// <summary>
-    /// Whether a gallery is eligible to create photo pages and contexts: rendered and using
-    /// the effective default gallery body.
-    /// </summary>
-    public static bool IsEligible(Gallery gallery) =>
-        gallery.Template is null
-        || gallery.Template.Equals("gallery", StringComparison.OrdinalIgnoreCase)
-        || gallery.Template.Equals("body/gallery", StringComparison.OrdinalIgnoreCase);
-
-    /// <summary>
     /// Stable HTML id token (without the <c>ctx-</c> prefix) for a gallery-context fragment.
     /// The site root maps to <c>"home"</c>; other galleries reuse their output slug with path
     /// separators replaced by hyphens.
     /// </summary>
-    public static string ContextId(string gallerySlug) =>
-        gallerySlug.Length == 0 ? "home" : gallerySlug.Replace('/', '-');
+    public static string BaseContextId(string gallerySlug)
+    {
+        var normalized = gallerySlug.Trim('/').Replace('/', '-');
+        return normalized.Length == 0 ? "home" : normalized;
+    }
+
+    /// <summary>
+    /// Stable context id for a base or filtered membership.
+    /// </summary>
+    public static string ContextId(PhotoMembership membership)
+    {
+        var baseContextId = BaseContextId(membership.Gallery.Slug);
+        return membership.GridNumber is null
+            ? baseContextId
+            : $"{baseContextId}-grid-{membership.GridNumber.Value}";
+    }
 
     /// <summary>
     /// Stable gallery-side anchor id (<c>photo-</c> prefix) for an image slug so <c>up</c>
     /// links land on the originating gallery occurrence.
     /// </summary>
-    public static string GalleryAnchor(string imageSlug) =>
-        "photo-" + imageSlug.Trim('/').Replace('/', '-');
+    public static string Anchor(string imageSlug, int? gridNumber)
+    {
+        var normalizedImageSlug = imageSlug.Trim('/').Replace('/', '-');
+        return gridNumber is null
+            ? $"photo-{normalizedImageSlug}"
+            : $"grid-{gridNumber.Value}-photo-{normalizedImageSlug}";
+    }
 
     private static string PageTitle(Image image) =>
         !string.IsNullOrWhiteSpace(image.Title) ? image.Title : image.FileName;
@@ -131,7 +141,20 @@ internal static class PhotoPageCatalog
         return string.Equals(directory, NormalizeSourcePath(gallery.Path), StringComparison.OrdinalIgnoreCase);
     }
 
-    private static string NormalizeSourcePath(string path) => path.Replace('\\', '/').Trim('/');
+    public static string NormalizeSourcePath(string path) => path.Replace('\\', '/').Trim('/');
 
-    private readonly record struct Occurrence(Gallery Gallery, Image Image, Image? Previous, Image? Next);
+    private readonly record struct Occurrence(
+        PhotoMembership Membership,
+        Image Image,
+        Image? Previous,
+        Image? Next);
 }
+
+/// <summary>
+/// Frozen image order for one eligible base gallery or filtered inline-grid occurrence.
+/// </summary>
+internal sealed record PhotoMembership(
+    Gallery Gallery,
+    IReadOnlyList<Image> Images,
+    int? GridNumber,
+    PhotoViewerMode ViewerMode);

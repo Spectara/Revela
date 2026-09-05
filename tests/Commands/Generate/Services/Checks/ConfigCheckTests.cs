@@ -1,10 +1,11 @@
 using Microsoft.Extensions.Options;
-
 using NSubstitute;
-
 using Spectara.Revela.Features.Generate.Services.Checks;
+using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Abstractions;
 using Spectara.Revela.Sdk.Configuration;
+using Spectara.Revela.Sdk.Models;
+using Spectara.Revela.Sdk.Services;
 
 namespace Spectara.Revela.Tests.Commands.Generate.Services.Checks;
 
@@ -53,7 +54,64 @@ public sealed class ConfigCheckTests
         Assert.IsEmpty(diagnostics);
     }
 
-    private static ConfigCheck CreateCheck(Uri? baseUrl, string title)
+    [TestMethod]
+    public async Task ValidateAsync_InvalidThemeConfig_ReportsBindingFailure()
+    {
+        var themeConfig = Substitute.For<IOptionsMonitor<ThemeConfig>>();
+        themeConfig.CurrentValue.Returns(_ => throw new OptionsValidationException(
+            Options.DefaultName,
+            typeof(ThemeConfig),
+            ["theme.photoViewer has an invalid value."]));
+        var check = CreateCheck(
+            baseUrl: new Uri("https://example.com"),
+            title: "My Site",
+            themeConfig: themeConfig);
+
+        var diagnostics = await check.ValidateAsync();
+
+        Assert.IsTrue(diagnostics.Any(d => d.Severity == ValidationSeverity.Error
+            && d.Message.Contains("theme.photoViewer", StringComparison.Ordinal)));
+    }
+
+    [TestMethod]
+    public async Task ValidateAsync_UnsupportedProjectViewer_ReportsThemeAndSupportedModes()
+    {
+        var themeConfig = CreateThemeConfig(new ThemeConfig
+        {
+            Name = "Limited",
+            PhotoViewer = PhotoViewerMode.Page
+        });
+        var themeRegistry = Substitute.For<IThemeRegistry>();
+        var theme = Substitute.For<ITheme>();
+        theme.Manifest.Returns(new ThemeManifest
+        {
+            LayoutTemplate = "Body/Gallery.revela",
+            PhotoViewer = new PhotoViewerCapabilities
+            {
+                Supported = [PhotoViewerMode.Lightbox, PhotoViewerMode.None],
+                Default = PhotoViewerMode.Lightbox
+            }
+        });
+        themeRegistry.Resolve("Limited", Arg.Any<string>()).Returns(theme);
+        var check = CreateCheck(
+            baseUrl: new Uri("https://example.com"),
+            title: "My Site",
+            themeConfig: themeConfig,
+            themeRegistry: themeRegistry);
+
+        var diagnostics = await check.ValidateAsync();
+
+        var diagnostic = diagnostics.Single(d => d.Severity == ValidationSeverity.Error);
+        Assert.Contains("theme.photoViewer", diagnostic.Message, StringComparison.Ordinal);
+        Assert.Contains("Limited", diagnostic.Message, StringComparison.Ordinal);
+        Assert.Contains("lightbox, none", diagnostic.Message, StringComparison.Ordinal);
+    }
+
+    private static ConfigCheck CreateCheck(
+        Uri? baseUrl,
+        string title,
+        IOptionsMonitor<ThemeConfig>? themeConfig = null,
+        IThemeRegistry? themeRegistry = null)
     {
         var projectConfig = Substitute.For<IOptionsMonitor<ProjectConfig>>();
         projectConfig.CurrentValue.Returns(new ProjectConfig { Name = "Test", BaseUrl = baseUrl });
@@ -61,6 +119,18 @@ public sealed class ConfigCheckTests
         var siteConfig = Substitute.For<IOptionsMonitor<SiteCoreConfig>>();
         siteConfig.CurrentValue.Returns(new SiteCoreConfig { Title = title });
 
-        return new ConfigCheck(projectConfig, siteConfig);
+        return new ConfigCheck(
+            projectConfig,
+            siteConfig,
+            themeConfig ?? CreateThemeConfig(new ThemeConfig { Name = "Lumina" }),
+            themeRegistry ?? Substitute.For<IThemeRegistry>(),
+            Options.Create(new ProjectEnvironment { Path = "test-project" }));
+    }
+
+    private static IOptionsMonitor<ThemeConfig> CreateThemeConfig(ThemeConfig config)
+    {
+        var monitor = Substitute.For<IOptionsMonitor<ThemeConfig>>();
+        monitor.CurrentValue.Returns(config);
+        return monitor;
     }
 }
