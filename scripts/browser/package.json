@@ -1,0 +1,10 @@
+{
+  "name": "revela-browser-checks",
+  "private": true,
+  "scripts": {
+    "verify": "node verify-lumina.cjs"
+  },
+  "devDependencies": {
+    "playwright": "1.63.0"
+  }
+}

@@ -41,6 +41,10 @@ Coverage filters are configured in `coverage.config`.
 
 ## Building Releases
 
+For theme work, also run the [Lumina browser acceptance](../scripts/browser/README.md)
+against fresh Showcase output. It verifies actual viewport/JS settings and the
+page/lightbox/none journeys; .NET tests alone do not prove browser usability.
+
 ### Create Standalone Executable
 
 ```bash

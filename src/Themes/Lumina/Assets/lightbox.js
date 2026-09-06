@@ -8,7 +8,7 @@
   }
 
   let initiatingTrigger = null;
-  let isSwitching = false;
+  const switchingDialogs = new WeakSet();
 
   for (const button of document.querySelectorAll("[data-lightbox-target]")) {
     button.hidden = false;
@@ -52,11 +52,10 @@
 
     const currentDialog = targetButton.closest("dialog[open]");
     if (currentDialog) {
-      isSwitching = true;
+      switchingDialogs.add(currentDialog);
       closeDialog(currentDialog);
       queueMicrotask(() => {
         openDialog(targetDialog);
-        isSwitching = false;
       });
       return;
     }
@@ -67,13 +66,13 @@
       if (event.command === "show-modal") {
         initiatingTrigger ??= event.source;
         prioritizeImage(dialog);
-      } else if (event.command === "close" && !isSwitching) {
+      } else if (event.command === "close" && !switchingDialogs.has(dialog)) {
         restoreFocus(dialog);
       }
     });
 
     dialog.addEventListener("close", () => {
-      if (isSwitching || initiatingTrigger === null) {
+      if (switchingDialogs.delete(dialog) || initiatingTrigger === null) {
         return;
       }
 
