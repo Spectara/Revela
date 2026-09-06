@@ -83,20 +83,34 @@ internal sealed partial class RestoreCommand(
         // Check each dependency
         var missing = new List<RequiredDependency>();
         var installed = new List<RequiredDependency>();
+        var invalidCount = 0;
 
         AnsiConsole.MarkupLine("\n[bold]Checking dependencies...[/]\n");
 
         foreach (var dep in dependencies)
         {
-            var isInstalled = dep.Type switch
-            {
-                DependencyType.Theme => IsThemeInstalled(dep, fullPath),
-                DependencyType.Plugin => IsPluginInstalled(dep),
-                _ => false
-            };
-
             var typeLabel = dep.Type == DependencyType.Theme ? "Theme" : "Plugin";
-            var shortName = GetShortName(dep);
+            var shortName = Markup.Escape(GetShortName(dep));
+            var isInstalled = false;
+
+            if (dep.Type == DependencyType.Theme)
+            {
+                try
+                {
+                    isInstalled = IsThemeInstalled(dep, fullPath);
+                }
+                catch (InvalidOperationException ex)
+                {
+                    invalidCount++;
+                    var safeError = Markup.Escape(ex.Message);
+                    AnsiConsole.MarkupLine($"  {OutputMarkers.Error} Theme [white]{shortName}[/] - [red]invalid[/]: {safeError}");
+                    continue;
+                }
+            }
+            else if (dep.Type == DependencyType.Plugin)
+            {
+                isInstalled = IsPluginInstalled(dep);
+            }
 
             if (isInstalled)
             {
@@ -113,6 +127,13 @@ internal sealed partial class RestoreCommand(
         AnsiConsole.WriteLine();
 
         // Summary
+        if (invalidCount > 0)
+        {
+            AnsiConsole.MarkupLine($"{OutputMarkers.Error} {invalidCount} theme(s) invalid; {missing.Count} dependency(ies) missing.");
+            AnsiConsole.MarkupLine("    Fix invalid local theme configuration before restoring dependencies. No packages were installed.");
+            return 1;
+        }
+
         if (missing.Count == 0)
         {
             AnsiConsole.MarkupLine($"{OutputMarkers.Success} All {dependencies.Count} dependency(ies) are installed.");
@@ -193,7 +214,7 @@ internal sealed partial class RestoreCommand(
             AnsiConsole.MarkupLine($"{OutputMarkers.Error} Failed to install {installFailed.Count} package(s):");
             foreach (var (dep, error) in installFailed)
             {
-                var shortName = GetShortName(dep);
+                var shortName = Markup.Escape(GetShortName(dep));
                 var safeError = Markup.Escape(error);
                 AnsiConsole.MarkupLine($"  {OutputMarkers.Error} {shortName}: [dim]{safeError}[/]");
             }

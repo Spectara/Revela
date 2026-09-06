@@ -17,6 +17,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Commands\Commands.csproj" />
+    <ProjectReference Include="..\..\src\Features\Packages\Packages.csproj" />
     <ProjectReference Include="..\Shared\Shared.csproj" />
   </ItemGroup>
 
