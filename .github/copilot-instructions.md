@@ -52,6 +52,7 @@ scripts/              # build-release.ps1, test-release.ps1
 | **Revela Dev** | All implementation work — features, fixes, tests, refactoring |
 | **Revela Reviewer** | Read-only audits — architecture, security, performance, conventions |
 | **Revela Docs** | Website documentation — write/maintain product docs, persona paths (#86), migrate docs/ → website, keep docs in sync with code |
+| **UX Advocate** | Read-only UX assessment for the assigned audience and browser verification of affected journeys on an assigned local preview; reports observed findings and untested conditions, without implementing fixes |
 | **Spike Analyst** | New feature ideas — sharpens problem, weighs trade-offs, compares prior art, produces decision-ready spike report (read-only) |
 | **Explore** | Fast read-only codebase exploration (subagent — call in parallel) |
 | **Pattern Finder** | Subagent — finds 2-3 canonical examples to mirror; dispatched by Dev before implementing something new |
@@ -84,6 +85,14 @@ scripts/              # build-release.ps1, test-release.ps1
 | `/new-plugin` | Scaffold a new plugin → routes to Revela Dev |
 | `/new-theme` | Scaffold a new theme → routes to Revela Dev |
 | `/release-notes` | Generate CHANGELOG entries from commits |
+
+---
+
+## Reasoned Delegation
+
+Use the [reasoned delegation workflow](../docs/subagent-patterns.md#reasoned-delegation) and [assignment contract](../docs/subagent-patterns.md#assignment-contract) for scoped outcomes, reasons, protected behaviors, resource ownership, and acceptance. Workers own reversible local details and challenge contradicted assumptions with evidence; the parent owns decisions, integration, and final verification.
+
+Keep **Revela Scout MAI** and **Revela Worker MAI** pinned to **MAI Code 1.1**, as explained by the [accepted decision](../docs/decisions/0001-reasoned-mai-delegation.md). Configuration alone does not prove runtime availability or general reliability.
 
 ---
 
@@ -122,14 +131,21 @@ If unsure whether the user wants a commit, **ask** — don't commit speculativel
 dotnet build                                # full solution
 dotnet test                                 # all tests
 dotnet test tests/Core                      # one project
-dotnet format                               # auto-fix style
-dotnet format --verify-no-changes           # CI gate — MUST pass before commit
+dotnet format                               # auto-fix style for .NET code/build changes
+dotnet format --verify-no-changes           # required gate for .NET code/build changes
 
 # Run CLI against a sample
 cd samples/showcase ; dotnet run --project ../../src/Cli -- generate all
 ```
 
-**Mandatory post-edit gate:** `dotnet build` → relevant `dotnet test` → `dotnet format --verify-no-changes`.
+**Task-scoped post-edit gates:**
+
+- **.NET code/build changes:** `dotnet build` -> relevant `dotnet test` -> `dotnet format --verify-no-changes` remains mandatory.
+- **Theme/site changes:** fresh generation with the target configuration, generated output/link/image/asset checks, and browser checks for affected journeys and viewports.
+- **Documentation/agent-only changes:** local links, applicable YAML frontmatter, routing/tool availability, and instruction consistency; no unrelated .NET checks.
+- **Mixed changes:** the union of applicable gates. Unavailable checks are reported as verification gaps, not passes.
+
+The parent owns integration and the applicable final gates; a Worker runs its assigned focused check. See [Revela Dev](./agents/revela-dev.agent.md#post-edit-workflow-mandatory-gate) and the [verification workflow](../docs/subagent-patterns.md#shared-resources-and-verification) for details.
 
 ---
 
@@ -166,13 +182,17 @@ Always **Typed Client pattern** — `services.AddHttpClient<MyService>()` then i
 
 ---
 
-## Session Startup (Revela Dev agent does this automatically)
+## Session Startup
 
-When starting a new conversation, run these in parallel and report only issues:
+Choose baseline checks for the task and target repository, not automatically for every conversation. Reuse verified results when their inputs have not changed:
 
-1. `dotnet format --verify-no-changes` — style violations?
-2. `dotnet outdated` — outdated/vulnerable packages?
-3. `dotnet build` — clean state?
+- **Revela .NET code/build work:** establish relevant build/format baselines as needed.
+- **Theme/site work:** identify the generator version, target configuration, owned output directory, and browser acceptance criteria.
+- **Documentation/agent work or questions:** use relevant local checks; do not start .NET builds or dependency audits automatically.
+
+Reserve mutable resources before execution; never run concurrent mutations of shared build outputs, generated directories, or browser pages. Dependency freshness/security checks belong to dependency work or an explicit audit; `dotnet outdated` alone is not a vulnerability scan.
+
+Report issues concisely. Baselines do not replace post-edit gates. See [Revela Dev startup](./agents/revela-dev.agent.md#session-startup) and the [resource and verification workflow](../docs/subagent-patterns.md#shared-resources-and-verification).
 
 ---
 

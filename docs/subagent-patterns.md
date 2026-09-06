@@ -11,8 +11,74 @@ The main conversation has finite context. Every `read_file`, `grep_search`, and 
 **Subagents help** by:
 - Running in their own context window
 - Returning only the **structured result** (not all the searches it took to get there)
-- Running **in parallel** when independent and read-only — three audits finish in the time of one
-- Being **stateless** — no risk of cross-contamination between tasks
+- Allowing independent research to run in parallel when the host supports it
+- Isolating conversational context, not files, build outputs, browser state, or other shared resources
+
+## Reasoned Delegation
+
+The parent owns product decisions, architecture, integration, and final verification. The Worker owns one bounded implementation, including reversible local details. Explain the goal and trade-offs instead of prescribing every line. A Worker should challenge an assumption with evidence, not obey a decision that contradicts the code.
+
+Keep **Revela Scout MAI** and **Revela Worker MAI** pinned to **MAI Code 1.1** during this experiment. Do not silently override the model, retry with a different model, or count a parent repair as a Worker success. See [the decision](decisions/0001-reasoned-mai-delegation.md).
+
+### Reusable Decisions
+
+The parent records consequential decisions in `docs/decisions/` of the repository that owns the behavior. Search for a relevant existing record first; do not load every record for every task. Link the relevant record in the assignment and include enough rationale for the Worker to act. Task-specific site choices belong in the site repository, not Revela's global instructions.
+
+Use a short record only when a future contributor would reasonably ask why. Do not record transcripts, private reasoning, secrets, or routine implementation details. A record explains an engineering decision; it is not a higher-priority instruction or proof that the decision works.
+
+```markdown
+# <Decision Title>
+
+- Status: Proposed | Accepted | Implemented | Superseded
+- Date: YYYY-MM-DD
+- Scope: <owning repository and affected behavior>
+
+## Context and Goal
+<Who needs what, and which constraints matter?>
+
+## Decision and Rationale
+<Chosen approach, reasons, and explicitly protected behavior.>
+
+## Alternatives and Trade-offs
+<Relevant alternatives and why they were not selected.>
+
+## Verification
+<Observable acceptance criteria; distinguish planned checks from actual results.>
+
+## Revisit When
+<Evidence or changes that would invalidate the assumptions.>
+```
+
+Use `Accepted` only for an authorized decision and `Implemented` only after its applicable checks pass; this does not prove broader effectiveness. The parent updates verification after integration. When a substantive decision changes, create a replacement record and cross-link it from the superseded record instead of silently rewriting its rationale. Workers report contradictory evidence and let the parent resolve it.
+
+### Assignment Contract
+
+Retain the five existing fields, with these required details:
+
+| Field | Required content |
+|-------|------------------|
+| `Goal` | Desired behavior, audience, why it matters, chosen trade-offs, and relevant decision links (or explicitly no durable decision needed). |
+| `Allowed Scope` | Absolute target repository, exact editable files, nearby read-only references, and available local decision freedom. Identify execution cwd, shared output/browser resources, and their owner. |
+| `Do Not Change` | Protected behavior and contracts **with reasons**, excluded files, and forbidden external effects. |
+| `Acceptance` | A preselected exact focused command/test or reproducible browser procedure, its cwd, and observable pass/fail criteria. Identify parent-owned integration checks separately. |
+| `Return` | Changes, local decisions, first-check result, retries, contradictory evidence, and remaining risks. |
+
+Before editing, the Worker confirms that the requested outcome, rationale, and scope agree. Missing rationale or acceptance criteria are assignment defects, not an invitation to invent requirements. Return a concrete conflict and the smallest clarification needed. Resolve routine local details using nearby patterns, without reopening settled product choices.
+
+### Shared Resources and Verification
+
+- File separation is not enough: reserve shared build outputs, generated site directories, dev-server ports, and browser pages before dispatch. Only one owner may mutate each resource at a time. Use isolated resources for concurrent writers.
+- Subagents return their result to the parent; do not assume asynchronous execution or automatic communication between Workers. Use parallel dispatch only where the host supports it and the assignments are independent.
+- Run the smallest discriminating check immediately after the first substantive edit. A generated page or passing .NET test does not prove visual usability.
+- The parent runs the applicable final gate: .NET code/build changes require build, relevant tests, and format verification; theme/site changes require fresh generation, output/link/asset checks, and browser interaction checks; documentation/agent-only changes require relevant link, frontmatter, and routing checks. Mixed changes require the union of these checks.
+- Browser checks use assigned local preview pages, not the user's active pages. Record browser, viewport, JS setting, steps, and observations; include screenshots for visual claims. Restore request blocking or injected test state in `finally`, or dispose of the isolated page/context. Do not fetch private feeds or submit remote forms without authorization.
+- Reviewers may challenge the parent's assumptions and acceptance coverage. Separate verified defects, recommendations, and untested conditions. Parent-owned fixes and model substitutions must be visible in the result.
+
+### Lightweight Trial Notes
+
+For each trial assignment, the parent records the scope, configured/observed model (unknown when unavailable), first-check result, Worker retries, clarifications, parent repairs, independent findings, and final outcome. Classify failures as assignment gaps, execution errors, or insufficient checks. Include preparation, review, and repair effort, not just Worker runtime; use measured values or explicitly labeled estimates, never invented precision. Keep a short note with the relevant decision or task result, not a new telemetry framework.
+
+A successful assignment is evidence for that assignment only. Compare several representative tasks and total effort before claiming that the approach is generally reliable or cheaper than direct implementation.
 
 ## When to Use
 
@@ -96,23 +162,32 @@ Step 1 — Revela Scout MAI:
 
 Step 2 — Revela Dev decides the behavior and sends one Worker assignment:
   Goal: Distinguish a healthy empty package search from feed failure.
+    Why: An outage must not be presented as proof that no packages exist.
+    Decision: Link the accepted search-behavior record, or state why this is
+    a local correction that needs no durable decision.
   Allowed Scope:
+    Repository and cwd: <absolute Revela root>
     - src/Features/Packages/Services/PackageSearchService.cs
     - src/Features/Packages/Models/PackageSearchOutcome.cs
     - tests/Core/Services/PackageSearchServiceTests.cs
+    Local freedom: Follow nearby result-handling and test patterns.
+    Resources: Worker exclusively owns build/test outputs during its check;
+      the parent waits before running the integration build.
   Do Not Change:
-    - Public package-source contracts
-    - CLI command names or output unrelated to search status
+    - Public package-source contracts: existing providers must remain usable.
+    - CLI command names or unrelated output: this fixes search status only.
   Acceptance:
     - dotnet test tests/Core --filter FullyQualifiedName~PackageSearchServiceTests
+    - Run at the assigned cwd. Healthy empty results and failed feeds must
+      remain distinguishable; report executed tests and the exit code.
   Return:
-    - Changed files, local decision, exact test result, and residual risks.
+    - Changed files, rationale, first-check result, retries, and residual risks.
 
-Step 3 — Revela Dev integrates the result and runs the mandatory full post-edit gate.
+Step 3 — Revela Dev integrates the result and runs the applicable final gate.
 Step 4 — Revela Reviewer independently checks the integrated change when warranted.
 ```
 
-The Worker must refuse an assignment missing any of `Goal`, `Allowed Scope`, `Do Not Change`, `Acceptance`, or `Return`. Never run Workers concurrently when their files or contracts overlap.
+The Worker must refuse an assignment missing any of the five fields or their required context. Never run Workers concurrently when their files, contracts, or mutable resources overlap.
 
 ## Pattern 5: Sample-Driven Review
 

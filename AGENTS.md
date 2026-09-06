@@ -40,6 +40,7 @@ Quick orientation for AI coding agents (GitHub Copilot, Claude, Cursor, etc.) wo
 | **Revela Dev** | Implementation work — features, bug fixes, commands, plugins, services, tests, refactoring. Knows all conventions. |
 | **Revela Reviewer** | Architecture / security / performance reviews. Read-only audit with structured report. |
 | **Revela Docs** | Website documentation — write/maintain product docs, persona paths (#86), migrate `docs/` → website, keep docs in sync with code. Writes docs only; hands off C# to Revela Dev. |
+| **UX Advocate** | Read-only UX assessment for the assigned audience and browser verification of affected journeys on an assigned local preview. Reports observed findings and untested conditions; does not implement fixes. |
 | **Spike Analyst** | New feature ideas — interactive analysis (problem sharpening, prior-art research, MVP carving, trade-off matrix). Read-only. Hands off to Dev when build is approved. |
 | **Explore** | Read-only codebase exploration when chaining many searches. Safe to call in parallel. |
 | **Pattern Finder** | Subagent — finds canonical existing examples (plugin, command, config, HttpClient, etc.) to mirror. Dispatched by Dev before new implementations. |
@@ -49,6 +50,12 @@ Quick orientation for AI coding agents (GitHub Copilot, Claude, Cursor, etc.) wo
 | **Plugin Auditor** | Subagent — single-plugin convention audit. Dispatched by Reviewer in Phase 2, one per plugin in parallel. |
 | **Test Doctor** | Subagent — test-quality audit (FluentAssertions/Moq, missing assertions, MSTest patterns). Dispatched by Reviewer in Phase 3 for `tests/`. |
 | **Security Scout** | Subagent — OWASP-aligned security scan (secrets, vulnerable deps, path traversal, SSRF, crypto). Dispatched by Reviewer in Phase 4. |
+
+## Reasoned Delegation
+
+Use the [reasoned delegation workflow](docs/subagent-patterns.md#reasoned-delegation) and [assignment contract](docs/subagent-patterns.md#assignment-contract) for scoped outcomes, reasons, protected behaviors, resource ownership, and acceptance. Workers own reversible local details and challenge contradicted assumptions with evidence; the parent owns decisions, integration, and final verification.
+
+Keep **Revela Scout MAI** and **Revela Worker MAI** pinned to **MAI Code 1.1**, as explained by the [accepted decision](docs/decisions/0001-reasoned-mai-delegation.md). Configuration alone does not prove runtime availability or general reliability.
 
 ## Skills (`.github/skills/`)
 
@@ -89,14 +96,25 @@ Reusable workflows — invoke with `/` in chat:
 dotnet build                                                # full solution
 dotnet test                                                 # all tests
 dotnet test tests/Core                                      # one project
-dotnet format                                               # MUST pass before commit
-dotnet format --verify-no-changes                           # CI gate
+dotnet format                                               # auto-fix style for .NET code/build changes
+dotnet format --verify-no-changes                           # required gate for .NET code/build changes
 
 # Run CLI against a sample
 cd samples/showcase ; dotnet run --project ../../src/Cli -- generate all
 ```
 
-**Mandatory post-edit gate:** `dotnet build` → relevant `dotnet test` → `dotnet format --verify-no-changes`.
+**Task-scoped post-edit gates:**
+
+- **.NET code/build changes:** `dotnet build` -> relevant `dotnet test` -> `dotnet format --verify-no-changes` remains mandatory.
+- **Theme/site changes:** fresh generation with the target configuration, generated output/link/image/asset checks, and browser checks for affected journeys and viewports.
+- **Documentation/agent-only changes:** local links, applicable YAML frontmatter, routing/tool availability, and instruction consistency; no unrelated .NET checks.
+- **Mixed changes:** the union of applicable gates. Unavailable checks are reported as verification gaps, not passes.
+
+The parent owns integration and the applicable final gates; a Worker runs its assigned focused check. See [Revela Dev](.github/agents/revela-dev.agent.md#post-edit-workflow-mandatory-gate) and the [verification workflow](docs/subagent-patterns.md#shared-resources-and-verification) for details.
+
+## Git Consent
+
+Follow the [Git consent rules](.github/copilot-instructions.md#git--hard-rule): never run `git commit` or any other history-mutating Git command without an explicit user request for that exact action.
 
 ## Hard Rules (frequent agent mistakes)
 
