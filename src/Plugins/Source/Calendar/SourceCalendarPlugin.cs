@@ -45,7 +45,8 @@ public sealed class SourceCalendarPlugin : IPlugin
         {
             client.Timeout = TimeSpan.FromSeconds(30);
             client.DefaultRequestHeaders.Add("User-Agent", "Revela/1.0 (Static Site Generator)");
-        });
+        }).RemoveAllLoggers()
+            .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler { AllowAutoRedirect = false, UseCookies = false });
 
         services.TryAddTransient<CalendarFetchCommand>();
     }

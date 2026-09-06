@@ -22,42 +22,89 @@ internal sealed partial class ICalFetcher(
             || !UrlSafety.IsSafeOutboundUrl(uri, allowHttp: true))
         {
             throw new InvalidOperationException(
-                $"iCal URL '{url}' is not a safe outbound target. " +
+                "The configured iCal URL is not a safe outbound target. " +
                 "URLs must use http(s) and not point to loopback, private, or link-local addresses.");
         }
 
-        // Information: host only — iCal feed URLs frequently embed auth tokens in query strings
-        // (Booking.com, Airbnb personal feeds, etc.). Full URL stays at Debug for diagnostics.
         LogFetchingHost(uri.Host);
-        LogFetchingUrl(url);
 
-        using var response = await httpClient.GetAsync(uri, cancellationToken);
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        timeout.CancelAfter(httpClient.Timeout);
+        using var response = await GetResponseAsync(uri, timeout.Token);
         response.EnsureSuccessStatusCode();
 
-        var directory = Path.GetDirectoryName(outputPath);
-        if (directory is not null)
+        var destination = Path.GetFullPath(outputPath);
+        Directory.CreateDirectory(Path.GetDirectoryName(destination)!);
+        var temporaryPath = destination + "." + Guid.NewGuid().ToString("N") + ".tmp";
+        try
         {
-            Directory.CreateDirectory(directory);
-        }
+            long bytesWritten;
+            await using (var fileStream = new FileStream(temporaryPath, FileMode.CreateNew, FileAccess.Write, FileShare.None, 81920, FileOptions.Asynchronous))
+            {
+                await response.Content.CopyToAsync(fileStream, timeout.Token);
+                bytesWritten = fileStream.Length;
+            }
 
-        long bytesWritten;
-        await using (var fileStream = File.Create(outputPath))
+            timeout.Token.ThrowIfCancellationRequested();
+            File.Move(temporaryPath, destination, overwrite: true);
+            LogFetched(outputPath, bytesWritten);
+            return bytesWritten;
+        }
+        finally
         {
-            await response.Content.CopyToAsync(fileStream, cancellationToken);
-            bytesWritten = fileStream.Length;
+            if (File.Exists(temporaryPath))
+            {
+                try
+                {
+                    File.Delete(temporaryPath);
+                }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+                {
+                    LogTemporaryCleanupFailed();
+                }
+            }
         }
+    }
 
-        LogFetched(outputPath, bytesWritten);
+    private async Task<HttpResponseMessage> GetResponseAsync(Uri uri, CancellationToken cancellationToken)
+    {
+        for (var redirects = 0; ; redirects++)
+        {
+            var response = await httpClient.GetAsync(uri, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+            if ((int)response.StatusCode is not (301 or 302 or 303 or 307 or 308))
+            {
+                return response;
+            }
 
-        return bytesWritten;
+            using (response)
+            {
+                Uri? location;
+                try
+                {
+                    location = response.Headers.Location;
+                }
+                catch (FormatException)
+                {
+                    throw new HttpRequestException("Calendar redirect contains an invalid location.");
+                }
+                if (redirects >= 5 || location is null || !Uri.TryCreate(uri, location, out var next) ||
+                    !UrlSafety.IsSafeOutboundUrl(next, allowHttp: true) ||
+                    (uri.Scheme == Uri.UriSchemeHttps && next.Scheme != Uri.UriSchemeHttps))
+                {
+                    throw new HttpRequestException("Calendar redirect is unsafe, invalid, or exceeds the redirect limit.");
+                }
+
+                uri = next;
+            }
+        }
     }
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Fetching iCal feed from {Host}")]
     private partial void LogFetchingHost(string host);
 
-    [LoggerMessage(Level = LogLevel.Debug, Message = "Fetching iCal feed: {Url}")]
-    private partial void LogFetchingUrl(string url);
-
     [LoggerMessage(Level = LogLevel.Debug, Message = "Saved iCal feed to {Path} ({Bytes} bytes)")]
     private partial void LogFetched(string path, long bytes);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Could not remove temporary calendar download. The previous output file was retained; inspect temporary files in its directory.")]
+    private partial void LogTemporaryCleanupFailed();
 }

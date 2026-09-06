@@ -39,12 +39,25 @@ rendering of third-party submissions.
 
 - **Path traversal in the dev server** — see [`StaticFileServer.TryResolveSafePath`](../src/Plugins/Serve/StaticFileServer.cs).
 - **SSRF in source-plugin URL fetches** — see [`UrlSafety`](../src/Sdk/Validation/UrlSafety.cs). Rejects loopback (`127.0.0.0/8`, `::1`, `localhost`), RFC 1918 private (`10/8`, `172.16/12`, `192.168/16`), RFC 6598 CGN (`100.64/10`), link-local (`169.254/16`, including AWS/Azure metadata IP), IPv6 link-local/site-local/ULA (`fc00::/7`), multicast, IPv4-mapped loopback, and non-https schemes (http opt-in for legacy iCal feeds).
-- **Sensitive URLs leaking into default-verbosity logs** — OneDrive share URLs and iCal feed URLs are logged at `Debug`, only the host appears at `Information`.
+- **Sensitive URLs leaking into logs** — Source.Calendar logs the host only and removes this typed client's default HTTP request loggers, including at Debug/Trace. Its command reports sanitized failure categories, not potentially token-bearing transport messages. OneDrive logging has its own policy; do not assume this protection applies to every HTTP client.
+- **Accidental calendar output escape and interrupted replacement** — selected feed destinations are checked below the configured source root, including existing link components and duplicate targets. Downloads use same-directory temporary replacement; failed/aborted requests retain the previous destination. This is not protection against a hostile concurrent process with the author's filesystem permissions.
 - **Spectre.Console markup injection from user-controlled strings** — every `MarkupLine` call passes user data through `Markup.Escape`.
 
 ---
 
 ## What Revela explicitly does NOT protect against
+
+### DNS targets and provider data quality
+
+`UrlSafety` does not resolve DNS. A permitted hostname can resolve to a private
+address; deployment-level egress policy is needed for stronger isolation.
+Source.Calendar validates each redirect's scheme and literal host and disallows
+HTTPS downgrade, but does not claim DNS-rebinding protection.
+
+A downloaded response can still be invalid or stale calendar data. Calendar
+generation validates the supported booking format and fails on invalid/missing
+inputs; it cannot attest to a provider's completeness or freshness. Successful
+downloads across multiple feeds are not rolled back when another feed fails.
 
 ### Raw HTML in `_index.revela` bodies
 
