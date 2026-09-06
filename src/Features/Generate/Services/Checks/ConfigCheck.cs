@@ -83,7 +83,16 @@ internal sealed class ConfigCheck(
         }
 
         var themeName = string.IsNullOrWhiteSpace(config.Name) ? "Lumina" : config.Name;
-        var theme = themeRegistry.Resolve(themeName, projectEnvironment.Value.Path);
+        ITheme? theme;
+        try
+        {
+            theme = themeRegistry.Resolve(themeName, projectEnvironment.Value.Path);
+        }
+        catch (InvalidOperationException ex)
+        {
+            diagnostics.Add(ValidationDiagnostic.Error(ex.Message, hint: "Fix the selected local theme manifest before checking its photo viewer."));
+            return;
+        }
         if (theme is null || theme.Manifest.PhotoViewer?.Supported.Contains(viewer) is true)
         {
             return;

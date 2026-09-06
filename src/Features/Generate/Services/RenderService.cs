@@ -187,9 +187,9 @@ internal sealed partial class RenderService(
             templateResolver.Initialize(theme, extensions, projectEnvironment.Value.Path);
             assetResolver.Initialize(theme, extensions, projectEnvironment.Value.Path);
 
-            var photoTemplate = LoadTemplate("body/photo.revela");
-            if (theme.Manifest.PhotoViewer?.Supported.Contains(PhotoViewerMode.Page) is true
-                && photoTemplate is null)
+            var supportsPhotoPages = theme.Manifest.PhotoViewer?.Supported.Contains(PhotoViewerMode.Page) is true;
+            var photoTemplate = supportsPhotoPages ? LoadTemplate("body/photo.revela") : null;
+            if (supportsPhotoPages && photoTemplate is null)
             {
                 return new RenderResult
                 {

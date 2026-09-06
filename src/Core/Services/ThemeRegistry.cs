@@ -1,3 +1,5 @@
+using System.Text.Json;
+
 using Spectara.Revela.Core.Themes;
 using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Abstractions;
@@ -132,10 +134,11 @@ public sealed partial class ThemeRegistry(
         {
             return new LocalThemeProvider(themePath);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is JsonException or InvalidOperationException or IOException or UnauthorizedAccessException)
         {
             LogLocalThemeError(logger, themeName, ex.Message);
-            return null;
+            var manifestPath = Path.GetRelativePath(projectPath, themeJsonPath);
+            throw new InvalidOperationException($"Local theme manifest '{manifestPath}' could not be loaded: {ex.Message}", ex);
         }
     }
 

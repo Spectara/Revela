@@ -39,7 +39,18 @@ internal sealed class ThemeCheck(
         }
 
         var projectPath = projectEnvironment.Value.Path;
-        var theme = themeRegistry.Resolve(themeName, projectPath);
+        ITheme? theme;
+        try
+        {
+            theme = themeRegistry.Resolve(themeName, projectPath);
+        }
+        catch (InvalidOperationException ex)
+        {
+            diagnostics.Add(ValidationDiagnostic.Error(
+                ex.Message,
+                hint: "Fix the local theme.json. Theme stylesheets/scripts use objects such as {\"path\":\"main.css\"}, not the site.json string shorthand."));
+            return new ValueTask<IReadOnlyList<ValidationDiagnostic>>(diagnostics);
+        }
 
         if (theme is null)
         {

@@ -68,6 +68,31 @@ public sealed class CheckCommandTests
     }
 
     [TestMethod]
+    [DataRow(/*lang=json,strict*/ """{"photoViewers":["none"],"defaultPhotoViewer":"none","stylesheets":["main.css"]}""", "$.stylesheets[0]", null)]
+    [DataRow("{}", "photoViewers", "none")]
+    public async Task CheckAll_MalformedLocalTheme_ReportsManifestInsteadOfInstalledFallback(string manifest, string expectedDetail, string? viewer)
+    {
+        using var project = TestProject.Create(p => p
+            .WithProjectJson(new { project = new { name = "Broken Local", baseUrl = "https://example.com" }, theme = new { name = "Lumina", photoViewer = viewer } })
+            .WithSiteJson(new { title = "Broken Local" })
+            .AddGallery("Events", gallery => gallery.AddImage("one.jpg")));
+        var themeDirectory = Path.Combine(project.RootPath, "themes", "Lumina");
+        Directory.CreateDirectory(themeDirectory);
+        await File.WriteAllTextAsync(Path.Combine(themeDirectory, "theme.json"), manifest);
+        using var host = RevelaTestHost.Build(project.RootPath, AddServices);
+        var check = host.Services.GetServices<ICheck>().Single(item => item.Name == "theme");
+
+        var diagnostics = await check.ValidateAsync();
+        var exitCode = await InvokeAsync(host.Services, command => command.CreateAll());
+
+        Assert.HasCount(1, diagnostics);
+        Assert.Contains("theme.json", diagnostics[0].Message, StringComparison.Ordinal);
+        Assert.Contains(expectedDetail, diagnostics[0].Message, StringComparison.Ordinal);
+        Assert.DoesNotContain("not installed", diagnostics[0].Message, StringComparison.Ordinal);
+        Assert.AreEqual(2, exitCode);
+    }
+
+    [TestMethod]
     public async Task CheckTheme_MissingTheme_ExitsTwo()
     {
         using var project = TestProject.Create(p => p

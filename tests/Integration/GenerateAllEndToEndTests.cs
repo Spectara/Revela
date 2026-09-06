@@ -1,10 +1,12 @@
 using Microsoft.Extensions.DependencyInjection;
 using Spectara.Revela.Commands;
+using Spectara.Revela.Core.Services;
 using Spectara.Revela.Features.Generate;
 using Spectara.Revela.Features.Generate.Abstractions;
 using Spectara.Revela.Features.Generate.Models.Results;
 using Spectara.Revela.Sdk.Abstractions;
 using Spectara.Revela.Sdk.Artifacts;
+using Spectara.Revela.Sdk.Models;
 using Spectara.Revela.Tests.Shared.Fixtures;
 using Spectara.Revela.Themes.Lumina;
 
@@ -1178,7 +1180,52 @@ public sealed class GenerateAllEndToEndTests
     }
 
     [TestMethod]
-    public async Task RenderAsync_ThemeWithoutPhotoTemplateSupportingPage_FailsBeforeHtmlWrite()
+    [DataRow(PhotoViewerMode.Lightbox)]
+    [DataRow(PhotoViewerMode.None)]
+    public async Task RenderAsync_ThemeWithoutPhotoTemplateWithoutPageSupport_RendersWithoutPhotoWarning(
+        PhotoViewerMode viewerMode)
+    {
+        using var project = TestProject.Create(p => p
+            .WithProjectJson(new
+            {
+                project = new { name = "Non-Page Viewer" },
+                theme = new { name = "Lumina" }
+            })
+            .WithSiteJson(new { title = "Non-Page Viewer", author = "Test" })
+            .AddGallery("Photos", gallery => gallery.AddRealImage("one.jpg", 1280, 720)));
+        var resolverLogger = new RecordingTemplateLogger();
+
+        using var host = RevelaTestHost.Build(project.RootPath, services =>
+        {
+            services.AddRevelaCommands();
+            services.AddGenerateFeature();
+            services.AddSingleton<ITheme>(new ThemeWithoutPhotoTemplate(viewerMode));
+            services.AddSingleton<ILogger<TemplateResolver>>(resolverLogger);
+        });
+
+        var contentService = host.Services.GetRequiredService<IContentService>();
+        var renderService = host.Services.GetRequiredService<IRenderService>();
+        var scanResult = await contentService.ScanAsync();
+        Assert.IsTrue(scanResult.Success, scanResult.ErrorMessage);
+
+        var renderResult = await renderService.RenderAsync();
+
+        Assert.IsTrue(renderResult.Success, renderResult.ErrorMessage);
+        Assert.AreEqual(2, renderResult.PageCount);
+        Assert.IsTrue(File.Exists(Path.Combine(project.OutputPath, "index.html")));
+        var html = await File.ReadAllTextAsync(Path.Combine(project.OutputPath, "photos", "index.html"));
+        Assert.Contains("<picture", html);
+        Assert.AreEqual(viewerMode is PhotoViewerMode.Lightbox, html.Contains("<dialog", StringComparison.Ordinal));
+        Assert.IsEmpty(ExtractPhotoHrefs(html));
+        Assert.IsFalse(Directory.Exists(Path.Combine(project.OutputPath, "photo")));
+        Assert.AreEqual(0, resolverLogger.MissingPhotoTemplateWarnings,
+            "A theme without page support must not probe the missing photo template.");
+    }
+
+    [TestMethod]
+    [DataRow("page")]
+    [DataRow("none")]
+    public async Task RenderAsync_ThemeWithoutPhotoTemplateSupportingPage_FailsBeforeHtmlWrite(string viewerMode)
     {
         using var project = TestProject.Create(p => p
             .WithProjectJson(new
@@ -1188,12 +1235,20 @@ public sealed class GenerateAllEndToEndTests
             })
             .WithSiteJson(new { title = "Missing Photo Template", author = "Test" })
             .AddGallery("Photos", gallery => gallery.AddRealImage("one.jpg", 1280, 720)));
+        await File.WriteAllTextAsync(
+            Path.Combine(project.SourcePath, "_index.revela"),
+            $"+++\nphoto_viewer = \"{viewerMode}\"\n+++\n");
+        await File.WriteAllTextAsync(
+            Path.Combine(project.SourcePath, "Photos", "_index.revela"),
+            $"+++\nphoto_viewer = \"{viewerMode}\"\n+++\n");
+        var resolverLogger = new RecordingTemplateLogger();
 
         using var host = RevelaTestHost.Build(project.RootPath, services =>
         {
             services.AddRevelaCommands();
             services.AddGenerateFeature();
             services.AddSingleton<ITheme>(new ThemeWithoutPhotoTemplate());
+            services.AddSingleton<ILogger<TemplateResolver>>(resolverLogger);
         });
 
         var contentService = host.Services.GetRequiredService<IContentService>();
@@ -1206,7 +1261,37 @@ public sealed class GenerateAllEndToEndTests
         Assert.IsFalse(renderResult.Success);
         Assert.IsNotNull(renderResult.ErrorMessage);
         Assert.Contains("Body/Photo.revela", renderResult.ErrorMessage, StringComparison.Ordinal);
+        Assert.AreEqual(1, resolverLogger.MissingPhotoTemplateWarnings);
         Assert.IsFalse(Directory.Exists(project.OutputPath));
+    }
+
+    private sealed class RecordingTemplateLogger : ILogger<TemplateResolver>
+    {
+        private int missingPhotoTemplateWarnings;
+
+        public int MissingPhotoTemplateWarnings => Volatile.Read(ref missingPhotoTemplateWarnings);
+
+        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+
+        public bool IsEnabled(LogLevel logLevel) => true;
+
+        public void Log<TState>(
+            LogLevel logLevel,
+            EventId eventId,
+            TState state,
+            Exception? exception,
+            Func<TState, Exception?, string> formatter)
+        {
+            if (logLevel is LogLevel.Warning
+                && state is IReadOnlyList<KeyValuePair<string, object?>> properties
+                && properties.Any(property =>
+                    property.Key.Equals("Key", StringComparison.Ordinal)
+                    && property.Value is string key
+                    && key.Equals("body/photo", StringComparison.Ordinal)))
+            {
+                Interlocked.Increment(ref missingPhotoTemplateWarnings);
+            }
+        }
     }
 
     private static int CountOccurrences(string value, string search)
@@ -1371,13 +1456,27 @@ public sealed class GenerateAllEndToEndTests
         private const string PhotoTemplatePath = "Body/Photo.revela";
         private readonly LuminaTheme inner = new();
 
+        public ThemeWithoutPhotoTemplate(PhotoViewerMode? supportedMode = null)
+        {
+            var manifest = inner.Manifest;
+            Manifest = supportedMode is { } mode
+                ? new ThemeManifest
+                {
+                    LayoutTemplate = manifest.LayoutTemplate,
+                    PhotoViewer = new PhotoViewerCapabilities { Supported = [mode], Default = mode },
+                    Stylesheets = manifest.Stylesheets,
+                    Scripts = manifest.Scripts
+                }
+                : manifest;
+        }
+
         public PackageMetadata Metadata => inner.Metadata;
 
         public string? Prefix => inner.Prefix;
 
         public string? TargetTheme => inner.TargetTheme;
 
-        public ThemeManifest Manifest => inner.Manifest;
+        public ThemeManifest Manifest { get; }
 
         public Stream? GetFile(string relativePath) =>
             IsPhotoTemplate(relativePath) ? null : inner.GetFile(relativePath);
