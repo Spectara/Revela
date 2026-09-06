@@ -24,14 +24,14 @@ Body Template Selection:
 
 <head>
     <meta charset="UTF-8">
-    <title>{{~ if gallery.title ~}}{{ site.title }} - {{ gallery.title }}{{~ else ~}}{{ site.title }}{{~ end ~}}</title>
+    <title>{{~ if gallery.title ~}}{{ html_escape site.title }} - {{ html_escape gallery.title }}{{~ else ~}}{{ html_escape site.title }}{{~ end ~}}</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="{{ gallery.description ?? site.description }}">
-    <meta name="author" content="{{ site.author }}">
-    <meta name="generator" content="Revela {{ revela.version }}">
+    <meta name="description" content="{{ html_escape (gallery.description ?? site.description) }}">
+    <meta name="author" content="{{ html_escape site.author }}">
+    <meta name="generator" content="Revela {{ html_escape revela.version }}">
     {{~ include 'favicon' ~}}
     {{~ for css in stylesheets ~}}
-    <link type="text/css" rel="stylesheet" media="all" href="{{ basepath }}_assets/{{ css }}">
+    <link type="text/css" rel="stylesheet" media="all" href="{{ html_escape basepath }}_assets/{{ html_escape css }}">
     {{~ end ~}}
 </head>
 
@@ -52,7 +52,7 @@ Body Template Selection:
                     <span aria-hidden="true">i</span>
                 </button>
                 {{~ # basepath is empty string at root, "../" for galleries, or "/photos/" for subdirectory hosting ~}}
-                <a href="{{ basepath == '' ? '.' : basepath }}">{{ site.title }}</a>
+                <a href="{{ html_escape (basepath == '' ? '.' : basepath) }}">{{ html_escape site.title }}</a>
             </h2>
             <nav>
                 {{~ include 'HeaderNavigation' ~}}
@@ -91,7 +91,7 @@ Body Template Selection:
 
     {{~ # Scripts (deferred — non-render-blocking, keeps them off the critical request chain) ~}}
     {{~ for js in scripts ~}}
-    <script src="{{ basepath }}_assets/{{ js }}" defer></script>
+    <script src="{{ html_escape basepath }}_assets/{{ html_escape js }}" defer></script>
     {{~ end ~}}
 </body>
 

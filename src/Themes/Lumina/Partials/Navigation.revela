@@ -22,9 +22,9 @@
 {{~ # Top-level with children = section ~}}
 <section>
 {{~ if link ~}}
-  <h3><a href="{{ link }}"{{ item.current ? ' class="active"' : '' }}>{{ item.text }}</a></h3>
+  <h3><a href="{{ html_escape link }}"{{ item.current ? ' class="active"' : '' }}>{{ html_escape item.text }}</a></h3>
 {{~ else ~}}
-  <h3>{{ item.text }}</h3>
+  <h3>{{ html_escape item.text }}</h3>
 {{~ end ~}}
 {{~ for child in item.children ~}}
 {{~ render_item child false ~}}
@@ -33,16 +33,16 @@
 {{~ else ~}}
 {{~ # Top-level leaf = section with heading link (consistent with branch sections) ~}}
 <section>
-  <h3><a href="{{ link }}"{{ item.current ? ' class="active"' : '' }}>{{ item.text }}</a></h3>
+  <h3><a href="{{ html_escape link }}"{{ item.current ? ' class="active"' : '' }}>{{ html_escape item.text }}</a></h3>
 </section>
 {{~ end ~}}
 {{~ else if item.children.size > 0 ~}}
 {{~ # Branch: Has children ~}}
 <div>
 {{~ if link ~}}
-  <a href="{{ link }}"{{ item.current ? ' class="active"' : '' }}>{{ item.text }}</a>
+  <a href="{{ html_escape link }}"{{ item.current ? ' class="active"' : '' }}>{{ html_escape item.text }}</a>
 {{~ else ~}}
-  <span>{{ item.text }}</span>
+  <span>{{ html_escape item.text }}</span>
 {{~ end ~}}
 {{~ for child in item.children ~}}
 {{~ render_item child false ~}}
@@ -50,7 +50,7 @@
 </div>
 {{~ else ~}}
 {{~ # Leaf: Simple link ~}}
-  <a href="{{ link }}"{{ item.current ? ' class="active"' : '' }}>{{ item.text }}</a>
+  <a href="{{ html_escape link }}"{{ item.current ? ' class="active"' : '' }}>{{ html_escape item.text }}</a>
 {{~ end ~}}
 {{~ end ~}}
 {{~ for item in nav_items ~}}

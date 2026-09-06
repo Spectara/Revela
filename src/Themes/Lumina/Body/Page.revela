@@ -11,7 +11,7 @@ Expects:
 {{~ # Page Content (rendered from _index.revela body using Markdig) ~}}
 <section>
     {{~ if gallery.title ~}}
-    <h1>{{ gallery.title }}</h1>
+    <h1>{{ html_escape gallery.title }}</h1>
     {{~ end ~}}
     {{~ gallery.body ~}}
 </section>

@@ -164,6 +164,46 @@ public sealed class ScribanTemplateEngineTests
     }
 
     [TestMethod]
+    [DataRow("https://example.com", "/photos/", "../../images/", "https://example.com/photos/images/events/fireworks/029081/640.jpg")]
+    [DataRow("https://example.com/", "../../", "../../images/", "https://example.com/images/events/fireworks/029081/640.jpg")]
+    [DataRow("https://example.com", "/photos/", "/media/", "https://example.com/media/events/fireworks/029081/640.jpg")]
+    [DataRow("https://example.com", "/photos/", "media/", "https://example.com/photos/events/fireworks/media/events/fireworks/029081/640.jpg")]
+    [DataRow("", "../../", "../../images/", "/images/events/fireworks/029081/640.jpg")]
+    [DataRow("", "/photos/", "https://cdn.example.com/images/", "https://cdn.example.com/images/events/fireworks/029081/640.jpg")]
+    public void AbsoluteVariantUrl_ResolvesPageAndAssetContext(string origin, string basePath, string assetsBasePath, string expected)
+    {
+        var engine = CreateEngine();
+        var gallery = new Scriban.Runtime.ScriptObject { ["slug"] = "events/fireworks/" };
+        var image = new Scriban.Runtime.ScriptObject { ["slug"] = "events/fireworks/029081", ["width"] = 1920, ["height"] = 1080 };
+
+        var result = engine.Render("{{ absolute_variant_url image 640 'jpg' }}",
+            Model(("base_url", origin), ("basepath", basePath), ("assets_basepath", assetsBasePath),
+                ("gallery", gallery), ("image", image)));
+
+        Assert.AreEqual(expected, result.Trim());
+    }
+
+    [TestMethod]
+    public void AbsoluteVariantUrl_OnPhotoPage_UsesPhotoPageDepth()
+    {
+        var engine = CreateEngine();
+        var result = engine.Render("{{ absolute_variant_url image 640 'jpg' }}",
+            Model(("base_url", "https://example.com"), ("basepath", "/photos/"), ("assets_basepath", "../../../../images/"),
+                ("photo", new Scriban.Runtime.ScriptObject()), ("image", CreateImage("events/fireworks/029081"))));
+
+        Assert.AreEqual("https://example.com/photos/images/events/fireworks/029081/640.jpg", result.Trim());
+    }
+
+    [TestMethod]
+    public void AbsoluteUrl_WithDeploymentPrefix_PreservesPhotoDestination()
+    {
+        var result = CreateEngine().Render("{{ absolute_url image }}",
+            Model(("base_url", "https://example.com/"), ("basepath", "/photos/"), ("image", CreateImage("one"))));
+
+        Assert.AreEqual("https://example.com/photos/photo/one/", result.Trim());
+    }
+
+    [TestMethod]
     public void HtmlEscape_WithHostileAttributeValue_EncodesMarkupCharacters()
     {
         var engine = CreateEngine();

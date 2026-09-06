@@ -24,16 +24,17 @@ Template contract:
 
 <head>
     <meta charset="UTF-8">
-    <title>{{ photo.title }}{{ site.title ? ' - ' + site.title : '' }}</title>
+    <title>{{ html_escape photo.title }}{{ html_escape (site.title ? ' - ' + site.title : '') }}</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     {{~ if description != '' ~}}
     <meta name="description" content="{{ html_escape description }}">
     {{~ end ~}}
-    <meta name="generator" content="Revela {{ revela.version }}">
-    <link rel="canonical" href="{{ absolute_url(image) }}">
+    <meta name="generator" content="Revela {{ html_escape revela.version }}">
+    <link rel="canonical" href="{{ html_escape (absolute_url image) }}">
+    <meta property="og:image" content="{{ html_escape (absolute_variant_url image largest_size (image_formats | array.last)) }}">
     {{~ include 'favicon' ~}}
     {{~ for css in stylesheets ~}}
-    <link type="text/css" rel="stylesheet" media="all" href="{{ basepath }}_assets/{{ css }}">
+    <link type="text/css" rel="stylesheet" media="all" href="{{ html_escape basepath }}_assets/{{ html_escape css }}">
     {{~ end ~}}
 </head>
 
@@ -42,25 +43,25 @@ Template contract:
         <article style="--width:{{ html_escape image.width }}; --height:{{ html_escape image.height }};{{~ if image.placeholder ~}} --lqip:{{ html_escape image.placeholder }};{{~ end ~}}">
             <picture id="photo-{{ html_escape image.id }}"{{~ if image.placeholder }} data-lqip{{ end }}>
                 {{~ for format in image_formats ~}}
-                <source type="image/{{ format }}" srcset="{{ assets_basepath }}{{ image.slug }}/{{ largest_size }}.{{ format }}">
+                <source type="image/{{ html_escape format }}" srcset="{{ html_escape (variant_url image largest_size format) }}">
                 {{~ end ~}}
-                <img alt="{{ alt_text }}" src="{{ assets_basepath }}{{ image.slug }}/{{ largest_size }}.{{ image_formats | array.last }}"
-                    width="{{ image.width }}" height="{{ image.height }}" fetchpriority="high" decoding="async">
+                <img alt="{{ html_escape alt_text }}" src="{{ html_escape (variant_url image largest_size (image_formats | array.last)) }}"
+                    width="{{ html_escape image.width }}" height="{{ html_escape image.height }}" fetchpriority="high" decoding="async">
             </picture>
             <section>
                 <nav class="photo-nav" aria-label="Photo navigation">
                     {{~ for ctx in contexts ~}}
                     {{~ up_href = ctx.route == '' ? basepath : page_url(ctx.route) ~}}
-                    <div id="ctx-{{ ctx.context_id }}"{{~ if ctx.context_id == primary_context.context_id }} data-primary{{ end }}>
-                        <a data-photo-return rel="up" href="{{ up_href }}#{{ ctx.anchor }}" aria-label="Return to {{ html_escape ctx.label }}">&times;</a>
+                    <div id="ctx-{{ html_escape ctx.context_id }}"{{~ if ctx.context_id == primary_context.context_id }} data-primary{{ end }}>
+                        <a data-photo-return rel="up" href="{{ html_escape up_href }}#{{ html_escape ctx.anchor }}" aria-label="Return to {{ html_escape ctx.label }}">&times;</a>
                         {{~ if ctx.previous_photo ~}}
-                        <a data-photo-previous rel="prev" href="{{ page_url(ctx.previous_photo) }}#ctx-{{ ctx.context_id }}" aria-label="Previous photo in {{ html_escape ctx.label }}"><span aria-hidden="true">&lsaquo;</span></a>
+                        <a data-photo-previous rel="prev" href="{{ html_escape (page_url ctx.previous_photo) }}#ctx-{{ html_escape ctx.context_id }}" aria-label="Previous photo in {{ html_escape ctx.label }}"><span aria-hidden="true">&lsaquo;</span></a>
                         {{~ else ~}}
                         <span data-photo-previous aria-hidden="true"></span>
                         {{~ end ~}}
                         <span data-photo-label>{{ html_escape display_label }}</span>
                         {{~ if ctx.next_photo ~}}
-                        <a data-photo-next rel="next" href="{{ page_url(ctx.next_photo) }}#ctx-{{ ctx.context_id }}" aria-label="Next photo in {{ html_escape ctx.label }}"><span aria-hidden="true">&rsaquo;</span></a>
+                        <a data-photo-next rel="next" href="{{ html_escape (page_url ctx.next_photo) }}#ctx-{{ html_escape ctx.context_id }}" aria-label="Next photo in {{ html_escape ctx.label }}"><span aria-hidden="true">&rsaquo;</span></a>
                         {{~ else ~}}
                         <span data-photo-next aria-hidden="true"></span>
                         {{~ end ~}}
@@ -80,7 +81,7 @@ Template contract:
     </main>
 
     {{~ for js in scripts ~}}
-    <script src="{{ basepath }}_assets/{{ js }}" defer></script>
+    <script src="{{ html_escape basepath }}_assets/{{ html_escape js }}" defer></script>
     {{~ end ~}}
 </body>
 

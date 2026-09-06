@@ -21,7 +21,7 @@ Expects:
 {{~ # Image Gallery Grid (suppressed when the body places its own [[gallery]] blocks) ~}}
 {{~ if !gallery.has_inline_galleries && occurrences && occurrences.size > 0 ~}}
 <section class="gallery">
-    <h2>{{ gallery.title }}</h2>
+    <h2>{{ html_escape gallery.title }}</h2>
     {{~ for occurrence in occurrences ~}}
     {{~ image = occurrence.image ~}}
     {{~ viewer_mode = occurrence.viewer_mode ~}}

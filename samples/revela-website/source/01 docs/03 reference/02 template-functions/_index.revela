@@ -69,6 +69,26 @@ Build a URL for a specific image variant (size + format), resolved against the c
 
 **Returns** `{assets_basepath}{image.slug}/{size}.{format}`, e.g. `../images/events/fireworks/029081/1920.webp`.
 
+Choose a size from `image.sizes` and a format from `image_formats`; the helper
+does not generate missing variants. Configured asset prefixes must end with `/`.
+
+### `absolute_variant_url`
+
+Generate an absolute image-variant URL for Open Graph or other image metadata in
+a full page template. It respects the current gallery/photo page, deployment
+prefix and asset base path, including absolute CDN addresses.
+
+```scriban
+{{ largest_size = image.sizes | array.last }}
+<meta property="og:image" content="{{ html_escape (absolute_variant_url image largest_size (image_formats | array.last)) }}">
+```
+
+Without `base_url`, local variants use a root-relative URL; an absolute CDN URL
+remains absolute. This helper needs the normal page context (`base_url`,
+`basepath`, `assets_basepath`, and `gallery` or `photo`/`image`). Separately rendered
+content-image partials only have the asset context: use `variant_url` there.
+`absolute_url(image)` still links to the canonical **photo page**, not its image file.
+
 ---
 
 ## URL Functions
@@ -86,7 +106,7 @@ Generate a URL for a page. Polymorphic — accepts an `Image`, `Gallery`, `Navig
 
 ### `absolute_url`
 
-Generate an absolute URL (including host from `project.baseUrl`) for Open Graph, RSS, sitemap, or JSON-LD. Same polymorphism as `page_url`. When `baseUrl` is unset it returns the root-relative form instead of failing.
+Generate an absolute URL (including host from `project.baseUrl` and the deployment prefix) for Open Graph, RSS, sitemap, or JSON-LD. Same polymorphism as `page_url`. When `baseUrl` is unset it returns the root-relative form instead of failing. Escape helper results with `html_escape` when writing HTML attributes.
 
 ```scriban
 {{ absolute_url(gallery) }}

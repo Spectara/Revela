@@ -441,11 +441,17 @@ internal sealed partial class ScribanTemplateEngine(
         var basePath = GetStringValue(scriptObject, "basepath");
         var assetsBasePath = GetStringValue(scriptObject, "assets_basepath");
         var baseUrl = GetStringValue(scriptObject, "base_url");
+        scriptObject.TryGetValue("gallery", out var currentGallery);
+        scriptObject.TryGetValue("photo", out var currentPhoto);
+        scriptObject.TryGetValue("image", out var currentImage);
+        var currentPagePath = currentPhoto is null ? ResolveTargetPath(currentGallery) : ImagePagePath(ResolveImageSlug(currentImage));
 
         // Register custom functions
         scriptObject.Import("page_url", new Func<object?, string?>(target => PageUrl(target, basePath)));
-        scriptObject.Import("absolute_url", new Func<object?, string>(target => AbsoluteUrl(target, baseUrl)));
+        scriptObject.Import("absolute_url", new Func<object?, string>(target => AbsoluteUrl(target, baseUrl, basePath)));
         scriptObject.Import("variant_url", new Func<object?, int, string, string>((image, size, format) => VariantUrl(image, size, format, assetsBasePath)));
+        scriptObject.Import("absolute_variant_url", new Func<object?, int, string, string>((image, size, format) =>
+            AbsoluteVariantUrl(image, size, format, assetsBasePath, baseUrl, basePath, currentPagePath)));
         scriptObject.Import("asset_url", new Func<string, string>(AssetUrl));
         scriptObject.Import("format_date", new Func<DateTime, string, string>(FormatDate));
         scriptObject.Import("format_filesize", new Func<long, string>(FormatFileSize));
@@ -499,10 +505,32 @@ internal sealed partial class ScribanTemplateEngine(
     /// without a configured base URL.
     /// </remarks>
     /// <example>{{ absolute_url(gallery) }} → https://example.com/events/fireworks/</example>
-    private static string AbsoluteUrl(object? target, string baseUrl)
+    private static string AbsoluteUrl(object? target, string baseUrl, string basePath)
     {
-        var rootRelative = "/" + ResolveTargetPath(target);
-        return baseUrl.Length == 0 ? rootRelative : baseUrl + rootRelative;
+        var resolved = new Uri(CreateSiteRoot(baseUrl, basePath), ResolveTargetPath(target));
+        return baseUrl.Length == 0 ? resolved.PathAndQuery : resolved.AbsoluteUri;
+    }
+
+    private static Uri CreateSiteRoot(string baseUrl, string basePath)
+    {
+        var origin = new Uri(baseUrl.Length == 0 ? "https://revela.invalid/" : baseUrl.TrimEnd('/') + "/", UriKind.Absolute);
+        return basePath.StartsWith('/') ? new Uri(origin, basePath.TrimEnd('/') + "/") : origin;
+    }
+
+    private static string AbsoluteVariantUrl(object? image, int size, string format, string assetsBasePath, string baseUrl, string basePath, string currentPagePath)
+    {
+        var variant = VariantUrl(image, size, format, assetsBasePath);
+        if (Uri.TryCreate(variant, UriKind.Absolute, out var absolute) &&
+            (absolute.Scheme == Uri.UriSchemeHttps || absolute.Scheme == Uri.UriSchemeHttp))
+        {
+            return absolute.AbsoluteUri;
+        }
+
+        var currentPage = new Uri(CreateSiteRoot(baseUrl, basePath), currentPagePath);
+        var resolved = new Uri(currentPage, variant);
+        return baseUrl.Length == 0 && !variant.StartsWith("//", StringComparison.Ordinal)
+            ? resolved.PathAndQuery
+            : resolved.AbsoluteUri;
     }
 
     /// <summary>

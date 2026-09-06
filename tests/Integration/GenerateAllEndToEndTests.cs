@@ -32,6 +32,47 @@ namespace Spectara.Revela.Tests.Integration;
 public sealed class GenerateAllEndToEndTests
 {
     [TestMethod]
+    public async Task RenderAsync_LuminaEscapesTextButPreservesBodyHtml()
+    {
+        using var project = TestProject.Create(builder => builder
+            .WithProjectJson(new { project = new { name = "Escaping" }, theme = new { name = "Lumina" } })
+            .WithSiteJson(new { title = "Site <mark> & \"name\"", author = "Author \"quoted\"", copyright = "<strong>Copyright</strong>" })
+            .AddGallery("Photos", gallery => gallery.AddRealImage("one.jpg", 800, 600)));
+        await File.WriteAllTextAsync(Path.Combine(project.SourcePath, "Photos", "_index.revela"), """
+            +++
+            title = 'Gallery <mark> & "title"'
+            description = 'Description "quoted" & <mark>'
+            pinned = true
+            +++
+            **Body stays formatted**
+
+            ![Alt "quoted" & <mark>](one.jpg)
+            """);
+        using var host = RevelaTestHost.Build(project.RootPath, services =>
+        {
+            services.AddRevelaCommands();
+            services.AddGenerateFeature();
+            services.AddSingleton<ITheme>(new LuminaTheme());
+        });
+        var scan = await host.Services.GetRequiredService<IContentService>().ScanAsync();
+        var render = await host.Services.GetRequiredService<IRenderService>().RenderAsync();
+
+        Assert.IsTrue(scan.Success);
+        Assert.IsTrue(render.Success, render.ErrorMessage);
+        var html = await File.ReadAllTextAsync(Path.Combine(project.OutputPath, "photos", "index.html"));
+        Assert.DoesNotContain("<mark>", html, StringComparison.Ordinal);
+        Assert.Contains("Gallery &lt;mark&gt; &amp; &quot;title&quot;", html, StringComparison.Ordinal);
+        Assert.Contains("content=\"Description &quot;quoted&quot; &amp; &lt;mark&gt;\"", html, StringComparison.Ordinal);
+        Assert.Contains("<strong>Body stays formatted</strong>", html, StringComparison.Ordinal);
+        Assert.Contains("<strong>Copyright</strong>", html, StringComparison.Ordinal);
+        var photoFile = Directory.GetFiles(Path.Combine(project.OutputPath, "photo"), "index.html", SearchOption.AllDirectories).Single();
+        var photoHtml = await File.ReadAllTextAsync(photoFile);
+        Assert.DoesNotContain("<mark>", photoHtml, StringComparison.Ordinal);
+        Assert.Contains("Site &lt;mark&gt; &amp; &quot;name&quot;", photoHtml, StringComparison.Ordinal);
+        Assert.Contains("property=\"og:image\" content=\"/images/", photoHtml, StringComparison.Ordinal);
+    }
+
+    [TestMethod]
     public async Task RenderAsync_DerivedArtifactInvalidationFails_DoesNotWriteOutput()
     {
         using var project = TestProject.Create(p => p

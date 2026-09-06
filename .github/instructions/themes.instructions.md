@@ -25,10 +25,10 @@ public sealed class LuminaTheme : EmbeddedTheme  // base class for NuGet themes
 | File | Purpose |
 |------|---------|
 | `manifest.json` (or `theme.json` for local themes) | Metadata, version, target theme, asset list |
-| `Layouts/Default.revela` | Default page layout |
-| `Layouts/Gallery.revela` | Gallery page layout |
+| `Layout.revela` (or `templates.layout`) | Main page layout |
+| `Body/Photo.revela` | Required only when the theme declares `page` viewer support |
 | `Partials/ContentImage.revela` | **Required for all themes** — renders `![alt](path)` from Markdown |
-| `Assets/*.css`, `Assets/*.js` | Static assets — copied to `_assets/<theme>/` |
+| `Assets/*.css`, `Assets/*.js` | Static assets copied to `_assets/`; declarations determine which pages link them |
 
 ## Templates — Scriban
 - File extension: `.revela` (Scriban templates).
@@ -37,7 +37,8 @@ public sealed class LuminaTheme : EmbeddedTheme  // base class for NuGet themes
 ### Available context (every template)
 | Variable | Meaning |
 |----------|---------|
-| `site` | Site settings from `site.json` (title, author, description, copyright, baseUrl) |
+| `site` | Site settings from `site.json` (title, language, author, description, copyright) |
+| `base_url` | Normalized `project.baseUrl`, separate from site settings |
 | `basepath` | Relative path to root (`""`, `"../"`, `"../../"`) |
 | `assets_basepath` | Path/URL to image assets (CDN-aware) |
 | `image_formats` | Global formats: `["avif", "webp", "jpg"]` (same for all images) |
@@ -55,6 +56,8 @@ public sealed class LuminaTheme : EmbeddedTheme  // base class for NuGet themes
 | `absolute_url(target)` | Absolute URL (host from `baseUrl`) for OG/RSS/sitemap; root-relative fallback |
 | `asset_url "path"` | Generate asset URL |
 | `variant_url(image, size, format)` | Generate image variant URL |
+| `absolute_variant_url(image, size, format)` | Absolute variant URL in a full page context, or local root-relative fallback without base_url |
+| `html_escape(value)` | Encode dynamic text/attribute values; Scriban does not auto-escape |
 | `format_date date "format"` | Format date |
 | `format_filesize bytes` | Human-readable size |
 | `format_exif_exposure value` | "1/250s" |
@@ -69,7 +72,7 @@ Every theme must implement this partial — it's invoked for every `![alt](path)
   {{ for fmt in image_formats }}
     <source type="image/{{ fmt }}" srcset="..." />
   {{ end }}
-  <img src="..." alt="{{ alt }}" loading="lazy" />
+  <img src="..." alt="{{ html_escape alt }}" loading="lazy" />
 </picture>
 ```
 
@@ -79,17 +82,17 @@ Every theme must implement this partial — it's invoked for every `![alt](path)
 - Declare base theme via `TargetTheme = "Lumina"` and `ExtendsPackages = ["Spectara.Revela.Themes.Lumina"]` in metadata.
 
 ## CSS / SCSS
-- Source SCSS → compiled CSS → copied to `_assets/<theme>/`.
-- For CSS-only iteration: also update the live copy (e.g. `samples/revela-website/output/_assets/website.css`) so Live Server picks it up without rebuild.
-- Only rebuild when HTML/template changes are needed.
+- Source SCSS is compiled before packaging; assets are copied to `_assets/`.
+- Regenerate the assigned preview after source changes. Do not validate stale output or manually patch generated files as the final result.
 
 ## Assets
-- Listed in `manifest.json` under `assets`.
-- Copied to `_assets/<theme-id>/` during generation.
-- Use `asset_url "name.css"` in templates — never hardcode paths.
+- Declare `stylesheets` and `scripts` in `manifest.json` (embedded) or `theme.json` (local). Theme entries are objects, for example `"stylesheets": [{ "path": "main.css" }, { "path": "photo.css", "scope": ["photo"] }]`. Omitted scope means global. `site.json` also accepts string shorthand, but theme manifests do not.
+- Render the resolved `stylesheets`/`scripts` arrays using escaped `basepath + '_assets/' + path`, as Lumina's layout does. Undeclared assets may be copied without being linked. The legacy `asset_url` helper targets `/assets/`, not the generated theme asset directory.
+- Use `variant_url` for local/CDN image references and `absolute_variant_url` for absolute image metadata. Neither helper creates variants. Use only prepared sizes and formats.
+- Escape text and attributes with `html_escape`; deliberately rendered Markdown/body HTML and documented HTML-valued fields are separate trusted boundaries.
 
 ## Sitemap
-Generated automatically by `generate pages` when `site.baseUrl` is set. Themes don't generate sitemaps.
+Generated automatically by `generate pages` when `project.baseUrl` is set. Themes don't generate sitemaps.
 
 ## Theme Tests
 Themes are usually tested via E2E generation tests (`tests/Integration`). Key checks:
