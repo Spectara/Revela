@@ -172,7 +172,7 @@ try {
         Write-Success "Restore completed"
 
         Write-Info "Running dotnet build (solution, Release)..."
-        dotnet build Spectara.Revela.slnx -c Release --no-restore --verbosity quiet
+        dotnet build Spectara.Revela.slnx -c Release --no-restore -p:Version=$Version -p:DebugType=embedded --verbosity quiet
         if ($LASTEXITCODE -ne 0) { throw "Build failed" }
         Write-Success "Solution built"
     }
@@ -208,8 +208,7 @@ try {
             --self-contained `
             -p:PublishSingleFile=true `
             -p:IncludeNativeLibrariesForSelfExtract=true `
-            -p:DebugType=none `
-            -p:DebugSymbols=false `
+            -p:DebugType=embedded `
             -p:Version=$Version `
             -o $CliDir `
             --verbosity quiet
@@ -242,7 +241,7 @@ try {
         # Lumina (goes next to CLI - bundled with release)
         Write-Info "Building Lumina for $RuntimeIdentifier..."
         dotnet build src/Themes/Lumina/Lumina.csproj `
-            -c Release -r $RuntimeIdentifier -p:Version=$Version --verbosity quiet
+            -c Release -r $RuntimeIdentifier -p:Version=$Version -p:DebugType=embedded --verbosity quiet
         if ($LASTEXITCODE -ne 0) { throw "Lumina build failed" }
 
         Copy-Item "artifacts/bin/Lumina/Release/net10.0/$RuntimeIdentifier/Spectara.Revela.Themes.Lumina.dll" $CliDir
@@ -257,7 +256,7 @@ try {
         New-Item -ItemType Directory -Path $packStaging -Force | Out-Null
 
         dotnet pack Spectara.Revela.slnx `
-            -c Release -o $packStaging -p:PackageVersion=$Version `
+            -c Release -o $packStaging -p:PackageVersion=$Version -p:Version=$Version -p:DebugType=embedded -p:IncludeSymbols=false `
             --no-build --no-restore --verbosity quiet
         if ($LASTEXITCODE -ne 0) { throw "Pack failed" }
 
@@ -388,15 +387,15 @@ try {
     Measure-Step "Plugin Verify" {
         $localPluginsDir = Join-Path $CliDir "plugins"
 
-        # Verify correct number of plugins loaded (8 functional plugins)
+        # Verify the five external plugins installed above; built-in features are not plugins.
         # Themes (Lumina, Lumina.Statistics, Lumina.Calendar) are shown in 'theme list' instead
         $pluginListOutput = & $ExePath plugin list 2>&1 | Out-String
-        if ($pluginListOutput -match "Installed Plugins.*\(8\)") {
-            Write-Success "Verified: 8 plugins loaded"
+        if ($LASTEXITCODE -eq 0 -and $pluginListOutput -match "Installed Plugins.*\(5\)") {
+            Write-Success "Verified: 5 external plugins loaded"
         }
         else {
             Write-Warn "Plugin list output: $pluginListOutput"
-            throw "Expected 8 plugins in panel header, got unexpected output"
+            throw "Expected 5 external plugins in panel header, got unexpected output"
         }
 
         # Verify installed plugins are local (5 plugins + 2 theme extensions should show 'installed')
@@ -1043,6 +1042,7 @@ try {
             -o $ToolDir `
             -p:Version=$Version `
             -p:PackageVersion=$Version `
+            -p:DebugType=embedded `
             -p:IncludeSymbols=false `
             --no-restore `
             --verbosity quiet
@@ -1054,43 +1054,49 @@ try {
         Write-Info "Package: $($nupkgFile.Name) ($([Math]::Round($nupkgFile.Length / 1MB, 2)) MB)"
 
         Write-Info "Installing tool from local package..."
-        $installResult = dotnet tool install -g Spectara.Revela `
+        $toolInstallDir = Join-Path $TestDir "tool-install"
+        $installResult = dotnet tool install --tool-path $toolInstallDir Spectara.Revela `
             --version $Version `
             --add-source $ToolDir `
             --verbosity quiet 2>&1
         if ($LASTEXITCODE -ne 0) {
-            # Tool might already be installed from previous run
-            Write-Warn "Install failed (might be already installed), trying update..."
-            dotnet tool update -g Spectara.Revela `
-                --version $Version `
-                --add-source $ToolDir `
-                --verbosity quiet
-            if ($LASTEXITCODE -ne 0) { throw "Tool install/update failed" }
+            throw "Isolated tool installation failed: $installResult"
         }
-        Write-Success "Tool installed globally"
+        Write-Success "Tool installed in isolated test directory"
+        $toolExe = Join-Path $toolInstallDir $ExeName
 
-        Write-Info "Testing tool command..."
-        $versionOutput = & revela --version 2>&1
-        if ($LASTEXITCODE -ne 0) { throw "Tool command failed: $versionOutput" }
+        $toolCheckFailed = $true
+        try {
+            Write-Info "Testing tool command..."
+            $versionOutput = & $toolExe --version 2>&1
+            if ($LASTEXITCODE -ne 0) { throw "Tool command failed: $versionOutput" }
 
-        # Verify version matches what we packed
-        if ($versionOutput -match "^$([regex]::Escape($Version))") {
-            Write-Success "Version matches: $versionOutput"
+            # Verify version matches what we packed
+            if ($versionOutput -match "(?:^|\s)$([regex]::Escape($Version))(?:\s|$)") {
+                Write-Success "Version matches: $versionOutput"
+            }
+            else {
+                throw "Version mismatch: expected $Version, got $versionOutput"
+            }
+
+            Write-Info "Testing plugin list..."
+            $pluginOutput = & $toolExe plugin list 2>&1
+            if ($LASTEXITCODE -ne 0) { throw "Plugin list failed: $pluginOutput" }
+            Write-Success "Plugin list command works"
+            $toolCheckFailed = $false
         }
-        else {
-            Write-Warn "Version mismatch: expected $Version, got $versionOutput"
+        finally {
+            Write-Info "Uninstalling tool..."
+            try {
+                $null = dotnet tool uninstall --tool-path $toolInstallDir Spectara.Revela 2>&1
+                if ($LASTEXITCODE -ne 0) { throw "Tool uninstall failed" }
+                Write-Success "Tool uninstalled"
+            }
+            catch {
+                if (-not $toolCheckFailed) { throw }
+                Write-Warn "Isolated tool cleanup also failed; retaining the original test failure. Inspect $toolInstallDir."
+            }
         }
-
-        Write-Info "Testing plugin list..."
-        $pluginOutput = & revela plugin list 2>&1
-        if ($LASTEXITCODE -ne 0) { throw "Plugin list failed: $pluginOutput" }
-        Write-Success "Plugin list command works"
-
-        Write-Info "Uninstalling tool..."
-        # Note: dotnet tool uninstall doesn't support --verbosity
-        $null = dotnet tool uninstall -g Spectara.Revela 2>&1
-        if ($LASTEXITCODE -ne 0) { throw "Tool uninstall failed" }
-        Write-Success "Tool uninstalled"
 
         Write-Success "✓ .NET Tool package verified"
     }

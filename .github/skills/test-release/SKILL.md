@@ -46,7 +46,7 @@ The script runs 13 sequential steps:
 | 9 | Validate Output | index.html, images, galleries, _assets exist |
 | 10 | **Compress** | Install compress plugin, generate compress, clean compress |
 | 11 | **Idempotency** | clean all → generate all → generate all (incremental) |
-| 12 | **dotnet tool** | Pack, install globally, verify version, uninstall |
+| 12 | **dotnet tool** | Pack, install into an isolated test directory, verify version, uninstall without changing global tools |
 | 13 | Summary | Timing report |
 
 ## Common Usage
