@@ -22,14 +22,19 @@ internal static class ICalParser
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(icalContent);
 
+        var unfoldedContent = icalContent
+            .Replace("\r\n ", "", StringComparison.Ordinal)
+            .Replace("\r\n\t", "", StringComparison.Ordinal)
+            .Replace("\n ", "", StringComparison.Ordinal)
+            .Replace("\n\t", "", StringComparison.Ordinal);
         var ranges = new List<BookingRange>();
-        var lines = icalContent.AsSpan();
-
-        var inEvent = false;
+        var components = new Stack<string>();
+        var calendarStarted = false;
+        var calendarEnded = false;
         DateOnly? dtStart = null;
         DateOnly? dtEnd = null;
 
-        foreach (var rawLine in lines.EnumerateLines())
+        foreach (var rawLine in unfoldedContent.AsSpan().TrimStart('\uFEFF').EnumerateLines())
         {
             var line = rawLine.Trim();
 
@@ -38,85 +43,136 @@ internal static class ICalParser
                 continue;
             }
 
-            if (line.SequenceEqual("BEGIN:VEVENT".AsSpan()))
+            if (!calendarStarted)
             {
-                inEvent = true;
-                dtStart = null;
-                dtEnd = null;
+                if (!line.Equals("BEGIN:VCALENDAR", StringComparison.OrdinalIgnoreCase))
+                {
+                    throw new FormatException("Expected BEGIN:VCALENDAR.");
+                }
+
+                calendarStarted = true;
+                components.Push("VCALENDAR");
                 continue;
             }
 
-            if (line.SequenceEqual("END:VEVENT".AsSpan()))
+            if (calendarEnded)
             {
-                if (inEvent && dtStart.HasValue && dtEnd.HasValue && dtEnd.Value > dtStart.Value)
+                throw new FormatException("Unexpected content after END:VCALENDAR.");
+            }
+
+            var colonIndex = line.IndexOf(':');
+            if (colonIndex <= 0)
+            {
+                throw new FormatException("Invalid iCalendar property.");
+            }
+
+            var property = line[..colonIndex];
+            var parameterIndex = property.IndexOf(';');
+            var propertyName = parameterIndex < 0 ? property : property[..parameterIndex];
+            foreach (var character in propertyName)
+            {
+                if (!char.IsAsciiLetterOrDigit(character) && character != '-')
                 {
+                    throw new FormatException("Invalid iCalendar property name.");
+                }
+            }
+
+            if (propertyName.IsEmpty || (parameterIndex >= 0 &&
+                (propertyName.Equals("BEGIN", StringComparison.OrdinalIgnoreCase) || propertyName.Equals("END", StringComparison.OrdinalIgnoreCase))))
+            {
+                throw new FormatException("Invalid iCalendar component boundary.");
+            }
+
+            if (line.StartsWith("BEGIN:", StringComparison.OrdinalIgnoreCase))
+            {
+                var component = line[6..].ToString().ToUpperInvariant();
+                var allowed = components.Peek() switch
+                {
+                    "VCALENDAR" => component is "VEVENT" or "VTIMEZONE",
+                    "VTIMEZONE" => component is "STANDARD" or "DAYLIGHT",
+                    "VEVENT" => component == "VALARM",
+                    _ => false
+                };
+                if (!allowed)
+                {
+                    throw new FormatException("Invalid iCalendar component nesting.");
+                }
+
+                components.Push(component);
+                if (component == "VEVENT")
+                {
+                    dtStart = null;
+                    dtEnd = null;
+                }
+
+                continue;
+            }
+
+            if (line.StartsWith("END:", StringComparison.OrdinalIgnoreCase))
+            {
+                if (!line[4..].Equals(components.Peek(), StringComparison.OrdinalIgnoreCase))
+                {
+                    throw new FormatException("Mismatched iCalendar component boundary.");
+                }
+
+                if (components.Pop() == "VEVENT")
+                {
+                    if (!dtStart.HasValue || !dtEnd.HasValue || dtEnd.Value <= dtStart.Value)
+                    {
+                        throw new FormatException("Every booking must have a valid DTSTART and a later DTEND.");
+                    }
+
                     ranges.Add(new BookingRange(dtStart.Value, dtEnd.Value));
                 }
 
-                inEvent = false;
+                calendarEnded = components.Count == 0;
                 continue;
             }
 
-            if (!inEvent)
+            if (components.Peek() != "VEVENT")
             {
                 continue;
             }
 
-            if (TryParseDateProperty(line, "DTSTART", out var start))
+            if (propertyName.Equals("RRULE", StringComparison.OrdinalIgnoreCase) ||
+                propertyName.Equals("RDATE", StringComparison.OrdinalIgnoreCase) ||
+                propertyName.Equals("EXDATE", StringComparison.OrdinalIgnoreCase) ||
+                propertyName.Equals("EXRULE", StringComparison.OrdinalIgnoreCase) ||
+                propertyName.Equals("DURATION", StringComparison.OrdinalIgnoreCase) ||
+                propertyName.Equals("RECURRENCE-ID", StringComparison.OrdinalIgnoreCase))
             {
-                dtStart = start;
+                throw new FormatException("Recurrence and duration-based bookings are not supported; export individual all-day events with DTSTART and DTEND.");
             }
-            else if (TryParseDateProperty(line, "DTEND", out var end))
+
+            var isStart = propertyName.Equals("DTSTART", StringComparison.OrdinalIgnoreCase);
+            var isEnd = propertyName.Equals("DTEND", StringComparison.OrdinalIgnoreCase);
+            if (!isStart && !isEnd)
             {
-                dtEnd = end;
+                continue;
             }
+
+            if ((parameterIndex >= 0 && !property[parameterIndex..].Equals(";VALUE=DATE", StringComparison.OrdinalIgnoreCase)) ||
+                !DateOnly.TryParseExact(line[(colonIndex + 1)..], "yyyyMMdd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var date) ||
+                (isStart ? dtStart.HasValue : dtEnd.HasValue))
+            {
+                throw new FormatException("Booking dates must be unique all-day dates in YYYYMMDD format.");
+            }
+
+            if (isStart)
+            {
+                dtStart = date;
+            }
+            else
+            {
+                dtEnd = date;
+            }
+        }
+
+        if (!calendarEnded)
+        {
+            throw new FormatException("Incomplete iCalendar document.");
         }
 
         return ranges;
-    }
-
-    /// <summary>
-    /// Tries to parse a date property line like "DTSTART;VALUE=DATE:20260320" or "DTSTART:20260320".
-    /// </summary>
-    private static bool TryParseDateProperty(ReadOnlySpan<char> line, string propertyName, out DateOnly date)
-    {
-        date = default;
-
-        var propertySpan = propertyName.AsSpan();
-
-        if (!line.StartsWith(propertySpan, StringComparison.Ordinal))
-        {
-            return false;
-        }
-
-        // After the property name, expect either ':' or ';'
-        var rest = line[propertySpan.Length..];
-
-        if (rest.IsEmpty)
-        {
-            return false;
-        }
-
-        // Find the colon that separates parameters from the value
-        var colonIndex = rest.IndexOf(':');
-        if (colonIndex < 0)
-        {
-            return false;
-        }
-
-        var value = rest[(colonIndex + 1)..].Trim();
-
-        // Parse DATE format: YYYYMMDD (8 chars)
-        if (value.Length >= 8)
-        {
-            return DateOnly.TryParseExact(
-                value[..8],
-                "yyyyMMdd",
-                CultureInfo.InvariantCulture,
-                DateTimeStyles.None,
-                out date);
-        }
-
-        return false;
     }
 }

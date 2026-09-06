@@ -62,6 +62,30 @@ public sealed class CalendarDataCheckTests
     }
 
     [TestMethod]
+    public async Task ValidateAsync_IncompleteCalendarWithValidMarker_ReturnsError()
+    {
+        using var source = new TempSource();
+        source.WriteCalendarPage("availability", "availability.ics");
+        source.WriteFile("availability", "availability.ics", "BEGIN:VCALENDAR\nBEGIN:VEVENT\nDTSTART:20260320\nEND:VEVENT\nEND:VCALENDAR");
+
+        var diagnostics = await CreateValidator(source).ValidateAsync();
+
+        Assert.IsTrue(diagnostics.Any(diagnostic => diagnostic.Severity == ValidationSeverity.Error));
+    }
+
+    [TestMethod]
+    public async Task ValidateAsync_FoldedCalendarMarker_AgreesWithGenerationParser()
+    {
+        using var source = new TempSource();
+        source.WriteCalendarPage("availability", "availability.ics");
+        source.WriteFile("availability", "availability.ics", ValidIcs.Replace("BEGIN:VCALENDAR", "BEGIN:VCAL\r\n ENDAR", StringComparison.Ordinal));
+
+        var diagnostics = await CreateValidator(source).ValidateAsync();
+
+        Assert.IsEmpty(diagnostics);
+    }
+
+    [TestMethod]
     public async Task ValidateAsync_NoCalendarPages_ReturnsNoDiagnostics()
     {
         using var source = new TempSource();

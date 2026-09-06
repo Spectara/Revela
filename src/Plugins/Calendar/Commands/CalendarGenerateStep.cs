@@ -80,15 +80,14 @@ internal sealed partial class CalendarGenerateStep(
             var icsPath = Path.Combine(sourcePath, pagePath, pageConfig.Source);
             if (!File.Exists(icsPath))
             {
-                // Missing local calendar data is not fatal to the whole build: skip this
-                // page with a friendly log. 'revela check' (check calendar) surfaces it up
-                // front so the photographer can fix it before generating.
-                LogMissingCalendarFile(pageConfig.Source, pagePath);
-                continue;
+                return PipelineStepResult.Fail($"Calendar page '{pagePath}' references missing iCalendar file '{pageConfig.Source}'.");
             }
 
             var icsContent = await File.ReadAllTextAsync(icsPath, cancellationToken);
-            var bookings = ICalParser.Parse(icsContent);
+            if (!TryParseCalendar(icsContent, out var bookings, out var errorMessage))
+            {
+                return PipelineStepResult.Fail($"Calendar page '{pagePath}' has invalid iCalendar file '{pageConfig.Source}': {errorMessage}");
+            }
 
             var labels = pageConfig.Labels ?? new CalendarLabels();
             var culture = ResolveCulture(pageConfig, siteCoreConfig.Value);
@@ -183,16 +182,21 @@ internal sealed partial class CalendarGenerateStep(
             var icsPath = Path.Combine(sourcePath, pagePath, pageConfig.Source);
             if (!File.Exists(icsPath))
             {
-                ErrorPanels.ShowWarning(
+                ErrorPanels.ShowError(
                     "iCal File Not Found",
-                    $"[yellow]Expected:[/] [cyan]{icsPath}[/]\n\n" +
-                    "Run [cyan]revela source calendar fetch[/] to download the iCal feed,\n" +
-                    "or place the .ics file manually.");
-                continue;
+                    Markup.Escape($"Calendar page '{pagePath}' references missing iCalendar file '{pageConfig.Source}'."));
+                return 1;
             }
 
             var icsContent = await File.ReadAllTextAsync(icsPath, cancellationToken);
-            var bookings = ICalParser.Parse(icsContent);
+            if (!TryParseCalendar(icsContent, out var bookings, out var errorMessage))
+            {
+                ErrorPanels.ShowError(
+                    "Invalid iCal File",
+                    Markup.Escape($"Calendar page '{pagePath}' has invalid iCalendar file '{pageConfig.Source}': {errorMessage}"));
+                return 1;
+            }
+
             LogParsedBookings(pagePath, bookings.Count);
 
             // Resolve labels (page overrides > defaults)
@@ -233,6 +237,22 @@ internal sealed partial class CalendarGenerateStep(
         AnsiConsole.Write(panel);
 
         return 0;
+    }
+
+    private static bool TryParseCalendar(string icsContent, out IReadOnlyList<BookingRange> bookings, out string errorMessage)
+    {
+        try
+        {
+            bookings = ICalParser.Parse(icsContent);
+            errorMessage = string.Empty;
+            return true;
+        }
+        catch (Exception ex) when (ex is FormatException or ArgumentException)
+        {
+            bookings = [];
+            errorMessage = ex.Message;
+            return false;
+        }
     }
 
     /// <summary>
@@ -282,9 +302,6 @@ internal sealed partial class CalendarGenerateStep(
             }
         }
     }
-
-    [LoggerMessage(Level = LogLevel.Warning, Message = "Calendar page '{Path}' references a missing calendar file '{Source}' — skipping. Run 'revela check' to diagnose.")]
-    private partial void LogMissingCalendarFile(string source, string path);
 
     [LoggerMessage(Level = LogLevel.Debug, Message = "Loading manifest...")]
     private partial void LogLoadingManifest();

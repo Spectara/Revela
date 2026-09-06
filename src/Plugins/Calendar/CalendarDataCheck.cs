@@ -11,8 +11,8 @@ namespace Spectara.Revela.Plugins.Calendar;
 /// <remarks>
 /// <para>
 /// The calendar plugin renders a page from a local <c>.ics</c> file during <c>generate</c>. If a
-/// page references a file that is missing or not a valid iCalendar object, the calendar step would
-/// silently skip it and produce a broken (empty) calendar. This check surfaces that up front,
+/// page references a file that is missing or invalid, generation fails rather than creating
+/// misleading free availability. This check surfaces the same parser failure up front,
 /// contributing to <c>revela check</c> (as <c>check calendar</c>) and the <c>check all</c> report.
 /// </para>
 /// <para>
@@ -23,7 +23,6 @@ namespace Spectara.Revela.Plugins.Calendar;
 internal sealed class CalendarDataCheck(IPathResolver pathResolver) : ICheck
 {
     private const string IndexFileName = "_index.revela";
-    private const string CalendarMarker = "BEGIN:VCALENDAR";
 
     /// <inheritdoc />
     public string Name => "calendar";
@@ -103,18 +102,16 @@ internal sealed class CalendarDataCheck(IPathResolver pathResolver) : ICheck
 
     private static bool IsParseable(string icsContent)
     {
-        if (string.IsNullOrWhiteSpace(icsContent) ||
-            !icsContent.Contains(CalendarMarker, StringComparison.OrdinalIgnoreCase))
-        {
-            return false;
-        }
-
         try
         {
             _ = ICalParser.Parse(icsContent);
             return true;
         }
         catch (ArgumentException)
+        {
+            return false;
+        }
+        catch (FormatException)
         {
             return false;
         }
