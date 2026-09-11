@@ -1,3 +1,5 @@
+using System.Globalization;
+
 using Spectara.Revela.Features.Generate.Models;
 using Spectara.Revela.Sdk.Models;
 
@@ -94,13 +96,13 @@ internal static class PhotoPageCatalog
 
     /// <summary>
     /// Stable HTML id token (without the <c>ctx-</c> prefix) for a gallery-context fragment.
-    /// The site root maps to <c>"home"</c>; other galleries reuse their output slug with path
-    /// separators replaced by hyphens.
+    /// The site root maps to <c>r</c>; other galleries use <c>g-</c> followed by
+    /// fixed-width hexadecimal UTF-16 code units, preserving distinct canonical slugs.
     /// </summary>
     public static string BaseContextId(string gallerySlug)
     {
-        var normalized = gallerySlug.Trim('/').Replace('/', '-');
-        return normalized.Length == 0 ? "home" : normalized;
+        var normalized = gallerySlug.Trim('/');
+        return normalized.Length == 0 ? "r" : $"g-{EncodeSlug(normalized)}";
     }
 
     /// <summary>
@@ -111,20 +113,23 @@ internal static class PhotoPageCatalog
         var baseContextId = BaseContextId(membership.Gallery.Slug);
         return membership.GridNumber is null
             ? baseContextId
-            : $"{baseContextId}-grid-{membership.GridNumber.Value}";
+            : string.Create(CultureInfo.InvariantCulture, $"{baseContextId}-grid-{membership.GridNumber.Value}");
     }
 
     /// <summary>
-    /// Stable gallery-side anchor id (<c>photo-</c> prefix) for an image slug so <c>up</c>
+    /// Stable gallery-side anchor id (<c>photo-i-</c> prefix) for an image slug so <c>up</c>
     /// links land on the originating gallery occurrence.
     /// </summary>
     public static string Anchor(string imageSlug, int? gridNumber)
     {
-        var normalizedImageSlug = imageSlug.Trim('/').Replace('/', '-');
+        var encodedImageSlug = EncodeSlug(imageSlug.Trim('/'));
         return gridNumber is null
-            ? $"photo-{normalizedImageSlug}"
-            : $"grid-{gridNumber.Value}-photo-{normalizedImageSlug}";
+            ? $"photo-i-{encodedImageSlug}"
+            : string.Create(CultureInfo.InvariantCulture, $"grid-{gridNumber.Value}-photo-i-{encodedImageSlug}");
     }
+
+    private static string EncodeSlug(string slug) =>
+        string.Concat(slug.Select(codeUnit => ((int)codeUnit).ToString("x4", CultureInfo.InvariantCulture)));
 
     private static string PageTitle(Image image) =>
         !string.IsNullOrWhiteSpace(image.Title) ? image.Title : image.FileName;

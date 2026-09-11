@@ -341,7 +341,7 @@ public sealed class GenerateAllEndToEndTests
         Assert.Contains("/photo/landscapes/sunset/", sunsetPhotoContent);
         Assert.Contains("rel=\"canonical\"", sunsetPhotoContent);
         // up returns to the originating gallery occurrence via the #photo-* anchor.
-        Assert.Contains("#photo-landscapes-sunset", sunsetPhotoContent);
+        Assert.Contains("#photo-i-006c0061006e0064007300630061007000650073002f00730075006e007300650074", sunsetPhotoContent);
         // no wraparound: the first image in the gallery has a next but no previous link.
         Assert.Contains("photo/landscapes/mountain/", sunsetPhotoContent);
         var mountainPhotoContent = await File.ReadAllTextAsync(
@@ -363,7 +363,7 @@ public sealed class GenerateAllEndToEndTests
         Assert.Contains("/1920.avif\">", sunsetPhotoContent);
         Assert.Contains("</picture>\n            <section>\n                <nav class=\"photo-nav\"", normalizedSunsetPhoto);
         Assert.AreEqual(1, CountOccurrences(sunsetPhotoContent, "<nav class=\"photo-nav\""));
-        Assert.Contains("<div id=\"ctx-landscapes\" data-primary>", sunsetPhotoContent);
+        Assert.Contains("<div id=\"ctx-g-006c0061006e0064007300630061007000650073\" data-primary>", sunsetPhotoContent);
         Assert.AreEqual(1, CountOccurrences(sunsetPhotoContent, "data-photo-return rel=\"up\""));
         Assert.Contains("<aside class=\"photo-metadata\">", sunsetPhotoContent);
         Assert.Contains("<aside class=\"photo-metadata\">\n    <p>", normalizedSunsetPhoto);
@@ -698,7 +698,7 @@ public sealed class GenerateAllEndToEndTests
 
         var inlinePhotoHtml = await File.ReadAllTextAsync(
             Path.Combine(project.OutputPath, "photo", "inline-gallery", "first", "index.html"));
-        Assert.AreEqual(1, CountOccurrences(inlinePhotoHtml, "id=\"ctx-inline-gallery\""),
+        Assert.AreEqual(1, CountOccurrences(inlinePhotoHtml, "id=\"ctx-g-0069006e006c0069006e0065002d00670061006c006c006500720079\""),
             "Duplicate bare blocks must share one base membership context.");
     }
 
@@ -738,7 +738,7 @@ public sealed class GenerateAllEndToEndTests
         var galleryHtml = await File.ReadAllTextAsync(
             Path.Combine(project.OutputPath, "filtered", "index.html"));
         var href = ExtractPhotoHrefs(galleryHtml).Single();
-        Assert.EndsWith("photo/shared/#ctx-filtered-grid-1", href);
+        Assert.EndsWith("photo/shared/#ctx-g-00660069006c00740065007200650064-grid-1", href);
         Assert.IsTrue(File.Exists(
             Path.Combine(project.OutputPath, "photo", "shared", "index.html")));
         Assert.IsFalse(File.Exists(
@@ -782,17 +782,133 @@ public sealed class GenerateAllEndToEndTests
         Assert.IsTrue(renderResult.Success, $"Render failed: {renderResult.ErrorMessage}");
         var galleryHtml = await File.ReadAllTextAsync(
             Path.Combine(project.OutputPath, "featured", "index.html"));
-        Assert.AreEqual(1, CountOccurrences(galleryHtml, "id=\"grid-1-photo-shared\""));
-        Assert.AreEqual(1, CountOccurrences(galleryHtml, "id=\"grid-2-photo-shared\""));
+        Assert.AreEqual(1, CountOccurrences(galleryHtml, "id=\"grid-1-photo-i-007300680061007200650064\""));
+        Assert.AreEqual(1, CountOccurrences(galleryHtml, "id=\"grid-2-photo-i-007300680061007200650064\""));
         var hrefs = ExtractPhotoHrefs(galleryHtml);
-        Assert.IsTrue(hrefs.Any(href => href.EndsWith("#ctx-featured-grid-1", StringComparison.Ordinal)));
-        Assert.IsTrue(hrefs.Any(href => href.EndsWith("#ctx-featured-grid-2", StringComparison.Ordinal)));
+        Assert.IsTrue(hrefs.Any(href => href.EndsWith("#ctx-g-00660065006100740075007200650064-grid-1", StringComparison.Ordinal)));
+        Assert.IsTrue(hrefs.Any(href => href.EndsWith("#ctx-g-00660065006100740075007200650064-grid-2", StringComparison.Ordinal)));
 
         var photoHtml = await File.ReadAllTextAsync(
             Path.Combine(project.OutputPath, "photo", "shared", "index.html"));
-        Assert.Contains("featured/#grid-1-photo-shared", photoHtml);
-        Assert.Contains("featured/#grid-2-photo-shared", photoHtml);
+        Assert.Contains("featured/#grid-1-photo-i-007300680061007200650064", photoHtml);
+        Assert.Contains("featured/#grid-2-photo-i-007300680061007200650064", photoHtml);
     }
+
+    [TestMethod]
+    public async Task GeneratePages_PhotoPageCollidingSlugs_PreservesMembershipsAndResolvesEveryViewerLink()
+    {
+        var galleries = new[]
+        {
+            (Route: string.Empty, ContextId: "r"),
+            (Route: "home/", ContextId: "g-0068006f006d0065"),
+            (Route: "a/b/", ContextId: "g-0061002f0062"),
+            (Route: "a-b/", ContextId: "g-0061002d0062"),
+            (Route: "r-grid-1/", ContextId: "g-0072002d0067007200690064002d0031"),
+            (Route: "home-grid-1/", ContextId: "g-0068006f006d0065002d0067007200690064002d0031")
+        };
+        using var project = TestProject.Create(builder =>
+        {
+            builder.WithSiteJson(new { title = "Distinct Viewer IDs", author = "Test" });
+            foreach (var (route, _) in galleries)
+            {
+                builder.AddGallery(route);
+            }
+        });
+        TestImageGenerator.CreateJpeg(Path.Combine(project.SourcePath, "_images", "a", "b.jpg"), 800, 600);
+        TestImageGenerator.CreateJpeg(Path.Combine(project.SourcePath, "_images", "a-b.jpg"), 800, 600);
+        foreach (var (route, _) in galleries)
+        {
+            await File.WriteAllTextAsync(Path.Combine(project.SourcePath, route, "_index.revela"),
+                "[[gallery: all | sort filename asc]]\n\n[[gallery: all | sort filename asc]]");
+        }
+
+        using var host = RevelaTestHost.Build(project.RootPath, services =>
+        {
+            services.AddRevelaCommands();
+            services.AddGenerateFeature();
+            services.AddSingleton<ITheme>(new LuminaTheme());
+        });
+        var scanResult = await host.Services.GetRequiredService<IContentService>().ScanAsync();
+        Assert.IsTrue(scanResult.Success, scanResult.ErrorMessage);
+        Assert.AreEqual(2, scanResult.ImageCount);
+        var renderResult = await host.Services.GetRequiredService<IRenderService>().RenderAsync();
+        Assert.IsTrue(renderResult.Success, renderResult.ErrorMessage);
+
+        var pages = new Dictionary<string, string>(StringComparer.Ordinal);
+        var photoRoutes = new[] { "photo/a-b/", "photo/a/b/" };
+        foreach (var route in galleries.Select(gallery => gallery.Route).Concat(photoRoutes))
+        {
+            var html = await File.ReadAllTextAsync(Path.Combine(project.OutputPath, route, "index.html"));
+            pages.Add(route, html);
+            var ids = ExtractAttributeValues(html, " id=\"");
+            Assert.AreEqual(ids.Count, ids.Distinct(StringComparer.Ordinal).Count(),
+                $"Generated page '{route}' contains duplicate IDs.");
+        }
+
+        var expectedContextIds = galleries.SelectMany(gallery => new[]
+        {
+            $"ctx-{gallery.ContextId}-grid-1", $"ctx-{gallery.ContextId}-grid-2"
+        }).ToArray();
+        var expectedAnchors = new[]
+        {
+            "grid-1-photo-i-0061002d0062", "grid-1-photo-i-0061002f0062",
+            "grid-2-photo-i-0061002d0062", "grid-2-photo-i-0061002f0062"
+        };
+        foreach (var (route, contextId) in galleries)
+        {
+            var html = pages[route];
+            CollectionAssert.AreEqual(expectedAnchors, ExtractAttributeValues(html, "<article id=\"").ToArray());
+            var hrefs = ExtractPhotoHrefs(html);
+            Assert.HasCount(4, hrefs);
+            CollectionAssert.AreEqual(new[]
+            {
+                $"/photo/a-b/#ctx-{contextId}-grid-1", $"/photo/a/b/#ctx-{contextId}-grid-1",
+                $"/photo/a-b/#ctx-{contextId}-grid-2", $"/photo/a/b/#ctx-{contextId}-grid-2"
+            }, hrefs.Select(href =>
+            {
+                var target = ResolveViewerHref(route, href);
+                return target.PathAndQuery + target.Fragment;
+            }).ToArray());
+        }
+
+        foreach (var photoRoute in photoRoutes)
+        {
+            var html = pages[photoRoute];
+            CollectionAssert.AreEquivalent(expectedContextIds, ExtractAttributeValues(html, "<div id=\"").ToArray());
+            var upLinks = ExtractAttributeValues(html, "data-photo-return rel=\"up\" href=\"");
+            Assert.HasCount(12, upLinks);
+            CollectionAssert.AreEquivalent(galleries.SelectMany(gallery => new[] { gallery.Route, gallery.Route }).ToArray(),
+                upLinks.Select(href => ResolveViewerHref(photoRoute, href).AbsolutePath.TrimStart('/')).ToArray());
+            var previousLinks = ExtractAttributeValues(html, "data-photo-previous rel=\"prev\" href=\"");
+            var nextLinks = ExtractAttributeValues(html, "data-photo-next rel=\"next\" href=\"");
+            Assert.HasCount(photoRoute == photoRoutes[0] ? 0 : 12, previousLinks);
+            Assert.HasCount(photoRoute == photoRoutes[0] ? 12 : 0, nextLinks);
+            var neighborRoute = photoRoute == photoRoutes[0] ? "/photo/a/b/" : "/photo/a-b/";
+            Assert.IsTrue(previousLinks.Concat(nextLinks).All(href =>
+                ResolveViewerHref(photoRoute, href).AbsolutePath.Equals(neighborRoute, StringComparison.Ordinal)));
+        }
+
+        foreach (var (route, html) in pages)
+        {
+            foreach (var href in ExtractAttributeValues(html, "href=\""))
+            {
+                var target = ResolveViewerHref(route, href);
+                if (target.Fragment.Length == 0)
+                {
+                    continue;
+                }
+
+                Assert.IsTrue(pages.TryGetValue(target.AbsolutePath.TrimStart('/'), out var targetHtml),
+                    $"Viewer link '{href}' from '{route}' has no generated page.");
+                Assert.AreEqual(1, ExtractAttributeValues(targetHtml, " id=\"").Count(id =>
+                    id.Equals(target.Fragment[1..], StringComparison.Ordinal)),
+                    $"Viewer link '{href}' from '{route}' must resolve to exactly one ID.");
+            }
+        }
+    }
+
+    private static Uri ResolveViewerHref(string route, string href) =>
+        new(new Uri($"https://revela.test/{route}"), href);
 
     [TestMethod]
     public async Task GeneratePages_CustomBodyInlineGallery_CreatesLinkedPhotoPage()
@@ -1101,8 +1217,8 @@ public sealed class GenerateAllEndToEndTests
 
         var photoHtml = await File.ReadAllTextAsync(
             Path.Combine(project.OutputPath, "photo", "shared", "index.html"));
-        Assert.Contains("id=\"ctx-page-viewer-grid-1\"", photoHtml);
-        Assert.DoesNotContain("ctx-none-viewer-grid-1", photoHtml);
+        Assert.Contains("id=\"ctx-g-0070006100670065002d007600690065007700650072-grid-1\"", photoHtml);
+        Assert.DoesNotContain("ctx-g-006e006f006e0065002d007600690065007700650072-grid-1", photoHtml);
     }
 
     [TestMethod]
