@@ -69,35 +69,50 @@ internal sealed partial class ConfigService(
     /// <inheritdoc />
     public async Task UpdateProjectConfigAsync(JsonObject updates, CancellationToken cancellationToken = default)
     {
-        var existing = await ReadProjectConfigAsync(cancellationToken) ?? [];
+        cancellationToken.ThrowIfCancellationRequested();
+        var existing = await ReadProjectConfigForUpdateAsync(cancellationToken);
 
         // Deep merge updates into existing
         DeepMerge(existing, updates);
 
-        var json = existing.ToJsonString(JsonOptions);
+        var json = Encoding.UTF8.GetBytes(existing.ToJsonString(JsonOptions));
+        ValidateProjectConfiguration(json);
         var directory = Path.GetDirectoryName(ProjectConfigPath)
             ?? throw new InvalidOperationException("Project configuration path has no parent directory.");
         var tempPath = Path.Combine(
             directory,
             $".{Path.GetFileName(ProjectConfigPath)}.{Guid.NewGuid():N}.tmp");
+        var streamOptions = new FileStreamOptions
+        {
+            Mode = FileMode.CreateNew,
+            Access = FileAccess.Write,
+            Share = FileShare.None,
+            Options = FileOptions.Asynchronous
+        };
+        var originalMode = (UnixFileMode?)null;
+        if (!OperatingSystem.IsWindows())
+        {
+            streamOptions.UnixCreateMode = UnixFileMode.UserRead | UnixFileMode.UserWrite;
+            if (File.Exists(ProjectConfigPath))
+            {
+                originalMode = File.GetUnixFileMode(ProjectConfigPath);
+            }
+        }
 
         try
         {
-            await using (var stream = new FileStream(
-                tempPath,
-                FileMode.CreateNew,
-                FileAccess.Write,
-                FileShare.None,
-                bufferSize: 4096,
-                FileOptions.Asynchronous))
-            await using (var writer = new StreamWriter(stream, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false)))
+            await using (var stream = new FileStream(tempPath, streamOptions))
             {
-                await writer.WriteAsync(json.AsMemory(), cancellationToken);
-                await writer.FlushAsync(cancellationToken);
+                await stream.WriteAsync(json, cancellationToken);
                 await stream.FlushAsync(cancellationToken);
             }
 
             cancellationToken.ThrowIfCancellationRequested();
+            if (!OperatingSystem.IsWindows() && originalMode is { } mode)
+            {
+                File.SetUnixFileMode(tempPath, mode);
+            }
+
             File.Move(tempPath, ProjectConfigPath, overwrite: true);
         }
         finally
@@ -113,6 +128,28 @@ internal sealed partial class ConfigService(
         ReloadConfigurationAndInvalidateCaches();
 
         LogConfigUpdated(ProjectConfigPath);
+    }
+
+    private async Task<JsonObject> ReadProjectConfigForUpdateAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            var json = await File.ReadAllBytesAsync(ProjectConfigPath, cancellationToken);
+            ValidateProjectConfiguration(json);
+            using var stream = new MemoryStream(json, writable: false);
+            return (await JsonNode.ParseAsync(stream, nodeOptions: null, RevelaJsonOptions.LenientDocument, cancellationToken))?.AsObject()
+                ?? throw new JsonException("Project configuration must be a JSON object.");
+        }
+        catch (FileNotFoundException)
+        {
+            return [];
+        }
+    }
+
+    private static void ValidateProjectConfiguration(byte[] json)
+    {
+        using var stream = new MemoryStream(json, writable: false);
+        using var validation = (ConfigurationRoot)new ConfigurationBuilder().AddJsonStream(stream).Build();
     }
 
     /// <summary>
@@ -171,13 +208,14 @@ internal sealed partial class ConfigService(
     {
         foreach (var property in source)
         {
+            var key = ResolveExistingKey(target, property.Key);
             if (property.Value is null)
             {
                 // Null value means "remove this key"
-                target.Remove(property.Key);
+                target.Remove(key);
             }
             else if (property.Value is JsonObject sourceObj &&
-                target[property.Key] is JsonObject targetObj)
+                target[key] is JsonObject targetObj)
             {
                 // Both are objects: merge recursively
                 DeepMerge(targetObj, sourceObj);
@@ -185,9 +223,29 @@ internal sealed partial class ConfigService(
             else
             {
                 // Replace value (clone to avoid parent issues)
-                target[property.Key] = property.Value.DeepClone();
+                target[key] = property.Value.DeepClone();
             }
         }
+    }
+
+    private static string ResolveExistingKey(JsonObject target, string key)
+    {
+        var matchingKey = (string?)null;
+        foreach (var property in target)
+        {
+            if (string.Equals(property.Key, key, StringComparison.OrdinalIgnoreCase))
+            {
+                if (matchingKey is not null)
+                {
+                    throw new InvalidOperationException(
+                        $"Cannot update configuration key '{key}' because multiple existing keys differ only by case.");
+                }
+
+                matchingKey = property.Key;
+            }
+        }
+
+        return matchingKey ?? key;
     }
 
     [LoggerMessage(Level = LogLevel.Debug, Message = "Updated configuration: {ConfigPath}")]
