@@ -86,6 +86,17 @@ internal sealed partial class CompressionService(ILogger<CompressionService> log
         IProgress<(int current, int total, string fileName)>? progress = null,
         CancellationToken cancellationToken = default)
     {
+        outputPath = Path.GetFullPath(outputPath);
+        using var ownership = await CompressedSiteOwnership.OpenAsync(outputPath, cancellationToken);
+        return await CompressDirectoryAsync(outputPath, ownership, progress, cancellationToken);
+    }
+
+    internal async Task<CompressionStats> CompressDirectoryAsync(
+        string outputPath,
+        CompressedSiteOwnership ownership,
+        IProgress<(int current, int total, string fileName)>? progress = null,
+        CancellationToken cancellationToken = default)
+    {
         var stats = new CompressionStats();
 
         // Find all compressible files
@@ -120,13 +131,13 @@ internal sealed partial class CompressionService(ILogger<CompressionService> log
             },
             async (filePath, ct) =>
             {
+                filePath = ownership.GetSourcePath(filePath);
                 var fileInfo = new FileInfo(filePath);
 
                 // Skip small files
                 if (fileInfo.Length < MinFileSizeBytes)
                 {
-                    File.Delete(filePath + ".gz");
-                    File.Delete(filePath + ".br");
+                    await ownership.RemoveSidecarsAsync(filePath, ct);
 
                     lock (lockObj)
                     {
@@ -137,12 +148,12 @@ internal sealed partial class CompressionService(ILogger<CompressionService> log
                 }
 
                 // Read original content once
-                var content = await File.ReadAllBytesAsync(filePath, ct);
+                var content = await File.ReadAllBytesAsync(ownership.GetSourcePath(filePath), ct);
                 var originalSize = content.Length;
 
                 // Compress with both formats
-                var gzipSize = await CompressGzipAsync(filePath, content, ct);
-                var brotliSize = await CompressBrotliAsync(filePath, content, ct);
+                var gzipSize = await CompressGzipAsync(ownership, filePath, content, ct);
+                var brotliSize = await CompressBrotliAsync(ownership, filePath, content, ct);
 
                 // Update statistics (thread-safe)
                 lock (lockObj)
@@ -169,20 +180,14 @@ internal sealed partial class CompressionService(ILogger<CompressionService> log
     /// <summary>
     /// Compresses content with Gzip and writes to .gz file.
     /// </summary>
-    private async Task<long> CompressGzipAsync(string filePath, byte[] content, CancellationToken ct)
+    private async Task<long> CompressGzipAsync(CompressedSiteOwnership ownership, string filePath, byte[] content, CancellationToken ct)
     {
-        var gzipPath = filePath + ".gz";
-
-        await using var outputStream = File.Create(gzipPath);
-        await using var gzipStream = new GZipStream(outputStream, GzipLevel);
-        await gzipStream.WriteAsync(content, ct);
-        await gzipStream.FlushAsync(ct);
-
-        // Need to close streams to get accurate file size
-        await gzipStream.DisposeAsync();
-        await outputStream.DisposeAsync();
-
-        var size = new FileInfo(gzipPath).Length;
+        var size = await ownership.PublishAsync(filePath + ".gz", async (outputStream, cancellationToken) =>
+        {
+            await using var gzipStream = new GZipStream(outputStream, GzipLevel, leaveOpen: true);
+            await gzipStream.WriteAsync(content, cancellationToken);
+            await gzipStream.FlushAsync(cancellationToken);
+        }, ct);
         LogCompressedFile(logger, "Gzip", filePath, content.Length, size);
         return size;
     }
@@ -190,23 +195,14 @@ internal sealed partial class CompressionService(ILogger<CompressionService> log
     /// <summary>
     /// Compresses content with Brotli and writes to .br file.
     /// </summary>
-    private async Task<long> CompressBrotliAsync(string filePath, byte[] content, CancellationToken ct)
+    private async Task<long> CompressBrotliAsync(CompressedSiteOwnership ownership, string filePath, byte[] content, CancellationToken ct)
     {
-        var brotliPath = filePath + ".br";
-
-        await using var outputStream = File.Create(brotliPath);
-        await using var brotliStream = new BrotliStream(outputStream, CompressionLevel.SmallestSize);
-
-        // Set Brotli quality to maximum (11)
-        // Note: BrotliStream uses CompressionLevel enum, SmallestSize = quality 11
-        await brotliStream.WriteAsync(content, ct);
-        await brotliStream.FlushAsync(ct);
-
-        // Need to close streams to get accurate file size
-        await brotliStream.DisposeAsync();
-        await outputStream.DisposeAsync();
-
-        var size = new FileInfo(brotliPath).Length;
+        var size = await ownership.PublishAsync(filePath + ".br", async (outputStream, cancellationToken) =>
+        {
+            await using var brotliStream = new BrotliStream(outputStream, CompressionLevel.SmallestSize, leaveOpen: true);
+            await brotliStream.WriteAsync(content, cancellationToken);
+            await brotliStream.FlushAsync(cancellationToken);
+        }, ct);
         LogCompressedFile(logger, "Brotli", filePath, content.Length, size);
         return size;
     }

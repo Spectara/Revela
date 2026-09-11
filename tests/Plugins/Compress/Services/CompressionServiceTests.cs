@@ -1,4 +1,5 @@
 using System.IO.Compression;
+using System.Text.Json.Nodes;
 
 using Microsoft.Extensions.Logging.Abstractions;
 
@@ -11,13 +12,15 @@ namespace Spectara.Revela.Tests.Plugins.Compress.Services;
 [TestCategory("Unit")]
 public sealed class CompressionServiceTests
 {
+    private TestProject project = null!;
     private string testDirectory = null!;
     private CompressionService service = null!;
 
     [TestInitialize]
     public void Setup()
     {
-        testDirectory = Path.Combine(Path.GetTempPath(), "revela-compress-tests", Guid.NewGuid().ToString());
+        project = TestProject.Create();
+        testDirectory = project.OutputPath;
         Directory.CreateDirectory(testDirectory);
 
         var logger = NullLogger<CompressionService>.Instance;
@@ -25,13 +28,7 @@ public sealed class CompressionServiceTests
     }
 
     [TestCleanup]
-    public void Cleanup()
-    {
-        if (Directory.Exists(testDirectory))
-        {
-            Directory.Delete(testDirectory, recursive: true);
-        }
-    }
+    public void Cleanup() => project.Dispose();
 
     [TestMethod]
     public async Task CompressDirectoryAsync_CompressesHtmlFile()
@@ -147,9 +144,9 @@ public sealed class CompressionServiceTests
         // Arrange - file smaller than 256 bytes threshold
         var smallContent = "<html></html>";
         var smallPath = Path.Combine(testDirectory, "small.html");
+        await File.WriteAllTextAsync(smallPath, new string('x', 512));
+        await service.CompressDirectoryAsync(testDirectory);
         await File.WriteAllTextAsync(smallPath, smallContent);
-        await File.WriteAllTextAsync(smallPath + ".gz", "stale");
-        await File.WriteAllTextAsync(smallPath + ".br", "stale");
 
         // Act
         var stats = await service.CompressDirectoryAsync(testDirectory);
@@ -164,7 +161,8 @@ public sealed class CompressionServiceTests
     [TestMethod]
     public async Task CompressDirectoryAsync_DirectoryLinkLeavesOutput_PreservesExternalSidecars()
     {
-        var externalDirectory = testDirectory + "-external";
+        using var external = TestProject.Create();
+        var externalDirectory = external.OutputPath;
         var linkPath = Path.Combine(testDirectory, "linked");
         Directory.CreateDirectory(externalDirectory);
         var externalFile = Path.Combine(externalDirectory, "small.html");
@@ -317,6 +315,262 @@ public sealed class CompressionServiceTests
         var decompressedContent = await reader.ReadToEndAsync();
 
         Assert.AreEqual(originalContent, decompressedContent);
+    }
+
+    [TestMethod]
+    [DataRow(12, ".gz")]
+    [DataRow(12, ".br")]
+    [DataRow(512, ".gz")]
+    [DataRow(512, ".br")]
+    public async Task CompressDirectoryAsync_UnownedDestination_FailsWithoutChangingBytes(int sourceLength, string suffix)
+    {
+        var original = Path.Combine(testDirectory, "index.html");
+        var destination = original + suffix;
+        await File.WriteAllTextAsync(original, new string('x', sourceLength));
+        await using (var stream = File.Create(destination))
+        await using (var compressor = suffix == ".gz"
+            ? (Stream)new GZipStream(stream, CompressionLevel.Optimal)
+            : new BrotliStream(stream, CompressionLevel.Optimal))
+        {
+            await compressor.WriteAsync("unrelated download"u8.ToArray());
+        }
+        var bytes = await File.ReadAllBytesAsync(destination);
+
+        await Assert.ThrowsExactlyAsync<IOException>(() => service.CompressDirectoryAsync(testDirectory));
+
+        CollectionAssert.AreEqual(bytes, await File.ReadAllBytesAsync(destination));
+        var manifestPath = Path.Combine(testDirectory, ".revela-compress.manifest");
+        if (File.Exists(manifestPath))
+        {
+            var manifest = JsonNode.Parse(await File.ReadAllTextAsync(manifestPath))!;
+            Assert.IsFalse(manifest["files"]!.AsArray().Any(entry => entry!["path"]!.GetValue<string>() == "index.html" + suffix));
+        }
+    }
+
+    [TestMethod]
+    [DataRow(12, ".gz")]
+    [DataRow(12, ".br")]
+    [DataRow(512, ".gz")]
+    [DataRow(512, ".br")]
+    public async Task CompressDirectoryAsync_ChangedOwnedBytes_FailsWithoutOverwritingReplacement(int sourceLength, string suffix)
+    {
+        var original = Path.Combine(testDirectory, "index.html");
+        await File.WriteAllTextAsync(original, new string('x', 512));
+        await service.CompressDirectoryAsync(testDirectory);
+        var replacement = await File.ReadAllBytesAsync(original + suffix);
+        replacement[0] ^= 0xff;
+        await File.WriteAllBytesAsync(original + suffix, replacement);
+        await File.WriteAllTextAsync(original, new string('y', sourceLength));
+
+        var recreated = new CompressionService(NullLogger<CompressionService>.Instance);
+        await Assert.ThrowsExactlyAsync<IOException>(() => recreated.CompressDirectoryAsync(testDirectory));
+
+        CollectionAssert.AreEqual(replacement, await File.ReadAllBytesAsync(original + suffix));
+        var manifest = JsonNode.Parse(await File.ReadAllTextAsync(Path.Combine(testDirectory, ".revela-compress.manifest")))!;
+        Assert.IsTrue(manifest["files"]!.AsArray().Any(entry => entry!["path"]!.GetValue<string>() == "index.html" + suffix));
+    }
+
+    [TestMethod]
+    public async Task CompressDirectoryAsync_RecreatedService_ReplacesOwnedFilesAndKeepsManifestOutOfInputs()
+    {
+        var original = Path.Combine(testDirectory, "index.html");
+        await File.WriteAllTextAsync(original, new string('x', 512));
+        await service.CompressDirectoryAsync(testDirectory);
+        var replacement = new string('y', 768);
+        await File.WriteAllTextAsync(original, replacement);
+
+        var stats = await new CompressionService(NullLogger<CompressionService>.Instance).CompressDirectoryAsync(testDirectory);
+
+        Assert.AreEqual(1, stats.TotalFiles);
+        await using var gzip = new GZipStream(File.OpenRead(original + ".gz"), CompressionMode.Decompress);
+        using var reader = new StreamReader(gzip);
+        Assert.AreEqual(replacement, await reader.ReadToEndAsync());
+        var manifestPath = Path.Combine(testDirectory, ".revela-compress.manifest");
+        var manifest = JsonNode.Parse(await File.ReadAllTextAsync(manifestPath))!;
+        Assert.AreEqual("Spectara.Revela.Plugins.Compress", manifest["owner"]!.GetValue<string>());
+        Assert.AreEqual(1, manifest["version"]!.GetValue<int>());
+        Assert.HasCount(2, manifest["files"]!.AsArray());
+        Assert.IsFalse(File.Exists(manifestPath + ".gz"));
+        Assert.IsFalse(File.Exists(manifestPath + ".br"));
+    }
+
+    [TestMethod]
+    [DataRow(".gz", false)]
+    [DataRow(".br", false)]
+    [DataRow(".gz", true)]
+    [DataRow(".br", true)]
+    public async Task PublishAsync_CancelledStaging_PreservesExistingFileAndNeverPublishesPartial(string suffix, bool existing)
+    {
+        var original = Path.Combine(testDirectory, "index.html");
+        var destination = original + suffix;
+        if (existing)
+        {
+            await File.WriteAllTextAsync(original, new string('x', 512));
+            await service.CompressDirectoryAsync(testDirectory);
+        }
+        var before = existing ? await File.ReadAllBytesAsync(destination) : [];
+        var manifestPath = Path.Combine(testDirectory, ".revela-compress.manifest");
+        var manifestBefore = existing ? await File.ReadAllBytesAsync(manifestPath) : [];
+        using var cancellation = new CancellationTokenSource();
+        using var ownership = await CompressedSiteOwnership.OpenAsync(testDirectory);
+        var staged = false;
+
+        await Assert.ThrowsAsync<OperationCanceledException>(() => ownership.PublishAsync(destination, async (stream, token) =>
+        {
+            await using var compressor = suffix == ".gz"
+                ? (Stream)new GZipStream(stream, CompressionLevel.SmallestSize, leaveOpen: true)
+                : new BrotliStream(stream, CompressionLevel.SmallestSize, leaveOpen: true);
+            await compressor.WriteAsync(new byte[4096], token);
+            await compressor.FlushAsync(token);
+            staged = true;
+            await cancellation.CancelAsync();
+        }, cancellation.Token));
+
+        Assert.IsTrue(staged);
+        Assert.AreEqual(existing, File.Exists(destination));
+        Assert.IsEmpty(Directory.GetFiles(testDirectory, "*.tmp"));
+        if (existing)
+        {
+            CollectionAssert.AreEqual(before, await File.ReadAllBytesAsync(destination));
+            CollectionAssert.AreEqual(manifestBefore, await File.ReadAllBytesAsync(manifestPath));
+        }
+        else
+        {
+            Assert.IsFalse(File.Exists(manifestPath));
+        }
+    }
+
+    [TestMethod]
+    public async Task PublishAsync_StagingFails_PreservesOwnedFileAndRecord()
+    {
+        var original = Path.Combine(testDirectory, "index.html");
+        await File.WriteAllTextAsync(original, new string('x', 512));
+        await service.CompressDirectoryAsync(testDirectory);
+        var before = await File.ReadAllBytesAsync(original + ".gz");
+        var manifestPath = Path.Combine(testDirectory, ".revela-compress.manifest");
+        var manifestBefore = await File.ReadAllBytesAsync(manifestPath);
+        using var ownership = await CompressedSiteOwnership.OpenAsync(testDirectory);
+
+        await Assert.ThrowsExactlyAsync<IOException>(() => ownership.PublishAsync(original + ".gz", async (stream, token) =>
+        {
+            await stream.WriteAsync("partial"u8.ToArray(), token);
+            throw new IOException("Synthetic staging failure");
+        }));
+
+        CollectionAssert.AreEqual(before, await File.ReadAllBytesAsync(original + ".gz"));
+        CollectionAssert.AreEqual(manifestBefore, await File.ReadAllBytesAsync(manifestPath));
+        Assert.IsEmpty(Directory.GetFiles(testDirectory, "*.tmp"));
+    }
+
+    [TestMethod]
+    [DataRow(".gz", false)]
+    [DataRow(".br", false)]
+    [DataRow(".gz", true)]
+    [DataRow(".br", true)]
+    public async Task PublishAsync_StagingCleanupFails_PreservesPrimaryExceptionAndOwnedFiles(string suffix, bool cancel)
+    {
+        if (!OperatingSystem.IsWindows())
+        {
+            Assert.Inconclusive("Windows read-only file deletion is required for this failure injection.");
+        }
+
+        var original = Path.Combine(testDirectory, "index.html");
+        await File.WriteAllTextAsync(original, new string('x', 512));
+        await service.CompressDirectoryAsync(testDirectory);
+        var gzipBefore = await File.ReadAllBytesAsync(original + ".gz");
+        var brotliBefore = await File.ReadAllBytesAsync(original + ".br");
+        var manifestPath = Path.Combine(testDirectory, ".revela-compress.manifest");
+        var manifestBefore = await File.ReadAllBytesAsync(manifestPath);
+        using var cancellation = new CancellationTokenSource();
+        var primary = cancel
+            ? (Exception)new OperationCanceledException(cancellation.Token)
+            : new IOException("Synthetic staging failure");
+        string? temporaryPath = null;
+
+        try
+        {
+            using (var ownership = await CompressedSiteOwnership.OpenAsync(testDirectory))
+            {
+                var actual = await Assert.ThrowsAsync<Exception>(() => ownership.PublishAsync(original + suffix, async (stream, token) =>
+                {
+                    temporaryPath = ((FileStream)stream).Name;
+                    await stream.WriteAsync("partial"u8.ToArray(), token);
+                    await stream.DisposeAsync();
+                    File.SetAttributes(temporaryPath, File.GetAttributes(temporaryPath) | FileAttributes.ReadOnly);
+                    if (cancel)
+                    {
+                        await cancellation.CancelAsync();
+                    }
+                    throw primary;
+                }, cancellation.Token));
+
+                Assert.AreSame(primary, actual);
+                if (cancel)
+                {
+                    Assert.AreEqual(cancellation.Token, ((OperationCanceledException)actual).CancellationToken);
+                }
+                CollectionAssert.AreEqual(gzipBefore, await File.ReadAllBytesAsync(original + ".gz"));
+                CollectionAssert.AreEqual(brotliBefore, await File.ReadAllBytesAsync(original + ".br"));
+                CollectionAssert.AreEqual(manifestBefore, await File.ReadAllBytesAsync(manifestPath));
+                Assert.IsNotNull(temporaryPath);
+                Assert.IsTrue(File.Exists(temporaryPath));
+                var failures = actual.Data["Spectara.Revela.Plugins.Compress.CleanupFailures"] as string[];
+                Assert.IsNotNull(failures);
+                Assert.HasCount(1, failures);
+                Assert.IsTrue(failures[0].Contains("Publish staging cleanup", StringComparison.Ordinal));
+                Assert.IsTrue(failures[0].Contains(nameof(UnauthorizedAccessException), StringComparison.Ordinal));
+                Assert.IsFalse(failures[0].Contains(testDirectory, StringComparison.Ordinal));
+
+                var recoveredPath = Path.Combine(testDirectory, "recovered.html.gz");
+                await ownership.PublishAsync(recoveredPath, async (stream, token) => await stream.WriteAsync("complete"u8.ToArray(), token));
+                CollectionAssert.AreEqual("complete"u8.ToArray(), await File.ReadAllBytesAsync(recoveredPath));
+            }
+
+            using var recoveryCancellation = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+            using var recreated = await CompressedSiteOwnership.OpenAsync(testDirectory, recoveryCancellation.Token);
+            var cleaned = await recreated.CleanAsync(recoveryCancellation.Token);
+            Assert.AreEqual(2, cleaned.Gzip.FileCount);
+            Assert.AreEqual(1, cleaned.Brotli.FileCount);
+            Assert.IsTrue(File.Exists(temporaryPath));
+        }
+        finally
+        {
+            if (temporaryPath is not null && File.Exists(temporaryPath))
+            {
+                File.SetAttributes(temporaryPath, File.GetAttributes(temporaryPath) & ~FileAttributes.ReadOnly);
+                File.Delete(temporaryPath);
+            }
+        }
+    }
+
+    [TestMethod]
+    public async Task PublishAsync_ManifestLocked_RollsBackNewFileAndPreservesPreviousRecord()
+    {
+        if (!OperatingSystem.IsWindows())
+        {
+            Assert.Inconclusive("Windows file sharing is required for this failure injection.");
+        }
+        var original = Path.Combine(testDirectory, "index.html");
+        await File.WriteAllTextAsync(original, new string('x', 512));
+        await service.CompressDirectoryAsync(testDirectory);
+        var manifestPath = Path.Combine(testDirectory, ".revela-compress.manifest");
+        var before = await File.ReadAllBytesAsync(manifestPath);
+        using (var ownership = await CompressedSiteOwnership.OpenAsync(testDirectory))
+        await using (var locked = new FileStream(manifestPath, FileMode.Open, FileAccess.Read, FileShare.Read))
+        {
+            await Assert.ThrowsExactlyAsync<UnauthorizedAccessException>(() => ownership.PublishAsync(
+                Path.Combine(testDirectory, "new.html.gz"), async (stream, token) => await stream.WriteAsync("complete"u8.ToArray(), token)));
+            Assert.IsGreaterThan(0L, locked.Length);
+        }
+
+        Assert.IsFalse(File.Exists(Path.Combine(testDirectory, "new.html.gz")));
+        Assert.IsTrue(File.Exists(original + ".gz"));
+        CollectionAssert.AreEqual(before, await File.ReadAllBytesAsync(manifestPath));
+        Assert.IsEmpty(Directory.GetFiles(testDirectory, "*.tmp"));
+        using var recreated = await CompressedSiteOwnership.OpenAsync(testDirectory);
+        var cleaned = await recreated.CleanAsync();
+        Assert.AreEqual(1, cleaned.Gzip.FileCount);
+        Assert.AreEqual(1, cleaned.Brotli.FileCount);
     }
 
     [TestMethod]

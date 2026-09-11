@@ -26,12 +26,26 @@ revela generate all
 ### Clean Compressed Files
 
 ```bash
-# Remove all .gz and .br files from output
+# Remove sidecars created and tracked by this plugin
 revela clean compress
 
 # Or clean everything
 revela clean all
 ```
+
+### Ownership and Conflicts
+
+The output-local `.revela-compress.manifest` records sidecars created by this
+plugin. Keep it with your local generated output: `clean cache` does not remove
+it. Compression cleanup removes tracked sidecars even when their source files
+have disappeared, but preserves independent gzip/Brotli downloads.
+
+An existing untracked destination, a changed tracked file, or an invalid
+ownership record causes an explicit failure instead of overwriting or deleting
+unknown data. Old untracked sidecars are not adopted automatically. Resolve such
+conflicts manually after inspecting the files, or regenerate a disposable output
+directory with `clean output`. That command intentionally removes all output,
+including independently supplied downloads.
 
 ## Pipeline Integration
 

@@ -1,6 +1,7 @@
 using System.CommandLine;
 using System.Globalization;
 
+using Spectara.Revela.Plugins.Compress.Services;
 using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Abstractions;
 using Spectara.Revela.Sdk.Output;
@@ -24,30 +25,22 @@ internal sealed partial class CleanCompressCommand(
     string IPipelineStep.Name => "compress";
 
 
-    ValueTask<PipelineStepResult> IPipelineStep.ExecuteAsync(CancellationToken cancellationToken)
+    async ValueTask<PipelineStepResult> IPipelineStep.ExecuteAsync(CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
         var outputPath = pathResolver.OutputPath;
-        if (!Directory.Exists(outputPath))
+        try
         {
-            return new ValueTask<PipelineStepResult>(PipelineStepResult.Ok());
+            using var ownership = await CompressedSiteOwnership.OpenAsync(outputPath, cancellationToken);
+            await ownership.CleanAsync(cancellationToken);
+            return PipelineStepResult.Ok();
         }
-
-        var gzipFiles = Directory.GetFiles(outputPath, "*.gz", SearchOption.AllDirectories);
-        var brotliFiles = Directory.GetFiles(outputPath, "*.br", SearchOption.AllDirectories);
-
-        foreach (var file in gzipFiles.Concat(brotliFiles))
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
         {
-            try
-            { File.Delete(file); }
-            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
-            {
-                LogDeleteFailed(logger, file, ex);
-            }
+            LogDeleteFailed(logger, outputPath, exception);
+            return PipelineStepResult.Fail($"Could not clean compressed files: {exception.Message}");
         }
-
-        return new ValueTask<PipelineStepResult>(PipelineStepResult.Ok());
     }
 
     // ── CLI command ──
@@ -65,7 +58,7 @@ internal sealed partial class CleanCompressCommand(
         return command;
     }
 
-    public Task<int> ExecuteAsync(CancellationToken cancellationToken)
+    public async Task<int> ExecuteAsync(CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
@@ -74,23 +67,31 @@ internal sealed partial class CleanCompressCommand(
         // If output doesn't exist, nothing to clean - exit silently
         if (!Directory.Exists(outputPath))
         {
-            return Task.FromResult(0);
+            return 0;
         }
 
-        // Find all .gz and .br files
-        var gzipFiles = Directory.GetFiles(outputPath, "*.gz", SearchOption.AllDirectories);
-        var brotliFiles = Directory.GetFiles(outputPath, "*.br", SearchOption.AllDirectories);
+        CompressionStats stats;
+        try
+        {
+            using var ownership = await CompressedSiteOwnership.OpenAsync(outputPath, cancellationToken);
+            stats = await ownership.CleanAsync(cancellationToken);
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        {
+            LogDeleteFailed(logger, outputPath, exception);
+            AnsiConsole.MarkupLine($"{OutputMarkers.Error} Could not clean compressed files: {Markup.Escape(exception.Message)}");
+            return 1;
+        }
 
-        if (gzipFiles.Length == 0 && brotliFiles.Length == 0)
+        if (stats.Gzip.FileCount == 0 && stats.Brotli.FileCount == 0)
         {
             AnsiConsole.MarkupLine("[dim]No compressed files found in output[/]");
-            return Task.FromResult(0);
+            return 0;
         }
 
-        var gzipSize = DeleteFiles(gzipFiles, cancellationToken);
-        var brotliSize = DeleteFiles(brotliFiles, cancellationToken);
-
-        var totalCount = gzipFiles.Length + brotliFiles.Length;
+        var gzipSize = stats.Gzip.CompressedSize;
+        var brotliSize = stats.Brotli.CompressedSize;
+        var totalCount = stats.Gzip.FileCount + stats.Brotli.FileCount;
         var totalSize = gzipSize + brotliSize;
 
         var content = $"[green]Compressed files removed![/]\n\n" +
@@ -98,8 +99,8 @@ internal sealed partial class CleanCompressCommand(
                       $"  Files:   {totalCount}\n" +
                       $"  Size:    {FormatSize(totalSize)}\n\n" +
                       $"[dim]By format:[/]\n" +
-                      $"  Gzip:    {gzipFiles.Length} files ({FormatSize(gzipSize)})\n" +
-                      $"  Brotli:  {brotliFiles.Length} files ({FormatSize(brotliSize)})";
+                      $"  Gzip:    {stats.Gzip.FileCount} files ({FormatSize(gzipSize)})\n" +
+                      $"  Brotli:  {stats.Brotli.FileCount} files ({FormatSize(brotliSize)})";
 
         var panel = new Panel(new Markup(content))
         {
@@ -108,37 +109,7 @@ internal sealed partial class CleanCompressCommand(
         panel.WithSuccessStyle();
         AnsiConsole.Write(panel);
 
-        return Task.FromResult(0);
-    }
-
-    private long DeleteFiles(string[] files, CancellationToken cancellationToken)
-    {
-        long totalSize = 0;
-
-        foreach (var file in files)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-
-            try
-            {
-                var fileInfo = new FileInfo(file);
-                totalSize += fileInfo.Length;
-                File.Delete(file);
-                LogFileDeleted(logger, file);
-            }
-            catch (IOException ex)
-            {
-                LogDeleteFailed(logger, file, ex);
-                AnsiConsole.MarkupLine($"{OutputMarkers.Error} Failed to delete {Markup.Escape(file)}: {Markup.Escape(ex.Message)}");
-            }
-            catch (UnauthorizedAccessException ex)
-            {
-                LogDeleteFailed(logger, file, ex);
-                AnsiConsole.MarkupLine($"{OutputMarkers.Error} Access denied: {Markup.Escape(file)}");
-            }
-        }
-
-        return totalSize;
+        return 0;
     }
 
     private static string FormatSize(long bytes) => bytes switch
@@ -149,9 +120,6 @@ internal sealed partial class CleanCompressCommand(
     };
 
     #region Logging
-
-    [LoggerMessage(Level = LogLevel.Debug, Message = "Deleted: {FilePath}")]
-    private static partial void LogFileDeleted(ILogger logger, string filePath);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Failed to delete {FilePath}")]
     private static partial void LogDeleteFailed(ILogger logger, string filePath, Exception exception);

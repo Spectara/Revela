@@ -28,8 +28,7 @@ internal sealed partial class CompressCommand(
     ILogger<CompressCommand> logger,
     IPathResolver pathResolver,
     CompressionService compressionService,
-    IArtifactLifecycle artifactLifecycle,
-    CompressedSiteInvalidator compressedSiteInvalidator)
+    IArtifactLifecycle artifactLifecycle)
 {
     /// <summary>
     /// Creates the CLI command.
@@ -47,7 +46,8 @@ internal sealed partial class CompressCommand(
     /// <inheritdoc />
     public async Task<int> ExecuteAsync(CancellationToken cancellationToken = default)
     {
-        var outputPath = pathResolver.OutputPath;
+        cancellationToken.ThrowIfCancellationRequested();
+        var outputPath = Path.GetFullPath(pathResolver.OutputPath);
 
         // Check if output directory exists
         if (!Directory.Exists(outputPath))
@@ -68,15 +68,23 @@ internal sealed partial class CompressCommand(
             return 1;
         }
 
-        var cleanupResult = await compressedSiteInvalidator.InvalidateAsync(cancellationToken);
-        if (!cleanupResult.Success)
+        try
+        {
+            using var ownership = await CompressedSiteOwnership.OpenAsync(outputPath, cancellationToken);
+            await ownership.CleanAsync(cancellationToken);
+            return await CompressAsync(outputPath, ownership, cancellationToken);
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
         {
             ErrorPanels.ShowError(
-                "Compression Cleanup Failed",
-                $"[yellow]{Markup.Escape(cleanupResult.ErrorMessage ?? "Unknown error")}[/]");
+                "Compression Failed",
+                $"[yellow]{Markup.Escape(exception.Message)}[/]");
             return 1;
         }
+    }
 
+    private async Task<int> CompressAsync(string outputPath, CompressedSiteOwnership ownership, CancellationToken cancellationToken)
+    {
         LogStartingCompression(logger, outputPath);
 
         CompressionStats? stats = null;
@@ -109,8 +117,7 @@ internal sealed partial class CompressCommand(
                     task.Description = $"[green]Compressing[/] ({report.current}/{report.total}) {safeName}";
                 });
 
-                stats = await compressionService.CompressDirectoryAsync(outputPath, progress, cancellationToken)
-                    ;
+                stats = await compressionService.CompressDirectoryAsync(outputPath, ownership, progress, cancellationToken);
 
                 task.Value = task.MaxValue;
                 task.Description = "[green]Compression complete[/]";
