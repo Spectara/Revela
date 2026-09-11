@@ -7,6 +7,7 @@
     <PackageId>Spectara.Revela.Sdk</PackageId>
     <PackageTags>revela;sdk;plugin;theme;photography;static-site-generator</PackageTags>
     <PackageReadmeFile>README.md</PackageReadmeFile>
+    <TargetsForTfmSpecificContentInPackage>$(TargetsForTfmSpecificContentInPackage);_RevelaPackSourceGenerator</TargetsForTfmSpecificContentInPackage>
     <!-- Sdk must be trim- and AOT-safe so it can be consumed by Cli.Embedded
          (static AOT host) and by 3rd-party plugin authors who want to publish
          trimmed/AOT-compatible plugins. Setting IsAotCompatible=true also
@@ -42,5 +43,26 @@
     <PackageReference Include="Spectre.Console" />
     <PackageReference Include="System.CommandLine" />
   </ItemGroup>
+
+  <Target Name="_RevelaPackSourceGenerator" DependsOnTargets="PrepareProjectReferences">
+    <MSBuild Projects="@(_MSBuildProjectReferenceExistent)"
+             Targets="GetTargetPath"
+             Properties="%(_MSBuildProjectReferenceExistent.SetConfiguration);%(_MSBuildProjectReferenceExistent.SetPlatform);%(_MSBuildProjectReferenceExistent.SetTargetFramework)"
+             RemoveProperties="%(_MSBuildProjectReferenceExistent.GlobalPropertiesToRemove);%(_MSBuildProjectReferenceExistent.UndefineProperties);$(_GlobalPropertiesToRemoveFromProjectReferences)"
+             Condition="'%(_MSBuildProjectReferenceExistent.OutputItemType)' == 'Analyzer'">
+      <Output TaskParameter="TargetOutputs" ItemName="_RevelaAnalyzerTargetPath" />
+    </MSBuild>
+    <ItemGroup>
+      <_RevelaGenerator Include="@(_RevelaAnalyzerTargetPath)"
+                        Condition="'%(_RevelaAnalyzerTargetPath.Filename)' == 'Spectara.Revela.Sdk.Generators'" />
+    </ItemGroup>
+    <Error Condition="'@(_RevelaGenerator->Count())' != '1'"
+           Text="Expected exactly one resolved Revela generator analyzer for SDK packaging." />
+    <Error Condition="!Exists('%(_RevelaGenerator.Identity)')"
+           Text="The Revela generator analyzer must be built before SDK packaging: %(_RevelaGenerator.Identity)" />
+    <ItemGroup>
+      <TfmSpecificPackageFile Include="@(_RevelaGenerator)" PackagePath="analyzers/dotnet/cs/" />
+    </ItemGroup>
+  </Target>
 
 </Project>

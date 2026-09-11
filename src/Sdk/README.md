@@ -61,6 +61,49 @@ public class MyTheme : EmbeddedThemePlugin
 }
 ```
 
+## Template Model Generation
+
+The SDK package includes the compile-time generator for `[RevelaTemplateModel]`.
+NuGet loads it automatically; no generator package, project reference, or manual
+analyzer registration is needed. Roslyn assemblies are not runtime dependencies.
+
+Generated conversions return Scriban's `ScriptObject` and `ScriptArray` types.
+Consumers using this feature must reference Scriban explicitly; the SDK does not
+add Scriban as a runtime dependency. For a .NET 10 / C# 14 project:
+
+```xml
+<ItemGroup>
+    <PackageReference Include="Spectara.Revela.Sdk" Version="0.0.1-beta.21" />
+    <PackageReference Include="Scriban" Version="7.4.0" />
+</ItemGroup>
+```
+
+Import `Spectara.Revela.Sdk.TemplateModels` to call the generated extensions:
+
+```csharp
+using Scriban;
+using Spectara.Revela.Sdk.Abstractions;
+using Spectara.Revela.Sdk.TemplateModels;
+
+var model = new GalleryModel { DisplayName = "Alpine Gallery" };
+var scriptObject = model.ToScriptObject();
+var context = new TemplateContext();
+context.PushGlobal(scriptObject);
+var rendered = Template.Parse("{{ display_name }}").Render(context);
+Console.WriteLine(rendered);
+
+[RevelaTemplateModel]
+public sealed class GalleryModel
+{
+        public required string DisplayName { get; init; }
+}
+```
+
+This renders `Alpine Gallery`. Models do not need to be `partial`: the generator
+creates separate extension classes in the consumer assembly. Public properties
+are projected with direct access and snake_case keys; `[ScriptName("custom")]`
+overrides a key and `[ScriptIgnore]` excludes a property.
+
 ## Documentation
 
 - [Plugin Development Guide](https://revela.website/docs/developers/plugin-development/)
