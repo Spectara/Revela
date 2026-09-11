@@ -24,6 +24,22 @@ public sealed class ScribanTemplateEngineTests
     };
 
     [TestMethod]
+    public void Render_LargePageFollowedBySmallPage_PreservesCompleteOutputs()
+    {
+        var engine = CreateEngine();
+        const string template = "<html><body>{{ for section in sections }}<p>{{ section }}</p>{{ end }}</body></html>";
+        var sections = Enumerable.Repeat(new string('x', 65_536), 20).ToArray();
+        var smallSections = new[] { "Small page" };
+        var expectedBody = string.Concat(sections.Select(section => $"<p>{section}</p>"));
+
+        var largePage = engine.Render(template, Model(("sections", sections)));
+        var smallPage = engine.Render(template, Model(("sections", smallSections)));
+
+        Assert.AreEqual($"<html><body>{expectedBody}</body></html>", largePage);
+        Assert.AreEqual("<html><body><p>Small page</p></body></html>", smallPage);
+    }
+
+    [TestMethod]
     public void Render_ShouldBeThreadSafe_ForConcurrentInvocations()
     {
         // Arrange
