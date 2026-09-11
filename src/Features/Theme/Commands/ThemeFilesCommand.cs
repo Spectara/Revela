@@ -33,11 +33,10 @@ internal sealed partial class ThemeFilesCommand(
         var command = new Command("files", "List all theme files with source information");
         command.Options.Add(themeOption);
 
-        command.SetAction(async (parseResult, cancellationToken) =>
+        command.SetAction((parseResult, cancellationToken) =>
         {
             var themeName = parseResult.GetValue(themeOption);
-            await ExecuteAsync(themeName, cancellationToken);
-            return 0;
+            return Task.FromResult(Execute(themeName, cancellationToken));
         });
 
         return command;
@@ -47,7 +46,7 @@ internal sealed partial class ThemeFilesCommand(
     private const string ThemeColor = "grey";
     private static readonly string[] ExtensionColors = ["blue", "magenta", "darkcyan", "darkorange", "mediumpurple"];
 
-    private Task ExecuteAsync(string? themeNameOverride, CancellationToken cancellationToken)
+    private int Execute(string? themeNameOverride, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
         var projectPath = projectEnvironment.Value.Path;
@@ -68,7 +67,7 @@ internal sealed partial class ThemeFilesCommand(
                 "Theme Not Found",
                 $"[yellow]Theme '{Markup.Escape(themeName)}' not found.[/]\n\n" +
                 "Run [cyan]revela theme list[/] to see available themes.");
-            return Task.CompletedTask;
+            return 1;
         }
 
         // Get extensions for color map and config entries
@@ -179,7 +178,7 @@ internal sealed partial class ThemeFilesCommand(
         AnsiConsole.MarkupLine("");
         AnsiConsole.MarkupLine("[dim]Tip:[/] Use [cyan]revela theme extract --file <path>[/] to extract specific files for customization");
 
-        return Task.CompletedTask;
+        return 0;
     }
 
     private static string FormatSource(
