@@ -2,8 +2,10 @@ using System.CommandLine;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Http.Resilience;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Polly;
+using Polly.Telemetry;
 using Spectara.Revela.Plugins.Source.OneDrive.Commands;
 using Spectara.Revela.Plugins.Source.OneDrive.Configuration;
 using Spectara.Revela.Plugins.Source.OneDrive.Providers;
@@ -15,7 +17,7 @@ namespace Spectara.Revela.Plugins.Source.OneDrive;
 /// <summary>
 /// OneDrive source plugin for Revela
 /// </summary>
-public sealed class OneDrivePlugin : IPlugin
+public sealed partial class OneDrivePlugin : IPlugin
 {
     /// <inheritdoc />
     public PackageMetadata Metadata { get; } = new()
@@ -40,17 +42,21 @@ public sealed class OneDrivePlugin : IPlugin
         // [OptionsValidator] source generator.
         services.AddSingleton<IValidateOptions<OneDrivePluginConfig>, OneDrivePluginConfigValidator>();
 
-        // Register Typed HttpClient for SharedLinkProvider with Resilience
-        // Custom resilience handler: retry without verbose logging
-        // Only logs on final failure, not on each retry attempt
         services.AddHttpClient<SharedLinkProvider>(client =>
         {
             client.Timeout = TimeSpan.FromMinutes(5); // OneDrive API can be slow for large files
             client.DefaultRequestHeaders.Add("User-Agent", "Revela/1.0 (Static Site Generator)");
         })
-        .AddResilienceHandler("onedrive-retry", builder =>
+        .RemoveAllLoggers()
+        .AddResilienceHandler("onedrive-retry", (builder, context) =>
         {
-            // Retry: 3 attempts with exponential backoff, no logging on retry
+            var telemetry = new TelemetryOptions(context.GetOptions<TelemetryOptions>())
+            {
+                LoggerFactory = NullLoggerFactory.Instance
+            };
+            telemetry.TelemetryListeners.Add(new SafeTelemetryListener(context.ServiceProvider.GetRequiredService<ILogger<SharedLinkProvider>>()));
+            builder.ConfigureTelemetry(telemetry);
+
             builder.AddRetry(new HttpRetryStrategyOptions
             {
                 MaxRetryAttempts = 3,
@@ -64,8 +70,6 @@ public sealed class OneDrivePlugin : IPlugin
                     .HandleResult(r => (int)r.StatusCode >= 500 ||
                                        r.StatusCode == System.Net.HttpStatusCode.RequestTimeout ||
                                        r.StatusCode == System.Net.HttpStatusCode.TooManyRequests)
-                // No OnRetry callback = no logging during retries
-                // User only sees error if ALL retries fail
             });
 
             // Timeout per request attempt
@@ -80,6 +84,25 @@ public sealed class OneDrivePlugin : IPlugin
 
         // Register Wizard Step (for project setup wizard integration)
         services.TryAddEnumerable(ServiceDescriptor.Transient<IWizardStep, OneDriveWizardStep>());
+    }
+
+    private sealed partial class SafeTelemetryListener(ILogger<SharedLinkProvider> logger) : TelemetryListener
+    {
+        public override void Write<TResult, TArgs>(in TelemetryEventArguments<TResult, TArgs> args)
+        {
+            if (args.Outcome is not { } outcome || !logger.IsEnabled(LogLevel.Debug))
+            {
+                return;
+            }
+
+            var host = args.Context.GetRequestMessage()?.RequestUri?.Host ?? "unknown";
+            var errorCategory = outcome.Exception?.GetType().Name ?? "None";
+            var statusCode = outcome.Result is HttpResponseMessage response ? (int?)response.StatusCode : null;
+            LogHttpOutcome(args.Event.EventName, host, errorCategory, statusCode);
+        }
+
+        [LoggerMessage(Level = LogLevel.Debug, Message = "OneDrive HTTP event {EventName} for {Host}: {ErrorCategory}, status {StatusCode}")]
+        private partial void LogHttpOutcome(string eventName, string host, string errorCategory, int? statusCode);
     }
 
     /// <inheritdoc />

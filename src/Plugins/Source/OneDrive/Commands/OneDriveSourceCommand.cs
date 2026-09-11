@@ -1,5 +1,7 @@
 using System.CommandLine;
+using System.Text.Json;
 using Microsoft.Extensions.Options;
+using Polly.Timeout;
 using Spectara.Revela.Plugins.Source.OneDrive.Configuration;
 using Spectara.Revela.Plugins.Source.OneDrive.Formatting;
 using Spectara.Revela.Plugins.Source.OneDrive.Models;
@@ -115,7 +117,7 @@ internal sealed partial class OneDriveSourceCommand(
             var concurrency = currentConfig.DefaultConcurrency ?? DefaultConcurrency;
 
             AnsiConsole.MarkupLine($"{OutputMarkers.Info} Downloading from OneDrive...");
-            AnsiConsole.MarkupLine($"[dim]Share URL:[/] {Markup.Escape(shareUrl)}");
+            AnsiConsole.MarkupLine($"[dim]Share URL:[/] {Markup.Escape(SharedLinkProvider.RedactShareUrl(shareUrl))}");
             AnsiConsole.MarkupLine($"[dim]Output:[/] {Markup.Escape(outputDirectory)}");
             AnsiConsole.MarkupLine($"[dim]Concurrency:[/] {concurrency} parallel downloads");
             AnsiConsole.WriteLine();
@@ -195,7 +197,7 @@ internal sealed partial class OneDriveSourceCommand(
                 {
                     foreach (var file in analysis.OrphanedFiles)
                     {
-                        file.Delete();
+                        DeleteOrphanedFile(outputDirectory, file);
                     }
                     AnsiConsole.MarkupLine($"{OutputMarkers.Success} Deleted {analysis.OrphanedFiles.Count} orphaned file(s)");
                 }
@@ -264,30 +266,24 @@ internal sealed partial class OneDriveSourceCommand(
 
             return 0;
         }
-        catch (HttpRequestException ex)
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
         {
-            ErrorPanels.ShowException(ex);
-            LogDownloadFailed(ex);
-            return 1;
+            return ReportFailure("Download timed out");
         }
-        catch (InvalidOperationException ex)
+        catch (Exception ex) when (ex is HttpRequestException or InvalidOperationException or IOException or
+            UnauthorizedAccessException or ArgumentException or JsonException or FormatException or TimeoutRejectedException)
         {
-            ErrorPanels.ShowException(ex);
-            LogDownloadFailed(ex);
-            return 1;
+            cancellationToken.ThrowIfCancellationRequested();
+            return ReportFailure(ex.GetType().Name);
         }
-        catch (IOException ex)
-        {
-            ErrorPanels.ShowException(ex);
-            LogDownloadFailed(ex);
-            return 1;
-        }
-        catch (UnauthorizedAccessException ex)
-        {
-            ErrorPanels.ShowException(ex);
-            LogDownloadFailed(ex);
-            return 1;
-        }
+    }
+
+    private int ReportFailure(string reason)
+    {
+        ErrorPanels.ShowError("Download failed",
+            $"OneDrive sync failed ({Markup.Escape(reason)}). Check the share configuration, network and output permissions.");
+        LogDownloadFailed(reason);
+        return 1;
     }
 
     /// <summary>
@@ -469,11 +465,39 @@ internal sealed partial class OneDriveSourceCommand(
             "  3. Provide [cyan]--share-url[/] parameter");
     }
 
-    [LoggerMessage(Level = LogLevel.Error, Message = "Download failed")]
-    private partial void LogDownloadFailed(Exception exception);
+    [LoggerMessage(Level = LogLevel.Error, Message = "Download failed: {Reason}")]
+    private partial void LogDownloadFailed(string reason);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Rejected OneDrive item with unsafe relative path: {relativePath}")]
     private partial void LogPathTraversalRejected(string relativePath);
+
+    internal static void DeleteOrphanedFile(string destinationDirectory, FileInfo file)
+    {
+        var root = Path.GetFullPath(destinationDirectory);
+        var destination = file.FullName;
+        var relative = Path.GetRelativePath(root, destination);
+        if (Path.IsPathRooted(relative) || relative == "." || relative == ".." ||
+            relative.StartsWith(".." + Path.DirectorySeparatorChar, StringComparison.Ordinal))
+        {
+            throw new InvalidOperationException("Refusing to delete an orphan outside the source directory.");
+        }
+
+        var current = root;
+        foreach (var part in relative.Split(Path.DirectorySeparatorChar))
+        {
+            current = Path.Combine(current, part);
+            var attributes = File.GetAttributes(current);
+            var isDirectory = (attributes & FileAttributes.Directory) != 0;
+            var isDestination = string.Equals(current, destination,
+                OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal);
+            if ((attributes & FileAttributes.ReparsePoint) != 0 || isDirectory == isDestination)
+            {
+                throw new InvalidOperationException("Refusing to delete an orphan with linked or invalid path components.");
+            }
+        }
+
+        file.Delete();
+    }
 
     /// <summary>
     /// Resolves the remote relative path against the destination directory and rejects

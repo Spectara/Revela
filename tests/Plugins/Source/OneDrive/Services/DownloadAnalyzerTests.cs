@@ -1,5 +1,6 @@
 using Spectara.Revela.Plugins.Source.OneDrive.Models;
 using Spectara.Revela.Plugins.Source.OneDrive.Services;
+using Spectara.Revela.Tests.Shared.Fixtures;
 
 namespace Spectara.Revela.Tests.Plugins.Source.OneDrive.Services;
 
@@ -247,6 +248,60 @@ public sealed class DownloadAnalyzerTests : IDisposable
 
         // Assert
         Assert.HasCount(2, result.OrphanedFiles);
+    }
+
+    [TestMethod]
+    [DataRow(false)]
+    [DataRow(true)]
+    public void Analyze_LinkedChildDirectory_ExcludesExternalOrphans(bool includeAllOrphans)
+    {
+        var sourceDirectory = Path.Combine(tempDirectory, "chosen-source");
+        var externalDirectory = Path.Combine(tempDirectory, "external");
+        CreateLocalFile(Path.Combine("chosen-source", "nested", "orphan.jpg"), 1024);
+        CreateLocalFile(Path.Combine("external", "external.jpg"), 2048);
+        CreateLocalFile(Path.Combine("external", "external.pdf"), 4096);
+        var linkPath = Path.Combine(sourceDirectory, "linked");
+
+        try
+        {
+            DirectoryLinkTestHelper.Create(linkPath, externalDirectory);
+
+            var result = DownloadAnalyzer.Analyze([], sourceDirectory,
+                includeOrphans: true, includeAllOrphans: includeAllOrphans);
+
+            Assert.HasCount(1, result.OrphanedFiles);
+            Assert.AreEqual(Path.Combine(sourceDirectory, "nested", "orphan.jpg"), result.OrphanedFiles[0].FullName);
+            Assert.AreEqual(1024L, result.Statistics.TotalOrphanedSize);
+        }
+        finally
+        {
+            DirectoryLinkTestHelper.Delete(linkPath);
+        }
+    }
+
+    [TestMethod]
+    public void Analyze_HiddenAndSystemOrphans_StillIncludesFiles()
+    {
+        CreateLocalFile(".hidden.jpg", 1024);
+        var filePath = Path.Combine(tempDirectory, ".hidden.jpg");
+        var originalAttributes = File.GetAttributes(filePath);
+
+        try
+        {
+            if (OperatingSystem.IsWindows())
+            {
+                File.SetAttributes(filePath, originalAttributes | FileAttributes.Hidden | FileAttributes.System);
+            }
+
+            var result = DownloadAnalyzer.Analyze([], tempDirectory, includeOrphans: true);
+
+            Assert.HasCount(1, result.OrphanedFiles);
+            Assert.AreEqual(filePath, result.OrphanedFiles[0].FullName);
+        }
+        finally
+        {
+            File.SetAttributes(filePath, originalAttributes);
+        }
     }
 
     #endregion

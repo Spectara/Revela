@@ -1,8 +1,14 @@
+using System.Collections.Concurrent;
 using System.Net;
+using System.Net.Http.Headers;
+using System.Text;
 using System.Text.Json;
+using Microsoft.Extensions.DependencyInjection;
 using NSubstitute;
+using Spectara.Revela.Plugins.Source.OneDrive;
 using Spectara.Revela.Plugins.Source.OneDrive.Models;
 using Spectara.Revela.Plugins.Source.OneDrive.Providers;
+using Spectara.Revela.Tests.Shared.Fixtures;
 using Spectara.Revela.Tests.Shared.Http;
 
 namespace Spectara.Revela.Tests.Plugins.Source.OneDrive.Providers;
@@ -228,6 +234,204 @@ public sealed class SharedLinkProviderTests : IDisposable
     #region DownloadFileAsync Tests
 
     [TestMethod]
+    [DataRow(false, true)]
+    [DataRow(true, true)]
+    [DataRow(false, false)]
+    [DataRow(true, false)]
+    public async Task DownloadFileAsync_WhenBodyInterrupted_PreservesDestinationState(bool cancel, bool destinationExists)
+    {
+        using var project = TestProject.Create();
+        using var cancellationSource = new CancellationTokenSource();
+        var destinationPath = Path.Combine(project.SourcePath, "photo.jpg");
+        var previousBytes = "previous image bytes"u8.ToArray();
+        var previousTimestamp = new DateTime(2023, 1, 15, 10, 30, 0, DateTimeKind.Utc);
+        if (destinationExists)
+        {
+            await File.WriteAllBytesAsync(destinationPath, previousBytes);
+            File.SetLastWriteTimeUtc(destinationPath, previousTimestamp);
+        }
+
+        var unrelatedPath = destinationPath + ".unrelated.tmp";
+        await File.WriteAllBytesAsync(unrelatedPath, previousBytes);
+        var item = CreateTestItem("photo.jpg", "https://cdn.example.com/photo.jpg");
+        using var body = new DownloadBodyStream("partial replacement"u8.ToArray(), () =>
+        {
+            if (cancel)
+            {
+                cancellationSource.Cancel();
+            }
+            else
+            {
+                throw new IOException("Synthetic body interruption");
+            }
+        });
+        using var handler = new StreamingHttpMessageHandler(body);
+        using var client = new HttpClient(handler);
+        var streamingProvider = new SharedLinkProvider(client, logger);
+
+        if (cancel)
+        {
+            var exception = await Assert.ThrowsExactlyAsync<OperationCanceledException>(
+                () => streamingProvider.DownloadFileAsync(item, destinationPath, cancellationSource.Token));
+            Assert.AreEqual(cancellationSource.Token, exception.CancellationToken);
+        }
+        else
+        {
+            var exception = await Assert.ThrowsExactlyAsync<IOException>(
+                () => streamingProvider.DownloadFileAsync(item, destinationPath));
+            Assert.AreEqual("Synthetic body interruption", exception.Message);
+        }
+
+        Assert.AreEqual(2, body.ReadCalls);
+        Assert.AreEqual("partial replacement"u8.Length, body.BytesRead);
+        if (destinationExists)
+        {
+            CollectionAssert.AreEqual(previousBytes, await File.ReadAllBytesAsync(destinationPath));
+            Assert.AreEqual(previousTimestamp, File.GetLastWriteTimeUtc(destinationPath));
+        }
+        else
+        {
+            Assert.IsFalse(File.Exists(destinationPath));
+        }
+
+        CollectionAssert.AreEqual(previousBytes, await File.ReadAllBytesAsync(unrelatedPath));
+        CollectionAssert.AreEquivalent(
+            destinationExists ? new[] { destinationPath, unrelatedPath } : [unrelatedPath],
+            Directory.GetFiles(project.SourcePath));
+    }
+
+    [TestMethod]
+    [DataRow(false)]
+    [DataRow(true)]
+    public async Task DownloadFileAsync_WhenSuccessful_PublishesBytesAndTimestamp(bool destinationExists)
+    {
+        using var project = TestProject.Create();
+        var destinationPath = Path.Combine(project.SourcePath, "photo.jpg");
+        if (destinationExists)
+        {
+            await File.WriteAllBytesAsync(destinationPath, "previous image bytes"u8.ToArray());
+            File.SetLastWriteTimeUtc(destinationPath, new DateTime(2023, 1, 15, 10, 30, 0, DateTimeKind.Utc));
+        }
+
+        var expectedBytes = "complete replacement image bytes"u8.ToArray();
+        var expectedTimestamp = new DateTime(2024, 6, 15, 10, 30, 0, DateTimeKind.Utc);
+        var item = CreateTestItem("photo.jpg", "https://cdn.example.com/photo.jpg", expectedTimestamp);
+        using var body = new DownloadBodyStream(expectedBytes);
+        using var handler = new StreamingHttpMessageHandler(body);
+        using var client = new HttpClient(handler);
+        var streamingProvider = new SharedLinkProvider(client, logger);
+
+        var result = await streamingProvider.DownloadFileAsync(item, destinationPath);
+
+        Assert.AreEqual(destinationPath, result);
+        Assert.AreEqual(2, body.ReadCalls);
+        Assert.AreEqual(expectedBytes.Length, body.BytesRead);
+        CollectionAssert.AreEqual(expectedBytes, await File.ReadAllBytesAsync(destinationPath));
+        Assert.AreEqual(expectedTimestamp, File.GetLastWriteTimeUtc(destinationPath));
+        CollectionAssert.AreEquivalent(new[] { destinationPath }, Directory.GetFiles(project.SourcePath));
+    }
+
+    [TestMethod]
+    [DataRow(false, UnixFileMode.UserRead | UnixFileMode.UserWrite)]
+    [DataRow(true, UnixFileMode.UserRead | UnixFileMode.UserWrite)]
+    [DataRow(true, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.GroupRead)]
+    public async Task DownloadFileAsync_UnixPermissions_CreatesPrivateStageAndPreservesDestinationMode(
+        bool destinationExists, UnixFileMode finalMode)
+    {
+        if (OperatingSystem.IsWindows())
+        {
+            Assert.Inconclusive("Unix file permissions cannot be verified on Windows.");
+            return;
+        }
+
+        using var project = TestProject.Create();
+        var destinationPath = Path.Combine(project.SourcePath, "photo.jpg");
+        var previousTimestamp = new DateTime(2023, 1, 15, 10, 30, 0, DateTimeKind.Utc);
+        if (destinationExists)
+        {
+            await File.WriteAllBytesAsync(destinationPath, "previous image bytes"u8.ToArray());
+            File.SetLastWriteTimeUtc(destinationPath, previousTimestamp);
+            File.SetUnixFileMode(destinationPath, finalMode);
+        }
+
+        var expectedBytes = Encoding.UTF8.GetBytes(new string('x', 16384));
+        var expectedTimestamp = new DateTime(2024, 6, 15, 10, 30, 0, DateTimeKind.Utc);
+        var item = CreateTestItem("photo.jpg", "https://cdn.example.com/photo.jpg", expectedTimestamp);
+        var stagingObservations = 0;
+        using var body = new DownloadBodyStream(expectedBytes, onRead: () =>
+        {
+            var temporaryFiles = Directory.GetFiles(project.SourcePath, "photo.jpg.*.tmp");
+            Assert.HasCount(1, temporaryFiles);
+            if (!OperatingSystem.IsWindows())
+            {
+                Assert.AreEqual(UnixFileMode.UserRead | UnixFileMode.UserWrite, File.GetUnixFileMode(temporaryFiles[0]));
+            }
+
+            Assert.AreEqual(stagingObservations == 0 ? 0L : expectedBytes.Length, new FileInfo(temporaryFiles[0]).Length);
+            if (destinationExists)
+            {
+                Assert.AreEqual(previousTimestamp, File.GetLastWriteTimeUtc(destinationPath));
+            }
+            else
+            {
+                Assert.IsFalse(File.Exists(destinationPath));
+            }
+
+            stagingObservations++;
+        });
+        using var handler = new StreamingHttpMessageHandler(body);
+        using var client = new HttpClient(handler);
+        var streamingProvider = new SharedLinkProvider(client, logger);
+
+        var result = await streamingProvider.DownloadFileAsync(item, destinationPath);
+
+        Assert.AreEqual(destinationPath, result);
+        Assert.AreEqual(2, stagingObservations);
+        Assert.AreEqual(finalMode, File.GetUnixFileMode(destinationPath));
+        CollectionAssert.AreEqual(expectedBytes, await File.ReadAllBytesAsync(destinationPath));
+        Assert.AreEqual(expectedTimestamp, File.GetLastWriteTimeUtc(destinationPath));
+        CollectionAssert.AreEquivalent(new[] { destinationPath }, Directory.GetFiles(project.SourcePath));
+    }
+
+    [TestMethod]
+    public async Task DownloadFileAsync_WhenPublicationFails_PreservesDirectoryContentsAndRemovesTemporaryFile()
+    {
+        using var project = TestProject.Create();
+        var destinationPath = Path.Combine(project.SourcePath, "photo.jpg");
+        Directory.CreateDirectory(destinationPath);
+        var retainedPath = Path.Combine(destinationPath, "retained.jpg");
+        var previousBytes = "previous image bytes"u8.ToArray();
+        var previousTimestamp = new DateTime(2023, 1, 15, 10, 30, 0, DateTimeKind.Utc);
+        await File.WriteAllBytesAsync(retainedPath, previousBytes);
+        File.SetLastWriteTimeUtc(retainedPath, previousTimestamp);
+        var replacementBytes = "complete replacement"u8.ToArray();
+        var item = CreateTestItem("photo.jpg", "https://cdn.example.com/photo.jpg");
+        using var body = new DownloadBodyStream(replacementBytes);
+        using var handler = new StreamingHttpMessageHandler(body);
+        using var client = new HttpClient(handler);
+        var streamingProvider = new SharedLinkProvider(client, logger);
+
+        if (OperatingSystem.IsWindows())
+        {
+            await Assert.ThrowsExactlyAsync<UnauthorizedAccessException>(
+                () => streamingProvider.DownloadFileAsync(item, destinationPath));
+        }
+        else
+        {
+            await Assert.ThrowsExactlyAsync<IOException>(
+                () => streamingProvider.DownloadFileAsync(item, destinationPath));
+        }
+
+        Assert.AreEqual(2, body.ReadCalls);
+        Assert.AreEqual(replacementBytes.Length, body.BytesRead);
+        CollectionAssert.AreEqual(previousBytes, await File.ReadAllBytesAsync(retainedPath));
+        Assert.AreEqual(previousTimestamp, File.GetLastWriteTimeUtc(retainedPath));
+        Assert.IsEmpty(Directory.GetFiles(project.SourcePath));
+        CollectionAssert.AreEquivalent(new[] { destinationPath }, Directory.GetDirectories(project.SourcePath));
+        CollectionAssert.AreEquivalent(new[] { retainedPath }, Directory.GetFiles(destinationPath));
+    }
+
+    [TestMethod]
     public async Task DownloadFileAsync_DownloadsToCorrectPath()
     {
         // Arrange
@@ -332,6 +536,12 @@ public sealed class SharedLinkProviderTests : IDisposable
     public async Task DownloadFileAsync_WithoutDownloadUrl_ThrowsArgumentException()
     {
         // Arrange
+        using var project = TestProject.Create();
+        var destinationPath = Path.Combine(project.SourcePath, "photo.jpg");
+        var previousBytes = "previous image bytes"u8.ToArray();
+        var previousTimestamp = new DateTime(2023, 1, 15, 10, 30, 0, DateTimeKind.Utc);
+        await File.WriteAllBytesAsync(destinationPath, previousBytes);
+        File.SetLastWriteTimeUtc(destinationPath, previousTimestamp);
         var item = new OneDriveItem
         {
             Id = "1",
@@ -343,14 +553,19 @@ public sealed class SharedLinkProviderTests : IDisposable
 
         // Act & Assert
         var ex = await Assert.ThrowsExactlyAsync<ArgumentException>(
-            async () => await provider.DownloadFileAsync(item, "C:\\temp\\photo.jpg"));
+            async () => await provider.DownloadFileAsync(item, destinationPath));
         Assert.IsTrue(ex.Message.Contains("download URL", StringComparison.OrdinalIgnoreCase));
+        CollectionAssert.AreEqual(previousBytes, await File.ReadAllBytesAsync(destinationPath));
+        Assert.AreEqual(previousTimestamp, File.GetLastWriteTimeUtc(destinationPath));
+        CollectionAssert.AreEquivalent(new[] { destinationPath }, Directory.GetFiles(project.SourcePath));
     }
 
     [TestMethod]
     public async Task DownloadFileAsync_WithEmptyDownloadUrl_ThrowsArgumentException()
     {
         // Arrange
+        using var project = TestProject.Create();
+        var destinationPath = Path.Combine(project.SourcePath, "photo.jpg");
         var item = new OneDriveItem
         {
             Id = "1",
@@ -362,13 +577,65 @@ public sealed class SharedLinkProviderTests : IDisposable
 
         // Act & Assert
         var ex = await Assert.ThrowsExactlyAsync<ArgumentException>(
-            async () => await provider.DownloadFileAsync(item, "C:\\temp\\photo.jpg"));
+            async () => await provider.DownloadFileAsync(item, destinationPath));
         Assert.IsTrue(ex.Message.Contains("download URL", StringComparison.OrdinalIgnoreCase));
+        Assert.IsFalse(File.Exists(destinationPath));
+        Assert.IsEmpty(Directory.GetFiles(project.SourcePath));
     }
 
     #endregion
 
     #region Error Handling Tests
+
+    [TestMethod]
+    [DataRow("success", 4)]
+    [DataRow("share-failure", 5)]
+    [DataRow("cdn-failure", 7)]
+    [DataRow("cdn-status", 7)]
+    public async Task ConfigureServices_TraceHttpLogs_DoNotDiscloseCredentials(string scenario, int expectedRequests)
+    {
+        using var project = TestProject.CreateMinimal();
+        using var capture = new PrivacyLogCapture();
+        using var handler = new PrivacyHttpMessageHandler(scenario);
+        var services = CreatePrivacyServices(handler, capture);
+        using var serviceProvider = services.BuildServiceProvider();
+        PrivacyLogCapture.WriteControl(serviceProvider.GetRequiredService<ILoggerFactory>());
+        var typedProvider = serviceProvider.GetRequiredService<SharedLinkProvider>();
+        var destination = Path.Combine(project.SourcePath, "photo.jpg");
+
+        async Task SyncAsync()
+        {
+            var items = await typedProvider.ListItemsAsync(PrivacyHttpMessageHandler.ShareUrl);
+            Assert.HasCount(1, items);
+            await typedProvider.DownloadFileAsync(items[0], destination);
+        }
+
+        if (string.Equals(scenario, "success", StringComparison.Ordinal))
+        {
+            await SyncAsync();
+            Assert.AreEqual("synthetic image bytes", await File.ReadAllTextAsync(destination));
+        }
+        else
+        {
+            await Assert.ThrowsExactlyAsync<HttpRequestException>(SyncAsync);
+            Assert.IsFalse(File.Exists(destination));
+        }
+
+        Assert.AreEqual(expectedRequests, handler.Requests);
+        Assert.IsTrue(handler.BadgerRequests > 0, "The local handler must observe authenticated share requests.");
+        Assert.IsTrue(handler.BearerRequests > 0, "The local handler must observe the injected synthetic bearer header.");
+        Assert.IsTrue(capture.Entries.Any(entry => entry.Contains("Listed", StringComparison.Ordinal) || entry.Contains("Requesting Badger", StringComparison.Ordinal)));
+        Assert.IsTrue(capture.Entries.Any(entry => entry.Contains("OneDrive HTTP event", StringComparison.Ordinal)), "Safe resilience outcome logging must remain active.");
+        if (scenario.EndsWith("failure", StringComparison.Ordinal))
+        {
+            Assert.IsTrue(capture.Entries.Contains("state:HttpRequestException"), "Resilience failures must retain their sanitized category.");
+        }
+        else
+        {
+            Assert.IsTrue(capture.Entries.Contains(string.Equals(scenario, "cdn-status", StringComparison.Ordinal) ? "state:503" : "state:200"));
+        }
+        capture.AssertNoCredentials();
+    }
 
     [TestMethod]
     public async Task ListItemsAsync_WhenBadgerTokenFails_ThrowsHttpRequestException()
@@ -385,9 +652,21 @@ public sealed class SharedLinkProviderTests : IDisposable
     }
 
     [TestMethod]
-    public async Task DownloadFileAsync_WhenDownloadFails_ThrowsHttpRequestException()
+    [DataRow(false)]
+    [DataRow(true)]
+    public async Task DownloadFileAsync_WhenDownloadFails_ThrowsHttpRequestException(bool destinationExists)
     {
         // Arrange
+        using var project = TestProject.Create();
+        var destinationPath = Path.Combine(project.SourcePath, "photo.jpg");
+        var previousBytes = "previous image bytes"u8.ToArray();
+        var previousTimestamp = new DateTime(2023, 1, 15, 10, 30, 0, DateTimeKind.Utc);
+        if (destinationExists)
+        {
+            await File.WriteAllBytesAsync(destinationPath, previousBytes);
+            File.SetLastWriteTimeUtc(destinationPath, previousTimestamp);
+        }
+
         var item = CreateTestItem("photo.jpg", "https://cdn.example.com/photo.jpg");
 
         mockHandler.AddResponse(
@@ -397,7 +676,21 @@ public sealed class SharedLinkProviderTests : IDisposable
 
         // Act & Assert
         await Assert.ThrowsExactlyAsync<HttpRequestException>(
-            async () => await provider.DownloadFileAsync(item, "C:\\temp\\photo.jpg"));
+            async () => await provider.DownloadFileAsync(item, destinationPath));
+
+        if (destinationExists)
+        {
+            CollectionAssert.AreEqual(previousBytes, await File.ReadAllBytesAsync(destinationPath));
+            Assert.AreEqual(previousTimestamp, File.GetLastWriteTimeUtc(destinationPath));
+        }
+        else
+        {
+            Assert.IsFalse(File.Exists(destinationPath));
+        }
+
+        CollectionAssert.AreEquivalent(
+            destinationExists ? new[] { destinationPath } : [],
+            Directory.GetFiles(project.SourcePath));
     }
 
     #endregion
@@ -410,7 +703,7 @@ public sealed class SharedLinkProviderTests : IDisposable
             new Uri("https://api-badgerp.svc.ms/v1.0/token"),
             new HttpResponseMessage(HttpStatusCode.OK)
             {
-                Content = new StringContent(JsonSerializer.Serialize(new { token }), System.Text.Encoding.UTF8, "application/json")
+                Content = new StringContent(JsonSerializer.Serialize(new { token }), Encoding.UTF8, "application/json")
             }
         );
     }
@@ -428,7 +721,7 @@ public sealed class SharedLinkProviderTests : IDisposable
                         id = folderId,
                         parentReference = new { driveId }
                     }),
-                    System.Text.Encoding.UTF8,
+                    Encoding.UTF8,
                     "application/json"
                 )
             }
@@ -445,7 +738,7 @@ public sealed class SharedLinkProviderTests : IDisposable
             {
                 Content = new StringContent(
                     JsonSerializer.Serialize(new { value }),
-                    System.Text.Encoding.UTF8,
+                    Encoding.UTF8,
                     "application/json"
                 )
             }
@@ -463,7 +756,7 @@ public sealed class SharedLinkProviderTests : IDisposable
             {
                 Content = new StringContent(
                     JsonSerializer.Serialize(new { value }),
-                    System.Text.Encoding.UTF8,
+                    Encoding.UTF8,
                     "application/json"
                 )
             }
@@ -486,7 +779,7 @@ public sealed class SharedLinkProviderTests : IDisposable
             {
                 Content = new StringContent(
                     JsonSerializer.Serialize(response),
-                    System.Text.Encoding.UTF8,
+                    Encoding.UTF8,
                     "application/json"
                 )
             }
@@ -510,7 +803,7 @@ public sealed class SharedLinkProviderTests : IDisposable
             {
                 Content = new StringContent(
                     JsonSerializer.Serialize(response),
-                    System.Text.Encoding.UTF8,
+                    Encoding.UTF8,
                     "application/json"
                 )
             }
@@ -533,7 +826,7 @@ public sealed class SharedLinkProviderTests : IDisposable
             {
                 Content = new StringContent(
                     JsonSerializer.Serialize(response),
-                    System.Text.Encoding.UTF8,
+                    Encoding.UTF8,
                     "application/json"
                 )
             }
@@ -586,6 +879,235 @@ public sealed class SharedLinkProviderTests : IDisposable
     #endregion
 
     #region Helper Classes
+
+    internal static ServiceCollection CreatePrivacyServices(PrivacyHttpMessageHandler handler, PrivacyLogCapture capture)
+    {
+        var services = new ServiceCollection();
+        services.AddLogging(logging => logging.SetMinimumLevel(LogLevel.Trace).AddProvider(capture));
+        new OneDrivePlugin().ConfigureServices(services);
+        services.AddHttpClient<SharedLinkProvider>()
+            .ConfigurePrimaryHttpMessageHandler(() => handler)
+            .ConfigureHttpClient(client => client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", PrivacyHttpMessageHandler.BearerToken))
+            .RedactLoggedHeaders(static _ => false);
+        return services;
+    }
+
+    internal sealed class PrivacyHttpMessageHandler(string scenario = "success", Func<Exception>? failureFactory = null) : HttpMessageHandler
+    {
+        internal const string ShareUrl = "https://1drv.ms/f/SYNTHETIC_SHARE_SECRET?authkey=SYNTHETIC_SHARE_QUERY";
+        internal const string CdnUrl = "https://cdn.example.com/SYNTHETIC_CDN_PATH/photo.jpg?sig=SYNTHETIC_CDN_QUERY";
+        internal const string BadgerToken = "SYNTHETIC_BADGER_TOKEN";
+        internal const string BearerToken = "SYNTHETIC_BEARER_TOKEN";
+        internal const string FailureMessage = ShareUrl + " " + CdnUrl + " " + BadgerToken + " " + BearerToken + " SYNTHETIC_EXCEPTION_SECRET";
+
+        public int Requests { get; private set; }
+        public int BadgerRequests { get; private set; }
+        public int BearerRequests { get; private set; }
+
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            Requests++;
+            if (string.Equals(request.Headers.Authorization?.Parameter, BadgerToken, StringComparison.Ordinal))
+            {
+                BadgerRequests++;
+            }
+            if (string.Equals(request.Headers.Authorization?.Parameter, BearerToken, StringComparison.Ordinal))
+            {
+                BearerRequests++;
+            }
+
+            var uri = request.RequestUri!;
+            if (string.Equals(uri.Host, "api-badgerp.svc.ms", StringComparison.Ordinal))
+            {
+                return JsonResponse(new { token = BadgerToken });
+            }
+            if (string.Equals(uri.Host, "cdn.example.com", StringComparison.Ordinal))
+            {
+                Assert.IsTrue(string.Equals(uri.AbsoluteUri, CdnUrl, StringComparison.Ordinal), "The signed CDN URL must reach the local primary handler unchanged.");
+                if (string.Equals(scenario, "cdn-status", StringComparison.Ordinal))
+                {
+                    return Task.FromResult(new HttpResponseMessage(HttpStatusCode.ServiceUnavailable)
+                    {
+                        ReasonPhrase = FailureMessage,
+                        Content = new StringContent(FailureMessage)
+                    });
+                }
+                if (!string.Equals(scenario, "success", StringComparison.Ordinal))
+                {
+                    return Task.FromException<HttpResponseMessage>(failureFactory?.Invoke() ?? new HttpRequestException(FailureMessage));
+                }
+                return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent("synthetic image bytes") });
+            }
+            if (uri.AbsolutePath.EndsWith("/driveItem", StringComparison.Ordinal))
+            {
+                if (string.Equals(scenario, "share-failure", StringComparison.Ordinal))
+                {
+                    return Task.FromException<HttpResponseMessage>(new HttpRequestException(FailureMessage));
+                }
+                return JsonResponse(new { id = "folder123", parentReference = new { driveId = "drive123" } });
+            }
+            Assert.IsTrue(uri.AbsolutePath.EndsWith("/root/children", StringComparison.Ordinal), "Unexpected request reached the local handler.");
+            return JsonResponse(new
+            {
+                value = new[]
+                {
+                    new Dictionary<string, object>
+                    {
+                        ["id"] = "photo123",
+                        ["name"] = "photo.jpg",
+                        ["size"] = 21,
+                        ["file"] = new { mimeType = "image/jpeg" },
+                        ["@content.downloadUrl"] = CdnUrl
+                    }
+                }
+            });
+        }
+
+        private static Task<HttpResponseMessage> JsonResponse<T>(T value) =>
+            Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent(JsonSerializer.Serialize(value), Encoding.UTF8, "application/json")
+            });
+    }
+
+    internal sealed class PrivacyLogCapture : ILoggerProvider, ISupportExternalScope
+    {
+        private IExternalScopeProvider externalScopes = new LoggerExternalScopeProvider();
+        private readonly ConcurrentQueue<Exception> exceptions = new();
+        internal ConcurrentQueue<string> Entries { get; } = new();
+
+        public ILogger CreateLogger(string categoryName) => new CaptureLogger(this, categoryName);
+        public void SetScopeProvider(IExternalScopeProvider scopeProvider) => externalScopes = scopeProvider;
+        public void Dispose() { }
+
+        internal static void WriteControl(ILoggerFactory factory)
+        {
+            var control = factory.CreateLogger("PrivacyControl");
+            if (control.IsEnabled(LogLevel.Trace))
+            {
+                using var scope = control.BeginScope(new Dictionary<string, object> { ["ControlScope"] = "privacy-control-scope" });
+                control.Log(LogLevel.Trace, new EventId(901), new Dictionary<string, object> { ["ControlState"] = "privacy-control-state" }, new InvalidOperationException("privacy-control-exception"),
+                    static (_, _) => "privacy-control-formatted");
+            }
+        }
+
+        internal void AssertNoCredentials()
+        {
+            Assert.IsTrue(Entries.Contains("formatted:privacy-control-formatted"), "Trace logging capture was not active.");
+            Assert.IsTrue(Entries.Contains("state:privacy-control-state"), "Structured state capture was not active.");
+            Assert.IsTrue(Entries.Contains("scope:privacy-control-scope"), "Scope capture was not active.");
+            var encodedShare = Convert.ToBase64String(Encoding.UTF8.GetBytes(PrivacyHttpMessageHandler.ShareUrl)).TrimEnd('=').Replace('/', '_').Replace('+', '-');
+            var sentinels = new[]
+            {
+                "SYNTHETIC_SHARE_SECRET", "SYNTHETIC_SHARE_QUERY", "SYNTHETIC_CDN_PATH", "SYNTHETIC_CDN_QUERY",
+                PrivacyHttpMessageHandler.BadgerToken, PrivacyHttpMessageHandler.BearerToken, "SYNTHETIC_EXCEPTION_SECRET",
+                encodedShare, Uri.EscapeDataString(PrivacyHttpMessageHandler.ShareUrl), Uri.EscapeDataString(PrivacyHttpMessageHandler.CdnUrl)
+            };
+            foreach (var sentinel in sentinels)
+            {
+                Assert.IsFalse(Entries.Any(entry => entry.Contains(sentinel, StringComparison.Ordinal)), "A synthetic credential reached a captured logging surface.");
+            }
+            Assert.HasCount(1, exceptions, "Only the benign positive-control exception may reach the log sink.");
+            Assert.IsTrue(Entries.Any(entry => entry.StartsWith("exception:System.InvalidOperationException: privacy-control-exception", StringComparison.Ordinal)), "Exception capture was not active.");
+        }
+
+        private void Capture(string surface, object? value)
+        {
+            Entries.Enqueue(surface + ":" + Convert.ToString(value, System.Globalization.CultureInfo.InvariantCulture));
+            if (value is Exception exception)
+            {
+                foreach (System.Collections.DictionaryEntry property in exception.Data)
+                {
+                    Capture(surface, property.Key);
+                    Capture(surface, property.Value);
+                }
+            }
+            if (value is IEnumerable<KeyValuePair<string, object?>> properties)
+            {
+                foreach (var property in properties)
+                {
+                    Capture(surface, property.Key);
+                    Capture(surface, property.Value);
+                }
+            }
+        }
+
+        private sealed class CaptureLogger(PrivacyLogCapture capture, string category) : ILogger
+        {
+            public IDisposable? BeginScope<TState>(TState state) where TState : notnull
+            {
+                capture.Capture("scope", state);
+                return capture.externalScopes.Push(state);
+            }
+
+            public bool IsEnabled(LogLevel logLevel) => true;
+
+            public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
+            {
+                capture.Capture("category", category);
+                capture.Capture("formatted", formatter(state, exception));
+                capture.Capture("state", state);
+                capture.Capture("exception", exception);
+                if (exception is not null)
+                {
+                    capture.exceptions.Enqueue(exception);
+                }
+                capture.externalScopes.ForEachScope((scope, owner) => owner.Capture("scope", scope), capture);
+            }
+        }
+    }
+
+    private sealed class StreamingHttpMessageHandler(Stream body) : HttpMessageHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) =>
+            Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = new StreamContent(body) });
+    }
+
+    private sealed class DownloadBodyStream(ReadOnlyMemory<byte> content, Action? onEndOfStream = null, Action? onRead = null) : Stream
+    {
+        public int ReadCalls { get; private set; }
+        public int BytesRead { get; private set; }
+        public override bool CanRead => true;
+        public override bool CanSeek => false;
+        public override bool CanWrite => false;
+        public override long Length => throw new NotSupportedException();
+        public override long Position
+        {
+            get => throw new NotSupportedException();
+            set => throw new NotSupportedException();
+        }
+
+        public override int Read(byte[] buffer, int offset, int count) => Read(buffer.AsSpan(offset, count));
+
+        public override int Read(Span<byte> buffer)
+        {
+            ReadCalls++;
+            onRead?.Invoke();
+            if (BytesRead == content.Length)
+            {
+                onEndOfStream?.Invoke();
+                return 0;
+            }
+
+            var count = Math.Min(buffer.Length, content.Length - BytesRead);
+            content.Span.Slice(BytesRead, count).CopyTo(buffer);
+            BytesRead += count;
+            return count;
+        }
+
+        public override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var count = Read(buffer.Span);
+            cancellationToken.ThrowIfCancellationRequested();
+            return ValueTask.FromResult(count);
+        }
+
+        public override void Flush() => throw new NotSupportedException();
+        public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+        public override void SetLength(long value) => throw new NotSupportedException();
+        public override void Write(byte[] buffer, int offset, int count) => throw new NotSupportedException();
+    }
 
     private sealed class ItemData
     {

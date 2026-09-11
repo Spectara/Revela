@@ -19,7 +19,7 @@ namespace Spectara.Revela.Plugins.Source.OneDrive.Providers;
 /// Uses C# 12 Primary Constructor - parameters are captured automatically.
 /// HttpClient is injected as a Typed Client (configured in OneDrivePlugin.ConfigureServices).
 /// </remarks>
-internal sealed class SharedLinkProvider(
+internal sealed partial class SharedLinkProvider(
     HttpClient httpClient,
     ILogger<SharedLinkProvider> logger)
 {
@@ -174,14 +174,59 @@ internal sealed class SharedLinkProvider(
         using var response = await httpClient.GetAsync(new Uri(item.DownloadUrl), HttpCompletionOption.ResponseHeadersRead, cancellationToken);
         response.EnsureSuccessStatusCode();
 
-        await using (var stream = await response.Content.ReadAsStreamAsync(cancellationToken))
-        await using (var fileStream = new FileStream(destinationPath, FileMode.Create, FileAccess.Write, FileShare.None, 8192, true))
+        var temporaryPath = destinationPath + "." + Guid.NewGuid().ToString("N", CultureInfo.InvariantCulture) + ".tmp";
+        var streamOptions = new FileStreamOptions
         {
-            await stream.CopyToAsync(fileStream, cancellationToken);
+            Mode = FileMode.CreateNew,
+            Access = FileAccess.Write,
+            Share = FileShare.None,
+            BufferSize = 8192,
+            Options = FileOptions.Asynchronous
+        };
+        var originalMode = (UnixFileMode?)null;
+        if (!OperatingSystem.IsWindows())
+        {
+            streamOptions.UnixCreateMode = UnixFileMode.UserRead | UnixFileMode.UserWrite;
+            if (File.Exists(destinationPath))
+            {
+                originalMode = File.GetUnixFileMode(destinationPath);
+            }
         }
 
-        // Preserve OneDrive's LastModified timestamp (must be done after file is closed)
-        File.SetLastWriteTimeUtc(destinationPath, item.LastModified);
+        var ownsTemporaryFile = false;
+        try
+        {
+            await using (var stream = await response.Content.ReadAsStreamAsync(cancellationToken))
+            await using (var fileStream = new FileStream(temporaryPath, streamOptions))
+            {
+                ownsTemporaryFile = true;
+                await stream.CopyToAsync(fileStream, cancellationToken);
+            }
+
+            File.SetLastWriteTimeUtc(temporaryPath, item.LastModified);
+            cancellationToken.ThrowIfCancellationRequested();
+            if (!OperatingSystem.IsWindows() && originalMode is { } mode)
+            {
+                File.SetUnixFileMode(temporaryPath, mode);
+            }
+
+            File.Move(temporaryPath, destinationPath, overwrite: true);
+            ownsTemporaryFile = false;
+        }
+        finally
+        {
+            if (ownsTemporaryFile)
+            {
+                try
+                {
+                    File.Delete(temporaryPath);
+                }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+                {
+                    LogTemporaryCleanupFailed();
+                }
+            }
+        }
 
         if (logger.IsEnabled(LogLevel.Debug))
         {
@@ -190,6 +235,9 @@ internal sealed class SharedLinkProvider(
 
         return destinationPath;
     }
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Could not remove temporary OneDrive download. Inspect temporary files in the destination directory.")]
+    private partial void LogTemporaryCleanupFailed();
 
     /// <summary>
     /// Gets a Badger authentication token from Microsoft API

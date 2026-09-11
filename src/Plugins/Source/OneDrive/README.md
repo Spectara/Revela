@@ -82,6 +82,23 @@ revela source onedrive sync
 revela generate
 ```
 
+### Data Safety and Diagnostics
+
+Cleanup skips linked files and directories below the configured source root and
+checks descendant path components again before deleting. An intentionally linked
+source root remains supported. These checks do not prevent a hostile concurrent
+process from replacing paths between inspection and deletion.
+
+Downloads are staged beside their destination. Failed or cancelled transfers
+retain the previous file and timestamp; successful transfers replace it only
+after the new data is complete. Existing Unix permissions are preserved, and
+new staged files are private by default. Sync is not a transaction across files.
+
+Sync console output uses a host/hash share reference, and this client's default
+HTTP/resilience logs omit raw share/CDN credentials and transport exception text.
+Custom telemetry subscribers and shell history are outside that protection;
+avoid putting private share links directly into recorded command lines.
+
 ## Features
 
 - ✅ Downloads from OneDrive shared folder links

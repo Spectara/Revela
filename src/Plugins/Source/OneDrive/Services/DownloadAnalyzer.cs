@@ -175,7 +175,12 @@ internal static class DownloadAnalyzer
         }
 
         // Get all local files
-        var allLocalFiles = Directory.EnumerateFiles(destinationDirectory, "*", SearchOption.AllDirectories)
+        var allLocalFiles = Directory.EnumerateFiles(destinationDirectory, "*", new EnumerationOptions
+        {
+            RecurseSubdirectories = true,
+            AttributesToSkip = FileAttributes.ReparsePoint,
+            IgnoreInaccessible = false
+        })
             .Select(f => new FileInfo(f))
             .ToList();
 
