@@ -605,12 +605,12 @@ try {
             Write-Info "Running: revela config locations"
             $configLocationsOutput = & $ExePath config locations 2>&1 | Out-String
             if ($LASTEXITCODE -ne 0) { throw "config locations failed" }
-            if ($configLocationsOutput -match "Project" -or $configLocationsOutput -match "project.json") {
-                Write-Success "config locations works"
+            foreach ($configName in @('project.json', 'site.json', 'logging.json')) {
+                if ($configLocationsOutput -notmatch [regex]::Escape($configName)) {
+                    throw "config locations did not report $configName"
+                }
             }
-            else {
-                Write-Warn "config locations output may be incomplete"
-            }
+            Write-Success "config locations reports project, site and logging paths"
 
         }
         finally {
@@ -631,16 +631,46 @@ try {
             if ($LASTEXITCODE -ne 0) { throw "restore --check failed" }
             Write-Success "restore --check passed"
 
+            $projectConfigPath = Join-Path $SampleProjectDir 'project.json'
+            $originalProjectBytes = [IO.File]::ReadAllBytes($projectConfigPath)
+            try {
+                $dependencyProbe = [Text.Encoding]::UTF8.GetString($originalProjectBytes) | ConvertFrom-Json -AsHashtable
+                if (-not $dependencyProbe.ContainsKey('plugins')) { $dependencyProbe['plugins'] = @{} }
+                $dependencyProbe.plugins['Spectara.Revela.Plugins.ReleaseTestMissing'] = $Version
+                $dependencyProbe | ConvertTo-Json -Depth 100 | Set-Content -LiteralPath $projectConfigPath -Encoding utf8
+                $missingDependencyOutput = & $ExePath restore --check 2>&1 | Out-String
+                $missingDependencyExit = $LASTEXITCODE
+                $compactDependencyOutput = $missingDependencyOutput -replace '\s', ''
+                if ($missingDependencyExit -ne 1 -or
+                    $missingDependencyOutput -notmatch 'Checking dependencies' -or
+                    $compactDependencyOutput -notmatch 'Spectara\.Revela\.Plugins\.ReleaseTestMissing.*missing') {
+                    throw "restore --check did not diagnose the declared missing plugin (exit $missingDependencyExit): $missingDependencyOutput"
+                }
+                Write-Success "restore --check rejects a root-declared missing plugin"
+            }
+            finally {
+                [IO.File]::WriteAllBytes($projectConfigPath, $originalProjectBytes)
+            }
+
             # Test theme files (shows all template/asset sources)
             Write-Info "Running: revela theme files"
+            if (Test-Path (Join-Path $SampleProjectDir "themes")) {
+                throw "theme files must be tested before local themes are extracted"
+            }
             $themeFilesOutput = & $ExePath theme files 2>&1 | Out-String
             if ($LASTEXITCODE -ne 0) { throw "theme files failed" }
-            if ($themeFilesOutput -match "Body" -or $themeFilesOutput -match "Partials") {
-                Write-Success "theme files shows template listing"
+            if ($themeFilesOutput -notmatch 'Layout\.revela' -or $themeFilesOutput -notmatch 'main\.css') {
+                throw "theme files did not list bundled templates and assets: $themeFilesOutput"
             }
-            else {
-                Write-Warn "theme files output may be incomplete: $themeFilesOutput"
+            Write-Success "theme files shows bundled templates and assets"
+
+            Write-Info "Running: revela theme files --theme MissingReleaseTestTheme"
+            $missingThemeOutput = & $ExePath theme files --theme MissingReleaseTestTheme 2>&1 | Out-String
+            if ($LASTEXITCODE -eq 0) { throw "theme files returned success for an unknown theme" }
+            if ($missingThemeOutput -notmatch "Theme Not Found") {
+                throw "theme files did not report the missing theme: $missingThemeOutput"
             }
+            Write-Success "theme files rejects unknown themes"
 
             # Test theme extract selective (extract a single file to themes/ directory)
             Write-Info "Running: revela theme extract Lumina --file Partials/ --force"
@@ -994,15 +1024,33 @@ try {
             }
 
             # Test individual clean steps
+            $validImageHashes = @{}
+            foreach ($imageFile in Get-ChildItem -LiteralPath $imagesDir -Recurse -File) {
+                $validImageHashes[$imageFile.FullName] = (Get-FileHash -LiteralPath $imageFile.FullName).Hash
+            }
+            if ($validImageHashes.Count -eq 0) { throw "No valid image variants for cleanup preservation test" }
+            $referenceImage = Get-ChildItem -LiteralPath $imagesDir -Recurse -File -Filter '*.jpg' | Select-Object -First 1
+            if ($null -eq $referenceImage) { throw "No JPEG variant for obsolete-size fixture" }
+            $obsoleteVariant = Join-Path $referenceImage.DirectoryName '2147483647.jpg'
+            if (Test-Path -LiteralPath $obsoleteVariant) { throw "Obsolete-size fixture already exists" }
+            Copy-Item -LiteralPath $referenceImage.FullName -Destination $obsoleteVariant
+            & $ExePath clean images --dry-run
+            if ($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $obsoleteVariant)) {
+                throw "clean images dry-run changed the obsolete variant or failed"
+            }
             Write-Info "Running: revela clean images"
             & $ExePath clean images
             if ($LASTEXITCODE -ne 0) { throw "clean images failed" }
-            if (-not (Test-Path $imagesDir) -or (Get-ChildItem $imagesDir -Recurse -File -ErrorAction SilentlyContinue).Count -eq 0) {
-                Write-Success "clean images removed image files"
+            if (Test-Path -LiteralPath $obsoleteVariant) { throw "clean images retained the obsolete size" }
+            foreach ($entry in $validImageHashes.GetEnumerator()) {
+                if (-not (Test-Path -LiteralPath $entry.Key) -or (Get-FileHash -LiteralPath $entry.Key).Hash -ne $entry.Value) {
+                    throw "clean images removed or changed a valid variant: $($entry.Key)"
+                }
             }
-            else {
-                Write-Warn "clean images may not have removed all files"
+            if (@(Get-ChildItem -LiteralPath $imagesDir -Recurse -File).Count -ne $validImageHashes.Count) {
+                throw "Unexpected image count after clean images"
             }
+            Write-Success "clean images removed the obsolete variant and preserved $($validImageHashes.Count) valid image hashes"
 
             Write-Info "Running: revela clean output"
             & $ExePath clean output
@@ -1104,6 +1152,11 @@ try {
     # ========================================================================
     # STEP 13: Summary
     # ========================================================================
+    Measure-Step "SDK Consumer" {
+        & (Join-Path $ScriptDir 'test-sdk-consumer.ps1') -PackageDirectory $NuGetDir -Version $Version
+        Write-Success "Actual release SDK package consumer verified"
+    }
+
     Write-Banner "Release Test Complete"
 
     $stopwatch.Stop()

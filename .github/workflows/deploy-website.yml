@@ -7,7 +7,7 @@ name: Deploy Website
 # consistent with what users can actually download.
 #
 # Triggers:
-#   - workflow_run: deploys after a successful Release workflow
+#   - workflow_run: deploys after a successful tag-triggered Release workflow
 #   - workflow_dispatch: manual deploy for content-only fixes (typos,
 #     links, sponsor updates) without cutting a new release
 #
@@ -47,8 +47,12 @@ jobs:
   build:
     name: Generate Website
     runs-on: ubuntu-latest
-    # Skip if triggered by a failed release workflow
-    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
+    # Release workflow_dispatch runs validate artifacts without deploying the site.
+    if: >-
+      ${{ github.event_name == 'workflow_dispatch' ||
+          (github.event_name == 'workflow_run' &&
+           github.event.workflow_run.conclusion == 'success' &&
+           github.event.workflow_run.event == 'push') }}
     steps:
       - name: Checkout
         uses: actions/checkout@v7

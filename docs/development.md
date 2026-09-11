@@ -32,10 +32,12 @@ Assert.DoesNotContain("bad", text);
 ### Code Coverage
 
 ```bash
-dotnet test --collect:"XPlat Code Coverage"
+dotnet test --coverage --coverage-settings coverage.config
 ```
 
-Coverage filters are configured in `coverage.config`.
+Microsoft Code Coverage runs through Microsoft.Testing.Platform. Coverage filters
+are configured in `coverage.config`. Add `--coverage-output-format cobertura` for
+Cobertura output, and `--report-trx --results-directory ./TestResults` for TRX reports.
 
 ---
 
@@ -65,6 +67,21 @@ dotnet publish src/Cli -c Release -r osx-arm64 --self-contained
 ```
 
 This runs the full release pipeline: build, pack, plugin install, generate, compress, clean, idempotency check, and dotnet tool install.
+
+### CI Release Dry Runs
+
+The [Release workflow](../.github/workflows/release.yml) accepts a version through
+`workflow_dispatch` to validate packages and platform builds without creating a
+GitHub Release or automatically deploying the website. The
+[Deploy Website workflow](../.github/workflows/deploy-website.yml) runs automatically
+only after a successful tag-triggered Release workflow. Its own manual dispatch
+remains available for intentional content deployments using the latest release.
+
+Manual Release runs still attest and sign artifacts. They are not externally
+side-effect-free checks and must be started intentionally.
+
+These workflow changes must be present on the default branch before a Release
+dry run is started. A tag push publishes a release; it is not a dry run.
 
 ### Build Release Bundle
 
