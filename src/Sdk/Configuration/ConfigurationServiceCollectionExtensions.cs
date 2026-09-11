@@ -18,7 +18,7 @@ public static class ConfigurationServiceCollectionExtensions
     /// </para>
     /// <list type="bullet">
     /// <item><see cref="PackagesConfig"/> - packages section (NuGet feeds)</item>
-    /// <item><see cref="DependenciesConfig"/> - dependencies section (theme, plugins)</item>
+    /// <item><see cref="DependenciesConfig"/> - root-level themes and plugins maps</item>
     /// <item><see cref="GlobalDefaultsConfig"/> - defaults section (default theme)</item>
     /// <item><see cref="GlobalSettingsConfig"/> - settings section (checkUpdates)</item>
     /// <item><see cref="LoggingConfig"/> - Logging section</item>

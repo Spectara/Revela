@@ -19,6 +19,15 @@ public sealed class EmbeddedThemePluginTests
     public void Metadata_ReturnsCorrectName() => Assert.AreEqual("Lumina", plugin.Metadata.Name);
 
     [TestMethod]
+    public void Metadata_EmbeddedTheme_UsesAssemblyPackageIdentity()
+    {
+        var metadata = plugin.Metadata;
+
+        Assert.AreEqual("Spectara.Revela.Themes.Lumina", metadata.Id);
+        Assert.AreEqual(typeof(LuminaTheme).Assembly.GetName().Name, metadata.Id);
+    }
+
+    [TestMethod]
     public void Metadata_ReturnsVersion() => Assert.IsFalse(string.IsNullOrEmpty(plugin.Metadata.Version));
 
     [TestMethod]

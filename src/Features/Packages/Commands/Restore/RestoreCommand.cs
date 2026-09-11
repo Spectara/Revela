@@ -28,6 +28,8 @@ internal sealed partial class RestoreCommand(
     IOptions<ProjectEnvironment> projectEnvironment,
     ILogger<RestoreCommand> logger)
 {
+    private const string ThemePackagePrefix = "Spectara.Revela.Themes.";
+
     /// <summary>
     /// Creates the CLI command
     /// </summary>
@@ -233,51 +235,27 @@ internal sealed partial class RestoreCommand(
 
         // Check if theme is available (local or installed)
         var theme = themeRegistry.Resolve(themeName, projectPath);
-        return theme != null;
-    }
-
-    private bool IsPluginInstalled(RequiredDependency dep)
-    {
-        // Check if plugin is loaded by matching package ID patterns
-        // Package ID: "Spectara.Revela.Plugins.Source.OneDrive"
-        // Plugin Name: "OneDrive Source"
-
-        return installedPlugins.Any(p =>
+        if (theme is not null)
         {
-            // Direct name match
-            if (p.Metadata.Name.Equals(GetShortName(dep), StringComparison.OrdinalIgnoreCase))
-            {
-                return true;
-            }
+            return true;
+        }
 
-            // Check if package ID contains the plugin name (without spaces)
-            var pluginNameNormalized = p.Metadata.Name.Replace(" ", string.Empty, StringComparison.Ordinal);
-            if (dep.PackageId.Contains(pluginNameNormalized, StringComparison.OrdinalIgnoreCase))
-            {
-                return true;
-            }
-
-            // Check if the last parts of package ID match the plugin name parts
-            // "Spectara.Revela.Plugins.Source.OneDrive" should match "OneDrive Source"
-            var packageParts = dep.PackageId.Split('.');
-            var nameParts = p.Metadata.Name.Split(' ');
-
-            // Reverse compare: last package part should be in name
-            if (packageParts.Length > 0 && nameParts.Length > 0)
-            {
-                var lastPackagePart = packageParts[^1];
-                if (nameParts.Any(part => part.Equals(lastPackagePart, StringComparison.OrdinalIgnoreCase)))
-                {
-                    return true;
-                }
-            }
-
-            return false;
-        });
+        var extensionSeparator = themeName.LastIndexOf('.');
+        return extensionSeparator > 0
+            && themeRegistry.GetExtensions(themeName[..extensionSeparator])
+                .Any(extension => extension.Metadata.Id.Equals(dep.PackageId, StringComparison.OrdinalIgnoreCase));
     }
+
+    private bool IsPluginInstalled(RequiredDependency dep) =>
+        installedPlugins.Any(plugin => plugin.Metadata.Id.Equals(dep.PackageId, StringComparison.OrdinalIgnoreCase));
 
     private static string GetShortName(RequiredDependency dep)
     {
+        if (dep.Type == DependencyType.Theme && dep.PackageId.StartsWith(ThemePackagePrefix, StringComparison.OrdinalIgnoreCase))
+        {
+            return dep.PackageId[ThemePackagePrefix.Length..];
+        }
+
         // Extract short name from package ID
         // "Spectara.Revela.Plugins.Source.OneDrive" → "OneDrive Source" or just last part
         // "Spectara.Revela.Themes.Lumina" → "Lumina"
@@ -286,11 +264,6 @@ internal sealed partial class RestoreCommand(
         if (parts.Length >= 2)
         {
             // Get last meaningful parts
-            if (dep.Type == DependencyType.Theme && parts.Length > 3)
-            {
-                return parts[^1]; // Just theme name
-            }
-
             if (dep.Type == DependencyType.Plugin && parts.Length > 4)
             {
                 // "Spectara.Revela.Plugins.Source.OneDrive" → "OneDrive"

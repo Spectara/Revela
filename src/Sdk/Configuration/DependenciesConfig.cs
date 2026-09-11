@@ -27,30 +27,22 @@ namespace Spectara.Revela.Sdk.Configuration;
 ///
 /// // project.json (local)
 /// {
-///   "theme": "Lumina",
+///   "theme": { "name": "Lumina" },
 ///   "themes": { "Spectara.Revela.Themes.Lumina": "2.0.0" },  // overrides global
 ///   "plugins": { "Spectara.Revela.Plugins.Source.OneDrive": "1.0.0" }  // extends
 /// }
 /// </code>
 /// </example>
 /// </remarks>
-[RevelaConfig("dependencies", ValidateDataAnnotations = false)]
+[RevelaConfig("", ValidateDataAnnotations = false)]
 public sealed class DependenciesConfig
 {
     /// <summary>
-    /// Configuration section name. Matches the <c>[RevelaConfig]</c> attribute
-    /// argument; passed to <c>BindConfiguration</c> at registration time.
+    /// Empty section name binds the root-level themes and plugins maps.
+    /// Matches the <c>[RevelaConfig]</c> attribute argument; passed to
+    /// <c>BindConfiguration</c> at registration time.
     /// </summary>
-    public const string Section = "dependencies";
-    /// <summary>
-    /// Active theme name (short name like "Lumina" or full package ID)
-    /// </summary>
-    /// <remarks>
-    /// This determines which theme is used for rendering.
-    /// Can be a short name (auto-prefixed with "Spectara.Revela.Themes.")
-    /// or a full package ID.
-    /// </remarks>
-    public string? Theme { get; set; }
+    public const string Section = "";
 
     /// <summary>
     /// Installed theme packages with versions
@@ -59,7 +51,7 @@ public sealed class DependenciesConfig
     /// Key: Full package ID (e.g., "Spectara.Revela.Themes.Lumina")
     /// Value: Version string (e.g., "1.0.0") or null for latest
     /// </remarks>
-    public Dictionary<string, string?> Themes { get; } = [];
+    public Dictionary<string, string?> Themes { get; } = new(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>
     /// Installed plugin packages with versions

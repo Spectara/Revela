@@ -43,7 +43,7 @@ public abstract class EmbeddedTheme : ITheme
     {
         resources = new EmbeddedResourceProvider(assembly);
         config = new Lazy<ThemeJsonConfig>(resources.LoadManifest);
-        packageMetadata = new Lazy<PackageMetadata>(() => CreateMetadata(config.Value));
+        packageMetadata = new Lazy<PackageMetadata>(() => CreateMetadata(config.Value, assembly));
         manifest = new Lazy<ThemeManifest>(() => config.Value.CreateManifest());
     }
 
@@ -100,13 +100,13 @@ public abstract class EmbeddedTheme : ITheme
         return EmptyDefaults;
     }
 
-    private static PackageMetadata CreateMetadata(ThemeJsonConfig config)
+    private static PackageMetadata CreateMetadata(ThemeJsonConfig config, Assembly assembly)
     {
         var name = config.Name ?? throw new InvalidOperationException("Theme name is required in manifest.json");
 
         return new PackageMetadata
         {
-            Id = $"Spectara.Revela.Themes.{name}",
+            Id = assembly.GetName().Name ?? throw new InvalidOperationException("Theme assembly name is required"),
             Name = name,
             Version = config.Version ?? "1.0.0",
             Description = config.Description ?? string.Empty,

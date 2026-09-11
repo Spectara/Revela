@@ -45,7 +45,7 @@ internal enum DependencyType
 /// The .NET Configuration system automatically merges these sources.
 /// </para>
 /// <list type="bullet">
-/// <item><b>theme</b>: Active theme (short name or full package ID)</item>
+/// <item><b>theme.name</b>: Active theme (short name or full package ID)</item>
 /// <item><b>themes</b>: Installed theme packages with versions</item>
 /// <item><b>plugins</b>: Installed plugin packages with versions</item>
 /// </list>
@@ -64,7 +64,8 @@ internal interface IDependencyScanner
 /// </summary>
 internal sealed partial class DependencyScanner(
     ILogger<DependencyScanner> logger,
-    IOptionsMonitor<DependenciesConfig> options) : IDependencyScanner
+    IOptionsMonitor<DependenciesConfig> options,
+    IOptionsMonitor<ThemeConfig> themeOptions) : IDependencyScanner
 {
     private const string ThemePackagePrefix = "Spectara.Revela.Themes.";
     private const string PluginPackagePrefix = "Spectara.Revela.Plugins.";
@@ -73,14 +74,15 @@ internal sealed partial class DependencyScanner(
     public IReadOnlyList<RequiredDependency> GetDependencies()
     {
         var config = options.CurrentValue;
+        var activeTheme = themeOptions.CurrentValue.Name;
         var dependencies = new List<RequiredDependency>();
         var addedPackageIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
-        // 1. Active theme from "theme" property
-        if (!string.IsNullOrEmpty(config.Theme))
+        // 1. Active theme from "theme.name" with its declared package version
+        if (!string.IsNullOrEmpty(activeTheme))
         {
-            var (name, version) = ParsePackageSpec(config.Theme);
-            var packageId = NormalizeThemePackageId(name);
+            var packageId = NormalizeThemePackageId(activeTheme);
+            var version = config.Themes.GetValueOrDefault(packageId);
 
             LogActiveThemeFound(packageId, version);
             dependencies.Add(new RequiredDependency
@@ -101,7 +103,7 @@ internal sealed partial class DependencyScanner(
                 continue;
             }
 
-            // Skip if already added via "theme" property
+            // Skip if already added via "theme.name"
             if (!addedPackageIds.Add(packageId))
             {
                 continue;
@@ -119,18 +121,32 @@ internal sealed partial class DependencyScanner(
         // 3. Plugins from "plugins" section
         foreach (var (packageId, version) in config.Plugins)
         {
-            if (!packageId.StartsWith(PluginPackagePrefix, StringComparison.OrdinalIgnoreCase))
+            var isTheme = packageId.StartsWith(ThemePackagePrefix, StringComparison.OrdinalIgnoreCase);
+            if (!isTheme && !packageId.StartsWith(PluginPackagePrefix, StringComparison.OrdinalIgnoreCase))
             {
                 LogInvalidPluginPackageId(packageId);
                 continue;
             }
 
-            LogPluginFound(packageId, version);
+            if (!addedPackageIds.Add(packageId))
+            {
+                continue;
+            }
+
+            if (isTheme)
+            {
+                LogThemeFound(packageId, version);
+            }
+            else
+            {
+                LogPluginFound(packageId, version);
+            }
+
             dependencies.Add(new RequiredDependency
             {
                 PackageId = packageId,
                 Version = version,
-                Type = DependencyType.Plugin
+                Type = isTheme ? DependencyType.Theme : DependencyType.Plugin
             });
         }
 
@@ -146,24 +162,6 @@ internal sealed partial class DependencyScanner(
             ? name
             : ThemePackagePrefix + name;
 
-    /// <summary>
-    /// Parse package specification with optional version
-    /// </summary>
-    /// <example>
-    /// "Lumina" → ("Lumina", null)
-    /// "Lumina@1.2.0" → ("Lumina", "1.2.0")
-    /// </example>
-    private static (string Name, string? Version) ParsePackageSpec(string spec)
-    {
-        var atIndex = spec.LastIndexOf('@');
-        if (atIndex > 0 && atIndex < spec.Length - 1)
-        {
-            return (spec[..atIndex], spec[(atIndex + 1)..]);
-        }
-
-        return (spec, null);
-    }
-
     [LoggerMessage(Level = LogLevel.Information, Message = "Found active theme '{PackageId}' version '{Version}'")]
     private partial void LogActiveThemeFound(string packageId, string? version);
 
@@ -176,7 +174,7 @@ internal sealed partial class DependencyScanner(
     [LoggerMessage(Level = LogLevel.Warning, Message = "Invalid theme package ID '{PackageId}' (expected 'Spectara.Revela.Themes.*')")]
     private partial void LogInvalidThemePackageId(string packageId);
 
-    [LoggerMessage(Level = LogLevel.Warning, Message = "Invalid plugin package ID '{PackageId}' (expected 'Spectara.Revela.Plugins.*')")]
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Invalid plugin package ID '{PackageId}' (expected 'Spectara.Revela.Plugins.*' or 'Spectara.Revela.Themes.*')")]
     private partial void LogInvalidPluginPackageId(string packageId);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Found {Count} dependency(ies)")]

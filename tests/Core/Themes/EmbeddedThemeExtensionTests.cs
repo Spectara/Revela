@@ -18,6 +18,15 @@ public sealed class EmbeddedThemeExtensionTests
     public void Metadata_ReturnsCorrectName() => Assert.AreEqual("Lumina Statistics", extension.Metadata.Name);
 
     [TestMethod]
+    public void Metadata_DisplayNameWithSpaces_UsesAssemblyPackageIdentity()
+    {
+        var metadata = extension.Metadata;
+
+        Assert.AreEqual("Spectara.Revela.Themes.Lumina.Statistics", metadata.Id);
+        Assert.AreEqual(typeof(LuminaStatisticsExtension).Assembly.GetName().Name, metadata.Id);
+    }
+
+    [TestMethod]
     public void TargetTheme_ReturnsLumina() => Assert.AreEqual("Lumina", extension.TargetTheme);
 
     [TestMethod]
