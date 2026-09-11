@@ -1,6 +1,7 @@
 using System.IO.Compression;
 using System.Net;
 using System.Net.Sockets;
+using System.Security.Cryptography;
 using Spectara.Revela.Plugins.Serve;
 
 namespace Spectara.Revela.Tests.Plugins.Serve;
@@ -239,9 +240,7 @@ public sealed class StaticFileServerTests
 
         try
         {
-            var port = GetAvailablePort();
-            await using var server = new StaticFileServer(tempDir, port);
-            server.Start();
+            await using var server = StartServer(tempDir, out var port);
             using var client = new HttpClient();
             using var request = new HttpRequestMessage(HttpMethod.Get, LocalUri(port, "/style.css"));
             request.Headers.AcceptEncoding.ParseAdd("br");
@@ -277,9 +276,7 @@ public sealed class StaticFileServerTests
 
         try
         {
-            var port = GetAvailablePort();
-            await using var server = new StaticFileServer(tempDir, port);
-            server.Start();
+            await using var server = StartServer(tempDir, out var port);
             using var client = new HttpClient();
             using var request = new HttpRequestMessage(HttpMethod.Head, LocalUri(port));
             request.Headers.AcceptEncoding.ParseAdd("gzip");
@@ -308,9 +305,7 @@ public sealed class StaticFileServerTests
 
         try
         {
-            var port = GetAvailablePort();
-            await using var server = new StaticFileServer(tempDir, port);
-            server.Start();
+            await using var server = StartServer(tempDir, out var port);
             using var client = new HttpClient();
             using var request = new HttpRequestMessage(HttpMethod.Head, LocalUri(port, "/missing.html"));
 
@@ -336,9 +331,7 @@ public sealed class StaticFileServerTests
 
         try
         {
-            var port = GetAvailablePort();
-            await using var server = new StaticFileServer(tempDir, port);
-            server.Start();
+            await using var server = StartServer(tempDir, out var port);
             using var client = new HttpClient();
             using var request = new HttpRequestMessage(HttpMethod.Post, LocalUri(port));
 
@@ -376,14 +369,12 @@ public sealed class StaticFileServerTests
             var expectedContent = "<html><body>Hello World</body></html>";
             await File.WriteAllTextAsync(Path.Combine(tempDir, "index.html"), expectedContent);
 
-            var port = GetAvailablePort();
-            using var server = new StaticFileServer(tempDir, port);
-            server.Start();
+            await using var server = StartServer(tempDir, out var port);
 
             using var client = new HttpClient();
 
             // Act
-            var response = await client.GetAsync(LocalUri(port, "/index.html"));
+            using var response = await client.GetAsync(LocalUri(port, "/index.html"));
             var content = await response.Content.ReadAsStringAsync();
 
             // Assert
@@ -407,23 +398,17 @@ public sealed class StaticFileServerTests
 
         try
         {
-            var port = GetAvailablePort();
-            var callbackStatusCode = 0;
-
-            using var server = new StaticFileServer(tempDir, port, (_, status) => callbackStatusCode = status);
-            server.Start();
+            var callbackInvoked = new TaskCompletionSource<int>(TaskCreationOptions.RunContinuationsAsynchronously);
+            await using var server = StartServer(tempDir, out var port, (_, status) => callbackInvoked.TrySetResult(status));
 
             using var client = new HttpClient();
 
             // Act
-            var response = await client.GetAsync(LocalUri(port, "/missing.html"));
+            using var response = await client.GetAsync(LocalUri(port, "/missing.html"));
 
             // Assert
             Assert.AreEqual(HttpStatusCode.NotFound, response.StatusCode);
-
-            // Give callback a moment to execute
-            await Task.Delay(50);
-            Assert.AreEqual(404, callbackStatusCode);
+            Assert.AreEqual(404, await callbackInvoked.Task.WaitAsync(TimeSpan.FromSeconds(10)));
         }
         finally
         {
@@ -441,16 +426,12 @@ public sealed class StaticFileServerTests
 
         try
         {
-            var port = GetAvailablePort();
-            var callbackStatusCode = 0;
-
-            using var server = new StaticFileServer(tempDir, port, (_, status) => callbackStatusCode = status);
-            server.Start();
+            await using var server = StartServer(tempDir, out var port);
 
             using var client = new HttpClient();
 
             // Act — attempt directory traversal
-            var response = await client.GetAsync(LocalUri(port, "/../../../etc/passwd"));
+            using var response = await client.GetAsync(LocalUri(port, "/../../../etc/passwd"));
 
             // Assert — should either be 403 (traversal detected) or 404 (file doesn't exist)
             Assert.IsTrue(
@@ -476,14 +457,12 @@ public sealed class StaticFileServerTests
             var expectedContent = "<html><body>Index</body></html>";
             await File.WriteAllTextAsync(Path.Combine(tempDir, "index.html"), expectedContent);
 
-            var port = GetAvailablePort();
-            using var server = new StaticFileServer(tempDir, port);
-            server.Start();
+            await using var server = StartServer(tempDir, out var port);
 
             using var client = new HttpClient();
 
             // Act — request root path
-            var response = await client.GetAsync(LocalUri(port));
+            using var response = await client.GetAsync(LocalUri(port));
             var content = await response.Content.ReadAsStringAsync();
 
             // Assert
@@ -508,14 +487,12 @@ public sealed class StaticFileServerTests
         {
             await File.WriteAllTextAsync(Path.Combine(tempDir, "style.css"), "body { color: red; }");
 
-            var port = GetAvailablePort();
-            using var server = new StaticFileServer(tempDir, port);
-            server.Start();
+            await using var server = StartServer(tempDir, out var port);
 
             using var client = new HttpClient();
 
             // Act
-            var response = await client.GetAsync(LocalUri(port, "/style.css"));
+            using var response = await client.GetAsync(LocalUri(port, "/style.css"));
 
             // Assert
             Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
@@ -539,14 +516,12 @@ public sealed class StaticFileServerTests
         {
             await File.WriteAllTextAsync(Path.Combine(tempDir, "page.html"), "<html></html>");
 
-            var port = GetAvailablePort();
-            using var server = new StaticFileServer(tempDir, port);
-            server.Start();
+            await using var server = StartServer(tempDir, out var port);
 
             using var client = new HttpClient();
 
             // Act
-            var response = await client.GetAsync(LocalUri(port, "/page.html"));
+            using var response = await client.GetAsync(LocalUri(port, "/page.html"));
 
             // Assert
             Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
@@ -568,9 +543,7 @@ public sealed class StaticFileServerTests
 
         try
         {
-            var port = GetAvailablePort();
-            var server = new StaticFileServer(tempDir, port);
-            server.Start();
+            using var server = StartServer(tempDir, out _);
 
             // Act & Assert — should not throw
             server.Stop();
@@ -586,7 +559,7 @@ public sealed class StaticFileServerTests
 
     [TestMethod]
     [TestCategory("Integration")]
-    public void Server_RequestCallback_IsInvoked()
+    public async Task Server_RequestCallback_IsInvoked()
     {
         // Arrange
         var tempDir = Path.Combine(Path.GetTempPath(), $"revela-serve-test-{Guid.NewGuid():N}");
@@ -594,25 +567,21 @@ public sealed class StaticFileServerTests
 
         try
         {
-            File.WriteAllText(Path.Combine(tempDir, "test.txt"), "hello");
+            await File.WriteAllTextAsync(Path.Combine(tempDir, "test.txt"), "hello");
 
-            var port = GetAvailablePort();
-            var callbackInvoked = new TaskCompletionSource<(string path, int status)>();
+            var callbackInvoked = new TaskCompletionSource<(string path, int status)>(TaskCreationOptions.RunContinuationsAsynchronously);
 
-            using var server = new StaticFileServer(tempDir, port, (path, status) =>
+            await using var server = StartServer(tempDir, out var port, (path, status) =>
                 callbackInvoked.TrySetResult((path, status)));
-            server.Start();
 
             using var client = new HttpClient();
 
             // Act
-            _ = client.GetAsync(LocalUri(port, "/test.txt"));
+            using var response = await client.GetAsync(LocalUri(port, "/test.txt"));
 
             // Assert — wait for callback with timeout
-            var completed = callbackInvoked.Task.Wait(TimeSpan.FromSeconds(5));
-            Assert.IsTrue(completed, "Request callback should have been invoked");
-
-            var (callbackPath, callbackStatus) = callbackInvoked.Task.Result;
+            var (callbackPath, callbackStatus) = await callbackInvoked.Task.WaitAsync(TimeSpan.FromSeconds(10));
+            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
             Assert.AreEqual("/test.txt", callbackPath);
             Assert.AreEqual(200, callbackStatus);
         }
@@ -622,15 +591,308 @@ public sealed class StaticFileServerTests
         }
     }
 
-    /// <summary>
-    /// Find an available TCP port for testing
-    /// </summary>
-    private static int GetAvailablePort()
+    [TestMethod]
+    [TestCategory("Integration")]
+    [DataRow(false)]
+    [DataRow(true)]
+    public async Task Server_DisposeWithActiveHandler_WaitsForFileRelease(bool synchronous)
     {
-        using var listener = new TcpListener(IPAddress.Loopback, 0);
-        listener.Start();
-        var port = ((IPEndPoint)listener.LocalEndpoint).Port;
-        listener.Stop();
-        return port;
+        var tempDir = Directory.CreateTempSubdirectory("revela-serve-dispose-").FullName;
+        var callbackEntered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        using var releaseCallback = new ManualResetEventSlim();
+        var synchronizationContext = new RecordingSynchronizationContext();
+
+        try
+        {
+            var filePath = Path.Combine(tempDir, "large.bin");
+            await File.WriteAllBytesAsync(filePath, new byte[16 * 1024 * 1024]);
+            await using var server = StartServer(tempDir, out var port, (path, status) =>
+            {
+                if (path.Equals("/large.bin", StringComparison.Ordinal) && status is 200)
+                {
+                    callbackEntered.TrySetResult();
+                    releaseCallback.Wait();
+                }
+            });
+            using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(10) };
+            var disposal = Task.CompletedTask;
+            var repeatedDisposal = Task.CompletedTask;
+
+            try
+            {
+                using var response = await client.GetAsync(LocalUri(port, "/large.bin"), HttpCompletionOption.ResponseHeadersRead);
+                using var probe = await client.GetAsync(LocalUri(port, "/missing.html"));
+                Assert.AreEqual(HttpStatusCode.NotFound, probe.StatusCode);
+                Assert.IsFalse(callbackEntered.Task.IsCompleted, "The unread response must keep the file transfer active.");
+                await response.Content.CopyToAsync(Stream.Null);
+                await callbackEntered.Task.WaitAsync(TimeSpan.FromSeconds(10));
+                Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+                Assert.ThrowsExactly<IOException>(() => File.Open(filePath, FileMode.Open, FileAccess.ReadWrite, FileShare.None).Dispose());
+
+                disposal = synchronous
+                    ? Task.Run(() =>
+                    {
+                        var previousContext = SynchronizationContext.Current;
+                        try
+                        {
+                            SynchronizationContext.SetSynchronizationContext(synchronizationContext);
+                            server.Dispose();
+                        }
+                        finally
+                        {
+                            SynchronizationContext.SetSynchronizationContext(previousContext);
+                        }
+                    })
+                    : server.DisposeAsync().AsTask();
+                repeatedDisposal = server.DisposeAsync().AsTask();
+
+                await Assert.ThrowsExactlyAsync<TimeoutException>(
+                    () => Task.WhenAny(disposal, repeatedDisposal).WaitAsync(TimeSpan.FromSeconds(3)),
+                    "Disposal must remain pending while the callback holds the file stream open.");
+            }
+            finally
+            {
+                releaseCallback.Set();
+                await Task.WhenAll(disposal, repeatedDisposal).WaitAsync(TimeSpan.FromSeconds(10));
+            }
+
+            Assert.AreEqual(0, synchronizationContext.PostCount, "Synchronous disposal must not capture the caller's context.");
+            using var reopened = File.Open(filePath, FileMode.Open, FileAccess.ReadWrite, FileShare.None);
+            Assert.AreEqual(16 * 1024 * 1024, reopened.Length);
+        }
+        finally
+        {
+            releaseCallback.Set();
+            Directory.Delete(tempDir, recursive: true);
+        }
     }
+
+    [TestMethod]
+    [TestCategory("Integration")]
+    [DataRow(false)]
+    [DataRow(true)]
+    public async Task Server_DisposeWithUnreadResponse_CancelsTransferAndReleasesFile(bool synchronous)
+    {
+        var tempDir = Directory.CreateTempSubdirectory("revela-serve-cancel-").FullName;
+        try
+        {
+            var filePath = Path.Combine(tempDir, "large.bin");
+            await File.WriteAllBytesAsync(filePath, new byte[16 * 1024 * 1024]);
+            await using var server = StartServer(tempDir, out var port);
+            using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(10) };
+            using var response = await client.GetAsync(LocalUri(port, "/large.bin"), HttpCompletionOption.ResponseHeadersRead);
+            using var probe = await client.GetAsync(LocalUri(port, "/missing.html"));
+            Assert.AreEqual(HttpStatusCode.NotFound, probe.StatusCode);
+            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+            Assert.ThrowsExactly<IOException>(() => File.Open(filePath, FileMode.Open, FileAccess.ReadWrite, FileShare.None).Dispose());
+
+            var disposal = synchronous ? Task.Run(server.Dispose) : server.DisposeAsync().AsTask();
+            await disposal.WaitAsync(TimeSpan.FromSeconds(10));
+            await Assert.ThrowsExactlyAsync<HttpRequestException>(
+                () => response.Content.CopyToAsync(Stream.Null).WaitAsync(TimeSpan.FromSeconds(10)));
+
+            using var reopened = File.Open(filePath, FileMode.Open, FileAccess.ReadWrite, FileShare.None);
+            Assert.AreEqual(16 * 1024 * 1024, reopened.Length);
+        }
+        finally
+        {
+            Directory.Delete(tempDir, recursive: true);
+        }
+    }
+
+    [TestMethod]
+    [TestCategory("Integration")]
+    public async Task Server_StopAndRestart_ServesRequestsAndDisposesIdempotently()
+    {
+        var tempDir = Directory.CreateTempSubdirectory("revela-serve-restart-").FullName;
+        try
+        {
+            await File.WriteAllTextAsync(Path.Combine(tempDir, "index.html"), "restart");
+            await using var server = StartServer(tempDir, out var port);
+            using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(10) };
+            using var initialResponse = await client.GetAsync(LocalUri(port));
+            Assert.AreEqual("restart", await initialResponse.Content.ReadAsStringAsync());
+
+            server.Start();
+            server.Stop();
+            server.Stop();
+            server.Start();
+            using var restartedResponse = await client.GetAsync(LocalUri(port));
+            Assert.AreEqual(HttpStatusCode.OK, restartedResponse.StatusCode);
+            Assert.AreEqual("restart", await restartedResponse.Content.ReadAsStringAsync());
+
+            await server.DisposeAsync();
+            await server.DisposeAsync();
+            server.Stop();
+            Assert.ThrowsExactly<ObjectDisposedException>(server.Start);
+        }
+        finally
+        {
+            Directory.Delete(tempDir, recursive: true);
+        }
+    }
+
+    [TestMethod]
+    [TestCategory("Integration")]
+    [DataRow(false)]
+    [DataRow(true)]
+    public async Task Server_StopBeforeAccept_OnlyIgnoresInvalidOperationWhenLocalTokenIsCanceled(bool cancelLocalToken)
+    {
+        var tempDir = Directory.CreateTempSubdirectory("revela-serve-accept-").FullName;
+        try
+        {
+            await using var server = StartServer(tempDir, out _);
+            using var cancellation = new CancellationTokenSource();
+            InvalidOperationException? acceptException = null;
+            var processing = server.ProcessRequestsAsync(cancellation.Token, async listener =>
+            {
+                server.Stop();
+                if (cancelLocalToken)
+                {
+                    await cancellation.CancelAsync();
+                }
+
+                try
+                {
+                    return await listener.GetContextAsync();
+                }
+                catch (InvalidOperationException exception)
+                {
+                    acceptException = exception;
+                    throw;
+                }
+            });
+
+            if (cancelLocalToken)
+            {
+                await processing.WaitAsync(TimeSpan.FromSeconds(10));
+                Assert.IsTrue(processing.IsCompletedSuccessfully);
+            }
+            else
+            {
+                var exception = await Assert.ThrowsExactlyAsync<InvalidOperationException>(
+                    () => processing.WaitAsync(TimeSpan.FromSeconds(10)));
+                Assert.AreSame(acceptException, exception);
+            }
+
+            Assert.IsNotNull(acceptException, "The stopped listener must throw at the accept boundary.");
+            await server.DisposeAsync();
+        }
+        finally
+        {
+            Directory.Delete(tempDir, recursive: true);
+        }
+    }
+
+    [TestMethod]
+    [TestCategory("Integration")]
+    public async Task Server_StartWithBoundPrefix_ClosesFailedListenerWithoutAffectingOwner()
+    {
+        var tempDir = Directory.CreateTempSubdirectory("revela-serve-binding-").FullName;
+        try
+        {
+            await File.WriteAllTextAsync(Path.Combine(tempDir, "index.html"), "owner");
+            await using var server = StartServer(tempDir, out var port);
+            await using var conflictingServer = new StaticFileServer(tempDir, port);
+            var originalCulture = System.Globalization.CultureInfo.CurrentUICulture;
+            var exception = Assert.ThrowsExactly<HttpListenerException>(() => StartWithInvariantErrors(conflictingServer));
+            Assert.AreSame(originalCulture, System.Globalization.CultureInfo.CurrentUICulture);
+            Assert.IsTrue(IsBindCollision(exception, port), $"Unexpected binding error: {exception.NativeErrorCode}");
+            Assert.ThrowsExactly<ObjectDisposedException>(conflictingServer.Start);
+
+            using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(10) };
+            using var response = await client.GetAsync(LocalUri(port));
+            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+            Assert.AreEqual("owner", await response.Content.ReadAsStringAsync());
+        }
+        finally
+        {
+            Directory.Delete(tempDir, recursive: true);
+        }
+    }
+
+    [TestMethod]
+    [DataRow(400, "Bad Request")]
+    [DataRow(400, "Invalid port in prefix.")]
+    [DataRow(400, "Failed to listen on prefix 'http://localhost:49153/' because it conflicts with an existing registration on the machine.")]
+    [DataRow(400, "Failed to listen on prefix 'http://localhost:49152/other/' because it conflicts with an existing registration on the machine.")]
+    [DataRow(403, "Failed to listen on prefix 'http://localhost:49152/' because it conflicts with an existing registration on the machine.")]
+    public void IsBindCollision_UnrelatedListenerError_ReturnsFalse(int errorCode, string message)
+    {
+        var exception = new HttpListenerException(errorCode, message);
+
+        Assert.IsFalse(IsBindCollision(exception, 49152));
+    }
+
+    [TestMethod]
+    public void IsBindCollision_ExactManagedPrefixConflict_RequiresUnixListener()
+    {
+        var exception = new HttpListenerException(400,
+            "Failed to listen on prefix 'http://localhost:49152/' because it conflicts with an existing registration on the machine.");
+
+        Assert.AreEqual(OperatingSystem.IsLinux() || OperatingSystem.IsMacOS(), IsBindCollision(exception, 49152));
+    }
+
+    private sealed class RecordingSynchronizationContext : SynchronizationContext
+    {
+        private int postCount;
+
+        public int PostCount => Volatile.Read(ref postCount);
+
+        public override void Post(SendOrPostCallback callback, object? state)
+        {
+            Interlocked.Increment(ref postCount);
+            base.Post(callback, state);
+        }
+    }
+
+    private static StaticFileServer StartServer(string rootPath, out int port, Action<string, int>? requestCallback = null)
+    {
+        for (var attempt = 0; attempt < 20; attempt++)
+        {
+            port = RandomNumberGenerator.GetInt32(49152, 65536);
+            var server = new StaticFileServer(rootPath, port, requestCallback);
+            try
+            {
+                StartWithInvariantErrors(server);
+                return server;
+            }
+            catch (HttpListenerException exception) when (IsBindCollision(exception, port))
+            {
+                server.Dispose();
+            }
+            catch
+            {
+                server.Dispose();
+                throw;
+            }
+        }
+
+        throw new InvalidOperationException("Could not bind a test server after 20 port collisions.");
+    }
+
+    private static void StartWithInvariantErrors(StaticFileServer server)
+    {
+        var originalCulture = System.Globalization.CultureInfo.CurrentUICulture;
+        try
+        {
+            System.Globalization.CultureInfo.CurrentUICulture = System.Globalization.CultureInfo.InvariantCulture;
+            server.Start();
+        }
+        finally
+        {
+            System.Globalization.CultureInfo.CurrentUICulture = originalCulture;
+        }
+    }
+
+    private static bool IsBindCollision(HttpListenerException exception, int port) =>
+        exception.NativeErrorCode is 183 or (int)SocketError.AddressAlreadyInUse ||
+        (OperatingSystem.IsWindows() && exception.NativeErrorCode is 32) ||
+        (OperatingSystem.IsLinux() && exception.NativeErrorCode is 98) ||
+        (OperatingSystem.IsMacOS() && exception.NativeErrorCode is 48) ||
+        ((OperatingSystem.IsLinux() || OperatingSystem.IsMacOS()) &&
+            exception.NativeErrorCode is (int)HttpStatusCode.BadRequest &&
+            exception.Message.Equals(FormattableString.Invariant(
+                $"Failed to listen on prefix 'http://localhost:{port}/' because it conflicts with an existing registration on the machine."),
+                StringComparison.Ordinal));
 }

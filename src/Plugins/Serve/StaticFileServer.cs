@@ -17,9 +17,11 @@ internal sealed class StaticFileServer : IAsyncDisposable, IDisposable
     private readonly string rootPath;
     private readonly HttpListener listener;
     private readonly Action<string, int>? requestCallback;
+    private readonly Lock lifecycleLock = new();
+    private readonly HashSet<Task> requestTasks = [];
     private CancellationTokenSource? cts;
     private Task? processingTask;
-    private int disposed;
+    private Task? shutdownTask;
 
     /// <summary>
     /// MIME type mappings for common static file extensions
@@ -82,11 +84,32 @@ internal sealed class StaticFileServer : IAsyncDisposable, IDisposable
     /// <exception cref="HttpListenerException">Thrown when port is already in use</exception>
     public void Start()
     {
-        cts = new CancellationTokenSource();
-        listener.Start();
+        lock (lifecycleLock)
+        {
+            ObjectDisposedException.ThrowIf(shutdownTask is not null, this);
+            if (listener.IsListening)
+            {
+                return;
+            }
 
-        // Start processing requests in background — awaited in DisposeAsync
-        processingTask = Task.Run(ProcessRequestsAsync);
+            try
+            {
+                listener.Start();
+            }
+            catch
+            {
+                listener.Close();
+                throw;
+            }
+
+            cts?.Dispose();
+            cts = new CancellationTokenSource();
+            var token = cts.Token;
+            var acceptLoop = Task.Run(() => ProcessRequestsAsync(token));
+            processingTask = processingTask is { IsCompleted: false }
+                ? Task.WhenAll(processingTask, acceptLoop)
+                : acceptLoop;
+        }
     }
 
     /// <summary>
@@ -94,47 +117,75 @@ internal sealed class StaticFileServer : IAsyncDisposable, IDisposable
     /// </summary>
     public void Stop()
     {
-        if (cts is null or { IsCancellationRequested: true })
+        lock (lifecycleLock)
         {
-            return;
-        }
+            if (cts is null or { IsCancellationRequested: true })
+            {
+                return;
+            }
 
-        cts.Cancel();
+            cts.Cancel();
 
-        try
-        {
-            listener.Stop();
-        }
-        catch (ObjectDisposedException)
-        {
-            // Already disposed - ignore
+            try
+            {
+                listener.Stop();
+            }
+            catch (ObjectDisposedException)
+            {
+                // Already disposed - ignore
+            }
         }
     }
 
     /// <summary>
     /// Process incoming HTTP requests
     /// </summary>
-    private async Task ProcessRequestsAsync()
+    internal async Task ProcessRequestsAsync(
+        CancellationToken cancellationToken,
+        Func<HttpListener, Task<HttpListenerContext>>? acceptContextAsync = null)
     {
-        var token = cts?.Token ?? CancellationToken.None;
-
-        while (cts is { IsCancellationRequested: false })
+        while (!cancellationToken.IsCancellationRequested)
         {
             try
             {
-                var context = await listener.GetContextAsync();
-                _ = HandleRequestAsync(context, token);
+                var context = await (acceptContextAsync is null
+                    ? listener.GetContextAsync()
+                    : acceptContextAsync(listener));
+                var requestTask = HandleRequestAsync(context, cancellationToken);
+                lock (lifecycleLock)
+                {
+                    requestTasks.Add(requestTask);
+                }
+
+                _ = requestTask.ContinueWith(
+                    RemoveCompletedRequest,
+                    CancellationToken.None,
+                    TaskContinuationOptions.ExecuteSynchronously,
+                    TaskScheduler.Default);
             }
-            catch (HttpListenerException) when (cts is null or { IsCancellationRequested: true })
+            catch (HttpListenerException) when (cancellationToken.IsCancellationRequested)
             {
                 // Expected when stopping - listener.Stop() causes GetContextAsync to throw
                 break;
             }
-            catch (ObjectDisposedException) when (cts is null or { IsCancellationRequested: true })
+            catch (ObjectDisposedException) when (cancellationToken.IsCancellationRequested)
             {
                 // Expected when disposing
                 break;
             }
+            catch (InvalidOperationException) when (cancellationToken.IsCancellationRequested)
+            {
+                break;
+            }
+        }
+    }
+
+    private void RemoveCompletedRequest(Task requestTask)
+    {
+        _ = requestTask.Exception;
+        lock (lifecycleLock)
+        {
+            requestTasks.Remove(requestTask);
         }
     }
 
@@ -217,7 +268,7 @@ internal sealed class StaticFileServer : IAsyncDisposable, IDisposable
 
             requestCallback?.Invoke(urlPath, 200);
         }
-        catch (OperationCanceledException)
+        catch (Exception exception) when (exception is OperationCanceledException || cancellationToken.IsCancellationRequested)
         {
             // Server shutting down during file transfer — expected
         }
@@ -378,50 +429,54 @@ internal sealed class StaticFileServer : IAsyncDisposable, IDisposable
     /// <inheritdoc />
     public async ValueTask DisposeAsync()
     {
-        if (Interlocked.Exchange(ref disposed, 1) is 1)
+        Task shutdown;
+        lock (lifecycleLock)
         {
-            return;
+            if (shutdownTask is null)
+            {
+                Stop();
+                shutdownTask = Task.Run(DrainRequestsAsync);
+            }
+
+            shutdown = shutdownTask;
         }
-
-        Stop();
-
-        // Await background task for clean shutdown
-        if (processingTask is not null)
-        {
-            await processingTask;
-        }
-
-        cts?.Dispose();
 
         try
         {
-            listener.Close();
+            await shutdown;
         }
-        catch (ObjectDisposedException)
+        finally
         {
-            // Already disposed - ignore
+            lock (lifecycleLock)
+            {
+                cts?.Dispose();
+                cts = null;
+                listener.Close();
+            }
+        }
+    }
+
+    private async Task DrainRequestsAsync()
+    {
+        try
+        {
+            if (processingTask is not null)
+            {
+                await processingTask;
+            }
+        }
+        finally
+        {
+            Task[] pendingRequests;
+            lock (lifecycleLock)
+            {
+                pendingRequests = [.. requestTasks];
+            }
+
+            await Task.WhenAll(pendingRequests);
         }
     }
 
     /// <inheritdoc />
-    public void Dispose()
-    {
-        if (Interlocked.Exchange(ref disposed, 1) is 1)
-        {
-            return;
-        }
-
-        Stop();
-        processingTask?.Wait(TimeSpan.FromSeconds(2));
-        cts?.Dispose();
-
-        try
-        {
-            listener.Close();
-        }
-        catch (ObjectDisposedException)
-        {
-            // Already disposed - ignore
-        }
-    }
+    public void Dispose() => Task.Run(async () => await DisposeAsync()).GetAwaiter().GetResult();
 }
