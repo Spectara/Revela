@@ -1,5 +1,7 @@
 using System.CommandLine;
+using Microsoft.Extensions.Options;
 using Spectara.Revela.Core.Services;
+using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Output;
 using Spectre.Console;
 
@@ -9,7 +11,8 @@ namespace Spectara.Revela.Commands.Config.Revela;
 /// Command to display configuration and plugin locations.
 /// </summary>
 internal sealed partial class ConfigLocationsCommand(
-    ILogger<ConfigLocationsCommand> logger)
+    ILogger<ConfigLocationsCommand> logger,
+    IOptions<ProjectEnvironment> projectEnvironment)
 {
     /// <summary>
     /// Creates the command definition.
@@ -29,10 +32,18 @@ internal sealed partial class ConfigLocationsCommand(
                 .AddColumn("Path");
 
             table.AddRow("[cyan]Installation Type[/]", $"[green]{locationType}[/]");
-            table.AddRow("[cyan]Config Directory[/]", $"[dim]{ConfigPathResolver.ConfigDirectory}[/]");
-            table.AddRow("[cyan]Config File[/]", $"[dim]{ConfigPathResolver.ConfigFilePath}[/]");
-            table.AddRow("[cyan]Plugins (local)[/]", $"[dim]{ConfigPathResolver.LocalPluginDirectory}[/]");
-            table.AddRow("[cyan]Plugins (global)[/]", $"[dim]{ConfigPathResolver.GlobalPluginDirectory}[/]");
+            table.AddRow("[cyan]Config Directory[/]", $"[dim]{Markup.Escape(ConfigPathResolver.ConfigDirectory)}[/]");
+            table.AddRow("[cyan]Config File[/]", $"[dim]{Markup.Escape(ConfigPathResolver.ConfigFilePath)}[/]");
+            table.AddRow("[cyan]Plugins (local)[/]", $"[dim]{Markup.Escape(ConfigPathResolver.LocalPluginDirectory)}[/]");
+            table.AddRow("[cyan]Plugins (global)[/]", $"[dim]{Markup.Escape(ConfigPathResolver.GlobalPluginDirectory)}[/]");
+
+            var environment = projectEnvironment.Value;
+            if (environment.IsInitialized)
+            {
+                table.AddRow("[cyan]Project Config[/]", $"[dim]{Markup.Escape(Path.Combine(environment.Path, "project.json"))}[/]");
+                table.AddRow("[cyan]Site Config[/]", $"[dim]{Markup.Escape(Path.Combine(environment.Path, "site.json"))}[/]");
+                table.AddRow("[cyan]Logging Config[/]", $"[dim]{Markup.Escape(Path.Combine(environment.Path, "logging.json"))}[/]");
+            }
 
             AnsiConsole.Write(table);
 
