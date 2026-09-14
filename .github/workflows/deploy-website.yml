@@ -1,7 +1,8 @@
 name: Deploy Website
 
-# Deployment policy: the live website always reflects the latest released
-# binary. Content iteration happens locally via
+# Deployment policy: automatic deployments use the completed Release run's
+# source and binary. Manual deployments use current content and the latest
+# release. Content iteration happens locally via
 # `cd samples/revela-website && dotnet run --project ../../src/Cli -- generate all`,
 # so there is no push-based auto-deploy. This keeps revela.website 1:1
 # consistent with what users can actually download.
@@ -34,6 +35,7 @@ concurrency:
 
 # Minimum permissions required by actions/deploy-pages.
 permissions:
+  actions: read
   contents: read
   pages: write
   id-token: write
@@ -55,9 +57,88 @@ jobs:
            github.event.workflow_run.event == 'push') }}
     steps:
       - name: Checkout
+        if: github.event_name == 'workflow_dispatch'
         uses: actions/checkout@v7
 
+      - name: Download triggering release identity
+        if: github.event_name == 'workflow_run'
+        uses: actions/download-artifact@v8
+        with:
+          name: release-identity-${{ github.event.workflow_run.run_attempt }}
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ github.token }}
+          path: ${{ runner.temp }}/release-identity
+
+      - name: Resolve triggering release
+        if: github.event_name == 'workflow_run'
+        id: resolve-release
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const fs = require('node:fs');
+            const path = require('node:path');
+            const run = context.payload.workflow_run;
+            if (!run || run.event !== 'push' || run.conclusion !== 'success') {
+              throw new Error('Expected a successful tag-triggered Release run.');
+            }
+
+            const identity = JSON.parse(fs.readFileSync(
+              path.join(process.env.RUNNER_TEMP, 'release-identity', 'release-metadata.json'), 'utf8'));
+            if (!identity || typeof identity !== 'object' || Array.isArray(identity)) {
+              throw new Error('Missing release identity metadata.');
+            }
+
+            for (const [identityKey, runKey] of [['runId', 'id'], ['runAttempt', 'run_attempt']]) {
+              const value = identity[identityKey];
+              if (!['string', 'number'].includes(typeof value) ||
+                  !Number.isSafeInteger(run[runKey]) || run[runKey] < 1 ||
+                  String(value) !== String(run[runKey])) {
+                throw new Error(`Release identity does not match triggering run: ${identityKey}.`);
+              }
+            }
+            if (typeof identity.commit !== 'string' || identity.commit.length !== 40 ||
+                !/^[a-f0-9]{40}$/.test(identity.commit) || identity.commit !== run.head_sha) {
+              throw new Error('Release identity commit does not match triggering head SHA.');
+            }
+            if (typeof identity.version !== 'string' || identity.version !== identity.version.trim() ||
+                !/^[0-9]+\.[0-9]+\.[0-9]+(?:-[a-zA-Z0-9]+(?:\.[0-9]+)?)?$/.test(identity.version) ||
+                identity.tag !== `v${identity.version}`) {
+              throw new Error('Release identity tag/version is invalid.');
+            }
+
+            const { data: release } = await github.rest.repos.getReleaseByTag({
+              ...context.repo, tag: identity.tag
+            });
+            if (!release || release.draft !== false || release.tag_name !== identity.tag) {
+              throw new Error('Expected a published release for the exact identity tag.');
+            }
+            const { data: commit } = await github.rest.repos.getCommit({
+              ...context.repo, ref: `refs/tags/${identity.tag}`
+            });
+            if (commit?.sha !== identity.commit) {
+              throw new Error('Release tag does not resolve to the triggering commit.');
+            }
+
+            core.setOutput('ref', identity.commit);
+            core.setOutput('tag', identity.tag);
+
+      - name: Checkout triggering release source
+        if: github.event_name == 'workflow_run'
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ steps.resolve-release.outputs.ref }}
+
+      - name: Download triggering Revela release (Standalone)
+        if: github.event_name == 'workflow_run'
+        uses: robinraju/release-downloader@v1
+        with:
+          repository: Spectara/Revela
+          tag: ${{ steps.resolve-release.outputs.tag }}
+          fileName: "revela-linux-x64-standalone.tar.gz"
+          out-file-path: ./revela-download
+
       - name: Download latest Revela release (Standalone)
+        if: github.event_name == 'workflow_dispatch'
         uses: robinraju/release-downloader@v1
         id: download-release
         with:
@@ -76,8 +157,9 @@ jobs:
           chmod +x ./revela
 
       - name: Replace download placeholders with actual release URLs
+        env:
+          VERSION: ${{ steps.resolve-release.outputs.tag || steps.download-release.outputs.tag_name }}
         run: |
-          VERSION="${{ steps.download-release.outputs.tag_name }}"
           BASE_URL="https://github.com/Spectara/Revela/releases/download/${VERSION}"
 
           # Files containing download placeholders

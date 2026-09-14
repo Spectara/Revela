@@ -28,7 +28,17 @@
     Don't clean up artifacts after test
 
 .PARAMETER RuntimeIdentifier
-    Target runtime (default: win-x64 on Windows, linux-x64 on Linux, osx-x64 on macOS)
+    Target runtime (default: current OS and OS architecture; cross-runtime tests fail)
+
+.PARAMETER ArtifactPath
+    Existing first-party release directory, .zip or .tar.gz inside this repository.
+    Selects Artifact mode, which never builds, restores, publishes or packs the product.
+
+.PARAMETER Variant
+    Full (default), Core or Standalone. Build mode produces Full.
+
+.PARAMETER PackageDirectory
+    Required external package feed for Core artifacts, copied before testing.
 
 .EXAMPLE
     .\scripts\test-release.ps1
@@ -47,18 +57,32 @@
     # Test specific version, keep artifacts for inspection
 #>
 
-[CmdletBinding()]
+[CmdletBinding(DefaultParameterSetName = 'Build')]
 param(
+    [ValidatePattern('^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(?:-(?:(?:0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*)(?:\.(?:0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*))*))?$')]
     [string]$Version = "0.0.0-test",
+    [Parameter(ParameterSetName = 'Build')]
     [switch]$SkipTests,
     [switch]$IncludeOneDrive,
     [switch]$KeepArtifacts,
-    [string]$RuntimeIdentifier
+    [string]$RuntimeIdentifier,
+    [Parameter(Mandatory, ParameterSetName = 'Artifact')]
+    [string]$ArtifactPath,
+    [ValidateSet('Full', 'Core', 'Standalone')]
+    [string]$Variant = 'Full',
+    [Parameter(ParameterSetName = 'Artifact')]
+    [string]$PackageDirectory
 )
 
 # Strict mode
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
+$PSNativeCommandUseErrorActionPreference = $false
+$Mode = $PSCmdlet.ParameterSetName
+if ($Mode -eq 'Build' -and $Variant -ne 'Full') { throw 'Build mode produces Full; supply -ArtifactPath for other variants.' }
+if ($Variant -eq 'Core' -and -not $PackageDirectory) { throw 'Core requires -PackageDirectory.' }
+if ($PackageDirectory -and $Variant -ne 'Core') { throw 'Only Core accepts -PackageDirectory; Full must use bundled packages.' }
+if ($Variant -eq 'Standalone' -and $IncludeOneDrive) { throw 'Standalone does not run the optional OneDrive suite.' }
 
 # Colors for output
 function Write-Step { param([string]$Message) Write-Host "`n▶ $Message" -ForegroundColor Cyan }
@@ -80,38 +104,107 @@ function Write-Banner {
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $RepoRoot = Split-Path -Parent $ScriptDir
 $Timestamp = [DateTime]::Now.ToString('yyyyMMdd-HHmmss')
-$TestDir = Join-Path $RepoRoot "artifacts/release-test-$Timestamp"
+$TestDir = Join-Path $RepoRoot "artifacts/release-test-$Timestamp-$([Guid]::NewGuid().ToString('N'))"
 $CliDir = Join-Path $TestDir "cli"
-$NuGetDir = Join-Path $TestDir "nuget"
-$PluginsDir = Join-Path $TestDir "plugins"
+$PluginsDir = if ($Variant -eq 'Core') { Join-Path $TestDir 'plugins' } else { Join-Path $CliDir 'packages' }
+$NuGetDir = $PluginsDir
 $ToolDir = Join-Path $TestDir "tool"
+$ToolInstallDir = Join-Path $TestDir 'tool-install'
+$ToolConfigPath = Join-Path $ToolDir 'NuGet.Config'
+$ExtractDir = Join-Path $TestDir 'extracted'
 $SampleProjectDir = Join-Path $TestDir "sample"
 $ShowcaseDir = Join-Path $RepoRoot "samples/showcase"
 $OneDriveDir = Join-Path $RepoRoot "samples/onedrive"
+$RelativeFeed = [IO.Path]::GetRelativePath($CliDir, $PluginsDir)
 
 # Determine runtime identifier and executable name
 # Note: $IsWindows, $IsMacOS, $IsLinux are automatic variables in PowerShell Core 6+
 # For Windows PowerShell 5.x compatibility, we also check $env:OS
 $isWindowsOS = $IsWindows -or $env:OS -eq "Windows_NT"
 
-if (-not $RuntimeIdentifier) {
-    if ($isWindowsOS) {
-        $RuntimeIdentifier = "win-x64"
-    }
-    elseif ($IsMacOS) {
-        $RuntimeIdentifier = "osx-x64"
-    }
-    else {
-        $RuntimeIdentifier = "linux-x64"
-    }
-}
+$hostOS = if ($isWindowsOS) { 'win' } elseif ($IsMacOS) { 'osx' } else { 'linux' }
+$hostArchitecture = [Runtime.InteropServices.RuntimeInformation]::OSArchitecture.ToString().ToLowerInvariant()
+$hostRid = "$hostOS-$hostArchitecture"
+if (-not $RuntimeIdentifier) { $RuntimeIdentifier = $hostRid }
+if ($RuntimeIdentifier -cne $hostRid) { throw "Cannot execute $RuntimeIdentifier artifacts on $hostRid." }
 
-# Determine executable extension based on runtime (not current OS!)
-# This allows cross-compilation scenarios
+# Determine executable extension after validating the host runtime.
 $ExeName = if ($RuntimeIdentifier -like "win-*") { "revela.exe" } else { "revela" }
-$exeExt = if ($RuntimeIdentifier -like "win-*") { ".exe" } else { "" }
 
 $ExePath = Join-Path $CliDir $ExeName
+$VersionPattern = '^revela ' + [regex]::Escape($Version) + ' \([^\r\n]+\)'
+$VersionPattern += if ($Variant -eq 'Standalone') { ' \u2014 embedded build$' } else { '$' }
+
+function Resolve-InputPath {
+    param([string]$Path)
+    $resolved = (Resolve-Path -LiteralPath $Path).ProviderPath
+    $relative = [IO.Path]::GetRelativePath($RepoRoot, $resolved)
+    if ($relative -eq '.' -or [IO.Path]::IsPathRooted($relative) -or $relative -match '^\.\.([/\\]|$)') {
+        throw 'Artifact inputs must be strictly inside the Revela repository.'
+    }
+    $ancestor = Get-Item -LiteralPath $resolved -Force
+    while ($ancestor.FullName -ne $RepoRoot) {
+        if ($ancestor.Attributes -band [IO.FileAttributes]::ReparsePoint) { throw 'Linked artifact inputs are not supported.' }
+        $ancestor = Get-Item -LiteralPath (Split-Path -Parent $ancestor.FullName) -Force
+    }
+    return $resolved
+}
+
+function Get-InputHashes {
+    param([string[]]$Paths)
+    $hashes = @{}
+    foreach ($path in $Paths) {
+        $item = Get-Item -LiteralPath $path -Force
+        $items = if ($item.PSIsContainer) { @(Get-ChildItem -LiteralPath $path -Recurse -Force) } else { @($item) }
+        foreach ($entry in $items) {
+            if ($entry.Attributes -band [IO.FileAttributes]::ReparsePoint) { throw 'Linked input content is not supported.' }
+            if (-not $entry.PSIsContainer) { $hashes[$entry.FullName] = (Get-FileHash -LiteralPath $entry.FullName -Algorithm SHA256).Hash }
+        }
+    }
+    return $hashes
+}
+
+function Assert-GeneratedOutput {
+    $outputDir = Join-Path $SampleProjectDir 'output'
+    $expectedPaths = @('index.html', '_assets/main.css')
+    if ($Variant -ne 'Standalone') { $expectedPaths += @('test-gallery/index.html', 'test-stats/index.html', 'about/index.html') }
+    foreach ($relativePath in $expectedPaths) {
+        $path = Join-Path $outputDir $relativePath
+        if (-not (Test-Path -LiteralPath $path -PathType Leaf) -or (Get-Item -LiteralPath $path).Length -eq 0) {
+            throw "Missing or empty output: $relativePath"
+        }
+        if ($relativePath.EndsWith('.html', [StringComparison]::Ordinal) -and (Get-Content -LiteralPath $path -Raw) -notmatch '<html') {
+            throw "Invalid HTML output: $relativePath"
+        }
+    }
+    $imageFiles = @(Get-ChildItem -LiteralPath (Join-Path $outputDir 'images') -Recurse -File | Where-Object { $_.Extension -in @('.jpg', '.webp', '.avif') })
+    $imageDirectories = @($imageFiles.DirectoryName | Sort-Object -Unique)
+    if ($imageFiles.Count -lt 228 -or $imageDirectories.Count -lt 14 -or @($imageFiles | Where-Object Length -eq 0).Count -gt 0) {
+        throw "Expected at least 14 images and 228 nonempty variants, found $($imageDirectories.Count) images / $($imageFiles.Count) variants."
+    }
+    Write-Success "Output verified: $($expectedPaths.Count) required assets/pages, $($imageDirectories.Count) images, $($imageFiles.Count) nonempty variants"
+}
+
+$InputPaths = @((Join-Path $ShowcaseDir 'source'), (Join-Path $ShowcaseDir 'project.json'), (Join-Path $ShowcaseDir 'site.json'))
+if ($ArtifactPath) {
+    $ArtifactPath = Resolve-InputPath $ArtifactPath
+    $InputPaths += $ArtifactPath
+    if (-not (Test-Path -LiteralPath $ArtifactPath -PathType Container) -and $ArtifactPath -notmatch '(?i)\.(zip|tar\.gz)$') {
+        throw 'ArtifactPath must be an extracted directory, .zip or .tar.gz.'
+    }
+}
+if ($PackageDirectory) {
+    $PackageDirectory = Resolve-InputPath $PackageDirectory
+    if (-not (Test-Path -LiteralPath $PackageDirectory -PathType Container)) { throw 'PackageDirectory must be a directory.' }
+    $InputPaths += $PackageDirectory
+}
+$InputHashes = Get-InputHashes $InputPaths
+$SavedEnvironment = @{}
+foreach ($name in @('HOME', 'USERPROFILE', 'APPDATA', 'LOCALAPPDATA', 'XDG_CONFIG_HOME', 'XDG_DATA_HOME', 'XDG_CACHE_HOME', 'DOTNET_CLI_HOME', 'NUGET_PACKAGES', 'NUGET_HTTP_CACHE_PATH', 'NUGET_PLUGINS_CACHE_PATH', 'DOTNET_BUNDLE_EXTRACT_BASE_DIR')) {
+    $SavedEnvironment[$name] = [Environment]::GetEnvironmentVariable($name, 'Process')
+}
+$PipelineFailure = $null
+$TranscriptStarted = $false
 
 # Track timing
 $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
@@ -136,6 +229,8 @@ function Measure-Step {
 Write-Banner "Revela End-to-End Release Test"
 Write-Host ""
 Write-Info "Version:    $Version"
+Write-Info "Mode:       $Mode"
+Write-Info "Variant:    $Variant"
 Write-Info "Runtime:    $RuntimeIdentifier"
 Write-Info "Skip Tests: $SkipTests"
 Write-Info "OneDrive:   $IncludeOneDrive"
@@ -149,18 +244,22 @@ try {
     # ========================================================================
     Write-Step "Step 1: Clean & Prepare"
     Measure-Step "Clean" {
-        if (Test-Path $TestDir) {
-            Remove-Item $TestDir -Recurse -Force
-            Write-Success "Cleaned previous test artifacts"
-        }
-        New-Item -ItemType Directory -Path $TestDir -Force | Out-Null
+        New-Item -ItemType Directory -Path $TestDir | Out-Null
         New-Item -ItemType Directory -Path $CliDir -Force | Out-Null
-        New-Item -ItemType Directory -Path $NuGetDir -Force | Out-Null
-        New-Item -ItemType Directory -Path $PluginsDir -Force | Out-Null
         New-Item -ItemType Directory -Path $ToolDir -Force | Out-Null
+        foreach ($name in $SavedEnvironment.Keys) {
+            $isolatedPath = Join-Path $TestDir "environment/$name"
+            New-Item -ItemType Directory -Path $isolatedPath -Force | Out-Null
+            [Environment]::SetEnvironmentVariable($name, $isolatedPath, 'Process')
+        }
         Write-Success "Created test directories"
     }
 
+    Start-Transcript -Path (Join-Path $TestDir 'verification.log') | Out-Null
+    $TranscriptStarted = $true
+    $InputHashes | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath (Join-Path $TestDir 'input-hashes.json') -Encoding utf8
+
+    if ($Mode -eq 'Build') {
     # ========================================================================
     # STEP 2: Restore & Build
     # ========================================================================
@@ -171,8 +270,10 @@ try {
         if ($LASTEXITCODE -ne 0) { throw "Restore failed" }
         Write-Success "Restore completed"
 
+        dotnet build src/Sdk.Generators/Sdk.Generators.csproj -c Release --no-restore -p:Version=$Version -p:DebugType=embedded --verbosity quiet
+        if ($LASTEXITCODE -ne 0) { throw 'Generator build failed' }
         Write-Info "Running dotnet build (solution, Release)..."
-        dotnet build Spectara.Revela.slnx -c Release --no-restore -p:Version=$Version -p:DebugType=embedded --verbosity quiet
+        dotnet build Spectara.Revela.slnx -c Release -m:1 --no-restore -p:Version=$Version -p:DebugType=embedded --verbosity quiet
         if ($LASTEXITCODE -ne 0) { throw "Build failed" }
         Write-Success "Solution built"
     }
@@ -221,16 +322,6 @@ try {
         $exeSize = (Get-Item $ExePath).Length / 1MB
         Write-Success "CLI published: $ExeName ($([math]::Round($exeSize, 1)) MB)"
 
-        # Verify --version works for standalone CLI
-        Write-Info "Testing standalone --version..."
-        $standaloneVersion = & $ExePath --version 2>&1
-        if ($LASTEXITCODE -ne 0) { throw "Standalone --version failed: $standaloneVersion" }
-        if ($standaloneVersion -match '\d+\.\d+\.\d+') {
-            Write-Success "Standalone --version: $standaloneVersion"
-        }
-        else {
-            Write-Warn "Unexpected --version output: $standaloneVersion"
-        }
     }
 
     # ========================================================================
@@ -238,56 +329,94 @@ try {
     # ========================================================================
     Write-Step "Step 5: Pack NuGet Packages"
     Measure-Step "NuGet Packages" {
-        # Lumina (goes next to CLI - bundled with release)
-        Write-Info "Building Lumina for $RuntimeIdentifier..."
-        dotnet build src/Themes/Lumina/Lumina.csproj `
-            -c Release -r $RuntimeIdentifier -p:Version=$Version -p:DebugType=embedded --verbosity quiet
-        if ($LASTEXITCODE -ne 0) { throw "Lumina build failed" }
-
-        Copy-Item "artifacts/bin/Lumina/Release/net10.0/$RuntimeIdentifier/Spectara.Revela.Themes.Lumina.dll" $CliDir
-        Write-Success "Lumina bundled with CLI"
-
         # Pack everything from the existing Release build (no rebuild). The
         # solution-wide pack respects each csproj's <IsPackable>, so exactly
         # the right 14 packages are produced — no hardcoded list to maintain.
         Write-Info "Packing all NuGet packages (solution-wide)..."
-        $packStaging = Join-Path $TestDir "pack-staging"
-        if (Test-Path $packStaging) { Remove-Item $packStaging -Recurse -Force }
-        New-Item -ItemType Directory -Path $packStaging -Force | Out-Null
+        New-Item -ItemType Directory -Path $PluginsDir | Out-Null
 
         dotnet pack Spectara.Revela.slnx `
-            -c Release -o $packStaging -p:PackageVersion=$Version -p:Version=$Version -p:DebugType=embedded -p:IncludeSymbols=false `
+            -c Release -o $PluginsDir -p:PackageVersion=$Version -p:Version=$Version -p:DebugType=embedded -p:IncludeSymbols=false `
             --no-build --no-restore --verbosity quiet
         if ($LASTEXITCODE -ne 0) { throw "Pack failed" }
 
-        # Sort packages into the two layout-specific dirs the integration
-        # tests below expect:
-        #   - SDK    -> nuget/   (consumed by plugin authors)
-        #   - others -> plugins/ (consumed by `revela plugin install`)
-        Get-ChildItem $packStaging -Filter "*.nupkg" | ForEach-Object {
-            if ($_.Name -like "Spectara.Revela.Sdk.*") {
-                Move-Item $_.FullName $NuGetDir -Force
-            } else {
-                Move-Item $_.FullName $PluginsDir -Force
-            }
-        }
-        Remove-Item $packStaging -Recurse -Force
         Write-Success "Packages produced"
 
         # List SDK package (for developers)
-        Write-Info "SDK package (nuget/):"
-        Get-ChildItem $NuGetDir -Filter "*.nupkg" | ForEach-Object {
+        Write-Info "SDK package (cli/packages/):"
+        Get-ChildItem $NuGetDir -Filter "Spectara.Revela.Sdk.*.nupkg" | ForEach-Object {
             $size = [math]::Round($_.Length / 1KB, 1)
             Write-Info "  $($_.Name) ($size KB)"
         }
 
         # List plugin packages (for installation)
-        Write-Info "Plugin packages (plugins/):"
+        Write-Info "Release packages (cli/packages/):"
         Get-ChildItem $PluginsDir -Filter "*.nupkg" | ForEach-Object {
             $size = [math]::Round($_.Length / 1KB, 1)
             Write-Info "  $($_.Name) ($size KB)"
         }
     }
+    }
+    else {
+        Write-Step 'Steps 2-5 [SKIPPED]: using existing release bytes; no product restore/build/publish/pack'
+        Measure-Step 'Stage Artifact' {
+            $stagingInput = $ArtifactPath
+            if (-not (Test-Path -LiteralPath $ArtifactPath -PathType Container)) {
+                New-Item -ItemType Directory -Path $ExtractDir | Out-Null
+                if ($ArtifactPath.EndsWith('.zip', [StringComparison]::OrdinalIgnoreCase)) {
+                    [IO.Compression.ZipFile]::ExtractToDirectory($ArtifactPath, $ExtractDir)
+                }
+                else {
+                    $archiveStream = [IO.File]::OpenRead($ArtifactPath)
+                    try {
+                        $gzipStream = [IO.Compression.GZipStream]::new($archiveStream, [IO.Compression.CompressionMode]::Decompress)
+                        try { [System.Formats.Tar.TarFile]::ExtractToDirectory($gzipStream, $ExtractDir, $false) }
+                        finally { $gzipStream.Dispose() }
+                    }
+                    finally { $archiveStream.Dispose() }
+                }
+                $stagingInput = $ExtractDir
+            }
+            foreach ($entry in Get-ChildItem -LiteralPath $stagingInput -Recurse -Force) {
+                if ($entry.Attributes -band [IO.FileAttributes]::ReparsePoint) { throw 'Linked archive content is not supported.' }
+            }
+            Get-ChildItem -LiteralPath $stagingInput -Force | Copy-Item -Destination $CliDir -Recurse
+            if ($Variant -eq 'Core') {
+                New-Item -ItemType Directory -Path $PluginsDir | Out-Null
+                Get-ChildItem -LiteralPath $PackageDirectory -Force | Copy-Item -Destination $PluginsDir -Recurse
+            }
+        }
+    }
+
+    if (-not (Test-Path -LiteralPath $ExePath -PathType Leaf)) { throw "Artifact is missing $ExeName at its root." }
+    if ($Variant -ne 'Standalone') {
+        foreach ($entry in Get-ChildItem -LiteralPath $CliDir -Force) {
+            if ($entry.PSIsContainer) {
+                if ($Variant -ne 'Full' -or $entry.Name -cne 'packages') { throw "Dirty $Variant artifact layout: $($entry.Name)" }
+            }
+            elseif ($entry.Name -cne $ExeName -and $entry.Name -notmatch '^(?i:readme(?:\.(md|txt))?|license(?:\.(md|txt))?|start-revela\.sh|Start Revela\.command)$') {
+                throw "Unexpected loose file in $Variant artifact: $($entry.Name)"
+            }
+        }
+        if (-not (Test-Path -LiteralPath $PluginsDir -PathType Container) -or @(Get-ChildItem -LiteralPath $PluginsDir -File -Filter '*.nupkg').Count -eq 0) {
+            throw "$Variant package feed is missing or empty."
+        }
+    }
+    else {
+        $vipsName = if ($isWindowsOS) { 'libvips-42.dll' } elseif ($IsMacOS) { 'libvips.42.dylib' } else { 'libvips.so.42' }
+        $vipsPath = Join-Path $CliDir $vipsName
+        if (-not (Test-Path -LiteralPath $vipsPath -PathType Leaf) -or (Get-Item -LiteralPath $vipsPath).Length -eq 0) {
+            throw "Standalone requires its actual native companion: $vipsName"
+        }
+    }
+    if (-not $isWindowsOS) {
+        if (([IO.File]::GetUnixFileMode($ExePath) -band [IO.UnixFileMode]::UserExecute) -eq 0) {
+            throw 'Release executable is missing its owner execute permission.'
+        }
+    }
+    $releaseVersion = (& $ExePath --version 2>&1 | Out-String).Trim()
+    if ($LASTEXITCODE -ne 0 -or $releaseVersion -cnotmatch $VersionPattern) { throw "Expected exact $Variant version $Version, got: $releaseVersion" }
+    Write-Success "$Variant exact version verified: $releaseVersion"
 
     # ========================================================================
     # STEP 6: Integration Test - Setup Project
@@ -305,6 +434,34 @@ try {
         Write-Success "Sample project created with $fileCount source files"
     }
 
+    if ($Variant -eq 'Standalone') {
+        Measure-Step 'Standalone Config' {
+            Push-Location $SampleProjectDir
+            try {
+                $configPath = Join-Path $SampleProjectDir 'project.json'
+                $before = Get-Content -LiteralPath $configPath -Raw | ConvertFrom-Json -AsHashtable
+                $statisticsKey = 'Spectara.Revela.Plugins.Statistics'
+                if (-not $before.ContainsKey($statisticsKey)) {
+                    $before[$statisticsKey] = @{ maxEntriesPerCategory = 19; sortByCount = $true }
+                    $before | ConvertTo-Json -Depth 100 | Set-Content -LiteralPath $configPath -Encoding utf8
+                }
+                $previousValue = $before[$statisticsKey]['maxEntriesPerCategory']
+                $newValue = if ($previousValue -eq 20) { 21 } else { 20 }
+                & $ExePath config statistics --max-entries $newValue
+                if ($LASTEXITCODE -ne 0) { throw 'Standalone statistics config failed' }
+                $after = Get-Content -LiteralPath $configPath -Raw | ConvertFrom-Json -AsHashtable
+                if ($after[$statisticsKey]['maxEntriesPerCategory'] -ne $newValue) { throw 'Standalone statistics value was not changed' }
+                $before[$statisticsKey].Remove('maxEntriesPerCategory')
+                $after[$statisticsKey].Remove('maxEntriesPerCategory')
+                if (($before | ConvertTo-Json -Depth 100 -Compress) -cne ($after | ConvertTo-Json -Depth 100 -Compress)) {
+                    throw 'Standalone config changed unrelated settings'
+                }
+                Write-Success "Standalone fresh-process config changed max entries from $previousValue to $newValue and preserved unrelated settings"
+            }
+            finally { Pop-Location }
+        }
+    }
+    else {
     # ========================================================================
     # STEP 7: Install Plugins via NuGet (local feed)
     # ========================================================================
@@ -314,6 +471,10 @@ try {
         Push-Location $SampleProjectDir
         try {
             # Core features (Generate, Theme, Projects) are built into the CLI — no install needed
+
+            Write-Info 'Installing base Lumina from the exact release package...'
+            & $ExePath plugin install Spectara.Revela.Themes.Lumina --version $Version --source $PluginsDir
+            if ($LASTEXITCODE -ne 0) { throw 'Base Lumina installation failed' }
 
             # Install addon plugins
             Write-Info "Installing Source.OneDrive..."
@@ -375,6 +536,7 @@ try {
             # List installed plugins
             Write-Info "Installed plugins:"
             & $ExePath plugin list
+            if ($LASTEXITCODE -ne 0) { throw 'plugin list failed' }
         }
         finally {
             Pop-Location
@@ -441,7 +603,7 @@ try {
 
         # Re-install for subsequent tests
         Write-Info "Re-installing Statistics plugin..."
-        & $ExePath plugin install Spectara.Revela.Plugins.Statistics --source $PluginsDir
+        & $ExePath plugin install Spectara.Revela.Plugins.Statistics --version $Version --source $PluginsDir
         if ($LASTEXITCODE -ne 0) { throw "Plugin re-install failed" }
         Write-Success "Plugin re-installed for subsequent tests"
 
@@ -451,7 +613,7 @@ try {
         Push-Location $SampleProjectDir
         try {
             $serveHelpOutput = & $ExePath serve --help 2>&1 | Out-String
-            if ($serveHelpOutput -match "Preview generated site") {
+            if ($LASTEXITCODE -eq 0 -and $serveHelpOutput -match "Preview generated site") {
                 Write-Success "Verified: Serve plugin command registered and working"
             }
             else {
@@ -475,6 +637,7 @@ try {
             # Verifies Issue #32: themes appear in 'theme list', NOT in 'plugin list'
             Write-Info "Running: revela theme list"
             $themeListOutput = & $ExePath theme list 2>&1 | Out-String
+            if ($LASTEXITCODE -ne 0) { throw 'theme list failed' }
             if ($themeListOutput -match "Lumina") {
                 Write-Success "Found built-in Lumina theme"
             }
@@ -492,14 +655,15 @@ try {
 
             # Test theme list --online (searches NuGet sources)
             # Add local NuGet source first (for testing without nuget.org)
-            # Use relative path from config directory (cli/) to plugins directory (../plugins)
+            # Use a relative path from config directory (cli/) to the variant's feed.
             # This tests that relative paths are correctly resolved at runtime
             Write-Info "Adding local NuGet feed for testing (relative path)..."
-            & $ExePath config feed add local-test "../plugins"
-            if ($LASTEXITCODE -ne 0) { Write-Warn "Feed may already exist, continuing..." }
+            & $ExePath config feed add local-test $RelativeFeed
+            if ($LASTEXITCODE -ne 0) { throw 'Adding relative local-test feed failed' }
 
             Write-Info "Running: revela theme list --online"
             $themeOnlineOutput = & $ExePath theme list --online 2>&1 | Out-String
+            if ($LASTEXITCODE -ne 0) { throw 'theme list --online failed' }
             Write-Info $themeOnlineOutput
 
             # Should find Lumina from local NuGet feed
@@ -597,16 +761,18 @@ try {
                     Write-Success "Statistics config verified: MaxEntriesPerCategory = 20"
                 }
                 else {
-                    Write-Warn "Statistics config value not as expected (may not have been written yet)"
+                    throw 'Statistics config value was not persisted as requested'
                 }
             }
+            else { throw 'Statistics config did not create project.json' }
 
             # Test config locations (shows where configs are stored)
             Write-Info "Running: revela config locations"
             $configLocationsOutput = & $ExePath config locations 2>&1 | Out-String
             if ($LASTEXITCODE -ne 0) { throw "config locations failed" }
+            $compactLocationsOutput = $configLocationsOutput -replace '[^\x21-\x7e]', ''
             foreach ($configName in @('project.json', 'site.json', 'logging.json')) {
-                if ($configLocationsOutput -notmatch [regex]::Escape($configName)) {
+                if ($compactLocationsOutput -notmatch [regex]::Escape($configName)) {
                     throw "config locations did not report $configName"
                 }
             }
@@ -651,6 +817,93 @@ try {
             finally {
                 [IO.File]::WriteAllBytes($projectConfigPath, $originalProjectBytes)
             }
+
+                $registrationProject = Join-Path $TestDir 'registration-project'
+                New-Item -ItemType Directory -Path $registrationProject | Out-Null
+                $registrationConfig = Join-Path $registrationProject 'project.json'
+                $seedVersion = if ($Version -eq '0.0.0-test') { '0.0.0-registration-seed' } else { '0.0.0-test' }
+                if ($seedVersion -eq $Version) { throw 'Registration seed must differ from the installed version' }
+                $registrationProbe = [ordered]@{
+                    Plugins = [ordered]@{ 'spectara.revela.plugins.statistics' = $seedVersion }
+                    retained = [ordered]@{ value = 'registration-sentinel' }
+                }
+                $registrationProbe | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $registrationConfig -Encoding utf8
+                Push-Location $registrationProject
+                try {
+                    & $ExePath plugin install Statistics --version $Version --source $PluginsDir
+                    if ($LASTEXITCODE -ne 0) { throw 'Mixed-case package registration failed' }
+                    $savedRegistration = Get-Content -LiteralPath $registrationConfig -Raw | ConvertFrom-Json -AsHashtable
+                    if (-not (@($savedRegistration.Keys) -ccontains 'Plugins') -or
+                        (@($savedRegistration.Keys) -ccontains 'plugins') -or
+                        $savedRegistration.Plugins['spectara.revela.plugins.statistics'] -ne $Version -or
+                        $savedRegistration.retained.value -ne 'registration-sentinel') {
+                        throw 'Mixed-case registration did not preserve keys and unrelated data'
+                    }
+                    & $ExePath restore --check
+                    if ($LASTEXITCODE -ne 0) { throw 'Registered project could not be reopened by the real provider' }
+                    Write-Success 'Mixed-case registration changed the version and preserved a readable project'
+
+                    foreach ($packageId in @('Spectara.Revela.Plugins.Statistics', 'Spectara.Revela.Plugins.Serve')) {
+                        Remove-Item -LiteralPath (Join-Path $CliDir "plugins/$packageId") -Recurse -Force
+                    }
+                    $registrationProbe.Plugins = [ordered]@{}
+                    $registrationProbe | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $registrationConfig -Encoding utf8
+                    $coreRestoreFeed = Join-Path $CliDir 'packages'
+                    try {
+                        if ($Variant -eq 'Core') {
+                            Write-Info 'Core restore fixture: temporarily prioritize the supplied local packages (not shipped Core content).'
+                            New-Item -ItemType Directory -Path $coreRestoreFeed | Out-Null
+                            Get-ChildItem -LiteralPath $PluginsDir -Filter '*.nupkg' | Copy-Item -Destination $coreRestoreFeed
+                        }
+                        & $ExePath restore
+                        if ($LASTEXITCODE -ne 0) { throw 'Parallel restore registration failed' }
+                    }
+                    finally {
+                        if ($Variant -eq 'Core' -and (Test-Path -LiteralPath $coreRestoreFeed)) {
+                            Remove-Item -LiteralPath $coreRestoreFeed -Recurse -Force
+                        }
+                    }
+                    $restoredRegistration = Get-Content -LiteralPath $registrationConfig -Raw | ConvertFrom-Json -AsHashtable
+                    if ($restoredRegistration.Plugins.Count -ne 2 -or
+                        $restoredRegistration.retained.value -ne 'registration-sentinel') {
+                        throw 'Parallel registration did not preserve both new entries and unrelated data'
+                    }
+                    foreach ($packageId in @('Spectara.Revela.Plugins.Statistics', 'Spectara.Revela.Plugins.Serve')) {
+                        if ($restoredRegistration.Plugins[$packageId] -ne $Version -or
+                            -not (Test-Path -LiteralPath (Join-Path $CliDir "plugins/$packageId/$packageId.dll"))) {
+                            throw "Parallel restore lost registration or files for $packageId"
+                        }
+                        $package = [IO.Compression.ZipFile]::OpenRead((Join-Path $PluginsDir "$packageId.$Version.nupkg"))
+                        try {
+                            $assemblyEntries = @($package.Entries | Where-Object FullName -match "^lib/[^/]+/$([regex]::Escape($packageId))\.dll$")
+                            if ($assemblyEntries.Count -ne 1) { throw "Expected one primary assembly in $packageId" }
+                            $stream = $assemblyEntries[0].Open()
+                            try { $expectedHash = [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData($stream)) }
+                            finally { $stream.Dispose() }
+                            if ((Get-FileHash -LiteralPath (Join-Path $CliDir "plugins/$packageId/$packageId.dll")).Hash -cne $expectedHash) {
+                                throw "Restore did not install the supplied package bytes for $packageId"
+                            }
+                        }
+                        finally { $package.Dispose() }
+                    }
+                    & $ExePath restore --check
+                    if ($LASTEXITCODE -ne 0) { throw 'Restored project did not pass a fresh check' }
+                    Write-Success 'Parallel restore preserved both registered packages'
+
+                    [IO.File]::WriteAllText($registrationConfig, '{"Plugins":{"Spectara.Revela.Plugins.Statistics":"0.0.0-test"},"plugins":{"Other":"1.0.0"}}')
+                    $beforeFailedRegistration = (Get-FileHash -LiteralPath $registrationConfig).Hash
+                    $failureOutput = & $ExePath plugin install Statistics --version $Version --source $PluginsDir 2>&1 | Out-String
+                    if ($LASTEXITCODE -ne 1 -or $failureOutput -notmatch 'files extracted but project registration failed' -or
+                        $failureOutput -match 'installed successfully' -or
+                        (Get-FileHash -LiteralPath $registrationConfig).Hash -ne $beforeFailedRegistration -or
+                        -not (Test-Path -LiteralPath (Join-Path $CliDir 'plugins/Spectara.Revela.Plugins.Statistics/Spectara.Revela.Plugins.Statistics.dll'))) {
+                        throw "Registration failure was not reported with retained files and unchanged configuration: $failureOutput"
+                    }
+                    Write-Success 'Registration failure is explicit, original configuration and extracted files retained'
+                }
+                finally {
+                    Pop-Location
+                }
 
             # Test theme files (shows all template/asset sources)
             Write-Info "Running: revela theme files"
@@ -756,6 +1009,7 @@ try {
     # ========================================================================
     # STEP 8: Generate All (primary user command)
     # ========================================================================
+    }
     Write-Step "Step 8: Generate All"
     Measure-Step "Generate All" {
         Push-Location $SampleProjectDir
@@ -775,6 +1029,7 @@ try {
     # ========================================================================
     Write-Step "Step 9: Validate Output"
     Measure-Step "Validate" {
+        Assert-GeneratedOutput
         $outputDir = Join-Path $SampleProjectDir "output"
 
         if (-not (Test-Path $outputDir)) {
@@ -806,7 +1061,7 @@ try {
             Write-Success "Images generated: $imageCount files"
         }
         else {
-            Write-Warn "Images directory not found"
+            throw 'Images directory not found'
         }
 
         # Check gallery directories (exclude special dirs)
@@ -855,7 +1110,7 @@ try {
                 Write-Success "index.html contains valid HTML"
             }
             else {
-                Write-Warn "index.html may be invalid"
+                throw 'index.html is invalid'
             }
         }
 
@@ -869,6 +1124,24 @@ try {
     # ========================================================================
     # STEP 10: Compress (Plugin Integration Test)
     # ========================================================================
+    if ($Variant -eq 'Standalone') {
+        Measure-Step 'Standalone Regenerate' {
+            Push-Location $SampleProjectDir
+            try {
+                & $ExePath clean all
+                if ($LASTEXITCODE -ne 0) { throw 'Standalone clean all failed' }
+                $outputPath = Join-Path $SampleProjectDir 'output'
+                if (Test-Path -LiteralPath $outputPath) {
+                    if (@(Get-ChildItem -LiteralPath $outputPath -Recurse -File).Count -ne 0) { throw 'Standalone clean retained output' }
+                }
+                & $ExePath generate all
+                if ($LASTEXITCODE -ne 0) { throw 'Standalone regeneration failed' }
+                Assert-GeneratedOutput
+            }
+            finally { Pop-Location }
+        }
+    }
+    else {
     Write-Step "Step 10: Compress Plugin Test"
     Measure-Step "Compress" {
         Push-Location $SampleProjectDir
@@ -889,11 +1162,11 @@ try {
             $outputDir = Join-Path $SampleProjectDir "output"
             $gzFiles = @(Get-ChildItem $outputDir -Recurse -Filter "*.gz")
             $brFiles = @(Get-ChildItem $outputDir -Recurse -Filter "*.br")
-            if ($gzFiles.Count -gt 0 -or $brFiles.Count -gt 0) {
+            if ($gzFiles.Count -gt 0 -and $brFiles.Count -gt 0) {
                 Write-Success "Compressed files: $($gzFiles.Count) .gz, $($brFiles.Count) .br"
             }
             else {
-                Write-Warn "No compressed files found (may need compressible content)"
+                throw 'Expected both gzip and Brotli output for the generated showcase.'
             }
 
             # Test clean compress
@@ -907,7 +1180,7 @@ try {
                 Write-Success "clean compress removed all compressed files"
             }
             else {
-                Write-Warn "Some compressed files remain after clean"
+                throw 'Compressed files remain after clean compress.'
             }
         }
         finally {
@@ -933,7 +1206,7 @@ try {
                 Write-Success "clean all removed output"
             }
             else {
-                Write-Warn "Output directory not fully cleaned"
+                throw 'Output directory not fully cleaned.'
             }
 
             # Regenerate from scratch
@@ -1055,6 +1328,9 @@ try {
             Write-Info "Running: revela clean output"
             & $ExePath clean output
             if ($LASTEXITCODE -ne 0) { throw "clean output failed" }
+            if ((Test-Path -LiteralPath $outputDir) -and @(Get-ChildItem -LiteralPath $outputDir -Recurse -File).Count -gt 0) {
+                throw 'clean output retained generated files.'
+            }
 
             Write-Info "Running: revela clean cache"
             & $ExePath clean cache
@@ -1063,7 +1339,7 @@ try {
                 Write-Success "clean cache removed cache files"
             }
             else {
-                Write-Warn "clean cache may not have removed all files"
+                throw 'clean cache retained cache files.'
             }
 
             # Restore output for subsequent steps
@@ -1082,36 +1358,29 @@ try {
     # ========================================================================
     Write-Step "Step 12: Test .NET Tool Package"
     Measure-Step "ToolTest" {
-        # Use the pre-created ToolDir instead of separate nupkgs folder
-
-        Write-Info "Packing CLI as .NET Tool..."
-        dotnet pack src/Cli/Cli.csproj `
-            -c Release `
-            -o $ToolDir `
-            -p:Version=$Version `
-            -p:PackageVersion=$Version `
-            -p:DebugType=embedded `
-            -p:IncludeSymbols=false `
-            --no-restore `
-            --verbosity quiet
-        if ($LASTEXITCODE -ne 0) { throw "Pack failed" }
-        Write-Success "CLI packed to NuGet package"
-
-        $nupkgFile = Get-ChildItem -Path $ToolDir -Filter "Spectara.Revela.$Version.nupkg" | Select-Object -First 1
+        $nupkgFile = Get-Item -LiteralPath (Join-Path $PluginsDir "Spectara.Revela.$Version.nupkg")
         if (-not $nupkgFile) { throw "NuGet package not found" }
         Write-Info "Package: $($nupkgFile.Name) ($([Math]::Round($nupkgFile.Length / 1MB, 2)) MB)"
 
         Write-Info "Installing tool from local package..."
-        $toolInstallDir = Join-Path $TestDir "tool-install"
-        $installResult = dotnet tool install --tool-path $toolInstallDir Spectara.Revela `
+        $escapedFeed = [Security.SecurityElement]::Escape($PluginsDir)
+        [IO.File]::WriteAllText($ToolConfigPath, "<configuration><packageSources><clear /><add key=`"release-under-test`" value=`"$escapedFeed`" /></packageSources></configuration>")
+        $installResult = dotnet tool install --tool-path $ToolInstallDir Spectara.Revela `
             --version $Version `
-            --add-source $ToolDir `
+            --configfile $ToolConfigPath `
+            --no-cache `
             --verbosity quiet 2>&1
         if ($LASTEXITCODE -ne 0) {
             throw "Isolated tool installation failed: $installResult"
         }
         Write-Success "Tool installed in isolated test directory"
-        $toolExe = Join-Path $toolInstallDir $ExeName
+        $installedPackages = @(Get-ChildItem -LiteralPath $ToolInstallDir -Recurse -File -Filter "spectara.revela.$Version.nupkg")
+        if ($installedPackages.Count -ne 1 -or
+            (Get-FileHash -LiteralPath $installedPackages[0].FullName).Hash -cne (Get-FileHash -LiteralPath $nupkgFile.FullName).Hash) {
+            throw 'Installed tool package does not match the supplied release package hash.'
+        }
+        Write-Success 'Installed tool package SHA256 matches the exact supplied release package'
+        $toolExe = Join-Path $ToolInstallDir $ExeName
 
         $toolCheckFailed = $true
         try {
@@ -1120,7 +1389,7 @@ try {
             if ($LASTEXITCODE -ne 0) { throw "Tool command failed: $versionOutput" }
 
             # Verify version matches what we packed
-            if ($versionOutput -match "(?:^|\s)$([regex]::Escape($Version))(?:\s|$)") {
+            if (($versionOutput | Out-String).Trim() -cmatch $VersionPattern) {
                 Write-Success "Version matches: $versionOutput"
             }
             else {
@@ -1156,8 +1425,9 @@ try {
         & (Join-Path $ScriptDir 'test-sdk-consumer.ps1') -PackageDirectory $NuGetDir -Version $Version
         Write-Success "Actual release SDK package consumer verified"
     }
+    }
 
-    Write-Banner "Release Test Complete"
+    Write-Banner "$Variant Release Test Complete ($Mode)"
 
     $stopwatch.Stop()
     Write-Host ""
@@ -1179,19 +1449,44 @@ try {
     Write-Host "    Output:   $(Join-Path $SampleProjectDir 'output')" -ForegroundColor Gray
     Write-Host ""
 
-    Write-Host "  ✓ Release pipeline test PASSED" -ForegroundColor Green
+    Write-Host "  $Variant release suite passed; checking input preservation..." -ForegroundColor Green
     Write-Host ""
 
 }
 catch {
+    $PipelineFailure = $_
     Write-Host ""
     Write-Err "Pipeline failed: $_"
     Write-Host ""
     Write-Host $_.ScriptStackTrace -ForegroundColor DarkGray
-    exit 1
+    throw
 }
 finally {
     Pop-Location
+    foreach ($name in $SavedEnvironment.Keys) {
+        [Environment]::SetEnvironmentVariable($name, $SavedEnvironment[$name], 'Process')
+    }
+    try {
+        $afterHashes = Get-InputHashes $InputPaths
+        if (Test-Path -LiteralPath $TestDir) {
+            $afterHashes | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath (Join-Path $TestDir 'after-hashes.json') -Encoding utf8
+        }
+        if ($afterHashes.Count -ne $InputHashes.Count) { throw 'Input file inventory changed during release tests.' }
+        foreach ($entry in $InputHashes.GetEnumerator()) {
+            if (-not $afterHashes.ContainsKey($entry.Key) -or $afterHashes[$entry.Key] -cne $entry.Value) {
+                throw "Input file changed during release tests: $($entry.Key)"
+            }
+        }
+        Write-Success "Input preservation verified: $($InputHashes.Count) SHA256 hashes unchanged (artifact/feed and original showcase)"
+        if ($null -eq $PipelineFailure) { Write-Success "$Variant release pipeline test PASSED ($Mode)" }
+    }
+    catch {
+        if ($null -eq $PipelineFailure) { throw }
+        Write-Err "Input preservation also failed; retaining original pipeline failure: $_"
+    }
+    finally {
+        if ($TranscriptStarted) { Stop-Transcript | Out-Null }
+    }
 
     # Cleanup (unless -KeepArtifacts)
     if (-not $KeepArtifacts -and (Test-Path $TestDir)) {

@@ -51,6 +51,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
 
+      - name: Verify pipeline contracts
+        run: node --test scripts/tests/resolve-website-release.test.cjs
+
       # `cache: true` enables NuGet package caching keyed on packages.lock.json
       # / Directory.Packages.props. Saves ~30–60s per job after the first run.
       - name: Setup .NET
@@ -73,13 +76,23 @@ jobs:
         run: |
           dotnet build-server shutdown
           dotnet build src/Sdk.Generators/Sdk.Generators.csproj --no-restore -c Release
-          dotnet build Spectara.Revela.slnx --no-restore -c Release
+          dotnet build Spectara.Revela.slnx --no-restore -c Release -m:1
 
       - name: Run Tests
         # `--solution` is required for the new MTP-based dotnet test to
         # discover plugin test projects (without it only Core/Commands/
         # Integration are exercised — 168 plugin tests are silently skipped).
         run: dotnet test --solution Spectara.Revela.slnx --no-build -c Release --report-trx --results-directory ./TestResults --coverage --coverage-settings coverage.config --coverage-output-format cobertura
+
+      - name: Build source generator (Debug)
+        run: dotnet build src/Sdk.Generators/Sdk.Generators.csproj -c Debug --no-restore
+
+      - name: Verify formatting
+        run: dotnet format Spectara.Revela.slnx --verify-no-changes --no-restore --verbosity minimal
+
+      - name: Verify modular release packages
+        shell: pwsh
+        run: ./scripts/test-release.ps1 -SkipTests -Version 0.0.0-ci -KeepArtifacts
 
       # AOT regression canary — Cli.Embedded.csproj has <PublishAot>true</PublishAot>
       # unconditional, so this catches any reflection-based pattern that slips
@@ -152,4 +165,14 @@ jobs:
           name: test-results-${{ matrix.os }}
           path: |
             ./TestResults/**/*.trx
-            ./artifacts/bin/**/TestResults/**/*.cobertura.xml
+            ./TestResults/**/*.cobertura.xml
+
+      - name: Upload release test evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: release-tests-${{ matrix.os }}
+          path: |
+            artifacts/release-test-*/**/*.log
+            artifacts/release-test-*/**/*hashes*.json
+            artifacts/sdk-consumer-*/*.log

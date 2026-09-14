@@ -129,7 +129,9 @@ jobs:
       # `dotnet pack --no-build` with NU5026), and stack traces from the
       # released binaries still show file/line numbers.
       - name: Build
-        run: dotnet build Spectara.Revela.slnx -c Release --no-restore -p:Version=${{ env.VERSION }} -p:DebugType=embedded
+        run: |
+          dotnet build src/Sdk.Generators/Sdk.Generators.csproj -c Release --no-restore -p:Version=${{ env.VERSION }} -p:DebugType=embedded
+          dotnet build Spectara.Revela.slnx -c Release -m:1 --no-restore -p:Version=${{ env.VERSION }} -p:DebugType=embedded
 
       - name: Test
         run: dotnet test --solution Spectara.Revela.slnx -c Release --no-build --no-restore
@@ -145,6 +147,10 @@ jobs:
 
       - name: List NuGet packages
         run: ls -lh ./nupkgs/
+
+      - name: Verify packaged SDK consumer
+        shell: pwsh
+        run: ./scripts/test-sdk-consumer.ps1 -PackageDirectory ./nupkgs -Version $env:VERSION
 
       - name: Attest build provenance
         uses: actions/attest-build-provenance@v4
@@ -357,6 +363,36 @@ jobs:
           fi
 
       # === Attestation & Upload ===
+      - name: Verify final release archives
+        shell: pwsh
+        env:
+          RELEASE_VERSION: ${{ needs.validate.outputs.version }}
+          RELEASE_RID: ${{ matrix.rid }}
+        run: |
+          $extension = if ($env:RELEASE_RID.StartsWith('win-')) { 'zip' } else { 'tar.gz' }
+          foreach ($variant in @('Core', 'Full', 'Standalone')) {
+            $arguments = @{
+              ArtifactPath = "./revela-$env:RELEASE_RID-$($variant.ToLowerInvariant()).$extension"
+              Variant = $variant
+              Version = $env:RELEASE_VERSION
+              RuntimeIdentifier = $env:RELEASE_RID
+              KeepArtifacts = $true
+            }
+            if ($variant -eq 'Core') { $arguments.PackageDirectory = './publish/packages' }
+            ./scripts/test-release.ps1 @arguments
+          }
+
+      - name: Upload artifact test evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: artifact-tests-${{ matrix.rid }}
+          path: |
+            artifacts/release-test-*/**/*.log
+            artifacts/release-test-*/**/*hashes*.json
+            artifacts/sdk-consumer-*/*.log
+          if-no-files-found: warn
+
       - name: Attest Core build provenance
         uses: actions/attest-build-provenance@v4
         with:
@@ -576,6 +612,22 @@ jobs:
             artifacts/**/SHA256SUMS
             artifacts/**/*.sig
             artifacts/**/*.crt
+
+      - name: Record published release identity
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+          RELEASE_COMMIT: ${{ github.sha }}
+          RELEASE_VERSION: ${{ needs.validate.outputs.version }}
+        run: |
+          node -e 'const fs = require("node:fs"); fs.mkdirSync("release-identity"); fs.writeFileSync("release-identity/release-metadata.json", JSON.stringify({tag: process.env.RELEASE_TAG, commit: process.env.RELEASE_COMMIT, version: process.env.RELEASE_VERSION, runId: process.env.GITHUB_RUN_ID, runAttempt: process.env.GITHUB_RUN_ATTEMPT}));'
+
+      - name: Upload published release identity
+        uses: actions/upload-artifact@v7
+        with:
+          name: release-identity-${{ github.run_attempt }}
+          path: release-identity/release-metadata.json
+          if-no-files-found: error
+          retention-days: 90
 
   # Publish NuGet packages (requires manual approval)
   #
