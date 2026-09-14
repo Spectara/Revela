@@ -72,3 +72,36 @@ remain skipped on this host: eight Unix permission cases and one privileged
 file-symlink case. Independent closure review found no remaining blocker in the
 repaired scope; other platforms and remote execution remain unverified. See the
 plan for failed intermediate checks, parent repairs and exact evidence paths.
+
+## R1 Follow-up: Shared Project Writer
+
+Accepted and implemented on 2026-09-14; this extends the project-update decision
+above, without changing its validation policy or the public SDK contract.
+The [later review](../reviews/release-readiness-beta.21-2026-09-13.md) found a
+separate package writer that bypassed it.
+
+- Package registration sends minimal patches through the existing `IConfigService`.
+  Its singleton serializes read, merge, validation, staged replacement and reload,
+  including updates from separate transient package services within the same host.
+- Null patches delete against the current document inside that operation. A
+  deletion-only nested patch does not create missing ancestors or null package
+  entries. Valid semantic no-ops preserve bytes and do not trigger a reload;
+  original-provider validation still runs. Explicit empty objects remain supported.
+- A registration failure after extraction is a failed install, with an explicit
+  retained-files diagnostic and no success announcement or next-feed fallback.
+  Cancellation remains cancellation through the installer, restore and install
+  command. No automatic rollback of extracted files is promised.
+- The lock is per service instance, not interprocess or cross-host coordination.
+  It does not protect against arbitrary external edits, crashes or power loss.
+
+Keeping an independent package writer would duplicate validation and still race
+with ordinary configuration commands. Locking only replacement would retain the
+stale-read problem. Automatic extraction rollback was rejected because installation
+can replace existing files and registration failure alone does not establish which
+files can safely be deleted or restored.
+
+The [R1 remediation record](../reviews/remediation-r1-beta.21-2026-09-14.md)
+contains Worker trials, independent findings and parent integration evidence:
+Windows and Linux full tests, actual Windows package installs/parallel restore,
+and a fresh Linux Native AOT configuration round-trip. Other release/platform
+gates remain explicitly separate.
