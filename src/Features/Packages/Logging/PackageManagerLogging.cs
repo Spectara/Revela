@@ -50,6 +50,9 @@ internal static partial class PackageManagerLogging
     [LoggerMessage(Level = LogLevel.Information, Message = "Plugin {PackageId} installed successfully")]
     public static partial void PluginInstalled(this ILogger<PackageManager> logger, string packageId);
 
+    [LoggerMessage(Level = LogLevel.Error, Message = "Plugin {PackageId}: files extracted but project registration failed. Extracted files were retained.")]
+    public static partial void ProjectRegistrationFailed(this ILogger<PackageManager> logger, Exception exception, string packageId);
+
     // Multi-source discovery logging
     [LoggerMessage(Level = LogLevel.Debug, Message = "Using named source '{SourceName}' -> {Url}")]
     public static partial void UsingNamedSource(this ILogger<PackageManager> logger, string sourceName, string url);

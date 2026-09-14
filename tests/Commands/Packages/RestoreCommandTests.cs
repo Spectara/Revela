@@ -4,6 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using NSubstitute;
+using Spectara.Revela.Commands;
 using Spectara.Revela.Commands.Restore;
 using Spectara.Revela.Core;
 using Spectara.Revela.Core.Services;
@@ -359,9 +360,10 @@ public sealed class RestoreCommandTests
         var environment = Options.Create(new ProjectEnvironment { Path = project.RootPath });
         var packageLogger = Substitute.For<ILogger<PackageManager>>();
         var sourceManager = Substitute.For<INuGetSourceManager>();
+        using var host = RevelaTestHost.Build(project.RootPath, services => services.AddRevelaCommands());
         var services = new ServiceCollection();
         services.AddSingleton(new NupkgExtractor(NullLogger<NupkgExtractor>.Instance, TimeProvider.System));
-        services.AddSingleton(new PluginProjectService(environment, NullLogger<PluginProjectService>.Instance));
+        services.AddSingleton(new PluginProjectService(host.Services.GetRequiredService<IConfigService>(), NullLogger<PluginProjectService>.Instance));
         services.AddSingleton(packageLogger);
         services.AddSingleton(sourceManager);
         services.AddHttpClient<PackageManager>()

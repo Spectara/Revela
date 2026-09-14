@@ -27,12 +27,17 @@ internal sealed partial class ConfigService(
     IOptionsMonitorCache<ThemeConfig> themeCache,
     IOptionsMonitorCache<ProjectConfig> projectCache,
     IOptionsMonitorCache<GenerateConfig> generateCache,
-    IOptionsMonitorCache<DependenciesConfig> dependenciesCache) : IConfigService
+    IOptionsMonitorCache<DependenciesConfig> dependenciesCache) : IConfigService, IDisposable
 {
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         WriteIndented = true
     };
+
+    private readonly SemaphoreSlim updateGate = new(1, 1);
+    private readonly Lock lifetimeGate = new();
+    private int pendingUpdates;
+    private bool disposed;
 
     /// <inheritdoc />
     public string ProjectConfigPath => Path.Combine(projectEnvironment.Value.Path, "project.json");
@@ -69,11 +74,69 @@ internal sealed partial class ConfigService(
     /// <inheritdoc />
     public async Task UpdateProjectConfigAsync(JsonObject updates, CancellationToken cancellationToken = default)
     {
+        lock (lifetimeGate)
+        {
+            ObjectDisposedException.ThrowIf(disposed, this);
+            pendingUpdates++;
+        }
+
+        try
+        {
+            await updateGate.WaitAsync(cancellationToken);
+            try
+            {
+                await UpdateProjectConfigCoreAsync(updates, cancellationToken);
+            }
+            finally
+            {
+                updateGate.Release();
+            }
+        }
+        finally
+        {
+            lock (lifetimeGate)
+            {
+                pendingUpdates--;
+                if (disposed && pendingUpdates == 0)
+                {
+                    updateGate.Dispose();
+                }
+            }
+        }
+    }
+
+    /// <inheritdoc />
+    public void Dispose()
+    {
+        lock (lifetimeGate)
+        {
+            if (disposed)
+            {
+                return;
+            }
+
+            disposed = true;
+            if (pendingUpdates == 0)
+            {
+                updateGate.Dispose();
+            }
+        }
+    }
+
+    private async Task UpdateProjectConfigCoreAsync(JsonObject updates, CancellationToken cancellationToken)
+    {
         cancellationToken.ThrowIfCancellationRequested();
         var existing = await ReadProjectConfigForUpdateAsync(cancellationToken);
+        var original = existing.DeepClone();
 
         // Deep merge updates into existing
         DeepMerge(existing, updates);
+
+        cancellationToken.ThrowIfCancellationRequested();
+        if (JsonNode.DeepEquals(original, existing))
+        {
+            return;
+        }
 
         var json = Encoding.UTF8.GetBytes(existing.ToJsonString(JsonOptions));
         ValidateProjectConfiguration(json);
@@ -214,11 +277,21 @@ internal sealed partial class ConfigService(
                 // Null value means "remove this key"
                 target.Remove(key);
             }
-            else if (property.Value is JsonObject sourceObj &&
-                target[key] is JsonObject targetObj)
+            else if (property.Value is JsonObject sourceObj)
             {
-                // Both are objects: merge recursively
-                DeepMerge(targetObj, sourceObj);
+                if (target[key] is JsonObject targetObj)
+                {
+                    DeepMerge(targetObj, sourceObj);
+                }
+                else
+                {
+                    var merged = new JsonObject();
+                    DeepMerge(merged, sourceObj);
+                    if (merged.Count > 0 || sourceObj.Count == 0)
+                    {
+                        target[key] = merged;
+                    }
+                }
             }
             else
             {

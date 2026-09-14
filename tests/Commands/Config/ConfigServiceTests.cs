@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
@@ -13,6 +14,303 @@ namespace Spectara.Revela.Tests.Commands.Config;
 [TestCategory("Integration")]
 public sealed class ConfigServiceTests
 {
+    private static readonly TimeSpan OperationTimeout = TimeSpan.FromSeconds(10);
+
+    [TestMethod]
+    [DataRow("{}")]
+    [DataRow(/*lang=json,strict*/ "{\"New\":\"old-scalar\"}")]
+    [DataRow(/*lang=json,strict*/ "{\"New\":null}")]
+    public async Task UpdateProjectConfigAsync_NewNestedObject_AppliesDeletionWithoutMutatingPatch(string originalJson)
+    {
+        using var project = TestProject.Create();
+        await File.WriteAllTextAsync(project.ProjectJsonPath, originalJson);
+        using var host = RevelaTestHost.Build(project.RootPath, services => services.AddRevelaCommands());
+        var configService = host.Services.GetRequiredService<IConfigService>();
+        var updates = new JsonObject
+        {
+            ["New"] = new JsonObject
+            {
+                ["Deleted"] = null,
+                ["Nested"] = new JsonObject { ["Added"] = "kept", ["Deleted"] = null },
+                ["DeletionOnly"] = new JsonObject { ["Nested"] = new JsonObject { ["Deleted"] = null } },
+                ["Empty"] = new JsonObject(),
+                ["Values"] = new JsonArray(null, "replacement", null)
+            }
+        };
+        var originalPatch = updates.DeepClone();
+
+        await configService.UpdateProjectConfigAsync(updates);
+
+        var saved = await configService.ReadProjectConfigAsync();
+        var expected = JsonNode.Parse("""
+            {"New":{"Nested":{"Added":"kept"},"Empty":{},"Values":[null,"replacement",null]}}
+            """);
+        Assert.IsTrue(JsonNode.DeepEquals(expected, saved));
+        Assert.IsTrue(JsonNode.DeepEquals(originalPatch, updates));
+        using var stream = File.OpenRead(project.ProjectJsonPath);
+        using var reopened = (ConfigurationRoot)new ConfigurationBuilder().AddJsonStream(stream).Build();
+        Assert.AreEqual("kept", reopened["new:nested:added"]);
+        Assert.HasCount(1, reopened.GetSection("new:nested").GetChildren());
+        Assert.IsEmpty(reopened.GetSection("new:deletiononly").GetChildren());
+        Assert.IsEmpty(GetTempFiles(project.RootPath));
+    }
+
+    [TestMethod]
+    [DataRow("{}")]
+    [DataRow(/*lang=json,strict*/ "{\"settings\":{\"value\":\"preserved\"}}")]
+    [DataRow(/*lang=json,strict*/ "{\"Missing\":{\"Nested\":{\"Deleted\":null}}}")]
+    [DataRow(/*lang=json,strict*/ "{\"RawNull\":{\"Deleted\":null}}")]
+    [DataRow(/*lang=json,strict*/ "{\"settings\":{\"value\":{\"Deleted\":null}}}")]
+    public async Task UpdateProjectConfigAsync_NoEffectiveChanges_PreservesBytesAndDoesNotReload(string patchJson)
+    {
+        using var project = TestProject.Create();
+        await File.WriteAllTextAsync(project.ProjectJsonPath, /*lang=json*/ """
+            {
+                // Keep comments, whitespace, BOM and untouched literal nulls.
+                "Settings": { "Value": "preserved", },
+                "RawNull": null,
+            }
+            """, new UTF8Encoding(encoderShouldEmitUTF8Identifier: true));
+        using var host = RevelaTestHost.Build(project.RootPath, services => services.AddRevelaCommands());
+        var configService = host.Services.GetRequiredService<IConfigService>();
+        var reload = host.Services.GetRequiredService<IConfiguration>().GetReloadToken();
+        var original = await File.ReadAllBytesAsync(project.ProjectJsonPath);
+
+        await configService.UpdateProjectConfigAsync(JsonNode.Parse(patchJson)!.AsObject());
+
+        CollectionAssert.AreEqual(original, await File.ReadAllBytesAsync(project.ProjectJsonPath));
+        Assert.IsFalse(reload.HasChanged);
+        Assert.IsEmpty(GetTempFiles(project.RootPath));
+    }
+
+    [TestMethod]
+    [DataRow("{}")]
+    [DataRow(/*lang=json,strict*/ "{\"Missing\":{\"Deleted\":null}}")]
+    public async Task UpdateProjectConfigAsync_NoEffectiveChanges_StillValidatesOriginal(string patchJson)
+    {
+        using var project = TestProject.Create();
+        using var host = RevelaTestHost.Build(project.RootPath, services => services.AddRevelaCommands());
+        var configService = host.Services.GetRequiredService<IConfigService>();
+        var reload = host.Services.GetRequiredService<IConfiguration>().GetReloadToken();
+        await File.WriteAllTextAsync(project.ProjectJsonPath, /*lang=json,strict*/ """
+            {"Paths":{"Source":"original"},"paths:source":"collision"}
+            """);
+        var original = await File.ReadAllBytesAsync(project.ProjectJsonPath);
+
+        await Assert.ThrowsExactlyAsync<FormatException>(() => configService.UpdateProjectConfigAsync(
+            JsonNode.Parse(patchJson)!.AsObject()));
+
+        CollectionAssert.AreEqual(original, await File.ReadAllBytesAsync(project.ProjectJsonPath));
+        Assert.IsFalse(reload.HasChanged);
+        Assert.IsEmpty(GetTempFiles(project.RootPath));
+    }
+
+    [TestMethod]
+    public async Task UpdateProjectConfigAsync_CanceledWhileReloadInProgress_DoesNotAccessFileAndAllowsNextUpdate()
+    {
+        using var project = TestProject.Create(p => p.WithProjectJson(new
+        {
+            Settings = new { Sibling = "preserved" }
+        }));
+        using var host = RevelaTestHost.Build(project.RootPath, services => services.AddRevelaCommands());
+        using var scope = host.Services.CreateScope();
+        var configService = host.Services.GetRequiredService<IConfigService>();
+        var secondWriter = scope.ServiceProvider.GetRequiredService<IConfigService>();
+        Assert.AreSame(configService, secondWriter);
+        var configuration = host.Services.GetRequiredService<IConfiguration>();
+        var reloadEntered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var releaseReload = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        using var registration = configuration.GetReloadToken().RegisterChangeCallback(_ =>
+        {
+            reloadEntered.TrySetResult();
+            if (!releaseReload.Task.Wait(OperationTimeout))
+            {
+                throw new TimeoutException("The test did not release the configuration reload.");
+            }
+        }, null);
+        var firstUpdate = Task.Run(() => configService.UpdateProjectConfigAsync(
+            new JsonObject { ["settings"] = new JsonObject { ["first"] = "committed" } }));
+
+        try
+        {
+            await reloadEntered.Task.WaitAsync(OperationTimeout);
+            var committed = await File.ReadAllBytesAsync(project.ProjectJsonPath);
+            using var cancellation = new CancellationTokenSource();
+            using (var exclusiveRead = new FileStream(project.ProjectJsonPath, FileMode.Open, FileAccess.Read, FileShare.None))
+            {
+                var queuedUpdate = secondWriter.UpdateProjectConfigAsync(
+                    new JsonObject { ["settings"] = new JsonObject { ["canceled"] = "must-not-appear" } },
+                    cancellation.Token);
+                var completedBeforeCancellation = queuedUpdate.IsCompleted;
+                await cancellation.CancelAsync();
+
+                await Assert.ThrowsAsync<OperationCanceledException>(() => queuedUpdate.WaitAsync(OperationTimeout));
+                Assert.IsFalse(completedBeforeCancellation, "The second writer must wait for reload to finish.");
+            }
+
+            CollectionAssert.AreEqual(committed, await File.ReadAllBytesAsync(project.ProjectJsonPath));
+            Assert.IsFalse(firstUpdate.IsCompleted);
+            Assert.IsEmpty(GetTempFiles(project.RootPath));
+        }
+        finally
+        {
+            releaseReload.TrySetResult();
+            await firstUpdate.WaitAsync(OperationTimeout);
+        }
+
+        await secondWriter.UpdateProjectConfigAsync(
+            new JsonObject { ["settings"] = new JsonObject { ["next"] = "succeeded" } }).WaitAsync(OperationTimeout);
+
+        Assert.AreEqual("committed", configuration["settings:first"]);
+        Assert.AreEqual("succeeded", configuration["settings:next"]);
+        Assert.AreEqual("preserved", configuration["settings:sibling"]);
+        Assert.IsNull(configuration["settings:canceled"]);
+        using var stream = File.OpenRead(project.ProjectJsonPath);
+        using var reopened = (ConfigurationRoot)new ConfigurationBuilder().AddJsonStream(stream).Build();
+        Assert.AreEqual("committed", reopened["settings:first"]);
+        Assert.AreEqual("succeeded", reopened["settings:next"]);
+        Assert.AreEqual("preserved", reopened["settings:sibling"]);
+        Assert.IsNull(reopened["settings:canceled"]);
+        Assert.IsEmpty(GetTempFiles(project.RootPath));
+    }
+
+    [TestMethod]
+    public async Task UpdateProjectConfigAsync_DisposedDuringReload_CompletesActiveAndQueuedUpdates()
+    {
+        using var project = TestProject.Create(p => p.WithProjectJson(new
+        {
+            Settings = new { Sibling = "preserved" }
+        }));
+        using var host = RevelaTestHost.Build(project.RootPath, services => services.AddRevelaCommands());
+        var configService = host.Services.GetRequiredService<IConfigService>();
+        var configuration = host.Services.GetRequiredService<IConfiguration>();
+        var reloadEntered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var releaseReload = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        using var registration = configuration.GetReloadToken().RegisterChangeCallback(_ =>
+        {
+            reloadEntered.TrySetResult();
+            if (!releaseReload.Task.Wait(OperationTimeout))
+            {
+                throw new TimeoutException("The test did not release the configuration reload.");
+            }
+        }, null);
+        var firstUpdate = Task.Run(() => configService.UpdateProjectConfigAsync(
+            new JsonObject { ["settings"] = new JsonObject { ["first"] = "committed" } }));
+        var queuedUpdate = Task.CompletedTask;
+
+        try
+        {
+            await reloadEntered.Task.WaitAsync(OperationTimeout);
+            queuedUpdate = configService.UpdateProjectConfigAsync(
+                new JsonObject { ["settings"] = new JsonObject { ["queued"] = "succeeded" } });
+            ((IDisposable)configService).Dispose();
+
+            Assert.IsFalse(firstUpdate.IsCompleted);
+            Assert.IsFalse(queuedUpdate.IsCompleted);
+        }
+        finally
+        {
+            releaseReload.TrySetResult();
+            await Task.WhenAll(firstUpdate, queuedUpdate).WaitAsync(OperationTimeout);
+        }
+
+        await Assert.ThrowsExactlyAsync<ObjectDisposedException>(() => configService.UpdateProjectConfigAsync(
+            new JsonObject { ["settings"] = new JsonObject { ["rejected"] = "must-not-appear" } }));
+        Assert.AreEqual("committed", configuration["settings:first"]);
+        Assert.AreEqual("succeeded", configuration["settings:queued"]);
+        Assert.AreEqual("preserved", configuration["settings:sibling"]);
+        Assert.IsNull(configuration["settings:rejected"]);
+        Assert.IsEmpty(GetTempFiles(project.RootPath));
+    }
+
+    [TestMethod]
+    public async Task UpdateProjectConfigAsync_ConcurrentUpdates_PreservesEveryUniqueKeyAndSibling()
+    {
+        using var project = TestProject.Create(p => p.WithProjectJson(new
+        {
+            Plugins = new { Existing = "preserved" },
+            Settings = new { Sibling = "untouched" }
+        }));
+        using var host = RevelaTestHost.Build(project.RootPath, services => services.AddRevelaCommands());
+        var configService = host.Services.GetRequiredService<IConfigService>();
+        var configuration = host.Services.GetRequiredService<IConfiguration>();
+        var start = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var packageNames = Enumerable.Range(0, 16)
+            .Select(index => $"Package{index.ToString(CultureInfo.InvariantCulture)}")
+            .ToArray();
+        var updates = packageNames.Select(packageName => Task.Run(async () =>
+        {
+            await start.Task;
+            await configService.UpdateProjectConfigAsync(
+                new JsonObject { ["plugins"] = new JsonObject { [packageName] = "1.0.0" } });
+        })).ToArray();
+
+        start.SetResult();
+        await Task.WhenAll(updates).WaitAsync(OperationTimeout);
+
+        using var stream = File.OpenRead(project.ProjectJsonPath);
+        using var reopened = (ConfigurationRoot)new ConfigurationBuilder().AddJsonStream(stream).Build();
+        foreach (var packageName in packageNames)
+        {
+            Assert.AreEqual("1.0.0", configuration[$"plugins:{packageName}"]);
+            Assert.AreEqual("1.0.0", reopened[$"plugins:{packageName}"]);
+        }
+
+        Assert.HasCount(packageNames.Length + 1, reopened.GetSection("plugins").GetChildren());
+        Assert.AreEqual("preserved", configuration["plugins:existing"]);
+        Assert.AreEqual("untouched", configuration["settings:sibling"]);
+        Assert.AreEqual("preserved", reopened["plugins:existing"]);
+        Assert.AreEqual("untouched", reopened["settings:sibling"]);
+        Assert.IsEmpty(GetTempFiles(project.RootPath));
+    }
+
+    [TestMethod]
+    public async Task UpdateProjectConfigAsync_InvalidCandidate_AllowsSubsequentUpdate()
+    {
+        using var project = TestProject.Create(p => p.WithProjectJson(new
+        {
+            Settings = new { Sibling = "preserved" }
+        }));
+        using var host = RevelaTestHost.Build(project.RootPath, services => services.AddRevelaCommands());
+        var configService = host.Services.GetRequiredService<IConfigService>();
+        var configuration = host.Services.GetRequiredService<IConfiguration>();
+
+        await Assert.ThrowsExactlyAsync<FormatException>(() => configService.UpdateProjectConfigAsync(
+            new JsonObject { ["settings:sibling"] = "collision" }).WaitAsync(OperationTimeout));
+
+        await configService.UpdateProjectConfigAsync(
+            new JsonObject { ["settings"] = new JsonObject { ["next"] = "succeeded" } }).WaitAsync(OperationTimeout);
+
+        Assert.AreEqual("succeeded", configuration["settings:next"]);
+        Assert.AreEqual("preserved", configuration["settings:sibling"]);
+        Assert.IsEmpty(GetTempFiles(project.RootPath));
+    }
+
+    [TestMethod]
+    public async Task UpdateProjectConfigAsync_ReloadThrows_AllowsSubsequentUpdate()
+    {
+        using var project = TestProject.Create(p => p.WithProjectJson(new
+        {
+            Settings = new { Sibling = "preserved" }
+        }));
+        using var host = RevelaTestHost.Build(project.RootPath, services => services.AddRevelaCommands());
+        var configService = host.Services.GetRequiredService<IConfigService>();
+        var configuration = host.Services.GetRequiredService<IConfiguration>();
+        using var registration = configuration.GetReloadToken().RegisterChangeCallback(
+            _ => throw new InvalidOperationException("Injected reload failure."), null);
+
+        await Assert.ThrowsExactlyAsync<AggregateException>(() => configService.UpdateProjectConfigAsync(
+            new JsonObject { ["settings"] = new JsonObject { ["first"] = "committed" } }).WaitAsync(OperationTimeout));
+
+        await configService.UpdateProjectConfigAsync(
+            new JsonObject { ["settings"] = new JsonObject { ["next"] = "succeeded" } }).WaitAsync(OperationTimeout);
+
+        Assert.AreEqual("committed", configuration["settings:first"]);
+        Assert.AreEqual("succeeded", configuration["settings:next"]);
+        Assert.AreEqual("preserved", configuration["settings:sibling"]);
+        Assert.IsEmpty(GetTempFiles(project.RootPath));
+    }
+
     [TestMethod]
     public async Task UpdateProjectConfigAsync_MixedCaseKeys_UpdatesExistingValueAndReloadsConfiguration()
     {

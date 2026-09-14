@@ -191,6 +191,10 @@ internal sealed partial class RestoreCommand(
                                 installFailed.Add((dep, "Installation failed (see logs)"));
                             }
                         }
+                        catch (OperationCanceledException)
+                        {
+                            throw;
+                        }
                         catch (Exception ex)
                         {
                             installFailed.Add((dep, ex.Message));

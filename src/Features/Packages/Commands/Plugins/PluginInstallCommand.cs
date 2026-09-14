@@ -4,6 +4,7 @@ using Spectara.Revela.Core.Helpers;
 using Spectara.Revela.Core.Models;
 using Spectara.Revela.Core.Services;
 using Spectara.Revela.Sdk;
+using Spectara.Revela.Sdk.Abstractions;
 using Spectara.Revela.Sdk.Output;
 using Spectara.Revela.Sdk.Services;
 using Spectre.Console;
@@ -17,12 +18,34 @@ namespace Spectara.Revela.Commands.Plugins;
 /// Installs plugins from NuGet. Before running, use 'revela packages refresh'
 /// to update the package index for better type validation.
 /// </remarks>
-internal sealed partial class PluginInstallCommand(
-    ILogger<PluginInstallCommand> logger,
-    PackageManager pluginManager,
-    IPackageIndexService packageIndexService,
-    IGlobalConfigManager globalConfigManager)
+internal sealed partial class PluginInstallCommand
 {
+    private readonly ILogger<PluginInstallCommand> logger;
+    private readonly IPackageInstaller pluginManager;
+    private readonly IPackageIndexService packageIndexService;
+    private readonly IGlobalConfigManager globalConfigManager;
+
+    public PluginInstallCommand(
+        ILogger<PluginInstallCommand> logger,
+        PackageManager pluginManager,
+        IPackageIndexService packageIndexService,
+        IGlobalConfigManager globalConfigManager)
+        : this(logger, (IPackageInstaller)pluginManager, packageIndexService, globalConfigManager)
+    {
+    }
+
+    internal PluginInstallCommand(
+        ILogger<PluginInstallCommand> commandLogger,
+        IPackageInstaller installer,
+        IPackageIndexService indexService,
+        IGlobalConfigManager configManager)
+    {
+        logger = commandLogger;
+        pluginManager = installer;
+        packageIndexService = indexService;
+        globalConfigManager = configManager;
+    }
+
     /// <summary>
     /// Creates the command definition.
     /// </summary>
@@ -338,6 +361,10 @@ internal sealed partial class PluginInstallCommand(
                 AnsiConsole.MarkupLine($"{OutputMarkers.Error} Failed to install plugin [cyan]{Markup.Escape(packageId)}[/]");
                 return 1;
             }
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
         }
         catch (Exception ex)
         {
