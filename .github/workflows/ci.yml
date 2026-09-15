@@ -29,6 +29,9 @@ on:
       - '.github/dependabot.yml'
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 # Cancel previous runs on the same branch / PR when a new commit comes in
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}

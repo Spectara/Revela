@@ -24,6 +24,43 @@ side-effect-free local check.
 
 ## CI Gates
 
+### Action Versions
+
+Stable upstream releases checked on 2026-09-14. Existing major-tag tracking is
+retained; this is not a migration to commit-SHA pinning. Dependabot checks the
+GitHub Actions ecosystem weekly. Version updates still require workflow tests.
+
+| Action | Workflow reference | Latest stable release checked |
+| --- | --- | --- |
+| actions/checkout | v7 | v7.0.1 |
+| actions/setup-dotnet | v6 | v6.0.0 |
+| actions/upload-artifact | v7 | v7.0.1 |
+| actions/download-artifact | v8 | v8.0.1 |
+| actions/github-script | v9 | v9.0.0 |
+| actions/upload-pages-artifact | v5 | v5.0.0 |
+| actions/deploy-pages | v5 | v5.0.1 |
+| actions/attest-build-provenance | v4 | v4.2.2 |
+| sigstore/cosign-installer | v4 | v4.1.2 |
+| softprops/action-gh-release | v3 | v3.0.3 |
+| robinraju/release-downloader | v1 | v1.13 |
+
+The installer explicitly selects Cosign `v3.1.3`, rather than its older default.
+Cosign 3 requires verification bundles for blob signing; the signing and release
+steps publish `.sigstore.json` files as described below. The github-script v9
+resolver uses Node built-ins and the provided client, not the removed
+`require('@actions/github')` path. Its new injected `getOctokit` parameter is
+included in the local resolver test context.
+
+SDK selection continues to follow the repository's `global.json`. Hosted runner
+labels and platform coverage are unchanged; an Action update is not a new
+platform support claim. NuGet.org publishing remains disabled.
+
+### Execution
+
+CI and Release default to `contents: read`. Release jobs explicitly add only
+their required signing, attestation or release-publication rights. The website
+workflow retains its separate Actions/Pages permissions.
+
 On Windows, Linux and macOS, CI builds the source generator and full solution in
 Release, then runs `dotnet test --solution Spectara.Revela.slnx --no-build -c Release`
 with TRX and Cobertura coverage. Reports are uploaded from `TestResults`.
@@ -47,8 +84,10 @@ variants. It supplements the modular suite.
 
 The job chain is `validate -> packages -> build -> sign -> release -> publish-nuget`.
 
-1. `validate` resolves and validates the version. Tag-push runs also compare it
-	with existing version tags.
+1. `validate` reads event/version/ref data through environment variables and
+	invokes [validate-release-version.ps1](../../scripts/validate-release-version.ps1).
+	Only a completely validated version becomes a workflow output. Tag-push runs
+	must be strictly newer than all other release tags by SemVer precedence.
 2. `packages` builds the Release solution, runs its full tests, then packs those
 	binaries with `--no-build --no-restore`. It tests an isolated consumer of the
 	packaged SDK before attesting and uploading the packages as `nupkgs`.
@@ -76,6 +115,29 @@ Full and Core run the modular suite; Standalone tests its Native AOT host and
 supplied native companion without plugin management. Core does not ship a usable
 theme. See [local artifact testing](../../docs/development.md#test-existing-release-artifacts)
 for input preservation, host requirements and the limited Core restore fixture.
+
+### Release Version Policy
+
+The supported syntax remains `X.Y.Z[-alphanumeric[.digits]]`, for example
+`1.0.0`, `1.0.0-beta` or `0.0.1-beta.21`. Numeric identifiers must be canonical,
+without leading zeros. Hyphenated labels, multiple textual prerelease identifiers,
+build metadata, whitespace and shell expressions are rejected. Values must fit
+PowerShell's built-in `SemanticVersion` parser; its comparer supplies precedence,
+not a shell version sort. Thus `1.0.0` follows `1.0.0-rc.1`, and `beta.10` follows
+`beta.2` at the same core version.
+
+A push must reference a lower-case `v`-prefixed tag. The exact current tag is
+excluded from the comparison; invalid historical `v`-prefixed tags fail closed
+instead of being silently ignored. The validator only lists tags and never
+creates or modifies them. Manual dispatch requires an explicit version, but
+allows an older or equal valid version for testing without consulting tags.
+
+Local regression checks run through
+`node --test scripts/tests/resolve-website-release.test.cjs` and require `pwsh`
+on PATH. They verify rejection without changing the output, SemVer ordering,
+tag-enumeration errors and workflow permissions. Native Windows and Linux checks
+also exercised the script with real repository tags. These checks do not start
+a hosted workflow or validate newly changed .NET dependencies.
 
 ## Website Release Identity
 
@@ -137,10 +199,8 @@ artifacts/
   nupkgs/Spectara.Revela.Sdk.<VERSION>.nupkg
   signatures/
 	 SHA256SUMS
-	 SHA256SUMS.sig
-	 SHA256SUMS.crt
-	 win-x64-full/revela-win-x64-full.zip.sig
-	 win-x64-full/revela-win-x64-full.zip.crt
+	 SHA256SUMS.sigstore.json
+	 win-x64-full/revela-win-x64-full.zip.sigstore.json
 ```
 
 Run GNU `sha256sum` from that root, not from `signatures`:
@@ -158,9 +218,10 @@ archives and packages before a complete manifest check.
 ### Signature Identity
 
 Follow [cosign blob verification](https://docs.sigstore.dev/cosign/verifying/verify/)
-for the installed cosign version. Verify `SHA256SUMS` and each distributed archive
-or package with its matching `.sig` and `.crt`. For an artifact at `<relative-path>`,
-the workflow download stores these in `signatures/<relative-path>.sig` and `.crt`.
+using Cosign 3. Verify `SHA256SUMS` and each distributed archive or package with
+its matching `.sigstore.json` bundle. It includes the signature, certificate and
+verification material. For an artifact at `<relative-path>`, the workflow download
+stores the bundle in `signatures/<relative-path>.sigstore.json`.
 
 Keyless verification must constrain both `--certificate-identity-regexp` and
 `--certificate-oidc-issuer`; a signature alone is insufficient. For a tag-push
@@ -176,6 +237,21 @@ Replace `<REGEX_ESCAPED_VERSION>` with the exact version, escaping regex charact
 the exact selected ref's identity, such as `refs/heads/main`; do not broaden the
 expression to accept arbitrary workflows or refs. These are verification
 requirements, not a claim that cosign has been run locally.
+
+For example, from the downloaded workflow artifacts root, after replacing the
+version with the release being checked:
+
+```bash
+cosign verify-blob \
+	--bundle signatures/SHA256SUMS.sigstore.json \
+	--certificate-identity-regexp '^https://github\.com/Spectara/Revela/\.github/workflows/release\.yml@refs/tags/v0\.0\.1-beta\.21$' \
+	--certificate-oidc-issuer https://token.actions.githubusercontent.com \
+	signatures/SHA256SUMS
+```
+
+Repeat for each archive/package with its corresponding bundle and payload path.
+Older releases using separate `.sig`/`.crt` files keep their original verification
+procedure; these new bundle paths apply to releases produced by this workflow.
 
 ---
 

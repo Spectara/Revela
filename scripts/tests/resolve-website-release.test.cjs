@@ -1,4 +1,5 @@
 const assert = require('node:assert/strict');
+const { spawnSync } = require('node:child_process');
 const fs = require('node:fs');
 const path = require('node:path');
 const { test } = require('node:test');
@@ -8,7 +9,7 @@ const workflow = fs.readFileSync(path.join(__dirname, '../../.github/workflows/d
 const scriptBlock = workflow.match(/^          script: \|\n((?: {12}[^\n]*\n|\n)+)/m);
 assert.ok(scriptBlock, 'Expected the inline release resolver');
 const AsyncFunction = Object.getPrototypeOf(async function () {}).constructor;
-const resolveRelease = new AsyncFunction('require', 'github', 'context', 'core', 'process',
+const resolveRelease = new AsyncFunction('require', 'github', 'context', 'core', 'process', 'getOctokit',
   scriptBlock[1].replace(/^ {12}/gm, ''));
 
 function fixture() {
@@ -218,4 +219,221 @@ test('actual package and archive checks precede attestation and CI runs these co
   assert.ok(ci.includes('node --test scripts/tests/resolve-website-release.test.cjs'));
   assert.ok(ci.includes('dotnet format Spectara.Revela.slnx --verify-no-changes'));
   assert.ok(ci.includes('./TestResults/**/*.cobertura.xml'));
+});
+
+test('Cosign 3 emits and publishes verification bundles for artifacts and checksums', () => {
+  const signing = releaseWorkflow.split('      - name: Sign artifacts (keyless)\n')[1]
+    .split('      - name: Upload signatures and checksums\n')[0];
+  assert.ok(releaseWorkflow.includes('uses: sigstore/cosign-installer@v4'));
+  assert.ok(releaseWorkflow.includes('cosign-release: v3.1.3'));
+  assert.equal((signing.match(/cosign sign-blob/g) ?? []).length, 2);
+  assert.ok(signing.includes('--bundle "${outBase}.sigstore.json"'));
+  assert.ok(signing.includes('--bundle ../signatures/SHA256SUMS.sigstore.json'));
+  assert.ok(!signing.includes('--output-signature'));
+  assert.ok(!signing.includes('--output-certificate'));
+  assert.ok(!signing.includes('--tlog-upload=false'));
+  assert.ok(!signing.includes('--use-signing-config=false'));
+  const releaseJob = releaseWorkflow.split('\n  release:\n')[1].split('\n  publish-nuget:\n')[0];
+  assert.ok(releaseJob.includes('artifacts/**/*.sigstore.json'));
+  assert.ok(releaseJob.includes('artifacts/**/SHA256SUMS'));
+  const publishingJob = releaseWorkflow.split('\n  publish-nuget:\n')[1];
+  assert.ok(publishingJob.includes('\n    if: false\n'));
+});
+
+test('CI and Release default to read-only contents while publishing jobs retain scoped rights', () => {
+  const ci = fs.readFileSync(path.join(__dirname, '../../.github/workflows/ci.yml'), 'utf8')
+    .replace(/\r\n/g, '\n');
+  for (const content of [ci, releaseWorkflow]) {
+    assert.match(content, /^permissions:\n  contents: read\n\n/m);
+  }
+  for (const jobName of ['packages', 'build']) {
+    const job = releaseWorkflow.split(`\n  ${jobName}:\n`)[1].split(/^  [\w-]+:\n/m)[0];
+    assert.match(job, /    permissions:\n      contents: read\n      id-token: write\n      attestations: write\n/);
+  }
+  const signingJob = releaseWorkflow.split('\n  sign:\n')[1].split('\n  release:\n')[0];
+  assert.match(signingJob, /    permissions:\n      contents: read\n      id-token: write\n/);
+  const releaseJob = releaseWorkflow.split('\n  release:\n')[1].split('\n  publish-nuget:\n')[0];
+  assert.match(releaseJob, /    permissions:\n      contents: write\n/);
+});
+
+test('release validation passes untrusted values only through env to a constant pwsh command', () => {
+  const validationJob = releaseWorkflow.split('\n  validate:\n')[1].split('\n  packages:\n')[0];
+  assert.equal((validationJob.match(/- name: Validate release version\n/g) ?? []).length, 1);
+  assert.match(validationJob, /        id: version\n        shell: pwsh\n        env:\n/);
+  for (const [name, expression] of [
+    ['RELEASE_EVENT', 'github.event_name'],
+    ['RELEASE_INPUT_VERSION', 'inputs.version'],
+    ['RELEASE_REF_NAME', 'github.ref_name'],
+    ['RELEASE_REF_TYPE', 'github.ref_type']
+  ]) {
+    assert.ok(validationJob.includes(`          ${name}: \${{ ${expression} }}\n`));
+  }
+  assert.deepEqual(validationJob.match(/^        run:.*$/gm), ['        run: ./scripts/validate-release-version.ps1']);
+  assert.ok(validationJob.includes('version: ${{ steps.version.outputs.version }}'));
+  assert.ok(!validationJob.includes('sort -V'));
+  assert.ok(!validationJob.includes('name: Extract version'));
+  assert.ok(!validationJob.includes('name: Validate version format'));
+});
+
+const repositoryRoot = path.resolve(__dirname, '../..');
+const validatorPath = path.join(repositoryRoot, 'scripts/validate-release-version.ps1');
+const versionFixtureRoot = path.join(repositoryRoot, 'artifacts/release-version-tests');
+const outputSentinel = 'sentinel=unchanged\n';
+const validatorHarness = `
+$ErrorActionPreference = 'Stop'
+$global:ReleaseGitCalls = 0
+function git {
+    $global:ReleaseGitCalls++
+    if ($args.Count -ne 3 -or $args[0] -cne 'tag' -or $args[1] -cne '--list' -or $args[2] -cne 'v*') {
+        throw 'Unexpected git invocation in release validator.'
+    }
+    $expectedRoot = Split-Path -Parent (Split-Path -Parent $env:TEST_RELEASE_VALIDATOR)
+    if ((Get-Location).Path -cne $expectedRoot) {
+        throw 'Release tag enumeration must run in the actual repository.'
+    }
+    $global:LASTEXITCODE = [int]$env:TEST_RELEASE_GIT_EXIT_CODE
+    ConvertFrom-Json -InputObject $env:TEST_RELEASE_TAGS
+}
+try {
+    & $env:TEST_RELEASE_VALIDATOR
+    $status = 0
+}
+catch {
+    [Console]::Error.WriteLine($_.Exception.Message)
+    $status = 1
+}
+finally {
+    [IO.File]::WriteAllText($env:TEST_RELEASE_GIT_CALLS, [string]$global:ReleaseGitCalls)
+}
+exit $status
+`;
+
+function executeVersion({ env = {}, tags = [], gitExitCode = 0 } = {}) {
+  fs.mkdirSync(versionFixtureRoot, { recursive: true });
+  const directory = fs.mkdtempSync(path.join(versionFixtureRoot, 'case-'));
+  const outputPath = path.join(directory, 'github-output.txt');
+  const gitCallsPath = path.join(directory, 'git-calls.txt');
+  fs.writeFileSync(outputPath, outputSentinel, 'utf8');
+  const childEnv = { ...process.env,
+    RELEASE_EVENT: 'workflow_dispatch', RELEASE_INPUT_VERSION: '1.2.3',
+    RELEASE_REF_NAME: 'main', RELEASE_REF_TYPE: 'branch', GITHUB_OUTPUT: outputPath,
+    TEST_RELEASE_VALIDATOR: validatorPath, TEST_RELEASE_TAGS: JSON.stringify(tags),
+    TEST_RELEASE_GIT_EXIT_CODE: String(gitExitCode), TEST_RELEASE_GIT_CALLS: gitCallsPath,
+    ...env };
+  for (const [name, value] of Object.entries(childEnv)) {
+    if (value === null) delete childEnv[name];
+  }
+  const result = spawnSync('pwsh', ['-NoLogo', '-NoProfile', '-NonInteractive', '-Command', validatorHarness], {
+    cwd: directory, env: childEnv, encoding: 'utf8', shell: false
+  });
+  assert.ifError(result.error);
+  assert.equal(result.signal, null);
+  assert.equal(result.stdout, '');
+  return { ...result, output: fs.readFileSync(outputPath),
+    gitCalls: Number(fs.readFileSync(gitCallsPath, 'utf8')) };
+}
+
+function assertVersionSuccess(result, version, gitCalls = 0) {
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(result.stderr, '');
+  assert.deepEqual(result.output, Buffer.from(`${outputSentinel}version=${version}\n`, 'utf8'));
+  assert.equal(result.gitCalls, gitCalls);
+}
+
+function assertVersionFailure(result, expectedError, gitCalls = 0) {
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, expectedError);
+  assert.deepEqual(result.output, Buffer.from(outputSentinel, 'utf8'));
+  assert.equal(result.gitCalls, gitCalls);
+}
+
+for (const version of ['1.2.3', '1.2.3-beta', '1.2.3-beta.1', '0.0.0', '1.0.0-0', '1.0.0-01a.0']) {
+  test(`manual release accepts ${version} without consulting newer or equal tags`, () => {
+    assertVersionSuccess(executeVersion({ env: { RELEASE_INPUT_VERSION: version },
+      tags: [`v${version}`, 'v99.0.0'], gitExitCode: 97 }), version);
+  });
+}
+
+const invalidReleaseVersions = [
+  ['missing input', null], ['empty input', ''], ['leading whitespace', ' 1.2.3'],
+  ['trailing whitespace', '1.2.3 '], ['trailing newline', '1.2.3\n'],
+  ['CRLF output injection', '1.2.3\r\nversion=9.0.0'], ['tab', '1.2.3\t'],
+  ['command substitution', '$(printf PROBE)'], ['embedded command substitution', '1.2.3-$(printf PROBE)'],
+  ['backticks', '`printf PROBE`'], ['double quote', '1.2.3"'], ["single quote", "1.2.3'"],
+  ['command separator', '1.2.3;printf PROBE'], ['slash', '../1.2.3'], ['v prefix', 'v1.2.3'],
+  ['leading-zero major', '01.2.3'], ['leading-zero minor', '1.02.3'], ['leading-zero patch', '1.2.03'],
+  ['leading-zero numeric label', '1.2.3-01'], ['leading-zero numeric label with suffix', '1.2.3-01.1'],
+  ['leading-zero prerelease number', '1.2.3-beta.01'], ['hyphenated label', '1.2.3-beta-1'],
+  ['multiple textual identifiers', '1.2.3-beta.rc'], ['multiple numeric suffixes', '1.2.3-beta.1.2'],
+  ['build metadata', '1.2.3+build.1'], ['non-ASCII digits', '\u0661.2.3'],
+  ['parser numeric overflow', '2147483648.0.0']
+];
+
+for (const [name, version] of invalidReleaseVersions) {
+  test(`release validator rejects ${name} without output or input disclosure`, () => {
+    const result = executeVersion({ env: { RELEASE_INPUT_VERSION: version,
+      RELEASE_REF_NAME: 'v9.0.0', RELEASE_REF_TYPE: 'tag' } });
+    assertVersionFailure(result, /Invalid or missing release version/);
+    if (version) assert.ok(!result.stderr.includes(version));
+  });
+}
+
+for (const [name, env, expectedError] of [
+  ['unknown event', { RELEASE_EVENT: 'pull_request' }, /Unsupported or missing release event/],
+  ['missing event', { RELEASE_EVENT: null }, /Unsupported or missing release event/],
+  ['push branch', { RELEASE_EVENT: 'push', RELEASE_REF_NAME: 'v1.2.3' }, /v-prefixed tag ref/],
+  ['push without ref type', { RELEASE_EVENT: 'push', RELEASE_REF_TYPE: null }, /v-prefixed tag ref/],
+  ['push without ref', { RELEASE_EVENT: 'push', RELEASE_REF_TYPE: 'tag', RELEASE_REF_NAME: null }, /v-prefixed tag ref/],
+  ['push without v prefix', { RELEASE_EVENT: 'push', RELEASE_REF_TYPE: 'tag', RELEASE_REF_NAME: '1.2.3' }, /v-prefixed tag ref/],
+  ['push with uppercase prefix', { RELEASE_EVENT: 'push', RELEASE_REF_TYPE: 'tag', RELEASE_REF_NAME: 'V1.2.3' }, /v-prefixed tag ref/],
+  ['push cannot use manual fallback', { RELEASE_EVENT: 'push', RELEASE_REF_TYPE: 'tag', RELEASE_REF_NAME: 'v' }, /Invalid or missing release version/],
+  ['missing output path', { GITHUB_OUTPUT: null }, /GITHUB_OUTPUT is required/]
+]) {
+  test(`release validator fails closed for ${name}`, () => {
+    assertVersionFailure(executeVersion({ env }), expectedError);
+  });
+}
+
+function executePush(version, options = {}) {
+  return executeVersion({ ...options, env: { RELEASE_EVENT: 'push', RELEASE_REF_TYPE: 'tag',
+    RELEASE_REF_NAME: `v${version}`, RELEASE_INPUT_VERSION: '$(printf PROBE)' } });
+}
+
+for (const [name, tags] of [['no historical tags', []], ['blank tag listing', ['']], ['only the exact current tag', ['v1.0.0']]]) {
+  test(`first push release accepts ${name} and ignores manual input`, () => {
+    assertVersionSuccess(executePush('1.0.0', { tags }), '1.0.0', 1);
+  });
+}
+
+for (const [current, previous, newer] of [
+  ['1.0.0', '1.0.0-rc.1', true], ['1.0.0-rc.1', '1.0.0', false],
+  ['1.0.0-beta.10', '1.0.0-beta.2', true], ['1.0.0-beta.2', '1.0.0-beta.10', false],
+  ['1.0.0-rc.1', '1.0.0-beta.99', true], ['2.0.0', '1.99.99', true],
+  ['1.0.0-a', '1.0.0-9', true], ['1.0.0-9', '1.0.0-a', false],
+  ['1.0.0-10', '1.0.0-2', true], ['1.0.0-2', '1.0.0-10', false],
+  ['1.0.0-alpha', '1.0.0-ALPHA', true], ['1.0.0-ALPHA', '1.0.0-alpha', false],
+  ['1.0.0-beta.1', '1.0.0-beta', true], ['1.0.0-beta', '1.0.0-beta.1', false]
+]) {
+  test(`push ${current} after ${previous} follows SemVer (${newer ? 'accept' : 'reject'})`, () => {
+    const result = executePush(current, { tags: [`v${current}`, `v${previous}`] });
+    if (newer) assertVersionSuccess(result, current, 1);
+    else assertVersionFailure(result, /must be strictly newer/, 1);
+  });
+}
+
+test('push compares against the maximum historical version, not the final listed tag', () => {
+  assertVersionFailure(executePush('2.0.0', { tags: ['v3.0.0', 'v2.0.0', 'v1.0.0'] }), /must be strictly newer/, 1);
+});
+
+for (const tag of ['v01.0.0', 'v1.0.0-beta.01', 'v1.0.0-01', 'v1.0.0-beta-1', 'v1.0.0+build', 'v1x0x0', 'v', 'v$(printf PROBE)']) {
+  test(`push fails closed for invalid historical tag ${tag}`, () => {
+    const result = executePush('1.0.0', { tags: ['v1.0.0', tag] });
+    assertVersionFailure(result, /Invalid historical v-prefixed release tag/, 1);
+    assert.equal(result.stderr.replace(/\r\n/g, '\n'),
+      'Invalid historical v-prefixed release tag. Expected canonical X.Y.Z[-alphanumeric[.digits]].\n');
+  });
+}
+
+test('failed git enumeration does not publish a partial listing or append an output', () => {
+  assertVersionFailure(executePush('1.0.0', { tags: ['v0.1.0'], gitExitCode: 128 }), /Unable to enumerate release tags/, 1);
 });

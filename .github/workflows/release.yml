@@ -31,6 +31,9 @@ on:
         required: true
         type: string
 
+permissions:
+  contents: read
+
 env:
   DOTNET_NOLOGO: true
   DOTNET_CLI_TELEMETRY_OPTOUT: true
@@ -49,48 +52,15 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Extract version
+      - name: Validate release version
         id: version
-        run: |
-          # Use input version for manual trigger, tag for push trigger
-          if [ -n "${{ inputs.version }}" ]; then
-            VERSION="${{ inputs.version }}"
-            echo "📦 Manual trigger with version: $VERSION"
-          else
-            VERSION="${GITHUB_REF_NAME#v}"
-            echo "📦 Tag trigger with version: $VERSION"
-          fi
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-
-      - name: Validate version format
-        run: |
-          VERSION="${{ steps.version.outputs.version }}"
-          if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9]+(\.[0-9]+)?)?$ ]]; then
-            echo "❌ Invalid version format: $VERSION"
-            echo "   Expected: X.Y.Z or X.Y.Z-suffix (e.g. 0.0.1, 1.0.0-beta, 0.0.1-beta.1)"
-            exit 1
-          fi
-          echo "✅ Version format valid: $VERSION"
-
-      - name: Validate version is newer (tag trigger only)
-        if: github.event_name == 'push'
-        run: |
-          CURRENT="${GITHUB_REF_NAME#v}"
-
-          # Get all version tags, sort by version, get the latest (excluding current)
-          LATEST=$(git tag -l 'v*' | grep -v "^${GITHUB_REF_NAME}$" | sed 's/^v//' | sort -V | tail -1)
-
-          if [ -n "$LATEST" ]; then
-            # Compare versions
-            HIGHEST=$(echo -e "$CURRENT\n$LATEST" | sort -V | tail -1)
-            if [ "$HIGHEST" != "$CURRENT" ]; then
-              echo "❌ Version $CURRENT is not greater than latest release $LATEST"
-              exit 1
-            fi
-            echo "✅ Version $CURRENT is greater than $LATEST"
-          else
-            echo "✅ First release: $CURRENT"
-          fi
+        shell: pwsh
+        env:
+          RELEASE_EVENT: ${{ github.event_name }}
+          RELEASE_INPUT_VERSION: ${{ inputs.version }}
+          RELEASE_REF_NAME: ${{ github.ref_name }}
+          RELEASE_REF_TYPE: ${{ github.ref_type }}
+        run: ./scripts/validate-release-version.ps1
 
   # Build plugins and themes as NuGet packages (platform-independent, runs first)
   packages:
@@ -471,7 +441,9 @@ jobs:
           done
 
       - name: Install cosign
-        uses: sigstore/cosign-installer@v3
+        uses: sigstore/cosign-installer@v4
+        with:
+          cosign-release: v3.1.3
 
       - name: Sign artifacts (keyless)
         shell: bash
@@ -490,15 +462,13 @@ jobs:
 
             cosign sign-blob \
               --yes \
-              --output-signature "${outBase}.sig" \
-              --output-certificate "${outBase}.crt" \
+              --bundle "${outBase}.sigstore.json" \
               "$f"
           done
 
           cosign sign-blob \
             --yes \
-            --output-signature ../signatures/SHA256SUMS.sig \
-            --output-certificate ../signatures/SHA256SUMS.crt \
+            --bundle ../signatures/SHA256SUMS.sigstore.json \
             ../signatures/SHA256SUMS
 
       - name: Upload signatures and checksums
@@ -610,8 +580,7 @@ jobs:
             artifacts/**/*.tar.gz
             artifacts/**/*.nupkg
             artifacts/**/SHA256SUMS
-            artifacts/**/*.sig
-            artifacts/**/*.crt
+            artifacts/**/*.sigstore.json
 
       - name: Record published release identity
         env:
