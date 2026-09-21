@@ -197,6 +197,7 @@ internal sealed class StaticFileServer : IAsyncDisposable, IDisposable
         var request = context.Request;
         var response = context.Response;
         var isHead = request.HttpMethod.Equals("HEAD", StringComparison.OrdinalIgnoreCase);
+        var abortResponse = false;
 
         try
         {
@@ -271,6 +272,7 @@ internal sealed class StaticFileServer : IAsyncDisposable, IDisposable
         catch (Exception exception) when (exception is OperationCanceledException || cancellationToken.IsCancellationRequested)
         {
             // Server shutting down during file transfer — expected
+            abortResponse = true;
         }
         catch (Exception)
         {
@@ -289,7 +291,14 @@ internal sealed class StaticFileServer : IAsyncDisposable, IDisposable
         {
             try
             {
-                response.Close();
+                if (abortResponse)
+                {
+                    response.Abort();
+                }
+                else
+                {
+                    response.Close();
+                }
             }
             catch (ObjectDisposedException)
             {
