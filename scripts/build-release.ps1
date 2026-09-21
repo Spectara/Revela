@@ -155,9 +155,6 @@ Push-Location $RepoRoot
 try {
     # ----------------------------------------------------------------------
     # Restore + solution-wide Release build.
-    #
-    # Prebuild the shared generator and serialize solution compilation to
-    # avoid concurrent writes to its shared output directory.
     # ----------------------------------------------------------------------
     if (-not $SkipBuild) {
         Write-Step 'Restoring NuGet packages'
@@ -166,14 +163,11 @@ try {
         Write-Success 'Restore completed'
 
         Write-Step 'Building solution (Release)'
-        dotnet build src/Sdk.Generators/Sdk.Generators.csproj -c Release --no-restore `
-            -p:Version=$Version -p:DebugType=embedded --verbosity quiet
-        if ($LASTEXITCODE -ne 0) { throw 'Generator build failed' }
         # `-p:DebugType=embedded` keeps debug info inside the DLL itself —
         # no separate .pdb files. This makes the build output stable across
         # later `dotnet publish` calls (which would otherwise strip PDBs and
         # break `dotnet pack --no-build` with NU5026).
-        dotnet build Spectara.Revela.slnx -c Release -m:1 --no-restore `
+        dotnet build Spectara.Revela.slnx -c Release --no-restore `
             -p:Version=$Version `
             -p:DebugType=embedded `
             --verbosity quiet

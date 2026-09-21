@@ -52,25 +52,23 @@ Show the user what was changed and suggest next steps:
 git add CHANGELOG.md
 git commit -m "Release vX.Y.Z-suffix"
 git tag vX.Y.Z-suffix
-git push origin main --tags
+git push origin main --no-follow-tags
+git push origin refs/tags/vX.Y.Z-suffix
 ```
 
-**Do NOT execute these commands automatically.** Let the user review and decide.
+**Do NOT execute these commands automatically.** Commit, tag and push each need
+explicit approval. Push only the approved tag, never all local tags.
 
 **Note:** `Directory.Build.props` does NOT need updating — the release workflow passes the version from the git tag via `-p:Version=` and `-p:PackageVersion=` build parameters.
 
 ## Workflow Reference
 
-The release pipeline (`.github/workflows/release.yml`) handles everything after the tag push:
-1. **Validate** — Version format and ordering
-2. **Packages** — Build and pack NuGet packages (CLI tool + plugins + themes + SDK)
-3. **Build** — Native executables for 5 platforms (win-x64, linux-x64, linux-arm64, osx-x64, osx-arm64)
-4. **Sign** — Keyless cosign signatures + SHA256SUMS
-5. **Release** — Create GitHub Release with all artifacts
-6. **Publish NuGet** — Push to NuGet.org (requires `nuget-org` environment approval)
-
-Additional workflows triggered after release:
-- `deploy-website.yml` — Deploy revela.website
+Use the [CI/CD guide](../../workflows/README.md#release-stages) for the current
+platform matrix, artifact checks, signing and website publication. A tag push
+publishes a release and calls the website workflow; manual Release rehearsals
+do not publish or deploy but still attest/sign. NuGet packages are GitHub Release
+assets; publishing to NuGet.org is not configured and requires separate setup
+and authorization.
 
 ## Checklist
 

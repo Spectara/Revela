@@ -67,7 +67,7 @@ On Linux/macOS each variant also gets a launcher script (`start-revela.sh` or `S
 
 ## Implementation Notes
 
-1. **Per-project Release builds**: The script builds each plugin/theme/feature project explicitly with `dotnet build -c Release`, NOT via `dotnet build Solution.slnx -c Release`. Solution-level builds can produce Debug output for plugin projects when test projects are pulled in via dependency graph (MSBuild node reuse quirk). The GitHub workflow does the same.
+1. **Solution-wide Release build**: The script and workflow use `dotnet build Spectara.Revela.slnx -c Release`. MSBuild builds the source generator through its analyzer project reference; no generator pre-build or forced serial build is needed. The single-target generator declares its own framework; do not force `SetTargetFramework` on the reference, which can create a second build instance writing the same outputs.
 
 2. **`DebugType=embedded`** (Full only): Both build and pack use `-p:DebugType=embedded` so symbol info lands inside each DLL instead of separate `.pdb` files. Avoids NU5026 ("PDB not found") when `dotnet pack --no-build` runs after `dotnet publish` (which strips PDBs from the shared `artifacts/bin/`). Stack traces still show file/line info because the symbols travel with the assembly.
 

@@ -29,7 +29,6 @@
     <ProjectReference Include="$(MSBuildThisFileDirectory)src\Sdk.Generators\Sdk.Generators.csproj"
                       OutputItemType="Analyzer"
                       ReferenceOutputAssembly="false"
-                      SetTargetFramework="TargetFramework=netstandard2.0"
                       UndefineProperties="RuntimeIdentifier;SelfContained;PublishSingleFile" />
   </ItemGroup>
 </Project>

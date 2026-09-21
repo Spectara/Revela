@@ -6,17 +6,16 @@ This directory hosts all automation used to build, test, sign, and ship Revela. 
 
 ## Workflow Summary
 
-| Workflow | File | Triggers | Purpose |
-| --- | --- | --- | --- |
-| CI | [ci.yml](ci.yml) | Push/PR to `main` or `develop` (subject to path filters), manual dispatch | Three-OS Release build, full-solution tests with coverage, formatting, modular release suite and Native AOT canary. |
-| Release | [release.yml](release.yml) | `v*` tag push or manual dispatch with `version` | Validate, test and pack, verify actual platform archives, attest and sign. Only tag pushes create a GitHub Release; NuGet publishing is disabled. |
-| Deploy Website | [deploy-website.yml](deploy-website.yml) | Successful tag-push Release run, or manual dispatch | Automatic: use that run's exact release and source commit. Manual: use selected source and latest release, including prereleases. Publish to GitHub Pages at `revela.website`. |
-| Dependency Updates | [Dependabot](../dependabot.yml) | Weekly (Monday), automatic | Creates PRs for outdated NuGet packages and GitHub Actions. |
+| Workflow           | File                                     | Triggers                                                     | Purpose                                                                                                                                                    |
+| ------------------ | ---------------------------------------- | ------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| CI                 | [ci.yml](ci.yml)                         | Push/PR to `main` (subject to path filters), manual dispatch | Ubuntu Release build, full-solution tests with coverage and formatting.                                                                                    |
+| Release            | [release.yml](release.yml)               | `v*` tag push or manual dispatch with `version`              | Validate, test and pack, verify actual platform archives, attest and sign. Only tag pushes create a GitHub Release; no NuGet.org publication.             |
+| Deploy Website     | [deploy-website.yml](deploy-website.yml) | Reusable call after Release publication, or manual dispatch  | Automatic: caller's exact commit and tag. Manual: explicit source ref and existing release tag. Both generate and check before publishing to GitHub Pages. |
+| Dependency Updates | [Dependabot](../dependabot.yml)          | Weekly (Monday), automatic                                   | Creates PRs for outdated NuGet packages and GitHub Actions.                                                                                                |
 
 > **Note**
 > `code-quality.yml` from early plans was replaced by the consolidated `ci.yml` pipeline.
 
-The verification contract is [ADR 0005](../../docs/decisions/0005-release-artifact-verification.md).
 This guide describes the implemented paths, not proof that a hosted run passed.
 Remote workflow execution requires explicit permission. In particular, a manual
 Release run still performs external attestation and keyless signing; it is not a
@@ -28,61 +27,55 @@ side-effect-free local check.
 
 Stable upstream releases checked on 2026-09-14. Existing major-tag tracking is
 retained; this is not a migration to commit-SHA pinning. Dependabot checks the
-GitHub Actions ecosystem weekly. Version updates still require workflow tests.
+GitHub Actions ecosystem weekly. Review version updates and lint affected workflows.
 
-| Action | Workflow reference | Latest stable release checked |
-| --- | --- | --- |
-| actions/checkout | v7 | v7.0.1 |
-| actions/setup-dotnet | v6 | v6.0.0 |
-| actions/upload-artifact | v7 | v7.0.1 |
-| actions/download-artifact | v8 | v8.0.1 |
-| actions/github-script | v9 | v9.0.0 |
-| actions/upload-pages-artifact | v5 | v5.0.0 |
-| actions/deploy-pages | v5 | v5.0.1 |
-| actions/attest-build-provenance | v4 | v4.2.2 |
-| sigstore/cosign-installer | v4 | v4.1.2 |
-| softprops/action-gh-release | v3 | v3.0.3 |
-| robinraju/release-downloader | v1 | v1.13 |
+| Action                          | Workflow reference | Latest stable release checked |
+| ------------------------------- | ------------------ | ----------------------------- |
+| actions/checkout                | v7                 | v7.0.1                        |
+| actions/setup-dotnet            | v6                 | v6.0.0                        |
+| actions/upload-artifact         | v7                 | v7.0.1                        |
+| actions/download-artifact       | v8                 | v8.0.1                        |
+| actions/upload-pages-artifact   | v5                 | v5.0.0                        |
+| actions/deploy-pages            | v5                 | v5.0.1                        |
+| actions/attest-build-provenance | v4                 | v4.2.2                        |
+| sigstore/cosign-installer       | v4                 | v4.1.2                        |
+| softprops/action-gh-release     | v3                 | v3.0.3                        |
 
 The installer explicitly selects Cosign `v3.1.3`, rather than its older default.
 Cosign 3 requires verification bundles for blob signing; the signing and release
-steps publish `.sigstore.json` files as described below. The github-script v9
-resolver uses Node built-ins and the provided client, not the removed
-`require('@actions/github')` path. Its new injected `getOctokit` parameter is
-included in the local resolver test context.
+steps publish `.sigstore.json` files as described below. The custom JavaScript
+release resolver and Node metadata producer have been removed. Actions may use
+their own internal runtimes. There is no repository-owned pipeline test framework
+or Node/npm toolchain.
 
-SDK selection continues to follow the repository's `global.json`. Hosted runner
-labels and platform coverage are unchanged; an Action update is not a new
-platform support claim. NuGet.org publishing remains disabled.
+SDK selection continues to follow the repository's `global.json`. CI uses Ubuntu;
+the release matrix retains all five native RIDs. NuGet packages remain available
+as GitHub Release downloads; they are not pushed to NuGet.org.
 
 ### Execution
 
 CI and Release default to `contents: read`. Release jobs explicitly add only
 their required signing, attestation or release-publication rights. The website
-workflow retains its separate Actions/Pages permissions.
+build uses read-only contents access; only its deploy job receives Pages/OIDC
+write permissions. The reusable caller grants that upper bound explicitly.
 
-On Windows, Linux and macOS, CI builds the source generator and full solution in
+On Ubuntu, CI builds the full solution, including the referenced source generator, in
 Release, then runs `dotnet test --solution Spectara.Revela.slnx --no-build -c Release`
 with TRX and Cobertura coverage. Reports are uploaded from `TestResults`.
-It also builds the source generator in Debug before
+The formatting step sets the MSBuild environment property `Configuration=Release` for
 `dotnet format Spectara.Revela.slnx --verify-no-changes --no-restore --verbosity minimal`,
-because formatting needs the Debug generator output.
+so it uses the existing Release generator output without a separate Debug build.
 
-Each OS then runs the shared modular Build-mode suite:
-
-```pwsh
-./scripts/test-release.ps1 -SkipTests -Version 0.0.0-ci -KeepArtifacts
-```
-
-`-SkipTests` avoids repeating the unit tests already run above; it does not skip
-the release installation, registration, generation, cleanup, local tool or SDK
-consumer checks. The separate Native AOT canary publishes `Cli.Embedded`, checks
-its version and generates Showcase, asserting HTML/gallery output and image
-variants. It supplements the modular suite.
+CI does not package releases, publish Native AOT binaries or run a custom
+workflow-contract suite. Package, SDK-consumer and Native AOT execution checks
+remain in Release against the actual artifacts. This deliberately detects those
+failures later. Windows/macOS-specific unit tests no longer run automatically;
+the native release checks cover artifact workflows, not their entire unit suites.
 
 ## Release Stages
 
-The job chain is `validate -> packages -> build -> sign -> release -> publish-nuget`.
+The publishing chain is `validate -> packages -> build -> sign -> release -> website`.
+NuGet.org publication is not configured; adding it requires separate setup and authorization.
 
 1. `validate` reads event/version/ref data through environment variables and
 	invokes [validate-release-version.ps1](../../scripts/validate-release-version.ps1).
@@ -93,7 +86,9 @@ The job chain is `validate -> packages -> build -> sign -> release -> publish-nu
 	packaged SDK before attesting and uploading the packages as `nupkgs`.
 3. `build` publishes and archives Core, Full and Standalone on five native RIDs:
 	`win-x64`, `win-arm64`, `linux-x64`, `linux-arm64` and `osx-arm64`. Full bundles
-	the packages downloaded from `packages`. For each RID, the shared
+	the packages downloaded from `packages`. Each `dotnet publish` restores its
+	required dependencies for the selected RID; no separate solution restore runs
+	in this job. For each RID, the shared
 	[test-release.ps1](../../scripts/test-release.ps1) suite consumes each actual
 	ZIP/TAR archive via `-ArtifactPath`, with its exact `-Version`, `-Variant` and
 	`-RuntimeIdentifier`. Core receives `-PackageDirectory ./publish/packages` as
@@ -103,13 +98,9 @@ The job chain is `validate -> packages -> build -> sign -> release -> publish-nu
 	`artifact-tests-<rid>`, including on failure when evidence exists.
 4. `sign` checksums and signs the resulting archives and NuGet packages using
 	keyless cosign. Manual runs also attest and sign.
-5. `release` runs only on tag pushes. It creates the GitHub Release and then
-	uploads a `release-identity-<attempt>` artifact containing the tag, version, commit,
-	run ID and run attempt.
-6. `publish-nuget` is disabled by `if: false`. Environment approval or the GitHub
-	UI's re-run controls cannot bypass that condition. Publishing requires a
-	separately authorized workflow change and NuGet setup before approval in
-	the `nuget-org` environment can apply.
+5. `release` runs only on tag pushes and creates the GitHub Release. The dependent
+	`website` job calls the reusable website workflow with `github.sha` and
+	`github.ref_name`. A skipped or failed release never deploys the website.
 
 Full and Core run the modular suite; Standalone tests its Native AOT host and
 supplied native companion without plugin management. Core does not ship a usable
@@ -132,39 +123,47 @@ instead of being silently ignored. The validator only lists tags and never
 creates or modifies them. Manual dispatch requires an explicit version, but
 allows an older or equal valid version for testing without consulting tags.
 
-Local regression checks run through
-`node --test scripts/tests/resolve-website-release.test.cjs` and require `pwsh`
-on PATH. They verify rejection without changing the output, SemVer ordering,
-tag-enumeration errors and workflow permissions. Native Windows and Linux checks
-also exercised the script with real repository tags. These checks do not start
-a hosted workflow or validate newly changed .NET dependencies.
+The validator and deployment guards remain in the real workflows. Their former
+synthetic regression suite has been removed along with YAML text contracts.
+Use `actionlint` for workflow syntax and review changes to publication conditions
+and permissions directly. Linting does not prove SemVer behavior, GitHub permissions
+or hosted publication; those are not covered by a replacement test framework.
 
-## Website Release Identity
+## Website Publication
 
-Automatic deployment accepts only a successful Release `workflow_run` whose
-original event was `push`. It downloads `release-identity-<attempt>` from that exact run
-and validates its run ID, run attempt, commit against `head_sha`, and tag/version
-pair. `getReleaseByTag` must return a published, non-draft release for that tag;
-`getCommit` for `refs/tags/<tag>` must resolve to the recorded commit. The workflow
-then checks out that commit and downloads that tag's Linux x64 Standalone archive.
-Download-link substitutions use the same tag. It never falls back to latest for
-an automatic deployment: missing metadata, mismatches or a missing release fail
-closed.
+Automatic publication is a dependent job in Release, not an event listener in a
+second workflow. The local reusable workflow reference uses the caller's revision.
+After a successful tag-push publication it receives the exact source commit and
+release tag directly. It needs no identity artifact, run-attempt protocol,
+JavaScript resolver or secondary `release` event. Ordinary pushes, pull requests
+and manual Release rehearsals do not deploy the website.
 
-Attempt-specific artifact names avoid collisions with immutable artifacts from
-earlier attempts. The successful attempt must execute the identity producer;
-partial reruns that reuse an older attempt's metadata fail closed.
+Both entry paths use the same steps: validate explicit inputs, check that the
+selected release is published rather than a draft, check out `source-ref`,
+download that exact tag's Linux x64 Standalone archive, substitute download links,
+sync the existing homepage source, generate, check Pages markers and deploy.
+Release checks and downloads use `gh` already available on the Ubuntu runner;
+no additional download Action or custom GitHub API client is needed. The download
+selects the explicit tag and exact archive name from `Spectara/Revela`, passing
+the tag through a quoted environment variable. There is no `latest` fallback.
+Checks or downloads failing stop publication. The published AOT binary runs
+without SDK setup or SDK-specific environment variables.
 
-Manual website dispatch retains a separate path: checkout uses the selected
-dispatch ref, while the binary comes from the latest available release with
-`preRelease: true`. It intentionally permits current content with a different
-release binary. A manual Release run does not trigger automatic website deployment.
+For an emergency content correction, manually dispatch **Deploy Website** with:
 
-Older Release runs without identity metadata cannot satisfy the automatic guard.
-The website guard must be on the default branch and the identity producer must
-be on the Release source ref. A new Release run after both changes land is needed;
-re-running an old workflow revision does not add the missing producer. This is
-an operational prerequisite, not permission to push a tag or start any workflow.
+- `source-ref`: the branch, tag or commit containing corrected content (default `main`).
+- `release-tag`: an existing published tag, including `v`, for example `v0.0.1-beta.21`.
+
+The dispatch branch selects the workflow implementation; `source-ref` selects
+content. They need not match. Use trusted refs with content/templates compatible
+with the selected binary. If `main` already requires an unreleased generator,
+use a content-fix commit based on the published release instead. No new release
+or tag is created. This path is not a bypass of generation or deployment checks.
+
+The `github-pages` environment and common `pages` concurrency group remain in
+use. A website failure does not roll back a GitHub Release already published;
+correct the problem and explicitly retry the failed deployment path. Old runs
+retain their old workflow revision; rerunning them does not apply this redesign.
 
 ---
 
@@ -181,11 +180,10 @@ an operational prerequisite, not permission to push a tag or start any workflow.
 	below. Stop on any missing file, failed hash or unexpected signing identity.
 4. **Publish only with separate authorization.** A `v<VERSION>` tag push runs a
 	new publishing workflow; it does not promote the manual run's bytes unchanged.
-	Verify that run's artifacts too. NuGet publishing remains disabled.
+	Verify that run's artifacts too. There is no NuGet.org publication step.
 5. **Record results.** Capture the run URL/attempt, source commit, version, date,
-	hashes and observed checks. Keep historical R1 reports immutable; record new
-	remediation evidence separately. The report owner maintains ADR verification
-	status; this guide is not a replacement for that evidence.
+	hashes and observed checks in the release/PR or task result, linking retained
+	workflow evidence. A description of the pipeline is not proof that it passed.
 
 ### Checksum Working Directory
 
@@ -267,6 +265,9 @@ gh workflow run ci.yml --ref '<SOURCE_REF>'
 
 # Trigger manual Release validation, including external attestation/signing
 gh workflow run release.yml --ref '<SOURCE_REF>' -f version='<VERSION>'
+
+# Emergency content deployment; choose a compatible, already published binary
+gh workflow run deploy-website.yml --ref main -f source-ref='<CONTENT_REF>' -f release-tag='v<VERSION>'
 ```
 
 For deeper details, inspect the workflow files alongside this guide.

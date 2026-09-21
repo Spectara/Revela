@@ -2,15 +2,12 @@
 # Triggered by pushing a version tag (v0.0.1, v1.0.0, etc.)
 #
 # Pipeline stages:
-#   validate → packages → build → sign → release → publish-nuget
+#   validate → packages → build → sign → release → website
 #
 # "Build once, ship the artifact" — packages are built once in the
-# packages stage and reused for signing, GitHub Release, and NuGet.org.
+# packages stage and reused for signing and GitHub Release downloads.
 #
-# The publish-nuget stage is currently DISABLED (`if: false`) until
-# NuGet.org publishing is fully set up. When re-enabled, it requires
-# manual approval via the "nuget-org" GitHub Environment before
-# pushing to NuGet.org.
+# NuGet.org publication is not configured in this workflow.
 #
 # Release contents:
 # - Standalone: CLI executable with all plugins/themes statically linked
@@ -99,9 +96,7 @@ jobs:
       # `dotnet pack --no-build` with NU5026), and stack traces from the
       # released binaries still show file/line numbers.
       - name: Build
-        run: |
-          dotnet build src/Sdk.Generators/Sdk.Generators.csproj -c Release --no-restore -p:Version=${{ env.VERSION }} -p:DebugType=embedded
-          dotnet build Spectara.Revela.slnx -c Release -m:1 --no-restore -p:Version=${{ env.VERSION }} -p:DebugType=embedded
+        run: dotnet build Spectara.Revela.slnx -c Release --no-restore -p:Version=${{ env.VERSION }} -p:DebugType=embedded
 
       - name: Test
         run: dotnet test --solution Spectara.Revela.slnx -c Release --no-build --no-restore
@@ -179,9 +174,6 @@ jobs:
           global-json-file: global.json
           cache: true
           cache-dependency-path: '**/Directory.Packages.props'
-
-      - name: Restore
-        run: dotnet restore
 
       - name: Publish CLI
         shell: bash
@@ -346,7 +338,6 @@ jobs:
               Variant = $variant
               Version = $env:RELEASE_VERSION
               RuntimeIdentifier = $env:RELEASE_RID
-              KeepArtifacts = $true
             }
             if ($variant -eq 'Core') { $arguments.PackageDirectory = './publish/packages' }
             ./scripts/test-release.ps1 @arguments
@@ -582,109 +573,15 @@ jobs:
             artifacts/**/SHA256SUMS
             artifacts/**/*.sigstore.json
 
-      - name: Record published release identity
-        env:
-          RELEASE_TAG: ${{ github.ref_name }}
-          RELEASE_COMMIT: ${{ github.sha }}
-          RELEASE_VERSION: ${{ needs.validate.outputs.version }}
-        run: |
-          node -e 'const fs = require("node:fs"); fs.mkdirSync("release-identity"); fs.writeFileSync("release-identity/release-metadata.json", JSON.stringify({tag: process.env.RELEASE_TAG, commit: process.env.RELEASE_COMMIT, version: process.env.RELEASE_VERSION, runId: process.env.GITHUB_RUN_ID, runAttempt: process.env.GITHUB_RUN_ATTEMPT}));'
-
-      - name: Upload published release identity
-        uses: actions/upload-artifact@v7
-        with:
-          name: release-identity-${{ github.run_attempt }}
-          path: release-identity/release-metadata.json
-          if-no-files-found: error
-          retention-days: 90
-
-  # Publish NuGet packages (requires manual approval)
-  #
-  # Disabled until NuGet.org publishing is fully set up (API key, package
-  # ownership, package validation). Re-enable by removing the `if: false`
-  # below — the existing `nuget-org` GitHub Environment will then gate
-  # the run with manual approval as designed.
-  publish-nuget:
-    name: Publish to NuGet.org
-    needs: [validate, packages, release]
-    # Disabled — flip to `github.event_name == 'push'` once ready.
-    if: false
-    runs-on: ubuntu-latest
-    # Requires manual approval via GitHub Environment
-    environment: nuget-org
+  website:
+    name: Publish Website
+    needs: release
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
     permissions:
       contents: read
-    steps:
-      - name: Download NuGet packages
-        uses: actions/download-artifact@v8
-        with:
-          name: nupkgs
-          path: ./nupkgs
-
-      - name: List packages
-        run: ls -lh ./nupkgs/
-
-      - name: Verify packages
-        run: |
-          VERSION=${{ needs.validate.outputs.version }}
-          EXPECTED=(
-            "Spectara.Revela.${VERSION}.nupkg"
-            "Spectara.Revela.Sdk.${VERSION}.nupkg"
-            "Spectara.Revela.Plugins.Source.OneDrive.${VERSION}.nupkg"
-            "Spectara.Revela.Plugins.Statistics.${VERSION}.nupkg"
-            "Spectara.Revela.Plugins.Serve.${VERSION}.nupkg"
-            "Spectara.Revela.Plugins.Compress.${VERSION}.nupkg"
-            "Spectara.Revela.Plugins.Calendar.${VERSION}.nupkg"
-            "Spectara.Revela.Plugins.Source.Calendar.${VERSION}.nupkg"
-            "Spectara.Revela.Themes.Lumina.${VERSION}.nupkg"
-            "Spectara.Revela.Themes.Lumina.Statistics.${VERSION}.nupkg"
-            "Spectara.Revela.Themes.Lumina.Calendar.${VERSION}.nupkg"
-          )
-          MISSING=0
-          for pkg in "${EXPECTED[@]}"; do
-            if [ ! -f "./nupkgs/$pkg" ]; then
-              echo "❌ Missing: $pkg"
-              MISSING=$((MISSING + 1))
-            else
-              echo "✅ Found: $pkg"
-            fi
-          done
-          if [ $MISSING -gt 0 ]; then
-            echo "❌ $MISSING package(s) missing!"
-            exit 1
-          fi
-
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v6
-        with:
-          global-json-file: global.json
-
-      - name: Publish to NuGet.org
-        run: |
-          dotnet nuget push "./nupkgs/*.nupkg" \
-            --source https://api.nuget.org/v3/index.json \
-            --api-key ${{ secrets.NUGET_API_KEY }} \
-            --skip-duplicate
-        env:
-          NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
-
-      - name: Summary
-        run: |
-          VERSION=${{ needs.validate.outputs.version }}
-          echo "### ✅ Published to NuGet.org" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Version:** ${VERSION}" >> $GITHUB_STEP_SUMMARY
-          echo "**Packages:**" >> $GITHUB_STEP_SUMMARY
-          echo "- **Spectara.Revela** (CLI Tool)" >> $GITHUB_STEP_SUMMARY
-          echo "- Spectara.Revela.Sdk" >> $GITHUB_STEP_SUMMARY
-          echo "- Spectara.Revela.Plugins.Source.OneDrive" >> $GITHUB_STEP_SUMMARY
-          echo "- Spectara.Revela.Plugins.Statistics" >> $GITHUB_STEP_SUMMARY
-          echo "- Spectara.Revela.Plugins.Serve" >> $GITHUB_STEP_SUMMARY
-          echo "- Spectara.Revela.Plugins.Compress" >> $GITHUB_STEP_SUMMARY
-          echo "- Spectara.Revela.Plugins.Calendar" >> $GITHUB_STEP_SUMMARY
-          echo "- Spectara.Revela.Plugins.Source.Calendar" >> $GITHUB_STEP_SUMMARY
-          echo "- Spectara.Revela.Themes.Lumina" >> $GITHUB_STEP_SUMMARY
-          echo "- Spectara.Revela.Themes.Lumina.Statistics" >> $GITHUB_STEP_SUMMARY
-          echo "- Spectara.Revela.Themes.Lumina.Calendar" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Source:** Same artifacts from build stage (no rebuild)" >> $GITHUB_STEP_SUMMARY
+      pages: write
+      id-token: write
+    uses: ./.github/workflows/deploy-website.yml
+    with:
+      source-ref: ${{ github.sha }}
+      release-tag: ${{ github.ref_name }}

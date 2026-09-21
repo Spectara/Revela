@@ -43,11 +43,14 @@ Cobertura output, and `--report-trx --results-directory ./TestResults` for TRX r
 
 ## Building Releases
 
-For theme work, also run the [Lumina browser acceptance](../scripts/browser/README.md)
-against fresh Showcase output. It verifies actual viewport/JS settings and the
-page/lightbox/none journeys; .NET tests alone do not prove browser usability.
+For theme work, use the retained [Lumina browser requirements](../scripts/browser/README.md)
+against fresh isolated output. The former standalone browser script has been
+removed; no replacement automated browser suite is currently available. Perform
+manual or available isolated browser checks and report gaps explicitly. .NET
+tests alone do not prove browser usability. A future Playwright integration is
+a separate decision, not part of the pipeline-toolchain cleanup.
 
-The contract is [ADR 0005: Release Artifact Verification](decisions/0005-release-artifact-verification.md).
+The [CI/CD guide](../.github/workflows/README.md#release-stages) describes release verification.
 Run the following PowerShell examples from the Revela repository root, only when
 you own the build/output resources. Do not run Build mode or release publishing
 concurrently with another build using the same repository outputs.
@@ -82,7 +85,7 @@ Without `-ArtifactPath`, [test-release.ps1](../scripts/test-release.ps1) selects
 Build mode, which produces and tests **Full** only:
 
 ```pwsh
-.\scripts\test-release.ps1 -Version 0.0.0-test -KeepArtifacts
+.\scripts\test-release.ps1 -Version 0.0.0-test
 ```
 
 It restores/builds the Release solution, runs its full tests, publishes the CLI,
@@ -91,8 +94,8 @@ package installation and registration, theme commands, generation, compression,
 cleanup, idempotency, installing the exact CLI tool package locally and consuming
 the packaged SDK. Lumina comes from its release package, not an injected loose DLL.
 
-`-SkipTests` is Build-only and skips unit tests, not the modular suite. CI uses
-`-SkipTests -Version 0.0.0-ci -KeepArtifacts` after its full-solution test step.
+`-SkipTests` is Build-only and skips unit tests, not the modular suite. Build mode
+is a local opt-in check; CI no longer runs it on every change.
 `-IncludeOneDrive` adds a real network download and requires a valid share; it is
 optional and unavailable for Standalone. Local package/SDK dependency restores
 may also need network access; omitting OneDrive is not a guarantee of an entirely
@@ -110,9 +113,9 @@ Replace `<VERSION>` and the example paths below with existing matching inputs.
 These Windows x64 examples are alternatives, not a script to run unchanged:
 
 ```pwsh
-.\scripts\test-release.ps1 -ArtifactPath .\artifacts\downloads\revela-win-x64-full.zip -Variant Full -Version '<VERSION>' -RuntimeIdentifier win-x64 -KeepArtifacts
-.\scripts\test-release.ps1 -ArtifactPath .\artifacts\downloads\revela-win-x64-core.zip -Variant Core -PackageDirectory .\artifacts\downloads\nupkgs -Version '<VERSION>' -RuntimeIdentifier win-x64 -KeepArtifacts
-.\scripts\test-release.ps1 -ArtifactPath .\artifacts\downloads\revela-win-x64-standalone.zip -Variant Standalone -Version '<VERSION>' -RuntimeIdentifier win-x64 -KeepArtifacts
+.\scripts\test-release.ps1 -ArtifactPath .\artifacts\downloads\revela-win-x64-full.zip -Variant Full -Version '<VERSION>' -RuntimeIdentifier win-x64
+.\scripts\test-release.ps1 -ArtifactPath .\artifacts\downloads\revela-win-x64-core.zip -Variant Core -PackageDirectory .\artifacts\downloads\nupkgs -Version '<VERSION>' -RuntimeIdentifier win-x64
+.\scripts\test-release.ps1 -ArtifactPath .\artifacts\downloads\revela-win-x64-standalone.zip -Variant Standalone -Version '<VERSION>' -RuntimeIdentifier win-x64
 ```
 
 An extracted directory can replace the archive path. On a Linux x64 host, for
@@ -123,10 +126,10 @@ the host, not the artifact. The requested version must exactly match the binary
 and tested packages; it is not inferred from the archive name. Unix executables
 must already have owner execute permission; the test does not repair the archive.
 
-| Variant | Inputs and checks |
-| --- | --- |
-| Full | Uses its bundled `packages/` only; `-PackageDirectory` is rejected. Runs the modular suite. |
-| Core | Requires explicit `-PackageDirectory` with the same release's packages. Runs the modular suite using this external fixture, not a shipped theme/feed. |
+| Variant    | Inputs and checks                                                                                                                                                   |
+| ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Full       | Uses its bundled `packages/` only; `-PackageDirectory` is rejected. Runs the modular suite.                                                                         |
+| Core       | Requires explicit `-PackageDirectory` with the same release's packages. Runs the modular suite using this external fixture, not a shipped theme/feed.               |
 | Standalone | Requires its actual native libvips companion. Tests the Native AOT host, configuration, generation and cleanup without plugin management or SDK/tool package tests. |
 
 Artifact mode skips product restore/build/publish/pack entirely. Full/Core may
@@ -147,47 +150,52 @@ The suite stages copies and isolates test configuration/caches under a unique
 `artifacts/release-test-<timestamp>-<id>/` directory. It records
 `verification.log`, `input-hashes.json` and `after-hashes.json`, comparing SHA256
 hashes and the file inventory of supplied artifacts/feed and original Showcase
-inputs. Test directories are currently retained even without `-KeepArtifacts`,
-including after failures; remove unneeded test directories explicitly. SDK consumer evidence is retained
+inputs. Test directories are always retained, including after failures; remove
+unneeded test directories explicitly. SDK consumer evidence is retained
 separately under `artifacts/sdk-consumer-<id>/`.
 
 ### Hosted CI and Release Runs
 
 [CI](../.github/workflows/ci.yml) runs Release builds and full-solution tests with
-coverage on Windows, Linux and macOS. A Debug source-generator build precedes
-format verification. The shared modular Build suite runs afterward, alongside a
-separate Native AOT version/Showcase canary. TRX/Cobertura uploads come from
-`TestResults`.
+coverage on Ubuntu. The generator builds through its normal project reference.
+Format verification sets the environment variable `Configuration=Release` to use
+the same output; no separate Debug build is needed.
+TRX/Cobertura uploads come from `TestResults`. Packaging and Native AOT execution
+are checked in Release, not on every push or pull request. Windows/macOS-specific
+unit tests require an explicit local run; release artifact tests do not replace
+those full unit suites.
 
 [Release](../.github/workflows/release.yml) runs `validate -> packages -> build ->
-sign -> release -> publish-nuget`. Packages are tested before no-build packing,
+sign -> release -> website`. Packages are tested before no-build packing,
 then checked through an isolated SDK consumer. The five native RID jobs test
 their actual Core, Full and Standalone archives before archive attestation and
 signing, without rebuilding the product in the tests. The `release` job creates
-a GitHub Release only on a tag push. `publish-nuget` remains disabled by
-`if: false`; a UI re-run or environment approval cannot enable it.
+a GitHub Release only on a tag push. NuGet packages are included as release
+downloads; publishing to NuGet.org is not configured and requires separate setup
+and authorization.
 
 Manual Release dispatch takes `version` and does not create a GitHub Release or
 automatically deploy the website. It still attests and signs, with external
 effects. Any remote workflow run, tag push or deployment requires explicit
 permission; none is authorized by this guide.
 
-[Automatic website deployment](../.github/workflows/deploy-website.yml) binds to
-the successful tag-push Release run's `release-identity-<attempt>` artifact. It checks the
-tag/version, commit, run ID and attempt, confirms a published release through
-`getReleaseByTag`, and checks that `getCommit` for the tag matches the triggering
-commit. Both source checkout and downloaded Standalone binary use that identity.
-Missing or inconsistent metadata fails closed, without falling back to latest.
-Manual website dispatch retains selected-ref content and the latest release,
-including prereleases.
+[Website deployment](../.github/workflows/deploy-website.yml) is called directly
+after a successful tag-push Release publication, with that run's commit and tag.
+A manual **Deploy Website** dispatch remains available for emergency content
+corrections: provide `source-ref` (default `main`) and an explicit existing
+`release-tag` including `v`. Both entry paths require a published, non-draft
+release and run the same generation/Pages checks. Neither falls back to latest;
+manual Release rehearsals do not deploy. Use content compatible with the selected
+binary, or a correction based on the published release if `main` has moved ahead.
 
-Old runs without metadata need a new Release run after the website guard lands
-on the default branch and the producer lands on the Release source ref. Re-running
-an older workflow revision does not add the producer. See the
-[CI/CD guide](../.github/workflows/README.md) for stage details and checksum/signing
-verification. Local checks do not establish hosted event, signing or Pages
-integration success. Preserve historical R1 reports; the remediation report and
-ADR verification status are maintained separately by their owner.
+There is no custom pipeline-contract test suite. Use `actionlint` for workflow
+syntax and review permissions and publication conditions directly; the old
+synthetic version/deployment cases are no longer automated. No replacement
+test framework or Node/npm dependency is introduced.
+See the [CI/CD guide](../.github/workflows/README.md) for the coverage trade-off,
+stage details and checksum/signing verification. Local checks do not establish
+hosted event, signing or Pages integration success. Report actual run results
+and verification gaps with the task or release, not as permanent review diaries.
 
 ---
 

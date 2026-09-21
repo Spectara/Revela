@@ -1,16 +1,7 @@
 name: Deploy Website
 
-# Deployment policy: automatic deployments use the completed Release run's
-# source and binary. Manual deployments use current content and the latest
-# release. Content iteration happens locally via
-# `cd samples/revela-website && dotnet run --project ../../src/Cli -- generate all`,
-# so there is no push-based auto-deploy. This keeps revela.website 1:1
-# consistent with what users can actually download.
-#
-# Triggers:
-#   - workflow_run: deploys after a successful tag-triggered Release workflow
-#   - workflow_dispatch: manual deploy for content-only fixes (typos,
-#     links, sponsor updates) without cutting a new release
+# Called after publication by Release, or dispatched explicitly for content fixes.
+# Both paths use an explicit source ref and published binary tag; never latest.
 #
 # Mechanism: GitHub-native Pages deployment via actions/deploy-pages.
 # Pages source for this repo must be set to "GitHub Actions" in the
@@ -19,13 +10,27 @@ name: Deploy Website
 # survives every deploy. The `_static/.nojekyll` file disables Jekyll
 # post-processing so files starting with `_` are served as-is.
 on:
-  # Automatically deploy after a successful release
-  workflow_run:
-    workflows: ["Release"]
-    types: [completed]
-
-  # Manual trigger — used for content-only fixes between releases
+  workflow_call:
+    inputs:
+      source-ref:
+        description: 'Website source commit supplied by the Release workflow'
+        required: true
+        type: string
+      release-tag:
+        description: 'Published Revela release tag, including v'
+        required: true
+        type: string
   workflow_dispatch:
+    inputs:
+      source-ref:
+        description: 'Source branch, tag or commit containing the content correction'
+        required: true
+        default: 'main'
+        type: string
+      release-tag:
+        description: 'Existing published Revela release tag, e.g. v0.0.1-beta.21'
+        required: true
+        type: string
 
 # Only one concurrent Pages deployment. Don't cancel an in-flight deploy
 # (Pages backend dislikes that); queue the next one instead.
@@ -35,121 +40,51 @@ concurrency:
 
 # Minimum permissions required by actions/deploy-pages.
 permissions:
-  actions: read
   contents: read
-  pages: write
-  id-token: write
-
-env:
-  DOTNET_NOLOGO: true
-  DOTNET_CLI_TELEMETRY_OPTOUT: true
-  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
 
 jobs:
   build:
     name: Generate Website
     runs-on: ubuntu-latest
-    # Release workflow_dispatch runs validate artifacts without deploying the site.
-    if: >-
-      ${{ github.event_name == 'workflow_dispatch' ||
-          (github.event_name == 'workflow_run' &&
-           github.event.workflow_run.conclusion == 'success' &&
-           github.event.workflow_run.event == 'push') }}
     steps:
-      - name: Checkout
-        if: github.event_name == 'workflow_dispatch'
-        uses: actions/checkout@v7
+      - name: Validate deployment inputs
+        shell: pwsh
+        env:
+          WEBSITE_SOURCE_REF: ${{ inputs.source-ref }}
+          RELEASE_TAG: ${{ inputs.release-tag }}
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:WEBSITE_SOURCE_REF)) {
+            throw 'A website source ref is required.'
+          }
+          if ($env:RELEASE_TAG -cnotmatch '\Av[0-9]+\.[0-9]+\.[0-9]+(?:-[a-zA-Z0-9]+(?:\.[0-9]+)?)?\z') {
+            throw 'An explicit release tag in vX.Y.Z[-label[.number]] form is required.'
+          }
 
-      - name: Download triggering release identity
-        if: github.event_name == 'workflow_run'
-        uses: actions/download-artifact@v8
-        with:
-          name: release-identity-${{ github.event.workflow_run.run_attempt }}
-          run-id: ${{ github.event.workflow_run.id }}
-          github-token: ${{ github.token }}
-          path: ${{ runner.temp }}/release-identity
+      - name: Check published release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ inputs.release-tag }}
+        run: |
+          $draft = gh release view $env:RELEASE_TAG --json isDraft --jq '.isDraft'
+          if ($LASTEXITCODE -ne 0 -or $draft -cne 'false') {
+            throw 'The selected release must exist and be published, not a draft.'
+          }
 
-      - name: Resolve triggering release
-        if: github.event_name == 'workflow_run'
-        id: resolve-release
-        uses: actions/github-script@v9
-        with:
-          script: |
-            const fs = require('node:fs');
-            const path = require('node:path');
-            const run = context.payload.workflow_run;
-            if (!run || run.event !== 'push' || run.conclusion !== 'success') {
-              throw new Error('Expected a successful tag-triggered Release run.');
-            }
-
-            const identity = JSON.parse(fs.readFileSync(
-              path.join(process.env.RUNNER_TEMP, 'release-identity', 'release-metadata.json'), 'utf8'));
-            if (!identity || typeof identity !== 'object' || Array.isArray(identity)) {
-              throw new Error('Missing release identity metadata.');
-            }
-
-            for (const [identityKey, runKey] of [['runId', 'id'], ['runAttempt', 'run_attempt']]) {
-              const value = identity[identityKey];
-              if (!['string', 'number'].includes(typeof value) ||
-                  !Number.isSafeInteger(run[runKey]) || run[runKey] < 1 ||
-                  String(value) !== String(run[runKey])) {
-                throw new Error(`Release identity does not match triggering run: ${identityKey}.`);
-              }
-            }
-            if (typeof identity.commit !== 'string' || identity.commit.length !== 40 ||
-                !/^[a-f0-9]{40}$/.test(identity.commit) || identity.commit !== run.head_sha) {
-              throw new Error('Release identity commit does not match triggering head SHA.');
-            }
-            if (typeof identity.version !== 'string' || identity.version !== identity.version.trim() ||
-                !/^[0-9]+\.[0-9]+\.[0-9]+(?:-[a-zA-Z0-9]+(?:\.[0-9]+)?)?$/.test(identity.version) ||
-                identity.tag !== `v${identity.version}`) {
-              throw new Error('Release identity tag/version is invalid.');
-            }
-
-            const { data: release } = await github.rest.repos.getReleaseByTag({
-              ...context.repo, tag: identity.tag
-            });
-            if (!release || release.draft !== false || release.tag_name !== identity.tag) {
-              throw new Error('Expected a published release for the exact identity tag.');
-            }
-            const { data: commit } = await github.rest.repos.getCommit({
-              ...context.repo, ref: `refs/tags/${identity.tag}`
-            });
-            if (commit?.sha !== identity.commit) {
-              throw new Error('Release tag does not resolve to the triggering commit.');
-            }
-
-            core.setOutput('ref', identity.commit);
-            core.setOutput('tag', identity.tag);
-
-      - name: Checkout triggering release source
-        if: github.event_name == 'workflow_run'
+      - name: Checkout website source
         uses: actions/checkout@v7
         with:
-          ref: ${{ steps.resolve-release.outputs.ref }}
+          ref: ${{ inputs.source-ref }}
+          persist-credentials: false
 
-      - name: Download triggering Revela release (Standalone)
-        if: github.event_name == 'workflow_run'
-        uses: robinraju/release-downloader@v1
-        with:
-          repository: Spectara/Revela
-          tag: ${{ steps.resolve-release.outputs.tag }}
-          fileName: "revela-linux-x64-standalone.tar.gz"
-          out-file-path: ./revela-download
-
-      - name: Download latest Revela release (Standalone)
-        if: github.event_name == 'workflow_dispatch'
-        uses: robinraju/release-downloader@v1
-        id: download-release
-        with:
-          repository: Spectara/Revela
-          latest: true
-          # Until 1.0 we publish pre-releases. Switch this to `false`
-          # once stable releases exist so the live site only follows
-          # production-grade builds.
-          preRelease: true
-          fileName: "revela-linux-x64-standalone.tar.gz"
-          out-file-path: ./revela-download
+      - name: Download selected Revela release (Standalone)
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: Spectara/Revela
+          RELEASE_TAG: ${{ inputs.release-tag }}
+        run: gh release download "$RELEASE_TAG" --pattern "revela-linux-x64-standalone.tar.gz" --dir ./revela-download
 
       - name: Extract Revela
         run: |
@@ -158,7 +93,7 @@ jobs:
 
       - name: Replace download placeholders with actual release URLs
         env:
-          VERSION: ${{ steps.resolve-release.outputs.tag || steps.download-release.outputs.tag_name }}
+          VERSION: ${{ inputs.release-tag }}
         run: |
           BASE_URL="https://github.com/Spectara/Revela/releases/download/${VERSION}"
 
@@ -216,6 +151,9 @@ jobs:
     name: Deploy to GitHub Pages
     needs: build
     runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}

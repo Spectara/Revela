@@ -24,9 +24,6 @@
 .PARAMETER IncludeOneDrive
     Also test OneDrive sync (requires network + valid share URL)
 
-.PARAMETER KeepArtifacts
-    Don't clean up artifacts after test
-
 .PARAMETER RuntimeIdentifier
     Target runtime (default: current OS and OS architecture; cross-runtime tests fail)
 
@@ -53,7 +50,7 @@
     # Full test including OneDrive download
 
 .EXAMPLE
-    .\scripts\test-release.ps1 -Version "1.0.0-beta.1" -KeepArtifacts
+    .\scripts\test-release.ps1 -Version "1.0.0-beta.1"
     # Test specific version, keep artifacts for inspection
 #>
 
@@ -64,7 +61,6 @@ param(
     [Parameter(ParameterSetName = 'Build')]
     [switch]$SkipTests,
     [switch]$IncludeOneDrive,
-    [switch]$KeepArtifacts,
     [string]$RuntimeIdentifier,
     [Parameter(Mandatory, ParameterSetName = 'Artifact')]
     [string]$ArtifactPath,
@@ -234,7 +230,7 @@ Write-Info "Variant:    $Variant"
 Write-Info "Runtime:    $RuntimeIdentifier"
 Write-Info "Skip Tests: $SkipTests"
 Write-Info "OneDrive:   $IncludeOneDrive"
-Write-Info "Keep Artifacts: $KeepArtifacts"
+Write-Info "Artifacts are retained for inspection."
 Write-Info "Repo Root:  $RepoRoot"
 
 Push-Location $RepoRoot
@@ -270,10 +266,8 @@ try {
         if ($LASTEXITCODE -ne 0) { throw "Restore failed" }
         Write-Success "Restore completed"
 
-        dotnet build src/Sdk.Generators/Sdk.Generators.csproj -c Release --no-restore -p:Version=$Version -p:DebugType=embedded --verbosity quiet
-        if ($LASTEXITCODE -ne 0) { throw 'Generator build failed' }
         Write-Info "Running dotnet build (solution, Release)..."
-        dotnet build Spectara.Revela.slnx -c Release -m:1 --no-restore -p:Version=$Version -p:DebugType=embedded --verbosity quiet
+        dotnet build Spectara.Revela.slnx -c Release --no-restore -p:Version=$Version -p:DebugType=embedded --verbosity quiet
         if ($LASTEXITCODE -ne 0) { throw "Build failed" }
         Write-Success "Solution built"
     }
@@ -770,7 +764,8 @@ try {
             Write-Info "Running: revela config locations"
             $configLocationsOutput = & $ExePath config locations 2>&1 | Out-String
             if ($LASTEXITCODE -ne 0) { throw "config locations failed" }
-            $compactLocationsOutput = $configLocationsOutput -replace '[^\x21-\x7e]', ''
+            $plainLocationsOutput = $configLocationsOutput -replace '\x1b\[[0-?]*[ -/]*[@-~]', ''
+            $compactLocationsOutput = $plainLocationsOutput -replace '[^\x21-\x7e]|\|', ''
             foreach ($configName in @('project.json', 'site.json', 'logging.json')) {
                 if ($compactLocationsOutput -notmatch [regex]::Escape($configName)) {
                     throw "config locations did not report $configName"
@@ -1030,95 +1025,6 @@ try {
     Write-Step "Step 9: Validate Output"
     Measure-Step "Validate" {
         Assert-GeneratedOutput
-        $outputDir = Join-Path $SampleProjectDir "output"
-
-        if (-not (Test-Path $outputDir)) {
-            throw "Output directory not created!"
-        }
-
-        # Check for expected files
-        $expectedFiles = @(
-            @{ Path = "index.html"; Description = "Homepage" },
-            @{ Path = "_assets/main.css"; Description = "Theme CSS" }
-        )
-
-        $missingFiles = @()
-        foreach ($file in $expectedFiles) {
-            $path = Join-Path $outputDir $file.Path
-            if (Test-Path $path) {
-                Write-Success "Found: $($file.Path)"
-            }
-            else {
-                $missingFiles += $file.Path
-                Write-Err "Missing: $($file.Path) ($($file.Description))"
-            }
-        }
-
-        # Check images directory
-        $imagesDir = Join-Path $outputDir "images"
-        if (Test-Path $imagesDir) {
-            $imageCount = (Get-ChildItem $imagesDir -Recurse -File).Count
-            Write-Success "Images generated: $imageCount files"
-        }
-        else {
-            throw 'Images directory not found'
-        }
-
-        # Check gallery directories (exclude special dirs)
-        $specialDirs = @("images", "_assets", "test-gallery", "test-stats", "about")
-        $galleryDirs = @(Get-ChildItem $outputDir -Directory | Where-Object { $_.Name -notin $specialDirs })
-        if ($galleryDirs.Count -gt 0) {
-            Write-Success "Gallery directories: $($galleryDirs.Count)"
-            foreach ($dir in $galleryDirs) {
-                $htmlFiles = @(Get-ChildItem $dir.FullName -Filter "*.html" -Recurse)
-                Write-Info "  $($dir.Name): $($htmlFiles.Count) HTML files"
-            }
-        }
-
-        # Check statistics page
-        $statsPages = Get-ChildItem $outputDir -Recurse -Filter "index.html" |
-            Where-Object { $_.Directory.Name -eq "06-statistics" -or $_.Directory.Name -eq "test-stats" }
-        if ($statsPages) {
-            Write-Success "Statistics page found: $($statsPages[0].Directory.Name)/index.html"
-        }
-        else {
-            Write-Warn "Statistics page not found (optional)"
-        }
-
-        # Check _assets directory
-        $assetsDir = Join-Path $outputDir "_assets"
-        if (Test-Path $assetsDir) {
-            $assetFiles = Get-ChildItem $assetsDir -Recurse -File
-            Write-Success "_assets/ directory: $($assetFiles.Count) files"
-
-            $extensionDir = Join-Path $assetsDir "lumina-statistics"
-            if (Test-Path $extensionDir) {
-                Write-Success "Lumina.Statistics assets included"
-            }
-
-            $calendarExtDir = Join-Path $assetsDir "lumina-calendar"
-            if (Test-Path $calendarExtDir) {
-                Write-Success "Lumina.Calendar assets included"
-            }
-        }
-
-        # Check index.html content
-        $indexPath = Join-Path $outputDir "index.html"
-        if (Test-Path $indexPath) {
-            $indexContent = Get-Content $indexPath -Raw
-            if ($indexContent -match "<html") {
-                Write-Success "index.html contains valid HTML"
-            }
-            else {
-                throw 'index.html is invalid'
-            }
-        }
-
-        if ($missingFiles.Count -gt 0) {
-            throw "Validation failed: Missing files: $($missingFiles -join ', ')"
-        }
-
-        Write-Success "All validations passed!"
     }
 
     # ========================================================================
@@ -1374,9 +1280,11 @@ try {
             throw "Isolated tool installation failed: $installResult"
         }
         Write-Success "Tool installed in isolated test directory"
-        $installedPackages = @(Get-ChildItem -LiteralPath $ToolInstallDir -Recurse -File -Filter "spectara.revela.$Version.nupkg")
-        if ($installedPackages.Count -ne 1 -or
-            (Get-FileHash -LiteralPath $installedPackages[0].FullName).Hash -cne (Get-FileHash -LiteralPath $nupkgFile.FullName).Hash) {
+        $installedPackages = @(Get-ChildItem -LiteralPath $ToolInstallDir -Recurse -File -Force -Filter "spectara.revela.$Version.nupkg")
+        if ($installedPackages.Count -ne 1) {
+            throw "Installed tool package lookup expected exactly one archive, found $($installedPackages.Count)."
+        }
+        if ((Get-FileHash -LiteralPath $installedPackages[0].FullName).Hash -cne (Get-FileHash -LiteralPath $nupkgFile.FullName).Hash) {
             throw 'Installed tool package does not match the supplied release package hash.'
         }
         Write-Success 'Installed tool package SHA256 matches the exact supplied release package'
@@ -1488,12 +1396,4 @@ finally {
         if ($TranscriptStarted) { Stop-Transcript | Out-Null }
     }
 
-    # Cleanup (unless -KeepArtifacts)
-    if (-not $KeepArtifacts -and (Test-Path $TestDir)) {
-        Write-Info "Cleaning up test artifacts..."
-        # Don't actually delete - user might want to inspect
-        # Remove-Item $TestDir -Recurse -Force
-        Write-Info "Artifacts kept at: $TestDir"
-        Write-Info "Run with -KeepArtifacts:$false to auto-delete"
-    }
 }

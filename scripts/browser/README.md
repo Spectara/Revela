@@ -1,63 +1,56 @@
-# Lumina Browser Acceptance
+# Lumina Browser Acceptance Requirements
 
-Development-only checks for a freshly generated Showcase site. This package is
-not bundled with the CLI or emitted into generated sites.
+Status: the standalone Node/Playwright test script was retired on 2026-09-15.
+There is currently **no executable automated browser suite** in this directory
+or in CI. This document preserves its acceptance requirements for a separate
+decision about future browser tests; it does not introduce replacement tooling.
+See the [Development Guide](../../docs/development.md#building-releases) for current verification requirements.
 
-## Prepare and Run
+## Retained Visitor Journeys
 
-From the repository root, build and generate the Showcase with the local CLI:
+- Lightbox: each trigger opens a single modal containing the selected thumbnail's
+  actual image. Images must finish loading with nonzero natural dimensions.
+- Close by button and Escape, returning keyboard focus to the initiating trigger.
+  Switching to another image must still return focus to the original trigger.
+- With JavaScript disabled, supported native open/close behavior remains usable;
+  JavaScript-only previous/next controls are hidden rather than left inoperative.
+- The `none` viewer has images but no photo links, lightbox buttons or dialogs.
+- The `page` viewer navigates through the visible thumbnail to the expected photo,
+  preserves the canonical path and uses an image variant for Open Graph metadata.
+- Returning from a photo page selects the original gallery occurrence, whose
+  fragment target exists. Repeated memberships must not create duplicate IDs.
+- Required pages and assets load successfully, controls remain visible, and
+  generated layouts have no unintended horizontal overflow.
 
-```powershell
-dotnet build -m:1
-Push-Location samples/showcase
-dotnet run --no-build --no-launch-profile --project ../../src/Cli.Embedded -- generate all
-dotnet run --no-build --no-launch-profile --project ../../src/Cli.Embedded -- serve --port 8098
-```
+The previous Showcase fixtures were `galleries/canon-only/` (lightbox),
+`galleries/sony-only/` (none), and `galleries/landscapes/` (page). Future tests
+should express these scenarios with small deterministic fixtures rather than
+requiring those particular sample names.
 
-Keep that server terminal open; use another terminal at the repository root:
+## Retained Environments
 
-```powershell
-npm ci --prefix scripts/browser --ignore-scripts
-node scripts/browser/verify-lumina.cjs http://localhost:8098/ edge
-```
+| Viewport    | Color scheme | JavaScript | Reduced motion |
+| ----------- | ------------ | ---------- | -------------- |
+| 1440 x 1000 | Light        | Enabled    | Disabled       |
+| 1440 x 1000 | Dark         | Disabled   | Enabled        |
+| 390 x 844   | Light        | Disabled   | Enabled        |
+| 390 x 844   | Dark         | Enabled    | Disabled       |
 
-The Edge run requires locally installed Microsoft Edge. Alternatively install
-Playwright-managed engines and select one explicitly:
+These are the former four combinations, not full combinatorial coverage.
+Observe the actual viewport, media settings and JavaScript execution rather than
+only requested options. Record the engine/version and conditions actually tested.
 
-```powershell
-node scripts/browser/node_modules/playwright/cli.js install chromium firefox webkit
-node scripts/browser/verify-lumina.cjs http://localhost:8098/ chromium
-node scripts/browser/verify-lumina.cjs http://localhost:8098/ firefox
-node scripts/browser/verify-lumina.cjs http://localhost:8098/ webkit
-```
+## Isolation And Evidence
 
-Use an unused port if 8098 is occupied. The supplied URL must be local and point
-to the site root, ending in `/`. Stop a server using the build output before
-rebuilding on Windows, or serve from a separate runtime copy. Agents must reserve
-the generated directory/server and use isolated project copies when sharing a
-workspace; never regenerate somebody else's actively tested output.
+Use a fresh local generation with owned source/output directories and isolated
+browser pages. Do not modify another preview, fetch private feeds or submit remote
+forms. Block external requests during visitor checks. Dispose of test contexts
+and restore interception/state after checks. Screenshots support visual inspection,
+not automatic visual-regression claims without a baseline comparison.
 
-## Coverage
-
-- Existing Showcase routes: Canon lightbox, Sony noninteractive, Landscapes photo pages.
-- Desktop/mobile, light/dark, actual JavaScript settings, normal/reduced motion.
-- All Canon triggers open the correct modal and selected image resource, close
-  via native commands/Escape, and restore keyboard focus. No-JS pages hide
-  unavailable previous/next controls; JS pages switch to the intended next dialog.
-- Photo links navigate through the visible image, preserve canonical destination,
-  show the selected photo, provide a real OG image variant and return occurrence.
-- Loaded image data, unique IDs, horizontal overflow and failed HTTP responses.
-- Screenshots under `artifacts/browser-checks/<engine>/` for visual review.
-
-Contexts and their request interception are disposed in `finally`; external
-requests are blocked. No remote forms are submitted. A failed check exits nonzero.
-Unit/integration tests cover missing templates, malformed configuration, hostile
-metadata and additional URI combinations; this browser check complements them.
-
-## Limits
-
-Screenshots still need inspection; DOM assertions are not a complete accessibility
-audit. The suite does not certify real-device touch/zoom, assistive technology,
-every navigation context or every asset prefix. Windows WebKit is not shipping
-Safari on macOS/iOS. Report the actual tested engine/version and remaining gaps,
-not a claim that every supported browser was tested.
+Historical screenshots and results remain historical; they do not establish
+current browser correctness. Existing .NET HTML/URL tests do not execute browser
+behavior. Until replacement automation is explicitly agreed, theme changes need
+manual or available isolated browser checks, with missing checks reported as gaps.
+Real touch/zoom, assistive technology and shipping Safari on Apple devices were
+not comprehensively covered by the retired script.
