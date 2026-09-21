@@ -55,8 +55,23 @@ The active theme declares which viewer modes it supports and which one is its de
 }
 ```
 
-The project can override that default with `theme.photoViewer`. A page or gallery can override
-the project in `_index.revela`:
+Base themes must declare both fields, with a nonempty list of distinct supported modes and a
+default contained in that list. Theme extensions cannot declare or override viewer capabilities.
+Themes declaring `page` support must provide a resolvable `Body/Photo.revela`; that template is
+not required for themes supporting only `lightbox` or `none`.
+
+The project can override the theme default:
+
+```json
+{
+	"theme": {
+		"name": "Lumina",
+		"photoViewer": "page"
+	}
+}
+```
+
+A page or gallery can override the project in `_index.revela`:
 
 ```text
 +++
@@ -76,11 +91,22 @@ The body template does not change this behavior. Custom `home` and `page` templa
 rules as default gallery bodies. Unsupported modes fail generation with the theme's supported
 values instead of silently falling back.
 
+Viewer selection is page-wide, including all inline grids; there is no per-token viewer override.
+The mode belongs to an occurrence, not the canonical image. A photo appearing in different
+galleries may use different modes. At least one published `page` membership produces one
+canonical photo page, containing only the `page` memberships' navigation contexts. Other modes
+do not implicitly link to that page.
+
 In `page` mode, the bare token reuses the page's existing photo navigation context. Each filtered
 token creates a separate Previous/Back/Next context in its frozen display order. The same photo
 may appear in multiple filtered grids; every occurrence receives a distinct HTML anchor and
 returns to the correct grid. A Custom Body without a visible inline grid does not publish hidden
 images merely because its source directory contains them.
+
+Viewer IDs use collision-free encoding with separate namespaces for the root,
+galleries, images and numbered grids. Do not replace this with separator substitution
+or truncated hashes: distinct source paths must not share an HTML target. ID encoding
+does not change page routes or membership order.
 
 Once a valid inline token is present, Lumina suppresses the automatic trailing gallery grid. This
 also applies when the token matches no photos. Multiple bare tokens are allowed, but generate a
@@ -95,6 +121,7 @@ inline galleries. The grid receives prepared image occurrences with:
 - `occurrence.image`: the normal image template model.
 - `occurrence.viewer_mode`: lowercase `page`, `lightbox`, or `none`.
 - `occurrence.context_id`: the stable membership identity.
+- `occurrence.context_label`: the display label for that membership.
 - `occurrence.occurrence_id`: the unique identity for this image occurrence.
 - `occurrence.previous_occurrence_id`: the previous occurrence, or `null` at the boundary.
 - `occurrence.next_occurrence_id`: the next occurrence, or `null` at the boundary.
@@ -107,82 +134,16 @@ must not infer the viewer from the body template or from the existence of a phot
 Filtered selections are prepared before photo-page aggregation and reused for final rendering.
 Theme code must not evaluate the filter again.
 
-## Photo Viewer Architecture
-
-> **Status:** Implemented. This contract supersedes the former D6 template-based rule.
-
-The concrete implementation sequence, file touchpoints, test matrix, and acceptance criteria are
-tracked in
-[`docs/ideas/photo-viewer-implementation-plan.md`](ideas/photo-viewer-implementation-plan.md).
-
-The photo viewer must not be inferred from a page's body template. A `[[gallery]]` block should
-behave predictably whether its page uses the default gallery body, `home`, `page`, or a custom
-theme template.
-
-Revela provides the publication and navigation mechanisms. Themes choose which presentation
-modes they implement and declare those capabilities in their manifest:
-
-```json
-{
-	"photoViewers": ["page", "lightbox", "none"],
-	"defaultPhotoViewer": "page"
-}
-```
-
-The modes are:
-
-- `page`: open a generated canonical photo page with the prepared navigation context.
-- `lightbox`: open a theme-provided inline lightbox without generating a photo page for that
-	occurrence.
-- `none`: render a non-interactive image occurrence.
-
-The project may override the theme default explicitly:
-
-```json
-{
-	"theme": {
-		"name": "Lumina",
-		"photoViewer": "page"
-	}
-}
-```
-
-A gallery or page may override the project choice in `_index.revela`:
-
-```text
-+++
-photo_viewer = "lightbox"
-+++
-```
-
-The effective mode resolves in this order:
-
-1. Page or gallery `photo_viewer`.
-2. Project `theme.photoViewer`.
-3. Theme manifest `defaultPhotoViewer`.
-
-Revela validates the effective mode against the active theme's `photoViewers`. Unsupported modes
-must fail generation with the theme name and its supported modes; Revela must not silently fall
-back to another interaction.
-
-The mode belongs to the image occurrence, not to the canonical image identity. The same image may
-open a photo page in one gallery, use a lightbox on another page, and remain static elsewhere. A
-canonical photo page is generated when at least one published membership uses `page`.
-
-The Core remains responsible for effective configuration, prepared memberships, stable ordering,
-navigation contexts, and photo-page generation. The theme remains responsible for page-link,
-lightbox, and static-image markup and styling. Themes may support any subset of the modes; Revela
-does not require every theme to implement every presentation.
-
-Viewer selection is intentionally page-wide. Per-token viewer overrides are not planned because
-mixing interaction models within one page would be difficult for visitors to predict and would
-unnecessarily expand the inline-gallery syntax.
+## Lumina Browser Behavior
 
 Lumina's lightbox uses `commandfor` with `command="show-modal"` and `command="close"`. Its
 supported browser baseline is Chrome/Edge 135+, Firefox 144+, and Safari/iOS 26.2+. Without
 JavaScript, visitors can open and close the modal dialog through its visible controls, inspect the
 full-size photo, and read the same image metadata as on the canonical photo page. With JavaScript,
 validated Previous/Next controls, arrow-key navigation, and a robust Escape fallback are added.
-Conforming browsers also provide native Escape handling. The image-first layout follows the
-prototype direction: a full-viewport sticky photo stage followed by a translucent scrolling
-metadata sheet, without photo-page context navigation.
+Conforming browsers also provide native Escape handling. The layout uses a full-viewport photo
+stage followed by a scrolling metadata sheet, without photo-page context navigation.
+
+These capabilities need browser verification; HTML generation alone cannot prove focus, modal
+or touch behavior. The retained [browser acceptance requirements](../scripts/browser/README.md)
+describe the visitor checks and the current automation gap.

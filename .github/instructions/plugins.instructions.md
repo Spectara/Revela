@@ -182,5 +182,5 @@ Test project lives at `tests/Plugins/<Name>/` and references the plugin project.
 
 ## Reference
 - Full plugin guide: [revela.website/docs/developers/plugin-development](https://revela.website/docs/developers/plugin-development/)
-- Plugin system v2: [`docs/plugin-system-v2.md`](../../docs/plugin-system-v2.md)
+- Plugin architecture: [`docs/architecture.md`](../../docs/architecture.md)
 - HttpClient pattern: [revela.website/docs/developers/httpclient-pattern](https://revela.website/docs/developers/httpclient-pattern/)

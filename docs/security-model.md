@@ -22,16 +22,16 @@ rendering of third-party submissions.
 
 ## Trust assumptions
 
-| Source | Trust | Why |
-|--------|-------|-----|
-| `_index.revela` files | **Trusted** | Authored by the site owner. |
-| `site.json`, `project.json` | **Trusted** | Configured by the site owner. |
-| Theme files (`*.revela`, CSS, JS) | **Trusted** | Either authored locally, or installed via NuGet from a feed the user explicitly configured. |
-| Images in the source folder | **Trusted** | Provided by the site owner. |
-| OneDrive shared folders (Source plugin) | **Trusted** | The site owner controls the share. |
-| iCal feeds (Source plugin) | **Trusted URL, validated network target** | URL itself is configured by the owner. SSRF guardrails reject loopback/private/link-local targets. |
-| Plugin DLLs from NuGet | **Trusted source, OS-permission-protected** | Loaded only from feeds the user explicitly added. Same trust model as `dotnet tool install` — see [Plugin trust](#plugin-trust). |
-| HTTP requests to the dev server | **Trusted (loopback only)** | The Serve plugin binds to `localhost`. Path-traversal attempts return 403. |
+| Source                                  | Trust                                       | Why                                                                                                                              |
+| --------------------------------------- | ------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| `_index.revela` files                   | **Trusted**                                 | Authored by the site owner.                                                                                                      |
+| `site.json`, `project.json`             | **Trusted**                                 | Configured by the site owner.                                                                                                    |
+| Theme files (`*.revela`, CSS, JS)       | **Trusted**                                 | Either authored locally, or installed via NuGet from a feed the user explicitly configured.                                      |
+| Images in the source folder             | **Trusted**                                 | Provided by the site owner.                                                                                                      |
+| OneDrive shared folders (Source plugin) | **Trusted**                                 | The site owner controls the share.                                                                                               |
+| iCal feeds (Source plugin)              | **Trusted URL, validated network target**   | URL itself is configured by the owner. SSRF guardrails reject loopback/private/link-local targets.                               |
+| Plugin DLLs from NuGet                  | **Trusted source, OS-permission-protected** | Loaded only from feeds the user explicitly added. Same trust model as `dotnet tool install` — see [Plugin trust](#plugin-trust). |
+| HTTP requests to the dev server         | **Trusted (loopback only)**                 | The Serve plugin binds to `localhost`. Path-traversal attempts return 403.                                                       |
 
 ---
 
@@ -60,6 +60,12 @@ A downloaded response can still be invalid or stale calendar data. Calendar
 generation validates the supported booking format and fails on invalid/missing
 inputs; it cannot attest to a provider's completeness or freshness. Successful
 downloads across multiple feeds are not rolled back when another feed fails.
+
+OneDrive downloads use `ResponseHeadersRead`; the request timeout does not cover
+the subsequent body copy. That copy currently receives caller cancellation only,
+with no body-wide deadline, so a stalled body can keep synchronization waiting.
+Staging protects the previous destination but does not fix this hang risk; see
+[`SharedLinkProvider.DownloadFileAsync`](../src/Plugins/Source/OneDrive/Providers/SharedLinkProvider.cs).
 
 ### Raw HTML in `_index.revela` bodies
 
@@ -206,7 +212,7 @@ use GitHub's **Report a vulnerability** button on the
 ## Related documentation
 
 - [`docs/architecture.md`](architecture.md) — overall system design
-- [`docs/plugin-system-v2.md`](plugin-system-v2.md) — plugin loading architecture
+- [Architecture](architecture.md) — plugin loading and ownership boundaries
 - [Plugin Development](plugin-development.md) — how to write plugins (incl. URL safety guidance)
 - [`src/Sdk/Validation/UrlSafety.cs`](../src/Sdk/Validation/UrlSafety.cs) — SSRF guardrails source
 - [`src/Plugins/Serve/StaticFileServer.cs`](../src/Plugins/Serve/StaticFileServer.cs) — dev-server path-traversal protection

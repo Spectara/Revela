@@ -16,91 +16,36 @@ Quick orientation for AI coding agents (GitHub Copilot, Claude, Cursor, etc.) wo
   - `src/Cli/` — production (dynamic plugin loading via `DiskPackageSource`)
   - `src/Cli.Embedded/` — debugging (static plugin references via `EmbeddedPackageSource`) ← **start here for F5 debug**
 
-## Where Things Live
+## Routing And Conventions
 
-| Path | Contents |
-|------|----------|
-| `src/Sdk/` | Public abstractions for plugin/theme authors (`IPlugin`, `ITheme`, `IRevelaEngine`, `IPathResolver`) |
-| `src/Core/` | Shared kernel — services, package loading, configuration |
-| `src/Commands/` | Host-owned CLI commands (`Config`, `Packages`, `Plugins`, `Restore`) |
-| `src/Features/` | **Always built-in features**: `Generate`, `Theme` (NOT plugin-loaded) |
-| `src/Plugins/` | External plugins: `Compress`, `Serve`, `Statistics`, `Calendar`, `Source/OneDrive`, `Source/Calendar` |
-| `src/Themes/` | Themes: `Lumina` (base), `Lumina.Calendar`, `Lumina.Statistics` (extensions) |
-| `src/Sdk.Generators/` | Roslyn source generators (e.g. `[RevelaConfig]`) |
-| `tests/` | Mirrors `src/` — `Core`, `Commands`, `Integration`, `Plugins/*`, `Shared` (fixtures) |
-| `samples/` | `revela-website`, `showcase`, `onedrive`, `calendar` — runnable example projects |
-| `docs/` | Architecture, plugin development, setup, getting started |
-| `benchmarks/` | BenchmarkDotNet projects |
-| `scripts/` | `build-release.ps1`, `test-release.ps1` |
+Use Revela Dev for implementation, Revela Reviewer for read-only audits, Revela
+Docs for product documentation and UX Advocate for assigned browser checks.
+The [baseline instructions](.github/copilot-instructions.md) and
+[agent definitions](.github/agents/) describe the remaining specialized roles.
 
-## Custom Agents (use these!)
+Load only the scoped conventions relevant to the task:
 
-| Agent | When to invoke |
-|-------|----------------|
-| **Revela Dev** | Implementation work — features, bug fixes, commands, plugins, services, tests, refactoring. Knows all conventions. |
-| **Revela Reviewer** | Architecture / security / performance reviews. Read-only audit with structured report. |
-| **Revela Docs** | Website documentation — write/maintain product docs, persona paths (#86), migrate `docs/` → website, keep docs in sync with code. Writes docs only; hands off C# to Revela Dev. |
-| **UX Advocate** | Read-only UX assessment for the assigned audience and browser verification of affected journeys on an assigned local preview. Reports observed findings and untested conditions; does not implement fixes. |
-| **Spike Analyst** | New feature ideas — interactive analysis (problem sharpening, prior-art research, MVP carving, trade-off matrix). Read-only. Hands off to Dev when build is approved. |
-| **Explore** | Read-only codebase exploration when chaining many searches. Safe to call in parallel. |
-| **Pattern Finder** | Subagent — finds canonical existing examples (plugin, command, config, HttpClient, etc.) to mirror. Dispatched by Dev before new implementations. |
-| **Revela Scout MAI** | Internal read-only subagent — locates the owning code path, one falsifiable hypothesis, and the cheapest focused check for a bounded bug or behavior. |
-| **Revela Worker MAI** | Internal implementation subagent — changes one explicitly bounded file set and runs one exact acceptance check. Dev retains integration and the final gate. |
-| **Convention Sentry** | Subagent — anti-pattern scanner returning JSON findings. Dispatched by Reviewer in Phase 3. |
-| **Plugin Auditor** | Subagent — single-plugin convention audit. Dispatched by Reviewer in Phase 2, one per plugin in parallel. |
-| **Test Doctor** | Subagent — test-quality audit (FluentAssertions/Moq, missing assertions, MSTest patterns). Dispatched by Reviewer in Phase 3 for `tests/`. |
-| **Security Scout** | Subagent — OWASP-aligned security scan (secrets, vulnerable deps, path traversal, SSRF, crypto). Dispatched by Reviewer in Phase 4. |
+- [C#](.github/instructions/csharp.instructions.md): all C# files; `.editorconfig` is authoritative.
+- [Plugins](.github/instructions/plugins.instructions.md): lifecycle, commands and configuration.
+- [Tests](.github/instructions/tests.instructions.md): MSTest, fixtures and meaningful assertions.
+- [Themes](.github/instructions/themes.instructions.md): manifests, Scriban, assets and browser checks.
+
+See [Project Structure](docs/project-structure.md) for the directory/build map and
+[Architecture](docs/architecture.md) for ownership boundaries. Built-in features
+are not dynamically loaded plugins.
 
 ## Reasoned Delegation
 
 Use the [reasoned delegation workflow](docs/subagent-patterns.md#reasoned-delegation) and [assignment contract](docs/subagent-patterns.md#assignment-contract) for scoped outcomes, reasons, protected behaviors, resource ownership, and acceptance. Workers own reversible local details and challenge contradicted assumptions with evidence; the parent owns decisions, integration, and final verification.
 
-Keep **Revela Scout MAI** and **Revela Worker MAI** pinned to **MAI Code 1.1**, as explained by the [accepted decision](docs/decisions/0001-reasoned-mai-delegation.md). Configuration alone does not prove runtime availability or general reliability.
-
-## Skills (`.github/skills/`)
-
-| Skill | Purpose |
-|-------|---------|
-| `build-sample` | Build sample projects (`revela-website`, `showcase`, `onedrive`) with local CLI |
-| `build-release` | Local release build — Standalone, Full, or Core variant (`scripts/build-release.ps1`) |
-| `commit-changes` | Conventional Commits — wait for explicit user request |
-| `create-release` | Bump version, update `CHANGELOG.md`, tag |
-| `review-code` | Per-file code review against `.editorconfig` and conventions |
-| `test-release` | End-to-end release pipeline test (`scripts/test-release.ps1`) |
-
-## Instruction Files (`.github/instructions/`)
-
-Apply automatically based on `applyTo:` glob:
-
-| File | Scope |
-|------|-------|
-| `csharp.instructions.md` | All `.cs` files — naming, async, logging, modern C# |
-| `tests.instructions.md` | `tests/**/*.cs` — MSTest v4, NSubstitute, fixtures |
-| `plugins.instructions.md` | `src/Plugins/**` — plugin lifecycle, `CommandDescriptor` |
-| `themes.instructions.md` | `src/Themes/**` — theme conventions, Scriban templates |
-
-## Prompt Files (`.github/prompts/`)
-
-Reusable workflows — invoke with `/` in chat:
-
-| Prompt | Purpose |
-|--------|---------|
-| `new-plugin` | Scaffold a new plugin (project, csproj, plugin class, tests) |
-| `new-theme` | Scaffold a new theme or theme extension |
-| `full-review` | Multi-phase deep review (architecture → quality → security → performance) |
-| `release-notes` | Generate `CHANGELOG.md` entries from commits |
+Keep **Revela Scout MAI** and **Revela Worker MAI** pinned to **MAI Code 1.1**, as explained by the [delegation rationale](docs/subagent-patterns.md#reasoned-delegation). Configuration alone does not prove runtime availability or general reliability.
 
 ## Build / Test / Run
 
 ```pwsh
-dotnet build                                                # full solution
-dotnet test                                                 # all tests
-dotnet test tests/Core                                      # one project
-dotnet format                                               # auto-fix style for .NET code/build changes
-dotnet format --verify-no-changes                           # required gate for .NET code/build changes
-
-# Run CLI against a sample
-cd samples/showcase ; dotnet run --project ../../src/Cli -- generate all
+dotnet build
+dotnet test --solution Spectara.Revela.slnx
+dotnet format --verify-no-changes
 ```
 
 **Task-scoped post-edit gates:**
@@ -110,64 +55,11 @@ cd samples/showcase ; dotnet run --project ../../src/Cli -- generate all
 - **Documentation/agent-only changes:** local links, applicable YAML frontmatter, routing/tool availability, and instruction consistency; no unrelated .NET checks.
 - **Mixed changes:** the union of applicable gates. Unavailable checks are reported as verification gaps, not passes.
 
-The parent owns integration and the applicable final gates; a Worker runs its assigned focused check. See [Revela Dev](.github/agents/revela-dev.agent.md#post-edit-workflow-mandatory-gate) and the [verification workflow](docs/subagent-patterns.md#shared-resources-and-verification) for details.
+The parent owns integration and final gates; a Worker runs its focused check.
+See the [verification workflow](docs/subagent-patterns.md#shared-resources-and-verification)
+and [Development Guide](docs/development.md) for sample, packaging and runtime checks.
 
 ## Git Consent
 
-Follow the [Git consent rules](.github/copilot-instructions.md#git--hard-rule): never run `git commit` or any other history-mutating Git command without an explicit user request for that exact action.
-
-## Hard Rules (frequent agent mistakes)
-
-1. **`var` everywhere** — never spell out the type.
-2. **Private fields = `camelCase`** — NO underscore prefix.
-3. **`StringComparison.Ordinal`** on every string method (except char overloads like `StartsWith('-')`).
-4. **`CultureInfo.InvariantCulture`** on every formatting call.
-5. **`LoggerMessage` source generator** — never `logger.LogInformation($"...")`.
-6. **Never hardcode `"source"` / `"output"`** — inject `IPathResolver`.
-7. **System.CommandLine 2.0 final API** — NOT beta. `new Option<T>("--name", "-n")`, `command.SetAction(...)`.
-8. **No `ConfigureAwait(false)`** — CA2007 is suppressed (this is an app, not a lib).
-9. **Fix root cause, don't suppress** — convert `List<T>` → `IReadOnlyList<T>`, `string url` → `Uri?`, etc.
-10. **`Markup.Escape(input)`** for Spectre output — never custom escaping.
-
-## Modern C# 14 / .NET 10 Cheat Sheet
-
-Prefer when applicable (full list in [`csharp.instructions.md`](.github/instructions/csharp.instructions.md)):
-
-| Use this | Instead of |
-|----------|-----------|
-| `field` keyword in property setter | manual private backing field |
-| `extension` blocks | only static extension methods |
-| `obj?.Prop = value` | `if (obj is not null) obj.Prop = value;` |
-| `private Lock gate = new();` | `private readonly object gate = new();` |
-| `Random.Shared` | `new Random()` |
-| `TimeProvider` | `DateTime.UtcNow` (in testable code) |
-| `FrozenDictionary` / `FrozenSet` | static `Dictionary` / `HashSet` |
-| `SearchValues<T>` | repeated `IndexOfAny` |
-| `Regex.EnumerateMatches` | `Regex.Matches` |
-| `params Span<T>` / `params IEnumerable<T>` | `params T[]` |
-| `ZipFile.ExtractToDirectoryAsync` | `ZipFile.ExtractToDirectory` (in async paths) |
-| `JsonSerializerOptions.AllowDuplicateProperties = false` | implicit duplicate-tolerant parsing |
-
-## Subagent Patterns
-
-Use `runSubagent` to keep the main conversation lean and run audits in parallel:
-
-```text
-Phase 1 (parallel) — three explorers:
-  → Explore: "Plugin lifecycle audit — list every IPlugin and verify ConfigureServices uses TryAdd*"
-  → Explore: "Find every hardcoded 'source'/'output' path string in src/"
-  → Explore: "List every HttpClient instantiation outside AddHttpClient<T>()"
-
-Phase 2 (sequential) — synthesize findings into report.
-```
-
-Each subagent is stateless — give it a precise task and tell it exactly what to return.
-
-## Documentation
-
-- Architecture: [`docs/architecture.md`](docs/architecture.md)
-- HttpClient pattern: [revela.website/docs/developers/httpclient-pattern](https://revela.website/docs/developers/httpclient-pattern/)
-- Plugin development: [revela.website/docs/developers/plugin-development](https://revela.website/docs/developers/plugin-development/)
-- Plugin system v2: [`docs/plugin-system-v2.md`](docs/plugin-system-v2.md)
-- Project structure: [`docs/project-structure.md`](docs/project-structure.md)
-- **Subagent patterns**: [`docs/subagent-patterns.md`](docs/subagent-patterns.md) — how to use parallel subagents for reviews
+Follow the [Git consent rules](.github/copilot-instructions.md#git--hard-rule).
+Every history-mutating Git command requires explicit user approval for that exact action.

@@ -38,13 +38,13 @@ Never delegate overlapping files, contracts, build outputs, generated directorie
 
 ### Reasoned MAI Assignments
 
-Follow the [assignment contract](../../docs/subagent-patterns.md#assignment-contract) and [accepted experiment decision](../../docs/decisions/0001-reasoned-mai-delegation.md). Keep both MAI agents pinned to MAI Code 1.1; do not silently override their model.
+Follow the [assignment contract](../../docs/subagent-patterns.md#assignment-contract) and [delegation rationale](../../docs/subagent-patterns.md#reasoned-delegation). Keep both MAI agents pinned to MAI Code 1.1; do not silently override their model.
 
-Every Worker assignment must contain `Goal`, `Allowed Scope`, `Do Not Change`, `Acceptance`, and `Return`. Explain the desired behavior, audience, rationale, and trade-offs under `Goal`. Link relevant decision records, or explicitly state that no durable decision is needed. Include the target repository, exact editable files, nearby references, resource ownership, and reversible local freedoms under `Allowed Scope`. Explain why each protected behavior matters under `Do Not Change`. Define a focused falsifying check and pass criteria before execution, separately from parent-owned integration checks.
+Every Worker assignment must contain `Goal`, `Allowed Scope`, `Do Not Change`, `Acceptance`, and `Return`. Explain the desired behavior, audience, rationale, and trade-offs under `Goal`. Link existing relevant documentation, or include the rationale directly when no documentation update is needed. Include the target repository, exact editable files, nearby references, resource ownership, and reversible local freedoms under `Allowed Scope`. Explain why each protected behavior matters under `Do Not Change`. Define a focused falsifying check and pass criteria before execution, separately from parent-owned integration checks.
 
 Workers may challenge assumptions with evidence. Resolve contradictions rather than demanding compliance, and do not delegate unresolved product or architecture decisions. A reasoned bounded outcome is preferable to prescribing every line.
 
-The parent maintains consequential decision records in the owning repository's `docs/decisions/`, reusing relevant records instead of copying them into every instruction file. Distinguish proposed, accepted, implemented, and superseded decisions. Record verification evidence after integration; a changed substantive decision gets a cross-linked replacement, not a silent rationale rewrite.
+The parent keeps consequential behavior and concise rationale in the owning repository's existing documentation, following [Reusable Decisions](../../docs/subagent-patterns.md#reusable-decisions). Create separate decision, idea or review documents only when explicitly requested. Distinguish proposals from authorized changes and verified implementation; report verification evidence and gaps in the task or release result, not in permanent trial diaries.
 
 For trial assignments, keep a short result note: configured/observed model, first-check result, retries, clarifications, parent repairs, independent findings, and preparation/review/repair effort. Distinguish assignment gaps, execution errors, and inadequate checks. Do not invent timing/cost data or present parent repairs as Worker success. One successful task is not proof of general reliability.
 

@@ -95,12 +95,12 @@ Opens your browser with a live preview. The Serve plugin ships built-in with the
 
 ## 📦 Installation Options
 
-| Method | Best For | Where |
-|--------|----------|-------|
-| **Standalone** | Most users — single binary, all plugins built in | [Download](https://revela.website/pages/downloads/) |
-| **Full** | Want to add custom plugins, manage them via NuGet | [Download](https://revela.website/pages/downloads/) |
-| **.NET Tool** | You already have the .NET 10 SDK | `dotnet tool install -g Spectara.Revela` |
-| **From Source** | Contributors | See [Setup Guide](docs/setup.md) |
+| Method          | Best For                                          | Where                                               |
+| --------------- | ------------------------------------------------- | --------------------------------------------------- |
+| **Standalone**  | Most users — single binary, all plugins built in  | [Download](https://revela.website/pages/downloads/) |
+| **Full**        | Want to add custom plugins, manage them via NuGet | [Download](https://revela.website/pages/downloads/) |
+| **.NET Tool**   | You already have the .NET 10 SDK                  | `dotnet tool install -g Spectara.Revela`            |
+| **From Source** | Contributors                                      | See [Setup Guide](docs/setup.md)                    |
 
 **[Detailed Installation Guide →](https://revela.website/docs/get-started/installation/)**
 
@@ -110,14 +110,14 @@ Opens your browser with a live preview. The Serve plugin ships built-in with the
 
 Standalone has all of these built in. Full / .NET Tool installs them on demand:
 
-| Plugin | Description |
-|--------|-------------|
-| **Compress** | Pre-compress static files with Gzip/Brotli |
-| **Serve** | Local dev server with live preview |
-| **Statistics** | EXIF statistics page (camera bodies, lenses, focal lengths) |
-| **Calendar** | Calendar/timeline pages built from gallery dates |
-| **Source.OneDrive** | Import from OneDrive shared folders |
-| **Source.Calendar** | Import events from iCal feeds |
+| Plugin              | Description                                                 |
+| ------------------- | ----------------------------------------------------------- |
+| **Compress**        | Pre-compress static files with Gzip/Brotli                  |
+| **Serve**           | Local dev server with live preview                          |
+| **Statistics**      | EXIF statistics page (camera bodies, lenses, focal lengths) |
+| **Calendar**        | Calendar/timeline pages built from gallery dates            |
+| **Source.OneDrive** | Import from OneDrive shared folders                         |
+| **Source.Calendar** | Import events from iCal feeds                               |
 
 ```bash
 revela plugin install Spectara.Revela.Plugins.Serve
@@ -144,7 +144,7 @@ Visit **[revela.website/docs](https://revela.website/docs/)** for the full docum
 Want to build a plugin, create a theme, or understand how Revela works internally? The **[developer documentation](docs/)** lives right here in the repo, next to the code:
 
 - **[Plugin Development](docs/plugin-development.md)** — build, configure, test, and publish a plugin
-- **[Plugin System](docs/plugin-system-v2.md)** — architecture and design
+- **[Architecture](docs/architecture.md)** — built-in features, plugins and package loading
 - **[Security Model](docs/security-model.md)** — trust assumptions and URL-safety guardrails
 - **[Architecture](docs/architecture.md)** · **[Project Structure](docs/project-structure.md)** · **[Development Guide](docs/development.md)**
 

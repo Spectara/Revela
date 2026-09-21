@@ -92,7 +92,7 @@ scripts/              # build-release.ps1, test-release.ps1
 
 Use the [reasoned delegation workflow](../docs/subagent-patterns.md#reasoned-delegation) and [assignment contract](../docs/subagent-patterns.md#assignment-contract) for scoped outcomes, reasons, protected behaviors, resource ownership, and acceptance. Workers own reversible local details and challenge contradicted assumptions with evidence; the parent owns decisions, integration, and final verification.
 
-Keep **Revela Scout MAI** and **Revela Worker MAI** pinned to **MAI Code 1.1**, as explained by the [accepted decision](../docs/decisions/0001-reasoned-mai-delegation.md). Configuration alone does not prove runtime availability or general reliability.
+Keep **Revela Scout MAI** and **Revela Worker MAI** pinned to **MAI Code 1.1**, as explained by the [delegation rationale](../docs/subagent-patterns.md#reasoned-delegation). Configuration alone does not prove runtime availability or general reliability.
 
 ---
 
@@ -200,7 +200,6 @@ Report issues concisely. Baselines do not replace post-edit gates. See [Revela D
 
 - Architecture: [`docs/architecture.md`](../docs/architecture.md)
 - Plugin development: [revela.website/docs/developers/plugin-development](https://revela.website/docs/developers/plugin-development/)
-- Plugin system v2: [`docs/plugin-system-v2.md`](../docs/plugin-system-v2.md)
 - HttpClient pattern: [revela.website/docs/developers/httpclient-pattern](https://revela.website/docs/developers/httpclient-pattern/)
 - Subagent patterns: [`docs/subagent-patterns.md`](../docs/subagent-patterns.md)
 - Project structure: [`docs/project-structure.md`](../docs/project-structure.md)

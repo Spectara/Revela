@@ -2,7 +2,7 @@
 
 A practical guide to building, configuring, testing, and publishing a Revela plugin.
 
-> For the *why* behind the plugin system (architecture, layers, what stays internal), see [Plugin System](plugin-system-v2.md).
+> For the *why* behind the plugin system (architecture, ownership, what stays internal), see [Architecture](architecture.md).
 > For the security rationale behind URL validation and trust, see [Security Model](security-model.md).
 
 ---
@@ -28,6 +28,8 @@ Revela is extensible through a **NuGet-based plugin system**. A plugin is a smal
 
 The package **name** is only a convention. Revela detects a plugin from the `<PackageType>RevelaPlugin</PackageType>` marker in your project file (see the `.csproj` below), not from the ID. Pick any prefix you control; including a `.Revela.Plugin.` (or `.Revela.Plugins.`) segment also helps Revela classify your package in `revela plugin search` results before it is installed.
 
+Plugins execute in the host process with the user's permissions; package naming and metadata are not a sandbox or load-time signature verification. Install only plugins whose authors and sources you trust.
+
 ---
 
 ## The `IPlugin` class
@@ -44,8 +46,9 @@ namespace YourName.Revela.Plugin.Example;
 
 public sealed class ExamplePlugin : IPlugin
 {
-    public PluginMetadata Metadata => new()
+    public PackageMetadata Metadata => new()
     {
+        Id = "YourName.Revela.Plugin.Example",
         Name = "Example",
         Version = "1.0.0",
         Description = "Example plugin for Revela",
@@ -170,6 +173,8 @@ YourName.Revela.Plugin.Example/
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <EnableConfigurationBindingGenerator>true</EnableConfigurationBindingGenerator>
 
     <PackageId>YourName.Revela.Plugin.Example</PackageId>
     <PackageType>RevelaPlugin</PackageType>
@@ -181,44 +186,61 @@ YourName.Revela.Plugin.Example/
   </PropertyGroup>
 
   <ItemGroup>
-    <!-- Public plugin/theme abstractions (IPlugin, CommandDescriptor, …) -->
-    <PackageReference Include="Spectara.Revela.Sdk" Version="1.0.0" />
-    <PackageReference Include="System.CommandLine" Version="2.0.8" />
+    <PackageReference Include="Spectara.Revela.Sdk" Version="0.0.1-beta.21" />
+    <PackageReference Include="Microsoft.Extensions.Http" Version="10.0.12" />
   </ItemGroup>
 </Project>
 ```
+
+Choose an SDK package version compatible with the Revela host you target; the versions above are examples, not a latest-release declaration. The HTTP package supports the typed-client examples below. The SDK includes its generators as compile-time analyzers; no separate Revela generator package is needed.
 
 ---
 
 ## Configuration
 
-Revela auto-loads plugin configuration before your plugin initializes, pulling from `project.json` (and any `plugins/*.json`) plus environment variables prefixed `SPECTARA__REVELA__`. You usually don't override `ConfigureConfiguration` at all.
+The host loads global `revela.json`, local `project.json`, and environment variables prefixed `SPECTARA__REVELA__`. It does not automatically load `plugins/*.json`. You usually don't override `ConfigureConfiguration`; use it only to add an explicit configuration source. See the [configuration chain](architecture.md#configuration-and-paths) for precedence and the `site.json` split.
 
-Bind a strongly-typed options class whose section name is your package ID:
+Bind a strongly-typed options class whose section name is your package ID. Keep properties writable (`set`, not `init`) for generated binding, and declare `Section` by hand so the .NET configuration binding generator can resolve it:
 
 ```csharp
+using System.ComponentModel.DataAnnotations;
+using Microsoft.Extensions.Options;
+using Spectara.Revela.Sdk.Abstractions;
+
+[RevelaConfig("YourName.Revela.Plugin.Example")]
 public sealed class ExampleConfig
 {
-    public const string SectionName = "YourName.Revela.Plugin.Example";
+    public const string Section = "YourName.Revela.Plugin.Example";
 
     [Required]
-    public string ApiUrl { get; init; } = string.Empty;
-    public int Timeout { get; init; } = 30;
+    public string ApiUrl { get; set; } = string.Empty;
+
+    [Range(1, 300)]
+    public int Timeout { get; set; } = 30;
 }
 
-// in ConfigureServices
-services.AddOptions<ExampleConfig>()
-    .BindConfiguration(ExampleConfig.SectionName)
-    .ValidateDataAnnotations();
+[OptionsValidator]
+internal sealed partial class ExampleConfigValidator : IValidateOptions<ExampleConfig>;
 ```
 
-Inject it with `IOptionsMonitor<ExampleConfig>` and read `.CurrentValue`. Users configure it in `project.json`:
+In `ConfigureServices`, bind and register the generated validator explicitly:
+
+```csharp
+services.AddOptions<ExampleConfig>()
+    .BindConfiguration(ExampleConfig.Section);
+services.TryAddEnumerable(
+    ServiceDescriptor.Singleton<IValidateOptions<ExampleConfig>, ExampleConfigValidator>());
+```
+
+Keep `BindConfiguration` in handwritten source and enable `EnableConfigurationBindingGenerator` as shown above. `[OptionsValidator]` generates a trim/AOT-safe `IValidateOptions<T>` implementation from the annotations, avoiding reflection-based validation. `[RevelaConfig]` alone does not bind options or register a validator. Validation occurs when options are read; `[Required]` does not replace outbound URL safety checks.
+
+Inject `IOptions<ExampleConfig>` and read `.Value`, or use `IOptionsMonitor<ExampleConfig>.CurrentValue` when the service needs configuration reloads. Users configure it in `project.json`:
 
 ```json
 {
   "YourName.Revela.Plugin.Example": {
-    "ApiUrl": "https://api.example.com",
-    "Timeout": 30
+    "apiUrl": "https://api.example.com",
+    "timeout": 30
   }
 }
 ```
@@ -231,21 +253,26 @@ Inject it with `IOptionsMonitor<ExampleConfig>` and read `.CurrentValue`. Users 
 
 ### Persisting config from a CLI command
 
-If your plugin contributes a `config <plugin>` command, persist the user's settings by building a `JsonObject` and calling `IConfigService.UpdateProjectConfigAsync(...)`. It deep-merges into `project.json` (a `null` value deletes a key), so wrap your values under your plugin's section name and include only non-default values. Keys are the camelCase of your config POCO's property names:
+If your plugin contributes a `config <plugin>` command, persist settings through `IConfigService.UpdateProjectConfigAsync(...)`, not a separate file writer. It validates and deep-merges a `JsonObject` patch into `project.json`, preserving unrelated settings. Include only intended changes under your section; omission leaves an existing value unchanged, while `null` deletes a key. Use generated keys for the camelCase property names:
 
 ```csharp
+using System.Text.Json.Nodes;
+using Spectara.Revela.Sdk.Configuration.Keys;
+
 var settings = new JsonObject();
 if (!string.IsNullOrEmpty(apiUrl))
-    settings["apiUrl"] = apiUrl;            // key = camelCase of the ExampleConfig.ApiUrl property
+{
+    settings[ExampleConfigKeys.ApiUrl] = apiUrl;
+}
 
 var updates = new JsonObject
 {
-    [ExampleConfig.SectionName] = settings  // wrap under your plugin's section
+    [ExampleConfig.Section] = settings
 };
 await configService.UpdateProjectConfigAsync(updates, cancellationToken);
 ```
 
-> **Note:** You may notice compile-safe `<Poco>Keys` constants (and a `Spectara.Revela.Sdk.Configuration.Keys` namespace) in Revela's own plugin source. Those are an internal build-time convenience produced by a source generator that ships only inside the Revela repo — it is **not** part of the `Spectara.Revela.Sdk` NuGet package. In an external plugin, just use plain string keys that match your section and property names (the `[RevelaConfigKeys]` attribute does nothing without that unshipped generator).
+The SDK's `ConfigKeysGenerator` emits an internal `<Poco>Keys` class in `Spectara.Revela.Sdk.Configuration.Keys` for local `[RevelaConfig]` classes. For an options type declared in another assembly, opt in with `[assembly: RevelaConfigKeys(typeof(ThatConfig))]`. These constants are generated in your assembly for JSON writers; use the handwritten `ExampleConfig.Section`, not a generated constant, at the `BindConfiguration` call site.
 
 ---
 
@@ -312,6 +339,8 @@ internal sealed class ExampleFetcher(HttpClient httpClient)
 ```
 
 `UrlSafety.IsSafeOutboundUrl(uri, allowHttp: false)` rejects non-HTTPS schemes, loopback, private/CGN ranges, link-local (including the cloud metadata IP), and more. For the full rejection list and the reasoning behind it, see [Security Model → What Revela protects against](security-model.md). To validate just a host string (for example in a prompt), use `UrlSafety.IsSafeOutboundHost(uri.Host)`.
+
+This checks the literal host, not DNS resolution. A permitted hostname can resolve to a private address. For user-supplied targets, disable automatic redirects and validate each redirect before following it; use network egress policy when stronger isolation is required. Avoid logging full URLs that may contain credentials or tokens.
 
 ### Advanced
 
@@ -431,6 +460,6 @@ jobs:
 
 ## See also
 
-- [Plugin System](plugin-system-v2.md) — architecture and design of the plugin system
+- [Architecture](architecture.md) — ownership boundaries and package lifecycle
 - [Security Model](security-model.md) — trust assumptions and URL-safety rationale
 - [Development Guide](development.md) — building and testing Revela itself

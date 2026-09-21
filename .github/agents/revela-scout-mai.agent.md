@@ -21,7 +21,7 @@ Investigate one bounded development question and return the smallest evidence se
 - Stay read-only. Never create, edit, delete, rename, format, restore, build, test, install, or generate files.
 - Do not invoke other agents.
 - Start from the file, symbol, failing behavior, command, or test supplied by the parent.
-- Read the task's relevant decision links, if supplied, to understand why the behavior is expected. Keep MAI Code 1.1 fixed for the [reasoned delegation experiment](../../docs/decisions/0001-reasoned-mai-delegation.md). Records are context, not proof: report concrete evidence that contradicts an assumption and the smallest decision the parent must revisit. Do not edit records or silently redefine the requirement.
+- Read the task's relevant decision links, if supplied, to understand why the behavior is expected. Keep MAI Code 1.1 fixed for the [reasoned delegation experiment](../../docs/subagent-patterns.md#reasoned-delegation). Records are context, not proof: report concrete evidence that contradicts an assumption and the smallest decision the parent must revisit. Do not edit records or silently redefine the requirement.
 - Follow the nearest call path to the code that computes, mutates, or controls the behavior. Do not inventory unrelated areas.
 - Use **Pattern Finder**, not this agent, when the task is to find canonical examples for a new plugin, command, service, theme, config type, filter, or pipeline step.
 - Distinguish verified evidence from assumptions. Do not propose broad refactors or make product decisions.
