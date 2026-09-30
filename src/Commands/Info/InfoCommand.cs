@@ -44,10 +44,10 @@ internal sealed class InfoCommand(
     {
         AnsiConsole.MarkupLine($"[bold]{Markup.Escape(buildInfo.FormatVersionLine())}[/]");
 
-        if (buildInfo.Kind == HostKind.Embedded)
+        if (buildInfo.Kind == HostKind.Standalone)
         {
             AnsiConsole.MarkupLine(
-                "[dim]Plugin management: not available in embedded build (use the standalone CLI)[/]");
+                "[dim]Package management: not available in the Standalone edition (use the Full edition to install plugins and themes)[/]");
         }
 
         AnsiConsole.WriteLine();

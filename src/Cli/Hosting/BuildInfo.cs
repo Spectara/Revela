@@ -13,7 +13,7 @@ namespace Spectara.Revela.Cli.Hosting;
 /// <para>
 /// Detects <see cref="HostKind"/> by reading the <c>Revela.HostKind</c>
 /// <see cref="AssemblyMetadataAttribute"/> from the entry assembly. Default
-/// when the attribute is absent is <see cref="HostKind.Standalone"/>.
+/// when the attribute is absent is <see cref="HostKind.Full"/>.
 /// </para>
 /// <para>
 /// Both Cli and Cli.Embedded produce an executable named <c>revela</c>, so
@@ -22,7 +22,7 @@ namespace Spectara.Revela.Cli.Hosting;
 /// </para>
 /// <code>
 /// &lt;ItemGroup&gt;
-///   &lt;AssemblyMetadata Include="Revela.HostKind" Value="Embedded" /&gt;
+///   &lt;AssemblyMetadata Include="Revela.HostKind" Value="Standalone" /&gt;
 /// &lt;/ItemGroup&gt;
 /// </code>
 /// </remarks>
@@ -91,15 +91,15 @@ internal sealed class BuildInfo : IBuildInfo
 
     public string FormatVersionLine()
     {
-        var suffix = Kind switch
+        var edition = Kind switch
         {
-            HostKind.Embedded => " \u2014 embedded build",
-            HostKind.Standalone => string.Empty,
-            _ => string.Empty,
+            HostKind.Standalone => "Standalone",
+            HostKind.Full => "Full",
+            _ => Kind.ToString(),
         };
         return string.Create(
             CultureInfo.InvariantCulture,
-            $"revela {Version} ({Framework}){suffix}");
+            $"revela {Version} ({Framework}) \u2014 {edition} edition");
     }
 
     private static HostKind DetectHostKind(Assembly entry)
@@ -109,9 +109,9 @@ internal sealed class BuildInfo : IBuildInfo
             .FirstOrDefault(a => string.Equals(a.Key, HostKindMetadataKey, StringComparison.Ordinal))
             ?.Value;
 
-        return string.Equals(value, nameof(HostKind.Embedded), StringComparison.Ordinal)
-            ? HostKind.Embedded
-            : HostKind.Standalone;
+        return string.Equals(value, nameof(HostKind.Standalone), StringComparison.Ordinal)
+            ? HostKind.Standalone
+            : HostKind.Full;
     }
 
     /// <summary>Test seam — exposes <see cref="DetectHostKind"/>.</summary>

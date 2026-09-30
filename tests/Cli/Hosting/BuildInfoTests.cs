@@ -10,10 +10,10 @@ namespace Spectara.Revela.Tests.Cli.Hosting;
 public sealed class BuildInfoTests
 {
     [TestMethod]
-    public void FormatVersionLine_Standalone_OmitsHostSuffix()
+    public void FormatVersionLine_Full_NamesFullEdition()
     {
         var info = new BuildInfo(
-            HostKind.Standalone,
+            HostKind.Full,
             version: "1.2.3",
             informationalVersion: "1.2.3+abc1234",
             framework: ".NET 10.0.4",
@@ -22,14 +22,14 @@ public sealed class BuildInfoTests
 
         var line = info.FormatVersionLine();
 
-        Assert.AreEqual("revela 1.2.3 (.NET 10.0.4)", line);
+        Assert.AreEqual("revela 1.2.3 (.NET 10.0.4) \u2014 Full edition", line);
     }
 
     [TestMethod]
-    public void FormatVersionLine_Embedded_AppendsEmbeddedSuffix()
+    public void FormatVersionLine_Standalone_NamesStandaloneEdition()
     {
         var info = new BuildInfo(
-            HostKind.Embedded,
+            HostKind.Standalone,
             version: "1.2.3",
             informationalVersion: "1.2.3",
             framework: ".NET 10.0.4",
@@ -38,7 +38,7 @@ public sealed class BuildInfoTests
 
         var line = info.FormatVersionLine();
 
-        Assert.AreEqual("revela 1.2.3 (.NET 10.0.4) \u2014 embedded build", line);
+        Assert.AreEqual("revela 1.2.3 (.NET 10.0.4) \u2014 Standalone edition", line);
     }
 
     [TestMethod]
@@ -54,18 +54,18 @@ public sealed class BuildInfoTests
     }
 
     [TestMethod]
-    public void DetectHostKind_AssemblyWithoutMetadata_ReturnsStandalone()
+    public void DetectHostKind_AssemblyWithoutMetadata_ReturnsFull()
     {
         // The test runner assembly itself has no Revela.HostKind metadata.
         var asm = Assembly.GetExecutingAssembly();
 
         var kind = BuildInfo.DetectHostKindForTesting(asm);
 
-        Assert.AreEqual(HostKind.Standalone, kind);
+        Assert.AreEqual(HostKind.Full, kind);
     }
 
     [TestMethod]
-    public void DetectHostKind_CliEmbeddedAssembly_ReturnsEmbedded()
+    public void DetectHostKind_CliEmbeddedAssembly_ReturnsStandalone()
     {
         // Locate Cli.Embedded's revela.dll relative to this test assembly.
         // Layout: artifacts/bin/Tests.Cli/{Config}/net10.0/  →  ../../../Cli.Embedded/{Config}/net10.0/revela.dll
@@ -83,7 +83,7 @@ public sealed class BuildInfoTests
 
         var kind = BuildInfo.DetectHostKindForTesting(asm);
 
-        Assert.AreEqual(HostKind.Embedded, kind);
+        Assert.AreEqual(HostKind.Standalone, kind);
     }
 
     [TestMethod]
@@ -91,7 +91,7 @@ public sealed class BuildInfoTests
     {
         var info = new BuildInfo(Assembly.GetExecutingAssembly());
 
-        Assert.AreEqual(HostKind.Standalone, info.Kind);
+        Assert.AreEqual(HostKind.Full, info.Kind);
         Assert.IsFalse(string.IsNullOrEmpty(info.Version));
         Assert.IsFalse(string.IsNullOrEmpty(info.Framework));
         Assert.IsFalse(string.IsNullOrEmpty(info.RuntimeIdentifier));

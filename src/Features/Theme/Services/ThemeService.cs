@@ -272,12 +272,7 @@ internal sealed partial class ThemeService(
         // Extract base theme
         LogExtracting(logger, sourceName, targetPath);
         await sourceTheme.ExtractToAsync(targetPath, cancellationToken);
-
-        // Update theme.json name if renamed
-        if (targetName is not null && !targetName.Equals(sourceName, StringComparison.OrdinalIgnoreCase))
-        {
-            await UpdateThemeNameAsync(targetPath, targetName, cancellationToken);
-        }
+        await LocalThemeManifest.WriteAsync(sourceTheme, targetPath, themeName, cancellationToken);
 
         // Extract extensions
         var extractedExtensions = new List<string>();
@@ -452,27 +447,6 @@ internal sealed partial class ThemeService(
         var parts = key.Split('/');
         return string.Join(Path.DirectorySeparatorChar.ToString(),
             parts.Select(p => p.Length > 0 ? char.ToUpperInvariant(p[0]) + p[1..] : p));
-    }
-
-    private static async Task UpdateThemeNameAsync(string themePath, string newName, CancellationToken cancellationToken)
-    {
-        var manifestPath = Path.Combine(themePath, "manifest.json");
-        if (!File.Exists(manifestPath))
-        {
-            return;
-        }
-
-        var manifestJson = await File.ReadAllTextAsync(manifestPath, cancellationToken);
-        var json = JsonNode.Parse(manifestJson) as JsonObject;
-
-        if (json is not null)
-        {
-            json["name"] = newName;
-            await File.WriteAllTextAsync(
-                manifestPath,
-                json.ToJsonString(new System.Text.Json.JsonSerializerOptions { WriteIndented = true }),
-                cancellationToken);
-        }
     }
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Extracting theme '{SourceName}' to {TargetPath}")]

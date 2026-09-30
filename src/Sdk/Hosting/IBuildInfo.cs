@@ -10,7 +10,7 @@ namespace Spectara.Revela.Sdk.Hosting;
 /// </para>
 /// <para>
 /// <b>Note:</b> <see cref="IBuildInfo"/> describes the <em>build-time</em>
-/// identity of the host (Standalone vs. Embedded), determined at compile time
+/// identity of the host (Full vs. Standalone edition), determined at compile time
 /// via the <c>Revela.HostKind</c> assembly metadata attribute.
 /// It is not user-overridable.
 /// </para>
@@ -51,25 +51,29 @@ public interface IBuildInfo
     /// and the first line of <c>revela info</c>.
     /// </summary>
     /// <example>
-    /// <c>revela 1.0.0 (.NET 10.0.4) — embedded build</c>
+    /// <c>revela 1.0.0 (.NET 10.0.4) — Standalone edition</c>
     /// </example>
     string FormatVersionLine();
 }
 
 /// <summary>
-/// Build variant of the running Revela host.
+/// Build variant (edition) of the running Revela host.
 /// </summary>
+/// <remarks>
+/// Names match the published editions: <see cref="Full"/> is <c>Cli</c> with package
+/// management, <see cref="Standalone"/> is <c>Cli.Embedded</c> with everything built in.
+/// </remarks>
 public enum HostKind
 {
     /// <summary>
-    /// Standard standalone CLI build with dynamic plugin loading
-    /// (the <c>revela</c> dotnet tool).
+    /// Full edition (<c>Cli</c>, also the <c>revela</c> dotnet tool): loads plugins and
+    /// themes dynamically and provides package management commands.
     /// </summary>
-    Standalone,
+    Full,
 
     /// <summary>
-    /// Self-contained build with all plugins and themes statically linked.
-    /// No plugin management commands are available.
+    /// Standalone edition (<c>Cli.Embedded</c>): all plugins and themes are built in.
+    /// No package management commands are available.
     /// </summary>
-    Embedded,
+    Standalone,
 }

@@ -13,7 +13,7 @@ public enum PackageSource
     /// <summary>
     /// Plugin installed in the plugins directory.
     /// Location depends on installation type:
-    /// - Standalone: {exe-dir}/plugins
+    /// - Full edition (portable): {exe-dir}/plugins
     /// - dotnet tool: %APPDATA%/Revela/plugins
     /// </summary>
     Local

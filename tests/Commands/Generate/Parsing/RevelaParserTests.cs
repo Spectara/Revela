@@ -118,6 +118,48 @@ public sealed class RevelaParserTests
     }
 
     [TestMethod]
+    public void Parse_PluginDottedKeysBeforeTemplate_StillExtractsLaterKeys()
+    {
+        // calendar.* lines come from `revela create page calendar`; the core parser does not
+        // know the "calendar" object, which previously aborted evaluation before `template`.
+        var content = """
+            +++
+            title = "Availability"
+            calendar.source = "bookings.ics"
+            calendar.labels.booked = "Booked"
+            calendar.months = 6
+            template = "calendar/page"
+            data.statistics = "stats.json"
+            hidden = true
+            +++
+            """;
+
+        var result = RevelaParser.Parse(content);
+
+        Assert.AreEqual("Availability", result.Title);
+        Assert.AreEqual("calendar/page", result.Template);
+        Assert.IsTrue(result.Hidden);
+        Assert.AreEqual("stats.json", result.DataSources["statistics"]);
+    }
+
+    [TestMethod]
+    public void Parse_FailingStatement_DoesNotStopLaterKeys()
+    {
+        var content = """
+            +++
+            title = "Page"
+            broken = missing.member.value
+            template = "body/page"
+            +++
+            """;
+
+        var result = RevelaParser.Parse(content);
+
+        Assert.AreEqual("Page", result.Title);
+        Assert.AreEqual("body/page", result.Template);
+    }
+
+    [TestMethod]
     public void Parse_DataSources_ExtractsDataObject()
     {
         // Arrange - Scriban object syntax

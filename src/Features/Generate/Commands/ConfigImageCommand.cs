@@ -4,6 +4,7 @@ using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Microsoft.Extensions.Options;
+using Spectara.Revela.Core.Themes;
 using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Abstractions;
 using Spectara.Revela.Sdk.Configuration;
@@ -128,7 +129,7 @@ internal sealed partial class ConfigImageCommand(
             return null;
         }
 
-        using var stream = theme.GetImagesTemplate();
+        using var stream = ThemeConfigurationFiles.OpenImagesTemplate(theme, projectPath);
         if (stream is null)
         {
             return null;

@@ -1,5 +1,7 @@
 using System.CommandLine;
 using Microsoft.Extensions.Options;
+using Spectara.Revela.Core.Themes;
+using Spectara.Revela.Features.Theme.Services;
 using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Abstractions;
 using Spectara.Revela.Sdk.Configuration;
@@ -210,7 +212,13 @@ internal sealed partial class ThemeFilesCommand(
     {
         var entries = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
-        // Get from base theme (Configuration/*.json and manifest.json)
+        // Get from base theme (Configuration/*.json and the manifest)
+        if (theme is LocalThemeProvider)
+        {
+            // Local themes are defined by an editable theme.json (hidden from GetAllFiles).
+            entries[LocalThemeManifest.FileName] = $"[{ThemeColor}]{Markup.Escape(themeName)}[/]";
+        }
+
         foreach (var file in theme.GetAllFiles())
         {
             var normalized = file.Replace('\\', '/');
@@ -247,8 +255,8 @@ internal sealed partial class ThemeFilesCommand(
             }
         }
 
-        // Check for local overrides in theme/configuration/ folder (lowercase)
-        var localConfigPath = Path.Combine(projectPath, "theme", "configuration");
+        // Check for local overrides in themes/{name}/Configuration/ (read by ImageSizesProvider)
+        var localConfigPath = Path.Combine(projectPath, ProjectPaths.Themes, themeName, "Configuration");
         if (Directory.Exists(localConfigPath))
         {
             foreach (var file in Directory.GetFiles(localConfigPath, "*.json", SearchOption.AllDirectories))

@@ -34,11 +34,46 @@ public sealed class ThemeCheckTests
         Assert.IsFalse(diagnostics.Any(d => d.Message.Contains("Body/Photo.revela", StringComparison.Ordinal)));
     }
 
+    [TestMethod]
+    [DataRow(null)]
+    [DataRow(/*lang=json,strict*/ """{ "resizeMode": "longest" }""")]
+    [DataRow(/*lang=json,strict*/ """{ "sizes": [] }""")]
+    [DataRow("""{ "sizes": [ """)]
+    public async Task ValidateAsync_ThemeWithoutUsableImageSizes_ReportsError(string? imagesJson)
+    {
+        var check = CreateCheck([PhotoViewerMode.Page], includePhotoTemplate: true, imagesJson);
+
+        var diagnostics = await check.ValidateAsync();
+
+        var error = diagnostics.Single(d => d.Severity == ValidationSeverity.Error);
+        Assert.Contains("Configuration/images.json", error.Message);
+        Assert.Contains("themes/TestTheme/Configuration/images.json", error.Suggestion ?? string.Empty);
+    }
+
+    [TestMethod]
+    public async Task ValidateAsync_ThemeWithImageSizes_ReportsNoError()
+    {
+        var check = CreateCheck([PhotoViewerMode.Page], includePhotoTemplate: true);
+
+        var diagnostics = await check.ValidateAsync();
+
+        Assert.IsEmpty(diagnostics);
+    }
+
     private static ThemeCheck CreateCheck(
         IReadOnlyList<PhotoViewerMode> supported,
-        bool includePhotoTemplate)
+        bool includePhotoTemplate,
+        string? imagesJson = /*lang=json,strict*/ """{ "sizes": [640, 1280] }""")
     {
         var theme = Substitute.For<ITheme>();
+        theme.Metadata.Returns(new PackageMetadata
+        {
+            Id = "Test.Theme",
+            Name = "TestTheme",
+            Version = "1.0.0",
+            Description = "Test theme",
+            Author = "Test"
+        });
         theme.Manifest.Returns(new ThemeManifest
         {
             LayoutTemplate = "body/gallery.revela",
@@ -48,6 +83,9 @@ public sealed class ThemeCheckTests
                 Default = supported[0]
             }
         });
+        theme.GetImagesTemplate().Returns(_ => imagesJson is null
+            ? null
+            : new MemoryStream(System.Text.Encoding.UTF8.GetBytes(imagesJson)));
 
         var themeRegistry = Substitute.For<IThemeRegistry>();
         themeRegistry.Resolve("TestTheme", Arg.Any<string>()).Returns(theme);
