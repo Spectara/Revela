@@ -513,7 +513,8 @@ public sealed class GenerateAllEndToEndTests
         Assert.Contains("--lqip:", sunsetPhotoContent);
         Assert.Contains(" data-lqip>", sunsetPhotoContent);
         Assert.DoesNotContain("sizes=\"100vw\"", sunsetPhotoContent);
-        Assert.Contains("/1920.avif\">", sunsetPhotoContent);
+        Assert.Contains("/1920.avif 1920w\">", sunsetPhotoContent);
+        Assert.Contains("sizes=\"(min-aspect-ratio: ", sunsetPhotoContent);
         Assert.Contains("</picture>\n            <section>\n                <nav class=\"photo-nav\"", normalizedSunsetPhoto);
         Assert.AreEqual(1, CountOccurrences(sunsetPhotoContent, "<nav class=\"photo-nav\""));
         Assert.Contains("<div id=\"ctx-g-006c0061006e0064007300630061007000650073\" data-primary>", sunsetPhotoContent);

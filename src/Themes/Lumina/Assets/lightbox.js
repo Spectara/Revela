@@ -62,6 +62,25 @@
   });
 
   for (const dialog of dialogs.values()) {
+    dialog.addEventListener("keydown", (event) => {
+      if (event.defaultPrevented || event.repeat || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey
+        || (event.key !== "ArrowLeft" && event.key !== "ArrowRight")) {
+        return;
+      }
+
+      const isRtl = getComputedStyle(dialog).direction === "rtl";
+      const goesForward = (event.key === "ArrowRight") !== isRtl;
+      const button = dialog.querySelector(
+        goesForward ? "button[data-photo-next][data-lightbox-target]" : "button[data-photo-previous][data-lightbox-target]"
+      );
+      if (!button) {
+        return;
+      }
+
+      event.preventDefault();
+      button.click();
+    });
+
     dialog.addEventListener("command", (event) => {
       if (event.command === "show-modal") {
         initiatingTrigger ??= event.source;

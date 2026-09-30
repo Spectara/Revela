@@ -7,6 +7,9 @@ centered. Wrap content in <article> instead — same convention as
 home.revela and docs.revela — so the standard `main article` typography
 rules apply (left-aligned text, proper spacing, table styling, etc.).
 
+Rendered tables are wrapped so they scroll on their own instead of widening
+the page on small screens.
+
 Expects:
 - gallery: { title, body }
 ##~}}
@@ -14,5 +17,7 @@ Expects:
     {{~ if gallery.title ~}}
     <h1>{{ gallery.title }}</h1>
     {{~ end ~}}
-    {{~ gallery.body ~}}
+    {{~ if gallery.body ~}}
+    {{~ gallery.body | string.replace '<table>' '<div class="table-scroll"><table>' | string.replace '</table>' '</table></div>' ~}}
+    {{~ end ~}}
 </article>
