@@ -15,7 +15,7 @@ A personal photography portfolio showcasing landscapes, events, and street photo
 
 | Feature | How It's Used |
 |---------|---------------|
-| **Lumina Theme** | Default theme with dark design and CSS-only lightbox |
+| **Lumina Theme** | Default theme with dark design and a native `<dialog>` photo viewer that opens without JavaScript in current browsers |
 | **Multiple Galleries** | Organized by year and category (landscapes, events, street) |
 | **Nested Categories** | Hierarchical navigation with nested gallery folders |
 | **EXIF Statistics** | Statistics page showing camera/lens usage across all photos |
@@ -45,27 +45,35 @@ source/
 ```json
 {
   "project": {
+    "name": "Kirsten Kluge",
     "baseUrl": "https://photo.kirk.one"
   },
   "theme": {
-    "name": "Lumina",
-    "images": {
-      "sizes": [160, 320, 480, 640, 720, 960, 1280, 1440, 1920, 2560]
-    }
+    "name": "Lumina"
   },
   "generate": {
     "images": {
       "avif": 80,
       "webp": 85,
       "jpg": 90
+    },
+    "sorting": {
+      "galleries": "desc",
+      "images": { "field": "dateTaken", "direction": "desc", "fallback": "filename" }
     }
+  },
+  "plugins": {
+    "oneDrive": { "shareUrl": "https://1drv.ms/f/…" },
+    "statistics": { "maxEntriesPerCategory": 15, "sortByCount": false }
   }
 }
 ```
+
+Image sizes come from the Lumina theme's defaults; no size configuration is needed.
 
 ## What Makes It Interesting
 
 - **Pure photography site**: Revela's core use case, fast and beautiful photo galleries
 - **No custom theme needed**: the default Lumina theme handles everything
-- **Automatic EXIF overlay**: hover over any image to see its camera settings
-- **CSS-only lightbox**: click or focus any image for a full-screen view, no JavaScript needed
+- **Camera settings with every photo**: aperture, shutter speed, ISO, lens and camera are shown with each photo, read from EXIF
+- **Photo viewer without JavaScript**: click any photo for a full-screen view; JavaScript only adds arrow-key navigation and zoom
