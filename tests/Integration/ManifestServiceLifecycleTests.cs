@@ -246,6 +246,29 @@ public sealed class ManifestServiceLifecycleTests
     }
 
     [TestMethod]
+    public async Task LoadAsync_ManifestWithoutProcessedImages_LoadsWithEmptyState()
+    {
+        // Manifests written before the processing fingerprint existed have no "processedImages".
+        using var project = TestProject.Create();
+        var cacheDirectory = Path.Combine(project.RootPath, ".cache");
+        Directory.CreateDirectory(cacheDirectory);
+        await File.WriteAllTextAsync(Path.Combine(cacheDirectory, "manifest.json"), /*lang=json,strict*/ """
+            {
+              "_meta": { "version": 4, "configHash": "ABC", "scanConfigHash": "DEF" },
+              "root": { "text": "Home", "slug": "", "path": "", "content": [], "children": [] }
+            }
+            """);
+        using var host = RevelaTestHost.Build(project.RootPath, s => { s.AddRevelaCommands(); s.AddGenerateFeature(); });
+        var manifest = host.Services.GetRequiredService<IManifestRepository>();
+
+        await manifest.LoadAsync();
+
+        Assert.IsNull(manifest.GetProcessedFingerprint("photos/a.jpg"));
+        Assert.IsEmpty(manifest.FormatQualities);
+        Assert.AreEqual("ABC", manifest.ConfigHash);
+    }
+
+    [TestMethod]
     public void RemoveOrphans_DeletedSource_DropsProcessedFingerprint()
     {
         using var project = TestProject.Create();

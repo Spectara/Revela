@@ -213,7 +213,7 @@ internal sealed partial class ManifestService(
             }
             else
             {
-                manifest = loaded;
+                manifest = WithDefaultMetaCollections(loaded);
                 RebuildImageCache();
                 LogManifestLoaded(logger, imageCache.Count);
             }
@@ -227,6 +227,23 @@ internal sealed partial class ManifestService(
 
         processedImages = new Dictionary<string, string>(manifest.Meta.ProcessedImages, StringComparer.Ordinal);
     }
+
+    /// <summary>
+    /// Replaces meta collections that are missing from older manifest files with empty ones.
+    /// </summary>
+    /// <remarks>
+    /// Source-generated System.Text.Json deserialization assigns <c>null</c> to init-only
+    /// properties absent from the JSON instead of keeping their initializers.
+    /// </remarks>
+    private static ImageManifest WithDefaultMetaCollections(ImageManifest loaded) =>
+        loaded with
+        {
+            Meta = loaded.Meta with
+            {
+                FormatQualities = loaded.Meta.FormatQualities ?? new Dictionary<string, int>(),
+                ProcessedImages = loaded.Meta.ProcessedImages ?? new Dictionary<string, string>(),
+            }
+        };
 
     /// <inheritdoc />
     public async Task SaveAsync(CancellationToken cancellationToken = default)
