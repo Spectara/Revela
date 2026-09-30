@@ -17,8 +17,7 @@ public static class ConfigurationServiceCollectionExtensions
     /// Binds the following configuration sections to their respective models:
     /// </para>
     /// <list type="bullet">
-    /// <item><see cref="PackagesConfig"/> - packages section (NuGet feeds)</item>
-    /// <item><see cref="DependenciesConfig"/> - root-level themes and plugins maps</item>
+    /// <item><see cref="DependenciesConfig"/> - dependencies section (packages and feeds)</item>
     /// <item><see cref="GlobalDefaultsConfig"/> - defaults section (default theme)</item>
     /// <item><see cref="GlobalSettingsConfig"/> - settings section (checkUpdates)</item>
     /// <item><see cref="LoggingConfig"/> - Logging section</item>
@@ -58,7 +57,6 @@ public static class ConfigurationServiceCollectionExtensions
         // Hot-reload is provided by BindConfiguration via IOptionsMonitor.
         // Note: only site.json's identity core (SiteCoreConfig) is bound via IOptions;
         // its theme-specific tail is loaded dynamically by RenderService.
-        services.AddOptions<PackagesConfig>().BindConfiguration(PackagesConfig.Section);
         services.AddOptions<DependenciesConfig>().BindConfiguration(DependenciesConfig.Section);
         services.AddOptions<GlobalDefaultsConfig>().BindConfiguration(GlobalDefaultsConfig.Section);
         services.AddOptions<GlobalSettingsConfig>().BindConfiguration(GlobalSettingsConfig.Section);

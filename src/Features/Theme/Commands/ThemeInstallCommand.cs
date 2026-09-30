@@ -16,7 +16,8 @@ internal sealed partial class ThemeInstallCommand(
     ILogger<ThemeInstallCommand> logger,
     IPackageIndexService packageIndexService,
     IThemeService themeService,
-    IGlobalConfigManager globalConfigManager)
+    IGlobalConfigManager globalConfigManager,
+    IEnumerable<ProjectFeedConsent> feedConsents)
 {
     /// <summary>
     /// Creates the command definition.
@@ -50,12 +51,23 @@ internal sealed partial class ThemeInstallCommand(
         };
         command.Options.Add(allOption);
 
+        var allowProjectFeedsOption = ProjectFeedConsent.CreateOption();
+        command.Options.Add(allowProjectFeedsOption);
+
         command.SetAction(async (parseResult, cancellationToken) =>
         {
             var name = parseResult.GetValue(nameArgument);
             var version = parseResult.GetValue(versionOption);
             var source = parseResult.GetValue(sourceOption);
             var all = parseResult.GetValue(allOption);
+
+            // Package installation (and its feed list) only exists when the Packages feature is loaded.
+            var feedConsent = feedConsents.FirstOrDefault();
+            if (feedConsent is not null &&
+                !await feedConsent.EnsureApprovedAsync(parseResult.GetValue(allowProjectFeedsOption), source, cancellationToken))
+            {
+                return 1;
+            }
 
             // --all flag → install all available themes
             if (all)
@@ -95,15 +107,14 @@ internal sealed partial class ThemeInstallCommand(
         }
 
         // Get already installed themes to filter them out
-        var installedThemes = await globalConfigManager.GetThemesAsync(cancellationToken);
-        var installedIds = installedThemes.Keys.ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var installedIds = await GetInstalledThemeIdsAsync(themes, cancellationToken);
 
         var availableThemes = themes.Where(t => !installedIds.Contains(t.Id)).ToList();
 
         if (availableThemes.Count == 0)
         {
             AnsiConsole.MarkupLine($"{OutputMarkers.Success} All available themes are already installed.");
-            return new InstallResult([], [.. installedThemes.Keys], []);
+            return new InstallResult([], [.. installedIds], []);
         }
 
         AnsiConsole.MarkupLine($"Installing [cyan]{availableThemes.Count}[/] theme(s)...");
@@ -158,10 +169,11 @@ internal sealed partial class ThemeInstallCommand(
         if (selectedThemes.Count == 0)
         {
             // Check if all themes are already installed
-            var installedThemes = await globalConfigManager.GetThemesAsync(cancellationToken);
+            var themes = await packageIndexService.SearchByTypeAsync("RevelaTheme", cancellationToken);
+            var installedThemes = await GetInstalledThemeIdsAsync(themes, cancellationToken);
             if (installedThemes.Count > 0)
             {
-                return new InstallResult([], [.. installedThemes.Keys], []);
+                return new InstallResult([], [.. installedThemes], []);
             }
 
             return InstallResult.Empty;
@@ -229,11 +241,10 @@ internal sealed partial class ThemeInstallCommand(
         }
 
         // Get already installed themes to filter them out
-        var installedThemes = await globalConfigManager.GetThemesAsync(cancellationToken);
-        var installedIds = installedThemes.Keys.ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var installedThemes = await GetInstalledThemeIdsAsync(themes, cancellationToken);
 
         // Filter out already installed themes
-        var availableThemes = themes.Where(t => !installedIds.Contains(t.Id)).ToList();
+        var availableThemes = themes.Where(t => !installedThemes.Contains(t.Id)).ToList();
 
         if (availableThemes.Count == 0)
         {
@@ -245,7 +256,7 @@ internal sealed partial class ThemeInstallCommand(
         if (installedThemes.Count > 0)
         {
             AnsiConsole.MarkupLine("[green]Already installed:[/]");
-            foreach (var themeId in installedThemes.Keys)
+            foreach (var themeId in installedThemes)
             {
                 AnsiConsole.MarkupLine($"  {OutputMarkers.Success} {Markup.Escape(themeId)}");
             }
@@ -330,7 +341,7 @@ internal sealed partial class ThemeInstallCommand(
             AnsiConsole.MarkupLine($"[blue]Installing theme:[/] [cyan]{Markup.Escape(packageId)}[/]{sourceInfo}");
             LogInstallingTheme(logger, packageId, version, source);
 
-            var success = await AnsiConsole.Status()
+            var package = await AnsiConsole.Status()
                 .Spinner(Spinner.Known.Dots)
                 .StartAsync("Installing...", async ctx =>
                 {
@@ -339,13 +350,12 @@ internal sealed partial class ThemeInstallCommand(
                     return await themeService.InstallAsync(packageId, version, source, cancellationToken);
                 });
 
-            if (success)
+            if (package is not null)
             {
-                // Register theme in global config (revela.json)
-                var installedVersion = version ?? packageEntry.Version;
-                await globalConfigManager.AddThemeAsync(packageId, installedVersion, cancellationToken);
+                // Register the exact installed version in global config (revela.json)
+                await globalConfigManager.AddPackageAsync(package.Id, package.Version, cancellationToken);
 
-                AnsiConsole.MarkupLine($"{OutputMarkers.Success} Theme [cyan]{Markup.Escape(packageId)}[/] installed successfully.");
+                AnsiConsole.MarkupLine($"{OutputMarkers.Success} Theme [cyan]{Markup.Escape(package.Id)}[/] [dim]{Markup.Escape(package.Version)}[/] installed successfully.");
                 AnsiConsole.MarkupLine("[dim]Configure with:[/] revela config theme select");
                 return 0;
             }
@@ -374,10 +384,24 @@ internal sealed partial class ThemeInstallCommand(
             return [];
         }
 
-        var installedThemes = await globalConfigManager.GetThemesAsync(cancellationToken);
-        var installedIds = installedThemes.Keys.ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var installedIds = await GetInstalledThemeIdsAsync(themes, cancellationToken);
 
         return [.. themes.Where(t => !installedIds.Contains(t.Id))];
+    }
+
+    /// <summary>
+    /// Returns the IDs of indexed themes that are declared in the global <c>dependencies.packages</c>.
+    /// </summary>
+    private async Task<HashSet<string>> GetInstalledThemeIdsAsync(
+        IReadOnlyList<PackageIndexEntry> themes,
+        CancellationToken cancellationToken)
+    {
+        var packages = await globalConfigManager.GetPackagesAsync(cancellationToken);
+        var packageIds = packages.Keys.ToHashSet(StringComparer.OrdinalIgnoreCase);
+        return themes
+            .Select(theme => theme.Id)
+            .Where(packageIds.Contains)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
     }
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Installing theme {PackageId} version={Version} source={Source}")]

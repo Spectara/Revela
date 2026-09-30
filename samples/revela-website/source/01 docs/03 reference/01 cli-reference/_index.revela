@@ -144,8 +144,11 @@ revela plugin list                   # List installed plugins
 revela plugin install Statistics     # Install by short name
 revela plugin install Spectara.Revela.Plugins.Statistics  # Install by full ID
 revela plugin install Statistics --version 1.2.0         # Specific version
+revela plugin install Statistics --allow-project-feeds   # Use project.json feeds without asking
 revela plugin uninstall Statistics   # Remove a plugin
 ```
+
+Install commands record the exact installed version under `dependencies.packages` (global `revela.json`, and `project.json` inside a project). Uninstall removes the entry again. `revela theme install` accepts the same `--version`, `--source` and `--allow-project-feeds` options.
 
 ---
 
@@ -182,9 +185,10 @@ Restore project dependencies (themes and plugins) from configuration.
 ```bash
 revela restore                       # Install missing dependencies
 revela restore --check               # Check only (don't install)
+revela restore --allow-project-feeds # Use feeds declared in project.json without asking
 ```
 
-Useful after cloning a project or updating Revela. Reads the `theme`, `themes`, and `plugins` sections from your configuration and installs anything that's missing.
+Useful after cloning a project or updating Revela. Installs every package listed in `dependencies.packages` that is not installed yet, plus the package that provides `theme.name`, and pins the exact installed versions in `project.json`. Feeds that are declared only in `project.json` need confirmation; non-interactive runs stop unless you pass `--allow-project-feeds`. See [Dependencies and Feeds](../../guide/configuration/#dependencies-and-feeds).
 
 ---
 

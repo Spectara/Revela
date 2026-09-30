@@ -20,12 +20,12 @@ public sealed class PluginProjectServiceTests
     private static readonly TimeSpan OperationTimeout = TimeSpan.FromSeconds(10);
 
     [TestMethod]
-    public async Task RemovePluginAsync_QueuedAfterSectionDeletion_DoesNotResurrectDependency()
+    public async Task RemovePackageAsync_QueuedAfterSectionDeletion_DoesNotResurrectDependency()
     {
         const string packageId = "Spectara.Revela.Plugins.Fixture";
         using var project = TestProject.Create(projectBuilder => projectBuilder.WithProjectJson(new
         {
-            Plugins = new JsonObject { [packageId] = "1.0.0" },
+            Dependencies = PackagesSection(new JsonObject { [packageId] = "1.0.0" }),
             Settings = new { Sibling = "preserved" }
         }));
         using var host = RevelaTestHost.Build(project.RootPath, services => services.AddRevelaCommands());
@@ -71,8 +71,8 @@ public sealed class PluginProjectServiceTests
         try
         {
             await reloadEntered.Task.WaitAsync(OperationTimeout);
-            sectionDeletion = configService.UpdateProjectConfigAsync(new JsonObject { ["plugins"] = null });
-            removal = service.RemovePluginAsync(packageId.ToUpperInvariant(), CancellationToken.None);
+            sectionDeletion = configService.UpdateProjectConfigAsync(new JsonObject { ["dependencies"] = null });
+            removal = service.RemovePackageAsync(packageId.ToUpperInvariant(), CancellationToken.None);
             await removalQueued.Task.WaitAsync(OperationTimeout);
             Assert.IsFalse(sectionDeletion.IsCompleted);
             Assert.IsFalse(removal.IsCompleted);
@@ -85,11 +85,11 @@ public sealed class PluginProjectServiceTests
 
         var saved = await configService.ReadProjectConfigAsync();
         Assert.IsNotNull(saved);
-        Assert.IsFalse(saved.Any(section => string.Equals(section.Key, "plugins", StringComparison.OrdinalIgnoreCase)));
+        Assert.IsFalse(saved.Any(section => string.Equals(section.Key, "dependencies", StringComparison.OrdinalIgnoreCase)));
         using var stream = File.OpenRead(project.ProjectJsonPath);
         using var reopened = (ConfigurationRoot)new ConfigurationBuilder().AddJsonStream(stream).Build();
-        Assert.IsEmpty(configuration.GetSection("plugins").GetChildren());
-        Assert.IsEmpty(reopened.GetSection("plugins").GetChildren());
+        Assert.IsEmpty(configuration.GetSection("dependencies:packages").GetChildren());
+        Assert.IsEmpty(reopened.GetSection("dependencies:packages").GetChildren());
         Assert.IsEmpty(scanner.GetDependencies());
         using var reopenedScannerProvider = scannerServices.AddSingleton<IConfiguration>(reopened).BuildServiceProvider();
         Assert.IsEmpty(reopenedScannerProvider.GetRequiredService<IDependencyScanner>().GetDependencies());
@@ -99,36 +99,56 @@ public sealed class PluginProjectServiceTests
     }
 
     [TestMethod]
-    public async Task AddPluginAsync_DeclaredCaseSection_UpdatesExistingEntryAndReloadsProvider()
+    public async Task AddPackageAsync_DeclaredCaseSection_UpdatesExistingEntryAndReloadsProvider()
     {
         using var project = TestProject.Create(projectBuilder => projectBuilder.WithProjectJson(new
         {
-            Plugins = new { MixedCasePackage = "1.0.0" }
+            Dependencies = new { Packages = new { MixedCasePackage = "1.0.0" } }
         }));
         using var host = RevelaTestHost.Build(project.RootPath, services => services.AddRevelaCommands());
         var service = ActivatorUtilities.CreateInstance<PluginProjectService>(host.Services);
 
-        await service.AddPluginAsync("MixedCasePackage", "2.0.0", CancellationToken.None);
+        await service.AddPackageAsync("MixedCasePackage", "2.0.0", CancellationToken.None);
 
         using var stream = File.OpenRead(project.ProjectJsonPath);
         using var reopened = (ConfigurationRoot)new ConfigurationBuilder().AddJsonStream(stream).Build();
-        Assert.AreEqual("2.0.0", reopened["plugins:mixedcasepackage"]);
-        Assert.AreEqual("2.0.0", host.Services.GetRequiredService<IConfiguration>()["plugins:mixedcasepackage"]);
-        Assert.HasCount(1, reopened.GetSection("plugins").GetChildren());
+        Assert.AreEqual("2.0.0", reopened["dependencies:packages:mixedcasepackage"]);
+        Assert.AreEqual("2.0.0", host.Services.GetRequiredService<IConfiguration>()["dependencies:packages:mixedcasepackage"]);
+        Assert.HasCount(1, reopened.GetSection("dependencies:packages").GetChildren());
     }
 
     [TestMethod]
-    public async Task AddAndRemovePluginAsync_MixedCasePackage_PreservesSpellingNullVersionsAndUnknownData()
+    public async Task AddPackageAsync_NoDependenciesSection_WritesNewShapeWithoutLegacyMaps()
     {
         using var project = TestProject.Create(projectBuilder => projectBuilder.WithProjectJson(new
         {
-            Plugins = new JsonObject
+            Theme = new { Name = "Lumina" }
+        }));
+        using var host = RevelaTestHost.Build(project.RootPath, services => services.AddRevelaCommands());
+        var configService = host.Services.GetRequiredService<IConfigService>();
+        var service = ActivatorUtilities.CreateInstance<PluginProjectService>(host.Services);
+
+        await service.AddPackageAsync("Acme.Revela.Watermark", "1.0.0-beta.2", CancellationToken.None);
+
+        var saved = await configService.ReadProjectConfigAsync();
+        Assert.IsNotNull(saved);
+        Assert.AreEqual("1.0.0-beta.2", saved["dependencies"]!["packages"]!["Acme.Revela.Watermark"]!.GetValue<string>());
+        Assert.IsFalse(saved.ContainsKey("plugins"));
+        Assert.IsFalse(saved.ContainsKey("themes"));
+    }
+
+    [TestMethod]
+    public async Task AddAndRemovePackageAsync_MixedCasePackage_PreservesSpellingNullVersionsAndUnknownData()
+    {
+        using var project = TestProject.Create(projectBuilder => projectBuilder.WithProjectJson(new
+        {
+            Dependencies = PackagesSection(new JsonObject
             {
                 ["MixedCasePackage"] = "1.0.0",
                 ["UnpinnedPackage"] = null,
                 ["OtherPackage"] = "3.0.0",
                 ["FutureEntry"] = new JsonObject { ["Enabled"] = true }
-            },
+            }),
             UnknownSettings = new { MixedCase = new JsonArray("one", "two"), Count = 42 }
         }));
         using var host = RevelaTestHost.Build(project.RootPath, services => services.AddRevelaCommands());
@@ -138,39 +158,39 @@ public sealed class PluginProjectServiceTests
         var expected = await configService.ReadProjectConfigAsync();
         Assert.IsNotNull(expected);
 
-        await service.AddPluginAsync("mixedcasepackage", "2.0.0", CancellationToken.None);
-        expected["Plugins"]!["MixedCasePackage"] = "2.0.0";
+        await service.AddPackageAsync("mixedcasepackage", "2.0.0", CancellationToken.None);
+        expected["Dependencies"]!["Packages"]!["MixedCasePackage"] = "2.0.0";
         Assert.IsTrue(JsonNode.DeepEquals(expected, await configService.ReadProjectConfigAsync()));
-        Assert.AreEqual("2.0.0", configuration["plugins:mixedcasepackage"]);
+        Assert.AreEqual("2.0.0", configuration["dependencies:packages:mixedcasepackage"]);
 
-        await service.RemovePluginAsync("MIXEDCASEPACKAGE", CancellationToken.None);
-        expected["Plugins"]!.AsObject().Remove("MixedCasePackage");
+        await service.RemovePackageAsync("MIXEDCASEPACKAGE", CancellationToken.None);
+        expected["Dependencies"]!["Packages"]!.AsObject().Remove("MixedCasePackage");
         Assert.IsTrue(JsonNode.DeepEquals(expected, await configService.ReadProjectConfigAsync()));
-        Assert.IsNull(configuration["plugins:mixedcasepackage"]);
-        Assert.AreEqual("3.0.0", configuration["plugins:otherpackage"]);
+        Assert.IsNull(configuration["dependencies:packages:mixedcasepackage"]);
+        Assert.AreEqual("3.0.0", configuration["dependencies:packages:otherpackage"]);
         using (var stream = File.OpenRead(project.ProjectJsonPath))
         using (var reopened = (ConfigurationRoot)new ConfigurationBuilder().AddJsonStream(stream).Build())
         {
-            Assert.HasCount(3, reopened.GetSection("plugins").GetChildren());
-            Assert.IsNull(reopened["plugins:mixedcasepackage"]);
-            Assert.IsNull(reopened["plugins:unpinnedpackage"]);
-            Assert.AreEqual("3.0.0", reopened["plugins:otherpackage"]);
-            Assert.AreEqual("True", reopened["plugins:futureentry:enabled"]);
+            Assert.HasCount(3, reopened.GetSection("dependencies:packages").GetChildren());
+            Assert.IsNull(reopened["dependencies:packages:mixedcasepackage"]);
+            Assert.IsNull(reopened["dependencies:packages:unpinnedpackage"]);
+            Assert.AreEqual("3.0.0", reopened["dependencies:packages:otherpackage"]);
+            Assert.AreEqual("True", reopened["dependencies:packages:futureentry:enabled"]);
             Assert.AreEqual("two", reopened["unknownsettings:mixedcase:1"]);
         }
 
-        await service.RemovePluginAsync("UNPINNEDPACKAGE", CancellationToken.None);
-        expected["Plugins"]!.AsObject().Remove("UnpinnedPackage");
+        await service.RemovePackageAsync("UNPINNEDPACKAGE", CancellationToken.None);
+        expected["Dependencies"]!["Packages"]!.AsObject().Remove("UnpinnedPackage");
         Assert.IsTrue(JsonNode.DeepEquals(expected, await configService.ReadProjectConfigAsync()));
-        Assert.HasCount(2, configuration.GetSection("plugins").GetChildren());
+        Assert.HasCount(2, configuration.GetSection("dependencies:packages").GetChildren());
     }
 
     [TestMethod]
     [DataRow("{ }")]
-    [DataRow(/*lang=json,strict*/ "{\"Plugins\":{}}")]
-    [DataRow(/*lang=json,strict*/ "{\"Plugins\":{\"OtherPackage\":null}}")]
-    [DataRow(/*lang=json,strict*/ "{\"Plugins\":null,\"Unknown\":42}")]
-    public async Task RemovePluginAsync_UnknownPackage_DoesNotRewriteOrInsertNullEntry(string json)
+    [DataRow(/*lang=json,strict*/ "{\"Dependencies\":{\"Packages\":{}}}")]
+    [DataRow(/*lang=json,strict*/ "{\"Dependencies\":{\"Packages\":{\"OtherPackage\":null}}}")]
+    [DataRow(/*lang=json,strict*/ "{\"Dependencies\":{\"Packages\":null},\"Unknown\":42}")]
+    public async Task RemovePackageAsync_UnknownPackage_DoesNotRewriteOrInsertNullEntry(string json)
     {
         using var project = TestProject.Create();
         await File.WriteAllTextAsync(project.ProjectJsonPath, json);
@@ -179,7 +199,7 @@ public sealed class PluginProjectServiceTests
         var reload = host.Services.GetRequiredService<IConfiguration>().GetReloadToken();
         var original = await File.ReadAllBytesAsync(project.ProjectJsonPath);
 
-        await service.RemovePluginAsync("UnknownPackage", CancellationToken.None);
+        await service.RemovePackageAsync("UnknownPackage", CancellationToken.None);
 
         CollectionAssert.AreEqual(original, await File.ReadAllBytesAsync(project.ProjectJsonPath));
         Assert.IsFalse(reload.HasChanged);
@@ -187,7 +207,7 @@ public sealed class PluginProjectServiceTests
     }
 
     [TestMethod]
-    public async Task AddAndRemovePluginAsync_OutsideProject_DoesNotCreateProjectFile()
+    public async Task AddAndRemovePackageAsync_OutsideProject_DoesNotCreateProjectFile()
     {
         using var project = TestProject.Create();
         using var host = RevelaTestHost.Build(project.RootPath, services => services.AddRevelaCommands());
@@ -195,8 +215,8 @@ public sealed class PluginProjectServiceTests
         var service = ActivatorUtilities.CreateInstance<PluginProjectService>(host.Services);
         var reload = host.Services.GetRequiredService<IConfiguration>().GetReloadToken();
 
-        await service.AddPluginAsync("Package", "1.0.0", CancellationToken.None);
-        await service.RemovePluginAsync("Package", CancellationToken.None);
+        await service.AddPackageAsync("Package", "1.0.0", CancellationToken.None);
+        await service.RemovePackageAsync("Package", CancellationToken.None);
 
         Assert.IsFalse(File.Exists(project.ProjectJsonPath));
         Assert.IsFalse(reload.HasChanged);
@@ -206,11 +226,11 @@ public sealed class PluginProjectServiceTests
     [TestMethod]
     [DataRow(false)]
     [DataRow(true)]
-    public async Task AddOrRemovePluginAsync_PreCanceled_LeavesProjectUnchanged(bool remove)
+    public async Task AddOrRemovePackageAsync_PreCanceled_LeavesProjectUnchanged(bool remove)
     {
         using var project = TestProject.Create(projectBuilder => projectBuilder.WithProjectJson(new
         {
-            Plugins = new { MixedCasePackage = "1.0.0" }
+            Dependencies = new { Packages = new { MixedCasePackage = "1.0.0" } }
         }));
         using var host = RevelaTestHost.Build(project.RootPath, services => services.AddRevelaCommands());
         var service = ActivatorUtilities.CreateInstance<PluginProjectService>(host.Services);
@@ -219,23 +239,23 @@ public sealed class PluginProjectServiceTests
         await cancellation.CancelAsync();
 
         var exception = await Assert.ThrowsAsync<OperationCanceledException>(() => remove
-            ? service.RemovePluginAsync("mixedcasepackage", cancellation.Token)
-            : service.AddPluginAsync("mixedcasepackage", "2.0.0", cancellation.Token));
+            ? service.RemovePackageAsync("mixedcasepackage", cancellation.Token)
+            : service.AddPackageAsync("mixedcasepackage", "2.0.0", cancellation.Token));
 
         Assert.AreEqual(cancellation.Token, exception.CancellationToken);
         CollectionAssert.AreEqual(original, await File.ReadAllBytesAsync(project.ProjectJsonPath));
-        Assert.AreEqual("1.0.0", host.Services.GetRequiredService<IConfiguration>()["plugins:mixedcasepackage"]);
+        Assert.AreEqual("1.0.0", host.Services.GetRequiredService<IConfiguration>()["dependencies:packages:mixedcasepackage"]);
         Assert.IsEmpty(Directory.GetFiles(project.RootPath, ".project.json.*.tmp"));
     }
 
     [TestMethod]
     [DataRow(false)]
     [DataRow(true)]
-    public async Task AddOrRemovePluginAsync_MalformedOriginal_PropagatesFailureWithoutWriting(bool remove)
+    public async Task AddOrRemovePackageAsync_MalformedOriginal_PropagatesFailureWithoutWriting(bool remove)
     {
         using var project = TestProject.Create(projectBuilder => projectBuilder.WithProjectJson(new
         {
-            Plugins = new { MixedCasePackage = "1.0.0" }
+            Dependencies = new { Packages = new { MixedCasePackage = "1.0.0" } }
         }));
         using var host = RevelaTestHost.Build(project.RootPath, services => services.AddRevelaCommands());
         var service = ActivatorUtilities.CreateInstance<PluginProjectService>(host.Services);
@@ -243,70 +263,70 @@ public sealed class PluginProjectServiceTests
         var original = await File.ReadAllBytesAsync(project.ProjectJsonPath);
 
         await Assert.ThrowsAsync<JsonException>(() => remove
-            ? service.RemovePluginAsync("mixedcasepackage", CancellationToken.None)
-            : service.AddPluginAsync("mixedcasepackage", "2.0.0", CancellationToken.None));
+            ? service.RemovePackageAsync("mixedcasepackage", CancellationToken.None)
+            : service.AddPackageAsync("mixedcasepackage", "2.0.0", CancellationToken.None));
 
         CollectionAssert.AreEqual(original, await File.ReadAllBytesAsync(project.ProjectJsonPath));
-        Assert.AreEqual("1.0.0", host.Services.GetRequiredService<IConfiguration>()["plugins:mixedcasepackage"]);
+        Assert.AreEqual("1.0.0", host.Services.GetRequiredService<IConfiguration>()["dependencies:packages:mixedcasepackage"]);
         Assert.IsEmpty(Directory.GetFiles(project.RootPath, ".project.json.*.tmp"));
     }
 
     [TestMethod]
     [DataRow(false)]
     [DataRow(true)]
-    public async Task AddOrRemovePluginAsync_ProviderInvalidOriginal_PropagatesFailureWithoutWriting(bool remove)
+    public async Task AddOrRemovePackageAsync_ProviderInvalidOriginal_PropagatesFailureWithoutWriting(bool remove)
     {
         using var project = TestProject.Create(projectBuilder => projectBuilder.WithProjectJson(new
         {
-            Plugins = new { MixedCasePackage = "1.0.0" }
+            Dependencies = new { Packages = new { MixedCasePackage = "1.0.0" } }
         }));
         using var host = RevelaTestHost.Build(project.RootPath, services => services.AddRevelaCommands());
         var service = ActivatorUtilities.CreateInstance<PluginProjectService>(host.Services);
         await File.WriteAllTextAsync(project.ProjectJsonPath, /*lang=json,strict*/ """
-            {"Plugins":{"MixedCasePackage":"original"},"plugins":{"mixedcasepackage":"collision"}}
+            {"Dependencies":{"Packages":{"MixedCasePackage":"original"}},"dependencies":{"packages":{"mixedcasepackage":"collision"}}}
             """);
         var original = await File.ReadAllBytesAsync(project.ProjectJsonPath);
 
         await Assert.ThrowsExactlyAsync<FormatException>(() => remove
-            ? service.RemovePluginAsync("mixedcasepackage", CancellationToken.None)
-            : service.AddPluginAsync("mixedcasepackage", "2.0.0", CancellationToken.None));
+            ? service.RemovePackageAsync("mixedcasepackage", CancellationToken.None)
+            : service.AddPackageAsync("mixedcasepackage", "2.0.0", CancellationToken.None));
 
         CollectionAssert.AreEqual(original, await File.ReadAllBytesAsync(project.ProjectJsonPath));
-        Assert.AreEqual("1.0.0", host.Services.GetRequiredService<IConfiguration>()["plugins:mixedcasepackage"]);
+        Assert.AreEqual("1.0.0", host.Services.GetRequiredService<IConfiguration>()["dependencies:packages:mixedcasepackage"]);
         Assert.IsEmpty(Directory.GetFiles(project.RootPath, ".project.json.*.tmp"));
     }
 
     [TestMethod]
     [DataRow(false)]
     [DataRow(true)]
-    public async Task AddOrRemovePluginAsync_AmbiguousCaseSplitSection_LeavesBothSectionsUnchanged(bool remove)
+    public async Task AddOrRemovePackageAsync_AmbiguousCaseSplitSection_LeavesBothSectionsUnchanged(bool remove)
     {
         using var project = TestProject.Create(projectBuilder => projectBuilder.WithProjectJson(new
         {
-            Plugins = new { MixedCasePackage = "1.0.0" },
-            plugins = new { OtherPackage = "3.0.0" }
+            Dependencies = new { Packages = new { MixedCasePackage = "1.0.0" } },
+            dependencies = new { packages = new { OtherPackage = "3.0.0" } }
         }));
         using var host = RevelaTestHost.Build(project.RootPath, services => services.AddRevelaCommands());
         var service = ActivatorUtilities.CreateInstance<PluginProjectService>(host.Services);
         var original = await File.ReadAllBytesAsync(project.ProjectJsonPath);
 
         await Assert.ThrowsExactlyAsync<InvalidOperationException>(() => remove
-            ? service.RemovePluginAsync("mixedcasepackage", CancellationToken.None)
-            : service.AddPluginAsync("mixedcasepackage", "2.0.0", CancellationToken.None));
+            ? service.RemovePackageAsync("mixedcasepackage", CancellationToken.None)
+            : service.AddPackageAsync("mixedcasepackage", "2.0.0", CancellationToken.None));
 
         CollectionAssert.AreEqual(original, await File.ReadAllBytesAsync(project.ProjectJsonPath));
         var configuration = host.Services.GetRequiredService<IConfiguration>();
-        Assert.AreEqual("1.0.0", configuration["plugins:mixedcasepackage"]);
-        Assert.AreEqual("3.0.0", configuration["plugins:otherpackage"]);
+        Assert.AreEqual("1.0.0", configuration["dependencies:packages:mixedcasepackage"]);
+        Assert.AreEqual("3.0.0", configuration["dependencies:packages:otherpackage"]);
         Assert.IsEmpty(Directory.GetFiles(project.RootPath, ".project.json.*.tmp"));
     }
 
     [TestMethod]
-    public async Task AddPluginAsync_DistinctServicesShareWriter_SerializesWithOrdinaryUpdatesThroughReload()
+    public async Task AddPackageAsync_DistinctServicesShareWriter_SerializesWithOrdinaryUpdatesThroughReload()
     {
         using var project = TestProject.Create(projectBuilder => projectBuilder.WithProjectJson(new
         {
-            Plugins = new JsonObject { ["UnpinnedPackage"] = null },
+            Dependencies = PackagesSection(new JsonObject { ["UnpinnedPackage"] = null }),
             Settings = new { Sibling = "preserved" }
         }));
         using var host = RevelaTestHost.Build(project.RootPath, services => services.AddRevelaCommands());
@@ -332,13 +352,13 @@ public sealed class PluginProjectServiceTests
         {
             await reloadEntered.Task.WaitAsync(OperationTimeout);
             var committed = await File.ReadAllBytesAsync(project.ProjectJsonPath);
-            var firstPackageUpdate = firstService.AddPluginAsync("FirstPackage", "1.0.0", CancellationToken.None);
-            var secondPackageUpdate = secondService.AddPluginAsync("SecondPackage", "2.0.0", CancellationToken.None);
+            var firstPackageUpdate = firstService.AddPackageAsync("FirstPackage", "1.0.0", CancellationToken.None);
+            var secondPackageUpdate = secondService.AddPackageAsync("SecondPackage", "2.0.0", CancellationToken.None);
             var settingsUpdate = configService.UpdateProjectConfigAsync(
                 new JsonObject { ["settings"] = new JsonObject { ["second"] = "queued" } });
             queuedUpdates = Task.WhenAll(firstPackageUpdate, secondPackageUpdate, settingsUpdate);
             using var cancellation = new CancellationTokenSource();
-            var canceledUpdate = secondService.AddPluginAsync("CanceledPackage", "3.0.0", cancellation.Token);
+            var canceledUpdate = secondService.AddPackageAsync("CanceledPackage", "3.0.0", cancellation.Token);
             var completedBeforeCancellation = canceledUpdate.IsCompleted;
             await cancellation.CancelAsync();
 
@@ -360,10 +380,10 @@ public sealed class PluginProjectServiceTests
         using var reopened = (ConfigurationRoot)new ConfigurationBuilder().AddJsonStream(stream).Build();
         foreach (var provider in new[] { configuration, reopened })
         {
-            Assert.AreEqual("1.0.0", provider["plugins:firstpackage"]);
-            Assert.AreEqual("2.0.0", provider["plugins:secondpackage"]);
-            Assert.IsNull(provider["plugins:canceledpackage"]);
-            Assert.HasCount(3, provider.GetSection("plugins").GetChildren());
+            Assert.AreEqual("1.0.0", provider["dependencies:packages:firstpackage"]);
+            Assert.AreEqual("2.0.0", provider["dependencies:packages:secondpackage"]);
+            Assert.IsNull(provider["dependencies:packages:canceledpackage"]);
+            Assert.HasCount(3, provider.GetSection("dependencies:packages").GetChildren());
             Assert.AreEqual("committed", provider["settings:first"]);
             Assert.AreEqual("queued", provider["settings:second"]);
             Assert.AreEqual("preserved", provider["settings:sibling"]);
@@ -371,8 +391,10 @@ public sealed class PluginProjectServiceTests
 
         var saved = await configService.ReadProjectConfigAsync();
         Assert.IsNotNull(saved);
-        Assert.IsTrue(saved["Plugins"]!.AsObject().ContainsKey("UnpinnedPackage"));
-        Assert.IsNull(saved["Plugins"]!["UnpinnedPackage"]);
+        Assert.IsTrue(saved["Dependencies"]!["Packages"]!.AsObject().ContainsKey("UnpinnedPackage"));
+        Assert.IsNull(saved["Dependencies"]!["Packages"]!["UnpinnedPackage"]);
         Assert.IsEmpty(Directory.GetFiles(project.RootPath, ".project.json.*.tmp"));
     }
+
+    private static JsonObject PackagesSection(JsonObject packages) => new() { ["Packages"] = packages };
 }

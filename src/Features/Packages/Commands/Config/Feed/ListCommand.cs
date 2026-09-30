@@ -50,14 +50,29 @@ internal sealed partial class ListCommand(
                 };
 
                 table.AddRow(
-                    $"[cyan]{source.Name}[/]",
-                    $"[dim]{source.Url}[/]",
+                    $"[cyan]{Markup.Escape(source.Name)}[/]",
+                    $"[dim]{Markup.Escape(source.Url)}[/]",
                     typeStyle);
+            }
+
+            // Feeds declared only in project.json are listed but need consent before restore/install use them.
+            var projectFeeds = nugetSourceManager.GetProjectFeeds();
+            foreach (var feed in projectFeeds)
+            {
+                table.AddRow(
+                    $"[cyan]{Markup.Escape(feed.Name)}[/]",
+                    $"[dim]{Markup.Escape(feed.Url)}[/]",
+                    "[yellow]project.json[/]");
             }
 
             AnsiConsole.Write(table);
             AnsiConsole.WriteLine();
-            AnsiConsole.MarkupLine($"Total: [cyan]{sources.Count}[/] feed(s)");
+            AnsiConsole.MarkupLine($"Total: [cyan]{sources.Count + projectFeeds.Count}[/] feed(s)");
+
+            if (projectFeeds.Count > 0)
+            {
+                AnsiConsole.MarkupLine($"[yellow]project.json[/] feeds are only used after confirmation or with [cyan]{ProjectFeedConsent.AllowOptionName}[/].");
+            }
 
             // Show bundled packages info if exists
             var bundledDir = ConfigPathResolver.BundledPackagesDirectory;

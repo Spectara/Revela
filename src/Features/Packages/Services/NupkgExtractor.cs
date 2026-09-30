@@ -5,6 +5,7 @@ using NuGet.Packaging;
 using NuGet.Packaging.Core;
 using Spectara.Revela.Core.Logging;
 using Spectara.Revela.Core.Models;
+using Spectara.Revela.Sdk.Abstractions;
 
 namespace Spectara.Revela.Core;
 
@@ -26,8 +27,8 @@ public sealed class NupkgExtractor(ILogger<NupkgExtractor> logger, TimeProvider 
     /// <param name="targetDir">Root plugin directory (e.g., plugins/).</param>
     /// <param name="installedFrom">Source URL or file path for metadata tracking.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns>The extracted package identity, or null if extraction failed.</returns>
-    public async Task<PackageIdentity?> ExtractAsync(
+    /// <returns>The installed package (ID, exact version, nuspec package types), or null if extraction failed.</returns>
+    public async Task<InstalledPackage?> ExtractAsync(
         string nupkgPath,
         string targetDir,
         string installedFrom,
@@ -117,13 +118,13 @@ public sealed class NupkgExtractor(ILogger<NupkgExtractor> logger, TimeProvider 
         }
 
         // Create plugin.meta.json with metadata from .nuspec (in plugin subfolder)
-        await CreateMetadataAsync(packageReader, identity, installedFrom, pluginDir, cancellationToken);
+        var packageTypes = await CreateMetadataAsync(packageReader, identity, installedFrom, pluginDir, cancellationToken);
 
         logger.PackageExtracted(identity.Id, fileCount);
-        return identity;
+        return new InstalledPackage(identity.Id, identity.Version.ToNormalizedString(), packageTypes);
     }
 
-    private async Task CreateMetadataAsync(
+    private async Task<IReadOnlyList<string>> CreateMetadataAsync(
         PackageArchiveReader packageReader,
         PackageIdentity identity,
         string installedFrom,
@@ -172,6 +173,7 @@ public sealed class NupkgExtractor(ILogger<NupkgExtractor> logger, TimeProvider 
         await JsonSerializer.SerializeAsync(fileStream, metadata, InstalledPluginInfoJsonContext.Default.InstalledPluginInfo, cancellationToken);
 
         logger.MetadataCreated(metadataPath);
+        return packageTypes;
     }
 }
 

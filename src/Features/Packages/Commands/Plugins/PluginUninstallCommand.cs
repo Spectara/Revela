@@ -3,6 +3,7 @@ using System.CommandLine;
 using Spectara.Revela.Core;
 using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Output;
+using Spectara.Revela.Sdk.Services;
 
 using Spectre.Console;
 
@@ -13,7 +14,8 @@ namespace Spectara.Revela.Commands.Plugins;
 /// </summary>
 internal sealed partial class PluginUninstallCommand(
     ILogger<PluginUninstallCommand> logger,
-    PackageManager pluginManager)
+    PackageManager pluginManager,
+    IGlobalConfigManager globalConfigManager)
 {
     /// <summary>
     /// Creates the command definition.
@@ -69,6 +71,8 @@ internal sealed partial class PluginUninstallCommand(
 
             if (success)
             {
+                // Files and the project.json entry are gone; drop the global dependency too.
+                _ = await globalConfigManager.RemovePackageAsync(packageId, cancellationToken);
                 AnsiConsole.MarkupLine($"{OutputMarkers.Success} Plugin [cyan]{Markup.Escape(packageId)}[/] uninstalled successfully.");
                 return 0;
             }

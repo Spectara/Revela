@@ -1,27 +1,29 @@
 using System.Text.Json.Nodes;
 using Spectara.Revela.Core.Logging;
 using Spectara.Revela.Sdk.Abstractions;
+using Spectara.Revela.Sdk.Configuration;
 
 namespace Spectara.Revela.Core;
 
 /// <summary>
-/// Manages plugin entries in project.json.
+/// Manages package entries (<c>dependencies.packages</c>) in project.json.
 /// </summary>
 /// <remarks>
-/// Handles reading and writing the "plugins" section of project.json.
 /// Operations are no-ops when project.json doesn't exist (optional feature).
 /// </remarks>
 public sealed class PluginProjectService(
     IConfigService configService,
     ILogger<PluginProjectService> logger)
 {
+    private const string PackagesKey = "packages";
+
     /// <summary>
-    /// Adds or updates a plugin entry in project.json.
+    /// Adds or updates a package entry in project.json.
     /// </summary>
-    /// <param name="packageId">The plugin package ID.</param>
-    /// <param name="version">The plugin version.</param>
+    /// <param name="packageId">The package ID.</param>
+    /// <param name="version">The exact installed version.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
-    public async Task AddPluginAsync(string packageId, string version, CancellationToken cancellationToken)
+    public async Task AddPackageAsync(string packageId, string version, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
         if (!configService.IsProjectInitialized())
@@ -29,18 +31,16 @@ public sealed class PluginProjectService(
             return;
         }
 
-        await configService.UpdateProjectConfigAsync(
-            new JsonObject { ["plugins"] = new JsonObject { [packageId] = version } },
-            cancellationToken);
+        await configService.UpdateProjectConfigAsync(CreatePatch(packageId, version), cancellationToken);
         logger.PluginAdded(configService.ProjectConfigPath, packageId, version);
     }
 
     /// <summary>
-    /// Removes a plugin entry from project.json.
+    /// Removes a package entry from project.json.
     /// </summary>
-    /// <param name="packageId">The plugin package ID to remove.</param>
+    /// <param name="packageId">The package ID to remove.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
-    public async Task RemovePluginAsync(string packageId, CancellationToken cancellationToken)
+    public async Task RemovePackageAsync(string packageId, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
         if (!configService.IsProjectInitialized())
@@ -48,9 +48,15 @@ public sealed class PluginProjectService(
             return;
         }
 
-        await configService.UpdateProjectConfigAsync(
-            new JsonObject { ["plugins"] = new JsonObject { [packageId] = null } },
-            cancellationToken);
+        await configService.UpdateProjectConfigAsync(CreatePatch(packageId, version: null), cancellationToken);
         logger.PluginRemoved(configService.ProjectConfigPath, packageId);
     }
+
+    private static JsonObject CreatePatch(string packageId, string? version) => new()
+    {
+        [DependenciesConfig.Section] = new JsonObject
+        {
+            [PackagesKey] = new JsonObject { [packageId] = version }
+        }
+    };
 }

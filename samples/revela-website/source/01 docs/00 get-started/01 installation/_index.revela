@@ -72,6 +72,8 @@ If you have the [.NET SDK](https://dotnet.microsoft.com/download) installed (ver
    revela config feed add releases /absolute/path/to/revela-packages
    ```
 
+   This adds the folder to `dependencies.feeds` in your global `revela.json`, so it is trusted for every project.
+
 ### Update
 
 Download the new `.nupkg` files into the same folder, then:

@@ -27,7 +27,8 @@ public interface IThemeService
     /// <summary>
     /// Installs a theme by name or package ID.
     /// </summary>
-    Task<bool> InstallAsync(
+    /// <returns>The installed package with its exact version, or <c>null</c> if installation failed.</returns>
+    Task<InstalledPackage?> InstallAsync(
         string name,
         string? version = null,
         string? source = null,

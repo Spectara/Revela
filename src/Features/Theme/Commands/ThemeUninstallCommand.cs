@@ -13,7 +13,8 @@ namespace Spectara.Revela.Features.Theme.Commands;
 /// </summary>
 internal sealed partial class ThemeUninstallCommand(
     ILogger<ThemeUninstallCommand> logger,
-    IThemeService themeService)
+    IThemeService themeService,
+    IGlobalConfigManager globalConfigManager)
 {
     /// <summary>
     /// Creates the command definition.
@@ -81,6 +82,8 @@ internal sealed partial class ThemeUninstallCommand(
 
             if (success)
             {
+                // Files and the project.json entry are gone; drop the global dependency too.
+                _ = await globalConfigManager.RemovePackageAsync(packageId, cancellationToken);
                 AnsiConsole.MarkupLine($"{OutputMarkers.Success} Theme [cyan]{Markup.Escape(packageId)}[/] uninstalled successfully.");
                 return 0;
             }

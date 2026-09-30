@@ -3,62 +3,55 @@ using Spectara.Revela.Sdk.Abstractions;
 namespace Spectara.Revela.Sdk.Configuration;
 
 /// <summary>
-/// Configuration for theme and plugin dependencies
+/// Package dependencies and the NuGet feeds they are restored from.
 /// </summary>
 /// <remarks>
 /// <para>
-/// This configuration is merged from multiple sources (in order, later wins):
-/// </para>
-/// <list type="number">
-/// <item><b>revela.json</b> (global): User-wide default themes/plugins</item>
-/// <item><b>project.json</b> (local): Project-specific themes/plugins</item>
-/// </list>
-/// <para>
-/// The .NET Configuration system automatically merges these sources.
-/// Local settings override global settings for the same key.
+/// <c>revela.json</c> (global) and <c>project.json</c> (local) use the same shape and are
+/// merged per key by the .NET configuration system (later layers win):
 /// </para>
 /// <example>
 /// <code>
-/// // revela.json (global)
-/// {
-///   "themes": { "Spectara.Revela.Themes.Lumina": "1.0.0" },
-///   "plugins": { "Spectara.Revela.Plugins.Statistics": "1.0.0" }
-/// }
-///
-/// // project.json (local)
 /// {
 ///   "theme": { "name": "Lumina" },
-///   "themes": { "Spectara.Revela.Themes.Lumina": "2.0.0" },  // overrides global
-///   "plugins": { "Spectara.Revela.Plugins.Source.OneDrive": "1.0.0" }  // extends
+///   "dependencies": {
+///     "feeds":    { "test": "../my-feed", "myFeed": "https://example.com/v3/index.json" },
+///     "packages": { "Spectara.Revela.Themes.Lumina": "1.0.0", "Acme.Revela.Watermark": "1.0.0" }
+///   }
 /// }
 /// </code>
 /// </example>
+/// <para>
+/// The package type (theme or plugin) is read from the installed package itself, never
+/// derived from its ID. The root <c>plugins</c> node is reserved for plugin settings.
+/// </para>
 /// </remarks>
-[RevelaConfig("", ValidateDataAnnotations = false)]
+[RevelaConfig("dependencies", ValidateDataAnnotations = false)]
 public sealed class DependenciesConfig
 {
     /// <summary>
-    /// Empty section name binds the root-level themes and plugins maps.
-    /// Matches the <c>[RevelaConfig]</c> attribute argument; passed to
-    /// <c>BindConfiguration</c> at registration time.
+    /// Configuration section name. Matches the <c>[RevelaConfig]</c> attribute
+    /// argument; passed to <c>BindConfiguration</c> at registration time.
     /// </summary>
-    public const string Section = "";
+    public const string Section = "dependencies";
 
     /// <summary>
-    /// Installed theme packages with versions
+    /// Required packages: package ID → exact version.
     /// </summary>
     /// <remarks>
-    /// Key: Full package ID (e.g., "Spectara.Revela.Themes.Lumina")
-    /// Value: Version string (e.g., "1.0.0") or null for latest
+    /// Install commands always persist the exact installed version. A missing value or
+    /// <c>"latest"</c> resolves to the newest stable version (prereleases only for
+    /// prerelease hosts).
     /// </remarks>
-    public Dictionary<string, string?> Themes { get; } = new(StringComparer.OrdinalIgnoreCase);
+    public Dictionary<string, string?> Packages { get; } = new(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>
-    /// Installed plugin packages with versions
+    /// Additional NuGet feeds: name → URL or folder path.
     /// </summary>
     /// <remarks>
-    /// Key: Full package ID (e.g., "Spectara.Revela.Plugins.Statistics")
-    /// Value: Version string (e.g., "1.0.0") or null for latest
+    /// nuget.org and the bundled <c>packages/</c> folder are always available and do not
+    /// appear here. Relative folder paths are resolved relative to the file that declares
+    /// them. Feeds declared only in <c>project.json</c> require explicit consent before use.
     /// </remarks>
-    public Dictionary<string, string?> Plugins { get; } = [];
+    public Dictionary<string, string> Feeds { get; } = new(StringComparer.OrdinalIgnoreCase);
 }

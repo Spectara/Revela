@@ -30,7 +30,7 @@ rendering of third-party submissions.
 | Images in the source folder             | **Trusted**                                 | Provided by the site owner.                                                                                                      |
 | OneDrive shared folders (Source plugin) | **Trusted**                                 | The site owner controls the share.                                                                                               |
 | iCal feeds (Source plugin)              | **Trusted URL, validated network target**   | URL itself is configured by the owner. SSRF guardrails reject loopback/private/link-local targets.                               |
-| Plugin DLLs from NuGet                  | **Trusted source, OS-permission-protected** | Loaded only from feeds the user explicitly added. Same trust model as `dotnet tool install` — see [Plugin trust](#plugin-trust). |
+| Plugin DLLs from NuGet                  | **Trusted source, OS-permission-protected** | Loaded only from feeds the user explicitly added or confirmed. Same trust model as `dotnet tool install` — see [Plugin trust](#plugin-trust). |
 | HTTP requests to the dev server         | **Trusted (loopback only)**                 | The Serve plugin binds to `localhost`. Path-traversal attempts return 403.                                                       |
 
 ---
@@ -122,6 +122,32 @@ Themes installed via `revela theme install` are NuGet packages. Their HTML/CSS/J
 ---
 
 ## Plugin trust
+
+### Project-declared package feeds
+
+A project can declare feeds in `project.json` (`dependencies.feeds`). Because a project may be
+a cloned repository rather than something the machine owner wrote, such feeds are **not trusted
+by default**:
+
+- A feed counts as project-declared when `project.json` declares it and the global `revela.json`
+  does not declare the same name for the same location. Provenance is determined by reading both
+  files separately; the merged configuration cannot tell which file set a key. If `project.json`
+  cannot be read, every feed not declared globally is treated as project-declared.
+- Project-declared feeds are excluded from package sources (install, restore, update, package
+  index refresh, setup wizard) until the owner consents for the current process.
+- `revela restore`, `revela plugin install` and `revela theme install` list each such feed (name,
+  URL or resolved folder, and the `project.json` path) and ask for confirmation. Declining
+  installs nothing.
+- Non-interactive runs (CI, redirected output, see `IConsoleCapabilities`) fail with a non-zero
+  exit code and point to `--allow-project-feeds`, which approves them explicitly.
+- An explicit `--source <url-or-folder>` does not use configured feeds and needs no consent;
+  naming a project-declared feed with `--source` does.
+- Local folders and remote URLs are handled alike. The existing `http://` rejection still applies
+  after consent.
+
+Packages listed in `dependencies.packages` are explicit owner choices and may use any package ID,
+including third-party ones. The official-prefix rule described in the next section applies only to
+what the package index and setup wizard *offer*, not to dependencies the configuration declares.
 
 ### Why no hash-pinning between install and load
 

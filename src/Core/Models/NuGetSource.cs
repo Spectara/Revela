@@ -31,4 +31,13 @@ public sealed class NuGetSource
     /// </summary>
     [JsonPropertyName("enabled")]
     public bool Enabled { get; init; } = true;
+
+    /// <summary>
+    /// Whether the feed is declared in project.json but not in revela.json.
+    /// </summary>
+    /// <remarks>
+    /// Such feeds come with the project (possibly from someone else) and require explicit consent.
+    /// </remarks>
+    [JsonIgnore]
+    public bool IsProjectFeed { get; init; }
 }

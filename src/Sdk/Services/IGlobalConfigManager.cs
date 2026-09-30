@@ -12,8 +12,8 @@ namespace Spectara.Revela.Sdk.Services;
 /// <item>dotnet tool: %APPDATA%/Revela/revela.json</item>
 /// </list>
 /// <para>
-/// This interface handles WRITING to revela.json. For READING, use
-/// IOptionsMonitor&lt;FeedsConfig&gt;, IOptionsMonitor&lt;DependenciesConfig&gt;, etc.
+/// This interface handles WRITING to revela.json. For READING the merged configuration,
+/// use IOptionsMonitor&lt;DependenciesConfig&gt;, etc.
 /// </para>
 /// </remarks>
 public interface IGlobalConfigManager
@@ -47,36 +47,22 @@ public interface IGlobalConfigManager
     Task<bool> RemoveFeedAsync(string name, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Adds a theme to the global configuration.
+    /// Adds or updates a package dependency (<c>dependencies.packages</c>) in the global configuration.
     /// </summary>
-    Task AddThemeAsync(string packageId, string version, CancellationToken cancellationToken = default);
+    /// <param name="packageId">Package ID.</param>
+    /// <param name="version">Exact installed version.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    Task AddPackageAsync(string packageId, string version, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Removes a theme from the global configuration.
+    /// Removes a package dependency from the global configuration.
     /// </summary>
-    /// <returns>True if the theme was found and removed.</returns>
-    Task<bool> RemoveThemeAsync(string packageId, CancellationToken cancellationToken = default);
+    /// <returns>True if the package was found and removed.</returns>
+    Task<bool> RemovePackageAsync(string packageId, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Adds a plugin to the global configuration.
-    /// </summary>
-    Task AddPluginAsync(string packageId, string version, CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Removes a plugin from the global configuration.
-    /// </summary>
-    /// <returns>True if the plugin was found and removed.</returns>
-    Task<bool> RemovePluginAsync(string packageId, CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Gets all installed themes from the global configuration.
+    /// Gets all package dependencies declared in the global configuration.
     /// </summary>
     /// <returns>Dictionary of package ID to version.</returns>
-    Task<IReadOnlyDictionary<string, string>> GetThemesAsync(CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Gets all installed plugins from the global configuration.
-    /// </summary>
-    /// <returns>Dictionary of package ID to version.</returns>
-    Task<IReadOnlyDictionary<string, string>> GetPluginsAsync(CancellationToken cancellationToken = default);
+    Task<IReadOnlyDictionary<string, string?>> GetPackagesAsync(CancellationToken cancellationToken = default);
 }

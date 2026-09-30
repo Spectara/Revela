@@ -1,5 +1,4 @@
 using NuGet.Packaging;
-using NuGet.Packaging.Core;
 using NuGet.Protocol;
 using NuGet.Protocol.Core.Types;
 using NuGet.Versioning;
@@ -57,8 +56,8 @@ public sealed class PackageManager(
     /// </param>
     /// <param name="source">Custom NuGet source (https:// URL, local folder, or configured feed name; null = all configured sources).</param>
     /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns>True if installation succeeded.</returns>
-    public async Task<bool> InstallAsync(
+    /// <returns>The installed package with its exact version, or null if installation failed.</returns>
+    public async Task<InstalledPackage?> InstallAsync(
         string packageId,
         string? version = null,
         string? source = null,
@@ -84,7 +83,7 @@ public sealed class PackageManager(
                     if (!PackageTrustPolicy.IsAllowedSource(uri))
                     {
                         logger.InsecureSourceRejected(packageId);
-                        return false;
+                        return null;
                     }
 
                     // URL to .nupkg
@@ -99,13 +98,13 @@ public sealed class PackageManager(
                     if (!File.Exists(filePath))
                     {
                         logger.LocalPackageNotFound(filePath);
-                        return false;
+                        return null;
                     }
 
                     if (!filePath.EndsWith(".nupkg", StringComparison.OrdinalIgnoreCase))
                     {
                         logger.LocalPackageNotNupkg(filePath);
-                        return false;
+                        return null;
                     }
 
                     logger.InstallingFromFile(filePath);
@@ -118,7 +117,7 @@ public sealed class PackageManager(
                 if (!PackageIdRules.IsValid(packageId))
                 {
                     logger.InvalidPackageId(packageId);
-                    return false;
+                    return null;
                 }
 
                 // Package ID from NuGet feed
@@ -131,12 +130,12 @@ public sealed class PackageManager(
                     if (!PackageTrustPolicy.IsAllowedSource(sourceUrl))
                     {
                         logger.InsecureSourceRejected(sourceUrl);
-                        return false;
+                        return null;
                     }
 
                     var sourceRepo = Repository.Factory.GetCoreV3(new NuGetPackageSource(sourceUrl));
-                    var identity = await ExtractFromNuGetAsync(packageId, version, sourceRepo, targetDir, cancellationToken);
-                    return identity is not null && await RegisterExtractedPluginAsync(identity, cancellationToken);
+                    var extracted = await ExtractFromNuGetAsync(packageId, version, sourceRepo, targetDir, cancellationToken);
+                    return extracted is null ? null : await RegisterExtractedPluginAsync(extracted, cancellationToken);
                 }
                 else
                 {
@@ -152,7 +151,7 @@ public sealed class PackageManager(
         catch (Exception ex)
         {
             logger.InstallFailed(ex, packageId);
-            return false;
+            return null;
         }
     }
 
@@ -161,8 +160,8 @@ public sealed class PackageManager(
     /// </summary>
     /// <param name="packageId">The NuGet package ID of the plugin to update.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns>True if the update succeeded.</returns>
-    public async Task<bool> UpdatePluginAsync(string packageId, CancellationToken cancellationToken = default)
+    /// <returns>The installed package with its exact version, or null if the update failed.</returns>
+    public async Task<InstalledPackage?> UpdatePluginAsync(string packageId, CancellationToken cancellationToken = default)
     {
         logger.UpdatingPlugin(packageId);
         _ = await UninstallPluginAsync(packageId, cancellationToken);
@@ -228,7 +227,7 @@ public sealed class PackageManager(
 
             if (found)
             {
-                await projectService.RemovePluginAsync(packageId, cancellationToken);
+                await projectService.RemovePackageAsync(packageId, cancellationToken);
                 logger.PluginUninstalled(packageId);
                 return true;
             }
@@ -294,7 +293,7 @@ public sealed class PackageManager(
         return results;
     }
 
-    internal async Task<PackageIdentity?> ExtractFromNuGetAsync(
+    internal async Task<InstalledPackage?> ExtractFromNuGetAsync(
         string packageId,
         string? version,
         SourceRepository sourceRepo,
@@ -370,7 +369,7 @@ public sealed class PackageManager(
         }
     }
 
-    private async Task<bool> InstallFromUrlAsync(Uri url, string targetDir, CancellationToken cancellationToken)
+    private async Task<InstalledPackage?> InstallFromUrlAsync(Uri url, string targetDir, CancellationToken cancellationToken)
     {
         await using var stream = await httpClient.GetStreamAsync(url, cancellationToken);
 
@@ -393,17 +392,17 @@ public sealed class PackageManager(
         }
     }
 
-    internal async Task<bool> InstallFromNupkgAsync(string nupkgPath, string targetDir, string installedFrom, CancellationToken cancellationToken)
+    internal async Task<InstalledPackage?> InstallFromNupkgAsync(string nupkgPath, string targetDir, string installedFrom, CancellationToken cancellationToken)
     {
-        var identity = await extractor.ExtractAsync(nupkgPath, targetDir, installedFrom, cancellationToken);
-        return identity is not null && await RegisterExtractedPluginAsync(identity, cancellationToken);
+        var extracted = await extractor.ExtractAsync(nupkgPath, targetDir, installedFrom, cancellationToken);
+        return extracted is null ? null : await RegisterExtractedPluginAsync(extracted, cancellationToken);
     }
 
-    private async Task<bool> RegisterExtractedPluginAsync(PackageIdentity identity, CancellationToken cancellationToken)
+    private async Task<InstalledPackage?> RegisterExtractedPluginAsync(InstalledPackage package, CancellationToken cancellationToken)
     {
         try
         {
-            await projectService.AddPluginAsync(identity.Id, identity.Version.ToString(), cancellationToken);
+            await projectService.AddPackageAsync(package.Id, package.Version, cancellationToken);
         }
         catch (OperationCanceledException)
         {
@@ -411,15 +410,15 @@ public sealed class PackageManager(
         }
         catch (Exception ex)
         {
-            logger.ProjectRegistrationFailed(ex, identity.Id);
-            return false;
+            logger.ProjectRegistrationFailed(ex, package.Id);
+            return null;
         }
 
-        logger.PluginInstalled(identity.Id);
-        return true;
+        logger.PluginInstalled(package.Id);
+        return package;
     }
 
-    private async Task<bool> InstallFromMultipleSourcesAsync(
+    private async Task<InstalledPackage?> InstallFromMultipleSourcesAsync(
         string packageId,
         string? version,
         string targetDir,
@@ -437,12 +436,12 @@ public sealed class PackageManager(
                 continue;
             }
 
-            var identity = (PackageIdentity?)null;
+            var extracted = (InstalledPackage?)null;
             try
             {
                 logger.TryingSource(source.Name, source.Url);
                 var sourceRepo = Repository.Factory.GetCoreV3(new NuGetPackageSource(source.Url));
-                identity = await ExtractFromNuGetAsync(packageId, version, sourceRepo, targetDir, cancellationToken);
+                extracted = await ExtractFromNuGetAsync(packageId, version, sourceRepo, targetDir, cancellationToken);
             }
             catch (OperationCanceledException)
             {
@@ -453,20 +452,20 @@ public sealed class PackageManager(
                 logger.SourceFailed(source.Name);
             }
 
-            if (identity is not null)
+            if (extracted is not null)
             {
-                var success = await RegisterExtractedPluginAsync(identity, cancellationToken);
-                if (success)
+                var registered = await RegisterExtractedPluginAsync(extracted, cancellationToken);
+                if (registered is not null)
                 {
                     logger.SuccessFromSource(packageId, source.Name);
                 }
 
-                return success;
+                return registered;
             }
         }
 
         logger.AllSourcesFailed(packageId);
-        return false;
+        return null;
     }
 
     private async Task<string> ResolveSourceAsync(string source, CancellationToken cancellationToken)
@@ -494,8 +493,8 @@ public sealed class PackageManager(
         NuGetVersion.TryParse(buildInfo.Version, out var hostVersion) && hostVersion.IsPrerelease;
 
     /// <summary>
-    /// Parses a requested version. Missing, empty and <c>"latest"</c> (persisted by install
-    /// commands) mean "no explicit version" and yield <see langword="null"/>.
+    /// Parses a requested version. Missing, empty and <c>"latest"</c> mean "no explicit version"
+    /// and yield <see langword="null"/> (resolved per the stable/prerelease policy).
     /// </summary>
     private static bool TryResolveRequestedVersion(string? version, out NuGetVersion? requested)
     {

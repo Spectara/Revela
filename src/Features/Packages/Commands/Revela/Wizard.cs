@@ -105,8 +105,8 @@ internal sealed partial class Wizard(
             // Must have at least one theme
             if (selectedThemes.Count == 0)
             {
-                var installedThemes = await globalConfigManager.GetThemesAsync(cancellationToken);
-                if (installedThemes.Count == 0)
+                var declaredPackages = await globalConfigManager.GetPackagesAsync(cancellationToken);
+                if (!availableThemes.Any(theme => declaredPackages.ContainsKey(theme.Id)))
                 {
                     ShowNoThemesError();
                     return 1;
@@ -119,7 +119,7 @@ internal sealed partial class Wizard(
             // Install user-selected packages
             themeResult = await InstallSelectedAsync(
                 selectedThemes,
-                InstallThemeAsync,
+                InstallPackageAsync,
                 cancellationToken);
 
             var optionalResult = await InstallSelectedAsync(
@@ -357,7 +357,7 @@ internal sealed partial class Wizard(
         foreach (var theme in themes)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            var result = await InstallThemeAsync(theme.Id, null, null, cancellationToken);
+            var result = await InstallPackageAsync(theme.Id, null, null, cancellationToken);
             if (result == 0)
             {
                 installed.Add(theme.Id);
@@ -404,25 +404,7 @@ internal sealed partial class Wizard(
     }
 
     /// <summary>
-    /// Installs a single theme: NuGet install + register in global config.
-    /// </summary>
-    private async Task<int> InstallThemeAsync(
-        string packageId,
-        string? version,
-        string? source,
-        CancellationToken cancellationToken)
-    {
-        var success = await pluginManager.InstallAsync(packageId, version, source, cancellationToken);
-        if (success)
-        {
-            await globalConfigManager.AddThemeAsync(packageId, version ?? "latest", cancellationToken);
-        }
-
-        return success ? 0 : 1;
-    }
-
-    /// <summary>
-    /// Installs a single plugin via PluginManager.
+    /// Installs a single package and registers its exact version in the global config.
     /// </summary>
     private async Task<int> InstallPackageAsync(
         string packageId,
@@ -430,8 +412,14 @@ internal sealed partial class Wizard(
         string? source,
         CancellationToken cancellationToken)
     {
-        var success = await pluginManager.InstallAsync(packageId, version, source, cancellationToken);
-        return success ? 0 : 1;
+        var package = await pluginManager.InstallAsync(packageId, version, source, cancellationToken);
+        if (package is null)
+        {
+            return 1;
+        }
+
+        await globalConfigManager.AddPackageAsync(package.Id, package.Version, cancellationToken);
+        return 0;
     }
 
     private static void ShowCorePluginsInfo(IReadOnlyList<PackageIndexEntry> corePlugins)
