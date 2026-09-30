@@ -7,7 +7,8 @@ namespace Spectara.Revela.Core.Services;
 /// </summary>
 /// <remarks>
 /// The package index is stored at {ConfigDirectory}/packages.json and must be
-/// refreshed using 'revela packages refresh' before use.
+/// refreshed using 'revela packages refresh' before use. Lookups only return
+/// official packages (<see cref="PackageTrustPolicy.IsOfficialPackageId"/>).
 /// </remarks>
 public interface IPackageIndexService
 {

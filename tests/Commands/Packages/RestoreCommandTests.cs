@@ -11,6 +11,7 @@ using Spectara.Revela.Core.Services;
 using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Abstractions;
 using Spectara.Revela.Sdk.Configuration;
+using Spectara.Revela.Sdk.Hosting;
 using Spectara.Revela.Sdk.Services;
 using Spectara.Revela.Tests.Shared.Fixtures;
 using Spectre.Console;
@@ -366,6 +367,7 @@ public sealed class RestoreCommandTests
         services.AddSingleton(new PluginProjectService(host.Services.GetRequiredService<IConfigService>(), NullLogger<PluginProjectService>.Instance));
         services.AddSingleton(packageLogger);
         services.AddSingleton(sourceManager);
+        services.AddSingleton(Substitute.For<IBuildInfo>());
         services.AddHttpClient<PackageManager>()
             .ConfigurePrimaryHttpMessageHandler(() => new RejectingHttpMessageHandler());
         using var provider = services.BuildServiceProvider();

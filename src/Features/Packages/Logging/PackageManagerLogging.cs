@@ -74,6 +74,19 @@ internal static partial class PackageManagerLogging
 
     [LoggerMessage(Level = LogLevel.Error, Message = "All sources failed for package {PackageId}")]
     public static partial void AllSourcesFailed(this ILogger<PackageManager> logger, string packageId);
+
+    // Package trust
+    [LoggerMessage(Level = LogLevel.Error, Message = "Invalid package ID '{PackageId}': expected a NuGet package ID (letters, digits, '_', separated by single '.' or '-')")]
+    public static partial void InvalidPackageId(this ILogger<PackageManager> logger, string packageId);
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "Invalid version '{Version}' for package {PackageId}: expected an exact NuGet version (e.g. 1.2.0) or 'latest'")]
+    public static partial void InvalidVersion(this ILogger<PackageManager> logger, string packageId, string version);
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "Rejected insecure package source {Source}: use https:// or a local folder (plain http:// is only allowed for localhost)")]
+    public static partial void InsecureSourceRejected(this ILogger<PackageManager> logger, string source);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Skipping insecure package source '{SourceName}' ({Url}): use https:// or a local folder")]
+    public static partial void InsecureSourceSkipped(this ILogger<PackageManager> logger, string sourceName, string url);
 }
 
 

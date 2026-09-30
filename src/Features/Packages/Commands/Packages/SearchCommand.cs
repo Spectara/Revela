@@ -143,11 +143,11 @@ internal sealed partial class SearchCommand(
                     : package.Description;
 
                 table.AddRow(
-                    $"[cyan]{shortId}[/]",
-                    $"[dim]{package.Version}[/]",
+                    $"[cyan]{Markup.Escape(shortId)}[/]",
+                    $"[dim]{Markup.Escape(package.Version)}[/]",
                     $"[{typeColor}]{typeDisplay}[/]",
-                    $"[dim]{package.Source}[/]",
-                    $"[dim]{description}[/]");
+                    $"[dim]{Markup.Escape(package.Source)}[/]",
+                    $"[dim]{Markup.Escape(description)}[/]");
             }
 
             AnsiConsole.Write(table);

@@ -25,4 +25,7 @@ internal static partial class NupkgExtractorLogging
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Skipped suspicious nupkg entry with unsafe path: {EntryName}")]
     public static partial void SkippedSuspiciousEntry(this ILogger<NupkgExtractor> logger, string entryName);
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "Rejected package with invalid package ID '{PackageId}' in .nuspec")]
+    public static partial void InvalidPackageId(this ILogger<NupkgExtractor> logger, string packageId);
 }

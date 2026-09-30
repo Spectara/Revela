@@ -283,7 +283,7 @@ internal sealed partial class PluginInstallCommand
         }
 
         var choices = availablePlugins
-            .Select(p => $"{p.Id} [dim]({p.Version})[/] - {InstallCommandHelper.Truncate(p.Description, 40)}")
+            .Select(InstallCommandHelper.FormatPackageChoice)
             .ToList();
 
         var selections = AnsiConsole.Prompt(

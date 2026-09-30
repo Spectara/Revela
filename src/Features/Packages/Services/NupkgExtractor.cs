@@ -53,11 +53,19 @@ public sealed class NupkgExtractor(ILogger<NupkgExtractor> logger, TimeProvider 
         }
 
         var fileCount = 0;
+
+        // The ID comes from the untrusted .nuspec and becomes a directory name below.
+        var pluginDir = Path.Combine(targetDir, identity.Id);
+        if (!PackageIdRules.IsValid(identity.Id) || !PackageIdRules.IsContainedIn(targetDir, pluginDir))
+        {
+            logger.InvalidPackageId(identity.Id);
+            return null;
+        }
+
         using var archive = await ZipFile.OpenReadAsync(nupkgPath, cancellationToken);
 
         // All files go into plugins/{PackageId}/ subfolder
         // This keeps main DLL and dependencies together for clean isolation
-        var pluginDir = Path.Combine(targetDir, identity.Id);
         _ = Directory.CreateDirectory(pluginDir);
 
         var pluginDirFull = Path.GetFullPath(pluginDir);

@@ -12,6 +12,7 @@ using Spectara.Revela.Core;
 using Spectara.Revela.Core.Models;
 using Spectara.Revela.Core.Services;
 using Spectara.Revela.Sdk.Abstractions;
+using Spectara.Revela.Sdk.Hosting;
 using Spectara.Revela.Sdk.Services;
 using Spectara.Revela.Tests.Shared.Fixtures;
 using Spectre.Console;
@@ -197,6 +198,7 @@ public sealed class PackageManagerRegistrationTests
         services.AddSingleton(new NupkgExtractor(NullLogger<NupkgExtractor>.Instance, TimeProvider.System));
         services.AddSingleton<PluginProjectService>();
         services.AddSingleton(Substitute.For<INuGetSourceManager>());
+        services.AddSingleton(Substitute.For<IBuildInfo>());
         services.AddHttpClient<PackageManager>();
         return services.BuildServiceProvider();
     }
