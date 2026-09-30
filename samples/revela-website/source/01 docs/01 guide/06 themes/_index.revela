@@ -107,7 +107,7 @@ revela theme extract Lumina --file Assets/
 revela theme extract Lumina --force
 ```
 
-`--file` (`-F`) selects a file or folder; `--force` (`-f`) overwrites without asking.
+`--file` (`-F`) selects a file or folder; `--force` (`-f`) overwrites without asking. For a full extraction, `--force` replaces the whole `themes/<name>/` folder. The target name must be a single folder inside `themes/`, so names such as `..` or absolute paths are rejected.
 
 See what's available first:
 

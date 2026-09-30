@@ -1,7 +1,10 @@
 using System.CommandLine;
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using Microsoft.Extensions.Options;
+using Spectara.Revela.Core.Helpers;
 using Spectara.Revela.Features.Generate.Infrastructure;
+using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Abstractions;
 using Spectara.Revela.Sdk.Configuration;
 using Spectara.Revela.Sdk.Output;
@@ -36,7 +39,8 @@ internal sealed partial class CleanImagesCommand(
     IPathResolver pathResolver,
     IManifestRepository manifestRepository,
     IOptionsMonitor<GenerateConfig> generateConfig,
-    IOptionsMonitor<ThemeConfig> themeConfig) : IPipelineStep
+    IOptionsMonitor<ThemeConfig> themeConfig,
+    IOptions<ProjectEnvironment> projectEnvironment) : IPipelineStep
 {
     // ── IPipelineStep (service-level, no UI) ──
 
@@ -47,6 +51,11 @@ internal sealed partial class CleanImagesCommand(
 
     async ValueTask<PipelineStepResult> IPipelineStep.ExecuteAsync(CancellationToken cancellationToken)
     {
+        if (!TryValidateOutputPath(out var unsafeReason))
+        {
+            return PipelineStepResult.Fail(unsafeReason);
+        }
+
         await manifestRepository.LoadAsync(cancellationToken);
 
         if (!Directory.Exists(ImagesPath))
@@ -87,6 +96,25 @@ internal sealed partial class CleanImagesCommand(
     private string ImagesPath => Path.Combine(pathResolver.OutputPath, ImagesDirectory);
 
     /// <summary>
+    /// Refuses to clean when the configured output overlaps project data, because
+    /// orphaned folders are deleted recursively.
+    /// </summary>
+    private bool TryValidateOutputPath([NotNullWhen(false)] out string? unsafeReason)
+    {
+        if (DirectoryDeletionGuard.TryValidateOutputDirectory(
+            pathResolver.OutputPath,
+            projectEnvironment.Value.Path,
+            pathResolver.SourcePath,
+            out unsafeReason))
+        {
+            return true;
+        }
+
+        LogUnsafeOutputPath(logger, unsafeReason);
+        return false;
+    }
+
+    /// <summary>
     /// Creates the CLI command.
     /// </summary>
     public Command Create()
@@ -115,6 +143,13 @@ internal sealed partial class CleanImagesCommand(
     private async Task<int> ExecuteAsync(bool dryRun, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
+
+        if (!TryValidateOutputPath(out var unsafeReason))
+        {
+            AnsiConsole.MarkupLine($"{OutputMarkers.Error} {Markup.Escape(unsafeReason)}");
+            AnsiConsole.MarkupLine("[dim]Check 'paths.output' in project.json. Nothing was deleted.[/]");
+            return 1;
+        }
 
         // Load manifest first
         await manifestRepository.LoadAsync(cancellationToken);
@@ -497,6 +532,9 @@ internal sealed partial class CleanImagesCommand(
 
     [LoggerMessage(Level = LogLevel.Error, Message = "Failed to delete {Path}")]
     private static partial void LogDeleteFailed(ILogger logger, string path, Exception exception);
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "Unsafe output path: {Reason}")]
+    private static partial void LogUnsafeOutputPath(ILogger logger, string reason);
 
     #endregion
 }

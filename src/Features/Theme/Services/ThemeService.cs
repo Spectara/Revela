@@ -1,5 +1,6 @@
 using System.Text.Json.Nodes;
 using Microsoft.Extensions.Options;
+using Spectara.Revela.Core.Helpers;
 using Spectara.Revela.Core.Services;
 using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Abstractions;
@@ -228,6 +229,15 @@ internal sealed partial class ThemeService(
         var themeName = targetName ?? sourceName;
         var themesFolder = Path.Combine(ProjectPath, ProjectPaths.Themes);
         var targetPath = Path.Combine(themesFolder, themeName);
+
+        if (!DirectoryDeletionGuard.TryValidateContainedDirectory(targetPath, themesFolder, out var unsafeReason))
+        {
+            return new ThemeExtractResult
+            {
+                Success = false,
+                ErrorMessage = $"Invalid theme name '{themeName}'. {unsafeReason}"
+            };
+        }
 
         // Prefer installed theme (user wants a fresh copy from original)
         var sourceTheme = themeRegistry.ResolveInstalled(sourceName)

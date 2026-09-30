@@ -1,6 +1,11 @@
 using System.CommandLine;
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 
+using Microsoft.Extensions.Options;
+
+using Spectara.Revela.Core.Helpers;
+using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Abstractions;
 using Spectara.Revela.Sdk.Output;
 using Spectara.Revela.Sdk.Services;
@@ -12,9 +17,14 @@ namespace Spectara.Revela.Features.Generate.Commands;
 /// <summary>
 /// Cleans the output directory.
 /// </summary>
+/// <remarks>
+/// Refuses to delete an output path that is a filesystem root or that is, or contains,
+/// the project, source or home directory (see <see cref="DirectoryDeletionGuard"/>).
+/// </remarks>
 internal sealed partial class CleanOutputCommand(
     ILogger<CleanOutputCommand> logger,
-    IPathResolver pathResolver) : IPipelineStep
+    IPathResolver pathResolver,
+    IOptions<ProjectEnvironment> projectEnvironment) : IPipelineStep
 {
     // ── IPipelineStep (service-level, no UI) ──
 
@@ -26,6 +36,11 @@ internal sealed partial class CleanOutputCommand(
     ValueTask<PipelineStepResult> IPipelineStep.ExecuteAsync(CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
+
+        if (!TryValidateOutputPath(out var unsafeReason))
+        {
+            return new ValueTask<PipelineStepResult>(PipelineStepResult.Fail(unsafeReason));
+        }
 
         if (!Directory.Exists(OutputPath))
         {
@@ -65,6 +80,13 @@ internal sealed partial class CleanOutputCommand(
     {
         cancellationToken.ThrowIfCancellationRequested();
 
+        if (!TryValidateOutputPath(out var unsafeReason))
+        {
+            AnsiConsole.MarkupLine($"{OutputMarkers.Error} {Markup.Escape(unsafeReason)}");
+            AnsiConsole.MarkupLine("[dim]Check 'paths.output' in project.json. Nothing was deleted.[/]");
+            return Task.FromResult(1);
+        }
+
         // Nothing to clean - exit silently (goal already achieved)
         if (!Directory.Exists(OutputPath))
         {
@@ -96,6 +118,21 @@ internal sealed partial class CleanOutputCommand(
         return Task.FromResult(0);
     }
 
+    private bool TryValidateOutputPath([NotNullWhen(false)] out string? unsafeReason)
+    {
+        if (DirectoryDeletionGuard.TryValidateOutputDirectory(
+            OutputPath,
+            projectEnvironment.Value.Path,
+            pathResolver.SourcePath,
+            out unsafeReason))
+        {
+            return true;
+        }
+
+        LogUnsafeOutputPath(logger, unsafeReason);
+        return false;
+    }
+
     private static CleanTarget AnalyzeDirectory(string path)
     {
         var files = Directory.GetFiles(path, "*", SearchOption.AllDirectories);
@@ -117,6 +154,9 @@ internal sealed partial class CleanOutputCommand(
 
     [LoggerMessage(Level = LogLevel.Error, Message = "Failed to delete {Path}")]
     private static partial void LogDeleteFailed(ILogger logger, string path, Exception exception);
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "Unsafe output path: {Reason}")]
+    private static partial void LogUnsafeOutputPath(ILogger logger, string reason);
 }
 
 /// <summary>
