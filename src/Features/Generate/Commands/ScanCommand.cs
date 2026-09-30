@@ -95,7 +95,7 @@ internal sealed partial class ScanCommand(
                     $"[dim]Next steps:[/]\n" +
                     $"  • Run [cyan]revela generate images[/] to process images\n" +
                     $"  • Run [cyan]revela generate pages[/] to render HTML\n" +
-                    $"  • Or run [cyan]revela generate[/] for full build"
+                    $"  • Or run [cyan]revela generate all[/] for full build"
                 )
                 .WithHeader("[bold green]Success[/]")
                 .WithSuccessStyle();

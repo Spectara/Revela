@@ -7,7 +7,7 @@ namespace Spectara.Revela.Plugins.Calendar.Commands;
 /// </summary>
 /// <remarks>
 /// Generates _index.revela files with frontmatter for the calendar/page template.
-/// Requires an iCal source URL and optionally configures display months, mode, and labels.
+/// Requires a local iCalendar (.ics) file and optionally configures display months, mode, and labels.
 /// <para>
 /// Usage: revela create page calendar source/availability --title "Availability"
 /// </para>
@@ -55,7 +55,7 @@ public sealed class CalendarPageTemplate : IPageTemplate
             Aliases = ["--source", "-s"],
             Type = typeof(string),
             DefaultValue = "",
-            Description = "iCal source URL (example: 'https://example.com/calendar.ics')",
+            Description = "iCalendar (.ics) file path, relative to the page folder (example: 'bookings.ics')",
             Required = true,
             FrontmatterKey = "calendar.source"
         },

@@ -64,7 +64,7 @@ Where does this live? Pick exactly ONE primary location:
 |----------|------|
 | `src/Plugins/<Name>/` | External feature, optional, NuGet-installable. Default for most new functionality. |
 | `src/Plugins/Source/<Name>/` | Content source (file system, OneDrive, Calendar, etc.). |
-| `src/Features/<Name>/` | Always-on built-in (Generate, Theme, Projects). High bar — needs justification. |
+| `src/Features/<Name>/` | Always-on built-in (Generate, Packages, Theme). High bar — needs justification. |
 | `src/Themes/<Name>/` or `src/Themes/Lumina.<Ext>/` | Render-layer concern (CSS, templates, layouts). |
 | `src/Core/` | Shared kernel only — needs strong justification. Affects everyone. |
 | `src/Sdk/` | New public abstraction for plugin/theme authors. Stable contract — design carefully. |

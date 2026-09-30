@@ -1,5 +1,6 @@
 using System.CommandLine;
 using System.Globalization;
+using System.Text.Json.Nodes;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 
@@ -75,7 +76,7 @@ public sealed class ThemeExtractDeletionGuardTests
 
         Assert.IsTrue(result.Success, result.ErrorMessage);
         Assert.IsFalse(File.Exists(staleFile));
-        Assert.IsTrue(File.Exists(Path.Combine(customTheme, "theme.json")));
+        AssertLocalTheme(customTheme, "Custom");
         fixture.AssertNothingDeleted();
     }
 
@@ -94,8 +95,33 @@ public sealed class ThemeExtractDeletionGuardTests
 
         Assert.AreEqual(0, exitCode);
         Assert.IsFalse(File.Exists(staleFile));
-        Assert.IsTrue(File.Exists(Path.Combine(customTheme, "theme.json")));
+        AssertLocalTheme(customTheme, "Custom");
         fixture.AssertNothingDeleted();
+    }
+
+    [TestMethod]
+    public async Task ExtractCommand_SameName_WritesThemeJsonWithOriginalName()
+    {
+        using var workspace = TestProject.Create();
+        var fixture = ThemeFixture.Create(workspace.RootPath);
+        var command = fixture.CreateCommand().Create();
+
+        var exitCode = await InvokeQuietAsync(command, [SourceTheme]);
+
+        Assert.AreEqual(0, exitCode);
+        AssertLocalTheme(Path.Combine(fixture.ThemesPath, SourceTheme), SourceTheme);
+    }
+
+    /// <summary>
+    /// A full extraction must be recognised as a local theme: theme.json carrying the
+    /// target name, and no leftover bundled manifest.json.
+    /// </summary>
+    private static void AssertLocalTheme(string themePath, string expectedName)
+    {
+        Assert.IsFalse(File.Exists(Path.Combine(themePath, "manifest.json")), "Bundled manifest.json must become theme.json");
+        var manifest = JsonNode.Parse(File.ReadAllText(Path.Combine(themePath, "theme.json")))!;
+        Assert.AreEqual(expectedName, manifest["name"]!.GetValue<string>());
+        Assert.AreEqual("1.0.0", manifest["version"]!.GetValue<string>(), "Remaining manifest fields must be preserved");
     }
 
     private static async Task<int> InvokeQuietAsync(Command command, string[] args)
@@ -143,12 +169,13 @@ public sealed class ThemeExtractDeletionGuardTests
                 File.WriteAllText(file, "data");
             }
 
+            // Mirrors EmbeddedTheme: bundled themes extract their read-only manifest.json.
             var theme = Substitute.For<ITheme>();
             theme.ExtractToAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(call =>
             {
                 var target = call.Arg<string>();
                 Directory.CreateDirectory(target);
-                return File.WriteAllTextAsync(Path.Combine(target, "theme.json"), /*lang=json,strict*/ """{ "name": "Lumina" }""");
+                return File.WriteAllTextAsync(Path.Combine(target, "manifest.json"), /*lang=json,strict*/ """{ "name": "Lumina", "version": "1.0.0" }""");
             });
 
             registry = Substitute.For<IThemeRegistry>();

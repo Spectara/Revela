@@ -1,6 +1,7 @@
 using Scriban;
 using Scriban.Parsing;
 using Scriban.Runtime;
+using Scriban.Syntax;
 
 using Spectara.Revela.Features.Generate.Models;
 
@@ -87,21 +88,26 @@ internal sealed partial class RevelaParser(ILogger<RevelaParser> logger)
             return DirectoryMetadata.Empty;
         }
 
-        // Evaluate frontmatter to extract variables
-        // Wrapped in try/catch because plugin-specific dot-notation fields
-        // (e.g., calendar.source = "x") throw ScriptRuntimeException when the
-        // parent object doesn't exist. We extract what we can from partial results.
+        // Evaluate frontmatter statement by statement so one failing line cannot
+        // hide the keys after it. Dotted plugin keys (calendar.source = "x") get
+        // their parent objects created first; the core ignores them, plugins read
+        // them with their own reader.
         var context = new TemplateContext();
 
-        if (template.Page?.FrontMatter is not null)
+        if (template.Page?.FrontMatter is { } frontMatter && context.CurrentGlobal is ScriptObject root)
         {
-            try
+            foreach (var statement in frontMatter.Statements.Statements)
             {
-                context.Evaluate(template.Page.FrontMatter);
-            }
-            catch (Scriban.Syntax.ScriptRuntimeException)
-            {
-                // Partial evaluation — known fields assigned before the error are still available
+                EnsureAssignmentParents(root, statement);
+
+                try
+                {
+                    context.Evaluate(statement);
+                }
+                catch (ScriptRuntimeException)
+                {
+                    // Skip only this statement; later keys are still evaluated
+                }
             }
         }
 
@@ -179,6 +185,42 @@ internal sealed partial class RevelaParser(ILogger<RevelaParser> logger)
             LogReadError(logger, filePath, ex);
             return DirectoryMetadata.Empty;
         }
+    }
+
+    /// <summary>
+    /// For an assignment like <c>a.b.c = value</c>, creates the missing parent objects
+    /// <c>a</c> and <c>a.b</c> so Scriban can assign into them.
+    /// </summary>
+    private static void EnsureAssignmentParents(ScriptObject root, ScriptStatement statement)
+    {
+        if (statement is ScriptExpressionStatement { Expression: ScriptAssignExpression { Target: ScriptMemberExpression { Target: { } parent } } })
+        {
+            EnsureObject(root, parent);
+        }
+    }
+
+    private static ScriptObject? EnsureObject(ScriptObject root, ScriptExpression expression)
+    {
+        var (parent, name) = expression switch
+        {
+            ScriptVariableGlobal variable => (root, variable.Name),
+            ScriptMemberExpression { Target: { } target, Member: ScriptVariable memberVariable } => (EnsureObject(root, target), memberVariable.Name),
+            _ => (null, null)
+        };
+
+        if (parent is null || name is null)
+        {
+            return null;
+        }
+
+        if (parent.TryGetValue(name, out var existing) && existing is not null)
+        {
+            return existing as ScriptObject;
+        }
+
+        var created = new ScriptObject();
+        parent[name] = created;
+        return created;
     }
 
     private static string? GetStringValue(ScriptObject global, string key)

@@ -5,7 +5,7 @@ description: "Plugin development conventions — IPlugin lifecycle, CommandDescr
 
 # Plugin Conventions — Revela
 
-External plugins live under `src/Plugins/`. **Built-in features (`Generate`, `Theme`, `Projects`) are NOT plugins** — they live in `src/Features/` and are registered via `AddRevelaCommands()`.
+External plugins live under `src/Plugins/`. **Built-in features (`Generate`, `Packages`, `Theme`) are NOT plugins** — they live in `src/Features/` and are registered via `AddRevelaCommands()`.
 
 ## Plugin Lifecycle (4 phases)
 1. **Discovery** — `IPackageSource.LoadPlugins()` (Disk or Embedded).

@@ -1,7 +1,7 @@
 using System.CommandLine;
-using System.Text.RegularExpressions;
 using Microsoft.Extensions.Options;
 using Spectara.Revela.Core.Helpers;
+using Spectara.Revela.Features.Theme.Services;
 using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Abstractions;
 using Spectara.Revela.Sdk.Configuration;
@@ -311,16 +311,14 @@ internal sealed partial class ThemeExtractCommand(
 
     private static string GetTargetPath(ResolvedFileInfo entry, bool isAsset, bool isConfig, string themeName, string projectPath)
     {
-        // Configuration files go to theme/configuration/ folder (mirrors theme structure, lowercase)
+        // Templates, assets and configuration go to themes/{ThemeName}/
+        var themesFolder = Path.Combine(projectPath, ProjectPaths.Themes, themeName);
+
         if (isConfig)
         {
-            // manifest.json → theme/manifest.json
-            // configuration/images.json → theme/configuration/images.json
-            return Path.Combine(projectPath, "theme", entry.Key.Replace('/', Path.DirectorySeparatorChar));
+            // Configuration/images.json → themes/Lumina/Configuration/images.json (read by ImageSizesProvider)
+            return Path.Combine(themesFolder, entry.OriginalPath.Replace('/', Path.DirectorySeparatorChar));
         }
-
-        // Templates and assets go to themes/{ThemeName}/
-        var themesFolder = Path.Combine(projectPath, ProjectPaths.Themes, themeName);
 
         if (isAsset)
         {
@@ -433,16 +431,20 @@ internal sealed partial class ThemeExtractCommand(
     }
 
     /// <summary>
-    /// Gets configuration file entries from theme and extensions.
-    /// Includes manifest.json and Configuration/*.json files.
+    /// Gets configuration file entries (Configuration/*.json) from theme and extensions.
     /// </summary>
+    /// <remarks>
+    /// The theme manifest is deliberately excluded: a partial extraction cannot override it
+    /// (a theme.json would turn the folder into an incomplete local theme). Full extraction
+    /// writes it as theme.json instead.
+    /// </remarks>
     private static List<ResolvedFileInfo> GetConfigurationEntries(
         ITheme theme,
         IReadOnlyList<ITheme> extensions)
     {
         var entries = new Dictionary<string, ResolvedFileInfo>(StringComparer.OrdinalIgnoreCase);
 
-        // Get from base theme (theme.json and Configuration/*.json)
+        // Get from base theme (Configuration/*.json)
         foreach (var file in theme.GetAllFiles())
         {
             var normalized = file.Replace('\\', '/');
@@ -452,14 +454,6 @@ internal sealed partial class ThemeExtractCommand(
                 var key = "configuration/" + normalized["Configuration/".Length..];
                 entries[key] = new ResolvedFileInfo(
                     key,
-                    normalized,
-                    FileSourceType.Theme,
-                    null);
-            }
-            else if (normalized.Equals("manifest.json", StringComparison.OrdinalIgnoreCase))
-            {
-                entries["manifest.json"] = new ResolvedFileInfo(
-                    "manifest.json",
                     normalized,
                     FileSourceType.Theme,
                     null);
@@ -477,14 +471,6 @@ internal sealed partial class ThemeExtractCommand(
                     var key = "configuration/" + normalized["Configuration/".Length..];
                     entries[key] = new ResolvedFileInfo(
                         key,
-                        normalized,
-                        FileSourceType.Extension,
-                        ext.Metadata.Name);
-                }
-                else if (normalized.Equals("manifest.json", StringComparison.OrdinalIgnoreCase))
-                {
-                    entries["manifest.json"] = new ResolvedFileInfo(
-                        "manifest.json",
                         normalized,
                         FileSourceType.Extension,
                         ext.Metadata.Name);
@@ -554,11 +540,7 @@ internal sealed partial class ThemeExtractCommand(
                 $"Extracting theme '{sourceName}'...",
                 async _ => await sourceTheme.ExtractToAsync(targetPath, cancellationToken));
 
-        // Update theme.json with new name if different
-        if (targetName is not null && !targetName.Equals(sourceName, StringComparison.OrdinalIgnoreCase))
-        {
-            await UpdateThemeNameAsync(targetPath, targetName, cancellationToken);
-        }
+        await LocalThemeManifest.WriteAsync(sourceTheme, targetPath, themeName, cancellationToken);
 
         // Extract extensions into category subfolders (Partials/<ExtName>/, Assets/<ExtName>/)
         var extractedExtensions = new List<string>();
@@ -630,13 +612,17 @@ internal sealed partial class ThemeExtractCommand(
         var extensionsInfo = extractedExtensions.Count > 0
             ? $"\n[bold]Extensions:[/] {string.Join(", ", extractedExtensions)}"
             : "";
+        var nextSteps = themeName.Equals(sourceName, StringComparison.OrdinalIgnoreCase)
+            ? "2. Run [cyan]revela generate all[/] to see changes\n" +
+              "3. Your local theme takes priority over installed themes"
+            : $"2. Select it with [cyan]revela config theme[/] (theme name [cyan]{Markup.Escape(themeName)}[/])\n" +
+              "3. Run [cyan]revela generate all[/] to see changes";
 
         var panel = new Panel($"[green]Theme '{Markup.Escape(themeName)}' extracted![/]\n\n" +
                             $"[bold]Location:[/] [cyan]themes/{Markup.Escape(themeName)}/[/]{extensionsInfo}\n\n" +
                             "[bold]Next steps:[/]\n" +
                             $"1. Edit [cyan]themes/{Markup.Escape(themeName)}/[/] to customize\n" +
-                            "2. Run [cyan]revela generate[/] to see changes\n" +
-                            "3. Your local theme takes priority over installed themes")
+                            nextSteps)
             .WithHeader("[bold green]Success[/]")
             .WithSuccessStyle();
 
@@ -662,26 +648,6 @@ internal sealed partial class ThemeExtractCommand(
             $"{Markup.Escape(unsafeReason)}");
         return false;
     }
-
-    private static async Task UpdateThemeNameAsync(string themePath, string newName, CancellationToken cancellationToken)
-    {
-        var manifestPath = Path.Combine(themePath, "manifest.json");
-        if (!File.Exists(manifestPath))
-        {
-            return;
-        }
-
-        var json = await File.ReadAllTextAsync(manifestPath, cancellationToken);
-
-        // Simple regex replacement for "name": "..."
-        var replacement = $"\"name\": \"{newName}\"";
-        var updatedJson = ThemeNamePattern().Replace(json, replacement);
-
-        await File.WriteAllTextAsync(manifestPath, updatedJson, cancellationToken);
-    }
-
-    [GeneratedRegex(@"""name""\s*:\s*""[^""]*""")]
-    private static partial Regex ThemeNamePattern();
 
     /// <summary>
     /// Prompts the user to select a theme for extraction.
@@ -923,10 +889,15 @@ internal sealed partial class ThemeExtractCommand(
     {
         var files = new List<(string Path, string Category, FileSourceType SourceType, int ExtensionIndex)>();
 
-        // Add files from base theme
+        // Add files from base theme (the manifest is only extracted by a full extraction, as theme.json)
         foreach (var file in theme.GetAllFiles())
         {
             var normalized = file.Replace('\\', '/');
+            if (IsManifest(normalized))
+            {
+                continue;
+            }
+
             var category = GetFileCategory(normalized);
             files.Add((normalized, category, FileSourceType.Theme, -1));
         }
@@ -945,6 +916,11 @@ internal sealed partial class ThemeExtractCommand(
             foreach (var file in extension.GetAllFiles())
             {
                 var normalized = file.Replace('\\', '/');
+                if (IsManifest(normalized))
+                {
+                    continue;
+                }
+
                 var targetPath = InsertExtensionFolder(normalized, folderName);
                 var category = GetFileCategory(normalized);
                 files.Add((targetPath, category, FileSourceType.Extension, i));
@@ -987,14 +963,17 @@ internal sealed partial class ThemeExtractCommand(
             return "Assets";
         }
 
-        if (path.StartsWith("Configuration/", StringComparison.OrdinalIgnoreCase) ||
-            path.Equals("manifest.json", StringComparison.OrdinalIgnoreCase))
+        if (path.StartsWith("Configuration/", StringComparison.OrdinalIgnoreCase))
         {
             return "Configuration";
         }
 
         return "Other";
     }
+
+    private static bool IsManifest(string path) =>
+        path.Equals("manifest.json", StringComparison.OrdinalIgnoreCase)
+        || path.Equals(LocalThemeManifest.FileName, StringComparison.OrdinalIgnoreCase);
 
     /// <summary>
     /// Extracts the original extension file path from the target path.

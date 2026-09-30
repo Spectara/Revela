@@ -231,7 +231,7 @@ internal sealed partial class Wizard(
             "",
             "[bold]Next steps:[/]",
             "  [cyan]1.[/] Add images to the [bold]source/[/] folder",
-            "  [cyan]2.[/] Run [bold]revela generate[/] to build your site",
+            "  [cyan]2.[/] Run [bold]revela generate all[/] to build your site",
             "  [cyan]3.[/] View your site in [bold]output/[/]",
             "",
             "[dim]Tip: Create subfolders in source/ to organize galleries[/]",

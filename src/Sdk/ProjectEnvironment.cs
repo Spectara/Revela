@@ -25,9 +25,8 @@ public sealed class ProjectEnvironment
     /// Full path to the project directory.
     /// </summary>
     /// <remarks>
-    /// This is the ContentRootPath from the host environment.
-    /// In standalone mode, this is projects/{folder-name}/.
-    /// In tool mode, this is the current working directory.
+    /// This is the ContentRootPath from the host environment — the current
+    /// working directory, which is always the project directory.
     /// </remarks>
     public string Path { get; set; } = string.Empty;
 

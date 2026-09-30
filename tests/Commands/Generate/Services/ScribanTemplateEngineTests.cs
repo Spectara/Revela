@@ -143,6 +143,19 @@ public sealed class ScribanTemplateEngineTests
     }
 
     [TestMethod]
+    [DataRow("", "_assets/css/x.css")]
+    [DataRow("../../", "../../_assets/css/x.css")]
+    [DataRow("/gallery/", "/gallery/_assets/css/x.css")]
+    public void AssetUrl_ResolvesAgainstPageBasePath(string basePath, string expected)
+    {
+        var engine = CreateEngine();
+
+        var result = engine.Render("{{ asset_url \"/css\\\\x.css\" }}", Model(("basepath", basePath)));
+
+        Assert.AreEqual(expected, result.Trim());
+    }
+
+    [TestMethod]
     public void VariantUrl_BuildsAssetPathFromSlugSizeAndFormat()
     {
         var engine = CreateEngine();

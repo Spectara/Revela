@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.Text.Json;
 using Microsoft.Extensions.Options;
+using Spectara.Revela.Core.Themes;
 using Spectara.Revela.Sdk.Configuration;
 using Spectara.Revela.Sdk.Json;
 
@@ -40,6 +41,8 @@ public interface IImageSizesProvider
 /// </list>
 /// <para>
 /// Local themes read their images.json from themes/{name}/Configuration/images.json automatically.
+/// For installed themes the same path acts as a project-local override
+/// (see <see cref="ThemeConfigurationFiles"/>).
 /// </para>
 /// </remarks>
 public sealed partial class ImageSizesProvider(
@@ -131,7 +134,7 @@ public sealed partial class ImageSizesProvider(
             return (null, null);
         }
 
-        using var stream = theme.GetImagesTemplate();
+        using var stream = ThemeConfigurationFiles.OpenImagesTemplate(theme, projectPath);
         if (stream is null)
         {
             LogNoImagesTemplate(themeName);

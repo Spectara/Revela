@@ -28,8 +28,8 @@ src/
 ├── Sdk/              # Public abstractions for plugin/theme authors
 ├── Sdk.Generators/   # Roslyn source generators ([RevelaConfig], etc.)
 ├── Core/             # Shared kernel — services, package loading, configuration
-├── Commands/         # Host-owned CLI commands (Config, Packages, Plugins, Restore)
-├── Features/         # Always built-in (Generate, Theme, Projects) — NOT plugins
+├── Commands/         # Host-owned CLI commands (Config, Info, Project)
+├── Features/         # Always built-in (Generate, Packages, Theme) — NOT plugins
 ├── Plugins/          # External plugins (Calendar, Compress, Serve, Source/*, Statistics)
 ├── Themes/           # Lumina (base) + Lumina.Calendar, Lumina.Statistics (extensions)
 ├── Cli/              # Entry point — dynamic plugin loading (DiskPackageSource)

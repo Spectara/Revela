@@ -79,7 +79,7 @@ public static class RevelaTestHost
 
     private sealed class TestBuildInfo : IBuildInfo
     {
-        public HostKind Kind => HostKind.Standalone;
+        public HostKind Kind => HostKind.Full;
         public string Version => "0.0.0-test";
         public string InformationalVersion => "0.0.0-test";
         public string Framework => ".NET 10.0";

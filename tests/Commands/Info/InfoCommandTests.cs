@@ -1,3 +1,5 @@
+using System.CommandLine;
+using System.Globalization;
 using Microsoft.Extensions.Options;
 
 using NSubstitute;
@@ -7,10 +9,13 @@ using Spectara.Revela.Sdk.Abstractions;
 using Spectara.Revela.Sdk.Configuration;
 using Spectara.Revela.Sdk.Hosting;
 
+using Spectre.Console;
+
 namespace Spectara.Revela.Tests.Commands.Info;
 
 [TestClass]
 [TestCategory("Unit")]
+[DoNotParallelize]
 public sealed class InfoCommandTests
 {
     [TestMethod]
@@ -41,11 +46,56 @@ public sealed class InfoCommandTests
         Assert.IsEmpty(command.Arguments);
     }
 
-    private static InfoCommand CreateCommand()
+    [TestMethod]
+    public void Execute_StandaloneEdition_PointsToFullEditionForPackages()
+    {
+        var output = RunQuiet(CreateCommand(HostKind.Standalone).Create());
+
+        Assert.Contains("Standalone edition", output);
+        Assert.Contains("Full edition", output);
+        Assert.DoesNotContain("embedded", output, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [TestMethod]
+    public void Execute_FullEdition_DoesNotShowPackageManagementNotice()
+    {
+        var output = RunQuiet(CreateCommand(HostKind.Full).Create());
+
+        Assert.DoesNotContain("Package management", output);
+    }
+
+    private static string RunQuiet(Command command)
+    {
+        using var writer = new StringWriter(CultureInfo.InvariantCulture);
+        var originalConsole = AnsiConsole.Console;
+        var console = AnsiConsole.Create(new AnsiConsoleSettings
+        {
+            Ansi = AnsiSupport.No,
+            ColorSystem = ColorSystemSupport.NoColors,
+            Interactive = InteractionSupport.No,
+            Out = new AnsiConsoleOutput(writer)
+        });
+        console.Profile.Width = 200;
+        AnsiConsole.Console = console;
+
+        try
+        {
+            Assert.AreEqual(0, command.Parse([]).Invoke());
+            return writer.ToString();
+        }
+        finally
+        {
+            AnsiConsole.Console = originalConsole;
+        }
+    }
+
+    private static InfoCommand CreateCommand(HostKind kind = HostKind.Full)
     {
         var buildInfo = Substitute.For<IBuildInfo>();
-        buildInfo.Kind.Returns(HostKind.Standalone);
-        buildInfo.FormatVersionLine().Returns("revela 1.0.0 (.NET 10.0.4)");
+        buildInfo.Kind.Returns(kind);
+        buildInfo.FormatVersionLine().Returns(kind == HostKind.Standalone
+            ? "revela 1.0.0 (.NET 10.0.4) \u2014 Standalone edition"
+            : "revela 1.0.0 (.NET 10.0.4) \u2014 Full edition");
         buildInfo.InformationalVersion.Returns("1.0.0");
         buildInfo.Configuration.Returns("Debug");
         buildInfo.RuntimeIdentifier.Returns("linux-x64");

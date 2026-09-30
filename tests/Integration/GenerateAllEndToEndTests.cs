@@ -83,6 +83,45 @@ public sealed class GenerateAllEndToEndTests
     }
 
     [TestMethod]
+    [DataRow("/")]
+    [DataRow("/gallery/")]
+    public async Task RenderAsync_AssetUrl_ResolvesToWrittenThemeAsset(string basePath)
+    {
+        using var project = TestProject.Create(builder => builder
+            .WithProjectJson(new { project = new { name = "Assets", basePath }, theme = new { name = "Lumina" } })
+            .WithSiteJson(new { title = "Assets", author = "Test" })
+            .AddGallery("Photos", gallery => gallery.AddRealImage("one.jpg", 800, 600)));
+        var partialsPath = Path.Combine(project.RootPath, ProjectPaths.Themes, "Lumina", "Partials");
+        Directory.CreateDirectory(partialsPath);
+        await File.WriteAllTextAsync(
+            Path.Combine(partialsPath, "Favicon.revela"),
+            "<link rel=\"x-asset\" href=\"{{ asset_url 'main.css' }}\">");
+        using var host = RevelaTestHost.Build(project.RootPath, services =>
+        {
+            services.AddRevelaCommands();
+            services.AddGenerateFeature();
+            services.AddSingleton<ITheme>(new LuminaTheme());
+        });
+        var scan = await host.Services.GetRequiredService<IContentService>().ScanAsync();
+        var render = await host.Services.GetRequiredService<IRenderService>().RenderAsync();
+
+        Assert.IsTrue(scan.Success, scan.ErrorMessage);
+        Assert.IsTrue(render.Success, render.ErrorMessage);
+        foreach (var page in new[] { "index.html", "photos/index.html" })
+        {
+            var html = await File.ReadAllTextAsync(Path.Combine(project.OutputPath, page));
+            var href = ExtractAttributeValues(html, "rel=\"x-asset\" href=\"").Single();
+            var siteRoot = new Uri($"https://example.com{basePath}");
+            var resolved = new Uri(new Uri(siteRoot, page), href);
+            Assert.StartsWith(siteRoot.AbsolutePath, resolved.AbsolutePath, $"{page}: {href}");
+            var outputRelative = resolved.AbsolutePath[siteRoot.AbsolutePath.Length..];
+            Assert.IsTrue(
+                File.Exists(Path.Combine(project.OutputPath, outputRelative)),
+                $"{page}: asset_url produced '{href}', which does not resolve to a written file.");
+        }
+    }
+
+    [TestMethod]
     public async Task RenderAsync_LuminaStatisticsEscapesExifData()
     {
         var statistics = new

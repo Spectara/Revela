@@ -129,7 +129,7 @@ $ExeName = if ($RuntimeIdentifier -like "win-*") { "revela.exe" } else { "revela
 
 $ExePath = Join-Path $CliDir $ExeName
 $VersionPattern = '^revela ' + [regex]::Escape($Version) + ' \([^\r\n]+\)'
-$VersionPattern += if ($Variant -eq 'Standalone') { ' \u2014 embedded build$' } else { '$' }
+$VersionPattern += if ($Variant -eq 'Standalone') { ' \u2014 Standalone edition$' } else { ' \u2014 Full edition$' }
 
 function Resolve-InputPath {
     param([string]$Path)

@@ -41,7 +41,7 @@ public sealed class PackageManager(
     /// Gets the plugin directory based on installation type.
     /// </summary>
     /// <remarks>
-    /// Standalone: {exe-dir}/plugins
+    /// Full edition (portable): {exe-dir}/plugins
     /// dotnet tool: %APPDATA%/Revela/plugins
     /// </remarks>
     public static string PluginDirectory => ConfigPathResolver.LocalPluginDirectory;

@@ -301,10 +301,17 @@ internal sealed partial class CreatePageCommand(
         return 0;
     }
 
-    private static string GenerateFrontmatter(IPageTemplate template, Dictionary<string, object?> values)
+    internal static string GenerateFrontmatter(IPageTemplate template, Dictionary<string, object?> values)
     {
         var sb = new StringBuilder();
         sb.AppendLine("+++");
+
+        // Template first: it is what identifies the page, so it must not depend on
+        // later (plugin-specific, dotted) keys evaluating cleanly.
+        if (!string.IsNullOrEmpty(template.TemplateName))
+        {
+            sb.AppendLine(string.Format(CultureInfo.InvariantCulture, "template = \"{0}\"", template.TemplateName));
+        }
 
         // Write properties that appear in frontmatter
         foreach (var property in template.PageProperties.Where(p => p.FrontmatterKey != null))
@@ -327,12 +334,6 @@ internal sealed partial class CreatePageCommand(
                 sb.AppendLine(string.Format(CultureInfo.InvariantCulture, "{0} = {1}", property.FrontmatterKey, formattedDefault));
             }
             // Skip: null defaults (optional fields like sort, slug) and false booleans
-        }
-
-        // Template field (only if specified)
-        if (!string.IsNullOrEmpty(template.TemplateName))
-        {
-            sb.AppendLine(string.Format(CultureInfo.InvariantCulture, "template = \"{0}\"", template.TemplateName));
         }
 
         sb.AppendLine("+++");

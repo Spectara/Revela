@@ -452,7 +452,7 @@ internal sealed partial class ScribanTemplateEngine(
         scriptObject.Import("variant_url", new Func<object?, int, string, string>((image, size, format) => VariantUrl(image, size, format, assetsBasePath)));
         scriptObject.Import("absolute_variant_url", new Func<object?, int, string, string>((image, size, format) =>
             AbsoluteVariantUrl(image, size, format, assetsBasePath, baseUrl, basePath, currentPagePath)));
-        scriptObject.Import("asset_url", new Func<string, string>(AssetUrl));
+        scriptObject.Import("asset_url", new Func<string?, string>(path => AssetUrl(path, basePath)));
         scriptObject.Import("format_date", new Func<DateTime, string, string>(FormatDate));
         scriptObject.Import("format_filesize", new Func<long, string>(FormatFileSize));
         scriptObject.Import("format_exif_exposure", new Func<double?, string>(FormatExifExposure));
@@ -611,18 +611,15 @@ internal sealed partial class ScribanTemplateEngine(
     }
 
     /// <summary>
-    /// Generate URL for static asset (CSS, JS)
+    /// URL for a theme asset (CSS, JS, fonts) written to the output's <c>_assets/</c>
+    /// folder, resolved against the current page's base path (relative directory
+    /// or configured subdirectory like <c>/photos/</c>).
     /// </summary>
-    /// <example>{{ asset_url "css/style.css" }} → /assets/css/style.css</example>
-    private static string AssetUrl(string path)
+    /// <example>{{ asset_url "main.css" }} → ../_assets/main.css</example>
+    private static string AssetUrl(string? path, string basePath)
     {
-        if (string.IsNullOrWhiteSpace(path))
-        {
-            return "/assets/";
-        }
-
-        path = path.Trim('/').Replace('\\', '/');
-        return $"/assets/{path}";
+        var normalized = (path ?? string.Empty).Replace('\\', '/').Trim('/');
+        return $"{basePath}_assets/{normalized}";
     }
 
     /// <summary>

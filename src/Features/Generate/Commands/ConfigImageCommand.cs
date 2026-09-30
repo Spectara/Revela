@@ -4,6 +4,7 @@ using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Microsoft.Extensions.Options;
+using Spectara.Revela.Core.Themes;
 using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Abstractions;
 using Spectara.Revela.Sdk.Configuration;
@@ -128,7 +129,7 @@ internal sealed partial class ConfigImageCommand(
             return null;
         }
 
-        using var stream = theme.GetImagesTemplate();
+        using var stream = ThemeConfigurationFiles.OpenImagesTemplate(theme, projectPath);
         if (stream is null)
         {
             return null;
@@ -373,7 +374,7 @@ internal sealed partial class ConfigImageCommand(
         // Show info about sizes
         AnsiConsole.WriteLine();
         AnsiConsole.MarkupLine("[dim]Note: Image sizes are defined by the theme.[/]");
-        AnsiConsole.MarkupLine("[dim]To customize sizes, create theme/images.json in your project.[/]");
+        AnsiConsole.MarkupLine("[dim]To customize sizes, run [cyan]revela theme extract[/] and edit themes/<name>/Configuration/images.json.[/]");
 
         return 0;
     }

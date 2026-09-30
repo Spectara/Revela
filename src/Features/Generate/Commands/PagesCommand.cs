@@ -133,7 +133,7 @@ internal sealed partial class PagesCommand(
                               $"  Duration: {result.Duration.TotalSeconds:F2}s\n\n" +
                               "[dim]Next steps:[/]\n" +
                               "  • Open [cyan]output/index.html[/] in your browser\n" +
-                              "  • Run [cyan]revela generate[/] for full generation"))
+                              "  • Run [cyan]revela generate all[/] for full generation"))
                 .WithHeader("[bold green]Success[/]")
                 .WithSuccessStyle();
                 AnsiConsole.Write(successPanel);

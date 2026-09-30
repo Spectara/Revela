@@ -256,7 +256,7 @@ internal sealed partial class OneDriveSourceCommand(
                 $"  ~ Updated: {analysis.Statistics.ModifiedFiles}\n" +
                 $"  = Unchanged: {analysis.Statistics.UnchangedFiles}\n\n" +
                 $"[dim]Next steps:[/]\n" +
-                $"1. Run [cyan]revela generate[/] to process your content\n" +
+                $"1. Run [cyan]revela generate all[/] to process your content\n" +
                 $"2. Check output in [cyan]output/[/] directory"
             )
             .WithHeader("[bold green]Success[/]")
