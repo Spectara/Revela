@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <IsPackable>true</IsPackable>
-    <Description>Revela Plugin - Fetch iCal feeds for calendar data</Description>
+    <Description>Fetch iCal feeds for calendar data</Description>
     <PackageTags>revela;plugin;source;calendar;ical;fetch</PackageTags>
     <PackageIcon>icon.png</PackageIcon>
     <PackageReleaseNotes>https://github.com/spectara/revela/blob/main/CHANGELOG.md</PackageReleaseNotes>

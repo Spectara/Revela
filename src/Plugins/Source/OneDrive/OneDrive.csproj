@@ -2,7 +2,7 @@
 
 <PropertyGroup>
     <IsPackable>true</IsPackable>
-  <Description>Revela Plugin - OneDrive shared folder source</Description>
+  <Description>Download photos from OneDrive shared folders</Description>
   <PackageTags>revela;plugin;source;onedrive;shared</PackageTags>
   <PackageIcon>icon.png</PackageIcon>
   <PackageReleaseNotes>https://github.com/spectara/revela/blob/main/CHANGELOG.md</PackageReleaseNotes>

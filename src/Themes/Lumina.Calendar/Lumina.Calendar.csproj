@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <IsPackable>true</IsPackable>
-    <Description>Revela Theme Extension - Availability calendar for Lumina theme</Description>
+    <Description>Availability calendar display for the Lumina theme</Description>
     <PackageTags>revela;theme;lumina;calendar;availability;booking</PackageTags>
     <PackageIcon>icon.png</PackageIcon>
     <PackageReleaseNotes>https://github.com/spectara/revela/blob/main/CHANGELOG.md</PackageReleaseNotes>
