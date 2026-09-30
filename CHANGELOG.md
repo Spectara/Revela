@@ -40,6 +40,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Extension theme escaping** - Lumina.Statistics and Lumina.Calendar now HTML-escape EXIF-derived chart labels and calendar labels/values with `html_escape`, like base Lumina, so crafted EXIF or calendar data can no longer inject markup into generated pages.
+- **Calendar page template** - `revela create page calendar` now writes `template = "calendar/page"`, the template Lumina.Calendar provides, instead of the non-existent `calendar/overview`.
 - **Package registration integrity** - package installs and removals use the shared project configuration writer, preserving mixed-case keys and unrelated settings. Same-host updates serialize the complete read-through-reload operation, preventing parallel restore from losing registrations. Failed registration reports failure instead of installation success; extracted files remain available for recovery, and cancellation propagates through the install command.
 - **Review data-integrity fixes** - OneDrive cleanup excludes linked descendants and rechecks deletion boundaries; interrupted downloads preserve existing files and timestamps. Configuration updates reject invalid replacements before persistence and retain unrelated global settings, including nested and mixed-case sections. Unix staging starts private and preserves existing source/project file modes.
 - **Compression ownership** - independent gzip/Brotli downloads are no longer deleted or overwritten. A private output-local ownership record tracks generated sidecars, including orphaned ones; changed or unowned targets cause explicit failures.

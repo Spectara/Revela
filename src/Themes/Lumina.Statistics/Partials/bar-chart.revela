@@ -8,10 +8,10 @@ Expects variables set before include:
 - chart_title: Chart heading text
 - chart_items: Array of { name, count, percentage }
 ##~}}
-<h3>{{ chart_title }}</h3>
+<h3>{{ html_escape chart_title }}</h3>
 <dl>
 {{~ for item in chart_items ~}}
-    <dt data-count="{{ item.count }}">{{ item.name }}</dt>
-    <dd style="--percent: {{ item.percentage }}"></dd>
+    <dt data-count="{{ html_escape item.count }}">{{ html_escape item.name }}</dt>
+    <dd style="--percent: {{ html_escape item.percentage }}"></dd>
 {{~ end ~}}
 </dl>
