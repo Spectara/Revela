@@ -7,8 +7,8 @@
     (ProjectReference to Sdk.csproj), this import ensures the same
     targets are applied.
   -->
-  <Import Project="$(MSBuildThisFileDirectory)src\Sdk\Build\Spectara.Revela.Sdk.targets"
-          Condition="Exists('$(MSBuildThisFileDirectory)src\Sdk\Build\Spectara.Revela.Sdk.targets')
+  <Import Project="$(MSBuildThisFileDirectory)src\Sdk\build\Spectara.Revela.Sdk.targets"
+          Condition="Exists('$(MSBuildThisFileDirectory)src\Sdk\build\Spectara.Revela.Sdk.targets')
                      And ('$(PackageType)' == 'RevelaPlugin' Or '$(PackageType)' == 'RevelaTheme')" />
 
   <!--

@@ -297,6 +297,8 @@ try {
                 --no-build --no-restore --verbosity quiet
             if ($LASTEXITCODE -ne 0) { throw 'Pack failed' }
 
+            & (Join-Path $PSScriptRoot 'test-package-contents.ps1') -PackageDirectory $packagesDir
+
             $pkgFiles = Get-ChildItem $packagesDir -Filter '*.nupkg'
             Write-Success "Packed $($pkgFiles.Count) NuGet packages"
             foreach ($p in $pkgFiles) {

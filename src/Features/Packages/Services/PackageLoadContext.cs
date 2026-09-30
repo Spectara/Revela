@@ -132,7 +132,7 @@ internal sealed class PackageLoadContext : AssemblyLoadContext
     /// rather than from the plugin's own directory.
     /// </summary>
     /// <remarks>
-    /// SYNC: Keep rules in sync with Sdk/Build/Spectara.Revela.Sdk.targets
+    /// SYNC: Keep rules in sync with src/Sdk/build/Spectara.Revela.Sdk.targets
     /// which excludes the same assemblies from plugin NuGet packages.
     /// </remarks>
     internal static bool IsSharedAssembly(string assemblyName)

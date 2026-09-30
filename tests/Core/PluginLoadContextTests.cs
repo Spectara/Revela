@@ -7,7 +7,7 @@ namespace Spectara.Revela.Tests.Core;
 /// </summary>
 /// <remarks>
 /// SYNC: If these tests fail after changing IsSharedAssembly(),
-/// also update Sdk/Build/Spectara.Revela.Sdk.targets to match.
+/// also update src/Sdk/build/Spectara.Revela.Sdk.targets to match.
 /// </remarks>
 [TestClass]
 public sealed class PluginLoadContextTests

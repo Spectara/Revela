@@ -334,6 +334,8 @@ try {
             --no-build --no-restore --verbosity quiet
         if ($LASTEXITCODE -ne 0) { throw "Pack failed" }
 
+        & (Join-Path $PSScriptRoot 'test-package-contents.ps1') -PackageDirectory $PluginsDir
+
         Write-Success "Packages produced"
 
         # List SDK package (for developers)
