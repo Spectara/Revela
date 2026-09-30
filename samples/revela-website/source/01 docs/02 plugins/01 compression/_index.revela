@@ -25,6 +25,8 @@ Servers deliver pre-compressed files instantly.
 
 ## Installation
 
+The **Standalone** edition has Compress built in. In the **Full** edition, install it from the bundled packages:
+
 ```bash
 revela plugin install Compress
 ```

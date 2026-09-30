@@ -7,14 +7,15 @@ Revela automatically processes your images into optimized web formats. This page
 
 ## Image Configuration
 
-Configure image formats and quality in `project.json`:
+Configure image formats and quality in `project.json`, or with `revela config image`:
 
 ```json
 {
   "generate": {
     "images": {
-      "jpg": 90,
-      "webp": 85
+      "avif": 80,
+      "webp": 85,
+      "jpg": 90
     }
   }
 }
@@ -25,11 +26,15 @@ Configure image formats and quality in `project.json`:
 - `webp` - Smaller files, modern browsers (quality 1-100)
 - `avif` - Smallest files, newest browsers (quality 1-100)
 
-**Recommendation:** Start with just `jpg: 90` for compatibility. Add `webp` or `avif` later if needed.
+Set a format to `0` (or leave it out) to disable it. The project wizard enables all three with the values above, and they are a good default: browsers pick the smallest format they support, and JPG remains the fallback. If you want faster builds or less disk space, disable AVIF, which is the slowest to encode.
+
+```bash
+revela config image --formats avif:80,webp:85,jpg:90
+```
 
 ## Image Sizes
 
-Sizes are defined by your theme. The default Lumina theme generates these widths:
+Sizes are defined by your theme in its `Configuration/images.json`. The default Lumina theme generates these widths:
 
 ```
 160, 320, 480, 640, 720, 960, 1280, 1440, 1920, 2560
@@ -37,7 +42,9 @@ Sizes are defined by your theme. The default Lumina theme generates these widths
 
 These sizes are optimized for High-DPI displays (1.5x, 2x scaling).
 
-Plus the **original width** for full-resolution lightbox view.
+Each photo gets every theme size that is **smaller than the photo**, plus its **original width** for the full-resolution view. A 2000-pixel-wide photo, for example, gets 160 to 1920 and 2000.
+
+To use different sizes, see [Themes](../themes/#theme-structure).
 
 ## Color Spaces
 
@@ -89,17 +96,20 @@ revela generate images
 # → Existing jpg files are kept
 ```
 
+### Changing Quality
+
+When you change a format's quality (for example AVIF from 80 to 70), the next build re-encodes **only that format** for all photos. The other formats are kept, and you don't need `--force`.
+
 ### Progress Display
 
+While images are encoded, Revela shows one progress bar for all photos and a status line below it:
+
 ```
-image001.jpg  ■ ■ ■ ■ □ □ □ □ □ □ □ □
-image002.jpg  ■ ■ ■ □ □ □ □ □ □ □ □ □
-image003.jpg  ■ ■ □ □ □ □ □ □ □ □ □ □
+Encoding photos  ████████████░░░░░░░░  512/1197 (43%)  ·  18m elapsed  ·  ~24m left
+⠋ 16 workers busy · avif 512 · webp 998 · jpg 1120 · 132 img/min · 3 skipped
 ```
 
-- **Green ■** = Generated (new file)
-- **Gray ■** = Skipped (already exists)
-- **Empty □** = Pending
+The status line shows how many photos are finished per format, the processing rate, and how many photos were skipped because they were already up to date.
 
 ## Cleaning Up
 
@@ -117,9 +127,11 @@ revela clean images
 
 | Category | Description | Example |
 |----------|-------------|---------|
-| **Orphaned folders** | Source image was deleted | `output/images/deleted-photo/` |
-| **Unused sizes** | Width no longer in theme config | `*_480w.jpg` when 480 removed |
-| **Unused formats** | Format disabled in project | `*.webp` when webp removed |
+| **Orphaned folders** | Source image was deleted | `output/images/galleries/vacation/deleted-photo/` |
+| **Unused sizes** | Width no longer in theme config | `output/images/<gallery>/<photo>/480.jpg` when 480 removed |
+| **Unused formats** | Format disabled in project | `output/images/<gallery>/<photo>/*.webp` when webp removed |
+
+> **Scan first.** `clean images` compares the output with the manifest. `revela generate all` (or `revela generate scan`) brings the manifest up to date, so run it before cleaning.
 
 ### Typical Workflow
 
@@ -181,13 +193,13 @@ The browser reconstructs this as radial gradients with blend modes, creating a b
 
 <div class="features-grid">
 
-### 🚀 Start Simple
+### 🚀 Keep the Defaults
 
-Begin with `jpg: 90` only. Add webp/avif later when you need smaller files.
+AVIF 80, WebP 85 and JPG 90 give small files with a safe fallback. Disable AVIF only if encoding time matters more than file size.
 
 ### 🔄 Incremental Updates
 
-Don't use `--force` unless necessary. Incremental processing is much faster.
+Don't use `--force` unless necessary. Incremental processing is much faster, and quality changes are picked up automatically.
 
 ### 🧹 Clean After Config Changes
 
@@ -198,3 +210,7 @@ After removing formats or sizes, run `clean images` to free disk space.
 Always use `--dry-run` before `clean images` to preview what will be deleted.
 
 </div>
+
+## Troubleshooting
+
+If images are missing or `generate images` fails, run `revela check` first. It reports problems such as a missing source folder, an output folder Revela can't write to, a missing theme or invalid settings, each with a suggested fix.

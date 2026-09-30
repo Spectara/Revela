@@ -1,0 +1,110 @@
++++
+title = "Calendar Feeds"
+template = "docs"
++++
+
+The Source.Calendar plugin **downloads iCal feeds** (`.ics` URLs) into your `source/` folder. Use it together with the [Availability Calendar](../calendar/) plugin: your booking platform or calendar app keeps the bookings, and Revela fetches the latest version before each build.
+
+<div class="features-grid">
+
+### 🔗 Any iCal URL
+
+Works with the export or subscription link of Google Calendar, Outlook, Airbnb, Booking.com and most booking tools.
+
+### 🗂️ Named Feeds
+
+Configure several feeds and fetch all of them, or just one by name.
+
+### 🛡️ Safe Updates
+
+If a download fails, the previous file is kept, so your calendar never ends up empty.
+
+</div>
+
+## Installation
+
+The **Standalone** edition has Source.Calendar built in. In the **Full** edition, install it from the bundled packages:
+
+```bash
+revela plugin install Source.Calendar
+```
+
+## Configuration
+
+Add your feeds to `project.json` below `plugins.calendarFeeds`. Each feed has a name, the URL to download, and the file to write, relative to your `source` folder:
+
+```json
+{
+  "plugins": {
+    "calendarFeeds": {
+      "feeds": {
+        "bookings": {
+          "url": "https://calendar.example.com/export/bookings.ics",
+          "output": "availability/bookings.ics"
+        }
+      }
+    }
+  }
+}
+```
+
+| Option | Required | Description |
+|--------|----------|-------------|
+| `url` | Yes | The iCal feed URL (`http` or `https`) |
+| `output` | Yes | Target file below the source folder, for example `availability/bookings.ics` |
+
+- The `output` file must lie inside your source folder, and every feed needs its own file.
+- If your calendar app gives you a `webcal://` link, replace `webcal://` with `https://`.
+- Links to your own computer or local network (such as `localhost` or `192.168.x.x`) are refused.
+
+There is no `revela config` command for feeds; edit `project.json` directly.
+
+Feed URLs often contain a private token. To keep it out of `project.json` (for example in CI), set it as an environment variable instead:
+
+```bash
+SPECTARA__REVELA__PLUGINS__CALENDARFEEDS__FEEDS__BOOKINGS__URL=https://calendar.example.com/export/bookings.ics?token=...
+SPECTARA__REVELA__PLUGINS__CALENDARFEEDS__FEEDS__BOOKINGS__OUTPUT=availability/bookings.ics
+```
+
+## Usage
+
+```bash
+# Download all configured feeds
+revela source calendar fetch
+
+# Download only one feed
+revela source calendar fetch --name bookings
+```
+
+```
+✓ bookings → availability/bookings.ics
+
+Fetched 1 feed(s) (4.2 KB)
+```
+
+Fetching is **not** part of `revela generate all`. Run it before you build:
+
+```bash
+revela source calendar fetch
+revela generate all
+```
+
+Then point a calendar page at the downloaded file with `calendar.source = "bookings.ics"` in `source/availability/_index.revela` (see [Availability Calendar](../calendar/)).
+
+In a CI workflow, add `./revela source calendar fetch` before `./revela generate all` (see [Deployment](../../guide/deployment/)), and run the workflow on a schedule so the calendar stays up to date.
+
+## Error Handling
+
+- Each download times out after 30 seconds.
+- A failed download leaves the previous file untouched and prints which feed failed. The other feeds are still fetched.
+- The command exits with `1` if any feed failed, so scripts can react.
+- Without any configured feeds, the command shows an example configuration.
+
+If the calendar page complains about a missing or broken file afterwards, run `revela check calendar`.
+
+## CLI Commands
+
+| Command | Description |
+|---------|-------------|
+| `revela source calendar fetch` | Download all configured feeds |
+| `revela source calendar fetch --name <feed>` | Download one feed (`-n`) |

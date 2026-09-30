@@ -1,0 +1,134 @@
++++
+title = "Availability Calendar"
+template = "docs"
++++
+
+The Calendar plugin turns an **iCal file** (`.ics`) into an **availability calendar** on your site: a month grid that shows which days are booked and which are free. It's made for photographers who take bookings, and for holiday rentals.
+
+<div class="features-grid">
+
+### 📅 From Any Calendar
+
+Reads standard iCal (RFC 5545) files, as exported by Google Calendar, Outlook, Apple Calendar or booking platforms.
+
+### 🌙 Days or Nights
+
+Mark whole days as booked, or show arrival and departure days with diagonals, like a holiday rental calendar.
+
+### 🌍 Your Language
+
+Month names follow your site language, and every label can be renamed.
+
+</div>
+
+## Installation
+
+The **Standalone** edition has the Calendar plugin and the **Lumina.Calendar** theme extension built in, so there's nothing to install.
+
+In the **Full** edition, install both from the bundled packages:
+
+```bash
+revela plugin install Calendar
+revela theme install Lumina.Calendar
+```
+
+The plugin builds the calendar data; the theme extension renders it as a month grid.
+
+## Creating a Calendar Page
+
+1. Put your `.ics` file into a page folder, for example `source/availability/bookings.ics`. To download it automatically from a calendar URL, use [Calendar Feeds](../source-calendar/).
+2. Create `source/availability/_index.revela`:
+
+   ```toml
+   +++
+   title = "Availability"
+   template = "calendar/page"
+   calendar.source = "bookings.ics"
+   calendar.months = 12
+   +++
+   Green days are free. Get in touch to book a session.
+   ```
+
+   Or let Revela create it: `revela create page calendar availability --title "Availability" --source bookings.ics`.
+
+   > **Known issue:** `revela create page calendar` currently writes the `template` line below the `calendar.*` lines, and Revela then doesn't recognize the page as a calendar page. Move `template = "calendar/page"` up, directly below `title`.
+
+3. Build your site:
+
+   ```bash
+   revela generate all
+   ```
+
+The Markdown below the front matter appears above the calendar.
+
+## Front Matter Options
+
+| Field | Default | Description |
+|-------|---------|-------------|
+| `calendar.source` | (required) | The `.ics` file, relative to the page folder |
+| `calendar.months` | `12` | Number of months to show, starting with the current month |
+| `calendar.mode` | `"days"` | `"days"` or `"nights"` (see below) |
+| `calendar.locale` | site language | Language for month and day names, for example `"de"` |
+| `calendar.labels.booked` | `"Booked"` | Label for booked days |
+| `calendar.labels.free` | `"Free"` | Label for free days |
+| `calendar.labels.arrive` | `"Arrival"` | Label for arrival days (nights mode) |
+| `calendar.labels.depart` | `"Departure"` | Label for departure days (nights mode) |
+
+The site language comes from `language` in `site.json` (default `en`). An unknown locale falls back to neutral formatting and prints a warning.
+
+### Days or Nights
+
+- **`days`** (default): each event blocks whole days, from its start date up to the day before its end date. Good for photo sessions and events.
+- **`nights`**: an event's start date is the **arrival** day and its end date the **departure** day. Both are shown as half-booked diagonals, so a changeover day (one guest leaves, the next arrives) is still visible. Good for holiday rentals.
+
+Example of a German holiday-rental calendar:
+
+```toml
++++
+title = "Verfügbarkeit"
+template = "calendar/page"
+calendar.source = "bookings.ics"
+calendar.mode = "nights"
+calendar.months = 12
+calendar.locale = "de"
+calendar.labels.booked = "belegt"
+calendar.labels.free = "frei"
+calendar.labels.arrive = "Anreise"
+calendar.labels.depart = "Abreise"
++++
+```
+
+## How It Works
+
+1. `revela generate scan` finds every page whose template starts with `calendar/`.
+2. The **calendar** step (part of `generate all`, right after scan) reads each page's `.ics` file and writes `.cache/<page>/calendar.json`.
+3. `revela generate pages` renders the month grid with the Lumina.Calendar extension.
+
+Past days are dimmed and today is highlighted, based on the day you **build** the site. Rebuild regularly (for example with a scheduled CI job) so the calendar stays current.
+
+## Styling
+
+Lumina.Calendar marks each day with a CSS class you can restyle in your own theme override (see [Themes](../../guide/themes/)):
+
+| Class | Look | Used in |
+|-------|------|---------|
+| `free` | Green tint | Both modes |
+| `booked` | Red tint | Both modes |
+| `arrive` | Diagonal, free → booked | Nights mode |
+| `depart` | Diagonal, booked → free | Nights mode |
+| `past` | Dimmed | Both modes |
+| `today` | Accent outline | Both modes |
+
+## CLI Commands
+
+| Command | Description |
+|---------|-------------|
+| `revela generate calendar` | Build calendar data for all calendar pages |
+| `revela generate all` | Full pipeline (includes the calendar step) |
+| `revela clean calendar` | Delete generated `calendar.json` files from the cache |
+| `revela check calendar` | Check that every calendar page's `.ics` file exists and is valid |
+| `revela create page calendar` | Create a calendar page |
+
+## Troubleshooting
+
+Run `revela check calendar` (or just `revela check`). It reports a missing `.ics` file or one that isn't valid iCal data, with the page it belongs to and how to fix it. The calendar step stops the build for the same problems.

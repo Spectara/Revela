@@ -90,7 +90,7 @@ Values are resolved in order: CLI arguments → environment variables → `proje
 **Standard mode** – only shows errors:
 
 ```
-🌐 Serving output/ at http://localhost:8080
+🌐 Serving /home/jane/portfolio/output at http://localhost:8080
    Press Ctrl+C to stop
 
 ⚠ 404: /favicon.ico
@@ -99,12 +99,12 @@ Values are resolved in order: CLI arguments → environment variables → `proje
 **Verbose mode** – logs every request:
 
 ```
-🌐 Serving output/ at http://localhost:8080
+🌐 Serving /home/jane/portfolio/output at http://localhost:8080
    Press Ctrl+C to stop
 
 GET /index.html 200
-GET /css/style.css 200
-GET /images/photo.avif 200
+GET /_assets/main.css 200
+GET /images/galleries/vacation/beach/640.avif 200
 ⚠ 404: /favicon.ico
 ```
 
