@@ -24,14 +24,6 @@ public sealed class StatsPageTemplate : IPageTemplate
 
     public string TemplateName => "statistics/overview";
 
-    public string ConfigSectionName => "Spectara.Revela.Plugins.Statistics";
-
-    /// <inheritdoc />
-    /// <remarks>
-    /// Statistics plugin has 'config statistics' command for interactive configuration.
-    /// </remarks>
-    public bool HasConfigCommand => true;
-
     public IReadOnlyList<TemplateProperty> PageProperties { get; } =
     [
         new()
@@ -42,8 +34,7 @@ public sealed class StatsPageTemplate : IPageTemplate
             DefaultValue = "Photo Statistics",
             Description = "Page title (example: 'Gallery Stats')",
             Required = false,
-            FrontmatterKey = "title",
-            ConfigKey = null
+            FrontmatterKey = "title"
         },
         new()
         {
@@ -53,14 +44,7 @@ public sealed class StatsPageTemplate : IPageTemplate
             DefaultValue = "EXIF statistics from your photo library",
             Description = "Page description (example: 'Statistics from 500+ photos')",
             Required = false,
-            FrontmatterKey = "description",
-            ConfigKey = null
+            FrontmatterKey = "description"
         }
     ];
-
-    /// <inheritdoc />
-    /// <remarks>
-    /// Empty - configuration is handled by ConfigStatisticsCommand, not dynamically generated.
-    /// </remarks>
-    public IReadOnlyList<TemplateProperty> ConfigProperties { get; } = [];
 }

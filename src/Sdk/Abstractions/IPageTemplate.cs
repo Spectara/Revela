@@ -1,14 +1,13 @@
 namespace Spectara.Revela.Sdk.Abstractions;
 
 /// <summary>
-/// Defines a page template for creating _index.revela files with frontmatter and optional plugin configuration.
+/// Defines a page template for creating _index.revela files with frontmatter.
 /// </summary>
 /// <remarks>
 /// Templates provide metadata and properties that drive the initialization process:
 /// <list type="bullet">
 /// <item><description><see cref="PageProperties"/> define frontmatter fields (title, description, etc.)</description></item>
-/// <item><description><see cref="ConfigProperties"/> define plugin configuration options (maxEntries, etc.)</description></item>
-/// <item><description>Both property types are exposed as CLI options with help text and examples</description></item>
+/// <item><description>Each property is exposed as a CLI option with help text and examples</description></item>
 /// </list>
 /// </remarks>
 public interface IPageTemplate
@@ -41,24 +40,6 @@ public interface IPageTemplate
     string TemplateName { get; }
 
     /// <summary>
-    /// Gets the configuration section name for plugin settings (e.g., "Spectara.Revela.Plugins.Statistics").
-    /// </summary>
-    /// <remarks>
-    /// Used to auto-detect the plugin JSON filename: <c>{ConfigSectionName}.json</c>
-    /// Also used as the root key in the JSON structure.
-    /// </remarks>
-    string ConfigSectionName { get; }
-
-    /// <summary>
-    /// Gets a value indicating whether a corresponding 'config {name}' command exists.
-    /// </summary>
-    /// <remarks>
-    /// When true, 'init {name}' will show a hint to use 'config {name}' for interactive configuration.
-    /// Default should be false for templates that only have init commands.
-    /// </remarks>
-    bool HasConfigCommand { get; }
-
-    /// <summary>
     /// Gets the properties that appear in page frontmatter (title, description, etc.).
     /// </summary>
     /// <remarks>
@@ -67,16 +48,6 @@ public interface IPageTemplate
     /// Properties with <c>FrontmatterKey = null</c> are CLI-only (like --path).
     /// </remarks>
     IReadOnlyList<TemplateProperty> PageProperties { get; }
-
-    /// <summary>
-    /// Gets the properties that appear in plugin configuration JSON.
-    /// </summary>
-    /// <remarks>
-    /// These properties are exposed as CLI options in "revela init config {name}" command.
-    /// Properties are written to config/{ConfigSectionName}.json using <see cref="TemplateProperty.ConfigKey"/>.
-    /// Supports dot notation for nested objects (e.g., "Deploy.Host" → {"Deploy": {"Host": "..."}}).
-    /// </remarks>
-    IReadOnlyList<TemplateProperty> ConfigProperties { get; }
 
     /// <summary>
     /// Gets the default body content (Markdown) to include after frontmatter.

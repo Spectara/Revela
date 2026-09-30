@@ -4,24 +4,28 @@ Fetches iCal (RFC 5545) feeds from URLs and saves them to the source directory.
 
 ## Configuration
 
-In `project.json`:
+In `project.json` below `plugins.calendarFeeds`:
 
 ```json
 {
-  "Spectara.Revela.Plugins.Source.Calendar": {
-    "feeds": {
-      "booking": {
-        "url": "https://ical.booking.com/v1/export/t/xxx.ics",
-        "output": "availability/bookings.ics"
-      },
-      "google": {
-        "url": "https://calendar.google.com/calendar/ical/xxx/public/basic.ics",
-        "output": "schedule/schedule.ics"
+  "plugins": {
+    "calendarFeeds": {
+      "feeds": {
+        "booking": {
+          "url": "https://ical.booking.com/v1/export/t/xxx.ics",
+          "output": "availability/bookings.ics"
+        },
+        "google": {
+          "url": "https://calendar.google.com/calendar/ical/xxx/public/basic.ics",
+          "output": "schedule/schedule.ics"
+        }
       }
     }
   }
 }
 ```
+
+Environment variables override `project.json`, e.g. `SPECTARA__REVELA__PLUGINS__CALENDARFEEDS__FEEDS__BOOKING__URL=https://...`.
 
 ## Usage
 

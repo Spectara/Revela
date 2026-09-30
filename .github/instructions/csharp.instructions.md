@@ -93,7 +93,7 @@ These rules apply to every `.cs` file. They are enforced by `.editorconfig` (war
 - Plugin services should use `TryAdd*` for idempotent registration.
 
 ## Configuration
-- `IOptions<T>` / `IOptionsMonitor<T>` with `[RevelaConfig]` attribute (a documentation marker).
+- `IOptions<T>` / `IOptionsMonitor<T>` with `[RevelaConfig]` attribute. Plugin/theme sections must be `plugins:<key>` (key `^[a-z][a-zA-Z0-9]*$`) — enforced by the SDK generator (`REVELA001`/`REVELA002`).
 - Config class is `sealed class` (NOT `partial`, NOT `init`-only). Add a hand-written `public const string Section = "...";` matching the attribute argument — the .NET Configuration Binding Source Generator only intercepts call sites where the section name is statically resolvable from user source.
 - Property accessors: `{ get; set; }` (CBSG silently skips `init`-only). Collection properties getter-only with initializer (`Dictionary<,> X { get; } = [];`).
 - Register from user code so CBSG can intercept: `services.AddOptions<T>().BindConfiguration(T.Section)`.

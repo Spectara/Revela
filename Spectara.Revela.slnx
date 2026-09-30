@@ -36,6 +36,7 @@
     <Project Path="tests/Cli/Cli.csproj" />
     <Project Path="tests/Integration/Integration.csproj" />
     <Project Path="tests/Shared/Shared.csproj" />
+    <Project Path="tests/Sdk.Generators/Sdk.Generators.csproj" />
   </Folder>
   <Folder Name="/tests/Plugins/">
     <Project Path="tests/Plugins/Compress/Compress.csproj" />

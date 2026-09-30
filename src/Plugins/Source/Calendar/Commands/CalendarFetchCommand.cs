@@ -55,10 +55,14 @@ internal sealed partial class CalendarFetchCommand(
                 "No Feeds Configured",
                 "[yellow]No iCal feeds configured.[/]\n\n" +
                 $"Add feeds to [cyan]project.json[/] under [cyan]{SourceCalendarConfig.Section}[/]:\n\n" +
-                "[dim]\"feeds\": {\n" +
-                "  \"booking\": {\n" +
-                "    \"url\": \"https://ical.example.com/calendar.ics\",\n" +
-                "    \"output\": \"availability/bookings.ics\"\n" +
+                "[dim]\"plugins\": {\n" +
+                "  \"calendarFeeds\": {\n" +
+                "    \"feeds\": {\n" +
+                "      \"booking\": {\n" +
+                "        \"url\": \"https://ical.example.com/calendar.ics\",\n" +
+                "        \"output\": \"availability/bookings.ics\"\n" +
+                "      }\n" +
+                "    }\n" +
                 "  }\n" +
                 "}[/]");
             return 1;

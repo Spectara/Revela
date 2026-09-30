@@ -56,13 +56,15 @@ revela config serve --verbose
 
 ## Configuration
 
-Plugin configuration is stored in `project.json`:
+Plugin configuration is stored in `project.json` below `plugins.serve` (`revela.json` works the same for user-wide defaults):
 
 ```json
 {
-  "Spectara.Revela.Plugins.Serve": {
-    "Port": 8080,
-    "Verbose": false
+  "plugins": {
+    "serve": {
+      "port": 8080,
+      "verbose": false
+    }
   }
 }
 ```
@@ -70,8 +72,8 @@ Plugin configuration is stored in `project.json`:
 Or use environment variables:
 
 ```bash
-SPECTARA__REVELA__PLUGIN__SERVE__PORT=3000
-SPECTARA__REVELA__PLUGIN__SERVE__VERBOSE=true
+SPECTARA__REVELA__PLUGINS__SERVE__PORT=3000
+SPECTARA__REVELA__PLUGINS__SERVE__VERBOSE=true
 ```
 
 ## Features

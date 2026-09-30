@@ -26,7 +26,7 @@ Use the **Revela Dev** agent for actual implementation. Follow the conventions i
    - Output to `artifacts/bin/${pluginName}/` (centrally configured via `Directory.Build.props`)
 2. **Add to solution** — `dotnet sln add src/Plugins/${pluginName}/...`
 3. **Plugin class** — `${PluginName}Plugin.cs` implementing `IPlugin` with `PackageMetadata`
-4. **(Optional) Config class** — `Configuration/${PluginName}Config.cs` with `[RevelaConfig("Spectara.Revela.Plugins.${PluginName}")]`
+4. **(Optional) Config class** — `Configuration/${PluginName}Config.cs` with `[RevelaConfig("plugins:<key>")]` and a matching `public const string Section = "plugins:<key>";` (`<key>` is the camelCase plugin key, e.g. `myFeature`)
 5. **Command class** — `Commands/${VerbName}Command.cs` (partial, with primary constructor DI)
 6. **Register in `EmbeddedPackageSource`** — `src/Cli.Embedded/EmbeddedPackageSource.cs` so F5 debugging includes the new plugin
 7. **Test project** — `tests/Plugins/${pluginName}/Spectara.Revela.Tests.Plugins.${pluginName}.csproj`

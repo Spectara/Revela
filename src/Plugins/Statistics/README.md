@@ -57,21 +57,25 @@ The JSON is rendered into HTML by a theme extension (see below).
 
 ## Configuration
 
-Settings in `project.json`:
+Settings in `project.json` below `plugins.statistics`:
 
 ```json
 {
-  "Spectara.Revela.Plugins.Statistics": {
-    "MaxEntriesPerCategory": 15,
-    "SortByCount": true
+  "plugins": {
+    "statistics": {
+      "maxEntriesPerCategory": 15,
+      "sortByCount": true
+    }
   }
 }
 ```
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `MaxEntriesPerCategory` | `15` | Top N entries per category (0 = unlimited). Remaining entries are aggregated into "Other". |
-| `SortByCount` | `true` | Sort by count (descending) instead of natural order |
+| `maxEntriesPerCategory` | `15` | Top N entries per category (0 = unlimited). Remaining entries are aggregated into "Other". |
+| `sortByCount` | `true` | Sort by count (descending) instead of natural order |
+
+Environment variables override `project.json`, e.g. `SPECTARA__REVELA__PLUGINS__STATISTICS__MAXENTRIESPERCATEGORY=20`.
 
 ```bash
 # Configure interactively

@@ -7,6 +7,7 @@
   1. Plugin build settings (EnableDynamicLoading, CopyLocalLockFileAssemblies)
   2. NuGet packaging that EXCLUDES host-provided ("shared") assemblies
   3. Inclusion of .deps.json for runtime dependency resolution
+  4. PackageType as a compiler-visible property for the SDK source generator
 
   SYNC: The shared assembly exclusion rules MUST match
         PackageLoadContext.IsSharedAssembly() in Spectara.Revela.Core.
@@ -35,6 +36,15 @@
     <EnableDynamicLoading>true</EnableDynamicLoading>
     <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
   </PropertyGroup>
+
+  <!-- ================================================================== -->
+  <!-- Source generator input                                              -->
+  <!-- The SDK generator (PluginConfigSectionGenerator) reads PackageType  -->
+  <!-- to require plugin/theme settings below 'plugins:<key>'.             -->
+  <!-- ================================================================== -->
+  <ItemGroup>
+    <CompilerVisibleProperty Include="PackageType" />
+  </ItemGroup>
 
   <!-- ================================================================== -->
   <!-- NuGet Package: Include plugin-specific dependencies only            -->

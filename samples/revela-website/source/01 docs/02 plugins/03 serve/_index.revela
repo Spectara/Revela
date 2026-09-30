@@ -50,21 +50,23 @@ Press **Ctrl+C** to stop the server.
 
 ## Configuration
 
-Settings are stored in `project.json`:
+Settings are stored in `project.json` below `plugins.serve`:
 
 ```json
 {
-  "Spectara.Revela.Plugins.Serve": {
-    "Port": 8080,
-    "Verbose": false
+  "plugins": {
+    "serve": {
+      "port": 8080,
+      "verbose": false
+    }
   }
 }
 ```
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `Port` | `8080` | HTTP server port (1-65535) |
-| `Verbose` | `false` | Log all requests (not just errors) |
+| `port` | `8080` | HTTP server port (1-65535) |
+| `verbose` | `false` | Log all requests (not just errors) |
 
 ```bash
 # Configure interactively
@@ -77,11 +79,11 @@ revela config serve --port 3000
 Both commands also accept the short aliases `-p` (port) and `-v` (verbose), and the settings can be supplied as environment variables:
 
 ```bash
-SPECTARA__REVELA__PLUGIN__SERVE__PORT=3000
-SPECTARA__REVELA__PLUGIN__SERVE__VERBOSE=true
+SPECTARA__REVELA__PLUGINS__SERVE__PORT=3000
+SPECTARA__REVELA__PLUGINS__SERVE__VERBOSE=true
 ```
 
-Values are resolved in order: CLI arguments → environment variables → `project.json` → defaults.
+Values are resolved in order: CLI arguments → environment variables → `project.json` → `revela.json` → defaults.
 
 ## Output
 

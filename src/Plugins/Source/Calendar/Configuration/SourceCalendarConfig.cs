@@ -7,14 +7,29 @@ namespace Spectara.Revela.Plugins.Source.Calendar.Configuration;
 /// <summary>
 /// Configuration for the Source.Calendar plugin.
 /// </summary>
-[RevelaConfig("Spectara.Revela.Plugins.Source.Calendar")]
+/// <remarks>
+/// Example project.json:
+/// <code>
+/// {
+///   "plugins": {
+///     "calendarFeeds": {
+///       "feeds": {
+///         "bookings": { "url": "https://example.com/calendar.ics", "output": "availability/bookings.ics" }
+///       }
+///     }
+///   }
+/// }
+/// </code>
+/// Environment variables: <c>SPECTARA__REVELA__PLUGINS__CALENDARFEEDS__FEEDS__BOOKINGS__URL=...</c>
+/// </remarks>
+[RevelaConfig("plugins:calendarFeeds")]
 internal sealed class SourceCalendarConfig
 {
     /// <summary>
     /// Configuration section name. Matches the <c>[RevelaConfig]</c> attribute
     /// argument; passed to <c>BindConfiguration</c> at registration time.
     /// </summary>
-    public const string Section = "Spectara.Revela.Plugins.Source.Calendar";
+    public const string Section = "plugins:calendarFeeds";
     /// <summary>
     /// Named iCal feeds to fetch. Key = feed name, Value = feed configuration.
     /// </summary>

@@ -1,8 +1,8 @@
 namespace Spectara.Revela.Sdk.Abstractions;
 
 /// <summary>
-/// Marks a configuration class as a Revela options type. The attribute is a
-/// documentation marker only — there is no source generator behind it.
+/// Marks a configuration class as a Revela options type and declares its
+/// configuration section.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -15,11 +15,20 @@ namespace Spectara.Revela.Sdk.Abstractions;
 /// to CBSG, which would silently fall back to the reflection binder and
 /// break under <c>PublishTrimmed</c> / <c>PublishAot</c>.
 /// </para>
+/// <para>
+/// Plugins and themes (MSBuild <c>PackageType</c> <c>RevelaPlugin</c> /
+/// <c>RevelaTheme</c>) must use a section of the form <c>plugins:&lt;key&gt;</c>
+/// where the key matches <c>^[a-z][a-zA-Z0-9]*$</c> (see <see cref="Configuration.PluginConfigSection"/>).
+/// The SDK source generator reports an error for any other section and when the
+/// attribute argument and the <c>Section</c> const differ. It also emits a
+/// <see cref="RevelaPluginConfigKeyAttribute"/> so the host knows which package
+/// owns which key.
+/// </para>
 /// <code>
-/// [RevelaConfig("Spectara.Revela.Plugins.MyPlugin")]
+/// [RevelaConfig("plugins:myPlugin")]
 /// internal sealed class MyPluginConfig
 /// {
-///     public const string Section = "Spectara.Revela.Plugins.MyPlugin";
+///     public const string Section = "plugins:myPlugin";
 ///
 ///     [Required] public string ApiUrl { get; set; } = string.Empty;
 ///     public int Timeout { get; set; } = 30;
@@ -32,7 +41,7 @@ namespace Spectara.Revela.Sdk.Abstractions;
 ///     MyPluginConfigValidator&gt;();   // trim/AOT-safe DataAnnotations
 /// </code>
 /// </remarks>
-/// <param name="sectionName">The configuration section name (e.g., "project" or "Spectara.Revela.Plugins.MyPlugin").</param>
+/// <param name="sectionName">The configuration section name (e.g., "project" or "plugins:myPlugin").</param>
 [AttributeUsage(AttributeTargets.Class, Inherited = false, AllowMultiple = false)]
 public sealed class RevelaConfigAttribute(string sectionName) : Attribute
 {

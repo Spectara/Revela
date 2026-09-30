@@ -10,31 +10,34 @@ namespace Spectara.Revela.Plugins.Source.OneDrive.Configuration;
 /// <remarks>
 /// These can be overridden from multiple sources (in priority order, highest to lowest):
 /// 1. Command-line arguments (--share-url, etc.)
-/// 2. Environment variables (SPECTARA__REVELA__PLUGIN__SOURCE__ONEDRIVE__*)
+/// 2. Environment variables (SPECTARA__REVELA__PLUGINS__ONEDRIVE__*)
 /// 3. Project config file (project.json)
+/// 4. Global config file (revela.json)
 ///
 /// Example project.json:
 /// {
-///   "Spectara.Revela.Plugins.Source.OneDrive": {
-///     "ShareUrl": "https://1drv.ms/...",
-///     "IncludePatterns": ["*.jpg", "*.png", "*.md"],
-///     "ExcludePatterns": ["*.tmp"]
+///   "plugins": {
+///     "oneDrive": {
+///       "shareUrl": "https://1drv.ms/...",
+///       "includePatterns": ["*.jpg", "*.png", "*.md"],
+///       "excludePatterns": ["*.tmp"]
+///     }
 ///   }
 /// }
 ///
 /// Example Environment Variables:
-/// SPECTARA__REVELA__PLUGIN__SOURCE__ONEDRIVE__SHAREURL=https://1drv.ms/...
+/// SPECTARA__REVELA__PLUGINS__ONEDRIVE__SHAREURL=https://1drv.ms/...
 ///
 /// Downloaded files are saved to the project's source directory (paths.source config).
 /// </remarks>
-[RevelaConfig("Spectara.Revela.Plugins.Source.OneDrive")]
+[RevelaConfig("plugins:oneDrive")]
 internal sealed class OneDrivePluginConfig
 {
     /// <summary>
     /// Configuration section name. Matches the <c>[RevelaConfig]</c> attribute
     /// argument; passed to <c>BindConfiguration</c> at registration time.
     /// </summary>
-    public const string Section = "Spectara.Revela.Plugins.Source.OneDrive";
+    public const string Section = "plugins:oneDrive";
     /// <summary>
     /// OneDrive shared folder URL
     /// </summary>

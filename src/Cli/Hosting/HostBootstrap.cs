@@ -12,6 +12,7 @@ using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Abstractions;
 using Spectara.Revela.Sdk.Configuration;
 using Spectara.Revela.Sdk.Hosting;
+using Spectre.Console;
 
 namespace Spectara.Revela.Cli.Hosting;
 
@@ -82,6 +83,11 @@ internal static class HostBootstrap
             configureExtra?.Invoke(builder);
 
             return await builder.Build().RunRevelaAsync(args);
+        }
+        catch (PluginConfigConflictException ex)
+        {
+            ErrorPanels.ShowError("Plugin configuration conflict", Markup.Escape(ex.Message));
+            return 1;
         }
         catch (InvalidDataException ex) when (ex.GetBaseException() is JsonException jsonException)
         {
@@ -170,6 +176,9 @@ internal static class HostBootstrap
         versionOption?.Action = new BuildInfoVersionAction(buildInfo);
 
         // Detect interactive mode: no arguments AND an interactive terminal.
+        // Warn about plugins:<key> settings no loaded plugin claims (typos, uninstalled plugins).
+        host.Services.GetService<UnclaimedPluginConfigReporter>()?.Report();
+
         var consoleCapabilities = host.Services.GetRequiredService<IConsoleCapabilities>();
         var isInteractiveMode = args.Length == 0 && consoleCapabilities.IsInteractive;
 

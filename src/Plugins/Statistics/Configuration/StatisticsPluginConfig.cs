@@ -11,29 +11,32 @@ namespace Spectara.Revela.Plugins.Statistics.Configuration;
 /// Default values are defined in the property initializers.
 /// These can be overridden from multiple sources (in priority order, highest to lowest):
 /// 1. Command-line arguments (--output, etc.)
-/// 2. Environment variables (SPECTARA__REVELA__PLUGIN__STATISTICS__*)
+/// 2. Environment variables (SPECTARA__REVELA__PLUGINS__STATISTICS__*)
 /// 3. Project config file (project.json)
+/// 4. Global config file (revela.json)
 ///
 /// Example project.json:
 /// {
-///   "Spectara.Revela.Plugins.Statistics": {
-///     "MaxEntriesPerCategory": 15,
-///     "SortByCount": true
+///   "plugins": {
+///     "statistics": {
+///       "maxEntriesPerCategory": 15,
+///       "sortByCount": true
+///     }
 ///   }
 /// }
 ///
 /// Example Environment Variables:
-/// SPECTARA__REVELA__PLUGIN__STATISTICS__MAXENTRIESPERCATEGORY=20
-/// SPECTARA__REVELA__PLUGIN__STATISTICS__SORTBYCOUNT=false
+/// SPECTARA__REVELA__PLUGINS__STATISTICS__MAXENTRIESPERCATEGORY=20
+/// SPECTARA__REVELA__PLUGINS__STATISTICS__SORTBYCOUNT=false
 /// </remarks>
-[RevelaConfig("Spectara.Revela.Plugins.Statistics")]
+[RevelaConfig("plugins:statistics")]
 internal sealed class StatisticsPluginConfig
 {
     /// <summary>
     /// Configuration section name. Matches the <c>[RevelaConfig]</c> attribute
     /// argument; passed to <c>BindConfiguration</c> at registration time.
     /// </summary>
-    public const string Section = "Spectara.Revela.Plugins.Statistics";
+    public const string Section = "plugins:statistics";
     /// <summary>
     /// Maximum number of entries per category (e.g., top 15 apertures)
     /// </summary>

@@ -35,18 +35,6 @@ internal sealed class GalleryPageTemplate : IPageTemplate
     public string TemplateName => "";
 
     /// <inheritdoc />
-    /// <remarks>
-    /// Empty string means no plugin configuration is needed.
-    /// </remarks>
-    public string ConfigSectionName => "";
-
-    /// <inheritdoc />
-    /// <remarks>
-    /// Gallery pages don't have a dedicated config command.
-    /// </remarks>
-    public bool HasConfigCommand => false;
-
-    /// <inheritdoc />
     public IReadOnlyList<TemplateProperty> PageProperties { get; } =
     [
         new()
@@ -57,8 +45,7 @@ internal sealed class GalleryPageTemplate : IPageTemplate
             DefaultValue = "Gallery",
             Description = "Page title",
             Required = false,
-            FrontmatterKey = "title",
-            ConfigKey = null
+            FrontmatterKey = "title"
         },
         new()
         {
@@ -68,8 +55,7 @@ internal sealed class GalleryPageTemplate : IPageTemplate
             DefaultValue = "",
             Description = "Page description",
             Required = false,
-            FrontmatterKey = "description",
-            ConfigKey = null
+            FrontmatterKey = "description"
         },
         new()
         {
@@ -79,8 +65,7 @@ internal sealed class GalleryPageTemplate : IPageTemplate
             DefaultValue = null,
             Description = "Sort override (e.g., 'dateTaken:asc', 'exif.raw.Rating:desc')",
             Required = false,
-            FrontmatterKey = "sort",
-            ConfigKey = null
+            FrontmatterKey = "sort"
         },
         new()
         {
@@ -90,8 +75,7 @@ internal sealed class GalleryPageTemplate : IPageTemplate
             DefaultValue = false,
             Description = "Hide from navigation (page still accessible via URL)",
             Required = false,
-            FrontmatterKey = "hidden",
-            ConfigKey = null
+            FrontmatterKey = "hidden"
         },
         new()
         {
@@ -101,16 +85,9 @@ internal sealed class GalleryPageTemplate : IPageTemplate
             DefaultValue = null,
             Description = "Custom URL segment (overrides folder name)",
             Required = false,
-            FrontmatterKey = "slug",
-            ConfigKey = null
+            FrontmatterKey = "slug"
         }
     ];
-
-    /// <inheritdoc />
-    /// <remarks>
-    /// Gallery pages don't require any plugin configuration.
-    /// </remarks>
-    public IReadOnlyList<TemplateProperty> ConfigProperties { get; } = [];
 
     /// <inheritdoc />
     /// <remarks>

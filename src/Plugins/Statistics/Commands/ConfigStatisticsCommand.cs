@@ -3,6 +3,7 @@ using System.Text.Json.Nodes;
 using Microsoft.Extensions.Options;
 using Spectara.Revela.Plugins.Statistics.Configuration;
 using Spectara.Revela.Sdk.Abstractions;
+using Spectara.Revela.Sdk.Configuration;
 using Spectara.Revela.Sdk.Configuration.Keys;
 using Spectara.Revela.Sdk.Output;
 using Spectre.Console;
@@ -94,11 +95,8 @@ internal sealed partial class ConfigStatisticsCommand(
             [StatisticsPluginConfigKeys.SortByCount] = sortByCount
         };
 
-        // Wrap with plugin section name and update project.json
-        var updates = new JsonObject
-        {
-            [StatisticsPluginConfigKeys.Section] = pluginConfig
-        };
+        // Nest below plugins:<key> and update project.json
+        var updates = PluginConfigSection.CreateUpdate(StatisticsPluginConfigKeys.Section, pluginConfig);
 
         await configService.UpdateProjectConfigAsync(updates, cancellationToken);
 

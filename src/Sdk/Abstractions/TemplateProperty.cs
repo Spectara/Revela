@@ -1,14 +1,13 @@
 namespace Spectara.Revela.Sdk.Abstractions;
 
 /// <summary>
-/// Defines a property for page templates that serves dual purpose as CLI option and frontmatter/config field.
+/// Defines a property for page templates that serves dual purpose as CLI option and frontmatter field.
 /// </summary>
 /// <remarks>
-/// Each property can be used in three contexts:
+/// Each property can be used in two contexts:
 /// <list type="bullet">
 /// <item><description><strong>CLI Option:</strong> Generated from <see cref="Name"/> and <see cref="Aliases"/></description></item>
 /// <item><description><strong>Frontmatter:</strong> Written to _index.revela if <see cref="FrontmatterKey"/> is set</description></item>
-/// <item><description><strong>Config JSON:</strong> Written to plugin JSON if <see cref="ConfigKey"/> is set</description></item>
 /// </list>
 /// </remarks>
 /// <example>
@@ -22,23 +21,7 @@ namespace Spectara.Revela.Sdk.Abstractions;
 ///     DefaultValue = "Photo Statistics",
 ///     Description = "Page title (example: 'Gallery Stats')",
 ///     Required = false,
-///     FrontmatterKey = "title",
-///     ConfigKey = null  // Not in config
-/// }
-/// </code>
-///
-/// Config property example:
-/// <code>
-/// new TemplateProperty
-/// {
-///     Name = "max-entries",
-///     Aliases = ["--max-entries", "-m"],
-///     Type = typeof(int),
-///     DefaultValue = 15,
-///     Description = "Maximum entries per category (example: 20)",
-///     Required = false,
-///     FrontmatterKey = null,  // Not in frontmatter
-///     ConfigKey = "MaxEntriesPerCategory"
+///     FrontmatterKey = "title"
 /// }
 /// </code>
 /// </example>
@@ -75,7 +58,6 @@ public sealed class TemplateProperty
     /// </summary>
     /// <remarks>
     /// Written as a comment in frontmatter when not provided by user (e.g., # title = "Photo Statistics").
-    /// Used as actual value in plugin config JSON.
     /// Must be compatible with <see cref="Type"/>.
     /// </remarks>
     public object? DefaultValue { get; init; }
@@ -107,17 +89,7 @@ public sealed class TemplateProperty
     public string? FrontmatterKey { get; init; }
 
     /// <summary>
-    /// Gets the key name used in plugin configuration JSON (e.g., "MaxEntriesPerCategory").
-    /// </summary>
-    /// <remarks>
-    /// Set to <c>null</c> for properties that shouldn't appear in config (only in frontmatter).
-    /// Supports dot notation for nested objects: "Deploy.Host" → {"Deploy": {"Host": "..."}}.
-    /// Written to: config/{ConfigSectionName}.json
-    /// </remarks>
-    public string? ConfigKey { get; init; }
-
-    /// <summary>
-    /// Gets an optional function to format the value for frontmatter/config output.
+    /// Gets an optional function to format the value for frontmatter output.
     /// </summary>
     /// <remarks>
     /// Used for custom formatting (e.g., escaping strings, formatting booleans as true/false).
