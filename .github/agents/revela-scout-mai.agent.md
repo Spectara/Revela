@@ -2,7 +2,7 @@
 name: Revela Scout MAI
 description: "Read-only Revela code scout using MAI Code 1.1. Use for: locating the owning code path for one bounded bug or behavior, finding nearby tests, and preparing a minimal implementation assignment without changing code."
 model: "MAI Code 1.1"
-tools: [read, search]
+tools: [read, search, grep, glob]
 agents: []
 user-invocable: false
 disable-model-invocation: false

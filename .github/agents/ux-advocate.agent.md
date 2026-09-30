@@ -1,7 +1,7 @@
 ---
 name: UX Advocate
 description: "Read-only UX assessment and browser verification for Revela and explicitly assigned generated sites. Use for: visitor/author workflows, mobile and keyboard usability, no-JS behavior, accessibility, and visual regression checks. Uses the task's actual audience; separates observed defects from recommendations and untested conditions. Does not implement fixes."
-tools: [read, search, web, todo, browser/openBrowserPage, browser/readPage, browser/screenshotPage, browser/navigatePage, browser/clickElement, browser/hoverElement, browser/dragElement, browser/typeInPage, browser/runPlaywrightCode, browser/handleDialog]
+tools: [read, search, web, todo, browser/openBrowserPage, browser/readPage, browser/screenshotPage, browser/navigatePage, browser/clickElement, browser/hoverElement, browser/dragElement, browser/typeInPage, browser/runPlaywrightCode, browser/handleDialog, grep, glob, web_fetch, web_search]
 agents: []
 handoffs:
   - label: Document (Revela Docs)

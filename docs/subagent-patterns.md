@@ -71,6 +71,28 @@ task result. Distinguish assignment gaps from execution or acceptance defects.
 Count preparation/review/repair effort, but invent no timing or cost measurements.
 One successful assignment does not prove general reliability or efficiency.
 
+### Tool Frontmatter
+
+Agent `tools:` lists must work in both VS Code and Copilot CLI. An agent that
+should use every available tool, such as Revela Dev, omits `tools:` entirely.
+Restricted agents list their tools; unknown names are ignored, so keep the VS Code
+names and add the CLI runtime names explicitly:
+the aliases `search` and `web` did not grant `rg`/`glob` or `web_fetch`/`web_search`
+in Copilot CLI 1.0.88, while `read`, `edit`, `execute` and `agent` did.
+
+| Capability | Add to `tools:` |
+|------------|-----------------|
+| Local text/file search | `grep`, `glob` |
+| Web access | `web_fetch`, `web_search` |
+| File edits | `edit` |
+
+After changing an agent, verify what the runtime actually grants instead of
+trusting the configuration:
+
+```pwsh
+copilot -p "Output only a JSON array of the tools you can call." --agent <file-name-without-.agent.md> -s
+```
+
 ## Bounded Workflow
 
 1. Start with a concrete behavior and its nearest owning code. Use a Scout only

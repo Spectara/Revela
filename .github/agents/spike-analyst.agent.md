@@ -1,7 +1,7 @@
 ---
 name: Spike Analyst
 description: "Interactive analysis partner for new feature ideas. Use BEFORE deciding whether to build something. Sharpens the problem, weighs trade-offs, maps codebase impact, compares prior art in other static site generators, and produces a structured spike report. Read-only — does NOT write code; hands off to Revela Dev when (and IF) implementation is approved."
-tools: [read, search, web, todo, microsoftdocs/mcp/*]
+tools: [read, search, web, todo, microsoftdocs/mcp/*, grep, glob, web_fetch, web_search]
 handoffs:
   - label: Implement (Revela Dev)
     agent: Revela Dev

@@ -2,7 +2,7 @@
 name: Revela Worker MAI
 description: "Focused Revela implementation worker using MAI Code 1.1. Use for: one bounded code, test, documentation, or agent-definition change with explicit allowed files, preserved boundaries, and one exact focused acceptance check."
 model: "MAI Code 1.1"
-tools: [read, search, edit, execute]
+tools: [read, search, edit, execute, grep, glob]
 agents: []
 user-invocable: false
 disable-model-invocation: false
