@@ -85,6 +85,11 @@ An image is regenerated completely when its source file changes (size or
 modification time), when the theme's resize mode changes, or when a Revela
 update changes how images are encoded.
 
+Large libraries can take a while, especially the first time or after such an
+update. If a run is interrupted (Ctrl+C, a closed terminal or a restart), just
+start it again: Revela saves its progress as it goes and continues with the
+photos that weren't finished yet.
+
 ### Adding a New Format
 
 ```bash

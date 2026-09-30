@@ -41,6 +41,12 @@ internal sealed partial class ImageService(
     /// <summary>Image output directory within output folder</summary>
     private const string ImageDirectory = "images";
 
+    /// <summary>Save the manifest after this many finished images during a run.</summary>
+    private const int CheckpointEveryImages = 25;
+
+    /// <summary>Save the manifest at least this often during a run.</summary>
+    private static readonly TimeSpan CheckpointInterval = TimeSpan.FromSeconds(30);
+
     /// <summary>Gets full path to source directory (supports hot-reload)</summary>
     private string SourcePath => pathResolver.SourcePath;
 
@@ -57,6 +63,10 @@ internal sealed partial class ImageService(
         CancellationToken cancellationToken = default)
     {
         var stopwatch = Stopwatch.StartNew();
+
+        // Set once encoding starts: from then on, completed images are worth persisting
+        // even if the run fails or is cancelled.
+        var processingStarted = false;
 
         try
         {
@@ -280,7 +290,12 @@ internal sealed partial class ImageService(
             var cacheDirectory = Path.Combine(projectEnvironment.Value.Path, ProjectPaths.Cache);
             var totalFilesCreated = 0;
             var totalSizeBytes = 0L;
-            var manifestLock = new Lock();
+
+            // Serializes manifest updates and checkpoint saves. A SemaphoreSlim (not a Lock)
+            // because checkpoints await the manifest save.
+            using var manifestGate = new SemaphoreSlim(1, 1);
+            var imagesSinceCheckpoint = 0;
+            var lastCheckpoint = stopwatch.Elapsed;
 
             // Lock-free shared counters that the encode workers update. A single
             // reporting path turns them into immutable snapshots for the UI — the
@@ -314,6 +329,7 @@ internal sealed partial class ImageService(
 
             ReportProgress();
 
+            processingStarted = true;
             await Parallel.ForEachAsync(
                 imagesToProcess,
                 new ParallelOptions
@@ -394,8 +410,12 @@ internal sealed partial class ImageService(
 
                         ReportProgress();
 
-                        // Thread-safe manifest update - record success, update placeholder if changed
-                        lock (manifestLock)
+                        // Record success, update placeholder if changed, and checkpoint regularly
+                        // so an interrupted run keeps the images it already finished.
+                        // CancellationToken.None: a finished image must be recorded even if the
+                        // run is being cancelled.
+                        await manifestGate.WaitAsync(CancellationToken.None);
+                        try
                         {
                             manifestRepository.SetProcessedFingerprint(manifestKey, fingerprint);
 
@@ -407,6 +427,19 @@ internal sealed partial class ImageService(
                                     Placeholder = image.Placeholder
                                 });
                             }
+
+                            imagesSinceCheckpoint++;
+                            if (imagesSinceCheckpoint >= CheckpointEveryImages
+                                || stopwatch.Elapsed - lastCheckpoint >= CheckpointInterval)
+                            {
+                                await manifestRepository.SaveAsync(CancellationToken.None);
+                                imagesSinceCheckpoint = 0;
+                                lastCheckpoint = stopwatch.Elapsed;
+                            }
+                        }
+                        finally
+                        {
+                            manifestGate.Release();
                         }
                     }
                     finally
@@ -444,17 +477,47 @@ internal sealed partial class ImageService(
         }
         catch (OperationCanceledException)
         {
+            if (processingStarted)
+            {
+                await SaveProgressAfterInterruptionAsync();
+            }
+
             throw;
         }
         catch (Exception ex)
         {
             LogImageProcessingFailed(logger, ex);
+            if (processingStarted)
+            {
+                await SaveProgressAfterInterruptionAsync();
+            }
+
             return new ImageResult
             {
                 Success = false,
                 ErrorMessage = ex.Message,
                 Duration = stopwatch.Elapsed
             };
+        }
+    }
+
+    /// <summary>
+    /// Persists the fingerprints of images finished before a run was interrupted.
+    /// </summary>
+    /// <remarks>
+    /// Parallel.ForEachAsync has awaited all running workers before it throws, so no
+    /// worker touches the manifest concurrently. Best effort: a failed save only costs
+    /// re-encoding those images on the next run.
+    /// </remarks>
+    private async Task SaveProgressAfterInterruptionAsync()
+    {
+        try
+        {
+            await manifestRepository.SaveAsync(CancellationToken.None);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            LogProgressSaveFailed(logger, ex);
         }
     }
 
@@ -598,6 +661,9 @@ internal sealed partial class ImageService(
 
     [LoggerMessage(Level = LogLevel.Error, Message = "Image processing failed")]
     private static partial void LogImageProcessingFailed(ILogger logger, Exception exception);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Could not save image processing progress; finished images will be processed again on the next run")]
+    private static partial void LogProgressSaveFailed(ILogger logger, Exception exception);
 
     #endregion
 }
