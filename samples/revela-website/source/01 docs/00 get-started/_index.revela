@@ -1,4 +1,13 @@
 +++
 title = "Get Started"
-container = true
+template = "docs"
+description = "Three steps from download to your first published portfolio."
 +++
+
+New to Revela? Follow these pages in order. Photographers can stop after the first one and come back later.
+
+<div class="path-grid">
+<a class="path-card" href="first-site/"><span class="path-title">1. Your First Site <span class="arrow">→</span></span><span class="path-desc">Download, add your photos, build, preview and publish. One page, no programming.</span></a>
+<a class="path-card" href="installation/"><span class="path-title">2. Installation <span class="arrow">→</span></span><span class="path-desc">All editions and platforms in detail, updating Revela and fixing first-start warnings.</span></a>
+<a class="path-card" href="user-journey/"><span class="path-title">3. User Journey <span class="arrow">→</span></span><span class="path-desc">The complete workflow: editing photos, adding pages, statistics, favicons and rebuilding.</span></a>
+</div>

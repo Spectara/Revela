@@ -1,42 +1,54 @@
 +++
 title = "Home"
 template = "home"
-description = "Reveal your stories through beautiful portfolios that load fast, with no quality trade-offs."
+description = "Revela turns a folder of photos into a fast, beautiful portfolio website. Free, and no programming needed."
 filter = "contains(sourcePath, '_images/home/')"
 photo_viewer = "lightbox"
 +++
 
 <nav class="cta">
-  <a href="docs/get-started/installation/">Get Started</a>
-  <a href="https://github.com/Spectara/Revela">View on GitHub</a>
+  <a href="pages/downloads/">Download</a>
+  <a href="docs/get-started/first-site/">Getting started</a>
 </nav>
+
+**Put your photos in folders, run Revela, and get a finished website** that you can publish anywhere. Runs on Windows, macOS and Linux.
 
 [[gallery]]
 
 ## Why Revela?
 
-**Built for photographers.** While other static site generators are designed for blogs and documentation, Revela focuses on what matters most: **showcasing your images beautifully**.
-
-**Single binary, zero dependencies.** No Node.js, no ImageMagick, no package managers. Just download, unzip, and run on Windows, macOS, and Linux.
+**Built for photographers.** Other website builders are made for blogs and online shops. Revela focuses on one thing: **showing your photos beautifully**.
 
 <div class="features-grid">
 
-### ⚡ Blazing Fast
-NetVips image processing runs 3-5× faster than ImageMagick, and smart change detection only regenerates what actually changed.
+### 📁 Your folders are your website
+Each folder of photos becomes a gallery. Add, change or remove photos and build again; Revela only redoes what changed.
 
-### 🖼️ Modern Formats
-Automatic AVIF, WebP, and JPEG generation. Responsive `<picture>` elements and LQIP placeholders, with no JavaScript needed.
+### ⚡ Fast for every visitor
+Revela prepares each photo in several sizes and modern formats, so phones and big screens both get the smallest file that still looks perfect.
 
-### 🎨 Beautiful Themes
-Minimalist gallery themes that put your photos front and center. Dark mode, theme overrides, and customizable variables.
+### 🎨 Beautiful out of the box
+A clean, minimal theme that puts your photos first, with dark mode. Change colors and layout whenever you like.
 
-### 🔌 Extensible
-NuGet-based plugin system: OneDrive sync, EXIF statistics, Gzip/Brotli compression, local dev server, and more.
+### 🌍 Publish anywhere
+The result is plain website files. Host them for free on GitHub Pages, Netlify or Cloudflare Pages, or on any web space.
+
+### 📦 One download, nothing else
+No installer, no account, no subscription, no database. Unzip and start.
 
 </div>
 
 ## Noticeably faster
 
-**Your images load in 0.2 seconds, not 3.** No loading spinner, no bounce. And because Revela produces perfectly optimized, static code, Google ranks you higher and every visitor sees your work instantly.
+**Your images load in 0.2 seconds, not 3.** No loading spinner, no bounce. And because Revela produces lean, static pages, search engines rank you higher and every visitor sees your work instantly.
 
 > **Proof:** [photo.kirk.one](https://photo.kirk.one) scores **100 / 100 / 100 / 100** on Google Lighthouse (Performance · Accessibility · Best Practices · SEO) — First Contentful Paint 0.2 s, zero layout shift.
+
+<nav class="cta">
+  <a href="pages/downloads/">Download Revela</a>
+  <a href="showcase/">See real sites</a>
+</nav>
+
+## For developers
+
+Under the hood: libvips image processing via NetVips, AVIF/WebP/JPEG output with responsive `<picture>` elements and blurred placeholders (LQIP), Scriban templates, Markdown pages, Gzip/Brotli pre-compression and a NuGet-based plugin system. Extend it, script it in CI, or contribute: see the [developer orientation](docs/developer/).

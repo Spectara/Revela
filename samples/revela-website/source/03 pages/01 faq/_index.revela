@@ -12,15 +12,15 @@ Revela is a static site generator built specifically for photographers. It takes
 
 ### Do I need programming experience?
 
-No. Revela has an interactive setup wizard that guides you through creating your first site. You'll need to be comfortable with basic file management (creating folders, copying files), but no coding is required.
+No. Revela has an interactive setup wizard that guides you through creating your first site. You'll need to be comfortable with basic file management (creating folders, copying files), but no coding is required. [Your First Site](../../docs/get-started/first-site/) walks you through it in six steps.
 
 ### What platforms does Revela run on?
 
-Windows, macOS, and Linux. Native executables are available for all platforms, so there's no runtime installation needed.
+Windows (x64 and ARM64), macOS (Apple Silicon), and Linux (x64 and ARM64). Every [download](../downloads/) is a ready-to-run program, so there's no runtime installation needed.
 
 ### Does Revela require Node.js, Ruby, or Python?
 
-No. Revela is a standalone .NET application. The only requirement is the executable itself (Standalone or Full download) or the .NET 10 SDK (.NET tool installation from the `.nupkg` on [GitHub Releases](https://github.com/Spectara/Revela/releases); Revela is not on NuGet.org yet).
+No. The Standalone and Full [downloads](../downloads/) are self-contained programs with nothing else to install. Only the optional .NET global tool needs the .NET 10 SDK; its `.nupkg` files are attached to each [GitHub Release](https://github.com/Spectara/Revela/releases) (Revela is not on NuGet.org yet).
 
 ---
 
@@ -32,7 +32,7 @@ Revela generates **AVIF**, **WebP**, and **JPEG**: modern formats for maximum co
 
 ### How many sizes are generated per image?
 
-By default, up to 10 sizes: 160, 320, 480, 640, 720, 960, 1280, 1440, 1920, and 2560 pixels wide. Sizes larger than the original are skipped automatically.
+The theme decides. The built-in Lumina theme defines 160, 320, 480, 640, 720, 960, 1280, 1440, 1920, and 2560 pixels. Revela generates every theme size that is smaller than your original, plus one version at the original size for full-screen viewing. Nothing is ever upscaled.
 
 ### How fast is image processing?
 
@@ -48,7 +48,7 @@ By default, EXIF data is **stripped** from generated images (for privacy and fil
 
 ### Can I customize the built-in theme?
 
-Yes. Place files in your project's `themes/Lumina/` folder to override any template, partial, or asset from the built-in theme. Only the files you change need to live in your project, and everything else comes from the theme package. See [Theme Customization](../../docs/guide/themes/) for details.
+Yes. Place files in your project's `themes/Lumina/` folder to override any template, partial, or asset from the built-in theme. Only the files you change need to live in your project, and everything else comes from the built-in theme. `revela theme extract --file <path>` copies a single theme file there for you. See [Theme Customization](../../docs/guide/themes/) for details.
 
 ### Can I create my own theme from scratch?
 
@@ -56,9 +56,23 @@ Yes. There are three approaches, depending on how far you want to go:
 
 1. **Customize an existing theme.** Place override files in your project's `themes/Lumina/` folder. Only the files you change are needed, and everything else comes from the base theme. This is how [revela.website](../../showcase/) is built. See [Theme Customization](../../docs/guide/themes/).
 
-2. **Create a theme from scratch.** Put your Scriban templates directly in `themes/MyTheme/` in your project folder and set `"name": "MyTheme"` in `project.json`. No NuGet package needed, since Revela loads themes from the local folder first.
+2. **Create a theme from scratch.** Create `themes/MyTheme/` in your project folder with at least these files:
 
-3. **Distribute as a NuGet package.** To share themes with others, package your theme as a NuGet package with `PackageType=RevelaTheme`. Users install it with `revela theme install`.
+   - `theme.json`: the theme manifest. It is required; without it Revela ignores the folder. The smallest version is `{ "name": "MyTheme", "photoViewers": ["none"], "defaultPhotoViewer": "none" }`.
+   - `Layout.revela`: the page layout (a Scriban template).
+   - `Partials/ContentImage.revela`: how images inside Markdown text are rendered.
+   - `Configuration/images.json`: the image sizes to generate, for example `{ "sizes": [640, 1280, 1920] }`.
+
+   Then select the theme in `project.json`:
+
+   ```json
+   {
+     "theme": { "name": "MyTheme" }
+   }
+   ```
+
+   No package is needed, since Revela loads local themes first. `revela check` helps you spot missing pieces.
+3. **Share it as a package.** Package your theme as a `.nupkg` with `PackageType=RevelaTheme`. Others add the folder or feed that hosts it (`revela config feed add`) and install it with `revela theme install`.
 
 ---
 
@@ -74,7 +88,7 @@ It depends on your images and quality settings. A portfolio with 50 photos at de
 
 ### Can I use a CDN for images?
 
-Yes. Configure `assetsBasePath` in `project.json` to point to your CDN URL. Revela will generate HTML that references images from the CDN instead of relative paths.
+Yes. Set `project.assetsBasePath` in `project.json` to your CDN URL. Revela will generate HTML that references images from the CDN instead of relative paths.
 
 ---
 
@@ -104,4 +118,4 @@ Plugins are distributed as NuGet packages (`.nupkg`) attached to each [GitHub Re
 
 ### Can I write my own plugin?
 
-Yes. Reference the `Spectara.Revela.Sdk` package (download `Spectara.Revela.Sdk.<version>.nupkg` from [GitHub Releases](https://github.com/Spectara/Revela/releases); it is not on NuGet.org yet) and implement the `IPlugin` interface. See the [Plugin Development Guide](https://github.com/Spectara/Revela/blob/main/docs/plugin-development.md).
+Yes. Reference the `Spectara.Revela.Sdk` package (download `Spectara.Revela.Sdk.<version>.nupkg` from [GitHub Releases](https://github.com/Spectara/Revela/releases); it is not on NuGet.org yet) and implement the `IPlugin` interface. See the [Plugin Development Guide](https://github.com/Spectara/Revela/blob/main/docs/plugin-development.md) and the [developer orientation](../../docs/developer/).

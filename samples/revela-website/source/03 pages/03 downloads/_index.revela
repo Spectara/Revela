@@ -1,26 +1,34 @@
 +++
 title = "Downloads"
 template = "page"
+pinned = true
 description = "Download Revela for Windows, macOS, or Linux: Standalone, Full, or .NET global tool."
 +++
 
-Revela ships in three editions. **Standalone** covers what most people need; pick another only if you have a specific reason.
+Revela comes in two ready-to-run editions. Neither needs an installer or any other software:
+
+- **Standalone:** one program with the theme and all plugins built in. The right choice for almost everyone.
+- **Full:** the same program plus every plugin and theme as separate packages, so you can add, remove or bring your own.
+
+Not sure which Windows version you need? Most PCs are **x64**; choose **ARM64** only for Windows on ARM laptops (for example Snapdragon-based Copilot+ PCs). Downloads for Intel-based Macs are not available.
 
 ---
 
 ## Standalone <small>(recommended)</small>
 
-A single executable with the default theme and all built-in plugins (compression, dev server, OneDrive sync, EXIF statistics, calendar) baked in. No .NET SDK, no plugin downloads, no internet connection required after the initial download.
+A single executable with the default theme and all built-in plugins (compression, preview server, OneDrive sync, EXIF statistics, calendar) baked in. No .NET SDK, no plugin downloads, no internet connection required after the initial download.
 
 **Pick this if:** you just want to publish a photography portfolio.
 
 <nav class="cta">
   <a href="__DOWNLOAD_URL_WIN_X64_STANDALONE__">Windows x64 (.zip)</a>
+  <a href="__DOWNLOAD_URL_WIN_ARM64_STANDALONE__">Windows ARM64 (.zip)</a>
   <a href="__DOWNLOAD_URL_OSX_ARM64_STANDALONE__">macOS Apple Silicon (.tar.gz)</a>
   <a href="__DOWNLOAD_URL_LINUX_X64_STANDALONE__">Linux x64 (.tar.gz)</a>
+  <a href="__DOWNLOAD_URL_LINUX_ARM64_STANDALONE__">Linux ARM64 (.tar.gz)</a>
 </nav>
 
-<p><small>Other architectures (Linux ARM64, Windows ARM64) are available on the <a href="https://github.com/Spectara/Revela/releases">GitHub Releases</a> page.</small></p>
+<p><small>Downloaded? Continue with <a href="../../docs/get-started/first-site/">Your First Site</a>.</small></p>
 
 ---
 
@@ -32,14 +40,15 @@ The modular edition: the `revela` host executable plus a `packages/` folder that
 
 <nav class="cta">
   <a href="__DOWNLOAD_URL_WIN_X64_FULL__">Windows x64 (.zip)</a>
+  <a href="__DOWNLOAD_URL_WIN_ARM64_FULL__">Windows ARM64 (.zip)</a>
   <a href="__DOWNLOAD_URL_OSX_ARM64_FULL__">macOS Apple Silicon (.tar.gz)</a>
   <a href="__DOWNLOAD_URL_LINUX_X64_FULL__">Linux x64 (.tar.gz)</a>
+  <a href="__DOWNLOAD_URL_LINUX_ARM64_FULL__">Linux ARM64 (.tar.gz)</a>
 </nav>
 
-<p><small><a href="https://github.com/Spectara/Revela/releases">All Full downloads →</a></small></p>
+<p><small><a href="https://github.com/Spectara/Revela/releases">All releases on GitHub →</a></small></p>
 
 ---
-
 ## .NET Global Tool <small>(for developers)</small>
 
 If you already have the [.NET 10 SDK](https://dotnet.microsoft.com/download) installed, you can install Revela as a global tool. Revela is **not on NuGet.org yet**: download `Spectara.Revela.<version>.nupkg` (plus the plugin and theme `.nupkg` files you need) from [GitHub Releases](https://github.com/Spectara/Revela/releases) into a folder, then install from there:
@@ -69,6 +78,4 @@ dotnet tool update -g Spectara.Revela --version <version> --add-source ./revela-
 | Custom plugins | ❌ | ✅ | ✅ |
 | Updates | manual download | manual download | `dotnet tool update` from downloaded packages |
 
-When in doubt: **Standalone**.
-
-For the full installation walkthrough, including first run, project layout, and the setup wizard, see the [Installation guide](../../docs/get-started/installation/).
+When in doubt: **Standalone**, then follow [Your First Site](../../docs/get-started/first-site/). The [Installation guide](../../docs/get-started/installation/) covers every edition in detail, including updates and first-start warnings.

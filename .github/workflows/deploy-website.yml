@@ -106,14 +106,18 @@ jobs:
           # Standalone (recommended — homepage + downloads page)
           for f in "${FILES[@]}"; do
             sed -i "s|__DOWNLOAD_URL_WIN_X64_STANDALONE__|${BASE_URL}/revela-win-x64-standalone.zip|g" "$f"
+            sed -i "s|__DOWNLOAD_URL_WIN_ARM64_STANDALONE__|${BASE_URL}/revela-win-arm64-standalone.zip|g" "$f"
             sed -i "s|__DOWNLOAD_URL_OSX_ARM64_STANDALONE__|${BASE_URL}/revela-osx-arm64-standalone.tar.gz|g" "$f"
             sed -i "s|__DOWNLOAD_URL_LINUX_X64_STANDALONE__|${BASE_URL}/revela-linux-x64-standalone.tar.gz|g" "$f"
+            sed -i "s|__DOWNLOAD_URL_LINUX_ARM64_STANDALONE__|${BASE_URL}/revela-linux-arm64-standalone.tar.gz|g" "$f"
           done
 
           # Full (modular — downloads page only)
           sed -i "s|__DOWNLOAD_URL_WIN_X64_FULL__|${BASE_URL}/revela-win-x64-full.zip|g" "samples/revela-website/source/03 pages/03 downloads/_index.revela"
+          sed -i "s|__DOWNLOAD_URL_WIN_ARM64_FULL__|${BASE_URL}/revela-win-arm64-full.zip|g" "samples/revela-website/source/03 pages/03 downloads/_index.revela"
           sed -i "s|__DOWNLOAD_URL_OSX_ARM64_FULL__|${BASE_URL}/revela-osx-arm64-full.tar.gz|g" "samples/revela-website/source/03 pages/03 downloads/_index.revela"
           sed -i "s|__DOWNLOAD_URL_LINUX_X64_FULL__|${BASE_URL}/revela-linux-x64-full.tar.gz|g" "samples/revela-website/source/03 pages/03 downloads/_index.revela"
+          sed -i "s|__DOWNLOAD_URL_LINUX_ARM64_FULL__|${BASE_URL}/revela-linux-arm64-full.tar.gz|g" "samples/revela-website/source/03 pages/03 downloads/_index.revela"
 
           echo "✅ Updated download links to version ${VERSION}"
 

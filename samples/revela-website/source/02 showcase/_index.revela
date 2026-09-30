@@ -2,9 +2,20 @@
 title = "Showcase"
 template = "docs"
 pinned = true
+description = "Real websites built with Revela, from photography portfolios to holiday apartments to documentation sites."
 +++
 
-Real websites built with Revela, from photography portfolios to holiday apartments to documentation sites. Each showcase explores how Revela's features are used in practice.
+Real websites built with Revela, from photography portfolios to holiday apartments to documentation sites. Each showcase explains which features the site uses and how it's built.
+
+<div class="path-grid">
+
+[![A photography portfolio built with Revela and the Lumina theme](screenshots/example-website.jpg){.browser-mockup}<span class="path-title">photo.kirk.one <span class="arrow">→</span></span><span class="path-desc">A photography portfolio with landscapes, events and street photography, using the default Lumina theme.</span>](photo-kirk-one/){.path-card}
+
+[![Holiday apartment website built with Revela and a custom Panorama theme](screenshots/alpenstrasse.jpg){.browser-mockup}<span class="path-title">Alpenstrasse 8 <span class="arrow">→</span></span><span class="path-desc">A holiday apartment site with a custom theme and a live availability calendar.</span>](alpenstrasse/){.path-card}
+
+[<span class="path-title">revela.website <span class="arrow">→</span></span><span class="path-desc">The site you're reading: documentation built with Revela and a customized Lumina theme.</span>](revela-website/){.path-card}
+
+</div>
 
 ## What You'll Find
 
@@ -13,7 +24,7 @@ Each showcase page covers:
 - **What the site does**: its purpose and who it's for
 - **Which features are used**: themes, plugins, configuration
 - **How it's built**: template structure, custom CSS, and the interesting details
-- **Source code**: links to GitHub repos so you can explore the code yourself
+- **Source code**: links to GitHub repos where available, so you can explore the code yourself
 
 ## Submit Your Site
 
