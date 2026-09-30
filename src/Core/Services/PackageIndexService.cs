@@ -7,14 +7,28 @@ namespace Spectara.Revela.Core.Services;
 /// <summary>
 /// Service for loading and searching the local package index.
 /// </summary>
-public sealed class PackageIndexService(TimeProvider timeProvider) : IPackageIndexService
+public sealed class PackageIndexService : IPackageIndexService
 {
+    private readonly TimeProvider timeProvider;
     private PackageIndex? cachedIndex;
     private DateTime? lastLoadTime;
 
+    /// <summary>
+    /// Creates a service that reads the index from the global config directory.
+    /// </summary>
+    public PackageIndexService(TimeProvider timeProvider)
+        : this(timeProvider, Path.Combine(ConfigPathResolver.ConfigDirectory, "packages.json"))
+    {
+    }
+
+    internal PackageIndexService(TimeProvider timeProvider, string indexFilePath)
+    {
+        this.timeProvider = timeProvider;
+        IndexFilePath = indexFilePath;
+    }
+
     /// <inheritdoc />
-    public string IndexFilePath { get; } = Path.Combine(
-        ConfigPathResolver.ConfigDirectory, "packages.json");
+    public string IndexFilePath { get; }
 
     /// <inheritdoc />
     public async Task<PackageIndex?> LoadIndexAsync(CancellationToken cancellationToken = default)
@@ -56,6 +70,7 @@ public sealed class PackageIndexService(TimeProvider timeProvider) : IPackageInd
         }
 
         return index.Packages.FirstOrDefault(p =>
+            PackageTrustPolicy.IsOfficialPackageId(p.Id) &&
             p.Id.Equals(packageId, StringComparison.OrdinalIgnoreCase));
     }
 
@@ -70,7 +85,9 @@ public sealed class PackageIndexService(TimeProvider timeProvider) : IPackageInd
             return [];
         }
 
-        return [.. index.Packages.Where(p => p.Types.Contains(packageType, StringComparer.OrdinalIgnoreCase))];
+        return [.. index.Packages.Where(p =>
+            PackageTrustPolicy.IsOfficialPackageId(p.Id) &&
+            p.Types.Contains(packageType, StringComparer.OrdinalIgnoreCase))];
     }
 
     /// <inheritdoc />

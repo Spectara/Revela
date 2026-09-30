@@ -257,7 +257,7 @@ internal sealed partial class ThemeInstallCommand(
         var isRequired = installedThemes.Count == 0;
 
         var choices = availableThemes
-            .Select(t => $"{t.Id} [dim]({t.Version})[/] - {InstallCommandHelper.Truncate(t.Description, 40)}")
+            .Select(InstallCommandHelper.FormatPackageChoice)
             .ToList();
 
         var prompt = new MultiSelectionPrompt<string>()

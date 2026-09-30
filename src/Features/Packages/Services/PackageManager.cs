@@ -5,6 +5,7 @@ using NuGet.Versioning;
 using Spectara.Revela.Core.Logging;
 using Spectara.Revela.Core.Services;
 using Spectara.Revela.Sdk.Abstractions;
+using Spectara.Revela.Sdk.Hosting;
 
 using NuGetPackageSource = NuGet.Configuration.PackageSource;
 
@@ -23,7 +24,8 @@ public sealed class PackageManager(
     NupkgExtractor extractor,
     PluginProjectService projectService,
     ILogger<PackageManager> logger,
-    INuGetSourceManager nugetSourceManager) : IPackageInstaller
+    INuGetSourceManager nugetSourceManager,
+    IBuildInfo buildInfo) : IPackageInstaller
 {
     /// <summary>
     /// Gets the bundled packages directory (next to executable).
@@ -46,9 +48,12 @@ public sealed class PackageManager(
     /// <summary>
     /// Installs a plugin from a package ID, local .nupkg file, or URL.
     /// </summary>
-    /// <param name="packageId">Package ID (e.g., 'Spectara.Revela.Plugins.Statistics'), local .nupkg path, or HTTP(S) URL.</param>
-    /// <param name="version">Specific version to install (only for package IDs).</param>
-    /// <param name="source">Custom NuGet source URL (null = use default nuget.org).</param>
+    /// <param name="packageId">Package ID (e.g., 'Spectara.Revela.Plugins.Statistics'), local .nupkg path, or HTTPS URL.</param>
+    /// <param name="version">
+    /// Specific version to install (only for package IDs). When null, empty or <c>"latest"</c>, the highest stable version is chosen;
+    /// prerelease versions are only considered when the running host is itself a prerelease build.
+    /// </param>
+    /// <param name="source">Custom NuGet source (https:// URL, local folder, or configured feed name; null = all configured sources).</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>True if installation succeeded.</returns>
     public async Task<bool> InstallAsync(
@@ -74,6 +79,12 @@ public sealed class PackageManager(
             {
                 if (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps)
                 {
+                    if (!PackageTrustPolicy.IsAllowedSource(uri))
+                    {
+                        logger.InsecureSourceRejected(packageId);
+                        return false;
+                    }
+
                     // URL to .nupkg
                     logger.InstallingFromUrl(packageId);
                     return await InstallFromUrlAsync(uri, targetDir, cancellationToken);
@@ -102,6 +113,12 @@ public sealed class PackageManager(
 
             // Fall through: treat as NuGet package ID
             {
+                if (!PackageIdRules.IsValid(packageId))
+                {
+                    logger.InvalidPackageId(packageId);
+                    return false;
+                }
+
                 // Package ID from NuGet feed
                 logger.InstallingPlugin(packageId);
 
@@ -109,6 +126,12 @@ public sealed class PackageManager(
                 {
                     // Explicit source - try named source or treat as URL
                     var sourceUrl = await ResolveSourceAsync(source, cancellationToken);
+                    if (!PackageTrustPolicy.IsAllowedSource(sourceUrl))
+                    {
+                        logger.InsecureSourceRejected(sourceUrl);
+                        return false;
+                    }
+
                     var sourceRepo = Repository.Factory.GetCoreV3(new NuGetPackageSource(sourceUrl));
                     var identity = await ExtractFromNuGetAsync(packageId, version, sourceRepo, targetDir, cancellationToken);
                     return identity is not null && await RegisterExtractedPluginAsync(identity, cancellationToken);
@@ -255,13 +278,19 @@ public sealed class PackageManager(
         return results;
     }
 
-    private async Task<PackageIdentity?> ExtractFromNuGetAsync(
+    internal async Task<PackageIdentity?> ExtractFromNuGetAsync(
         string packageId,
         string? version,
         SourceRepository sourceRepo,
         string targetDir,
         CancellationToken cancellationToken)
     {
+        if (!TryResolveRequestedVersion(version, out var requestedVersion))
+        {
+            logger.InvalidVersion(packageId, version!);
+            return null;
+        }
+
         var resource = await sourceRepo.GetResourceAsync<FindPackageByIdResource>(cancellationToken);
         if (resource is null)
         {
@@ -277,9 +306,10 @@ public sealed class PackageManager(
             NuGet.Common.NullLogger.Instance,
             cancellationToken);
 
-        var targetVersion = version is not null
-            ? NuGetVersion.Parse(version)
-            : versions.MaxBy(v => v);
+        // Prereleases are only picked implicitly when the host itself is a prerelease.
+        var includePrerelease = IsPrereleaseHost();
+        var targetVersion = requestedVersion
+            ?? versions.Where(v => includePrerelease || !v.IsPrerelease).MaxBy(v => v);
 
         if (targetVersion is null)
         {
@@ -385,6 +415,12 @@ public sealed class PackageManager(
         foreach (var source in sources)
         {
             cancellationToken.ThrowIfCancellationRequested();
+            if (!PackageTrustPolicy.IsAllowedSource(source.Url))
+            {
+                logger.InsecureSourceSkipped(source.Name, source.Url);
+                continue;
+            }
+
             var identity = (PackageIdentity?)null;
             try
             {
@@ -436,5 +472,29 @@ public sealed class PackageManager(
 
         logger.SourceNotFoundTreatingAsUrl(source);
         return source;
+    }
+
+    private bool IsPrereleaseHost() =>
+        NuGetVersion.TryParse(buildInfo.Version, out var hostVersion) && hostVersion.IsPrerelease;
+
+    /// <summary>
+    /// Parses a requested version. Missing, empty and <c>"latest"</c> (persisted by install
+    /// commands) mean "no explicit version" and yield <see langword="null"/>.
+    /// </summary>
+    private static bool TryResolveRequestedVersion(string? version, out NuGetVersion? requested)
+    {
+        requested = null;
+        if (string.IsNullOrWhiteSpace(version) || version.Equals("latest", StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        if (!NuGetVersion.TryParse(version, out var parsed))
+        {
+            return false;
+        }
+
+        requested = parsed;
+        return true;
     }
 }

@@ -32,6 +32,7 @@ internal sealed partial class Wizard(
 
     private const string FullInstallation = "full";
     private const string CustomInstallation = "custom";
+    private const string CorePluginPrefix = PackageTrustPolicy.OfficialPackagePrefix + "Plugins.Core.";
 
     /// <summary>
     /// Runs the setup wizard.
@@ -60,8 +61,11 @@ internal sealed partial class Wizard(
         }
 
         // Get available packages directly from package index (no plugin dependency)
-        var availableThemes = await packageIndexService.SearchByTypeAsync("RevelaTheme", cancellationToken);
-        var availablePlugins = await packageIndexService.SearchByTypeAsync("RevelaPlugin", cancellationToken);
+        // Core plugins are always installed — not user-selectable
+        var (availableThemes, corePlugins, optionalPlugins) = PartitionPackages(
+            await packageIndexService.SearchByTypeAsync("RevelaTheme", cancellationToken),
+            await packageIndexService.SearchByTypeAsync("RevelaPlugin", cancellationToken));
+        IReadOnlyList<PackageIndexEntry> availablePlugins = [.. corePlugins, .. optionalPlugins];
 
         var totalAvailable = availableThemes.Count + availablePlugins.Count;
 
@@ -74,14 +78,6 @@ internal sealed partial class Wizard(
 
         // Show setup mode selection
         var mode = PromptSetupMode(availableThemes.Count, availablePlugins.Count);
-
-        // Core plugins are always installed — not user-selectable
-        var corePlugins = availablePlugins
-            .Where(p => p.Id.Contains(".Plugins.Core.", StringComparison.Ordinal))
-            .ToList();
-        var optionalPlugins = availablePlugins
-            .Where(p => !p.Id.Contains(".Plugins.Core.", StringComparison.Ordinal))
-            .ToList();
 
         InstallResult themeResult;
         InstallResult pluginResult;
@@ -203,6 +199,49 @@ internal sealed partial class Wizard(
         return selection.Contains("Full", StringComparison.Ordinal) ? FullInstallation : CustomInstallation;
     }
 
+    /// <summary>
+    /// Splits index entries into the themes and plugins the wizard may offer.
+    /// </summary>
+    /// <remarks>
+    /// Only official <c>Spectara.Revela.*</c> packages are offered, even if the index
+    /// service returns more; core plugins (auto-installed) must be official core plugins.
+    /// </remarks>
+    internal static (IReadOnlyList<PackageIndexEntry> Themes, IReadOnlyList<PackageIndexEntry> CorePlugins, IReadOnlyList<PackageIndexEntry> OptionalPlugins) PartitionPackages(
+        IReadOnlyList<PackageIndexEntry> themes,
+        IReadOnlyList<PackageIndexEntry> plugins)
+    {
+        var officialThemes = themes
+            .Where(p => PackageTrustPolicy.IsOfficialPackageId(p.Id))
+            .ToList();
+        var officialPlugins = plugins
+            .Where(p => PackageTrustPolicy.IsOfficialPackageId(p.Id))
+            .ToList();
+        var corePlugins = officialPlugins
+            .Where(p => p.Id.StartsWith(CorePluginPrefix, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+        var optionalPlugins = officialPlugins
+            .Where(p => !p.Id.StartsWith(CorePluginPrefix, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+
+        return (officialThemes, corePlugins, optionalPlugins);
+    }
+
+    /// <summary>
+    /// Builds the Spectre markup label shown for a package in the custom selection prompt.
+    /// </summary>
+    internal static string FormatChoiceLabel(PackageIndexEntry package, bool isTheme)
+    {
+        var description = Markup.Escape(Truncate(package.Description, 40));
+        if (isTheme)
+        {
+            var themeName = Markup.Escape(package.Id.Replace("Spectara.Revela.Themes.", "", StringComparison.Ordinal));
+            return $"[cyan]Theme:[/] {themeName} [dim]- {description}[/]";
+        }
+
+        var pluginName = Markup.Escape(package.Id.Replace("Spectara.Revela.Plugins.", "", StringComparison.Ordinal));
+        return $"[blue]Plugin:[/] {pluginName} [dim]- {description}[/]";
+    }
+
     private static (List<string> Themes, List<string> Plugins) PromptCustomSelection(
         IReadOnlyList<PackageIndexEntry> availableThemes,
         IReadOnlyList<PackageIndexEntry> availablePlugins)
@@ -216,16 +255,14 @@ internal sealed partial class Wizard(
 
         foreach (var theme in availableThemes)
         {
-            var shortName = theme.Id.Replace("Spectara.Revela.Themes.", "", StringComparison.Ordinal);
-            var choice = $"{theme.Id}|[cyan]Theme:[/] {shortName} [dim]- {Truncate(theme.Description, 40)}[/]";
+            var choice = $"{theme.Id}|{FormatChoiceLabel(theme, isTheme: true)}";
             themeChoices.Add(choice);
             allChoices.Add(choice);
         }
 
         foreach (var plugin in availablePlugins)
         {
-            var shortName = plugin.Id.Replace("Spectara.Revela.Plugins.", "", StringComparison.Ordinal);
-            var choice = $"{plugin.Id}|[blue]Plugin:[/] {shortName} [dim]- {Truncate(plugin.Description, 40)}[/]";
+            var choice = $"{plugin.Id}|{FormatChoiceLabel(plugin, isTheme: false)}";
             pluginChoices.Add(choice);
             allChoices.Add(choice);
         }
@@ -236,13 +273,13 @@ internal sealed partial class Wizard(
             .Required(false)
             .HighlightStyle(new Style(Color.Cyan1))
             .InstructionsText("[dim](↑↓ navigate, Space toggle, a=all, Enter confirm)[/]")
-            .AddChoices([.. themeChoices.Select(c => c.Split('|')[1])])
-            .AddChoices([.. pluginChoices.Select(c => c.Split('|')[1])]);
+            .AddChoices([.. themeChoices.Select(c => c.Split('|', 2)[1])])
+            .AddChoices([.. pluginChoices.Select(c => c.Split('|', 2)[1])]);
 
         // Pre-select all items
         foreach (var choice in allChoices)
         {
-            prompt.Select(choice.Split('|')[1]);
+            prompt.Select(choice.Split('|', 2)[1]);
         }
 
         var selections = AnsiConsole.Prompt(prompt);
@@ -254,7 +291,7 @@ internal sealed partial class Wizard(
         foreach (var selection in selections)
         {
             // Find the original choice to get the package ID
-            var originalChoice = allChoices.FirstOrDefault(c => c.Split('|')[1] == selection);
+            var originalChoice = allChoices.FirstOrDefault(c => c.Split('|', 2)[1] == selection);
             if (originalChoice is not null)
             {
                 var packageId = originalChoice.Split('|')[0];
@@ -397,7 +434,7 @@ internal sealed partial class Wizard(
         return success ? 0 : 1;
     }
 
-    private static void ShowCorePluginsInfo(List<PackageIndexEntry> corePlugins)
+    private static void ShowCorePluginsInfo(IReadOnlyList<PackageIndexEntry> corePlugins)
     {
         AnsiConsole.WriteLine();
 
@@ -478,7 +515,7 @@ internal sealed partial class Wizard(
                 foreach (var theme in themeResult.Installed)
                 {
                     var shortName = theme.Replace("Spectara.Revela.Themes.", "", StringComparison.Ordinal);
-                    lines.Add($"  [cyan]•[/] {shortName}");
+                    lines.Add($"  [cyan]•[/] {Markup.Escape(shortName)}");
                 }
 
                 lines.Add("");
@@ -490,7 +527,7 @@ internal sealed partial class Wizard(
                 foreach (var plugin in pluginResult.Installed)
                 {
                     var shortName = plugin.Replace("Spectara.Revela.Plugins.", "", StringComparison.Ordinal);
-                    lines.Add($"  [cyan]•[/] {shortName}");
+                    lines.Add($"  [cyan]•[/] {Markup.Escape(shortName)}");
                 }
 
                 lines.Add("");

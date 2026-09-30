@@ -1,3 +1,4 @@
+using Spectara.Revela.Core.Models;
 using Spectara.Revela.Sdk;
 
 using Spectre.Console;
@@ -22,6 +23,20 @@ public static class InstallCommandHelper
     /// <returns>Truncated text or original if shorter than maxLength.</returns>
     public static string Truncate(string text, int maxLength) =>
         text.Length <= maxLength ? text : text[..(maxLength - 3)] + "...";
+
+    /// <summary>
+    /// Builds the Spectre markup choice text for a package index entry.
+    /// </summary>
+    /// <remarks>
+    /// The package ID is the first space-delimited token so callers can map a selection back to it.
+    /// </remarks>
+    /// <param name="package">The package index entry.</param>
+    /// <returns>Markup-safe choice text.</returns>
+    public static string FormatPackageChoice(PackageIndexEntry package)
+    {
+        ArgumentNullException.ThrowIfNull(package);
+        return $"{Markup.Escape(package.Id)} [dim]({Markup.Escape(package.Version)})[/] - {Markup.Escape(Truncate(package.Description, 40))}";
+    }
 
     /// <summary>
     /// Shows the restart required notice after installing packages.

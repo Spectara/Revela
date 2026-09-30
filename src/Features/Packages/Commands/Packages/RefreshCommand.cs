@@ -68,11 +68,11 @@ internal sealed partial class RefreshCommand(
 
                     foreach (var (source, location) in sources)
                     {
-                        task.Description = $"[cyan]Scanning[/] {source.Name}";
+                        task.Description = $"[cyan]Scanning[/] {Markup.Escape(source.Name)}";
 
                         try
                         {
-                            var sourcePackages = await ScanSourceAsync(source, location, httpClient, cancellationToken);
+                            var sourcePackages = await ScanSourceAsync(source, location, httpClient, logger, cancellationToken);
                             packages.AddRange(sourcePackages);
                             LogScannedSource(logger, source.Name, sourcePackages.Count);
                         }
@@ -117,10 +117,11 @@ internal sealed partial class RefreshCommand(
         }
     }
 
-    private static async Task<List<PackageIndexEntry>> ScanSourceAsync(
+    internal static async Task<List<PackageIndexEntry>> ScanSourceAsync(
         NuGetSource source,
         string location,
         HttpClient httpClient,
+        ILogger logger,
         CancellationToken cancellationToken)
     {
         var packages = new List<PackageIndexEntry>();
@@ -146,6 +147,14 @@ internal sealed partial class RefreshCommand(
                                 await using (stream)
                                 {
                                     var reader = new NuspecReader(stream);
+
+                                    // Explicitly configured local/bundled folders are trusted by prefix only
+                                    var packageId = reader.GetId();
+                                    if (!PackageTrustPolicy.IsOfficialPackageId(packageId))
+                                    {
+                                        LogIgnoredForeignPackage(logger, packageId, source.Name);
+                                        continue;
+                                    }
 
                                     // Read real PackageTypes from .nuspec
                                     var packageTypes = reader.GetPackageTypes()
@@ -180,6 +189,12 @@ internal sealed partial class RefreshCommand(
         }
         else
         {
+            if (!PackageTrustPolicy.IsAllowedSource(source.Url))
+            {
+                LogInsecureSourceSkipped(logger, source.Name, source.Url);
+                return packages;
+            }
+
             // Remote NuGet feed - use Search API directly via HTTP
             // This gives us access to packageTypes (SearchQueryService/3.5.0)
             // See: https://learn.microsoft.com/en-us/nuget/api/search-query-service-resource
@@ -208,6 +223,20 @@ internal sealed partial class RefreshCommand(
                 {
                     foreach (var result in response.Data)
                     {
+                        // Full-text search matches foreign IDs too; only the reserved,
+                        // nuget.org-verified Spectara.Revela.* namespace is indexed.
+                        if (!PackageTrustPolicy.IsOfficialPackageId(result.Id))
+                        {
+                            LogIgnoredForeignPackage(logger, result.Id ?? "", source.Name);
+                            continue;
+                        }
+
+                        if (!result.Verified)
+                        {
+                            LogIgnoredUnverifiedPackage(logger, result.Id!, source.Name);
+                            continue;
+                        }
+
                         // Extract packageTypes from response
                         var packageTypes = result.PackageTypes?
                             .Where(pt => !string.IsNullOrEmpty(pt.Name))
@@ -273,6 +302,15 @@ internal sealed partial class RefreshCommand(
 
     [LoggerMessage(Level = LogLevel.Error, Message = "Failed to refresh package index")]
     private static partial void LogRefreshFailed(ILogger logger, Exception exception);
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Ignoring package {PackageId} from source {SourceName}: not an official Spectara.Revela.* package")]
+    private static partial void LogIgnoredForeignPackage(ILogger logger, string packageId, string sourceName);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Ignoring package {PackageId} from source {SourceName}: remote search result is not marked as verified")]
+    private static partial void LogIgnoredUnverifiedPackage(ILogger logger, string packageId, string sourceName);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Skipping insecure package source {SourceName} ({SourceUrl}): use https:// or a local folder")]
+    private static partial void LogInsecureSourceSkipped(ILogger logger, string sourceName, string sourceUrl);
 }
 
 // DTOs for NuGet V3 API
@@ -326,6 +364,12 @@ internal sealed class NuGetSearchResult
 
     [JsonPropertyName("authors")]
     public string? Authors { get; init; }
+
+    /// <summary>
+    /// Whether the package ID is covered by a verified reserved prefix (nuget.org).
+    /// </summary>
+    [JsonPropertyName("verified")]
+    public bool Verified { get; init; }
 
     [JsonPropertyName("packageTypes")]
     public List<NuGetPackageType>? PackageTypes { get; init; }
