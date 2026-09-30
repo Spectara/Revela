@@ -3,10 +3,13 @@ title = "CLI Reference"
 template = "docs"
 +++
 
-Complete reference of all Revela commands. Commands are organized by function.
+Every Revela command, grouped the way `revela --help` and the interactive menu show them: **Build**, **Content**, **Setup**, **Addons** and **Info**.
 
-> **Tip:** Run any command with `--help` for detailed usage information.
-> Run `revela` without arguments for the interactive menu.
+> **Tip:** Add `--help` to any command for its options. Run `revela` without arguments for the interactive menu.
+
+Revela always works on the **current folder** as the project. `cd` into your project folder before running commands.
+
+> **Editions:** Commands marked **Full only** exist in the Full edition and the .NET global tool, but not in Standalone. Standalone has every official plugin and theme built in, so it doesn't need package management. See [Installation](../../get-started/installation/).
 
 ---
 
@@ -14,194 +17,242 @@ Complete reference of all Revela commands. Commands are organized by function.
 
 | Option | Alias | Description |
 |--------|-------|-------------|
-| `--project` | `-p` | Project name or path (standalone mode) |
 | `--version` | | Show version information |
-| `--help` | `-h` | Show help |
+| `--help` | `-h`, `-?` | Show help |
 
 ---
 
-## Generate (Build)
+## Build
+
+### generate
 
 Build your site from source content.
 
 ```bash
-revela generate all                  # Full pipeline: scan → statistics → pages → images
-revela generate scan                 # Scan content and update manifest
-revela generate pages                # Render HTML pages from manifest
-revela generate images               # Process images from manifest
-revela generate images --force       # Force regenerate all images (ignore cache)
+revela generate all                  # Full pipeline
+revela generate scan                 # Scan content and update the manifest
+revela generate calendar             # Build calendar data from .ics files (Calendar plugin)
+revela generate statistics           # Build EXIF statistics (Statistics plugin)
+revela generate pages                # Render HTML pages from the manifest
+revela generate images               # Process images from the manifest
+revela generate images --force       # Re-encode all images, ignoring what's already done (-f)
+revela generate compress             # Pre-compress output with Gzip and Brotli (Compress plugin)
 ```
 
-### Plugin Generate Steps
+`generate all` runs **scan → calendar → statistics → pages → images**. The calendar and statistics steps come from plugins, so the list can be shorter in the Full edition if those plugins aren't installed. Compression is **not** part of `generate all`; run `generate compress` afterwards.
+
+If a step fails, the pipeline stops and suggests `revela check`.
+
+### serve
+
+Preview the generated site on a local HTTP server (Serve plugin).
 
 ```bash
-revela generate statistics           # Generate EXIF statistics (Statistics plugin)
-revela generate compress             # Pre-compress static files (Compress plugin)
+revela serve                         # http://localhost:8080
+revela serve --port 3000             # Custom port (-p)
+revela serve --verbose               # Log every request, not only 404s (-v)
 ```
 
-> **Note:** `generate all` runs `scan → statistics → pages → images`. Compression is **not** included, so run `generate compress` separately.
-
----
-
-## Clean
+### clean
 
 Remove generated files.
 
 ```bash
-revela clean all                     # Clean everything
-revela clean output                  # Clean output directory
-revela clean images                  # Clean orphaned/unused image files
-revela clean images --dry-run        # Preview what would be deleted
-revela clean cache                   # Clean manifest cache
-```
-
-### Plugin Clean Steps
-
-```bash
-revela clean statistics              # Clean statistics cache
-revela clean compress                # Clean compressed files (.gz, .br)
+revela clean all                     # output → images → cache → statistics → calendar → compress
+revela clean output                  # Delete the output directory
+revela clean images                  # Delete unused image files (orphaned, old sizes/formats)
+revela clean images --dry-run        # Preview only (-d)
+revela clean cache                   # Delete the .cache directory (manifest)
+revela clean statistics              # Delete statistics JSON from the cache (Statistics plugin)
+revela clean calendar                # Delete calendar JSON from the cache (Calendar plugin)
+revela clean compress                # Delete .gz/.br files from the output (Compress plugin)
 ```
 
 ---
 
-## Create
+## Content
 
-Create new pages in your project.
+### create page
 
-```bash
-revela create page gallery vacation --title "Summer Vacation"
-revela create page text about --title "About Me"
-revela create page statistics stats --title "Photo Statistics"
-```
-
-### Options
-
-| Option | Alias | Description |
-|--------|-------|-------------|
-| `--title` | `-t` | Page title |
-| `--description` | `-d` | Description (for SEO) |
-| `--sort` | `-s` | Sort override (gallery only) |
-| `--hidden` | | Hide from navigation |
-| `--slug` | | Custom URL segment |
-
-Run without the path argument for **interactive mode**:
+Create an `_index.revela` file from a template. The path is relative to `source/`.
 
 ```bash
-revela create page gallery           # Interactive prompts for all options
+revela create page gallery "01 Galleries/Vacation" --title "Summer Vacation"
+revela create page text "02 About" --title "About Me"
+revela create page statistics "03 Statistics" --title "Photo Statistics"
+revela create page calendar "04 Availability" --source bookings.ics --months 12
 ```
+
+| Option | Alias | Page types | Description |
+|--------|-------|------------|-------------|
+| `--title` | `-t` | all | Page title |
+| `--description` | `-d` | all | Description (for SEO) |
+| `--sort` | `-s` | gallery | Sort override, e.g. `dateTaken:asc` |
+| `--hidden` | | gallery, text | Hide from navigation |
+| `--slug` | | gallery, text | Custom URL segment |
+| `--source` | `-s` | calendar | `.ics` file, relative to the page folder (required) |
+| `--months` | `-m` | calendar | Number of months to show (default `12`) |
+
+Leave out the path for **interactive mode**:
+
+```bash
+revela create page gallery
+```
+
+`statistics` and `calendar` come from the Statistics and Calendar plugins. See [Creating Pages](../../guide/pages/).
+
+### source
+
+Download content from external sources.
+
+```bash
+revela source onedrive sync                  # Download new and changed files from OneDrive
+revela source onedrive sync --dry-run        # Preview only (-n)
+revela source onedrive sync --show-files     # List every affected file
+revela source onedrive sync --share-url URL  # Use this share link instead of the configured one (-u)
+revela source onedrive sync --force          # Re-download all files (-f)
+revela source onedrive sync --clean          # Also delete local files that are gone from OneDrive (asks first)
+revela source onedrive sync --clean-all      # Delete ALL local files not in OneDrive, ignoring filters
+
+revela source calendar fetch                 # Download all configured iCal feeds into source/
+revela source calendar fetch --name bookings # Only one feed (-n)
+```
+
+See [OneDrive Source](../../plugins/source-onedrive/) and [Calendar Feeds](../../plugins/source-calendar/).
 
 ---
 
-## Config
+## Setup
 
-Configure project settings interactively or directly.
+### config
 
-```bash
-revela config                        # Interactive configuration menu
-revela config project                # Project name and URL
-revela config theme                  # Select site theme
-revela config site                   # Site metadata (title, author, description)
-revela config paths                  # Source and output directories
-revela config image                  # Image formats and quality
-revela config sorting                # Gallery and image sort order
-revela config feed                   # NuGet package sources
-revela config locations              # Show configuration file paths
-```
-
-### Plugin Config Commands
+Change settings interactively (`revela config`) or directly with options. Most commands open prompts when you run them without options.
 
 ```bash
-revela config serve                  # Dev server settings (Serve plugin)
-revela config statistics             # Statistics settings (Statistics plugin)
-revela config onedrive               # OneDrive share URL (OneDrive plugin)
+revela config                                # Interactive configuration menu
+
+# Project
+revela config project --name "My Portfolio" --url https://example.com   # -n, -u
+revela config theme --set Lumina             # Select the theme (-s)
+revela config theme --viewer lightbox        # Photo viewer: page, lightbox or none
+revela config theme --clear-viewer           # Back to the theme's default viewer
+revela config paths --source "D:\Photos" --output dist                  # -s, -o
+revela config image --formats avif:80,webp:85,jpg:90                    # -f; quality 0 disables a format
+revela config site                           # Site metadata in site.json (interactive only)
+revela config sorting --galleries asc --field dateTaken --direction desc --fallback filename   # -g, -f, -d
+
+# Source
+revela config onedrive --share-url URL       # OneDrive share link (-u)
+
+# Addons
+revela config serve --port 3000 --verbose    # -p, -v
+revela config statistics --max-entries 20 --sort-by-count false          # -m, -s
+
+# Other
+revela config locations                      # Show where configuration files and plugins live
 ```
+
+Package feeds (**Full only**):
+
+```bash
+revela config feed list                                           # List feeds
+revela config feed add releases /absolute/path/to/revela-packages # Add a folder or NuGet v3 URL
+revela config feed remove releases                                # Remove a feed (asks when no name is given)
+```
+
+See [Configuration](../../guide/configuration/).
+
+### check
+
+Check your project for problems without generating anything. Start here whenever something doesn't work.
+
+```bash
+revela check                         # Run every check (same as check all)
+revela check all
+revela check config                  # Configuration files and values
+revela check structure               # Project structure
+revela check theme                   # Theme
+revela check content                 # Content and front matter
+revela check slugs                   # Gallery URLs
+revela check calendar                # Calendar .ics files (Calendar plugin)
+```
+
+Each problem comes with the file and a suggested fix. The command exits with `2` when it finds a problem that would stop the build. Hints and warnings don't change the exit code.
 
 ---
 
-## Theme
+## Addons
 
-Manage themes.
-
-```bash
-revela theme list                    # List installed themes
-revela theme install Lumina          # Install a theme
-revela theme uninstall Lumina        # Remove a theme
-revela theme files                   # List files in active theme
-revela theme files --theme Lumina    # List files in specific theme
-revela theme extract Lumina          # Extract theme for customization
-revela theme extract Lumina --file Body/Gallery.revela  # Extract specific file
-revela theme extract Lumina --force  # Overwrite existing files
-```
-
----
-
-## Plugin
-
-Manage plugins.
+### theme
 
 ```bash
-revela plugin list                   # List installed plugins
-revela plugin install Statistics     # Install by short name
-revela plugin install Spectara.Revela.Plugins.Statistics  # Install by full ID
-revela plugin install Statistics --version 1.2.0         # Specific version
-revela plugin install Statistics --allow-project-feeds   # Use project.json feeds without asking
-revela plugin uninstall Statistics   # Remove a plugin
+revela theme list                    # Available themes
+revela theme list --online           # Also list themes from NuGet feeds (-o)
+revela theme files                   # Files of the active theme and where they come from
+revela theme files --theme Lumina    # A specific theme (-t)
+revela theme extract Lumina          # Copy the whole theme to themes/Lumina/
+revela theme extract Lumina MyTheme  # Copy it under another name
+revela theme extract Lumina --file Assets/main.css   # Only a file or folder (-F)
+revela theme extract Lumina --force  # Overwrite without asking (-f)
 ```
 
-Install commands record the exact installed version under `dependencies.packages` (global `revela.json`, and `project.json` inside a project). Uninstall removes the entry again. `revela theme install` accepts the same `--version`, `--source` and `--allow-project-feeds` options.
-
----
-
-## Serve (Plugin)
-
-Start a local development server.
+Install and remove themes (**Full only**):
 
 ```bash
-revela serve                         # Start server (default port 8080)
-revela serve --port 3000             # Custom port
-revela serve --verbose               # Log all HTTP requests
+revela theme install Lumina.Statistics       # By short name or full package ID
+revela theme install --all                   # All available themes (-a)
+revela theme uninstall Lumina.Statistics     # Asks for confirmation; --yes (-y) skips it
 ```
 
----
+`theme install` accepts `--version` (`-v`), `--source` (`-s`, feed name or URL) and `--allow-project-feeds`, like `plugin install`.
 
-## Source (Plugin)
-
-Sync content from external sources.
+### plugin (Full only)
 
 ```bash
-revela source onedrive sync          # Sync from OneDrive shared folder
-revela source onedrive sync --dry-run    # Preview changes
-revela source onedrive sync --force      # Force re-download all files
-revela source onedrive sync --clean      # Remove files no longer in OneDrive
-revela source onedrive sync --clean-all  # Remove ALL local files and re-download
+revela plugin list                           # Installed plugins
+revela plugin install Statistics             # By short name
+revela plugin install Spectara.Revela.Plugins.Statistics   # By package ID
+revela plugin install Statistics --version 1.2.0           # Specific version (-v)
+revela plugin install MyPlugin --source https://my-feed.example.com/v3/index.json   # Feed name or URL (-s)
+revela plugin install --all                  # All available plugins (-a)
+revela plugin install Statistics --allow-project-feeds     # Use project.json feeds without asking
+revela plugin uninstall Statistics           # Asks for confirmation; --yes (-y) skips it
 ```
 
----
+Install commands record the exact installed version under `dependencies.packages` in the global `revela.json` and, inside a project, in `project.json`. Uninstall removes the entry again.
 
-## Restore
+### packages (Full only)
 
-Restore project dependencies (themes and plugins) from configuration.
+```bash
+revela packages refresh              # Update the local package index from all feeds
+revela packages search               # List all packages in the index
+revela packages search calendar      # Search by name
+revela packages search --type theme  # Only themes or only plugins (-t theme|plugin)
+```
+
+### restore (Full only)
+
+Install the themes and plugins a project needs.
 
 ```bash
 revela restore                       # Install missing dependencies
-revela restore --check               # Check only (don't install)
+revela restore --check               # Only report what's missing
 revela restore --allow-project-feeds # Use feeds declared in project.json without asking
 ```
 
-Useful after cloning a project or updating Revela. Installs every package listed in `dependencies.packages` that is not installed yet, plus the package that provides `theme.name`, and pins the exact installed versions in `project.json`. Feeds that are declared only in `project.json` need confirmation; non-interactive runs stop unless you pass `--allow-project-feeds`. See [Dependencies and Feeds](../../guide/configuration/#dependencies-and-feeds).
+Useful after cloning a project or updating Revela. Installs every package in `dependencies.packages` that isn't installed yet, plus the package that provides `theme.name`, and pins the exact versions in `project.json`. Feeds declared only in `project.json` need your confirmation; non-interactive runs stop unless you pass `--allow-project-feeds`. See [Dependencies and Feeds](../../guide/configuration/#dependencies-and-feeds).
 
 ---
 
-## Projects (Standalone Only)
-
-Manage multiple projects. Only available in standalone/portable mode.
+## Info
 
 ```bash
-revela projects list                 # List all projects
-revela projects create               # Create a new project (interactive)
-revela projects delete               # Delete a project (with confirmation)
-revela projects delete MyPhotos      # Delete specific project
+revela info                          # Version, build type, plugin/theme counts, active theme
+revela info plugins                  # Loaded plugins
+revela info themes                   # Available themes and extensions
 ```
+
+`revela --version` prints just the version line. The Standalone edition identifies itself there as an "embedded build", because its plugins and themes are embedded in the executable.
 
 ---
 
@@ -210,66 +261,48 @@ revela projects delete MyPhotos      # Delete specific project
 | Code | Meaning |
 |------|---------|
 | `0` | Success |
-| `1` | Error, check the output |
-| `2` | Restart required: the setup wizard installed packages, so re-run your command |
+| `1` | Error or cancelled; see the output |
+| `2` | Configuration problem (invalid JSON or setting), or `revela check` found a blocking problem |
 
-Handy for scripting: treat any non-zero code as a failure, and re-run once on `2`.
+Handy for scripting: treat any non-zero code as a failure. Running `revela` without arguments outside a terminal (for example in CI) exits with `1`; always pass a command there.
 
 ---
 
 ## Automation & CI
 
-Revela runs headless wherever the .NET tool is available. Generated output lands in `output/`.
-
-> Revela packages are **not on NuGet.org** yet. The examples below download the tool and the packages your project needs from a [GitHub Release](https://github.com/Spectara/Revela/releases) into a local folder and install from there. Pin the version for reproducible builds.
-
-### GitHub Actions
+Use the **Standalone** edition in CI: it's one download with everything built in, and no .NET SDK is needed. This is how [revela.website](https://revela.website) itself is built:
 
 ```yaml
 name: Build site
 on:
   push:
-    paths: ['source/**']
+    branches: [main]
+
 jobs:
   build:
     runs-on: ubuntu-latest
-    env:
-      REVELA_VERSION: 0.0.1-beta.21
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: '10.0.x'
-      - name: Download Revela packages
+
+      - name: Download Revela (Standalone, newest release)
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release download "v$REVELA_VERSION" --repo Spectara/Revela --pattern '*.nupkg' --dir "$RUNNER_TEMP/revela-packages"
-      - run: dotnet tool install -g Spectara.Revela --version "$REVELA_VERSION" --add-source "$RUNNER_TEMP/revela-packages"
-      - run: revela config feed add releases "$RUNNER_TEMP/revela-packages"
-      - run: revela restore        # install themes/plugins the project needs
-      - run: revela generate all
+        run: |
+          TAG=$(gh release list --repo Spectara/Revela --limit 1 --json tagName --jq '.[0].tagName')
+          gh release download "$TAG" --repo Spectara/Revela --pattern "revela-linux-x64-standalone.tar.gz"
+          tar -xzf revela-linux-x64-standalone.tar.gz
+          chmod +x ./revela
+
+      - name: Generate site
+        run: ./revela generate all
+
       - uses: actions/upload-artifact@v4
         with:
           name: website
           path: output/
 ```
 
-### Docker
-
-Download the release's `.nupkg` files into `revela-packages/` next to your project first:
-
-```dockerfile
-FROM mcr.microsoft.com/dotnet/sdk:10.0
-ARG REVELA_VERSION=0.0.1-beta.21
-COPY revela-packages/ /revela-packages/
-RUN dotnet tool install -g Spectara.Revela --version ${REVELA_VERSION} --add-source /revela-packages
-ENV PATH="${PATH}:/root/.dotnet/tools"
-RUN revela config feed add releases /revela-packages
-WORKDIR /project
-COPY . .
-RUN revela restore && revela generate all
-# Site is in /project/output/
-```
+To pin a version for reproducible builds, replace `$TAG` with a tag such as `v0.0.1-beta.21`. The [Deployment guide](../../guide/deployment/) shows how to publish the result to GitHub Pages and other hosts.
 
 ---
 
@@ -291,4 +324,4 @@ Revela is built on System.CommandLine, so your shell can tab-complete commands, 
    dotnet-suggest register --command-path /path/to/revela
    ```
 
-Restart your shell. Now `revela gen<Tab>` expands to `generate`, and `revela generate <Tab>` lists `all`, `scan`, `pages`, `images`, and the installed plugin steps.
+Restart your shell. Now `revela gen<Tab>` expands to `generate`, and `revela generate <Tab>` lists `all`, `scan`, `pages`, `images`, and the plugin steps.

@@ -32,7 +32,7 @@ EXIF analysis showing camera and lens usage statistics.
 | `statistics` | EXIF statistics | statistics/overview |
 | `calendar` | Availability calendar | calendar/page |
 
-> `statistics` and `calendar` are **plugin-provided** page types. They appear only when the Statistics or Calendar plugin is installed.
+> `statistics` and `calendar` are **plugin-provided** page types. In the Standalone edition they are always available. In the Full edition they appear once the Statistics or Calendar plugin is installed (`revela plugin install Statistics`, `revela plugin install Calendar`).
 
 ---
 
@@ -133,7 +133,7 @@ revela create page statistics stats --title "Photo Statistics" \
     --description "Analysis of my camera and lens usage"
 ```
 
-> **Note:** The Statistics plugin must be installed (`revela plugin install Statistics`).
+> **Note:** Statistics pages need the Statistics plugin and the Lumina.Statistics theme extension. Both are built into the Standalone edition. In the Full edition, install them with `revela plugin install Statistics` and `revela theme install Lumina.Statistics`. See [Statistics](../../plugins/statistics/).
 
 ### Generated File
 
@@ -147,6 +147,34 @@ template = "statistics/overview"
 
 ---
 
+## Calendar Pages
+
+Show an availability calendar (booked and free days) from an iCal `.ics` file:
+
+```bash
+revela create page calendar availability --title "Availability" \
+    --source bookings.ics --months 12
+```
+
+`--source` (required) is the `.ics` file, relative to the page folder. Put the file there yourself, or let the [Calendar Feeds](../../plugins/source-calendar/) plugin download it.
+
+### Front Matter
+
+```toml
++++
+title = "Availability"
+template = "calendar/page"
+calendar.source = "bookings.ics"
+calendar.months = 12
++++
+```
+
+> **Known issue:** `revela create page calendar` currently writes the `template` line **below** the `calendar.*` lines. Revela then doesn't recognize the page as a calendar page. Move `template = "calendar/page"` up, directly below `title`, as shown above.
+
+See [Availability Calendar](../../plugins/calendar/) for modes, labels and languages.
+
+---
+
 ## Interactive Mode
 
 All page types support an interactive mode. Start without the path argument:
@@ -155,6 +183,7 @@ All page types support an interactive mode. Start without the path argument:
 revela create page gallery
 revela create page text
 revela create page statistics
+revela create page calendar
 ```
 
 The wizard guides you through all options:
@@ -252,6 +281,12 @@ source/
 ```
 
 Use number prefixes for desired sorting. Numbers are stripped from the display title.
+
+---
+
+## Troubleshooting
+
+If a page doesn't show up or the build fails, run `revela check`. It reports invalid front matter (with file and line), gallery folders that would end up at the same URL, and missing calendar files, each with a suggested fix.
 
 ---
 

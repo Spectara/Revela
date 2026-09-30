@@ -23,18 +23,28 @@ Preview your generated site locally during development.
 
 Sync photos from OneDrive shared folders directly into your project.
 
+### 📅 Availability Calendar
+
+Show booked and free days from an iCal file as a month calendar.
+
+### 🔗 Calendar Feeds
+
+Download iCal feeds from your booking tool into your project before each build.
+
 </div>
 
 ## Official Plugins
 
 | Plugin | Package | Description |
 |--------|---------|-------------|
-| **Compression** | `Spectara.Revela.Plugins.Compress` | Pre-compress static files with Gzip and Brotli |
-| **Statistics** | `Spectara.Revela.Plugins.Statistics` | Generate EXIF statistics pages |
-| **Serve** | `Spectara.Revela.Plugins.Serve` | Local development server |
-| **OneDrive** | `Spectara.Revela.Plugins.Source.OneDrive` | Download photos from OneDrive shared folders |
-| **Calendar** | `Spectara.Revela.Plugins.Calendar` | Availability calendar (booked/free days) from iCal `.ics` files |
-| **Source.Calendar** | `Spectara.Revela.Plugins.Source.Calendar` | Download iCal feeds (e.g. booking exports) into the source folder |
+| [**Compression**](compression/) | `Spectara.Revela.Plugins.Compress` | Pre-compress static files with Gzip and Brotli |
+| [**Statistics**](statistics/) | `Spectara.Revela.Plugins.Statistics` | Generate EXIF statistics pages |
+| [**Serve**](serve/) | `Spectara.Revela.Plugins.Serve` | Local development server |
+| [**OneDrive**](source-onedrive/) | `Spectara.Revela.Plugins.Source.OneDrive` | Download photos from OneDrive shared folders |
+| [**Calendar**](calendar/) | `Spectara.Revela.Plugins.Calendar` | Availability calendar (booked/free days) from iCal `.ics` files |
+| [**Source.Calendar**](source-calendar/) | `Spectara.Revela.Plugins.Source.Calendar` | Download iCal feeds (e.g. booking exports) into the source folder |
+
+The Lumina theme has two matching extensions: **Lumina.Statistics** and **Lumina.Calendar**.
 
 All `Spectara.Revela.*` release packages come with a `SHA256SUMS` file and Sigstore (cosign) signatures on the GitHub Release.
 
@@ -42,9 +52,11 @@ All `Spectara.Revela.*` release packages come with a `SHA256SUMS` file and Sigst
 
 How you get plugins depends on your edition:
 
-- **Standalone**: all official plugins are built in. There is nothing to install, and the `plugin` commands are not available.
+- **Standalone**: all six official plugins and both theme extensions are built in. There is nothing to install, and the `plugin`, `packages` and `restore` commands are not available. `revela info plugins` lists what's loaded.
 - **Full**: the `packages/` folder next to the executable is used as a local feed (`bundled`), so the commands below work offline.
 - **.NET tool**: there is no bundled folder. Download the `.nupkg` files from the release into a folder and register it once with `revela config feed add releases /absolute/path/to/folder`.
+
+The rest of this page applies to the **Full** edition and the .NET tool.
 
 ```bash
 # Install by short name
@@ -67,11 +79,15 @@ revela plugin list
 
 # Remove a plugin
 revela plugin uninstall Statistics
+
+# Refresh the package index and search it
+revela packages refresh
+revela packages search --type plugin
 ```
 
 ## Configuration
 
-Plugins store their settings in `project.json` below `plugins`, each under its own key (`serve`, `statistics`, `oneDrive`, `calendarFeeds`):
+Plugins store their settings in `project.json` below `plugins`, each under its own key (`serve`, `statistics`, `oneDrive`, `calendarFeeds`). This works the same in every edition:
 
 ```json
 {
@@ -95,7 +111,7 @@ SPECTARA__REVELA__PLUGINS__SERVE__PORT=3000
 
 ## Community Plugins
 
-Revela supports third-party plugins from any NuGet source. Community plugins use their own package prefix:
+In the Full edition and the .NET tool, Revela supports third-party plugins from any NuGet source. Community plugins use their own package prefix:
 
 ```bash
 # Install from custom NuGet feed
@@ -106,7 +122,7 @@ revela plugin install MyPlugin --source https://my-feed.example.com/v3/index.jso
 
 ## Restoring Dependencies
 
-After cloning a project, updating Revela, or sharing your project with someone else, use `restore` to install all required themes and plugins:
+In the Full edition and the .NET tool, use `restore` after cloning a project, updating Revela, or sharing your project with someone else, to install all required themes and plugins:
 
 ```bash
 # Install missing themes and plugins

@@ -126,31 +126,35 @@ A full extraction of Lumina looks like this:
 your-project/
 ├── themes/
 │   └── Lumina/
-│       ├── theme.json             # Local theme manifest (name, version, templates)
+│       ├── manifest.json          # Theme description (name, version, templates)
 │       ├── Layout.revela          # Main page layout
 │       ├── Assets/                # Static assets (copied as-is)
 │       │   ├── main.css
 │       │   └── main.js
 │       ├── Body/                  # Page body templates
 │       │   ├── Gallery.revela
-│       │   └── Page.revela
+│       │   ├── Page.revela
+│       │   └── Photo.revela
 │       ├── Configuration/
 │       │   ├── images.json        # Responsive image sizes
-│       │   └── site.json
+│       │   └── site.json          # Template for your site.json
 │       └── Partials/
 │           ├── ContentImage.revela  # Required: renders ![alt](path)
 │           ├── Image.revela
 │           ├── Navigation.revela
 │           ├── HeaderNavigation.revela
-│           └── Favicon.revela
+│           ├── Favicon.revela
+│           └── ...
 ├── source/
 ├── project.json
 └── site.json
 ```
 
-> Bundled themes ship a read-only `manifest.json`; an extracted local theme uses a `theme.json` you can edit.
+Templates, partials and assets override the installed theme file by file: extract a file and it becomes yours, while everything you don't extract keeps loading from the installed theme.
 
-Overrides work at the file level: extract a file and it becomes yours, while everything you don't extract keeps loading from the installed theme.
+`Configuration/images.json` (the image sizes) is different: Revela reads it only from a complete local theme, which is a folder with a `theme.json` file.
+
+> **Known issue:** `revela theme extract` currently saves the theme description as `manifest.json`. To use your own image sizes, extract the whole theme, rename `themes/Lumina/manifest.json` to `theme.json`, and then edit `themes/Lumina/Configuration/images.json`. Extracting only `Configuration/images.json` puts it in a `theme/configuration/` folder that is not used for generating.
 
 ---
 
@@ -225,15 +229,15 @@ Extensions (such as Statistics or Calendar for Lumina) add views and partials. W
 ```
 themes/Lumina/
 ├── Assets/
-│   └── Statistics/statistics.css
+│   └── statistics/main.css
 └── Partials/
-    └── Statistics/Statistics.revela
+    └── Statistics/Bar-chart.revela
 ```
 
-Extract a single extension file the same way:
+Extract a single extension file the same way, using the path shown by `revela theme files`:
 
 ```bash
-revela theme extract Lumina --file Partials/Statistics/Statistics.revela
+revela theme extract Lumina --file partials/statistics/bar-chart.revela
 ```
 
 ---

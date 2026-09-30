@@ -13,12 +13,15 @@ Revela creates a fully self-contained static website:
 output/
 ├── index.html          # Your homepage
 ├── sitemap.xml         # Search engine sitemap (if baseUrl configured)
-├── gallery/
-│   └── index.html      # A gallery page
-├── images/             # Optimized images (AVIF, WebP, JPG)
-├── css/                # Stylesheets
-└── js/                 # JavaScript (if any)
+├── galleries/
+│   └── vacation/
+│       └── index.html  # A gallery page
+├── photo/              # One page per photo (Lumina's default photo viewer)
+├── images/             # Optimized images: images/<gallery>/<photo>/<width>.<format>
+└── _assets/            # Theme CSS, JavaScript and fonts
 ```
+
+Files from `source/_static/` (for example `CNAME`, `robots.txt` or favicons) are copied to the output root as well.
 
 **No server-side processing needed!** Any web host that serves HTML files will work.
 
@@ -36,7 +39,9 @@ add `baseUrl` to your `project.json`:
 ```
 
 The sitemap includes all pages with `<lastmod>` dates. Without `baseUrl`, the sitemap is
-skipped (sitemaps require absolute URLs).
+skipped (sitemaps require absolute URLs). You can also set it with `revela config project --url https://your-domain.com`.
+
+> **Before you publish:** run `revela check`. It catches configuration and content problems and reminds you when `baseUrl` is missing.
 
 ## Hosting Options
 
@@ -62,7 +67,7 @@ This is how [revela.website](https://revela.website) is hosted. Free, fast, and 
 
 ### Automated with GitHub Actions
 
-For automatic deployment when you push changes, create `.github/workflows/deploy.yml`:
+To build and deploy automatically on every push, commit your project (`project.json`, `site.json`, `source/`, and `themes/` if you have one) to the repository. Then set **Settings → Pages → Source** to **GitHub Actions** and create `.github/workflows/deploy.yml`:
 
 ```yaml
 name: Deploy Portfolio
@@ -70,29 +75,49 @@ name: Deploy Portfolio
 on:
   push:
     branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
 
 jobs:
-  deploy:
+  build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Download Revela
+      - name: Download Revela (Standalone, newest release)
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          curl -L https://github.com/Spectara/Revela/releases/latest/download/revela-linux-x64-full.tar.gz | tar xz
+          TAG=$(gh release list --repo Spectara/Revela --limit 1 --json tagName --jq '.[0].tagName')
+          gh release download "$TAG" --repo Spectara/Revela --pattern "revela-linux-x64-standalone.tar.gz"
+          tar -xzf revela-linux-x64-standalone.tar.gz
           chmod +x ./revela
 
       - name: Generate site
         run: ./revela generate all
 
-      - name: Deploy to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v4
+      - uses: actions/upload-pages-artifact@v5
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./output
+          path: output
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v5
 ```
 
-> **Note:** For pre-releases, replace `/latest/download/` with `/download/v0.0.1-beta.12/` (your version).
+The Standalone edition has the theme and all plugins built in, so nothing else needs to be installed. To pin a version for reproducible builds, replace `$TAG` with a release tag such as `v0.0.1-beta.21`.
+
+> **Photos in OneDrive?** Add `./revela source onedrive sync` before `./revela generate all` (see [OneDrive Source](../../plugins/source-onedrive/)).
 
 ## Option 2: Netlify (Drag & Drop)
 
@@ -129,7 +154,12 @@ Fast global CDN with generous free tier:
 1. Push your project to GitHub/GitLab
 2. Go to [pages.cloudflare.com](https://pages.cloudflare.com/)
 3. Connect your repository
-4. Build command: `./revela generate all`
+4. Build command (downloads the newest Standalone release, then builds):
+
+   ```bash
+   TAG=$(curl -s https://api.github.com/repos/Spectara/Revela/releases | grep -m1 '"tag_name"' | cut -d '"' -f4) && curl -L "https://github.com/Spectara/Revela/releases/download/$TAG/revela-linux-x64-standalone.tar.gz" | tar xz && ./revela generate all
+   ```
+
 5. Output directory: `output`
 
 ## Custom Domain

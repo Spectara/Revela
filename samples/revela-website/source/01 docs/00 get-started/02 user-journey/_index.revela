@@ -1,1210 +1,314 @@
 +++
 title = "User Journey"
-description = "The complete lifecycle of a Revela project from the perspective of a new user."
+description = "A guided tour of a Revela project, from an empty folder to a published site and beyond."
 template = "docs"
 +++
 
-This document describes the complete lifecycle of a Revela project from the perspective of a new user.
+This tour follows one project from an empty folder to a published website, and then through the changes you'll make over the following months.
 
-> **Setup:** This guide assumes **Windows** with the **Standalone** version of Revela (no .NET SDK required). Paths use Windows conventions (`D:\Revela\`). For other platforms or the .NET Tool version, see [Installation](../installation).
+> **Setup:** The examples use **Windows** and the **Standalone** edition (see [Installation](../installation/)). Every step works the same on macOS and Linux; only the paths look different.
 >
-> This guide uses the **interactive TUI** (double-click `revela.exe`). All actions can also be performed via CLI commands - see [CLI Reference](../../reference/cli-reference/).
+> You can do everything from the **interactive menu** (run `revela` without arguments) or with **commands**. Both are shown. The menu groups commands under **Build**, **Content**, **Setup**, **Addons** and **Info**. The [CLI Reference](../../reference/cli-reference/) lists every command.
 
-## Phase 1: First Run (Installing Revela)
+## 1. Create Your Project
 
-1. User downloads `revela-win-x64-standalone.zip` from [GitHub Releases](https://github.com/Spectara/Revela/releases)
-2. User extracts to `D:\Revela\`
-3. User double-clicks `revela.exe`
+Revela treats the folder you start it in as your project. Create an empty folder and start Revela there:
 
-**TUI detects fresh installation (no revela.json exists):**
+```powershell
+mkdir D:\Photos\MyPortfolio
+cd D:\Photos\MyPortfolio
+revela
 ```
-   ____                _
-  |  _ \ _____   _____| | __ _
-  | |_) / _ \ \ / / _ \ |/ _` |
-  |  _ <  __/\ V /  __/ | (_| |
-  |_| \_\___| \_/ \___|_|\__,_|
 
-╭─ First Run ──────────────────────────────────╮
-│                                              │
-│  Welcome to Revela!                          │
-│                                              │
-│  This appears to be your first time running  │
-│  Revela. The setup wizard will help you      │
-│  install themes and plugins.                 │
-│                                              │
-╰──────────────────────────────────────────────╯
+Revela finds no `project.json` and offers to create a project:
+
+```
+╭─Create Project───────────────────────────────────────────────╮
+│ No Project Found                                             │
+│                                                              │
+│ This directory (MyPortfolio) doesn't contain a Revela        │
+│ project. Would you like to create one?                       │
+╰──────────────────────────────────────────────────────────────╯
 
 What would you like to do?
-  › Start Setup Wizard
-    Skip (use menu instead)
-    Exit
+> Create New Project
+  Skip (use menu instead)
+  Exit
 ```
 
-User selects "Start Setup Wizard" › Revela Setup starts:
+Choose **Create New Project**. The project wizard asks five things:
+
+1. **Project settings**: a display name (spaces allowed) and, optionally, the URL your site will live at
+2. **Directory paths**: where your photos are (`source`) and where the site goes (`output`)
+3. **Theme**: Lumina
+4. **Image settings**: output formats and quality. The defaults are AVIF 80, WebP 85 and JPG 90.
+5. **Site metadata**: title, author, description, copyright
+
+After that it offers optional steps, for example connecting a [OneDrive folder](../../plugins/source-onedrive/). Skip them for now.
+
+> **Tip:** `source` can point anywhere, for example `D:\OneDrive\Photos\Portfolio`. Revela reads your photos there without copying them. You can change the paths later with `revela config paths`.
+
+Your folder now contains:
 
 ```
-╭─ Setup ──────────────────────────────────────╮
-│                                              │
-│  Welcome to the Revela Setup Wizard!         │
-│                                              │
-│  This wizard will help you install themes    │
-│  and plugins.                                │
-│                                              │
-│  You can re-run this wizard later via:       │
-│  Addons › wizard                             │
-│                                              │
-╰──────────────────────────────────────────────╯
-
-How would you like to set up Revela?
-  › ⭐ Full Installation (recommended)
-       Install all 2 themes and 4 plugins
-    🔧 Custom Installation
-       Choose which packages to install
+D:\Photos\MyPortfolio\
+├── project.json    # Project settings (paths, theme, image formats)
+└── site.json       # Site metadata (title, author, ...)
 ```
 
-User selects "Full Installation" › All themes and plugins are installed.
+## 2. Add Your Photos
 
-**Result:** Revela is now configured with themes and plugins. A `revela.json` file is created next to `revela.exe` containing the global configuration. **Revela closes automatically after installation.**
-
-## Phase 2: Creating a Project
-
-User double-clicks `revela.exe` again. The TUI detects no project in the current directory:
+Create a `source\` folder and copy your photos into it. **Folders become galleries**, and the number prefix sets the order:
 
 ```
-╭─ Create Project ─────────────────────────────╮
-│                                              │
-│  No Project Found                            │
-│                                              │
-│  This directory (Revela) doesn't contain   │
-│  a Revela project. Would you like to create  │
-│  one?                                        │
-│                                              │
-╰──────────────────────────────────────────────╯
-
-What would you like to do?
-  › Create New Project
-    Skip (use menu instead)
-    Exit
-```
-
-User selects "Create New Project" › Folder name prompt:
-
-```
-Folder name: MyPhotos
-✓ Project folder created: MyPhotos
-```
-
-Project Setup Wizard starts:
-
-```
-   ____                _
-  |  _ \ _____   _____| | __ _
-  | |_) / _ \ \ / / _ \ |/ _` |
-  |  _ <  __/\ V /  __/ | (_| |
-  |_| \_\___| \_/ \___|_|\__,_|
-
-╭─ New Project ────────────────────────────────╮
-│                                              │
-│  Create a New Revela Project                 │
-│                                              │
-│  This wizard will help you set up a new      │
-│  photo gallery:                              │
-│    1. Project settings (name, URL)           │
-│    2. Directory paths                        │
-│    3. Select a theme                         │
-│    4. Image settings (formats, sizes)        │
-│    5. Site metadata (title, author)          │
-│                                              │
-│  You can change these settings later via:    │
-│  revela config                               │
-│                                              │
-╰──────────────────────────────────────────────╯
-
-━━━ Step 1/5: Project Settings ━━━
-Configure your project name and base URL.
-
-Project name: My Photography Portfolio
-Base URL: (empty)
-```
-
-```
-━━━ Step 2/5: Directory Paths ━━━
-Configure source and output paths
-
-Current source: source
-  → Resolves to: D:\Revela\projects\MyPhotos\source
-Current output: output
-  → Resolves to: D:\Revela\projects\MyPhotos\output
-
-Source directory: source
-Output directory: output
-
-✓ Paths configured
-```
-
-> **Tip:** You can use an external folder like `D:\OneDrive\Photos` as source - Revela reads directly from there without copying. Change paths anytime via TUI › Config › Paths.
-
-> **Note:** The folder name (`MyPhotos`) is used for the filesystem. The project name (`My Photography Portfolio`) is the display name shown in the UI and can contain spaces.
-
-User completes the wizard steps.
-
-```
-╭─ Complete ───────────────────────────────────╮
-│                                              │
-│  ✓ Project created successfully!             │
-│                                              │
-│  Next steps:                                 │
-│    1. Add images to the source/ folder       │
-│    2. Run revela generate all to build       │
-│    3. View your site in output/              │
-│                                              │
-│  Tip: Create subfolders in source/ to        │
-│  organize galleries                          │
-│                                              │
-╰──────────────────────────────────────────────╯
-```
-
-**Result:**
-```
-D:\Revela\
-├── packages/             (installed themes & plugins)
-├── projects/
-│   └── MyPhotos/         (your project folder)
-│       ├── output/       (empty, for generated site)
-│       ├── source/       (empty, ready for photos)
-│       ├── project.json  (project configuration)
-│       └── site.json     (site metadata)
-├── revela.exe
-└── revela.json           (global configuration)
-```
-
-## Phase 3: Adding Photos
-
-User copies photos into the project's `source\` folder:
-
-```
-D:\Revela\projects\MyPhotos\source\
+D:\Photos\MyPortfolio\source\
 └── 01 Galleries\
-    ├── 2024-Vacation\
+    ├── 2024 Vacation\
     │   ├── beach.jpg
     │   └── sunset.jpg
-    └── 2025-Wedding\
+    └── 2025 Wedding\
+        ├── cake.jpg
         ├── church.jpg
-        ├── party.jpg
-        └── cake.jpg
+        └── party.jpg
 ```
 
-> **Note:** If you configured an external source folder (e.g., `D:\OneDrive\Photos`) in Step 2, your photos are already there - no copying needed.
->
-> Folder structure becomes gallery structure on the website. The `01` prefix controls the navigation order.
->
-> **Categories:** Top-level folders like `01 Galleries` become navigation categories. Subfolders become galleries within that category.
+Top-level folders such as `01 Galleries` become navigation sections, and their subfolders become galleries. Numbers are stripped from titles and URLs, so `2024 Vacation` ends up at `/galleries/2024-vacation/`. See [Source Structure](../../guide/source-structure/) for filter galleries, text pages and more.
 
-## Phase 4: First Build
+## 3. Check and Build
 
-User runs: `revela.exe` (TUI)
+Before your first build, let Revela check the project:
 
-**TUI displays main menu:**
-```
-   ____                _
-  |  _ \ _____   _____| | __ _
-  | |_) / _ \ \ / / _ \ |/ _` |
-  |  _ <  __/\ V /  __/ | (_| |
-  |_| \_\___| \_/ \___|_|\__,_|
-
-╭─ Welcome ────────────────────────────────────╮
-│                                              │
-│  Version 1.0.0                               │
-│  Modern static site generator for            │
-│  photographers                               │
-│                                              │
-│  Project: My Photography Portfolio           │
-│                                              │
-│  Navigate with ↑↓, select with Enter         │
-│                                              │
-╰──────────────────────────────────────────────╯
-
-Generate
-  › Generate all
-    Scan content
-    Generate images
-    Generate pages
-    Generate statistics
-Config
-    ...
+```bash
+revela check
 ```
 
-User selects "Generate all" › Pipeline runs:
+It reports configuration, structure, theme and content problems together with a suggested fix. Hints (such as "no `baseUrl` configured") don't stop the build.
+
+Now build the site: **Build → generate → all** in the menu, or:
+
+```bash
+revela generate all
+```
+
+The pipeline runs five steps:
 
 ```
-Pipeline: scan → statistics → pages → images
+Pipeline: scan → calendar → statistics → pages → images
 
-━━━ Step 1/4: scan ━━━
+━━━ Step 1/5: scan ━━━
 Scan content and update manifest
 
-╭─ Success ────────────────────────────────────╮
-│                                              │
-│  Content scan complete!                      │
-│                                              │
-│  Project:    My Photography Portfolio        │
-│                                              │
-│  Statistics:                                 │
-│    Galleries: 2                              │
-│    Images:    5                              │
-│                                              │
-╰──────────────────────────────────────────────╯
+╭─Success──────────────────────────────────────────╮
+│ Content scan complete!                           │
+│                                                  │
+│ Project:    My Photography Portfolio             │
+│                                                  │
+│ Statistics:                                      │
+│   Galleries:  2                                  │
+│   Images:     5                                  │
+│   Navigation: 4                                  │
+│   Duration:   0.50s                              │
+╰──────────────────────────────────────────────────╯
 
-━━━ Step 2/4: statistics ━━━
-Generate statistics from manifest
+━━━ Step 2/5: calendar ━━━
+Generate availability calendar from iCal data
+(no calendar pages yet: skipped)
 
-╭─ Success ────────────────────────────────────╮
-│  Statistics generated                        │
-╰──────────────────────────────────────────────╯
+━━━ Step 3/5: statistics ━━━
+Generate statistics JSON from EXIF data
+(no statistics pages yet: skipped)
 
-━━━ Step 3/4: pages ━━━
-Render HTML pages from manifest
+━━━ Step 4/5: pages ━━━
+Generate HTML pages from manifest
 
-╭─ Success ────────────────────────────────────╮
-│                                              │
-│  Page rendering complete!                    │
-│                                              │
-│  Project:  My Photography Portfolio          │
-│                                              │
-│  Statistics:                                 │
-│    Pages:    4                               │
-│    Duration: 0.12s                           │
-│                                              │
-╰──────────────────────────────────────────────╯
+╭─Success─────────────────────────────────────╮
+│ Page rendering complete!                    │
+│                                             │
+│ Statistics:                                 │
+│   Pages:    8                               │
+│   Duration: 0.20s                           │
+╰─────────────────────────────────────────────╯
 
-━━━ Step 4/4: images ━━━
+━━━ Step 5/5: images ━━━
 Process images from manifest
 
-  Worker 1 ████████████ 100% beach.jpg (30/30)
-  Worker 2 ████████████ 100% sunset.jpg (30/30)
-  ...
+Encoding photos  ████████████████████  5/5 (100%)  ·  2s elapsed
+⠋ 8 workers busy · avif 5 · webp 5 · jpg 5
 
-╭─ Success ────────────────────────────────────╮
+╭─Success──────────────────────────────────────╮
+│ Image processing complete!                   │
 │                                              │
-│  Image processing complete!                  │
-│                                              │
-│  Project:   My Photography Portfolio         │
-│                                              │
-│  Statistics:                                 │
-│    Processed: 5 images                       │
-│    Files:     150 created                    │
-│    Size:      24.5 MB (generated)            │
-│    Duration:  32.15s                         │
-│                                              │
+│ Statistics:                                  │
+│   Processed: 5 images                        │
+│   Files:     123 created                     │
+│   Size:      2.1 MB (generated)              │
+│   Duration:  2.57s                           │
 ╰──────────────────────────────────────────────╯
 
-✓ Pipeline completed in 32.50s
+✓ Pipeline completed in 3.36s
 ```
 
-**Result:**
+The output is a complete static website:
+
 ```
-D:\Revela\projects\MyPhotos\
-├── .cache\
-│   └── manifest.json    (tracks processed state)
+D:\Photos\MyPortfolio\
+├── .cache\              # Manifest: what was scanned and processed
 ├── output\
+│   ├── index.html
 │   ├── galleries\
-│   │   ├── 2024-vacation\
-│   │   │   └── index.html
-│   │   ├── 2025-wedding\
-│   │   │   └── index.html
-│   │   └── index.html   (category page)
-│   ├── _assets\         (theme CSS, JS, fonts)
+│   │   ├── 2024-vacation\index.html
+│   │   └── 2025-wedding\index.html
+│   ├── photo\           # One page per photo
 │   ├── images\
-│   │   └── galleries\
-│   │       ├── 2024-vacation\
-│   │       │   ├── beach\
-│   │       │   │   ├── 320.avif, 320.webp, 320.jpg
-│   │       │   │   ├── 640.avif, 640.webp, 640.jpg
-│   │       │   │   └── ... (all sizes)
-│   │       │   └── sunset\
-│   │       │       └── ...
-│   │       └── 2025-wedding\
-│   │           └── ...
-│   └── index.html
+│   │   └── galleries\2024-vacation\beach\
+│   │       ├── 160.avif  160.webp  160.jpg
+│   │       ├── 320.avif  320.webp  320.jpg
+│   │       └── ...       # every theme size, plus the original width
+│   └── _assets\         # Theme CSS, JavaScript and fonts
 └── source\
 ```
 
-## Phase 5: Preview
+Each photo is saved in every size the theme asks for that is smaller than the photo, plus its original width, in each enabled format. See [Image Processing](../../guide/images/).
 
-User selects "Serve" from TUI:
+## 4. Preview
+
+Choose **Build → serve**, or run:
+
+```bash
+revela serve
+```
 
 ```
-🌐 Serving D:\Revela\projects\MyPhotos\output at http://localhost:8080
+🌐 Serving D:\Photos\MyPortfolio\output at http://localhost:8080
    Press Ctrl+C to stop
 ```
 
-User opens http://localhost:8080 in browser and reviews the website.
+Open `http://localhost:8080` in your browser. The server does not watch files: after a change, run `revela generate all` again and refresh the page. See [Dev Server](../../plugins/serve/).
 
-## Phase 6: Edit a Photo
+## 5. Everyday Changes
 
-User notices `beach.jpg` is overexposed.
+Just run `revela generate all` again after any change. Revela keeps a manifest in `.cache\` and only redoes what's needed.
 
-1. User opens `beach.jpg` in Lightroom/Photoshop
-2. User edits and exports back to `source/2024-Vacation/beach.jpg`
-3. User runs TUI › "Generate all"
+### Edit, add or remove photos
 
-```
-Pipeline: scan → statistics → pages → images
+- **Edited a photo** (re-exported from Lightroom, for example): only that photo is encoded again.
+- **Added a gallery**: only the new photos are encoded; the others are reported as cached.
+- **Deleted a photo**: it disappears from the pages, but its generated images stay in `output\images\`. Remove them with:
 
-━━━ Step 1/4: scan ━━━
-Scan content and update manifest
+  ```bash
+  revela clean images --dry-run   # preview
+  revela clean images             # delete
+  ```
 
-╭─ Success ────────────────────────────────────╮
-│                                              │
-│  Content scan complete!                      │
-│                                              │
-│  Project:    My Photography Portfolio        │
-│                                              │
-│  Statistics:                                 │
-│    Galleries: 2                              │
-│    Images:    5                              │
-│                                              │
-╰──────────────────────────────────────────────╯
+### Change image quality or formats
 
-━━━ Step 2/4: statistics ━━━
-...
+Run `revela config image` (menu: **Setup → config → image**) and set, for example, AVIF to 70. On the next build, Revela notices the change and re-encodes **only the AVIF files**. JPG and WebP stay as they are, and you don't need `--force`.
 
-━━━ Step 3/4: pages ━━━
-...
+Enabling a new format creates just that format. Disabling a format stops creating it; `revela clean images` removes the old files.
 
-━━━ Step 4/4: images ━━━
-Process images from manifest
+### Change image sizes
 
-  Worker 1 ████████████ 100% beach.jpg (30/30)
+Sizes belong to the theme, in its `Configuration/images.json`. The Lumina defaults are:
 
-╭─ Success ────────────────────────────────────╮
-│                                              │
-│  Image processing complete!                  │
-│                                              │
-│  Project:   My Photography Portfolio         │
-│                                              │
-│  Statistics:                                 │
-│    Processed: 1 images                       │
-│    Cached:    4 images                       │
-│    Files:     30 created                     │
-│    Duration:  2.45s                          │
-│                                              │
-╰──────────────────────────────────────────────╯
-
-✓ Pipeline completed in 3.12s
+```json
+{
+  "sizes": [160, 320, 480, 640, 720, 960, 1280, 1440, 1920, 2560],
+  "resizeMode": "longest"
+}
 ```
 
-> **Incremental Processing:** Only `beach.jpg` is regenerated (30 variants). The other 4 unchanged images are cached. Revela detects changes via `LastModified` timestamp and/or `FileSize`.
+To use your own sizes, extract the theme into your project and edit `themes\Lumina\Configuration\images.json`:
 
-## Phase 7: Add New Photos
-
-User adds a new gallery with 20 photos:
-
-```
-D:\Revela\projects\MyPhotos\source\
-└── 01 Galleries/
-    ├── 2024-Vacation/
-    ├── 2025-Wedding/
-    └── 2025-Birthday/        ← NEW
-        ├── guests.jpg
-        ├── presents.jpg
-        └── ... (20 photos)
+```bash
+revela theme extract Lumina
 ```
 
-User runs TUI › "Generate all":
+> **Known issue:** Revela uses a local theme's `images.json` only when the folder contains a `theme.json`. Extraction currently names that file `manifest.json`, so rename `themes\Lumina\manifest.json` to `theme.json` after extracting.
 
-```
-Pipeline: scan → statistics → pages → images
+If you add `3840`, the next build creates a 3840 variant for every photo that is wider than 3840 pixels. Nothing else is encoded again. If you remove a size, `revela clean images` deletes its files. See [Themes](../../guide/themes/).
 
-━━━ Step 1/4: scan ━━━
-Scan content and update manifest
+### Output folder deleted
 
-╭─ Success ────────────────────────────────────╮
-│                                              │
-│  Content scan complete!                      │
-│                                              │
-│  Project:    My Photography Portfolio        │
-│                                              │
-│  Statistics:                                 │
-│    Galleries: 3                              │
-│    Images:    25                             │
-│                                              │
-╰──────────────────────────────────────────────╯
+If `output\` (or part of it) disappears, the next `revela generate all` recreates whatever is missing.
 
-━━━ Step 2/4: statistics ━━━
-...
+## 6. Add an About Page
 
-━━━ Step 3/4: pages ━━━
-...
+Create a text page (menu: **Content → create → page → text**):
 
-━━━ Step 4/4: images ━━━
-Process images from manifest
-
-  Worker 1 ████████████ 100% guests.jpg (30/30)
-  Worker 2 ████████████ 100% presents.jpg (30/30)
-  ...
-
-╭─ Success ────────────────────────────────────╮
-│                                              │
-│  Image processing complete!                  │
-│                                              │
-│  Project:   My Photography Portfolio         │
-│                                              │
-│  Statistics:                                 │
-│    Processed: 20 images                      │
-│    Cached:    5 images                       │
-│    Files:     600 created                    │
-│    Duration:  2m 15s                         │
-│                                              │
-╰──────────────────────────────────────────────╯
-
-✓ Pipeline completed in 2m 18s
+```bash
+revela create page text "02 About" --title "About Me"
 ```
 
-> **Incremental Processing:** Only the 20 new images are processed. The existing 5 images are cached.
-
-## Phase 8: Remove a Photo
-
-User decides `party.jpg` shouldn't be on the website.
-
-1. User deletes `source/01 Galleries/2025-Wedding/party.jpg`
-2. User runs TUI › "Generate all"
-
-```
-Pipeline: scan → statistics → pages → images
-
-━━━ Step 1/4: scan ━━━
-Scan content and update manifest
-
-╭─ Success ────────────────────────────────────╮
-│                                              │
-│  Content scan complete!                      │
-│                                              │
-│  Project:    My Photography Portfolio        │
-│                                              │
-│  Statistics:                                 │
-│    Galleries: 3                              │
-│    Images:    24                             │
-│                                              │
-╰──────────────────────────────────────────────╯
-
-━━━ Step 2/4: statistics ━━━
-...
-
-━━━ Step 3/4: pages ━━━
-...
-
-━━━ Step 4/4: images ━━━
-Process images from manifest
-
-╭─ Success ────────────────────────────────────╮
-│                                              │
-│  Image processing complete!                  │
-│                                              │
-│  Project:   My Photography Portfolio         │
-│                                              │
-│  Statistics:                                 │
-│    Processed: 0 images                       │
-│    Cached:    24 images                      │
-│    Duration:  0.05s                          │
-│                                              │
-╰──────────────────────────────────────────────╯
-
-✓ Pipeline completed in 1.20s
-```
-
-> **Note:** The deleted image is removed from the manifest, but the generated output files remain on disk. These are called "orphaned files".
-
-**Cleaning up orphaned files:**
-
-> **Important:** Always run "Generate › Scan content" before cleaning! The clean command uses the manifest to determine which files are orphaned. If the manifest is outdated, you might accidentally delete valid files.
-
-User selects TUI › Clean › Images:
-
-```
-━━━ clean images ━━━
-Clean unused image files (orphaned, wrong sizes/formats)
-
-Orphaned folders (source images deleted):
-  • party/ (18 files, 2.4 MB)
-
-Will delete: 18 files (2.4 MB)
-```
-
-```
-╭─ Success ────────────────────────────────────╮
-│                                              │
-│  Cleanup complete!                           │
-│                                              │
-│  Deleted:                                    │
-│    Files:   18                               │
-│    Size:    2.4 MB freed                     │
-│                                              │
-╰──────────────────────────────────────────────╯
-```
-
-> **Tip:** Use `--dry-run` to preview what would be deleted without actually removing files.
-
-## Phase 9: Change Configuration (Add Image Size)
-
-User wants higher resolution for retina displays.
-
-> **Note:** Image sizes are defined by the theme in `Configuration/images.json`. To customize sizes, extract the configuration file to your project.
-
-1. User extracts theme configuration via TUI › Theme › Extract:
-   ```
-   ━━━ theme extract ━━━
-   Extract a theme or specific files to themes/ folder
-
-   Select a theme to extract:
-   › Lumina
-
-   What would you like to extract?
-     Extract entire theme
-   › Select specific files
-     Cancel
-
-   Select files to extract (Space to toggle, Enter to confirm):
-     [ ] Templates
-     [ ] Assets
-     [x] Configuration
-           [x] images.json
-     [ ] Other
-
-   ✓ Extracted 1 file to themes/Lumina/
-   ```
-
-2. User edits `themes/Lumina/Configuration/images.json`:
-   ```json
-   {
-     "sizes": [320, 640, 960, 1280, 1920, 2560],
-     "resizeMode": "longest"
-   }
-   ```
-
-3. User runs TUI › "Generate all"
-
-```
-Pipeline: scan → statistics → pages → images
-
-━━━ Step 1/4: scan ━━━
-...
-
-━━━ Step 2/4: statistics ━━━
-...
-
-━━━ Step 3/4: pages ━━━
-...
-
-━━━ Step 4/4: images ━━━
-Process images from manifest
-
-  Worker 1 ████████████ 100% beach.jpg (6/6)
-  Worker 2 ████████████ 100% sunset.jpg (6/6)
-  ...
-
-╭─ Success ────────────────────────────────────╮
-│                                              │
-│  Image processing complete!                  │
-│                                              │
-│  Project:   My Photography Portfolio         │
-│                                              │
-│  Statistics:                                 │
-│    Processed: 24 images                      │
-│    Files:     144 created                    │
-│    Duration:  1m 30s                         │
-│                                              │
-╰──────────────────────────────────────────────╯
-
-✓ Pipeline completed in 1m 32s
-```
-
-> **Key Feature:** Only missing sizes (1920, 2560) are generated. Existing variants are preserved.
-
-## Phase 10: Change Quality Settings
-
-User wants better AVIF quality.
-
-User runs TUI › Config › Image:
-
-```
-━━━ config image ━━━
-Configure image processing settings
-
-Current formats:
-  • AVIF: 80 (enabled)
-  • WebP: 85 (enabled)
-  • JPG:  90 (enabled)
-
-Configure formats interactively? [y/N]: y
-
-AVIF quality (0=disable, 1-100): 90
-WebP quality (0=disable, 1-100): 85
-JPG quality (0=disable, 1-100): 90
-
-✓ Image settings saved to project.json
-```
-
-**Problem:** How does Revela know existing AVIF files need regeneration?
-
-**Current behavior:** Quality changes require explicit force rebuild.
-
-```
-User selects: Generate › Generate images › --force
-
-━━━ images ━━━
-Process images from manifest
-
-  Worker 1 ████████████ 100% beach.jpg (18/18)
-  Worker 2 ████████████ 100% sunset.jpg (18/18)
-  ...
-
-╭─ Success ────────────────────────────────────╮
-│                                              │
-│  Image processing complete!                  │
-│                                              │
-│  Project:   My Photography Portfolio         │
-│                                              │
-│  Statistics:                                 │
-│    Processed: 24 images                      │
-│    Files:     432 created                    │
-│    Duration:  45.00s                         │
-│                                              │
-╰──────────────────────────────────────────────╯
-```
-
-> **Note:** `--force` regenerates ALL variants for all images. There's currently no format-specific force option.
-
-## Phase 11: Add an About Page
-
-User wants to add an "About Me" page to the website.
-
-### Step 1: Create the Page
-
-User selects TUI › Create › Page:
-
-```
-━━━ create page ━━━
-Create a new page in your project
-
-What type of page would you like to create?
-  Gallery page (with images)
-› Text page (no images)
-  Statistics page
-
-Path (relative to source/): 02 Pages/about
-Title: About Me
-Description: Learn more about me and my photography
-
-✓ Created source/02 Pages/about/_index.revela
-```
-
-### Step 2: Edit the Content
-
-User opens `source/02 Pages/about/_index.revela` in a text editor:
+This creates `source\02 About\_index.revela`. Open it in a text editor and write your content in Markdown below the front matter:
 
 ```toml
 +++
 title = "About Me"
-description = "Learn more about me and my photography"
 template = "page"
 +++
-
 ## Hello!
 
-I'm a passionate photographer based in Berlin, Germany.
-
-I specialize in landscape and travel photography, capturing
-the beauty of nature and urban environments.
-
-## My Gear
-
-- Canon EOS R5
-- RF 24-70mm f/2.8L
-- RF 70-200mm f/2.8L
-
-## Contact
-
-Feel free to reach out at **hello@example.com**
+I'm a landscape and travel photographer based in Berlin.
 ```
 
-> **Tip:** Use Markdown for formatting. The content appears below the title on the generated page.
+Rebuild, and the page appears in the navigation. Add `hidden = true` to keep a page (such as an imprint) out of the navigation. See [Creating Pages](../../guide/pages/).
 
-### Step 3: Generate
+## 7. Add a Statistics Page
 
-User runs TUI › "Generate all":
+Revela can show which cameras, lenses and settings you use most:
 
-```
-Pipeline: scan → statistics → pages → images
-
-━━━ Step 1/4: scan ━━━
-Scan content and update manifest
-
-╭─ Success ────────────────────────────────────╮
-│                                              │
-│  Content scan complete!                      │
-│                                              │
-│  Project:    My Photography Portfolio        │
-│                                              │
-│  Statistics:                                 │
-│    Galleries: 4                              │
-│    Images:    24                             │
-│                                              │
-╰──────────────────────────────────────────────╯
-
-━━━ Step 2/4: statistics ━━━
-...
-
-━━━ Step 3/4: pages ━━━
-Render HTML pages from manifest
-
-╭─ Success ────────────────────────────────────╮
-│                                              │
-│  Page rendering complete!                    │
-│                                              │
-│  Project:  My Photography Portfolio          │
-│                                              │
-│  Statistics:                                 │
-│    Pages:    5                               │
-│    Duration: 0.14s                           │
-│                                              │
-╰──────────────────────────────────────────────╯
-
-━━━ Step 4/4: images ━━━
-...
-
-✓ Pipeline completed in 1.35s
+```bash
+revela create page statistics "03 Statistics" --title "Photo Statistics"
 ```
 
-**Result:**
-```
-D:\Revela\projects\MyPhotos\
-├── output/
-│   ├── galleries/
-│   │   ├── 2024-vacation/
-│   │   └── 2025-wedding/
-│   ├── pages/
-│   │   ├── about/
-│   │   │   └── index.html    ← NEW: About page
-│   │   └── index.html        (category page)
-│   └── index.html            ← Navigation with categories
-└── source/
-    ├── 01 Galleries/
-    │   ├── 2024-Vacation/
-    │   └── 2025-Wedding/
-    └── 02 Pages/
-        └── about/
-            └── _index.revela ← NEW: About page source
+The page uses the `statistics/overview` template. On the next `generate all`, the **statistics** step reads the EXIF data of your photos, and the page shows it as bar charts. See [Statistics](../../plugins/statistics/).
+
+## 8. Add a Favicon
+
+Put your favicon files in `source\_static\favicon\` (everything in `_static\` is copied to the output root) and override the theme's `Favicon.revela` partial. [Static Files](../../guide/source-structure/static-files/) explains the steps.
+
+## 9. Publish
+
+Your `output\` folder is the finished website. Upload it to any static host: GitHub Pages, Netlify, Cloudflare Pages or your own web space. Set the site's public address first so Revela can generate `sitemap.xml`:
+
+```bash
+revela config project --url https://example.com
 ```
 
-> **How it works:**
-> - Numeric prefixes (`01`, `02`) control navigation order and are stripped from URLs
-> - `01 Galleries` → `/galleries/`, `02 Pages` → `/pages/`
-> - Text pages use `template = "page"` (no image gallery)
-> - The page appears in the navigation automatically
-> - Use `hidden = true` in frontmatter to exclude from navigation (e.g., for Imprint pages)
+See [Deployment](../../guide/deployment/) for step-by-step instructions and a ready-made GitHub Actions workflow.
 
-## Phase 12: Add a Statistics Page
+## 10. Months Later
 
-User wants to see analytics about their photo collection (cameras, lenses, focal lengths).
+Come back, drop new photos into `source\` and run `revela generate all`. Revela remembers what it already processed, so only the new photos are encoded.
 
-### Step 1: Create the Statistics Page
+To start completely fresh, delete everything Revela generated and rebuild:
 
-User selects TUI › Create › Page:
-
-```
-━━━ create page ━━━
-Create a new page in your project
-
-What type of page would you like to create?
-  Gallery page (with images)
-  Text page (no images)
-› Statistics page
-
-Path (relative to source/): 02 Pages/stats
-Title: Photo Statistics
-Description: Analysis of my camera and lens usage
-
-✓ Created source/02 Pages/stats/_index.revela
+```bash
+revela clean all
+revela generate all
 ```
 
-> **Note:** The Statistics plugin must be installed. If not present, install via TUI › Addons › Install › Statistics.
+## When Something Goes Wrong
 
-### Step 2: Generate
+Start with:
 
-User runs TUI › "Generate all":
-
-```
-Pipeline: scan → statistics → pages → images
-
-━━━ Step 1/4: scan ━━━
-Scan content and update manifest
-
-╭─ Success ────────────────────────────────────╮
-│                                              │
-│  Content scan complete!                      │
-│                                              │
-│  Project:    My Photography Portfolio        │
-│                                              │
-│  Statistics:                                 │
-│    Galleries: 4                              │
-│    Images:    24                             │
-│                                              │
-╰──────────────────────────────────────────────╯
-
-━━━ Step 2/4: statistics ━━━
-Generate statistics from EXIF data
-
-╭─ Success ────────────────────────────────────╮
-│                                              │
-│  Statistics generated!                       │
-│                                              │
-│  Analyzed: 24 images                         │
-│  Cameras:  2 models                          │
-│  Lenses:   3 models                          │
-│                                              │
-╰──────────────────────────────────────────────╯
-
-━━━ Step 3/4: pages ━━━
-Render HTML pages from manifest
-
-╭─ Success ────────────────────────────────────╮
-│                                              │
-│  Page rendering complete!                    │
-│                                              │
-│  Project:  My Photography Portfolio          │
-│                                              │
-│  Statistics:                                 │
-│    Pages:    6                               │
-│    Duration: 0.16s                           │
-│                                              │
-╰──────────────────────────────────────────────╯
-
-━━━ Step 4/4: images ━━━
-...
-
-✓ Pipeline completed in 1.42s
+```bash
+revela check
 ```
 
-**Result:**
-```
-D:\Revela\projects\MyPhotos\
-├── output/
-│   ├── galleries/
-│   ├── pages/
-│   │   ├── about/
-│   │   └── stats/
-│   │       └── index.html    ← NEW: Statistics page
-│   └── index.html
-└── source/
-    ├── 01 Galleries/
-    └── 02 Pages/
-        ├── about/
-        └── stats/
-            └── _index.revela ← NEW: Statistics page
-```
-
-The statistics page displays interactive charts:
-- **Camera usage** - Which cameras were used most
-- **Lens usage** - Popular lenses in the collection
-- **Focal lengths** - Distribution of focal lengths
-- **Apertures** - Most common f-stops
-- **Timeline** - Photos over time
-
-> **How it works:**
-> - Statistics are extracted from EXIF metadata during the "statistics" pipeline step
-> - The page uses `template = "statistics"` which renders the charts
-> - Data updates automatically when new photos are added
-
-## Phase 13: Customize Favicon
-
-User wants to add a custom favicon to the website.
-
-### Step 1: Generate Favicon Files
-
-User visits [realfavicongenerator.net](https://realfavicongenerator.net):
-
-1. Uploads logo/image
-2. Configures platform-specific icons
-3. Downloads the generated package
-
-### Step 2: Add Favicon Files to Project
-
-User copies the favicon files to `source/_static/favicon/`:
-
-```
-D:\Revela\projects\MyPhotos\source\
-├── _static/
-│   └── favicon/              ← NEW
-│       ├── favicon.ico
-│       ├── favicon.svg
-│       ├── favicon-96x96.png
-│       ├── apple-touch-icon.png
-│       └── site.webmanifest
-├── 01 Galleries/
-│   ├── 2024-Vacation/
-│   └── 2025-Wedding/
-└── 02 Pages/
-    └── about/
-```
-
-> **Convention:** Files in `_static/` are copied 1:1 to the output root. The `_` prefix excludes this folder from gallery scanning.
-
-### Step 3: Create Favicon Partial
-
-The Lumina theme has an empty `Favicon.revela` partial by default. User creates an override:
-
-User selects TUI › Theme › Extract:
-
-```
-━━━ theme extract ━━━
-Extract a theme or specific files to themes/ folder
-
-Select a theme to extract:
-› Lumina
-
-What would you like to extract?
-  Extract entire theme
-› Select specific files
-  Cancel
-
-Select files to extract (Space to toggle, Enter to confirm):
-  [ ] Templates
-  [ ] Assets
-  [ ] Configuration
-  [x] Partials
-        [x] Favicon.revela
-
-✓ Extracted 1 file to themes/Lumina/
-```
-
-User edits `themes/Lumina/Partials/Favicon.revela`:
-
-```html
-<link rel="icon" type="image/png" href="/favicon/favicon-96x96.png" sizes="96x96" />
-<link rel="icon" type="image/svg+xml" href="/favicon/favicon.svg" />
-<link rel="shortcut icon" href="/favicon/favicon.ico" />
-<link rel="apple-touch-icon" sizes="180x180" href="/favicon/apple-touch-icon.png" />
-<meta name="apple-mobile-web-app-title" content="My Photography Portfolio" />
-<link rel="manifest" href="/favicon/site.webmanifest" />
-```
-
-> **Tip:** Copy the exact HTML provided by your favicon generator. The paths must match your `_static/favicon/` structure.
-
-### Step 4: Generate
-
-User runs TUI › "Generate all":
-
-```
-Pipeline: scan → statistics → pages → images
-
-━━━ Step 1/4: scan ━━━
-...
-
-━━━ Step 2/4: statistics ━━━
-...
-
-━━━ Step 3/4: pages ━━━
-Render HTML pages from manifest
-
-╭─ Success ────────────────────────────────────╮
-│                                              │
-│  Page rendering complete!                    │
-│                                              │
-│  Project:  My Photography Portfolio          │
-│                                              │
-│  Statistics:                                 │
-│    Pages:    4                               │
-│    Duration: 0.15s                           │
-│                                              │
-╰──────────────────────────────────────────────╯
-
-━━━ Step 4/4: images ━━━
-...
-
-✓ Pipeline completed in 1.50s
-```
-
-**Result:**
-```
-D:\Revela\projects\MyPhotos\
-├── output/
-│   ├── favicon/              ← Copied from _static/
-│   │   ├── favicon.ico
-│   │   ├── favicon.svg
-│   │   ├── favicon-96x96.png
-│   │   ├── apple-touch-icon.png
-│   │   └── site.webmanifest
-│   ├── index.html            ← Contains favicon links
-│   └── ...
-├── source/
-│   └── _static/
-│       └── favicon/
-└── themes/
-    └── Lumina/
-        └── Partials/
-            └── Favicon.revela
-```
-
-> **How it works:**
-> 1. `_static/favicon/*` files are copied to `output/favicon/`
-> 2. The `Favicon.revela` partial is included in every page's `<head>`
-> 3. Project overrides in `themes/` take precedence over installed theme files
-
-## Phase 14: Output Accidentally Deleted
-
-User accidentally deletes the output folder (`D:\Revela\projects\MyPhotos\output\images\`).
-
-User runs TUI › "Generate all":
-
-```
-Pipeline: scan → statistics → pages → images
-
-━━━ Step 1/4: scan ━━━
-...
-
-━━━ Step 2/4: statistics ━━━
-...
-
-━━━ Step 3/4: pages ━━━
-...
-
-━━━ Step 4/4: images ━━━
-Process images from manifest
-
-  Worker 1 ████████████ 100% beach.jpg (18/18)
-  Worker 2 ████████████ 100% sunset.jpg (18/18)
-  ...
-
-╭─ Success ────────────────────────────────────╮
-│                                              │
-│  Image processing complete!                  │
-│                                              │
-│  Project:   My Photography Portfolio         │
-│                                              │
-│  Statistics:                                 │
-│    Processed: 24 images                      │
-│    Files:     432 created                    │
-│    Duration:  5m 00s                         │
-│                                              │
-╰──────────────────────────────────────────────╯
-
-✓ Pipeline completed in 5m 02s
-```
-
-> **Key Feature:** Revela detects missing output files and regenerates them automatically.
-
-## Phase 15: Deployment
-
-User is ready to publish:
-
-1. User runs TUI › "Generate all" (final build)
-2. User copies `output/` folder to web server
-
-**Deployment options:**
-- FTP upload
-- `rsync` to Linux server
-- GitHub Pages (copy to repo)
-- Netlify/Vercel drag & drop
-- Any static hosting
-
-## Phase 16: Months Later - Return to Project
-
-User returns after 3 months with 50 new photos.
-
-```
-D:\Revela\projects\MyPhotos\source\
-├── 01 Galleries/
-│   ├── 2024-Vacation/
-│   ├── 2025-Wedding/
-│   ├── 2025-Birthday/
-│   └── 2025-Summer/      ← NEW (50 photos)
-└── 02 Pages/
-    └── about/
-```
-
-User runs TUI › "Generate all":
-
-```
-Pipeline: scan → statistics → pages → images
-
-━━━ Step 1/4: scan ━━━
-Scan content and update manifest
-
-╭─ Success ────────────────────────────────────╮
-│                                              │
-│  Content scan complete!                      │
-│                                              │
-│  Project:    My Photography Portfolio        │
-│                                              │
-│  Statistics:                                 │
-│    Galleries: 4                              │
-│    Images:    74                             │
-│                                              │
-╰──────────────────────────────────────────────╯
-
-━━━ Step 2/4: statistics ━━━
-...
-
-━━━ Step 3/4: pages ━━━
-...
-
-━━━ Step 4/4: images ━━━
-Process images from manifest
-
-  Worker 1 ████████████ 100% summer01.jpg (18/18)
-  Worker 2 ████████████ 100% summer02.jpg (18/18)
-  ...
-
-╭─ Success ────────────────────────────────────╮
-│                                              │
-│  Image processing complete!                  │
-│                                              │
-│  Project:   My Photography Portfolio         │
-│                                              │
-│  Statistics:                                 │
-│    Processed: 50 images                      │
-│    Cached:    24 images                      │
-│    Files:     900 created                    │
-│    Duration:  6m 00s                         │
-│                                              │
-╰──────────────────────────────────────────────╯
-
-✓ Pipeline completed in 6m 05s
-```
-
-> **Incremental Processing:** The manifest remembers what was already processed. Only the 50 new images are generated, the existing 24 are cached.
-
-## Phase 17: Complete Rebuild (Edge Case)
-
-User wants a fresh start:
-
-TUI › "Clean › All (cache + output)"
-
-```
-╭─ Clean ──────────────────────────────────────╮
-│                                              │
-│  ⚠ This will delete:                         │
-│    • .cache/manifest.json                    │
-│    • output/ (all generated files)           │
-│                                              │
-│  Are you sure? [y/N]                         │
-│                                              │
-╰──────────────────────────────────────────────╯
-```
-
-User confirms › Clean slate. Next "Generate all" rebuilds everything.
-
-## Summary: Change Detection
-
-| Scenario | Detection Method | Action |
-|----------|------------------|--------|
-| New image | Not in manifest | Generate all variants |
-| Changed image | LastModified or FileSize differs from the last successful processing | Regenerate all variants |
-| Deleted image | In manifest but not on disk | Remove from manifest |
-| New size in config | Output file missing | Generate missing size only |
-| New format in config | Output file missing | Generate missing format only |
-| Quality changed | Quality differs from the last run | Regenerate that format |
-| Theme resize mode changed | Differs from the last successful processing | Regenerate all variants |
-| Revela changes its image output | Output version differs | Regenerate all variants |
-| Output deleted | Output file missing | Regenerate affected variants |
-| Force rebuild | User flag `--force` | Regenerate everything |
+It lists every problem it finds, with the file and a suggested fix, and exits with code `2` if something would stop the build. To run a single area, use `revela check config`, `structure`, `theme`, `content`, `slugs` or `calendar`.
+
+## Summary: What Triggers Work
+
+| You change… | Revela does… |
+|-------------|--------------|
+| Add a photo | Encodes all variants of the new photo |
+| Edit a photo (file size or date changes) | Re-encodes that photo |
+| Delete a photo | Removes it from pages; `clean images` removes its files |
+| Add a size to `images.json` | Creates only the new size |
+| Enable a format | Creates only the new format |
+| Change a format's quality | Re-encodes only that format |
+| Change the theme's `resizeMode` | Re-encodes all photos |
+| Update Revela with a new image pipeline | Re-encodes all photos |
+| Delete generated files | Recreates the missing files |
+| `revela generate images --force` | Re-encodes everything |

@@ -3,7 +3,7 @@ title = "Configuration"
 template = "docs"
 +++
 
-Revela stores all project settings in `project.json`. This file is created automatically when you initialize a project with `revela config project`.
+Revela stores project settings in `project.json` in your project folder. The project wizard creates it when you start `revela` in a folder that has no project yet (see [Installation](../../get-started/installation/#first-run)). `revela config project` creates it too.
 
 ## Quick Configuration
 
@@ -18,8 +18,10 @@ Or configure specific settings directly:
 ```bash
 revela config theme --set Lumina
 revela config paths --source "D:\Photos" --output "dist"
-revela config site --title "My Portfolio" --author "John Doe"
+revela config image --formats avif:80,webp:85,jpg:90
 ```
+
+`revela config site` edits `site.json`. It is interactive only and asks for each field the theme defines.
 
 ## Configuration File Structure
 
@@ -27,8 +29,8 @@ revela config site --title "My Portfolio" --author "John Doe"
 {
   "project": {
     "name": "my-portfolio",
-    "basePath": "/",
-    "language": "en"
+    "baseUrl": "https://example.com",
+    "basePath": "/"
   },
   "paths": {
     "source": "source",
@@ -51,9 +53,13 @@ revela config site --title "My Portfolio" --author "John Doe"
 }
 ```
 
-> **Note:** Image sizes are defined by the theme (in `theme.json`), not in `project.json`. Image format quality (`webp`, `jpg`, `avif`) are flat properties under `generate.images`. Set one to `0` to disable that format.
+> **Note:** Image sizes are defined by the theme in its `Configuration/images.json`, not in `project.json` (see [Themes](../themes/#theme-structure)). Every photo gets the theme sizes smaller than the photo, plus its original width. Image format quality (`webp`, `jpg`, `avif`) are flat properties under `generate.images`. Set one to `0` to disable that format.
+
+> **Language belongs in `site.json`.** A `language` key in the `project` section of `project.json` is rejected with a configuration error. Set `"language": "en"` in `site.json` instead (see [Site Metadata](#site-metadata)).
 
 ## Dependencies and Feeds
+
+> **Full edition and .NET tool only.** The Standalone edition has every official theme and plugin built in and has no commands that install packages, so it doesn't need this section.
 
 Themes and plugins your project needs are listed under `dependencies`. The global `revela.json` and your `project.json` use the same shape; for the same key, `project.json` wins.
 
@@ -104,7 +110,7 @@ Every Revela configuration file accepts a slightly relaxed JSON dialect, commonl
 }
 ```
 
-This applies to `project.json`, `site.json`, `theme.json`, `images.json`, and the global `revela.json` (in `%APPDATA%/Revela/` on Windows or `~/.config/Revela/` on Linux/macOS).
+This applies to `project.json`, `site.json`, `theme.json`, `images.json`, and the global `revela.json` (see [Where Settings Come From](#where-settings-come-from)).
 
 > **Heads up:** When Revela rewrites one of these files for you, for example with `revela plugin install <id>` or any `revela config` command, comments and your original formatting are **not preserved**. The file is reserialised as pretty-printed JSON. This matches how tools like `npm` and `dotnet user-secrets` behave. If you keep important comments in a file, prefer editing it manually.
 
@@ -189,27 +195,33 @@ After `revela generate all`, your site is immediately live, with no file copying
 | Command | Description |
 |---------|-------------|
 | `revela config` | Interactive configuration menu |
-| `revela config project` | Project name and URL |
-| `revela config theme` | Select site theme |
-| `revela config site` | Site metadata (title, author, description) |
-| `revela config paths` | Source and output directories |
-| `revela config image` | Image formats and quality |
+| `revela config project` | Project name and URL (`--name`, `--url`) |
+| `revela config theme` | Theme and photo viewer (`--set`, `--viewer`, `--clear-viewer`) |
+| `revela config site` | Site metadata in `site.json` (interactive) |
+| `revela config paths` | Source and output directories (`--source`, `--output`) |
+| `revela config image` | Image formats and quality (`--formats`) |
 | `revela config sorting` | Gallery and image sort order |
-| `revela config feed` | NuGet package sources |
+| `revela config onedrive` / `serve` / `statistics` | Plugin settings |
+| `revela config feed` | NuGet package sources (Full edition and .NET tool only) |
 | `revela config locations` | Show configuration file paths |
+
+Run `revela check config` to validate your configuration files without building. See the [CLI Reference](../../reference/cli-reference/#config) for every option.
 
 ## Site Metadata
 
-Site-specific content (title, description, copyright) is stored separately in `site.json`:
+Site-specific content (title, description, copyright, language) is stored separately in `site.json`:
 
 ```json
 {
   "title": "My Photography Portfolio",
   "author": "Jane Smith",
   "description": "Landscapes and nature photography",
-  "copyright": "© 2026 Jane Smith"
+  "copyright": "© 2026 Jane Smith",
+  "language": "en"
 }
 ```
+
+`language` defaults to `en`. It sets the page language and is used, for example, for month names in calendars.
 
 Configure with:
 
@@ -252,7 +264,7 @@ HTML. See [revela.website](../themes/website-example/) for the complete customiz
 Revela merges configuration from several sources. Later sources override earlier ones:
 
 1. Built-in defaults
-2. Global `revela.json` (`%APPDATA%/Revela/` on Windows, `~/.config/Revela/` on Linux/macOS)
+2. Global `revela.json`: next to the Revela executable when that folder is writable (for example an extracted Standalone ZIP), otherwise `%APPDATA%/Revela/` on Windows or `~/.config/Revela/` on Linux/macOS. `revela config locations` shows the path in use.
 3. Project `project.json`
 4. Environment variables prefixed `SPECTARA__REVELA__` (use `__` to separate nested keys)
 5. Command-line arguments

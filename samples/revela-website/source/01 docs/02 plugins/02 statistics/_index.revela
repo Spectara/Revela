@@ -23,7 +23,9 @@ See how your photography evolves over time, broken down by year and month.
 
 ## Installation
 
-The Statistics plugin has two parts:
+The **Standalone** edition has the plugin and the theme extension built in, so there's nothing to install.
+
+In the **Full** edition, the Statistics feature has two parts:
 
 ```bash
 # 1. The plugin (generates statistics data)
@@ -68,7 +70,7 @@ revela generate all
 revela generate statistics
 ```
 
-The pipeline order is: `scan → statistics → pages → images`. Statistics runs after scan (which collects EXIF data) and before pages (which renders the HTML).
+The pipeline order is: `scan → calendar → statistics → pages → images`. Statistics runs after scan (which collects EXIF data) and before pages (which renders the HTML).
 
 ## What Gets Analyzed?
 
@@ -131,7 +133,7 @@ SPECTARA__REVELA__PLUGINS__STATISTICS__SORTBYCOUNT=false
 - **Dark/light mode**: inherits Lumina's color scheme automatically
 - **Hover effects**: bar highlight and count display on interaction
 
-Install it alongside the plugin:
+Install it alongside the plugin (Full edition only; Standalone has it built in):
 
 ```bash
 revela theme install Lumina.Statistics

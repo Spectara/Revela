@@ -3,59 +3,80 @@ title = "Installation"
 template = "docs"
 +++
 
-Revela runs on **Windows**, **macOS**, and **Linux**. Choose the installation method that suits you best.
+Revela runs on **Windows**, **macOS**, and **Linux**. It comes in three editions. If you just want to publish your photos, pick **Standalone**.
 
-## Option 1: Standalone (Recommended)
+| | **Standalone** (recommended) | **Full** | **.NET Global Tool** |
+|---|---|---|---|
+| Prerequisites | None | None | .NET 10 SDK |
+| Plugins & themes | All built in | Installed from the bundled `packages/` folder | Installed from release `.nupkg` files |
+| Plugin/theme management | Not needed (not available) | `revela plugin …`, `revela theme install …`, `revela restore` | Same as Full |
+| Custom plugins | ❌ | ✅ | ✅ |
 
-Download, extract, run. No prerequisites needed.
+The [Downloads](../../../pages/downloads/) page has direct links for every edition.
+
+---
+
+## Standalone (Recommended)
+
+A single executable with the Lumina theme, its Statistics and Calendar extensions, and all six official plugins (Compress, Serve, Statistics, Calendar, Source.OneDrive, Source.Calendar) built in. There is nothing to install afterwards and no internet connection is needed to build your site.
+
+The easiest way is the [Downloads](../../../pages/downloads/) page, or the newest release on [GitHub Releases](https://github.com/Spectara/Revela/releases). Extract the archive into a folder of your choice.
+
+> **Beta note:** every Revela release is currently a pre-release, so GitHub's `/releases/latest/` links don't work yet. The commands below look up the newest release first.
 
 ### Windows (x64)
 
-```bash
-# Download and extract
-curl -L https://github.com/Spectara/Revela/releases/latest/download/revela-win-x64-standalone.zip -o revela.zip
+In PowerShell:
+
+```powershell
+$tag = (Invoke-RestMethod https://api.github.com/repos/Spectara/Revela/releases)[0].tag_name
+Invoke-WebRequest "https://github.com/Spectara/Revela/releases/download/$tag/revela-win-x64-standalone.zip" -OutFile revela.zip
 Expand-Archive revela.zip -DestinationPath D:\Revela
 ```
-
-Or simply download the `.zip` from [GitHub Releases](https://github.com/Spectara/Revela/releases), right-click → Extract All.
 
 ### macOS (Apple Silicon)
 
 ```bash
-curl -L https://github.com/Spectara/Revela/releases/latest/download/revela-osx-arm64-standalone.tar.gz | tar xz
+TAG=$(curl -s https://api.github.com/repos/Spectara/Revela/releases | grep -m1 '"tag_name"' | cut -d '"' -f4)
+curl -L "https://github.com/Spectara/Revela/releases/download/$TAG/revela-osx-arm64-standalone.tar.gz" | tar xz
 chmod +x revela
 ```
 
 ### Linux (x64)
 
 ```bash
-curl -L https://github.com/Spectara/Revela/releases/latest/download/revela-linux-x64-standalone.tar.gz | tar xz
+TAG=$(curl -s https://api.github.com/repos/Spectara/Revela/releases | grep -m1 '"tag_name"' | cut -d '"' -f4)
+curl -L "https://github.com/Spectara/Revela/releases/download/$TAG/revela-linux-x64-standalone.tar.gz" | tar xz
 chmod +x revela
 ```
 
-### Standalone Directory Structure
+Keep the native library that comes in the archive (`libvips-42.dll`, `libvips.42.dylib` or `libvips.so.42`) next to the executable. Builds for Windows ARM64 and Linux ARM64 are also on the [releases page](https://github.com/Spectara/Revela/releases).
 
-After extraction, your directory looks like this:
-
-```
-D:\Revela\
-├── revela.exe          # The executable
-├── revela.json         # Global configuration (created on first run)
-└── projects/           # Your projects (one folder per site)
-    └── MyPhotos/
-        ├── project.json
-        ├── site.json
-        ├── source/
-        └── output/
-```
-
-**Key feature:** In standalone mode, Revela manages multiple projects in the `projects/` folder. Double-click `revela.exe` to start the interactive menu with project selection.
+> **Tip:** Add the folder that contains `revela` to your `PATH`, so you can run `revela` from any project folder.
 
 ---
 
-## Option 2: .NET Global Tool
+## Full (Modular)
 
-If you have the [.NET SDK](https://dotnet.microsoft.com/download) installed (version 10 or later), you can install Revela as a global tool.
+The `revela` executable plus a `packages/` folder with every official plugin and theme as a `.nupkg` file. Revela uses that folder as an offline package feed named `bundled`, so you choose which plugins and themes to install, and you can add third-party or your own plugins.
+
+Download `revela-<platform>-full.zip` (Windows) or `revela-<platform>-full.tar.gz` (macOS/Linux) from the [releases page](https://github.com/Spectara/Revela/releases) and extract it. Keep the `packages/` folder next to the executable.
+
+On first run, Revela starts the **Setup Wizard**, which installs themes and plugins from `packages/`. Choose **Full Installation** to install everything, or **Custom Installation** to pick packages. Revela exits after installing; start it again to continue. You can install or remove packages later:
+
+```bash
+revela plugin install Statistics
+revela theme install Lumina.Statistics
+revela plugin list
+```
+
+See [Plugins](../../plugins/) for details.
+
+---
+
+## .NET Global Tool
+
+If you have the [.NET SDK](https://dotnet.microsoft.com/download) (version 10 or later), you can install Revela as a global tool.
 
 > **Not on NuGet.org yet:** Revela packages are not published on NuGet.org, so `dotnet tool install -g Spectara.Revela` on its own will fail. Every package is attached to each [GitHub Release](https://github.com/Spectara/Revela/releases) instead.
 
@@ -74,51 +95,29 @@ If you have the [.NET SDK](https://dotnet.microsoft.com/download) installed (ver
 
    This adds the folder to `dependencies.feeds` in your global `revela.json`, so it is trusted for every project.
 
-### Update
-
-Download the new `.nupkg` files into the same folder, then:
-
-```bash
-dotnet tool update -g Spectara.Revela --version <version> --add-source ./revela-packages
-```
-
-### Usage
-
-Navigate to your project directory and run commands directly:
-
-```bash
-cd ~/my-photography-website
-revela generate all
-```
-
-### Differences from Standalone
-
-| Feature | Standalone | .NET Global Tool |
-|---------|-----------|-----------------|
-| **Prerequisites** | None | .NET 10 SDK |
-| **Projects** | Multiple (managed in `projects/`) | One per directory |
-| **Config location** | Next to `revela.exe` | `%APPDATA%/Revela/` |
-| **Project selection** | Interactive menu | Navigate to project dir |
-| **`revela projects`** | Available | Not available |
-| **Interactive mode** | Double-click exe | Run `revela` without args |
+The tool has the same commands as the Full edition.
 
 ---
 
 ## First Run
 
-After installation, run `revela` without arguments:
+Revela always works on the **current folder**: the folder you start it in is your project. To create a site:
 
-```bash
-revela
-```
+1. Create an empty folder for your site, for example `D:\Photos\MyPortfolio`.
+2. Open a terminal in that folder and run `revela`. (If you double-click the executable or the `Start Revela` launcher instead, the folder that contains Revela becomes the project.)
+3. Revela finds no `project.json` and offers **Create New Project**. The project wizard asks for:
+   1. Project settings (name, base URL)
+   2. Directory paths (`source` and `output` by default)
+   3. Theme (Lumina)
+   4. Image settings (formats and quality)
+   5. Site metadata (title, author, …)
 
-On first run, the **Setup Wizard** starts automatically:
+   It then offers optional steps, such as connecting a OneDrive folder.
+4. Put your photos in `source/` and choose **generate → all**.
 
-1. **Install themes and plugins**: full or custom installation
-2. **Create a project**: folder name and settings
-3. **Ready to go**: add photos and generate
+The wizard creates `project.json` and `site.json` in the folder. The [User Journey](../user-journey/) walks through the whole workflow.
 
-See the [User Journey](../user-journey/) for a complete walkthrough.
+> **Full edition and .NET tool:** on the very first start, the Setup Wizard installs themes and plugins before the project wizard runs.
 
 ---
 
@@ -128,11 +127,21 @@ See the [User Journey](../user-journey/) for a complete walkthrough.
 revela --version
 ```
 
+For more detail (plugin and theme counts, active theme):
+
+```bash
+revela info
+```
+
+The Standalone edition reports itself as an "embedded build", since its plugins and themes are embedded in the executable.
+
 Check where Revela stores its configuration:
 
 ```bash
 revela config locations
 ```
+
+The global `revela.json` lives next to the executable when that folder is writable (for example an extracted ZIP). Otherwise it goes to `%APPDATA%\Revela\` on Windows or `~/.config/Revela/` on macOS and Linux.
 
 ---
 
@@ -140,7 +149,15 @@ revela config locations
 
 ### Standalone
 
-Download the latest release and replace `revela.exe`. Your `revela.json` and `projects/` folder are preserved. Themes and plugins are built into the Standalone executable, so they update with it.
+Download the latest release and replace the executable (and the native `libvips` library next to it). Your projects are ordinary folders and are not touched. Themes and plugins are built in, so they update with the executable.
+
+### Full
+
+Extract the new release over the old one, including the new `packages/` folder. Then run this in each project to install the matching versions:
+
+```bash
+revela restore
+```
 
 ### .NET Global Tool
 
@@ -148,11 +165,6 @@ Download the new release's `.nupkg` files into your package folder, then:
 
 ```bash
 dotnet tool update -g Spectara.Revela --version <version> --add-source ./revela-packages
-```
-
-After updating, restore your dependencies:
-
-```bash
 revela restore
 ```
 
@@ -186,3 +198,13 @@ Allow it once under **System Settings → Privacy & Security → Open Anyway**, 
 ```bash
 xattr -d com.apple.quarantine /path/to/revela
 ```
+
+### Something else looks wrong
+
+Run this inside your project folder:
+
+```bash
+revela check
+```
+
+It checks configuration, folder structure, theme and content, and tells you how to fix each problem.
