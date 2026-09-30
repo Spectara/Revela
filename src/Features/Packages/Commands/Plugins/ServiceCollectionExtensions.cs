@@ -20,6 +20,9 @@ internal static class ServiceCollectionExtensions
         // NuGetSourceManager for resolving package sources (supports relative paths)
         services.AddSingleton<INuGetSourceManager, NuGetSourceManager>();
 
+        // Consent prompt for feeds declared only in project.json (restore/install)
+        services.AddTransient<ProjectFeedConsent>();
+
         // Internal services used by PluginManager
         services.AddTransient<NupkgExtractor>();
         services.AddTransient<PluginProjectService>();

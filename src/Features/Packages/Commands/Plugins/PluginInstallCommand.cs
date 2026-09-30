@@ -24,13 +24,15 @@ internal sealed partial class PluginInstallCommand
     private readonly IPackageInstaller pluginManager;
     private readonly IPackageIndexService packageIndexService;
     private readonly IGlobalConfigManager globalConfigManager;
+    private readonly ProjectFeedConsent feedConsent;
 
     public PluginInstallCommand(
         ILogger<PluginInstallCommand> logger,
         PackageManager pluginManager,
         IPackageIndexService packageIndexService,
-        IGlobalConfigManager globalConfigManager)
-        : this(logger, (IPackageInstaller)pluginManager, packageIndexService, globalConfigManager)
+        IGlobalConfigManager globalConfigManager,
+        ProjectFeedConsent feedConsent)
+        : this(logger, (IPackageInstaller)pluginManager, packageIndexService, globalConfigManager, feedConsent)
     {
     }
 
@@ -38,12 +40,14 @@ internal sealed partial class PluginInstallCommand
         ILogger<PluginInstallCommand> commandLogger,
         IPackageInstaller installer,
         IPackageIndexService indexService,
-        IGlobalConfigManager configManager)
+        IGlobalConfigManager configManager,
+        ProjectFeedConsent consent)
     {
         logger = commandLogger;
         pluginManager = installer;
         packageIndexService = indexService;
         globalConfigManager = configManager;
+        feedConsent = consent;
     }
 
     /// <summary>
@@ -78,12 +82,20 @@ internal sealed partial class PluginInstallCommand
         };
         command.Options.Add(allOption);
 
+        var allowProjectFeedsOption = ProjectFeedConsent.CreateOption();
+        command.Options.Add(allowProjectFeedsOption);
+
         command.SetAction(async (parseResult, cancellationToken) =>
         {
             var name = parseResult.GetValue(nameArgument);
             var version = parseResult.GetValue(versionOption);
             var source = parseResult.GetValue(sourceOption);
             var all = parseResult.GetValue(allOption);
+
+            if (!await feedConsent.EnsureApprovedAsync(parseResult.GetValue(allowProjectFeedsOption), source, cancellationToken))
+            {
+                return 1;
+            }
 
             // --all flag → install all available plugins
             if (all)
@@ -124,7 +136,7 @@ internal sealed partial class PluginInstallCommand
         }
 
         // Get already installed plugins to filter them out
-        var installedPlugins = await globalConfigManager.GetPluginsAsync(cancellationToken);
+        var installedPlugins = await globalConfigManager.GetPackagesAsync(cancellationToken);
         var installedIds = installedPlugins.Keys.ToHashSet(StringComparer.OrdinalIgnoreCase);
 
         var availablePlugins = plugins.Where(p => !installedIds.Contains(p.Id)).ToList();
@@ -187,7 +199,7 @@ internal sealed partial class PluginInstallCommand
         if (selectedPlugins.Count == 0)
         {
             // Check if all plugins are already installed
-            var installedPlugins = await globalConfigManager.GetPluginsAsync(cancellationToken);
+            var installedPlugins = await globalConfigManager.GetPackagesAsync(cancellationToken);
             if (installedPlugins.Count > 0)
             {
                 return new InstallResult([], [.. installedPlugins.Keys], []);
@@ -258,7 +270,7 @@ internal sealed partial class PluginInstallCommand
         }
 
         // Get already installed plugins to filter them out
-        var installedPlugins = await globalConfigManager.GetPluginsAsync(cancellationToken);
+        var installedPlugins = await globalConfigManager.GetPackagesAsync(cancellationToken);
         var installedIds = installedPlugins.Keys.ToHashSet(StringComparer.OrdinalIgnoreCase);
 
         // Filter out already installed plugins
@@ -337,7 +349,7 @@ internal sealed partial class PluginInstallCommand
             AnsiConsole.MarkupLine($"[blue]Installing plugin:[/] [cyan]{Markup.Escape(packageId)}[/]{sourceInfo}");
             LogInstallingPlugin(packageId, version, source);
 
-            var success = await AnsiConsole.Status()
+            var package = await AnsiConsole.Status()
                 .Spinner(Spinner.Known.Dots)
                 .StartAsync("Installing...", async ctx =>
                 {
@@ -346,13 +358,12 @@ internal sealed partial class PluginInstallCommand
                     return await pluginManager.InstallAsync(packageId, version, source, cancellationToken);
                 });
 
-            if (success)
+            if (package is not null)
             {
-                // Register plugin in global config (revela.json)
-                var installedVersion = version ?? packageEntry?.Version ?? "latest";
-                await globalConfigManager.AddPluginAsync(packageId, installedVersion, cancellationToken);
+                // Register the exact installed version in global config (revela.json)
+                await globalConfigManager.AddPackageAsync(package.Id, package.Version, cancellationToken);
 
-                AnsiConsole.MarkupLine($"{OutputMarkers.Success} Plugin [cyan]{Markup.Escape(packageId)}[/] installed successfully.");
+                AnsiConsole.MarkupLine($"{OutputMarkers.Success} Plugin [cyan]{Markup.Escape(package.Id)}[/] [dim]{Markup.Escape(package.Version)}[/] installed successfully.");
                 AnsiConsole.MarkupLine("[dim]The plugin will be available after restarting revela.[/]");
                 return 0;
             }
@@ -387,7 +398,7 @@ internal sealed partial class PluginInstallCommand
             return [];
         }
 
-        var installedPlugins = await globalConfigManager.GetPluginsAsync(cancellationToken);
+        var installedPlugins = await globalConfigManager.GetPackagesAsync(cancellationToken);
         var installedIds = installedPlugins.Keys.ToHashSet(StringComparer.OrdinalIgnoreCase);
 
         return [.. plugins.Where(p => !installedIds.Contains(p.Id))];

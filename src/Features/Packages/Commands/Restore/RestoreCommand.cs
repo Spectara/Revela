@@ -1,6 +1,8 @@
+using System.Collections.Concurrent;
 using System.CommandLine;
 using Microsoft.Extensions.Options;
 using Spectara.Revela.Core;
+using Spectara.Revela.Core.Services;
 using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Abstractions;
 using Spectara.Revela.Sdk.Output;
@@ -13,22 +15,29 @@ namespace Spectara.Revela.Commands.Restore;
 /// Restores project dependencies (themes and plugins)
 /// </summary>
 /// <remarks>
-/// Reads dependencies from the merged configuration (revela.json + project.json)
-/// and installs any that are missing:
-/// - Theme from "theme" property
-/// - Themes from "themes" section
-/// - Plugins from "plugins" section
-/// Uses PluginManager for installation.
+/// <para>
+/// Reads <c>dependencies.packages</c> from the merged configuration (revela.json + project.json)
+/// and installs every package that is not loaded yet. A package counts as installed when any
+/// loaded plugin or theme (including theme extensions) has the same package ID; its type is
+/// taken from the package itself, not from its ID.
+/// </para>
+/// <para>
+/// The active theme (<c>theme.name</c>) is resolved by manifest name through local and
+/// installed themes. Only when no theme and no declared dependency provides it does restore
+/// fall back to the official <c>Spectara.Revela.Themes.{name}</c> package.
+/// </para>
 /// </remarks>
 internal sealed partial class RestoreCommand(
     IDependencyScanner dependencyScanner,
     IThemeRegistry themeRegistry,
     IEnumerable<IPlugin> installedPlugins,
-    PackageManager pluginManager,
+    IEnumerable<ITheme> installedThemes,
+    PackageManager packageManager,
+    ProjectFeedConsent feedConsent,
     IOptions<ProjectEnvironment> projectEnvironment,
     ILogger<RestoreCommand> logger)
 {
-    private const string ThemePackagePrefix = "Spectara.Revela.Themes.";
+    private const string OfficialThemePrefix = PackageTrustPolicy.OfficialPackagePrefix + "Themes.";
 
     /// <summary>
     /// Creates the CLI command
@@ -39,21 +48,24 @@ internal sealed partial class RestoreCommand(
         {
             Description = "Only check dependencies, don't install"
         };
+        var allowProjectFeedsOption = ProjectFeedConsent.CreateOption();
 
         var command = new Command("restore", "Restore project dependencies (themes and plugins)");
         command.Options.Add(checkOption);
+        command.Options.Add(allowProjectFeedsOption);
 
         command.SetAction(async (parseResult, cancellationToken) =>
         {
             var checkOnly = parseResult.GetValue(checkOption);
+            var allowProjectFeeds = parseResult.GetValue(allowProjectFeedsOption);
 
-            return await ExecuteAsync(checkOnly, cancellationToken);
+            return await ExecuteAsync(checkOnly, allowProjectFeeds, cancellationToken);
         });
 
         return command;
     }
 
-    private async Task<int> ExecuteAsync(bool checkOnly, CancellationToken cancellationToken)
+    private async Task<int> ExecuteAsync(bool checkOnly, bool allowProjectFeeds, CancellationToken cancellationToken)
     {
         var fullPath = Path.GetFullPath(projectEnvironment.Value.Path);
 
@@ -73,86 +85,115 @@ internal sealed partial class RestoreCommand(
 
         LogRestoring(fullPath);
 
-        // Get dependencies from merged config (revela.json + project.json)
         var dependencies = dependencyScanner.GetDependencies();
+        var activeTheme = dependencyScanner.GetActiveThemeName();
 
-        if (dependencies.Count == 0)
+        if (dependencies.Count == 0 && activeTheme is null)
         {
             AnsiConsole.MarkupLine($"{OutputMarkers.Success} No dependencies to restore.");
             return 0;
         }
 
-        // Check each dependency
-        var missing = new List<RequiredDependency>();
-        var installed = new List<RequiredDependency>();
-        var invalidCount = 0;
-
         AnsiConsole.MarkupLine("\n[bold]Checking dependencies...[/]\n");
 
+        var missing = new List<RequiredDependency>();
         foreach (var dep in dependencies)
         {
-            var typeLabel = dep.Type == DependencyType.Theme ? "Theme" : "Plugin";
-            var shortName = Markup.Escape(GetShortName(dep));
-            var isInstalled = false;
-
-            if (dep.Type == DependencyType.Theme)
+            var id = Markup.Escape(dep.PackageId);
+            var label = GetInstalledLabel(dep.PackageId);
+            if (label is not null)
             {
-                try
-                {
-                    isInstalled = IsThemeInstalled(dep, fullPath);
-                }
-                catch (InvalidOperationException ex)
-                {
-                    invalidCount++;
-                    var safeError = Markup.Escape(ex.Message);
-                    AnsiConsole.MarkupLine($"  {OutputMarkers.Error} Theme [white]{shortName}[/] - [red]invalid[/]: {safeError}");
-                    continue;
-                }
-            }
-            else if (dep.Type == DependencyType.Plugin)
-            {
-                isInstalled = IsPluginInstalled(dep);
-            }
-
-            if (isInstalled)
-            {
-                AnsiConsole.MarkupLine($"  {OutputMarkers.Success} {typeLabel} [white]{shortName}[/]");
-                installed.Add(dep);
+                AnsiConsole.MarkupLine($"  {OutputMarkers.Success} {label} [white]{id}[/]");
             }
             else
             {
-                AnsiConsole.MarkupLine($"  {OutputMarkers.Error} {typeLabel} [white]{shortName}[/] - [yellow]missing[/]");
+                AnsiConsole.MarkupLine($"  {OutputMarkers.Error} Package [white]{id}[/] - [yellow]missing[/]");
                 missing.Add(dep);
+            }
+        }
+
+        var themeMissing = false;
+        if (activeTheme is not null)
+        {
+            var themeName = Markup.Escape(activeTheme);
+            ITheme? theme;
+            try
+            {
+                theme = themeRegistry.Resolve(activeTheme, fullPath);
+            }
+            catch (InvalidOperationException ex)
+            {
+                AnsiConsole.MarkupLine($"  {OutputMarkers.Error} Theme [white]{themeName}[/] - [red]invalid[/]: {Markup.Escape(ex.Message)}");
+                AnsiConsole.WriteLine();
+                AnsiConsole.MarkupLine($"{OutputMarkers.Error} 1 theme(s) invalid; {missing.Count} dependency(ies) missing.");
+                AnsiConsole.MarkupLine("    Fix invalid local theme configuration before restoring dependencies. No packages were installed.");
+                return 1;
+            }
+
+            if (theme is not null)
+            {
+                var provider = installedThemes.Contains(theme) ? Markup.Escape(theme.Metadata.Id) : "local";
+                AnsiConsole.MarkupLine($"  {OutputMarkers.Success} Theme [white]{themeName}[/] [dim]({provider})[/]");
+            }
+            else
+            {
+                AnsiConsole.MarkupLine($"  {OutputMarkers.Error} Theme [white]{themeName}[/] - [yellow]missing[/] [dim](no installed or local theme has this name)[/]");
+                themeMissing = true;
             }
         }
 
         AnsiConsole.WriteLine();
 
-        // Summary
-        if (invalidCount > 0)
+        var missingCount = missing.Count + (themeMissing ? 1 : 0);
+        if (missingCount == 0)
         {
-            AnsiConsole.MarkupLine($"{OutputMarkers.Error} {invalidCount} theme(s) invalid; {missing.Count} dependency(ies) missing.");
-            AnsiConsole.MarkupLine("    Fix invalid local theme configuration before restoring dependencies. No packages were installed.");
-            return 1;
-        }
-
-        if (missing.Count == 0)
-        {
-            AnsiConsole.MarkupLine($"{OutputMarkers.Success} All {dependencies.Count} dependency(ies) are installed.");
+            AnsiConsole.MarkupLine($"{OutputMarkers.Success} All {dependencies.Count + (activeTheme is null ? 0 : 1)} dependency(ies) are installed.");
             return 0;
         }
 
         if (checkOnly)
         {
-            AnsiConsole.MarkupLine($"{OutputMarkers.Warning} {missing.Count} dependency(ies) missing.");
+            AnsiConsole.MarkupLine($"{OutputMarkers.Warning} {missingCount} dependency(ies) missing.");
             AnsiConsole.MarkupLine("    Run [blue]revela restore[/] to install them.");
             return 1;
         }
 
-        // Install missing dependencies with progress bar
+        if (!await feedConsent.EnsureApprovedAsync(allowProjectFeeds, cancellationToken: cancellationToken))
+        {
+            return 1;
+        }
+
+        var installed = await InstallMissingAsync(missing, cancellationToken);
+        if (installed is null)
+        {
+            return 1;
+        }
+
+        if (themeMissing && !await RestoreActiveThemeAsync(activeTheme!, installed, cancellationToken))
+        {
+            return 1;
+        }
+
+        AnsiConsole.MarkupLine($"{OutputMarkers.Success} Restore complete - all dependencies installed.");
+        return 0;
+    }
+
+    /// <summary>
+    /// Installs the missing packages; returns the installed packages or <c>null</c> if any failed.
+    /// </summary>
+    private async Task<IReadOnlyList<InstalledPackage>?> InstallMissingAsync(
+        List<RequiredDependency> missing,
+        CancellationToken cancellationToken)
+    {
+        if (missing.Count == 0)
+        {
+            return [];
+        }
+
         AnsiConsole.MarkupLine($"[bold]Installing {missing.Count} missing dependency(ies)...[/]\n");
 
-        var installFailed = new System.Collections.Concurrent.ConcurrentBag<(RequiredDependency Dep, string Error)>();
+        var installed = new ConcurrentBag<InstalledPackage>();
+        var installFailed = new ConcurrentBag<(RequiredDependency Dep, string Error)>();
 
         await AnsiConsole.Progress()
             .AutoClear(false)
@@ -175,20 +216,21 @@ internal sealed partial class RestoreCommand(
                     },
                     async (dep, ct) =>
                     {
-                        var shortName = GetShortName(dep);
-
                         try
                         {
-                            // Install plugin or theme using PluginManager
-                            var success = await pluginManager.InstallAsync(
+                            var package = await packageManager.InstallAsync(
                                 packageId: dep.PackageId,
                                 version: dep.Version,
-                                source: null, // Use default NuGet.org
+                                source: null,
                                 cancellationToken: ct);
 
-                            if (!success)
+                            if (package is null)
                             {
                                 installFailed.Add((dep, "Installation failed (see logs)"));
+                            }
+                            else
+                            {
+                                installed.Add(package);
                             }
                         }
                         catch (OperationCanceledException)
@@ -208,11 +250,15 @@ internal sealed partial class RestoreCommand(
 
         AnsiConsole.WriteLine();
 
-        // Show results
-        var successCount = missing.Count - installFailed.Count;
-        if (successCount > 0)
+        foreach (var package in installed.OrderBy(p => p.Id, StringComparer.OrdinalIgnoreCase))
         {
-            AnsiConsole.MarkupLine($"{OutputMarkers.Success} Installed {successCount} package(s)");
+            var kind = package.IsTheme ? "Theme" : "Plugin";
+            AnsiConsole.MarkupLine($"  {OutputMarkers.Success} {kind} [white]{Markup.Escape(package.Id)}[/] [dim]{Markup.Escape(package.Version)}[/]");
+        }
+
+        if (!installed.IsEmpty)
+        {
+            AnsiConsole.MarkupLine($"{OutputMarkers.Success} Installed {installed.Count} package(s)");
         }
 
         if (!installFailed.IsEmpty)
@@ -220,66 +266,70 @@ internal sealed partial class RestoreCommand(
             AnsiConsole.MarkupLine($"{OutputMarkers.Error} Failed to install {installFailed.Count} package(s):");
             foreach (var (dep, error) in installFailed)
             {
-                var shortName = Markup.Escape(GetShortName(dep));
-                var safeError = Markup.Escape(error);
-                AnsiConsole.MarkupLine($"  {OutputMarkers.Error} {shortName}: [dim]{safeError}[/]");
+                AnsiConsole.MarkupLine($"  {OutputMarkers.Error} {Markup.Escape(dep.PackageId)}: [dim]{Markup.Escape(error)}[/]");
             }
+
             AnsiConsole.WriteLine();
             AnsiConsole.MarkupLine($"{OutputMarkers.Warning} Run with increased log level for details: [blue]revela restore --loglevel Debug[/]");
-            return 1;
+            return null;
         }
 
-        AnsiConsole.MarkupLine($"{OutputMarkers.Success} Restore complete - all dependencies installed.");
-        return 0;
+        return [.. installed];
     }
 
-    private bool IsThemeInstalled(RequiredDependency dep, string projectPath)
+    /// <summary>
+    /// Handles an active theme that no local or installed theme provides.
+    /// </summary>
+    private async Task<bool> RestoreActiveThemeAsync(
+        string themeName,
+        IReadOnlyList<InstalledPackage> installed,
+        CancellationToken cancellationToken)
     {
-        var themeName = GetShortName(dep);
+        var name = Markup.Escape(themeName);
 
-        // Check if theme is available (local or installed)
-        var theme = themeRegistry.Resolve(themeName, projectPath);
-        if (theme is not null)
+        // Newly installed themes are loaded on the next run; their manifest names cannot be checked in-process.
+        var newThemes = installed.Where(p => p.IsTheme).ToList();
+        if (newThemes.Count > 0)
         {
+            var ids = Markup.Escape(string.Join(", ", newThemes.Select(p => p.Id)));
+            AnsiConsole.MarkupLine($"{OutputMarkers.Info} Theme [white]{name}[/] is expected from the newly installed theme package(s) [dim]{ids}[/]; it is loaded on the next run.");
             return true;
         }
 
-        var extensionSeparator = themeName.LastIndexOf('.');
-        return extensionSeparator > 0
-            && themeRegistry.GetExtensions(themeName[..extensionSeparator])
-                .Any(extension => extension.Metadata.Id.Equals(dep.PackageId, StringComparison.OrdinalIgnoreCase));
+        var officialId = themeName.StartsWith(OfficialThemePrefix, StringComparison.OrdinalIgnoreCase)
+            ? themeName
+            : OfficialThemePrefix + themeName;
+        AnsiConsole.MarkupLine($"{OutputMarkers.Info} No installed theme or declared dependency provides theme [white]{name}[/]. Trying the official package [white]{Markup.Escape(officialId)}[/]...");
+
+        var package = PackageIdRules.IsValid(officialId)
+            ? await packageManager.InstallAsync(officialId, version: null, source: null, cancellationToken)
+            : null;
+        if (package is null)
+        {
+            AnsiConsole.MarkupLine($"{OutputMarkers.Error} Theme [white]{name}[/] could not be resolved: no installed or local theme has this name, no declared dependency provides it, and the official package [white]{Markup.Escape(officialId)}[/] could not be installed.");
+            AnsiConsole.MarkupLine("    Add the package that provides this theme to [cyan]dependencies.packages[/] in project.json, or change [cyan]theme.name[/].");
+            return false;
+        }
+
+        AnsiConsole.MarkupLine($"  {OutputMarkers.Success} Theme [white]{Markup.Escape(package.Id)}[/] [dim]{Markup.Escape(package.Version)}[/]");
+        return true;
     }
 
-    private bool IsPluginInstalled(RequiredDependency dep) =>
-        installedPlugins.Any(plugin => plugin.Metadata.Id.Equals(dep.PackageId, StringComparison.OrdinalIgnoreCase));
-
-    private static string GetShortName(RequiredDependency dep)
+    /// <summary>
+    /// Returns "Plugin"/"Theme" when a loaded package has <paramref name="packageId"/>; otherwise <c>null</c>.
+    /// </summary>
+    private string? GetInstalledLabel(string packageId)
     {
-        if (dep.Type == DependencyType.Theme && dep.PackageId.StartsWith(ThemePackagePrefix, StringComparison.OrdinalIgnoreCase))
+        if (installedPlugins.Any(plugin => plugin.Metadata.Id.Equals(packageId, StringComparison.OrdinalIgnoreCase)))
         {
-            return dep.PackageId[ThemePackagePrefix.Length..];
+            return "Plugin";
         }
 
-        // Extract short name from package ID
-        // "Spectara.Revela.Plugins.Source.OneDrive" → "OneDrive Source" or just last part
-        // "Spectara.Revela.Themes.Lumina" → "Lumina"
-
-        var parts = dep.PackageId.Split('.');
-        if (parts.Length >= 2)
-        {
-            // Get last meaningful parts
-            if (dep.Type == DependencyType.Plugin && parts.Length > 4)
-            {
-                // "Spectara.Revela.Plugins.Source.OneDrive" → "OneDrive"
-                return parts[^1];
-            }
-        }
-
-        return dep.PackageId;
+        return installedThemes.Any(theme => theme.Metadata.Id.Equals(packageId, StringComparison.OrdinalIgnoreCase))
+            ? "Theme"
+            : null;
     }
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Restoring dependencies for {ProjectPath}")]
     private partial void LogRestoring(string projectPath);
 }
-
-

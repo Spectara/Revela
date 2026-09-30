@@ -799,8 +799,9 @@ try {
             $originalProjectBytes = [IO.File]::ReadAllBytes($projectConfigPath)
             try {
                 $dependencyProbe = [Text.Encoding]::UTF8.GetString($originalProjectBytes) | ConvertFrom-Json -AsHashtable
-                if (-not $dependencyProbe.ContainsKey('plugins')) { $dependencyProbe['plugins'] = @{} }
-                $dependencyProbe.plugins['Spectara.Revela.Plugins.ReleaseTestMissing'] = $Version
+                if (-not $dependencyProbe.ContainsKey('dependencies')) { $dependencyProbe['dependencies'] = @{} }
+                if (-not $dependencyProbe.dependencies.ContainsKey('packages')) { $dependencyProbe.dependencies['packages'] = @{} }
+                $dependencyProbe.dependencies.packages['Spectara.Revela.Plugins.ReleaseTestMissing'] = $Version
                 $dependencyProbe | ConvertTo-Json -Depth 100 | Set-Content -LiteralPath $projectConfigPath -Encoding utf8
                 $missingDependencyOutput = & $ExePath restore --check 2>&1 | Out-String
                 $missingDependencyExit = $LASTEXITCODE
@@ -810,7 +811,7 @@ try {
                     $compactDependencyOutput -notmatch 'Spectara\.Revela\.Plugins\.ReleaseTestMissing.*missing') {
                     throw "restore --check did not diagnose the declared missing plugin (exit $missingDependencyExit): $missingDependencyOutput"
                 }
-                Write-Success "restore --check rejects a root-declared missing plugin"
+                Write-Success "restore --check rejects a declared missing package"
             }
             finally {
                 [IO.File]::WriteAllBytes($projectConfigPath, $originalProjectBytes)
@@ -822,7 +823,7 @@ try {
                 $seedVersion = if ($Version -eq '0.0.0-test') { '0.0.0-registration-seed' } else { '0.0.0-test' }
                 if ($seedVersion -eq $Version) { throw 'Registration seed must differ from the installed version' }
                 $registrationProbe = [ordered]@{
-                    Plugins = [ordered]@{ 'spectara.revela.plugins.statistics' = $seedVersion }
+                    Dependencies = [ordered]@{ Packages = [ordered]@{ 'spectara.revela.plugins.statistics' = $seedVersion } }
                     retained = [ordered]@{ value = 'registration-sentinel' }
                 }
                 $registrationProbe | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $registrationConfig -Encoding utf8
@@ -831,9 +832,11 @@ try {
                     & $ExePath plugin install Statistics --version $Version --source $PluginsDir
                     if ($LASTEXITCODE -ne 0) { throw 'Mixed-case package registration failed' }
                     $savedRegistration = Get-Content -LiteralPath $registrationConfig -Raw | ConvertFrom-Json -AsHashtable
-                    if (-not (@($savedRegistration.Keys) -ccontains 'Plugins') -or
-                        (@($savedRegistration.Keys) -ccontains 'plugins') -or
-                        $savedRegistration.Plugins['spectara.revela.plugins.statistics'] -ne $Version -or
+                    if (-not (@($savedRegistration.Keys) -ccontains 'Dependencies') -or
+                        (@($savedRegistration.Keys) -ccontains 'dependencies') -or
+                        -not (@($savedRegistration.Dependencies.Keys) -ccontains 'Packages') -or
+                        (@($savedRegistration.Keys) -ccontains 'Plugins') -or
+                        $savedRegistration.Dependencies.Packages['spectara.revela.plugins.statistics'] -ne $Version -or
                         $savedRegistration.retained.value -ne 'registration-sentinel') {
                         throw 'Mixed-case registration did not preserve keys and unrelated data'
                     }
@@ -844,7 +847,7 @@ try {
                     foreach ($packageId in @('Spectara.Revela.Plugins.Statistics', 'Spectara.Revela.Plugins.Serve')) {
                         Remove-Item -LiteralPath (Join-Path $CliDir "plugins/$packageId") -Recurse -Force
                     }
-                    $registrationProbe.Plugins = [ordered]@{}
+                    $registrationProbe.Dependencies.Packages = [ordered]@{}
                     $registrationProbe | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $registrationConfig -Encoding utf8
                     $coreRestoreFeed = Join-Path $CliDir 'packages'
                     try {
@@ -862,12 +865,12 @@ try {
                         }
                     }
                     $restoredRegistration = Get-Content -LiteralPath $registrationConfig -Raw | ConvertFrom-Json -AsHashtable
-                    if ($restoredRegistration.Plugins.Count -ne 2 -or
+                    if ($restoredRegistration.Dependencies.Packages.Count -ne 2 -or
                         $restoredRegistration.retained.value -ne 'registration-sentinel') {
                         throw 'Parallel registration did not preserve both new entries and unrelated data'
                     }
                     foreach ($packageId in @('Spectara.Revela.Plugins.Statistics', 'Spectara.Revela.Plugins.Serve')) {
-                        if ($restoredRegistration.Plugins[$packageId] -ne $Version -or
+                        if ($restoredRegistration.Dependencies.Packages[$packageId] -ne $Version -or
                             -not (Test-Path -LiteralPath (Join-Path $CliDir "plugins/$packageId/$packageId.dll"))) {
                             throw "Parallel restore lost registration or files for $packageId"
                         }
@@ -888,7 +891,7 @@ try {
                     if ($LASTEXITCODE -ne 0) { throw 'Restored project did not pass a fresh check' }
                     Write-Success 'Parallel restore preserved both registered packages'
 
-                    [IO.File]::WriteAllText($registrationConfig, '{"Plugins":{"Spectara.Revela.Plugins.Statistics":"0.0.0-test"},"plugins":{"Other":"1.0.0"}}')
+                    [IO.File]::WriteAllText($registrationConfig, '{"Dependencies":{"Packages":{"Spectara.Revela.Plugins.Statistics":"0.0.0-test"}},"dependencies":{"packages":{"Other":"1.0.0"}}}')
                     $beforeFailedRegistration = (Get-FileHash -LiteralPath $registrationConfig).Hash
                     $failureOutput = & $ExePath plugin install Statistics --version $Version --source $PluginsDir 2>&1 | Out-String
                     if ($LASTEXITCODE -ne 1 -or $failureOutput -notmatch 'files extracted but project registration failed' -or

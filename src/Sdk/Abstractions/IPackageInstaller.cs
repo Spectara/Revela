@@ -13,11 +13,11 @@ public interface IPackageInstaller
     /// Installs a package by NuGet ID.
     /// </summary>
     /// <param name="packageId">NuGet package ID.</param>
-    /// <param name="version">Optional version constraint.</param>
+    /// <param name="version">Optional exact version; <c>null</c>, empty or <c>"latest"</c> selects the newest allowed version.</param>
     /// <param name="source">Optional NuGet source override.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns><c>true</c> if installation succeeded.</returns>
-    Task<bool> InstallAsync(string packageId, string? version = null, string? source = null, CancellationToken cancellationToken = default);
+    /// <returns>The installed package with its exact version, or <c>null</c> if installation failed.</returns>
+    Task<InstalledPackage?> InstallAsync(string packageId, string? version = null, string? source = null, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Uninstalls a package by NuGet ID.

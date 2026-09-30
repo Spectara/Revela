@@ -81,6 +81,40 @@ project-relative locations use `ProjectPaths`. Services must not assume default
 folder names or use the process working directory as a substitute for project
 context.
 
+### Dependencies And Feeds
+
+`revela.json` and `project.json` declare dependencies with the same shape, bound
+to `DependenciesConfig` (section `dependencies`) and merged per key:
+
+```jsonc
+{
+  "theme": { "name": "Lumina" },
+  "dependencies": {
+    "feeds":    { "test": "../my-feed", "myFeed": "https://example.com/v3/index.json" },
+    "packages": { "Spectara.Revela.Themes.Lumina": "1.0.0", "Acme.Revela.Watermark": "1.0.0" }
+  }
+}
+```
+
+- `dependencies.packages` is a flat package ID → exact version map. Install
+  commands and restore persist the version that was actually installed; a
+  missing value or `latest` resolves per the stable/prerelease host policy.
+- Package kind is never derived from the ID. Restore treats every entry as
+  required, checks "installed" by package ID across loaded plugins and themes,
+  and reports the kind from the nuspec package type after extraction.
+- `theme.name` is a manifest name. Restore resolves it through local and
+  installed themes; the official `Spectara.Revela.Themes.<name>` package is only
+  a fallback when neither an installed theme nor a newly restored theme package
+  can provide it.
+- `dependencies.feeds` values are URLs or folders; relative folders resolve from
+  the declaring file. Feeds declared only in `project.json` are excluded from
+  package sources until the owner consents (see
+  [Security Model](security-model.md#project-declared-package-feeds)).
+  Provenance comes from reading `revela.json` and `project.json` separately,
+  because the merged configuration no longer knows which file set a key.
+- The root `plugins` node is reserved for plugin settings and is never read as a
+  dependency list.
+
 Configuration commands and package registration update project settings through
 `IConfigService`. Reading, merging, provider validation, staged replacement and
 reload are serialized within the service instance. Invalid originals or ambiguous
@@ -171,7 +205,7 @@ required registration hook. Use idempotent DI registrations and typed HTTP clien
 Package-mutating CLI commands avoid normal package loading so loaded assemblies do
 not lock files being installed or removed.
 
-Installation extracts a package and registers its requested version through the
+Installation extracts a package and registers its exact installed version through the
 shared configuration service. Extraction and registration are not a whole-install
 transaction: registration failure is a failed install and can leave extracted
 files. It must not announce success or retry another feed after that failure;

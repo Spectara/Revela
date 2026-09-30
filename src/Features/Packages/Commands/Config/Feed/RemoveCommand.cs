@@ -71,14 +71,14 @@ internal sealed partial class RemoveCommand(
 
             if (removed)
             {
-                AnsiConsole.MarkupLine($"{OutputMarkers.Success} Removed feed [cyan]{name}[/]");
+                AnsiConsole.MarkupLine($"{OutputMarkers.Success} Removed feed [cyan]{Markup.Escape(name)}[/]");
                 AnsiConsole.WriteLine();
-                AnsiConsole.MarkupLine($"Config: [dim]{ConfigPathResolver.ConfigFilePath}[/]");
+                AnsiConsole.MarkupLine($"Config: [dim]{Markup.Escape(ConfigPathResolver.ConfigFilePath)}[/]");
                 return 0;
             }
             else
             {
-                AnsiConsole.MarkupLine($"[yellow]WARNING[/] Feed '{name}' not found");
+                AnsiConsole.MarkupLine($"[yellow]WARNING[/] Feed '{Markup.Escape(name)}' not found in revela.json");
                 return 1;
             }
         }

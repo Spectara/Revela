@@ -41,15 +41,18 @@ public sealed class PackageManagerRegistrationTests
             installerToken = call.Arg<CancellationToken>();
             installerEntered.TrySetResult();
             await Task.Delay(Timeout.Infinite, installerToken);
-            return true;
+            return (InstalledPackage?)new InstalledPackage(fullPackageId, "2.0.0", ["RevelaPlugin"]);
         });
         var indexService = Substitute.For<IPackageIndexService>();
         indexService.SearchByTypeAsync("RevelaPlugin", Arg.Any<CancellationToken>()).Returns(
             [new PackageIndexEntry { Id = fullPackageId, Version = "2.0.0", Description = "Fixture plugin", Source = "fixture", Types = ["RevelaPlugin"] }]);
         var globalConfig = Substitute.For<IGlobalConfigManager>();
-        globalConfig.GetPluginsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<string, string>());
+        globalConfig.GetPackagesAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<string, string?>());
         var logger = new RegistrationLogger<PluginInstallCommand>();
-        var command = new PluginInstallCommand(logger, installer, indexService, globalConfig).Create();
+        var sourceManager = Substitute.For<INuGetSourceManager>();
+        sourceManager.GetPendingProjectFeeds().Returns([]);
+        var consent = new ProjectFeedConsent(sourceManager, Substitute.For<IConsoleCapabilities>());
+        var command = new PluginInstallCommand(logger, installer, indexService, globalConfig, consent).Create();
         using var cancellation = new CancellationTokenSource();
         using var writer = new StringWriter(CultureInfo.InvariantCulture);
         var originalConsole = AnsiConsole.Console;
@@ -79,7 +82,7 @@ public sealed class PackageManagerRegistrationTests
             Assert.AreEqual(installerToken, exception.CancellationToken);
             Assert.IsTrue(exception.CancellationToken.IsCancellationRequested);
             await installer.Received(1).InstallAsync(fullPackageId, null, null, installerToken);
-            await globalConfig.DidNotReceive().AddPluginAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+            await globalConfig.DidNotReceive().AddPackageAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
             Assert.IsFalse(logger.Entries.Any(entry => entry.Level >= LogLevel.Error));
             Assert.DoesNotContain("Failed to install", writer.ToString(), StringComparison.OrdinalIgnoreCase);
             Assert.DoesNotContain("installed successfully", writer.ToString(), StringComparison.OrdinalIgnoreCase);
@@ -141,7 +144,7 @@ public sealed class PackageManagerRegistrationTests
         }
         else
         {
-            Assert.IsFalse(await installer.InstallFromNupkgAsync(nupkgPath, targetDir, nupkgPath, cancellation.Token));
+            Assert.IsNull(await installer.InstallFromNupkgAsync(nupkgPath, targetDir, nupkgPath, cancellation.Token));
         }
 
         var installedPath = Path.Combine(targetDir, PackageId);
@@ -149,8 +152,9 @@ public sealed class PackageManagerRegistrationTests
         Assert.IsTrue(File.Exists(Path.Combine(installedPath, $"{PackageId}.meta.json")));
         CollectionAssert.AreEqual(original, await File.ReadAllBytesAsync(project.ProjectJsonPath));
         await configService.Received(1).UpdateProjectConfigAsync(
-            Arg.Is<JsonObject>(patch => patch.Count == 1 && patch["plugins"]!.AsObject().Count == 1 &&
-                patch["plugins"]![PackageId]!.GetValue<string>() == "2.0.0"), cancellation.Token);
+            Arg.Is<JsonObject>(patch => patch.Count == 1 && patch["dependencies"]!.AsObject().Count == 1 &&
+                patch["dependencies"]!["packages"]!.AsObject().Count == 1 &&
+                patch["dependencies"]!["packages"]![PackageId]!.GetValue<string>() == "2.0.0"), cancellation.Token);
         var logs = logger.Entries;
         Assert.IsFalse(logs.Any(entry => entry.Message.Contains("installed successfully", StringComparison.Ordinal)));
         if (cancel)

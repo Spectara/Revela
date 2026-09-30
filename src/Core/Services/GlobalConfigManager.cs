@@ -5,6 +5,7 @@ using System.Text.Json.Serialization;
 
 using Microsoft.Extensions.Configuration;
 
+using Spectara.Revela.Sdk.Configuration;
 using Spectara.Revela.Sdk.Json;
 using Spectara.Revela.Sdk.Services;
 namespace Spectara.Revela.Core.Services;
@@ -24,12 +25,16 @@ namespace Spectara.Revela.Core.Services;
 /// The config file is created with defaults on first access if it doesn't exist.
 /// </para>
 /// <para>
-/// NOTE: This class handles WRITING to revela.json. For READING, use
-/// IOptionsMonitor&lt;FeedsConfig&gt;, IOptionsMonitor&lt;DependenciesConfig&gt;, etc.
+/// NOTE: This class handles WRITING to revela.json. For READING the merged configuration,
+/// use IOptionsMonitor&lt;DependenciesConfig&gt;, etc.
 /// </para>
 /// </remarks>
 public sealed partial class GlobalConfigManager(ILogger<GlobalConfigManager> logger) : IGlobalConfigManager
 {
+    private const string DependenciesSection = DependenciesConfig.Section;
+    private const string FeedsKey = "feeds";
+    private const string PackagesKey = "packages";
+
     private string? ExplicitConfigFilePath { get; }
     private JsonObject? cachedConfig;
 
@@ -232,7 +237,7 @@ public sealed partial class GlobalConfigManager(ILogger<GlobalConfigManager> log
     public async Task AddFeedAsync(string name, string url, CancellationToken cancellationToken = default)
     {
         var config = (JsonObject)(await LoadFileAsync(cancellationToken)).DeepClone();
-        var feeds = GetMapping(GetSection(config, "packages")!, "feeds")!;
+        var feeds = GetMapping(GetSection(config, DependenciesSection)!, FeedsKey)!;
 
         if (feeds.ContainsKey(name))
         {
@@ -256,77 +261,44 @@ public sealed partial class GlobalConfigManager(ILogger<GlobalConfigManager> log
             throw new InvalidOperationException("Cannot remove built-in feed 'nuget.org'");
         }
 
-        var config = (JsonObject)(await LoadFileAsync(cancellationToken)).DeepClone();
-        var packages = GetSection(config, "packages", create: false);
-        var feeds = packages is null ? null : GetMapping(packages, "feeds", create: false);
+        return await RemoveEntryAsync(FeedsKey, name, cancellationToken);
+    }
 
-        if (feeds is null || !feeds.Remove(name))
+    /// <inheritdoc />
+    public async Task AddPackageAsync(string packageId, string version, CancellationToken cancellationToken = default)
+    {
+        var config = (JsonObject)(await LoadFileAsync(cancellationToken)).DeepClone();
+        GetMapping(GetSection(config, DependenciesSection)!, PackagesKey)![packageId] = version;
+        await SaveFileAsync(config, cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public Task<bool> RemovePackageAsync(string packageId, CancellationToken cancellationToken = default) =>
+        RemoveEntryAsync(PackagesKey, packageId, cancellationToken);
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyDictionary<string, string?>> GetPackagesAsync(CancellationToken cancellationToken = default)
+    {
+        var config = (JsonObject)(await LoadFileAsync(cancellationToken)).DeepClone();
+        var dependencies = GetSection(config, DependenciesSection, create: false);
+        var packages = dependencies is null ? null : GetMapping(dependencies, PackagesKey, create: false);
+        return packages?.ToDictionary(property => property.Key, property => property.Value?.GetValue<string>(), StringComparer.Ordinal)
+            ?? [];
+    }
+
+    private async Task<bool> RemoveEntryAsync(string mappingName, string key, CancellationToken cancellationToken)
+    {
+        var config = (JsonObject)(await LoadFileAsync(cancellationToken)).DeepClone();
+        var dependencies = GetSection(config, DependenciesSection, create: false);
+        var mapping = dependencies is null ? null : GetMapping(dependencies, mappingName, create: false);
+
+        if (mapping is null || !mapping.Remove(key))
         {
             return false;
         }
 
         await SaveFileAsync(config, cancellationToken);
         return true;
-    }
-
-    /// <inheritdoc />
-    public async Task AddThemeAsync(string packageId, string version, CancellationToken cancellationToken = default)
-    {
-        var config = (JsonObject)(await LoadFileAsync(cancellationToken)).DeepClone();
-        GetMapping(config, "themes")![packageId] = version;
-        await SaveFileAsync(config, cancellationToken);
-    }
-
-    /// <inheritdoc />
-    public async Task<bool> RemoveThemeAsync(string packageId, CancellationToken cancellationToken = default)
-    {
-        var config = (JsonObject)(await LoadFileAsync(cancellationToken)).DeepClone();
-        var themes = GetMapping(config, "themes", create: false);
-
-        if (themes is null || !themes.Remove(packageId))
-        {
-            return false;
-        }
-
-        await SaveFileAsync(config, cancellationToken);
-        return true;
-    }
-
-    /// <inheritdoc />
-    public async Task AddPluginAsync(string packageId, string version, CancellationToken cancellationToken = default)
-    {
-        var config = (JsonObject)(await LoadFileAsync(cancellationToken)).DeepClone();
-        GetMapping(config, "plugins")![packageId] = version;
-        await SaveFileAsync(config, cancellationToken);
-    }
-
-    /// <inheritdoc />
-    public async Task<bool> RemovePluginAsync(string packageId, CancellationToken cancellationToken = default)
-    {
-        var config = (JsonObject)(await LoadFileAsync(cancellationToken)).DeepClone();
-        var plugins = GetMapping(config, "plugins", create: false);
-
-        if (plugins is null || !plugins.Remove(packageId))
-        {
-            return false;
-        }
-
-        await SaveFileAsync(config, cancellationToken);
-        return true;
-    }
-
-    /// <inheritdoc />
-    public async Task<IReadOnlyDictionary<string, string>> GetThemesAsync(CancellationToken cancellationToken = default)
-    {
-        var config = (JsonObject)(await LoadFileAsync(cancellationToken)).DeepClone();
-        return GetMapping(config, "themes", create: false)?.ToDictionary(property => property.Key, property => property.Value?.GetValue<string>()!, StringComparer.Ordinal) ?? [];
-    }
-
-    /// <inheritdoc />
-    public async Task<IReadOnlyDictionary<string, string>> GetPluginsAsync(CancellationToken cancellationToken = default)
-    {
-        var config = (JsonObject)(await LoadFileAsync(cancellationToken)).DeepClone();
-        return GetMapping(config, "plugins", create: false)?.ToDictionary(property => property.Key, property => property.Value?.GetValue<string>()!, StringComparer.Ordinal) ?? [];
     }
 
     #region Logging
@@ -350,16 +322,15 @@ public sealed partial class GlobalConfigManager(ILogger<GlobalConfigManager> log
     /// </summary>
     internal sealed class GlobalConfigFile
     {
-        public PackagesSection Packages { get; init; } = new();
+        public DependenciesSectionFile Dependencies { get; init; } = new();
         public LoggingSection Logging { get; init; } = new();
         public DefaultsSection Defaults { get; init; } = new();
         public bool CheckUpdates { get; init; } = true;
-        public Dictionary<string, string> Themes { get; init; } = [];
-        public Dictionary<string, string> Plugins { get; init; } = [];
 
-        public sealed class PackagesSection
+        public sealed class DependenciesSectionFile
         {
             public Dictionary<string, string> Feeds { get; init; } = [];
+            public Dictionary<string, string> Packages { get; init; } = [];
         }
 
         public sealed class LoggingSection

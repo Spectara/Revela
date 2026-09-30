@@ -53,6 +53,33 @@ revela config site --title "My Portfolio" --author "John Doe"
 
 > **Note:** Image sizes are defined by the theme (in `theme.json`), not in `project.json`. Image format quality (`webp`, `jpg`, `avif`) are flat properties under `generate.images`. Set one to `0` to disable that format.
 
+## Dependencies and Feeds
+
+Themes and plugins your project needs are listed under `dependencies`. The global `revela.json` and your `project.json` use the same shape; for the same key, `project.json` wins.
+
+```jsonc
+{
+  "theme": { "name": "Lumina" },
+  "dependencies": {
+    "feeds": {
+      "test": "../my-feed",                          // folder, relative to this file
+      "myFeed": "https://example.com/v3/index.json"   // remote NuGet v3 feed
+    },
+    "packages": {
+      "Spectara.Revela.Themes.Lumina": "1.0.0",
+      "Acme.Revela.Watermark": "1.0.0"
+    }
+  }
+}
+```
+
+- **`dependencies.packages`** maps a package ID to an exact version. `revela plugin install`, `revela theme install` and `revela restore` write the version that was actually installed. A missing version or `"latest"` means "newest stable version" (a prerelease build of Revela also picks prereleases).
+- **Any package ID works.** Revela reads whether a package is a theme or a plugin from the package itself, so third-party packages are restored like official ones.
+- **`dependencies.feeds`** maps a name to a NuGet v3 URL or a folder of `.nupkg` files. Relative folders are resolved from the file that declares them. nuget.org and the bundled `packages/` folder are always available.
+- **`theme.name`** is the theme's name from its manifest (for example `Lumina`), not a package ID. `revela restore` looks it up in your local and installed themes and falls back to the official `Spectara.Revela.Themes.<name>` package only when nothing else provides that name.
+
+> **Feeds from a project need your confirmation.** A feed that appears only in `project.json` (not in your global `revela.json`) could come from someone else's repository. `revela restore`, `revela plugin install` and `revela theme install` list such feeds and ask before using them. In scripts and CI, pass `--allow-project-feeds` if you trust them, or add the feed to your global config with `revela config feed add`.
+
 ## JSONC: Comments and Trailing Commas
 
 Every Revela configuration file accepts a slightly relaxed JSON dialect, commonly called **JSONC**. You can use:

@@ -57,6 +57,8 @@ revela plugin install Spectara.Revela.Plugins.Statistics
 revela plugin install Statistics --version 1.2.0
 ```
 
+Installing records the package and its exact installed version under `dependencies.packages` in your global `revela.json` and, inside a project, in `project.json` (see [Configuration](../guide/configuration/#dependencies-and-feeds)).
+
 ## Managing Plugins
 
 ```bash
@@ -114,4 +116,10 @@ revela restore
 revela restore --check
 ```
 
-Revela reads the `theme`, `themes`, and `plugins` sections from your configuration and installs anything that's missing.
+Revela reads `dependencies.packages` and `theme.name` from your configuration (global `revela.json` plus `project.json`) and installs anything that's missing. Every package in `dependencies.packages` is required, whatever its ID; installed packages are matched by package ID across plugins and themes. Restoring pins the exact installed version in `project.json`.
+
+Feeds declared only in `project.json` are never used silently. Restore lists them and asks for confirmation; in scripts and CI, where Revela cannot ask, it stops unless you pass `--allow-project-feeds`:
+
+```bash
+revela restore --allow-project-feeds
+```

@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Text.Json.Nodes;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -7,6 +8,7 @@ using NSubstitute;
 using Spectara.Revela.Commands;
 using Spectara.Revela.Commands.Restore;
 using Spectara.Revela.Core;
+using Spectara.Revela.Core.Models;
 using Spectara.Revela.Core.Services;
 using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Abstractions;
@@ -23,288 +25,326 @@ namespace Spectara.Revela.Tests.Commands.Packages;
 [DoNotParallelize]
 public sealed class RestoreCommandTests
 {
+    #region Dependency scanner
+
     [TestMethod]
-    [DataRow(false, false)]
-    [DataRow(false, true)]
-    [DataRow(true, false)]
-    [DataRow(true, true)]
-    public async Task ExecuteAsync_InvalidThemes_InspectsRemainingDependenciesAndBlocksInstallation(bool checkOnly, bool includeMissing)
+    public void GetDependencies_LayeredConfiguration_MergesPackagesPerKeyWithoutClassifyingIds()
+    {
+        using var configuration = (ConfigurationRoot)new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["dependencies:packages:Spectara.Revela.Themes.Lumina"] = "1.0.0",
+                ["dependencies:packages:Spectara.Revela.Plugins.Statistics"] = "1.0.0"
+            })
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["dependencies:packages:Spectara.Revela.Themes.Lumina"] = "2.0.0",
+                ["dependencies:packages:Acme.Revela.Watermark"] = "3.0.0"
+            })
+            .Build();
+        using var provider = CreateScannerProvider(configuration);
+
+        var dependencies = provider.GetRequiredService<IDependencyScanner>().GetDependencies()
+            .ToDictionary(d => d.PackageId, d => d.Version, StringComparer.Ordinal);
+
+        Assert.HasCount(3, dependencies);
+        Assert.AreEqual("2.0.0", dependencies["Spectara.Revela.Themes.Lumina"]);
+        Assert.AreEqual("1.0.0", dependencies["Spectara.Revela.Plugins.Statistics"]);
+        Assert.AreEqual("3.0.0", dependencies["Acme.Revela.Watermark"]);
+    }
+
+    [TestMethod]
+    [DataRow("plugins:Spectara.Revela.Plugins.Serve")]
+    [DataRow("themes:Spectara.Revela.Themes.Lumina")]
+    [DataRow("plugins:serve:port")]
+    public void GetDependencies_LegacyRootMaps_AreNotReadAsDependencies(string key)
+    {
+        using var configuration = (ConfigurationRoot)new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?> { [key] = "1.0.0" })
+            .Build();
+        using var provider = CreateScannerProvider(configuration);
+
+        Assert.IsEmpty(provider.GetRequiredService<IDependencyScanner>().GetDependencies());
+    }
+
+    [TestMethod]
+    [DataRow(null, null)]
+    [DataRow("  ", null)]
+    [DataRow("Noir", "Noir")]
+    public void GetActiveThemeName_ReturnsConfiguredManifestName(string? configured, string? expected)
+    {
+        using var configuration = (ConfigurationRoot)new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?> { ["theme:name"] = configured })
+            .Build();
+        using var provider = CreateScannerProvider(configuration);
+
+        Assert.AreEqual(expected, provider.GetRequiredService<IDependencyScanner>().GetActiveThemeName());
+    }
+
+    #endregion
+
+    #region Check
+
+    [TestMethod]
+    public async Task Check_NothingDeclared_ReportsNoDependencies()
     {
         using var project = TestProject.CreateMinimal();
-        var registry = Substitute.For<IThemeRegistry>();
-        var dependencies = new List<RequiredDependency>
-        {
-            Theme("[Broken]"),
-            Theme("[Valid]"),
-            Theme("[AlsoBroken]")
-        };
-        var firstError = "Failed to load local theme '[Broken]': invalid [manifest].";
-        var secondError = "Failed to load local theme '[AlsoBroken]': invalid [configuration].";
-        registry.Resolve("[Broken]", project.RootPath).Returns(_ => throw new InvalidOperationException(firstError));
-        registry.Resolve("[Valid]", project.RootPath).Returns(Substitute.For<ITheme>());
-        registry.Resolve("[AlsoBroken]", project.RootPath).Returns(_ => throw new InvalidOperationException(secondError));
-        if (includeMissing)
-        {
-            registry.Resolve("[Missing]", project.RootPath).Returns((ITheme?)null);
-            dependencies.Add(Theme("[Missing]"));
-            dependencies.Add(new RequiredDependency
-            {
-                PackageId = "Spectara.Revela.Plugins.[MissingPlugin]",
-                Type = DependencyType.Plugin
-            });
-        }
 
-        var (exitCode, output) = await InvokeAsync(project, dependencies, registry, checkOnly);
+        var (exitCode, output) = await InvokeAsync(project, Scanner(), EmptyRegistry(), ["--check"]);
+
+        Assert.AreEqual(0, exitCode);
+        Assert.Contains("No dependencies to restore.", output, StringComparison.Ordinal);
+    }
+
+    [TestMethod]
+    public async Task Check_ThirdPartyPackageNotInstalled_IsReportedMissing()
+    {
+        using var project = TestProject.CreateMinimal();
+
+        var (exitCode, output) = await InvokeAsync(
+            project, Scanner(packages: [("Acme.Revela.Watermark", "1.0.0")]), EmptyRegistry(), ["--check"]);
 
         Assert.AreEqual(1, exitCode);
-        registry.Received(1).Resolve("[Broken]", project.RootPath);
-        registry.Received(1).Resolve("[Valid]", project.RootPath);
-        registry.Received(1).Resolve("[AlsoBroken]", project.RootPath);
-        Assert.Contains("Theme [Broken] - invalid", output, StringComparison.Ordinal);
-        Assert.Contains(firstError, output, StringComparison.Ordinal);
-        Assert.Contains(secondError, output, StringComparison.Ordinal);
-        Assert.Contains("Theme [Valid]", output, StringComparison.Ordinal);
-        var missingCount = includeMissing ? 2 : 0;
-        Assert.Contains($"2 theme(s) invalid; {missingCount} dependency(ies) missing.", output, StringComparison.Ordinal);
-        Assert.Contains("Fix invalid local theme configuration", output, StringComparison.Ordinal);
-        Assert.Contains("No packages were installed.", output, StringComparison.Ordinal);
+        Assert.Contains("Package Acme.Revela.Watermark - missing", output, StringComparison.Ordinal);
+        Assert.Contains("1 dependency(ies) missing.", output, StringComparison.Ordinal);
+        Assert.Contains("Run revela restore to install them.", output, StringComparison.Ordinal);
+    }
+
+    [TestMethod]
+    [DataRow("Spectara.Revela.Plugins.Source.Calendar", 0)]
+    [DataRow("spectara.revela.plugins.source.calendar", 0)]
+    [DataRow("Spectara.Revela.Plugins.Calendar", 1)]
+    public async Task Check_InstalledPlugin_MatchesExactPackageId(string installedId, int expectedExitCode)
+    {
+        using var project = TestProject.CreateMinimal();
+
+        var (exitCode, output) = await InvokeAsync(
+            project,
+            Scanner(packages: [("Spectara.Revela.Plugins.Source.Calendar", "2.0.0")]),
+            EmptyRegistry(),
+            ["--check"],
+            installedPlugins: [InstalledPlugin(installedId)]);
+
+        Assert.AreEqual(expectedExitCode, exitCode);
+        Assert.Contains(expectedExitCode == 0 ? "All 1 dependency(ies) are installed." : "1 dependency(ies) missing.", output, StringComparison.Ordinal);
         Assert.DoesNotContain("Installing ", output, StringComparison.Ordinal);
-        Assert.DoesNotContain("Run revela restore to install them.", output, StringComparison.Ordinal);
-        Assert.DoesNotContain("System.InvalidOperationException", output, StringComparison.Ordinal);
-        Assert.DoesNotContain("   at ", output, StringComparison.Ordinal);
-        if (includeMissing)
+    }
+
+    [TestMethod]
+    [DataRow("Spectara.Revela.Themes.Lumina.Statistics", 0)]
+    [DataRow("Spectara.Revela.Themes.Other.Statistics", 1)]
+    public async Task Check_InstalledThemeExtension_MatchesByPackageIdAcrossThemes(string installedExtensionId, int expectedExitCode)
+    {
+        using var project = TestProject.CreateMinimal();
+        var extension = InstalledTheme(installedExtensionId, "Reports");
+        extension.Prefix.Returns("statistics");
+        extension.TargetTheme.Returns("Lumina");
+        List<ITheme> themes = [InstalledTheme("Spectara.Revela.Themes.Lumina", "Lumina"), extension];
+
+        var (exitCode, output) = await InvokeAsync(
+            project,
+            Scanner(packages: [("Spectara.Revela.Themes.Lumina.Statistics", "2.0.0")]),
+            new ThemeRegistry(themes, NullLogger<ThemeRegistry>.Instance),
+            ["--check"],
+            installedThemes: themes);
+
+        Assert.AreEqual(expectedExitCode, exitCode);
+        if (expectedExitCode == 0)
         {
-            registry.Received(1).Resolve("[Missing]", project.RootPath);
-            Assert.Contains("Theme [Missing] - missing", output, StringComparison.Ordinal);
-            Assert.Contains("Plugin Spectara.Revela.Plugins.[MissingPlugin] - missing", output, StringComparison.Ordinal);
+            Assert.Contains("Theme Spectara.Revela.Themes.Lumina.Statistics", output, StringComparison.Ordinal);
         }
+        else
+        {
+            Assert.Contains("Package Spectara.Revela.Themes.Lumina.Statistics - missing", output, StringComparison.Ordinal);
+        }
+    }
+
+    [TestMethod]
+    public async Task Check_ActiveThemeByManifestName_UsesInstalledPackageIdInsteadOfOfficialPrefix()
+    {
+        using var project = TestProject.CreateMinimal();
+        List<ITheme> themes = [InstalledTheme("Acme.Revela.Noir", "Noir")];
+
+        var (exitCode, output) = await InvokeAsync(
+            project,
+            Scanner(activeTheme: "Noir"),
+            new ThemeRegistry(themes, NullLogger<ThemeRegistry>.Instance),
+            ["--check"],
+            installedThemes: themes);
+
+        Assert.AreEqual(0, exitCode);
+        Assert.Contains("Theme Noir (Acme.Revela.Noir)", output, StringComparison.Ordinal);
+        Assert.DoesNotContain("Spectara.Revela.Themes.Noir", output, StringComparison.Ordinal);
+        Assert.Contains("All 1 dependency(ies) are installed.", output, StringComparison.Ordinal);
+    }
+
+    [TestMethod]
+    public async Task Check_ActiveThemeNotProvided_IsReportedMissing()
+    {
+        using var project = TestProject.CreateMinimal();
+
+        var (exitCode, output) = await InvokeAsync(project, Scanner(activeTheme: "Noir"), EmptyRegistry(), ["--check"]);
+
+        Assert.AreEqual(1, exitCode);
+        Assert.Contains("Theme Noir - missing (no installed or local theme has this name)", output, StringComparison.Ordinal);
+        Assert.Contains("1 dependency(ies) missing.", output, StringComparison.Ordinal);
     }
 
     [TestMethod]
     [DataRow(false)]
     [DataRow(true)]
-    public async Task ExecuteAsync_AllDependenciesInstalled_ReturnsSuccess(bool checkOnly)
+    public async Task Execute_InvalidLocalActiveTheme_BlocksInstallation(bool checkOnly)
     {
         using var project = TestProject.CreateMinimal();
         var registry = Substitute.For<IThemeRegistry>();
-        registry.Resolve("[Valid]", project.RootPath).Returns(Substitute.For<ITheme>());
-
-        var (exitCode, output) = await InvokeAsync(project, [Theme("[Valid]")], registry, checkOnly);
-
-        Assert.AreEqual(0, exitCode);
-        registry.Received(1).Resolve("[Valid]", project.RootPath);
-        Assert.Contains("Theme [Valid]", output, StringComparison.Ordinal);
-        Assert.Contains("All 1 dependency(ies) are installed.", output, StringComparison.Ordinal);
-    }
-
-    [TestMethod]
-    public async Task ExecuteAsync_CheckWithMissingDependency_ReturnsFailureAndRestoreGuidance()
-    {
-        using var project = TestProject.CreateMinimal();
-        var registry = Substitute.For<IThemeRegistry>();
-        registry.Resolve("[Missing]", project.RootPath).Returns((ITheme?)null);
-
-        var (exitCode, output) = await InvokeAsync(project, [Theme("[Missing]")], registry, checkOnly: true);
-
-        Assert.AreEqual(1, exitCode);
-        registry.Received(1).Resolve("[Missing]", project.RootPath);
-        Assert.Contains("Theme [Missing] - missing", output, StringComparison.Ordinal);
-        Assert.Contains("1 dependency(ies) missing.", output, StringComparison.Ordinal);
-        Assert.Contains("Run revela restore to install them.", output, StringComparison.Ordinal);
-        Assert.DoesNotContain("invalid", output, StringComparison.Ordinal);
-    }
-
-    [TestMethod]
-    [DataRow("plugins:Spectara.Revela.Plugins.Missing", "1.0.0", "Plugin Spectara.Revela.Plugins.Missing")]
-    [DataRow("themes:Spectara.Revela.Themes.Missing", "1.0.0", "Theme Missing")]
-    [DataRow("theme:name", "Missing", "Theme Missing")]
-    [DataRow("theme:name", "Spectara.Revela.Themes.Missing", "Theme Missing")]
-    public async Task Create_CheckWithConfiguredMissingDependency_ReturnsFailure(string key, string value, string label)
-    {
-        using var project = TestProject.CreateMinimal();
-        using var configuration = (ConfigurationRoot)new ConfigurationBuilder()
-            .AddInMemoryCollection(new Dictionary<string, string?> { [key] = value })
-            .Build();
-        using var provider = CreateScannerProvider(configuration);
-        var scanner = provider.GetRequiredService<IDependencyScanner>();
-        var registry = Substitute.For<IThemeRegistry>();
-        registry.Resolve("Missing", project.RootPath).Returns((ITheme?)null);
-
-        var (exitCode, output) = await InvokeAsync(project, scanner, registry, checkOnly: true);
-
-        Assert.AreEqual(1, exitCode);
-        Assert.Contains($"{label} - missing", output, StringComparison.Ordinal);
-        Assert.Contains("1 dependency(ies) missing.", output, StringComparison.Ordinal);
-        Assert.DoesNotContain("No dependencies to restore.", output, StringComparison.Ordinal);
-    }
-
-    [TestMethod]
-    [DataRow("Lumina")]
-    [DataRow("Spectara.Revela.Themes.Lumina")]
-    [DataRow("lumina")]
-    public void GetDependencies_LayeredRootConfiguration_PreservesActiveVersionAndMergedPackages(string activeTheme)
-    {
-        using var configuration = (ConfigurationRoot)new ConfigurationBuilder()
-            .AddInMemoryCollection(new Dictionary<string, string?>
-            {
-                ["theme:name"] = "Other",
-                ["themes:Spectara.Revela.Themes.Lumina"] = "1.0.0",
-                ["themes:Spectara.Revela.Themes.Other"] = "1.5.0",
-                ["plugins:Spectara.Revela.Plugins.Statistics"] = "1.0.0"
-            })
-            .AddInMemoryCollection(new Dictionary<string, string?>
-            {
-                ["theme:name"] = activeTheme,
-                ["themes:Spectara.Revela.Themes.Lumina"] = "2.0.0",
-                ["plugins:Spectara.Revela.Plugins.Statistics"] = "3.0.0"
-            })
-            .Build();
-        using var provider = CreateScannerProvider(configuration);
-
-        var dependencies = provider.GetRequiredService<IDependencyScanner>().GetDependencies();
-
-        Assert.HasCount(3, dependencies);
-        var active = dependencies.Single(dependency => string.Equals(
-            dependency.PackageId, "Spectara.Revela.Themes.Lumina", StringComparison.OrdinalIgnoreCase));
-        Assert.AreEqual(DependencyType.Theme, active.Type);
-        Assert.AreEqual("2.0.0", active.Version);
-        var other = dependencies.Single(dependency => string.Equals(
-            dependency.PackageId, "Spectara.Revela.Themes.Other", StringComparison.Ordinal));
-        Assert.AreEqual(DependencyType.Theme, other.Type);
-        Assert.AreEqual("1.5.0", other.Version);
-        var plugin = dependencies.Single(dependency => string.Equals(
-            dependency.PackageId, "Spectara.Revela.Plugins.Statistics", StringComparison.Ordinal));
-        Assert.AreEqual(DependencyType.Plugin, plugin.Type);
-        Assert.AreEqual("3.0.0", plugin.Version);
-    }
-
-    [TestMethod]
-    public async Task Create_CheckWithConfiguredInstalledTheme_ReturnsSuccessWithoutDuplicateDependencies()
-    {
-        using var project = TestProject.CreateMinimal();
-        using var configuration = (ConfigurationRoot)new ConfigurationBuilder()
-            .AddInMemoryCollection(new Dictionary<string, string?>
-            {
-                ["theme:name"] = "Valid",
-                ["themes:Spectara.Revela.Themes.Valid"] = "2.0.0"
-            })
-            .Build();
-        using var provider = CreateScannerProvider(configuration);
-        var registry = Substitute.For<IThemeRegistry>();
-        registry.Resolve("Valid", project.RootPath).Returns(Substitute.For<ITheme>());
+        const string error = "Local theme manifest 'themes/[Broken]/theme.json' could not be loaded: invalid [manifest].";
+        registry.Resolve("[Broken]", project.RootPath).Returns(_ => throw new InvalidOperationException(error));
 
         var (exitCode, output) = await InvokeAsync(
-            project, provider.GetRequiredService<IDependencyScanner>(), registry, checkOnly: true);
+            project,
+            Scanner(packages: [("Spectara.Revela.Plugins.Missing", "1.0.0")], activeTheme: "[Broken]"),
+            registry,
+            checkOnly ? ["--check"] : []);
 
-        Assert.AreEqual(0, exitCode);
-        registry.Received(1).Resolve("Valid", project.RootPath);
-        Assert.Contains("All 1 dependency(ies) are installed.", output, StringComparison.Ordinal);
-        Assert.DoesNotContain("No dependencies to restore.", output, StringComparison.Ordinal);
+        Assert.AreEqual(1, exitCode);
+        Assert.Contains("Theme [Broken] - invalid", output, StringComparison.Ordinal);
+        Assert.Contains(error, output, StringComparison.Ordinal);
+        Assert.Contains("1 theme(s) invalid; 1 dependency(ies) missing.", output, StringComparison.Ordinal);
+        Assert.Contains("No packages were installed.", output, StringComparison.Ordinal);
+        Assert.DoesNotContain("Installing ", output, StringComparison.Ordinal);
+        Assert.DoesNotContain("   at ", output, StringComparison.Ordinal);
+    }
+
+    #endregion
+
+    #region Install
+
+    [TestMethod]
+    public async Task Restore_ProjectFeedWithoutConsentNonInteractive_FailsWithHintAndInstallsNothing()
+    {
+        using var project = TestProject.CreateMinimal();
+        var sourceManager = Substitute.For<INuGetSourceManager>();
+        sourceManager.ProjectConfigPath.Returns(project.ProjectJsonPath);
+        sourceManager.GetPendingProjectFeeds().Returns([new NuGetSource { Name = "sneaky", Url = @"C:\sneaky-feed", IsProjectFeed = true }]);
+
+        var (exitCode, output) = await InvokeAsync(
+            project,
+            Scanner(packages: [("Acme.Revela.Watermark", "1.0.0")]),
+            EmptyRegistry(),
+            [],
+            sourceManager: sourceManager);
+
+        Assert.AreEqual(1, exitCode);
+        Assert.Contains("sneaky", output, StringComparison.Ordinal);
+        Assert.Contains(@"C:\sneaky-feed", output, StringComparison.Ordinal);
+        Assert.Contains("project.json", output, StringComparison.Ordinal);
+        Assert.Contains("--allow-project-feeds", output, StringComparison.Ordinal);
+        Assert.DoesNotContain("Installing ", output, StringComparison.Ordinal);
+        sourceManager.DidNotReceive().ApproveProjectFeeds();
+        _ = await sourceManager.DidNotReceive().LoadSourcesAsync(Arg.Any<CancellationToken>());
     }
 
     [TestMethod]
-    [DataRow("Spectara.Revela.Plugins.Calendar", "Calendar", 1)]
-    [DataRow("Spectara.Revela.Plugins.Other", "Source.Calendar", 1)]
-    [DataRow("Spectara.Revela.Plugins.Source.Calendar", "Booking Feed", 0)]
-    [DataRow("spectara.revela.plugins.source.calendar", "Booking Feed", 0)]
-    public async Task Create_CheckWithConfiguredPlugin_MatchesExactPackageId(string installedId, string displayName, int expectedExitCode)
+    public async Task Restore_ThirdPartyDependencyFromProjectFolderFeed_InstallsAndPinsExactVersion()
+    {
+        var packageId = $"Acme.Revela.Watermark{Guid.NewGuid():N}";
+        var pluginPath = Path.Combine(PackageManager.PluginDirectory, packageId);
+        using var project = TestProject.CreateMinimal();
+        _ = TestPackageFactory.CreatePackage(Path.Combine(project.RootPath, "feed"), packageId, "1.2.0");
+        await File.WriteAllTextAsync(project.ProjectJsonPath, $$"""
+            {
+              "project": { "name": "restore-test" },
+              "dependencies": {
+                "feeds": { "local": "./feed" },
+                "packages": { "{{packageId}}": "latest" }
+              }
+            }
+            """);
+        using var host = RevelaTestHost.Build(project.RootPath, services => services.AddRevelaCommands());
+        var configuration = host.Services.GetRequiredService<IConfiguration>();
+        var globalConfig = Substitute.For<IGlobalConfigManager>();
+        globalConfig.ConfigFilePath.Returns(Path.Combine(project.RootPath, "global", "revela.json"));
+        var sourceManager = new OfflineSourceManager(new NuGetSourceManager(
+            NullLogger<NuGetSourceManager>.Instance,
+            host.Services.GetRequiredService<IOptionsMonitor<DependenciesConfig>>(),
+            Options.Create(new ProjectEnvironment { Path = project.RootPath }),
+            globalConfig));
+        using var scannerProvider = CreateScannerProvider(configuration);
+
+        try
+        {
+            var (exitCode, output) = await InvokeAsync(
+                project,
+                scannerProvider.GetRequiredService<IDependencyScanner>(),
+                EmptyRegistry(),
+                ["--allow-project-feeds"],
+                sourceManager: sourceManager,
+                configService: host.Services.GetRequiredService<IConfigService>());
+
+            Assert.AreEqual(0, exitCode, output);
+            Assert.Contains($"Package {packageId} - missing", output, StringComparison.Ordinal);
+            Assert.Contains($"Plugin {packageId} 1.2.0", output, StringComparison.Ordinal);
+            Assert.Contains("Restore complete", output, StringComparison.Ordinal);
+            Assert.DoesNotContain("This project declares package feeds", output, StringComparison.Ordinal);
+            Assert.IsTrue(File.Exists(Path.Combine(pluginPath, $"{packageId}.dll")));
+            var saved = JsonNode.Parse(await File.ReadAllTextAsync(project.ProjectJsonPath))!;
+            Assert.AreEqual("1.2.0", saved["dependencies"]!["packages"]![packageId]!.GetValue<string>());
+            Assert.AreEqual("./feed", saved["dependencies"]!["feeds"]!["local"]!.GetValue<string>());
+        }
+        finally
+        {
+            if (Directory.Exists(pluginPath))
+            {
+                Directory.Delete(pluginPath, recursive: true);
+            }
+        }
+    }
+
+    [TestMethod]
+    public async Task Restore_ActiveThemeNotProvidedAnywhere_TriesOfficialFallbackAndExplainsFailure()
     {
         using var project = TestProject.CreateMinimal();
-        using var configuration = (ConfigurationRoot)new ConfigurationBuilder()
-            .AddInMemoryCollection(new Dictionary<string, string?>
-            {
-                ["plugins:Spectara.Revela.Plugins.Source.Calendar"] = "2.0.0"
-            })
-            .Build();
-        using var provider = CreateScannerProvider(configuration);
-        var scanner = provider.GetRequiredService<IDependencyScanner>();
+        var sourceManager = Substitute.For<INuGetSourceManager>();
+        sourceManager.GetPendingProjectFeeds().Returns([]);
+        sourceManager.LoadSourcesAsync(Arg.Any<CancellationToken>()).Returns([]);
+
+        var (exitCode, output) = await InvokeAsync(
+            project, Scanner(activeTheme: "Noir"), EmptyRegistry(), [], sourceManager: sourceManager);
+
+        Assert.AreEqual(1, exitCode);
+        Assert.Contains("No installed theme or declared dependency provides theme Noir", output, StringComparison.Ordinal);
+        Assert.Contains("Spectara.Revela.Themes.Noir", output, StringComparison.Ordinal);
+        Assert.Contains("could not be resolved", output, StringComparison.Ordinal);
+        Assert.Contains("dependencies.packages", output, StringComparison.Ordinal);
+        _ = await sourceManager.Received(1).LoadSourcesAsync(Arg.Any<CancellationToken>());
+    }
+
+    #endregion
+
+    private static IDependencyScanner Scanner(
+        IReadOnlyList<(string Id, string? Version)>? packages = null,
+        string? activeTheme = null)
+    {
+        var scanner = Substitute.For<IDependencyScanner>();
+        scanner.GetDependencies().Returns(
+            [.. (packages ?? []).Select(p => new RequiredDependency { PackageId = p.Id, Version = p.Version })]);
+        scanner.GetActiveThemeName().Returns(activeTheme);
+        return scanner;
+    }
+
+    private static ThemeRegistry EmptyRegistry() => new([], NullLogger<ThemeRegistry>.Instance);
+
+    private static IPlugin InstalledPlugin(string packageId)
+    {
         var plugin = Substitute.For<IPlugin>();
         plugin.Metadata.Returns(new PackageMetadata
         {
-            Id = installedId,
-            Name = displayName,
+            Id = packageId,
+            Name = "Installed plugin",
             Version = "1.0.0",
             Description = "Installed plugin fixture"
         });
-        var registry = new ThemeRegistry([], NullLogger<ThemeRegistry>.Instance);
-
-        var (exitCode, output) = await InvokeAsync(project, scanner, registry, checkOnly: true, installedPlugins: [plugin]);
-
-        Assert.AreEqual(expectedExitCode, exitCode);
-        var dependency = scanner.GetDependencies().Single();
-        Assert.AreEqual(DependencyType.Plugin, dependency.Type);
-        Assert.AreEqual("2.0.0", dependency.Version);
-        Assert.Contains(expectedExitCode == 0 ? "All 1 dependency(ies) are installed." : "1 dependency(ies) missing.", output, StringComparison.Ordinal);
-        Assert.DoesNotContain("Installing ", output, StringComparison.Ordinal);
-    }
-
-    [TestMethod]
-    [DataRow("plugins", null, 1)]
-    [DataRow("themes", null, 1)]
-    [DataRow("plugins", "Spectara.Revela.Themes.Lumina.Statistics", 0)]
-    [DataRow("themes", "Spectara.Revela.Themes.Lumina.Statistics", 0)]
-    [DataRow("plugins", "spectara.revela.themes.lumina.statistics", 0)]
-    [DataRow("plugins", "Spectara.Revela.Themes.Other.Statistics", 1)]
-    [DataRow("themes", "Spectara.Revela.Themes.Other.Statistics", 1)]
-    public async Task Create_CheckWithConfiguredThemeExtension_MatchesFullExtensionIdentity(string section, string? installedExtensionId, int expectedExitCode)
-    {
-        using var project = TestProject.CreateMinimal();
-        using var configuration = (ConfigurationRoot)new ConfigurationBuilder()
-            .AddInMemoryCollection(new Dictionary<string, string?>
-            {
-                [$"{section}:Spectara.Revela.Themes.Lumina.Statistics"] = "2.0.0"
-            })
-            .Build();
-        using var provider = CreateScannerProvider(configuration);
-        var scanner = provider.GetRequiredService<IDependencyScanner>();
-        var installedThemes = new List<ITheme>
-        {
-            InstalledTheme("Spectara.Revela.Themes.Lumina", "Lumina"),
-            InstalledTheme("Spectara.Revela.Themes.Statistics", "Statistics")
-        };
-        if (installedExtensionId is not null)
-        {
-            var extension = InstalledTheme(installedExtensionId, "Reports");
-            extension.Prefix.Returns("statistics");
-            extension.TargetTheme.Returns("Lumina");
-            installedThemes.Add(extension);
-        }
-
-        var registry = new ThemeRegistry(installedThemes, NullLogger<ThemeRegistry>.Instance);
-
-        var (exitCode, output) = await InvokeAsync(project, scanner, registry, checkOnly: true);
-
-        Assert.AreEqual(expectedExitCode, exitCode);
-        var dependency = scanner.GetDependencies().Single();
-        Assert.AreEqual("Spectara.Revela.Themes.Lumina.Statistics", dependency.PackageId);
-        Assert.AreEqual(DependencyType.Theme, dependency.Type);
-        Assert.AreEqual("2.0.0", dependency.Version);
-        Assert.Contains("Theme Lumina.Statistics", output, StringComparison.Ordinal);
-        Assert.Contains(expectedExitCode == 0 ? "All 1 dependency(ies) are installed." : "1 dependency(ies) missing.", output, StringComparison.Ordinal);
-        Assert.DoesNotContain("No dependencies to restore.", output, StringComparison.Ordinal);
-        Assert.DoesNotContain("Installing ", output, StringComparison.Ordinal);
-    }
-
-    [TestMethod]
-    public async Task Create_CheckWithUnknownPackagePrefixes_IgnoresDependencies()
-    {
-        using var project = TestProject.CreateMinimal();
-        using var configuration = (ConfigurationRoot)new ConfigurationBuilder()
-            .AddInMemoryCollection(new Dictionary<string, string?>
-            {
-                ["plugins:Other.Plugins.Calendar"] = "1.0.0",
-                ["themes:Other.Themes.Lumina"] = "1.0.0"
-            })
-            .Build();
-        using var provider = CreateScannerProvider(configuration);
-        var scanner = provider.GetRequiredService<IDependencyScanner>();
-        var registry = new ThemeRegistry([], NullLogger<ThemeRegistry>.Instance);
-
-        var (exitCode, output) = await InvokeAsync(project, scanner, registry, checkOnly: true);
-
-        Assert.AreEqual(0, exitCode);
-        Assert.IsEmpty(scanner.GetDependencies());
-        Assert.Contains("No dependencies to restore.", output, StringComparison.Ordinal);
+        return plugin;
     }
 
     private static ITheme InstalledTheme(string packageId, string name)
@@ -332,78 +372,100 @@ public sealed class RestoreCommandTests
         return services.BuildServiceProvider();
     }
 
-    private static RequiredDependency Theme(string name) => new()
-    {
-        PackageId = $"Spectara.Revela.Themes.{name}",
-        Type = DependencyType.Theme
-    };
-
-    private static async Task<(int ExitCode, string Output)> InvokeAsync(
-        TestProject project,
-        IReadOnlyList<RequiredDependency> dependencies,
-        IThemeRegistry registry,
-        bool checkOnly)
-    {
-        var scanner = Substitute.For<IDependencyScanner>();
-        scanner.GetDependencies().Returns(dependencies);
-        var result = await InvokeAsync(project, scanner, registry, checkOnly);
-        scanner.Received(1).GetDependencies();
-        return result;
-    }
-
     private static async Task<(int ExitCode, string Output)> InvokeAsync(
         TestProject project,
         IDependencyScanner scanner,
         IThemeRegistry registry,
-        bool checkOnly,
-        IEnumerable<IPlugin>? installedPlugins = null)
+        string[] args,
+        IEnumerable<IPlugin>? installedPlugins = null,
+        IEnumerable<ITheme>? installedThemes = null,
+        INuGetSourceManager? sourceManager = null,
+        IConfigService? configService = null)
     {
         var environment = Options.Create(new ProjectEnvironment { Path = project.RootPath });
-        var packageLogger = Substitute.For<ILogger<PackageManager>>();
-        var sourceManager = Substitute.For<INuGetSourceManager>();
+        var isolatedSources = sourceManager is null;
+        sourceManager ??= Substitute.For<INuGetSourceManager>();
         using var host = RevelaTestHost.Build(project.RootPath, services => services.AddRevelaCommands());
         var services = new ServiceCollection();
         services.AddSingleton(new NupkgExtractor(NullLogger<NupkgExtractor>.Instance, TimeProvider.System));
-        services.AddSingleton(new PluginProjectService(host.Services.GetRequiredService<IConfigService>(), NullLogger<PluginProjectService>.Instance));
-        services.AddSingleton(packageLogger);
+        services.AddSingleton(new PluginProjectService(
+            configService ?? host.Services.GetRequiredService<IConfigService>(), NullLogger<PluginProjectService>.Instance));
+        services.AddSingleton<ILogger<PackageManager>>(NullLogger<PackageManager>.Instance);
         services.AddSingleton(sourceManager);
         services.AddSingleton(Substitute.For<IBuildInfo>());
         services.AddHttpClient<PackageManager>()
             .ConfigurePrimaryHttpMessageHandler(() => new RejectingHttpMessageHandler());
         using var provider = services.BuildServiceProvider();
+        var console = Substitute.For<IConsoleCapabilities>();
+        console.IsInteractive.Returns(false);
         var command = new RestoreCommand(
             scanner,
             registry,
             installedPlugins ?? [],
+            installedThemes ?? [],
             provider.GetRequiredService<PackageManager>(),
+            new ProjectFeedConsent(sourceManager, console),
             environment,
             NullLogger<RestoreCommand>.Instance).Create();
         using var writer = new StringWriter(CultureInfo.InvariantCulture);
         var originalConsole = AnsiConsole.Console;
-        var console = AnsiConsole.Create(new AnsiConsoleSettings
+        var ansiConsole = AnsiConsole.Create(new AnsiConsoleSettings
         {
             Ansi = AnsiSupport.No,
             ColorSystem = ColorSystemSupport.NoColors,
             Interactive = InteractionSupport.No,
             Out = new AnsiConsoleOutput(writer)
         });
-        console.Profile.Width = 240;
-        AnsiConsole.Console = console;
+        ansiConsole.Profile.Width = 400;
+        AnsiConsole.Console = ansiConsole;
 
         try
         {
-            var parseResult = command.Parse(checkOnly ? ["--check"] : []);
+            var parseResult = command.Parse(args);
             Assert.IsEmpty(parseResult.Errors);
             var exitCode = await parseResult.InvokeAsync();
 
-            Assert.IsEmpty(packageLogger.ReceivedCalls(), "Restore must not invoke the package manager.");
-            Assert.IsEmpty(sourceManager.ReceivedCalls(), "Restore must not query package sources.");
-            return (exitCode, writer.ToString());
+            var output = writer.ToString();
+            if (isolatedSources && args.Contains("--check"))
+            {
+                Assert.IsEmpty(sourceManager.ReceivedCalls(), "restore --check must not query package sources.");
+            }
+
+            return (exitCode, output);
         }
         finally
         {
             AnsiConsole.Console = originalConsole;
         }
+    }
+
+    /// <summary>
+    /// Real source manager without nuget.org, so restore tests never touch the network.
+    /// </summary>
+    private sealed class OfflineSourceManager(NuGetSourceManager inner) : INuGetSourceManager
+    {
+        public string? ProjectConfigPath => inner.ProjectConfigPath;
+
+        public async Task<List<NuGetSource>> LoadSourcesAsync(CancellationToken cancellationToken = default) =>
+            [.. (await inner.LoadSourcesAsync(cancellationToken)).Where(s => s.Name != "nuget.org")];
+
+        public async Task<List<(NuGetSource Source, string Location)>> GetAllSourcesWithLocationAsync(CancellationToken cancellationToken = default) =>
+            [.. (await inner.GetAllSourcesWithLocationAsync(cancellationToken)).Where(s => s.Source.Name != "nuget.org")];
+
+        public Task<List<NuGetSource>> GetAllSourcesAsync(CancellationToken cancellationToken = default) =>
+            LoadSourcesAsync(cancellationToken);
+
+        public IReadOnlyList<NuGetSource> GetProjectFeeds() => inner.GetProjectFeeds();
+
+        public IReadOnlyList<NuGetSource> GetPendingProjectFeeds() => inner.GetPendingProjectFeeds();
+
+        public void ApproveProjectFeeds() => inner.ApproveProjectFeeds();
+
+        public Task AddSourceAsync(string name, string url, CancellationToken cancellationToken = default) =>
+            inner.AddSourceAsync(name, url, cancellationToken);
+
+        public Task<bool> RemoveSourceAsync(string name, CancellationToken cancellationToken = default) =>
+            inner.RemoveSourceAsync(name, cancellationToken);
     }
 
     private sealed class RejectingHttpMessageHandler : HttpMessageHandler

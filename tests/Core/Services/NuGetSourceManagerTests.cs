@@ -1,7 +1,10 @@
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using NSubstitute;
 using Spectara.Revela.Core.Services;
+using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Configuration;
 using Spectara.Revela.Sdk.Services;
 
@@ -10,236 +13,193 @@ namespace Spectara.Revela.Tests.Core.Services;
 /// <summary>
 /// Unit tests for <see cref="NuGetSourceManager"/>
 /// </summary>
-/// <remarks>
-/// Tests that access GlobalConfigManager (file I/O) are marked with DoNotParallelize
-/// to avoid race conditions when multiple tests try to create/access revela.json simultaneously.
-/// </remarks>
 [TestClass]
-[TestCategory("Unit")]
+[TestCategory("Integration")]
 public sealed class NuGetSourceManagerTests
 {
-    private NuGetSourceManager service = null!;
-    private IOptionsMonitor<PackagesConfig> packagesConfig = null!;
-    private IGlobalConfigManager globalConfigManager = null!;
+    private string root = null!;
+    private string globalDirectory = null!;
+    private string projectDirectory = null!;
 
     [TestInitialize]
-    public void Setup()
+    public void Initialize()
     {
-        packagesConfig = Substitute.For<IOptionsMonitor<PackagesConfig>>();
-        packagesConfig.CurrentValue.Returns(new PackagesConfig());
-        globalConfigManager = Substitute.For<IGlobalConfigManager>();
-        service = new NuGetSourceManager(NullLogger<NuGetSourceManager>.Instance, packagesConfig, globalConfigManager);
+        root = Directory.CreateTempSubdirectory("revela-feeds-").FullName;
+        globalDirectory = Directory.CreateDirectory(Path.Combine(root, "global")).FullName;
+        projectDirectory = Directory.CreateDirectory(Path.Combine(root, "project")).FullName;
     }
 
-    #region Static Properties Tests
+    [TestCleanup]
+    public void Cleanup()
+    {
+        if (Directory.Exists(root))
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
 
     [TestMethod]
     public void DefaultSource_IsNuGetOrg()
     {
-        // Arrange & Act
         var source = NuGetSourceManager.DefaultSource;
 
-        // Assert
         Assert.AreEqual("nuget.org", source.Name);
         Assert.AreEqual("https://api.nuget.org/v3/index.json", source.Url);
         Assert.IsTrue(source.Enabled);
     }
 
     [TestMethod]
-    public void ConfigFilePath_IsNotEmpty()
+    public async Task LoadSourcesAsync_NoFeeds_IncludesNuGetOrgAsBuiltIn()
     {
-        // Arrange & Act
-        var path = NuGetSourceManager.ConfigFilePath;
+        using var context = Create(globalJson: null, projectJson: null);
 
-        // Assert
-        Assert.IsFalse(string.IsNullOrEmpty(path));
-        Assert.IsTrue(path.EndsWith("revela.json", StringComparison.OrdinalIgnoreCase));
-    }
+        var sources = await context.Manager.LoadSourcesAsync();
+        var withLocation = await context.Manager.GetAllSourcesWithLocationAsync();
 
-    #endregion
-
-    #region File I/O Tests (sequential to avoid race conditions)
-
-    [TestMethod]
-    [DoNotParallelize]
-    public async Task LoadSourcesAsync_AlwaysIncludesNuGetOrg()
-    {
-        // Act
-        var sources = await service.LoadSourcesAsync();
-
-        // Assert
-        Assert.IsNotEmpty(sources);
-        var nugetOrg = sources.FirstOrDefault(s => s.Name == "nuget.org");
-        Assert.IsNotNull(nugetOrg);
-        Assert.AreEqual("https://api.nuget.org/v3/index.json", nugetOrg.Url);
+        Assert.AreEqual("https://api.nuget.org/v3/index.json", sources.Single(s => s.Name == "nuget.org").Url);
+        Assert.AreEqual("built-in", withLocation.Single(s => s.Source.Name == "nuget.org").Location);
+        Assert.IsEmpty(context.Manager.GetProjectFeeds());
     }
 
     [TestMethod]
-    [DoNotParallelize]
-    public async Task GetAllSourcesWithLocationAsync_NuGetOrgIsBuiltIn()
+    public async Task LoadSourcesAsync_GlobalRelativeFeed_ResolvesRelativeToRevelaJsonAndIsTrusted()
     {
-        // Act
-        var sources = await service.GetAllSourcesWithLocationAsync();
+        using var context = Create(
+            globalJson: /*lang=json,strict*/ """{ "dependencies": { "feeds": { "local": "../global-feed" } } }""",
+            projectJson: /*lang=json,strict*/ """{ "project": { "name": "demo" } }""");
 
-        // Assert - nuget.org is always first and built-in
-        // Find the source and verify in one step to avoid trivially-true assertion warning
-        var (_, location) = sources.Single(s => s.Source.Name == "nuget.org");
-        Assert.AreEqual("built-in", location);
+        var sources = await context.Manager.LoadSourcesAsync();
+
+        var feed = sources.Single(s => s.Name == "local");
+        Assert.AreEqual(Path.GetFullPath(Path.Combine(globalDirectory, "..", "global-feed")), feed.Url);
+        Assert.IsFalse(feed.IsProjectFeed);
+        Assert.IsEmpty(context.Manager.GetPendingProjectFeeds());
     }
 
     [TestMethod]
-    public async Task RemoveSourceAsync_ThrowsForNuGetOrg()
+    public async Task ProjectOnlyFeed_IsExcludedUntilApprovedAndResolvesRelativeToProjectJson()
     {
-        // Act & Assert
-        await Assert.ThrowsExactlyAsync<InvalidOperationException>(
-            async () => await service.RemoveSourceAsync("nuget.org"));
+        using var context = Create(
+            globalJson: /*lang=json,strict*/ """{ "dependencies": { "feeds": { "corp": "https://corp.example/v3/index.json" } } }""",
+            projectJson: /*lang=json,strict*/ """{ "dependencies": { "feeds": { "test": "./my-feed", "remote": "https://project.example/v3/index.json" } } }""");
+
+        var before = await context.Manager.LoadSourcesAsync();
+        var pending = context.Manager.GetPendingProjectFeeds();
+
+        Assert.IsTrue(before.Any(s => s.Name == "corp"));
+        Assert.IsFalse(before.Any(s => s.Name is "test" or "remote"));
+        Assert.HasCount(2, pending);
+        Assert.AreEqual(Path.Combine(projectDirectory, "my-feed"), pending.Single(s => s.Name == "test").Url);
+        Assert.AreEqual("https://project.example/v3/index.json", pending.Single(s => s.Name == "remote").Url);
+        Assert.IsTrue(pending.All(s => s.IsProjectFeed));
+
+        context.Manager.ApproveProjectFeeds();
+
+        var after = await context.Manager.LoadSourcesAsync();
+        Assert.IsEmpty(context.Manager.GetPendingProjectFeeds());
+        Assert.HasCount(2, context.Manager.GetProjectFeeds());
+        Assert.AreEqual(Path.Combine(projectDirectory, "my-feed"), after.Single(s => s.Name == "test").Url);
+        Assert.IsTrue(after.Any(s => s.Name == "remote"));
     }
 
     [TestMethod]
-    public async Task RemoveSourceAsync_ThrowsForNuGetOrgCaseInsensitive()
+    public async Task ProjectFeed_AlsoDeclaredGlobally_IsTrusted()
     {
-        // Act & Assert
-        await Assert.ThrowsExactlyAsync<InvalidOperationException>(
-            async () => await service.RemoveSourceAsync("NuGet.Org"));
-    }
+        using var context = Create(
+            globalJson: /*lang=json,strict*/ """{ "dependencies": { "feeds": { "shared": "https://shared.example/v3/index.json", "folder": "../project/feed" } } }""",
+            projectJson: /*lang=json,strict*/ """{ "dependencies": { "feeds": { "shared": "https://shared.example/v3/index.json", "folder": "./feed" } } }""");
 
-    #endregion
+        var sources = await context.Manager.LoadSourcesAsync();
 
-    #region Path Resolution Tests (using reflection to test private method)
-
-    [TestMethod]
-    public void ResolvePathIfRelative_HttpUrl_ReturnsUnchanged()
-    {
-        // Arrange
-        var url = "https://api.nuget.org/v3/index.json";
-
-        // Act
-        var result = InvokeResolvePathIfRelative(url);
-
-        // Assert
-        Assert.AreEqual(url, result);
+        Assert.IsEmpty(context.Manager.GetProjectFeeds());
+        Assert.AreEqual("https://shared.example/v3/index.json", sources.Single(s => s.Name == "shared").Url);
+        Assert.AreEqual(Path.Combine(projectDirectory, "feed"), sources.Single(s => s.Name == "folder").Url);
     }
 
     [TestMethod]
-    public void ResolvePathIfRelative_HttpsUrl_ReturnsUnchanged()
+    public async Task ProjectFeed_OverridingGlobalNameWithOtherLocation_RequiresConsent()
     {
-        // Arrange
-        var url = "http://my-nuget-server.local/v3/index.json";
+        using var context = Create(
+            globalJson: /*lang=json,strict*/ """{ "dependencies": { "feeds": { "corp": "https://corp.example/v3/index.json" } } }""",
+            projectJson: /*lang=json,strict*/ """{ "dependencies": { "feeds": { "corp": "https://evil.example/v3/index.json" } } }""");
 
-        // Act
-        var result = InvokeResolvePathIfRelative(url);
+        var sources = await context.Manager.LoadSourcesAsync();
 
-        // Assert
-        Assert.AreEqual(url, result);
+        Assert.IsFalse(sources.Any(s => s.Name == "corp"));
+        Assert.AreEqual("https://evil.example/v3/index.json", context.Manager.GetPendingProjectFeeds().Single().Url);
     }
 
     [TestMethod]
-    public void ResolvePathIfRelative_AbsoluteWindowsPath_ReturnsUnchanged()
+    public async Task RemoveSourceAsync_NuGetOrg_Throws()
     {
-        // Arrange
-        var path = @"C:\NuGet\packages";
+        using var context = Create(globalJson: null, projectJson: null);
 
-        // Act
-        var result = InvokeResolvePathIfRelative(path);
+        await Assert.ThrowsExactlyAsync<InvalidOperationException>(() => context.Manager.RemoveSourceAsync("NuGet.Org"));
+    }
 
-        // Assert
-        // On Windows, this is recognized as an absolute path and returned unchanged
-        // On Linux/macOS, Windows paths are NOT recognized as absolute (no drive letters),
-        // so they get resolved relative to the config directory - this is expected behavior
-        if (OperatingSystem.IsWindows())
+    [TestMethod]
+    [DataRow("https://api.nuget.org/v3/index.json")]
+    [DataRow("http://127.0.0.1:5000/v3/index.json")]
+    public void ResolveFeedLocation_Url_ReturnsUnchanged(string feed) =>
+        Assert.AreEqual(feed, NuGetSourceManager.ResolveFeedLocation(feed, globalDirectory));
+
+    [TestMethod]
+    public void ResolveFeedLocation_RootedPath_ReturnsUnchanged()
+    {
+        var path = Path.Combine(Path.GetTempPath(), "feed");
+
+        Assert.AreEqual(path, NuGetSourceManager.ResolveFeedLocation(path, root));
+    }
+
+    [TestMethod]
+    [DataRow("../plugins", "plugins")]
+    [DataRow("./local-packages", "global/local-packages")]
+    [DataRow("packages", "global/packages")]
+    public void ResolveFeedLocation_RelativePath_ResolvesAgainstDeclaringDirectory(string relative, string expected) =>
+        Assert.AreEqual(
+            Path.GetFullPath(Path.Combine(root, expected)),
+            NuGetSourceManager.ResolveFeedLocation(relative, globalDirectory));
+
+    private FeedContext Create(string? globalJson, string? projectJson)
+    {
+        var globalPath = Path.Combine(globalDirectory, "revela.json");
+        var projectPath = Path.Combine(projectDirectory, "project.json");
+        if (globalJson is not null)
         {
-            Assert.AreEqual(path, result);
+            File.WriteAllText(globalPath, globalJson);
         }
-        else
+
+        if (projectJson is not null)
         {
-            // On Unix, the path will be treated as relative and resolved
-            Assert.IsTrue(Path.IsPathRooted(result), $"Expected rooted path, got: {result}");
-            Assert.IsTrue(result.Contains("NuGet", StringComparison.Ordinal), $"Expected path containing 'NuGet', got: {result}");
+            File.WriteAllText(projectPath, projectJson);
         }
+
+        var configuration = (ConfigurationRoot)new ConfigurationBuilder()
+            .AddJsonFile(globalPath, optional: true, reloadOnChange: false)
+            .AddJsonFile(projectPath, optional: true, reloadOnChange: false)
+            .Build();
+        var services = new ServiceCollection();
+        services.AddSingleton<IConfiguration>(configuration);
+        services.AddRevelaConfigSections();
+        var provider = services.BuildServiceProvider();
+        var globalConfig = Substitute.For<IGlobalConfigManager>();
+        globalConfig.ConfigFilePath.Returns(globalPath);
+        var manager = new NuGetSourceManager(
+            NullLogger<NuGetSourceManager>.Instance,
+            provider.GetRequiredService<IOptionsMonitor<DependenciesConfig>>(),
+            Options.Create(new ProjectEnvironment { Path = projectDirectory }),
+            globalConfig);
+        return new FeedContext(manager, provider, configuration);
     }
 
-    [TestMethod]
-    public void ResolvePathIfRelative_AbsoluteUnixPath_ReturnsUnchanged()
+    private sealed class FeedContext(NuGetSourceManager manager, ServiceProvider provider, ConfigurationRoot configuration) : IDisposable
     {
-        // Arrange
-        var path = "/home/user/nuget/packages";
+        public NuGetSourceManager Manager { get; } = manager;
 
-        // Act
-        var result = InvokeResolvePathIfRelative(path);
-
-        // Assert
-        // On Windows, Unix paths may not be recognized as rooted
-        // On Unix, this should return unchanged
-        if (OperatingSystem.IsWindows())
+        public void Dispose()
         {
-            // On Windows, /path is not rooted, so it will be resolved relative to config
-            // This is expected behavior - Unix paths on Windows are treated as relative
-            Assert.IsTrue(result.EndsWith("nuget\\packages", StringComparison.OrdinalIgnoreCase)
-                || result.Contains("home", StringComparison.Ordinal));
-        }
-        else
-        {
-            Assert.AreEqual(path, result);
+            provider.Dispose();
+            configuration.Dispose();
         }
     }
-
-    [TestMethod]
-    public void ResolvePathIfRelative_RelativePath_ResolvesToAbsolute()
-    {
-        // Arrange
-        var relativePath = "../plugins";
-
-        // Act
-        var result = InvokeResolvePathIfRelative(relativePath);
-
-        // Assert
-        Assert.IsTrue(Path.IsPathRooted(result), $"Expected rooted path, got: {result}");
-        Assert.DoesNotContain("..", result, $"Expected resolved path without '..', got: {result}");
-    }
-
-    [TestMethod]
-    public void ResolvePathIfRelative_CurrentDirRelative_ResolvesToAbsolute()
-    {
-        // Arrange
-        var relativePath = "./local-packages";
-
-        // Act
-        var result = InvokeResolvePathIfRelative(relativePath);
-
-        // Assert
-        Assert.IsTrue(Path.IsPathRooted(result), $"Expected rooted path, got: {result}");
-        Assert.IsTrue(result.EndsWith("local-packages", StringComparison.OrdinalIgnoreCase));
-    }
-
-    [TestMethod]
-    public void ResolvePathIfRelative_SimpleRelative_ResolvesToAbsolute()
-    {
-        // Arrange
-        var relativePath = "packages";
-
-        // Act
-        var result = InvokeResolvePathIfRelative(relativePath);
-
-        // Assert
-        Assert.IsTrue(Path.IsPathRooted(result), $"Expected rooted path, got: {result}");
-        Assert.IsTrue(result.EndsWith("packages", StringComparison.OrdinalIgnoreCase));
-    }
-
-    /// <summary>
-    /// Helper method to invoke the private ResolvePathIfRelative method via reflection
-    /// </summary>
-    private string InvokeResolvePathIfRelative(string url)
-    {
-        var method = typeof(NuGetSourceManager)
-            .GetMethod("ResolvePathIfRelative", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-
-        Assert.IsNotNull(method, "ResolvePathIfRelative method not found");
-
-        var result = method.Invoke(service, [url]);
-        Assert.IsNotNull(result);
-
-        return (string)result;
-    }
-
-    #endregion
 }

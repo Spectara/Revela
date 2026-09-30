@@ -89,7 +89,7 @@ internal sealed partial class ThemeService(
     }
 
     /// <inheritdoc />
-    public async Task<bool> InstallAsync(
+    public async Task<InstalledPackage?> InstallAsync(
         string name,
         string? version = null,
         string? source = null,
@@ -99,7 +99,7 @@ internal sealed partial class ThemeService(
         if (installer is null)
         {
             LogPackageInstallerNotAvailable(logger);
-            return false;
+            return null;
         }
 
         var packageId = EnsureFullPackageId(name);
