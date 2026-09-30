@@ -126,7 +126,7 @@ A full extraction of Lumina looks like this:
 your-project/
 ├── themes/
 │   └── Lumina/
-│       ├── manifest.json          # Theme description (name, version, templates)
+│       ├── theme.json             # Theme description (name, version, templates)
 │       ├── Layout.revela          # Main page layout
 │       ├── Assets/                # Static assets (copied as-is)
 │       │   ├── main.css
@@ -150,11 +150,11 @@ your-project/
 └── site.json
 ```
 
-Templates, partials and assets override the installed theme file by file: extract a file and it becomes yours, while everything you don't extract keeps loading from the installed theme.
+Templates, partials, assets and `Configuration/images.json` override the installed theme file by file: extract a file and it becomes yours, while everything you don't extract keeps loading from the installed theme. To change only the image sizes, extract just that file and edit it:
 
-`Configuration/images.json` (the image sizes) is different: Revela reads it only from a complete local theme, which is a folder with a `theme.json` file.
-
-> **Known issue:** `revela theme extract` currently saves the theme description as `manifest.json`. To use your own image sizes, extract the whole theme, rename `themes/Lumina/manifest.json` to `theme.json`, and then edit `themes/Lumina/Configuration/images.json`. Extracting only `Configuration/images.json` puts it in a `theme/configuration/` folder that is not used for generating.
+```bash
+revela theme extract Lumina --file Configuration/images.json
+```
 
 ---
 

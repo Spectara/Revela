@@ -217,13 +217,11 @@ Sizes belong to the theme, in its `Configuration/images.json`. The Lumina defaul
 }
 ```
 
-To use your own sizes, extract the theme into your project and edit `themes\Lumina\Configuration\images.json`:
+To use your own sizes, extract just the size file into your project and edit `themes\Lumina\Configuration\images.json`:
 
 ```bash
-revela theme extract Lumina
+revela theme extract Lumina --file Configuration/images.json
 ```
-
-> **Known issue:** Revela uses a local theme's `images.json` only when the folder contains a `theme.json`. Extraction currently names that file `manifest.json`, so rename `themes\Lumina\manifest.json` to `theme.json` after extracting.
 
 If you add `3840`, the next build creates a 3840 variant for every photo that is wider than 3840 pixels. Nothing else is encoded again. If you remove a size, `revela clean images` deletes its files. See [Themes](../../guide/themes/).
 

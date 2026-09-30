@@ -51,8 +51,6 @@ The plugin builds the calendar data; the theme extension renders it as a month g
 
    Or let Revela create it: `revela create page calendar availability --title "Availability" --source bookings.ics`.
 
-   > **Known issue:** `revela create page calendar` currently writes the `template` line below the `calendar.*` lines, and Revela then doesn't recognize the page as a calendar page. Move `template = "calendar/page"` up, directly below `title`.
-
 3. Build your site:
 
    ```bash

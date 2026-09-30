@@ -122,7 +122,7 @@ Generate a URL for a theme asset (CSS, JS).
 {{ asset_url "css/style.css" }}
 ```
 
-**Returns** `/assets/{path}`, e.g. `/assets/css/style.css`.
+**Returns** the asset path relative to the current page, including the site base path: `_assets/css/style.css` on the home page, `../_assets/css/style.css` one level down, or `/gallery/_assets/css/style.css` with an absolute base path of `/gallery/`.
 
 ---
 

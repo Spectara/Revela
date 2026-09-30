@@ -169,8 +169,6 @@ calendar.months = 12
 +++
 ```
 
-> **Known issue:** `revela create page calendar` currently writes the `template` line **below** the `calendar.*` lines. Revela then doesn't recognize the page as a calendar page. Move `template = "calendar/page"` up, directly below `title`, as shown above.
-
 See [Availability Calendar](../../plugins/calendar/) for modes, labels and languages.
 
 ---

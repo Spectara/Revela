@@ -133,7 +133,7 @@ For more detail (plugin and theme counts, active theme):
 revela info
 ```
 
-The Standalone edition reports itself as an "embedded build", since its plugins and themes are embedded in the executable.
+The version line ends with the edition, for example `— Standalone edition` or `— Full edition`.
 
 Check where Revela stores its configuration:
 

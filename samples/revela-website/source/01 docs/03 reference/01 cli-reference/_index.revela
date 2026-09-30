@@ -252,7 +252,7 @@ revela info plugins                  # Loaded plugins
 revela info themes                   # Available themes and extensions
 ```
 
-`revela --version` prints just the version line. The Standalone edition identifies itself there as an "embedded build", because its plugins and themes are embedded in the executable.
+`revela --version` prints just the version line, ending with the edition (`— Standalone edition` or `— Full edition`).
 
 ---
 

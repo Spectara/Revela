@@ -3,7 +3,9 @@ title = "Plugins"
 template = "docs"
 +++
 
-Revela's plugin system lets you extend your site with additional features. Official plugins are distributed as **NuGet packages** (`.nupkg`) attached to each [GitHub Release](https://github.com/Spectara/Revela/releases). They are not published on NuGet.org yet.
+Plugins add features to Revela. In the **Standalone** edition all official plugins are already built in, so there is nothing to install. The **Full** edition installs them as packages from the bundled `packages/` folder or from the `.nupkg` files attached to each [GitHub Release](https://github.com/Spectara/Revela/releases); they are not published on NuGet.org yet.
+
+## What the official plugins do
 
 <div class="features-grid">
 
