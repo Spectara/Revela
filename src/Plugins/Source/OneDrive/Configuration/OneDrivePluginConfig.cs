@@ -60,13 +60,14 @@ internal sealed class OneDrivePluginConfig
     public int? DefaultConcurrency { get; set; }
 
     /// <summary>
-    /// File patterns to include (e.g., "*.jpg", "*.png")
-    /// If null or empty, smart defaults are used: all images (via MIME type) and markdown files
+    /// File-name patterns to download (e.g., "*.jpg", "*.png"; <c>*</c> and <c>?</c>, case-insensitive).
+    /// If null or empty, all files are downloaded; <c>--clean</c> then only considers
+    /// local images (.jpg, .jpeg, .png, .webp) and markdown files.
     /// </summary>
     public IReadOnlyList<string>? IncludePatterns { get; set; }
 
     /// <summary>
-    /// File patterns to exclude (e.g., "*.tmp", "*.bak")
+    /// File-name patterns to skip (e.g., "*.tmp", "*.bak"). Exclusion wins over inclusion.
     /// </summary>
     public IReadOnlyList<string>? ExcludePatterns { get; set; }
 }

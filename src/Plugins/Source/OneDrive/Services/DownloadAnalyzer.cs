@@ -21,8 +21,8 @@ internal static class DownloadAnalyzer
     /// </summary>
     /// <param name="remoteItems">Remote OneDrive items</param>
     /// <param name="destinationDirectory">Local destination directory</param>
-    /// <param name="includePatterns">File patterns to include (null = defaults)</param>
-    /// <param name="excludePatterns">File patterns to exclude</param>
+    /// <param name="includePatterns">File-name patterns to download (null or empty = all files); orphan detection falls back to images + markdown</param>
+    /// <param name="excludePatterns">File-name patterns to skip; exclusion wins over inclusion</param>
     /// <param name="includeOrphans">Whether to detect orphaned files</param>
     /// <param name="includeAllOrphans">Whether to include all orphans (not just filtered)</param>
     /// <param name="forceRefresh">Force re-download all files, even if they appear unchanged</param>
@@ -39,8 +39,8 @@ internal static class DownloadAnalyzer
     {
         var items = new List<DownloadItem>();
 
-        // Analyze remote items
-        foreach (var remoteItem in remoteItems.Where(i => !i.IsFolder))
+        // Analyze remote items; patterns match the file name, like local cleanup
+        foreach (var remoteItem in remoteItems.Where(i => !i.IsFolder && ShouldDownload(i.Name, includePatterns, excludePatterns)))
         {
             var relativePath = GetRelativePath(remoteItem);
             var localPath = Path.Combine(destinationDirectory, relativePath);
@@ -218,6 +218,28 @@ internal static class DownloadAnalyzer
     }
 
     /// <summary>
+    /// Checks if a remote file should be downloaded based on patterns
+    /// </summary>
+    /// <remarks>
+    /// Uses the same wildcard matching and exclude-first order as <see cref="ShouldIncludeFile"/>.
+    /// Without include patterns, every non-excluded file is downloaded so that content such as
+    /// <c>_index.revela</c> is not lost to the narrower local cleanup defaults.
+    /// </remarks>
+    private static bool ShouldDownload(
+        string fileName,
+        IReadOnlyList<string>? includePatterns,
+        IReadOnlyList<string>? excludePatterns
+    )
+    {
+        if (IsExcluded(fileName, excludePatterns))
+        {
+            return false;
+        }
+
+        return includePatterns is null or [] || includePatterns.Any(p => MatchesWildcard(fileName, p));
+    }
+
+    /// <summary>
     /// Checks if a file should be included based on patterns
     /// </summary>
     private static bool ShouldIncludeFile(
@@ -227,7 +249,7 @@ internal static class DownloadAnalyzer
     )
     {
         // Check exclude first
-        if (excludePatterns is not null && excludePatterns.Any(p => MatchesWildcard(fileName, p)))
+        if (IsExcluded(fileName, excludePatterns))
         {
             return false;
         }
@@ -240,6 +262,9 @@ internal static class DownloadAnalyzer
 
         return includePatterns.Any(p => MatchesWildcard(fileName, p));
     }
+
+    private static bool IsExcluded(string fileName, IReadOnlyList<string>? excludePatterns) =>
+        excludePatterns is not null && excludePatterns.Any(p => MatchesWildcard(fileName, p));
 
     /// <summary>
     /// Simple wildcard matching (supports * and ?)

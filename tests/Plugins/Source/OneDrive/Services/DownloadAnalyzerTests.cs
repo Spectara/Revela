@@ -306,6 +306,109 @@ public sealed class DownloadAnalyzerTests : IDisposable
 
     #endregion
 
+    #region Pattern Filtering
+
+    [TestMethod]
+    public void Analyze_RemoteItemMatchesExcludePattern_IsNotDownloaded()
+    {
+        var remoteItems = new List<OneDriveItem>
+        {
+            CreateRemoteItem("photo.jpg", 1024),
+            CreateRemoteItem("photo.CR2", 4096),
+            CreateRemoteItem("photo.xmp", 128)
+        };
+
+        var result = DownloadAnalyzer.Analyze(remoteItems, tempDirectory, excludePatterns: ["*.cr2", "*.xmp"]);
+
+        Assert.HasCount(1, result.Items);
+        Assert.AreEqual("photo.jpg", result.Items[0].RemoteItem.Name);
+        Assert.AreEqual(1, result.Statistics.NewFiles);
+        Assert.AreEqual(1024L, result.Statistics.TotalDownloadSize);
+    }
+
+    [TestMethod]
+    public void Analyze_RemoteItemNotMatchingIncludePattern_IsNotDownloaded()
+    {
+        var remoteItems = new List<OneDriveItem>
+        {
+            CreateRemoteItem("photo.jpg", 1024),
+            CreateRemoteItem("notes.md", 64),
+            CreateRemoteItem("scan.tiff", 8192)
+        };
+
+        var result = DownloadAnalyzer.Analyze(remoteItems, tempDirectory, includePatterns: ["*.JPG", "*.md"]);
+
+        var names = result.Items.Select(i => i.RemoteItem.Name).ToList();
+        Assert.HasCount(2, names);
+        Assert.Contains("photo.jpg", names);
+        Assert.Contains("notes.md", names);
+        Assert.AreEqual(1024L + 64L, result.Statistics.TotalDownloadSize);
+    }
+
+    [TestMethod]
+    public void Analyze_RemoteItemMatchingIncludeAndExclude_ExcludeWins()
+    {
+        var remoteItems = new List<OneDriveItem>
+        {
+            CreateRemoteItem("keep.jpg", 1024),
+            CreateRemoteItem("private-01.jpg", 2048)
+        };
+
+        var result = DownloadAnalyzer.Analyze(remoteItems, tempDirectory,
+            includePatterns: ["*.jpg"], excludePatterns: ["private-*"]);
+
+        Assert.HasCount(1, result.Items);
+        Assert.AreEqual("keep.jpg", result.Items[0].RemoteItem.Name);
+    }
+
+    [TestMethod]
+    public void Analyze_NestedRemoteItemMatchingExcludePattern_IsNotDownloaded()
+    {
+        var remoteItems = new List<OneDriveItem>
+        {
+            new() { Id = "1", Name = "photo.jpg", ParentPath = "Gallery", Size = 1024, LastModified = DateTime.UtcNow },
+            new() { Id = "2", Name = "photo.tmp", ParentPath = "Gallery", Size = 512, LastModified = DateTime.UtcNow }
+        };
+
+        var result = DownloadAnalyzer.Analyze(remoteItems, tempDirectory, excludePatterns: ["*.tmp"]);
+
+        Assert.HasCount(1, result.Items);
+        Assert.AreEqual("Gallery/photo.jpg", result.Items[0].RelativePath);
+    }
+
+    [TestMethod]
+    public void Analyze_NoIncludePatterns_DownloadsAllNonExcludedRemoteFiles()
+    {
+        var remoteItems = new List<OneDriveItem>
+        {
+            CreateRemoteItem("photo.jpg", 1024),
+            CreateRemoteItem("_index.revela", 256),
+            CreateRemoteItem("animation.gif", 2048)
+        };
+
+        var result = DownloadAnalyzer.Analyze(remoteItems, tempDirectory);
+
+        Assert.HasCount(3, result.Items);
+    }
+
+    [TestMethod]
+    public void Analyze_ExcludedRemoteFileWithLocalCopy_IsNotReportedAsOrphan()
+    {
+        CreateLocalFile("photo.xmp", 128);
+        var remoteItems = new List<OneDriveItem>
+        {
+            CreateRemoteItem("photo.xmp", 128)
+        };
+
+        var result = DownloadAnalyzer.Analyze(remoteItems, tempDirectory,
+            excludePatterns: ["*.xmp"], includeOrphans: true, includeAllOrphans: true);
+
+        Assert.IsEmpty(result.Items);
+        Assert.IsEmpty(result.OrphanedFiles);
+    }
+
+    #endregion
+
     #region Folders
 
     [TestMethod]

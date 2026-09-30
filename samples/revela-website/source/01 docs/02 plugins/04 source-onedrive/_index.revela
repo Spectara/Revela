@@ -88,7 +88,7 @@ revela generate all
   "Spectara.Revela.Plugins.Source.OneDrive": {
     "ShareUrl": "https://1drv.ms/f/your-link",
     "DefaultConcurrency": 4,
-    "IncludePatterns": ["*.jpg", "*.jpeg", "*.png", "*.tiff", "*.md"],
+    "IncludePatterns": ["*.jpg", "*.jpeg", "*.png", "*.tiff", "*.md", "_index.revela"],
     "ExcludePatterns": ["*.tmp"]
   }
 }
@@ -98,8 +98,12 @@ revela generate all
 |--------|----------|---------|-------------|
 | `ShareUrl` | Yes | – | OneDrive shared folder URL |
 | `DefaultConcurrency` | No | `4` | Parallel downloads (increase for fast connections) |
-| `IncludePatterns` | No | All images + markdown | File patterns to include |
-| `ExcludePatterns` | No | None | File patterns to exclude |
+| `IncludePatterns` | No | All files | File-name patterns to download (`*`, `?`, case-insensitive) |
+| `ExcludePatterns` | No | None | File-name patterns to skip; exclusion wins over inclusion |
+
+Patterns match the file name only, not the folder path. Without `IncludePatterns`,
+`--clean` only considers local images (`.jpg`, `.jpeg`, `.png`, `.webp`) and
+Markdown files; excluded files are never downloaded or cleaned up.
 
 ## Supported Link Formats
 
