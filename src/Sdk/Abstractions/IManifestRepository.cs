@@ -97,6 +97,20 @@ public interface IManifestRepository
     void SetFormatQualities(IReadOnlyDictionary<string, int> qualities);
 
     /// <summary>
+    /// Get the processing fingerprint recorded after the image's variants were last generated.
+    /// </summary>
+    /// <param name="sourcePath">Relative path to source image (normalized with forward slashes)</param>
+    /// <returns>Fingerprint if the image was processed before, null otherwise</returns>
+    string? GetProcessedFingerprint(string sourcePath);
+
+    /// <summary>
+    /// Record the processing fingerprint after all variants of an image were generated successfully.
+    /// </summary>
+    /// <param name="sourcePath">Relative path to source image (normalized with forward slashes)</param>
+    /// <param name="fingerprint">Fingerprint of the source file and pipeline settings</param>
+    void SetProcessedFingerprint(string sourcePath, string fingerprint);
+
+    /// <summary>
     /// Timestamp of last content scan.
     /// </summary>
     DateTime? LastScanned { get; set; }

@@ -39,6 +39,19 @@ These sizes are optimized for High-DPI displays (1.5x, 2x scaling).
 
 Plus the **original width** for full-resolution lightbox view.
 
+## Color Spaces
+
+Generated images are always **sRGB**, the color space browsers assume for web images.
+Photos exported with another embedded profile (Display P3, Adobe RGB, CMYK) are converted
+using that profile, so colors look the same as in your editor on standard displays.
+
+Colors that sRGB cannot represent — very saturated reds, greens and cyans that wide-gamut
+displays can show — are mapped to the closest sRGB color. Your source files are never
+changed. For full control over that mapping, soft-proof and export in sRGB from your
+photo editor.
+
+HDR photos (JPEG with gain map) are published as their standard dynamic range image.
+
 ## Detail View Zoom
 
 Canonical photo pages and Lightbox images support two-finger pinch zoom, double-tap on touch
@@ -60,7 +73,10 @@ revela generate images --force
 
 ## Incremental Processing
 
-Revela automatically detects what's missing and only generates those variants:
+Revela automatically detects what's missing and only generates those variants.
+An image is regenerated completely when its source file changes (size or
+modification time), when the theme's resize mode changes, or when a Revela
+update changes how images are encoded.
 
 ### Adding a New Format
 

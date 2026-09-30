@@ -40,6 +40,26 @@ internal sealed partial class NetVipsImageProcessor(
     CameraModelMapper cameraModelMapper) : IImageProcessor
 {
     /// <summary>
+    /// Version of the encoded output for an unchanged source and configuration.
+    /// </summary>
+    /// <remarks>
+    /// Part of every image's processing fingerprint. Increment whenever the written pixels
+    /// or metadata change (e.g. color conversion) so existing variants are regenerated.
+    /// </remarks>
+    internal const int OutputVersion = 2;
+
+    /// <summary>
+    /// Color space of published variants. Variants are saved without metadata, and browsers
+    /// interpret untagged images as sRGB.
+    /// </summary>
+    private const string OutputProfile = "srgb";
+
+    /// <summary>
+    /// Largest image dimension libvips accepts (<c>VIPS_MAX_COORD</c>).
+    /// </summary>
+    private const int VipsMaxCoord = 10_000_000;
+
+    /// <summary>
     /// Flag to ensure NetVips is initialized only once
     /// </summary>
     private static bool netVipsInitialized;
@@ -284,6 +304,11 @@ internal sealed partial class NetVipsImageProcessor(
 
                 try
                 {
+                    // Convert after resizing: converting the original once would be recomputed
+                    // for every size and format by the lazy pipeline (~60% slower overall).
+                    using var converted = ConvertToOutputColorSpace(thumb, keepGrey: true);
+                    var publishable = converted ?? thumb;
+
                     // Process each format - report saved or skipped in order
                     foreach (var (format, quality) in options.Formats)
                     {
@@ -298,7 +323,7 @@ internal sealed partial class NetVipsImageProcessor(
                             onVariantProgress?.Invoke(VariantState.Started, format);
 
                             var variant = await SaveVariantAsync(
-                                thumb,
+                                publishable,
                                 options.ImageSlug,
                                 options.OutputDirectory,
                                 format,
@@ -426,14 +451,58 @@ internal sealed partial class NetVipsImageProcessor(
         //
         // Using ThumbnailImage instead of Resize for correct alpha channel handling.
         // See: https://github.com/libvips/libvips/issues/4588
+        //
+        // The unconstrained side must stay within VIPS_MAX_COORD: libvips rejects larger
+        // values (e.g. int.MaxValue) and silently falls back to a square bounding box.
 
         return resizeMode.ToUpperInvariant() switch
         {
-            "WIDTH" => source.ThumbnailImage(size, height: int.MaxValue),
-            "HEIGHT" => source.ThumbnailImage(int.MaxValue, height: size),
+            "WIDTH" => source.ThumbnailImage(size, height: VipsMaxCoord),
+            "HEIGHT" => source.ThumbnailImage(VipsMaxCoord, height: size),
             // "LONGEST" (default) - ThumbnailImage constrains to longest side
             _ => source.ThumbnailImage(size)
         };
+    }
+
+    /// <summary>
+    /// Converts an image to 8-bit sRGB for publishing.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Variants are saved without metadata, so the pixels must already be sRGB. An embedded
+    /// ICC profile (Display P3, Adobe RGB, CMYK, …) is applied with the perceptual intent;
+    /// untagged images outside 8-bit RGB (CMYK, 16-bit, Lab, …) use libvips' default profiles.
+    /// Colors outside sRGB are mapped into it — the source file is never modified.
+    /// </para>
+    /// <para>
+    /// ThumbnailImage/Resize keep the pixel values and the attached profile unchanged,
+    /// so this can run after resizing.
+    /// </para>
+    /// </remarks>
+    /// <param name="image">Image to convert (not disposed).</param>
+    /// <param name="keepGrey">Keep untagged 8-bit greyscale images single-band.</param>
+    /// <returns>The converted image (caller disposes), or <c>null</c> if <paramref name="image"/> is already publishable.</returns>
+    private Image? ConvertToOutputColorSpace(Image image, bool keepGrey)
+    {
+        if (image.Contains("icc-profile-data"))
+        {
+            try
+            {
+                return image.IccTransform(OutputProfile, embedded: true, intent: Enums.Intent.Perceptual);
+            }
+            catch (VipsException ex)
+            {
+                // A broken embedded profile must not fail the build: fall back to the
+                // interpretation-based conversion below (untagged sRGB stays unchanged).
+                LogIccTransformFailed(logger, ex);
+            }
+        }
+
+        var alreadyPublishable = image.Format == Enums.BandFormat.Uchar
+            && (image.Interpretation is Enums.Interpretation.Srgb or Enums.Interpretation.Rgb or Enums.Interpretation.Multiband
+                || (keepGrey && image.Interpretation == Enums.Interpretation.Bw));
+
+        return alreadyPublishable ? null : image.Colourspace(Enums.Interpretation.Srgb);
     }
 
     /// <summary>
@@ -866,6 +935,9 @@ internal sealed partial class NetVipsImageProcessor(
     [LoggerMessage(Level = LogLevel.Debug, Message = "Generated {Strategy} placeholder ({Bytes} bytes)")]
     private static partial void LogPlaceholderGenerated(ILogger logger, string strategy, int bytes);
 
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Embedded ICC profile could not be applied, converting without it")]
+    private static partial void LogIccTransformFailed(ILogger logger, Exception exception);
+
     /// <summary>
     /// Generate a CSS-only LQIP hash (20-bit integer)
     /// </summary>
@@ -896,7 +968,9 @@ internal sealed partial class NetVipsImageProcessor(
         // Step 1: Calculate average color in Oklab space
         // Using average instead of dominant color works better for high-contrast images
         // (e.g., white fur on black background)
-        using var sampler = image.ThumbnailImage(10, height: 10, crop: Enums.Interesting.Centre);
+        using var samplerRaw = image.ThumbnailImage(10, height: 10, crop: Enums.Interesting.Centre);
+        using var samplerConverted = ConvertToOutputColorSpace(samplerRaw, keepGrey: false);
+        var sampler = samplerConverted ?? samplerRaw;
 
         var sumL = 0.0;
         var sumA = 0.0;
@@ -936,7 +1010,8 @@ internal sealed partial class NetVipsImageProcessor(
         var gridScaleX = 3.0 / image.Width;
         var gridScaleY = 2.0 / image.Height;
         using var gridRaw = image.Resize(gridScaleX, vscale: gridScaleY);
-        using var grid = gridRaw.Sharpen(sigma: 1.0);
+        using var gridConverted = ConvertToOutputColorSpace(gridRaw, keepGrey: false);
+        using var grid = (gridConverted ?? gridRaw).Sharpen(sigma: 1.0);
 
         // Step 4: Calculate ABSOLUTE brightness values (original algorithm)
         // The CSS uses grayscale cells (hsl(0 0% x%)) NOT relative to base color

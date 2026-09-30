@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Globalization;
 using Microsoft.Extensions.Options;
 using Spectara.Revela.Core.Services;
 using Spectara.Revela.Features.Generate.Abstractions;
@@ -20,8 +21,10 @@ namespace Spectara.Revela.Features.Generate.Services;
 /// <remarks>
 /// <para>
 /// Processes images from the manifest, generating responsive variants
-/// in multiple sizes and formats. Uses metadata-based caching (LastModified + FileSize)
-/// to skip unchanged images.
+/// in multiple sizes and formats. An image is skipped when its processing
+/// fingerprint (source size + modification time, resize mode, output version)
+/// matches the one recorded after its last successful processing and all
+/// expected variant files exist.
 /// </para>
 /// </remarks>
 internal sealed partial class ImageService(
@@ -125,8 +128,9 @@ internal sealed partial class ImageService(
             manifestRepository.RemoveOrphans(uniqueSourcePaths);
 
             // Determine which images need processing
-            var imagesToProcess = new List<(string SourcePath, string ManifestKey, string ImageSlug, IReadOnlyList<int> Sizes, IReadOnlyList<(int Size, string Format)>? MissingVariants, string? ExistingPlaceholder, int Width, int Height)>();
+            var imagesToProcess = new List<(string SourcePath, string ManifestKey, string ImageSlug, IReadOnlyList<int> Sizes, IReadOnlyList<(int Size, string Format)>? MissingVariants, string? ExistingPlaceholder, int Width, int Height, string Fingerprint)>();
             var cachedCount = 0;
+            var resizeMode = imageSizesProvider.GetResizeMode();
 
             var selectionStopwatch = Stopwatch.StartNew();
 
@@ -158,21 +162,24 @@ internal sealed partial class ImageService(
                 // Get existing placeholder from manifest (generated during scan)
                 var existingPlaceholder = existingEntry?.Placeholder;
 
-                // Change detection: LastModified + FileSize (like git/rsync)
-                var sourceUnchanged = existingEntry != null
-                    && existingEntry.LastModified == fileInfo.LastWriteTimeUtc
-                    && existingEntry.FileSize == fileInfo.Length;
+                // Change detection against the state recorded after the last successful
+                // processing — never against scan metadata, which already reflects the edit.
+                var fingerprint = ComputeProcessingFingerprint(fileInfo.Length, fileInfo.LastWriteTimeUtc, resizeMode);
+                var sourceUnchanged = string.Equals(
+                    manifestRepository.GetProcessedFingerprint(manifestKey),
+                    fingerprint,
+                    StringComparison.Ordinal);
 
                 // Decision tree
                 if (options.Force)
                 {
                     // Force: regenerate everything
-                    imagesToProcess.Add((fullPath, manifestKey, imageName, manifestSizes, null, existingPlaceholder, width, height));
+                    imagesToProcess.Add((fullPath, manifestKey, imageName, manifestSizes, null, existingPlaceholder, width, height, fingerprint));
                 }
                 else if (!sourceUnchanged)
                 {
-                    // Source changed or never processed: regenerate everything
-                    imagesToProcess.Add((fullPath, manifestKey, imageName, manifestSizes, null, existingPlaceholder, width, height));
+                    // Source or pipeline changed, or never processed: regenerate everything
+                    imagesToProcess.Add((fullPath, manifestKey, imageName, manifestSizes, null, existingPlaceholder, width, height, fingerprint));
                 }
                 else
                 {
@@ -182,7 +189,7 @@ internal sealed partial class ImageService(
                     var missingVariants = GetMissingVariants(outputImagesDirectory, imageName, manifestSizes, formats, formatsWithQualityChange);
                     if (missingVariants.Count > 0)
                     {
-                        imagesToProcess.Add((fullPath, manifestKey, imageName, manifestSizes, missingVariants, existingPlaceholder, width, height));
+                        imagesToProcess.Add((fullPath, manifestKey, imageName, manifestSizes, missingVariants, existingPlaceholder, width, height, fingerprint));
                     }
                     else
                     {
@@ -195,7 +202,7 @@ internal sealed partial class ImageService(
             LogSelectionCompleted(logger, uniqueSourcePaths.Count, imagesToProcess.Count, cachedCount, selectionStopwatch.Elapsed);
 
             long plannedVariants = 0;
-            foreach (var (_, _, _, manifestSizes, missingVariants, _, _, _) in imagesToProcess)
+            foreach (var (_, _, _, manifestSizes, missingVariants, _, _, _, _) in imagesToProcess)
             {
                 if (missingVariants != null)
                 {
@@ -316,7 +323,7 @@ internal sealed partial class ImageService(
                 },
                 async (item, ct) =>
                 {
-                    var (sourcePath, manifestKey, imageSlug, manifestSizes, missingVariants, existingPlaceholder, width, height) = item;
+                    var (sourcePath, manifestKey, imageSlug, manifestSizes, missingVariants, existingPlaceholder, width, height, fingerprint) = item;
 
                     // Use sizes from manifest (calculated during scan with original width).
                     // Fall back to config sizes if manifest sizes are empty (shouldn't happen).
@@ -341,7 +348,7 @@ internal sealed partial class ImageService(
                                 OutputDirectory = outputImagesDirectory,
                                 ImageSlug = imageSlug,
                                 CacheDirectory = cacheDirectory,
-                                ResizeMode = imageSizesProvider.GetResizeMode(),
+                                ResizeMode = resizeMode,
                                 Placeholder = ImageSettings.Placeholder,
                                 ExistingPlaceholder = existingPlaceholder,
                                 Width = width,
@@ -387,9 +394,11 @@ internal sealed partial class ImageService(
 
                         ReportProgress();
 
-                        // Thread-safe manifest update - update placeholder if changed
+                        // Thread-safe manifest update - record success, update placeholder if changed
                         lock (manifestLock)
                         {
+                            manifestRepository.SetProcessedFingerprint(manifestKey, fingerprint);
+
                             var existingEntry = manifestRepository.GetImage(manifestKey);
                             if (existingEntry != null && existingEntry.Placeholder != image.Placeholder)
                             {
@@ -457,6 +466,15 @@ internal sealed partial class ImageService(
         CancellationToken cancellationToken = default) => await imageProcessor.ProcessImageAsync(inputPath, options, onVariantProgress, cancellationToken);
 
     #region Private Helpers
+
+    /// <summary>
+    /// Fingerprint of the inputs that determine an image's variants, apart from sizes and
+    /// formats (checked per output file) and quality (tracked in <c>FormatQualities</c>).
+    /// </summary>
+    internal static string ComputeProcessingFingerprint(long fileSize, DateTime lastWriteTimeUtc, string resizeMode) =>
+        string.Create(
+            CultureInfo.InvariantCulture,
+            $"v{NetVipsImageProcessor.OutputVersion}|size:{fileSize}|mtime:{lastWriteTimeUtc.Ticks}|resize:{resizeMode}");
 
     /// <summary>
     /// Collect all image source paths from the unified tree.

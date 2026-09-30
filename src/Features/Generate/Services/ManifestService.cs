@@ -50,6 +50,11 @@ internal sealed partial class ManifestService(
     /// </remarks>
     private Dictionary<string, (ImageContent Entry, ManifestEntry Node)> imageCache = [];
 
+    /// <summary>
+    /// Mutable working copy of <see cref="ManifestMeta.ProcessedImages"/>, written back on save.
+    /// </summary>
+    private Dictionary<string, string> processedImages = new(StringComparer.Ordinal);
+
     #region Root Node
 
     /// <inheritdoc />
@@ -170,6 +175,12 @@ internal sealed partial class ManifestService(
     public void SetFormatQualities(IReadOnlyDictionary<string, int> qualities) =>
         manifest = manifest with { Meta = manifest.Meta with { FormatQualities = new Dictionary<string, int>(qualities) } };
 
+    /// <inheritdoc />
+    public string? GetProcessedFingerprint(string sourcePath) => processedImages.GetValueOrDefault(sourcePath);
+
+    /// <inheritdoc />
+    public void SetProcessedFingerprint(string sourcePath, string fingerprint) => processedImages[sourcePath] = fingerprint;
+
     #endregion
 
     #region Lifecycle
@@ -185,6 +196,7 @@ internal sealed partial class ManifestService(
             LogManifestNotFound(logger, manifestPath);
             manifest = new ImageManifest();
             imageCache.Clear();
+            processedImages.Clear();
             return;
         }
 
@@ -212,6 +224,8 @@ internal sealed partial class ManifestService(
             manifest = new ImageManifest();
             imageCache.Clear();
         }
+
+        processedImages = new Dictionary<string, string>(manifest.Meta.ProcessedImages, StringComparer.Ordinal);
     }
 
     /// <inheritdoc />
@@ -223,8 +237,17 @@ internal sealed partial class ManifestService(
         var manifestPath = Path.Combine(cacheDirectory, ManifestFileName);
         var tempPath = manifestPath + ".tmp";
 
-        // Update timestamp
-        manifest = manifest with { Meta = manifest.Meta with { LastUpdated = timeProvider.GetUtcNow().UtcDateTime } };
+        // Update timestamp and persist the processing state in stable key order
+        manifest = manifest with
+        {
+            Meta = manifest.Meta with
+            {
+                LastUpdated = timeProvider.GetUtcNow().UtcDateTime,
+                ProcessedImages = processedImages
+                    .OrderBy(entry => entry.Key, StringComparer.Ordinal)
+                    .ToDictionary(StringComparer.Ordinal)
+            }
+        };
 
         try
         {
@@ -263,6 +286,7 @@ internal sealed partial class ManifestService(
     {
         manifest = new ImageManifest();
         imageCache.Clear();
+        processedImages.Clear();
     }
 
     #endregion
@@ -280,6 +304,11 @@ internal sealed partial class ManifestService(
         {
             RemoveImage(orphan);
             LogOrphanRemoved(logger, orphan);
+        }
+
+        foreach (var stale in processedImages.Keys.Where(key => !existingSourcePaths.Contains(key)).ToList())
+        {
+            processedImages.Remove(stale);
         }
 
         if (orphans.Count > 0)

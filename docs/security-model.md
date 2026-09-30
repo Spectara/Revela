@@ -111,7 +111,7 @@ Distinguish two separate things:
 - **Manifest EXIF extraction (read-only):** Revela reads EXIF from your source photos into the in-memory `ImageManifest` (see `ExtractExifData` in the same file) so camera settings can be shown in templates and aggregated by the Statistics plugin. GPS latitude/longitude are among the fields read. This data lives in the manifest and is surfaced only if your theme chooses to render it.
 - **Published variant metadata (stripped):** The resized/re-encoded files written to the output folder carry no embedded metadata at all.
 
-Since #98 the loader also calls `Autorot()` before stripping, so orientation is baked into the pixels rather than left in a now-removed EXIF tag.
+Since #98 the loader also calls `Autorot()` before stripping, so orientation is baked into the pixels rather than left in a now-removed EXIF tag. Likewise, pixels are converted to sRGB using the embedded ICC profile before the profile is dropped, so stripping it does not change the displayed colors.
 
 If your theme deliberately renders GPS from the manifest and you do not want coordinates published, omit them in your theme templates — the embedded file metadata is already gone.
 
