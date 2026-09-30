@@ -461,7 +461,7 @@ internal sealed partial class OneDriveSourceCommand(
             "OneDrive share URL",
             "config onedrive",
             "  1. Run [cyan]revela config onedrive[/] to configure interactively\n" +
-            "  2. Set environment variable: [cyan]SPECTARA__REVELA__PLUGIN__SOURCE__ONEDRIVE__SHAREURL[/]\n" +
+            "  2. Set environment variable: [cyan]SPECTARA__REVELA__PLUGINS__ONEDRIVE__SHAREURL[/]\n" +
             "  3. Provide [cyan]--share-url[/] parameter");
     }
 

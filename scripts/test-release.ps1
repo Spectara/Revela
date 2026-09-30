@@ -436,19 +436,20 @@ try {
             try {
                 $configPath = Join-Path $SampleProjectDir 'project.json'
                 $before = Get-Content -LiteralPath $configPath -Raw | ConvertFrom-Json -AsHashtable
-                $statisticsKey = 'Spectara.Revela.Plugins.Statistics'
-                if (-not $before.ContainsKey($statisticsKey)) {
-                    $before[$statisticsKey] = @{ maxEntriesPerCategory = 19; sortByCount = $true }
+                # Plugin settings live below plugins:<key>; Statistics claims 'statistics'.
+                if (-not $before.ContainsKey('plugins')) { $before['plugins'] = @{} }
+                if (-not $before['plugins'].ContainsKey('statistics')) {
+                    $before['plugins']['statistics'] = @{ maxEntriesPerCategory = 19; sortByCount = $true }
                     $before | ConvertTo-Json -Depth 100 | Set-Content -LiteralPath $configPath -Encoding utf8
                 }
-                $previousValue = $before[$statisticsKey]['maxEntriesPerCategory']
+                $previousValue = $before['plugins']['statistics']['maxEntriesPerCategory']
                 $newValue = if ($previousValue -eq 20) { 21 } else { 20 }
                 & $ExePath config statistics --max-entries $newValue
                 if ($LASTEXITCODE -ne 0) { throw 'Standalone statistics config failed' }
                 $after = Get-Content -LiteralPath $configPath -Raw | ConvertFrom-Json -AsHashtable
-                if ($after[$statisticsKey]['maxEntriesPerCategory'] -ne $newValue) { throw 'Standalone statistics value was not changed' }
-                $before[$statisticsKey].Remove('maxEntriesPerCategory')
-                $after[$statisticsKey].Remove('maxEntriesPerCategory')
+                if ($after['plugins']['statistics']['maxEntriesPerCategory'] -ne $newValue) { throw 'Standalone statistics value was not changed' }
+                $before['plugins']['statistics'].Remove('maxEntriesPerCategory')
+                $after['plugins']['statistics'].Remove('maxEntriesPerCategory')
                 if (($before | ConvertTo-Json -Depth 100 -Compress) -cne ($after | ConvertTo-Json -Depth 100 -Compress)) {
                     throw 'Standalone config changed unrelated settings'
                 }
@@ -753,7 +754,7 @@ try {
             $projectConfig = Join-Path $SampleProjectDir "project.json"
             if (Test-Path $projectConfig) {
                 $content = Get-Content $projectConfig -Raw | ConvertFrom-Json
-                if ($content.'Spectara.Revela.Plugins.Statistics'.MaxEntriesPerCategory -eq 20) {
+                if ($content.plugins.statistics.maxEntriesPerCategory -eq 20) {
                     Write-Success "Statistics config verified: MaxEntriesPerCategory = 20"
                 }
                 else {

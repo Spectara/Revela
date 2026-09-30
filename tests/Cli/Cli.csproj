@@ -18,6 +18,10 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\Cli\Cli.csproj" />
     <ProjectReference Include="..\..\src\Themes\Lumina\Lumina.csproj" />
+    <ProjectReference Include="..\..\src\Plugins\Serve\Serve.csproj" />
+    <ProjectReference Include="..\..\src\Plugins\Statistics\Statistics.csproj" />
+    <ProjectReference Include="..\..\src\Plugins\Source\OneDrive\OneDrive.csproj" />
+    <ProjectReference Include="..\..\src\Plugins\Source\Calendar\Calendar.csproj" />
     <ProjectReference Include="..\Shared\Shared.csproj" />
   </ItemGroup>
 

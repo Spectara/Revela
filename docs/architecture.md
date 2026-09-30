@@ -57,6 +57,18 @@ host features, such as title and language. `RenderService` also reads the docume
 dynamically for theme-specific properties that have no fixed options schema.
 Build/hosting settings belong to `ProjectConfig`, not the theme-specific site data.
 
+Plugin settings live below the host-owned `plugins` node as `plugins:<key>`,
+where each plugin declares its key (`^[a-z][a-zA-Z0-9]*$`; official keys:
+`serve`, `statistics`, `oneDrive`, `calendarFeeds`). Keys map directly to
+environment variables such as `SPECTARA__REVELA__PLUGINS__SERVE__PORT`. The SDK
+source generator rejects other sections in plugin/theme assemblies at compile time
+and emits a `RevelaPluginConfigKey` assembly attribute per claimed key.
+`AddPackages` reads those claims before any plugin configures services and fails
+loading when two packages claim the same key; after the host is built, keys below
+`plugins` that no loaded package claims are logged as warnings. Children that are
+not key-shaped (for example dependency-map package IDs) are ignored by that check.
+See [plugin configuration ownership](../src/Core/Configuration/PluginConfigOwnership.cs).
+
 Options use handwritten `Section` constants and writable properties. Binding and
 validation must remain trim-safe: generated .NET configuration binding and
 `[OptionsValidator]` implementations replace reflection-based binding/validation.

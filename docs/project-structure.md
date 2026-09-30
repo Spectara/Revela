@@ -44,6 +44,7 @@ Spectara.Revela/
 │   ├── Core/
 │   ├── Commands/
 │   ├── Integration/
+│   ├── Sdk.Generators/             # Roslyn driver tests for the source generators
 │   └── Plugins/
 │       ├── Directory.Build.props   # Inserts "Tests.Plugins" namespace segment
 │       ├── Compress/

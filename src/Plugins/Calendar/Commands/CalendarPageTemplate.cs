@@ -27,12 +27,6 @@ public sealed class CalendarPageTemplate : IPageTemplate
     public string TemplateName => "calendar/page";
 
     /// <inheritdoc />
-    public string ConfigSectionName => "";
-
-    /// <inheritdoc />
-    public bool HasConfigCommand => false;
-
-    /// <inheritdoc />
     public IReadOnlyList<TemplateProperty> PageProperties { get; } =
     [
         new()
@@ -43,8 +37,7 @@ public sealed class CalendarPageTemplate : IPageTemplate
             DefaultValue = "Availability",
             Description = "Page title (example: 'Booking Calendar')",
             Required = false,
-            FrontmatterKey = "title",
-            ConfigKey = null,
+            FrontmatterKey = "title"
         },
         new()
         {
@@ -54,8 +47,7 @@ public sealed class CalendarPageTemplate : IPageTemplate
             DefaultValue = "Availability calendar",
             Description = "Page description",
             Required = false,
-            FrontmatterKey = "description",
-            ConfigKey = null,
+            FrontmatterKey = "description"
         },
         new()
         {
@@ -65,8 +57,7 @@ public sealed class CalendarPageTemplate : IPageTemplate
             DefaultValue = "",
             Description = "iCal source URL (example: 'https://example.com/calendar.ics')",
             Required = true,
-            FrontmatterKey = "calendar.source",
-            ConfigKey = null,
+            FrontmatterKey = "calendar.source"
         },
         new()
         {
@@ -76,11 +67,7 @@ public sealed class CalendarPageTemplate : IPageTemplate
             DefaultValue = 12,
             Description = "Number of months to display (default: 12)",
             Required = false,
-            FrontmatterKey = "calendar.months",
-            ConfigKey = null,
+            FrontmatterKey = "calendar.months"
         },
     ];
-
-    /// <inheritdoc />
-    public IReadOnlyList<TemplateProperty> ConfigProperties { get; } = [];
 }

@@ -16,5 +16,7 @@
   <ItemGroup>
     <InternalsVisibleTo Remove="@(InternalsVisibleTo)" />
     <InternalsVisibleTo Include="$(RevelaNamespacePrefix).Tests.Plugins.Source.$(MSBuildProjectName)" />
+    <!-- Host-level configuration layering tests bind plugin options through the real CLI host -->
+    <InternalsVisibleTo Include="$(RevelaNamespacePrefix).Tests.Cli" />
   </ItemGroup>
 </Project>

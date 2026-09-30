@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Configuration;
 using Spectara.Revela.Core;
+using Spectara.Revela.Core.Configuration;
 using Spectara.Revela.Core.Logging;
 using Spectara.Revela.Sdk.Abstractions;
 
@@ -17,6 +18,7 @@ public static class PackageServiceCollectionExtensions
     /// <param name="packageSource">Source that provides plugins and themes.</param>
     /// <param name="configuration">The configuration builder for plugin configuration.</param>
     /// <param name="args">CLI arguments (used to detect package management commands).</param>
+    /// <exception cref="PluginConfigConflictException">Two loaded packages claim the same <c>plugins:&lt;key&gt;</c>.</exception>
     public static void AddPackages(
         this IServiceCollection services,
         IPackageSource packageSource,
@@ -38,6 +40,14 @@ public static class PackageServiceCollectionExtensions
 
         using var loggerFactory = CreateBootstrapLoggerFactory();
         ValidatePluginDependencies(plugins, loggerFactory);
+
+        // Resolve plugins:<key> ownership before any plugin configures services, so a
+        // duplicate claim fails loading instead of two packages binding the same node.
+        var ownership = PluginConfigOwnership.FromPackages(
+            plugins.Select(p => (IPackage)p.Plugin).Concat(themes.Select(t => t.Theme)));
+        services.AddSingleton(ownership);
+        services.AddSingleton<UnclaimedPluginConfigReporter>();
+
         ConfigurePlugins(services, configuration, plugins, loggerFactory);
         RegisterServices(services, plugins, themes);
     }

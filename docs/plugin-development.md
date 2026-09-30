@@ -202,17 +202,24 @@ Choose an SDK package version compatible with the Revela host you target; the ve
 
 The host loads global `revela.json`, local `project.json`, and environment variables prefixed `SPECTARA__REVELA__`. It does not automatically load `plugins/*.json`. You usually don't override `ConfigureConfiguration`; use it only to add an explicit configuration source. See the [configuration chain](architecture.md#configuration-and-paths) for precedence and the `site.json` split.
 
-Bind a strongly-typed options class whose section name is your package ID. Keep properties writable (`set`, not `init`) for generated binding, and declare `Section` by hand so the .NET configuration binding generator can resolve it:
+All plugin settings live below the host-owned `plugins` node. Your plugin **declares its own key** and binds the section `plugins:<key>`:
+
+- **Key rule:** `^[a-z][a-zA-Z0-9]*$` — camelCase letters and digits, no `.`, `:`, `/` or `_` (e.g. `example`, `oneDrive`). Pick a short, descriptive key; it is what users type in `project.json` and in environment variables (`SPECTARA__REVELA__PLUGINS__EXAMPLE__APIURL`).
+- **Compile-time enforcement:** in a project with `PackageType` `RevelaPlugin` or `RevelaTheme`, the SDK source generator reports `REVELA001` (error) for any other section (package-ID names, dotted or nested keys, core sections such as `generate`) and `REVELA002` when the `[RevelaConfig]` argument and the `Section` const differ.
+- **Ownership:** the generator records the key in your assembly (`[assembly: RevelaPluginConfigKey("example")]`). The host reads these claims before any plugin configures services; if two installed packages claim the same key, loading fails with an error naming both packages. Other plugins may still *read* your node — only claiming is exclusive.
+- **Unknown keys:** a key below `plugins` that no installed plugin claims (e.g. the typo `plugins:serv`) produces a warning with the closest claimed key as suggestion.
+
+Keep properties writable (`set`, not `init`) for generated binding, and declare `Section` by hand so the .NET configuration binding generator can resolve it:
 
 ```csharp
 using System.ComponentModel.DataAnnotations;
 using Microsoft.Extensions.Options;
 using Spectara.Revela.Sdk.Abstractions;
 
-[RevelaConfig("YourName.Revela.Plugin.Example")]
+[RevelaConfig("plugins:example")]
 public sealed class ExampleConfig
 {
-    public const string Section = "YourName.Revela.Plugin.Example";
+    public const string Section = "plugins:example";
 
     [Required]
     public string ApiUrl { get; set; } = string.Empty;
@@ -236,29 +243,34 @@ services.TryAddEnumerable(
 
 Keep `BindConfiguration` in handwritten source and enable `EnableConfigurationBindingGenerator` as shown above. `[OptionsValidator]` generates a trim/AOT-safe `IValidateOptions<T>` implementation from the annotations, avoiding reflection-based validation. `[RevelaConfig]` alone does not bind options or register a validator. Validation occurs when options are read; `[Required]` does not replace outbound URL safety checks.
 
-Inject `IOptions<ExampleConfig>` and read `.Value`, or use `IOptionsMonitor<ExampleConfig>.CurrentValue` when the service needs configuration reloads. Users configure it in `project.json`:
+Inject `IOptions<ExampleConfig>` and read `.Value`, or use `IOptionsMonitor<ExampleConfig>.CurrentValue` when the service needs configuration reloads. Users configure it in `project.json` (or user-wide in `revela.json`):
 
 ```json
 {
-  "YourName.Revela.Plugin.Example": {
-    "apiUrl": "https://api.example.com",
-    "timeout": 30
+  "plugins": {
+    "example": {
+      "apiUrl": "https://api.example.com",
+      "timeout": 30
+    }
   }
 }
 ```
 
+Or for a single run: `SPECTARA__REVELA__PLUGINS__EXAMPLE__TIMEOUT=60`.
+
 **Which config source for which use case?**
-- Own plugin config (e.g. `calendar.locale`): `[RevelaConfig("my.plugin")]` + `IOptions<MyPluginConfig>`
+- Own plugin config: `[RevelaConfig("plugins:myPlugin")]` + `IOptions<MyPluginConfig>`
 - Build/hosting settings (base URL, subpath, output path): `IOptions<ProjectConfig>`
 - Site identity (title, description, author, language): `IOptions<SiteCoreConfig>`
 - Theme-specific site properties: not from plugins — that's theme territory
 
 ### Persisting config from a CLI command
 
-If your plugin contributes a `config <plugin>` command, persist settings through `IConfigService.UpdateProjectConfigAsync(...)`, not a separate file writer. It validates and deep-merges a `JsonObject` patch into `project.json`, preserving unrelated settings. Include only intended changes under your section; omission leaves an existing value unchanged, while `null` deletes a key. Use generated keys for the camelCase property names:
+If your plugin contributes a `config <plugin>` command, persist settings through `IConfigService.UpdateProjectConfigAsync(...)`, not a separate file writer. It validates and deep-merges a `JsonObject` patch into `project.json`, preserving unrelated settings. Include only intended changes under your section; omission leaves an existing value unchanged, while `null` deletes a key. Use generated keys for the camelCase property names and `PluginConfigSection.CreateUpdate` to nest them below `plugins:<key>`:
 
 ```csharp
 using System.Text.Json.Nodes;
+using Spectara.Revela.Sdk.Configuration;
 using Spectara.Revela.Sdk.Configuration.Keys;
 
 var settings = new JsonObject();
@@ -267,10 +279,8 @@ if (!string.IsNullOrEmpty(apiUrl))
     settings[ExampleConfigKeys.ApiUrl] = apiUrl;
 }
 
-var updates = new JsonObject
-{
-    [ExampleConfig.Section] = settings
-};
+// { "plugins": { "example": { ... } } }
+var updates = PluginConfigSection.CreateUpdate(ExampleConfigKeys.Section, settings);
 await configService.UpdateProjectConfigAsync(updates, cancellationToken);
 ```
 

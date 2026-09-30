@@ -32,12 +32,6 @@ internal sealed class TextPageTemplate : IPageTemplate
     public string TemplateName => "page";
 
     /// <inheritdoc />
-    public string ConfigSectionName => "";
-
-    /// <inheritdoc />
-    public bool HasConfigCommand => false;
-
-    /// <inheritdoc />
     public IReadOnlyList<TemplateProperty> PageProperties { get; } =
     [
         new()
@@ -48,8 +42,7 @@ internal sealed class TextPageTemplate : IPageTemplate
             DefaultValue = "Page",
             Description = "Page title",
             Required = false,
-            FrontmatterKey = "title",
-            ConfigKey = null
+            FrontmatterKey = "title"
         },
         new()
         {
@@ -59,8 +52,7 @@ internal sealed class TextPageTemplate : IPageTemplate
             DefaultValue = "",
             Description = "Page description (for SEO)",
             Required = false,
-            FrontmatterKey = "description",
-            ConfigKey = null
+            FrontmatterKey = "description"
         },
         new()
         {
@@ -70,8 +62,7 @@ internal sealed class TextPageTemplate : IPageTemplate
             DefaultValue = false,
             Description = "Hide from navigation (page still accessible via URL)",
             Required = false,
-            FrontmatterKey = "hidden",
-            ConfigKey = null
+            FrontmatterKey = "hidden"
         },
         new()
         {
@@ -81,13 +72,9 @@ internal sealed class TextPageTemplate : IPageTemplate
             DefaultValue = null,
             Description = "Custom URL segment (overrides folder name)",
             Required = false,
-            FrontmatterKey = "slug",
-            ConfigKey = null
+            FrontmatterKey = "slug"
         }
     ];
-
-    /// <inheritdoc />
-    public IReadOnlyList<TemplateProperty> ConfigProperties { get; } = [];
 
     /// <inheritdoc />
     public string DefaultBody => """

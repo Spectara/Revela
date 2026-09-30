@@ -14,17 +14,20 @@ namespace Spectara.Revela.Plugins.Serve.Configuration;
 /// </para>
 /// <list type="number">
 /// <item>Command-line arguments (--port, --verbose)</item>
-/// <item>Environment variables (SPECTARA__REVELA__PLUGIN__SERVE__*)</item>
+/// <item>Environment variables (SPECTARA__REVELA__PLUGINS__SERVE__*)</item>
 /// <item>Project config file (project.json)</item>
+/// <item>Global config file (revela.json)</item>
 /// </list>
 /// <para>
 /// Example project.json:
 /// </para>
 /// <code>
 /// {
-///   "Spectara.Revela.Plugins.Serve": {
-///     "Port": 3000,
-///     "Verbose": true
+///   "plugins": {
+///     "serve": {
+///       "port": 3000,
+///       "verbose": true
+///     }
 ///   }
 /// }
 /// </code>
@@ -32,11 +35,11 @@ namespace Spectara.Revela.Plugins.Serve.Configuration;
 /// Example Environment Variables:
 /// </para>
 /// <code>
-/// SPECTARA__REVELA__PLUGIN__SERVE__PORT=3000
-/// SPECTARA__REVELA__PLUGIN__SERVE__VERBOSE=true
+/// SPECTARA__REVELA__PLUGINS__SERVE__PORT=3000
+/// SPECTARA__REVELA__PLUGINS__SERVE__VERBOSE=true
 /// </code>
 /// </remarks>
-[RevelaConfig("Spectara.Revela.Plugins.Serve")]
+[RevelaConfig("plugins:serve")]
 internal sealed class ServePluginConfig
 {
     /// <summary>
@@ -47,7 +50,7 @@ internal sealed class ServePluginConfig
     /// resolvable from user-written source (constants emitted from another
     /// source generator are invisible to it).
     /// </summary>
-    public const string Section = "Spectara.Revela.Plugins.Serve";
+    public const string Section = "plugins:serve";
 
     /// <summary>
     /// Port number for the HTTP server

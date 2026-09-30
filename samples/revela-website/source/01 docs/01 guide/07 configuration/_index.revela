@@ -230,4 +230,26 @@ Revela merges configuration from several sources. Later sources override earlier
 4. Environment variables prefixed `SPECTARA__REVELA__` (use `__` to separate nested keys)
 5. Command-line arguments
 
-This lets you override a single setting for one run without editing a file. For example, `SPECTARA__REVELA__PLUGIN__SERVE__PORT=3000` changes the dev-server port temporarily.
+This lets you override a single setting for one run without editing a file. For example, `SPECTARA__REVELA__PLUGINS__SERVE__PORT=3000` changes the dev-server port temporarily.
+
+### Plugin Settings
+
+Every plugin keeps its settings below `plugins`, under a short key the plugin defines:
+
+| Plugin | Key | Environment variable prefix |
+|--------|-----|-----------------------------|
+| Serve | `serve` | `SPECTARA__REVELA__PLUGINS__SERVE__` |
+| Statistics | `statistics` | `SPECTARA__REVELA__PLUGINS__STATISTICS__` |
+| Source.OneDrive | `oneDrive` | `SPECTARA__REVELA__PLUGINS__ONEDRIVE__` |
+| Source.Calendar | `calendarFeeds` | `SPECTARA__REVELA__PLUGINS__CALENDARFEEDS__` |
+
+```json
+{
+  "plugins": {
+    "serve": { "port": 3000 },
+    "statistics": { "maxEntriesPerCategory": 20 }
+  }
+}
+```
+
+If a key below `plugins` is not used by any installed plugin (for example the typo `serv`), Revela prints a warning and suggests the closest key.

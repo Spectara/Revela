@@ -69,24 +69,26 @@ revela plugin uninstall Statistics
 
 ## Configuration
 
-Plugins store their settings in `project.json`:
+Plugins store their settings in `project.json` below `plugins`, each under its own key (`serve`, `statistics`, `oneDrive`, `calendarFeeds`):
 
 ```json
 {
-  "Spectara.Revela.Plugins.Statistics": {
-    "MaxEntriesPerCategory": 15,
-    "SortByCount": true
-  },
-  "Spectara.Revela.Plugins.Serve": {
-    "Port": 8080
+  "plugins": {
+    "statistics": {
+      "maxEntriesPerCategory": 15,
+      "sortByCount": true
+    },
+    "serve": {
+      "port": 8080
+    }
   }
 }
 ```
 
-Settings can also be overridden with environment variables:
+Settings can also be overridden with environment variables (`SPECTARA__REVELA__PLUGINS__<KEY>__<SETTING>`):
 
 ```bash
-SPECTARA__REVELA__PLUGIN__SERVE__PORT=3000
+SPECTARA__REVELA__PLUGINS__SERVE__PORT=3000
 ```
 
 ## Community Plugins

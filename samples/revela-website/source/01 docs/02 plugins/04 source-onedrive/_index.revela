@@ -34,12 +34,14 @@ revela plugin install Source.OneDrive
 revela config onedrive
 ```
 
-Or add the share URL directly to `project.json`:
+Or add the share URL directly to `project.json` below `plugins.oneDrive`:
 
 ```json
 {
-  "Spectara.Revela.Plugins.Source.OneDrive": {
-    "ShareUrl": "https://1drv.ms/f/your-shared-folder-link"
+  "plugins": {
+    "oneDrive": {
+      "shareUrl": "https://1drv.ms/f/your-shared-folder-link"
+    }
   }
 }
 ```
@@ -85,23 +87,25 @@ revela generate all
 
 ```json
 {
-  "Spectara.Revela.Plugins.Source.OneDrive": {
-    "ShareUrl": "https://1drv.ms/f/your-link",
-    "DefaultConcurrency": 4,
-    "IncludePatterns": ["*.jpg", "*.jpeg", "*.png", "*.tiff", "*.md", "_index.revela"],
-    "ExcludePatterns": ["*.tmp"]
+  "plugins": {
+    "oneDrive": {
+      "shareUrl": "https://1drv.ms/f/your-link",
+      "defaultConcurrency": 4,
+      "includePatterns": ["*.jpg", "*.jpeg", "*.png", "*.tiff", "*.md", "_index.revela"],
+      "excludePatterns": ["*.tmp"]
+    }
   }
 }
 ```
 
 | Option | Required | Default | Description |
 |--------|----------|---------|-------------|
-| `ShareUrl` | Yes | – | OneDrive shared folder URL |
-| `DefaultConcurrency` | No | `4` | Parallel downloads (increase for fast connections) |
-| `IncludePatterns` | No | All files | File-name patterns to download (`*`, `?`, case-insensitive) |
-| `ExcludePatterns` | No | None | File-name patterns to skip; exclusion wins over inclusion |
+| `shareUrl` | Yes | – | OneDrive shared folder URL |
+| `defaultConcurrency` | No | `4` | Parallel downloads (increase for fast connections) |
+| `includePatterns` | No | All files | File-name patterns to download (`*`, `?`, case-insensitive) |
+| `excludePatterns` | No | None | File-name patterns to skip; exclusion wins over inclusion |
 
-Patterns match the file name only, not the folder path. Without `IncludePatterns`,
+Patterns match the file name only, not the folder path. Without `includePatterns`,
 `--clean` only considers local images (`.jpg`, `.jpeg`, `.png`, `.webp`) and
 Markdown files; excluded files are never downloaded or cleaned up.
 
@@ -131,8 +135,8 @@ Downloading (42/142) vacation/sunset.jpg  ━━━━━━━━━━━━�
 All settings can be overridden with environment variables:
 
 ```bash
-SPECTARA__REVELA__PLUGIN__SOURCE__ONEDRIVE__SHAREURL=https://1drv.ms/f/...
-SPECTARA__REVELA__PLUGIN__SOURCE__ONEDRIVE__DEFAULTCONCURRENCY=8
+SPECTARA__REVELA__PLUGINS__ONEDRIVE__SHAREURL=https://1drv.ms/f/...
+SPECTARA__REVELA__PLUGINS__ONEDRIVE__DEFAULTCONCURRENCY=8
 ```
 
 ## Requirements

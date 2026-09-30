@@ -95,7 +95,7 @@ Hard rules for `info` subcommands:
   you need active probing.
 
 ## Plugin Configuration
-1. Create config class with `[RevelaConfig("Spectara.Revela.Plugins.MyFeature")]` (documentation marker) plus a hand-written `public const string Section = "Spectara.Revela.Plugins.MyFeature";` (CBSG needs to see the const in user-source).
+1. Create config class with `[RevelaConfig("plugins:myFeature")]` plus a hand-written `public const string Section = "plugins:myFeature";` (CBSG needs to see the const in user-source). All plugin settings live below the host-owned `plugins` node; the key must match `^[a-z][a-zA-Z0-9]*$` (camelCase, no `.`/`:`/`/`/`_`). The SDK generator reports `REVELA001` for any other section in a plugin/theme assembly and `REVELA002` if attribute and const differ; it also emits the ownership claim the host uses to reject two packages claiming the same key.
 2. **Property accessors must be `{ get; set; }`** (not `init`) and **collection properties getter-only with initializer** (`Dictionary<,> X { get; } = [];`). CBSG silently skips `init`-only properties and triggers CA2227 on settable collections.
 3. Register from `ConfigureServices`:
    ```csharp
@@ -106,17 +106,21 @@ Hard rules for `info` subcommands:
 5. Inject `IOptionsMonitor<MyFeatureConfig>` into commands/services for hot-reload.
 6. CLI args override config: `var url = urlOverride ?? config.CurrentValue.ApiUrl;`
 
+7. Persist settings from a `config` command via `configService.UpdateProjectConfigAsync(PluginConfigSection.CreateUpdate(MyFeatureConfigKeys.Section, settings))`.
+
 Example `project.json`:
 ```json
 {
-  "Spectara.Revela.Plugins.MyFeature": {
-    "ApiUrl": "https://api.example.com",
-    "Timeout": 60
+  "plugins": {
+    "myFeature": {
+      "apiUrl": "https://api.example.com",
+      "timeout": 60
+    }
   }
 }
 ```
 
-ENV override: `SPECTARA__REVELA__SPECTARA__REVELA__PLUGINS__MYFEATURE__APIURL=...`
+ENV override: `SPECTARA__REVELA__PLUGINS__MYFEATURE__APIURL=...`
 
 ## Commands (System.CommandLine 2.0 — final, NOT beta!)
 ```csharp

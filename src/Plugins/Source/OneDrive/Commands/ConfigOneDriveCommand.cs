@@ -131,11 +131,8 @@ internal sealed partial class ConfigOneDriveCommand(
             pluginConfig[OneDrivePluginConfigKeys.ShareUrl] = shareUrl;
         }
 
-        // Wrap with plugin section name and update project.json
-        var updates = new JsonObject
-        {
-            [OneDrivePluginConfigKeys.Section] = pluginConfig
-        };
+        // Nest below plugins:<key> and update project.json
+        var updates = PluginConfigSection.CreateUpdate(OneDrivePluginConfigKeys.Section, pluginConfig);
 
         await configService.UpdateProjectConfigAsync(updates, cancellationToken);
 
