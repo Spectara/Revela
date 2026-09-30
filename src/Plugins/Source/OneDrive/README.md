@@ -40,8 +40,12 @@ Or add to `project.json`:
 |--------|----------|---------|-------------|
 | `ShareUrl` | Yes | - | OneDrive shared folder URL (1drv.ms or onedrive.live.com) |
 | `DefaultConcurrency` | No | `4` | Number of parallel downloads (increase for fast connections) |
-| `IncludePatterns` | No | `["*.jpg", "*.jpeg", ...]` | File patterns to include |
-| `ExcludePatterns` | No | `[]` | File patterns to exclude |
+| `IncludePatterns` | No | `[]` (all files) | File-name patterns to download (`*`, `?`, case-insensitive) |
+| `ExcludePatterns` | No | `[]` | File-name patterns to skip; exclusion wins over inclusion |
+
+Patterns match the file name only, not the folder path. Without `IncludePatterns`,
+`--clean` only considers local images (`.jpg`, `.jpeg`, `.png`, `.webp`) and
+Markdown files; excluded files are never downloaded or cleaned up.
 
 Downloaded files are saved to the project's source directory (configured via `paths.source` in `project.json`).
 
