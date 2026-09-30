@@ -59,6 +59,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Security
 
+- **Pinned CI actions** - GitHub Actions workflows pin every third-party action to a full commit SHA (tag kept as a comment, kept current by Dependabot) and no checkout persists its credentials. `sigstore/cosign-installer` now references the existing `v4.1.2` release; the previous `v4` reference does not exist upstream.
 - **Calendar-source transport and output hardening** - HTTP(S) destinations are validated on each redirect; HTTPS downgrades are rejected and downloads have a deadline covering the response body. Downloads replace their destination only after successful completion. Output paths are preflighted against the source directory, existing reparse points and overlapping feed destinations. URL credentials are omitted from logs and user-facing errors; default HTTP-client URL logging, automatic redirects and cookies are disabled. DNS rebinding protection, a download byte quota and transactional updates across multiple feeds are not provided.
 - **HTML metadata escaping** - Lumina escapes dynamic text and attributes, including titles, navigation and image metadata. Authored Markdown HTML and `site.copyright` remain trusted HTML, not sanitized input.
 - **Security guidance** - added a private vulnerability-reporting route and clarified the trust model, configuration-file protection and EXIF/GPS removal from published image variants.
