@@ -217,6 +217,8 @@ Handy for scripting: treat any non-zero code as a failure, and re-run once on `2
 
 Revela runs headless wherever the .NET tool is available. Generated output lands in `output/`.
 
+> Revela packages are **not on NuGet.org** yet. The examples below download the tool and the packages your project needs from a [GitHub Release](https://github.com/Spectara/Revela/releases) into a local folder and install from there. Pin the version for reproducible builds.
+
 ### GitHub Actions
 
 ```yaml
@@ -227,12 +229,19 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      REVELA_VERSION: 0.0.1-beta.21
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '10.0.x'
-      - run: dotnet tool install -g Spectara.Revela
+      - name: Download Revela packages
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release download "v$REVELA_VERSION" --repo Spectara/Revela --pattern '*.nupkg' --dir "$RUNNER_TEMP/revela-packages"
+      - run: dotnet tool install -g Spectara.Revela --version "$REVELA_VERSION" --add-source "$RUNNER_TEMP/revela-packages"
+      - run: revela config feed add releases "$RUNNER_TEMP/revela-packages"
       - run: revela restore        # install themes/plugins the project needs
       - run: revela generate all
       - uses: actions/upload-artifact@v4
@@ -243,17 +252,20 @@ jobs:
 
 ### Docker
 
+Download the release's `.nupkg` files into `revela-packages/` next to your project first:
+
 ```dockerfile
 FROM mcr.microsoft.com/dotnet/sdk:10.0
-RUN dotnet tool install -g Spectara.Revela
+ARG REVELA_VERSION=0.0.1-beta.21
+COPY revela-packages/ /revela-packages/
+RUN dotnet tool install -g Spectara.Revela --version ${REVELA_VERSION} --add-source /revela-packages
 ENV PATH="${PATH}:/root/.dotnet/tools"
+RUN revela config feed add releases /revela-packages
 WORKDIR /project
 COPY . .
 RUN revela restore && revela generate all
 # Site is in /project/output/
 ```
-
-> Pin a version for reproducible builds: `dotnet tool install -g Spectara.Revela --version <x.y.z>`.
 
 ---
 

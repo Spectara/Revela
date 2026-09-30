@@ -26,7 +26,7 @@ A single executable with the default theme and all built-in plugins (compression
 
 ## Full <small>(modular, with plugin manager)</small>
 
-The same executable as Standalone, but bundled with a local NuGet feed of every official plugin and theme as separate packages. Lets you install, update, and remove plugins individually with `revela plugin install`/`uninstall`. Useful if you want to keep the binary small, ship custom plugins, or mix and match themes.
+The modular edition: the `revela` host executable plus a `packages/` folder that contains every official plugin and theme as a separate `.nupkg` file. Revela uses that folder as a local, offline package feed (`bundled`), so `revela plugin install`/`uninstall` add and remove plugins without any internet connection. Useful if you want to ship custom plugins or mix and match themes.
 
 **Pick this if:** you want to add or build custom plugins, or you prefer a smaller running footprint with plugins loaded on demand.
 
@@ -42,19 +42,20 @@ The same executable as Standalone, but bundled with a local NuGet feed of every 
 
 ## .NET Global Tool <small>(for developers)</small>
 
-If you already have the [.NET 10 SDK](https://dotnet.microsoft.com/download) installed, the cleanest install is via NuGet:
+If you already have the [.NET 10 SDK](https://dotnet.microsoft.com/download) installed, you can install Revela as a global tool. Revela is **not on NuGet.org yet**: download `Spectara.Revela.<version>.nupkg` (plus the plugin and theme `.nupkg` files you need) from [GitHub Releases](https://github.com/Spectara/Revela/releases) into a folder, then install from there:
 
 ```bash
-dotnet tool install -g Spectara.Revela
+dotnet tool install -g Spectara.Revela --version <version> --add-source ./revela-packages
+revela config feed add releases /absolute/path/to/revela-packages
 ```
 
-Update later with:
+Update later by downloading the new packages into the same folder:
 
 ```bash
-dotnet tool update -g Spectara.Revela
+dotnet tool update -g Spectara.Revela --version <version> --add-source ./revela-packages
 ```
 
-**Pick this if:** you already use .NET and want Revela on your `PATH` without a separate download.
+**Pick this if:** you already use .NET and want Revela on your `PATH`.
 
 ---
 
@@ -66,7 +67,7 @@ dotnet tool update -g Spectara.Revela
 | Download size | smallest | larger | smallest |
 | Built-in plugins | all (fixed) | all (removable) | core only |
 | Custom plugins | ❌ | ✅ | ✅ |
-| Auto-update | manual | manual | `dotnet tool update` |
+| Updates | manual download | manual download | `dotnet tool update` from downloaded packages |
 
 When in doubt: **Standalone**.
 

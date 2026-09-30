@@ -8,9 +8,15 @@ This package provides the interfaces, models, and base classes needed to create 
 
 ## Installation
 
+The SDK is **not on NuGet.org** yet. Download `Spectara.Revela.Sdk.<version>.nupkg` from
+[GitHub Releases](https://github.com/spectara/revela/releases) into a local folder and add it
+from there:
+
 ```bash
-dotnet add package Spectara.Revela.Sdk
+dotnet add package Spectara.Revela.Sdk --version <version> --source ./revela-packages
 ```
+
+For repeatable restores, add that folder as a package source in your `NuGet.Config`.
 
 ## Creating a Plugin
 

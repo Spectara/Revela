@@ -1,7 +1,5 @@
 # Spectara.Revela.Themes.Lumina
 
-[![NuGet](https://img.shields.io/nuget/v/Spectara.Revela.Themes.Lumina.svg)](https://www.nuget.org/packages/Spectara.Revela.Themes.Lumina)
-
 The default photography portfolio theme for [Revela](https://github.com/spectara/revela).
 
 ## Features
@@ -122,7 +120,7 @@ and the theme partial contract.
 
 Enhance Lumina with extensions:
 
-- **[Lumina.Statistics](https://www.nuget.org/packages/Spectara.Revela.Themes.Lumina.Statistics)** - EXIF statistics with charts
+- **Lumina.Statistics** (`Spectara.Revela.Themes.Lumina.Statistics`, see [GitHub Releases](https://github.com/spectara/revela/releases)) - EXIF statistics with charts
 
 ## Screenshots
 

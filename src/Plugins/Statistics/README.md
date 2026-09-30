@@ -1,10 +1,11 @@
 # Spectara.Revela.Plugins.Statistics
 
-[![NuGet](https://img.shields.io/nuget/v/Spectara.Revela.Plugins.Statistics.svg)](https://www.nuget.org/packages/Spectara.Revela.Plugins.Statistics)
-
 Generate EXIF statistics from your Revela photography site.
 
 ## Installation
+
+The Standalone build has Statistics built in. In the Full build, install it from the bundled
+`packages/` folder:
 
 ```bash
 revela plugin install Statistics
@@ -14,6 +15,9 @@ Or with full package name:
 ```bash
 revela plugin install Spectara.Revela.Plugins.Statistics
 ```
+
+The package is not on NuGet.org; it is attached to each
+[GitHub Release](https://github.com/spectara/revela/releases).
 
 ## What It Does
 
@@ -79,10 +83,11 @@ revela config statistics --max-entries 20 --sort-by-count false
 
 ## Theme Extension
 
-For a ready-made dashboard with pure-CSS bar charts, install the matching theme extension:
+For a ready-made dashboard with pure-CSS bar charts, install the matching theme extension
+(it is a theme package, so use `theme install`):
 
 ```bash
-revela plugin install Lumina.Statistics
+revela theme install Lumina.Statistics
 ```
 
 This provides:

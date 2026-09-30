@@ -41,7 +41,6 @@ After extraction, your directory looks like this:
 D:\Revela\
 ├── revela.exe          # The executable
 ├── revela.json         # Global configuration (created on first run)
-├── packages/           # Installed themes & plugins
 └── projects/           # Your projects (one folder per site)
     └── MyPhotos/
         ├── project.json
@@ -56,16 +55,29 @@ D:\Revela\
 
 ## Option 2: .NET Global Tool
 
-If you have the [.NET SDK](https://dotnet.microsoft.com/download) installed (version 10 or later):
+If you have the [.NET SDK](https://dotnet.microsoft.com/download) installed (version 10 or later), you can install Revela as a global tool.
 
-```bash
-dotnet tool install -g Spectara.Revela
-```
+> **Not on NuGet.org yet:** Revela packages are not published on NuGet.org, so `dotnet tool install -g Spectara.Revela` on its own will fail. Every package is attached to each [GitHub Release](https://github.com/Spectara/Revela/releases) instead.
+
+1. Download `Spectara.Revela.<version>.nupkg` from the release into a folder, for example `./revela-packages`. Download the plugin and theme `.nupkg` files you want into the same folder (at least `Spectara.Revela.Themes.Lumina.<version>.nupkg`).
+2. Install the tool from that folder:
+
+   ```bash
+   dotnet tool install -g Spectara.Revela --version <version> --add-source ./revela-packages
+   ```
+
+3. Tell Revela where to find plugins and themes (the tool has no bundled packages):
+
+   ```bash
+   revela config feed add releases /absolute/path/to/revela-packages
+   ```
 
 ### Update
 
+Download the new `.nupkg` files into the same folder, then:
+
 ```bash
-dotnet tool update -g Spectara.Revela
+dotnet tool update -g Spectara.Revela --version <version> --add-source ./revela-packages
 ```
 
 ### Usage
@@ -126,12 +138,14 @@ revela config locations
 
 ### Standalone
 
-Download the latest release and replace `revela.exe`. Your `revela.json`, `packages/`, and `projects/` folders are preserved.
+Download the latest release and replace `revela.exe`. Your `revela.json` and `projects/` folder are preserved. Themes and plugins are built into the Standalone executable, so they update with it.
 
 ### .NET Global Tool
 
+Download the new release's `.nupkg` files into your package folder, then:
+
 ```bash
-dotnet tool update -g Spectara.Revela
+dotnet tool update -g Spectara.Revela --version <version> --add-source ./revela-packages
 ```
 
 After updating, restore your dependencies:

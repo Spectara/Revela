@@ -1,23 +1,27 @@
 # Spectara.Revela.Themes.Lumina.Statistics
 
-[![NuGet](https://img.shields.io/nuget/v/Spectara.Revela.Themes.Lumina.Statistics.svg)](https://www.nuget.org/packages/Spectara.Revela.Themes.Lumina.Statistics)
-
 Statistics extension for the Lumina theme — displays EXIF statistics as a pure-CSS dashboard with bar charts.
 
 ## Prerequisites
 
 This is a **theme extension** that requires:
-- [Spectara.Revela.Themes.Lumina](https://www.nuget.org/packages/Spectara.Revela.Themes.Lumina) (default theme)
-- [Spectara.Revela.Plugins.Statistics](https://www.nuget.org/packages/Spectara.Revela.Plugins.Statistics) (data generation)
+- `Spectara.Revela.Themes.Lumina` (default theme)
+- `Spectara.Revela.Plugins.Statistics` (data generation)
+
+All three packages are built into the Standalone build and bundled with the Full build. They are
+not on NuGet.org; the `.nupkg` files are attached to each
+[GitHub Release](https://github.com/spectara/revela/releases).
 
 ## Installation
+
+In the Full build:
 
 ```bash
 # Install statistics plugin (generates data)
 revela plugin install Statistics
 
-# Install theme extension (visualizes data)
-revela plugin install Lumina.Statistics
+# Install theme extension (visualizes data) — it is a theme package
+revela theme install Lumina.Statistics
 ```
 
 ## What It Adds
