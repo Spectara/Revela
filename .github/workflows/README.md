@@ -82,8 +82,11 @@ NuGet.org publication is not configured; adding it requires separate setup and a
 	Only a completely validated version becomes a workflow output. Tag-push runs
 	must be strictly newer than all other release tags by SemVer precedence.
 2. `packages` builds the Release solution, runs its full tests, then packs those
-	binaries with `--no-build --no-restore`. It tests an isolated consumer of the
-	packaged SDK before attesting and uploading the packages as `nupkgs`.
+	binaries with `--no-build --no-restore`. It verifies that every plugin and theme
+	package carries its assembly and `.deps.json`, which proves the SDK packaging
+	target ran ([test-package-contents.ps1](../../scripts/test-package-contents.ps1)),
+	and tests an isolated consumer of the packaged SDK before attesting and
+	uploading the packages as `nupkgs`.
 3. `build` publishes and archives Core, Full and Standalone on five native RIDs:
 	`win-x64`, `win-arm64`, `linux-x64`, `linux-arm64` and `osx-arm64`. Full bundles
 	the packages downloaded from `packages`. Each `dotnet publish` restores its

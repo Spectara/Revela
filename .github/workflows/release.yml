@@ -113,6 +113,10 @@ jobs:
       - name: List NuGet packages
         run: ls -lh ./nupkgs/
 
+      - name: Verify plugin and theme package contents
+        shell: pwsh
+        run: ./scripts/test-package-contents.ps1 -PackageDirectory ./nupkgs
+
       - name: Verify packaged SDK consumer
         shell: pwsh
         run: ./scripts/test-sdk-consumer.ps1 -PackageDirectory ./nupkgs -Version $env:VERSION
