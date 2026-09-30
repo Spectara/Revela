@@ -73,7 +73,7 @@ On Linux/macOS each variant also gets a launcher script (`start-revela.sh` or `S
 
 3. **`DebugType=none` + `StripSymbols=true`** (Standalone/AOT only): AOT publish emits a native binary plus a separate debug companion (`.dbg` on Linux, `.dwarf` on macOS, `.pdb` on Windows). The script strips them post-publish to keep the release lean. Managed PDBs and XML docs are also swept.
 
-4. **Native toolchain pre-flight** (Standalone only): The script aborts with an actionable install hint if `gcc`/`clang`/`link.exe` is missing on PATH — catches the missing-toolchain case before `dotnet publish` produces a cryptic NETSDK1144.
+4. **Native toolchain pre-flight** (Standalone only): The script aborts with an actionable install hint if no toolchain is found — `gcc`/`clang` on Linux/macOS; on Windows `link.exe` on PATH or a Visual Studio installation with the C++ tools (located via `vswhere`, exactly like the .NET AOT compiler does, so a plain shell works). Catches the missing-toolchain case before `dotnet publish` produces a cryptic NETSDK1144.
 
 5. **Smoke test**: After publishing, the script runs `revela --version` to verify the binary actually executes (catches AOT/single-file-bundle issues early). Skipped automatically when cross-compiling.
 
@@ -84,15 +84,6 @@ On Linux/macOS each variant also gets a launcher script (`start-revela.sh` or `S
 $exe = (Get-Item artifacts\releases\standalone-* | Sort-Object LastWriteTime -Descending | Select-Object -First 1).FullName + '\revela.exe'
 # Revela uses the current directory as the project (there is no -p flag)
 Push-Location samples\revela-website; & $exe generate all; Pop-Location
-```
-
-On Windows the Standalone variant needs the MSVC toolchain. From a normal shell, load it
-first and clear the `Platform` variable that `vcvars64.bat` sets (MSBuild would read it as
-the solution platform):
-
-```powershell
-$vcvars = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -find 'VC\Auxiliary\Build\vcvars64.bat'
-& $env:ComSpec /c "call `"$vcvars`" >nul && set `"Platform=`"&& pwsh -NoProfile -File scripts\build-release.ps1 -Variant Standalone"
 ```
 
 For a full pipeline test (install plugins, generate, verify .NET tool install), use `scripts/test-release.ps1` instead.

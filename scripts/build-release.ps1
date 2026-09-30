@@ -104,12 +104,18 @@ $ExeName = if ($RuntimeIdentifier -like 'win-*') { 'revela.exe' } else { 'revela
 # --------------------------------------------------------------------------
 function Test-NativeToolchain {
     if ($isWindowsOS) {
-        # AOT on Windows requires MSVC (link.exe / cl.exe). Both are absent
-        # from PATH in a plain PowerShell session even when Visual Studio is
-        # installed — you need a Developer Command Prompt / Developer
-        # PowerShell, or to have vcvarsall.bat applied to the current shell.
-        return ($null -ne (Get-Command link.exe -ErrorAction SilentlyContinue)) -or
-               ($null -ne (Get-Command cl.exe -ErrorAction SilentlyContinue))
+        # AOT on Windows needs the MSVC toolchain from Visual Studio's "Desktop
+        # development with C++" workload. The .NET AOT compiler locates it via
+        # vswhere itself, so a Developer PowerShell (link.exe on PATH) is not needed.
+        if ($null -ne (Get-Command link.exe -ErrorAction SilentlyContinue)) {
+            return $true
+        }
+        $vswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio\Installer\vswhere.exe'
+        if (-not (Test-Path -LiteralPath $vswhere)) {
+            return $false
+        }
+        $installation = & $vswhere -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+        return -not [string]::IsNullOrWhiteSpace($installation)
     }
     return ($null -ne (Get-Command gcc -ErrorAction SilentlyContinue)) -or
            ($null -ne (Get-Command clang -ErrorAction SilentlyContinue))
@@ -120,7 +126,7 @@ function Test-NativeToolchain {
 # - `dotnet build Spectara.Revela.slnx` walks the whole solution.
 # - `dotnet pack` emits packages for every csproj with <IsPackable>true</IsPackable>
 #   (default false in Directory.Build.props; opted in by Sdk, Cli tool,
-#   all Plugins, all Themes, and Features.{Generate,Theme,Projects}).
+#   all Plugins and all Themes — built-in Features are never packed).
 # Adding a new plugin = single <IsPackable>true</IsPackable> line in its csproj.
 # --------------------------------------------------------------------------
 
@@ -133,7 +139,7 @@ $VariantsToBuild = if ($Variant -eq 'All') {
 # Pre-flight: Standalone needs a native toolchain (AOT publish).
 if ('Standalone' -in $VariantsToBuild -and -not (Test-NativeToolchain)) {
     $installHint = if ($isWindowsOS) {
-        'Run this script from "Developer PowerShell for VS 2022" (so link.exe is on PATH), or install "Desktop development with C++" via the Visual Studio Installer.'
+        'Install the "Desktop development with C++" workload via the Visual Studio Installer. The .NET AOT compiler finds it automatically; no Developer PowerShell is needed.'
     } elseif ($IsMacOS) {
         'Run: xcode-select --install'
     } else {

@@ -71,8 +71,10 @@ Choose your actual OS/architecture instead of `win-x64` when appropriate.
 `Standalone` is the Native AOT `Cli.Embedded` host with plugins and themes linked
 statically, plus the platform's native libvips companion. It has no plugin
 management and needs a native build toolchain (MSVC on Windows, gcc/clang on
-Linux, Xcode CLT on macOS). Publishing `src/Cli` as self-contained does not create
-this Standalone variant.
+Linux, Xcode CLT on macOS). On Windows, installing Visual Studio's "Desktop
+development with C++" workload is enough: the .NET AOT compiler locates it
+itself, so a plain shell works (no Developer PowerShell or `vcvars64.bat`).
+Publishing `src/Cli` as self-contained does not create this Standalone variant.
 
 `Full` uses the modular CLI with plugins, themes, SDK and CLI tool packages in
 `packages/`. `All` builds both variants. `-SkipBuild` reuses the solution build
