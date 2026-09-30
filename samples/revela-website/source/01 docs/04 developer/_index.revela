@@ -1,14 +1,38 @@
 +++
-title = "Developer?"
+title = "For Developers"
 template = "docs"
+description = "Orientation for developers: build plugins and themes, automate Revela, or contribute to its code."
 +++
 
-Want to build a plugin, create a theme from scratch, or dig into how Revela works under the hood?
+As a developer, you can extend Revela with your own plugins and themes, script it in CI, or help build Revela itself. This page points you to the right place. Contributor documentation lives next to the code on GitHub, so it stays current with every change.
 
-The developer documentation — architecture, the plugin system, the security model, build and setup instructions — lives right next to the code, where it stays current with every change.
+## Build on Revela
+
+<div class="path-grid">
+<a class="path-card" href="https://github.com/Spectara/Revela/blob/main/docs/plugin-development.md"><span class="path-title">🧩 Plugin Development <span class="arrow">→</span></span><span class="path-desc">Implement <code>IPlugin</code>, register services, add CLI commands, test and package your plugin.</span></a>
+<a class="path-card" href="https://github.com/Spectara/Revela/tree/main/src/Sdk"><span class="path-title">📦 SDK <span class="arrow">→</span></span><span class="path-desc"><code>Spectara.Revela.Sdk</code>: the public interfaces for plugins and themes. The package is attached to every GitHub Release.</span></a>
+<a class="path-card" href="../guide/themes/"><span class="path-title">🎨 Themes <span class="arrow">→</span></span><span class="path-desc">Override or extract a theme, then shape it with Scriban templates.</span></a>
+<a class="path-card" href="../reference/template-functions/"><span class="path-title">🧰 Template Functions <span class="arrow">→</span></span><span class="path-desc">Every function and variable available in templates.</span></a>
+</div>
+
+## Automate Revela
+
+Every menu entry is also a command, so Revela runs unattended in scripts and CI pipelines. Start with the [CLI Reference](../reference/cli-reference/) and the [Configuration guide](../guide/configuration/) (settings can also come from environment variables). The [Deployment guide](../guide/deployment/) includes a GitHub Actions example.
+
+## Understand and contribute
+
+| Document | What's inside |
+|----------|---------------|
+| [Architecture](https://github.com/Spectara/Revela/blob/main/docs/architecture.md) | How Revela is structured, what is built in and what is a plugin |
+| [Project Structure](https://github.com/Spectara/Revela/blob/main/docs/project-structure.md) | Repository layout and build configuration |
+| [Setup](https://github.com/Spectara/Revela/blob/main/docs/setup.md) | Prerequisites, clone, build and IDE setup |
+| [Development Guide](https://github.com/Spectara/Revela/blob/main/docs/development.md) | Day-to-day workflow: tests, formatting, running samples |
+| [Security Model](https://github.com/Spectara/Revela/blob/main/docs/security-model.md) | Threat model and security defaults |
+| [AGENTS.md](https://github.com/Spectara/Revela/blob/main/AGENTS.md) | Conventions for AI coding assistants working on the repo |
 
 <nav class="cta">
-  <a href="https://github.com/Spectara/Revela/tree/main/docs">Developer Docs on GitHub →</a>
+  <a href="https://github.com/Spectara/Revela">Revela on GitHub</a>
+  <a href="https://github.com/Spectara/Revela/tree/main/docs">All developer docs</a>
 </nav>
 
-New contributors are always welcome. See you in the repo! 👋
+Bug reports, ideas and pull requests are always welcome. See you in the repo! 👋

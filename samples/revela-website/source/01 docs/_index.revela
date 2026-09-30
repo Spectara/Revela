@@ -2,56 +2,46 @@
 title = "Docs"
 template = "docs"
 pinned = true
+description = "Revela documentation: get started, guides, plugins, reference and developer resources."
 +++
 
-Welcome to the Revela documentation. Here you'll find everything you need to create beautiful photo galleries.
+Everything you need to turn your photos into a fast portfolio website.
 
-<div class="features-grid">
+## Start here (photographers)
 
-### ⬇️ Installation
-
-Download and install Revela on Windows, macOS, or Linux.
-
-### 📁 Source Structure
-
-Learn how to organize your photos with traditional galleries, filter galleries, or a hybrid approach.
-
-### 📄 Creating Pages
-
-Use CLI commands to quickly create gallery, text, and statistics pages.
-
-### 🖼️ Image Processing
-
-Configure image formats, sizes, and use incremental generation.
-
-### 📊 Sorting
-
-Configure how galleries and images are sorted, with per-gallery overrides.
-
-### 🔍 Filter Galleries
-
-Create dynamic galleries that automatically select images based on EXIF data, filename, or date.
-
-### 🎨 Theme Customization
-
-Extract and customize themes to match your style with variables and templates.
-
-### ⚙️ Configuration
-
-Advanced project settings and configuration options.
-
-### 🧩 Plugins
-
-Extend Revela with compression, statistics, a dev server, and more.
-
-### 🚀 Deployment
-
-Publish your portfolio online — GitHub Pages, Netlify, or your own server.
-
-### 💻 CLI Reference
-
-Complete reference of all commands and options.
-
+<div class="path-grid">
+<a class="path-card" href="get-started/first-site/"><span class="path-title">🚀 Your First Site <span class="arrow">→</span></span><span class="path-desc">From a folder of photos to a website in six steps. Start here if you are new.</span></a>
+<a class="path-card" href="get-started/installation/"><span class="path-title">⬇️ Installation <span class="arrow">→</span></span><span class="path-desc">Editions, platforms, updates and first-start warnings.</span></a>
+<a class="path-card" href="get-started/user-journey/"><span class="path-title">🧭 User Journey <span class="arrow">→</span></span><span class="path-desc">The complete everyday workflow, step by step.</span></a>
 </div>
 
-Building a plugin or theme, or curious how Revela works internally? See the [Developer documentation](developer/).
+## Guides
+
+<div class="path-grid">
+<a class="path-card" href="guide/source-structure/"><span class="path-title">📁 Source Structure <span class="arrow">→</span></span><span class="path-desc">Organize photos into galleries with folders.</span></a>
+<a class="path-card" href="guide/pages/"><span class="path-title">📄 Creating Pages <span class="arrow">→</span></span><span class="path-desc">Add text, gallery and statistics pages.</span></a>
+<a class="path-card" href="guide/images/"><span class="path-title">🖼️ Image Processing <span class="arrow">→</span></span><span class="path-desc">Formats, sizes, quality and fast rebuilds.</span></a>
+<a class="path-card" href="guide/sorting/"><span class="path-title">📊 Sorting <span class="arrow">→</span></span><span class="path-desc">Control the order of galleries and photos.</span></a>
+<a class="path-card" href="guide/filtering/"><span class="path-title">🔍 Filter Galleries <span class="arrow">→</span></span><span class="path-desc">Galleries that pick photos by camera, date or name.</span></a>
+<a class="path-card" href="guide/themes/"><span class="path-title">🎨 Theme Customization <span class="arrow">→</span></span><span class="path-desc">Change colors, fonts and layout.</span></a>
+<a class="path-card" href="guide/configuration/"><span class="path-title">⚙️ Configuration <span class="arrow">→</span></span><span class="path-desc">All project and site settings.</span></a>
+<a class="path-card" href="guide/deployment/"><span class="path-title">🌍 Deployment <span class="arrow">→</span></span><span class="path-desc">Publish on GitHub Pages, Netlify or your own host.</span></a>
+</div>
+
+## Plugins and reference
+
+<div class="path-grid">
+<a class="path-card" href="plugins/"><span class="path-title">🧩 Plugins <span class="arrow">→</span></span><span class="path-desc">Compression, statistics, preview server, OneDrive sync and more.</span></a>
+<a class="path-card" href="reference/cli-reference/"><span class="path-title">💻 CLI Reference <span class="arrow">→</span></span><span class="path-desc">Every command and option.</span></a>
+<a class="path-card" href="reference/template-functions/"><span class="path-title">🧰 Template Functions <span class="arrow">→</span></span><span class="path-desc">Functions available in theme templates.</span></a>
+</div>
+
+---
+
+## For developers
+
+Building a plugin or theme, automating Revela, or contributing to its code?
+
+<div class="path-grid">
+<a class="path-card" href="developer/"><span class="path-title">🛠️ Developer Orientation <span class="arrow">→</span></span><span class="path-desc">Architecture, plugin and theme development, and how to contribute.</span></a>
+</div>

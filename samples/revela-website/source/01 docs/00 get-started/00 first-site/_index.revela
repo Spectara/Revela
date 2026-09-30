@@ -1,0 +1,27 @@
++++
+title = "Your First Site"
+template = "docs"
+description = "From a folder of photos to your own portfolio website in six steps. No programming needed."
++++
+
+As a photographer, all you need is a folder of photos and a few minutes. No programming, no installer, no account.
+
+1. **Download** the **Standalone** edition for your computer from the [Downloads page](../../../pages/downloads/). Theme and plugins are already built in.
+2. **Make a folder for your site**, for example `My Portfolio`, and unzip the download into it. Inside, create a folder named `source` and copy your photos into it. Each subfolder becomes a gallery; optional number prefixes like `01 ` set the order and are hidden on the website.
+   ```
+   My Portfolio/
+   ├── revela.exe        ← "revela" on macOS/Linux
+   └── source/
+       ├── 01 Landscapes/
+       └── 02 Portraits/
+   ```
+3. **Start Revela**: double-click `revela.exe` (Windows) or `Start Revela.command` (macOS), or run `./start-revela.sh` (Linux). It notices the folder has no project yet and offers **Create New Project**. Answer the questions; <kbd>Enter</kbd> keeps the suggested value, and the base URL can stay empty for now.
+4. **Build** by choosing **generate → all** in the menu. The first build turns every photo into several sizes and modern formats, which can take a few minutes; later builds only redo what changed. Your website appears in the `output/` folder.
+5. **Preview** by choosing **serve**, then open <http://localhost:8080> (<kbd>Ctrl</kbd>+<kbd>C</kbd> stops the preview). After changing photos, build again and refresh.
+6. **Publish** by uploading the `output/` folder to any web host. The [Deployment guide](../../guide/deployment/) shows free options such as GitHub Pages, Netlify and Cloudflare Pages.
+
+Prefer a terminal? Every menu entry is also a command, run in your site folder: `./revela generate all`, `./revela serve`.
+
+> **Stuck?** Choose **check** in the menu (or run `./revela check`): it lists every problem in your project with a hint on how to fix it. If Windows or macOS blocks the first start, see [Installation](../installation/).
+
+**Next:** the [User Journey](../user-journey/) covers the everyday workflow in depth, [Source Structure](../../guide/source-structure/) explains how folders become galleries, and [Theme Customization](../../guide/themes/) shows how to change the look.
