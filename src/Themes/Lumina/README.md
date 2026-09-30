@@ -75,8 +75,10 @@ Supported frontmatter fields: `title`, `slug`, `description`, `hidden`, `pinned`
 Lumina supports three photo viewer modes:
 
 - `page` (default): link each published occurrence to its canonical photo page.
-- `lightbox`: open a native, keyboard-accessible in-page dialog.
+- `lightbox`: open a native, keyboard-accessible in-page dialog (←/→ move between photos).
 - `none`: render static responsive images.
+
+Photo pages and the lightbox load a viewport-sized variant and fetch the original only when the visitor zooms in.
 
 Set a project-wide override in `project.json`:
 

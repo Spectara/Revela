@@ -44,7 +44,8 @@ Body Template Selection:
     {{~ # Sticky Header ~}}
     <header>
         <div>
-            <h2>
+            {{~ # Site name is branding, not a heading: each page's own <h1> stays the first heading. ~}}
+            <p>
                 <button type="button" popovertarget="site-menu" title="Menu">
                     <span class="visually-hidden">Menu</span>
                     <span aria-hidden="true">i</span>
@@ -53,7 +54,7 @@ Body Template Selection:
                 </button>
                 {{~ # basepath is empty string at root, "../" for galleries, or "/photos/" for subdirectory hosting ~}}
                 <a href="{{ html_escape (basepath == '' ? '.' : basepath) }}">{{ html_escape site.title }}</a>
-            </h2>
+            </p>
             <nav>
                 {{~ include 'HeaderNavigation' ~}}
             </nav>

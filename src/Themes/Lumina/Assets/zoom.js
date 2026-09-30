@@ -33,6 +33,7 @@
       this.lastTapTime = 0;
       this.baseSize = null;
       this.pointerStart = null;
+      this.hasFullResolution = false;
 
       this.attach();
     }
@@ -136,6 +137,7 @@
     onTouchStart(event) {
       if (event.touches.length === 2) {
         event.preventDefault();
+        this.loadFullResolution();
         const metrics = touchMetrics(event.touches);
         const rect = this.image.getBoundingClientRect();
         this.getBaseSize();
@@ -247,6 +249,7 @@
         return;
       }
 
+      this.loadFullResolution();
       const rect = this.image.getBoundingClientRect();
       this.baseSize = { width: this.image.clientWidth, height: this.image.clientHeight };
       const scale = this.maxScale;
@@ -262,6 +265,23 @@
     bound(value, scale, dimension) {
       const size = this.getBaseSize()[dimension];
       return clamp(value, -((scale - 1) * size) / 2, ((scale - 1) * size) / 2);
+    }
+
+    // The viewer initially picks a viewport-sized variant; zooming asks the
+    // browser for the widest candidate (the original) instead.
+    loadFullResolution() {
+      const sourceWidth = this.image.getAttribute("width");
+      if (this.hasFullResolution || !sourceWidth) {
+        return;
+      }
+
+      this.hasFullResolution = true;
+      const sizes = `${sourceWidth}px`;
+      for (const candidate of [...this.stage.querySelectorAll(":scope > source[sizes]"), this.image]) {
+        if (candidate.hasAttribute("sizes")) {
+          candidate.sizes = sizes;
+        }
+      }
     }
 
     getBaseSize() {

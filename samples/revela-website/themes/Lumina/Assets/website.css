@@ -93,6 +93,16 @@ header {
   }
 }
 
+/* Primary destinations first (overlay menu + footer), on a row of their own. */
+:is(#site-menu, body > footer nav) section[data-primary-links] {
+  flex: 1 0 100%;
+  flex-flow: row wrap;
+  justify-content: center;
+  gap: var(--space-2xs) var(--space-m);
+  padding-bottom: var(--space-s);
+  border-bottom: 1px solid var(--glass-border);
+}
+
 /* ============================================
    Hero Section (home page: main > section)
    ============================================ */
@@ -103,12 +113,13 @@ main>section:first-child {
   justify-content: center;
   align-items: center;
   text-align: center;
-  min-height: 50vh;
-  padding: var(--space-2xl) var(--space-s);
+  /* Height-aware spacing keeps the call-to-action buttons after the hero above
+     the fold on short laptop screens (e.g. 1366x768). */
+  padding: clamp(var(--space-m), 5vh, var(--space-2xl)) var(--space-s);
   max-width: var(--content-max-width);
 
   img[alt="Revela"] {
-    width: calc(var(--font-size-5) * 5.5);
+    width: clamp(8rem, 25vh, calc(var(--font-size-5) * 5.5));
     height: auto;
   }
 
@@ -127,7 +138,7 @@ main>section:first-child {
   p {
     font-size: var(--font-size-2);
     color: var(--color-light);
-    margin-bottom: var(--space-xl);
+    margin-bottom: var(--space-l);
   }
 }
 
@@ -258,6 +269,17 @@ main article {
     border-spacing: 0;
   }
 
+  /* Wide tables scroll inside their wrapper (added by the page/docs templates)
+     instead of widening the page. */
+  .table-scroll {
+    overflow-x: auto;
+    margin-bottom: var(--space-m);
+
+    >table {
+      margin-bottom: 0;
+    }
+  }
+
   th,
   td {
     padding: var(--space-xs) var(--space-s);
@@ -337,6 +359,21 @@ main article nav.cta {
       box-shadow:
         0 0 20px color-mix(in oklch, var(--accent-glow) 15%, transparent),
         inset 0 0 20px color-mix(in oklch, var(--accent-glow) 3%, transparent);
+    }
+
+    /* The first action is the primary one (e.g. Download); the rest stay glass. */
+    &:first-child {
+      --cta-primary-color: light-dark(oklch(1 0 0), oklch(0.17 0.02 260));
+      background: var(--accent);
+      border-color: var(--accent);
+      color: var(--cta-primary-color);
+      font-weight: 400;
+
+      &:hover {
+        background: var(--accent-light);
+        border-color: var(--accent-light);
+        color: var(--cta-primary-color);
+      }
     }
   }
 }
@@ -448,6 +485,11 @@ main article nav.cta+p {
   color: var(--color-light);
 }
 
+/* Screenshots inside cards: no content-image block margin, just a small gap. */
+.path-card .content-image {
+  margin: 0 0 var(--space-2xs);
+}
+
 /* ============================================
    Docs Layout — Detected via main:has(> aside)
    ============================================ */
@@ -512,10 +554,38 @@ main>aside {
   /* Container labels (non-clickable group headers) */
   li>span {
     display: block;
+    margin-top: var(--space-2xs);
     font-size: var(--font-size-1);
-    color: color-mix(in srgb, var(--color-light) 65%, transparent);
+    font-weight: 400;
+    color: var(--color-light);
     padding: var(--space-3xs) 0;
     cursor: default;
+  }
+
+  /* Sidebar toggle: collapsed on small screens so the article title is on the
+     first screen; always expanded on wide screens where supported. */
+  details>summary {
+    padding: var(--space-2xs) 0;
+    font-size: var(--font-size-1);
+    color: var(--accent);
+    cursor: pointer;
+  }
+
+  details[open]>summary {
+    margin-bottom: var(--space-s);
+  }
+
+  @media (width > 768px) {
+    @supports selector(::details-content) {
+      details>summary {
+        display: none;
+      }
+
+      details::details-content {
+        display: block;
+        content-visibility: visible;
+      }
+    }
   }
 }
 

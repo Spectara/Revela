@@ -1,0 +1,53 @@
+{{~##
+Navigation Partial (revela.website override)
+
+Used by the overlay menu and the footer. The base Lumina partial renders the
+whole tree in order, which puts 20+ docs links before Showcase/FAQ/Downloads
+on small screens. This override starts with the flat primary links, then the
+sections that have a tree of their own (Docs, Showcase). Containers without a
+page whose children are plain pages (Pages) are already covered by the
+primary links and are skipped.
+
+Expects: nav_items (Array of NavigationItem)
+##~}}
+{{~ func render_item(item, is_top_level) ~}}
+{{~ link = page_url(item) ~}}
+{{~ current_attrs = item.current ? ' class="active" aria-current="page"' : '' ~}}
+{{~ if is_top_level ~}}
+<section>
+{{~ if link ~}}
+  <h3><a href="{{ html_escape link }}"{{ current_attrs }}>{{ html_escape item.text }}</a></h3>
+{{~ else ~}}
+  <h3>{{ html_escape item.text }}</h3>
+{{~ end ~}}
+{{~ for child in item.children ~}}
+{{~ render_item child false ~}}
+{{~ end ~}}
+</section>
+{{~ else if item.children.size > 0 ~}}
+<div>
+{{~ if link ~}}
+  <a href="{{ html_escape link }}"{{ current_attrs }}>{{ html_escape item.text }}</a>
+{{~ else ~}}
+  <span>{{ html_escape item.text }}</span>
+{{~ end ~}}
+{{~ for child in item.children ~}}
+{{~ render_item child false ~}}
+{{~ end ~}}
+</div>
+{{~ else ~}}
+  <a href="{{ html_escape link }}"{{ current_attrs }}>{{ html_escape item.text }}</a>
+{{~ end ~}}
+{{~ end ~}}
+<section data-primary-links>
+{{ include 'primarylinks' }}
+</section>
+{{~ for item in nav_items ~}}
+{{~ has_tree = page_url(item) && item.children.size > 0 ~}}
+{{~ for child in item.children ~}}
+{{~ if child.children.size > 0; has_tree = true; end ~}}
+{{~ end ~}}
+{{~ if has_tree ~}}
+{{~ render_item item true ~}}
+{{~ end ~}}
+{{~ end ~}}

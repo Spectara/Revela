@@ -5,15 +5,27 @@ Expects image, image_formats, assets_basepath, occurrence_id, context_label,
 previous_occurrence_id, next_occurrence_id, lightbox_id, and alt_text.
 ##~}}
 {{~ largest_size = image.sizes | array.last ~}}
+{{~ is_landscape = image.width >= image.height ~}}
+{{~ # Fit the viewport; zoom.js switches sizes to the original width when zooming in. ~}}
+{{~ viewer_sizes = '(min-aspect-ratio: ' + image.width + '/' + image.height + ') calc((100vh - 2.25rem) * ' + image.width + ' / ' + image.height + '), 100vw' ~}}
+{{~ func viewer_srcset(format)
+    candidates = []
+    for size in image.sizes
+        actual_width = is_landscape ? size : ((size * image.width / image.height) | math.floor)
+        candidates = candidates | array.add (assets_basepath + image.slug + '/' + size + '.' + format + ' ' + actual_width + 'w')
+    end
+    ret candidates | array.join ', '
+end ~}}
 {{~ display_label = image.description && image.description != '' ? image.description : image.id ~}}
 <dialog id="{{ html_escape lightbox_id }}" class="photo-lightbox" data-lightbox closedby="any" aria-label="{{~ if alt_text != '' }}{{ html_escape alt_text }}{{ else }}Photo {{ html_escape image.id }}{{ end }}">
     <button type="button" commandfor="{{ html_escape lightbox_id }}" command="close" aria-label="Close photo">&times;</button>
     <article style="--width:{{ html_escape image.width }}; --height:{{ html_escape image.height }};{{~ if image.placeholder ~}} --lqip:{{ html_escape image.placeholder }};{{~ end ~}}">
         <picture{{~ if image.placeholder }} data-lqip{{ end }}>
             {{~ for format in image_formats ~}}
-            <source type="image/{{ html_escape format }}" srcset="{{ html_escape assets_basepath }}{{ html_escape image.slug }}/{{ html_escape largest_size }}.{{ html_escape format }}">
+            <source type="image/{{ html_escape format }}" sizes="{{ html_escape viewer_sizes }}" srcset="{{ html_escape (viewer_srcset format) }}">
             {{~ end ~}}
             <img alt="{{ html_escape alt_text }}" src="{{ html_escape assets_basepath }}{{ html_escape image.slug }}/{{ html_escape largest_size }}.{{ html_escape (image_formats | array.last) }}"
+                sizes="{{ html_escape viewer_sizes }}" srcset="{{ html_escape (viewer_srcset (image_formats | array.last)) }}"
                 width="{{ html_escape image.width }}" height="{{ html_escape image.height }}" loading="lazy" fetchpriority="low" decoding="async">
         </picture>
         <section>

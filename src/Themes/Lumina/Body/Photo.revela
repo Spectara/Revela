@@ -16,6 +16,17 @@ Template contract:
 - helpers: page_url, absolute_url, variant_url
 ##~}}
 {{~ largest_size = image.sizes | array.last ~}}
+{{~ is_landscape = image.width >= image.height ~}}
+{{~ # Fit the viewport; zoom.js switches sizes to the original width when zooming in. ~}}
+{{~ viewer_sizes = '(min-aspect-ratio: ' + image.width + '/' + image.height + ') calc((100vh - 2.25rem) * ' + image.width + ' / ' + image.height + '), 100vw' ~}}
+{{~ func viewer_srcset(format)
+    candidates = []
+    for size in image.sizes
+        actual_width = is_landscape ? size : ((size * image.width / image.height) | math.floor)
+        candidates = candidates | array.add ((variant_url image size format) + ' ' + actual_width + 'w')
+    end
+    ret candidates | array.join ', '
+end ~}}
 {{~ alt_text = image.title ?? '' ~}}
 {{~ description = alt_text != '' ? alt_text : (site.description ?? '') ~}}
 {{~ display_label = image.description && image.description != '' ? image.description : image.id ~}}
@@ -43,9 +54,10 @@ Template contract:
         <article style="--width:{{ html_escape image.width }}; --height:{{ html_escape image.height }};{{~ if image.placeholder ~}} --lqip:{{ html_escape image.placeholder }};{{~ end ~}}">
             <picture id="photo-{{ html_escape image.id }}"{{~ if image.placeholder }} data-lqip{{ end }}>
                 {{~ for format in image_formats ~}}
-                <source type="image/{{ html_escape format }}" srcset="{{ html_escape (variant_url image largest_size format) }}">
+                <source type="image/{{ html_escape format }}" sizes="{{ html_escape viewer_sizes }}" srcset="{{ html_escape (viewer_srcset format) }}">
                 {{~ end ~}}
                 <img alt="{{ html_escape alt_text }}" src="{{ html_escape (variant_url image largest_size (image_formats | array.last)) }}"
+                    sizes="{{ html_escape viewer_sizes }}" srcset="{{ html_escape (viewer_srcset (image_formats | array.last)) }}"
                     width="{{ html_escape image.width }}" height="{{ html_escape image.height }}" fetchpriority="high" decoding="async">
             </picture>
             <section>

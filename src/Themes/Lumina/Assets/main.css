@@ -362,12 +362,13 @@ header {
     align-items: baseline;
     flex-wrap: wrap;
 
-    h2 {
+    >p {
       font-size: var(--font-size-4);
       letter-spacing: 0.1em;
       font-weight: 100;
       display: flex;
       gap: var(--space-s);
+      max-width: none;
     }
 
     nav {
@@ -713,12 +714,6 @@ main {
         top: calc(var(--space-xl) + var(--space-xs));
       }
 
-      /* Visible focus treatment on the linked thumbnail (#77). */
-      &:has(> a:focus-visible) img {
-        outline: 3px solid var(--color);
-        outline-offset: 2px;
-      }
-
       >button[aria-haspopup="dialog"][command="show-modal"] {
         position: absolute;
         inset: 0;
@@ -726,11 +721,21 @@ main {
         border: 0;
         background: transparent;
         cursor: zoom-in;
+
+        /* The thumbnail below draws the ring; a second UA ring on the overlay
+           showed up as a stray line next to it. Keep the UA ring without :has(). */
+        @supports selector(:has(*)) {
+          &:focus-visible {
+            outline: none;
+          }
+        }
       }
 
-      &:has(>button[aria-haspopup="dialog"][command="show-modal"]:focus-visible) img {
-        outline: 3px solid var(--color);
-        outline-offset: 2px;
+      /* Visible focus ring on the thumbnail (#77). Drawn inset so neighbouring
+         articles' background outlines and clipping galleries cannot cut it off. */
+      &:has(> a:focus-visible, >button[aria-haspopup="dialog"][command="show-modal"]:focus-visible)>:is(picture, a>picture)>img {
+        outline: 3px solid var(--color-dark);
+        outline-offset: -3px;
       }
 
     }

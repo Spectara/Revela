@@ -4,47 +4,58 @@ Docs Body Template - Documentation with Sidebar
 Renders a documentation page with sidebar navigation.
 Supports nested documentation (e.g., docs/source-structure/static-files).
 
+The sidebar sits in a <details> element: collapsed on small screens so the
+article title is on the first screen, forced open on wide screens via CSS
+(website.css). Without JS or ::details-content support it stays a working
+toggle. Rendered tables are wrapped so they scroll on their own instead of
+widening the page.
+
 Expects:
 - gallery: { title, body }
 - nav_items: Array of NavigationItem for sidebar
 ##~}}
-<aside>
-    <nav>
-        <ul>
+{{~ section = null ~}}
 {{~ for item in nav_items ~}}
-{{~ if item.active || item.text == gallery.title ~}}
-{{~ for child in item.children }}
-{{~ child_link = page_url(child) ~}}
-            <li>
-{{~ if child_link ~}}
-                <a href="{{ child_link }}"{{ if child.current }} class="active"{{ end }}>{{ child.text }}</a>
-{{~ else ~}}
-                <span>{{ child.text }}</span>
+{{~ if !section && (item.active || item.text == gallery.title); section = item; end ~}}
 {{~ end ~}}
-{{~ if child.children ~}}
-                <ul>
+<aside>
+{{~ if section && section.children.size > 0 ~}}
+    <details>
+        <summary>{{ html_escape section.text }} menu</summary>
+        <nav aria-label="{{ html_escape section.text }}">
+            <ul>
+{{~ for child in section.children }}
+{{~ child_link = page_url(child) ~}}
+                <li>
+{{~ if child_link ~}}
+                    <a href="{{ html_escape child_link }}"{{ if child.current }} class="active" aria-current="page"{{ end }}>{{ html_escape child.text }}</a>
+{{~ else ~}}
+                    <span>{{ html_escape child.text }}</span>
+{{~ end ~}}
+{{~ if child.children.size > 0 ~}}
+                    <ul>
 {{~ for grandchild in child.children ~}}
 {{~ grandchild_link = page_url(grandchild) ~}}
 {{~ if grandchild_link ~}}
-                    <li><a href="{{ grandchild_link }}"{{ if grandchild.current }} class="active"{{ end }}>{{ grandchild.text }}</a></li>
+                        <li><a href="{{ html_escape grandchild_link }}"{{ if grandchild.current }} class="active" aria-current="page"{{ end }}>{{ html_escape grandchild.text }}</a></li>
 {{~ else ~}}
-                    <li><span>{{ grandchild.text }}</span></li>
+                        <li><span>{{ html_escape grandchild.text }}</span></li>
 {{~ end ~}}
 {{~ end ~}}
-                </ul>
+                    </ul>
 {{~ end ~}}
-            </li>
+                </li>
 {{~ end ~}}
+            </ul>
+        </nav>
+    </details>
 {{~ end ~}}
-{{~ end ~}}
-        </ul>
-    </nav>
 </aside>
 <article>
 {{~ if gallery.title ~}}
-    <h1>{{ gallery.title }}</h1>
+    <h1>{{ html_escape gallery.title }}</h1>
 {{~ end ~}}
 {{~ if gallery.body ~}}
-{{ gallery.body }}
+{{ gallery.body | string.replace '<table>' '<div class="table-scroll"><table>' | string.replace '</table>' '</table></div>' }}
 {{~ end ~}}
 </article>
