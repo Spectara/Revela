@@ -1,14 +1,19 @@
+using System.Text.Json;
+
 using Microsoft.Extensions.DependencyInjection;
 using Spectara.Revela.Commands;
 using Spectara.Revela.Core.Services;
 using Spectara.Revela.Features.Generate;
 using Spectara.Revela.Features.Generate.Abstractions;
 using Spectara.Revela.Features.Generate.Models.Results;
+using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Abstractions;
 using Spectara.Revela.Sdk.Artifacts;
 using Spectara.Revela.Sdk.Models;
 using Spectara.Revela.Tests.Shared.Fixtures;
 using Spectara.Revela.Themes.Lumina;
+using Spectara.Revela.Themes.Lumina.Calendar;
+using Spectara.Revela.Themes.Lumina.Statistics;
 
 namespace Spectara.Revela.Tests.Integration;
 
@@ -31,6 +36,11 @@ namespace Spectara.Revela.Tests.Integration;
 [TestCategory("E2E")]
 public sealed class GenerateAllEndToEndTests
 {
+    private const string UntrustedText = "<script>x</script> & \"q\"";
+    private const string EscapedText = "&lt;script&gt;x&lt;/script&gt; &amp; &quot;q&quot;";
+    private const string UntrustedAttribute = "1\" onmouseover=\"x";
+    private const string EscapedAttribute = "1&quot; onmouseover=&quot;x";
+
     [TestMethod]
     public async Task RenderAsync_LuminaEscapesTextButPreservesBodyHtml()
     {
@@ -70,6 +80,110 @@ public sealed class GenerateAllEndToEndTests
         Assert.DoesNotContain("<mark>", photoHtml, StringComparison.Ordinal);
         Assert.Contains("Site &lt;mark&gt; &amp; &quot;name&quot;", photoHtml, StringComparison.Ordinal);
         Assert.Contains("property=\"og:image\" content=\"/images/", photoHtml, StringComparison.Ordinal);
+    }
+
+    [TestMethod]
+    public async Task RenderAsync_LuminaStatisticsEscapesExifData()
+    {
+        var statistics = new
+        {
+            total_images = 1,
+            total_galleries = 1,
+            cameras = new object[] { new { name = UntrustedText, count = UntrustedAttribute, percentage = 100 } },
+            lenses = new object[] { new { name = UntrustedText, count = 1, percentage = 100 } },
+            photo_heatmap = new object[] { new { year = UntrustedText, month = 1, count = UntrustedAttribute, level = UntrustedAttribute } },
+            heatmap_years = new object[] { UntrustedText },
+        };
+
+        var html = await RenderExtensionPageAsync(
+            new LuminaStatisticsExtension(),
+            "stats",
+            "statistics/overview",
+            "statistics.json",
+            statistics);
+
+        Assert.DoesNotContain("<script>", html, StringComparison.Ordinal);
+        Assert.DoesNotContain("\" onmouseover=\"", html, StringComparison.Ordinal);
+        Assert.Contains($"<dt data-count=\"{EscapedAttribute}\">{EscapedText}</dt>", html, StringComparison.Ordinal);
+        Assert.Contains($"<span class=\"heatmap-label\">{EscapedText}</span>", html, StringComparison.Ordinal);
+    }
+
+    [TestMethod]
+    public async Task RenderAsync_LuminaCalendarEscapesCalendarData()
+    {
+        var calendar = new
+        {
+            day_names = new[] { UntrustedText },
+            labels = new { booked = UntrustedText, free = UntrustedText, arrive = UntrustedText, depart = UntrustedText },
+            months = new object[]
+            {
+                new
+                {
+                    name = UntrustedText,
+                    weeks = new object[] { new object[] { new { number = 1, css = UntrustedAttribute } } },
+                },
+            },
+        };
+
+        var html = await RenderExtensionPageAsync(
+            new LuminaCalendarExtension(),
+            "availability",
+            "calendar/page",
+            "calendar.json",
+            calendar);
+
+        Assert.DoesNotContain("<script>", html, StringComparison.Ordinal);
+        Assert.DoesNotContain("\" onmouseover=\"", html, StringComparison.Ordinal);
+        Assert.Contains($"<span class=\"legend-free\">{EscapedText}</span>", html, StringComparison.Ordinal);
+        Assert.Contains($"<span class=\"legend-booked\">{EscapedText}</span>", html, StringComparison.Ordinal);
+        Assert.Contains($"<span class=\"legend-arrive\">{EscapedText}</span>", html, StringComparison.Ordinal);
+        Assert.Contains($"<span class=\"legend-depart\">{EscapedText}</span>", html, StringComparison.Ordinal);
+        Assert.Contains($"<h3>{EscapedText}</h3>", html, StringComparison.Ordinal);
+        Assert.Contains($"<th>{EscapedText}</th>", html, StringComparison.Ordinal);
+        Assert.Contains($"<td class=\"{EscapedAttribute}\">1</td>", html, StringComparison.Ordinal);
+        Assert.Contains("<strong>Body stays formatted</strong>", html, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// Renders one page that uses an extension template with a plugin-style
+    /// <c>.cache/&lt;page&gt;/&lt;dataFile&gt;</c> data file and returns its HTML.
+    /// </summary>
+    private static async Task<string> RenderExtensionPageAsync(
+        ITheme extension,
+        string pageFolder,
+        string template,
+        string dataFile,
+        object data)
+    {
+        using var project = TestProject.Create(builder => builder
+            .WithProjectJson(new { project = new { name = "Extension Escaping" }, theme = new { name = "Lumina" } })
+            .WithSiteJson(new { title = "Extension Escaping", author = "Test" }));
+        var pagePath = Path.Combine(project.SourcePath, pageFolder);
+        Directory.CreateDirectory(pagePath);
+        await File.WriteAllTextAsync(Path.Combine(pagePath, "_index.revela"), $"""
+            +++
+            title = "Extension"
+            template = "{template}"
+            +++
+            **Body stays formatted**
+            """);
+        var cachePath = Path.Combine(project.RootPath, ProjectPaths.Cache, pageFolder);
+        Directory.CreateDirectory(cachePath);
+        await File.WriteAllTextAsync(Path.Combine(cachePath, dataFile), JsonSerializer.Serialize(data));
+        using var host = RevelaTestHost.Build(project.RootPath, services =>
+        {
+            services.AddRevelaCommands();
+            services.AddGenerateFeature();
+            services.AddSingleton<ITheme>(new LuminaTheme());
+            services.AddSingleton(extension);
+        });
+
+        var scan = await host.Services.GetRequiredService<IContentService>().ScanAsync();
+        var render = await host.Services.GetRequiredService<IRenderService>().RenderAsync();
+
+        Assert.IsTrue(scan.Success, scan.ErrorMessage);
+        Assert.IsTrue(render.Success, render.ErrorMessage);
+        return await File.ReadAllTextAsync(Path.Combine(project.OutputPath, pageFolder, "index.html"));
     }
 
     [TestMethod]

@@ -30,7 +30,7 @@ EXIF analysis showing camera and lens usage statistics.
 | `gallery` | Photo gallery with image grid | Default (body/gallery) |
 | `text` | Text-only page without images | page |
 | `statistics` | EXIF statistics | statistics/overview |
-| `calendar` | Availability calendar | calendar/overview |
+| `calendar` | Availability calendar | calendar/page |
 
 > `statistics` and `calendar` are **plugin-provided** page types. They appear only when the Statistics or Calendar plugin is installed.
 

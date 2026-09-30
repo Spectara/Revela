@@ -31,10 +31,10 @@ Expects variables set before include:
     {{~ # One row per year ~}}
     {{~ for year in chart_years ~}}
     <div class="heatmap-row">
-        <span class="heatmap-label">{{ year }}</span>
+        <span class="heatmap-label">{{ html_escape year }}</span>
         {{~ for cell in chart_items ~}}
         {{~ if cell.year == year ~}}
-        <span class="heatmap-cell lv-{{ cell.level }}" title="{{ cell.count }} photos">{{ if cell.count > 0 }}{{ cell.count }}{{ end }}</span>
+        <span class="heatmap-cell lv-{{ html_escape cell.level }}" title="{{ html_escape cell.count }} photos">{{ if cell.count > 0 }}{{ html_escape cell.count }}{{ end }}</span>
         {{~ end ~}}
         {{~ end ~}}
     </div>

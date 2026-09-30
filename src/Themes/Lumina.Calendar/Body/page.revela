@@ -3,20 +3,20 @@
 </section>
 
 <div class="calendar-legend">
-  <span class="legend-free">{{ calendar.labels.free }}</span>
-  {{ if calendar.labels.arrive }}<span class="legend-arrive">{{ calendar.labels.arrive }}</span>{{ end }}
-  {{ if calendar.labels.depart }}<span class="legend-depart">{{ calendar.labels.depart }}</span>{{ end }}
-  <span class="legend-booked">{{ calendar.labels.booked }}</span>
+  <span class="legend-free">{{ html_escape calendar.labels.free }}</span>
+  {{ if calendar.labels.arrive }}<span class="legend-arrive">{{ html_escape calendar.labels.arrive }}</span>{{ end }}
+  {{ if calendar.labels.depart }}<span class="legend-depart">{{ html_escape calendar.labels.depart }}</span>{{ end }}
+  <span class="legend-booked">{{ html_escape calendar.labels.booked }}</span>
 </div>
 
 <div class="calendar-grid">
 {{ for month in calendar.months }}
   <div class="calendar-month">
-    <h3>{{ month.name }}</h3>
+    <h3>{{ html_escape month.name }}</h3>
     <table>
       <thead>
         <tr>
-          {{ for name in calendar.day_names }}<th>{{ name }}</th>{{ end }}
+          {{ for name in calendar.day_names }}<th>{{ html_escape name }}</th>{{ end }}
         </tr>
       </thead>
       <tbody>
@@ -26,7 +26,7 @@
           {{ if day.number == 0 }}
           <td></td>
           {{ else }}
-          <td class="{{ day.css }}">{{ day.number }}</td>
+          <td class="{{ html_escape day.css }}">{{ html_escape day.number }}</td>
           {{ end }}
         {{ end }}
         </tr>

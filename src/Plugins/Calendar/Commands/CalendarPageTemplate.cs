@@ -6,7 +6,7 @@ namespace Spectara.Revela.Plugins.Calendar.Commands;
 /// Page template for creating calendar pages with availability data.
 /// </summary>
 /// <remarks>
-/// Generates _index.revela files with frontmatter for the calendar/overview template.
+/// Generates _index.revela files with frontmatter for the calendar/page template.
 /// Requires an iCal source URL and optionally configures display months, mode, and labels.
 /// <para>
 /// Usage: revela create page calendar source/availability --title "Availability"
@@ -24,7 +24,7 @@ public sealed class CalendarPageTemplate : IPageTemplate
     public string Description => "Create calendar page with availability from iCal data";
 
     /// <inheritdoc />
-    public string TemplateName => "calendar/overview";
+    public string TemplateName => "calendar/page";
 
     /// <inheritdoc />
     public string ConfigSectionName => "";

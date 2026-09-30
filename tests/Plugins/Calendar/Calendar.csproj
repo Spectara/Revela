@@ -22,6 +22,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\..\src\Plugins\Calendar\Calendar.csproj" />
+    <ProjectReference Include="..\..\..\src\Themes\Lumina.Calendar\Lumina.Calendar.csproj" />
     <ProjectReference Include="..\..\Shared\Shared.csproj" />
   </ItemGroup>
 
