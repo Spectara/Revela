@@ -5,6 +5,7 @@ using NSubstitute;
 using Spectara.Revela.Core;
 using Spectara.Revela.Core.Services;
 using Spectara.Revela.Sdk.Abstractions;
+using Spectara.Revela.Sdk.Hosting;
 using Spectara.Revela.Tests.Shared.Fixtures;
 
 namespace Spectara.Revela.Tests.Commands.Packages;
@@ -102,7 +103,8 @@ public sealed class PackageManagerUninstallTests
             new NupkgExtractor(NullLogger<NupkgExtractor>.Instance, TimeProvider.System),
             new PluginProjectService(configService, NullLogger<PluginProjectService>.Instance),
             NullLogger<PackageManager>.Instance,
-            Substitute.For<INuGetSourceManager>());
+            Substitute.For<INuGetSourceManager>(),
+            Substitute.For<IBuildInfo>());
     }
 
     private static string CreateDirectoryWithFile(string path)
