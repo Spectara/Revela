@@ -91,7 +91,7 @@ first and clear the `Platform` variable that `vcvars64.bat` sets (MSBuild would 
 the solution platform):
 
 ```powershell
-$vcvars = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" -latest -products * -find 'VC\Auxiliary\Build\vcvars64.bat'
+$vcvars = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -find 'VC\Auxiliary\Build\vcvars64.bat'
 & $env:ComSpec /c "call `"$vcvars`" >nul && set `"Platform=`"&& pwsh -NoProfile -File scripts\build-release.ps1 -Variant Standalone"
 ```
 
