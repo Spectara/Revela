@@ -60,7 +60,10 @@ revela generate images --force
 
 ## Incremental Processing
 
-Revela automatically detects what's missing and only generates those variants:
+Revela automatically detects what's missing and only generates those variants.
+An image is regenerated completely when its source file changes (size or
+modification time), when the theme's resize mode changes, or when a Revela
+update changes how images are encoded.
 
 ### Adding a New Format
 

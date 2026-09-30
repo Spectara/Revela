@@ -49,6 +49,17 @@ public sealed record ManifestMeta
     public IReadOnlyDictionary<string, int> FormatQualities { get; init; } = new Dictionary<string, int>();
 
     /// <summary>
+    /// Processing fingerprint per source image, recorded after its variants were generated.
+    /// Key = normalized source path, Value = fingerprint of source file and pipeline settings.
+    /// </summary>
+    /// <remarks>
+    /// Owned by image processing and independent of the scan metadata on <see cref="ImageContent"/>,
+    /// so a scan that sees an edited source cannot mark its stale variants as current.
+    /// </remarks>
+    [JsonPropertyName("processedImages")]
+    public IReadOnlyDictionary<string, string> ProcessedImages { get; init; } = new Dictionary<string, string>();
+
+    /// <summary>
     /// Timestamp of last content scan.
     /// </summary>
     [JsonPropertyName("lastScanned")]

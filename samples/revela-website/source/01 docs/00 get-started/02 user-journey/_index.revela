@@ -1199,10 +1199,12 @@ User confirms › Clean slate. Next "Generate all" rebuilds everything.
 | Scenario | Detection Method | Action |
 |----------|------------------|--------|
 | New image | Not in manifest | Generate all variants |
-| Changed image | LastModified or FileSize differs | Regenerate all variants |
+| Changed image | LastModified or FileSize differs from the last successful processing | Regenerate all variants |
 | Deleted image | In manifest but not on disk | Remove from manifest |
 | New size in config | Output file missing | Generate missing size only |
 | New format in config | Output file missing | Generate missing format only |
-| Quality changed | Not detected (file exists) | Require explicit `--force` |
+| Quality changed | Quality differs from the last run | Regenerate that format |
+| Theme resize mode changed | Differs from the last successful processing | Regenerate all variants |
+| Revela changes its image output | Output version differs | Regenerate all variants |
 | Output deleted | Output file missing | Regenerate affected variants |
 | Force rebuild | User flag `--force` | Regenerate everything |

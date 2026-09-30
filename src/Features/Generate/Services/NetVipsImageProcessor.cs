@@ -40,6 +40,20 @@ internal sealed partial class NetVipsImageProcessor(
     CameraModelMapper cameraModelMapper) : IImageProcessor
 {
     /// <summary>
+    /// Version of the encoded output for an unchanged source and configuration.
+    /// </summary>
+    /// <remarks>
+    /// Part of every image's processing fingerprint. Increment whenever the written pixels
+    /// or metadata change (e.g. color conversion) so existing variants are regenerated.
+    /// </remarks>
+    internal const int OutputVersion = 1;
+
+    /// <summary>
+    /// Largest image dimension libvips accepts (<c>VIPS_MAX_COORD</c>).
+    /// </summary>
+    private const int VipsMaxCoord = 10_000_000;
+
+    /// <summary>
     /// Flag to ensure NetVips is initialized only once
     /// </summary>
     private static bool netVipsInitialized;
@@ -426,11 +440,14 @@ internal sealed partial class NetVipsImageProcessor(
         //
         // Using ThumbnailImage instead of Resize for correct alpha channel handling.
         // See: https://github.com/libvips/libvips/issues/4588
+        //
+        // The unconstrained side must stay within VIPS_MAX_COORD: libvips rejects larger
+        // values (e.g. int.MaxValue) and silently falls back to a square bounding box.
 
         return resizeMode.ToUpperInvariant() switch
         {
-            "WIDTH" => source.ThumbnailImage(size, height: int.MaxValue),
-            "HEIGHT" => source.ThumbnailImage(int.MaxValue, height: size),
+            "WIDTH" => source.ThumbnailImage(size, height: VipsMaxCoord),
+            "HEIGHT" => source.ThumbnailImage(VipsMaxCoord, height: size),
             // "LONGEST" (default) - ThumbnailImage constrains to longest side
             _ => source.ThumbnailImage(size)
         };

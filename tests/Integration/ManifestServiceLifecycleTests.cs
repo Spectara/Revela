@@ -225,5 +225,40 @@ public sealed class ManifestServiceLifecycleTests
         Assert.AreEqual(85, manifest2.FormatQualities["webp"]);
         Assert.AreEqual(90, manifest2.FormatQualities["jpg"]);
     }
+
+    [TestMethod]
+    public async Task ProcessedFingerprint_SavedAndLoaded_SurvivesRestart()
+    {
+        using var project = TestProject.Create();
+        using var host = RevelaTestHost.Build(project.RootPath, s => { s.AddRevelaCommands(); s.AddGenerateFeature(); });
+        var manifest = host.Services.GetRequiredService<IManifestRepository>();
+        manifest.SetRoot(new ManifestEntry { Text = "Site", Path = "" });
+
+        manifest.SetProcessedFingerprint("photos/a.jpg", "v1|a");
+        await manifest.SaveAsync();
+
+        using var host2 = RevelaTestHost.Build(project.RootPath, s => { s.AddRevelaCommands(); s.AddGenerateFeature(); });
+        var manifest2 = host2.Services.GetRequiredService<IManifestRepository>();
+        await manifest2.LoadAsync();
+
+        Assert.AreEqual("v1|a", manifest2.GetProcessedFingerprint("photos/a.jpg"));
+        Assert.IsNull(manifest2.GetProcessedFingerprint("photos/unknown.jpg"));
+    }
+
+    [TestMethod]
+    public void RemoveOrphans_DeletedSource_DropsProcessedFingerprint()
+    {
+        using var project = TestProject.Create();
+        using var host = RevelaTestHost.Build(project.RootPath, s => { s.AddRevelaCommands(); s.AddGenerateFeature(); });
+        var manifest = host.Services.GetRequiredService<IManifestRepository>();
+        manifest.SetRoot(new ManifestEntry { Text = "Site", Path = "" });
+        manifest.SetProcessedFingerprint("photos/keep.jpg", "v1|keep");
+        manifest.SetProcessedFingerprint("photos/deleted.jpg", "v1|deleted");
+
+        manifest.RemoveOrphans(new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "photos/keep.jpg" });
+
+        Assert.AreEqual("v1|keep", manifest.GetProcessedFingerprint("photos/keep.jpg"));
+        Assert.IsNull(manifest.GetProcessedFingerprint("photos/deleted.jpg"));
+    }
 }
 
