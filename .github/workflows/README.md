@@ -25,11 +25,15 @@ side-effect-free local check.
 
 ### Action Versions
 
-Stable upstream releases checked on 2026-09-14. Existing major-tag tracking is
-retained; this is not a migration to commit-SHA pinning. Dependabot checks the
-GitHub Actions ecosystem weekly. Review version updates and lint affected workflows.
+Stable upstream releases checked on 2026-09-14. Every third-party action is pinned
+to the full commit SHA of the referenced tag, with the tag kept as a trailing
+comment (`uses: actions/checkout@<sha> # v7`), so a repointed upstream tag cannot
+change what runs. Every `actions/checkout` step sets `persist-credentials: false`;
+no job pushes or tags with the checkout token. Dependabot checks the GitHub Actions
+ecosystem weekly and updates SHA and comment together. Review version updates and
+lint affected workflows.
 
-| Action                          | Workflow reference | Latest stable release checked |
+| Action                          | Pinned tag         | Latest stable release checked |
 | ------------------------------- | ------------------ | ----------------------------- |
 | actions/checkout                | v7                 | v7.0.1                        |
 | actions/setup-dotnet            | v6                 | v6.0.0                        |
@@ -38,7 +42,7 @@ GitHub Actions ecosystem weekly. Review version updates and lint affected workfl
 | actions/upload-pages-artifact   | v5                 | v5.0.0                        |
 | actions/deploy-pages            | v5                 | v5.0.1                        |
 | actions/attest-build-provenance | v4                 | v4.2.2                        |
-| sigstore/cosign-installer       | v4                 | v4.1.2                        |
+| sigstore/cosign-installer       | v4.1.2             | v4.1.2                        |
 | softprops/action-gh-release     | v3                 | v3.0.3                        |
 
 The installer explicitly selects Cosign `v3.1.3`, rather than its older default.
