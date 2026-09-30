@@ -49,6 +49,48 @@ public sealed class ContentServiceScanTests
     }
 
     [TestMethod]
+    public async Task ScanAsync_ManifestFromOlderMetadataVersion_RereadsImageMetadata()
+    {
+        // A manifest written by an older Revela carries metadata computed by an older
+        // pipeline (e.g. un-rotated dimensions before #98, non-sRGB placeholders).
+        using var project = TestProject.Create(p => p
+            .AddGallery("Photos", g => g.AddRealImage("photo.jpg", 800, 600)));
+        using (var host = RevelaTestHost.Build(project.RootPath, AddServices))
+        {
+            var first = await host.Services.GetRequiredService<IContentService>().ScanAsync();
+            Assert.IsTrue(first.Success, first.ErrorMessage);
+        }
+
+        var manifestPath = Path.Combine(project.RootPath, ".cache", "manifest.json");
+        var manifest = System.Text.Json.Nodes.JsonNode.Parse(await File.ReadAllTextAsync(manifestPath))!.AsObject();
+        manifest["_meta"]!["scanConfigHash"] = LegacyScanConfigHash("CssHash", 0, 0);
+        var image = manifest["root"]!["children"]![0]!["content"]!.AsArray().Single(c => (string?)c!["filename"] == "photo.jpg")!;
+        image["width"] = 600;
+        image["height"] = 800;
+        await File.WriteAllTextAsync(manifestPath, manifest.ToJsonString());
+
+        using (var host = RevelaTestHost.Build(project.RootPath, AddServices))
+        {
+            var second = await host.Services.GetRequiredService<IContentService>().ScanAsync();
+            Assert.IsTrue(second.Success, second.ErrorMessage);
+
+            var rescanned = host.Services.GetRequiredService<IManifestRepository>().Images.Values.Single();
+            Assert.AreEqual(800, rescanned.Width, "Stale cached metadata must be re-read from the source file.");
+            Assert.AreEqual(600, rescanned.Height);
+        }
+    }
+
+    /// <summary>
+    /// Scan cache key as written by Revela up to v0.0.1-beta.20 (no metadata version).
+    /// </summary>
+    private static string LegacyScanConfigHash(string placeholderStrategy, int minWidth, int minHeight)
+    {
+        var input = $"placeholder:{placeholderStrategy}|minWidth:{minWidth}|minHeight:{minHeight}";
+        var hash = System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(input));
+        return Convert.ToHexString(hash)[..12];
+    }
+
+    [TestMethod]
     public async Task ScanAsync_SingleGalleryWithImages_FindsGallery()
     {
         // Arrange

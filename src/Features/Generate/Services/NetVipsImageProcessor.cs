@@ -49,6 +49,16 @@ internal sealed partial class NetVipsImageProcessor(
     internal const int OutputVersion = 2;
 
     /// <summary>
+    /// Version of the scanned metadata (dimensions, EXIF, placeholder) for an unchanged source.
+    /// </summary>
+    /// <remarks>
+    /// Part of the scan cache key. Increment whenever <see cref="ReadMetadataAsync"/> computes
+    /// different values for the same file (2: upright dimensions after EXIF orientation and
+    /// sRGB placeholders), so manifests from older versions re-read their metadata.
+    /// </remarks>
+    internal const int MetadataVersion = 2;
+
+    /// <summary>
     /// Color space of published variants. Variants are saved without metadata, and browsers
     /// interpret untagged images as sRGB.
     /// </summary>

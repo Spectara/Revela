@@ -502,14 +502,14 @@ internal sealed partial class ManifestService(
     /// </summary>
     /// <remarks>
     /// When this hash changes, all metadata needs to be re-read from source files.
-    /// Includes: placeholder strategy, min dimensions.
+    /// Includes: metadata version, placeholder strategy, min dimensions.
     /// </remarks>
     public static string ComputeScanConfigHash(
         PlaceholderStrategy placeholderStrategy,
         int minWidth,
         int minHeight)
     {
-        var input = $"placeholder:{placeholderStrategy}|minWidth:{minWidth}|minHeight:{minHeight}";
+        var input = $"metadata:{NetVipsImageProcessor.MetadataVersion}|placeholder:{placeholderStrategy}|minWidth:{minWidth}|minHeight:{minHeight}";
         var hashBytes = SHA256.HashData(Encoding.UTF8.GetBytes(input));
         return Convert.ToHexString(hashBytes)[..12];
     }
