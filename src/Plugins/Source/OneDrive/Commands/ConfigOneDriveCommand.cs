@@ -148,7 +148,7 @@ internal sealed partial class ConfigOneDriveCommand(
             $"[bold]Output directory:[/] [cyan]{sourceDir}/[/]\n\n" +
             $"[bold]Next steps:[/]\n" +
             $"1. Run [cyan]revela source onedrive sync[/] to fetch files\n" +
-            $"2. Run [cyan]revela generate[/] to build your site")
+            $"2. Run [cyan]revela generate all[/] to build your site")
             .WithHeader($"[bold green]{(isFirstTime ? "Created" : "Updated")}[/]")
             .WithSuccessStyle();
 

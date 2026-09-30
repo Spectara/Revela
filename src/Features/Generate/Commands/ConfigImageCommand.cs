@@ -373,7 +373,7 @@ internal sealed partial class ConfigImageCommand(
         // Show info about sizes
         AnsiConsole.WriteLine();
         AnsiConsole.MarkupLine("[dim]Note: Image sizes are defined by the theme.[/]");
-        AnsiConsole.MarkupLine("[dim]To customize sizes, create theme/images.json in your project.[/]");
+        AnsiConsole.MarkupLine("[dim]To customize sizes, run [cyan]revela theme extract[/] and edit themes/<name>/Configuration/images.json.[/]");
 
         return 0;
     }

@@ -162,7 +162,7 @@ internal sealed partial class ImagesCommand(
                 content += $"  Duration:  {result.Duration.TotalSeconds:F2}s\n";
                 content += "\n[dim]Next steps:[/]\n";
                 content += "  • Run [cyan]revela generate pages[/] to render HTML\n";
-                content += "  • Or run [cyan]revela generate[/] for full build";
+                content += "  • Or run [cyan]revela generate all[/] for full build";
 
                 var successPanel = new Panel(new Markup(content))
                     .WithHeader("[bold green]Success[/]")

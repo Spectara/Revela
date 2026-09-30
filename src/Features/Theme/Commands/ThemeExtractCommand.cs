@@ -635,7 +635,7 @@ internal sealed partial class ThemeExtractCommand(
                             $"[bold]Location:[/] [cyan]themes/{Markup.Escape(themeName)}/[/]{extensionsInfo}\n\n" +
                             "[bold]Next steps:[/]\n" +
                             $"1. Edit [cyan]themes/{Markup.Escape(themeName)}/[/] to customize\n" +
-                            "2. Run [cyan]revela generate[/] to see changes\n" +
+                            "2. Run [cyan]revela generate all[/] to see changes\n" +
                             "3. Your local theme takes priority over installed themes")
             .WithHeader("[bold green]Success[/]")
             .WithSuccessStyle();

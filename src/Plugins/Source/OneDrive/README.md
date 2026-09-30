@@ -91,7 +91,7 @@ revela config onedrive
 revela source onedrive sync
 
 # 4. Generate site
-revela generate
+revela generate all
 ```
 
 ### Data Safety and Diagnostics

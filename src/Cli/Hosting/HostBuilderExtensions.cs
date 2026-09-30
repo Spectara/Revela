@@ -32,16 +32,16 @@ internal static class HostBuilderExtensions
     /// Similar to NuGet.Config hierarchical loading.
     /// </para>
     /// <para>
-    /// The project directory is determined by ContentRootPath, which is set in Program.cs
-    /// based on standalone mode detection and --project argument parsing.
+    /// The project directory is the host's ContentRootPath, which <c>HostBootstrap</c>
+    /// sets to the current working directory (tests may pass an explicit path).
     /// </para>
     /// </remarks>
     /// <param name="builder">The host application builder.</param>
     /// <returns>The builder for chaining.</returns>
     public static HostApplicationBuilder AddRevelaConfiguration(this HostApplicationBuilder builder)
     {
-        // Use ContentRootPath instead of GetCurrentDirectory()
-        // This allows standalone mode to set the project path before host build
+        // Use ContentRootPath instead of GetCurrentDirectory() so callers (e.g. tests)
+        // can supply the project directory explicitly before the host is built
         var projectDirectory = builder.Environment.ContentRootPath;
 
         // 1. Load revela.json (global config - user-wide defaults)
