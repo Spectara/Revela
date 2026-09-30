@@ -3,7 +3,7 @@ title = "Plugins"
 template = "docs"
 +++
 
-Revela's plugin system lets you extend your site with additional features. All official plugins are distributed as **NuGet packages** and installed with a single command.
+Revela's plugin system lets you extend your site with additional features. Official plugins are distributed as **NuGet packages** (`.nupkg`) attached to each [GitHub Release](https://github.com/Spectara/Revela/releases). They are not published on NuGet.org yet.
 
 <div class="features-grid">
 
@@ -33,10 +33,18 @@ Sync photos from OneDrive shared folders directly into your project.
 | **Statistics** | `Spectara.Revela.Plugins.Statistics` | Generate EXIF statistics pages |
 | **Serve** | `Spectara.Revela.Plugins.Serve` | Local development server |
 | **OneDrive** | `Spectara.Revela.Plugins.Source.OneDrive` | Download photos from OneDrive shared folders |
+| **Calendar** | `Spectara.Revela.Plugins.Calendar` | Availability calendar (booked/free days) from iCal `.ics` files |
+| **Source.Calendar** | `Spectara.Revela.Plugins.Source.Calendar` | Download iCal feeds (e.g. booking exports) into the source folder |
 
-All `Spectara.Revela.*` packages are **verified and signed** by the Spectara organization.
+All `Spectara.Revela.*` release packages come with a `SHA256SUMS` file and Sigstore (cosign) signatures on the GitHub Release.
 
 ## Installing Plugins
+
+How you get plugins depends on your edition:
+
+- **Standalone**: all official plugins are built in. There is nothing to install, and the `plugin` commands are not available.
+- **Full**: the `packages/` folder next to the executable is used as a local feed (`bundled`), so the commands below work offline.
+- **.NET tool**: there is no bundled folder. Download the `.nupkg` files from the release into a folder and register it once with `revela config feed add releases /absolute/path/to/folder`.
 
 ```bash
 # Install by short name

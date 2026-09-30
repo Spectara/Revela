@@ -89,7 +89,7 @@ Rendering pages   [████████████████████]
 revela serve
 ```
 
-Opens your browser with a live preview. The Serve plugin ships built-in with the Standalone build; for the modular Full / .NET Tool builds, install it once with `revela plugin install Spectara.Revela.Plugins.Serve`.
+Starts a local static preview server at `http://localhost:8080` — open that URL in your browser. It does not open a browser, watch files, or reload pages: after changes, run `revela generate all` again and refresh. The Serve plugin ships built in with the Standalone build; in the modular Full build, install it once from the bundled packages with `revela plugin install Serve`.
 
 ---
 
@@ -99,8 +99,15 @@ Opens your browser with a live preview. The Serve plugin ships built-in with the
 | --------------- | ------------------------------------------------- | --------------------------------------------------- |
 | **Standalone**  | Most users — single binary, all plugins built in  | [Download](https://revela.website/pages/downloads/) |
 | **Full**        | Want to add custom plugins, manage them via NuGet | [Download](https://revela.website/pages/downloads/) |
-| **.NET Tool**   | You already have the .NET 10 SDK                  | `dotnet tool install -g Spectara.Revela`            |
+| **.NET Tool**   | You already have the .NET 10 SDK                  | `.nupkg` from [GitHub Releases](https://github.com/spectara/revela/releases) (see below) |
 | **From Source** | Contributors                                      | See [Setup Guide](docs/setup.md)                    |
+
+> [!IMPORTANT]
+> Revela packages are **not published on NuGet.org** yet. Every package, including the `Spectara.Revela` .NET tool, is attached to each [GitHub Release](https://github.com/spectara/revela/releases). To install the tool, download `Spectara.Revela.<version>.nupkg` into a folder and run:
+>
+> ```bash
+> dotnet tool install -g Spectara.Revela --version <version> --add-source ./downloads
+> ```
 
 **[Detailed Installation Guide →](https://revela.website/docs/get-started/installation/)**
 
@@ -108,20 +115,22 @@ Opens your browser with a live preview. The Serve plugin ships built-in with the
 
 ## 🔌 Official Plugins
 
-Standalone has all of these built in. Full / .NET Tool installs them on demand:
+Standalone has all of these built in. The Full build installs them on demand from its bundled `packages/` folder:
 
-| Plugin              | Description                                                 |
-| ------------------- | ----------------------------------------------------------- |
-| **Compress**        | Pre-compress static files with Gzip/Brotli                  |
-| **Serve**           | Local dev server with live preview                          |
-| **Statistics**      | EXIF statistics page (camera bodies, lenses, focal lengths) |
-| **Calendar**        | Calendar/timeline pages built from gallery dates            |
-| **Source.OneDrive** | Import from OneDrive shared folders                         |
-| **Source.Calendar** | Import events from iCal feeds                               |
+| Plugin              | Description                                                        |
+| ------------------- | ------------------------------------------------------------------ |
+| **Compress**        | Pre-compress static files with Gzip/Brotli                         |
+| **Serve**           | Local static preview server (no live reload)                       |
+| **Statistics**      | EXIF statistics page (camera bodies, lenses, focal lengths)        |
+| **Calendar**        | Availability calendar (booked/free days) from iCal `.ics` files    |
+| **Source.OneDrive** | Import from OneDrive shared folders                                |
+| **Source.Calendar** | Download iCal feeds (e.g. booking exports) into the source folder  |
 
 ```bash
-revela plugin install Spectara.Revela.Plugins.Serve
+revela plugin install Serve
 ```
+
+With the .NET tool there is no bundled folder: download the `.nupkg` files from the release and register that folder once with `revela config feed add releases ./downloads`.
 
 And three theme packages: **Lumina** (default), **Lumina.Statistics**, **Lumina.Calendar**.
 

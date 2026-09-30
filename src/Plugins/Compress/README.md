@@ -4,23 +4,30 @@ Static file compression plugin for Revela - compresses HTML, CSS, JS, JSON, SVG,
 
 ## Features
 
-- **Gzip compression** (`.gz` files) - Maximum compression (Level 9)
-- **Brotli compression** (`.br` files) - Maximum compression (Level 11)
+- **Gzip compression** (`.gz` files) - Maximum compression (`CompressionLevel.SmallestSize`, zlib level 9)
+- **Brotli compression** (`.br` files) - Maximum compression (`CompressionLevel.SmallestSize`, quality 11)
 - **Smart filtering** - Only compresses text-based files (HTML, CSS, JS, JSON, SVG, XML)
 - **Size threshold** - Skips files smaller than 256 bytes
-- **Parallel processing** - Fast compression using all available CPU cores
+- **Parallel processing** - Compresses up to one file per logical CPU core (`Environment.ProcessorCount`)
 - **Statistics** - Shows compression savings per format
+
+## Installation
+
+The Standalone build has Compress built in. In the Full build, install it from the bundled
+`packages/` folder with `revela plugin install Compress`. The package is not on NuGet.org; it is
+attached to each [GitHub Release](https://github.com/spectara/revela/releases).
 
 ## Usage
 
 ### Compress Output Files
 
-```bash
-# Compress all static files in output directory
-revela generate compress
+Compression is opt-in and is **not** part of `revela generate all`. Run it after generating:
 
-# Or run full pipeline (includes compression at the end)
+```bash
 revela generate all
+
+# Compress all eligible files in the output directory
+revela generate compress
 ```
 
 ### Clean Compressed Files
@@ -49,11 +56,15 @@ including independently supplied downloads.
 
 ## Pipeline Integration
 
-The compress step runs **after** all content is generated:
+`revela generate compress` is registered under `generate` (menu order 500), but it is not a
+pipeline step, so `revela generate all` does not run it:
 
 ```
-scan (100) → statistics (200) → pages (300) → images (400) → compress (500)
+generate all:  scan (100) → calendar (150, plugin) → statistics (200, plugin) → pages (300) → images (400)
+separately:    compress
 ```
+
+Cleanup, in contrast, is a pipeline step: `revela clean all` includes `clean compress`.
 
 ## Supported File Types
 
@@ -68,7 +79,7 @@ scan (100) → statistics (200) → pages (300) → images (400) → compress (5
 
 ## Requirements
 
-- Revela 1.0.0 or later
+- Revela host of the same release version (plugins are packed and released together with Revela)
 - .NET 10.0 or later
 
 ## License

@@ -3,7 +3,7 @@ title = "Dev Server"
 template = "docs"
 +++
 
-The Serve plugin starts a **local HTTP server** so you can preview your generated site during development.
+The Serve plugin starts a **local static HTTP server** so you can preview your generated site during development. It serves the files in `output/` as they are: it does not open a browser, watch your files, or live-reload pages.
 
 <div class="features-grid">
 
@@ -23,9 +23,13 @@ Press Ctrl+C to stop and return to the interactive menu.
 
 ## Installation
 
+The **Standalone** edition has Serve built in. In the **Full** edition, install it from the bundled packages:
+
 ```bash
 revela plugin install Serve
 ```
+
+With the .NET tool, first register a folder containing the release's `.nupkg` files (see [Plugins](../)).
 
 ## Usage
 
@@ -122,3 +126,4 @@ revela serve
 - **Correct MIME types** – HTML, CSS, JS, JSON, AVIF, WebP, JPG, PNG, SVG, ICO
 - **404 logging** – missing files always shown, even in non-verbose mode
 - **CLI overrides** – `--port` and `--verbose` override `project.json` settings
+- **No live reload** – no file watching or browser auto-open; regenerate and refresh manually

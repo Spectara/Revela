@@ -194,6 +194,8 @@ YourName.Revela.Plugin.Example/
 
 Choose an SDK package version compatible with the Revela host you target; the versions above are examples, not a latest-release declaration. The HTTP package supports the typed-client examples below. The SDK includes its generators as compile-time analyzers; no separate Revela generator package is needed.
 
+> **SDK source:** `Spectara.Revela.Sdk` is not published on NuGet.org yet. Download `Spectara.Revela.Sdk.<version>.nupkg` from [GitHub Releases](https://github.com/spectara/revela/releases) and add its folder as a package source in your `NuGet.Config` so the `PackageReference` above can restore.
+
 ---
 
 ## Configuration

@@ -244,7 +244,7 @@ revela theme extract Lumina --file Partials/Statistics/Statistics.revela
 2. **Version control.** Commit your `themes/` folder.
 3. **Prefer CSS Custom Properties.** For visual tweaks, edit the tokens in `Assets/main.css` rather than templates.
 4. **Update-friendly.** When the bundled theme updates, your extracted overrides stay put.
-5. **Preview live.** Run `revela serve` while you edit.
+5. **Preview locally.** Keep `revela serve` running in a second terminal; after each edit, run `revela generate all` and refresh the browser (there is no live reload).
 
 ## See Also
 

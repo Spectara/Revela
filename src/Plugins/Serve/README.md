@@ -1,16 +1,27 @@
 # Spectara.Revela.Plugins.Serve
 
-Local HTTP server plugin for Revela - preview generated sites during development.
+Local static HTTP server plugin for Revela - preview generated sites during development.
+
+It serves the generated `output/` folder at `http://localhost:8080` (configurable). It does
+**not** open a browser, watch files, or live-reload pages: after changes, run
+`revela generate all` again and refresh the browser.
 
 ## Installation
 
+The Standalone build has Serve built in. In the Full build, install it from the bundled
+`packages/` folder:
+
 ```bash
-# Install from NuGet
 revela plugin install Serve
 
 # Or with full package ID
 revela plugin install Spectara.Revela.Plugins.Serve
 ```
+
+The package is not on NuGet.org. With the .NET tool, download
+`Spectara.Revela.Plugins.Serve.<version>.nupkg` from
+[GitHub Releases](https://github.com/spectara/revela/releases) and register its folder with
+`revela config feed add releases <folder>` first.
 
 ## Usage
 
@@ -70,6 +81,7 @@ SPECTARA__REVELA__PLUGIN__SERVE__VERBOSE=true
 - **404 logging** - Shows missing files by default
 - **Verbose mode** - Log all requests for debugging
 - **Graceful shutdown** - Ctrl+C returns to interactive menu
+- **No live reload** - no file watching or browser auto-open; regenerate and refresh manually
 
 ## Output
 

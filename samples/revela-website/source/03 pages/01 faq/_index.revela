@@ -20,7 +20,7 @@ Windows, macOS, and Linux. Native executables are available for all platforms, s
 
 ### Does Revela require Node.js, Ruby, or Python?
 
-No. Revela is a standalone .NET application. The only requirement is the executable itself (standalone download) or the .NET 10 SDK (dotnet tool installation).
+No. Revela is a standalone .NET application. The only requirement is the executable itself (Standalone or Full download) or the .NET 10 SDK (.NET tool installation from the `.nupkg` on [GitHub Releases](https://github.com/Spectara/Revela/releases); Revela is not on NuGet.org yet).
 
 ---
 
@@ -82,20 +82,26 @@ Yes. Configure `assetsBasePath` in `project.json` to point to your CDN URL. Reve
 
 ### How do I install plugins?
 
+In the **Standalone** edition, all official plugins are already built in. There is nothing to install.
+
+In the **Full** edition, install them from the bundled `packages/` folder:
+
 ```bash
 revela plugin install Statistics
 revela plugin install Serve
 ```
 
-Plugins are distributed as NuGet packages and installed with a single command.
+Plugins are distributed as NuGet packages (`.nupkg`) attached to each [GitHub Release](https://github.com/Spectara/Revela/releases), not on NuGet.org. If you use the .NET tool, download them into a folder and register it once with `revela config feed add releases /path/to/folder`.
 
 ### What plugins are available?
 
 - **Compress**: pre-compress output with Gzip and Brotli
 - **Statistics**: generate EXIF statistics pages (cameras, lenses, apertures)
-- **Serve**: local development server with live preview
+- **Serve**: local static preview server (no live reload; regenerate and refresh)
+- **Calendar**: availability calendar (booked/free days) from iCal `.ics` files
 - **Source OneDrive**: sync photos from OneDrive shared folders
+- **Source Calendar**: download iCal feeds (e.g. booking exports) into your source folder
 
 ### Can I write my own plugin?
 
-Yes. Install the `Spectara.Revela.Sdk` NuGet package and implement the `IPlugin` interface. See the [Plugin Development Guide](https://github.com/Spectara/Revela/blob/main/docs/plugin-development.md).
+Yes. Reference the `Spectara.Revela.Sdk` package (download `Spectara.Revela.Sdk.<version>.nupkg` from [GitHub Releases](https://github.com/Spectara/Revela/releases); it is not on NuGet.org yet) and implement the `IPlugin` interface. See the [Plugin Development Guide](https://github.com/Spectara/Revela/blob/main/docs/plugin-development.md).

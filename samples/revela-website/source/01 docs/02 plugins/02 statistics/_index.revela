@@ -29,8 +29,8 @@ The Statistics plugin has two parts:
 # 1. The plugin (generates statistics data)
 revela plugin install Statistics
 
-# 2. The theme extension (renders charts), recommended
-revela plugin install Lumina.Statistics
+# 2. The theme extension (renders charts), recommended; it is a theme package
+revela theme install Lumina.Statistics
 ```
 
 The plugin generates a `statistics.json` data file. The **Lumina.Statistics** extension renders that data as a responsive dashboard with pure-CSS bar charts that inherit the Lumina color scheme.
@@ -132,7 +132,7 @@ SPECTARA__REVELA__PLUGIN__STATISTICS__SORTBYCOUNT=false
 Install it alongside the plugin:
 
 ```bash
-revela plugin install Lumina.Statistics
+revela theme install Lumina.Statistics
 ```
 
 ## CLI Commands

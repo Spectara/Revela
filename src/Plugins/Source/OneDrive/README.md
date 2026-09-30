@@ -1,19 +1,23 @@
 # Spectara.Revela.Plugins.Source.OneDrive
 
-[![NuGet](https://img.shields.io/nuget/v/Spectara.Revela.Plugins.Source.OneDrive.svg)](https://www.nuget.org/packages/Spectara.Revela.Plugins.Source.OneDrive)
-
 Download images from OneDrive shared folders for [Revela](https://github.com/spectara/revela).
 
 ## Installation
 
+The Standalone build has this plugin built in. In the Full build, install it from the bundled
+`packages/` folder:
+
 ```bash
-revela plugin install OneDrive
+revela plugin install Source.OneDrive
 ```
 
 Or with full package name:
 ```bash
 revela plugin install Spectara.Revela.Plugins.Source.OneDrive
 ```
+
+The package is not on NuGet.org; it is attached to each
+[GitHub Release](https://github.com/spectara/revela/releases).
 
 ## Configuration
 
@@ -73,8 +77,8 @@ revela source onedrive sync --clean
 ### Workflow Example
 
 ```bash
-# 1. Install plugin
-revela plugin install OneDrive
+# 1. Install plugin (Full build only; built into Standalone)
+revela plugin install Source.OneDrive
 
 # 2. Configure (interactive)
 revela config onedrive
