@@ -155,6 +155,8 @@ After `revela generate all`, your site is immediately live, with no file copying
 | Absolute | `D:\Photos` | `D:\Photos` |
 | Absolute | `/var/www/html` | `/var/www/html` |
 
+> **Output is disposable.** `revela clean output` deletes the whole output directory, and `revela clean images` deletes unused folders inside it. Both commands refuse to run, and delete nothing, if `output` is a drive or filesystem root, your home directory, the project folder, the source folder, or a folder that contains any of them. Keep `output` in a folder that only Revela writes to.
+
 ## Available Config Commands
 
 | Command | Description |

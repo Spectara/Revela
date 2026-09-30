@@ -1,7 +1,9 @@
+using NuGet.Packaging;
 using NuGet.Packaging.Core;
 using NuGet.Protocol;
 using NuGet.Protocol.Core.Types;
 using NuGet.Versioning;
+using Spectara.Revela.Core.Helpers;
 using Spectara.Revela.Core.Logging;
 using Spectara.Revela.Core.Services;
 using Spectara.Revela.Sdk.Abstractions;
@@ -154,18 +156,32 @@ public sealed class PackageManager(
     /// <param name="packageId">The NuGet package ID of the plugin to uninstall.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>True if the plugin was found and removed.</returns>
+    /// <exception cref="ArgumentException"><paramref name="packageId"/> is not a valid NuGet package ID.</exception>
+    /// <exception cref="InvalidOperationException">The plugin folder escapes the plugin directory or is a symbolic link or junction.</exception>
     public async Task<bool> UninstallPluginAsync(string packageId, CancellationToken cancellationToken = default)
     {
+        // The ID becomes a path segment below the plugin directory, so reject anything that
+        // could traverse, be rooted or contain separators before touching the filesystem.
+        if (!PackageIdValidator.IsValidPackageId(packageId))
+        {
+            throw new ArgumentException($"'{packageId}' is not a valid package ID.", nameof(packageId));
+        }
+
+        var pluginDir = PluginDirectory;
+        var pluginPath = Path.Combine(pluginDir, packageId);
+        if (!DirectoryDeletionGuard.TryValidateContainedDirectory(pluginPath, pluginDir, out var unsafeReason))
+        {
+            throw new InvalidOperationException(unsafeReason);
+        }
+
         try
         {
             cancellationToken.ThrowIfCancellationRequested();
             logger.UninstallingPlugin(packageId);
 
-            var pluginDir = PluginDirectory;
             var found = false;
 
             // Delete plugin subdirectory with all contents (main DLL + dependencies)
-            var pluginPath = Path.Combine(pluginDir, packageId);
             if (Directory.Exists(pluginPath))
             {
                 Directory.Delete(pluginPath, recursive: true);

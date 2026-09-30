@@ -1,6 +1,7 @@
 using System.CommandLine;
 using System.Text.RegularExpressions;
 using Microsoft.Extensions.Options;
+using Spectara.Revela.Core.Helpers;
 using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Abstractions;
 using Spectara.Revela.Sdk.Configuration;
@@ -507,6 +508,11 @@ internal sealed partial class ThemeExtractCommand(
         var themesFolder = Path.Combine(projectPath, ProjectPaths.Themes);
         var targetPath = Path.Combine(themesFolder, themeName);
 
+        if (!TryValidateTargetTheme(themesFolder, targetPath, themeName))
+        {
+            return 1;
+        }
+
         // For extract: always prefer installed theme (user wants fresh copy from original)
         // Fall back to local only if installed theme not found
         var sourceTheme = themeRegistry.ResolveInstalled(sourceName)
@@ -637,6 +643,24 @@ internal sealed partial class ThemeExtractCommand(
         AnsiConsole.Write(panel);
 
         return 0;
+    }
+
+    /// <summary>
+    /// Ensures the target theme folder is strictly inside the project's themes folder,
+    /// because a forced extraction deletes and overwrites it.
+    /// </summary>
+    private static bool TryValidateTargetTheme(string themesFolder, string targetPath, string themeName)
+    {
+        if (DirectoryDeletionGuard.TryValidateContainedDirectory(targetPath, themesFolder, out var unsafeReason))
+        {
+            return true;
+        }
+
+        ErrorPanels.ShowError(
+            "Invalid Theme Name",
+            $"[yellow]Theme name '{Markup.Escape(themeName)}' must name a folder inside themes/.[/]\n\n" +
+            $"{Markup.Escape(unsafeReason)}");
+        return false;
     }
 
     private static async Task UpdateThemeNameAsync(string themePath, string newName, CancellationToken cancellationToken)
@@ -803,6 +827,11 @@ internal sealed partial class ThemeExtractCommand(
         // Determine target directory
         var targetThemeName = targetName ?? sourceName;
         var themesDir = Path.Combine(projectPath, ProjectPaths.Themes, targetThemeName);
+
+        if (!TryValidateTargetTheme(Path.Combine(projectPath, ProjectPaths.Themes), themesDir, targetThemeName))
+        {
+            return 1;
+        }
 
         // Check if target exists
         if (Directory.Exists(themesDir) && !force)
