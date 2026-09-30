@@ -89,8 +89,8 @@ jobs:
 
       # Standard 3-step pipeline (build → test → pack) per Microsoft's
       # GitHub Actions guidance. `IsPackable` is set per-project in csproj
-      # (default false in Directory.Build.props, true on the 14 published
-      # projects), so `dotnet pack` against the solution emits exactly the
+      # (default false in Directory.Build.props, true on every published
+      # project), so `dotnet pack` against the solution emits exactly the
       # right packages.
       #
       # `DebugType=embedded` keeps symbol info inside each DLL (no separate

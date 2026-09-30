@@ -1,33 +1,16 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <IsPackable>true</IsPackable>
-    <Description>Revela Plugin - Theme management (list, install, extract, inspect)</Description>
-    <PackageTags>revela;plugin;theme;management;tier-bundled;category-core</PackageTags>
-    <PackageIcon>icon.png</PackageIcon>
-    <PackageReleaseNotes>https://github.com/spectara/revela/blob/main/CHANGELOG.md</PackageReleaseNotes>
-    <PackageType>RevelaPlugin</PackageType>
     <!-- Trim/AOT analyzers — Theme is statically linked into Cli.Embedded (AOT target). -->
     <IsAotCompatible>true</IsAotCompatible>
   </PropertyGroup>
 
   <ItemGroup>
-    <None Include="README.md" Pack="true" PackagePath="/" />
-    <None Include="../../../assets/revela_100.png" Pack="true" PackagePath="icon.png" />
+    <ProjectReference Include="..\..\Sdk\Sdk.csproj" />
+    <ProjectReference Include="..\..\Core\Core.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <ProjectReference Include="..\\..\\Sdk\Sdk.csproj">
-      <Private>false</Private>
-      <ExcludeAssets>runtime</ExcludeAssets>
-    </ProjectReference>
-    <ProjectReference Include="..\\..\\Core\Core.csproj">
-      <Private>false</Private>
-      <ExcludeAssets>runtime</ExcludeAssets>
-    </ProjectReference>
-  </ItemGroup>
-
-  <!-- InternalsVisibleTo for test projects and host (during migration) -->
+  <!-- InternalsVisibleTo for test projects and the host -->
   <ItemGroup>
     <InternalsVisibleTo Include="$(RevelaNamespacePrefix).Tests.Commands" />
     <InternalsVisibleTo Include="$(RevelaNamespacePrefix).Commands" />

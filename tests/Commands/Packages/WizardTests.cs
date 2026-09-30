@@ -9,8 +9,7 @@ namespace Spectara.Revela.Tests.Commands.Packages;
 public sealed class WizardTests
 {
     private static readonly string[] ExpectedThemes = ["Spectara.Revela.Themes.Lumina"];
-    private static readonly string[] ExpectedCorePlugins = ["Spectara.Revela.Plugins.Core.Fixture"];
-    private static readonly string[] ExpectedOptionalPlugins = ["Spectara.Revela.Plugins.Statistics", "spectara.revela.plugins.lowercase"];
+    private static readonly string[] ExpectedPlugins = ["Spectara.Revela.Plugins.Statistics", "spectara.revela.plugins.lowercase"];
 
     [TestMethod]
     public void PartitionPackages_MixedIndex_OffersOnlyOfficialPackages()
@@ -18,18 +17,16 @@ public sealed class WizardTests
         IReadOnlyList<PackageIndexEntry> themes = [Entry("Spectara.Revela.Themes.Lumina"), Entry("Evil.Themes.Fake")];
         IReadOnlyList<PackageIndexEntry> plugins =
         [
-            Entry("Spectara.Revela.Plugins.Core.Fixture"),
             Entry("Evil.Plugins.Core.Backdoor"),
             Entry("Evil.Spectara.Revela.Plugins.Squat"),
             Entry("Spectara.Revela.Plugins.Statistics"),
             Entry("spectara.revela.plugins.lowercase"),
         ];
 
-        var (offeredThemes, corePlugins, optionalPlugins) = Wizard.PartitionPackages(themes, plugins);
+        var (offeredThemes, offeredPlugins) = Wizard.PartitionPackages(themes, plugins);
 
         CollectionAssert.AreEqual(ExpectedThemes, offeredThemes.Select(p => p.Id).ToArray());
-        CollectionAssert.AreEqual(ExpectedCorePlugins, corePlugins.Select(p => p.Id).ToArray());
-        CollectionAssert.AreEqual(ExpectedOptionalPlugins, optionalPlugins.Select(p => p.Id).ToArray());
+        CollectionAssert.AreEqual(ExpectedPlugins, offeredPlugins.Select(p => p.Id).ToArray());
     }
 
     [TestMethod]

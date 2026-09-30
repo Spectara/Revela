@@ -1,24 +1,11 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <IsPackable>true</IsPackable>
-    <Description>Revela Plugin - Core site generation pipeline (scan, render pages, process images)</Description>
-    <PackageTags>revela;plugin;generate;scan;render;images;core;tier-bundled;category-core</PackageTags>
-    <PackageIcon>icon.png</PackageIcon>
-    <PackageReleaseNotes>https://github.com/spectara/revela/blob/main/CHANGELOG.md</PackageReleaseNotes>
-    <PackageType>RevelaPlugin</PackageType>
-
-    <!-- Ensure all package dependencies are copied to output -->
-    <!-- Required because Core ProjectReference uses Private=false which breaks transitive copy -->
-    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
-
     <!-- Trim/AOT analyzers — Generate is statically linked into Cli.Embedded (AOT target). -->
     <IsAotCompatible>true</IsAotCompatible>
-
-    <!-- Plugin packaging handled by Spectara.Revela.Sdk.targets -->
   </PropertyGroup>
 
-  <!-- InternalsVisibleTo for test projects and host (during migration) -->
+  <!-- InternalsVisibleTo for test projects and the host -->
   <ItemGroup>
     <InternalsVisibleTo Include="$(RevelaNamespacePrefix).Tests.Commands" />
     <InternalsVisibleTo Include="$(RevelaNamespacePrefix).Tests.Integration" />
@@ -28,22 +15,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Include="README.md" Pack="true" PackagePath="/" />
-    <None Include="../../../assets/revela_100.png" Pack="true" PackagePath="icon.png" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <!-- Reference to host Sdk - NOT copied to output (loaded from host) -->
-    <ProjectReference Include="..\\..\\Sdk\Sdk.csproj">
-      <Private>false</Private>
-      <ExcludeAssets>runtime</ExcludeAssets>
-    </ProjectReference>
-    <!-- Core reference needed for service implementations (AssetResolver, TemplateResolver, etc.) -->
-    <!-- Interfaces and config types are in SDK; only implementation registrations need Core -->
-    <ProjectReference Include="..\\..\\Core\Core.csproj">
-      <Private>false</Private>
-      <ExcludeAssets>runtime</ExcludeAssets>
-    </ProjectReference>
+    <ProjectReference Include="..\..\Sdk\Sdk.csproj" />
+    <!-- Core provides service implementations (AssetResolver, TemplateResolver, etc.) -->
+    <ProjectReference Include="..\..\Core\Core.csproj" />
   </ItemGroup>
 
   <ItemGroup Label="Image Processing">

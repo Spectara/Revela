@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.0.1-beta.21] - 2026-09-30
+
 ### Added
 
 - **Inline galleries and explicit photo viewers** - place `[[gallery]]` blocks in page content and choose `page`, `lightbox`, or `none` through theme defaults, project configuration, or page frontmatter. Dedicated `/photo/` pages participate in the sitemap; occurrence-specific navigation returns visitors to the selected gallery position. Lumina supports native dialog opening and closing without JavaScript in browsers with invoker-command support, with optional JavaScript navigation and zoom enhancements.
@@ -42,6 +44,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Built-in features were still packed as plugins** - `Features/Generate` and `Features/Theme` kept the plugin packaging from an abandoned "everything is a plugin" design (#24, reverted in #32), so every build produced `Spectara.Revela.Features.*` plugin packages that were bundled in the Full release and offered by the setup wizard. They are now plain built-in libraries, and the wizard's unused auto-installed "core plugin" tier is removed.
 - **Plugin and theme packages built on Linux lacked their dependencies** - `Directory.Build.targets` imported `src\Sdk\Build\...` while the folder is `src/Sdk/build/`, so on case-sensitive file systems the SDK packaging target silently did not run and released packages (e.g. OneDrive) contained only the plugin assembly without `.deps.json` or private dependencies. The path is fixed, a unit test compares build-file paths ordinally on every OS, and release/test scripts now reject plugin or theme packages without their `.deps.json`.
 - **Wide-gamut and CMYK photos were published with wrong colors** - variants were saved without their ICC profile but also without converting the pixels, so browsers showed Display P3 / Adobe RGB photos desaturated (placeholders too) and the original-size variant of CMYK JPEGs stayed 4-channel CMYK. Variants and placeholders are now converted to sRGB using the embedded profile (perceptual intent) after resizing. HDR gain-map JPEGs are published as their SDR image. The image output version changes, so existing variants are regenerated once.
 - **Edited source images kept their stale variants** - the scan stored the new file size and modification time in the manifest before image processing compared against those same values, so replaced photos were reported as cached. Image processing now records its own fingerprint per image (source size + modification time, theme resize mode, image output version) only after all variants were written, and regenerates when it differs. Changing the theme's resize mode now regenerates affected images as well. Existing projects regenerate all images once after upgrading.
@@ -537,7 +540,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Source.OneDrive (OneDrive Shared Folder Support)
 - Commands: generate, init, clean, theme, plugins, restore
 
-[Unreleased]: https://github.com/spectara/revela/compare/v0.0.1-beta.20...HEAD
+[Unreleased]: https://github.com/spectara/revela/compare/v0.0.1-beta.21...HEAD
+[0.0.1-beta.21]: https://github.com/spectara/revela/compare/v0.0.1-beta.20...v0.0.1-beta.21
 [0.0.1-beta.20]: https://github.com/spectara/revela/compare/v0.0.1-beta.19...v0.0.1-beta.20
 [0.0.1-beta.19]: https://github.com/spectara/revela/compare/v0.0.1-beta.18...v0.0.1-beta.19
 [0.0.1-beta.18]: https://github.com/spectara/revela/compare/v0.0.1-beta.17...v0.0.1-beta.18

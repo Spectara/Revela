@@ -325,7 +325,7 @@ try {
     Measure-Step "NuGet Packages" {
         # Pack everything from the existing Release build (no rebuild). The
         # solution-wide pack respects each csproj's <IsPackable>, so exactly
-        # the right 14 packages are produced — no hardcoded list to maintain.
+        # exactly the published packages are produced — no hardcoded list to maintain.
         Write-Info "Packing all NuGet packages (solution-wide)..."
         New-Item -ItemType Directory -Path $PluginsDir | Out-Null
 

@@ -1,13 +1,10 @@
 <Project>
   <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)..'))" />
 
-  <!-- SDK.targets is imported by Directory.Build.targets (root) for PackageType=RevelaPlugin -->
-
-  <!-- Core features: {Prefix}.Features.{ProjectName} -->
+  <!-- Built-in features: compiled into the host via Commands.csproj, never packed or loaded as plugins -->
   <PropertyGroup>
     <AssemblyName>$(RevelaNamespacePrefix).Features.$(MSBuildProjectName)</AssemblyName>
     <RootNamespace>$(AssemblyName)</RootNamespace>
-    <PackageId>$(AssemblyName)</PackageId>
   </PropertyGroup>
 
   <PropertyGroup>

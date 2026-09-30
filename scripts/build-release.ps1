@@ -276,7 +276,7 @@ try {
         # Full variant — pack plugins/themes/SDK into packages/
         #
         # `IsPackable` is set per-project in csproj (default false in
-        # Directory.Build.props, true on the 14 published projects), so a
+        # Directory.Build.props, true on every published project), so a
         # solution-wide pack emits exactly the right packages.
         #
         # Safe with `--no-build` because the Release build above used

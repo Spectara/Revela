@@ -1,6 +1,6 @@
 # Spectara.Revela.Features.Theme
 
-Theme management plugin for Revela — list, install, extract, and inspect themes.
+Built-in theme management feature of Revela — list, install, extract, and inspect themes. Compiled into the host; not a plugin package.
 
 ## Commands
 

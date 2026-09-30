@@ -32,7 +32,6 @@ internal sealed partial class Wizard(
 
     private const string FullInstallation = "full";
     private const string CustomInstallation = "custom";
-    private const string CorePluginPrefix = PackageTrustPolicy.OfficialPackagePrefix + "Plugins.Core.";
 
     /// <summary>
     /// Runs the setup wizard.
@@ -61,11 +60,9 @@ internal sealed partial class Wizard(
         }
 
         // Get available packages directly from package index (no plugin dependency)
-        // Core plugins are always installed — not user-selectable
-        var (availableThemes, corePlugins, optionalPlugins) = PartitionPackages(
+        var (availableThemes, availablePlugins) = PartitionPackages(
             await packageIndexService.SearchByTypeAsync("RevelaTheme", cancellationToken),
             await packageIndexService.SearchByTypeAsync("RevelaPlugin", cancellationToken));
-        IReadOnlyList<PackageIndexEntry> availablePlugins = [.. corePlugins, .. optionalPlugins];
 
         var totalAvailable = availableThemes.Count + availablePlugins.Count;
 
@@ -94,13 +91,8 @@ internal sealed partial class Wizard(
         }
         else
         {
-            // Custom installation — core plugins auto-installed, user selects the rest
-            if (corePlugins.Count > 0)
-            {
-                ShowCorePluginsInfo(corePlugins);
-            }
-
-            var (selectedThemes, selectedPlugins) = PromptCustomSelection(availableThemes, optionalPlugins);
+            // Custom installation — user selects themes and plugins
+            var (selectedThemes, selectedPlugins) = PromptCustomSelection(availableThemes, availablePlugins);
 
             // Must have at least one theme
             if (selectedThemes.Count == 0)
@@ -113,25 +105,16 @@ internal sealed partial class Wizard(
                 }
             }
 
-            // Always install core plugins first
-            var coreResult = await InstallPackagesAsync(corePlugins, cancellationToken);
-
             // Install user-selected packages
             themeResult = await InstallSelectedAsync(
                 selectedThemes,
                 InstallPackageAsync,
                 cancellationToken);
 
-            var optionalResult = await InstallSelectedAsync(
+            pluginResult = await InstallSelectedAsync(
                 selectedPlugins,
                 InstallPackageAsync,
                 cancellationToken);
-
-            // Merge core + optional plugin results
-            pluginResult = new InstallResult(
-                [.. coreResult.Installed, .. optionalResult.Installed],
-                [.. coreResult.AlreadyInstalled, .. optionalResult.AlreadyInstalled],
-                [.. coreResult.Failed, .. optionalResult.Failed]);
         }
 
         // Determine if restart is needed
@@ -204,9 +187,9 @@ internal sealed partial class Wizard(
     /// </summary>
     /// <remarks>
     /// Only official <c>Spectara.Revela.*</c> packages are offered, even if the index
-    /// service returns more; core plugins (auto-installed) must be official core plugins.
+    /// service returns more.
     /// </remarks>
-    internal static (IReadOnlyList<PackageIndexEntry> Themes, IReadOnlyList<PackageIndexEntry> CorePlugins, IReadOnlyList<PackageIndexEntry> OptionalPlugins) PartitionPackages(
+    internal static (IReadOnlyList<PackageIndexEntry> Themes, IReadOnlyList<PackageIndexEntry> Plugins) PartitionPackages(
         IReadOnlyList<PackageIndexEntry> themes,
         IReadOnlyList<PackageIndexEntry> plugins)
     {
@@ -216,14 +199,8 @@ internal sealed partial class Wizard(
         var officialPlugins = plugins
             .Where(p => PackageTrustPolicy.IsOfficialPackageId(p.Id))
             .ToList();
-        var corePlugins = officialPlugins
-            .Where(p => p.Id.StartsWith(CorePluginPrefix, StringComparison.OrdinalIgnoreCase))
-            .ToList();
-        var optionalPlugins = officialPlugins
-            .Where(p => !p.Id.StartsWith(CorePluginPrefix, StringComparison.OrdinalIgnoreCase))
-            .ToList();
 
-        return (officialThemes, corePlugins, optionalPlugins);
+        return (officialThemes, officialPlugins);
     }
 
     /// <summary>
@@ -420,21 +397,6 @@ internal sealed partial class Wizard(
 
         await globalConfigManager.AddPackageAsync(package.Id, package.Version, cancellationToken);
         return 0;
-    }
-
-    private static void ShowCorePluginsInfo(IReadOnlyList<PackageIndexEntry> corePlugins)
-    {
-        AnsiConsole.WriteLine();
-
-        var lines = new List<string> { "[bold]Core plugins[/] [dim](always installed):[/]", "" };
-        foreach (var plugin in corePlugins)
-        {
-            var shortName = plugin.Id.Replace("Spectara.Revela.Features.", "", StringComparison.Ordinal);
-            lines.Add($"  [green]✓[/] {Markup.Escape(shortName)} [dim]- {Markup.Escape(Truncate(plugin.Description, 50))}[/]");
-        }
-
-        AnsiConsole.MarkupLine(string.Join("\n", lines));
-        AnsiConsole.WriteLine();
     }
 
     private static string Truncate(string? text, int maxLength)

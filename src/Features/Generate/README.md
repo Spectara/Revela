@@ -1,6 +1,6 @@
 # Spectara.Revela.Features.Generate
 
-Core site generation plugin for Revela — scans content, renders pages, and processes images.
+Built-in site generation feature of Revela — scans content, renders pages, and processes images. Compiled into the host; not a plugin package.
 
 ## Features
 
