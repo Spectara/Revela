@@ -82,7 +82,17 @@ On Linux/macOS each variant also gets a launcher script (`start-revela.sh` or `S
 ```powershell
 .\scripts\build-release.ps1 -Variant Standalone
 $exe = (Get-Item artifacts\releases\standalone-* | Sort-Object LastWriteTime -Descending | Select-Object -First 1).FullName + '\revela.exe'
-& $exe -p samples\revela-website generate all
+# Revela uses the current directory as the project (there is no -p flag)
+Push-Location samples\revela-website; & $exe generate all; Pop-Location
+```
+
+On Windows the Standalone variant needs the MSVC toolchain. From a normal shell, load it
+first and clear the `Platform` variable that `vcvars64.bat` sets (MSBuild would read it as
+the solution platform):
+
+```powershell
+$vcvars = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" -latest -products * -find 'VC\Auxiliary\Build\vcvars64.bat'
+& $env:ComSpec /c "call `"$vcvars`" >nul && set `"Platform=`"&& pwsh -NoProfile -File scripts\build-release.ps1 -Variant Standalone"
 ```
 
 For a full pipeline test (install plugins, generate, verify .NET tool install), use `scripts/test-release.ps1` instead.

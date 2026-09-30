@@ -185,7 +185,7 @@ dotnet tool install -g --add-source ./artifacts/packages Spectara.Revela
 
 ```bash
 revela --help
-revela -p path/to/site generate all
+cd path/to/site && revela generate all
 ```
 
 ### Publish to NuGet.org
