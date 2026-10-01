@@ -140,7 +140,6 @@ main section dl dt:hover+dd::after {
 
 /* Month header labels */
 .heatmap-header .heatmap-month {
-  position: relative;
   font-size: var(--font-size-0);
   color: var(--color-light);
   text-align: center;
@@ -149,22 +148,15 @@ main section dl dt:hover+dd::after {
   padding-bottom: var(--space-3xs);
 }
 
-.heatmap-month-initial {
-  display: none;
-}
-
-/* Too narrow for "Mär"/"Nov": show initials, keep the names for screen readers. */
+/* Too narrow for "Mär"/"Nov": show only the initial. The full short name stays in
+   the text, so screen readers still read it. */
 @container (width < 300px) {
-  .heatmap-month-name {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    clip-path: inset(50%);
-  }
+  .heatmap-header .heatmap-month {
+    font-size: 0;
 
-  .heatmap-month-initial {
-    display: inline;
+    &::first-letter {
+      font-size: var(--font-size-0);
+    }
   }
 }
 

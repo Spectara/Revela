@@ -164,6 +164,11 @@ function Assert-GeneratedOutput {
     $outputDir = Join-Path $SampleProjectDir 'output'
     $expectedPaths = @('index.html', '_assets/main.css')
     if ($Variant -ne 'Standalone') { $expectedPaths += @('test-gallery/index.html', 'test-stats/index.html', 'about/index.html') }
+    else {
+        # Native AOT trims Scriban's built-in functions to the ones the theme templates use, so the
+        # Standalone run must render every template kind: statistics (heatmap), photo pages, 404.
+        $expectedPaths += @('galleries/statistics/index.html', 'photo/landscapes/ocean-sunset/index.html', '404.html')
+    }
     foreach ($relativePath in $expectedPaths) {
         $path = Join-Path $outputDir $relativePath
         if (-not (Test-Path -LiteralPath $path -PathType Leaf) -or (Get-Item -LiteralPath $path).Length -eq 0) {

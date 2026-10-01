@@ -274,7 +274,7 @@ public sealed class GenerateAllEndToEndTests
             "<h2>Übersicht</h2>", "</strong> Bilder</span>", "</strong> Galerien</span>", "</strong> Kameras</span>",
             "</strong> Objektive</span>", "<h3>Kameramodelle</h3>", "<h3>Fotoaktivität</h3>", "<h3>Fotos nach Monat</h3>",
             "<h3>Ausrichtung</h3>", ">Querformat</dt>", ">März</dt>", ">Andere</dt>", ">Canon EOS R5</dt>",
-            "title=\"3 Fotos\"", "<span class=\"heatmap-month-name\">Mär</span><span class=\"heatmap-month-initial\" aria-hidden=\"true\">M</span>", "<span>Weniger</span>",
+            "title=\"3 Fotos\"", "<span class=\"heatmap-month\">Mär</span>", "<span>Weniger</span>",
         })
         {
             Assert.Contains(german, html, StringComparison.Ordinal);
