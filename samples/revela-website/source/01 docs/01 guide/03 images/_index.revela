@@ -61,9 +61,16 @@ HDR photos (JPEG with gain map) are published as their standard dynamic range im
 
 ## Detail View Zoom
 
-Canonical photo pages and Lightbox images support two-finger pinch zoom, double-tap on touch
-screens, double-click with a mouse, and dragging while zoomed. Zoom is limited by the available
-source resolution and resets when a Lightbox closes or switches images.
+Canonical photo pages and Lightbox images can be zoomed:
+
+- **Mouse or pen:** click to zoom to the original's full resolution (one image pixel per screen
+  pixel), drag to move around, click again to zoom out.
+- **Touch:** double-tap to zoom in or out, pinch with two fingers (up to twice the original
+  resolution), and move with one finger while zoomed.
+
+The page first loads a photo that fits the screen and fetches the original only when someone
+zooms; until it has arrived the current photo is shown enlarged, so it never goes blank. Zoom
+resets when a Lightbox closes or switches images.
 
 Mouse-wheel zoom and swipe-to-close are intentionally not enabled, so vertical scrolling to
 photo metadata remains predictable.
