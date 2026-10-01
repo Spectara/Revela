@@ -116,19 +116,20 @@ main section dl dt:hover+dd::after {
 
 .heatmap {
   margin: 0 0 var(--space-l);
+  container-type: inline-size;
 }
 
-/* Grid rows */
+/* Grid rows: minmax(0, 1fr) lets the month columns shrink below their label width. */
 .heatmap-row {
   display: grid;
-  grid-template-columns: 4ch repeat(12, 1fr);
+  grid-template-columns: 4ch repeat(12, minmax(0, 1fr));
   gap: 3px;
   margin-bottom: 3px;
 }
 
 /* Year label */
 .heatmap-label {
-  font-size: var(--font-size--1);
+  font-size: var(--font-size-0);
   color: var(--color-light);
   font-variant-numeric: tabular-nums;
   display: flex;
@@ -139,17 +140,39 @@ main section dl dt:hover+dd::after {
 
 /* Month header labels */
 .heatmap-header .heatmap-month {
-  font-size: var(--font-size--2);
+  position: relative;
+  font-size: var(--font-size-0);
   color: var(--color-light);
   text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
   padding-bottom: var(--space-3xs);
+}
+
+.heatmap-month-initial {
+  display: none;
+}
+
+/* Too narrow for "Mär"/"Nov": show initials, keep the names for screen readers. */
+@container (width < 300px) {
+  .heatmap-month-name {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+
+  .heatmap-month-initial {
+    display: inline;
+  }
 }
 
 /* Cells */
 .heatmap-cell {
   aspect-ratio: 1;
   border-radius: 2px;
-  font-size: var(--font-size--2);
+  font-size: var(--font-size-0);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -193,7 +216,7 @@ main section dl dt:hover+dd::after {
   justify-content: flex-end;
   gap: 3px;
   margin-top: var(--space-xs);
-  font-size: var(--font-size--2);
+  font-size: var(--font-size-0);
   color: var(--color-light);
 
   .heatmap-cell {
@@ -205,7 +228,7 @@ main section dl dt:hover+dd::after {
 /* Responsive: remove text from cells, tighter grid */
 @media (width <=480px) {
   .heatmap-row {
-    grid-template-columns: 3ch repeat(12, 1fr);
+    grid-template-columns: 3ch repeat(12, minmax(0, 1fr));
     gap: 2px;
     margin-bottom: 2px;
   }

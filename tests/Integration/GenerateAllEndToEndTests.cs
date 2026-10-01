@@ -274,7 +274,7 @@ public sealed class GenerateAllEndToEndTests
             "<h2>Übersicht</h2>", "</strong> Bilder</span>", "</strong> Galerien</span>", "</strong> Kameras</span>",
             "</strong> Objektive</span>", "<h3>Kameramodelle</h3>", "<h3>Fotoaktivität</h3>", "<h3>Fotos nach Monat</h3>",
             "<h3>Ausrichtung</h3>", ">Querformat</dt>", ">März</dt>", ">Andere</dt>", ">Canon EOS R5</dt>",
-            "title=\"3 Fotos\"", "<span class=\"heatmap-month\">Mär</span>", "<span>Weniger</span>",
+            "title=\"3 Fotos\"", "<span class=\"heatmap-month-name\">Mär</span><span class=\"heatmap-month-initial\" aria-hidden=\"true\">M</span>", "<span>Weniger</span>",
         })
         {
             Assert.Contains(german, html, StringComparison.Ordinal);
@@ -1183,6 +1183,54 @@ public sealed class GenerateAllEndToEndTests
         Assert.Contains("featured/#grid-2-photo-i-shared", photoHtml);
     }
 
+    [TestMethod]
+    public async Task GeneratePages_BareInlineGallery_EveryPhotoPageLinkTargetsAnExistingAnchor()
+    {
+        // Arrange: a home page and a gallery that both place their own photos with [[gallery]]
+        // between texts, as the bare block replaces the trailing grid.
+        using var project = TestProject.Create(p => p
+            .WithSiteJson(new { title = "Anchors", author = "Test" })
+            .AddGallery("Years", g => g
+                .AddRealImage("fence.jpg", 1920, 1080)
+                .AddRealImage("lake.jpg", 1920, 1080)));
+        await File.WriteAllTextAsync(
+            Path.Combine(project.SourcePath, "_index.revela"),
+            "+++\nfilter = \"all\"\n+++\nBefore.\n\n[[gallery]]\n\nAfter.");
+        await File.WriteAllTextAsync(
+            Path.Combine(project.SourcePath, "Years", "_index.revela"),
+            "Before.\n\n[[gallery]]\n\nAfter.");
+
+        // Act
+        var (scanResult, renderResult) = await ScanAndRenderAsync(project, new LuminaTheme());
+
+        // Assert: every return and "seen in" link on a photo page lands on an element of its page.
+        Assert.IsTrue(scanResult.Success, $"Scan failed: {scanResult.ErrorMessage}");
+        Assert.IsTrue(renderResult.Success, $"Render failed: {renderResult.ErrorMessage}");
+        var photoPages = Directory.GetFiles(Path.Combine(project.OutputPath, "photo"), "index.html", SearchOption.AllDirectories);
+        Assert.HasCount(2, photoPages);
+        var checkedLinks = 0;
+        foreach (var photoPage in photoPages)
+        {
+            var html = await File.ReadAllTextAsync(photoPage);
+            var pageUrl = new Uri(
+                new Uri("https://site.test/"),
+                Path.GetRelativePath(project.OutputPath, Path.GetDirectoryName(photoPage)!).Replace('\\', '/') + "/");
+            var links = ExtractAttributeValues(html, "data-photo-return rel=\"up\" href=\"")
+                .Concat(ExtractAttributeValues(html[html.IndexOf("<footer>", StringComparison.Ordinal)..], "<a href=\""));
+            foreach (var link in links)
+            {
+                var target = new Uri(pageUrl, link);
+                var targetFile = Path.Combine(project.OutputPath, target.AbsolutePath.TrimStart('/'), "index.html");
+                var targetHtml = await File.ReadAllTextAsync(targetFile);
+                Assert.Contains($" id=\"{target.Fragment.TrimStart('#')}\"", targetHtml,
+                    $"{link} on {pageUrl.AbsolutePath} points to a missing anchor.");
+                checkedLinks++;
+            }
+        }
+
+        Assert.AreEqual(8, checkedLinks, "Each photo has a return link and a footer link for the home page and Years.");
+    }
+
     private const string StoryContextId = "g-story";
     private const string FenceSlugId = "years_fence";
 
@@ -1718,9 +1766,9 @@ public sealed class GenerateAllEndToEndTests
         Assert.HasCount(4, dialogIds);
         Assert.IsTrue(targets.All(dialogIds.Contains), "Every trigger and navigation target must resolve to a dialog.");
         Assert.IsTrue(commandTargets.All(dialogIds.Contains), "Every declarative dialog command must resolve to a dialog.");
-        Assert.AreEqual(2, targets.Count(target => target.StartsWith("lightbox-bare-1-", StringComparison.Ordinal)));
+        Assert.AreEqual(2, targets.Count(target => target.StartsWith("lightbox-photo-i-", StringComparison.Ordinal)));
         Assert.AreEqual(2, targets.Count(target => target.StartsWith("lightbox-bare-2-", StringComparison.Ordinal)));
-        Assert.AreEqual(4, commandTargets.Count(target => target.StartsWith("lightbox-bare-1-", StringComparison.Ordinal)));
+        Assert.AreEqual(4, commandTargets.Count(target => target.StartsWith("lightbox-photo-i-", StringComparison.Ordinal)));
         Assert.AreEqual(4, commandTargets.Count(target => target.StartsWith("lightbox-bare-2-", StringComparison.Ordinal)));
     }
 

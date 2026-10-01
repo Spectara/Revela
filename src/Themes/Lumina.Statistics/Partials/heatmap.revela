@@ -11,21 +11,13 @@ Expects variables set before include:
 ##~}}
 <h3>{{ html_escape (t 'statistics.photo_activity') }}</h3>
 <div class="heatmap">
-    {{~ # Month labels header ~}}
+    {{~ # Month labels header: the initial replaces the short name when the heatmap gets narrow ~}}
     <div class="heatmap-row heatmap-header">
         <span class="heatmap-label"></span>
-        <span class="heatmap-month">{{ html_escape (t 'statistics.month_short.1') }}</span>
-        <span class="heatmap-month">{{ html_escape (t 'statistics.month_short.2') }}</span>
-        <span class="heatmap-month">{{ html_escape (t 'statistics.month_short.3') }}</span>
-        <span class="heatmap-month">{{ html_escape (t 'statistics.month_short.4') }}</span>
-        <span class="heatmap-month">{{ html_escape (t 'statistics.month_short.5') }}</span>
-        <span class="heatmap-month">{{ html_escape (t 'statistics.month_short.6') }}</span>
-        <span class="heatmap-month">{{ html_escape (t 'statistics.month_short.7') }}</span>
-        <span class="heatmap-month">{{ html_escape (t 'statistics.month_short.8') }}</span>
-        <span class="heatmap-month">{{ html_escape (t 'statistics.month_short.9') }}</span>
-        <span class="heatmap-month">{{ html_escape (t 'statistics.month_short.10') }}</span>
-        <span class="heatmap-month">{{ html_escape (t 'statistics.month_short.11') }}</span>
-        <span class="heatmap-month">{{ html_escape (t 'statistics.month_short.12') }}</span>
+        {{~ for month in 1..12 ~}}
+        {{~ month_name = t ('statistics.month_short.' + month) ~}}
+        <span class="heatmap-month"><span class="heatmap-month-name">{{ html_escape month_name }}</span><span class="heatmap-month-initial" aria-hidden="true">{{ html_escape (month_name | string.slice 0 1) }}</span></span>
+        {{~ end ~}}
     </div>
 
     {{~ # One row per year ~}}

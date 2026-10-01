@@ -1335,8 +1335,10 @@ internal sealed partial class RenderService(
         return occurrences;
     }
 
+    // The first bare [[gallery]] block keeps the plain anchor that photo pages link back to;
+    // only repeats of the same block need a prefix to keep ids unique on the page.
     private static string OccurrenceId(string imageSlug, int? gridNumber, int? bareRenderOrdinal) =>
-        bareRenderOrdinal is null
+        bareRenderOrdinal is null or 1
             ? PhotoPageCatalog.Anchor(imageSlug, gridNumber)
             : $"bare-{bareRenderOrdinal.Value}-{PhotoPageCatalog.Anchor(imageSlug, null)}";
 
