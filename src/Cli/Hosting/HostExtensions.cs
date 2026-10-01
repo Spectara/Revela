@@ -5,9 +5,12 @@ using System.Diagnostics;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Options;
 
+using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Abstractions;
 using Spectara.Revela.Sdk.Output;
+using Spectara.Revela.Sdk.Services;
 
 using Spectre.Console;
 
@@ -132,7 +135,7 @@ internal static class HostExtensions
 
         // Auto-generate "all" subcommands for parents with ≥2 IsSequentialStep children
         // Uses CommandDescriptor.Order (stored in PipelineStepOrderProvider) as single source of truth
-        AutoGenerateAllCommands(rootCommand, orderRegistry, pipelineOrderProvider);
+        AutoGenerateAllCommands(rootCommand, orderRegistry, pipelineOrderProvider, services);
 
         // Register subcommand orders for ALL commands (core + plugin-provided)
         // This must happen AFTER plugins have registered and merged their commands
@@ -294,11 +297,16 @@ internal static class HostExtensions
     /// just set <see cref="CommandDescriptor.IsSequentialStep"/> and implement
     /// <see cref="IPipelineStep"/>.
     /// </para>
+    /// <para>
+    /// Each step gets the hidden <see cref="PipelineInvocation.InPipelineOption"/>, which the
+    /// "all" command passes so steps can suppress standalone-only "Next steps" hints.
+    /// </para>
     /// </remarks>
     private static void AutoGenerateAllCommands(
         RootCommand rootCommand,
         CommandOrderRegistry orderRegistry,
-        PipelineStepOrderProvider pipelineOrderProvider)
+        PipelineStepOrderProvider pipelineOrderProvider,
+        IServiceProvider services)
     {
         foreach (var parent in rootCommand.Subcommands)
         {
@@ -324,16 +332,53 @@ internal static class HostExtensions
                 .ThenBy(cmd => cmd.Name, StringComparer.OrdinalIgnoreCase)
                 .ToList();
 
-            var allCommand = CreatePipelineAllCommand(orderedSteps);
+            foreach (var step in orderedSteps)
+            {
+                step.Options.Add(PipelineInvocation.InPipelineOption);
+            }
+
+            var completionHint = string.Equals(category, PipelineCategories.Generate, StringComparison.Ordinal)
+                ? CreateGenerateCompletionHint(rootCommand, services)
+                : null;
+
+            var allCommand = CreatePipelineAllCommand(orderedSteps, completionHint);
             parent.Subcommands.Add(allCommand);
             orderRegistry.Register(allCommand, 0); // "all" is always first
         }
     }
 
     /// <summary>
+    /// Creates the single next-step hint shown after a successful <c>generate all</c>.
+    /// </summary>
+    /// <remarks>
+    /// Resolved lazily at completion so the output path reflects the loaded configuration.
+    /// Only suggests <c>revela serve</c> when the Serve plugin registered that command.
+    /// </remarks>
+    private static Func<string> CreateGenerateCompletionHint(RootCommand rootCommand, IServiceProvider services)
+    {
+        var canServe = rootCommand.Subcommands.Any(c => string.Equals(c.Name, "serve", StringComparison.Ordinal));
+
+        return () =>
+        {
+            var outputPath = services.GetRequiredService<IPathResolver>().OutputPath;
+            var projectPath = services.GetRequiredService<IOptions<ProjectEnvironment>>().Value.Path;
+            var displayPath = string.IsNullOrEmpty(projectPath)
+                ? outputPath
+                : Path.GetRelativePath(projectPath, outputPath);
+            var folder = $"[cyan]{Markup.Escape(displayPath)}[/]";
+
+            return canServe
+                ? $"[dim]Next:[/] preview with [cyan]revela serve[/], then deploy the {folder} folder"
+                : $"[dim]Next:[/] deploy the {folder} folder to your web host";
+        };
+    }
+
+    /// <summary>
     /// Creates an "all" command that executes pipeline steps in order.
     /// </summary>
-    private static Command CreatePipelineAllCommand(List<Command> steps)
+    /// <param name="steps">Step commands in execution order.</param>
+    /// <param name="completionHint">Optional next-step hint (markup) printed after a successful run.</param>
+    private static Command CreatePipelineAllCommand(List<Command> steps, Func<string>? completionHint)
     {
         var stepNames = string.Join(" → ", steps.Select(s => s.Name));
         var description = $"Execute full pipeline ({stepNames})";
@@ -374,7 +419,9 @@ internal static class HostExtensions
 
                 AnsiConsole.WriteLine();
 
-                var exitCode = await step.Parse([]).InvokeAsync(stepInvocation, cancellationToken);
+                var exitCode = await step
+                    .Parse([PipelineInvocation.InPipelineOption.Name])
+                    .InvokeAsync(stepInvocation, cancellationToken);
 
                 if (exitCode != 0)
                 {
@@ -391,6 +438,11 @@ internal static class HostExtensions
 
             stopwatch.Stop();
             AnsiConsole.MarkupLine($"{OutputMarkers.Success} Pipeline completed in {stopwatch.Elapsed.TotalSeconds:F2}s");
+
+            if (completionHint is not null)
+            {
+                AnsiConsole.MarkupLine(completionHint());
+            }
 
             return 0;
         });
