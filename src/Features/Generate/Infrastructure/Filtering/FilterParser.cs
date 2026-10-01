@@ -134,7 +134,13 @@ internal sealed class FilterParser
         }
 
         // Parse optional direction (default: ascending)
+        var isRandom = path is [var single] && single.Equals(SortClause.RandomKeyword, StringComparison.OrdinalIgnoreCase);
         var direction = SortDirection.Asc;
+        if (isRandom && (Check(TokenType.Asc) || Check(TokenType.Desc)))
+        {
+            throw CreateError("'sort random' does not take a direction (asc/desc)", Current().Position);
+        }
+
         if (Match(TokenType.Desc))
         {
             direction = SortDirection.Desc;

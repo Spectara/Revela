@@ -387,6 +387,55 @@ public sealed class FilterServiceTests
     }
 
     [TestMethod]
+    public void ApplyQuery_SortRandom_ReturnsShuffledPermutationOfMatches()
+    {
+        // Arrange
+        var images = Enumerable.Range(0, 40)
+            .Select(i => CreateTestImage($"img-{i:D2}.jpg", make: i % 2 == 0 ? "Canon" : "Sony"))
+            .ToArray();
+        var canonInFilenameOrder = images
+            .Where(image => image.Exif!.Make == "Canon")
+            .Select(image => image.Filename)
+            .ToList();
+
+        // Act: 20! orders, so five runs all in filename order would mean no shuffle happened
+        var runs = Enumerable.Range(0, 5)
+            .Select(_ => FilterService.ApplyQuery(images, "exif.make == 'Canon' | sort random").Select(i => i.Filename).ToList())
+            .ToList();
+
+        // Assert
+        foreach (var run in runs)
+        {
+            CollectionAssert.AreEquivalent(canonInFilenameOrder, run);
+        }
+
+        Assert.IsTrue(runs.Any(run => !run.SequenceEqual(canonInFilenameOrder, StringComparer.Ordinal)));
+    }
+
+    [TestMethod]
+    public void ApplyQuery_SortRandomWithLimit_ReturnsLimitedSubsetOfMatches()
+    {
+        // Arrange
+        var images = Enumerable.Range(0, 30)
+            .Select(i => CreateTestImage($"img-{i:D2}.jpg", make: i < 20 ? "Canon" : "Sony"))
+            .ToArray();
+        var globalSort = new ImageSortConfig
+        {
+            Field = "dateTaken",
+            Direction = SortDirection.Desc,
+            Fallback = "filename"
+        };
+
+        // Act
+        var result = FilterService.ApplyQuery(images, "exif.make == 'Canon' | sort random | limit 5", null, globalSort).ToList();
+
+        // Assert
+        Assert.HasCount(5, result);
+        Assert.IsTrue(result.All(image => image.Exif!.Make == "Canon"));
+        Assert.HasCount(5, result.Select(image => image.Filename).Distinct(StringComparer.Ordinal));
+    }
+
+    [TestMethod]
     public void ApplyQuery_ExplicitSortWithNullValues_PutsNullsLastWithoutConfiguredFallback()
     {
         // Arrange

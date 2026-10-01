@@ -367,6 +367,26 @@ public sealed class FilterParserTests
     }
 
     [TestMethod]
+    public void Parse_SortRandom_ReturnsRandomSortClause()
+    {
+        // Arrange & Act
+        var query = ParseQuery("all | sort random | limit 15");
+
+        // Assert
+        Assert.IsNotNull(query.Sort);
+        Assert.IsTrue(query.Sort.IsRandom);
+        Assert.AreEqual(15, query.Limit);
+    }
+
+    [TestMethod]
+    public void Parse_SortRandomWithDirection_ThrowsException()
+    {
+        // Act & Assert
+        var exception = Assert.ThrowsExactly<FilterParseException>(() => ParseQuery("all | sort random desc"));
+        Assert.Contains("random", exception.Message, StringComparison.Ordinal);
+    }
+
+    [TestMethod]
     public void Parse_SortAndLimit_ReturnsBoth()
     {
         // Arrange & Act

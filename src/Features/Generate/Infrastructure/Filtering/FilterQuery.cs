@@ -16,13 +16,24 @@ internal sealed record SortClause(
     /// Gets the property path as a dot-separated string.
     /// </summary>
     public string PropertyPathString => string.Join(".", PropertyPath);
+
+    /// <summary>
+    /// Gets a value indicating whether this is <c>sort random</c> (shuffled at build time).
+    /// </summary>
+    public bool IsRandom => PropertyPath is [var single] && single.Equals(RandomKeyword, StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// The pseudo-property that requests a random order.
+    /// </summary>
+    public const string RandomKeyword = "random";
 }
 
 /// <summary>
 /// Represents a complete filter query with optional sort and limit clauses.
 /// </summary>
 /// <remarks>
-/// Syntax: <c>filter_expression [| sort property [asc|desc]] [| limit n]</c>
+/// Syntax: <c>filter_expression [| sort property [asc|desc]] [| limit n]</c>, where
+/// <c>sort random</c> shuffles the matches on every build.
 /// <para>
 /// Examples:
 /// <list type="bullet">

@@ -166,6 +166,7 @@ Chain operations using the pipe `|` operator:
 
 ```
 filter_expression | sort property [asc|desc] | limit n
+filter_expression | sort random | limit n
 ```
 
 ### The `all` Keyword
@@ -189,6 +190,23 @@ filter = "all | sort dateTaken desc"
 # By EXIF property
 filter = "exif.make == 'Canon' | sort exif.iso desc"
 ```
+
+### Random Order
+
+`sort random` shuffles the matching photos. Combined with `limit`, it picks a
+different selection each time:
+
+```toml
+# 15 random photos for the home page
+filter = "all | sort random | limit 15"
+```
+
+The order is chosen while the site is built, not when someone visits it. Every
+`revela generate all` gives a new selection, and the site stays the same between
+builds. To change it regularly, run `revela generate all` on a schedule (for
+example a nightly task); photos that are already processed are not processed
+again. `sort random` takes no `asc`/`desc`. In an inline `[[gallery: …]]` block
+the selection changes on every `revela generate pages`.
 
 ### Limit Clause
 
@@ -270,11 +288,21 @@ filter = "exif.focalLength >= 85"   # Portrait/Telephoto
 filter = "all | sort dateTaken desc | limit 5"
 ```
 
+### Random Selection (Homepage)
+
+```toml
+filter = "all | sort random | limit 15"
+```
+
 ### Best Rated
 
 ```toml
 filter = "exif.raw.Rating >= 4 | sort exif.raw.Rating desc"
 ```
+
+> **Note:** This reads the EXIF `Rating` tag, which Windows and some editors write.
+> Capture One and Lightroom usually store star ratings in XMP, which Revela does
+> not read yet, so this filter may find no photos from those exports.
 
 ---
 

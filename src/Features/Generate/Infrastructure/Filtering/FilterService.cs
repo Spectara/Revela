@@ -1,6 +1,7 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Linq.Expressions;
 using System.Reflection;
+using System.Security.Cryptography;
 
 using Spectara.Revela.Sdk.Configuration;
 using Spectara.Revela.Sdk.Models;
@@ -144,7 +145,14 @@ internal sealed class FilterService
         }
 
         // Step 2: Select one effective sort and apply a stable filename tie-breaker
-        if (query.Sort is not null)
+        if (query.Sort is { IsRandom: true })
+        {
+            // Shuffle from a stable filename order; the secure generator only avoids CA5394, the order is not security-relevant.
+            var shuffled = result.OrderBy(image => image.Filename, StringComparer.OrdinalIgnoreCase).ToArray();
+            RandomNumberGenerator.Shuffle(shuffled.AsSpan());
+            result = shuffled;
+        }
+        else if (query.Sort is not null)
         {
             result = ApplySort(result, query.Sort);
         }
