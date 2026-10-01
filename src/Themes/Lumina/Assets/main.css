@@ -508,6 +508,14 @@ main {
     margin-bottom: var(--space-l);
     container-type: inline-size;
 
+    /* River Flow pictures are sticky and overflow their rows on purpose; at the end of a
+       page the footer covers that overflow. An inline [[gallery]] followed by more content
+       has nothing covering it, so clip there. `clip` (unlike `hidden`) creates no scroll
+       container, so the sticky motion is unchanged. */
+    &:not(:last-child) {
+      overflow-y: clip;
+    }
+
     >h2 {
       margin-bottom: var(--space-m);
       background-color: var(--color-bg);
