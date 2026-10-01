@@ -485,6 +485,11 @@ main article nav.cta+p {
   color: var(--color-light);
 }
 
+/* Screenshots keep the soft corners Lumina dropped for photos. */
+.content-image {
+  border-radius: var(--space-2xs);
+}
+
 /* Screenshots inside cards: no content-image block margin, just a small gap. */
 .path-card .content-image {
   margin: 0 0 var(--space-2xs);

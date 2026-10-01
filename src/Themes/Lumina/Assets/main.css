@@ -1109,7 +1109,6 @@ body>footer {
   display: block;
   margin: var(--space-l) auto;
   max-width: 100%;
-  border-radius: var(--space-2xs);
   overflow: hidden;
 
   img {
