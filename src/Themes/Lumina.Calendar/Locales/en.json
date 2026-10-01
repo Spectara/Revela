@@ -2,5 +2,6 @@
   "calendar.free": "Free",
   "calendar.booked": "Booked",
   "calendar.arrive": "Arrival",
-  "calendar.depart": "Departure"
+  "calendar.depart": "Departure",
+  "calendar.no_data": "No calendar data yet."
 }

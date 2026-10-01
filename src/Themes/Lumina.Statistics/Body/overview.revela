@@ -16,6 +16,10 @@ Expects:
 ##~}}
 <section>
 <h1>{{ html_escape ((gallery.title && gallery.title != '') ? gallery.title : (t 'statistics.overview')) }}</h1>
+{{~ if !statistics ~}}
+{{~ # statistics.json is missing, e.g. `generate scan` dropped stale data and `generate statistics` has not run yet ~}}
+<p>{{ html_escape (t 'statistics.no_data') }}</p>
+{{~ else ~}}
 <h2>{{ html_escape (t 'statistics.overview') }}</h2>
 
 <p class="stats-summary">
@@ -64,6 +68,7 @@ Expects:
 {{~ if statistics.images_by_month && statistics.images_by_month.size > 0 ~}}
 {{~ chart_title = (t 'statistics.photos_by_month'); chart_items = statistics.images_by_month ~}}
 {{ include 'statistics/bar-chart' }}
+{{~ end ~}}
 {{~ end ~}}
 
 </section>

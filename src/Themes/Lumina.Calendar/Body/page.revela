@@ -9,7 +9,12 @@ Heading: the page title is the single <h1>, unless the Markdown body brings its 
 <h1>{{ html_escape ((gallery.title && gallery.title != '') ? gallery.title : site.title) }}</h1>
 {{~ end ~}}
 {{ page_content }}
+{{~ if !calendar ~}}
+{{~ # calendar.json is missing, e.g. `generate scan` dropped stale data and the calendar step has not run yet ~}}
+<p>{{ html_escape (t 'calendar.no_data') }}</p>
+{{~ end ~}}
 </section>
+{{~ if calendar ~}}
 
 <div class="calendar-legend">
   <span class="legend-free">{{ html_escape (calendar.labels.free ?? (t 'calendar.free')) }}</span>
@@ -45,3 +50,4 @@ Heading: the page title is the single <h1>, unless the Markdown body brings its 
   </div>
 {{ end }}
 </div>
+{{~ end ~}}

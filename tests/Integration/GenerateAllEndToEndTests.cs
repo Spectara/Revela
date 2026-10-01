@@ -311,6 +311,28 @@ public sealed class GenerateAllEndToEndTests
     }
 
     [TestMethod]
+    [DataRow("en", "No statistics yet.", "No calendar data yet.")]
+    [DataRow("de", "Noch keine Statistik vorhanden.", "Noch keine Kalenderdaten vorhanden.")]
+    public async Task RenderAsync_ExtensionDataFileMissing_RendersPageWithNoticeInsteadOfFailing(
+        string language,
+        string statisticsNotice,
+        string calendarNotice)
+    {
+        // `generate scan` deletes stale plugin data; running `generate pages` next must not abort every page.
+        var statisticsHtml = await RenderExtensionPageAsync(
+            new LuminaStatisticsExtension(), "stats", "statistics/overview", "statistics.json", data: null, language);
+        var calendarHtml = await RenderExtensionPageAsync(
+            new LuminaCalendarExtension(), "availability", "calendar/page", "calendar.json", data: null, language);
+
+        Assert.Contains("<h1>Extension</h1>", statisticsHtml, StringComparison.Ordinal);
+        Assert.Contains(statisticsNotice, statisticsHtml, StringComparison.Ordinal);
+        Assert.DoesNotContain("stats-summary", statisticsHtml, StringComparison.Ordinal);
+        Assert.Contains("<h1>Extension</h1>", calendarHtml, StringComparison.Ordinal);
+        Assert.Contains(calendarNotice, calendarHtml, StringComparison.Ordinal);
+        Assert.DoesNotContain("calendar-legend", calendarHtml, StringComparison.Ordinal);
+    }
+
+    [TestMethod]
     public async Task RenderAsync_LuminaExtensionPages_RenderExactlyOneTitleH1()
     {
         var statisticsHtml = await RenderExtensionPageAsync(
@@ -400,7 +422,7 @@ public sealed class GenerateAllEndToEndTests
         string pageFolder,
         string template,
         string dataFile,
-        object data,
+        object? data,
         string language = "en")
     {
         using var project = TestProject.Create(builder => builder
@@ -417,7 +439,10 @@ public sealed class GenerateAllEndToEndTests
             """);
         var cachePath = Path.Combine(project.RootPath, ProjectPaths.Cache, pageFolder);
         Directory.CreateDirectory(cachePath);
-        await File.WriteAllTextAsync(Path.Combine(cachePath, dataFile), JsonSerializer.Serialize(data));
+        if (data is not null)
+        {
+            await File.WriteAllTextAsync(Path.Combine(cachePath, dataFile), JsonSerializer.Serialize(data));
+        }
         using var host = RevelaTestHost.Build(project.RootPath, services =>
         {
             services.AddRevelaCommands();

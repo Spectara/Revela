@@ -526,6 +526,17 @@ main {
         outline-offset: 2px;
       }
     }
+
+    /* A content image linked to its photo page ([![alt](photo.jpg)](photo/…/)) is not text:
+       no underline, and the focus ring frames the picture. */
+    :is(p, li, td, dd, blockquote) a:has(> picture.content-image) {
+      display: block;
+      border-bottom: 0;
+
+      &:focus-visible {
+        outline-offset: 4px;
+      }
+    }
   }
 
   .gallery {

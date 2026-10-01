@@ -2,5 +2,6 @@
   "calendar.free": "Frei",
   "calendar.booked": "Belegt",
   "calendar.arrive": "Anreise",
-  "calendar.depart": "Abreise"
+  "calendar.depart": "Abreise",
+  "calendar.no_data": "Noch keine Kalenderdaten vorhanden."
 }

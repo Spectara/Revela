@@ -784,6 +784,15 @@ internal sealed partial class RenderService(
                 galleryImages,
                 ct);
 
+            foreach (var (variableName, source) in effectiveDataSources)
+            {
+                if (!resolvedData.ContainsKey(variableName)
+                    && source.EndsWith(".json", StringComparison.OrdinalIgnoreCase))
+                {
+                    LogDataFileMissing(logger, source, gallery.Slug);
+                }
+            }
+
             // Preserve original markdown body as page_content for custom body templates.
             // Custom templates can use either {{ page_content }} or {{ gallery.body }}.
             var pageContent = gallery.Body ?? string.Empty;
@@ -1706,6 +1715,9 @@ internal sealed partial class RenderService(
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "{Warning}")]
     private static partial void LogInlineGalleryWarning(ILogger logger, string warning);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Data file '{DataFile}' for page '/{PagePath}' is missing, so the page renders without it. Run the generate step that creates it (for example 'revela generate statistics') or 'revela generate all'")]
+    private static partial void LogDataFileMissing(ILogger logger, string dataFile, string pagePath);
 
     #endregion
 }

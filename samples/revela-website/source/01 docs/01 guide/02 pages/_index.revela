@@ -107,6 +107,23 @@ More stories from the trip are in the other galleries.
 `[[gallery: <filter>]]` shows a different selection at that spot, using the
 [filter syntax](../filtering/), for example `[[gallery: all | sort random | limit 6]]`.
 
+### Photos in Your Text
+
+A Markdown image becomes the same responsive picture as in the galleries:
+
+```markdown
+![A fence with gaps to look through](<Years/2018/002190.jpg>)
+```
+
+Revela looks for the file in the page's folder, then in `_images/`, then as a path
+from the source folder. Put paths with spaces in `< >`. A photo in the text has no
+zoom of its own; to offer one, link it to its photo page (open the photo on your site
+and copy the address after the domain):
+
+```markdown
+[![A fence with gaps to look through](<Years/2018/002190.jpg>)](photo/years/2018/002190/)
+```
+
 ### Open the Menu from Your Text
 
 Lumina's menu opens without JavaScript, so a sentence can open it too. Write the

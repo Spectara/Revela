@@ -43,5 +43,6 @@
   "statistics.month_short.9": "Sep",
   "statistics.month_short.10": "Okt",
   "statistics.month_short.11": "Nov",
-  "statistics.month_short.12": "Dez"
+  "statistics.month_short.12": "Dez",
+  "statistics.no_data": "Noch keine Statistik vorhanden."
 }
