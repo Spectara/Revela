@@ -181,6 +181,11 @@ then English. Your own content (titles, descriptions, Markdown) and EXIF values
 are never translated. Month and day names from `format_date` follow the same
 language.
 
+A site has **one** language. Revela does not build multilingual sites (the same
+pages in several languages with a language switcher). The `revela` command line
+itself is English, and page titles written by `revela create page` (such as
+"Photo Statistics") are plain front matter you can change to your language.
+
 ### Change a Wording
 
 Each theme keeps its text in `Locales/<language>.json`, a flat list of

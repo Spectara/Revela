@@ -31,8 +31,9 @@ Modern static site generator for photographers — fast, beautiful output, no qu
 
 - **🖼️ Modern Image Formats** — JPEG by default, AVIF and WebP available with one config flag (off by default because they're CPU-heavy to encode). Responsive sizes and CSS-only LQIP placeholders included.
 - **🧙 Interactive Wizards** — Project setup, theme picker, plugin install — no manual config files.
-- ** Plugin System** — Compress, Serve, Statistics, Calendar, Source.OneDrive, Source.Calendar.
+- **🔌 Plugin System** — Compress, Serve, Statistics, Calendar, Source.OneDrive, Source.Calendar.
 - **🎨 Themes** — Lumina (+ Statistics and Calendar extensions). Customize via overrides instead of forking.
+- **🌐 Your Language** — The theme's own text (navigation, labels, 404 page, dates) follows `language` in `site.json`. English and German are included; add another language with one JSON file.
 - **⚡ Fast** — Powered by libvips (NetVips), parallel processing, change detection.
 - **📊 Lighthouse-friendly** — [photo.kirk.one](https://photo.kirk.one) (built with Revela) scores 100/100/100/100 with FCP 0.2 s, LCP 0.3 s, zero blocking time, zero layout shift.
 
