@@ -5,6 +5,7 @@ using System.Net;
 using Scriban;
 using Scriban.Parsing;
 using Scriban.Runtime;
+using Spectara.Revela.Core.Themes;
 using Spectara.Revela.Features.Generate.Abstractions;
 using Spectara.Revela.Features.Generate.Models;
 using Spectara.Revela.Sdk;
@@ -41,6 +42,8 @@ internal sealed partial class ScribanTemplateEngine(
     private readonly ConcurrentDictionary<string, Template> compiledTemplates = new();
     private ITheme? currentTheme;
     private IReadOnlyDictionary<string, Image>? imageLookup;
+    private ThemeStrings strings = ThemeStrings.Empty;
+    private TranslateFunction translateFunction = new(ThemeStrings.Empty);
 
     /// <summary>
     /// Converts PascalCase member names to lowercase for Scriban templates
@@ -119,6 +122,15 @@ internal sealed partial class ScribanTemplateEngine(
     /// </summary>
     public void SetImageLookup(IReadOnlyDictionary<string, Image> imagesBySourcePath) =>
         imageLookup = imagesBySourcePath;
+
+    /// <summary>
+    /// Set the theme UI strings and formatting culture for <c>t</c>, <c>format_date</c> and <c>format_filesize</c>.
+    /// </summary>
+    public void SetStrings(ThemeStrings themeStrings)
+    {
+        strings = themeStrings;
+        translateFunction = new TranslateFunction(themeStrings);
+    }
 
     /// <summary>
     /// Render template content with data model
@@ -453,13 +465,15 @@ internal sealed partial class ScribanTemplateEngine(
         scriptObject.Import("absolute_variant_url", new Func<object?, int, string, string>((image, size, format) =>
             AbsoluteVariantUrl(image, size, format, assetsBasePath, baseUrl, basePath, currentPagePath)));
         scriptObject.Import("asset_url", new Func<string?, string>(path => AssetUrl(path, basePath)));
-        scriptObject.Import("format_date", new Func<DateTime, string, string>(FormatDate));
-        scriptObject.Import("format_filesize", new Func<long, string>(FormatFileSize));
+        var culture = strings.Culture;
+        scriptObject.Import("format_date", new Func<DateTime, string, string>((date, format) => FormatDate(date, format, culture)));
+        scriptObject.Import("format_filesize", new Func<long, string>(bytes => FormatFileSize(bytes, culture)));
         scriptObject.Import("format_exif_exposure", new Func<double?, string>(FormatExifExposure));
         scriptObject.Import("format_exif_aperture", new Func<double?, string>(FormatExifAperture));
         scriptObject.Import("html_escape", new Func<object?, string>(HtmlEscape));
         scriptObject.Import("markdown", new Func<string?, string>(Markdown));
         scriptObject.Import("find_image", new Func<string, Image?>(path => ResolveImageForTemplate(path, scriptObject)));
+        scriptObject["t"] = translateFunction;
 
         context.PushGlobal(scriptObject);
 
@@ -623,26 +637,26 @@ internal sealed partial class ScribanTemplateEngine(
     }
 
     /// <summary>
-    /// Format date with custom format string
+    /// Format date with custom format string in the site language's culture
     /// </summary>
-    /// <example>{{ format_date image.date_taken "yyyy-MM-dd" }} → 2024-01-20</example>
-    private static string FormatDate(DateTime date, string format)
+    /// <example>{{ format_date image.date_taken "d. MMMM yyyy" }} → 20. Januar 2024 (site.language "de")</example>
+    private static string FormatDate(DateTime date, string format, CultureInfo culture)
     {
         try
         {
-            return date.ToString(format, CultureInfo.InvariantCulture);
+            return date.ToString(format, culture);
         }
-        catch
+        catch (FormatException)
         {
-            return date.ToShortDateString();
+            return date.ToString("d", culture);
         }
     }
 
     /// <summary>
-    /// Format file size in human-readable format
+    /// Format file size in human-readable format using the site language's number format
     /// </summary>
-    /// <example>{{ format_filesize 1048576 }} → 1.00 MB</example>
-    private static string FormatFileSize(long bytes)
+    /// <example>{{ format_filesize 1048576 }} → 1 MB</example>
+    private static string FormatFileSize(long bytes, CultureInfo culture)
     {
         string[] sizes = ["B", "KB", "MB", "GB"];
         double len = bytes;
@@ -654,7 +668,7 @@ internal sealed partial class ScribanTemplateEngine(
             len /= 1024;
         }
 
-        return string.Format(CultureInfo.InvariantCulture, "{0:0.##} {1}", len, sizes[order]);
+        return string.Format(culture, "{0:0.##} {1}", len, sizes[order]);
     }
 
     /// <summary>

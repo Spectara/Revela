@@ -1,0 +1,17 @@
+{
+  "nav.menu": "Menü",
+  "photo.navigation": "Fotonavigation",
+  "photo.close": "Foto schließen",
+  "photo.previous": "Vorheriges Foto",
+  "photo.next": "Nächstes Foto",
+  "photo.previous_in": "Vorheriges Foto in {0}",
+  "photo.next_in": "Nächstes Foto in {0}",
+  "photo.return_to": "Zurück zu {0}",
+  "photo.label": "Foto {0}",
+  "photo.view": "Foto {0} ansehen",
+  "photo.tags": "Schlagwörter:",
+  "photo.aperture": "Blende",
+  "photo.shutter": "Belichtungszeit",
+  "photo.focal_length": "Brennweite",
+  "photo.lens_on_camera": "{0} an {1}"
+}

@@ -126,7 +126,7 @@ public sealed class FrontmatterReaderTests
     }
 
     [TestMethod]
-    public void Read_PartialLabels_FillsDefaults()
+    public void Read_PartialLabels_LeavesUnsetLabelsForTheme()
     {
         var content = """
             +++
@@ -137,11 +137,12 @@ public sealed class FrontmatterReaderTests
 
         var config = FrontmatterReader.Read(content);
 
+        // Unset labels stay null so the theme renders its translation for site.language.
         Assert.IsNotNull(config);
         Assert.IsNotNull(config.Labels);
         Assert.AreEqual("belegt", config.Labels.Booked);
-        Assert.AreEqual("Free", config.Labels.Free);
-        Assert.AreEqual("Arrival", config.Labels.Arrive);
-        Assert.AreEqual("Departure", config.Labels.Depart);
+        Assert.IsNull(config.Labels.Free);
+        Assert.IsNull(config.Labels.Arrive);
+        Assert.IsNull(config.Labels.Depart);
     }
 }

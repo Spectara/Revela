@@ -130,10 +130,10 @@ internal static class FrontmatterReader
 
         return new CalendarLabels
         {
-            Booked = booked ?? "Booked",
-            Free = free ?? "Free",
-            Arrive = arrive ?? "Arrival",
-            Depart = depart ?? "Departure"
+            Booked = booked,
+            Free = free,
+            Arrive = arrive,
+            Depart = depart
         };
     }
 

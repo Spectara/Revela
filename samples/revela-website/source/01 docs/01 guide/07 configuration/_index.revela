@@ -221,7 +221,7 @@ Site-specific content (title, description, copyright, language) is stored separa
 }
 ```
 
-`language` defaults to `en`. It sets the page language and is used, for example, for month names in calendars.
+`language` defaults to `en`. It sets the page language, selects the theme's UI text (see [Theme Language](../themes/#theme-language)), and controls month and day names, for example in calendars and `format_date`.
 
 Configure with:
 

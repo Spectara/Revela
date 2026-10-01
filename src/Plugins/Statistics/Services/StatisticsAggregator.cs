@@ -202,7 +202,10 @@ internal sealed partial class StatisticsAggregator(
             var otherCount = sorted.Skip(settings.MaxEntriesPerCategory).Sum(c => c.Count);
             if (otherCount > 0)
             {
-                top.Add(("Other", otherCount));
+                top.Add((OtherLabel, otherCount));
+                var entries = CalculatePercent(top);
+                entries[^1] = entries[^1] with { Key = "other" };
+                return entries;
             }
 
             sorted = top;
@@ -211,7 +214,9 @@ internal sealed partial class StatisticsAggregator(
         return CalculatePercent(sorted);
     }
 
-    private static List<StatisticsEntry> CalculatePercent(List<(string Label, int Count)> sorted)
+    private static List<StatisticsEntry> CalculatePercent(
+        List<(string Label, int Count)> sorted,
+        Func<string, string?>? keyOf = null)
     {
         if (sorted.Count == 0)
         {
@@ -225,11 +230,14 @@ internal sealed partial class StatisticsAggregator(
             .. sorted.Select(c => new StatisticsEntry
             {
                 Name = c.Label,
+                Key = keyOf?.Invoke(c.Label),
                 Count = c.Count,
                 Percentage = maxCount > 0 ? (int)Math.Round(c.Count * 100.0 / maxCount) : 0
             })
         ];
     }
+
+    private const string OtherLabel = "Other";
 
     private static readonly string[] MonthNames =
     [
@@ -251,7 +259,9 @@ internal sealed partial class StatisticsAggregator(
             .Where(c => c.Count > 0)
             .ToList();
 
-        return CalculatePercent(sorted);
+        return CalculatePercent(
+            sorted,
+            label => string.Create(CultureInfo.InvariantCulture, $"month.{Array.IndexOf(MonthNames, label) + 1}"));
     }
 
     /// <summary>
@@ -333,7 +343,12 @@ internal sealed partial class StatisticsAggregator(
             .OrderByDescending(c => c.Count)
             .ToList();
 
-        return CalculatePercent(counts);
+        return CalculatePercent(counts, label => label switch
+        {
+            "Landscape" => "orientation.landscape",
+            "Portrait" => "orientation.portrait",
+            _ => "orientation.square"
+        });
     }
 
     #endregion

@@ -154,7 +154,7 @@ internal sealed partial class ThemeFilesCommand(
         grid.AddRow(new Markup("[blue]Templates[/]"));
         grid.AddRow(templatesTable);
         grid.AddEmptyRow();
-        grid.AddRow(new Markup("[green]Configuration[/]"));
+        grid.AddRow(new Markup("[green]Configuration & Locales[/]"));
         grid.AddRow(configTable);
         grid.AddEmptyRow();
         grid.AddRow(new Markup("[yellow]Assets[/]"));
@@ -166,7 +166,7 @@ internal sealed partial class ThemeFilesCommand(
         panel.Padding = new Padding(1, 0, 1, 0);
 
         AnsiConsole.Write(panel);
-        AnsiConsole.MarkupLine($"\n[dim]Total:[/] {templateEntries.Count} templates, {configEntries.Count} config files, {assetEntries.Count} assets");
+        AnsiConsole.MarkupLine($"\n[dim]Total:[/] {templateEntries.Count} templates, {configEntries.Count} config/locale files, {assetEntries.Count} assets");
 
         // Build legend with colored extension names
         var legendParts = new List<string> { $"[{ThemeColor}]{Markup.Escape(themeName)}[/] = Theme" };
@@ -271,6 +271,18 @@ internal sealed partial class ThemeFilesCommand(
                     entries[matchingKey] = "[green]Local[/]";
                 }
             }
+        }
+
+        // UI strings: Locales/<lang>.json (theme) and Locales/<Prefix>/<lang>.json (extensions),
+        // merged key by key with local overrides in themes/{name}/Locales/ (read by ThemeLocales)
+        foreach (var entry in ThemeLocales.GetEntries(theme, extensions))
+        {
+            var isLocal = File.Exists(Path.Combine(projectPath, ProjectPaths.Themes, themeName, ThemeLocales.GetLocalPath(entry.Key)));
+            entries[entry.Key] = isLocal
+                ? "[green]Local[/]"
+                : entry.ExtensionName is { } extName
+                    ? $"[{extensionColorMap.GetValueOrDefault(extName, "blue")}]{Markup.Escape(extName)}[/]"
+                    : $"[{ThemeColor}]{Markup.Escape(themeName)}[/]";
         }
 
         return [.. entries.Select(kvp => (kvp.Key, kvp.Value))];

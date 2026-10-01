@@ -44,6 +44,10 @@
     <EmbeddedResource Include="Assets\**\*">
       <LogicalName>Assets\%(RecursiveDir)%(Filename)%(Extension)</LogicalName>
     </EmbeddedResource>
+    <!-- Embed UI strings (Locales/<language>.json), resolved per site.language -->
+    <EmbeddedResource Include="Locales\*.json">
+      <LogicalName>Locales\%(Filename)%(Extension)</LogicalName>
+    </EmbeddedResource>
   </ItemGroup>
 
   <ItemGroup>

@@ -7,16 +7,17 @@ Shared concept metadata for canonical photo pages and lightbox dialogs.
 <aside class="photo-metadata">
     {{~ if has_exposure ~}}
     <p>
-        {{~ if image.exif.f_number ~}}<span><span class="visually-hidden">Aperture </span>{{ format_exif_aperture image.exif.f_number }}</span>{{~ end ~}}
-        {{~ if image.exif.exposure_time ~}}<span><span class="visually-hidden">Shutter </span>{{ format_exif_exposure image.exif.exposure_time }}</span>{{~ end ~}}
+        {{~ if image.exif.f_number ~}}<span><span class="visually-hidden">{{ html_escape (t 'photo.aperture') }} </span>{{ format_exif_aperture image.exif.f_number }}</span>{{~ end ~}}
+        {{~ if image.exif.exposure_time ~}}<span><span class="visually-hidden">{{ html_escape (t 'photo.shutter') }} </span>{{ format_exif_exposure image.exif.exposure_time }}</span>{{~ end ~}}
         {{~ if image.exif.iso ~}}<span>ISO {{ html_escape image.exif.iso }}</span>{{~ end ~}}
-        {{~ if image.exif.focal_length ~}}<span><span class="visually-hidden">Focal length </span>{{ html_escape image.exif.focal_length }} mm</span>{{~ end ~}}
+        {{~ if image.exif.focal_length ~}}<span><span class="visually-hidden">{{ html_escape (t 'photo.focal_length') }} </span>{{ html_escape image.exif.focal_length }} mm</span>{{~ end ~}}
     </p>
     {{~ end ~}}
     {{~ if has_equipment ~}}
     <p>
         {{~ if image.exif.lens_model ~}}
-        <span>{{ html_escape image.exif.lens_model }}{{~ if image.exif.make || image.exif.model }} on {{ html_escape image.exif.make }}{{ image.exif.make && image.exif.model ? " " : "" }}{{ html_escape image.exif.model }}{{ end }}</span>
+        {{~ metadata_camera = (image.exif.make ?? '') + (image.exif.make && image.exif.model ? ' ' : '') + (image.exif.model ?? '') ~}}
+        <span>{{~ if metadata_camera != '' }}{{ html_escape (t 'photo.lens_on_camera' image.exif.lens_model metadata_camera) }}{{ else }}{{ html_escape image.exif.lens_model }}{{ end }}</span>
         {{~ else if image.exif.make || image.exif.model ~}}
         <span>{{ html_escape image.exif.make }}{{ image.exif.make && image.exif.model ? " " : "" }}{{ html_escape image.exif.model }}</span>
         {{~ end ~}}

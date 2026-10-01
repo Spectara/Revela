@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Text.Json;
 using Microsoft.Extensions.Options;
 using Scriban.Runtime;
+using Spectara.Revela.Core.Themes;
 using Spectara.Revela.Features.Generate.Abstractions;
 using Spectara.Revela.Features.Generate.Infrastructure;
 using Spectara.Revela.Features.Generate.Models;
@@ -55,6 +56,7 @@ internal sealed partial class RenderService(
     private IReadOnlyList<ITheme> currentExtensions = [];
     private ITheme? currentTheme;
     private IReadOnlyDictionary<string, Image>? currentImageLookup;
+    private ThemeStrings currentStrings = ThemeStrings.Empty;
 
     /// <summary>Gets full path to source directory (supports hot-reload)</summary>
     private string SourcePath => pathResolver.SourcePath;
@@ -72,6 +74,7 @@ internal sealed partial class RenderService(
         var engine = templateEngineFactory();
         engine.SetTheme(currentTheme);
         engine.SetExtensions(currentExtensions);
+        engine.SetStrings(currentStrings);
         if (currentImageLookup is not null)
         {
             engine.SetImageLookup(currentImageLookup);
@@ -186,6 +189,9 @@ internal sealed partial class RenderService(
             // Initialize template resolver (scans theme, extensions, local overrides)
             templateResolver.Initialize(theme, extensions, projectEnvironment.Value.Path);
             assetResolver.Initialize(theme, extensions, projectEnvironment.Value.Path);
+
+            // Theme UI strings for site.language — loaded once per render, shared by all pages.
+            currentStrings = ThemeLocales.Load(theme, extensions, projectEnvironment.Value.Path, config.Project.Language, logger);
 
             var supportsPhotoPages = theme.Manifest.PhotoViewer?.Supported.Contains(PhotoViewerMode.Page) is true;
             var photoTemplate = supportsPhotoPages ? LoadTemplate("body/photo.revela") : null;

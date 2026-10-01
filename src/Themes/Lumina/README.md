@@ -99,6 +99,12 @@ photo_viewer = "none"
 +++
 ```
 
+## Language
+
+Lumina's UI text (menu, photo navigation, screen-reader labels) follows `language` in
+`site.json`; English and German are included. Customize a wording with
+`revela theme extract Lumina --file Locales/de.json` and edit the extracted file.
+
 Page overrides win over the project setting, which wins over Lumina's default. The selected body
 template does not affect the viewer.
 

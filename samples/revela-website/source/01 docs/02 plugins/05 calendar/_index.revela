@@ -67,12 +67,12 @@ The Markdown below the front matter appears above the calendar.
 | `calendar.months` | `12` | Number of months to show, starting with the current month |
 | `calendar.mode` | `"days"` | `"days"` or `"nights"` (see below) |
 | `calendar.locale` | site language | Language for month and day names, for example `"de"` |
-| `calendar.labels.booked` | `"Booked"` | Label for booked days |
-| `calendar.labels.free` | `"Free"` | Label for free days |
-| `calendar.labels.arrive` | `"Arrival"` | Label for arrival days (nights mode) |
-| `calendar.labels.depart` | `"Departure"` | Label for departure days (nights mode) |
+| `calendar.labels.booked` | theme text (`"Booked"`, de: `"Belegt"`) | Label for booked days |
+| `calendar.labels.free` | theme text (`"Free"`, de: `"Frei"`) | Label for free days |
+| `calendar.labels.arrive` | theme text (`"Arrival"`, de: `"Anreise"`) | Label for arrival days (nights mode) |
+| `calendar.labels.depart` | theme text (`"Departure"`, de: `"Abreise"`) | Label for departure days (nights mode) |
 
-The site language comes from `language` in `site.json` (default `en`). An unknown locale falls back to neutral formatting and prints a warning.
+The site language comes from `language` in `site.json` (default `en`). An unknown locale falls back to neutral formatting and prints a warning. Labels you don't set are shown in the site language by the theme (see [Theme Language](../../guide/themes/#theme-language)); set them only to use your own wording.
 
 ### Days or Nights
 

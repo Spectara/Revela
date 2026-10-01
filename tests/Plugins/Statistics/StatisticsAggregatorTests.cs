@@ -167,9 +167,10 @@ public sealed class StatisticsAggregatorTests
         // Act
         var result = aggregator.Aggregate();
 
-        // Assert - Should have 2 cameras + "Other"
+        // Assert - Should have 2 cameras + "Other"; only the synthesized entry carries a translation key
         Assert.HasCount(3, result.Cameras);
-        Assert.IsTrue(result.Cameras.Any(c => c.Name == "Other"));
+        Assert.IsTrue(result.Cameras.Any(c => c.Name == "Other" && c.Key == "other"));
+        Assert.IsTrue(result.Cameras.Where(c => c.Name != "Other").All(c => c.Key is null));
     }
 
     [TestMethod]
@@ -242,8 +243,8 @@ public sealed class StatisticsAggregatorTests
 
         // Assert - January: 2, July: 2
         Assert.HasCount(2, result.ImagesByMonth);
-        Assert.IsTrue(result.ImagesByMonth.Any(m => m.Name == "January" && m.Count == 2));
-        Assert.IsTrue(result.ImagesByMonth.Any(m => m.Name == "July" && m.Count == 2));
+        Assert.IsTrue(result.ImagesByMonth.Any(m => m.Name == "January" && m.Key == "month.1" && m.Count == 2));
+        Assert.IsTrue(result.ImagesByMonth.Any(m => m.Name == "July" && m.Key == "month.7" && m.Count == 2));
     }
 
     [TestMethod]
@@ -264,9 +265,9 @@ public sealed class StatisticsAggregatorTests
 
         // Assert
         Assert.HasCount(3, result.Orientations);
-        Assert.IsTrue(result.Orientations.Any(o => o.Name == "Landscape" && o.Count == 1));
-        Assert.IsTrue(result.Orientations.Any(o => o.Name == "Portrait" && o.Count == 1));
-        Assert.IsTrue(result.Orientations.Any(o => o.Name == "Square" && o.Count == 1));
+        Assert.IsTrue(result.Orientations.Any(o => o.Name == "Landscape" && o.Key == "orientation.landscape" && o.Count == 1));
+        Assert.IsTrue(result.Orientations.Any(o => o.Name == "Portrait" && o.Key == "orientation.portrait" && o.Count == 1));
+        Assert.IsTrue(result.Orientations.Any(o => o.Name == "Square" && o.Key == "orientation.square" && o.Count == 1));
     }
 
     [TestMethod]

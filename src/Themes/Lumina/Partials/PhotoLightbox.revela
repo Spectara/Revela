@@ -17,8 +17,8 @@ previous_occurrence_id, next_occurrence_id, lightbox_id, and alt_text.
     ret candidates | array.join ', '
 end ~}}
 {{~ display_label = image.description && image.description != '' ? image.description : image.id ~}}
-<dialog id="{{ html_escape lightbox_id }}" class="photo-lightbox" data-lightbox closedby="any" aria-label="{{~ if alt_text != '' }}{{ html_escape alt_text }}{{ else }}Photo {{ html_escape image.id }}{{ end }}">
-    <button type="button" commandfor="{{ html_escape lightbox_id }}" command="close" aria-label="Close photo">&times;</button>
+<dialog id="{{ html_escape lightbox_id }}" class="photo-lightbox" data-lightbox closedby="any" aria-label="{{~ if alt_text != '' }}{{ html_escape alt_text }}{{ else }}{{ html_escape (t 'photo.label' image.id) }}{{ end }}">
+    <button type="button" commandfor="{{ html_escape lightbox_id }}" command="close" aria-label="{{ html_escape (t 'photo.close') }}">&times;</button>
     <article style="--width:{{ html_escape image.width }}; --height:{{ html_escape image.height }};{{~ if image.placeholder ~}} --lqip:{{ html_escape image.placeholder }};{{~ end ~}}">
         <picture{{~ if image.placeholder }} data-lqip{{ end }}>
             {{~ for format in image_formats ~}}
@@ -29,22 +29,22 @@ end ~}}
                 width="{{ html_escape image.width }}" height="{{ html_escape image.height }}" loading="lazy" fetchpriority="low" decoding="async">
         </picture>
         <section>
-            <nav aria-label="Photo navigation">
+            <nav aria-label="{{ html_escape (t 'photo.navigation') }}">
                 {{~ if previous_occurrence_id ~}}
-                <button type="button" hidden aria-controls="lightbox-{{ html_escape previous_occurrence_id }}" data-photo-previous data-lightbox-target="lightbox-{{ html_escape previous_occurrence_id }}" aria-label="Previous photo"><span aria-hidden="true">&lsaquo;</span></button>
+                <button type="button" hidden aria-controls="lightbox-{{ html_escape previous_occurrence_id }}" data-photo-previous data-lightbox-target="lightbox-{{ html_escape previous_occurrence_id }}" aria-label="{{ html_escape (t 'photo.previous') }}"><span aria-hidden="true">&lsaquo;</span></button>
                 {{~ else ~}}
                 <span aria-hidden="true"></span>
                 {{~ end ~}}
                 <span data-photo-label>{{ html_escape display_label }}</span>
                 {{~ if next_occurrence_id ~}}
-                <button type="button" hidden aria-controls="lightbox-{{ html_escape next_occurrence_id }}" data-photo-next data-lightbox-target="lightbox-{{ html_escape next_occurrence_id }}" aria-label="Next photo"><span aria-hidden="true">&rsaquo;</span></button>
+                <button type="button" hidden aria-controls="lightbox-{{ html_escape next_occurrence_id }}" data-photo-next data-lightbox-target="lightbox-{{ html_escape next_occurrence_id }}" aria-label="{{ html_escape (t 'photo.next') }}"><span aria-hidden="true">&rsaquo;</span></button>
                 {{~ else ~}}
                 <span aria-hidden="true"></span>
                 {{~ end ~}}
             </nav>
             {{~ include 'photometadata' image ~}}
             <footer>
-                <strong>Tags:</strong>
+                <strong>{{ html_escape (t 'photo.tags') }}</strong>
                 <span>{{ html_escape context_label }}</span>
                 {{~ for tag in image.tags ~}}<span>{{ html_escape tag }}</span>{{~ end ~}}
             </footer>
