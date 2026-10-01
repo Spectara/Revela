@@ -144,8 +144,9 @@ warning and renders nothing.
 
 - `[[photo: path]]` adds a single-image page membership (no previous/next) so the photo page's
   return link targets this page at the photo. Photo blocks are numbered in their own namespace
-  (context `…-photo-n`, anchor `photo-n-photo-i-…`): adding one never renumbers `[[gallery:]]`
-  grids (`…-grid-n`), whose ids are part of existing links.
+  (context `….photo-n`, anchor `photo-n-photo-i-…`): adding one never renumbers `[[gallery:]]`
+  grids (`….grid-n`), whose ids are part of existing links. Ids use the readable slug
+  (`/` → `_`, other characters as `~xxxx`), e.g. `#ctx-r.photo-1` or `#photo-i-jahre_2018_002190`.
 - `[[photo: path | gallery]]` adds no membership and links without a fragment, so the photo page
   shows its primary context. If the photo has no gallery or grid membership with photo pages
   anywhere, the page context is used instead (with a warning) so the photo page has a way back.

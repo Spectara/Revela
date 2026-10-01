@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Text;
 
 using Spectara.Revela.Features.Generate.Models;
 using Spectara.Revela.Sdk.Models;
@@ -100,8 +101,8 @@ internal static class PhotoPageCatalog
 
     /// <summary>
     /// Stable HTML id token (without the <c>ctx-</c> prefix) for a gallery-context fragment.
-    /// The site root maps to <c>r</c>; other galleries use <c>g-</c> followed by
-    /// fixed-width hexadecimal UTF-16 code units, preserving distinct canonical slugs.
+    /// The site root maps to <c>r</c>; other galleries use <c>g-</c> followed by the readable
+    /// encoded slug (see <see cref="EncodeSlug"/>), e.g. <c>g-jahre_2018</c>.
     /// </summary>
     public static string BaseContextId(string gallerySlug)
     {
@@ -110,20 +111,22 @@ internal static class PhotoPageCatalog
     }
 
     /// <summary>
-    /// Stable context id for a base, filtered-grid (<c>-grid-n</c>) or photo-block
-    /// (<c>-photo-n</c>) membership. Grids and photo blocks are numbered independently.
+    /// Stable context id for a base, filtered-grid (<c>.grid-n</c>) or photo-block
+    /// (<c>.photo-n</c>) membership. Grids and photo blocks are numbered independently.
+    /// The <c>.</c> separator never occurs in an encoded slug, so a gallery whose slug ends in
+    /// <c>-grid-1</c> cannot collide with the first grid of another gallery.
     /// </summary>
     public static string ContextId(PhotoMembership membership)
     {
         var baseContextId = BaseContextId(membership.Gallery.Slug);
         if (membership.PhotoNumber is { } photoNumber)
         {
-            return string.Create(CultureInfo.InvariantCulture, $"{baseContextId}-photo-{photoNumber}");
+            return string.Create(CultureInfo.InvariantCulture, $"{baseContextId}.photo-{photoNumber}");
         }
 
         return membership.GridNumber is null
             ? baseContextId
-            : string.Create(CultureInfo.InvariantCulture, $"{baseContextId}-grid-{membership.GridNumber.Value}");
+            : string.Create(CultureInfo.InvariantCulture, $"{baseContextId}.grid-{membership.GridNumber.Value}");
     }
 
     /// <summary>
@@ -145,8 +148,36 @@ internal static class PhotoPageCatalog
     public static string PhotoAnchor(string imageSlug, int photoNumber) =>
         string.Create(CultureInfo.InvariantCulture, $"photo-{photoNumber}-photo-i-{EncodeSlug(imageSlug.Trim('/'))}");
 
-    private static string EncodeSlug(string slug) =>
-        string.Concat(slug.Select(codeUnit => ((int)codeUnit).ToString("x4", CultureInfo.InvariantCulture)));
+    /// <summary>
+    /// Readable, injective encoding of a canonical slug for HTML ids and URL fragments.
+    /// </summary>
+    /// <remarks>
+    /// Slug characters <c>a-z</c>, <c>0-9</c> and <c>-</c> stay as they are, <c>/</c> becomes
+    /// <c>_</c>, and every other UTF-16 code unit becomes <c>~</c> plus four hex digits. The
+    /// result never contains <c>.</c>, which <see cref="ContextId"/> reserves as its separator,
+    /// and all output characters are unreserved in URLs, so fragments need no percent-encoding.
+    /// </remarks>
+    private static string EncodeSlug(string slug)
+    {
+        var builder = new StringBuilder(slug.Length);
+        foreach (var codeUnit in slug)
+        {
+            if (codeUnit is (>= 'a' and <= 'z') or (>= '0' and <= '9') or '-')
+            {
+                builder.Append(codeUnit);
+            }
+            else if (codeUnit == '/')
+            {
+                builder.Append('_');
+            }
+            else
+            {
+                builder.Append('~').Append(((int)codeUnit).ToString("x4", CultureInfo.InvariantCulture));
+            }
+        }
+
+        return builder.ToString();
+    }
 
     private static string PageTitle(Image image) =>
         !string.IsNullOrWhiteSpace(image.Title) ? image.Title : image.FileName;

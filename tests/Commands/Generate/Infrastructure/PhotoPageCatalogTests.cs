@@ -95,19 +95,19 @@ public sealed class PhotoPageCatalogTests
     [TestMethod]
     [DataRow("", "r")]
     [DataRow("///", "r")]
-    [DataRow("home/", "g-0068006f006d0065")]
-    [DataRow("/a/", "g-0061")]
-    [DataRow("a/b/", "g-0061002f0062")]
-    [DataRow("a-b/", "g-0061002d0062")]
-    [DataRow("\ud83d\ude00", "g-d83dde00")]
+    [DataRow("home/", "g-home")]
+    [DataRow("/a/", "g-a")]
+    [DataRow("a/b/", "g-a_b")]
+    [DataRow("a-b/", "g-a-b")]
+    [DataRow("\ud83d\ude00", "g-~d83d~de00")]
     public void BaseContextId_CanonicalSlug_UsesDeclaredEncoding(string slug, string expected) =>
         Assert.AreEqual(expected, PhotoPageCatalog.BaseContextId(slug));
 
     [TestMethod]
     [DataRow("", null, "photo-i-")]
-    [DataRow("/a/b/", null, "photo-i-0061002f0062")]
-    [DataRow("a-b", 12, "grid-12-photo-i-0061002d0062")]
-    [DataRow("\ud83d\ude00", 1, "grid-1-photo-i-d83dde00")]
+    [DataRow("/a/b/", null, "photo-i-a_b")]
+    [DataRow("a-b", 12, "grid-12-photo-i-a-b")]
+    [DataRow("\ud83d\ude00", 1, "grid-1-photo-i-~d83d~de00")]
     public void Anchor_CanonicalSlug_UsesDeclaredEncoding(string slug, int? gridNumber, string expected) =>
         Assert.AreEqual(expected, PhotoPageCatalog.Anchor(slug, gridNumber));
 
@@ -121,8 +121,8 @@ public sealed class PhotoPageCatalogTests
         var pages = PhotoPageCatalog.Build(memberships);
 
         var context = pages.Single().Contexts.Single();
-        Assert.AreEqual("g-00670061006c006c006500720079", context.ContextId);
-        Assert.AreEqual("photo-i-00670061006c006c006500720079002f00700068006f0074006f", context.Anchor);
+        Assert.AreEqual("g-gallery", context.ContextId);
+        Assert.AreEqual("photo-i-gallery_photo", context.Anchor);
     }
 
     [TestMethod]
@@ -140,8 +140,8 @@ public sealed class PhotoPageCatalogTests
         var context = pages.Single(page => page.Slug == "first").Contexts.Single();
         Assert.AreEqual("third", context.PreviousPhoto!.Slug);
         Assert.AreEqual("second", context.NextPhoto!.Slug);
-        Assert.AreEqual("g-00660065006100740075007200650064-grid-1", context.ContextId);
-        Assert.AreEqual("grid-1-photo-i-00660069007200730074", context.Anchor);
+        Assert.AreEqual("g-featured.grid-1", context.ContextId);
+        Assert.AreEqual("grid-1-photo-i-first", context.Anchor);
     }
 
     [TestMethod]
@@ -172,10 +172,10 @@ public sealed class PhotoPageCatalogTests
         var contexts = PhotoPageCatalog.Build(memberships).Single().Contexts;
 
         Assert.HasCount(2, contexts);
-        Assert.AreEqual("g-00660065006100740075007200650064-grid-1", contexts[0].ContextId);
-        Assert.AreEqual("grid-1-photo-i-007300680061007200650064", contexts[0].Anchor);
-        Assert.AreEqual("g-00660065006100740075007200650064-grid-2", contexts[1].ContextId);
-        Assert.AreEqual("grid-2-photo-i-007300680061007200650064", contexts[1].Anchor);
+        Assert.AreEqual("g-featured.grid-1", contexts[0].ContextId);
+        Assert.AreEqual("grid-1-photo-i-shared", contexts[0].Anchor);
+        Assert.AreEqual("g-featured.grid-2", contexts[1].ContextId);
+        Assert.AreEqual("grid-2-photo-i-shared", contexts[1].Anchor);
     }
 
     [TestMethod]
@@ -324,7 +324,7 @@ public sealed class PhotoPageCatalogTests
 
         var pages = PhotoPageCatalog.Build(BaseMemberships(galleries));
 
-        Assert.AreEqual("photo-i-006c0061006e0064007300630061007000650073002f006f006300650061006e002d00730075006e007300650074",
+        Assert.AreEqual("photo-i-landscapes_ocean-sunset",
             pages.Single().Contexts.Single().Anchor);
     }
 
@@ -345,9 +345,9 @@ public sealed class PhotoPageCatalogTests
 
         Assert.HasCount(2, page.Contexts);
         var photoContext = page.Contexts[1];
-        Assert.AreEqual("g-00730074006f00720079-photo-1", photoContext.ContextId);
+        Assert.AreEqual("g-story.photo-1", photoContext.ContextId);
         Assert.AreEqual(PhotoPageCatalog.PhotoAnchor(fence.Slug, 1), photoContext.Anchor);
-        Assert.AreEqual("photo-1-photo-i-00790065006100720073002f00660065006e00630065", photoContext.Anchor);
+        Assert.AreEqual("photo-1-photo-i-years_fence", photoContext.Anchor);
         Assert.AreEqual("story/", photoContext.Route);
         Assert.IsNull(photoContext.PreviousPhoto);
         Assert.IsNull(photoContext.NextPhoto);
@@ -368,12 +368,12 @@ public sealed class PhotoPageCatalogTests
 
         var page = PhotoPageCatalog.Build(memberships).Single();
 
-        Assert.AreEqual("g-00790065006100720073", page.PrimaryContext.ContextId);
+        Assert.AreEqual("g-years", page.PrimaryContext.ContextId);
     }
 
     [TestMethod]
     public void BaseContextId_NonRootGallery_TrimsAndEncodesSeparators() =>
-        Assert.AreEqual("g-00740072006900700073002f006900740061006c0079", PhotoPageCatalog.BaseContextId("trips/italy/"));
+        Assert.AreEqual("g-trips_italy", PhotoPageCatalog.BaseContextId("trips/italy/"));
 
     private static IReadOnlyList<PhotoMembership> BaseMemberships(IEnumerable<Gallery> galleries) =>
         [.. galleries.Select(gallery => new PhotoMembership(gallery, gallery.Images, null, PhotoViewerMode.Page))];
