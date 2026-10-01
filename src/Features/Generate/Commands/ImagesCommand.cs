@@ -67,7 +67,7 @@ internal sealed partial class ImagesCommand(
         command.SetAction(async (parseResult, cancellationToken) =>
         {
             var force = parseResult.GetValue(forceOption);
-            return await ExecuteAsync(force, cancellationToken);
+            return await ExecuteAsync(force, parseResult.IsInPipeline(), cancellationToken);
         });
 
         return command;
@@ -75,18 +75,19 @@ internal sealed partial class ImagesCommand(
 
     /// <inheritdoc />
     /// <remarks>
-    /// Called by pipeline orchestration. Uses default options (no force rebuild).
+    /// Standalone execution with default options (no force rebuild).
     /// </remarks>
     public Task<int> ExecuteAsync(CancellationToken cancellationToken = default)
-        => ExecuteAsync(force: false, cancellationToken);
+        => ExecuteAsync(force: false, inPipeline: false, cancellationToken);
 
     /// <summary>
     /// Executes the images command with force option.
     /// </summary>
     /// <param name="force">Force rebuild all images (ignore cache).</param>
+    /// <param name="inPipeline">Whether processing runs as a pipeline step (suppresses standalone hints).</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>Exit code (0 = success).</returns>
-    public async Task<int> ExecuteAsync(bool force, CancellationToken cancellationToken)
+    public async Task<int> ExecuteAsync(bool force, bool inPipeline, CancellationToken cancellationToken)
     {
         try
         {
@@ -159,10 +160,14 @@ internal sealed partial class ImagesCommand(
                     content += $"  Size:      {FormatSize(result.TotalSize)} (generated)\n";
                 }
 
-                content += $"  Duration:  {result.Duration.TotalSeconds:F2}s\n";
-                content += "\n[dim]Next steps:[/]\n";
-                content += "  • Run [cyan]revela generate pages[/] to render HTML\n";
-                content += "  • Or run [cyan]revela generate all[/] for full build";
+                content += $"  Duration:  {result.Duration.TotalSeconds:F2}s";
+
+                if (!inPipeline)
+                {
+                    content += "\n\n[dim]Next steps:[/]\n";
+                    content += "  • Run [cyan]revela generate pages[/] to render HTML\n";
+                    content += "  • Or run [cyan]revela generate all[/] for full build";
+                }
 
                 var successPanel = new Panel(new Markup(content))
                     .WithHeader("[bold green]Success[/]")

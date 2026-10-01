@@ -95,13 +95,19 @@ internal sealed partial class StatsCommand(
     {
         var command = new Command("statistics", "Generate statistics JSON from EXIF data");
 
-        command.SetAction(async (parseResult, cancellationToken) => await ExecuteAsync(cancellationToken));
+        command.SetAction(async (parseResult, cancellationToken) =>
+            await ExecuteAsync(parseResult.IsInPipeline(), cancellationToken));
 
         return command;
     }
 
-    /// <inheritdoc />
-    public async Task<int> ExecuteAsync(CancellationToken cancellationToken = default)
+    /// <summary>
+    /// Executes the statistics command.
+    /// </summary>
+    /// <param name="inPipeline">Whether the step runs inside a pipeline (suppresses standalone hints).</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>Exit code (0 = success).</returns>
+    public async Task<int> ExecuteAsync(bool inPipeline = false, CancellationToken cancellationToken = default)
     {
         var projectPath = projectEnvironment.Value.Path;
 
@@ -180,14 +186,21 @@ internal sealed partial class StatsCommand(
         }
 
         // Display summary
-        var panel = new Panel(
-            new Markup($"[green]Statistics generated![/]\n\n" +
-                      $"[dim]Summary:[/]\n" +
-                      $"  Pages:    {generatedCount}\n" +
-                      $"  Images:   {manifestRepository.Images.Count}\n\n" +
-                      "[dim]Next steps:[/]\n" +
-                      "  • Run [cyan]revela generate pages[/] to render statistics pages\n" +
-                      "  • Requires [cyan]Lumina.Statistics[/] extension for styling"))
+        var content =
+            $"[green]Statistics generated![/]\n\n" +
+            $"[dim]Summary:[/]\n" +
+            $"  Pages:    {generatedCount}\n" +
+            $"  Images:   {manifestRepository.Images.Count}";
+
+        if (!inPipeline)
+        {
+            content +=
+                "\n\n[dim]Next steps:[/]\n" +
+                "  • Run [cyan]revela generate pages[/] to render statistics pages\n" +
+                "  • Requires [cyan]Lumina.Statistics[/] extension for styling";
+        }
+
+        var panel = new Panel(new Markup(content))
             .WithHeader("[bold green]Success[/]")
             .WithSuccessStyle();
         AnsiConsole.Write(panel);

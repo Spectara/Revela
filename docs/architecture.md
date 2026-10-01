@@ -142,6 +142,11 @@ contribute sequential steps through `CommandDescriptor` and `IPipelineStep`.
 execution. A failed step stops the sequence. Structural checks under `check` are
 separate from generation, not additional generate steps.
 
+The CLI `all` command passes the hidden `--in-pipeline` option
+([`PipelineInvocation`](../src/Sdk/Abstractions/PipelineInvocation.cs)) to each
+step. Steps read it with `parseResult.IsInPipeline()` and omit their standalone
+"Next steps" hints, so `generate all` prints a single next-step hint at the end.
+
 ### Scan
 
 Scanning discovers `_index.revela` content, images, shared images, and navigation

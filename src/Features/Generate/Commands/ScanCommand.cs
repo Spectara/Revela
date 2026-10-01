@@ -50,10 +50,7 @@ internal sealed partial class ScanCommand(
         var command = new Command("scan", "Scan content and update manifest");
 
         command.SetAction(async (parseResult, cancellationToken) =>
-        {
-            _ = parseResult;
-            return await ExecuteAsync(cancellationToken);
-        });
+            await ExecuteAsync(parseResult.IsInPipeline(), cancellationToken));
 
         return command;
     }
@@ -61,9 +58,10 @@ internal sealed partial class ScanCommand(
     /// <summary>
     /// Executes the scan command.
     /// </summary>
+    /// <param name="inPipeline">Whether the scan runs as a pipeline step (suppresses standalone hints).</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>Exit code (0 = success).</returns>
-    public async Task<int> ExecuteAsync(CancellationToken cancellationToken)
+    public async Task<int> ExecuteAsync(bool inPipeline, CancellationToken cancellationToken)
     {
         try
         {
@@ -84,19 +82,25 @@ internal sealed partial class ScanCommand(
                     projectName = "Revela Site";
                 }
 
-                var panel = new Panel(
+                var content =
                     $"[green]Content scan complete![/]\n\n" +
                     $"[dim]Project:[/]    [cyan]{projectName}[/]\n\n" +
                     $"[dim]Statistics:[/]\n" +
                     $"  Galleries:  {result.GalleryCount}\n" +
                     $"  Images:     {result.ImageCount}\n" +
                     $"  Navigation: {result.NavigationItemCount}\n" +
-                    $"  Duration:   {result.Duration.TotalSeconds:F2}s\n\n" +
-                    $"[dim]Next steps:[/]\n" +
-                    $"  • Run [cyan]revela generate images[/] to process images\n" +
-                    $"  • Run [cyan]revela generate pages[/] to render HTML\n" +
-                    $"  • Or run [cyan]revela generate all[/] for full build"
-                )
+                    $"  Duration:   {result.Duration.TotalSeconds:F2}s";
+
+                if (!inPipeline)
+                {
+                    content +=
+                        "\n\n[dim]Next steps:[/]\n" +
+                        "  • Run [cyan]revela generate images[/] to process images\n" +
+                        "  • Run [cyan]revela generate pages[/] to render HTML\n" +
+                        "  • Or run [cyan]revela generate all[/] for full build";
+                }
+
+                var panel = new Panel(content)
                 .WithHeader("[bold green]Success[/]")
                 .WithSuccessStyle();
 

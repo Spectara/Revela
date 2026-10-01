@@ -124,6 +124,26 @@ public sealed class CalendarGenerateStepTests
         Assert.AreEqual("free", days[12]);
     }
 
+    [TestMethod]
+    [DataRow(false, true)]
+    [DataRow(true, false)]
+    public async Task Command_InPipelineSignal_ControlsNextStepsHint(bool inPipeline, bool expectHint)
+    {
+        using var project = TestProject.Create();
+        var step = CreateStep(project, EmptyCalendar);
+        var command = step.Create();
+        // The host attaches this option to every step of an auto-generated "all" command.
+        command.Options.Add(PipelineInvocation.InPipelineOption);
+        string[] args = inPipeline ? [PipelineInvocation.InPipelineOption.Name] : [];
+
+        var (exitCode, output) = await CaptureAsync(() => command.Parse(args).InvokeAsync());
+
+        Assert.AreEqual(0, exitCode);
+        Assert.Contains("Calendar data generated!", output, StringComparison.Ordinal);
+        Assert.AreEqual(expectHint, output.Contains("Next steps:", StringComparison.Ordinal));
+        Assert.AreEqual(expectHint, output.Contains("revela generate pages", StringComparison.Ordinal));
+    }
+
     private static CalendarGenerateStep CreateStep(TestProject project, string? content)
     {
         var pageDirectory = Path.Combine(project.SourcePath, PagePath);
@@ -179,7 +199,10 @@ public sealed class CalendarGenerateStepTests
     }
 
     private static async Task<(int ExitCode, string Output)> ExecuteCliAsync(
-        CalendarGenerateStep step, CancellationToken cancellationToken = default)
+        CalendarGenerateStep step, CancellationToken cancellationToken = default) =>
+        await CaptureAsync(() => step.ExecuteAsync(cancellationToken: cancellationToken));
+
+    private static async Task<(int ExitCode, string Output)> CaptureAsync(Func<Task<int>> execute)
     {
         var originalConsole = AnsiConsole.Console;
         using var writer = new StringWriter(CultureInfo.InvariantCulture);
@@ -194,7 +217,7 @@ public sealed class CalendarGenerateStepTests
 
         try
         {
-            var exitCode = await step.ExecuteAsync(cancellationToken);
+            var exitCode = await execute();
             return (exitCode, writer.ToString());
         }
         finally

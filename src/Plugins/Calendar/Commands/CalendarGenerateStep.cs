@@ -113,13 +113,19 @@ internal sealed partial class CalendarGenerateStep(
     {
         var command = new Command("calendar", "Generate availability calendar from iCal data");
 
-        command.SetAction(async (parseResult, cancellationToken) => await ExecuteAsync(cancellationToken));
+        command.SetAction(async (parseResult, cancellationToken) =>
+            await ExecuteAsync(parseResult.IsInPipeline(), cancellationToken));
 
         return command;
     }
 
-    /// <inheritdoc />
-    public async Task<int> ExecuteAsync(CancellationToken cancellationToken = default)
+    /// <summary>
+    /// Executes the calendar command.
+    /// </summary>
+    /// <param name="inPipeline">Whether the step runs inside a pipeline (suppresses standalone hints).</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>Exit code (0 = success).</returns>
+    public async Task<int> ExecuteAsync(bool inPipeline = false, CancellationToken cancellationToken = default)
     {
         var projectPath = projectEnvironment.Value.Path;
         var sourcePath = pathResolver.SourcePath;
@@ -226,12 +232,19 @@ internal sealed partial class CalendarGenerateStep(
         }
 
         // Display summary
-        var panel = new Panel(
-            new Markup($"[green]Calendar data generated![/]\n\n" +
-                       $"[dim]Summary:[/]\n" +
-                       $"  Pages:  {generatedCount}\n\n" +
-                       "[dim]Next steps:[/]\n" +
-                       "  • Run [cyan]revela generate pages[/] to render calendar pages"))
+        var content =
+            $"[green]Calendar data generated![/]\n\n" +
+            $"[dim]Summary:[/]\n" +
+            $"  Pages:  {generatedCount}";
+
+        if (!inPipeline)
+        {
+            content +=
+                "\n\n[dim]Next steps:[/]\n" +
+                "  • Run [cyan]revela generate pages[/] to render calendar pages";
+        }
+
+        var panel = new Panel(new Markup(content))
             .WithHeader("[bold green]Success[/]")
             .WithSuccessStyle();
         AnsiConsole.Write(panel);
