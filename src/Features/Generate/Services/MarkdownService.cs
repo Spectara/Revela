@@ -28,13 +28,22 @@ namespace Spectara.Revela.Features.Generate.Services;
 internal interface IMarkdownService
 {
     /// <summary>
-    /// Parses and resolves inline-gallery blocks before page catalog construction.
+    /// Parses and resolves inline-gallery and photo blocks before page catalog construction.
     /// </summary>
+    /// <param name="markdown">The Markdown body.</param>
+    /// <param name="sourcePath">The <c>_index.revela</c> path used in errors.</param>
+    /// <param name="pageImages">The page's effective image set for bare <c>[[gallery]]</c> blocks.</param>
+    /// <param name="resolveGalleryImages">Resolves a <c>[[gallery: filter]]</c> expression.</param>
+    /// <param name="resolvePhoto">
+    /// Resolves a <c>[[photo: path]]</c> path like a Markdown content image; <c>null</c> leaves
+    /// every photo unresolved.
+    /// </param>
     PreparedGalleryBlocks PrepareGalleryBlocks(
         string markdown,
         string sourcePath,
         IReadOnlyList<Image> pageImages,
-        Func<string, IReadOnlyList<Image>> resolveGalleryImages);
+        Func<string, IReadOnlyList<Image>> resolveGalleryImages,
+        Func<string, Image?>? resolvePhoto = null);
 
     /// <summary>
     /// Converts Markdown text to HTML.
@@ -101,7 +110,8 @@ internal sealed class MarkdownService : IMarkdownService
         string markdown,
         string sourcePath,
         IReadOnlyList<Image> pageImages,
-        Func<string, IReadOnlyList<Image>> resolveGalleryImages)
+        Func<string, IReadOnlyList<Image>> resolveGalleryImages,
+        Func<string, Image?>? resolvePhoto = null)
     {
         ArgumentNullException.ThrowIfNull(markdown);
         ArgumentException.ThrowIfNullOrWhiteSpace(sourcePath);
@@ -154,7 +164,31 @@ internal sealed class MarkdownService : IMarkdownService
                     block.FilterExpression is null ? bareBlockCount : null));
         }
 
-        return new PreparedGalleryBlocks(blocks.ToFrozenDictionary());
+        return new PreparedGalleryBlocks(blocks.ToFrozenDictionary())
+        {
+            Photos = PreparePhotoBlocks(document, resolvePhoto)
+        };
+    }
+
+    private static FrozenDictionary<GalleryBlockId, PreparedPhotoBlock> PreparePhotoBlocks(
+        MarkdownDocument document,
+        Func<string, Image?>? resolvePhoto)
+    {
+        var photos = new Dictionary<GalleryBlockId, PreparedPhotoBlock>();
+        var photoNumber = 0;
+        foreach (var block in document.Descendants<PhotoBlock>())
+        {
+            photoNumber++;
+            photos.Add(
+                new GalleryBlockId(block.Line, block.Column),
+                new PreparedPhotoBlock(
+                    resolvePhoto?.Invoke(block.ImagePath),
+                    block.ImagePath,
+                    block.UsesPageContext,
+                    photoNumber));
+        }
+
+        return photos.ToFrozenDictionary();
     }
 
     /// <inheritdoc/>

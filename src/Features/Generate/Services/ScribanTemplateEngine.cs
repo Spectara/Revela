@@ -500,7 +500,7 @@ internal sealed partial class ScribanTemplateEngine(
     /// quoted attribute values. Unlike <see cref="WebUtility.HtmlEncode(string)"/>, non-ASCII text such
     /// as umlauts stays literal so the UTF-8 source remains readable.
     /// </summary>
-    private static string HtmlEscape(object? value)
+    internal static string HtmlEscape(object? value)
     {
         var text = Convert.ToString(value, CultureInfo.InvariantCulture) ?? string.Empty;
         if (text.AsSpan().IndexOfAny(HtmlSpecialCharacters) < 0)
@@ -553,7 +553,7 @@ internal sealed partial class ScribanTemplateEngine(
     /// (Scriban treats an empty string as truthy, but <c>null</c> as falsy).
     /// </remarks>
     /// <example>{{ page_url(gallery) }} → /events/fireworks/</example>
-    private static string? PageUrl(object? target, string basePath)
+    internal static string? PageUrl(object? target, string basePath)
     {
         var path = ResolveTargetPath(target);
         return path.Length == 0 ? null : basePath + path;

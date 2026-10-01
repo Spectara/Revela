@@ -6,7 +6,8 @@ using Markdig.Renderers;
 namespace Spectara.Revela.Features.Generate.Services;
 
 /// <summary>
-/// Registers standalone inline-gallery blocks with a Markdig pipeline.
+/// Registers standalone inline-gallery (<c>[[gallery]]</c>) and photo (<c>[[photo]]</c>) blocks
+/// with a Markdig pipeline.
 /// </summary>
 internal sealed class GalleryBlockExtension : IMarkdownExtension
 {
@@ -30,6 +31,11 @@ internal sealed class GalleryBlockExtension : IMarkdownExtension
             pipeline.BlockParsers.InsertBefore<ParagraphBlockParser>(new GalleryBlockParser(sourcePath));
         }
 
+        if (!pipeline.BlockParsers.Any(parser => parser is PhotoBlockParser))
+        {
+            pipeline.BlockParsers.InsertBefore<ParagraphBlockParser>(new PhotoBlockParser(sourcePath));
+        }
+
         if (context is not null && !pipeline.InlineParsers.Any(parser => parser is GalleryTokenWarningInlineParser))
         {
             pipeline.InlineParsers.InsertBefore<LinkInlineParser>(new GalleryTokenWarningInlineParser(context));
@@ -41,10 +47,19 @@ internal sealed class GalleryBlockExtension : IMarkdownExtension
     {
         ArgumentNullException.ThrowIfNull(renderer);
 
-        if (context is not null && renderer is HtmlRenderer htmlRenderer &&
-            !htmlRenderer.ObjectRenderers.Any(objectRenderer => objectRenderer is GalleryBlockRenderer))
+        if (context is null || renderer is not HtmlRenderer htmlRenderer)
+        {
+            return;
+        }
+
+        if (!htmlRenderer.ObjectRenderers.Any(objectRenderer => objectRenderer is GalleryBlockRenderer))
         {
             htmlRenderer.ObjectRenderers.Add(new GalleryBlockRenderer(context));
+        }
+
+        if (!htmlRenderer.ObjectRenderers.Any(objectRenderer => objectRenderer is PhotoBlockRenderer))
+        {
+            htmlRenderer.ObjectRenderers.Add(new PhotoBlockRenderer(context));
         }
     }
 }

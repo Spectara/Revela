@@ -109,19 +109,39 @@ More stories from the trip are in the other galleries.
 
 ### Photos in Your Text
 
-A Markdown image becomes the same responsive picture as in the galleries:
+To show one of your photos in the text, put `[[photo: …]]` on its own line:
 
 ```markdown
-![A fence with gaps to look through](<Years/2018/002190.jpg>)
+The fence on the way to the lake:
+
+[[photo: Years/2018/002190.jpg]]
+
+We walked on for another hour.
+```
+
+The photo fills the width of the text and opens its photo page, like a photo in a
+gallery. The × on the photo page brings visitors back to this page, right at the
+photo. The photo page is created even when the page uses the lightbox or the photo
+lives only in `_images/`.
+
+To send visitors on to the photo's own gallery instead (the × then returns to that
+gallery, for example 2018), add `| gallery`:
+
+```markdown
+[[photo: Years/2018/002190.jpg | gallery]]
 ```
 
 Revela looks for the file in the page's folder, then in `_images/`, then as a path
-from the source folder. Put paths with spaces in `< >`. A photo in the text has no
-zoom of its own; to offer one, link it to its photo page (open the photo on your site
-and copy the address after the domain):
+from the source folder. Spaces in the path are fine as they are. If no photo matches,
+`revela generate` shows a warning with the file and line, and the page shows nothing
+at that spot. The photo's title (or its description) becomes the text for screen
+readers.
+
+For illustrations and screenshots that need no photo page, use a Markdown image. It
+becomes the same responsive picture, without a link; put paths with spaces in `< >`:
 
 ```markdown
-[![A fence with gaps to look through](<Years/2018/002190.jpg>)](photo/years/2018/002190/)
+![The settings dialog](<_images/screenshots/settings dialog.png>)
 ```
 
 ### Open the Menu from Your Text

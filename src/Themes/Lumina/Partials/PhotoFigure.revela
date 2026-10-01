@@ -1,0 +1,34 @@
+{{~##
+Photo Figure Template - Lumina Theme
+
+Renders a [[photo: path]] block from Markdown: one photo at full content width,
+linked to its photo page. The picture markup is the shared ContentImage partial.
+
+Context variables:
+- image: ImageData { id, slug, width, height, title?, description?, sizes, placeholder? }
+- viewer_mode: 'page' (link to the photo page) or 'none' (theme renders no photo pages)
+- context_id: page context for the photo page's return link, or null for `| gallery`
+  (the photo page then uses its primary context, normally the photo's gallery)
+- context_label: label of the page context, or null
+- occurrence_id: anchor id the photo page's return link targets
+- assets_basepath: Path/URL to image folder
+- basepath: Relative path to root
+- image_formats: Available formats ["avif", "webp", "jpg"]
+##~}}
+{{~ if !image.sizes || image.sizes.size == 0; ret; end ~}}
+{{~ alt = image.title && image.title != '' ? image.title : (image.description && image.description != '' ? image.description : (t 'photo.label' image.id)) ~}}
+{{~ classes = [] ~}}
+{{~ photo_href = null ~}}
+{{~ if viewer_mode == 'page' ~}}
+{{~ photo_href = page_url(image) ~}}
+{{~ if context_id; photo_href = photo_href + '#ctx-' + context_id; end ~}}
+{{~ end ~}}
+<figure class="photo-figure" id="{{ html_escape occurrence_id }}">
+{{~ if photo_href ~}}
+  <a href="{{ html_escape photo_href }}">
+{{~ end ~}}
+{{~ include 'contentimage' ~}}
+{{~ if photo_href ~}}
+  </a>
+{{~ end ~}}
+</figure>

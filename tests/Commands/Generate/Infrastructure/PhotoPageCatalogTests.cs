@@ -329,6 +329,49 @@ public sealed class PhotoPageCatalogTests
     }
 
     [TestMethod]
+    public void Build_PhotoBlockMembership_UsesOwnContextAndAnchorNamespace()
+    {
+        var fence = Img("Years/fence.jpg");
+        var neighbour = Img("Years/lake.jpg");
+        var years = Gal("Years", null, fence, neighbour);
+        var story = Gal("Story", null);
+        IReadOnlyList<PhotoMembership> memberships =
+        [
+            new(years, years.Images, null, PhotoViewerMode.Page),
+            new(story, [fence], null, PhotoViewerMode.Page, PhotoNumber: 1)
+        ];
+
+        var page = PhotoPageCatalog.Build(memberships)[0];
+
+        Assert.HasCount(2, page.Contexts);
+        var photoContext = page.Contexts[1];
+        Assert.AreEqual("g-00730074006f00720079-photo-1", photoContext.ContextId);
+        Assert.AreEqual(PhotoPageCatalog.PhotoAnchor(fence.Slug, 1), photoContext.Anchor);
+        Assert.AreEqual("photo-1-photo-i-00790065006100720073002f00660065006e00630065", photoContext.Anchor);
+        Assert.AreEqual("story/", photoContext.Route);
+        Assert.IsNull(photoContext.PreviousPhoto);
+        Assert.IsNull(photoContext.NextPhoto);
+        Assert.IsFalse(photoContext.IsPhysical);
+        Assert.AreEqual("years/", page.PrimaryContext.Route);
+    }
+
+    [TestMethod]
+    public void Build_PhotoBlockInPhysicalGallery_KeepsGalleryAsPrimaryContext()
+    {
+        var fence = Img("Years/fence.jpg");
+        var years = Gal("Years", null, fence);
+        IReadOnlyList<PhotoMembership> memberships =
+        [
+            new(years, [fence], null, PhotoViewerMode.Page, PhotoNumber: 1),
+            new(years, years.Images, null, PhotoViewerMode.Page)
+        ];
+
+        var page = PhotoPageCatalog.Build(memberships).Single();
+
+        Assert.AreEqual("g-00790065006100720073", page.PrimaryContext.ContextId);
+    }
+
+    [TestMethod]
     public void BaseContextId_NonRootGallery_TrimsAndEncodesSeparators() =>
         Assert.AreEqual("g-00740072006900700073002f006900740061006c0079", PhotoPageCatalog.BaseContextId("trips/italy/"));
 

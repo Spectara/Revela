@@ -134,6 +134,31 @@ must not infer the viewer from the body template or from the existence of a phot
 Filtered selections are prepared before photo-page aggregation and reused for final rendering.
 Theme code must not evaluate the filter again.
 
+## Photo Blocks
+
+`[[photo: <path>]]` places one photo, linked to its photo page, as a standalone top-level block.
+The path is resolved like a Markdown content image (page folder, `_images/`, exact source path)
+and may contain spaces. Parsing, nesting and escaping follow the gallery token rules; a malformed
+token or an unknown option stops generation with the file and line, an unresolved path emits a
+warning and renders nothing.
+
+- `[[photo: path]]` adds a single-image page membership (no previous/next) so the photo page's
+  return link targets this page at the photo. Photo blocks are numbered in their own namespace
+  (context `…-photo-n`, anchor `photo-n-photo-i-…`): adding one never renumbers `[[gallery:]]`
+  grids (`…-grid-n`), whose ids are part of existing links.
+- `[[photo: path | gallery]]` adds no membership and links without a fragment, so the photo page
+  shows its primary context. If the photo has no gallery or grid membership with photo pages
+  anywhere, the page context is used instead (with a warning) so the photo page has a way back.
+- The link always targets a photo page, independent of the page's viewer mode, and the photo page
+  is created even for `_images/`-only photos; it then counts toward pages and the sitemap like
+  any other photo page. Photo-block contexts never count as the physical (primary) gallery.
+- Photo blocks do not set `gallery.has_inline_galleries`; the trailing grid stays.
+
+Themes render photo blocks with the optional `Partials/PhotoFigure.revela`, which receives
+`image`, `viewer_mode`, `context_id`, `context_label`, `occurrence_id`, `basepath`,
+`assets_basepath` and `image_formats`. Without it, the `ContentImage` partial is wrapped in the
+photo-page link. Themes without photo pages get `viewer_mode = "none"` and no link.
+
 ## Lumina Browser Behavior
 
 Lumina's lightbox uses `commandfor` with `command="show-modal"` and `command="close"`. Its

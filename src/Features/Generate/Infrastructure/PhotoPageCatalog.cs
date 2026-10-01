@@ -72,8 +72,12 @@ internal static class PhotoPageCatalog
                     Route = occurrence.Membership.Gallery.Slug,
                     Label = GalleryLabel(occurrence.Membership.Gallery),
                     ContextId = ContextId(occurrence.Membership),
-                    Anchor = Anchor(occurrence.Image.Slug, occurrence.Membership.GridNumber),
-                    IsPhysical = IsPhysical(occurrence.Membership.Gallery, occurrence.Image),
+                    Anchor = occurrence.Membership.PhotoNumber is { } photoNumber
+                        ? PhotoAnchor(occurrence.Image.Slug, photoNumber)
+                        : Anchor(occurrence.Image.Slug, occurrence.Membership.GridNumber),
+                    // A [[photo]] block is a page reference, never the photo's gallery home.
+                    IsPhysical = occurrence.Membership.PhotoNumber is null &&
+                        IsPhysical(occurrence.Membership.Gallery, occurrence.Image),
                     PreviousPhoto = occurrence.Previous,
                     NextPhoto = occurrence.Next
                 })
@@ -106,11 +110,17 @@ internal static class PhotoPageCatalog
     }
 
     /// <summary>
-    /// Stable context id for a base or filtered membership.
+    /// Stable context id for a base, filtered-grid (<c>-grid-n</c>) or photo-block
+    /// (<c>-photo-n</c>) membership. Grids and photo blocks are numbered independently.
     /// </summary>
     public static string ContextId(PhotoMembership membership)
     {
         var baseContextId = BaseContextId(membership.Gallery.Slug);
+        if (membership.PhotoNumber is { } photoNumber)
+        {
+            return string.Create(CultureInfo.InvariantCulture, $"{baseContextId}-photo-{photoNumber}");
+        }
+
         return membership.GridNumber is null
             ? baseContextId
             : string.Create(CultureInfo.InvariantCulture, $"{baseContextId}-grid-{membership.GridNumber.Value}");
@@ -127,6 +137,13 @@ internal static class PhotoPageCatalog
             ? $"photo-i-{encodedImageSlug}"
             : string.Create(CultureInfo.InvariantCulture, $"grid-{gridNumber.Value}-photo-i-{encodedImageSlug}");
     }
+
+    /// <summary>
+    /// Stable page-side anchor id for a <c>[[photo]]</c> block occurrence
+    /// (<c>photo-{n}-photo-i-</c> prefix, distinct from gallery and grid anchors).
+    /// </summary>
+    public static string PhotoAnchor(string imageSlug, int photoNumber) =>
+        string.Create(CultureInfo.InvariantCulture, $"photo-{photoNumber}-photo-i-{EncodeSlug(imageSlug.Trim('/'))}");
 
     private static string EncodeSlug(string slug) =>
         string.Concat(slug.Select(codeUnit => ((int)codeUnit).ToString("x4", CultureInfo.InvariantCulture)));
@@ -156,10 +173,25 @@ internal static class PhotoPageCatalog
 }
 
 /// <summary>
-/// Frozen image order for one eligible base gallery or filtered inline-grid occurrence.
+/// Frozen image order for one eligible base gallery, filtered inline-grid, or
+/// <c>[[photo]]</c> block occurrence.
 /// </summary>
+/// <param name="Gallery">The page the occurrence is rendered on.</param>
+/// <param name="Images">The frozen image order of this occurrence.</param>
+/// <param name="GridNumber">The filtered inline-grid number, or <c>null</c>.</param>
+/// <param name="ViewerMode">The effective viewer mode of this occurrence.</param>
+/// <param name="PhotoNumber">
+/// The <c>[[photo]]</c> block number (own namespace, independent of <paramref name="GridNumber"/>), or <c>null</c>.
+/// </param>
 internal sealed record PhotoMembership(
     Gallery Gallery,
     IReadOnlyList<Image> Images,
     int? GridNumber,
-    PhotoViewerMode ViewerMode);
+    PhotoViewerMode ViewerMode,
+    int? PhotoNumber = null)
+{
+    /// <summary>
+    /// Gets whether this is the page's base gallery membership (not a filtered grid or photo block).
+    /// </summary>
+    public bool IsBase => GridNumber is null && PhotoNumber is null;
+}
