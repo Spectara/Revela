@@ -80,7 +80,7 @@ public sealed class GalleryImageResolverTests
     }
 
     [TestMethod]
-    public void Resolve_ImageDescriptionMetadata_PreservesDescriptionForRendering()
+    public void Resolve_ScannedDescriptiveMetadata_PopulatesTemplateFields()
     {
         var images = new Dictionary<string, ImageContent>
         {
@@ -90,20 +90,20 @@ public sealed class GalleryImageResolverTests
                 Width = 1920,
                 Height = 1080,
                 Sizes = [320, 640, 1280],
-                Exif = new ExifData
-                {
-                    Raw = new Dictionary<string, string>
-                    {
-                        ["ImageDescription"] = "Evening light"
-                    }
-                }
+                Title = "Abendlicht",
+                Description = "Evening light",
+                Keywords = ["Selected", "Startseite"],
+                Rating = 4
             }
         };
 
         var result = GalleryImageResolver.Resolve(images, "all");
 
         Assert.HasCount(1, result);
+        Assert.AreEqual("Abendlicht", result[0].Title);
         Assert.AreEqual("Evening light", result[0].Description);
+        Assert.AreEqual("Selected,Startseite", string.Join(',', result[0].Keywords));
+        Assert.AreEqual(4, result[0].Rating);
     }
 
     private static ImageContent CreateImage(string filename, string make, DateTime? dateTaken) => new()

@@ -52,7 +52,8 @@ Configure sorting in `project.json`:
 | `exif.make` | Camera manufacturer |
 | `exif.model` | Camera model |
 | `exif.lensModel` | Lens model |
-| `exif.raw.Rating` | Star rating (1-5) |
+| `rating` | XMP star rating (Capture One, Lightroom); unrated photos last |
+| `title` | Photo title (XMP, else Windows title) |
 | `exif.raw.Copyright` | Copyright field |
 | `exif.raw.{FieldName}` | Any EXIF field from Raw dictionary |
 
@@ -83,7 +84,7 @@ Compare shots from wide-angle to telephoto.
 ```toml
 +++
 title = "Best Shots"
-sort = "exif.raw.Rating:desc"
+sort = "rating:desc"
 +++
 
 My highest rated photos.
@@ -178,7 +179,7 @@ revela config sorting
 revela config sorting --field dateTaken --direction desc
 
 # Sort by rating
-revela config sorting --field exif.raw.Rating --direction desc
+revela config sorting --field rating --direction desc
 
 # Sort by focal length
 revela config sorting --field exif.focalLength --direction asc

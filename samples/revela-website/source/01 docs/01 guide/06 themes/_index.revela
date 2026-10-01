@@ -235,7 +235,7 @@ Variables available inside it:
 
 | Variable | Type | Description |
 |----------|------|-------------|
-| `image` | Image | Image object (`slug`, `width`, `height`, `sizes`, `placeholder`, `exif`) |
+| `image` | Image | Image object (`slug`, `width`, `height`, `sizes`, `placeholder`, `exif`, `title`, `description`, `keywords`, `rating`) |
 | `alt` | string | Alt text from Markdown |
 | `classes` | string[] | CSS classes from `{.class}` syntax |
 | `assets_basepath` | string | Base path to image variants |

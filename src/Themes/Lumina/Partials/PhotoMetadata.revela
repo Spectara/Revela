@@ -1,10 +1,17 @@
 {{~##
 Shared concept metadata for canonical photo pages and lightbox dialogs.
+
+The photo label shows the title (else the description); the description is listed
+here only when a title took the label, so it is never shown twice.
 ##~}}
+{{~ show_description = image.title && image.title != '' && image.description && image.description != '' && image.description != image.title ~}}
 {{~ has_exposure = image.exif && (image.exif.f_number || image.exif.exposure_time || image.exif.iso || image.exif.focal_length) ~}}
 {{~ has_equipment = image.exif && (image.exif.lens_model || image.exif.make || image.exif.model) ~}}
-{{~ if has_exposure || has_equipment ~}}
+{{~ if show_description || has_exposure || has_equipment ~}}
 <aside class="photo-metadata">
+    {{~ if show_description ~}}
+    <p data-photo-description>{{ html_escape image.description }}</p>
+    {{~ end ~}}
     {{~ if has_exposure ~}}
     <p>
         {{~ if image.exif.f_number ~}}<span><span class="visually-hidden">{{ html_escape (t 'photo.aperture') }} </span>{{ format_exif_aperture image.exif.f_number }}</span>{{~ end ~}}

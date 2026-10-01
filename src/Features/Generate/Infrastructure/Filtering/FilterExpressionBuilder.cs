@@ -18,9 +18,14 @@ namespace Spectara.Revela.Features.Generate.Filtering;
 /// <item><c>filename</c> - Image filename</item>
 /// <item><c>width</c>, <c>height</c> - Dimensions</item>
 /// <item><c>dateTaken</c> - Date the photo was taken</item>
+/// <item><c>rating</c>, <c>title</c>, <c>description</c>, <c>keywords</c> - XMP metadata</item>
 /// <item><c>exif.*</c> - EXIF properties (make, model, iso, fNumber, etc.)</item>
 /// <item><c>exif.raw.*</c> - Raw EXIF dictionary values</item>
 /// </list>
+/// <para>
+/// <c>contains(keywords, 'x')</c> tests list properties for a whole entry (case-insensitive);
+/// on strings, <c>contains</c> is a substring test.
+/// </para>
 /// </remarks>
 internal sealed class FilterExpressionBuilder : IFilterNodeVisitor<Expression>
 {
@@ -49,6 +54,7 @@ internal sealed class FilterExpressionBuilder : IFilterNodeVisitor<Expression>
     private static readonly PropertyInfo RawProperty = typeof(ExifData).GetProperty(nameof(ExifData.Raw))!;
     private static readonly MethodInfo RawContainsKeyMethod = typeof(IReadOnlyDictionary<string, string>).GetMethod(nameof(IReadOnlyDictionary<,>.ContainsKey))!;
     private static readonly MethodInfo RawGetItemMethod = typeof(IReadOnlyDictionary<string, string>).GetMethod("get_Item")!;
+    private static readonly MethodInfo ListContainsMethod = ((Func<IReadOnlyList<string>?, string?, bool>)ListContainsIgnoreCase).Method;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="FilterExpressionBuilder"/> class.
@@ -296,7 +302,7 @@ internal sealed class FilterExpressionBuilder : IFilterNodeVisitor<Expression>
         throw CreateError($"'{node.FunctionName}' function requires a date argument", node.Position);
     }
 
-    private ConditionalExpression BuildStringFunction(CallNode node, string methodName)
+    private Expression BuildStringFunction(CallNode node, string methodName)
     {
         if (node.Arguments.Count != 2)
         {
@@ -306,14 +312,20 @@ internal sealed class FilterExpressionBuilder : IFilterNodeVisitor<Expression>
         var stringExpr = node.Arguments[0].Accept(this);
         var searchExpr = node.Arguments[1].Accept(this);
 
-        if (stringExpr.Type != typeof(string))
-        {
-            throw CreateError($"First argument to '{node.FunctionName}' must be a string", node.Position);
-        }
-
         if (searchExpr.Type != typeof(string))
         {
             throw CreateError($"Second argument to '{node.FunctionName}' must be a string", node.Position);
+        }
+
+        // contains(keywords, 'x'): whole-entry match on list properties.
+        if (methodName == "Contains" && stringExpr.Type == typeof(IReadOnlyList<string>))
+        {
+            return Expression.Call(ListContainsMethod, stringExpr, searchExpr);
+        }
+
+        if (stringExpr.Type != typeof(string))
+        {
+            throw CreateError($"First argument to '{node.FunctionName}' must be a string", node.Position);
         }
 
         var method = typeof(string).GetMethod(methodName, [typeof(string), typeof(StringComparison)])!;
@@ -326,6 +338,9 @@ internal sealed class FilterExpressionBuilder : IFilterNodeVisitor<Expression>
             Expression.Call(stringExpr, method, searchExpr, comparison)
         );
     }
+
+    private static bool ListContainsIgnoreCase(IReadOnlyList<string>? values, string? value) =>
+        values is not null && value is not null && values.Contains(value, StringComparer.OrdinalIgnoreCase);
 
     private ConditionalExpression BuildToLowerFunction(CallNode node)
     {

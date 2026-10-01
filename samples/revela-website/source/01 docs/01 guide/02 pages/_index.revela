@@ -47,7 +47,7 @@ revela create page gallery vacation --title "Summer Vacation 2024"
 # With description and sorting
 revela create page gallery best-shots --title "Highlights" \
     --description "My best shots" \
-    --sort "exif.raw.Rating:desc"
+    --sort "rating:desc"
 
 # Hidden gallery (not in navigation)
 revela create page gallery drafts --title "Drafts" --hidden
@@ -72,7 +72,7 @@ revela create page gallery 2024-12-christmas --title "Christmas" --slug "xmas"
 --sort "dateTaken:asc"        # Oldest first
 --sort "dateTaken:desc"       # Newest first
 --sort "filename:asc"         # A → Z
---sort "exif.raw.Rating:desc" # Highest rating first
+--sort "rating:desc"          # Highest rating first
 --sort "exif.focalLength:asc" # Wide angle → telephoto
 ```
 

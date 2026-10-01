@@ -55,7 +55,25 @@ Resolve an image from the project by path. Uses the same 3-step lookup as Markdo
 2. Shared images: `_images/{path}`
 3. Exact match: `{path}` as-is
 
-The `Image` object exposes `slug`, `width`, `height`, `sizes`, `file_size`, `date_taken`, `exif`, `title`, `description`, `tags`, and `placeholder`.
+The `Image` object exposes `slug`, `width`, `height`, `sizes`, `file_size`, `date_taken`, `exif`, `title`, `description`, `keywords`, `rating`, and `placeholder`.
+
+The descriptive fields come from the photo's XMP metadata, as Capture One and Lightroom export it:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `title` | string or null | XMP title; falls back to the Windows title (EXIF `XPTitle`) |
+| `description` | string or null | XMP description/caption; falls back to EXIF `ImageDescription` |
+| `keywords` | string[] | XMP keywords; empty when there are none |
+| `rating` | int or null | XMP star rating: `1`–`5`, `0` = unrated, `-1` = rejected |
+
+These are user data: escape them (`{{ html_escape image.title }}`) and never pass them
+through `t`. Keywords are often private workflow markers such as `Selected`, so Lumina
+does not show them; render them in your own theme only when that is intended:
+
+```scriban
+{{~ if image.rating && image.rating >= 4 ~}}<span>★ {{ image.rating }}</span>{{~ end ~}}
+{{~ for keyword in image.keywords ~}}<span>{{ html_escape keyword }}</span>{{~ end ~}}
+```
 
 ### `variant_url`
 

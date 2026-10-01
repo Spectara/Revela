@@ -299,6 +299,30 @@ public sealed class ScribanTemplateEngineTests
     }
 
     [TestMethod]
+    public void Render_ImageDescriptiveMetadata_ExposesSnakeCaseFields()
+    {
+        var engine = CreateEngine();
+        var image = new Image
+        {
+            SourcePath = "photos/029081.jpg",
+            FileName = "029081",
+            Slug = "photos/029081",
+            Width = 1920,
+            Height = 1080,
+            Title = "Abendlicht",
+            Description = "Evening light",
+            Keywords = ["Selected", "Startseite"],
+            Rating = 4
+        };
+
+        var result = engine.Render(
+            "{{ image.title }}|{{ image.description }}|{{ image.keywords | array.join ',' }}|{{ image.rating }}|{{ image.rating >= 4 }}",
+            Model(("image", image)));
+
+        Assert.AreEqual("Abendlicht|Evening light|Selected,Startseite|4|true", result);
+    }
+
+    [TestMethod]
     public void Translate_WithoutStrings_RendersKey()
     {
         var engine = CreateEngine();

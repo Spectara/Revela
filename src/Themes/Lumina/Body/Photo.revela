@@ -9,7 +9,7 @@ back to it via CSS (:target + :has).
 
 Template contract:
 - photo: { image, slug, title, primary_context, contexts }
-- image: ImageData { id, slug, width, height, title?, exif?, sizes, placeholder? }
+- image: ImageData { id, slug, width, height, title?, description?, keywords, rating?, exif?, sizes, placeholder? }
 - contexts: PhotoContext[] { route, label, context_id, anchor, is_physical, previous_photo?, next_photo? }
 - primary_context: PhotoContext
 - site, base_url, basepath, assets_basepath, image_formats, stylesheets, scripts, revela
@@ -28,8 +28,9 @@ Template contract:
     ret candidates | array.join ', '
 end ~}}
 {{~ alt_text = image.title ?? '' ~}}
+{{~ image_description = image.description ?? '' ~}}
 {{~ description = alt_text != '' ? alt_text : (site.description ?? '') ~}}
-{{~ display_label = image.description && image.description != '' ? image.description : image.id ~}}
+{{~ display_label = alt_text != '' ? alt_text : (image_description != '' ? image_description : image.id) ~}}
 {{~ heading = alt_text != '' ? alt_text : (t 'photo.label' image.id) ~}}
 {{~ canonical_url = base_url ? (absolute_url image) : null ~}}
 {{~ og_image = image ~}}
@@ -108,7 +109,6 @@ end ~}}
                     {{~ shown_labels = shown_labels | array.add ctx.label ~}}
                     {{~ end ~}}
                     {{~ end ~}}
-                    {{~ for tag in image.tags ~}}<span>{{ html_escape tag }}</span>{{~ end ~}}
                 </footer>
             </section>
         </article>

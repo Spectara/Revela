@@ -28,9 +28,11 @@ namespace Spectara.Revela.Features.Generate.Filtering;
 /// // Functions
 /// year(dateTaken) == 2024
 /// contains(filename, 'portrait')
+/// contains(keywords, 'Startseite')   // whole keyword, case-insensitive
 ///
 /// // Sort and limit (pipe syntax)
 /// all | sort dateTaken desc | limit 5
+/// rating >= 4 | sort random | limit 15
 /// exif.make == 'Canon' | sort exif.iso desc | limit 10
 /// </code>
 /// </remarks>
@@ -323,6 +325,7 @@ internal sealed class FilterService
             "DATETAKEN" => DateTime.MaxValue,
             "ISO" or "FNUMBER" or "FOCALLENGTH" or "EXPOSURETIME" => double.MaxValue,
             "WIDTH" or "HEIGHT" or "FILESIZE" => long.MaxValue,
+            "RATING" => int.MaxValue,
             _ => "\uFFFF" // High unicode character for strings
         };
     }
@@ -339,6 +342,7 @@ internal sealed class FilterService
             "DATETAKEN" => DateTime.MinValue,
             "ISO" or "FNUMBER" or "FOCALLENGTH" or "EXPOSURETIME" => double.MinValue,
             "WIDTH" or "HEIGHT" or "FILESIZE" => long.MinValue,
+            "RATING" => int.MinValue,
             _ => string.Empty
         };
     }
