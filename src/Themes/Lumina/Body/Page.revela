@@ -7,11 +7,14 @@ Used for text-only pages like About, Contact, etc.
 Expects:
 - gallery: { title, body }
 - basepath: Relative path to root
+
+Heading: the title is the page's single <h1>, unless the Markdown body brings its own.
 ##~}}
+{{~ body_has_h1 = gallery.body && (gallery.body | string.contains '<h1') ~}}
 {{~ # Page Content (rendered from _index.revela body using Markdig) ~}}
 <section>
-    {{~ if gallery.title ~}}
-    <h1>{{ html_escape gallery.title }}</h1>
+    {{~ if !body_has_h1 ~}}
+    <h1>{{ html_escape ((gallery.title && gallery.title != '') ? gallery.title : site.title) }}</h1>
     {{~ end ~}}
     {{~ gallery.body ~}}
 </section>

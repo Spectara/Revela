@@ -13,22 +13,55 @@ Expects:
 - image_formats: Array of format strings ["avif", "webp", "jpg"]
 - stylesheets: Array of CSS paths relative to _assets/
 - scripts: Array of JS paths relative to _assets/
+- base_url: Absolute site URL (optional) - enables canonical and absolute Open Graph URLs
+- og_locale: Open Graph locale derived from site.language (e.g. "de_DE")
+- not_found: true only for 404.html (rendered with body/notfound, root-absolute basepath)
 
 Body Template Selection:
 - Default: "body/gallery" (shows images and optional intro text)
 - Custom: Specify in _index.revela frontmatter: template = "body/page"
 - Extension templates: "statistics/overview" etc.
+- 404 page: "body/notfound"
+
+Headings: the layout renders no heading of its own. Every body template renders
+exactly one <h1> for the page (visually hidden where the design shows no title).
 ##~}}
+{{~ page_title = not_found ? (t 'notfound.title') : gallery.title ~}}
+{{~ page_description = gallery.description ?? site.description ~}}
+{{~ canonical_url = (base_url && !not_found) ? (absolute_url gallery) : null ~}}
+{{~ # Social preview image: the cover image, else the first image of the page ~}}
+{{~ og_image = gallery.cover_image ?? ((images && images.size > 0) ? images[0] : null) ~}}
 <!DOCTYPE html>
 <html lang="{{ html_escape (site.language ?? 'en') }}">
 
 <head>
     <meta charset="UTF-8">
-    <title>{{~ if gallery.title ~}}{{ html_escape site.title }} - {{ html_escape gallery.title }}{{~ else ~}}{{ html_escape site.title }}{{~ end ~}}</title>
+    <title>{{~ if page_title ~}}{{ html_escape site.title }} - {{ html_escape page_title }}{{~ else ~}}{{ html_escape site.title }}{{~ end ~}}</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="{{ html_escape (gallery.description ?? site.description) }}">
+    <meta name="description" content="{{ html_escape page_description }}">
     <meta name="author" content="{{ html_escape site.author }}">
     <meta name="generator" content="Revela {{ html_escape revela.version }}">
+    {{~ if not_found ~}}
+    <meta name="robots" content="noindex">
+    {{~ end ~}}
+    {{~ if canonical_url ~}}
+    <link rel="canonical" href="{{ html_escape canonical_url }}">
+    {{~ end ~}}
+    {{~ if !not_found ~}}
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="{{ html_escape site.title }}">
+    <meta property="og:title" content="{{ html_escape (page_title ?? site.title) }}">
+    {{~ if page_description ~}}
+    <meta property="og:description" content="{{ html_escape page_description }}">
+    {{~ end ~}}
+    {{~ if canonical_url ~}}
+    <meta property="og:url" content="{{ html_escape canonical_url }}">
+    {{~ end ~}}
+    {{~ if og_locale != '' ~}}
+    <meta property="og:locale" content="{{ html_escape og_locale }}">
+    {{~ end ~}}
+    {{~ include 'opengraphimage' ~}}
+    {{~ end ~}}
     {{~ include 'favicon' ~}}
     {{~ for css in stylesheets ~}}
     <link type="text/css" rel="stylesheet" media="all" href="{{ html_escape basepath }}_assets/{{ html_escape css }}">

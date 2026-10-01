@@ -247,6 +247,32 @@ public sealed class ScribanTemplateEngineTests
     }
 
     [TestMethod]
+    public void HtmlEscape_WithNonAsciiText_KeepsCharactersLiteral()
+    {
+        var engine = CreateEngine();
+
+        var result = engine.Render(
+            "<p title=\"{{ html_escape value }}\">",
+            Model(("value", "Menü Straße 日本 <script>alert('x')</script>")));
+
+        Assert.AreEqual("<p title=\"Menü Straße 日本 &lt;script&gt;alert(&#39;x&#39;)&lt;/script&gt;\">", result.Trim());
+    }
+
+    [TestMethod]
+    [DataRow("de", "de_DE")]
+    [DataRow("en", "en_US")]
+    [DataRow("de-CH", "de_CH")]
+    public void OgLocale_WithSiteLanguage_ReturnsOpenGraphLocale(string language, string expected)
+    {
+        var engine = CreateEngine();
+        engine.SetStrings(CreateStrings(language));
+
+        var result = engine.Render("{{ og_locale }}", Model());
+
+        Assert.AreEqual(expected, result);
+    }
+
+    [TestMethod]
     public void Translate_WithPlaceholderArguments_ReturnsSiteLanguageText()
     {
         var engine = CreateEngine();

@@ -30,6 +30,9 @@ end ~}}
 {{~ alt_text = image.title ?? '' ~}}
 {{~ description = alt_text != '' ? alt_text : (site.description ?? '') ~}}
 {{~ display_label = image.description && image.description != '' ? image.description : image.id ~}}
+{{~ heading = alt_text != '' ? alt_text : (t 'photo.label' image.id) ~}}
+{{~ canonical_url = base_url ? (absolute_url image) : null ~}}
+{{~ og_image = image ~}}
 <!DOCTYPE html>
 <html lang="{{ html_escape (site.language ?? 'en') }}">
 
@@ -41,8 +44,22 @@ end ~}}
     <meta name="description" content="{{ html_escape description }}">
     {{~ end ~}}
     <meta name="generator" content="Revela {{ html_escape revela.version }}">
-    <link rel="canonical" href="{{ html_escape (absolute_url image) }}">
-    <meta property="og:image" content="{{ html_escape (absolute_variant_url image largest_size (image_formats | array.last)) }}">
+    {{~ if canonical_url ~}}
+    <link rel="canonical" href="{{ html_escape canonical_url }}">
+    {{~ end ~}}
+    <meta property="og:type" content="article">
+    <meta property="og:site_name" content="{{ html_escape site.title }}">
+    <meta property="og:title" content="{{ html_escape heading }}">
+    {{~ if description != '' ~}}
+    <meta property="og:description" content="{{ html_escape description }}">
+    {{~ end ~}}
+    {{~ if canonical_url ~}}
+    <meta property="og:url" content="{{ html_escape canonical_url }}">
+    {{~ end ~}}
+    {{~ if og_locale != '' ~}}
+    <meta property="og:locale" content="{{ html_escape og_locale }}">
+    {{~ end ~}}
+    {{~ include 'opengraphimage' ~}}
     {{~ include 'favicon' ~}}
     {{~ for css in stylesheets ~}}
     <link type="text/css" rel="stylesheet" media="all" href="{{ html_escape basepath }}_assets/{{ html_escape css }}">
@@ -51,10 +68,11 @@ end ~}}
 
 <body class="photo-page">
     <main>
+        <h1 class="visually-hidden">{{ html_escape heading }}</h1>
         <article style="--width:{{ html_escape image.width }}; --height:{{ html_escape image.height }};{{~ if image.placeholder ~}} --lqip:{{ html_escape image.placeholder }};{{~ end ~}}">
             <picture id="photo-{{ html_escape image.id }}"{{~ if image.placeholder }} data-lqip{{ end }}>
                 {{~ for format in image_formats ~}}
-                <source type="image/{{ html_escape format }}" sizes="{{ html_escape viewer_sizes }}" srcset="{{ html_escape (viewer_srcset format) }}">
+                <source type="image/{{ html_escape (format == 'jpg' ? 'jpeg' : format) }}" sizes="{{ html_escape viewer_sizes }}" srcset="{{ html_escape (viewer_srcset format) }}">
                 {{~ end ~}}
                 <img alt="{{ html_escape alt_text }}" src="{{ html_escape (variant_url image largest_size (image_formats | array.last)) }}"
                     sizes="{{ html_escape viewer_sizes }}" srcset="{{ html_escape (viewer_srcset (image_formats | array.last)) }}"

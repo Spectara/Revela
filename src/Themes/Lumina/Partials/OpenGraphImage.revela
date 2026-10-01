@@ -1,0 +1,31 @@
+{{~##
+Open Graph Image Partial - Lumina Theme
+
+Emits og:image (+ width/height) for a social preview of one image. Social crawlers
+need an absolute URL and handle JPEG best, and the original file is often far too
+large, so this picks a generated variant: the largest size up to 1920px, else the
+smallest available size; JPEG when the site generates it.
+
+Expects:
+- og_image: Image { slug, width, height, sizes } (nothing is emitted when null)
+- image_formats: Array of generated formats ["avif", "webp", "jpg"]
+- base_url: Absolute site URL (nothing is emitted without it)
+##~}}
+{{~ if !base_url || !og_image || !og_image.sizes || og_image.sizes.size == 0; ret; end ~}}
+{{~ og_size = 0 ~}}
+{{~ og_smallest = 0 ~}}
+{{~ for size in og_image.sizes ~}}
+{{~ if size <= 1920 && size > og_size; og_size = size; end ~}}
+{{~ if og_smallest == 0 || size < og_smallest; og_smallest = size; end ~}}
+{{~ end ~}}
+{{~ if og_size == 0; og_size = og_smallest; end ~}}
+{{~ og_format = (image_formats | array.contains 'jpg') ? 'jpg' : (image_formats | array.last) ~}}
+{{~ # Sizes describe the longest edge (resizeMode "longest"), matching the srcset widths. ~}}
+{{~ if og_image.width >= og_image.height ~}}
+{{~ og_width = og_size; og_height = (og_size * og_image.height / og_image.width) | math.round ~}}
+{{~ else ~}}
+{{~ og_height = og_size; og_width = (og_size * og_image.width / og_image.height) | math.round ~}}
+{{~ end ~}}
+<meta property="og:image" content="{{ html_escape (absolute_variant_url og_image og_size og_format) }}">
+<meta property="og:image:width" content="{{ html_escape og_width }}">
+<meta property="og:image:height" content="{{ html_escape og_height }}">

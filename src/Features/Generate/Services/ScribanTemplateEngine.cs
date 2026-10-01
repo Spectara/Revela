@@ -1,7 +1,9 @@
+using System.Buffers;
 using System.Collections.Concurrent;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Net;
+using System.Text;
 using Scriban;
 using Scriban.Parsing;
 using Scriban.Runtime;
@@ -44,6 +46,9 @@ internal sealed partial class ScribanTemplateEngine(
     private IReadOnlyDictionary<string, Image>? imageLookup;
     private ThemeStrings strings = ThemeStrings.Empty;
     private TranslateFunction translateFunction = new(ThemeStrings.Empty);
+    private string ogLocale = ToOpenGraphLocale(ThemeStrings.Empty.Language);
+
+    private static readonly SearchValues<char> HtmlSpecialCharacters = SearchValues.Create("&<>\"'");
 
     /// <summary>
     /// Converts PascalCase member names to lowercase for Scriban templates
@@ -66,7 +71,7 @@ internal sealed partial class ScribanTemplateEngine(
     private static string ConvertToSnakeCase(System.Reflection.MemberInfo member)
     {
         var name = member.Name;
-        var result = new System.Text.StringBuilder(name.Length + 5);
+        var result = new StringBuilder(name.Length + 5);
 
         for (var i = 0; i < name.Length; i++)
         {
@@ -130,6 +135,7 @@ internal sealed partial class ScribanTemplateEngine(
     {
         strings = themeStrings;
         translateFunction = new TranslateFunction(themeStrings);
+        ogLocale = ToOpenGraphLocale(themeStrings.Language);
     }
 
     /// <summary>
@@ -474,6 +480,7 @@ internal sealed partial class ScribanTemplateEngine(
         scriptObject.Import("markdown", new Func<string?, string>(Markdown));
         scriptObject.Import("find_image", new Func<string, Image?>(path => ResolveImageForTemplate(path, scriptObject)));
         scriptObject["t"] = translateFunction;
+        scriptObject["og_locale"] = ogLocale;
 
         context.PushGlobal(scriptObject);
 
@@ -488,8 +495,52 @@ internal sealed partial class ScribanTemplateEngine(
     private static string GetStringValue(ScriptObject scriptObject, string key) =>
         scriptObject.TryGetValue(key, out var value) && value is string text ? text : string.Empty;
 
-    private static string HtmlEscape(object? value) =>
-        WebUtility.HtmlEncode(Convert.ToString(value, CultureInfo.InvariantCulture) ?? string.Empty);
+    /// <summary>
+    /// Escapes only the HTML-significant characters (<c>&amp; &lt; &gt; " '</c>), safe for text and
+    /// quoted attribute values. Unlike <see cref="WebUtility.HtmlEncode(string)"/>, non-ASCII text such
+    /// as umlauts stays literal so the UTF-8 source remains readable.
+    /// </summary>
+    private static string HtmlEscape(object? value)
+    {
+        var text = Convert.ToString(value, CultureInfo.InvariantCulture) ?? string.Empty;
+        if (text.AsSpan().IndexOfAny(HtmlSpecialCharacters) < 0)
+        {
+            return text;
+        }
+
+        var builder = new StringBuilder(text.Length + 16);
+        foreach (var c in text)
+        {
+            _ = c switch
+            {
+                '&' => builder.Append("&amp;"),
+                '<' => builder.Append("&lt;"),
+                '>' => builder.Append("&gt;"),
+                '"' => builder.Append("&quot;"),
+                '\'' => builder.Append("&#39;"),
+                _ => builder.Append(c)
+            };
+        }
+
+        return builder.ToString();
+    }
+
+    /// <summary>
+    /// Open Graph locale (<c>language_TERRITORY</c>, e.g. <c>de_DE</c>) for a site language, using the
+    /// language's default territory when none is given. Empty when the language is unknown.
+    /// </summary>
+    private static string ToOpenGraphLocale(string language)
+    {
+        try
+        {
+            var culture = CultureInfo.CreateSpecificCulture(language.Trim().Replace('_', '-'));
+            return culture.Name.Replace('-', '_');
+        }
+        catch (CultureNotFoundException)
+        {
+            return string.Empty;
+        }
+    }
 
     /// <summary>
     /// Site-root-relative page URL for a link target, resolved against the current

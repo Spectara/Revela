@@ -13,5 +13,8 @@
   "photo.aperture": "Aperture",
   "photo.shutter": "Shutter",
   "photo.focal_length": "Focal length",
-  "photo.lens_on_camera": "{0} on {1}"
+  "photo.lens_on_camera": "{0} on {1}",
+  "notfound.title": "Page not found",
+  "notfound.text": "The page you are looking for does not exist or has moved.",
+  "notfound.home": "Back to the home page"
 }

@@ -408,12 +408,108 @@ public sealed class StaticFileServerTests
 
             // Assert
             Assert.AreEqual(HttpStatusCode.NotFound, response.StatusCode);
+            Assert.AreEqual("text/plain; charset=utf-8", response.Content.Headers.ContentType?.ToString());
+            Assert.AreEqual("Not Found", await response.Content.ReadAsStringAsync());
             Assert.AreEqual(404, await callbackInvoked.Task.WaitAsync(TimeSpan.FromSeconds(10)));
         }
         finally
         {
             Directory.Delete(tempDir, recursive: true);
         }
+    }
+
+    [TestMethod]
+    [TestCategory("Integration")]
+    public async Task Server_MissingFileWithNotFoundPage_Returns404WithPageBody()
+    {
+        var tempDir = Path.Combine(Path.GetTempPath(), $"revela-serve-test-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(tempDir);
+        const string notFoundPage = "<!DOCTYPE html><title>Seite nicht gefunden</title>";
+        await File.WriteAllTextAsync(Path.Combine(tempDir, "404.html"), notFoundPage);
+
+        try
+        {
+            var callbackInvoked = new TaskCompletionSource<int>(TaskCreationOptions.RunContinuationsAsynchronously);
+            await using var server = StartServer(tempDir, out var port, (_, status) => callbackInvoked.TrySetResult(status));
+            using var client = new HttpClient();
+
+            using var response = await client.GetAsync(LocalUri(port, "/gallery/missing/"));
+            var content = await response.Content.ReadAsStringAsync();
+
+            Assert.AreEqual(HttpStatusCode.NotFound, response.StatusCode);
+            Assert.AreEqual(notFoundPage, content);
+            Assert.AreEqual("text/html; charset=utf-8", response.Content.Headers.ContentType?.ToString());
+            Assert.AreEqual(404, await callbackInvoked.Task.WaitAsync(TimeSpan.FromSeconds(10)));
+        }
+        finally
+        {
+            Directory.Delete(tempDir, recursive: true);
+        }
+    }
+
+    [TestMethod]
+    [TestCategory("Integration")]
+    public async Task Server_HeadMissingFileWithNotFoundPage_Returns404HtmlHeadersWithoutBody()
+    {
+        var tempDir = Path.Combine(Path.GetTempPath(), $"revela-serve-test-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(tempDir);
+        await File.WriteAllTextAsync(Path.Combine(tempDir, "404.html"), "<!DOCTYPE html><title>404</title>");
+
+        try
+        {
+            await using var server = StartServer(tempDir, out var port);
+            using var client = new HttpClient();
+            using var request = new HttpRequestMessage(HttpMethod.Head, LocalUri(port, "/missing.html"));
+
+            using var response = await client.SendAsync(request);
+            var body = await response.Content.ReadAsByteArrayAsync();
+
+            Assert.AreEqual(HttpStatusCode.NotFound, response.StatusCode);
+            Assert.AreEqual("text/html; charset=utf-8", response.Content.Headers.ContentType?.ToString());
+            Assert.IsEmpty(body);
+        }
+        finally
+        {
+            Directory.Delete(tempDir, recursive: true);
+        }
+    }
+
+    [TestMethod]
+    [TestCategory("Integration")]
+    public async Task Server_EncodedTraversalWithNotFoundPage_StaysForbidden()
+    {
+        var tempDir = Path.Combine(Path.GetTempPath(), $"revela-serve-test-{Guid.NewGuid():N}");
+        var rootDir = Path.Combine(tempDir, "output");
+        Directory.CreateDirectory(rootDir);
+        await File.WriteAllTextAsync(Path.Combine(rootDir, "404.html"), "NOT-FOUND-PAGE");
+        await File.WriteAllTextAsync(Path.Combine(tempDir, "secret.txt"), "SECRET");
+
+        try
+        {
+            await using var server = StartServer(rootDir, out var port);
+
+            // Raw request: HttpClient would normalize the dot segments before sending.
+            var response = await SendRawGetAsync(port, "/..%5Csecret.txt");
+
+            Assert.StartsWith("HTTP/1.1 403", response, response);
+            Assert.DoesNotContain("SECRET", response, StringComparison.Ordinal);
+            Assert.DoesNotContain("NOT-FOUND-PAGE", response, StringComparison.Ordinal);
+        }
+        finally
+        {
+            Directory.Delete(tempDir, recursive: true);
+        }
+    }
+
+    private static async Task<string> SendRawGetAsync(int port, string rawPath)
+    {
+        using var tcp = new TcpClient();
+        await tcp.ConnectAsync(IPAddress.Loopback, port);
+        await using var stream = tcp.GetStream();
+        var request = $"GET {rawPath} HTTP/1.1\r\nHost: localhost:{port}\r\nConnection: close\r\n\r\n";
+        await stream.WriteAsync(System.Text.Encoding.ASCII.GetBytes(request));
+        using var reader = new StreamReader(stream, System.Text.Encoding.UTF8);
+        return await reader.ReadToEndAsync().WaitAsync(TimeSpan.FromSeconds(10));
     }
 
     [TestMethod]

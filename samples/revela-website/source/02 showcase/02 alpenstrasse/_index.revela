@@ -73,7 +73,7 @@ The homepage uses `cover = "panorama/panorama.jpg"` in the frontmatter. The Layo
 <section class="hero-panorama">
   <picture>
     {{~ for format in image_formats ~}}
-    <source type="image/{{ format }}" srcset="...">
+    <source type="image/{{ format == 'jpg' ? 'jpeg' : format }}" srcset="...">
     {{~ end ~}}
     <img src="..." alt="{{ gallery.title }}" loading="eager">
   </picture>

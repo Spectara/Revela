@@ -22,7 +22,7 @@ end ~}}
     <article style="--width:{{ html_escape image.width }}; --height:{{ html_escape image.height }};{{~ if image.placeholder ~}} --lqip:{{ html_escape image.placeholder }};{{~ end ~}}">
         <picture{{~ if image.placeholder }} data-lqip{{ end }}>
             {{~ for format in image_formats ~}}
-            <source type="image/{{ html_escape format }}" sizes="{{ html_escape viewer_sizes }}" srcset="{{ html_escape (viewer_srcset format) }}">
+            <source type="image/{{ html_escape (format == 'jpg' ? 'jpeg' : format) }}" sizes="{{ html_escape viewer_sizes }}" srcset="{{ html_escape (viewer_srcset format) }}">
             {{~ end ~}}
             <img alt="{{ html_escape alt_text }}" src="{{ html_escape assets_basepath }}{{ html_escape image.slug }}/{{ html_escape largest_size }}.{{ html_escape (image_formats | array.last) }}"
                 sizes="{{ html_escape viewer_sizes }}" srcset="{{ html_escape (viewer_srcset (image_formats | array.last)) }}"

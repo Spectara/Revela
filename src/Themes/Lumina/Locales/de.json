@@ -13,5 +13,8 @@
   "photo.aperture": "Blende",
   "photo.shutter": "Belichtungszeit",
   "photo.focal_length": "Brennweite",
-  "photo.lens_on_camera": "{0} an {1}"
+  "photo.lens_on_camera": "{0} an {1}",
+  "notfound.title": "Seite nicht gefunden",
+  "notfound.text": "Die gesuchte Seite existiert nicht oder wurde verschoben.",
+  "notfound.home": "Zurück zur Startseite"
 }

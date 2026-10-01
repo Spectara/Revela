@@ -264,6 +264,9 @@ grids require `Partials/GalleryGrid.revela` when used. Viewer capabilities and
 defaults belong to the base theme; `Body/Photo.revela` is required when that theme
 supports the `page` viewer. See [Inline Galleries](inline-galleries.md#theme-contract)
 for occurrence models and viewer behavior rather than duplicating that catalog.
+`Body/NotFound.revela` is optional: when present (and no `source/_static/404.html`
+exists) the renderer writes `404.html` once at the output root with a root-absolute
+`basepath`, outside navigation, sitemap and page count.
 
 Template properties describe identity and data. URL helpers such as `page_url`,
 `variant_url`, and `asset_url` own rendering paths and prefixes. The SDK's
