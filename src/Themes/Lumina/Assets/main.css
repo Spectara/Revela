@@ -559,8 +559,7 @@ main {
       margin-bottom: var(--space-m);
       background-color: var(--color-bg);
       position: relative;
-      outline: solid calc(var(--space-m)) var(--color-bg);
-      box-shadow: 0px calc(var(--space-m) + var(--grid-gap)) 0 0 var(--color-bg);
+      box-shadow: 0 0 0 var(--space-m) var(--color-bg), 0px calc(var(--space-m) + var(--grid-gap)) 0 0 var(--color-bg);
     }
 
     >article {
@@ -569,7 +568,10 @@ main {
       min-width: 0;
       position: relative;
       background-color: var(--color-bg);
-      outline: solid var(--grid-gap) var(--color-bg);
+      /* Covers the gaps where earlier rows' sticky pictures slide through. A spread
+         box-shadow, not an outline: iOS Safari skipped the outline on part of the
+         composited tiles, which let the photo above show between the tiles. */
+      box-shadow: 0 0 0 var(--grid-gap) var(--color-bg);
       display: flex;
       justify-content: center;
 
@@ -792,7 +794,7 @@ main {
       flex-grow: 1000000000;
       background: var(--color-bg);
       position: relative;
-      outline: solid var(--grid-gap) var(--color-bg);
+      box-shadow: 0 0 0 var(--grid-gap) var(--color-bg);
 
       @media (width <=600px) {
         display: none;
@@ -1104,7 +1106,7 @@ body>footer {
   justify-content: space-between;
   align-items: center;
   height: calc(100dvh - var(--space-2xl) + 1px);
-  outline: solid var(--space-m) var(--color-bg);
+  box-shadow: 0 0 0 var(--space-m) var(--color-bg);
   padding-top: var(--space-l);
 
   div {

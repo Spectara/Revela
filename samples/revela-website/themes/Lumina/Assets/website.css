@@ -758,7 +758,7 @@ main:has(.gallery)+footer {
   background: var(--color-bg);
   grid-column: full-width;
   border-top: 1px solid var(--glass-border);
-  box-shadow: 0 1px 15px var(--glass-shadow);
+  box-shadow: 0 0 0 var(--space-m) var(--color-bg), 0 1px 15px var(--glass-shadow);
   margin-top: var(--space-m);
 }
 
@@ -766,5 +766,5 @@ main:has(.gallery)+footer {
    the last images don't bleed past the section on the gradient background. */
 main .gallery {
   overflow-y: clip;
-  outline: solid var(--space-m) var(--color-bg);
+  box-shadow: 0 0 0 var(--space-m) var(--color-bg);
 }
