@@ -1,4 +1,6 @@
 using System.Globalization;
+using System.Security;
+using System.Text;
 using NetVips;
 using Image = NetVips.Image;
 
@@ -207,7 +209,69 @@ public static class TestImageGenerator
                 m.Set(GValue.GStrType, "exif-ifd2-DateTimeOriginal", dateStr));
         }
 
+        if (!string.IsNullOrEmpty(exif.XpTitle))
+        {
+            image = image.Mutate(m => m.Set(GValue.GStrType, "exif-ifd0-XPTitle", exif.XpTitle));
+        }
+
+        if (exif.XmpPacket is not null)
+        {
+            // jpegsave writes the "xmp-data" blob as an APP1 XMP segment.
+            var packet = Encoding.UTF8.GetBytes(exif.XmpPacket);
+            image = image.Mutate(m => m.Set(GValue.BlobType, "xmp-data", packet));
+        }
+
         return image;
+    }
+
+    /// <summary>
+    /// Builds an XMP packet shaped like a Capture One / Lightroom export.
+    /// </summary>
+    /// <param name="title">Value of <c>dc:title</c> (x-default), omitted when null.</param>
+    /// <param name="description">Value of <c>dc:description</c> (x-default), omitted when null.</param>
+    /// <param name="keywords">Entries of the <c>dc:subject</c> bag, omitted when null.</param>
+    /// <param name="rating">Value of the <c>xmp:Rating</c> attribute, omitted when null.</param>
+    public static string CreateXmpPacket(
+        string? title = null,
+        string? description = null,
+        IEnumerable<string>? keywords = null,
+        int? rating = null)
+    {
+        var builder = new StringBuilder();
+        builder.Append("<?xpacket begin=\"\uFEFF\" id=\"W5M0MpCehiHzreSzNTczkc9d\"?>\n");
+        builder.Append("<x:xmpmeta xmlns:x=\"adobe:ns:meta/\" x:xmptk=\"Test\">\n");
+        builder.Append(" <rdf:RDF xmlns:rdf=\"http://www.w3.org/1999/02/22-rdf-syntax-ns#\">\n");
+        builder.Append("  <rdf:Description rdf:about=\"\" xmlns:xmp=\"http://ns.adobe.com/xap/1.0/\" xmlns:dc=\"http://purl.org/dc/elements/1.1/\"");
+        if (rating is not null)
+        {
+            builder.Append(CultureInfo.InvariantCulture, $" xmp:Rating=\"{rating.Value}\"");
+        }
+
+        builder.Append(">\n");
+
+        if (keywords is not null)
+        {
+            builder.Append("   <dc:subject><rdf:Bag>");
+            foreach (var keyword in keywords)
+            {
+                builder.Append(CultureInfo.InvariantCulture, $"<rdf:li>{SecurityElement.Escape(keyword)}</rdf:li>");
+            }
+
+            builder.Append("</rdf:Bag></dc:subject>\n");
+        }
+
+        if (title is not null)
+        {
+            builder.Append(CultureInfo.InvariantCulture, $"   <dc:title><rdf:Alt><rdf:li xml:lang=\"x-default\">{SecurityElement.Escape(title)}</rdf:li></rdf:Alt></dc:title>\n");
+        }
+
+        if (description is not null)
+        {
+            builder.Append(CultureInfo.InvariantCulture, $"   <dc:description><rdf:Alt><rdf:li xml:lang=\"x-default\">{SecurityElement.Escape(description)}</rdf:li></rdf:Alt></dc:description>\n");
+        }
+
+        builder.Append("  </rdf:Description>\n </rdf:RDF>\n</x:xmpmeta>\n<?xpacket end=\"w\"?>");
+        return builder.ToString();
     }
 
     /// <summary>
@@ -265,6 +329,12 @@ public sealed class ExifOptions
 
     /// <summary>Date and time the photo was taken.</summary>
     public DateTime? DateTaken { get; private set; }
+
+    /// <summary>Windows title (EXIF <c>XPTitle</c>).</summary>
+    public string? XpTitle { get; private set; }
+
+    /// <summary>Raw XMP packet embedded as the image's XMP segment.</summary>
+    public string? XmpPacket { get; private set; }
 
     /// <summary>Creates a new empty ExifOptions builder.</summary>
     public static ExifOptions Create() => new();
@@ -325,4 +395,29 @@ public sealed class ExifOptions
         DateTaken = dateTaken;
         return this;
     }
+
+    /// <summary>Sets the Windows title (EXIF <c>XPTitle</c>).</summary>
+    public ExifOptions WithXpTitle(string title)
+    {
+        XpTitle = title;
+        return this;
+    }
+
+    /// <summary>Embeds a raw (possibly malformed) XMP packet.</summary>
+    public ExifOptions WithXmp(string packet)
+    {
+        XmpPacket = packet;
+        return this;
+    }
+
+    /// <summary>
+    /// Embeds an XMP packet as Capture One / Lightroom write it
+    /// (see <see cref="TestImageGenerator.CreateXmpPacket"/>).
+    /// </summary>
+    public ExifOptions WithXmpMetadata(
+        string? title = null,
+        string? description = null,
+        IEnumerable<string>? keywords = null,
+        int? rating = null) =>
+        WithXmp(TestImageGenerator.CreateXmpPacket(title, description, keywords, rating));
 }

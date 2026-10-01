@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using System.Collections.Frozen;
 using System.Globalization;
+using System.Xml;
 using NetVips;
 using Spectara.Revela.Features.Generate.Abstractions;
 using Spectara.Revela.Features.Generate.Infrastructure;
@@ -54,9 +55,15 @@ internal sealed partial class NetVipsImageProcessor(
     /// <remarks>
     /// Part of the scan cache key. Increment whenever <see cref="ReadMetadataAsync"/> computes
     /// different values for the same file (2: upright dimensions after EXIF orientation and
-    /// sRGB placeholders), so manifests from older versions re-read their metadata.
+    /// sRGB placeholders; 3: XMP title, description, keywords, and rating), so manifests from
+    /// older versions re-read their metadata.
     /// </remarks>
-    internal const int MetadataVersion = 2;
+    internal const int MetadataVersion = 3;
+
+    /// <summary>
+    /// libvips metadata field holding the raw XMP packet.
+    /// </summary>
+    private const string XmpField = "xmp-data";
 
     /// <summary>
     /// Color space of published variants. Variants are saved without metadata, and browsers
@@ -426,6 +433,7 @@ internal sealed partial class NetVipsImageProcessor(
         var height = image.Height;
         var fileInfo = new FileInfo(inputPath);
         var exif = ExtractExifData(image);
+        var xmp = ExtractXmpMetadata(image, inputPath);
 
         // Generate placeholder if configured
         string? placeholder = null;
@@ -441,9 +449,44 @@ internal sealed partial class NetVipsImageProcessor(
             FileSize = fileInfo.Length,
             Exif = exif,
             DateTaken = exif?.DateTaken ?? fileInfo.LastWriteTimeUtc,
+            // XMP is what DAMs (Capture One, Lightroom) write; EXIF tags are the fallback.
+            Title = xmp.Title ?? GetRawExifText(exif, "XPTitle"),
+            Description = xmp.Description ?? GetRawExifText(exif, "ImageDescription"),
+            Keywords = xmp.Keywords,
+            Rating = xmp.Rating,
             Placeholder = placeholder
         });
     }
+
+    /// <summary>
+    /// Reads descriptive metadata from the image's XMP packet.
+    /// </summary>
+    /// <remarks>
+    /// Unreadable XMP never fails the scan: the image keeps its EXIF data and is
+    /// treated as having no XMP.
+    /// </remarks>
+    private XmpMetadata ExtractXmpMetadata(Image image, string inputPath)
+    {
+        if (!image.Contains(XmpField))
+        {
+            return XmpMetadata.Empty;
+        }
+
+        try
+        {
+            return image.Get(XmpField) is byte[] { Length: > 0 } packet
+                ? XmpMetadataParser.Parse(packet)
+                : XmpMetadata.Empty;
+        }
+        catch (Exception ex) when (ex is XmlException or InvalidDataException or VipsException)
+        {
+            LogXmpIgnored(logger, inputPath, ex);
+            return XmpMetadata.Empty;
+        }
+    }
+
+    private static string? GetRawExifText(ExifData? exif, string field) =>
+        exif?.Raw?.GetValueOrDefault(field)?.Trim() is { Length: > 0 } value ? value : null;
 
     /// <summary>
     /// Resize an already-loaded image based on the resize mode.
@@ -938,6 +981,9 @@ internal sealed partial class NetVipsImageProcessor(
 
     [LoggerMessage(Level = LogLevel.Debug, Message = "Failed to extract EXIF from image")]
     private static partial void LogExifExtractionFailed(ILogger logger, Exception exception);
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Ignoring unreadable XMP metadata in {Path}")]
+    private static partial void LogXmpIgnored(ILogger logger, string path, Exception exception);
 
     [LoggerMessage(Level = LogLevel.Debug, Message = "Saved variant: {Path} ({Width}×{Height}, {Format})")]
     private static partial void LogSavedVariant(ILogger logger, string path, int width, int height, string format);

@@ -16,7 +16,7 @@ previous_occurrence_id, next_occurrence_id, lightbox_id, and alt_text.
     end
     ret candidates | array.join ', '
 end ~}}
-{{~ display_label = image.description && image.description != '' ? image.description : image.id ~}}
+{{~ display_label = alt_text != '' ? alt_text : (image.description && image.description != '' ? image.description : image.id) ~}}
 <dialog id="{{ html_escape lightbox_id }}" class="photo-lightbox" data-lightbox closedby="any" aria-label="{{~ if alt_text != '' }}{{ html_escape alt_text }}{{ else }}{{ html_escape (t 'photo.label' image.id) }}{{ end }}">
     <button type="button" commandfor="{{ html_escape lightbox_id }}" command="close" aria-label="{{ html_escape (t 'photo.close') }}">&times;</button>
     <article style="--width:{{ html_escape image.width }}; --height:{{ html_escape image.height }};{{~ if image.placeholder ~}} --lqip:{{ html_escape image.placeholder }};{{~ end ~}}">
@@ -46,7 +46,6 @@ end ~}}
             <footer>
                 <strong>{{ html_escape (t 'photo.tags') }}</strong>
                 <span>{{ html_escape context_label }}</span>
-                {{~ for tag in image.tags ~}}<span>{{ html_escape tag }}</span>{{~ end ~}}
             </footer>
         </section>
     </article>

@@ -309,6 +309,10 @@ internal sealed partial class ContentService(
                             FileSize = cached.FileSize,
                             Exif = cached.Exif,
                             DateTaken = cached.DateTaken,
+                            Title = cached.Title,
+                            Description = cached.Description,
+                            Keywords = cached.Keywords,
+                            Rating = cached.Rating,
                             Placeholder = cached.Placeholder
                         };
                         Interlocked.Increment(ref cachedCount);
@@ -540,6 +544,10 @@ internal sealed partial class ContentService(
             Sizes = sizes,
             DateTaken = meta.DateTaken,
             Exif = meta.Exif,
+            Title = meta.Title,
+            Description = meta.Description,
+            Keywords = meta.Keywords,
+            Rating = meta.Rating,
             Placeholder = meta.Placeholder
         };
     }
@@ -701,13 +709,26 @@ internal sealed partial class ContentService(
             }
         }
 
-        var sorted = direction == SortDirection.Asc
-            ? content.OrderBy(c => GetSortKey(c, field, fallback), SortKeyComparer.Instance)
-            : content.OrderByDescending(c => GetSortKey(c, field, fallback), SortKeyComparer.Instance);
+        object Key(GalleryContent c) => GetSortKey(c, field, fallback);
+
+        // Unrated photos follow the rated ones in either direction, as in filter sorting.
+        var sorted = string.Equals(field, "rating", StringComparison.OrdinalIgnoreCase)
+            ? ThenByDirection(content.OrderBy(c => c is ImageContent { Rating: not null } ? 0 : 1), Key, direction)
+            : direction == SortDirection.Asc
+                ? content.OrderBy(Key, SortKeyComparer.Instance)
+                : content.OrderByDescending(Key, SortKeyComparer.Instance);
 
         // Always use filename as final tie-breaker for stable sorting
         return [.. sorted.ThenBy(c => c.Filename, StringComparer.OrdinalIgnoreCase)];
     }
+
+    private static IOrderedEnumerable<GalleryContent> ThenByDirection(
+        IOrderedEnumerable<GalleryContent> content,
+        Func<GalleryContent, object> key,
+        SortDirection direction) =>
+        direction == SortDirection.Asc
+            ? content.ThenBy(key, SortKeyComparer.Instance)
+            : content.ThenByDescending(key, SortKeyComparer.Instance);
 
     /// <summary>
     /// Get a comparable sort key from content using the specified field path.
@@ -735,6 +756,7 @@ internal sealed partial class ContentService(
     /// <list type="bullet">
     ///   <item><c>filename</c> - GalleryContent.Filename</item>
     ///   <item><c>dateTaken</c> - ImageContent.DateTaken</item>
+    ///   <item><c>rating</c>, <c>title</c> - XMP metadata (ImageContent.Rating / Title)</item>
     ///   <item><c>exif.focalLength</c> - Typed EXIF property</item>
     ///   <item><c>exif.raw.Rating</c> - Raw EXIF dictionary value</item>
     /// </list>
@@ -753,6 +775,8 @@ internal sealed partial class ContentService(
         {
             "FILENAME" => content.Filename,
             "DATETAKEN" when content is ImageContent img => img.DateTaken ?? DateTime.MaxValue,
+            "RATING" when content is ImageContent img => img.Rating,
+            "TITLE" when content is ImageContent img => img.Title,
             "EXIF" when content is ImageContent img && img.Exif is not null => GetExifFieldValue(img.Exif, parts.AsSpan()[1..]),
             _ => null
         };
@@ -832,6 +856,10 @@ internal sealed partial class ContentService(
             LastModified = source.LastModified,
             DateTaken = meta?.DateTaken,
             Exif = meta?.Exif,
+            Title = meta?.Title,
+            Description = meta?.Description,
+            Keywords = meta?.Keywords ?? [],
+            Rating = meta?.Rating,
             Placeholder = meta?.Placeholder
         };
     }

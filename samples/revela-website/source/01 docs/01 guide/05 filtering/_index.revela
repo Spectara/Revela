@@ -17,7 +17,7 @@ Galleries automatically update when images change or are added.
 
 ### 🔍 Powerful Queries
 
-Filter by EXIF data, filename, date, and more with a simple syntax.
+Filter by star rating, keywords, EXIF data, filename, date, and more with a simple syntax.
 
 </div>
 
@@ -109,6 +109,33 @@ filter = "(exif.make == 'Canon' or exif.make == 'Sony') and exif.iso >= 800"
 | `dateTaken` | DateTime | Date the photo was taken |
 | `lastModified` | DateTime | File last-modified timestamp |
 
+### Photo Metadata
+
+Revela reads the XMP metadata that Capture One, Lightroom, and other photo
+managers write into exported files:
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `rating` | int? | Star rating: `1`–`5`, `0` = unrated, `-1` = rejected; empty when the file has none |
+| `keywords` | list | Keywords (e.g. `Selected`, `Startseite`) |
+| `title` | string? | Photo title; falls back to the Windows title (EXIF `XPTitle`) |
+| `description` | string? | Caption; falls back to the EXIF `ImageDescription` |
+
+Test for a keyword with `contains(keywords, 'Startseite')`. It matches whole
+keywords and ignores upper/lower case, so `Startseite-Archiv` does not match.
+
+```toml
+filter = "rating >= 4"
+filter = "contains(keywords, 'Startseite')"
+filter = "rating >= 4 and not contains(keywords, 'Privat')"
+```
+
+> **Export your metadata.** Revela can only read what is in the exported file.
+> In Capture One, open the export recipe's **Metadata** tab and include the rating,
+> keywords, and the title/description (IPTC) fields. In Lightroom Classic, set
+> **Metadata** in the export dialog to *All Metadata* or *All Except Camera &
+> Camera Raw Info*. Re-export the photos after changing the recipe.
+
 ### EXIF Properties
 
 Access via `exif.` prefix:
@@ -133,8 +160,9 @@ Access any EXIF tag via `exif.raw.TagName`:
 ```toml
 filter = "exif.raw.Software == 'Lightroom'"
 filter = "exif.raw.Artist == 'John Doe'"
-filter = "exif.raw.Rating >= 4"
 ```
+
+Raw EXIF values are text, so compare them with text values.
 
 ---
 
@@ -153,6 +181,7 @@ filter = "exif.raw.Rating >= 4"
 | Function | Description | Example |
 |----------|-------------|---------|
 | `contains(str, substr)` | Check if contains | `contains(filename, 'portrait')` |
+| `contains(keywords, word)` | Has this keyword (whole word, any case) | `contains(keywords, 'Startseite')` |
 | `starts_with(str, prefix)` | Check prefix | `starts_with(filename, 'IMG_')` |
 | `ends_with(str, suffix)` | Check suffix | `ends_with(filename, '-edit.jpg')` |
 | `lower(str)` | To lowercase | `lower(exif.make) == 'canon'` |
@@ -297,12 +326,23 @@ filter = "all | sort random | limit 15"
 ### Best Rated
 
 ```toml
-filter = "exif.raw.Rating >= 4 | sort exif.raw.Rating desc"
+# All 4- and 5-star photos, best first
+filter = "rating >= 4 | sort rating desc"
+
+# 15 random photos from the best rated
+filter = "rating >= 4 | sort random | limit 15"
 ```
 
-> **Note:** This reads the EXIF `Rating` tag, which Windows and some editors write.
-> Capture One and Lightroom usually store star ratings in XMP, which Revela does
-> not read yet, so this filter may find no photos from those exports.
+`rating` comes from the XMP star rating that Capture One and Lightroom export
+(see [Photo Metadata](#photo-metadata)). Photos without a
+rating never match `rating >= 4` and are listed last by `sort rating`.
+
+### By Keyword
+
+```toml
+filter = "contains(keywords, 'Startseite')"
+filter = "contains(keywords, 'Startseite') | sort random | limit 15"
+```
 
 ---
 

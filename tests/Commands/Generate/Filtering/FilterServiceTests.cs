@@ -464,5 +464,116 @@ public sealed class FilterServiceTests
         Assert.AreEqual("dated.jpg", result[0].Filename);
         Assert.AreEqual("undated.jpg", result[1].Filename);
     }
+
+    private static ImageContent CreateDescribedImage(
+        string filename,
+        int? rating = null,
+        IReadOnlyList<string>? keywords = null,
+        string? title = null,
+        string? description = null) => new()
+        {
+            Filename = filename,
+            Width = 1920,
+            Height = 1080,
+            Sizes = [1920],
+            Rating = rating,
+            Keywords = keywords ?? [],
+            Title = title,
+            Description = description
+        };
+
+    [TestMethod]
+    public void ApplyQuery_RatingFilterWithRandomSortAndLimit_ReturnsOnlyHighlyRatedImages()
+    {
+        // Arrange
+        var images = Enumerable.Range(0, 40)
+            .Select(i => CreateDescribedImage($"img-{i:D2}.jpg", rating: i % 2 == 0 ? (i % 4 == 0 ? 5 : 4) : (i % 3 == 0 ? null : 3)))
+            .ToArray();
+
+        // Act
+        var result = FilterService.ApplyQuery(images, "rating >= 4 | sort random | limit 15").ToList();
+
+        // Assert
+        Assert.HasCount(15, result);
+        Assert.IsTrue(result.All(image => image.Rating >= 4));
+    }
+
+    [TestMethod]
+    public void ApplyQuery_SortRatingDesc_PutsUnratedImagesLast()
+    {
+        // Arrange
+        var images = new[]
+        {
+            CreateDescribedImage("unrated.jpg"),
+            CreateDescribedImage("three.jpg", rating: 3),
+            CreateDescribedImage("rejected.jpg", rating: -1),
+            CreateDescribedImage("five.jpg", rating: 5)
+        };
+
+        // Act
+        var result = FilterService.ApplyQuery(images, "all | sort rating desc").Select(image => image.Filename).ToArray();
+
+        // Assert
+        Assert.AreEqual("five.jpg,three.jpg,rejected.jpg,unrated.jpg", string.Join(',', result));
+    }
+
+    [TestMethod]
+    public void ApplyQuery_SortRatingAsc_PutsUnratedImagesLast()
+    {
+        // Arrange
+        var images = new[]
+        {
+            CreateDescribedImage("unrated.jpg"),
+            CreateDescribedImage("five.jpg", rating: 5),
+            CreateDescribedImage("one.jpg", rating: 1)
+        };
+
+        // Act
+        var result = FilterService.ApplyQuery(images, "all | sort rating asc").Select(image => image.Filename).ToArray();
+
+        // Assert
+        Assert.AreEqual("one.jpg,five.jpg,unrated.jpg", string.Join(',', result));
+    }
+
+    [TestMethod]
+    public void Compile_ContainsKeywords_MatchesWholeKeywordIgnoringCase()
+    {
+        // Arrange
+        var predicate = FilterService.Compile("contains(keywords, 'startseite')");
+
+        // Act & Assert
+        Assert.IsTrue(predicate(CreateDescribedImage("a.jpg", keywords: ["Selected", "Startseite"])));
+        Assert.IsFalse(predicate(CreateDescribedImage("b.jpg", keywords: ["Startseite-Archiv"])));
+        Assert.IsFalse(predicate(CreateDescribedImage("c.jpg")));
+    }
+
+    [TestMethod]
+    public void Compile_NotContainsKeywordsCombinedWithRating_FiltersByBoth()
+    {
+        // Arrange
+        var predicate = FilterService.Compile("rating >= 4 and not contains(keywords, 'Privat')");
+
+        // Act & Assert
+        Assert.IsTrue(predicate(CreateDescribedImage("a.jpg", rating: 4, keywords: ["Selected"])));
+        Assert.IsFalse(predicate(CreateDescribedImage("b.jpg", rating: 5, keywords: ["privat"])));
+        Assert.IsFalse(predicate(CreateDescribedImage("c.jpg", keywords: ["Selected"])));
+    }
+
+    [TestMethod]
+    public void Compile_TitleAndDescription_AreFilterable()
+    {
+        // Arrange
+        var predicate = FilterService.Compile("contains(title, 'sunset') or description == 'Evening light'");
+
+        // Act & Assert
+        Assert.IsTrue(predicate(CreateDescribedImage("a.jpg", title: "Sunset at the lake")));
+        Assert.IsTrue(predicate(CreateDescribedImage("b.jpg", description: "Evening light")));
+        Assert.IsFalse(predicate(CreateDescribedImage("c.jpg")));
+    }
+
+    [TestMethod]
+    public void Compile_StartsWithOnKeywords_ThrowsFilterParseException() =>
+        // Act & Assert
+        Assert.ThrowsExactly<FilterParseException>(() => FilterService.Compile("starts_with(keywords, 'Start')"));
 }
 

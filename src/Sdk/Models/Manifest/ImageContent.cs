@@ -42,6 +42,32 @@ public sealed record ImageContent : GalleryContent
     public ExifData? Exif { get; init; }
 
     /// <summary>
+    /// Photo title: XMP <c>dc:title</c>, falling back to the EXIF <c>XPTitle</c> tag.
+    /// </summary>
+    [JsonPropertyName("title")]
+    public string? Title { get; init; }
+
+    /// <summary>
+    /// Photo description: XMP <c>dc:description</c>, falling back to the EXIF
+    /// <c>ImageDescription</c> tag.
+    /// </summary>
+    [JsonPropertyName("description")]
+    public string? Description { get; init; }
+
+    /// <summary>
+    /// Keywords from XMP <c>dc:subject</c> (e.g. written by Capture One or Lightroom).
+    /// </summary>
+    [JsonPropertyName("keywords")]
+    public IReadOnlyList<string> Keywords { get; init; } = [];
+
+    /// <summary>
+    /// Star rating from XMP <c>xmp:Rating</c>: -1 (rejected), 0 (unrated) to 5;
+    /// <c>null</c> when the file carries no rating.
+    /// </summary>
+    [JsonPropertyName("rating")]
+    public int? Rating { get; init; }
+
+    /// <summary>
     /// Last modification time of the source file.
     /// Used for cache invalidation during scan.
     /// </summary>

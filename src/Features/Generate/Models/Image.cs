@@ -56,7 +56,20 @@ internal sealed class Image
     public ExifData? Exif { get; init; }
     public string? Title { get; init; }
     public string? Description { get; init; }
-    public IReadOnlyList<string> Tags { get; init; } = [];
+
+    /// <summary>
+    /// Keywords from the photo's XMP metadata (<c>image.keywords</c> in templates).
+    /// </summary>
+    /// <remarks>
+    /// Often workflow markers (e.g. "Selected"), so themes should not publish them by default.
+    /// </remarks>
+    public IReadOnlyList<string> Keywords { get; init; } = [];
+
+    /// <summary>
+    /// Star rating from XMP (-1 rejected, 0 unrated, 1–5); <c>null</c> when absent.
+    /// </summary>
+    public int? Rating { get; init; }
+
     public IReadOnlyList<ImageVariant> Variants { get; init; } = [];
 
     /// <summary>
@@ -98,7 +111,10 @@ internal sealed class Image
             FileSize = entry.FileSize,
             DateTaken = entry.DateTaken ?? DateTime.MinValue,
             Exif = entry.Exif,
-            Description = entry.Exif?.Raw?.GetValueOrDefault("ImageDescription"),
+            Title = entry.Title,
+            Description = entry.Description,
+            Keywords = entry.Keywords,
+            Rating = entry.Rating,
             Sizes = entry.Sizes,
             Placeholder = entry.Placeholder
         };

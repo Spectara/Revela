@@ -79,6 +79,18 @@ internal sealed class ImageMetadata
     /// <summary>Date photo was taken (from EXIF or file date)</summary>
     public DateTime? DateTaken { get; init; }
 
+    /// <summary>Title (XMP <c>dc:title</c>, else EXIF <c>XPTitle</c>)</summary>
+    public string? Title { get; init; }
+
+    /// <summary>Description (XMP <c>dc:description</c>, else EXIF <c>ImageDescription</c>)</summary>
+    public string? Description { get; init; }
+
+    /// <summary>Keywords (XMP <c>dc:subject</c>)</summary>
+    public IReadOnlyList<string> Keywords { get; init; } = [];
+
+    /// <summary>Star rating (XMP <c>xmp:Rating</c>, -1 to 5)</summary>
+    public int? Rating { get; init; }
+
     /// <summary>
     /// Pre-generated placeholder for lazy loading (CSS-only LQIP hash).
     /// </summary>

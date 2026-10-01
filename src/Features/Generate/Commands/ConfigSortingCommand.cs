@@ -216,7 +216,7 @@ internal sealed class ConfigSortingCommand(IConfigService configService)
             ("exif.iso", "ISO [dim](sensitivity)[/]"),
             ("exif.fNumber", "Aperture [dim](f-number)[/]"),
             ("exif.exposureTime", "Shutter Speed [dim](exposure time)[/]"),
-            ("exif.raw.Rating", "Rating [dim](star rating 1-5)[/]"),
+            ("rating", "Rating [dim](XMP star rating)[/]"),
             ("custom", "[dim]Custom field...[/]")
         };
 
