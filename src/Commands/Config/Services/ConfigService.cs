@@ -3,6 +3,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
+using Spectara.Revela.Core.Helpers;
 using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Abstractions;
 using Spectara.Revela.Sdk.Configuration;
@@ -176,7 +177,7 @@ internal sealed partial class ConfigService(
                 File.SetUnixFileMode(tempPath, mode);
             }
 
-            File.Move(tempPath, ProjectConfigPath, overwrite: true);
+            await AtomicFileReplace.ReplaceAsync(tempPath, ProjectConfigPath, cancellationToken);
         }
         finally
         {

@@ -5,6 +5,7 @@ using System.Text.Json.Serialization;
 
 using Microsoft.Extensions.Configuration;
 
+using Spectara.Revela.Core.Helpers;
 using Spectara.Revela.Sdk.Configuration;
 using Spectara.Revela.Sdk.Json;
 using Spectara.Revela.Sdk.Services;
@@ -132,7 +133,7 @@ public sealed partial class GlobalConfigManager(ILogger<GlobalConfigManager> log
             }
 
             cancellationToken.ThrowIfCancellationRequested();
-            File.Move(temporaryPath, configPath, overwrite: true);
+            await AtomicFileReplace.ReplaceAsync(temporaryPath, configPath, cancellationToken);
             temporaryFileCreated = false;
         }
         finally

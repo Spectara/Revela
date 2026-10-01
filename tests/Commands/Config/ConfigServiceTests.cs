@@ -224,6 +224,39 @@ public sealed class ConfigServiceTests
     }
 
     [TestMethod]
+    public async Task UpdateProjectConfigAsync_TargetBrieflyOpenByReader_RetriesAndWrites()
+    {
+        using var project = TestProject.Create(p => p.WithProjectJson(new { Settings = new { Sibling = "untouched" } }));
+        using var host = RevelaTestHost.Build(project.RootPath, services => services.AddRevelaCommands());
+        var configService = host.Services.GetRequiredService<IConfigService>();
+
+        // Same sharing mode as the JSON configuration provider's reload (no FileShare.Delete), which
+        // blocks an atomic replace of project.json on Windows while it is open.
+        await using var reader = new FileStream(project.ProjectJsonPath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+        var releaseReader = Task.Run(async () =>
+        {
+            await Task.Delay(TimeSpan.FromMilliseconds(150));
+            await reader.DisposeAsync();
+        });
+
+        try
+        {
+            await configService.UpdateProjectConfigAsync(
+                new JsonObject { ["plugins"] = new JsonObject { ["Package"] = "1.0.0" } }).WaitAsync(OperationTimeout);
+        }
+        finally
+        {
+            await releaseReader;
+        }
+
+        using var stream = File.OpenRead(project.ProjectJsonPath);
+        using var reopened = (ConfigurationRoot)new ConfigurationBuilder().AddJsonStream(stream).Build();
+        Assert.AreEqual("1.0.0", reopened["plugins:Package"]);
+        Assert.AreEqual("untouched", reopened["settings:sibling"]);
+        Assert.IsEmpty(GetTempFiles(project.RootPath));
+    }
+
+    [TestMethod]
     public async Task UpdateProjectConfigAsync_ConcurrentUpdates_PreservesEveryUniqueKeyAndSibling()
     {
         using var project = TestProject.Create(p => p.WithProjectJson(new
