@@ -1,0 +1,16 @@
+{{~##
+Not Found Body Template - Lumina Theme
+
+Rendered once per site into 404.html at the output root. Web servers serve that file
+for any missing URL, so the renderer passes a root-absolute basepath (e.g. "/" or
+"/photos/") and every link here must be built from it, never relative.
+
+Expects:
+- basepath: Root-absolute path to the site root
+- site: { title }
+##~}}
+<section>
+    <h1>{{ html_escape (t 'notfound.title') }}</h1>
+    <p>{{ html_escape (t 'notfound.text') }}</p>
+    <p><a href="{{ html_escape basepath }}">{{ html_escape (t 'notfound.home') }}</a></p>
+</section>

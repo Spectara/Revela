@@ -1,4 +1,13 @@
+{{~##
+Calendar Page Body Template - Lumina Calendar Extension
+
+Heading: the page title is the single <h1>, unless the Markdown body brings its own.
+##~}}
+{{~ body_has_h1 = page_content && (page_content | string.contains '<h1') ~}}
 <section>
+{{~ if !body_has_h1 ~}}
+<h1>{{ html_escape ((gallery.title && gallery.title != '') ? gallery.title : site.title) }}</h1>
+{{~ end ~}}
 {{ page_content }}
 </section>
 

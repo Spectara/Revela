@@ -10,10 +10,24 @@ Expects:
 - image_formats: Array of format strings ["avif", "webp", "jpg"]
 - assets_basepath: Path/URL to image resources
 - basepath: Relative path to root (for navigation)
+
+Heading: exactly one <h1> per page. The gallery title is the <h1> at the top of the
+body, unless the Markdown body brings its own (`# Heading`). On the home page the
+title stays visually hidden so the grid starts without a visible heading.
 ##~}}
+{{~ is_home = (gallery.slug ?? '') == '' ~}}
+{{~ body_has_h1 = gallery.body && (gallery.body | string.contains '<h1') ~}}
+{{~ heading = (gallery.title && gallery.title != '') ? gallery.title : site.title ~}}
+{{~ if is_home && !body_has_h1 ~}}
+<h1 class="visually-hidden">{{ html_escape heading }}</h1>
+{{~ end ~}}
+
 {{~ # Gallery Introduction (rendered from _index.revela body using Markdig) ~}}
-{{~ if gallery.body ~}}
+{{~ if gallery.body || (!is_home && !body_has_h1) ~}}
 <section>
+    {{~ if !is_home && !body_has_h1 ~}}
+    <h1>{{ html_escape heading }}</h1>
+    {{~ end ~}}
     {{ gallery.body }}
 </section>
 {{~ end ~}}
@@ -21,7 +35,6 @@ Expects:
 {{~ # Image Gallery Grid (suppressed when the body places its own [[gallery]] blocks) ~}}
 {{~ if !gallery.has_inline_galleries && occurrences && occurrences.size > 0 ~}}
 <section class="gallery">
-    <h2>{{ html_escape gallery.title }}</h2>
     {{~ for occurrence in occurrences ~}}
     {{~ image = occurrence.image ~}}
     {{~ viewer_mode = occurrence.viewer_mode ~}}

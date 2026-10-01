@@ -21,7 +21,7 @@ Revela themes are [Scriban](https://github.com/scriban/scriban) templates (`.rev
 
 ### 🌍 Text
 
-`t`: theme UI text in the site language.
+`t`, `html_escape`: theme UI text in the site language, safe escaping.
 
 ### 📝 Content
 
@@ -83,9 +83,12 @@ a full page template. It respects the current gallery/photo page, deployment
 prefix and asset base path, including absolute CDN addresses.
 
 ```scriban
-{{ largest_size = image.sizes | array.last }}
-<meta property="og:image" content="{{ html_escape (absolute_variant_url image largest_size (image_formats | array.last)) }}">
+{{ og_size = image.sizes | array.last }}
+<meta property="og:image" content="{{ html_escape (absolute_variant_url image og_size 'jpg') }}">
 ```
+
+Social crawlers prefer JPEG around 1200–1920 px; Lumina's `Partials/OpenGraphImage.revela`
+picks the largest generated size up to 1920 and also emits `og:image:width`/`og:image:height`.
 
 Without `base_url`, local variants use a root-relative URL; an absolute CDN URL
 remains absolute. This helper needs the normal page context (`base_url`,
@@ -199,6 +202,19 @@ culture-invariantly.
 The result is **not** trusted HTML: arguments are often user data such as gallery
 titles. Always escape it like any other text, e.g. `html_escape (t "key" value)`.
 
+### `html_escape`
+
+Escape text for HTML content and quoted attribute values. Scriban does not escape
+automatically, so wrap every dynamic value (titles, EXIF data, `t` results, URLs).
+
+```scriban
+<img alt="{{ html_escape image.title }}" src="{{ html_escape (variant_url image 640 'jpg') }}">
+```
+
+**Returns** the text with only `&`, `<`, `>`, `"` and `'` replaced (`&amp;`, `&lt;`, `&gt;`,
+`&quot;`, `&#39;`). Everything else, including umlauts and other non-ASCII characters, stays
+literal (`Menü`, not `Men&#252;`); generated pages are UTF-8.
+
 ---
 
 ## Content Functions
@@ -226,9 +242,11 @@ These values (not functions) are available in templates:
 | `galleries` | Gallery[] | Child galleries (home page only) |
 | `images` | Image[] | Images for the current gallery |
 | `nav_items` | NavItem[] | Navigation tree with active state |
-| `basepath` | string | Relative path to the site root |
+| `basepath` | string | Path to the site root: relative (`""`, `"../"`), or your absolute `basePath`; always root-absolute on the 404 page |
 | `assets_basepath` | string | Path/URL to image variants |
 | `base_url` | string? | Absolute site host from `project.baseUrl` (null when unset) |
+| `og_locale` | string | Open Graph locale from `language` in `site.json` (`"de"` → `de_DE`; empty when unknown) |
+| `not_found` | bool | `true` only while rendering `404.html` (`Body/NotFound.revela`) |
 | `image_formats` | string[] | Active formats (`["avif", "webp", "jpg"]`) |
 | `page_content` | string | Rendered Markdown body (gallery pages) |
 | `stylesheets` | string[] | CSS filenames resolved for the current template, plugin, and feature scopes |

@@ -27,6 +27,7 @@ public sealed class LuminaTheme : EmbeddedTheme  // base class for NuGet themes
 | `manifest.json` (or `theme.json` for local themes) | Metadata, version, target theme, asset list |
 | `Layout.revela` (or `templates.layout`) | Main page layout |
 | `Body/Photo.revela` | Required only when the theme declares `page` viewer support |
+| `Body/NotFound.revela` | Optional — rendered once into `404.html` at the output root (root-absolute `basepath`, `not_found = true`); skipped when absent or when `source/_static/404.html` exists |
 | `Partials/ContentImage.revela` | **Required for all themes** — renders `![alt](path)` from Markdown |
 | `Locales/en.json` | UI strings (fallback language); add `Locales/<lang>.json` per language |
 | `Assets/*.css`, `Assets/*.js` | Static assets copied to `_assets/`; declarations determine which pages link them |
@@ -40,7 +41,9 @@ public sealed class LuminaTheme : EmbeddedTheme  // base class for NuGet themes
 |----------|---------|
 | `site` | Site settings from `site.json` (title, language, author, description, copyright) |
 | `base_url` | Normalized `project.baseUrl`, separate from site settings |
-| `basepath` | Relative path to root (`""`, `"../"`, `"../../"`) |
+| `og_locale` | Open Graph locale from `site.language` (`de` → `de_DE`, empty when unknown) |
+| `not_found` | `true` only while rendering `404.html` |
+| `basepath` | Relative path to root (`""`, `"../"`, `"../../"`); root-absolute with a configured `basePath` and always on `404.html` |
 | `assets_basepath` | Path/URL to image assets (CDN-aware) |
 | `image_formats` | Global formats: `["avif", "webp", "jpg"]` (same for all images) |
 | `nav_items` | Navigation tree with active state |
@@ -58,7 +61,7 @@ public sealed class LuminaTheme : EmbeddedTheme  // base class for NuGet themes
 | `asset_url "path"` | Theme asset URL: `basepath + "_assets/" + path` (base-path safe) |
 | `variant_url(image, size, format)` | Generate image variant URL |
 | `absolute_variant_url(image, size, format)` | Absolute variant URL in a full page context, or local root-relative fallback without base_url |
-| `html_escape(value)` | Encode dynamic text/attribute values; Scriban does not auto-escape |
+| `html_escape(value)` | Encode dynamic text/attribute values (only `& < > " '`; non-ASCII stays literal); Scriban does not auto-escape |
 | `format_date date "format"` | Format date (culture of `site.language`) |
 | `format_filesize bytes` | Human-readable size (culture of `site.language`) |
 | `format_exif_exposure value` | "1/250s" |
@@ -76,13 +79,18 @@ public sealed class LuminaTheme : EmbeddedTheme  // base class for NuGet themes
 - Never translate user content (titles, Markdown) or EXIF values. Data-driven labels a plugin synthesizes (e.g. statistics months) carry a `key` the template translates.
 - Lookup: `de-CH` → `de` → `en` → key itself. Layers (later wins per key): theme → extensions → `themes/<Theme>/Locales/<lang>.json` → `themes/<Theme>/Locales/<Prefix>/<lang>.json`.
 
+## Document Structure (SEO)
+- **One `<h1>` per page**, rendered by the body template (the layout has none). Skip the title `<h1>` when the Markdown body contains one; use `.visually-hidden` where the design shows no title (home, photo pages).
+- Canonical / `og:url` / `og:image` only when `base_url` is set (absolute URLs). `og:image` uses a generated JPG variant ≤ 1920px (`Partials/OpenGraphImage.revela`), never the original.
+- `<source type>` must be a MIME type: map the format `jpg` to `image/jpeg`. Give the fallback `<img>` a `srcset`.
+
 ## ContentImage.revela (mandatory)
 Every theme must implement this partial — it's invoked for every `![alt](path)` in Markdown:
 ```scriban
 {{- # variables: image, alt, classes, assets_basepath, image_formats -}}
 <picture class="{{ classes }}">
   {{ for fmt in image_formats }}
-    <source type="image/{{ fmt }}" srcset="..." />
+    <source type="image/{{ fmt == 'jpg' ? 'jpeg' : fmt }}" srcset="..." />
   {{ end }}
   <img src="..." alt="{{ html_escape alt }}" loading="lazy" />
 </picture>

@@ -15,6 +15,7 @@ Expects:
   Each array item has: name, count, percentage
 ##~}}
 <section>
+<h1>{{ html_escape ((gallery.title && gallery.title != '') ? gallery.title : (t 'statistics.overview')) }}</h1>
 <h2>{{ html_escape (t 'statistics.overview') }}</h2>
 
 <p class="stats-summary">

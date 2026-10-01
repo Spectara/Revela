@@ -79,7 +79,7 @@ public sealed class GenerateAllEndToEndTests
         var photoHtml = await File.ReadAllTextAsync(photoFile);
         Assert.DoesNotContain("<mark>", photoHtml, StringComparison.Ordinal);
         Assert.Contains("Site &lt;mark&gt; &amp; &quot;name&quot;", photoHtml, StringComparison.Ordinal);
-        Assert.Contains("property=\"og:image\" content=\"/images/", photoHtml, StringComparison.Ordinal);
+        Assert.DoesNotContain("og:image", photoHtml, StringComparison.Ordinal);
     }
 
     [TestMethod]
@@ -188,16 +188,16 @@ public sealed class GenerateAllEndToEndTests
     {
         var pages = await RenderLocalizedPhotoSiteAsync("de");
 
-        Assert.Contains(Encoded("title=\"Menü\""), pages.Gallery, StringComparison.Ordinal);
-        Assert.Contains(Encoded("<span class=\"visually-hidden\">Menü</span>"), pages.Gallery, StringComparison.Ordinal);
-        Assert.Contains("aria-label=\"Foto schlie&#223;en\"", pages.Lightbox, StringComparison.Ordinal);
-        Assert.Contains(Encoded("aria-label=\"Nächstes Foto\""), pages.Lightbox, StringComparison.Ordinal);
+        Assert.Contains("title=\"Menü\"", pages.Gallery, StringComparison.Ordinal);
+        Assert.Contains("<span class=\"visually-hidden\">Menü</span>", pages.Gallery, StringComparison.Ordinal);
+        Assert.Contains("aria-label=\"Foto schließen\"", pages.Lightbox, StringComparison.Ordinal);
+        Assert.Contains("aria-label=\"Nächstes Foto\"", pages.Lightbox, StringComparison.Ordinal);
         Assert.Contains("aria-label=\"Vorheriges Foto\"", pages.Lightbox, StringComparison.Ordinal);
         Assert.Contains("<nav aria-label=\"Fotonavigation\">", pages.Lightbox, StringComparison.Ordinal);
-        Assert.Contains(Encoded("<strong>Schlagwörter:</strong>"), pages.Lightbox, StringComparison.Ordinal);
+        Assert.Contains("<strong>Schlagwörter:</strong>", pages.Lightbox, StringComparison.Ordinal);
         Assert.Contains("aria-label=\"Fotonavigation\"", pages.Photo, StringComparison.Ordinal);
-        Assert.Contains(Encoded("aria-label=\"Zurück zu Island &lt;script&gt;x&lt;/script&gt;\""), pages.Photo, StringComparison.Ordinal);
-        Assert.Contains(Encoded("aria-label=\"Nächstes Foto in Island &lt;script&gt;x&lt;/script&gt;\""), pages.Photo, StringComparison.Ordinal);
+        Assert.Contains("aria-label=\"Zurück zu Island &lt;script&gt;x&lt;/script&gt;\"", pages.Photo, StringComparison.Ordinal);
+        Assert.Contains("aria-label=\"Nächstes Foto in Island &lt;script&gt;x&lt;/script&gt;\"", pages.Photo, StringComparison.Ordinal);
         Assert.Contains("<span class=\"visually-hidden\">Blende </span>", pages.Photo, StringComparison.Ordinal);
         Assert.Contains("<span class=\"visually-hidden\">Belichtungszeit </span>", pages.Photo, StringComparison.Ordinal);
         Assert.Contains("<span class=\"visually-hidden\">Brennweite </span>", pages.Photo, StringComparison.Ordinal);
@@ -237,9 +237,9 @@ public sealed class GenerateAllEndToEndTests
     {
         var pages = await RenderLocalizedPhotoSiteAsync("de", localOverride: /*lang=json,strict*/ """{ "photo.close": "Schließen" }""");
 
-        Assert.Contains(Encoded("aria-label=\"Schließen\""), pages.Lightbox, StringComparison.Ordinal);
+        Assert.Contains("aria-label=\"Schließen\"", pages.Lightbox, StringComparison.Ordinal);
         Assert.DoesNotContain("Foto schließen", pages.Lightbox, StringComparison.Ordinal);
-        Assert.Contains(Encoded("aria-label=\"Nächstes Foto\""), pages.Lightbox, StringComparison.Ordinal);
+        Assert.Contains("aria-label=\"Nächstes Foto\"", pages.Lightbox, StringComparison.Ordinal);
     }
 
     [TestMethod]
@@ -277,7 +277,7 @@ public sealed class GenerateAllEndToEndTests
             "title=\"3 Fotos\"", "<span class=\"heatmap-month\">Mär</span>", "<span>Weniger</span>",
         })
         {
-            Assert.Contains(Encoded(german), html, StringComparison.Ordinal);
+            Assert.Contains(german, html, StringComparison.Ordinal);
         }
 
         foreach (var english in new[] { "Overview", "Camera Models", "Photo Activity", "Photos by Month", "Landscape", "March", ">Other<", "photos\"", ">Less<" })
@@ -308,6 +308,29 @@ public sealed class GenerateAllEndToEndTests
         Assert.Contains("<span class=\"legend-booked\">Belegt</span>", html, StringComparison.Ordinal);
         Assert.Contains("<span class=\"legend-arrive\">Anreise</span>", html, StringComparison.Ordinal);
         Assert.Contains("<span class=\"legend-depart\">Abfahrt</span>", html, StringComparison.Ordinal);
+    }
+
+    [TestMethod]
+    public async Task RenderAsync_LuminaExtensionPages_RenderExactlyOneTitleH1()
+    {
+        var statisticsHtml = await RenderExtensionPageAsync(
+            new LuminaStatisticsExtension(),
+            "stats",
+            "statistics/overview",
+            "statistics.json",
+            new { total_images = 0, total_galleries = 0, cameras = Array.Empty<object>(), lenses = Array.Empty<object>() });
+        var calendarHtml = await RenderExtensionPageAsync(
+            new LuminaCalendarExtension(),
+            "availability",
+            "calendar/page",
+            "calendar.json",
+            new { day_names = Array.Empty<string>(), labels = new { }, months = Array.Empty<object>() });
+
+        foreach (var html in new[] { statisticsHtml, calendarHtml })
+        {
+            Assert.AreEqual(1, CountOccurrences(html, "<h1"));
+            Assert.Contains("<h1>Extension</h1>", html, StringComparison.Ordinal);
+        }
     }
 
     private sealed record LocalizedPages(string Gallery, string Lightbox, string Photo);
@@ -633,8 +656,8 @@ public sealed class GenerateAllEndToEndTests
             "Gallery page should contain gallery title");
         Assert.Contains("<nav id=\"site-menu\" popover=\"auto\">", landscapesContent);
         Assert.Contains("<button type=\"button\" popovertarget=\"site-menu\"", landscapesContent);
-        // site.json "language": "de" selects the German theme strings (html_escape emits umlauts as entities).
-        Assert.Contains($"<span class=\"visually-hidden\">{Html("Menü")}</span>", landscapesContent);
+        // site.json "language": "de" selects the German theme strings; html_escape keeps umlauts literal.
+        Assert.Contains($"<span class=\"visually-hidden\">Menü</span>", landscapesContent);
         Assert.AreEqual(3, CountOccurrences(landscapesContent, "<span aria-hidden=\"true\">i</span>"));
         Assert.DoesNotContain("aria-label=\"Menu\"", landscapesContent);
         Assert.DoesNotContain("type=\"checkbox\"", landscapesContent);
@@ -670,8 +693,8 @@ public sealed class GenerateAllEndToEndTests
         Assert.Contains("<html lang=\"de\">", sunsetPhotoContent);
         Assert.Contains("<meta name=\"description\" content=\"E2E test site\">", sunsetPhotoContent);
         Assert.Contains("fetchpriority=\"high\" decoding=\"async\">", sunsetPhotoContent);
-        Assert.Contains("/photo/landscapes/sunset/", sunsetPhotoContent);
-        Assert.Contains("rel=\"canonical\"", sunsetPhotoContent);
+        // No baseUrl configured: canonical links need an absolute URL, so none is emitted.
+        Assert.DoesNotContain("rel=\"canonical\"", sunsetPhotoContent);
         // up returns to the originating gallery occurrence via the #photo-* anchor.
         Assert.Contains("#photo-i-006c0061006e0064007300630061007000650073002f00730075006e007300650074", sunsetPhotoContent);
         // no wraparound: the first image in the gallery has a next but no previous link.
@@ -680,15 +703,15 @@ public sealed class GenerateAllEndToEndTests
             Path.Combine(project.OutputPath, "photo", "landscapes", "mountain", "index.html"));
         var landscapePhotoContent = sunsetPhotoContent + mountainPhotoContent;
         Assert.Contains("aria-label=\"Vorheriges Foto in Landscapes\"><span aria-hidden=\"true\">&lsaquo;</span></a>", landscapePhotoContent);
-        Assert.Contains($"aria-label=\"{Html("Nächstes Foto in Landscapes")}\"><span aria-hidden=\"true\">&rsaquo;</span></a>", landscapePhotoContent);
+        Assert.Contains($"aria-label=\"Nächstes Foto in Landscapes\"><span aria-hidden=\"true\">&rsaquo;</span></a>", landscapePhotoContent);
         Assert.Contains("aria-hidden=\"true\"></span>", landscapePhotoContent);
         Assert.Contains("data-photo-return rel=\"up\"", sunsetPhotoContent);
-        Assert.Contains($"aria-label=\"{Html("Zurück zu Landscapes")}\">&times;</a>", sunsetPhotoContent);
+        Assert.Contains($"aria-label=\"Zurück zu Landscapes\">&times;</a>", sunsetPhotoContent);
         Assert.Contains("<span data-photo-label>Golden sunset</span>", sunsetPhotoContent);
         Assert.Contains("<span>Landscapes</span>", sunsetPhotoContent);
         Assert.DoesNotContain(">Landscapes</a>", sunsetPhotoContent);
         var normalizedSunsetPhoto = NormalizeLineEndings(sunsetPhotoContent);
-        Assert.Contains("<body class=\"photo-page\">\n    <main>\n        <article style=", normalizedSunsetPhoto);
+        Assert.Contains("<body class=\"photo-page\">\n    <main>\n        <h1 class=\"visually-hidden\">Foto sunset</h1>\n        <article style=", normalizedSunsetPhoto);
         Assert.Contains("--lqip:", sunsetPhotoContent);
         Assert.Contains(" data-lqip>", sunsetPhotoContent);
         Assert.DoesNotContain("sizes=\"100vw\"", sunsetPhotoContent);
@@ -700,7 +723,7 @@ public sealed class GenerateAllEndToEndTests
         Assert.AreEqual(1, CountOccurrences(sunsetPhotoContent, "data-photo-return rel=\"up\""));
         Assert.Contains("<aside class=\"photo-metadata\">", sunsetPhotoContent);
         Assert.Contains("<aside class=\"photo-metadata\">\n    <p>", normalizedSunsetPhoto);
-        Assert.Contains($"<footer>\n                    <strong>{Html("Schlagwörter:")}</strong>", normalizedSunsetPhoto);
+        Assert.Contains($"<footer>\n                    <strong>Schlagwörter:</strong>", normalizedSunsetPhoto);
         AssertRetiredPhotoClassesAreAbsent(sunsetPhotoContent);
         Assert.DoesNotContain("photo-stage", sunsetPhotoContent);
         Assert.DoesNotContain("photo-detail", sunsetPhotoContent);
@@ -1800,19 +1823,6 @@ public sealed class GenerateAllEndToEndTests
 
     private static string NormalizeLineEndings(string value) =>
         value.Replace("\r\n", "\n", StringComparison.Ordinal);
-
-    /// <summary>
-    /// Encodes expected text like Lumina's <c>html_escape</c> (WebUtility: umlauts become numeric entities).
-    /// </summary>
-    private static string Html(string text) => System.Net.WebUtility.HtmlEncode(text);
-
-    /// <summary>
-    /// Encodes only the Latin-1 supplement (ä, ö, ü, ß, …) like <c>html_escape</c> does, leaving markup intact.
-    /// </summary>
-    private static string Encoded(string markup) =>
-        string.Concat(markup.Select(c => c is >= '\u00A0' and <= '\u00FF'
-            ? string.Create(System.Globalization.CultureInfo.InvariantCulture, $"&#{(int)c};")
-            : c.ToString()));
 
     private static void AssertRetiredPhotoClassesAreAbsent(string html)
     {

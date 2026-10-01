@@ -133,6 +133,7 @@ your-project/
 │       │   └── main.js
 │       ├── Body/                  # Page body templates
 │       │   ├── Gallery.revela
+│       │   ├── NotFound.revela    # 404.html (rendered once at the output root)
 │       │   ├── Page.revela
 │       │   └── Photo.revela
 │       ├── Configuration/
@@ -147,6 +148,7 @@ your-project/
 │           ├── Navigation.revela
 │           ├── HeaderNavigation.revela
 │           ├── Favicon.revela
+│           ├── OpenGraphImage.revela  # og:image for social previews
 │           └── ...
 ├── source/
 ├── project.json
@@ -214,7 +216,7 @@ leave out fall back to English.
 
 ---
 
-# Advanced: For Theme Authors
+## Advanced: For Theme Authors
 
 The rest of this page is for building a theme or deeply modifying one.
 
@@ -238,7 +240,7 @@ Minimal implementation:
 {{~ if !image.sizes || image.sizes.size == 0; ret; end ~}}
 <picture class="content-image{{ for cls in classes }} {{ cls }}{{ end }}">
 {{~ for format in image_formats ~}}
-  <source type="image/{{ format }}" srcset="
+  <source type="image/{{ format == 'jpg' ? 'jpeg' : format }}" srcset="
     {{~ for size in image.sizes ~}}
     {{ variant_url(image, size, format) }} {{ size }}w{{ if !for.last }},{{ end }}
     {{~ end ~}}">
@@ -255,6 +257,18 @@ Templates are Scriban `.revela` files. The main ones:
 - `Layout.revela`: the HTML shell (`<head>`, navigation include, `{{ body }}`)
 - `Body/Gallery.revela`: gallery page content
 - `Body/Page.revela`: text or landing page content
+- `Body/Photo.revela`: a complete document for each photo page
+- `Body/NotFound.revela` *(optional)*: rendered once into `404.html` at the output root. The
+  renderer passes a root-absolute `basepath` (`/` or your `basePath`) and `not_found = true`;
+  build every link from `basepath`/`asset_url`, never relative. Without this template no
+  404 page is generated.
+
+The format name `jpg` is not a MIME type: write `type="image/{{ format == 'jpg' ? 'jpeg' : format }}"`
+on `<source>` elements.
+
+**Headings:** the layout renders no heading of its own; each body template renders exactly one
+`<h1>`. Lumina uses the page title, skips it when the Markdown body contains its own
+`# Heading`, and keeps it visually hidden on the home page and on photo pages.
 
 Every template receives a model with `site`, `gallery`, `images`, `nav_items`, `basepath`, `assets_basepath`, `base_url`, and `image_formats`, plus helper functions such as `page_url`, `asset_url`, `variant_url`, `format_date`, `t`, and `markdown`. Never hardcode paths; use `asset_url` / `page_url` / `variant_url` so the site works at any base path.
 

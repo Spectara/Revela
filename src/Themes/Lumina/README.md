@@ -10,7 +10,7 @@ The default photography portfolio theme for [Revela](https://github.com/spectara
 - 🔎 **Flexible Photo Viewers** - Choose photo pages, an accessible lightbox, or static images
 - ⚡ **Fast Loading** - Optimized CSS, lazy loading images, and page-scoped JavaScript enhancements
 - 🌙 **Dark Mode Ready** - Respects system preferences
-- 🔍 **SEO Optimized** - Proper meta tags and structure
+- 🔍 **SEO Optimized** - One `<h1>` per page, canonical links and Open Graph previews (with `baseUrl`), and a localized `404.html`
 
 ## Installation
 

@@ -81,6 +81,7 @@ SPECTARA__REVELA__PLUGINS__SERVE__VERBOSE=true
 - **Zero dependencies** - Uses .NET built-in `HttpListener`
 - **Correct MIME types** - Supports HTML, CSS, JS, JSON, AVIF, WebP, JPG, PNG, SVG, ICO
 - **404 logging** - Shows missing files by default
+- **404 page** - Missing files return status 404 with the generated `404.html` when the output has one
 - **Verbose mode** - Log all requests for debugging
 - **Graceful shutdown** - Ctrl+C returns to interactive menu
 - **No live reload** - no file watching or browser auto-open; regenerate and refresh manually

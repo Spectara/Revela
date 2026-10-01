@@ -12,6 +12,7 @@ Revela creates a fully self-contained static website:
 ```
 output/
 ├── index.html          # Your homepage
+├── 404.html            # "Page not found" page (if the theme provides one, Lumina does)
 ├── sitemap.xml         # Search engine sitemap (if baseUrl configured)
 ├── galleries/
 │   └── vacation/
@@ -42,6 +43,67 @@ The sitemap includes all pages with `<lastmod>` dates. Without `baseUrl`, the si
 skipped (sitemaps require absolute URLs). You can also set it with `revela config project --url https://your-domain.com`.
 
 > **Before you publish:** run `revela check`. It catches configuration and content problems and reminds you when `baseUrl` is missing.
+
+`baseUrl` also enables `<link rel="canonical">` and absolute Open Graph URLs (`og:url`,
+`og:image`) on every page, so shared links get a proper preview image.
+
+## 404 Page
+
+`revela generate pages` (and `generate all`) writes a `404.html` to the output root, rendered
+with your theme's layout and in your site language. It is marked `noindex`, is not part of the
+navigation, and is excluded from `sitemap.xml`. Because the web server shows it for *any* missing
+URL, all of its links and stylesheets are root-absolute (they start with `/`, or with your
+`basePath` such as `/photos/`).
+
+Revela only writes the file; your web server has to serve it for missing pages:
+
+| Host | Setup |
+|------|-------|
+| **GitHub Pages, Netlify, Cloudflare Pages** | Nothing to do, `404.html` is picked up automatically |
+| **`revela serve`** (local preview) | Nothing to do, missing files get `404.html` with status 404 |
+| **Caddy** | `handle_errors` block, see below |
+| **nginx** | `error_page 404 /404.html;` |
+| **Apache** | `ErrorDocument 404 /404.html` (e.g. in `.htaccess`) |
+
+Caddy:
+
+```
+handle_errors {
+    @404 expression {err.status_code} == 404
+    handle @404 {
+        rewrite * /404.html
+        file_server
+    }
+}
+```
+
+With a `basePath`, point the server at that path instead (for example `/photos/404.html`).
+
+**Customize it:** change the wording through the `notfound.*` keys in the theme's
+`Locales/<language>.json` (see [Theme Language](../themes/#theme-language)), or extract and edit
+the template with `revela theme extract Lumina --file Body/NotFound.revela`. A hand-written
+`source/_static/404.html` replaces the generated page entirely. Themes without a
+`Body/NotFound.revela` template produce no 404 page.
+
+## Caching
+
+A sensible default for your web server or CDN:
+
+- **HTML** (`*.html` and directory URLs): `Cache-Control: no-cache`. Browsers revalidate, so
+  visitors see a new build right away.
+- **Images** (`/images/`): a long cache, e.g. `Cache-Control: public, max-age=2592000` (30 days).
+  Variant file names stay the same when you replace a photo under the same name, so only go
+  up to a year with `immutable` if you never do that.
+- **Theme assets** (`/_assets/`): a short cache (e.g. one day). Their names are not versioned either.
+
+Caddy example:
+
+```
+@html path *.html */
+header @html Cache-Control "no-cache"
+@images path /images/*
+header @images Cache-Control "public, max-age=2592000"
+```
 
 ## Hosting Options
 

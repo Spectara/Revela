@@ -52,6 +52,11 @@ internal sealed partial class RenderService(
     TimeProvider timeProvider,
     ILogger<RenderService> logger) : IRenderService
 {
+    /// <summary>Template key, asset scope and output file of the optional theme-provided 404 page.</summary>
+    private const string NotFoundTemplateKey = "body/notfound";
+    private const string NotFoundScope = "notfound";
+    private const string NotFoundFileName = "404.html";
+
     /// <summary>Current theme extensions (set during rendering)</summary>
     private IReadOnlyList<ITheme> currentExtensions = [];
     private ITheme? currentTheme;
@@ -927,7 +932,72 @@ internal sealed partial class RenderService(
             }
         }
 
+        if (layoutTemplate is not null)
+        {
+            await RenderNotFoundPageAsync(engine, layoutTemplate, model, config, revelaInfo, formats.Keys, cancellationToken);
+        }
+
         return pageCount;
+    }
+
+    /// <summary>
+    /// Renders the theme's <c>Body/NotFound.revela</c> inside the layout to <c>404.html</c> at the output root.
+    /// </summary>
+    /// <remarks>
+    /// Web servers serve this file for arbitrary missing URLs, so the page uses the root-absolute
+    /// base path (never a relative one). It is not a content page: it is excluded from navigation,
+    /// the sitemap and the page count. Themes without the template simply produce no 404 page, and a
+    /// hand-written <c>source/_static/404.html</c> replaces it.
+    /// </remarks>
+    private async Task RenderNotFoundPageAsync(
+        ITemplateEngine engine,
+        string layoutTemplate,
+        SiteModel model,
+        RenderContext config,
+        ScriptObject revelaInfo,
+        IEnumerable<string> imageFormats,
+        CancellationToken cancellationToken)
+    {
+        // A hand-written source/_static/404.html wins. Skip rendering instead of relying on the static
+        // copy to overwrite: it keeps an existing output file of equal size and newer timestamp.
+        if (File.Exists(Path.Combine(SourcePath, ProjectPaths.Static, NotFoundFileName)))
+        {
+            return;
+        }
+
+        // Probe the resolved entries: GetTemplate would log a missing-template warning for themes
+        // that simply do not ship a 404 page.
+        var hasTemplate = templateResolver.GetAllEntries()
+            .Any(entry => entry.Key.Equals(NotFoundTemplateKey, StringComparison.Ordinal));
+        if (!hasTemplate)
+        {
+            LogNotFoundPageSkipped(logger);
+            return;
+        }
+
+        var basePath = config.Project.BasePath;
+        var html = engine.Render(
+            layoutTemplate,
+            new Dictionary<string, object?>
+            {
+                ["site"] = model.Site,
+                ["gallery"] = new ScriptObject { ["template"] = "notfound" },
+                ["galleries"] = model.Galleries.ToScriptArray(),
+                ["images"] = Array.Empty<object>(),
+                ["occurrences"] = Array.Empty<object>(),
+                ["nav_items"] = SetActiveState(model.Navigation, string.Empty).ToScriptArray(),
+                ["basepath"] = basePath,
+                ["assets_basepath"] = CalculateAssetsBasePath(config, basePath),
+                ["base_url"] = config.Project.BaseUrl,
+                ["image_formats"] = imageFormats,
+                ["revela"] = revelaInfo,
+                ["stylesheets"] = assetResolver.GetStyleSheets(NotFoundScope),
+                ["scripts"] = assetResolver.GetScripts(NotFoundScope),
+                ["not_found"] = true
+            });
+
+        WarnIfHtmlTruncated(html, NotFoundFileName);
+        await File.WriteAllTextAsync(Path.Combine(OutputPath, NotFoundFileName), html, cancellationToken);
     }
 
     private static List<NavigationItem> SetActiveState(
@@ -1627,6 +1697,9 @@ internal sealed partial class RenderService(
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Sitemap skipped: set 'baseUrl' in project.json for sitemap.xml generation")]
     private static partial void LogSitemapSkipped(ILogger logger);
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "404.html skipped: the theme provides no 'Body/NotFound.revela'")]
+    private static partial void LogNotFoundPageSkipped(ILogger logger);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Rendered HTML for {OutputPath} appears truncated ({Length} bytes, ends with: {Tail}). The page does not close with </html> — check for template runtime limits or rendering errors.")]
     private static partial void LogHtmlTruncated(ILogger logger, string outputPath, int length, string tail);

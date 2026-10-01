@@ -13,7 +13,11 @@ widening the page.
 Expects:
 - gallery: { title, body }
 - nav_items: Array of NavigationItem for sidebar
+
+Heading: like Lumina, exactly one <h1> per page. The title is the <h1> unless the
+rendered Markdown body already contains one (`# Heading`).
 ##~}}
+{{~ body_has_h1 = gallery.body && (gallery.body | string.contains '<h1') ~}}
 {{~ section = null ~}}
 {{~ for item in nav_items ~}}
 {{~ if !section && (item.active || item.text == gallery.title); section = item; end ~}}
@@ -52,7 +56,7 @@ Expects:
 {{~ end ~}}
 </aside>
 <article>
-{{~ if gallery.title ~}}
+{{~ if gallery.title && !body_has_h1 ~}}
     <h1>{{ html_escape gallery.title }}</h1>
 {{~ end ~}}
 {{~ if gallery.body ~}}
