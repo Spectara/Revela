@@ -63,10 +63,13 @@ HDR photos (JPEG with gain map) are published as their standard dynamic range im
 
 Canonical photo pages and Lightbox images can be zoomed:
 
-- **Mouse or pen:** click to zoom to the original's full resolution (one image pixel per screen
-  pixel), drag to move around, click again to zoom out.
-- **Touch:** double-tap to zoom in or out, pinch with two fingers (up to twice the original
-  resolution), and move with one finger while zoomed.
+- **Mouse or pen:** click to zoom to 100 % (one image pixel per screen pixel, also on high-density
+  screens), drag to move around, click again to zoom out.
+- **Touch:** double-tap to zoom to 100 % or back, pinch with two fingers, and move with one finger
+  while zoomed. A pinch past 100 % or below the fitted size springs back when you let go.
+
+Zoom stops at 100 % because beyond it a photo only shows enlarged pixels. Photos that already fit
+the screen at 100 % or less are not zoomable and show no zoom cursor.
 
 The page first loads a photo that fits the screen and fetches the original only when someone
 zooms; until it has arrived the current photo is shown enlarged, so it never goes blank. Zoom

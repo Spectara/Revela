@@ -1,12 +1,15 @@
 // Zoom for the photo viewer image on photo pages and in lightbox dialogs.
 //
 // Browsers can zoom only the whole page, not a single element, so the image is
-// scaled with a CSS transform driven by custom properties (--zoom-scale,
-// --zoom-x, --zoom-y; see main.css). Without JavaScript the photo is shown
-// fitted to the viewport.
+// scaled with a CSS transform. This script only sets the custom properties
+// --zoom-scale, --zoom-x and --zoom-y plus two state attributes (data-zoomed,
+// data-gesture); main.css turns them into the transform and its animation.
+// Without JavaScript the photo is shown fitted to the viewport.
 //
-// Mouse and pen: click toggles zoom, drag pans. Touch: double-tap toggles zoom,
-// two fingers pinch, one finger pans while zoomed.
+// Zoom goes up to 100 %: one image pixel per device pixel. Beyond that a photo
+// only shows enlarged pixels. Mouse and pen: click toggles 100 %, drag pans.
+// Touch: double-tap toggles 100 %, two fingers pinch (a pinch past 100 % or
+// below the fitted size springs back on release), one finger pans while zoomed.
 (() => {
   const images = document.querySelectorAll(
     "body.photo-page > main > article > picture > img, dialog[data-lightbox] > article > picture > img"
@@ -17,10 +20,19 @@
 
   const DOUBLE_TAP_MS = 300;
   const CLICK_SLOP_PX = 3;
-  const MIN_CLICK_SCALE = 2;
-  const MAX_SCALE = 10;
+  // Below this a zoom would be barely visible, so the photo is not zoomable.
+  const MIN_ZOOM = 1.1;
+  // Share of a pinch beyond the limits that still moves the image.
+  const OVERSTRETCH = 0.3;
 
   const clamp = (value, minimum, maximum) => Math.min(Math.max(value, minimum), maximum);
+  const resist = (scale, minimum, maximum) => {
+    if (scale > maximum) {
+      return maximum * (1 + (scale / maximum - 1) * OVERSTRETCH);
+    }
+
+    return scale < minimum ? minimum * (1 - (1 - scale / minimum) * OVERSTRETCH) : scale;
+  };
   const point = (x, y) => ({ x, y });
   const touchMetrics = (touches) => {
     const first = touches[0];
@@ -69,25 +81,20 @@
       return this.transform.scale > 1.01;
     }
 
-    // Scale at which one image pixel covers one CSS pixel.
-    get nativeScale() {
+    // Scale at which one image pixel covers one device pixel (100 %).
+    get fullScale() {
       const { width, height } = this.getBaseSize();
       const sourceWidth = Number.parseFloat(this.image.getAttribute("width")) || this.image.naturalWidth;
       const sourceHeight = Number.parseFloat(this.image.getAttribute("height")) || this.image.naturalHeight;
       if (!sourceWidth || !sourceHeight || !width || !height) {
-        return MIN_CLICK_SCALE;
+        return 1;
       }
 
-      return Math.min(sourceWidth / width, sourceHeight / height);
+      return Math.min(sourceWidth / width, sourceHeight / height) / (window.devicePixelRatio || 1);
     }
 
-    // Click and double-tap zoom to the original's pixels; pinching may go further.
-    get clickScale() {
-      return clamp(this.nativeScale, MIN_CLICK_SCALE, MAX_SCALE);
-    }
-
-    get maxScale() {
-      return clamp(Math.max(this.nativeScale * 2, MIN_CLICK_SCALE), 1, MAX_SCALE);
+    get canZoom() {
+      return this.fullScale >= MIN_ZOOM;
     }
 
     onPointerDown(event) {
@@ -101,7 +108,6 @@
       this.press = point(event.clientX, event.clientY);
       if (this.isZoomed) {
         this.startPan(this.press);
-        this.image.dataset.dragging = "";
       }
     }
 
@@ -127,7 +133,7 @@
     endPress() {
       this.press = null;
       this.pan = null;
-      delete this.image.dataset.dragging;
+      this.setGesture(false);
     }
 
     onTouchStart(event) {
@@ -169,17 +175,20 @@
     }
 
     onTouchEnd(event) {
-      if (event.touches.length < 2) {
+      if (event.touches.length < 2 && this.pinch) {
         this.pinch = null;
+        this.settle();
       }
 
       if (event.touches.length === 0) {
         this.pan = null;
+        this.setGesture(false);
       }
     }
 
     startPan(start) {
       this.pan = { start, translate: point(this.transform.x, this.transform.y) };
+      this.setGesture(true);
     }
 
     startPinch(touches) {
@@ -195,11 +204,12 @@
         center: point(rect.left + rect.width / 2, rect.top + rect.height / 2)
       };
       this.pan = null;
+      this.setGesture(true);
     }
 
     updatePinch(touches) {
       const metrics = touchMetrics(touches);
-      const scale = clamp(this.pinch.scale * (metrics.distance / this.pinch.distance), 1, this.maxScale);
+      const scale = resist(this.pinch.scale * (metrics.distance / this.pinch.distance), 1, Math.max(this.fullScale, 1));
       const scaleDelta = scale / this.pinch.scale;
       const pan = point(metrics.midpoint.x - this.pinch.midpoint.x, metrics.midpoint.y - this.pinch.midpoint.y);
       const zoomOffset = point(
@@ -225,17 +235,21 @@
       this.apply();
     }
 
-    // Zooms in around the given viewport point, or back out when already zoomed.
+    // Zooms in to 100 % around the given viewport point, or back out when zoomed.
     toggle(origin) {
       if (this.isZoomed) {
         this.reset();
         return;
       }
 
+      this.baseSize = { width: this.image.clientWidth, height: this.image.clientHeight };
+      if (!this.canZoom) {
+        return;
+      }
+
       this.loadFullResolution();
       const rect = this.image.getBoundingClientRect();
-      this.baseSize = { width: this.image.clientWidth, height: this.image.clientHeight };
-      const scale = this.clickScale;
+      const scale = this.fullScale;
       const center = point(rect.left + rect.width / 2, rect.top + rect.height / 2);
       this.transform = {
         scale,
@@ -245,9 +259,26 @@
       this.apply();
     }
 
+    // Brings a pinch that went past 100 % or below the fitted size back into range.
+    settle() {
+      const scale = clamp(this.transform.scale, 1, Math.max(this.fullScale, 1));
+      if (scale <= 1.01) {
+        this.reset();
+        return;
+      }
+
+      this.setGesture(false);
+      this.transform = {
+        scale,
+        x: this.bound(this.transform.x, scale, "width"),
+        y: this.bound(this.transform.y, scale, "height")
+      };
+      this.apply();
+    }
+
     // Keeps the scaled image covering its unscaled box, so no empty edge shows.
     bound(value, scale, dimension) {
-      const limit = ((scale - 1) * this.getBaseSize()[dimension]) / 2;
+      const limit = (Math.max(scale - 1, 0) * this.getBaseSize()[dimension]) / 2;
       return clamp(value, -limit, limit);
     }
 
@@ -293,6 +324,21 @@
       this.image.style.setProperty("--zoom-y", `${this.transform.y}px`);
     }
 
+    // Shows the zoom cursor only where zooming does something; the fitted size
+    // changes with layout, the window size and when a lightbox opens.
+    updateZoomable() {
+      if (!this.isZoomed) {
+        this.baseSize = null;
+      }
+
+      this.image.toggleAttribute("data-zoomable", this.canZoom);
+    }
+
+    // While a finger or the mouse moves the image, CSS skips the transition.
+    setGesture(active) {
+      this.image.toggleAttribute("data-gesture", active);
+    }
+
     reset() {
       this.transform = { scale: 1, x: 0, y: 0 };
       this.baseSize = null;
@@ -305,10 +351,19 @@
     }
   }
 
-  const viewers = Array.from(images, (image) => new PhotoZoom(image));
+  const viewers = new Map(Array.from(images, (image) => [image, new PhotoZoom(image)]));
+  const fittedSize = new ResizeObserver((entries) => {
+    for (const entry of entries) {
+      viewers.get(entry.target).updateZoomable();
+    }
+  });
+  for (const image of viewers.keys()) {
+    fittedSize.observe(image);
+  }
+
   // A new viewport size changes the fitted image size that zoom is based on.
   window.addEventListener("resize", () => {
-    for (const viewer of viewers) {
+    for (const viewer of viewers.values()) {
       viewer.reset();
     }
   });

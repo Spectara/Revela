@@ -837,15 +837,24 @@ main {
       object-fit: contain;
       user-select: none;
       -webkit-user-drag: none;
-      cursor: zoom-in;
+      cursor: auto;
+      /* zoom.js only sets these variables; clicks and snapping glide, gestures follow directly. */
+      transform: translate3d(var(--zoom-x, 0px), var(--zoom-y, 0px), 0) scale(var(--zoom-scale, 1));
+      transition: transform var(--animation-time) ease-out;
+
+      &[data-zoomable] {
+        cursor: zoom-in;
+      }
 
       &[data-zoomed] {
-        transition: none;
-        transform: translate3d(var(--zoom-x), var(--zoom-y), 0) scale(var(--zoom-scale));
         cursor: grab;
       }
 
-      &[data-dragging] {
+      &[data-gesture] {
+        transition: none;
+      }
+
+      &[data-zoomed][data-gesture] {
         cursor: grabbing;
       }
     }
