@@ -1,5 +1,7 @@
 using System.Globalization;
+using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
+using Spectara.Revela.Core.Themes;
 using Spectara.Revela.Features.Generate.Models;
 using Spectara.Revela.Features.Generate.Services;
 using Spectara.Revela.Sdk.Services;
@@ -243,6 +245,79 @@ public sealed class ScribanTemplateEngineTests
 
         Assert.AreEqual("<img alt=\"photo&quot; &amp; &lt;script&gt;\">", result.Trim());
     }
+
+    [TestMethod]
+    public void Translate_WithPlaceholderArguments_ReturnsSiteLanguageText()
+    {
+        var engine = CreateEngine();
+        engine.SetStrings(CreateStrings("de", ("photo.next_in", "Nächstes Foto in {0}"), ("photo.close", "Foto schließen")));
+
+        var result = engine.Render(
+            "{{ t 'photo.close' }}|{{ t 'photo.next_in' gallery_title }}",
+            Model(("gallery_title", "Island")));
+
+        Assert.AreEqual("Foto schließen|Nächstes Foto in Island", result);
+    }
+
+    [TestMethod]
+    public void Translate_WithHostileArgument_IsEscapedByHtmlEscape()
+    {
+        var engine = CreateEngine();
+        engine.SetStrings(CreateStrings("en", ("photo.return_to", "Return to {0}")));
+
+        var result = engine.Render(
+            "<a aria-label=\"{{ html_escape (t 'photo.return_to' title) }}\">",
+            Model(("title", "<script>\"x\"</script>")));
+
+        Assert.AreEqual("<a aria-label=\"Return to &lt;script&gt;&quot;x&quot;&lt;/script&gt;\">", result);
+    }
+
+    [TestMethod]
+    public void Translate_WithoutStrings_RendersKey()
+    {
+        var engine = CreateEngine();
+
+        var result = engine.Render("{{ t 'photo.close' }}", Model());
+
+        Assert.AreEqual("photo.close", result);
+    }
+
+    [TestMethod]
+    public void FormatDate_WithGermanSiteLanguage_UsesGermanMonthNames()
+    {
+        var engine = CreateEngine();
+        engine.SetStrings(CreateStrings("de"));
+
+        var result = engine.Render("{{ format_date day 'd. MMMM yyyy' }}", Model(("day", new DateTime(2024, 3, 5))));
+
+        Assert.AreEqual("5. März 2024", result);
+    }
+
+    [TestMethod]
+    public void FormatDate_WithoutStrings_UsesInvariantCulture()
+    {
+        var engine = CreateEngine();
+        var original = CultureInfo.CurrentCulture;
+        CultureInfo.CurrentCulture = new CultureInfo("de-DE");
+
+        try
+        {
+            var result = engine.Render("{{ format_date day 'MMMM' }}", Model(("day", new DateTime(2024, 3, 5))));
+
+            Assert.AreEqual("March", result);
+        }
+        finally
+        {
+            CultureInfo.CurrentCulture = original;
+        }
+    }
+
+    private static ThemeStrings CreateStrings(string language, params (string Key, string Text)[] entries) =>
+        new(
+            language,
+            [(language, entries.ToDictionary(e => e.Key, e => e.Text, StringComparer.Ordinal))],
+            CultureInfo.GetCultureInfo(language),
+            NullLogger.Instance);
 
     private static Dictionary<string, object?> Model(params (string Key, object? Value)[] entries)
     {

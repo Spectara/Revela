@@ -46,8 +46,8 @@ Body Template Selection:
         <div>
             {{~ # Site name is branding, not a heading: each page's own <h1> stays the first heading. ~}}
             <p>
-                <button type="button" popovertarget="site-menu" title="Menu">
-                    <span class="visually-hidden">Menu</span>
+                <button type="button" popovertarget="site-menu" title="{{ html_escape (t 'nav.menu') }}">
+                    <span class="visually-hidden">{{ html_escape (t 'nav.menu') }}</span>
                     <span aria-hidden="true">i</span>
                     <span aria-hidden="true">i</span>
                     <span aria-hidden="true">i</span>

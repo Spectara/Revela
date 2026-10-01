@@ -1,0 +1,17 @@
+{
+  "nav.menu": "Menu",
+  "photo.navigation": "Photo navigation",
+  "photo.close": "Close photo",
+  "photo.previous": "Previous photo",
+  "photo.next": "Next photo",
+  "photo.previous_in": "Previous photo in {0}",
+  "photo.next_in": "Next photo in {0}",
+  "photo.return_to": "Return to {0}",
+  "photo.label": "Photo {0}",
+  "photo.view": "View photo {0}",
+  "photo.tags": "Tags:",
+  "photo.aperture": "Aperture",
+  "photo.shutter": "Shutter",
+  "photo.focal_length": "Focal length",
+  "photo.lens_on_camera": "{0} on {1}"
+}

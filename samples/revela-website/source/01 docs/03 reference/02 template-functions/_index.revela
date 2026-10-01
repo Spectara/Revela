@@ -3,7 +3,7 @@ title = "Template Functions"
 template = "docs"
 +++
 
-Revela themes are [Scriban](https://github.com/scriban/scriban) templates (`.revela` files). Every template has access to the built-in functions below for URLs, images, date/EXIF formatting, and Markdown. For where these are used, see [Theme Customization](../../guide/themes/).
+Revela themes are [Scriban](https://github.com/scriban/scriban) templates (`.revela` files). Every template has access to the built-in functions below for URLs, images, date/EXIF formatting, UI text, and Markdown. For where these are used, see [Theme Customization](../../guide/themes/).
 
 <div class="features-grid">
 
@@ -18,6 +18,10 @@ Revela themes are [Scriban](https://github.com/scriban/scriban) templates (`.rev
 ### 📅 Formatting
 
 `format_date`, `format_filesize`, `format_exif_*`: human-readable values.
+
+### 🌍 Text
+
+`t`: theme UI text in the site language.
 
 ### 📝 Content
 
@@ -130,7 +134,7 @@ Generate a URL for a theme asset (CSS, JS).
 
 ### `format_date`
 
-Format a date with a custom format string.
+Format a date with a custom format string. Month and day names follow `language` in `site.json` (`"de"` turns `MMMM` into `März`); an unknown language falls back to neutral (English) names.
 
 ```scriban
 {{ format_date image.date_taken "yyyy-MM-dd" }}
@@ -139,13 +143,13 @@ Format a date with a custom format string.
 
 ### `format_filesize`
 
-Format a byte count as a human-readable string.
+Format a byte count as a human-readable string, using the number format of the site language.
 
 ```scriban
 {{ format_filesize image.file_size }}
 ```
 
-**Returns** e.g. `"2.4 MB"`, `"340 KB"`.
+**Returns** e.g. `"2.4 MB"`, `"340 KB"` (`"2,4 MB"` for `"language": "de"`).
 
 ### `format_exif_exposure`
 
@@ -166,6 +170,34 @@ Format an aperture (f-number) as photography notation.
 ```
 
 **Returns** e.g. `"f/2.8"`, `"f/11"` (or `"N/A"` when unset).
+
+---
+
+## Text Functions
+
+### `t`
+
+Return a theme UI string (button labels, headings, screen-reader text) in the site language.
+Strings come from the theme's `Locales/<language>.json` files; see
+[Theme Language](../../guide/themes/#theme-language).
+
+```scriban
+<button aria-label="{{ html_escape (t 'photo.close') }}">&times;</button>
+<a aria-label="{{ html_escape (t 'photo.return_to' gallery.title) }}">…</a>
+```
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `key` | string | Namespaced key, e.g. `photo.close`, `statistics.overview` |
+| `args…` | any | Optional values for the placeholders `{0}`, `{1}`, … |
+
+**Returns** plain text. The value of `language` in `site.json` is tried exactly
+(`de-CH`), then without region (`de`), then `en`; a key missing everywhere
+renders as the key itself so the gap is visible. Placeholder values are inserted
+culture-invariantly.
+
+The result is **not** trusted HTML: arguments are often user data such as gallery
+titles. Always escape it like any other text, e.g. `html_escape (t "key" value)`.
 
 ---
 

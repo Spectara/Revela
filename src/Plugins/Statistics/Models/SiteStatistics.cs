@@ -114,4 +114,11 @@ internal sealed record StatisticsEntry
     /// Percentage relative to the maximum count in the category (0-100)
     /// </summary>
     public required int Percentage { get; init; }
+
+    /// <summary>
+    /// Translation key for labels the aggregator synthesizes (e.g. <c>month.3</c>,
+    /// <c>orientation.landscape</c>, <c>other</c>); <see langword="null"/> for data values
+    /// such as camera names. Themes translate it, falling back to <see cref="Name"/>.
+    /// </summary>
+    public string? Key { get; init; }
 }

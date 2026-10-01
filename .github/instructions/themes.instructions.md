@@ -28,6 +28,7 @@ public sealed class LuminaTheme : EmbeddedTheme  // base class for NuGet themes
 | `Layout.revela` (or `templates.layout`) | Main page layout |
 | `Body/Photo.revela` | Required only when the theme declares `page` viewer support |
 | `Partials/ContentImage.revela` | **Required for all themes** — renders `![alt](path)` from Markdown |
+| `Locales/en.json` | UI strings (fallback language); add `Locales/<lang>.json` per language |
 | `Assets/*.css`, `Assets/*.js` | Static assets copied to `_assets/`; declarations determine which pages link them |
 
 ## Templates — Scriban
@@ -58,11 +59,22 @@ public sealed class LuminaTheme : EmbeddedTheme  // base class for NuGet themes
 | `variant_url(image, size, format)` | Generate image variant URL |
 | `absolute_variant_url(image, size, format)` | Absolute variant URL in a full page context, or local root-relative fallback without base_url |
 | `html_escape(value)` | Encode dynamic text/attribute values; Scriban does not auto-escape |
-| `format_date date "format"` | Format date |
-| `format_filesize bytes` | Human-readable size |
+| `format_date date "format"` | Format date (culture of `site.language`) |
+| `format_filesize bytes` | Human-readable size (culture of `site.language`) |
 | `format_exif_exposure value` | "1/250s" |
 | `format_exif_aperture value` | "f/2.8" |
 | `markdown "text"` | Render Markdown to HTML |
+| `t "key" args…` | Theme UI string for `site.language`; `{0}`, `{1}` filled with args. Plain text — escape it |
+
+## UI Text — never hardcode it
+- **No hardcoded user-visible text in theme templates or JS** — labels, headings, `aria-label`s, `title`s, visually hidden text. Use `{{ html_escape (t 'photo.close') }}` / `{{ html_escape (t 'photo.return_to' ctx.label) }}`.
+- Strings live in `Locales/<lang>.json` (flat `"key": "text"`). `en.json` is required (fallback); ship `de.json` alongside. Keep both files' key sets identical (`ThemeLocalesTests` guards the embedded Lumina themes).
+- Namespace keys by owner: base theme `photo.*`, `nav.*`; extensions use their prefix (`statistics.*`, `calendar.*`).
+- `t` output is **not** trusted HTML — args are often user data. Always escape.
+- JS needs text? Render it into a `data-` attribute with `t`; don't hardcode strings in `Assets/*.js`.
+- Embedded themes embed `Locales\*.json` with `LogicalName` `Locales\%(Filename)%(Extension)`.
+- Never translate user content (titles, Markdown) or EXIF values. Data-driven labels a plugin synthesizes (e.g. statistics months) carry a `key` the template translates.
+- Lookup: `de-CH` → `de` → `en` → key itself. Layers (later wins per key): theme → extensions → `themes/<Theme>/Locales/<lang>.json` → `themes/<Theme>/Locales/<Prefix>/<lang>.json`.
 
 ## ContentImage.revela (mandatory)
 Every theme must implement this partial — it's invoked for every `![alt](path)` in Markdown:

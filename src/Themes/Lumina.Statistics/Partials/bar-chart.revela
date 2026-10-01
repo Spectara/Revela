@@ -6,12 +6,14 @@ Used by overview.revela for all chart sections.
 
 Expects variables set before include:
 - chart_title: Chart heading text
-- chart_items: Array of { name, count, percentage }
+- chart_items: Array of { name, count, percentage, key? }
+  key (e.g. "month.3", "orientation.landscape", "other") marks labels the
+  statistics plugin synthesizes; they are translated via t "statistics.<key>".
 ##~}}
 <h3>{{ html_escape chart_title }}</h3>
 <dl>
 {{~ for item in chart_items ~}}
-    <dt data-count="{{ html_escape item.count }}">{{ html_escape item.name }}</dt>
+    <dt data-count="{{ html_escape item.count }}">{{ html_escape (item.key ? (t ('statistics.' + item.key)) : item.name) }}</dt>
     <dd style="--percent: {{ html_escape item.percentage }}"></dd>
 {{~ end ~}}
 </dl>

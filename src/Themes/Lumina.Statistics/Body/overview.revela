@@ -15,41 +15,41 @@ Expects:
   Each array item has: name, count, percentage
 ##~}}
 <section>
-<h2>Overview</h2>
+<h2>{{ html_escape (t 'statistics.overview') }}</h2>
 
 <p class="stats-summary">
-    <span><strong>{{ html_escape statistics.total_images }}</strong> Images</span>
-    <span><strong>{{ html_escape statistics.total_galleries }}</strong> Galleries</span>
-    <span><strong>{{ statistics.cameras | array.size }}</strong> Cameras</span>
-    <span><strong>{{ statistics.lenses | array.size }}</strong> Lenses</span>
+    <span><strong>{{ html_escape statistics.total_images }}</strong> {{ html_escape (t 'statistics.images') }}</span>
+    <span><strong>{{ html_escape statistics.total_galleries }}</strong> {{ html_escape (t 'statistics.galleries') }}</span>
+    <span><strong>{{ statistics.cameras | array.size }}</strong> {{ html_escape (t 'statistics.cameras') }}</span>
+    <span><strong>{{ statistics.lenses | array.size }}</strong> {{ html_escape (t 'statistics.lenses') }}</span>
 </p>
 
 {{~ if statistics.cameras && statistics.cameras.size > 0 ~}}
-{{~ chart_title = "Camera Models"; chart_items = statistics.cameras ~}}
+{{~ chart_title = (t 'statistics.camera_models'); chart_items = statistics.cameras ~}}
 {{ include 'statistics/bar-chart' }}
 {{~ end ~}}
 {{~ if statistics.lenses && statistics.lenses.size > 0 ~}}
-{{~ chart_title = "Lenses"; chart_items = statistics.lenses ~}}
+{{~ chart_title = (t 'statistics.lenses'); chart_items = statistics.lenses ~}}
 {{ include 'statistics/bar-chart' }}
 {{~ end ~}}
 {{~ if statistics.focal_lengths && statistics.focal_lengths.size > 0 ~}}
-{{~ chart_title = "Focal Length"; chart_items = statistics.focal_lengths ~}}
+{{~ chart_title = (t 'statistics.focal_length'); chart_items = statistics.focal_lengths ~}}
 {{ include 'statistics/bar-chart' }}
 {{~ end ~}}
 {{~ if statistics.apertures && statistics.apertures.size > 0 ~}}
-{{~ chart_title = "Aperture"; chart_items = statistics.apertures ~}}
+{{~ chart_title = (t 'statistics.aperture'); chart_items = statistics.apertures ~}}
 {{ include 'statistics/bar-chart' }}
 {{~ end ~}}
 {{~ if statistics.shutter_speeds && statistics.shutter_speeds.size > 0 ~}}
-{{~ chart_title = "Shutter Speed"; chart_items = statistics.shutter_speeds ~}}
+{{~ chart_title = (t 'statistics.shutter_speed'); chart_items = statistics.shutter_speeds ~}}
 {{ include 'statistics/bar-chart' }}
 {{~ end ~}}
 {{~ if statistics.iso_values && statistics.iso_values.size > 0 ~}}
-{{~ chart_title = "ISO"; chart_items = statistics.iso_values ~}}
+{{~ chart_title = (t 'statistics.iso'); chart_items = statistics.iso_values ~}}
 {{ include 'statistics/bar-chart' }}
 {{~ end ~}}
 {{~ if statistics.orientations && statistics.orientations.size > 0 ~}}
-{{~ chart_title = "Orientation"; chart_items = statistics.orientations ~}}
+{{~ chart_title = (t 'statistics.orientation'); chart_items = statistics.orientations ~}}
 {{ include 'statistics/bar-chart' }}
 {{~ end ~}}
 {{~ if statistics.photo_heatmap && statistics.photo_heatmap.size > 0 ~}}
@@ -57,11 +57,11 @@ Expects:
 {{ include 'statistics/heatmap' }}
 {{~ end ~}}
 {{~ if statistics.images_by_year && statistics.images_by_year.size > 0 ~}}
-{{~ chart_title = "Timeline"; chart_items = statistics.images_by_year ~}}
+{{~ chart_title = (t 'statistics.timeline'); chart_items = statistics.images_by_year ~}}
 {{ include 'statistics/bar-chart' }}
 {{~ end ~}}
 {{~ if statistics.images_by_month && statistics.images_by_month.size > 0 ~}}
-{{~ chart_title = "Photos by Month"; chart_items = statistics.images_by_month ~}}
+{{~ chart_title = (t 'statistics.photos_by_month'); chart_items = statistics.images_by_month ~}}
 {{ include 'statistics/bar-chart' }}
 {{~ end ~}}
 

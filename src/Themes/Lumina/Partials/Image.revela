@@ -40,7 +40,7 @@ rendered size instead of viewport. Firefox/Safari fallback to 100vw.
 
 <article id="{{ html_escape occurrence_id }}" style="--width:{{ html_escape image.width }}; --height:{{ html_escape image.height }};{{~ if image.placeholder ~}} --lqip:{{ html_escape image.placeholder }};{{~ end ~}}">
     {{~ if should_link_to_photo_page ~}}
-    <a href="{{ html_escape photo_href }}"{{~ if alt_text == '' }} aria-label="View photo {{ html_escape image.id }}"{{ end }}>
+    <a href="{{ html_escape photo_href }}"{{~ if alt_text == '' }} aria-label="{{ html_escape (t 'photo.view' image.id) }}"{{ end }}>
     {{~ end ~}}
         <picture>
             {{~ for format in image_formats ~}}
@@ -58,7 +58,7 @@ rendered size instead of viewport. Firefox/Safari fallback to 100vw.
     {{~ end ~}}
     {{~ if should_render_lightbox ~}}
     <button id="{{ html_escape lightbox_trigger_id }}" type="button" aria-haspopup="dialog"
-        aria-controls="{{ html_escape lightbox_id }}" aria-label="{{~ if alt_text != '' }}{{ html_escape alt_text }}{{ else }}View photo {{ html_escape image.id }}{{ end }}"
+        aria-controls="{{ html_escape lightbox_id }}" aria-label="{{~ if alt_text != '' }}{{ html_escape alt_text }}{{ else }}{{ html_escape (t 'photo.view' image.id) }}{{ end }}"
         commandfor="{{ html_escape lightbox_id }}" command="show-modal"></button>
     {{~ include 'photolightbox' image ~}}
     {{~ end ~}}

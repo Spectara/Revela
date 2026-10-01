@@ -1,6 +1,7 @@
 using System.CommandLine;
 using Microsoft.Extensions.Options;
 using Spectara.Revela.Core.Helpers;
+using Spectara.Revela.Core.Themes;
 using Spectara.Revela.Features.Theme.Services;
 using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Abstractions;
@@ -316,6 +317,13 @@ internal sealed partial class ThemeExtractCommand(
 
         if (isConfig)
         {
+            // Locales/de.json → themes/Lumina/Locales/de.json;
+            // extension Locales/de.json → themes/Lumina/Locales/Statistics/de.json (read by ThemeLocales)
+            if (ThemeLocales.IsLocaleKey(entry.Key))
+            {
+                return Path.Combine(themesFolder, ThemeLocales.GetLocalPath(entry.Key));
+            }
+
             // Configuration/images.json → themes/Lumina/Configuration/images.json (read by ImageSizesProvider)
             return Path.Combine(themesFolder, entry.OriginalPath.Replace('/', Path.DirectorySeparatorChar));
         }
@@ -478,6 +486,12 @@ internal sealed partial class ThemeExtractCommand(
             }
         }
 
+        // UI strings: Locales/<lang>.json (theme) and Locales/<Prefix>/<lang>.json (extensions)
+        foreach (var entry in ThemeLocales.GetEntries(theme, extensions))
+        {
+            entries[entry.Key] = entry;
+        }
+
         return [.. entries.Values];
     }
 
@@ -566,7 +580,7 @@ internal sealed partial class ThemeExtractCommand(
                             {
                                 // file is like "Partials/Statistics.revela" or "Assets/statistics.css"
                                 // We want to insert the extension name: "Partials/Statistics/Statistics.revela"
-                                var parts = file.Split('/', 2);
+                                var parts = file.Replace('\\', '/').Split('/', 2);
                                 string targetFile;
                                 if (parts.Length == 2)
                                 {
@@ -752,6 +766,8 @@ internal sealed partial class ThemeExtractCommand(
             .Select(f => new FileChoice(f.Path, f.Category, f.SourceType, f.ExtensionIndex)).ToList();
         var configFiles = allFiles.Where(f => f.Category == "Configuration")
             .Select(f => new FileChoice(f.Path, f.Category, f.SourceType, f.ExtensionIndex)).ToList();
+        var localeFiles = allFiles.Where(f => f.Category == "Locales")
+            .Select(f => new FileChoice(f.Path, f.Category, f.SourceType, f.ExtensionIndex)).ToList();
         var otherFiles = allFiles.Where(f => f.Category == "Other")
             .Select(f => new FileChoice(f.Path, f.Category, f.SourceType, f.ExtensionIndex)).ToList();
 
@@ -775,6 +791,11 @@ internal sealed partial class ThemeExtractCommand(
         if (configFiles.Count > 0)
         {
             prompt.AddChoiceGroup(new FileChoice("Configuration", "group"), configFiles);
+        }
+
+        if (localeFiles.Count > 0)
+        {
+            prompt.AddChoiceGroup(new FileChoice("Locales", "group"), localeFiles);
         }
 
         if (otherFiles.Count > 0)
@@ -966,6 +987,11 @@ internal sealed partial class ThemeExtractCommand(
         if (path.StartsWith("Configuration/", StringComparison.OrdinalIgnoreCase))
         {
             return "Configuration";
+        }
+
+        if (path.StartsWith(ThemeLocales.Folder + "/", StringComparison.OrdinalIgnoreCase))
+        {
+            return "Locales";
         }
 
         return "Other";

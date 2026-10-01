@@ -61,19 +61,19 @@ end ~}}
                     width="{{ html_escape image.width }}" height="{{ html_escape image.height }}" fetchpriority="high" decoding="async">
             </picture>
             <section>
-                <nav class="photo-nav" aria-label="Photo navigation">
+                <nav class="photo-nav" aria-label="{{ html_escape (t 'photo.navigation') }}">
                     {{~ for ctx in contexts ~}}
                     {{~ up_href = ctx.route == '' ? basepath : page_url(ctx.route) ~}}
                     <div id="ctx-{{ html_escape ctx.context_id }}"{{~ if ctx.context_id == primary_context.context_id }} data-primary{{ end }}>
-                        <a data-photo-return rel="up" href="{{ html_escape up_href }}#{{ html_escape ctx.anchor }}" aria-label="Return to {{ html_escape ctx.label }}">&times;</a>
+                        <a data-photo-return rel="up" href="{{ html_escape up_href }}#{{ html_escape ctx.anchor }}" aria-label="{{ html_escape (t 'photo.return_to' ctx.label) }}">&times;</a>
                         {{~ if ctx.previous_photo ~}}
-                        <a data-photo-previous rel="prev" href="{{ html_escape (page_url ctx.previous_photo) }}#ctx-{{ html_escape ctx.context_id }}" aria-label="Previous photo in {{ html_escape ctx.label }}"><span aria-hidden="true">&lsaquo;</span></a>
+                        <a data-photo-previous rel="prev" href="{{ html_escape (page_url ctx.previous_photo) }}#ctx-{{ html_escape ctx.context_id }}" aria-label="{{ html_escape (t 'photo.previous_in' ctx.label) }}"><span aria-hidden="true">&lsaquo;</span></a>
                         {{~ else ~}}
                         <span data-photo-previous aria-hidden="true"></span>
                         {{~ end ~}}
                         <span data-photo-label>{{ html_escape display_label }}</span>
                         {{~ if ctx.next_photo ~}}
-                        <a data-photo-next rel="next" href="{{ html_escape (page_url ctx.next_photo) }}#ctx-{{ html_escape ctx.context_id }}" aria-label="Next photo in {{ html_escape ctx.label }}"><span aria-hidden="true">&rsaquo;</span></a>
+                        <a data-photo-next rel="next" href="{{ html_escape (page_url ctx.next_photo) }}#ctx-{{ html_escape ctx.context_id }}" aria-label="{{ html_escape (t 'photo.next_in' ctx.label) }}"><span aria-hidden="true">&rsaquo;</span></a>
                         {{~ else ~}}
                         <span data-photo-next aria-hidden="true"></span>
                         {{~ end ~}}
@@ -82,7 +82,7 @@ end ~}}
                 </nav>
                 {{~ include 'photometadata' image ~}}
                 <footer>
-                    <strong>Tags:</strong>
+                    <strong>{{ html_escape (t 'photo.tags') }}</strong>
                     {{~ for ctx in contexts ~}}
                     <span>{{ html_escape ctx.label }}</span>
                     {{~ end ~}}

@@ -3,10 +3,10 @@
 </section>
 
 <div class="calendar-legend">
-  <span class="legend-free">{{ html_escape calendar.labels.free }}</span>
-  {{ if calendar.labels.arrive }}<span class="legend-arrive">{{ html_escape calendar.labels.arrive }}</span>{{ end }}
-  {{ if calendar.labels.depart }}<span class="legend-depart">{{ html_escape calendar.labels.depart }}</span>{{ end }}
-  <span class="legend-booked">{{ html_escape calendar.labels.booked }}</span>
+  <span class="legend-free">{{ html_escape (calendar.labels.free ?? (t 'calendar.free')) }}</span>
+  <span class="legend-arrive">{{ html_escape (calendar.labels.arrive ?? (t 'calendar.arrive')) }}</span>
+  <span class="legend-depart">{{ html_escape (calendar.labels.depart ?? (t 'calendar.depart')) }}</span>
+  <span class="legend-booked">{{ html_escape (calendar.labels.booked ?? (t 'calendar.booked')) }}</span>
 </div>
 
 <div class="calendar-grid">

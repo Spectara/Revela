@@ -1,3 +1,4 @@
+using Spectara.Revela.Core.Themes;
 using Spectara.Revela.Features.Generate.Models;
 using Spectara.Revela.Sdk.Abstractions;
 
@@ -36,6 +37,17 @@ internal interface ITemplateEngine
     /// </remarks>
     /// <param name="imagesBySourcePath">All processed images keyed by source path</param>
     void SetImageLookup(IReadOnlyDictionary<string, Image> imagesBySourcePath);
+
+    /// <summary>
+    /// Set the theme UI strings used by the <c>t</c> function and the culture used by
+    /// <c>format_date</c>/<c>format_filesize</c>.
+    /// </summary>
+    /// <remarks>
+    /// Loaded once per render for the active theme, its extensions and <c>site.language</c>.
+    /// Without strings, <c>t</c> renders keys and formatting is culture-invariant.
+    /// </remarks>
+    /// <param name="themeStrings">Strings resolved for the site language</param>
+    void SetStrings(ThemeStrings themeStrings);
 
     /// <summary>
     /// Render template content with data model

@@ -183,6 +183,183 @@ public sealed class GenerateAllEndToEndTests
         Assert.Contains("<strong>Body stays formatted</strong>", html, StringComparison.Ordinal);
     }
 
+    [TestMethod]
+    public async Task RenderAsync_GermanSiteLanguage_LocalizesLuminaPhotoUi()
+    {
+        var pages = await RenderLocalizedPhotoSiteAsync("de");
+
+        Assert.Contains(Encoded("title=\"Menü\""), pages.Gallery, StringComparison.Ordinal);
+        Assert.Contains(Encoded("<span class=\"visually-hidden\">Menü</span>"), pages.Gallery, StringComparison.Ordinal);
+        Assert.Contains("aria-label=\"Foto schlie&#223;en\"", pages.Lightbox, StringComparison.Ordinal);
+        Assert.Contains(Encoded("aria-label=\"Nächstes Foto\""), pages.Lightbox, StringComparison.Ordinal);
+        Assert.Contains("aria-label=\"Vorheriges Foto\"", pages.Lightbox, StringComparison.Ordinal);
+        Assert.Contains("<nav aria-label=\"Fotonavigation\">", pages.Lightbox, StringComparison.Ordinal);
+        Assert.Contains(Encoded("<strong>Schlagwörter:</strong>"), pages.Lightbox, StringComparison.Ordinal);
+        Assert.Contains("aria-label=\"Fotonavigation\"", pages.Photo, StringComparison.Ordinal);
+        Assert.Contains(Encoded("aria-label=\"Zurück zu Island &lt;script&gt;x&lt;/script&gt;\""), pages.Photo, StringComparison.Ordinal);
+        Assert.Contains(Encoded("aria-label=\"Nächstes Foto in Island &lt;script&gt;x&lt;/script&gt;\""), pages.Photo, StringComparison.Ordinal);
+        Assert.Contains("<span class=\"visually-hidden\">Blende </span>", pages.Photo, StringComparison.Ordinal);
+        Assert.Contains("<span class=\"visually-hidden\">Belichtungszeit </span>", pages.Photo, StringComparison.Ordinal);
+        Assert.Contains("<span class=\"visually-hidden\">Brennweite </span>", pages.Photo, StringComparison.Ordinal);
+        Assert.Contains("<span>EF 50mm an Canon EOS R5</span>", pages.Photo, StringComparison.Ordinal);
+        foreach (var english in new[]
+        {
+            "Close photo", "Next photo", "Previous photo", "Photo navigation", "Tags:", "Return to",
+            ">Menu<", "\"Menu\"", "Aperture", "Shutter", "Focal length", "EF 50mm on Canon",
+        })
+        {
+            Assert.DoesNotContain(english, pages.Gallery + pages.Lightbox + pages.Photo, StringComparison.Ordinal);
+        }
+
+        Assert.DoesNotContain("<script>x", pages.Photo, StringComparison.Ordinal);
+    }
+
+    [TestMethod]
+    public async Task RenderAsync_DefaultSiteLanguage_KeepsEnglishLuminaPhotoUi()
+    {
+        var pages = await RenderLocalizedPhotoSiteAsync(language: null);
+
+        Assert.Contains("title=\"Menu\"", pages.Gallery, StringComparison.Ordinal);
+        Assert.Contains("aria-label=\"Close photo\"", pages.Lightbox, StringComparison.Ordinal);
+        Assert.Contains("<strong>Tags:</strong>", pages.Lightbox, StringComparison.Ordinal);
+        Assert.Contains("aria-label=\"Return to Island &lt;script&gt;x&lt;/script&gt;\"", pages.Photo, StringComparison.Ordinal);
+        Assert.Contains("<span class=\"visually-hidden\">Aperture </span>", pages.Photo, StringComparison.Ordinal);
+        Assert.Contains("<span>EF 50mm on Canon EOS R5</span>", pages.Photo, StringComparison.Ordinal);
+        Assert.DoesNotContain("Foto schließen", pages.Lightbox, StringComparison.Ordinal);
+        foreach (var key in new[] { "nav.menu", "photo.close", "photo.return_to", "photo.aperture", "photo.tags" })
+        {
+            Assert.DoesNotContain(key, pages.Gallery + pages.Lightbox + pages.Photo, StringComparison.Ordinal);
+        }
+    }
+
+    [TestMethod]
+    public async Task RenderAsync_LocalLocaleOverride_ReplacesOnlyOverriddenLabel()
+    {
+        var pages = await RenderLocalizedPhotoSiteAsync("de", localOverride: /*lang=json,strict*/ """{ "photo.close": "Schließen" }""");
+
+        Assert.Contains(Encoded("aria-label=\"Schließen\""), pages.Lightbox, StringComparison.Ordinal);
+        Assert.DoesNotContain("Foto schließen", pages.Lightbox, StringComparison.Ordinal);
+        Assert.Contains(Encoded("aria-label=\"Nächstes Foto\""), pages.Lightbox, StringComparison.Ordinal);
+    }
+
+    [TestMethod]
+    public async Task RenderAsync_GermanSiteLanguage_LocalizesLuminaStatistics()
+    {
+        var statistics = new
+        {
+            total_images = 3,
+            total_galleries = 1,
+            cameras = new object[]
+            {
+                new { name = "Canon EOS R5", count = 2, percentage = 100 },
+                new { name = "Other", key = "other", count = 1, percentage = 50 },
+            },
+            lenses = new object[] { new { name = "EF 50mm", count = 1, percentage = 100 } },
+            orientations = new object[] { new { name = "Landscape", key = "orientation.landscape", count = 3, percentage = 100 } },
+            images_by_month = new object[] { new { name = "March", key = "month.3", count = 3, percentage = 100 } },
+            photo_heatmap = new object[] { new { year = 2024, month = 3, count = 3, level = 4 } },
+            heatmap_years = new object[] { 2024 },
+        };
+
+        var html = await RenderExtensionPageAsync(
+            new LuminaStatisticsExtension(),
+            "stats",
+            "statistics/overview",
+            "statistics.json",
+            statistics,
+            language: "de");
+
+        foreach (var german in new[]
+        {
+            "<h2>Übersicht</h2>", "</strong> Bilder</span>", "</strong> Galerien</span>", "</strong> Kameras</span>",
+            "</strong> Objektive</span>", "<h3>Kameramodelle</h3>", "<h3>Fotoaktivität</h3>", "<h3>Fotos nach Monat</h3>",
+            "<h3>Ausrichtung</h3>", ">Querformat</dt>", ">März</dt>", ">Andere</dt>", ">Canon EOS R5</dt>",
+            "title=\"3 Fotos\"", "<span class=\"heatmap-month\">Mär</span>", "<span>Weniger</span>",
+        })
+        {
+            Assert.Contains(Encoded(german), html, StringComparison.Ordinal);
+        }
+
+        foreach (var english in new[] { "Overview", "Camera Models", "Photo Activity", "Photos by Month", "Landscape", "March", ">Other<", "photos\"", ">Less<" })
+        {
+            Assert.DoesNotContain(english, html, StringComparison.Ordinal);
+        }
+    }
+
+    [TestMethod]
+    public async Task RenderAsync_GermanSiteLanguage_TranslatesUnsetCalendarLabels()
+    {
+        var calendar = new
+        {
+            day_names = new[] { "Mo" },
+            labels = new { booked = (string?)null, free = (string?)null, arrive = (string?)null, depart = "Abfahrt" },
+            months = Array.Empty<object>(),
+        };
+
+        var html = await RenderExtensionPageAsync(
+            new LuminaCalendarExtension(),
+            "availability",
+            "calendar/page",
+            "calendar.json",
+            calendar,
+            language: "de");
+
+        Assert.Contains("<span class=\"legend-free\">Frei</span>", html, StringComparison.Ordinal);
+        Assert.Contains("<span class=\"legend-booked\">Belegt</span>", html, StringComparison.Ordinal);
+        Assert.Contains("<span class=\"legend-arrive\">Anreise</span>", html, StringComparison.Ordinal);
+        Assert.Contains("<span class=\"legend-depart\">Abfahrt</span>", html, StringComparison.Ordinal);
+    }
+
+    private sealed record LocalizedPages(string Gallery, string Lightbox, string Photo);
+
+    /// <summary>
+    /// Renders a Lumina site with one photo-page gallery (EXIF metadata, hostile title)
+    /// and one lightbox gallery for the given <c>site.language</c>.
+    /// </summary>
+    private static async Task<LocalizedPages> RenderLocalizedPhotoSiteAsync(string? language, string? localOverride = null)
+    {
+        object site = language is null
+            ? new { title = "Localized", author = "Test" }
+            : new { title = "Localized", author = "Test", language };
+        static void Exif(ExifOptions exif) => exif
+            .WithCamera("Canon", "EOS R5").WithLens("EF 50mm").WithAperture(2.8).WithShutterSpeed(0.004).WithFocalLength(50).WithIso(200);
+        using var project = TestProject.Create(p => p
+            .WithProjectJson(new { project = new { name = "Localized" }, theme = new { name = "Lumina" } })
+            .WithSiteJson(site)
+            .AddGallery("Island", g => g.AddRealImage("first.jpg", 800, 600, Exif).AddRealImage("second.jpg", 800, 600, Exif))
+            .AddGallery("Lightbox", g => g.AddRealImage("one.jpg", 800, 600, Exif).AddRealImage("two.jpg", 800, 600, Exif)));
+        await File.WriteAllTextAsync(
+            Path.Combine(project.SourcePath, "Island", "_index.revela"),
+            "+++\ntitle = \"Island <script>x</script>\"\n+++\n");
+        await File.WriteAllTextAsync(
+            Path.Combine(project.SourcePath, "Lightbox", "_index.revela"),
+            "+++\nphoto_viewer = \"lightbox\"\n+++\n");
+        if (localOverride is not null)
+        {
+            var localesPath = Path.Combine(project.RootPath, ProjectPaths.Themes, "Lumina", "Locales");
+            Directory.CreateDirectory(localesPath);
+            await File.WriteAllTextAsync(Path.Combine(localesPath, $"{language}.json"), localOverride);
+        }
+
+        using var host = RevelaTestHost.Build(project.RootPath, services =>
+        {
+            services.AddRevelaCommands();
+            services.AddGenerateFeature();
+            services.AddSingleton<ITheme>(new LuminaTheme());
+        });
+        var scan = await host.Services.GetRequiredService<IContentService>().ScanAsync();
+        var render = await host.Services.GetRequiredService<IRenderService>().RenderAsync();
+
+        Assert.IsTrue(scan.Success, scan.ErrorMessage);
+        Assert.IsTrue(render.Success, render.ErrorMessage);
+        var photoFile = Directory.GetFiles(Path.Combine(project.OutputPath, "photo"), "index.html", SearchOption.AllDirectories)
+            .First(path => File.ReadAllText(path).Contains("rel=\"next\"", StringComparison.Ordinal));
+        return new LocalizedPages(
+            await File.ReadAllTextAsync(Path.Combine(project.OutputPath, "island", "index.html")),
+            await File.ReadAllTextAsync(Path.Combine(project.OutputPath, "lightbox", "index.html")),
+            await File.ReadAllTextAsync(photoFile));
+    }
+
     /// <summary>
     /// Renders one page that uses an extension template with a plugin-style
     /// <c>.cache/&lt;page&gt;/&lt;dataFile&gt;</c> data file and returns its HTML.
@@ -192,11 +369,12 @@ public sealed class GenerateAllEndToEndTests
         string pageFolder,
         string template,
         string dataFile,
-        object data)
+        object data,
+        string language = "en")
     {
         using var project = TestProject.Create(builder => builder
             .WithProjectJson(new { project = new { name = "Extension Escaping" }, theme = new { name = "Lumina" } })
-            .WithSiteJson(new { title = "Extension Escaping", author = "Test" }));
+            .WithSiteJson(new { title = "Extension Escaping", author = "Test", language }));
         var pagePath = Path.Combine(project.SourcePath, pageFolder);
         Directory.CreateDirectory(pagePath);
         await File.WriteAllTextAsync(Path.Combine(pagePath, "_index.revela"), $"""
@@ -455,7 +633,8 @@ public sealed class GenerateAllEndToEndTests
             "Gallery page should contain gallery title");
         Assert.Contains("<nav id=\"site-menu\" popover=\"auto\">", landscapesContent);
         Assert.Contains("<button type=\"button\" popovertarget=\"site-menu\"", landscapesContent);
-        Assert.Contains("<span class=\"visually-hidden\">Menu</span>", landscapesContent);
+        // site.json "language": "de" selects the German theme strings (html_escape emits umlauts as entities).
+        Assert.Contains($"<span class=\"visually-hidden\">{Html("Menü")}</span>", landscapesContent);
         Assert.AreEqual(3, CountOccurrences(landscapesContent, "<span aria-hidden=\"true\">i</span>"));
         Assert.DoesNotContain("aria-label=\"Menu\"", landscapesContent);
         Assert.DoesNotContain("type=\"checkbox\"", landscapesContent);
@@ -500,11 +679,11 @@ public sealed class GenerateAllEndToEndTests
         var mountainPhotoContent = await File.ReadAllTextAsync(
             Path.Combine(project.OutputPath, "photo", "landscapes", "mountain", "index.html"));
         var landscapePhotoContent = sunsetPhotoContent + mountainPhotoContent;
-        Assert.Contains("aria-label=\"Previous photo in Landscapes\"><span aria-hidden=\"true\">&lsaquo;</span></a>", landscapePhotoContent);
-        Assert.Contains("aria-label=\"Next photo in Landscapes\"><span aria-hidden=\"true\">&rsaquo;</span></a>", landscapePhotoContent);
+        Assert.Contains("aria-label=\"Vorheriges Foto in Landscapes\"><span aria-hidden=\"true\">&lsaquo;</span></a>", landscapePhotoContent);
+        Assert.Contains($"aria-label=\"{Html("Nächstes Foto in Landscapes")}\"><span aria-hidden=\"true\">&rsaquo;</span></a>", landscapePhotoContent);
         Assert.Contains("aria-hidden=\"true\"></span>", landscapePhotoContent);
         Assert.Contains("data-photo-return rel=\"up\"", sunsetPhotoContent);
-        Assert.Contains("aria-label=\"Return to Landscapes\">&times;</a>", sunsetPhotoContent);
+        Assert.Contains($"aria-label=\"{Html("Zurück zu Landscapes")}\">&times;</a>", sunsetPhotoContent);
         Assert.Contains("<span data-photo-label>Golden sunset</span>", sunsetPhotoContent);
         Assert.Contains("<span>Landscapes</span>", sunsetPhotoContent);
         Assert.DoesNotContain(">Landscapes</a>", sunsetPhotoContent);
@@ -521,7 +700,7 @@ public sealed class GenerateAllEndToEndTests
         Assert.AreEqual(1, CountOccurrences(sunsetPhotoContent, "data-photo-return rel=\"up\""));
         Assert.Contains("<aside class=\"photo-metadata\">", sunsetPhotoContent);
         Assert.Contains("<aside class=\"photo-metadata\">\n    <p>", normalizedSunsetPhoto);
-        Assert.Contains("<footer>\n                    <strong>Tags:</strong>", normalizedSunsetPhoto);
+        Assert.Contains($"<footer>\n                    <strong>{Html("Schlagwörter:")}</strong>", normalizedSunsetPhoto);
         AssertRetiredPhotoClassesAreAbsent(sunsetPhotoContent);
         Assert.DoesNotContain("photo-stage", sunsetPhotoContent);
         Assert.DoesNotContain("photo-detail", sunsetPhotoContent);
@@ -1621,6 +1800,19 @@ public sealed class GenerateAllEndToEndTests
 
     private static string NormalizeLineEndings(string value) =>
         value.Replace("\r\n", "\n", StringComparison.Ordinal);
+
+    /// <summary>
+    /// Encodes expected text like Lumina's <c>html_escape</c> (WebUtility: umlauts become numeric entities).
+    /// </summary>
+    private static string Html(string text) => System.Net.WebUtility.HtmlEncode(text);
+
+    /// <summary>
+    /// Encodes only the Latin-1 supplement (ä, ö, ü, ß, …) like <c>html_escape</c> does, leaving markup intact.
+    /// </summary>
+    private static string Encoded(string markup) =>
+        string.Concat(markup.Select(c => c is >= '\u00A0' and <= '\u00FF'
+            ? string.Create(System.Globalization.CultureInfo.InvariantCulture, $"&#{(int)c};")
+            : c.ToString()));
 
     private static void AssertRetiredPhotoClassesAreAbsent(string html)
     {

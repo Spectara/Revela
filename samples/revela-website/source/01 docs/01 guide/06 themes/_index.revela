@@ -138,6 +138,9 @@ your-project/
 │       ├── Configuration/
 │       │   ├── images.json        # Responsive image sizes
 │       │   └── site.json          # Template for your site.json
+│       ├── Locales/
+│       │   ├── en.json            # UI text (buttons, labels, screen-reader text)
+│       │   └── de.json
 │       └── Partials/
 │           ├── ContentImage.revela  # Required: renders ![alt](path)
 │           ├── Image.revela
@@ -155,6 +158,59 @@ Templates, partials, assets and `Configuration/images.json` override the install
 ```bash
 revela theme extract Lumina --file Configuration/images.json
 ```
+
+---
+
+## Theme Language
+
+Lumina's own text (the menu button, photo navigation, "Close photo", the
+screen-reader labels for aperture, shutter and focal length, the statistics page
+headings, calendar legend defaults) follows `language` in `site.json`:
+
+```json
+{
+  "language": "de"
+}
+```
+
+Lumina and its extensions ship English (`en`) and German (`de`). Revela tries
+the exact language first (`de-CH`), then the language without region (`de`),
+then English. Your own content (titles, descriptions, Markdown) and EXIF values
+are never translated. Month and day names from `format_date` follow the same
+language.
+
+### Change a Wording
+
+Each theme keeps its text in `Locales/<language>.json`, a flat list of
+`"key": "text"` pairs:
+
+```json
+{
+  "photo.close": "Foto schließen",
+  "photo.return_to": "Zurück zu {0}"
+}
+```
+
+`{0}`, `{1}`, … are filled in by the theme (for example with the gallery name).
+To change a wording, extract the file and edit it:
+
+```bash
+revela theme extract Lumina --file Locales/de.json
+```
+
+Your `themes/Lumina/Locales/de.json` is merged **key by key** on top of the
+installed text, so you may also delete every line except the ones you changed;
+keys the theme adds in a later version keep working. Extension text lives in a
+subfolder named after the extension, e.g.
+`revela theme extract Lumina --file Locales/Statistics/de.json` →
+`themes/Lumina/Locales/Statistics/de.json`. `revela theme files` lists all
+locale files.
+
+### Add a Language
+
+Create `themes/Lumina/Locales/<language>.json` (e.g. `fr.json`) with the keys
+from `en.json` translated, and set `"language": "fr"` in `site.json`. Keys you
+leave out fall back to English.
 
 ---
 
@@ -200,7 +256,30 @@ Templates are Scriban `.revela` files. The main ones:
 - `Body/Gallery.revela`: gallery page content
 - `Body/Page.revela`: text or landing page content
 
-Every template receives a model with `site`, `gallery`, `images`, `nav_items`, `basepath`, `assets_basepath`, `base_url`, and `image_formats`, plus helper functions such as `page_url`, `asset_url`, `variant_url`, `format_date`, and `markdown`. Never hardcode paths; use `asset_url` / `page_url` / `variant_url` so the site works at any base path.
+Every template receives a model with `site`, `gallery`, `images`, `nav_items`, `basepath`, `assets_basepath`, `base_url`, and `image_formats`, plus helper functions such as `page_url`, `asset_url`, `variant_url`, `format_date`, `t`, and `markdown`. Never hardcode paths; use `asset_url` / `page_url` / `variant_url` so the site works at any base path.
+
+## UI Text: `Locales/`
+
+Never hardcode user-visible theme text (labels, headings, `aria-label`s,
+visually hidden text). Put it in `Locales/en.json` (required: every lookup
+falls back to English) plus any other languages, and render it with
+[`t`](../../reference/template-functions/#t):
+
+```scriban
+<nav aria-label="{{ html_escape (t 'photo.navigation') }}">
+<a aria-label="{{ html_escape (t 'photo.return_to' ctx.label) }}">&times;</a>
+```
+
+- **Namespace keys by owner** (`photo.*`, `nav.*` for the base theme,
+  `statistics.*` for the Statistics extension) so extensions never collide.
+- **Escape the result.** `t` returns plain text and its arguments are often user
+  data.
+- **Layers:** base theme → extensions → project `themes/<Theme>/Locales/<lang>.json`
+  → `themes/<Theme>/Locales/<Prefix>/<lang>.json`; later layers win per key.
+- If JavaScript needs text, render it into a `data-` attribute with `t` instead of
+  hardcoding it in the script.
+- Embedded (NuGet) themes must embed `Locales/*.json` as resources with the
+  logical name `Locales\<file>`, like `Configuration/` and `Assets/`.
 
 ## Image Sizes: `Configuration/images.json`
 
