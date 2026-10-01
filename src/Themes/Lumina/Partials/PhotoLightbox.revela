@@ -44,7 +44,7 @@ end ~}}
             </nav>
             {{~ include 'photometadata' image ~}}
             <footer>
-                <strong>{{ html_escape (t 'photo.tags') }}</strong>
+                <strong>{{ html_escape (t 'photo.seen_in') }}</strong>
                 <span>{{ html_escape context_label }}</span>
             </footer>
         </section>

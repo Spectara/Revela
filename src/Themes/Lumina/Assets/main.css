@@ -917,6 +917,24 @@ main {
         color: var(--color-light);
         font-weight: inherit;
       }
+
+      /* Galleries the photo appears in: back to the photo's spot in each of them. */
+      >a {
+        color: var(--color);
+        text-decoration: none;
+        border-bottom: 1px solid color-mix(in oklch, var(--color) 35%, transparent);
+        transition: color var(--animation-time) ease-in-out, border-color var(--animation-time) ease-in-out;
+
+        &:hover {
+          color: var(--color-dark);
+          border-bottom-color: var(--color-dark);
+        }
+
+        &:focus-visible {
+          outline: 2px solid var(--color-dark);
+          outline-offset: 2px;
+        }
+      }
     }
 
     @media (width <=600px) {

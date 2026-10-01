@@ -101,12 +101,13 @@ end ~}}
                 </nav>
                 {{~ include 'photometadata' image ~}}
                 <footer>
-                    <strong>{{ html_escape (t 'photo.tags') }}</strong>
-                    {{~ shown_labels = [] ~}}
+                    <strong>{{ html_escape (t 'photo.seen_in') }}</strong>
+                    {{~ shown_routes = [] ~}}
                     {{~ for ctx in contexts ~}}
-                    {{~ if !(shown_labels | array.contains ctx.label) ~}}
-                    <span>{{ html_escape ctx.label }}</span>
-                    {{~ shown_labels = shown_labels | array.add ctx.label ~}}
+                    {{~ if !(shown_routes | array.contains ctx.route) ~}}
+                    {{~ seen_href = ctx.route == '' ? basepath : page_url(ctx.route) ~}}
+                    <a href="{{ html_escape seen_href }}#{{ html_escape ctx.anchor }}">{{ html_escape ctx.label }}</a>
+                    {{~ shown_routes = shown_routes | array.add ctx.route ~}}
                     {{~ end ~}}
                     {{~ end ~}}
                 </footer>

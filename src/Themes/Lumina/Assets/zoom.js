@@ -34,6 +34,7 @@
       this.baseSize = null;
       this.pointerStart = null;
       this.hasFullResolution = false;
+      this.preload = null;
 
       this.attach();
     }
@@ -268,7 +269,11 @@
     }
 
     // The viewer initially picks a viewport-sized variant; zooming asks the
-    // browser for the widest candidate (the original) instead.
+    // browser for the widest candidate (the original) instead. Switching the
+    // visible image's sizes right away blanks it until the original arrives, so
+    // the original is fetched and decoded on a detached copy of the <picture>
+    // first; the visible image switches only once that copy is ready, which
+    // lets the browser reuse the already decoded image without a gap.
     loadFullResolution() {
       const sourceWidth = this.image.getAttribute("width");
       if (this.hasFullResolution || !sourceWidth) {
@@ -277,11 +282,33 @@
 
       this.hasFullResolution = true;
       const sizes = `${sourceWidth}px`;
-      for (const candidate of [...this.stage.querySelectorAll(":scope > source[sizes]"), this.image]) {
+      const switchToFullResolution = () => {
+        for (const candidate of [...this.stage.querySelectorAll(":scope > source[sizes]"), this.image]) {
+          if (candidate.hasAttribute("sizes")) {
+            candidate.sizes = sizes;
+          }
+        }
+      };
+
+      const preload = this.stage.cloneNode(true);
+      const preloadImage = preload.querySelector("img");
+      if (!preloadImage || typeof preloadImage.decode !== "function") {
+        switchToFullResolution();
+        return;
+      }
+
+      preloadImage.loading = "eager";
+      preloadImage.fetchPriority = "high";
+      for (const candidate of [...preload.querySelectorAll(":scope > source[sizes]"), preloadImage]) {
         if (candidate.hasAttribute("sizes")) {
           candidate.sizes = sizes;
         }
       }
+
+      this.preload = preload;
+      preloadImage.decode().then(switchToFullResolution, switchToFullResolution).finally(() => {
+        this.preload = null;
+      });
     }
 
     getBaseSize() {

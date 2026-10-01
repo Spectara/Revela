@@ -194,7 +194,7 @@ public sealed class GenerateAllEndToEndTests
         Assert.Contains("aria-label=\"Nächstes Foto\"", pages.Lightbox, StringComparison.Ordinal);
         Assert.Contains("aria-label=\"Vorheriges Foto\"", pages.Lightbox, StringComparison.Ordinal);
         Assert.Contains("<nav aria-label=\"Fotonavigation\">", pages.Lightbox, StringComparison.Ordinal);
-        Assert.Contains("<strong>Schlagwörter:</strong>", pages.Lightbox, StringComparison.Ordinal);
+        Assert.Contains("<strong>Zu sehen in:</strong>", pages.Lightbox, StringComparison.Ordinal);
         Assert.Contains("aria-label=\"Fotonavigation\"", pages.Photo, StringComparison.Ordinal);
         Assert.Contains("aria-label=\"Zurück zu Island &lt;script&gt;x&lt;/script&gt;\"", pages.Photo, StringComparison.Ordinal);
         Assert.Contains("aria-label=\"Nächstes Foto in Island &lt;script&gt;x&lt;/script&gt;\"", pages.Photo, StringComparison.Ordinal);
@@ -204,7 +204,7 @@ public sealed class GenerateAllEndToEndTests
         Assert.Contains("<span>EF 50mm an Canon EOS R5</span>", pages.Photo, StringComparison.Ordinal);
         foreach (var english in new[]
         {
-            "Close photo", "Next photo", "Previous photo", "Photo navigation", "Tags:", "Return to",
+            "Close photo", "Next photo", "Previous photo", "Photo navigation", "Seen in:", "Return to",
             ">Menu<", "\"Menu\"", "Aperture", "Shutter", "Focal length", "EF 50mm on Canon",
         })
         {
@@ -221,12 +221,12 @@ public sealed class GenerateAllEndToEndTests
 
         Assert.Contains("title=\"Menu\"", pages.Gallery, StringComparison.Ordinal);
         Assert.Contains("aria-label=\"Close photo\"", pages.Lightbox, StringComparison.Ordinal);
-        Assert.Contains("<strong>Tags:</strong>", pages.Lightbox, StringComparison.Ordinal);
+        Assert.Contains("<strong>Seen in:</strong>", pages.Lightbox, StringComparison.Ordinal);
         Assert.Contains("aria-label=\"Return to Island &lt;script&gt;x&lt;/script&gt;\"", pages.Photo, StringComparison.Ordinal);
         Assert.Contains("<span class=\"visually-hidden\">Aperture </span>", pages.Photo, StringComparison.Ordinal);
         Assert.Contains("<span>EF 50mm on Canon EOS R5</span>", pages.Photo, StringComparison.Ordinal);
         Assert.DoesNotContain("Foto schließen", pages.Lightbox, StringComparison.Ordinal);
-        foreach (var key in new[] { "nav.menu", "photo.close", "photo.return_to", "photo.aperture", "photo.tags" })
+        foreach (var key in new[] { "nav.menu", "photo.close", "photo.return_to", "photo.aperture", "photo.seen_in" })
         {
             Assert.DoesNotContain(key, pages.Gallery + pages.Lightbox + pages.Photo, StringComparison.Ordinal);
         }
@@ -741,8 +741,8 @@ public sealed class GenerateAllEndToEndTests
         Assert.Contains("data-photo-return rel=\"up\"", sunsetPhotoContent);
         Assert.Contains($"aria-label=\"Zurück zu Landscapes\">&times;</a>", sunsetPhotoContent);
         Assert.Contains("<span data-photo-label>Golden sunset</span>", sunsetPhotoContent);
-        Assert.Contains("<span>Landscapes</span>", sunsetPhotoContent);
-        Assert.DoesNotContain(">Landscapes</a>", sunsetPhotoContent);
+        Assert.Contains("<a href=\"../../../landscapes/#photo-i-landscapes_sunset\">Landscapes</a>", sunsetPhotoContent);
+        Assert.AreEqual(1, CountOccurrences(sunsetPhotoContent, ">Landscapes</a>"));
         var normalizedSunsetPhoto = NormalizeLineEndings(sunsetPhotoContent);
         Assert.Contains("<body class=\"photo-page\">\n    <main>\n        <h1 class=\"visually-hidden\">Foto sunset</h1>\n        <article style=", normalizedSunsetPhoto);
         Assert.Contains("--lqip:", sunsetPhotoContent);
@@ -756,7 +756,7 @@ public sealed class GenerateAllEndToEndTests
         Assert.AreEqual(1, CountOccurrences(sunsetPhotoContent, "data-photo-return rel=\"up\""));
         Assert.Contains("<aside class=\"photo-metadata\">", sunsetPhotoContent);
         Assert.Contains("<aside class=\"photo-metadata\">\n    <p>", normalizedSunsetPhoto);
-        Assert.Contains($"<footer>\n                    <strong>Schlagwörter:</strong>", normalizedSunsetPhoto);
+        Assert.Contains($"<footer>\n                    <strong>Zu sehen in:</strong>", normalizedSunsetPhoto);
         AssertRetiredPhotoClassesAreAbsent(sunsetPhotoContent);
         Assert.DoesNotContain("photo-stage", sunsetPhotoContent);
         Assert.DoesNotContain("photo-detail", sunsetPhotoContent);
@@ -1240,7 +1240,7 @@ public sealed class GenerateAllEndToEndTests
             Path.Combine(project.OutputPath, "photo", "years", "fence", "index.html"));
         Assert.AreEqual(1, CountOccurrences(fencePhotoHtml, $"id=\"ctx-{StoryContextId}.photo-1\""));
         Assert.Contains($"story/#photo-1-photo-i-{FenceSlugId}\"", fencePhotoHtml);
-        Assert.AreEqual(1, CountOccurrences(fencePhotoHtml, "<span>Years</span>"),
+        Assert.AreEqual(1, CountOccurrences(fencePhotoHtml, ">Years</a>"),
             "Two contexts on the same page must list the page label once.");
 
         var lakePhotoHtml = await File.ReadAllTextAsync(
@@ -1657,7 +1657,7 @@ public sealed class GenerateAllEndToEndTests
                 "</picture>\n        <section>\n            <nav aria-label=\"Photo navigation\">"));
             Assert.AreEqual(expectedCount, CountOccurrences(html, "<aside class=\"photo-metadata\">"));
             Assert.AreEqual(expectedCount, CountOccurrences(normalizedHtml,
-                "<footer>\n                <strong>Tags:</strong>"));
+                "<footer>\n                <strong>Seen in:</strong>"));
             Assert.AreEqual(expectedCount, CountOccurrences(html, "loading=\"lazy\" fetchpriority=\"low\" decoding=\"async\""));
             Assert.AreEqual(expectedCount,
                 CountOccurrences(html, $">{char.ToUpperInvariant(gallerySlug[0])}{gallerySlug[1..]}</span>"));
