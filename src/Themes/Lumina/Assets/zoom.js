@@ -22,16 +22,17 @@
   const CLICK_SLOP_PX = 3;
   // Below this a zoom would be barely visible, so the photo is not zoomable.
   const MIN_ZOOM = 1.1;
-  // Share of a pinch beyond the limits that still moves the image.
-  const OVERSTRETCH = 0.3;
+  // Furthest a pinch can stretch past the limits, as a share of the limit.
+  const MAX_OVERSTRETCH = 0.25;
 
   const clamp = (value, minimum, maximum) => Math.min(Math.max(value, minimum), maximum);
+  // Past the limits a pinch meets growing resistance and never gets further than MAX_OVERSTRETCH.
   const resist = (scale, minimum, maximum) => {
     if (scale > maximum) {
-      return maximum * (1 + (scale / maximum - 1) * OVERSTRETCH);
+      return maximum * (1 + MAX_OVERSTRETCH * (1 - Math.exp(1 - scale / maximum)));
     }
 
-    return scale < minimum ? minimum * (1 - (1 - scale / minimum) * OVERSTRETCH) : scale;
+    return scale < minimum ? minimum * (1 - MAX_OVERSTRETCH * (1 - Math.exp(1 - minimum / scale))) : scale;
   };
   const point = (x, y) => ({ x, y });
   const touchMetrics = (touches) => {
@@ -176,8 +177,9 @@
 
     onTouchEnd(event) {
       if (event.touches.length < 2 && this.pinch) {
+        const focus = this.pinch.focus;
         this.pinch = null;
-        this.settle();
+        this.settle(focus);
       }
 
       if (event.touches.length === 0) {
@@ -199,6 +201,7 @@
       this.pinch = {
         distance: metrics.distance,
         midpoint: metrics.midpoint,
+        focus: metrics.midpoint,
         scale: this.transform.scale,
         translate: point(this.transform.x, this.transform.y),
         center: point(rect.left + rect.width / 2, rect.top + rect.height / 2)
@@ -209,6 +212,7 @@
 
     updatePinch(touches) {
       const metrics = touchMetrics(touches);
+      this.pinch.focus = metrics.midpoint;
       const scale = resist(this.pinch.scale * (metrics.distance / this.pinch.distance), 1, Math.max(this.fullScale, 1));
       const scaleDelta = scale / this.pinch.scale;
       const pan = point(metrics.midpoint.x - this.pinch.midpoint.x, metrics.midpoint.y - this.pinch.midpoint.y);
@@ -259,19 +263,25 @@
       this.apply();
     }
 
-    // Brings a pinch that went past 100 % or below the fitted size back into range.
-    settle() {
-      const scale = clamp(this.transform.scale, 1, Math.max(this.fullScale, 1));
+    // Brings a pinch that went past 100 % or below the fitted size back into
+    // range, scaling around the point between the fingers so it stays put.
+    settle(focus) {
+      const { scale: current, x, y } = this.transform;
+      const scale = clamp(current, 1, Math.max(this.fullScale, 1));
       if (scale <= 1.01) {
         this.reset();
         return;
       }
 
+      // The transform scales around the image centre, which the translation moves.
+      const rect = this.image.getBoundingClientRect();
+      const centre = point(rect.left + rect.width / 2 - x, rect.top + rect.height / 2 - y);
+      const ratio = scale / current;
       this.setGesture(false);
       this.transform = {
         scale,
-        x: this.bound(this.transform.x, scale, "width"),
-        y: this.bound(this.transform.y, scale, "height")
+        x: this.bound((focus.x - centre.x) * (1 - ratio) + x * ratio, scale, "width"),
+        y: this.bound((focus.y - centre.y) * (1 - ratio) + y * ratio, scale, "height")
       };
       this.apply();
     }
