@@ -144,6 +144,8 @@ your-project/
 │       │   └── de.json
 │       └── Partials/
 │           ├── ContentImage.revela  # Required: renders ![alt](path)
+│           ├── GalleryGrid.revela   # Renders [[gallery]] blocks
+│           ├── PhotoFigure.revela   # Renders [[photo: …]] blocks
 │           ├── Image.revela
 │           ├── Navigation.revela
 │           ├── HeaderNavigation.revela
@@ -254,6 +256,38 @@ Minimal implementation:
        alt="{{ alt }}" loading="lazy" decoding="async">
 </picture>
 ```
+
+## Optional: `Partials/PhotoFigure.revela`
+
+Renders a `[[photo: path]]` block: one photo in the page text, linked to its photo
+page. Themes without this partial still work: Revela then renders
+`ContentImage.revela` wrapped in a link to the photo page.
+
+Variables available inside it:
+
+| Variable | Type | Description |
+|----------|------|-------------|
+| `image` | Image | The photo (`id`, `slug`, `width`, `height`, `title`, `description`, `sizes`, `placeholder`) |
+| `viewer_mode` | string | `page` (link to the photo page) or `none` (the theme renders no photo pages) |
+| `context_id` | string? | Page context for the photo page's return link; `null` with the `gallery` option (the photo page then uses its primary context) |
+| `context_label` | string? | Name of the page context, `null` without one |
+| `occurrence_id` | string | Anchor id for the element; the photo page's return link points here |
+| `basepath` | string | Relative path to the site root (for `page_url`) |
+| `assets_basepath` | string | Base path to image variants |
+| `image_formats` | string[] | Active formats, e.g. `["avif", "webp", "jpg"]` |
+
+Build the link like a gallery thumbnail and put `occurrence_id` on the outer element:
+
+```scriban
+{{~ href = page_url(image) + (context_id ? '#ctx-' + context_id : '') ~}}
+<figure id="{{ html_escape occurrence_id }}">
+  <a href="{{ html_escape href }}">…picture…</a>
+</figure>
+```
+
+Lumina's version reuses `ContentImage.revela` for the picture (set `alt` and
+`classes`, then `{{ include 'contentimage' }}`) and takes the alt text from the
+photo's title, then its description, then `t 'photo.label' image.id`.
 
 ## Editing Templates
 

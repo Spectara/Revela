@@ -101,8 +101,12 @@ end ~}}
                 {{~ include 'photometadata' image ~}}
                 <footer>
                     <strong>{{ html_escape (t 'photo.tags') }}</strong>
+                    {{~ shown_labels = [] ~}}
                     {{~ for ctx in contexts ~}}
+                    {{~ if !(shown_labels | array.contains ctx.label) ~}}
                     <span>{{ html_escape ctx.label }}</span>
+                    {{~ shown_labels = shown_labels | array.add ctx.label ~}}
+                    {{~ end ~}}
                     {{~ end ~}}
                     {{~ for tag in image.tags ~}}<span>{{ html_escape tag }}</span>{{~ end ~}}
                 </footer>

@@ -22,14 +22,42 @@ internal sealed record PreparedGalleryBlock(
 /// <summary>
 /// Prepared inline-gallery blocks keyed by their source identity.
 /// </summary>
+/// <remarks>
+/// <see cref="Count"/> counts only <c>[[gallery]]</c> blocks: <c>[[photo]]</c> blocks never
+/// suppress the trailing gallery grid.
+/// </remarks>
 internal sealed record PreparedGalleryBlocks(
     IReadOnlyDictionary<GalleryBlockId, PreparedGalleryBlock> Blocks)
 {
     public static PreparedGalleryBlocks Empty { get; } = new(
         new Dictionary<GalleryBlockId, PreparedGalleryBlock>().ToFrozenDictionary());
 
+    /// <summary>
+    /// Gets the prepared <c>[[photo]]</c> blocks keyed by their source identity.
+    /// </summary>
+    public IReadOnlyDictionary<GalleryBlockId, PreparedPhotoBlock> Photos { get; init; } =
+        new Dictionary<GalleryBlockId, PreparedPhotoBlock>().ToFrozenDictionary();
+
     public int Count => Blocks.Count;
 }
+
+/// <summary>
+/// Frozen result of preparing a <c>[[photo: path]]</c> block.
+/// </summary>
+/// <param name="Image">The resolved image, or <c>null</c> when the path matches no processed image.</param>
+/// <param name="ImagePath">The path as written in the token.</param>
+/// <param name="UsesPageContext">
+/// <c>true</c> when the photo page returns to this page; <c>false</c> for <c>| gallery</c>.
+/// </param>
+/// <param name="PhotoNumber">
+/// 1-based document-order number among the page's photo blocks. Photo blocks use their own
+/// numbering namespace so adding one never shifts <see cref="PreparedGalleryBlock.GridNumber"/>.
+/// </param>
+internal sealed record PreparedPhotoBlock(
+    Image? Image,
+    string ImagePath,
+    bool UsesPageContext,
+    int PhotoNumber);
 
 /// <summary>
 /// An image occurrence prepared for inline-gallery rendering.
@@ -45,11 +73,20 @@ internal sealed record GalleryImageOccurrence(
     string? NextOccurrenceId);
 
 /// <summary>
-/// Provides page-local rendering callbacks for inline-gallery blocks.
+/// Provides page-local rendering callbacks for inline-gallery and photo blocks.
 /// </summary>
+/// <param name="SourcePath">The <c>_index.revela</c> path used in warnings and errors.</param>
+/// <param name="PreparedBlocks">Blocks prepared before photo-page catalog construction.</param>
+/// <param name="EnsureGalleryGrid">Fails with a source location when the grid partial is missing.</param>
+/// <param name="RenderGalleryGrid">Renders a prepared <c>[[gallery]]</c> block.</param>
+/// <param name="ReportWarning">Reports a source-located warning.</param>
+/// <param name="RenderPhoto">
+/// Renders a prepared, resolved <c>[[photo]]</c> block; <c>null</c> renders nothing.
+/// </param>
 internal sealed record GalleryBlockContext(
     string SourcePath,
     PreparedGalleryBlocks PreparedBlocks,
     Action<int> EnsureGalleryGrid,
     Func<PreparedGalleryBlock, int, string> RenderGalleryGrid,
-    Action<string> ReportWarning);
+    Action<string> ReportWarning,
+    Func<PreparedPhotoBlock, int, string>? RenderPhoto = null);

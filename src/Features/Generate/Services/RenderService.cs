@@ -241,7 +241,7 @@ internal sealed partial class RenderService(
                 theme.Manifest,
                 config.ThemeName,
                 cancellationToken);
-            var photoMemberships = BuildPhotoMemberships(galleries, preparedGalleryMetadata);
+            var photoMemberships = BuildPhotoMemberships(galleries, preparedGalleryMetadata, photoTemplate is not null);
 
             // Build the photo-page catalog when the theme resolves Body/Photo.revela.
             // Validation runs here — before any output is written — so a route collision
@@ -669,12 +669,17 @@ internal sealed partial class RenderService(
             var rootMemberships = photoMemberships
                 .Where(membership => ReferenceEquals(membership.Gallery, rootGallery))
                 .ToList();
+            var rootContentImageRenderer = CreateContentImageRenderer(
+                engine,
+                contentImageTemplate,
+                rootAssetsBasePath,
+                formats.Keys);
             var rootImageContext = new ContentImageContext(
                 allImagesBySourcePath,
                 rootGallery.Path,
                 rootAssetsBasePath,
                 formats.Keys,
-                CreateContentImageRenderer(engine, contentImageTemplate, rootAssetsBasePath, formats.Keys),
+                rootContentImageRenderer,
                 CreateGalleryBlockContext(
                     rootMetadata.PreparedBlocks,
                     engine,
@@ -682,7 +687,9 @@ internal sealed partial class RenderService(
                     indexBasePath,
                     formats.Keys,
                     rootMetadata.SourcePath,
-                    rootMemberships));
+                    rootMemberships,
+                    rootContentImageRenderer,
+                    photoTemplate is not null));
             RenderPreparedGalleryBody(rootGallery, rootMetadata, rootImageContext);
             indexScope = ScopeFromTemplate(rootMetadata.Template, "index");
             indexViewerMode = rootMetadata.PhotoViewerMode;
@@ -696,7 +703,7 @@ internal sealed partial class RenderService(
             ? rootGallery.Images
             : model.Images;
         var rootBaseMembership = photoMemberships.FirstOrDefault(membership =>
-            ReferenceEquals(membership.Gallery, rootGallery) && membership.GridNumber is null);
+            ReferenceEquals(membership.Gallery, rootGallery) && membership.IsBase);
 
         var indexHtml = engine.Render(
             indexTemplate,
@@ -739,12 +746,17 @@ internal sealed partial class RenderService(
                 .ToList();
             var relativeBasePath = UrlBuilder.CalculateBasePath(gallery.Slug);
             var basepath = CalculateSiteBasePath(config, relativeBasePath);
+            var galleryContentImageRenderer = CreateContentImageRenderer(
+                renderEngine,
+                contentImageTemplate,
+                contentAssetsBasePath,
+                formats.Keys);
             var galleryImageContext = new ContentImageContext(
                 allImagesBySourcePath,
                 gallery.Path,
                 contentAssetsBasePath,
                 formats.Keys,
-                CreateContentImageRenderer(renderEngine, contentImageTemplate, contentAssetsBasePath, formats.Keys),
+                galleryContentImageRenderer,
                 CreateGalleryBlockContext(
                     metadata.PreparedBlocks,
                     renderEngine,
@@ -752,7 +764,9 @@ internal sealed partial class RenderService(
                     basepath,
                     formats.Keys,
                     metadata.SourcePath,
-                    galleryMemberships));
+                    galleryMemberships,
+                    galleryContentImageRenderer,
+                    photoTemplate is not null));
             RenderPreparedGalleryBody(gallery, metadata, galleryImageContext);
 
             // Page scope for stylesheet filtering: a plugin template like
@@ -764,7 +778,7 @@ internal sealed partial class RenderService(
             var galleryScripts = GetPageScripts(galleryScope, metadata.PhotoViewerMode);
 
             var galleryImages = gallery.Images.ToList();
-            var baseMembership = galleryMemberships.FirstOrDefault(membership => membership.GridNumber is null);
+            var baseMembership = galleryMemberships.FirstOrDefault(membership => membership.IsBase);
 
             var galleryNavigation = SetActiveState(model.Navigation, gallery.Slug);
             var galleryAssetsBasePath = CalculateAssetsBasePath(config, relativeBasePath);
@@ -1199,7 +1213,8 @@ internal sealed partial class RenderService(
                         imageContentsBySourcePath,
                         filterExpression,
                         metadata.Sort,
-                        options.CurrentValue.Sorting.Images));
+                        options.CurrentValue.Sorting.Images),
+                    photoPath => ResolveImageByPath(photoPath, gallery.Path, imagesBySourcePath));
 
             gallery.HasInlineGalleries = preparedBlocks.Count > 0;
             gallery.Template = metadata.Template;
@@ -1224,9 +1239,20 @@ internal sealed partial class RenderService(
         return prepared;
     }
 
+    /// <summary>
+    /// Builds every photo membership in stable site order: base galleries and filtered grids first,
+    /// then <c>[[photo]]</c> blocks.
+    /// </summary>
+    /// <remarks>
+    /// A <c>[[photo]]</c> block always links to a photo page when the theme renders photo pages,
+    /// regardless of the page's viewer mode. Page-context blocks add a single-image membership
+    /// (no previous/next). <c>| gallery</c> blocks add none, unless the photo has no gallery or
+    /// grid membership anywhere — then the page context is used so its photo page has a way back.
+    /// </remarks>
     private static IReadOnlyList<PhotoMembership> BuildPhotoMemberships(
         IReadOnlyList<Gallery> galleries,
-        IReadOnlyDictionary<Gallery, PreparedGalleryMetadata> preparedGalleryMetadata)
+        IReadOnlyDictionary<Gallery, PreparedGalleryMetadata> preparedGalleryMetadata,
+        bool supportsPhotoPages)
     {
         var memberships = new List<PhotoMembership>();
         foreach (var gallery in galleries)
@@ -1248,6 +1274,33 @@ internal sealed partial class RenderService(
                 new PhotoMembership(gallery, block.Images, block.GridNumber, metadata.PhotoViewerMode)));
         }
 
+        if (!supportsPhotoPages)
+        {
+            return memberships;
+        }
+
+        var photosWithGalleryContext = memberships
+            .Where(membership => membership.ViewerMode is PhotoViewerMode.Page)
+            .SelectMany(membership => membership.Images)
+            .Select(image => PhotoPageCatalog.NormalizeSourcePath(image.SourcePath))
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var gallery in galleries)
+        {
+            var photoBlocks = preparedGalleryMetadata[gallery].PreparedBlocks.Photos.Values
+                .Where(photo => photo.Image is { Sizes.Count: > 0 })
+                .OrderBy(photo => photo.PhotoNumber);
+            foreach (var photo in photoBlocks)
+            {
+                var image = photo.Image!;
+                if (photo.UsesPageContext ||
+                    !photosWithGalleryContext.Contains(PhotoPageCatalog.NormalizeSourcePath(image.SourcePath)))
+                {
+                    memberships.Add(new PhotoMembership(gallery, [image], null, PhotoViewerMode.Page, photo.PhotoNumber));
+                }
+            }
+        }
+
         return memberships;
     }
 
@@ -1261,9 +1314,7 @@ internal sealed partial class RenderService(
         int? bareRenderOrdinal = null)
     {
         var occurrences = new List<GalleryImageOccurrence>(membership.Images.Count);
-        var contextLabel = !string.IsNullOrWhiteSpace(membership.Gallery.Title)
-            ? membership.Gallery.Title
-            : membership.Gallery.Name;
+        var contextLabel = GalleryLabel(membership.Gallery);
         for (var index = 0; index < membership.Images.Count; index++)
         {
             var image = membership.Images[index];
@@ -1371,11 +1422,14 @@ internal sealed partial class RenderService(
         });
 
     /// <summary>
-    /// Creates the page-local context that renders inline-gallery <c>[[gallery]]</c> blocks.
+    /// Creates the page-local context that renders inline-gallery <c>[[gallery]]</c> and
+    /// <c>[[photo]]</c> blocks.
     /// </summary>
     /// <remarks>
     /// The grid template (<c>Partials/GalleryGrid.revela</c>) is loaded lazily on first use so that
     /// themes without inline galleries are unaffected. A missing template raises a source-located error.
+    /// Photo blocks use the optional <c>Partials/PhotoFigure.revela</c>; themes without it get the
+    /// content image wrapped in a link to the photo page.
     /// </remarks>
     private GalleryBlockContext CreateGalleryBlockContext(
         PreparedGalleryBlocks preparedBlocks,
@@ -1384,9 +1438,15 @@ internal sealed partial class RenderService(
         string basePath,
         IEnumerable<string> imageFormats,
         string sourcePath,
-        IReadOnlyList<PhotoMembership> memberships)
+        IReadOnlyList<PhotoMembership> memberships,
+        Func<Image, string, List<string>?, string> renderContentImage,
+        bool supportsPhotoPages)
     {
         string? galleryGridTemplate = null;
+        string? photoFigureTemplate = null;
+        var photoFigureTemplateLoaded = false;
+
+        void ReportWarning(string warning) => LogInlineGalleryWarning(logger, warning);
 
         string GetGalleryGridTemplate(int line) =>
             galleryGridTemplate ??= LoadTemplate("partials/gallerygrid.revela")
@@ -1397,7 +1457,7 @@ internal sealed partial class RenderService(
         string RenderGalleryGrid(PreparedGalleryBlock preparedBlock, int line)
         {
             var membership = memberships.Single(candidate =>
-                candidate.GridNumber == preparedBlock.GridNumber);
+                candidate.PhotoNumber is null && candidate.GridNumber == preparedBlock.GridNumber);
             var occurrences = BuildOccurrences(membership, preparedBlock.BareRenderOrdinal);
 
             return engine.Render(
@@ -1411,13 +1471,68 @@ internal sealed partial class RenderService(
                 });
         }
 
+        string RenderPhoto(PreparedPhotoBlock photo, int line)
+        {
+            var image = photo.Image
+                ?? throw new InvalidOperationException($"{sourcePath}:{line}: unresolved photo cannot be rendered.");
+            var membership = memberships.FirstOrDefault(candidate => candidate.PhotoNumber == photo.PhotoNumber);
+            if (!photo.UsesPageContext && membership is not null)
+            {
+                ReportWarning(
+                    $"{sourcePath}:{line}: photo '{photo.ImagePath}' is in no gallery with photo pages; " +
+                    "its photo page returns to this page instead.");
+            }
+
+            var contextId = membership is null ? null : PhotoPageCatalog.ContextId(membership);
+            var occurrenceId = PhotoPageCatalog.PhotoAnchor(image.Slug, photo.PhotoNumber);
+
+            if (!photoFigureTemplateLoaded)
+            {
+                photoFigureTemplate = LoadTemplate("partials/photofigure.revela");
+                photoFigureTemplateLoaded = true;
+            }
+
+            if (photoFigureTemplate is not null)
+            {
+                return engine.Render(
+                    photoFigureTemplate,
+                    new Dictionary<string, object?>
+                    {
+                        ["image"] = image.ToScriptObject(),
+                        ["viewer_mode"] = supportsPhotoPages ? "page" : "none",
+                        ["context_id"] = contextId,
+                        ["context_label"] = membership is null ? null : GalleryLabel(membership.Gallery),
+                        ["occurrence_id"] = occurrenceId,
+                        ["assets_basepath"] = assetsBasePath,
+                        ["basepath"] = basePath,
+                        ["image_formats"] = imageFormats
+                    });
+            }
+
+            // Fallback for themes without Partials/PhotoFigure.revela: the content image, linked.
+            var alt = new[] { image.Title, image.Description }.FirstOrDefault(text => !string.IsNullOrWhiteSpace(text))
+                ?? image.Id;
+            var picture = renderContentImage(image, alt, null);
+            if (!supportsPhotoPages)
+            {
+                return picture;
+            }
+
+            var href = ScribanTemplateEngine.PageUrl(image, basePath) + (contextId is null ? string.Empty : $"#ctx-{contextId}");
+            return $"<a id=\"{ScribanTemplateEngine.HtmlEscape(occurrenceId)}\" href=\"{ScribanTemplateEngine.HtmlEscape(href)}\">{picture}</a>";
+        }
+
         return new GalleryBlockContext(
             sourcePath,
             preparedBlocks,
             line => _ = GetGalleryGridTemplate(line),
             RenderGalleryGrid,
-            warning => LogInlineGalleryWarning(logger, warning));
+            ReportWarning,
+            RenderPhoto);
     }
+
+    private static string GalleryLabel(Gallery gallery) =>
+        !string.IsNullOrWhiteSpace(gallery.Title) ? gallery.Title : gallery.Name;
 
     private string GetGallerySourcePath(Gallery gallery) =>
         Path.Combine(SourcePath, gallery.Path, RevelaParser.IndexFileName);

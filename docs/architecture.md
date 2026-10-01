@@ -260,7 +260,8 @@ dependencies but installs nothing when an invalid local theme is present.
 A genuinely absent local manifest still permits normal fallback.
 
 `Partials/ContentImage.revela` is mandatory for rendering content images. Inline
-grids require `Partials/GalleryGrid.revela` when used. Viewer capabilities and
+grids require `Partials/GalleryGrid.revela` when used. `[[photo]]` blocks use the
+optional `Partials/PhotoFigure.revela` and fall back to a linked content image. Viewer capabilities and
 defaults belong to the base theme; `Body/Photo.revela` is required when that theme
 supports the `page` viewer. See [Inline Galleries](inline-galleries.md#theme-contract)
 for occurrence models and viewer behavior rather than duplicating that catalog.
