@@ -2,8 +2,8 @@
   Recursive Navigation Template - Lumina Theme
 
   Structure:
-  - Section with children: <section><h3>Title</h3>...children...</section>
-  - Section with link: <section><h3><a>Title</a></h3>...children...</section>
+  - Section with children: <section><h2>Title</h2>...children...</section>
+  - Section with link: <section><h2><a>Title</a></h2>...children...</section>
   - Top-level leaf: <a href="#">Title</a> (flat navigation)
   - Branch with link: <div><a href="#">Title</a>...children...</div>
   - Branch without link: <div><span>Title</span>...children...</div>
@@ -22,9 +22,9 @@
 {{~ # Top-level with children = section ~}}
 <section>
 {{~ if link ~}}
-  <h3><a href="{{ html_escape link }}"{{ item.current ? ' class="active"' : '' }}>{{ html_escape item.text }}</a></h3>
+  <h2><a href="{{ html_escape link }}"{{ item.current ? ' class="active"' : '' }}>{{ html_escape item.text }}</a></h2>
 {{~ else ~}}
-  <h3>{{ html_escape item.text }}</h3>
+  <h2>{{ html_escape item.text }}</h2>
 {{~ end ~}}
 {{~ for child in item.children ~}}
 {{~ render_item child false ~}}
@@ -33,7 +33,7 @@
 {{~ else ~}}
 {{~ # Top-level leaf = section with heading link (consistent with branch sections) ~}}
 <section>
-  <h3><a href="{{ html_escape link }}"{{ item.current ? ' class="active"' : '' }}>{{ html_escape item.text }}</a></h3>
+  <h2><a href="{{ html_escape link }}"{{ item.current ? ' class="active"' : '' }}>{{ html_escape item.text }}</a></h2>
 </section>
 {{~ end ~}}
 {{~ else if item.children.size > 0 ~}}

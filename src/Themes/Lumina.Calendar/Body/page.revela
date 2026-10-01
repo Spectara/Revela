@@ -21,7 +21,7 @@ Heading: the page title is the single <h1>, unless the Markdown body brings its 
 <div class="calendar-grid">
 {{ for month in calendar.months }}
   <div class="calendar-month">
-    <h3>{{ html_escape month.name }}</h3>
+    <h2>{{ html_escape month.name }}</h2>
     <table>
       <thead>
         <tr>

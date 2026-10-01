@@ -46,6 +46,41 @@ public sealed partial class LuminaSeoEndToEndTests
     }
 
     [TestMethod]
+    public async Task RenderAsync_LuminaPages_HeadingLevelsNeverSkip()
+    {
+        var site = await RenderSiteAsync(baseUrl: BaseUrl);
+
+        foreach (var (page, html) in site.Pages)
+        {
+            HeadingOrderAssert.Sequential(page, html);
+        }
+    }
+
+    [TestMethod]
+    public async Task RenderAsync_LuminaPages_LabelEveryNavigationLandmarkDistinctly()
+    {
+        var site = await RenderSiteAsync(baseUrl: BaseUrl, language: "de");
+
+        foreach (var (page, html) in site.Pages)
+        {
+            var navs = NavPattern().Matches(html).Select(match => match.Value).ToList();
+            var labels = navs
+                .Select(nav => AriaLabelPattern().Match(nav))
+                .Where(match => match.Success)
+                .Select(match => match.Groups["label"].Value)
+                .ToList();
+
+            Assert.HasCount(navs.Count, labels, $"{page}: every <nav> needs an aria-label.");
+            Assert.HasCount(labels.Count, labels.Distinct(StringComparer.Ordinal), $"{page}: <nav> labels must be unique.");
+        }
+
+        var home = site.Pages["index.html"];
+        Assert.Contains("<nav id=\"site-menu\" popover=\"auto\" aria-label=\"Menü\">", home);
+        Assert.Contains("<nav aria-label=\"Hauptnavigation\">", home);
+        Assert.Contains("<nav aria-label=\"Seitenübersicht\">", home);
+    }
+
+    [TestMethod]
     public async Task RenderAsync_WithBaseUrl_EmitsAbsoluteCanonicalOnEveryIndexablePage()
     {
         var site = await RenderSiteAsync(baseUrl: BaseUrl);
@@ -250,6 +285,12 @@ public sealed partial class LuminaSeoEndToEndTests
 
     [GeneratedRegex(@"<img\s[^>]*>")]
     private static partial Regex ImgPattern();
+
+    [GeneratedRegex(@"<nav(?:\s[^>]*)?>")]
+    private static partial Regex NavPattern();
+
+    [GeneratedRegex(@"aria-label=""(?<label>[^""]*)""")]
+    private static partial Regex AriaLabelPattern();
 
     [GeneratedRegex("(?:href|src|srcset)=\"(?<url>[^\"\\s]+)")]
     private static partial Regex UrlAttributePattern();

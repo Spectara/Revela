@@ -70,7 +70,7 @@ exactly one <h1> for the page (visually hidden where the design shows no title).
 
 <body>
     {{~ # Main Navigation (Fullscreen Overlay) ~}}
-    <nav id="site-menu" popover="auto">
+    <nav id="site-menu" popover="auto" aria-label="{{ html_escape (t 'nav.menu') }}">
         {{~ include 'navigation' nav_items ~}}
     </nav>
 
@@ -88,7 +88,7 @@ exactly one <h1> for the page (visually hidden where the design shows no title).
                 {{~ # basepath is empty string at root, "../" for galleries, or "/photos/" for subdirectory hosting ~}}
                 <a href="{{ html_escape (basepath == '' ? '.' : basepath) }}">{{ html_escape site.title }}</a>
             </p>
-            <nav>
+            <nav aria-label="{{ html_escape (t 'nav.primary') }}">
                 {{~ include 'HeaderNavigation' ~}}
             </nav>
         </div>
@@ -115,7 +115,7 @@ exactly one <h1> for the page (visually hidden where the design shows no title).
 
     {{~ # Footer with Navigation Copy ~}}
     <footer>
-        <nav>
+        <nav aria-label="{{ html_escape (t 'nav.site') }}">
             {{~ include 'navigation' nav_items ~}}
         </nav>
         <div>

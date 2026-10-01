@@ -1,5 +1,7 @@
 {
   "nav.menu": "Menu",
+  "nav.primary": "Primary",
+  "nav.site": "Site overview",
   "photo.navigation": "Photo navigation",
   "photo.close": "Close photo",
   "photo.previous": "Previous photo",

@@ -177,7 +177,7 @@ public sealed class GenerateAllEndToEndTests
         Assert.Contains($"<span class=\"legend-booked\">{EscapedText}</span>", html, StringComparison.Ordinal);
         Assert.Contains($"<span class=\"legend-arrive\">{EscapedText}</span>", html, StringComparison.Ordinal);
         Assert.Contains($"<span class=\"legend-depart\">{EscapedText}</span>", html, StringComparison.Ordinal);
-        Assert.Contains($"<h3>{EscapedText}</h3>", html, StringComparison.Ordinal);
+        Assert.Contains($"<h2>{EscapedText}</h2>", html, StringComparison.Ordinal);
         Assert.Contains($"<th>{EscapedText}</th>", html, StringComparison.Ordinal);
         Assert.Contains($"<td class=\"{EscapedAttribute}\">1</td>", html, StringComparison.Ordinal);
         Assert.Contains("<strong>Body stays formatted</strong>", html, StringComparison.Ordinal);
@@ -324,13 +324,21 @@ public sealed class GenerateAllEndToEndTests
             "availability",
             "calendar/page",
             "calendar.json",
-            new { day_names = Array.Empty<string>(), labels = new { }, months = Array.Empty<object>() });
+            new
+            {
+                day_names = Array.Empty<string>(),
+                labels = new { },
+                months = new object[] { new { name = "January", weeks = new object[] { new object[] { new { number = 1, css = "free" } } } } },
+            });
 
         foreach (var html in new[] { statisticsHtml, calendarHtml })
         {
             Assert.AreEqual(1, CountOccurrences(html, "<h1"));
             Assert.Contains("<h1>Extension</h1>", html, StringComparison.Ordinal);
         }
+
+        HeadingOrderAssert.Sequential("statistics", statisticsHtml);
+        HeadingOrderAssert.Sequential("calendar", calendarHtml);
     }
 
     private sealed record LocalizedPages(string Gallery, string Lightbox, string Photo);
@@ -654,7 +662,7 @@ public sealed class GenerateAllEndToEndTests
         Assert.Contains("<html lang=\"de\">", landscapesContent);
         Assert.IsTrue(landscapesContent.Contains("Landscapes", StringComparison.Ordinal),
             "Gallery page should contain gallery title");
-        Assert.Contains("<nav id=\"site-menu\" popover=\"auto\">", landscapesContent);
+        Assert.Contains("<nav id=\"site-menu\" popover=\"auto\" aria-label=\"Menü\">", landscapesContent);
         Assert.Contains("<button type=\"button\" popovertarget=\"site-menu\"", landscapesContent);
         // site.json "language": "de" selects the German theme strings; html_escape keeps umlauts literal.
         Assert.Contains($"<span class=\"visually-hidden\">Menü</span>", landscapesContent);

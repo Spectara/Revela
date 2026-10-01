@@ -16,9 +16,9 @@ Expects: nav_items (Array of NavigationItem)
 {{~ if is_top_level ~}}
 <section>
 {{~ if link ~}}
-  <h3><a href="{{ html_escape link }}"{{ current_attrs }}>{{ html_escape item.text }}</a></h3>
+  <h2><a href="{{ html_escape link }}"{{ current_attrs }}>{{ html_escape item.text }}</a></h2>
 {{~ else ~}}
-  <h3>{{ html_escape item.text }}</h3>
+  <h2>{{ html_escape item.text }}</h2>
 {{~ end ~}}
 {{~ for child in item.children ~}}
 {{~ render_item child false ~}}
