@@ -1,4 +1,5 @@
 using System.CommandLine;
+using System.Globalization;
 using Microsoft.Extensions.Options;
 using Spectara.Revela.Features.Generate.Abstractions;
 using Spectara.Revela.Features.Generate.Models.Results;
@@ -125,10 +126,10 @@ internal sealed partial class PagesCommand(
 
                 var content =
                     $"[green]Page rendering complete![/]\n\n" +
-                    $"[dim]Project:[/]  [cyan]{projectName}[/]\n\n" +
+                    $"[dim]Project:[/]  [cyan]{Markup.Escape(projectName)}[/]\n\n" +
                     $"[dim]Statistics:[/]\n" +
                     $"  Pages:    {result.PageCount}\n" +
-                    $"  Duration: {result.Duration.TotalSeconds:F2}s";
+                    $"  Duration: {result.Duration.TotalSeconds.ToString("F2", CultureInfo.InvariantCulture)}s";
 
                 if (!inPipeline)
                 {
@@ -146,7 +147,7 @@ internal sealed partial class PagesCommand(
             }
 
             var errorPanel = new Panel(
-                new Markup($"[red]{result.ErrorMessage}[/]"))
+                new Markup($"[red]{Markup.Escape(result.ErrorMessage ?? string.Empty)}[/]"))
                 .WithHeader("[bold red]Page generation failed[/]")
                 .WithErrorStyle();
             AnsiConsole.Write(errorPanel);

@@ -105,7 +105,7 @@ internal sealed partial class RefreshCommand(
 
             AnsiConsole.WriteLine();
             AnsiConsole.MarkupLine($"{OutputMarkers.Success} Indexed [cyan]{uniquePackages.Count}[/] packages from [cyan]{sources.Count}[/] sources");
-            AnsiConsole.MarkupLine($"  Cache: [dim]{IndexFilePath}[/]");
+            AnsiConsole.MarkupLine($"  Cache: [dim]{Markup.Escape(IndexFilePath)}[/]");
 
             return 0;
         }

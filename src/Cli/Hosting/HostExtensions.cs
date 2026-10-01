@@ -2,6 +2,7 @@ using System.Collections.Frozen;
 using System.CommandLine;
 using System.CommandLine.Help;
 using System.Diagnostics;
+using System.Globalization;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -437,7 +438,7 @@ internal static class HostExtensions
             }
 
             stopwatch.Stop();
-            AnsiConsole.MarkupLine($"{OutputMarkers.Success} Pipeline completed in {stopwatch.Elapsed.TotalSeconds:F2}s");
+            AnsiConsole.MarkupLine($"{OutputMarkers.Success} Pipeline completed in {stopwatch.Elapsed.TotalSeconds.ToString("F2", CultureInfo.InvariantCulture)}s");
 
             if (completionHint is not null)
             {

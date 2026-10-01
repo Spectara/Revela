@@ -145,7 +145,7 @@ internal sealed partial class ConfigOneDriveCommand(
             $"[green]OneDrive source {action}![/]\n\n" +
             $"[bold]Configuration:[/] [cyan]project.json[/]\n" +
             (string.IsNullOrEmpty(shareUrl) ? "" : $"[bold]Share URL:[/] [dim]{Markup.Escape(shareUrl)}[/]\n") +
-            $"[bold]Output directory:[/] [cyan]{sourceDir}/[/]\n\n" +
+            $"[bold]Output directory:[/] [cyan]{Markup.Escape(sourceDir)}/[/]\n\n" +
             $"[bold]Next steps:[/]\n" +
             $"1. Run [cyan]revela source onedrive sync[/] to fetch files\n" +
             $"2. Run [cyan]revela generate all[/] to build your site")

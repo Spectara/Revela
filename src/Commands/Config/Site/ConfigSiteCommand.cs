@@ -252,7 +252,7 @@ internal sealed partial class ConfigSiteCommand(
         var valuesSummary = string.Join("\n",
             values
                 .Where(kv => !string.IsNullOrEmpty(kv.Value))
-                .Select(kv => $"  [dim]{kv.Key}:[/] {kv.Value}"));
+                .Select(kv => $"  [dim]{Markup.Escape(kv.Key)}:[/] {Markup.Escape(kv.Value)}"));
 
         if (string.IsNullOrWhiteSpace(valuesSummary))
         {

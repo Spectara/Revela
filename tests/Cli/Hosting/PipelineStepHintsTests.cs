@@ -1,3 +1,5 @@
+using System.Globalization;
+
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
@@ -66,12 +68,35 @@ public sealed class PipelineStepHintsTests
         Assert.Contains("revela generate pages", statsOutput, StringComparison.Ordinal);
     }
 
-    private static TestProject CreateProjectWithStatisticsPage()
+    [TestMethod]
+    public async Task GenerateAll_MarkupProjectNameUnderGermanCulture_EscapesNameAndFormatsInvariantDurations()
+    {
+        using var project = CreateProjectWithStatisticsPage("[Hints]");
+        var originalCulture = CultureInfo.CurrentCulture;
+        CultureInfo.CurrentCulture = CultureInfo.GetCultureInfo("de-DE");
+
+        try
+        {
+            var (exitCode, output) = await RunCliAsync(project.RootPath, ["generate", "all"]);
+
+            Assert.AreEqual(0, exitCode, output);
+            Assert.Contains("[Hints]", output, StringComparison.Ordinal);
+            Assert.MatchesRegex(@"Duration:\s+\d+\.\d{2}s", output);
+            Assert.DoesNotMatchRegex(@"Duration:\s+\d+,\d{2}s", output);
+            Assert.MatchesRegex(@"Pipeline completed in \d+\.\d{2}s", output);
+        }
+        finally
+        {
+            CultureInfo.CurrentCulture = originalCulture;
+        }
+    }
+
+    private static TestProject CreateProjectWithStatisticsPage(string projectName = "Hints")
     {
         var project = TestProject.Create(p => p
             .WithProjectJson(new
             {
-                project = new { name = "Hints" },
+                project = new { name = projectName },
                 theme = new { name = "Lumina" },
                 generate = new { images = new { jpg = 90 } },
             })

@@ -144,7 +144,7 @@ internal sealed partial class ImagesCommand(
                 }
 
                 var content = "[green]Image processing complete![/]\n\n";
-                content += $"[dim]Project:[/]   [cyan]{projectName}[/]\n\n";
+                content += $"[dim]Project:[/]   [cyan]{Markup.Escape(projectName)}[/]\n\n";
                 content += "[dim]Statistics:[/]\n";
 
                 content += $"  Processed: {result.ProcessedCount} images\n";
@@ -160,7 +160,7 @@ internal sealed partial class ImagesCommand(
                     content += $"  Size:      {FormatSize(result.TotalSize)} (generated)\n";
                 }
 
-                content += $"  Duration:  {result.Duration.TotalSeconds:F2}s";
+                content += $"  Duration:  {result.Duration.TotalSeconds.ToString("F2", CultureInfo.InvariantCulture)}s";
 
                 if (!inPipeline)
                 {
@@ -195,7 +195,7 @@ internal sealed partial class ImagesCommand(
             }
 
             var errorPanel = new Panel(
-                new Markup($"[red]{result.ErrorMessage}[/]"))
+                new Markup($"[red]{Markup.Escape(result.ErrorMessage ?? string.Empty)}[/]"))
                 .WithHeader("[bold red]Image processing failed[/]")
                 .WithErrorStyle();
             AnsiConsole.Write(errorPanel);

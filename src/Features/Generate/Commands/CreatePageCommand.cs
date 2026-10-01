@@ -296,7 +296,7 @@ internal sealed partial class CreatePageCommand(
         await File.WriteAllTextAsync(revelaPath, frontmatter, cancellationToken);
 
         LogPageCreated(logger, revelaPath, template.DisplayName);
-        AnsiConsole.MarkupLine($"{OutputMarkers.Success} Created [cyan]{revelaPath}[/]");
+        AnsiConsole.MarkupLine($"{OutputMarkers.Success} Created [cyan]{Markup.Escape(revelaPath)}[/]");
 
         return 0;
     }

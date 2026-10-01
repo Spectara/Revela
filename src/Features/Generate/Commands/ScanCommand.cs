@@ -1,4 +1,5 @@
 using System.CommandLine;
+using System.Globalization;
 using Microsoft.Extensions.Options;
 using Spectara.Revela.Features.Generate.Abstractions;
 using Spectara.Revela.Features.Generate.Models.Results;
@@ -84,12 +85,12 @@ internal sealed partial class ScanCommand(
 
                 var content =
                     $"[green]Content scan complete![/]\n\n" +
-                    $"[dim]Project:[/]    [cyan]{projectName}[/]\n\n" +
+                    $"[dim]Project:[/]    [cyan]{Markup.Escape(projectName)}[/]\n\n" +
                     $"[dim]Statistics:[/]\n" +
                     $"  Galleries:  {result.GalleryCount}\n" +
                     $"  Images:     {result.ImageCount}\n" +
                     $"  Navigation: {result.NavigationItemCount}\n" +
-                    $"  Duration:   {result.Duration.TotalSeconds:F2}s";
+                    $"  Duration:   {result.Duration.TotalSeconds.ToString("F2", CultureInfo.InvariantCulture)}s";
 
                 if (!inPipeline)
                 {
@@ -109,7 +110,7 @@ internal sealed partial class ScanCommand(
             }
 
             var errorPanel = new Panel(
-                new Markup($"[red]{result.ErrorMessage}[/]"))
+                new Markup($"[red]{Markup.Escape(result.ErrorMessage ?? string.Empty)}[/]"))
                 .WithHeader("[bold red]Scan failed[/]")
                 .WithErrorStyle();
             AnsiConsole.Write(errorPanel);

@@ -292,7 +292,7 @@ internal sealed partial class RestoreCommand(
         if (newThemes.Count > 0)
         {
             var ids = Markup.Escape(string.Join(", ", newThemes.Select(p => p.Id)));
-            AnsiConsole.MarkupLine($"{OutputMarkers.Info} Theme [white]{name}[/] is expected from the newly installed theme package(s) [dim]{ids}[/]; it is loaded on the next run.");
+            AnsiConsole.MarkupLine($"{OutputMarkers.Info} Theme [white]{Markup.Escape(name)}[/] is expected from the newly installed theme package(s) [dim]{Markup.Escape(ids)}[/]; it is loaded on the next run.");
             return true;
         }
 

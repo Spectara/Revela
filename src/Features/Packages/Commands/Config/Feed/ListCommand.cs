@@ -81,12 +81,12 @@ internal sealed partial class ListCommand(
                 var nupkgCount = Directory.GetFiles(bundledDir, "*.nupkg").Length;
                 if (nupkgCount > 0)
                 {
-                    AnsiConsole.MarkupLine($"Bundled: [cyan]{nupkgCount}[/] package(s) in [dim]{bundledDir}[/]");
+                    AnsiConsole.MarkupLine($"Bundled: [cyan]{nupkgCount}[/] package(s) in [dim]{Markup.Escape(bundledDir)}[/]");
                 }
             }
 
             AnsiConsole.WriteLine();
-            AnsiConsole.MarkupLine($"Config: [dim]{ConfigPathResolver.ConfigFilePath}[/]");
+            AnsiConsole.MarkupLine($"Config: [dim]{Markup.Escape(ConfigPathResolver.ConfigFilePath)}[/]");
 
             return 0;
         }
