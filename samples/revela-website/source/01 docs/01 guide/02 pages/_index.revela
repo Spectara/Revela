@@ -88,6 +88,37 @@ Add an optional introduction here.
 This text appears above the image gallery.
 ```
 
+### Text Around the Photos
+
+To put text after the photos as well, place `[[gallery]]` on its own line where the
+grid should appear:
+
+```toml
++++
+title = "Summer Vacation 2024"
++++
+Two weeks on the coast.
+
+[[gallery]]
+
+More stories from the trip are in the other galleries.
+```
+
+`[[gallery: <filter>]]` shows a different selection at that spot, using the
+[filter syntax](../filtering/), for example `[[gallery: all | sort random | limit 6]]`.
+
+### Open the Menu from Your Text
+
+Lumina's menu opens without JavaScript, so a sentence can open it too. Write the
+words as a button that targets the menu; Lumina styles it like a link:
+
+```html
+Browse the <button type="button" popovertarget="site-menu">photos of past years</button>.
+```
+
+All current browsers support this (Chrome and Edge 114, Safari 17, Firefox 125). In
+older browsers the words still look like a link, but nothing happens.
+
 ---
 
 ## Text Pages

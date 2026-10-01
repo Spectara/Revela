@@ -498,6 +498,34 @@ main {
       border-bottom: solid 1px color-mix(in srgb, var(--color) 30%, transparent);
       margin: var(--space-s) calc(var(--space-s) * -1);
     }
+
+    /* A <button popovertarget="site-menu"> in running text opens the menu without
+       JavaScript; reset the button so it reads like the links around it. */
+    :is(p, li, td, dd, blockquote) button[popovertarget] {
+      padding: 0;
+      border: 0;
+      background: none;
+      font: inherit;
+      letter-spacing: inherit;
+      cursor: pointer;
+    }
+
+    /* Links in running text: theme colors with a quiet underline instead of browser blue. */
+    :is(p, li, td, dd, blockquote) :is(a, button[popovertarget]) {
+      color: var(--color-dark);
+      text-decoration: none;
+      border-bottom: solid 1px color-mix(in srgb, var(--color) 40%, transparent);
+      transition: border-color var(--animation-time) ease-in-out;
+
+      &:hover {
+        border-bottom-color: var(--color-dark);
+      }
+
+      &:focus-visible {
+        outline: 2px solid var(--color-dark);
+        outline-offset: 2px;
+      }
+    }
   }
 
   .gallery {
