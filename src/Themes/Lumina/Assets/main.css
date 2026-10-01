@@ -894,22 +894,22 @@ main {
   place-items: center;
   border: 0;
   border-radius: 0;
-  color: rgb(255 255 255 / 92%);
+  color: color-mix(in oklch, var(--color-dark) 92%, var(--color-bg));
   background: transparent;
   font-family: inherit;
   font-size: 2rem;
   font-weight: 100;
   line-height: 1;
   text-decoration: none;
-  text-shadow: 0 1px 2px rgb(0 0 0 / 60%);
+  text-shadow: 0 1px 2px color-mix(in srgb, var(--color-bg) 60%, transparent);
   cursor: pointer;
 
   &:hover {
-    color: white;
+    color: var(--color-dark);
   }
 
   &:focus-visible {
-    color: white;
+    color: var(--color-dark);
     outline: 2px solid color-mix(in oklch, var(--color) 55%, transparent);
     outline-offset: -2px;
   }
@@ -922,8 +922,8 @@ main {
   block-size: 0.65rem;
   border-block-start: 1px solid currentColor;
   border-inline-end: 1px solid currentColor;
-  color: rgb(255 255 255 / 92%);
-  filter: drop-shadow(0 1px 2px rgb(0 0 0 / 60%));
+  color: color-mix(in oklch, var(--color-dark) 92%, var(--color-bg));
+  filter: drop-shadow(0 1px 2px color-mix(in srgb, var(--color-bg) 60%, transparent));
   font-size: 0;
 }
 
@@ -936,7 +936,7 @@ main {
 }
 
 :where([data-photo-previous], [data-photo-next]):is(:hover, :focus-visible)>span {
-  color: white;
+  color: var(--color-dark);
 }
 
 [data-photo-label] {

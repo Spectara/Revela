@@ -48,6 +48,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Photo controls were hard to see in light mode** - the close button (×) and the previous/next arrows on photo pages and in the lightbox were always white with a dark shadow, so on the light theme they were barely visible. They now use the theme's text and background colors: dark with a light halo in light mode, light as before in dark mode.
 - **Console output crashed on square brackets** - a project name, path, config value or error message containing `[` and `]` was read as Spectre markup and aborted the command (for example a project named `[Test]` failed in `generate scan`). These values are now escaped, and durations are always printed with a dot (`1.18s`) regardless of the system language.
 - **Lumina pages had no or several `<h1>`** - gallery titles were an `<h2>` below the intro text and photo pages had no heading. Every page now has exactly one `<h1>`: the gallery title above the intro (skipped when the Markdown body has its own `# Heading`), visually hidden on the home page and on photo pages (photo title or "Photo {name}"), plus the page title on Statistics and Calendar pages.
 - **Open Graph images pointed at the full-size original** - photo pages now share a generated JPEG variant (largest size up to 1920px) with `og:image:width`/`og:image:height`; canonical and `og:image` are omitted without `baseUrl` instead of falling back to relative URLs.
