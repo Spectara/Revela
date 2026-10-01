@@ -568,6 +568,8 @@ main {
       min-width: 0;
       position: relative;
       background-color: var(--color-bg);
+      /* Returning from a photo page lands below the sticky header, not under it. */
+      scroll-margin-top: var(--header-height);
       /* Covers the gaps where earlier rows' sticky pictures slide through. A spread
          box-shadow, not an outline: iOS Safari skipped the outline on part of the
          composited tiles, which let the photo above show between the tiles. */
@@ -1082,18 +1084,10 @@ dialog.photo-lightbox {
   }
 }
 
-html:where(:has(body > #site-menu)) {
-  overflow: hidden;
-  scrollbar-gutter: auto;
-}
-
-body:where(:has(> #site-menu)) {
-  height: 100dvh;
-  overflow-y: auto;
-  scrollbar-gutter: stable;
-}
-
-body:where(:has(> #site-menu:popover-open), :has(dialog[data-lightbox][open])) {
+/* The document scrolls (not <body>): iOS Safari only clears a #fragment target when the
+   page itself is scrolled, so a body scroller kept jumping back to the photo you returned
+   to whenever layout changed. Root scrolling also lets mobile toolbars collapse. */
+html:where(:has(body > #site-menu:popover-open), :has(dialog[data-lightbox][open])) {
   overflow: hidden;
 }
 

@@ -36,12 +36,22 @@ body:not(.photo-page) {
    Background Gradient
    ============================================ */
 body:not(.photo-page) {
-  background-image: radial-gradient(ellipse 100% 60% at 50% -10%,
-      light-dark(oklch(0.64 0.10 255 / 0.20), oklch(0.37 0.08 255 / 0.25)) 0%,
-      light-dark(oklch(0.64 0.16 310 / 0.15), oklch(0.43 0.15 310 / 0.15)) 40%,
-      light-dark(oklch(0.72 0.12 10 / 0.08), oklch(0.56 0.16 10 / 0.08)) 70%,
-      transparent 100%);
-  background-attachment: fixed;
+  /* The glow sits on a fixed layer: iOS Safari ignores background-attachment: fixed, so
+     with the document scrolling it would otherwise scroll away with the page. */
+  background-color: transparent;
+
+  &::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background-image: radial-gradient(ellipse 100% 60% at 50% -10%,
+        light-dark(oklch(0.64 0.10 255 / 0.20), oklch(0.37 0.08 255 / 0.25)) 0%,
+        light-dark(oklch(0.64 0.16 310 / 0.15), oklch(0.43 0.15 310 / 0.15)) 40%,
+        light-dark(oklch(0.72 0.12 10 / 0.08), oklch(0.56 0.16 10 / 0.08)) 70%,
+        transparent 100%);
+  }
 
   /* Scroll Indicator */
   &::before {
