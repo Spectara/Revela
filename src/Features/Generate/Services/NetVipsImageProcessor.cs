@@ -31,9 +31,9 @@ namespace Spectara.Revela.Features.Generate.Services;
 /// </list>
 /// <para>
 /// Thread Safety: Each image is processed independently. LibVips is thread-safe
-/// for reading different images in parallel. We disable the libvips cache and cap the
-/// per-image libvips concurrency (see <c>EnsureNetVipsInitialized</c>) because ImageService
-/// already processes several images in parallel.
+/// for reading different images in parallel. We disable the libvips cache and set the
+/// per-image libvips concurrency (see <see cref="SetThreadsPerImage"/>) because ImageService
+/// processes several images in parallel.
 /// </para>
 /// </remarks>
 internal sealed partial class NetVipsImageProcessor(
@@ -55,10 +55,11 @@ internal sealed partial class NetVipsImageProcessor(
     /// <remarks>
     /// Part of the scan cache key. Increment whenever <see cref="ReadMetadataAsync"/> computes
     /// different values for the same file (2: upright dimensions after EXIF orientation and
-    /// sRGB placeholders; 3: XMP title, description, keywords, and rating), so manifests from
-    /// older versions re-read their metadata.
+    /// sRGB placeholders; 3: XMP title, description, keywords, and rating; 4: placeholders from
+    /// a shrink-on-load thumbnail), so manifests from older versions re-read their metadata.
+    /// Images are not re-encoded: their processing state is independent of the scan.
     /// </remarks>
-    internal const int MetadataVersion = 3;
+    internal const int MetadataVersion = 4;
 
     /// <summary>
     /// libvips metadata field holding the raw XMP packet.
@@ -75,6 +76,12 @@ internal sealed partial class NetVipsImageProcessor(
     /// Largest image dimension libvips accepts (<c>VIPS_MAX_COORD</c>).
     /// </summary>
     private const int VipsMaxCoord = 10_000_000;
+
+    /// <summary>
+    /// Largest side of the thumbnail a placeholder is computed from. Its hash samples a 10×10
+    /// center crop and a 3×2 grid, so a few hundred pixels keep it close to the full image.
+    /// </summary>
+    private const int PlaceholderSourceSize = 256;
 
     /// <summary>
     /// Flag to ensure NetVips is initialized only once
@@ -120,20 +127,23 @@ internal sealed partial class NetVipsImageProcessor(
                 }
             });
 
-            // Thread strategy: many image-workers × a small per-image libvips concurrency.
-            // - Workers (in ImageService): CPU/2 images processed in parallel.
-            // - Concurrency (here): libvips threads PER image (also caps libaom's internal
-            //   AVIF-encoder threads, see kleisauke/net-vips#272).
-            // Benchmarks (Ryzen 16C/32T, AVIF+WebP+JPG) show libaom stops scaling past ~8
-            // threads, so a per-image concurrency of CPU/2 (=16 here) just oversubscribes:
-            // W16×C8 = 209s vs W16×C16 = 220s. We therefore cap concurrency at libaom's
-            // effective ceiling (~8) instead of scaling it with the core count. On small
-            // machines (≤8 threads) this collapses to the core count, which avoids the
-            // opposite failure — concurrency=1 starves libaom and halves throughput.
+            // Default libvips threads per image until ImageService applies its plan
+            // (SetThreadsPerImage). The scan reads one image per core with this value. libvips
+            // also passes it to libaom as the AVIF encoder's thread count
+            // (see kleisauke/net-vips#272), which stops scaling past ~8 threads.
             NetVips.NetVips.Concurrency = Math.Clamp(Environment.ProcessorCount, 1, 8);
 
             netVipsInitialized = true;
         }
+    }
+
+    /// <summary>
+    /// Sets how many libvips threads each image uses (see <see cref="ImageWorkerPlan"/>).
+    /// </summary>
+    internal static void SetThreadsPerImage(int threads)
+    {
+        EnsureNetVipsInitialized();
+        NetVips.NetVips.Concurrency = Math.Max(1, threads);
     }
 
     /// <summary>
@@ -235,17 +245,15 @@ internal sealed partial class NetVipsImageProcessor(
         //   Strategy B (star from thumbnail):     30.09s
         //   Strategy C (star from original):      28.90s ← Winner! 13% faster
         //
-        // Since original size is ALWAYS included in sizes (for lightbox),
+        // Since original size is included in sizes (for lightbox, unless capped by maxSize),
         // loading the full original is optimal. All smaller sizes are resized
         // from the full-resolution image in memory.
         //
         // Quality: Each resize is directly from original = maximum quality
         // No accumulated artifacts like pyramid resize
         //
-        // Note: CopyMemory() is NOT needed here because:
-        // - NewFromFile() uses random access by default
-        // - Multiple Resize() calls from same source work fine
-        // - Only Thumbnail() (sequential access) would need CopyMemory()
+        // NewFromFile() uses random access, so the original is decoded once and every resize
+        // reads it from memory. Each resized size is then materialized once (see below).
 
         // Find the largest size we need to generate (drives the single full-res load).
         // sizesToGenerate is sorted ascending → Last() is the biggest.
@@ -278,7 +286,10 @@ internal sealed partial class NetVipsImageProcessor(
             using var original = loaded.Autorot();
 
             var originalWidth = original.Width;
-            var originalHeight = original.Height;
+
+            // Above the configured cap, the cap replaces the full resolution: every size is a resize.
+            var capped = options.MaxSize > 0
+                && GetResizeExtent(original.Width, original.Height, options.ResizeMode) > options.MaxSize;
 
             foreach (var size in sizesToGenerate)
             {
@@ -301,68 +312,55 @@ internal sealed partial class NetVipsImageProcessor(
                 }
 
                 // Get image for this size:
-                // - Original size: use loaded original directly
-                // - Smaller sizes: resize from original (no additional file I/O!)
-                Image thumb;
-                int thumbHeight;
+                // - Original size: use loaded original directly (already decoded in memory),
+                //   unless a maxSize cap applies
+                // - Smaller sizes: resize from original (no additional file I/O!), computed once
+                //   into memory because every format and the sRGB check below read it. The lazy
+                //   pipeline would otherwise redo the resize for each of them.
+                using var resized = size >= originalWidth && !capped ? null : ResizeImage(original, size, options.ResizeMode);
+                using var frame = resized?.CopyMemory();
+                var source = frame ?? original;
+                var thumbHeight = source.Height;
 
-                if (size >= originalWidth)
-                {
-                    // Use the already-loaded original directly (no resize needed)
-                    thumb = original;
-                    thumbHeight = originalHeight;
-                }
-                else
-                {
-                    // Resize from original based on resize mode
-                    thumb = ResizeImage(original, size, options.ResizeMode);
-                    thumbHeight = thumb.Height;
-                }
+                // Convert after resizing: converting the original once would be recomputed
+                // for every size and format by the lazy pipeline (~60% slower overall).
+                using var converted = ConvertToOutputColorSpace(source, keepGrey: true);
 
-                try
-                {
-                    // Convert after resizing: converting the original once would be recomputed
-                    // for every size and format by the lazy pipeline (~60% slower overall).
-                    using var converted = ConvertToOutputColorSpace(thumb, keepGrey: true);
-                    var publishable = converted ?? thumb;
+                // Materialize the conversion when several formats encode it (one extra frame per
+                // worker); a single encode streams it.
+                var encodeCount = isIncrementalMode ? formatsNeededForSize!.Count : options.Formats.Count;
+                using var convertedFrame = converted is not null && encodeCount > 1 ? converted.CopyMemory() : null;
+                var publishable = convertedFrame ?? converted ?? source;
 
-                    // Process each format - report saved or skipped in order
-                    foreach (var (format, quality) in options.Formats)
+                // Process each format - report saved or skipped in order
+                foreach (var (format, quality) in options.Formats)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+
+                    // In incremental mode, check if this specific format needs to be generated
+                    var needsGeneration = !isIncrementalMode || formatsNeededForSize!.Contains(format);
+
+                    if (needsGeneration)
                     {
-                        cancellationToken.ThrowIfCancellationRequested();
+                        // Announce work-in-progress before the (potentially slow) encode/write
+                        onVariantProgress?.Invoke(VariantState.Started, format);
 
-                        // In incremental mode, check if this specific format needs to be generated
-                        var needsGeneration = !isIncrementalMode || formatsNeededForSize!.Contains(format);
+                        var variant = await SaveVariantAsync(
+                            publishable,
+                            options.ImageSlug,
+                            options.OutputDirectory,
+                            format,
+                            size,
+                            thumbHeight,
+                            quality,
+                            options.Efforts.TryGetValue(format, out var effort) ? effort : null);
 
-                        if (needsGeneration)
-                        {
-                            // Announce work-in-progress before the (potentially slow) encode/write
-                            onVariantProgress?.Invoke(VariantState.Started, format);
-
-                            var variant = await SaveVariantAsync(
-                                publishable,
-                                options.ImageSlug,
-                                options.OutputDirectory,
-                                format,
-                                size,
-                                thumbHeight,
-                                quality);
-
-                            variants.Add(variant);
-                            onVariantProgress?.Invoke(VariantState.Done, format);
-                        }
-                        else
-                        {
-                            onVariantProgress?.Invoke(VariantState.Skipped, format);
-                        }
+                        variants.Add(variant);
+                        onVariantProgress?.Invoke(VariantState.Done, format);
                     }
-                }
-                finally
-                {
-                    // Dispose resized thumbnails (but NOT the original - it's managed by using)
-                    if (size < originalWidth)
+                    else
                     {
-                        thumb.Dispose();
+                        onVariantProgress?.Invoke(VariantState.Skipped, format);
                     }
                 }
             }
@@ -393,13 +391,12 @@ internal sealed partial class NetVipsImageProcessor(
     /// </summary>
     /// <remarks>
     /// <para>
-    /// Uses Sequential access mode - only reads image header, not full decode.
-    /// Much faster than full processing (~10-20ms vs 200-500ms per image).
+    /// Dimensions, EXIF and XMP come from the header (sequential access, no pixel decode).
     /// </para>
     /// <para>
-    /// When placeholderConfig is provided with Strategy != None, the image is loaded
-    /// with random access to generate the placeholder. This is slower but ensures
-    /// placeholders are available when pages are generated.
+    /// When placeholderConfig is provided with Strategy != None, the placeholder is computed
+    /// from a small shrink-on-load thumbnail: a JPEG is decoded at 1/2–1/8 scale instead of at
+    /// full resolution, which was 90% of the scan's cost.
     /// </para>
     /// </remarks>
     public Task<ImageMetadata> ReadMetadataAsync(
@@ -418,11 +415,7 @@ internal sealed partial class NetVipsImageProcessor(
         // Ensure NetVips is configured for parallel processing
         EnsureNetVipsInitialized();
 
-        // Determine access mode based on whether we need to generate placeholder
-        var needsPlaceholder = placeholderConfig?.Strategy is PlaceholderStrategy.CssHash;
-        var accessMode = needsPlaceholder ? Enums.Access.Random : Enums.Access.Sequential;
-
-        using var loaded = Image.NewFromFile(inputPath, access: accessMode);
+        using var loaded = Image.NewFromFile(inputPath, access: Enums.Access.Sequential);
 
         // Normalize EXIF orientation once so the scanned dimensions (and any placeholder)
         // describe the visually UPRIGHT image, consistent with the variants produced later
@@ -437,9 +430,14 @@ internal sealed partial class NetVipsImageProcessor(
 
         // Generate placeholder if configured
         string? placeholder = null;
-        if (needsPlaceholder && placeholderConfig is not null)
+        if (placeholderConfig?.Strategy is PlaceholderStrategy.CssHash)
         {
-            placeholder = GenerateCssHash(image);
+            // Thumbnail applies the EXIF orientation like Autorot and never enlarges. Its result
+            // is read sequentially, so it is materialized before the hash reads it several
+            // times (libvips would fail with "out of order read").
+            using var thumbnail = Image.Thumbnail(inputPath, PlaceholderSourceSize, height: PlaceholderSourceSize, size: Enums.Size.Down);
+            using var source = thumbnail.CopyMemory();
+            placeholder = GenerateCssHash(source);
         }
 
         return Task.FromResult(new ImageMetadata
@@ -518,6 +516,17 @@ internal sealed partial class NetVipsImageProcessor(
     }
 
     /// <summary>
+    /// The dimension a size constrains under <paramref name="resizeMode"/> (see <see cref="ResizeImage"/>).
+    /// </summary>
+    internal static int GetResizeExtent(int width, int height, string resizeMode) =>
+        resizeMode.ToUpperInvariant() switch
+        {
+            "WIDTH" => width,
+            "HEIGHT" => height,
+            _ => Math.Max(width, height)
+        };
+
+    /// <summary>
     /// Converts an image to 8-bit sRGB for publishing.
     /// </summary>
     /// <remarks>
@@ -537,11 +546,17 @@ internal sealed partial class NetVipsImageProcessor(
     /// <returns>The converted image (caller disposes), or <c>null</c> if <paramref name="image"/> is already publishable.</returns>
     private Image? ConvertToOutputColorSpace(Image image, bool keepGrey)
     {
-        if (image.Contains("icc-profile-data"))
+        if (image.Contains(IccTransformShortcut.ProfileField))
         {
+            if (IccTransformShortcut.IsNoOp(image, TransformToOutputProfile))
+            {
+                // Already sRGB pixel for pixel: the conversion would write the same values.
+                return null;
+            }
+
             try
             {
-                return image.IccTransform(OutputProfile, embedded: true, intent: Enums.Intent.Perceptual);
+                return TransformToOutputProfile(image);
             }
             catch (VipsException ex)
             {
@@ -557,6 +572,12 @@ internal sealed partial class NetVipsImageProcessor(
 
         return alreadyPublishable ? null : image.Colourspace(Enums.Interpretation.Srgb);
     }
+
+    /// <summary>
+    /// Converts an image with an embedded ICC profile to sRGB, the profile of published variants.
+    /// </summary>
+    internal static Image TransformToOutputProfile(Image image) =>
+        image.IccTransform(OutputProfile, embedded: true, intent: Enums.Intent.Perceptual);
 
     /// <summary>
     /// Extract EXIF data from image
@@ -908,7 +929,9 @@ internal sealed partial class NetVipsImageProcessor(
     /// <remarks>
     /// Output structure: images/{imageSlug}/{width}.{format}
     /// e.g., images/events/fireworks/029081/640.jpg
-    /// The imageSlug includes the gallery path to avoid filename collisions.
+    /// The imageSlug includes the gallery path to avoid collisions between images with the same
+    /// filename in different galleries. A <c>null</c> <paramref name="effort"/> leaves the
+    /// encoder's default (the option is not passed at all).
     /// </remarks>
     private Task<ImageVariant> SaveVariantAsync(
         Image image,
@@ -917,7 +940,8 @@ internal sealed partial class NetVipsImageProcessor(
         string format,
         int width,
         int height,
-        int quality)
+        int quality,
+        int? effort)
     {
         // Build output path: images/{imageSlug}/{width}.{format}
         var imageDirectory = Path.Combine(outputDirectory, imageSlug.Replace('/', Path.DirectorySeparatorChar));
@@ -940,7 +964,7 @@ internal sealed partial class NetVipsImageProcessor(
         switch (format.ToUpperInvariant())
         {
             case "WEBP":
-                image.Webpsave(outputPath, q: quality, keep: Enums.ForeignKeep.None);
+                image.Webpsave(outputPath, q: quality, effort: effort, keep: Enums.ForeignKeep.None);
                 break;
 
             case "JPG":
@@ -950,7 +974,7 @@ internal sealed partial class NetVipsImageProcessor(
 
             case "AVIF":
                 // AVIF uses AV1 compression via HEIF container
-                image.Heifsave(outputPath, q: quality, compression: Enums.ForeignHeifCompression.Av1, keep: Enums.ForeignKeep.None);
+                image.Heifsave(outputPath, q: quality, compression: Enums.ForeignHeifCompression.Av1, effort: effort, keep: Enums.ForeignKeep.None);
                 break;
 
             case "PNG":
@@ -1024,7 +1048,10 @@ internal sealed partial class NetVipsImageProcessor(
         // Step 1: Calculate average color in Oklab space
         // Using average instead of dominant color works better for high-contrast images
         // (e.g., white fur on black background)
-        using var samplerRaw = image.ThumbnailImage(10, height: 10, crop: Enums.Interesting.Centre);
+        // Materialized: the sRGB check and the per-pixel reads below would otherwise each
+        // recompute the shrink from the source image.
+        using var samplerShrunk = image.ThumbnailImage(10, height: 10, crop: Enums.Interesting.Centre);
+        using var samplerRaw = samplerShrunk.CopyMemory();
         using var samplerConverted = ConvertToOutputColorSpace(samplerRaw, keepGrey: false);
         var sampler = samplerConverted ?? samplerRaw;
 
@@ -1065,7 +1092,8 @@ internal sealed partial class NetVipsImageProcessor(
         // Step 3: Resize to 3x2 with sharpen (like original)
         var gridScaleX = 3.0 / image.Width;
         var gridScaleY = 2.0 / image.Height;
-        using var gridRaw = image.Resize(gridScaleX, vscale: gridScaleY);
+        using var gridShrunk = image.Resize(gridScaleX, vscale: gridScaleY);
+        using var gridRaw = gridShrunk.CopyMemory();
         using var gridConverted = ConvertToOutputColorSpace(gridRaw, keepGrey: false);
         using var grid = (gridConverted ?? gridRaw).Sharpen(sigma: 1.0);
 

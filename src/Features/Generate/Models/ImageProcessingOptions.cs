@@ -14,6 +14,14 @@ internal sealed class ImageProcessingOptions
     public required IReadOnlyDictionary<string, int> Formats { get; init; }
 
     /// <summary>
+    /// Encoder effort per format that differs from libvips' default.
+    /// </summary>
+    /// <remarks>
+    /// Formats without an entry are encoded exactly as before effort was configurable.
+    /// </remarks>
+    public IReadOnlyDictionary<string, int> Efforts { get; init; } = new Dictionary<string, int>();
+
+    /// <summary>
     /// Sizes to generate in pixels (e.g., [640, 1280, 1920])
     /// </summary>
     public required IReadOnlyList<int> Sizes { get; init; }
@@ -89,5 +97,14 @@ internal sealed class ImageProcessingOptions
     /// Original image height in pixels (from manifest/scan).
     /// </summary>
     public required int Height { get; init; }
+
+    /// <summary>
+    /// Largest variant size (<c>generate.images.maxSize</c>); 0 = full resolution.
+    /// </summary>
+    /// <remarks>
+    /// When the image is larger than the cap, every size (including the cap itself) is
+    /// resized and the full-resolution original is never written.
+    /// </remarks>
+    public int MaxSize { get; init; }
 }
 

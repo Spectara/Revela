@@ -319,12 +319,16 @@ Spectara.Revela.Sdk.Configuration.GenerateConfig.Sorting.set -> void
 Spectara.Revela.Sdk.Configuration.ImageConfig
 Spectara.Revela.Sdk.Configuration.ImageConfig.Avif.get -> int
 Spectara.Revela.Sdk.Configuration.ImageConfig.Avif.set -> void
+Spectara.Revela.Sdk.Configuration.ImageConfig.AvifEffort.get -> int
+Spectara.Revela.Sdk.Configuration.ImageConfig.AvifEffort.set -> void
 Spectara.Revela.Sdk.Configuration.ImageConfig.GetActiveFormats() -> System.Collections.Generic.IReadOnlyDictionary<string!, int>!
 Spectara.Revela.Sdk.Configuration.ImageConfig.ImageConfig() -> void
 Spectara.Revela.Sdk.Configuration.ImageConfig.Jpg.get -> int
 Spectara.Revela.Sdk.Configuration.ImageConfig.Jpg.set -> void
 Spectara.Revela.Sdk.Configuration.ImageConfig.MaxDegreeOfParallelism.get -> int?
 Spectara.Revela.Sdk.Configuration.ImageConfig.MaxDegreeOfParallelism.set -> void
+Spectara.Revela.Sdk.Configuration.ImageConfig.MaxSize.get -> int
+Spectara.Revela.Sdk.Configuration.ImageConfig.MaxSize.set -> void
 Spectara.Revela.Sdk.Configuration.ImageConfig.MinHeight.get -> int
 Spectara.Revela.Sdk.Configuration.ImageConfig.MinHeight.set -> void
 Spectara.Revela.Sdk.Configuration.ImageConfig.MinWidth.get -> int
@@ -333,6 +337,8 @@ Spectara.Revela.Sdk.Configuration.ImageConfig.Placeholder.get -> Spectara.Revela
 Spectara.Revela.Sdk.Configuration.ImageConfig.Placeholder.set -> void
 Spectara.Revela.Sdk.Configuration.ImageConfig.Webp.get -> int
 Spectara.Revela.Sdk.Configuration.ImageConfig.Webp.set -> void
+Spectara.Revela.Sdk.Configuration.ImageConfig.WebpEffort.get -> int
+Spectara.Revela.Sdk.Configuration.ImageConfig.WebpEffort.set -> void
 Spectara.Revela.Sdk.Configuration.ImageSortConfig
 Spectara.Revela.Sdk.Configuration.ImageSortConfig.Direction.get -> Spectara.Revela.Sdk.Configuration.SortDirection
 Spectara.Revela.Sdk.Configuration.ImageSortConfig.Direction.set -> void
@@ -811,3 +817,5 @@ Spectara.Revela.Sdk.Artifacts.IArtifactLifecycle.InvalidateAllAsync(System.Colle
 Spectara.Revela.Sdk.Artifacts.IArtifactLifecycle.InvalidateAsync(Spectara.Revela.Sdk.Artifacts.ArtifactId artifact, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask<Spectara.Revela.Sdk.Abstractions.OperationResult!>
 static Spectara.Revela.Sdk.ProjectPaths.GetOwnerDirectory(string! owner) -> string!
 static Spectara.Revela.Sdk.ProjectPaths.IsValidOwner(string? owner) -> bool
+const Spectara.Revela.Sdk.Configuration.ImageConfig.DefaultAvifEffort = 2 -> int
+const Spectara.Revela.Sdk.Configuration.ImageConfig.DefaultWebpEffort = 4 -> int

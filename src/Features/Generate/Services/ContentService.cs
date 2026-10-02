@@ -522,7 +522,7 @@ internal sealed partial class ContentService(
         ImageMetadata meta)
     {
         // Calculate sizes based on actual image dimensions
-        var sizes = CalculateSizes(meta.Width);
+        var sizes = CalculateSizes(meta.Width, meta.Height);
 
         return new ImageContent
         {
@@ -631,7 +631,7 @@ internal sealed partial class ContentService(
 
         // Calculate which sizes to generate (config sizes + original width)
         var sizes = meta != null
-            ? CalculateSizes(meta.Width)
+            ? CalculateSizes(meta.Width, meta.Height)
             : [];
 
         return new ImageContent
@@ -654,17 +654,25 @@ internal sealed partial class ContentService(
     }
 
     /// <summary>
-    /// Calculate which sizes to generate based on image width.
+    /// Calculate which sizes to generate based on image dimensions.
     /// </summary>
     /// <remarks>
     /// Includes configured sizes smaller than original width, plus the original width.
     /// Original width is included for full-resolution lightbox view.
     /// Sizes come from theme configuration (theme defines responsive breakpoints).
+    /// An image larger than <c>generate.images.maxSize</c> (measured like the theme sizes)
+    /// gets the cap instead of its full resolution.
     /// </remarks>
-    private List<int> CalculateSizes(int imageWidth)
+    private List<int> CalculateSizes(int imageWidth, int imageHeight)
     {
         // Get sizes from theme via provider (handles local override vs theme default)
         var themeSizes = imageSizesProvider.GetSizes();
+
+        var maxSize = ImageSettings.MaxSize;
+        if (maxSize > 0 && NetVipsImageProcessor.GetResizeExtent(imageWidth, imageHeight, imageSizesProvider.GetResizeMode()) > maxSize)
+        {
+            return [.. themeSizes.Where(s => s < maxSize).Append(maxSize).Order()];
+        }
 
         // Filter configured sizes to only include those smaller than original
         // Then add original width for full-resolution lightbox

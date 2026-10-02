@@ -7,7 +7,7 @@
   },
   "generate": {
     "images": {
-      "avif": 80,
+      "avif": 75,
       "webp": 85,
       "jpg": 90
     }

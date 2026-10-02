@@ -74,6 +74,25 @@ public sealed class ConfigCheckTests
     }
 
     [TestMethod]
+    public async Task ValidateAsync_InvalidGenerateConfig_ReportsValidationFailure()
+    {
+        var generateConfig = Substitute.For<IOptionsMonitor<GenerateConfig>>();
+        generateConfig.CurrentValue.Returns(_ => throw new OptionsValidationException(
+            Options.DefaultName,
+            typeof(GenerateConfig),
+            ["Images.AvifEffort must be between 0 and 9."]));
+        var check = CreateCheck(
+            baseUrl: new Uri("https://example.com"),
+            title: "My Site",
+            generateConfig: generateConfig);
+
+        var diagnostics = await check.ValidateAsync();
+
+        Assert.IsTrue(diagnostics.Any(d => d.Severity == ValidationSeverity.Error
+            && d.Message.Contains("AvifEffort", StringComparison.Ordinal)));
+    }
+
+    [TestMethod]
     public async Task ValidateAsync_UnsupportedProjectViewer_ReportsThemeAndSupportedModes()
     {
         var themeConfig = CreateThemeConfig(new ThemeConfig
@@ -111,7 +130,8 @@ public sealed class ConfigCheckTests
         Uri? baseUrl,
         string title,
         IOptionsMonitor<ThemeConfig>? themeConfig = null,
-        IThemeRegistry? themeRegistry = null)
+        IThemeRegistry? themeRegistry = null,
+        IOptionsMonitor<GenerateConfig>? generateConfig = null)
     {
         var projectConfig = Substitute.For<IOptionsMonitor<ProjectConfig>>();
         projectConfig.CurrentValue.Returns(new ProjectConfig { Name = "Test", BaseUrl = baseUrl });
@@ -119,10 +139,17 @@ public sealed class ConfigCheckTests
         var siteConfig = Substitute.For<IOptionsMonitor<SiteCoreConfig>>();
         siteConfig.CurrentValue.Returns(new SiteCoreConfig { Title = title });
 
+        if (generateConfig is null)
+        {
+            generateConfig = Substitute.For<IOptionsMonitor<GenerateConfig>>();
+            generateConfig.CurrentValue.Returns(new GenerateConfig());
+        }
+
         return new ConfigCheck(
             projectConfig,
             siteConfig,
             themeConfig ?? CreateThemeConfig(new ThemeConfig { Name = "Lumina" }),
+            generateConfig,
             themeRegistry ?? Substitute.For<IThemeRegistry>(),
             Options.Create(new ProjectEnvironment { Path = "test-project" }));
     }

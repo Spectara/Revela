@@ -36,7 +36,7 @@ internal interface IImageProcessor
     /// </summary>
     /// <remarks>
     /// <para>
-    /// Reads only the image header - does NOT decode full image (unless placeholderConfig is set).
+    /// Reads only the image header - does NOT decode the full image (a placeholder decodes a small thumbnail).
     /// Used during scan phase for:
     /// - Width/Height extraction
     /// - EXIF data extraction
@@ -44,9 +44,8 @@ internal interface IImageProcessor
     /// </para>
     /// <para>
     /// When <paramref name="placeholderConfig"/> is provided with Strategy != None,
-    /// the placeholder is generated during scan and included in the metadata.
-    /// This requires loading the full image but ensures placeholders are available
-    /// when pages are generated.
+    /// the placeholder is generated during scan and included in the metadata, from a
+    /// shrink-on-load thumbnail rather than the full-resolution image.
     /// </para>
     /// </remarks>
     /// <param name="inputPath">Path to the source image</param>

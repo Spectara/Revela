@@ -1,3 +1,5 @@
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json.Nodes;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -62,6 +64,23 @@ public sealed class ImageProcessingStateTests
     }
 
     [TestMethod]
+    public async Task ProcessAsync_StateWrittenByBeta21_ReencodesNothing()
+    {
+        // JPEG/WebP libraries already processed by beta.21 must not be re-encoded by a later
+        // build with the default configuration.
+        using var project = CreateProject("a.jpg", "b.jpg");
+        await RunAsync(project);
+        var recorded = ReadJson(StatePath(project)).ToJsonString();
+        var beta21State = WriteBeta21State(project, new JsonObject { ["jpg"] = 90 });
+        Assert.AreEqual(beta21State.ToJsonString(), recorded, "Default settings must record exactly what beta.21 recorded.");
+
+        var rerun = await RunAsync(project);
+
+        Assert.AreEqual(0, rerun.ProcessedCount);
+        Assert.AreEqual(2, rerun.SkippedCount);
+    }
+
+    [TestMethod]
     public async Task ProcessAsync_StateFromOlderPipelineVersion_ReencodesImage()
     {
         using var project = CreateProject("a.jpg");
@@ -80,6 +99,29 @@ public sealed class ImageProcessingStateTests
     }
 
     [TestMethod]
+    public async Task ProcessAsync_ScanMetadataFromOlderVersion_RereadsMetadataWithoutReencoding()
+    {
+        // A MetadataVersion bump (e.g. a new placeholder algorithm) re-reads the scan metadata
+        // once; the processing state is independent of it, so no image is re-encoded.
+        using var project = CreateProject("a.jpg");
+        await RunAsync(project);
+        var manifest = ReadJson(ManifestPath(project));
+        var input = $"metadata:{NetVipsImageProcessor.MetadataVersion - 1}|placeholder:CssHash|minWidth:0|minHeight:0";
+        manifest["_meta"]!["scanConfigHash"] = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(input)))[..12];
+        var image = manifest["root"]!["children"]![0]!["content"]!.AsArray().Single(c => (string?)c!["filename"] == "a.jpg")!;
+        var placeholder = image["placeholder"]!.GetValue<string>();
+        image["placeholder"] = "0";
+        WriteJson(ManifestPath(project), manifest);
+
+        var rerun = await RunAsync(project);
+
+        Assert.AreEqual(0, rerun.ProcessedCount);
+        var rescanned = ReadJson(ManifestPath(project))["root"]!["children"]![0]!["content"]!.AsArray()
+            .Single(c => (string?)c!["filename"] == "a.jpg")!;
+        Assert.AreEqual(placeholder, rescanned["placeholder"]!.GetValue<string>(), "The scan must re-read the placeholder.");
+    }
+
+    [TestMethod]
     public async Task ProcessAsync_QualityChanged_ReencodesImages()
     {
         using var project = CreateProject("a.jpg", "b.jpg");
@@ -91,6 +133,127 @@ public sealed class ImageProcessingStateTests
 
         Assert.AreEqual(2, rerun.ProcessedCount);
         Assert.AreEqual(0, third.ProcessedCount, "The new quality must be recorded.");
+    }
+
+    [TestMethod]
+    public async Task ProcessAsync_AvifEffortChanged_ReencodesOnlyAvif()
+    {
+        using var project = CreateProject("a.jpg", "b.jpg");
+        WriteImageSettings(project, new JsonObject { ["jpg"] = 90, ["avif"] = 60 });
+        await RunAsync(project);
+        var jpg = VariantPath(project, "a", VariantSize);
+        var avif = Path.ChangeExtension(jpg, ".avif");
+        File.SetLastWriteTimeUtc(jpg, new DateTime(2020, 1, 1, 0, 0, 0, DateTimeKind.Utc));
+        File.SetLastWriteTimeUtc(avif, new DateTime(2020, 1, 1, 0, 0, 0, DateTimeKind.Utc));
+        var defaultEffortAvif = await File.ReadAllBytesAsync(avif);
+        WriteImageSettings(project, new JsonObject { ["jpg"] = 90, ["avif"] = 60, ["avifEffort"] = 0 });
+        var rerun = await RunAsync(project);
+        var third = await RunAsync(project);
+
+        Assert.AreEqual(2, rerun.ProcessedCount);
+        Assert.AreEqual(4, rerun.FilesCreated, "Only the AVIF variants (320 and the original width) are re-encoded.");
+        Assert.AreEqual(2020, File.GetLastWriteTimeUtc(jpg).Year, "JPG variants must be kept.");
+        Assert.AreNotEqual(2020, File.GetLastWriteTimeUtc(avif).Year, "AVIF variants must be re-encoded.");
+        CollectionAssert.AreNotEqual(defaultEffortAvif, await File.ReadAllBytesAsync(avif), "The encoder must use the configured effort.");
+        Assert.AreEqual(0, third.ProcessedCount, "The new effort must be recorded.");
+    }
+
+    [TestMethod]
+    public async Task ProcessAsync_EffortSetBackToDefault_ReencodesAgain()
+    {
+        using var project = CreateProject("a.jpg");
+        WriteImageSettings(project, new JsonObject { ["jpg"] = 90, ["webp"] = 80, ["webpEffort"] = 1 });
+        await RunAsync(project);
+
+        WriteImageSettings(project, new JsonObject { ["jpg"] = 90, ["webp"] = 80 });
+        var rerun = await RunAsync(project);
+
+        Assert.AreEqual(1, rerun.ProcessedCount);
+        Assert.AreEqual(2, rerun.FilesCreated, "Only the WebP variants are re-encoded.");
+    }
+
+    [TestMethod]
+    public async Task ProcessAsync_DefaultEffortsWrittenExplicitly_ReencodesNothing()
+    {
+        using var project = CreateProject("a.jpg");
+        WriteImageSettings(project, new JsonObject { ["jpg"] = 90, ["avif"] = 60 });
+        await RunAsync(project);
+        var state = await File.ReadAllTextAsync(StatePath(project));
+
+        WriteImageSettings(project, new JsonObject { ["jpg"] = 90, ["avif"] = 60, ["avifEffort"] = 2, ["webpEffort"] = 4 });
+        var rerun = await RunAsync(project);
+
+        Assert.AreEqual(0, rerun.ProcessedCount);
+        Assert.AreEqual(state, await File.ReadAllTextAsync(StatePath(project)));
+    }
+
+    [TestMethod]
+    public async Task ProcessAsync_AvifStateWrittenByBeta21_ReencodesOnlyAvifOnce()
+    {
+        // beta.21 encoded AVIF with libvips' effort 4 and recorded no effort. The default is now
+        // effort 2, so AVIF variants are re-encoded once; JPG variants are kept.
+        using var project = CreateProject("a.jpg", "b.jpg");
+        WriteImageSettings(project, new JsonObject { ["jpg"] = 90, ["avif"] = 60 });
+        await RunAsync(project);
+        WriteBeta21State(project, new JsonObject { ["jpg"] = 90, ["avif"] = 60 });
+        var jpg = VariantPath(project, "a", VariantSize);
+        File.SetLastWriteTimeUtc(jpg, new DateTime(2020, 1, 1, 0, 0, 0, DateTimeKind.Utc));
+
+        var rerun = await RunAsync(project);
+        var third = await RunAsync(project);
+
+        Assert.AreEqual(2, rerun.ProcessedCount);
+        Assert.AreEqual(4, rerun.FilesCreated, "Only the AVIF variants (320 and the original width) are re-encoded.");
+        Assert.AreEqual(2020, File.GetLastWriteTimeUtc(jpg).Year, "JPG variants must be kept.");
+        Assert.AreEqual(0, third.ProcessedCount, "The new effort must be recorded.");
+    }
+
+    [TestMethod]
+    public async Task ProcessAsync_AvifStateWrittenByBeta21WithExplicitEffort4_ReencodesNothing()
+    {
+        // Setting the previous effort explicitly keeps an AVIF library as it is.
+        using var project = CreateProject("a.jpg");
+        WriteImageSettings(project, new JsonObject { ["jpg"] = 90, ["avif"] = 60, ["avifEffort"] = 4 });
+        await RunAsync(project);
+        WriteBeta21State(project, new JsonObject { ["jpg"] = 90, ["avif"] = 60 });
+
+        var rerun = await RunAsync(project);
+
+        Assert.AreEqual(0, rerun.ProcessedCount);
+    }
+
+    [TestMethod]
+    public async Task ProcessAsync_MaxSizeSet_CapsTheLargestVariantOfLargerImages()
+    {
+        using var project = CreateProject(("wide.jpg", 640, 480), ("tall.jpg", 480, 640), ("small.jpg", 300, 200));
+        WriteImageSettings(project, new JsonObject { ["jpg"] = 90, ["maxSize"] = 400 });
+
+        await RunAsync(project);
+
+        var sizes = ReadManifestSizes(project);
+        Assert.AreEqual("320,400", sizes["wide.jpg"]);
+        Assert.AreEqual("320,400", sizes["tall.jpg"], "A size is the longest edge, also for portraits.");
+        Assert.AreEqual("300", sizes["small.jpg"], "Images within the cap keep their full resolution.");
+        AssertDimensions(VariantPath(project, "wide", 400), 400, 300);
+        AssertDimensions(VariantPath(project, "tall", 400), 300, 400);
+        Assert.IsFalse(File.Exists(VariantPath(project, "wide", 640)));
+    }
+
+    [TestMethod]
+    public async Task ProcessAsync_MaxSizeChanged_ReencodesOnlyImagesAboveTheCap()
+    {
+        using var project = CreateProject(("wide.jpg", 640, 480), ("small.jpg", 300, 200));
+        await RunAsync(project);
+
+        WriteImageSettings(project, new JsonObject { ["jpg"] = 90, ["maxSize"] = 400 });
+        var capped = await RunAsync(project);
+        WriteImageSettings(project, new JsonObject { ["jpg"] = 90 });
+        var uncapped = await RunAsync(project);
+
+        Assert.AreEqual(1, capped.ProcessedCount);
+        Assert.AreEqual(1, capped.SkippedCount);
+        Assert.AreEqual(1, uncapped.ProcessedCount);
+        AssertDimensions(VariantPath(project, "wide", 640), 640, 480);
     }
 
     [TestMethod]
@@ -221,27 +384,64 @@ public sealed class ImageProcessingStateTests
         Assert.IsFalse(images.ContainsKey($"{GalleryName}/b.jpg"));
     }
 
-    private static TestProject CreateProject(params string[] fileNames)
+    /// <summary>
+    /// Replaces the state with what beta.21 recorded for the project's images: no efforts,
+    /// because beta.21 always encoded with libvips' default effort.
+    /// </summary>
+    private static JsonObject WriteBeta21State(TestProject project, JsonObject qualities)
+    {
+        var images = new JsonObject();
+        foreach (var source in new DirectoryInfo(Path.Combine(project.SourcePath, GalleryName)).GetFiles("*.jpg").OrderBy(f => f.Name, StringComparer.Ordinal))
+        {
+            images[$"{GalleryName}/{source.Name}"] = new JsonObject
+            {
+                ["fingerprint"] = $"v2|size:{source.Length}|mtime:{source.LastWriteTimeUtc.Ticks}|resize:longest",
+                ["qualities"] = qualities.DeepClone(),
+            };
+        }
+
+        var state = new JsonObject { ["version"] = 1, ["images"] = images };
+        WriteJson(StatePath(project), state);
+        return state;
+    }
+
+    private static TestProject CreateProject(params string[] fileNames) =>
+        CreateProject([.. fileNames.Select(fileName => (fileName, 640, 480))]);
+
+    private static TestProject CreateProject(params (string FileName, int Width, int Height)[] images)
     {
         var project = TestProject.Create(p => p
             .WithSiteJson(new { title = "State", author = "Test" })
             .AddGallery(GalleryName, g =>
             {
-                foreach (var fileName in fileNames)
+                foreach (var (fileName, width, height) in images)
                 {
-                    g.AddRealImage(fileName, 640, 480);
+                    g.AddRealImage(fileName, width, height);
                 }
             }));
         WriteProjectJson(project, jpgQuality: 90);
         return project;
     }
 
+    private static Dictionary<string, string> ReadManifestSizes(TestProject project) =>
+        ReadJson(ManifestPath(project))["root"]!["children"]![0]!["content"]!.AsArray()
+            .ToDictionary(c => c!["filename"]!.GetValue<string>(), c => string.Join(",", c!["sizes"]!.AsArray().Select(s => s!.GetValue<int>())));
+
+    private static void AssertDimensions(string path, int width, int height)
+    {
+        using var image = NetVips.Image.NewFromFile(path);
+        Assert.AreEqual((width, height), (image.Width, image.Height), Path.GetFileName(path));
+    }
+
     private static void WriteProjectJson(TestProject project, int jpgQuality) =>
+        WriteImageSettings(project, new JsonObject { ["jpg"] = jpgQuality });
+
+    private static void WriteImageSettings(TestProject project, JsonObject images) =>
         WriteJson(Path.Combine(project.RootPath, "project.json"), new JsonObject
         {
             ["project"] = new JsonObject { ["name"] = "State" },
             ["theme"] = new JsonObject { ["name"] = "Lumina" },
-            ["generate"] = new JsonObject { ["images"] = new JsonObject { ["jpg"] = jpgQuality } },
+            ["generate"] = new JsonObject { ["images"] = images },
         });
 
     private static async Task<ImageResult> RunAsync(TestProject project, IReadOnlyList<int>? sizes = null)

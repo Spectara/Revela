@@ -9,7 +9,7 @@ internal sealed record ProcessedImage
 {
     /// <summary>
     /// Fingerprint of the source file and the pipeline settings that apply to every variant
-    /// (output version, resize mode).
+    /// (output version, resize mode, and a maxSize cap that shrinks the image).
     /// </summary>
     [JsonPropertyName("fingerprint")]
     public string Fingerprint { get; init; } = string.Empty;
@@ -23,4 +23,16 @@ internal sealed record ProcessedImage
     /// </remarks>
     [JsonPropertyName("qualities")]
     public IReadOnlyDictionary<string, int> Qualities { get; init; } = new Dictionary<string, int>();
+
+    /// <summary>
+    /// Encoder effort per format that differs from libvips' default (4), as encoded on disk.
+    /// </summary>
+    /// <remarks>
+    /// Absent for formats encoded with libvips' default effort, and omitted entirely when every
+    /// format uses it, so state written before effort was configurable stays valid. Like
+    /// <see cref="Qualities"/>, a change re-encodes only that format.
+    /// </remarks>
+    [JsonPropertyName("efforts")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public IReadOnlyDictionary<string, int>? Efforts { get; init; }
 }

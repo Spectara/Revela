@@ -22,9 +22,9 @@ namespace Spectara.Revela.Features.Generate.Services;
 /// <para>
 /// Processes images from the manifest, generating responsive variants
 /// in multiple sizes and formats. An image is skipped when its processing
-/// fingerprint (source size + modification time, resize mode, output version)
+/// fingerprint (source size + modification time, resize mode, output version, applied maxSize cap)
 /// matches the one recorded in <see cref="ImageStateStore"/> after its last successful
-/// processing and every expected variant exists with the recorded quality of its format.
+/// processing and every expected variant exists with the recorded quality and encoder effort of its format.
 /// The scan manifest only supplies sizes, dimensions and placeholders, so rebuilding it
 /// never re-encodes images.
 /// </para>
@@ -46,6 +46,15 @@ internal sealed partial class ImageService(
 
     /// <summary>Save the processing state after this many finished images during a run.</summary>
     private const int CheckpointEveryImages = 25;
+
+    /// <summary>Thread-pool threads kept free beside the encode workers (progress, checkpoint saves).</summary>
+    private const int ReservedPoolThreads = 4;
+
+    /// <summary>
+    /// libvips' default AVIF and WebP encoder effort: what variants were encoded with before
+    /// effort was configurable, and what a format without a recorded effort means.
+    /// </summary>
+    private const int EncoderDefaultEffort = 4;
 
     /// <summary>Save the processing state at least this often during a run.</summary>
     private static readonly TimeSpan CheckpointInterval = TimeSpan.FromSeconds(30);
@@ -134,7 +143,9 @@ internal sealed partial class ImageService(
             var imagesToProcess = new List<PendingImage>();
             var cachedCount = 0;
             var resizeMode = imageSizesProvider.GetResizeMode();
+            var efforts = GetEffortsToRecord(formats, ImageSettings);
             var qualityChanges = new HashSet<(string Format, int Recorded, int Configured)>();
+            var effortChanges = new HashSet<(string Format, int Recorded, int Configured)>();
 
             var selectionStopwatch = Stopwatch.StartNew();
 
@@ -168,26 +179,33 @@ internal sealed partial class ImageService(
 
                 // Change detection against the state recorded after the last successful
                 // processing — never against scan metadata, which already reflects the edit.
-                var fingerprint = ComputeProcessingFingerprint(fileInfo.Length, fileInfo.LastWriteTimeUtc, resizeMode);
+                var appliedMaxSize = ImageSettings.MaxSize > 0
+                    && NetVipsImageProcessor.GetResizeExtent(width, height, resizeMode) > ImageSettings.MaxSize
+                        ? ImageSettings.MaxSize
+                        : 0;
+                var fingerprint = ComputeProcessingFingerprint(fileInfo.Length, fileInfo.LastWriteTimeUtc, resizeMode, appliedMaxSize);
                 var recorded = imageState.Get(manifestKey);
-                var sourceUnchanged = recorded is not null
-                    && string.Equals(recorded.Fingerprint, fingerprint, StringComparison.Ordinal);
 
-                if (options.Force || !sourceUnchanged)
+                if (options.Force || recorded is null || !string.Equals(recorded.Fingerprint, fingerprint, StringComparison.Ordinal))
                 {
                     // Forced, source or pipeline changed, or never processed: regenerate everything.
                     // Variants of formats that are no longer configured are now stale, so only
-                    // the configured qualities are recorded.
+                    // the configured qualities and efforts are recorded.
                     imagesToProcess.Add(new PendingImage(
                         fullPath, manifestKey, imageName, manifestSizes, null, existingPlaceholder, width, height,
-                        new ProcessedImage { Fingerprint = fingerprint, Qualities = new Dictionary<string, int>(formats) }));
+                        new ProcessedImage
+                        {
+                            Fingerprint = fingerprint,
+                            Qualities = new Dictionary<string, int>(formats),
+                            Efforts = efforts.Count > 0 ? new Dictionary<string, int>(efforts) : null
+                        }));
                     continue;
                 }
 
                 // Source unchanged: regenerate variants that are missing (deleted, new size or
-                // format, interrupted run) or encoded with another quality than configured.
+                // format, interrupted run) or encoded with another quality or effort than configured.
                 // Cost: ~10 File.Exists calls per image (cheap I/O, typically cached by OS)
-                var staleFormats = GetStaleFormats(recorded!.Qualities, formats, qualityChanges);
+                var staleFormats = GetStaleFormats(recorded, formats, efforts, qualityChanges, effortChanges);
                 var missingVariants = GetMissingVariants(outputImagesDirectory, imageName, manifestSizes, formats, staleFormats);
                 if (missingVariants.Count == 0)
                 {
@@ -197,19 +215,33 @@ internal sealed partial class ImageService(
 
                 // Variants of formats that are no longer configured are untouched and still valid.
                 var qualities = new Dictionary<string, int>(recorded.Qualities);
+                var recordedEfforts = new Dictionary<string, int>(recorded.Efforts ?? new Dictionary<string, int>());
                 foreach (var (format, quality) in formats)
                 {
                     qualities[format] = quality;
+                    if (efforts.TryGetValue(format, out var effort))
+                    {
+                        recordedEfforts[format] = effort;
+                    }
+                    else
+                    {
+                        recordedEfforts.Remove(format);
+                    }
                 }
 
                 imagesToProcess.Add(new PendingImage(
                     fullPath, manifestKey, imageName, manifestSizes, missingVariants, existingPlaceholder, width, height,
-                    recorded with { Qualities = qualities }));
+                    recorded with { Qualities = qualities, Efforts = recordedEfforts.Count > 0 ? recordedEfforts : null }));
             }
 
             foreach (var (format, recordedQuality, configuredQuality) in qualityChanges)
             {
                 LogQualityChanged(logger, format, recordedQuality, configuredQuality);
+            }
+
+            foreach (var (format, recordedEffort, configuredEffort) in effortChanges)
+            {
+                LogEffortChanged(logger, format, recordedEffort, configuredEffort);
             }
 
             selectionStopwatch.Stop();
@@ -241,19 +273,22 @@ internal sealed partial class ImageService(
                 LogCacheHits(logger, cachedCount, uniqueSourcePaths.Count);
             }
 
-            // Worker pool: CPU/2 images in parallel, each with a libvips concurrency capped at 8
-            // (see NetVipsImageProcessor). This optimizes thread usage:
-            // - Fewer workers = fewer parallel AVIF encoder instances (each spawns ~15 threads)
-            // - Reduces total thread count by ~30% with equal or better performance
+            // Images in parallel × libvips threads per image (see ImageWorkerPlan).
             var configuredParallelism = ImageSettings.MaxDegreeOfParallelism;
-            var workerCount = configuredParallelism.HasValue
-                ? Math.Max(1, configuredParallelism.Value)
-                : Math.Max(1, Environment.ProcessorCount / 2);
+            var plan = ImageWorkerPlan.Create(
+                Environment.ProcessorCount,
+                GC.GetGCMemoryInfo().TotalAvailableMemoryBytes,
+                configuredParallelism,
+                imagesToProcess.Count,
+                encodesAvif: formats.ContainsKey("avif"));
+            var workerCount = plan.Workers;
 
             if (configuredParallelism.HasValue)
             {
                 LogUsingConfiguredParallelism(logger, workerCount);
             }
+
+            LogWorkerPlan(logger, plan.Workers, plan.ThreadsPerImage);
 
             var formatNames = formats.Keys.ToList();
 
@@ -332,6 +367,16 @@ internal sealed partial class ImageService(
 
             ReportProgress();
 
+            // Each worker encodes synchronously on a thread-pool thread for a whole image. Keep
+            // threads available beyond the workers, so progress reports and checkpoint saves never
+            // wait for the pool to grow.
+            NetVipsImageProcessor.SetThreadsPerImage(plan.ThreadsPerImage);
+            ThreadPool.GetMinThreads(out var minWorkerThreads, out var minIoThreads);
+            if (minWorkerThreads < workerCount + ReservedPoolThreads)
+            {
+                ThreadPool.SetMinThreads(workerCount + ReservedPoolThreads, minIoThreads);
+            }
+
             processingStarted = true;
             await Parallel.ForEachAsync(
                 imagesToProcess,
@@ -362,6 +407,7 @@ internal sealed partial class ImageService(
                             new ImageProcessingOptions
                             {
                                 Formats = formats,
+                                Efforts = efforts,
                                 Sizes = sizesToGenerate,
                                 VariantsToGenerate = missingVariants,  // null = all, list = incremental
                                 OutputDirectory = outputImagesDirectory,
@@ -371,7 +417,8 @@ internal sealed partial class ImageService(
                                 Placeholder = ImageSettings.Placeholder,
                                 ExistingPlaceholder = existingPlaceholder,
                                 Width = width,
-                                Height = height
+                                Height = height,
+                                MaxSize = ImageSettings.MaxSize
                             },
                             // O(1), lock-free per-variant bookkeeping. No rendering and no
                             // display-state allocation — this runs tens of thousands of times.
@@ -544,27 +591,69 @@ internal sealed partial class ImageService(
     /// Fingerprint of the inputs that determine all of an image's variants. Sizes and formats
     /// are checked per output file, and quality per format (<see cref="ProcessedImage.Qualities"/>).
     /// </summary>
-    internal static string ComputeProcessingFingerprint(long fileSize, DateTime lastWriteTimeUtc, string resizeMode) =>
-        string.Create(
+    /// <remarks>
+    /// A <c>maxSize</c> cap is included only for images it shrinks (<paramref name="appliedMaxSize"/>
+    /// &gt; 0): their largest variant becomes a resize instead of the original, so they are
+    /// re-encoded when the cap changes, while images within the cap and the default
+    /// configuration keep their fingerprint.
+    /// </remarks>
+    internal static string ComputeProcessingFingerprint(long fileSize, DateTime lastWriteTimeUtc, string resizeMode, int appliedMaxSize = 0)
+    {
+        var fingerprint = string.Create(
             CultureInfo.InvariantCulture,
             $"v{NetVipsImageProcessor.OutputVersion}|size:{fileSize}|mtime:{lastWriteTimeUtc.Ticks}|resize:{resizeMode}");
+        return appliedMaxSize > 0
+            ? string.Create(CultureInfo.InvariantCulture, $"{fingerprint}|max:{appliedMaxSize}")
+            : fingerprint;
+    }
 
     /// <summary>
-    /// Formats whose variants on disk were not encoded with the configured quality.
+    /// Encoder effort of the configured formats that differs from libvips' default.
+    /// </summary>
+    /// <remarks>
+    /// Recorded relative to the encoder's own default (<see cref="EncoderDefaultEffort"/>), not to
+    /// the configured default: the state of variants encoded before effort was configurable has
+    /// no efforts and means libvips' default. An effort equal to it is neither passed to the
+    /// encoder nor recorded, so <c>avifEffort: 4</c> keeps such AVIF variants, while the default
+    /// AVIF effort 2 re-encodes them once.
+    /// </remarks>
+    private static Dictionary<string, int> GetEffortsToRecord(IReadOnlyDictionary<string, int> formats, ImageConfig settings)
+    {
+        var efforts = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        foreach (var format in formats.Keys)
+        {
+            if (string.Equals(format, "avif", StringComparison.OrdinalIgnoreCase) && settings.AvifEffort != EncoderDefaultEffort)
+            {
+                efforts[format] = settings.AvifEffort;
+            }
+            else if (string.Equals(format, "webp", StringComparison.OrdinalIgnoreCase) && settings.WebpEffort != EncoderDefaultEffort)
+            {
+                efforts[format] = settings.WebpEffort;
+            }
+        }
+
+        return efforts;
+    }
+
+    /// <summary>
+    /// Formats whose variants on disk were not encoded with the configured quality and effort.
     /// </summary>
     /// <remarks>
     /// A format without a recorded quality counts as stale: its files (if any) predate the
-    /// recorded fingerprint, for example from before the format was last removed.
+    /// recorded fingerprint, for example from before the format was last removed. A format
+    /// without a recorded effort was encoded with the encoder's default effort.
     /// </remarks>
     private static HashSet<string> GetStaleFormats(
-        IReadOnlyDictionary<string, int> recordedQualities,
+        ProcessedImage recorded,
         IReadOnlyDictionary<string, int> formats,
-        HashSet<(string Format, int Recorded, int Configured)> qualityChanges)
+        IReadOnlyDictionary<string, int> efforts,
+        HashSet<(string Format, int Recorded, int Configured)> qualityChanges,
+        HashSet<(string Format, int Recorded, int Configured)> effortChanges)
     {
         var stale = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach (var (format, quality) in formats)
         {
-            if (!recordedQualities.TryGetValue(format, out var recordedQuality))
+            if (!recorded.Qualities.TryGetValue(format, out var recordedQuality))
             {
                 stale.Add(format);
             }
@@ -572,6 +661,14 @@ internal sealed partial class ImageService(
             {
                 stale.Add(format);
                 qualityChanges.Add((format, recordedQuality, quality));
+            }
+
+            int? recordedEffort = recorded.Efforts?.TryGetValue(format, out var value) is true ? value : null;
+            int? configuredEffort = efforts.TryGetValue(format, out var configured) ? configured : null;
+            if (recordedEffort != configuredEffort)
+            {
+                stale.Add(format);
+                effortChanges.Add((format, recordedEffort ?? EncoderDefaultEffort, configuredEffort ?? EncoderDefaultEffort));
             }
         }
 
@@ -710,8 +807,14 @@ internal sealed partial class ImageService(
     [LoggerMessage(Level = LogLevel.Information, Message = "Using configured parallelism for images: {Workers}")]
     private static partial void LogUsingConfiguredParallelism(ILogger logger, int workers);
 
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Encoding {Workers} images in parallel with {Threads} libvips threads each")]
+    private static partial void LogWorkerPlan(ILogger logger, int workers, int threads);
+
     [LoggerMessage(Level = LogLevel.Information, Message = "Quality changed for {Format}: {OldQuality} → {NewQuality}, regenerating all {Format} files")]
     private static partial void LogQualityChanged(ILogger logger, string format, int oldQuality, int newQuality);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Encoder effort changed for {Format}: {OldEffort} → {NewEffort}, regenerating all {Format} files")]
+    private static partial void LogEffortChanged(ILogger logger, string format, int oldEffort, int newEffort);
 
     [LoggerMessage(Level = LogLevel.Error, Message = "Image processing failed")]
     private static partial void LogImageProcessingFailed(ILogger logger, Exception exception);

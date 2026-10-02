@@ -41,7 +41,7 @@ Choose **Create New Project**. The project wizard asks five things:
 1. **Project settings**: a display name (spaces allowed) and, optionally, the URL your site will live at
 2. **Directory paths**: where your photos are (`source`) and where the site goes (`output`)
 3. **Theme**: Lumina
-4. **Image settings**: output formats and quality. The defaults are AVIF 80, WebP 85 and JPG 90.
+4. **Image settings**: output formats and quality. The defaults are AVIF 75, WebP 85 and JPG 90.
 5. **Site metadata**: title, author, description, copyright
 
 After that it offers optional steps, for example connecting a [OneDrive folder](../../plugins/source-onedrive/). Skip them for now.

@@ -9,13 +9,14 @@ using Spectara.Revela.Sdk.Models;
 namespace Spectara.Revela.Features.Generate.Services.Checks;
 
 /// <summary>
-/// Validates project and site configuration: surfaces options-binding failures as
+/// Validates project, site and generate configuration: surfaces options-binding failures as
 /// friendly errors, requires a site title, and emits the non-blocking base-URL hint.
 /// </summary>
 internal sealed class ConfigCheck(
     IOptionsMonitor<ProjectConfig> projectConfig,
     IOptionsMonitor<SiteCoreConfig> siteConfig,
     IOptionsMonitor<ThemeConfig> themeConfig,
+    IOptionsMonitor<GenerateConfig> generateConfig,
     IThemeRegistry themeRegistry,
     IOptions<ProjectEnvironment> projectEnvironment) : ICheck
 {
@@ -33,6 +34,7 @@ internal sealed class ConfigCheck(
         CollectConfigFailures(diagnostics, () => _ = projectConfig.CurrentValue);
         CollectConfigFailures(diagnostics, () => _ = siteConfig.CurrentValue);
         var validThemeConfig = CollectConfigFailures(diagnostics, () => _ = themeConfig.CurrentValue);
+        CollectConfigFailures(diagnostics, () => _ = generateConfig.CurrentValue);
 
         // SiteCoreConfig.Title carries no [Required] annotation (site.json is written
         // incrementally by the wizard/CLI, so the model must not throw mid-write). The

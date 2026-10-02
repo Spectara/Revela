@@ -51,7 +51,7 @@ internal sealed partial class ConfigImageCommand(
     {
         [ImageConfigKeys.Jpg] = 90,
         [ImageConfigKeys.Webp] = 85,
-        [ImageConfigKeys.Avif] = 80
+        [ImageConfigKeys.Avif] = 75
     }.ToFrozenDictionary(StringComparer.OrdinalIgnoreCase);
     /// <summary>
     /// Creates the command definition.
@@ -62,7 +62,7 @@ internal sealed partial class ConfigImageCommand(
 
         var formatsOption = new Option<string?>("--formats", "-f")
         {
-            Description = "Output formats with optional quality (e.g., avif:80,webp:85,jpg or just avif,webp,jpg). Set quality to 0 to disable."
+            Description = "Output formats with optional quality (e.g., avif:75,webp:85,jpg or just avif,webp,jpg). Set quality to 0 to disable."
         };
 
         command.Options.Add(formatsOption);
@@ -95,7 +95,7 @@ internal sealed partial class ConfigImageCommand(
 
         if (string.IsNullOrEmpty(formatsArg) && !consoleCapabilities.EnsureInteractive(
             InteractiveInput.NoOptionsGiven,
-            "revela config image --formats jpg:90,webp:85[,avif:80]"))
+            "revela config image --formats jpg:90,webp:85[,avif:75]"))
         {
             return 1;
         }
@@ -281,7 +281,7 @@ internal sealed partial class ConfigImageCommand(
         {
             [ImageConfigKeys.Jpg] = "jpg  [dim]— great quality, works everywhere[/]",
             [ImageConfigKeys.Webp] = "webp [dim]— sharper at same file size, all modern browsers[/]",
-            [ImageConfigKeys.Avif] = "avif [dim]— best quality per byte, very slow to generate[/]"
+            [ImageConfigKeys.Avif] = "avif [dim]— smallest files, slowest to generate[/]"
         };
         var formatChoices = new[] { ImageConfigKeys.Jpg, ImageConfigKeys.Webp, ImageConfigKeys.Avif };
         var prompt = new MultiSelectionPrompt<string>()

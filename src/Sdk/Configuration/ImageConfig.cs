@@ -1,3 +1,5 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace Spectara.Revela.Sdk.Configuration;
 
 /// <summary>
@@ -52,18 +54,73 @@ public sealed class ImageConfig
     /// AVIF quality (1-100). Set to 0 to disable AVIF output.
     /// </summary>
     /// <remarks>
-    /// AVIF offers best compression but encoding is ~10x slower than WebP.
-    /// Recommended quality: 75-85. Set to 0 to disable.
+    /// AVIF gives the smallest files for the quality: at 75 about as large as WebP 85 on typical
+    /// photos and up to 18% smaller on very detailed ones, at equal or better visual quality
+    /// (AVIF 80 is larger than WebP 85). Recommended quality: 70-80, the setup wizard uses 75.
+    /// Set to 0 to disable.
     /// Default is 0 - user must explicitly configure via 'revela config image'.
     /// </remarks>
     public int Avif { get; set; }
 
     /// <summary>
-    /// Optional maximum degree of parallelism for image processing.
+    /// Default of <see cref="AvifEffort"/>.
     /// </summary>
     /// <remarks>
-    /// When null, defaults to <c>Environment.ProcessorCount - 2</c> to leave headroom.
-    /// Set to 1 to process images sequentially on low-memory systems.
+    /// Below libvips' own default (4): effort 2 encodes AVIF about 6–7× faster with no visible
+    /// difference in a side-by-side of detailed photos. Files range from 2% smaller (very detailed
+    /// photos) to about 15% larger (typical photos) than with effort 4 at the same quality.
+    /// </remarks>
+    public const int DefaultAvifEffort = 2;
+
+    /// <summary>
+    /// Default of <see cref="WebpEffort"/>, libvips' WebP encoder default.
+    /// </summary>
+    public const int DefaultWebpEffort = 4;
+
+    /// <summary>
+    /// AVIF encoder effort (0-9): CPU time spent to make each AVIF file smaller.
+    /// </summary>
+    /// <remarks>
+    /// Default 2. libvips' own default 4 encodes about 6–7× slower for files up to about 15%
+    /// smaller; set it to keep AVIF files encoded before effort 2 became the default.
+    /// Changing it re-encodes the AVIF variants only.
+    /// </remarks>
+    [Range(0, 9)]
+    public int AvifEffort { get; set; } = DefaultAvifEffort;
+
+    /// <summary>
+    /// WebP encoder effort (0-6): CPU time spent to make each WebP file smaller.
+    /// </summary>
+    /// <remarks>
+    /// Default 4 (libvips' default). Changing it re-encodes the WebP variants only.
+    /// </remarks>
+    [Range(0, 6)]
+    public int WebpEffort { get; set; } = DefaultWebpEffort;
+
+    /// <summary>
+    /// Largest variant size in pixels, measured like the theme's sizes (by default the longest
+    /// edge). 0 (default) keeps the photo's full resolution as the largest variant.
+    /// </summary>
+    /// <remarks>
+    /// Each photo gets the theme sizes plus its full resolution for zooming. The full-resolution
+    /// variant is the slowest to encode (about half of all AVIF time) and the largest file. With
+    /// a cap, photos larger than it get the cap instead (e.g. 3840 for 4K displays: about 24%
+    /// less CPU per photo, but zooming stops at the cap's resolution). Changing it re-encodes the
+    /// photos larger than the old or the new cap.
+    /// </remarks>
+    [Range(0, int.MaxValue)]
+    public int MaxSize { get; set; }
+
+    /// <summary>
+    /// Optional maximum number of images processed in parallel.
+    /// </summary>
+    /// <remarks>
+    /// When null, Revela chooses: without AVIF about one image per CPU core (half as many from 8
+    /// logical processors up, each with two libvips threads), never more than there are images to
+    /// encode; with AVIF half the cores as images with up to 8 libvips threads each, which suits
+    /// the AV1 encoder. Either way at most one image per GiB of memory. A configured value always
+    /// wins; without AVIF the cores are then split between its images (up to 8 libvips threads
+    /// each). Set to 1 to process images one at a time on low-memory systems.
     /// </remarks>
     public int? MaxDegreeOfParallelism { get; set; }
 

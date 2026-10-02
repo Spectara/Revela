@@ -142,7 +142,7 @@ revela config theme --set Lumina             # Select the theme (-s)
 revela config theme --viewer lightbox        # Photo viewer: page, lightbox or none
 revela config theme --clear-viewer           # Back to the theme's default viewer
 revela config paths --source "D:\Photos" --output dist                  # -s, -o
-revela config image --formats avif:80,webp:85,jpg:90                    # -f; quality 0 disables a format
+revela config image --formats avif:75,webp:85,jpg:90                    # -f; quality 0 disables a format
 revela config site                           # Site metadata in site.json (interactive only)
 revela config sorting --galleries asc --field dateTaken --direction desc --fallback filename   # -g, -f, -d
 
