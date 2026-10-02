@@ -201,18 +201,6 @@ internal static class HostBootstrap
     /// <returns>The exit code.</returns>
     public static async Task<int> RunRevelaAsync(this IHost host, string[] args)
     {
-        var rootCommand = host.UseRevelaCommands();
-
-        // Replace System.CommandLine's default --version action with one that
-        // prints the human-readable, host-kind-aware identifier. Same string
-        // is used as the first line of `revela info`.
-        var buildInfo = host.Services.GetRequiredService<IBuildInfo>();
-        var versionOption = rootCommand.Options.OfType<VersionOption>().FirstOrDefault();
-        versionOption?.Action = new BuildInfoVersionAction(buildInfo);
-
-        // Warn about plugins:<key> settings no loaded plugin claims (typos, uninstalled plugins).
-        host.Services.GetService<UnclaimedPluginConfigReporter>()?.Report();
-
         // Opt out of System.CommandLine's default exception handler so we can turn
         // a configuration validation failure into a friendly panel ourselves.
         // Otherwise it would swallow the exception, print a raw stack trace, and
@@ -222,13 +210,27 @@ internal static class HostBootstrap
             EnableDefaultExceptionHandler = false,
         };
 
-        // Guard both invocation paths: configuration is validated lazily on first
-        // IOptions/IOptionsMonitor access inside a command, so an invalid value
-        // (e.g. a stray project.language — see #75) surfaces as an
-        // OptionsValidationException here. Render it as a clean, styled panel with
-        // no stack trace and exit with code 2 instead of crashing.
+        // Guard command construction and both invocation paths: configuration is
+        // validated lazily on first IOptions/IOptionsMonitor access, which happens while
+        // services are resolved for the command tree or inside a command, so an invalid
+        // value (e.g. a stray project.language — see #75, or an out-of-range
+        // generate.images.avifEffort) surfaces as an OptionsValidationException here.
+        // Render it as a clean, styled panel with no stack trace and exit with code 2
+        // instead of crashing.
         try
         {
+            var rootCommand = host.UseRevelaCommands();
+
+            // Replace System.CommandLine's default --version action with one that
+            // prints the human-readable, host-kind-aware identifier. Same string
+            // is used as the first line of `revela info`.
+            var buildInfo = host.Services.GetRequiredService<IBuildInfo>();
+            var versionOption = rootCommand.Options.OfType<VersionOption>().FirstOrDefault();
+            versionOption?.Action = new BuildInfoVersionAction(buildInfo);
+
+            // Warn about plugins:<key> settings no loaded plugin claims (typos, uninstalled plugins).
+            host.Services.GetService<UnclaimedPluginConfigReporter>()?.Report();
+
             // No arguments = the interactive menu. It runs outside System.CommandLine's
             // invocation so Ctrl+C only cancels the command started from the menu, and it
             // decides itself (via IConsoleCapabilities) whether the terminal is interactive.

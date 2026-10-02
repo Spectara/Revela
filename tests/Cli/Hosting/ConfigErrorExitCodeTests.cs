@@ -91,6 +91,30 @@ public sealed class ConfigErrorExitCodeTests
     }
 
     [TestMethod]
+    [DataRow("check", "config", DisplayName = "check config")]
+    [DataRow("generate", "images", DisplayName = "generate images")]
+    public async Task RunRevelaAsync_ImageEffortOutOfRange_ExitsWithCode2AndNamesTheSetting(string group, string command)
+    {
+        // Arrange: generate settings are read while the commands are built, before any
+        // command runs; an invalid value must still surface as the friendly panel.
+        using var project = TestProject.Create(p => p
+            .WithProjectJson(new
+            {
+                project = new { name = "My Portfolio" },
+                generate = new { images = new { avif = 80, avifEffort = 12 } }
+            }));
+
+        // Act
+        var (exitCode, output) = await RunCliAsync(project.RootPath, [group, command]);
+
+        // Assert
+        Assert.AreEqual(2, exitCode);
+        Assert.Contains("Configuration problem", output, StringComparison.Ordinal);
+        Assert.Contains("AvifEffort", output, StringComparison.Ordinal);
+        Assert.DoesNotContain("   at ", output, StringComparison.Ordinal);
+    }
+
+    [TestMethod]
     public async Task RunRevelaAsync_ProjectJsonWithAbsoluteUrlBasePath_ExitsWithCode2AndPointsToBaseUrl()
     {
         // Arrange: basePath is a subdirectory prefix, not a host (#76). An absolute
