@@ -10,66 +10,25 @@ body.photo-page {
   >main {
     margin: 0;
 
-    >article>section {
-      >nav.photo-nav {
-        >div {
-          display: none;
-          grid-template-columns: 3rem minmax(0, 1fr) 3rem;
-          align-items: center;
-          inline-size: 100%;
-          block-size: 100%;
-          scroll-margin-block-start: 100dvh;
+    /* One navigation row per gallery context (layout in main.css): the #ctx-… target,
+       else the primary context. An unknown fragment falls back to the primary row. */
+    >article>section>nav.photo-nav {
+      >div {
+        block-size: 100%;
+        scroll-margin-block-start: 100dvh;
 
-          &:target,
-          &[data-primary] {
-            display: grid;
-          }
-
-          >a:not([data-photo-return]) {
-            color: inherit;
-            text-decoration: none;
-          }
-
-          >[data-photo-return] {
-            position: fixed;
-            z-index: 3;
-            inset-block-start: 0;
-            inset-inline-end: 0;
-          }
-
-          >[data-photo-previous],
-          >[data-photo-next] {
-            display: grid;
-            place-items: center;
-            inline-size: 3rem;
-            block-size: var(--space-xl);
-            font-size: 1.75rem;
-          }
-
-          >[data-photo-previous] {
-            grid-column: 1;
-          }
-
-          >[data-photo-label] {
-            grid-column: 2;
-            overflow: hidden;
-            padding-inline: var(--space-xs);
-            text-align: center;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-          }
-
-          >[data-photo-next] {
-            grid-column: 3;
-            justify-self: end;
-          }
-        }
-
-        &:has(>div:target)>div[data-primary]:not(:target) {
-          display: none;
+        >[data-photo-return] {
+          position: fixed;
+          z-index: 3;
+          inset-block-start: 0;
+          inset-inline-end: 0;
         }
       }
 
+      >div:not(:target, [data-primary]),
+      &:has(>div:target)>div[data-primary]:not(:target) {
+        display: none;
+      }
     }
   }
 }

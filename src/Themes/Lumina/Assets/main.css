@@ -1030,9 +1030,56 @@ main {
   color: var(--color-dark);
 }
 
-[data-photo-label] {
-  display: block;
-  line-height: 1;
+/* Previous · label · next, on photo pages (links; photo.css shows the row of the current
+   gallery context) and in the lightbox (buttons). A missing neighbour is an empty
+   placeholder with the same data attribute, so every row keeps its three columns. */
+:where(body.photo-page nav.photo-nav > div, dialog.photo-lightbox > article > section > nav) {
+  display: grid;
+  grid-template-columns: 3rem minmax(0, 1fr) 3rem;
+  align-items: center;
+
+  >:is([data-photo-previous], [data-photo-next]) {
+    inline-size: 3rem;
+    block-size: var(--space-xl);
+    text-decoration: none;
+
+    /* The lightbox buttons stay [hidden] until lightbox.js runs. */
+    &:not([hidden]) {
+      display: grid;
+      place-items: center;
+    }
+
+    &:focus-visible {
+      outline: 3px solid var(--color-dark);
+      outline-offset: -3px;
+    }
+  }
+
+  >button {
+    padding: 0;
+    border: 0;
+    background: transparent;
+    cursor: pointer;
+  }
+
+  >[data-photo-previous] {
+    grid-column: 1;
+  }
+
+  >[data-photo-label] {
+    grid-column: 2;
+    overflow: hidden;
+    padding-inline: var(--space-xs);
+    line-height: 1;
+    text-align: center;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  >[data-photo-next] {
+    grid-column: 3;
+    justify-self: end;
+  }
 }
 
 dialog.photo-lightbox {
@@ -1060,40 +1107,6 @@ dialog.photo-lightbox {
     inset-inline-end: auto;
     margin-block-end: -2.75rem;
     margin-inline-start: auto;
-  }
-
-  >article>section>nav {
-    display: grid;
-    grid-template-columns: 3rem minmax(0, 1fr) 3rem;
-    align-items: center;
-
-    >button {
-      inline-size: 3rem;
-      block-size: var(--space-xl);
-      padding: 0;
-      border: 0;
-      color: inherit;
-      background: transparent;
-      font-size: 1.75rem;
-      cursor: pointer;
-
-      &:focus-visible {
-        outline: 3px solid var(--color-dark);
-        outline-offset: -3px;
-      }
-    }
-
-    >:nth-child(2) {
-      overflow: hidden;
-      padding-inline: var(--space-xs);
-      text-align: center;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-
-    >:last-child {
-      justify-self: end;
-    }
   }
 }
 

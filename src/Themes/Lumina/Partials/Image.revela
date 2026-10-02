@@ -32,7 +32,6 @@ rendered size instead of viewport. Firefox/Safari fallback to 100vw.
 {{~ should_render_lightbox = viewer_mode == 'lightbox' ~}}
 {{~ if should_render_lightbox ~}}
 {{~ lightbox_id = 'lightbox-' + occurrence_id ~}}
-{{~ lightbox_trigger_id = 'lightbox-trigger-' + occurrence_id ~}}
 {{~ end ~}}
 {{~ if should_link_to_photo_page ~}}
 {{~ photo_href = page_url(image) ~}}
@@ -58,7 +57,7 @@ rendered size instead of viewport. Firefox/Safari fallback to 100vw.
     </a>
     {{~ end ~}}
     {{~ if should_render_lightbox ~}}
-    <button id="{{ html_escape lightbox_trigger_id }}" type="button" aria-haspopup="dialog"
+    <button type="button" aria-haspopup="dialog"
         aria-controls="{{ html_escape lightbox_id }}" aria-label="{{~ if alt_text != '' }}{{ html_escape alt_text }}{{ else }}{{ html_escape (t 'photo.view' image.id) }}{{ end }}"
         commandfor="{{ html_escape lightbox_id }}" command="show-modal"></button>
     {{~ include 'photolightbox' image ~}}

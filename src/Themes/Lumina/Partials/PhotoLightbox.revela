@@ -9,7 +9,7 @@ previous_occurrence_id, next_occurrence_id, lightbox_id, and alt_text.
 {{~ # Fit the viewport; zoom.js switches sizes to the original width when zooming in. ~}}
 {{~ photo_sizes = viewer_sizes image ~}}
 {{~ display_label = alt_text != '' ? alt_text : (image.description && image.description != '' ? image.description : image.id) ~}}
-<dialog id="{{ html_escape lightbox_id }}" class="photo-lightbox" data-lightbox closedby="any" aria-label="{{~ if alt_text != '' }}{{ html_escape alt_text }}{{ else }}{{ html_escape (t 'photo.label' image.id) }}{{ end }}">
+<dialog id="{{ html_escape lightbox_id }}" class="photo-lightbox" data-lightbox aria-label="{{~ if alt_text != '' }}{{ html_escape alt_text }}{{ else }}{{ html_escape (t 'photo.label' image.id) }}{{ end }}">
     <button type="button" commandfor="{{ html_escape lightbox_id }}" command="close" aria-label="{{ html_escape (t 'photo.close') }}">&times;</button>
     <article style="--width:{{ html_escape image.width }}; --height:{{ html_escape image.height }};{{~ if image.placeholder ~}} --lqip:{{ html_escape image.placeholder }};{{~ end ~}}">
         <picture{{~ if image.placeholder }} data-lqip{{ end }}>
@@ -25,13 +25,13 @@ previous_occurrence_id, next_occurrence_id, lightbox_id, and alt_text.
                 {{~ if previous_occurrence_id ~}}
                 <button type="button" hidden aria-controls="lightbox-{{ html_escape previous_occurrence_id }}" data-photo-previous data-lightbox-target="lightbox-{{ html_escape previous_occurrence_id }}" aria-label="{{ html_escape (t 'photo.previous') }}"><span aria-hidden="true">&lsaquo;</span></button>
                 {{~ else ~}}
-                <span aria-hidden="true"></span>
+                <span data-photo-previous aria-hidden="true"></span>
                 {{~ end ~}}
                 <span data-photo-label>{{ html_escape display_label }}</span>
                 {{~ if next_occurrence_id ~}}
                 <button type="button" hidden aria-controls="lightbox-{{ html_escape next_occurrence_id }}" data-photo-next data-lightbox-target="lightbox-{{ html_escape next_occurrence_id }}" aria-label="{{ html_escape (t 'photo.next') }}"><span aria-hidden="true">&rsaquo;</span></button>
                 {{~ else ~}}
-                <span aria-hidden="true"></span>
+                <span data-photo-next aria-hidden="true"></span>
                 {{~ end ~}}
             </nav>
             {{~ include 'photometadata' image ~}}
