@@ -12,11 +12,12 @@ rest of the title-resolution chain is free to do the boring, correct
 Expects:
 - site: { title, description }
 - gallery: { title, body, description? }
+- occurrences: images of the page, rendered by Lumina's GalleryGrid partial
 ##~}}
 <section>
-    <img src="{{ basepath }}revela.svg" alt="Revela" />
+    <img src="{{ html_escape basepath }}revela.svg" alt="Revela" />
     <h1>Revela</h1>
-    <p>{{ gallery.description ?? site.description }}</p>
+    <p>{{ html_escape (gallery.description ?? site.description) }}</p>
 </section>
 
 {{~ if gallery.body ~}}
@@ -25,11 +26,7 @@ Expects:
 </article>
 {{~ end ~}}
 
-{{~ # Photo strip — only when the body has NO inline [[gallery]] token (backward compat) ~}}
-{{~ if images && images.size > 0 && !gallery.has_inline_galleries ~}}
-<section class="gallery">
-    {{~ for image in images ~}}
-    {{~ include 'image' image ~}}
-    {{~ end ~}}
-</section>
+{{~ # Photo strip, as in Lumina's gallery body: only when the body places no [[gallery]] itself ~}}
+{{~ if !gallery.has_inline_galleries && occurrences && occurrences.size > 0 ~}}
+{{~ include 'gallerygrid' ~}}
 {{~ end ~}}
