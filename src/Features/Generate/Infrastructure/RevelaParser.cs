@@ -24,7 +24,7 @@ namespace Spectara.Revela.Features.Generate.Infrastructure;
 /// +++
 /// # Markdown Content
 ///
-/// With **formatting** and {{ scriban.expressions }}
+/// With **formatting**, [[gallery]] blocks and [[photo: …]] placements.
 /// </code>
 /// <para>
 /// Benefits over YAML frontmatter:
@@ -32,9 +32,12 @@ namespace Spectara.Revela.Features.Generate.Infrastructure;
 /// <list type="bullet">
 /// <item>No syntax confusion (YAML uses <c>---</c>, Scriban uses <c>+++</c>)</item>
 /// <item>Native Scriban expressions in frontmatter if needed</item>
-/// <item>Single parser for both frontmatter and body</item>
 /// <item>Type-safe: booleans are <c>true</c>/<c>false</c>, not strings</item>
 /// </list>
+/// <para>
+/// The body is Markdown, not a template: <c>{{ … }}</c> in it is output as text, so code
+/// examples in docs pages need no escaping.
+/// </para>
 /// </remarks>
 internal sealed partial class RevelaParser(ILogger<RevelaParser> logger)
 {

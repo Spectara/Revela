@@ -901,8 +901,10 @@ try {
                     [IO.File]::WriteAllText($registrationConfig, '{"Dependencies":{"Packages":{"Spectara.Revela.Plugins.Statistics":"0.0.0-test"}},"dependencies":{"packages":{"Other":"1.0.0"}}}')
                     $beforeFailedRegistration = (Get-FileHash -LiteralPath $registrationConfig).Hash
                     $failureOutput = & $ExePath plugin install Statistics --version $Version --source $PluginsDir 2>&1 | Out-String
-                    if ($LASTEXITCODE -ne 1 -or $failureOutput -notmatch 'was installed, but declaring it' -or
-                        $failureOutput -match 'installed successfully' -or
+                    # Redirected output wraps at 80 columns; compare the message with collapsed whitespace.
+                    $failureText = $failureOutput -replace '\s+', ' '
+                    if ($LASTEXITCODE -ne 1 -or $failureText -notmatch 'was installed, but declaring it' -or
+                        $failureText -match 'installed successfully' -or
                         (Get-FileHash -LiteralPath $registrationConfig).Hash -ne $beforeFailedRegistration -or
                         -not (Test-Path -LiteralPath (Join-Path $CliDir 'plugins/Spectara.Revela.Plugins.Statistics/Spectara.Revela.Plugins.Statistics.dll'))) {
                         throw "Registration failure was not reported with retained files and unchanged configuration: $failureOutput"
