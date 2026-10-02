@@ -71,7 +71,7 @@ public sealed class JsonPropertyExtractorTests
     [TestMethod]
     public void BuildJson_ExistingWithComments_IsReadLeniently()
     {
-        const string existing = /*lang=jsonc*/ """
+        const string existing = /*lang=json*/ """
             {
               // kept by the reader, dropped on write
               "language": "fr",
