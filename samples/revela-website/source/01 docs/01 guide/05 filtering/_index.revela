@@ -220,6 +220,11 @@ filter = "all | sort dateTaken desc"
 filter = "exif.make == 'Canon' | sort exif.iso desc"
 ```
 
+Photos without a value for the sort field (for example no ISO) come last, in both
+directions; ties are broken by file name. Without a `| sort` clause, a filter gallery
+uses the page's `sort` or the configured image sort, exactly like a folder gallery
+(see [Sorting](../sorting/)).
+
 ### Random Order
 
 `sort random` shuffles the matching photos. Combined with `limit`, it picks a
@@ -230,12 +235,14 @@ different selection each time:
 filter = "all | sort random | limit 15"
 ```
 
-The order is chosen while the site is built, not when someone visits it. Every
-`revela generate all` gives a new selection, and the site stays the same between
-builds. To change it regularly, run `revela generate all` on a schedule (for
-example a nightly task); photos that are already processed are not processed
-again. `sort random` takes no `asc`/`desc`. In an inline `[[gallery: …]]` block
-the selection changes on every `revela generate pages`.
+The order is chosen while the pages are rendered, not when someone visits the site.
+Every `revela generate pages` (and so every `revela generate all`) draws a new
+selection, and the site stays the same between builds. A page `filter` and an
+inline `[[gallery: …]]` block behave the same way, and within one build the grid,
+the photo pages and their previous/next links all use the same order. To change it
+regularly, run `revela generate all` on a schedule (for example a nightly task);
+photos that are already processed are not processed again. `sort random` takes no
+`asc`/`desc`.
 
 ### Limit Clause
 

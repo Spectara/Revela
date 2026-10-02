@@ -35,7 +35,13 @@ Configure sorting in `project.json`:
 | `galleries` | Gallery sort direction: `asc` or `desc` | `asc` |
 | `images.field` | Field to sort images by | `dateTaken` |
 | `images.direction` | Image sort direction: `asc` or `desc` | `desc` |
-| `images.fallback` | Fallback field when primary is null | `filename` |
+| `images.fallback` | Field used to order photos that have no value for `images.field` | `filename` |
+
+The same image sort applies to folder galleries, filter galleries and `[[gallery]]` blocks without their own `| sort` clause.
+
+### Photos Without a Value
+
+Photos that have no value for the sort field (for example no EXIF date, or no rating) always come **last**, whether you sort `asc` or `desc`. Among themselves they are ordered by the `fallback` field in the same direction, and the file name breaks any remaining tie.
 
 ---
 
@@ -195,5 +201,6 @@ revela config sorting --galleries desc
 1. **No front matter `sort`** → Use global config (`generate.sorting.images`)
 2. **`sort = "field"`** → Override field, keep global direction
 3. **`sort = "field:direction"`** → Override both field and direction
-4. **Fallback** is always from global config (not overridable per gallery)
-5. **Final tie-breaker** is always filename (for stable sorting)
+4. **Photos without a value** for the sort field come last, ordered by the fallback field
+5. **Fallback** is always from global config (not overridable per gallery)
+6. **Final tie-breaker** is always filename (for stable sorting)
