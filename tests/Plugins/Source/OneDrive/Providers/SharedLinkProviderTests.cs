@@ -607,6 +607,26 @@ public sealed class SharedLinkProviderTests : IDisposable
     }
 
     [TestMethod]
+    [DataRow("https://my.microsoftpersonalcontent.com/personal/90362b8badfb304c/_layouts/15/download.aspx?UniqueId=1")]
+    [DataRow("https://public.am.files.1drv.com/photo.jpg")]
+    [DataRow("https://contoso.sharepoint.com/photo.jpg")]
+    public async Task DownloadFileAsync_DownloadUrlOnOneDriveHost_Downloads(string address)
+    {
+        // Personal OneDrive serves @content.downloadUrl from my.microsoftpersonalcontent.com.
+        using var project = TestProject.Create();
+        var destinationPath = Path.Combine(project.SourcePath, "photo.jpg");
+        var item = CreateTestItem("photo.jpg", address);
+        mockHandler.AddResponse(new Uri(address), new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new ByteArrayContent("photo"u8.ToArray())
+        });
+
+        await provider.DownloadFileAsync(item, destinationPath);
+
+        Assert.AreEqual("photo", await File.ReadAllTextAsync(destinationPath));
+    }
+
+    [TestMethod]
     public async Task ListItemsAsync_NextLinkOutsideOneDriveHosts_ThrowsWithoutRequest()
     {
         SetupBadgerTokenResponse();

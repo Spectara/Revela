@@ -33,13 +33,15 @@ internal sealed partial class SharedLinkProvider(
 
     /// <summary>
     /// Hosts (and their subdomains) that API calls, pagination links, download URLs and
-    /// redirects may target: the OneDrive API, the OneDrive/SharePoint download CDNs and Graph.
+    /// redirects may target: the OneDrive API, the OneDrive/SharePoint download CDNs
+    /// (personal OneDrive serves downloads from <c>my.microsoftpersonalcontent.com</c>) and Graph.
     /// </summary>
     private static readonly string[] AllowedHosts =
     [
         "onedrive.com",
         "1drv.com",
         "livefilestore.com",
+        "microsoftpersonalcontent.com",
         "sharepoint.com",
         "graph.microsoft.com",
     ];
@@ -280,7 +282,8 @@ internal sealed partial class SharedLinkProvider(
         {
             if (!IsAllowedHost(uri))
             {
-                throw new InvalidOperationException("OneDrive returned a URL outside the allowed Microsoft OneDrive hosts.");
+                throw new InvalidOperationException(
+                    $"OneDrive returned a URL outside the allowed Microsoft OneDrive hosts ({uri.Scheme}://{uri.Host}).");
             }
 
             using var request = new HttpRequestMessage(HttpMethod.Get, uri);
