@@ -52,7 +52,7 @@ internal sealed class ThemeCheck(
         {
             diagnostics.Add(ValidationDiagnostic.Error(
                 ex.Message,
-                hint: "Fix the local theme.json. Theme stylesheets/scripts use objects such as {\"path\":\"main.css\"}, not the site.json string shorthand."));
+                suggestion: "Fix the local theme.json. Theme stylesheets/scripts use objects such as {\"path\":\"main.css\"}, not the site.json string shorthand."));
             return new ValueTask<IReadOnlyList<ValidationDiagnostic>>(diagnostics);
         }
 
@@ -60,7 +60,7 @@ internal sealed class ThemeCheck(
         {
             diagnostics.Add(ValidationDiagnostic.Error(
                 $"Theme '{themeName}' is not installed.",
-                hint: $"Run 'revela theme install {themeName}' or pick an installed theme with 'revela config theme'."));
+                suggestion: $"Run 'revela theme install {themeName}' or pick an installed theme with 'revela config theme'."));
             return new ValueTask<IReadOnlyList<ValidationDiagnostic>>(diagnostics);
         }
 
@@ -72,14 +72,14 @@ internal sealed class ThemeCheck(
         {
             diagnostics.Add(ValidationDiagnostic.Error(
                 $"Theme '{themeName}' is missing its layout template ('{layoutKey}').",
-                hint: "The theme package looks incomplete — try reinstalling it."));
+                suggestion: "The theme package looks incomplete — try reinstalling it."));
         }
 
         if (!TemplateExists(ContentImagePartialKey))
         {
             diagnostics.Add(ValidationDiagnostic.Error(
                 $"Theme '{themeName}' is missing the required partial 'Partials/ContentImage.revela'.",
-                hint: "This partial renders images in Markdown body content — reinstall the theme."));
+                suggestion: "This partial renders images in Markdown body content — reinstall the theme."));
         }
 
         if (theme.Manifest.PhotoViewer?.Supported.Contains(PhotoViewerMode.Page) is true
@@ -87,14 +87,14 @@ internal sealed class ThemeCheck(
         {
             diagnostics.Add(ValidationDiagnostic.Error(
                 $"Theme '{themeName}' supports the 'page' photo viewer but is missing 'Body/Photo.revela'.",
-                hint: "Add the photo page template or remove 'page' from the theme's supported photo viewers."));
+                suggestion: "Add the photo page template or remove 'page' from the theme's supported photo viewers."));
         }
 
         if (!HasImageSizes(theme, projectPath))
         {
             diagnostics.Add(ValidationDiagnostic.Error(
                 $"Theme '{themeName}' does not define image sizes in Configuration/images.json.",
-                hint: $"Add themes/{themeName}/Configuration/images.json with a \"sizes\" array (e.g. {{ \"sizes\": [640, 1280, 1920] }}); for an installed theme, reinstall it."));
+                suggestion: $"Add themes/{themeName}/Configuration/images.json with a \"sizes\" array (e.g. {{ \"sizes\": [640, 1280, 1920] }}); for an installed theme, reinstall it."));
         }
 
         return new ValueTask<IReadOnlyList<ValidationDiagnostic>>(diagnostics);

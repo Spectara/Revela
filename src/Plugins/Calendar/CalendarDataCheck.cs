@@ -70,7 +70,7 @@ internal sealed class CalendarDataCheck(IPathResolver pathResolver) : ICheck
                 diagnostics.Add(ValidationDiagnostic.Error(
                     $"Calendar page references a missing calendar file: {pageConfig.Source}",
                     file: relativeIcs,
-                    hint: "Run 'revela source calendar fetch' to download the feed, or place the .ics file next to the page."));
+                    suggestion: "Run 'revela source calendar fetch' to download the feed, or place the .ics file next to the page."));
                 continue;
             }
 
@@ -84,7 +84,7 @@ internal sealed class CalendarDataCheck(IPathResolver pathResolver) : ICheck
                 diagnostics.Add(ValidationDiagnostic.Error(
                     $"Calendar file could not be read: {ex.Message}",
                     file: relativeIcs,
-                    hint: "Check the file's permissions, then run the command again."));
+                    suggestion: "Check the file's permissions, then run the command again."));
                 continue;
             }
 
@@ -93,7 +93,7 @@ internal sealed class CalendarDataCheck(IPathResolver pathResolver) : ICheck
                 diagnostics.Add(ValidationDiagnostic.Error(
                     "Calendar file is not a valid iCalendar document.",
                     file: relativeIcs,
-                    hint: "The file must be iCal (RFC 5545) data beginning with 'BEGIN:VCALENDAR' — re-export or re-fetch it."));
+                    suggestion: "The file must be iCal (RFC 5545) data beginning with 'BEGIN:VCALENDAR' — re-export or re-fetch it."));
             }
         }
 

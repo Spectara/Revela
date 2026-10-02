@@ -45,14 +45,14 @@ public sealed record ValidationDiagnostic
     public string? Suggestion { get; init; }
 
     /// <summary>Creates an error diagnostic.</summary>
-    public static ValidationDiagnostic Error(string message, string? file = null, int? line = null, string? hint = null) =>
-        new() { Severity = ValidationSeverity.Error, Message = message, File = file, Line = line, Suggestion = hint };
+    public static ValidationDiagnostic Error(string message, string? file = null, int? line = null, string? suggestion = null) =>
+        new() { Severity = ValidationSeverity.Error, Message = message, File = file, Line = line, Suggestion = suggestion };
 
     /// <summary>Creates a warning diagnostic.</summary>
-    public static ValidationDiagnostic Warning(string message, string? file = null, int? line = null, string? hint = null) =>
-        new() { Severity = ValidationSeverity.Warning, Message = message, File = file, Line = line, Suggestion = hint };
+    public static ValidationDiagnostic Warning(string message, string? file = null, int? line = null, string? suggestion = null) =>
+        new() { Severity = ValidationSeverity.Warning, Message = message, File = file, Line = line, Suggestion = suggestion };
 
     /// <summary>Creates a hint diagnostic.</summary>
-    public static ValidationDiagnostic Hint(string message, string? file = null, int? line = null, string? hint = null) =>
-        new() { Severity = ValidationSeverity.Hint, Message = message, File = file, Line = line, Suggestion = hint };
+    public static ValidationDiagnostic Hint(string message, string? file = null, int? line = null, string? suggestion = null) =>
+        new() { Severity = ValidationSeverity.Hint, Message = message, File = file, Line = line, Suggestion = suggestion };
 }
