@@ -16,7 +16,7 @@ public sealed class ServePlugin : IPlugin
     {
         Id = "Spectara.Revela.Plugins.Serve",
         Name = "Serve",
-        Version = "1.0.0",
+        Version = PackageVersion.FromAssembly(typeof(ServePlugin).Assembly),
         Description = "Local HTTP server for previewing generated sites",
         Author = "Spectara"
     };

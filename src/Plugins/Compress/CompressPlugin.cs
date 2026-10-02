@@ -33,7 +33,7 @@ public sealed class CompressPlugin : IPlugin
     {
         Id = "Spectara.Revela.Plugins.Compress",
         Name = "Static Compression",
-        Version = "1.0.0",
+        Version = PackageVersion.FromAssembly(typeof(CompressPlugin).Assembly),
         Description = "Compress static files with Gzip and Brotli",
         Author = "Spectara"
     };

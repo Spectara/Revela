@@ -7,6 +7,7 @@ using Spectara.Revela.Plugins.Source.Calendar.Commands;
 using Spectara.Revela.Plugins.Source.Calendar.Configuration;
 using Spectara.Revela.Plugins.Source.Calendar.Services;
 using Spectara.Revela.Sdk.Abstractions;
+using Spectara.Revela.Sdk.Hosting;
 
 namespace Spectara.Revela.Plugins.Source.Calendar;
 
@@ -24,7 +25,7 @@ public sealed class SourceCalendarPlugin : IPlugin
     {
         Id = "Spectara.Revela.Plugins.Source.Calendar",
         Name = "Source Calendar",
-        Version = "1.0.0",
+        Version = PackageVersion.FromAssembly(typeof(SourceCalendarPlugin).Assembly),
         Description = "Fetch iCal feeds for calendar data",
         Author = "Spectara"
     };
@@ -41,10 +42,11 @@ public sealed class SourceCalendarPlugin : IPlugin
         services.AddOptions<SourceCalendarConfig>()
             .BindConfiguration(SourceCalendarConfig.Section);
 
-        services.AddHttpClient<ICalFetcher>(client =>
+        services.AddHttpClient<ICalFetcher>((serviceProvider, client) =>
         {
             client.Timeout = TimeSpan.FromSeconds(30);
-            client.DefaultRequestHeaders.Add("User-Agent", "Revela/1.0 (Static Site Generator)");
+            var version = serviceProvider.GetRequiredService<IBuildInfo>().Version;
+            client.DefaultRequestHeaders.UserAgent.ParseAdd($"Revela/{version} (Static Site Generator)");
         }).RemoveAllLoggers()
             .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler { AllowAutoRedirect = false, UseCookies = false });
 

@@ -11,6 +11,7 @@ using Spectara.Revela.Plugins.Source.OneDrive.Configuration;
 using Spectara.Revela.Plugins.Source.OneDrive.Providers;
 using Spectara.Revela.Plugins.Source.OneDrive.Wizard;
 using Spectara.Revela.Sdk.Abstractions;
+using Spectara.Revela.Sdk.Hosting;
 
 namespace Spectara.Revela.Plugins.Source.OneDrive;
 
@@ -24,7 +25,7 @@ public sealed partial class OneDrivePlugin : IPlugin
     {
         Id = "Spectara.Revela.Plugins.Source.OneDrive",
         Name = "Source OneDrive",
-        Version = "1.0.0",
+        Version = PackageVersion.FromAssembly(typeof(OneDrivePlugin).Assembly),
         Description = "Download images from OneDrive shared folders",
         Author = "Spectara"
     };
@@ -42,10 +43,11 @@ public sealed partial class OneDrivePlugin : IPlugin
         // [OptionsValidator] source generator.
         services.AddSingleton<IValidateOptions<OneDrivePluginConfig>, OneDrivePluginConfigValidator>();
 
-        services.AddHttpClient<SharedLinkProvider>(client =>
+        services.AddHttpClient<SharedLinkProvider>((serviceProvider, client) =>
         {
             client.Timeout = TimeSpan.FromMinutes(5); // OneDrive API can be slow for large files
-            client.DefaultRequestHeaders.Add("User-Agent", "Revela/1.0 (Static Site Generator)");
+            var version = serviceProvider.GetRequiredService<IBuildInfo>().Version;
+            client.DefaultRequestHeaders.UserAgent.ParseAdd($"Revela/{version} (Static Site Generator)");
         })
         .RemoveAllLoggers()
         .AddResilienceHandler("onedrive-retry", (builder, context) =>

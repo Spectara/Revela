@@ -26,7 +26,7 @@ public sealed class StatisticsPlugin : IPlugin
     {
         Id = "Spectara.Revela.Plugins.Statistics",
         Name = "Generate Statistics",
-        Version = "1.0.0",
+        Version = PackageVersion.FromAssembly(typeof(StatisticsPlugin).Assembly),
         Description = "Generate EXIF statistics pages for your photo library",
         Author = "Spectara"
     };

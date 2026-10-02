@@ -27,7 +27,7 @@ public sealed class CalendarPlugin : IPlugin
     {
         Id = "Spectara.Revela.Plugins.Calendar",
         Name = "Calendar",
-        Version = "1.0.0",
+        Version = PackageVersion.FromAssembly(typeof(CalendarPlugin).Assembly),
         Description = "Generate availability calendars from iCal data",
         Author = "Spectara"
     };

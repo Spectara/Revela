@@ -8,6 +8,7 @@ using NSubstitute;
 using Spectara.Revela.Plugins.Source.OneDrive;
 using Spectara.Revela.Plugins.Source.OneDrive.Models;
 using Spectara.Revela.Plugins.Source.OneDrive.Providers;
+using Spectara.Revela.Sdk.Hosting;
 using Spectara.Revela.Tests.Shared.Fixtures;
 using Spectara.Revela.Tests.Shared.Http;
 
@@ -588,6 +589,22 @@ public sealed class SharedLinkProviderTests : IDisposable
     #region Error Handling Tests
 
     [TestMethod]
+    public async Task ConfigureServices_HttpClient_SendsUserAgentWithHostVersion()
+    {
+        using var capture = new PrivacyLogCapture();
+        using var handler = new PrivacyHttpMessageHandler();
+        var services = CreatePrivacyServices(handler, capture);
+        using var serviceProvider = services.BuildServiceProvider();
+
+        await serviceProvider.GetRequiredService<SharedLinkProvider>().ListItemsAsync(PrivacyHttpMessageHandler.ShareUrl);
+
+        Assert.IsNotEmpty(handler.UserAgents);
+        Assert.IsTrue(
+            handler.UserAgents.All(agent => string.Equals(agent, "Revela/0.0.1-beta.21 (Static Site Generator)", StringComparison.Ordinal)),
+            string.Join(" | ", handler.UserAgents));
+    }
+
+    [TestMethod]
     [DataRow("success", 4)]
     [DataRow("share-failure", 5)]
     [DataRow("cdn-failure", 7)]
@@ -880,10 +897,18 @@ public sealed class SharedLinkProviderTests : IDisposable
 
     #region Helper Classes
 
+    internal static IBuildInfo CreateBuildInfo(string version)
+    {
+        var buildInfo = Substitute.For<IBuildInfo>();
+        buildInfo.Version.Returns(version);
+        return buildInfo;
+    }
+
     internal static ServiceCollection CreatePrivacyServices(PrivacyHttpMessageHandler handler, PrivacyLogCapture capture)
     {
         var services = new ServiceCollection();
         services.AddLogging(logging => logging.SetMinimumLevel(LogLevel.Trace).AddProvider(capture));
+        services.AddSingleton(CreateBuildInfo("0.0.1-beta.21"));
         new OneDrivePlugin().ConfigureServices(services);
         services.AddHttpClient<SharedLinkProvider>()
             .ConfigurePrimaryHttpMessageHandler(() => handler)
@@ -903,10 +928,12 @@ public sealed class SharedLinkProviderTests : IDisposable
         public int Requests { get; private set; }
         public int BadgerRequests { get; private set; }
         public int BearerRequests { get; private set; }
+        public ConcurrentQueue<string> UserAgents { get; } = new();
 
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
             Requests++;
+            UserAgents.Enqueue(request.Headers.UserAgent.ToString());
             if (string.Equals(request.Headers.Authorization?.Parameter, BadgerToken, StringComparison.Ordinal))
             {
                 BadgerRequests++;
