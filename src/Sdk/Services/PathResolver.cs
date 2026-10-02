@@ -8,9 +8,8 @@ namespace Spectara.Revela.Sdk.Services;
 /// Resolves source and output paths for the current project.
 /// </summary>
 /// <remarks>
-/// Uses <see cref="IOptionsMonitor{T}"/> for hot-reload support.
-/// Paths are resolved dynamically on each access, so configuration
-/// changes during a session are immediately reflected.
+/// Reads <see cref="IOptionsMonitor{T}"/> on every access, so a configuration reload
+/// after an in-process write is reflected immediately.
 /// </remarks>
 public sealed class PathResolver(
     IOptions<ProjectEnvironment> projectEnvironment,

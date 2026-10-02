@@ -73,6 +73,19 @@ public sealed class ConfigSiteCommandTests
     }
 
     [TestMethod]
+    public async Task ExecuteAsync_ThemeNotInstalled_PointsToThemeInstall()
+    {
+        using var project = TestProject.Create(p => p.WithProjectJson(new { theme = new { name = "Missing[Theme]" } }));
+        using var host = BuildHost(project.RootPath, themeInstalled: false);
+
+        var (exitCode, output) = await RunAsync(host, string.Empty);
+
+        Assert.AreEqual(1, exitCode);
+        Assert.Contains("revela theme install Missing[Theme]", output);
+        Assert.DoesNotContain("plugin install", output);
+    }
+
+    [TestMethod]
     public async Task ExecuteAsync_NonInteractiveConsole_FailsWithoutPromptingOrWriting()
     {
         using var project = TestProject.Create(p => p.WithProjectJson(new { theme = new { name = ThemeName } }));
@@ -86,7 +99,7 @@ public sealed class ConfigSiteCommandTests
         Assert.IsFalse(File.Exists(sitePath));
     }
 
-    private static IHost BuildHost(string projectRoot, bool interactive = true)
+    private static IHost BuildHost(string projectRoot, bool interactive = true, bool themeInstalled = true)
     {
         var theme = Substitute.For<ITheme>();
         theme.Metadata.Returns(new PackageMetadata
@@ -98,7 +111,7 @@ public sealed class ConfigSiteCommandTests
         });
         theme.GetSiteTemplate().Returns(_ => new MemoryStream(Encoding.UTF8.GetBytes(Template)));
         var registry = Substitute.For<IThemeRegistry>();
-        registry.GetAvailableThemes(Arg.Any<string>()).Returns([theme]);
+        registry.GetAvailableThemes(Arg.Any<string>()).Returns(themeInstalled ? [theme] : []);
         var capabilities = Substitute.For<IConsoleCapabilities>();
         capabilities.IsInteractive.Returns(interactive);
 

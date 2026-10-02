@@ -91,10 +91,11 @@ internal sealed partial class ConfigSiteCommand(
 
         if (selectedTheme is null)
         {
+            var escapedName = Markup.Escape(themeName);
             ErrorPanels.ShowError(
                 "Theme Not Found",
-                $"[yellow]Theme '{themeName}' is not installed.[/]\n\n" +
-                "[bold]Install it:[/] [cyan]revela plugin install Spectara.Revela.Themes.{themeName}[/]");
+                $"[yellow]Theme '{escapedName}' is not installed.[/]\n\n" +
+                $"[bold]Install it:[/] [cyan]revela theme install {escapedName}[/]");
             return 1;
         }
 
@@ -104,7 +105,7 @@ internal sealed partial class ConfigSiteCommand(
         {
             ErrorPanels.ShowWarning(
                 "No Template",
-                $"[yellow]Theme '{selectedTheme.Metadata.Name}' doesn't provide a site.json template.[/]\n\n" +
+                $"[yellow]Theme '{Markup.Escape(selectedTheme.Metadata.Name)}' doesn't provide a site.json template.[/]\n\n" +
                 "[dim]Create site.json manually.[/]");
             return 1;
         }
@@ -278,8 +279,8 @@ internal sealed partial class ConfigSiteCommand(
         var panel = new Panel(
             $"[green]{action} site.json[/]\n\n" +
             $"[bold]Values:[/]\n{valuesSummary}\n\n" +
-            $"[bold]File:[/]\n[link={path}]{path}[/]\n\n" +
-            $"[dim]Theme: {themeName}[/]")
+            $"[bold]File:[/]\n{Markup.Escape(path)}\n\n" +
+            $"[dim]Theme: {Markup.Escape(themeName)}[/]")
             .WithHeader($"[bold green]✓ Site {action}[/]")
             .WithSuccessStyle();
 

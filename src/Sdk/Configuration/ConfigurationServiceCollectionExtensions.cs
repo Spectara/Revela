@@ -32,7 +32,9 @@ public static class ConfigurationServiceCollectionExtensions
     /// properties without a fixed schema.
     /// </para>
     /// <para>
-    /// All configs support hot-reload via <c>IOptionsMonitor&lt;T&gt;</c>.
+    /// Every section is read through <c>IOptionsMonitor&lt;T&gt;</c>, so a value written
+    /// in-process by <c>ConfigFileWriter</c> (which reloads the configuration) is seen by later
+    /// steps of the same run. Files changed by other processes are not picked up.
     /// </para>
     /// <para>
     /// For writing configuration changes (e.g., adding feeds), use
@@ -51,8 +53,8 @@ public static class ConfigurationServiceCollectionExtensions
         // hand-written on the config class (the source generator's output is
         // invisible to CBSG, which would silently fall back to the reflection
         // binder and break under PublishTrimmed).
-        // Configuration is merged from multiple JSON files (revela.json → project.json → logging.json).
-        // Hot-reload is provided by BindConfiguration via IOptionsMonitor.
+        // Layers (later wins): revela.json → project.json → site.json → logging.json →
+        // SPECTARA__REVELA__ environment variables (see the CLI's AddRevelaConfiguration).
         // Note: only site.json's identity core (SiteCoreConfig) is bound via IOptions;
         // its theme-specific tail is loaded dynamically by RenderService.
         services.AddOptions<DependenciesConfig>().BindConfiguration(DependenciesConfig.Section);
@@ -67,7 +69,7 @@ public static class ConfigurationServiceCollectionExtensions
         // tail is still loaded separately by RenderService for theme-specific props.
         // Note: SiteCoreConfig carries no top-level [Required] annotations — site.json is
         // written incrementally (wizard/CLI), so required-field checks (e.g. a missing
-        // title) live at the call site (ValidationService / `revela check`), not on the
+        // title) live at the call site (`revela check`), not on the
         // model, to avoid crashing consumers that read the config mid-write.
         services.AddOptions<SiteCoreConfig>().BindConfiguration(SiteCoreConfig.Section);
 
@@ -79,8 +81,8 @@ public static class ConfigurationServiceCollectionExtensions
         // absolute-URL basePath values with a hint pointing at baseUrl for the host.
         services.AddSingleton<IValidateOptions<ProjectConfig>, ProjectConfigBasePathValidator>();
 
-        // Path resolver service (resolves relative paths against project root)
-        // Uses IOptionsMonitor for hot-reload support during interactive sessions
+        // Path resolver service (resolves relative paths against project root).
+        // Reads IOptionsMonitor on every access, so in-process config writes are reflected.
         services.AddSingleton<IPathResolver, PathResolver>();
 
         // Note: IGlobalConfigManager is registered by Core (requires Core.Services.GlobalConfigManager)

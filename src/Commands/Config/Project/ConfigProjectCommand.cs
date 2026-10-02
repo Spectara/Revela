@@ -142,7 +142,7 @@ internal sealed partial class ConfigProjectCommand(
 
         if (isFirstTime)
         {
-            AnsiConsole.MarkupLine($"\n{OutputMarkers.Success} Project '{name}' initialized");
+            AnsiConsole.MarkupLine($"\n{OutputMarkers.Success} Project '{Markup.Escape(name)}' initialized");
             AnsiConsole.MarkupLine("[dim]Created: project.json[/]");
 
             AnsiConsole.MarkupLine("\n[yellow]Next:[/] Run [cyan]revela config theme[/] to select a theme");

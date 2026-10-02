@@ -66,9 +66,9 @@
         "DOTNET_ENVIRONMENT": "Development"
       }
     },
-    "Init Project": {
+    "Config Project": {
       "commandName": "Project",
-      "commandLineArgs": "init project",
+      "commandLineArgs": "config project",
       "workingDirectory": "$(SolutionDir)debug",
       "environmentVariables": {
         "DOTNET_ENVIRONMENT": "Development"

@@ -5,8 +5,9 @@ namespace Spectara.Revela.Sdk.Services;
 /// </summary>
 /// <remarks>
 /// <para>
-/// This service dynamically resolves paths from <see cref="Configuration.PathsConfig"/>,
-/// supporting hot-reload when configuration changes during a session.
+/// This service dynamically resolves paths from <see cref="Configuration.PathsConfig"/> on
+/// every access, so a path changed in-process (e.g. by <c>revela config paths</c> in the
+/// interactive menu) is reflected immediately.
 /// </para>
 /// <para>
 /// Paths can be:
@@ -23,7 +24,6 @@ public interface IPathResolver
     /// </summary>
     /// <remarks>
     /// Resolved from <see cref="Configuration.PathsConfig.Source"/>.
-    /// Supports hot-reload when configuration changes.
     /// </remarks>
     string SourcePath { get; }
 
@@ -32,7 +32,6 @@ public interface IPathResolver
     /// </summary>
     /// <remarks>
     /// Resolved from <see cref="Configuration.PathsConfig.Output"/>.
-    /// Supports hot-reload when configuration changes.
     /// </remarks>
     string OutputPath { get; }
 }
