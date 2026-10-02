@@ -730,14 +730,25 @@ main {
       display: flex;
       justify-content: center;
 
-      /* The thumbnail is wrapped in a link to the photo page; keep the link out of
-         the River Flow layout so the sticky picture geometry is preserved (#77). */
+      /* The thumbnail is wrapped in a link to the photo page (#77). A block that fills the
+         article, not display: contents, which browsers skip when tabbing. As the article's
+         only flex item it passes the picture's River Flow geometry through unchanged. */
       >a {
-        display: contents;
+        display: block;
+        width: 100%;
+        min-width: 0;
+
+        /* The thumbnail below draws the ring (see :has() rule). */
+        @supports selector(:has(*)) {
+          &:focus-visible {
+            outline: none;
+          }
+        }
       }
 
       >picture,
       >a>picture {
+        display: block;
         width: 100%;
         min-width: 0;
         aspect-ratio: var(--width)/calc(var(--height) * 2);
@@ -790,12 +801,14 @@ main {
       }
 
       /* Visible focus ring on the thumbnail (#77). Drawn inset so neighbouring
-         articles' background outlines and clipping galleries cannot cut it off. */
-      &:has(> a:focus-visible, >button[aria-haspopup="dialog"][command="show-modal"]:focus-visible)>:is(picture, a>picture)>img {
-        outline: 3px solid var(--color-dark);
-        outline-offset: -3px;
+         articles' background box-shadows and clipping galleries cannot cut it off. */
+      &:has(>a:focus-visible, >button[aria-haspopup="dialog"][command="show-modal"]:focus-visible) {
+        >picture>img,
+        >a>picture>img {
+          outline: 3px solid var(--color-dark);
+          outline-offset: -3px;
+        }
       }
-
     }
 
     &::after {
