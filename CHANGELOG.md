@@ -170,9 +170,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Dependencies
 
 - Updated the .NET SDK baseline to `10.0.400` and Microsoft.Extensions packages to `10.0.11` (Http.Resilience `10.9.0`).
-- Updated Scriban to `7.4.0`, including output-budget reset and rendering-performance fixes. Revela continues disabling the output limit for trusted templates; a regression test covers complete large-page output followed by a small page.
+- Updated Scriban to `7.5.0`, including output-budget reset, rendering-performance and built-in function fixes (`string.truncatewords`, `date.parse`, `array.sort` with mixed number types). Revela continues disabling the output limit for trusted templates; a regression test covers complete large-page output followed by a small page.
 - Updated MSTest and MSTest.Analyzers to `4.4.0`, with Microsoft.Testing.Platform execution, TRX reporting and Microsoft Code Coverage verified locally.
-- Updated other centrally managed dependencies, including System.CommandLine `2.0.11`, Spectre.Console `0.57.2`, Markdig `1.3.2`, NetVips `3.2.0`, NetVips.Native `8.18.6`, NuGet packages `7.9.0`, and NSubstitute `6.2.0`.
+- Updated other centrally managed dependencies, including System.CommandLine `2.0.11`, Spectre.Console `0.57.2`, Markdig `1.3.2`, NetVips `3.2.0`, NetVips.Native `8.18.7` (libvips 8.18.7 with hardened TIFF, JPEG 2000, PDF and EXIF parsing), NuGet packages `7.9.0`, and NSubstitute `6.2.0`.
+- Added Microsoft.CodeAnalysis.PublicApiAnalyzers `5.6.0` (build-time only, not a dependency of the SDK package) to track the public SDK surface.
 
 ## [0.0.1-beta.20] - 2026-05-06
 
