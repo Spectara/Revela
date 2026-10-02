@@ -15,7 +15,9 @@ namespace Spectara.Revela.Sdk.Abstractions;
 /// Checks must be fast and structural only: no network access and no expensive I/O
 /// (no image decoding, no downloads). They run collect-all — every problem is returned
 /// in one pass rather than stopping at the first. Any <see cref="ValidationSeverity.Error"/>
-/// blocks the build (exit code 2); warnings and hints are surfaced but never abort it.
+/// makes <c>revela check</c> exit with code 2; warnings and hints are only reported.
+/// Checks run only when the user invokes <c>check</c> — they never block
+/// <c>generate</c>, so a pipeline step must still fail on its own when it cannot run.
 /// </para>
 /// <para>
 /// Context is obtained through constructor injection (the check's own

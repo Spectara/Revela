@@ -236,11 +236,11 @@ public static class ErrorPanels
     /// </summary>
     /// <remarks>
     /// The panel border reflects the highest severity present: red when any error exists,
-    /// yellow when only warnings do, cyan when only hints. Errors block the build; warnings
-    /// and hints are surfaced but do not. Each message is plain text and is escaped here.
+    /// yellow when only warnings do, cyan when only hints. Errors make <c>revela check</c>
+    /// exit with code 2; warnings and hints do not. Each message is plain text and is escaped here.
     /// </remarks>
-    /// <param name="errors">Blocking problems (empty when none).</param>
-    /// <param name="warnings">Non-blocking, questionable items (empty when none).</param>
+    /// <param name="errors">Problems that must be fixed (empty when none).</param>
+    /// <param name="warnings">Questionable items (empty when none).</param>
     /// <param name="hints">Friendly, informational notes (empty when none).</param>
     public static void ShowValidationReport(
         IReadOnlyList<string> errors,
