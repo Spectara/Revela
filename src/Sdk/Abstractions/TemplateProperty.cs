@@ -48,8 +48,8 @@ public sealed class TemplateProperty
     /// Gets the property type (typeof(string), typeof(int), typeof(bool), etc.).
     /// </summary>
     /// <remarks>
-    /// Used for System.CommandLine option type generation via reflection.
-    /// Supported types: string, int, bool, string[] (expandable for future needs).
+    /// Selects the System.CommandLine option type. Supported types: string, int, bool;
+    /// <c>revela create page</c> rejects any other type.
     /// </remarks>
     public required Type Type { get; init; }
 
@@ -75,7 +75,9 @@ public sealed class TemplateProperty
     /// Gets a value indicating whether the property is required (user must provide a value).
     /// </summary>
     /// <remarks>
-    /// Currently used for validation. Most properties are optional with sensible defaults.
+    /// <c>revela create page</c> fails without writing the page when a required value is missing
+    /// or an empty string, and the interactive mode asks again until one is given. Most properties
+    /// are optional with sensible defaults.
     /// </remarks>
     public bool Required { get; init; }
 

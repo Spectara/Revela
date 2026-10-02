@@ -23,7 +23,8 @@ namespace Spectara.Revela.Features.Generate.Commands;
 /// Usage: revela create page &lt;template&gt; &lt;path&gt; [options]
 /// </para>
 /// <para>
-/// The path argument is required. Options are dynamically generated from template properties.
+/// Without a path the command asks for every value interactively. Options are generated from the
+/// template properties; a missing <see cref="TemplateProperty.Required"/> value fails the command.
 /// </para>
 /// </remarks>
 internal sealed partial class CreatePageCommand(
@@ -163,8 +164,13 @@ internal sealed partial class CreatePageCommand(
 
         // Regular string properties
         var defaultString = property.DefaultValue?.ToString() ?? "";
-        var textPrompt = new TextPrompt<string>($"{prompt}:")
-            .AllowEmpty();
+        var textPrompt = new TextPrompt<string>($"{prompt}:");
+
+        // A required property re-prompts until a value is given.
+        if (!property.Required)
+        {
+            textPrompt.AllowEmpty();
+        }
 
         if (!string.IsNullOrEmpty(defaultString))
         {
@@ -271,6 +277,19 @@ internal sealed partial class CreatePageCommand(
     {
         cancellationToken.ThrowIfCancellationRequested();
 
+        var missing = template.PageProperties
+            .Where(property => property.Required && IsMissing(values.GetValueOrDefault(property.Name)))
+            .ToList();
+        if (missing.Count > 0)
+        {
+            ErrorPanels.ShowError(
+                "Missing required option",
+                string.Join(
+                    Environment.NewLine,
+                    missing.Select(property => Markup.Escape($"{property.Aliases[0]}: {property.Description}"))));
+            return 1;
+        }
+
         // Combine with source directory if relative
         // Pages are always created inside source/ directory
         var fullPath = Path.IsPathRooted(path)
@@ -300,6 +319,8 @@ internal sealed partial class CreatePageCommand(
 
         return 0;
     }
+
+    private static bool IsMissing(object? value) => value is null || (value is string text && string.IsNullOrWhiteSpace(text));
 
     internal static string GenerateFrontmatter(IPageTemplate template, Dictionary<string, object?> values)
     {
