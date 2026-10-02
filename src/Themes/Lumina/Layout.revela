@@ -7,7 +7,8 @@ Expects:
 - site: { title, description, author, copyright }
 - gallery: { title, body?, template? }
 - nav_items: Array of NavigationItem for navigation
-- images: Array of ImageData for gallery (optional)
+- images: Array of ImageData of this page (optional)
+- occurrences: Array of { image, ... } for the page's photo grid, in display order
 - basepath: Relative path to root
 - assets_basepath: Path/URL to image resources (can be absolute CDN URL)
 - image_formats: Array of format strings ["avif", "webp", "jpg"]
@@ -30,14 +31,15 @@ exactly one <h1> for the page (visually hidden where the design shows no title).
 {{~ page_title = not_found ? (t 'notfound.title') : gallery.title ~}}
 {{~ page_description = gallery.description ?? site.description ~}}
 {{~ canonical_url = (base_url && !not_found) ? (absolute_url gallery) : null ~}}
-{{~ # Social preview image: the cover image, else the first image of the page ~}}
-{{~ og_image = gallery.cover_image ?? ((images && images.size > 0) ? images[0] : null) ~}}
+{{~ # Social preview image: the cover image, else the first photo the page shows (none on a page without photos) ~}}
+{{~ og_image = gallery.cover_image ?? ((occurrences && occurrences.size > 0) ? occurrences[0].image : null) ~}}
 <!DOCTYPE html>
 <html lang="{{ html_escape (site.language ?? 'en') }}">
 
 <head>
     <meta charset="UTF-8">
-    <title>{{~ if page_title ~}}{{ html_escape site.title }} - {{ html_escape page_title }}{{~ else ~}}{{ html_escape site.title }}{{~ end ~}}</title>
+    {{~ # The home page's title falls back to the site title; don't print it twice. ~}}
+    <title>{{~ if page_title && page_title != site.title ~}}{{ html_escape site.title }} - {{ html_escape page_title }}{{~ else ~}}{{ html_escape site.title }}{{~ end ~}}</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="description" content="{{ html_escape page_description }}">
     <meta name="author" content="{{ html_escape site.author }}">

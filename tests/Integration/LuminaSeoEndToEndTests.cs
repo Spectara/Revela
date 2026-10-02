@@ -183,6 +183,25 @@ public sealed partial class LuminaSeoEndToEndTests
     }
 
     [TestMethod]
+    public async Task RenderAsync_GalleryWithoutCover_PreviewsItsFirstShownPhoto()
+    {
+        var site = await RenderSiteAsync(baseUrl: BaseUrl);
+
+        Assert.AreEqual($"{BaseUrl}/images/notes/three/800.jpg", AttributeAfter(site.Pages["notes/index.html"], "property=\"og:image\" content=\""));
+        Assert.DoesNotContain("og:image", site.Pages["about/index.html"], StringComparison.Ordinal);
+    }
+
+    [TestMethod]
+    public async Task RenderAsync_HomeTitledLikeTheSite_PrintsTheTitleOnce()
+    {
+        // An untitled home page falls back to the site title; either way "SEO Site - SEO Site" reads badly.
+        var site = await RenderSiteAsync(baseUrl: null, homeTitle: "SEO Site");
+
+        Assert.Contains("<title>SEO Site</title>", site.Pages["index.html"]);
+        Assert.Contains("<title>SEO Site - Island</title>", site.Pages["island/index.html"]);
+    }
+
+    [TestMethod]
     [DataRow("/")]
     [DataRow("/photos/")]
     public async Task RenderAsync_NotFoundPage_IsLocalizedNoindexAndUsesRootAbsoluteUrls(string basePath)
@@ -255,7 +274,8 @@ public sealed partial class LuminaSeoEndToEndTests
         string? baseUrl,
         string? language = null,
         string basePath = "/",
-        ITheme? theme = null)
+        ITheme? theme = null,
+        string homeTitle = "Home & More")
     {
         object site = language is null
             ? new { title = "SEO Site", author = "Test", description = "Site description" }
@@ -271,7 +291,7 @@ public sealed partial class LuminaSeoEndToEndTests
             .AddGallery("Island", g => g.AddRealImage("one.jpg", 2400, 1600).AddRealImage("two.jpg", 800, 1200))
             .AddGallery("Notes", g => g.AddRealImage("three.jpg", 800, 600))
             .AddGallery("About"));
-        await File.WriteAllTextAsync(Path.Combine(project.SourcePath, "_index.revela"), "+++\ntitle = \"Home & More\"\n+++\n");
+        await File.WriteAllTextAsync(Path.Combine(project.SourcePath, "_index.revela"), $"+++\ntitle = \"{homeTitle}\"\n+++\n");
         await File.WriteAllTextAsync(
             Path.Combine(project.SourcePath, "Island", "_index.revela"),
             "+++\ntitle = \"Island\"\ndescription = \"Island description\"\ncover = \"one.jpg\"\n+++\nIsland intro.\n");
