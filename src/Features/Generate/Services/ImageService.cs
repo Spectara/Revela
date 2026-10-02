@@ -267,12 +267,14 @@ internal sealed partial class ImageService(
                 LogCacheHits(logger, cachedCount, uniqueSourcePaths.Count);
             }
 
-            // Many images in parallel with few libvips threads each (see ImageWorkerPlan).
+            // Images in parallel × libvips threads per image (see ImageWorkerPlan).
             var configuredParallelism = ImageSettings.MaxDegreeOfParallelism;
             var plan = ImageWorkerPlan.Create(
                 Environment.ProcessorCount,
                 GC.GetGCMemoryInfo().TotalAvailableMemoryBytes,
-                configuredParallelism);
+                configuredParallelism,
+                imagesToProcess.Count,
+                encodesAvif: formats.ContainsKey("avif"));
             var workerCount = plan.Workers;
 
             if (configuredParallelism.HasValue)

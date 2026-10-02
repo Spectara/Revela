@@ -108,9 +108,11 @@ public sealed class ImageConfig
     /// Optional maximum number of images processed in parallel.
     /// </summary>
     /// <remarks>
-    /// When null, Revela processes about one image per CPU core (half as many from 8 logical
-    /// processors up, each with two libvips threads), at most one per GiB of memory. A configured
-    /// value always wins; the cores are then split between its images (up to 8 libvips threads
+    /// When null, Revela chooses: without AVIF about one image per CPU core (half as many from 8
+    /// logical processors up, each with two libvips threads), never more than there are images to
+    /// encode; with AVIF half the cores as images with up to 8 libvips threads each, which suits
+    /// the AV1 encoder. Either way at most one image per GiB of memory. A configured value always
+    /// wins; without AVIF the cores are then split between its images (up to 8 libvips threads
     /// each). Set to 1 to process images one at a time on low-memory systems.
     /// </remarks>
     public int? MaxDegreeOfParallelism { get; set; }
