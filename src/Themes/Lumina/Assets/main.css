@@ -431,29 +431,25 @@ header button[popovertarget="site-menu"] {
       color: var(--color-dark);
     }
 
-    &.active {
+    &[aria-current="page"] {
       color: var(--color-dark);
     }
-  }
-
-  /* Parent link should not look active when a child is active */
-  &:has(> a.active) h2 a.active {
-    color: var(--color-light);
   }
 }
 
 #site-menu {
   --nav-font-size: var(--font-size-3);
   --nav-heading-gap: var(--space-s);
-  grid-column: full-width;
   position: fixed;
   inset-inline: 0;
-  top: var(--header-height);
+  /* Directly below the sticky header. Without anchor positioning (Safari before 26, older
+     Firefox) the menu starts below the header's unscrolled position, so it never covers
+     the menu button; once scrolled, a strip of the page shows above it. */
+  top: calc(var(--space-xl) + var(--header-height));
   top: anchor(--header bottom);
   bottom: 0;
   width: 100dvw;
   height: auto;
-  block-size: auto;
   max-width: none;
   max-height: none;
   margin: 0;
@@ -478,12 +474,8 @@ header button[popovertarget="site-menu"] {
   section {
     flex: 0 0 auto;
 
-    a.active {
+    a[aria-current="page"] {
       pointer-events: none;
-    }
-
-    &:has(> a.active) h2 a.active {
-      pointer-events: auto;
     }
   }
 }
@@ -542,6 +534,10 @@ header {
       &:hover {
         color: var(--color-dark);
         border-bottom: solid 1px color-mix(in srgb, var(--color) 30%, transparent);
+      }
+
+      &[aria-current="page"] {
+        color: var(--color-dark);
       }
     }
 

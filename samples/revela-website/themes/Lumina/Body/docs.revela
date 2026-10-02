@@ -32,7 +32,7 @@ rendered Markdown body already contains one (`# Heading`).
 {{~ child_link = page_url(child) ~}}
                 <li>
 {{~ if child_link ~}}
-                    <a href="{{ html_escape child_link }}"{{ if child.current }} class="active" aria-current="page"{{ end }}>{{ html_escape child.text }}</a>
+                    <a href="{{ html_escape child_link }}"{{ if child.current }} aria-current="page"{{ end }}>{{ html_escape child.text }}</a>
 {{~ else ~}}
                     <span>{{ html_escape child.text }}</span>
 {{~ end ~}}
@@ -41,7 +41,7 @@ rendered Markdown body already contains one (`# Heading`).
 {{~ for grandchild in child.children ~}}
 {{~ grandchild_link = page_url(grandchild) ~}}
 {{~ if grandchild_link ~}}
-                        <li><a href="{{ html_escape grandchild_link }}"{{ if grandchild.current }} class="active" aria-current="page"{{ end }}>{{ html_escape grandchild.text }}</a></li>
+                        <li><a href="{{ html_escape grandchild_link }}"{{ if grandchild.current }} aria-current="page"{{ end }}>{{ html_escape grandchild.text }}</a></li>
 {{~ else ~}}
                         <li><span>{{ html_escape grandchild.text }}</span></li>
 {{~ end ~}}

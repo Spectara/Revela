@@ -11,12 +11,12 @@ Expects: nav_items
 {{~ for primary_item in nav_items ~}}
 {{~ primary_link = page_url(primary_item) ~}}
 {{~ if primary_link ~}}
-<a href="{{ html_escape primary_link }}"{{ if primary_item.current }} class="active" aria-current="page"{{ end }}>{{ html_escape primary_item.text }}</a>
+<a href="{{ html_escape primary_link }}"{{ if primary_item.current }} aria-current="page"{{ end }}>{{ html_escape primary_item.text }}</a>
 {{~ else ~}}
 {{~ for primary_child in primary_item.children ~}}
 {{~ primary_child_link = page_url(primary_child) ~}}
 {{~ if primary_child_link ~}}
-<a href="{{ html_escape primary_child_link }}"{{ if primary_child.current }} class="active" aria-current="page"{{ end }}>{{ html_escape primary_child.text }}</a>
+<a href="{{ html_escape primary_child_link }}"{{ if primary_child.current }} aria-current="page"{{ end }}>{{ html_escape primary_child.text }}</a>
 {{~ end ~}}
 {{~ end ~}}
 {{~ end ~}}

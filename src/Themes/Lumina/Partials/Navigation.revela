@@ -12,7 +12,7 @@
   Expects: nav_items (Array of NavigationItem)
   NavigationItem: { text, url?, active?, current?, children }
   - active: true if this item or any child is the current page (for breadcrumbs)
-  - current: true only if this item is the exact current page (for highlighting)
+  - current: true only if this item is the exact current page (aria-current="page")
   - page_url(item): link to the item's page, or empty for section headers
 ##~}}
 {{~ func render_item(item, is_top_level) ~}}
@@ -22,7 +22,7 @@
 {{~ # Top-level with children = section ~}}
 <section>
 {{~ if link ~}}
-  <h2><a href="{{ html_escape link }}"{{ item.current ? ' class="active"' : '' }}>{{ html_escape item.text }}</a></h2>
+  <h2><a href="{{ html_escape link }}"{{ item.current ? ' aria-current="page"' : '' }}>{{ html_escape item.text }}</a></h2>
 {{~ else ~}}
   <h2>{{ html_escape item.text }}</h2>
 {{~ end ~}}
@@ -33,14 +33,14 @@
 {{~ else ~}}
 {{~ # Top-level leaf = section with heading link (consistent with branch sections) ~}}
 <section>
-  <h2><a href="{{ html_escape link }}"{{ item.current ? ' class="active"' : '' }}>{{ html_escape item.text }}</a></h2>
+  <h2><a href="{{ html_escape link }}"{{ item.current ? ' aria-current="page"' : '' }}>{{ html_escape item.text }}</a></h2>
 </section>
 {{~ end ~}}
 {{~ else if item.children.size > 0 ~}}
 {{~ # Branch: Has children ~}}
 <div>
 {{~ if link ~}}
-  <a href="{{ html_escape link }}"{{ item.current ? ' class="active"' : '' }}>{{ html_escape item.text }}</a>
+  <a href="{{ html_escape link }}"{{ item.current ? ' aria-current="page"' : '' }}>{{ html_escape item.text }}</a>
 {{~ else ~}}
   <span>{{ html_escape item.text }}</span>
 {{~ end ~}}
@@ -50,7 +50,7 @@
 </div>
 {{~ else ~}}
 {{~ # Leaf: Simple link ~}}
-  <a href="{{ html_escape link }}"{{ item.current ? ' class="active"' : '' }}>{{ html_escape item.text }}</a>
+  <a href="{{ html_escape link }}"{{ item.current ? ' aria-current="page"' : '' }}>{{ html_escape item.text }}</a>
 {{~ end ~}}
 {{~ end ~}}
 {{~ for item in nav_items ~}}

@@ -12,7 +12,7 @@ Expects: nav_items (Array of NavigationItem)
 ##~}}
 {{~ func render_item(item, is_top_level) ~}}
 {{~ link = page_url(item) ~}}
-{{~ current_attrs = item.current ? ' class="active" aria-current="page"' : '' ~}}
+{{~ current_attrs = item.current ? ' aria-current="page"' : '' ~}}
 {{~ if is_top_level ~}}
 <section>
 {{~ if link ~}}

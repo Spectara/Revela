@@ -153,6 +153,36 @@ public sealed partial class LuminaSeoEndToEndTests
     }
 
     [TestMethod]
+    public async Task RenderAsync_LuminaPictures_SizeEverySourceAndPaintContentImagePlaceholders()
+    {
+        var site = await RenderSiteAsync(baseUrl: null);
+
+        foreach (var (page, html) in site.Pages)
+        {
+            foreach (Match source in SourcePattern().Matches(html))
+            {
+                Assert.Contains(" sizes=\"", source.Value, StringComparison.Ordinal, $"{page}: without sizes a browser assumes 100vw: {source.Value}");
+            }
+        }
+
+        var notes = site.Pages["notes/index.html"];
+        Assert.Contains("data-lqip>", notes);
+        Assert.AreEqual(3, CountOccurrences(notes, "sizes=\"auto, (min-width: 900px) 900px, 100vw\""),
+            "The content image's two <source> elements and its <img> fit the 900px text column.");
+    }
+
+    [TestMethod]
+    public async Task RenderAsync_LuminaNavigation_MarksOnlyTheCurrentPage()
+    {
+        var site = await RenderSiteAsync(baseUrl: null);
+
+        var island = site.Pages["island/index.html"];
+        Assert.AreEqual(2, CountOccurrences(island, "aria-current=\"page\">Island</a>"), "Overlay menu and footer navigation.");
+        Assert.AreEqual(2, CountOccurrences(island, "aria-current=\"page\""));
+        Assert.DoesNotContain("class=\"active\"", island);
+    }
+
+    [TestMethod]
     [DataRow("/")]
     [DataRow("/photos/")]
     public async Task RenderAsync_NotFoundPage_IsLocalizedNoindexAndUsesRootAbsoluteUrls(string basePath)
@@ -280,11 +310,25 @@ public sealed partial class LuminaSeoEndToEndTests
         return html[start..html.IndexOf('"', start)];
     }
 
+    private static int CountOccurrences(string text, string value)
+    {
+        var count = 0;
+        for (var index = text.IndexOf(value, StringComparison.Ordinal); index >= 0; index = text.IndexOf(value, index + value.Length, StringComparison.Ordinal))
+        {
+            count++;
+        }
+
+        return count;
+    }
+
     [GeneratedRegex(@"<h1[\s>]")]
     private static partial Regex H1Pattern();
 
     [GeneratedRegex(@"<img\s[^>]*>")]
     private static partial Regex ImgPattern();
+
+    [GeneratedRegex(@"<source\s[^>]*>")]
+    private static partial Regex SourcePattern();
 
     [GeneratedRegex(@"<nav(?:\s[^>]*)?>")]
     private static partial Regex NavPattern();

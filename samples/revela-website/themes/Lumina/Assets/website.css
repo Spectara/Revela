@@ -93,12 +93,12 @@ header {
 /* ============================================
    Navigation Colors
    ============================================ */
-:is(body > nav, footer nav) section a {
+:is(#site-menu, body > footer nav) section a {
   &:hover {
     color: var(--accent-light);
   }
 
-  &.active {
+  &[aria-current="page"] {
     color: var(--accent);
   }
 }
@@ -560,7 +560,7 @@ main>aside {
       color: var(--accent-light);
     }
 
-    &.active {
+    &[aria-current="page"] {
       color: var(--accent);
       text-shadow: 0 0 10px color-mix(in oklch, var(--accent-glow) 25%, transparent);
     }
