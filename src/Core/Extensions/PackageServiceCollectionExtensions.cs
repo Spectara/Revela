@@ -190,8 +190,7 @@ public static class PackageServiceCollectionExtensions
         // Read-only subcommands need packages loaded (e.g., to read installed themes/plugins)
         if (subcommand.Equals("list", StringComparison.OrdinalIgnoreCase)
             || subcommand.Equals("extract", StringComparison.OrdinalIgnoreCase)
-            || subcommand.Equals("files", StringComparison.OrdinalIgnoreCase)
-            || subcommand.Equals("info", StringComparison.OrdinalIgnoreCase))
+            || subcommand.Equals("files", StringComparison.OrdinalIgnoreCase))
         {
             return false;
         }

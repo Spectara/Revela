@@ -124,7 +124,7 @@ internal sealed class CoreCommandProvider : ICommandProvider
             Group: CommandGroups.Addons,
             RequiresProject: false);
 
-        // ── Info group (TUI rendered inline: Revela / Plugins → / Themes →) ──
+        // ── Info group (TUI rendered inline as "Revela") ──
         var infoCommand = services.GetRequiredService<InfoCommand>();
         yield return new CommandDescriptor(
             infoCommand.Create(),
@@ -133,18 +133,6 @@ internal sealed class CoreCommandProvider : ICommandProvider
             RequiresProject: false,
             InlineInMenu: true,
             InlineDefaultActionLabel: "Revela");
-
-        var infoPluginsCommand = services.GetRequiredService<InfoPluginsCommand>();
-        yield return new CommandDescriptor(
-            infoPluginsCommand.Create(),
-            ParentCommand: "info",
-            Order: 20);
-
-        var infoThemesCommand = services.GetRequiredService<InfoThemesCommand>();
-        yield return new CommandDescriptor(
-            infoThemesCommand.Create(),
-            ParentCommand: "info",
-            Order: 30);
 
         // Restore, Plugin, and Packages commands are provided by PackagesCommandProvider
         // (only available in Cli, not in Cli.Embedded)

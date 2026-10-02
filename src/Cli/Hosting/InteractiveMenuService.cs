@@ -260,7 +260,7 @@ internal sealed partial class InteractiveMenuService(
 
         // Top-level dispatch: Exit/Back/Wizard handled here; Navigate/Execute
         // delegate to HandleMenuActionAsync so CommandPathOverride from inlined
-        // entries (e.g. "Plugins" → ["info","plugins"]) is honored.
+        // entries (absolute "<parent> <sub>" paths) is honored.
         return selection.Action switch
         {
             MenuAction.Exit => new MenuResult(true, 0),

@@ -64,6 +64,27 @@ public sealed class InfoCommandTests
         Assert.DoesNotContain("Package management", output);
     }
 
+    [TestMethod]
+    public void Execute_FullEdition_PointsToListCommands()
+    {
+        var output = RunQuiet(CreateCommand(HostKind.Full).Create());
+
+        Assert.Contains("revela plugin list", output);
+        Assert.Contains("revela theme list", output);
+        Assert.DoesNotContain("info plugins", output);
+        Assert.DoesNotContain("info themes", output);
+    }
+
+    [TestMethod]
+    public void Execute_StandaloneEdition_PointsOnlyToAvailableListCommand()
+    {
+        // Standalone has no `plugin` command tree, so only `theme list` is a valid hint.
+        var output = RunQuiet(CreateCommand(HostKind.Standalone).Create());
+
+        Assert.Contains("revela theme list", output);
+        Assert.DoesNotContain("plugin list", output);
+    }
+
     private static string RunQuiet(Command command)
     {
         using var writer = new StringWriter(CultureInfo.InvariantCulture);
