@@ -110,7 +110,7 @@ public sealed class ContentServiceScanTests
             Assert.IsTrue(first.Success, first.ErrorMessage);
         }
 
-        var manifestPath = Path.Combine(project.RootPath, ".cache", "manifest.json");
+        var manifestPath = Path.Combine(project.RootPath, ".revela", "core", "manifest.json");
         var manifest = System.Text.Json.Nodes.JsonNode.Parse(await File.ReadAllTextAsync(manifestPath))!.AsObject();
         manifest["_meta"]!["scanConfigHash"] = LegacyScanConfigHash("CssHash", 0, 0);
         var image = manifest["root"]!["children"]![0]!["content"]!.AsArray().Single(c => (string?)c!["filename"] == "photo.jpg")!;

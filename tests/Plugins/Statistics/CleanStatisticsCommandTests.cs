@@ -1,9 +1,9 @@
 using System.Globalization;
 
-using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 
 using Spectara.Revela.Plugins.Statistics.Commands;
+using Spectara.Revela.Plugins.Statistics.Services;
 using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Abstractions;
 using Spectara.Revela.Tests.Shared.Fixtures;
@@ -23,7 +23,7 @@ public sealed class CleanStatisticsCommandTests
     public async Task Execute_DirectoryLinkInCache_PreservesExternalStatistics(bool useCli)
     {
         using var project = TestProject.CreateMinimal();
-        var cachePath = Path.Combine(project.RootPath, ProjectPaths.Cache);
+        var cachePath = Path.Combine(project.RootPath, ProjectPaths.GetOwnerDirectory("statistics"));
         var owned = Path.Combine(cachePath, "statistics", "statistics.json");
         Directory.CreateDirectory(Path.GetDirectoryName(owned)!);
         await File.WriteAllTextAsync(owned, "{}");
@@ -33,9 +33,8 @@ public sealed class CleanStatisticsCommandTests
         await File.WriteAllTextAsync(externalStatistics, "{}");
         var link = Path.Combine(cachePath, "linked");
         DirectoryLinkTestHelper.Create(link, external);
-        var command = new CleanStatisticsCommand(
-            NullLogger<CleanStatisticsCommand>.Instance,
-            Options.Create(new ProjectEnvironment { Path = project.RootPath }));
+        var command = new CleanStatisticsCommand(new TestArtifactLifecycle(
+            new StatisticsDataInvalidator(Options.Create(new ProjectEnvironment { Path = project.RootPath }))));
 
         try
         {

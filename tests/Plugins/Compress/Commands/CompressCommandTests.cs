@@ -24,7 +24,7 @@ public sealed class CompressCommandTests : IDisposable
         var originalPath = Path.Combine(TestDirectory, "index.html");
         var sidecarPath = originalPath + ".br";
         await File.WriteAllTextAsync(originalPath, new string('x', 512));
-        await new CompressionService(NullLogger<CompressionService>.Instance).CompressDirectoryAsync(TestDirectory);
+        await new CompressionService(NullLogger<CompressionService>.Instance).CompressDirectoryAsync(TestDirectory, project.OwnerDirectory());
         var command = CreateCommand(new FailingArtifactLifecycle());
 
         var exitCode = await command.ExecuteAsync();
@@ -41,7 +41,7 @@ public sealed class CompressCommandTests : IDisposable
         var orphanedSidecarPath = removedPath + ".gz";
         var currentPath = Path.Combine(TestDirectory, "index.html");
         await File.WriteAllTextAsync(removedPath, new string('x', 512));
-        await new CompressionService(NullLogger<CompressionService>.Instance).CompressDirectoryAsync(TestDirectory);
+        await new CompressionService(NullLogger<CompressionService>.Instance).CompressDirectoryAsync(TestDirectory, project.OwnerDirectory());
         File.Delete(removedPath);
         var gzipDownload = Path.Combine(TestDirectory, "download.gz");
         var brotliDownload = Path.Combine(TestDirectory, "download.br");
@@ -87,7 +87,7 @@ public sealed class CompressCommandTests : IDisposable
         Directory.CreateDirectory(other.OutputPath);
         var original = Path.Combine(TestDirectory, "index.html");
         await File.WriteAllTextAsync(original, new string('x', 512));
-        await new CompressionService(NullLogger<CompressionService>.Instance).CompressDirectoryAsync(TestDirectory);
+        await new CompressionService(NullLogger<CompressionService>.Instance).CompressDirectoryAsync(TestDirectory, project.OwnerDirectory());
         var oldSidecar = await File.ReadAllBytesAsync(original + ".gz");
         var untouched = Path.Combine(other.OutputPath, "download.gz");
         await File.WriteAllTextAsync(untouched, "other root");
@@ -103,6 +103,7 @@ public sealed class CompressCommandTests : IDisposable
         var command = new CompressCommand(
             NullLogger<CompressCommand>.Instance,
             resolver,
+            project.Environment(),
             new CompressionService(NullLogger<CompressionService>.Instance),
             lifecycle,
             Substitute.For<IConsoleCapabilities>());
@@ -114,7 +115,7 @@ public sealed class CompressCommandTests : IDisposable
         Assert.IsTrue(File.Exists(original + ".gz"));
         Assert.IsTrue(File.Exists(original + ".br"));
         Assert.AreEqual("other root", await File.ReadAllTextAsync(untouched));
-        Assert.IsFalse(File.Exists(Path.Combine(other.OutputPath, ".revela-compress.manifest")));
+        Assert.HasCount(1, Directory.GetFileSystemEntries(other.OutputPath), "Nothing may be written into the other root.");
     }
 
     public void Dispose() => project.Dispose();
@@ -126,6 +127,7 @@ public sealed class CompressCommandTests : IDisposable
         return new CompressCommand(
             NullLogger<CompressCommand>.Instance,
             pathResolver,
+            project.Environment(),
             new CompressionService(NullLogger<CompressionService>.Instance),
             artifactLifecycle,
             Substitute.For<IConsoleCapabilities>());
@@ -133,6 +135,12 @@ public sealed class CompressCommandTests : IDisposable
 
     private sealed class SuccessfulArtifactLifecycle(Action? beforeReplacement = null) : IArtifactLifecycle
     {
+        public ValueTask<OperationResult> InvalidateAsync(ArtifactId artifact, CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
+        public ValueTask<OperationResult> InvalidateAllAsync(IReadOnlyCollection<ArtifactKind> kinds, CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
         public ValueTask<OperationResult> PrepareToReplaceAsync(
             ArtifactId artifact,
             CancellationToken cancellationToken = default)
@@ -146,6 +154,12 @@ public sealed class CompressCommandTests : IDisposable
 
     private sealed class FailingArtifactLifecycle : IArtifactLifecycle
     {
+        public ValueTask<OperationResult> InvalidateAsync(ArtifactId artifact, CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
+        public ValueTask<OperationResult> InvalidateAllAsync(IReadOnlyCollection<ArtifactKind> kinds, CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
         public ValueTask<OperationResult> PrepareToReplaceAsync(
             ArtifactId artifact,
             CancellationToken cancellationToken = default)

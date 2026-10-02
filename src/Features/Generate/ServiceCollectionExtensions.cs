@@ -11,6 +11,7 @@ using Spectara.Revela.Features.Generate.Templates;
 using Spectara.Revela.Features.Generate.Wizard;
 using Spectara.Revela.Sdk.Abstractions;
 using Spectara.Revela.Sdk.Abstractions.Engine;
+using Spectara.Revela.Sdk.Artifacts;
 
 namespace Spectara.Revela.Features.Generate;
 
@@ -50,6 +51,11 @@ public static class ServiceCollectionExtensions
         services.TryAddSingleton<IManifestReader, ManifestReader>();
         services.TryAddSingleton<ImageStateStore>();
 
+        // Revela core owns its artifacts like any package: one invalidator each, with its kind.
+        services.TryAddEnumerable(ServiceDescriptor.Transient<IArtifactInvalidator, ManifestInvalidator>());
+        services.TryAddEnumerable(ServiceDescriptor.Transient<IArtifactInvalidator, RenderedSiteInvalidator>());
+        services.TryAddEnumerable(ServiceDescriptor.Transient<IArtifactInvalidator, ProcessedImagesInvalidator>());
+
         // Domain services (three main services)
         services.TryAddSingleton<IContentService, ContentService>();
         services.TryAddSingleton<IImageService, ImageService>();
@@ -80,6 +86,8 @@ public static class ServiceCollectionExtensions
         services.TryAddEnumerable(ServiceDescriptor.Transient<IPipelineStep, ImagesCommand>());
 
         // Clean commands
+        services.TryAddTransient<KindClean>();
+        services.TryAddTransient<CleanAllCommand>();
         services.TryAddTransient<CleanOutputCommand>();
         services.TryAddTransient<CleanImagesCommand>();
         services.TryAddTransient<CleanCacheCommand>();

@@ -2,7 +2,7 @@ namespace Spectara.Revela.Sdk.Artifacts;
 
 /// <summary>
 /// Removes derived files that a package wrote below a directory it owns
-/// (typically <c>.cache/&lt;page&gt;/&lt;name&gt;.json</c>).
+/// (typically <c>.revela/&lt;owner&gt;/&lt;page&gt;/&lt;name&gt;.json</c>).
 /// </summary>
 /// <remarks>
 /// Use it from <see cref="IArtifactInvalidator.InvalidateAsync"/> and from the matching

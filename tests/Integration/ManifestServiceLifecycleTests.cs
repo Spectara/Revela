@@ -200,7 +200,7 @@ public sealed class ManifestServiceLifecycleTests
     {
         // An older manifest has another shape; it is dropped and rebuilt by the next scan.
         using var project = TestProject.Create();
-        var cacheDirectory = Path.Combine(project.RootPath, ".cache");
+        var cacheDirectory = Path.Combine(project.RootPath, ".revela", "core");
         Directory.CreateDirectory(cacheDirectory);
         await File.WriteAllTextAsync(Path.Combine(cacheDirectory, "manifest.json"), /*lang=json,strict*/ """
             {
@@ -218,12 +218,12 @@ public sealed class ManifestServiceLifecycleTests
     }
 
     [TestMethod]
-    public async Task SaveAsync_Beta21ManifestWithProcessingState_LoadsAndMovesStateOut()
+    public async Task LoadAsync_ManifestWithRemovedMetaFields_LoadsAndSaveDropsThem()
     {
-        // beta.21 kept image processing state in manifest version 5; it moved to images.json
-        // without a version bump, so such a manifest must keep loading.
+        // Version 5 manifests of earlier builds still carry processedImages and formatQualities.
+        // The model no longer knows them: they are ignored on load and gone after the next save.
         using var project = TestProject.Create();
-        var cacheDirectory = Path.Combine(project.RootPath, ".cache");
+        var cacheDirectory = Path.Combine(project.RootPath, ".revela", "core");
         Directory.CreateDirectory(cacheDirectory);
         var manifestPath = Path.Combine(cacheDirectory, "manifest.json");
         await File.WriteAllTextAsync(manifestPath, /*lang=json,strict*/ """
@@ -247,8 +247,8 @@ public sealed class ManifestServiceLifecycleTests
         Assert.AreEqual("Site", manifest.Root?.Text);
         var saved = await File.ReadAllTextAsync(manifestPath);
         Assert.DoesNotContain("processedImages", saved, StringComparison.Ordinal);
-        var state = await File.ReadAllTextAsync(Path.Combine(cacheDirectory, "images.json"));
-        Assert.Contains("\"photos/a.jpg\"", state, StringComparison.Ordinal);
+        Assert.DoesNotContain("formatQualities", saved, StringComparison.Ordinal);
+        Assert.IsFalse(File.Exists(Path.Combine(cacheDirectory, "images.json")), "Nothing is carried over into the image state.");
     }
 }
 

@@ -71,6 +71,29 @@ Spectara.Revela/
     └── packages/                   # NuGet packages
 ```
 
+### A Revela Site Project
+
+Each site project (for example `samples/showcase/`) has this layout; the fixed folder
+names are defined once in [`ProjectPaths`](../src/Sdk/ProjectPaths.cs):
+
+```
+my-site/
+├── project.json, site.json        # Configuration
+├── source/                        # Photos and pages (paths.source)
+├── output/                        # Generated site, published as is (paths.output)
+├── themes/, plugins/              # Optional local theme files and plugin settings
+└── .revela/                       # Revela's own data, never published (gitignored)
+    ├── core/                      # manifest.json (cache), images.json (with the output)
+    ├── statistics/, calendar/     # Plugin data per page (cache)
+    └── compress/                  # ownership.json (with the output)
+```
+
+Each folder belongs to one owner (Revela core or a plugin). How long a file lives is
+declared per artifact: `clean cache` removes cache artifacts, `clean output` removes the
+output with everything that describes it, `clean all` both; durable plugin data is only
+removed by its owner's own clean command. See
+[Architecture](architecture.md#artifact-ownership).
+
 ## Namespace Convention
 
 A single property `RevelaNamespacePrefix` (defined in root `Directory.Build.props`) drives all naming.

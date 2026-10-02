@@ -1,123 +1,41 @@
 using System.CommandLine;
-using System.Globalization;
 
-using Microsoft.Extensions.Options;
-
-using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Abstractions;
-using Spectara.Revela.Sdk.Output;
-
-using Spectre.Console;
+using Spectara.Revela.Sdk.Artifacts;
 
 namespace Spectara.Revela.Features.Generate.Commands;
 
 /// <summary>
-/// Cleans the cache directory.
+/// <c>revela clean cache</c>: removes every <see cref="ArtifactKind.Cache"/> artifact
+/// (scan manifest, plugin data files) through its owner.
 /// </summary>
-internal sealed partial class CleanCacheCommand(
-    ILogger<CleanCacheCommand> logger,
-    IOptions<ProjectEnvironment> projectEnvironment) : IPipelineStep
+/// <remarks>
+/// The output and what describes it (image processing state, compression record) are
+/// <see cref="ArtifactKind.Output"/> artifacts and stay, so the next build re-encodes nothing.
+/// </remarks>
+internal sealed class CleanCacheCommand(KindClean kindClean) : IPipelineStep
 {
-    // ── IPipelineStep (service-level, no UI) ──
+    private static readonly ArtifactKind[] Kinds = [ArtifactKind.Cache];
 
     string IPipelineStep.Category => PipelineCategories.Clean;
 
     string IPipelineStep.Name => "cache";
 
-
-    ValueTask<OperationResult> IPipelineStep.ExecuteAsync(CancellationToken cancellationToken)
-    {
-        cancellationToken.ThrowIfCancellationRequested();
-
-        if (!Directory.Exists(CachePath))
-        {
-            return new ValueTask<OperationResult>(OperationResult.Ok());
-        }
-
-        try
-        {
-            Directory.Delete(CachePath, recursive: true);
-            LogDirectoryDeleted(logger, CachePath, 0);
-            return new ValueTask<OperationResult>(OperationResult.Ok());
-        }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
-        {
-            LogDeleteFailed(logger, CachePath, ex);
-            return new ValueTask<OperationResult>(OperationResult.Fail($"Failed to delete cache: {ex.Message}"));
-        }
-    }
-
-    // ── CLI command ──
-    /// <summary>Gets full path to cache directory.</summary>
-    private string CachePath => Path.Combine(projectEnvironment.Value.Path, ProjectPaths.Cache);
+    async ValueTask<OperationResult> IPipelineStep.ExecuteAsync(CancellationToken cancellationToken) =>
+        await kindClean.RunAsync(Kinds, cancellationToken);
 
     /// <summary>
     /// Creates the CLI command.
     /// </summary>
     public Command Create()
     {
-        var command = new Command("cache", "Clean cache directory (.cache)");
+        var command = new Command("cache", "Remove data Revela can rebuild (scan, plugin data); keeps the output and image state");
 
         command.SetAction(async (parseResult, cancellationToken) => await ExecuteAsync(cancellationToken));
 
         return command;
     }
 
-    public Task<int> ExecuteAsync(CancellationToken cancellationToken)
-    {
-        cancellationToken.ThrowIfCancellationRequested();
-
-        // Nothing to clean - exit silently (goal already achieved)
-        if (!Directory.Exists(CachePath))
-        {
-            return Task.FromResult(0);
-        }
-
-        var target = AnalyzeDirectory(CachePath);
-
-        try
-        {
-            Directory.Delete(CachePath, recursive: true);
-            LogDirectoryDeleted(logger, target.Path, target.FileCount);
-
-            AnsiConsole.MarkupLine($"{OutputMarkers.Success} Deleted [cyan]{ProjectPaths.Cache}/[/] ({target.FileCount} files, {FormatSize(target.TotalSize)})");
-        }
-        catch (IOException ex)
-        {
-            LogDeleteFailed(logger, CachePath, ex);
-            AnsiConsole.MarkupLine($"{OutputMarkers.Error} Failed to delete {ProjectPaths.Cache}: {Markup.Escape(ex.Message)}");
-            return Task.FromResult(1);
-        }
-        catch (UnauthorizedAccessException ex)
-        {
-            LogDeleteFailed(logger, CachePath, ex);
-            AnsiConsole.MarkupLine($"{OutputMarkers.Error} Access denied: {ProjectPaths.Cache}");
-            return Task.FromResult(1);
-        }
-
-        return Task.FromResult(0);
-    }
-
-    private static CleanTarget AnalyzeDirectory(string path)
-    {
-        var files = Directory.GetFiles(path, "*", SearchOption.AllDirectories);
-        var totalSize = files.Sum(f => new FileInfo(f).Length);
-
-        return new CleanTarget(path, files.Length, totalSize);
-    }
-
-    private static string FormatSize(long bytes) => bytes switch
-    {
-        < 1024 => string.Format(CultureInfo.InvariantCulture, "{0} B", bytes),
-        < 1024 * 1024 => string.Format(CultureInfo.InvariantCulture, "{0:0.#} KB", bytes / 1024.0),
-        < 1024 * 1024 * 1024 => string.Format(CultureInfo.InvariantCulture, "{0:0.#} MB", bytes / (1024.0 * 1024.0)),
-        _ => string.Format(CultureInfo.InvariantCulture, "{0:0.##} GB", bytes / (1024.0 * 1024.0 * 1024.0))
-    };
-
-    [LoggerMessage(Level = LogLevel.Information, Message = "Deleted {Path} ({FileCount} files)")]
-    private static partial void LogDirectoryDeleted(ILogger logger, string path, int fileCount);
-
-    [LoggerMessage(Level = LogLevel.Error, Message = "Failed to delete {Path}")]
-    private static partial void LogDeleteFailed(ILogger logger, string path, Exception exception);
+    public Task<int> ExecuteAsync(CancellationToken cancellationToken) =>
+        kindClean.RunCommandAsync(Kinds, "Removed cached data", cancellationToken);
 }
-

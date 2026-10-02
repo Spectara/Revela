@@ -1,9 +1,9 @@
 using System.Globalization;
 
-using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 
 using Spectara.Revela.Plugins.Calendar.Commands;
+using Spectara.Revela.Plugins.Calendar.Services;
 using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Abstractions;
 using Spectara.Revela.Tests.Shared.Fixtures;
@@ -40,7 +40,7 @@ public sealed class CleanCalendarCommandTests
     public async Task Execute_DirectoryLinkInCache_PreservesExternalCalendar(bool useCli)
     {
         using var project = TestProject.CreateMinimal();
-        var cachePath = Path.Combine(project.RootPath, ProjectPaths.Cache);
+        var cachePath = Path.Combine(project.RootPath, ProjectPaths.GetOwnerDirectory("calendar"));
         Directory.CreateDirectory(cachePath);
         var external = project.RootPath + "-external";
         Directory.CreateDirectory(external);
@@ -99,13 +99,12 @@ public sealed class CleanCalendarCommandTests
     }
 
     private static CleanCalendarCommand CreateCommand(TestProject project) =>
-        new(
-            NullLogger<CleanCalendarCommand>.Instance,
-            Options.Create(new ProjectEnvironment { Path = project.RootPath }));
+        new(new TestArtifactLifecycle(
+            new CalendarDataInvalidator(Options.Create(new ProjectEnvironment { Path = project.RootPath }))));
 
     private static string WriteCacheFile(TestProject project, string relativePath)
     {
-        var path = Path.Combine(project.RootPath, ProjectPaths.Cache, relativePath);
+        var path = Path.Combine(project.RootPath, ProjectPaths.GetOwnerDirectory("calendar"), relativePath);
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
         File.WriteAllText(path, "{}");
         return path;

@@ -213,7 +213,7 @@ internal sealed partial class CalendarGenerateStep(
 
         foreach (var (pagePath, calendarData) in calendars)
         {
-            var cacheDir = Path.Combine(projectPath, ProjectPaths.Cache, pagePath);
+            var cacheDir = Path.Combine(CalendarDataInvalidator.GetDataDirectory(projectPath), pagePath);
             Directory.CreateDirectory(cacheDir);
             var json = JsonSerializer.Serialize(calendarData, CalendarJsonContext.Default.CalendarData);
             await File.WriteAllTextAsync(Path.Combine(cacheDir, CalendarDataInvalidator.FileName), json, cancellationToken);

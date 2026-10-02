@@ -6,6 +6,7 @@ using Microsoft.Extensions.Options;
 using Spectara.Revela.Core.Abstractions;
 using Spectara.Revela.Features.Generate.Models;
 using Spectara.Revela.Sdk;
+using Spectara.Revela.Sdk.Artifacts;
 using Spectara.Revela.Sdk.Configuration;
 using Spectara.Revela.Sdk.Models.Manifest;
 
@@ -176,7 +177,7 @@ internal sealed partial class ManifestService(
     /// Gets the manifest file path of a project.
     /// </summary>
     internal static string GetManifestPath(string projectPath) =>
-        Path.Combine(projectPath, ProjectPaths.Cache, ManifestFileName);
+        Path.Combine(projectPath, ProjectPaths.GetOwnerDirectory(CoreArtifacts.Owner), ManifestFileName);
 
     /// <summary>
     /// Reads a manifest file without side effects.
@@ -255,13 +256,7 @@ internal sealed partial class ManifestService(
     /// <inheritdoc />
     public async Task SaveAsync(CancellationToken cancellationToken = default)
     {
-        var projectPath = projectEnvironment.Value.Path;
-
-        // The manifest file about to be replaced may be the last copy of the processing state
-        // that beta.21 kept in it; carry that over first so no image is re-encoded.
-        await ImageStateStore.SeedFromLegacyManifestAsync(projectPath, logger, cancellationToken);
-
-        var manifestPath = GetManifestPath(projectPath);
+        var manifestPath = GetManifestPath(projectEnvironment.Value.Path);
         Directory.CreateDirectory(Path.GetDirectoryName(manifestPath)!);
 
         var tempPath = manifestPath + ".tmp";

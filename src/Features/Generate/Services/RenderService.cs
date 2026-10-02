@@ -1252,7 +1252,7 @@ internal sealed partial class RenderService(
     /// Resolves one entry of a page's <c>data</c> frontmatter (or an extension's data default).
     /// </summary>
     /// <param name="source">A built-in source (<c>$galleries</c>, <c>$images</c>) or a JSON file name.</param>
-    /// <param name="basePath">Folder of the page's <c>_index.revela</c>; JSON files are read from the matching <c>.cache</c> folder.</param>
+    /// <param name="basePath">Folder of the page's <c>_index.revela</c>; JSON files are read from the matching page folder of a plugin's owner folder (<c>.revela/&lt;owner&gt;/</c>).</param>
     /// <param name="allGalleries">All galleries in the site.</param>
     /// <param name="localImages">Images of the current page.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
@@ -1274,21 +1274,55 @@ internal sealed partial class RenderService(
             };
         }
 
-        // Plugin-generated data from the .cache directory
+        // Plugin-generated data from the owners' folders (.revela/<owner>/<page>/<file>.json)
         if (source.EndsWith(".json", StringComparison.OrdinalIgnoreCase))
         {
             var relativePath = Path.GetRelativePath(SourcePath, basePath);
-            var cachePath = Path.Combine(projectEnvironment.Value.Path, ProjectPaths.Cache, relativePath, source);
+            var dataPath = FindOwnerDataFile(relativePath, source);
 
-            if (File.Exists(cachePath))
+            if (dataPath is not null)
             {
-                var json = await File.ReadAllTextAsync(cachePath, cancellationToken);
+                var json = await File.ReadAllTextAsync(dataPath, cancellationToken);
                 using var document = JsonDocument.Parse(json);
                 return JsonScriptConverter.ToScriptValue(document.RootElement);
             }
         }
 
         return null;
+    }
+
+    /// <summary>
+    /// Finds a page's data file in the owner folders below <c>.revela</c> (all owners except core).
+    /// </summary>
+    /// <remarks>
+    /// Owners are searched in ordinal order and linked folders are skipped. Two owners writing a
+    /// file with the same name for the same page is a plugin conflict: the first one is used and
+    /// a warning names both.
+    /// </remarks>
+    private string? FindOwnerDataFile(string relativePagePath, string fileName)
+    {
+        var revelaPath = Path.Combine(projectEnvironment.Value.Path, ProjectPaths.Revela);
+        if (!Directory.Exists(revelaPath))
+        {
+            return null;
+        }
+
+        var matches = new DirectoryInfo(revelaPath)
+            .EnumerateDirectories()
+            .Where(owner => (owner.Attributes & FileAttributes.ReparsePoint) == 0
+                && ProjectPaths.IsValidOwner(owner.Name)
+                && !string.Equals(owner.Name, CoreArtifacts.Owner, StringComparison.Ordinal))
+            .OrderBy(owner => owner.Name, StringComparer.Ordinal)
+            .Select(owner => Path.Combine(owner.FullName, relativePagePath, fileName))
+            .Where(File.Exists)
+            .ToList();
+
+        if (matches.Count > 1)
+        {
+            LogAmbiguousDataFile(logger, fileName, relativePagePath, string.Join(", ", matches));
+        }
+
+        return matches.FirstOrDefault();
     }
 
     #endregion
@@ -1338,6 +1372,9 @@ internal sealed partial class RenderService(
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Data file '{DataFile}' for page '/{PagePath}' is missing, so the page renders without it. Run the generate step that creates it (for example 'revela generate statistics') or 'revela generate all'")]
     private static partial void LogDataFileMissing(ILogger logger, string dataFile, string pagePath);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Data file '{DataFile}' for page '{PagePath}' exists in more than one owner folder ({Paths}); using the first. Two plugins write the same file name")]
+    private static partial void LogAmbiguousDataFile(ILogger logger, string dataFile, string pagePath, string paths);
 
     #endregion
 }

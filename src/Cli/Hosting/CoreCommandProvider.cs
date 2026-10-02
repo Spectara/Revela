@@ -51,6 +51,16 @@ internal sealed class CoreCommandProvider : ICommandProvider
             Group: CommandGroups.Build,
             RequiresProject: true);
 
+        // Bespoke `clean all` (cache + output artifacts of every owner, never durable data).
+        // Registered explicitly so the host does NOT auto-generate one that runs every clean
+        // subcommand in turn; the subcommands stay sequential steps for the menu marker.
+        var cleanAllCommand = services.GetRequiredService<CleanAllCommand>();
+        yield return new CommandDescriptor(
+            cleanAllCommand.Create(),
+            ParentCommand: "clean",
+            Order: 0,
+            RequiresProject: true);
+
         var cleanOutputCommand = services.GetRequiredService<CleanOutputCommand>();
         yield return new CommandDescriptor(
             cleanOutputCommand.Create(),

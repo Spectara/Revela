@@ -7,7 +7,10 @@ namespace Spectara.Revela.Plugins.Compress;
 /// </summary>
 public static class CompressArtifacts
 {
-    /// <summary>Pre-compressed Gzip and Brotli siblings of the rendered site.</summary>
+    /// <summary>
+    /// Pre-compressed Gzip and Brotli siblings of the rendered site, with the record of which
+    /// files Revela created (<c>.revela/compress/ownership.json</c>); <see cref="ArtifactKind.Output"/>.
+    /// </summary>
     public static ArtifactId PrecompressedSite { get; } =
-        new("spectara.revela.compress/precompressed-site");
+        new("compress/precompressed-site");
 }

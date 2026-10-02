@@ -3,32 +3,92 @@ using Spectara.Revela.Sdk.Artifacts;
 
 namespace Spectara.Revela.Core.Services;
 
+/// <summary>
+/// Invalidates artifacts along the registered dependency graph.
+/// </summary>
+/// <remarks>
+/// Revela core registers its artifacts (<see cref="CoreArtifacts"/>) like any package. Plugins
+/// tested without core may still depend on core artifacts: those identifiers are always known.
+/// </remarks>
 internal sealed class ArtifactLifecycle(
     IEnumerable<IArtifactInvalidator> artifactInvalidators) : IArtifactLifecycle
 {
     private readonly IReadOnlyList<IArtifactInvalidator> invalidators = [.. artifactInvalidators];
 
-    public async ValueTask<OperationResult> PrepareToReplaceAsync(
+    public ValueTask<OperationResult> PrepareToReplaceAsync(
         ArtifactId artifact,
         CancellationToken cancellationToken = default)
     {
-        var validationError = ValidateGraph();
-        if (validationError is not null)
+        if (ValidateGraph() is { } validationError)
         {
-            return OperationResult.Fail(validationError);
+            return ValueTask.FromResult(OperationResult.Fail(validationError));
         }
 
-        var invalidatorByArtifact = invalidators.ToDictionary(item => item.Artifact);
-        if (!CoreArtifacts.All.Contains(artifact) && !invalidatorByArtifact.ContainsKey(artifact))
+        if (!IsKnown(artifact))
         {
-            return OperationResult.Fail($"Unknown artifact '{artifact}'.");
+            return ValueTask.FromResult(OperationResult.Fail($"Unknown artifact '{artifact}'."));
         }
 
-        var orderedInvalidators = new List<IArtifactInvalidator>();
+        var ordered = new List<IArtifactInvalidator>();
+        var visited = new HashSet<ArtifactId> { artifact };
+        CollectDependents(artifact, visited, ordered);
+        return RunAsync(ordered, cancellationToken);
+    }
+
+    public ValueTask<OperationResult> InvalidateAsync(
+        ArtifactId artifact,
+        CancellationToken cancellationToken = default)
+    {
+        if (ValidateGraph() is { } validationError)
+        {
+            return ValueTask.FromResult(OperationResult.Fail(validationError));
+        }
+
+        var target = invalidators.FirstOrDefault(item => item.Artifact == artifact);
+        if (target is null)
+        {
+            return ValueTask.FromResult(OperationResult.Fail($"Unknown artifact '{artifact}'."));
+        }
+
+        var ordered = new List<IArtifactInvalidator>();
+        Collect(target, [], ordered);
+        return RunAsync(ordered, cancellationToken);
+    }
+
+    public ValueTask<OperationResult> InvalidateAllAsync(
+        IReadOnlyCollection<ArtifactKind> kinds,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(kinds);
+        if (kinds.Contains(ArtifactKind.Durable))
+        {
+            throw new ArgumentException(
+                "Durable artifacts are only removed by their owner's own clean command.",
+                nameof(kinds));
+        }
+
+        if (ValidateGraph() is { } validationError)
+        {
+            return ValueTask.FromResult(OperationResult.Fail(validationError));
+        }
+
+        var ordered = new List<IArtifactInvalidator>();
         var visited = new HashSet<ArtifactId>();
-        CollectDependents(artifact, visited, orderedInvalidators);
+        foreach (var target in invalidators
+                     .Where(item => kinds.Contains(item.Kind))
+                     .OrderBy(item => item.Artifact.Value, StringComparer.Ordinal))
+        {
+            Collect(target, visited, ordered);
+        }
 
-        foreach (var invalidator in orderedInvalidators)
+        return RunAsync(ordered, cancellationToken);
+    }
+
+    private static async ValueTask<OperationResult> RunAsync(
+        IReadOnlyList<IArtifactInvalidator> ordered,
+        CancellationToken cancellationToken)
+    {
+        foreach (var invalidator in ordered)
         {
             cancellationToken.ThrowIfCancellationRequested();
             OperationResult result;
@@ -57,26 +117,36 @@ internal sealed class ArtifactLifecycle(
         return OperationResult.Ok();
     }
 
+    /// <summary>Adds the target after all of its transitive dependents.</summary>
+    private void Collect(
+        IArtifactInvalidator target,
+        HashSet<ArtifactId> visited,
+        List<IArtifactInvalidator> ordered)
+    {
+        if (!visited.Add(target.Artifact))
+        {
+            return;
+        }
+
+        CollectDependents(target.Artifact, visited, ordered);
+        ordered.Add(target);
+    }
+
     private void CollectDependents(
         ArtifactId artifact,
         HashSet<ArtifactId> visited,
-        List<IArtifactInvalidator> orderedInvalidators)
+        List<IArtifactInvalidator> ordered)
     {
-        var dependents = invalidators
-            .Where(item => item.DependsOn.Contains(artifact))
-            .OrderBy(item => item.Artifact.Value, StringComparer.Ordinal);
-
-        foreach (var dependent in dependents)
+        foreach (var dependent in invalidators
+                     .Where(item => item.DependsOn.Contains(artifact))
+                     .OrderBy(item => item.Artifact.Value, StringComparer.Ordinal))
         {
-            if (!visited.Add(dependent.Artifact))
-            {
-                continue;
-            }
-
-            CollectDependents(dependent.Artifact, visited, orderedInvalidators);
-            orderedInvalidators.Add(dependent);
+            Collect(dependent, visited, ordered);
         }
     }
+
+    private bool IsKnown(ArtifactId artifact) =>
+        CoreArtifacts.All.Contains(artifact) || invalidators.Any(item => item.Artifact == artifact);
 
     private string? ValidateGraph()
     {
@@ -90,9 +160,9 @@ internal sealed class ArtifactLifecycle(
                 return "An artifact invalidator declared an empty artifact identifier.";
             }
 
-            if (CoreArtifacts.All.Contains(invalidator.Artifact))
+            if (!Enum.IsDefined(invalidator.Kind))
             {
-                return $"Artifact '{invalidator.Artifact}' is owned by Revela Core.";
+                return $"Artifact '{invalidator.Artifact}' declares an unknown kind.";
             }
 
             if (!invalidatorByArtifact.TryAdd(invalidator.Artifact, invalidator))
@@ -114,9 +184,16 @@ internal sealed class ArtifactLifecycle(
                     return $"Artifact '{invalidator.Artifact}' declares an empty dependency.";
                 }
 
-                if (!CoreArtifacts.All.Contains(dependency) && !invalidatorByArtifact.ContainsKey(dependency))
+                invalidatorByArtifact.TryGetValue(dependency, out var dependencyOwner);
+                if (dependencyOwner is null && !CoreArtifacts.All.Contains(dependency))
                 {
                     return $"Artifact '{invalidator.Artifact}' depends on unknown artifact '{dependency}'.";
+                }
+
+                // Core artifacts are never durable, whether or not core is registered.
+                if (invalidator.Kind is ArtifactKind.Durable && dependencyOwner?.Kind is not ArtifactKind.Durable)
+                {
+                    return $"Durable artifact '{invalidator.Artifact}' may only depend on durable artifacts, not '{dependency}'.";
                 }
             }
         }

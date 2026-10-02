@@ -289,7 +289,7 @@ internal sealed partial class ImageService(
             }
 
             // Process images in parallel with limited worker pool
-            var cacheDirectory = Path.Combine(projectEnvironment.Value.Path, ProjectPaths.Cache);
+            var cacheDirectory = Path.Combine(projectEnvironment.Value.Path, ProjectPaths.GetOwnerDirectory(CoreArtifacts.Owner));
             var totalFilesCreated = 0;
             var totalSizeBytes = 0L;
 

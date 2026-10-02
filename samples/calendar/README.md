@@ -29,4 +29,4 @@ cd samples/calendar
 dotnet run --project ../../src/Cli -- generate calendar
 ```
 
-This generates `calendar.json` files in `.cache/` — the data pipeline input for `generate pages`.
+This generates `calendar.json` files in `.revela/calendar/` — the data pipeline input for `generate pages`.

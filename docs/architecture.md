@@ -194,15 +194,16 @@ have separate parallelism settings. There is no fixed speedup guarantee: work
 depends on input images, formats, cache state, and hardware.
 
 Skipping unchanged images relies on the image processing state in
-`.cache/images.json` ([`ImageStateStore`](../src/Features/Generate/Services/ImageStateStore.cs)),
+`.revela/core/images.json` ([`ImageStateStore`](../src/Features/Generate/Services/ImageStateStore.cs)),
 not on the scan manifest. Per source image it records a fingerprint of the source
 file (size, modification time) and the pipeline (output version, resize mode) plus
 the quality each format was encoded with. An image is re-encoded only when that
 fingerprint changes, a configured quality differs, or an expected variant file is
 missing. The state has its own schema version, so manifest format changes and
 manifest rebuilds never re-encode images; only image-output changes do. It is
-checkpointed during long runs and written atomically. Deleting `.cache/` (for
-example `clean cache`) drops it and re-encodes everything on the next build.
+checkpointed during long runs and written atomically. It belongs to the processed
+images artifact, so it is removed together with the variants (see
+[Artifact Ownership](#artifact-ownership)).
 
 NetVips keeps image processing and EXIF extraction in-process. Markdig and Scriban
 separate content parsing from theme presentation without requiring a web server.
@@ -250,10 +251,81 @@ See [Plugin Development](plugin-development.md) for packaging and authoring exam
 
 ## Artifact Ownership
 
+Every file Revela or a plugin produces belongs to exactly one artifact
+([`IArtifactInvalidator`](../src/Sdk/Artifacts/IArtifactInvalidator.cs)) with an
+`owner/name` id. Core registers its artifacts the same way plugins do; nothing
+deletes folders on its own.
+
+### Owner Folders
+
+Files outside the output live in the owner's folder, `.revela/<owner>/`
+([`ProjectPaths.GetOwnerDirectory`](../src/Sdk/ProjectPaths.cs)), where the owner
+is the owner part of the artifact id. The id was chosen over the plugin config key
+(Calendar and Compress have none) and the package id (core has none, and folder
+names would be long): every file in `.revela/` must belong to a registered
+artifact anyway, so the artifact owner is the one identifier every writer already
+has. Owner names are validated because they become folder names.
+
+```
+.revela/
+  core/          manifest.json (core/manifest), images.json (core/processed-images)
+  statistics/    <page>/statistics.json (statistics/data)
+  calendar/      <page>/calendar.json (calendar/data)
+  compress/      ownership.json (compress/precompressed-site)
+```
+
+Nothing Revela-internal is written into the output directory, so a deployed site
+contains only the site, and `revela serve` refuses dot-files and dot-folders
+(except `/.well-known/`) as defense in depth. A page's `data = { … }` front matter
+reads `<page>/<name>.json` from the owner folders (all owners except `core`).
+
+### Artifact Kinds
+
+The owner declares how long each artifact lives
+([`ArtifactKind`](../src/Sdk/Artifacts/ArtifactKind.cs)); the folder says nothing
+about it, and one owner may have artifacts of several kinds.
+
+| Kind | Meaning | Core and official artifacts | Removed by |
+|------|---------|-----------------------------|------------|
+| `Cache` | Cheap to rebuild from the source (and durable artifacts) | `core/manifest`, `statistics/data`, `calendar/data` | `clean cache`, `clean all` |
+| `Output` | Belongs to or describes the output | `core/rendered-site`, `core/processed-images` (variants and `images.json`), `compress/precompressed-site` (sidecars and `ownership.json`) | `clean output`, `clean all` |
+| `Durable` | Expensive or impossible to reproduce (e.g. AI captions) | none yet | only the owner's own clean command |
+
+The manifest stays rebuildable: a future durable enrichment (captions, keywords)
+lives in its owner's folder as a durable artifact and is merged into the scan
+result while scanning, never stored only in the manifest.
+
+### The Graph
+
+A `DependsOn` edge means "must be invalidated when the dependency is replaced or
+invalidated". The [lifecycle](../src/Core/Services/ArtifactLifecycle.cs) validates
+the graph on every use: unique owners, known dependencies, no cycles, and durable
+artifacts depend only on durable artifacts (otherwise a rescan would delete them).
+It then always invalidates dependents before what they depend on:
+
+- `PrepareToReplaceAsync(artifact)` - before a producer replaces an artifact, its
+  transitive dependents (for example a scan invalidates `statistics/data` and
+  `calendar/data`; rendering invalidates `compress/precompressed-site`).
+- `InvalidateAsync(artifact)` - the owner's own clean command (`clean statistics`,
+  `clean calendar`, `clean compress`): the artifact and its dependents.
+- `InvalidateAllAsync(kinds)` - the generic clean commands: every artifact of the
+  kinds and their dependents. `clean cache` = `Cache`, `clean output` = `Output`,
+  `clean all` = both. `Durable` is rejected.
+
+Only declare an edge when the dependency's new version makes the dependent wrong.
+The rendered site and processed images are made from the source files, not from
+the manifest file, so they do not depend on `core/manifest` and `clean cache` keeps
+the output. Before any `Output` owner runs, the generic clean commands refuse an
+output path that is a filesystem root or is, or contains, the project, source or
+home directory; the core output invalidators check the same guard. `clean images`
+is not an invalidation: it prunes variants no longer used by the manifest or the
+configuration, which the image state never claims as current.
+
+### Producers
+
 Producers must invalidate downstream artifacts before replacing their inputs.
-The shared artifact lifecycle follows declared dependencies transitively and
-rejects missing dependencies, duplicate owners, and cycles. The producer then
-cleans its own previous artifact; cleanup failure must stop the write.
+The producer then cleans its own previous artifact; cleanup failure must stop the
+write.
 
 This applies to direct commands and engine calls, not just `generate all`.
 Registration does not intercept arbitrary plugin filesystem writes. Plugins must
@@ -263,8 +335,10 @@ honor the same preparation/cleanup contract; see
 Changing the installed or enabled plugin set requires `revela clean all` before
 regeneration because unloaded plugins cannot participate in invalidation. Artifact
 dependencies do not imply ownership of unrelated files. Compression separately
-records owned sidecars and fingerprints in the output-root
-`.revela-compress.manifest`, which survives cache cleanup. It never adopts files
+records owned sidecars and fingerprints in `.revela/compress/ownership.json`
+(outside the output, so it is never published); the record is part of the
+`compress/precompressed-site` output artifact and is deleted once it owns no files.
+It never adopts files
 based on their extension or contents; unowned or externally changed targets are
 preserved and conflicts fail explicitly. Completed sibling-staged writes are
 recorded, and failed registration rolls back only files created by that operation.

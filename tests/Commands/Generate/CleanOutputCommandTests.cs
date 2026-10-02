@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using Spectara.Revela.Features.Generate;
 using Spectara.Revela.Features.Generate.Commands;
 using Spectara.Revela.Sdk.Abstractions;
 using Spectara.Revela.Tests.Shared.Fixtures;
@@ -24,7 +25,7 @@ public sealed class CleanOutputCommandTests
         using var workspace = TestProject.Create();
         var projectPath = CreateProject(workspace.RootPath, projectSubdirectory, output, source);
         var photo = CreateFile(Path.Combine(projectPath, source), "photo.jpg");
-        using var host = RevelaTestHost.Build(projectPath, services => services.AddTransient<CleanOutputCommand>());
+        using var host = RevelaTestHost.Build(projectPath, services => services.AddGenerateFeature());
         var command = host.Services.GetRequiredService<CleanOutputCommand>();
 
         var exitCode = await command.ExecuteAsync(CancellationToken.None);
@@ -40,7 +41,7 @@ public sealed class CleanOutputCommandTests
         using var workspace = TestProject.Create();
         var projectPath = CreateProject(workspace.RootPath, string.Empty, ".", "source");
         var photo = CreateFile(Path.Combine(projectPath, "source"), "photo.jpg");
-        using var host = RevelaTestHost.Build(projectPath, services => services.AddTransient<CleanOutputCommand>());
+        using var host = RevelaTestHost.Build(projectPath, services => services.AddGenerateFeature());
         IPipelineStep step = host.Services.GetRequiredService<CleanOutputCommand>();
 
         var result = await step.ExecuteAsync(CancellationToken.None);
@@ -60,7 +61,7 @@ public sealed class CleanOutputCommandTests
         var photo = CreateFile(Path.Combine(projectPath, "source"), "photo.jpg");
         var outputPath = Path.GetFullPath(Path.Combine(projectPath, output));
         _ = CreateFile(outputPath, "index.html");
-        using var host = RevelaTestHost.Build(projectPath, services => services.AddTransient<CleanOutputCommand>());
+        using var host = RevelaTestHost.Build(projectPath, services => services.AddGenerateFeature());
         var command = host.Services.GetRequiredService<CleanOutputCommand>();
 
         var exitCode = await command.ExecuteAsync(CancellationToken.None);

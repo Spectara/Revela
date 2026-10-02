@@ -515,6 +515,59 @@ public sealed class StaticFileServerTests
 
     [TestMethod]
     [TestCategory("Integration")]
+    [DataRow("/.env", DisplayName = "dot-file in root")]
+    [DataRow("/.revela/compress/ownership.json", DisplayName = "file in dot-folder")]
+    [DataRow("/assets/.env", DisplayName = "nested dot-file")]
+    [DataRow("/assets/.git/config", DisplayName = "nested dot-folder")]
+    public async Task Server_DotFileOrFolder_Returns404WithoutContent(string path)
+    {
+        var tempDir = Path.Combine(Path.GetTempPath(), $"revela-serve-test-{Guid.NewGuid():N}");
+        var file = Path.Combine(tempDir, path.TrimStart('/').Replace('/', Path.DirectorySeparatorChar));
+        Directory.CreateDirectory(Path.GetDirectoryName(file)!);
+        await File.WriteAllTextAsync(file, "SECRET");
+
+        try
+        {
+            await using var server = StartServer(tempDir, out var port);
+            using var client = new HttpClient();
+
+            using var response = await client.GetAsync(LocalUri(port, path));
+
+            Assert.AreEqual(HttpStatusCode.NotFound, response.StatusCode);
+            Assert.DoesNotContain("SECRET", await response.Content.ReadAsStringAsync(), StringComparison.Ordinal);
+        }
+        finally
+        {
+            Directory.Delete(tempDir, recursive: true);
+        }
+    }
+
+    [TestMethod]
+    [TestCategory("Integration")]
+    public async Task Server_WellKnownFolder_IsServed()
+    {
+        // RFC 8615: /.well-known/ is a public, standard location (security.txt, ACME challenges).
+        var tempDir = Path.Combine(Path.GetTempPath(), $"revela-serve-test-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(Path.Combine(tempDir, ".well-known"));
+        await File.WriteAllTextAsync(Path.Combine(tempDir, ".well-known", "security.txt"), "Contact: mailto:me@example.com");
+
+        try
+        {
+            await using var server = StartServer(tempDir, out var port);
+            using var client = new HttpClient();
+
+            using var response = await client.GetAsync(LocalUri(port, "/.well-known/security.txt"));
+
+            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+        }
+        finally
+        {
+            Directory.Delete(tempDir, recursive: true);
+        }
+    }
+
+    [TestMethod]
+    [TestCategory("Integration")]
     public async Task Server_DirectoryTraversal_Returns403()
     {
         // Arrange

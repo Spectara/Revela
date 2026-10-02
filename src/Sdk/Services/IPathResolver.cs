@@ -16,6 +16,11 @@ namespace Spectara.Revela.Sdk.Services;
 /// <item>Absolute paths (e.g., "D:\OneDrive\Photos")</item>
 /// </list>
 /// </para>
+/// <para>
+/// Only site files belong in <see cref="OutputPath"/>: everything there is published. Revela core
+/// and each package keep their own files in a fixed, non-configurable owner folder:
+/// <see cref="ProjectEnvironment.Path"/> combined with <see cref="ProjectPaths.GetOwnerDirectory"/>.
+/// </para>
 /// </remarks>
 public interface IPathResolver
 {

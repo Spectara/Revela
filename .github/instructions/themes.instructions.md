@@ -50,7 +50,7 @@ public sealed class LuminaTheme : EmbeddedTheme  // base class for NuGet themes
 | `gallery` | Current page (home page included): `title`, `description`, `body` (rendered Markdown), `cover_image`, `template`, `slug`, `images`. The home page without a front-matter title uses the site title |
 | `gallery.cover_image` | Resolved `Image` from `cover` front-matter (null if unset) |
 | `images` | Array of `Image` objects (per-image: `sizes`, `placeholder`) |
-| *(data sources)* | Front matter `data = { name: source }` adds variables: `$galleries` (all galleries), `$images` (page images) or a plugin JSON file from `.cache/` (e.g. `statistics.json`). Extensions can declare defaults per template |
+| *(data sources)* | Front matter `data = { name: source }` adds variables: `$galleries` (all galleries), `$images` (page images) or a plugin JSON file from the page's folder in a plugin's owner folder `.revela/<owner>/` (e.g. `statistics.json`). Extensions can declare defaults per template |
 
 A missing layout or `Partials/ContentImage.revela` fails the render with a clear error — there is no built-in fallback markup. Templates and includes are parsed once per build and shared by all pages.
 

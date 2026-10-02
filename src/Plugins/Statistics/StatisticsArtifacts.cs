@@ -7,7 +7,10 @@ namespace Spectara.Revela.Plugins.Statistics;
 /// </summary>
 public static class StatisticsArtifacts
 {
-    /// <summary>Generated statistics data consumed by themes and plugins.</summary>
+    /// <summary>
+    /// Generated statistics data consumed by themes and plugins: <c>.revela/statistics/&lt;page&gt;/statistics.json</c>
+    /// (<see cref="ArtifactKind.Cache"/>, rebuilt from the manifest).
+    /// </summary>
     public static ArtifactId Data { get; } =
-        new("spectara.revela.statistics/data");
+        new("statistics/data");
 }

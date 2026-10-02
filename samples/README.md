@@ -40,7 +40,12 @@ The following paths are excluded from version control:
 ```gitignore
 samples/**/source/    # Downloaded/input images
 samples/**/output/    # Generated output
+samples/**/.revela/   # Revela's local data, one folder per owner (core and plugins)
 ```
+
+`.revela/` is local build data like `output/`, so ignore it entirely. On a build
+server that keeps its working directory between runs, keep `.revela/` together with
+`output/` to avoid re-encoding every image; back it up if a plugin keeps durable data there.
 
 This keeps the repository small while allowing real test data via plugins.
 

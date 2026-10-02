@@ -253,7 +253,7 @@ public sealed class CalendarGenerateStepTests
             File.WriteAllText(Path.Combine(pageDirectory, SourceFileName), content);
         }
 
-        var cacheDirectory = Path.Combine(project.RootPath, ProjectPaths.Cache);
+        var cacheDirectory = Path.Combine(project.RootPath, ProjectPaths.GetOwnerDirectory("calendar"));
         Directory.CreateDirectory(Path.Combine(cacheDirectory, PagePath));
         File.WriteAllText(Path.Combine(cacheDirectory, "manifest.json"), "{}");
         File.WriteAllText(GetCalendarJsonPath(project), SentinelJson);
@@ -296,14 +296,14 @@ public sealed class CalendarGenerateStepTests
 
     private static string WriteCalendarJson(TestProject project, string pagePath)
     {
-        var path = Path.Combine(project.RootPath, ProjectPaths.Cache, pagePath, "calendar.json");
+        var path = Path.Combine(project.RootPath, ProjectPaths.GetOwnerDirectory("calendar"), pagePath, "calendar.json");
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
         File.WriteAllText(path, SentinelJson);
         return path;
     }
 
     private static string GetCalendarJsonPath(TestProject project) =>
-        Path.Combine(project.RootPath, ProjectPaths.Cache, PagePath, "calendar.json");
+        Path.Combine(project.RootPath, ProjectPaths.GetOwnerDirectory("calendar"), PagePath, "calendar.json");
 
     private static async Task AssertSuccessfulExecutionAsync(
         CalendarGenerateStep step, bool useCli, CancellationToken cancellationToken = default)

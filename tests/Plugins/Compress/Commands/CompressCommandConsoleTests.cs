@@ -31,6 +31,7 @@ public sealed class CompressCommandConsoleTests
         var command = new CompressCommand(
             NullLogger<CompressCommand>.Instance,
             pathResolver,
+            project.Environment(),
             new CompressionService(NullLogger<CompressionService>.Instance),
             lifecycle,
             Substitute.For<IConsoleCapabilities>());

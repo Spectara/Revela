@@ -25,11 +25,10 @@ public sealed class CleanCompressCommandTests
         testDirectory = project.OutputPath;
         Directory.CreateDirectory(testDirectory);
 
-        var logger = NullLogger<CleanCompressCommand>.Instance;
         var pathResolver = Substitute.For<IPathResolver>();
         pathResolver.OutputPath.Returns(testDirectory);
 
-        command = new CleanCompressCommand(logger, pathResolver);
+        command = new CleanCompressCommand(new TestArtifactLifecycle(new CompressedSiteInvalidator(pathResolver, project.Environment())));
     }
 
     [TestCleanup]
@@ -53,7 +52,7 @@ public sealed class CleanCompressCommandTests
         var htmlPath = Path.Combine(testDirectory, "index.html");
         var gzipPath = htmlPath + ".gz";
         await File.WriteAllTextAsync(htmlPath, new string('x', 512));
-        await new CompressionService(NullLogger<CompressionService>.Instance).CompressDirectoryAsync(testDirectory);
+        await new CompressionService(NullLogger<CompressionService>.Instance).CompressDirectoryAsync(testDirectory, project.OwnerDirectory());
 
         var cmd = command.Create();
 
@@ -73,7 +72,7 @@ public sealed class CleanCompressCommandTests
         var htmlPath = Path.Combine(testDirectory, "index.html");
         var brotliPath = htmlPath + ".br";
         await File.WriteAllTextAsync(htmlPath, new string('x', 512));
-        await new CompressionService(NullLogger<CompressionService>.Instance).CompressDirectoryAsync(testDirectory);
+        await new CompressionService(NullLogger<CompressionService>.Instance).CompressDirectoryAsync(testDirectory, project.OwnerDirectory());
 
         var cmd = command.Create();
 
@@ -97,7 +96,7 @@ public sealed class CleanCompressCommandTests
         var subGz = Path.Combine(subDir, "about.html.gz");
         await File.WriteAllTextAsync(Path.Combine(testDirectory, "index.html"), new string('x', 512));
         await File.WriteAllTextAsync(Path.Combine(subDir, "about.html"), new string('x', 512));
-        await new CompressionService(NullLogger<CompressionService>.Instance).CompressDirectoryAsync(testDirectory);
+        await new CompressionService(NullLogger<CompressionService>.Instance).CompressDirectoryAsync(testDirectory, project.OwnerDirectory());
 
         var cmd = command.Create();
 
@@ -141,9 +140,9 @@ public sealed class CleanCompressCommandTests
     {
         var original = Path.Combine(testDirectory, "index.html");
         await File.WriteAllTextAsync(original, new string('x', 512));
-        await new CompressionService(NullLogger<CompressionService>.Instance).CompressDirectoryAsync(testDirectory);
+        await new CompressionService(NullLogger<CompressionService>.Instance).CompressDirectoryAsync(testDirectory, project.OwnerDirectory());
         await File.WriteAllTextAsync(original + ".gz", "replacement");
-        var manifestPath = Path.Combine(testDirectory, ".revela-compress.manifest");
+        var manifestPath = project.OwnershipRecord();
         var manifest = await File.ReadAllBytesAsync(manifestPath);
 
         if (pipeline)
@@ -173,8 +172,8 @@ public sealed class CleanCompressCommandTests
         }
         var original = Path.Combine(testDirectory, "index.html");
         await File.WriteAllTextAsync(original, new string('x', 512));
-        await new CompressionService(NullLogger<CompressionService>.Instance).CompressDirectoryAsync(testDirectory);
-        var manifestPath = Path.Combine(testDirectory, ".revela-compress.manifest");
+        await new CompressionService(NullLogger<CompressionService>.Instance).CompressDirectoryAsync(testDirectory, project.OwnerDirectory());
+        var manifestPath = project.OwnershipRecord();
         var before = await File.ReadAllBytesAsync(manifestPath);
         await using (var locked = new FileStream(original + ".gz", FileMode.Open, FileAccess.Read, FileShare.None))
         {
@@ -194,7 +193,7 @@ public sealed class CleanCompressCommandTests
 
         var resolver = Substitute.For<IPathResolver>();
         resolver.OutputPath.Returns(testDirectory);
-        var recreated = new CleanCompressCommand(NullLogger<CleanCompressCommand>.Instance, resolver);
+        var recreated = new CleanCompressCommand(new TestArtifactLifecycle(new CompressedSiteInvalidator(resolver, project.Environment())));
         var retry = await ((IPipelineStep)recreated).ExecuteAsync(CancellationToken.None);
 
         Assert.IsTrue(retry.Success);
@@ -210,7 +209,7 @@ public sealed class CleanCompressCommandTests
     {
         var original = Path.Combine(testDirectory, "index.html");
         await File.WriteAllTextAsync(original, new string('x', 512));
-        await new CompressionService(NullLogger<CompressionService>.Instance).CompressDirectoryAsync(testDirectory);
+        await new CompressionService(NullLogger<CompressionService>.Instance).CompressDirectoryAsync(testDirectory, project.OwnerDirectory());
         File.Delete(original);
         var download = Path.Combine(testDirectory, "download.gz");
         await File.WriteAllTextAsync(download, "unrelated");
@@ -236,7 +235,7 @@ public sealed class CleanCompressCommandTests
     {
         var original = Path.Combine(testDirectory, "index.html");
         await File.WriteAllTextAsync(original, new string('x', 512));
-        await new CompressionService(NullLogger<CompressionService>.Instance).CompressDirectoryAsync(testDirectory);
+        await new CompressionService(NullLogger<CompressionService>.Instance).CompressDirectoryAsync(testDirectory, project.OwnerDirectory());
         using var cancellation = new CancellationTokenSource();
         await cancellation.CancelAsync();
 

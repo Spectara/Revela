@@ -26,7 +26,7 @@ public sealed class ManifestReaderTests
         var snapshot = await host.Services.GetRequiredService<IManifestReader>().TryLoadAsync();
 
         Assert.IsNull(snapshot);
-        Assert.IsFalse(Directory.Exists(Path.Combine(project.RootPath, ProjectPaths.Cache)));
+        Assert.IsFalse(Directory.Exists(Path.Combine(project.RootPath, ProjectPaths.GetOwnerDirectory("core"))));
     }
 
     [TestMethod]
@@ -85,7 +85,7 @@ public sealed class ManifestReaderTests
 
     private static void WriteManifest(TestProject project, string json)
     {
-        var cache = Path.Combine(project.RootPath, ProjectPaths.Cache);
+        var cache = Path.Combine(project.RootPath, ProjectPaths.GetOwnerDirectory("core"));
         Directory.CreateDirectory(cache);
         File.WriteAllText(Path.Combine(cache, "manifest.json"), json);
     }

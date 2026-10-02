@@ -134,10 +134,12 @@ the SDK for consistent output.
 
 ## Pipeline steps
 
-A step of `generate all` or `clean all` is two things: a CLI command registered with
+A step of `generate all` is two things: a CLI command registered with
 `IsSequentialStep: true`, and an `IPipelineStep` service that the engine (and other
 programmatic callers) run without any console output. Usually one class implements
-both, with `IPipelineStep` implemented explicitly:
+both, with `IPipelineStep` implemented explicitly. (`clean all` is not a sequence of steps:
+it invalidates artifacts by kind, see [how cleaning works](#how-cleaning-works). A plugin's
+`clean <name>` command is still registered as a sequential step for the menu marker.)
 
 ```csharp
 internal sealed partial class SearchIndexStep(SearchIndexWriter writer) : IPipelineStep
@@ -172,8 +174,8 @@ yield return new CommandDescriptor(
 
 `PipelineOrder` (`Scan` 100, `Pages` 300, `Images` 400) and `CleanPipelineOrder`
 (`Output` 100, `Images` 150, `Cache` 200) are the host's slots. Steps that produce data
-read by page rendering go between `Scan` and `Pages`; plugin clean steps go after
-`Cache`. Declare a named constant relative to these slots rather than a bare number.
+read by page rendering go between `Scan` and `Pages`; plugin clean commands are listed after
+`Cache` in the menu. Declare a named constant relative to these slots rather than a bare number.
 
 ---
 
@@ -295,7 +297,7 @@ comes from `PackageVersion.FromAssembly(...)`.
 ## Reading the scanned site
 
 Plugins that work from the scanned site (statistics, calendars) inject `IManifestReader`
-(`Spectara.Revela.Sdk.Abstractions`) instead of reading `.cache/manifest.json`:
+(`Spectara.Revela.Sdk.Abstractions`) instead of reading `.revela/core/manifest.json`:
 
 ```csharp
 var snapshot = await manifestReader.TryLoadAsync(cancellationToken);
@@ -312,15 +314,83 @@ The snapshot is read-only; only Revela itself writes the manifest.
 
 ---
 
+## Where plugins keep files and how clean works
+
+### Your owner folder
+
+Every file a plugin keeps outside the output lives in its own folder, `.revela/<owner>/`.
+The owner is the owner part of your artifact ids (`acme.captions/text` → `acme.captions`),
+so pick one distinctive owner name and use it for all your artifacts. Resolve the folder
+through the SDK, never hardcode `.revela`:
+
+```csharp
+var folder = Path.Combine(
+    project.Value.Path,                                   // IOptions<ProjectEnvironment>
+    ProjectPaths.GetOwnerDirectory(MyArtifacts.Data.Owner));
+```
+
+Owner names are lowercase letters and digits, optionally separated by single `.` or `-`
+(`ProjectPaths.IsValidOwner`); `core` belongs to Revela. Files in
+`.revela/<owner>/<page>/<name>.json` are what a page's `data = { … }` front matter reads.
+Only files of the published site go into the output (`IPathResolver.OutputPath`):
+everything there is uploaded, so never write bookkeeping files into it.
+
+### Declare a kind for every artifact
+
+Every file set you produce is an artifact with an `IArtifactInvalidator`. Its `Kind` says
+how long it lives, and therefore which clean command removes it:
+
+| Kind | Rule | Example | Removed by |
+|------|------|---------|------------|
+| `ArtifactKind.Cache` | Reproducible from the source (and durable artifacts); may be deleted at any time, losing it only costs time | `.revela/statistics/<page>/statistics.json` (Statistics) | `clean cache`, `clean all` |
+| `ArtifactKind.Output` | Part of the output or describes it; goes together with the output | `.revela/compress/ownership.json` and the `.gz`/`.br` sidecars (Compress) | `clean output`, `clean all` |
+| `ArtifactKind.Durable` | Expensive or impossible to reproduce | captions an AI service wrote for each photo | only your own `clean <name>` |
+
+One owner folder may hold artifacts of several kinds. A durable artifact may only depend on
+other durable artifacts; otherwise a rescan would invalidate it.
+
+### Keep the manifest rebuildable
+
+The scan manifest (`core/manifest`) is a cache artifact: `clean cache` deletes it and the
+next scan rebuilds it from the source files. Never make the manifest the only copy of
+something expensive. A plugin that enriches photos (for example AI captions or keywords)
+stores its results as a durable artifact in its own folder and merges them into what it
+provides during the scan.
+
+### How cleaning works
+
+The clean commands do not delete folders; they call the owners. `clean cache`,
+`clean output` and `clean all` invalidate every registered artifact of their kinds
+(core and plugin alike) plus everything that depends on them, dependents first.
+Your own `clean <name>` step removes exactly your artifact through the same invalidator:
+
+```csharp
+internal sealed class CleanSearchIndexCommand(IArtifactLifecycle lifecycle)
+{
+    public ValueTask<OperationResult> ExecuteAsync(CancellationToken cancellationToken) =>
+        lifecycle.InvalidateAsync(ExampleArtifacts.SearchIndex, cancellationToken);
+}
+```
+
+Your files must tolerate disappearing between runs: a missing cache file is rebuilt, a
+missing output record means "nothing in the output is known to be mine".
+
+---
+
 ## Derived output artifacts
 
 Plugins that create files derived from generated output must declare and invalidate
 those artifacts. Revela invokes registered invalidators before an input artifact is
 replaced, including through direct CLI commands and `IRevelaEngine` calls.
 
-Artifact IDs are case-sensitive and use a namespaced `owner/name` form. Revela's
-built-in roots are published by `CoreArtifacts`. A plugin publishes IDs for its own
-artifacts from its package so dependent plugins can reference the same typed value.
+Artifact IDs are case-sensitive and use an `owner/name` form; the owner also names your
+folder (see above). Revela's own artifacts are published by `CoreArtifacts`. A plugin
+publishes IDs for its own artifacts from its package so dependent plugins can reference the
+same typed value.
+
+A `DependsOn` edge means "must be invalidated when the dependency is replaced". Only
+declare it when the dependency's new version makes your artifact wrong; reading a file is not
+enough.
 
 ```csharp
 using Spectara.Revela.Sdk.Artifacts;
@@ -328,12 +398,15 @@ using Spectara.Revela.Sdk.Artifacts;
 public static class ExampleArtifacts
 {
     public static ArtifactId SearchIndex { get; } =
-        new("yourname.example/search-index");
+        new("yourname.search/index");
 }
 
 internal sealed class SearchIndexInvalidator(IOptions<ProjectEnvironment> project) : IArtifactInvalidator
 {
     public ArtifactId Artifact => ExampleArtifacts.SearchIndex;
+
+    // Rebuilt from the rendered site at any time.
+    public ArtifactKind Kind => ArtifactKind.Cache;
 
     public IReadOnlyCollection<ArtifactId> DependsOn { get; } =
         [CoreArtifacts.RenderedSite];
@@ -342,8 +415,8 @@ internal sealed class SearchIndexInvalidator(IOptions<ProjectEnvironment> projec
         CancellationToken cancellationToken = default)
     {
         // Delete every file owned by SearchIndex. Return failure if cleanup is incomplete.
-        var cache = Path.Combine(project.Value.Path, ProjectPaths.Cache);
-        var deletion = DerivedFiles.DeleteAll(cache, "search-index.json", cancellationToken);
+        var folder = Path.Combine(project.Value.Path, ProjectPaths.GetOwnerDirectory(Artifact.Owner));
+        var deletion = DerivedFiles.DeleteAll(folder, "search-index.json", cancellationToken);
         return ValueTask.FromResult(deletion.Failures.Count == 0
             ? OperationResult.Ok()
             : OperationResult.Fail(deletion.Failures[0].Message));
@@ -352,9 +425,8 @@ internal sealed class SearchIndexInvalidator(IOptions<ProjectEnvironment> projec
 ```
 
 `DerivedFiles.DeleteAll` removes every file with that name below a directory and never
-follows symbolic links or junctions, so a link inside `.cache` cannot make Revela delete
-files elsewhere. Use the same call from your `clean <name>` step so both remove exactly
-the same files.
+follows symbolic links or junctions, so a link inside your owner folder cannot make Revela
+delete files elsewhere.
 
 Register the invalidator as an enumerable service:
 

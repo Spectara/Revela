@@ -16,7 +16,7 @@ public sealed class CalendarDataInvalidatorTests
     public async Task InvalidateAsync_CalendarFilesExist_DeletesCalendarFilesOnly()
     {
         using var project = TestProject.CreateMinimal();
-        var pageCache = Path.Combine(project.RootPath, ProjectPaths.Cache, "availability");
+        var pageCache = Path.Combine(project.RootPath, ProjectPaths.GetOwnerDirectory("calendar"), "availability");
         Directory.CreateDirectory(pageCache);
         var calendarPath = Path.Combine(pageCache, "calendar.json");
         var unrelatedPath = Path.Combine(pageCache, "statistics.json");
@@ -37,7 +37,7 @@ public sealed class CalendarDataInvalidatorTests
     public async Task InvalidateAsync_DirectoryLinkLeavesCache_PreservesExternalCalendar()
     {
         using var project = TestProject.CreateMinimal();
-        var cachePath = Path.Combine(project.RootPath, ProjectPaths.Cache);
+        var cachePath = Path.Combine(project.RootPath, ProjectPaths.GetOwnerDirectory("calendar"));
         Directory.CreateDirectory(cachePath);
         var external = project.RootPath + "-external";
         Directory.CreateDirectory(external);

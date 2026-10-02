@@ -297,7 +297,7 @@ data = { galleries: "$galleries", statistics: "statistics.json" }
 |--------|-------|
 | `$galleries` | All galleries of the site (same objects as `gallery`) |
 | `$images` | The images of the current page (same objects as `images`) |
-| `name.json` | Plugin-generated data from the page's folder in `.cache/` (for example `statistics.json`, `calendar.json`) |
+| `name.json` | Plugin-generated data from the page's folder in a plugin's folder below `.revela/` (for example `.revela/statistics/`) (for example `statistics.json`, `calendar.json`) |
 
 Theme extensions such as Lumina.Statistics and Lumina.Calendar provide default data sources for
 their templates, so their pages work without a `data` line.

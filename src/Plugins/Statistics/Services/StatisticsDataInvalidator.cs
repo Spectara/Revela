@@ -12,17 +12,22 @@ internal sealed class StatisticsDataInvalidator(
 
     public ArtifactId Artifact => StatisticsArtifacts.Data;
 
+    public ArtifactKind Kind => ArtifactKind.Cache;
+
     public IReadOnlyCollection<ArtifactId> DependsOn { get; } = [CoreArtifacts.Manifest];
 
     public ValueTask<OperationResult> InvalidateAsync(
         CancellationToken cancellationToken = default)
     {
-        var cachePath = Path.Combine(projectEnvironment.Value.Path, ProjectPaths.Cache);
-        var deletion = DerivedFiles.DeleteAll(cachePath, FileName, cancellationToken);
+        var deletion = DerivedFiles.DeleteAll(GetDataDirectory(projectEnvironment.Value.Path), FileName, cancellationToken);
 
         return new ValueTask<OperationResult>(deletion.Failures.Count == 0
             ? OperationResult.Ok()
             : OperationResult.Fail(
                 $"Could not delete '{deletion.Failures[0].Path}': {deletion.Failures[0].Message}"));
     }
+
+    /// <summary>Gets the plugin's folder, <c>.revela/statistics</c>, which holds one folder per page.</summary>
+    internal static string GetDataDirectory(string projectPath) =>
+        Path.Combine(projectPath, ProjectPaths.GetOwnerDirectory(StatisticsArtifacts.Data.Owner));
 }

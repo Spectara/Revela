@@ -20,7 +20,7 @@ namespace Spectara.Revela.Features.Generate.Models;
 ///   <item><description>EXIF data caching (replaces separate ExifCache)</description></item>
 /// </list>
 /// </para>
-/// <para>Location: <c>.cache/manifest.json</c></para>
+/// <para>Location: <c>.revela/core/manifest.json</c> (<see cref="Sdk.Artifacts.CoreArtifacts.Manifest"/>, a cache artifact)</para>
 /// <para>
 /// <b>Immutable:</b> all properties are <c>init</c>-only. To update the manifest,
 /// use the <c>with</c> expression to produce a modified copy.

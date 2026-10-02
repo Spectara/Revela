@@ -29,7 +29,7 @@ public sealed class CompressedSiteInvalidatorTests
 
         var pathResolver = Substitute.For<IPathResolver>();
         pathResolver.OutputPath.Returns(testDirectory);
-        invalidator = new CompressedSiteInvalidator(pathResolver);
+        invalidator = new CompressedSiteInvalidator(pathResolver, project.Environment());
     }
 
     [TestCleanup]
@@ -42,7 +42,7 @@ public sealed class CompressedSiteInvalidatorTests
         Directory.CreateDirectory(project.OutputPath);
         var pathResolver = Substitute.For<IPathResolver>();
         pathResolver.OutputPath.Returns(project.OutputPath);
-        var service = new CompressedSiteInvalidator(pathResolver);
+        var service = new CompressedSiteInvalidator(pathResolver, project.Environment());
 
         foreach (var suffix in new[] { ".gz", ".br" })
         {
@@ -77,7 +77,7 @@ public sealed class CompressedSiteInvalidatorTests
         var gzip = original + ".gz";
         var brotli = original + ".br";
         await File.WriteAllTextAsync(original, new string('x', 512));
-        await new CompressionService(NullLogger<CompressionService>.Instance).CompressDirectoryAsync(testDirectory);
+        await new CompressionService(NullLogger<CompressionService>.Instance).CompressDirectoryAsync(testDirectory, project.OwnerDirectory());
 
         var result = await invalidator.InvalidateAsync();
 
@@ -92,9 +92,9 @@ public sealed class CompressedSiteInvalidatorTests
     {
         var original = Path.Combine(testDirectory, "removed.html");
         await File.WriteAllTextAsync(original, new string('x', 512));
-        await new CompressionService(NullLogger<CompressionService>.Instance).CompressDirectoryAsync(testDirectory);
+        await new CompressionService(NullLogger<CompressionService>.Instance).CompressDirectoryAsync(testDirectory, project.OwnerDirectory());
         File.Delete(original);
-        var cache = Path.Combine(project.RootPath, ProjectPaths.Cache);
+        var cache = Path.Combine(project.RootPath, ProjectPaths.GetOwnerDirectory("core"));
         Directory.CreateDirectory(cache);
         await File.WriteAllTextAsync(Path.Combine(cache, "synthetic-cache"), "disposable");
         Directory.Delete(cache, recursive: true);
@@ -104,7 +104,7 @@ public sealed class CompressedSiteInvalidatorTests
         await File.WriteAllTextAsync(brotliDownload, "brotli download");
         var pathResolver = Substitute.For<IPathResolver>();
         pathResolver.OutputPath.Returns(testDirectory);
-        var recreated = new CompressedSiteInvalidator(pathResolver);
+        var recreated = new CompressedSiteInvalidator(pathResolver, project.Environment());
 
         var result = await recreated.InvalidateAsync();
 
@@ -113,8 +113,7 @@ public sealed class CompressedSiteInvalidatorTests
         Assert.IsFalse(File.Exists(original + ".br"));
         Assert.AreEqual("gzip download", await File.ReadAllTextAsync(gzipDownload));
         Assert.AreEqual("brotli download", await File.ReadAllTextAsync(brotliDownload));
-        var manifest = JsonNode.Parse(await File.ReadAllTextAsync(Path.Combine(testDirectory, ".revela-compress.manifest")))!;
-        Assert.IsEmpty(manifest["files"]!.AsArray());
+        Assert.IsFalse(File.Exists(project.OwnershipRecord()), "A record that owns nothing is removed with the sidecars.");
     }
 
     [TestMethod]
@@ -122,17 +121,17 @@ public sealed class CompressedSiteInvalidatorTests
     {
         var original = Path.Combine(testDirectory, "index.html");
         await File.WriteAllTextAsync(original, new string('x', 512));
-        await new CompressionService(NullLogger<CompressionService>.Instance).CompressDirectoryAsync(testDirectory);
+        await new CompressionService(NullLogger<CompressionService>.Instance).CompressDirectoryAsync(testDirectory, project.OwnerDirectory());
         var gzip = await File.ReadAllBytesAsync(original + ".gz");
         var brotli = await File.ReadAllBytesAsync(original + ".br");
-        File.Delete(Path.Combine(testDirectory, ".revela-compress.manifest"));
+        File.Delete(project.OwnershipRecord());
 
         var result = await invalidator.InvalidateAsync();
 
         Assert.IsTrue(result.Success);
         CollectionAssert.AreEqual(gzip, await File.ReadAllBytesAsync(original + ".gz"));
         CollectionAssert.AreEqual(brotli, await File.ReadAllBytesAsync(original + ".br"));
-        Assert.IsFalse(File.Exists(Path.Combine(testDirectory, ".revela-compress.manifest")));
+        Assert.IsFalse(File.Exists(project.OwnershipRecord()));
     }
 
     [TestMethod]
@@ -156,10 +155,10 @@ public sealed class CompressedSiteInvalidatorTests
     {
         var original = Path.Combine(testDirectory, "index.html");
         await File.WriteAllTextAsync(original, new string('x', 512));
-        await new CompressionService(NullLogger<CompressionService>.Instance).CompressDirectoryAsync(testDirectory);
+        await new CompressionService(NullLogger<CompressionService>.Instance).CompressDirectoryAsync(testDirectory, project.OwnerDirectory());
         var gzip = await File.ReadAllBytesAsync(original + ".gz");
         var brotli = await File.ReadAllBytesAsync(original + ".br");
-        var manifestPath = Path.Combine(testDirectory, ".revela-compress.manifest");
+        var manifestPath = project.OwnershipRecord();
         var manifest = JsonNode.Parse(await File.ReadAllTextAsync(manifestPath))!;
         var entries = manifest["files"]!.AsArray();
         switch (corruption)
@@ -235,7 +234,7 @@ public sealed class CompressedSiteInvalidatorTests
         var rootOriginal = Path.Combine(testDirectory, "root.html");
         await File.WriteAllTextAsync(original, new string('x', 512));
         await File.WriteAllTextAsync(rootOriginal, new string('x', 512));
-        await new CompressionService(NullLogger<CompressionService>.Instance).CompressDirectoryAsync(testDirectory);
+        await new CompressionService(NullLogger<CompressionService>.Instance).CompressDirectoryAsync(testDirectory, project.OwnerDirectory());
         Directory.Move(nested, Path.Combine(project.RootPath, "preserved"));
         var externalGzip = Path.Combine(external.OutputPath, "index.html.gz");
         await File.WriteAllTextAsync(externalGzip, "external download");
@@ -265,10 +264,10 @@ public sealed class CompressedSiteInvalidatorTests
         {
             var original = Path.Combine(rootLink, "index.html");
             await File.WriteAllTextAsync(original, new string('x', 512));
-            await new CompressionService(NullLogger<CompressionService>.Instance).CompressDirectoryAsync(rootLink);
+            await new CompressionService(NullLogger<CompressionService>.Instance).CompressDirectoryAsync(rootLink, project.OwnerDirectory());
             var resolver = Substitute.For<IPathResolver>();
             resolver.OutputPath.Returns(rootLink);
-            var linkedInvalidator = new CompressedSiteInvalidator(resolver);
+            var linkedInvalidator = new CompressedSiteInvalidator(resolver, project.Environment());
 
             var result = await linkedInvalidator.InvalidateAsync();
 
@@ -288,11 +287,11 @@ public sealed class CompressedSiteInvalidatorTests
     {
         var original = Path.Combine(testDirectory, "index.html");
         await File.WriteAllTextAsync(original, new string('x', 512));
-        await new CompressionService(NullLogger<CompressionService>.Instance).CompressDirectoryAsync(testDirectory);
+        await new CompressionService(NullLogger<CompressionService>.Instance).CompressDirectoryAsync(testDirectory, project.OwnerDirectory());
         var replacement = await File.ReadAllBytesAsync(original + ".gz");
         replacement[0] ^= 0xff;
         await File.WriteAllBytesAsync(original + ".gz", replacement);
-        var manifestPath = Path.Combine(testDirectory, ".revela-compress.manifest");
+        var manifestPath = project.OwnershipRecord();
         var before = await File.ReadAllBytesAsync(manifestPath);
 
         var result = await invalidator.InvalidateAsync();
@@ -307,7 +306,7 @@ public sealed class CompressedSiteInvalidatorTests
     {
         var original = Path.Combine(testDirectory, "index.html");
         await File.WriteAllTextAsync(original, new string('x', 512));
-        await new CompressionService(NullLogger<CompressionService>.Instance).CompressDirectoryAsync(testDirectory);
+        await new CompressionService(NullLogger<CompressionService>.Instance).CompressDirectoryAsync(testDirectory, project.OwnerDirectory());
         using var cancellation = new CancellationTokenSource();
         await cancellation.CancelAsync();
 

@@ -1,6 +1,8 @@
 using System.CommandLine;
 using System.Globalization;
 
+using Microsoft.Extensions.Options;
+
 using Spectara.Revela.Plugins.Compress.Services;
 using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Artifacts;
@@ -28,6 +30,7 @@ namespace Spectara.Revela.Plugins.Compress.Commands;
 internal sealed partial class CompressCommand(
     ILogger<CompressCommand> logger,
     IPathResolver pathResolver,
+    IOptions<ProjectEnvironment> projectEnvironment,
     CompressionService compressionService,
     IArtifactLifecycle artifactLifecycle,
     IConsoleCapabilities consoleCapabilities)
@@ -72,7 +75,10 @@ internal sealed partial class CompressCommand(
 
         try
         {
-            using var ownership = await CompressedSiteOwnership.OpenAsync(outputPath, cancellationToken);
+            using var ownership = await CompressedSiteOwnership.OpenAsync(
+                outputPath,
+                CompressedSiteOwnership.GetOwnerDirectory(projectEnvironment.Value.Path),
+                cancellationToken);
             await ownership.CleanAsync(cancellationToken);
             return await CompressAsync(outputPath, ownership, cancellationToken);
         }

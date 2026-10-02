@@ -19,7 +19,7 @@ public sealed class StatisticsDataInvalidatorTests
             Path.GetTempPath(),
             "revela-statistics-invalidation-tests",
             Guid.NewGuid().ToString());
-        var cachePath = Path.Combine(projectPath, ProjectPaths.Cache, "statistics");
+        var cachePath = Path.Combine(projectPath, ProjectPaths.GetOwnerDirectory("statistics"), "statistics");
         Directory.CreateDirectory(cachePath);
         var statisticsPath = Path.Combine(cachePath, "statistics.json");
         var unrelatedPath = Path.Combine(cachePath, "calendar.json");
@@ -55,7 +55,7 @@ public sealed class StatisticsDataInvalidatorTests
             Path.GetTempPath(),
             "revela-statistics-invalidation-tests",
             Guid.NewGuid().ToString());
-        var cachePath = Path.Combine(projectPath, ProjectPaths.Cache);
+        var cachePath = Path.Combine(projectPath, ProjectPaths.GetOwnerDirectory("statistics"));
         var externalDirectory = projectPath + "-external";
         var linkPath = Path.Combine(cachePath, "linked");
         Directory.CreateDirectory(cachePath);

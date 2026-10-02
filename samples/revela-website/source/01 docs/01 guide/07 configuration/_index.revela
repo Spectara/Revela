@@ -191,7 +191,30 @@ After `revela generate all`, your site is immediately live, with no file copying
 | Absolute | `D:\Photos` | `D:\Photos` |
 | Absolute | `/var/www/html` | `/var/www/html` |
 
-> **Output is disposable.** `revela clean output` deletes the whole output directory, and `revela clean images` deletes unused folders inside it. Both commands refuse to run, and delete nothing, if `output` is a drive or filesystem root, your home directory, the project folder, the source folder, or a folder that contains any of them. Keep `output` in a folder that only Revela writes to.
+> **Output is disposable.** `revela clean output` deletes the whole output directory (together with Revela's records of what it produced there), and `revela clean images` deletes unused folders inside it. Both commands refuse to run, and delete nothing, if `output` is a drive or filesystem root, your home directory, the project folder, the source folder, or a folder that contains any of them. Keep `output` in a folder that only Revela writes to.
+
+### Revela's Own Folder: `.revela/`
+
+Revela keeps its bookkeeping in a `.revela/` folder in your project, never in the output. Revela itself and each plugin have their own folder in it:
+
+| Folder | What's in it |
+|--------|--------------|
+| `.revela/core/` | What was scanned (photo list, EXIF data) and how the image files in `output/` were made |
+| `.revela/statistics/` | The Statistics plugin's data for each statistics page |
+| `.revela/calendar/` | The Calendar plugin's data for each calendar page |
+| `.revela/compress/` | Which `.gz`/`.br` files in `output/` the Compress plugin created |
+
+What a clean command removes depends on what the data is, not on the folder:
+
+| Command | Removes | Next build |
+|---------|---------|------------|
+| `revela clean cache` | Everything Revela can quickly rebuild from your photos: the scan and plugin data | Rescans, but encodes no photo again |
+| `revela clean output` | The generated site with everything that describes it: image files, the record of how they were made, compressed files | Encodes every photo again |
+| `revela clean all` | Both | Starts from scratch |
+
+A plugin can also keep **durable** data that is expensive or impossible to recreate (for example captions written by an AI service). No general clean command ever removes it; only that plugin's own clean command does.
+
+If you use Git, add `.revela/` to your `.gitignore`: it is local build data, like `output/`. On a build server, keep `.revela/` between runs together with `output/`, and include it in your backups if you use a plugin with durable data.
 
 ## Available Config Commands
 

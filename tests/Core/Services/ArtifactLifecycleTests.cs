@@ -83,19 +83,6 @@ public sealed class ArtifactLifecycleTests
     }
 
     [TestMethod]
-    public async Task PrepareToReplaceAsync_PluginClaimsCoreArtifact_ReturnsFailure()
-    {
-        var lifecycle = new ArtifactLifecycle([
-            new FakeInvalidator(CoreArtifacts.Manifest, [CoreArtifacts.RenderedSite], [])
-        ]);
-
-        var result = await lifecycle.PrepareToReplaceAsync(CoreArtifacts.RenderedSite);
-
-        Assert.IsFalse(result.Success);
-        StringAssert.Contains(result.ErrorMessage, "owned by Revela Core", StringComparison.Ordinal);
-    }
-
-    [TestMethod]
     public async Task PrepareToReplaceAsync_InvalidatorThrows_ReturnsContextualFailure()
     {
         var invalidator = new ThrowingInvalidator();
@@ -124,13 +111,118 @@ public sealed class ArtifactLifecycleTests
         StringAssert.Contains(result.ErrorMessage, "cycle", StringComparison.OrdinalIgnoreCase);
     }
 
+    [TestMethod]
+    public async Task InvalidateAllAsync_Cache_RemovesCacheArtifactsWithDependentsAndKeepsOutput()
+    {
+        var calls = new List<ArtifactId>();
+        var graph = CoreGraph(calls);
+        var pluginData = new FakeInvalidator(new ArtifactId("stats/data"), [CoreArtifacts.Manifest], calls, kind: ArtifactKind.Cache);
+        var lifecycle = new ArtifactLifecycle([.. graph, pluginData]);
+
+        var result = await lifecycle.InvalidateAllAsync([ArtifactKind.Cache]);
+
+        Assert.IsTrue(result.Success, result.ErrorMessage);
+        CollectionAssert.AreEqual(new[] { pluginData.Artifact, CoreArtifacts.Manifest }, calls);
+    }
+
+    [TestMethod]
+    public async Task InvalidateAllAsync_Output_RemovesOutputArtifactsLeafFirstAndKeepsCache()
+    {
+        var calls = new List<ArtifactId>();
+        var sidecars = new FakeInvalidator(new ArtifactId("zip/sidecars"), [CoreArtifacts.RenderedSite], calls);
+        var lifecycle = new ArtifactLifecycle([.. CoreGraph(calls), sidecars]);
+
+        var result = await lifecycle.InvalidateAllAsync([ArtifactKind.Output]);
+
+        Assert.IsTrue(result.Success, result.ErrorMessage);
+        CollectionAssert.AreEquivalent(
+            new[] { sidecars.Artifact, CoreArtifacts.RenderedSite, CoreArtifacts.ProcessedImages },
+            calls);
+        Assert.IsLessThan(calls.IndexOf(CoreArtifacts.RenderedSite), calls.IndexOf(sidecars.Artifact), "Dependents go first.");
+    }
+
+    [TestMethod]
+    public async Task InvalidateAllAsync_CacheAndOutput_KeepsDurableArtifacts()
+    {
+        var calls = new List<ArtifactId>();
+        var captions = new FakeInvalidator(new ArtifactId("ai/captions"), [], calls, kind: ArtifactKind.Durable);
+        var keywords = new FakeInvalidator(new ArtifactId("ai/keywords"), [captions.Artifact], calls, kind: ArtifactKind.Durable);
+        var lifecycle = new ArtifactLifecycle([.. CoreGraph(calls), captions, keywords]);
+
+        var result = await lifecycle.InvalidateAllAsync([ArtifactKind.Cache, ArtifactKind.Output]);
+
+        Assert.IsTrue(result.Success, result.ErrorMessage);
+        Assert.HasCount(3, calls);
+        Assert.DoesNotContain(captions.Artifact, calls);
+        Assert.DoesNotContain(keywords.Artifact, calls);
+    }
+
+    [TestMethod]
+    public async Task InvalidateAllAsync_Durable_IsRejected()
+    {
+        var lifecycle = new ArtifactLifecycle(CoreGraph([]));
+
+        await Assert.ThrowsExactlyAsync<ArgumentException>(
+            async () => await lifecycle.InvalidateAllAsync([ArtifactKind.Durable]));
+    }
+
+    [TestMethod]
+    public async Task InvalidateAsync_DurableArtifact_RemovesItAndItsDependents()
+    {
+        var calls = new List<ArtifactId>();
+        var captions = new FakeInvalidator(new ArtifactId("ai/captions"), [], calls, kind: ArtifactKind.Durable);
+        var keywords = new FakeInvalidator(new ArtifactId("ai/keywords"), [captions.Artifact], calls, kind: ArtifactKind.Durable);
+        var lifecycle = new ArtifactLifecycle([.. CoreGraph(calls), captions, keywords]);
+
+        var result = await lifecycle.InvalidateAsync(captions.Artifact);
+
+        Assert.IsTrue(result.Success, result.ErrorMessage);
+        CollectionAssert.AreEqual(new[] { keywords.Artifact, captions.Artifact }, calls);
+    }
+
+    [TestMethod]
+    public async Task InvalidateAsync_UnknownArtifact_ReturnsFailure()
+    {
+        var lifecycle = new ArtifactLifecycle(CoreGraph([]));
+
+        var result = await lifecycle.InvalidateAsync(new ArtifactId("missing/data"));
+
+        Assert.IsFalse(result.Success);
+        StringAssert.Contains(result.ErrorMessage, "Unknown artifact", StringComparison.Ordinal);
+    }
+
+    [TestMethod]
+    public async Task InvalidateAllAsync_DurableDependsOnCacheArtifact_ReturnsFailure()
+    {
+        // Otherwise every rescan (replacing the manifest) would delete the durable data.
+        var calls = new List<ArtifactId>();
+        var captions = new FakeInvalidator(new ArtifactId("ai/captions"), [CoreArtifacts.Manifest], calls, kind: ArtifactKind.Durable);
+        var lifecycle = new ArtifactLifecycle([.. CoreGraph(calls), captions]);
+
+        var result = await lifecycle.InvalidateAllAsync([ArtifactKind.Cache]);
+
+        Assert.IsFalse(result.Success);
+        StringAssert.Contains(result.ErrorMessage, "durable", StringComparison.OrdinalIgnoreCase);
+        Assert.IsEmpty(calls);
+    }
+
+    private static IArtifactInvalidator[] CoreGraph(List<ArtifactId> calls) =>
+    [
+        new FakeInvalidator(CoreArtifacts.Manifest, [], calls, kind: ArtifactKind.Cache),
+        new FakeInvalidator(CoreArtifacts.RenderedSite, [], calls),
+        new FakeInvalidator(CoreArtifacts.ProcessedImages, [], calls),
+    ];
+
     private sealed class FakeInvalidator(
         ArtifactId artifact,
         IReadOnlyCollection<ArtifactId> dependsOn,
         List<ArtifactId> calls,
-        OperationResult? result = null) : IArtifactInvalidator
+        OperationResult? result = null,
+        ArtifactKind kind = ArtifactKind.Output) : IArtifactInvalidator
     {
         public ArtifactId Artifact { get; } = artifact;
+
+        public ArtifactKind Kind { get; } = kind;
 
         public IReadOnlyCollection<ArtifactId> DependsOn { get; } = dependsOn;
 
@@ -146,6 +238,8 @@ public sealed class ArtifactLifecycleTests
     private sealed class ThrowingInvalidator : IArtifactInvalidator
     {
         public ArtifactId Artifact { get; } = new("example/throwing");
+
+        public ArtifactKind Kind => ArtifactKind.Output;
 
         public IReadOnlyCollection<ArtifactId> DependsOn { get; } = [CoreArtifacts.RenderedSite];
 

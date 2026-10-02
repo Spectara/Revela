@@ -4,6 +4,7 @@ using Microsoft.Extensions.Options;
 using Spectara.Revela.Core.Helpers;
 using Spectara.Revela.Features.Generate.Models;
 using Spectara.Revela.Sdk;
+using Spectara.Revela.Sdk.Artifacts;
 
 namespace Spectara.Revela.Features.Generate.Services;
 
@@ -12,9 +13,10 @@ namespace Spectara.Revela.Features.Generate.Services;
 /// </summary>
 /// <remarks>
 /// <para>
-/// Persisted in <c>.cache/images.json</c> with its own schema version, separate from the scan
-/// manifest, so a manifest format change or rebuild never re-encodes images. Only things that
-/// change image output invalidate an entry (see <see cref="ImageService"/>).
+/// Persisted in <c>.revela/core/images.json</c> as part of <see cref="CoreArtifacts.ProcessedImages"/> with its own
+/// schema version, separate from the scan manifest, so a manifest format change, a rebuild or
+/// <c>clean cache</c> never re-encodes images. Only things that change image output invalidate
+/// an entry (see <see cref="ImageService"/>).
 /// </para>
 /// <para>
 /// Thread-safe for <see cref="Get"/>, <see cref="Set"/> and <see cref="RemoveExcept"/>.
@@ -37,14 +39,11 @@ internal sealed partial class ImageStateStore(
     /// Loads the state of the current project, replacing what is held in memory.
     /// </summary>
     /// <remarks>
-    /// A missing state is first carried over from a manifest written by beta.21.
     /// A missing, unreadable or other-version file yields an empty state.
     /// </remarks>
     public async Task LoadAsync(CancellationToken cancellationToken = default)
     {
-        var projectPath = projectEnvironment.Value.Path;
-        await SeedFromLegacyManifestAsync(projectPath, logger, cancellationToken);
-        var loaded = await ReadAsync(GetStatePath(projectPath), logger, cancellationToken);
+        var loaded = await ReadAsync(GetStatePath(projectEnvironment.Value.Path), logger, cancellationToken);
 
         lock (stateLock)
         {
@@ -105,89 +104,9 @@ internal sealed partial class ImageStateStore(
         await WriteAsync(GetStatePath(projectEnvironment.Value.Path), snapshot, cancellationToken);
     }
 
-    /// <summary>
-    /// One-time carry-over of the processing state that beta.21 kept in the manifest
-    /// (<c>_meta.processedImages</c> and <c>_meta.formatQualities</c>).
-    /// </summary>
-    /// <remarks>
-    /// Runs only while no state file exists, so it must happen before anything rewrites the
-    /// manifest without those fields; <see cref="ManifestService.SaveAsync"/> calls it first.
-    /// The manifest version is deliberately not checked: a scan may already have discarded the
-    /// manifest's tree, and each fingerprint carries the pipeline version it is valid for.
-    /// Best effort: on failure the images are simply processed again.
-    /// </remarks>
-    internal static async Task SeedFromLegacyManifestAsync(
-        string projectPath,
-        ILogger logger,
-        CancellationToken cancellationToken)
-    {
-        var statePath = GetStatePath(projectPath);
-        var manifestPath = ManifestService.GetManifestPath(projectPath);
-        if (File.Exists(statePath) || !File.Exists(manifestPath))
-        {
-            return;
-        }
-
-        try
-        {
-            var seeded = await ReadLegacyStateAsync(manifestPath, cancellationToken);
-            if (seeded.Count == 0)
-            {
-                return;
-            }
-
-            await WriteAsync(statePath, seeded, cancellationToken);
-            LogStateSeeded(logger, seeded.Count, statePath);
-        }
-        catch (Exception ex) when (ex is JsonException or IOException or UnauthorizedAccessException)
-        {
-            LogSeedFailed(logger, manifestPath, ex);
-        }
-    }
-
-    private static string GetStatePath(string projectPath) =>
-        Path.Combine(projectPath, ProjectPaths.Cache, FileName);
-
-    private static async Task<List<KeyValuePair<string, ProcessedImage>>> ReadLegacyStateAsync(
-        string manifestPath,
-        CancellationToken cancellationToken)
-    {
-        await using var stream = File.OpenRead(manifestPath);
-        using var document = await JsonDocument.ParseAsync(stream, cancellationToken: cancellationToken);
-
-        if (document.RootElement.ValueKind is not JsonValueKind.Object
-            || !document.RootElement.TryGetProperty("_meta", out var meta)
-            || meta.ValueKind is not JsonValueKind.Object
-            || !meta.TryGetProperty("processedImages", out var processed)
-            || processed.ValueKind is not JsonValueKind.Object)
-        {
-            return [];
-        }
-
-        var qualities = new Dictionary<string, int>(StringComparer.Ordinal);
-        if (meta.TryGetProperty("formatQualities", out var formatQualities)
-            && formatQualities.ValueKind is JsonValueKind.Object)
-        {
-            foreach (var format in formatQualities.EnumerateObject())
-            {
-                if (format.Value.TryGetInt32(out var quality))
-                {
-                    qualities[format.Name] = quality;
-                }
-            }
-        }
-
-        var seeded = new List<KeyValuePair<string, ProcessedImage>>();
-        foreach (var image in processed.EnumerateObject())
-        {
-            if (image.Value.ValueKind is JsonValueKind.String && image.Value.GetString() is { Length: > 0 } fingerprint)
-            {
-                seeded.Add(new(image.Name, new ProcessedImage { Fingerprint = fingerprint, Qualities = qualities }));
-            }
-        }
-
-        return seeded;
-    }
+    /// <summary>Gets the state file path of a project.</summary>
+    internal static string GetStatePath(string projectPath) =>
+        Path.Combine(projectPath, ProjectPaths.GetOwnerDirectory(CoreArtifacts.Owner), FileName);
 
     private static async Task<Dictionary<string, ProcessedImage>> ReadAsync(
         string statePath,
@@ -274,12 +193,6 @@ internal sealed partial class ImageStateStore(
             // The leftover temporary file is overwritten by the next save.
         }
     }
-
-    [LoggerMessage(Level = LogLevel.Information, Message = "Carried over the processing state of {Count} images from the manifest to {Path}")]
-    private static partial void LogStateSeeded(ILogger logger, int count, string path);
-
-    [LoggerMessage(Level = LogLevel.Warning, Message = "Could not carry over the image processing state from {Path}; images will be processed again")]
-    private static partial void LogSeedFailed(ILogger logger, string path, Exception exception);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Image state at {Path} has version {Version} (current: {CurrentVersion}); all images will be processed again")]
     private static partial void LogStateVersionIgnored(ILogger logger, string path, int version, int currentVersion);
