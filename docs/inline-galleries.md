@@ -37,12 +37,16 @@ no empty gallery section.
 Image queries always run in this order:
 
 1. Apply the filter predicate.
-2. Use an explicit pipe sort, otherwise the page `sort`, otherwise `generate.sorting.images`.
-3. Apply the configured fallback field for page or global sorting.
+2. Use an explicit pipe sort, otherwise the page `sort`, otherwise `generate.sorting.images`
+   (the same sort folder galleries use).
+3. Photos without a value for the sort field come last in both directions; for page or global
+   sorting they are ordered among themselves by the configured fallback field.
 4. Use the filename as a stable final tie-breaker.
 5. Apply `limit`.
 
-An explicit pipe sort takes precedence over page and global sorting.
+An explicit pipe sort takes precedence over page and global sorting. `sort random` is drawn
+once per render run, for inline blocks and page-level `filter` alike, so the grid, photo pages
+and previous/next links share one order and every `generate pages` draws a new one.
 
 ## Photo Viewers
 
@@ -167,7 +171,9 @@ supported browser baseline is Chrome/Edge 135+, Firefox 144+, and Safari/iOS 26.
 JavaScript, visitors can open and close the modal dialog through its visible controls, inspect the
 full-size photo, and read the same image metadata as on the canonical photo page. With JavaScript,
 validated Previous/Next controls, arrow-key navigation, and a robust Escape fallback are added.
-Conforming browsers also provide native Escape handling. The layout uses a full-viewport photo
+Conforming browsers also provide native Escape handling. The dialog fills the viewport, so there
+is no backdrop to click: it closes with its × button or Escape only (no `closedby="any"` light
+dismiss). The layout uses a full-viewport photo
 stage followed by a scrolling metadata sheet, without photo-page context navigation.
 
 These capabilities need browser verification; HTML generation alone cannot prove focus, modal

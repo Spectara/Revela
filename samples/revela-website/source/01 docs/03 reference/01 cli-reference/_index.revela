@@ -99,6 +99,8 @@ Leave out the path for **interactive mode**:
 revela create page gallery
 ```
 
+Required options (such as `--source` for a calendar page) must be given: without them, `create page` stops with an error and exit code `1` and writes nothing. Interactive mode asks until you enter a value.
+
 `statistics` and `calendar` come from the Statistics and Calendar plugins. See [Creating Pages](../../guide/pages/).
 
 ### source
@@ -112,6 +114,7 @@ revela source onedrive sync --show-files     # List every affected file
 revela source onedrive sync --share-url URL  # Use this share link instead of the configured one (-u)
 revela source onedrive sync --force          # Re-download all files (-f)
 revela source onedrive sync --clean          # Also delete local files that are gone from OneDrive (asks first)
+revela source onedrive sync --clean --yes    # Delete without asking (-y); required for --clean outside a terminal
 revela source onedrive sync --clean-all      # Delete ALL local files not in OneDrive, ignoring filters
 
 revela source calendar fetch                 # Download all configured iCal feeds into source/
@@ -126,7 +129,7 @@ See [OneDrive Source](../../plugins/source-onedrive/) and [Calendar Feeds](../..
 
 ### config
 
-Change settings interactively (`revela config`) or directly with options. Most commands open prompts when you run them without options.
+Change settings interactively (`revela config`) or directly with options. Most commands open prompts when you run them in a terminal without options. In scripts and CI, always pass options: `config project`, `serve`, `statistics` and `onedrive` without options then show which options to pass and exit with `1`, and `config site` (interactive only) asks you to edit `site.json` directly. The plugin config commands (`onedrive`, `serve`, `statistics`) write `project.json` and need a project.
 
 ```bash
 revela config                                # Interactive configuration menu
@@ -149,7 +152,7 @@ revela config serve --port 3000 --verbose    # -p, -v
 revela config statistics --max-entries 20 --sort-by-count false          # -m, -s
 
 # Other
-revela config locations                      # Show where configuration files and plugins live
+revela config locations                      # Show where configuration files and installed packages live
 ```
 
 Package feeds (**Full only**):
@@ -177,7 +180,7 @@ revela check slugs                   # Gallery URLs
 revela check calendar                # Calendar .ics files (Calendar plugin)
 ```
 
-Each problem comes with the file and a suggested fix. The command exits with `2` when it finds a problem that would stop the build. Hints and warnings don't change the exit code.
+Each problem comes with the file and a suggested fix. The command exits with `2` when it finds an error. Hints and warnings don't change the exit code. Checks only run when you call `revela check`; `generate` doesn't run them first, but a failing step points you to `revela check`.
 
 ---
 
@@ -204,7 +207,7 @@ revela theme install --all                   # All available themes (-a)
 revela theme uninstall Lumina.Statistics     # Asks for confirmation; --yes (-y) skips it
 ```
 
-`theme install` accepts `--version` (`-v`), `--source` (`-s`, feed name or URL) and `--allow-project-feeds`, like `plugin install`.
+`theme install` accepts `--version` (`-v`), `--source` (`-s`, feed name or URL) and `--allow-project-feeds`, like `plugin install`. Installing a theme by name reads the package type from the package itself, so no `packages refresh` is needed; only `--all` and the interactive picker (no name) list themes from the package index. A plugin package passed to `theme install` (or a theme package passed to `plugin install`) is rejected with a hint to the right command.
 
 ### plugin (Full only)
 
@@ -219,7 +222,7 @@ revela plugin install Statistics --allow-project-feeds     # Use project.json fe
 revela plugin uninstall Statistics           # Asks for confirmation; --yes (-y) skips it
 ```
 
-Install commands record the exact installed version under `dependencies.packages` in the global `revela.json` and, inside a project, in `project.json`. Uninstall removes the entry again.
+Install commands record the exact installed version under `dependencies.packages` in exactly one file: `project.json` when you run them inside a project, otherwise the global `revela.json`. Uninstall removes the entry from that same file.
 
 ### packages (Full only)
 
@@ -240,19 +243,17 @@ revela restore --check               # Only report what's missing
 revela restore --allow-project-feeds # Use feeds declared in project.json without asking
 ```
 
-Useful after cloning a project or updating Revela. Installs every package in `dependencies.packages` that isn't installed yet, plus the package that provides `theme.name`, and pins the exact versions in `project.json`. Feeds declared only in `project.json` need your confirmation; non-interactive runs stop unless you pass `--allow-project-feeds`. See [Dependencies and Feeds](../../guide/configuration/#dependencies-and-feeds).
+Useful after cloning a project or updating Revela. Installs every package in `dependencies.packages` (from `revela.json` and `project.json`) that isn't installed yet, plus the package that provides `theme.name`. Restored versions are pinned only for entries that `project.json` itself declares; packages declared only in your global `revela.json` are installed but not copied into the project. Feeds declared only in `project.json` need your confirmation; non-interactive runs stop unless you pass `--allow-project-feeds`. See [Dependencies and Feeds](../../guide/configuration/#dependencies-and-feeds).
 
 ---
 
 ## Info
 
 ```bash
-revela info                          # Version, build type, plugin/theme counts, active theme
-revela info plugins                  # Loaded plugins
-revela info themes                   # Available themes and extensions
+revela info                          # Version, edition, plugin/theme counts, active theme
 ```
 
-`revela --version` prints just the version line, ending with the edition (`— Standalone edition` or `— Full edition`).
+For the packages themselves, use `revela theme list` and (Full only) `revela plugin list`. `revela --version` prints just the version line, ending with the edition (`— Standalone edition` or `— Full edition`).
 
 ---
 
@@ -262,7 +263,7 @@ revela info themes                   # Available themes and extensions
 |------|---------|
 | `0` | Success |
 | `1` | Error or cancelled; see the output |
-| `2` | Configuration problem (invalid JSON or setting), or `revela check` found a blocking problem |
+| `2` | Configuration problem (invalid JSON or setting), or `revela check` found an error |
 
 Handy for scripting: treat any non-zero code as a failure. Running `revela` without arguments outside a terminal (for example in CI) exits with `1`; always pass a command there.
 

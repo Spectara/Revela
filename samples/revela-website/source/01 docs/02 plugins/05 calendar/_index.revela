@@ -49,7 +49,7 @@ The plugin builds the calendar data; the theme extension renders it as a month g
    Green days are free. Get in touch to book a session.
    ```
 
-   Or let Revela create it: `revela create page calendar availability --title "Availability" --source bookings.ics`.
+   Or let Revela create it: `revela create page calendar availability --title "Availability" --source bookings.ics` (`--source` is required).
 
 3. Build your site:
 

@@ -56,7 +56,7 @@ themes/Panorama/
 │   ├── home.revela             # Homepage with gallery + lightbox
 │   ├── page.revela             # Text pages
 │   └── calendar/
-│       └── page.revela         # Calendar page with {{ page_content }}
+│       └── page.revela         # Calendar page with {{ gallery.body }}
 ├── Partials/
 │   ├── ContentImage.revela     # Required: Markdown image rendering
 │   └── HeaderNavigation.revela
@@ -126,7 +126,7 @@ calendar.locale = "de"
 Der Kalender zeigt die aktuelle Belegung unserer Ferienwohnung.
 ```
 
-The body text comes from `{{ page_content }}`, kept separate from the calendar rendering.
+The body text comes from `{{ gallery.body }}`, kept separate from the calendar rendering.
 
 ## What Makes It Interesting
 

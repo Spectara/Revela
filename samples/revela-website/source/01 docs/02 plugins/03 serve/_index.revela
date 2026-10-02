@@ -76,7 +76,7 @@ revela config serve
 revela config serve --port 3000
 ```
 
-Both commands also accept the short aliases `-p` (port) and `-v` (verbose), and the settings can be supplied as environment variables:
+Both commands also accept the short aliases `-p` (port) and `-v` (verbose). `config serve` writes `project.json`, so run it inside your project; in scripts and CI pass the options, because without a terminal it doesn't prompt and exits with `1`. The settings can also be supplied as environment variables:
 
 ```bash
 SPECTARA__REVELA__PLUGINS__SERVE__PORT=3000

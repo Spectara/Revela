@@ -22,7 +22,7 @@ Never run anything that modifies state.
 
 1. **Secrets in source / config** — API keys, tokens, passwords, connection strings literal in code or `*.json`.
    - Patterns: regex `(api[_-]?key|secret|password|token|bearer|client[_-]?secret)\s*[:=]\s*["'][A-Za-z0-9_\-]{16,}["']`
-   - Also flag: any `appsettings*.json` / `project.json` / `revela.json` containing high-entropy strings under suspicious keys.
+   - Also flag: any `project.json` / `revela.json` / `site.json` / `logging.json` containing high-entropy strings under suspicious keys. (Revela reads no `appsettings*.json`; such a file in the repo is dead config — flag it if it holds secrets.)
    - Exclude: tests with obvious dummies (`"test-token"`, `"dummy"`).
 
 2. **Vulnerable packages** — output of `dotnet list package --vulnerable`. Each → blocker if Critical/High, major if Moderate, minor if Low.
@@ -37,8 +37,8 @@ Never run anything that modifies state.
 
 ### 🟠 Major (OWASP-mapped)
 
-5. **A03 Injection — Scriban raw HTML** — usage of `| html.escape` is good; flag any template that uses `{{~ raw_html ~}}` or `| object.eval_template` on user data.
-   - Search in `src/Themes/**/*.sbn*`: regex `eval_template|\| html`
+5. **A03 Injection — Scriban raw HTML** — Scriban does not auto-escape. Dynamic text and attributes must go through Revela's `html_escape` function (not the Scriban built-in `html.escape`, which Native AOT may trim); flag unescaped user data (titles, EXIF, `t` results) and any `object.eval_template` on user data.
+   - Search in `src/Themes/**/*.revela`: regex `eval_template|html\.escape|\{\{\s*(image|gallery|site)\.[a-z_]+\s*\}\}`
 
 6. **A07 Auth — token storage in plain text** — OneDrive/auth plugins storing tokens to disk without encryption.
    - Search: regex `File\.WriteAllText.*[Tt]oken|File\.WriteAllBytes.*[Tt]oken`

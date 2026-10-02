@@ -5,6 +5,8 @@ template = "docs"
 
 Revela themes are [Scriban](https://github.com/scriban/scriban) templates (`.revela` files). Every template has access to the built-in functions below for URLs, images, date/EXIF formatting, UI text, and Markdown. For where these are used, see [Theme Customization](../../guide/themes/).
 
+> **Prefer plain language features over Scriban's built-in libraries.** The Standalone edition is compiled with Native AOT, which keeps only the Scriban built-ins that Revela itself references; a template calling another one (for example `array.last`, `array.join`, `math.floor`) can fail there. Use indexing (`list[0]`, `list[-1]`), integer division (`//`), `for` loops and the functions on this page instead. Lumina only uses `string.contains`, and revela.website's own overrides add `string.replace`.
+
 <div class="features-grid">
 
 ### 🖼️ Images
@@ -49,13 +51,13 @@ Resolve an image from the project by path. Uses the same 3-step lookup as Markdo
 |-----------|------|-------------|
 | `path` | string | Image path (relative to gallery, `_images/`, or exact) |
 
-**Returns** an `Image` object (or `null` if not found). Resolution order:
+**Returns** the same image object that `images` and `gallery.cover_image` contain (or `null` if not found). Resolution order:
 
 1. Gallery-local: `{current gallery path}/{path}`
 2. Shared images: `_images/{path}`
 3. Exact match: `{path}` as-is
 
-The `Image` object exposes `slug`, `width`, `height`, `sizes`, `file_size`, `date_taken`, `exif`, `title`, `description`, `keywords`, `rating`, and `placeholder`.
+The image object exposes `slug`, `file_name`, `source_path`, `width`, `height`, `sizes`, `file_size`, `date_taken`, `exif`, `title`, `description`, `keywords`, `rating`, and `placeholder`.
 
 The descriptive fields come from the photo's XMP metadata, as Capture One and Lightroom export it:
 
@@ -101,12 +103,14 @@ a full page template. It respects the current gallery/photo page, deployment
 prefix and asset base path, including absolute CDN addresses.
 
 ```scriban
-{{ og_size = image.sizes | array.last }}
+{{ og_size = image.sizes[-1] }}
 <meta property="og:image" content="{{ html_escape (absolute_variant_url image og_size 'jpg') }}">
 ```
 
+`image.sizes` is in ascending order, so `image.sizes[-1]` is the largest generated size.
 Social crawlers prefer JPEG around 1200–1920 px; Lumina's `Partials/OpenGraphImage.revela`
-picks the largest generated size up to 1920 and also emits `og:image:width`/`og:image:height`.
+picks the largest generated size up to 1920 (with `image_size image 1920` from
+[`Partials/ImageHelpers.revela`](../../guide/themes/#shared-image-helpers)) and also emits `og:image:width`/`og:image:height`.
 
 Without `base_url`, local variants use a root-relative URL; an absolute CDN URL
 remains absolute. This helper needs the normal page context (`base_url`,
@@ -256,8 +260,7 @@ These values (not functions) are available in templates:
 | Variable | Type | Description |
 |----------|------|-------------|
 | `site` | object | Site settings from `site.json` |
-| `gallery` | Gallery | Current page (`title`, `body`, `cover_image`, `template`) |
-| `galleries` | Gallery[] | Child galleries (home page only) |
+| `gallery` | Gallery | Current page: `title`, `description`, `body` (rendered Markdown body), `cover_image`, `template`, `slug`, `images` |
 | `images` | Image[] | Images for the current gallery |
 | `nav_items` | NavItem[] | Navigation tree with active state |
 | `basepath` | string | Path to the site root: relative (`""`, `"../"`), or your absolute `basePath`; always root-absolute on the 404 page |
@@ -266,7 +269,6 @@ These values (not functions) are available in templates:
 | `og_locale` | string | Open Graph locale from `language` in `site.json` (`"de"` → `de_DE`; empty when unknown) |
 | `not_found` | bool | `true` only while rendering `404.html` (`Body/NotFound.revela`) |
 | `image_formats` | string[] | Active formats (`["avif", "webp", "jpg"]`) |
-| `page_content` | string | Rendered Markdown body (gallery pages) |
 | `stylesheets` | string[] | CSS filenames resolved for the current template, plugin, and feature scopes |
 | `scripts` | string[] | JS filenames resolved for the current template, plugin, and feature scopes |
 | `revela` | object | Build info: `revela.version`, `revela.kind`, `revela.framework`, `revela.configuration` |
@@ -275,6 +277,30 @@ These values (not functions) are available in templates:
 should emit the provided filenames in order; they do not need to inspect page scopes or asset
 configuration themselves. Canonical photo pages receive only the scoped image zoom script;
 Lightbox pages receive both dialog behavior and image zoom scripts.
+
+The home page is a gallery like any other: without a `title` in its `_index.revela`, `gallery.title`
+is the site title from `site.json` (then the project folder name).
+
+### Data Sources
+
+A page can bring extra variables into its template with `data` in the front matter. Each key
+becomes a template variable:
+
+```toml
++++
+template = "statistics/overview"
+data = { galleries: "$galleries", statistics: "statistics.json" }
++++
+```
+
+| Source | Value |
+|--------|-------|
+| `$galleries` | All galleries of the site (same objects as `gallery`) |
+| `$images` | The images of the current page (same objects as `images`) |
+| `name.json` | Plugin-generated data from the page's folder in `.cache/` (for example `statistics.json`, `calendar.json`) |
+
+Theme extensions such as Lumina.Statistics and Lumina.Calendar provide default data sources for
+their templates, so their pages work without a `data` line.
 
 ## See Also
 

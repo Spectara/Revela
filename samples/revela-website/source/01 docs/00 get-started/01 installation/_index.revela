@@ -168,6 +168,10 @@ dotnet tool update -g Spectara.Revela --version <version> --add-source ./revela-
 revela restore
 ```
 
+### After an update
+
+Revela keeps a manifest of scanned and processed photos in `.cache/`. When a new version changes its format, Revela discards the old manifest: the next `revela generate all` rescans your photos and re-encodes every image once, which can take a while for a large library. Later builds only process what changed again.
+
 ---
 
 ## Troubleshooting

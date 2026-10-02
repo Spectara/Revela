@@ -99,6 +99,14 @@ to `DependenciesConfig` (section `dependencies`) and merged per key:
 - `dependencies.packages` is a flat package ID → exact version map. Install
   commands and restore persist the version that was actually installed; a
   missing value or `latest` resolves per the stable/prerelease host policy.
+- One rule decides where an install is declared (`PackageDeclarations`): inside a
+  project (a `project.json` exists) only in `project.json`, otherwise only in the
+  global `revela.json`. Uninstall removes the declaration from that same file.
+  Restore pins versions only for entries the target file already declares; it
+  never copies `revela.json` dependencies into `project.json`.
+- `plugin install` and `theme install` share one flow (`PackageInstallService`)
+  that validates the package type from the package's own nuspec, not the package
+  index. A freshly extracted package of the wrong type is removed again.
 - Package kind is never derived from the ID. Restore treats every entry as
   required, checks "installed" by package ID across loaded plugins and themes,
   and reports the kind from the nuspec package type after extraction.
@@ -123,6 +131,12 @@ and valid semantic no-ops preserve bytes without reloading. Global writers mutat
 their own sections in the JSON document rather than rebuilding it from a DTO,
 preserving unknown nested settings. This is not an interprocess lock or protection
 against arbitrary concurrent editors.
+
+No configuration source watches its file: a CLI run is short-lived, and recursive
+file watching stalled startup in large projects on Linux. Every in-process write of
+`revela.json`, `project.json` or `site.json` goes through `ConfigFileWriter`
+(validate with the JSON reader, write a hidden temp file, replace atomically,
+reload `IConfigurationRoot`), so the interactive menu sees the new values.
 
 ## Generation Pipeline
 
@@ -259,7 +273,9 @@ theme. It must not silently fall back to an installed namesake; restore inspects
 dependencies but installs nothing when an invalid local theme is present.
 A genuinely absent local manifest still permits normal fallback.
 
-`Partials/ContentImage.revela` is mandatory for rendering content images. Inline
+`Partials/ContentImage.revela` is mandatory for rendering content images, and a
+missing layout or `ContentImage` partial fails the render with a clear message
+(there is no built-in fallback markup). Inline
 grids require `Partials/GalleryGrid.revela` when used. `[[photo]]` blocks use the
 optional `Partials/PhotoFigure.revela` and fall back to a linked content image. Viewer capabilities and
 defaults belong to the base theme; `Body/Photo.revela` is required when that theme
@@ -271,7 +287,7 @@ exists) the renderer writes `404.html` once at the output root with a root-absol
 
 Template properties describe identity and data. URL helpers such as `page_url`,
 `variant_url`, and `asset_url` own rendering paths and prefixes. The SDK's
-[template-model generation](../src/Sdk/README.md#template-model-generation) provides
+[template-model generation](../src/Sdk/README.md#template-models) provides
 direct-property conversions without runtime reflection; consumers using it must
 reference Scriban explicitly.
 

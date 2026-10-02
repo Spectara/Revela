@@ -34,7 +34,12 @@ revela plugin install Source.OneDrive
 ```bash
 # Interactive setup (recommended)
 revela config onedrive
+
+# In scripts and CI, pass the link as an option
+revela config onedrive --share-url https://1drv.ms/f/your-shared-folder-link
 ```
+
+`config onedrive` writes `project.json`, so run it inside your project. Without a terminal and without `--share-url` it doesn't prompt; it shows the option to pass and exits with `1`. The link must be an `https` address on `1drv.ms` or `onedrive.live.com`.
 
 Or add the share URL directly to `project.json` below `plugins.oneDrive`:
 
@@ -65,6 +70,9 @@ revela source onedrive sync --force
 # Remove local files that are no longer in OneDrive (asks first)
 revela source onedrive sync --clean
 
+# Same without asking, e.g. in scripts and CI (-y)
+revela source onedrive sync --clean --yes
+
 # Remove all local files that are not in OneDrive, ignoring include/exclude patterns
 revela source onedrive sync --clean-all
 
@@ -75,9 +83,9 @@ revela source onedrive sync --dry-run --show-files
 revela source onedrive sync --share-url https://1drv.ms/f/another-link
 ```
 
-The short aliases are `-n` (`--dry-run`), `-f` (`--force`) and `-u` (`--share-url`).
+The short aliases are `-n` (`--dry-run`), `-f` (`--force`), `-u` (`--share-url`) and `-y` (`--yes`).
 
-> **Careful with `--clean`:** local images and Markdown files that aren't in the OneDrive folder count as orphans. If your `source` folder also has photos or pages that don't come from OneDrive, preview with `--dry-run --show-files` first.
+> **Careful with `--clean`:** local images and Markdown files that aren't in the OneDrive folder count as orphans. If your `source` folder also has photos or pages that don't come from OneDrive, preview with `--dry-run --show-files` first. Outside a terminal (scripts, CI) Revela cannot ask, so `--clean` stops before downloading or deleting anything unless you add `--yes`.
 
 ### Full Workflow
 
@@ -140,6 +148,8 @@ The plugin shows a two-phase progress display:
 
 Downloading (42/142) vacation/sunset.jpg  ━━━━━━━━━━━━━━━━━━  29%  ETA 02:15
 ```
+
+When the output is not a terminal (CI logs, `> sync.log`), the spinner and progress bar are replaced by plain lines, one about every 10 %.
 
 ## Environment Variables
 

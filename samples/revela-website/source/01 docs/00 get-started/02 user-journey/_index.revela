@@ -82,7 +82,7 @@ Before your first build, let Revela check the project:
 revela check
 ```
 
-It reports configuration, structure, theme and content problems together with a suggested fix. Hints (such as "no `baseUrl` configured") don't stop the build.
+It reports configuration, structure, theme and content problems together with a suggested fix. Errors make `revela check` exit with code `2`; hints (such as "no `baseUrl` configured") and warnings are just information.
 
 Now build the site: **Build → generate → all** in the menu, or:
 
@@ -294,7 +294,7 @@ Start with:
 revela check
 ```
 
-It lists every problem it finds, with the file and a suggested fix, and exits with code `2` if something would stop the build. To run a single area, use `revela check config`, `structure`, `theme`, `content`, `slugs` or `calendar`.
+It lists every problem it finds, with the file and a suggested fix, and exits with code `2` if it finds an error. To run a single area, use `revela check config`, `structure`, `theme`, `content`, `slugs` or `calendar`.
 
 ## Summary: What Triggers Work
 

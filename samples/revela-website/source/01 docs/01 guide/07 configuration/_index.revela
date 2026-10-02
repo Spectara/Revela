@@ -21,7 +21,9 @@ revela config paths --source "D:\Photos" --output "dist"
 revela config image --formats avif:80,webp:85,jpg:90
 ```
 
-`revela config site` edits `site.json`. It is interactive only and asks for each field the theme defines.
+`revela config site` edits `site.json`. It is interactive and asks for each field the theme defines; keys the theme doesn't define (for example `language`) are kept.
+
+> **Scripts and CI:** always pass options there. Without a terminal, `config project`, `config serve`, `config statistics` and `config onedrive` run without options don't prompt: they show which options to pass and exit with `1`. `config site` needs a terminal; in scripts, edit `site.json` directly. Plugin settings (`config onedrive`, `serve`, `statistics`) are written to `project.json`, so these commands need a project.
 
 ## Configuration File Structure
 
@@ -80,6 +82,7 @@ Themes and plugins your project needs are listed under `dependencies`. The globa
 ```
 
 - **`dependencies.packages`** maps a package ID to an exact version. `revela plugin install`, `revela theme install` and `revela restore` write the version that was actually installed. A missing version or `"latest"` means "newest stable version" (a prerelease build of Revela also picks prereleases).
+- **One file per install.** Inside a project, `plugin install` and `theme install` record the package only in `project.json`; outside a project only in the global `revela.json`. `uninstall` removes the entry from that same file.
 - **Any package ID works.** Revela reads whether a package is a theme or a plugin from the package itself, so third-party packages are restored like official ones.
 - **`dependencies.feeds`** maps a name to a NuGet v3 URL or a folder of `.nupkg` files. Relative folders are resolved from the file that declares them. nuget.org and the bundled `packages/` folder are always available.
 - **`theme.name`** is the theme's name from its manifest (for example `Lumina`), not a package ID. `revela restore` looks it up in your local and installed themes and falls back to the official `Spectara.Revela.Themes.<name>` package only when nothing else provides that name.
@@ -266,10 +269,15 @@ Revela merges configuration from several sources. Later sources override earlier
 1. Built-in defaults
 2. Global `revela.json`: next to the Revela executable when that folder is writable (for example an extracted Standalone ZIP), otherwise `%APPDATA%/Revela/` on Windows or `~/.config/Revela/` on Linux/macOS. `revela config locations` shows the path in use.
 3. Project `project.json`
-4. Environment variables prefixed `SPECTARA__REVELA__` (use `__` to separate nested keys)
-5. Command-line arguments
+4. Project `site.json` (title, language and the other site fields)
+5. Project `logging.json` (optional, log levels)
+6. Environment variables prefixed `SPECTARA__REVELA__` (use `__` to separate nested keys)
 
-This lets you override a single setting for one run without editing a file. For example, `SPECTARA__REVELA__PLUGINS__SERVE__PORT=3000` changes the dev-server port temporarily.
+Nothing else is read as configuration: no `appsettings.json`, no environment variables without the prefix, and command-line options only affect the command they belong to.
+
+Environment variables let you override a single setting for one run without editing a file. For example, `SPECTARA__REVELA__PLUGINS__SERVE__PORT=3000` changes the dev-server port temporarily, and `SPECTARA__REVELA__LOGGING__LOGLEVEL__DEFAULT=Debug` turns on detailed logging. They also apply to `revela plugin install`, `revela theme install` and `revela restore`, so CI can supply a feed with `SPECTARA__REVELA__DEPENDENCIES__FEEDS__<NAME>=<url-or-absolute-folder>`.
+
+Revela reads these files once when a command starts; it does not watch them. Changes made by `revela config` commands (and package installs) take effect immediately, also in the interactive menu. If you edit a file by hand while the interactive menu is open, restart Revela.
 
 ### Plugin Settings
 

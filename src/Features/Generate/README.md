@@ -20,14 +20,18 @@ Built-in site generation feature of Revela — scans content, renders pages, and
 - `revela generate images` — Process and resize images
 
 ### Clean
+- `revela clean all` — Run every clean step
 - `revela clean output` — Delete the output directory
 - `revela clean cache` — Delete the cache directory
 - `revela clean images` — Smart cleanup of unused image variants
 
+### Check
+- `revela check` / `revela check all` — Run every check (exit code 2 on errors); `revela check <name>` runs one
+
 ### Config
-- `revela config images` — Configure image sizes and quality
-- `revela config sorting` — Configure gallery sorting rules
-- `revela config paths` — Show configured source/output paths
+- `revela config image` — Configure image formats and quality (sizes come from the theme)
+- `revela config sorting` — Configure gallery and image sorting
+- `revela config paths` — Set the source and output paths
 
 ### Create
-- `revela create page` — Create a new gallery or text page
+- `revela create page` — Create a page from a template (required template options are enforced)

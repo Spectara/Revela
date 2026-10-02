@@ -224,7 +224,7 @@ revela create page calendar availability --title "Availability" \
     --source bookings.ics --months 12
 ```
 
-`--source` (required) is the `.ics` file, relative to the page folder. Put the file there yourself, or let the [Calendar Feeds](../../plugins/source-calendar/) plugin download it.
+`--source` (required) is the `.ics` file, relative to the page folder. Without it, `create page` stops with an error and creates nothing. Put the file there yourself, or let the [Calendar Feeds](../../plugins/source-calendar/) plugin download it.
 
 ### Front Matter
 
@@ -263,7 +263,7 @@ The wizard guides you through all options:
 7. **Preview** - Show the generated front matter
 8. **Confirm** - Create file?
 
-> The wizard prompts follow each page type's own fields, so a text page skips the sorting step and a statistics page only asks for title and description.
+> The wizard prompts follow each page type's own fields, so a text page skips the sorting step and a statistics page only asks for title and description. Required fields, such as the calendar's `.ics` file, are asked again until you enter a value.
 
 ---
 
@@ -273,7 +273,7 @@ The wizard guides you through all options:
 
 | Field | Description |
 |-------|-------------|
-| `title` | Page title (in navigation and `<title>`) |
+| `title` | Page title (in navigation and `<title>`). The home page (`source/_index.revela`) without a title uses the site title from `site.json`. |
 | `description` | SEO description |
 | `hidden` | `true` = not in navigation (but accessible via URL) |
 | `slug` | Overrides URL segment (last segment only) |

@@ -50,7 +50,7 @@ public sealed class ExamplePlugin : IPlugin
     {
         Id = "YourName.Revela.Plugin.Example",
         Name = "Example",
-        // Reported by `revela info plugins`; read from the built assembly so it never drifts.
+        // Reported by `revela plugin list`; read from the built assembly so it never drifts.
         Version = PackageVersion.FromAssembly(typeof(ExamplePlugin).Assembly),
         Description = "Example plugin for Revela",
         Author = "Your Name",
@@ -91,7 +91,7 @@ tree from them:
 
 | Parameter | Meaning |
 | --- | --- |
-| `ParentCommand` | `null` = root; `"source"`, `"generate"`, `"clean"`, `"config"` or a multi-level path such as `"info plugins"`. Missing parents are created. |
+| `ParentCommand` | `null` = root; `"source"`, `"generate"`, `"clean"`, `"config"` or a multi-level path such as `"source onedrive"`. Missing parents are created. |
 | `Order` | Sort order within the parent (default 50, lower first). For pipeline steps it is also the execution order — see [Pipeline steps](#pipeline-steps). |
 | `Group` | Group label in the interactive menu (`"Build"`, `"Content"`, `"Setup"`, `"Addons"`, …). |
 | `RequiresProject` | `true` (default) shows the command only inside a project. Keep it `true` for anything that reads or writes `project.json`, including `config <plugin>` commands. |
@@ -420,7 +420,7 @@ Choose an SDK package version compatible with the Revela host you target; the ve
 
 ## Configuration
 
-The host loads global `revela.json`, local `project.json`, and environment variables prefixed `SPECTARA__REVELA__`. It does not automatically load `plugins/*.json`. You usually don't override `ConfigureConfiguration`; use it only to add an explicit configuration source. See the [configuration chain](architecture.md#configuration-and-paths) for precedence and the `site.json` split.
+The host loads global `revela.json`, local `project.json`, `site.json` (under `site`), an optional `logging.json` and environment variables prefixed `SPECTARA__REVELA__` — nothing else (no `appsettings*.json`, no `plugins/*.json`, and command-line options are not a configuration layer). No source watches its file; Revela's own config writers reload the configuration after writing. You usually don't override `ConfigureConfiguration`; use it only to add an explicit configuration source. See the [configuration chain](architecture.md#configuration-and-paths) for precedence and the `site.json` split.
 
 All plugin settings live below the host-owned `plugins` node. Your plugin **declares its own key** and binds the section `plugins:<key>`:
 
@@ -463,7 +463,7 @@ services.TryAddEnumerable(
 
 Keep `BindConfiguration` in handwritten source and enable `EnableConfigurationBindingGenerator` as shown above. `[OptionsValidator]` generates a trim/AOT-safe `IValidateOptions<T>` implementation from the annotations, avoiding reflection-based validation. `[RevelaConfig]` alone does not bind options or register a validator. Validation occurs when options are read; `[Required]` does not replace outbound URL safety checks.
 
-Inject `IOptions<ExampleConfig>` and read `.Value`, or use `IOptionsMonitor<ExampleConfig>.CurrentValue` when the service needs configuration reloads. Users configure it in `project.json` (or user-wide in `revela.json`):
+Inject `IOptions<ExampleConfig>` and read `.Value`, or use `IOptionsMonitor<ExampleConfig>.CurrentValue` when the same process may change the configuration before reading it (for example the interactive menu after a `config` command). Users configure it in `project.json` (or user-wide in `revela.json`):
 
 ```json
 {

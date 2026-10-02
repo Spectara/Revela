@@ -47,15 +47,17 @@ public sealed class LuminaTheme : EmbeddedTheme  // base class for NuGet themes
 | `assets_basepath` | Path/URL to image assets (CDN-aware) |
 | `image_formats` | Global formats: `["avif", "webp", "jpg"]` (same for all images) |
 | `nav_items` | Navigation tree with active state |
-| `gallery` | Current gallery: `title`, `body`, `cover_image`, `template` |
+| `gallery` | Current page (home page included): `title`, `description`, `body` (rendered Markdown), `cover_image`, `template`, `slug`, `images`. The home page without a front-matter title uses the site title |
 | `gallery.cover_image` | Resolved `Image` from `cover` front-matter (null if unset) |
-| `page_content` | Rendered Markdown body (same as `gallery.body`) |
 | `images` | Array of `Image` objects (per-image: `sizes`, `placeholder`) |
+| *(data sources)* | Front matter `data = { name: source }` adds variables: `$galleries` (all galleries), `$images` (page images) or a plugin JSON file from `.cache/` (e.g. `statistics.json`). Extensions can declare defaults per template |
+
+A missing layout or `Partials/ContentImage.revela` fails the render with a clear error — there is no built-in fallback markup. Templates and includes are parsed once per build and shared by all pages.
 
 ### Built-in functions
 | Function | Returns |
 |----------|---------|
-| `find_image "path"` | Resolve any image — returns `Image` or null |
+| `find_image "path"` | Resolve any image (page folder → `_images/` → exact path) — returns the same image object as `images`, or null |
 | `page_url(target)` | Page URL for an `Image`/`Gallery`/`NavigationItem`/slug (null for pageless nav) |
 | `absolute_url(target)` | Absolute URL (host from `baseUrl`) for OG/RSS/sitemap; root-relative fallback |
 | `asset_url "path"` | Theme asset URL: `basepath + "_assets/" + path` (base-path safe) |
@@ -83,6 +85,28 @@ public sealed class LuminaTheme : EmbeddedTheme  // base class for NuGet themes
 - **One `<h1>` per page**, rendered by the body template (the layout has none). Skip the title `<h1>` when the Markdown body contains one; use `.visually-hidden` where the design shows no title (home, photo pages).
 - Canonical / `og:url` / `og:image` only when `base_url` is set (absolute URLs). `og:image` uses a generated JPG variant ≤ 1920px (`Partials/OpenGraphImage.revela`), never the original.
 - `<source type>` must be a MIME type: map the format `jpg` to `image/jpeg`. Give the fallback `<img>` a `srcset`.
+
+## Scriban Under Native AOT
+- The Standalone edition is Native AOT and keeps only the Scriban built-ins Revela references. **Don't use `array.*`, `math.*`, `date.*` or other built-in library functions** in theme templates (`string.slice` already broke the Standalone build). Lumina only uses `string.contains`.
+- Use plain language features instead: indexing (`image.sizes[0]`, `image.sizes[-1]`), integer division (`a // b`), `for` loops, `.size` on lists, object keys, and Revela's own functions above.
+- `image_formats` has no index — take its last entry by looping (see `image_fallback_format`).
+
+## Responsive Images — `Partials/ImageHelpers.revela`
+Lumina defines its responsive-image functions once; every partial that renders a `<picture>` (`Image`, `ContentImage`, `PhotoLightbox`, `OpenGraphImage`, `Body/Photo`) starts with `{{~ include 'imagehelpers' ~}}` and must not build srcsets by hand:
+
+| Function | Returns |
+|----------|---------|
+| `image_type format` | `<source type>` MIME type (`jpg` → `image/jpeg`) |
+| `image_fallback_format` | Last of `image_formats` (normally `jpg`) for the `<img>` fallback |
+| `image_srcset image format` | All generated sizes as `url <width>w` (portrait widths derived from the longest edge) |
+| `image_size image limit` | Largest generated size ≤ `limit`, else the smallest |
+| `viewer_sizes image` | `sizes` for a photo fitted into the photo viewer |
+
+Build variant URLs with `variant_url`, never by concatenating `assets_basepath + slug`.
+
+## Navigation & Lightbox
+- Mark the current page with `aria-current="page"` (from `item.current`) and style `[aria-current="page"]` — no `class="active"`. `item.active` (ancestor of the current page) stays available for expanding sections.
+- The lightbox `<dialog>` fills the viewport: it closes with its × (`command="close"`) or Escape. No `closedby="any"` — there is no backdrop to click.
 
 ## ContentImage.revela (mandatory)
 Every theme must implement this partial — it's invoked for every `![alt](path)` in Markdown:

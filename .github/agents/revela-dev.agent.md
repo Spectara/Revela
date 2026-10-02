@@ -66,9 +66,10 @@ You deeply understand the Revela architecture:
 - **Plugin lifecycle**: `ConfigureConfiguration` → `ConfigureServices` → build host → `GetCommands(IServiceProvider)`
 - **System.CommandLine 2.0** (final release, NOT beta): `new Option<T>("--name", "-n")`, `command.SetAction()`, `parseResult.GetValue(option)`
 - **IPathResolver**: Never hardcode "source"/"output" paths — always use `IPathResolver.SourcePath`/`OutputPath`
-- **Template context**: `image_formats` is global, `image.sizes` is per-image, `site.json` loaded by RenderService (NOT via IConfiguration)
+- **Template context**: `image_formats` is global, `image.sizes` is per-image, the page body is `gallery.body` (no `page_content`), extra page variables come from front matter `data` (`$galleries`, `$images`, plugin JSON). `site.json` reaches templates as `site` via RenderService (dynamic, theme-specific) and is also bound via IConfiguration (`SiteCoreConfig`, section `site`)
 - **ProjectPaths**: Only non-configurable paths (Cache, Themes, Plugins, SharedImages, Static)
-- **Configuration chain**: `revela.json` (global) → `project.json` (local) → `logging.json` (optional)
+- **Configuration chain**: property defaults → `revela.json` (global) → `project.json` → `site.json` (re-keyed under `site`) → `logging.json` (optional) → `SPECTARA__REVELA__*` env vars. No appsettings, no unprefixed env, no CLI args as config, no file watching (`ConfigFileWriter` reloads after writes)
+- **Interactivity**: decide via `IConsoleCapabilities` only — `IsInteractive` gates prompts, `CanRenderLive` gates `Status()`/`Progress()`/`Live()`
 
 ## Coding Standards
 
@@ -113,7 +114,7 @@ Follow these rules strictly — they are enforced by .editorconfig as warnings/e
 ### DI & Configuration
 - Constructor injection via primary constructors — no `IServiceProvider` in business logic
 - **HttpClient**: Typed Client pattern via `services.AddHttpClient<T>()`
-- **IOptions<T>** / **IOptionsMonitor<T>** registered from user code via `services.AddOptions<T>().BindConfiguration(T.Section)` (the `Section` const is hand-written on the `[RevelaConfig]`-marked class — CBSG needs it visible in user source for trim/AOT interception). Validation via empty `[OptionsValidator]`-marked partial class implementing `IValidateOptions<T>` (NOT `.ValidateDataAnnotations()` — that's reflection-based and trim-unsafe). Validation is lazy on first `.Value` access; `ValidateOnStart` is intentionally not used because config values are produced at runtime via wizards/CLI.
+- **IOptions<T>** / **IOptionsMonitor<T>** registered from user code via `services.AddOptions<T>().BindConfiguration(T.Section)` (the `Section` const is hand-written on the `[RevelaConfig]`-marked class — CBSG needs it visible in user source for trim/AOT interception). Validation via empty `[OptionsValidator]`-marked partial class implementing `IValidateOptions<T>`, registered with `services.TryAddEnumerable(ServiceDescriptor.Singleton<IValidateOptions<T>, TValidator>())` (NOT `.ValidateDataAnnotations()` — that's reflection-based and trim-unsafe). Validation is lazy on first `.Value` access; `ValidateOnStart` is intentionally not used because config values are produced at runtime via wizards/CLI.
 
 ### Console Output
 - Use `OutputMarkers.Success/Error/Warning/Info` from `Spectara.Revela.Sdk.Output`
