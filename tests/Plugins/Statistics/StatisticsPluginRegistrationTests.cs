@@ -31,6 +31,18 @@ public sealed class StatisticsPluginRegistrationTests
     }
 
     [TestMethod]
+    public void ConfigureServices_CalledTwice_RegistersConfigValidatorOnce()
+    {
+        var services = new ServiceCollection();
+        var plugin = new StatisticsPlugin();
+
+        plugin.ConfigureServices(services);
+        plugin.ConfigureServices(services);
+
+        Assert.HasCount(1, services.Where(item => item.ServiceType == typeof(IValidateOptions<StatisticsPluginConfig>)));
+    }
+
+    [TestMethod]
     public void ConfigureServices_InvalidOptions_ThrowsOnAccess()
     {
         // Arrange

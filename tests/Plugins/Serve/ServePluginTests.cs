@@ -1,6 +1,8 @@
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using NSubstitute;
 using Spectara.Revela.Plugins.Serve;
+using Spectara.Revela.Plugins.Serve.Configuration;
 using Spectara.Revela.Sdk.Abstractions;
 using Spectara.Revela.Sdk.Services;
 
@@ -28,6 +30,18 @@ public sealed class ServePluginTests
         var descriptor = services.FirstOrDefault(d => d.ServiceType == typeof(ServeCommand));
         Assert.IsNotNull(descriptor, "ServeCommand should be registered");
         Assert.AreEqual(ServiceLifetime.Transient, descriptor.Lifetime);
+    }
+
+    [TestMethod]
+    public void ConfigureServices_CalledTwice_RegistersConfigValidatorOnce()
+    {
+        var plugin = new ServePlugin();
+        var services = new ServiceCollection();
+
+        plugin.ConfigureServices(services);
+        plugin.ConfigureServices(services);
+
+        Assert.HasCount(1, services.Where(d => d.ServiceType == typeof(IValidateOptions<ServePluginConfig>)));
     }
 
     [TestMethod]
