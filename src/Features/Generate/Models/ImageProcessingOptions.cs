@@ -14,6 +14,14 @@ internal sealed class ImageProcessingOptions
     public required IReadOnlyDictionary<string, int> Formats { get; init; }
 
     /// <summary>
+    /// Encoder effort per format that differs from libvips' default.
+    /// </summary>
+    /// <remarks>
+    /// Formats without an entry are encoded exactly as before effort was configurable.
+    /// </remarks>
+    public IReadOnlyDictionary<string, int> Efforts { get; init; } = new Dictionary<string, int>();
+
+    /// <summary>
     /// Sizes to generate in pixels (e.g., [640, 1280, 1920])
     /// </summary>
     public required IReadOnlyList<int> Sizes { get; init; }

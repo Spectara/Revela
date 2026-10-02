@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Options;
 using Spectara.Revela.Sdk.Abstractions;
 
 namespace Spectara.Revela.Sdk.Configuration;
@@ -63,6 +64,7 @@ public sealed class GenerateConfig
     /// <summary>
     /// Image processing settings
     /// </summary>
+    [ValidateObjectMembers]
     public ImageConfig Images { get; set; } = new();
 
     /// <summary>

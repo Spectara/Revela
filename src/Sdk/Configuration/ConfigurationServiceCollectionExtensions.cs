@@ -81,6 +81,9 @@ public static class ConfigurationServiceCollectionExtensions
         // absolute-URL basePath values with a hint pointing at baseUrl for the host.
         services.AddSingleton<IValidateOptions<ProjectConfig>, ProjectConfigBasePathValidator>();
 
+        // Encoder effort ranges (and other annotated generate settings).
+        services.AddSingleton<IValidateOptions<GenerateConfig>, GenerateConfigValidator>();
+
         // Path resolver service (resolves relative paths against project root).
         // Reads IOptionsMonitor on every access, so in-process config writes are reflected.
         services.AddSingleton<IPathResolver, PathResolver>();

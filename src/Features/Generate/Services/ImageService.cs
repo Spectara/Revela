@@ -24,7 +24,7 @@ namespace Spectara.Revela.Features.Generate.Services;
 /// in multiple sizes and formats. An image is skipped when its processing
 /// fingerprint (source size + modification time, resize mode, output version)
 /// matches the one recorded in <see cref="ImageStateStore"/> after its last successful
-/// processing and every expected variant exists with the recorded quality of its format.
+/// processing and every expected variant exists with the recorded quality and encoder effort of its format.
 /// The scan manifest only supplies sizes, dimensions and placeholders, so rebuilding it
 /// never re-encodes images.
 /// </para>
@@ -137,7 +137,9 @@ internal sealed partial class ImageService(
             var imagesToProcess = new List<PendingImage>();
             var cachedCount = 0;
             var resizeMode = imageSizesProvider.GetResizeMode();
+            var efforts = GetNonDefaultEfforts(formats, ImageSettings);
             var qualityChanges = new HashSet<(string Format, int Recorded, int Configured)>();
+            var effortChanges = new HashSet<(string Format, int Recorded, int Configured)>();
 
             var selectionStopwatch = Stopwatch.StartNew();
 
@@ -173,24 +175,27 @@ internal sealed partial class ImageService(
                 // processing — never against scan metadata, which already reflects the edit.
                 var fingerprint = ComputeProcessingFingerprint(fileInfo.Length, fileInfo.LastWriteTimeUtc, resizeMode);
                 var recorded = imageState.Get(manifestKey);
-                var sourceUnchanged = recorded is not null
-                    && string.Equals(recorded.Fingerprint, fingerprint, StringComparison.Ordinal);
 
-                if (options.Force || !sourceUnchanged)
+                if (options.Force || recorded is null || !string.Equals(recorded.Fingerprint, fingerprint, StringComparison.Ordinal))
                 {
                     // Forced, source or pipeline changed, or never processed: regenerate everything.
                     // Variants of formats that are no longer configured are now stale, so only
-                    // the configured qualities are recorded.
+                    // the configured qualities and efforts are recorded.
                     imagesToProcess.Add(new PendingImage(
                         fullPath, manifestKey, imageName, manifestSizes, null, existingPlaceholder, width, height,
-                        new ProcessedImage { Fingerprint = fingerprint, Qualities = new Dictionary<string, int>(formats) }));
+                        new ProcessedImage
+                        {
+                            Fingerprint = fingerprint,
+                            Qualities = new Dictionary<string, int>(formats),
+                            Efforts = efforts.Count > 0 ? new Dictionary<string, int>(efforts) : null
+                        }));
                     continue;
                 }
 
                 // Source unchanged: regenerate variants that are missing (deleted, new size or
-                // format, interrupted run) or encoded with another quality than configured.
+                // format, interrupted run) or encoded with another quality or effort than configured.
                 // Cost: ~10 File.Exists calls per image (cheap I/O, typically cached by OS)
-                var staleFormats = GetStaleFormats(recorded!.Qualities, formats, qualityChanges);
+                var staleFormats = GetStaleFormats(recorded, formats, efforts, qualityChanges, effortChanges);
                 var missingVariants = GetMissingVariants(outputImagesDirectory, imageName, manifestSizes, formats, staleFormats);
                 if (missingVariants.Count == 0)
                 {
@@ -200,19 +205,33 @@ internal sealed partial class ImageService(
 
                 // Variants of formats that are no longer configured are untouched and still valid.
                 var qualities = new Dictionary<string, int>(recorded.Qualities);
+                var recordedEfforts = new Dictionary<string, int>(recorded.Efforts ?? new Dictionary<string, int>());
                 foreach (var (format, quality) in formats)
                 {
                     qualities[format] = quality;
+                    if (efforts.TryGetValue(format, out var effort))
+                    {
+                        recordedEfforts[format] = effort;
+                    }
+                    else
+                    {
+                        recordedEfforts.Remove(format);
+                    }
                 }
 
                 imagesToProcess.Add(new PendingImage(
                     fullPath, manifestKey, imageName, manifestSizes, missingVariants, existingPlaceholder, width, height,
-                    recorded with { Qualities = qualities }));
+                    recorded with { Qualities = qualities, Efforts = recordedEfforts.Count > 0 ? recordedEfforts : null }));
             }
 
             foreach (var (format, recordedQuality, configuredQuality) in qualityChanges)
             {
                 LogQualityChanged(logger, format, recordedQuality, configuredQuality);
+            }
+
+            foreach (var (format, recordedEffort, configuredEffort) in effortChanges)
+            {
+                LogEffortChanged(logger, format, recordedEffort, configuredEffort);
             }
 
             selectionStopwatch.Stop();
@@ -376,6 +395,7 @@ internal sealed partial class ImageService(
                             new ImageProcessingOptions
                             {
                                 Formats = formats,
+                                Efforts = efforts,
                                 Sizes = sizesToGenerate,
                                 VariantsToGenerate = missingVariants,  // null = all, list = incremental
                                 OutputDirectory = outputImagesDirectory,
@@ -564,21 +584,49 @@ internal sealed partial class ImageService(
             $"v{NetVipsImageProcessor.OutputVersion}|size:{fileSize}|mtime:{lastWriteTimeUtc.Ticks}|resize:{resizeMode}");
 
     /// <summary>
-    /// Formats whose variants on disk were not encoded with the configured quality.
+    /// Encoder effort of the configured formats that differs from libvips' default.
+    /// </summary>
+    /// <remarks>
+    /// Default efforts are left out, so a default configuration encodes and records exactly
+    /// what it did before effort was configurable.
+    /// </remarks>
+    private static Dictionary<string, int> GetNonDefaultEfforts(IReadOnlyDictionary<string, int> formats, ImageConfig settings)
+    {
+        var efforts = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        foreach (var format in formats.Keys)
+        {
+            if (string.Equals(format, "avif", StringComparison.OrdinalIgnoreCase) && settings.AvifEffort != ImageConfig.DefaultAvifEffort)
+            {
+                efforts[format] = settings.AvifEffort;
+            }
+            else if (string.Equals(format, "webp", StringComparison.OrdinalIgnoreCase) && settings.WebpEffort != ImageConfig.DefaultWebpEffort)
+            {
+                efforts[format] = settings.WebpEffort;
+            }
+        }
+
+        return efforts;
+    }
+
+    /// <summary>
+    /// Formats whose variants on disk were not encoded with the configured quality and effort.
     /// </summary>
     /// <remarks>
     /// A format without a recorded quality counts as stale: its files (if any) predate the
-    /// recorded fingerprint, for example from before the format was last removed.
+    /// recorded fingerprint, for example from before the format was last removed. A format
+    /// without a recorded effort was encoded with the default effort.
     /// </remarks>
     private static HashSet<string> GetStaleFormats(
-        IReadOnlyDictionary<string, int> recordedQualities,
+        ProcessedImage recorded,
         IReadOnlyDictionary<string, int> formats,
-        HashSet<(string Format, int Recorded, int Configured)> qualityChanges)
+        IReadOnlyDictionary<string, int> efforts,
+        HashSet<(string Format, int Recorded, int Configured)> qualityChanges,
+        HashSet<(string Format, int Recorded, int Configured)> effortChanges)
     {
         var stale = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach (var (format, quality) in formats)
         {
-            if (!recordedQualities.TryGetValue(format, out var recordedQuality))
+            if (!recorded.Qualities.TryGetValue(format, out var recordedQuality))
             {
                 stale.Add(format);
             }
@@ -587,10 +635,21 @@ internal sealed partial class ImageService(
                 stale.Add(format);
                 qualityChanges.Add((format, recordedQuality, quality));
             }
+
+            int? recordedEffort = recorded.Efforts?.TryGetValue(format, out var value) is true ? value : null;
+            int? configuredEffort = efforts.TryGetValue(format, out var configured) ? configured : null;
+            if (recordedEffort != configuredEffort)
+            {
+                stale.Add(format);
+                effortChanges.Add((format, recordedEffort ?? DefaultEffort(format), configuredEffort ?? DefaultEffort(format)));
+            }
         }
 
         return stale;
     }
+
+    private static int DefaultEffort(string format) =>
+        string.Equals(format, "webp", StringComparison.OrdinalIgnoreCase) ? ImageConfig.DefaultWebpEffort : ImageConfig.DefaultAvifEffort;
 
     /// <summary>
     /// Collect all image source paths from the unified tree.
@@ -729,6 +788,9 @@ internal sealed partial class ImageService(
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Quality changed for {Format}: {OldQuality} → {NewQuality}, regenerating all {Format} files")]
     private static partial void LogQualityChanged(ILogger logger, string format, int oldQuality, int newQuality);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Encoder effort changed for {Format}: {OldEffort} → {NewEffort}, regenerating all {Format} files")]
+    private static partial void LogEffortChanged(ILogger logger, string format, int oldEffort, int newEffort);
 
     [LoggerMessage(Level = LogLevel.Error, Message = "Image processing failed")]
     private static partial void LogImageProcessingFailed(ILogger logger, Exception exception);

@@ -1,3 +1,5 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace Spectara.Revela.Sdk.Configuration;
 
 /// <summary>
@@ -57,6 +59,36 @@ public sealed class ImageConfig
     /// Default is 0 - user must explicitly configure via 'revela config image'.
     /// </remarks>
     public int Avif { get; set; }
+
+    /// <summary>
+    /// libvips' AVIF encoder effort, the default of <see cref="AvifEffort"/>.
+    /// </summary>
+    public const int DefaultAvifEffort = 4;
+
+    /// <summary>
+    /// libvips' WebP encoder effort, the default of <see cref="WebpEffort"/>.
+    /// </summary>
+    public const int DefaultWebpEffort = 4;
+
+    /// <summary>
+    /// AVIF encoder effort (0-9): CPU time spent to make each AVIF file smaller.
+    /// </summary>
+    /// <remarks>
+    /// Default 4 (libvips' default). Effort 2 encodes about 8× faster (measured on 25 MP photos:
+    /// about 3.5× less CPU per photo for AVIF + WebP + JPG) for AVIF files 4–11% larger at about
+    /// the same quality. Changing it re-encodes the AVIF variants only.
+    /// </remarks>
+    [Range(0, 9)]
+    public int AvifEffort { get; set; } = DefaultAvifEffort;
+
+    /// <summary>
+    /// WebP encoder effort (0-6): CPU time spent to make each WebP file smaller.
+    /// </summary>
+    /// <remarks>
+    /// Default 4 (libvips' default). Changing it re-encodes the WebP variants only.
+    /// </remarks>
+    [Range(0, 6)]
+    public int WebpEffort { get; set; } = DefaultWebpEffort;
 
     /// <summary>
     /// Optional maximum number of images processed in parallel.

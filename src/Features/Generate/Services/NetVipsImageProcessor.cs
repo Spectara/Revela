@@ -347,7 +347,8 @@ internal sealed partial class NetVipsImageProcessor(
                             format,
                             size,
                             thumbHeight,
-                            quality);
+                            quality,
+                            options.Efforts.TryGetValue(format, out var effort) ? effort : null);
 
                         variants.Add(variant);
                         onVariantProgress?.Invoke(VariantState.Done, format);
@@ -912,7 +913,9 @@ internal sealed partial class NetVipsImageProcessor(
     /// <remarks>
     /// Output structure: images/{imageSlug}/{width}.{format}
     /// e.g., images/events/fireworks/029081/640.jpg
-    /// The imageSlug includes the gallery path to avoid filename collisions.
+    /// The imageSlug includes the gallery path to avoid collisions between images with the same
+    /// filename in different galleries. A <c>null</c> <paramref name="effort"/> leaves the
+    /// encoder's default (the option is not passed at all).
     /// </remarks>
     private Task<ImageVariant> SaveVariantAsync(
         Image image,
@@ -921,7 +924,8 @@ internal sealed partial class NetVipsImageProcessor(
         string format,
         int width,
         int height,
-        int quality)
+        int quality,
+        int? effort)
     {
         // Build output path: images/{imageSlug}/{width}.{format}
         var imageDirectory = Path.Combine(outputDirectory, imageSlug.Replace('/', Path.DirectorySeparatorChar));
@@ -944,7 +948,7 @@ internal sealed partial class NetVipsImageProcessor(
         switch (format.ToUpperInvariant())
         {
             case "WEBP":
-                image.Webpsave(outputPath, q: quality, keep: Enums.ForeignKeep.None);
+                image.Webpsave(outputPath, q: quality, effort: effort, keep: Enums.ForeignKeep.None);
                 break;
 
             case "JPG":
@@ -954,7 +958,7 @@ internal sealed partial class NetVipsImageProcessor(
 
             case "AVIF":
                 // AVIF uses AV1 compression via HEIF container
-                image.Heifsave(outputPath, q: quality, compression: Enums.ForeignHeifCompression.Av1, keep: Enums.ForeignKeep.None);
+                image.Heifsave(outputPath, q: quality, compression: Enums.ForeignHeifCompression.Av1, effort: effort, keep: Enums.ForeignKeep.None);
                 break;
 
             case "PNG":

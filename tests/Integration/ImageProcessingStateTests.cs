@@ -181,6 +181,57 @@ public sealed class ImageProcessingStateTests
     }
 
     [TestMethod]
+    public async Task ProcessAsync_AvifEffortChanged_ReencodesOnlyAvif()
+    {
+        using var project = CreateProject("a.jpg", "b.jpg");
+        WriteImageSettings(project, new JsonObject { ["jpg"] = 90, ["avif"] = 60 });
+        await RunAsync(project);
+        var jpg = VariantPath(project, "a", VariantSize);
+        var avif = Path.ChangeExtension(jpg, ".avif");
+        File.SetLastWriteTimeUtc(jpg, new DateTime(2020, 1, 1, 0, 0, 0, DateTimeKind.Utc));
+        File.SetLastWriteTimeUtc(avif, new DateTime(2020, 1, 1, 0, 0, 0, DateTimeKind.Utc));
+        var defaultEffortAvif = await File.ReadAllBytesAsync(avif);
+        WriteImageSettings(project, new JsonObject { ["jpg"] = 90, ["avif"] = 60, ["avifEffort"] = 0 });
+        var rerun = await RunAsync(project);
+        var third = await RunAsync(project);
+
+        Assert.AreEqual(2, rerun.ProcessedCount);
+        Assert.AreEqual(4, rerun.FilesCreated, "Only the AVIF variants (320 and the original width) are re-encoded.");
+        Assert.AreEqual(2020, File.GetLastWriteTimeUtc(jpg).Year, "JPG variants must be kept.");
+        Assert.AreNotEqual(2020, File.GetLastWriteTimeUtc(avif).Year, "AVIF variants must be re-encoded.");
+        CollectionAssert.AreNotEqual(defaultEffortAvif, await File.ReadAllBytesAsync(avif), "The encoder must use the configured effort.");
+        Assert.AreEqual(0, third.ProcessedCount, "The new effort must be recorded.");
+    }
+
+    [TestMethod]
+    public async Task ProcessAsync_EffortSetBackToDefault_ReencodesAgain()
+    {
+        using var project = CreateProject("a.jpg");
+        WriteImageSettings(project, new JsonObject { ["jpg"] = 90, ["webp"] = 80, ["webpEffort"] = 1 });
+        await RunAsync(project);
+
+        WriteImageSettings(project, new JsonObject { ["jpg"] = 90, ["webp"] = 80 });
+        var rerun = await RunAsync(project);
+
+        Assert.AreEqual(1, rerun.ProcessedCount);
+        Assert.AreEqual(2, rerun.FilesCreated, "Only the WebP variants are re-encoded.");
+    }
+
+    [TestMethod]
+    public async Task ProcessAsync_DefaultEffortsWrittenExplicitly_ReencodesNothing()
+    {
+        using var project = CreateProject("a.jpg");
+        await RunAsync(project);
+        var state = await File.ReadAllTextAsync(StatePath(project));
+
+        WriteImageSettings(project, new JsonObject { ["jpg"] = 90, ["avifEffort"] = 4, ["webpEffort"] = 4 });
+        var rerun = await RunAsync(project);
+
+        Assert.AreEqual(0, rerun.ProcessedCount);
+        Assert.AreEqual(state, await File.ReadAllTextAsync(StatePath(project)));
+    }
+
+    [TestMethod]
     public async Task ProcessAsync_SizeAdded_GeneratesNewVariants()
     {
         using var project = CreateProject("a.jpg");
@@ -314,11 +365,14 @@ public sealed class ImageProcessingStateTests
     }
 
     private static void WriteProjectJson(TestProject project, int jpgQuality) =>
+        WriteImageSettings(project, new JsonObject { ["jpg"] = jpgQuality });
+
+    private static void WriteImageSettings(TestProject project, JsonObject images) =>
         WriteJson(Path.Combine(project.RootPath, "project.json"), new JsonObject
         {
             ["project"] = new JsonObject { ["name"] = "State" },
             ["theme"] = new JsonObject { ["name"] = "Lumina" },
-            ["generate"] = new JsonObject { ["images"] = new JsonObject { ["jpg"] = jpgQuality } },
+            ["generate"] = new JsonObject { ["images"] = images },
         });
 
     private static async Task<ImageResult> RunAsync(TestProject project, IReadOnlyList<int>? sizes = null)

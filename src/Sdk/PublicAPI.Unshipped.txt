@@ -319,6 +319,8 @@ Spectara.Revela.Sdk.Configuration.GenerateConfig.Sorting.set -> void
 Spectara.Revela.Sdk.Configuration.ImageConfig
 Spectara.Revela.Sdk.Configuration.ImageConfig.Avif.get -> int
 Spectara.Revela.Sdk.Configuration.ImageConfig.Avif.set -> void
+Spectara.Revela.Sdk.Configuration.ImageConfig.AvifEffort.get -> int
+Spectara.Revela.Sdk.Configuration.ImageConfig.AvifEffort.set -> void
 Spectara.Revela.Sdk.Configuration.ImageConfig.GetActiveFormats() -> System.Collections.Generic.IReadOnlyDictionary<string!, int>!
 Spectara.Revela.Sdk.Configuration.ImageConfig.ImageConfig() -> void
 Spectara.Revela.Sdk.Configuration.ImageConfig.Jpg.get -> int
@@ -333,6 +335,8 @@ Spectara.Revela.Sdk.Configuration.ImageConfig.Placeholder.get -> Spectara.Revela
 Spectara.Revela.Sdk.Configuration.ImageConfig.Placeholder.set -> void
 Spectara.Revela.Sdk.Configuration.ImageConfig.Webp.get -> int
 Spectara.Revela.Sdk.Configuration.ImageConfig.Webp.set -> void
+Spectara.Revela.Sdk.Configuration.ImageConfig.WebpEffort.get -> int
+Spectara.Revela.Sdk.Configuration.ImageConfig.WebpEffort.set -> void
 Spectara.Revela.Sdk.Configuration.ImageSortConfig
 Spectara.Revela.Sdk.Configuration.ImageSortConfig.Direction.get -> Spectara.Revela.Sdk.Configuration.SortDirection
 Spectara.Revela.Sdk.Configuration.ImageSortConfig.Direction.set -> void
@@ -800,3 +804,5 @@ virtual Spectara.Revela.Sdk.Abstractions.PackageMetadata.EqualityContract.get ->
 virtual Spectara.Revela.Sdk.Abstractions.PackageMetadata.Equals(Spectara.Revela.Sdk.Abstractions.PackageMetadata? other) -> bool
 virtual Spectara.Revela.Sdk.Abstractions.PackageMetadata.PrintMembers(System.Text.StringBuilder! builder) -> bool
 static Spectara.Revela.Sdk.Configuration.ThemeConfig.ResolveName(string? name) -> string!
+const Spectara.Revela.Sdk.Configuration.ImageConfig.DefaultAvifEffort = 4 -> int
+const Spectara.Revela.Sdk.Configuration.ImageConfig.DefaultWebpEffort = 4 -> int
