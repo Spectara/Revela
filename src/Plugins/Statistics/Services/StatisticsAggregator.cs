@@ -2,7 +2,6 @@ using System.Globalization;
 using Microsoft.Extensions.Options;
 using Spectara.Revela.Plugins.Statistics.Configuration;
 using Spectara.Revela.Plugins.Statistics.Models;
-using Spectara.Revela.Sdk.Abstractions;
 using Spectara.Revela.Sdk.Models.Manifest;
 
 namespace Spectara.Revela.Plugins.Statistics.Services;
@@ -11,7 +10,6 @@ namespace Spectara.Revela.Plugins.Statistics.Services;
 /// Aggregates EXIF data from manifest into statistics.
 /// </summary>
 internal sealed partial class StatisticsAggregator(
-    IManifestRepository manifestRepository,
     IOptionsMonitor<StatisticsPluginConfig> config,
     TimeProvider timeProvider,
     ILogger<StatisticsAggregator> logger)
@@ -65,13 +63,16 @@ internal sealed partial class StatisticsAggregator(
     #endregion
 
     /// <summary>
-    /// Aggregate statistics from manifest
+    /// Aggregate statistics from the scanned site.
     /// </summary>
-    public SiteStatistics Aggregate()
+    /// <param name="manifest">The manifest written by the last scan.</param>
+    public SiteStatistics Aggregate(ManifestSnapshot manifest)
     {
-        var images = manifestRepository.Images.Values.ToList();
+        ArgumentNullException.ThrowIfNull(manifest);
+
+        var images = manifest.Images.Values.ToList();
         var imagesWithExif = images.Where(i => i.Exif is not null).ToList();
-        var galleries = CountGalleries(manifestRepository.Root);
+        var galleries = CountGalleries(manifest.Root);
 
         LogAggregating(logger, images.Count, imagesWithExif.Count);
 
@@ -355,13 +356,8 @@ internal sealed partial class StatisticsAggregator(
 
     #region Helper Methods
 
-    private static int CountGalleries(ManifestEntry? root)
+    private static int CountGalleries(ManifestEntry root)
     {
-        if (root is null)
-        {
-            return 0;
-        }
-
         var count = 0;
         var queue = new Queue<ManifestEntry>();
         queue.Enqueue(root);

@@ -48,6 +48,7 @@ public static class ServiceCollectionExtensions
         services.TryAddSingleton<IAssetResolver, AssetResolver>();
         services.TryAddSingleton<IStaticFileService, StaticFileService>();
         services.TryAddSingleton<IManifestRepository, ManifestService>();
+        services.TryAddSingleton<IManifestReader, ManifestReader>();
 
         // Domain services (three main services)
         services.TryAddSingleton<IContentService, ContentService>();

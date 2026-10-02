@@ -36,7 +36,6 @@ internal sealed partial class ManifestService(
     TimeProvider timeProvider) : IManifestRepository
 {
     private const string ManifestFileName = "manifest.json";
-    private const string CacheDirectoryName = ".cache";
 
     private ImageManifest manifest = new();
 
@@ -181,16 +180,39 @@ internal sealed partial class ManifestService(
     /// <inheritdoc />
     public async Task LoadAsync(CancellationToken cancellationToken = default)
     {
-        var cacheDirectory = GetCacheDirectory();
-        var manifestPath = Path.Combine(cacheDirectory, ManifestFileName);
+        var loaded = await ReadAsync(GetManifestPath(projectEnvironment.Value.Path), logger, cancellationToken);
+        manifest = loaded ?? new ImageManifest();
+        RebuildImageCache();
+        if (loaded is not null)
+        {
+            LogManifestLoaded(logger, imageCache.Count);
+        }
 
+        processedImages = new Dictionary<string, string>(manifest.Meta.ProcessedImages, StringComparer.Ordinal);
+    }
+
+    /// <summary>
+    /// Gets the manifest file path of a project.
+    /// </summary>
+    internal static string GetManifestPath(string projectPath) =>
+        Path.Combine(projectPath, ProjectPaths.Cache, ManifestFileName);
+
+    /// <summary>
+    /// Reads a manifest file without side effects.
+    /// </summary>
+    /// <returns>
+    /// The manifest, or <c>null</c> when the file is missing, unreadable or written
+    /// by another manifest version.
+    /// </returns>
+    internal static async Task<ImageManifest?> ReadAsync(
+        string manifestPath,
+        ILogger logger,
+        CancellationToken cancellationToken)
+    {
         if (!File.Exists(manifestPath))
         {
             LogManifestNotFound(logger, manifestPath);
-            manifest = new ImageManifest();
-            imageCache.Clear();
-            processedImages.Clear();
-            return;
+            return null;
         }
 
         try
@@ -198,33 +220,55 @@ internal sealed partial class ManifestService(
             var json = await File.ReadAllTextAsync(manifestPath, cancellationToken);
             var loaded = JsonSerializer.Deserialize(json, ManifestJsonContext.Default.ImageManifest);
 
-            if (loaded is null)
+            // Source-generated deserialization leaves Meta null when "_meta" is absent.
+            if (loaded?.Meta is null)
             {
                 LogManifestInvalid(logger, manifestPath);
-                manifest = new ImageManifest();
-                imageCache.Clear();
+                return null;
             }
-            else if (loaded.Meta.Version != ManifestMeta.CurrentVersion)
+
+            if (loaded.Meta.Version != ManifestMeta.CurrentVersion)
             {
                 LogManifestOutdated(logger, manifestPath, loaded.Meta.Version, ManifestMeta.CurrentVersion);
-                manifest = new ImageManifest();
-                imageCache.Clear();
+                return null;
             }
-            else
-            {
-                manifest = WithDefaultMetaCollections(loaded);
-                RebuildImageCache();
-                LogManifestLoaded(logger, imageCache.Count);
-            }
+
+            return WithDefaultMetaCollections(loaded);
         }
         catch (JsonException ex)
         {
             LogManifestParseError(logger, manifestPath, ex);
-            manifest = new ImageManifest();
-            imageCache.Clear();
+            return null;
         }
+    }
 
-        processedImages = new Dictionary<string, string>(manifest.Meta.ProcessedImages, StringComparer.Ordinal);
+    /// <summary>
+    /// Enumerates every image in the tree with its manifest key and containing node.
+    /// </summary>
+    /// <remarks>
+    /// Keys are source paths with forward slashes; an image listed on several pages
+    /// (filtered images carry their original <see cref="ImageContent.SourcePath"/>)
+    /// yields the same key each time.
+    /// </remarks>
+    internal static IEnumerable<(string SourcePath, ImageContent Image, ManifestEntry Node)> EnumerateImages(
+        ManifestEntry root)
+    {
+        var pending = new Stack<ManifestEntry>();
+        pending.Push(root);
+
+        while (pending.Count > 0)
+        {
+            var node = pending.Pop();
+            foreach (var image in node.Content)
+            {
+                yield return (GetImageSourcePath(node.Path, image), image, node);
+            }
+
+            for (var i = node.Children.Count - 1; i >= 0; i--)
+            {
+                pending.Push(node.Children[i]);
+            }
+        }
     }
 
     /// <summary>
@@ -247,10 +291,9 @@ internal sealed partial class ManifestService(
     /// <inheritdoc />
     public async Task SaveAsync(CancellationToken cancellationToken = default)
     {
-        var cacheDirectory = GetCacheDirectory();
-        Directory.CreateDirectory(cacheDirectory);
+        var manifestPath = GetManifestPath(projectEnvironment.Value.Path);
+        Directory.CreateDirectory(Path.GetDirectoryName(manifestPath)!);
 
-        var manifestPath = Path.Combine(cacheDirectory, ManifestFileName);
         var tempPath = manifestPath + ".tmp";
 
         // Update timestamp and persist the processing state in stable key order
@@ -335,8 +378,6 @@ internal sealed partial class ManifestService(
         return orphans;
     }
 
-    private string GetCacheDirectory() => Path.Combine(projectEnvironment.Value.Path, CacheDirectoryName);
-
     /// <summary>
     /// Rebuild the internal image cache by traversing the tree.
     /// </summary>
@@ -349,23 +390,9 @@ internal sealed partial class ManifestService(
             return;
         }
 
-        TraverseForImages(manifest.Root);
-    }
-
-    /// <summary>
-    /// Recursively traverse the tree to populate image cache.
-    /// </summary>
-    private void TraverseForImages(ManifestEntry node)
-    {
-        foreach (var image in node.Content)
+        foreach (var (sourcePath, image, node) in EnumerateImages(manifest.Root))
         {
-            var sourcePath = GetImageSourcePath(node.Path, image);
             imageCache[sourcePath] = (image, node);
-        }
-
-        foreach (var child in node.Children)
-        {
-            TraverseForImages(child);
         }
     }
 
@@ -499,19 +526,19 @@ internal sealed partial class ManifestService(
 
     #region Logging
 
-    [LoggerMessage(Level = LogLevel.Debug, Message = "Manifest not found at {Path}, starting fresh")]
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Manifest not found at {Path}")]
     private static partial void LogManifestNotFound(ILogger logger, string path);
 
-    [LoggerMessage(Level = LogLevel.Warning, Message = "Manifest at {Path} is invalid, starting fresh")]
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Manifest at {Path} is invalid and is ignored until the next scan")]
     private static partial void LogManifestInvalid(ILogger logger, string path);
 
-    [LoggerMessage(Level = LogLevel.Information, Message = "Manifest at {Path} has version {Version} (current: {CurrentVersion}), rebuilding it")]
+    [LoggerMessage(Level = LogLevel.Information, Message = "Manifest at {Path} has version {Version} (current: {CurrentVersion}) and is ignored until the next scan")]
     private static partial void LogManifestOutdated(ILogger logger, string path, int version, int currentVersion);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Loaded manifest with {Count} images")]
     private static partial void LogManifestLoaded(ILogger logger, int count);
 
-    [LoggerMessage(Level = LogLevel.Error, Message = "Failed to parse manifest at {Path}")]
+    [LoggerMessage(Level = LogLevel.Error, Message = "Failed to parse manifest at {Path}; it is ignored until the next scan")]
     private static partial void LogManifestParseError(ILogger logger, string path, Exception ex);
 
     [LoggerMessage(Level = LogLevel.Debug, Message = "Saved manifest with {Count} images to {Path}")]

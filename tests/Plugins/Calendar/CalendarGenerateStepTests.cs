@@ -188,6 +188,30 @@ public sealed class CalendarGenerateStepTests
     [TestMethod]
     [DataRow(false)]
     [DataRow(true)]
+    public async Task ExecuteAsync_NoUsableManifest_ReportsMissingScanAndPreservesCalendarJson(bool useCli)
+    {
+        using var project = TestProject.Create();
+        var step = CreateStep(project, EmptyCalendar, scanned: false);
+
+        if (useCli)
+        {
+            var (exitCode, output) = await ExecuteCliAsync(step);
+            Assert.AreEqual(1, exitCode);
+            Assert.Contains("generate scan", output, StringComparison.Ordinal);
+        }
+        else
+        {
+            var result = await ((IPipelineStep)step).ExecuteAsync();
+            Assert.IsFalse(result.Success);
+            Assert.Contains("run scan first", result.ErrorMessage!, StringComparison.Ordinal);
+        }
+
+        Assert.AreEqual(SentinelJson, await File.ReadAllTextAsync(GetCalendarJsonPath(project)));
+    }
+
+    [TestMethod]
+    [DataRow(false)]
+    [DataRow(true)]
     public async Task ExecuteAsync_DependentInvalidationFails_FailsAndPreservesCalendarJson(bool useCli)
     {
         using var project = TestProject.Create();
@@ -216,7 +240,8 @@ public sealed class CalendarGenerateStepTests
         TestProject project,
         string? content,
         bool withCalendarPage = true,
-        IArtifactLifecycle? artifactLifecycle = null)
+        IArtifactLifecycle? artifactLifecycle = null,
+        bool scanned = true)
     {
         var pageDirectory = Path.Combine(project.SourcePath, PagePath);
         Directory.CreateDirectory(pageDirectory);
@@ -233,15 +258,21 @@ public sealed class CalendarGenerateStepTests
         File.WriteAllText(Path.Combine(cacheDirectory, "manifest.json"), "{}");
         File.WriteAllText(GetCalendarJsonPath(project), SentinelJson);
 
-        var manifestRepository = Substitute.For<IManifestRepository>();
-        manifestRepository.Root.Returns(new ManifestEntry
-        {
-            Text = "Availability",
-            Path = PagePath,
-            DataSources = withCalendarPage
-                ? new Dictionary<string, string> { ["calendar"] = "calendar.json" }
-                : []
-        });
+        var manifestReader = Substitute.For<IManifestReader>();
+        manifestReader.TryLoadAsync(Arg.Any<CancellationToken>()).Returns(scanned
+            ? new ManifestSnapshot
+            {
+                Root = new ManifestEntry
+                {
+                    Text = "Availability",
+                    Path = PagePath,
+                    DataSources = withCalendarPage
+                        ? new Dictionary<string, string> { ["calendar"] = "calendar.json" }
+                        : []
+                },
+                Images = new Dictionary<string, ImageContent>()
+            }
+            : null);
         var pathResolver = Substitute.For<IPathResolver>();
         pathResolver.SourcePath.Returns(project.SourcePath);
 
@@ -255,7 +286,7 @@ public sealed class CalendarGenerateStepTests
         var projectEnvironment = Options.Create(new ProjectEnvironment { Path = project.RootPath });
         return new CalendarGenerateStep(
             NullLogger<CalendarGenerateStep>.Instance,
-            manifestRepository,
+            manifestReader,
             projectEnvironment,
             Options.Create(new SiteCoreConfig { Language = "en" }),
             pathResolver,

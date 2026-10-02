@@ -27,14 +27,14 @@ namespace Spectara.Revela.Plugins.Calendar.Commands;
 /// </remarks>
 internal sealed partial class CalendarGenerateStep(
     ILogger<CalendarGenerateStep> logger,
-    IManifestRepository manifestRepository,
+    IManifestReader manifestReader,
     IOptions<ProjectEnvironment> projectEnvironment,
     IOptions<SiteCoreConfig> siteCoreConfig,
     IPathResolver pathResolver,
     IArtifactLifecycle artifactLifecycle,
     CalendarDataInvalidator calendarDataInvalidator) : IPipelineStep
 {
-    private const string ManifestFileName = "manifest.json";
+
     private const string IndexFileName = "_index.revela";
 
     // ── IPipelineStep (service-level, no UI) ──
@@ -136,17 +136,14 @@ internal sealed partial class CalendarGenerateStep(
         var projectPath = projectEnvironment.Value.Path;
         var sourcePath = pathResolver.SourcePath;
 
-        var manifestFile = Path.Combine(projectPath, ProjectPaths.Cache, ManifestFileName);
-        if (!File.Exists(manifestFile))
+        LogLoadingManifest();
+        var manifest = await manifestReader.TryLoadAsync(cancellationToken);
+        if (manifest is null)
         {
             return GenerationOutcome.ManifestMissing;
         }
 
-        LogLoadingManifest();
-        await manifestRepository.LoadAsync(cancellationToken);
-
-        var root = manifestRepository.Root ?? throw new InvalidOperationException("Manifest root is null after loading");
-        var calendarPages = FindCalendarPages(root);
+        var calendarPages = FindCalendarPages(manifest.Root);
         if (calendarPages.Count > 0)
         {
             LogGeneratingCalendars(calendarPages.Count);

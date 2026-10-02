@@ -2,7 +2,6 @@ using Microsoft.Extensions.Options;
 using NSubstitute;
 using Spectara.Revela.Plugins.Statistics.Configuration;
 using Spectara.Revela.Plugins.Statistics.Services;
-using Spectara.Revela.Sdk.Abstractions;
 using Spectara.Revela.Sdk.Models.Manifest;
 using Spectara.Revela.Tests.Shared;
 
@@ -12,13 +11,11 @@ namespace Spectara.Revela.Tests.Plugins.Statistics;
 [TestCategory("Unit")]
 public sealed class StatisticsAggregatorTests
 {
-    private readonly IManifestRepository manifestRepository;
     private readonly IOptionsMonitor<StatisticsPluginConfig> config;
     private readonly ILogger<StatisticsAggregator> logger;
 
     public StatisticsAggregatorTests()
     {
-        manifestRepository = Substitute.For<IManifestRepository>();
         config = Substitute.For<IOptionsMonitor<StatisticsPluginConfig>>();
         config.CurrentValue.Returns(new StatisticsPluginConfig());
         logger = Substitute.For<ILogger<StatisticsAggregator>>();
@@ -28,11 +25,10 @@ public sealed class StatisticsAggregatorTests
     public void Aggregate_EmptyManifest_ReturnsZeroCounts()
     {
         // Arrange
-        manifestRepository.Images.Returns(new Dictionary<string, ImageContent>());
-        var aggregator = new StatisticsAggregator(manifestRepository, config, TimeProvider.System, logger);
+        var aggregator = new StatisticsAggregator(config, TimeProvider.System, logger);
 
         // Act
-        var result = aggregator.Aggregate();
+        var result = aggregator.Aggregate(Snapshot(new Dictionary<string, ImageContent>()));
 
         // Assert
         Assert.AreEqual(0, result.TotalImages);
@@ -46,11 +42,10 @@ public sealed class StatisticsAggregatorTests
     {
         // Arrange
         var images = TestData.Images(10);
-        manifestRepository.Images.Returns(images);
-        var aggregator = new StatisticsAggregator(manifestRepository, config, TimeProvider.System, logger);
+        var aggregator = new StatisticsAggregator(config, TimeProvider.System, logger);
 
         // Act
-        var result = aggregator.Aggregate();
+        var result = aggregator.Aggregate(Snapshot(images));
 
         // Assert
         Assert.AreEqual(10, result.TotalImages);
@@ -66,11 +61,10 @@ public sealed class StatisticsAggregatorTests
             ["img2.jpg"] = TestData.Image("img2.jpg", TestData.Exif(iso: 100)),
             ["img3.jpg"] = TestData.Image("img3.jpg", exif: null) // No EXIF
         };
-        manifestRepository.Images.Returns(images);
-        var aggregator = new StatisticsAggregator(manifestRepository, config, TimeProvider.System, logger);
+        var aggregator = new StatisticsAggregator(config, TimeProvider.System, logger);
 
         // Act
-        var result = aggregator.Aggregate();
+        var result = aggregator.Aggregate(Snapshot(images));
 
         // Assert
         Assert.AreEqual(3, result.TotalImages);
@@ -88,11 +82,10 @@ public sealed class StatisticsAggregatorTests
             ["img3.jpg"] = TestData.Image("img3.jpg", TestData.Exif(fNumber: 2.8)),
             ["img4.jpg"] = TestData.Image("img4.jpg", TestData.Exif(fNumber: 4.0)) // Falls into f/2.8-4.0 bucket
         };
-        manifestRepository.Images.Returns(images);
-        var aggregator = new StatisticsAggregator(manifestRepository, config, TimeProvider.System, logger);
+        var aggregator = new StatisticsAggregator(config, TimeProvider.System, logger);
 
         // Act
-        var result = aggregator.Aggregate();
+        var result = aggregator.Aggregate(Snapshot(images));
 
         // Assert
         Assert.HasCount(3, result.Apertures); // 3 different buckets
@@ -112,11 +105,10 @@ public sealed class StatisticsAggregatorTests
             ["img3.jpg"] = TestData.Image("img3.jpg", TestData.Exif(focalLength: 85)),  // 70-135mm
             ["img4.jpg"] = TestData.Image("img4.jpg", TestData.Exif(focalLength: 200))  // 135-300mm
         };
-        manifestRepository.Images.Returns(images);
-        var aggregator = new StatisticsAggregator(manifestRepository, config, TimeProvider.System, logger);
+        var aggregator = new StatisticsAggregator(config, TimeProvider.System, logger);
 
         // Act
-        var result = aggregator.Aggregate();
+        var result = aggregator.Aggregate(Snapshot(images));
 
         // Assert
         Assert.HasCount(4, result.FocalLengths);
@@ -138,11 +130,10 @@ public sealed class StatisticsAggregatorTests
             ["img3.jpg"] = TestData.Image("img3.jpg", TestData.Exif(fNumber: 2.8)),  // f/2.8-4.0 bucket
             ["img4.jpg"] = TestData.Image("img4.jpg", TestData.Exif(fNumber: 2.8))   // f/2.8-4.0 bucket
         };
-        manifestRepository.Images.Returns(images);
-        var aggregator = new StatisticsAggregator(manifestRepository, config, TimeProvider.System, logger);
+        var aggregator = new StatisticsAggregator(config, TimeProvider.System, logger);
 
         // Act
-        var result = aggregator.Aggregate();
+        var result = aggregator.Aggregate(Snapshot(images));
 
         // Assert - f/2.8-4.0 should be first (3 occurrences vs 1)
         Assert.AreEqual("f/2.8-4.0", result.Apertures[0].Name);
@@ -161,11 +152,10 @@ public sealed class StatisticsAggregatorTests
             ["img3.jpg"] = TestData.Image("img3.jpg", TestData.Exif(model: "Camera B")),
             ["img4.jpg"] = TestData.Image("img4.jpg", TestData.Exif(model: "Camera C"))
         };
-        manifestRepository.Images.Returns(images);
-        var aggregator = new StatisticsAggregator(manifestRepository, config, TimeProvider.System, logger);
+        var aggregator = new StatisticsAggregator(config, TimeProvider.System, logger);
 
         // Act
-        var result = aggregator.Aggregate();
+        var result = aggregator.Aggregate(Snapshot(images));
 
         // Assert - Should have 2 cameras + "Other"; only the synthesized entry carries a translation key
         Assert.HasCount(3, result.Cameras);
@@ -186,11 +176,10 @@ public sealed class StatisticsAggregatorTests
             ["img5.jpg"] = TestData.Image("img5.jpg", TestData.Exif(model: "B")),
             ["img6.jpg"] = TestData.Image("img6.jpg", TestData.Exif(model: "B"))
         };
-        manifestRepository.Images.Returns(images);
-        var aggregator = new StatisticsAggregator(manifestRepository, config, TimeProvider.System, logger);
+        var aggregator = new StatisticsAggregator(config, TimeProvider.System, logger);
 
         // Act
-        var result = aggregator.Aggregate();
+        var result = aggregator.Aggregate(Snapshot(images));
 
         // Assert - A has 4 (100%), B has 2 (50%)
         var cameraA = result.Cameras.First(c => c.Name == "A");
@@ -210,11 +199,10 @@ public sealed class StatisticsAggregatorTests
             ["img3.jpg"] = TestData.Image("img3.jpg", TestData.Exif(), dateTaken: new DateTime(2023, 12, 1)),
             ["img4.jpg"] = TestData.Image("img4.jpg", TestData.Exif(), dateTaken: new DateTime(2023, 1, 1))
         };
-        manifestRepository.Images.Returns(images);
-        var aggregator = new StatisticsAggregator(manifestRepository, config, TimeProvider.System, logger);
+        var aggregator = new StatisticsAggregator(config, TimeProvider.System, logger);
 
         // Act
-        var result = aggregator.Aggregate();
+        var result = aggregator.Aggregate(Snapshot(images));
 
         // Assert
         Assert.HasCount(2, result.ImagesByYear);
@@ -235,11 +223,10 @@ public sealed class StatisticsAggregatorTests
             ["img3.jpg"] = TestData.Image("img3.jpg", TestData.Exif(), dateTaken: new DateTime(2023, 7, 15)),
             ["img4.jpg"] = TestData.Image("img4.jpg", TestData.Exif(), dateTaken: new DateTime(2024, 7, 1))
         };
-        manifestRepository.Images.Returns(images);
-        var aggregator = new StatisticsAggregator(manifestRepository, config, TimeProvider.System, logger);
+        var aggregator = new StatisticsAggregator(config, TimeProvider.System, logger);
 
         // Act
-        var result = aggregator.Aggregate();
+        var result = aggregator.Aggregate(Snapshot(images));
 
         // Assert - January: 2, July: 2
         Assert.HasCount(2, result.ImagesByMonth);
@@ -257,11 +244,10 @@ public sealed class StatisticsAggregatorTests
             ["portrait.jpg"] = TestData.Image("portrait.jpg", TestData.Exif(), width: 1080, height: 1920),
             ["square.jpg"] = TestData.Image("square.jpg", TestData.Exif(), width: 1000, height: 1000)
         };
-        manifestRepository.Images.Returns(images);
-        var aggregator = new StatisticsAggregator(manifestRepository, config, TimeProvider.System, logger);
+        var aggregator = new StatisticsAggregator(config, TimeProvider.System, logger);
 
         // Act
-        var result = aggregator.Aggregate();
+        var result = aggregator.Aggregate(Snapshot(images));
 
         // Assert
         Assert.HasCount(3, result.Orientations);
@@ -279,11 +265,10 @@ public sealed class StatisticsAggregatorTests
             ["normal.jpg"] = TestData.Image("normal.jpg", TestData.Exif(), width: 1920, height: 1080),
             ["nodim.jpg"] = TestData.Image("nodim.jpg", TestData.Exif(), width: 0, height: 0)
         };
-        manifestRepository.Images.Returns(images);
-        var aggregator = new StatisticsAggregator(manifestRepository, config, TimeProvider.System, logger);
+        var aggregator = new StatisticsAggregator(config, TimeProvider.System, logger);
 
         // Act
-        var result = aggregator.Aggregate();
+        var result = aggregator.Aggregate(Snapshot(images));
 
         // Assert - only the normal image should be counted
         Assert.HasCount(1, result.Orientations);
@@ -300,11 +285,10 @@ public sealed class StatisticsAggregatorTests
             ["fast2.jpg"] = TestData.Image("fast2.jpg", TestData.Exif(exposureTime: 1.0 / 500)),
             ["slow.jpg"] = TestData.Image("slow.jpg", TestData.Exif(exposureTime: 2.0))
         };
-        manifestRepository.Images.Returns(images);
-        var aggregator = new StatisticsAggregator(manifestRepository, config, TimeProvider.System, logger);
+        var aggregator = new StatisticsAggregator(config, TimeProvider.System, logger);
 
         // Act
-        var result = aggregator.Aggregate();
+        var result = aggregator.Aggregate(Snapshot(images));
 
         // Assert
         Assert.HasCount(2, result.ShutterSpeeds);
@@ -323,11 +307,10 @@ public sealed class StatisticsAggregatorTests
             ["mar1.jpg"] = TestData.Image("mar1.jpg", dateTaken: new DateTime(2024, 3, 5)),
             ["old.jpg"] = TestData.Image("old.jpg", dateTaken: new DateTime(2023, 6, 15))
         };
-        manifestRepository.Images.Returns(images);
-        var aggregator = new StatisticsAggregator(manifestRepository, config, TimeProvider.System, logger);
+        var aggregator = new StatisticsAggregator(config, TimeProvider.System, logger);
 
         // Act
-        var result = aggregator.Aggregate();
+        var result = aggregator.Aggregate(Snapshot(images));
 
         // Assert — 2 years × 12 months = 24 cells
         Assert.HasCount(24, result.PhotoHeatmap);
@@ -358,11 +341,10 @@ public sealed class StatisticsAggregatorTests
         {
             ["nodate.jpg"] = TestData.Image("nodate.jpg")
         };
-        manifestRepository.Images.Returns(images);
-        var aggregator = new StatisticsAggregator(manifestRepository, config, TimeProvider.System, logger);
+        var aggregator = new StatisticsAggregator(config, TimeProvider.System, logger);
 
         // Act
-        var result = aggregator.Aggregate();
+        var result = aggregator.Aggregate(Snapshot(images));
 
         // Assert
         Assert.IsEmpty(result.PhotoHeatmap);
@@ -397,11 +379,10 @@ public sealed class StatisticsAggregatorTests
             images[$"img{id++}.jpg"] = TestData.Image($"img{id}.jpg", dateTaken: new DateTime(2024, 4, (i % 28) + 1));
         }
 
-        manifestRepository.Images.Returns(images);
-        var aggregator = new StatisticsAggregator(manifestRepository, config, TimeProvider.System, logger);
+        var aggregator = new StatisticsAggregator(config, TimeProvider.System, logger);
 
         // Act
-        var result = aggregator.Aggregate();
+        var result = aggregator.Aggregate(Snapshot(images));
 
         // Assert — April (highest count) should have the highest level
         var apr = result.PhotoHeatmap.Single(c => c.Year == 2024 && c.Month == 4);
@@ -414,4 +395,35 @@ public sealed class StatisticsAggregatorTests
         var may = result.PhotoHeatmap.Single(c => c.Year == 2024 && c.Month == 5);
         Assert.AreEqual(0, may.Level);
     }
+
+    [TestMethod]
+    public void Aggregate_CountsOnlyEntriesWithImagesAsGalleries()
+    {
+        var image = TestData.Image("a.jpg", exif: null);
+        var root = new ManifestEntry
+        {
+            Text = "Home",
+            Path = "",
+            Children =
+            [
+                new ManifestEntry { Text = "Empty", Path = "empty" },
+                new ManifestEntry { Text = "Gallery", Path = "gallery", Content = [image] }
+            ]
+        };
+        var aggregator = new StatisticsAggregator(config, TimeProvider.System, logger);
+
+        var result = aggregator.Aggregate(new ManifestSnapshot
+        {
+            Root = root,
+            Images = new Dictionary<string, ImageContent> { ["gallery/a.jpg"] = image }
+        });
+
+        Assert.AreEqual(1, result.TotalGalleries);
+    }
+
+    private static ManifestSnapshot Snapshot(IReadOnlyDictionary<string, ImageContent> images) => new()
+    {
+        Root = new ManifestEntry { Text = "Home", Path = "" },
+        Images = images
+    };
 }
