@@ -756,9 +756,10 @@ main:has(> aside)>article {
 /* ============================================
    Footer
    ============================================ */
-footer {
-  background: unset;
-  outline: unset;
+/* Glass look: no solid Lumina backdrop or box-shadow mask over the background glow. */
+body>footer {
+  background: none;
+  box-shadow: none;
 }
 
 /* On pages with a photo gallery (home), the gallery's sticky-reveal effect
@@ -772,9 +773,8 @@ main:has(.gallery)+footer {
   margin-top: var(--space-m);
 }
 
-/* Clip the gallery's sticky-reveal overflow and give it a solid backdrop so
-   the last images don't bleed past the section on the gradient background. */
+/* A solid backdrop so the last images don't bleed past the section on the gradient
+   background (Lumina clips the overflow of galleries followed by more content). */
 main .gallery {
-  overflow-y: clip;
   box-shadow: 0 0 0 var(--space-m) var(--color-bg);
 }
