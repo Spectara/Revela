@@ -128,8 +128,7 @@ public sealed class ThemeJsonConfig
 
         foreach (var value in PhotoViewers)
         {
-            if (!Enum.TryParse<PhotoViewerMode>(value, ignoreCase: true, out var mode)
-                || !Enum.IsDefined(mode))
+            if (!PhotoViewerModeValues.TryParse(value, out var mode))
             {
                 throw new InvalidOperationException(
                     $"Base theme field 'photoViewers' contains unknown value '{value}'.");
@@ -144,8 +143,7 @@ public sealed class ThemeJsonConfig
             supported.Add(mode);
         }
 
-        if (!Enum.TryParse<PhotoViewerMode>(DefaultPhotoViewer, ignoreCase: true, out var defaultMode)
-            || !Enum.IsDefined(defaultMode))
+        if (!PhotoViewerModeValues.TryParse(DefaultPhotoViewer, out var defaultMode))
         {
             throw new InvalidOperationException(
                 $"Base theme field 'defaultPhotoViewer' contains unknown value '{DefaultPhotoViewer}'.");

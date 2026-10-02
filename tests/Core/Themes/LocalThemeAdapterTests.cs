@@ -223,6 +223,32 @@ public sealed class LocalThemeProviderTests
     }
 
     [TestMethod]
+    public void CreateManifest_NumericPhotoViewer_ThrowsClearError()
+    {
+        var config = CreateThemeConfig("TestTheme");
+        config.PhotoViewers = ["0"];
+        config.DefaultPhotoViewer = "0";
+
+        var exception = Assert.ThrowsExactly<InvalidOperationException>(config.CreateManifest);
+
+        StringAssert.Contains(exception.Message, "photoViewers", StringComparison.Ordinal);
+        StringAssert.Contains(exception.Message, "'0'", StringComparison.Ordinal);
+    }
+
+    [TestMethod]
+    public void CreateManifest_NumericDefaultPhotoViewer_ThrowsClearError()
+    {
+        var config = CreateThemeConfig("TestTheme");
+        config.PhotoViewers = ["page"];
+        config.DefaultPhotoViewer = "0";
+
+        var exception = Assert.ThrowsExactly<InvalidOperationException>(config.CreateManifest);
+
+        StringAssert.Contains(exception.Message, "defaultPhotoViewer", StringComparison.Ordinal);
+        StringAssert.Contains(exception.Message, "unknown value '0'", StringComparison.Ordinal);
+    }
+
+    [TestMethod]
     public void CreateManifest_UnsupportedDefaultPhotoViewer_ThrowsClearError()
     {
         var config = CreateThemeConfig("TestTheme");
