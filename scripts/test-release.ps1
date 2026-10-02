@@ -1134,7 +1134,7 @@ try {
 
             $outputDir = Join-Path $SampleProjectDir "output"
             $revelaDir = Join-Path $SampleProjectDir ".revela"
-            if (-not (Test-Path $outputDir) -or (Get-ChildItem $outputDir -Recurse -File -ErrorAction SilentlyContinue).Count -eq 0) {
+            if (-not (Test-Path $outputDir) -or @(Get-ChildItem $outputDir -Recurse -File -ErrorAction SilentlyContinue).Count -eq 0) {
                 Write-Success "clean all removed output"
             }
             else {
@@ -1278,7 +1278,7 @@ try {
             & $ExePath clean cache
             if ($LASTEXITCODE -ne 0) { throw "clean cache failed" }
             # After clean output and clean cache nothing remains (the sample has no durable data)
-            if (-not (Test-Path $revelaDir) -or (Get-ChildItem $revelaDir -Recurse -File -ErrorAction SilentlyContinue).Count -eq 0) {
+            if (-not (Test-Path $revelaDir) -or @(Get-ChildItem $revelaDir -Recurse -File -ErrorAction SilentlyContinue).Count -eq 0) {
                 Write-Success "clean cache removed cache files"
             }
             else {
