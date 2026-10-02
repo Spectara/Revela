@@ -65,7 +65,6 @@ public sealed class ManifestServiceLifecycleTests
         };
 
         manifest.SetRoot(root);
-        manifest.ConfigHash = "ABC123";
         manifest.ScanConfigHash = "SCAN456";
         await manifest.SaveAsync();
 
@@ -90,7 +89,6 @@ public sealed class ManifestServiceLifecycleTests
         Assert.HasCount(3, image.Sizes);
 
         // Verify metadata preserved
-        Assert.AreEqual("ABC123", manifest2.ConfigHash);
         Assert.AreEqual("SCAN456", manifest2.ScanConfigHash);
     }
 
@@ -246,16 +244,38 @@ public sealed class ManifestServiceLifecycleTests
     }
 
     [TestMethod]
-    public async Task LoadAsync_ManifestWithoutProcessedImages_LoadsWithEmptyState()
+    public async Task LoadAsync_ManifestFromOlderVersion_StartsFresh()
     {
-        // Manifests written before the processing fingerprint existed have no "processedImages".
+        // An older manifest has another shape; it is dropped and rebuilt by the next scan.
         using var project = TestProject.Create();
         var cacheDirectory = Path.Combine(project.RootPath, ".cache");
         Directory.CreateDirectory(cacheDirectory);
         await File.WriteAllTextAsync(Path.Combine(cacheDirectory, "manifest.json"), /*lang=json,strict*/ """
             {
-              "_meta": { "version": 4, "configHash": "ABC", "scanConfigHash": "DEF" },
+              "_meta": { "version": 4, "configHash": "ABC", "scanConfigHash": "DEF", "processedImages": { "photos/a.jpg": "v1|a" } },
               "root": { "text": "Home", "slug": "", "path": "", "content": [], "children": [] }
+            }
+            """);
+        using var host = RevelaTestHost.Build(project.RootPath, s => { s.AddRevelaCommands(); s.AddGenerateFeature(); });
+        var manifest = host.Services.GetRequiredService<IManifestRepository>();
+
+        await manifest.LoadAsync();
+
+        Assert.IsNull(manifest.Root);
+        Assert.IsNull(manifest.GetProcessedFingerprint("photos/a.jpg"));
+        Assert.AreEqual(string.Empty, manifest.ScanConfigHash);
+    }
+
+    [TestMethod]
+    public async Task LoadAsync_ManifestWithoutProcessedImages_LoadsWithEmptyState()
+    {
+        using var project = TestProject.Create();
+        var cacheDirectory = Path.Combine(project.RootPath, ".cache");
+        Directory.CreateDirectory(cacheDirectory);
+        await File.WriteAllTextAsync(Path.Combine(cacheDirectory, "manifest.json"), /*lang=json,strict*/ """
+            {
+              "_meta": { "version": 5, "scanConfigHash": "DEF" },
+              "root": { "text": "Site", "slug": "", "path": "", "content": [], "children": [] }
             }
             """);
         using var host = RevelaTestHost.Build(project.RootPath, s => { s.AddRevelaCommands(); s.AddGenerateFeature(); });
@@ -265,7 +285,7 @@ public sealed class ManifestServiceLifecycleTests
 
         Assert.IsNull(manifest.GetProcessedFingerprint("photos/a.jpg"));
         Assert.IsEmpty(manifest.FormatQualities);
-        Assert.AreEqual("ABC", manifest.ConfigHash);
+        Assert.AreEqual("DEF", manifest.ScanConfigHash);
     }
 
     [TestMethod]

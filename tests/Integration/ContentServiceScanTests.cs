@@ -49,6 +49,54 @@ public sealed class ContentServiceScanTests
     }
 
     [TestMethod]
+    public async Task ScanAsync_RootWithoutTitle_UsesSiteTitleInsteadOfEnglishHome()
+    {
+        using var project = TestProject.Create(p => p
+            .WithSiteJson(new { title = "Mein Portfolio" })
+            .AddGallery("Photos", g => g.AddImage("photo.jpg")));
+        using var host = RevelaTestHost.Build(project.RootPath, AddServices);
+
+        var result = await host.Services.GetRequiredService<IContentService>().ScanAsync();
+
+        Assert.IsTrue(result.Success, result.ErrorMessage);
+        Assert.AreEqual("Mein Portfolio", host.Services.GetRequiredService<IManifestRepository>().Root?.Text);
+    }
+
+    [TestMethod]
+    public async Task ScanAsync_RootWithoutTitleAndSiteTitle_UsesProjectFolderName()
+    {
+        using var project = TestProject.Create(p => p.AddGallery("Photos", g => g.AddImage("photo.jpg")));
+        using var host = RevelaTestHost.Build(project.RootPath, AddServices);
+
+        var result = await host.Services.GetRequiredService<IContentService>().ScanAsync();
+
+        Assert.IsTrue(result.Success, result.ErrorMessage);
+        Assert.AreEqual(
+            Path.GetFileName(project.RootPath.TrimEnd(Path.DirectorySeparatorChar)),
+            host.Services.GetRequiredService<IManifestRepository>().Root?.Text);
+    }
+
+    [TestMethod]
+    public async Task ScanAsync_FolderSortedByFieldSomePhotosLack_PutsThemLast()
+    {
+        using var project = TestProject.Create(p => p
+            .AddGallery("Photos", g => g
+                .AddRealImage("a-no-iso.jpg", 64, 48)
+                .AddRealImage("low.jpg", 64, 48, exif => exif.WithIso(100))
+                .AddRealImage("high.jpg", 64, 48, exif => exif.WithIso(3200))));
+        await File.WriteAllTextAsync(
+            Path.Combine(project.SourcePath, "Photos", "_index.revela"),
+            "+++\nsort = \"exif.iso:desc\"\n+++\n");
+        using var host = RevelaTestHost.Build(project.RootPath, AddServices);
+
+        var result = await host.Services.GetRequiredService<IContentService>().ScanAsync();
+
+        Assert.IsTrue(result.Success, result.ErrorMessage);
+        var photos = host.Services.GetRequiredService<IManifestRepository>().Root!.Children.Single();
+        Assert.AreEqual("high.jpg,low.jpg,a-no-iso.jpg", string.Join(',', photos.Content.Select(content => content.Filename)));
+    }
+
+    [TestMethod]
     public async Task ScanAsync_ManifestFromOlderMetadataVersion_RereadsImageMetadata()
     {
         // A manifest written by an older Revela carries metadata computed by an older

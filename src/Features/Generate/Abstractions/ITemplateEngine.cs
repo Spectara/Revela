@@ -1,6 +1,5 @@
 using Spectara.Revela.Core.Themes;
 using Spectara.Revela.Features.Generate.Models;
-using Spectara.Revela.Sdk.Abstractions;
 
 namespace Spectara.Revela.Features.Generate.Abstractions;
 
@@ -8,34 +7,23 @@ namespace Spectara.Revela.Features.Generate.Abstractions;
 /// Abstraction for template rendering operations
 /// </summary>
 /// <remarks>
-/// Implementations handle:
-/// - Template parsing and compilation
-/// - Variable substitution with data models
-/// - Custom functions (page_url, format_date, etc.)
-/// - Partial/include support via themes
+/// <para>
+/// One engine serves one render run: configure it once with <see cref="SetImageLookup"/> and
+/// <see cref="SetStrings"/>, then render every page with it. Rendering is thread-safe, and
+/// templates and includes are parsed only once per engine.
+/// </para>
+/// <para>
+/// Model values must be Scriban-native (primitives, strings, string lists, <c>ScriptObject</c>
+/// or <c>ScriptArray</c>) — never raw .NET objects, which Scriban would read through reflection
+/// that the trimmed Native AOT build does not support.
+/// </para>
 /// </remarks>
 internal interface ITemplateEngine
 {
     /// <summary>
-    /// Set the theme for loading partials
+    /// Set the image lookup for the <c>find_image</c> template function.
     /// </summary>
-    /// <param name="theme">Theme plugin to load partials from</param>
-    void SetTheme(ITheme? theme);
-
-    /// <summary>
-    /// Set the theme extensions for loading extension partials
-    /// </summary>
-    /// <param name="extensions">Theme extensions that match the current theme</param>
-    void SetExtensions(IReadOnlyList<ITheme> extensions);
-
-    /// <summary>
-    /// Set the image lookup for the <c>image</c> template function.
-    /// </summary>
-    /// <remarks>
-    /// Must be called before rendering. The lookup contains all processed images
-    /// (gallery + shared _images/) keyed by normalized source path.
-    /// </remarks>
-    /// <param name="imagesBySourcePath">All processed images keyed by source path</param>
+    /// <param name="imagesBySourcePath">All processed images (gallery and shared <c>_images/</c>) keyed by normalized source path</param>
     void SetImageLookup(IReadOnlyDictionary<string, Image> imagesBySourcePath);
 
     /// <summary>
@@ -43,7 +31,6 @@ internal interface ITemplateEngine
     /// <c>format_date</c>/<c>format_filesize</c>.
     /// </summary>
     /// <remarks>
-    /// Loaded once per render for the active theme, its extensions and <c>site.language</c>.
     /// Without strings, <c>t</c> renders keys and formatting is culture-invariant.
     /// </remarks>
     /// <param name="themeStrings">Strings resolved for the site language</param>
@@ -52,33 +39,8 @@ internal interface ITemplateEngine
     /// <summary>
     /// Render template content with data model
     /// </summary>
-    /// <param name="templateContent">Template string content</param>
-    /// <param name="model">Data model to bind to template</param>
-    /// <returns>Rendered HTML output</returns>
-    string Render(string templateContent, object model);
-
-    /// <summary>
-    /// Render template file with data model
-    /// </summary>
-    /// <param name="templatePath">Path to template file</param>
-    /// <param name="model">Data model to bind to template</param>
-    /// <param name="cancellationToken">Cancellation token</param>
-    /// <returns>Rendered HTML output</returns>
-    Task<string> RenderFileAsync(string templatePath, object model, CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Render body content as a Scriban template with optional data.
-    /// </summary>
-    /// <remarks>
-    /// Used for processing _index.md body content that contains Scriban includes.
-    /// The data is available as 'stats' variable in the template.
-    /// </remarks>
-    /// <param name="bodyContent">Raw body content with Scriban syntax</param>
-    /// <param name="stats">Optional data to expose as 'stats' variable</param>
-    /// <returns>Rendered HTML output</returns>
-    string RenderBodyTemplate(string bodyContent, object? stats);
+    /// <param name="templateContent">Template source</param>
+    /// <param name="model">Global variables for the template</param>
+    /// <returns>Rendered output</returns>
+    string Render(string templateContent, IReadOnlyDictionary<string, object?> model);
 }
-
-
-
-

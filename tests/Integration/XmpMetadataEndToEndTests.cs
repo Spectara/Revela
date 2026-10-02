@@ -25,8 +25,6 @@ public sealed class XmpMetadataEndToEndTests
             services.AddSingleton<ITheme>(new LuminaTheme());
         });
         var renderService = host.Services.GetRequiredService<IRenderService>();
-        renderService.SetTheme(host.Services.GetRequiredService<ITheme>());
-        renderService.SetExtensions([]);
 
         var scanResult = await host.Services.GetRequiredService<IContentService>().ScanAsync();
         Assert.IsTrue(scanResult.Success, scanResult.ErrorMessage);

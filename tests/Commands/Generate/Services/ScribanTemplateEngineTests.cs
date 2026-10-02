@@ -5,6 +5,9 @@ using Spectara.Revela.Core.Themes;
 using Spectara.Revela.Features.Generate.Models;
 using Spectara.Revela.Features.Generate.Services;
 using Spectara.Revela.Sdk.Services;
+#pragma warning disable IDE0005 // Using directive is unnecessary — namespace holds source-generated extension methods the analyzer cannot see.
+using Spectara.Revela.Sdk.TemplateModels;
+#pragma warning restore IDE0005
 
 namespace Spectara.Revela.Tests.Commands.Generate.Services;
 
@@ -51,7 +54,7 @@ public sealed class ScribanTemplateEngineTests
         var engine = new ScribanTemplateEngine(logger, markdown, resolver);
 
         const string template = "Hello {{ name }}!";
-        var model = new { name = "World" };
+        var model = Model(("name", "World"));
 
         // Act
         var outputs = new string[100];
@@ -62,6 +65,24 @@ public sealed class ScribanTemplateEngineTests
         {
             Assert.AreEqual("Hello World!", output);
         }
+    }
+
+    [TestMethod]
+    public void Render_SameIncludeOnManyPages_LoadsAndParsesIncludeOnce()
+    {
+        var resolver = Substitute.For<ITemplateResolver>();
+        resolver.GetTemplate("partials/figure")
+            .Returns(_ => new MemoryStream(System.Text.Encoding.UTF8.GetBytes("[{{ name }}]")));
+        var engine = new ScribanTemplateEngine(Substitute.For<ILogger<ScribanTemplateEngine>>(), new MarkdownService(), resolver);
+
+        var outputs = Enumerable.Range(1, 3)
+            .Select(page => engine.Render(
+                "{{ include 'figure' }}{{ include 'figure' }}",
+                Model(("name", page.ToString(CultureInfo.InvariantCulture)))))
+            .ToList();
+
+        Assert.AreEqual("[1][1]|[2][2]|[3][3]", string.Join('|', outputs));
+        resolver.Received(1).GetTemplate("partials/figure");
     }
 
     [TestMethod]
@@ -78,7 +99,7 @@ public sealed class ScribanTemplateEngineTests
         try
         {
             const string template = "{{ format_filesize 1048576 }}"; // 1 MB
-            var result = engine.Render(template, new { });
+            var result = engine.Render(template, Model());
 
             // Assert
             Assert.AreEqual("1 MB", result.Trim());
@@ -93,7 +114,7 @@ public sealed class ScribanTemplateEngineTests
     public void PageUrl_WithGallery_PrefixesBasePathToSlug()
     {
         var engine = CreateEngine();
-        var gallery = new Gallery { Path = "events/fireworks", Slug = "events/fireworks/", Name = "Fireworks" };
+        var gallery = new Gallery { Path = "events/fireworks", Slug = "events/fireworks/", Title = "Fireworks" }.ToScriptObject();
 
         var result = engine.Render("{{ page_url(gallery) }}", Model(("basepath", "/"), ("gallery", gallery)));
 
@@ -104,7 +125,7 @@ public sealed class ScribanTemplateEngineTests
     public void PageUrl_WithImage_UsesDedicatedImagePagePath()
     {
         var engine = CreateEngine();
-        var image = CreateImage("blubb/peng");
+        var image = CreateImage("blubb/peng").ToScriptObject();
 
         var result = engine.Render("{{ page_url(image) }}", Model(("basepath", "/"), ("image", image)));
 
@@ -115,7 +136,7 @@ public sealed class ScribanTemplateEngineTests
     public void PageUrl_WithNavigationItem_PrefixesRelativeBasePath()
     {
         var engine = CreateEngine();
-        var item = new NavigationItem { Text = "Vacation", Url = "gallery/2024/" };
+        var item = new NavigationItem { Text = "Vacation", Url = "gallery/2024/" }.ToScriptObject();
 
         var result = engine.Render("{{ page_url(item) }}", Model(("basepath", "../"), ("item", item)));
 
@@ -136,7 +157,7 @@ public sealed class ScribanTemplateEngineTests
     public void PageUrl_WithPagelessNavigationItem_RendersEmpty()
     {
         var engine = CreateEngine();
-        var item = new NavigationItem { Text = "Section", Url = null };
+        var item = new NavigationItem { Text = "Section", Url = null }.ToScriptObject();
 
         // Scriban treats "" as truthy but null as falsy; the helper must return null.
         var result = engine.Render("{{ if page_url(item) }}LINK{{ else }}NONE{{ end }}", Model(("basepath", "/"), ("item", item)));
@@ -161,7 +182,7 @@ public sealed class ScribanTemplateEngineTests
     public void VariantUrl_BuildsAssetPathFromSlugSizeAndFormat()
     {
         var engine = CreateEngine();
-        var image = CreateImage("events/fireworks/029081");
+        var image = CreateImage("events/fireworks/029081").ToScriptObject();
 
         var result = engine.Render(
             "{{ variant_url(image, 640, 'jpg') }}",
@@ -174,7 +195,7 @@ public sealed class ScribanTemplateEngineTests
     public void AbsoluteUrl_WithBaseUrl_PrependsHostToRootRelativePath()
     {
         var engine = CreateEngine();
-        var gallery = new Gallery { Path = "events/fireworks", Slug = "events/fireworks/", Name = "Fireworks" };
+        var gallery = new Gallery { Path = "events/fireworks", Slug = "events/fireworks/", Title = "Fireworks" }.ToScriptObject();
 
         var result = engine.Render(
             "{{ absolute_url(gallery) }}",
@@ -187,7 +208,7 @@ public sealed class ScribanTemplateEngineTests
     public void AbsoluteUrl_WithoutBaseUrl_FallsBackToRootRelative()
     {
         var engine = CreateEngine();
-        var gallery = new Gallery { Path = "events/fireworks", Slug = "events/fireworks/", Name = "Fireworks" };
+        var gallery = new Gallery { Path = "events/fireworks", Slug = "events/fireworks/", Title = "Fireworks" }.ToScriptObject();
 
         var result = engine.Render("{{ absolute_url(gallery) }}", Model(("basepath", "../"), ("gallery", gallery)));
 
@@ -220,7 +241,7 @@ public sealed class ScribanTemplateEngineTests
         var engine = CreateEngine();
         var result = engine.Render("{{ absolute_variant_url image 640 'jpg' }}",
             Model(("base_url", "https://example.com"), ("basepath", "/photos/"), ("assets_basepath", "../../../../images/"),
-                ("photo", new Scriban.Runtime.ScriptObject()), ("image", CreateImage("events/fireworks/029081"))));
+                ("photo", new Scriban.Runtime.ScriptObject()), ("image", CreateImage("events/fireworks/029081").ToScriptObject())));
 
         Assert.AreEqual("https://example.com/photos/images/events/fireworks/029081/640.jpg", result.Trim());
     }
@@ -229,7 +250,7 @@ public sealed class ScribanTemplateEngineTests
     public void AbsoluteUrl_WithDeploymentPrefix_PreservesPhotoDestination()
     {
         var result = CreateEngine().Render("{{ absolute_url image }}",
-            Model(("base_url", "https://example.com/"), ("basepath", "/photos/"), ("image", CreateImage("one"))));
+            Model(("base_url", "https://example.com/"), ("basepath", "/photos/"), ("image", CreateImage("one").ToScriptObject())));
 
         Assert.AreEqual("https://example.com/photos/photo/one/", result.Trim());
     }
@@ -317,7 +338,7 @@ public sealed class ScribanTemplateEngineTests
 
         var result = engine.Render(
             "{{ image.title }}|{{ image.description }}|{{ image.keywords | array.join ',' }}|{{ image.rating }}|{{ image.rating >= 4 }}",
-            Model(("image", image)));
+            Model(("image", image.ToScriptObject())));
 
         Assert.AreEqual("Abendlicht|Evening light|Selected,Startseite|4|true", result);
     }

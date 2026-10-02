@@ -1,4 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
+using System.Globalization;
 using System.Linq.Expressions;
 using System.Reflection;
 using System.Security.Cryptography;
@@ -160,8 +161,7 @@ internal sealed class FilterService
         }
         else if (globalSort is not null)
         {
-            var (sort, fallbackPropertyPath) = CreateConfiguredSort(pageSort, globalSort);
-            result = ApplySort(result, sort, fallbackPropertyPath);
+            result = Sort(result, pageSort, globalSort);
         }
         else
         {
@@ -178,44 +178,67 @@ internal sealed class FilterService
     }
 
     /// <summary>
+    /// Sorts images by the configured image sort, optionally overridden by a page's <c>sort</c>.
+    /// </summary>
+    /// <remarks>
+    /// The one sort used for folder galleries and for filter galleries and <c>[[gallery]]</c>
+    /// blocks without their own <c>| sort</c>.
+    /// </remarks>
+    /// <param name="images">The images to sort.</param>
+    /// <param name="pageSort">Optional page sort override in <c>field[:direction]</c> format.</param>
+    /// <param name="globalSort">The configured image sort (field, direction, fallback).</param>
+    /// <returns>The sorted images.</returns>
+    public static IReadOnlyList<ImageContent> Sort(
+        IEnumerable<ImageContent> images,
+        string? pageSort,
+        ImageSortConfig globalSort)
+    {
+        var (sort, fallbackPropertyPath) = CreateConfiguredSort(pageSort, globalSort);
+        return [.. ApplySort(images, sort, fallbackPropertyPath)];
+    }
+
+    /// <summary>
     /// Applies sorting to images based on a sort clause.
     /// </summary>
+    /// <remarks>
+    /// Images without a value for the sort field come last in both directions, ordered among
+    /// themselves by the fallback field (same direction). Ties are broken by filename.
+    /// </remarks>
     private static IEnumerable<ImageContent> ApplySort(
         IEnumerable<ImageContent> images,
         SortClause sort,
         IReadOnlyList<string>? fallbackPropertyPath = null)
     {
-        // Convert to list for multiple enumerations if needed
-        var imageList = images as IList<ImageContent> ?? [.. images];
-
-        if (imageList.Count == 0)
-        {
-            return imageList;
-        }
-
-        // Create sort key selector
         var keySelector = CreateSortKeySelector(sort.PropertyPath);
         var fallbackSelector = fallbackPropertyPath is null
             ? null
             : CreateSortKeySelector(fallbackPropertyPath);
 
-        object? SelectKey(ImageContent image)
-        {
-            var key = keySelector(image);
-            return key is null or "" ? fallbackSelector?.Invoke(image) : key;
-        }
+        var keyed = images
+            .Select(image =>
+            {
+                var key = NullIfEmpty(keySelector(image));
+                return (Image: image, Key: key, Fallback: key is null ? NullIfEmpty(fallbackSelector?.Invoke(image)) : null);
+            })
+            .ToList();
 
-        // Apply sort with null handling (nulls go to end)
-        var sorted = sort.Direction == SortDirection.Asc
-            ? imageList.OrderBy(
-                image => SelectKey(image) ?? GetMaxValue(sort.PropertyPath),
-                NullSafeComparer.Instance)
-            : imageList.OrderByDescending(
-                image => SelectKey(image) ?? GetMinValue(sort.PropertyPath),
-                NullSafeComparer.Instance);
+        var sorted = keyed.OrderBy(entry => entry.Key is null);
+        sorted = sort.Direction == SortDirection.Asc
+            ? sorted
+                .ThenBy(entry => entry.Key, SortKeyComparer.Instance)
+                .ThenBy(entry => entry.Fallback is null)
+                .ThenBy(entry => entry.Fallback, SortKeyComparer.Instance)
+            : sorted
+                .ThenByDescending(entry => entry.Key, SortKeyComparer.Instance)
+                .ThenBy(entry => entry.Fallback is null)
+                .ThenByDescending(entry => entry.Fallback, SortKeyComparer.Instance);
 
-        return sorted.ThenBy(image => image.Filename, StringComparer.OrdinalIgnoreCase);
+        return sorted
+            .ThenBy(entry => entry.Image.Filename, StringComparer.OrdinalIgnoreCase)
+            .Select(entry => entry.Image);
     }
+
+    private static object? NullIfEmpty(object? value) => value is "" ? null : value;
 
     private static (SortClause Sort, IReadOnlyList<string> FallbackPropertyPath) CreateConfiguredSort(
         string? pageSort,
@@ -313,41 +336,6 @@ internal sealed class FilterService
             BindingFlags.Public | BindingFlags.Instance | BindingFlags.IgnoreCase);
 
     /// <summary>
-    /// Gets a maximum value for sorting nulls to end in ascending order.
-    /// </summary>
-    private static object GetMaxValue(IReadOnlyList<string> propertyPath)
-    {
-        // Determine type based on property path
-        var lastSegment = propertyPath[^1].ToUpperInvariant();
-
-        return lastSegment switch
-        {
-            "DATETAKEN" => DateTime.MaxValue,
-            "ISO" or "FNUMBER" or "FOCALLENGTH" or "EXPOSURETIME" => double.MaxValue,
-            "WIDTH" or "HEIGHT" or "FILESIZE" => long.MaxValue,
-            "RATING" => int.MaxValue,
-            _ => "\uFFFF" // High unicode character for strings
-        };
-    }
-
-    /// <summary>
-    /// Gets a minimum value for sorting nulls to end in descending order.
-    /// </summary>
-    private static object GetMinValue(IReadOnlyList<string> propertyPath)
-    {
-        var lastSegment = propertyPath[^1].ToUpperInvariant();
-
-        return lastSegment switch
-        {
-            "DATETAKEN" => DateTime.MinValue,
-            "ISO" or "FNUMBER" or "FOCALLENGTH" or "EXPOSURETIME" => double.MinValue,
-            "WIDTH" or "HEIGHT" or "FILESIZE" => long.MinValue,
-            "RATING" => int.MinValue,
-            _ => string.Empty
-        };
-    }
-
-    /// <summary>
     /// Validates a filter expression without executing it.
     /// </summary>
     /// <param name="filterExpression">The filter expression to validate.</param>
@@ -394,52 +382,33 @@ internal sealed class FilterService
     }
 
     /// <summary>
-    /// Comparer that handles mixed types safely for sorting.
+    /// Orders the values of one sort field: same-typed values by their natural order (text
+    /// ordinal case-insensitive, like the filename tie-breaker), mixed types by their invariant text.
     /// </summary>
-    private sealed class NullSafeComparer : IComparer<object>
+    private sealed class SortKeyComparer : IComparer<object?>
     {
-        public static NullSafeComparer Instance { get; } = new();
+        public static SortKeyComparer Instance { get; } = new();
 
         public int Compare(object? x, object? y)
         {
-            if (x is null && y is null)
+            if (x is null || y is null)
             {
-                return 0;
+                return (x is null).CompareTo(y is null);
             }
 
-            if (x is null)
+            if (x is string textX && y is string textY)
             {
-                return 1; // Nulls go to end
+                return StringComparer.OrdinalIgnoreCase.Compare(textX, textY);
             }
 
-            if (y is null)
+            if (x.GetType() == y.GetType() && x is IComparable comparable)
             {
-                return -1;
+                return comparable.CompareTo(y);
             }
 
-            // Handle IComparable
-            if (x is IComparable comparableX)
-            {
-                // Try to convert y to same type
-                if (x.GetType() != y.GetType())
-                {
-                    try
-                    {
-                        y = Convert.ChangeType(y, x.GetType(), System.Globalization.CultureInfo.InvariantCulture);
-                    }
-                    catch
-                    {
-                        // Fall back to string comparison
-                        return string.Compare(x.ToString(), y.ToString(), StringComparison.OrdinalIgnoreCase);
-                    }
-                }
-
-                return comparableX.CompareTo(y);
-            }
-
-            // Fallback to string comparison
-            return string.Compare(x.ToString(), y.ToString(), StringComparison.OrdinalIgnoreCase);
+            return StringComparer.OrdinalIgnoreCase.Compare(
+                Convert.ToString(x, CultureInfo.InvariantCulture),
+                Convert.ToString(y, CultureInfo.InvariantCulture));
         }
     }
 }
-

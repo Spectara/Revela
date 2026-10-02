@@ -31,7 +31,6 @@ public static class ServiceCollectionExtensions
 
         // Core services (TryAdd for idempotent registration — safe when called by both
         // AddRevelaCommands and plugin loader)
-        services.TryAddSingleton<IFileHashService, FileHashService>();
         services.TryAddSingleton<IImageSizesProvider, ImageSizesProvider>();
 
         // Parsing, Scanning, Building, Mapping (static classes not registered: GallerySorter, UrlBuilder)
@@ -62,7 +61,7 @@ public static class ServiceCollectionExtensions
         services.TryAddEnumerable(ServiceDescriptor.Transient<ICheck, ContentCheck>());
         services.TryAddEnumerable(ServiceDescriptor.Transient<ICheck, SlugsCheck>());
 
-        // Aggregator shared by `check` and generate Phase 0.
+        // Aggregator behind the `check` report.
         services.TryAddSingleton<ISiteValidator, CheckService>();
 
         // Engine facade (public API for MCP, GUI, and other plugins)

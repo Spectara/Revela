@@ -4,7 +4,7 @@ Built-in site generation feature of Revela — scans content, renders pages, and
 
 ## Features
 
-- **Content Scanning** — Discovers galleries, images, and markdown content
+- **Content Scanning** — Discovers galleries, pages (`_index.revela`) and images
 - **Page Rendering** — Generates HTML pages using Scriban templates
 - **Image Processing** — Resizes and converts images using NetVips
 - **Sitemap Generation** — Creates sitemap.xml for SEO

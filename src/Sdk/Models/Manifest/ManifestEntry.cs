@@ -64,17 +64,7 @@ public sealed record ManifestEntry
     [JsonPropertyName("cover")]
     public RelativePath? Cover { get; init; }
 
-    /// <summary>
-    /// Gallery date for sorting (from front matter or first image EXIF).
-    /// </summary>
-    [JsonPropertyName("date")]
-    public DateTime? Date { get; init; }
 
-    /// <summary>
-    /// Whether this gallery is featured on the home page.
-    /// </summary>
-    [JsonPropertyName("featured")]
-    public bool Featured { get; init; }
 
     /// <summary>
     /// Whether this item is hidden from navigation.
@@ -88,11 +78,6 @@ public sealed record ManifestEntry
     [JsonPropertyName("pinned")]
     public bool Pinned { get; init; }
 
-    /// <summary>
-    /// Whether this item is a container (navigation group) that does not generate a page.
-    /// </summary>
-    [JsonPropertyName("container")]
-    public bool Container { get; init; }
 
     /// <summary>
     /// Optional custom template for rendering (e.g., "statistics/overview").
@@ -107,27 +92,13 @@ public sealed record ManifestEntry
     [JsonPropertyName("dataSources")]
     public IReadOnlyDictionary<string, string> DataSources { get; init; } = new Dictionary<string, string>();
 
-    /// <summary>
-    /// Filter expression to select images from the entire site.
-    /// </summary>
-    /// <remarks>
-    /// <para>
-    /// When set, images are selected by filtering all site images,
-    /// instead of using only images in this gallery's directory.
-    /// </para>
-    /// <para>
-    /// Example: <c>year(dateTaken) == 2024</c> selects all images from 2024.
-    /// </para>
-    /// </remarks>
-    [JsonPropertyName("filter")]
-    public string? Filter { get; init; }
 
     /// <summary>
-    /// Content items (images and markdown files) contained in this node.
-    /// Sorted alphabetically by filename for predictable ordering.
+    /// Images of this page in display order (configured sort or the page's filter).
+    /// Empty for navigation branches without a page.
     /// </summary>
     [JsonPropertyName("content")]
-    public IReadOnlyList<GalleryContent> Content { get; init; } = [];
+    public IReadOnlyList<ImageContent> Content { get; init; } = [];
 
     /// <summary>
     /// Child nodes (sub-galleries or branch sections).

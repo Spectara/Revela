@@ -8,10 +8,9 @@ namespace Spectara.Revela.Features.Generate.Abstractions;
 /// </summary>
 /// <remarks>
 /// <para>
-/// A single shared implementation backs two entry points: the standalone
-/// <c>revela check</c> command and Phase 0 of <c>generate all</c> (which fails fast on
-/// errors before the expensive image step). Warnings and hints are surfaced but never
-/// abort the build.
+/// Backs the <c>revela check</c> report, which exits with code 2 when any check reports
+/// an error. <c>generate</c> does not run checks; its steps fail with their own clear
+/// messages (e.g. a missing site.json title or theme layout).
 /// </para>
 /// <para>
 /// Validation is collect-all: every problem is reported in one pass rather than stopping

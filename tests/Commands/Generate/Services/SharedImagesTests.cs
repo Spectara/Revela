@@ -368,6 +368,7 @@ public sealed class SharedImagesTests : IDisposable
             pathResolver,
             themeRegistry,
             Options.Create(projectEnv),
+            Substitute.For<IOptionsMonitor<SiteCoreConfig>>(),
             themeConfigMonitor,
             optionsMonitor,
             new SuccessfulArtifactLifecycle(),

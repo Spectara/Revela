@@ -4,6 +4,7 @@ using Microsoft.Extensions.Options;
 using Scriban.Runtime;
 using Spectara.Revela.Core.Themes;
 using Spectara.Revela.Features.Generate.Abstractions;
+using Spectara.Revela.Features.Generate.Filtering;
 using Spectara.Revela.Features.Generate.Infrastructure;
 using Spectara.Revela.Features.Generate.Models;
 using Spectara.Revela.Features.Generate.Models.Results;
@@ -57,11 +58,13 @@ internal sealed partial class RenderService(
     private const string NotFoundScope = "notfound";
     private const string NotFoundFileName = "404.html";
 
+    private const string ContentImageTemplateKey = "partials/contentimage";
+    private const string GalleryGridTemplateKey = "partials/gallerygrid";
+    private const string PhotoFigureTemplateKey = "partials/photofigure";
+    private const string PhotoTemplateKey = "body/photo";
+
     /// <summary>Current theme extensions (set during rendering)</summary>
     private IReadOnlyList<ITheme> currentExtensions = [];
-    private ITheme? currentTheme;
-    private IReadOnlyDictionary<string, Image>? currentImageLookup;
-    private ThemeStrings currentStrings = ThemeStrings.Empty;
 
     /// <summary>Gets full path to source directory (supports hot-reload)</summary>
     private string SourcePath => pathResolver.SourcePath;
@@ -73,43 +76,6 @@ internal sealed partial class RenderService(
     private ImageConfig ImageSettings => options.CurrentValue.Images;
 
     private RenderConfig RenderSettings => options.CurrentValue.Render;
-
-    private ITemplateEngine CreateAndConfigureEngine()
-    {
-        var engine = templateEngineFactory();
-        engine.SetTheme(currentTheme);
-        engine.SetExtensions(currentExtensions);
-        engine.SetStrings(currentStrings);
-        if (currentImageLookup is not null)
-        {
-            engine.SetImageLookup(currentImageLookup);
-        }
-
-        return engine;
-    }
-
-    /// <inheritdoc />
-    public void SetTheme(ITheme? theme) => currentTheme = theme;
-
-    /// <inheritdoc />
-    public void SetExtensions(IReadOnlyList<ITheme> extensions) => currentExtensions = extensions;
-
-    /// <inheritdoc />
-    public string Render(string templateContent, object model)
-    {
-        var engine = CreateAndConfigureEngine();
-        return engine.Render(templateContent, model);
-    }
-
-    /// <inheritdoc />
-    public async Task<string> RenderFileAsync(
-        string templatePath,
-        object model,
-        CancellationToken cancellationToken = default)
-    {
-        var engine = CreateAndConfigureEngine();
-        return await engine.RenderFileAsync(templatePath, model, cancellationToken);
-    }
 
     /// <inheritdoc />
     public async Task<RenderResult> RenderAsync(
@@ -170,7 +136,6 @@ internal sealed partial class RenderService(
 
             // Resolve theme and extensions
             var theme = themeRegistry.Resolve(config.ThemeName, projectEnvironment.Value.Path);
-            SetTheme(theme);
 
             // Pre-check: the configured theme is not installed. Without it the renderer
             // cannot resolve the layout/partials the site depends on. Fail early with a
@@ -189,17 +154,40 @@ internal sealed partial class RenderService(
 
             // Get theme extensions matching this theme
             var extensions = themeRegistry.GetExtensions(config.ThemeName);
-            SetExtensions(extensions);
+            currentExtensions = extensions;
 
             // Initialize template resolver (scans theme, extensions, local overrides)
             templateResolver.Initialize(theme, extensions, projectEnvironment.Value.Path);
             assetResolver.Initialize(theme, extensions, projectEnvironment.Value.Path);
 
-            // Theme UI strings for site.language — loaded once per render, shared by all pages.
-            currentStrings = ThemeLocales.Load(theme, extensions, projectEnvironment.Value.Path, config.Project.Language, logger);
+            var layoutTemplate = LoadTemplate(theme.Manifest.LayoutTemplate);
+            if (layoutTemplate is null)
+            {
+                return new RenderResult
+                {
+                    Success = false,
+                    ErrorMessage =
+                        $"Theme '{config.ThemeName}' is missing its layout template '{theme.Manifest.LayoutTemplate}'. " +
+                        "The theme package looks incomplete — try reinstalling it. Run 'revela check' to diagnose your project.",
+                    Duration = stopwatch.Elapsed
+                };
+            }
+
+            var contentImageTemplate = LoadTemplate(ContentImageTemplateKey);
+            if (contentImageTemplate is null)
+            {
+                return new RenderResult
+                {
+                    Success = false,
+                    ErrorMessage =
+                        $"Theme '{config.ThemeName}' is missing required template 'Partials/ContentImage.revela'. " +
+                        "This template renders ![alt](path) images in Markdown body content.",
+                    Duration = stopwatch.Elapsed
+                };
+            }
 
             var supportsPhotoPages = theme.Manifest.PhotoViewer?.Supported.Contains(PhotoViewerMode.Page) is true;
-            var photoTemplate = supportsPhotoPages ? LoadTemplate("body/photo.revela") : null;
+            var photoTemplate = supportsPhotoPages ? LoadTemplate(PhotoTemplateKey) : null;
             if (supportsPhotoPages && photoTemplate is null)
             {
                 return new RenderResult
@@ -216,24 +204,18 @@ internal sealed partial class RenderService(
             var galleries = ReconstructGalleries(manifestRepository.Root);
             var navigation = ReconstructNavigation(manifestRepository.Root);
 
-            // Build site model
-            var allImages = new List<Image>();
-            FlattenImages(galleries, allImages);
-
             var siteModel = new SiteModel
             {
-                Site = config.Site,
-                Project = config.Project,
+                // Converted once and shared read-only by all pages, which may render in parallel.
+                Site = config.Site is { } site ? JsonScriptConverter.ToScriptValue(site, readOnly: true) : null,
                 Galleries = galleries,
                 Navigation = navigation,
-                Images = allImages,
-                BuildDate = timeProvider.GetUtcNow().UtcDateTime
+                Images = [.. galleries.SelectMany(gallery => gallery.Images)]
             };
 
             // Inline-gallery selections and metadata affect catalog eligibility and must be final
             // before photo pages are built. Preparation is sequential and performs no rendering.
             var allImagesBySourcePath = BuildImageLookup(siteModel);
-            currentImageLookup = allImagesBySourcePath;
             var preparedGalleryMetadata = await PrepareGalleryMetadataAsync(
                 galleries,
                 allImagesBySourcePath,
@@ -277,30 +259,38 @@ internal sealed partial class RenderService(
                 };
             }
 
-            // Report the real total up front: index (always 1) + sub-galleries + one photo page
-            // per eligible image (#77). Photo pages are the bulk of output, so counting them here
-            // keeps the progress bar honest instead of hitting 100% after just the galleries.
+            // Report the real total up front: one page per gallery (the home page included) plus one
+            // photo page per eligible image (#77). Photo pages are the bulk of output, so counting them
+            // here keeps the progress bar honest instead of hitting 100% after just the galleries.
             progress?.Report(new RenderProgress
             {
                 CurrentPage = "Preparing...",
                 Rendered = 0,
-                Total = 1 + galleries.Count(g => !string.IsNullOrEmpty(g.Path)) + photoPages.Count
+                Total = galleries.Count + photoPages.Count
             });
 
-            // Render templates
-            var engine = CreateAndConfigureEngine();
-            var pageCount = await RenderSiteAsync(
+            // One engine for the whole run: templates are parsed once and shared by all pages.
+            var engine = templateEngineFactory();
+            engine.SetStrings(ThemeLocales.Load(theme, extensions, projectEnvironment.Value.Path, config.Project.Language, logger));
+            engine.SetImageLookup(allImagesBySourcePath);
+
+            var run = new RenderRun(
                 engine,
                 siteModel,
                 config,
-                theme,
-                photoPages,
-                photoTemplate,
+                buildInfo.ToScriptObject(),
+                [.. ImageSettings.GetActiveFormats().Keys],
+                layoutTemplate,
+                contentImageTemplate,
+                photoTemplate is not null,
                 preparedGalleryMetadata,
                 photoMemberships,
-                allImagesBySourcePath,
-                progress,
-                cancellationToken);
+                allImagesBySourcePath)
+            {
+                GalleryGridTemplate = new Lazy<string?>(() => LoadTemplate(GalleryGridTemplateKey)),
+                PhotoFigureTemplate = new Lazy<string?>(() => LoadTemplate(PhotoFigureTemplateKey))
+            };
+            var pageCount = await RenderSiteAsync(run, photoPages, photoTemplate, progress, cancellationToken);
 
             // Post-render work (assets, static files, sitemap) runs after the last page report.
             // Surface a clear label so the final stretch is not a frozen, unlabelled 100% bar.
@@ -320,7 +310,7 @@ internal sealed partial class RenderService(
             // Generate sitemap.xml (requires absolute BaseUrl)
             if (config.Project.BaseUrl is not null)
             {
-                var sitemap = SitemapGenerator.Generate(siteModel, config.Project.BaseUrl, config.Project.BasePath, photoPages);
+                var sitemap = SitemapGenerator.Generate(siteModel, config.Project.BaseUrl, config.Project.BasePath, timeProvider.GetUtcNow().UtcDateTime, photoPages);
                 await File.WriteAllTextAsync(
                     Path.Combine(OutputPath, "sitemap.xml"),
                     sitemap,
@@ -369,9 +359,6 @@ internal sealed partial class RenderService(
     private async Task<RenderContext> LoadConfigurationAsync(CancellationToken cancellationToken)
     {
         var project = projectConfig.CurrentValue;
-
-        // Site identity core (title, language, …) from site.json. Accessing it here
-        // triggers validation — a site.json missing a required 'title' fails at load.
         var site = siteCoreConfig.CurrentValue;
 
         // Get theme name from ThemeConfig (IOptions pattern)
@@ -386,7 +373,6 @@ internal sealed partial class RenderService(
         {
             Project = new RenderProjectSettings
             {
-                Name = !string.IsNullOrEmpty(project.Name) ? project.Name : "Revela Site",
                 BaseUrl = project.BaseUrl?.ToString().TrimEnd('/'),
                 Language = !string.IsNullOrEmpty(site.Language) ? site.Language : "en",
                 AssetsBasePath = project.AssetsBasePath,
@@ -444,24 +430,13 @@ internal sealed partial class RenderService(
     #region Private Methods - Reconstruction
 
     /// <summary>
-    /// Reconstruct galleries from the unified root tree.
+    /// Reconstruct galleries from the unified root tree: the root (home page) first, then
+    /// every node with a slug (a page).
     /// </summary>
-    /// <remarks>
-    /// Galleries are nodes with a non-null slug (meaning they have a page).
-    /// </remarks>
     private static List<Gallery> ReconstructGalleries(ManifestEntry root)
     {
-        var galleries = new List<Gallery>();
-
-        // Add root as home gallery if it has a slug
-        if (!string.IsNullOrEmpty(root.Slug) || string.IsNullOrEmpty(root.Path))
-        {
-            galleries.Add(ReconstructGalleryFromEntry(root));
-        }
-
-        // Recursively find all gallery nodes
+        var galleries = new List<Gallery> { ReconstructGalleryFromEntry(root) };
         CollectGalleries(root.Children, galleries);
-
         return galleries;
     }
 
@@ -500,17 +475,12 @@ internal sealed partial class RenderService(
         {
             Path = entry.Path,
             Slug = entry.Slug ?? string.Empty,
-            Name = entry.Text,
             Title = entry.Text,
             Description = entry.Description,
             Template = entry.Template,
             DataSources = entry.DataSources,
             Cover = entry.Cover,
-            Date = entry.Date,
-            Featured = entry.Featured,
-            Weight = 0, // Weight removed from new structure
-            Images = images,
-            SubGalleries = [] // Sub-galleries are flattened in the tree
+            Images = images
         };
     }
 
@@ -540,23 +510,13 @@ internal sealed partial class RenderService(
         };
     }
 
-    private static void FlattenImages(IEnumerable<Gallery> galleries, List<Image> images)
-    {
-        foreach (var gallery in galleries)
-        {
-            images.AddRange(gallery.Images);
-            FlattenImages(gallery.SubGalleries, images);
-        }
-    }
-
     /// <summary>
     /// Builds a lookup of all processed images by normalized source path.
     /// </summary>
     /// <remarks>
     /// Includes images from galleries (via <see cref="SiteModel.Images"/>) and
-    /// shared images from <c>_images/</c> (via manifest). This enables the
-    /// <see cref="ContentImageExtension"/> to resolve image references from
-    /// Markdown body content regardless of where the image is located.
+    /// shared images from <c>_images/</c> (via manifest), so Markdown images, covers,
+    /// <c>[[photo]]</c> and <c>find_image</c> resolve wherever the image is located.
     /// </remarks>
     private Dictionary<string, Image> BuildImageLookup(SiteModel model)
     {
@@ -587,381 +547,173 @@ internal sealed partial class RenderService(
     #region Private Methods - Rendering
 
     private async Task<int> RenderSiteAsync(
-        ITemplateEngine engine,
-        SiteModel model,
-        RenderContext config,
-        ITheme? theme,
+        RenderRun run,
         IReadOnlyList<PhotoPage> photoPages,
         string? photoTemplate,
-        IReadOnlyDictionary<Gallery, PreparedGalleryMetadata> preparedGalleryMetadata,
-        IReadOnlyList<PhotoMembership> photoMemberships,
-        IReadOnlyDictionary<string, Image> allImagesBySourcePath,
         IProgress<RenderProgress>? progress,
         CancellationToken cancellationToken)
     {
         Directory.CreateDirectory(OutputPath);
 
-        var manifest = theme?.Manifest;
-        var layoutTemplate = manifest is not null
-            ? LoadTemplate(manifest.LayoutTemplate)
-            : null;
-
-        var indexTemplate = layoutTemplate
-            ?? LoadTemplate("index.revela")
-            ?? GetDefaultIndexTemplate();
-        var galleryTemplate = layoutTemplate
-            ?? LoadTemplate("gallery.revela")
-            ?? GetDefaultGalleryTemplate();
-
         var pageCount = 0;
-
-        // Real total = index (always written once) + sub-galleries + one photo page per eligible
-        // image (#77). When a root gallery exists it stands in for the index page, so this matches
-        // the final pageCount exactly — the progress bar reaches 100% only when the last page is
-        // written, and never overshoots.
-        var galleriesToRenderCount = model.Galleries.Count(g => !string.IsNullOrEmpty(g.Path));
-        var totalPages = 1 + galleriesToRenderCount + photoPages.Count;
-
-        // Render index page
-        progress?.Report(new RenderProgress
+        var totalPages = run.Model.Galleries.Count + photoPages.Count;
+        var parallelOptions = new ParallelOptions
         {
-            CurrentPage = "index.html",
-            Rendered = pageCount,
-            Total = totalPages
+            MaxDegreeOfParallelism = RenderSettings.Parallel ? RenderSettings.MaxDegreeOfParallelism ?? -1 : 1,
+            CancellationToken = cancellationToken
+        };
+
+        // Gallery pages, the home page included.
+        await Parallel.ForEachAsync(run.Model.Galleries, parallelOptions, async (gallery, ct) =>
+        {
+            var model = await BuildGalleryPageModelAsync(run, gallery, ct);
+            var html = run.Engine.Render(run.LayoutTemplate, model);
+
+            var outputDirectory = Path.Combine(OutputPath, gallery.Slug);
+            var displayPath = $"{gallery.Slug}index.html";
+            Directory.CreateDirectory(outputDirectory);
+            WarnIfHtmlTruncated(html, displayPath);
+            await File.WriteAllTextAsync(Path.Combine(outputDirectory, "index.html"), html, ct);
+
+            // Capture the incremented value into a local so the report is parallel-safe.
+            var rendered = Interlocked.Increment(ref pageCount);
+            progress?.Report(new RenderProgress { CurrentPage = displayPath, Rendered = rendered, Total = totalPages });
         });
 
-        var indexNavigation = SetActiveState(model.Navigation, string.Empty);
-        var indexBasePath = CalculateSiteBasePath(config, "");
-        var indexAssetsBasePath = CalculateAssetsBasePath(config, "");
-        var revelaInfo = buildInfo.ToScriptObject();
-        var formats = ImageSettings.GetActiveFormats();
-
-        // Get assets from resolver. Stylesheets are resolved per page-type scope so a
-        // photo-only, template-only, or plugin-only assets do not bloat unrelated pages.
-        // The index scope is resolved below once the root gallery's template is known
-        // (a plugin-templated homepage must still get that plugin's CSS).
-        var photoStylesheets = assetResolver.GetStyleSheets("photo");
-        var photoScripts = assetResolver.GetScripts("photo");
-
-        // Set image lookup on the main engine for the image() template function
-        engine.SetImageLookup(allImagesBySourcePath);
-
-        // Load content image template for Markdown body images (theme-customizable)
-        var contentImageTemplate = LoadTemplate("partials/contentimage.revela")
-            ?? throw new InvalidOperationException(
-                "Theme is missing required template 'Partials/ContentImage.revela'. " +
-                "This template renders ![alt](path) images in Markdown body content.");
-
-        // Find root gallery (home page) - has empty Path
-        var rootGallery = model.Galleries.FirstOrDefault(g => string.IsNullOrEmpty(g.Path));
-
-        // The homepage defaults to the "index" scope, but a plugin-templated homepage
-        // (e.g. a calendar landing page with template "calendar/page") must still get
-        // that plugin's CSS — derive the scope from the root template like galleries do.
-        var indexScope = "index";
-        var indexViewerMode = PhotoViewerMode.None;
-
-        // Load root gallery metadata (body content, etc.)
-        if (rootGallery is not null)
-        {
-            var rootAssetsBasePath = CalculateAssetsBasePath(config, "");
-            var rootMetadata = preparedGalleryMetadata[rootGallery];
-            var rootMemberships = photoMemberships
-                .Where(membership => ReferenceEquals(membership.Gallery, rootGallery))
-                .ToList();
-            var rootContentImageRenderer = CreateContentImageRenderer(
-                engine,
-                contentImageTemplate,
-                rootAssetsBasePath,
-                formats.Keys);
-            var rootImageContext = new ContentImageContext(
-                allImagesBySourcePath,
-                rootGallery.Path,
-                rootAssetsBasePath,
-                formats.Keys,
-                rootContentImageRenderer,
-                CreateGalleryBlockContext(
-                    rootMetadata.PreparedBlocks,
-                    engine,
-                    rootAssetsBasePath,
-                    indexBasePath,
-                    formats.Keys,
-                    rootMetadata.SourcePath,
-                    rootMemberships,
-                    rootContentImageRenderer,
-                    photoTemplate is not null));
-            RenderPreparedGalleryBody(rootGallery, rootMetadata, rootImageContext);
-            indexScope = ScopeFromTemplate(rootMetadata.Template, "index");
-            indexViewerMode = rootMetadata.PhotoViewerMode;
-        }
-
-        var indexStylesheets = assetResolver.GetStyleSheets(indexScope);
-        var indexScripts = GetPageScripts(indexScope, indexViewerMode);
-
-        // Use root gallery images if available (may be filtered), otherwise all images
-        var indexImages = rootGallery?.Images.Count > 0
-            ? rootGallery.Images
-            : model.Images;
-        var rootBaseMembership = photoMemberships.FirstOrDefault(membership =>
-            ReferenceEquals(membership.Gallery, rootGallery) && membership.IsBase);
-
-        var indexHtml = engine.Render(
-            indexTemplate,
-            new Dictionary<string, object?>
-            {
-                ["site"] = model.Site,
-                ["gallery"] = rootGallery?.ToScriptObject(),
-                ["galleries"] = model.Galleries.ToScriptArray(),
-                ["images"] = indexImages.ToScriptArray(),
-                ["occurrences"] = rootBaseMembership is null
-                    ? Array.Empty<object>()
-                    : BuildOccurrences(rootBaseMembership).ToScriptArray(),
-                ["nav_items"] = indexNavigation.ToScriptArray(),
-                ["basepath"] = indexBasePath,
-                ["assets_basepath"] = indexAssetsBasePath,
-                ["base_url"] = config.Project.BaseUrl,
-                ["image_formats"] = formats.Keys,
-                ["revela"] = revelaInfo,
-                ["stylesheets"] = indexStylesheets,
-                ["scripts"] = indexScripts
-            });
-
-        WarnIfHtmlTruncated(indexHtml, "index.html");
-        await File.WriteAllTextAsync(
-            Path.Combine(OutputPath, "index.html"),
-            indexHtml,
-            cancellationToken);
-        pageCount++;
-
-        var galleriesToRender = model.Galleries.Where(g => !string.IsNullOrEmpty(g.Path)).ToList();
-
-        async Task RenderGalleryAsync(Gallery gallery, ITemplateEngine renderEngine, CancellationToken ct)
-        {
-            ct.ThrowIfCancellationRequested();
-
-            var contentAssetsBasePath = CalculateAssetsBasePath(config, UrlBuilder.CalculateBasePath(gallery.Slug));
-            var metadata = preparedGalleryMetadata[gallery];
-            var galleryMemberships = photoMemberships
-                .Where(membership => ReferenceEquals(membership.Gallery, gallery))
-                .ToList();
-            var relativeBasePath = UrlBuilder.CalculateBasePath(gallery.Slug);
-            var basepath = CalculateSiteBasePath(config, relativeBasePath);
-            var galleryContentImageRenderer = CreateContentImageRenderer(
-                renderEngine,
-                contentImageTemplate,
-                contentAssetsBasePath,
-                formats.Keys);
-            var galleryImageContext = new ContentImageContext(
-                allImagesBySourcePath,
-                gallery.Path,
-                contentAssetsBasePath,
-                formats.Keys,
-                galleryContentImageRenderer,
-                CreateGalleryBlockContext(
-                    metadata.PreparedBlocks,
-                    renderEngine,
-                    contentAssetsBasePath,
-                    basepath,
-                    formats.Keys,
-                    metadata.SourcePath,
-                    galleryMemberships,
-                    galleryContentImageRenderer,
-                    photoTemplate is not null));
-            RenderPreparedGalleryBody(gallery, metadata, galleryImageContext);
-
-            // Page scope for stylesheet filtering: a plugin template like
-            // "statistics/overview" scopes to its prefix ("statistics"); a plain
-            // gallery scopes to "gallery".
-            var galleryScope = ScopeFromTemplate(metadata.Template, "gallery");
-
-            var galleryStylesheets = assetResolver.GetStyleSheets(galleryScope);
-            var galleryScripts = GetPageScripts(galleryScope, metadata.PhotoViewerMode);
-
-            var galleryImages = gallery.Images.ToList();
-            var baseMembership = galleryMemberships.FirstOrDefault(membership => membership.IsBase);
-
-            var galleryNavigation = SetActiveState(model.Navigation, gallery.Slug);
-            var galleryAssetsBasePath = CalculateAssetsBasePath(config, relativeBasePath);
-
-            var effectiveDataSources = metadata.DataSources;
-            if (metadata.DataSources.Count == 0 && metadata.Template is not null)
-            {
-                effectiveDataSources = GetExtensionDataDefaults(metadata.Template);
-            }
-
-            var resolvedData = await ResolveDataSourcesAsync(
-                effectiveDataSources,
-                metadata.BasePath,
-                projectEnvironment.Value.Path,
-                SourcePath,
-                model.Galleries,
-                galleryImages,
-                ct);
-
-            foreach (var (variableName, source) in effectiveDataSources)
-            {
-                if (!resolvedData.ContainsKey(variableName)
-                    && source.EndsWith(".json", StringComparison.OrdinalIgnoreCase))
-                {
-                    LogDataFileMissing(logger, source, gallery.Slug);
-                }
-            }
-
-            // Preserve original markdown body as page_content for custom body templates.
-            // Custom templates can use either {{ page_content }} or {{ gallery.body }}.
-            var pageContent = gallery.Body ?? string.Empty;
-
-            gallery.Body ??= string.Empty;
-
-            var layoutModel = new Dictionary<string, object?>
-            {
-                ["site"] = model.Site,
-                ["gallery"] = gallery.ToScriptObject(),
-                ["page_content"] = pageContent,
-                ["images"] = galleryImages.ToScriptArray(),
-                ["occurrences"] = baseMembership is null
-                    ? Array.Empty<object>()
-                    : BuildOccurrences(baseMembership).ToScriptArray(),
-                ["nav_items"] = galleryNavigation.ToScriptArray(),
-                ["basepath"] = basepath,
-                ["assets_basepath"] = galleryAssetsBasePath,
-                ["base_url"] = config.Project.BaseUrl,
-                ["image_formats"] = formats.Keys,
-                ["revela"] = revelaInfo,
-                ["stylesheets"] = galleryStylesheets,
-                ["scripts"] = galleryScripts
-            };
-
-            foreach (var (key, value) in resolvedData)
-            {
-                layoutModel[key] = value;
-            }
-
-            var galleryHtml = renderEngine.Render(galleryTemplate, layoutModel);
-
-            var galleryOutputPath = Path.Combine(OutputPath, gallery.Slug);
-            Directory.CreateDirectory(galleryOutputPath);
-
-            WarnIfHtmlTruncated(galleryHtml, $"{gallery.Slug.TrimEnd('/')}/index.html");
-            await File.WriteAllTextAsync(
-                Path.Combine(galleryOutputPath, "index.html"),
-                galleryHtml,
-                ct);
-
-            var rendered = Interlocked.Increment(ref pageCount);
-            progress?.Report(new RenderProgress
-            {
-                CurrentPage = $"{gallery.Slug.TrimEnd('/')}​/index.html",
-                Rendered = rendered,
-                Total = totalPages
-            });
-        }
-
-        if (RenderSettings.Parallel)
-        {
-            var parallelOptions = new ParallelOptions
-            {
-                MaxDegreeOfParallelism = RenderSettings.MaxDegreeOfParallelism ?? -1,
-                CancellationToken = cancellationToken
-            };
-
-            await Parallel.ForEachAsync(galleriesToRender, parallelOptions, async (gallery, ct) =>
-            {
-                var renderEngine = CreateAndConfigureEngine();
-                await RenderGalleryAsync(gallery, renderEngine, ct);
-            });
-        }
-        else
-        {
-            foreach (var gallery in galleriesToRender)
-            {
-                await RenderGalleryAsync(gallery, engine, cancellationToken);
-            }
-        }
-
         // Photo pages (#77): one canonical page per eligible source image, rendered after the
-        // gallery loop so every Gallery.Images list is final. Body/Photo.revela is a standalone
-        // document (no site header/overlay-menu). Counted into pageCount alongside index + galleries.
-        async Task RenderPhotoPageAsync(PhotoPage page, string template, ITemplateEngine renderEngine, CancellationToken ct)
+        // gallery pages so every Gallery.Images list is final. Body/Photo.revela is a standalone
+        // document (no site header/overlay-menu).
+        if (photoTemplate is not null)
         {
-            ct.ThrowIfCancellationRequested();
+            var photoStylesheets = assetResolver.GetStyleSheets("photo");
+            var photoScripts = assetResolver.GetScripts("photo");
 
-            var pagePath = $"photo/{page.Slug}/";
-            var relativeBasePath = UrlBuilder.CalculateBasePath(pagePath);
-            var photoBasePath = CalculateSiteBasePath(config, relativeBasePath);
-            var photoAssetsBasePath = CalculateAssetsBasePath(config, relativeBasePath);
-
-            var photoModel = new Dictionary<string, object?>
+            await Parallel.ForEachAsync(photoPages, parallelOptions, async (page, ct) =>
             {
-                ["site"] = model.Site,
-                ["photo"] = page.ToScriptObject(),
-                ["image"] = page.Image.ToScriptObject(),
-                ["contexts"] = page.Contexts.ToScriptArray(),
-                ["primary_context"] = page.PrimaryContext.ToScriptObject(),
-                ["basepath"] = photoBasePath,
-                ["assets_basepath"] = photoAssetsBasePath,
-                ["base_url"] = config.Project.BaseUrl,
-                ["image_formats"] = formats.Keys,
-                ["revela"] = revelaInfo,
-                ["stylesheets"] = photoStylesheets,
-                ["scripts"] = photoScripts
-            };
+                var relativeBasePath = UrlBuilder.CalculateBasePath($"photo/{page.Slug}/");
+                var html = run.Engine.Render(photoTemplate, new Dictionary<string, object?>
+                {
+                    ["site"] = run.Model.Site,
+                    ["photo"] = page.ToScriptObject(),
+                    ["image"] = page.Image.ToScriptObject(),
+                    ["contexts"] = page.Contexts.ToScriptArray(),
+                    ["primary_context"] = page.PrimaryContext.ToScriptObject(),
+                    ["basepath"] = CalculateSiteBasePath(run.Config, relativeBasePath),
+                    ["assets_basepath"] = CalculateAssetsBasePath(run.Config, relativeBasePath),
+                    ["base_url"] = run.Config.Project.BaseUrl,
+                    ["image_formats"] = run.ImageFormats,
+                    ["revela"] = run.RevelaInfo,
+                    ["stylesheets"] = photoStylesheets,
+                    ["scripts"] = photoScripts
+                });
 
-            var photoHtml = renderEngine.Render(template, photoModel);
+                var outputDirectory = Path.Combine(OutputPath, "photo", page.Slug.Replace('/', Path.DirectorySeparatorChar));
+                var displayPath = $"photo/{page.Slug}/index.html";
+                Directory.CreateDirectory(outputDirectory);
+                WarnIfHtmlTruncated(html, displayPath);
+                await File.WriteAllTextAsync(Path.Combine(outputDirectory, "index.html"), html, ct);
 
-            var photoOutputPath = Path.Combine(OutputPath, "photo", page.Slug.Replace('/', Path.DirectorySeparatorChar));
-            Directory.CreateDirectory(photoOutputPath);
-
-            WarnIfHtmlTruncated(photoHtml, $"photo/{page.Slug}/index.html");
-            await File.WriteAllTextAsync(
-                Path.Combine(photoOutputPath, "index.html"),
-                photoHtml,
-                ct);
-
-            // Capture the incremented value into a local so the report is parallel-safe: the photo
-            // loop runs under Parallel.ForEachAsync. Progress<T> marshals callbacks and PagesCommand
-            // only assigns task.Value = Rendered, so out-of-order reports are fine.
-            var rendered = Interlocked.Increment(ref pageCount);
-            progress?.Report(new RenderProgress
-            {
-                CurrentPage = $"photo/{page.Slug}/index.html",
-                Rendered = rendered,
-                Total = totalPages
+                var rendered = Interlocked.Increment(ref pageCount);
+                progress?.Report(new RenderProgress { CurrentPage = displayPath, Rendered = rendered, Total = totalPages });
             });
         }
 
-        if (photoTemplate is not null && photoPages.Count > 0)
-        {
-            if (RenderSettings.Parallel)
-            {
-                var parallelOptions = new ParallelOptions
-                {
-                    MaxDegreeOfParallelism = RenderSettings.MaxDegreeOfParallelism ?? -1,
-                    CancellationToken = cancellationToken
-                };
-
-                await Parallel.ForEachAsync(photoPages, parallelOptions, async (page, ct) =>
-                {
-                    var renderEngine = CreateAndConfigureEngine();
-                    await RenderPhotoPageAsync(page, photoTemplate, renderEngine, ct);
-                });
-            }
-            else
-            {
-                foreach (var page in photoPages)
-                {
-                    await RenderPhotoPageAsync(page, photoTemplate, engine, cancellationToken);
-                }
-            }
-        }
-
-        if (layoutTemplate is not null)
-        {
-            await RenderNotFoundPageAsync(engine, layoutTemplate, model, config, revelaInfo, formats.Keys, cancellationToken);
-        }
+        await RenderNotFoundPageAsync(run, cancellationToken);
 
         return pageCount;
     }
+
+    /// <summary>
+    /// Builds the layout model of a gallery page — the home page, a folder gallery, a filter
+    /// gallery or a text page alike — including its rendered Markdown body and data sources.
+    /// </summary>
+    private async Task<Dictionary<string, object?>> BuildGalleryPageModelAsync(
+        RenderRun run,
+        Gallery gallery,
+        CancellationToken cancellationToken)
+    {
+        var metadata = run.PreparedGalleryMetadata[gallery];
+        var memberships = run.PhotoMemberships
+            .Where(membership => ReferenceEquals(membership.Gallery, gallery))
+            .ToList();
+        var relativeBasePath = UrlBuilder.CalculateBasePath(gallery.Slug);
+        var basePath = CalculateSiteBasePath(run.Config, relativeBasePath);
+        var assetsBasePath = CalculateAssetsBasePath(run.Config, relativeBasePath);
+
+        var renderContentImage = CreateContentImageRenderer(run, assetsBasePath);
+        var imageContext = new ContentImageContext(
+            run.ImagesBySourcePath,
+            gallery.Path,
+            renderContentImage,
+            CreateGalleryBlockContext(run, metadata, memberships, assetsBasePath, basePath, renderContentImage));
+        if (metadata.RawBody is not null)
+        {
+            gallery.Body = markdownService.ToHtml(metadata.RawBody, imageContext);
+        }
+
+        // Page scope for stylesheet filtering: a plugin template like "statistics/overview"
+        // scopes to its prefix ("statistics"); the home page defaults to "index", any other
+        // page to "gallery".
+        var scope = ScopeFromTemplate(metadata.Template, string.IsNullOrEmpty(gallery.Slug) ? "index" : "gallery");
+        var baseMembership = memberships.FirstOrDefault(membership => membership.IsBase);
+
+        var model = CreateLayoutModel(
+            run,
+            gallery.ToScriptObject(),
+            gallery.Images.ToScriptArray(),
+            baseMembership is null ? [] : BuildOccurrences(baseMembership).ToScriptArray(),
+            gallery.Slug,
+            basePath,
+            assetsBasePath,
+            scope,
+            metadata.PhotoViewerMode);
+
+        var dataSources = metadata.DataSources.Count > 0
+            ? metadata.DataSources
+            : GetExtensionDataDefaults(metadata.Template);
+        foreach (var (variableName, source) in dataSources)
+        {
+            var value = await ResolveDataSourceAsync(source, metadata.BasePath, run.Model.Galleries, gallery.Images, cancellationToken);
+            if (value is not null)
+            {
+                model[variableName] = value;
+            }
+            else if (source.EndsWith(".json", StringComparison.OrdinalIgnoreCase))
+            {
+                LogDataFileMissing(logger, source, gallery.Slug);
+            }
+        }
+
+        return model;
+    }
+
+    /// <summary>
+    /// The globals every layout render receives (gallery pages and the 404 page).
+    /// </summary>
+    private Dictionary<string, object?> CreateLayoutModel(
+        RenderRun run,
+        ScriptObject gallery,
+        ScriptArray images,
+        ScriptArray occurrences,
+        string currentSlug,
+        string basePath,
+        string assetsBasePath,
+        string scope,
+        PhotoViewerMode viewerMode) => new()
+        {
+            ["site"] = run.Model.Site,
+            ["gallery"] = gallery,
+            ["images"] = images,
+            ["occurrences"] = occurrences,
+            ["nav_items"] = SetActiveState(run.Model.Navigation, currentSlug).ToScriptArray(),
+            ["basepath"] = basePath,
+            ["assets_basepath"] = assetsBasePath,
+            ["base_url"] = run.Config.Project.BaseUrl,
+            ["image_formats"] = run.ImageFormats,
+            ["revela"] = run.RevelaInfo,
+            ["stylesheets"] = assetResolver.GetStyleSheets(scope),
+            ["scripts"] = GetPageScripts(scope, viewerMode)
+        };
 
     /// <summary>
     /// Renders the theme's <c>Body/NotFound.revela</c> inside the layout to <c>404.html</c> at the output root.
@@ -972,14 +724,7 @@ internal sealed partial class RenderService(
     /// the sitemap and the page count. Themes without the template simply produce no 404 page, and a
     /// hand-written <c>source/_static/404.html</c> replaces it.
     /// </remarks>
-    private async Task RenderNotFoundPageAsync(
-        ITemplateEngine engine,
-        string layoutTemplate,
-        SiteModel model,
-        RenderContext config,
-        ScriptObject revelaInfo,
-        IEnumerable<string> imageFormats,
-        CancellationToken cancellationToken)
+    private async Task RenderNotFoundPageAsync(RenderRun run, CancellationToken cancellationToken)
     {
         // A hand-written source/_static/404.html wins. Skip rendering instead of relying on the static
         // copy to overwrite: it keeps an existing output file of equal size and newer timestamp.
@@ -998,27 +743,20 @@ internal sealed partial class RenderService(
             return;
         }
 
-        var basePath = config.Project.BasePath;
-        var html = engine.Render(
-            layoutTemplate,
-            new Dictionary<string, object?>
-            {
-                ["site"] = model.Site,
-                ["gallery"] = new ScriptObject { ["template"] = "notfound" },
-                ["galleries"] = model.Galleries.ToScriptArray(),
-                ["images"] = Array.Empty<object>(),
-                ["occurrences"] = Array.Empty<object>(),
-                ["nav_items"] = SetActiveState(model.Navigation, string.Empty).ToScriptArray(),
-                ["basepath"] = basePath,
-                ["assets_basepath"] = CalculateAssetsBasePath(config, basePath),
-                ["base_url"] = config.Project.BaseUrl,
-                ["image_formats"] = imageFormats,
-                ["revela"] = revelaInfo,
-                ["stylesheets"] = assetResolver.GetStyleSheets(NotFoundScope),
-                ["scripts"] = assetResolver.GetScripts(NotFoundScope),
-                ["not_found"] = true
-            });
+        var basePath = run.Config.Project.BasePath;
+        var model = CreateLayoutModel(
+            run,
+            new ScriptObject { ["template"] = NotFoundScope },
+            [],
+            [],
+            string.Empty,
+            basePath,
+            CalculateAssetsBasePath(run.Config, basePath),
+            NotFoundScope,
+            PhotoViewerMode.None);
+        model["not_found"] = true;
 
+        var html = run.Engine.Render(run.LayoutTemplate, model);
         WarnIfHtmlTruncated(html, NotFoundFileName);
         await File.WriteAllTextAsync(Path.Combine(OutputPath, NotFoundFileName), html, cancellationToken);
     }
@@ -1109,48 +847,19 @@ internal sealed partial class RenderService(
     /// <summary>
     /// Loads a template from the theme, extensions, or local overrides via ITemplateResolver.
     /// </summary>
-    /// <param name="templateName">Template file name (e.g., "gallery.revela" or "statistics/overview.revela")</param>
+    /// <param name="templateKey">Template key with folder, e.g. "layout", "body/photo" or "partials/contentimage"; a ".revela" suffix is ignored</param>
     /// <returns>Template content or null if not found</returns>
-    private string? LoadTemplate(string templateName)
+    private string? LoadTemplate(string templateKey)
     {
-        // Derive key from template name
-        var key = templateName;
-        if (key.EndsWith(".revela", StringComparison.OrdinalIgnoreCase))
+        using var stream = templateResolver.GetTemplate(templateKey);
+        if (stream is null)
         {
-            key = key[..^7];
+            return null;
         }
 
-        // Add body/ prefix for custom page templates
-        // This matches Layout.revela behavior: body_template = 'body/' + (gallery.template ?? 'gallery')
-        // Root templates (layout, index, gallery) don't need prefix
-        if (!key.StartsWith("body/", StringComparison.OrdinalIgnoreCase) &&
-            !key.StartsWith("partials/", StringComparison.OrdinalIgnoreCase) &&
-            !IsRootTemplate(key))
-        {
-            key = "body/" + key;
-        }
-
-        // Use template resolver for unified lookup (theme → extensions → local)
-        using var stream = templateResolver.GetTemplate(key);
-        if (stream is not null)
-        {
-            using var reader = new StreamReader(stream);
-            return reader.ReadToEnd();
-        }
-
-        return null;
+        using var reader = new StreamReader(stream);
+        return reader.ReadToEnd();
     }
-
-    /// <summary>
-    /// Determines if a template name is a root template (layout, index, gallery).
-    /// </summary>
-    /// <remarks>
-    /// Root templates are NOT prefixed with body/ since they exist at the theme root level.
-    /// </remarks>
-    private static bool IsRootTemplate(string key) =>
-        key.Equals("layout", StringComparison.OrdinalIgnoreCase) ||
-        key.Equals("index", StringComparison.OrdinalIgnoreCase) ||
-        key.Equals("gallery", StringComparison.OrdinalIgnoreCase);
 
     /// <summary>
     /// Loads and prepares metadata from every gallery before photo-page catalog construction.
@@ -1196,6 +905,18 @@ internal sealed partial class RenderService(
             }
 
             var metadata = await revelaParser.ParseFileAsync(sourcePath, cancellationToken);
+
+            // A page filter with `sort random` is drawn again on every render, once for the whole
+            // run like [[gallery: ... | sort random]] blocks — the order frozen at scan is ignored.
+            if (!string.IsNullOrWhiteSpace(metadata.Filter) && FilterService.ParseQuery(metadata.Filter).Sort is { IsRandom: true })
+            {
+                gallery.Images = GalleryImageResolver.Resolve(
+                    imageContentsBySourcePath,
+                    metadata.Filter,
+                    metadata.Sort,
+                    options.CurrentValue.Sorting.Images);
+            }
+
             var viewerMode = PhotoViewerResolver.Resolve(
                 metadata.PhotoViewer,
                 themeConfig.CurrentValue.PhotoViewer,
@@ -1214,14 +935,14 @@ internal sealed partial class RenderService(
                         filterExpression,
                         metadata.Sort,
                         options.CurrentValue.Sorting.Images),
-                    photoPath => ResolveImageByPath(photoPath, gallery.Path, imagesBySourcePath));
+                    photoPath => ImagePathResolver.Resolve(photoPath, gallery.Path, imagesBySourcePath));
 
             gallery.HasInlineGalleries = preparedBlocks.Count > 0;
             gallery.Template = metadata.Template;
 
             if (metadata.Cover is not null)
             {
-                gallery.CoverImage = ResolveImageByPath(metadata.Cover, gallery.Path, imagesBySourcePath);
+                gallery.CoverImage = ImagePathResolver.Resolve(metadata.Cover, gallery.Path, imagesBySourcePath);
             }
 
             prepared.Add(
@@ -1314,13 +1035,13 @@ internal sealed partial class RenderService(
         int? bareRenderOrdinal = null)
     {
         var occurrences = new List<GalleryImageOccurrence>(membership.Images.Count);
-        var contextLabel = GalleryLabel(membership.Gallery);
+        var contextLabel = membership.Gallery.Title;
         for (var index = 0; index < membership.Images.Count; index++)
         {
             var image = membership.Images[index];
             occurrences.Add(new GalleryImageOccurrence(
                 image,
-                ViewerModeValue(membership.ViewerMode),
+                membership.ViewerMode.ToValue(),
                 PhotoPageCatalog.ContextId(membership),
                 contextLabel,
                 OccurrenceId(image.Slug, membership.GridNumber, bareRenderOrdinal),
@@ -1342,85 +1063,20 @@ internal sealed partial class RenderService(
             ? PhotoPageCatalog.Anchor(imageSlug, gridNumber)
             : $"bare-{bareRenderOrdinal.Value}-{PhotoPageCatalog.Anchor(imageSlug, null)}";
 
-    private static string ViewerModeValue(PhotoViewerMode viewerMode) => viewerMode switch
-    {
-        PhotoViewerMode.Page => "page",
-        PhotoViewerMode.Lightbox => "lightbox",
-        PhotoViewerMode.None => "none",
-        _ => throw new ArgumentOutOfRangeException(nameof(viewerMode), viewerMode, null)
-    };
-
-    private void RenderPreparedGalleryBody(
-        Gallery gallery,
-        PreparedGalleryMetadata metadata,
-        ContentImageContext imageContext)
-    {
-        if (metadata.RawBody is not null)
-        {
-            gallery.Body = markdownService.ToHtml(metadata.RawBody, imageContext);
-        }
-    }
 
     /// <summary>
-    /// Resolves an image path (from frontmatter) to an Image object.
+    /// Creates a delegate that renders content images via the theme's <c>Partials/ContentImage.revela</c>.
     /// </summary>
-    /// <remarks>
-    /// Uses the same 3-step lookup as content images in Markdown:
-    /// <list type="number">
-    /// <item>Gallery-local: <c>{GalleryPath}/{path}</c></item>
-    /// <item>Shared images: <c>_images/{path}</c></item>
-    /// <item>Exact match: <c>{path}</c> as-is</item>
-    /// </list>
-    /// </remarks>
-    private static Image? ResolveImageByPath(
-        string imagePath,
-        string galleryPath,
-        IReadOnlyDictionary<string, Image> imagesBySourcePath)
-    {
-        var normalizedPath = imagePath.Replace('\\', '/');
-
-        // 1. Gallery-local
-        if (!string.IsNullOrEmpty(galleryPath))
-        {
-            var localPath = $"{galleryPath}/{normalizedPath}";
-            if (imagesBySourcePath.TryGetValue(localPath, out var localImage))
-            {
-                return localImage;
-            }
-        }
-
-        // 2. Shared images: _images/{path}
-        var sharedPath = $"{ProjectPaths.SharedImages}/{normalizedPath}";
-        if (imagesBySourcePath.TryGetValue(sharedPath, out var sharedImage))
-        {
-            return sharedImage;
-        }
-
-        // 3. Exact match
-        if (imagesBySourcePath.TryGetValue(normalizedPath, out var exactImage))
-        {
-            return exactImage;
-        }
-
-        return null;
-    }
-
-    /// <summary>
-    /// Creates a delegate that renders content images via a theme template.
-    /// </summary>
-    /// <returns>Render delegate, or null if no content image template is available.</returns>
     private static Func<Image, string, List<string>?, string> CreateContentImageRenderer(
-        ITemplateEngine engine,
-        string template,
-        string assetsBasePath,
-        IEnumerable<string> imageFormats) =>
-        (image, alt, classes) => engine.Render(template, new Dictionary<string, object?>
+        RenderRun run,
+        string assetsBasePath) =>
+        (image, alt, classes) => run.Engine.Render(run.ContentImageTemplate, new Dictionary<string, object?>
         {
             ["image"] = image.ToScriptObject(),
             ["alt"] = alt,
             ["classes"] = classes ?? [],
             ["assets_basepath"] = assetsBasePath,
-            ["image_formats"] = imageFormats
+            ["image_formats"] = run.ImageFormats
         });
 
     /// <summary>
@@ -1428,30 +1084,25 @@ internal sealed partial class RenderService(
     /// <c>[[photo]]</c> blocks.
     /// </summary>
     /// <remarks>
-    /// The grid template (<c>Partials/GalleryGrid.revela</c>) is loaded lazily on first use so that
+    /// The grid template (<c>Partials/GalleryGrid.revela</c>) is loaded on first use so that
     /// themes without inline galleries are unaffected. A missing template raises a source-located error.
     /// Photo blocks use the optional <c>Partials/PhotoFigure.revela</c>; themes without it get the
     /// content image wrapped in a link to the photo page.
     /// </remarks>
     private GalleryBlockContext CreateGalleryBlockContext(
-        PreparedGalleryBlocks preparedBlocks,
-        ITemplateEngine engine,
+        RenderRun run,
+        PreparedGalleryMetadata metadata,
+        IReadOnlyList<PhotoMembership> memberships,
         string assetsBasePath,
         string basePath,
-        IEnumerable<string> imageFormats,
-        string sourcePath,
-        IReadOnlyList<PhotoMembership> memberships,
-        Func<Image, string, List<string>?, string> renderContentImage,
-        bool supportsPhotoPages)
+        Func<Image, string, List<string>?, string> renderContentImage)
     {
-        string? galleryGridTemplate = null;
-        string? photoFigureTemplate = null;
-        var photoFigureTemplateLoaded = false;
+        var sourcePath = metadata.SourcePath;
 
         void ReportWarning(string warning) => LogInlineGalleryWarning(logger, warning);
 
         string GetGalleryGridTemplate(int line) =>
-            galleryGridTemplate ??= LoadTemplate("partials/gallerygrid.revela")
+            run.GalleryGridTemplate.Value
                 ?? throw new InvalidOperationException(
                     $"{sourcePath}:{line}: theme is missing required template 'Partials/GalleryGrid.revela'. " +
                     "This template renders [[gallery]] blocks in Markdown body content.");
@@ -1462,14 +1113,14 @@ internal sealed partial class RenderService(
                 candidate.PhotoNumber is null && candidate.GridNumber == preparedBlock.GridNumber);
             var occurrences = BuildOccurrences(membership, preparedBlock.BareRenderOrdinal);
 
-            return engine.Render(
+            return run.Engine.Render(
                 GetGalleryGridTemplate(line),
                 new Dictionary<string, object?>
                 {
                     ["occurrences"] = occurrences.ToScriptArray(),
                     ["assets_basepath"] = assetsBasePath,
                     ["basepath"] = basePath,
-                    ["image_formats"] = imageFormats
+                    ["image_formats"] = run.ImageFormats
                 });
         }
 
@@ -1488,56 +1139,71 @@ internal sealed partial class RenderService(
             var contextId = membership is null ? null : PhotoPageCatalog.ContextId(membership);
             var occurrenceId = PhotoPageCatalog.PhotoAnchor(image.Slug, photo.PhotoNumber);
 
-            if (!photoFigureTemplateLoaded)
+            if (run.PhotoFigureTemplate.Value is { } photoFigureTemplate)
             {
-                photoFigureTemplate = LoadTemplate("partials/photofigure.revela");
-                photoFigureTemplateLoaded = true;
-            }
-
-            if (photoFigureTemplate is not null)
-            {
-                return engine.Render(
+                return run.Engine.Render(
                     photoFigureTemplate,
                     new Dictionary<string, object?>
                     {
                         ["image"] = image.ToScriptObject(),
-                        ["viewer_mode"] = supportsPhotoPages ? "page" : "none",
+                        ["viewer_mode"] = (run.SupportsPhotoPages ? PhotoViewerMode.Page : PhotoViewerMode.None).ToValue(),
                         ["context_id"] = contextId,
-                        ["context_label"] = membership is null ? null : GalleryLabel(membership.Gallery),
+                        ["context_label"] = membership?.Gallery.Title,
                         ["occurrence_id"] = occurrenceId,
                         ["assets_basepath"] = assetsBasePath,
                         ["basepath"] = basePath,
-                        ["image_formats"] = imageFormats
+                        ["image_formats"] = run.ImageFormats
                     });
             }
 
             // Fallback for themes without Partials/PhotoFigure.revela: the content image, linked.
+            // A file name is no text alternative; without title or description the alt stays empty.
             var alt = new[] { image.Title, image.Description }.FirstOrDefault(text => !string.IsNullOrWhiteSpace(text))
-                ?? image.Id;
+                ?? string.Empty;
             var picture = renderContentImage(image, alt, null);
-            if (!supportsPhotoPages)
+            if (!run.SupportsPhotoPages)
             {
                 return picture;
             }
 
-            var href = ScribanTemplateEngine.PageUrl(image, basePath) + (contextId is null ? string.Empty : $"#ctx-{contextId}");
+            var href = ScribanTemplateEngine.PhotoPageUrl(image.Slug, basePath) + (contextId is null ? string.Empty : $"#ctx-{contextId}");
             return $"<a id=\"{ScribanTemplateEngine.HtmlEscape(occurrenceId)}\" href=\"{ScribanTemplateEngine.HtmlEscape(href)}\">{picture}</a>";
         }
 
         return new GalleryBlockContext(
             sourcePath,
-            preparedBlocks,
+            metadata.PreparedBlocks,
             line => _ = GetGalleryGridTemplate(line),
             RenderGalleryGrid,
             ReportWarning,
             RenderPhoto);
     }
 
-    private static string GalleryLabel(Gallery gallery) =>
-        !string.IsNullOrWhiteSpace(gallery.Title) ? gallery.Title : gallery.Name;
-
     private string GetGallerySourcePath(Gallery gallery) =>
         Path.Combine(SourcePath, gallery.Path, RevelaParser.IndexFileName);
+
+    /// <summary>
+    /// Everything one render run shares across its pages; immutable once rendering starts.
+    /// </summary>
+    private sealed record RenderRun(
+        ITemplateEngine Engine,
+        SiteModel Model,
+        RenderContext Config,
+        ScriptObject RevelaInfo,
+        IReadOnlyList<string> ImageFormats,
+        string LayoutTemplate,
+        string ContentImageTemplate,
+        bool SupportsPhotoPages,
+        IReadOnlyDictionary<Gallery, PreparedGalleryMetadata> PreparedGalleryMetadata,
+        IReadOnlyList<PhotoMembership> PhotoMemberships,
+        IReadOnlyDictionary<string, Image> ImagesBySourcePath)
+    {
+        /// <summary>Gets <c>Partials/GalleryGrid.revela</c>, loaded on first use.</summary>
+        public required Lazy<string?> GalleryGridTemplate { get; init; }
+
+        /// <summary>Gets the optional <c>Partials/PhotoFigure.revela</c>, loaded on first use.</summary>
+        public required Lazy<string?> PhotoFigureTemplate { get; init; }
+    }
 
     private sealed record PreparedGalleryMetadata(
         string SourcePath,
@@ -1557,8 +1223,13 @@ internal sealed partial class RenderService(
     /// </remarks>
     /// <param name="templateKey">Template key (e.g., "statistics/overview")</param>
     /// <returns>Dictionary of default data sources, or empty if none defined</returns>
-    private IReadOnlyDictionary<string, string> GetExtensionDataDefaults(string templateKey)
+    private IReadOnlyDictionary<string, string> GetExtensionDataDefaults(string? templateKey)
     {
+        if (templateKey is null)
+        {
+            return new Dictionary<string, string>();
+        }
+
         foreach (var extension in currentExtensions)
         {
             var defaults = extension.GetTemplateDataDefaults(templateKey);
@@ -1573,219 +1244,49 @@ internal sealed partial class RenderService(
 
     #endregion
 
-    #region Default Templates
-
-    private static string GetDefaultIndexTemplate() => """
-        <!DOCTYPE html>
-        <html lang="en">
-        <head>
-            <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>{{ site.title }}</title>
-            <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-        </head>
-        <body>
-            <div class="container py-5">
-                <h1>{{ site.title }}</h1>
-                <p class="lead">{{ site.description }}</p>
-
-                <div class="row g-4 mt-4">
-                {{ for gallery in galleries }}
-                    <div class="col-md-4">
-                        <div class="card">
-                            <div class="card-body">
-                                <h5 class="card-title">{{ gallery.name }}</h5>
-                                <p class="card-text">{{ gallery.description }}</p>
-                                <a href="{{ basepath }}{{ gallery.path }}" class="btn btn-primary">View Gallery</a>
-                            </div>
-                        </div>
-                    </div>
-                {{ end }}
-                </div>
-            </div>
-        </body>
-        </html>
-        """;
-
-    private static string GetDefaultGalleryTemplate() => """
-        <!DOCTYPE html>
-        <html lang="en">
-        <head>
-            <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>{{ gallery.title }} - {{ site.title }}</title>
-            <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-        </head>
-        <body>
-            <div class="container py-5">
-                <h1>{{ gallery.title ?? gallery.name }}</h1>
-                <p>{{ gallery.description }}</p>
-
-                <div class="row g-4 mt-4">
-                {{ for image in images }}
-                    <div class="col-md-4">
-                        <picture>
-                            <source srcset="{{ basepath }}images/{{ image.file_name }}_1920.webp" type="image/webp">
-                            <img src="{{ basepath }}images/{{ image.file_name }}_1920.jpg" class="img-fluid" alt="{{ image.file_name }}">
-                        </picture>
-
-                        {{ if image.exif }}
-                        <div class="small text-muted mt-2">
-                            {{ image.exif.make }} {{ image.exif.model }}<br>
-                            f/{{ image.exif.f_number }} ·
-                            {{ image.exif.exposure_time }}s ·
-                            ISO {{ image.exif.iso }}
-                        </div>
-                        {{ end }}
-                    </div>
-                {{ end }}
-                </div>
-
-                <a href="{{ basepath }}" class="btn btn-secondary mt-4">Back to Home</a>
-            </div>
-        </body>
-        </html>
-        """;
-
-    #endregion
-
     #region Private Methods - Data Sources
 
     /// <summary>
-    /// Resolved data sources from the data: frontmatter field.
+    /// Resolves one entry of a page's <c>data</c> frontmatter (or an extension's data default).
     /// </summary>
-    /// <param name="dataSources">Dictionary of variable name → source (JSON file or $built-in)</param>
-    /// <param name="basePath">Base path for resolving relative file paths</param>
-    /// <param name="projectPath">Project root path for resolving source folder</param>
-    /// <param name="sourcePath">Resolved source directory path</param>
-    /// <param name="allGalleries">All galleries in the site</param>
-    /// <param name="localImages">Images in the current gallery folder</param>
-    /// <param name="cancellationToken">Cancellation token</param>
-    /// <returns>Dictionary of resolved data (variable name → value)</returns>
-    private static async Task<Dictionary<string, object?>> ResolveDataSourcesAsync(
-        IReadOnlyDictionary<string, string> dataSources,
-        string basePath,
-        string projectPath,
-        string sourcePath,
-        IReadOnlyList<Gallery> allGalleries,
-        IReadOnlyList<Image> localImages,
-        CancellationToken cancellationToken)
-    {
-        var result = new Dictionary<string, object?>();
-
-        foreach (var (variableName, source) in dataSources)
-        {
-            var value = await ResolveSingleDataSourceAsync(
-                source,
-                basePath,
-                projectPath,
-                sourcePath,
-                allGalleries,
-                localImages,
-                cancellationToken);
-
-            if (value is not null)
-            {
-                result[variableName] = value;
-            }
-        }
-
-        return result;
-    }
-
-    /// <summary>
-    /// Resolves a single data source to its value.
-    /// </summary>
-    private static async Task<object?> ResolveSingleDataSourceAsync(
+    /// <param name="source">A built-in source (<c>$galleries</c>, <c>$images</c>) or a JSON file name.</param>
+    /// <param name="basePath">Folder of the page's <c>_index.revela</c>; JSON files are read from the matching <c>.cache</c> folder.</param>
+    /// <param name="allGalleries">All galleries in the site.</param>
+    /// <param name="localImages">Images of the current page.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>The Scriban-native value, or <c>null</c> when the source is unknown or the file is missing.</returns>
+    private async Task<object?> ResolveDataSourceAsync(
         string source,
         string basePath,
-        string projectPath,
-        string sourcePath,
         IReadOnlyList<Gallery> allGalleries,
         IReadOnlyList<Image> localImages,
         CancellationToken cancellationToken)
     {
-        // Handle built-in data sources (prefixed with $)
         if (source.StartsWith('$'))
         {
             return source.ToUpperInvariant() switch
             {
-                "$GALLERIES" => allGalleries,
-                "$IMAGES" => localImages,
+                "$GALLERIES" => allGalleries.ToScriptArray(),
+                "$IMAGES" => localImages.ToScriptArray(),
                 _ => null
             };
         }
 
-        // Handle JSON file references (plugin-generated data from .cache directory)
+        // Plugin-generated data from the .cache directory
         if (source.EndsWith(".json", StringComparison.OrdinalIgnoreCase))
         {
-            var relativePath = Path.GetRelativePath(
-                sourcePath,
-                basePath);
-            var cachePath = Path.Combine(projectPath, ProjectPaths.Cache, relativePath, source);
+            var relativePath = Path.GetRelativePath(SourcePath, basePath);
+            var cachePath = Path.Combine(projectEnvironment.Value.Path, ProjectPaths.Cache, relativePath, source);
 
             if (File.Exists(cachePath))
             {
                 var json = await File.ReadAllTextAsync(cachePath, cancellationToken);
                 using var document = JsonDocument.Parse(json);
-                return ConvertJsonElement(document.RootElement);
+                return JsonScriptConverter.ToScriptValue(document.RootElement);
             }
         }
 
         return null;
-    }
-
-    /// <summary>
-    /// Converts a JsonElement to Scriban-compatible types.
-    /// </summary>
-    /// <remarks>
-    /// Scriban cannot access properties on plain Dictionary or JsonElement directly.
-    /// This method converts JSON to ScriptObject/ScriptArray structures that Scriban
-    /// can traverse with dot-notation (e.g., statistics.cameras).
-    /// </remarks>
-    private static object? ConvertJsonElement(JsonElement element)
-    {
-#pragma warning disable IDE0072 // Populate switch - we handle all known values explicitly with a fallback
-        return element.ValueKind switch
-        {
-            JsonValueKind.Object => ConvertJsonObject(element),
-            JsonValueKind.Array => ConvertJsonArray(element),
-            JsonValueKind.String => element.GetString(),
-            JsonValueKind.Number when element.TryGetInt64(out var l) => l,
-            JsonValueKind.Number => element.GetDouble(),
-            JsonValueKind.True => true,
-            JsonValueKind.False => false,
-            _ => null, // Handles Null, Undefined, and any future values
-        };
-#pragma warning restore IDE0072
-    }
-
-    /// <summary>
-    /// Converts a JSON object to a ScriptObject for Scriban template access.
-    /// </summary>
-    private static ScriptObject ConvertJsonObject(JsonElement element)
-    {
-        var obj = new ScriptObject();
-        foreach (var prop in element.EnumerateObject())
-        {
-            obj[prop.Name] = ConvertJsonElement(prop.Value);
-        }
-
-        return obj;
-    }
-
-    /// <summary>
-    /// Converts a JSON array to a ScriptArray for Scriban template access.
-    /// </summary>
-    private static ScriptArray ConvertJsonArray(JsonElement element)
-    {
-        var arr = new ScriptArray();
-        foreach (var item in element.EnumerateArray())
-        {
-            arr.Add(ConvertJsonElement(item));
-        }
-
-        return arr;
     }
 
     #endregion

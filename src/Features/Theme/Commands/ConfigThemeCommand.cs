@@ -189,24 +189,11 @@ internal sealed partial class ConfigThemeCommand(
 
     private static bool TryParseViewer(string value, out PhotoViewerMode? viewer)
     {
-        var trimmed = value.Trim();
-        viewer = trimmed switch
-        {
-            _ when trimmed.Equals("page", StringComparison.OrdinalIgnoreCase) => PhotoViewerMode.Page,
-            _ when trimmed.Equals("lightbox", StringComparison.OrdinalIgnoreCase) => PhotoViewerMode.Lightbox,
-            _ when trimmed.Equals("none", StringComparison.OrdinalIgnoreCase) => PhotoViewerMode.None,
-            _ => null
-        };
+        viewer = PhotoViewerModeValues.TryParse(value, out var mode) ? mode : null;
         return viewer is not null;
     }
 
-    private static string Canonical(PhotoViewerMode? mode) => mode switch
-    {
-        PhotoViewerMode.Page => "page",
-        PhotoViewerMode.Lightbox => "lightbox",
-        PhotoViewerMode.None => "none",
-        _ => "none"
-    };
+    private static string Canonical(PhotoViewerMode? mode) => (mode ?? PhotoViewerMode.None).ToValue();
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Theme changed from '{OldTheme}' to '{NewTheme}'")]
     private partial void LogThemeChanged(string oldTheme, string newTheme);

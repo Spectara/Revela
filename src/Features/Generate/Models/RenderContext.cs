@@ -17,7 +17,7 @@ namespace Spectara.Revela.Features.Generate.Models;
 /// </remarks>
 internal sealed record RenderContext
 {
-    /// <summary>Project-level settings (name, base URL, language)</summary>
+    /// <summary>Project-level settings (base URL, base paths, language)</summary>
     public required RenderProjectSettings Project { get; init; }
 
     /// <summary>
@@ -35,9 +35,6 @@ internal sealed record RenderContext
 /// </summary>
 internal sealed record RenderProjectSettings
 {
-    /// <summary>Project name used for identification</summary>
-    public string Name { get; init; } = string.Empty;
-
     /// <summary>Base URL for the generated site (e.g., "https://example.com"). Null when not configured — disables features that require absolute URLs (sitemap.xml).</summary>
     public string? BaseUrl { get; init; }
 

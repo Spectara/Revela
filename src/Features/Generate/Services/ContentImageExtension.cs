@@ -4,8 +4,6 @@ using Markdig.Renderers;
 using Markdig.Renderers.Html;
 using Markdig.Renderers.Html.Inlines;
 using Markdig.Syntax.Inlines;
-using Spectara.Revela.Features.Generate.Models;
-using Spectara.Revela.Sdk;
 
 namespace Spectara.Revela.Features.Generate.Services;
 
@@ -20,12 +18,7 @@ namespace Spectara.Revela.Features.Generate.Services;
 /// generates a full <c>&lt;picture&gt;</c> element with format sources and responsive srcset.
 /// </para>
 /// <para>
-/// Image resolution priority:
-/// <list type="number">
-/// <item>Gallery-local: <c>{GalleryPath}/{path}</c></item>
-/// <item>Shared images: <c>_images/{path}</c></item>
-/// <item>Exact match: path as-is</item>
-/// </list>
+/// Paths resolve like every other image reference (see <see cref="ImagePathResolver"/>).
 /// </para>
 /// <para>
 /// External URLs (http/https) and unresolved paths fall through to standard
@@ -89,7 +82,7 @@ internal sealed class ContentImageRenderer : HtmlObjectRenderer<LinkInline>
         }
 
         // Try to resolve the image from processed site images
-        var image = ResolveImage(url);
+        var image = ImagePathResolver.Resolve(url, context.GalleryPath, context.ImagesBySourcePath);
         if (image is null || image.Sizes.Count == 0)
         {
             // Not a processed image — fall through to default <img>
@@ -106,39 +99,6 @@ internal sealed class ContentImageRenderer : HtmlObjectRenderer<LinkInline>
         renderer.Write(html);
     }
 
-    /// <summary>
-    /// Resolves an image path from Markdown against the processed image lookup.
-    /// </summary>
-    private Image? ResolveImage(string markdownPath)
-    {
-        // Normalize to forward slashes
-        var normalizedPath = markdownPath.Replace('\\', '/');
-
-        // 1. Gallery-local: {GalleryPath}/{path}
-        if (!string.IsNullOrEmpty(context.GalleryPath))
-        {
-            var localPath = $"{context.GalleryPath}/{normalizedPath}";
-            if (context.ImagesBySourcePath.TryGetValue(localPath, out var localImage))
-            {
-                return localImage;
-            }
-        }
-
-        // 2. Shared images: _images/{path}
-        var sharedPath = $"{ProjectPaths.SharedImages}/{normalizedPath}";
-        if (context.ImagesBySourcePath.TryGetValue(sharedPath, out var sharedImage))
-        {
-            return sharedImage;
-        }
-
-        // 3. Exact match (e.g., user wrote _images/screenshots/awesome.jpg explicitly)
-        if (context.ImagesBySourcePath.TryGetValue(normalizedPath, out var exactImage))
-        {
-            return exactImage;
-        }
-
-        return null;
-    }
 
     private static string GetAltText(LinkInline link)
     {

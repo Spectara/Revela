@@ -277,8 +277,6 @@ public sealed class InlineGalleryTests
         return new ContentImageContext(
             new Dictionary<string, Image>(),
             "gallery",
-            "../images/",
-            ["avif", "webp", "jpg"],
             (_, _, _) => string.Empty,
             galleryContext);
     }

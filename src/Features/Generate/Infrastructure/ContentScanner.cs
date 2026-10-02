@@ -27,11 +27,10 @@ internal sealed partial class ContentScanner(
         LogScanningDirectory(logger, sourceDirectory);
 
         var images = new List<SourceImage>();
-        var markdowns = new List<SourceMarkdown>();
         var galleries = new List<Gallery>();
 
         // Scan root directory
-        await ScanDirectoryAsync(sourceDirectory, string.Empty, images, markdowns, galleries, cancellationToken);
+        await ScanDirectoryAsync(sourceDirectory, string.Empty, images, galleries, cancellationToken);
 
         // Detect empty or colliding normalized output slugs across everything we enumerated.
         // The scan step fails on these before any rendering — see ContentService.ScanAsync.
@@ -42,7 +41,6 @@ internal sealed partial class ContentScanner(
         return new ContentTree
         {
             Images = images,
-            Markdowns = markdowns,
             Galleries = galleries,
             SlugConflicts = slugConflicts
         };
@@ -52,7 +50,6 @@ internal sealed partial class ContentScanner(
         string baseDirectory,
         string relativePath,
         List<SourceImage> images,
-        List<SourceMarkdown> markdowns,
         List<Gallery> galleries,
         CancellationToken cancellationToken)
     {
@@ -70,11 +67,6 @@ internal sealed partial class ContentScanner(
         // Find images in current directory
         var imageFiles = Directory.EnumerateFiles(currentDirectory)
             .Where(f => SupportedImageExtensions.IsSupported(Path.GetExtension(f)))
-            .ToList();
-
-        // Find markdown files (*.md) excluding _index.revela
-        var markdownFiles = Directory.EnumerateFiles(currentDirectory, "*.md")
-            .Where(f => !Path.GetFileName(f).Equals(RevelaParser.IndexFileName, StringComparison.OrdinalIgnoreCase))
             .ToList();
 
         // Check for _index.revela (gallery metadata or standalone page)
@@ -96,15 +88,14 @@ internal sealed partial class ContentScanner(
                 : relativePath.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
             var slug = UrlBuilder.BuildPath([.. pathSegments]);
 
-            // Use directory name as fallback title (without number prefix)
-            var directoryName = string.IsNullOrEmpty(relativePath)
-                ? "Home"
-                : Path.GetFileName(relativePath);
-            var fallbackTitle = UrlBuilder.ToTitle(directoryName);
+            // Fall back to the folder name without its number prefix. The home page has no
+            // folder name; ContentService gives it the site title instead.
+            var fallbackTitle = string.IsNullOrEmpty(relativePath)
+                ? string.Empty
+                : UrlBuilder.ToTitle(Path.GetFileName(relativePath));
 
             var gallery = new Gallery
             {
-                Name = directoryName,
                 Path = relativePath,
                 Slug = slug,
                 Title = directoryMetadata.Title ?? fallbackTitle,
@@ -134,26 +125,6 @@ internal sealed partial class ContentScanner(
                 };
 
                 images.Add(sourceImage);
-            }
-
-            // Add markdown files to the collection
-            foreach (var markdownFile in markdownFiles)
-            {
-                var mdRelativePath = string.IsNullOrEmpty(relativePath)
-                    ? Path.GetFileName(markdownFile)
-                    : Path.Combine(relativePath, Path.GetFileName(markdownFile));
-
-                var sourceMarkdown = new SourceMarkdown
-                {
-                    SourcePath = markdownFile,
-                    RelativePath = mdRelativePath,
-                    FileName = Path.GetFileName(markdownFile),
-                    FileSize = new FileInfo(markdownFile).Length,
-                    LastModified = File.GetLastWriteTimeUtc(markdownFile),
-                    Gallery = relativePath
-                };
-
-                markdowns.Add(sourceMarkdown);
             }
 
             galleries.Add(gallery);
@@ -188,7 +159,7 @@ internal sealed partial class ContentScanner(
                 ? subdirName
                 : Path.Combine(relativePath, subdirName);
 
-            await ScanDirectoryAsync(baseDirectory, subdirRelativePath, images, markdowns, galleries, cancellationToken);
+            await ScanDirectoryAsync(baseDirectory, subdirRelativePath, images, galleries, cancellationToken);
         }
     }
 

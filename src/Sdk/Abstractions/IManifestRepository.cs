@@ -74,12 +74,6 @@ public interface IManifestRepository
     #region Metadata
 
     /// <summary>
-    /// Hash of image processing configuration.
-    /// When this changes, all images need regeneration.
-    /// </summary>
-    string ConfigHash { get; set; }
-
-    /// <summary>
     /// Hash of scan configuration (placeholder strategy, min dimensions).
     /// When this changes, all metadata needs to be re-read.
     /// </summary>

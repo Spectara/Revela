@@ -259,8 +259,6 @@ public sealed class SiteValidatorTests
         var renderService = host.Services.GetRequiredService<IRenderService>();
         var imageService = host.Services.GetRequiredService<IImageService>();
 
-        renderService.SetTheme(host.Services.GetRequiredService<ITheme>());
-        renderService.SetExtensions([]);
 
         // Act
         var scanResult = await contentService.ScanAsync();

@@ -28,7 +28,7 @@ public sealed class PhotoPageCatalogTests
             var gallery = new Gallery
             {
                 Path = slug,
-                Name = slug,
+                Title = slug,
                 Slug = slug.Length == 0 ? string.Empty : $"{slug}/",
                 Images = [shared]
             };
@@ -393,8 +393,7 @@ public sealed class PhotoPageCatalogTests
     private static Gallery Gal(string path, string? template, params Image[] images) => new()
     {
         Path = path,
-        Name = path.Length == 0 ? "Home" : path,
-        Title = path.Length == 0 ? "Home" : path,
+        Title = path.Length == 0 ? "Site" : path,
         Slug = path.Length == 0 ? UrlBuilder.BuildPath() : UrlBuilder.BuildPath(path.Split('/')),
         Template = template,
         Images = images
