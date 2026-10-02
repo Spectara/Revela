@@ -299,25 +299,33 @@ public sealed class GlobalConfigManagerTests
     }
 
     [TestMethod]
-    public async Task GetPackagesAsync_MissingFile_CreatesDefaultsInNewShapeAtExplicitPath()
+    public async Task GetPackagesAsync_MissingFile_ReturnsEmptyWithoutCreatingFile()
     {
+        // First-run detection relies on revela.json not existing until something is saved.
         using var project = TestProject.Create();
         var configPath = Path.Combine(project.RootPath, "test-global.json");
         var manager = CreateManager(configPath);
         Assert.AreEqual(configPath, manager.ConfigFilePath);
-        Assert.IsFalse(manager.ConfigFileExists());
 
         var packages = await manager.GetPackagesAsync();
 
         Assert.IsEmpty(packages);
-        Assert.IsTrue(manager.ConfigFileExists());
+        Assert.IsFalse(manager.ConfigFileExists());
+        Assert.IsFalse(await manager.RemoveFeedAsync("Missing"));
+        Assert.IsFalse(manager.ConfigFileExists());
+    }
+
+    [TestMethod]
+    public async Task AddFeedAsync_MissingFile_CreatesFileWithOnlyTheFeed()
+    {
+        using var project = TestProject.Create();
+        var configPath = Path.Combine(project.RootPath, "test-global.json");
+        var manager = CreateManager(configPath);
+
+        await manager.AddFeedAsync("Private", "https://example.test/private");
+
         var expected = JsonNode.Parse("""
-            {
-              "dependencies": { "feeds": {}, "packages": {} },
-              "logging": { "logLevel": { "Default": "Warning", "Spectara.Revela": "Warning", "Microsoft": "Warning", "System": "Warning" } },
-              "defaults": { "theme": "Lumina" },
-              "checkUpdates": true
-            }
+            { "dependencies": { "feeds": { "Private": "https://example.test/private" } } }
             """)!;
         await AssertDocumentAsync(configPath, expected);
         if (!OperatingSystem.IsWindows())

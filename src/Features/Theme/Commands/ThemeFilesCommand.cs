@@ -57,7 +57,7 @@ internal sealed partial class ThemeFilesCommand(
         var themeName = themeNameOverride ?? themeConfig.CurrentValue.Name;
         if (string.IsNullOrWhiteSpace(themeName))
         {
-            themeName = "Lumina";
+            themeName = ThemeConfig.DefaultName;
         }
 
         // Use ThemeService for file data

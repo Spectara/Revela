@@ -18,8 +18,6 @@ public static class ConfigurationServiceCollectionExtensions
     /// </para>
     /// <list type="bullet">
     /// <item><see cref="DependenciesConfig"/> - dependencies section (packages and feeds)</item>
-    /// <item><see cref="GlobalDefaultsConfig"/> - defaults section (default theme)</item>
-    /// <item><see cref="GlobalSettingsConfig"/> - settings section (checkUpdates)</item>
     /// <item><see cref="LoggingConfig"/> - Logging section</item>
     /// <item><see cref="ProjectConfig"/> - project section</item>
     /// <item><see cref="ThemeConfig"/> - theme section</item>
@@ -58,8 +56,6 @@ public static class ConfigurationServiceCollectionExtensions
         // Note: only site.json's identity core (SiteCoreConfig) is bound via IOptions;
         // its theme-specific tail is loaded dynamically by RenderService.
         services.AddOptions<DependenciesConfig>().BindConfiguration(DependenciesConfig.Section);
-        services.AddOptions<GlobalDefaultsConfig>().BindConfiguration(GlobalDefaultsConfig.Section);
-        services.AddOptions<GlobalSettingsConfig>().BindConfiguration(GlobalSettingsConfig.Section);
         services.AddOptions<LoggingConfig>().BindConfiguration(LoggingConfig.Section);
         services.AddOptions<ProjectConfig>().BindConfiguration(ProjectConfig.Section);
         services.AddOptions<ThemeConfig>().BindConfiguration(ThemeConfig.Section);

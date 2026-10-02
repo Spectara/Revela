@@ -75,7 +75,7 @@ internal sealed partial class ConfigThemeCommand(
         }
 
         var current = themeService.GetCurrentTheme();
-        var currentThemeName = string.IsNullOrWhiteSpace(current.ThemeName) ? "Lumina" : current.ThemeName;
+        var currentThemeName = string.IsNullOrWhiteSpace(current.ThemeName) ? Sdk.Configuration.ThemeConfig.DefaultName : current.ThemeName;
         var listResult = await themeService.ListAsync(cancellationToken: cancellationToken);
 
         if (!string.IsNullOrWhiteSpace(viewerArg) && clearViewer)

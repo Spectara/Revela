@@ -1,7 +1,6 @@
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
-using System.Text.Json.Serialization;
 
 using Microsoft.Extensions.Configuration;
 
@@ -23,7 +22,8 @@ namespace Spectara.Revela.Core.Services;
 /// <item>dotnet tool: %APPDATA%/Revela/revela.json</item>
 /// </list>
 /// <para>
-/// The config file is created with defaults on first access if it doesn't exist.
+/// The file is created by the first write (feed or package); reading a missing file
+/// yields an empty document. Writes keep every unrelated value.
 /// </para>
 /// <para>
 /// NOTE: This class handles WRITING to revela.json. For READING the merged configuration,
@@ -61,8 +61,11 @@ public sealed partial class GlobalConfigManager(
     public bool ConfigFileExists() => File.Exists(ConfigFilePath);
 
     /// <summary>
-    /// Loads the global configuration file, creating defaults if not exists.
+    /// Loads the global configuration file; a missing file reads as an empty document.
     /// </summary>
+    /// <remarks>
+    /// Reading never creates the file: its absence is how the interactive menu detects a first run.
+    /// </remarks>
     private async Task<JsonObject> LoadFileAsync(CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
@@ -75,10 +78,7 @@ public sealed partial class GlobalConfigManager(
 
         if (!File.Exists(configPath))
         {
-            LogCreatingDefaultConfig(configPath);
-            var defaults = JsonSerializer.SerializeToNode(new GlobalConfigFile(), GlobalConfigJsonContext.Default.GlobalConfigFile)!.AsObject();
-            await SaveFileAsync(defaults, cancellationToken);
-            return defaults;
+            return [];
         }
 
         try
@@ -268,9 +268,6 @@ public sealed partial class GlobalConfigManager(
 
     #region Logging
 
-    [LoggerMessage(Level = LogLevel.Debug, Message = "Creating default config at '{ConfigPath}'")]
-    private partial void LogCreatingDefaultConfig(string configPath);
-
     [LoggerMessage(Level = LogLevel.Debug, Message = "Loaded config from '{ConfigPath}'")]
     private partial void LogConfigLoaded(string configPath);
 
@@ -278,47 +275,4 @@ public sealed partial class GlobalConfigManager(
     private partial void LogConfigCorrupted(string configPath, string error);
 
     #endregion
-
-    /// <summary>
-    /// Internal file structure for revela.json serialization
-    /// </summary>
-    internal sealed class GlobalConfigFile
-    {
-        public DependenciesSectionFile Dependencies { get; init; } = new();
-        public LoggingSection Logging { get; init; } = new();
-        public DefaultsSection Defaults { get; init; } = new();
-        public bool CheckUpdates { get; init; } = true;
-
-        public sealed class DependenciesSectionFile
-        {
-            public Dictionary<string, string> Feeds { get; init; } = [];
-            public Dictionary<string, string> Packages { get; init; } = [];
-        }
-
-        public sealed class LoggingSection
-        {
-            public Dictionary<string, string> LogLevel { get; init; } = new()
-            {
-                ["Default"] = "Warning",
-                ["Spectara.Revela"] = "Warning",
-                ["Microsoft"] = "Warning",
-                ["System"] = "Warning"
-            };
-        }
-
-        public sealed class DefaultsSection
-        {
-            public string Theme { get; init; } = "Lumina";
-        }
-    }
 }
-
-/// <summary>
-/// Source-generated JSON serializer context for the global revela.json file.
-/// </summary>
-[JsonSerializable(typeof(GlobalConfigManager.GlobalConfigFile))]
-[JsonSourceGenerationOptions(
-    WriteIndented = true,
-    PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase,
-    DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull)]
-internal sealed partial class GlobalConfigJsonContext : JsonSerializerContext;
