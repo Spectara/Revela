@@ -465,6 +465,55 @@ public sealed class FilterServiceTests
         Assert.AreEqual("undated.jpg", result[1].Filename);
     }
 
+    [TestMethod]
+    public void ApplyQuery_SortDateTakenAsc_PutsUndatedImagesLast()
+    {
+        var images = new[] { CreateUndatedImage("undated.jpg"), CreateTestImage("dated.jpg", new DateTime(2024, 1, 1)) };
+
+        var result = FilterService.ApplyQuery(images, "all | sort dateTaken asc").ToList();
+
+        Assert.AreEqual("dated.jpg", result[0].Filename);
+        Assert.AreEqual("undated.jpg", result[1].Filename);
+    }
+
+    [TestMethod]
+    [DataRow(SortDirection.Asc, "2024.jpg,2025.jpg,a-undated.jpg,b-undated.jpg")]
+    [DataRow(SortDirection.Desc, "2025.jpg,2024.jpg,b-undated.jpg,a-undated.jpg")]
+    public void Sort_ImagesWithoutSortField_ComeLastOrderedByFallbackInBothDirections(SortDirection direction, string expected)
+    {
+        var images = new[]
+        {
+            CreateUndatedImage("a-undated.jpg"),
+            CreateTestImage("2024.jpg", new DateTime(2024, 1, 1)),
+            CreateUndatedImage("b-undated.jpg"),
+            CreateTestImage("2025.jpg", new DateTime(2025, 1, 1))
+        };
+        var globalSort = new ImageSortConfig { Field = "dateTaken", Direction = direction, Fallback = "filename" };
+
+        var result = FilterService.Sort(images, null, globalSort);
+
+        Assert.AreEqual(expected, string.Join(',', result.Select(image => image.Filename)));
+    }
+
+    [TestMethod]
+    public void Sort_PageSortOverride_UsesAnyImageProperty()
+    {
+        var images = new[] { CreateTestImage("small.jpg"), CreateTestImage("large.jpg") with { Width = 4000 } };
+        var globalSort = new ImageSortConfig { Field = "filename", Direction = SortDirection.Asc, Fallback = "filename" };
+
+        var result = FilterService.Sort(images, "width:desc", globalSort);
+
+        Assert.AreEqual("large.jpg,small.jpg", string.Join(',', result.Select(image => image.Filename)));
+    }
+
+    private static ImageContent CreateUndatedImage(string filename) => new()
+    {
+        Filename = filename,
+        Width = 1920,
+        Height = 1080,
+        Sizes = [1920]
+    };
+
     private static ImageContent CreateDescribedImage(
         string filename,
         int? rating = null,
