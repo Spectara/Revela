@@ -18,7 +18,7 @@ namespace Spectara.Revela.Features.Generate.Infrastructure;
 /// +++
 /// title = "My Gallery"
 /// description = "Photos from 2024"
-/// template = "body/page"
+/// template = "page"
 /// hidden = true
 /// data.statistics = "statistics.json"
 /// +++

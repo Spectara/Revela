@@ -34,6 +34,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Removed
 
+- **Lightbox "click outside to close"** - the lightbox no longer declares `closedby="any"`; it never worked because the lightbox fills the screen. Close it with × or Escape.
 - **`revela info plugins` / `revela info themes`** - they duplicated `revela plugin list` / `revela theme list` and showed different results (local `themes/` folders were missing). Use the list commands.
 - **Template variables `page_content` and `galleries`** - use `gallery.body` for the page's Markdown body and the `$galleries` data source for all galleries. `image.variants` is no longer visible to templates.
 - **Built-in fallback templates** - a theme without a layout (or ContentImage partial) now stops the build with a clear message instead of rendering pages with decade-old fallback markup (Bootstrap from a CDN, English labels, outdated image URLs).
@@ -52,6 +53,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Faster page rendering** - templates and partials are parsed once per build instead of once per page, and `site.json` is converted once per build.
 - **Manifest format 5** - the scan cache dropped fields nobody read; the first build after updating re-reads image metadata and processes all images once.
 - **Plugins report their real version** - `revela plugin list` shows each plugin's package version, and the OneDrive and calendar sources send `Revela/<version>` as User-Agent.
+- **Lumina: one set of responsive-image helpers** - thumbnails, content images, photo pages and the lightbox build `srcset`/`sizes` through the shared `Partials/ImageHelpers.revela` and `variant_url`, so they can no longer drift apart. The templates avoid Scriban built-ins that Native AOT could trim. Navigation marks the current page with `aria-current="page"` instead of a CSS class, and photo page and lightbox share one previous/label/next layout.
 - **Clean steps report failures** - a clean step that cannot delete a file now ends with an error instead of reporting success.
 - **Website onboarding for photographers** - revela.website now leads with plain language and a Download button, adds a six-step "Your First Site" quickstart, turns the docs hub, Get Started and Showcase indexes into clickable cards (with screenshots), lists Windows ARM64 and Linux ARM64 downloads, adds a developer orientation page, and corrects outdated FAQ answers (image sizes, local themes need `theme.json`).
 - **Breaking: plugin settings move below `plugins:<key>`** - each plugin declares its own key (`plugins.serve`, `plugins.statistics`, `plugins.oneDrive`, `plugins.calendarFeeds`) instead of a package-ID section such as `Spectara.Revela.Plugins.Serve`; environment variables become `SPECTARA__REVELA__PLUGINS__<KEY>__<SETTING>` (e.g. `SPECTARA__REVELA__PLUGINS__SERVE__PORT`). The SDK generator rejects other plugin/theme sections at compile time (`REVELA001`/`REVELA002`), plugin loading fails when two packages claim the same key, and unclaimed keys produce a warning. The unused `IPageTemplate.ConfigSectionName`/`ConfigProperties`/`HasConfigCommand` and `TemplateProperty.ConfigKey` SDK members are removed.
@@ -68,6 +70,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Thumbnail placeholders** - gallery thumbnails show their blurred preview again while the photo loads (the rule had become invalid CSS), and images in page text now get one too.
+- **Keyboard access to photos** - visitors using a keyboard can tab to every gallery photo and open its photo page; the focused photo is outlined.
+- **Smaller images in page text** - images in your page text download at the width of the text column instead of the full screen width.
+- **Steadier scrolling on phones** - galleries no longer shift while iPhone toolbars hide or show, and a zoomed photo no longer springs back when they do.
+- **Menu on older Safari** - the menu no longer covers the menu button in browsers without CSS anchor positioning.
+- **Home page title** - a home page without its own title shows the site name once in the browser tab instead of "Site - Site"; its social preview image is the cover or the first photo it shows.
+- **Calendar page as home page** - shows its text.
+- **revela.website glass footer** - content pages had a solid footer because the override lost to Lumina's rule.
 - **`packages search` finds packages again** - it read the index from a different file than `packages refresh` wrote, so it always reported a missing index (also in beta.20).
 - **A statistics or calendar page as home page shows its data** - the home page was rendered by separate code that skipped `data` sources and the page body.
 - **No English "Home" in your site** - when the root `_index.revela` has no title, the home page uses the site title (then the project folder name) in the page title, Open Graph data and the photo pages' "Seen in" links.
