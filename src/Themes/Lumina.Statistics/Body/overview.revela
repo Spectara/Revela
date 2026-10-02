@@ -25,8 +25,8 @@ Expects:
 <p class="stats-summary">
     <span><strong>{{ html_escape statistics.total_images }}</strong> {{ html_escape (t 'statistics.images') }}</span>
     <span><strong>{{ html_escape statistics.total_galleries }}</strong> {{ html_escape (t 'statistics.galleries') }}</span>
-    <span><strong>{{ statistics.cameras | array.size }}</strong> {{ html_escape (t 'statistics.cameras') }}</span>
-    <span><strong>{{ statistics.lenses | array.size }}</strong> {{ html_escape (t 'statistics.lenses') }}</span>
+    <span><strong>{{ html_escape (statistics.cameras.size ?? 0) }}</strong> {{ html_escape (t 'statistics.cameras') }}</span>
+    <span><strong>{{ html_escape (statistics.lenses.size ?? 0) }}</strong> {{ html_escape (t 'statistics.lenses') }}</span>
 </p>
 
 {{~ if statistics.cameras && statistics.cameras.size > 0 ~}}

@@ -21,24 +21,13 @@ rendered size instead of viewport. Firefox/Safari fallback to 100vw.
 
 {{~ # Guard: skip if no sizes available ~}}
 {{~ if !image.sizes || image.sizes.size == 0; ret; end ~}}
+{{~ include 'imagehelpers' ~}}
 
 {{~ # Variables ~}}
 {{~ alt_text = image.title ?? '' ~}}
-{{~ is_landscape = image.width >= image.height ~}}
-{{~ fallback_format = image_formats | array.last ~}}
+{{~ fallback_format = image_fallback_format ~}}
 {{~ # Fallback src: the largest size up to 640px (small originals may lack 640). ~}}
-{{~ fallback_size = image.sizes[0] ~}}
-{{~ for size in image.sizes ~}}
-{{~ if size <= 640 && size > fallback_size; fallback_size = size; end ~}}
-{{~ end ~}}
-{{~ func thumbnail_srcset(format)
-    candidates = []
-    for size in image.sizes
-        actual_width = is_landscape ? size : ((size * image.width / image.height) | math.floor)
-        candidates = candidates | array.add ((variant_url image size format) + ' ' + actual_width + 'w')
-    end
-    ret candidates | array.join ', '
-end ~}}
+{{~ fallback_size = image_size image 640 ~}}
 {{~ should_link_to_photo_page = viewer_mode == 'page' ~}}
 {{~ should_render_lightbox = viewer_mode == 'lightbox' ~}}
 {{~ if should_render_lightbox ~}}
@@ -58,11 +47,11 @@ end ~}}
     {{~ end ~}}
         <picture>
             {{~ for format in image_formats ~}}
-            <source type="image/{{ html_escape (format == 'jpg' ? 'jpeg' : format) }}" sizes="auto" srcset="{{ html_escape (thumbnail_srcset format) }}">
+            <source type="{{ html_escape (image_type format) }}" sizes="auto" srcset="{{ html_escape (image_srcset image format) }}">
             {{~ end ~}}
             {{~ # The fallback <img> keeps a srcset so browsers without AVIF/WebP still pick a fitting size. ~}}
             <img alt="{{ html_escape alt_text }}" src="{{ html_escape (variant_url image fallback_size fallback_format) }}" sizes="auto"
-                srcset="{{ html_escape (thumbnail_srcset fallback_format) }}"
+                srcset="{{ html_escape (image_srcset image fallback_format) }}"
                 width="{{ html_escape image.width }}" height="{{ html_escape image.height }}" loading="lazy" decoding="async">
         </picture>
     {{~ if should_link_to_photo_page ~}}

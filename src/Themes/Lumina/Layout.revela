@@ -64,7 +64,7 @@ exactly one <h1> for the page (visually hidden where the design shows no title).
     {{~ end ~}}
     {{~ include 'favicon' ~}}
     {{~ for css in stylesheets ~}}
-    <link type="text/css" rel="stylesheet" media="all" href="{{ html_escape basepath }}_assets/{{ html_escape css }}">
+    <link type="text/css" rel="stylesheet" media="all" href="{{ html_escape (asset_url css) }}">
     {{~ end ~}}
 </head>
 
@@ -125,7 +125,7 @@ exactly one <h1> for the page (visually hidden where the design shows no title).
 
     {{~ # Scripts (deferred — non-render-blocking, keeps them off the critical request chain) ~}}
     {{~ for js in scripts ~}}
-    <script src="{{ html_escape basepath }}_assets/{{ html_escape js }}" defer></script>
+    <script src="{{ html_escape (asset_url js) }}" defer></script>
     {{~ end ~}}
 </body>
 

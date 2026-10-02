@@ -12,19 +12,15 @@ Expects:
 - base_url: Absolute site URL (nothing is emitted without it)
 ##~}}
 {{~ if !base_url || !og_image || !og_image.sizes || og_image.sizes.size == 0; ret; end ~}}
-{{~ og_size = 0 ~}}
-{{~ og_smallest = 0 ~}}
-{{~ for size in og_image.sizes ~}}
-{{~ if size <= 1920 && size > og_size; og_size = size; end ~}}
-{{~ if og_smallest == 0 || size < og_smallest; og_smallest = size; end ~}}
-{{~ end ~}}
-{{~ if og_size == 0; og_size = og_smallest; end ~}}
-{{~ og_format = (image_formats | array.contains 'jpg') ? 'jpg' : (image_formats | array.last) ~}}
-{{~ # Sizes describe the longest edge (resizeMode "longest"), matching the srcset widths. ~}}
+{{~ include 'imagehelpers' ~}}
+{{~ og_size = image_size og_image 1920 ~}}
+{{~ og_format = image_fallback_format ~}}
+{{~ for format in image_formats; if format == 'jpg'; og_format = 'jpg'; end; end ~}}
+{{~ # Sizes describe the longest edge (resizeMode "longest"); the short edge is rounded. ~}}
 {{~ if og_image.width >= og_image.height ~}}
-{{~ og_width = og_size; og_height = (og_size * og_image.height / og_image.width) | math.round ~}}
+{{~ og_width = og_size; og_height = (2 * og_size * og_image.height + og_image.width) // (2 * og_image.width) ~}}
 {{~ else ~}}
-{{~ og_height = og_size; og_width = (og_size * og_image.width / og_image.height) | math.round ~}}
+{{~ og_height = og_size; og_width = (2 * og_size * og_image.width + og_image.height) // (2 * og_image.height) ~}}
 {{~ end ~}}
 <meta property="og:image" content="{{ html_escape (absolute_variant_url og_image og_size og_format) }}">
 <meta property="og:image:width" content="{{ html_escape og_width }}">

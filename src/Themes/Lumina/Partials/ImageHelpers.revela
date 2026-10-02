@@ -1,0 +1,46 @@
+{{~##
+Image Helpers - Lumina Theme
+
+Responsive-image functions shared by every partial that renders a <picture>
+(Image, ContentImage, PhotoLightbox, OpenGraphImage, Body/Photo), so their
+markup cannot drift apart. Include this partial before calling them; it renders
+nothing itself.
+
+- image_type format         MIME type for <source type>: "jpg" -> "image/jpeg"
+- image_fallback_format     The last of image_formats (normally "jpg"), for the <img> fallback
+- image_srcset image format Every generated size as "url <width>w" candidates
+- image_size image limit    Largest generated size up to limit, else the smallest
+- viewer_sizes image        `sizes` for a photo fitted into the photo viewer
+
+image.sizes lists the generated sizes in ascending order. A size is the longest
+edge (images.json "resizeMode": "longest"), so portrait candidates are narrower.
+##~}}
+{{~ func image_type(format)
+    ret 'image/' + (format == 'jpg' ? 'jpeg' : format)
+end ~}}
+{{~ # image_formats is a plain collection without an index, so take its last item by looping. ~}}
+{{~ func image_fallback_format
+    for $format in image_formats
+        $last = $format
+    end
+    ret $last
+end ~}}
+{{~ func image_srcset(image, format)
+    $srcset = ''
+    for $size in image.sizes
+        $width = image.width >= image.height ? $size : $size * image.width // image.height
+        $srcset = $srcset + ($srcset == '' ? '' : ', ') + (variant_url image $size format) + ' ' + $width + 'w'
+    end
+    ret $srcset
+end ~}}
+{{~ func image_size(image, limit)
+    $best = image.sizes[0]
+    for $size in image.sizes
+        if $size <= limit; $best = $size; end
+    end
+    ret $best
+end ~}}
+{{~ # The viewer fits the photo into the viewport above the photo navigation bar. ~}}
+{{~ func viewer_sizes(image)
+    ret '(min-aspect-ratio: ' + image.width + '/' + image.height + ') calc((100vh - 2.25rem) * ' + image.width + ' / ' + image.height + '), 100vw'
+end ~}}
