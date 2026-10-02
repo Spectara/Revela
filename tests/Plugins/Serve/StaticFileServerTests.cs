@@ -504,7 +504,8 @@ public sealed class StaticFileServerTests
     private static async Task<string> SendRawGetAsync(int port, string rawPath)
     {
         using var tcp = new TcpClient();
-        await tcp.ConnectAsync(IPAddress.Loopback, port);
+        // By name, like a browser: on Linux the listener may only bind "localhost" to ::1.
+        await tcp.ConnectAsync("localhost", port);
         await using var stream = tcp.GetStream();
         var request = $"GET {rawPath} HTTP/1.1\r\nHost: localhost:{port}\r\nConnection: close\r\n\r\n";
         await stream.WriteAsync(System.Text.Encoding.ASCII.GetBytes(request));
