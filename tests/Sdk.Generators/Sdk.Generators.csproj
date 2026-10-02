@@ -26,6 +26,8 @@
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp" />
     <PackageReference Include="MSTest" />
     <PackageReference Include="MSTest.Analyzers" />
+    <!-- TemplateModelGenerator output references Scriban; tests compile and run it. -->
+    <PackageReference Include="Scriban" />
   </ItemGroup>
 
   <ItemGroup>
