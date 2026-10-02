@@ -44,20 +44,6 @@ namespace Spectara.Revela.Sdk.Abstractions;
 /// and by the "all" command to discover steps to run in Order sequence.
 /// Default is false.
 /// </param>
-/// <param name="InlineInMenu">
-/// When true, the interactive menu does NOT render this command as a single
-/// entry. Instead it renders the command's default action as a virtual entry
-/// (labeled by <see cref="InlineDefaultActionLabel"/>) followed by each of
-/// the command's visible subcommands directly under the group label. The CLI
-/// surface is unchanged. Only meaningful when the command has subcommands and
-/// is registered directly under root (with a <see cref="Group"/>).
-/// Default is false.
-/// </param>
-/// <param name="InlineDefaultActionLabel">
-/// Display label for the virtual default-action entry generated when
-/// <see cref="InlineInMenu"/> is true. Required when <see cref="InlineInMenu"/>
-/// is true; ignored otherwise.
-/// </param>
 /// <example>
 /// <code>
 /// // Register under "source": revela source onedrive
@@ -76,11 +62,6 @@ namespace Spectara.Revela.Sdk.Abstractions;
 /// // Sequential step: runs between scan and pages in "generate all"
 /// new CommandDescriptor(myStepCmd, ParentCommand: "generate",
 ///     Order: PipelineOrder.Scan + 50, IsSequentialStep: true)
-///
-/// // Inline a parent command flat under its group: the default action becomes a
-/// // "Status" entry, followed by each visible subcommand (status → Status / Refresh / Reset)
-/// new CommandDescriptor(statusCmd, Order: 10, Group: "Addons",
-///     InlineInMenu: true, InlineDefaultActionLabel: "Status")
 /// </code>
 /// </example>
 public sealed record CommandDescriptor(
@@ -90,6 +71,4 @@ public sealed record CommandDescriptor(
     string? Group = null,
     bool RequiresProject = true,
     bool HideWhenProjectExists = false,
-    bool IsSequentialStep = false,
-    bool InlineInMenu = false,
-    string? InlineDefaultActionLabel = null);
+    bool IsSequentialStep = false);

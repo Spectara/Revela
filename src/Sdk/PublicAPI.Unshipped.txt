@@ -95,17 +95,13 @@ Spectara.Revela.Sdk.Abstractions.CommandDescriptor
 Spectara.Revela.Sdk.Abstractions.CommandDescriptor.<Clone>$() -> Spectara.Revela.Sdk.Abstractions.CommandDescriptor!
 Spectara.Revela.Sdk.Abstractions.CommandDescriptor.Command.get -> System.CommandLine.Command!
 Spectara.Revela.Sdk.Abstractions.CommandDescriptor.Command.init -> void
-Spectara.Revela.Sdk.Abstractions.CommandDescriptor.CommandDescriptor(System.CommandLine.Command! Command, string? ParentCommand = null, int Order = 50, string? Group = null, bool RequiresProject = true, bool HideWhenProjectExists = false, bool IsSequentialStep = false, bool InlineInMenu = false, string? InlineDefaultActionLabel = null) -> void
-Spectara.Revela.Sdk.Abstractions.CommandDescriptor.Deconstruct(out System.CommandLine.Command! Command, out string? ParentCommand, out int Order, out string? Group, out bool RequiresProject, out bool HideWhenProjectExists, out bool IsSequentialStep, out bool InlineInMenu, out string? InlineDefaultActionLabel) -> void
+Spectara.Revela.Sdk.Abstractions.CommandDescriptor.CommandDescriptor(System.CommandLine.Command! Command, string? ParentCommand = null, int Order = 50, string? Group = null, bool RequiresProject = true, bool HideWhenProjectExists = false, bool IsSequentialStep = false) -> void
+Spectara.Revela.Sdk.Abstractions.CommandDescriptor.Deconstruct(out System.CommandLine.Command! Command, out string? ParentCommand, out int Order, out string? Group, out bool RequiresProject, out bool HideWhenProjectExists, out bool IsSequentialStep) -> void
 Spectara.Revela.Sdk.Abstractions.CommandDescriptor.Equals(Spectara.Revela.Sdk.Abstractions.CommandDescriptor? other) -> bool
 Spectara.Revela.Sdk.Abstractions.CommandDescriptor.Group.get -> string?
 Spectara.Revela.Sdk.Abstractions.CommandDescriptor.Group.init -> void
 Spectara.Revela.Sdk.Abstractions.CommandDescriptor.HideWhenProjectExists.get -> bool
 Spectara.Revela.Sdk.Abstractions.CommandDescriptor.HideWhenProjectExists.init -> void
-Spectara.Revela.Sdk.Abstractions.CommandDescriptor.InlineDefaultActionLabel.get -> string?
-Spectara.Revela.Sdk.Abstractions.CommandDescriptor.InlineDefaultActionLabel.init -> void
-Spectara.Revela.Sdk.Abstractions.CommandDescriptor.InlineInMenu.get -> bool
-Spectara.Revela.Sdk.Abstractions.CommandDescriptor.InlineInMenu.init -> void
 Spectara.Revela.Sdk.Abstractions.CommandDescriptor.IsSequentialStep.get -> bool
 Spectara.Revela.Sdk.Abstractions.CommandDescriptor.IsSequentialStep.init -> void
 Spectara.Revela.Sdk.Abstractions.CommandDescriptor.Order.get -> int
