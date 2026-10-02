@@ -1377,6 +1377,30 @@ public sealed class GenerateAllEndToEndTests
     }
 
     [TestMethod]
+    public async Task GeneratePages_ThemeWithoutPhotoFigure_UntitledPhotoGetsEmptyAltInsteadOfFileName()
+    {
+        using var project = TestProject.Create(p => p
+            .WithSiteJson(new { title = "Photo Token Alt", author = "Test" })
+            .AddGallery("Story", g => g.AddRealImage("img_4711.jpg", 1920, 1080)));
+        await File.WriteAllTextAsync(
+            Path.Combine(project.SourcePath, "Story", "_index.revela"),
+            "Intro.\n\n[[photo: img_4711.jpg]]");
+
+        var (scanResult, renderResult) = await ScanAndRenderAsync(
+            project,
+            new ThemeWithoutFile("Partials/PhotoFigure.revela"));
+
+        Assert.IsTrue(scanResult.Success, $"Scan failed: {scanResult.ErrorMessage}");
+        Assert.IsTrue(renderResult.Success, $"Render failed: {renderResult.ErrorMessage}");
+        var storyHtml = await File.ReadAllTextAsync(Path.Combine(project.OutputPath, "story", "index.html"));
+        var pictureStart = storyHtml.IndexOf("<picture class=\"content-image\"", StringComparison.Ordinal);
+        Assert.IsGreaterThan(0, pictureStart);
+        var picture = storyHtml[pictureStart..storyHtml.IndexOf("</picture>", pictureStart, StringComparison.Ordinal)];
+        Assert.Contains("alt=\"\"", picture);
+        Assert.DoesNotContain("img_4711", picture.Replace("/img-4711/", "/", StringComparison.Ordinal), StringComparison.OrdinalIgnoreCase);
+    }
+
+    [TestMethod]
     public async Task RenderAsync_ThemeWithoutLayout_FailsWithoutWritingOutput()
     {
         using var project = TestProject.Create(p => p

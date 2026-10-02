@@ -1157,8 +1157,9 @@ internal sealed partial class RenderService(
             }
 
             // Fallback for themes without Partials/PhotoFigure.revela: the content image, linked.
+            // A file name is no text alternative; without title or description the alt stays empty.
             var alt = new[] { image.Title, image.Description }.FirstOrDefault(text => !string.IsNullOrWhiteSpace(text))
-                ?? image.Id;
+                ?? string.Empty;
             var picture = renderContentImage(image, alt, null);
             if (!run.SupportsPhotoPages)
             {
