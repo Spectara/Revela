@@ -1,9 +1,8 @@
 using System.CommandLine;
 
-using Spectara.Revela.Core;
+using Spectara.Revela.Core.Services;
 using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Output;
-using Spectara.Revela.Sdk.Services;
 
 using Spectre.Console;
 
@@ -14,8 +13,7 @@ namespace Spectara.Revela.Commands.Plugins;
 /// </summary>
 internal sealed partial class PluginUninstallCommand(
     ILogger<PluginUninstallCommand> logger,
-    PackageManager pluginManager,
-    IGlobalConfigManager globalConfigManager)
+    PackageInstallService installService)
 {
     /// <summary>
     /// Creates the command definition.
@@ -50,15 +48,9 @@ internal sealed partial class PluginUninstallCommand(
     {
         try
         {
-            // Convert short name to full package ID
-            // Examples: "OneDrive" → "Spectara.Revela.Plugins.OneDrive"
-            //           "Spectara.Revela.Plugins.OneDrive" → unchanged
-            //           "Spectara.Revela.Themes.Lumina.Statistics" → unchanged
-            var packageId = name.StartsWith("Spectara.Revela.", StringComparison.OrdinalIgnoreCase)
-                ? name
-                : $"Spectara.Revela.Plugins.{name}";
+            var packageId = PackageIds.FromPluginName(name);
 
-            if (!skipConfirm && !await AnsiConsole.ConfirmAsync($"[yellow]Uninstall plugin '{packageId}'?[/]", defaultValue: false, cancellationToken))
+            if (!skipConfirm && !await AnsiConsole.ConfirmAsync($"[yellow]Uninstall plugin '{Markup.Escape(packageId)}'?[/]", defaultValue: false, cancellationToken))
             {
                 AnsiConsole.MarkupLine("[dim]Cancelled.[/]");
                 return 0;
@@ -67,12 +59,10 @@ internal sealed partial class PluginUninstallCommand(
             AnsiConsole.MarkupLine($"{OutputMarkers.Info} Uninstalling plugin: [cyan]{Markup.Escape(packageId)}[/]");
             LogUninstallingPlugin(packageId);
 
-            var success = await pluginManager.UninstallPluginAsync(packageId, cancellationToken: cancellationToken);
+            var success = await installService.UninstallAsync(packageId, cancellationToken);
 
             if (success)
             {
-                // Files and the project.json entry are gone; drop the global dependency too.
-                _ = await globalConfigManager.RemovePackageAsync(packageId, cancellationToken);
                 AnsiConsole.MarkupLine($"{OutputMarkers.Success} Plugin [cyan]{Markup.Escape(packageId)}[/] uninstalled successfully.");
                 return 0;
             }

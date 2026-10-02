@@ -1,12 +1,9 @@
 using System.CommandLine;
-using Spectara.Revela.Core;
 using Spectara.Revela.Core.Helpers;
 using Spectara.Revela.Core.Models;
 using Spectara.Revela.Core.Services;
 using Spectara.Revela.Sdk;
-using Spectara.Revela.Sdk.Abstractions;
 using Spectara.Revela.Sdk.Output;
-using Spectara.Revela.Sdk.Services;
 using Spectre.Console;
 
 namespace Spectara.Revela.Commands.Plugins;
@@ -15,41 +12,16 @@ namespace Spectara.Revela.Commands.Plugins;
 /// Handles 'revela plugin install' command.
 /// </summary>
 /// <remarks>
-/// Installs plugins from NuGet. Before running, use 'revela packages refresh'
-/// to update the package index for better type validation.
+/// A single package installs without the package index; the package type is validated from the
+/// package's nuspec by <see cref="PackageInstallService"/>. Interactive selection and <c>--all</c>
+/// list plugins from the index ('revela packages refresh').
 /// </remarks>
-internal sealed partial class PluginInstallCommand
+internal sealed partial class PluginInstallCommand(
+    ILogger<PluginInstallCommand> logger,
+    PackageInstallService installService,
+    IPackageIndexService packageIndexService,
+    ProjectFeedConsent feedConsent)
 {
-    private readonly ILogger<PluginInstallCommand> logger;
-    private readonly IPackageInstaller pluginManager;
-    private readonly IPackageIndexService packageIndexService;
-    private readonly IGlobalConfigManager globalConfigManager;
-    private readonly ProjectFeedConsent feedConsent;
-
-    public PluginInstallCommand(
-        ILogger<PluginInstallCommand> logger,
-        PackageManager pluginManager,
-        IPackageIndexService packageIndexService,
-        IGlobalConfigManager globalConfigManager,
-        ProjectFeedConsent feedConsent)
-        : this(logger, (IPackageInstaller)pluginManager, packageIndexService, globalConfigManager, feedConsent)
-    {
-    }
-
-    internal PluginInstallCommand(
-        ILogger<PluginInstallCommand> commandLogger,
-        IPackageInstaller installer,
-        IPackageIndexService indexService,
-        IGlobalConfigManager configManager,
-        ProjectFeedConsent consent)
-    {
-        logger = commandLogger;
-        pluginManager = installer;
-        packageIndexService = indexService;
-        globalConfigManager = configManager;
-        feedConsent = consent;
-    }
-
     /// <summary>
     /// Creates the command definition.
     /// </summary>
@@ -126,7 +98,7 @@ internal sealed partial class PluginInstallCommand
     /// <returns>Result containing installed, already-installed, and failed packages.</returns>
     public async Task<InstallResult> InstallAllAsync(bool showRestartNotice = true, CancellationToken cancellationToken = default)
     {
-        var plugins = await packageIndexService.SearchByTypeAsync("RevelaPlugin", cancellationToken);
+        var plugins = await packageIndexService.SearchByTypeAsync(PackageIds.PluginPackageType, cancellationToken);
 
         if (plugins.Count == 0)
         {
@@ -135,16 +107,14 @@ internal sealed partial class PluginInstallCommand
             return InstallResult.Empty;
         }
 
-        // Get already installed plugins to filter them out
-        var installedPlugins = await globalConfigManager.GetPackagesAsync(cancellationToken);
-        var installedIds = installedPlugins.Keys.ToHashSet(StringComparer.OrdinalIgnoreCase);
-
-        var availablePlugins = plugins.Where(p => !installedIds.Contains(p.Id)).ToList();
+        // Filter out already installed plugins
+        var installedIds = plugins.Select(p => p.Id).Where(installService.IsInstalled).ToList();
+        var availablePlugins = plugins.Where(p => !installService.IsInstalled(p.Id)).ToList();
 
         if (availablePlugins.Count == 0)
         {
             AnsiConsole.MarkupLine($"{OutputMarkers.Success} All available plugins are already installed.");
-            return new InstallResult([], [.. installedPlugins.Keys], []);
+            return new InstallResult([], installedIds, []);
         }
 
         AnsiConsole.MarkupLine($"Installing [cyan]{availablePlugins.Count}[/] plugin(s)...");
@@ -184,7 +154,7 @@ internal sealed partial class PluginInstallCommand
             InstallCommandHelper.ShowRestartNotice("plugins");
         }
 
-        return new InstallResult(installed, [.. installedIds], failed);
+        return new InstallResult(installed, installedIds, failed);
     }
 
     /// <summary>
@@ -199,10 +169,11 @@ internal sealed partial class PluginInstallCommand
         if (selectedPlugins.Count == 0)
         {
             // Check if all plugins are already installed
-            var installedPlugins = await globalConfigManager.GetPackagesAsync(cancellationToken);
+            var plugins = await packageIndexService.SearchByTypeAsync(PackageIds.PluginPackageType, cancellationToken);
+            var installedPlugins = plugins.Select(p => p.Id).Where(installService.IsInstalled).ToList();
             if (installedPlugins.Count > 0)
             {
-                return new InstallResult([], [.. installedPlugins.Keys], []);
+                return new InstallResult([], installedPlugins, []);
             }
 
             return InstallResult.Empty;
@@ -250,7 +221,7 @@ internal sealed partial class PluginInstallCommand
 
     private async Task<IReadOnlyList<string>> SelectPluginsInteractivelyAsync(CancellationToken cancellationToken)
     {
-        var plugins = await packageIndexService.SearchByTypeAsync("RevelaPlugin", cancellationToken);
+        var plugins = await packageIndexService.SearchByTypeAsync(PackageIds.PluginPackageType, cancellationToken);
 
         if (plugins.Count == 0)
         {
@@ -269,12 +240,9 @@ internal sealed partial class PluginInstallCommand
             return [];
         }
 
-        // Get already installed plugins to filter them out
-        var installedPlugins = await globalConfigManager.GetPackagesAsync(cancellationToken);
-        var installedIds = installedPlugins.Keys.ToHashSet(StringComparer.OrdinalIgnoreCase);
-
         // Filter out already installed plugins
-        var availablePlugins = plugins.Where(p => !installedIds.Contains(p.Id)).ToList();
+        var installedPlugins = plugins.Select(p => p.Id).Where(installService.IsInstalled).ToList();
+        var availablePlugins = plugins.Where(p => !installService.IsInstalled(p.Id)).ToList();
 
         if (availablePlugins.Count == 0)
         {
@@ -286,7 +254,7 @@ internal sealed partial class PluginInstallCommand
         if (installedPlugins.Count > 0)
         {
             AnsiConsole.MarkupLine("[green]Already installed:[/]");
-            foreach (var pluginId in installedPlugins.Keys)
+            foreach (var pluginId in installedPlugins)
             {
                 AnsiConsole.MarkupLine($"  {OutputMarkers.Success} {Markup.Escape(pluginId)}");
             }
@@ -322,56 +290,26 @@ internal sealed partial class PluginInstallCommand
     {
         try
         {
-            // Convert short name to full package ID
-            // Examples: "OneDrive" → "Spectara.Revela.Plugins.OneDrive"
-            //           "Source.OneDrive" → "Spectara.Revela.Plugins.Source.OneDrive"
-            //           "Spectara.Revela.Plugins.OneDrive" → unchanged
-            //           "Spectara.Revela.Themes.Lumina.Statistics" → unchanged
-            var packageId = name.StartsWith("Spectara.Revela.", StringComparison.OrdinalIgnoreCase)
-                ? name
-                : $"Spectara.Revela.Plugins.{name}";
-
-            // Check package type in index (if available)
-            var packageEntry = await packageIndexService.FindPackageAsync(packageId, cancellationToken);
-            if (packageEntry is not null)
-            {
-                // Validate it's a plugin, not a theme
-                if (packageEntry.Types.Contains("RevelaTheme", StringComparer.OrdinalIgnoreCase) &&
-                    !packageEntry.Types.Contains("RevelaPlugin", StringComparer.OrdinalIgnoreCase))
-                {
-                    AnsiConsole.MarkupLine($"{OutputMarkers.Error} Package [cyan]{Markup.Escape(packageId)}[/] is a theme, not a plugin.");
-                    AnsiConsole.MarkupLine("  Use [cyan]revela theme install[/] for themes.");
-                    return 1;
-                }
-            }
+            var packageId = PackageIds.FromPluginName(name);
 
             var sourceInfo = source is not null ? $" from [dim]{Markup.Escape(source)}[/]" : "";
             AnsiConsole.MarkupLine($"[blue]Installing plugin:[/] [cyan]{Markup.Escape(packageId)}[/]{sourceInfo}");
             LogInstallingPlugin(packageId, version, source);
 
-            var package = await AnsiConsole.Status()
+            var result = await AnsiConsole.Status()
                 .Spinner(Spinner.Known.Dots)
                 .StartAsync("Installing...", async ctx =>
                 {
                     cancellationToken.ThrowIfCancellationRequested();
                     ctx.Status($"Downloading {packageId}...");
-                    return await pluginManager.InstallAsync(packageId, version, source, cancellationToken);
+                    return await installService.InstallAsync(packageId, PackageIds.PluginPackageType, version, source, cancellationToken);
                 });
 
-            if (package is not null)
-            {
-                // Register the exact installed version in global config (revela.json)
-                await globalConfigManager.AddPackageAsync(package.Id, package.Version, cancellationToken);
-
-                AnsiConsole.MarkupLine($"{OutputMarkers.Success} Plugin [cyan]{Markup.Escape(package.Id)}[/] [dim]{Markup.Escape(package.Version)}[/] installed successfully.");
-                AnsiConsole.MarkupLine("[dim]The plugin will be available after restarting revela.[/]");
-                return 0;
-            }
-            else
-            {
-                AnsiConsole.MarkupLine($"{OutputMarkers.Error} Failed to install plugin [cyan]{Markup.Escape(packageId)}[/]");
-                return 1;
-            }
+            return InstallCommandHelper.ReportInstall(
+                result,
+                packageId,
+                "plugin",
+                "[dim]The plugin will be available after restarting revela.[/]");
         }
         catch (OperationCanceledException)
         {
@@ -383,25 +321,6 @@ internal sealed partial class PluginInstallCommand
             ErrorPanels.ShowException(ex);
             return 1;
         }
-    }
-
-    /// <summary>
-    /// Gets available plugins (not yet installed) from the package index.
-    /// </summary>
-    /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns>List of available plugin packages.</returns>
-    public async Task<IReadOnlyList<PackageIndexEntry>> GetAvailablePluginsAsync(CancellationToken cancellationToken = default)
-    {
-        var plugins = await packageIndexService.SearchByTypeAsync("RevelaPlugin", cancellationToken);
-        if (plugins.Count == 0)
-        {
-            return [];
-        }
-
-        var installedPlugins = await globalConfigManager.GetPackagesAsync(cancellationToken);
-        var installedIds = installedPlugins.Keys.ToHashSet(StringComparer.OrdinalIgnoreCase);
-
-        return [.. plugins.Where(p => !installedIds.Contains(p.Id))];
     }
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Installing plugin '{PackageId}' version '{Version}' from source '{Source}'")]

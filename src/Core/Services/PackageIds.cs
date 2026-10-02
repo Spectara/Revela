@@ -28,6 +28,48 @@ public static class PackageIds
     public const string OfficialPluginPrefix = PackageTrustPolicy.OfficialPackagePrefix + "Plugins.";
 
     /// <summary>
+    /// Expands a theme short name to its official package ID.
+    /// </summary>
+    /// <remarks>
+    /// <c>Lumina</c> becomes <c>Spectara.Revela.Themes.Lumina</c>; IDs that already start with
+    /// <c>Spectara.Revela.</c> are returned unchanged.
+    /// </remarks>
+    /// <param name="name">Short name or full package ID.</param>
+    /// <returns>The package ID.</returns>
+    public static string FromThemeName(string name) => Expand(name, OfficialThemePrefix);
+
+    /// <summary>
+    /// Expands a plugin short name to its official package ID.
+    /// </summary>
+    /// <remarks>
+    /// <c>Source.OneDrive</c> becomes <c>Spectara.Revela.Plugins.Source.OneDrive</c>; IDs that already
+    /// start with <c>Spectara.Revela.</c> are returned unchanged.
+    /// </remarks>
+    /// <param name="name">Short name or full package ID.</param>
+    /// <returns>The package ID.</returns>
+    public static string FromPluginName(string name) => Expand(name, OfficialPluginPrefix);
+
+    /// <summary>
+    /// Removes the official theme or plugin prefix for display (<c>Spectara.Revela.Themes.Lumina</c> → <c>Lumina</c>).
+    /// </summary>
+    /// <param name="packageId">The package ID.</param>
+    /// <returns>The short name, or <paramref name="packageId"/> when it has no official prefix.</returns>
+    public static string ToShortName(string packageId)
+    {
+        ArgumentNullException.ThrowIfNull(packageId);
+
+        foreach (var prefix in (ReadOnlySpan<string>)[OfficialThemePrefix, OfficialPluginPrefix])
+        {
+            if (packageId.Length > prefix.Length && packageId.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+            {
+                return packageId[prefix.Length..];
+            }
+        }
+
+        return packageId;
+    }
+
+    /// <summary>
     /// Infers package types from the ID when a feed does not report them.
     /// </summary>
     /// <remarks>
@@ -56,5 +98,14 @@ public static class PackageIds
         }
 
         return types;
+    }
+
+    private static string Expand(string name, string prefix)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(name);
+
+        return name.StartsWith(PackageTrustPolicy.OfficialPackagePrefix, StringComparison.OrdinalIgnoreCase)
+            ? name
+            : prefix + name;
     }
 }

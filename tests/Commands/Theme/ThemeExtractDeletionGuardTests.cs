@@ -203,7 +203,7 @@ public sealed class ThemeExtractDeletionGuardTests
                 Substitute.For<ITemplateResolver>(),
                 Substitute.For<IAssetResolver>(),
                 packageContext,
-                [],
+                new PackageInstallService([], new PackageDeclarations(Substitute.For<IConfigService>(), Substitute.For<IGlobalConfigManager>(), NullLogger<PackageDeclarations>.Instance)),
                 Substitute.For<IPackageIndexService>(),
                 Substitute.For<IConfigService>(),
                 Options.Create(new ProjectEnvironment { Path = ProjectPath }),

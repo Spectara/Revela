@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Spectara.Revela.Core;
 using Spectara.Revela.Core.Services;
 using Spectara.Revela.Sdk.Abstractions;
@@ -23,11 +24,13 @@ internal static class ServiceCollectionExtensions
         // Consent prompt for feeds declared only in project.json (restore/install)
         services.AddTransient<ProjectFeedConsent>();
 
-        // Internal services used by PluginManager
         services.AddTransient<NupkgExtractor>();
-        services.AddTransient<PluginProjectService>();
 
-        // PluginManager from Core with Typed HttpClient
+        // Install flow shared by plugin/theme install, the wizard and restore
+        services.TryAddTransient<PackageDeclarations>();
+        services.TryAddTransient<PackageInstallService>();
+
+        // PackageManager with Typed HttpClient
         // Standard resilience handler provides: retry (3x), circuit breaker, timeout
         services.AddHttpClient<PackageManager>(client =>
         {
@@ -36,7 +39,7 @@ internal static class ServiceCollectionExtensions
         })
         .AddStandardResilienceHandler();
 
-        // Register IPackageInstaller abstraction (used by ThemeService)
+        // The installer behind PackageInstallService (its presence enables plugin/theme install)
         services.AddTransient<IPackageInstaller>(sp => sp.GetRequiredService<PackageManager>());
 
         // Commands

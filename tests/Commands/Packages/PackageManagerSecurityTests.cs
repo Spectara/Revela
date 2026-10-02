@@ -6,7 +6,6 @@ using NuGet.Protocol.Core.Types;
 using Spectara.Revela.Core;
 using Spectara.Revela.Core.Models;
 using Spectara.Revela.Core.Services;
-using Spectara.Revela.Sdk.Abstractions;
 using Spectara.Revela.Sdk.Hosting;
 using Spectara.Revela.Tests.Shared.Http;
 
@@ -165,7 +164,6 @@ public sealed class PackageManagerSecurityTests
         var manager = new PackageManager(
             httpClient,
             new NupkgExtractor(NullLogger<NupkgExtractor>.Instance),
-            new PluginProjectService(Substitute.For<IConfigService>(), NullLogger<PluginProjectService>.Instance),
             logger,
             sourceManager,
             buildInfo);

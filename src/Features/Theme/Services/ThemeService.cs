@@ -20,15 +20,13 @@ internal sealed partial class ThemeService(
     ITemplateResolver templateResolver,
     IAssetResolver assetResolver,
     IPackageContext packageContext,
-    IEnumerable<IPackageInstaller> packageInstallers,
+    PackageInstallService packageInstallService,
     IPackageIndexService packageIndexService,
     IConfigService configService,
     IOptions<ProjectEnvironment> projectEnvironment,
     IOptionsMonitor<ThemeConfig> themeConfig,
     ILogger<ThemeService> logger) : IThemeService
 {
-    private const string ThemePackagePrefix = "Spectara.Revela.Themes.";
-
     private string ProjectPath => projectEnvironment.Value.Path;
 
     /// <inheritdoc />
@@ -48,14 +46,14 @@ internal sealed partial class ThemeService(
                 .Select(t => t.Metadata.Name)
                 .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
-            var searchResults = await packageIndexService.SearchByTypeAsync("RevelaTheme", cancellationToken);
+            var searchResults = await packageIndexService.SearchByTypeAsync(PackageIds.ThemePackageType, cancellationToken);
             online = [.. searchResults.Select(r => new OnlineThemeInfo
             {
                 Id = r.Id,
-                Name = ExtractThemeName(r.Id),
+                Name = PackageIds.ToShortName(r.Id),
                 Version = r.Version,
                 Description = r.Description,
-                IsInstalled = installedNames.Contains(ExtractThemeName(r.Id))
+                IsInstalled = installedNames.Contains(PackageIds.ToShortName(r.Id))
             })];
         }
 
@@ -95,16 +93,15 @@ internal sealed partial class ThemeService(
         string? source = null,
         CancellationToken cancellationToken = default)
     {
-        var installer = packageInstallers.FirstOrDefault();
-        if (installer is null)
+        var packageId = PackageIds.FromThemeName(name);
+        LogInstalling(logger, packageId);
+        var result = await packageInstallService.InstallAsync(packageId, PackageIds.ThemePackageType, version, source, cancellationToken);
+        if (result.Status == PackageInstallStatus.InstallerUnavailable)
         {
             LogPackageInstallerNotAvailable(logger);
-            return null;
         }
 
-        var packageId = EnsureFullPackageId(name);
-        LogInstalling(logger, packageId);
-        return await installer.InstallAsync(packageId, version, source, cancellationToken);
+        return result.Status == PackageInstallStatus.Installed ? result.Package : null;
     }
 
     /// <inheritdoc />
@@ -112,16 +109,15 @@ internal sealed partial class ThemeService(
         string name,
         CancellationToken cancellationToken = default)
     {
-        var installer = packageInstallers.FirstOrDefault();
-        if (installer is null)
+        if (!packageInstallService.IsAvailable)
         {
             LogPackageInstallerNotAvailable(logger);
             return false;
         }
 
-        var packageId = EnsureFullPackageId(name);
+        var packageId = PackageIds.FromThemeName(name);
         LogUninstalling(logger, packageId);
-        return await installer.UninstallAsync(packageId, cancellationToken);
+        return await packageInstallService.UninstallAsync(packageId, cancellationToken);
     }
 
     /// <inheritdoc />
@@ -529,21 +525,6 @@ internal sealed partial class ThemeService(
             _ => "installed"
         };
     }
-
-    private static string EnsureFullPackageId(string name)
-    {
-        if (name.StartsWith(ThemePackagePrefix, StringComparison.OrdinalIgnoreCase))
-        {
-            return name;
-        }
-
-        return ThemePackagePrefix + name;
-    }
-
-    private static string ExtractThemeName(string packageId) =>
-        packageId.StartsWith(ThemePackagePrefix, StringComparison.OrdinalIgnoreCase)
-            ? packageId[ThemePackagePrefix.Length..]
-            : packageId;
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Installing theme: {PackageId}")]
     private static partial void LogInstalling(ILogger logger, string packageId);

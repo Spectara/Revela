@@ -13,17 +13,16 @@ using NuGetPackageSource = NuGet.Configuration.PackageSource;
 namespace Spectara.Revela.Core;
 
 /// <summary>
-/// Orchestrates plugin installation, updates, and removal via NuGet.
+/// Installs and removes package files (plugins and themes) in the plugin directory via NuGet.
 /// </summary>
 /// <remarks>
-/// Delegates extraction to <see cref="NupkgExtractor"/> and project.json management
-/// to <see cref="PluginProjectService"/>.
+/// Only manages files: declaring packages in <c>dependencies.packages</c> and validating the
+/// package type is done by <see cref="PackageInstallService"/>; extraction by <see cref="NupkgExtractor"/>.
 /// HttpClient is injected via Typed HttpClient pattern for URL-based downloads.
 /// </remarks>
 public sealed class PackageManager(
     HttpClient httpClient,
     NupkgExtractor extractor,
-    PluginProjectService projectService,
     ILogger<PackageManager> logger,
     INuGetSourceManager nugetSourceManager,
     IBuildInfo buildInfo) : IPackageInstaller
@@ -126,7 +125,7 @@ public sealed class PackageManager(
 
                     var sourceRepo = Repository.Factory.GetCoreV3(new NuGetPackageSource(sourceUrl));
                     var extracted = await ExtractFromNuGetAsync(packageId, version, sourceRepo, targetDir, cancellationToken);
-                    return extracted is null ? null : await RegisterExtractedPluginAsync(extracted, cancellationToken);
+                    return extracted is null ? null : Installed(extracted);
                 }
                 else
                 {
@@ -147,7 +146,7 @@ public sealed class PackageManager(
     }
 
     /// <summary>
-    /// Uninstalls a plugin by removing its files and project.json entry.
+    /// Uninstalls a package by removing its folder from the plugin directory.
     /// </summary>
     /// <remarks>
     /// Plugin configuration files are preserved for potential reinstallation.
@@ -157,7 +156,7 @@ public sealed class PackageManager(
     /// <returns>True if the plugin was found and removed.</returns>
     /// <exception cref="ArgumentException"><paramref name="packageId"/> is not a valid NuGet package ID.</exception>
     /// <exception cref="InvalidOperationException">The plugin folder escapes the plugin directory or is a symbolic link or junction.</exception>
-    public async Task<bool> UninstallPluginAsync(string packageId, CancellationToken cancellationToken = default)
+    public bool Uninstall(string packageId, CancellationToken cancellationToken = default)
     {
         // The ID becomes a path segment below the plugin directory, so reject anything that
         // could traverse, be rooted or contain separators before touching the filesystem.
@@ -182,7 +181,6 @@ public sealed class PackageManager(
             if (Directory.Exists(pluginPath))
             {
                 Directory.Delete(pluginPath, recursive: true);
-                await projectService.RemovePackageAsync(packageId, cancellationToken);
                 logger.PluginUninstalled(packageId);
                 return true;
             }
@@ -203,7 +201,7 @@ public sealed class PackageManager(
 
     /// <inheritdoc />
     Task<bool> IPackageInstaller.UninstallAsync(string packageId, CancellationToken cancellationToken) =>
-        UninstallPluginAsync(packageId, cancellationToken);
+        Task.FromResult(Uninstall(packageId, cancellationToken));
 
     internal async Task<InstalledPackage?> ExtractFromNuGetAsync(
         string packageId,
@@ -307,25 +305,11 @@ public sealed class PackageManager(
     internal async Task<InstalledPackage?> InstallFromNupkgAsync(string nupkgPath, string targetDir, CancellationToken cancellationToken)
     {
         var extracted = await extractor.ExtractAsync(nupkgPath, targetDir, cancellationToken);
-        return extracted is null ? null : await RegisterExtractedPluginAsync(extracted, cancellationToken);
+        return extracted is null ? null : Installed(extracted);
     }
 
-    private async Task<InstalledPackage?> RegisterExtractedPluginAsync(InstalledPackage package, CancellationToken cancellationToken)
+    private InstalledPackage Installed(InstalledPackage package)
     {
-        try
-        {
-            await projectService.AddPackageAsync(package.Id, package.Version, cancellationToken);
-        }
-        catch (OperationCanceledException)
-        {
-            throw;
-        }
-        catch (Exception ex)
-        {
-            logger.ProjectRegistrationFailed(ex, package.Id);
-            return null;
-        }
-
         logger.PluginInstalled(package.Id);
         return package;
     }
@@ -366,13 +350,8 @@ public sealed class PackageManager(
 
             if (extracted is not null)
             {
-                var registered = await RegisterExtractedPluginAsync(extracted, cancellationToken);
-                if (registered is not null)
-                {
-                    logger.SuccessFromSource(packageId, source.Name);
-                }
-
-                return registered;
+                logger.SuccessFromSource(packageId, source.Name);
+                return Installed(extracted);
             }
         }
 

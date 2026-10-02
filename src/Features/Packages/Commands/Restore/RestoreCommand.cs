@@ -24,7 +24,12 @@ namespace Spectara.Revela.Commands.Restore;
 /// <para>
 /// The active theme (<c>theme.name</c>) is resolved by manifest name through local and
 /// installed themes. Only when no theme and no declared dependency provides it does restore
-/// fall back to the official <c>Spectara.Revela.Themes.{name}</c> package.
+/// fall back to the official <c>Spectara.Revela.Themes.{name}</c> package, which is then
+/// declared in project.json.
+/// </para>
+/// <para>
+/// Restored versions are pinned only in project.json entries; dependencies declared only in
+/// revela.json are installed without copying them into the project.
 /// </para>
 /// </remarks>
 internal sealed partial class RestoreCommand(
@@ -33,12 +38,12 @@ internal sealed partial class RestoreCommand(
     IEnumerable<IPlugin> installedPlugins,
     IEnumerable<ITheme> installedThemes,
     PackageManager packageManager,
+    PackageInstallService installService,
+    PackageDeclarations declarations,
     ProjectFeedConsent feedConsent,
     IOptions<ProjectEnvironment> projectEnvironment,
     ILogger<RestoreCommand> logger)
 {
-    private const string OfficialThemePrefix = PackageTrustPolicy.OfficialPackagePrefix + "Themes.";
-
     /// <summary>
     /// Creates the CLI command
     /// </summary>
@@ -230,6 +235,7 @@ internal sealed partial class RestoreCommand(
                             }
                             else
                             {
+                                _ = await declarations.PinAsync(package.Id, package.Version, ct);
                                 installed.Add(package);
                             }
                         }
@@ -296,21 +302,20 @@ internal sealed partial class RestoreCommand(
             return true;
         }
 
-        var officialId = themeName.StartsWith(OfficialThemePrefix, StringComparison.OrdinalIgnoreCase)
-            ? themeName
-            : OfficialThemePrefix + themeName;
+        var officialId = PackageIds.FromThemeName(themeName);
         AnsiConsole.MarkupLine($"{OutputMarkers.Info} No installed theme or declared dependency provides theme [white]{name}[/]. Trying the official package [white]{Markup.Escape(officialId)}[/]...");
 
-        var package = PackageIdRules.IsValid(officialId)
-            ? await packageManager.InstallAsync(officialId, version: null, source: null, cancellationToken)
-            : null;
-        if (package is null)
+        var result = PackageIdRules.IsValid(officialId)
+            ? await installService.InstallAsync(officialId, PackageIds.ThemePackageType, version: null, source: null, cancellationToken)
+            : new PackageInstallResult(PackageInstallStatus.Failed);
+        if (result.Status != PackageInstallStatus.Installed)
         {
             AnsiConsole.MarkupLine($"{OutputMarkers.Error} Theme [white]{name}[/] could not be resolved: no installed or local theme has this name, no declared dependency provides it, and the official package [white]{Markup.Escape(officialId)}[/] could not be installed.");
             AnsiConsole.MarkupLine("    Add the package that provides this theme to [cyan]dependencies.packages[/] in project.json, or change [cyan]theme.name[/].");
             return false;
         }
 
+        var package = result.Package!;
         AnsiConsole.MarkupLine($"  {OutputMarkers.Success} Theme [white]{Markup.Escape(package.Id)}[/] [dim]{Markup.Escape(package.Version)}[/]");
         return true;
     }

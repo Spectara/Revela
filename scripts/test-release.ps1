@@ -475,7 +475,7 @@ try {
             # Core features (Generate, Theme, Projects) are built into the CLI — no install needed
 
             Write-Info 'Installing base Lumina from the exact release package...'
-            & $ExePath plugin install Spectara.Revela.Themes.Lumina --version $Version --source $PluginsDir
+            & $ExePath theme install Lumina --version $Version --source $PluginsDir
             if ($LASTEXITCODE -ne 0) { throw 'Base Lumina installation failed' }
 
             # Install addon plugins
@@ -492,7 +492,7 @@ try {
 
             # Install Lumina.Statistics Extension
             Write-Info "Installing Lumina.Statistics..."
-            & $ExePath plugin install Spectara.Revela.Themes.Lumina.Statistics --version $Version --source $PluginsDir
+            & $ExePath theme install Lumina.Statistics --version $Version --source $PluginsDir
             if ($LASTEXITCODE -ne 0) { throw "Lumina.Statistics installation failed" }
             Write-Success "Lumina.Statistics installed"
 
@@ -514,7 +514,7 @@ try {
             Write-Success "Source.Calendar installed"
 
             Write-Info "Installing Lumina.Calendar..."
-            & $ExePath plugin install Spectara.Revela.Themes.Lumina.Calendar --version $Version --source $PluginsDir
+            & $ExePath theme install Lumina.Calendar --version $Version --source $PluginsDir
             if ($LASTEXITCODE -ne 0) { throw "Lumina.Calendar installation failed" }
             Write-Success "Lumina.Calendar installed"
 
@@ -852,7 +852,9 @@ try {
                     foreach ($packageId in @('Spectara.Revela.Plugins.Statistics', 'Spectara.Revela.Plugins.Serve')) {
                         Remove-Item -LiteralPath (Join-Path $CliDir "plugins/$packageId") -Recurse -Force
                     }
-                    $registrationProbe.Dependencies.Packages = [ordered]@{}
+                    # Both packages are declared by the project with 'latest'; restore must pin the exact
+                    # installed versions in parallel without losing either entry or unrelated data.
+                    $registrationProbe.Dependencies.Packages = [ordered]@{ 'Spectara.Revela.Plugins.Statistics' = 'latest'; 'Spectara.Revela.Plugins.Serve' = 'latest' }
                     $registrationProbe | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $registrationConfig -Encoding utf8
                     $coreRestoreFeed = Join-Path $CliDir 'packages'
                     try {
@@ -899,7 +901,7 @@ try {
                     [IO.File]::WriteAllText($registrationConfig, '{"Dependencies":{"Packages":{"Spectara.Revela.Plugins.Statistics":"0.0.0-test"}},"dependencies":{"packages":{"Other":"1.0.0"}}}')
                     $beforeFailedRegistration = (Get-FileHash -LiteralPath $registrationConfig).Hash
                     $failureOutput = & $ExePath plugin install Statistics --version $Version --source $PluginsDir 2>&1 | Out-String
-                    if ($LASTEXITCODE -ne 1 -or $failureOutput -notmatch 'files extracted but project registration failed' -or
+                    if ($LASTEXITCODE -ne 1 -or $failureOutput -notmatch 'was installed, but declaring it' -or
                         $failureOutput -match 'installed successfully' -or
                         (Get-FileHash -LiteralPath $registrationConfig).Hash -ne $beforeFailedRegistration -or
                         -not (Test-Path -LiteralPath (Join-Path $CliDir 'plugins/Spectara.Revela.Plugins.Statistics/Spectara.Revela.Plugins.Statistics.dll'))) {

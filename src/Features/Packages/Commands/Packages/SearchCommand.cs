@@ -127,9 +127,7 @@ internal sealed partial class SearchCommand(
                 };
 
                 // Shorten package ID for display
-                var shortId = package.Id
-                    .Replace("Spectara.Revela.Themes.", "", StringComparison.Ordinal)
-                    .Replace("Spectara.Revela.Plugins.", "", StringComparison.Ordinal);
+                var shortId = PackageIds.ToShortName(package.Id);
 
                 var description = package.Description.Length > 40
                     ? package.Description[..37] + "..."
