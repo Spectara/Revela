@@ -1,15 +1,7 @@
 {
   "name": "Lumina",
-  "version": "1.0.0",
   "description": "Lumina - elegant photography portfolio theme",
   "author": "Spectara",
-  "previewImage": "https://revela.website/themes/lumina/preview.jpg",
-  "tags": [
-    "photography",
-    "gallery",
-    "photo-pages",
-    "responsive"
-  ],
   "templates": {
     "layout": "Layout.revela"
   },

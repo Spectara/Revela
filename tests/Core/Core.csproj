@@ -21,6 +21,7 @@
     <ProjectReference Include="..\..\src\Themes\Lumina\Lumina.csproj" />
     <ProjectReference Include="..\..\src\Themes\Lumina.Statistics\Lumina.Statistics.csproj" />
     <ProjectReference Include="..\Shared\Shared.csproj" />
+    <ProjectReference Include="..\..\src\Themes\Lumina.Calendar\Lumina.Calendar.csproj" />
   </ItemGroup>
 
   <ItemGroup>

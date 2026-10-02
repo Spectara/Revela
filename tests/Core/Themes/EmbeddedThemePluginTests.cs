@@ -1,3 +1,6 @@
+using System.Text.Json.Nodes;
+
+using Spectara.Revela.Sdk.Abstractions;
 using Spectara.Revela.Sdk.Models;
 using Spectara.Revela.Themes.Lumina;
 
@@ -29,6 +32,24 @@ public sealed class EmbeddedThemePluginTests
 
     [TestMethod]
     public void Metadata_ReturnsVersion() => Assert.IsFalse(string.IsNullOrEmpty(plugin.Metadata.Version));
+
+    [TestMethod]
+    public void Metadata_EmbeddedTheme_ReportsItsPackageVersion() =>
+        Assert.AreEqual(PackageVersion.FromAssembly(typeof(LuminaTheme).Assembly), plugin.Metadata.Version);
+
+    [TestMethod]
+    [DataRow(typeof(LuminaTheme))]
+    [DataRow(typeof(Revela.Themes.Lumina.Statistics.LuminaStatisticsExtension))]
+    [DataRow(typeof(Revela.Themes.Lumina.Calendar.LuminaCalendarExtension))]
+    public void Manifest_EmbeddedTheme_DeclaresNoVersionOfItsOwn(Type themeType)
+    {
+        var theme = (ITheme)Activator.CreateInstance(themeType)!;
+        using var stream = theme.GetFile("manifest.json")!;
+
+        var manifest = JsonNode.Parse(stream)!.AsObject();
+
+        Assert.IsFalse(manifest.ContainsKey("version"), "The package version is the theme version; a manifest version drifts.");
+    }
 
     [TestMethod]
     public void GetManifest_ReturnsLayoutTemplate()

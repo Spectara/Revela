@@ -1,6 +1,5 @@
 {
     "name": "Lumina Calendar",
-    "version": "1.0.0",
     "description": "Availability calendar extension for the Lumina theme",
     "author": "Spectara",
     "targetTheme": "Lumina",

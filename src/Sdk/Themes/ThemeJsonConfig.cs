@@ -22,7 +22,10 @@ public sealed class ThemeJsonConfig
     /// <summary>Theme display name.</summary>
     public string? Name { get; set; }
 
-    /// <summary>Theme version (SemVer).</summary>
+    /// <summary>
+    /// Theme version (SemVer) of a local theme in <c>themes/</c>. Embedded (packaged) themes
+    /// report their package version instead, so their manifest declares none.
+    /// </summary>
     public string? Version { get; set; }
 
     /// <summary>Theme description.</summary>

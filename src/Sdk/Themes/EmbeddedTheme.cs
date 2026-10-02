@@ -108,7 +108,7 @@ public abstract class EmbeddedTheme : ITheme
         {
             Id = assembly.GetName().Name ?? throw new InvalidOperationException("Theme assembly name is required"),
             Name = name,
-            Version = config.Version ?? "1.0.0",
+            Version = PackageVersion.FromAssembly(assembly),
             Description = config.Description ?? string.Empty,
             Author = config.Author ?? "Unknown"
         };
