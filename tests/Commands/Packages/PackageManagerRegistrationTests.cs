@@ -138,18 +138,17 @@ public sealed class PackageManagerRegistrationTests
         if (cancel)
         {
             var thrown = await Assert.ThrowsAsync<OperationCanceledException>(() => installer.InstallFromNupkgAsync(
-                nupkgPath, targetDir, nupkgPath, cancellation.Token));
+                nupkgPath, targetDir, cancellation.Token));
             Assert.AreSame(failure, thrown);
             Assert.AreEqual(cancellation.Token, thrown.CancellationToken);
         }
         else
         {
-            Assert.IsNull(await installer.InstallFromNupkgAsync(nupkgPath, targetDir, nupkgPath, cancellation.Token));
+            Assert.IsNull(await installer.InstallFromNupkgAsync(nupkgPath, targetDir, cancellation.Token));
         }
 
         var installedPath = Path.Combine(targetDir, PackageId);
         CollectionAssert.AreEqual(new byte[] { 1, 2, 3, 4 }, await File.ReadAllBytesAsync(Path.Combine(installedPath, $"{PackageId}.dll")));
-        Assert.IsTrue(File.Exists(Path.Combine(installedPath, $"{PackageId}.meta.json")));
         CollectionAssert.AreEqual(original, await File.ReadAllBytesAsync(project.ProjectJsonPath));
         await configService.Received(1).UpdateProjectConfigAsync(
             Arg.Is<JsonObject>(patch => patch.Count == 1 && patch["dependencies"]!.AsObject().Count == 1 &&
@@ -199,7 +198,7 @@ public sealed class PackageManagerRegistrationTests
         var services = new ServiceCollection();
         services.AddSingleton(configService);
         services.AddSingleton(logger);
-        services.AddSingleton(new NupkgExtractor(NullLogger<NupkgExtractor>.Instance, TimeProvider.System));
+        services.AddSingleton(new NupkgExtractor(NullLogger<NupkgExtractor>.Instance));
         services.AddSingleton<PluginProjectService>();
         services.AddSingleton(Substitute.For<INuGetSourceManager>());
         services.AddSingleton(Substitute.For<IBuildInfo>());

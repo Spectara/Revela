@@ -92,6 +92,25 @@ public sealed class RefreshCommandTests
     }
 
     [TestMethod]
+    [DataRow("Spectara.Revela.Themes.Noir", "RevelaTheme")]
+    [DataRow("Spectara.Revela.Themes.Lumina.Statistics", "RevelaTheme")]
+    [DataRow("Spectara.Revela.Plugins.Source.OneDrive", "RevelaPlugin")]
+    public async Task ScanSourceAsync_RemoteResultWithoutPackageTypes_InfersTypeFromOfficialNamespace(string packageId, string expectedType)
+    {
+        var response = $$"""
+            { "totalHits": 1, "data": [{ "id": "{{packageId}}", "version": "1.0.0", "description": "No types", "authors": "Spectara", "verified": true }] }
+            """;
+        using var handler = new FeedHandler("https://feed.test/v3/index.json", response);
+        using var httpClient = new HttpClient(handler);
+        var source = new NuGetSource { Name = "nuget.org", Url = "https://feed.test/v3/index.json" };
+
+        var packages = await RefreshCommand.ScanSourceAsync(source, "built-in", httpClient, NullLogger.Instance, CancellationToken.None);
+
+        Assert.HasCount(1, packages);
+        CollectionAssert.AreEqual(new[] { expectedType }, packages[0].Types.ToArray());
+    }
+
+    [TestMethod]
     [DoNotParallelize]
     public async Task RefreshThenSearch_LocalFeed_SearchFindsRefreshedPackage()
     {
@@ -155,7 +174,7 @@ public sealed class RefreshCommandTests
     /// <summary>
     /// Serves a NuGet service index at <c>serviceIndexUrl</c> and a fixed search response.
     /// </summary>
-    private sealed class FeedHandler(string serviceIndexUrl) : HttpMessageHandler
+    private sealed class FeedHandler(string serviceIndexUrl, string searchResponse = SearchResponse) : HttpMessageHandler
     {
         public int RequestCount { get; private set; }
 
@@ -165,7 +184,7 @@ public sealed class RefreshCommandTests
             var url = request.RequestUri!.ToString();
             var content = url == serviceIndexUrl
                 ? $$"""{ "version": "3.0.0", "resources": [{ "@id": "{{SearchEndpoint}}", "@type": "SearchQueryService/3.5.0" }] }"""
-                : url.StartsWith(SearchEndpoint, StringComparison.Ordinal) ? SearchResponse : null;
+                : url.StartsWith(SearchEndpoint, StringComparison.Ordinal) ? searchResponse : null;
 
             return Task.FromResult(content is null
                 ? new HttpResponseMessage(HttpStatusCode.NotFound)

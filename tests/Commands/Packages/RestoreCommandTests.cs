@@ -387,7 +387,7 @@ public sealed class RestoreCommandTests
         sourceManager ??= Substitute.For<INuGetSourceManager>();
         using var host = RevelaTestHost.Build(project.RootPath, services => services.AddRevelaCommands());
         var services = new ServiceCollection();
-        services.AddSingleton(new NupkgExtractor(NullLogger<NupkgExtractor>.Instance, TimeProvider.System));
+        services.AddSingleton(new NupkgExtractor(NullLogger<NupkgExtractor>.Instance));
         services.AddSingleton(new PluginProjectService(
             configService ?? host.Services.GetRequiredService<IConfigService>(), NullLogger<PluginProjectService>.Instance));
         services.AddSingleton<ILogger<PackageManager>>(NullLogger<PackageManager>.Instance);
@@ -452,20 +452,11 @@ public sealed class RestoreCommandTests
         public async Task<List<(NuGetSource Source, string Location)>> GetAllSourcesWithLocationAsync(CancellationToken cancellationToken = default) =>
             [.. (await inner.GetAllSourcesWithLocationAsync(cancellationToken)).Where(s => s.Source.Name != "nuget.org")];
 
-        public Task<List<NuGetSource>> GetAllSourcesAsync(CancellationToken cancellationToken = default) =>
-            LoadSourcesAsync(cancellationToken);
-
         public IReadOnlyList<NuGetSource> GetProjectFeeds() => inner.GetProjectFeeds();
 
         public IReadOnlyList<NuGetSource> GetPendingProjectFeeds() => inner.GetPendingProjectFeeds();
 
         public void ApproveProjectFeeds() => inner.ApproveProjectFeeds();
-
-        public Task AddSourceAsync(string name, string url, CancellationToken cancellationToken = default) =>
-            inner.AddSourceAsync(name, url, cancellationToken);
-
-        public Task<bool> RemoveSourceAsync(string name, CancellationToken cancellationToken = default) =>
-            inner.RemoveSourceAsync(name, cancellationToken);
     }
 
     private sealed class RejectingHttpMessageHandler : HttpMessageHandler

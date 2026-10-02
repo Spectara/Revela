@@ -17,9 +17,6 @@ internal static partial class PackageManagerLogging
     [LoggerMessage(Level = LogLevel.Error, Message = "Failed to install plugin {PackageId}")]
     public static partial void InstallFailed(this ILogger<PackageManager> logger, Exception exception, string packageId);
 
-    [LoggerMessage(Level = LogLevel.Information, Message = "Updating plugin: {PackageId}")]
-    public static partial void UpdatingPlugin(this ILogger<PackageManager> logger, string packageId);
-
     [LoggerMessage(Level = LogLevel.Information, Message = "Uninstalling plugin: {PackageId}")]
     public static partial void UninstallingPlugin(this ILogger<PackageManager> logger, string packageId);
 

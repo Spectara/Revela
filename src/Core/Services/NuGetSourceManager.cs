@@ -63,10 +63,6 @@ public sealed partial class NuGetSourceManager(
         Task.FromResult(BuildSourceList().Where(IsUsable).ToList());
 
     /// <inheritdoc/>
-    public Task<List<NuGetSource>> GetAllSourcesAsync(CancellationToken cancellationToken = default) =>
-        LoadSourcesAsync(cancellationToken);
-
-    /// <inheritdoc/>
     public IReadOnlyList<NuGetSource> GetProjectFeeds() =>
         [.. BuildSourceList().Select(s => s.Source).Where(s => s.IsProjectFeed)];
 
@@ -109,7 +105,7 @@ public sealed partial class NuGetSourceManager(
         var globalFeeds = ReadFeeds(globalConfigManager.ConfigFilePath) ?? [];
         var projectFeeds = projectPath is null ? [] : ReadFeeds(projectPath);
 
-        // Merged feeds (revela.json → project.json → environment); hot-reload via IOptionsMonitor
+        // Merged feeds (revela.json → project.json → environment), read once per call
         foreach (var (name, url) in dependenciesConfig.CurrentValue.Feeds)
         {
             // Fail safe: when project.json cannot be read, every feed not declared globally counts as a project feed.
@@ -181,20 +177,6 @@ public sealed partial class NuGetSourceManager(
         }
 
         return feeds;
-    }
-
-    /// <inheritdoc/>
-    public Task AddSourceAsync(string name, string url, CancellationToken cancellationToken = default) => globalConfigManager.AddFeedAsync(name, url, cancellationToken);
-
-    /// <inheritdoc/>
-    public Task<bool> RemoveSourceAsync(string name, CancellationToken cancellationToken = default)
-    {
-        if (name.Equals("nuget.org", StringComparison.OrdinalIgnoreCase))
-        {
-            throw new InvalidOperationException("Cannot remove built-in source 'nuget.org'");
-        }
-
-        return globalConfigManager.RemoveFeedAsync(name, cancellationToken);
     }
 
     /// <summary>

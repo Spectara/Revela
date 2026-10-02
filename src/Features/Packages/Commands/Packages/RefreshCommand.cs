@@ -160,7 +160,7 @@ internal sealed partial class RefreshCommand(
                                     // Fallback to inference if no types defined
                                     if (packageTypes.Count == 0)
                                     {
-                                        packageTypes = InferPackageTypes(reader.GetId());
+                                        packageTypes = [.. PackageIds.InferPackageTypes(packageId)];
                                     }
 
                                     packages.Add(new PackageIndexEntry
@@ -242,7 +242,7 @@ internal sealed partial class RefreshCommand(
                         // Fallback to inference if no types in response
                         if (packageTypes.Count == 0)
                         {
-                            packageTypes = InferPackageTypes(result.Id ?? "");
+                            packageTypes = [.. PackageIds.InferPackageTypes(result.Id ?? "")];
                         }
 
                         packages.Add(new PackageIndexEntry
@@ -260,31 +260,6 @@ internal sealed partial class RefreshCommand(
         }
 
         return packages;
-    }
-
-    /// <summary>
-    /// Infers package types from naming convention.
-    /// </summary>
-    /// <remarks>
-    /// Fallback when packageTypes is not available in API response.
-    /// - Spectara.Revela.Themes.* → RevelaTheme
-    /// - Spectara.Revela.Plugins.* → RevelaPlugin
-    /// </remarks>
-    private static List<string> InferPackageTypes(string packageId)
-    {
-        var types = new List<string>();
-
-        if (packageId.Contains(".Theme.", StringComparison.OrdinalIgnoreCase))
-        {
-            types.Add("RevelaTheme");
-        }
-
-        if (packageId.Contains(".Plugin.", StringComparison.OrdinalIgnoreCase))
-        {
-            types.Add("RevelaPlugin");
-        }
-
-        return types;
     }
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Refreshing package index")]

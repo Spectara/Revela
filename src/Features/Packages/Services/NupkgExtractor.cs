@@ -1,37 +1,29 @@
 using System.IO.Compression;
-using System.Text.Json;
-using System.Text.Json.Serialization;
 using NuGet.Packaging;
-using NuGet.Packaging.Core;
 using Spectara.Revela.Core.Logging;
-using Spectara.Revela.Core.Models;
 using Spectara.Revela.Sdk.Abstractions;
 
 namespace Spectara.Revela.Core;
 
 /// <summary>
-/// Extracts NuGet packages (.nupkg) to the plugin directory and creates metadata files.
+/// Extracts NuGet packages (.nupkg) to the plugin directory.
 /// </summary>
 /// <remarks>
 /// Handles the low-level extraction of plugin files from .nupkg archives.
 /// Each plugin is installed into its own subdirectory for isolation.
-/// Metadata is persisted as {PackageId}.meta.json alongside the DLLs.
 /// </remarks>
-public sealed class NupkgExtractor(ILogger<NupkgExtractor> logger, TimeProvider timeProvider)
+public sealed class NupkgExtractor(ILogger<NupkgExtractor> logger)
 {
-
     /// <summary>
-    /// Extracts a .nupkg file to the target directory and creates metadata.
+    /// Extracts a .nupkg file into its own subdirectory of the target directory.
     /// </summary>
     /// <param name="nupkgPath">Path to the .nupkg file.</param>
     /// <param name="targetDir">Root plugin directory (e.g., plugins/).</param>
-    /// <param name="installedFrom">Source URL or file path for metadata tracking.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>The installed package (ID, exact version, nuspec package types), or null if extraction failed.</returns>
     public async Task<InstalledPackage?> ExtractAsync(
         string nupkgPath,
         string targetDir,
-        string installedFrom,
         CancellationToken cancellationToken)
     {
         using var packageReader = new PackageArchiveReader(nupkgPath);
@@ -117,71 +109,10 @@ public sealed class NupkgExtractor(ILogger<NupkgExtractor> logger, TimeProvider 
             return null;
         }
 
-        // Create plugin.meta.json with metadata from .nuspec (in plugin subfolder)
-        var packageTypes = await CreateMetadataAsync(packageReader, identity, installedFrom, pluginDir, cancellationToken);
+        var nuspecReader = await packageReader.GetNuspecReaderAsync(cancellationToken);
+        var packageTypes = nuspecReader.GetPackageTypes().Select(pt => pt.Name).ToList();
 
         logger.PackageExtracted(identity.Id, fileCount);
         return new InstalledPackage(identity.Id, identity.Version.ToNormalizedString(), packageTypes);
     }
-
-    private async Task<IReadOnlyList<string>> CreateMetadataAsync(
-        PackageArchiveReader packageReader,
-        PackageIdentity identity,
-        string installedFrom,
-        string targetDir,
-        CancellationToken cancellationToken)
-    {
-        using var nuspecStream = await packageReader.GetNuspecAsync(cancellationToken);
-        var nuspecReader = new NuspecReader(nuspecStream);
-
-        // Parse authors
-        var authors = nuspecReader.GetAuthors()?.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-                     ?? [];
-
-        // Parse package types (e.g., RevelaPlugin, RevelaTheme)
-        var packageTypes = nuspecReader.GetPackageTypes()
-            .Select(pt => pt.Name)
-            .ToList();
-
-        // Parse dependencies
-        var dependencyGroups = await packageReader.GetPackageDependenciesAsync(cancellationToken);
-        var dependencies = dependencyGroups
-            .SelectMany(g => g.Packages)
-            .ToDictionary(d => d.Id, d => d.VersionRange.MinVersion?.ToString() ?? "*");
-
-        // Determine source type
-        var source = installedFrom.StartsWith("http", StringComparison.OrdinalIgnoreCase) ? "url"
-                   : File.Exists(installedFrom) ? "nupkg"
-                   : "nuget";
-
-        var metadata = new InstalledPluginInfo
-        {
-            Name = identity.Id,
-            Version = identity.Version.ToString(),
-            Source = source,
-            InstalledFrom = installedFrom,
-            InstalledAt = timeProvider.GetUtcNow().UtcDateTime.ToString("O"),
-            Authors = authors,
-            Description = nuspecReader.GetDescription(),
-            Dependencies = dependencies,
-            PackageTypes = packageTypes
-        };
-
-        // Write to plugin.meta.json
-        var metadataPath = Path.Combine(targetDir, $"{identity.Id}.meta.json");
-        await using var fileStream = File.Create(metadataPath);
-        await JsonSerializer.SerializeAsync(fileStream, metadata, InstalledPluginInfoJsonContext.Default.InstalledPluginInfo, cancellationToken);
-
-        logger.MetadataCreated(metadataPath);
-        return packageTypes;
-    }
 }
-
-/// <summary>
-/// Source-generated JSON serializer context for installed plugin metadata files.
-/// </summary>
-[JsonSerializable(typeof(InstalledPluginInfo))]
-[JsonSourceGenerationOptions(
-    WriteIndented = true,
-    DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull)]
-internal sealed partial class InstalledPluginInfoJsonContext : JsonSerializerContext;

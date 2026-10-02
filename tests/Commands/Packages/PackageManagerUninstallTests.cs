@@ -100,7 +100,7 @@ public sealed class PackageManagerUninstallTests
 
         return new PackageManager(
             httpClient,
-            new NupkgExtractor(NullLogger<NupkgExtractor>.Instance, TimeProvider.System),
+            new NupkgExtractor(NullLogger<NupkgExtractor>.Instance),
             new PluginProjectService(configService, NullLogger<PluginProjectService>.Instance),
             NullLogger<PackageManager>.Instance,
             Substitute.For<INuGetSourceManager>(),

@@ -58,7 +58,7 @@ internal sealed class PackageContext(
 
         if (!string.IsNullOrEmpty(parentPath))
         {
-            // Plugin wants a parent command (supports nested paths like "init source")
+            // Plugin wants a parent command (supports nested paths like "source onedrive")
             var parentCmd = GetOrCreateParentCommand(rootCommand, parentPath, onCommandRegistered);
 
             if (parentCmd.Subcommands.Any(sc => string.Equals(sc.Name, command.Name, StringComparison.Ordinal)))
@@ -123,11 +123,11 @@ internal sealed class PackageContext(
     }
 
     /// <summary>
-    /// Gets or creates a parent command, supporting nested paths like "init source".
+    /// Gets or creates a parent command, supporting nested paths like "source onedrive".
     /// </summary>
     private static Command GetOrCreateParentCommand(RootCommand root, string parentPath, CommandRegisteredCallback? onCommandRegistered)
     {
-        // Split path into segments: "init source" → ["init", "source"]
+        // Split path into segments: "source onedrive" → ["source", "onedrive"]
         var segments = parentPath.Split(' ', StringSplitOptions.RemoveEmptyEntries);
 
         Command current = root;
@@ -162,12 +162,7 @@ internal sealed class PackageContext(
     {
         return commandName switch
         {
-            // Parent commands that don't require project (setup/management)
-            "init" => ("Initialize project, sources, or plugins", 30, "Setup", false, false),
-
-            // Parent commands that require project (content operations)
             "source" => ("Image source providers", 20, "Content", true, false),
-            "deploy" => ("Deploy generated site", 55, "Build", true, false),
 
             // Default: require project
             _ => ($"{commandName} commands", 50, null, true, false)

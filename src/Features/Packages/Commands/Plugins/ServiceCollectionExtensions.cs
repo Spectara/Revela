@@ -27,9 +27,6 @@ internal static class ServiceCollectionExtensions
         services.AddTransient<NupkgExtractor>();
         services.AddTransient<PluginProjectService>();
 
-        // PackageSearchService for NuGet search (used directly by theme/plugin list commands)
-        services.AddTransient<PackageSearchService>();
-
         // PluginManager from Core with Typed HttpClient
         // Standard resilience handler provides: retry (3x), circuit breaker, timeout
         services.AddHttpClient<PackageManager>(client =>

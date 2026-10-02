@@ -1,13 +1,13 @@
-using Spectara.Revela.Core;
+using Spectara.Revela.Core.Services;
 
 namespace Spectara.Revela.Tests.Core.Services;
 
 /// <summary>
-/// Unit tests for <see cref="PackageSearchService"/> naming-convention inference.
+/// Unit tests for <see cref="PackageIds"/>.
 /// </summary>
 [TestClass]
 [TestCategory("Unit")]
-public sealed class PackageSearchServiceTests
+public sealed class PackageIdsTests
 {
     [TestMethod]
     [DataRow("Spectara.Revela.Plugins.Statistics")]
@@ -15,20 +15,21 @@ public sealed class PackageSearchServiceTests
     [DataRow("acme.revela.plugins.cool")]
     public void InferPackageTypes_PluginNaming_ReturnsRevelaPlugin(string packageId)
     {
-        var types = PackageSearchService.InferPackageTypes(packageId);
+        var types = PackageIds.InferPackageTypes(packageId);
 
-        Assert.Contains("RevelaPlugin", types);
+        CollectionAssert.AreEqual(new[] { PackageIds.PluginPackageType }, types.ToArray());
     }
 
     [TestMethod]
     [DataRow("Spectara.Revela.Themes.Lumina")]
+    [DataRow("Spectara.Revela.Themes.Lumina.Statistics")]
     [DataRow("YourName.Revela.Theme.Example")]
     [DataRow("acme.revela.themes.dark")]
     public void InferPackageTypes_ThemeNaming_ReturnsRevelaTheme(string packageId)
     {
-        var types = PackageSearchService.InferPackageTypes(packageId);
+        var types = PackageIds.InferPackageTypes(packageId);
 
-        Assert.Contains("RevelaTheme", types);
+        CollectionAssert.AreEqual(new[] { PackageIds.ThemePackageType }, types.ToArray());
     }
 
     [TestMethod]
@@ -37,16 +38,8 @@ public sealed class PackageSearchServiceTests
     [DataRow("Some.Random.Package")]
     public void InferPackageTypes_UnrelatedNaming_ReturnsEmpty(string packageId)
     {
-        var types = PackageSearchService.InferPackageTypes(packageId);
+        var types = PackageIds.InferPackageTypes(packageId);
 
         Assert.IsEmpty(types);
-    }
-
-    [TestMethod]
-    public void InferPackageTypes_PluginSegmentNotTheme_DoesNotReturnTheme()
-    {
-        var types = PackageSearchService.InferPackageTypes("Spectara.Revela.Plugins.Statistics");
-
-        Assert.DoesNotContain("RevelaTheme", types);
     }
 }

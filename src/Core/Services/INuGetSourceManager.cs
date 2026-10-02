@@ -26,11 +26,6 @@ public interface INuGetSourceManager
     Task<List<(NuGetSource Source, string Location)>> GetAllSourcesWithLocationAsync(CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Gets all usable sources including built-in
-    /// </summary>
-    Task<List<NuGetSource>> GetAllSourcesAsync(CancellationToken cancellationToken = default);
-
-    /// <summary>
     /// Gets the path of the project.json whose feeds are inspected, or <c>null</c> outside a project.
     /// </summary>
     string? ProjectConfigPath { get; }
@@ -49,21 +44,4 @@ public interface INuGetSourceManager
     /// Allows project feeds to be used as package sources for the rest of this process.
     /// </summary>
     void ApproveProjectFeeds();
-
-    /// <summary>
-    /// Adds a new NuGet source
-    /// </summary>
-    /// <remarks>
-    /// The URL is stored as-is. NuGet sources can be either remote HTTP URLs
-    /// (<c>https://api.nuget.org/v3/index.json</c>) or local filesystem paths
-    /// (<c>./packages</c>) — relative paths remain relative for portability.
-    /// </remarks>
-    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1054:URI-like parameters should not be strings", Justification = "NuGet source URL can be local path OR remote URL")]
-    Task AddSourceAsync(string name, string url, CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Removes a NuGet source
-    /// </summary>
-    /// <exception cref="InvalidOperationException">Thrown when attempting to remove built-in source 'nuget.org'</exception>
-    Task<bool> RemoveSourceAsync(string name, CancellationToken cancellationToken = default);
 }
