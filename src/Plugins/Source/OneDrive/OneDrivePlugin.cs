@@ -123,13 +123,11 @@ public sealed partial class OneDrivePlugin : IPlugin
         yield return new CommandDescriptor(oneDriveCommand, ParentCommand: "source", Order: 20);
 
         // 2. Register config command → revela config onedrive
-        //    Direct under config with Source group for menu organization
-        //    Doesn't require project (config file is independent)
+        //    Writes project.json, so it requires a project (like every plugin config command)
         yield return new CommandDescriptor(
             configCommand.Create(),
             ParentCommand: "config",
             Order: 10,
-            Group: "Source",
-            RequiresProject: false);
+            Group: "Source");
     }
 }

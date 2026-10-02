@@ -1,4 +1,5 @@
 using System.CommandLine;
+using System.Globalization;
 using System.Text.Json;
 using Microsoft.Extensions.Options;
 using Polly.Timeout;
@@ -8,6 +9,7 @@ using Spectara.Revela.Plugins.Source.OneDrive.Models;
 using Spectara.Revela.Plugins.Source.OneDrive.Providers;
 using Spectara.Revela.Plugins.Source.OneDrive.Services;
 using Spectara.Revela.Sdk;
+using Spectara.Revela.Sdk.Hosting;
 using Spectara.Revela.Sdk.Output;
 using Spectara.Revela.Sdk.Services;
 using Spectre.Console;
@@ -26,7 +28,8 @@ internal sealed partial class OneDriveSourceCommand(
     ILogger<OneDriveSourceCommand> logger,
     SharedLinkProvider provider,
     IPathResolver pathResolver,
-    IOptionsMonitor<OneDrivePluginConfig> config)
+    IOptionsMonitor<OneDrivePluginConfig> config,
+    IConsoleCapabilities consoleCapabilities)
 {
     public Command Create()
     {
@@ -65,12 +68,18 @@ internal sealed partial class OneDriveSourceCommand(
             Hidden = true
         };
 
+        var yesOption = new Option<bool>("--yes", "-y")
+        {
+            Description = "Delete orphaned files without asking (required with --clean when not running in a terminal)"
+        };
+
         command.Options.Add(shareUrlOption);
         command.Options.Add(forceOption);
         command.Options.Add(dryRunOption);
         command.Options.Add(cleanOption);
         command.Options.Add(cleanAllOption);
         command.Options.Add(showFilesOption);
+        command.Options.Add(yesOption);
 
         command.SetAction(async (parseResult, cancellationToken) =>
         {
@@ -81,7 +90,8 @@ internal sealed partial class OneDriveSourceCommand(
                 DryRun = parseResult.GetValue(dryRunOption),
                 Clean = parseResult.GetValue(cleanOption),
                 CleanAll = parseResult.GetValue(cleanAllOption),
-                ShowFiles = parseResult.GetValue(showFilesOption)
+                ShowFiles = parseResult.GetValue(showFilesOption),
+                AssumeYes = parseResult.GetValue(yesOption)
             };
 
             return await ExecuteAsync(options, cancellationToken);
@@ -109,6 +119,17 @@ internal sealed partial class OneDriveSourceCommand(
                 return 1;
             }
 
+            // Deleting files needs a confirmation. Without a terminal it must be given up front.
+            var cleanup = options.Clean || options.CleanAll;
+            if (cleanup && !options.DryRun && !options.AssumeYes && !consoleCapabilities.IsInteractive)
+            {
+                ErrorPanels.ShowError(
+                    "Confirmation Required",
+                    "[yellow]--clean[/] deletes local files, and this console is not interactive, so Revela cannot ask.\n\n" +
+                    "Add [cyan]--yes[/] to confirm, or use [cyan]--dry-run[/] to preview the changes first.");
+                return 1;
+            }
+
             // Output to project's source directory
             var outputDirectory = pathResolver.SourcePath;
 
@@ -123,37 +144,24 @@ internal sealed partial class OneDriveSourceCommand(
             AnsiConsole.WriteLine();
 
             // Phase 1: Scan OneDrive structure
-            IReadOnlyList<OneDriveItem>? allItems = null;
-            var fileCount = 0;
-            var folderCount = 0;
-            await AnsiConsole.Status()
-                .Spinner(Spinner.Known.Dots)
-                .StartAsync("[yellow]Scanning OneDrive folder structure...[/]", async ctx =>
-                {
-                    allItems = await provider.ListItemsAsync(shareUrl, cancellationToken);
-
-                    // Count files and folders in single pass
-                    foreach (var item in allItems)
-                    {
-                        if (item.IsFolder)
-                        {
-                            folderCount++;
-                        }
-                        else
-                        {
-                            fileCount++;
-                        }
-                    }
-
-                    ctx.Status($"{OutputMarkers.Success} Found {fileCount} files in {folderCount} folders");
-                    await Task.Delay(500); // Brief pause to show result
-                });
-
-            if (allItems is null)
+            IReadOnlyList<OneDriveItem> allItems;
+            if (consoleCapabilities.CanRenderLive)
             {
-                throw new InvalidOperationException("Failed to scan OneDrive folder");
+                IReadOnlyList<OneDriveItem>? scanned = null;
+                await AnsiConsole.Status()
+                    .Spinner(Spinner.Known.Dots)
+                    .StartAsync("[yellow]Scanning OneDrive folder structure...[/]", async _ =>
+                        scanned = await provider.ListItemsAsync(shareUrl, cancellationToken));
+                allItems = scanned ?? throw new InvalidOperationException("Failed to scan OneDrive folder");
+            }
+            else
+            {
+                AnsiConsole.MarkupLine($"{OutputMarkers.Info} Scanning OneDrive folder structure...");
+                allItems = await provider.ListItemsAsync(shareUrl, cancellationToken);
             }
 
+            var folderCount = allItems.Count(item => item.IsFolder);
+            var fileCount = allItems.Count - folderCount;
             AnsiConsole.MarkupLine($"{OutputMarkers.Success} Scan complete: {fileCount} files, {folderCount} folders");
             AnsiConsole.WriteLine();
 
@@ -165,13 +173,13 @@ internal sealed partial class OneDriveSourceCommand(
                 outputDirectory,
                 includePatterns,
                 excludePatterns,
-                includeOrphans: options.Clean || options.CleanAll,
+                includeOrphans: cleanup,
                 includeAllOrphans: options.CleanAll,
                 forceRefresh: options.ForceRefresh
             );
 
             // Display analysis results
-            DisplayAnalysisResults(analysis, options.DryRun, options.Clean || options.CleanAll, options.ForceRefresh, options.ShowFiles);
+            DisplayAnalysisResults(analysis, options.DryRun, cleanup, options.ForceRefresh, options.ShowFiles);
 
             // Dry-run: Exit after showing preview
             if (options.DryRun)
@@ -185,11 +193,13 @@ internal sealed partial class OneDriveSourceCommand(
             }
 
             // Handle orphaned files if --clean specified
-            if ((options.Clean || options.CleanAll) && analysis.OrphanedFiles is not [])
+            if (cleanup && analysis.OrphanedFiles is not [])
             {
-#pragma warning disable CA2016 // Spectre.Console ConfirmAsync doesn't support CancellationToken
-                if (!await AnsiConsole.ConfirmAsync($"[yellow]Delete {analysis.OrphanedFiles.Count} orphaned file(s)?[/]"))
-#pragma warning restore CA2016
+                var confirmed = options.AssumeYes || await AnsiConsole.ConfirmAsync(
+                    $"[yellow]Delete {analysis.OrphanedFiles.Count} orphaned file(s)?[/]",
+                    defaultValue: true,
+                    cancellationToken);
+                if (!confirmed)
                 {
                     AnsiConsole.MarkupLine("[dim]Skipping cleanup.[/]");
                 }
@@ -212,40 +222,10 @@ internal sealed partial class OneDriveSourceCommand(
 
             // Phase 3: Download files with progress
             AnsiConsole.WriteLine();
-            var downloadedFiles = new List<string>();
-
-            await AnsiConsole.Progress()
-                .AutoClear(false)
-                .HideCompleted(false)
-                .Columns(
-                    new TaskDescriptionColumn(),
-                    new ProgressBarColumn(),
-                    new PercentageColumn(),
-                    new ElapsedTimeColumn(),
-                    new SpinnerColumn()
-                )
-                .StartAsync(async ctx =>
-                {
-                    var mainTask = ctx.AddTask($"[green]Downloading Changes[/]", maxValue: 100);
-                    mainTask.IsIndeterminate = true;
-
-                    var progress = new Progress<(int current, int total)>(report =>
-                    {
-                        if (mainTask.IsIndeterminate && report.total > 0)
-                        {
-                            mainTask.IsIndeterminate = false;
-                            mainTask.MaxValue = report.total;
-                        }
-                        mainTask.Value = report.current;
-                        mainTask.Description = $"[green]Downloading[/] ({report.current}/{report.total})";
-                    });
-
-                    // Only download items that need updating
-                    var itemsToDownload = analysis.ItemsToDownload.ToList();
-                    downloadedFiles = [.. await DownloadItemsAsync(itemsToDownload, outputDirectory, concurrency, progress, cancellationToken)];
-
-                    mainTask.StopTask();
-                });
+            var itemsToDownload = analysis.ItemsToDownload.ToList();
+            var downloadedFiles = consoleCapabilities.CanRenderLive
+                ? await DownloadWithProgressBarAsync(itemsToDownload, outputDirectory, concurrency, cancellationToken)
+                : await DownloadItemsAsync(itemsToDownload, outputDirectory, concurrency, new PlainProgressLines(), cancellationToken);
 
             // Success message
             var panel = new Panel(
@@ -275,6 +255,81 @@ internal sealed partial class OneDriveSourceCommand(
         {
             cancellationToken.ThrowIfCancellationRequested();
             return ReportFailure(ex.GetType().Name);
+        }
+    }
+
+    private async Task<List<string>> DownloadWithProgressBarAsync(
+        List<DownloadItem> itemsToDownload,
+        string outputDirectory,
+        int concurrency,
+        CancellationToken cancellationToken)
+    {
+        List<string> downloadedFiles = [];
+
+        await AnsiConsole.Progress()
+            .AutoClear(false)
+            .HideCompleted(false)
+            .Columns(
+                new TaskDescriptionColumn(),
+                new ProgressBarColumn(),
+                new PercentageColumn(),
+                new ElapsedTimeColumn(),
+                new SpinnerColumn()
+            )
+            .StartAsync(async ctx =>
+            {
+                var mainTask = ctx.AddTask("[green]Downloading Changes[/]", maxValue: 100);
+                mainTask.IsIndeterminate = true;
+
+                var progress = new Progress<(int current, int total)>(report =>
+                {
+                    if (mainTask.IsIndeterminate && report.total > 0)
+                    {
+                        mainTask.IsIndeterminate = false;
+                        mainTask.MaxValue = report.total;
+                    }
+                    mainTask.Value = report.current;
+                    mainTask.Description = $"[green]Downloading[/] ({report.current}/{report.total})";
+                });
+
+                downloadedFiles = await DownloadItemsAsync(itemsToDownload, outputDirectory, concurrency, progress, cancellationToken);
+
+                mainTask.StopTask();
+            });
+
+        return downloadedFiles;
+    }
+
+    /// <summary>
+    /// Plain progress for consoles that cannot render a live progress bar (CI, pipes):
+    /// one line per 10 % step. Downloads run in parallel, so steps are serialized and
+    /// only ever move forward.
+    /// </summary>
+    private sealed class PlainProgressLines : IProgress<(int current, int total)>
+    {
+        private readonly Lock gate = new();
+        private int lastStep = -1;
+
+        public void Report((int current, int total) value)
+        {
+            if (value.total <= 0)
+            {
+                return;
+            }
+
+            var step = value.current * 10 / value.total;
+            lock (gate)
+            {
+                if (step <= lastStep)
+                {
+                    return;
+                }
+
+                lastStep = step;
+                AnsiConsole.MarkupLine(string.Create(
+                    CultureInfo.InvariantCulture,
+                    $"[dim]Downloaded {value.current}/{value.total} file(s)[/]"));
+            }
         }
     }
 

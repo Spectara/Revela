@@ -6,6 +6,7 @@ using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Abstractions;
 using Spectara.Revela.Sdk.Configuration;
 using Spectara.Revela.Sdk.Configuration.Keys;
+using Spectara.Revela.Sdk.Hosting;
 using Spectara.Revela.Sdk.Validation;
 using Spectre.Console;
 
@@ -27,7 +28,8 @@ internal sealed partial class ConfigOneDriveCommand(
     ILogger<ConfigOneDriveCommand> logger,
     IConfigService configService,
     IOptionsMonitor<OneDrivePluginConfig> configMonitor,
-    IOptionsMonitor<PathsConfig> pathsConfig)
+    IOptionsMonitor<PathsConfig> pathsConfig,
+    IConsoleCapabilities consoleCapabilities)
 {
     /// <summary>
     /// Creates the command definition.
@@ -75,12 +77,21 @@ internal sealed partial class ConfigOneDriveCommand(
         // Check if plugin is already configured by looking for non-default ShareUrl
         var isFirstTime = string.IsNullOrEmpty(current.ShareUrl);
 
-        // Determine if interactive mode (no arguments provided)
-        var isInteractive = shareUrlArg is null;
+        // No arguments means: ask. That needs a terminal; never prompt in CI or pipes.
+        var promptForValues = shareUrlArg is null;
+        if (promptForValues && !consoleCapabilities.IsInteractive)
+        {
+            ErrorPanels.ShowError(
+                "Settings Required",
+                "This console is not interactive, so Revela cannot ask for the settings.\n\n" +
+                "Pass them as options, for example:\n" +
+                "  [cyan]revela config onedrive --share-url https://1drv.ms/f/...[/]");
+            return 1;
+        }
 
         string shareUrl;
 
-        if (isInteractive)
+        if (promptForValues)
         {
             AnsiConsole.MarkupLine("[cyan]Configure OneDrive Source Plugin[/]\n");
 
@@ -88,41 +99,19 @@ internal sealed partial class ConfigOneDriveCommand(
                 new TextPrompt<string>("OneDrive share URL:")
                     .DefaultValue(current.ShareUrl)
                     .AllowEmpty()
-                    .Validate(url =>
-                    {
-                        if (string.IsNullOrWhiteSpace(url))
-                        {
-                            return ValidationResult.Success(); // Allow empty for now
-                        }
-
-                        if (!Uri.TryCreate(url, UriKind.Absolute, out var uri))
-                        {
-                            return ValidationResult.Error("[red]Not a valid URL[/]");
-                        }
-
-                        if (!UrlSafety.IsSafeOutboundUrl(uri))
-                        {
-                            return ValidationResult.Error(
-                                "[red]URL must use https and may not point to loopback, private, or link-local addresses[/]");
-                        }
-
-                        // Host-equality check (Contains accepts attacker.com/?fake=1drv.ms)
-                        if (!string.Equals(uri.Host, "1drv.ms", StringComparison.OrdinalIgnoreCase) &&
-                            !string.Equals(uri.Host, "onedrive.live.com", StringComparison.OrdinalIgnoreCase))
-                        {
-                            return ValidationResult.Error(
-                                "[red]Host must be 1drv.ms or onedrive.live.com[/]");
-                        }
-
-                        return ValidationResult.Success();
-                    }));
+                    .Validate(url => ValidateShareUrl(url) is { } error
+                        ? ValidationResult.Error($"[red]{Markup.Escape(error)}[/]")
+                        : ValidationResult.Success()));
         }
         else
         {
-            // Use provided argument or current value
-            shareUrl = shareUrlArg ?? current.ShareUrl;
+            shareUrl = shareUrlArg!;
+            if (ValidateShareUrl(shareUrl) is { } error)
+            {
+                ErrorPanels.ShowError("Invalid Share URL", Markup.Escape(error));
+                return 1;
+            }
         }
-
         // Build config object (only include non-default values)
         var pluginConfig = new JsonObject();
 
@@ -155,6 +144,37 @@ internal sealed partial class ConfigOneDriveCommand(
         AnsiConsole.Write(panel);
 
         return 0;
+    }
+
+    /// <summary>
+    /// Returns why <paramref name="url"/> is not an acceptable share URL, or <see langword="null"/>
+    /// when it is acceptable. An empty value is accepted (no share configured yet).
+    /// </summary>
+    internal static string? ValidateShareUrl(string url)
+    {
+        if (string.IsNullOrWhiteSpace(url))
+        {
+            return null;
+        }
+
+        if (!Uri.TryCreate(url, UriKind.Absolute, out var uri))
+        {
+            return "Not a valid URL.";
+        }
+
+        if (!UrlSafety.IsSafeOutboundUrl(uri))
+        {
+            return "The URL must use https and may not point to loopback, private, or link-local addresses.";
+        }
+
+        // Host equality, not Contains: Contains would accept attacker.com/?fake=1drv.ms.
+        if (!string.Equals(uri.Host, "1drv.ms", StringComparison.OrdinalIgnoreCase) &&
+            !string.Equals(uri.Host, "onedrive.live.com", StringComparison.OrdinalIgnoreCase))
+        {
+            return "The host must be 1drv.ms or onedrive.live.com.";
+        }
+
+        return null;
     }
 
     [LoggerMessage(Level = LogLevel.Information, Message = "OneDrive config saved to {Path}")]

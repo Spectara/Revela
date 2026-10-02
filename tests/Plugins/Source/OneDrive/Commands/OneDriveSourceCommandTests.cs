@@ -9,6 +9,7 @@ using Spectara.Revela.Plugins.Source.OneDrive.Commands;
 using Spectara.Revela.Plugins.Source.OneDrive.Configuration;
 using Spectara.Revela.Plugins.Source.OneDrive.Providers;
 using Spectara.Revela.Plugins.Source.OneDrive.Services;
+using Spectara.Revela.Sdk.Hosting;
 using Spectara.Revela.Sdk.Services;
 using Spectara.Revela.Tests.Shared.Fixtures;
 using Spectara.Revela.Tests.Shared.Http;
@@ -410,6 +411,115 @@ public sealed class OneDriveSourceCommandTests : IDisposable
         }
     }
 
+    [TestMethod]
+    [DataRow("--clean")]
+    [DataRow("--clean-all")]
+    public async Task ExecuteAsync_CleanOnNonInteractiveConsoleWithoutYes_FailsBeforeAnyChange(string cleanOption)
+    {
+        using var project = TestProject.CreateMinimal();
+        var localFile = Path.Combine(project.SourcePath, "orphan.jpg");
+        await File.WriteAllTextAsync(localFile, "local bytes");
+        SetupEmptyRemoteFolder();
+        var command = CreateCommand(project.SourcePath).Create();
+
+        var (exitCode, output) = await InvokeAsync(command, ["--share-url", "https://1drv.ms/f/s!example", cleanOption]);
+
+        Assert.AreEqual(1, exitCode);
+        Assert.Contains("--yes", output, StringComparison.Ordinal);
+        Assert.IsEmpty(mockHandler.RecordedRequests);
+        Assert.AreEqual("local bytes", await File.ReadAllTextAsync(localFile));
+    }
+
+    [TestMethod]
+    public async Task ExecuteAsync_CleanWithYes_DeletesOrphansWithoutPrompting()
+    {
+        using var project = TestProject.CreateMinimal();
+        var localFile = Path.Combine(project.SourcePath, "orphan.jpg");
+        await File.WriteAllTextAsync(localFile, "local bytes");
+        SetupEmptyRemoteFolder();
+        var command = CreateCommand(project.SourcePath).Create();
+
+        var (exitCode, output) = await InvokeAsync(command, ["--share-url", "https://1drv.ms/f/s!example", "--clean", "--yes"]);
+
+        Assert.AreEqual(0, exitCode, output);
+        Assert.IsFalse(File.Exists(localFile));
+    }
+
+    [TestMethod]
+    public async Task ExecuteAsync_NonLiveConsole_WritesPlainScanAndDownloadProgress()
+    {
+        using var project = TestProject.CreateMinimal();
+        SetupRemoteFolderWithPhoto("https://contoso.sharepoint.com/download/photo.jpg");
+        var command = CreateCommand(project.SourcePath).Create();
+
+        var (exitCode, output) = await InvokeAsync(command, ["--share-url", "https://1drv.ms/f/s!example"]);
+
+        Assert.AreEqual(0, exitCode, output);
+        Assert.Contains("Scanning OneDrive folder structure", output, StringComparison.Ordinal);
+        Assert.Contains("Downloaded 1/1", output, StringComparison.Ordinal);
+        Assert.IsTrue(File.Exists(Path.Combine(project.SourcePath, "photo.jpg")));
+    }
+
+    private static async Task<(int ExitCode, string Output)> InvokeAsync(Command command, string[] args)
+    {
+        using var writer = new StringWriter(CultureInfo.InvariantCulture);
+        var previousConsole = AnsiConsole.Console;
+        var console = AnsiConsole.Create(new AnsiConsoleSettings
+        {
+            Ansi = AnsiSupport.No,
+            ColorSystem = ColorSystemSupport.NoColors,
+            Interactive = InteractionSupport.No,
+            Out = new AnsiConsoleOutput(writer)
+        });
+        console.Profile.Width = 240;
+
+        try
+        {
+            AnsiConsole.Console = console;
+            var exitCode = await command.Parse(args).InvokeAsync();
+            return (exitCode, writer.ToString());
+        }
+        finally
+        {
+            AnsiConsole.Console = previousConsole;
+        }
+    }
+
+    private void SetupRemoteFolderWithPhoto(string downloadUrl)
+    {
+        mockHandler.AddResponse(new Uri("https://api-badgerp.svc.ms/v1.0/token"), new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = JsonContent.Create(new { token = "test-token" })
+        });
+        mockHandler.AddPatternResponse(
+            url => url.Contains("/shares/u!", StringComparison.Ordinal) && url.Contains("/driveItem", StringComparison.Ordinal),
+            new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = JsonContent.Create(new { id = "folder123", parentReference = new { driveId = "drive123" } })
+            });
+        mockHandler.AddPatternResponse(url => url.Contains("/root/children", StringComparison.Ordinal), new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = JsonContent.Create(new
+            {
+                value = new object[]
+                {
+                    new Dictionary<string, object>
+                    {
+                        ["id"] = "photo123",
+                        ["name"] = "photo.jpg",
+                        ["size"] = 5,
+                        ["file"] = new { mimeType = "image/jpeg" },
+                        ["@content.downloadUrl"] = downloadUrl
+                    }
+                }
+            })
+        });
+        mockHandler.AddResponse(new Uri(downloadUrl), new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new ByteArrayContent("bytes"u8.ToArray())
+        });
+    }
+
     private void SetupEmptyRemoteFolder()
     {
         mockHandler.AddResponse(new Uri("https://api-badgerp.svc.ms/v1.0/token"), new HttpResponseMessage(HttpStatusCode.OK)
@@ -437,7 +547,8 @@ public sealed class OneDriveSourceCommandTests : IDisposable
         pathResolver.SourcePath.Returns(sourcePath ?? Path.GetTempPath());
         var configMonitor = Substitute.For<Microsoft.Extensions.Options.IOptionsMonitor<OneDrivePluginConfig>>();
         configMonitor.CurrentValue.Returns(new OneDrivePluginConfig());
+        var consoleCapabilities = Substitute.For<IConsoleCapabilities>();
 
-        return new OneDriveSourceCommand(commandLogger, provider, pathResolver, configMonitor);
+        return new OneDriveSourceCommand(commandLogger, provider, pathResolver, configMonitor, consoleCapabilities);
     }
 }

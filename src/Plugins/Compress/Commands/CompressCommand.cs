@@ -4,6 +4,7 @@ using System.Globalization;
 using Spectara.Revela.Plugins.Compress.Services;
 using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Artifacts;
+using Spectara.Revela.Sdk.Hosting;
 using Spectara.Revela.Sdk.Output;
 using Spectara.Revela.Sdk.Services;
 
@@ -28,7 +29,8 @@ internal sealed partial class CompressCommand(
     ILogger<CompressCommand> logger,
     IPathResolver pathResolver,
     CompressionService compressionService,
-    IArtifactLifecycle artifactLifecycle)
+    IArtifactLifecycle artifactLifecycle,
+    IConsoleCapabilities consoleCapabilities)
 {
     /// <summary>
     /// Creates the CLI command.
@@ -87,9 +89,28 @@ internal sealed partial class CompressCommand(
     {
         LogStartingCompression(logger, outputPath);
 
+        var stats = consoleCapabilities.CanRenderLive
+            ? await CompressWithProgressBarAsync(outputPath, ownership, cancellationToken)
+            : await compressionService.CompressDirectoryAsync(outputPath, ownership, new PlainProgressLines(), cancellationToken);
+        if (stats.TotalFiles == 0)
+        {
+            AnsiConsole.MarkupLine($"{OutputMarkers.Info} No files to compress");
+            return 0;
+        }
+
+        // Display success panel with statistics
+        DisplaySuccessPanel(stats);
+
+        return 0;
+    }
+
+    private async Task<CompressionStats> CompressWithProgressBarAsync(
+        string outputPath,
+        CompressedSiteOwnership ownership,
+        CancellationToken cancellationToken)
+    {
         CompressionStats? stats = null;
 
-        // Compress with progress display
         await AnsiConsole.Progress()
             .AutoClear(false)
             .HideCompleted(false)
@@ -123,16 +144,40 @@ internal sealed partial class CompressCommand(
                 task.Description = "[green]Compression complete[/]";
             });
 
-        if (stats is null || stats.TotalFiles == 0)
+        return stats ?? throw new InvalidOperationException("Compression finished without statistics.");
+    }
+
+    /// <summary>
+    /// Plain progress for consoles that cannot render a live progress bar (CI, pipes):
+    /// one line per 10 % step. Reports arrive from parallel workers, so steps are
+    /// serialized and only ever move forward.
+    /// </summary>
+    private sealed class PlainProgressLines : IProgress<(int current, int total, string fileName)>
+    {
+        private readonly Lock gate = new();
+        private int lastStep = -1;
+
+        public void Report((int current, int total, string fileName) value)
         {
-            AnsiConsole.MarkupLine($"{OutputMarkers.Info} No files to compress");
-            return 0;
+            if (value.total <= 0)
+            {
+                return;
+            }
+
+            var step = value.current * 10 / value.total;
+            lock (gate)
+            {
+                if (step <= lastStep)
+                {
+                    return;
+                }
+
+                lastStep = step;
+                AnsiConsole.MarkupLine(string.Create(
+                    CultureInfo.InvariantCulture,
+                    $"[dim]Compressed {value.current}/{value.total} file(s)[/]"));
+            }
         }
-
-        // Display success panel with statistics
-        DisplaySuccessPanel(stats);
-
-        return 0;
     }
 
     /// <summary>

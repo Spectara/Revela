@@ -5,7 +5,9 @@ using Microsoft.Extensions.Options;
 using Spectara.Revela.Plugins.Serve.Configuration;
 using Spectara.Revela.Sdk.Abstractions;
 using Spectara.Revela.Sdk.Configuration;
+using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Configuration.Keys;
+using Spectara.Revela.Sdk.Hosting;
 using Spectara.Revela.Sdk.Output;
 using Spectre.Console;
 
@@ -26,7 +28,8 @@ namespace Spectara.Revela.Plugins.Serve;
 internal sealed partial class ConfigServeCommand(
     ILogger<ConfigServeCommand> logger,
     IConfigService configService,
-    IOptionsMonitor<ServePluginConfig> configMonitor)
+    IOptionsMonitor<ServePluginConfig> configMonitor,
+    IConsoleCapabilities consoleCapabilities)
 {
     /// <summary>
     /// Creates the command definition.
@@ -63,13 +66,22 @@ internal sealed partial class ConfigServeCommand(
         // Read current values from IOptions
         var current = configMonitor.CurrentValue;
 
-        // Determine if interactive mode (no arguments provided)
-        var isInteractive = portArg is null && verboseArg is null;
+        // No arguments means: ask. That needs a terminal; never prompt in CI or pipes.
+        var promptForValues = portArg is null && verboseArg is null;
+        if (promptForValues && !consoleCapabilities.IsInteractive)
+        {
+            ErrorPanels.ShowError(
+                "Settings Required",
+                "This console is not interactive, so Revela cannot ask for the settings.\n\n" +
+                "Pass them as options, for example:\n" +
+                "  [cyan]revela config serve --port 8080 --verbose false[/]");
+            return 1;
+        }
 
         int port;
         bool verbose;
 
-        if (isInteractive)
+        if (promptForValues)
         {
             AnsiConsole.MarkupLine("[cyan]Configure Serve Plugin[/]\n");
 

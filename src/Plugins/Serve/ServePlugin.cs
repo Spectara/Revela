@@ -58,11 +58,10 @@ public sealed class ServePlugin : IPlugin
             Group: "Build");
 
         // 2. Register config command → revela config serve
-        //    Doesn't require project (config file is independent)
+        //    Writes project.json, so it requires a project (like every plugin config command)
         yield return new CommandDescriptor(
             configCommand.Create(),
             ParentCommand: "config",
-            Group: "Addons",
-            RequiresProject: false);
+            Group: "Addons");
     }
 }
