@@ -130,6 +130,159 @@ html {
   --lqip-stop40: 32%;
 }
 
+/* LQIP painting, based on https://leanrada.com/notes/css-only-lqip/: hard-light and
+   overlay layers with quadratic falloff blend into a smooth preview. River Flow thumbnails
+   paint a sticky ::before layer (geometry in the gallery rules); photo pages, lightboxes
+   and content images mark their <picture> with data-lqip and paint its background. */
+[data-lqip],
+.gallery>article[style*="--lqip:"]>picture::before,
+.gallery>article[style*="--lqip:"]>a>picture::before {
+  /* Layer order: 6× hard-light (full opacity), 6× overlay (50% opacity), 1× base color */
+  background-blend-mode:
+    hard-light, hard-light, hard-light, hard-light, hard-light, hard-light,
+    overlay, overlay, overlay, overlay, overlay, overlay,
+    normal;
+  background-image:
+    /* Hard-light layer: full opacity with quadratic falloff */
+    radial-gradient(50% 75% at 16.67% 25%,
+      rgb(from var(--lqip-ca-clr) r g b / 50%),
+      rgb(from var(--lqip-ca-clr) r g b / calc(50% - var(--lqip-stop10) / 2)) 10%,
+      rgb(from var(--lqip-ca-clr) r g b / calc(50% - var(--lqip-stop20) / 2)) 20%,
+      rgb(from var(--lqip-ca-clr) r g b / calc(50% - var(--lqip-stop30) / 2)) 30%,
+      rgb(from var(--lqip-ca-clr) r g b / calc(50% - var(--lqip-stop40) / 2)) 40%,
+      rgb(from var(--lqip-ca-clr) r g b / calc(var(--lqip-stop40) / 2)) 60%,
+      rgb(from var(--lqip-ca-clr) r g b / calc(var(--lqip-stop30) / 2)) 70%,
+      rgb(from var(--lqip-ca-clr) r g b / calc(var(--lqip-stop20) / 2)) 80%,
+      rgb(from var(--lqip-ca-clr) r g b / calc(var(--lqip-stop10) / 2)) 90%,
+      transparent),
+    radial-gradient(50% 75% at 83.33% 25%,
+      rgb(from var(--lqip-cc-clr) r g b / 50%),
+      rgb(from var(--lqip-cc-clr) r g b / calc(50% - var(--lqip-stop10) / 2)) 10%,
+      rgb(from var(--lqip-cc-clr) r g b / calc(50% - var(--lqip-stop20) / 2)) 20%,
+      rgb(from var(--lqip-cc-clr) r g b / calc(50% - var(--lqip-stop30) / 2)) 30%,
+      rgb(from var(--lqip-cc-clr) r g b / calc(50% - var(--lqip-stop40) / 2)) 40%,
+      rgb(from var(--lqip-cc-clr) r g b / calc(var(--lqip-stop40) / 2)) 60%,
+      rgb(from var(--lqip-cc-clr) r g b / calc(var(--lqip-stop30) / 2)) 70%,
+      rgb(from var(--lqip-cc-clr) r g b / calc(var(--lqip-stop20) / 2)) 80%,
+      rgb(from var(--lqip-cc-clr) r g b / calc(var(--lqip-stop10) / 2)) 90%,
+      transparent),
+    radial-gradient(50% 75% at 50% 25%,
+      rgb(from var(--lqip-cb-clr) r g b / 50%),
+      rgb(from var(--lqip-cb-clr) r g b / calc(50% - var(--lqip-stop10) / 2)) 10%,
+      rgb(from var(--lqip-cb-clr) r g b / calc(50% - var(--lqip-stop20) / 2)) 20%,
+      rgb(from var(--lqip-cb-clr) r g b / calc(50% - var(--lqip-stop30) / 2)) 30%,
+      rgb(from var(--lqip-cb-clr) r g b / calc(50% - var(--lqip-stop40) / 2)) 40%,
+      rgb(from var(--lqip-cb-clr) r g b / calc(var(--lqip-stop40) / 2)) 60%,
+      rgb(from var(--lqip-cb-clr) r g b / calc(var(--lqip-stop30) / 2)) 70%,
+      rgb(from var(--lqip-cb-clr) r g b / calc(var(--lqip-stop20) / 2)) 80%,
+      rgb(from var(--lqip-cb-clr) r g b / calc(var(--lqip-stop10) / 2)) 90%,
+      transparent),
+    radial-gradient(50% 75% at 16.67% 75%,
+      rgb(from var(--lqip-cd-clr) r g b / 50%),
+      rgb(from var(--lqip-cd-clr) r g b / calc(50% - var(--lqip-stop10) / 2)) 10%,
+      rgb(from var(--lqip-cd-clr) r g b / calc(50% - var(--lqip-stop20) / 2)) 20%,
+      rgb(from var(--lqip-cd-clr) r g b / calc(50% - var(--lqip-stop30) / 2)) 30%,
+      rgb(from var(--lqip-cd-clr) r g b / calc(50% - var(--lqip-stop40) / 2)) 40%,
+      rgb(from var(--lqip-cd-clr) r g b / calc(var(--lqip-stop40) / 2)) 60%,
+      rgb(from var(--lqip-cd-clr) r g b / calc(var(--lqip-stop30) / 2)) 70%,
+      rgb(from var(--lqip-cd-clr) r g b / calc(var(--lqip-stop20) / 2)) 80%,
+      rgb(from var(--lqip-cd-clr) r g b / calc(var(--lqip-stop10) / 2)) 90%,
+      transparent),
+    radial-gradient(50% 75% at 83.33% 75%,
+      rgb(from var(--lqip-cf-clr) r g b / 50%),
+      rgb(from var(--lqip-cf-clr) r g b / calc(50% - var(--lqip-stop10) / 2)) 10%,
+      rgb(from var(--lqip-cf-clr) r g b / calc(50% - var(--lqip-stop20) / 2)) 20%,
+      rgb(from var(--lqip-cf-clr) r g b / calc(50% - var(--lqip-stop30) / 2)) 30%,
+      rgb(from var(--lqip-cf-clr) r g b / calc(50% - var(--lqip-stop40) / 2)) 40%,
+      rgb(from var(--lqip-cf-clr) r g b / calc(var(--lqip-stop40) / 2)) 60%,
+      rgb(from var(--lqip-cf-clr) r g b / calc(var(--lqip-stop30) / 2)) 70%,
+      rgb(from var(--lqip-cf-clr) r g b / calc(var(--lqip-stop20) / 2)) 80%,
+      rgb(from var(--lqip-cf-clr) r g b / calc(var(--lqip-stop10) / 2)) 90%,
+      transparent),
+    radial-gradient(50% 75% at 50% 75%,
+      rgb(from var(--lqip-ce-clr) r g b / 50%),
+      rgb(from var(--lqip-ce-clr) r g b / calc(50% - var(--lqip-stop10) / 2)) 10%,
+      rgb(from var(--lqip-ce-clr) r g b / calc(50% - var(--lqip-stop20) / 2)) 20%,
+      rgb(from var(--lqip-ce-clr) r g b / calc(50% - var(--lqip-stop30) / 2)) 30%,
+      rgb(from var(--lqip-ce-clr) r g b / calc(50% - var(--lqip-stop40) / 2)) 40%,
+      rgb(from var(--lqip-ce-clr) r g b / calc(var(--lqip-stop40) / 2)) 60%,
+      rgb(from var(--lqip-ce-clr) r g b / calc(var(--lqip-stop30) / 2)) 70%,
+      rgb(from var(--lqip-ce-clr) r g b / calc(var(--lqip-stop20) / 2)) 80%,
+      rgb(from var(--lqip-ce-clr) r g b / calc(var(--lqip-stop10) / 2)) 90%,
+      transparent),
+    /* Overlay layer: full opacity gradients */
+    radial-gradient(50% 75% at 16.67% 25%,
+      var(--lqip-ca-clr),
+      rgb(from var(--lqip-ca-clr) r g b / calc(100% - var(--lqip-stop10))) 10%,
+      rgb(from var(--lqip-ca-clr) r g b / calc(100% - var(--lqip-stop20))) 20%,
+      rgb(from var(--lqip-ca-clr) r g b / calc(100% - var(--lqip-stop30))) 30%,
+      rgb(from var(--lqip-ca-clr) r g b / calc(100% - var(--lqip-stop40))) 40%,
+      rgb(from var(--lqip-ca-clr) r g b / calc(var(--lqip-stop40))) 60%,
+      rgb(from var(--lqip-ca-clr) r g b / calc(var(--lqip-stop30))) 70%,
+      rgb(from var(--lqip-ca-clr) r g b / calc(var(--lqip-stop20))) 80%,
+      rgb(from var(--lqip-ca-clr) r g b / calc(var(--lqip-stop10))) 90%,
+      transparent),
+    radial-gradient(50% 75% at 50% 25%,
+      var(--lqip-cb-clr),
+      rgb(from var(--lqip-cb-clr) r g b / calc(100% - var(--lqip-stop10))) 10%,
+      rgb(from var(--lqip-cb-clr) r g b / calc(100% - var(--lqip-stop20))) 20%,
+      rgb(from var(--lqip-cb-clr) r g b / calc(100% - var(--lqip-stop30))) 30%,
+      rgb(from var(--lqip-cb-clr) r g b / calc(100% - var(--lqip-stop40))) 40%,
+      rgb(from var(--lqip-cb-clr) r g b / calc(var(--lqip-stop40))) 60%,
+      rgb(from var(--lqip-cb-clr) r g b / calc(var(--lqip-stop30))) 70%,
+      rgb(from var(--lqip-cb-clr) r g b / calc(var(--lqip-stop20))) 80%,
+      rgb(from var(--lqip-cb-clr) r g b / calc(var(--lqip-stop10))) 90%,
+      transparent),
+    radial-gradient(50% 75% at 83.33% 25%,
+      var(--lqip-cc-clr),
+      rgb(from var(--lqip-cc-clr) r g b / calc(100% - var(--lqip-stop10))) 10%,
+      rgb(from var(--lqip-cc-clr) r g b / calc(100% - var(--lqip-stop20))) 20%,
+      rgb(from var(--lqip-cc-clr) r g b / calc(100% - var(--lqip-stop30))) 30%,
+      rgb(from var(--lqip-cc-clr) r g b / calc(100% - var(--lqip-stop40))) 40%,
+      rgb(from var(--lqip-cc-clr) r g b / calc(var(--lqip-stop40))) 60%,
+      rgb(from var(--lqip-cc-clr) r g b / calc(var(--lqip-stop30))) 70%,
+      rgb(from var(--lqip-cc-clr) r g b / calc(var(--lqip-stop20))) 80%,
+      rgb(from var(--lqip-cc-clr) r g b / calc(var(--lqip-stop10))) 90%,
+      transparent),
+    radial-gradient(50% 75% at 16.67% 75%,
+      var(--lqip-cd-clr),
+      rgb(from var(--lqip-cd-clr) r g b / calc(100% - var(--lqip-stop10))) 10%,
+      rgb(from var(--lqip-cd-clr) r g b / calc(100% - var(--lqip-stop20))) 20%,
+      rgb(from var(--lqip-cd-clr) r g b / calc(100% - var(--lqip-stop30))) 30%,
+      rgb(from var(--lqip-cd-clr) r g b / calc(100% - var(--lqip-stop40))) 40%,
+      rgb(from var(--lqip-cd-clr) r g b / calc(var(--lqip-stop40))) 60%,
+      rgb(from var(--lqip-cd-clr) r g b / calc(var(--lqip-stop30))) 70%,
+      rgb(from var(--lqip-cd-clr) r g b / calc(var(--lqip-stop20))) 80%,
+      rgb(from var(--lqip-cd-clr) r g b / calc(var(--lqip-stop10))) 90%,
+      transparent),
+    radial-gradient(50% 75% at 50% 75%,
+      var(--lqip-ce-clr),
+      rgb(from var(--lqip-ce-clr) r g b / calc(100% - var(--lqip-stop10))) 10%,
+      rgb(from var(--lqip-ce-clr) r g b / calc(100% - var(--lqip-stop20))) 20%,
+      rgb(from var(--lqip-ce-clr) r g b / calc(100% - var(--lqip-stop30))) 30%,
+      rgb(from var(--lqip-ce-clr) r g b / calc(100% - var(--lqip-stop40))) 40%,
+      rgb(from var(--lqip-ce-clr) r g b / calc(var(--lqip-stop40))) 60%,
+      rgb(from var(--lqip-ce-clr) r g b / calc(var(--lqip-stop30))) 70%,
+      rgb(from var(--lqip-ce-clr) r g b / calc(var(--lqip-stop20))) 80%,
+      rgb(from var(--lqip-ce-clr) r g b / calc(var(--lqip-stop10))) 90%,
+      transparent),
+    radial-gradient(50% 75% at 83.33% 75%,
+      var(--lqip-cf-clr),
+      rgb(from var(--lqip-cf-clr) r g b / calc(100% - var(--lqip-stop10))) 10%,
+      rgb(from var(--lqip-cf-clr) r g b / calc(100% - var(--lqip-stop20))) 20%,
+      rgb(from var(--lqip-cf-clr) r g b / calc(100% - var(--lqip-stop30))) 30%,
+      rgb(from var(--lqip-cf-clr) r g b / calc(100% - var(--lqip-stop40))) 40%,
+      rgb(from var(--lqip-cf-clr) r g b / calc(var(--lqip-stop40))) 60%,
+      rgb(from var(--lqip-cf-clr) r g b / calc(var(--lqip-stop30))) 70%,
+      rgb(from var(--lqip-cf-clr) r g b / calc(var(--lqip-stop20))) 80%,
+      rgb(from var(--lqip-cf-clr) r g b / calc(var(--lqip-stop10))) 90%,
+      transparent),
+    /* Base color layer */
+    linear-gradient(var(--lqip-base-clr), var(--lqip-base-clr));
+  background-repeat: no-repeat;
+  background-position: center;
+}
+
 html {
   scrollbar-gutter: stable;
   position: relative;
@@ -591,166 +744,20 @@ main {
         margin-bottom: max(-100% / (var(--width) / var(--height)), max(-100dvh, var(--height) * -1px));
       }
 
-      /* CSS-only LQIP: Full implementation from leanrada.com
-         Uses dual-layer approach with hard-light + overlay blend modes
-         and quadratic interpolation for smooth bilinear-like blending */
-      :where(&[style*="--lqip:"]>picture::before,
-        &[style*="--lqip:"]>a>picture::before,
-        [data-lqip]) {
+      /* River Flow placeholder: a sticky layer behind the image, one image tall and
+         pulled up so the image covers it once loaded. Painted by the LQIP rule above. */
+      &[style*="--lqip:"]>picture::before,
+      &[style*="--lqip:"]>a>picture::before {
         content: "";
         position: sticky;
-        top: calc(var(--space-xl) + var(--space-xs));
+        top: var(--header-height);
         z-index: 0;
         width: 100%;
         aspect-ratio: var(--width) / var(--height);
         margin-bottom: calc(-1 * (100% / (var(--width) / var(--height))));
         display: block;
         opacity: 0.8;
-        /* Layer order: 6× hard-light (full opacity), 6× overlay (50% opacity), 1× base color */
-        background-blend-mode:
-          hard-light, hard-light, hard-light, hard-light, hard-light, hard-light,
-          overlay, overlay, overlay, overlay, overlay, overlay,
-          normal;
-        background-image:
-          /* Hard-light layer: full opacity with quadratic falloff */
-          radial-gradient(50% 75% at 16.67% 25%,
-            rgb(from var(--lqip-ca-clr) r g b / 50%),
-            rgb(from var(--lqip-ca-clr) r g b / calc(50% - var(--lqip-stop10) / 2)) 10%,
-            rgb(from var(--lqip-ca-clr) r g b / calc(50% - var(--lqip-stop20) / 2)) 20%,
-            rgb(from var(--lqip-ca-clr) r g b / calc(50% - var(--lqip-stop30) / 2)) 30%,
-            rgb(from var(--lqip-ca-clr) r g b / calc(50% - var(--lqip-stop40) / 2)) 40%,
-            rgb(from var(--lqip-ca-clr) r g b / calc(var(--lqip-stop40) / 2)) 60%,
-            rgb(from var(--lqip-ca-clr) r g b / calc(var(--lqip-stop30) / 2)) 70%,
-            rgb(from var(--lqip-ca-clr) r g b / calc(var(--lqip-stop20) / 2)) 80%,
-            rgb(from var(--lqip-ca-clr) r g b / calc(var(--lqip-stop10) / 2)) 90%,
-            transparent),
-          radial-gradient(50% 75% at 83.33% 25%,
-            rgb(from var(--lqip-cc-clr) r g b / 50%),
-            rgb(from var(--lqip-cc-clr) r g b / calc(50% - var(--lqip-stop10) / 2)) 10%,
-            rgb(from var(--lqip-cc-clr) r g b / calc(50% - var(--lqip-stop20) / 2)) 20%,
-            rgb(from var(--lqip-cc-clr) r g b / calc(50% - var(--lqip-stop30) / 2)) 30%,
-            rgb(from var(--lqip-cc-clr) r g b / calc(50% - var(--lqip-stop40) / 2)) 40%,
-            rgb(from var(--lqip-cc-clr) r g b / calc(var(--lqip-stop40) / 2)) 60%,
-            rgb(from var(--lqip-cc-clr) r g b / calc(var(--lqip-stop30) / 2)) 70%,
-            rgb(from var(--lqip-cc-clr) r g b / calc(var(--lqip-stop20) / 2)) 80%,
-            rgb(from var(--lqip-cc-clr) r g b / calc(var(--lqip-stop10) / 2)) 90%,
-            transparent),
-          radial-gradient(50% 75% at 50% 25%,
-            rgb(from var(--lqip-cb-clr) r g b / 50%),
-            rgb(from var(--lqip-cb-clr) r g b / calc(50% - var(--lqip-stop10) / 2)) 10%,
-            rgb(from var(--lqip-cb-clr) r g b / calc(50% - var(--lqip-stop20) / 2)) 20%,
-            rgb(from var(--lqip-cb-clr) r g b / calc(50% - var(--lqip-stop30) / 2)) 30%,
-            rgb(from var(--lqip-cb-clr) r g b / calc(50% - var(--lqip-stop40) / 2)) 40%,
-            rgb(from var(--lqip-cb-clr) r g b / calc(var(--lqip-stop40) / 2)) 60%,
-            rgb(from var(--lqip-cb-clr) r g b / calc(var(--lqip-stop30) / 2)) 70%,
-            rgb(from var(--lqip-cb-clr) r g b / calc(var(--lqip-stop20) / 2)) 80%,
-            rgb(from var(--lqip-cb-clr) r g b / calc(var(--lqip-stop10) / 2)) 90%,
-            transparent),
-          radial-gradient(50% 75% at 16.67% 75%,
-            rgb(from var(--lqip-cd-clr) r g b / 50%),
-            rgb(from var(--lqip-cd-clr) r g b / calc(50% - var(--lqip-stop10) / 2)) 10%,
-            rgb(from var(--lqip-cd-clr) r g b / calc(50% - var(--lqip-stop20) / 2)) 20%,
-            rgb(from var(--lqip-cd-clr) r g b / calc(50% - var(--lqip-stop30) / 2)) 30%,
-            rgb(from var(--lqip-cd-clr) r g b / calc(50% - var(--lqip-stop40) / 2)) 40%,
-            rgb(from var(--lqip-cd-clr) r g b / calc(var(--lqip-stop40) / 2)) 60%,
-            rgb(from var(--lqip-cd-clr) r g b / calc(var(--lqip-stop30) / 2)) 70%,
-            rgb(from var(--lqip-cd-clr) r g b / calc(var(--lqip-stop20) / 2)) 80%,
-            rgb(from var(--lqip-cd-clr) r g b / calc(var(--lqip-stop10) / 2)) 90%,
-            transparent),
-          radial-gradient(50% 75% at 83.33% 75%,
-            rgb(from var(--lqip-cf-clr) r g b / 50%),
-            rgb(from var(--lqip-cf-clr) r g b / calc(50% - var(--lqip-stop10) / 2)) 10%,
-            rgb(from var(--lqip-cf-clr) r g b / calc(50% - var(--lqip-stop20) / 2)) 20%,
-            rgb(from var(--lqip-cf-clr) r g b / calc(50% - var(--lqip-stop30) / 2)) 30%,
-            rgb(from var(--lqip-cf-clr) r g b / calc(50% - var(--lqip-stop40) / 2)) 40%,
-            rgb(from var(--lqip-cf-clr) r g b / calc(var(--lqip-stop40) / 2)) 60%,
-            rgb(from var(--lqip-cf-clr) r g b / calc(var(--lqip-stop30) / 2)) 70%,
-            rgb(from var(--lqip-cf-clr) r g b / calc(var(--lqip-stop20) / 2)) 80%,
-            rgb(from var(--lqip-cf-clr) r g b / calc(var(--lqip-stop10) / 2)) 90%,
-            transparent),
-          radial-gradient(50% 75% at 50% 75%,
-            rgb(from var(--lqip-ce-clr) r g b / 50%),
-            rgb(from var(--lqip-ce-clr) r g b / calc(50% - var(--lqip-stop10) / 2)) 10%,
-            rgb(from var(--lqip-ce-clr) r g b / calc(50% - var(--lqip-stop20) / 2)) 20%,
-            rgb(from var(--lqip-ce-clr) r g b / calc(50% - var(--lqip-stop30) / 2)) 30%,
-            rgb(from var(--lqip-ce-clr) r g b / calc(50% - var(--lqip-stop40) / 2)) 40%,
-            rgb(from var(--lqip-ce-clr) r g b / calc(var(--lqip-stop40) / 2)) 60%,
-            rgb(from var(--lqip-ce-clr) r g b / calc(var(--lqip-stop30) / 2)) 70%,
-            rgb(from var(--lqip-ce-clr) r g b / calc(var(--lqip-stop20) / 2)) 80%,
-            rgb(from var(--lqip-ce-clr) r g b / calc(var(--lqip-stop10) / 2)) 90%,
-            transparent),
-          /* Overlay layer: full opacity gradients */
-          radial-gradient(50% 75% at 16.67% 25%,
-            var(--lqip-ca-clr),
-            rgb(from var(--lqip-ca-clr) r g b / calc(100% - var(--lqip-stop10))) 10%,
-            rgb(from var(--lqip-ca-clr) r g b / calc(100% - var(--lqip-stop20))) 20%,
-            rgb(from var(--lqip-ca-clr) r g b / calc(100% - var(--lqip-stop30))) 30%,
-            rgb(from var(--lqip-ca-clr) r g b / calc(100% - var(--lqip-stop40))) 40%,
-            rgb(from var(--lqip-ca-clr) r g b / calc(var(--lqip-stop40))) 60%,
-            rgb(from var(--lqip-ca-clr) r g b / calc(var(--lqip-stop30))) 70%,
-            rgb(from var(--lqip-ca-clr) r g b / calc(var(--lqip-stop20))) 80%,
-            rgb(from var(--lqip-ca-clr) r g b / calc(var(--lqip-stop10))) 90%,
-            transparent),
-          radial-gradient(50% 75% at 50% 25%,
-            var(--lqip-cb-clr),
-            rgb(from var(--lqip-cb-clr) r g b / calc(100% - var(--lqip-stop10))) 10%,
-            rgb(from var(--lqip-cb-clr) r g b / calc(100% - var(--lqip-stop20))) 20%,
-            rgb(from var(--lqip-cb-clr) r g b / calc(100% - var(--lqip-stop30))) 30%,
-            rgb(from var(--lqip-cb-clr) r g b / calc(100% - var(--lqip-stop40))) 40%,
-            rgb(from var(--lqip-cb-clr) r g b / calc(var(--lqip-stop40))) 60%,
-            rgb(from var(--lqip-cb-clr) r g b / calc(var(--lqip-stop30))) 70%,
-            rgb(from var(--lqip-cb-clr) r g b / calc(var(--lqip-stop20))) 80%,
-            rgb(from var(--lqip-cb-clr) r g b / calc(var(--lqip-stop10))) 90%,
-            transparent),
-          radial-gradient(50% 75% at 83.33% 25%,
-            var(--lqip-cc-clr),
-            rgb(from var(--lqip-cc-clr) r g b / calc(100% - var(--lqip-stop10))) 10%,
-            rgb(from var(--lqip-cc-clr) r g b / calc(100% - var(--lqip-stop20))) 20%,
-            rgb(from var(--lqip-cc-clr) r g b / calc(100% - var(--lqip-stop30))) 30%,
-            rgb(from var(--lqip-cc-clr) r g b / calc(100% - var(--lqip-stop40))) 40%,
-            rgb(from var(--lqip-cc-clr) r g b / calc(var(--lqip-stop40))) 60%,
-            rgb(from var(--lqip-cc-clr) r g b / calc(var(--lqip-stop30))) 70%,
-            rgb(from var(--lqip-cc-clr) r g b / calc(var(--lqip-stop20))) 80%,
-            rgb(from var(--lqip-cc-clr) r g b / calc(var(--lqip-stop10))) 90%,
-            transparent),
-          radial-gradient(50% 75% at 16.67% 75%,
-            var(--lqip-cd-clr),
-            rgb(from var(--lqip-cd-clr) r g b / calc(100% - var(--lqip-stop10))) 10%,
-            rgb(from var(--lqip-cd-clr) r g b / calc(100% - var(--lqip-stop20))) 20%,
-            rgb(from var(--lqip-cd-clr) r g b / calc(100% - var(--lqip-stop30))) 30%,
-            rgb(from var(--lqip-cd-clr) r g b / calc(100% - var(--lqip-stop40))) 40%,
-            rgb(from var(--lqip-cd-clr) r g b / calc(var(--lqip-stop40))) 60%,
-            rgb(from var(--lqip-cd-clr) r g b / calc(var(--lqip-stop30))) 70%,
-            rgb(from var(--lqip-cd-clr) r g b / calc(var(--lqip-stop20))) 80%,
-            rgb(from var(--lqip-cd-clr) r g b / calc(var(--lqip-stop10))) 90%,
-            transparent),
-          radial-gradient(50% 75% at 50% 75%,
-            var(--lqip-ce-clr),
-            rgb(from var(--lqip-ce-clr) r g b / calc(100% - var(--lqip-stop10))) 10%,
-            rgb(from var(--lqip-ce-clr) r g b / calc(100% - var(--lqip-stop20))) 20%,
-            rgb(from var(--lqip-ce-clr) r g b / calc(100% - var(--lqip-stop30))) 30%,
-            rgb(from var(--lqip-ce-clr) r g b / calc(100% - var(--lqip-stop40))) 40%,
-            rgb(from var(--lqip-ce-clr) r g b / calc(var(--lqip-stop40))) 60%,
-            rgb(from var(--lqip-ce-clr) r g b / calc(var(--lqip-stop30))) 70%,
-            rgb(from var(--lqip-ce-clr) r g b / calc(var(--lqip-stop20))) 80%,
-            rgb(from var(--lqip-ce-clr) r g b / calc(var(--lqip-stop10))) 90%,
-            transparent),
-          radial-gradient(50% 75% at 83.33% 75%,
-            var(--lqip-cf-clr),
-            rgb(from var(--lqip-cf-clr) r g b / calc(100% - var(--lqip-stop10))) 10%,
-            rgb(from var(--lqip-cf-clr) r g b / calc(100% - var(--lqip-stop20))) 20%,
-            rgb(from var(--lqip-cf-clr) r g b / calc(100% - var(--lqip-stop30))) 30%,
-            rgb(from var(--lqip-cf-clr) r g b / calc(100% - var(--lqip-stop40))) 40%,
-            rgb(from var(--lqip-cf-clr) r g b / calc(var(--lqip-stop40))) 60%,
-            rgb(from var(--lqip-cf-clr) r g b / calc(var(--lqip-stop30))) 70%,
-            rgb(from var(--lqip-cf-clr) r g b / calc(var(--lqip-stop20))) 80%,
-            rgb(from var(--lqip-cf-clr) r g b / calc(var(--lqip-stop10))) 90%,
-            transparent),
-          /* Base color layer */
-          linear-gradient(var(--lqip-base-clr), var(--lqip-base-clr));
         background-size: calc(100% - 2px) calc(100% - 2px);
-        background-repeat: no-repeat;
-        background-position: center;
       }
 
       >picture>img,
@@ -823,10 +830,7 @@ main {
     justify-content: center;
     inline-size: 100%;
     block-size: calc(100dvh - var(--space-xl));
-    margin: 0;
-    aspect-ratio: auto;
     overflow: hidden;
-    opacity: 1;
     background-size:
       min(100%, calc((100dvh - var(--space-xl)) * var(--width) / var(--height))) min(100%, calc(100cqi * var(--height) / var(--width)));
 
