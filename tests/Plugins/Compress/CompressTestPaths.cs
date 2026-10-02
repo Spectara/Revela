@@ -15,10 +15,6 @@ internal static class CompressTestPaths
     public static string OwnershipRecord(this TestProject project) =>
         Path.Combine(project.StateDirectory(), "compress.json");
 
-    /// <summary>The record of earlier versions, inside the output (and so published).</summary>
-    public static string LegacyOwnershipRecord(this TestProject project) =>
-        Path.Combine(project.OutputPath, ".revela-compress.manifest");
-
     public static IOptions<ProjectEnvironment> Environment(this TestProject project) =>
         Options.Create(new ProjectEnvironment { Path = project.RootPath });
 }

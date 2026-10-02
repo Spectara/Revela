@@ -218,14 +218,15 @@ public sealed class ManifestServiceLifecycleTests
     }
 
     [TestMethod]
-    public async Task SaveAsync_LegacyCacheManifestWithProcessingState_LoadsAndMovesStateOut()
+    public async Task LoadAsync_ManifestWithRemovedMetaFields_LoadsAndSaveDropsThem()
     {
-        // Earlier builds kept the processing state in the version 5 manifest at .cache/manifest.json;
-        // the manifest moves to .revela/cache and keeps loading, the state moves to .revela/state.
+        // Version 5 manifests of earlier builds still carry processedImages and formatQualities.
+        // The model no longer knows them: they are ignored on load and gone after the next save.
         using var project = TestProject.Create();
-        var legacyDirectory = Path.Combine(project.RootPath, ".cache");
-        Directory.CreateDirectory(legacyDirectory);
-        await File.WriteAllTextAsync(Path.Combine(legacyDirectory, "manifest.json"), /*lang=json,strict*/ """
+        var cacheDirectory = Path.Combine(project.RootPath, ".revela", "cache");
+        Directory.CreateDirectory(cacheDirectory);
+        var manifestPath = Path.Combine(cacheDirectory, "manifest.json");
+        await File.WriteAllTextAsync(manifestPath, /*lang=json,strict*/ """
             {
               "_meta": {
                 "version": 5,
@@ -244,11 +245,10 @@ public sealed class ManifestServiceLifecycleTests
 
         Assert.AreEqual("DEF", manifest.ScanConfigHash);
         Assert.AreEqual("Site", manifest.Root?.Text);
-        var saved = await File.ReadAllTextAsync(Path.Combine(project.RootPath, ".revela", "cache", "manifest.json"));
+        var saved = await File.ReadAllTextAsync(manifestPath);
         Assert.DoesNotContain("processedImages", saved, StringComparison.Ordinal);
-        var state = await File.ReadAllTextAsync(Path.Combine(project.RootPath, ".revela", "state", "images.json"));
-        Assert.Contains("\"photos/a.jpg\"", state, StringComparison.Ordinal);
-        Assert.IsFalse(Directory.Exists(legacyDirectory));
+        Assert.DoesNotContain("formatQualities", saved, StringComparison.Ordinal);
+        Assert.IsFalse(Directory.Exists(Path.Combine(project.RootPath, ".revela", "state")), "Nothing is carried over into the image state.");
     }
 }
 

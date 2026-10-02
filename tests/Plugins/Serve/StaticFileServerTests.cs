@@ -515,7 +515,7 @@ public sealed class StaticFileServerTests
 
     [TestMethod]
     [TestCategory("Integration")]
-    [DataRow("/.revela-compress.manifest", DisplayName = "dot-file in root")]
+    [DataRow("/.env", DisplayName = "dot-file in root")]
     [DataRow("/.revela/state/compress.json", DisplayName = "file in dot-folder")]
     [DataRow("/assets/.env", DisplayName = "nested dot-file")]
     [DataRow("/assets/.git/config", DisplayName = "nested dot-folder")]

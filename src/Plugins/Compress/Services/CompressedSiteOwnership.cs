@@ -12,14 +12,11 @@ namespace Spectara.Revela.Plugins.Compress.Services;
 /// </summary>
 /// <remarks>
 /// The record lives in <c>.revela/state/compress.json</c> (<see cref="ProjectPaths.State"/>), not
-/// in the output, so it is never published. A record left in the output by earlier versions
-/// (<c>.revela-compress.manifest</c>) is moved there on open; without it, the sidecars it lists
-/// would count as unowned and compression would refuse to run.
+/// in the output, so it is never published.
 /// </remarks>
 internal sealed partial class CompressedSiteOwnership : IDisposable
 {
     private const string RecordFileName = "compress.json";
-    private const string LegacyRecordName = ".revela-compress.manifest";
     private const string Owner = "Spectara.Revela.Plugins.Compress";
     private static readonly SemaphoreSlim OperationGate = new(1, 1);
     private static readonly OwnershipJsonContext JsonContext = new(new JsonSerializerOptions
@@ -55,8 +52,6 @@ internal sealed partial class CompressedSiteOwnership : IDisposable
         await OperationGate.WaitAsync(cancellationToken);
         try
         {
-            await ownership.CarryOverLegacyRecordAsync(cancellationToken);
-
             var path = ownership.RecordPath();
             if (File.Exists(path))
             {
@@ -202,33 +197,6 @@ internal sealed partial class CompressedSiteOwnership : IDisposable
         {
             throw new IOException("Invalid compression ownership manifest.", exception);
         }
-    }
-
-    /// <summary>
-    /// Moves a record that earlier versions kept in the output to the state directory.
-    /// </summary>
-    /// <remarks>
-    /// An invalid legacy record fails the open and stays in place, like an invalid current
-    /// record. When a current record already exists, it wins and the legacy file is removed.
-    /// </remarks>
-    private async Task CarryOverLegacyRecordAsync(CancellationToken cancellationToken)
-    {
-        var legacyPath = SafePath(LegacyRecordName);
-        if (!File.Exists(legacyPath))
-        {
-            return;
-        }
-
-        if (!File.Exists(RecordPath()))
-        {
-            var bytes = await File.ReadAllBytesAsync(legacyPath, cancellationToken);
-            manifest = Parse(bytes);
-            Validate();
-            await WriteRecordAsync(bytes, overwrite: false, cancellationToken);
-        }
-
-        cancellationToken.ThrowIfCancellationRequested();
-        File.Delete(legacyPath);
     }
 
     private string RecordPath()

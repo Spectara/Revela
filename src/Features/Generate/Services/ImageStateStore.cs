@@ -29,8 +29,7 @@ internal sealed partial class ImageStateStore(
     /// <summary>The state schema version this Revela reads and writes.</summary>
     internal const int CurrentVersion = 1;
 
-    /// <summary>File name of the state, in <see cref="ProjectPaths.State"/>.</summary>
-    internal const string FileName = "images.json";
+    private const string FileName = "images.json";
 
     private readonly Lock stateLock = new();
     private Dictionary<string, ProcessedImage> images = new(StringComparer.Ordinal);
@@ -39,15 +38,11 @@ internal sealed partial class ImageStateStore(
     /// Loads the state of the current project, replacing what is held in memory.
     /// </summary>
     /// <remarks>
-    /// A state left in the legacy <c>.cache</c> folder is carried over first
-    /// (see <see cref="LegacyCacheCarryOver"/>).
     /// A missing, unreadable or other-version file yields an empty state.
     /// </remarks>
     public async Task LoadAsync(CancellationToken cancellationToken = default)
     {
-        var projectPath = projectEnvironment.Value.Path;
-        await LegacyCacheCarryOver.RunAsync(projectPath, logger, cancellationToken);
-        var loaded = await ReadAsync(GetStatePath(projectPath), logger, cancellationToken);
+        var loaded = await ReadAsync(GetStatePath(projectEnvironment.Value.Path), logger, cancellationToken);
 
         lock (stateLock)
         {
@@ -108,84 +103,8 @@ internal sealed partial class ImageStateStore(
         await WriteAsync(GetStatePath(projectEnvironment.Value.Path), snapshot, cancellationToken);
     }
 
-    /// <summary>
-    /// One-time carry-over of the processing state that earlier versions kept in the manifest
-    /// (<c>_meta.processedImages</c> and <c>_meta.formatQualities</c>).
-    /// </summary>
-    /// <remarks>
-    /// The caller ensures no state file exists yet. The manifest version is deliberately not
-    /// checked: a scan may already have discarded the manifest's tree, and each fingerprint
-    /// carries the pipeline version it is valid for. A manifest without that state writes nothing.
-    /// </remarks>
-    /// <exception cref="JsonException">The manifest is not valid JSON.</exception>
-    /// <exception cref="IOException">Reading the manifest or writing the state failed.</exception>
-    internal static async Task SeedFromManifestAsync(
-        string manifestPath,
-        string statePath,
-        ILogger logger,
-        CancellationToken cancellationToken)
-    {
-        if (!File.Exists(manifestPath))
-        {
-            return;
-        }
-
-        var seeded = await ReadLegacyStateAsync(manifestPath, cancellationToken);
-        if (seeded.Count == 0)
-        {
-            return;
-        }
-
-        await WriteAsync(statePath, seeded, cancellationToken);
-        LogStateSeeded(logger, seeded.Count, statePath);
-    }
-
-    /// <summary>
-    /// Gets the state file path of a project.
-    /// </summary>
-    internal static string GetStatePath(string projectPath) =>
+    private static string GetStatePath(string projectPath) =>
         Path.Combine(projectPath, ProjectPaths.State, FileName);
-
-    private static async Task<List<KeyValuePair<string, ProcessedImage>>> ReadLegacyStateAsync(
-        string manifestPath,
-        CancellationToken cancellationToken)
-    {
-        await using var stream = File.OpenRead(manifestPath);
-        using var document = await JsonDocument.ParseAsync(stream, cancellationToken: cancellationToken);
-
-        if (document.RootElement.ValueKind is not JsonValueKind.Object
-            || !document.RootElement.TryGetProperty("_meta", out var meta)
-            || meta.ValueKind is not JsonValueKind.Object
-            || !meta.TryGetProperty("processedImages", out var processed)
-            || processed.ValueKind is not JsonValueKind.Object)
-        {
-            return [];
-        }
-
-        var qualities = new Dictionary<string, int>(StringComparer.Ordinal);
-        if (meta.TryGetProperty("formatQualities", out var formatQualities)
-            && formatQualities.ValueKind is JsonValueKind.Object)
-        {
-            foreach (var format in formatQualities.EnumerateObject())
-            {
-                if (format.Value.TryGetInt32(out var quality))
-                {
-                    qualities[format.Name] = quality;
-                }
-            }
-        }
-
-        var seeded = new List<KeyValuePair<string, ProcessedImage>>();
-        foreach (var image in processed.EnumerateObject())
-        {
-            if (image.Value.ValueKind is JsonValueKind.String && image.Value.GetString() is { Length: > 0 } fingerprint)
-            {
-                seeded.Add(new(image.Name, new ProcessedImage { Fingerprint = fingerprint, Qualities = qualities }));
-            }
-        }
-
-        return seeded;
-    }
 
     private static async Task<Dictionary<string, ProcessedImage>> ReadAsync(
         string statePath,
@@ -272,9 +191,6 @@ internal sealed partial class ImageStateStore(
             // The leftover temporary file is overwritten by the next save.
         }
     }
-
-    [LoggerMessage(Level = LogLevel.Information, Message = "Carried over the processing state of {Count} images from the manifest to {Path}")]
-    private static partial void LogStateSeeded(ILogger logger, int count, string path);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Image state at {Path} has version {Version} (current: {CurrentVersion}); all images will be processed again")]
     private static partial void LogStateVersionIgnored(ILogger logger, string path, int version, int currentVersion);

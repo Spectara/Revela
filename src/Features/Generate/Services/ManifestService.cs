@@ -36,7 +36,7 @@ internal sealed partial class ManifestService(
     IOptions<ProjectEnvironment> projectEnvironment,
     TimeProvider timeProvider) : IManifestRepository
 {
-    internal const string ManifestFileName = "manifest.json";
+    private const string ManifestFileName = "manifest.json";
 
     private ImageManifest manifest = new();
 
@@ -163,9 +163,7 @@ internal sealed partial class ManifestService(
     /// <inheritdoc />
     public async Task LoadAsync(CancellationToken cancellationToken = default)
     {
-        var projectPath = projectEnvironment.Value.Path;
-        await LegacyCacheCarryOver.RunAsync(projectPath, logger, cancellationToken);
-        var loaded = await ReadAsync(GetManifestPath(projectPath), logger, cancellationToken);
+        var loaded = await ReadAsync(GetManifestPath(projectEnvironment.Value.Path), logger, cancellationToken);
         manifest = loaded ?? new ImageManifest();
         RebuildImageCache();
         if (loaded is not null)
@@ -257,13 +255,7 @@ internal sealed partial class ManifestService(
     /// <inheritdoc />
     public async Task SaveAsync(CancellationToken cancellationToken = default)
     {
-        var projectPath = projectEnvironment.Value.Path;
-
-        // A legacy .cache manifest may hold the last copy of the image processing state;
-        // carry it over before anything new is written.
-        await LegacyCacheCarryOver.RunAsync(projectPath, logger, cancellationToken);
-
-        var manifestPath = GetManifestPath(projectPath);
+        var manifestPath = GetManifestPath(projectEnvironment.Value.Path);
         Directory.CreateDirectory(Path.GetDirectoryName(manifestPath)!);
 
         var tempPath = manifestPath + ".tmp";

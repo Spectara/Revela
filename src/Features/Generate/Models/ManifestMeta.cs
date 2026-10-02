@@ -27,10 +27,8 @@ internal sealed record ManifestMeta
     /// <para>
     /// Image processing state is not part of the manifest: it lives in <c>.revela/state/images.json</c>
     /// with its own version (<see cref="Services.ImageStateStore"/>), so discarding the manifest
-    /// never re-encodes images. Version 5 manifests written by earlier builds (in <c>.cache</c>) still
-    /// carry <c>processedImages</c> and <c>formatQualities</c>; they are carried over once
-    /// (<see cref="Services.LegacyCacheCarryOver"/>) and otherwise ignored, which is why their
-    /// removal did not need a new version.
+    /// never re-encodes images. Unknown properties are ignored on load, so removing a field
+    /// does not need a new version.
     /// </para>
     /// </remarks>
     [JsonPropertyName("version")]
