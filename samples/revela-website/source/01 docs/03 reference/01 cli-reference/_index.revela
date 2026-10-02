@@ -62,7 +62,7 @@ revela clean all                     # output → images → cache → statistic
 revela clean output                  # Delete the output directory
 revela clean images                  # Delete unused image files (orphaned, old sizes/formats)
 revela clean images --dry-run        # Preview only (-d)
-revela clean cache                   # Delete the .cache directory (manifest)
+revela clean cache                   # Delete the .cache directory (scan manifest, image state; next build re-encodes all images)
 revela clean statistics              # Delete statistics JSON from the cache (Statistics plugin)
 revela clean calendar                # Delete calendar JSON from the cache (Calendar plugin)
 revela clean compress                # Delete .gz/.br files from the output (Compress plugin)
