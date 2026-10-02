@@ -18,7 +18,7 @@ Or configure specific settings directly:
 ```bash
 revela config theme --set Lumina
 revela config paths --source "D:\Photos" --output "dist"
-revela config image --formats avif:80,webp:85,jpg:90
+revela config image --formats avif:75,webp:85,jpg:90
 ```
 
 `revela config site` edits `site.json`. It is interactive and asks for each field the theme defines; keys the theme doesn't define (for example `language`) are kept.
@@ -45,7 +45,7 @@ revela config image --formats avif:80,webp:85,jpg:90
     "images": {
       "webp": 85,
       "jpg": 90,
-      "avif": 80
+      "avif": 75
     },
     "sorting": {
       "galleries": "asc",
@@ -107,7 +107,7 @@ Every Revela configuration file accepts a slightly relaxed JSON dialect, commonl
       // Quality per format (0 disables that format)
       "webp": 85,
       "jpg": 90,
-      "avif": 80,
+      "avif": 75,
     },
   },
 }

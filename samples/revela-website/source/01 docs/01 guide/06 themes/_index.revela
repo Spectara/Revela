@@ -393,7 +393,7 @@ Image **formats and quality** are a project setting, not a theme setting, so the
 ```json
 {
   "generate": {
-    "images": { "avif": 80, "webp": 85, "jpg": 90 }
+    "images": { "avif": 75, "webp": 85, "jpg": 90 }
   }
 }
 ```

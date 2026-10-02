@@ -13,7 +13,7 @@ Configure image formats and quality in `project.json`, or with `revela config im
 {
   "generate": {
     "images": {
-      "avif": 80,
+      "avif": 75,
       "webp": 85,
       "jpg": 90
     }
@@ -29,7 +29,7 @@ Configure image formats and quality in `project.json`, or with `revela config im
 Set a format to `0` (or leave it out) to disable it. The project wizard enables all three with the values above, and they are a good default: browsers pick the smallest format they support, and JPG remains the fallback. If builds take too long, see [Encoding Speed](#encoding-speed) before disabling AVIF, which is the slowest to encode.
 
 ```bash
-revela config image --formats avif:80,webp:85,jpg:90
+revela config image --formats avif:75,webp:85,jpg:90
 ```
 
 ## Image Sizes
@@ -137,38 +137,48 @@ The status line shows how many photos are finished per format, the processing ra
 
 ## Encoding Speed
 
-Almost all of the build time goes into encoding, and AVIF takes most of it: for a 25-megapixel
-photo with AVIF 80, WebP 85 and JPG 90, AVIF is over 90 % of the work, and the full-resolution
-image alone about half of the AVIF time. Two optional settings trade some file size or zoom
-detail for much faster builds; by default both are off.
+Almost all of the build time goes into encoding, and AVIF takes most of it, especially the
+full-resolution image. Revela's defaults are chosen for fast AVIF; three optional settings let
+you trade build time against file size or zoom detail.
 
 | Setting (`generate.images`) | Default | Effect |
 |---|---|---|
-| `avifEffort` | `4` | AVIF encoder effort, `0` (fastest) to `9` (smallest files) |
+| `avifEffort` | `2` | AVIF encoder effort, `0` (fastest) to `9` (smallest files) |
 | `webpEffort` | `4` | WebP encoder effort, `0` to `6` |
 | `maxSize` | `0` (off) | Largest image in pixels, measured like the theme sizes (the longest edge in Lumina) |
 | `maxDegreeOfParallelism` | automatic | Photos encoded at the same time |
 
-### Faster AVIF (`avifEffort`)
+### Why AVIF 75 at Effort 2
+
+The suggested AVIF quality is **75** and the default AVIF effort is **2**. In a side-by-side of
+four very detailed photos, AVIF 75 at effort 2 looked the same as the previous AVIF 80 at
+effort 4 and encoded about **7× faster**.
+
+- **Quality 75 instead of 80:** at 80, AVIF files were larger than WebP 85, which loses the
+  point of AVIF. At 75 they are about as large as WebP 85 on typical photos (33 random photos,
+  2560 px) and about 18 % smaller on the very detailed test photos, while measuring closer to
+  the original than WebP 85.
+- **Effort 2 instead of 4:** the encoder spends far less time searching for the smallest file.
+  A full build with AVIF, WebP and JPG took about **3.8× less time** (33 photos: 101 s → 27 s).
+  Files range from about 2 % smaller (very detailed photos) to about 15 % larger (typical photos)
+  than with effort 4 at the same quality.
+
+If file size matters more than build time, set a higher effort:
 
 ```json
 {
   "generate": {
     "images": {
-      "avif": 80,
-      "avifEffort": 2
+      "avif": 75,
+      "avifEffort": 4
     }
   }
 }
 ```
 
-Measured on 25-megapixel photos, effort `2` encodes AVIF about 8× faster, so a photo with all
-three formats needs about **3.5× less CPU time**. The AVIF files are **4–11 % larger** (the more
-detail and the larger the image, the more), and the quality is about the same. On a small
-server this turns hours into minutes. `webpEffort` works the same way for WebP; WebP is far
-less of the build time, so it matters less.
-
-Changing an effort re-encodes only that format's files, like a quality change.
+`avifEffort: 4` also keeps AVIF files that an earlier Revela encoded with effort 4. `webpEffort`
+works the same way for WebP; WebP is far less of the build time, so it matters less. Changing an
+effort re-encodes only that format's files, like a quality change.
 
 ### Limit the Largest Image (`maxSize`)
 
@@ -184,10 +194,9 @@ Changing an effort re-encodes only that format's files, like a quality change.
 
 Every photo normally also gets its full resolution, so the photo viewer can zoom to 100 %. With
 `maxSize`, photos larger than the limit get an image of that size instead; smaller photos keep
-their full resolution. `3840` (4K) needs about **25–35 % less time** per photo (more for larger
+their full resolution. `3840` (4K) needs about **20–35 % less time** per photo (more for larger
 photos), and the files of the largest image shrink accordingly, but zooming shows no more detail
-than 3840 pixels. Together with `avifEffort: 2`, a photo needs about 80 % less time than with
-the defaults.
+than 3840 pixels.
 
 Changing `maxSize` re-encodes the photos larger than the old or the new limit. The
 full-resolution files they had before are no longer used; `revela clean images` removes them.
@@ -288,7 +297,7 @@ The browser reconstructs this as radial gradients with blend modes, creating a b
 
 ### 🚀 Keep the Defaults
 
-AVIF 80, WebP 85 and JPG 90 give small files with a safe fallback. If encoding takes too long, lower `avifEffort` or set `maxSize` before you disable AVIF.
+AVIF 75, WebP 85 and JPG 90 give small files with a safe fallback. If encoding still takes too long, set `maxSize` before you disable AVIF.
 
 ### 🔄 Incremental Updates
 
