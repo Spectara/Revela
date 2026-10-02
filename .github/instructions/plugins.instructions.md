@@ -19,11 +19,12 @@ namespace Spectara.Revela.Plugins.MyFeature;
 
 public sealed class MyFeaturePlugin : IPlugin
 {
-    public PackageMetadata Metadata => new()
+    public PackageMetadata Metadata { get; } = new()
     {
         Id = "Spectara.Revela.Plugins.MyFeature",
         Name = "My Feature",
-        Version = "1.0.0",
+        // Built package version (no build metadata) — never hardcode it.
+        Version = PackageVersion.FromAssembly(typeof(MyFeaturePlugin).Assembly),
         Description = "What it does",
         Author = "Spectara"
     };
@@ -34,8 +35,8 @@ public sealed class MyFeaturePlugin : IPlugin
         // Configuration Binding Source Generator can intercept it (trim/AOT).
         services.AddOptions<MyFeatureConfig>()
             .BindConfiguration(MyFeatureConfig.Section);
-        // Trim/AOT-safe DataAnnotations validation via [OptionsValidator].
-        services.AddSingleton<IValidateOptions<MyFeatureConfig>, MyFeatureConfigValidator>();
+        // Trim/AOT-safe DataAnnotations validation via [OptionsValidator]; TryAddEnumerable keeps it idempotent.
+        services.TryAddEnumerable(ServiceDescriptor.Singleton<IValidateOptions<MyFeatureConfig>, MyFeatureConfigValidator>());
 
         services.TryAddTransient<MyService>();
         services.TryAddTransient<MyCommand>();
@@ -47,7 +48,7 @@ public sealed class MyFeaturePlugin : IPlugin
         var cmd = sp.GetRequiredService<MyCommand>();
         yield return new CommandDescriptor(
             cmd.Create(),
-            ParentCommand: "source",       // null = root, "source"/"generate"/"theme" common
+            ParentCommand: "source",       // null = root, "source"/"generate"/"clean"/"config" common
             Order: 30,
             Group: "Content",
             RequiresProject: true,
@@ -58,41 +59,20 @@ public sealed class MyFeaturePlugin : IPlugin
 }
 ```
 
-## CommandDescriptor — All 7 Parameters
+## CommandDescriptor — Parameters
 | Param | Meaning |
 |-------|---------|
 | `Command` | The `System.CommandLine.Command` instance (from `MyCommand.Create()`) |
-| `ParentCommand` | `null` = root level, `"source"`/`"generate"`/etc. = subcommand. Parent created automatically if missing. **Multi-level paths supported** (`"info plugins"` → `revela info plugins <name>`). |
-| `Order` | Sort order within parent (default 50; lower = earlier) |
+| `ParentCommand` | `null` = root level, `"source"`/`"generate"`/`"clean"`/`"config"` = subcommand. Parent created automatically if missing. Multi-level paths (`"<parent> <sub>"`) are supported. |
+| `Order` | Sort order within parent (default 50; lower = earlier). For pipeline steps also the execution order — use a named constant relative to `PipelineOrder`/`CleanPipelineOrder` (see below). |
 | `Group` | Display group label in interactive menu |
-| `RequiresProject` | `false` = available without `project.json` (e.g. `init`, `setup`) |
+| `RequiresProject` | `true` (default) = only inside a project. Keep `true` for anything that reads or writes `project.json`, including every `config <plugin>` command. `false` only for commands that work without a project (e.g. one-time setup commands, usually with `HideWhenProjectExists: true`). |
 | `HideWhenProjectExists` | `true` = hidden inside a project (e.g. setup wizards) |
-| `IsSequentialStep` | `true` = picked up by CLI `generate all` discovery. Pair with `IPipelineStep` for engine/MCP. |
-| `InlineInMenu` | Host-only flag (`info` command tree). Plugins should not need this. |
+| `IsSequentialStep` | `true` = picked up by CLI `generate all` / `clean all`. Pair with `IPipelineStep` for engine/MCP. |
+| `InlineInMenu` | Host-only menu flag. Plugins should not need this. |
 | `InlineDefaultActionLabel` | Required when `InlineInMenu = true`. Plugins should not need this. |
 
-## `info` Subcommands — Convention for Plugins
-Plugins **may** contribute one read-only diagnostic subcommand under
-`revela info plugins <plugin-name>` by registering with
-`ParentCommand: "info plugins"`. This is opt-in; nothing breaks if you skip it.
-
-```csharp
-yield return new CommandDescriptor(
-    myInfoCommand.Create(),
-    ParentCommand: "info plugins",
-    Order: 10);
-```
-
-Hard rules for `info` subcommands:
-- **Read-only.** No prompts, no writes, no network calls that mutate state.
-- **Compact.** Output sized for bug-report copy-paste — typically a single
-  Spectre `Panel` with key/value lines. No tables that scroll.
-- **Fast.** No long-running work; user expects a tap-and-read response.
-- **Safe without context.** Must not crash when invoked without an active
-  project (e.g. report "no project loaded" instead of throwing).
-- **No side effects on cache, auth, or files.** This is diagnostics, not
-  troubleshooting tooling. Use a dedicated `doctor` or `check` command if
-  you need active probing.
+Package listings are host-owned (`revela plugin list`, `revela theme list`); plugins don't add diagnostic subcommands under `info`. Use an `ICheck` (`revela check <name>`) for active probing.
 
 ## Plugin Configuration
 1. Create config class with `[RevelaConfig("plugins:myFeature")]` plus a hand-written `public const string Section = "plugins:myFeature";` (CBSG needs to see the const in user-source). All plugin settings live below the host-owned `plugins` node; the key must match `^[a-z][a-zA-Z0-9]*$` (camelCase, no `.`/`:`/`/`/`_`). The SDK generator reports `REVELA001` for any other section in a plugin/theme assembly and `REVELA002` if attribute and const differ; it also emits the ownership claim the host uses to reject two packages claiming the same key.
@@ -100,13 +80,13 @@ Hard rules for `info` subcommands:
 3. Register from `ConfigureServices`:
    ```csharp
    services.AddOptions<MyFeatureConfig>().BindConfiguration(MyFeatureConfig.Section);
-   services.AddSingleton<IValidateOptions<MyFeatureConfig>, MyFeatureConfigValidator>();
+   services.TryAddEnumerable(ServiceDescriptor.Singleton<IValidateOptions<MyFeatureConfig>, MyFeatureConfigValidator>());
    ```
 4. For DataAnnotations validation: add an empty `[OptionsValidator]`-marked partial class implementing `IValidateOptions<MyFeatureConfig>` — the `Microsoft.Extensions.Options` source generator emits the trim/AOT-safe Validate body. Do NOT use `OptionsBuilder.ValidateDataAnnotations()` (reflection-based, IL2026).
-5. Inject `IOptionsMonitor<MyFeatureConfig>` into commands/services for hot-reload.
-6. CLI args override config: `var url = urlOverride ?? config.CurrentValue.ApiUrl;`
+5. Inject `IOptions<MyFeatureConfig>` (read once) or `IOptionsMonitor<MyFeatureConfig>.CurrentValue` (when the same process may write the config first, e.g. the interactive menu after a `config` command). Config files are not watched; Revela's own writers reload the configuration after writing.
+6. CLI options override config inside the command: `var url = urlOverride ?? config.CurrentValue.ApiUrl;` (command-line values are never a configuration layer).
 
-7. Persist settings from a `config` command via `configService.UpdateProjectConfigAsync(PluginConfigSection.CreateUpdate(MyFeatureConfigKeys.Section, settings))`.
+7. Persist settings from a `config` command via `configService.UpdateProjectConfigAsync(PluginConfigSection.CreateUpdate(MyFeatureConfigKeys.Section, settings))`. Such commands write `project.json`, so keep `RequiresProject: true`. Without options on a non-interactive console (`!IConsoleCapabilities.IsInteractive`), don't prompt — show the options to pass and return 1.
 
 Example `project.json`:
 ```json
@@ -160,31 +140,38 @@ public sealed partial class MyCommand(
 ## Pipeline Steps (for `generate all`)
 - Implement `IPipelineStep` (UI-free, pure service) — used by engine and MCP.
 - Set `IsSequentialStep: true` on the `CommandDescriptor` — used by CLI `generate all`.
+- Order: declare a named constant relative to the host slots, e.g. `private const int GenerateOrder = PipelineOrder.Scan + 100;` / `CleanPipelineOrder.Cache + 100`. `PipelineOrder` only has host slots (`Scan`, `Pages`, `Images`); data that pages read goes between `Scan` and `Pages`, output post-processing after `Images`.
+- Producing a derived artifact? Register an `IArtifactInvalidator` and delete old files with `DerivedFiles.DeleteAll` (never follows reparse points).
+- Checks: an `ICheck` error only sets the exit code of `revela check` (2); `generate` doesn't run checks, so the step must fail on its own.
 
 ## HttpClient — Typed Client Only
 ```csharp
 // ConfigureServices:
-services.AddHttpClient<MyApiClient>(client =>
+services.AddHttpClient<MyApiClient>((serviceProvider, client) =>
 {
     client.Timeout = TimeSpan.FromMinutes(5);
-    client.DefaultRequestHeaders.Add("User-Agent", "Revela/1.0");
+    var version = serviceProvider.GetRequiredService<IBuildInfo>().Version;
+    client.DefaultRequestHeaders.UserAgent.ParseAdd($"Revela/{version} (Static Site Generator)");
 });
 
 // Service constructor: inject HttpClient DIRECTLY
 public MyApiClient(HttpClient httpClient, ILogger<MyApiClient> logger) { ... }
 ```
 
-❌ Never `new HttpClient()`, never inject `IHttpClientFactory` into a typed client, never cache `HttpClient` in a singleton field.
+❌ Never `new HttpClient()`, never inject `IHttpClientFactory` into a typed client, never cache `HttpClient` in a singleton field, never hardcode the Revela version in the User-Agent.
 
-## Progress Display (Spectre.Console)
+## Console Output (Spectre.Console)
 Two-phase pattern: `AnsiConsole.Status()` for unknown totals (scan), `AnsiConsole.Progress()` for known totals (download). Always escape user data with `Markup.Escape()`.
 
-`Status()` and `Progress()` fall back automatically on a non-interactive console. The low-level `AnsiConsole.Live()` primitive does **not** — it hides the cursor unconditionally and throws on redirected output / no TTY (CI, Docker, pipes). If you use `Live()`, inject `IConsoleCapabilities` and gate it on `CanRenderLive`, running plainly otherwise. Never call raw `Live()` unguarded.
+Inject `IConsoleCapabilities` (`Spectara.Revela.Sdk.Hosting`) — never check `Console.IsOutputRedirected` yourself:
+- **Prompts** (`AnsiConsole.Prompt`, confirmations) only when `IsInteractive`. Otherwise fail with exit code 1 and say which options to pass; destructive actions need an explicit `--yes`.
+- **Live output** (`Status()`, `Progress()`, `Live()`) only when `CanRenderLive`. Otherwise print plain progress lines (e.g. one per 10 %). `Live()` throws on redirected output, so it must never run unguarded.
 
 ## Plugin Tests
 Test project lives at `tests/Plugins/<Name>/` and references the plugin project. Use `Substitute.For<HttpMessageHandler>()` or the `MockHttpMessageHandler` pattern for HTTP. Use `TestProject` fixture for filesystem tests.
 
 ## Reference
-- Full plugin guide: [revela.website/docs/developers/plugin-development](https://revela.website/docs/developers/plugin-development/)
+- Full plugin guide: [`docs/plugin-development.md`](../../docs/plugin-development.md)
 - Plugin architecture: [`docs/architecture.md`](../../docs/architecture.md)
-- HttpClient pattern: [revela.website/docs/developers/httpclient-pattern](https://revela.website/docs/developers/httpclient-pattern/)
+- HttpClient pattern: [`docs/plugin-development.md` — typed-client pattern](../../docs/plugin-development.md#making-http-calls-the-typed-client-pattern)
+- SDK package readme (compiled examples): [`src/Sdk/README.md`](../../src/Sdk/README.md)

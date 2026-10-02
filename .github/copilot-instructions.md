@@ -157,15 +157,17 @@ The parent owns integration and the applicable final gates; a Worker runs its as
 3. **`ConfigureServices`** *(required)* — register services, options, HttpClients (use `TryAdd*` for idempotency)
 4. **`GetCommands(IServiceProvider)`** *(optional)* — yield `CommandDescriptor` records
 
-### Configuration chain (merged in order)
+### Configuration chain (merged in order, later wins)
 1. C# property defaults
-2. `revela.json` (global, `%APPDATA%/Revela/`)
+2. `revela.json` (global: next to the executable when writable, else `%APPDATA%/Revela/` / `~/.config/Revela/`)
 3. `project.json` (local, project root)
-4. `logging.json` (optional, project root)
-5. Environment variables (`SPECTARA__REVELA__*`)
-6. CLI arguments
+4. `site.json` (local) — re-keyed under `site` by `AddSiteJson` and bound to `SiteCoreConfig`
+5. `logging.json` (optional, project root)
+6. Environment variables (`SPECTARA__REVELA__*`, also for logging and plugin/theme install)
 
-> **Note:** `site.json` is NOT loaded via `IConfiguration` — it's loaded dynamically by `RenderService`.
+Nothing else: no `appsettings*.json`, no unprefixed env vars, CLI options are never a configuration layer (commands apply their own overrides). No source watches its file — `ConfigFileWriter` reloads `IConfigurationRoot` after Revela writes a config file.
+
+> **Note:** `site.json` has two consumers — the typed identity core via `IConfiguration` (`SiteCoreConfig`, section `site`), and `RenderService`, which reads the whole document dynamically for theme-specific properties.
 
 ### Path resolution
 - **Configurable paths** (`source`, `output`) → inject `IPathResolver`
@@ -175,10 +177,10 @@ The parent owns integration and the applicable final gates; a Worker runs its as
 Always **Typed Client pattern** — `services.AddHttpClient<MyService>()` then inject `HttpClient` directly. Never `new HttpClient()`, never `IHttpClientFactory` inside a typed client.
 
 ### Template context (Scriban)
-- **Global** — `image_formats`, `site`, `basepath`, `assets_basepath`, `base_url`, `nav_items`
-- **Per page** — `gallery`, `page_content`, `images`
+- **Global** — `image_formats`, `site`, `basepath`, `assets_basepath`, `base_url`, `nav_items`, `og_locale`, `revela`, `stylesheets`, `scripts`
+- **Per page** — `gallery` (`gallery.body` = rendered Markdown), `images`; extra variables via front matter `data` (`$galleries`, `$images`, plugin `*.json`)
 - **Per image** — `sizes`, `placeholder`
-- **Functions** — `find_image`, `page_url`, `absolute_url`, `asset_url`, `variant_url`, `format_date`, `format_filesize`, `markdown`
+- **Functions** — `find_image`, `page_url`, `absolute_url`, `asset_url`, `variant_url`, `absolute_variant_url`, `format_date`, `format_filesize`, `markdown`, `t`, `html_escape`
 
 ---
 
@@ -199,7 +201,7 @@ Report issues concisely. Baselines do not replace post-edit gates. See [Revela D
 ## Documentation
 
 - Architecture: [`docs/architecture.md`](../docs/architecture.md)
-- Plugin development: [revela.website/docs/developers/plugin-development](https://revela.website/docs/developers/plugin-development/)
-- HttpClient pattern: [revela.website/docs/developers/httpclient-pattern](https://revela.website/docs/developers/httpclient-pattern/)
+- Plugin development: [`docs/plugin-development.md`](../docs/plugin-development.md)
+- HttpClient pattern: [`docs/plugin-development.md` — typed-client pattern](../docs/plugin-development.md#making-http-calls-the-typed-client-pattern)
 - Subagent patterns: [`docs/subagent-patterns.md`](../docs/subagent-patterns.md)
 - Project structure: [`docs/project-structure.md`](../docs/project-structure.md)

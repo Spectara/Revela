@@ -78,9 +78,10 @@ List EVERY config touchpoint the feature would need:
 |-------|----------|----------|
 | `revela.json` (global, `%APPDATA%`) | Cross-project user defaults | y/n |
 | `project.json` (local) | Per-project settings | y/n |
-| `site.json` (template) | Render-time site metadata | y/n |
+| `site.json` (theme template) | Site identity (`SiteCoreConfig`, section `site`) + render-time theme data | y/n |
+| `logging.json` (local, optional) | Log levels | y/n |
 | ENV (`SPECTARA__REVELA__*`) | CI / containers | y/n |
-| CLI flags | Per-invocation overrides | y/n |
+| CLI options | Per-invocation overrides applied by the command (not a configuration layer) | y/n |
 | `[RevelaConfig]` class | Code-level config | y/n |
 
 Flag if multiple layers are touched — that's a sign of confused ownership.
@@ -88,11 +89,12 @@ Flag if multiple layers are touched — that's a sign of confused ownership.
 #### 2c. CLI Surface
 If a new command is needed:
 
-- `ParentCommand`: `null` (root) / `"source"` / `"generate"` / `"theme"` / `"plugins"` / new parent?
-- `Order`: collision check vs sibling commands
-- `RequiresProject`: setup-style (`false`) or operates on project (`true`)
+- `ParentCommand`: `null` (root) / `"source"` / `"generate"` / `"clean"` / `"config"` / `"check"` / new parent?
+- `Order`: collision check vs sibling commands (pipeline steps: named constant relative to `PipelineOrder`/`CleanPipelineOrder`)
+- `RequiresProject`: setup-style (`false`) or operates on project (`true`; always for commands that write `project.json`)
 - `IsSequentialStep`: picked up by `generate all`?
 - `Group`: which interactive-menu group?
+- Non-interactive behavior: what happens without a terminal (`IConsoleCapabilities`) — options instead of prompts, `--yes` for destructive actions
 
 #### 2d. Breaking-Change Risk
 Pre-release means **no backward-compat needed**, but still call out:

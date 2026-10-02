@@ -47,15 +47,17 @@ public sealed class LuminaTheme : EmbeddedTheme  // base class for NuGet themes
 | `assets_basepath` | Path/URL to image assets (CDN-aware) |
 | `image_formats` | Global formats: `["avif", "webp", "jpg"]` (same for all images) |
 | `nav_items` | Navigation tree with active state |
-| `gallery` | Current gallery: `title`, `body`, `cover_image`, `template` |
+| `gallery` | Current page (home page included): `title`, `description`, `body` (rendered Markdown), `cover_image`, `template`, `slug`, `images`. The home page without a front-matter title uses the site title |
 | `gallery.cover_image` | Resolved `Image` from `cover` front-matter (null if unset) |
-| `page_content` | Rendered Markdown body (same as `gallery.body`) |
 | `images` | Array of `Image` objects (per-image: `sizes`, `placeholder`) |
+| *(data sources)* | Front matter `data = { name: source }` adds variables: `$galleries` (all galleries), `$images` (page images) or a plugin JSON file from `.cache/` (e.g. `statistics.json`). Extensions can declare defaults per template |
+
+A missing layout or `Partials/ContentImage.revela` fails the render with a clear error — there is no built-in fallback markup. Templates and includes are parsed once per build and shared by all pages.
 
 ### Built-in functions
 | Function | Returns |
 |----------|---------|
-| `find_image "path"` | Resolve any image — returns `Image` or null |
+| `find_image "path"` | Resolve any image (page folder → `_images/` → exact path) — returns the same image object as `images`, or null |
 | `page_url(target)` | Page URL for an `Image`/`Gallery`/`NavigationItem`/slug (null for pageless nav) |
 | `absolute_url(target)` | Absolute URL (host from `baseUrl`) for OG/RSS/sitemap; root-relative fallback |
 | `asset_url "path"` | Theme asset URL: `basepath + "_assets/" + path` (base-path safe) |

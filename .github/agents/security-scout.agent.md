@@ -22,7 +22,7 @@ Never run anything that modifies state.
 
 1. **Secrets in source / config** — API keys, tokens, passwords, connection strings literal in code or `*.json`.
    - Patterns: regex `(api[_-]?key|secret|password|token|bearer|client[_-]?secret)\s*[:=]\s*["'][A-Za-z0-9_\-]{16,}["']`
-   - Also flag: any `appsettings*.json` / `project.json` / `revela.json` containing high-entropy strings under suspicious keys.
+   - Also flag: any `project.json` / `revela.json` / `site.json` / `logging.json` containing high-entropy strings under suspicious keys. (Revela reads no `appsettings*.json`; such a file in the repo is dead config — flag it if it holds secrets.)
    - Exclude: tests with obvious dummies (`"test-token"`, `"dummy"`).
 
 2. **Vulnerable packages** — output of `dotnet list package --vulnerable`. Each → blocker if Critical/High, major if Moderate, minor if Low.

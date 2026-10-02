@@ -72,7 +72,7 @@ Apply the `review-code` skill systematically across the codebase.
 ### Phase 4 — Security
 OWASP-aligned audit.
 - **A01 Broken Access Control** — `Serve` plugin: directory traversal protection? Bound checks on requested paths?
-- **A02 Cryptographic Failures** — secrets in `appsettings.json` / `project.json` / source? Token caching duration justified?
+- **A02 Cryptographic Failures** — secrets in `revela.json` / `project.json` / `site.json` / source? Token caching duration justified?
 - **A03 Injection** — Scriban template auto-escapes HTML by default — any `{{ x | object.eval_template }}` or raw HTML output? Markdown XSS via `markdown` filter?
 - **A05 Security Misconfiguration** — default config values safe? Any `--no-verify` or HTTPS bypass?
 - **A06 Vulnerable Components** — `dotnet list package --vulnerable` results
