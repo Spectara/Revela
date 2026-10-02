@@ -2,6 +2,7 @@ using System.CommandLine;
 
 using Microsoft.Extensions.Options;
 
+using Spectara.Revela.Core.Helpers;
 using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Output;
 
@@ -29,10 +30,10 @@ internal sealed partial class CommandExecutor(
         IReadOnlyList<string> commandPath,
         CancellationToken cancellationToken)
     {
-        // Special case: plugin uninstall is not available in interactive mode
-        if (IsPluginUninstall(commandPath))
+        // Uninstall deletes package assemblies, which the menu process has loaded
+        if (PackageManagementCommands.DeletesPackageFiles(commandPath))
         {
-            ShowPluginUninstallWarning();
+            ShowUninstallNotAvailable(commandPath);
             return 0;
         }
 
@@ -117,21 +118,18 @@ internal sealed partial class CommandExecutor(
         return exitCode;
     }
 
-    private static bool IsPluginUninstall(IReadOnlyList<string> commandPath) =>
-        commandPath.Count >= 2 &&
-        commandPath[0].Equals("plugin", StringComparison.OrdinalIgnoreCase) &&
-        commandPath[1].Equals("uninstall", StringComparison.OrdinalIgnoreCase);
-
-    private static void ShowPluginUninstallWarning()
+    private static void ShowUninstallNotAvailable(IReadOnlyList<string> commandPath)
     {
         AnsiConsole.WriteLine();
 
+        // Menu paths are the registered (lower-case) command names
+        var kind = commandPath[0];
         var panel = new Panel(
             new Markup(
-                "[yellow]Plugin uninstall is not available in interactive mode.[/]\n\n" +
-                "The plugin assembly is loaded in memory and cannot be deleted.\n" +
+                $"[yellow]Uninstalling a {Markup.Escape(kind)} is not available in interactive mode.[/]\n\n" +
+                $"The {kind} assembly is loaded in memory and cannot be deleted.\n" +
                 "Please use the command line instead:\n\n" +
-                "[cyan]revela plugin uninstall <plugin-name>[/]"))
+                $"[cyan]revela {kind} uninstall <{kind}-name>[/]"))
             .WithHeader("[yellow]⚠ Not Available[/]")
             .WithWarningStyle()
             .Padding(1, 0);
