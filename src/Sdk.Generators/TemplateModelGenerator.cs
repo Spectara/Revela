@@ -168,8 +168,7 @@ public sealed class TemplateModelGenerator : IIncrementalGenerator
 
     private static IEnumerable<IPropertySymbol> EnumerateScriptableProperties(INamedTypeSymbol type)
     {
-        // Walk up the inheritance chain so derived records (e.g. ImageContent : GalleryContent)
-        // also expose inherited properties. Order: base first, then derived (templates rely on this).
+        // Walk up the inheritance chain so derived records also expose inherited properties. Order: base first, then derived (templates rely on this).
         var chain = new Stack<INamedTypeSymbol>();
         for (var current = type; current is not null && current.SpecialType != SpecialType.System_Object; current = current.BaseType)
         {
@@ -279,10 +278,9 @@ public sealed class TemplateModelGenerator : IIncrementalGenerator
             return;
         }
 
-        // Default: pass through. Scriban natively handles primitives, strings,
-        // IEnumerable, IDictionary (with string keys). JsonElement values flow
-        // through unchanged so the existing post-processing in
-        // ScribanTemplateEngine.ConvertJsonElementsInScriptObject converts them.
+        // Default: pass through. Scriban natively handles primitives, strings and lists of
+        // them. Anything else (e.g. a JsonElement) would be read through reflection, so
+        // template models must not expose such property types.
         if (isNullableRef)
         {
             sb.AppendLine($"        if ({access} is not null) so[\"{key}\"] = {access};");

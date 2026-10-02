@@ -563,7 +563,7 @@ internal sealed partial class RenderService(
             CancellationToken = cancellationToken
         };
 
-        // Gallery pages, the home page included (#77 counts it like any other gallery).
+        // Gallery pages, the home page included.
         await Parallel.ForEachAsync(run.Model.Galleries, parallelOptions, async (gallery, ct) =>
         {
             var model = await BuildGalleryPageModelAsync(run, gallery, ct);

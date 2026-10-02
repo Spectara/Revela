@@ -61,7 +61,7 @@ public static class ServiceCollectionExtensions
         services.TryAddEnumerable(ServiceDescriptor.Transient<ICheck, ContentCheck>());
         services.TryAddEnumerable(ServiceDescriptor.Transient<ICheck, SlugsCheck>());
 
-        // Aggregator shared by `check` and generate Phase 0.
+        // Aggregator behind the `check` report.
         services.TryAddSingleton<ISiteValidator, CheckService>();
 
         // Engine facade (public API for MCP, GUI, and other plugins)

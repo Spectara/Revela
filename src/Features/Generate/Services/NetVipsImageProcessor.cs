@@ -31,9 +31,9 @@ namespace Spectara.Revela.Features.Generate.Services;
 /// </list>
 /// <para>
 /// Thread Safety: Each image is processed independently. LibVips is thread-safe
-/// for reading different images in parallel. We disable the libvips cache and
-/// set internal concurrency to 1 to avoid contention when processing multiple
-/// images in parallel from ImageService.
+/// for reading different images in parallel. We disable the libvips cache and cap the
+/// per-image libvips concurrency (see <c>EnsureNetVipsInitialized</c>) because ImageService
+/// already processes several images in parallel.
 /// </para>
 /// </remarks>
 internal sealed partial class NetVipsImageProcessor(

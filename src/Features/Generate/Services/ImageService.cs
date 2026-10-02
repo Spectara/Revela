@@ -235,8 +235,8 @@ internal sealed partial class ImageService(
                 LogCacheHits(logger, cachedCount, uniqueSourcePaths.Count);
             }
 
-            // Worker pool configuration: (CPU/2) × (CPU/2) strategy
-            // Combined with NetVips.Concurrency = CPU/2, this optimizes thread usage:
+            // Worker pool: CPU/2 images in parallel, each with a libvips concurrency capped at 8
+            // (see NetVipsImageProcessor). This optimizes thread usage:
             // - Fewer workers = fewer parallel AVIF encoder instances (each spawns ~15 threads)
             // - Reduces total thread count by ~30% with equal or better performance
             var configuredParallelism = ImageSettings.MaxDegreeOfParallelism;

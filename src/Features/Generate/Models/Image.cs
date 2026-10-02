@@ -10,7 +10,7 @@ namespace Spectara.Revela.Features.Generate.Models;
 /// </summary>
 /// <remarks>
 /// Properties are named to match template expectations (Lumina theme):
-/// - id: Unique identifier for HTML anchors (filename without extension)
+/// - id: the file name without extension (a fallback label, not unique across galleries)
 /// - slug: Relative path segment identifying the image variants (e.g., "events/fireworks/029081").
 ///   URLs are built from it via the <c>variant_url</c> template helper, never by concatenation.
 /// </remarks>
@@ -18,12 +18,13 @@ namespace Spectara.Revela.Features.Generate.Models;
 internal sealed class Image
 {
     /// <summary>
-    /// Full path to the source image file.
+    /// Source path relative to the source folder with forward slashes (e.g. "Landscapes/sunset.jpg");
+    /// the image processor's result carries the absolute input path.
     /// </summary>
     public required string SourcePath { get; init; }
 
     /// <summary>
-    /// Image filename without path (e.g., "photo1.jpg").
+    /// Image file name without path and extension (e.g., "029081").
     /// </summary>
     public required string FileName { get; init; }
 
@@ -41,11 +42,11 @@ internal sealed class Image
     public required string Slug { get; init; }
 
     /// <summary>
-    /// Unique identifier for HTML anchors and lightbox targets
+    /// The file name without extension, e.g. for a fallback label (<c>t 'photo.label' image.id</c>).
     /// </summary>
     /// <remarks>
-    /// Typically the filename without extension, URL-safe.
-    /// Used in templates as: id="{{ image.id }}"
+    /// Not slugified (may contain spaces or capitals) and not unique across galleries; HTML ids
+    /// are built from <see cref="Slug"/> instead.
     /// </remarks>
     public string Id => FileName;
 

@@ -14,8 +14,9 @@ namespace Spectara.Revela.Features.Generate.Services;
 /// <remarks>
 /// The source is scanned at most once per run: the shared <see cref="ContentTree"/> is
 /// handed to every <see cref="IContentAwareCheck"/> so content-aware units do not each
-/// re-scan. Checks run in registration order; any <see cref="ValidationSeverity.Error"/>
-/// blocks the build (exit code 2), while warnings and hints are surfaced but never abort it.
+/// re-scan. Checks run in registration order. Any <see cref="ValidationSeverity.Error"/>
+/// makes <c>revela check</c> exit with code 2; warnings and hints are only reported.
+/// <c>generate</c> does not run checks.
 /// </remarks>
 internal sealed partial class CheckService(
     IEnumerable<ICheck> checks,

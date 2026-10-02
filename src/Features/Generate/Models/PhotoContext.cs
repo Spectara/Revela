@@ -27,7 +27,7 @@ internal sealed class PhotoContext
 
     /// <summary>
     /// Stable, valid HTML id token for this context, without the <c>ctx-</c> prefix
-    /// (e.g. <c>"landscapes-"</c>, or <c>"home"</c> for the root gallery). The gallery-side
+    /// (e.g. <c>"g-events_fireworks"</c>, <c>"g-events.grid-1"</c> for a filtered grid, or <c>"r"</c> for the home page). The gallery-side
     /// thumbnail link carries <c>#ctx-{ContextId}</c> and the photo page exposes a matching
     /// <c>id="ctx-{ContextId}"</c> block selected via <c>:target</c>.
     /// </summary>
