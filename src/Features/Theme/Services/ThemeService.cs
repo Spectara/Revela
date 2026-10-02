@@ -160,17 +160,13 @@ internal sealed partial class ThemeService(
             return new ThemeUpdateResult
             {
                 Success = false,
-                ThemeName = request.ThemeName ?? themeConfig.CurrentValue.Name ?? ThemeConfig.DefaultName,
+                ThemeName = NormalizeThemeName(request.ThemeName ?? themeConfig.CurrentValue.Name),
                 ErrorMessage = "A photo viewer override cannot be set and cleared in the same update."
             };
         }
 
         var current = themeConfig.CurrentValue;
-        var themeName = request.ThemeName ?? current.Name;
-        if (string.IsNullOrWhiteSpace(themeName))
-        {
-            themeName = ThemeConfig.DefaultName;
-        }
+        var themeName = NormalizeThemeName(request.ThemeName ?? current.Name);
 
         var theme = themeRegistry.Resolve(themeName, ProjectPath);
         if (theme is null)
@@ -326,7 +322,7 @@ internal sealed partial class ThemeService(
         bool force = false,
         CancellationToken cancellationToken = default)
     {
-        var currentThemeName = themeConfig.CurrentValue.Name ?? ThemeConfig.DefaultName;
+        var currentThemeName = NormalizeThemeName(themeConfig.CurrentValue.Name);
         var theme = themeRegistry.Resolve(currentThemeName, ProjectPath);
 
         if (theme is null)
