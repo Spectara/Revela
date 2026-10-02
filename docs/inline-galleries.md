@@ -171,7 +171,9 @@ supported browser baseline is Chrome/Edge 135+, Firefox 144+, and Safari/iOS 26.
 JavaScript, visitors can open and close the modal dialog through its visible controls, inspect the
 full-size photo, and read the same image metadata as on the canonical photo page. With JavaScript,
 validated Previous/Next controls, arrow-key navigation, and a robust Escape fallback are added.
-Conforming browsers also provide native Escape handling. The layout uses a full-viewport photo
+Conforming browsers also provide native Escape handling. The dialog fills the viewport, so there
+is no backdrop to click: it closes with its × button or Escape only (no `closedby="any"` light
+dismiss). The layout uses a full-viewport photo
 stage followed by a scrolling metadata sheet, without photo-page context navigation.
 
 These capabilities need browser verification; HTML generation alone cannot prove focus, modal

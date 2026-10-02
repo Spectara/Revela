@@ -245,17 +245,55 @@ Minimal implementation:
 
 ```scriban
 {{~ if !image.sizes || image.sizes.size == 0; ret; end ~}}
-<picture class="content-image{{ for cls in classes }} {{ cls }}{{ end }}">
+<picture class="content-image{{ for cls in classes }} {{ html_escape cls }}{{ end }}">
 {{~ for format in image_formats ~}}
   <source type="image/{{ format == 'jpg' ? 'jpeg' : format }}" srcset="
     {{~ for size in image.sizes ~}}
     {{ variant_url(image, size, format) }} {{ size }}w{{ if !for.last }},{{ end }}
     {{~ end ~}}">
 {{~ end ~}}
-  <img src="{{ variant_url(image, image.sizes | array.last, 'jpg') }}"
-       alt="{{ alt }}" loading="lazy" decoding="async">
+  <img src="{{ variant_url(image, image.sizes[-1], 'jpg') }}"
+       alt="{{ html_escape alt }}" loading="lazy" decoding="async">
 </picture>
 ```
+
+`image.sizes` is in ascending order, so `image.sizes[-1]` is the largest size. Write templates with
+plain language features (indexing, `//` integer division, `for` loops) rather than Scriban's
+`array.*`/`math.*` libraries: the Standalone edition is compiled with Native AOT and keeps only
+the built-ins Revela references (see [Template Functions](../../reference/template-functions/)).
+
+## Shared Image Helpers
+
+Lumina keeps its responsive-image logic in one partial, `Partials/ImageHelpers.revela`, so every `<picture>` (gallery thumbnails,
+content images, lightbox, photo page, Open Graph image) is built the same way. It renders nothing
+itself; it defines functions. If you override `Image`, `ContentImage`, `PhotoLightbox`,
+`OpenGraphImage` or `Body/Photo`, include it and reuse them instead of copying the logic:
+
+```scriban
+{{~ include 'imagehelpers' ~}}
+{{~ fallback_format = image_fallback_format ~}}
+<picture>
+{{~ for format in image_formats ~}}
+  <source type="{{ html_escape (image_type format) }}" sizes="100vw" srcset="{{ html_escape (image_srcset image format) }}">
+{{~ end ~}}
+  <img src="{{ html_escape (variant_url image (image_size image 1280) fallback_format) }}"
+       srcset="{{ html_escape (image_srcset image fallback_format) }}" sizes="100vw"
+       alt="{{ html_escape alt }}" width="{{ image.width }}" height="{{ image.height }}">
+</picture>
+```
+
+| Function | Returns |
+|----------|---------|
+| `image_type format` | MIME type for `<source type>`: `jpg` → `image/jpeg`, otherwise `image/<format>` |
+| `image_fallback_format` | The last entry of `image_formats` (normally `jpg`), for the `<img>` fallback |
+| `image_srcset image format` | Every generated size as `url <width>w` candidates (portrait widths are computed from the longest edge) |
+| `image_size image limit` | The largest generated size up to `limit`, else the smallest |
+| `viewer_sizes image` | A `sizes` value that fits the photo into the photo viewer (viewport minus the navigation bar) |
+
+`image_formats` can't be indexed, which is why `image_fallback_format` loops over it. Like every
+theme file, the partial falls back to the installed theme, so your overrides can include it
+without extracting it; extract it (`revela theme extract Lumina --file Partials/ImageHelpers.revela`)
+only to change the helpers themselves.
 
 ## Optional: `Partials/PhotoFigure.revela`
 
@@ -308,6 +346,12 @@ on `<source>` elements.
 **Headings:** the layout renders no heading of its own; each body template renders exactly one
 `<h1>`. Lumina uses the page title, skips it when the Markdown body contains its own
 `# Heading`, and keeps it visually hidden on the home page and on photo pages.
+
+**Current page in navigation:** mark the link to the current page with `aria-current="page"`
+(`{{ if item.current }} aria-current="page"{{ end }}`) and style that attribute
+(`a[aria-current="page"]`), not a class. Screen readers announce it; Lumina sets no `active`
+class. `item.active` is still available when you need to know that a child is the current page
+(for example to expand a section).
 
 Every template receives a model with `site`, `gallery`, `images`, `nav_items`, `basepath`, `assets_basepath`, `base_url`, and `image_formats`, plus helper functions such as `page_url`, `asset_url`, `variant_url`, `format_date`, `t`, and `markdown`. Never hardcode paths; use `asset_url` / `page_url` / `variant_url` so the site works at any base path.
 
