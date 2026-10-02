@@ -371,7 +371,7 @@ internal sealed partial class StatisticsAggregator(
             var entry = queue.Dequeue();
 
             // A gallery is an entry with image content
-            if (entry.Content.OfType<ImageContent>().Any())
+            if (entry.Content.Count > 0)
             {
                 count++;
             }

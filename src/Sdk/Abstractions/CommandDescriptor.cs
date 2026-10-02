@@ -9,7 +9,7 @@ namespace Spectara.Revela.Sdk.Abstractions;
 /// <param name="Command">The command to register.</param>
 /// <param name="ParentCommand">
 /// Optional parent command path (e.g., "source", "generate", "clean", "config",
-/// or a multi-level path such as "info plugins"). Missing parents are created
+/// or a multi-level path such as "source calendar"). Missing parents are created
 /// automatically. If null or empty, the command is registered directly under root.
 /// </param>
 /// <param name="Order">
@@ -77,10 +77,10 @@ namespace Spectara.Revela.Sdk.Abstractions;
 /// new CommandDescriptor(myStepCmd, ParentCommand: "generate",
 ///     Order: PipelineOrder.Scan + 50, IsSequentialStep: true)
 ///
-/// // Inline a parent command flat under its group (e.g. info → Revela / Plugins → / Themes →)
-/// new CommandDescriptor(infoCmd, Order: 10, Group: "Info",
-///     RequiresProject: false,
-///     InlineInMenu: true, InlineDefaultActionLabel: "Revela")
+/// // Inline a parent command flat under its group: the default action becomes a
+/// // "Status" entry, followed by each visible subcommand (status → Status / Refresh / Reset)
+/// new CommandDescriptor(statusCmd, Order: 10, Group: "Addons",
+///     InlineInMenu: true, InlineDefaultActionLabel: "Status")
 /// </code>
 /// </example>
 public sealed record CommandDescriptor(

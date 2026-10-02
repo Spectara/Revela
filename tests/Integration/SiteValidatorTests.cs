@@ -115,7 +115,7 @@ public sealed class SiteValidatorTests
         // Act
         var diagnostics = await validator.ValidateAsync();
 
-        // Assert — a warning is surfaced, but nothing blocks the build (no errors).
+        // Assert — a warning is surfaced, but it is not an error.
         Assert.IsTrue(
             diagnostics.Any(d => d.Severity == ValidationSeverity.Warning),
             "Expected an empty-source warning.");
@@ -329,7 +329,7 @@ public sealed class SiteValidatorTests
         // Act
         var diagnostics = await validator.ValidateAsync();
 
-        // Assert — the note is surfaced, but nothing blocks the build (no errors).
+        // Assert — the note is surfaced, but it is not an error.
         Assert.IsTrue(
             diagnostics.Any(d => d.Severity == ValidationSeverity.Warning
                 && d.Message.Contains("Plugin note", StringComparison.Ordinal)),

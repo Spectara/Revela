@@ -45,7 +45,7 @@ public sealed class SortingConfig
     /// Can be overridden per gallery using front matter:
     /// <code>
     /// +++
-    /// sort = "exif.rating"
+    /// sort = "exif.raw.Rating"
     /// sort_direction = "desc"
     /// +++
     /// </code>
@@ -80,7 +80,8 @@ public enum SortDirection
 ///   <item><c>dateTaken</c> - EXIF date taken</item>
 ///   <item><c>exif.focalLength</c> - Focal length</item>
 ///   <item><c>exif.iso</c> - ISO sensitivity</item>
-///   <item><c>exif.aperture</c> - Aperture (f-number)</item>
+///   <item><c>exif.fNumber</c> - Aperture (f-number)</item>
+///   <item><c>exif.exposureTime</c> - Shutter speed (exposure time in seconds)</item>
 ///   <item><c>exif.raw.Rating</c> - Star rating (1-5)</item>
 ///   <item><c>exif.raw.{FieldName}</c> - Any field from EXIF Raw dictionary</item>
 /// </list>
