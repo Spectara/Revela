@@ -799,3 +799,4 @@ virtual Spectara.Revela.Sdk.Abstractions.PackageMetadata.<Clone>$() -> Spectara.
 virtual Spectara.Revela.Sdk.Abstractions.PackageMetadata.EqualityContract.get -> System.Type!
 virtual Spectara.Revela.Sdk.Abstractions.PackageMetadata.Equals(Spectara.Revela.Sdk.Abstractions.PackageMetadata? other) -> bool
 virtual Spectara.Revela.Sdk.Abstractions.PackageMetadata.PrintMembers(System.Text.StringBuilder! builder) -> bool
+static Spectara.Revela.Sdk.Configuration.ThemeConfig.ResolveName(string? name) -> string!

@@ -112,7 +112,7 @@ exactly one <h1> for the page (visually hidden where the design shows no title).
         - template = "gallery" → Body/Gallery.revela, image gallery (default)
         - template = "statistics/overview" → Statistics extension template
         ##~}}
-        {{~ body_template = 'body/' + (gallery.template ?? 'gallery') ~}}
+        {{~ body_template = 'body/' + gallery.template ~}}
         {{~ include body_template ~}}
     </main>
 

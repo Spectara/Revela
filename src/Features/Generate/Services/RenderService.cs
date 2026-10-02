@@ -64,6 +64,12 @@ internal sealed partial class RenderService(
     private const string PhotoFigureTemplateKey = "partials/photofigure";
     private const string PhotoTemplateKey = "body/photo";
 
+    /// <summary>
+    /// Body template of a page without <c>template</c> in its front matter. It shows the folder's
+    /// photos as a grid, so those photos get photo pages; custom bodies opt in with <c>[[gallery]]</c>.
+    /// </summary>
+    private const string DefaultBodyTemplate = "gallery";
+
     /// <summary>Current theme extensions (set during rendering)</summary>
     private IReadOnlyList<ITheme> currentExtensions = [];
 
@@ -364,11 +370,7 @@ internal sealed partial class RenderService(
 
         // Get theme name from ThemeConfig (IOptions pattern)
         // Fallback to the default theme if not configured
-        var themeName = themeConfig.CurrentValue.Name;
-        if (string.IsNullOrEmpty(themeName))
-        {
-            themeName = ThemeConfig.DefaultName;
-        }
+        var themeName = ThemeConfig.ResolveName(themeConfig.CurrentValue.Name);
 
         return new RenderContext
         {
@@ -892,6 +894,7 @@ internal sealed partial class RenderService(
                     sourcePath,
                     themeName);
                 gallery.HasInlineGalleries = false;
+                gallery.Template ??= DefaultBodyTemplate;
                 prepared.Add(
                     gallery,
                     new PreparedGalleryMetadata(
@@ -939,7 +942,7 @@ internal sealed partial class RenderService(
                     photoPath => ImagePathResolver.Resolve(photoPath, gallery.Path, imagesBySourcePath));
 
             gallery.HasInlineGalleries = preparedBlocks.Count > 0;
-            gallery.Template = metadata.Template;
+            gallery.Template = metadata.Template ?? DefaultBodyTemplate;
 
             if (metadata.Cover is not null)
             {
@@ -1027,9 +1030,7 @@ internal sealed partial class RenderService(
     }
 
     private static bool IsDefaultGalleryBody(string? template) =>
-        template is null
-        || template.Equals("gallery", StringComparison.OrdinalIgnoreCase)
-        || template.Equals("body/gallery", StringComparison.OrdinalIgnoreCase);
+        template is null || template.Equals(DefaultBodyTemplate, StringComparison.OrdinalIgnoreCase);
 
     private static IReadOnlyList<GalleryImageOccurrence> BuildOccurrences(
         PhotoMembership membership,

@@ -54,11 +54,7 @@ internal sealed partial class ThemeFilesCommand(
         var projectPath = projectEnvironment.Value.Path;
 
         // Get theme name from option or config
-        var themeName = themeNameOverride ?? themeConfig.CurrentValue.Name;
-        if (string.IsNullOrWhiteSpace(themeName))
-        {
-            themeName = ThemeConfig.DefaultName;
-        }
+        var themeName = ThemeConfig.ResolveName(themeNameOverride ?? themeConfig.CurrentValue.Name);
 
         // Use ThemeService for file data
         var filesResult = themeService.GetFiles(themeName);

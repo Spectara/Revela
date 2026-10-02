@@ -67,7 +67,7 @@ internal sealed partial class ThemeService(
     /// <inheritdoc />
     public ThemeInfoResult GetCurrentTheme()
     {
-        var themeName = NormalizeThemeName(themeConfig.CurrentValue.Name);
+        var themeName = ThemeConfig.ResolveName(themeConfig.CurrentValue.Name);
         var theme = themeRegistry.Resolve(themeName, ProjectPath);
         var source = GetThemeSource(theme);
         var extensions = theme is not null
@@ -123,7 +123,7 @@ internal sealed partial class ThemeService(
     /// <inheritdoc />
     public ThemeFilesResult GetFiles(string? themeName = null)
     {
-        var name = NormalizeThemeName(themeName ?? themeConfig.CurrentValue.Name);
+        var name = ThemeConfig.ResolveName(themeName ?? themeConfig.CurrentValue.Name);
         var theme = themeRegistry.Resolve(name, ProjectPath);
 
         if (theme is null)
@@ -160,13 +160,13 @@ internal sealed partial class ThemeService(
             return new ThemeUpdateResult
             {
                 Success = false,
-                ThemeName = NormalizeThemeName(request.ThemeName ?? themeConfig.CurrentValue.Name),
+                ThemeName = ThemeConfig.ResolveName(request.ThemeName ?? themeConfig.CurrentValue.Name),
                 ErrorMessage = "A photo viewer override cannot be set and cleared in the same update."
             };
         }
 
         var current = themeConfig.CurrentValue;
-        var themeName = NormalizeThemeName(request.ThemeName ?? current.Name);
+        var themeName = ThemeConfig.ResolveName(request.ThemeName ?? current.Name);
 
         var theme = themeRegistry.Resolve(themeName, ProjectPath);
         if (theme is null)
@@ -322,7 +322,7 @@ internal sealed partial class ThemeService(
         bool force = false,
         CancellationToken cancellationToken = default)
     {
-        var currentThemeName = NormalizeThemeName(themeConfig.CurrentValue.Name);
+        var currentThemeName = ThemeConfig.ResolveName(themeConfig.CurrentValue.Name);
         var theme = themeRegistry.Resolve(currentThemeName, ProjectPath);
 
         if (theme is null)
@@ -477,9 +477,6 @@ internal sealed partial class ThemeService(
 
     private static string FormatSupported(IReadOnlyList<PhotoViewerMode> supported) =>
         string.Join(", ", supported.Select(Canonical));
-
-    private static string NormalizeThemeName(string? themeName) =>
-        string.IsNullOrWhiteSpace(themeName) ? ThemeConfig.DefaultName : themeName;
 
     private static string Canonical(PhotoViewerMode mode) => mode.ToValue();
 

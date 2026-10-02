@@ -123,11 +123,7 @@ internal sealed partial class ThemeExtractCommand(
         var projectPath = projectEnvironment.Value.Path;
 
         // Get theme name from config
-        var themeName = themeConfig.CurrentValue.Name;
-        if (string.IsNullOrWhiteSpace(themeName))
-        {
-            themeName = ThemeConfig.DefaultName;
-        }
+        var themeName = ThemeConfig.ResolveName(themeConfig.CurrentValue.Name);
 
         // Resolve theme
         var theme = themeRegistry.Resolve(themeName, projectPath);

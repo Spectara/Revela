@@ -36,11 +36,7 @@ internal sealed class ThemeCheck(
     {
         var diagnostics = new List<ValidationDiagnostic>();
 
-        var themeName = themeConfig.CurrentValue.Name;
-        if (string.IsNullOrEmpty(themeName))
-        {
-            themeName = ThemeConfig.DefaultName;
-        }
+        var themeName = ThemeConfig.ResolveName(themeConfig.CurrentValue.Name);
 
         var projectPath = projectEnvironment.Value.Path;
         ITheme? theme;

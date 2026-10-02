@@ -13,8 +13,6 @@ public sealed partial class ThemeRegistry(
     IEnumerable<ITheme> installedThemes,
     ILogger<ThemeRegistry> logger) : IThemeRegistry
 {
-    private const string DefaultThemeName = Sdk.Configuration.ThemeConfig.DefaultName;
-
     /// <inheritdoc />
     public IReadOnlyList<ITheme> GetExtensions(string themeName)
     {
@@ -34,7 +32,7 @@ public sealed partial class ThemeRegistry(
     /// <inheritdoc />
     public ITheme? Resolve(string? themeName, string projectPath)
     {
-        var name = string.IsNullOrEmpty(themeName) ? DefaultThemeName : themeName;
+        var name = Sdk.Configuration.ThemeConfig.ResolveName(themeName);
         LogResolvingTheme(logger, name);
 
         // 1. Check local themes folder
@@ -64,7 +62,7 @@ public sealed partial class ThemeRegistry(
     /// <inheritdoc />
     public ITheme? ResolveInstalled(string? themeName)
     {
-        var name = string.IsNullOrEmpty(themeName) ? DefaultThemeName : themeName;
+        var name = Sdk.Configuration.ThemeConfig.ResolveName(themeName);
         LogResolvingTheme(logger, name);
 
         var installedTheme = installedThemes.FirstOrDefault(

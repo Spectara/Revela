@@ -77,7 +77,7 @@ internal sealed partial class ContentService(
             // cannot resolve image sizes (imageSizesProvider.GetSizes() would throw).
             // Fail early with the same actionable message the pages step reports
             // instead of leaking a raw stack trace through the generic catch below.
-            var themeName = string.IsNullOrEmpty(themeConfig.CurrentValue.Name) ? ThemeConfig.DefaultName : themeConfig.CurrentValue.Name;
+            var themeName = ThemeConfig.ResolveName(themeConfig.CurrentValue.Name);
             var theme = themeRegistry.Resolve(themeName, projectEnvironment.Value.Path);
             if (theme is null)
             {

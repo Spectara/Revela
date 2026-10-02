@@ -50,8 +50,16 @@ public sealed class ThemeConfig
     public const string DefaultName = "Lumina";
 
     /// <summary>
+    /// Returns <paramref name="name"/>, or <see cref="DefaultName"/> when it is null, empty or whitespace.
+    /// </summary>
+    /// <param name="name">A configured or requested theme name.</param>
+    /// <returns>The theme name to resolve.</returns>
+    public static string ResolveName(string? name) =>
+        string.IsNullOrWhiteSpace(name) ? DefaultName : name;
+
+    /// <summary>
     /// Name of the theme to use (e.g., "Lumina"). Generation and theme commands fall back
-    /// to <see cref="DefaultName"/> when it is empty.
+    /// to <see cref="DefaultName"/> when it is empty (see <see cref="ResolveName"/>).
     /// </summary>
     public string Name { get; set; } = string.Empty;
 
