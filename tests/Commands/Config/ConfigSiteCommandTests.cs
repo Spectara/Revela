@@ -50,6 +50,29 @@ public sealed class ConfigSiteCommandTests
     }
 
     [TestMethod]
+    public async Task ExecuteAsync_EditExisting_PreservesKeysMissingFromTemplate()
+    {
+        // e.g. Lumina's template has no "language"; editing must not silently drop it.
+        using var project = TestProject.Create(p => p.WithProjectJson(new { theme = new { name = ThemeName } }));
+        var sitePath = Path.Combine(project.RootPath, "site.json");
+        await File.WriteAllTextAsync(sitePath, /*lang=json,strict*/ """
+            { "title": "Old", "language": "de", "custom": { "flag": true, "list": [1, 2] } }
+            """);
+        using var host = BuildHost(project.RootPath);
+
+        var (exitCode, _) = await RunAsync(host, string.Empty);
+
+        Assert.AreEqual(0, exitCode);
+        var saved = JsonNode.Parse(await File.ReadAllTextAsync(sitePath))!.AsObject();
+        Assert.AreEqual("Old", saved["title"]?.GetValue<string>());
+        Assert.AreEqual("de", saved["language"]?.GetValue<string>());
+        Assert.IsTrue(saved["custom"]?["flag"]?.GetValue<bool>());
+        Assert.IsTrue(JsonNode.DeepEquals(JsonNode.Parse("[1, 2]"), saved["custom"]?["list"]));
+        Assert.IsTrue(saved.ContainsKey("author"), "Template keys missing from the file are added.");
+        Assert.AreEqual("de", host.Services.GetRequiredService<IConfiguration>()["site:language"]);
+    }
+
+    [TestMethod]
     public async Task ExecuteAsync_NonInteractiveConsole_FailsWithoutPromptingOrWriting()
     {
         using var project = TestProject.Create(p => p.WithProjectJson(new { theme = new { name = ThemeName } }));

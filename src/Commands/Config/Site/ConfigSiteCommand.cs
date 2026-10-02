@@ -1,6 +1,5 @@
 using System.CommandLine;
 using System.Globalization;
-using System.Text.Json.Nodes;
 using Microsoft.Extensions.Options;
 using Spectara.Revela.Commands.Config.Services;
 using Spectara.Revela.Core.Configuration;
@@ -20,7 +19,8 @@ namespace Spectara.Revela.Commands.Config.Site;
 /// <para>
 /// Creates or edits site.json with interactive prompts.
 /// Uses JSON structure from theme template to determine available properties.
-/// When editing, existing values are used as defaults.
+/// When editing, existing values are used as defaults and keys the template doesn't
+/// know are kept.
 /// </para>
 /// </remarks>
 internal sealed partial class ConfigSiteCommand(
@@ -138,10 +138,11 @@ internal sealed partial class ConfigSiteCommand(
         // Collect values via interactive prompts
         var values = CollectValues(properties, isEditMode, projectName, timeProvider);
 
-        // Build final JSON using template structure; the writer validates, replaces atomically
-        // and reloads, so later steps in this process (e.g. generate from the menu) see it
-        var finalJson = JsonPropertyExtractor.BuildJson(templateJson, values);
-        await configFileWriter.WriteAsync(siteConfigPath, JsonNode.Parse(finalJson)!, cancellationToken: cancellationToken);
+        // Template structure + existing document (unknown keys kept); the writer validates,
+        // replaces atomically and reloads, so later steps in this process (e.g. generate from
+        // the menu) see it
+        var siteJson = JsonPropertyExtractor.BuildJson(templateJson, isEditMode ? sourceJson : null, values);
+        await configFileWriter.WriteAsync(siteConfigPath, siteJson, cancellationToken: cancellationToken);
 
         LogSavedSiteConfig(logger, siteConfigPath);
 
