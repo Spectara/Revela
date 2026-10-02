@@ -1,6 +1,7 @@
 using System.IO.Compression;
 using NuGet.Packaging;
 using Spectara.Revela.Core.Abstractions;
+using Spectara.Revela.Core.Services;
 using Spectara.Revela.Features.Packages.Logging;
 
 namespace Spectara.Revela.Features.Packages.Services;
@@ -19,11 +20,18 @@ public sealed class NupkgExtractor(ILogger<NupkgExtractor> logger)
     /// </summary>
     /// <param name="nupkgPath">Path to the .nupkg file.</param>
     /// <param name="targetDir">Root plugin directory (e.g., plugins/).</param>
+    /// <param name="requiredPackageType">
+    /// Package type the nuspec must declare, checked before anything is written; <c>null</c> accepts any type.
+    /// </param>
     /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns>The installed package (ID, exact version, nuspec package types), or null if extraction failed.</returns>
-    public async Task<InstalledPackage?> ExtractAsync(
+    /// <returns>
+    /// <see cref="PackageInstallStatus.Installed"/> with the package (ID, exact version, nuspec package types),
+    /// <see cref="PackageInstallStatus.WrongPackageType"/> without writing files, or <see cref="PackageInstallStatus.Failed"/>.
+    /// </returns>
+    public async Task<PackageInstallResult> ExtractAsync(
         string nupkgPath,
         string targetDir,
+        string? requiredPackageType,
         CancellationToken cancellationToken)
     {
         using var packageReader = new PackageArchiveReader(nupkgPath);
@@ -34,6 +42,18 @@ public sealed class NupkgExtractor(ILogger<NupkgExtractor> logger)
             logger.ExtractingPackage(identity.Id, identity.Version.ToString());
         }
 
+        var nuspecReader = await packageReader.GetNuspecReaderAsync(cancellationToken);
+        var package = new InstalledPackage(
+            identity.Id,
+            identity.Version.ToNormalizedString(),
+            [.. nuspecReader.GetPackageTypes().Select(pt => pt.Name)]);
+        if (requiredPackageType is not null
+            && !package.PackageTypes.Contains(requiredPackageType, StringComparer.OrdinalIgnoreCase))
+        {
+            logger.WrongPackageType(identity.Id, requiredPackageType);
+            return new PackageInstallResult(PackageInstallStatus.WrongPackageType, package);
+        }
+
         // Extract lib/net10.0/*.dll files
         var libItems = await packageReader.GetLibItemsAsync(cancellationToken);
         var targetGroup = libItems.FirstOrDefault(g => g.TargetFramework.Framework == ".NETCoreApp" && g.TargetFramework.Version.Major >= 10)
@@ -42,7 +62,7 @@ public sealed class NupkgExtractor(ILogger<NupkgExtractor> logger)
         if (targetGroup is null || !targetGroup.Items.Any())
         {
             logger.NoCompatibleLibs(identity.Id);
-            return null;
+            return new PackageInstallResult(PackageInstallStatus.Failed);
         }
 
         var fileCount = 0;
@@ -52,7 +72,7 @@ public sealed class NupkgExtractor(ILogger<NupkgExtractor> logger)
         if (!PackageIdRules.IsValid(identity.Id) || !PackageIdRules.IsContainedIn(targetDir, pluginDir))
         {
             logger.InvalidPackageId(identity.Id);
-            return null;
+            return new PackageInstallResult(PackageInstallStatus.Failed);
         }
 
         using var archive = await ZipFile.OpenReadAsync(nupkgPath, cancellationToken);
@@ -106,13 +126,10 @@ public sealed class NupkgExtractor(ILogger<NupkgExtractor> logger)
         if (fileCount == 0)
         {
             logger.NoFilesExtracted(identity.Id);
-            return null;
+            return new PackageInstallResult(PackageInstallStatus.Failed);
         }
 
-        var nuspecReader = await packageReader.GetNuspecReaderAsync(cancellationToken);
-        var packageTypes = nuspecReader.GetPackageTypes().Select(pt => pt.Name).ToList();
-
         logger.PackageExtracted(identity.Id, fileCount);
-        return new InstalledPackage(identity.Id, identity.Version.ToNormalizedString(), packageTypes);
+        return new PackageInstallResult(PackageInstallStatus.Installed, package);
     }
 }

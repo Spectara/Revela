@@ -39,8 +39,8 @@ public sealed class InstallCommandRegistrationTests
     public async Task PluginInstall_WithoutExactVersion_DeclaresInstalledVersion(string? requested)
     {
         var fixture = CreateFixture(insideProject: false);
-        fixture.Installer.InstallAsync(PluginId, requested, null, Arg.Any<CancellationToken>())
-            .Returns(new InstalledPackage(PluginId, "1.4.2", [PackageIds.PluginPackageType]));
+        fixture.Installer.InstallAsync(PluginId, PackageIds.PluginPackageType, requested, null, Arg.Any<CancellationToken>())
+            .Returns(Installed(PluginId, "1.4.2", PackageIds.PluginPackageType));
 
         var exitCode = await InvokeAsync(fixture.PluginInstall(), requested is null ? ["Fixture"] : ["Fixture", "--version", requested]);
 
@@ -53,8 +53,8 @@ public sealed class InstallCommandRegistrationTests
     public async Task PluginInstall_InsideProject_DeclaresOnlyInProjectJson()
     {
         var fixture = CreateFixture(insideProject: true);
-        fixture.Installer.InstallAsync(PluginId, null, null, Arg.Any<CancellationToken>())
-            .Returns(new InstalledPackage(PluginId, "1.4.2", [PackageIds.PluginPackageType]));
+        fixture.Installer.InstallAsync(PluginId, PackageIds.PluginPackageType, null, null, Arg.Any<CancellationToken>())
+            .Returns(Installed(PluginId, "1.4.2", PackageIds.PluginPackageType));
 
         var exitCode = await InvokeAsync(fixture.PluginInstall(), ["Fixture"]);
 
@@ -68,8 +68,8 @@ public sealed class InstallCommandRegistrationTests
     public async Task ThemeInstall_InsideProjectWithoutPackageIndex_InstallsAndDeclaresOnlyInProjectJson()
     {
         var fixture = CreateFixture(insideProject: true);
-        fixture.Installer.InstallAsync(ThemeId, null, null, Arg.Any<CancellationToken>())
-            .Returns(new InstalledPackage(ThemeId, "3.1.0-beta.2", [PackageIds.ThemePackageType]));
+        fixture.Installer.InstallAsync(ThemeId, PackageIds.ThemePackageType, null, null, Arg.Any<CancellationToken>())
+            .Returns(Installed(ThemeId, "3.1.0-beta.2", PackageIds.ThemePackageType));
 
         var exitCode = await InvokeAsync(fixture.ThemeInstall(), ["Noir"]);
 
@@ -81,60 +81,43 @@ public sealed class InstallCommandRegistrationTests
     }
 
     [TestMethod]
-    public async Task ThemeInstall_PackageIsPlugin_FailsAndRemovesFreshInstall()
+    public async Task ThemeInstall_PackageIsPlugin_FailsWithoutTouchingFiles()
     {
         var fixture = CreateFixture(insideProject: false);
-        fixture.Installer.InstallAsync(PluginId, null, null, Arg.Any<CancellationToken>())
-            .Returns(new InstalledPackage(PluginId, "1.0.0", [PackageIds.PluginPackageType]));
-        fixture.Installer.UninstallAsync(PluginId, Arg.Any<CancellationToken>()).Returns(true);
+        fixture.Installer.InstallAsync(PluginId, PackageIds.ThemePackageType, null, null, Arg.Any<CancellationToken>())
+            .Returns(WrongType(PluginId, PackageIds.PluginPackageType));
 
         var (exitCode, output) = await InvokeWithOutputAsync(fixture.ThemeInstall(), [PluginId]);
 
         Assert.AreEqual(1, exitCode);
         Assert.Contains("is not a theme", output, StringComparison.Ordinal);
         Assert.Contains("revela plugin install", output, StringComparison.Ordinal);
-        await fixture.Installer.Received(1).UninstallAsync(PluginId, Arg.Any<CancellationToken>());
+        await fixture.Installer.DidNotReceive().UninstallAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
         await fixture.GlobalConfig.DidNotReceive().AddPackageAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
 
     [TestMethod]
-    public async Task PluginInstall_PackageIsTheme_FailsAndRemovesFreshInstall()
+    public async Task PluginInstall_PackageIsTheme_FailsWithoutTouchingFiles()
     {
         var fixture = CreateFixture(insideProject: false);
-        fixture.Installer.InstallAsync(ThemeId, null, null, Arg.Any<CancellationToken>())
-            .Returns(new InstalledPackage(ThemeId, "1.0.0", [PackageIds.ThemePackageType]));
-        fixture.Installer.UninstallAsync(ThemeId, Arg.Any<CancellationToken>()).Returns(true);
+        fixture.Installer.InstallAsync(ThemeId, PackageIds.PluginPackageType, null, null, Arg.Any<CancellationToken>())
+            .Returns(WrongType(ThemeId, PackageIds.ThemePackageType));
 
         var (exitCode, output) = await InvokeWithOutputAsync(fixture.PluginInstall(), [ThemeId]);
 
         Assert.AreEqual(1, exitCode);
         Assert.Contains("is not a plugin", output, StringComparison.Ordinal);
         Assert.Contains("revela theme install", output, StringComparison.Ordinal);
-        await fixture.Installer.Received(1).UninstallAsync(ThemeId, Arg.Any<CancellationToken>());
-        await fixture.GlobalConfig.DidNotReceive().AddPackageAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
-    }
-
-    [TestMethod]
-    public async Task PluginInstall_WrongTypeButAlreadyInstalled_KeepsExistingPackage()
-    {
-        var fixture = CreateFixture(insideProject: false);
-        var existing = Directory.CreateDirectory(Path.Combine(pluginDirectory, ThemeId)).FullName;
-        await File.WriteAllBytesAsync(Path.Combine(existing, $"{ThemeId}.dll"), [1]);
-        fixture.Installer.InstallAsync(ThemeId, null, null, Arg.Any<CancellationToken>())
-            .Returns(new InstalledPackage(ThemeId, "1.0.0", [PackageIds.ThemePackageType]));
-
-        var exitCode = await InvokeAsync(fixture.PluginInstall(), [ThemeId]);
-
-        Assert.AreEqual(1, exitCode);
         await fixture.Installer.DidNotReceive().UninstallAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+        await fixture.GlobalConfig.DidNotReceive().AddPackageAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
 
     [TestMethod]
     public async Task PluginInstall_DeclarationFails_ReportsItAndKeepsInstalledFiles()
     {
         var fixture = CreateFixture(insideProject: true);
-        fixture.Installer.InstallAsync(PluginId, null, null, Arg.Any<CancellationToken>())
-            .Returns(new InstalledPackage(PluginId, "1.4.2", [PackageIds.PluginPackageType]));
+        fixture.Installer.InstallAsync(PluginId, PackageIds.PluginPackageType, null, null, Arg.Any<CancellationToken>())
+            .Returns(Installed(PluginId, "1.4.2", PackageIds.PluginPackageType));
         fixture.ConfigService.UpdateProjectConfigAsync(Arg.Any<JsonObject>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromException(new IOException("Injected write failure.")));
 
@@ -205,6 +188,12 @@ public sealed class InstallCommandRegistrationTests
         var installService = new PackageInstallService([installer], declarations, pluginDirectory);
         return new Fixture(installer, configService, globalConfig, Substitute.For<IPackageIndexService>(), installService);
     }
+
+    private static PackageInstallResult Installed(string id, string version, string packageType) =>
+        new(PackageInstallStatus.Installed, new InstalledPackage(id, version, [packageType]));
+
+    private static PackageInstallResult WrongType(string id, string declaredPackageType) =>
+        new(PackageInstallStatus.WrongPackageType, new InstalledPackage(id, "1.0.0", [declaredPackageType]));
 
     private static string? DeclaredVersion(JsonObject patch, string packageId) =>
         patch["dependencies"]?["packages"]?[packageId]?.GetValue<string>();

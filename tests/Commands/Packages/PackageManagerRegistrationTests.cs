@@ -35,12 +35,12 @@ public sealed class PackageManagerRegistrationTests
         var installer = Substitute.For<IPackageInstaller>();
         var installerEntered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var installerToken = CancellationToken.None;
-        installer.InstallAsync(fullPackageId, null, null, Arg.Any<CancellationToken>()).Returns(async call =>
+        installer.InstallAsync(fullPackageId, "RevelaPlugin", null, null, Arg.Any<CancellationToken>()).Returns(async call =>
         {
             installerToken = call.Arg<CancellationToken>();
             installerEntered.TrySetResult();
             await Task.Delay(Timeout.Infinite, installerToken);
-            return (InstalledPackage?)new InstalledPackage(fullPackageId, "2.0.0", ["RevelaPlugin"]);
+            return new PackageInstallResult(PackageInstallStatus.Installed, new InstalledPackage(fullPackageId, "2.0.0", ["RevelaPlugin"]));
         });
         var indexService = Substitute.For<IPackageIndexService>();
         indexService.SearchByTypeAsync("RevelaPlugin", Arg.Any<CancellationToken>()).Returns(
@@ -81,7 +81,7 @@ public sealed class PackageManagerRegistrationTests
 
             Assert.AreEqual(installerToken, exception.CancellationToken);
             Assert.IsTrue(exception.CancellationToken.IsCancellationRequested);
-            await installer.Received(1).InstallAsync(fullPackageId, null, null, installerToken);
+            await installer.Received(1).InstallAsync(fullPackageId, "RevelaPlugin", null, null, installerToken);
             await globalConfig.DidNotReceive().AddPackageAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
             Assert.IsFalse(logger.Entries.Any(entry => entry.Level >= LogLevel.Error));
             Assert.DoesNotContain("Failed to install", writer.ToString(), StringComparison.OrdinalIgnoreCase);
@@ -120,10 +120,10 @@ public sealed class PackageManagerRegistrationTests
         using var provider = CreateInstallerProvider(configService, logger);
         var installer = provider.GetRequiredService<PackageManager>();
 
-        var package = await installer.InstallFromNupkgAsync(nupkgPath, targetDir, CancellationToken.None);
+        var result = await installer.InstallFromNupkgAsync(nupkgPath, requiredPackageType: null, targetDir, CancellationToken.None);
 
-        Assert.IsNotNull(package);
-        Assert.AreEqual("2.0.0", package.Version);
+        Assert.AreEqual(PackageInstallStatus.Installed, result.Status);
+        Assert.AreEqual("2.0.0", result.Package!.Version);
         CollectionAssert.AreEqual(new byte[] { 1, 2, 3, 4 }, await File.ReadAllBytesAsync(Path.Combine(targetDir, PackageId, $"{PackageId}.dll")));
         CollectionAssert.AreEqual(original, await File.ReadAllBytesAsync(project.ProjectJsonPath));
         Assert.IsEmpty(configService.ReceivedCalls());
@@ -143,7 +143,7 @@ public sealed class PackageManagerRegistrationTests
         await cancellation.CancelAsync();
 
         var installFailure = await Assert.ThrowsAsync<OperationCanceledException>(() => installer.InstallAsync(
-            PackageId, cancellationToken: cancellation.Token));
+            PackageId, "RevelaPlugin", cancellationToken: cancellation.Token));
         var uninstallFailure = Assert.Throws<OperationCanceledException>(() => installer.Uninstall(
             PackageId, cancellation.Token));
 

@@ -1,3 +1,5 @@
+using Spectara.Revela.Core.Services;
+
 namespace Spectara.Revela.Core.Abstractions;
 
 /// <summary>
@@ -10,14 +12,28 @@ namespace Spectara.Revela.Core.Abstractions;
 public interface IPackageInstaller
 {
     /// <summary>
-    /// Installs a package by NuGet ID.
+    /// Installs a package by NuGet ID when its nuspec declares <paramref name="requiredPackageType"/>.
     /// </summary>
+    /// <remarks>
+    /// The package type is checked before any file is written, so a package of the wrong type
+    /// never replaces or adds files in the plugin directory.
+    /// </remarks>
     /// <param name="packageId">NuGet package ID.</param>
+    /// <param name="requiredPackageType">The required NuGet package type (see <see cref="PackageIds"/>).</param>
     /// <param name="version">Optional exact version; <c>null</c>, empty or <c>"latest"</c> selects the newest allowed version.</param>
     /// <param name="source">Optional NuGet source override.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns>The installed package with its exact version, or <c>null</c> if installation failed.</returns>
-    Task<InstalledPackage?> InstallAsync(string packageId, string? version = null, string? source = null, CancellationToken cancellationToken = default);
+    /// <returns>
+    /// <see cref="PackageInstallStatus.Installed"/> with the installed package,
+    /// <see cref="PackageInstallStatus.WrongPackageType"/> with the package's declared types (nothing written),
+    /// or <see cref="PackageInstallStatus.Failed"/>.
+    /// </returns>
+    Task<PackageInstallResult> InstallAsync(
+        string packageId,
+        string requiredPackageType,
+        string? version = null,
+        string? source = null,
+        CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Uninstalls a package by NuGet ID.

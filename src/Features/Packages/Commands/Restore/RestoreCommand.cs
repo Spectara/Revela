@@ -223,13 +223,14 @@ internal sealed partial class RestoreCommand(
                     {
                         try
                         {
-                            var package = await packageManager.InstallAsync(
-                                packageId: dep.PackageId,
+                            var result = await packageManager.InstallAsync(
+                                dep.PackageId,
+                                requiredPackageType: null,
                                 version: dep.Version,
                                 source: null,
                                 cancellationToken: ct);
 
-                            if (package is null)
+                            if (result.Status != PackageInstallStatus.Installed || result.Package is not { } package)
                             {
                                 installFailed.Add((dep, "Installation failed (see logs)"));
                             }
