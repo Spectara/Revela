@@ -35,10 +35,4 @@ public record PackageMetadata
     /// Extension commands are only registered if the target is present.
     /// </summary>
     public IReadOnlyList<string> ExtendsPackages { get; init; } = [];
-
-    /// <summary>URL to preview image (primarily used by themes).</summary>
-    public Uri? PreviewImageUri { get; init; }
-
-    /// <summary>Tags for discovery (e.g., "photography", "dark", "gallery").</summary>
-    public IReadOnlyList<string> Tags { get; init; } = [];
 }

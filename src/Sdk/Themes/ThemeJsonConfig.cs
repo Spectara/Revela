@@ -13,7 +13,7 @@ namespace Spectara.Revela.Sdk.Themes;
 /// <remarks>
 /// Supports both base themes and extensions in one format:
 /// <list type="bullet">
-/// <item>Base themes: Name, Version, Description, Author, PreviewImage, Tags, Templates</item>
+/// <item>Base themes: Name, Version, Description, Author, Templates, PhotoViewers, DefaultPhotoViewer</item>
 /// <item>Extensions: Name, Version, Description, Author, TargetTheme, Prefix, TemplateDefaults</item>
 /// </list>
 /// </remarks>
@@ -30,12 +30,6 @@ public sealed class ThemeJsonConfig
 
     /// <summary>Theme author.</summary>
     public string? Author { get; set; }
-
-    /// <summary>Preview image URI (base themes only).</summary>
-    public Uri? PreviewImage { get; set; }
-
-    /// <summary>Tags for theme discovery (base themes only).</summary>
-    public IReadOnlyList<string>? Tags { get; set; }
 
     /// <summary>Target theme name for extensions (null for base themes).</summary>
     public string? TargetTheme { get; set; }

@@ -31,9 +31,6 @@ public sealed class EmbeddedThemePluginTests
     public void Metadata_ReturnsVersion() => Assert.IsFalse(string.IsNullOrEmpty(plugin.Metadata.Version));
 
     [TestMethod]
-    public void Metadata_HasTags() => Assert.IsNotEmpty(plugin.Metadata.Tags);
-
-    [TestMethod]
     public void GetManifest_ReturnsLayoutTemplate()
     {
         // Arrange & Act

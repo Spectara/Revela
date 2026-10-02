@@ -110,9 +110,7 @@ public abstract class EmbeddedTheme : ITheme
             Name = name,
             Version = config.Version ?? "1.0.0",
             Description = config.Description ?? string.Empty,
-            Author = config.Author ?? "Unknown",
-            PreviewImageUri = config.PreviewImage,
-            Tags = config.Tags ?? []
+            Author = config.Author ?? "Unknown"
         };
     }
 
