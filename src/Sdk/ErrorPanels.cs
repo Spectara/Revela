@@ -368,28 +368,6 @@ public static class ErrorPanels
     }
 
     /// <summary>
-    /// Shows an error panel when a port is unavailable.
-    /// </summary>
-    /// <param name="port">The port that is unavailable.</param>
-    /// <param name="reason">The reason (e.g., "in use", "access denied").</param>
-    /// <param name="hint">Optional hint for resolution.</param>
-    public static void ShowPortError(int port, string reason, string? hint = null)
-    {
-        var content = $"[yellow]Port {port} {reason}.[/]";
-
-        if (!string.IsNullOrWhiteSpace(hint))
-        {
-            content += $"\n\n[dim]{hint}[/]";
-        }
-
-        var panel = new Panel(content)
-            .WithHeader("[bold red]Port Unavailable[/]")
-            .WithErrorStyle();
-
-        AnsiConsole.Write(panel);
-    }
-
-    /// <summary>
     /// Shows an info panel when a restart is required after installing packages.
     /// </summary>
     /// <param name="what">What was installed (e.g., "plugins", "themes").</param>
@@ -402,32 +380,4 @@ public static class ErrorPanels
 
         AnsiConsole.Write(panel);
     }
-
-    /// <summary>
-    /// Shows an error panel when the source directory is missing.
-    /// </summary>
-    /// <param name="path">The source directory path that was not found.</param>
-    /// <param name="additionalHints">Optional additional solution hints (e.g., for installed plugins).</param>
-    public static void ShowSourceDirectoryNotFoundError(string path, IEnumerable<string>? additionalHints = null)
-    {
-        var content = $"[yellow]Source directory not found:[/] [cyan]{Markup.Escape(path)}[/]\n\n" +
-            "[bold]Solutions:[/]\n" +
-            "  • Add your images to the [cyan]source/[/] folder\n" +
-            "  • Run [cyan]revela init[/] to set up a new project";
-
-        if (additionalHints is not null)
-        {
-            foreach (var hint in additionalHints)
-            {
-                content += $"\n  • {hint}";
-            }
-        }
-
-        var panel = new Panel(content)
-            .WithHeader("[bold red]Source Directory Missing[/]")
-            .WithErrorStyle();
-
-        AnsiConsole.Write(panel);
-    }
-
 }

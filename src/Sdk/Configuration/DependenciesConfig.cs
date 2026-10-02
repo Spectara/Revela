@@ -26,7 +26,7 @@ namespace Spectara.Revela.Sdk.Configuration;
 /// derived from its ID. The root <c>plugins</c> node is reserved for plugin settings.
 /// </para>
 /// </remarks>
-[RevelaConfig("dependencies", ValidateDataAnnotations = false)]
+[RevelaConfig("dependencies")]
 public sealed class DependenciesConfig
 {
     /// <summary>

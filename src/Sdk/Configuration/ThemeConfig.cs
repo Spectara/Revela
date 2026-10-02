@@ -35,7 +35,7 @@ namespace Spectara.Revela.Sdk.Configuration;
 /// </code>
 /// </example>
 /// </remarks>
-[RevelaConfig("theme", ValidateDataAnnotations = false)]
+[RevelaConfig("theme")]
 public sealed class ThemeConfig
 {
     /// <summary>
