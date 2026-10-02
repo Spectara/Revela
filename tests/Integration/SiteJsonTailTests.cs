@@ -5,6 +5,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Spectara.Revela.Commands;
 using Spectara.Revela.Features.Generate;
 using Spectara.Revela.Features.Generate.Abstractions;
+using Spectara.Revela.Features.Generate.Services;
 using Spectara.Revela.Sdk.Json;
 using Spectara.Revela.Tests.Shared.Fixtures;
 
@@ -50,7 +51,7 @@ public sealed class SiteJsonTailTests
         // Act: render a template against the same model key ("site") the pipeline uses.
         var output = engine.Render(
             "{{ site.heroImage }}|{{ site.contactEmail }}|{{ site.title }}",
-            new Dictionary<string, object?> { ["site"] = siteTail });
+            new Dictionary<string, object?> { ["site"] = JsonScriptConverter.ToScriptValue(siteTail, readOnly: true) });
 
         // Assert: the non-core tail properties reach the template alongside the core.
         Assert.AreEqual("hero.jpg|jane@example.com|My Portfolio", output);

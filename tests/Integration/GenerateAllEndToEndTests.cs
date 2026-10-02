@@ -148,6 +148,29 @@ public sealed class GenerateAllEndToEndTests
     }
 
     [TestMethod]
+    public async Task RenderAsync_StatisticsHomePage_ReceivesExtensionDataLikeGalleryPages()
+    {
+        var statistics = new
+        {
+            total_images = 4242,
+            total_galleries = 7,
+            cameras = Array.Empty<object>(),
+            lenses = Array.Empty<object>(),
+            photo_heatmap = Array.Empty<object>(),
+            heatmap_years = Array.Empty<object>(),
+        };
+
+        var html = await RenderExtensionPageAsync(
+            new LuminaStatisticsExtension(),
+            string.Empty,
+            "statistics/overview",
+            "statistics.json",
+            statistics);
+
+        Assert.Contains("<strong>4242</strong>", html, StringComparison.Ordinal);
+    }
+
+    [TestMethod]
     public async Task RenderAsync_LuminaCalendarEscapesCalendarData()
     {
         var calendar = new
@@ -480,8 +503,6 @@ public sealed class GenerateAllEndToEndTests
 
         var contentService = host.Services.GetRequiredService<IContentService>();
         var renderService = host.Services.GetRequiredService<IRenderService>();
-        renderService.SetTheme(host.Services.GetRequiredService<ITheme>());
-        renderService.SetExtensions([]);
 
         var scanResult = await contentService.ScanAsync();
         var renderResult = await renderService.RenderAsync();
@@ -517,8 +538,6 @@ public sealed class GenerateAllEndToEndTests
         var renderService = host.Services.GetRequiredService<IRenderService>();
         var imageService = host.Services.GetRequiredService<IImageService>();
         var themePlugin = host.Services.GetRequiredService<ITheme>();
-        renderService.SetTheme(themePlugin);
-        renderService.SetExtensions([]);
 
         // Act
         var scanResult = await contentService.ScanAsync();
@@ -570,8 +589,6 @@ public sealed class GenerateAllEndToEndTests
         var contentService = host.Services.GetRequiredService<IContentService>();
         var renderService = host.Services.GetRequiredService<IRenderService>();
         var themePlugin = host.Services.GetRequiredService<ITheme>();
-        renderService.SetTheme(themePlugin);
-        renderService.SetExtensions([]);
 
         // Act
         var scanResult = await contentService.ScanAsync();
@@ -643,8 +660,6 @@ public sealed class GenerateAllEndToEndTests
 
         // Configure render service with Lumina theme
         var themePlugin = host.Services.GetRequiredService<ITheme>();
-        renderService.SetTheme(themePlugin);
-        renderService.SetExtensions([]);
 
         // Act: Run the pipeline steps directly (avoids Spectre.Console terminal issues)
 
@@ -885,8 +900,6 @@ public sealed class GenerateAllEndToEndTests
         var imageService = host.Services.GetRequiredService<IImageService>();
 
         var themePlugin = host.Services.GetRequiredService<ITheme>();
-        renderService.SetTheme(themePlugin);
-        renderService.SetExtensions([]);
 
         // Act
         var scanResult = await contentService.ScanAsync();
@@ -941,8 +954,6 @@ public sealed class GenerateAllEndToEndTests
         var imageService = host.Services.GetRequiredService<IImageService>();
 
         var themePlugin = host.Services.GetRequiredService<ITheme>();
-        renderService.SetTheme(themePlugin);
-        renderService.SetExtensions([]);
 
         // Act: First run — everything processed
         await contentService.ScanAsync();
@@ -988,8 +999,6 @@ public sealed class GenerateAllEndToEndTests
         var imageService = host.Services.GetRequiredService<IImageService>();
 
         var themePlugin = host.Services.GetRequiredService<ITheme>();
-        renderService.SetTheme(themePlugin);
-        renderService.SetExtensions([]);
 
         // Act
         var scanResult = await contentService.ScanAsync();
@@ -1054,8 +1063,6 @@ public sealed class GenerateAllEndToEndTests
         var contentService = host.Services.GetRequiredService<IContentService>();
         var renderService = host.Services.GetRequiredService<IRenderService>();
         var theme = host.Services.GetRequiredService<ITheme>();
-        renderService.SetTheme(theme);
-        renderService.SetExtensions([]);
 
         // Act
         var scanResult = await contentService.ScanAsync();
@@ -1116,8 +1123,6 @@ public sealed class GenerateAllEndToEndTests
 
         var contentService = host.Services.GetRequiredService<IContentService>();
         var renderService = host.Services.GetRequiredService<IRenderService>();
-        renderService.SetTheme(host.Services.GetRequiredService<ITheme>());
-        renderService.SetExtensions([]);
 
         var scanResult = await contentService.ScanAsync();
         var renderResult = await renderService.RenderAsync();
@@ -1161,8 +1166,6 @@ public sealed class GenerateAllEndToEndTests
 
         var contentService = host.Services.GetRequiredService<IContentService>();
         var renderService = host.Services.GetRequiredService<IRenderService>();
-        renderService.SetTheme(host.Services.GetRequiredService<ITheme>());
-        renderService.SetExtensions([]);
 
         var scanResult = await contentService.ScanAsync();
         var renderResult = await renderService.RenderAsync();
@@ -1373,6 +1376,22 @@ public sealed class GenerateAllEndToEndTests
         Assert.Contains($"id=\"photo-1-photo-i-{FenceSlugId}\"", storyHtml);
     }
 
+    [TestMethod]
+    public async Task RenderAsync_ThemeWithoutLayout_FailsWithoutWritingOutput()
+    {
+        using var project = TestProject.Create(p => p
+            .WithSiteJson(new { title = "Missing Layout", author = "Test" })
+            .AddGallery("Photos", g => g.AddRealImage("one.jpg", 800, 600)));
+
+        var (scanResult, renderResult) = await ScanAndRenderAsync(project, new ThemeWithoutFile("Layout.revela"));
+
+        Assert.IsTrue(scanResult.Success, $"Scan failed: {scanResult.ErrorMessage}");
+        Assert.IsFalse(renderResult.Success);
+        Assert.IsNotNull(renderResult.ErrorMessage);
+        Assert.Contains("layout template", renderResult.ErrorMessage, StringComparison.Ordinal);
+        Assert.IsFalse(File.Exists(Path.Combine(project.OutputPath, "index.html")));
+    }
+
     private static async Task<(ContentResult Scan, RenderResult Render)> ScanAndRenderAsync(TestProject project, ITheme theme)
     {
         using var host = RevelaTestHost.Build(project.RootPath, services =>
@@ -1384,8 +1403,6 @@ public sealed class GenerateAllEndToEndTests
 
         var contentService = host.Services.GetRequiredService<IContentService>();
         var renderService = host.Services.GetRequiredService<IRenderService>();
-        renderService.SetTheme(theme);
-        renderService.SetExtensions([]);
 
         var scanResult = await contentService.ScanAsync();
         var renderResult = await renderService.RenderAsync();
@@ -1530,8 +1547,6 @@ public sealed class GenerateAllEndToEndTests
         var contentService = host.Services.GetRequiredService<IContentService>();
         var renderService = host.Services.GetRequiredService<IRenderService>();
         var theme = host.Services.GetRequiredService<ITheme>();
-        renderService.SetTheme(theme);
-        renderService.SetExtensions([]);
 
         // Act
         var scanResult = await contentService.ScanAsync();
@@ -1581,8 +1596,6 @@ public sealed class GenerateAllEndToEndTests
         });
         var contentService = host.Services.GetRequiredService<IContentService>();
         var renderService = host.Services.GetRequiredService<IRenderService>();
-        renderService.SetTheme(host.Services.GetRequiredService<ITheme>());
-        renderService.SetExtensions([]);
 
         var scanResult = await contentService.ScanAsync();
         var renderResult = await renderService.RenderAsync();
@@ -1618,8 +1631,6 @@ public sealed class GenerateAllEndToEndTests
         });
         var contentService = host.Services.GetRequiredService<IContentService>();
         var renderService = host.Services.GetRequiredService<IRenderService>();
-        renderService.SetTheme(host.Services.GetRequiredService<ITheme>());
-        renderService.SetExtensions([]);
 
         var scanResult = await contentService.ScanAsync();
         var renderResult = await renderService.RenderAsync();
@@ -1666,8 +1677,6 @@ public sealed class GenerateAllEndToEndTests
         });
         var contentService = host.Services.GetRequiredService<IContentService>();
         var renderService = host.Services.GetRequiredService<IRenderService>();
-        renderService.SetTheme(host.Services.GetRequiredService<ITheme>());
-        renderService.SetExtensions([]);
 
         var scanResult = await contentService.ScanAsync();
         var renderResult = await renderService.RenderAsync();
@@ -1747,8 +1756,6 @@ public sealed class GenerateAllEndToEndTests
         });
         var contentService = host.Services.GetRequiredService<IContentService>();
         var renderService = host.Services.GetRequiredService<IRenderService>();
-        renderService.SetTheme(host.Services.GetRequiredService<ITheme>());
-        renderService.SetExtensions([]);
 
         var scanResult = await contentService.ScanAsync();
         var renderResult = await renderService.RenderAsync();
@@ -1798,8 +1805,6 @@ public sealed class GenerateAllEndToEndTests
         });
         var contentService = host.Services.GetRequiredService<IContentService>();
         var renderService = host.Services.GetRequiredService<IRenderService>();
-        renderService.SetTheme(host.Services.GetRequiredService<ITheme>());
-        renderService.SetExtensions([]);
 
         var scanResult = await contentService.ScanAsync();
         var renderResult = await renderService.RenderAsync();
@@ -1900,8 +1905,6 @@ public sealed class GenerateAllEndToEndTests
         var contentService = host.Services.GetRequiredService<IContentService>();
         var renderService = host.Services.GetRequiredService<IRenderService>();
         var themePlugin = host.Services.GetRequiredService<ITheme>();
-        renderService.SetTheme(themePlugin);
-        renderService.SetExtensions([]);
 
         var scanResult = await contentService.ScanAsync();
         Assert.IsTrue(scanResult.Success, $"Scan should succeed: {scanResult.ErrorMessage}");

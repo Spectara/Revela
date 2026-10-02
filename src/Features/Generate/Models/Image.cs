@@ -70,7 +70,16 @@ internal sealed class Image
     /// </summary>
     public int? Rating { get; init; }
 
+    /// <summary>
+    /// Variant files written by the image processor (counts and sizes for progress reporting).
+    /// </summary>
+    /// <remarks>
+    /// Only filled on the processor's result; pages are rendered from the manifest, so templates
+    /// would always see an empty list and never get it.
+    /// </remarks>
+    [ScriptIgnore]
     public IReadOnlyList<ImageVariant> Variants { get; init; } = [];
+
 
     /// <summary>
     /// List of available image widths (for dynamic srcset in templates).

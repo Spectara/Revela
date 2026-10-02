@@ -3,12 +3,35 @@ using System.Text.Json.Serialization;
 namespace Spectara.Revela.Sdk.Models.Manifest;
 
 /// <summary>
-/// Content item representing an image file.
+/// An image of a page in the manifest, with the metadata read during scan.
 /// </summary>
 [System.Diagnostics.CodeAnalysis.DynamicallyAccessedMembers(
     System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.PublicProperties)]
-public sealed record ImageContent : GalleryContent
+public sealed record ImageContent
 {
+    /// <summary>
+    /// Filename of the image (without directory path).
+    /// </summary>
+    /// <example>"photo-001.jpg"</example>
+    [JsonPropertyName("filename")]
+    public required string Filename { get; init; }
+
+    /// <summary>
+    /// Relative path to the source file within the source directory, with forward slashes.
+    /// </summary>
+    /// <remarks>
+    /// For folder images this is the folder path + filename; for images selected by a filter
+    /// (e.g. from <c>_images</c>) it is the path of the matched file.
+    /// </remarks>
+    /// <example>"_images/canon-night-001.jpg" or "01 Gallery/photo-001.jpg"</example>
+    [JsonPropertyName("sourcePath")]
+    public string SourcePath { get; init; } = "";
+
+    /// <summary>
+    /// File size in bytes.
+    /// </summary>
+    [JsonPropertyName("fileSize")]
+    public long FileSize { get; init; }
     /// <summary>
     /// Image width in pixels.
     /// </summary>

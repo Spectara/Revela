@@ -48,7 +48,7 @@ public sealed class SlugsCheckTests
 
     private static Gallery Gallery(string path, string slug) => new()
     {
-        Name = path,
+        Title = path,
         Path = path,
         Slug = slug,
     };
@@ -56,7 +56,6 @@ public sealed class SlugsCheckTests
     private static ContentTree TreeWith(params Gallery[] galleries) => new()
     {
         Images = [],
-        Markdowns = [],
         Galleries = galleries,
     };
 }

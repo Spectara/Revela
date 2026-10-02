@@ -117,10 +117,8 @@ internal sealed partial class ImageService(
                 };
             }
 
-            // Store config hash for manifest tracking
+            // Configured sizes, the fallback for images whose manifest entry has none
             var sizes = imageSizesProvider.GetSizes();
-            var configHash = ManifestService.ComputeConfigHash(sizes, formats);
-            manifestRepository.ConfigHash = configHash;
 
             // Detect which formats have quality changes (need regeneration)
             var savedQualities = manifestRepository.FormatQualities;

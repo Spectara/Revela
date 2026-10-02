@@ -12,7 +12,7 @@ namespace Spectara.Revela.Sdk.Models.Manifest;
 public sealed record ManifestMeta
 {
     /// <summary>
-    /// Manifest schema version for future migrations.
+    /// Manifest schema version.
     /// </summary>
     /// <remarks>
     /// Version history:
@@ -21,17 +21,17 @@ public sealed record ManifestMeta
     ///   <item><description>v2: Added navigation tree</description></item>
     ///   <item><description>v3: Unified tree structure with root node containing everything</description></item>
     ///   <item><description>v4: Polymorphic content list (images + markdown), renamed images to content</description></item>
+    ///   <item><description>v5: Content holds only images (no type discriminator); removed configHash and unused entry fields</description></item>
     /// </list>
+    /// A manifest with another version is discarded on load and rebuilt by the next scan.
     /// </remarks>
     [JsonPropertyName("version")]
-    public int Version { get; init; } = 4;
+    public int Version { get; init; } = CurrentVersion;
 
     /// <summary>
-    /// Hash of image processing configuration (sizes, formats, quality).
-    /// When this changes, all images need to be regenerated.
+    /// The manifest schema version this Revela reads and writes.
     /// </summary>
-    [JsonPropertyName("configHash")]
-    public string ConfigHash { get; init; } = string.Empty;
+    public const int CurrentVersion = 5;
 
     /// <summary>
     /// Hash of scan configuration (placeholder strategy, min dimensions).

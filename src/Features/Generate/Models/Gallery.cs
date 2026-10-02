@@ -27,14 +27,12 @@ internal sealed class Gallery
     public required string Slug { get; init; }
 
     /// <summary>
-    /// Gallery display name derived from folder name.
+    /// Display title: the front matter `title`, else the folder name without its sort prefix.
     /// </summary>
-    public required string Name { get; init; }
-
-    /// <summary>
-    /// Optional custom title from front matter.
-    /// </summary>
-    public string? Title { get; init; }
+    /// <remarks>
+    /// The home page without a front matter title uses the site title (see `ContentService`).
+    /// </remarks>
+    public required string Title { get; init; }
 
     /// <summary>
     /// Optional description from front matter.
@@ -64,10 +62,10 @@ internal sealed class Gallery
     /// <remarks>
     /// <para>
     /// Specifies which body template to use inside the layout.
-    /// Default is "body/gallery" if not specified.
+    /// Without a template the theme's default body (Lumina: <c>Body/Gallery.revela</c>) is used.
     /// </para>
     /// <example>
-    /// template = "body/page" - Simple text page without gallery
+    /// template = "page" - Simple text page without gallery
     /// template = "statistics/overview" - Statistics plugin template
     /// </example>
     /// </remarks>
@@ -119,28 +117,8 @@ internal sealed class Gallery
     public string? Filter { get; init; }
 
     /// <summary>
-    /// Gallery date for sorting (from front matter or first image EXIF).
-    /// </summary>
-    public DateTime? Date { get; init; }
-
-    /// <summary>
-    /// Whether this gallery is featured on the home page.
-    /// </summary>
-    public bool Featured { get; init; }
-
-    /// <summary>
-    /// Manual sort weight (lower values appear first).
-    /// </summary>
-    public int Weight { get; init; }
-
-    /// <summary>
     /// Images contained in this gallery.
     /// </summary>
     public IReadOnlyList<Image> Images { get; init; } = [];
-
-    /// <summary>
-    /// Nested sub-galleries.
-    /// </summary>
-    public IReadOnlyList<Gallery> SubGalleries { get; init; } = [];
 }
 

@@ -209,7 +209,7 @@ public sealed class SlugValidatorTests
 
     private static Gallery Gallery(string path) => new()
     {
-        Name = path.Length == 0 ? "Home" : path,
+        Title = path.Length == 0 ? "Site" : path,
         Path = path,
         Slug = path.Length == 0
             ? UrlBuilder.BuildPath()

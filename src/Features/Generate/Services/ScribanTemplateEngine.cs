@@ -7,12 +7,14 @@ using System.Text;
 using Scriban;
 using Scriban.Parsing;
 using Scriban.Runtime;
+using Scriban.Syntax;
 using Spectara.Revela.Core.Themes;
 using Spectara.Revela.Features.Generate.Abstractions;
 using Spectara.Revela.Features.Generate.Models;
-using Spectara.Revela.Sdk;
-using Spectara.Revela.Sdk.Abstractions;
 using Spectara.Revela.Sdk.Services;
+#pragma warning disable IDE0005 // Using directive is unnecessary — namespace holds source-generated extension methods the analyzer cannot see.
+using Spectara.Revela.Sdk.TemplateModels;
+#pragma warning restore IDE0005
 
 namespace Spectara.Revela.Features.Generate.Services;
 
@@ -35,102 +37,31 @@ namespace Spectara.Revela.Features.Generate.Services;
 ///   &lt;img src="{{ variant_url(image, 640, 'jpg') }}" alt="{{ image.title }}" /&gt;
 /// {{ end }}
 /// </code>
+/// <para>
+/// One engine serves one render run and is shared by all pages, also when they render in
+/// parallel. Every template and include is parsed once per engine; each render gets its own
+/// <see cref="TemplateContext"/>, as Scriban requires for concurrent use.
+/// </para>
 /// </remarks>
 internal sealed partial class ScribanTemplateEngine(
     ILogger<ScribanTemplateEngine> logger,
     IMarkdownService markdownService,
     ITemplateResolver templateResolver) : ITemplateEngine
 {
-    private readonly ConcurrentDictionary<string, Template> compiledTemplates = new();
-    private ITheme? currentTheme;
-    private IReadOnlyDictionary<string, Image>? imageLookup;
+    private readonly ConcurrentDictionary<string, Template> parsedTemplates = new(StringComparer.Ordinal);
+    private readonly ConcurrentDictionary<string, Template> parsedIncludes = new(StringComparer.Ordinal);
+    private IReadOnlyDictionary<string, Image> imageLookup = new Dictionary<string, Image>();
     private ThemeStrings strings = ThemeStrings.Empty;
     private TranslateFunction translateFunction = new(ThemeStrings.Empty);
     private string ogLocale = ToOpenGraphLocale(ThemeStrings.Empty.Language);
 
     private static readonly SearchValues<char> HtmlSpecialCharacters = SearchValues.Create("&<>\"'");
 
-    /// <summary>
-    /// Converts PascalCase member names to lowercase for Scriban templates
-    /// </summary>
-    /// <remarks>
-    /// Scriban templates use lowercase property names ({{ site.title }})
-    /// but C# properties are PascalCase (Site.Title). This renamer bridges the gap.
-    ///
-    /// CA1308 is suppressed because this is intentional case conversion for template
-    /// compatibility, not string normalization for comparison. Scriban requires lowercase.
-    /// </remarks>
-    /// <summary>
-    /// Convert PascalCase property names to snake_case for Scriban templates.
-    /// Example: Sizes → sizes
-    /// </summary>
-    [SuppressMessage(
-        "Globalization",
-        "CA1308:Normalize strings to uppercase",
-        Justification = "Scriban templates require lowercase property names - this is format conversion, not normalization")]
-    private static string ConvertToSnakeCase(System.Reflection.MemberInfo member)
-    {
-        var name = member.Name;
-        var result = new StringBuilder(name.Length + 5);
-
-        for (var i = 0; i < name.Length; i++)
-        {
-            var c = name[i];
-            if (char.IsUpper(c))
-            {
-                if (i > 0)
-                {
-                    result.Append('_');
-                }
-
-                result.Append(char.ToLowerInvariant(c));
-            }
-            else
-            {
-                result.Append(c);
-            }
-        }
-
-        return result.ToString();
-    }
-
-    /// <summary>
-    /// Set the theme for loading partials
-    /// </summary>
-    /// <param name="theme">Theme plugin to load partials from</param>
-    public void SetTheme(ITheme? theme)
-    {
-        currentTheme = theme;
-        if (theme is not null)
-        {
-            LogThemeSet(logger, theme.Metadata.Name);
-        }
-    }
-
-    /// <summary>
-    /// Set theme extensions for loading plugin-specific partials
-    /// </summary>
-    /// <param name="extensions">Theme extensions to use for partial lookups</param>
-    /// <remarks>
-    /// Extensions are now managed by ITemplateResolver. This method is kept for interface compatibility.
-    /// </remarks>
-    public void SetExtensions(IReadOnlyList<ITheme> extensions)
-    {
-        foreach (var ext in extensions)
-        {
-            LogExtensionSet(logger, ext.Metadata.Name, ext.Prefix ?? "(base)");
-        }
-    }
-
-    /// <summary>
-    /// Set the image lookup for the <c>image</c> template function.
-    /// </summary>
+    /// <inheritdoc />
     public void SetImageLookup(IReadOnlyDictionary<string, Image> imagesBySourcePath) =>
         imageLookup = imagesBySourcePath;
 
-    /// <summary>
-    /// Set the theme UI strings and formatting culture for <c>t</c>, <c>format_date</c> and <c>format_filesize</c>.
-    /// </summary>
+    /// <inheritdoc />
     public void SetStrings(ThemeStrings themeStrings)
     {
         strings = themeStrings;
@@ -138,29 +69,13 @@ internal sealed partial class ScribanTemplateEngine(
         ogLocale = ToOpenGraphLocale(themeStrings.Language);
     }
 
-    /// <summary>
-    /// Render template content with data model
-    /// </summary>
-    public string Render(string templateContent, object model)
+    /// <inheritdoc />
+    public string Render(string templateContent, IReadOnlyDictionary<string, object?> model)
     {
         try
         {
-            // Parse and compile template (cached internally by Scriban)
-            var template = Template.Parse(templateContent);
-
-            if (template.HasErrors)
-            {
-                var errors = string.Join(", ", template.Messages.Select(m => m.Message));
-                throw new InvalidOperationException($"Template parsing failed: {errors}");
-            }
-
-            // Create script context with custom functions and template loader
-            var context = CreateScriptContext(model);
-
-            // Render template
-            var result = template.Render(context);
-
-            return result;
+            var template = parsedTemplates.GetOrAdd(templateContent, Parse);
+            return template.Render(CreateScriptContext(model));
         }
         catch (Exception ex)
         {
@@ -169,186 +84,16 @@ internal sealed partial class ScribanTemplateEngine(
         }
     }
 
-    /// <summary>
-    /// Render template file with data model
-    /// </summary>
-    public async Task<string> RenderFileAsync(string templatePath, object model, CancellationToken cancellationToken = default)
+    private static Template Parse(string templateContent)
     {
-        if (!File.Exists(templatePath))
+        var template = Template.Parse(templateContent);
+        if (template.HasErrors)
         {
-            throw new FileNotFoundException($"Template not found: {templatePath}", templatePath);
+            var errors = string.Join(", ", template.Messages.Select(m => m.Message));
+            throw new InvalidOperationException($"Template parsing failed: {errors}");
         }
 
-        LogRenderingTemplate(logger, templatePath);
-
-        // Read template content
-        var content = await File.ReadAllTextAsync(templatePath, cancellationToken);
-
-        // Render with caching
-        return RenderWithCache(templatePath, content, model);
-    }
-
-    /// <summary>
-    /// Render template with compilation caching
-    /// </summary>
-    private string RenderWithCache(string templateKey, string templateContent, object model)
-    {
-        var template = compiledTemplates.GetOrAdd(templateKey, key =>
-        {
-            var parsed = Template.Parse(templateContent);
-            if (parsed.HasErrors)
-            {
-                var errors = string.Join(", ", parsed.Messages.Select(m => m.Message));
-                throw new InvalidOperationException($"Template parsing failed: {errors}");
-            }
-
-            return parsed;
-        });
-
-        // Create context and render
-        var context = CreateScriptContext(model);
-        return template.Render(context);
-    }
-
-    /// <summary>
-    /// Render body content as a Scriban template with optional data.
-    /// </summary>
-    /// <remarks>
-    /// Used for processing _index.md body content that contains Scriban includes.
-    /// The data is available as 'stats' variable in the template.
-    /// </remarks>
-    public string RenderBodyTemplate(string bodyContent, object? stats)
-    {
-        try
-        {
-            var template = Template.Parse(bodyContent);
-
-            if (template.HasErrors)
-            {
-                var errors = string.Join(", ", template.Messages.Select(m => m.Message));
-                LogBodyTemplateParsingFailed(logger, errors);
-                return bodyContent; // Return original content on parse error
-            }
-
-            // Create minimal context with stats data
-            var context = new TemplateContext
-            {
-                MemberRenamer = ConvertToSnakeCase
-            };
-
-            // Set up template loader for includes
-            if (currentTheme is not null)
-            {
-                context.TemplateLoader = new TemplateResolverLoader(templateResolver, compiledTemplates, logger);
-            }
-
-            // Add stats as a named variable (convert JsonElement to Scriban-compatible types)
-            var scriptObject = new ScriptObject();
-            if (stats is not null)
-            {
-                scriptObject["stats"] = ConvertToScribanValue(stats);
-            }
-            context.PushGlobal(scriptObject);
-
-            return template.Render(context);
-        }
-        catch (Exception ex)
-        {
-            LogBodyRenderingFailed(logger, ex);
-            return bodyContent; // Return original content on error
-        }
-    }
-
-    /// <summary>
-    /// Converts a value (including JsonElement) to a Scriban-compatible type.
-    /// </summary>
-    private static object? ConvertToScribanValue(object? value)
-    {
-        if (value is null)
-        {
-            return null;
-        }
-
-        if (value is System.Text.Json.JsonElement jsonElement)
-        {
-            return ConvertJsonElement(jsonElement);
-        }
-
-        return value;
-    }
-
-    /// <summary>
-    /// Converts a JsonElement to Scriban-compatible types (ScriptObject, ScriptArray, primitives).
-    /// </summary>
-    private static object? ConvertJsonElement(System.Text.Json.JsonElement element)
-    {
-        return element.ValueKind switch
-        {
-            System.Text.Json.JsonValueKind.Object => ConvertJsonObject(element),
-            System.Text.Json.JsonValueKind.Array => ConvertJsonArray(element),
-            System.Text.Json.JsonValueKind.String => element.GetString(),
-            System.Text.Json.JsonValueKind.Number => element.TryGetInt64(out var l) ? l : element.GetDouble(),
-            System.Text.Json.JsonValueKind.True => true,
-            System.Text.Json.JsonValueKind.False => false,
-            System.Text.Json.JsonValueKind.Null => null,
-            System.Text.Json.JsonValueKind.Undefined => null,
-            _ => element.ToString()
-        };
-    }
-
-    /// <summary>
-    /// Converts a JSON object to a ScriptObject.
-    /// </summary>
-    private static ScriptObject ConvertJsonObject(System.Text.Json.JsonElement element)
-    {
-        var obj = new ScriptObject();
-        foreach (var prop in element.EnumerateObject())
-        {
-            obj[prop.Name] = ConvertJsonElement(prop.Value);
-        }
-        return obj;
-    }
-
-    /// <summary>
-    /// Converts a JSON array to a ScriptArray.
-    /// </summary>
-    private static ScriptArray ConvertJsonArray(System.Text.Json.JsonElement element)
-    {
-        var arr = new ScriptArray();
-        foreach (var item in element.EnumerateArray())
-        {
-            arr.Add(ConvertJsonElement(item));
-        }
-        return arr;
-    }
-
-    /// <summary>
-    /// Converts any JsonElement values in a ScriptObject to Scriban-compatible types.
-    /// </summary>
-    /// <remarks>
-    /// This handles data sources loaded from JSON files via the data: frontmatter field.
-    /// Variable names are user-defined (e.g., "statistics", "galleries", "images").
-    /// </remarks>
-    private static void ConvertJsonElementsInScriptObject(ScriptObject scriptObject)
-    {
-        // Collect keys to convert (can't modify during enumeration)
-        var keysToConvert = new List<string>();
-        foreach (var key in scriptObject.Keys)
-        {
-            if (scriptObject[key] is System.Text.Json.JsonElement)
-            {
-                keysToConvert.Add(key);
-            }
-        }
-
-        // Convert each JsonElement
-        foreach (var key in keysToConvert)
-        {
-            if (scriptObject[key] is System.Text.Json.JsonElement jsonElement)
-            {
-                scriptObject[key] = ConvertJsonElement(jsonElement);
-            }
-        }
+        return template;
     }
 
     /// <summary>
@@ -356,45 +101,28 @@ internal sealed partial class ScribanTemplateEngine(
     /// </summary>
     /// <remarks>
     /// <para>
-    /// This method calls <c>ScriptObject.Import</c> overloads that Scriban
-    /// annotates with <see cref="RequiresUnreferencedCodeAttribute"/> (10×
-    /// IL2026). Both flavors are trim-safe in our usage:
+    /// Every model value is already Scriban-native (primitives, strings, string lists,
+    /// <see cref="ScriptObject"/>/<see cref="ScriptArray"/> from <c>[RevelaTemplateModel]</c>
+    /// codegen or converted JSON), so Scriban never reflects over .NET objects — a requirement
+    /// for the trimmed Native AOT build.
     /// </para>
-    /// <list type="bullet">
-    /// <item>
-    /// <c>Import(model)</c> — <paramref name="model"/> is always a
-    /// <see cref="IDictionary{TKey, TValue}"/> built in
-    /// <c>RenderService</c>. Scriban iterates dictionary entries directly
-    /// (no property reflection), so trimming cannot remove anything the
-    /// runtime needs.
-    /// </item>
-    /// <item>
-    /// <c>Import(name, delegate)</c> — each delegate wraps a static method
-    /// of this class with a fully-known signature. The trimmer keeps those
-    /// methods because they are referenced via <c>new Func&lt;...&gt;(Method)</c>.
-    /// Scriban's <c>DynamicCustomFunction</c> uses
-    /// <see cref="System.Reflection.MethodInfo"/> from the delegate at
-    /// runtime, which works against the preserved metadata.
-    /// </item>
-    /// </list>
     /// <para>
-    /// Suppressed at method scope rather than per-call: every call site here
-    /// shares the same justification, and extracting nine local helpers would
-    /// be pure noise.
+    /// <c>Import(name, delegate)</c> is annotated with <see cref="RequiresUnreferencedCodeAttribute"/>.
+    /// Each delegate here wraps a method of this class with a fully-known signature, which the
+    /// trimmer keeps because it is referenced via <c>new Func&lt;...&gt;(...)</c>. Scriban's
+    /// <c>DynamicCustomFunction</c> uses the delegate's <see cref="System.Reflection.MethodInfo"/>,
+    /// which works against the preserved metadata.
     /// </para>
     /// </remarks>
     [UnconditionalSuppressMessage(
         "Trimming",
         "IL2026:Members attributed with RequiresUnreferencedCode may break when trimming",
-        Justification = "Scriban.Import on a Dictionary takes the entry-iteration path (no reflection); delegate imports wrap static methods preserved via Func<> references.")]
-    private TemplateContext CreateScriptContext(object model)
+        Justification = "Delegate imports wrap methods preserved via Func<> references.")]
+    private CachingTemplateContext CreateScriptContext(IReadOnlyDictionary<string, object?> model)
     {
-        var context = new TemplateContext
+        var context = new CachingTemplateContext(parsedIncludes)
         {
-            // Use Scriban's built-in member renamer for snake_case property names
-            // This is required because templates use snake_case ({{ site.build_date }})
-            // but C# properties are PascalCase (Site.BuildDate)
-            MemberRenamer = ConvertToSnakeCase,
+            TemplateLoader = new TemplateResolverLoader(templateResolver, logger),
 
             // Disable loop limit (default 1000) - our templates are trusted, not user-provided
             // Large galleries with nested loops (images × formats × sizes) easily exceed 1000
@@ -418,41 +146,11 @@ internal sealed partial class ScribanTemplateEngine(
             }
         };
 
-        // Set up template loader for partials if theme is set
-        if (currentTheme is not null)
-        {
-            context.TemplateLoader = new TemplateResolverLoader(templateResolver, compiledTemplates, logger);
-        }
-
         var scriptObject = new ScriptObject();
-
-        // Import model as global variables.
-        // Trim-safe explicit copy for dictionaries: Scriban's Import(object) uses
-        // reflection to detect IDictionary<string, object?> and dispatch to entry
-        // iteration. That reflection-based dispatch breaks under PublishTrimmed —
-        // the trimmer cannot prove the interface check is reachable. We do the
-        // copy ourselves so trimming never sees a reflection path on the model
-        // container. Values inside the dictionary are already trim-safe
-        // (primitives, ScriptObject from [RevelaTemplateModel] codegen, JsonElement).
-        if (model is IDictionary<string, object?> dict)
+        foreach (var (key, value) in model)
         {
-            foreach (var (key, value) in dict)
-            {
-                scriptObject[key] = value;
-            }
+            scriptObject[key] = value;
         }
-        else
-        {
-            scriptObject.Import(model);
-        }
-
-        // Convert any JsonElement values in the model to Scriban-compatible types
-        // This is needed for custom templates that use data: field with JSON files
-        ConvertJsonElementsInScriptObject(scriptObject);
-
-        // Convert any JsonElement values in the model to Scriban-compatible types
-        // This is needed for custom templates that use data: field with JSON files
-        ConvertJsonElementsInScriptObject(scriptObject);
 
         // Capture the per-render link context so URL helpers own all basepath /
         // baseUrl knowledge (templates never concatenate paths themselves).
@@ -463,6 +161,9 @@ internal sealed partial class ScribanTemplateEngine(
         scriptObject.TryGetValue("photo", out var currentPhoto);
         scriptObject.TryGetValue("image", out var currentImage);
         var currentPagePath = currentPhoto is null ? ResolveTargetPath(currentGallery) : ImagePagePath(ResolveImageSlug(currentImage));
+        var galleryPath = currentGallery is ScriptObject gallery && gallery.TryGetValue("path", out var path) && path is string text
+            ? text
+            : string.Empty;
 
         // Register custom functions
         scriptObject.Import("page_url", new Func<object?, string?>(target => PageUrl(target, basePath)));
@@ -478,7 +179,7 @@ internal sealed partial class ScribanTemplateEngine(
         scriptObject.Import("format_exif_aperture", new Func<double?, string>(FormatExifAperture));
         scriptObject.Import("html_escape", new Func<object?, string>(HtmlEscape));
         scriptObject.Import("markdown", new Func<string?, string>(Markdown));
-        scriptObject.Import("find_image", new Func<string, Image?>(path => ResolveImageForTemplate(path, scriptObject)));
+        scriptObject.Import("find_image", new Func<string, ScriptObject?>(imagePath => FindImage(imagePath, galleryPath)));
         scriptObject["t"] = translateFunction;
         scriptObject["og_locale"] = ogLocale;
 
@@ -544,8 +245,8 @@ internal sealed partial class ScribanTemplateEngine(
 
     /// <summary>
     /// Site-root-relative page URL for a link target, resolved against the current
-    /// page's base path. Polymorphic: accepts an <see cref="Image"/>, <see cref="Gallery"/>,
-    /// <see cref="NavigationItem"/>, their Scriban projections, or a raw slug string.
+    /// page's base path. Polymorphic: accepts the Scriban projection of an image, gallery or
+    /// navigation item, or a raw slug string.
     /// </summary>
     /// <remarks>
     /// Returns <c>null</c> for a navigation item that has no page (a section
@@ -553,11 +254,16 @@ internal sealed partial class ScribanTemplateEngine(
     /// (Scriban treats an empty string as truthy, but <c>null</c> as falsy).
     /// </remarks>
     /// <example>{{ page_url(gallery) }} → /events/fireworks/</example>
-    internal static string? PageUrl(object? target, string basePath)
+    private static string? PageUrl(object? target, string basePath)
     {
         var path = ResolveTargetPath(target);
         return path.Length == 0 ? null : basePath + path;
     }
+
+    /// <summary>
+    /// Page URL of an image's photo page, the same URL <c>page_url(image)</c> returns in templates.
+    /// </summary>
+    internal static string PhotoPageUrl(string imageSlug, string basePath) => basePath + ImagePagePath(imageSlug);
 
     /// <summary>
     /// Absolute URL (including host from <c>baseUrl</c>) for a link target. Same
@@ -615,10 +321,6 @@ internal sealed partial class ScribanTemplateEngine(
     /// </summary>
     private static string ResolveTargetPath(object? target) => target switch
     {
-        null => string.Empty,
-        Image image => ImagePagePath(image.Slug),
-        Gallery gallery => NormalizeDirectory(gallery.Slug),
-        NavigationItem item => NormalizeDirectory(item.Url),
         string slug => NormalizeDirectory(slug),
         ScriptObject so => ResolveTargetPathFromScriptObject(so),
         _ => string.Empty
@@ -648,7 +350,6 @@ internal sealed partial class ScribanTemplateEngine(
 
     private static string ResolveImageSlug(object? image) => image switch
     {
-        Image typed => typed.Slug.Trim('/').Replace('\\', '/'),
         string slug => slug.Trim('/').Replace('\\', '/'),
         ScriptObject so when so.TryGetValue("slug", out var slug) => (slug as string ?? string.Empty).Trim('/').Replace('\\', '/'),
         _ => string.Empty
@@ -790,70 +491,14 @@ internal sealed partial class ScribanTemplateEngine(
         return markdownService.ToHtml(text);
     }
 
-    /// <summary>
-    /// Resolve an image path for the <c>image</c> template function.
-    /// </summary>
-    /// <remarks>
-    /// Uses the same 3-step lookup as content images in Markdown:
-    /// <list type="number">
-    /// <item>Gallery-local: <c>{gallery.path}/{path}</c></item>
-    /// <item>Shared images: <c>_images/{path}</c></item>
-    /// <item>Exact match: <c>{path}</c> as-is</item>
-    /// </list>
-    /// </remarks>
-    private Image? ResolveImageForTemplate(string imagePath, ScriptObject scriptObject)
-    {
-        if (imageLookup is null)
-        {
-            return null;
-        }
-
-        var normalizedPath = imagePath.Replace('\\', '/');
-
-        // Get gallery path from the model (may be null for non-gallery contexts)
-        var galleryPath = string.Empty;
-        if (scriptObject.TryGetValue("gallery", out var galleryObj) && galleryObj is ScriptObject galleryScript)
-        {
-            if (galleryScript.TryGetValue("path", out var pathObj) && pathObj is string path)
-            {
-                galleryPath = path;
-            }
-        }
-
-        // 1. Gallery-local
-        if (!string.IsNullOrEmpty(galleryPath))
-        {
-            var localPath = $"{galleryPath}/{normalizedPath}";
-            if (imageLookup.TryGetValue(localPath, out var localImage))
-            {
-                return localImage;
-            }
-        }
-
-        // 2. Shared images: _images/{path}
-        var sharedPath = $"{ProjectPaths.SharedImages}/{normalizedPath}";
-        if (imageLookup.TryGetValue(sharedPath, out var sharedImage))
-        {
-            return sharedImage;
-        }
-
-        // 3. Exact match
-        if (imageLookup.TryGetValue(normalizedPath, out var exactImage))
-        {
-            return exactImage;
-        }
-
-        return null;
-    }
 
     /// <summary>
-    /// Clear compiled template cache
+    /// The <c>find_image</c> template function: resolves an image path like a Markdown image
+    /// (see <see cref="ImagePathResolver"/>) relative to the current page.
     /// </summary>
-    public void ClearCache()
-    {
-        compiledTemplates.Clear();
-        LogCacheCleared(logger);
-    }
+    /// <example>{{ hero = find_image 'hero.jpg' }}</example>
+    private ScriptObject? FindImage(string imagePath, string galleryPath) =>
+        ImagePathResolver.Resolve(imagePath, galleryPath, imageLookup)?.ToScriptObject();
 
     // High-performance logging with LoggerMessage source generator
     [LoggerMessage(Level = LogLevel.Error, Message = "Template rendering failed")]
@@ -862,23 +507,18 @@ internal sealed partial class ScribanTemplateEngine(
     [LoggerMessage(Level = LogLevel.Error, Message = "Scriban runtime exception: {Message} at {File}:{Line}:{Column}")]
     private static partial void LogScribanRuntimeException(ILogger logger, string message, string file, int line, int column);
 
-    [LoggerMessage(Level = LogLevel.Debug, Message = "Rendering template: {Path}")]
-    private static partial void LogRenderingTemplate(ILogger logger, string path);
-
-    [LoggerMessage(Level = LogLevel.Information, Message = "Template cache cleared")]
-    private static partial void LogCacheCleared(ILogger logger);
-
-    [LoggerMessage(Level = LogLevel.Debug, Message = "Theme set for template engine: {ThemeName}")]
-    private static partial void LogThemeSet(ILogger logger, string themeName);
-
-    [LoggerMessage(Level = LogLevel.Debug, Message = "Theme extension set: {ExtensionName} (prefix: {Prefix})")]
-    private static partial void LogExtensionSet(ILogger logger, string extensionName, string prefix);
-
-    [LoggerMessage(Level = LogLevel.Warning, Message = "Body template parsing failed: {Errors}")]
-    private static partial void LogBodyTemplateParsingFailed(ILogger logger, string errors);
-
-    [LoggerMessage(Level = LogLevel.Error, Message = "Body template rendering failed")]
-    private static partial void LogBodyRenderingFailed(ILogger logger, Exception exception);
+    /// <summary>
+    /// Template context that shares parsed includes across all renders of one engine.
+    /// </summary>
+    /// <remarks>
+    /// Scriban caches includes only per context (<see cref="TemplateContext.CachedTemplates"/>),
+    /// so without this every page would load and parse its partials again.
+    /// </remarks>
+    private sealed class CachingTemplateContext(ConcurrentDictionary<string, Template> parsedIncludes) : TemplateContext
+    {
+        protected override Template CreateTemplate(string templatePath, ScriptNode? callerContext) =>
+            parsedIncludes.GetOrAdd(templatePath, path => base.CreateTemplate(path, callerContext));
+    }
 }
 
 /// <summary>
@@ -888,7 +528,8 @@ internal sealed partial class ScribanTemplateEngine(
 /// <para>
 /// Supports the Scriban include directive:
 /// <code>
-/// {{ include 'gallery' }}              {{~ // → body/gallery ~}}
+/// {{ include 'navigation' }}           {{~ // → partials/navigation ~}}
+/// {{ include 'body/gallery' }}         {{~ // → body/gallery ~}}
 /// {{ include 'statistics/overview' }}  {{~ // → partials/statistics/overview ~}}
 /// </code>
 /// </para>
@@ -901,23 +542,14 @@ internal sealed partial class ScribanTemplateEngine(
 /// </remarks>
 internal sealed partial class TemplateResolverLoader(
     ITemplateResolver resolver,
-    ConcurrentDictionary<string, Template> templateCache,
     ILogger logger) : ITemplateLoader
 {
     /// <summary>
     /// Get the path for a template include (used as cache key)
     /// </summary>
     /// <remarks>
-    /// <para>
-    /// Template key conventions:
-    /// - Include without prefix → implicitly partials/ (e.g., "navigation" → "partials/navigation")
-    /// - Include with body/ prefix → explicit body template (e.g., "body/gallery")
-    /// - Include with partials/ prefix → kept as-is for backward compatibility
-    /// </para>
-    /// <para>
-    /// This allows users to write cleaner includes:
-    /// {{ include 'navigation' }} instead of {{ include 'partials/navigation' }}
-    /// </para>
+    /// Includes without a <c>body/</c> or <c>partials/</c> prefix are partials, so templates
+    /// write <c>{{ include 'navigation' }}</c> instead of <c>{{ include 'partials/navigation' }}</c>.
     /// </remarks>
     [SuppressMessage(
         "Globalization",
@@ -932,8 +564,6 @@ internal sealed partial class TemplateResolverLoader(
 
         key = key.ToLowerInvariant();
 
-        // Add implicit partials/ prefix if no prefix specified
-        // body/ and partials/ prefixes are kept as-is
         if (!key.StartsWith("body/", StringComparison.Ordinal) &&
             !key.StartsWith("partials/", StringComparison.Ordinal))
         {
@@ -948,21 +578,6 @@ internal sealed partial class TemplateResolverLoader(
     /// </summary>
     public string Load(TemplateContext context, SourceSpan callerSpan, string templatePath)
     {
-        // Check our compiled template cache first
-        if (templateCache.TryGetValue(templatePath, out var cachedTemplate))
-        {
-            // Template already compiled, but Scriban needs the source for include
-            // We need to return the source content for Scriban's internal handling
-            // Get it from the resolver again (streams are cheap)
-            using var cachedStream = resolver.GetTemplate(templatePath);
-            if (cachedStream is not null)
-            {
-                using var cachedReader = new StreamReader(cachedStream);
-                return cachedReader.ReadToEnd();
-            }
-        }
-
-        // Get template from resolver
         using var stream = resolver.GetTemplate(templatePath)
             ?? throw new FileNotFoundException(
                 $"Template '{templatePath}' not found. " +
@@ -970,25 +585,8 @@ internal sealed partial class TemplateResolverLoader(
                 templatePath);
 
         LogLoadingTemplate(logger, templatePath);
-        return LoadFromStream(stream, templatePath);
-    }
-
-    private string LoadFromStream(Stream stream, string templatePath)
-    {
         using var reader = new StreamReader(stream);
-        var content = reader.ReadToEnd();
-
-        // Parse and cache the template
-        var template = Template.Parse(content);
-        if (template.HasErrors)
-        {
-            var errors = string.Join(", ", template.Messages.Select(m => m.Message));
-            throw new InvalidOperationException($"Template parsing failed ({templatePath}): {errors}");
-        }
-
-        templateCache[templatePath] = template;
-
-        return content;
+        return reader.ReadToEnd();
     }
 
     /// <summary>
@@ -1000,7 +598,3 @@ internal sealed partial class TemplateResolverLoader(
     [LoggerMessage(Level = LogLevel.Debug, Message = "Loading template: {TemplatePath}")]
     private static partial void LogLoadingTemplate(ILogger logger, string templatePath);
 }
-
-
-
-

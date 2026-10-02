@@ -21,14 +21,6 @@ namespace Spectara.Revela.Features.Generate.Infrastructure;
 internal static class PhotoPageCatalog
 {
     /// <summary>
-    /// Builds page-viewer base memberships for callers without prepared rendering metadata.
-    /// </summary>
-    public static IReadOnlyList<PhotoPage> Build(IReadOnlyList<Gallery> galleries) =>
-        Build(
-            [.. galleries.Select(gallery =>
-                new PhotoMembership(gallery, gallery.Images, null, PhotoViewerMode.Page))]);
-
-    /// <summary>
     /// Builds photo pages from explicit gallery memberships with frozen image order.
     /// </summary>
     /// <param name="memberships">Page-viewer memberships in stable document order.</param>
@@ -71,7 +63,7 @@ internal static class PhotoPageCatalog
                 .Select(occurrence => new PhotoContext
                 {
                     Route = occurrence.Membership.Gallery.Slug,
-                    Label = GalleryLabel(occurrence.Membership.Gallery),
+                    Label = occurrence.Membership.Gallery.Title,
                     ContextId = ContextId(occurrence.Membership),
                     Anchor = occurrence.Membership.PhotoNumber is { } photoNumber
                         ? PhotoAnchor(occurrence.Image.Slug, photoNumber)
@@ -181,9 +173,6 @@ internal static class PhotoPageCatalog
 
     private static string PageTitle(Image image) =>
         !string.IsNullOrWhiteSpace(image.Title) ? image.Title : image.FileName;
-
-    private static string GalleryLabel(Gallery gallery) =>
-        !string.IsNullOrWhiteSpace(gallery.Title) ? gallery.Title : gallery.Name;
 
     private static bool IsPhysical(Gallery gallery, Image image)
     {

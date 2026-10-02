@@ -16,12 +16,14 @@ internal static class SitemapGenerator
     /// <param name="model">The site model containing all galleries.</param>
     /// <param name="baseUrl">Absolute base URL (e.g., "https://example.com").</param>
     /// <param name="basePath">Base path for subdirectory hosting (e.g., "/photos/").</param>
+    /// <param name="lastModified">Build time, the <c>lastmod</c> of every page.</param>
     /// <param name="photoPages">Canonical photo pages to include once each, without fragments.</param>
     /// <returns>The sitemap XML string.</returns>
     public static string Generate(
         SiteModel model,
         string baseUrl,
         string basePath,
+        DateTime lastModified,
         IReadOnlyList<PhotoPage>? photoPages = null)
     {
         var sb = new StringBuilder();
@@ -29,7 +31,7 @@ internal static class SitemapGenerator
         sb.AppendLine("<urlset xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\">");
 
         var normalizedBase = baseUrl.TrimEnd('/') + basePath.TrimEnd('/');
-        var lastmod = model.BuildDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+        var lastmod = lastModified.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
 
         // Index page
         AppendUrl(sb, normalizedBase + "/", lastmod);
@@ -42,8 +44,7 @@ internal static class SitemapGenerator
                 continue; // Skip root (already added as index)
             }
 
-            var date = gallery.Date?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) ?? lastmod;
-            AppendUrl(sb, $"{normalizedBase}/{gallery.Slug}", date);
+            AppendUrl(sb, $"{normalizedBase}/{gallery.Slug}", lastmod);
         }
 
         // Photo pages (#77): each eligible source image exactly once, canonical route, no fragment.

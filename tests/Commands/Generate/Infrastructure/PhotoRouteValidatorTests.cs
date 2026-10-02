@@ -1,5 +1,6 @@
 using Spectara.Revela.Features.Generate.Infrastructure;
 using Spectara.Revela.Features.Generate.Models;
+using Spectara.Revela.Sdk.Models;
 
 namespace Spectara.Revela.Tests.Commands.Generate.Infrastructure;
 
@@ -19,7 +20,7 @@ public sealed class PhotoRouteValidatorTests
         {
             Gal("Set", null, Img("_images/café.jpg"), Img("_images/cafe.jpg"))
         };
-        var pages = PhotoPageCatalog.Build(galleries);
+        var pages = PhotoPageCatalog.Build(BaseMemberships(galleries));
 
         var conflicts = SlugValidator.FindPhotoConflicts(pages, galleries);
 
@@ -38,7 +39,7 @@ public sealed class PhotoRouteValidatorTests
             Gal("Landscapes", null, Img("Landscapes/x.jpg")),
             Gal("photo/foo", null)
         };
-        var pages = PhotoPageCatalog.Build(galleries);
+        var pages = PhotoPageCatalog.Build(BaseMemberships(galleries));
 
         var conflicts = SlugValidator.FindPhotoConflicts(pages, galleries);
 
@@ -53,7 +54,7 @@ public sealed class PhotoRouteValidatorTests
         {
             Gal("Landscapes", null, Img("_images/ocean.jpg"), Img("_images/forest.jpg"))
         };
-        var pages = PhotoPageCatalog.Build(galleries);
+        var pages = PhotoPageCatalog.Build(BaseMemberships(galleries));
 
         var conflicts = SlugValidator.FindPhotoConflicts(pages, galleries);
 
@@ -67,7 +68,7 @@ public sealed class PhotoRouteValidatorTests
         {
             Gal("Set", null, Img("_images/café.jpg"), Img("_images/cafe.jpg"))
         };
-        var pages = PhotoPageCatalog.Build(galleries);
+        var pages = PhotoPageCatalog.Build(BaseMemberships(galleries));
         var conflicts = SlugValidator.FindPhotoConflicts(pages, galleries);
 
         var message = SlugValidator.FormatPhotoRouteError(conflicts);
@@ -86,11 +87,13 @@ public sealed class PhotoRouteValidatorTests
         Height = 100
     };
 
+    private static IReadOnlyList<PhotoMembership> BaseMemberships(IEnumerable<Gallery> galleries) =>
+        [.. galleries.Select(gallery => new PhotoMembership(gallery, gallery.Images, null, PhotoViewerMode.Page))];
+
     private static Gallery Gal(string path, string? template, params Image[] images) => new()
     {
         Path = path,
-        Name = path.Length == 0 ? "Home" : path,
-        Title = path.Length == 0 ? "Home" : path,
+        Title = path.Length == 0 ? "Site" : path,
         Slug = path.Length == 0 ? UrlBuilder.BuildPath() : UrlBuilder.BuildPath(path.Split('/')),
         Template = template,
         Images = images

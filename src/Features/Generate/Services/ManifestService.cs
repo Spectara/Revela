@@ -96,7 +96,7 @@ internal sealed partial class ManifestService(
         }
 
         // Build new content list (replace existing image or append new)
-        var existingImage = node.Content.OfType<ImageContent>()
+        var existingImage = node.Content
             .FirstOrDefault(img => GetImageSourcePath(node.Path, img) == sourcePath);
 
         var newContent = existingImage is not null
@@ -139,13 +139,6 @@ internal sealed partial class ManifestService(
     #endregion
 
     #region Metadata
-
-    /// <inheritdoc />
-    public string ConfigHash
-    {
-        get => manifest.Meta.ConfigHash;
-        set => manifest = manifest with { Meta = manifest.Meta with { ConfigHash = value } };
-    }
 
     /// <inheritdoc />
     public string ScanConfigHash
@@ -208,6 +201,12 @@ internal sealed partial class ManifestService(
             if (loaded is null)
             {
                 LogManifestInvalid(logger, manifestPath);
+                manifest = new ImageManifest();
+                imageCache.Clear();
+            }
+            else if (loaded.Meta.Version != ManifestMeta.CurrentVersion)
+            {
+                LogManifestOutdated(logger, manifestPath, loaded.Meta.Version, ManifestMeta.CurrentVersion);
                 manifest = new ImageManifest();
                 imageCache.Clear();
             }
@@ -358,7 +357,7 @@ internal sealed partial class ManifestService(
     /// </summary>
     private void TraverseForImages(ManifestEntry node)
     {
-        foreach (var image in node.Content.OfType<ImageContent>())
+        foreach (var image in node.Content)
         {
             var sourcePath = GetImageSourcePath(node.Path, image);
             imageCache[sourcePath] = (image, node);
@@ -461,15 +460,14 @@ internal sealed partial class ManifestService(
     /// SourcePath contains the original location. For regular images,
     /// SourcePath equals nodePath + Filename.
     /// </remarks>
-    private static string GetImageSourcePath(string nodePath, GalleryContent content)
+    private static string GetImageSourcePath(string nodePath, ImageContent content)
     {
         // If content has SourcePath set, use it directly (handles filtered images)
-        if (content is ImageContent image && !string.IsNullOrEmpty(image.SourcePath))
+        if (!string.IsNullOrEmpty(content.SourcePath))
         {
-            return image.SourcePath.Replace('\\', '/');
+            return content.SourcePath.Replace('\\', '/');
         }
 
-        // Fall back to nodePath + Filename for backward compatibility
         var path = string.IsNullOrEmpty(nodePath)
             ? content.Filename
             : $"{nodePath}/{content.Filename}";
@@ -479,23 +477,6 @@ internal sealed partial class ManifestService(
     #endregion
 
     #region Static Helpers
-
-    /// <summary>
-    /// Compute hash for image processing configuration.
-    /// </summary>
-    /// <remarks>
-    /// When this hash changes, all images need to be regenerated.
-    /// </remarks>
-    public static string ComputeConfigHash(
-        IReadOnlyList<int> sizes,
-        IReadOnlyDictionary<string, int> formats)
-    {
-        var sizesStr = string.Join(",", sizes.OrderBy(s => s));
-        var formatsStr = string.Join(",", formats.OrderBy(f => f.Key).Select(f => $"{f.Key}:{f.Value}"));
-        var input = $"sizes:{sizesStr}|formats:{formatsStr}";
-        var hashBytes = SHA256.HashData(Encoding.UTF8.GetBytes(input));
-        return Convert.ToHexString(hashBytes)[..12];
-    }
 
     /// <summary>
     /// Compute hash for scan configuration.
@@ -523,6 +504,9 @@ internal sealed partial class ManifestService(
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Manifest at {Path} is invalid, starting fresh")]
     private static partial void LogManifestInvalid(ILogger logger, string path);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Manifest at {Path} has version {Version} (current: {CurrentVersion}), rebuilding it")]
+    private static partial void LogManifestOutdated(ILogger logger, string path, int version, int currentVersion);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Loaded manifest with {Count} images")]
     private static partial void LogManifestLoaded(ILogger logger, int count);

@@ -38,6 +38,7 @@ internal sealed partial class ContentService(
     IPathResolver pathResolver,
     IThemeRegistry themeRegistry,
     IOptions<ProjectEnvironment> projectEnvironment,
+    IOptionsMonitor<SiteCoreConfig> siteCoreConfig,
     IOptionsMonitor<ThemeConfig> themeConfig,
     IOptionsMonitor<GenerateConfig> generateOptions,
     IArtifactLifecycle artifactLifecycle,
@@ -100,12 +101,6 @@ internal sealed partial class ContentService(
             // Load existing manifest (to preserve image hashes for incremental builds)
             await manifestRepository.LoadAsync(cancellationToken);
 
-            // Check if image config changed - if so, don't preserve old hashes
-            var sizes = imageSizesProvider.GetSizes();
-            var formats = generateOptions.CurrentValue.Images.GetActiveFormats();
-            var configHash = ManifestService.ComputeConfigHash(sizes, formats);
-            var configChanged = manifestRepository.ConfigHash != configHash;
-
             // Check if scan config changed - if so, don't use metadata cache
             var scanConfigHash = ManifestService.ComputeScanConfigHash(
                 ImageSettings.Placeholder.Strategy,
@@ -127,11 +122,6 @@ internal sealed partial class ContentService(
                         kvp => kvp.Key,
                         kvp => kvp.Value,
                         StringComparer.OrdinalIgnoreCase);
-            }
-
-            if (configChanged && manifestRepository.Images.Count > 0)
-            {
-                LogConfigChanged(logger);
             }
 
             progress?.Report(new ContentProgress
@@ -205,7 +195,6 @@ internal sealed partial class ContentService(
 
             // Update manifest
             manifestRepository.SetRoot(root);
-            manifestRepository.ConfigHash = configHash;
             manifestRepository.ScanConfigHash = scanConfigHash;
             manifestRepository.LastScanned = timeProvider.GetUtcNow().UtcDateTime;
 
@@ -418,14 +407,6 @@ internal sealed partial class ContentService(
                 g => g.ToList(),
                 StringComparer.OrdinalIgnoreCase);
 
-        // Build a lookup for markdown files by gallery path
-        var markdownsByPath = content.Markdowns
-            .GroupBy(md => md.Gallery, StringComparer.OrdinalIgnoreCase)
-            .ToDictionary(
-                g => g.Key,
-                g => g.ToList(),
-                StringComparer.OrdinalIgnoreCase);
-
         // Pre-convert ALL images to ImageContent for filter galleries
         // This allows filters to query across the entire site
         var allImages = ConvertAllImagesToContent(content.Images, imageMetadata);
@@ -434,13 +415,11 @@ internal sealed partial class ContentService(
         var buildContext = new EntryBuildContext(
             galleryBySlug,
             imagesByPath,
-            markdownsByPath,
             imageMetadata,
             allImages);
 
         // Create root node from home gallery
         var rootImages = imagesByPath.GetValueOrDefault(string.Empty) ?? [];
-        var rootMarkdowns = markdownsByPath.GetValueOrDefault(string.Empty) ?? [];
 
         // Build children: navigation entries + optional shared images node
         var children = navigation.Select(nav => ConvertNavigationToEntry(nav, buildContext)).ToList();
@@ -456,7 +435,6 @@ internal sealed partial class ContentService(
             var sharedContent = sharedImages
                 .Where(img => imageMetadata.ContainsKey(img.RelativePath))
                 .Select(img => CreateImageContent(img, imageMetadata[img.RelativePath]))
-                .Cast<GalleryContent>()
                 .ToList();
 
             if (sharedContent.Count > 0)
@@ -475,22 +453,36 @@ internal sealed partial class ContentService(
 
         var root = new ManifestEntry
         {
-            Text = homeGallery?.Title ?? homeGallery?.Name ?? "Home",
+            Text = RootTitle(homeGallery),
             Slug = RelativePath.Empty,
             Path = RelativePath.Empty,
             Description = homeGallery?.Description,
             Cover = RelativePath.FromNullable(homeGallery?.Cover),
-            Date = homeGallery?.Date,
-            Featured = homeGallery?.Featured ?? false,
             Hidden = false,
             Template = homeGallery?.Template,
-            Filter = homeGallery?.Filter,
             DataSources = homeGallery?.DataSources.ToDictionary(kvp => kvp.Key, kvp => kvp.Value) ?? [],
-            Content = BuildContentListWithFilter(rootImages, rootMarkdowns, homeGallery?.Sort, homeGallery?.Filter, buildContext),
+            Content = BuildContentList(rootImages, homeGallery?.Sort, homeGallery?.Filter, buildContext),
             Children = children
         };
 
         return root;
+    }
+
+    /// <summary>
+    /// Title of the home page: its front matter title, else the site title, else the project
+    /// folder name — never a hard-coded word in a language the site may not use.
+    /// </summary>
+    private string RootTitle(Gallery? homeGallery)
+    {
+        if (!string.IsNullOrWhiteSpace(homeGallery?.Title))
+        {
+            return homeGallery.Title;
+        }
+
+        var siteTitle = siteCoreConfig.CurrentValue.Title;
+        return !string.IsNullOrWhiteSpace(siteTitle)
+            ? siteTitle
+            : Path.GetFileName(Path.TrimEndingDirectorySeparator(projectEnvironment.Value.Path));
     }
 
     /// <summary>
@@ -499,7 +491,6 @@ internal sealed partial class ContentService(
     private sealed record EntryBuildContext(
         Dictionary<string, Gallery> GalleryBySlug,
         Dictionary<string, List<SourceImage>> ImagesByPath,
-        Dictionary<string, List<SourceMarkdown>> MarkdownsByPath,
         Dictionary<string, ImageMetadata> ImageMetadata,
         IReadOnlyList<ImageContent> AllImages);
 
@@ -566,15 +557,10 @@ internal sealed partial class ContentService(
             context.GalleryBySlug.TryGetValue(navItem.Url, out gallery);
         }
 
-        // Get images for this gallery path (only for gallery nodes, not branches)
         // Branch nodes (slug=null) don't have direct images - they only contain children
-        List<SourceImage> images = [];
-        List<SourceMarkdown> markdowns = [];
-        if (gallery != null)
-        {
-            images = context.ImagesByPath.GetValueOrDefault(gallery.Path) ?? [];
-            markdowns = context.MarkdownsByPath.GetValueOrDefault(gallery.Path) ?? [];
-        }
+        var images = gallery is null
+            ? []
+            : context.ImagesByPath.GetValueOrDefault(gallery.Path) ?? [];
 
         return new ManifestEntry
         {
@@ -583,239 +569,42 @@ internal sealed partial class ContentService(
             Path = gallery?.Path ?? BuildPathFromNavigation(navItem),
             Description = navItem.Description ?? gallery?.Description,
             Cover = RelativePath.FromNullable(gallery?.Cover),
-            Date = gallery?.Date,
-            Featured = gallery?.Featured ?? false,
             Hidden = navItem.Hidden,
             Pinned = navItem.Pinned,
-            Container = navItem.Url is null && navItem.Children.Count > 0,
             Template = gallery?.Template,
-            Filter = gallery?.Filter,
             DataSources = gallery?.DataSources.ToDictionary(kvp => kvp.Key, kvp => kvp.Value) ?? [],
-            Content = BuildContentListWithFilter(images, markdowns, gallery?.Sort, gallery?.Filter, context),
+            Content = BuildContentList(images, gallery?.Sort, gallery?.Filter, context),
             Children = [.. navItem.Children.Select(child => ConvertNavigationToEntry(child, context))]
         };
     }
 
     /// <summary>
-    /// Build a combined content list, optionally using a filter expression.
+    /// Build a page's image list: the images matching its filter, else its folder's images.
     /// </summary>
     /// <remarks>
     /// <para>
-    /// When a filter expression is provided, images are selected from ALL site images
-    /// that match the filter, instead of only images in the gallery's directory.
+    /// A filter selects from ALL site images instead of the page's folder; an invalid filter
+    /// throws a <see cref="FilterParseException"/> with the position of the error.
     /// </para>
     /// <para>
-    /// If the filter expression is invalid, a <see cref="FilterParseException"/> is thrown
-    /// with a detailed error message including the position of the error.
+    /// Folder images use the same sort as filters (see <see cref="FilterService.Sort"/>):
+    /// the configured image sort, overridden by the page's <c>sort</c>.
     /// </para>
     /// </remarks>
     /// <exception cref="FilterParseException">Thrown when the filter expression is invalid.</exception>
-    private List<GalleryContent> BuildContentListWithFilter(
+    private List<ImageContent> BuildContentList(
         List<SourceImage> folderImages,
-        List<SourceMarkdown> markdowns,
         string? sortOverride,
         string? filterExpression,
         EntryBuildContext context)
     {
-        List<GalleryContent> content;
-
         if (!string.IsNullOrEmpty(filterExpression))
         {
-            // Filter mode: select images from ALL site images matching the filter
-            var filteredImages = FilterService.ApplyQuery(
-                context.AllImages,
-                filterExpression,
-                sortOverride,
-                SortingSettings.Images);
-            content = [.. filteredImages];
-
-            // Add markdown files from the folder (filters only apply to images)
-            foreach (var markdown in markdowns)
-            {
-                content.Add(ConvertSourceMarkdown(markdown));
-            }
-
-            return content;
-        }
-        else
-        {
-            // Normal mode: use images from the folder
-            content = BuildContentList(folderImages, markdowns, context.ImageMetadata, sortOverride);
-            return content; // Already sorted by BuildContentList
-        }
-    }
-
-    /// <summary>
-    /// Build a combined content list from images and markdown files.
-    /// </summary>
-    /// <remarks>
-    /// Content is sorted based on the configured image sort order.
-    /// Default: alphabetically by filename to allow users to control
-    /// ordering via filename prefixes (e.g., "01-intro.md", "02-photo.jpg").
-    /// Alternative: by EXIF DateTaken for chronological galleries.
-    /// </remarks>
-    private List<GalleryContent> BuildContentList(
-        List<SourceImage> images,
-        List<SourceMarkdown> markdowns,
-        Dictionary<string, ImageMetadata> imageMetadata,
-        string? sortOverride)
-    {
-        var content = new List<GalleryContent>();
-
-        // Convert images
-        foreach (var image in images)
-        {
-            content.Add(ConvertSourceImage(image, imageMetadata));
+            return [.. FilterService.ApplyQuery(context.AllImages, filterExpression, sortOverride, SortingSettings.Images)];
         }
 
-        // Convert markdown files
-        foreach (var markdown in markdowns)
-        {
-            content.Add(ConvertSourceMarkdown(markdown));
-        }
-
-        // Sort based on configuration (with optional gallery override)
-        return SortContent(content, sortOverride);
-    }
-
-    /// <summary>
-    /// Sort content based on the configured image sort settings.
-    /// </summary>
-    /// <remarks>
-    /// Uses configurable field path with fallback for null values.
-    /// Gallery sort override format: "field" or "field:direction".
-    /// </remarks>
-    private List<GalleryContent> SortContent(List<GalleryContent> content, string? sortOverride)
-    {
-        var config = SortingSettings.Images;
-        var field = config.Field;
-        var direction = config.Direction;
-        var fallback = config.Fallback;
-
-        // Parse gallery sort override: "field" or "field:direction"
-        if (!string.IsNullOrEmpty(sortOverride))
-        {
-            var parts = sortOverride.Split(':', 2);
-            field = parts[0];
-
-            if (parts.Length > 1)
-            {
-                direction = parts[1].ToUpperInvariant() switch
-                {
-                    "ASC" => SortDirection.Asc,
-                    "DESC" => SortDirection.Desc,
-                    _ => direction // Keep global default if invalid
-                };
-            }
-        }
-
-        object Key(GalleryContent c) => GetSortKey(c, field, fallback);
-
-        // Unrated photos follow the rated ones in either direction, as in filter sorting.
-        var sorted = string.Equals(field, "rating", StringComparison.OrdinalIgnoreCase)
-            ? ThenByDirection(content.OrderBy(c => c is ImageContent { Rating: not null } ? 0 : 1), Key, direction)
-            : direction == SortDirection.Asc
-                ? content.OrderBy(Key, SortKeyComparer.Instance)
-                : content.OrderByDescending(Key, SortKeyComparer.Instance);
-
-        // Always use filename as final tie-breaker for stable sorting
-        return [.. sorted.ThenBy(c => c.Filename, StringComparer.OrdinalIgnoreCase)];
-    }
-
-    private static IOrderedEnumerable<GalleryContent> ThenByDirection(
-        IOrderedEnumerable<GalleryContent> content,
-        Func<GalleryContent, object> key,
-        SortDirection direction) =>
-        direction == SortDirection.Asc
-            ? content.ThenBy(key, SortKeyComparer.Instance)
-            : content.ThenByDescending(key, SortKeyComparer.Instance);
-
-    /// <summary>
-    /// Get a comparable sort key from content using the specified field path.
-    /// </summary>
-    /// <param name="content">The content item to extract the sort key from.</param>
-    /// <param name="field">Primary field path (e.g., "dateTaken", "exif.focalLength").</param>
-    /// <param name="fallback">Fallback field when primary is null.</param>
-    /// <returns>A comparable object for sorting (string, DateTime, or number).</returns>
-    private static object GetSortKey(GalleryContent content, string field, string fallback)
-    {
-        var value = GetFieldValue(content, field);
-        if (value is null or "")
-        {
-            value = GetFieldValue(content, fallback);
-        }
-
-        return value ?? string.Empty;
-    }
-
-    /// <summary>
-    /// Extract a field value from content using dot notation path.
-    /// </summary>
-    /// <remarks>
-    /// Supported paths:
-    /// <list type="bullet">
-    ///   <item><c>filename</c> - GalleryContent.Filename</item>
-    ///   <item><c>dateTaken</c> - ImageContent.DateTaken</item>
-    ///   <item><c>rating</c>, <c>title</c> - XMP metadata (ImageContent.Rating / Title)</item>
-    ///   <item><c>exif.focalLength</c> - Typed EXIF property</item>
-    ///   <item><c>exif.raw.Rating</c> - Raw EXIF dictionary value</item>
-    /// </list>
-    /// </remarks>
-    private static object? GetFieldValue(GalleryContent content, string fieldPath)
-    {
-        var parts = fieldPath.Split('.', StringSplitOptions.RemoveEmptyEntries);
-        if (parts.Length == 0)
-        {
-            return null;
-        }
-
-        var root = parts[0].ToUpperInvariant();
-
-        return root switch
-        {
-            "FILENAME" => content.Filename,
-            "DATETAKEN" when content is ImageContent img => img.DateTaken ?? DateTime.MaxValue,
-            "RATING" when content is ImageContent img => img.Rating,
-            "TITLE" when content is ImageContent img => img.Title,
-            "EXIF" when content is ImageContent img && img.Exif is not null => GetExifFieldValue(img.Exif, parts.AsSpan()[1..]),
-            _ => null
-        };
-    }
-
-    /// <summary>
-    /// Extract a field value from EXIF data using property path.
-    /// </summary>
-    private static object? GetExifFieldValue(ExifData exif, ReadOnlySpan<string> path)
-    {
-        if (path.IsEmpty)
-        {
-            return null;
-        }
-
-        var field = path[0].ToUpperInvariant();
-
-        // Check for raw dictionary access: exif.raw.{FieldName}
-        if (field == "RAW" && path.Length > 1 && exif.Raw is not null)
-        {
-            var rawField = path[1]; // Keep original case for dictionary lookup
-            return exif.Raw.TryGetValue(rawField, out var rawValue) ? rawValue : null;
-        }
-
-        // Typed EXIF properties (match ExifData property names)
-        return field switch
-        {
-            "MAKE" => exif.Make,
-            "MODEL" => exif.Model,
-            "LENSMODEL" => exif.LensModel,
-            "FOCALLENGTH" => exif.FocalLength,
-            "FNUMBER" => exif.FNumber,
-            "EXPOSURETIME" => exif.ExposureTime,
-            "ISO" => exif.Iso,
-            "DATETAKEN" => exif.DateTaken,
-            "GPSLATITUDE" => exif.GpsLatitude,
-            "GPSLONGITUDE" => exif.GpsLongitude,
-            _ => null
-        };
+        var images = folderImages.Select(image => ConvertSourceImage(image, context.ImageMetadata));
+        return [.. FilterService.Sort(images, sortOverride, SortingSettings.Images)];
     }
 
     /// <summary>
@@ -862,35 +651,6 @@ internal sealed partial class ContentService(
             Rating = meta?.Rating,
             Placeholder = meta?.Placeholder
         };
-    }
-
-    /// <summary>
-    /// Convert a SourceMarkdown to MarkdownContent.
-    /// </summary>
-    /// <remarks>
-    /// The markdown body is NOT stored in the manifest - it's loaded at render time.
-    /// Only metadata (filename, size, hash) is stored for change detection.
-    /// </remarks>
-    private static MarkdownContent ConvertSourceMarkdown(SourceMarkdown source)
-    {
-        return new MarkdownContent
-        {
-            Filename = source.FileName,
-            SourcePath = source.RelativePath.Replace('\\', '/'),
-            FileSize = source.FileSize,
-            Hash = ComputeMarkdownHash(source)
-        };
-    }
-
-    /// <summary>
-    /// Compute a hash for markdown change detection.
-    /// </summary>
-    private static string ComputeMarkdownHash(SourceMarkdown source)
-    {
-        var hashInput = $"{source.FileName}_{source.FileSize}_{source.LastModified.Ticks}";
-        var hashBytes = System.Security.Cryptography.SHA256.HashData(
-            System.Text.Encoding.UTF8.GetBytes(hashInput));
-        return Convert.ToHexString(hashBytes)[..12];
     }
 
     /// <summary>
@@ -949,66 +709,8 @@ internal sealed partial class ContentService(
     [LoggerMessage(Level = LogLevel.Information, Message = "Metadata cache: {CachedCount} cached, {NewCount} new, {SkippedCount} skipped")]
     private static partial void LogMetadataCacheStats(ILogger logger, int cachedCount, int newCount, int skippedCount);
 
-    [LoggerMessage(Level = LogLevel.Information, Message = "Image config changed, all images will be reprocessed")]
-    private static partial void LogConfigChanged(ILogger logger);
-
     [LoggerMessage(Level = LogLevel.Information, Message = "Scan config changed, all metadata will be re-read")]
     private static partial void LogScanConfigChanged(ILogger logger);
 
     #endregion
-
-    #region Nested Types
-
-    /// <summary>
-    /// Comparer for heterogeneous sort keys (handles DateTime, string, numbers).
-    /// </summary>
-    private sealed class SortKeyComparer : IComparer<object>
-    {
-        public static readonly SortKeyComparer Instance = new();
-
-        public int Compare(object? x, object? y)
-        {
-            // Handle nulls
-            if (x is null && y is null)
-            {
-                return 0;
-            }
-
-            if (x is null)
-            {
-                return -1;
-            }
-
-            if (y is null)
-            {
-                return 1;
-            }
-
-            // Same type: use natural comparison
-            if (x.GetType() == y.GetType() && x is IComparable comparableX)
-            {
-                return comparableX.CompareTo(y);
-            }
-
-            // Different types: convert to string for comparison
-            var strX = x switch
-            {
-                DateTime dt => dt.ToString("O", System.Globalization.CultureInfo.InvariantCulture),
-                IFormattable f => f.ToString(null, System.Globalization.CultureInfo.InvariantCulture),
-                _ => x.ToString() ?? string.Empty
-            };
-
-            var strY = y switch
-            {
-                DateTime dt => dt.ToString("O", System.Globalization.CultureInfo.InvariantCulture),
-                IFormattable f => f.ToString(null, System.Globalization.CultureInfo.InvariantCulture),
-                _ => y.ToString() ?? string.Empty
-            };
-
-            return string.Compare(strX, strY, StringComparison.OrdinalIgnoreCase);
-        }
-    }
-
-    #endregion
 }
-

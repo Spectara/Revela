@@ -43,7 +43,6 @@ public sealed class ScanCachingTests
         // Verify that ScanConfigHash survives JSON round-trip
         var meta = new ManifestMeta
         {
-            ConfigHash = "CONFIG123",
             ScanConfigHash = "SCAN456789"
         };
 

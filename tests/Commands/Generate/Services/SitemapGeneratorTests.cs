@@ -1,6 +1,7 @@
 using Spectara.Revela.Features.Generate.Infrastructure;
 using Spectara.Revela.Features.Generate.Models;
 using Spectara.Revela.Features.Generate.Services;
+using Spectara.Revela.Sdk.Models;
 
 namespace Spectara.Revela.Tests.Commands.Generate.Services;
 
@@ -8,26 +9,26 @@ namespace Spectara.Revela.Tests.Commands.Generate.Services;
 [TestCategory("Unit")]
 public sealed class SitemapGeneratorTests
 {
+    private static readonly DateTime BuildDate = new(2026, 3, 15, 0, 0, 0, DateTimeKind.Utc);
+
     [TestMethod]
     public void Generate_WithGalleries_ProducesValidSitemap()
     {
         // Arrange
         var model = new SiteModel
         {
-            Project = new RenderProjectSettings { Name = "test" },
             Galleries =
             [
-                new Gallery { Path = "", Slug = "", Name = "Home", Title = "Home" },
-                new Gallery { Path = "landscapes", Slug = "landscapes/", Name = "Landscapes", Title = "Landscapes" },
-                new Gallery { Path = "portraits", Slug = "portraits/", Name = "Portraits", Title = "Portraits" }
+                new Gallery { Path = "", Slug = "", Title = "Home" },
+                new Gallery { Path = "landscapes", Slug = "landscapes/", Title = "Landscapes" },
+                new Gallery { Path = "portraits", Slug = "portraits/", Title = "Portraits" }
             ],
             Navigation = [],
-            Images = [],
-            BuildDate = new DateTime(2026, 3, 15, 0, 0, 0, DateTimeKind.Utc)
+            Images = []
         };
 
         // Act
-        var xml = SitemapGenerator.Generate(model, "https://example.com", "/");
+        var xml = SitemapGenerator.Generate(model, "https://example.com", "/", BuildDate);
 
         // Assert
         Assert.Contains("<?xml version=\"1.0\" encoding=\"UTF-8\"?>", xml);
@@ -44,49 +45,21 @@ public sealed class SitemapGeneratorTests
         // Arrange
         var model = new SiteModel
         {
-            Project = new RenderProjectSettings { Name = "test" },
             Galleries =
             [
-                new Gallery { Path = "", Slug = "", Name = "Home", Title = "Home" },
-                new Gallery { Path = "gallery", Slug = "gallery/", Name = "Gallery", Title = "Gallery" }
+                new Gallery { Path = "", Slug = "", Title = "Home" },
+                new Gallery { Path = "gallery", Slug = "gallery/", Title = "Gallery" }
             ],
             Navigation = [],
-            Images = [],
-            BuildDate = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc)
+            Images = []
         };
 
         // Act
-        var xml = SitemapGenerator.Generate(model, "https://example.com", "/photos/");
+        var xml = SitemapGenerator.Generate(model, "https://example.com", "/photos/", BuildDate);
 
         // Assert
         Assert.Contains("<loc>https://example.com/photos/</loc>", xml);
         Assert.Contains("<loc>https://example.com/photos/gallery/</loc>", xml);
-    }
-
-    [TestMethod]
-    public void Generate_WithGalleryDate_UsesGalleryDate()
-    {
-        // Arrange
-        var model = new SiteModel
-        {
-            Project = new RenderProjectSettings { Name = "test" },
-            Galleries =
-            [
-                new Gallery { Path = "", Slug = "", Name = "Home", Title = "Home" },
-                new Gallery { Path = "events", Slug = "events/", Name = "Events", Title = "Events", Date = new DateTime(2025, 12, 25, 0, 0, 0, DateTimeKind.Utc) }
-            ],
-            Navigation = [],
-            Images = [],
-            BuildDate = new DateTime(2026, 3, 15, 0, 0, 0, DateTimeKind.Utc)
-        };
-
-        // Act
-        var xml = SitemapGenerator.Generate(model, "https://example.com", "/");
-
-        // Assert — index uses build date, gallery uses its own date
-        Assert.Contains("<loc>https://example.com/events/</loc>", xml);
-        Assert.Contains("<lastmod>2025-12-25</lastmod>", xml);
-        Assert.Contains("<lastmod>2026-03-15</lastmod>", xml);
     }
 
     [TestMethod]
@@ -95,18 +68,16 @@ public sealed class SitemapGeneratorTests
         // Arrange
         var model = new SiteModel
         {
-            Project = new RenderProjectSettings { Name = "test" },
             Galleries =
             [
-                new Gallery { Path = "", Slug = "", Name = "Home", Title = "Home" }
+                new Gallery { Path = "", Slug = "", Title = "Home" }
             ],
             Navigation = [],
-            Images = [],
-            BuildDate = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc)
+            Images = []
         };
 
         // Act
-        var xml = SitemapGenerator.Generate(model, "https://example.com/", "/");
+        var xml = SitemapGenerator.Generate(model, "https://example.com/", "/", BuildDate);
 
         // Assert — no double slash
         Assert.Contains("<loc>https://example.com/</loc>", xml);
@@ -127,22 +98,20 @@ public sealed class SitemapGeneratorTests
         };
         var galleries = new[]
         {
-            new Gallery { Path = "canon", Slug = "canon/", Name = "Canon", Title = "Canon", Images = [image] },
-            new Gallery { Path = "sony", Slug = "sony/", Name = "Sony", Title = "Sony", Images = [image] }
+            new Gallery { Path = "canon", Slug = "canon/", Title = "Canon", Images = [image] },
+            new Gallery { Path = "sony", Slug = "sony/", Title = "Sony", Images = [image] }
         };
-        var photoPages = PhotoPageCatalog.Build(galleries);
+        var photoPages = PhotoPageCatalog.Build([.. galleries.Select(gallery => new PhotoMembership(gallery, gallery.Images, null, PhotoViewerMode.Page))]);
 
         var model = new SiteModel
         {
-            Project = new RenderProjectSettings { Name = "test" },
             Galleries = galleries,
             Navigation = [],
-            Images = [image],
-            BuildDate = new DateTime(2026, 3, 15, 0, 0, 0, DateTimeKind.Utc)
+            Images = [image]
         };
 
         // Act
-        var xml = SitemapGenerator.Generate(model, "https://example.com", "/", photoPages);
+        var xml = SitemapGenerator.Generate(model, "https://example.com", "/", BuildDate, photoPages);
 
         // Assert — the photo appears exactly once, canonical route, no context fragment.
         Assert.Contains("<loc>https://example.com/photo/ocean/</loc>", xml);
