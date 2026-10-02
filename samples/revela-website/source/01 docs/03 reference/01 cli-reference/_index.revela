@@ -250,10 +250,12 @@ Useful after cloning a project or updating Revela. Installs every package in `de
 ## Info
 
 ```bash
-revela info                          # Version, edition, plugin/theme counts, active theme
+revela info                          # Version, edition, runtime and active theme
 ```
 
-For the packages themselves, use `revela theme list` and (Full only) `revela plugin list`. `revela --version` prints just the version line, ending with the edition (`— Standalone edition` or `— Full edition`).
+In the **Standalone** edition `revela info` also lists every built-in plugin and theme with its version. In the **Full** edition use `revela plugin list` and `revela theme list` for the installed packages. `revela --version` prints just the version line, ending with the edition (`— Standalone edition` or `— Full edition`).
+
+In the interactive menu, installing and uninstalling plugins and themes is not offered: the running menu has the package files loaded and cannot replace them safely. Run those commands from the command line (or use the setup wizard for packages that are not installed yet), then start Revela again.
 
 ---
 

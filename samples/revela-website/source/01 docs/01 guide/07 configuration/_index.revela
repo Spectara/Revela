@@ -277,7 +277,7 @@ Nothing else is read as configuration: no `appsettings.json`, no environment var
 
 Environment variables let you override a single setting for one run without editing a file. For example, `SPECTARA__REVELA__PLUGINS__SERVE__PORT=3000` changes the dev-server port temporarily, and `SPECTARA__REVELA__LOGGING__LOGLEVEL__DEFAULT=Debug` turns on detailed logging. They also apply to `revela plugin install`, `revela theme install` and `revela restore`, so CI can supply a feed with `SPECTARA__REVELA__DEPENDENCIES__FEEDS__<NAME>=<url-or-absolute-folder>`.
 
-Revela reads these files once when a command starts; it does not watch them. Changes made by `revela config` commands (and package installs) take effect immediately, also in the interactive menu. If you edit a file by hand while the interactive menu is open, restart Revela.
+Revela reads these files once when a command starts; it does not watch them. Changes made by `revela config` commands take effect immediately, also in the interactive menu. If you edit a file by hand while the interactive menu is open, restart Revela.
 
 ### Plugin Settings
 

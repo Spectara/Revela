@@ -54,7 +54,7 @@ All `Spectara.Revela.*` release packages come with a `SHA256SUMS` file and Sigst
 
 How you get plugins depends on your edition:
 
-- **Standalone**: all six official plugins and both theme extensions are built in. There is nothing to install, and the `plugin`, `packages` and `restore` commands are not available. `revela info` shows how many plugins and themes are loaded, and `revela theme list` lists the themes.
+- **Standalone**: all six official plugins and both theme extensions are built in. There is nothing to install, and the `plugin`, `packages` and `restore` commands are not available. `revela info` lists the built-in plugins and themes with their versions, and `revela theme list` lists the themes.
 - **Full**: the `packages/` folder next to the executable is used as a local feed (`bundled`), so the commands below work offline.
 - **.NET tool**: there is no bundled folder. Download the `.nupkg` files from the release into a folder and register it once with `revela config feed add releases /absolute/path/to/folder`.
 

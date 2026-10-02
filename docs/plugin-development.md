@@ -147,10 +147,10 @@ internal sealed partial class SearchIndexStep(SearchIndexWriter writer) : IPipel
     // Must match the command name.
     string IPipelineStep.Name => "search-index";
 
-    async ValueTask<PipelineStepResult> IPipelineStep.ExecuteAsync(CancellationToken cancellationToken)
+    async ValueTask<OperationResult> IPipelineStep.ExecuteAsync(CancellationToken cancellationToken)
     {
         var error = await writer.WriteAsync(cancellationToken);
-        return error is null ? PipelineStepResult.Ok() : PipelineStepResult.Fail(error);
+        return error is null ? OperationResult.Ok() : OperationResult.Fail(error);
     }
 
     public Command Create() { /* CLI command "search-index" with console output */ }
@@ -292,6 +292,26 @@ comes from `PackageVersion.FromAssembly(...)`.
 
 ---
 
+## Reading the scanned site
+
+Plugins that work from the scanned site (statistics, calendars) inject `IManifestReader`
+(`Spectara.Revela.Sdk.Abstractions`) instead of reading `.cache/manifest.json`:
+
+```csharp
+var snapshot = await manifestReader.TryLoadAsync(cancellationToken);
+if (snapshot is null)
+{
+    // No usable scan yet (missing, corrupt or from an older Revela) — ask for `revela generate scan`.
+    return OperationResult.Fail("No scan found. Run 'revela generate scan' first.");
+}
+
+foreach (var (sourcePath, image) in snapshot.Images) { /* ... */ }
+```
+
+The snapshot is read-only; only Revela itself writes the manifest.
+
+---
+
 ## Derived output artifacts
 
 Plugins that create files derived from generated output must declare and invalidate
@@ -318,15 +338,15 @@ internal sealed class SearchIndexInvalidator(IOptions<ProjectEnvironment> projec
     public IReadOnlyCollection<ArtifactId> DependsOn { get; } =
         [CoreArtifacts.RenderedSite];
 
-    public ValueTask<ArtifactInvalidationResult> InvalidateAsync(
+    public ValueTask<OperationResult> InvalidateAsync(
         CancellationToken cancellationToken = default)
     {
         // Delete every file owned by SearchIndex. Return failure if cleanup is incomplete.
         var cache = Path.Combine(project.Value.Path, ProjectPaths.Cache);
         var deletion = DerivedFiles.DeleteAll(cache, "search-index.json", cancellationToken);
         return ValueTask.FromResult(deletion.Failures.Count == 0
-            ? ArtifactInvalidationResult.Ok()
-            : ArtifactInvalidationResult.Fail(deletion.Failures[0].Message));
+            ? OperationResult.Ok()
+            : OperationResult.Fail(deletion.Failures[0].Message));
     }
 }
 ```

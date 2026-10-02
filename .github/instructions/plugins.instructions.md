@@ -69,10 +69,11 @@ public sealed class MyFeaturePlugin : IPlugin
 | `RequiresProject` | `true` (default) = only inside a project. Keep `true` for anything that reads or writes `project.json`, including every `config <plugin>` command. `false` only for commands that work without a project (e.g. one-time setup commands, usually with `HideWhenProjectExists: true`). |
 | `HideWhenProjectExists` | `true` = hidden inside a project (e.g. setup wizards) |
 | `IsSequentialStep` | `true` = picked up by CLI `generate all` / `clean all`. Pair with `IPipelineStep` for engine/MCP. |
-| `InlineInMenu` | Host-only menu flag. Plugins should not need this. |
-| `InlineDefaultActionLabel` | Required when `InlineInMenu = true`. Plugins should not need this. |
 
 Package listings are host-owned (`revela plugin list`, `revela theme list`); plugins don't add diagnostic subcommands under `info`. Use an `ICheck` (`revela check <name>`) for active probing.
+
+## Public SDK Surface
+The SDK (`src/Sdk`) is the contract for plugin and theme authors; host-only contracts live in `src/Core`. `Microsoft.CodeAnalysis.PublicApiAnalyzers` tracks every public member: adding or removing one fails the build (RS0016/RS0017) until `src/Sdk/PublicAPI.Unshipped.txt` is updated in the same change. Only make something public in the SDK when an official plugin or theme needs it; read the scanned site through `IManifestReader`, never `.cache/manifest.json`.
 
 ## Plugin Configuration
 1. Create config class with `[RevelaConfig("plugins:myFeature")]` plus a hand-written `public const string Section = "plugins:myFeature";` (CBSG needs to see the const in user-source). All plugin settings live below the host-owned `plugins` node; the key must match `^[a-z][a-zA-Z0-9]*$` (camelCase, no `.`/`:`/`/`/`_`). The SDK generator reports `REVELA001` for any other section in a plugin/theme assembly and `REVELA002` if attribute and const differ; it also emits the ownership claim the host uses to reject two packages claiming the same key.
