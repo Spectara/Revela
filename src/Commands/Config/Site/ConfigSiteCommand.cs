@@ -143,7 +143,17 @@ internal sealed partial class ConfigSiteCommand(
         // replaces atomically and reloads, so later steps in this process (e.g. generate from
         // the menu) see it
         var siteJson = JsonPropertyExtractor.BuildJson(templateJson, isEditMode ? sourceJson : null, values);
-        await configFileWriter.WriteAsync(siteConfigPath, siteJson, cancellationToken: cancellationToken);
+        try
+        {
+            await configFileWriter.WriteAsync(siteConfigPath, siteJson, cancellationToken: cancellationToken);
+        }
+        catch (FormatException ex)
+        {
+            ErrorPanels.ShowError(
+                "site.json Not Saved",
+                $"[yellow]The configuration reader would reject the result:[/]\n{Markup.Escape(ex.Message)}");
+            return 1;
+        }
 
         LogSavedSiteConfig(logger, siteConfigPath);
 

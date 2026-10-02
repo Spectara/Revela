@@ -40,7 +40,8 @@ internal static class JsonPropertyExtractor
     /// <remarks>
     /// Template keys come first, in template order; every key of the existing document is kept
     /// (values the template doesn't know, e.g. <c>language</c>, are appended rather than dropped)
-    /// and existing values win over template placeholders. Prompted values then replace string
+    /// and existing values win over template placeholders. Keys are matched ignoring case, like the
+    /// configuration reader does, and keep the template's spelling. Prompted values then replace string
     /// leaves, and fill <c>null</c> leaves when not empty; numbers, booleans and arrays keep their value.
     /// </remarks>
     /// <param name="templateJson">The theme's site template.</param>
@@ -69,8 +70,13 @@ internal static class JsonPropertyExtractor
 
     private static void Overlay(JsonObject target, JsonObject source)
     {
-        foreach (var (key, value) in source)
+        foreach (var (sourceKey, value) in source)
         {
+            // The configuration reader ignores key case: "Title" must update "title", not add a duplicate
+            var key = target.Select(property => property.Key)
+                .FirstOrDefault(existing => string.Equals(existing, sourceKey, StringComparison.OrdinalIgnoreCase))
+                ?? sourceKey;
+
             if (value is JsonObject sourceObject && target[key] is JsonObject targetObject)
             {
                 Overlay(targetObject, sourceObject);

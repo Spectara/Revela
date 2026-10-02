@@ -69,6 +69,20 @@ public sealed class JsonPropertyExtractorTests
     }
 
     [TestMethod]
+    public void BuildJson_ExistingKeyDiffersOnlyByCase_MergesIntoTemplateKey()
+    {
+        // The configuration reader is case-insensitive; two spellings would be a duplicate key.
+        const string existing = /*lang=json,strict*/ """{ "Title": "Mine", "Social": { "Instagram": "@me" } }""";
+
+        var result = JsonPropertyExtractor.BuildJson(Template, existing, new Dictionary<string, string>());
+
+        var expected = JsonNode.Parse("""
+            { "title": "Mine", "author": "", "social": { "instagram": "@me" }, "items": 3 }
+            """);
+        Assert.IsTrue(JsonNode.DeepEquals(expected, result), result.ToJsonString());
+    }
+
+    [TestMethod]
     public void BuildJson_ExistingWithComments_IsReadLeniently()
     {
         const string existing = /*lang=json*/ """
