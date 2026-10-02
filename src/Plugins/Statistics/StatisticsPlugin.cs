@@ -15,6 +15,12 @@ namespace Spectara.Revela.Plugins.Statistics;
 /// </summary>
 public sealed class StatisticsPlugin : IPlugin
 {
+    // Statistics data is read by page rendering: run after scan, before pages.
+    private const int GenerateOrder = PipelineOrder.Scan + 100;
+
+    // Plugin data is removed after the host's cache clean.
+    private const int CleanOrder = CleanPipelineOrder.Cache + 100;
+
     /// <inheritdoc />
     public PackageMetadata Metadata { get; } = new()
     {
@@ -69,10 +75,10 @@ public sealed class StatisticsPlugin : IPlugin
         var configCommand = services.GetRequiredService<ConfigStatisticsCommand>();
 
         // Register stats command → revela generate statistics
-        yield return new CommandDescriptor(statsCommand.Create(), ParentCommand: "generate", Order: PipelineOrder.Statistics, IsSequentialStep: true);
+        yield return new CommandDescriptor(statsCommand.Create(), ParentCommand: "generate", Order: GenerateOrder, IsSequentialStep: true);
 
         // Register clean statistics command → revela clean statistics
-        yield return new CommandDescriptor(cleanStatsCommand.Create(), ParentCommand: "clean", Order: 300, IsSequentialStep: true);
+        yield return new CommandDescriptor(cleanStatsCommand.Create(), ParentCommand: "clean", Order: CleanOrder, IsSequentialStep: true);
 
         // Register config command → revela config statistics
         yield return new CommandDescriptor(configCommand.Create(), ParentCommand: "config", Group: "Addons");

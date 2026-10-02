@@ -16,6 +16,12 @@ namespace Spectara.Revela.Plugins.Calendar;
 /// </remarks>
 public sealed class CalendarPlugin : IPlugin
 {
+    // Calendar data is read by page rendering: run after scan, before pages and statistics.
+    private const int GenerateOrder = PipelineOrder.Scan + 50;
+
+    // Plugin data is removed after the host's cache clean, after statistics.
+    private const int CleanOrder = CleanPipelineOrder.Cache + 150;
+
     /// <inheritdoc />
     public PackageMetadata Metadata { get; } = new()
     {
@@ -54,7 +60,7 @@ public sealed class CalendarPlugin : IPlugin
         yield return new CommandDescriptor(
             calendarCommand.Create(),
             ParentCommand: "generate",
-            Order: PipelineOrder.Calendar,
+            Order: GenerateOrder,
             IsSequentialStep: true);
 
         // Register: revela clean calendar
@@ -62,7 +68,7 @@ public sealed class CalendarPlugin : IPlugin
         yield return new CommandDescriptor(
             cleanCalendarCommand.Create(),
             ParentCommand: "clean",
-            Order: 350,
+            Order: CleanOrder,
             IsSequentialStep: true);
     }
 }
