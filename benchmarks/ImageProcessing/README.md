@@ -6,7 +6,7 @@ Benchmarks for comparing different image processing strategies in Revela.
 
 ```bash
 # Run all benchmarks
-cd benchmarks/ImageProcessing.Benchmarks
+cd benchmarks/ImageProcessing
 dotnet run -c Release
 
 # Run specific benchmark
