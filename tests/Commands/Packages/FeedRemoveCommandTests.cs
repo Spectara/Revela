@@ -4,7 +4,6 @@ using NSubstitute;
 
 using Spectara.Revela.Core.Services;
 using Spectara.Revela.Features.Packages.Commands.Config.Feed;
-using Spectara.Revela.Sdk.Services;
 using Spectara.Revela.Tests.Shared.Fixtures;
 
 namespace Spectara.Revela.Tests.Commands.Packages;

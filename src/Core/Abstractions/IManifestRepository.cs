@@ -1,6 +1,6 @@
 using Spectara.Revela.Sdk.Models.Manifest;
 
-namespace Spectara.Revela.Sdk.Abstractions;
+namespace Spectara.Revela.Core.Abstractions;
 
 /// <summary>
 /// Repository for manifest persistence operations.

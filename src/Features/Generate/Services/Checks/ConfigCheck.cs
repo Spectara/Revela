@@ -1,10 +1,10 @@
 using Microsoft.Extensions.Options;
 
+using Spectara.Revela.Core.Services;
 using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Abstractions;
 using Spectara.Revela.Sdk.Configuration;
 using Spectara.Revela.Sdk.Models;
-using Spectara.Revela.Sdk.Services;
 
 namespace Spectara.Revela.Features.Generate.Services.Checks;
 
@@ -41,7 +41,7 @@ internal sealed class ConfigCheck(
         {
             diagnostics.Add(ValidationDiagnostic.Error(
                 "site.json must define a 'title'.",
-                hint: "Set \"title\" in site.json (or run 'revela config site')."));
+                suggestion: "Set \"title\" in site.json (or run 'revela config site')."));
         }
 
         AddBaseUrlHint(diagnostics);
@@ -67,7 +67,7 @@ internal sealed class ConfigCheck(
             {
                 diagnostics.Add(ValidationDiagnostic.Error(
                     failure,
-                    hint: "Fix the setting in project.json (or site.json), then run the command again."));
+                    suggestion: "Fix the setting in project.json (or site.json), then run the command again."));
             }
 
             return false;
@@ -90,7 +90,7 @@ internal sealed class ConfigCheck(
         }
         catch (InvalidOperationException ex)
         {
-            diagnostics.Add(ValidationDiagnostic.Error(ex.Message, hint: "Fix the selected local theme manifest before checking its photo viewer."));
+            diagnostics.Add(ValidationDiagnostic.Error(ex.Message, suggestion: "Fix the selected local theme manifest before checking its photo viewer."));
             return;
         }
         if (theme is null || theme.Manifest.PhotoViewer?.Supported.Contains(viewer) is true)
@@ -103,7 +103,7 @@ internal sealed class ConfigCheck(
             : string.Join(", ", theme.Manifest.PhotoViewer.Supported.Select(PhotoViewerModeValues.ToValue));
         diagnostics.Add(ValidationDiagnostic.Error(
             $"Unsupported project.json key theme.photoViewer value '{viewer.ToValue()}' for theme '{themeName}'. Supported modes: {supported}.",
-            hint: "Choose a supported value or remove theme.photoViewer to use the theme default."));
+            suggestion: "Choose a supported value or remove theme.photoViewer to use the theme default."));
     }
 
 
@@ -128,7 +128,7 @@ internal sealed class ConfigCheck(
         {
             diagnostics.Add(ValidationDiagnostic.Hint(
                 "No baseUrl is configured, so sitemap.xml and absolute Open Graph URLs will be skipped.",
-                hint: "Set project.baseUrl in project.json (e.g. \"https://example.com\") when you deploy."));
+                suggestion: "Set project.baseUrl in project.json (e.g. \"https://example.com\") when you deploy."));
         }
     }
 }

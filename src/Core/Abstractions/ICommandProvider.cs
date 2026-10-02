@@ -1,4 +1,6 @@
-namespace Spectara.Revela.Sdk.Abstractions;
+using Spectara.Revela.Sdk.Abstractions;
+
+namespace Spectara.Revela.Core.Abstractions;
 
 /// <summary>
 /// Provides command descriptors for CLI registration.

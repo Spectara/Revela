@@ -1,0 +1,801 @@
+#nullable enable
+~override Spectara.Revela.Sdk.Artifacts.ArtifactId.Equals(object obj) -> bool
+~override Spectara.Revela.Sdk.Models.RelativePath.Equals(object obj) -> bool
+const Spectara.Revela.Sdk.Abstractions.CleanPipelineOrder.Cache = 200 -> int
+const Spectara.Revela.Sdk.Abstractions.CleanPipelineOrder.Images = 150 -> int
+const Spectara.Revela.Sdk.Abstractions.CleanPipelineOrder.Output = 100 -> int
+const Spectara.Revela.Sdk.Abstractions.PipelineCategories.Check = "check" -> string!
+const Spectara.Revela.Sdk.Abstractions.PipelineCategories.Clean = "clean" -> string!
+const Spectara.Revela.Sdk.Abstractions.PipelineCategories.Generate = "generate" -> string!
+const Spectara.Revela.Sdk.Abstractions.PipelineOrder.Images = 400 -> int
+const Spectara.Revela.Sdk.Abstractions.PipelineOrder.Pages = 300 -> int
+const Spectara.Revela.Sdk.Abstractions.PipelineOrder.Scan = 100 -> int
+const Spectara.Revela.Sdk.Configuration.DependenciesConfig.Section = "dependencies" -> string!
+const Spectara.Revela.Sdk.Configuration.GenerateConfig.Section = "generate" -> string!
+const Spectara.Revela.Sdk.Configuration.LoggingConfig.Section = "Logging" -> string!
+const Spectara.Revela.Sdk.Configuration.PathsConfig.Section = "paths" -> string!
+const Spectara.Revela.Sdk.Configuration.PluginConfigSection.Prefix = "plugins:" -> string!
+const Spectara.Revela.Sdk.Configuration.PluginConfigSection.Root = "plugins" -> string!
+const Spectara.Revela.Sdk.Configuration.ProjectConfig.Section = "project" -> string!
+const Spectara.Revela.Sdk.Configuration.SiteCoreConfig.Section = "site" -> string!
+const Spectara.Revela.Sdk.Configuration.ThemeConfig.DefaultName = "Lumina" -> string!
+const Spectara.Revela.Sdk.Configuration.ThemeConfig.Section = "theme" -> string!
+const Spectara.Revela.Sdk.Output.OutputMarkers.Error = "[red]✗[/]" -> string!
+const Spectara.Revela.Sdk.Output.OutputMarkers.Info = "[blue]ℹ[/]" -> string!
+const Spectara.Revela.Sdk.Output.OutputMarkers.Success = "[green]✓[/]" -> string!
+const Spectara.Revela.Sdk.Output.OutputMarkers.Warning = "[yellow]⚠[/]" -> string!
+const Spectara.Revela.Sdk.ProjectPaths.Cache = ".cache" -> string!
+const Spectara.Revela.Sdk.ProjectPaths.Plugins = "plugins" -> string!
+const Spectara.Revela.Sdk.ProjectPaths.SharedImages = "_images" -> string!
+const Spectara.Revela.Sdk.ProjectPaths.Static = "_static" -> string!
+const Spectara.Revela.Sdk.ProjectPaths.Themes = "themes" -> string!
+override Spectara.Revela.Sdk.Abstractions.CommandDescriptor.Equals(object? obj) -> bool
+override Spectara.Revela.Sdk.Abstractions.CommandDescriptor.GetHashCode() -> int
+override Spectara.Revela.Sdk.Abstractions.CommandDescriptor.ToString() -> string!
+override Spectara.Revela.Sdk.Abstractions.OperationResult.Equals(object? obj) -> bool
+override Spectara.Revela.Sdk.Abstractions.OperationResult.GetHashCode() -> int
+override Spectara.Revela.Sdk.Abstractions.OperationResult.ToString() -> string!
+override Spectara.Revela.Sdk.Abstractions.PackageMetadata.Equals(object? obj) -> bool
+override Spectara.Revela.Sdk.Abstractions.PackageMetadata.GetHashCode() -> int
+override Spectara.Revela.Sdk.Abstractions.PackageMetadata.ToString() -> string!
+override Spectara.Revela.Sdk.Abstractions.ValidationDiagnostic.Equals(object? obj) -> bool
+override Spectara.Revela.Sdk.Abstractions.ValidationDiagnostic.GetHashCode() -> int
+override Spectara.Revela.Sdk.Abstractions.ValidationDiagnostic.ToString() -> string!
+override Spectara.Revela.Sdk.Artifacts.ArtifactId.GetHashCode() -> int
+override Spectara.Revela.Sdk.Artifacts.ArtifactId.ToString() -> string!
+override Spectara.Revela.Sdk.Artifacts.DerivedFileDeletion.Equals(object? obj) -> bool
+override Spectara.Revela.Sdk.Artifacts.DerivedFileDeletion.GetHashCode() -> int
+override Spectara.Revela.Sdk.Artifacts.DerivedFileDeletion.ToString() -> string!
+override Spectara.Revela.Sdk.Artifacts.DerivedFileDeletionFailure.Equals(object? obj) -> bool
+override Spectara.Revela.Sdk.Artifacts.DerivedFileDeletionFailure.GetHashCode() -> int
+override Spectara.Revela.Sdk.Artifacts.DerivedFileDeletionFailure.ToString() -> string!
+override Spectara.Revela.Sdk.Models.Engine.GenerateProgress.Equals(object? obj) -> bool
+override Spectara.Revela.Sdk.Models.Engine.GenerateProgress.GetHashCode() -> int
+override Spectara.Revela.Sdk.Models.Engine.GenerateProgress.ToString() -> string!
+override Spectara.Revela.Sdk.Models.Engine.GenerateResult.Equals(object? obj) -> bool
+override Spectara.Revela.Sdk.Models.Engine.GenerateResult.GetHashCode() -> int
+override Spectara.Revela.Sdk.Models.Engine.GenerateResult.ToString() -> string!
+override Spectara.Revela.Sdk.Models.Engine.ImagesProgress.Equals(object? obj) -> bool
+override Spectara.Revela.Sdk.Models.Engine.ImagesProgress.GetHashCode() -> int
+override Spectara.Revela.Sdk.Models.Engine.ImagesProgress.ToString() -> string!
+override Spectara.Revela.Sdk.Models.Engine.ImagesResult.Equals(object? obj) -> bool
+override Spectara.Revela.Sdk.Models.Engine.ImagesResult.GetHashCode() -> int
+override Spectara.Revela.Sdk.Models.Engine.ImagesResult.ToString() -> string!
+override Spectara.Revela.Sdk.Models.Engine.PagesProgress.Equals(object? obj) -> bool
+override Spectara.Revela.Sdk.Models.Engine.PagesProgress.GetHashCode() -> int
+override Spectara.Revela.Sdk.Models.Engine.PagesProgress.ToString() -> string!
+override Spectara.Revela.Sdk.Models.Engine.PagesResult.Equals(object? obj) -> bool
+override Spectara.Revela.Sdk.Models.Engine.PagesResult.GetHashCode() -> int
+override Spectara.Revela.Sdk.Models.Engine.PagesResult.ToString() -> string!
+override Spectara.Revela.Sdk.Models.Engine.ScanProgress.Equals(object? obj) -> bool
+override Spectara.Revela.Sdk.Models.Engine.ScanProgress.GetHashCode() -> int
+override Spectara.Revela.Sdk.Models.Engine.ScanProgress.ToString() -> string!
+override Spectara.Revela.Sdk.Models.Engine.ScanResult.Equals(object? obj) -> bool
+override Spectara.Revela.Sdk.Models.Engine.ScanResult.GetHashCode() -> int
+override Spectara.Revela.Sdk.Models.Engine.ScanResult.ToString() -> string!
+override Spectara.Revela.Sdk.Models.Manifest.ImageContent.Equals(object? obj) -> bool
+override Spectara.Revela.Sdk.Models.Manifest.ImageContent.GetHashCode() -> int
+override Spectara.Revela.Sdk.Models.Manifest.ImageContent.ToString() -> string!
+override Spectara.Revela.Sdk.Models.Manifest.ManifestEntry.Equals(object? obj) -> bool
+override Spectara.Revela.Sdk.Models.Manifest.ManifestEntry.GetHashCode() -> int
+override Spectara.Revela.Sdk.Models.Manifest.ManifestEntry.ToString() -> string!
+override Spectara.Revela.Sdk.Models.Manifest.ManifestSnapshot.Equals(object? obj) -> bool
+override Spectara.Revela.Sdk.Models.Manifest.ManifestSnapshot.GetHashCode() -> int
+override Spectara.Revela.Sdk.Models.Manifest.ManifestSnapshot.ToString() -> string!
+override Spectara.Revela.Sdk.Models.RelativePath.GetHashCode() -> int
+override Spectara.Revela.Sdk.Models.RelativePath.ToString() -> string!
+override Spectara.Revela.Sdk.Models.RelativePathJsonConverter.Read(ref System.Text.Json.Utf8JsonReader reader, System.Type! typeToConvert, System.Text.Json.JsonSerializerOptions! options) -> Spectara.Revela.Sdk.Models.RelativePath
+override Spectara.Revela.Sdk.Models.RelativePathJsonConverter.Write(System.Text.Json.Utf8JsonWriter! writer, Spectara.Revela.Sdk.Models.RelativePath value, System.Text.Json.JsonSerializerOptions! options) -> void
+Spectara.Revela.Sdk.Abstractions.AssetDeclaration
+Spectara.Revela.Sdk.Abstractions.AssetDeclaration.AssetDeclaration() -> void
+Spectara.Revela.Sdk.Abstractions.AssetDeclaration.Path.get -> string?
+Spectara.Revela.Sdk.Abstractions.AssetDeclaration.Path.set -> void
+Spectara.Revela.Sdk.Abstractions.AssetDeclaration.Scope.get -> System.Collections.Generic.IReadOnlyList<string!>?
+Spectara.Revela.Sdk.Abstractions.AssetDeclaration.Scope.set -> void
+Spectara.Revela.Sdk.Abstractions.CleanPipelineOrder
+Spectara.Revela.Sdk.Abstractions.CommandDescriptor
+Spectara.Revela.Sdk.Abstractions.CommandDescriptor.<Clone>$() -> Spectara.Revela.Sdk.Abstractions.CommandDescriptor!
+Spectara.Revela.Sdk.Abstractions.CommandDescriptor.Command.get -> System.CommandLine.Command!
+Spectara.Revela.Sdk.Abstractions.CommandDescriptor.Command.init -> void
+Spectara.Revela.Sdk.Abstractions.CommandDescriptor.CommandDescriptor(System.CommandLine.Command! Command, string? ParentCommand = null, int Order = 50, string? Group = null, bool RequiresProject = true, bool HideWhenProjectExists = false, bool IsSequentialStep = false) -> void
+Spectara.Revela.Sdk.Abstractions.CommandDescriptor.Deconstruct(out System.CommandLine.Command! Command, out string? ParentCommand, out int Order, out string? Group, out bool RequiresProject, out bool HideWhenProjectExists, out bool IsSequentialStep) -> void
+Spectara.Revela.Sdk.Abstractions.CommandDescriptor.Equals(Spectara.Revela.Sdk.Abstractions.CommandDescriptor? other) -> bool
+Spectara.Revela.Sdk.Abstractions.CommandDescriptor.Group.get -> string?
+Spectara.Revela.Sdk.Abstractions.CommandDescriptor.Group.init -> void
+Spectara.Revela.Sdk.Abstractions.CommandDescriptor.HideWhenProjectExists.get -> bool
+Spectara.Revela.Sdk.Abstractions.CommandDescriptor.HideWhenProjectExists.init -> void
+Spectara.Revela.Sdk.Abstractions.CommandDescriptor.IsSequentialStep.get -> bool
+Spectara.Revela.Sdk.Abstractions.CommandDescriptor.IsSequentialStep.init -> void
+Spectara.Revela.Sdk.Abstractions.CommandDescriptor.Order.get -> int
+Spectara.Revela.Sdk.Abstractions.CommandDescriptor.Order.init -> void
+Spectara.Revela.Sdk.Abstractions.CommandDescriptor.ParentCommand.get -> string?
+Spectara.Revela.Sdk.Abstractions.CommandDescriptor.ParentCommand.init -> void
+Spectara.Revela.Sdk.Abstractions.CommandDescriptor.RequiresProject.get -> bool
+Spectara.Revela.Sdk.Abstractions.CommandDescriptor.RequiresProject.init -> void
+Spectara.Revela.Sdk.Abstractions.Engine.IRevelaEngine
+Spectara.Revela.Sdk.Abstractions.Engine.IRevelaEngine.GenerateAllAsync(System.IProgress<Spectara.Revela.Sdk.Models.Engine.GenerateProgress!>? progress = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Spectara.Revela.Sdk.Models.Engine.GenerateResult!>!
+Spectara.Revela.Sdk.Abstractions.Engine.IRevelaEngine.GenerateImagesAsync(bool force = false, System.IProgress<Spectara.Revela.Sdk.Models.Engine.ImagesProgress!>? progress = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Spectara.Revela.Sdk.Models.Engine.ImagesResult!>!
+Spectara.Revela.Sdk.Abstractions.Engine.IRevelaEngine.GeneratePagesAsync(System.IProgress<Spectara.Revela.Sdk.Models.Engine.PagesProgress!>? progress = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Spectara.Revela.Sdk.Models.Engine.PagesResult!>!
+Spectara.Revela.Sdk.Abstractions.Engine.IRevelaEngine.ScanAsync(System.IProgress<Spectara.Revela.Sdk.Models.Engine.ScanProgress!>? progress = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Spectara.Revela.Sdk.Models.Engine.ScanResult!>!
+Spectara.Revela.Sdk.Abstractions.ICheck
+Spectara.Revela.Sdk.Abstractions.ICheck.Name.get -> string!
+Spectara.Revela.Sdk.Abstractions.ICheck.Title.get -> string!
+Spectara.Revela.Sdk.Abstractions.ICheck.ValidateAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask<System.Collections.Generic.IReadOnlyList<Spectara.Revela.Sdk.Abstractions.ValidationDiagnostic!>!>
+Spectara.Revela.Sdk.Abstractions.IConfigService
+Spectara.Revela.Sdk.Abstractions.IConfigService.IsProjectInitialized() -> bool
+Spectara.Revela.Sdk.Abstractions.IConfigService.IsSiteConfigured() -> bool
+Spectara.Revela.Sdk.Abstractions.IConfigService.ProjectConfigPath.get -> string!
+Spectara.Revela.Sdk.Abstractions.IConfigService.ReadProjectConfigAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Text.Json.Nodes.JsonObject?>!
+Spectara.Revela.Sdk.Abstractions.IConfigService.ReadSiteConfigAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Text.Json.Nodes.JsonObject?>!
+Spectara.Revela.Sdk.Abstractions.IConfigService.SiteConfigPath.get -> string!
+Spectara.Revela.Sdk.Abstractions.IConfigService.UpdateProjectConfigAsync(System.Text.Json.Nodes.JsonObject! updates, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+Spectara.Revela.Sdk.Abstractions.IManifestReader
+Spectara.Revela.Sdk.Abstractions.IManifestReader.TryLoadAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Spectara.Revela.Sdk.Models.Manifest.ManifestSnapshot?>!
+Spectara.Revela.Sdk.Abstractions.IPackage
+Spectara.Revela.Sdk.Abstractions.IPackage.Metadata.get -> Spectara.Revela.Sdk.Abstractions.PackageMetadata!
+Spectara.Revela.Sdk.Abstractions.IPageTemplate
+Spectara.Revela.Sdk.Abstractions.IPageTemplate.DefaultBody.get -> string?
+Spectara.Revela.Sdk.Abstractions.IPageTemplate.Description.get -> string!
+Spectara.Revela.Sdk.Abstractions.IPageTemplate.DisplayName.get -> string!
+Spectara.Revela.Sdk.Abstractions.IPageTemplate.Name.get -> string!
+Spectara.Revela.Sdk.Abstractions.IPageTemplate.PageProperties.get -> System.Collections.Generic.IReadOnlyList<Spectara.Revela.Sdk.Abstractions.TemplateProperty!>!
+Spectara.Revela.Sdk.Abstractions.IPageTemplate.TemplateName.get -> string!
+Spectara.Revela.Sdk.Abstractions.IPipelineStep
+Spectara.Revela.Sdk.Abstractions.IPipelineStep.Category.get -> string!
+Spectara.Revela.Sdk.Abstractions.IPipelineStep.ExecuteAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask<Spectara.Revela.Sdk.Abstractions.OperationResult!>
+Spectara.Revela.Sdk.Abstractions.IPipelineStep.Name.get -> string!
+Spectara.Revela.Sdk.Abstractions.IPlugin
+Spectara.Revela.Sdk.Abstractions.IPlugin.ConfigureConfiguration(Microsoft.Extensions.Configuration.IConfigurationBuilder! configuration) -> void
+Spectara.Revela.Sdk.Abstractions.IPlugin.ConfigureServices(Microsoft.Extensions.DependencyInjection.IServiceCollection! services) -> void
+Spectara.Revela.Sdk.Abstractions.IPlugin.GetCommands(System.IServiceProvider! services) -> System.Collections.Generic.IEnumerable<Spectara.Revela.Sdk.Abstractions.CommandDescriptor!>!
+Spectara.Revela.Sdk.Abstractions.ITheme
+Spectara.Revela.Sdk.Abstractions.ITheme.ExtractToAsync(string! targetDirectory, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+Spectara.Revela.Sdk.Abstractions.ITheme.GetAllFiles() -> System.Collections.Generic.IEnumerable<string!>!
+Spectara.Revela.Sdk.Abstractions.ITheme.GetFile(string! relativePath) -> System.IO.Stream?
+Spectara.Revela.Sdk.Abstractions.ITheme.GetImagesTemplate() -> System.IO.Stream?
+Spectara.Revela.Sdk.Abstractions.ITheme.GetSiteTemplate() -> System.IO.Stream?
+Spectara.Revela.Sdk.Abstractions.ITheme.GetTemplateDataDefaults(string! templateKey) -> System.Collections.Generic.IReadOnlyDictionary<string!, string!>!
+Spectara.Revela.Sdk.Abstractions.ITheme.Manifest.get -> Spectara.Revela.Sdk.Abstractions.ThemeManifest!
+Spectara.Revela.Sdk.Abstractions.ITheme.Prefix.get -> string?
+Spectara.Revela.Sdk.Abstractions.ITheme.TargetTheme.get -> string?
+Spectara.Revela.Sdk.Abstractions.IWizardStep
+Spectara.Revela.Sdk.Abstractions.IWizardStep.Description.get -> string!
+Spectara.Revela.Sdk.Abstractions.IWizardStep.ExecuteAsync(System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<int>!
+Spectara.Revela.Sdk.Abstractions.IWizardStep.IsRequired.get -> bool
+Spectara.Revela.Sdk.Abstractions.IWizardStep.Name.get -> string!
+Spectara.Revela.Sdk.Abstractions.IWizardStep.Order.get -> int
+Spectara.Revela.Sdk.Abstractions.IWizardStep.ShouldPrompt() -> bool
+Spectara.Revela.Sdk.Abstractions.OperationResult
+Spectara.Revela.Sdk.Abstractions.OperationResult.<Clone>$() -> Spectara.Revela.Sdk.Abstractions.OperationResult!
+Spectara.Revela.Sdk.Abstractions.OperationResult.Equals(Spectara.Revela.Sdk.Abstractions.OperationResult? other) -> bool
+Spectara.Revela.Sdk.Abstractions.OperationResult.ErrorMessage.get -> string?
+Spectara.Revela.Sdk.Abstractions.OperationResult.ErrorMessage.init -> void
+Spectara.Revela.Sdk.Abstractions.OperationResult.OperationResult() -> void
+Spectara.Revela.Sdk.Abstractions.OperationResult.Success.get -> bool
+Spectara.Revela.Sdk.Abstractions.OperationResult.Success.init -> void
+Spectara.Revela.Sdk.Abstractions.PackageMetadata
+Spectara.Revela.Sdk.Abstractions.PackageMetadata.Author.get -> string!
+Spectara.Revela.Sdk.Abstractions.PackageMetadata.Author.init -> void
+Spectara.Revela.Sdk.Abstractions.PackageMetadata.Description.get -> string!
+Spectara.Revela.Sdk.Abstractions.PackageMetadata.Description.init -> void
+Spectara.Revela.Sdk.Abstractions.PackageMetadata.ExtendsPackages.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Spectara.Revela.Sdk.Abstractions.PackageMetadata.ExtendsPackages.init -> void
+Spectara.Revela.Sdk.Abstractions.PackageMetadata.Id.get -> string!
+Spectara.Revela.Sdk.Abstractions.PackageMetadata.Id.init -> void
+Spectara.Revela.Sdk.Abstractions.PackageMetadata.Name.get -> string!
+Spectara.Revela.Sdk.Abstractions.PackageMetadata.Name.init -> void
+Spectara.Revela.Sdk.Abstractions.PackageMetadata.PackageMetadata() -> void
+Spectara.Revela.Sdk.Abstractions.PackageMetadata.PackageMetadata(Spectara.Revela.Sdk.Abstractions.PackageMetadata! original) -> void
+Spectara.Revela.Sdk.Abstractions.PackageMetadata.RequiredPackages.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Spectara.Revela.Sdk.Abstractions.PackageMetadata.RequiredPackages.init -> void
+Spectara.Revela.Sdk.Abstractions.PackageMetadata.Version.get -> string!
+Spectara.Revela.Sdk.Abstractions.PackageMetadata.Version.init -> void
+Spectara.Revela.Sdk.Abstractions.PackageVersion
+Spectara.Revela.Sdk.Abstractions.PhotoViewerCapabilities
+Spectara.Revela.Sdk.Abstractions.PhotoViewerCapabilities.Default.get -> Spectara.Revela.Sdk.Models.PhotoViewerMode
+Spectara.Revela.Sdk.Abstractions.PhotoViewerCapabilities.Default.init -> void
+Spectara.Revela.Sdk.Abstractions.PhotoViewerCapabilities.PhotoViewerCapabilities() -> void
+Spectara.Revela.Sdk.Abstractions.PhotoViewerCapabilities.Supported.get -> System.Collections.Generic.IReadOnlyList<Spectara.Revela.Sdk.Models.PhotoViewerMode>!
+Spectara.Revela.Sdk.Abstractions.PhotoViewerCapabilities.Supported.init -> void
+Spectara.Revela.Sdk.Abstractions.PipelineCategories
+Spectara.Revela.Sdk.Abstractions.PipelineInvocation
+Spectara.Revela.Sdk.Abstractions.PipelineOrder
+Spectara.Revela.Sdk.Abstractions.RevelaConfigAttribute
+Spectara.Revela.Sdk.Abstractions.RevelaConfigAttribute.RevelaConfigAttribute(string! sectionName) -> void
+Spectara.Revela.Sdk.Abstractions.RevelaConfigAttribute.SectionName.get -> string!
+Spectara.Revela.Sdk.Abstractions.RevelaConfigKeysAttribute
+Spectara.Revela.Sdk.Abstractions.RevelaConfigKeysAttribute.ConfigType.get -> System.Type!
+Spectara.Revela.Sdk.Abstractions.RevelaConfigKeysAttribute.RevelaConfigKeysAttribute(System.Type! configType) -> void
+Spectara.Revela.Sdk.Abstractions.RevelaPluginConfigKeyAttribute
+Spectara.Revela.Sdk.Abstractions.RevelaPluginConfigKeyAttribute.Key.get -> string!
+Spectara.Revela.Sdk.Abstractions.RevelaPluginConfigKeyAttribute.RevelaPluginConfigKeyAttribute(string! key) -> void
+Spectara.Revela.Sdk.Abstractions.RevelaTemplateModelAttribute
+Spectara.Revela.Sdk.Abstractions.RevelaTemplateModelAttribute.RevelaTemplateModelAttribute() -> void
+Spectara.Revela.Sdk.Abstractions.RevelaTemplateModelAttribute.RevelaTemplateModelAttribute(System.Type! targetType) -> void
+Spectara.Revela.Sdk.Abstractions.RevelaTemplateModelAttribute.TargetType.get -> System.Type?
+Spectara.Revela.Sdk.Abstractions.ScriptIgnoreAttribute
+Spectara.Revela.Sdk.Abstractions.ScriptIgnoreAttribute.ScriptIgnoreAttribute() -> void
+Spectara.Revela.Sdk.Abstractions.ScriptNameAttribute
+Spectara.Revela.Sdk.Abstractions.ScriptNameAttribute.Name.get -> string!
+Spectara.Revela.Sdk.Abstractions.ScriptNameAttribute.ScriptNameAttribute(string! name) -> void
+Spectara.Revela.Sdk.Abstractions.TemplateProperty
+Spectara.Revela.Sdk.Abstractions.TemplateProperty.Aliases.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Spectara.Revela.Sdk.Abstractions.TemplateProperty.Aliases.init -> void
+Spectara.Revela.Sdk.Abstractions.TemplateProperty.DefaultValue.get -> object?
+Spectara.Revela.Sdk.Abstractions.TemplateProperty.DefaultValue.init -> void
+Spectara.Revela.Sdk.Abstractions.TemplateProperty.Description.get -> string!
+Spectara.Revela.Sdk.Abstractions.TemplateProperty.Description.init -> void
+Spectara.Revela.Sdk.Abstractions.TemplateProperty.FormatValue.get -> System.Func<object?, string!>?
+Spectara.Revela.Sdk.Abstractions.TemplateProperty.FormatValue.init -> void
+Spectara.Revela.Sdk.Abstractions.TemplateProperty.FrontmatterKey.get -> string?
+Spectara.Revela.Sdk.Abstractions.TemplateProperty.FrontmatterKey.init -> void
+Spectara.Revela.Sdk.Abstractions.TemplateProperty.Name.get -> string!
+Spectara.Revela.Sdk.Abstractions.TemplateProperty.Name.init -> void
+Spectara.Revela.Sdk.Abstractions.TemplateProperty.Required.get -> bool
+Spectara.Revela.Sdk.Abstractions.TemplateProperty.Required.init -> void
+Spectara.Revela.Sdk.Abstractions.TemplateProperty.TemplateProperty() -> void
+Spectara.Revela.Sdk.Abstractions.TemplateProperty.Type.get -> System.Type!
+Spectara.Revela.Sdk.Abstractions.TemplateProperty.Type.init -> void
+Spectara.Revela.Sdk.Abstractions.ThemeManifest
+Spectara.Revela.Sdk.Abstractions.ThemeManifest.LayoutTemplate.get -> string!
+Spectara.Revela.Sdk.Abstractions.ThemeManifest.LayoutTemplate.init -> void
+Spectara.Revela.Sdk.Abstractions.ThemeManifest.PhotoViewer.get -> Spectara.Revela.Sdk.Abstractions.PhotoViewerCapabilities?
+Spectara.Revela.Sdk.Abstractions.ThemeManifest.PhotoViewer.init -> void
+Spectara.Revela.Sdk.Abstractions.ThemeManifest.Scripts.get -> System.Collections.Generic.IReadOnlyList<Spectara.Revela.Sdk.Abstractions.AssetDeclaration!>?
+Spectara.Revela.Sdk.Abstractions.ThemeManifest.Scripts.init -> void
+Spectara.Revela.Sdk.Abstractions.ThemeManifest.Stylesheets.get -> System.Collections.Generic.IReadOnlyList<Spectara.Revela.Sdk.Abstractions.AssetDeclaration!>?
+Spectara.Revela.Sdk.Abstractions.ThemeManifest.Stylesheets.init -> void
+Spectara.Revela.Sdk.Abstractions.ThemeManifest.ThemeManifest() -> void
+Spectara.Revela.Sdk.Abstractions.ValidationDiagnostic
+Spectara.Revela.Sdk.Abstractions.ValidationDiagnostic.<Clone>$() -> Spectara.Revela.Sdk.Abstractions.ValidationDiagnostic!
+Spectara.Revela.Sdk.Abstractions.ValidationDiagnostic.Equals(Spectara.Revela.Sdk.Abstractions.ValidationDiagnostic? other) -> bool
+Spectara.Revela.Sdk.Abstractions.ValidationDiagnostic.File.get -> string?
+Spectara.Revela.Sdk.Abstractions.ValidationDiagnostic.File.init -> void
+Spectara.Revela.Sdk.Abstractions.ValidationDiagnostic.Line.get -> int?
+Spectara.Revela.Sdk.Abstractions.ValidationDiagnostic.Line.init -> void
+Spectara.Revela.Sdk.Abstractions.ValidationDiagnostic.Message.get -> string!
+Spectara.Revela.Sdk.Abstractions.ValidationDiagnostic.Message.init -> void
+Spectara.Revela.Sdk.Abstractions.ValidationDiagnostic.Severity.get -> Spectara.Revela.Sdk.Abstractions.ValidationSeverity
+Spectara.Revela.Sdk.Abstractions.ValidationDiagnostic.Severity.init -> void
+Spectara.Revela.Sdk.Abstractions.ValidationDiagnostic.Suggestion.get -> string?
+Spectara.Revela.Sdk.Abstractions.ValidationDiagnostic.Suggestion.init -> void
+Spectara.Revela.Sdk.Abstractions.ValidationDiagnostic.ValidationDiagnostic() -> void
+Spectara.Revela.Sdk.Abstractions.ValidationSeverity
+Spectara.Revela.Sdk.Abstractions.ValidationSeverity.Error = 2 -> Spectara.Revela.Sdk.Abstractions.ValidationSeverity
+Spectara.Revela.Sdk.Abstractions.ValidationSeverity.Hint = 0 -> Spectara.Revela.Sdk.Abstractions.ValidationSeverity
+Spectara.Revela.Sdk.Abstractions.ValidationSeverity.Warning = 1 -> Spectara.Revela.Sdk.Abstractions.ValidationSeverity
+Spectara.Revela.Sdk.Artifacts.ArtifactId
+Spectara.Revela.Sdk.Artifacts.ArtifactId.ArtifactId() -> void
+Spectara.Revela.Sdk.Artifacts.ArtifactId.ArtifactId(string! value) -> void
+Spectara.Revela.Sdk.Artifacts.ArtifactId.Equals(Spectara.Revela.Sdk.Artifacts.ArtifactId other) -> bool
+Spectara.Revela.Sdk.Artifacts.ArtifactId.IsEmpty.get -> bool
+Spectara.Revela.Sdk.Artifacts.ArtifactId.Value.get -> string!
+Spectara.Revela.Sdk.Artifacts.CoreArtifacts
+Spectara.Revela.Sdk.Artifacts.DerivedFileDeletion
+Spectara.Revela.Sdk.Artifacts.DerivedFileDeletion.<Clone>$() -> Spectara.Revela.Sdk.Artifacts.DerivedFileDeletion!
+Spectara.Revela.Sdk.Artifacts.DerivedFileDeletion.DeletedBytes.get -> long
+Spectara.Revela.Sdk.Artifacts.DerivedFileDeletion.DeletedBytes.init -> void
+Spectara.Revela.Sdk.Artifacts.DerivedFileDeletion.DeletedCount.get -> int
+Spectara.Revela.Sdk.Artifacts.DerivedFileDeletion.DeletedCount.init -> void
+Spectara.Revela.Sdk.Artifacts.DerivedFileDeletion.DerivedFileDeletion() -> void
+Spectara.Revela.Sdk.Artifacts.DerivedFileDeletion.Equals(Spectara.Revela.Sdk.Artifacts.DerivedFileDeletion? other) -> bool
+Spectara.Revela.Sdk.Artifacts.DerivedFileDeletion.Failures.get -> System.Collections.Generic.IReadOnlyList<Spectara.Revela.Sdk.Artifacts.DerivedFileDeletionFailure!>!
+Spectara.Revela.Sdk.Artifacts.DerivedFileDeletion.Failures.init -> void
+Spectara.Revela.Sdk.Artifacts.DerivedFileDeletionFailure
+Spectara.Revela.Sdk.Artifacts.DerivedFileDeletionFailure.<Clone>$() -> Spectara.Revela.Sdk.Artifacts.DerivedFileDeletionFailure!
+Spectara.Revela.Sdk.Artifacts.DerivedFileDeletionFailure.Deconstruct(out string! Path, out string! Message) -> void
+Spectara.Revela.Sdk.Artifacts.DerivedFileDeletionFailure.DerivedFileDeletionFailure(string! Path, string! Message) -> void
+Spectara.Revela.Sdk.Artifacts.DerivedFileDeletionFailure.Equals(Spectara.Revela.Sdk.Artifacts.DerivedFileDeletionFailure? other) -> bool
+Spectara.Revela.Sdk.Artifacts.DerivedFileDeletionFailure.Message.get -> string!
+Spectara.Revela.Sdk.Artifacts.DerivedFileDeletionFailure.Message.init -> void
+Spectara.Revela.Sdk.Artifacts.DerivedFileDeletionFailure.Path.get -> string!
+Spectara.Revela.Sdk.Artifacts.DerivedFileDeletionFailure.Path.init -> void
+Spectara.Revela.Sdk.Artifacts.DerivedFiles
+Spectara.Revela.Sdk.Artifacts.IArtifactInvalidator
+Spectara.Revela.Sdk.Artifacts.IArtifactInvalidator.Artifact.get -> Spectara.Revela.Sdk.Artifacts.ArtifactId
+Spectara.Revela.Sdk.Artifacts.IArtifactInvalidator.DependsOn.get -> System.Collections.Generic.IReadOnlyCollection<Spectara.Revela.Sdk.Artifacts.ArtifactId>!
+Spectara.Revela.Sdk.Artifacts.IArtifactInvalidator.InvalidateAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask<Spectara.Revela.Sdk.Abstractions.OperationResult!>
+Spectara.Revela.Sdk.Artifacts.IArtifactLifecycle
+Spectara.Revela.Sdk.Artifacts.IArtifactLifecycle.PrepareToReplaceAsync(Spectara.Revela.Sdk.Artifacts.ArtifactId artifact, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask<Spectara.Revela.Sdk.Abstractions.OperationResult!>
+Spectara.Revela.Sdk.Configuration.CameraConfig
+Spectara.Revela.Sdk.Configuration.CameraConfig.CameraConfig() -> void
+Spectara.Revela.Sdk.Configuration.CameraConfig.Makes.get -> System.Collections.Generic.Dictionary<string!, string!>!
+Spectara.Revela.Sdk.Configuration.CameraConfig.Models.get -> System.Collections.Generic.Dictionary<string!, string!>!
+Spectara.Revela.Sdk.Configuration.ConfigurationServiceCollectionExtensions
+Spectara.Revela.Sdk.Configuration.DependenciesConfig
+Spectara.Revela.Sdk.Configuration.DependenciesConfig.DependenciesConfig() -> void
+Spectara.Revela.Sdk.Configuration.DependenciesConfig.Feeds.get -> System.Collections.Generic.Dictionary<string!, string!>!
+Spectara.Revela.Sdk.Configuration.DependenciesConfig.Packages.get -> System.Collections.Generic.Dictionary<string!, string?>!
+Spectara.Revela.Sdk.Configuration.GenerateConfig
+Spectara.Revela.Sdk.Configuration.GenerateConfig.Cameras.get -> Spectara.Revela.Sdk.Configuration.CameraConfig!
+Spectara.Revela.Sdk.Configuration.GenerateConfig.Cameras.set -> void
+Spectara.Revela.Sdk.Configuration.GenerateConfig.GenerateConfig() -> void
+Spectara.Revela.Sdk.Configuration.GenerateConfig.Images.get -> Spectara.Revela.Sdk.Configuration.ImageConfig!
+Spectara.Revela.Sdk.Configuration.GenerateConfig.Images.set -> void
+Spectara.Revela.Sdk.Configuration.GenerateConfig.Render.get -> Spectara.Revela.Sdk.Configuration.RenderConfig!
+Spectara.Revela.Sdk.Configuration.GenerateConfig.Render.set -> void
+Spectara.Revela.Sdk.Configuration.GenerateConfig.Sorting.get -> Spectara.Revela.Sdk.Configuration.SortingConfig!
+Spectara.Revela.Sdk.Configuration.GenerateConfig.Sorting.set -> void
+Spectara.Revela.Sdk.Configuration.ImageConfig
+Spectara.Revela.Sdk.Configuration.ImageConfig.Avif.get -> int
+Spectara.Revela.Sdk.Configuration.ImageConfig.Avif.set -> void
+Spectara.Revela.Sdk.Configuration.ImageConfig.GetActiveFormats() -> System.Collections.Generic.IReadOnlyDictionary<string!, int>!
+Spectara.Revela.Sdk.Configuration.ImageConfig.ImageConfig() -> void
+Spectara.Revela.Sdk.Configuration.ImageConfig.Jpg.get -> int
+Spectara.Revela.Sdk.Configuration.ImageConfig.Jpg.set -> void
+Spectara.Revela.Sdk.Configuration.ImageConfig.MaxDegreeOfParallelism.get -> int?
+Spectara.Revela.Sdk.Configuration.ImageConfig.MaxDegreeOfParallelism.set -> void
+Spectara.Revela.Sdk.Configuration.ImageConfig.MinHeight.get -> int
+Spectara.Revela.Sdk.Configuration.ImageConfig.MinHeight.set -> void
+Spectara.Revela.Sdk.Configuration.ImageConfig.MinWidth.get -> int
+Spectara.Revela.Sdk.Configuration.ImageConfig.MinWidth.set -> void
+Spectara.Revela.Sdk.Configuration.ImageConfig.Placeholder.get -> Spectara.Revela.Sdk.Configuration.PlaceholderConfig!
+Spectara.Revela.Sdk.Configuration.ImageConfig.Placeholder.set -> void
+Spectara.Revela.Sdk.Configuration.ImageConfig.Webp.get -> int
+Spectara.Revela.Sdk.Configuration.ImageConfig.Webp.set -> void
+Spectara.Revela.Sdk.Configuration.ImageSortConfig
+Spectara.Revela.Sdk.Configuration.ImageSortConfig.Direction.get -> Spectara.Revela.Sdk.Configuration.SortDirection
+Spectara.Revela.Sdk.Configuration.ImageSortConfig.Direction.set -> void
+Spectara.Revela.Sdk.Configuration.ImageSortConfig.Fallback.get -> string!
+Spectara.Revela.Sdk.Configuration.ImageSortConfig.Fallback.set -> void
+Spectara.Revela.Sdk.Configuration.ImageSortConfig.Field.get -> string!
+Spectara.Revela.Sdk.Configuration.ImageSortConfig.Field.set -> void
+Spectara.Revela.Sdk.Configuration.ImageSortConfig.ImageSortConfig() -> void
+Spectara.Revela.Sdk.Configuration.LoggingConfig
+Spectara.Revela.Sdk.Configuration.LoggingConfig.LoggingConfig() -> void
+Spectara.Revela.Sdk.Configuration.LoggingConfig.LogLevel.get -> System.Collections.Generic.Dictionary<string!, string!>!
+Spectara.Revela.Sdk.Configuration.PackageOptions
+Spectara.Revela.Sdk.Configuration.PackageOptions.EnableVerboseLogging.get -> bool
+Spectara.Revela.Sdk.Configuration.PackageOptions.EnableVerboseLogging.set -> void
+Spectara.Revela.Sdk.Configuration.PackageOptions.ExcludePatterns.get -> System.Collections.ObjectModel.Collection<string!>!
+Spectara.Revela.Sdk.Configuration.PackageOptions.PackageOptions() -> void
+Spectara.Revela.Sdk.Configuration.PackageOptions.RequirePlugins.get -> bool
+Spectara.Revela.Sdk.Configuration.PackageOptions.RequirePlugins.set -> void
+Spectara.Revela.Sdk.Configuration.PackageOptions.SearchApplicationDirectory.get -> bool
+Spectara.Revela.Sdk.Configuration.PackageOptions.SearchApplicationDirectory.set -> void
+Spectara.Revela.Sdk.Configuration.PathsConfig
+Spectara.Revela.Sdk.Configuration.PathsConfig.Output.get -> string!
+Spectara.Revela.Sdk.Configuration.PathsConfig.Output.set -> void
+Spectara.Revela.Sdk.Configuration.PathsConfig.PathsConfig() -> void
+Spectara.Revela.Sdk.Configuration.PathsConfig.Source.get -> string!
+Spectara.Revela.Sdk.Configuration.PathsConfig.Source.set -> void
+Spectara.Revela.Sdk.Configuration.PlaceholderConfig
+Spectara.Revela.Sdk.Configuration.PlaceholderConfig.PlaceholderConfig() -> void
+Spectara.Revela.Sdk.Configuration.PlaceholderConfig.Strategy.get -> Spectara.Revela.Sdk.Configuration.PlaceholderStrategy
+Spectara.Revela.Sdk.Configuration.PlaceholderConfig.Strategy.set -> void
+Spectara.Revela.Sdk.Configuration.PlaceholderStrategy
+Spectara.Revela.Sdk.Configuration.PlaceholderStrategy.CssHash = 1 -> Spectara.Revela.Sdk.Configuration.PlaceholderStrategy
+Spectara.Revela.Sdk.Configuration.PlaceholderStrategy.None = 0 -> Spectara.Revela.Sdk.Configuration.PlaceholderStrategy
+Spectara.Revela.Sdk.Configuration.PluginConfigSection
+Spectara.Revela.Sdk.Configuration.ProjectConfig
+Spectara.Revela.Sdk.Configuration.ProjectConfig.AssetsBasePath.get -> string?
+Spectara.Revela.Sdk.Configuration.ProjectConfig.AssetsBasePath.set -> void
+Spectara.Revela.Sdk.Configuration.ProjectConfig.BasePath.get -> string!
+Spectara.Revela.Sdk.Configuration.ProjectConfig.BasePath.set -> void
+Spectara.Revela.Sdk.Configuration.ProjectConfig.BaseUrl.get -> System.Uri?
+Spectara.Revela.Sdk.Configuration.ProjectConfig.BaseUrl.set -> void
+Spectara.Revela.Sdk.Configuration.ProjectConfig.Name.get -> string!
+Spectara.Revela.Sdk.Configuration.ProjectConfig.Name.set -> void
+Spectara.Revela.Sdk.Configuration.ProjectConfig.ProjectConfig() -> void
+Spectara.Revela.Sdk.Configuration.RenderConfig
+Spectara.Revela.Sdk.Configuration.RenderConfig.MaxDegreeOfParallelism.get -> int?
+Spectara.Revela.Sdk.Configuration.RenderConfig.MaxDegreeOfParallelism.set -> void
+Spectara.Revela.Sdk.Configuration.RenderConfig.Parallel.get -> bool
+Spectara.Revela.Sdk.Configuration.RenderConfig.Parallel.set -> void
+Spectara.Revela.Sdk.Configuration.RenderConfig.RenderConfig() -> void
+Spectara.Revela.Sdk.Configuration.SiteCoreConfig
+Spectara.Revela.Sdk.Configuration.SiteCoreConfig.Author.get -> string?
+Spectara.Revela.Sdk.Configuration.SiteCoreConfig.Author.set -> void
+Spectara.Revela.Sdk.Configuration.SiteCoreConfig.Copyright.get -> string?
+Spectara.Revela.Sdk.Configuration.SiteCoreConfig.Copyright.set -> void
+Spectara.Revela.Sdk.Configuration.SiteCoreConfig.Description.get -> string?
+Spectara.Revela.Sdk.Configuration.SiteCoreConfig.Description.set -> void
+Spectara.Revela.Sdk.Configuration.SiteCoreConfig.Language.get -> string!
+Spectara.Revela.Sdk.Configuration.SiteCoreConfig.Language.set -> void
+Spectara.Revela.Sdk.Configuration.SiteCoreConfig.SiteCoreConfig() -> void
+Spectara.Revela.Sdk.Configuration.SiteCoreConfig.Title.get -> string!
+Spectara.Revela.Sdk.Configuration.SiteCoreConfig.Title.set -> void
+Spectara.Revela.Sdk.Configuration.SortDirection
+Spectara.Revela.Sdk.Configuration.SortDirection.Asc = 0 -> Spectara.Revela.Sdk.Configuration.SortDirection
+Spectara.Revela.Sdk.Configuration.SortDirection.Desc = 1 -> Spectara.Revela.Sdk.Configuration.SortDirection
+Spectara.Revela.Sdk.Configuration.SortingConfig
+Spectara.Revela.Sdk.Configuration.SortingConfig.Galleries.get -> Spectara.Revela.Sdk.Configuration.SortDirection
+Spectara.Revela.Sdk.Configuration.SortingConfig.Galleries.set -> void
+Spectara.Revela.Sdk.Configuration.SortingConfig.Images.get -> Spectara.Revela.Sdk.Configuration.ImageSortConfig!
+Spectara.Revela.Sdk.Configuration.SortingConfig.Images.set -> void
+Spectara.Revela.Sdk.Configuration.SortingConfig.SortingConfig() -> void
+Spectara.Revela.Sdk.Configuration.ThemeConfig
+Spectara.Revela.Sdk.Configuration.ThemeConfig.Images.get -> Spectara.Revela.Sdk.Configuration.ThemeImagesConfig!
+Spectara.Revela.Sdk.Configuration.ThemeConfig.Images.set -> void
+Spectara.Revela.Sdk.Configuration.ThemeConfig.Name.get -> string!
+Spectara.Revela.Sdk.Configuration.ThemeConfig.Name.set -> void
+Spectara.Revela.Sdk.Configuration.ThemeConfig.PhotoViewer.get -> Spectara.Revela.Sdk.Models.PhotoViewerMode?
+Spectara.Revela.Sdk.Configuration.ThemeConfig.PhotoViewer.set -> void
+Spectara.Revela.Sdk.Configuration.ThemeConfig.ThemeConfig() -> void
+Spectara.Revela.Sdk.Configuration.ThemeImagesConfig
+Spectara.Revela.Sdk.Configuration.ThemeImagesConfig.ResizeMode.get -> string!
+Spectara.Revela.Sdk.Configuration.ThemeImagesConfig.ResizeMode.set -> void
+Spectara.Revela.Sdk.Configuration.ThemeImagesConfig.Sizes.get -> System.Collections.Generic.IReadOnlyList<int>!
+Spectara.Revela.Sdk.Configuration.ThemeImagesConfig.Sizes.set -> void
+Spectara.Revela.Sdk.Configuration.ThemeImagesConfig.ThemeImagesConfig() -> void
+Spectara.Revela.Sdk.ErrorPanels
+Spectara.Revela.Sdk.Hosting.HostKind
+Spectara.Revela.Sdk.Hosting.HostKind.Full = 0 -> Spectara.Revela.Sdk.Hosting.HostKind
+Spectara.Revela.Sdk.Hosting.HostKind.Standalone = 1 -> Spectara.Revela.Sdk.Hosting.HostKind
+Spectara.Revela.Sdk.Hosting.IBuildInfo
+Spectara.Revela.Sdk.Hosting.IBuildInfo.Configuration.get -> string!
+Spectara.Revela.Sdk.Hosting.IBuildInfo.FormatVersionLine() -> string!
+Spectara.Revela.Sdk.Hosting.IBuildInfo.Framework.get -> string!
+Spectara.Revela.Sdk.Hosting.IBuildInfo.InformationalVersion.get -> string!
+Spectara.Revela.Sdk.Hosting.IBuildInfo.Kind.get -> Spectara.Revela.Sdk.Hosting.HostKind
+Spectara.Revela.Sdk.Hosting.IBuildInfo.RuntimeIdentifier.get -> string!
+Spectara.Revela.Sdk.Hosting.IBuildInfo.Version.get -> string!
+Spectara.Revela.Sdk.Hosting.IConsoleCapabilities
+Spectara.Revela.Sdk.Hosting.IConsoleCapabilities.CanRenderLive.get -> bool
+Spectara.Revela.Sdk.Hosting.IConsoleCapabilities.IsInteractive.get -> bool
+Spectara.Revela.Sdk.Json.RevelaJsonOptions
+Spectara.Revela.Sdk.Models.Engine.GenerateProgress
+Spectara.Revela.Sdk.Models.Engine.GenerateProgress.<Clone>$() -> Spectara.Revela.Sdk.Models.Engine.GenerateProgress!
+Spectara.Revela.Sdk.Models.Engine.GenerateProgress.CurrentStep.get -> int
+Spectara.Revela.Sdk.Models.Engine.GenerateProgress.CurrentStep.init -> void
+Spectara.Revela.Sdk.Models.Engine.GenerateProgress.Equals(Spectara.Revela.Sdk.Models.Engine.GenerateProgress? other) -> bool
+Spectara.Revela.Sdk.Models.Engine.GenerateProgress.GenerateProgress() -> void
+Spectara.Revela.Sdk.Models.Engine.GenerateProgress.StepName.get -> string!
+Spectara.Revela.Sdk.Models.Engine.GenerateProgress.StepName.init -> void
+Spectara.Revela.Sdk.Models.Engine.GenerateProgress.TotalSteps.get -> int
+Spectara.Revela.Sdk.Models.Engine.GenerateProgress.TotalSteps.init -> void
+Spectara.Revela.Sdk.Models.Engine.GenerateResult
+Spectara.Revela.Sdk.Models.Engine.GenerateResult.<Clone>$() -> Spectara.Revela.Sdk.Models.Engine.GenerateResult!
+Spectara.Revela.Sdk.Models.Engine.GenerateResult.Duration.get -> System.TimeSpan
+Spectara.Revela.Sdk.Models.Engine.GenerateResult.Duration.init -> void
+Spectara.Revela.Sdk.Models.Engine.GenerateResult.Equals(Spectara.Revela.Sdk.Models.Engine.GenerateResult? other) -> bool
+Spectara.Revela.Sdk.Models.Engine.GenerateResult.ErrorMessage.get -> string?
+Spectara.Revela.Sdk.Models.Engine.GenerateResult.ErrorMessage.init -> void
+Spectara.Revela.Sdk.Models.Engine.GenerateResult.GenerateResult() -> void
+Spectara.Revela.Sdk.Models.Engine.GenerateResult.Images.get -> Spectara.Revela.Sdk.Models.Engine.ImagesResult?
+Spectara.Revela.Sdk.Models.Engine.GenerateResult.Images.init -> void
+Spectara.Revela.Sdk.Models.Engine.GenerateResult.Pages.get -> Spectara.Revela.Sdk.Models.Engine.PagesResult?
+Spectara.Revela.Sdk.Models.Engine.GenerateResult.Pages.init -> void
+Spectara.Revela.Sdk.Models.Engine.GenerateResult.Scan.get -> Spectara.Revela.Sdk.Models.Engine.ScanResult?
+Spectara.Revela.Sdk.Models.Engine.GenerateResult.Scan.init -> void
+Spectara.Revela.Sdk.Models.Engine.GenerateResult.Success.get -> bool
+Spectara.Revela.Sdk.Models.Engine.GenerateResult.Success.init -> void
+Spectara.Revela.Sdk.Models.Engine.ImagesProgress
+Spectara.Revela.Sdk.Models.Engine.ImagesProgress.<Clone>$() -> Spectara.Revela.Sdk.Models.Engine.ImagesProgress!
+Spectara.Revela.Sdk.Models.Engine.ImagesProgress.Equals(Spectara.Revela.Sdk.Models.Engine.ImagesProgress? other) -> bool
+Spectara.Revela.Sdk.Models.Engine.ImagesProgress.ImagesProgress() -> void
+Spectara.Revela.Sdk.Models.Engine.ImagesProgress.Processed.get -> int
+Spectara.Revela.Sdk.Models.Engine.ImagesProgress.Processed.init -> void
+Spectara.Revela.Sdk.Models.Engine.ImagesProgress.Skipped.get -> int
+Spectara.Revela.Sdk.Models.Engine.ImagesProgress.Skipped.init -> void
+Spectara.Revela.Sdk.Models.Engine.ImagesProgress.Total.get -> int
+Spectara.Revela.Sdk.Models.Engine.ImagesProgress.Total.init -> void
+Spectara.Revela.Sdk.Models.Engine.ImagesResult
+Spectara.Revela.Sdk.Models.Engine.ImagesResult.<Clone>$() -> Spectara.Revela.Sdk.Models.Engine.ImagesResult!
+Spectara.Revela.Sdk.Models.Engine.ImagesResult.Duration.get -> System.TimeSpan
+Spectara.Revela.Sdk.Models.Engine.ImagesResult.Duration.init -> void
+Spectara.Revela.Sdk.Models.Engine.ImagesResult.Equals(Spectara.Revela.Sdk.Models.Engine.ImagesResult? other) -> bool
+Spectara.Revela.Sdk.Models.Engine.ImagesResult.ErrorMessage.get -> string?
+Spectara.Revela.Sdk.Models.Engine.ImagesResult.ErrorMessage.init -> void
+Spectara.Revela.Sdk.Models.Engine.ImagesResult.FilesCreated.get -> int
+Spectara.Revela.Sdk.Models.Engine.ImagesResult.FilesCreated.init -> void
+Spectara.Revela.Sdk.Models.Engine.ImagesResult.ImagesResult() -> void
+Spectara.Revela.Sdk.Models.Engine.ImagesResult.ProcessedCount.get -> int
+Spectara.Revela.Sdk.Models.Engine.ImagesResult.ProcessedCount.init -> void
+Spectara.Revela.Sdk.Models.Engine.ImagesResult.SkippedCount.get -> int
+Spectara.Revela.Sdk.Models.Engine.ImagesResult.SkippedCount.init -> void
+Spectara.Revela.Sdk.Models.Engine.ImagesResult.Success.get -> bool
+Spectara.Revela.Sdk.Models.Engine.ImagesResult.Success.init -> void
+Spectara.Revela.Sdk.Models.Engine.ImagesResult.TotalSize.get -> long
+Spectara.Revela.Sdk.Models.Engine.ImagesResult.TotalSize.init -> void
+Spectara.Revela.Sdk.Models.Engine.ImagesResult.Warnings.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Spectara.Revela.Sdk.Models.Engine.ImagesResult.Warnings.init -> void
+Spectara.Revela.Sdk.Models.Engine.PagesProgress
+Spectara.Revela.Sdk.Models.Engine.PagesProgress.<Clone>$() -> Spectara.Revela.Sdk.Models.Engine.PagesProgress!
+Spectara.Revela.Sdk.Models.Engine.PagesProgress.CurrentPage.get -> string!
+Spectara.Revela.Sdk.Models.Engine.PagesProgress.CurrentPage.init -> void
+Spectara.Revela.Sdk.Models.Engine.PagesProgress.Equals(Spectara.Revela.Sdk.Models.Engine.PagesProgress? other) -> bool
+Spectara.Revela.Sdk.Models.Engine.PagesProgress.PagesProgress() -> void
+Spectara.Revela.Sdk.Models.Engine.PagesProgress.Rendered.get -> int
+Spectara.Revela.Sdk.Models.Engine.PagesProgress.Rendered.init -> void
+Spectara.Revela.Sdk.Models.Engine.PagesProgress.Total.get -> int
+Spectara.Revela.Sdk.Models.Engine.PagesProgress.Total.init -> void
+Spectara.Revela.Sdk.Models.Engine.PagesResult
+Spectara.Revela.Sdk.Models.Engine.PagesResult.<Clone>$() -> Spectara.Revela.Sdk.Models.Engine.PagesResult!
+Spectara.Revela.Sdk.Models.Engine.PagesResult.Duration.get -> System.TimeSpan
+Spectara.Revela.Sdk.Models.Engine.PagesResult.Duration.init -> void
+Spectara.Revela.Sdk.Models.Engine.PagesResult.Equals(Spectara.Revela.Sdk.Models.Engine.PagesResult? other) -> bool
+Spectara.Revela.Sdk.Models.Engine.PagesResult.ErrorMessage.get -> string?
+Spectara.Revela.Sdk.Models.Engine.PagesResult.ErrorMessage.init -> void
+Spectara.Revela.Sdk.Models.Engine.PagesResult.PageCount.get -> int
+Spectara.Revela.Sdk.Models.Engine.PagesResult.PageCount.init -> void
+Spectara.Revela.Sdk.Models.Engine.PagesResult.PagesResult() -> void
+Spectara.Revela.Sdk.Models.Engine.PagesResult.Success.get -> bool
+Spectara.Revela.Sdk.Models.Engine.PagesResult.Success.init -> void
+Spectara.Revela.Sdk.Models.Engine.ScanProgress
+Spectara.Revela.Sdk.Models.Engine.ScanProgress.<Clone>$() -> Spectara.Revela.Sdk.Models.Engine.ScanProgress!
+Spectara.Revela.Sdk.Models.Engine.ScanProgress.Equals(Spectara.Revela.Sdk.Models.Engine.ScanProgress? other) -> bool
+Spectara.Revela.Sdk.Models.Engine.ScanProgress.GalleriesFound.get -> int
+Spectara.Revela.Sdk.Models.Engine.ScanProgress.GalleriesFound.init -> void
+Spectara.Revela.Sdk.Models.Engine.ScanProgress.ImagesFound.get -> int
+Spectara.Revela.Sdk.Models.Engine.ScanProgress.ImagesFound.init -> void
+Spectara.Revela.Sdk.Models.Engine.ScanProgress.ScanProgress() -> void
+Spectara.Revela.Sdk.Models.Engine.ScanProgress.Status.get -> string!
+Spectara.Revela.Sdk.Models.Engine.ScanProgress.Status.init -> void
+Spectara.Revela.Sdk.Models.Engine.ScanResult
+Spectara.Revela.Sdk.Models.Engine.ScanResult.<Clone>$() -> Spectara.Revela.Sdk.Models.Engine.ScanResult!
+Spectara.Revela.Sdk.Models.Engine.ScanResult.Duration.get -> System.TimeSpan
+Spectara.Revela.Sdk.Models.Engine.ScanResult.Duration.init -> void
+Spectara.Revela.Sdk.Models.Engine.ScanResult.Equals(Spectara.Revela.Sdk.Models.Engine.ScanResult? other) -> bool
+Spectara.Revela.Sdk.Models.Engine.ScanResult.ErrorMessage.get -> string?
+Spectara.Revela.Sdk.Models.Engine.ScanResult.ErrorMessage.init -> void
+Spectara.Revela.Sdk.Models.Engine.ScanResult.GalleryCount.get -> int
+Spectara.Revela.Sdk.Models.Engine.ScanResult.GalleryCount.init -> void
+Spectara.Revela.Sdk.Models.Engine.ScanResult.ImageCount.get -> int
+Spectara.Revela.Sdk.Models.Engine.ScanResult.ImageCount.init -> void
+Spectara.Revela.Sdk.Models.Engine.ScanResult.NavigationItemCount.get -> int
+Spectara.Revela.Sdk.Models.Engine.ScanResult.NavigationItemCount.init -> void
+Spectara.Revela.Sdk.Models.Engine.ScanResult.ScanResult() -> void
+Spectara.Revela.Sdk.Models.Engine.ScanResult.Success.get -> bool
+Spectara.Revela.Sdk.Models.Engine.ScanResult.Success.init -> void
+Spectara.Revela.Sdk.Models.ExifData
+Spectara.Revela.Sdk.Models.ExifData.DateTaken.get -> System.DateTime?
+Spectara.Revela.Sdk.Models.ExifData.DateTaken.init -> void
+Spectara.Revela.Sdk.Models.ExifData.ExifData() -> void
+Spectara.Revela.Sdk.Models.ExifData.ExposureTime.get -> double?
+Spectara.Revela.Sdk.Models.ExifData.ExposureTime.init -> void
+Spectara.Revela.Sdk.Models.ExifData.FNumber.get -> double?
+Spectara.Revela.Sdk.Models.ExifData.FNumber.init -> void
+Spectara.Revela.Sdk.Models.ExifData.FocalLength.get -> double?
+Spectara.Revela.Sdk.Models.ExifData.FocalLength.init -> void
+Spectara.Revela.Sdk.Models.ExifData.GpsLatitude.get -> double?
+Spectara.Revela.Sdk.Models.ExifData.GpsLatitude.init -> void
+Spectara.Revela.Sdk.Models.ExifData.GpsLongitude.get -> double?
+Spectara.Revela.Sdk.Models.ExifData.GpsLongitude.init -> void
+Spectara.Revela.Sdk.Models.ExifData.Iso.get -> int?
+Spectara.Revela.Sdk.Models.ExifData.Iso.init -> void
+Spectara.Revela.Sdk.Models.ExifData.LensModel.get -> string?
+Spectara.Revela.Sdk.Models.ExifData.LensModel.init -> void
+Spectara.Revela.Sdk.Models.ExifData.Make.get -> string?
+Spectara.Revela.Sdk.Models.ExifData.Make.init -> void
+Spectara.Revela.Sdk.Models.ExifData.Model.get -> string?
+Spectara.Revela.Sdk.Models.ExifData.Model.init -> void
+Spectara.Revela.Sdk.Models.ExifData.Raw.get -> System.Collections.Generic.IReadOnlyDictionary<string!, string!>?
+Spectara.Revela.Sdk.Models.ExifData.Raw.init -> void
+Spectara.Revela.Sdk.Models.Manifest.ImageContent
+Spectara.Revela.Sdk.Models.Manifest.ImageContent.<Clone>$() -> Spectara.Revela.Sdk.Models.Manifest.ImageContent!
+Spectara.Revela.Sdk.Models.Manifest.ImageContent.DateTaken.get -> System.DateTime?
+Spectara.Revela.Sdk.Models.Manifest.ImageContent.DateTaken.init -> void
+Spectara.Revela.Sdk.Models.Manifest.ImageContent.Description.get -> string?
+Spectara.Revela.Sdk.Models.Manifest.ImageContent.Description.init -> void
+Spectara.Revela.Sdk.Models.Manifest.ImageContent.Equals(Spectara.Revela.Sdk.Models.Manifest.ImageContent? other) -> bool
+Spectara.Revela.Sdk.Models.Manifest.ImageContent.Exif.get -> Spectara.Revela.Sdk.Models.ExifData?
+Spectara.Revela.Sdk.Models.Manifest.ImageContent.Exif.init -> void
+Spectara.Revela.Sdk.Models.Manifest.ImageContent.Filename.get -> string!
+Spectara.Revela.Sdk.Models.Manifest.ImageContent.Filename.init -> void
+Spectara.Revela.Sdk.Models.Manifest.ImageContent.FileSize.get -> long
+Spectara.Revela.Sdk.Models.Manifest.ImageContent.FileSize.init -> void
+Spectara.Revela.Sdk.Models.Manifest.ImageContent.Height.get -> int
+Spectara.Revela.Sdk.Models.Manifest.ImageContent.Height.init -> void
+Spectara.Revela.Sdk.Models.Manifest.ImageContent.ImageContent() -> void
+Spectara.Revela.Sdk.Models.Manifest.ImageContent.Keywords.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Spectara.Revela.Sdk.Models.Manifest.ImageContent.Keywords.init -> void
+Spectara.Revela.Sdk.Models.Manifest.ImageContent.LastModified.get -> System.DateTime
+Spectara.Revela.Sdk.Models.Manifest.ImageContent.LastModified.init -> void
+Spectara.Revela.Sdk.Models.Manifest.ImageContent.Placeholder.get -> string?
+Spectara.Revela.Sdk.Models.Manifest.ImageContent.Placeholder.init -> void
+Spectara.Revela.Sdk.Models.Manifest.ImageContent.Rating.get -> int?
+Spectara.Revela.Sdk.Models.Manifest.ImageContent.Rating.init -> void
+Spectara.Revela.Sdk.Models.Manifest.ImageContent.Sizes.get -> System.Collections.Generic.IReadOnlyList<int>!
+Spectara.Revela.Sdk.Models.Manifest.ImageContent.Sizes.init -> void
+Spectara.Revela.Sdk.Models.Manifest.ImageContent.SourcePath.get -> string!
+Spectara.Revela.Sdk.Models.Manifest.ImageContent.SourcePath.init -> void
+Spectara.Revela.Sdk.Models.Manifest.ImageContent.Title.get -> string?
+Spectara.Revela.Sdk.Models.Manifest.ImageContent.Title.init -> void
+Spectara.Revela.Sdk.Models.Manifest.ImageContent.Width.get -> int
+Spectara.Revela.Sdk.Models.Manifest.ImageContent.Width.init -> void
+Spectara.Revela.Sdk.Models.Manifest.ManifestEntry
+Spectara.Revela.Sdk.Models.Manifest.ManifestEntry.<Clone>$() -> Spectara.Revela.Sdk.Models.Manifest.ManifestEntry!
+Spectara.Revela.Sdk.Models.Manifest.ManifestEntry.Children.get -> System.Collections.Generic.IReadOnlyList<Spectara.Revela.Sdk.Models.Manifest.ManifestEntry!>!
+Spectara.Revela.Sdk.Models.Manifest.ManifestEntry.Children.init -> void
+Spectara.Revela.Sdk.Models.Manifest.ManifestEntry.Content.get -> System.Collections.Generic.IReadOnlyList<Spectara.Revela.Sdk.Models.Manifest.ImageContent!>!
+Spectara.Revela.Sdk.Models.Manifest.ManifestEntry.Content.init -> void
+Spectara.Revela.Sdk.Models.Manifest.ManifestEntry.Cover.get -> Spectara.Revela.Sdk.Models.RelativePath?
+Spectara.Revela.Sdk.Models.Manifest.ManifestEntry.Cover.init -> void
+Spectara.Revela.Sdk.Models.Manifest.ManifestEntry.DataSources.get -> System.Collections.Generic.IReadOnlyDictionary<string!, string!>!
+Spectara.Revela.Sdk.Models.Manifest.ManifestEntry.DataSources.init -> void
+Spectara.Revela.Sdk.Models.Manifest.ManifestEntry.Description.get -> string?
+Spectara.Revela.Sdk.Models.Manifest.ManifestEntry.Description.init -> void
+Spectara.Revela.Sdk.Models.Manifest.ManifestEntry.Equals(Spectara.Revela.Sdk.Models.Manifest.ManifestEntry? other) -> bool
+Spectara.Revela.Sdk.Models.Manifest.ManifestEntry.Hidden.get -> bool
+Spectara.Revela.Sdk.Models.Manifest.ManifestEntry.Hidden.init -> void
+Spectara.Revela.Sdk.Models.Manifest.ManifestEntry.ManifestEntry() -> void
+Spectara.Revela.Sdk.Models.Manifest.ManifestEntry.Path.get -> Spectara.Revela.Sdk.Models.RelativePath
+Spectara.Revela.Sdk.Models.Manifest.ManifestEntry.Path.init -> void
+Spectara.Revela.Sdk.Models.Manifest.ManifestEntry.Pinned.get -> bool
+Spectara.Revela.Sdk.Models.Manifest.ManifestEntry.Pinned.init -> void
+Spectara.Revela.Sdk.Models.Manifest.ManifestEntry.Slug.get -> Spectara.Revela.Sdk.Models.RelativePath?
+Spectara.Revela.Sdk.Models.Manifest.ManifestEntry.Slug.init -> void
+Spectara.Revela.Sdk.Models.Manifest.ManifestEntry.Template.get -> string?
+Spectara.Revela.Sdk.Models.Manifest.ManifestEntry.Template.init -> void
+Spectara.Revela.Sdk.Models.Manifest.ManifestEntry.Text.get -> string!
+Spectara.Revela.Sdk.Models.Manifest.ManifestEntry.Text.init -> void
+Spectara.Revela.Sdk.Models.Manifest.ManifestSnapshot
+Spectara.Revela.Sdk.Models.Manifest.ManifestSnapshot.<Clone>$() -> Spectara.Revela.Sdk.Models.Manifest.ManifestSnapshot!
+Spectara.Revela.Sdk.Models.Manifest.ManifestSnapshot.Equals(Spectara.Revela.Sdk.Models.Manifest.ManifestSnapshot? other) -> bool
+Spectara.Revela.Sdk.Models.Manifest.ManifestSnapshot.Images.get -> System.Collections.Generic.IReadOnlyDictionary<string!, Spectara.Revela.Sdk.Models.Manifest.ImageContent!>!
+Spectara.Revela.Sdk.Models.Manifest.ManifestSnapshot.Images.init -> void
+Spectara.Revela.Sdk.Models.Manifest.ManifestSnapshot.ManifestSnapshot() -> void
+Spectara.Revela.Sdk.Models.Manifest.ManifestSnapshot.Root.get -> Spectara.Revela.Sdk.Models.Manifest.ManifestEntry!
+Spectara.Revela.Sdk.Models.Manifest.ManifestSnapshot.Root.init -> void
+Spectara.Revela.Sdk.Models.PhotoViewerMode
+Spectara.Revela.Sdk.Models.PhotoViewerMode.Lightbox = 1 -> Spectara.Revela.Sdk.Models.PhotoViewerMode
+Spectara.Revela.Sdk.Models.PhotoViewerMode.None = 2 -> Spectara.Revela.Sdk.Models.PhotoViewerMode
+Spectara.Revela.Sdk.Models.PhotoViewerMode.Page = 0 -> Spectara.Revela.Sdk.Models.PhotoViewerMode
+Spectara.Revela.Sdk.Models.PhotoViewerModeValues
+Spectara.Revela.Sdk.Models.RelativePath
+Spectara.Revela.Sdk.Models.RelativePath.Deconstruct(out string! Value) -> void
+Spectara.Revela.Sdk.Models.RelativePath.Equals(Spectara.Revela.Sdk.Models.RelativePath other) -> bool
+Spectara.Revela.Sdk.Models.RelativePath.IsEmpty.get -> bool
+Spectara.Revela.Sdk.Models.RelativePath.RelativePath() -> void
+Spectara.Revela.Sdk.Models.RelativePath.RelativePath(string! Value) -> void
+Spectara.Revela.Sdk.Models.RelativePath.ToStringValue() -> string!
+Spectara.Revela.Sdk.Models.RelativePath.Value.get -> string!
+Spectara.Revela.Sdk.Models.RelativePath.Value.init -> void
+Spectara.Revela.Sdk.Models.RelativePathJsonConverter
+Spectara.Revela.Sdk.Models.RelativePathJsonConverter.RelativePathJsonConverter() -> void
+Spectara.Revela.Sdk.Output.OutputMarkers
+Spectara.Revela.Sdk.Output.PlainProgressReporter
+Spectara.Revela.Sdk.Output.PlainProgressReporter.PlainProgressReporter(string! verb, Spectre.Console.IAnsiConsole? console = null) -> void
+Spectara.Revela.Sdk.Output.PlainProgressReporter.Report((int Current, int Total, string! Item) value) -> void
+Spectara.Revela.Sdk.Output.PlainProgressReporter.Report((int Current, int Total) value) -> void
+Spectara.Revela.Sdk.PanelStyles
+Spectara.Revela.Sdk.ProjectEnvironment
+Spectara.Revela.Sdk.ProjectEnvironment.FolderName.get -> string!
+Spectara.Revela.Sdk.ProjectEnvironment.IsInitialized.get -> bool
+Spectara.Revela.Sdk.ProjectEnvironment.Path.get -> string!
+Spectara.Revela.Sdk.ProjectEnvironment.Path.set -> void
+Spectara.Revela.Sdk.ProjectEnvironment.ProjectEnvironment() -> void
+Spectara.Revela.Sdk.ProjectPaths
+Spectara.Revela.Sdk.Services.IPathResolver
+Spectara.Revela.Sdk.Services.IPathResolver.OutputPath.get -> string!
+Spectara.Revela.Sdk.Services.IPathResolver.SourcePath.get -> string!
+Spectara.Revela.Sdk.Themes.EmbeddedTheme
+Spectara.Revela.Sdk.Themes.EmbeddedTheme.EmbeddedTheme(System.Reflection.Assembly! assembly) -> void
+Spectara.Revela.Sdk.Themes.EmbeddedTheme.ExtractToAsync(string! targetDirectory, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+Spectara.Revela.Sdk.Themes.EmbeddedTheme.GetAllFiles() -> System.Collections.Generic.IEnumerable<string!>!
+Spectara.Revela.Sdk.Themes.EmbeddedTheme.GetFile(string! relativePath) -> System.IO.Stream?
+Spectara.Revela.Sdk.Themes.EmbeddedTheme.GetImagesTemplate() -> System.IO.Stream?
+Spectara.Revela.Sdk.Themes.EmbeddedTheme.GetSiteTemplate() -> System.IO.Stream?
+Spectara.Revela.Sdk.Themes.EmbeddedTheme.GetTemplateDataDefaults(string! templateKey) -> System.Collections.Generic.IReadOnlyDictionary<string!, string!>!
+Spectara.Revela.Sdk.Themes.EmbeddedTheme.Manifest.get -> Spectara.Revela.Sdk.Abstractions.ThemeManifest!
+Spectara.Revela.Sdk.Themes.EmbeddedTheme.Metadata.get -> Spectara.Revela.Sdk.Abstractions.PackageMetadata!
+Spectara.Revela.Sdk.Themes.EmbeddedTheme.Prefix.get -> string?
+Spectara.Revela.Sdk.Themes.EmbeddedTheme.TargetTheme.get -> string?
+Spectara.Revela.Sdk.Themes.TemplateDataConfig
+Spectara.Revela.Sdk.Themes.TemplateDataConfig.Data.get -> System.Collections.Generic.IReadOnlyDictionary<string!, string!>?
+Spectara.Revela.Sdk.Themes.TemplateDataConfig.Data.set -> void
+Spectara.Revela.Sdk.Themes.TemplateDataConfig.TemplateDataConfig() -> void
+Spectara.Revela.Sdk.Themes.ThemeJsonConfig
+Spectara.Revela.Sdk.Themes.ThemeJsonConfig.Author.get -> string?
+Spectara.Revela.Sdk.Themes.ThemeJsonConfig.Author.set -> void
+Spectara.Revela.Sdk.Themes.ThemeJsonConfig.CreateManifest() -> Spectara.Revela.Sdk.Abstractions.ThemeManifest!
+Spectara.Revela.Sdk.Themes.ThemeJsonConfig.DefaultPhotoViewer.get -> string?
+Spectara.Revela.Sdk.Themes.ThemeJsonConfig.DefaultPhotoViewer.set -> void
+Spectara.Revela.Sdk.Themes.ThemeJsonConfig.Description.get -> string?
+Spectara.Revela.Sdk.Themes.ThemeJsonConfig.Description.set -> void
+Spectara.Revela.Sdk.Themes.ThemeJsonConfig.Name.get -> string?
+Spectara.Revela.Sdk.Themes.ThemeJsonConfig.Name.set -> void
+Spectara.Revela.Sdk.Themes.ThemeJsonConfig.PhotoViewers.get -> System.Collections.Generic.IReadOnlyList<string!>?
+Spectara.Revela.Sdk.Themes.ThemeJsonConfig.PhotoViewers.set -> void
+Spectara.Revela.Sdk.Themes.ThemeJsonConfig.Prefix.get -> string?
+Spectara.Revela.Sdk.Themes.ThemeJsonConfig.Prefix.set -> void
+Spectara.Revela.Sdk.Themes.ThemeJsonConfig.Scripts.get -> System.Collections.Generic.IReadOnlyList<Spectara.Revela.Sdk.Abstractions.AssetDeclaration!>?
+Spectara.Revela.Sdk.Themes.ThemeJsonConfig.Scripts.set -> void
+Spectara.Revela.Sdk.Themes.ThemeJsonConfig.Stylesheets.get -> System.Collections.Generic.IReadOnlyList<Spectara.Revela.Sdk.Abstractions.AssetDeclaration!>?
+Spectara.Revela.Sdk.Themes.ThemeJsonConfig.Stylesheets.set -> void
+Spectara.Revela.Sdk.Themes.ThemeJsonConfig.TargetTheme.get -> string?
+Spectara.Revela.Sdk.Themes.ThemeJsonConfig.TargetTheme.set -> void
+Spectara.Revela.Sdk.Themes.ThemeJsonConfig.TemplateDefaults.get -> System.Collections.Generic.IReadOnlyDictionary<string!, Spectara.Revela.Sdk.Themes.TemplateDataConfig!>?
+Spectara.Revela.Sdk.Themes.ThemeJsonConfig.TemplateDefaults.set -> void
+Spectara.Revela.Sdk.Themes.ThemeJsonConfig.Templates.get -> Spectara.Revela.Sdk.Themes.ThemeTemplatesConfig?
+Spectara.Revela.Sdk.Themes.ThemeJsonConfig.Templates.set -> void
+Spectara.Revela.Sdk.Themes.ThemeJsonConfig.ThemeJsonConfig() -> void
+Spectara.Revela.Sdk.Themes.ThemeJsonConfig.Version.get -> string?
+Spectara.Revela.Sdk.Themes.ThemeJsonConfig.Version.set -> void
+Spectara.Revela.Sdk.Themes.ThemeTemplatesConfig
+Spectara.Revela.Sdk.Themes.ThemeTemplatesConfig.Layout.get -> string?
+Spectara.Revela.Sdk.Themes.ThemeTemplatesConfig.Layout.set -> void
+Spectara.Revela.Sdk.Themes.ThemeTemplatesConfig.ThemeTemplatesConfig() -> void
+Spectara.Revela.Sdk.Validation.UrlSafety
+static readonly Spectara.Revela.Sdk.Themes.ThemeJsonConfig.JsonOptions -> System.Text.Json.JsonSerializerOptions!
+static Spectara.Revela.Sdk.Abstractions.CommandDescriptor.operator !=(Spectara.Revela.Sdk.Abstractions.CommandDescriptor? left, Spectara.Revela.Sdk.Abstractions.CommandDescriptor? right) -> bool
+static Spectara.Revela.Sdk.Abstractions.CommandDescriptor.operator ==(Spectara.Revela.Sdk.Abstractions.CommandDescriptor? left, Spectara.Revela.Sdk.Abstractions.CommandDescriptor? right) -> bool
+static Spectara.Revela.Sdk.Abstractions.OperationResult.Fail(string! errorMessage) -> Spectara.Revela.Sdk.Abstractions.OperationResult!
+static Spectara.Revela.Sdk.Abstractions.OperationResult.Ok() -> Spectara.Revela.Sdk.Abstractions.OperationResult!
+static Spectara.Revela.Sdk.Abstractions.OperationResult.operator !=(Spectara.Revela.Sdk.Abstractions.OperationResult? left, Spectara.Revela.Sdk.Abstractions.OperationResult? right) -> bool
+static Spectara.Revela.Sdk.Abstractions.OperationResult.operator ==(Spectara.Revela.Sdk.Abstractions.OperationResult? left, Spectara.Revela.Sdk.Abstractions.OperationResult? right) -> bool
+static Spectara.Revela.Sdk.Abstractions.PackageMetadata.operator !=(Spectara.Revela.Sdk.Abstractions.PackageMetadata? left, Spectara.Revela.Sdk.Abstractions.PackageMetadata? right) -> bool
+static Spectara.Revela.Sdk.Abstractions.PackageMetadata.operator ==(Spectara.Revela.Sdk.Abstractions.PackageMetadata? left, Spectara.Revela.Sdk.Abstractions.PackageMetadata? right) -> bool
+static Spectara.Revela.Sdk.Abstractions.PackageVersion.FromAssembly(System.Reflection.Assembly! assembly) -> string!
+static Spectara.Revela.Sdk.Abstractions.PipelineInvocation.InPipelineOption.get -> System.CommandLine.Option<bool>!
+static Spectara.Revela.Sdk.Abstractions.PipelineInvocation.IsInPipeline(this System.CommandLine.ParseResult! parseResult) -> bool
+static Spectara.Revela.Sdk.Abstractions.ValidationDiagnostic.Error(string! message, string? file = null, int? line = null, string? suggestion = null) -> Spectara.Revela.Sdk.Abstractions.ValidationDiagnostic!
+static Spectara.Revela.Sdk.Abstractions.ValidationDiagnostic.Hint(string! message, string? file = null, int? line = null, string? suggestion = null) -> Spectara.Revela.Sdk.Abstractions.ValidationDiagnostic!
+static Spectara.Revela.Sdk.Abstractions.ValidationDiagnostic.operator !=(Spectara.Revela.Sdk.Abstractions.ValidationDiagnostic? left, Spectara.Revela.Sdk.Abstractions.ValidationDiagnostic? right) -> bool
+static Spectara.Revela.Sdk.Abstractions.ValidationDiagnostic.operator ==(Spectara.Revela.Sdk.Abstractions.ValidationDiagnostic? left, Spectara.Revela.Sdk.Abstractions.ValidationDiagnostic? right) -> bool
+static Spectara.Revela.Sdk.Abstractions.ValidationDiagnostic.Warning(string! message, string? file = null, int? line = null, string? suggestion = null) -> Spectara.Revela.Sdk.Abstractions.ValidationDiagnostic!
+static Spectara.Revela.Sdk.Artifacts.ArtifactId.operator !=(Spectara.Revela.Sdk.Artifacts.ArtifactId left, Spectara.Revela.Sdk.Artifacts.ArtifactId right) -> bool
+static Spectara.Revela.Sdk.Artifacts.ArtifactId.operator ==(Spectara.Revela.Sdk.Artifacts.ArtifactId left, Spectara.Revela.Sdk.Artifacts.ArtifactId right) -> bool
+static Spectara.Revela.Sdk.Artifacts.CoreArtifacts.All.get -> System.Collections.Generic.IReadOnlySet<Spectara.Revela.Sdk.Artifacts.ArtifactId>!
+static Spectara.Revela.Sdk.Artifacts.CoreArtifacts.Manifest.get -> Spectara.Revela.Sdk.Artifacts.ArtifactId
+static Spectara.Revela.Sdk.Artifacts.CoreArtifacts.ProcessedImages.get -> Spectara.Revela.Sdk.Artifacts.ArtifactId
+static Spectara.Revela.Sdk.Artifacts.CoreArtifacts.RenderedSite.get -> Spectara.Revela.Sdk.Artifacts.ArtifactId
+static Spectara.Revela.Sdk.Artifacts.DerivedFileDeletion.operator !=(Spectara.Revela.Sdk.Artifacts.DerivedFileDeletion? left, Spectara.Revela.Sdk.Artifacts.DerivedFileDeletion? right) -> bool
+static Spectara.Revela.Sdk.Artifacts.DerivedFileDeletion.operator ==(Spectara.Revela.Sdk.Artifacts.DerivedFileDeletion? left, Spectara.Revela.Sdk.Artifacts.DerivedFileDeletion? right) -> bool
+static Spectara.Revela.Sdk.Artifacts.DerivedFileDeletionFailure.operator !=(Spectara.Revela.Sdk.Artifacts.DerivedFileDeletionFailure? left, Spectara.Revela.Sdk.Artifacts.DerivedFileDeletionFailure? right) -> bool
+static Spectara.Revela.Sdk.Artifacts.DerivedFileDeletionFailure.operator ==(Spectara.Revela.Sdk.Artifacts.DerivedFileDeletionFailure? left, Spectara.Revela.Sdk.Artifacts.DerivedFileDeletionFailure? right) -> bool
+static Spectara.Revela.Sdk.Artifacts.DerivedFiles.DeleteAll(string! directory, string! fileName, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> Spectara.Revela.Sdk.Artifacts.DerivedFileDeletion!
+static Spectara.Revela.Sdk.Configuration.ConfigurationServiceCollectionExtensions.AddRevelaConfigSections(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
+static Spectara.Revela.Sdk.Configuration.PluginConfigSection.CreateUpdate(string! section, System.Text.Json.Nodes.JsonObject! settings) -> System.Text.Json.Nodes.JsonObject!
+static Spectara.Revela.Sdk.Configuration.PluginConfigSection.IsValidKey(string? key) -> bool
+static Spectara.Revela.Sdk.Configuration.PluginConfigSection.TryGetKey(string? section, out string? key) -> bool
+static Spectara.Revela.Sdk.ErrorPanels.ShowConfigFileError(string! path, long? line, long? position) -> void
+static Spectara.Revela.Sdk.ErrorPanels.ShowConfigRequiredError(string! what, string! configCommand, string? additionalHints = null) -> void
+static Spectara.Revela.Sdk.ErrorPanels.ShowConfigurationProblem(System.Collections.Generic.IEnumerable<string!>! problems) -> void
+static Spectara.Revela.Sdk.ErrorPanels.ShowDirectoryNotFoundError(string! path, string? prerequisiteCommand = null) -> void
+static Spectara.Revela.Sdk.ErrorPanels.ShowError(string! title, string! message) -> void
+static Spectara.Revela.Sdk.ErrorPanels.ShowException(System.Exception! ex, string? hint = null) -> void
+static Spectara.Revela.Sdk.ErrorPanels.ShowFileExistsError(string! path, string? hint = null) -> void
+static Spectara.Revela.Sdk.ErrorPanels.ShowNotAProjectError() -> void
+static Spectara.Revela.Sdk.ErrorPanels.ShowNothingInstalledError(string! what, string! installCommand, string? listCommand = null) -> void
+static Spectara.Revela.Sdk.ErrorPanels.ShowPrerequisiteError(string! what, string! prerequisiteCommand, string? explanation = null) -> void
+static Spectara.Revela.Sdk.ErrorPanels.ShowValidationError(string! message, string? hint = null) -> void
+static Spectara.Revela.Sdk.ErrorPanels.ShowValidationReport(System.Collections.Generic.IReadOnlyList<string!>! errors, System.Collections.Generic.IReadOnlyList<string!>! warnings, System.Collections.Generic.IReadOnlyList<string!>! hints) -> void
+static Spectara.Revela.Sdk.ErrorPanels.ShowWarning(string! title, string! message) -> void
+static Spectara.Revela.Sdk.Json.RevelaJsonOptions.Lenient.get -> System.Text.Json.JsonSerializerOptions!
+static Spectara.Revela.Sdk.Json.RevelaJsonOptions.LenientDocument.get -> System.Text.Json.JsonDocumentOptions
+static Spectara.Revela.Sdk.Json.RevelaJsonOptions.Write.get -> System.Text.Json.JsonSerializerOptions!
+static Spectara.Revela.Sdk.Models.Engine.GenerateProgress.operator !=(Spectara.Revela.Sdk.Models.Engine.GenerateProgress? left, Spectara.Revela.Sdk.Models.Engine.GenerateProgress? right) -> bool
+static Spectara.Revela.Sdk.Models.Engine.GenerateProgress.operator ==(Spectara.Revela.Sdk.Models.Engine.GenerateProgress? left, Spectara.Revela.Sdk.Models.Engine.GenerateProgress? right) -> bool
+static Spectara.Revela.Sdk.Models.Engine.GenerateResult.operator !=(Spectara.Revela.Sdk.Models.Engine.GenerateResult? left, Spectara.Revela.Sdk.Models.Engine.GenerateResult? right) -> bool
+static Spectara.Revela.Sdk.Models.Engine.GenerateResult.operator ==(Spectara.Revela.Sdk.Models.Engine.GenerateResult? left, Spectara.Revela.Sdk.Models.Engine.GenerateResult? right) -> bool
+static Spectara.Revela.Sdk.Models.Engine.ImagesProgress.operator !=(Spectara.Revela.Sdk.Models.Engine.ImagesProgress? left, Spectara.Revela.Sdk.Models.Engine.ImagesProgress? right) -> bool
+static Spectara.Revela.Sdk.Models.Engine.ImagesProgress.operator ==(Spectara.Revela.Sdk.Models.Engine.ImagesProgress? left, Spectara.Revela.Sdk.Models.Engine.ImagesProgress? right) -> bool
+static Spectara.Revela.Sdk.Models.Engine.ImagesResult.operator !=(Spectara.Revela.Sdk.Models.Engine.ImagesResult? left, Spectara.Revela.Sdk.Models.Engine.ImagesResult? right) -> bool
+static Spectara.Revela.Sdk.Models.Engine.ImagesResult.operator ==(Spectara.Revela.Sdk.Models.Engine.ImagesResult? left, Spectara.Revela.Sdk.Models.Engine.ImagesResult? right) -> bool
+static Spectara.Revela.Sdk.Models.Engine.PagesProgress.operator !=(Spectara.Revela.Sdk.Models.Engine.PagesProgress? left, Spectara.Revela.Sdk.Models.Engine.PagesProgress? right) -> bool
+static Spectara.Revela.Sdk.Models.Engine.PagesProgress.operator ==(Spectara.Revela.Sdk.Models.Engine.PagesProgress? left, Spectara.Revela.Sdk.Models.Engine.PagesProgress? right) -> bool
+static Spectara.Revela.Sdk.Models.Engine.PagesResult.operator !=(Spectara.Revela.Sdk.Models.Engine.PagesResult? left, Spectara.Revela.Sdk.Models.Engine.PagesResult? right) -> bool
+static Spectara.Revela.Sdk.Models.Engine.PagesResult.operator ==(Spectara.Revela.Sdk.Models.Engine.PagesResult? left, Spectara.Revela.Sdk.Models.Engine.PagesResult? right) -> bool
+static Spectara.Revela.Sdk.Models.Engine.ScanProgress.operator !=(Spectara.Revela.Sdk.Models.Engine.ScanProgress? left, Spectara.Revela.Sdk.Models.Engine.ScanProgress? right) -> bool
+static Spectara.Revela.Sdk.Models.Engine.ScanProgress.operator ==(Spectara.Revela.Sdk.Models.Engine.ScanProgress? left, Spectara.Revela.Sdk.Models.Engine.ScanProgress? right) -> bool
+static Spectara.Revela.Sdk.Models.Engine.ScanResult.operator !=(Spectara.Revela.Sdk.Models.Engine.ScanResult? left, Spectara.Revela.Sdk.Models.Engine.ScanResult? right) -> bool
+static Spectara.Revela.Sdk.Models.Engine.ScanResult.operator ==(Spectara.Revela.Sdk.Models.Engine.ScanResult? left, Spectara.Revela.Sdk.Models.Engine.ScanResult? right) -> bool
+static Spectara.Revela.Sdk.Models.Manifest.ImageContent.operator !=(Spectara.Revela.Sdk.Models.Manifest.ImageContent? left, Spectara.Revela.Sdk.Models.Manifest.ImageContent? right) -> bool
+static Spectara.Revela.Sdk.Models.Manifest.ImageContent.operator ==(Spectara.Revela.Sdk.Models.Manifest.ImageContent? left, Spectara.Revela.Sdk.Models.Manifest.ImageContent? right) -> bool
+static Spectara.Revela.Sdk.Models.Manifest.ManifestEntry.operator !=(Spectara.Revela.Sdk.Models.Manifest.ManifestEntry? left, Spectara.Revela.Sdk.Models.Manifest.ManifestEntry? right) -> bool
+static Spectara.Revela.Sdk.Models.Manifest.ManifestEntry.operator ==(Spectara.Revela.Sdk.Models.Manifest.ManifestEntry? left, Spectara.Revela.Sdk.Models.Manifest.ManifestEntry? right) -> bool
+static Spectara.Revela.Sdk.Models.Manifest.ManifestSnapshot.operator !=(Spectara.Revela.Sdk.Models.Manifest.ManifestSnapshot? left, Spectara.Revela.Sdk.Models.Manifest.ManifestSnapshot? right) -> bool
+static Spectara.Revela.Sdk.Models.Manifest.ManifestSnapshot.operator ==(Spectara.Revela.Sdk.Models.Manifest.ManifestSnapshot? left, Spectara.Revela.Sdk.Models.Manifest.ManifestSnapshot? right) -> bool
+static Spectara.Revela.Sdk.Models.PhotoViewerModeValues.ToValue(this Spectara.Revela.Sdk.Models.PhotoViewerMode mode) -> string!
+static Spectara.Revela.Sdk.Models.PhotoViewerModeValues.TryParse(string? value, out Spectara.Revela.Sdk.Models.PhotoViewerMode mode) -> bool
+static Spectara.Revela.Sdk.Models.RelativePath.Empty.get -> Spectara.Revela.Sdk.Models.RelativePath
+static Spectara.Revela.Sdk.Models.RelativePath.FromNullable(string? value) -> Spectara.Revela.Sdk.Models.RelativePath?
+static Spectara.Revela.Sdk.Models.RelativePath.FromString(string! value) -> Spectara.Revela.Sdk.Models.RelativePath
+static Spectara.Revela.Sdk.Models.RelativePath.implicit operator Spectara.Revela.Sdk.Models.RelativePath(string! value) -> Spectara.Revela.Sdk.Models.RelativePath
+static Spectara.Revela.Sdk.Models.RelativePath.implicit operator string!(Spectara.Revela.Sdk.Models.RelativePath path) -> string!
+static Spectara.Revela.Sdk.Models.RelativePath.operator !=(Spectara.Revela.Sdk.Models.RelativePath left, Spectara.Revela.Sdk.Models.RelativePath right) -> bool
+static Spectara.Revela.Sdk.Models.RelativePath.operator ==(Spectara.Revela.Sdk.Models.RelativePath left, Spectara.Revela.Sdk.Models.RelativePath right) -> bool
+static Spectara.Revela.Sdk.PanelStyles.WithErrorStyle(this Spectre.Console.Panel! panel) -> Spectre.Console.Panel!
+static Spectara.Revela.Sdk.PanelStyles.WithHeader(this Spectre.Console.Panel! panel, string! header) -> Spectre.Console.Panel!
+static Spectara.Revela.Sdk.PanelStyles.WithInfoStyle(this Spectre.Console.Panel! panel) -> Spectre.Console.Panel!
+static Spectara.Revela.Sdk.PanelStyles.WithSuccessStyle(this Spectre.Console.Panel! panel) -> Spectre.Console.Panel!
+static Spectara.Revela.Sdk.PanelStyles.WithWarningStyle(this Spectre.Console.Panel! panel) -> Spectre.Console.Panel!
+static Spectara.Revela.Sdk.Themes.ThemeJsonConfig.JsonTypeInfo.get -> System.Text.Json.Serialization.Metadata.JsonTypeInfo<Spectara.Revela.Sdk.Themes.ThemeJsonConfig!>!
+static Spectara.Revela.Sdk.Validation.UrlSafety.IsSafeOutboundHost(string! host) -> bool
+static Spectara.Revela.Sdk.Validation.UrlSafety.IsSafeOutboundUrl(System.Uri! uri, bool allowHttp = false) -> bool
+virtual Spectara.Revela.Sdk.Abstractions.PackageMetadata.<Clone>$() -> Spectara.Revela.Sdk.Abstractions.PackageMetadata!
+virtual Spectara.Revela.Sdk.Abstractions.PackageMetadata.EqualityContract.get -> System.Type!
+virtual Spectara.Revela.Sdk.Abstractions.PackageMetadata.Equals(Spectara.Revela.Sdk.Abstractions.PackageMetadata? other) -> bool
+virtual Spectara.Revela.Sdk.Abstractions.PackageMetadata.PrintMembers(System.Text.StringBuilder! builder) -> bool

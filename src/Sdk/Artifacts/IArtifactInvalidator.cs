@@ -1,3 +1,5 @@
+using Spectara.Revela.Sdk.Abstractions;
+
 namespace Spectara.Revela.Sdk.Artifacts;
 
 /// <summary>
@@ -16,6 +18,6 @@ public interface IArtifactInvalidator
     IReadOnlyCollection<ArtifactId> DependsOn { get; }
 
     /// <summary>Removes the derived artifact.</summary>
-    ValueTask<ArtifactInvalidationResult> InvalidateAsync(
+    ValueTask<OperationResult> InvalidateAsync(
         CancellationToken cancellationToken = default);
 }

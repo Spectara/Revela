@@ -5,7 +5,6 @@ using Spectara.Revela.Commands.Info;
 using Spectara.Revela.Core.Services;
 using Spectara.Revela.Features.Generate;
 using Spectara.Revela.Features.Theme;
-using Spectara.Revela.Sdk.Services;
 
 using ProjectWizard = Spectara.Revela.Commands.Project.Wizard;
 

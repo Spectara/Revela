@@ -1,17 +1,14 @@
 using System.Globalization;
-
 using Microsoft.Extensions.DependencyInjection;
-
 using NSubstitute;
-
 using Spectara.Revela.Cli.Hosting;
+using Spectara.Revela.Core.Abstractions;
 using Spectara.Revela.Core.Services;
 using Spectara.Revela.Plugins.Serve;
 using Spectara.Revela.Plugins.Statistics;
 using Spectara.Revela.Sdk.Abstractions;
 using Spectara.Revela.Tests.Shared.Fixtures;
 using Spectara.Revela.Themes.Lumina;
-
 using Spectre.Console;
 
 namespace Spectara.Revela.Tests.Cli.Hosting;

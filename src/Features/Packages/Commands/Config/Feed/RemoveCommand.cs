@@ -4,7 +4,6 @@ using Spectara.Revela.Core.Services;
 using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Hosting;
 using Spectara.Revela.Sdk.Output;
-using Spectara.Revela.Sdk.Services;
 using Spectre.Console;
 
 namespace Spectara.Revela.Features.Packages.Commands.Config.Feed;

@@ -5,6 +5,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using Microsoft.Extensions.Options;
 using Spectara.Revela.Core.Helpers;
+using Spectara.Revela.Core.Services;
 using Spectara.Revela.Core.Themes;
 using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Abstractions;
@@ -13,7 +14,6 @@ using Spectara.Revela.Sdk.Configuration.Keys;
 using Spectara.Revela.Sdk.Hosting;
 using Spectara.Revela.Sdk.Json;
 using Spectara.Revela.Sdk.Output;
-using Spectara.Revela.Sdk.Services;
 using Spectre.Console;
 
 namespace Spectara.Revela.Features.Generate.Commands;

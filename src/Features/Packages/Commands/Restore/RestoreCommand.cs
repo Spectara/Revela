@@ -1,12 +1,12 @@
 using System.Collections.Concurrent;
 using System.CommandLine;
 using Microsoft.Extensions.Options;
+using Spectara.Revela.Core.Abstractions;
 using Spectara.Revela.Core.Services;
 using Spectara.Revela.Features.Packages.Services;
 using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Abstractions;
 using Spectara.Revela.Sdk.Output;
-using Spectara.Revela.Sdk.Services;
 using Spectre.Console;
 
 namespace Spectara.Revela.Features.Packages.Commands.Restore;
@@ -223,13 +223,14 @@ internal sealed partial class RestoreCommand(
                     {
                         try
                         {
-                            var package = await packageManager.InstallAsync(
-                                packageId: dep.PackageId,
+                            var result = await packageManager.InstallAsync(
+                                dep.PackageId,
+                                requiredPackageType: null,
                                 version: dep.Version,
                                 source: null,
                                 cancellationToken: ct);
 
-                            if (package is null)
+                            if (result.Status != PackageInstallStatus.Installed || result.Package is not { } package)
                             {
                                 installFailed.Add((dep, "Installation failed (see logs)"));
                             }

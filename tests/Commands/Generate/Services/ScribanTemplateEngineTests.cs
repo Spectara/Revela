@@ -1,10 +1,10 @@
 using System.Globalization;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
+using Spectara.Revela.Core.Services;
 using Spectara.Revela.Core.Themes;
 using Spectara.Revela.Features.Generate.Models;
 using Spectara.Revela.Features.Generate.Services;
-using Spectara.Revela.Sdk.Services;
 #pragma warning disable IDE0005 // Using directive is unnecessary — namespace holds source-generated extension methods the analyzer cannot see.
 using Spectara.Revela.Sdk.TemplateModels;
 #pragma warning restore IDE0005

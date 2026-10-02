@@ -62,9 +62,7 @@ public sealed class LocalThemeProvider : ITheme
             Name = themeName,
             Version = themeConfig.Version ?? "1.0.0",
             Description = themeConfig.Description ?? "Local theme",
-            Author = themeConfig.Author ?? "Unknown",
-            PreviewImageUri = themeConfig.PreviewImage,
-            Tags = themeConfig.Tags ?? []
+            Author = themeConfig.Author ?? "Unknown"
         };
 
         Manifest = themeConfig.CreateManifest();

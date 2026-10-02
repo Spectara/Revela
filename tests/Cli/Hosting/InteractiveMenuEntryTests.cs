@@ -1,7 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 
 using Spectara.Revela.Cli.Hosting;
-using Spectara.Revela.Sdk.Abstractions;
+using Spectara.Revela.Core.Abstractions;
 using Spectara.Revela.Tests.Shared.Fixtures;
 
 namespace Spectara.Revela.Tests.Cli.Hosting;

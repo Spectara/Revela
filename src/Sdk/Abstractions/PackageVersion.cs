@@ -7,7 +7,7 @@ namespace Spectara.Revela.Sdk.Abstractions;
 /// </summary>
 /// <remarks>
 /// Use it for <see cref="PackageMetadata.Version"/> so the version shown by
-/// <c>revela info plugins</c> always matches the built package:
+/// <c>revela plugin list</c> always matches the built package:
 /// <code>
 /// public PackageMetadata Metadata { get; } = new()
 /// {

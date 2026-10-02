@@ -72,7 +72,7 @@ internal sealed class ContentCheck(IPathResolver pathResolver) : ICheck
                     $"Invalid frontmatter: {message.Message}",
                     file: RelativeToSource(source, file),
                     line: message.Span.Start.Line + 1,
-                    hint: "Fix the '+++' frontmatter block (title = \"...\", one assignment per line)."));
+                    suggestion: "Fix the '+++' frontmatter block (title = \"...\", one assignment per line)."));
             }
         }
 

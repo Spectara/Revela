@@ -88,7 +88,7 @@ public sealed class CleanCalendarCommandTests
         using var project = TestProject.CreateMinimal();
         var calendar = WriteCacheFile(project, Path.Combine("availability", "calendar.json"));
 
-        PipelineStepResult result;
+        OperationResult result;
         using (new FileStream(calendar, FileMode.Open, FileAccess.Read, FileShare.None))
         {
             result = await ((IPipelineStep)CreateCommand(project)).ExecuteAsync();

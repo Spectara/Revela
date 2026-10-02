@@ -1,5 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using Spectara.Revela.Cli.Hosting;
+using Spectara.Revela.Core.Abstractions;
 using Spectara.Revela.Core.Configuration;
 using Spectara.Revela.Plugins.Serve;
 using Spectara.Revela.Plugins.Source.Calendar;

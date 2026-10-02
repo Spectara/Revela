@@ -1,3 +1,5 @@
+using Spectara.Revela.Sdk.Abstractions;
+
 namespace Spectara.Revela.Sdk.Artifacts;
 
 /// <summary>
@@ -9,7 +11,7 @@ public interface IArtifactLifecycle
     /// Invalidates all loaded artifacts that transitively depend on the artifact
     /// about to be replaced.
     /// </summary>
-    ValueTask<ArtifactInvalidationResult> PrepareToReplaceAsync(
+    ValueTask<OperationResult> PrepareToReplaceAsync(
         ArtifactId artifact,
         CancellationToken cancellationToken = default);
 }

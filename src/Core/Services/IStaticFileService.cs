@@ -1,4 +1,4 @@
-namespace Spectara.Revela.Sdk.Services;
+namespace Spectara.Revela.Core.Services;
 
 /// <summary>
 /// Service for copying static files from source/_static/ to output root.

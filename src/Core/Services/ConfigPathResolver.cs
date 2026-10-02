@@ -65,11 +65,6 @@ public static class ConfigPathResolver
     public static string BundledPackagesDirectory => Path.Combine(AppContext.BaseDirectory, "packages");
 
     /// <summary>
-    /// Gets the global plugin directory (always in AppData)
-    /// </summary>
-    public static string GlobalPluginDirectory => Path.Combine(AppDataDirectory, "plugins");
-
-    /// <summary>
     /// Gets whether this is a portable installation (config stored next to exe)
     /// </summary>
     public static bool IsPortableInstallation => LazyIsPortable.Value;

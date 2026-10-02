@@ -81,7 +81,7 @@ internal sealed class HelloCommand
 ```
 
 `PackageVersion.FromAssembly` reports the version your package was built with, so
-`revela info plugins` always matches the installed package.
+`revela plugin list` always matches the installed package.
 
 ## Plugin configuration
 
@@ -114,6 +114,37 @@ public static class GreetingRegistration
 
 ```json
 { "plugins": { "greeting": { "salutation": "Hi" } } }
+```
+
+## Reading the scanned site
+
+Inject `IManifestReader` to read what the last `revela generate scan` found. It returns
+`null` when there is no usable scan, so report that the scan must run first:
+
+```csharp
+using Spectara.Revela.Sdk.Abstractions;
+
+namespace MyCompany.Revela.Plugin.Greeting;
+
+public sealed class ImageCountStep(IManifestReader manifestReader) : IPipelineStep
+{
+    public string Category => PipelineCategories.Generate;
+
+    public string Name => "image-count";
+
+    public async ValueTask<OperationResult> ExecuteAsync(CancellationToken cancellationToken = default)
+    {
+        var manifest = await manifestReader.TryLoadAsync(cancellationToken);
+        if (manifest is null)
+        {
+            return OperationResult.Fail("Manifest not found — run 'revela generate scan' first");
+        }
+
+        // Images are keyed by source path; Root is the page tree starting at the home page.
+        Console.WriteLine($"{manifest.Images.Count} images below '{manifest.Root.Text}'");
+        return OperationResult.Ok();
+    }
+}
 ```
 
 ## Creating a theme

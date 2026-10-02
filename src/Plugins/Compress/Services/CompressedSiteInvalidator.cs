@@ -1,3 +1,4 @@
+using Spectara.Revela.Sdk.Abstractions;
 using Spectara.Revela.Sdk.Artifacts;
 using Spectara.Revela.Sdk.Services;
 
@@ -9,14 +10,14 @@ internal sealed class CompressedSiteInvalidator(IPathResolver pathResolver) : IA
 
     public IReadOnlyCollection<ArtifactId> DependsOn { get; } = [CoreArtifacts.RenderedSite];
 
-    public async ValueTask<ArtifactInvalidationResult> InvalidateAsync(
+    public async ValueTask<OperationResult> InvalidateAsync(
         CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
         var outputPath = pathResolver.OutputPath;
         if (!Directory.Exists(outputPath))
         {
-            return ArtifactInvalidationResult.Ok();
+            return OperationResult.Ok();
         }
 
         try
@@ -26,10 +27,10 @@ internal sealed class CompressedSiteInvalidator(IPathResolver pathResolver) : IA
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
         {
-            return ArtifactInvalidationResult.Fail(
+            return OperationResult.Fail(
                 $"Could not clean compressed artifacts in '{outputPath}': {exception.Message}");
         }
 
-        return ArtifactInvalidationResult.Ok();
+        return OperationResult.Ok();
     }
 }

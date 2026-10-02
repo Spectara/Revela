@@ -1,3 +1,4 @@
+using Spectara.Revela.Core.Abstractions;
 using Spectara.Revela.Sdk.Abstractions;
 
 namespace Spectara.Revela.Cli.Hosting;

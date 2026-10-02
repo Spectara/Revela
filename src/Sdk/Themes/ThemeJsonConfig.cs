@@ -13,7 +13,7 @@ namespace Spectara.Revela.Sdk.Themes;
 /// <remarks>
 /// Supports both base themes and extensions in one format:
 /// <list type="bullet">
-/// <item>Base themes: Name, Version, Description, Author, PreviewImage, Tags, Templates</item>
+/// <item>Base themes: Name, Version, Description, Author, Templates, PhotoViewers, DefaultPhotoViewer</item>
 /// <item>Extensions: Name, Version, Description, Author, TargetTheme, Prefix, TemplateDefaults</item>
 /// </list>
 /// </remarks>
@@ -30,12 +30,6 @@ public sealed class ThemeJsonConfig
 
     /// <summary>Theme author.</summary>
     public string? Author { get; set; }
-
-    /// <summary>Preview image URI (base themes only).</summary>
-    public Uri? PreviewImage { get; set; }
-
-    /// <summary>Tags for theme discovery (base themes only).</summary>
-    public IReadOnlyList<string>? Tags { get; set; }
 
     /// <summary>Target theme name for extensions (null for base themes).</summary>
     public string? TargetTheme { get; set; }
@@ -128,8 +122,7 @@ public sealed class ThemeJsonConfig
 
         foreach (var value in PhotoViewers)
         {
-            if (!Enum.TryParse<PhotoViewerMode>(value, ignoreCase: true, out var mode)
-                || !Enum.IsDefined(mode))
+            if (!PhotoViewerModeValues.TryParse(value, out var mode))
             {
                 throw new InvalidOperationException(
                     $"Base theme field 'photoViewers' contains unknown value '{value}'.");
@@ -144,8 +137,7 @@ public sealed class ThemeJsonConfig
             supported.Add(mode);
         }
 
-        if (!Enum.TryParse<PhotoViewerMode>(DefaultPhotoViewer, ignoreCase: true, out var defaultMode)
-            || !Enum.IsDefined(defaultMode))
+        if (!PhotoViewerModeValues.TryParse(DefaultPhotoViewer, out var defaultMode))
         {
             throw new InvalidOperationException(
                 $"Base theme field 'defaultPhotoViewer' contains unknown value '{DefaultPhotoViewer}'.");

@@ -366,18 +366,4 @@ public static class ErrorPanels
 
         AnsiConsole.Write(panel);
     }
-
-    /// <summary>
-    /// Shows an info panel when a restart is required after installing packages.
-    /// </summary>
-    /// <param name="what">What was installed (e.g., "plugins", "themes").</param>
-    public static void ShowRestartRequired(string what)
-    {
-        var panel = new Panel(
-            $"The installed {what} will be available after restarting Revela.")
-            .WithHeader("[bold yellow]Restart Required[/]")
-            .WithWarningStyle();
-
-        AnsiConsole.Write(panel);
-    }
 }

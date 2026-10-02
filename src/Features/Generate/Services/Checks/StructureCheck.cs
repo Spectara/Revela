@@ -37,7 +37,7 @@ internal sealed class StructureCheck(IPathResolver pathResolver) : ICheck
         {
             diagnostics.Add(ValidationDiagnostic.Error(
                 $"Source directory not found: {source}",
-                hint: "Create the source/ folder and add your photos, or run 'revela config paths'."));
+                suggestion: "Create the source/ folder and add your photos, or run 'revela config paths'."));
             return;
         }
 
@@ -46,7 +46,7 @@ internal sealed class StructureCheck(IPathResolver pathResolver) : ICheck
         {
             diagnostics.Add(ValidationDiagnostic.Warning(
                 $"Source directory is empty: {source}",
-                hint: "Add galleries or photos before generating — the build would produce an empty site."));
+                suggestion: "Add galleries or photos before generating — the build would produce an empty site."));
         }
     }
 
@@ -63,7 +63,7 @@ internal sealed class StructureCheck(IPathResolver pathResolver) : ICheck
         {
             diagnostics.Add(ValidationDiagnostic.Error(
                 $"Output location is not reachable: {output}",
-                hint: "Check the 'output' path in project.json points somewhere Revela can create."));
+                suggestion: "Check the 'output' path in project.json points somewhere Revela can create."));
             return;
         }
 
@@ -77,7 +77,7 @@ internal sealed class StructureCheck(IPathResolver pathResolver) : ICheck
         {
             diagnostics.Add(ValidationDiagnostic.Error(
                 $"Output directory is not writable: {output}",
-                hint: "Check folder permissions or choose a different 'output' path in project.json."));
+                suggestion: "Check folder permissions or choose a different 'output' path in project.json."));
         }
     }
 

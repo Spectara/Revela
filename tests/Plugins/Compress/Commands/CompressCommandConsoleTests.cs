@@ -1,16 +1,13 @@
 using System.Globalization;
-
 using Microsoft.Extensions.Logging.Abstractions;
-
 using NSubstitute;
-
 using Spectara.Revela.Plugins.Compress.Commands;
 using Spectara.Revela.Plugins.Compress.Services;
+using Spectara.Revela.Sdk.Abstractions;
 using Spectara.Revela.Sdk.Artifacts;
 using Spectara.Revela.Sdk.Hosting;
 using Spectara.Revela.Sdk.Services;
 using Spectara.Revela.Tests.Shared.Fixtures;
-
 using Spectre.Console;
 
 namespace Spectara.Revela.Tests.Plugins.Compress.Commands;
@@ -30,7 +27,7 @@ public sealed class CompressCommandConsoleTests
         pathResolver.OutputPath.Returns(project.OutputPath);
         var lifecycle = Substitute.For<IArtifactLifecycle>();
         lifecycle.PrepareToReplaceAsync(Arg.Any<ArtifactId>(), Arg.Any<CancellationToken>())
-            .Returns(ArtifactInvalidationResult.Ok());
+            .Returns(OperationResult.Ok());
         var command = new CompressCommand(
             NullLogger<CompressCommand>.Instance,
             pathResolver,

@@ -4,13 +4,13 @@ using Microsoft.Extensions.Options;
 
 using NSubstitute;
 
+using Spectara.Revela.Core.Abstractions;
 using Spectara.Revela.Core.Services;
 using Spectara.Revela.Features.Theme.Services;
 using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Abstractions;
 using Spectara.Revela.Sdk.Configuration;
 using Spectara.Revela.Sdk.Models;
-using Spectara.Revela.Sdk.Services;
 
 namespace Spectara.Revela.Tests.Commands.Theme;
 

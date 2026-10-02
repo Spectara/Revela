@@ -1,3 +1,5 @@
+using System.Globalization;
+
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using NSubstitute;
@@ -10,10 +12,13 @@ using Spectara.Revela.Sdk.Abstractions;
 using Spectara.Revela.Sdk.Artifacts;
 using Spectara.Revela.Sdk.Models.Manifest;
 
+using Spectre.Console;
+
 namespace Spectara.Revela.Tests.Plugins.Statistics;
 
 [TestClass]
 [TestCategory("Unit")]
+[DoNotParallelize]
 public sealed class StatsCommandTests : IDisposable
 {
     private readonly string projectPath = Path.Combine(
@@ -31,6 +36,32 @@ public sealed class StatsCommandTests : IDisposable
 
         Assert.AreEqual(0, exitCode);
         Assert.IsFalse(File.Exists(statisticsPath));
+    }
+
+    [TestMethod]
+    public async Task PipelineExecuteAsync_NoUsableManifest_FailsAskingForScanAndPreservesArtifacts()
+    {
+        var statisticsPath = await CreateStatisticsArtifactAsync();
+        var command = CreateCommand(new SuccessfulArtifactLifecycle(), manifest: null);
+
+        var result = await ((IPipelineStep)command).ExecuteAsync();
+
+        Assert.IsFalse(result.Success);
+        Assert.Contains("run scan first", result.ErrorMessage!, StringComparison.Ordinal);
+        Assert.IsTrue(File.Exists(statisticsPath));
+    }
+
+    [TestMethod]
+    public async Task ExecuteAsync_NoUsableManifest_ReportsMissingScanAndPreservesArtifacts()
+    {
+        var statisticsPath = await CreateStatisticsArtifactAsync();
+        var command = CreateCommand(new SuccessfulArtifactLifecycle(), manifest: null);
+
+        var (exitCode, output) = await CaptureAsync(() => command.ExecuteAsync());
+
+        Assert.AreEqual(1, exitCode);
+        Assert.Contains("generate scan", output, StringComparison.Ordinal);
+        Assert.IsTrue(File.Exists(statisticsPath));
     }
 
     [TestMethod]
@@ -64,49 +95,80 @@ public sealed class StatsCommandTests : IDisposable
         return statisticsPath;
     }
 
-    private StatsCommand CreateCommand(IArtifactLifecycle artifactLifecycle)
+    private static readonly ManifestSnapshot EmptyScan = new()
     {
-        var manifestRepository = Substitute.For<IManifestRepository>();
-        manifestRepository.Images.Returns(new Dictionary<string, ImageContent>());
+        Root = new ManifestEntry { Text = "Home", Path = "" },
+        Images = new Dictionary<string, ImageContent>()
+    };
+
+    private StatsCommand CreateCommand(IArtifactLifecycle artifactLifecycle) =>
+        CreateCommand(artifactLifecycle, EmptyScan);
+
+    private StatsCommand CreateCommand(IArtifactLifecycle artifactLifecycle, ManifestSnapshot? manifest)
+    {
+        var manifestReader = Substitute.For<IManifestReader>();
+        manifestReader.TryLoadAsync(Arg.Any<CancellationToken>()).Returns(manifest);
         var config = Substitute.For<IOptionsMonitor<StatisticsPluginConfig>>();
         config.CurrentValue.Returns(new StatisticsPluginConfig());
         var environment = Options.Create(new ProjectEnvironment { Path = projectPath });
         var aggregator = new StatisticsAggregator(
-            manifestRepository,
             config,
             TimeProvider.System,
             NullLogger<StatisticsAggregator>.Instance);
         return new StatsCommand(
             NullLogger<StatsCommand>.Instance,
-            manifestRepository,
+            manifestReader,
             environment,
             aggregator,
             artifactLifecycle,
             new StatisticsDataInvalidator(environment));
     }
 
+    private static async Task<(int ExitCode, string Output)> CaptureAsync(Func<Task<int>> execute)
+    {
+        var originalConsole = AnsiConsole.Console;
+        using var writer = new StringWriter(CultureInfo.InvariantCulture);
+        AnsiConsole.Console = AnsiConsole.Create(new AnsiConsoleSettings
+        {
+            Ansi = AnsiSupport.No,
+            ColorSystem = ColorSystemSupport.NoColors,
+            Interactive = InteractionSupport.No,
+            Out = new AnsiConsoleOutput(writer)
+        });
+        AnsiConsole.Console.Profile.Width = 240;
+        try
+        {
+            var exitCode = await execute();
+            return (exitCode, writer.ToString());
+        }
+        finally
+        {
+            AnsiConsole.Console = originalConsole;
+        }
+    }
+
     private sealed class SuccessfulArtifactLifecycle : IArtifactLifecycle
     {
-        public ValueTask<ArtifactInvalidationResult> PrepareToReplaceAsync(
+        public ValueTask<OperationResult> PrepareToReplaceAsync(
             ArtifactId artifact,
             CancellationToken cancellationToken = default)
         {
             _ = artifact;
             cancellationToken.ThrowIfCancellationRequested();
-            return new ValueTask<ArtifactInvalidationResult>(ArtifactInvalidationResult.Ok());
+            return new ValueTask<OperationResult>(OperationResult.Ok());
         }
     }
 
     private sealed class FailingArtifactLifecycle : IArtifactLifecycle
     {
-        public ValueTask<ArtifactInvalidationResult> PrepareToReplaceAsync(
+        public ValueTask<OperationResult> PrepareToReplaceAsync(
             ArtifactId artifact,
             CancellationToken cancellationToken = default)
         {
             _ = artifact;
             cancellationToken.ThrowIfCancellationRequested();
-            return new ValueTask<ArtifactInvalidationResult>(
-                ArtifactInvalidationResult.Fail("dependent cleanup failed"));
+            return new ValueTask<OperationResult>(
+                OperationResult.Fail("dependent cleanup failed"));
         }
     }
 }

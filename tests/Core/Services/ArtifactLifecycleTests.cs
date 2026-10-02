@@ -1,4 +1,5 @@
 using Spectara.Revela.Core.Services;
+using Spectara.Revela.Sdk.Abstractions;
 using Spectara.Revela.Sdk.Artifacts;
 
 namespace Spectara.Revela.Tests.Core.Services;
@@ -37,7 +38,7 @@ public sealed class ArtifactLifecycleTests
             new ArtifactId("example/a-failing"),
             [CoreArtifacts.RenderedSite],
             calls,
-            ArtifactInvalidationResult.Fail("locked"));
+            OperationResult.Fail("locked"));
         var remaining = new FakeInvalidator(
             new ArtifactId("example/z-remaining"),
             [CoreArtifacts.RenderedSite],
@@ -127,18 +128,18 @@ public sealed class ArtifactLifecycleTests
         ArtifactId artifact,
         IReadOnlyCollection<ArtifactId> dependsOn,
         List<ArtifactId> calls,
-        ArtifactInvalidationResult? result = null) : IArtifactInvalidator
+        OperationResult? result = null) : IArtifactInvalidator
     {
         public ArtifactId Artifact { get; } = artifact;
 
         public IReadOnlyCollection<ArtifactId> DependsOn { get; } = dependsOn;
 
-        public ValueTask<ArtifactInvalidationResult> InvalidateAsync(
+        public ValueTask<OperationResult> InvalidateAsync(
             CancellationToken cancellationToken = default)
         {
             cancellationToken.ThrowIfCancellationRequested();
             calls.Add(Artifact);
-            return new ValueTask<ArtifactInvalidationResult>(result ?? ArtifactInvalidationResult.Ok());
+            return new ValueTask<OperationResult>(result ?? OperationResult.Ok());
         }
     }
 
@@ -148,7 +149,7 @@ public sealed class ArtifactLifecycleTests
 
         public IReadOnlyCollection<ArtifactId> DependsOn { get; } = [CoreArtifacts.RenderedSite];
 
-        public ValueTask<ArtifactInvalidationResult> InvalidateAsync(
+        public ValueTask<OperationResult> InvalidateAsync(
             CancellationToken cancellationToken = default)
         {
             cancellationToken.ThrowIfCancellationRequested();

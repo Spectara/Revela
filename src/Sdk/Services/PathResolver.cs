@@ -11,7 +11,7 @@ namespace Spectara.Revela.Sdk.Services;
 /// Reads <see cref="IOptionsMonitor{T}"/> on every access, so a configuration reload
 /// after an in-process write is reflected immediately.
 /// </remarks>
-public sealed class PathResolver(
+internal sealed class PathResolver(
     IOptions<ProjectEnvironment> projectEnvironment,
     IOptionsMonitor<PathsConfig> pathsConfig) : IPathResolver
 {

@@ -1,8 +1,8 @@
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
-
 using Spectara.Revela.Plugins.Compress.Commands;
 using Spectara.Revela.Plugins.Compress.Services;
+using Spectara.Revela.Sdk.Abstractions;
 using Spectara.Revela.Sdk.Artifacts;
 using Spectara.Revela.Sdk.Hosting;
 using Spectara.Revela.Sdk.Services;
@@ -133,27 +133,27 @@ public sealed class CompressCommandTests : IDisposable
 
     private sealed class SuccessfulArtifactLifecycle(Action? beforeReplacement = null) : IArtifactLifecycle
     {
-        public ValueTask<ArtifactInvalidationResult> PrepareToReplaceAsync(
+        public ValueTask<OperationResult> PrepareToReplaceAsync(
             ArtifactId artifact,
             CancellationToken cancellationToken = default)
         {
             _ = artifact;
             cancellationToken.ThrowIfCancellationRequested();
             beforeReplacement?.Invoke();
-            return new ValueTask<ArtifactInvalidationResult>(ArtifactInvalidationResult.Ok());
+            return new ValueTask<OperationResult>(OperationResult.Ok());
         }
     }
 
     private sealed class FailingArtifactLifecycle : IArtifactLifecycle
     {
-        public ValueTask<ArtifactInvalidationResult> PrepareToReplaceAsync(
+        public ValueTask<OperationResult> PrepareToReplaceAsync(
             ArtifactId artifact,
             CancellationToken cancellationToken = default)
         {
             _ = artifact;
             cancellationToken.ThrowIfCancellationRequested();
-            return new ValueTask<ArtifactInvalidationResult>(
-                ArtifactInvalidationResult.Fail("dependent cleanup failed"));
+            return new ValueTask<OperationResult>(
+                OperationResult.Fail("dependent cleanup failed"));
         }
     }
 }

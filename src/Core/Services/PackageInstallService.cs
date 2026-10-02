@@ -1,4 +1,4 @@
-using Spectara.Revela.Sdk.Abstractions;
+using Spectara.Revela.Core.Abstractions;
 
 namespace Spectara.Revela.Core.Services;
 
@@ -13,7 +13,7 @@ public enum PackageInstallStatus
     /// <summary>The package could not be downloaded or extracted.</summary>
     Failed,
 
-    /// <summary>The package's nuspec does not declare the required package type; nothing was declared.</summary>
+    /// <summary>The package's nuspec does not declare the required package type; nothing was written or declared.</summary>
     WrongPackageType,
 
     /// <summary>The package was installed, but declaring it failed; the installed files are kept.</summary>
@@ -27,7 +27,10 @@ public enum PackageInstallStatus
 /// Result of <see cref="PackageInstallService.InstallAsync"/>.
 /// </summary>
 /// <param name="Status">The outcome.</param>
-/// <param name="Package">The extracted package, when one was extracted.</param>
+/// <param name="Package">
+/// The installed package; for <see cref="PackageInstallStatus.WrongPackageType"/> the package's identity and
+/// declared types (nothing was written).
+/// </param>
 /// <param name="Error">Why declaring the package failed (<see cref="PackageInstallStatus.DeclarationFailed"/>).</param>
 public sealed record PackageInstallResult(PackageInstallStatus Status, InstalledPackage? Package = null, string? Error = null);
 
@@ -37,9 +40,9 @@ public sealed record PackageInstallResult(PackageInstallStatus Status, Installed
 /// </summary>
 /// <remarks>
 /// <para>
-/// The package type is validated against the types declared in the package's own nuspec (not the
-/// package index). A freshly extracted package of the wrong type is removed again; a package that
-/// was already installed is left in place.
+/// The installer validates the package type against the types declared in the package's own nuspec
+/// (not the package index) before it writes any file, so a package of the wrong type never changes
+/// the plugin directory.
 /// </para>
 /// <para>
 /// Successful installs are declared via <see cref="PackageDeclarations"/> (project.json inside a
@@ -108,21 +111,10 @@ public sealed class PackageInstallService
             return new PackageInstallResult(PackageInstallStatus.InstallerUnavailable);
         }
 
-        var wasInstalled = IsInstalled(packageId);
-        var package = await installer.InstallAsync(packageId, version, source, cancellationToken);
-        if (package is null)
+        var result = await installer.InstallAsync(packageId, requiredPackageType, version, source, cancellationToken);
+        if (result.Status != PackageInstallStatus.Installed || result.Package is not { } package)
         {
-            return new PackageInstallResult(PackageInstallStatus.Failed);
-        }
-
-        if (!package.PackageTypes.Contains(requiredPackageType, StringComparer.OrdinalIgnoreCase))
-        {
-            if (!wasInstalled)
-            {
-                _ = await installer.UninstallAsync(package.Id, cancellationToken);
-            }
-
-            return new PackageInstallResult(PackageInstallStatus.WrongPackageType, package);
+            return result;
         }
 
         try

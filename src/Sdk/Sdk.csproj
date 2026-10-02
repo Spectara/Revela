@@ -44,6 +44,16 @@
     <PackageReference Include="System.CommandLine" />
   </ItemGroup>
 
+  <!-- Public API tracking: every public SDK change must be recorded in PublicAPI.Unshipped.txt
+       (RS0016 new API / RS0017 removed API; errors via TreatWarningsAsErrors), so it is visible in
+       review. Move entries to PublicAPI.Shipped.txt when a release is published to nuget.org.
+       PrivateAssets keeps the analyzer out of the SDK package's dependencies. -->
+  <ItemGroup>
+    <PackageReference Include="Microsoft.CodeAnalysis.PublicApiAnalyzers" PrivateAssets="all" />
+    <AdditionalFiles Include="PublicAPI.Shipped.txt" />
+    <AdditionalFiles Include="PublicAPI.Unshipped.txt" />
+  </ItemGroup>
+
   <Target Name="_RevelaPackSourceGenerator" DependsOnTargets="PrepareProjectReferences">
     <MSBuild Projects="@(_MSBuildProjectReferenceExistent)"
              Targets="GetTargetPath"

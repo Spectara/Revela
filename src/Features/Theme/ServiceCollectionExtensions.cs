@@ -5,7 +5,6 @@ using Spectara.Revela.Features.Theme.Commands;
 using Spectara.Revela.Features.Theme.Services;
 using Spectara.Revela.Features.Theme.Wizard;
 using Spectara.Revela.Sdk.Abstractions;
-using Spectara.Revela.Sdk.Services;
 
 namespace Spectara.Revela.Features.Theme;
 

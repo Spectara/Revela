@@ -25,25 +25,25 @@ internal sealed partial class CleanCacheCommand(
     string IPipelineStep.Name => "cache";
 
 
-    ValueTask<PipelineStepResult> IPipelineStep.ExecuteAsync(CancellationToken cancellationToken)
+    ValueTask<OperationResult> IPipelineStep.ExecuteAsync(CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
         if (!Directory.Exists(CachePath))
         {
-            return new ValueTask<PipelineStepResult>(PipelineStepResult.Ok());
+            return new ValueTask<OperationResult>(OperationResult.Ok());
         }
 
         try
         {
             Directory.Delete(CachePath, recursive: true);
             LogDirectoryDeleted(logger, CachePath, 0);
-            return new ValueTask<PipelineStepResult>(PipelineStepResult.Ok());
+            return new ValueTask<OperationResult>(OperationResult.Ok());
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
             LogDeleteFailed(logger, CachePath, ex);
-            return new ValueTask<PipelineStepResult>(PipelineStepResult.Fail($"Failed to delete cache: {ex.Message}"));
+            return new ValueTask<OperationResult>(OperationResult.Fail($"Failed to delete cache: {ex.Message}"));
         }
     }
 

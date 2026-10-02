@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging.Abstractions;
+using Spectara.Revela.Core.Services;
 using Spectara.Revela.Features.Packages.Services;
 
 namespace Spectara.Revela.Tests.Commands.Packages;
@@ -11,7 +12,7 @@ public sealed class NupkgExtractorTests
     [DataRow("../escaped")]
     [DataRow("..")]
     [DataRow("nested/escaped")]
-    public async Task ExtractAsync_UnsafePackageIdInNuspec_ReturnsNullWithoutWritingOutsideTarget(string nuspecId)
+    public async Task ExtractAsync_UnsafePackageIdInNuspec_FailsWithoutWritingOutsideTarget(string nuspecId)
     {
         var root = Directory.CreateTempSubdirectory("revela-extract-").FullName;
         try
@@ -21,9 +22,10 @@ public sealed class NupkgExtractorTests
             var nupkg = TestPackageFactory.CreateRawPackage(Path.Combine(root, "crafted.nupkg"), nuspecId);
             var extractor = new NupkgExtractor(NullLogger<NupkgExtractor>.Instance);
 
-            var identity = await extractor.ExtractAsync(nupkg, targetDir, CancellationToken.None);
+            // No required type: the crafted nuspec declares none, so the ID check is what rejects it.
+            var result = await extractor.ExtractAsync(nupkg, targetDir, requiredPackageType: null, CancellationToken.None);
 
-            Assert.IsNull(identity);
+            Assert.AreEqual(PackageInstallStatus.Failed, result.Status);
             Assert.IsFalse(Directory.Exists(Path.Combine(root, "escaped")));
             Assert.IsEmpty(Directory.GetFileSystemEntries(targetDir));
             Assert.IsEmpty(Directory.GetFiles(root, "*.dll", SearchOption.AllDirectories));
@@ -44,9 +46,9 @@ public sealed class NupkgExtractorTests
             var nupkg = TestPackageFactory.CreatePackage(Path.Combine(root, "feed"), "Spectara.Revela.Plugins.Fixture", "1.0.0");
             var extractor = new NupkgExtractor(NullLogger<NupkgExtractor>.Instance);
 
-            var identity = await extractor.ExtractAsync(nupkg, targetDir, CancellationToken.None);
+            var result = await extractor.ExtractAsync(nupkg, targetDir, PackageIds.PluginPackageType, CancellationToken.None);
 
-            Assert.IsNotNull(identity);
+            Assert.AreEqual(PackageInstallStatus.Installed, result.Status);
             Assert.IsTrue(File.Exists(Path.Combine(targetDir, "Spectara.Revela.Plugins.Fixture", "Spectara.Revela.Plugins.Fixture.dll")));
         }
         finally

@@ -1,4 +1,4 @@
-namespace Spectara.Revela.Sdk.Services;
+namespace Spectara.Revela.Core.Services;
 
 /// <summary>
 /// Manages the global CLI configuration (revela.json)

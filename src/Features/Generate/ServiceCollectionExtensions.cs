@@ -1,5 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Spectara.Revela.Core.Abstractions;
 using Spectara.Revela.Core.Services;
 using Spectara.Revela.Features.Generate.Abstractions;
 using Spectara.Revela.Features.Generate.Commands;
@@ -10,8 +11,6 @@ using Spectara.Revela.Features.Generate.Templates;
 using Spectara.Revela.Features.Generate.Wizard;
 using Spectara.Revela.Sdk.Abstractions;
 using Spectara.Revela.Sdk.Abstractions.Engine;
-using Spectara.Revela.Sdk.Services;
-using IManifestRepository = Spectara.Revela.Sdk.Abstractions.IManifestRepository;
 
 namespace Spectara.Revela.Features.Generate;
 
@@ -48,6 +47,7 @@ public static class ServiceCollectionExtensions
         services.TryAddSingleton<IAssetResolver, AssetResolver>();
         services.TryAddSingleton<IStaticFileService, StaticFileService>();
         services.TryAddSingleton<IManifestRepository, ManifestService>();
+        services.TryAddSingleton<IManifestReader, ManifestReader>();
 
         // Domain services (three main services)
         services.TryAddSingleton<IContentService, ContentService>();

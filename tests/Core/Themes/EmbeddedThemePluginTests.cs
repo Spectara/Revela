@@ -31,9 +31,6 @@ public sealed class EmbeddedThemePluginTests
     public void Metadata_ReturnsVersion() => Assert.IsFalse(string.IsNullOrEmpty(plugin.Metadata.Version));
 
     [TestMethod]
-    public void Metadata_HasTags() => Assert.IsNotEmpty(plugin.Metadata.Tags);
-
-    [TestMethod]
     public void GetManifest_ReturnsLayoutTemplate()
     {
         // Arrange & Act
@@ -151,5 +148,54 @@ public sealed class EmbeddedThemePluginTests
             }
         }
     }
-}
 
+    [TestMethod]
+    [DataRow("Body/Gallery.revela")]
+    [DataRow("Body\\Gallery.revela")]
+    public void GetFile_EitherPathSeparator_ReturnsStream(string relativePath)
+    {
+        using var stream = plugin.GetFile(relativePath);
+
+        Assert.IsNotNull(stream);
+    }
+
+    [TestMethod]
+    public void GetAllFiles_ContainsManifestTemplatesAndStylesheets()
+    {
+        var files = plugin.GetAllFiles().ToList();
+
+        Assert.IsTrue(files.Any(f => f.EndsWith("manifest.json", StringComparison.OrdinalIgnoreCase)));
+        Assert.IsTrue(files.Any(f => f.EndsWith(".revela", StringComparison.OrdinalIgnoreCase)));
+        // Lumina ships CSS assets; it intentionally requires no JavaScript (#77).
+        Assert.IsTrue(files.Any(f => f.EndsWith(".css", StringComparison.OrdinalIgnoreCase)));
+    }
+
+    [TestMethod]
+    public void GetAllFiles_ExcludesSourceFiles()
+    {
+        var files = plugin.GetAllFiles().ToList();
+
+        Assert.IsFalse(files.Any(f => f.EndsWith(".cs", StringComparison.OrdinalIgnoreCase)));
+    }
+
+    [TestMethod]
+    public async Task ExtractToAsync_CancelledToken_Throws()
+    {
+        var tempDir = Path.Combine(Path.GetTempPath(), $"ERP_Test_{Guid.NewGuid():N}");
+        using var cts = new CancellationTokenSource();
+        await cts.CancelAsync();
+
+        try
+        {
+            await Assert.ThrowsExactlyAsync<OperationCanceledException>(() =>
+                plugin.ExtractToAsync(tempDir, cts.Token));
+        }
+        finally
+        {
+            if (Directory.Exists(tempDir))
+            {
+                Directory.Delete(tempDir, recursive: true);
+            }
+        }
+    }
+}

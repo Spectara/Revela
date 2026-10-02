@@ -9,7 +9,6 @@ using Spectara.Revela.Core.Services;
 using Spectara.Revela.Features.Packages.Commands.Restore;
 using Spectara.Revela.Sdk.Abstractions;
 using Spectara.Revela.Sdk.Configuration;
-using Spectara.Revela.Sdk.Services;
 using Spectara.Revela.Tests.Shared.Fixtures;
 
 namespace Spectara.Revela.Tests.Commands.Packages;

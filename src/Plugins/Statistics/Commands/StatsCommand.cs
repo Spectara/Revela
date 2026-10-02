@@ -19,13 +19,12 @@ namespace Spectara.Revela.Plugins.Statistics.Commands;
 /// </remarks>
 internal sealed partial class StatsCommand(
     ILogger<StatsCommand> logger,
-    IManifestRepository manifestRepository,
+    IManifestReader manifestReader,
     IOptions<ProjectEnvironment> projectEnvironment,
     StatisticsAggregator aggregator,
     IArtifactLifecycle artifactLifecycle,
     StatisticsDataInvalidator statisticsDataInvalidator) : IPipelineStep
 {
-    private const string ManifestFileName = "manifest.json";
 
     // ── IPipelineStep (service-level, no UI) ──
 
@@ -34,56 +33,52 @@ internal sealed partial class StatsCommand(
     string IPipelineStep.Name => "statistics";
 
 
-    async ValueTask<PipelineStepResult> IPipelineStep.ExecuteAsync(CancellationToken cancellationToken)
+    async ValueTask<OperationResult> IPipelineStep.ExecuteAsync(CancellationToken cancellationToken)
     {
         var projectPath = projectEnvironment.Value.Path;
-        var manifestFile = Path.Combine(projectPath, ProjectPaths.Cache, ManifestFileName);
-        if (!File.Exists(manifestFile))
+        var manifest = await manifestReader.TryLoadAsync(cancellationToken);
+        if (manifest is null)
         {
-            return PipelineStepResult.Fail("Manifest not found — run scan first");
+            return OperationResult.Fail("Manifest not found — run scan first");
         }
-
-        await manifestRepository.LoadAsync(cancellationToken);
 
         var invalidationResult = await artifactLifecycle.PrepareToReplaceAsync(
             StatisticsArtifacts.Data,
             cancellationToken);
         if (!invalidationResult.Success)
         {
-            return PipelineStepResult.Fail(
-                invalidationResult.ErrorMessage ?? "Statistics artifact invalidation failed");
+            return invalidationResult;
         }
 
         var cleanupResult = await statisticsDataInvalidator.InvalidateAsync(cancellationToken);
         if (!cleanupResult.Success)
         {
-            return PipelineStepResult.Fail(
+            return OperationResult.Fail(
                 cleanupResult.ErrorMessage ?? "Statistics artifact cleanup failed");
         }
 
-        if (manifestRepository.Images.Count == 0)
+        if (manifest.Images.Count == 0)
         {
-            return PipelineStepResult.Ok();
+            return OperationResult.Ok();
         }
 
-        var root = manifestRepository.Root ?? throw new InvalidOperationException("Manifest root is null after loading");
-        var statsPages = FindStatisticsPages(root);
+        var statsPages = FindStatisticsPages(manifest.Root);
 
         if (statsPages.Count == 0)
         {
-            return PipelineStepResult.Ok();
+            return OperationResult.Ok();
         }
 
         foreach (var pagePath in statsPages)
         {
-            var stats = aggregator.Aggregate();
+            var stats = aggregator.Aggregate(manifest);
             var cacheDir = Path.Combine(projectPath, ProjectPaths.Cache, pagePath);
             var jsonPath = Path.Combine(cacheDir, "statistics.json");
             Directory.CreateDirectory(cacheDir);
             await JsonWriter.WriteAsync(jsonPath, stats, cancellationToken);
         }
 
-        return PipelineStepResult.Ok();
+        return OperationResult.Ok();
     }
 
     // ── CLI command ──
@@ -111,9 +106,9 @@ internal sealed partial class StatsCommand(
     {
         var projectPath = projectEnvironment.Value.Path;
 
-        // Check if manifest exists
-        var manifestFile = Path.Combine(projectPath, ProjectPaths.Cache, ManifestFileName);
-        if (!File.Exists(manifestFile))
+        LogLoadingManifest();
+        var manifest = await manifestReader.TryLoadAsync(cancellationToken);
+        if (manifest is null)
         {
             ErrorPanels.ShowPrerequisiteError(
                 "Site manifest",
@@ -121,9 +116,6 @@ internal sealed partial class StatsCommand(
                 "The manifest contains all image metadata needed for statistics.");
             return 1;
         }
-        // Load manifest
-        LogLoadingManifest();
-        await manifestRepository.LoadAsync(cancellationToken);
 
         var invalidationResult = await artifactLifecycle.PrepareToReplaceAsync(
             StatisticsArtifacts.Data,
@@ -145,15 +137,14 @@ internal sealed partial class StatsCommand(
             return 1;
         }
 
-        if (manifestRepository.Images.Count == 0)
+        if (manifest.Images.Count == 0)
         {
             AnsiConsole.MarkupLine($"{OutputMarkers.Warning} No images found in manifest.");
             return 0;
         }
 
         // Find all pages that need statistics (data = { statistics: "..." })
-        var root = manifestRepository.Root ?? throw new InvalidOperationException("Manifest root is null after loading");
-        var statsPages = FindStatisticsPages(root);
+        var statsPages = FindStatisticsPages(manifest.Root);
 
         if (statsPages.Count == 0)
         {
@@ -170,7 +161,7 @@ internal sealed partial class StatsCommand(
         foreach (var pagePath in statsPages)
         {
             // Aggregate statistics (TODO: filter by page metadata)
-            var stats = aggregator.Aggregate();
+            var stats = aggregator.Aggregate(manifest);
 
             // Calculate output path in {ProjectPaths.Cache}/{pagePath}/
             // pagePath is already relative (e.g., "03 Pages\Statistics")
@@ -190,7 +181,7 @@ internal sealed partial class StatsCommand(
             $"[green]Statistics generated![/]\n\n" +
             $"[dim]Summary:[/]\n" +
             $"  Pages:    {generatedCount}\n" +
-            $"  Images:   {manifestRepository.Images.Count}";
+            $"  Images:   {manifest.Images.Count}";
 
         if (!inPipeline)
         {

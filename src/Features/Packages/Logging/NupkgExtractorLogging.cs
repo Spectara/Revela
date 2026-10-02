@@ -13,6 +13,9 @@ internal static partial class NupkgExtractorLogging
     [LoggerMessage(Level = LogLevel.Warning, Message = "No compatible libraries found in package {PackageId}")]
     public static partial void NoCompatibleLibs(this ILogger<NupkgExtractor> logger, string packageId);
 
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Package {PackageId} does not declare package type {RequiredPackageType}; nothing was installed")]
+    public static partial void WrongPackageType(this ILogger<NupkgExtractor> logger, string packageId, string requiredPackageType);
+
     [LoggerMessage(Level = LogLevel.Debug, Message = "Extracted {FileName} to {TargetDir}")]
     public static partial void ExtractedFile(this ILogger<NupkgExtractor> logger, string fileName, string targetDir);
 

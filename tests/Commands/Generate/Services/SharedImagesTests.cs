@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using NSubstitute;
+using Spectara.Revela.Core.Abstractions;
 using Spectara.Revela.Core.Services;
 using Spectara.Revela.Features.Generate.Abstractions;
 using Spectara.Revela.Features.Generate.Infrastructure;
@@ -380,13 +381,13 @@ public sealed class SharedImagesTests : IDisposable
 
     private sealed class SuccessfulArtifactLifecycle : IArtifactLifecycle
     {
-        public ValueTask<ArtifactInvalidationResult> PrepareToReplaceAsync(
+        public ValueTask<OperationResult> PrepareToReplaceAsync(
             ArtifactId artifact,
             CancellationToken cancellationToken = default)
         {
             _ = artifact;
             cancellationToken.ThrowIfCancellationRequested();
-            return new ValueTask<ArtifactInvalidationResult>(ArtifactInvalidationResult.Ok());
+            return new ValueTask<OperationResult>(OperationResult.Ok());
         }
     }
 

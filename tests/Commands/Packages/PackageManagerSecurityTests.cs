@@ -43,9 +43,9 @@ public sealed class PackageManagerSecurityTests
         using var httpClient = new HttpClient();
         var (manager, logger, sourceManager) = CreateManager(httpClient);
 
-        var installed = await manager.InstallAsync(packageId);
+        var installed = await manager.InstallAsync(packageId, PackageIds.PluginPackageType);
 
-        Assert.IsNull(installed);
+        Assert.AreEqual(PackageInstallStatus.Failed, installed.Status);
         _ = await sourceManager.DidNotReceive().LoadSourcesAsync(Arg.Any<CancellationToken>());
         Assert.IsTrue(logger.Entries.Any(e => e.Message.Contains("Invalid package ID", StringComparison.Ordinal)));
     }
@@ -59,9 +59,9 @@ public sealed class PackageManagerSecurityTests
         using var httpClient = new HttpClient(handler);
         var (manager, logger, _) = CreateManager(httpClient);
 
-        var installed = await manager.InstallAsync("http://packages.test/Spectara.Revela.Plugins.Fixture.1.0.0.nupkg");
+        var installed = await manager.InstallAsync("http://packages.test/Spectara.Revela.Plugins.Fixture.1.0.0.nupkg", PackageIds.PluginPackageType);
 
-        Assert.IsNull(installed);
+        Assert.AreEqual(PackageInstallStatus.Failed, installed.Status);
         Assert.IsEmpty(handler.RecordedRequests);
         Assert.IsTrue(logger.Entries.Any(e => e.Message.Contains("insecure package source", StringComparison.Ordinal)));
     }
@@ -76,9 +76,9 @@ public sealed class PackageManagerSecurityTests
         sourceManager.LoadSourcesAsync(Arg.Any<CancellationToken>())
             .Returns([new NuGetSource { Name = "corp", Url = InsecureFeed }]);
 
-        var installed = await manager.InstallAsync(FixtureId, source: source);
+        var installed = await manager.InstallAsync(FixtureId, PackageIds.PluginPackageType, source: source);
 
-        Assert.IsNull(installed);
+        Assert.AreEqual(PackageInstallStatus.Failed, installed.Status);
         Assert.IsTrue(logger.Entries.Any(e => e.Message.Contains("insecure package source", StringComparison.Ordinal)));
         Assert.IsFalse(logger.Entries.Any(e => e.Exception is not null));
     }
@@ -91,9 +91,9 @@ public sealed class PackageManagerSecurityTests
         sourceManager.LoadSourcesAsync(Arg.Any<CancellationToken>())
             .Returns([new NuGetSource { Name = "corp", Url = InsecureFeed }]);
 
-        var installed = await manager.InstallAsync(FixtureId);
+        var installed = await manager.InstallAsync(FixtureId, PackageIds.PluginPackageType);
 
-        Assert.IsNull(installed);
+        Assert.AreEqual(PackageInstallStatus.Failed, installed.Status);
         Assert.IsTrue(logger.Entries.Any(e => e.Message.Contains("insecure package source", StringComparison.Ordinal)));
         Assert.IsFalse(logger.Entries.Any(e => e.Message.Contains("'corp' failed", StringComparison.Ordinal)));
     }
@@ -117,9 +117,10 @@ public sealed class PackageManagerSecurityTests
         var (manager, _, _) = CreateManager(httpClient, buildInfo);
         var repository = Repository.Factory.GetCoreV3(new NuGetPackageSource(feed));
 
-        var package = await manager.ExtractFromNuGetAsync(FixtureId, requested, repository, Path.Combine(root, "plugins"), CancellationToken.None);
+        var result = await manager.ExtractFromNuGetAsync(FixtureId, requested, PackageIds.PluginPackageType, repository, Path.Combine(root, "plugins"), CancellationToken.None);
 
-        Assert.IsNotNull(package);
+        Assert.AreEqual(PackageInstallStatus.Installed, result.Status);
+        var package = result.Package!;
         Assert.AreEqual(expected, package.Version);
         Assert.AreEqual(FixtureId, package.Id);
         Assert.AreEqual("RevelaPlugin", package.PackageTypes.Single());
@@ -137,9 +138,9 @@ public sealed class PackageManagerSecurityTests
         var (manager, logger, _) = CreateManager(httpClient);
         var repository = Repository.Factory.GetCoreV3(new NuGetPackageSource(feed));
 
-        var identity = await manager.ExtractFromNuGetAsync(FixtureId, requested, repository, targetDir, CancellationToken.None);
+        var result = await manager.ExtractFromNuGetAsync(FixtureId, requested, PackageIds.PluginPackageType, repository, targetDir, CancellationToken.None);
 
-        Assert.IsNull(identity);
+        Assert.AreEqual(PackageInstallStatus.Failed, result.Status);
         Assert.IsFalse(Directory.Exists(targetDir));
         Assert.IsTrue(logger.Entries.Any(e =>
             e.Level == LogLevel.Error && e.Exception is null &&

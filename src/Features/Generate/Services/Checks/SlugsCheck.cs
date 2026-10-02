@@ -58,7 +58,7 @@ internal sealed class SlugsCheck(
 
             diagnostics.Add(ValidationDiagnostic.Error(
                 $"Slug collision: {string.Join(", ", sources)} all resolve to the same URL '{url}'.",
-                hint: "Rename one of the folders so each gallery gets a unique URL."));
+                suggestion: "Rename one of the folders so each gallery gets a unique URL."));
         }
 
         return diagnostics;

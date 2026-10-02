@@ -2,6 +2,8 @@ using System.Diagnostics;
 using System.Text.Json;
 using Microsoft.Extensions.Options;
 using Scriban.Runtime;
+using Spectara.Revela.Core.Services;
+using Spectara.Revela.Core.Abstractions;
 using Spectara.Revela.Core.Themes;
 using Spectara.Revela.Features.Generate.Abstractions;
 using Spectara.Revela.Features.Generate.Filtering;
@@ -20,7 +22,6 @@ using Spectara.Revela.Sdk.Services;
 #pragma warning disable IDE0005 // Using directive is unnecessary — namespace holds source-generated extension methods the analyzer cannot see.
 using Spectara.Revela.Sdk.TemplateModels;
 #pragma warning restore IDE0005
-using IManifestRepository = Spectara.Revela.Sdk.Abstractions.IManifestRepository;
 
 namespace Spectara.Revela.Features.Generate.Services;
 

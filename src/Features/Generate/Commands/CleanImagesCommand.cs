@@ -2,6 +2,7 @@ using System.CommandLine;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using Microsoft.Extensions.Options;
+using Spectara.Revela.Core.Abstractions;
 using Spectara.Revela.Core.Helpers;
 using Spectara.Revela.Features.Generate.Infrastructure;
 using Spectara.Revela.Sdk;
@@ -49,30 +50,30 @@ internal sealed partial class CleanImagesCommand(
     string IPipelineStep.Name => "images";
 
 
-    async ValueTask<PipelineStepResult> IPipelineStep.ExecuteAsync(CancellationToken cancellationToken)
+    async ValueTask<OperationResult> IPipelineStep.ExecuteAsync(CancellationToken cancellationToken)
     {
         if (!TryValidateOutputPath(out var unsafeReason))
         {
-            return PipelineStepResult.Fail(unsafeReason);
+            return OperationResult.Fail(unsafeReason);
         }
 
         await manifestRepository.LoadAsync(cancellationToken);
 
         if (!Directory.Exists(ImagesPath))
         {
-            return PipelineStepResult.Ok();
+            return OperationResult.Ok();
         }
 
         var activeFormats = generateConfig.CurrentValue.Images.GetActiveFormats();
         if (activeFormats.Count == 0)
         {
-            return PipelineStepResult.Fail("No image formats configured");
+            return OperationResult.Fail("No image formats configured");
         }
 
         var validImageNames = BuildValidImageNames();
         if (validImageNames.Count == 0)
         {
-            return PipelineStepResult.Fail("Manifest contains no images — run scan first");
+            return OperationResult.Fail("Manifest contains no images — run scan first");
         }
 
         var configuredSizes = themeConfig.CurrentValue.Images.Sizes;
@@ -80,11 +81,11 @@ internal sealed partial class CleanImagesCommand(
 
         if (analysis.IsEmpty)
         {
-            return PipelineStepResult.Ok();
+            return OperationResult.Ok();
         }
 
         PerformCleanup(analysis, cancellationToken);
-        return PipelineStepResult.Ok();
+        return OperationResult.Ok();
     }
 
     // ── CLI command ──

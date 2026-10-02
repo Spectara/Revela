@@ -558,12 +558,12 @@ public sealed class GenerateAllEndToEndTests
 
         public IReadOnlyCollection<ArtifactId> DependsOn { get; } = [CoreArtifacts.RenderedSite];
 
-        public ValueTask<ArtifactInvalidationResult> InvalidateAsync(
+        public ValueTask<OperationResult> InvalidateAsync(
             CancellationToken cancellationToken = default)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            return new ValueTask<ArtifactInvalidationResult>(
-                ArtifactInvalidationResult.Fail("locked sidecar"));
+            return new ValueTask<OperationResult>(
+                OperationResult.Fail("locked sidecar"));
         }
     }
 

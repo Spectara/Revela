@@ -1,6 +1,7 @@
 using System.CommandLine;
+using Spectara.Revela.Sdk.Abstractions;
 
-namespace Spectara.Revela.Sdk.Abstractions;
+namespace Spectara.Revela.Core.Abstractions;
 
 /// <summary>
 /// Callback invoked when a command is registered during plugin command registration.

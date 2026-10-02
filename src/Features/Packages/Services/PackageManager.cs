@@ -2,10 +2,10 @@ using NuGet.Packaging;
 using NuGet.Protocol;
 using NuGet.Protocol.Core.Types;
 using NuGet.Versioning;
+using Spectara.Revela.Core.Abstractions;
 using Spectara.Revela.Core.Helpers;
 using Spectara.Revela.Core.Services;
 using Spectara.Revela.Features.Packages.Logging;
-using Spectara.Revela.Sdk.Abstractions;
 using Spectara.Revela.Sdk.Hosting;
 using NuGetPackageSource = NuGet.Configuration.PackageSource;
 
@@ -15,8 +15,8 @@ namespace Spectara.Revela.Features.Packages.Services;
 /// Installs and removes package files (plugins and themes) in the plugin directory via NuGet.
 /// </summary>
 /// <remarks>
-/// Only manages files: declaring packages in <c>dependencies.packages</c> and validating the
-/// package type is done by <see cref="PackageInstallService"/>; extraction by <see cref="NupkgExtractor"/>.
+/// Only manages files: the nuspec package type is checked before extraction (<see cref="NupkgExtractor"/>);
+/// declaring packages in <c>dependencies.packages</c> is done by <see cref="PackageInstallService"/>.
 /// HttpClient is injected via Typed HttpClient pattern for URL-based downloads.
 /// </remarks>
 public sealed class PackageManager(
@@ -39,15 +39,23 @@ public sealed class PackageManager(
     /// Installs a plugin from a package ID, local .nupkg file, or URL.
     /// </summary>
     /// <param name="packageId">Package ID (e.g., 'Spectara.Revela.Plugins.Statistics'), local .nupkg path, or HTTPS URL.</param>
+    /// <param name="requiredPackageType">
+    /// Package type the nuspec must declare, checked before any file is written. <c>null</c> accepts any
+    /// type (restore installs packages a project already declares).
+    /// </param>
     /// <param name="version">
     /// Specific version to install (only for package IDs). When null, empty or <c>"latest"</c>, the highest stable version is chosen;
     /// prerelease versions are only considered when the running host is itself a prerelease build.
     /// </param>
     /// <param name="source">Custom NuGet source (https:// URL, local folder, or configured feed name; null = all configured sources).</param>
     /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns>The installed package with its exact version, or null if installation failed.</returns>
-    public async Task<InstalledPackage?> InstallAsync(
+    /// <returns>
+    /// <see cref="PackageInstallStatus.Installed"/> with the exact version, <see cref="PackageInstallStatus.WrongPackageType"/>
+    /// (nothing written) or <see cref="PackageInstallStatus.Failed"/>.
+    /// </returns>
+    public async Task<PackageInstallResult> InstallAsync(
         string packageId,
+        string? requiredPackageType,
         string? version = null,
         string? source = null,
         CancellationToken cancellationToken = default)
@@ -63,7 +71,7 @@ public sealed class PackageManager(
             {
                 // Local .nupkg file
                 logger.InstallingFromFile(packageId);
-                return await InstallFromNupkgAsync(packageId, targetDir, cancellationToken);
+                return await InstallFromNupkgAsync(packageId, requiredPackageType, targetDir, cancellationToken);
             }
             else if (Uri.TryCreate(packageId, UriKind.Absolute, out var uri))
             {
@@ -72,12 +80,12 @@ public sealed class PackageManager(
                     if (!PackageTrustPolicy.IsAllowedSource(uri))
                     {
                         logger.InsecureSourceRejected(packageId);
-                        return null;
+                        return Failed;
                     }
 
                     // URL to .nupkg
                     logger.InstallingFromUrl(packageId);
-                    return await InstallFromUrlAsync(uri, targetDir, cancellationToken);
+                    return await InstallFromUrlAsync(uri, requiredPackageType, targetDir, cancellationToken);
                 }
                 else if (uri.Scheme == Uri.UriSchemeFile)
                 {
@@ -87,17 +95,17 @@ public sealed class PackageManager(
                     if (!File.Exists(filePath))
                     {
                         logger.LocalPackageNotFound(filePath);
-                        return null;
+                        return Failed;
                     }
 
                     if (!filePath.EndsWith(".nupkg", StringComparison.OrdinalIgnoreCase))
                     {
                         logger.LocalPackageNotNupkg(filePath);
-                        return null;
+                        return Failed;
                     }
 
                     logger.InstallingFromFile(filePath);
-                    return await InstallFromNupkgAsync(filePath, targetDir, cancellationToken);
+                    return await InstallFromNupkgAsync(filePath, requiredPackageType, targetDir, cancellationToken);
                 }
             }
 
@@ -106,7 +114,7 @@ public sealed class PackageManager(
                 if (!PackageIdRules.IsValid(packageId))
                 {
                     logger.InvalidPackageId(packageId);
-                    return null;
+                    return Failed;
                 }
 
                 // Package ID from NuGet feed
@@ -119,17 +127,16 @@ public sealed class PackageManager(
                     if (!PackageTrustPolicy.IsAllowedSource(sourceUrl))
                     {
                         logger.InsecureSourceRejected(sourceUrl);
-                        return null;
+                        return Failed;
                     }
 
                     var sourceRepo = Repository.Factory.GetCoreV3(new NuGetPackageSource(sourceUrl));
-                    var extracted = await ExtractFromNuGetAsync(packageId, version, sourceRepo, targetDir, cancellationToken);
-                    return extracted is null ? null : Installed(extracted);
+                    return Logged(await ExtractFromNuGetAsync(packageId, version, requiredPackageType, sourceRepo, targetDir, cancellationToken));
                 }
                 else
                 {
                     // No explicit source - try all configured sources
-                    return await InstallFromMultipleSourcesAsync(packageId, version, targetDir, cancellationToken);
+                    return await InstallFromMultipleSourcesAsync(packageId, version, requiredPackageType, targetDir, cancellationToken);
                 }
             }
         }
@@ -140,7 +147,7 @@ public sealed class PackageManager(
         catch (Exception ex)
         {
             logger.InstallFailed(ex, packageId);
-            return null;
+            return Failed;
         }
     }
 
@@ -202,9 +209,12 @@ public sealed class PackageManager(
     Task<bool> IPackageInstaller.UninstallAsync(string packageId, CancellationToken cancellationToken) =>
         Task.FromResult(Uninstall(packageId, cancellationToken));
 
-    internal async Task<InstalledPackage?> ExtractFromNuGetAsync(
+    private static PackageInstallResult Failed { get; } = new(PackageInstallStatus.Failed);
+
+    internal async Task<PackageInstallResult> ExtractFromNuGetAsync(
         string packageId,
         string? version,
+        string? requiredPackageType,
         SourceRepository sourceRepo,
         string targetDir,
         CancellationToken cancellationToken)
@@ -212,14 +222,14 @@ public sealed class PackageManager(
         if (!TryResolveRequestedVersion(version, out var requestedVersion))
         {
             logger.InvalidVersion(packageId, version!);
-            return null;
+            return Failed;
         }
 
         var resource = await sourceRepo.GetResourceAsync<FindPackageByIdResource>(cancellationToken);
         if (resource is null)
         {
             logger.PackageNotFound(packageId);
-            return null;
+            return Failed;
         }
 
         using var cacheContext = new SourceCacheContext();
@@ -238,7 +248,7 @@ public sealed class PackageManager(
         if (targetVersion is null)
         {
             logger.PackageNotFound(packageId);
-            return null;
+            return Failed;
         }
 
         if (logger.IsEnabled(LogLevel.Information))
@@ -263,11 +273,11 @@ public sealed class PackageManager(
                 if (!success)
                 {
                     logger.DownloadFailed(packageId, targetVersion.ToString());
-                    return null;
+                    return Failed;
                 }
             }
 
-            return await extractor.ExtractAsync(tempFile, targetDir, cancellationToken);
+            return await extractor.ExtractAsync(tempFile, targetDir, requiredPackageType, cancellationToken);
         }
         finally
         {
@@ -278,7 +288,11 @@ public sealed class PackageManager(
         }
     }
 
-    private async Task<InstalledPackage?> InstallFromUrlAsync(Uri url, string targetDir, CancellationToken cancellationToken)
+    private async Task<PackageInstallResult> InstallFromUrlAsync(
+        Uri url,
+        string? requiredPackageType,
+        string targetDir,
+        CancellationToken cancellationToken)
     {
         await using var stream = await httpClient.GetStreamAsync(url, cancellationToken);
 
@@ -290,7 +304,7 @@ public sealed class PackageManager(
                 await stream.CopyToAsync(fileStream, cancellationToken);
             }
 
-            return await InstallFromNupkgAsync(tempFile, targetDir, cancellationToken);
+            return await InstallFromNupkgAsync(tempFile, requiredPackageType, targetDir, cancellationToken);
         }
         finally
         {
@@ -301,21 +315,27 @@ public sealed class PackageManager(
         }
     }
 
-    internal async Task<InstalledPackage?> InstallFromNupkgAsync(string nupkgPath, string targetDir, CancellationToken cancellationToken)
+    internal async Task<PackageInstallResult> InstallFromNupkgAsync(
+        string nupkgPath,
+        string? requiredPackageType,
+        string targetDir,
+        CancellationToken cancellationToken) =>
+        Logged(await extractor.ExtractAsync(nupkgPath, targetDir, requiredPackageType, cancellationToken));
+
+    private PackageInstallResult Logged(PackageInstallResult result)
     {
-        var extracted = await extractor.ExtractAsync(nupkgPath, targetDir, cancellationToken);
-        return extracted is null ? null : Installed(extracted);
+        if (result.Status == PackageInstallStatus.Installed)
+        {
+            logger.PluginInstalled(result.Package!.Id);
+        }
+
+        return result;
     }
 
-    private InstalledPackage Installed(InstalledPackage package)
-    {
-        logger.PluginInstalled(package.Id);
-        return package;
-    }
-
-    private async Task<InstalledPackage?> InstallFromMultipleSourcesAsync(
+    private async Task<PackageInstallResult> InstallFromMultipleSourcesAsync(
         string packageId,
         string? version,
+        string? requiredPackageType,
         string targetDir,
         CancellationToken cancellationToken)
     {
@@ -331,12 +351,12 @@ public sealed class PackageManager(
                 continue;
             }
 
-            var extracted = (InstalledPackage?)null;
+            var result = Failed;
             try
             {
                 logger.TryingSource(source.Name, source.Url);
                 var sourceRepo = Repository.Factory.GetCoreV3(new NuGetPackageSource(source.Url));
-                extracted = await ExtractFromNuGetAsync(packageId, version, sourceRepo, targetDir, cancellationToken);
+                result = await ExtractFromNuGetAsync(packageId, version, requiredPackageType, sourceRepo, targetDir, cancellationToken);
             }
             catch (OperationCanceledException)
             {
@@ -347,15 +367,20 @@ public sealed class PackageManager(
                 logger.SourceFailed(source.Name);
             }
 
-            if (extracted is not null)
+            if (result.Status == PackageInstallStatus.WrongPackageType)
+            {
+                return result;
+            }
+
+            if (result.Status == PackageInstallStatus.Installed)
             {
                 logger.SuccessFromSource(packageId, source.Name);
-                return Installed(extracted);
+                return Logged(result);
             }
         }
 
         logger.AllSourcesFailed(packageId);
-        return null;
+        return Failed;
     }
 
     private async Task<string> ResolveSourceAsync(string source, CancellationToken cancellationToken)

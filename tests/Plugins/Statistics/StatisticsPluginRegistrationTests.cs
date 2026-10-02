@@ -9,7 +9,6 @@ using Spectara.Revela.Plugins.Statistics.Services;
 using Spectara.Revela.Sdk.Abstractions;
 using Spectara.Revela.Sdk.Artifacts;
 using Spectara.Revela.Sdk.Hosting;
-using Spectara.Revela.Sdk.Models.Manifest;
 
 namespace Spectara.Revela.Tests.Plugins.Statistics;
 
@@ -55,11 +54,7 @@ public sealed class StatisticsPluginRegistrationTests
         var services = new ServiceCollection();
         services.AddLogging();
 
-        var manifestRepository = Substitute.For<IManifestRepository>();
-        manifestRepository.Images.Returns(new Dictionary<string, ImageContent>());
-        manifestRepository.Root.Returns((ManifestEntry?)null);
-
-        services.AddSingleton(manifestRepository);
+        services.AddSingleton(Substitute.For<IManifestReader>());
         services.AddSingleton(TimeProvider.System);
         services.AddSingleton(Substitute.For<IArtifactLifecycle>());
 
@@ -100,16 +95,7 @@ public sealed class StatisticsPluginRegistrationTests
         var services = new ServiceCollection();
         services.AddLogging();
 
-        var manifestRepository = Substitute.For<IManifestRepository>();
-        manifestRepository.Images.Returns(new Dictionary<string, ImageContent>());
-        manifestRepository.Root.Returns(new ManifestEntry
-        {
-            Text = "Root",
-            Path = "root",
-            DataSources = new Dictionary<string, string>()
-        });
-
-        services.AddSingleton(manifestRepository);
+        services.AddSingleton(Substitute.For<IManifestReader>());
         services.AddSingleton(TimeProvider.System);
         services.AddSingleton(Substitute.For<IArtifactLifecycle>());
 

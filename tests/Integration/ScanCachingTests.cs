@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Spectara.Revela.Features.Generate.Models;
 using Spectara.Revela.Sdk.Models.Manifest;
 
 namespace Spectara.Revela.Tests.Integration;

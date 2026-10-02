@@ -2,6 +2,7 @@ using System.CommandLine;
 using System.Globalization;
 using System.Runtime.CompilerServices;
 using Microsoft.Extensions.Options;
+using Spectara.Revela.Core.Abstractions;
 using Spectara.Revela.Features.Generate.Abstractions;
 using Spectara.Revela.Features.Generate.Models;
 using Spectara.Revela.Features.Generate.Models.Results;
@@ -11,7 +12,6 @@ using Spectara.Revela.Sdk.Configuration;
 using Spectara.Revela.Sdk.Hosting;
 using Spectara.Revela.Sdk.Output;
 using Spectre.Console;
-using IManifestRepository = Spectara.Revela.Sdk.Abstractions.IManifestRepository;
 
 namespace Spectara.Revela.Features.Generate.Commands;
 
@@ -42,12 +42,12 @@ internal sealed partial class ImagesCommand(
     string IPipelineStep.Name => "images";
 
 
-    async ValueTask<PipelineStepResult> IPipelineStep.ExecuteAsync(CancellationToken cancellationToken)
+    async ValueTask<OperationResult> IPipelineStep.ExecuteAsync(CancellationToken cancellationToken)
     {
         var result = await imageService.ProcessAsync(new ProcessImagesOptions(), progress: null, cancellationToken);
         return result.Success
-            ? PipelineStepResult.Ok()
-            : PipelineStepResult.Fail(result.ErrorMessage ?? "Image processing failed");
+            ? OperationResult.Ok()
+            : OperationResult.Fail(result.ErrorMessage ?? "Image processing failed");
     }
 
     // ── CLI command ──

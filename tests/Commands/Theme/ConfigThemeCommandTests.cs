@@ -2,10 +2,10 @@ using Microsoft.Extensions.Logging.Abstractions;
 
 using NSubstitute;
 
+using Spectara.Revela.Core.Services;
 using Spectara.Revela.Features.Theme.Commands;
 using Spectara.Revela.Sdk.Abstractions;
 using Spectara.Revela.Sdk.Models;
-using Spectara.Revela.Sdk.Services;
 using Spectara.Revela.Tests.Shared.Fixtures;
 
 namespace Spectara.Revela.Tests.Commands.Theme;

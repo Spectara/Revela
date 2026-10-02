@@ -1,4 +1,6 @@
-namespace Spectara.Revela.Sdk.Abstractions;
+using Spectara.Revela.Sdk.Abstractions;
+
+namespace Spectara.Revela.Core.Abstractions;
 
 /// <summary>
 /// Information about a loaded plugin including its source location.

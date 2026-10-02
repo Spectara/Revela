@@ -1,13 +1,13 @@
 using System.CommandLine;
 using System.Globalization;
 using Microsoft.Extensions.Options;
+using Spectara.Revela.Core.Abstractions;
 using Spectara.Revela.Features.Generate.Abstractions;
 using Spectara.Revela.Features.Generate.Models.Results;
 using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Abstractions;
 using Spectara.Revela.Sdk.Configuration;
 using Spectre.Console;
-using IManifestRepository = Spectara.Revela.Sdk.Abstractions.IManifestRepository;
 
 namespace Spectara.Revela.Features.Generate.Commands;
 
@@ -36,12 +36,12 @@ internal sealed partial class PagesCommand(
     string IPipelineStep.Name => "pages";
 
 
-    async ValueTask<PipelineStepResult> IPipelineStep.ExecuteAsync(CancellationToken cancellationToken)
+    async ValueTask<OperationResult> IPipelineStep.ExecuteAsync(CancellationToken cancellationToken)
     {
         var result = await renderService.RenderAsync(progress: null, cancellationToken);
         return result.Success
-            ? PipelineStepResult.Ok()
-            : PipelineStepResult.Fail(result.ErrorMessage ?? "Page generation failed");
+            ? OperationResult.Ok()
+            : OperationResult.Fail(result.ErrorMessage ?? "Page generation failed");
     }
 
     // ── CLI command ──

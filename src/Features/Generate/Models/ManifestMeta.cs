@@ -1,6 +1,6 @@
 using System.Text.Json.Serialization;
 
-namespace Spectara.Revela.Sdk.Models.Manifest;
+namespace Spectara.Revela.Features.Generate.Models;
 
 /// <summary>
 /// Manifest metadata for tracking configuration changes.
@@ -9,7 +9,7 @@ namespace Spectara.Revela.Sdk.Models.Manifest;
 /// Immutable: all properties are <c>init</c>-only. To update metadata, use the
 /// <c>with</c> expression to produce a modified copy.
 /// </remarks>
-public sealed record ManifestMeta
+internal sealed record ManifestMeta
 {
     /// <summary>
     /// Manifest schema version.
@@ -53,7 +53,7 @@ public sealed record ManifestMeta
     /// Key = normalized source path, Value = fingerprint of source file and pipeline settings.
     /// </summary>
     /// <remarks>
-    /// Owned by image processing and independent of the scan metadata on <see cref="ImageContent"/>,
+    /// Owned by image processing and independent of the scan metadata on <see cref="Sdk.Models.Manifest.ImageContent"/>,
     /// so a scan that sees an edited source cannot mark its stale variants as current.
     /// </remarks>
     [JsonPropertyName("processedImages")]
