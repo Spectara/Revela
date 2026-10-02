@@ -10,9 +10,30 @@ namespace Spectara.Revela.Sdk;
 public static class ProjectPaths
 {
     /// <summary>
-    /// Cache directory for intermediate files (manifest, processed images).
+    /// Revela's own folder in the project. Holds <see cref="Cache"/> and <see cref="State"/>;
+    /// nothing in it is ever published.
     /// </summary>
-    public const string Cache = ".cache";
+    public const string Revela = ".revela";
+
+    /// <summary>
+    /// Reproducible data (scan manifest, plugin data files such as <c>statistics.json</c>).
+    /// </summary>
+    /// <remarks>
+    /// Deleted by <c>revela clean cache</c>; losing it costs at most a rescan.
+    /// <c>.revela/cache</c>, composed with the platform's directory separator.
+    /// </remarks>
+    public static readonly string Cache = Path.Combine(Revela, "cache");
+
+    /// <summary>
+    /// State of the output: what Revela produced there and with which settings
+    /// (image variants, pre-compressed sidecars).
+    /// </summary>
+    /// <remarks>
+    /// Belongs to the output directory: <c>revela clean output</c> deletes both, <c>revela clean cache</c>
+    /// keeps it. Losing it while the output stays means re-encoding every image.
+    /// <c>.revela/state</c>, composed with the platform's directory separator.
+    /// </remarks>
+    public static readonly string State = Path.Combine(Revela, "state");
 
     /// <summary>
     /// Themes directory for local/extracted themes.

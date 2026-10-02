@@ -36,7 +36,7 @@ internal sealed partial class ManifestService(
     IOptions<ProjectEnvironment> projectEnvironment,
     TimeProvider timeProvider) : IManifestRepository
 {
-    private const string ManifestFileName = "manifest.json";
+    internal const string ManifestFileName = "manifest.json";
 
     private ImageManifest manifest = new();
 
@@ -163,7 +163,9 @@ internal sealed partial class ManifestService(
     /// <inheritdoc />
     public async Task LoadAsync(CancellationToken cancellationToken = default)
     {
-        var loaded = await ReadAsync(GetManifestPath(projectEnvironment.Value.Path), logger, cancellationToken);
+        var projectPath = projectEnvironment.Value.Path;
+        await LegacyCacheCarryOver.RunAsync(projectPath, logger, cancellationToken);
+        var loaded = await ReadAsync(GetManifestPath(projectPath), logger, cancellationToken);
         manifest = loaded ?? new ImageManifest();
         RebuildImageCache();
         if (loaded is not null)
@@ -257,9 +259,9 @@ internal sealed partial class ManifestService(
     {
         var projectPath = projectEnvironment.Value.Path;
 
-        // The manifest file about to be replaced may be the last copy of the processing state
-        // that beta.21 kept in it; carry that over first so no image is re-encoded.
-        await ImageStateStore.SeedFromLegacyManifestAsync(projectPath, logger, cancellationToken);
+        // A legacy .cache manifest may hold the last copy of the image processing state;
+        // carry it over before anything new is written.
+        await LegacyCacheCarryOver.RunAsync(projectPath, logger, cancellationToken);
 
         var manifestPath = GetManifestPath(projectPath);
         Directory.CreateDirectory(Path.GetDirectoryName(manifestPath)!);

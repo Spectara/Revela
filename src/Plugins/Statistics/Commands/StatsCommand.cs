@@ -14,7 +14,7 @@ namespace Spectara.Revela.Plugins.Statistics.Commands;
 /// Command to generate statistics page from manifest EXIF data.
 /// </summary>
 /// <remarks>
-/// Output: Creates statistics.json in .cache/{page.Path}/.
+/// Output: Creates statistics.json in .revela/cache/{page.Path}/.
 /// The actual rendering is done by the theme extension (Lumina.Statistics).
 /// </remarks>
 internal sealed partial class StatsCommand(

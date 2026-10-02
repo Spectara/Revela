@@ -12,8 +12,12 @@ using Spectre.Console;
 namespace Spectara.Revela.Features.Generate.Commands;
 
 /// <summary>
-/// Cleans the cache directory.
+/// Cleans the cache directory (<see cref="ProjectPaths.Cache"/>): reproducible data only.
 /// </summary>
+/// <remarks>
+/// The output state in <see cref="ProjectPaths.State"/> is kept, so the next build reuses the
+/// existing image variants; <c>clean output</c> removes it together with the output.
+/// </remarks>
 internal sealed partial class CleanCacheCommand(
     ILogger<CleanCacheCommand> logger,
     IOptions<ProjectEnvironment> projectEnvironment) : IPipelineStep
@@ -56,7 +60,7 @@ internal sealed partial class CleanCacheCommand(
     /// </summary>
     public Command Create()
     {
-        var command = new Command("cache", "Clean cache directory (.cache)");
+        var command = new Command("cache", $"Clean cache directory ({ProjectPaths.Cache}); keeps the image state");
 
         command.SetAction(async (parseResult, cancellationToken) => await ExecuteAsync(cancellationToken));
 
@@ -80,7 +84,7 @@ internal sealed partial class CleanCacheCommand(
             Directory.Delete(CachePath, recursive: true);
             LogDirectoryDeleted(logger, target.Path, target.FileCount);
 
-            AnsiConsole.MarkupLine($"{OutputMarkers.Success} Deleted [cyan]{ProjectPaths.Cache}/[/] ({target.FileCount} files, {FormatSize(target.TotalSize)})");
+            AnsiConsole.MarkupLine($"{OutputMarkers.Success} Deleted [cyan]{Markup.Escape(ProjectPaths.Cache)}[/] ({target.FileCount} files, {FormatSize(target.TotalSize)})");
         }
         catch (IOException ex)
         {

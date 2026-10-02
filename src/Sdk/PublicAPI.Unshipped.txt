@@ -24,7 +24,7 @@ const Spectara.Revela.Sdk.Output.OutputMarkers.Error = "[red]✗[/]" -> string!
 const Spectara.Revela.Sdk.Output.OutputMarkers.Info = "[blue]ℹ[/]" -> string!
 const Spectara.Revela.Sdk.Output.OutputMarkers.Success = "[green]✓[/]" -> string!
 const Spectara.Revela.Sdk.Output.OutputMarkers.Warning = "[yellow]⚠[/]" -> string!
-const Spectara.Revela.Sdk.ProjectPaths.Cache = ".cache" -> string!
+const Spectara.Revela.Sdk.ProjectPaths.Revela = ".revela" -> string!
 const Spectara.Revela.Sdk.ProjectPaths.Plugins = "plugins" -> string!
 const Spectara.Revela.Sdk.ProjectPaths.SharedImages = "_images" -> string!
 const Spectara.Revela.Sdk.ProjectPaths.Static = "_static" -> string!
@@ -800,3 +800,5 @@ virtual Spectara.Revela.Sdk.Abstractions.PackageMetadata.EqualityContract.get ->
 virtual Spectara.Revela.Sdk.Abstractions.PackageMetadata.Equals(Spectara.Revela.Sdk.Abstractions.PackageMetadata? other) -> bool
 virtual Spectara.Revela.Sdk.Abstractions.PackageMetadata.PrintMembers(System.Text.StringBuilder! builder) -> bool
 static Spectara.Revela.Sdk.Configuration.ThemeConfig.ResolveName(string? name) -> string!
+static readonly Spectara.Revela.Sdk.ProjectPaths.Cache -> string!
+static readonly Spectara.Revela.Sdk.ProjectPaths.State -> string!

@@ -70,6 +70,54 @@ public sealed class CleanOutputCommandTests
         Assert.IsTrue(File.Exists(photo));
     }
 
+    [TestMethod]
+    [DataRow(true, true, DisplayName = "CLI command")]
+    [DataRow(false, true, DisplayName = "pipeline step")]
+    [DataRow(true, false, DisplayName = "CLI command, output already gone")]
+    [DataRow(false, false, DisplayName = "pipeline step, output already gone")]
+    public async Task Clean_StateExists_DeletesOutputStateButKeepsCache(bool viaCommand, bool outputExists)
+    {
+        // The state describes the output (which variants and sidecars exist), so it goes with it.
+        using var workspace = TestProject.Create();
+        var projectPath = CreateProject(workspace.RootPath, string.Empty, "output", "source");
+        var outputPath = Path.Combine(projectPath, "output");
+        if (outputExists)
+        {
+            _ = CreateFile(outputPath, "index.html");
+        }
+
+        var stateDirectory = Path.Combine(projectPath, ".revela", "state");
+        _ = CreateFile(stateDirectory, "images.json");
+        _ = CreateFile(stateDirectory, "compress.json");
+        var manifest = CreateFile(Path.Combine(projectPath, ".revela", "cache"), "manifest.json");
+        using var host = RevelaTestHost.Build(projectPath, services => services.AddTransient<CleanOutputCommand>());
+        var command = host.Services.GetRequiredService<CleanOutputCommand>();
+
+        var succeeded = viaCommand
+            ? await command.ExecuteAsync(CancellationToken.None) == 0
+            : (await ((IPipelineStep)command).ExecuteAsync(CancellationToken.None)).Success;
+
+        Assert.IsTrue(succeeded);
+        Assert.IsFalse(Directory.Exists(outputPath));
+        Assert.IsFalse(Directory.Exists(stateDirectory), "clean output must remove the output state.");
+        Assert.IsTrue(File.Exists(manifest), "clean output must keep the cache.");
+    }
+
+    [TestMethod]
+    public async Task ExecuteAsync_UnsafeOutputPath_KeepsState()
+    {
+        using var workspace = TestProject.Create();
+        var projectPath = CreateProject(workspace.RootPath, string.Empty, ".", "source");
+        var imageState = CreateFile(Path.Combine(projectPath, ".revela", "state"), "images.json");
+        using var host = RevelaTestHost.Build(projectPath, services => services.AddTransient<CleanOutputCommand>());
+        var command = host.Services.GetRequiredService<CleanOutputCommand>();
+
+        var exitCode = await command.ExecuteAsync(CancellationToken.None);
+
+        Assert.AreEqual(1, exitCode);
+        Assert.IsTrue(File.Exists(imageState));
+    }
+
     private static string CreateProject(string workspaceRoot, string projectSubdirectory, string output, string source)
     {
         var projectPath = Path.Combine(workspaceRoot, projectSubdirectory);

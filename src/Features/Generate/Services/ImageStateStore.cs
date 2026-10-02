@@ -12,9 +12,10 @@ namespace Spectara.Revela.Features.Generate.Services;
 /// </summary>
 /// <remarks>
 /// <para>
-/// Persisted in <c>.cache/images.json</c> with its own schema version, separate from the scan
-/// manifest, so a manifest format change or rebuild never re-encodes images. Only things that
-/// change image output invalidate an entry (see <see cref="ImageService"/>).
+/// Persisted in <c>.revela/state/images.json</c> (<see cref="ProjectPaths.State"/>) with its own
+/// schema version, separate from the scan manifest, so a manifest format change, a rebuild or
+/// <c>clean cache</c> never re-encodes images. Only things that change image output invalidate
+/// an entry (see <see cref="ImageService"/>).
 /// </para>
 /// <para>
 /// Thread-safe for <see cref="Get"/>, <see cref="Set"/> and <see cref="RemoveExcept"/>.
@@ -28,7 +29,8 @@ internal sealed partial class ImageStateStore(
     /// <summary>The state schema version this Revela reads and writes.</summary>
     internal const int CurrentVersion = 1;
 
-    private const string FileName = "images.json";
+    /// <summary>File name of the state, in <see cref="ProjectPaths.State"/>.</summary>
+    internal const string FileName = "images.json";
 
     private readonly Lock stateLock = new();
     private Dictionary<string, ProcessedImage> images = new(StringComparer.Ordinal);
@@ -37,13 +39,14 @@ internal sealed partial class ImageStateStore(
     /// Loads the state of the current project, replacing what is held in memory.
     /// </summary>
     /// <remarks>
-    /// A missing state is first carried over from a manifest written by beta.21.
+    /// A state left in the legacy <c>.cache</c> folder is carried over first
+    /// (see <see cref="LegacyCacheCarryOver"/>).
     /// A missing, unreadable or other-version file yields an empty state.
     /// </remarks>
     public async Task LoadAsync(CancellationToken cancellationToken = default)
     {
         var projectPath = projectEnvironment.Value.Path;
-        await SeedFromLegacyManifestAsync(projectPath, logger, cancellationToken);
+        await LegacyCacheCarryOver.RunAsync(projectPath, logger, cancellationToken);
         var loaded = await ReadAsync(GetStatePath(projectPath), logger, cancellationToken);
 
         lock (stateLock)
@@ -106,47 +109,42 @@ internal sealed partial class ImageStateStore(
     }
 
     /// <summary>
-    /// One-time carry-over of the processing state that beta.21 kept in the manifest
+    /// One-time carry-over of the processing state that earlier versions kept in the manifest
     /// (<c>_meta.processedImages</c> and <c>_meta.formatQualities</c>).
     /// </summary>
     /// <remarks>
-    /// Runs only while no state file exists, so it must happen before anything rewrites the
-    /// manifest without those fields; <see cref="ManifestService.SaveAsync"/> calls it first.
-    /// The manifest version is deliberately not checked: a scan may already have discarded the
-    /// manifest's tree, and each fingerprint carries the pipeline version it is valid for.
-    /// Best effort: on failure the images are simply processed again.
+    /// The caller ensures no state file exists yet. The manifest version is deliberately not
+    /// checked: a scan may already have discarded the manifest's tree, and each fingerprint
+    /// carries the pipeline version it is valid for. A manifest without that state writes nothing.
     /// </remarks>
-    internal static async Task SeedFromLegacyManifestAsync(
-        string projectPath,
+    /// <exception cref="JsonException">The manifest is not valid JSON.</exception>
+    /// <exception cref="IOException">Reading the manifest or writing the state failed.</exception>
+    internal static async Task SeedFromManifestAsync(
+        string manifestPath,
+        string statePath,
         ILogger logger,
         CancellationToken cancellationToken)
     {
-        var statePath = GetStatePath(projectPath);
-        var manifestPath = ManifestService.GetManifestPath(projectPath);
-        if (File.Exists(statePath) || !File.Exists(manifestPath))
+        if (!File.Exists(manifestPath))
         {
             return;
         }
 
-        try
+        var seeded = await ReadLegacyStateAsync(manifestPath, cancellationToken);
+        if (seeded.Count == 0)
         {
-            var seeded = await ReadLegacyStateAsync(manifestPath, cancellationToken);
-            if (seeded.Count == 0)
-            {
-                return;
-            }
+            return;
+        }
 
-            await WriteAsync(statePath, seeded, cancellationToken);
-            LogStateSeeded(logger, seeded.Count, statePath);
-        }
-        catch (Exception ex) when (ex is JsonException or IOException or UnauthorizedAccessException)
-        {
-            LogSeedFailed(logger, manifestPath, ex);
-        }
+        await WriteAsync(statePath, seeded, cancellationToken);
+        LogStateSeeded(logger, seeded.Count, statePath);
     }
 
-    private static string GetStatePath(string projectPath) =>
-        Path.Combine(projectPath, ProjectPaths.Cache, FileName);
+    /// <summary>
+    /// Gets the state file path of a project.
+    /// </summary>
+    internal static string GetStatePath(string projectPath) =>
+        Path.Combine(projectPath, ProjectPaths.State, FileName);
 
     private static async Task<List<KeyValuePair<string, ProcessedImage>>> ReadLegacyStateAsync(
         string manifestPath,
@@ -277,9 +275,6 @@ internal sealed partial class ImageStateStore(
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Carried over the processing state of {Count} images from the manifest to {Path}")]
     private static partial void LogStateSeeded(ILogger logger, int count, string path);
-
-    [LoggerMessage(Level = LogLevel.Warning, Message = "Could not carry over the image processing state from {Path}; images will be processed again")]
-    private static partial void LogSeedFailed(ILogger logger, string path, Exception exception);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Image state at {Path} has version {Version} (current: {CurrentVersion}); all images will be processed again")]
     private static partial void LogStateVersionIgnored(ILogger logger, string path, int version, int currentVersion);

@@ -1252,7 +1252,7 @@ internal sealed partial class RenderService(
     /// Resolves one entry of a page's <c>data</c> frontmatter (or an extension's data default).
     /// </summary>
     /// <param name="source">A built-in source (<c>$galleries</c>, <c>$images</c>) or a JSON file name.</param>
-    /// <param name="basePath">Folder of the page's <c>_index.revela</c>; JSON files are read from the matching <c>.cache</c> folder.</param>
+    /// <param name="basePath">Folder of the page's <c>_index.revela</c>; JSON files are read from the matching <c>.revela/cache</c> folder.</param>
     /// <param name="allGalleries">All galleries in the site.</param>
     /// <param name="localImages">Images of the current page.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
@@ -1274,7 +1274,7 @@ internal sealed partial class RenderService(
             };
         }
 
-        // Plugin-generated data from the .cache directory
+        // Plugin-generated data from the cache directory (.revela/cache)
         if (source.EndsWith(".json", StringComparison.OrdinalIgnoreCase))
         {
             var relativePath = Path.GetRelativePath(SourcePath, basePath);

@@ -84,7 +84,7 @@ public sealed class ImageProcessingCheckpointTests
     {
         const int imageCount = 27;
         using var project = CreateProject(imageCount);
-        var statePath = Path.Combine(project.RootPath, ".cache", "images.json");
+        var statePath = Path.Combine(project.RootPath, ".revela", "state", "images.json");
         var savedBeforeLastImage = -1;
         var observing = new ScriptedProcessor(call =>
         {

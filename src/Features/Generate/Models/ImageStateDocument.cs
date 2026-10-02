@@ -3,7 +3,7 @@ using System.Text.Json.Serialization;
 namespace Spectara.Revela.Features.Generate.Models;
 
 /// <summary>
-/// File format of the image processing state (<c>.cache/images.json</c>).
+/// File format of the image processing state (<c>.revela/state/images.json</c>).
 /// </summary>
 internal sealed record ImageStateDocument
 {

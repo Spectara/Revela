@@ -8,7 +8,7 @@ namespace Spectara.Revela.Sdk.Abstractions;
 /// <remarks>
 /// <para>
 /// Plugins that derive data from scanned content (statistics, calendar pages, …)
-/// inject this instead of locating <c>.cache/manifest.json</c> themselves. Writing
+/// inject this instead of locating <c>.revela/cache/manifest.json</c> themselves. Writing
 /// the manifest is reserved for the host's scan and image steps.
 /// </para>
 /// <para>

@@ -200,7 +200,7 @@ public sealed class ManifestServiceLifecycleTests
     {
         // An older manifest has another shape; it is dropped and rebuilt by the next scan.
         using var project = TestProject.Create();
-        var cacheDirectory = Path.Combine(project.RootPath, ".cache");
+        var cacheDirectory = Path.Combine(project.RootPath, ".revela", "cache");
         Directory.CreateDirectory(cacheDirectory);
         await File.WriteAllTextAsync(Path.Combine(cacheDirectory, "manifest.json"), /*lang=json,strict*/ """
             {
@@ -218,15 +218,14 @@ public sealed class ManifestServiceLifecycleTests
     }
 
     [TestMethod]
-    public async Task SaveAsync_Beta21ManifestWithProcessingState_LoadsAndMovesStateOut()
+    public async Task SaveAsync_LegacyCacheManifestWithProcessingState_LoadsAndMovesStateOut()
     {
-        // beta.21 kept image processing state in manifest version 5; it moved to images.json
-        // without a version bump, so such a manifest must keep loading.
+        // Before beta.21 the processing state lived in the version 5 manifest at .cache/manifest.json;
+        // the manifest moves to .revela/cache and keeps loading, the state moves to .revela/state.
         using var project = TestProject.Create();
-        var cacheDirectory = Path.Combine(project.RootPath, ".cache");
-        Directory.CreateDirectory(cacheDirectory);
-        var manifestPath = Path.Combine(cacheDirectory, "manifest.json");
-        await File.WriteAllTextAsync(manifestPath, /*lang=json,strict*/ """
+        var legacyDirectory = Path.Combine(project.RootPath, ".cache");
+        Directory.CreateDirectory(legacyDirectory);
+        await File.WriteAllTextAsync(Path.Combine(legacyDirectory, "manifest.json"), /*lang=json,strict*/ """
             {
               "_meta": {
                 "version": 5,
@@ -245,10 +244,11 @@ public sealed class ManifestServiceLifecycleTests
 
         Assert.AreEqual("DEF", manifest.ScanConfigHash);
         Assert.AreEqual("Site", manifest.Root?.Text);
-        var saved = await File.ReadAllTextAsync(manifestPath);
+        var saved = await File.ReadAllTextAsync(Path.Combine(project.RootPath, ".revela", "cache", "manifest.json"));
         Assert.DoesNotContain("processedImages", saved, StringComparison.Ordinal);
-        var state = await File.ReadAllTextAsync(Path.Combine(cacheDirectory, "images.json"));
+        var state = await File.ReadAllTextAsync(Path.Combine(project.RootPath, ".revela", "state", "images.json"));
         Assert.Contains("\"photos/a.jpg\"", state, StringComparison.Ordinal);
+        Assert.IsFalse(Directory.Exists(legacyDirectory));
     }
 }
 
