@@ -115,7 +115,7 @@ public sealed class CompressCommandTests : IDisposable
         Assert.IsTrue(File.Exists(original + ".gz"));
         Assert.IsTrue(File.Exists(original + ".br"));
         Assert.AreEqual("other root", await File.ReadAllTextAsync(untouched));
-        Assert.IsFalse(File.Exists(Path.Combine(other.OutputPath, ".revela-compress.manifest")));
+        Assert.HasCount(1, Directory.GetFileSystemEntries(other.OutputPath), "Nothing may be written into the other root.");
     }
 
     public void Dispose() => project.Dispose();
