@@ -180,7 +180,7 @@ Always **Typed Client pattern** — `services.AddHttpClient<MyService>()` then i
 - **Global** — `image_formats`, `site`, `basepath`, `assets_basepath`, `base_url`, `nav_items`, `og_locale`, `revela`, `stylesheets`, `scripts`
 - **Per page** — `gallery` (`gallery.body` = rendered Markdown), `images`; extra variables via front matter `data` (`$galleries`, `$images`, plugin `*.json`)
 - **Per image** — `sizes`, `placeholder`
-- **Functions** — `find_image`, `page_url`, `absolute_url`, `asset_url`, `variant_url`, `absolute_variant_url`, `format_date`, `format_filesize`, `markdown`, `t`, `html_escape`
+- **Functions** — `find_image`, `page_url`, `absolute_url`, `asset_url`, `variant_url`, `absolute_variant_url`, `format_date`, `format_filesize`, `markdown`, `t`, `html_escape`. Avoid Scriban's `array.*`/`math.*` libraries (Native AOT trims them) — use indexing, `//`, loops; Lumina's responsive-image helpers live in `Partials/ImageHelpers.revela`
 
 ---
 

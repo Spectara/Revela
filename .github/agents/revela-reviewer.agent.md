@@ -73,7 +73,7 @@ Apply the `review-code` skill systematically across the codebase.
 OWASP-aligned audit.
 - **A01 Broken Access Control** — `Serve` plugin: directory traversal protection? Bound checks on requested paths?
 - **A02 Cryptographic Failures** — secrets in `revela.json` / `project.json` / `site.json` / source? Token caching duration justified?
-- **A03 Injection** — Scriban template auto-escapes HTML by default — any `{{ x | object.eval_template }}` or raw HTML output? Markdown XSS via `markdown` filter?
+- **A03 Injection** — Scriban does **not** auto-escape: is every dynamic value wrapped in `html_escape`? Any `object.eval_template` or unescaped user data (titles, EXIF, `t` results)? Markdown XSS via the `markdown` filter (authored Markdown is trusted HTML by design)?
 - **A05 Security Misconfiguration** — default config values safe? Any `--no-verify` or HTTPS bypass?
 - **A06 Vulnerable Components** — `dotnet list package --vulnerable` results
 - **A07 Identification & Authentication** — OneDrive plugin: token storage location, expiry, refresh logic

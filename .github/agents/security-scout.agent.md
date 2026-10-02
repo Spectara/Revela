@@ -37,8 +37,8 @@ Never run anything that modifies state.
 
 ### 🟠 Major (OWASP-mapped)
 
-5. **A03 Injection — Scriban raw HTML** — usage of `| html.escape` is good; flag any template that uses `{{~ raw_html ~}}` or `| object.eval_template` on user data.
-   - Search in `src/Themes/**/*.sbn*`: regex `eval_template|\| html`
+5. **A03 Injection — Scriban raw HTML** — Scriban does not auto-escape. Dynamic text and attributes must go through Revela's `html_escape` function (not the Scriban built-in `html.escape`, which Native AOT may trim); flag unescaped user data (titles, EXIF, `t` results) and any `object.eval_template` on user data.
+   - Search in `src/Themes/**/*.revela`: regex `eval_template|html\.escape|\{\{\s*(image|gallery|site)\.[a-z_]+\s*\}\}`
 
 6. **A07 Auth — token storage in plain text** — OneDrive/auth plugins storing tokens to disk without encryption.
    - Search: regex `File\.WriteAllText.*[Tt]oken|File\.WriteAllBytes.*[Tt]oken`

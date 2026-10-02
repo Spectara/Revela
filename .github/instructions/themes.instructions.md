@@ -86,6 +86,28 @@ A missing layout or `Partials/ContentImage.revela` fails the render with a clear
 - Canonical / `og:url` / `og:image` only when `base_url` is set (absolute URLs). `og:image` uses a generated JPG variant ≤ 1920px (`Partials/OpenGraphImage.revela`), never the original.
 - `<source type>` must be a MIME type: map the format `jpg` to `image/jpeg`. Give the fallback `<img>` a `srcset`.
 
+## Scriban Under Native AOT
+- The Standalone edition is Native AOT and keeps only the Scriban built-ins Revela references. **Don't use `array.*`, `math.*`, `date.*` or other built-in library functions** in theme templates (`string.slice` already broke the Standalone build). Lumina only uses `string.contains`.
+- Use plain language features instead: indexing (`image.sizes[0]`, `image.sizes[-1]`), integer division (`a // b`), `for` loops, `.size` on lists, object keys, and Revela's own functions above.
+- `image_formats` has no index — take its last entry by looping (see `image_fallback_format`).
+
+## Responsive Images — `Partials/ImageHelpers.revela`
+Lumina defines its responsive-image functions once; every partial that renders a `<picture>` (`Image`, `ContentImage`, `PhotoLightbox`, `OpenGraphImage`, `Body/Photo`) starts with `{{~ include 'imagehelpers' ~}}` and must not build srcsets by hand:
+
+| Function | Returns |
+|----------|---------|
+| `image_type format` | `<source type>` MIME type (`jpg` → `image/jpeg`) |
+| `image_fallback_format` | Last of `image_formats` (normally `jpg`) for the `<img>` fallback |
+| `image_srcset image format` | All generated sizes as `url <width>w` (portrait widths derived from the longest edge) |
+| `image_size image limit` | Largest generated size ≤ `limit`, else the smallest |
+| `viewer_sizes image` | `sizes` for a photo fitted into the photo viewer |
+
+Build variant URLs with `variant_url`, never by concatenating `assets_basepath + slug`.
+
+## Navigation & Lightbox
+- Mark the current page with `aria-current="page"` (from `item.current`) and style `[aria-current="page"]` — no `class="active"`. `item.active` (ancestor of the current page) stays available for expanding sections.
+- The lightbox `<dialog>` fills the viewport: it closes with its × (`command="close"`) or Escape. No `closedby="any"` — there is no backdrop to click.
+
 ## ContentImage.revela (mandatory)
 Every theme must implement this partial — it's invoked for every `![alt](path)` in Markdown:
 ```scriban
