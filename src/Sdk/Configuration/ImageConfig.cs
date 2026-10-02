@@ -59,11 +59,13 @@ public sealed class ImageConfig
     public int Avif { get; set; }
 
     /// <summary>
-    /// Optional maximum degree of parallelism for image processing.
+    /// Optional maximum number of images processed in parallel.
     /// </summary>
     /// <remarks>
-    /// When null, defaults to <c>Environment.ProcessorCount - 2</c> to leave headroom.
-    /// Set to 1 to process images sequentially on low-memory systems.
+    /// When null, Revela processes about one image per CPU core (half as many from 8 logical
+    /// processors up, each with two libvips threads), at most one per GiB of memory. A configured
+    /// value always wins; the cores are then split between its images (up to 8 libvips threads
+    /// each). Set to 1 to process images one at a time on low-memory systems.
     /// </remarks>
     public int? MaxDegreeOfParallelism { get; set; }
 

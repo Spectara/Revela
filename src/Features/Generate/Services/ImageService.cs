@@ -47,6 +47,9 @@ internal sealed partial class ImageService(
     /// <summary>Save the processing state after this many finished images during a run.</summary>
     private const int CheckpointEveryImages = 25;
 
+    /// <summary>Thread-pool threads kept free beside the encode workers (progress, checkpoint saves).</summary>
+    private const int ReservedPoolThreads = 4;
+
     /// <summary>Save the processing state at least this often during a run.</summary>
     private static readonly TimeSpan CheckpointInterval = TimeSpan.FromSeconds(30);
 
@@ -241,19 +244,20 @@ internal sealed partial class ImageService(
                 LogCacheHits(logger, cachedCount, uniqueSourcePaths.Count);
             }
 
-            // Worker pool: CPU/2 images in parallel, each with a libvips concurrency capped at 8
-            // (see NetVipsImageProcessor). This optimizes thread usage:
-            // - Fewer workers = fewer parallel AVIF encoder instances (each spawns ~15 threads)
-            // - Reduces total thread count by ~30% with equal or better performance
+            // Many images in parallel with few libvips threads each (see ImageWorkerPlan).
             var configuredParallelism = ImageSettings.MaxDegreeOfParallelism;
-            var workerCount = configuredParallelism.HasValue
-                ? Math.Max(1, configuredParallelism.Value)
-                : Math.Max(1, Environment.ProcessorCount / 2);
+            var plan = ImageWorkerPlan.Create(
+                Environment.ProcessorCount,
+                GC.GetGCMemoryInfo().TotalAvailableMemoryBytes,
+                configuredParallelism);
+            var workerCount = plan.Workers;
 
             if (configuredParallelism.HasValue)
             {
                 LogUsingConfiguredParallelism(logger, workerCount);
             }
+
+            LogWorkerPlan(logger, plan.Workers, plan.ThreadsPerImage);
 
             var formatNames = formats.Keys.ToList();
 
@@ -331,6 +335,16 @@ internal sealed partial class ImageService(
             }
 
             ReportProgress();
+
+            // Each worker encodes synchronously on a thread-pool thread for a whole image. Keep
+            // threads available beyond the workers, so progress reports and checkpoint saves never
+            // wait for the pool to grow.
+            NetVipsImageProcessor.SetThreadsPerImage(plan.ThreadsPerImage);
+            ThreadPool.GetMinThreads(out var minWorkerThreads, out var minIoThreads);
+            if (minWorkerThreads < workerCount + ReservedPoolThreads)
+            {
+                ThreadPool.SetMinThreads(workerCount + ReservedPoolThreads, minIoThreads);
+            }
 
             processingStarted = true;
             await Parallel.ForEachAsync(
@@ -709,6 +723,9 @@ internal sealed partial class ImageService(
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Using configured parallelism for images: {Workers}")]
     private static partial void LogUsingConfiguredParallelism(ILogger logger, int workers);
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Encoding {Workers} images in parallel with {Threads} libvips threads each")]
+    private static partial void LogWorkerPlan(ILogger logger, int workers, int threads);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Quality changed for {Format}: {OldQuality} → {NewQuality}, regenerating all {Format} files")]
     private static partial void LogQualityChanged(ILogger logger, string format, int oldQuality, int newQuality);

@@ -31,9 +31,9 @@ namespace Spectara.Revela.Features.Generate.Services;
 /// </list>
 /// <para>
 /// Thread Safety: Each image is processed independently. LibVips is thread-safe
-/// for reading different images in parallel. We disable the libvips cache and cap the
-/// per-image libvips concurrency (see <c>EnsureNetVipsInitialized</c>) because ImageService
-/// already processes several images in parallel.
+/// for reading different images in parallel. We disable the libvips cache and set the
+/// per-image libvips concurrency (see <see cref="SetThreadsPerImage"/>) because ImageService
+/// processes several images in parallel.
 /// </para>
 /// </remarks>
 internal sealed partial class NetVipsImageProcessor(
@@ -120,20 +120,23 @@ internal sealed partial class NetVipsImageProcessor(
                 }
             });
 
-            // Thread strategy: many image-workers × a small per-image libvips concurrency.
-            // - Workers (in ImageService): CPU/2 images processed in parallel.
-            // - Concurrency (here): libvips threads PER image (also caps libaom's internal
-            //   AVIF-encoder threads, see kleisauke/net-vips#272).
-            // Benchmarks (Ryzen 16C/32T, AVIF+WebP+JPG) show libaom stops scaling past ~8
-            // threads, so a per-image concurrency of CPU/2 (=16 here) just oversubscribes:
-            // W16×C8 = 209s vs W16×C16 = 220s. We therefore cap concurrency at libaom's
-            // effective ceiling (~8) instead of scaling it with the core count. On small
-            // machines (≤8 threads) this collapses to the core count, which avoids the
-            // opposite failure — concurrency=1 starves libaom and halves throughput.
+            // Default libvips threads per image until ImageService applies its plan
+            // (SetThreadsPerImage). The scan reads one image per core with this value. libvips
+            // also passes it to libaom as the AVIF encoder's thread count
+            // (see kleisauke/net-vips#272), which stops scaling past ~8 threads.
             NetVips.NetVips.Concurrency = Math.Clamp(Environment.ProcessorCount, 1, 8);
 
             netVipsInitialized = true;
         }
+    }
+
+    /// <summary>
+    /// Sets how many libvips threads each image uses (see <see cref="ImageWorkerPlan"/>).
+    /// </summary>
+    internal static void SetThreadsPerImage(int threads)
+    {
+        EnsureNetVipsInitialized();
+        NetVips.NetVips.Concurrency = Math.Max(1, threads);
     }
 
     /// <summary>
