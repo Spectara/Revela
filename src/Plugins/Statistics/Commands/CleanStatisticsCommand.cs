@@ -3,8 +3,10 @@ using System.Globalization;
 
 using Microsoft.Extensions.Options;
 
+using Spectara.Revela.Plugins.Statistics.Services;
 using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Abstractions;
+using Spectara.Revela.Sdk.Artifacts;
 using Spectara.Revela.Sdk.Output;
 
 using Spectre.Console;
@@ -18,10 +20,6 @@ internal sealed partial class CleanStatisticsCommand(
     ILogger<CleanStatisticsCommand> logger,
     IOptions<ProjectEnvironment> projectEnvironment) : IPipelineStep
 {
-    /// <summary>Statistics JSON filename.</summary>
-    private const string StatisticsFileName = "statistics.json";
-
-    /// <summary>Gets full path to cache directory.</summary>
     private string CachePath => Path.Combine(projectEnvironment.Value.Path, ProjectPaths.Cache);
 
     // ── IPipelineStep (service-level, no UI) ──
@@ -30,28 +28,13 @@ internal sealed partial class CleanStatisticsCommand(
 
     string IPipelineStep.Name => "statistics";
 
-
     ValueTask<PipelineStepResult> IPipelineStep.ExecuteAsync(CancellationToken cancellationToken)
     {
-        cancellationToken.ThrowIfCancellationRequested();
-
-        if (!Directory.Exists(CachePath))
-        {
-            return new ValueTask<PipelineStepResult>(PipelineStepResult.Ok());
-        }
-
-        var statsFiles = Directory.GetFiles(CachePath, StatisticsFileName, SearchOption.AllDirectories);
-        foreach (var file in statsFiles)
-        {
-            try
-            { File.Delete(file); }
-            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
-            {
-                LogDeleteFailed(logger, file, ex);
-            }
-        }
-
-        return new ValueTask<PipelineStepResult>(PipelineStepResult.Ok());
+        var deletion = Delete(cancellationToken);
+        return new ValueTask<PipelineStepResult>(deletion.Failures.Count == 0
+            ? PipelineStepResult.Ok()
+            : PipelineStepResult.Fail(
+                $"Could not delete '{deletion.Failures[0].Path}': {deletion.Failures[0].Message}"));
     }
 
     // ── CLI command ──
@@ -68,71 +51,51 @@ internal sealed partial class CleanStatisticsCommand(
         return command;
     }
 
+    /// <summary>
+    /// Deletes all statistics JSON files and reports the result.
+    /// </summary>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>Exit code (0 = success, 1 = a file could not be deleted).</returns>
     public Task<int> ExecuteAsync(CancellationToken cancellationToken)
     {
-        cancellationToken.ThrowIfCancellationRequested();
-
-        // If cache doesn't exist, nothing to clean - exit silently
-        // (this is expected when running after 'clean cache' or 'clean all')
+        // A missing cache is expected after 'clean cache' or 'clean all': exit silently.
         if (!Directory.Exists(CachePath))
         {
             return Task.FromResult(0);
         }
 
-        // Find all statistics.json files in .cache
-        var statsFiles = Directory.GetFiles(CachePath, StatisticsFileName, SearchOption.AllDirectories);
+        var deletion = Delete(cancellationToken);
 
-        if (statsFiles.Length == 0)
+        foreach (var failure in deletion.Failures)
         {
-            AnsiConsole.MarkupLine("[dim]No statistics.json files found in cache[/]");
-            return Task.FromResult(0);
+            AnsiConsole.MarkupLine($"{OutputMarkers.Error} Failed to delete {Markup.Escape(failure.Path)}: {Markup.Escape(failure.Message)}");
         }
 
-        var deletedCount = 0;
-        long totalSize = 0;
-
-        foreach (var file in statsFiles)
+        if (deletion.DeletedCount > 0)
         {
-            cancellationToken.ThrowIfCancellationRequested();
-
-            try
-            {
-                var fileInfo = new FileInfo(file);
-                totalSize += fileInfo.Length;
-                File.Delete(file);
-                deletedCount++;
-                LogFileDeleted(logger, file);
-            }
-            catch (IOException ex)
-            {
-                LogDeleteFailed(logger, file, ex);
-                AnsiConsole.MarkupLine($"{OutputMarkers.Error} Failed to delete {Markup.Escape(file)}: {Markup.Escape(ex.Message)}");
-            }
-            catch (UnauthorizedAccessException ex)
-            {
-                LogDeleteFailed(logger, file, ex);
-                AnsiConsole.MarkupLine($"{OutputMarkers.Error} Access denied: {Markup.Escape(file)}");
-            }
+            AnsiConsole.MarkupLine(string.Create(
+                CultureInfo.InvariantCulture,
+                $"{OutputMarkers.Success} Deleted [cyan]{deletion.DeletedCount}[/] {StatisticsDataInvalidator.FileName} file(s) ({deletion.DeletedBytes / 1024.0:0.#} KB)"));
+        }
+        else if (deletion.Failures.Count == 0)
+        {
+            AnsiConsole.MarkupLine($"[dim]No {StatisticsDataInvalidator.FileName} files found in cache[/]");
         }
 
-        if (deletedCount > 0)
-        {
-            AnsiConsole.MarkupLine($"{OutputMarkers.Success} Deleted [cyan]{deletedCount}[/] statistics.json file(s) ({FormatSize(totalSize)})");
-        }
-
-        return Task.FromResult(0);
+        return Task.FromResult(deletion.Failures.Count == 0 ? 0 : 1);
     }
 
-    private static string FormatSize(long bytes) => bytes switch
+    private DerivedFileDeletion Delete(CancellationToken cancellationToken)
     {
-        < 1024 => string.Format(CultureInfo.InvariantCulture, "{0} B", bytes),
-        < 1024 * 1024 => string.Format(CultureInfo.InvariantCulture, "{0:0.#} KB", bytes / 1024.0),
-        _ => string.Format(CultureInfo.InvariantCulture, "{0:0.#} MB", bytes / (1024.0 * 1024.0))
-    };
+        var deletion = DerivedFiles.DeleteAll(CachePath, StatisticsDataInvalidator.FileName, cancellationToken);
+        foreach (var failure in deletion.Failures)
+        {
+            LogDeleteFailed(logger, failure.Path, failure.Message);
+        }
 
-    [LoggerMessage(Level = LogLevel.Debug, Message = "Deleted statistics file: {Path}")]
-    private static partial void LogFileDeleted(ILogger logger, string path);
+        return deletion;
+    }
 
-    [LoggerMessage(Level = LogLevel.Error, Message = "Failed to delete {Path}")]
-    private static partial void LogDeleteFailed(ILogger logger, string path, Exception exception);
+    [LoggerMessage(Level = LogLevel.Error, Message = "Failed to delete {Path}: {Reason}")]
+    private static partial void LogDeleteFailed(ILogger logger, string path, string reason);
 }

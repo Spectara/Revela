@@ -1,0 +1,65 @@
+using Microsoft.Extensions.Options;
+
+using Spectara.Revela.Plugins.Calendar;
+using Spectara.Revela.Plugins.Calendar.Services;
+using Spectara.Revela.Sdk;
+using Spectara.Revela.Sdk.Artifacts;
+using Spectara.Revela.Tests.Shared.Fixtures;
+
+namespace Spectara.Revela.Tests.Calendar;
+
+[TestClass]
+[TestCategory("Unit")]
+public sealed class CalendarDataInvalidatorTests
+{
+    [TestMethod]
+    public async Task InvalidateAsync_CalendarFilesExist_DeletesCalendarFilesOnly()
+    {
+        using var project = TestProject.CreateMinimal();
+        var pageCache = Path.Combine(project.RootPath, ProjectPaths.Cache, "availability");
+        Directory.CreateDirectory(pageCache);
+        var calendarPath = Path.Combine(pageCache, "calendar.json");
+        var unrelatedPath = Path.Combine(pageCache, "statistics.json");
+        await File.WriteAllTextAsync(calendarPath, "{}");
+        await File.WriteAllTextAsync(unrelatedPath, "{}");
+        var invalidator = CreateInvalidator(project.RootPath);
+
+        var result = await invalidator.InvalidateAsync();
+
+        Assert.IsTrue(result.Success, result.ErrorMessage);
+        Assert.AreEqual(CalendarArtifacts.Data, invalidator.Artifact);
+        CollectionAssert.AreEqual(new[] { CoreArtifacts.Manifest }, invalidator.DependsOn.ToArray());
+        Assert.IsFalse(File.Exists(calendarPath));
+        Assert.IsTrue(File.Exists(unrelatedPath));
+    }
+
+    [TestMethod]
+    public async Task InvalidateAsync_DirectoryLinkLeavesCache_PreservesExternalCalendar()
+    {
+        using var project = TestProject.CreateMinimal();
+        var cachePath = Path.Combine(project.RootPath, ProjectPaths.Cache);
+        Directory.CreateDirectory(cachePath);
+        var external = project.RootPath + "-external";
+        Directory.CreateDirectory(external);
+        var externalCalendar = Path.Combine(external, "calendar.json");
+        await File.WriteAllTextAsync(externalCalendar, "{}");
+        var link = Path.Combine(cachePath, "linked");
+        DirectoryLinkTestHelper.Create(link, external);
+
+        try
+        {
+            var result = await CreateInvalidator(project.RootPath).InvalidateAsync();
+
+            Assert.IsTrue(result.Success, result.ErrorMessage);
+            Assert.IsTrue(File.Exists(externalCalendar));
+        }
+        finally
+        {
+            DirectoryLinkTestHelper.Delete(link);
+            Directory.Delete(external, recursive: true);
+        }
+    }
+
+    private static CalendarDataInvalidator CreateInvalidator(string projectPath) =>
+        new(Options.Create(new ProjectEnvironment { Path = projectPath }));
+}

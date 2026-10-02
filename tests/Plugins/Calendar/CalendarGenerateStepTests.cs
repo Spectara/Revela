@@ -6,9 +6,12 @@ using Microsoft.Extensions.Options;
 
 using NSubstitute;
 
+using Spectara.Revela.Plugins.Calendar;
 using Spectara.Revela.Plugins.Calendar.Commands;
+using Spectara.Revela.Plugins.Calendar.Services;
 using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Abstractions;
+using Spectara.Revela.Sdk.Artifacts;
 using Spectara.Revela.Sdk.Configuration;
 using Spectara.Revela.Sdk.Models.Manifest;
 using Spectara.Revela.Sdk.Services;
@@ -144,7 +147,76 @@ public sealed class CalendarGenerateStepTests
         Assert.AreEqual(expectHint, output.Contains("revela generate pages", StringComparison.Ordinal));
     }
 
-    private static CalendarGenerateStep CreateStep(TestProject project, string? content)
+    [TestMethod]
+    [DataRow(false)]
+    [DataRow(true)]
+    public async Task ExecuteAsync_PageNoLongerInManifest_DeletesStaleCalendarJson(bool useCli)
+    {
+        using var project = TestProject.Create();
+        var step = CreateStep(project, EmptyCalendar);
+        var stalePath = WriteCalendarJson(project, "removed [page]");
+
+        await AssertSuccessfulExecutionAsync(step, useCli);
+
+        Assert.IsFalse(File.Exists(stalePath));
+        Assert.AreNotEqual(SentinelJson, await File.ReadAllTextAsync(GetCalendarJsonPath(project)));
+    }
+
+    [TestMethod]
+    [DataRow(false)]
+    [DataRow(true)]
+    public async Task ExecuteAsync_NoCalendarPages_DeletesStaleCalendarJson(bool useCli)
+    {
+        using var project = TestProject.Create();
+        var step = CreateStep(project, EmptyCalendar, withCalendarPage: false);
+
+        if (useCli)
+        {
+            var (exitCode, output) = await ExecuteCliAsync(step);
+            Assert.AreEqual(0, exitCode);
+            Assert.Contains("No calendar pages", output, StringComparison.Ordinal);
+        }
+        else
+        {
+            var result = await ((IPipelineStep)step).ExecuteAsync();
+            Assert.IsTrue(result.Success, result.ErrorMessage);
+        }
+
+        Assert.IsFalse(File.Exists(GetCalendarJsonPath(project)));
+    }
+
+    [TestMethod]
+    [DataRow(false)]
+    [DataRow(true)]
+    public async Task ExecuteAsync_DependentInvalidationFails_FailsAndPreservesCalendarJson(bool useCli)
+    {
+        using var project = TestProject.Create();
+        var lifecycle = Substitute.For<IArtifactLifecycle>();
+        lifecycle.PrepareToReplaceAsync(CalendarArtifacts.Data, Arg.Any<CancellationToken>())
+            .Returns(ArtifactInvalidationResult.Fail("dependent cleanup failed"));
+        var step = CreateStep(project, EmptyCalendar, artifactLifecycle: lifecycle);
+
+        if (useCli)
+        {
+            var (exitCode, output) = await ExecuteCliAsync(step);
+            Assert.AreEqual(1, exitCode);
+            Assert.Contains("dependent cleanup failed", output, StringComparison.Ordinal);
+        }
+        else
+        {
+            var result = await ((IPipelineStep)step).ExecuteAsync();
+            Assert.IsFalse(result.Success);
+            Assert.Contains("dependent cleanup failed", result.ErrorMessage!, StringComparison.Ordinal);
+        }
+
+        Assert.AreEqual(SentinelJson, await File.ReadAllTextAsync(GetCalendarJsonPath(project)));
+    }
+
+    private static CalendarGenerateStep CreateStep(
+        TestProject project,
+        string? content,
+        bool withCalendarPage = true,
+        IArtifactLifecycle? artifactLifecycle = null)
     {
         var pageDirectory = Path.Combine(project.SourcePath, PagePath);
         Directory.CreateDirectory(pageDirectory);
@@ -166,17 +238,37 @@ public sealed class CalendarGenerateStepTests
         {
             Text = "Availability",
             Path = PagePath,
-            DataSources = new Dictionary<string, string> { ["calendar"] = "calendar.json" }
+            DataSources = withCalendarPage
+                ? new Dictionary<string, string> { ["calendar"] = "calendar.json" }
+                : []
         });
         var pathResolver = Substitute.For<IPathResolver>();
         pathResolver.SourcePath.Returns(project.SourcePath);
 
+        if (artifactLifecycle is null)
+        {
+            artifactLifecycle = Substitute.For<IArtifactLifecycle>();
+            artifactLifecycle.PrepareToReplaceAsync(Arg.Any<ArtifactId>(), Arg.Any<CancellationToken>())
+                .Returns(ArtifactInvalidationResult.Ok());
+        }
+
+        var projectEnvironment = Options.Create(new ProjectEnvironment { Path = project.RootPath });
         return new CalendarGenerateStep(
             NullLogger<CalendarGenerateStep>.Instance,
             manifestRepository,
-            Options.Create(new ProjectEnvironment { Path = project.RootPath }),
+            projectEnvironment,
             Options.Create(new SiteCoreConfig { Language = "en" }),
-            pathResolver);
+            pathResolver,
+            artifactLifecycle,
+            new CalendarDataInvalidator(projectEnvironment));
+    }
+
+    private static string WriteCalendarJson(TestProject project, string pagePath)
+    {
+        var path = Path.Combine(project.RootPath, ProjectPaths.Cache, pagePath, "calendar.json");
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        File.WriteAllText(path, SentinelJson);
+        return path;
     }
 
     private static string GetCalendarJsonPath(TestProject project) =>

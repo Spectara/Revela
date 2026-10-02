@@ -2,7 +2,9 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
 using Spectara.Revela.Plugins.Calendar.Commands;
+using Spectara.Revela.Plugins.Calendar.Services;
 using Spectara.Revela.Sdk.Abstractions;
+using Spectara.Revela.Sdk.Artifacts;
 
 namespace Spectara.Revela.Plugins.Calendar;
 
@@ -37,6 +39,11 @@ public sealed class CalendarPlugin : IPlugin
     {
         services.TryAddTransient<CalendarGenerateStep>();
         services.TryAddTransient<CleanCalendarCommand>();
+        services.TryAddTransient<CalendarDataInvalidator>();
+
+        // calendar.json is derived from the manifest: drop it whenever the manifest changes.
+        services.TryAddEnumerable(
+            ServiceDescriptor.Transient<IArtifactInvalidator, CalendarDataInvalidator>());
 
         // Register as pipeline steps for engine orchestration
         services.TryAddEnumerable(ServiceDescriptor.Transient<IPipelineStep, CalendarGenerateStep>());
@@ -45,9 +52,10 @@ public sealed class CalendarPlugin : IPlugin
         // Register page template for 'revela create page calendar'
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IPageTemplate, CalendarPageTemplate>());
 
-        // Contribute a generate-precondition check to 'revela check' (as 'check calendar')
-        // and the 'check all' report: referenced local calendar files must be present and
-        // parseable. The host auto-wraps this ICheck — the plugin adds no command.
+        // Contribute a check to 'revela check' (as 'check calendar') and the 'check all'
+        // report: referenced local calendar files must be present and parseable. The host
+        // auto-wraps this ICheck — the plugin adds no command. It does not block generate;
+        // the generate step fails on its own when a referenced file is missing or invalid.
         services.TryAddEnumerable(ServiceDescriptor.Transient<ICheck, CalendarDataCheck>());
     }
 

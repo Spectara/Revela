@@ -3,8 +3,10 @@ using System.Globalization;
 
 using Microsoft.Extensions.Options;
 
+using Spectara.Revela.Plugins.Calendar.Services;
 using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Abstractions;
+using Spectara.Revela.Sdk.Artifacts;
 using Spectara.Revela.Sdk.Output;
 
 using Spectre.Console;
@@ -18,10 +20,6 @@ internal sealed partial class CleanCalendarCommand(
     ILogger<CleanCalendarCommand> logger,
     IOptions<ProjectEnvironment> projectEnvironment) : IPipelineStep
 {
-    /// <summary>Calendar JSON filename.</summary>
-    private const string CalendarFileName = "calendar.json";
-
-    /// <summary>Gets full path to cache directory.</summary>
     private string CachePath => Path.Combine(projectEnvironment.Value.Path, ProjectPaths.Cache);
 
     // ── IPipelineStep (service-level, no UI) ──
@@ -30,28 +28,13 @@ internal sealed partial class CleanCalendarCommand(
 
     string IPipelineStep.Name => "calendar";
 
-
     ValueTask<PipelineStepResult> IPipelineStep.ExecuteAsync(CancellationToken cancellationToken)
     {
-        cancellationToken.ThrowIfCancellationRequested();
-
-        if (!Directory.Exists(CachePath))
-        {
-            return new ValueTask<PipelineStepResult>(PipelineStepResult.Ok());
-        }
-
-        var calendarFiles = Directory.GetFiles(CachePath, CalendarFileName, SearchOption.AllDirectories);
-        foreach (var file in calendarFiles)
-        {
-            try
-            { File.Delete(file); }
-            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
-            {
-                LogDeleteFailed(logger, file, ex);
-            }
-        }
-
-        return new ValueTask<PipelineStepResult>(PipelineStepResult.Ok());
+        var deletion = Delete(cancellationToken);
+        return new ValueTask<PipelineStepResult>(deletion.Failures.Count == 0
+            ? PipelineStepResult.Ok()
+            : PipelineStepResult.Fail(
+                $"Could not delete '{deletion.Failures[0].Path}': {deletion.Failures[0].Message}"));
     }
 
     // ── CLI command ──
@@ -68,69 +51,51 @@ internal sealed partial class CleanCalendarCommand(
         return command;
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// Deletes all calendar JSON files and reports the result.
+    /// </summary>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>Exit code (0 = success, 1 = a file could not be deleted).</returns>
     public Task<int> ExecuteAsync(CancellationToken cancellationToken)
     {
-        cancellationToken.ThrowIfCancellationRequested();
-
+        // A missing cache is expected after 'clean cache' or 'clean all': exit silently.
         if (!Directory.Exists(CachePath))
         {
             return Task.FromResult(0);
         }
 
-        var calendarFiles = Directory.GetFiles(CachePath, CalendarFileName, SearchOption.AllDirectories);
+        var deletion = Delete(cancellationToken);
 
-        if (calendarFiles.Length == 0)
+        foreach (var failure in deletion.Failures)
         {
-            AnsiConsole.MarkupLine("[dim]No calendar.json files found in cache[/]");
-            return Task.FromResult(0);
+            AnsiConsole.MarkupLine($"{OutputMarkers.Error} Failed to delete {Markup.Escape(failure.Path)}: {Markup.Escape(failure.Message)}");
         }
 
-        var deletedCount = 0;
-        long totalSize = 0;
-
-        foreach (var file in calendarFiles)
+        if (deletion.DeletedCount > 0)
         {
-            cancellationToken.ThrowIfCancellationRequested();
-
-            try
-            {
-                var fileInfo = new FileInfo(file);
-                totalSize += fileInfo.Length;
-                File.Delete(file);
-                deletedCount++;
-                LogFileDeleted(logger, file);
-            }
-            catch (IOException ex)
-            {
-                LogDeleteFailed(logger, file, ex);
-                AnsiConsole.MarkupLine($"{OutputMarkers.Error} Failed to delete {file}: {ex.Message}");
-            }
-            catch (UnauthorizedAccessException ex)
-            {
-                LogDeleteFailed(logger, file, ex);
-                AnsiConsole.MarkupLine($"{OutputMarkers.Error} Access denied: {file}");
-            }
+            AnsiConsole.MarkupLine(string.Create(
+                CultureInfo.InvariantCulture,
+                $"{OutputMarkers.Success} Deleted [cyan]{deletion.DeletedCount}[/] {CalendarDataInvalidator.FileName} file(s) ({deletion.DeletedBytes / 1024.0:0.#} KB)"));
+        }
+        else if (deletion.Failures.Count == 0)
+        {
+            AnsiConsole.MarkupLine($"[dim]No {CalendarDataInvalidator.FileName} files found in cache[/]");
         }
 
-        if (deletedCount > 0)
-        {
-            AnsiConsole.MarkupLine($"{OutputMarkers.Success} Deleted [cyan]{deletedCount}[/] calendar.json file(s) ({FormatSize(totalSize)})");
-        }
-
-        return Task.FromResult(0);
+        return Task.FromResult(deletion.Failures.Count == 0 ? 0 : 1);
     }
 
-    private static string FormatSize(long bytes) => bytes switch
+    private DerivedFileDeletion Delete(CancellationToken cancellationToken)
     {
-        < 1024 => string.Format(CultureInfo.InvariantCulture, "{0} B", bytes),
-        < 1024 * 1024 => string.Format(CultureInfo.InvariantCulture, "{0:0.#} KB", bytes / 1024.0),
-        _ => string.Format(CultureInfo.InvariantCulture, "{0:0.#} MB", bytes / (1024.0 * 1024.0)),
-    };
+        var deletion = DerivedFiles.DeleteAll(CachePath, CalendarDataInvalidator.FileName, cancellationToken);
+        foreach (var failure in deletion.Failures)
+        {
+            LogDeleteFailed(logger, failure.Path, failure.Message);
+        }
 
-    [LoggerMessage(Level = LogLevel.Debug, Message = "Deleted calendar file: {Path}")]
-    private static partial void LogFileDeleted(ILogger logger, string path);
+        return deletion;
+    }
 
-    [LoggerMessage(Level = LogLevel.Error, Message = "Failed to delete {Path}")]
-    private static partial void LogDeleteFailed(ILogger logger, string path, Exception exception);
+    [LoggerMessage(Level = LogLevel.Error, Message = "Failed to delete {Path}: {Reason}")]
+    private static partial void LogDeleteFailed(ILogger logger, string path, string reason);
 }
