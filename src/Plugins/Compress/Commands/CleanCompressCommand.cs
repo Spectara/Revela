@@ -1,6 +1,8 @@
 using System.CommandLine;
 using System.Globalization;
 
+using Microsoft.Extensions.Options;
+
 using Spectara.Revela.Plugins.Compress.Services;
 using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Abstractions;
@@ -16,7 +18,8 @@ namespace Spectara.Revela.Plugins.Compress.Commands;
 /// </summary>
 internal sealed partial class CleanCompressCommand(
     ILogger<CleanCompressCommand> logger,
-    IPathResolver pathResolver) : IPipelineStep
+    IPathResolver pathResolver,
+    IOptions<ProjectEnvironment> projectEnvironment) : IPipelineStep
 {
     // ── IPipelineStep (service-level, no UI) ──
 
@@ -32,7 +35,7 @@ internal sealed partial class CleanCompressCommand(
         var outputPath = pathResolver.OutputPath;
         try
         {
-            using var ownership = await CompressedSiteOwnership.OpenAsync(outputPath, cancellationToken);
+            using var ownership = await CompressedSiteOwnership.OpenAsync(outputPath, StateDirectory, cancellationToken);
             await ownership.CleanAsync(cancellationToken);
             return OperationResult.Ok();
         }
@@ -42,6 +45,8 @@ internal sealed partial class CleanCompressCommand(
             return OperationResult.Fail($"Could not clean compressed files: {exception.Message}");
         }
     }
+
+    private string StateDirectory => Path.Combine(projectEnvironment.Value.Path, ProjectPaths.State);
 
     // ── CLI command ──
 
@@ -73,7 +78,7 @@ internal sealed partial class CleanCompressCommand(
         CompressionStats stats;
         try
         {
-            using var ownership = await CompressedSiteOwnership.OpenAsync(outputPath, cancellationToken);
+            using var ownership = await CompressedSiteOwnership.OpenAsync(outputPath, StateDirectory, cancellationToken);
             stats = await ownership.CleanAsync(cancellationToken);
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)

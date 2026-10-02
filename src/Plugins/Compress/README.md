@@ -42,10 +42,16 @@ revela clean all
 
 ### Ownership and Conflicts
 
-The output-local `.revela-compress.manifest` records sidecars created by this
-plugin. Keep it with your local generated output: `clean cache` does not remove
-it. Compression cleanup removes tracked sidecars even when their source files
+The ownership record `.revela/state/compress.json` (in the project, not in the
+output, so it is never published) lists the sidecars created by this plugin.
+`clean cache` keeps it; `clean output` removes it together with the output.
+Compression cleanup removes tracked sidecars even when their source files
 have disappeared, but preserves independent gzip/Brotli downloads.
+
+Sites compressed by earlier versions kept the record in the output as
+`.revela-compress.manifest`. The next `compress` or `clean compress` moves it
+to `.revela/state/compress.json` and deletes it from the output, so the existing
+sidecars stay owned. If both files exist, the one in `.revela/state` wins.
 
 An existing untracked destination, a changed tracked file, or an invalid
 ownership record causes an explicit failure instead of overwriting or deleting

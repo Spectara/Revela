@@ -2,12 +2,24 @@ using System.Globalization;
 using System.Security.Cryptography;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Spectara.Revela.Sdk;
 
 namespace Spectara.Revela.Plugins.Compress.Services;
 
+/// <summary>
+/// Records which <c>.gz</c>/<c>.br</c> sidecars in the output were created by this plugin, so
+/// only those are ever replaced or deleted.
+/// </summary>
+/// <remarks>
+/// The record lives in <c>.revela/state/compress.json</c> (<see cref="ProjectPaths.State"/>), not
+/// in the output, so it is never published. A record left in the output by earlier versions
+/// (<c>.revela-compress.manifest</c>) is moved there on open; without it, the sidecars it lists
+/// would count as unowned and compression would refuse to run.
+/// </remarks>
 internal sealed partial class CompressedSiteOwnership : IDisposable
 {
-    private const string ManifestName = ".revela-compress.manifest";
+    private const string RecordFileName = "compress.json";
+    private const string LegacyRecordName = ".revela-compress.manifest";
     private const string Owner = "Spectara.Revela.Plugins.Compress";
     private static readonly SemaphoreSlim OperationGate = new(1, 1);
     private static readonly OwnershipJsonContext JsonContext = new(new JsonSerializerOptions
@@ -18,33 +30,38 @@ internal sealed partial class CompressedSiteOwnership : IDisposable
     });
     private readonly SemaphoreSlim mutationGate = new(1, 1);
     private readonly string root;
+    private readonly string recordPath;
     private Manifest manifest = new() { Owner = Owner, Version = 1, Files = [] };
     private byte[]? savedManifest;
 
-    private CompressedSiteOwnership(string outputPath) => root = Path.GetFullPath(outputPath);
+    private CompressedSiteOwnership(string outputPath, string stateDirectory)
+    {
+        root = Path.GetFullPath(outputPath);
+        recordPath = Path.Combine(Path.GetFullPath(stateDirectory), RecordFileName);
+    }
 
+    /// <summary>
+    /// Opens the ownership record of an output directory.
+    /// </summary>
+    /// <param name="outputPath">The output directory holding the sidecars.</param>
+    /// <param name="stateDirectory">The project's state directory (<see cref="ProjectPaths.State"/>).</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
     public static async Task<CompressedSiteOwnership> OpenAsync(
         string outputPath,
+        string stateDirectory,
         CancellationToken cancellationToken = default)
     {
-        var ownership = new CompressedSiteOwnership(outputPath);
+        var ownership = new CompressedSiteOwnership(outputPath, stateDirectory);
         await OperationGate.WaitAsync(cancellationToken);
         try
         {
-            var manifestPath = ownership.SafePath(ManifestName);
-            if (File.Exists(manifestPath))
+            await ownership.CarryOverLegacyRecordAsync(cancellationToken);
+
+            var path = ownership.RecordPath();
+            if (File.Exists(path))
             {
-                ownership.savedManifest = await File.ReadAllBytesAsync(manifestPath, cancellationToken);
-                try
-                {
-                    ownership.manifest = JsonSerializer.Deserialize(
-                        ownership.savedManifest, JsonContext.Manifest)
-                        ?? throw new IOException("Invalid compression ownership manifest.");
-                }
-                catch (JsonException exception)
-                {
-                    throw new IOException("Invalid compression ownership manifest.", exception);
-                }
+                ownership.savedManifest = await File.ReadAllBytesAsync(path, cancellationToken);
+                ownership.manifest = Parse(ownership.savedManifest);
             }
 
             ownership.Validate();
@@ -163,7 +180,7 @@ internal sealed partial class CompressedSiteOwnership : IDisposable
         {
             if (created)
             {
-                DeleteTemporaryFile(temporaryPath, primaryException, "Publish staging cleanup");
+                DeleteTemporaryFile(() => SafePath(temporaryPath), primaryException, "Publish staging cleanup");
             }
         }
     }
@@ -172,6 +189,61 @@ internal sealed partial class CompressedSiteOwnership : IDisposable
     {
         mutationGate.Dispose();
         OperationGate.Release();
+    }
+
+    private static Manifest Parse(byte[] bytes)
+    {
+        try
+        {
+            return JsonSerializer.Deserialize(bytes, JsonContext.Manifest)
+                ?? throw new IOException("Invalid compression ownership manifest.");
+        }
+        catch (JsonException exception)
+        {
+            throw new IOException("Invalid compression ownership manifest.", exception);
+        }
+    }
+
+    /// <summary>
+    /// Moves a record that earlier versions kept in the output to the state directory.
+    /// </summary>
+    /// <remarks>
+    /// An invalid legacy record fails the open and stays in place, like an invalid current
+    /// record. When a current record already exists, it wins and the legacy file is removed.
+    /// </remarks>
+    private async Task CarryOverLegacyRecordAsync(CancellationToken cancellationToken)
+    {
+        var legacyPath = SafePath(LegacyRecordName);
+        if (!File.Exists(legacyPath))
+        {
+            return;
+        }
+
+        if (!File.Exists(RecordPath()))
+        {
+            var bytes = await File.ReadAllBytesAsync(legacyPath, cancellationToken);
+            manifest = Parse(bytes);
+            Validate();
+            await WriteRecordAsync(bytes, overwrite: false, cancellationToken);
+        }
+
+        cancellationToken.ThrowIfCancellationRequested();
+        File.Delete(legacyPath);
+    }
+
+    private string RecordPath()
+    {
+        try
+        {
+            if ((File.GetAttributes(recordPath) & (FileAttributes.ReparsePoint | FileAttributes.Directory)) != 0)
+            {
+                throw new IOException("Compression ownership record is linked or is not a file.");
+            }
+        }
+        catch (FileNotFoundException) { }
+        catch (DirectoryNotFoundException) { }
+
+        return recordPath;
     }
 
     private void Validate()
@@ -282,7 +354,7 @@ internal sealed partial class CompressedSiteOwnership : IDisposable
 
     private async Task EnsureManifestUnchangedAsync(CancellationToken cancellationToken)
     {
-        var path = SafePath(ManifestName);
+        var path = RecordPath();
         if (savedManifest is null)
         {
             if (File.Exists(path))
@@ -299,22 +371,29 @@ internal sealed partial class CompressedSiteOwnership : IDisposable
     private async Task SaveAsync(Manifest replacement, CancellationToken cancellationToken)
     {
         var bytes = JsonSerializer.SerializeToUtf8Bytes(replacement, JsonContext.Manifest);
-        var temporaryPath = ManifestName + "." + Guid.NewGuid().ToString("N") + ".tmp";
+        await EnsureManifestUnchangedAsync(cancellationToken);
+        await WriteRecordAsync(bytes, overwrite: savedManifest is not null, cancellationToken);
+        savedManifest = bytes;
+        manifest = replacement;
+    }
+
+    private async Task WriteRecordAsync(byte[] bytes, bool overwrite, CancellationToken cancellationToken)
+    {
+        var path = RecordPath();
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        var temporaryPath = path + "." + Guid.NewGuid().ToString("N") + ".tmp";
         var created = false;
         Exception? primaryException = null;
         try
         {
-            await using (var stream = new FileStream(SafePath(temporaryPath), FileMode.CreateNew, FileAccess.Write, FileShare.None))
+            await using (var stream = new FileStream(temporaryPath, FileMode.CreateNew, FileAccess.Write, FileShare.None))
             {
                 created = true;
                 await stream.WriteAsync(bytes, cancellationToken);
                 await stream.FlushAsync(cancellationToken);
             }
-            await EnsureManifestUnchangedAsync(cancellationToken);
             cancellationToken.ThrowIfCancellationRequested();
-            File.Move(SafePath(temporaryPath), SafePath(ManifestName), overwrite: savedManifest is not null);
-            savedManifest = bytes;
-            manifest = replacement;
+            File.Move(temporaryPath, RecordPath(), overwrite);
         }
         catch (Exception exception)
         {
@@ -325,16 +404,16 @@ internal sealed partial class CompressedSiteOwnership : IDisposable
         {
             if (created)
             {
-                DeleteTemporaryFile(temporaryPath, primaryException, "Manifest staging cleanup");
+                DeleteTemporaryFile(() => temporaryPath, primaryException, "Manifest staging cleanup");
             }
         }
     }
 
-    private void DeleteTemporaryFile(string relativePath, Exception? primaryException, string operation)
+    private static void DeleteTemporaryFile(Func<string> resolvePath, Exception? primaryException, string operation)
     {
         try
         {
-            File.Delete(SafePath(relativePath));
+            File.Delete(resolvePath());
         }
         catch (Exception cleanupException) when (primaryException is not null)
         {

@@ -39,7 +39,7 @@ public sealed class CompressionServiceTests
         await File.WriteAllTextAsync(htmlPath, htmlContent);
 
         // Act
-        var stats = await service.CompressDirectoryAsync(testDirectory);
+        var stats = await service.CompressDirectoryAsync(testDirectory, project.StateDirectory());
 
         // Assert
         Assert.AreEqual(1, stats.TotalFiles);
@@ -61,7 +61,7 @@ public sealed class CompressionServiceTests
         await File.WriteAllTextAsync(cssPath, cssContent);
 
         // Act
-        var stats = await service.CompressDirectoryAsync(testDirectory);
+        var stats = await service.CompressDirectoryAsync(testDirectory, project.StateDirectory());
 
         // Assert
         Assert.AreEqual(1, stats.TotalFiles);
@@ -78,7 +78,7 @@ public sealed class CompressionServiceTests
         await File.WriteAllTextAsync(jsPath, jsContent);
 
         // Act
-        var stats = await service.CompressDirectoryAsync(testDirectory);
+        var stats = await service.CompressDirectoryAsync(testDirectory, project.StateDirectory());
 
         // Assert
         Assert.AreEqual(1, stats.TotalFiles);
@@ -95,7 +95,7 @@ public sealed class CompressionServiceTests
         await File.WriteAllTextAsync(jsonPath, jsonContent);
 
         // Act
-        var stats = await service.CompressDirectoryAsync(testDirectory);
+        var stats = await service.CompressDirectoryAsync(testDirectory, project.StateDirectory());
 
         // Assert
         Assert.AreEqual(1, stats.TotalFiles);
@@ -112,7 +112,7 @@ public sealed class CompressionServiceTests
         await File.WriteAllTextAsync(svgPath, svgContent);
 
         // Act
-        var stats = await service.CompressDirectoryAsync(testDirectory);
+        var stats = await service.CompressDirectoryAsync(testDirectory, project.StateDirectory());
 
         // Assert
         Assert.AreEqual(1, stats.TotalFiles);
@@ -130,7 +130,7 @@ public sealed class CompressionServiceTests
         await File.WriteAllTextAsync(xmlPath, xmlContent);
 
         // Act
-        var stats = await service.CompressDirectoryAsync(testDirectory);
+        var stats = await service.CompressDirectoryAsync(testDirectory, project.StateDirectory());
 
         // Assert
         Assert.AreEqual(1, stats.TotalFiles);
@@ -145,11 +145,11 @@ public sealed class CompressionServiceTests
         var smallContent = "<html></html>";
         var smallPath = Path.Combine(testDirectory, "small.html");
         await File.WriteAllTextAsync(smallPath, new string('x', 512));
-        await service.CompressDirectoryAsync(testDirectory);
+        await service.CompressDirectoryAsync(testDirectory, project.StateDirectory());
         await File.WriteAllTextAsync(smallPath, smallContent);
 
         // Act
-        var stats = await service.CompressDirectoryAsync(testDirectory);
+        var stats = await service.CompressDirectoryAsync(testDirectory, project.StateDirectory());
 
         // Assert
         Assert.AreEqual(0, stats.TotalFiles);
@@ -173,7 +173,7 @@ public sealed class CompressionServiceTests
 
         try
         {
-            var stats = await service.CompressDirectoryAsync(testDirectory);
+            var stats = await service.CompressDirectoryAsync(testDirectory, project.StateDirectory());
 
             Assert.AreEqual(0, stats.TotalFiles);
             Assert.IsTrue(File.Exists(externalFile + ".gz"));
@@ -196,7 +196,7 @@ public sealed class CompressionServiceTests
         await File.WriteAllBytesAsync(pngPath, new byte[1000]);
 
         // Act
-        var stats = await service.CompressDirectoryAsync(testDirectory);
+        var stats = await service.CompressDirectoryAsync(testDirectory, project.StateDirectory());
 
         // Assert
         Assert.AreEqual(0, stats.TotalFiles);
@@ -216,7 +216,7 @@ public sealed class CompressionServiceTests
         await File.WriteAllTextAsync(Path.Combine(subDir, "about.html"), htmlContent);
 
         // Act
-        var stats = await service.CompressDirectoryAsync(testDirectory);
+        var stats = await service.CompressDirectoryAsync(testDirectory, project.StateDirectory());
 
         // Assert
         Assert.AreEqual(2, stats.TotalFiles);
@@ -234,7 +234,7 @@ public sealed class CompressionServiceTests
         await File.WriteAllTextAsync(Path.Combine(testDirectory, "style.css"), cssContent);
 
         // Act
-        var stats = await service.CompressDirectoryAsync(testDirectory);
+        var stats = await service.CompressDirectoryAsync(testDirectory, project.StateDirectory());
 
         // Assert
         Assert.AreEqual(2, stats.TotalFiles);
@@ -255,7 +255,7 @@ public sealed class CompressionServiceTests
         await File.WriteAllTextAsync(Path.Combine(testDirectory, "index.html"), htmlContent);
 
         // Act
-        var stats = await service.CompressDirectoryAsync(testDirectory);
+        var stats = await service.CompressDirectoryAsync(testDirectory, project.StateDirectory());
 
         // Assert - Brotli should typically achieve better compression
         Assert.IsLessThanOrEqualTo(
@@ -268,7 +268,7 @@ public sealed class CompressionServiceTests
     public async Task CompressDirectoryAsync_EmptyDirectory_ReturnsZeroStats()
     {
         // Act
-        var stats = await service.CompressDirectoryAsync(testDirectory);
+        var stats = await service.CompressDirectoryAsync(testDirectory, project.StateDirectory());
 
         // Assert
         Assert.AreEqual(0, stats.TotalFiles);
@@ -284,7 +284,7 @@ public sealed class CompressionServiceTests
         await File.WriteAllTextAsync(htmlPath, originalContent);
 
         // Act
-        await service.CompressDirectoryAsync(testDirectory);
+        await service.CompressDirectoryAsync(testDirectory, project.StateDirectory());
 
         // Assert - verify gzip can be decompressed to original
         await using var gzipStream = new GZipStream(
@@ -305,7 +305,7 @@ public sealed class CompressionServiceTests
         await File.WriteAllTextAsync(htmlPath, originalContent);
 
         // Act
-        await service.CompressDirectoryAsync(testDirectory);
+        await service.CompressDirectoryAsync(testDirectory, project.StateDirectory());
 
         // Assert - verify brotli can be decompressed to original
         await using var brotliStream = new BrotliStream(
@@ -336,10 +336,10 @@ public sealed class CompressionServiceTests
         }
         var bytes = await File.ReadAllBytesAsync(destination);
 
-        await Assert.ThrowsExactlyAsync<IOException>(() => service.CompressDirectoryAsync(testDirectory));
+        await Assert.ThrowsExactlyAsync<IOException>(() => service.CompressDirectoryAsync(testDirectory, project.StateDirectory()));
 
         CollectionAssert.AreEqual(bytes, await File.ReadAllBytesAsync(destination));
-        var manifestPath = Path.Combine(testDirectory, ".revela-compress.manifest");
+        var manifestPath = project.OwnershipRecord();
         if (File.Exists(manifestPath))
         {
             var manifest = JsonNode.Parse(await File.ReadAllTextAsync(manifestPath))!;
@@ -356,17 +356,17 @@ public sealed class CompressionServiceTests
     {
         var original = Path.Combine(testDirectory, "index.html");
         await File.WriteAllTextAsync(original, new string('x', 512));
-        await service.CompressDirectoryAsync(testDirectory);
+        await service.CompressDirectoryAsync(testDirectory, project.StateDirectory());
         var replacement = await File.ReadAllBytesAsync(original + suffix);
         replacement[0] ^= 0xff;
         await File.WriteAllBytesAsync(original + suffix, replacement);
         await File.WriteAllTextAsync(original, new string('y', sourceLength));
 
         var recreated = new CompressionService(NullLogger<CompressionService>.Instance);
-        await Assert.ThrowsExactlyAsync<IOException>(() => recreated.CompressDirectoryAsync(testDirectory));
+        await Assert.ThrowsExactlyAsync<IOException>(() => recreated.CompressDirectoryAsync(testDirectory, project.StateDirectory()));
 
         CollectionAssert.AreEqual(replacement, await File.ReadAllBytesAsync(original + suffix));
-        var manifest = JsonNode.Parse(await File.ReadAllTextAsync(Path.Combine(testDirectory, ".revela-compress.manifest")))!;
+        var manifest = JsonNode.Parse(await File.ReadAllTextAsync(project.OwnershipRecord()))!;
         Assert.IsTrue(manifest["files"]!.AsArray().Any(entry => entry!["path"]!.GetValue<string>() == "index.html" + suffix));
     }
 
@@ -375,17 +375,17 @@ public sealed class CompressionServiceTests
     {
         var original = Path.Combine(testDirectory, "index.html");
         await File.WriteAllTextAsync(original, new string('x', 512));
-        await service.CompressDirectoryAsync(testDirectory);
+        await service.CompressDirectoryAsync(testDirectory, project.StateDirectory());
         var replacement = new string('y', 768);
         await File.WriteAllTextAsync(original, replacement);
 
-        var stats = await new CompressionService(NullLogger<CompressionService>.Instance).CompressDirectoryAsync(testDirectory);
+        var stats = await new CompressionService(NullLogger<CompressionService>.Instance).CompressDirectoryAsync(testDirectory, project.StateDirectory());
 
         Assert.AreEqual(1, stats.TotalFiles);
         await using var gzip = new GZipStream(File.OpenRead(original + ".gz"), CompressionMode.Decompress);
         using var reader = new StreamReader(gzip);
         Assert.AreEqual(replacement, await reader.ReadToEndAsync());
-        var manifestPath = Path.Combine(testDirectory, ".revela-compress.manifest");
+        var manifestPath = project.OwnershipRecord();
         var manifest = JsonNode.Parse(await File.ReadAllTextAsync(manifestPath))!;
         Assert.AreEqual("Spectara.Revela.Plugins.Compress", manifest["owner"]!.GetValue<string>());
         Assert.AreEqual(1, manifest["version"]!.GetValue<int>());
@@ -406,13 +406,13 @@ public sealed class CompressionServiceTests
         if (existing)
         {
             await File.WriteAllTextAsync(original, new string('x', 512));
-            await service.CompressDirectoryAsync(testDirectory);
+            await service.CompressDirectoryAsync(testDirectory, project.StateDirectory());
         }
         var before = existing ? await File.ReadAllBytesAsync(destination) : [];
-        var manifestPath = Path.Combine(testDirectory, ".revela-compress.manifest");
+        var manifestPath = project.OwnershipRecord();
         var manifestBefore = existing ? await File.ReadAllBytesAsync(manifestPath) : [];
         using var cancellation = new CancellationTokenSource();
-        using var ownership = await CompressedSiteOwnership.OpenAsync(testDirectory);
+        using var ownership = await CompressedSiteOwnership.OpenAsync(testDirectory, project.StateDirectory());
         var staged = false;
 
         await Assert.ThrowsAsync<OperationCanceledException>(() => ownership.PublishAsync(destination, async (stream, token) =>
@@ -445,11 +445,11 @@ public sealed class CompressionServiceTests
     {
         var original = Path.Combine(testDirectory, "index.html");
         await File.WriteAllTextAsync(original, new string('x', 512));
-        await service.CompressDirectoryAsync(testDirectory);
+        await service.CompressDirectoryAsync(testDirectory, project.StateDirectory());
         var before = await File.ReadAllBytesAsync(original + ".gz");
-        var manifestPath = Path.Combine(testDirectory, ".revela-compress.manifest");
+        var manifestPath = project.OwnershipRecord();
         var manifestBefore = await File.ReadAllBytesAsync(manifestPath);
-        using var ownership = await CompressedSiteOwnership.OpenAsync(testDirectory);
+        using var ownership = await CompressedSiteOwnership.OpenAsync(testDirectory, project.StateDirectory());
 
         await Assert.ThrowsExactlyAsync<IOException>(() => ownership.PublishAsync(original + ".gz", async (stream, token) =>
         {
@@ -476,10 +476,10 @@ public sealed class CompressionServiceTests
 
         var original = Path.Combine(testDirectory, "index.html");
         await File.WriteAllTextAsync(original, new string('x', 512));
-        await service.CompressDirectoryAsync(testDirectory);
+        await service.CompressDirectoryAsync(testDirectory, project.StateDirectory());
         var gzipBefore = await File.ReadAllBytesAsync(original + ".gz");
         var brotliBefore = await File.ReadAllBytesAsync(original + ".br");
-        var manifestPath = Path.Combine(testDirectory, ".revela-compress.manifest");
+        var manifestPath = project.OwnershipRecord();
         var manifestBefore = await File.ReadAllBytesAsync(manifestPath);
         using var cancellation = new CancellationTokenSource();
         var primary = cancel
@@ -489,7 +489,7 @@ public sealed class CompressionServiceTests
 
         try
         {
-            using (var ownership = await CompressedSiteOwnership.OpenAsync(testDirectory))
+            using (var ownership = await CompressedSiteOwnership.OpenAsync(testDirectory, project.StateDirectory()))
             {
                 var actual = await Assert.ThrowsAsync<Exception>(() => ownership.PublishAsync(original + suffix, async (stream, token) =>
                 {
@@ -527,7 +527,7 @@ public sealed class CompressionServiceTests
             }
 
             using var recoveryCancellation = new CancellationTokenSource(TimeSpan.FromSeconds(10));
-            using var recreated = await CompressedSiteOwnership.OpenAsync(testDirectory, recoveryCancellation.Token);
+            using var recreated = await CompressedSiteOwnership.OpenAsync(testDirectory, project.StateDirectory(), recoveryCancellation.Token);
             var cleaned = await recreated.CleanAsync(recoveryCancellation.Token);
             Assert.AreEqual(2, cleaned.Gzip.FileCount);
             Assert.AreEqual(1, cleaned.Brotli.FileCount);
@@ -552,10 +552,10 @@ public sealed class CompressionServiceTests
         }
         var original = Path.Combine(testDirectory, "index.html");
         await File.WriteAllTextAsync(original, new string('x', 512));
-        await service.CompressDirectoryAsync(testDirectory);
-        var manifestPath = Path.Combine(testDirectory, ".revela-compress.manifest");
+        await service.CompressDirectoryAsync(testDirectory, project.StateDirectory());
+        var manifestPath = project.OwnershipRecord();
         var before = await File.ReadAllBytesAsync(manifestPath);
-        using (var ownership = await CompressedSiteOwnership.OpenAsync(testDirectory))
+        using (var ownership = await CompressedSiteOwnership.OpenAsync(testDirectory, project.StateDirectory()))
         await using (var locked = new FileStream(manifestPath, FileMode.Open, FileAccess.Read, FileShare.Read))
         {
             await Assert.ThrowsExactlyAsync<UnauthorizedAccessException>(() => ownership.PublishAsync(
@@ -567,7 +567,7 @@ public sealed class CompressionServiceTests
         Assert.IsTrue(File.Exists(original + ".gz"));
         CollectionAssert.AreEqual(before, await File.ReadAllBytesAsync(manifestPath));
         Assert.IsEmpty(Directory.GetFiles(testDirectory, "*.tmp"));
-        using var recreated = await CompressedSiteOwnership.OpenAsync(testDirectory);
+        using var recreated = await CompressedSiteOwnership.OpenAsync(testDirectory, project.StateDirectory());
         var cleaned = await recreated.CleanAsync();
         Assert.AreEqual(1, cleaned.Gzip.FileCount);
         Assert.AreEqual(1, cleaned.Brotli.FileCount);

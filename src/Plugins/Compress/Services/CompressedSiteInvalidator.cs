@@ -1,10 +1,14 @@
+using Microsoft.Extensions.Options;
+using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Abstractions;
 using Spectara.Revela.Sdk.Artifacts;
 using Spectara.Revela.Sdk.Services;
 
 namespace Spectara.Revela.Plugins.Compress.Services;
 
-internal sealed class CompressedSiteInvalidator(IPathResolver pathResolver) : IArtifactInvalidator
+internal sealed class CompressedSiteInvalidator(
+    IPathResolver pathResolver,
+    IOptions<ProjectEnvironment> projectEnvironment) : IArtifactInvalidator
 {
     public ArtifactId Artifact => CompressArtifacts.PrecompressedSite;
 
@@ -22,7 +26,8 @@ internal sealed class CompressedSiteInvalidator(IPathResolver pathResolver) : IA
 
         try
         {
-            using var ownership = await CompressedSiteOwnership.OpenAsync(outputPath, cancellationToken);
+            var stateDirectory = Path.Combine(projectEnvironment.Value.Path, ProjectPaths.State);
+            using var ownership = await CompressedSiteOwnership.OpenAsync(outputPath, stateDirectory, cancellationToken);
             await ownership.CleanAsync(cancellationToken);
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)

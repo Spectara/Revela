@@ -24,7 +24,7 @@ public sealed class CompressCommandTests : IDisposable
         var originalPath = Path.Combine(TestDirectory, "index.html");
         var sidecarPath = originalPath + ".br";
         await File.WriteAllTextAsync(originalPath, new string('x', 512));
-        await new CompressionService(NullLogger<CompressionService>.Instance).CompressDirectoryAsync(TestDirectory);
+        await new CompressionService(NullLogger<CompressionService>.Instance).CompressDirectoryAsync(TestDirectory, project.StateDirectory());
         var command = CreateCommand(new FailingArtifactLifecycle());
 
         var exitCode = await command.ExecuteAsync();
@@ -41,7 +41,7 @@ public sealed class CompressCommandTests : IDisposable
         var orphanedSidecarPath = removedPath + ".gz";
         var currentPath = Path.Combine(TestDirectory, "index.html");
         await File.WriteAllTextAsync(removedPath, new string('x', 512));
-        await new CompressionService(NullLogger<CompressionService>.Instance).CompressDirectoryAsync(TestDirectory);
+        await new CompressionService(NullLogger<CompressionService>.Instance).CompressDirectoryAsync(TestDirectory, project.StateDirectory());
         File.Delete(removedPath);
         var gzipDownload = Path.Combine(TestDirectory, "download.gz");
         var brotliDownload = Path.Combine(TestDirectory, "download.br");
@@ -87,7 +87,7 @@ public sealed class CompressCommandTests : IDisposable
         Directory.CreateDirectory(other.OutputPath);
         var original = Path.Combine(TestDirectory, "index.html");
         await File.WriteAllTextAsync(original, new string('x', 512));
-        await new CompressionService(NullLogger<CompressionService>.Instance).CompressDirectoryAsync(TestDirectory);
+        await new CompressionService(NullLogger<CompressionService>.Instance).CompressDirectoryAsync(TestDirectory, project.StateDirectory());
         var oldSidecar = await File.ReadAllBytesAsync(original + ".gz");
         var untouched = Path.Combine(other.OutputPath, "download.gz");
         await File.WriteAllTextAsync(untouched, "other root");
@@ -103,6 +103,7 @@ public sealed class CompressCommandTests : IDisposable
         var command = new CompressCommand(
             NullLogger<CompressCommand>.Instance,
             resolver,
+            project.Environment(),
             new CompressionService(NullLogger<CompressionService>.Instance),
             lifecycle,
             Substitute.For<IConsoleCapabilities>());
@@ -126,6 +127,7 @@ public sealed class CompressCommandTests : IDisposable
         return new CompressCommand(
             NullLogger<CompressCommand>.Instance,
             pathResolver,
+            project.Environment(),
             new CompressionService(NullLogger<CompressionService>.Instance),
             artifactLifecycle,
             Substitute.For<IConsoleCapabilities>());
