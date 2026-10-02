@@ -2,7 +2,9 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
 using Spectara.Revela.Plugins.Calendar.Commands;
+using Spectara.Revela.Plugins.Calendar.Services;
 using Spectara.Revela.Sdk.Abstractions;
+using Spectara.Revela.Sdk.Artifacts;
 
 namespace Spectara.Revela.Plugins.Calendar;
 
@@ -16,12 +18,18 @@ namespace Spectara.Revela.Plugins.Calendar;
 /// </remarks>
 public sealed class CalendarPlugin : IPlugin
 {
+    // Calendar data is read by page rendering: run after scan, before pages and statistics.
+    private const int GenerateOrder = PipelineOrder.Scan + 50;
+
+    // Plugin data is removed after the host's cache clean, after statistics.
+    private const int CleanOrder = CleanPipelineOrder.Cache + 150;
+
     /// <inheritdoc />
     public PackageMetadata Metadata { get; } = new()
     {
         Id = "Spectara.Revela.Plugins.Calendar",
         Name = "Calendar",
-        Version = "1.0.0",
+        Version = PackageVersion.FromAssembly(typeof(CalendarPlugin).Assembly),
         Description = "Generate availability calendars from iCal data",
         Author = "Spectara"
     };
@@ -31,6 +39,11 @@ public sealed class CalendarPlugin : IPlugin
     {
         services.TryAddTransient<CalendarGenerateStep>();
         services.TryAddTransient<CleanCalendarCommand>();
+        services.TryAddTransient<CalendarDataInvalidator>();
+
+        // calendar.json is derived from the manifest: drop it whenever the manifest changes.
+        services.TryAddEnumerable(
+            ServiceDescriptor.Transient<IArtifactInvalidator, CalendarDataInvalidator>());
 
         // Register as pipeline steps for engine orchestration
         services.TryAddEnumerable(ServiceDescriptor.Transient<IPipelineStep, CalendarGenerateStep>());
@@ -39,9 +52,10 @@ public sealed class CalendarPlugin : IPlugin
         // Register page template for 'revela create page calendar'
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IPageTemplate, CalendarPageTemplate>());
 
-        // Contribute a generate-precondition check to 'revela check' (as 'check calendar')
-        // and the 'check all' report: referenced local calendar files must be present and
-        // parseable. The host auto-wraps this ICheck — the plugin adds no command.
+        // Contribute a check to 'revela check' (as 'check calendar') and the 'check all'
+        // report: referenced local calendar files must be present and parseable. The host
+        // auto-wraps this ICheck — the plugin adds no command. It does not block generate;
+        // the generate step fails on its own when a referenced file is missing or invalid.
         services.TryAddEnumerable(ServiceDescriptor.Transient<ICheck, CalendarDataCheck>());
     }
 
@@ -54,7 +68,7 @@ public sealed class CalendarPlugin : IPlugin
         yield return new CommandDescriptor(
             calendarCommand.Create(),
             ParentCommand: "generate",
-            Order: PipelineOrder.Calendar,
+            Order: GenerateOrder,
             IsSequentialStep: true);
 
         // Register: revela clean calendar
@@ -62,7 +76,7 @@ public sealed class CalendarPlugin : IPlugin
         yield return new CommandDescriptor(
             cleanCalendarCommand.Create(),
             ParentCommand: "clean",
-            Order: 350,
+            Order: CleanOrder,
             IsSequentialStep: true);
     }
 }

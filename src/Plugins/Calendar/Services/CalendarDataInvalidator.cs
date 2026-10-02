@@ -3,14 +3,21 @@ using Microsoft.Extensions.Options;
 using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Artifacts;
 
-namespace Spectara.Revela.Plugins.Statistics.Services;
+namespace Spectara.Revela.Plugins.Calendar.Services;
 
-internal sealed class StatisticsDataInvalidator(
+/// <summary>
+/// Removes generated <c>calendar.json</c> files from the project cache.
+/// </summary>
+/// <remarks>
+/// Calendar data is derived from the manifest (which pages are calendar pages), so it is
+/// invalidated whenever the manifest is replaced and before new calendar data is written.
+/// </remarks>
+internal sealed class CalendarDataInvalidator(
     IOptions<ProjectEnvironment> projectEnvironment) : IArtifactInvalidator
 {
-    internal const string FileName = "statistics.json";
+    internal const string FileName = "calendar.json";
 
-    public ArtifactId Artifact => StatisticsArtifacts.Data;
+    public ArtifactId Artifact => CalendarArtifacts.Data;
 
     public IReadOnlyCollection<ArtifactId> DependsOn { get; } = [CoreArtifacts.Manifest];
 

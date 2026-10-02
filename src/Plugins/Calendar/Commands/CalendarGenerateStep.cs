@@ -8,6 +8,7 @@ using Spectara.Revela.Plugins.Calendar.Models;
 using Spectara.Revela.Plugins.Calendar.Services;
 using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Abstractions;
+using Spectara.Revela.Sdk.Artifacts;
 using Spectara.Revela.Sdk.Configuration;
 using Spectara.Revela.Sdk.Models.Manifest;
 using Spectara.Revela.Sdk.Services;
@@ -19,15 +20,21 @@ namespace Spectara.Revela.Plugins.Calendar.Commands;
 /// <summary>
 /// Generate step that reads local .ics files and produces calendar.json for each calendar page.
 /// </summary>
+/// <remarks>
+/// All calendar pages are built in memory first. Only when every page succeeded are the
+/// previous <c>calendar.json</c> files removed and the new ones written, so a broken page
+/// keeps the last good data and pages that no longer exist leave no stale data behind.
+/// </remarks>
 internal sealed partial class CalendarGenerateStep(
     ILogger<CalendarGenerateStep> logger,
     IManifestRepository manifestRepository,
     IOptions<ProjectEnvironment> projectEnvironment,
     IOptions<SiteCoreConfig> siteCoreConfig,
-    IPathResolver pathResolver) : IPipelineStep
+    IPathResolver pathResolver,
+    IArtifactLifecycle artifactLifecycle,
+    CalendarDataInvalidator calendarDataInvalidator) : IPipelineStep
 {
     private const string ManifestFileName = "manifest.json";
-    private const string CalendarJsonFileName = "calendar.json";
     private const string IndexFileName = "_index.revela";
 
     // ── IPipelineStep (service-level, no UI) ──
@@ -36,72 +43,16 @@ internal sealed partial class CalendarGenerateStep(
 
     string IPipelineStep.Name => "calendar";
 
-
     async ValueTask<PipelineStepResult> IPipelineStep.ExecuteAsync(CancellationToken cancellationToken)
     {
-        var projectPath = projectEnvironment.Value.Path;
-        var sourcePath = pathResolver.SourcePath;
-
-        var manifestFile = Path.Combine(projectPath, ProjectPaths.Cache, ManifestFileName);
-        if (!File.Exists(manifestFile))
+        var outcome = await GenerateAsync(cancellationToken);
+        return outcome.Status switch
         {
-            return PipelineStepResult.Fail("Manifest not found — run scan first");
-        }
-
-        await manifestRepository.LoadAsync(cancellationToken);
-
-        var root = manifestRepository.Root ?? throw new InvalidOperationException("Manifest root is null after loading");
-        var calendarPages = FindCalendarPages(root);
-
-        if (calendarPages.Count == 0)
-        {
-            return PipelineStepResult.Ok();
-        }
-
-        var today = DateOnly.FromDateTime(DateTime.Today);
-
-        foreach (var pagePath in calendarPages)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-
-            var indexPath = Path.Combine(sourcePath, pagePath, IndexFileName);
-            if (!File.Exists(indexPath))
-            {
-                continue;
-            }
-
-            var indexContent = await File.ReadAllTextAsync(indexPath, cancellationToken);
-            var pageConfig = FrontmatterReader.Read(indexContent);
-            if (pageConfig is null)
-            {
-                continue;
-            }
-
-            var icsPath = Path.Combine(sourcePath, pagePath, pageConfig.Source);
-            if (!File.Exists(icsPath))
-            {
-                return PipelineStepResult.Fail($"Calendar page '{pagePath}' references missing iCalendar file '{pageConfig.Source}'.");
-            }
-
-            var icsContent = await File.ReadAllTextAsync(icsPath, cancellationToken);
-            if (!TryParseCalendar(icsContent, out var bookings, out var errorMessage))
-            {
-                return PipelineStepResult.Fail($"Calendar page '{pagePath}' has invalid iCalendar file '{pageConfig.Source}': {errorMessage}");
-            }
-
-            var labels = pageConfig.Labels ?? new CalendarLabels();
-            var culture = ResolveCulture(pageConfig, siteCoreConfig.Value);
-
-            var calendarData = CalendarBuilder.Build(bookings, pageConfig.Months, today, pageConfig.Mode, labels, culture);
-
-            var cacheDir = Path.Combine(projectPath, ProjectPaths.Cache, pagePath);
-            var jsonPath = Path.Combine(cacheDir, CalendarJsonFileName);
-            Directory.CreateDirectory(cacheDir);
-            var json = JsonSerializer.Serialize(calendarData, CalendarJsonContext.Default.CalendarData);
-            await File.WriteAllTextAsync(jsonPath, json, cancellationToken);
-        }
-
-        return PipelineStepResult.Ok();
+            GenerationStatus.ManifestMissing => PipelineStepResult.Fail("Manifest not found — run scan first"),
+            GenerationStatus.Failed => PipelineStepResult.Fail(outcome.ErrorMessage ?? "Calendar generation failed"),
+            GenerationStatus.Generated or GenerationStatus.NoPages => PipelineStepResult.Ok(),
+            _ => throw new InvalidOperationException($"Unexpected calendar generation status '{outcome.Status}'."),
+        };
     }
 
     // ── CLI command ──
@@ -127,115 +78,41 @@ internal sealed partial class CalendarGenerateStep(
     /// <returns>Exit code (0 = success).</returns>
     public async Task<int> ExecuteAsync(bool inPipeline = false, CancellationToken cancellationToken = default)
     {
-        var projectPath = projectEnvironment.Value.Path;
-        var sourcePath = pathResolver.SourcePath;
+        var outcome = await GenerateAsync(cancellationToken);
 
-        // Check if manifest exists
-        var manifestFile = Path.Combine(projectPath, ProjectPaths.Cache, ManifestFileName);
-        if (!File.Exists(manifestFile))
+        switch (outcome.Status)
         {
-            ErrorPanels.ShowPrerequisiteError(
-                "Site manifest",
-                "generate scan",
-                "The manifest contains page metadata needed for calendar generation.");
-            return 1;
-        }
-
-        // Load manifest
-        LogLoadingManifest();
-        await manifestRepository.LoadAsync(cancellationToken);
-
-        // Find pages with calendar data source
-        var root = manifestRepository.Root ?? throw new InvalidOperationException("Manifest root is null after loading");
-        var calendarPages = FindCalendarPages(root);
-
-        if (calendarPages.Count == 0)
-        {
-            ErrorPanels.ShowWarning(
-                "No Calendar Pages",
-                "[yellow]No calendar pages found in manifest.[/]\n\n" +
-                "Create a page with [cyan]data.calendar = \"calendar.json\"[/] in frontmatter.");
-            return 0;
-        }
-
-        LogGeneratingCalendars(calendarPages.Count);
-
-        var today = DateOnly.FromDateTime(DateTime.Today);
-        var generatedCount = 0;
-
-        foreach (var pagePath in calendarPages)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-
-            // Read per-page config from _index.revela frontmatter
-            var indexPath = Path.Combine(sourcePath, pagePath, IndexFileName);
-            if (!File.Exists(indexPath))
-            {
-                LogIndexFileNotFound(pagePath);
-                continue;
-            }
-
-            var indexContent = await File.ReadAllTextAsync(indexPath, cancellationToken);
-            var pageConfig = FrontmatterReader.Read(indexContent);
-
-            if (pageConfig is null)
-            {
-                LogNoCalendarConfig(pagePath);
-                continue;
-            }
-
-            // Read local .ics file
-            var icsPath = Path.Combine(sourcePath, pagePath, pageConfig.Source);
-            if (!File.Exists(icsPath))
-            {
-                ErrorPanels.ShowError(
-                    "iCal File Not Found",
-                    Markup.Escape($"Calendar page '{pagePath}' references missing iCalendar file '{pageConfig.Source}'."));
+            case GenerationStatus.ManifestMissing:
+                ErrorPanels.ShowPrerequisiteError(
+                    "Site manifest",
+                    "generate scan",
+                    "The manifest contains page metadata needed for calendar generation.");
                 return 1;
-            }
 
-            var icsContent = await File.ReadAllTextAsync(icsPath, cancellationToken);
-            if (!TryParseCalendar(icsContent, out var bookings, out var errorMessage))
-            {
+            case GenerationStatus.Failed:
                 ErrorPanels.ShowError(
-                    "Invalid iCal File",
-                    Markup.Escape($"Calendar page '{pagePath}' has invalid iCalendar file '{pageConfig.Source}': {errorMessage}"));
+                    outcome.ErrorTitle ?? "Calendar Generation Failed",
+                    Markup.Escape(outcome.ErrorMessage ?? "Unknown error"));
                 return 1;
-            }
 
-            LogParsedBookings(pagePath, bookings.Count);
+            case GenerationStatus.NoPages:
+                ErrorPanels.ShowWarning(
+                    "No Calendar Pages",
+                    "[yellow]No calendar pages found in manifest.[/]\n\n" +
+                    "Create a page with [cyan]data.calendar = \"calendar.json\"[/] in frontmatter.");
+                return 0;
 
-            // Resolve labels (page overrides > defaults)
-            var labels = pageConfig.Labels ?? new CalendarLabels();
+            case GenerationStatus.Generated:
+                break;
 
-            // Resolve locale (page override > site language default)
-            var locale = pageConfig.Locale ?? siteCoreConfig.Value.Language;
-            var culture = ResolveCulture(pageConfig, siteCoreConfig.Value);
-            if (culture is null)
-            {
-                LogInvalidLocale(locale, pagePath);
-            }
-
-            // Build calendar data
-            var calendarData = CalendarBuilder.Build(bookings, pageConfig.Months, today, pageConfig.Mode, labels, culture);
-
-            // Write to .cache/{pagePath}/calendar.json
-            var cacheDir = Path.Combine(projectPath, ProjectPaths.Cache, pagePath);
-            var jsonPath = Path.Combine(cacheDir, CalendarJsonFileName);
-
-            Directory.CreateDirectory(cacheDir);
-            var json = JsonSerializer.Serialize(calendarData, CalendarJsonContext.Default.CalendarData);
-            await File.WriteAllTextAsync(jsonPath, json, cancellationToken);
-
-            LogGeneratedJson(pagePath, calendarData.Months.Count);
-            generatedCount++;
+            default:
+                throw new InvalidOperationException($"Unexpected calendar generation status '{outcome.Status}'.");
         }
 
-        // Display summary
         var content =
             $"[green]Calendar data generated![/]\n\n" +
             $"[dim]Summary:[/]\n" +
-            $"  Pages:  {generatedCount}";
+            $"  Pages:  {outcome.GeneratedCount}";
 
         if (!inPipeline)
         {
@@ -252,6 +129,128 @@ internal sealed partial class CalendarGenerateStep(
         return 0;
     }
 
+    // ── Shared generation core ──
+
+    private async Task<GenerationOutcome> GenerateAsync(CancellationToken cancellationToken)
+    {
+        var projectPath = projectEnvironment.Value.Path;
+        var sourcePath = pathResolver.SourcePath;
+
+        var manifestFile = Path.Combine(projectPath, ProjectPaths.Cache, ManifestFileName);
+        if (!File.Exists(manifestFile))
+        {
+            return GenerationOutcome.ManifestMissing;
+        }
+
+        LogLoadingManifest();
+        await manifestRepository.LoadAsync(cancellationToken);
+
+        var root = manifestRepository.Root ?? throw new InvalidOperationException("Manifest root is null after loading");
+        var calendarPages = FindCalendarPages(root);
+        if (calendarPages.Count > 0)
+        {
+            LogGeneratingCalendars(calendarPages.Count);
+        }
+
+        var today = DateOnly.FromDateTime(DateTime.Today);
+        var calendars = new List<(string PagePath, CalendarData Data)>();
+
+        foreach (var pagePath in calendarPages)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            var indexPath = Path.Combine(sourcePath, pagePath, IndexFileName);
+            if (!File.Exists(indexPath))
+            {
+                LogIndexFileNotFound(pagePath);
+                continue;
+            }
+
+            var indexContent = await File.ReadAllTextAsync(indexPath, cancellationToken);
+            var pageConfig = FrontmatterReader.Read(indexContent);
+            if (pageConfig is null)
+            {
+                LogNoCalendarConfig(pagePath);
+                continue;
+            }
+
+            var icsPath = Path.Combine(sourcePath, pagePath, pageConfig.Source);
+            if (!File.Exists(icsPath))
+            {
+                return GenerationOutcome.Failure(
+                    "iCal File Not Found",
+                    $"Calendar page '{pagePath}' references missing iCalendar file '{pageConfig.Source}'.");
+            }
+
+            var icsContent = await File.ReadAllTextAsync(icsPath, cancellationToken);
+            if (!TryParseCalendar(icsContent, out var bookings, out var errorMessage))
+            {
+                return GenerationOutcome.Failure(
+                    "Invalid iCal File",
+                    $"Calendar page '{pagePath}' has invalid iCalendar file '{pageConfig.Source}': {errorMessage}");
+            }
+
+            LogParsedBookings(pagePath, bookings.Count);
+
+            var labels = pageConfig.Labels ?? new CalendarLabels();
+            var culture = ResolveCulture(pageConfig, siteCoreConfig.Value);
+            if (culture is null)
+            {
+                LogInvalidLocale(pageConfig.Locale ?? siteCoreConfig.Value.Language, pagePath);
+            }
+
+            calendars.Add((pagePath, CalendarBuilder.Build(bookings, pageConfig.Months, today, pageConfig.Mode, labels, culture)));
+        }
+
+        var invalidation = await artifactLifecycle.PrepareToReplaceAsync(CalendarArtifacts.Data, cancellationToken);
+        if (!invalidation.Success)
+        {
+            return GenerationOutcome.Failure("Calendar Invalidation Failed", invalidation.ErrorMessage ?? "Unknown error");
+        }
+
+        var cleanup = await calendarDataInvalidator.InvalidateAsync(cancellationToken);
+        if (!cleanup.Success)
+        {
+            return GenerationOutcome.Failure("Calendar Cleanup Failed", cleanup.ErrorMessage ?? "Unknown error");
+        }
+
+        foreach (var (pagePath, calendarData) in calendars)
+        {
+            var cacheDir = Path.Combine(projectPath, ProjectPaths.Cache, pagePath);
+            Directory.CreateDirectory(cacheDir);
+            var json = JsonSerializer.Serialize(calendarData, CalendarJsonContext.Default.CalendarData);
+            await File.WriteAllTextAsync(Path.Combine(cacheDir, CalendarDataInvalidator.FileName), json, cancellationToken);
+            LogGeneratedJson(pagePath, calendarData.Months.Count);
+        }
+
+        return calendarPages.Count == 0
+            ? GenerationOutcome.NoPages
+            : GenerationOutcome.Generated(calendars.Count);
+    }
+
+    private enum GenerationStatus
+    {
+        Generated,
+        NoPages,
+        ManifestMissing,
+        Failed,
+    }
+
+    private sealed record GenerationOutcome(
+        GenerationStatus Status,
+        int GeneratedCount = 0,
+        string? ErrorTitle = null,
+        string? ErrorMessage = null)
+    {
+        public static GenerationOutcome ManifestMissing { get; } = new(GenerationStatus.ManifestMissing);
+
+        public static GenerationOutcome NoPages { get; } = new(GenerationStatus.NoPages);
+
+        public static GenerationOutcome Generated(int count) => new(GenerationStatus.Generated, count);
+
+        public static GenerationOutcome Failure(string title, string message) =>
+            new(GenerationStatus.Failed, ErrorTitle: title, ErrorMessage: message);
+    }
     private static bool TryParseCalendar(string icsContent, out IReadOnlyList<BookingRange> bookings, out string errorMessage)
     {
         try

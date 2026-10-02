@@ -1,10 +1,13 @@
 using System.Globalization;
+using System.Net;
+using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using Spectara.Revela.Plugins.Source.OneDrive.Models;
 using Spectara.Revela.Plugins.Source.OneDrive.Providers.Logging;
+using Spectara.Revela.Sdk.Validation;
 
 namespace Spectara.Revela.Plugins.Source.OneDrive.Providers;
 
@@ -26,6 +29,20 @@ internal sealed partial class SharedLinkProvider(
     private const string BadgerAppId = "5cbed6ac-a083-4e14-b191-b4ba07653de2";
     private const string BadgerTokenUrl = "https://api-badgerp.svc.ms/v1.0/token";
     private const string OneDriveApiBaseUrl = "https://api.onedrive.com/v1.0";
+    private const int MaxRedirects = 5;
+
+    /// <summary>
+    /// Hosts (and their subdomains) that API calls, pagination links, download URLs and
+    /// redirects may target: the OneDrive API, the OneDrive/SharePoint download CDNs and Graph.
+    /// </summary>
+    private static readonly string[] AllowedHosts =
+    [
+        "onedrive.com",
+        "1drv.com",
+        "livefilestore.com",
+        "sharepoint.com",
+        "graph.microsoft.com",
+    ];
 
     /// <summary>
     /// Lists all items in the shared folder recursively
@@ -88,10 +105,8 @@ internal sealed partial class SharedLinkProvider(
         var nextLink = apiUrl;
         while (nextLink is not null)
         {
-            using var request = new HttpRequestMessage(HttpMethod.Get, nextLink);
-            request.Headers.Add("Authorization", $"Badger {token}");
-
-            var response = await httpClient.SendAsync(request, cancellationToken);
+            // nextLink comes from the API response: GetAsync only follows it to OneDrive hosts.
+            using var response = await GetAsync(new Uri(nextLink), token, preferAutoRedeem: false, HttpCompletionOption.ResponseContentRead, cancellationToken);
             response.EnsureSuccessStatusCode();
 
             using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
@@ -170,8 +185,14 @@ internal sealed partial class SharedLinkProvider(
             Directory.CreateDirectory(directory);
         }
 
-        // Download file from CDN (pre-signed URL, no Badger token needed, no API rate limit)
-        using var response = await httpClient.GetAsync(new Uri(item.DownloadUrl), HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+        // Download file from CDN (pre-signed URL, no Badger token needed, no API rate limit).
+        // The URL comes from the API response: GetAsync only follows it to OneDrive hosts.
+        if (!Uri.TryCreate(item.DownloadUrl, UriKind.Absolute, out var downloadUri))
+        {
+            throw new ArgumentException("Item does not have a valid download URL", nameof(item));
+        }
+
+        using var response = await GetAsync(downloadUri, badgerToken: null, preferAutoRedeem: false, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
         response.EnsureSuccessStatusCode();
 
         var temporaryPath = destinationPath + "." + Guid.NewGuid().ToString("N", CultureInfo.InvariantCulture) + ".tmp";
@@ -240,6 +261,87 @@ internal sealed partial class SharedLinkProvider(
     private partial void LogTemporaryCleanupFailed();
 
     /// <summary>
+    /// Sends a GET request to a OneDrive host and follows redirects itself, validating every hop.
+    /// </summary>
+    /// <remarks>
+    /// Download URLs, <c>@odata.nextLink</c> and redirect targets come from remote responses.
+    /// The typed client disables automatic redirects, so every URL requested here passes
+    /// <see cref="IsAllowedHost"/> first. The Badger token is only sent to the original host.
+    /// </remarks>
+    private async Task<HttpResponseMessage> GetAsync(
+        Uri uri,
+        string? badgerToken,
+        bool preferAutoRedeem,
+        HttpCompletionOption completionOption,
+        CancellationToken cancellationToken)
+    {
+        var tokenHost = uri.Host;
+        for (var hop = 0; ; hop++)
+        {
+            if (!IsAllowedHost(uri))
+            {
+                throw new InvalidOperationException("OneDrive returned a URL outside the allowed Microsoft OneDrive hosts.");
+            }
+
+            using var request = new HttpRequestMessage(HttpMethod.Get, uri);
+            if (badgerToken is not null && string.Equals(uri.Host, tokenHost, StringComparison.OrdinalIgnoreCase))
+            {
+                request.Headers.Authorization = new AuthenticationHeaderValue("Badger", badgerToken);
+            }
+
+            if (preferAutoRedeem)
+            {
+                request.Headers.Add("Prefer", "autoredeem");
+            }
+
+            var response = await httpClient.SendAsync(request, completionOption, cancellationToken);
+            if (!IsRedirect(response.StatusCode))
+            {
+                return response;
+            }
+
+            var location = response.Headers.Location;
+            response.Dispose();
+            if (location is null || hop >= MaxRedirects)
+            {
+                throw new HttpRequestException("OneDrive redirect could not be followed.");
+            }
+
+            uri = location.IsAbsoluteUri ? location : new Uri(uri, location);
+        }
+    }
+
+    /// <summary>
+    /// Returns <see langword="true"/> for https URLs on Microsoft OneDrive/SharePoint hosts
+    /// that also pass <see cref="UrlSafety.IsSafeOutboundUrl"/>.
+    /// </summary>
+    internal static bool IsAllowedHost(Uri uri)
+    {
+        if (!UrlSafety.IsSafeOutboundUrl(uri))
+        {
+            return false;
+        }
+
+        foreach (var allowed in AllowedHosts)
+        {
+            if (string.Equals(uri.Host, allowed, StringComparison.OrdinalIgnoreCase) ||
+                uri.Host.EndsWith("." + allowed, StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static bool IsRedirect(HttpStatusCode statusCode) => statusCode is
+        HttpStatusCode.MovedPermanently or
+        HttpStatusCode.Found or
+        HttpStatusCode.SeeOther or
+        HttpStatusCode.TemporaryRedirect or
+        HttpStatusCode.PermanentRedirect;
+
+    /// <summary>
     /// Gets a Badger authentication token from Microsoft API
     /// </summary>
     /// <remarks>
@@ -273,13 +375,9 @@ internal sealed partial class SharedLinkProvider(
     private async Task<ShareMetadata> ActivateBadgerTokenAsync(string shareUrl, string token, CancellationToken cancellationToken)
     {
         var encodedUrl = EncodeShareUrl(shareUrl);
-        var activationUrl = $"{OneDriveApiBaseUrl}/shares/u!{encodedUrl}/driveItem";
+        var activationUrl = new Uri($"{OneDriveApiBaseUrl}/shares/u!{encodedUrl}/driveItem");
 
-        using var request = new HttpRequestMessage(HttpMethod.Get, activationUrl);
-        request.Headers.Add("Authorization", $"Badger {token}");
-        request.Headers.Add("Prefer", "autoredeem");
-
-        var response = await httpClient.SendAsync(request, cancellationToken);
+        using var response = await GetAsync(activationUrl, token, preferAutoRedeem: true, HttpCompletionOption.ResponseContentRead, cancellationToken);
         response.EnsureSuccessStatusCode();
 
         using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);

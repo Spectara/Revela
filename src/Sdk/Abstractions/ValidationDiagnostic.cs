@@ -1,26 +1,27 @@
 namespace Spectara.Revela.Sdk.Abstractions;
 
 /// <summary>
-/// Severity of a <see cref="ValidationDiagnostic"/> produced by a validator.
+/// Severity of a <see cref="ValidationDiagnostic"/> produced by an <see cref="ICheck"/>.
 /// </summary>
 /// <remarks>
-/// Only <see cref="Error"/> blocks a build (exit code 2). <see cref="Warning"/> and
-/// <see cref="Hint"/> are surfaced but never abort <c>generate all</c>.
+/// Only <see cref="Error"/> changes the exit code of <c>revela check</c> (exit code 2).
+/// <see cref="Warning"/> and <see cref="Hint"/> are only reported. No severity blocks
+/// <c>generate</c>: checks run only when the user invokes <c>check</c>.
 /// </remarks>
 public enum ValidationSeverity
 {
-    /// <summary>A friendly, non-blocking note (e.g. a feature will be skipped).</summary>
+    /// <summary>A friendly note (e.g. a feature will be skipped).</summary>
     Hint,
 
-    /// <summary>Something questionable but still buildable — surfaced, does not block.</summary>
+    /// <summary>Something questionable but still buildable.</summary>
     Warning,
 
-    /// <summary>A problem that prevents a correct build — blocks with exit code 2.</summary>
+    /// <summary>A problem that prevents a correct build — <c>revela check</c> exits with code 2.</summary>
     Error,
 }
 
 /// <summary>
-/// A single, human-readable finding from site validation.
+/// A single, human-readable finding from an <see cref="ICheck"/>.
 /// </summary>
 /// <remarks>
 /// Diagnostics are collected in a single pass (collect-all) so the user sees every

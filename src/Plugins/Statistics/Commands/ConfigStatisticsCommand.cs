@@ -2,9 +2,11 @@ using System.CommandLine;
 using System.Text.Json.Nodes;
 using Microsoft.Extensions.Options;
 using Spectara.Revela.Plugins.Statistics.Configuration;
+using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Abstractions;
 using Spectara.Revela.Sdk.Configuration;
 using Spectara.Revela.Sdk.Configuration.Keys;
+using Spectara.Revela.Sdk.Hosting;
 using Spectara.Revela.Sdk.Output;
 using Spectre.Console;
 
@@ -25,7 +27,8 @@ namespace Spectara.Revela.Plugins.Statistics.Commands;
 internal sealed partial class ConfigStatisticsCommand(
     ILogger<ConfigStatisticsCommand> logger,
     IConfigService configService,
-    IOptionsMonitor<StatisticsPluginConfig> configMonitor)
+    IOptionsMonitor<StatisticsPluginConfig> configMonitor,
+    IConsoleCapabilities consoleCapabilities)
 {
     /// <summary>
     /// Creates the command definition.
@@ -62,13 +65,22 @@ internal sealed partial class ConfigStatisticsCommand(
         // Read current values from IOptions
         var current = configMonitor.CurrentValue;
 
-        // Determine if interactive mode (no arguments provided)
-        var isInteractive = maxEntriesArg is null && sortByCountArg is null;
+        // No arguments means: ask. That needs a terminal; never prompt in CI or pipes.
+        var promptForValues = maxEntriesArg is null && sortByCountArg is null;
+        if (promptForValues && !consoleCapabilities.IsInteractive)
+        {
+            ErrorPanels.ShowError(
+                "Settings Required",
+                "This console is not interactive, so Revela cannot ask for the settings.\n\n" +
+                "Pass them as options, for example:\n" +
+                "  [cyan]revela config statistics --max-entries 20 --sort-by-count true[/]");
+            return 1;
+        }
 
         int maxEntries;
         bool sortByCount;
 
-        if (isInteractive)
+        if (promptForValues)
         {
             AnsiConsole.MarkupLine("[cyan]Configure Statistics Plugin[/]\n");
 

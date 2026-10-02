@@ -8,6 +8,7 @@ using Spectara.Revela.Plugins.Statistics.Configuration;
 using Spectara.Revela.Plugins.Statistics.Services;
 using Spectara.Revela.Sdk.Abstractions;
 using Spectara.Revela.Sdk.Artifacts;
+using Spectara.Revela.Sdk.Hosting;
 using Spectara.Revela.Sdk.Models.Manifest;
 
 namespace Spectara.Revela.Tests.Plugins.Statistics;
@@ -28,6 +29,18 @@ public sealed class StatisticsPluginRegistrationTests
             item.ServiceType == typeof(IArtifactInvalidator));
         Assert.IsNotNull(descriptor);
         Assert.AreEqual(typeof(StatisticsDataInvalidator), descriptor.ImplementationType);
+    }
+
+    [TestMethod]
+    public void ConfigureServices_CalledTwice_RegistersConfigValidatorOnce()
+    {
+        var services = new ServiceCollection();
+        var plugin = new StatisticsPlugin();
+
+        plugin.ConfigureServices(services);
+        plugin.ConfigureServices(services);
+
+        Assert.HasCount(1, services.Where(item => item.ServiceType == typeof(IValidateOptions<StatisticsPluginConfig>)));
     }
 
     [TestMethod]
@@ -62,6 +75,7 @@ public sealed class StatisticsPluginRegistrationTests
         // Add mock IConfigService (required by ConfigStatisticsCommand)
         var configService = Substitute.For<IConfigService>();
         services.AddSingleton(configService);
+        services.AddSingleton(Substitute.For<IConsoleCapabilities>());
 
         var plugin = new StatisticsPlugin();
         plugin.ConfigureServices(services);
@@ -105,6 +119,7 @@ public sealed class StatisticsPluginRegistrationTests
         // Add mock IConfigService (required by ConfigStatisticsCommand)
         var configService = Substitute.For<IConfigService>();
         services.AddSingleton(configService);
+        services.AddSingleton(Substitute.For<IConsoleCapabilities>());
 
         var plugin = new StatisticsPlugin();
         plugin.ConfigureServices(services);

@@ -48,7 +48,7 @@ namespace Spectara.Revela.Sdk.Configuration;
 /// </code>
 /// </example>
 /// </remarks>
-[RevelaConfig("paths", ValidateDataAnnotations = false)]
+[RevelaConfig("paths")]
 public sealed class PathsConfig
 {
     /// <summary>

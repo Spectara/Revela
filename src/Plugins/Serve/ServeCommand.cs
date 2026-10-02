@@ -124,12 +124,12 @@ internal sealed partial class ServeCommand(
         }
         catch (HttpListenerException ex) when (ex.ErrorCode == 5) // Access denied
         {
-            ErrorPanels.ShowPortError(port, "access denied", "Try running as administrator or use a port above 1024.");
+            ShowPortError(port, "access denied", "Try running as administrator or use a port above 1024.");
             return 1;
         }
         catch (HttpListenerException ex) when (ex.ErrorCode is 183 or 32) // Port in use
         {
-            ErrorPanels.ShowPortError(port, "is already in use", "Try a different port: revela serve --port 3000");
+            ShowPortError(port, "is already in use", "Try a different port: revela serve --port 3000");
             return 1;
         }
         catch (HttpListenerException ex)
@@ -165,6 +165,15 @@ internal sealed partial class ServeCommand(
         // Server disposed automatically by using statement
         LogServerStopped(logger);
         return 0;
+    }
+
+    private static void ShowPortError(int port, string reason, string hint)
+    {
+        var panel = new Panel($"[yellow]Port {port} {reason}.[/]\n\n[dim]{Markup.Escape(hint)}[/]")
+            .WithHeader("[bold red]Port Unavailable[/]")
+            .WithErrorStyle();
+
+        AnsiConsole.Write(panel);
     }
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Server started: {RootPath} on port {Port}")]

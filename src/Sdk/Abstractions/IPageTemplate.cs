@@ -4,7 +4,7 @@ namespace Spectara.Revela.Sdk.Abstractions;
 /// Defines a page template for creating _index.revela files with frontmatter.
 /// </summary>
 /// <remarks>
-/// Templates provide metadata and properties that drive the initialization process:
+/// Templates provide metadata and properties that drive <c>revela create page</c>:
 /// <list type="bullet">
 /// <item><description><see cref="PageProperties"/> define frontmatter fields (title, description, etc.)</description></item>
 /// <item><description>Each property is exposed as a CLI option with help text and examples</description></item>
@@ -13,7 +13,7 @@ namespace Spectara.Revela.Sdk.Abstractions;
 public interface IPageTemplate
 {
     /// <summary>
-    /// Gets the template name used for CLI subcommand (e.g., "statistics" for "revela init page statistics").
+    /// Gets the template name used for CLI subcommand (e.g., "statistics" for "revela create page statistics").
     /// </summary>
     /// <remarks>
     /// Must be lowercase and URL-safe (alphanumeric, hyphens).
@@ -43,9 +43,9 @@ public interface IPageTemplate
     /// Gets the properties that appear in page frontmatter (title, description, etc.).
     /// </summary>
     /// <remarks>
-    /// These properties are exposed as CLI options in "revela init page {name}" command.
+    /// These properties are exposed as CLI options in "revela create page {name}" command.
     /// Properties with <see cref="TemplateProperty.FrontmatterKey"/> are written to _index.revela.
-    /// Properties with <c>FrontmatterKey = null</c> are CLI-only (like --path).
+    /// Properties with <c>FrontmatterKey = null</c> are CLI-only options.
     /// </remarks>
     IReadOnlyList<TemplateProperty> PageProperties { get; }
 

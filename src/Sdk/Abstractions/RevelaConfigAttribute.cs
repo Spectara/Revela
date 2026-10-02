@@ -37,8 +37,12 @@ namespace Spectara.Revela.Sdk.Abstractions;
 /// // In IPlugin.ConfigureServices:
 /// services.AddOptions&lt;MyPluginConfig&gt;()
 ///     .BindConfiguration(MyPluginConfig.Section);
-/// services.AddSingleton&lt;IValidateOptions&lt;MyPluginConfig&gt;,
-///     MyPluginConfigValidator&gt;();   // trim/AOT-safe DataAnnotations
+/// services.TryAddEnumerable(ServiceDescriptor.Singleton&lt;
+///     IValidateOptions&lt;MyPluginConfig&gt;, MyPluginConfigValidator&gt;());
+///
+/// // Trim/AOT-safe DataAnnotations validation, run lazily on first .Value access:
+/// [OptionsValidator]
+/// internal sealed partial class MyPluginConfigValidator : IValidateOptions&lt;MyPluginConfig&gt;;
 /// </code>
 /// </remarks>
 /// <param name="sectionName">The configuration section name (e.g., "project" or "plugins:myPlugin").</param>
@@ -51,13 +55,4 @@ public sealed class RevelaConfigAttribute(string sectionName) : Attribute
     /// <c>BindConfiguration</c>.
     /// </summary>
     public string SectionName { get; } = sectionName;
-
-    /// <summary>
-    /// Whether to call <c>ValidateDataAnnotations()</c>. Default: <c>true</c>.
-    /// </summary>
-    /// <remarks>
-    /// Validation runs lazily on first <c>IOptions&lt;T&gt;.Value</c> access — not at startup,
-    /// because most config values are produced at runtime (wizards, CLI args, generated sections).
-    /// </remarks>
-    public bool ValidateDataAnnotations { get; init; } = true;
 }

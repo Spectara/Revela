@@ -8,13 +8,17 @@ namespace Spectara.Revela.Sdk.Abstractions;
 /// </summary>
 /// <param name="Command">The command to register.</param>
 /// <param name="ParentCommand">
-/// Optional parent command name (e.g., "init", "source", "deploy").
-/// If null or empty, the command is registered directly under root.
+/// Optional parent command path (e.g., "source", "generate", "clean", "config",
+/// or a multi-level path such as "info plugins"). Missing parents are created
+/// automatically. If null or empty, the command is registered directly under root.
 /// </param>
 /// <param name="Order">
-/// Display order for interactive menu (1-100). Lower values appear first.
-/// Commands with the same order are sorted alphabetically by name.
-/// Default is 50, giving plugins room to insert before or after.
+/// Sort order within the parent. Lower values appear first; commands with the
+/// same order are sorted alphabetically by name. Default is 50.
+/// For menu entries, the host uses small values (0–50). For pipeline steps
+/// (<paramref name="IsSequentialStep"/> = true), this is also the execution
+/// order — see <see cref="PipelineOrder"/> and <see cref="CleanPipelineOrder"/>
+/// for the host slots (100–400) and choose a value relative to them.
 /// </param>
 /// <param name="Group">
 /// Optional group name for visual organization in the interactive menu.
@@ -26,11 +30,12 @@ namespace Spectara.Revela.Sdk.Abstractions;
 /// Whether the command requires an active project context (project.json).
 /// When true (default), the command is only shown in the interactive menu
 /// when a project is loaded. When false, the command is always available.
-/// Examples: generate/clean require project, config project/theme install don't.
+/// Commands that read or write <c>project.json</c> (including plugin
+/// <c>config</c> commands) should keep the default.
 /// </param>
 /// <param name="HideWhenProjectExists">
 /// Whether to hide the command when a project already exists.
-/// Useful for one-time setup commands like "init" that shouldn't be shown
+/// Useful for one-time setup commands that shouldn't be shown
 /// after initial project setup. Default is false.
 /// </param>
 /// <param name="IsSequentialStep">
@@ -55,22 +60,22 @@ namespace Spectara.Revela.Sdk.Abstractions;
 /// </param>
 /// <example>
 /// <code>
-/// // Register under "init" parent: revela init onedrive
-/// new CommandDescriptor(initCommand, "init")
+/// // Register under "source": revela source onedrive
+/// new CommandDescriptor(oneDriveCommand, ParentCommand: "source", Order: 20)
 ///
 /// // Register at root level with custom order and group
-/// new CommandDescriptor(onedriveCommand, null, Order: 10, Group: "Content")
+/// new CommandDescriptor(serveCommand, Order: 15, Group: "Build")
 ///
-/// // Command that doesn't require a project (setup commands)
-/// new CommandDescriptor(configProjectCmd, "config", RequiresProject: false)
+/// // Plugin config command: writes project.json, so it requires a project
+/// new CommandDescriptor(configCmd, ParentCommand: "config", Group: "Addons")
 ///
-/// // Init command: show without project, hide when project exists
-/// new CommandDescriptor(initCmd, null, Order: 5, Group: "Setup",
+/// // One-time setup command: show without project, hide when project exists
+/// new CommandDescriptor(setupCmd, Order: 5, Group: "Setup",
 ///     RequiresProject: false, HideWhenProjectExists: true)
 ///
-/// // Sequential step: part of a pipeline that supports "all"
-/// new CommandDescriptor(scanCmd, "generate", Order: 10,
-///     IsSequentialStep: true)
+/// // Sequential step: runs between scan and pages in "generate all"
+/// new CommandDescriptor(myStepCmd, ParentCommand: "generate",
+///     Order: PipelineOrder.Scan + 50, IsSequentialStep: true)
 ///
 /// // Inline a parent command flat under its group (e.g. info → Revela / Plugins → / Themes →)
 /// new CommandDescriptor(infoCmd, Order: 10, Group: "Info",

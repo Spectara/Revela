@@ -5,8 +5,8 @@ using Spectara.Revela.Sdk.Services;
 namespace Spectara.Revela.Plugins.Calendar;
 
 /// <summary>
-/// Checks the <c>generate</c> precondition that every calendar page's referenced local
-/// calendar data file is present and parseable, before the pipeline reaches the calendar step.
+/// Checks that every calendar page's referenced local calendar data file is present and
+/// parseable, so <c>revela check</c> reports the problem before a <c>generate</c> run fails on it.
 /// </summary>
 /// <remarks>
 /// <para>

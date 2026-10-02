@@ -22,12 +22,18 @@ namespace Spectara.Revela.Plugins.Compress;
 /// </remarks>
 public sealed class CompressPlugin : IPlugin
 {
+    // Menu position only (compress is opt-in, not a sequential step): after images.
+    private const int GenerateOrder = PipelineOrder.Images + 100;
+
+    // Sidecars are removed after the host's cache clean and other plugin data.
+    private const int CleanOrder = CleanPipelineOrder.Cache + 200;
+
     /// <inheritdoc />
     public PackageMetadata Metadata { get; } = new()
     {
         Id = "Spectara.Revela.Plugins.Compress",
         Name = "Static Compression",
-        Version = "1.0.0",
+        Version = PackageVersion.FromAssembly(typeof(CompressPlugin).Assembly),
         Description = "Compress static files with Gzip and Brotli",
         Author = "Spectara"
     };
@@ -60,17 +66,16 @@ public sealed class CompressPlugin : IPlugin
         var cleanCompressCommand = services.GetRequiredService<CleanCompressCommand>();
 
         // Register compress command → revela generate compress
-        // After images (400) — compress runs on generated output
         yield return new CommandDescriptor(
             compressCommand.Create(),
             ParentCommand: "generate",
-            Order: 500);
+            Order: GenerateOrder);
 
         // Register clean compress command → revela clean compress
         yield return new CommandDescriptor(
             cleanCompressCommand.Create(),
             ParentCommand: "clean",
-            Order: 400,
+            Order: CleanOrder,
             IsSequentialStep: true);
     }
 }

@@ -23,7 +23,7 @@ namespace Spectara.Revela.Sdk.Configuration;
 /// </code>
 /// </example>
 /// </remarks>
-[RevelaConfig("project", ValidateDataAnnotations = false)]
+[RevelaConfig("project")]
 public sealed class ProjectConfig
 {
     /// <summary>

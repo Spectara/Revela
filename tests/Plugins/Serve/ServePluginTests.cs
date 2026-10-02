@@ -1,7 +1,10 @@
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using NSubstitute;
 using Spectara.Revela.Plugins.Serve;
+using Spectara.Revela.Plugins.Serve.Configuration;
 using Spectara.Revela.Sdk.Abstractions;
+using Spectara.Revela.Sdk.Hosting;
 using Spectara.Revela.Sdk.Services;
 
 namespace Spectara.Revela.Tests.Plugins.Serve;
@@ -31,6 +34,18 @@ public sealed class ServePluginTests
     }
 
     [TestMethod]
+    public void ConfigureServices_CalledTwice_RegistersConfigValidatorOnce()
+    {
+        var plugin = new ServePlugin();
+        var services = new ServiceCollection();
+
+        plugin.ConfigureServices(services);
+        plugin.ConfigureServices(services);
+
+        Assert.HasCount(1, services.Where(d => d.ServiceType == typeof(IValidateOptions<ServePluginConfig>)));
+    }
+
+    [TestMethod]
     public void GetCommands_ReturnsTwoCommands()
     {
         // Arrange
@@ -52,6 +67,7 @@ public sealed class ServePluginTests
         var pathResolver = Substitute.For<IPathResolver>();
         pathResolver.OutputPath.Returns("/fake/output");
         services.AddSingleton(pathResolver);
+        services.AddSingleton(Substitute.For<IConsoleCapabilities>());
 
         plugin.ConfigureServices(services);
         var serviceProvider = services.BuildServiceProvider();
@@ -70,5 +86,6 @@ public sealed class ServePluginTests
         // Check config command (under config parent)
         var configDescriptor = commands.First(c => c.ParentCommand == "config");
         Assert.AreEqual("serve", configDescriptor.Command.Name);
+        Assert.IsTrue(configDescriptor.RequiresProject, "config serve writes project.json");
     }
 }

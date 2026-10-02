@@ -3,8 +3,11 @@ using System.Net;
 
 using Microsoft.Extensions.DependencyInjection;
 
+using NSubstitute;
+
 using Spectara.Revela.Plugins.Source.Calendar;
 using Spectara.Revela.Plugins.Source.Calendar.Services;
+using Spectara.Revela.Sdk.Hosting;
 using Spectara.Revela.Tests.Shared.Fixtures;
 
 namespace Spectara.Revela.Tests.Plugins.Source.Calendar;
@@ -33,12 +36,31 @@ public sealed class SourceCalendarHttpTests
     }
 
     [TestMethod]
+    public async Task FetchAsync_SendsUserAgentWithHostVersion()
+    {
+        using var project = TestProject.CreateMinimal();
+        using var handler = new ResponseHandler();
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddSingleton(CreateBuildInfo("0.0.1-beta.21"));
+        new SourceCalendarPlugin().ConfigureServices(services);
+        services.AddHttpClient<ICalFetcher>().ConfigurePrimaryHttpMessageHandler(() => handler);
+        using var provider = services.BuildServiceProvider();
+
+        await provider.GetRequiredService<ICalFetcher>().FetchAsync(
+            "https://example.com/calendar.ics", Path.Combine(project.SourcePath, "bookings.ics"));
+
+        Assert.AreEqual("Revela/0.0.1-beta.21 (Static Site Generator)", handler.LastUserAgent);
+    }
+
+    [TestMethod]
     public async Task FetchAsync_FactoryLoggingEnabled_DoesNotRecordFeedCredentials()
     {
         using var project = TestProject.CreateMinimal();
         using var capture = new CaptureProvider();
         var services = new ServiceCollection();
         services.AddLogging(logging => logging.SetMinimumLevel(LogLevel.Trace).AddProvider(capture));
+        services.AddSingleton(CreateBuildInfo("0.0.0-test"));
         new SourceCalendarPlugin().ConfigureServices(services);
         services.AddHttpClient<ICalFetcher>().ConfigurePrimaryHttpMessageHandler(() => new ResponseHandler());
         using var provider = services.BuildServiceProvider();
@@ -52,10 +74,22 @@ public sealed class SourceCalendarHttpTests
         Assert.DoesNotContain("query-credential", logs, StringComparison.Ordinal);
     }
 
+    private static IBuildInfo CreateBuildInfo(string version)
+    {
+        var buildInfo = Substitute.For<IBuildInfo>();
+        buildInfo.Version.Returns(version);
+        return buildInfo;
+    }
+
     private sealed class ResponseHandler : HttpMessageHandler
     {
-        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) =>
-            Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent("BEGIN:VCALENDAR\nEND:VCALENDAR") });
+        public string? LastUserAgent { get; private set; }
+
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            LastUserAgent = request.Headers.UserAgent.ToString();
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent("BEGIN:VCALENDAR\nEND:VCALENDAR") });
+        }
     }
 
     private sealed class CaptureProvider : ILoggerProvider

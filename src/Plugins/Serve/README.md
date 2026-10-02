@@ -46,7 +46,7 @@ Press `Ctrl+C` to stop the server and return to the interactive menu.
 ### Modify configuration
 
 ```bash
-# Interactive
+# Interactive (needs a terminal; without one the command fails instead of prompting)
 revela config serve
 
 # Non-interactive

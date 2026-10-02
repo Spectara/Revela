@@ -83,7 +83,7 @@ public interface IPipelineStepOrderProvider
 /// </summary>
 public static class PipelineCategories
 {
-    /// <summary>Content generation pipeline (scan → statistics → pages → images).</summary>
+    /// <summary>Content generation pipeline (scan → plugin data → pages → images).</summary>
     public const string Generate = "generate";
 
     /// <summary>Cleanup pipeline (output → images → cache → plugin data).</summary>
@@ -99,18 +99,18 @@ public static class PipelineCategories
 }
 
 /// <summary>
-/// Standard pipeline step order constants for the generate pipeline.
+/// Host step order constants for the generate pipeline.
 /// </summary>
+/// <remarks>
+/// Plugin steps choose an order relative to these slots: steps that produce data
+/// consumed by page rendering go between <see cref="Scan"/> and <see cref="Pages"/>
+/// (for example <c>Scan + 50</c>); post-processing of the rendered site goes after
+/// <see cref="Images"/>.
+/// </remarks>
 public static class PipelineOrder
 {
     /// <summary>Content scanning (100).</summary>
     public const int Scan = 100;
-
-    /// <summary>Calendar generation (150).</summary>
-    public const int Calendar = 150;
-
-    /// <summary>Statistics/EXIF aggregation (200).</summary>
-    public const int Statistics = 200;
 
     /// <summary>HTML page generation (300).</summary>
     public const int Pages = 300;
@@ -120,8 +120,12 @@ public static class PipelineOrder
 }
 
 /// <summary>
-/// Standard pipeline step order constants for the clean pipeline.
+/// Host step order constants for the clean pipeline.
 /// </summary>
+/// <remarks>
+/// Plugin clean steps that remove their own derived data run after <see cref="Cache"/>
+/// (for example <c>Cache + 100</c>).
+/// </remarks>
 public static class CleanPipelineOrder
 {
     /// <summary>Clean output directory (100).</summary>
@@ -135,13 +139,13 @@ public static class CleanPipelineOrder
 }
 
 /// <summary>
-/// Standard menu-ordering constants for <c>check</c> sub-commands.
+/// Menu-ordering constants for the host's built-in <c>check</c> sub-commands.
 /// </summary>
 /// <remarks>
-/// These order the host-wrapped <c>check &lt;name&gt;</c> entries (and their <c>●</c>
-/// markers) in the interactive menu. They are display order only — checks are not
-/// generate pipeline steps. Plugin checks that do not match a known name fall back to
-/// <see cref="Plugin"/>.
+/// The host assigns these by check name to order the <c>check &lt;name&gt;</c> entries
+/// (and their <c>●</c> markers) in the interactive menu. They are display order only —
+/// checks are not generate pipeline steps. Plugin-contributed checks cannot choose a
+/// position; they are always listed at <see cref="Plugin"/>, after the built-in checks.
 /// </remarks>
 public static class CheckPipelineOrder
 {

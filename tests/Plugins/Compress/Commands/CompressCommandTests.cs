@@ -4,6 +4,7 @@ using NSubstitute;
 using Spectara.Revela.Plugins.Compress.Commands;
 using Spectara.Revela.Plugins.Compress.Services;
 using Spectara.Revela.Sdk.Artifacts;
+using Spectara.Revela.Sdk.Hosting;
 using Spectara.Revela.Sdk.Services;
 using Spectara.Revela.Tests.Shared.Fixtures;
 
@@ -103,7 +104,8 @@ public sealed class CompressCommandTests : IDisposable
             NullLogger<CompressCommand>.Instance,
             resolver,
             new CompressionService(NullLogger<CompressionService>.Instance),
-            lifecycle);
+            lifecycle,
+            Substitute.For<IConsoleCapabilities>());
 
         var result = await command.ExecuteAsync();
 
@@ -125,7 +127,8 @@ public sealed class CompressCommandTests : IDisposable
             NullLogger<CompressCommand>.Instance,
             pathResolver,
             new CompressionService(NullLogger<CompressionService>.Instance),
-            artifactLifecycle);
+            artifactLifecycle,
+            Substitute.For<IConsoleCapabilities>());
     }
 
     private sealed class SuccessfulArtifactLifecycle(Action? beforeReplacement = null) : IArtifactLifecycle

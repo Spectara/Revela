@@ -26,6 +26,13 @@
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp" />
     <PackageReference Include="MSTest" />
     <PackageReference Include="MSTest.Analyzers" />
+    <!-- TemplateModelGenerator output references Scriban; tests compile and run it. -->
+    <PackageReference Include="Scriban" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The SDK package readme is compile-checked by SdkReadmeSnippetTests. -->
+    <None Include="..\..\src\Sdk\README.md" Link="Docs\Sdk.README.md" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>

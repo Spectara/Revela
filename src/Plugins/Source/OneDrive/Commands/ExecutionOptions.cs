@@ -15,4 +15,5 @@ internal sealed class ExecutionOptions
     public required bool Clean { get; init; }
     public required bool CleanAll { get; init; }
     public required bool ShowFiles { get; init; }
+    public required bool AssumeYes { get; init; }
 }
