@@ -1,5 +1,5 @@
 using System.Text.Json;
-
+using Spectara.Revela.Core.Services;
 using Spectara.Revela.Core.Themes;
 using Spectara.Revela.Sdk.Models;
 using Spectara.Revela.Sdk.Themes;
@@ -43,6 +43,18 @@ public sealed class LocalThemeProviderTests
         // Assert
         Assert.AreEqual("MyTheme", adapter.Metadata.Name);
         Assert.AreEqual("1.0.0", adapter.Metadata.Version);
+    }
+
+    [TestMethod]
+    public void Constructor_LocalCopyOfOfficialTheme_DoesNotClaimThePackageId()
+    {
+        // A local copy of Lumina must not pose as the installed Spectara.Revela.Themes.Lumina package.
+        var themeDir = CreateThemeDirectory("Lumina");
+
+        var adapter = new LocalThemeProvider(themeDir);
+
+        Assert.AreEqual("themes/Lumina", adapter.Metadata.Id);
+        Assert.IsFalse(PackageTrustPolicy.IsOfficialPackageId(adapter.Metadata.Id));
     }
 
     [TestMethod]
