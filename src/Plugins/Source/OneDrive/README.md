@@ -27,6 +27,13 @@ Configure the plugin using the interactive command:
 revela config onedrive
 ```
 
+In CI or scripts (no terminal), pass the value instead; without options the command
+fails rather than prompting:
+
+```bash
+revela config onedrive --share-url "https://1drv.ms/f/your-shared-folder-link"
+```
+
 Or add to `project.json` below `plugins.oneDrive`:
 
 ```json
@@ -74,9 +81,14 @@ revela source onedrive sync --dry-run
 # Force re-download all files
 revela source onedrive sync --force
 
-# Remove local files not in OneDrive
+# Remove local files not in OneDrive (asks for confirmation)
 revela source onedrive sync --clean
+
+# Same without asking — required when not running in a terminal (CI, scripts)
+revela source onedrive sync --clean --yes
 ```
+
+Without a terminal, `sync` prints plain progress lines instead of a progress bar.
 
 ### Workflow Example
 
@@ -111,6 +123,10 @@ HTTP/resilience logs omit raw share/CDN credentials and transport exception text
 Custom telemetry subscribers and shell history are outside that protection;
 avoid putting private share links directly into recorded command lines.
 
+Download URLs, paging links and redirects come from OneDrive's responses. They are
+only followed over HTTPS to OneDrive, SharePoint and Microsoft Graph hosts (at most
+five redirects), and the share token is never sent to another host.
+
 ## Features
 
 - ✅ Downloads from OneDrive shared folder links
@@ -124,7 +140,7 @@ avoid putting private share links directly into recorded command lines.
 
 ## Requirements
 
-- Revela CLI v1.0.0 or later
+- Revela host of the same release version (plugins are packed and released together with Revela)
 - OneDrive shared folder link (public or organization-shared)
 
 ## Supported Link Formats

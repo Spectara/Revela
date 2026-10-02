@@ -30,13 +30,18 @@ calendar.labels.depart = "Abreise"
 
 3. Run `revela generate all` or `revela generate calendar`
 
+`calendar.json` lives in `.cache/<page>/` and is derived from the manifest: a rescan
+(`generate scan`) removes it, and `generate calendar` rebuilds it for every calendar
+page and removes the files of pages that no longer exist. `revela clean calendar`
+removes all of them; symbolic links and junctions inside `.cache` are never followed.
+
 ## Invalid and Empty Calendars
 
 A complete `BEGIN:VCALENDAR` / `END:VCALENDAR` document with no events is a valid
 empty calendar. It generates free future dates. Missing files, malformed calendar
 boundaries, and incomplete or invalid booking events fail the generation step;
-they are never silently interpreted as no bookings. The failing page's previous
-`calendar.json` is not overwritten. Generation is not a transaction across pages.
+they are never silently interpreted as no bookings. All pages are read before
+anything is written, so when one page fails, every previous `calendar.json` is kept.
 
 The supported booking format is individual all-day events with one `DTSTART` and
 one later `DTEND` in `YYYYMMDD` format, optionally with `;VALUE=DATE`. Folded lines
@@ -46,7 +51,8 @@ Only event components (with optional alarms) and time-zone components are accept
 unknown or malformed component names are errors rather than silently ignored bookings.
 This is a booking-feed subset, not a general-purpose RFC 5545 validator.
 
-`revela check calendar` uses the same parser. Neither a successful HTTP download
+`revela check calendar` uses the same parser and reports the same problems up front;
+it does not block `generate`. Neither a successful HTTP download
 nor an empty calendar establishes that the provider's data is fresh or complete;
 deployment monitoring and feed credentials remain separate concerns.
 

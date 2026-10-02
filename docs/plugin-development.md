@@ -46,11 +46,12 @@ namespace YourName.Revela.Plugin.Example;
 
 public sealed class ExamplePlugin : IPlugin
 {
-    public PackageMetadata Metadata => new()
+    public PackageMetadata Metadata { get; } = new()
     {
         Id = "YourName.Revela.Plugin.Example",
         Name = "Example",
-        Version = "1.0.0",
+        // Reported by `revela info plugins`; read from the built assembly so it never drifts.
+        Version = PackageVersion.FromAssembly(typeof(ExamplePlugin).Assembly),
         Description = "Example plugin for Revela",
         Author = "Your Name",
     };
@@ -78,6 +79,217 @@ public sealed class ExamplePlugin : IPlugin
 
 The plugin lifecycle has four phases: **discovery** → `ConfigureConfiguration` (optional) → `ConfigureServices` (required) → `GetCommands` (optional).
 
+The [SDK package readme](../src/Sdk/README.md) contains a minimal plugin, configuration
+section, theme and template model; its examples are compiled by the test suite.
+
+---
+
+## Commands
+
+`GetCommands` yields one `CommandDescriptor` per command. The host builds the command
+tree from them:
+
+| Parameter | Meaning |
+| --- | --- |
+| `ParentCommand` | `null` = root; `"source"`, `"generate"`, `"clean"`, `"config"` or a multi-level path such as `"info plugins"`. Missing parents are created. |
+| `Order` | Sort order within the parent (default 50, lower first). For pipeline steps it is also the execution order — see [Pipeline steps](#pipeline-steps). |
+| `Group` | Group label in the interactive menu (`"Build"`, `"Content"`, `"Setup"`, `"Addons"`, …). |
+| `RequiresProject` | `true` (default) shows the command only inside a project. Keep it `true` for anything that reads or writes `project.json`, including `config <plugin>` commands. |
+| `HideWhenProjectExists` | Hide one-time setup commands once a project exists. |
+| `IsSequentialStep` | Include the command in `<parent> all` (for example `generate all`). |
+
+Use System.CommandLine 2.0 (`new Option<T>("--name", "-n")`, `command.SetAction(...)`).
+Commands that only exist to show something may write to the console; services and
+pipeline steps must not.
+
+---
+
+## Console output
+
+Revela runs in terminals, CI jobs and pipes. Inject `IConsoleCapabilities`
+(`Spectara.Revela.Sdk.Hosting`) instead of checking `Console.IsOutputRedirected`:
+
+- **`IsInteractive`** — stdin and stdout are a terminal. Only then may a command prompt
+  (`AnsiConsole.Prompt`, `ConfirmAsync`). Without it, fail with exit code 1 and tell the
+  user which options to pass; for destructive actions require an explicit flag such as
+  `--yes` instead of asking.
+- **`CanRenderLive`** — stdout can render live output. Gate `AnsiConsole.Progress()`,
+  `Status()` and `Live()` on it and write plain lines (for example one per 10 %) otherwise.
+
+```csharp
+if (noOptionsGiven && !consoleCapabilities.IsInteractive)
+{
+    ErrorPanels.ShowError(
+        "Settings Required",
+        "This console is not interactive. Pass the settings as options, for example:\n" +
+        "  [cyan]revela config example --api-url https://api.example.com[/]");
+    return 1;
+}
+```
+
+Escape user data with `Markup.Escape(...)` and use `OutputMarkers` / `ErrorPanels` from
+the SDK for consistent output.
+
+---
+
+## Pipeline steps
+
+A step of `generate all` or `clean all` is two things: a CLI command registered with
+`IsSequentialStep: true`, and an `IPipelineStep` service that the engine (and other
+programmatic callers) run without any console output. Usually one class implements
+both, with `IPipelineStep` implemented explicitly:
+
+```csharp
+internal sealed partial class SearchIndexStep(SearchIndexWriter writer) : IPipelineStep
+{
+    string IPipelineStep.Category => PipelineCategories.Generate;
+
+    // Must match the command name.
+    string IPipelineStep.Name => "search-index";
+
+    async ValueTask<PipelineStepResult> IPipelineStep.ExecuteAsync(CancellationToken cancellationToken)
+    {
+        var error = await writer.WriteAsync(cancellationToken);
+        return error is null ? PipelineStepResult.Ok() : PipelineStepResult.Fail(error);
+    }
+
+    public Command Create() { /* CLI command "search-index" with console output */ }
+}
+```
+
+```csharp
+// ConfigureServices
+services.TryAddTransient<SearchIndexStep>();
+services.TryAddEnumerable(ServiceDescriptor.Transient<IPipelineStep, SearchIndexStep>());
+
+// GetCommands — post-processing of the rendered site runs after the host's image step.
+yield return new CommandDescriptor(
+    services.GetRequiredService<SearchIndexStep>().Create(),
+    ParentCommand: "generate",
+    Order: PipelineOrder.Images + 100,
+    IsSequentialStep: true);
+```
+
+`PipelineOrder` (`Scan` 100, `Pages` 300, `Images` 400) and `CleanPipelineOrder`
+(`Output` 100, `Images` 150, `Cache` 200) are the host's slots. Steps that produce data
+read by page rendering go between `Scan` and `Pages`; plugin clean steps go after
+`Cache`. Declare a named constant relative to these slots rather than a bare number.
+
+---
+
+## Checks
+
+`revela check` runs fast, structural checks — no network, no image decoding. Contribute
+one by registering an `ICheck`; the host adds `check <name>` and includes it in
+`check all`. An `Error` makes `revela check` exit with code 2. Checks only run when the
+user invokes `check`; they never block `generate`, so your pipeline step must still fail
+on its own when it cannot run.
+
+```csharp
+internal sealed class ExampleCheck(IPathResolver pathResolver) : ICheck
+{
+    public string Name => "example";
+
+    public string Title => "Example data";
+
+    public ValueTask<IReadOnlyList<ValidationDiagnostic>> ValidateAsync(CancellationToken cancellationToken = default)
+    {
+        var dataFile = Path.Combine(pathResolver.SourcePath, "example.json");
+        IReadOnlyList<ValidationDiagnostic> diagnostics = File.Exists(dataFile)
+            ? []
+            : [new ValidationDiagnostic
+            {
+                Severity = ValidationSeverity.Error,
+                Message = "example.json is missing.",
+                File = dataFile,
+                Suggestion = "Run 'revela source example fetch' first.",
+            }];
+        return ValueTask.FromResult(diagnostics);
+    }
+}
+
+// ConfigureServices
+services.TryAddEnumerable(ServiceDescriptor.Transient<ICheck, ExampleCheck>());
+```
+
+Return every finding in one pass. Use `Warning` or `Hint` for problems that still
+produce a correct site.
+
+---
+
+## Page templates
+
+An `IPageTemplate` adds `revela create page <name>`, which writes an `_index.revela`
+file with frontmatter. Each `TemplateProperty` becomes a CLI option and, when it has a
+`FrontmatterKey`, a frontmatter entry:
+
+```csharp
+public sealed class ExamplePageTemplate : IPageTemplate
+{
+    public string Name => "example";                // revela create page example <path>
+    public string DisplayName => "Example Page";
+    public string Description => "Create a page that shows example data";
+    public string TemplateName => "example/page";   // written as template = "example/page"
+
+    public IReadOnlyList<TemplateProperty> PageProperties { get; } =
+    [
+        new()
+        {
+            Name = "title",
+            Aliases = ["--title", "-t"],
+            Type = typeof(string),
+            DefaultValue = "Example",
+            Description = "Page title (example: 'My Data')",
+            FrontmatterKey = "title",
+        },
+    ];
+}
+
+// ConfigureServices
+services.TryAddEnumerable(ServiceDescriptor.Singleton<IPageTemplate, ExamplePageTemplate>());
+```
+
+The Calendar and Statistics plugins ship page templates you can use as a reference.
+
+---
+
+## Setup wizard steps
+
+`IWizardStep` adds a step to the interactive project setup. Optional steps (the
+default) are offered as checkboxes after the required host steps. Keep the actual
+work in your `config` command and delegate to it, so the wizard and the command behave
+the same:
+
+```csharp
+internal sealed class ExampleWizardStep(
+    ConfigExampleCommand configCommand,
+    IOptionsMonitor<ExampleConfig> config) : IWizardStep
+{
+    public string Name => "Example Source";
+    public string Description => "Import data from the example service";
+    public int Order => 100;   // 100–199: source providers
+
+    public bool ShouldPrompt() => string.IsNullOrEmpty(config.CurrentValue.ApiUrl);
+
+    public Task<int> ExecuteAsync(CancellationToken cancellationToken) =>
+        configCommand.ExecuteInteractiveAsync(cancellationToken);
+}
+
+// ConfigureServices
+services.TryAddEnumerable(ServiceDescriptor.Transient<IWizardStep, ExampleWizardStep>());
+```
+
+---
+
+## Host information
+
+`IBuildInfo` (`Spectara.Revela.Sdk.Hosting`) describes the running Revela host:
+`Version` (for example `0.0.1-beta.21`), `InformationalVersion` (with build metadata),
+`Kind` (`Full` with package management, or `Standalone`), framework and runtime. Use it
+instead of hardcoding a Revela version, for example in an HTTP `User-Agent`
+(see [the typed-client pattern](#register-a-typed-client)). Your own package version
+comes from `PackageVersion.FromAssembly(...)`.
+
 ---
 
 ## Derived output artifacts
@@ -99,22 +311,30 @@ public static class ExampleArtifacts
         new("yourname.example/search-index");
 }
 
-internal sealed class SearchIndexInvalidator : IArtifactInvalidator
+internal sealed class SearchIndexInvalidator(IOptions<ProjectEnvironment> project) : IArtifactInvalidator
 {
     public ArtifactId Artifact => ExampleArtifacts.SearchIndex;
 
     public IReadOnlyCollection<ArtifactId> DependsOn { get; } =
         [CoreArtifacts.RenderedSite];
 
-    public async ValueTask<ArtifactInvalidationResult> InvalidateAsync(
+    public ValueTask<ArtifactInvalidationResult> InvalidateAsync(
         CancellationToken cancellationToken = default)
     {
         // Delete every file owned by SearchIndex. Return failure if cleanup is incomplete.
-        await DeleteIndexAsync(cancellationToken);
-        return ArtifactInvalidationResult.Ok();
+        var cache = Path.Combine(project.Value.Path, ProjectPaths.Cache);
+        var deletion = DerivedFiles.DeleteAll(cache, "search-index.json", cancellationToken);
+        return ValueTask.FromResult(deletion.Failures.Count == 0
+            ? ArtifactInvalidationResult.Ok()
+            : ArtifactInvalidationResult.Fail(deletion.Failures[0].Message));
     }
 }
 ```
+
+`DerivedFiles.DeleteAll` removes every file with that name below a directory and never
+follows symbolic links or junctions, so a link inside `.cache` cannot make Revela delete
+files elsewhere. Use the same call from your `clean <name>` step so both remove exactly
+the same files.
 
 Register the invalidator as an enumerable service:
 
@@ -294,16 +514,17 @@ If your plugin makes HTTP calls (syncing from a cloud source, fetching a feed, c
 
 ### Register a typed client
 
-Register the client in your plugin's `ConfigureServices`. Configure the timeout and headers once:
+Register the client in your plugin's `ConfigureServices`. Configure the timeout and headers once; build the `User-Agent` from the running host's `IBuildInfo` instead of hardcoding a version:
 
 ```csharp
 public void ConfigureServices(IServiceCollection services)
 {
-    services.AddHttpClient<ExampleService>(client =>
+    services.AddHttpClient<ExampleService>((serviceProvider, client) =>
     {
         client.Timeout = TimeSpan.FromMinutes(5);
         client.BaseAddress = new Uri("https://api.example.com");
-        client.DefaultRequestHeaders.Add("User-Agent", "Revela/1.0");
+        var version = serviceProvider.GetRequiredService<IBuildInfo>().Version;
+        client.DefaultRequestHeaders.UserAgent.ParseAdd($"Revela/{version}");
     });
 }
 ```
@@ -356,12 +577,27 @@ This checks the literal host, not DNS resolution. A permitted hostname can resol
 
 ### Advanced
 
+Retries and timeouts come from `Microsoft.Extensions.Http.Resilience` (Polly v8):
+
 ```csharp
 services.AddHttpClient<ExampleService>(client => { /* … */ })
-    .SetHandlerLifetime(TimeSpan.FromMinutes(10));   // default is 2 minutes
+    .SetHandlerLifetime(TimeSpan.FromMinutes(10))   // default is 2 minutes
+    .AddResilienceHandler("example-retry", builder =>
+    {
+        builder.AddRetry(new HttpRetryStrategyOptions
+        {
+            MaxRetryAttempts = 3,
+            BackoffType = DelayBackoffType.Exponential,
+            UseJitter = true,
+        });
+        builder.AddTimeout(TimeSpan.FromMinutes(2));   // per attempt
+    });
 ```
 
-You can also chain `.AddPolicyHandler(...)` for retries or `.ConfigurePrimaryHttpMessageHandler(...)` for custom handler settings.
+Use `.AddStandardResilienceHandler()` for the default pipeline, and
+`.ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler { AllowAutoRedirect = false })`
+when you validate redirects yourself (see above). The OneDrive plugin shows all of this
+together.
 
 ---
 
@@ -395,7 +631,7 @@ public sealed class ExamplePluginTests
 }
 ```
 
-For HTTP code, mock the transport, not the typed client, by injecting a fake handler:
+For HTTP code, mock the transport, not the typed client, by injecting a fake handler (this example uses the RichardSzalay.MockHttp package):
 
 ```csharp
 [TestMethod]
@@ -464,6 +700,8 @@ jobs:
 - ✅ Use `TryAdd*` in `ConfigureServices` to stay idempotent.
 - ✅ Version with SemVer; pre-release tags (`-beta.1`) are never auto-installed.
 - ✅ Validate every user-supplied URL with `UrlSafety` before fetching.
+- ✅ Read your version with `PackageVersion.FromAssembly` and the host version from `IBuildInfo`.
+- ✅ Gate prompts on `IConsoleCapabilities.IsInteractive` and live output on `CanRenderLive`.
 - ❌ Don't use the reserved `Spectara` prefix.
 - ❌ Don't `new HttpClient()` (socket exhaustion) or cache it in a singleton (stale DNS).
 - ❌ Don't hardcode paths or assume a specific directory layout.

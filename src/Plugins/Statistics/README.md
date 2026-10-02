@@ -78,10 +78,10 @@ Settings in `project.json` below `plugins.statistics`:
 Environment variables override `project.json`, e.g. `SPECTARA__REVELA__PLUGINS__STATISTICS__MAXENTRIESPERCATEGORY=20`.
 
 ```bash
-# Configure interactively
+# Configure interactively (needs a terminal)
 revela config statistics
 
-# Or set specific options
+# Or set specific options (works in CI and scripts)
 revela config statistics --max-entries 20 --sort-by-count false
 ```
 
@@ -108,7 +108,7 @@ This provides:
 |---------|-------------|
 | `revela generate statistics` | Generate statistics JSON |
 | `revela generate all` | Full pipeline (includes statistics) |
-| `revela clean statistics` | Remove generated statistics files |
+| `revela clean statistics` | Remove generated statistics files (never follows links out of `.cache`) |
 | `revela config statistics` | Configure plugin settings |
 
 ## Requirements
