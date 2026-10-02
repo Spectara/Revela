@@ -171,9 +171,6 @@ revela restore
 ### After an update
 
 Revela keeps a manifest of scanned photos in `.revela/cache/`. When a new version changes its format, Revela discards the old manifest and the next `revela generate all` rescans your photos (reading their metadata again). Images are not re-encoded for that: Revela tracks processed images separately in `.revela/state/images.json` and only re-encodes a photo when something that changes its output changed — its source file, sizes, formats, quality, or a Revela update to how images are encoded (the release notes say so when that happens).
-
-Projects created before 0.0.1-beta.21 used a `.cache/` folder instead. The first build after the update moves it to `.revela/` and keeps the record of processed images, so no photo is encoded again. If `.revela/cache/` already exists, the old `.cache/` folder is left alone and Revela tells you it can be deleted. Sites compressed with `revela generate compress` also had a `.revela-compress.manifest` file in the output; the next `compress` moves it to `.revela/state/compress.json`, so it is no longer uploaded with your site.
-
 ---
 
 ## Troubleshooting

@@ -48,11 +48,6 @@ output, so it is never published) lists the sidecars created by this plugin.
 Compression cleanup removes tracked sidecars even when their source files
 have disappeared, but preserves independent gzip/Brotli downloads.
 
-Sites compressed by earlier versions kept the record in the output as
-`.revela-compress.manifest`. The next `compress` or `clean compress` moves it
-to `.revela/state/compress.json` and deletes it from the output, so the existing
-sidecars stay owned. If both files exist, the one in `.revela/state` wins.
-
 An existing untracked destination, a changed tracked file, or an invalid
 ownership record causes an explicit failure instead of overwriting or deleting
 unknown data. Old untracked sidecars are not adopted automatically. Resolve such

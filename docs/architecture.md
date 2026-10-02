@@ -216,13 +216,7 @@ Revela keeps its own data in `.revela/` in the project
 The state describes the output, so the two are deleted together; `clean cache`
 never touches it. Nothing Revela-internal is written into the output directory,
 so a deployed site contains only the site, and `revela serve` refuses dot-files
-and dot-folders (except `/.well-known/`) as defense in depth. Projects from
-before beta.21 kept everything in `.cache/`; it is carried over once
-([`LegacyCacheCarryOver`](../src/Features/Generate/Services/LegacyCacheCarryOver.cs)):
-the image state (`.cache/images.json`, or the `processedImages` of an old
-manifest) moves to `.revela/state/images.json`, then the rest of `.cache/` moves
-to `.revela/cache/`. If `.revela/cache/` already exists, the old folder is left
-in place with a warning.
+and dot-folders (except `/.well-known/`) as defense in depth.
 
 NetVips keeps image processing and EXIF extraction in-process. Markdig and Scriban
 separate content parsing from theme presentation without requiring a web server.
@@ -284,8 +278,7 @@ Changing the installed or enabled plugin set requires `revela clean all` before
 regeneration because unloaded plugins cannot participate in invalidation. Artifact
 dependencies do not imply ownership of unrelated files. Compression separately
 records owned sidecars and fingerprints in `.revela/state/compress.json` (outside
-the output, so it is never published; a legacy output-root
-`.revela-compress.manifest` is moved there on open). It survives cache cleanup and
+the output, so it is never published). It survives cache cleanup and
 is removed by `clean output`. It never adopts files
 based on their extension or contents; unowned or externally changed targets are
 preserved and conflicts fail explicitly. Completed sibling-staged writes are

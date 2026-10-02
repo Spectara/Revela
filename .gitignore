@@ -498,8 +498,6 @@ $RECYCLE.BIN/
 samples/**/output/
 samples/**/images/
 samples/**/.revela/
-# Legacy cache folder of older builds (moved to .revela/ by the next build)
-samples/**/.cache/
 
 # Homepage photo strip - synced from OneDrive (full-res), not committed
 samples/revela-website/source/_images/home/
