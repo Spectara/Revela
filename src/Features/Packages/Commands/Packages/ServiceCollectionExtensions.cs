@@ -1,6 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 
-namespace Spectara.Revela.Commands.Packages;
+namespace Spectara.Revela.Features.Packages.Commands.Packages;
 
 /// <summary>
 /// Extension methods for registering Packages feature services.

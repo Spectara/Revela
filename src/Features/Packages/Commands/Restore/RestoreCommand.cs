@@ -1,15 +1,15 @@
 using System.Collections.Concurrent;
 using System.CommandLine;
 using Microsoft.Extensions.Options;
-using Spectara.Revela.Core;
 using Spectara.Revela.Core.Services;
+using Spectara.Revela.Features.Packages.Services;
 using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Abstractions;
 using Spectara.Revela.Sdk.Output;
 using Spectara.Revela.Sdk.Services;
 using Spectre.Console;
 
-namespace Spectara.Revela.Commands.Restore;
+namespace Spectara.Revela.Features.Packages.Commands.Restore;
 
 /// <summary>
 /// Restores project dependencies (themes and plugins)

@@ -1,5 +1,5 @@
-using Spectara.Revela.Commands.Revela;
 using Spectara.Revela.Core.Models;
+using Spectara.Revela.Features.Packages.Commands.Revela;
 using Spectre.Console;
 
 namespace Spectara.Revela.Tests.Commands.Packages;

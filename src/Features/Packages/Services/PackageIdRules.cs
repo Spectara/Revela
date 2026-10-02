@@ -1,6 +1,6 @@
 using NuGet.Packaging;
 
-namespace Spectara.Revela.Core;
+namespace Spectara.Revela.Features.Packages.Services;
 
 /// <summary>
 /// NuGet package ID validation for IDs that are used to build file system paths.

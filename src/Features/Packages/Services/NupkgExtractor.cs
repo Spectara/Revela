@@ -1,9 +1,9 @@
 using System.IO.Compression;
 using NuGet.Packaging;
-using Spectara.Revela.Core.Logging;
+using Spectara.Revela.Features.Packages.Logging;
 using Spectara.Revela.Sdk.Abstractions;
 
-namespace Spectara.Revela.Core;
+namespace Spectara.Revela.Features.Packages.Services;
 
 /// <summary>
 /// Extracts NuGet packages (.nupkg) to the plugin directory.

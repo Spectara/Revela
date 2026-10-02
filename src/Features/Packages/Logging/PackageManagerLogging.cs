@@ -1,4 +1,6 @@
-namespace Spectara.Revela.Core.Logging;
+using Spectara.Revela.Features.Packages.Services;
+
+namespace Spectara.Revela.Features.Packages.Logging;
 
 /// <summary>
 /// High-performance logging for PackageManager using source-generated extension methods.

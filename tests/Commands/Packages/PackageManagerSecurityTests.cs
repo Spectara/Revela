@@ -3,12 +3,11 @@ using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using NuGet.Protocol;
 using NuGet.Protocol.Core.Types;
-using Spectara.Revela.Core;
 using Spectara.Revela.Core.Models;
 using Spectara.Revela.Core.Services;
+using Spectara.Revela.Features.Packages.Services;
 using Spectara.Revela.Sdk.Hosting;
 using Spectara.Revela.Tests.Shared.Http;
-
 using NuGetPackageSource = NuGet.Configuration.PackageSource;
 
 namespace Spectara.Revela.Tests.Commands.Packages;

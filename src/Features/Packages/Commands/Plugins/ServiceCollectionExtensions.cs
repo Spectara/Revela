@@ -1,10 +1,10 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using Spectara.Revela.Core;
 using Spectara.Revela.Core.Services;
+using Spectara.Revela.Features.Packages.Services;
 using Spectara.Revela.Sdk.Abstractions;
 
-namespace Spectara.Revela.Commands.Plugins;
+namespace Spectara.Revela.Features.Packages.Commands.Plugins;
 
 /// <summary>
 /// Extension methods for registering Plugins feature services.

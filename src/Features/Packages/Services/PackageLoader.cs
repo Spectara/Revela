@@ -4,7 +4,7 @@ using Spectara.Revela.Core.Services;
 using Spectara.Revela.Sdk.Abstractions;
 using Spectara.Revela.Sdk.Configuration;
 
-namespace Spectara.Revela.Core;
+namespace Spectara.Revela.Features.Packages.Services;
 
 /// <summary>
 /// Loads plugins and themes from configured directories.

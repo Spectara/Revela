@@ -4,9 +4,9 @@ using System.Text;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
-using Spectara.Revela.Commands.Packages;
 using Spectara.Revela.Core.Models;
 using Spectara.Revela.Core.Services;
+using Spectara.Revela.Features.Packages.Commands.Packages;
 using Spectre.Console;
 
 namespace Spectara.Revela.Tests.Commands.Packages;

@@ -1,6 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using Spectara.Revela.Cli.Hosting;
-using Spectara.Revela.Core;
+using Spectara.Revela.Features.Packages.Services;
 
 // NuGet-based package management (install, search, restore) is only wired up in
 // the dynamic CLI, applied after ConfigureRevela and before the host is built.

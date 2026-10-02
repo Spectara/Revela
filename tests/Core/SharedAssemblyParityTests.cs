@@ -1,7 +1,7 @@
 using System.Collections.Frozen;
 using System.Diagnostics;
 using System.Globalization;
-using Spectara.Revela.Core;
+using Spectara.Revela.Features.Packages.Services;
 
 namespace Spectara.Revela.Tests.Core;
 

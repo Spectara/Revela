@@ -1,6 +1,6 @@
 using System.CommandLine;
 
-namespace Spectara.Revela.Commands.Packages;
+namespace Spectara.Revela.Features.Packages.Commands.Packages;
 
 /// <summary>
 /// Parent command for package management (refresh, search).

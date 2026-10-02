@@ -3,14 +3,13 @@ using NuGet.Protocol;
 using NuGet.Protocol.Core.Types;
 using NuGet.Versioning;
 using Spectara.Revela.Core.Helpers;
-using Spectara.Revela.Core.Logging;
 using Spectara.Revela.Core.Services;
+using Spectara.Revela.Features.Packages.Logging;
 using Spectara.Revela.Sdk.Abstractions;
 using Spectara.Revela.Sdk.Hosting;
-
 using NuGetPackageSource = NuGet.Configuration.PackageSource;
 
-namespace Spectara.Revela.Core;
+namespace Spectara.Revela.Features.Packages.Services;
 
 /// <summary>
 /// Installs and removes package files (plugins and themes) in the plugin directory via NuGet.

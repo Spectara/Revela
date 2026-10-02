@@ -9,7 +9,7 @@ using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Output;
 using Spectre.Console;
 
-namespace Spectara.Revela.Commands.Packages;
+namespace Spectara.Revela.Features.Packages.Commands.Packages;
 
 /// <summary>
 /// Command to refresh the local package index from all feeds.

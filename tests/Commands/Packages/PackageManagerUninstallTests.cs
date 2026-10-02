@@ -1,9 +1,7 @@
 using Microsoft.Extensions.Logging.Abstractions;
-
 using NSubstitute;
-
-using Spectara.Revela.Core;
 using Spectara.Revela.Core.Services;
+using Spectara.Revela.Features.Packages.Services;
 using Spectara.Revela.Sdk.Hosting;
 using Spectara.Revela.Tests.Shared.Fixtures;
 

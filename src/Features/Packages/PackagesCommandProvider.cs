@@ -1,8 +1,8 @@
 using Microsoft.Extensions.DependencyInjection;
-using Spectara.Revela.Commands.Config.Feed;
-using Spectara.Revela.Commands.Packages;
-using Spectara.Revela.Commands.Plugins;
-using Spectara.Revela.Commands.Restore;
+using Spectara.Revela.Features.Packages.Commands.Config.Feed;
+using Spectara.Revela.Features.Packages.Commands.Packages;
+using Spectara.Revela.Features.Packages.Commands.Plugins;
+using Spectara.Revela.Features.Packages.Commands.Restore;
 using Spectara.Revela.Sdk.Abstractions;
 
 namespace Spectara.Revela.Features.Packages;

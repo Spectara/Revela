@@ -4,7 +4,7 @@ using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Output;
 using Spectre.Console;
 
-namespace Spectara.Revela.Commands.Packages;
+namespace Spectara.Revela.Features.Packages.Commands.Packages;
 
 /// <summary>
 /// Command to search for packages in the local index.

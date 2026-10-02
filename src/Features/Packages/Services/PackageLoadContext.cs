@@ -2,7 +2,7 @@ using System.Collections.Frozen;
 using System.Reflection;
 using System.Runtime.Loader;
 
-namespace Spectara.Revela.Core;
+namespace Spectara.Revela.Features.Packages.Services;
 
 /// <summary>
 /// Isolated assembly load context for plugins.

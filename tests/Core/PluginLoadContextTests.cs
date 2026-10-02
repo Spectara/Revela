@@ -1,4 +1,4 @@
-using Spectara.Revela.Core;
+using Spectara.Revela.Features.Packages.Services;
 
 namespace Spectara.Revela.Tests.Core;
 

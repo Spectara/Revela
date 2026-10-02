@@ -6,7 +6,7 @@ using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Output;
 using Spectre.Console;
 
-namespace Spectara.Revela.Commands.Plugins;
+namespace Spectara.Revela.Features.Packages.Commands.Plugins;
 
 /// <summary>
 /// Handles 'revela plugin install' command.

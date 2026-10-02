@@ -1,12 +1,12 @@
-using Spectara.Revela.Commands.Packages;
 using Spectara.Revela.Core.Models;
 using Spectara.Revela.Core.Services;
+using Spectara.Revela.Features.Packages.Commands.Packages;
 using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Abstractions;
 using Spectara.Revela.Sdk.Output;
 using Spectre.Console;
 
-namespace Spectara.Revela.Commands.Revela;
+namespace Spectara.Revela.Features.Packages.Commands.Revela;
 
 /// <summary>
 /// Setup wizard for first-time Revela configuration.
