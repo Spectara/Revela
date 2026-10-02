@@ -1028,7 +1028,7 @@ internal sealed partial class RenderService(
             var image = membership.Images[index];
             occurrences.Add(new GalleryImageOccurrence(
                 image,
-                ViewerModeValue(membership.ViewerMode),
+                membership.ViewerMode.ToValue(),
                 PhotoPageCatalog.ContextId(membership),
                 contextLabel,
                 OccurrenceId(image.Slug, membership.GridNumber, bareRenderOrdinal),
@@ -1050,13 +1050,6 @@ internal sealed partial class RenderService(
             ? PhotoPageCatalog.Anchor(imageSlug, gridNumber)
             : $"bare-{bareRenderOrdinal.Value}-{PhotoPageCatalog.Anchor(imageSlug, null)}";
 
-    private static string ViewerModeValue(PhotoViewerMode viewerMode) => viewerMode switch
-    {
-        PhotoViewerMode.Page => "page",
-        PhotoViewerMode.Lightbox => "lightbox",
-        PhotoViewerMode.None => "none",
-        _ => throw new ArgumentOutOfRangeException(nameof(viewerMode), viewerMode, null)
-    };
 
     /// <summary>
     /// Creates a delegate that renders content images via the theme's <c>Partials/ContentImage.revela</c>.
@@ -1140,7 +1133,7 @@ internal sealed partial class RenderService(
                     new Dictionary<string, object?>
                     {
                         ["image"] = image.ToScriptObject(),
-                        ["viewer_mode"] = run.SupportsPhotoPages ? "page" : "none",
+                        ["viewer_mode"] = (run.SupportsPhotoPages ? PhotoViewerMode.Page : PhotoViewerMode.None).ToValue(),
                         ["context_id"] = contextId,
                         ["context_label"] = membership?.Gallery.Title,
                         ["occurrence_id"] = occurrenceId,

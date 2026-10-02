@@ -27,7 +27,7 @@ internal static class PhotoViewerResolver
             if (!capabilities.Supported.Contains(mode))
             {
                 throw new PhotoViewerResolutionException(
-                    $"Unsupported photo_viewer value '{Canonical(mode)}' in '{sourcePath}' for theme '{themeName}'. " +
+                    $"Unsupported photo_viewer value '{mode.ToValue()}' in '{sourcePath}' for theme '{themeName}'. " +
                     $"Supported modes: {supportedValues}.");
             }
 
@@ -39,7 +39,7 @@ internal static class PhotoViewerResolver
             if (!capabilities.Supported.Contains(projectMode))
             {
                 throw new PhotoViewerResolutionException(
-                    $"Unsupported project.json key theme.photoViewer value '{Canonical(projectMode)}' for theme '{themeName}'. " +
+                    $"Unsupported project.json key theme.photoViewer value '{projectMode.ToValue()}' for theme '{themeName}'. " +
                     $"Supported modes: {supportedValues}.");
             }
 
@@ -49,7 +49,7 @@ internal static class PhotoViewerResolver
         if (!capabilities.Supported.Contains(capabilities.Default))
         {
             throw new PhotoViewerResolutionException(
-                $"Theme '{themeName}' default photo viewer value '{Canonical(capabilities.Default)}' is unsupported. " +
+                $"Theme '{themeName}' default photo viewer value '{capabilities.Default.ToValue()}' is unsupported. " +
                 $"Supported modes: {supportedValues}.");
         }
 
@@ -62,21 +62,9 @@ internal static class PhotoViewerResolver
         string themeName,
         string supportedValues)
     {
-        var value = pageValue.Trim();
-
-        if (value.Equals("page", StringComparison.OrdinalIgnoreCase))
+        if (PhotoViewerModeValues.TryParse(pageValue, out var mode))
         {
-            return PhotoViewerMode.Page;
-        }
-
-        if (value.Equals("lightbox", StringComparison.OrdinalIgnoreCase))
-        {
-            return PhotoViewerMode.Lightbox;
-        }
-
-        if (value.Equals("none", StringComparison.OrdinalIgnoreCase))
-        {
-            return PhotoViewerMode.None;
+            return mode;
         }
 
         throw new PhotoViewerResolutionException(
@@ -85,15 +73,8 @@ internal static class PhotoViewerResolver
     }
 
     private static string FormatSupported(IReadOnlyList<PhotoViewerMode> supported) =>
-        string.Join(", ", supported.Select(Canonical));
+        string.Join(", ", supported.Select(PhotoViewerModeValues.ToValue));
 
-    private static string Canonical(PhotoViewerMode mode) => mode switch
-    {
-        PhotoViewerMode.Page => "page",
-        PhotoViewerMode.Lightbox => "lightbox",
-        PhotoViewerMode.None => "none",
-        _ => mode.ToString()
-    };
 }
 
 internal sealed class PhotoViewerResolutionException : InvalidOperationException

@@ -100,19 +100,12 @@ internal sealed class ConfigCheck(
 
         var supported = theme.Manifest.PhotoViewer is null
             ? "none"
-            : string.Join(", ", theme.Manifest.PhotoViewer.Supported.Select(Canonical));
+            : string.Join(", ", theme.Manifest.PhotoViewer.Supported.Select(PhotoViewerModeValues.ToValue));
         diagnostics.Add(ValidationDiagnostic.Error(
-            $"Unsupported project.json key theme.photoViewer value '{Canonical(viewer)}' for theme '{themeName}'. Supported modes: {supported}.",
+            $"Unsupported project.json key theme.photoViewer value '{viewer.ToValue()}' for theme '{themeName}'. Supported modes: {supported}.",
             hint: "Choose a supported value or remove theme.photoViewer to use the theme default."));
     }
 
-    private static string Canonical(PhotoViewerMode mode) => mode switch
-    {
-        PhotoViewerMode.Page => "page",
-        PhotoViewerMode.Lightbox => "lightbox",
-        PhotoViewerMode.None => "none",
-        _ => mode.ToString()
-    };
 
     /// <summary>
     /// Adds a friendly, non-blocking hint when no absolute base URL is configured, since

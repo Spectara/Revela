@@ -489,13 +489,7 @@ internal sealed partial class ThemeService(
     private static string NormalizeThemeName(string? themeName) =>
         string.IsNullOrWhiteSpace(themeName) ? "Lumina" : themeName;
 
-    private static string Canonical(PhotoViewerMode mode) => mode switch
-    {
-        PhotoViewerMode.Page => "page",
-        PhotoViewerMode.Lightbox => "lightbox",
-        PhotoViewerMode.None => "none",
-        _ => mode.ToString()
-    };
+    private static string Canonical(PhotoViewerMode mode) => mode.ToValue();
 
     private ThemeExtensionInfo ToExtensionInfo(ITheme extension)
     {
