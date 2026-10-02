@@ -35,6 +35,13 @@ internal static class HostBuilderExtensions
     /// The project directory is the host's ContentRootPath, which <c>HostBootstrap</c>
     /// sets to the current working directory (tests may pass an explicit path).
     /// </para>
+    /// <para>
+    /// No source watches for changes: a reload-on-change file source watches its whole
+    /// directory recursively, which on Linux costs one inotify watch per sub-directory of
+    /// the project (photos, output, cache) and stalled startup on large or network-mounted
+    /// projects. A CLI run is short-lived; code that writes a config file in-process reloads
+    /// <see cref="IConfigurationRoot"/> explicitly afterwards.
+    /// </para>
     /// </remarks>
     /// <param name="builder">The host application builder.</param>
     /// <returns>The builder for chaining.</returns>
@@ -49,7 +56,7 @@ internal static class HostBuilderExtensions
         builder.Configuration.AddJsonFile(
             ConfigPathResolver.ConfigFilePath,
             optional: true,
-            reloadOnChange: true
+            reloadOnChange: false
         );
 
         // 2. Load project.json (local config - overrides global)
@@ -57,7 +64,7 @@ internal static class HostBuilderExtensions
         builder.Configuration.AddJsonFile(
             Path.Combine(projectDirectory, "project.json"),
             optional: true,
-            reloadOnChange: true
+            reloadOnChange: false
         );
 
         // Note: site.json is loaded via a dedicated source (AddSiteJson) that re-keys
@@ -66,14 +73,14 @@ internal static class HostBuilderExtensions
         builder.Configuration.AddSiteJson(
             Path.Combine(projectDirectory, "site.json"),
             optional: true,
-            reloadOnChange: true
+            reloadOnChange: false
         );
 
         // 3. Load logging.json (logging config - can override global logging settings)
         builder.Configuration.AddJsonFile(
             Path.Combine(projectDirectory, "logging.json"),
             optional: true,
-            reloadOnChange: true
+            reloadOnChange: false
         );
 
         // Apply logging configuration with sensible defaults

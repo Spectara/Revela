@@ -2,6 +2,7 @@ using System.CommandLine;
 using System.CommandLine.Invocation;
 using System.Text;
 using System.Text.Json;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
@@ -41,7 +42,7 @@ internal static class HostBootstrap
     /// </summary>
     /// <remarks>
     /// <para>
-    /// Configuration files are added to a <see cref="Microsoft.Extensions.Configuration.ConfigurationManager"/>
+    /// Configuration files are added to a <see cref="ConfigurationManager"/>
     /// during <see cref="ConfigureRevela"/>, which loads them <b>eagerly</b>. A syntax error in
     /// <c>revela.json</c>, <c>project.json</c>, <c>site.json</c> or <c>logging.json</c> therefore
     /// throws while the host is still being constructed — <em>before</em> the guarded region inside
@@ -73,13 +74,7 @@ internal static class HostBootstrap
     {
         try
         {
-            var builder = Host.CreateApplicationBuilder(new HostApplicationBuilderSettings
-            {
-                Args = args,
-                ContentRootPath = contentRootPath ?? Directory.GetCurrentDirectory(),
-            });
-
-            builder.ConfigureRevela(args, packageSource);
+            var builder = CreateBuilder(args, packageSource, contentRootPath);
             configureExtra?.Invoke(builder);
 
             return await builder.Build().RunRevelaAsync(args);
@@ -95,6 +90,43 @@ internal static class HostBootstrap
             ErrorPanels.ShowConfigFileError(path, jsonException.LineNumber, jsonException.BytePositionInLine);
             return 2;
         }
+    }
+
+    /// <summary>
+    /// Creates the host builder with the Revela configuration chain and services applied.
+    /// </summary>
+    /// <param name="args">CLI arguments.</param>
+    /// <param name="packageSource">Source for loading plugins and themes.</param>
+    /// <param name="contentRootPath">
+    /// Project directory used as the host content root. Defaults to
+    /// <see cref="Directory.GetCurrentDirectory"/> when <see langword="null"/>.
+    /// </param>
+    /// <returns>The configured builder, ready to build.</returns>
+    internal static HostApplicationBuilder CreateBuilder(
+        string[] args,
+        IPackageSource packageSource,
+        string? contentRootPath = null)
+    {
+        var builder = Host.CreateApplicationBuilder(new HostApplicationBuilderSettings
+        {
+            Args = args,
+            ContentRootPath = contentRootPath ?? Directory.GetCurrentDirectory(),
+            Configuration = CreateNonWatchingConfiguration(),
+        });
+
+        builder.ConfigureRevela(args, packageSource);
+        return builder;
+    }
+
+    /// <summary>
+    /// Pre-seeds the host configuration so the default <c>appsettings*.json</c> sources do not
+    /// watch the content root (see <see cref="HostBuilderExtensions.AddRevelaConfiguration"/>).
+    /// </summary>
+    private static ConfigurationManager CreateNonWatchingConfiguration()
+    {
+        var configuration = new ConfigurationManager();
+        configuration.AddInMemoryCollection([new("hostBuilder:reloadConfigOnChange", "false")]);
+        return configuration;
     }
 
     /// <summary>

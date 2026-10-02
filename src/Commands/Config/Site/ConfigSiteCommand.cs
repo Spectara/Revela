@@ -1,5 +1,6 @@
 using System.CommandLine;
 using System.Globalization;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
 using Spectara.Revela.Commands.Config.Services;
 using Spectara.Revela.Sdk;
@@ -26,6 +27,7 @@ internal sealed partial class ConfigSiteCommand(
     IOptionsMonitor<ThemeConfig> themeConfig,
     IConfigService configService,
     IThemeRegistry themeRegistry,
+    IConfiguration configuration,
     TimeProvider timeProvider)
 {
     /// <summary>
@@ -127,6 +129,10 @@ internal sealed partial class ConfigSiteCommand(
         // Build final JSON using template structure
         var finalJson = JsonPropertyExtractor.BuildJson(templateJson, values);
         await File.WriteAllTextAsync(siteConfigPath, finalJson, cancellationToken);
+
+        // Configuration sources don't watch files, so later steps in this process
+        // (e.g. generate from the interactive menu) only see the new values after a reload
+        (configuration as IConfigurationRoot)?.Reload();
 
         LogSavedSiteConfig(logger, siteConfigPath);
 

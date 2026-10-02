@@ -187,8 +187,8 @@ internal sealed partial class ConfigService(
             }
         }
 
-        // Force IConfiguration to reload from file immediately (don't wait for FileSystemWatcher)
-        // Then invalidate IOptionsMonitor caches so CurrentValue returns fresh data
+        // Configuration sources don't watch files: reload explicitly so this process sees the change,
+        // then invalidate IOptionsMonitor caches so CurrentValue returns fresh data
         ReloadConfigurationAndInvalidateCaches();
 
         LogConfigUpdated(ProjectConfigPath);
@@ -220,8 +220,8 @@ internal sealed partial class ConfigService(
     /// Reloads configuration from files and invalidates all IOptionsMonitor caches.
     /// </summary>
     /// <remarks>
-    /// This is needed for immediate in-process updates (e.g., wizard flows).
-    /// Without explicit Reload(), the FileSystemWatcher has a delay before detecting changes.
+    /// This is needed for immediate in-process updates (e.g., wizard flows): configuration
+    /// sources don't watch files, so nothing else picks up the change.
     /// </remarks>
     private void ReloadConfigurationAndInvalidateCaches()
     {
