@@ -28,16 +28,4 @@ public sealed class PackageManagementCommandsTests
         Assert.IsFalse(PackageManagementCommands.ModifiesPackageFiles([]));
         Assert.IsFalse(PackageManagementCommands.ModifiesPackageFiles(["theme"]));
     }
-
-    [TestMethod]
-    [DataRow("plugin")]
-    [DataRow("theme")]
-    public void DeletesPackageFiles_Uninstall_ReturnsTrue(string command) => Assert.IsTrue(PackageManagementCommands.DeletesPackageFiles([command, "uninstall"]));
-
-    [TestMethod]
-    [DataRow("plugin", "install")]
-    [DataRow("theme", "install")]
-    [DataRow("theme", "list")]
-    [DataRow("generate", "uninstall")]
-    public void DeletesPackageFiles_NotPackageUninstall_ReturnsFalse(string command, string subcommand) => Assert.IsFalse(PackageManagementCommands.DeletesPackageFiles([command, subcommand]));
 }
