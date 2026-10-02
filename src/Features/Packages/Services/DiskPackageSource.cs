@@ -1,4 +1,4 @@
-using Spectara.Revela.Sdk.Abstractions;
+using Spectara.Revela.Core.Abstractions;
 using Spectara.Revela.Sdk.Configuration;
 
 namespace Spectara.Revela.Features.Packages.Services;

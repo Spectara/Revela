@@ -6,13 +6,13 @@ using NSubstitute;
 using NuGet.Packaging;
 using NuGet.Versioning;
 using Spectara.Revela.Commands;
+using Spectara.Revela.Core.Abstractions;
 using Spectara.Revela.Core.Models;
 using Spectara.Revela.Core.Services;
 using Spectara.Revela.Features.Packages.Commands.Plugins;
 using Spectara.Revela.Features.Packages.Services;
 using Spectara.Revela.Sdk.Abstractions;
 using Spectara.Revela.Sdk.Hosting;
-using Spectara.Revela.Sdk.Services;
 using Spectara.Revela.Tests.Shared.Fixtures;
 using Spectre.Console;
 

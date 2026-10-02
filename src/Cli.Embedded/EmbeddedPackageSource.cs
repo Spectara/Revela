@@ -1,10 +1,10 @@
+using Spectara.Revela.Core.Abstractions;
 using Spectara.Revela.Plugins.Calendar;
 using Spectara.Revela.Plugins.Compress;
 using Spectara.Revela.Plugins.Serve;
 using Spectara.Revela.Plugins.Source.Calendar;
 using Spectara.Revela.Plugins.Source.OneDrive;
 using Spectara.Revela.Plugins.Statistics;
-using Spectara.Revela.Sdk.Abstractions;
 using Spectara.Revela.Themes.Lumina;
 using Spectara.Revela.Themes.Lumina.Calendar;
 using Spectara.Revela.Themes.Lumina.Statistics;

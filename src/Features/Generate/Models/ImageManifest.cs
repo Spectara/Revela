@@ -1,6 +1,7 @@
 using System.Text.Json.Serialization;
+using Spectara.Revela.Sdk.Models.Manifest;
 
-namespace Spectara.Revela.Sdk.Models.Manifest;
+namespace Spectara.Revela.Features.Generate.Models;
 
 /// <summary>
 /// Site manifest for incremental builds and caching.
@@ -25,7 +26,7 @@ namespace Spectara.Revela.Sdk.Models.Manifest;
 /// use the <c>with</c> expression to produce a modified copy.
 /// </para>
 /// </remarks>
-public sealed record ImageManifest
+internal sealed record ImageManifest
 {
     /// <summary>
     /// Manifest metadata for version and configuration tracking.

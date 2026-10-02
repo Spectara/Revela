@@ -1,12 +1,9 @@
 using System.Text.Json;
-
 using Microsoft.Extensions.Configuration;
-
 using Spectara.Revela.Cli.Hosting;
+using Spectara.Revela.Core.Abstractions;
 using Spectara.Revela.Core.Configuration;
-using Spectara.Revela.Sdk.Abstractions;
 using Spectara.Revela.Tests.Shared.Fixtures;
-
 using Spectre.Console;
 
 namespace Spectara.Revela.Tests.Integration;

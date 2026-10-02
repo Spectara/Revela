@@ -1,7 +1,8 @@
+using Spectara.Revela.Core.Abstractions;
 using Spectara.Revela.Sdk.Abstractions;
 using Spectara.Revela.Sdk.Models;
 
-namespace Spectara.Revela.Sdk.Services;
+namespace Spectara.Revela.Core.Services;
 
 /// <summary>
 /// Service for theme management operations — list, install, uninstall, file inspection.

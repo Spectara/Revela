@@ -2,10 +2,10 @@ using NuGet.Packaging;
 using NuGet.Protocol;
 using NuGet.Protocol.Core.Types;
 using NuGet.Versioning;
+using Spectara.Revela.Core.Abstractions;
 using Spectara.Revela.Core.Helpers;
 using Spectara.Revela.Core.Services;
 using Spectara.Revela.Features.Packages.Logging;
-using Spectara.Revela.Sdk.Abstractions;
 using Spectara.Revela.Sdk.Hosting;
 using NuGetPackageSource = NuGet.Configuration.PackageSource;
 

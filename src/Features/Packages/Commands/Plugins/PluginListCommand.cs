@@ -1,6 +1,6 @@
 using System.CommandLine;
+using Spectara.Revela.Core.Abstractions;
 using Spectara.Revela.Sdk;
-using Spectara.Revela.Sdk.Abstractions;
 using Spectre.Console;
 
 namespace Spectara.Revela.Features.Packages.Commands.Plugins;

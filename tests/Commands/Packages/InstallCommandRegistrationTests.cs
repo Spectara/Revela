@@ -2,13 +2,13 @@ using System.Globalization;
 using System.Text.Json.Nodes;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
+using Spectara.Revela.Core.Abstractions;
 using Spectara.Revela.Core.Models;
 using Spectara.Revela.Core.Services;
 using Spectara.Revela.Features.Packages.Commands.Plugins;
 using Spectara.Revela.Features.Theme.Commands;
 using Spectara.Revela.Sdk.Abstractions;
 using Spectara.Revela.Sdk.Hosting;
-using Spectara.Revela.Sdk.Services;
 using Spectre.Console;
 
 namespace Spectara.Revela.Tests.Commands.Packages;

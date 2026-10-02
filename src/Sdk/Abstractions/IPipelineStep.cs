@@ -16,9 +16,8 @@ namespace Spectara.Revela.Sdk.Abstractions;
 /// </para>
 /// <para>
 /// Step ordering is defined once on <see cref="CommandDescriptor.Order"/>
-/// when registering with <c>IsSequentialStep: true</c>. The host stores
-/// this in <see cref="IPipelineStepOrderProvider"/> which both the CLI "all"
-/// command and <see cref="Engine.IRevelaEngine"/> use for sorting.
+/// when registering with <c>IsSequentialStep: true</c>. The host uses this order
+/// for both the CLI "all" command and <see cref="Engine.IRevelaEngine"/>.
 /// </para>
 /// </remarks>
 public interface IPipelineStep
@@ -52,30 +51,6 @@ public interface IPipelineStep
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>Result indicating success or failure.</returns>
     ValueTask<OperationResult> ExecuteAsync(CancellationToken cancellationToken = default);
-}
-
-/// <summary>
-/// Provides pipeline step ordering information collected during command registration.
-/// </summary>
-/// <remarks>
-/// <para>
-/// This is the single source of truth for step ordering. Order values come from
-/// <see cref="CommandDescriptor.Order"/> when <c>IsSequentialStep: true</c>.
-/// </para>
-/// <para>
-/// The host populates this during command registration. Both the CLI "all" command
-/// and <see cref="Engine.IRevelaEngine"/> use it for sorting.
-/// </para>
-/// </remarks>
-public interface IPipelineStepOrderProvider
-{
-    /// <summary>
-    /// Gets the execution order for a pipeline step.
-    /// </summary>
-    /// <param name="category">The pipeline category (e.g., "generate", "clean").</param>
-    /// <param name="name">The step name (e.g., "scan", "pages").</param>
-    /// <returns>The order value, or <see cref="int.MaxValue"/> if not registered.</returns>
-    int GetOrder(string category, string name);
 }
 
 /// <summary>
@@ -136,34 +111,4 @@ public static class CleanPipelineOrder
 
     /// <summary>Clean cache directory (200).</summary>
     public const int Cache = 200;
-}
-
-/// <summary>
-/// Menu-ordering constants for the host's built-in <c>check</c> sub-commands.
-/// </summary>
-/// <remarks>
-/// The host assigns these by check name to order the <c>check &lt;name&gt;</c> entries
-/// (and their <c>●</c> markers) in the interactive menu. They are display order only —
-/// checks are not generate pipeline steps. Plugin-contributed checks cannot choose a
-/// position; they are always listed at <see cref="Plugin"/>, after the built-in checks.
-/// </remarks>
-public static class CheckPipelineOrder
-{
-    /// <summary>Configuration check (100).</summary>
-    public const int Config = 100;
-
-    /// <summary>Project-structure check (200).</summary>
-    public const int Structure = 200;
-
-    /// <summary>Theme check (300).</summary>
-    public const int Theme = 300;
-
-    /// <summary>Content &amp; metadata check (400).</summary>
-    public const int Content = 400;
-
-    /// <summary>Gallery-URL (slug) check (500).</summary>
-    public const int Slugs = 500;
-
-    /// <summary>Fallback order for plugin-contributed checks (900).</summary>
-    public const int Plugin = 900;
 }

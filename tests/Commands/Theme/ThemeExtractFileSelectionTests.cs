@@ -5,11 +5,11 @@ using Microsoft.Extensions.Options;
 
 using NSubstitute;
 
+using Spectara.Revela.Core.Services;
 using Spectara.Revela.Features.Theme.Commands;
 using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Abstractions;
 using Spectara.Revela.Sdk.Configuration;
-using Spectara.Revela.Sdk.Services;
 using Spectara.Revela.Tests.Shared.Fixtures;
 
 using Spectre.Console;

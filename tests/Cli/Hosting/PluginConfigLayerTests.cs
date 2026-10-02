@@ -3,6 +3,7 @@ using System.Text.Json.Nodes;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Spectara.Revela.Cli.Hosting;
+using Spectara.Revela.Core.Abstractions;
 using Spectara.Revela.Core.Services;
 using Spectara.Revela.Plugins.Serve;
 using Spectara.Revela.Plugins.Serve.Configuration;
@@ -12,7 +13,6 @@ using Spectara.Revela.Plugins.Source.OneDrive;
 using Spectara.Revela.Plugins.Source.OneDrive.Configuration;
 using Spectara.Revela.Plugins.Statistics;
 using Spectara.Revela.Plugins.Statistics.Configuration;
-using Spectara.Revela.Sdk.Abstractions;
 using Spectara.Revela.Tests.Shared.Fixtures;
 
 namespace Spectara.Revela.Tests.Cli.Hosting;

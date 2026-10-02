@@ -3,8 +3,8 @@ using System.Globalization;
 
 using Microsoft.Extensions.Options;
 
+using Spectara.Revela.Core.Abstractions;
 using Spectara.Revela.Sdk;
-using Spectara.Revela.Sdk.Abstractions;
 using Spectara.Revela.Sdk.Configuration;
 using Spectara.Revela.Sdk.Hosting;
 

@@ -1,14 +1,11 @@
 using System.CommandLine;
 using System.Globalization;
 using Microsoft.Extensions.Options;
-
 using NSubstitute;
-
 using Spectara.Revela.Commands.Info;
-using Spectara.Revela.Sdk.Abstractions;
+using Spectara.Revela.Core.Abstractions;
 using Spectara.Revela.Sdk.Configuration;
 using Spectara.Revela.Sdk.Hosting;
-
 using Spectre.Console;
 
 namespace Spectara.Revela.Tests.Commands.Info;

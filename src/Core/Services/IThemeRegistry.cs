@@ -1,6 +1,6 @@
 using Spectara.Revela.Sdk.Abstractions;
 
-namespace Spectara.Revela.Sdk.Services;
+namespace Spectara.Revela.Core.Services;
 
 /// <summary>
 /// Service for resolving themes with priority: local → installed → default.

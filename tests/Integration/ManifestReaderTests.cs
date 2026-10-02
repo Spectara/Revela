@@ -1,6 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Spectara.Revela.Commands;
+using Spectara.Revela.Core.Abstractions;
 using Spectara.Revela.Features.Generate;
 using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Abstractions;

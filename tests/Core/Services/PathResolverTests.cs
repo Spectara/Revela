@@ -1,5 +1,6 @@
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
-using NSubstitute;
 using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Configuration;
 using Spectara.Revela.Sdk.Services;
@@ -7,7 +8,8 @@ using Spectara.Revela.Sdk.Services;
 namespace Spectara.Revela.Tests.Core.Services;
 
 /// <summary>
-/// Unit tests for <see cref="PathResolver"/>.
+/// Unit tests for the SDK's <see cref="IPathResolver"/> as registered by
+/// <see cref="ConfigurationServiceCollectionExtensions.AddRevelaConfigSections"/>.
 /// </summary>
 [TestClass]
 [TestCategory("Unit")]
@@ -79,16 +81,21 @@ public sealed class PathResolverTests
         Assert.IsTrue(resolver.OutputPath.EndsWith("output", StringComparison.Ordinal));
     }
 
-    private static PathResolver CreateResolver(string source, string output)
+    private static IPathResolver CreateResolver(string source, string output)
     {
-        var projectEnv = Options.Create(new ProjectEnvironment { Path = ProjectPath });
-        var pathsMonitor = Substitute.For<IOptionsMonitor<PathsConfig>>();
-        pathsMonitor.CurrentValue.Returns(new PathsConfig
-        {
-            Source = source,
-            Output = output
-        });
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                [$"{PathsConfig.Section}:{nameof(PathsConfig.Source)}"] = source,
+                [$"{PathsConfig.Section}:{nameof(PathsConfig.Output)}"] = output
+            })
+            .Build();
 
-        return new PathResolver(projectEnv, pathsMonitor);
+        var services = new ServiceCollection();
+        services.AddSingleton<IConfiguration>(configuration);
+        services.AddSingleton(Options.Create(new ProjectEnvironment { Path = ProjectPath }));
+        services.AddRevelaConfigSections();
+
+        return services.BuildServiceProvider().GetRequiredService<IPathResolver>();
     }
 }

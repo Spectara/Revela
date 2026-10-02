@@ -37,8 +37,8 @@ public static class ConfigurationServiceCollectionExtensions
     /// steps of the same run. Files changed by other processes are not picked up.
     /// </para>
     /// <para>
-    /// For writing configuration changes (e.g., adding feeds), use
-    /// <see cref="IGlobalConfigManager"/> which writes to revela.json.
+    /// For writing configuration changes (e.g., adding feeds), the host uses its
+    /// global config manager, which writes to revela.json.
     /// </para>
     /// </remarks>
     /// <param name="services">The service collection.</param>

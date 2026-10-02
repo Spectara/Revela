@@ -1,4 +1,4 @@
-namespace Spectara.Revela.Sdk.Abstractions;
+namespace Spectara.Revela.Core.Abstractions;
 
 /// <summary>
 /// A package that was installed into the local package directory.

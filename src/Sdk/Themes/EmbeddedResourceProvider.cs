@@ -16,7 +16,7 @@ namespace Spectara.Revela.Sdk.Themes;
 /// <item>Manifest loading from embedded JSON</item>
 /// </list>
 /// </remarks>
-public sealed class EmbeddedResourceProvider
+internal sealed class EmbeddedResourceProvider
 {
     private const string ManifestFileName = "manifest.json";
 

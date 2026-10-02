@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Configuration;
 using Spectara.Revela.Core;
+using Spectara.Revela.Core.Abstractions;
 using Spectara.Revela.Core.Configuration;
 using Spectara.Revela.Core.Helpers;
 using Spectara.Revela.Core.Logging;

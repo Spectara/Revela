@@ -47,7 +47,10 @@ public static class InstallCommandHelper
     public static void ShowRestartNotice(string what)
     {
         AnsiConsole.WriteLine();
-        ErrorPanels.ShowRestartRequired(what);
+        var panel = new Panel($"The installed {Markup.Escape(what)} will be available after restarting Revela.")
+            .WithHeader("[bold yellow]Restart Required[/]")
+            .WithWarningStyle();
+        AnsiConsole.Write(panel);
     }
 
     /// <summary>

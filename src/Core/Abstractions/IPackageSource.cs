@@ -1,4 +1,4 @@
-namespace Spectara.Revela.Sdk.Abstractions;
+namespace Spectara.Revela.Core.Abstractions;
 
 /// <summary>
 /// Abstraction for loading plugins and themes.

@@ -4,8 +4,6 @@ using Microsoft.Extensions.Options;
 using Spectara.Revela.Core.Themes;
 using Spectara.Revela.Sdk.Configuration;
 using Spectara.Revela.Sdk.Json;
-
-using Spectara.Revela.Sdk.Services;
 namespace Spectara.Revela.Core.Services;
 
 /// <summary>

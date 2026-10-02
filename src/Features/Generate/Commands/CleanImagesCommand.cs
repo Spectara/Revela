@@ -2,6 +2,7 @@ using System.CommandLine;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using Microsoft.Extensions.Options;
+using Spectara.Revela.Core.Abstractions;
 using Spectara.Revela.Core.Helpers;
 using Spectara.Revela.Features.Generate.Infrastructure;
 using Spectara.Revela.Sdk;

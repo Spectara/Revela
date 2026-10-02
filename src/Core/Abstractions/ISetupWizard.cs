@@ -1,4 +1,4 @@
-namespace Spectara.Revela.Sdk.Abstractions;
+namespace Spectara.Revela.Core.Abstractions;
 
 /// <summary>
 /// First-run setup wizard for installing themes and plugins.

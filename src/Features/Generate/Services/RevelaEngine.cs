@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using Spectara.Revela.Core.Abstractions;
 using Spectara.Revela.Features.Generate.Abstractions;
 using Spectara.Revela.Features.Generate.Models;
 using Spectara.Revela.Features.Generate.Models.Results;

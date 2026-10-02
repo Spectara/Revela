@@ -3,7 +3,6 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 
 using Spectara.Revela.Core.Services;
 using Spectara.Revela.Sdk.Artifacts;
-using Spectara.Revela.Sdk.Services;
 
 namespace Spectara.Revela.Core.Configuration;
 
