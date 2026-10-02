@@ -49,6 +49,34 @@ public sealed class ColorManagementTests
     }
 
     [TestMethod]
+    public async Task ProcessAsync_SrgbTaggedSource_VariantsMatchConvertedReference()
+    {
+        // Skipping a conversion that changes no pixel must not change a single byte.
+        using var project = CreateProject(g => g.AddRealImage("placeholder.jpg", 800, 600));
+        var source = SourceFile(project, "placeholder.jpg");
+        WriteGradientJpeg(source, 800, 600, "srgb");
+        using var host = BuildHost(project);
+
+        await ScanAndProcessAsync(host);
+
+        var variants = Variants(project);
+        Assert.HasCount(4, variants, "320 and the original width, as JPG and WebP.");
+        using var loaded = Image.NewFromFile(source);
+        using var original = loaded.Autorot();
+        foreach (var variant in variants)
+        {
+            var width = int.Parse(Path.GetFileNameWithoutExtension(variant), System.Globalization.CultureInfo.InvariantCulture);
+            using var resized = width >= original.Width ? original.Copy() : original.ThumbnailImage(width);
+            using var converted = resized.IccTransform("srgb", embedded: true, intent: Enums.Intent.Perceptual);
+            var expected = variant.EndsWith(".webp", StringComparison.Ordinal)
+                ? converted.WebpsaveBuffer(q: 95, keep: Enums.ForeignKeep.None)
+                : converted.JpegsaveBuffer(q: 95, keep: Enums.ForeignKeep.None);
+
+            CollectionAssert.AreEqual(expected, await File.ReadAllBytesAsync(variant), Path.GetFileName(variant));
+        }
+    }
+
+    [TestMethod]
     public async Task ProcessAsync_CmykSource_VariantsAreThreeBandSrgb()
     {
         using var project = CreateProject(g => g.AddRealImage("placeholder.jpg", 800, 600));
@@ -182,6 +210,23 @@ public sealed class ColorManagementTests
 
         using var converted = pixels.IccTransform(profile, inputProfile: "srgb", intent: Enums.Intent.Relative);
         converted.Jpegsave(path, q: 95, keep: keepProfile ? Enums.ForeignKeep.All : Enums.ForeignKeep.None);
+    }
+
+    /// <summary>
+    /// Writes a red/green gradient (including vivid greens with little red) tagged with a libvips profile.
+    /// </summary>
+    private static void WriteGradientJpeg(string path, int width, int height, string profile)
+    {
+        using var xyz = Image.Xyz(width, height);
+        using var x = xyz[0];
+        using var y = xyz[1];
+        using var red = x * (255.0 / width);
+        using var green = y * (255.0 / height);
+        using var blue = (x + y) * (64.0 / (width + height));
+        using var joined = red.Bandjoin(green, blue);
+        using var pixels = joined.Cast(Enums.BandFormat.Uchar).Copy(interpretation: Enums.Interpretation.Srgb);
+        using var tagged = pixels.IccTransform(profile, inputProfile: "srgb", intent: Enums.Intent.Relative);
+        tagged.Jpegsave(path, q: 95, keep: Enums.ForeignKeep.All);
     }
 
     /// <summary>

@@ -242,10 +242,8 @@ internal sealed partial class NetVipsImageProcessor(
         // Quality: Each resize is directly from original = maximum quality
         // No accumulated artifacts like pyramid resize
         //
-        // Note: CopyMemory() is NOT needed here because:
-        // - NewFromFile() uses random access by default
-        // - Multiple Resize() calls from same source work fine
-        // - Only Thumbnail() (sequential access) would need CopyMemory()
+        // NewFromFile() uses random access, so the original is decoded once and every resize
+        // reads it from memory. Each resized size is then materialized once (see below).
 
         // Find the largest size we need to generate (drives the single full-res load).
         // sizesToGenerate is sorted ascending → Last() is the biggest.
@@ -278,7 +276,6 @@ internal sealed partial class NetVipsImageProcessor(
             using var original = loaded.Autorot();
 
             var originalWidth = original.Width;
-            var originalHeight = original.Height;
 
             foreach (var size in sizesToGenerate)
             {
@@ -301,68 +298,53 @@ internal sealed partial class NetVipsImageProcessor(
                 }
 
                 // Get image for this size:
-                // - Original size: use loaded original directly
-                // - Smaller sizes: resize from original (no additional file I/O!)
-                Image thumb;
-                int thumbHeight;
+                // - Original size: use loaded original directly (already decoded in memory)
+                // - Smaller sizes: resize from original (no additional file I/O!), computed once
+                //   into memory because every format and the sRGB check below read it. The lazy
+                //   pipeline would otherwise redo the resize for each of them.
+                using var resized = size >= originalWidth ? null : ResizeImage(original, size, options.ResizeMode);
+                using var frame = resized?.CopyMemory();
+                var source = frame ?? original;
+                var thumbHeight = source.Height;
 
-                if (size >= originalWidth)
-                {
-                    // Use the already-loaded original directly (no resize needed)
-                    thumb = original;
-                    thumbHeight = originalHeight;
-                }
-                else
-                {
-                    // Resize from original based on resize mode
-                    thumb = ResizeImage(original, size, options.ResizeMode);
-                    thumbHeight = thumb.Height;
-                }
+                // Convert after resizing: converting the original once would be recomputed
+                // for every size and format by the lazy pipeline (~60% slower overall).
+                using var converted = ConvertToOutputColorSpace(source, keepGrey: true);
 
-                try
-                {
-                    // Convert after resizing: converting the original once would be recomputed
-                    // for every size and format by the lazy pipeline (~60% slower overall).
-                    using var converted = ConvertToOutputColorSpace(thumb, keepGrey: true);
-                    var publishable = converted ?? thumb;
+                // Materialize the conversion when several formats encode it (one extra frame per
+                // worker); a single encode streams it.
+                var encodeCount = isIncrementalMode ? formatsNeededForSize!.Count : options.Formats.Count;
+                using var convertedFrame = converted is not null && encodeCount > 1 ? converted.CopyMemory() : null;
+                var publishable = convertedFrame ?? converted ?? source;
 
-                    // Process each format - report saved or skipped in order
-                    foreach (var (format, quality) in options.Formats)
+                // Process each format - report saved or skipped in order
+                foreach (var (format, quality) in options.Formats)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+
+                    // In incremental mode, check if this specific format needs to be generated
+                    var needsGeneration = !isIncrementalMode || formatsNeededForSize!.Contains(format);
+
+                    if (needsGeneration)
                     {
-                        cancellationToken.ThrowIfCancellationRequested();
+                        // Announce work-in-progress before the (potentially slow) encode/write
+                        onVariantProgress?.Invoke(VariantState.Started, format);
 
-                        // In incremental mode, check if this specific format needs to be generated
-                        var needsGeneration = !isIncrementalMode || formatsNeededForSize!.Contains(format);
+                        var variant = await SaveVariantAsync(
+                            publishable,
+                            options.ImageSlug,
+                            options.OutputDirectory,
+                            format,
+                            size,
+                            thumbHeight,
+                            quality);
 
-                        if (needsGeneration)
-                        {
-                            // Announce work-in-progress before the (potentially slow) encode/write
-                            onVariantProgress?.Invoke(VariantState.Started, format);
-
-                            var variant = await SaveVariantAsync(
-                                publishable,
-                                options.ImageSlug,
-                                options.OutputDirectory,
-                                format,
-                                size,
-                                thumbHeight,
-                                quality);
-
-                            variants.Add(variant);
-                            onVariantProgress?.Invoke(VariantState.Done, format);
-                        }
-                        else
-                        {
-                            onVariantProgress?.Invoke(VariantState.Skipped, format);
-                        }
+                        variants.Add(variant);
+                        onVariantProgress?.Invoke(VariantState.Done, format);
                     }
-                }
-                finally
-                {
-                    // Dispose resized thumbnails (but NOT the original - it's managed by using)
-                    if (size < originalWidth)
+                    else
                     {
-                        thumb.Dispose();
+                        onVariantProgress?.Invoke(VariantState.Skipped, format);
                     }
                 }
             }
@@ -537,11 +519,17 @@ internal sealed partial class NetVipsImageProcessor(
     /// <returns>The converted image (caller disposes), or <c>null</c> if <paramref name="image"/> is already publishable.</returns>
     private Image? ConvertToOutputColorSpace(Image image, bool keepGrey)
     {
-        if (image.Contains("icc-profile-data"))
+        if (image.Contains(IccTransformShortcut.ProfileField))
         {
+            if (IccTransformShortcut.IsNoOp(image, TransformToOutputProfile))
+            {
+                // Already sRGB pixel for pixel: the conversion would write the same values.
+                return null;
+            }
+
             try
             {
-                return image.IccTransform(OutputProfile, embedded: true, intent: Enums.Intent.Perceptual);
+                return TransformToOutputProfile(image);
             }
             catch (VipsException ex)
             {
@@ -557,6 +545,12 @@ internal sealed partial class NetVipsImageProcessor(
 
         return alreadyPublishable ? null : image.Colourspace(Enums.Interpretation.Srgb);
     }
+
+    /// <summary>
+    /// Converts an image with an embedded ICC profile to sRGB, the profile of published variants.
+    /// </summary>
+    internal static Image TransformToOutputProfile(Image image) =>
+        image.IccTransform(OutputProfile, embedded: true, intent: Enums.Intent.Perceptual);
 
     /// <summary>
     /// Extract EXIF data from image
@@ -1024,7 +1018,10 @@ internal sealed partial class NetVipsImageProcessor(
         // Step 1: Calculate average color in Oklab space
         // Using average instead of dominant color works better for high-contrast images
         // (e.g., white fur on black background)
-        using var samplerRaw = image.ThumbnailImage(10, height: 10, crop: Enums.Interesting.Centre);
+        // Materialized: the sRGB check and the per-pixel reads below would otherwise each
+        // recompute the shrink from the source image.
+        using var samplerShrunk = image.ThumbnailImage(10, height: 10, crop: Enums.Interesting.Centre);
+        using var samplerRaw = samplerShrunk.CopyMemory();
         using var samplerConverted = ConvertToOutputColorSpace(samplerRaw, keepGrey: false);
         var sampler = samplerConverted ?? samplerRaw;
 
@@ -1065,7 +1062,8 @@ internal sealed partial class NetVipsImageProcessor(
         // Step 3: Resize to 3x2 with sharpen (like original)
         var gridScaleX = 3.0 / image.Width;
         var gridScaleY = 2.0 / image.Height;
-        using var gridRaw = image.Resize(gridScaleX, vscale: gridScaleY);
+        using var gridShrunk = image.Resize(gridScaleX, vscale: gridScaleY);
+        using var gridRaw = gridShrunk.CopyMemory();
         using var gridConverted = ConvertToOutputColorSpace(gridRaw, keepGrey: false);
         using var grid = (gridConverted ?? gridRaw).Sharpen(sigma: 1.0);
 

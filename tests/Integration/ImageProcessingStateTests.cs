@@ -96,6 +96,34 @@ public sealed class ImageProcessingStateTests
     }
 
     [TestMethod]
+    public async Task ProcessAsync_StateWrittenByBeta21_ReencodesNothing()
+    {
+        // Libraries already processed by beta.21 must not be re-encoded by a later build with the
+        // default configuration: re-encoding an AVIF library takes hours on a small server.
+        using var project = CreateProject("a.jpg", "b.jpg");
+        await RunAsync(project);
+        var images = new JsonObject();
+        foreach (var name in new[] { "a.jpg", "b.jpg" })
+        {
+            var source = new FileInfo(Path.Combine(project.SourcePath, GalleryName, name));
+            images[$"{GalleryName}/{name}"] = new JsonObject
+            {
+                ["fingerprint"] = $"v2|size:{source.Length}|mtime:{source.LastWriteTimeUtc.Ticks}|resize:longest",
+                ["qualities"] = new JsonObject { ["jpg"] = 90 },
+            };
+        }
+
+        var beta21State = new JsonObject { ["version"] = 1, ["images"] = images };
+        Assert.AreEqual(beta21State.ToJsonString(), ReadJson(StatePath(project)).ToJsonString(), "Default settings must record exactly what beta.21 recorded.");
+        WriteJson(StatePath(project), beta21State);
+
+        var rerun = await RunAsync(project);
+
+        Assert.AreEqual(0, rerun.ProcessedCount);
+        Assert.AreEqual(2, rerun.SkippedCount);
+    }
+
+    [TestMethod]
     public async Task ProcessAsync_StateFromOlderPipelineVersion_ReencodesImage()
     {
         using var project = CreateProject("a.jpg");
