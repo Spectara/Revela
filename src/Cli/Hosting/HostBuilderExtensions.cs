@@ -45,8 +45,8 @@ internal static class HostBuilderExtensions
     /// No source watches for changes: a reload-on-change file source watches its whole
     /// directory recursively, which on Linux costs one inotify watch per sub-directory of
     /// the project (photos, output, cache) and stalled startup on large or network-mounted
-    /// projects. A CLI run is short-lived; code that writes a config file in-process reloads
-    /// <see cref="IConfigurationRoot"/> explicitly afterwards.
+    /// projects. A CLI run is short-lived; code that writes a config file in-process uses
+    /// <see cref="ConfigFileWriter"/>, which reloads <see cref="IConfigurationRoot"/> afterwards.
     /// </para>
     /// </remarks>
     /// <param name="builder">The host application builder.</param>

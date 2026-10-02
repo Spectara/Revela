@@ -5,7 +5,7 @@ using System.Text.Json.Serialization;
 
 using Microsoft.Extensions.Configuration;
 
-using Spectara.Revela.Core.Helpers;
+using Spectara.Revela.Core.Configuration;
 using Spectara.Revela.Sdk.Configuration;
 using Spectara.Revela.Sdk.Json;
 using Spectara.Revela.Sdk.Services;
@@ -30,7 +30,9 @@ namespace Spectara.Revela.Core.Services;
 /// use IOptionsMonitor&lt;DependenciesConfig&gt;, etc.
 /// </para>
 /// </remarks>
-public sealed partial class GlobalConfigManager(ILogger<GlobalConfigManager> logger) : IGlobalConfigManager
+public sealed partial class GlobalConfigManager(
+    ILogger<GlobalConfigManager> logger,
+    ConfigFileWriter configFileWriter) : IGlobalConfigManager
 {
     private const string DependenciesSection = DependenciesConfig.Section;
     private const string FeedsKey = "feeds";
@@ -39,7 +41,10 @@ public sealed partial class GlobalConfigManager(ILogger<GlobalConfigManager> log
     private string? ExplicitConfigFilePath { get; }
     private JsonObject? cachedConfig;
 
-    internal GlobalConfigManager(ILogger<GlobalConfigManager> logger, string configFilePath) : this(logger)
+    internal GlobalConfigManager(
+        ILogger<GlobalConfigManager> logger,
+        ConfigFileWriter configFileWriter,
+        string configFilePath) : this(logger, configFileWriter)
     {
         if (!Path.IsPathFullyQualified(configFilePath))
         {
@@ -93,64 +98,23 @@ public sealed partial class GlobalConfigManager(ILogger<GlobalConfigManager> log
     }
 
     /// <summary>
-    /// Saves the global configuration file.
+    /// Saves the global configuration file and reloads the configuration.
     /// </summary>
+    /// <remarks>
+    /// revela.json can hold private feed URLs, so it is always written owner-only on Unix.
+    /// </remarks>
     private async Task SaveFileAsync(JsonObject config, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        var json = config.ToJsonString(GlobalConfigJsonContext.Default.Options);
-        ValidateConfiguration(json);
-        var configPath = ConfigFilePath;
+        ValidateConfiguration(config.ToJsonString());
 
-        // Ensure directory exists
-        var dir = Path.GetDirectoryName(configPath);
-        if (!string.IsNullOrEmpty(dir))
-        {
-            _ = Directory.CreateDirectory(dir);
-        }
-
-        var temporaryPath = configPath + "." + Guid.NewGuid().ToString("N") + ".tmp";
-        var streamOptions = new FileStreamOptions
-        {
-            Mode = FileMode.CreateNew,
-            Access = FileAccess.Write,
-            Share = FileShare.None,
-            Options = FileOptions.Asynchronous
-        };
-        if (!OperatingSystem.IsWindows())
-        {
-            streamOptions.UnixCreateMode = UnixFileMode.UserRead | UnixFileMode.UserWrite;
-        }
-
-        var temporaryFileCreated = false;
-        try
-        {
-            await using (var stream = new FileStream(temporaryPath, streamOptions))
-            {
-                temporaryFileCreated = true;
-                await stream.WriteAsync(Encoding.UTF8.GetBytes(json), cancellationToken);
-                await stream.FlushAsync(cancellationToken);
-            }
-
-            cancellationToken.ThrowIfCancellationRequested();
-            await AtomicFileReplace.ReplaceAsync(temporaryPath, configPath, cancellationToken);
-            temporaryFileCreated = false;
-        }
-        finally
-        {
-            if (temporaryFileCreated)
-            {
-                try
-                {
-                    File.Delete(temporaryPath);
-                }
-                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
-                {
-                    LogTemporaryFileCleanupFailed(temporaryPath, ex.Message);
-                }
-            }
-        }
-
+        // A failed write or reload must not leave a cache that differs from the file
+        cachedConfig = null;
+        await configFileWriter.WriteAsync(
+            ConfigFilePath,
+            config,
+            UnixFileMode.UserRead | UnixFileMode.UserWrite,
+            cancellationToken);
         cachedConfig = config;
     }
 
@@ -312,9 +276,6 @@ public sealed partial class GlobalConfigManager(ILogger<GlobalConfigManager> log
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Config file '{ConfigPath}' is invalid ({Error}), refusing to overwrite it")]
     private partial void LogConfigCorrupted(string configPath, string error);
-
-    [LoggerMessage(Level = LogLevel.Warning, Message = "Could not remove temporary configuration file '{TemporaryPath}' ({Error})")]
-    private partial void LogTemporaryFileCleanupFailed(string temporaryPath, string error);
 
     #endregion
 

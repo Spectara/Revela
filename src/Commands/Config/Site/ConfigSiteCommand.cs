@@ -1,8 +1,9 @@
 using System.CommandLine;
 using System.Globalization;
-using Microsoft.Extensions.Configuration;
+using System.Text.Json.Nodes;
 using Microsoft.Extensions.Options;
 using Spectara.Revela.Commands.Config.Services;
+using Spectara.Revela.Core.Configuration;
 using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Abstractions;
 using Spectara.Revela.Sdk.Configuration;
@@ -27,7 +28,7 @@ internal sealed partial class ConfigSiteCommand(
     IOptionsMonitor<ThemeConfig> themeConfig,
     IConfigService configService,
     IThemeRegistry themeRegistry,
-    IConfiguration configuration,
+    ConfigFileWriter configFileWriter,
     TimeProvider timeProvider)
 {
     /// <summary>
@@ -126,13 +127,10 @@ internal sealed partial class ConfigSiteCommand(
         // Collect values via interactive prompts
         var values = CollectValues(properties, isEditMode, projectName, timeProvider);
 
-        // Build final JSON using template structure
+        // Build final JSON using template structure; the writer validates, replaces atomically
+        // and reloads, so later steps in this process (e.g. generate from the menu) see it
         var finalJson = JsonPropertyExtractor.BuildJson(templateJson, values);
-        await File.WriteAllTextAsync(siteConfigPath, finalJson, cancellationToken);
-
-        // Configuration sources don't watch files, so later steps in this process
-        // (e.g. generate from the interactive menu) only see the new values after a reload
-        (configuration as IConfigurationRoot)?.Reload();
+        await configFileWriter.WriteAsync(siteConfigPath, JsonNode.Parse(finalJson)!, cancellationToken: cancellationToken);
 
         LogSavedSiteConfig(logger, siteConfigPath);
 
