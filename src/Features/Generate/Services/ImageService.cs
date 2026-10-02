@@ -50,6 +50,12 @@ internal sealed partial class ImageService(
     /// <summary>Thread-pool threads kept free beside the encode workers (progress, checkpoint saves).</summary>
     private const int ReservedPoolThreads = 4;
 
+    /// <summary>
+    /// libvips' default AVIF and WebP encoder effort: what variants were encoded with before
+    /// effort was configurable, and what a format without a recorded effort means.
+    /// </summary>
+    private const int EncoderDefaultEffort = 4;
+
     /// <summary>Save the processing state at least this often during a run.</summary>
     private static readonly TimeSpan CheckpointInterval = TimeSpan.FromSeconds(30);
 
@@ -137,7 +143,7 @@ internal sealed partial class ImageService(
             var imagesToProcess = new List<PendingImage>();
             var cachedCount = 0;
             var resizeMode = imageSizesProvider.GetResizeMode();
-            var efforts = GetNonDefaultEfforts(formats, ImageSettings);
+            var efforts = GetEffortsToRecord(formats, ImageSettings);
             var qualityChanges = new HashSet<(string Format, int Recorded, int Configured)>();
             var effortChanges = new HashSet<(string Format, int Recorded, int Configured)>();
 
@@ -605,19 +611,22 @@ internal sealed partial class ImageService(
     /// Encoder effort of the configured formats that differs from libvips' default.
     /// </summary>
     /// <remarks>
-    /// Default efforts are left out, so a default configuration encodes and records exactly
-    /// what it did before effort was configurable.
+    /// Recorded relative to the encoder's own default (<see cref="EncoderDefaultEffort"/>), not to
+    /// the configured default: the state of variants encoded before effort was configurable has
+    /// no efforts and means libvips' default. An effort equal to it is neither passed to the
+    /// encoder nor recorded, so <c>avifEffort: 4</c> keeps such AVIF variants, while the default
+    /// AVIF effort 2 re-encodes them once.
     /// </remarks>
-    private static Dictionary<string, int> GetNonDefaultEfforts(IReadOnlyDictionary<string, int> formats, ImageConfig settings)
+    private static Dictionary<string, int> GetEffortsToRecord(IReadOnlyDictionary<string, int> formats, ImageConfig settings)
     {
         var efforts = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
         foreach (var format in formats.Keys)
         {
-            if (string.Equals(format, "avif", StringComparison.OrdinalIgnoreCase) && settings.AvifEffort != ImageConfig.DefaultAvifEffort)
+            if (string.Equals(format, "avif", StringComparison.OrdinalIgnoreCase) && settings.AvifEffort != EncoderDefaultEffort)
             {
                 efforts[format] = settings.AvifEffort;
             }
-            else if (string.Equals(format, "webp", StringComparison.OrdinalIgnoreCase) && settings.WebpEffort != ImageConfig.DefaultWebpEffort)
+            else if (string.Equals(format, "webp", StringComparison.OrdinalIgnoreCase) && settings.WebpEffort != EncoderDefaultEffort)
             {
                 efforts[format] = settings.WebpEffort;
             }
@@ -632,7 +641,7 @@ internal sealed partial class ImageService(
     /// <remarks>
     /// A format without a recorded quality counts as stale: its files (if any) predate the
     /// recorded fingerprint, for example from before the format was last removed. A format
-    /// without a recorded effort was encoded with the default effort.
+    /// without a recorded effort was encoded with the encoder's default effort.
     /// </remarks>
     private static HashSet<string> GetStaleFormats(
         ProcessedImage recorded,
@@ -659,15 +668,12 @@ internal sealed partial class ImageService(
             if (recordedEffort != configuredEffort)
             {
                 stale.Add(format);
-                effortChanges.Add((format, recordedEffort ?? DefaultEffort(format), configuredEffort ?? DefaultEffort(format)));
+                effortChanges.Add((format, recordedEffort ?? EncoderDefaultEffort, configuredEffort ?? EncoderDefaultEffort));
             }
         }
 
         return stale;
     }
-
-    private static int DefaultEffort(string format) =>
-        string.Equals(format, "webp", StringComparison.OrdinalIgnoreCase) ? ImageConfig.DefaultWebpEffort : ImageConfig.DefaultAvifEffort;
 
     /// <summary>
     /// Collect all image source paths from the unified tree.

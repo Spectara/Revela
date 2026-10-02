@@ -25,12 +25,12 @@ internal sealed record ProcessedImage
     public IReadOnlyDictionary<string, int> Qualities { get; init; } = new Dictionary<string, int>();
 
     /// <summary>
-    /// Encoder effort per format that differs from libvips' default, as encoded on disk.
+    /// Encoder effort per format that differs from libvips' default (4), as encoded on disk.
     /// </summary>
     /// <remarks>
-    /// Absent for formats encoded with the default effort, and omitted entirely when every format
-    /// uses it, so the state of a default configuration stays as it was before effort was
-    /// configurable. Like <see cref="Qualities"/>, a change re-encodes only that format.
+    /// Absent for formats encoded with libvips' default effort, and omitted entirely when every
+    /// format uses it, so state written before effort was configurable stays valid. Like
+    /// <see cref="Qualities"/>, a change re-encodes only that format.
     /// </remarks>
     [JsonPropertyName("efforts")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]

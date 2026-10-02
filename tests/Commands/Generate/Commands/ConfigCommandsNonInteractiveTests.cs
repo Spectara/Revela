@@ -44,6 +44,35 @@ public sealed class ConfigCommandsNonInteractiveTests
     }
 
     [TestMethod]
+    public async Task ConfigImage_FormatsWithoutQuality_WritesDefaultQualities()
+    {
+        // AVIF 75 is about 18 % smaller than WebP 85 at visually equal quality on real photos;
+        // AVIF 80 was larger than WebP 85.
+        var configService = ProjectConfigService();
+        configService.ReadProjectConfigAsync(Arg.Any<CancellationToken>()).Returns([]);
+        JsonObject? written = null;
+        await configService.UpdateProjectConfigAsync(Arg.Do<JsonObject>(update => written = update), Arg.Any<CancellationToken>());
+        var themeRegistry = Substitute.For<IThemeRegistry>();
+        themeRegistry.Resolve(Arg.Any<string>(), Arg.Any<string>()).Returns((ITheme?)null);
+        var command = new ConfigImageCommand(
+            NullLogger<ConfigImageCommand>.Instance,
+            Options.Create(new ProjectEnvironment { Path = "project" }),
+            Monitor(new ThemeConfig { Name = "Lumina" }),
+            themeRegistry,
+            configService,
+            FakeConsoleCapabilities.NonInteractive);
+
+        var (exitCode, _) = await ConsoleCapture.RunAsync(() => command.ExecuteAsync("avif,webp,jpg", CancellationToken.None));
+
+        Assert.AreEqual(0, exitCode);
+        var images = written?["generate"]?["images"];
+        Assert.IsNotNull(images);
+        Assert.AreEqual(75, images["avif"]!.GetValue<int>());
+        Assert.AreEqual(85, images["webp"]!.GetValue<int>());
+        Assert.AreEqual(90, images["jpg"]!.GetValue<int>());
+    }
+
+    [TestMethod]
     public async Task ConfigSorting_NoOptions_FailsWithOptionsHint()
     {
         var configService = ProjectConfigService();

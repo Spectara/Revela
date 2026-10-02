@@ -54,19 +54,24 @@ public sealed class ImageConfig
     /// AVIF quality (1-100). Set to 0 to disable AVIF output.
     /// </summary>
     /// <remarks>
-    /// AVIF offers best compression but encoding is ~10x slower than WebP.
-    /// Recommended quality: 75-85. Set to 0 to disable.
+    /// AVIF gives the smallest files: at quality 75 about 18% smaller than WebP 85 at visually
+    /// equal quality on real photos (AVIF 80 was larger than WebP 85). Recommended quality: 70-80,
+    /// the setup wizard uses 75. Set to 0 to disable.
     /// Default is 0 - user must explicitly configure via 'revela config image'.
     /// </remarks>
     public int Avif { get; set; }
 
     /// <summary>
-    /// libvips' AVIF encoder effort, the default of <see cref="AvifEffort"/>.
+    /// Default of <see cref="AvifEffort"/>.
     /// </summary>
-    public const int DefaultAvifEffort = 4;
+    /// <remarks>
+    /// Below libvips' own default (4): on detailed 25–33 MP photos effort 2 encoded about 7×
+    /// faster with no visible difference and files no larger (about 2% smaller at equal quality).
+    /// </remarks>
+    public const int DefaultAvifEffort = 2;
 
     /// <summary>
-    /// libvips' WebP encoder effort, the default of <see cref="WebpEffort"/>.
+    /// Default of <see cref="WebpEffort"/>, libvips' WebP encoder default.
     /// </summary>
     public const int DefaultWebpEffort = 4;
 
@@ -74,9 +79,9 @@ public sealed class ImageConfig
     /// AVIF encoder effort (0-9): CPU time spent to make each AVIF file smaller.
     /// </summary>
     /// <remarks>
-    /// Default 4 (libvips' default). Effort 2 encodes about 8× faster (measured on 25 MP photos:
-    /// about 3.5× less CPU per photo for AVIF + WebP + JPG) for AVIF files 4–11% larger at about
-    /// the same quality. Changing it re-encodes the AVIF variants only.
+    /// Default 2. libvips' own default 4 encodes about 7× slower without making files smaller
+    /// on real photos; set it to keep AVIF files encoded before effort 2 became the default.
+    /// Changing it re-encodes the AVIF variants only.
     /// </remarks>
     [Range(0, 9)]
     public int AvifEffort { get; set; } = DefaultAvifEffort;

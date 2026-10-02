@@ -100,24 +100,13 @@ public sealed class ImageProcessingStateTests
     [TestMethod]
     public async Task ProcessAsync_StateWrittenByBeta21_ReencodesNothing()
     {
-        // Libraries already processed by beta.21 must not be re-encoded by a later build with the
-        // default configuration: re-encoding an AVIF library takes hours on a small server.
+        // JPEG/WebP libraries already processed by beta.21 must not be re-encoded by a later
+        // build with the default configuration.
         using var project = CreateProject("a.jpg", "b.jpg");
         await RunAsync(project);
-        var images = new JsonObject();
-        foreach (var name in new[] { "a.jpg", "b.jpg" })
-        {
-            var source = new FileInfo(Path.Combine(project.SourcePath, GalleryName, name));
-            images[$"{GalleryName}/{name}"] = new JsonObject
-            {
-                ["fingerprint"] = $"v2|size:{source.Length}|mtime:{source.LastWriteTimeUtc.Ticks}|resize:longest",
-                ["qualities"] = new JsonObject { ["jpg"] = 90 },
-            };
-        }
-
-        var beta21State = new JsonObject { ["version"] = 1, ["images"] = images };
-        Assert.AreEqual(beta21State.ToJsonString(), ReadJson(StatePath(project)).ToJsonString(), "Default settings must record exactly what beta.21 recorded.");
-        WriteJson(StatePath(project), beta21State);
+        var recorded = ReadJson(StatePath(project)).ToJsonString();
+        var beta21State = WriteBeta21State(project, new JsonObject { ["jpg"] = 90 });
+        Assert.AreEqual(beta21State.ToJsonString(), recorded, "Default settings must record exactly what beta.21 recorded.");
 
         var rerun = await RunAsync(project);
 
@@ -221,14 +210,50 @@ public sealed class ImageProcessingStateTests
     public async Task ProcessAsync_DefaultEffortsWrittenExplicitly_ReencodesNothing()
     {
         using var project = CreateProject("a.jpg");
+        WriteImageSettings(project, new JsonObject { ["jpg"] = 90, ["avif"] = 60 });
         await RunAsync(project);
         var state = await File.ReadAllTextAsync(StatePath(project));
 
-        WriteImageSettings(project, new JsonObject { ["jpg"] = 90, ["avifEffort"] = 4, ["webpEffort"] = 4 });
+        WriteImageSettings(project, new JsonObject { ["jpg"] = 90, ["avif"] = 60, ["avifEffort"] = 2, ["webpEffort"] = 4 });
         var rerun = await RunAsync(project);
 
         Assert.AreEqual(0, rerun.ProcessedCount);
         Assert.AreEqual(state, await File.ReadAllTextAsync(StatePath(project)));
+    }
+
+    [TestMethod]
+    public async Task ProcessAsync_AvifStateWrittenByBeta21_ReencodesOnlyAvifOnce()
+    {
+        // beta.21 encoded AVIF with libvips' effort 4 and recorded no effort. The default is now
+        // effort 2, so AVIF variants are re-encoded once; JPG variants are kept.
+        using var project = CreateProject("a.jpg", "b.jpg");
+        WriteImageSettings(project, new JsonObject { ["jpg"] = 90, ["avif"] = 60 });
+        await RunAsync(project);
+        WriteBeta21State(project, new JsonObject { ["jpg"] = 90, ["avif"] = 60 });
+        var jpg = VariantPath(project, "a", VariantSize);
+        File.SetLastWriteTimeUtc(jpg, new DateTime(2020, 1, 1, 0, 0, 0, DateTimeKind.Utc));
+
+        var rerun = await RunAsync(project);
+        var third = await RunAsync(project);
+
+        Assert.AreEqual(2, rerun.ProcessedCount);
+        Assert.AreEqual(4, rerun.FilesCreated, "Only the AVIF variants (320 and the original width) are re-encoded.");
+        Assert.AreEqual(2020, File.GetLastWriteTimeUtc(jpg).Year, "JPG variants must be kept.");
+        Assert.AreEqual(0, third.ProcessedCount, "The new effort must be recorded.");
+    }
+
+    [TestMethod]
+    public async Task ProcessAsync_AvifStateWrittenByBeta21WithExplicitEffort4_ReencodesNothing()
+    {
+        // Setting the previous effort explicitly keeps an AVIF library as it is.
+        using var project = CreateProject("a.jpg");
+        WriteImageSettings(project, new JsonObject { ["jpg"] = 90, ["avif"] = 60, ["avifEffort"] = 4 });
+        await RunAsync(project);
+        WriteBeta21State(project, new JsonObject { ["jpg"] = 90, ["avif"] = 60 });
+
+        var rerun = await RunAsync(project);
+
+        Assert.AreEqual(0, rerun.ProcessedCount);
     }
 
     [TestMethod]
@@ -362,6 +387,27 @@ public sealed class ImageProcessingStateTests
         var images = ReadJson(StatePath(project))["images"]!.AsObject();
         Assert.IsTrue(images.ContainsKey($"{GalleryName}/a.jpg"));
         Assert.IsFalse(images.ContainsKey($"{GalleryName}/b.jpg"));
+    }
+
+    /// <summary>
+    /// Replaces the state with what beta.21 recorded for the project's images: no efforts,
+    /// because beta.21 always encoded with libvips' default effort.
+    /// </summary>
+    private static JsonObject WriteBeta21State(TestProject project, JsonObject qualities)
+    {
+        var images = new JsonObject();
+        foreach (var source in new DirectoryInfo(Path.Combine(project.SourcePath, GalleryName)).GetFiles("*.jpg").OrderBy(f => f.Name, StringComparer.Ordinal))
+        {
+            images[$"{GalleryName}/{source.Name}"] = new JsonObject
+            {
+                ["fingerprint"] = $"v2|size:{source.Length}|mtime:{source.LastWriteTimeUtc.Ticks}|resize:longest",
+                ["qualities"] = qualities.DeepClone(),
+            };
+        }
+
+        var state = new JsonObject { ["version"] = 1, ["images"] = images };
+        WriteJson(StatePath(project), state);
+        return state;
     }
 
     /// <summary>
