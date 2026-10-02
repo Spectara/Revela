@@ -1,5 +1,4 @@
 using System.CommandLine;
-using System.Globalization;
 using System.Text.Json;
 using Microsoft.Extensions.Options;
 using Polly.Timeout;
@@ -225,7 +224,7 @@ internal sealed partial class OneDriveSourceCommand(
             var itemsToDownload = analysis.ItemsToDownload.ToList();
             var downloadedFiles = consoleCapabilities.CanRenderLive
                 ? await DownloadWithProgressBarAsync(itemsToDownload, outputDirectory, concurrency, cancellationToken)
-                : await DownloadItemsAsync(itemsToDownload, outputDirectory, concurrency, new PlainProgressLines(), cancellationToken);
+                : await DownloadItemsAsync(itemsToDownload, outputDirectory, concurrency, new PlainProgressReporter("Downloaded"), cancellationToken);
 
             // Success message
             var panel = new Panel(
@@ -298,39 +297,6 @@ internal sealed partial class OneDriveSourceCommand(
             });
 
         return downloadedFiles;
-    }
-
-    /// <summary>
-    /// Plain progress for consoles that cannot render a live progress bar (CI, pipes):
-    /// one line per 10 % step. Downloads run in parallel, so steps are serialized and
-    /// only ever move forward.
-    /// </summary>
-    private sealed class PlainProgressLines : IProgress<(int current, int total)>
-    {
-        private readonly Lock gate = new();
-        private int lastStep = -1;
-
-        public void Report((int current, int total) value)
-        {
-            if (value.total <= 0)
-            {
-                return;
-            }
-
-            var step = value.current * 10 / value.total;
-            lock (gate)
-            {
-                if (step <= lastStep)
-                {
-                    return;
-                }
-
-                lastStep = step;
-                AnsiConsole.MarkupLine(string.Create(
-                    CultureInfo.InvariantCulture,
-                    $"[dim]Downloaded {value.current}/{value.total} file(s)[/]"));
-            }
-        }
     }
 
     private int ReportFailure(string reason)

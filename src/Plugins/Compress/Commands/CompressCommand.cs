@@ -91,7 +91,7 @@ internal sealed partial class CompressCommand(
 
         var stats = consoleCapabilities.CanRenderLive
             ? await CompressWithProgressBarAsync(outputPath, ownership, cancellationToken)
-            : await compressionService.CompressDirectoryAsync(outputPath, ownership, new PlainProgressLines(), cancellationToken);
+            : await compressionService.CompressDirectoryAsync(outputPath, ownership, new PlainProgressReporter("Compressed"), cancellationToken);
         if (stats.TotalFiles == 0)
         {
             AnsiConsole.MarkupLine($"{OutputMarkers.Info} No files to compress");
@@ -145,39 +145,6 @@ internal sealed partial class CompressCommand(
             });
 
         return stats ?? throw new InvalidOperationException("Compression finished without statistics.");
-    }
-
-    /// <summary>
-    /// Plain progress for consoles that cannot render a live progress bar (CI, pipes):
-    /// one line per 10 % step. Reports arrive from parallel workers, so steps are
-    /// serialized and only ever move forward.
-    /// </summary>
-    private sealed class PlainProgressLines : IProgress<(int current, int total, string fileName)>
-    {
-        private readonly Lock gate = new();
-        private int lastStep = -1;
-
-        public void Report((int current, int total, string fileName) value)
-        {
-            if (value.total <= 0)
-            {
-                return;
-            }
-
-            var step = value.current * 10 / value.total;
-            lock (gate)
-            {
-                if (step <= lastStep)
-                {
-                    return;
-                }
-
-                lastStep = step;
-                AnsiConsole.MarkupLine(string.Create(
-                    CultureInfo.InvariantCulture,
-                    $"[dim]Compressed {value.current}/{value.total} file(s)[/]"));
-            }
-        }
     }
 
     /// <summary>
