@@ -1,7 +1,6 @@
 using System.CommandLine;
 using System.IO.Compression;
 using System.Net.Http.Json;
-using System.Text.Json;
 using System.Text.Json.Serialization;
 using NuGet.Packaging;
 using Spectara.Revela.Core.Models;
@@ -22,12 +21,10 @@ namespace Spectara.Revela.Commands.Packages;
 internal sealed partial class RefreshCommand(
     ILogger<RefreshCommand> logger,
     INuGetSourceManager nugetSourceManager,
+    IPackageIndexService packageIndexService,
     HttpClient httpClient,
     TimeProvider timeProvider)
 {
-    private static readonly string IndexFilePath = Path.Combine(
-        ConfigPathResolver.ConfigDirectory, "packages.json");
-
     /// <summary>
     /// Creates the CLI command.
     /// </summary>
@@ -93,19 +90,18 @@ internal sealed partial class RefreshCommand(
                 .OrderBy(p => p.Id)
                 .ToList();
 
-            // Save index (ConfigDirectory is ensured to exist by ConfigPathResolver)
+            // Save index
             var index = new PackageIndex
             {
                 LastUpdated = timeProvider.GetUtcNow().UtcDateTime,
                 Packages = uniquePackages
             };
 
-            var json = JsonSerializer.Serialize(index, PackageIndexJsonContext.Default.PackageIndex);
-            await File.WriteAllTextAsync(IndexFilePath, json, cancellationToken);
+            await packageIndexService.SaveIndexAsync(index, cancellationToken);
 
             AnsiConsole.WriteLine();
             AnsiConsole.MarkupLine($"{OutputMarkers.Success} Indexed [cyan]{uniquePackages.Count}[/] packages from [cyan]{sources.Count}[/] sources");
-            AnsiConsole.MarkupLine($"  Cache: [dim]{Markup.Escape(IndexFilePath)}[/]");
+            AnsiConsole.MarkupLine($"  Cache: [dim]{Markup.Escape(packageIndexService.IndexFilePath)}[/]");
 
             return 0;
         }

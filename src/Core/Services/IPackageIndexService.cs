@@ -20,6 +20,13 @@ public interface IPackageIndexService
     Task<PackageIndex?> LoadIndexAsync(CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Replaces the package index file with <paramref name="index"/>.
+    /// </summary>
+    /// <param name="index">The index to persist.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    Task SaveIndexAsync(PackageIndex index, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Finds a package by ID in the index.
     /// </summary>
     /// <param name="packageId">Package ID to find.</param>
