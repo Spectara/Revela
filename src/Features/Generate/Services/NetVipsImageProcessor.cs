@@ -245,7 +245,7 @@ internal sealed partial class NetVipsImageProcessor(
         //   Strategy B (star from thumbnail):     30.09s
         //   Strategy C (star from original):      28.90s ← Winner! 13% faster
         //
-        // Since original size is ALWAYS included in sizes (for lightbox),
+        // Since original size is included in sizes (for lightbox, unless capped by maxSize),
         // loading the full original is optimal. All smaller sizes are resized
         // from the full-resolution image in memory.
         //
@@ -287,6 +287,10 @@ internal sealed partial class NetVipsImageProcessor(
 
             var originalWidth = original.Width;
 
+            // Above the configured cap, the cap replaces the full resolution: every size is a resize.
+            var capped = options.MaxSize > 0
+                && GetResizeExtent(original.Width, original.Height, options.ResizeMode) > options.MaxSize;
+
             foreach (var size in sizesToGenerate)
             {
                 cancellationToken.ThrowIfCancellationRequested();
@@ -308,11 +312,12 @@ internal sealed partial class NetVipsImageProcessor(
                 }
 
                 // Get image for this size:
-                // - Original size: use loaded original directly (already decoded in memory)
+                // - Original size: use loaded original directly (already decoded in memory),
+                //   unless a maxSize cap applies
                 // - Smaller sizes: resize from original (no additional file I/O!), computed once
                 //   into memory because every format and the sRGB check below read it. The lazy
                 //   pipeline would otherwise redo the resize for each of them.
-                using var resized = size >= originalWidth ? null : ResizeImage(original, size, options.ResizeMode);
+                using var resized = size >= originalWidth && !capped ? null : ResizeImage(original, size, options.ResizeMode);
                 using var frame = resized?.CopyMemory();
                 var source = frame ?? original;
                 var thumbHeight = source.Height;
@@ -509,6 +514,17 @@ internal sealed partial class NetVipsImageProcessor(
             _ => source.ThumbnailImage(size)
         };
     }
+
+    /// <summary>
+    /// The dimension a size constrains under <paramref name="resizeMode"/> (see <see cref="ResizeImage"/>).
+    /// </summary>
+    internal static int GetResizeExtent(int width, int height, string resizeMode) =>
+        resizeMode.ToUpperInvariant() switch
+        {
+            "WIDTH" => width,
+            "HEIGHT" => height,
+            _ => Math.Max(width, height)
+        };
 
     /// <summary>
     /// Converts an image to 8-bit sRGB for publishing.

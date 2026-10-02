@@ -232,6 +232,40 @@ public sealed class ImageProcessingStateTests
     }
 
     [TestMethod]
+    public async Task ProcessAsync_MaxSizeSet_CapsTheLargestVariantOfLargerImages()
+    {
+        using var project = CreateProject(("wide.jpg", 640, 480), ("tall.jpg", 480, 640), ("small.jpg", 300, 200));
+        WriteImageSettings(project, new JsonObject { ["jpg"] = 90, ["maxSize"] = 400 });
+
+        await RunAsync(project);
+
+        var sizes = ReadManifestSizes(project);
+        Assert.AreEqual("320,400", sizes["wide.jpg"]);
+        Assert.AreEqual("320,400", sizes["tall.jpg"], "A size is the longest edge, also for portraits.");
+        Assert.AreEqual("300", sizes["small.jpg"], "Images within the cap keep their full resolution.");
+        AssertDimensions(VariantPath(project, "wide", 400), 400, 300);
+        AssertDimensions(VariantPath(project, "tall", 400), 300, 400);
+        Assert.IsFalse(File.Exists(VariantPath(project, "wide", 640)));
+    }
+
+    [TestMethod]
+    public async Task ProcessAsync_MaxSizeChanged_ReencodesOnlyImagesAboveTheCap()
+    {
+        using var project = CreateProject(("wide.jpg", 640, 480), ("small.jpg", 300, 200));
+        await RunAsync(project);
+
+        WriteImageSettings(project, new JsonObject { ["jpg"] = 90, ["maxSize"] = 400 });
+        var capped = await RunAsync(project);
+        WriteImageSettings(project, new JsonObject { ["jpg"] = 90 });
+        var uncapped = await RunAsync(project);
+
+        Assert.AreEqual(1, capped.ProcessedCount);
+        Assert.AreEqual(1, capped.SkippedCount);
+        Assert.AreEqual(1, uncapped.ProcessedCount);
+        AssertDimensions(VariantPath(project, "wide", 640), 640, 480);
+    }
+
+    [TestMethod]
     public async Task ProcessAsync_SizeAdded_GeneratesNewVariants()
     {
         using var project = CreateProject("a.jpg");
@@ -349,19 +383,32 @@ public sealed class ImageProcessingStateTests
         File.Delete(StatePath(project));
     }
 
-    private static TestProject CreateProject(params string[] fileNames)
+    private static TestProject CreateProject(params string[] fileNames) =>
+        CreateProject([.. fileNames.Select(fileName => (fileName, 640, 480))]);
+
+    private static TestProject CreateProject(params (string FileName, int Width, int Height)[] images)
     {
         var project = TestProject.Create(p => p
             .WithSiteJson(new { title = "State", author = "Test" })
             .AddGallery(GalleryName, g =>
             {
-                foreach (var fileName in fileNames)
+                foreach (var (fileName, width, height) in images)
                 {
-                    g.AddRealImage(fileName, 640, 480);
+                    g.AddRealImage(fileName, width, height);
                 }
             }));
         WriteProjectJson(project, jpgQuality: 90);
         return project;
+    }
+
+    private static Dictionary<string, string> ReadManifestSizes(TestProject project) =>
+        ReadJson(ManifestPath(project))["root"]!["children"]![0]!["content"]!.AsArray()
+            .ToDictionary(c => c!["filename"]!.GetValue<string>(), c => string.Join(",", c!["sizes"]!.AsArray().Select(s => s!.GetValue<int>())));
+
+    private static void AssertDimensions(string path, int width, int height)
+    {
+        using var image = NetVips.Image.NewFromFile(path);
+        Assert.AreEqual((width, height), (image.Width, image.Height), Path.GetFileName(path));
     }
 
     private static void WriteProjectJson(TestProject project, int jpgQuality) =>

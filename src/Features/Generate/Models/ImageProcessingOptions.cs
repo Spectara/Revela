@@ -97,5 +97,14 @@ internal sealed class ImageProcessingOptions
     /// Original image height in pixels (from manifest/scan).
     /// </summary>
     public required int Height { get; init; }
+
+    /// <summary>
+    /// Largest variant size (<c>generate.images.maxSize</c>); 0 = full resolution.
+    /// </summary>
+    /// <remarks>
+    /// When the image is larger than the cap, every size (including the cap itself) is
+    /// resized and the full-resolution original is never written.
+    /// </remarks>
+    public int MaxSize { get; init; }
 }
 

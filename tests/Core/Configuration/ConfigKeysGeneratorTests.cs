@@ -50,6 +50,7 @@ public sealed class ConfigKeysGeneratorTests
         Assert.AreEqual("placeholder", Actual(ImageConfigKeys.Placeholder));
         Assert.AreEqual("avifEffort", Actual(ImageConfigKeys.AvifEffort));
         Assert.AreEqual("webpEffort", Actual(ImageConfigKeys.WebpEffort));
+        Assert.AreEqual("maxSize", Actual(ImageConfigKeys.MaxSize));
     }
 
     [TestMethod]

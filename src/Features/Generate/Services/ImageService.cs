@@ -22,7 +22,7 @@ namespace Spectara.Revela.Features.Generate.Services;
 /// <para>
 /// Processes images from the manifest, generating responsive variants
 /// in multiple sizes and formats. An image is skipped when its processing
-/// fingerprint (source size + modification time, resize mode, output version)
+/// fingerprint (source size + modification time, resize mode, output version, applied maxSize cap)
 /// matches the one recorded in <see cref="ImageStateStore"/> after its last successful
 /// processing and every expected variant exists with the recorded quality and encoder effort of its format.
 /// The scan manifest only supplies sizes, dimensions and placeholders, so rebuilding it
@@ -173,7 +173,11 @@ internal sealed partial class ImageService(
 
                 // Change detection against the state recorded after the last successful
                 // processing — never against scan metadata, which already reflects the edit.
-                var fingerprint = ComputeProcessingFingerprint(fileInfo.Length, fileInfo.LastWriteTimeUtc, resizeMode);
+                var appliedMaxSize = ImageSettings.MaxSize > 0
+                    && NetVipsImageProcessor.GetResizeExtent(width, height, resizeMode) > ImageSettings.MaxSize
+                        ? ImageSettings.MaxSize
+                        : 0;
+                var fingerprint = ComputeProcessingFingerprint(fileInfo.Length, fileInfo.LastWriteTimeUtc, resizeMode, appliedMaxSize);
                 var recorded = imageState.Get(manifestKey);
 
                 if (options.Force || recorded is null || !string.Equals(recorded.Fingerprint, fingerprint, StringComparison.Ordinal))
@@ -405,7 +409,8 @@ internal sealed partial class ImageService(
                                 Placeholder = ImageSettings.Placeholder,
                                 ExistingPlaceholder = existingPlaceholder,
                                 Width = width,
-                                Height = height
+                                Height = height,
+                                MaxSize = ImageSettings.MaxSize
                             },
                             // O(1), lock-free per-variant bookkeeping. No rendering and no
                             // display-state allocation — this runs tens of thousands of times.
@@ -578,10 +583,21 @@ internal sealed partial class ImageService(
     /// Fingerprint of the inputs that determine all of an image's variants. Sizes and formats
     /// are checked per output file, and quality per format (<see cref="ProcessedImage.Qualities"/>).
     /// </summary>
-    internal static string ComputeProcessingFingerprint(long fileSize, DateTime lastWriteTimeUtc, string resizeMode) =>
-        string.Create(
+    /// <remarks>
+    /// A <c>maxSize</c> cap is included only for images it shrinks (<paramref name="appliedMaxSize"/>
+    /// &gt; 0): their largest variant becomes a resize instead of the original, so they are
+    /// re-encoded when the cap changes, while images within the cap and the default
+    /// configuration keep their fingerprint.
+    /// </remarks>
+    internal static string ComputeProcessingFingerprint(long fileSize, DateTime lastWriteTimeUtc, string resizeMode, int appliedMaxSize = 0)
+    {
+        var fingerprint = string.Create(
             CultureInfo.InvariantCulture,
             $"v{NetVipsImageProcessor.OutputVersion}|size:{fileSize}|mtime:{lastWriteTimeUtc.Ticks}|resize:{resizeMode}");
+        return appliedMaxSize > 0
+            ? string.Create(CultureInfo.InvariantCulture, $"{fingerprint}|max:{appliedMaxSize}")
+            : fingerprint;
+    }
 
     /// <summary>
     /// Encoder effort of the configured formats that differs from libvips' default.

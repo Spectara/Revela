@@ -327,6 +327,8 @@ Spectara.Revela.Sdk.Configuration.ImageConfig.Jpg.get -> int
 Spectara.Revela.Sdk.Configuration.ImageConfig.Jpg.set -> void
 Spectara.Revela.Sdk.Configuration.ImageConfig.MaxDegreeOfParallelism.get -> int?
 Spectara.Revela.Sdk.Configuration.ImageConfig.MaxDegreeOfParallelism.set -> void
+Spectara.Revela.Sdk.Configuration.ImageConfig.MaxSize.get -> int
+Spectara.Revela.Sdk.Configuration.ImageConfig.MaxSize.set -> void
 Spectara.Revela.Sdk.Configuration.ImageConfig.MinHeight.get -> int
 Spectara.Revela.Sdk.Configuration.ImageConfig.MinHeight.set -> void
 Spectara.Revela.Sdk.Configuration.ImageConfig.MinWidth.get -> int

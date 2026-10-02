@@ -9,7 +9,7 @@ internal sealed record ProcessedImage
 {
     /// <summary>
     /// Fingerprint of the source file and the pipeline settings that apply to every variant
-    /// (output version, resize mode).
+    /// (output version, resize mode, and a maxSize cap that shrinks the image).
     /// </summary>
     [JsonPropertyName("fingerprint")]
     public string Fingerprint { get; init; } = string.Empty;

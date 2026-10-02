@@ -91,6 +91,20 @@ public sealed class ImageConfig
     public int WebpEffort { get; set; } = DefaultWebpEffort;
 
     /// <summary>
+    /// Largest variant size in pixels, measured like the theme's sizes (by default the longest
+    /// edge). 0 (default) keeps the photo's full resolution as the largest variant.
+    /// </summary>
+    /// <remarks>
+    /// Each photo gets the theme sizes plus its full resolution for zooming. The full-resolution
+    /// variant is the slowest to encode (about half of all AVIF time) and the largest file. With
+    /// a cap, photos larger than it get the cap instead (e.g. 3840 for 4K displays: about 24%
+    /// less CPU per photo, but zooming stops at the cap's resolution). Changing it re-encodes the
+    /// photos larger than the old or the new cap.
+    /// </remarks>
+    [Range(0, int.MaxValue)]
+    public int MaxSize { get; set; }
+
+    /// <summary>
     /// Optional maximum number of images processed in parallel.
     /// </summary>
     /// <remarks>

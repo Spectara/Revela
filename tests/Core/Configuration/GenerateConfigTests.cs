@@ -27,6 +27,15 @@ public sealed class GenerateConfigTests
         Assert.AreEqual(4, images.WebpEffort);
         Assert.AreEqual(ImageConfig.DefaultAvifEffort, images.AvifEffort);
         Assert.AreEqual(ImageConfig.DefaultWebpEffort, images.WebpEffort);
+        Assert.AreEqual(0, images.MaxSize, "No cap: the largest variant has the photo's full resolution.");
+    }
+
+    [TestMethod]
+    public void Images_NegativeMaxSize_FailsValidation()
+    {
+        var exception = Assert.ThrowsExactly<OptionsValidationException>(() => Bind("maxSize", "-1"));
+
+        Assert.IsTrue(exception.Failures.Any(f => f.Contains("MaxSize", StringComparison.Ordinal)), string.Join("; ", exception.Failures));
     }
 
     [TestMethod]
