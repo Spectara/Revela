@@ -55,10 +55,11 @@ internal sealed partial class NetVipsImageProcessor(
     /// <remarks>
     /// Part of the scan cache key. Increment whenever <see cref="ReadMetadataAsync"/> computes
     /// different values for the same file (2: upright dimensions after EXIF orientation and
-    /// sRGB placeholders; 3: XMP title, description, keywords, and rating), so manifests from
-    /// older versions re-read their metadata.
+    /// sRGB placeholders; 3: XMP title, description, keywords, and rating; 4: placeholders from
+    /// a shrink-on-load thumbnail), so manifests from older versions re-read their metadata.
+    /// Images are not re-encoded: their processing state is independent of the scan.
     /// </remarks>
-    internal const int MetadataVersion = 3;
+    internal const int MetadataVersion = 4;
 
     /// <summary>
     /// libvips metadata field holding the raw XMP packet.
@@ -75,6 +76,12 @@ internal sealed partial class NetVipsImageProcessor(
     /// Largest image dimension libvips accepts (<c>VIPS_MAX_COORD</c>).
     /// </summary>
     private const int VipsMaxCoord = 10_000_000;
+
+    /// <summary>
+    /// Largest side of the thumbnail a placeholder is computed from. Its hash samples a 10×10
+    /// center crop and a 3×2 grid, so a few hundred pixels keep it close to the full image.
+    /// </summary>
+    private const int PlaceholderSourceSize = 256;
 
     /// <summary>
     /// Flag to ensure NetVips is initialized only once
@@ -378,13 +385,12 @@ internal sealed partial class NetVipsImageProcessor(
     /// </summary>
     /// <remarks>
     /// <para>
-    /// Uses Sequential access mode - only reads image header, not full decode.
-    /// Much faster than full processing (~10-20ms vs 200-500ms per image).
+    /// Dimensions, EXIF and XMP come from the header (sequential access, no pixel decode).
     /// </para>
     /// <para>
-    /// When placeholderConfig is provided with Strategy != None, the image is loaded
-    /// with random access to generate the placeholder. This is slower but ensures
-    /// placeholders are available when pages are generated.
+    /// When placeholderConfig is provided with Strategy != None, the placeholder is computed
+    /// from a small shrink-on-load thumbnail: a JPEG is decoded at 1/2–1/8 scale instead of at
+    /// full resolution, which was 90% of the scan's cost.
     /// </para>
     /// </remarks>
     public Task<ImageMetadata> ReadMetadataAsync(
@@ -403,11 +409,7 @@ internal sealed partial class NetVipsImageProcessor(
         // Ensure NetVips is configured for parallel processing
         EnsureNetVipsInitialized();
 
-        // Determine access mode based on whether we need to generate placeholder
-        var needsPlaceholder = placeholderConfig?.Strategy is PlaceholderStrategy.CssHash;
-        var accessMode = needsPlaceholder ? Enums.Access.Random : Enums.Access.Sequential;
-
-        using var loaded = Image.NewFromFile(inputPath, access: accessMode);
+        using var loaded = Image.NewFromFile(inputPath, access: Enums.Access.Sequential);
 
         // Normalize EXIF orientation once so the scanned dimensions (and any placeholder)
         // describe the visually UPRIGHT image, consistent with the variants produced later
@@ -422,9 +424,14 @@ internal sealed partial class NetVipsImageProcessor(
 
         // Generate placeholder if configured
         string? placeholder = null;
-        if (needsPlaceholder && placeholderConfig is not null)
+        if (placeholderConfig?.Strategy is PlaceholderStrategy.CssHash)
         {
-            placeholder = GenerateCssHash(image);
+            // Thumbnail applies the EXIF orientation like Autorot and never enlarges. Its result
+            // is read sequentially, so it is materialized before the hash reads it several
+            // times (libvips would fail with "out of order read").
+            using var thumbnail = Image.Thumbnail(inputPath, PlaceholderSourceSize, height: PlaceholderSourceSize, size: Enums.Size.Down);
+            using var source = thumbnail.CopyMemory();
+            placeholder = GenerateCssHash(source);
         }
 
         return Task.FromResult(new ImageMetadata

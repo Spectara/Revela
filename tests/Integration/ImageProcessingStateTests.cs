@@ -1,3 +1,5 @@
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json.Nodes;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -139,6 +141,29 @@ public sealed class ImageProcessingStateTests
         var rerun = await RunAsync(project);
 
         Assert.AreEqual(1, rerun.ProcessedCount);
+    }
+
+    [TestMethod]
+    public async Task ProcessAsync_ScanMetadataFromOlderVersion_RereadsMetadataWithoutReencoding()
+    {
+        // A MetadataVersion bump (e.g. a new placeholder algorithm) re-reads the scan metadata
+        // once; the processing state is independent of it, so no image is re-encoded.
+        using var project = CreateProject("a.jpg");
+        await RunAsync(project);
+        var manifest = ReadJson(ManifestPath(project));
+        var input = $"metadata:{NetVipsImageProcessor.MetadataVersion - 1}|placeholder:CssHash|minWidth:0|minHeight:0";
+        manifest["_meta"]!["scanConfigHash"] = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(input)))[..12];
+        var image = manifest["root"]!["children"]![0]!["content"]!.AsArray().Single(c => (string?)c!["filename"] == "a.jpg")!;
+        var placeholder = image["placeholder"]!.GetValue<string>();
+        image["placeholder"] = "0";
+        WriteJson(ManifestPath(project), manifest);
+
+        var rerun = await RunAsync(project);
+
+        Assert.AreEqual(0, rerun.ProcessedCount);
+        var rescanned = ReadJson(ManifestPath(project))["root"]!["children"]![0]!["content"]!.AsArray()
+            .Single(c => (string?)c!["filename"] == "a.jpg")!;
+        Assert.AreEqual(placeholder, rescanned["placeholder"]!.GetValue<string>(), "The scan must re-read the placeholder.");
     }
 
     [TestMethod]
