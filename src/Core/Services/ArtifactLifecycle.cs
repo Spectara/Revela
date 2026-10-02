@@ -1,3 +1,4 @@
+using Spectara.Revela.Sdk.Abstractions;
 using Spectara.Revela.Sdk.Artifacts;
 
 namespace Spectara.Revela.Core.Services;
@@ -7,20 +8,20 @@ internal sealed class ArtifactLifecycle(
 {
     private readonly IReadOnlyList<IArtifactInvalidator> invalidators = [.. artifactInvalidators];
 
-    public async ValueTask<ArtifactInvalidationResult> PrepareToReplaceAsync(
+    public async ValueTask<OperationResult> PrepareToReplaceAsync(
         ArtifactId artifact,
         CancellationToken cancellationToken = default)
     {
         var validationError = ValidateGraph();
         if (validationError is not null)
         {
-            return ArtifactInvalidationResult.Fail(validationError);
+            return OperationResult.Fail(validationError);
         }
 
         var invalidatorByArtifact = invalidators.ToDictionary(item => item.Artifact);
         if (!CoreArtifacts.All.Contains(artifact) && !invalidatorByArtifact.ContainsKey(artifact))
         {
-            return ArtifactInvalidationResult.Fail($"Unknown artifact '{artifact}'.");
+            return OperationResult.Fail($"Unknown artifact '{artifact}'.");
         }
 
         var orderedInvalidators = new List<IArtifactInvalidator>();
@@ -30,7 +31,7 @@ internal sealed class ArtifactLifecycle(
         foreach (var invalidator in orderedInvalidators)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            ArtifactInvalidationResult result;
+            OperationResult result;
             try
             {
                 result = await invalidator.InvalidateAsync(cancellationToken);
@@ -41,19 +42,19 @@ internal sealed class ArtifactLifecycle(
             }
             catch (Exception exception)
             {
-                return ArtifactInvalidationResult.Fail(
+                return OperationResult.Fail(
                     $"Failed to invalidate '{invalidator.Artifact}': {exception.Message}");
             }
 
             if (!result.Success)
             {
-                return ArtifactInvalidationResult.Fail(
+                return OperationResult.Fail(
                     $"Failed to invalidate '{invalidator.Artifact}': " +
                     (result.ErrorMessage ?? "Unknown error"));
             }
         }
 
-        return ArtifactInvalidationResult.Ok();
+        return OperationResult.Ok();
     }
 
     private void CollectDependents(

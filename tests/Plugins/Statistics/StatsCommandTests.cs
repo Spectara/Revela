@@ -87,26 +87,26 @@ public sealed class StatsCommandTests : IDisposable
 
     private sealed class SuccessfulArtifactLifecycle : IArtifactLifecycle
     {
-        public ValueTask<ArtifactInvalidationResult> PrepareToReplaceAsync(
+        public ValueTask<OperationResult> PrepareToReplaceAsync(
             ArtifactId artifact,
             CancellationToken cancellationToken = default)
         {
             _ = artifact;
             cancellationToken.ThrowIfCancellationRequested();
-            return new ValueTask<ArtifactInvalidationResult>(ArtifactInvalidationResult.Ok());
+            return new ValueTask<OperationResult>(OperationResult.Ok());
         }
     }
 
     private sealed class FailingArtifactLifecycle : IArtifactLifecycle
     {
-        public ValueTask<ArtifactInvalidationResult> PrepareToReplaceAsync(
+        public ValueTask<OperationResult> PrepareToReplaceAsync(
             ArtifactId artifact,
             CancellationToken cancellationToken = default)
         {
             _ = artifact;
             cancellationToken.ThrowIfCancellationRequested();
-            return new ValueTask<ArtifactInvalidationResult>(
-                ArtifactInvalidationResult.Fail("dependent cleanup failed"));
+            return new ValueTask<OperationResult>(
+                OperationResult.Fail("dependent cleanup failed"));
         }
     }
 }

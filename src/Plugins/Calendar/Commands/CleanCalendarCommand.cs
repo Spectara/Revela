@@ -28,12 +28,12 @@ internal sealed partial class CleanCalendarCommand(
 
     string IPipelineStep.Name => "calendar";
 
-    ValueTask<PipelineStepResult> IPipelineStep.ExecuteAsync(CancellationToken cancellationToken)
+    ValueTask<OperationResult> IPipelineStep.ExecuteAsync(CancellationToken cancellationToken)
     {
         var deletion = Delete(cancellationToken);
-        return new ValueTask<PipelineStepResult>(deletion.Failures.Count == 0
-            ? PipelineStepResult.Ok()
-            : PipelineStepResult.Fail(
+        return new ValueTask<OperationResult>(deletion.Failures.Count == 0
+            ? OperationResult.Ok()
+            : OperationResult.Fail(
                 $"Could not delete '{deletion.Failures[0].Path}': {deletion.Failures[0].Message}"));
     }
 

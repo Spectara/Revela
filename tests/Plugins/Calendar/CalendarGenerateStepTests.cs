@@ -193,7 +193,7 @@ public sealed class CalendarGenerateStepTests
         using var project = TestProject.Create();
         var lifecycle = Substitute.For<IArtifactLifecycle>();
         lifecycle.PrepareToReplaceAsync(CalendarArtifacts.Data, Arg.Any<CancellationToken>())
-            .Returns(ArtifactInvalidationResult.Fail("dependent cleanup failed"));
+            .Returns(OperationResult.Fail("dependent cleanup failed"));
         var step = CreateStep(project, EmptyCalendar, artifactLifecycle: lifecycle);
 
         if (useCli)
@@ -249,7 +249,7 @@ public sealed class CalendarGenerateStepTests
         {
             artifactLifecycle = Substitute.For<IArtifactLifecycle>();
             artifactLifecycle.PrepareToReplaceAsync(Arg.Any<ArtifactId>(), Arg.Any<CancellationToken>())
-                .Returns(ArtifactInvalidationResult.Ok());
+                .Returns(OperationResult.Ok());
         }
 
         var projectEnvironment = Options.Create(new ProjectEnvironment { Path = project.RootPath });

@@ -1,6 +1,6 @@
 using Microsoft.Extensions.Options;
-
 using Spectara.Revela.Sdk;
+using Spectara.Revela.Sdk.Abstractions;
 using Spectara.Revela.Sdk.Artifacts;
 
 namespace Spectara.Revela.Plugins.Statistics.Services;
@@ -14,15 +14,15 @@ internal sealed class StatisticsDataInvalidator(
 
     public IReadOnlyCollection<ArtifactId> DependsOn { get; } = [CoreArtifacts.Manifest];
 
-    public ValueTask<ArtifactInvalidationResult> InvalidateAsync(
+    public ValueTask<OperationResult> InvalidateAsync(
         CancellationToken cancellationToken = default)
     {
         var cachePath = Path.Combine(projectEnvironment.Value.Path, ProjectPaths.Cache);
         var deletion = DerivedFiles.DeleteAll(cachePath, FileName, cancellationToken);
 
-        return new ValueTask<ArtifactInvalidationResult>(deletion.Failures.Count == 0
-            ? ArtifactInvalidationResult.Ok()
-            : ArtifactInvalidationResult.Fail(
+        return new ValueTask<OperationResult>(deletion.Failures.Count == 0
+            ? OperationResult.Ok()
+            : OperationResult.Fail(
                 $"Could not delete '{deletion.Failures[0].Path}': {deletion.Failures[0].Message}"));
     }
 }

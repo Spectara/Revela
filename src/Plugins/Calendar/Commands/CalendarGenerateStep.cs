@@ -43,14 +43,14 @@ internal sealed partial class CalendarGenerateStep(
 
     string IPipelineStep.Name => "calendar";
 
-    async ValueTask<PipelineStepResult> IPipelineStep.ExecuteAsync(CancellationToken cancellationToken)
+    async ValueTask<OperationResult> IPipelineStep.ExecuteAsync(CancellationToken cancellationToken)
     {
         var outcome = await GenerateAsync(cancellationToken);
         return outcome.Status switch
         {
-            GenerationStatus.ManifestMissing => PipelineStepResult.Fail("Manifest not found — run scan first"),
-            GenerationStatus.Failed => PipelineStepResult.Fail(outcome.ErrorMessage ?? "Calendar generation failed"),
-            GenerationStatus.Generated or GenerationStatus.NoPages => PipelineStepResult.Ok(),
+            GenerationStatus.ManifestMissing => OperationResult.Fail("Manifest not found — run scan first"),
+            GenerationStatus.Failed => OperationResult.Fail(outcome.ErrorMessage ?? "Calendar generation failed"),
+            GenerationStatus.Generated or GenerationStatus.NoPages => OperationResult.Ok(),
             _ => throw new InvalidOperationException($"Unexpected calendar generation status '{outcome.Status}'."),
         };
     }

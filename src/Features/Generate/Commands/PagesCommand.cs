@@ -36,12 +36,12 @@ internal sealed partial class PagesCommand(
     string IPipelineStep.Name => "pages";
 
 
-    async ValueTask<PipelineStepResult> IPipelineStep.ExecuteAsync(CancellationToken cancellationToken)
+    async ValueTask<OperationResult> IPipelineStep.ExecuteAsync(CancellationToken cancellationToken)
     {
         var result = await renderService.RenderAsync(progress: null, cancellationToken);
         return result.Success
-            ? PipelineStepResult.Ok()
-            : PipelineStepResult.Fail(result.ErrorMessage ?? "Page generation failed");
+            ? OperationResult.Ok()
+            : OperationResult.Fail(result.ErrorMessage ?? "Page generation failed");
     }
 
     // ── CLI command ──

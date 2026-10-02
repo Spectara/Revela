@@ -42,12 +42,12 @@ internal sealed partial class ImagesCommand(
     string IPipelineStep.Name => "images";
 
 
-    async ValueTask<PipelineStepResult> IPipelineStep.ExecuteAsync(CancellationToken cancellationToken)
+    async ValueTask<OperationResult> IPipelineStep.ExecuteAsync(CancellationToken cancellationToken)
     {
         var result = await imageService.ProcessAsync(new ProcessImagesOptions(), progress: null, cancellationToken);
         return result.Success
-            ? PipelineStepResult.Ok()
-            : PipelineStepResult.Fail(result.ErrorMessage ?? "Image processing failed");
+            ? OperationResult.Ok()
+            : OperationResult.Fail(result.ErrorMessage ?? "Image processing failed");
     }
 
     // ── CLI command ──

@@ -34,13 +34,13 @@ internal sealed partial class StatsCommand(
     string IPipelineStep.Name => "statistics";
 
 
-    async ValueTask<PipelineStepResult> IPipelineStep.ExecuteAsync(CancellationToken cancellationToken)
+    async ValueTask<OperationResult> IPipelineStep.ExecuteAsync(CancellationToken cancellationToken)
     {
         var projectPath = projectEnvironment.Value.Path;
         var manifestFile = Path.Combine(projectPath, ProjectPaths.Cache, ManifestFileName);
         if (!File.Exists(manifestFile))
         {
-            return PipelineStepResult.Fail("Manifest not found — run scan first");
+            return OperationResult.Fail("Manifest not found — run scan first");
         }
 
         await manifestRepository.LoadAsync(cancellationToken);
@@ -50,20 +50,19 @@ internal sealed partial class StatsCommand(
             cancellationToken);
         if (!invalidationResult.Success)
         {
-            return PipelineStepResult.Fail(
-                invalidationResult.ErrorMessage ?? "Statistics artifact invalidation failed");
+            return invalidationResult;
         }
 
         var cleanupResult = await statisticsDataInvalidator.InvalidateAsync(cancellationToken);
         if (!cleanupResult.Success)
         {
-            return PipelineStepResult.Fail(
+            return OperationResult.Fail(
                 cleanupResult.ErrorMessage ?? "Statistics artifact cleanup failed");
         }
 
         if (manifestRepository.Images.Count == 0)
         {
-            return PipelineStepResult.Ok();
+            return OperationResult.Ok();
         }
 
         var root = manifestRepository.Root ?? throw new InvalidOperationException("Manifest root is null after loading");
@@ -71,7 +70,7 @@ internal sealed partial class StatsCommand(
 
         if (statsPages.Count == 0)
         {
-            return PipelineStepResult.Ok();
+            return OperationResult.Ok();
         }
 
         foreach (var pagePath in statsPages)
@@ -83,7 +82,7 @@ internal sealed partial class StatsCommand(
             await JsonWriter.WriteAsync(jsonPath, stats, cancellationToken);
         }
 
-        return PipelineStepResult.Ok();
+        return OperationResult.Ok();
     }
 
     // ── CLI command ──

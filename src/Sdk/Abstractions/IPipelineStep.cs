@@ -51,7 +51,7 @@ public interface IPipelineStep
     /// </remarks>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>Result indicating success or failure.</returns>
-    ValueTask<PipelineStepResult> ExecuteAsync(CancellationToken cancellationToken = default);
+    ValueTask<OperationResult> ExecuteAsync(CancellationToken cancellationToken = default);
 }
 
 /// <summary>
@@ -166,22 +166,4 @@ public static class CheckPipelineOrder
 
     /// <summary>Fallback order for plugin-contributed checks (900).</summary>
     public const int Plugin = 900;
-}
-
-/// <summary>
-/// Result of a pipeline step execution.
-/// </summary>
-public sealed record PipelineStepResult
-{
-    /// <summary>Whether the step succeeded.</summary>
-    public required bool Success { get; init; }
-
-    /// <summary>Error message if the step failed.</summary>
-    public string? ErrorMessage { get; init; }
-
-    /// <summary>Creates a successful result.</summary>
-    public static PipelineStepResult Ok() => new() { Success = true };
-
-    /// <summary>Creates a failed result with an error message.</summary>
-    public static PipelineStepResult Fail(string errorMessage) => new() { Success = false, ErrorMessage = errorMessage };
 }

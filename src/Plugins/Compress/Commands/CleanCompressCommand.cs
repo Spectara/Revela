@@ -25,7 +25,7 @@ internal sealed partial class CleanCompressCommand(
     string IPipelineStep.Name => "compress";
 
 
-    async ValueTask<PipelineStepResult> IPipelineStep.ExecuteAsync(CancellationToken cancellationToken)
+    async ValueTask<OperationResult> IPipelineStep.ExecuteAsync(CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
@@ -34,12 +34,12 @@ internal sealed partial class CleanCompressCommand(
         {
             using var ownership = await CompressedSiteOwnership.OpenAsync(outputPath, cancellationToken);
             await ownership.CleanAsync(cancellationToken);
-            return PipelineStepResult.Ok();
+            return OperationResult.Ok();
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
         {
             LogDeleteFailed(logger, outputPath, exception);
-            return PipelineStepResult.Fail($"Could not clean compressed files: {exception.Message}");
+            return OperationResult.Fail($"Could not clean compressed files: {exception.Message}");
         }
     }
 
