@@ -523,7 +523,7 @@ main>aside {
   position: sticky;
   top: calc(var(--space-xl) + var(--space-xs) + var(--space-l));
   height: fit-content;
-  max-height: calc(100dvh - var(--space-xl) - var(--space-xs) - var(--space-2xl));
+  max-height: calc(100svh - var(--space-xl) - var(--space-xs) - var(--space-2xl));
   overflow-y: auto;
   border-right: 1px solid var(--glass-border);
   padding-right: var(--space-s);

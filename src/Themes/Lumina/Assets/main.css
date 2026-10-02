@@ -285,8 +285,6 @@ html {
 
 html {
   scrollbar-gutter: stable;
-  position: relative;
-  height: 100dvh;
   background-color: var(--color-bg);
 }
 
@@ -748,7 +746,10 @@ main {
         width: 100%;
         min-width: 0;
         aspect-ratio: var(--width)/calc(var(--height) * 2);
-        margin-bottom: max(-100% / (var(--width) / var(--height)), max(-100dvh, var(--height) * -1px));
+        /* Small-viewport units (here and for the image and footer below): with the document
+           scrolling, iOS collapses its toolbars while scrolling, and dvh would then reflow
+           the whole grid mid-scroll. */
+        margin-bottom: max(-100% / (var(--width) / var(--height)), max(-100svh, var(--height) * -1px));
       }
 
       /* River Flow placeholder: a sticky layer behind the image, one image tall and
@@ -770,13 +771,13 @@ main {
       >picture>img,
       >a>picture>img {
         max-width: 100%;
-        max-height: 100vh;
+        max-height: 100svh;
         height: auto;
         object-fit: contain;
         margin: auto;
         display: block;
         position: sticky;
-        top: calc(var(--space-xl) + var(--space-xs));
+        top: var(--header-height);
       }
 
       >button[aria-haspopup="dialog"][command="show-modal"] {
@@ -1125,7 +1126,7 @@ body>footer {
   flex-direction: column;
   justify-content: space-between;
   align-items: center;
-  height: calc(100dvh - var(--space-2xl) + 1px);
+  height: calc(100svh - var(--space-2xl) + 1px);
   box-shadow: 0 0 0 var(--space-m) var(--color-bg);
   padding-top: var(--space-l);
 
