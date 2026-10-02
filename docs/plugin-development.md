@@ -312,6 +312,38 @@ The snapshot is read-only; only Revela itself writes the manifest.
 
 ---
 
+## Where plugins keep files
+
+Choose the location by asking what losing the file means:
+
+- **Cache** (`ProjectPaths.Cache`, `.revela/cache/`) - data that can be rebuilt from the
+  source and configuration. It may be deleted at any time (`revela clean cache`, `clean all`,
+  or by hand); losing it only costs time.
+- **State** (`ProjectPaths.State`, `.revela/state/`) - records that describe what is in the
+  output, for example which files your plugin created there. It is deleted together with the
+  output (`revela clean output`, `clean all`), kept by `clean cache`, and never published.
+- **Output** (`IPathResolver.OutputPath`) - only files that belong to the published site.
+  Everything there is uploaded, so never write bookkeeping files into it.
+
+| File | Location | Why |
+|------|----------|-----|
+| `statistics.json` (Statistics plugin) | `.revela/cache/<page>/` | Rebuilt from the scan at any time |
+| Compress ownership record (`compress.json`) | `.revela/state/` | Says which `.gz`/`.br` files in the output are Revela's; meaningless without that output |
+| Generated pages, assets, `.gz`/`.br` sidecars | output | Part of the published site |
+
+Both folders are fixed: combine them with the project root from `IOptions<ProjectEnvironment>`,
+for example `Path.Combine(project.Value.Path, ProjectPaths.Cache, pagePath)`. Files in
+`.revela/cache/<page>/<name>.json` are what a page's `data = { … }` front matter reads.
+
+Cleanup: register an `IArtifactInvalidator` for every file set you produce (see
+[Derived output artifacts](#derived-output-artifacts)) and a matching `clean <name>` step
+that removes exactly the same files. The host's `clean cache` and `clean output` delete the
+whole cache or the output plus the state, so your files must tolerate disappearing between
+runs: a missing cache file is rebuilt, a missing state record means "nothing in the output is
+known to be mine".
+
+---
+
 ## Derived output artifacts
 
 Plugins that create files derived from generated output must declare and invalidate
@@ -355,12 +387,6 @@ internal sealed class SearchIndexInvalidator(IOptions<ProjectEnvironment> projec
 follows symbolic links or junctions, so a link inside `.revela/cache` cannot make Revela delete
 files elsewhere. Use the same call from your `clean <name>` step so both remove exactly
 the same files.
-
-Where to write: reproducible data that a rerun can rebuild goes below
-`ProjectPaths.Cache` (`.revela/cache`, deleted by `clean cache`). A record of what your
-plugin produced in the output (for example which files it owns) goes in
-`ProjectPaths.State` (`.revela/state`, deleted with the output by `clean output`). Never
-write Revela-internal files into the output directory: everything there is published.
 
 Register the invalidator as an enumerable service:
 

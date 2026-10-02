@@ -16,6 +16,12 @@ namespace Spectara.Revela.Sdk.Services;
 /// <item>Absolute paths (e.g., "D:\OneDrive\Photos")</item>
 /// </list>
 /// </para>
+/// <para>
+/// Only site files belong in <see cref="OutputPath"/>: everything there is published. Revela's
+/// own folders are fixed and not configurable; plugins combine <see cref="ProjectEnvironment.Path"/>
+/// with <see cref="ProjectPaths.Cache"/> for data reproducible from the source and with
+/// <see cref="ProjectPaths.State"/> for records of what is in the output.
+/// </para>
 /// </remarks>
 public interface IPathResolver
 {

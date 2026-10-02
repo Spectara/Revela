@@ -4,34 +4,53 @@ namespace Spectara.Revela.Sdk;
 /// Well-known directory names used in Revela projects.
 /// </summary>
 /// <remarks>
+/// <para>
 /// These constants define the standard folder structure for Revela projects.
-/// All paths are relative to the project root directory.
+/// All paths are relative to the project root directory; combine them with
+/// <see cref="ProjectEnvironment.Path"/>.
+/// </para>
+/// <para>
+/// Where a plugin keeps a file depends on what losing it means: data that can be rebuilt
+/// from the source goes to <see cref="Cache"/>, a record of what the plugin produced in the
+/// output goes to <see cref="State"/>, and only files that belong to the published site go
+/// to the output (<see cref="Services.IPathResolver.OutputPath"/>).
+/// </para>
 /// </remarks>
 public static class ProjectPaths
 {
     /// <summary>
-    /// Revela's own folder in the project. Holds <see cref="Cache"/> and <see cref="State"/>;
-    /// nothing in it is ever published.
+    /// Revela's own folder in the project (<c>.revela</c>). Holds <see cref="Cache"/> and
+    /// <see cref="State"/>; nothing in it is ever published.
     /// </summary>
     public const string Revela = ".revela";
 
     /// <summary>
-    /// Reproducible data (scan manifest, plugin data files such as <c>statistics.json</c>).
+    /// Cache (<c>.revela/cache</c>): data that is reproducible from the source, such as the scan
+    /// manifest and plugin data files (<c>&lt;page&gt;/statistics.json</c>).
     /// </summary>
     /// <remarks>
-    /// Deleted by <c>revela clean cache</c>; losing it costs at most a rescan.
-    /// <c>.revela/cache</c>, composed with the platform's directory separator.
+    /// <para>
+    /// May be deleted at any time (<c>revela clean cache</c>, <c>clean all</c>, or by hand);
+    /// losing it only costs time, because the next build recreates it. Never put anything here
+    /// that the next build cannot rebuild from the source and configuration.
+    /// </para>
+    /// <para>Composed with the platform's directory separator.</para>
     /// </remarks>
     public static readonly string Cache = Path.Combine(Revela, "cache");
 
     /// <summary>
-    /// State of the output: what Revela produced there and with which settings
-    /// (image variants, pre-compressed sidecars).
+    /// State (<c>.revela/state</c>): records that describe what is in the output, such as which
+    /// image variants exist and with which settings, or which <c>.gz</c>/<c>.br</c> sidecars
+    /// Revela created.
     /// </summary>
     /// <remarks>
-    /// Belongs to the output directory: <c>revela clean output</c> deletes both, <c>revela clean cache</c>
-    /// keeps it. Losing it while the output stays means re-encoding every image.
-    /// <c>.revela/state</c>, composed with the platform's directory separator.
+    /// <para>
+    /// Belongs to the output: it is deleted together with the output (<c>revela clean output</c>,
+    /// <c>clean all</c>) and kept by <c>clean cache</c>. It lives outside the output, so it is never
+    /// published. Losing it while the output stays means redoing that work (re-encoding every
+    /// image) or no longer knowing which files in the output are yours.
+    /// </para>
+    /// <para>Composed with the platform's directory separator.</para>
     /// </remarks>
     public static readonly string State = Path.Combine(Revela, "state");
 
