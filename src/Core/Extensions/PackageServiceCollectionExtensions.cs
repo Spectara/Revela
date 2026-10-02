@@ -116,8 +116,6 @@ public static class PackageServiceCollectionExtensions
     {
         var logger = loggerFactory.CreateLogger("Spectara.Revela.Core.PluginBootstrap");
 
-        configuration.AddEnvironmentVariables(prefix: "SPECTARA__REVELA__");
-
         foreach (var pluginInfo in plugins)
         {
             try

@@ -1,5 +1,4 @@
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
 
 using NSubstitute;
 
@@ -28,12 +27,7 @@ public sealed class CheckCommandTests
         using var project = TestProject.Create(p => p
             .WithProjectJson(new { project = new { name = "Tree" } }));
 
-        var builder = Host.CreateApplicationBuilder(new HostApplicationBuilderSettings
-        {
-            ContentRootPath = project.RootPath,
-            EnvironmentName = "Testing",
-        });
-        builder.ConfigureRevela([], new EmptyPackageSource());
+        var builder = HostBootstrap.CreateBuilder([], new EmptyPackageSource(), project.RootPath);
         using var host = builder.Build();
 
         var rootCommand = host.UseRevelaCommands();
@@ -144,13 +138,7 @@ public sealed class CheckCommandTests
 
         try
         {
-            var builder = Host.CreateApplicationBuilder(new HostApplicationBuilderSettings
-            {
-                ContentRootPath = projectPath,
-                EnvironmentName = "Testing",
-            });
-
-            builder.ConfigureRevela(args, new EmptyPackageSource());
+            var builder = HostBootstrap.CreateBuilder(args, new EmptyPackageSource(), projectPath);
 
             var imageSizes = Substitute.For<IImageSizesProvider>();
             imageSizes.GetSizes().Returns([320, 640]);

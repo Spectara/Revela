@@ -1,7 +1,6 @@
 using System.Globalization;
 using System.Text.Json.Nodes;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using Spectara.Revela.Cli.Hosting;
 using Spectara.Revela.Core.Services;
@@ -126,13 +125,7 @@ public sealed class PluginConfigLayerTests
 
     private static string ReadSetting(string projectRoot, PluginSample sample)
     {
-        var builder = Host.CreateApplicationBuilder(new HostApplicationBuilderSettings
-        {
-            ContentRootPath = projectRoot,
-            EnvironmentName = "Testing",
-        });
-
-        builder.ConfigureRevela([], new OfficialPluginSource());
+        var builder = HostBootstrap.CreateBuilder([], new OfficialPluginSource(), projectRoot);
 
         using var host = builder.Build();
         return sample.Read(host.Services);

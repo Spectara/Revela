@@ -107,26 +107,28 @@ internal static class HostBootstrap
         IPackageSource packageSource,
         string? contentRootPath = null)
     {
-        var builder = Host.CreateApplicationBuilder(new HostApplicationBuilderSettings
+        // No host defaults: they would add appsettings*.json from the project directory,
+        // unprefixed environment variables and the CLI arguments as configuration in front of
+        // Revela's own layers (see HostBuilderExtensions.AddRevelaConfiguration). Args are
+        // deliberately not passed — they belong to System.CommandLine, not to configuration.
+        var builder = Host.CreateEmptyApplicationBuilder(new HostApplicationBuilderSettings
         {
-            Args = args,
             ContentRootPath = contentRootPath ?? Directory.GetCurrentDirectory(),
-            Configuration = CreateNonWatchingConfiguration(),
+            EnvironmentName = Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT") ?? Environments.Production,
         });
+
+        // Development (e.g. launchSettings.json) keeps the DI validation the host defaults gave it
+        if (builder.Environment.IsDevelopment())
+        {
+            builder.ConfigureContainer(new DefaultServiceProviderFactory(new ServiceProviderOptions
+            {
+                ValidateScopes = true,
+                ValidateOnBuild = true,
+            }));
+        }
 
         builder.ConfigureRevela(args, packageSource);
         return builder;
-    }
-
-    /// <summary>
-    /// Pre-seeds the host configuration so the default <c>appsettings*.json</c> sources do not
-    /// watch the content root (see <see cref="HostBuilderExtensions.AddRevelaConfiguration"/>).
-    /// </summary>
-    private static ConfigurationManager CreateNonWatchingConfiguration()
-    {
-        var configuration = new ConfigurationManager();
-        configuration.AddInMemoryCollection([new("hostBuilder:reloadConfigOnChange", "false")]);
-        return configuration;
     }
 
     /// <summary>
@@ -166,6 +168,7 @@ internal static class HostBootstrap
 
         // Pre-build: Load configuration and register services
         builder.AddRevelaConfiguration();
+        builder.AddRevelaLogging();
         builder.Services.AddRevelaConfigSections();
         builder.Services.AddCoreServices();
         builder.Services.AddRevelaCommands();

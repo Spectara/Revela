@@ -1,5 +1,4 @@
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
 
 using NSubstitute;
 
@@ -106,13 +105,7 @@ public sealed class GenerateGracefulFailureTests
 
         try
         {
-            var builder = Host.CreateApplicationBuilder(new HostApplicationBuilderSettings
-            {
-                ContentRootPath = projectPath,
-                EnvironmentName = "Testing",
-            });
-
-            builder.ConfigureRevela(args, new EmptyPackageSource());
+            var builder = HostBootstrap.CreateBuilder(args, new EmptyPackageSource(), projectPath);
 
             if (installTheme)
             {
