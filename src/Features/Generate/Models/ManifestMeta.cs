@@ -24,6 +24,13 @@ internal sealed record ManifestMeta
     ///   <item><description>v5: Content holds only images (no type discriminator); removed configHash and unused entry fields</description></item>
     /// </list>
     /// A manifest with another version is discarded on load and rebuilt by the next scan.
+    /// <para>
+    /// Image processing state is not part of the manifest: it lives in <c>.cache/images.json</c>
+    /// with its own version (<see cref="Services.ImageStateStore"/>), so discarding the manifest
+    /// never re-encodes images. Version 5 manifests written by beta.21 still carry
+    /// <c>processedImages</c> and <c>formatQualities</c>; they are carried over once and
+    /// otherwise ignored, which is why their removal did not need a new version.
+    /// </para>
     /// </remarks>
     [JsonPropertyName("version")]
     public int Version { get; init; } = CurrentVersion;
@@ -39,25 +46,6 @@ internal sealed record ManifestMeta
     /// </summary>
     [JsonPropertyName("scanConfigHash")]
     public string ScanConfigHash { get; init; } = string.Empty;
-
-    /// <summary>
-    /// Format qualities used for last image generation.
-    /// Key = format (jpg, webp, avif), Value = quality (1-100).
-    /// When a quality changes, all images of that format need regeneration.
-    /// </summary>
-    [JsonPropertyName("formatQualities")]
-    public IReadOnlyDictionary<string, int> FormatQualities { get; init; } = new Dictionary<string, int>();
-
-    /// <summary>
-    /// Processing fingerprint per source image, recorded after its variants were generated.
-    /// Key = normalized source path, Value = fingerprint of source file and pipeline settings.
-    /// </summary>
-    /// <remarks>
-    /// Owned by image processing and independent of the scan metadata on <see cref="Sdk.Models.Manifest.ImageContent"/>,
-    /// so a scan that sees an edited source cannot mark its stale variants as current.
-    /// </remarks>
-    [JsonPropertyName("processedImages")]
-    public IReadOnlyDictionary<string, string> ProcessedImages { get; init; } = new Dictionary<string, string>();
 
     /// <summary>
     /// Timestamp of last content scan.

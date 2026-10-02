@@ -48,6 +48,7 @@ public static class ServiceCollectionExtensions
         services.TryAddSingleton<IStaticFileService, StaticFileService>();
         services.TryAddSingleton<IManifestRepository, ManifestService>();
         services.TryAddSingleton<IManifestReader, ManifestReader>();
+        services.TryAddSingleton<ImageStateStore>();
 
         // Domain services (three main services)
         services.TryAddSingleton<IContentService, ContentService>();

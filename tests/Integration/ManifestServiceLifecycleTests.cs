@@ -196,54 +196,6 @@ public sealed class ManifestServiceLifecycleTests
     }
 
     [TestMethod]
-    public async Task FormatQualities_SavedAndLoaded()
-    {
-        using var project = TestProject.Create();
-        using var host = RevelaTestHost.Build(project.RootPath, s => { s.AddRevelaCommands(); s.AddGenerateFeature(); });
-
-        var manifest = host.Services.GetRequiredService<IManifestRepository>();
-
-        manifest.SetRoot(new ManifestEntry { Text = "Site", Path = "" });
-        manifest.SetFormatQualities(new Dictionary<string, int>
-        {
-            ["avif"] = 80,
-            ["webp"] = 85,
-            ["jpg"] = 90
-        });
-
-        await manifest.SaveAsync();
-
-        // Reload
-        using var host2 = RevelaTestHost.Build(project.RootPath, s => { s.AddRevelaCommands(); s.AddGenerateFeature(); });
-        var manifest2 = host2.Services.GetRequiredService<IManifestRepository>();
-        await manifest2.LoadAsync();
-
-        Assert.AreEqual(3, manifest2.FormatQualities.Count);
-        Assert.AreEqual(80, manifest2.FormatQualities["avif"]);
-        Assert.AreEqual(85, manifest2.FormatQualities["webp"]);
-        Assert.AreEqual(90, manifest2.FormatQualities["jpg"]);
-    }
-
-    [TestMethod]
-    public async Task ProcessedFingerprint_SavedAndLoaded_SurvivesRestart()
-    {
-        using var project = TestProject.Create();
-        using var host = RevelaTestHost.Build(project.RootPath, s => { s.AddRevelaCommands(); s.AddGenerateFeature(); });
-        var manifest = host.Services.GetRequiredService<IManifestRepository>();
-        manifest.SetRoot(new ManifestEntry { Text = "Site", Path = "" });
-
-        manifest.SetProcessedFingerprint("photos/a.jpg", "v1|a");
-        await manifest.SaveAsync();
-
-        using var host2 = RevelaTestHost.Build(project.RootPath, s => { s.AddRevelaCommands(); s.AddGenerateFeature(); });
-        var manifest2 = host2.Services.GetRequiredService<IManifestRepository>();
-        await manifest2.LoadAsync();
-
-        Assert.AreEqual("v1|a", manifest2.GetProcessedFingerprint("photos/a.jpg"));
-        Assert.IsNull(manifest2.GetProcessedFingerprint("photos/unknown.jpg"));
-    }
-
-    [TestMethod]
     public async Task LoadAsync_ManifestFromOlderVersion_StartsFresh()
     {
         // An older manifest has another shape; it is dropped and rebuilt by the next scan.
@@ -262,19 +214,26 @@ public sealed class ManifestServiceLifecycleTests
         await manifest.LoadAsync();
 
         Assert.IsNull(manifest.Root);
-        Assert.IsNull(manifest.GetProcessedFingerprint("photos/a.jpg"));
         Assert.AreEqual(string.Empty, manifest.ScanConfigHash);
     }
 
     [TestMethod]
-    public async Task LoadAsync_ManifestWithoutProcessedImages_LoadsWithEmptyState()
+    public async Task SaveAsync_Beta21ManifestWithProcessingState_LoadsAndMovesStateOut()
     {
+        // beta.21 kept image processing state in manifest version 5; it moved to images.json
+        // without a version bump, so such a manifest must keep loading.
         using var project = TestProject.Create();
         var cacheDirectory = Path.Combine(project.RootPath, ".cache");
         Directory.CreateDirectory(cacheDirectory);
-        await File.WriteAllTextAsync(Path.Combine(cacheDirectory, "manifest.json"), /*lang=json,strict*/ """
+        var manifestPath = Path.Combine(cacheDirectory, "manifest.json");
+        await File.WriteAllTextAsync(manifestPath, /*lang=json,strict*/ """
             {
-              "_meta": { "version": 5, "scanConfigHash": "DEF" },
+              "_meta": {
+                "version": 5,
+                "scanConfigHash": "DEF",
+                "formatQualities": { "jpg": 90 },
+                "processedImages": { "photos/a.jpg": "v2|a" }
+              },
               "root": { "text": "Site", "slug": "", "path": "", "content": [], "children": [] }
             }
             """);
@@ -282,26 +241,14 @@ public sealed class ManifestServiceLifecycleTests
         var manifest = host.Services.GetRequiredService<IManifestRepository>();
 
         await manifest.LoadAsync();
+        await manifest.SaveAsync();
 
-        Assert.IsNull(manifest.GetProcessedFingerprint("photos/a.jpg"));
-        Assert.IsEmpty(manifest.FormatQualities);
         Assert.AreEqual("DEF", manifest.ScanConfigHash);
-    }
-
-    [TestMethod]
-    public void RemoveOrphans_DeletedSource_DropsProcessedFingerprint()
-    {
-        using var project = TestProject.Create();
-        using var host = RevelaTestHost.Build(project.RootPath, s => { s.AddRevelaCommands(); s.AddGenerateFeature(); });
-        var manifest = host.Services.GetRequiredService<IManifestRepository>();
-        manifest.SetRoot(new ManifestEntry { Text = "Site", Path = "" });
-        manifest.SetProcessedFingerprint("photos/keep.jpg", "v1|keep");
-        manifest.SetProcessedFingerprint("photos/deleted.jpg", "v1|deleted");
-
-        manifest.RemoveOrphans(new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "photos/keep.jpg" });
-
-        Assert.AreEqual("v1|keep", manifest.GetProcessedFingerprint("photos/keep.jpg"));
-        Assert.IsNull(manifest.GetProcessedFingerprint("photos/deleted.jpg"));
+        Assert.AreEqual("Site", manifest.Root?.Text);
+        var saved = await File.ReadAllTextAsync(manifestPath);
+        Assert.DoesNotContain("processedImages", saved, StringComparison.Ordinal);
+        var state = await File.ReadAllTextAsync(Path.Combine(cacheDirectory, "images.json"));
+        Assert.Contains("\"photos/a.jpg\"", state, StringComparison.Ordinal);
     }
 }
 

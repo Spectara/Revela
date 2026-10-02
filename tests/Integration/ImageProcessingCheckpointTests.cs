@@ -84,13 +84,13 @@ public sealed class ImageProcessingCheckpointTests
     {
         const int imageCount = 27;
         using var project = CreateProject(imageCount);
-        var manifestPath = Path.Combine(project.RootPath, ".cache", "manifest.json");
+        var statePath = Path.Combine(project.RootPath, ".cache", "images.json");
         var savedBeforeLastImage = -1;
         var observing = new ScriptedProcessor(call =>
         {
             if (call == imageCount)
             {
-                savedBeforeLastImage = CountProcessedImages(manifestPath);
+                savedBeforeLastImage = CountProcessedImages(statePath);
             }
         });
 
@@ -102,21 +102,67 @@ public sealed class ImageProcessingCheckpointTests
         Assert.IsGreaterThanOrEqualTo(25, savedBeforeLastImage, "Progress must be checkpointed during the run, not only at the end.");
     }
 
-    private static TestProject CreateProject(int imageCount) => TestProject.Create(p => p
-        .WithProjectJson(new
+    [TestMethod]
+    public async Task ProcessAsync_QualityChangeInterrupted_NextRunProcessesOnlyRemainingImages()
+    {
+        using var project = CreateProject(imageCount: 3);
+        using (var host = BuildHost(project, new ScriptedProcessor(_ => { })))
         {
-            project = new { name = "Checkpoint" },
-            theme = new { name = "Lumina" },
-            generate = new { images = new { jpg = 80, maxDegreeOfParallelism = 1 } }
-        })
-        .WithSiteJson(new { title = "Checkpoint", author = "Test" })
-        .AddGallery(GalleryName, g =>
+            await ScanAsync(host);
+            var initial = await host.Services.GetRequiredService<IImageService>().ProcessAsync(new ProcessImagesOptions());
+            Assert.AreEqual(3, initial.ProcessedCount);
+        }
+
+        WriteProjectJson(project, jpgQuality: 60);
+        var failing = new ScriptedProcessor(call =>
         {
-            for (var i = 1; i <= imageCount; i++)
+            if (call == 3)
             {
-                g.AddRealImage($"photo{i:D2}.jpg", 200, 150);
+                throw new IOException("Simulated failure while encoding.");
             }
-        }));
+        });
+        using (var host = BuildHost(project, failing))
+        {
+            await ScanAsync(host);
+            var failed = await host.Services.GetRequiredService<IImageService>().ProcessAsync(new ProcessImagesOptions());
+            Assert.IsFalse(failed.Success);
+        }
+
+        using (var host = BuildHost(project, new ScriptedProcessor(_ => { })))
+        {
+            await ScanAsync(host);
+            var rerun = await host.Services.GetRequiredService<IImageService>().ProcessAsync(new ProcessImagesOptions());
+
+            Assert.IsTrue(rerun.Success, rerun.ErrorMessage);
+            Assert.AreEqual(1, rerun.ProcessedCount, "Images re-encoded with the new quality before the failure are current.");
+        }
+    }
+
+    private static TestProject CreateProject(int imageCount)
+    {
+        var project = TestProject.Create(p => p
+            .WithSiteJson(new { title = "Checkpoint", author = "Test" })
+            .AddGallery(GalleryName, g =>
+            {
+                for (var i = 1; i <= imageCount; i++)
+                {
+                    g.AddRealImage($"photo{i:D2}.jpg", 200, 150);
+                }
+            }));
+        WriteProjectJson(project, jpgQuality: 80);
+        return project;
+    }
+
+    private static void WriteProjectJson(TestProject project, int jpgQuality) =>
+        File.WriteAllText(Path.Combine(project.RootPath, "project.json"), new JsonObject
+        {
+            ["project"] = new JsonObject { ["name"] = "Checkpoint" },
+            ["theme"] = new JsonObject { ["name"] = "Lumina" },
+            ["generate"] = new JsonObject
+            {
+                ["images"] = new JsonObject { ["jpg"] = jpgQuality, ["maxDegreeOfParallelism"] = 1 }
+            },
+        }.ToJsonString());
 
     private static IHost BuildHost(TestProject project, ScriptedProcessor processor) =>
         RevelaTestHost.Build(project.RootPath, services =>
@@ -139,15 +185,15 @@ public sealed class ImageProcessingCheckpointTests
         Assert.IsTrue(scan.Success, scan.ErrorMessage);
     }
 
-    private static int CountProcessedImages(string manifestPath)
+    private static int CountProcessedImages(string statePath)
     {
-        if (!File.Exists(manifestPath))
+        if (!File.Exists(statePath))
         {
             return 0;
         }
 
-        var manifest = JsonNode.Parse(File.ReadAllText(manifestPath))!.AsObject();
-        return manifest["_meta"]?["processedImages"] is JsonObject processed ? processed.Count : 0;
+        var state = JsonNode.Parse(File.ReadAllText(statePath))!.AsObject();
+        return state["images"] is JsonObject processed ? processed.Count : 0;
     }
 
     /// <summary>

@@ -50,11 +50,6 @@ internal sealed partial class ManifestService(
     /// </remarks>
     private Dictionary<string, (ImageContent Entry, ManifestEntry Node)> imageCache = [];
 
-    /// <summary>
-    /// Mutable working copy of <see cref="ManifestMeta.ProcessedImages"/>, written back on save.
-    /// </summary>
-    private Dictionary<string, string> processedImages = new(StringComparer.Ordinal);
-
     #region Root Node
 
     /// <inheritdoc />
@@ -161,19 +156,6 @@ internal sealed partial class ManifestService(
         set => manifest = manifest with { Meta = manifest.Meta with { LastImagesProcessed = value } };
     }
 
-    /// <inheritdoc />
-    public IReadOnlyDictionary<string, int> FormatQualities => manifest.Meta.FormatQualities;
-
-    /// <inheritdoc />
-    public void SetFormatQualities(IReadOnlyDictionary<string, int> qualities) =>
-        manifest = manifest with { Meta = manifest.Meta with { FormatQualities = new Dictionary<string, int>(qualities) } };
-
-    /// <inheritdoc />
-    public string? GetProcessedFingerprint(string sourcePath) => processedImages.GetValueOrDefault(sourcePath);
-
-    /// <inheritdoc />
-    public void SetProcessedFingerprint(string sourcePath, string fingerprint) => processedImages[sourcePath] = fingerprint;
-
     #endregion
 
     #region Lifecycle
@@ -188,8 +170,6 @@ internal sealed partial class ManifestService(
         {
             LogManifestLoaded(logger, imageCache.Count);
         }
-
-        processedImages = new Dictionary<string, string>(manifest.Meta.ProcessedImages, StringComparer.Ordinal);
     }
 
     /// <summary>
@@ -234,7 +214,7 @@ internal sealed partial class ManifestService(
                 return null;
             }
 
-            return WithDefaultMetaCollections(loaded);
+            return loaded;
         }
         catch (JsonException ex)
         {
@@ -272,40 +252,25 @@ internal sealed partial class ManifestService(
         }
     }
 
-    /// <summary>
-    /// Replaces meta collections that are missing from older manifest files with empty ones.
-    /// </summary>
-    /// <remarks>
-    /// Source-generated System.Text.Json deserialization assigns <c>null</c> to init-only
-    /// properties absent from the JSON instead of keeping their initializers.
-    /// </remarks>
-    private static ImageManifest WithDefaultMetaCollections(ImageManifest loaded) =>
-        loaded with
-        {
-            Meta = loaded.Meta with
-            {
-                FormatQualities = loaded.Meta.FormatQualities ?? new Dictionary<string, int>(),
-                ProcessedImages = loaded.Meta.ProcessedImages ?? new Dictionary<string, string>(),
-            }
-        };
-
     /// <inheritdoc />
     public async Task SaveAsync(CancellationToken cancellationToken = default)
     {
-        var manifestPath = GetManifestPath(projectEnvironment.Value.Path);
+        var projectPath = projectEnvironment.Value.Path;
+
+        // The manifest file about to be replaced may be the last copy of the processing state
+        // that beta.21 kept in it; carry that over first so no image is re-encoded.
+        await ImageStateStore.SeedFromLegacyManifestAsync(projectPath, logger, cancellationToken);
+
+        var manifestPath = GetManifestPath(projectPath);
         Directory.CreateDirectory(Path.GetDirectoryName(manifestPath)!);
 
         var tempPath = manifestPath + ".tmp";
 
-        // Update timestamp and persist the processing state in stable key order
         manifest = manifest with
         {
             Meta = manifest.Meta with
             {
-                LastUpdated = timeProvider.GetUtcNow().UtcDateTime,
-                ProcessedImages = processedImages
-                    .OrderBy(entry => entry.Key, StringComparer.Ordinal)
-                    .ToDictionary(StringComparer.Ordinal)
+                LastUpdated = timeProvider.GetUtcNow().UtcDateTime
             }
         };
 
@@ -346,7 +311,6 @@ internal sealed partial class ManifestService(
     {
         manifest = new ImageManifest();
         imageCache.Clear();
-        processedImages.Clear();
     }
 
     #endregion
@@ -364,11 +328,6 @@ internal sealed partial class ManifestService(
         {
             RemoveImage(orphan);
             LogOrphanRemoved(logger, orphan);
-        }
-
-        foreach (var stale in processedImages.Keys.Where(key => !existingSourcePaths.Contains(key)).ToList())
-        {
-            processedImages.Remove(stale);
         }
 
         if (orphans.Count > 0)

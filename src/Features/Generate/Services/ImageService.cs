@@ -23,13 +23,16 @@ namespace Spectara.Revela.Features.Generate.Services;
 /// Processes images from the manifest, generating responsive variants
 /// in multiple sizes and formats. An image is skipped when its processing
 /// fingerprint (source size + modification time, resize mode, output version)
-/// matches the one recorded after its last successful processing and all
-/// expected variant files exist.
+/// matches the one recorded in <see cref="ImageStateStore"/> after its last successful
+/// processing and every expected variant exists with the recorded quality of its format.
+/// The scan manifest only supplies sizes, dimensions and placeholders, so rebuilding it
+/// never re-encodes images.
 /// </para>
 /// </remarks>
 internal sealed partial class ImageService(
     IImageProcessor imageProcessor,
     IManifestRepository manifestRepository,
+    ImageStateStore imageState,
     IImageSizesProvider imageSizesProvider,
     IOptions<ProjectEnvironment> projectEnvironment,
     IPathResolver pathResolver,
@@ -41,10 +44,10 @@ internal sealed partial class ImageService(
     /// <summary>Image output directory within output folder</summary>
     private const string ImageDirectory = "images";
 
-    /// <summary>Save the manifest after this many finished images during a run.</summary>
+    /// <summary>Save the processing state after this many finished images during a run.</summary>
     private const int CheckpointEveryImages = 25;
 
-    /// <summary>Save the manifest at least this often during a run.</summary>
+    /// <summary>Save the processing state at least this often during a run.</summary>
     private static readonly TimeSpan CheckpointInterval = TimeSpan.FromSeconds(30);
 
     /// <summary>Gets full path to source directory (supports hot-reload)</summary>
@@ -70,8 +73,9 @@ internal sealed partial class ImageService(
 
         try
         {
-            // Load manifest
+            // Load manifest (scan results) and processing state (what the variants on disk are made from)
             await manifestRepository.LoadAsync(cancellationToken);
+            await imageState.LoadAsync(cancellationToken);
 
             if (manifestRepository.Root is null)
             {
@@ -91,6 +95,8 @@ internal sealed partial class ImageService(
             if (uniqueSourcePaths.Count == 0)
             {
                 manifestRepository.RemoveOrphans(uniqueSourcePaths);
+                imageState.RemoveExcept(uniqueSourcePaths);
+                await imageState.SaveAsync(cancellationToken);
                 manifestRepository.LastImagesProcessed = timeProvider.GetUtcNow().UtcDateTime;
                 await manifestRepository.SaveAsync(cancellationToken);
                 stopwatch.Stop();
@@ -120,25 +126,15 @@ internal sealed partial class ImageService(
             // Configured sizes, the fallback for images whose manifest entry has none
             var sizes = imageSizesProvider.GetSizes();
 
-            // Detect which formats have quality changes (need regeneration)
-            var savedQualities = manifestRepository.FormatQualities;
-            var formatsWithQualityChange = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            foreach (var (format, quality) in formats)
-            {
-                if (savedQualities.TryGetValue(format, out var savedQuality) && savedQuality != quality)
-                {
-                    formatsWithQualityChange.Add(format);
-                    LogQualityChanged(logger, format, savedQuality, quality);
-                }
-            }
-
             // Remove orphaned entries (unique paths were collected above)
             manifestRepository.RemoveOrphans(uniqueSourcePaths);
+            imageState.RemoveExcept(uniqueSourcePaths);
 
             // Determine which images need processing
-            var imagesToProcess = new List<(string SourcePath, string ManifestKey, string ImageSlug, IReadOnlyList<int> Sizes, IReadOnlyList<(int Size, string Format)>? MissingVariants, string? ExistingPlaceholder, int Width, int Height, string Fingerprint)>();
+            var imagesToProcess = new List<PendingImage>();
             var cachedCount = 0;
             var resizeMode = imageSizesProvider.GetResizeMode();
+            var qualityChanges = new HashSet<(string Format, int Recorded, int Configured)>();
 
             var selectionStopwatch = Stopwatch.StartNew();
 
@@ -173,54 +169,64 @@ internal sealed partial class ImageService(
                 // Change detection against the state recorded after the last successful
                 // processing — never against scan metadata, which already reflects the edit.
                 var fingerprint = ComputeProcessingFingerprint(fileInfo.Length, fileInfo.LastWriteTimeUtc, resizeMode);
-                var sourceUnchanged = string.Equals(
-                    manifestRepository.GetProcessedFingerprint(manifestKey),
-                    fingerprint,
-                    StringComparison.Ordinal);
+                var recorded = imageState.Get(manifestKey);
+                var sourceUnchanged = recorded is not null
+                    && string.Equals(recorded.Fingerprint, fingerprint, StringComparison.Ordinal);
 
-                // Decision tree
-                if (options.Force)
+                if (options.Force || !sourceUnchanged)
                 {
-                    // Force: regenerate everything
-                    imagesToProcess.Add((fullPath, manifestKey, imageName, manifestSizes, null, existingPlaceholder, width, height, fingerprint));
+                    // Forced, source or pipeline changed, or never processed: regenerate everything.
+                    // Variants of formats that are no longer configured are now stale, so only
+                    // the configured qualities are recorded.
+                    imagesToProcess.Add(new PendingImage(
+                        fullPath, manifestKey, imageName, manifestSizes, null, existingPlaceholder, width, height,
+                        new ProcessedImage { Fingerprint = fingerprint, Qualities = new Dictionary<string, int>(formats) }));
+                    continue;
                 }
-                else if (!sourceUnchanged)
+
+                // Source unchanged: regenerate variants that are missing (deleted, new size or
+                // format, interrupted run) or encoded with another quality than configured.
+                // Cost: ~10 File.Exists calls per image (cheap I/O, typically cached by OS)
+                var staleFormats = GetStaleFormats(recorded!.Qualities, formats, qualityChanges);
+                var missingVariants = GetMissingVariants(outputImagesDirectory, imageName, manifestSizes, formats, staleFormats);
+                if (missingVariants.Count == 0)
                 {
-                    // Source or pipeline changed, or never processed: regenerate everything
-                    imagesToProcess.Add((fullPath, manifestKey, imageName, manifestSizes, null, existingPlaceholder, width, height, fingerprint));
+                    cachedCount++;
+                    continue;
                 }
-                else
+
+                // Variants of formats that are no longer configured are untouched and still valid.
+                var qualities = new Dictionary<string, int>(recorded.Qualities);
+                foreach (var (format, quality) in formats)
                 {
-                    // Source unchanged: check if all output files exist or quality changed
-                    // This handles: config changes, quality changes, manually deleted files, interrupted builds
-                    // Cost: ~10 File.Exists calls per image (cheap I/O, typically cached by OS)
-                    var missingVariants = GetMissingVariants(outputImagesDirectory, imageName, manifestSizes, formats, formatsWithQualityChange);
-                    if (missingVariants.Count > 0)
-                    {
-                        imagesToProcess.Add((fullPath, manifestKey, imageName, manifestSizes, missingVariants, existingPlaceholder, width, height, fingerprint));
-                    }
-                    else
-                    {
-                        cachedCount++;
-                    }
+                    qualities[format] = quality;
                 }
+
+                imagesToProcess.Add(new PendingImage(
+                    fullPath, manifestKey, imageName, manifestSizes, missingVariants, existingPlaceholder, width, height,
+                    recorded with { Qualities = qualities }));
+            }
+
+            foreach (var (format, recordedQuality, configuredQuality) in qualityChanges)
+            {
+                LogQualityChanged(logger, format, recordedQuality, configuredQuality);
             }
 
             selectionStopwatch.Stop();
             LogSelectionCompleted(logger, uniqueSourcePaths.Count, imagesToProcess.Count, cachedCount, selectionStopwatch.Elapsed);
 
             long plannedVariants = 0;
-            foreach (var (_, _, _, manifestSizes, missingVariants, _, _, _, _) in imagesToProcess)
+            foreach (var pending in imagesToProcess)
             {
-                if (missingVariants != null)
+                if (pending.MissingVariants != null)
                 {
                     // Incremental mode: count only missing variants
-                    plannedVariants += missingVariants.Count;
+                    plannedVariants += pending.MissingVariants.Count;
                 }
                 else
                 {
                     // Full mode: all size/format combinations
-                    var sizesToGenerateCount = manifestSizes.Count > 0 ? manifestSizes.Count : sizes.Count;
+                    var sizesToGenerateCount = pending.Sizes.Count > 0 ? pending.Sizes.Count : sizes.Count;
                     plannedVariants += (long)sizesToGenerateCount * formats.Count;
                 }
             }
@@ -253,9 +259,7 @@ internal sealed partial class ImageService(
 
             if (imagesToProcess.Count == 0)
             {
-                // Still save format qualities even when nothing to process
-                // This initializes the qualities on first run or after manifest reset
-                manifestRepository.SetFormatQualities(formats);
+                await imageState.SaveAsync(cancellationToken);
                 manifestRepository.LastImagesProcessed = timeProvider.GetUtcNow().UtcDateTime;
                 await manifestRepository.SaveAsync(cancellationToken);
                 stopwatch.Stop();
@@ -289,11 +293,12 @@ internal sealed partial class ImageService(
             var totalFilesCreated = 0;
             var totalSizeBytes = 0L;
 
-            // Serializes manifest updates and checkpoint saves. A SemaphoreSlim (not a Lock)
-            // because checkpoints await the manifest save.
-            using var manifestGate = new SemaphoreSlim(1, 1);
+            // Serializes state updates and checkpoint saves. A SemaphoreSlim (not a Lock)
+            // because checkpoints await the saves.
+            using var checkpointGate = new SemaphoreSlim(1, 1);
             var imagesSinceCheckpoint = 0;
             var lastCheckpoint = stopwatch.Elapsed;
+            var manifestChanged = false;
 
             // Lock-free shared counters that the encode workers update. A single
             // reporting path turns them into immutable snapshots for the UI — the
@@ -337,7 +342,7 @@ internal sealed partial class ImageService(
                 },
                 async (item, ct) =>
                 {
-                    var (sourcePath, manifestKey, imageSlug, manifestSizes, missingVariants, existingPlaceholder, width, height, fingerprint) = item;
+                    var (sourcePath, manifestKey, imageSlug, manifestSizes, missingVariants, existingPlaceholder, width, height, processed) = item;
 
                     // Use sizes from manifest (calculated during scan with original width).
                     // Fall back to config sizes if manifest sizes are empty (shouldn't happen).
@@ -412,10 +417,10 @@ internal sealed partial class ImageService(
                         // so an interrupted run keeps the images it already finished.
                         // CancellationToken.None: a finished image must be recorded even if the
                         // run is being cancelled.
-                        await manifestGate.WaitAsync(CancellationToken.None);
+                        await checkpointGate.WaitAsync(CancellationToken.None);
                         try
                         {
-                            manifestRepository.SetProcessedFingerprint(manifestKey, fingerprint);
+                            imageState.Set(manifestKey, processed);
 
                             var existingEntry = manifestRepository.GetImage(manifestKey);
                             if (existingEntry != null && existingEntry.Placeholder != image.Placeholder)
@@ -424,20 +429,27 @@ internal sealed partial class ImageService(
                                 {
                                     Placeholder = image.Placeholder
                                 });
+                                manifestChanged = true;
                             }
 
                             imagesSinceCheckpoint++;
                             if (imagesSinceCheckpoint >= CheckpointEveryImages
                                 || stopwatch.Elapsed - lastCheckpoint >= CheckpointInterval)
                             {
-                                await manifestRepository.SaveAsync(CancellationToken.None);
+                                await imageState.SaveAsync(CancellationToken.None);
+                                if (manifestChanged)
+                                {
+                                    await manifestRepository.SaveAsync(CancellationToken.None);
+                                    manifestChanged = false;
+                                }
+
                                 imagesSinceCheckpoint = 0;
                                 lastCheckpoint = stopwatch.Elapsed;
                             }
                         }
                         finally
                         {
-                            manifestGate.Release();
+                            checkpointGate.Release();
                         }
                     }
                     finally
@@ -448,8 +460,7 @@ internal sealed partial class ImageService(
 
             // totalSizeBytes already accumulated from variants; skip directory scan
 
-            // Save manifest with updated format qualities
-            manifestRepository.SetFormatQualities(formats);
+            await imageState.SaveAsync(cancellationToken);
             manifestRepository.LastImagesProcessed = timeProvider.GetUtcNow().UtcDateTime;
             await manifestRepository.SaveAsync(cancellationToken);
 
@@ -500,17 +511,18 @@ internal sealed partial class ImageService(
     }
 
     /// <summary>
-    /// Persists the fingerprints of images finished before a run was interrupted.
+    /// Persists the state of images finished before a run was interrupted.
     /// </summary>
     /// <remarks>
     /// Parallel.ForEachAsync has awaited all running workers before it throws, so no
-    /// worker touches the manifest concurrently. Best effort: a failed save only costs
+    /// worker touches the state concurrently. Best effort: a failed save only costs
     /// re-encoding those images on the next run.
     /// </remarks>
     private async Task SaveProgressAfterInterruptionAsync()
     {
         try
         {
+            await imageState.SaveAsync(CancellationToken.None);
             await manifestRepository.SaveAsync(CancellationToken.None);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
@@ -529,13 +541,42 @@ internal sealed partial class ImageService(
     #region Private Helpers
 
     /// <summary>
-    /// Fingerprint of the inputs that determine an image's variants, apart from sizes and
-    /// formats (checked per output file) and quality (tracked in <c>FormatQualities</c>).
+    /// Fingerprint of the inputs that determine all of an image's variants. Sizes and formats
+    /// are checked per output file, and quality per format (<see cref="ProcessedImage.Qualities"/>).
     /// </summary>
     internal static string ComputeProcessingFingerprint(long fileSize, DateTime lastWriteTimeUtc, string resizeMode) =>
         string.Create(
             CultureInfo.InvariantCulture,
             $"v{NetVipsImageProcessor.OutputVersion}|size:{fileSize}|mtime:{lastWriteTimeUtc.Ticks}|resize:{resizeMode}");
+
+    /// <summary>
+    /// Formats whose variants on disk were not encoded with the configured quality.
+    /// </summary>
+    /// <remarks>
+    /// A format without a recorded quality counts as stale: its files (if any) predate the
+    /// recorded fingerprint, for example from before the format was last removed.
+    /// </remarks>
+    private static HashSet<string> GetStaleFormats(
+        IReadOnlyDictionary<string, int> recordedQualities,
+        IReadOnlyDictionary<string, int> formats,
+        HashSet<(string Format, int Recorded, int Configured)> qualityChanges)
+    {
+        var stale = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var (format, quality) in formats)
+        {
+            if (!recordedQualities.TryGetValue(format, out var recordedQuality))
+            {
+                stale.Add(format);
+            }
+            else if (recordedQuality != quality)
+            {
+                stale.Add(format);
+                qualityChanges.Add((format, recordedQuality, quality));
+            }
+        }
+
+        return stale;
+    }
 
     /// <summary>
     /// Collect all image source paths from the unified tree.
@@ -580,7 +621,7 @@ internal sealed partial class ImageService(
     /// <remarks>
     /// Checks each expected output file and returns those that:
     /// - Don't exist on disk (deleted, new size, new format)
-    /// - Have quality changes (format exists but quality setting changed)
+    /// - Belong to a stale format (encoded with another quality than configured)
     /// This enables incremental generation when config changes.
     /// </remarks>
     private static List<(int Size, string Format)> GetMissingVariants(
@@ -588,7 +629,7 @@ internal sealed partial class ImageService(
         string imageName,
         IReadOnlyList<int> sizes,
         IReadOnlyDictionary<string, int> formats,
-        HashSet<string> formatsWithQualityChange)
+        HashSet<string> staleFormats)
     {
         var missing = new List<(int Size, string Format)>();
 
@@ -621,8 +662,8 @@ internal sealed partial class ImageService(
             {
                 var expectedPath = Path.Combine(imageDirectory, $"{size}.{format}");
 
-                // Mark as missing if: file doesn't exist OR quality changed for this format
-                if (!File.Exists(expectedPath) || formatsWithQualityChange.Contains(format))
+                // Mark as missing if: file doesn't exist OR it was encoded with another quality
+                if (!File.Exists(expectedPath) || staleFormats.Contains(format))
                 {
                     missing.Add((size, format));
                 }
@@ -633,6 +674,21 @@ internal sealed partial class ImageService(
     }
 
     #endregion
+
+    /// <summary>
+    /// An image selected for processing, with the state to record once its variants are written.
+    /// </summary>
+    /// <remarks><c>MissingVariants</c> is <c>null</c> to generate all variants.</remarks>
+    private sealed record PendingImage(
+        string SourcePath,
+        string ManifestKey,
+        string ImageSlug,
+        IReadOnlyList<int> Sizes,
+        IReadOnlyList<(int Size, string Format)>? MissingVariants,
+        string? ExistingPlaceholder,
+        int Width,
+        int Height,
+        ProcessedImage Processed);
 
     #region Logging
 
