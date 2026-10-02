@@ -7,6 +7,7 @@ using Spectara.Revela.Core.Configuration;
 using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Abstractions;
 using Spectara.Revela.Sdk.Configuration;
+using Spectara.Revela.Sdk.Hosting;
 using Spectara.Revela.Sdk.Services;
 using Spectre.Console;
 
@@ -29,6 +30,7 @@ internal sealed partial class ConfigSiteCommand(
     IConfigService configService,
     IThemeRegistry themeRegistry,
     ConfigFileWriter configFileWriter,
+    IConsoleCapabilities consoleCapabilities,
     TimeProvider timeProvider)
 {
     /// <summary>
@@ -54,6 +56,15 @@ internal sealed partial class ConfigSiteCommand(
         if (!configService.IsProjectInitialized())
         {
             ErrorPanels.ShowNotAProjectError();
+            return 1;
+        }
+
+        if (!consoleCapabilities.IsInteractive)
+        {
+            ErrorPanels.ShowError(
+                "Interactive Input Required",
+                "[yellow]revela config site asks for every value and needs an interactive terminal.[/]\n\n" +
+                "[dim]In scripts and CI, edit site.json directly.[/]");
             return 1;
         }
 

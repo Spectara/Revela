@@ -4,6 +4,7 @@ using Spectara.Revela.Commands.Config.Site;
 using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Abstractions;
 using Spectara.Revela.Sdk.Configuration;
+using Spectara.Revela.Sdk.Hosting;
 using Spectara.Revela.Sdk.Services;
 using Spectre.Console;
 using ProjectWizard = Spectara.Revela.Commands.Project.Wizard;
@@ -25,6 +26,7 @@ internal sealed partial class InteractiveMenuService(
     IEnumerable<ISetupWizard> setupWizards,
     ProjectWizard projectWizard,
     ConfigSiteCommand configSiteCommand,
+    IConsoleCapabilities consoleCapabilities,
     ILogger<InteractiveMenuService> logger) : IInteractiveMenuService
 {
     private bool bannerShown;
@@ -44,7 +46,7 @@ internal sealed partial class InteractiveMenuService(
 
         // Check if terminal supports interactive mode (TTY available)
         // This fails in Docker without -it, CI/CD pipelines, or piped input
-        if (!AnsiConsole.Profile.Capabilities.Interactive)
+        if (!consoleCapabilities.IsInteractive)
         {
             LogNonInteractiveTerminal(logger);
             AnsiConsole.MarkupLine("[yellow]Interactive mode requires a terminal.[/]");
@@ -589,7 +591,7 @@ internal sealed partial class InteractiveMenuService(
     [LoggerMessage(Level = LogLevel.Error, Message = "RootCommand not set")]
     private static partial void LogRootCommandNotSet(ILogger logger);
 
-    [LoggerMessage(Level = LogLevel.Warning, Message = "Interactive mode unavailable - terminal does not support interactive input")]
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Interactive mode unavailable - terminal does not support interactive input")]
     private static partial void LogNonInteractiveTerminal(ILogger logger);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Exiting interactive mode")]

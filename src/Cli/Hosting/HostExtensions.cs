@@ -27,12 +27,13 @@ internal static class HostExtensions
     /// </summary>
     /// <remarks>
     /// This is the post-build phase that:
-    /// 1. Creates the RootCommand with interactive mode handler
+    /// 1. Creates the RootCommand
     /// 2. Initializes plugins via IPluginContext
     /// 3. Resolves and registers all core commands from DI
     /// 4. Registers plugin commands
     ///
-    /// When invoked without arguments, the CLI enters interactive mode.
+    /// The root command has no action of its own: running without arguments starts the
+    /// interactive menu in <c>HostBootstrap.RunRevelaAsync</c>, before parsing.
     /// Call AddRevelaCommands() and AddPlugins() on the service collection first.
     ///
     /// Example:
@@ -154,15 +155,6 @@ internal static class HostExtensions
 
         // Replace default help with grouped help output for all commands
         ConfigureGroupedHelpRecursive(rootCommand, groupRegistry, orderRegistry);
-
-        // Set interactive mode handler for root command (no subcommand specified)
-        rootCommand.SetAction(async (parseResult, cancellationToken) =>
-        {
-            // If we get here, no subcommand was specified - enter interactive mode
-            var interactiveService = services.GetRequiredService<IInteractiveMenuService>();
-            interactiveService.RootCommand = rootCommand;
-            return await interactiveService.RunAsync(cancellationToken);
-        });
 
         return rootCommand;
     }

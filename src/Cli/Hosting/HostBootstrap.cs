@@ -210,12 +210,8 @@ internal static class HostBootstrap
         var versionOption = rootCommand.Options.OfType<VersionOption>().FirstOrDefault();
         versionOption?.Action = new BuildInfoVersionAction(buildInfo);
 
-        // Detect interactive mode: no arguments AND an interactive terminal.
         // Warn about plugins:<key> settings no loaded plugin claims (typos, uninstalled plugins).
         host.Services.GetService<UnclaimedPluginConfigReporter>()?.Report();
-
-        var consoleCapabilities = host.Services.GetRequiredService<IConsoleCapabilities>();
-        var isInteractiveMode = args.Length == 0 && consoleCapabilities.IsInteractive;
 
         // Opt out of System.CommandLine's default exception handler so we can turn
         // a configuration validation failure into a friendly panel ourselves.
@@ -233,7 +229,10 @@ internal static class HostBootstrap
         // no stack trace and exit with code 2 instead of crashing.
         try
         {
-            if (isInteractiveMode)
+            // No arguments = the interactive menu. It runs outside System.CommandLine's
+            // invocation so Ctrl+C only cancels the command started from the menu, and it
+            // decides itself (via IConsoleCapabilities) whether the terminal is interactive.
+            if (args.Length == 0)
             {
                 var interactiveService = host.Services.GetRequiredService<IInteractiveMenuService>();
                 interactiveService.RootCommand = rootCommand;

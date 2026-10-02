@@ -11,6 +11,7 @@ using NSubstitute;
 using Spectara.Revela.Commands;
 using Spectara.Revela.Commands.Config.Site;
 using Spectara.Revela.Sdk.Abstractions;
+using Spectara.Revela.Sdk.Hosting;
 using Spectara.Revela.Sdk.Services;
 using Spectara.Revela.Tests.Shared.Fixtures;
 
@@ -48,7 +49,21 @@ public sealed class ConfigSiteCommandTests
         Assert.IsEmpty(Directory.GetFiles(project.RootPath, ".site.json.*.tmp"));
     }
 
-    private static IHost BuildHost(string projectRoot)
+    [TestMethod]
+    public async Task ExecuteAsync_NonInteractiveConsole_FailsWithoutPromptingOrWriting()
+    {
+        using var project = TestProject.Create(p => p.WithProjectJson(new { theme = new { name = ThemeName } }));
+        var sitePath = Path.Combine(project.RootPath, "site.json");
+        using var host = BuildHost(project.RootPath, interactive: false);
+
+        var (exitCode, output) = await RunAsync(host, string.Empty);
+
+        Assert.AreEqual(1, exitCode);
+        Assert.Contains("interactive", output, StringComparison.OrdinalIgnoreCase);
+        Assert.IsFalse(File.Exists(sitePath));
+    }
+
+    private static IHost BuildHost(string projectRoot, bool interactive = true)
     {
         var theme = Substitute.For<ITheme>();
         theme.Metadata.Returns(new PackageMetadata
@@ -61,11 +76,14 @@ public sealed class ConfigSiteCommandTests
         theme.GetSiteTemplate().Returns(_ => new MemoryStream(Encoding.UTF8.GetBytes(Template)));
         var registry = Substitute.For<IThemeRegistry>();
         registry.GetAvailableThemes(Arg.Any<string>()).Returns([theme]);
+        var capabilities = Substitute.For<IConsoleCapabilities>();
+        capabilities.IsInteractive.Returns(interactive);
 
         return RevelaTestHost.Build(projectRoot, services =>
         {
             services.AddRevelaCommands();
             services.AddSingleton(registry);
+            services.AddSingleton(capabilities);
         });
     }
 

@@ -1,4 +1,7 @@
+using System.Globalization;
+
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 
 using Spectara.Revela.Commands;
@@ -7,8 +10,11 @@ using Spectara.Revela.Features.Generate;
 using Spectara.Revela.Features.Generate.Abstractions;
 using Spectara.Revela.Sdk.Abstractions;
 using Spectara.Revela.Sdk.Configuration;
+using Spectara.Revela.Sdk.Hosting;
 using Spectara.Revela.Tests.Shared.Fixtures;
 using Spectara.Revela.Themes.Lumina;
+
+using Spectre.Console;
 
 namespace Spectara.Revela.Tests.Integration;
 
@@ -20,8 +26,38 @@ namespace Spectara.Revela.Tests.Integration;
 /// </summary>
 [TestClass]
 [TestCategory("Integration")]
+[DoNotParallelize]
 public sealed class ConfigProjectCommandTests
 {
+    [TestMethod]
+    public async Task ExecuteAsync_NoArgumentsNonInteractive_FailsWithHintAndWritesNothing()
+    {
+        using var project = TestProject.Create(p => p
+            .WithProjectJson(new { project = new { name = "Original" } }));
+        using var host = BuildHost(project.RootPath, interactive: false);
+        var command = host.Services.GetRequiredService<ConfigProjectCommand>();
+        var original = await File.ReadAllBytesAsync(project.ProjectJsonPath);
+
+        var (exitCode, output) = await RunQuietAsync(() => command.ExecuteAsync(null, null, CancellationToken.None));
+
+        Assert.AreEqual(1, exitCode);
+        Assert.Contains("--name", output);
+        CollectionAssert.AreEqual(original, await File.ReadAllBytesAsync(project.ProjectJsonPath));
+    }
+
+    [TestMethod]
+    public async Task ExecuteAsync_ArgumentsNonInteractive_WritesWithoutPrompting()
+    {
+        using var project = TestProject.Create(p => p
+            .WithProjectJson(new { project = new { name = "Original" } }));
+        using var host = BuildHost(project.RootPath, interactive: false);
+        var command = host.Services.GetRequiredService<ConfigProjectCommand>();
+
+        var (exitCode, _) = await RunQuietAsync(() => command.ExecuteAsync("Scripted", null, CancellationToken.None));
+
+        Assert.AreEqual(0, exitCode);
+        Assert.AreEqual("Scripted", host.Services.GetRequiredService<IOptionsMonitor<ProjectConfig>>().CurrentValue.Name);
+    }
     [TestMethod]
     public async Task ExecuteAsync_WithUrl_BindsToProjectConfigBaseUrl()
     {
@@ -32,7 +68,7 @@ public sealed class ConfigProjectCommandTests
                 project = new { name = "Original" },
                 theme = new { name = "Lumina" },
             }));
-        using var host = RevelaTestHost.Build(project.RootPath, s => s.AddRevelaCommands());
+        using var host = BuildHost(project.RootPath, interactive: false);
 
         var command = host.Services.GetRequiredService<ConfigProjectCommand>();
 
@@ -56,7 +92,7 @@ public sealed class ConfigProjectCommandTests
                 project = new { name = "Original" },
                 theme = new { name = "Lumina" },
             }));
-        using var host = RevelaTestHost.Build(project.RootPath, s => s.AddRevelaCommands());
+        using var host = BuildHost(project.RootPath, interactive: false);
 
         var command = host.Services.GetRequiredService<ConfigProjectCommand>();
 
@@ -92,6 +128,7 @@ public sealed class ConfigProjectCommandTests
         using var host = RevelaTestHost.Build(project.RootPath, services =>
         {
             services.AddRevelaCommands();
+            services.AddSingleton(Capabilities(interactive: false));
             services.AddGenerateFeature();
             services.AddSingleton<ITheme>(new LuminaTheme());
         });
@@ -114,5 +151,46 @@ public sealed class ConfigProjectCommandTests
             after.Any(d => d.Severity == ValidationSeverity.Hint
                 && d.Message.Contains("baseUrl", StringComparison.OrdinalIgnoreCase)),
             "The 'No baseUrl' hint must disappear after a base URL is set.");
+    }
+
+    private static IHost BuildHost(string projectRoot, bool interactive) =>
+        RevelaTestHost.Build(projectRoot, services =>
+        {
+            services.AddRevelaCommands();
+            services.AddSingleton(Capabilities(interactive));
+        });
+
+    private static IConsoleCapabilities Capabilities(bool interactive) => new FakeConsoleCapabilities(interactive);
+
+    private static async Task<(int ExitCode, string Output)> RunQuietAsync(Func<Task<int>> action)
+    {
+        using var writer = new StringWriter(CultureInfo.InvariantCulture);
+        var originalConsole = AnsiConsole.Console;
+        var console = AnsiConsole.Create(new AnsiConsoleSettings
+        {
+            Ansi = AnsiSupport.No,
+            ColorSystem = ColorSystemSupport.NoColors,
+            Interactive = InteractionSupport.No,
+            Out = new AnsiConsoleOutput(writer),
+        });
+        console.Profile.Width = 200;
+        AnsiConsole.Console = console;
+
+        try
+        {
+            var exitCode = await action();
+            return (exitCode, writer.ToString());
+        }
+        finally
+        {
+            AnsiConsole.Console = originalConsole;
+        }
+    }
+
+    private sealed class FakeConsoleCapabilities(bool interactive) : IConsoleCapabilities
+    {
+        public bool IsInteractive => interactive;
+
+        public bool CanRenderLive => interactive;
     }
 }
