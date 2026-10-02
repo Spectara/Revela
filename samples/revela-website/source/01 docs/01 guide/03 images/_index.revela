@@ -96,7 +96,11 @@ revela generate images --force
 Revela automatically detects what's missing and only generates those variants.
 An image is regenerated completely when its source file changes (size or
 modification time), when the theme's resize mode changes, or when a Revela
-update changes how images are encoded.
+update changes how images are encoded. Revela remembers what each photo's
+variants were made from in `.cache/images.json`, separately from the scan data,
+so a rescan or a Revela update that only changes the scan data never re-encodes
+your photos. Deleting `.cache/` (`revela clean cache`) forgets it, and the next
+build re-encodes every photo.
 
 Large libraries can take a while, especially the first time or after such an
 update. If a run is interrupted (Ctrl+C, a closed terminal or a restart), just

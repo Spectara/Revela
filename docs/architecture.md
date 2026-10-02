@@ -189,10 +189,20 @@ occurrences and their navigation contexts; details belong in
 
 NetVips produces the required responsive sizes and configured formats after page
 generation. Metadata and variant descriptions are available earlier, so templates
-can generate URLs before the variant files exist. The manifest supports skipping
-unchanged work; rendering and image processing have separate parallelism settings.
-There is no fixed speedup guarantee: work depends on input images, formats, cache
-state, and hardware.
+can generate URLs before the variant files exist. Rendering and image processing
+have separate parallelism settings. There is no fixed speedup guarantee: work
+depends on input images, formats, cache state, and hardware.
+
+Skipping unchanged images relies on the image processing state in
+`.cache/images.json` ([`ImageStateStore`](../src/Features/Generate/Services/ImageStateStore.cs)),
+not on the scan manifest. Per source image it records a fingerprint of the source
+file (size, modification time) and the pipeline (output version, resize mode) plus
+the quality each format was encoded with. An image is re-encoded only when that
+fingerprint changes, a configured quality differs, or an expected variant file is
+missing. The state has its own schema version, so manifest format changes and
+manifest rebuilds never re-encode images; only image-output changes do. It is
+checkpointed during long runs and written atomically. Deleting `.cache/` (for
+example `clean cache`) drops it and re-encodes everything on the next build.
 
 NetVips keeps image processing and EXIF extraction in-process. Markdig and Scriban
 separate content parsing from theme presentation without requiring a web server.
