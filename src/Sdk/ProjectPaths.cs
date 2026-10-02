@@ -10,49 +10,88 @@ namespace Spectara.Revela.Sdk;
 /// <see cref="ProjectEnvironment.Path"/>.
 /// </para>
 /// <para>
-/// Where a plugin keeps a file depends on what losing it means: data that can be rebuilt
-/// from the source goes to <see cref="Cache"/>, a record of what the plugin produced in the
-/// output goes to <see cref="State"/>, and only files that belong to the published site go
-/// to the output (<see cref="Services.IPathResolver.OutputPath"/>).
+/// Revela core and every package keep their files in their own owner folder
+/// (<see cref="GetOwnerDirectory"/>), never in the output: only files of the published site
+/// go to <see cref="Services.IPathResolver.OutputPath"/>. How long a file lives is declared per
+/// artifact (<see cref="Artifacts.ArtifactKind"/>), not by the folder it is in.
 /// </para>
 /// </remarks>
 public static class ProjectPaths
 {
+    private const int MaxOwnerLength = 64;
+
+    private static readonly HashSet<string> ReservedDeviceNames = new(StringComparer.Ordinal)
+    {
+        "con", "prn", "aux", "nul",
+        "com1", "com2", "com3", "com4", "com5", "com6", "com7", "com8", "com9",
+        "lpt1", "lpt2", "lpt3", "lpt4", "lpt5", "lpt6", "lpt7", "lpt8", "lpt9",
+    };
+
     /// <summary>
-    /// Revela's own folder in the project (<c>.revela</c>). Holds <see cref="Cache"/> and
-    /// <see cref="State"/>; nothing in it is ever published.
+    /// Revela's own folder in the project (<c>.revela</c>). Holds one folder per owner;
+    /// nothing in it is ever published.
     /// </summary>
     public const string Revela = ".revela";
 
     /// <summary>
-    /// Cache (<c>.revela/cache</c>): data that is reproducible from the source, such as the scan
-    /// manifest and plugin data files (<c>&lt;page&gt;/statistics.json</c>).
+    /// Gets an owner's folder, <c>.revela/&lt;owner&gt;</c>, relative to the project root.
     /// </summary>
     /// <remarks>
     /// <para>
-    /// May be deleted at any time (<c>revela clean cache</c>, <c>clean all</c>, or by hand);
-    /// losing it only costs time, because the next build recreates it. Never put anything here
-    /// that the next build cannot rebuild from the source and configuration.
+    /// The owner is the owner part of the owner's artifact identifiers
+    /// (<see cref="Artifacts.ArtifactId.Owner"/>), for example <c>core</c> or <c>statistics</c>:
+    /// <c>Path.Combine(project.Path, ProjectPaths.GetOwnerDirectory(MyArtifacts.Data.Owner))</c>.
     /// </para>
-    /// <para>Composed with the platform's directory separator.</para>
+    /// <para>
+    /// Every file in the folder must belong to one of the owner's registered artifacts, so the
+    /// clean commands can remove it according to the artifact's kind. The folder may hold
+    /// artifacts of different kinds.
+    /// </para>
     /// </remarks>
-    public static readonly string Cache = Path.Combine(Revela, "cache");
+    /// <param name="owner">A valid owner name (<see cref="IsValidOwner"/>).</param>
+    /// <exception cref="ArgumentException">The owner name is not valid.</exception>
+    public static string GetOwnerDirectory(string owner)
+    {
+        if (!IsValidOwner(owner))
+        {
+            throw new ArgumentException(
+                $"'{owner}' is not a valid owner name: use lowercase letters and digits, separated by single '.' or '-'.",
+                nameof(owner));
+        }
+
+        return Path.Combine(Revela, owner);
+    }
 
     /// <summary>
-    /// State (<c>.revela/state</c>): records that describe what is in the output, such as which
-    /// image variants exist and with which settings, or which <c>.gz</c>/<c>.br</c> sidecars
-    /// Revela created.
+    /// Whether a name can be used as an owner (artifact owner and folder name).
     /// </summary>
     /// <remarks>
-    /// <para>
-    /// Belongs to the output: it is deleted together with the output (<c>revela clean output</c>,
-    /// <c>clean all</c>) and kept by <c>clean cache</c>. It lives outside the output, so it is never
-    /// published. Losing it while the output stays means redoing that work (re-encoding every
-    /// image) or no longer knowing which files in the output are yours.
-    /// </para>
-    /// <para>Composed with the platform's directory separator.</para>
+    /// Lowercase ASCII letters and digits, starting with a letter, optionally separated by single
+    /// <c>.</c> or <c>-</c> (for example <c>statistics</c>, <c>acme.captions</c>), at most 64
+    /// characters and not a reserved Windows device name. These names are the same folder on
+    /// every file system and cannot point outside <c>.revela</c>.
     /// </remarks>
-    public static readonly string State = Path.Combine(Revela, "state");
+    public static bool IsValidOwner(string? owner)
+    {
+        if (string.IsNullOrEmpty(owner) || owner.Length > MaxOwnerLength || owner[0] is < 'a' or > 'z')
+        {
+            return false;
+        }
+
+        var previousWasSeparator = false;
+        foreach (var character in owner)
+        {
+            var isSeparator = character is '.' or '-';
+            if (isSeparator ? previousWasSeparator : character is not ((>= 'a' and <= 'z') or (>= '0' and <= '9')))
+            {
+                return false;
+            }
+
+            previousWasSeparator = isSeparator;
+        }
+
+        return !previousWasSeparator && !ReservedDeviceNames.Contains(owner.Split('.')[0]);
+    }
 
     /// <summary>
     /// Themes directory for local/extracted themes.

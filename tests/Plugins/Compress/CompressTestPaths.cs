@@ -9,11 +9,11 @@ namespace Spectara.Revela.Tests.Plugins.Compress;
 /// </summary>
 internal static class CompressTestPaths
 {
-    public static string StateDirectory(this TestProject project) =>
-        Path.Combine(project.RootPath, ".revela", "state");
+    public static string OwnerDirectory(this TestProject project) =>
+        Path.Combine(project.RootPath, ".revela", "compress");
 
     public static string OwnershipRecord(this TestProject project) =>
-        Path.Combine(project.StateDirectory(), "compress.json");
+        Path.Combine(project.OwnerDirectory(), "ownership.json");
 
     public static IOptions<ProjectEnvironment> Environment(this TestProject project) =>
         Options.Create(new ProjectEnvironment { Path = project.RootPath });

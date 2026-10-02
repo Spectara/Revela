@@ -78,18 +78,18 @@ internal sealed partial class CompressionService(ILogger<CompressionService> log
     /// Compresses all eligible files in a directory.
     /// </summary>
     /// <param name="outputPath">Directory to scan for files.</param>
-    /// <param name="stateDirectory">The project's state directory, which holds the ownership record.</param>
+    /// <param name="ownerDirectory">The plugin's folder, which holds the ownership record.</param>
     /// <param name="progress">Progress reporter.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>Compression statistics.</returns>
     public async Task<CompressionStats> CompressDirectoryAsync(
         string outputPath,
-        string stateDirectory,
+        string ownerDirectory,
         IProgress<(int current, int total, string fileName)>? progress = null,
         CancellationToken cancellationToken = default)
     {
         outputPath = Path.GetFullPath(outputPath);
-        using var ownership = await CompressedSiteOwnership.OpenAsync(outputPath, stateDirectory, cancellationToken);
+        using var ownership = await CompressedSiteOwnership.OpenAsync(outputPath, ownerDirectory, cancellationToken);
         return await CompressDirectoryAsync(outputPath, ownership, progress, cancellationToken);
     }
 

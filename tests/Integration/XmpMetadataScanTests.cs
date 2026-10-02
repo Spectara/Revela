@@ -60,7 +60,7 @@ public sealed class XmpMetadataScanTests
                 .WithXmpMetadata(title: "Abendlicht", keywords: ["Selected"], rating: 5))));
         _ = await ScanSingleImageAsync(project);
 
-        var manifestJson = await File.ReadAllTextAsync(Path.Combine(project.RootPath, ".revela", "cache", "manifest.json"));
+        var manifestJson = await File.ReadAllTextAsync(Path.Combine(project.RootPath, ".revela", "core", "manifest.json"));
         var cached = await ScanSingleImageAsync(project);
 
         Assert.Contains("\"rating\": 5", manifestJson);

@@ -77,7 +77,7 @@ internal sealed partial class CompressCommand(
         {
             using var ownership = await CompressedSiteOwnership.OpenAsync(
                 outputPath,
-                Path.Combine(projectEnvironment.Value.Path, ProjectPaths.State),
+                CompressedSiteOwnership.GetOwnerDirectory(projectEnvironment.Value.Path),
                 cancellationToken);
             await ownership.CleanAsync(cancellationToken);
             return await CompressAsync(outputPath, ownership, cancellationToken);

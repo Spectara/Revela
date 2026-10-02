@@ -4,6 +4,7 @@ using Microsoft.Extensions.Options;
 using Spectara.Revela.Core.Helpers;
 using Spectara.Revela.Features.Generate.Models;
 using Spectara.Revela.Sdk;
+using Spectara.Revela.Sdk.Artifacts;
 
 namespace Spectara.Revela.Features.Generate.Services;
 
@@ -12,7 +13,7 @@ namespace Spectara.Revela.Features.Generate.Services;
 /// </summary>
 /// <remarks>
 /// <para>
-/// Persisted in <c>.revela/state/images.json</c> (<see cref="ProjectPaths.State"/>) with its own
+/// Persisted in <c>.revela/core/images.json</c> as part of <see cref="CoreArtifacts.ProcessedImages"/> with its own
 /// schema version, separate from the scan manifest, so a manifest format change, a rebuild or
 /// <c>clean cache</c> never re-encodes images. Only things that change image output invalidate
 /// an entry (see <see cref="ImageService"/>).
@@ -103,8 +104,9 @@ internal sealed partial class ImageStateStore(
         await WriteAsync(GetStatePath(projectEnvironment.Value.Path), snapshot, cancellationToken);
     }
 
-    private static string GetStatePath(string projectPath) =>
-        Path.Combine(projectPath, ProjectPaths.State, FileName);
+    /// <summary>Gets the state file path of a project.</summary>
+    internal static string GetStatePath(string projectPath) =>
+        Path.Combine(projectPath, ProjectPaths.GetOwnerDirectory(CoreArtifacts.Owner), FileName);
 
     private static async Task<Dictionary<string, ProcessedImage>> ReadAsync(
         string statePath,

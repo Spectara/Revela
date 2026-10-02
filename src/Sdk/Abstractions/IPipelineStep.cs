@@ -109,6 +109,6 @@ public static class CleanPipelineOrder
     /// <summary>Clean unused images (150).</summary>
     public const int Images = 150;
 
-    /// <summary>Clean cache directory (200).</summary>
+    /// <summary>Clean cache artifacts (200).</summary>
     public const int Cache = 200;
 }

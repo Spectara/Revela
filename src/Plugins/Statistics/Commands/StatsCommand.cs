@@ -14,7 +14,7 @@ namespace Spectara.Revela.Plugins.Statistics.Commands;
 /// Command to generate statistics page from manifest EXIF data.
 /// </summary>
 /// <remarks>
-/// Output: Creates statistics.json in .revela/cache/{page.Path}/.
+/// Output: Creates statistics.json in .revela/statistics/{page.Path}/.
 /// The actual rendering is done by the theme extension (Lumina.Statistics).
 /// </remarks>
 internal sealed partial class StatsCommand(
@@ -72,7 +72,7 @@ internal sealed partial class StatsCommand(
         foreach (var pagePath in statsPages)
         {
             var stats = aggregator.Aggregate(manifest);
-            var cacheDir = Path.Combine(projectPath, ProjectPaths.Cache, pagePath);
+            var cacheDir = Path.Combine(StatisticsDataInvalidator.GetDataDirectory(projectPath), pagePath);
             var jsonPath = Path.Combine(cacheDir, "statistics.json");
             Directory.CreateDirectory(cacheDir);
             await JsonWriter.WriteAsync(jsonPath, stats, cancellationToken);
@@ -163,9 +163,9 @@ internal sealed partial class StatsCommand(
             // Aggregate statistics (TODO: filter by page metadata)
             var stats = aggregator.Aggregate(manifest);
 
-            // Calculate output path in {ProjectPaths.Cache}/{pagePath}/
+            // Calculate output path in .revela/statistics/{pagePath}/
             // pagePath is already relative (e.g., "03 Pages\Statistics")
-            var cacheDir = Path.Combine(projectPath, ProjectPaths.Cache, pagePath);
+            var cacheDir = Path.Combine(StatisticsDataInvalidator.GetDataDirectory(projectPath), pagePath);
             var jsonPath = Path.Combine(cacheDir, "statistics.json");
 
             // Write JSON data file

@@ -11,12 +11,14 @@ namespace Spectara.Revela.Plugins.Compress.Services;
 /// only those are ever replaced or deleted.
 /// </summary>
 /// <remarks>
-/// The record lives in <c>.revela/state/compress.json</c> (<see cref="ProjectPaths.State"/>), not
-/// in the output, so it is never published.
+/// The record lives in the plugin's folder, <c>.revela/compress/ownership.json</c>, not in the
+/// output, so it is never published. It is part of <see cref="CompressArtifacts.PrecompressedSite"/>
+/// (an output artifact): removed together with the sidecars it lists.
 /// </remarks>
 internal sealed partial class CompressedSiteOwnership : IDisposable
 {
-    private const string RecordFileName = "compress.json";
+    /// <summary>File name of the record in the plugin's folder.</summary>
+    internal const string RecordFileName = "ownership.json";
     private const string Owner = "Spectara.Revela.Plugins.Compress";
     private static readonly SemaphoreSlim OperationGate = new(1, 1);
     private static readonly OwnershipJsonContext JsonContext = new(new JsonSerializerOptions
@@ -31,24 +33,28 @@ internal sealed partial class CompressedSiteOwnership : IDisposable
     private Manifest manifest = new() { Owner = Owner, Version = 1, Files = [] };
     private byte[]? savedManifest;
 
-    private CompressedSiteOwnership(string outputPath, string stateDirectory)
+    private CompressedSiteOwnership(string outputPath, string ownerDirectory)
     {
         root = Path.GetFullPath(outputPath);
-        recordPath = Path.Combine(Path.GetFullPath(stateDirectory), RecordFileName);
+        recordPath = Path.Combine(Path.GetFullPath(ownerDirectory), RecordFileName);
     }
+
+    /// <summary>Gets the plugin's folder, <c>.revela/compress</c>, of a project.</summary>
+    internal static string GetOwnerDirectory(string projectPath) =>
+        Path.Combine(projectPath, ProjectPaths.GetOwnerDirectory(CompressArtifacts.PrecompressedSite.Owner));
 
     /// <summary>
     /// Opens the ownership record of an output directory.
     /// </summary>
     /// <param name="outputPath">The output directory holding the sidecars.</param>
-    /// <param name="stateDirectory">The project's state directory (<see cref="ProjectPaths.State"/>).</param>
+    /// <param name="ownerDirectory">The plugin's folder (<see cref="GetOwnerDirectory"/>) holding the record.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     public static async Task<CompressedSiteOwnership> OpenAsync(
         string outputPath,
-        string stateDirectory,
+        string ownerDirectory,
         CancellationToken cancellationToken = default)
     {
-        var ownership = new CompressedSiteOwnership(outputPath, stateDirectory);
+        var ownership = new CompressedSiteOwnership(outputPath, ownerDirectory);
         await OperationGate.WaitAsync(cancellationToken);
         try
         {
@@ -95,6 +101,35 @@ internal sealed partial class CompressedSiteOwnership : IDisposable
         }
 
         return stats;
+    }
+
+    /// <summary>
+    /// Deletes the record after <see cref="CleanAsync"/> removed every owned file; the next
+    /// compression starts a new one.
+    /// </summary>
+    /// <exception cref="IOException">The record still owns files or changed during the operation.</exception>
+    public async Task DeleteEmptyRecordAsync(CancellationToken cancellationToken = default)
+    {
+        await mutationGate.WaitAsync(cancellationToken);
+        try
+        {
+            if (manifest.Files.Count != 0)
+            {
+                throw new IOException("Compression ownership record still owns files.");
+            }
+
+            await EnsureManifestUnchangedAsync(cancellationToken);
+            cancellationToken.ThrowIfCancellationRequested();
+            if (savedManifest is not null)
+            {
+                File.Delete(RecordPath());
+                savedManifest = null;
+            }
+        }
+        finally
+        {
+            mutationGate.Release();
+        }
     }
 
     public async Task RemoveSidecarsAsync(string sourcePath, CancellationToken cancellationToken = default)

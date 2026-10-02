@@ -8,13 +8,14 @@ using Spectara.Revela.Features.Generate.Abstractions;
 using Spectara.Revela.Features.Generate.Models.Results;
 using Spectara.Revela.Features.Generate.Services;
 using Spectara.Revela.Sdk.Abstractions;
+using Spectara.Revela.Sdk.Artifacts;
 using Spectara.Revela.Tests.Shared.Fixtures;
 using Spectara.Revela.Themes.Lumina;
 
 namespace Spectara.Revela.Tests.Integration;
 
 /// <summary>
-/// Image processing state (<c>.revela/state/images.json</c>) decides which images are re-encoded.
+/// Image processing state (<c>.revela/core/images.json</c>) decides which images are re-encoded.
 /// </summary>
 /// <remarks>
 /// The state used to live in the scan manifest, so a manifest format change discarded it and
@@ -148,13 +149,14 @@ public sealed class ImageProcessingStateTests
     }
 
     [TestMethod]
-    public async Task ProcessAsync_CacheDeleted_ReusesVariants()
+    public async Task ProcessAsync_AfterCleanCache_ReusesVariants()
     {
-        // What "clean cache" does: the cache is reproducible, the image state is not part of it.
+        // The manifest is a cache artifact; the image state belongs to the processed images (output).
         using var project = CreateProject("a.jpg");
         await RunAsync(project);
-        Directory.Delete(Path.Combine(project.RootPath, ".revela", "cache"), recursive: true);
+        await CleanAsync(project, ArtifactKind.Cache);
 
+        Assert.IsFalse(File.Exists(ManifestPath(project)));
         var rerun = await RunAsync(project);
 
         Assert.AreEqual(0, rerun.ProcessedCount);
@@ -162,11 +164,25 @@ public sealed class ImageProcessingStateTests
     }
 
     [TestMethod]
+    public async Task ProcessAsync_AfterCleanOutput_ReencodesAllImages()
+    {
+        using var project = CreateProject("a.jpg", "b.jpg");
+        await RunAsync(project);
+        await CleanAsync(project, ArtifactKind.Output);
+
+        Assert.IsFalse(File.Exists(StatePath(project)), "The image state goes with the processed images.");
+        Assert.IsTrue(File.Exists(ManifestPath(project)), "The manifest stays.");
+        var rerun = await RunAsync(project);
+
+        Assert.AreEqual(2, rerun.ProcessedCount);
+    }
+
+    [TestMethod]
     public async Task ProcessAsync_StateDeleted_ReencodesAllImages()
     {
         using var project = CreateProject("a.jpg");
         await RunAsync(project);
-        Directory.Delete(Path.Combine(project.RootPath, ".revela", "state"), recursive: true);
+        File.Delete(StatePath(project));
 
         var rerun = await RunAsync(project);
 
@@ -239,6 +255,13 @@ public sealed class ImageProcessingStateTests
         return images;
     }
 
+    private static async Task CleanAsync(TestProject project, ArtifactKind kind)
+    {
+        using var host = BuildHost(project, [VariantSize]);
+        var result = await host.Services.GetRequiredService<IArtifactLifecycle>().InvalidateAllAsync([kind]);
+        Assert.IsTrue(result.Success, result.ErrorMessage);
+    }
+
     private static IHost BuildHost(TestProject project, IReadOnlyList<int> sizes) =>
         RevelaTestHost.Build(project.RootPath, services =>
         {
@@ -248,9 +271,9 @@ public sealed class ImageProcessingStateTests
             services.AddSingleton<IImageSizesProvider>(new FixedSizesProvider(sizes));
         });
 
-    private static string ManifestPath(TestProject project) => Path.Combine(project.RootPath, ".revela", "cache", "manifest.json");
+    private static string ManifestPath(TestProject project) => Path.Combine(project.RootPath, ".revela", "core", "manifest.json");
 
-    private static string StatePath(TestProject project) => Path.Combine(project.RootPath, ".revela", "state", "images.json");
+    private static string StatePath(TestProject project) => Path.Combine(project.RootPath, ".revela", "core", "images.json");
 
     private static string VariantPath(TestProject project, string imageSlug, int size) =>
         Path.Combine(project.OutputPath, "images", GallerySlug, imageSlug, $"{size}.jpg");

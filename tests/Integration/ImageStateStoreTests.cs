@@ -8,7 +8,7 @@ using Spectara.Revela.Tests.Shared.Fixtures;
 namespace Spectara.Revela.Tests.Integration;
 
 /// <summary>
-/// Persistence of <see cref="ImageStateStore"/> (<c>.revela/state/images.json</c>) on a real filesystem.
+/// Persistence of <see cref="ImageStateStore"/> (<c>.revela/core/images.json</c>) on a real filesystem.
 /// </summary>
 [TestClass]
 [TestCategory("Integration")]
@@ -37,5 +37,5 @@ public sealed class ImageStateStoreTests
     private static ImageStateStore CreateStore(TestProject project) =>
         new(Options.Create(new ProjectEnvironment { Path = project.RootPath }), NullLogger<ImageStateStore>.Instance);
 
-    private static string StatePath(TestProject project) => Path.Combine(project.RootPath, ".revela", "state", "images.json");
+    private static string StatePath(TestProject project) => Path.Combine(project.RootPath, ".revela", "core", "images.json");
 }

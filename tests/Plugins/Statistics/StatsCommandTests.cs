@@ -86,7 +86,7 @@ public sealed class StatsCommandTests : IDisposable
 
     private async Task<string> CreateStatisticsArtifactAsync()
     {
-        var cachePath = Path.Combine(projectPath, ProjectPaths.Cache);
+        var cachePath = Path.Combine(projectPath, ProjectPaths.GetOwnerDirectory("statistics"));
         var statisticsDirectory = Path.Combine(cachePath, "statistics");
         Directory.CreateDirectory(statisticsDirectory);
         await File.WriteAllTextAsync(Path.Combine(cachePath, "manifest.json"), "{}");
@@ -149,6 +149,12 @@ public sealed class StatsCommandTests : IDisposable
 
     private sealed class SuccessfulArtifactLifecycle : IArtifactLifecycle
     {
+        public ValueTask<OperationResult> InvalidateAsync(ArtifactId artifact, CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
+        public ValueTask<OperationResult> InvalidateAllAsync(IReadOnlyCollection<ArtifactKind> kinds, CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
         public ValueTask<OperationResult> PrepareToReplaceAsync(
             ArtifactId artifact,
             CancellationToken cancellationToken = default)
@@ -161,6 +167,12 @@ public sealed class StatsCommandTests : IDisposable
 
     private sealed class FailingArtifactLifecycle : IArtifactLifecycle
     {
+        public ValueTask<OperationResult> InvalidateAsync(ArtifactId artifact, CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
+        public ValueTask<OperationResult> InvalidateAllAsync(IReadOnlyCollection<ArtifactKind> kinds, CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
         public ValueTask<OperationResult> PrepareToReplaceAsync(
             ArtifactId artifact,
             CancellationToken cancellationToken = default)

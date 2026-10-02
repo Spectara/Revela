@@ -200,7 +200,7 @@ public sealed class ManifestServiceLifecycleTests
     {
         // An older manifest has another shape; it is dropped and rebuilt by the next scan.
         using var project = TestProject.Create();
-        var cacheDirectory = Path.Combine(project.RootPath, ".revela", "cache");
+        var cacheDirectory = Path.Combine(project.RootPath, ".revela", "core");
         Directory.CreateDirectory(cacheDirectory);
         await File.WriteAllTextAsync(Path.Combine(cacheDirectory, "manifest.json"), /*lang=json,strict*/ """
             {
@@ -223,7 +223,7 @@ public sealed class ManifestServiceLifecycleTests
         // Version 5 manifests of earlier builds still carry processedImages and formatQualities.
         // The model no longer knows them: they are ignored on load and gone after the next save.
         using var project = TestProject.Create();
-        var cacheDirectory = Path.Combine(project.RootPath, ".revela", "cache");
+        var cacheDirectory = Path.Combine(project.RootPath, ".revela", "core");
         Directory.CreateDirectory(cacheDirectory);
         var manifestPath = Path.Combine(cacheDirectory, "manifest.json");
         await File.WriteAllTextAsync(manifestPath, /*lang=json,strict*/ """
@@ -248,7 +248,7 @@ public sealed class ManifestServiceLifecycleTests
         var saved = await File.ReadAllTextAsync(manifestPath);
         Assert.DoesNotContain("processedImages", saved, StringComparison.Ordinal);
         Assert.DoesNotContain("formatQualities", saved, StringComparison.Ordinal);
-        Assert.IsFalse(Directory.Exists(Path.Combine(project.RootPath, ".revela", "state")), "Nothing is carried over into the image state.");
+        Assert.IsFalse(File.Exists(Path.Combine(cacheDirectory, "images.json")), "Nothing is carried over into the image state.");
     }
 }
 

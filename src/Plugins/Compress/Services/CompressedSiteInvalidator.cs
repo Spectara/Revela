@@ -6,11 +6,21 @@ using Spectara.Revela.Sdk.Services;
 
 namespace Spectara.Revela.Plugins.Compress.Services;
 
+/// <summary>
+/// Removes the pre-compressed sidecars and their ownership record
+/// (<see cref="CompressArtifacts.PrecompressedSite"/>, an <see cref="ArtifactKind.Output"/> artifact).
+/// </summary>
+/// <remarks>
+/// Only files listed in the record are deleted, and only while unchanged. Without an output
+/// directory the record describes nothing and is deleted on its own.
+/// </remarks>
 internal sealed class CompressedSiteInvalidator(
     IPathResolver pathResolver,
     IOptions<ProjectEnvironment> projectEnvironment) : IArtifactInvalidator
 {
     public ArtifactId Artifact => CompressArtifacts.PrecompressedSite;
+
+    public ArtifactKind Kind => ArtifactKind.Output;
 
     public IReadOnlyCollection<ArtifactId> DependsOn { get; } = [CoreArtifacts.RenderedSite];
 
@@ -19,16 +29,24 @@ internal sealed class CompressedSiteInvalidator(
     {
         cancellationToken.ThrowIfCancellationRequested();
         var outputPath = pathResolver.OutputPath;
-        if (!Directory.Exists(outputPath))
-        {
-            return OperationResult.Ok();
-        }
+        var ownerDirectory = CompressedSiteOwnership.GetOwnerDirectory(projectEnvironment.Value.Path);
 
         try
         {
-            var stateDirectory = Path.Combine(projectEnvironment.Value.Path, ProjectPaths.State);
-            using var ownership = await CompressedSiteOwnership.OpenAsync(outputPath, stateDirectory, cancellationToken);
+            if (!Directory.Exists(outputPath))
+            {
+                var record = Path.Combine(ownerDirectory, CompressedSiteOwnership.RecordFileName);
+                if (File.Exists(record))
+                {
+                    File.Delete(record);
+                }
+
+                return OperationResult.Ok();
+            }
+
+            using var ownership = await CompressedSiteOwnership.OpenAsync(outputPath, ownerDirectory, cancellationToken);
             await ownership.CleanAsync(cancellationToken);
+            await ownership.DeleteEmptyRecordAsync(cancellationToken);
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
         {

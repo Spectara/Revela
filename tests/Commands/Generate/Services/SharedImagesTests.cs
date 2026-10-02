@@ -381,6 +381,12 @@ public sealed class SharedImagesTests : IDisposable
 
     private sealed class SuccessfulArtifactLifecycle : IArtifactLifecycle
     {
+        public ValueTask<OperationResult> InvalidateAsync(ArtifactId artifact, CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
+        public ValueTask<OperationResult> InvalidateAllAsync(IReadOnlyCollection<ArtifactKind> kinds, CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
         public ValueTask<OperationResult> PrepareToReplaceAsync(
             ArtifactId artifact,
             CancellationToken cancellationToken = default)

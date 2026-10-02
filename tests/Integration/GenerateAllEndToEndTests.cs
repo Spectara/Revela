@@ -438,7 +438,7 @@ public sealed class GenerateAllEndToEndTests
 
     /// <summary>
     /// Renders one page that uses an extension template with a plugin-style
-    /// <c>.revela/cache/&lt;page&gt;/&lt;dataFile&gt;</c> data file and returns its HTML.
+    /// <c>.revela/statistics/&lt;page&gt;/&lt;dataFile&gt;</c> data file and returns its HTML.
     /// </summary>
     private static async Task<string> RenderExtensionPageAsync(
         ITheme extension,
@@ -460,7 +460,7 @@ public sealed class GenerateAllEndToEndTests
             +++
             **Body stays formatted**
             """);
-        var cachePath = Path.Combine(project.RootPath, ProjectPaths.Cache, pageFolder);
+        var cachePath = Path.Combine(project.RootPath, ProjectPaths.GetOwnerDirectory("statistics"), pageFolder);
         Directory.CreateDirectory(cachePath);
         if (data is not null)
         {
@@ -550,11 +550,18 @@ public sealed class GenerateAllEndToEndTests
             $"Image step must succeed on an image-less site, not fail: {imageResult.ErrorMessage}");
         Assert.AreEqual(0, imageResult.ProcessedCount, "No images means nothing processed");
         Assert.IsNull(imageResult.ErrorMessage, "Image-less site must not surface an error");
+
+        // Revela's own files live in .revela/<owner>/, never in the published output.
+        Assert.IsTrue(File.Exists(Path.Combine(project.RootPath, ".revela", "core", "manifest.json")));
+        var hidden = Directory.EnumerateFileSystemEntries(project.OutputPath, ".*", SearchOption.AllDirectories).ToList();
+        Assert.IsEmpty(hidden, $"Output must contain only site files: {string.Join(", ", hidden)}");
     }
 
     private sealed class FailingRenderedSiteDependent : IArtifactInvalidator
     {
         public ArtifactId Artifact { get; } = new("example/failing-derived-site");
+
+        public ArtifactKind Kind => ArtifactKind.Output;
 
         public IReadOnlyCollection<ArtifactId> DependsOn { get; } = [CoreArtifacts.RenderedSite];
 

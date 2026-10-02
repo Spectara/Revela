@@ -17,10 +17,9 @@ namespace Spectara.Revela.Sdk.Services;
 /// </list>
 /// </para>
 /// <para>
-/// Only site files belong in <see cref="OutputPath"/>: everything there is published. Revela's
-/// own folders are fixed and not configurable; plugins combine <see cref="ProjectEnvironment.Path"/>
-/// with <see cref="ProjectPaths.Cache"/> for data reproducible from the source and with
-/// <see cref="ProjectPaths.State"/> for records of what is in the output.
+/// Only site files belong in <see cref="OutputPath"/>: everything there is published. Revela core
+/// and each package keep their own files in a fixed, non-configurable owner folder:
+/// <see cref="ProjectEnvironment.Path"/> combined with <see cref="ProjectPaths.GetOwnerDirectory"/>.
 /// </para>
 /// </remarks>
 public interface IPathResolver
