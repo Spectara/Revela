@@ -38,7 +38,7 @@ Extends the Lumina theme with a statistics dashboard page:
 
 ## How It Works
 
-The plugin generates a `statistics.json` data file during `revela generate all`. This theme extension provides a **Scriban template** (`statistics/overview`) that renders the JSON data into a single dashboard page with 9 chart sections.
+The plugin generates a `statistics.json` data file during `revela generate all`. This theme extension provides a **Scriban template** (`statistics/overview`) that renders the JSON data into a single dashboard page: summary cards, nine bar charts and a month × year activity heatmap.
 
 All charts use a semantic `<dl>/<dt>/<dd>` structure with CSS `--percent` custom properties for bar widths — no JavaScript dependencies.
 
@@ -53,21 +53,17 @@ revela generate all
 
 ```
 Body/
-└── overview.revela         # Main dashboard template
+└── overview.revela         # Dashboard: summary cards, then one section per chart
 
-Partials/                   # Chart partials (included by overview)
-├── cameras.revela          # Camera models
-├── lenses.revela           # Lens models
-├── focal-lengths.revela    # Focal length ranges (mm)
-├── apertures.revela        # f-stop ranges
-├── shutter-speeds.revela   # Exposure times
-├── iso.revela              # ISO ranges
-├── orientations.revela     # Landscape / Portrait / Square
-├── timeline.revela         # Photos per year
-└── months.revela           # Photos per month
+Partials/                   # Included by overview.revela
+├── bar-chart.revela        # One <dl> bar chart (cameras, lenses, focal lengths, apertures,
+│                           #   shutter speeds, ISO, orientation, per year, per month)
+└── heatmap.revela          # Photo activity per month and year
+
+Locales/                    # UI strings (en, de), keys prefixed with "statistics."
 
 Assets/
-└── main.css                # Dashboard styles (cards, bar charts, responsive grid)
+└── main.css                # Dashboard styles (cards, bar charts, heatmap), statistics pages only
 ```
 
 ## Screenshots

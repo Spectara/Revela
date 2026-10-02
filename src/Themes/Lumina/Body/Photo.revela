@@ -13,20 +13,12 @@ Template contract:
 - contexts: PhotoContext[] { route, label, context_id, anchor, is_physical, previous_photo?, next_photo? }
 - primary_context: PhotoContext
 - site, base_url, basepath, assets_basepath, image_formats, stylesheets, scripts, revela
-- helpers: page_url, absolute_url, variant_url
+- helpers: page_url, absolute_url, asset_url, variant_url (+ Partials/ImageHelpers)
 ##~}}
-{{~ largest_size = image.sizes | array.last ~}}
-{{~ is_landscape = image.width >= image.height ~}}
+{{~ include 'imagehelpers' ~}}
+{{~ fallback_format = image_fallback_format ~}}
 {{~ # Fit the viewport; zoom.js switches sizes to the original width when zooming in. ~}}
-{{~ viewer_sizes = '(min-aspect-ratio: ' + image.width + '/' + image.height + ') calc((100vh - 2.25rem) * ' + image.width + ' / ' + image.height + '), 100vw' ~}}
-{{~ func viewer_srcset(format)
-    candidates = []
-    for size in image.sizes
-        actual_width = is_landscape ? size : ((size * image.width / image.height) | math.floor)
-        candidates = candidates | array.add ((variant_url image size format) + ' ' + actual_width + 'w')
-    end
-    ret candidates | array.join ', '
-end ~}}
+{{~ photo_sizes = viewer_sizes image ~}}
 {{~ alt_text = image.title ?? '' ~}}
 {{~ image_description = image.description ?? '' ~}}
 {{~ description = alt_text != '' ? alt_text : (site.description ?? '') ~}}
@@ -63,7 +55,7 @@ end ~}}
     {{~ include 'opengraphimage' ~}}
     {{~ include 'favicon' ~}}
     {{~ for css in stylesheets ~}}
-    <link type="text/css" rel="stylesheet" media="all" href="{{ html_escape basepath }}_assets/{{ html_escape css }}">
+    <link type="text/css" rel="stylesheet" media="all" href="{{ html_escape (asset_url css) }}">
     {{~ end ~}}
 </head>
 
@@ -73,10 +65,10 @@ end ~}}
         <article style="--width:{{ html_escape image.width }}; --height:{{ html_escape image.height }};{{~ if image.placeholder ~}} --lqip:{{ html_escape image.placeholder }};{{~ end ~}}">
             <picture id="photo-{{ html_escape image.id }}"{{~ if image.placeholder }} data-lqip{{ end }}>
                 {{~ for format in image_formats ~}}
-                <source type="image/{{ html_escape (format == 'jpg' ? 'jpeg' : format) }}" sizes="{{ html_escape viewer_sizes }}" srcset="{{ html_escape (viewer_srcset format) }}">
+                <source type="{{ html_escape (image_type format) }}" sizes="{{ html_escape photo_sizes }}" srcset="{{ html_escape (image_srcset image format) }}">
                 {{~ end ~}}
-                <img alt="{{ html_escape alt_text }}" src="{{ html_escape (variant_url image largest_size (image_formats | array.last)) }}"
-                    sizes="{{ html_escape viewer_sizes }}" srcset="{{ html_escape (viewer_srcset (image_formats | array.last)) }}"
+                <img alt="{{ html_escape alt_text }}" src="{{ html_escape (variant_url image image.sizes[-1] fallback_format) }}"
+                    sizes="{{ html_escape photo_sizes }}" srcset="{{ html_escape (image_srcset image fallback_format) }}"
                     width="{{ html_escape image.width }}" height="{{ html_escape image.height }}" fetchpriority="high" decoding="async">
             </picture>
             <section>
@@ -102,12 +94,12 @@ end ~}}
                 {{~ include 'photometadata' image ~}}
                 <footer>
                     <strong>{{ html_escape (t 'photo.seen_in') }}</strong>
-                    {{~ shown_routes = [] ~}}
+                    {{~ shown_routes = {} ~}}
                     {{~ for ctx in contexts ~}}
-                    {{~ if !(shown_routes | array.contains ctx.route) ~}}
+                    {{~ if !shown_routes[ctx.route] ~}}
                     {{~ seen_href = ctx.route == '' ? basepath : page_url(ctx.route) ~}}
                     <a href="{{ html_escape seen_href }}#{{ html_escape ctx.anchor }}">{{ html_escape ctx.label }}</a>
-                    {{~ shown_routes = shown_routes | array.add ctx.route ~}}
+                    {{~ shown_routes[ctx.route] = true ~}}
                     {{~ end ~}}
                     {{~ end ~}}
                 </footer>
@@ -116,7 +108,7 @@ end ~}}
     </main>
 
     {{~ for js in scripts ~}}
-    <script src="{{ html_escape basepath }}_assets/{{ html_escape js }}" defer></script>
+    <script src="{{ html_escape (asset_url js) }}" defer></script>
     {{~ end ~}}
 </body>
 

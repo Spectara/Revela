@@ -7,7 +7,8 @@ Expects:
 - site: { title, description, author, copyright }
 - gallery: { title, body?, template? }
 - nav_items: Array of NavigationItem for navigation
-- images: Array of ImageData for gallery (optional)
+- images: Array of ImageData of this page (optional)
+- occurrences: Array of { image, ... } for the page's photo grid, in display order
 - basepath: Relative path to root
 - assets_basepath: Path/URL to image resources (can be absolute CDN URL)
 - image_formats: Array of format strings ["avif", "webp", "jpg"]
@@ -18,10 +19,11 @@ Expects:
 - not_found: true only for 404.html (rendered with body/notfound, root-absolute basepath)
 
 Body Template Selection:
-- Default: "body/gallery" (shows images and optional intro text)
-- Custom: Specify in _index.revela frontmatter: template = "body/page"
+- Default: "gallery" (shows images and optional intro text)
+- Custom: Specify in _index.revela frontmatter: template = "page"
 - Extension templates: "statistics/overview" etc.
-- 404 page: "body/notfound"
+- 404 page: "notfound"
+The layout includes "body/" + template, e.g. Body/Page.revela for template = "page".
 
 Headings: the layout renders no heading of its own. Every body template renders
 exactly one <h1> for the page (visually hidden where the design shows no title).
@@ -29,14 +31,15 @@ exactly one <h1> for the page (visually hidden where the design shows no title).
 {{~ page_title = not_found ? (t 'notfound.title') : gallery.title ~}}
 {{~ page_description = gallery.description ?? site.description ~}}
 {{~ canonical_url = (base_url && !not_found) ? (absolute_url gallery) : null ~}}
-{{~ # Social preview image: the cover image, else the first image of the page ~}}
-{{~ og_image = gallery.cover_image ?? ((images && images.size > 0) ? images[0] : null) ~}}
+{{~ # Social preview image: the cover image, else the first photo the page shows (none on a page without photos) ~}}
+{{~ og_image = gallery.cover_image ?? ((occurrences && occurrences.size > 0) ? occurrences[0].image : null) ~}}
 <!DOCTYPE html>
 <html lang="{{ html_escape (site.language ?? 'en') }}">
 
 <head>
     <meta charset="UTF-8">
-    <title>{{~ if page_title ~}}{{ html_escape site.title }} - {{ html_escape page_title }}{{~ else ~}}{{ html_escape site.title }}{{~ end ~}}</title>
+    {{~ # The home page's title falls back to the site title; don't print it twice. ~}}
+    <title>{{~ if page_title && page_title != site.title ~}}{{ html_escape site.title }} - {{ html_escape page_title }}{{~ else ~}}{{ html_escape site.title }}{{~ end ~}}</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="description" content="{{ html_escape page_description }}">
     <meta name="author" content="{{ html_escape site.author }}">
@@ -64,7 +67,7 @@ exactly one <h1> for the page (visually hidden where the design shows no title).
     {{~ end ~}}
     {{~ include 'favicon' ~}}
     {{~ for css in stylesheets ~}}
-    <link type="text/css" rel="stylesheet" media="all" href="{{ html_escape basepath }}_assets/{{ html_escape css }}">
+    <link type="text/css" rel="stylesheet" media="all" href="{{ html_escape (asset_url css) }}">
     {{~ end ~}}
 </head>
 
@@ -101,13 +104,13 @@ exactly one <h1> for the page (visually hidden where the design shows no title).
 
         All body templates are included dynamically with full context.
         Extension templates define data defaults in manifest.json, so users
-        can simply specify template = "body/statistics/overview" without
+        can simply specify template = "statistics/overview" without
         explicit data configuration.
 
         Examples:
-        - template = "body/page" → Simple text page
-        - template = "body/gallery" → Image gallery (default)
-        - template = "body/statistics/overview" → Statistics extension template
+        - template = "page" → Body/Page.revela, simple text page
+        - template = "gallery" → Body/Gallery.revela, image gallery (default)
+        - template = "statistics/overview" → Statistics extension template
         ##~}}
         {{~ body_template = 'body/' + (gallery.template ?? 'gallery') ~}}
         {{~ include body_template ~}}
@@ -125,7 +128,7 @@ exactly one <h1> for the page (visually hidden where the design shows no title).
 
     {{~ # Scripts (deferred — non-render-blocking, keeps them off the critical request chain) ~}}
     {{~ for js in scripts ~}}
-    <script src="{{ html_escape basepath }}_assets/{{ html_escape js }}" defer></script>
+    <script src="{{ html_escape (asset_url js) }}" defer></script>
     {{~ end ~}}
 </body>
 

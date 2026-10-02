@@ -1,10 +1,12 @@
 // Zoom for the photo viewer image on photo pages and in lightbox dialogs.
 //
 // Browsers can zoom only the whole page, not a single element, so the image is
-// scaled with a CSS transform. This script only sets the custom properties
-// --zoom-scale, --zoom-x and --zoom-y plus two state attributes (data-zoomed,
-// data-gesture); main.css turns them into the transform and its animation.
-// Without JavaScript the photo is shown fitted to the viewport.
+// scaled with a CSS transform. The script sets the custom properties --zoom-scale,
+// --zoom-x and --zoom-y and the state attributes data-zoomable, data-zoomed and
+// data-gesture; main.css turns them into the cursor, the transform and its
+// animation. Zooming in also points the picture's `sizes` at the original width,
+// so the browser loads the full-resolution image. Without JavaScript the photo is
+// shown fitted to the viewport.
 //
 // Zoom goes up to 100 %: one image pixel per device pixel. Beyond that a photo
 // only shows enlarged pixels. Mouse and pen: click toggles 100 %, drag pans.
@@ -334,10 +336,19 @@
       this.image.style.setProperty("--zoom-y", `${this.transform.y}px`);
     }
 
-    // Shows the zoom cursor only where zooming does something; the fitted size
-    // changes with layout, the window size and when a lightbox opens.
-    updateZoomable() {
-      if (!this.isZoomed) {
+    // The fitted size changed: the window or the iOS toolbars resized, the layout
+    // moved, or a lightbox opened or closed. Zoom is measured against the fitted size,
+    // so a zoomed photo returns to it, and the zoom cursor is re-evaluated. Sub-pixel
+    // changes (the original replacing the viewport-sized variant) are ignored.
+    refit() {
+      const { clientWidth: width, clientHeight: height } = this.image;
+      if (this.baseSize?.width === width && this.baseSize?.height === height) {
+        return;
+      }
+
+      if (this.isZoomed) {
+        this.reset();
+      } else {
         this.baseSize = null;
       }
 
@@ -362,19 +373,14 @@
   }
 
   const viewers = new Map(Array.from(images, (image) => [image, new PhotoZoom(image)]));
+  // One path for every size change; a separate window resize listener would also fire
+  // on iOS toolbar changes that leave the fitted size alone.
   const fittedSize = new ResizeObserver((entries) => {
     for (const entry of entries) {
-      viewers.get(entry.target).updateZoomable();
+      viewers.get(entry.target).refit();
     }
   });
   for (const image of viewers.keys()) {
     fittedSize.observe(image);
   }
-
-  // A new viewport size changes the fitted image size that zoom is based on.
-  window.addEventListener("resize", () => {
-    for (const viewer of viewers.values()) {
-      viewer.reset();
-    }
-  });
 })();

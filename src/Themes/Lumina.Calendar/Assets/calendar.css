@@ -5,11 +5,11 @@
 .calendar-legend {
     display: flex;
     flex-wrap: wrap;
-    gap: var(--space-xs, 0.5rem) var(--space-m, 1rem);
+    gap: var(--space-xs) var(--space-m);
     justify-content: center;
-    font-size: var(--font-size-0, 0.75rem);
-    color: var(--color-light, gray);
-    margin-bottom: var(--space-l, 1.5rem);
+    font-size: var(--font-size-0);
+    color: var(--color-light);
+    margin-bottom: var(--space-l);
 }
 
 .calendar-legend span::before {
@@ -43,23 +43,17 @@
 .calendar-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-    gap: var(--space-xl, 2rem) var(--space-l, 1.5rem);
+    gap: var(--space-xl) var(--space-l);
 }
 
 /* Month */
 
 .calendar-month h2 {
     text-align: center;
-    font-size: var(--font-size-1, 1rem);
+    font-size: var(--font-size-1);
     font-weight: 200;
     letter-spacing: 0.1em;
-    margin: 0 0 var(--space-s, 0.75rem) 0;
-    padding: 0;
-    border: none;
-}
-
-.calendar-month h2::after {
-    display: none;
+    margin-bottom: var(--space-s);
 }
 
 /* Table */
@@ -72,18 +66,18 @@
 }
 
 .calendar-month th {
-    font-size: var(--font-size-0, 0.75rem);
+    font-size: var(--font-size-0);
     font-weight: 200;
     letter-spacing: 0.05em;
-    color: var(--color-light, gray);
+    color: var(--color-light);
     text-align: center;
-    padding: var(--space-3xs, 0.2rem) 0;
+    padding: var(--space-3xs) 0;
 }
 
 .calendar-month td {
     text-align: center;
-    padding: var(--space-3xs, 0.2rem);
-    font-size: var(--font-size-0, 0.75rem);
+    padding: var(--space-3xs);
+    font-size: var(--font-size-0);
     font-weight: 200;
     border-radius: 2px;
 }
@@ -122,7 +116,7 @@
 
 /* Responsive */
 
-@media (max-width: 600px) {
+@media (width <=600px) {
     .calendar-grid {
         grid-template-columns: 1fr;
     }

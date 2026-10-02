@@ -1723,7 +1723,6 @@ public sealed class GenerateAllEndToEndTests
             Assert.AreEqual((expectedCount * 2) - 2, CountOccurrences(html, "type=\"button\" hidden aria-controls=\"lightbox-"));
             Assert.AreEqual(expectedCount, CountOccurrences(html, "command=\"show-modal\""));
             Assert.AreEqual(expectedCount, CountOccurrences(html, "command=\"close\""));
-            Assert.AreEqual(expectedCount, CountOccurrences(html, "closedby=\"any\""));
             Assert.DoesNotContain("hidden></button>", html);
             Assert.AreEqual(expectedCount, dialogIds.Distinct().Count());
             Assert.AreEqual(targets.Count + expectedCount, controls.Count);
@@ -1756,7 +1755,8 @@ public sealed class GenerateAllEndToEndTests
             Path.Combine(project.OutputPath, "default", "index.html"));
         Assert.AreEqual(2, CountOccurrences(defaultHtml, "aria-label=\"Previous photo\""));
         Assert.AreEqual(2, CountOccurrences(defaultHtml, "aria-label=\"Next photo\""));
-        Assert.AreEqual(2, CountOccurrences(defaultHtml, "<span aria-hidden=\"true\"></span>"));
+        Assert.AreEqual(1, CountOccurrences(defaultHtml, "<span data-photo-previous aria-hidden=\"true\"></span>"));
+        Assert.AreEqual(1, CountOccurrences(defaultHtml, "<span data-photo-next aria-hidden=\"true\"></span>"));
         Assert.IsFalse(Directory.Exists(Path.Combine(project.OutputPath, "photo")));
     }
 
@@ -1851,13 +1851,14 @@ public sealed class GenerateAllEndToEndTests
     [TestMethod]
     public async Task GeneratePages_ThemeWithoutGalleryGrid_OnlyFailsWhenTokenIsPresent()
     {
-        // Arrange: first prove a no-token page remains unaffected.
+        // Arrange: first prove a no-token page remains unaffected. Lumina's own gallery body
+        // renders its grid through GalleryGrid, so this page uses the text page body.
         using var noTokenProject = TestProject.Create(p => p
             .WithSiteJson(new { title = "No Token", author = "Test" })
             .AddGallery("Gallery", g => g.AddRealImage("photo.jpg", 1920, 1080)));
         await File.WriteAllTextAsync(
             Path.Combine(noTokenProject.SourcePath, "Gallery", "_index.revela"),
-            "Body without an inline gallery.");
+            "+++\ntemplate = \"page\"\n+++\nBody without an inline gallery.");
 
         using var noTokenHost = RevelaTestHost.Build(noTokenProject.RootPath, services =>
         {

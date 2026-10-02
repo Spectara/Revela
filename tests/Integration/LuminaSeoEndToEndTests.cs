@@ -153,6 +153,55 @@ public sealed partial class LuminaSeoEndToEndTests
     }
 
     [TestMethod]
+    public async Task RenderAsync_LuminaPictures_SizeEverySourceAndPaintContentImagePlaceholders()
+    {
+        var site = await RenderSiteAsync(baseUrl: null);
+
+        foreach (var (page, html) in site.Pages)
+        {
+            foreach (Match source in SourcePattern().Matches(html))
+            {
+                Assert.Contains(" sizes=\"", source.Value, StringComparison.Ordinal, $"{page}: without sizes a browser assumes 100vw: {source.Value}");
+            }
+        }
+
+        var notes = site.Pages["notes/index.html"];
+        Assert.Contains("data-lqip>", notes);
+        Assert.AreEqual(3, CountOccurrences(notes, "sizes=\"auto, (min-width: 900px) 900px, 100vw\""),
+            "The content image's two <source> elements and its <img> fit the 900px text column.");
+    }
+
+    [TestMethod]
+    public async Task RenderAsync_LuminaNavigation_MarksOnlyTheCurrentPage()
+    {
+        var site = await RenderSiteAsync(baseUrl: null);
+
+        var island = site.Pages["island/index.html"];
+        Assert.AreEqual(2, CountOccurrences(island, "aria-current=\"page\">Island</a>"), "Overlay menu and footer navigation.");
+        Assert.AreEqual(2, CountOccurrences(island, "aria-current=\"page\""));
+        Assert.DoesNotContain("class=\"active\"", island);
+    }
+
+    [TestMethod]
+    public async Task RenderAsync_GalleryWithoutCover_PreviewsItsFirstShownPhoto()
+    {
+        var site = await RenderSiteAsync(baseUrl: BaseUrl);
+
+        Assert.AreEqual($"{BaseUrl}/images/notes/three/800.jpg", AttributeAfter(site.Pages["notes/index.html"], "property=\"og:image\" content=\""));
+        Assert.DoesNotContain("og:image", site.Pages["about/index.html"], StringComparison.Ordinal);
+    }
+
+    [TestMethod]
+    public async Task RenderAsync_HomeTitledLikeTheSite_PrintsTheTitleOnce()
+    {
+        // An untitled home page falls back to the site title; either way "SEO Site - SEO Site" reads badly.
+        var site = await RenderSiteAsync(baseUrl: null, homeTitle: "SEO Site");
+
+        Assert.Contains("<title>SEO Site</title>", site.Pages["index.html"]);
+        Assert.Contains("<title>SEO Site - Island</title>", site.Pages["island/index.html"]);
+    }
+
+    [TestMethod]
     [DataRow("/")]
     [DataRow("/photos/")]
     public async Task RenderAsync_NotFoundPage_IsLocalizedNoindexAndUsesRootAbsoluteUrls(string basePath)
@@ -225,7 +274,8 @@ public sealed partial class LuminaSeoEndToEndTests
         string? baseUrl,
         string? language = null,
         string basePath = "/",
-        ITheme? theme = null)
+        ITheme? theme = null,
+        string homeTitle = "Home & More")
     {
         object site = language is null
             ? new { title = "SEO Site", author = "Test", description = "Site description" }
@@ -241,7 +291,7 @@ public sealed partial class LuminaSeoEndToEndTests
             .AddGallery("Island", g => g.AddRealImage("one.jpg", 2400, 1600).AddRealImage("two.jpg", 800, 1200))
             .AddGallery("Notes", g => g.AddRealImage("three.jpg", 800, 600))
             .AddGallery("About"));
-        await File.WriteAllTextAsync(Path.Combine(project.SourcePath, "_index.revela"), "+++\ntitle = \"Home & More\"\n+++\n");
+        await File.WriteAllTextAsync(Path.Combine(project.SourcePath, "_index.revela"), $"+++\ntitle = \"{homeTitle}\"\n+++\n");
         await File.WriteAllTextAsync(
             Path.Combine(project.SourcePath, "Island", "_index.revela"),
             "+++\ntitle = \"Island\"\ndescription = \"Island description\"\ncover = \"one.jpg\"\n+++\nIsland intro.\n");
@@ -280,11 +330,25 @@ public sealed partial class LuminaSeoEndToEndTests
         return html[start..html.IndexOf('"', start)];
     }
 
+    private static int CountOccurrences(string text, string value)
+    {
+        var count = 0;
+        for (var index = text.IndexOf(value, StringComparison.Ordinal); index >= 0; index = text.IndexOf(value, index + value.Length, StringComparison.Ordinal))
+        {
+            count++;
+        }
+
+        return count;
+    }
+
     [GeneratedRegex(@"<h1[\s>]")]
     private static partial Regex H1Pattern();
 
     [GeneratedRegex(@"<img\s[^>]*>")]
     private static partial Regex ImgPattern();
+
+    [GeneratedRegex(@"<source\s[^>]*>")]
+    private static partial Regex SourcePattern();
 
     [GeneratedRegex(@"<nav(?:\s[^>]*)?>")]
     private static partial Regex NavPattern();

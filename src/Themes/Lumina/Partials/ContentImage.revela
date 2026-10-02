@@ -12,26 +12,15 @@ Context variables:
 - image_formats: Available formats ["avif", "webp", "jpg"]
 ##~}}
 {{~ if !image.sizes || image.sizes.size == 0; ret; end ~}}
-{{~ largest_size = image.sizes | array.last ~}}
-{{~ is_landscape = image.width >= image.height ~}}
-{{~ fallback_size = largest_size > 1280 ? 1280 : largest_size ~}}
-{{~ actual_fallback = 0 ~}}
-{{~ for size in image.sizes ~}}
-{{~ if size <= fallback_size; actual_fallback = size; end ~}}
-{{~ end ~}}
-{{~ if actual_fallback == 0; actual_fallback = image.sizes[0]; end ~}}
-{{~ func content_srcset(format)
-    candidates = []
-    for size in image.sizes
-        actual_width = is_landscape ? size : ((size * image.width / image.height) | math.floor)
-        candidates = candidates | array.add ((variant_url image size format) + ' ' + actual_width + 'w')
-    end
-    ret candidates | array.join ', '
-end ~}}
-<picture class="content-image{{ for cls in classes }} {{ html_escape cls }}{{ end }}"{{ if image.placeholder }} style="--lqip:{{ html_escape image.placeholder }}"{{ end }}>
+{{~ include 'imagehelpers' ~}}
+{{~ fallback_format = image_fallback_format ~}}
+{{~ ## The text column is at most 900px wide (--content-max-width); "auto" lets browsers
+   that support it use the laid-out width instead. ## ~}}
+{{~ content_sizes = 'auto, (min-width: 900px) 900px, 100vw' ~}}
+<picture class="content-image{{ for cls in classes }} {{ html_escape cls }}{{ end }}"{{ if image.placeholder }} style="--lqip:{{ html_escape image.placeholder }}" data-lqip{{ end }}>
 {{~ for format in image_formats ~}}
-  <source type="image/{{ html_escape (format == 'jpg' ? 'jpeg' : format) }}" srcset="{{ html_escape (content_srcset format) }}">
+  <source type="{{ html_escape (image_type format) }}" sizes="{{ content_sizes }}" srcset="{{ html_escape (image_srcset image format) }}">
 {{~ end ~}}
-    <img src="{{ html_escape (variant_url image actual_fallback (image_formats | array.last)) }}" srcset="{{ html_escape (content_srcset (image_formats | array.last)) }}" alt="{{ html_escape alt }}"
+    <img src="{{ html_escape (variant_url image (image_size image 1280) fallback_format) }}" sizes="{{ content_sizes }}" srcset="{{ html_escape (image_srcset image fallback_format) }}" alt="{{ html_escape alt }}"
       width="{{ html_escape image.width }}" height="{{ html_escape image.height }}" loading="lazy" decoding="async">
 </picture>

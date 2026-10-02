@@ -6,7 +6,8 @@ This is the default body template if no `template` is specified.
 
 Expects:
 - gallery: { title, body? }
-- occurrences: Array of GalleryImageOccurrence
+- occurrences: Array of GalleryImageOccurrence (rendered by Partials/GalleryGrid.revela,
+  the same grid an inline [[gallery]] block renders)
 - image_formats: Array of format strings ["avif", "webp", "jpg"]
 - assets_basepath: Path/URL to image resources
 - basepath: Relative path to root (for navigation)
@@ -34,16 +35,5 @@ title stays visually hidden so the grid starts without a visible heading.
 
 {{~ # Image Gallery Grid (suppressed when the body places its own [[gallery]] blocks) ~}}
 {{~ if !gallery.has_inline_galleries && occurrences && occurrences.size > 0 ~}}
-<section class="gallery">
-    {{~ for occurrence in occurrences ~}}
-    {{~ image = occurrence.image ~}}
-    {{~ viewer_mode = occurrence.viewer_mode ~}}
-    {{~ context_id = occurrence.context_id ~}}
-    {{~ context_label = occurrence.context_label ~}}
-    {{~ occurrence_id = occurrence.occurrence_id ~}}
-    {{~ previous_occurrence_id = occurrence.previous_occurrence_id ~}}
-    {{~ next_occurrence_id = occurrence.next_occurrence_id ~}}
-    {{~ include 'image' image ~}}
-    {{~ end ~}}
-</section>
+{{~ include 'gallerygrid' ~}}
 {{~ end ~}}

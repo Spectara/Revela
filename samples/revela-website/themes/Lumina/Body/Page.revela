@@ -10,12 +10,16 @@ rules apply (left-aligned text, proper spacing, table styling, etc.).
 Rendered tables are wrapped so they scroll on their own instead of widening
 the page on small screens.
 
+Heading: like Lumina, the title is the page's single <h1>, unless the Markdown body
+brings its own.
+
 Expects:
 - gallery: { title, body }
 ##~}}
+{{~ body_has_h1 = gallery.body && (gallery.body | string.contains '<h1') ~}}
 <article>
-    {{~ if gallery.title ~}}
-    <h1>{{ gallery.title }}</h1>
+    {{~ if gallery.title && !body_has_h1 ~}}
+    <h1>{{ html_escape gallery.title }}</h1>
     {{~ end ~}}
     {{~ if gallery.body ~}}
     {{~ gallery.body | string.replace '<table>' '<div class="table-scroll"><table>' | string.replace '</table>' '</table></div>' ~}}

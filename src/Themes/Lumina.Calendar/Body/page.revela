@@ -3,12 +3,12 @@ Calendar Page Body Template - Lumina Calendar Extension
 
 Heading: the page title is the single <h1>, unless the Markdown body brings its own.
 ##~}}
-{{~ body_has_h1 = page_content && (page_content | string.contains '<h1') ~}}
+{{~ body_has_h1 = gallery.body && (gallery.body | string.contains '<h1') ~}}
 <section>
 {{~ if !body_has_h1 ~}}
 <h1>{{ html_escape ((gallery.title && gallery.title != '') ? gallery.title : site.title) }}</h1>
 {{~ end ~}}
-{{ page_content }}
+{{ gallery.body }}
 {{~ if !calendar ~}}
 {{~ # calendar.json is missing, e.g. `generate scan` dropped stale data and the calendar step has not run yet ~}}
 <p>{{ html_escape (t 'calendar.no_data') }}</p>

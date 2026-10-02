@@ -14,19 +14,23 @@ Expects:
   - iso_values, orientations, images_by_year, images_by_month
   Each array item has: name, count, percentage
 ##~}}
+{{~ has_title = gallery.title && gallery.title != '' ~}}
 <section>
-<h1>{{ html_escape ((gallery.title && gallery.title != '') ? gallery.title : (t 'statistics.overview')) }}</h1>
+<h1>{{ html_escape (has_title ? gallery.title : (t 'statistics.overview')) }}</h1>
 {{~ if !statistics ~}}
 {{~ # statistics.json is missing, e.g. `generate scan` dropped stale data and `generate statistics` has not run yet ~}}
 <p>{{ html_escape (t 'statistics.no_data') }}</p>
 {{~ else ~}}
+{{~ # Without a page title the <h1> already reads "Overview". ~}}
+{{~ if has_title ~}}
 <h2>{{ html_escape (t 'statistics.overview') }}</h2>
+{{~ end ~}}
 
 <p class="stats-summary">
     <span><strong>{{ html_escape statistics.total_images }}</strong> {{ html_escape (t 'statistics.images') }}</span>
     <span><strong>{{ html_escape statistics.total_galleries }}</strong> {{ html_escape (t 'statistics.galleries') }}</span>
-    <span><strong>{{ statistics.cameras | array.size }}</strong> {{ html_escape (t 'statistics.cameras') }}</span>
-    <span><strong>{{ statistics.lenses | array.size }}</strong> {{ html_escape (t 'statistics.lenses') }}</span>
+    <span><strong>{{ html_escape (statistics.cameras.size ?? 0) }}</strong> {{ html_escape (t 'statistics.cameras') }}</span>
+    <span><strong>{{ html_escape (statistics.lenses.size ?? 0) }}</strong> {{ html_escape (t 'statistics.lenses') }}</span>
 </p>
 
 {{~ if statistics.cameras && statistics.cameras.size > 0 ~}}

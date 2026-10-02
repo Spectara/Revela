@@ -35,14 +35,13 @@
   }
 }
 
-/* Section headings */
-main section h3 {
-  font-weight: 100;
-  font-size: var(--font-size-2);
-  margin-top: var(--space-xl);
-  margin-bottom: var(--space-s);
-  padding-bottom: var(--space-3xs);
-  border-bottom: 1px solid color-mix(in srgb, var(--color) 15%, transparent);
+/* Chart headings: Lumina's section heading (size, weight, inline bleed) with more room
+   above, less below and a lighter rule, so the charts read as one dashboard. Same
+   specificity as Lumina's rule; this stylesheet loads after main.css. */
+main>section>h3 {
+  margin-block: var(--space-xl) var(--space-s);
+  padding-block-end: var(--space-3xs);
+  border-bottom-color: color-mix(in srgb, var(--color) 15%, transparent);
 }
 
 /* Bar charts using dl/dt/dd (partial templates) */
