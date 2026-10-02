@@ -45,10 +45,12 @@ revela generate statistics
 
 ## Output
 
-Creates a `statistics.json` in the cache directory for each statistics page:
+Creates a `statistics.json` in the plugin's folder for each statistics page. It is a cache
+artifact (`statistics/data`): `clean cache` and `clean statistics` remove it, the next
+`generate statistics` rebuilds it from the scan.
 
 ```
-.revela/cache/
+.revela/statistics/
 └── {page-path}/
     └── statistics.json     # Statistics data consumed by theme templates
 ```
@@ -108,7 +110,7 @@ This provides:
 |---------|-------------|
 | `revela generate statistics` | Generate statistics JSON |
 | `revela generate all` | Full pipeline (includes statistics) |
-| `revela clean statistics` | Remove generated statistics files (never follows links out of `.revela/cache`) |
+| `revela clean statistics` | Remove generated statistics files (never follows links out of `.revela/statistics`) |
 | `revela config statistics` | Configure plugin settings |
 
 ## Requirements

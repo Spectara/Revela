@@ -42,9 +42,10 @@ revela clean all
 
 ### Ownership and Conflicts
 
-The ownership record `.revela/state/compress.json` (in the project, not in the
-output, so it is never published) lists the sidecars created by this plugin.
-`clean cache` keeps it; `clean output` removes it together with the output.
+The ownership record `.revela/compress/ownership.json` (in the plugin's folder in the
+project, not in the output, so it is never published) lists the sidecars created by this
+plugin. Sidecars and record form one output artifact (`compress/precompressed-site`):
+`clean output`, `clean all` and `clean compress` remove both, `clean cache` keeps them.
 Compression cleanup removes tracked sidecars even when their source files
 have disappeared, but preserves independent gzip/Brotli downloads.
 

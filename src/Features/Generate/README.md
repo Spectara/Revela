@@ -20,9 +20,9 @@ Built-in site generation feature of Revela — scans content, renders pages, and
 - `revela generate images` — Process and resize images
 
 ### Clean
-- `revela clean all` — Run every clean step
-- `revela clean output` — Delete the output directory and `.revela/state` (the record of what was produced there)
-- `revela clean cache` — Delete `.revela/cache` (scan manifest, plugin data); keeps `.revela/state`, so no image is re-encoded
+- `revela clean all` — Remove every cache and output artifact (never durable plugin data)
+- `revela clean output` — Remove every output artifact: the generated site, processed images with `.revela/core/images.json`, plugin output such as compressed sidecars
+- `revela clean cache` — Remove every cache artifact: the scan manifest and plugin data; keeps the output and image state, so no image is re-encoded
 - `revela clean images` — Smart cleanup of unused image variants
 
 ### Check

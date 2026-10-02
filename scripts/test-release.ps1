@@ -1090,16 +1090,16 @@ try {
                 throw 'Expected both gzip and Brotli output for the generated showcase.'
             }
 
-            # The ownership record lives in .revela/state, never in the published output
-            $ownershipRecord = Join-Path $SampleProjectDir ".revela/state/compress.json"
+            # The ownership record lives in the plugin's folder, never in the published output
+            $ownershipRecord = Join-Path $SampleProjectDir ".revela/compress/ownership.json"
             if (-not (Test-Path -LiteralPath $ownershipRecord)) {
-                throw 'generate compress did not write .revela/state/compress.json.'
+                throw 'generate compress did not write .revela/compress/ownership.json.'
             }
             $internalOutput = @(Get-ChildItem -LiteralPath $outputDir -Recurse -Force | Where-Object { $_.Name.StartsWith('.revela', [StringComparison]::Ordinal) })
             if ($internalOutput.Count -gt 0) {
                 throw "Output contains Revela-internal files: $($internalOutput.FullName -join ', ')"
             }
-            Write-Success "Ownership record kept in .revela/state; output contains only the site"
+            Write-Success "Ownership record kept in .revela/compress; output contains only the site"
 
             # Test clean compress
             Write-Info "Running: revela clean compress"
@@ -1133,15 +1133,16 @@ try {
             if ($LASTEXITCODE -ne 0) { throw "clean all failed" }
 
             $outputDir = Join-Path $SampleProjectDir "output"
-            $stateDir = Join-Path $SampleProjectDir ".revela/state"
+            $revelaDir = Join-Path $SampleProjectDir ".revela"
             if (-not (Test-Path $outputDir) -or (Get-ChildItem $outputDir -Recurse -File -ErrorAction SilentlyContinue).Count -eq 0) {
                 Write-Success "clean all removed output"
             }
             else {
                 throw 'Output directory not fully cleaned.'
             }
-            if (Test-Path -LiteralPath $stateDir) {
-                throw 'clean all retained .revela/state.'
+            # The sample has no durable plugin data, so clean all leaves no file in .revela
+            if ((Test-Path -LiteralPath $revelaDir) -and @(Get-ChildItem -LiteralPath $revelaDir -Recurse -File).Count -gt 0) {
+                throw 'clean all retained files in .revela.'
             }
 
             # Regenerate from scratch
@@ -1189,12 +1190,12 @@ try {
             & $ExePath generate scan
             if ($LASTEXITCODE -ne 0) { throw "generate scan failed" }
 
-            $cacheDir = Join-Path $SampleProjectDir ".revela/cache"
-            if (Test-Path $cacheDir) {
-                Write-Success "generate scan created cache"
+            $revelaDir = Join-Path $SampleProjectDir ".revela"
+            if (Test-Path (Join-Path $revelaDir "core/manifest.json")) {
+                Write-Success "generate scan created .revela/core/manifest.json"
             }
             else {
-                throw "generate scan did not create .revela/cache/"
+                throw "generate scan did not create .revela/core/manifest.json"
             }
 
             # Test generate statistics (must run before pages — templates reference stats data)
@@ -1266,14 +1267,18 @@ try {
             if ((Test-Path -LiteralPath $outputDir) -and @(Get-ChildItem -LiteralPath $outputDir -Recurse -File).Count -gt 0) {
                 throw 'clean output retained generated files.'
             }
-            if (Test-Path -LiteralPath (Join-Path $SampleProjectDir ".revela/state")) {
-                throw 'clean output retained .revela/state.'
+            if (Test-Path -LiteralPath (Join-Path $revelaDir "core/images.json")) {
+                throw 'clean output retained the image state .revela/core/images.json.'
+            }
+            if (-not (Test-Path -LiteralPath (Join-Path $revelaDir "core/manifest.json"))) {
+                throw 'clean output removed the manifest, a cache artifact.'
             }
 
             Write-Info "Running: revela clean cache"
             & $ExePath clean cache
             if ($LASTEXITCODE -ne 0) { throw "clean cache failed" }
-            if (-not (Test-Path $cacheDir) -or (Get-ChildItem $cacheDir -Recurse -File -ErrorAction SilentlyContinue).Count -eq 0) {
+            # After clean output and clean cache nothing remains (the sample has no durable data)
+            if (-not (Test-Path $revelaDir) -or (Get-ChildItem $revelaDir -Recurse -File -ErrorAction SilentlyContinue).Count -eq 0) {
                 Write-Success "clean cache removed cache files"
             }
             else {

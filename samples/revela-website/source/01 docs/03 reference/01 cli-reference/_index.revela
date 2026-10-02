@@ -58,15 +58,17 @@ revela serve --verbose               # Log every request, not only 404s (-v)
 Remove generated files.
 
 ```bash
-revela clean all                     # output → images → cache → statistics → calendar → compress
-revela clean output                  # Delete the output directory and .revela/state (next build re-encodes all images)
+revela clean all                     # clean cache + clean output (never durable plugin data)
+revela clean output                  # Remove the generated site, image files and their records, compressed files (next build re-encodes all images)
 revela clean images                  # Delete unused image files (orphaned, old sizes/formats)
 revela clean images --dry-run        # Preview only (-d)
-revela clean cache                   # Delete .revela/cache (scan manifest, plugin data); keeps .revela/state, so no image is re-encoded
-revela clean statistics              # Delete statistics JSON from the cache (Statistics plugin)
-revela clean calendar                # Delete calendar JSON from the cache (Calendar plugin)
-revela clean compress                # Delete .gz/.br files from the output (Compress plugin)
+revela clean cache                   # Remove data Revela rebuilds from your photos (scan, plugin data); keeps the output, so no image is re-encoded
+revela clean statistics              # Remove the statistics data (Statistics plugin)
+revela clean calendar                # Remove the calendar data (Calendar plugin)
+revela clean compress                # Remove the .gz/.br files Revela created and their record (Compress plugin)
 ```
+
+`clean cache`, `clean output` and `clean all` ask Revela and every installed plugin to remove their data of that kind, so plugins clean up after themselves. Data a plugin marks as durable (expensive or impossible to recreate) is never removed by them, only by that plugin's own clean command. See [Configuration](../../guide/configuration/) for what lives in `.revela/`.
 
 ---
 

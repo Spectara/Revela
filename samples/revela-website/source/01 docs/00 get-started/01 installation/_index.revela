@@ -170,7 +170,7 @@ revela restore
 
 ### After an update
 
-Revela keeps a manifest of scanned photos in `.revela/cache/`. When a new version changes its format, Revela discards the old manifest and the next `revela generate all` rescans your photos (reading their metadata again). Images are not re-encoded for that: Revela tracks processed images separately in `.revela/state/images.json` and only re-encodes a photo when something that changes its output changed — its source file, sizes, formats, quality, or a Revela update to how images are encoded (the release notes say so when that happens).
+Revela keeps a manifest of scanned photos in `.revela/core/`. When a new version changes its format, Revela discards the old manifest and the next `revela generate all` rescans your photos (reading their metadata again). Images are not re-encoded for that: Revela tracks processed images separately in `.revela/core/images.json` and only re-encodes a photo when something that changes its output changed — its source file, sizes, formats, quality, or a Revela update to how images are encoded (the release notes say so when that happens).
 ---
 
 ## Troubleshooting

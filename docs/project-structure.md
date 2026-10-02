@@ -83,12 +83,16 @@ my-site/
 ├── output/                        # Generated site, published as is (paths.output)
 ├── themes/, plugins/              # Optional local theme files and plugin settings
 └── .revela/                       # Revela's own data, never published (gitignored)
-    ├── cache/                     # Reproducible: scan manifest, plugin data
-    └── state/                     # State of output/: images.json, compress.json
+    ├── core/                      # manifest.json (cache), images.json (with the output)
+    ├── statistics/, calendar/     # Plugin data per page (cache)
+    └── compress/                  # ownership.json (with the output)
 ```
 
-`clean cache` deletes `.revela/cache/` only; `clean output` deletes `output/` and
-`.revela/state/` together. See [Architecture](architecture.md#project-folders-cache-and-state).
+Each folder belongs to one owner (Revela core or a plugin). How long a file lives is
+declared per artifact: `clean cache` removes cache artifacts, `clean output` removes the
+output with everything that describes it, `clean all` both; durable plugin data is only
+removed by its owner's own clean command. See
+[Architecture](architecture.md#artifact-ownership).
 
 ## Namespace Convention
 

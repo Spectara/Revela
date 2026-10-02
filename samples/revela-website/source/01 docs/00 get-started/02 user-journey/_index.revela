@@ -153,8 +153,7 @@ The output is a complete static website:
 ```
 D:\Photos\MyPortfolio\
 ├── .revela\             # Revela's own data (never published)
-│   ├── cache\           #   What was scanned (rebuilt when missing)
-│   └── state\           #   Which image files exist in output\ and how they were made
+│   └── core\            #   What was scanned, and how the image files in output\ were made
 ├── output\
 │   ├── index.html
 │   ├── galleries\

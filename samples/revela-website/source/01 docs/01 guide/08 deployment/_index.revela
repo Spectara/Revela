@@ -30,7 +30,7 @@ The output contains only your site: Revela keeps its own bookkeeping in the proj
 
 ### Building on a Server or in CI
 
-Encoding images is the slow part of a build (hours for a large library with AVIF). Revela only encodes new or changed photos, as long as it finds both the previous `output/` and the project's `.revela/state/` folder, which records how the existing image files were made. On a build server, keep both between runs (for example as a persistent working directory or a CI cache). `.revela/cache/` is optional: without it Revela just rescans your photos. A fresh checkout without them builds everything from scratch, which is correct, just slower.
+Encoding images is the slow part of a build (hours for a large library with AVIF). Revela only encodes new or changed photos, as long as it finds both the previous `output/` and the project's `.revela/` folder, which records how the existing image files were made. On a build server, keep both between runs (for example as a persistent working directory or a CI cache). A fresh checkout without them builds everything from scratch, which is correct, just slower. If a plugin keeps durable data in `.revela/` (data it cannot recreate), back that folder up as well.
 
 ## Sitemap
 

@@ -83,7 +83,7 @@ output/
 │   └── main.css.br
 ```
 
-Revela remembers which `.gz` and `.br` files it created in `.revela/state/compress.json` in your project, not in the output, so that record is never uploaded with your site. `revela clean compress` removes only those files and never touches other `.gz`/`.br` files you put there yourself.
+Revela remembers which `.gz` and `.br` files it created in `.revela/compress/ownership.json` in your project, not in the output, so that record is never uploaded with your site. `revela clean compress` removes only those files and never touches other `.gz`/`.br` files you put there yourself.
 
 ## Example Output
 
