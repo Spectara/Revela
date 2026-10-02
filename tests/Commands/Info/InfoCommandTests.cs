@@ -85,6 +85,28 @@ public sealed class InfoCommandTests
         Assert.DoesNotContain("plugin list", output);
     }
 
+    [TestMethod]
+    public void Execute_StandaloneEdition_ListsIncludedPluginsAndThemesWithVersions()
+    {
+        // Standalone has no `plugin list`, so `info` is the only place that shows what is built in.
+        var output = RunQuiet(CreateCommand(HostKind.Standalone, withPackages: true).Create());
+
+        Assert.Contains("Serve", output);
+        Assert.Contains("2.1.0", output);
+        Assert.Contains("Lumina", output);
+        Assert.Contains("3.0.0-beta.1", output);
+    }
+
+    [TestMethod]
+    public void Execute_FullEdition_ShowsCountsWithoutListingPackages()
+    {
+        var output = RunQuiet(CreateCommand(HostKind.Full, withPackages: true).Create());
+
+        Assert.DoesNotContain("Serve", output);
+        Assert.DoesNotContain("2.1.0", output);
+        Assert.Contains("revela plugin list", output);
+    }
+
     private static string RunQuiet(Command command)
     {
         using var writer = new StringWriter(CultureInfo.InvariantCulture);
@@ -110,7 +132,7 @@ public sealed class InfoCommandTests
         }
     }
 
-    private static InfoCommand CreateCommand(HostKind kind = HostKind.Full)
+    private static InfoCommand CreateCommand(HostKind kind = HostKind.Full, bool withPackages = false)
     {
         var buildInfo = Substitute.For<IBuildInfo>();
         buildInfo.Kind.Returns(kind);
@@ -122,12 +144,32 @@ public sealed class InfoCommandTests
         buildInfo.RuntimeIdentifier.Returns("linux-x64");
 
         var packageContext = Substitute.For<IPackageContext>();
-        packageContext.Plugins.Returns([]);
-        packageContext.Themes.Returns([]);
+        if (withPackages)
+        {
+            var plugin = Substitute.For<IPlugin>();
+            plugin.Metadata.Returns(Metadata("Spectara.Revela.Plugins.Serve", "Serve", "2.1.0"));
+            var theme = Substitute.For<ITheme>();
+            theme.Metadata.Returns(Metadata("Spectara.Revela.Themes.Lumina", "Lumina", "3.0.0-beta.1"));
+            packageContext.Plugins.Returns([new LoadedPluginInfo(plugin, PackageSource.Bundled)]);
+            packageContext.Themes.Returns([new LoadedThemeInfo(theme, PackageSource.Bundled)]);
+        }
+        else
+        {
+            packageContext.Plugins.Returns([]);
+            packageContext.Themes.Returns([]);
+        }
 
         var themeConfig = Substitute.For<IOptionsMonitor<ThemeConfig>>();
         themeConfig.CurrentValue.Returns(new ThemeConfig());
 
         return new InfoCommand(buildInfo, packageContext, themeConfig);
     }
+
+    private static PackageMetadata Metadata(string id, string name, string version) => new()
+    {
+        Id = id,
+        Name = name,
+        Version = version,
+        Description = "Test package"
+    };
 }

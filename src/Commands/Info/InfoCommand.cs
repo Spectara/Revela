@@ -18,8 +18,10 @@ namespace Spectara.Revela.Commands.Info;
 /// <remarks>
 /// <para>
 /// Default action prints a compact Revela summary (version, framework, host
-/// kind, plugin/theme counts, active theme). Package details live in
-/// <c>revela plugin list</c> and <c>revela theme list</c>.
+/// kind, plugin/theme counts, active theme). In the Full edition package
+/// details live in <c>revela plugin list</c> and <c>revela theme list</c>; the
+/// Standalone edition has no <c>plugin</c> command, so it lists its built-in
+/// plugins and themes (name and version) here.
 /// </para>
 /// <para>
 /// The first line of output is <see cref="IBuildInfo.FormatVersionLine"/>
@@ -74,10 +76,41 @@ internal sealed class InfoCommand(
         AnsiConsole.Write(panel);
 
         AnsiConsole.WriteLine();
-        AnsiConsole.MarkupLine(buildInfo.Kind == HostKind.Standalone
-            ? "[dim]For details: [white]revela theme list[/][/]"
-            : "[dim]For details: [white]revela plugin list[/] · [white]revela theme list[/][/]");
+
+        // Standalone has no `plugin list`: info is the only place that shows what is built in
+        if (buildInfo.Kind == HostKind.Standalone)
+        {
+            WritePackageTable("Included plugins", packageContext.Plugins.Select(p => p.Plugin.Metadata));
+            WritePackageTable("Included themes", packageContext.Themes.Select(t => t.Theme.Metadata));
+            AnsiConsole.MarkupLine("[dim]Theme files and local themes: [white]revela theme list[/][/]");
+        }
+        else
+        {
+            AnsiConsole.MarkupLine("[dim]For details: [white]revela plugin list[/] · [white]revela theme list[/][/]");
+        }
 
         return 0;
+    }
+
+    private static void WritePackageTable(string title, IEnumerable<PackageMetadata> packages)
+    {
+        var table = new Table()
+            .Border(TableBorder.Rounded)
+            .Title($"[bold]{Markup.Escape(title)}[/]")
+            .AddColumn("Name")
+            .AddColumn("Version");
+
+        foreach (var metadata in packages.OrderBy(m => m.Name, StringComparer.OrdinalIgnoreCase))
+        {
+            table.AddRow(Markup.Escape(metadata.Name), Markup.Escape(metadata.Version));
+        }
+
+        if (table.Rows.Count == 0)
+        {
+            table.AddRow("[dim](none)[/]", string.Empty);
+        }
+
+        AnsiConsole.Write(table);
+        AnsiConsole.WriteLine();
     }
 }
