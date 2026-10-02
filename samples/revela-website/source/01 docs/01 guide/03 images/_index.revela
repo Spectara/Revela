@@ -26,7 +26,7 @@ Configure image formats and quality in `project.json`, or with `revela config im
 - `webp` - Smaller files, modern browsers (quality 1-100)
 - `avif` - Smallest files, newest browsers (quality 1-100)
 
-Set a format to `0` (or leave it out) to disable it. The project wizard enables all three with the values above, and they are a good default: browsers pick the smallest format they support, and JPG remains the fallback. If you want faster builds or less disk space, disable AVIF, which is the slowest to encode.
+Set a format to `0` (or leave it out) to disable it. The project wizard enables all three with the values above, and they are a good default: browsers pick the smallest format they support, and JPG remains the fallback. If builds take too long, see [Encoding Speed](#encoding-speed) before disabling AVIF, which is the slowest to encode.
 
 ```bash
 revela config image --formats avif:80,webp:85,jpg:90
@@ -42,7 +42,7 @@ Sizes are defined by your theme in its `Configuration/images.json`. The default 
 
 These sizes are optimized for High-DPI displays (1.5x, 2x scaling).
 
-Each photo gets every theme size that is **smaller than the photo**, plus its **original width** for the full-resolution view. A 2000-pixel-wide photo, for example, gets 160 to 1920 and 2000.
+Each photo gets every theme size that is **smaller than the photo**, plus its **original width** for the full-resolution view. A 2000-pixel-wide photo, for example, gets 160 to 1920 and 2000. To limit that largest image, see [`maxSize`](#limit-the-largest-image-maxsize).
 
 To use different sizes, see [Themes](../themes/#theme-structure).
 
@@ -69,7 +69,9 @@ Canonical photo pages and Lightbox images can be zoomed:
   while zoomed. A pinch past 100 % or below the fitted size springs back when you let go.
 
 Zoom stops at 100 % because beyond it a photo only shows enlarged pixels. Photos that already fit
-the screen at 100 % or less are not zoomable and show no zoom cursor.
+the screen at 100 % or less are not zoomable and show no zoom cursor. With
+[`maxSize`](#limit-the-largest-image-maxsize), the largest image is the capped one, so zooming
+shows no more detail than that.
 
 The page first loads a photo that fits the screen and fetches the original only when someone
 zooms; until it has arrived the current photo is shown enlarged, so it never goes blank. Zoom
@@ -120,7 +122,7 @@ revela generate images
 
 ### Changing Quality
 
-When you change a format's quality (for example AVIF from 80 to 70), the next build re-encodes **only that format** for all photos. The other formats are kept, and you don't need `--force`.
+When you change a format's quality (for example AVIF from 80 to 70), the next build re-encodes **only that format** for all photos. The other formats are kept, and you don't need `--force`. Changing `avifEffort` or `webpEffort` works the same way, and changing `maxSize` re-encodes only the photos larger than the old or the new limit (see [Encoding Speed](#encoding-speed)).
 
 ### Progress Display
 
@@ -132,6 +134,75 @@ Encoding photos  ████████████░░░░░░░░  5
 ```
 
 The status line shows how many photos are finished per format, the processing rate, and how many photos were skipped because they were already up to date.
+
+## Encoding Speed
+
+Almost all of the build time goes into encoding, and AVIF takes most of it: for a 25-megapixel
+photo with AVIF 80, WebP 85 and JPG 90, AVIF is over 90 % of the work, and the full-resolution
+image alone about half of the AVIF time. Two optional settings trade some file size or zoom
+detail for much faster builds; by default both are off.
+
+| Setting (`generate.images`) | Default | Effect |
+|---|---|---|
+| `avifEffort` | `4` | AVIF encoder effort, `0` (fastest) to `9` (smallest files) |
+| `webpEffort` | `4` | WebP encoder effort, `0` to `6` |
+| `maxSize` | `0` (off) | Largest image in pixels, measured like the theme sizes (the longest edge in Lumina) |
+| `maxDegreeOfParallelism` | automatic | Photos encoded at the same time |
+
+### Faster AVIF (`avifEffort`)
+
+```json
+{
+  "generate": {
+    "images": {
+      "avif": 80,
+      "avifEffort": 2
+    }
+  }
+}
+```
+
+Measured on 25-megapixel photos, effort `2` encodes AVIF about 8× faster, so a photo with all
+three formats needs about **3.5× less CPU time**. The AVIF files are **4–11 % larger** (the more
+detail and the larger the image, the more), and the quality is about the same. On a small
+server this turns hours into minutes. `webpEffort` works the same way for WebP; WebP is far
+less of the build time, so it matters less.
+
+Changing an effort re-encodes only that format's files, like a quality change.
+
+### Limit the Largest Image (`maxSize`)
+
+```json
+{
+  "generate": {
+    "images": {
+      "maxSize": 3840
+    }
+  }
+}
+```
+
+Every photo normally also gets its full resolution, so the photo viewer can zoom to 100 %. With
+`maxSize`, photos larger than the limit get an image of that size instead; smaller photos keep
+their full resolution. `3840` (4K) needs about **25–35 % less time** per photo (more for larger
+photos), and the files of the largest image shrink accordingly, but zooming shows no more detail
+than 3840 pixels. Together with `avifEffort: 2`, a photo needs about 80 % less time than with
+the defaults.
+
+Changing `maxSize` re-encodes the photos larger than the old or the new limit. The
+full-resolution files they had before are no longer used; `revela clean images` removes them.
+
+### Parallel Encoding
+
+Revela encodes several photos at the same time. Without AVIF it encodes about one photo per CPU
+core, each with one or two threads, because the JPEG and WebP encoders use a single thread. With
+AVIF it encodes half as many photos as there are cores with up to 8 threads each, which suits the
+AVIF encoder best.
+
+Each photo being encoded needs up to about 700 MB of memory (a full-resolution AVIF of a
+30-megapixel photo), so Revela encodes at most one photo per GB of memory. To use less memory,
+set `maxDegreeOfParallelism` to a smaller number, for example `1` to encode one photo at a time.
+Changing it never re-encodes photos.
 
 ## Cleaning Up
 
@@ -180,7 +251,7 @@ Revela generates **CSS-only placeholders** that display while images load. This 
 
 ### How It Works
 
-1. During scan, Revela analyzes each image's average color and brightness pattern
+1. During scan, Revela analyzes the average color and brightness pattern of a small preview of each image (the full-size photo is not decoded)
 2. This data is encoded into a compact integer (e.g., `-721311`)
 3. The theme's CSS decodes this integer into gradient placeholders
 4. When the image loads, it smoothly replaces the placeholder
@@ -217,7 +288,7 @@ The browser reconstructs this as radial gradients with blend modes, creating a b
 
 ### 🚀 Keep the Defaults
 
-AVIF 80, WebP 85 and JPG 90 give small files with a safe fallback. Disable AVIF only if encoding time matters more than file size.
+AVIF 80, WebP 85 and JPG 90 give small files with a safe fallback. If encoding takes too long, lower `avifEffort` or set `maxSize` before you disable AVIF.
 
 ### 🔄 Incremental Updates
 
