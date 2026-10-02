@@ -52,7 +52,7 @@ public sealed class PackageManagerRegistrationTests
         var sourceManager = Substitute.For<INuGetSourceManager>();
         sourceManager.GetPendingProjectFeeds().Returns([]);
         var consent = new ProjectFeedConsent(sourceManager, Substitute.For<IConsoleCapabilities>());
-        var command = new PluginInstallCommand(logger, installService, indexService, consent).Create();
+        var command = new PluginInstallCommand(logger, installService, indexService, consent, FakeConsoleCapabilities.NonInteractive).Create();
         using var cancellation = new CancellationTokenSource();
         using var writer = new StringWriter(CultureInfo.InvariantCulture);
         var originalConsole = AnsiConsole.Console;

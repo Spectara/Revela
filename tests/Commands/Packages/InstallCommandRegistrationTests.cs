@@ -175,6 +175,58 @@ public sealed class InstallCommandRegistrationTests
     }
 
     [TestMethod]
+    public async Task PluginInstall_NoNameNonInteractive_FailsWithHintAndInstallsNothing()
+    {
+        var fixture = CreateFixture(insideProject: false);
+
+        var (exitCode, output) = await InvokeWithOutputAsync(fixture.PluginInstall(), []);
+
+        Assert.AreEqual(1, exitCode);
+        Assert.Contains("revela plugin install <name>", output, StringComparison.Ordinal);
+        Assert.Contains("revela plugin install --all", output, StringComparison.Ordinal);
+        Assert.IsEmpty(fixture.Installer.ReceivedCalls());
+        Assert.IsEmpty(fixture.Index.ReceivedCalls());
+    }
+
+    [TestMethod]
+    public async Task ThemeInstall_NoNameNonInteractive_FailsWithHintAndInstallsNothing()
+    {
+        var fixture = CreateFixture(insideProject: false);
+
+        var (exitCode, output) = await InvokeWithOutputAsync(fixture.ThemeInstall(), []);
+
+        Assert.AreEqual(1, exitCode);
+        Assert.Contains("revela theme install <name>", output, StringComparison.Ordinal);
+        Assert.Contains("revela theme install --all", output, StringComparison.Ordinal);
+        Assert.IsEmpty(fixture.Installer.ReceivedCalls());
+        Assert.IsEmpty(fixture.Index.ReceivedCalls());
+    }
+
+    [TestMethod]
+    public async Task PluginUninstall_WithoutYesNonInteractive_FailsWithHintAndKeepsPackage()
+    {
+        var fixture = CreateFixture(insideProject: false);
+
+        var (exitCode, output) = await InvokeWithOutputAsync(fixture.PluginUninstall(), ["Fixture"]);
+
+        Assert.AreEqual(1, exitCode);
+        Assert.Contains("revela plugin uninstall Fixture --yes", output, StringComparison.Ordinal);
+        Assert.IsEmpty(fixture.Installer.ReceivedCalls());
+    }
+
+    [TestMethod]
+    public async Task ThemeUninstall_WithoutYesNonInteractive_FailsWithHintAndKeepsPackage()
+    {
+        var fixture = CreateFixture(insideProject: false);
+
+        var (exitCode, output) = await InvokeWithOutputAsync(fixture.ThemeUninstall(), ["Noir"]);
+
+        Assert.AreEqual(1, exitCode);
+        Assert.Contains("revela theme uninstall Noir --yes", output, StringComparison.Ordinal);
+        Assert.IsEmpty(fixture.Installer.ReceivedCalls());
+    }
+
+    [TestMethod]
     public async Task PluginInstall_ProjectFeedWithoutConsent_InstallsNothing()
     {
         var fixture = CreateFixture(insideProject: false);
@@ -184,7 +236,8 @@ public sealed class InstallCommandRegistrationTests
             NullLogger<PluginInstallCommand>.Instance,
             fixture.InstallService,
             fixture.Index,
-            new ProjectFeedConsent(sourceManager, NonInteractive())).Create();
+            new ProjectFeedConsent(sourceManager, NonInteractive()),
+            NonInteractive()).Create();
 
         var exitCode = await InvokeAsync(command, ["Fixture"]);
 
@@ -265,15 +318,15 @@ public sealed class InstallCommandRegistrationTests
         PackageInstallService InstallService)
     {
         public System.CommandLine.Command PluginInstall() => new PluginInstallCommand(
-            NullLogger<PluginInstallCommand>.Instance, InstallService, Index, NoProjectFeeds()).Create();
+            NullLogger<PluginInstallCommand>.Instance, InstallService, Index, NoProjectFeeds(), NonInteractive()).Create();
 
         public System.CommandLine.Command ThemeInstall() => new ThemeInstallCommand(
-            NullLogger<ThemeInstallCommand>.Instance, Index, InstallService, [NoProjectFeeds()]).Create();
+            NullLogger<ThemeInstallCommand>.Instance, Index, InstallService, [NoProjectFeeds()], NonInteractive()).Create();
 
         public System.CommandLine.Command PluginUninstall() => new PluginUninstallCommand(
-            NullLogger<PluginUninstallCommand>.Instance, InstallService).Create();
+            NullLogger<PluginUninstallCommand>.Instance, InstallService, NonInteractive()).Create();
 
         public System.CommandLine.Command ThemeUninstall() => new ThemeUninstallCommand(
-            NullLogger<ThemeUninstallCommand>.Instance, InstallService).Create();
+            NullLogger<ThemeUninstallCommand>.Instance, InstallService, NonInteractive()).Create();
     }
 }

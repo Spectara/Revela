@@ -27,7 +27,7 @@ public sealed class CheckCommandTests
         services.AddRevelaCommands();
         services.AddGenerateFeature();
         services.AddSingleton<ITheme>(new LuminaTheme());
-        services.AddSingleton<IConsoleCapabilities>(new NonInteractiveConsole());
+        services.AddSingleton<IConsoleCapabilities>(FakeConsoleCapabilities.NonInteractive);
     }
 
     [TestMethod]
@@ -116,12 +116,5 @@ public sealed class CheckCommandTests
         var checkCommand = services.GetRequiredService<CheckCommand>();
         var command = select(checkCommand);
         return await command.Parse([]).InvokeAsync();
-    }
-
-    private sealed class NonInteractiveConsole : IConsoleCapabilities
-    {
-        public bool IsInteractive => false;
-
-        public bool CanRenderLive => false;
     }
 }

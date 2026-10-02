@@ -2,8 +2,10 @@ using System.CommandLine;
 using System.Globalization;
 using System.Text;
 
+using Spectara.Revela.Core.Helpers;
 using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Abstractions;
+using Spectara.Revela.Sdk.Hosting;
 using Spectara.Revela.Sdk.Output;
 using Spectara.Revela.Sdk.Services;
 
@@ -23,14 +25,15 @@ namespace Spectara.Revela.Features.Generate.Commands;
 /// Usage: revela create page &lt;template&gt; &lt;path&gt; [options]
 /// </para>
 /// <para>
-/// Without a path the command asks for every value interactively. Options are generated from the
+/// Without a path the command asks for every value interactively (this needs a terminal). Options are generated from the
 /// template properties; a missing <see cref="TemplateProperty.Required"/> value fails the command.
 /// </para>
 /// </remarks>
 internal sealed partial class CreatePageCommand(
     ILogger<CreatePageCommand> logger,
     IPathResolver pathResolver,
-    IEnumerable<IPageTemplate> templates)
+    IEnumerable<IPageTemplate> templates,
+    IConsoleCapabilities consoleCapabilities)
 {
     /// <summary>
     /// Creates the 'create page' command with template subcommands.
@@ -77,6 +80,13 @@ internal sealed partial class CreatePageCommand(
             // Interactive mode if path not provided
             if (string.IsNullOrEmpty(path))
             {
+                if (!consoleCapabilities.EnsureInteractive(
+                    "No path given and this console is not interactive.",
+                    $"revela create page {template.Name} <path> [options]"))
+                {
+                    return 1;
+                }
+
                 return await ExecuteInteractiveAsync(template, cancellationToken);
             }
 

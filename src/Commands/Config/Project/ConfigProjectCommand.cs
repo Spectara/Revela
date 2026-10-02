@@ -3,6 +3,7 @@ using System.Text.Json.Nodes;
 
 using Microsoft.Extensions.Options;
 
+using Spectara.Revela.Core.Helpers;
 using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Abstractions;
 using Spectara.Revela.Sdk.Configuration.Keys;
@@ -74,12 +75,10 @@ internal sealed partial class ConfigProjectCommand(
 
         // No options means "ask"; without a terminal there is nobody to ask
         var isInteractive = nameArg is null && urlArg is null;
-        if (isInteractive && !consoleCapabilities.IsInteractive)
+        if (isInteractive && !consoleCapabilities.EnsureInteractive(
+            InteractiveInput.NoOptionsGiven,
+            "revela config project --name <name> [--url <url>]"))
         {
-            ErrorPanels.ShowError(
-                "Interactive Input Required",
-                "[yellow]No options given and this console is not interactive.[/]\n\n" +
-                "[bold]Use:[/] [cyan]revela config project --name <name> [[--url <url>]][/]");
             return 1;
         }
 

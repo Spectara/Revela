@@ -73,6 +73,9 @@ public static class RevelaTestHost
         // Let tests register the services they need
         configure?.Invoke(builder.Services);
 
+        // Tests never have a terminal; a test that needs prompts registers its own capabilities.
+        builder.Services.TryAddSingleton<IConsoleCapabilities>(FakeConsoleCapabilities.NonInteractive);
+
         return builder.Build();
     }
 

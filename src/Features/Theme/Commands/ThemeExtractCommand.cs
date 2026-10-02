@@ -6,6 +6,7 @@ using Spectara.Revela.Features.Theme.Services;
 using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Abstractions;
 using Spectara.Revela.Sdk.Configuration;
+using Spectara.Revela.Sdk.Hosting;
 using Spectara.Revela.Sdk.Output;
 using Spectara.Revela.Sdk.Services;
 using Spectre.Console;
@@ -29,6 +30,7 @@ internal sealed partial class ThemeExtractCommand(
     IAssetResolver assetResolver,
     IOptions<ProjectEnvironment> projectEnvironment,
     IOptionsMonitor<ThemeConfig> themeConfig,
+    IConsoleCapabilities consoleCapabilities,
     ILogger<ThemeExtractCommand> logger)
 {
     /// <summary>
@@ -81,6 +83,14 @@ internal sealed partial class ThemeExtractCommand(
             // If no source argument, show interactive selection
             if (string.IsNullOrEmpty(source))
             {
+                if (!consoleCapabilities.EnsureInteractive(
+                    "No theme given and this console is not interactive.",
+                    "revela theme extract <theme> [target]",
+                    "revela theme extract --file <path>"))
+                {
+                    return 1;
+                }
+
                 source = await PromptForThemeSelectionAsync(cancellationToken);
                 if (source is null)
                 {
@@ -276,6 +286,13 @@ internal sealed partial class ThemeExtractCommand(
                 AnsiConsole.MarkupLine($"  • [cyan]{Markup.Escape(file)}[/]");
             }
             AnsiConsole.MarkupLine("");
+
+            if (!consoleCapabilities.EnsureInteractive(
+                "These files already exist and this console cannot ask whether to overwrite them.",
+                $"revela theme extract --file {filePath} --force"))
+            {
+                return 1;
+            }
 
             if (!await AnsiConsole.ConfirmAsync("Overwrite?", defaultValue: false, cancellationToken))
             {

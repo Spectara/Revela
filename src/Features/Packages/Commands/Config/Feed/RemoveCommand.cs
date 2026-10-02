@@ -1,6 +1,8 @@
 using System.CommandLine;
+using Spectara.Revela.Core.Helpers;
 using Spectara.Revela.Core.Services;
 using Spectara.Revela.Sdk;
+using Spectara.Revela.Sdk.Hosting;
 using Spectara.Revela.Sdk.Output;
 using Spectara.Revela.Sdk.Services;
 using Spectre.Console;
@@ -13,7 +15,8 @@ namespace Spectara.Revela.Features.Packages.Commands.Config.Feed;
 internal sealed partial class RemoveCommand(
     ILogger<RemoveCommand> logger,
     INuGetSourceManager nugetSourceManager,
-    IGlobalConfigManager globalConfigManager)
+    IGlobalConfigManager globalConfigManager,
+    IConsoleCapabilities consoleCapabilities)
 {
     /// <summary>
     /// Creates the CLI command.
@@ -45,6 +48,14 @@ internal sealed partial class RemoveCommand(
             // If no name provided, show interactive selection
             if (string.IsNullOrEmpty(name))
             {
+                if (!consoleCapabilities.EnsureInteractive(
+                    "No feed name given and this console is not interactive.",
+                    "revela config feed remove <name>",
+                    "revela config feed list"))
+                {
+                    return 1;
+                }
+
                 name = await SelectFeedInteractivelyAsync(cancellationToken);
                 if (name is null)
                 {

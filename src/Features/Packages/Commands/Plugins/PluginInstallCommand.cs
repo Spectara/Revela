@@ -3,6 +3,7 @@ using Spectara.Revela.Core.Helpers;
 using Spectara.Revela.Core.Models;
 using Spectara.Revela.Core.Services;
 using Spectara.Revela.Sdk;
+using Spectara.Revela.Sdk.Hosting;
 using Spectara.Revela.Sdk.Output;
 using Spectre.Console;
 
@@ -20,7 +21,8 @@ internal sealed partial class PluginInstallCommand(
     ILogger<PluginInstallCommand> logger,
     PackageInstallService installService,
     IPackageIndexService packageIndexService,
-    ProjectFeedConsent feedConsent)
+    ProjectFeedConsent feedConsent,
+    IConsoleCapabilities consoleCapabilities)
 {
     /// <summary>
     /// Creates the command definition.
@@ -63,6 +65,15 @@ internal sealed partial class PluginInstallCommand(
             var version = parseResult.GetValue(versionOption);
             var source = parseResult.GetValue(sourceOption);
             var all = parseResult.GetValue(allOption);
+
+            // No name and no --all → interactive multi-selection, which needs a terminal
+            if (!all && string.IsNullOrEmpty(name) && !consoleCapabilities.EnsureInteractive(
+                "No plugin name given and this console is not interactive.",
+                "revela plugin install <name>",
+                "revela plugin install --all"))
+            {
+                return 1;
+            }
 
             if (!await feedConsent.EnsureApprovedAsync(parseResult.GetValue(allowProjectFeedsOption), source, cancellationToken))
             {

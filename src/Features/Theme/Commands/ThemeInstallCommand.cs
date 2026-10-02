@@ -3,6 +3,7 @@ using Spectara.Revela.Core.Helpers;
 using Spectara.Revela.Core.Models;
 using Spectara.Revela.Core.Services;
 using Spectara.Revela.Sdk;
+using Spectara.Revela.Sdk.Hosting;
 using Spectara.Revela.Sdk.Output;
 using Spectre.Console;
 
@@ -20,7 +21,8 @@ internal sealed partial class ThemeInstallCommand(
     ILogger<ThemeInstallCommand> logger,
     IPackageIndexService packageIndexService,
     PackageInstallService installService,
-    IEnumerable<ProjectFeedConsent> feedConsents)
+    IEnumerable<ProjectFeedConsent> feedConsents,
+    IConsoleCapabilities consoleCapabilities)
 {
     /// <summary>
     /// Creates the command definition.
@@ -63,6 +65,15 @@ internal sealed partial class ThemeInstallCommand(
             var version = parseResult.GetValue(versionOption);
             var source = parseResult.GetValue(sourceOption);
             var all = parseResult.GetValue(allOption);
+
+            // No name and no --all → interactive multi-selection, which needs a terminal
+            if (!all && string.IsNullOrEmpty(name) && !consoleCapabilities.EnsureInteractive(
+                "No theme name given and this console is not interactive.",
+                "revela theme install <name>",
+                "revela theme install --all"))
+            {
+                return 1;
+            }
 
             // Package installation (and its feed list) only exists when the Packages feature is loaded.
             var feedConsent = feedConsents.FirstOrDefault();

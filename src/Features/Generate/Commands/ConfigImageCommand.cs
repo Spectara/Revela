@@ -4,11 +4,13 @@ using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Microsoft.Extensions.Options;
+using Spectara.Revela.Core.Helpers;
 using Spectara.Revela.Core.Themes;
 using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Abstractions;
 using Spectara.Revela.Sdk.Configuration;
 using Spectara.Revela.Sdk.Configuration.Keys;
+using Spectara.Revela.Sdk.Hosting;
 using Spectara.Revela.Sdk.Json;
 using Spectara.Revela.Sdk.Output;
 using Spectara.Revela.Sdk.Services;
@@ -42,7 +44,8 @@ internal sealed partial class ConfigImageCommand(
     IOptions<ProjectEnvironment> projectEnvironment,
     IOptionsMonitor<ThemeConfig> themeConfig,
     IThemeRegistry themeRegistry,
-    IConfigService configService)
+    IConfigService configService,
+    IConsoleCapabilities consoleCapabilities)
 {
     private static readonly FrozenDictionary<string, int> DefaultFormatQualities = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase)
     {
@@ -87,6 +90,13 @@ internal sealed partial class ConfigImageCommand(
         if (!configService.IsProjectInitialized())
         {
             ErrorPanels.ShowNotAProjectError();
+            return 1;
+        }
+
+        if (string.IsNullOrEmpty(formatsArg) && !consoleCapabilities.EnsureInteractive(
+            InteractiveInput.NoOptionsGiven,
+            "revela config image --formats jpg:90,webp:85[,avif:80]"))
+        {
             return 1;
         }
 

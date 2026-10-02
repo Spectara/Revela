@@ -3,10 +3,12 @@ using System.Text.Json.Nodes;
 
 using Microsoft.Extensions.Options;
 
+using Spectara.Revela.Core.Helpers;
 using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Abstractions;
 using Spectara.Revela.Sdk.Configuration;
 using Spectara.Revela.Sdk.Configuration.Keys;
+using Spectara.Revela.Sdk.Hosting;
 using Spectara.Revela.Sdk.Output;
 using Spectara.Revela.Sdk.Services;
 
@@ -32,7 +34,8 @@ internal sealed partial class ConfigPathsCommand(
     IOptions<ProjectEnvironment> projectEnvironment,
     IOptionsMonitor<PathsConfig> pathsConfig,
     IPathResolver pathResolver,
-    IConfigService configService)
+    IConfigService configService,
+    IConsoleCapabilities consoleCapabilities)
 {
     /// <summary>
     /// Creates the command definition.
@@ -65,15 +68,6 @@ internal sealed partial class ConfigPathsCommand(
     }
 
     /// <summary>
-    /// Executes the paths configuration in interactive mode.
-    /// </summary>
-    /// <remarks>
-    /// Used by the config interactive menu.
-    /// </remarks>
-    public Task<int> ExecuteInteractiveAsync(CancellationToken cancellationToken)
-        => ExecuteAsync(null, null, cancellationToken);
-
-    /// <summary>
     /// Executes the paths configuration.
     /// </summary>
     public async Task<int> ExecuteAsync(
@@ -87,11 +81,17 @@ internal sealed partial class ConfigPathsCommand(
             return 1;
         }
 
-        // Get current config
-        var current = pathsConfig.CurrentValue;
-
         // Determine if interactive mode (no arguments provided)
         var isInteractive = sourceArg is null && outputArg is null;
+        if (isInteractive && !consoleCapabilities.EnsureInteractive(
+            InteractiveInput.NoOptionsGiven,
+            "revela config paths --source <dir> [--output <dir>]"))
+        {
+            return 1;
+        }
+
+        // Get current config
+        var current = pathsConfig.CurrentValue;
 
         string source, output;
 
