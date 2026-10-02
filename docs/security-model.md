@@ -132,8 +132,10 @@ by default**:
 - A feed counts as project-declared when `project.json` declares it and the global `revela.json`
   does not declare the same name for the same location. Provenance is determined by reading both
   files separately; the merged configuration cannot tell which file set a key. If `project.json`
-  cannot be read, every feed not declared globally is treated as project-declared.
-- Project-declared feeds are excluded from package sources (install, restore, update, package
+  cannot be read, every feed not declared globally is treated as project-declared. A feed that
+  only a `SPECTARA__REVELA__DEPENDENCIES__FEEDS__*` environment variable supplies is set by whoever
+  runs Revela and is not project-declared.
+- Project-declared feeds are excluded from package sources (install, restore, package
   index refresh, setup wizard) until the owner consents for the current process.
 - `revela restore`, `revela plugin install` and `revela theme install` list each such feed (name,
   URL or resolved folder, and the `project.json` path) and ask for confirmation. Declining

@@ -37,12 +37,16 @@ no empty gallery section.
 Image queries always run in this order:
 
 1. Apply the filter predicate.
-2. Use an explicit pipe sort, otherwise the page `sort`, otherwise `generate.sorting.images`.
-3. Apply the configured fallback field for page or global sorting.
+2. Use an explicit pipe sort, otherwise the page `sort`, otherwise `generate.sorting.images`
+   (the same sort folder galleries use).
+3. Photos without a value for the sort field come last in both directions; for page or global
+   sorting they are ordered among themselves by the configured fallback field.
 4. Use the filename as a stable final tie-breaker.
 5. Apply `limit`.
 
-An explicit pipe sort takes precedence over page and global sorting.
+An explicit pipe sort takes precedence over page and global sorting. `sort random` is drawn
+once per render run, for inline blocks and page-level `filter` alike, so the grid, photo pages
+and previous/next links share one order and every `generate pages` draws a new one.
 
 ## Photo Viewers
 
