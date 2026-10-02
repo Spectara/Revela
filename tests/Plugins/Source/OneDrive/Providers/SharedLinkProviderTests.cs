@@ -70,7 +70,7 @@ public sealed class SharedLinkProviderTests : IDisposable
                 Id = "file1",
                 Name = "photo.jpg",
                 Size = 1024,
-                DownloadUrl = "https://cdn.example.com/photo.jpg",
+                DownloadUrl = "https://public.am.files.1drv.com/photo.jpg",
                 LastModified = "2024-01-15T10:30:00Z",
                 MimeType = "image/jpeg"
             }
@@ -108,7 +108,7 @@ public sealed class SharedLinkProviderTests : IDisposable
                 Id = "file2",
                 Name = "nested.jpg",
                 Size = 2048,
-                DownloadUrl = "https://cdn.example.com/nested.jpg",
+                DownloadUrl = "https://public.am.files.1drv.com/nested.jpg",
                 LastModified = "2024-02-20T15:00:00Z"
             }
         ]);
@@ -254,7 +254,7 @@ public sealed class SharedLinkProviderTests : IDisposable
 
         var unrelatedPath = destinationPath + ".unrelated.tmp";
         await File.WriteAllBytesAsync(unrelatedPath, previousBytes);
-        var item = CreateTestItem("photo.jpg", "https://cdn.example.com/photo.jpg");
+        var item = CreateTestItem("photo.jpg", "https://public.am.files.1drv.com/photo.jpg");
         using var body = new DownloadBodyStream("partial replacement"u8.ToArray(), () =>
         {
             if (cancel)
@@ -316,7 +316,7 @@ public sealed class SharedLinkProviderTests : IDisposable
 
         var expectedBytes = "complete replacement image bytes"u8.ToArray();
         var expectedTimestamp = new DateTime(2024, 6, 15, 10, 30, 0, DateTimeKind.Utc);
-        var item = CreateTestItem("photo.jpg", "https://cdn.example.com/photo.jpg", expectedTimestamp);
+        var item = CreateTestItem("photo.jpg", "https://public.am.files.1drv.com/photo.jpg", expectedTimestamp);
         using var body = new DownloadBodyStream(expectedBytes);
         using var handler = new StreamingHttpMessageHandler(body);
         using var client = new HttpClient(handler);
@@ -357,7 +357,7 @@ public sealed class SharedLinkProviderTests : IDisposable
 
         var expectedBytes = Encoding.UTF8.GetBytes(new string('x', 16384));
         var expectedTimestamp = new DateTime(2024, 6, 15, 10, 30, 0, DateTimeKind.Utc);
-        var item = CreateTestItem("photo.jpg", "https://cdn.example.com/photo.jpg", expectedTimestamp);
+        var item = CreateTestItem("photo.jpg", "https://public.am.files.1drv.com/photo.jpg", expectedTimestamp);
         var stagingObservations = 0;
         using var body = new DownloadBodyStream(expectedBytes, onRead: () =>
         {
@@ -406,7 +406,7 @@ public sealed class SharedLinkProviderTests : IDisposable
         await File.WriteAllBytesAsync(retainedPath, previousBytes);
         File.SetLastWriteTimeUtc(retainedPath, previousTimestamp);
         var replacementBytes = "complete replacement"u8.ToArray();
-        var item = CreateTestItem("photo.jpg", "https://cdn.example.com/photo.jpg");
+        var item = CreateTestItem("photo.jpg", "https://public.am.files.1drv.com/photo.jpg");
         using var body = new DownloadBodyStream(replacementBytes);
         using var handler = new StreamingHttpMessageHandler(body);
         using var client = new HttpClient(handler);
@@ -437,10 +437,10 @@ public sealed class SharedLinkProviderTests : IDisposable
     {
         // Arrange
         var tempPath = Path.Combine(Path.GetTempPath(), $"test_{Guid.NewGuid():N}.jpg");
-        var item = CreateTestItem("photo.jpg", "https://cdn.example.com/photo.jpg");
+        var item = CreateTestItem("photo.jpg", "https://public.am.files.1drv.com/photo.jpg");
 
         mockHandler.AddResponse(
-            new Uri("https://cdn.example.com/photo.jpg"),
+            new Uri("https://public.am.files.1drv.com/photo.jpg"),
             new HttpResponseMessage(HttpStatusCode.OK)
             {
                 Content = new ByteArrayContent("fake image data"u8.ToArray())
@@ -471,10 +471,10 @@ public sealed class SharedLinkProviderTests : IDisposable
         // Arrange
         var tempPath = Path.Combine(Path.GetTempPath(), $"test_{Guid.NewGuid():N}.jpg");
         var expectedTime = new DateTime(2024, 6, 15, 10, 30, 0, DateTimeKind.Utc);
-        var item = CreateTestItem("photo.jpg", "https://cdn.example.com/photo.jpg", expectedTime);
+        var item = CreateTestItem("photo.jpg", "https://public.am.files.1drv.com/photo.jpg", expectedTime);
 
         mockHandler.AddResponse(
-            new Uri("https://cdn.example.com/photo.jpg"),
+            new Uri("https://public.am.files.1drv.com/photo.jpg"),
             new HttpResponseMessage(HttpStatusCode.OK)
             {
                 Content = new ByteArrayContent("fake image data"u8.ToArray())
@@ -505,10 +505,10 @@ public sealed class SharedLinkProviderTests : IDisposable
         // Arrange
         var tempBase = Path.Combine(Path.GetTempPath(), $"test_{Guid.NewGuid():N}");
         var tempPath = Path.Combine(tempBase, "nested", "folder", "photo.jpg");
-        var item = CreateTestItem("photo.jpg", "https://cdn.example.com/photo.jpg");
+        var item = CreateTestItem("photo.jpg", "https://public.am.files.1drv.com/photo.jpg");
 
         mockHandler.AddResponse(
-            new Uri("https://cdn.example.com/photo.jpg"),
+            new Uri("https://public.am.files.1drv.com/photo.jpg"),
             new HttpResponseMessage(HttpStatusCode.OK)
             {
                 Content = new ByteArrayContent("fake image data"u8.ToArray())
@@ -582,6 +582,99 @@ public sealed class SharedLinkProviderTests : IDisposable
         Assert.IsTrue(ex.Message.Contains("download URL", StringComparison.OrdinalIgnoreCase));
         Assert.IsFalse(File.Exists(destinationPath));
         Assert.IsEmpty(Directory.GetFiles(project.SourcePath));
+    }
+
+    #endregion
+
+    #region URL Safety Tests
+
+    [TestMethod]
+    [DataRow("https://cdn.example.com/photo.jpg")]
+    [DataRow("https://1drv.com.attacker.example/photo.jpg")]
+    [DataRow("http://public.am.files.1drv.com/photo.jpg")]
+    [DataRow("https://127.0.0.1/photo.jpg")]
+    public async Task DownloadFileAsync_DownloadUrlOutsideOneDriveHosts_ThrowsWithoutRequest(string address)
+    {
+        using var project = TestProject.Create();
+        var destinationPath = Path.Combine(project.SourcePath, "photo.jpg");
+        var item = CreateTestItem("photo.jpg", address);
+
+        await Assert.ThrowsExactlyAsync<InvalidOperationException>(
+            async () => await provider.DownloadFileAsync(item, destinationPath));
+
+        Assert.IsEmpty(mockHandler.RecordedRequests);
+        Assert.IsFalse(File.Exists(destinationPath));
+    }
+
+    [TestMethod]
+    public async Task ListItemsAsync_NextLinkOutsideOneDriveHosts_ThrowsWithoutRequest()
+    {
+        SetupBadgerTokenResponse();
+        SetupActivationResponse("drive123", "folder123");
+        SetupPaginatedListItemsResponse([], nextLink: "https://attacker.example/v1.0/next?token=1");
+
+        await Assert.ThrowsExactlyAsync<InvalidOperationException>(
+            async () => await provider.ListItemsAsync("https://1drv.ms/f/s!example"));
+
+        Assert.IsFalse(mockHandler.RecordedRequests.Any(request =>
+            string.Equals(request.RequestUri!.Host, "attacker.example", StringComparison.Ordinal)));
+    }
+
+    [TestMethod]
+    public async Task DownloadFileAsync_RedirectToOneDriveHost_FollowsRedirect()
+    {
+        using var project = TestProject.Create();
+        var destinationPath = Path.Combine(project.SourcePath, "photo.jpg");
+        var item = CreateTestItem("photo.jpg", "https://public.am.files.1drv.com/photo.jpg");
+        var redirect = new HttpResponseMessage(HttpStatusCode.Found);
+        redirect.Headers.Location = new Uri("https://contoso.sharepoint.com/photo.jpg");
+        mockHandler.AddResponse(new Uri("https://public.am.files.1drv.com/photo.jpg"), redirect);
+        mockHandler.AddResponse(new Uri("https://contoso.sharepoint.com/photo.jpg"), new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new ByteArrayContent("redirected"u8.ToArray())
+        });
+
+        await provider.DownloadFileAsync(item, destinationPath);
+
+        Assert.AreEqual("redirected", await File.ReadAllTextAsync(destinationPath));
+    }
+
+    [TestMethod]
+    public async Task DownloadFileAsync_RedirectOutsideOneDriveHosts_ThrowsWithoutFollowing()
+    {
+        using var project = TestProject.Create();
+        var destinationPath = Path.Combine(project.SourcePath, "photo.jpg");
+        var item = CreateTestItem("photo.jpg", "https://public.am.files.1drv.com/photo.jpg");
+        var redirect = new HttpResponseMessage(HttpStatusCode.Found);
+        redirect.Headers.Location = new Uri("http://169.254.169.254/latest/meta-data");
+        mockHandler.AddResponse(new Uri("https://public.am.files.1drv.com/photo.jpg"), redirect);
+
+        await Assert.ThrowsExactlyAsync<InvalidOperationException>(
+            async () => await provider.DownloadFileAsync(item, destinationPath));
+
+        Assert.HasCount(1, mockHandler.RecordedRequests);
+        Assert.IsFalse(File.Exists(destinationPath));
+    }
+
+    [TestMethod]
+    public void ConfigureServices_DisablesAutomaticRedirectsAndCookies()
+    {
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddSingleton(CreateBuildInfo("0.0.0-test"));
+        new OneDrivePlugin().ConfigureServices(services);
+        using var serviceProvider = services.BuildServiceProvider();
+
+        var handler = serviceProvider.GetRequiredService<IHttpMessageHandlerFactory>().CreateHandler(nameof(SharedLinkProvider));
+        while (handler is DelegatingHandler delegating)
+        {
+            handler = delegating.InnerHandler!;
+        }
+
+        var primary = handler as HttpClientHandler;
+        Assert.IsNotNull(primary);
+        Assert.IsFalse(primary.AllowAutoRedirect);
+        Assert.IsFalse(primary.UseCookies);
     }
 
     #endregion
@@ -684,10 +777,10 @@ public sealed class SharedLinkProviderTests : IDisposable
             File.SetLastWriteTimeUtc(destinationPath, previousTimestamp);
         }
 
-        var item = CreateTestItem("photo.jpg", "https://cdn.example.com/photo.jpg");
+        var item = CreateTestItem("photo.jpg", "https://public.am.files.1drv.com/photo.jpg");
 
         mockHandler.AddResponse(
-            new Uri("https://cdn.example.com/photo.jpg"),
+            new Uri("https://public.am.files.1drv.com/photo.jpg"),
             new HttpResponseMessage(HttpStatusCode.NotFound)
         );
 
@@ -920,7 +1013,7 @@ public sealed class SharedLinkProviderTests : IDisposable
     internal sealed class PrivacyHttpMessageHandler(string scenario = "success", Func<Exception>? failureFactory = null) : HttpMessageHandler
     {
         internal const string ShareUrl = "https://1drv.ms/f/SYNTHETIC_SHARE_SECRET?authkey=SYNTHETIC_SHARE_QUERY";
-        internal const string CdnUrl = "https://cdn.example.com/SYNTHETIC_CDN_PATH/photo.jpg?sig=SYNTHETIC_CDN_QUERY";
+        internal const string CdnUrl = "https://public.am.files.1drv.com/SYNTHETIC_CDN_PATH/photo.jpg?sig=SYNTHETIC_CDN_QUERY";
         internal const string BadgerToken = "SYNTHETIC_BADGER_TOKEN";
         internal const string BearerToken = "SYNTHETIC_BEARER_TOKEN";
         internal const string FailureMessage = ShareUrl + " " + CdnUrl + " " + BadgerToken + " " + BearerToken + " SYNTHETIC_EXCEPTION_SECRET";
@@ -948,7 +1041,7 @@ public sealed class SharedLinkProviderTests : IDisposable
             {
                 return JsonResponse(new { token = BadgerToken });
             }
-            if (string.Equals(uri.Host, "cdn.example.com", StringComparison.Ordinal))
+            if (string.Equals(uri.Host, "public.am.files.1drv.com", StringComparison.Ordinal))
             {
                 Assert.IsTrue(string.Equals(uri.AbsoluteUri, CdnUrl, StringComparison.Ordinal), "The signed CDN URL must reach the local primary handler unchanged.");
                 if (string.Equals(scenario, "cdn-status", StringComparison.Ordinal))

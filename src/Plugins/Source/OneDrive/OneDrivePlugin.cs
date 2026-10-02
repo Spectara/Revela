@@ -50,6 +50,7 @@ public sealed partial class OneDrivePlugin : IPlugin
             var version = serviceProvider.GetRequiredService<IBuildInfo>().Version;
             client.DefaultRequestHeaders.UserAgent.ParseAdd($"Revela/{version} (Static Site Generator)");
         })
+        .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler { AllowAutoRedirect = false, UseCookies = false })
         .RemoveAllLoggers()
         .AddResilienceHandler("onedrive-retry", (builder, context) =>
         {
