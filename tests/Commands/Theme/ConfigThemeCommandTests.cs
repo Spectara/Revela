@@ -6,13 +6,42 @@ using Spectara.Revela.Features.Theme.Commands;
 using Spectara.Revela.Sdk.Abstractions;
 using Spectara.Revela.Sdk.Models;
 using Spectara.Revela.Sdk.Services;
+using Spectara.Revela.Tests.Shared.Fixtures;
 
 namespace Spectara.Revela.Tests.Commands.Theme;
 
 [TestClass]
 [TestCategory("Unit")]
+[DoNotParallelize]
 public sealed class ConfigThemeCommandTests
 {
+    [TestMethod]
+    public async Task ExecuteAsync_NoOptionsNonInteractive_FailsWithHintWithoutUpdate()
+    {
+        var (command, themeService) = CreateCommand();
+
+        var (exitCode, output) = await ConsoleCapture.RunAsync(
+            () => command.ExecuteAsync(null, null, clearViewer: false, CancellationToken.None));
+
+        Assert.AreEqual(1, exitCode);
+        Assert.Contains("revela config theme --set <theme>", output);
+        await themeService.DidNotReceive().UpdateAsync(
+            Arg.Any<ThemeUpdateRequest>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [TestMethod]
+    public async Task ExecuteAsync_ThemeOptionNonInteractive_UpdatesWithoutPrompting()
+    {
+        var (command, themeService) = CreateCommand();
+
+        var (exitCode, _) = await ConsoleCapture.RunAsync(
+            () => command.ExecuteAsync("Full", null, clearViewer: false, CancellationToken.None));
+
+        Assert.AreEqual(0, exitCode);
+        await themeService.Received(1).UpdateAsync(Arg.Any<ThemeUpdateRequest>(), Arg.Any<CancellationToken>());
+    }
+
     [TestMethod]
     public async Task ExecuteAsync_ViewerWithoutTheme_UpdatesCurrentThemeViewerOnly()
     {
@@ -119,6 +148,7 @@ public sealed class ConfigThemeCommandTests
         return (new ConfigThemeCommand(
             NullLogger<ConfigThemeCommand>.Instance,
             configService,
-            themeService), themeService);
+            themeService,
+            FakeConsoleCapabilities.NonInteractive), themeService);
     }
 }

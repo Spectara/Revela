@@ -154,6 +154,32 @@ public sealed class ThemeServiceTests
     }
 
     [TestMethod]
+    [DataRow("")]
+    [DataRow("   ")]
+    public async Task UpdateAsync_ConflictingViewerWithBlankConfiguredName_ReportsLumina(string configuredName)
+    {
+        var (service, _, _) = CreateService(new ThemeConfig { Name = configuredName });
+
+        var result = await service.UpdateAsync(new ThemeUpdateRequest(PhotoViewer: PhotoViewerMode.Page, ClearPhotoViewer: true));
+
+        Assert.IsFalse(result.Success);
+        Assert.AreEqual("Lumina", result.ThemeName);
+    }
+
+    [TestMethod]
+    [DataRow("")]
+    [DataRow("   ")]
+    public async Task ExtractFilesAsync_BlankConfiguredName_UsesLumina(string configuredName)
+    {
+        var (service, _, _) = CreateService(new ThemeConfig { Name = configuredName });
+
+        var result = await service.ExtractFilesAsync("missing.revela");
+
+        Assert.IsFalse(result.Success);
+        Assert.AreEqual("No files matching 'missing.revela' found in theme 'Lumina'.", result.ErrorMessage);
+    }
+
+    [TestMethod]
     public void PhotoViewerCapabilities_ListInput_IsSnapshotted()
     {
         var source = new List<PhotoViewerMode> { PhotoViewerMode.Page };
@@ -197,10 +223,15 @@ public sealed class ThemeServiceTests
         packageContext.Themes.Returns([]);
         var configService = Substitute.For<IConfigService>();
 
+        var templateResolver = Substitute.For<ITemplateResolver>();
+        templateResolver.GetAllEntries().Returns([]);
+        var assetResolver = Substitute.For<IAssetResolver>();
+        assetResolver.GetAllEntries().Returns([]);
+
         var service = new ThemeService(
             registry,
-            Substitute.For<ITemplateResolver>(),
-            Substitute.For<IAssetResolver>(),
+            templateResolver,
+            assetResolver,
             packageContext,
             new PackageInstallService([], new PackageDeclarations(Substitute.For<IConfigService>(), Substitute.For<IGlobalConfigManager>(), NullLogger<PackageDeclarations>.Instance)),
             Substitute.For<IPackageIndexService>(),

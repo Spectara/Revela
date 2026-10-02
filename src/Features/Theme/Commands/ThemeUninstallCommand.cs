@@ -1,7 +1,9 @@
 using System.CommandLine;
 
+using Spectara.Revela.Core.Helpers;
 using Spectara.Revela.Core.Services;
 using Spectara.Revela.Sdk;
+using Spectara.Revela.Sdk.Hosting;
 using Spectara.Revela.Sdk.Output;
 
 using Spectre.Console;
@@ -13,7 +15,8 @@ namespace Spectara.Revela.Features.Theme.Commands;
 /// </summary>
 internal sealed partial class ThemeUninstallCommand(
     ILogger<ThemeUninstallCommand> logger,
-    PackageInstallService installService)
+    PackageInstallService installService,
+    IConsoleCapabilities consoleCapabilities)
 {
     /// <summary>
     /// Creates the command definition.
@@ -59,6 +62,13 @@ internal sealed partial class ThemeUninstallCommand(
         try
         {
             var packageId = PackageIds.FromThemeName(name);
+
+            if (!skipConfirm && !consoleCapabilities.EnsureInteractive(
+                "Uninstalling asks for confirmation and this console is not interactive.",
+                $"revela theme uninstall {name} --yes"))
+            {
+                return 1;
+            }
 
             if (!skipConfirm && !await AnsiConsole.ConfirmAsync(
                 $"[yellow]Uninstall theme '{Markup.Escape(packageId)}'?[/]",

@@ -15,43 +15,45 @@ namespace Spectara.Revela.Tests.Cli.Hosting;
 public sealed class CommandExecutorTests
 {
     [TestMethod]
-    [DataRow("plugin")]
-    [DataRow("theme")]
-    public async Task ExecuteAsync_PackageUninstall_IsBlockedInInteractiveMenu(string parentName)
+    [DataRow("plugin", "uninstall")]
+    [DataRow("theme", "uninstall")]
+    [DataRow("plugin", "install")]
+    [DataRow("theme", "install")]
+    public async Task ExecuteAsync_PackageInstallOrUninstall_IsBlockedInInteractiveMenu(string parentName, string subcommandName)
     {
         var invoked = false;
-        var uninstall = new Command("uninstall");
-        uninstall.SetAction(_ =>
+        var subcommand = new Command(subcommandName);
+        subcommand.SetAction(_ =>
         {
             invoked = true;
             return 0;
         });
-        var root = new RootCommand { new Command(parentName) { uninstall } };
+        var root = new RootCommand { new Command(parentName) { subcommand } };
         var executor = new CommandExecutor(NullLogger<CommandExecutor>.Instance);
 
         var (exitCode, output) = await RunQuietAsync(
-            () => executor.ExecuteAsync(root, uninstall, [parentName, "uninstall"], CancellationToken.None));
+            () => executor.ExecuteAsync(root, subcommand, [parentName, subcommandName], CancellationToken.None));
 
-        Assert.IsFalse(invoked, "Uninstall deletes loaded assemblies and must not run inside the menu.");
+        Assert.IsFalse(invoked, "Install/uninstall replace or delete loaded package files and must not run inside the menu.");
         Assert.AreEqual(0, exitCode);
-        Assert.Contains($"revela {parentName} uninstall", output);
+        Assert.Contains($"revela {parentName} {subcommandName}", output);
     }
 
     [TestMethod]
-    public async Task ExecuteAsync_ThemeInstall_RunsCommand()
+    public async Task ExecuteAsync_ThemeList_RunsCommand()
     {
         var invoked = false;
-        var install = new Command("install");
-        install.SetAction(_ =>
+        var list = new Command("list");
+        list.SetAction(_ =>
         {
             invoked = true;
             return 0;
         });
-        var root = new RootCommand { new Command("theme") { install } };
+        var root = new RootCommand { new Command("theme") { list } };
         var executor = new CommandExecutor(NullLogger<CommandExecutor>.Instance);
 
         var (exitCode, _) = await RunQuietAsync(
-            () => executor.ExecuteAsync(root, install, ["theme", "install"], CancellationToken.None));
+            () => executor.ExecuteAsync(root, list, ["theme", "list"], CancellationToken.None));
 
         Assert.IsTrue(invoked);
         Assert.AreEqual(0, exitCode);

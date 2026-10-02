@@ -218,6 +218,7 @@ public sealed class ThemeExtractDeletionGuardTests
             Substitute.For<IAssetResolver>(),
             Options.Create(new ProjectEnvironment { Path = ProjectPath }),
             CreateThemeConfig(),
+            FakeConsoleCapabilities.NonInteractive,
             NullLogger<ThemeExtractCommand>.Instance);
 
         public void AssertNothingDeleted()

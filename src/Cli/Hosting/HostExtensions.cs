@@ -101,17 +101,6 @@ internal static class HostExtensions
                     pipelineOrderProvider.Register(desc.ParentCommand, cmd.Name, desc.Order);
                 }
             }
-
-            if (desc.InlineInMenu)
-            {
-                if (string.IsNullOrEmpty(desc.InlineDefaultActionLabel))
-                {
-                    throw new InvalidOperationException(
-                        $"Command '{cmd.Name}' has InlineInMenu=true but no InlineDefaultActionLabel. " +
-                        "Provide a label for the virtual default-action menu entry.");
-                }
-                orderRegistry.RegisterInlinedParent(cmd, desc.InlineDefaultActionLabel);
-            }
         }
 
         // Core commands (via CoreCommandProvider — uses same registration as plugins

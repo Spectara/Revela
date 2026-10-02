@@ -30,10 +30,13 @@ internal sealed partial class CommandExecutor(
         IReadOnlyList<string> commandPath,
         CancellationToken cancellationToken)
     {
-        // Uninstall deletes package assemblies, which the menu process has loaded
-        if (PackageManagementCommands.DeletesPackageFiles(commandPath))
+        // Install and uninstall replace or delete package files. The menu process has those
+        // assemblies loaded (locked on Windows, stale in memory elsewhere), so a reinstall,
+        // upgrade or removal could leave mixed versions on disk. The menu's setup wizard only
+        // adds packages that are not installed yet and then exits for a restart.
+        if (PackageManagementCommands.ModifiesPackageFiles(commandPath))
         {
-            ShowUninstallNotAvailable(commandPath);
+            ShowPackageChangeNotAvailable(commandPath);
             return 0;
         }
 
@@ -118,18 +121,25 @@ internal sealed partial class CommandExecutor(
         return exitCode;
     }
 
-    private static void ShowUninstallNotAvailable(IReadOnlyList<string> commandPath)
+    private static void ShowPackageChangeNotAvailable(IReadOnlyList<string> commandPath)
     {
         AnsiConsole.WriteLine();
 
         // Menu paths are the registered (lower-case) command names
         var kind = commandPath[0];
+        var action = commandPath[1];
+        var isInstall = action.Equals("install", StringComparison.OrdinalIgnoreCase);
+        var verb = isInstall ? "Installing" : "Uninstalling";
+        var wizardHint = isInstall
+            ? "\n\n[dim]To add packages that are not installed yet, use [white]wizard[/] in the Addons menu.[/]"
+            : string.Empty;
         var panel = new Panel(
             new Markup(
-                $"[yellow]Uninstalling a {Markup.Escape(kind)} is not available in interactive mode.[/]\n\n" +
-                $"The {kind} assembly is loaded in memory and cannot be deleted.\n" +
+                $"[yellow]{verb} a {Markup.Escape(kind)} is not available in interactive mode.[/]\n\n" +
+                $"Loaded {Markup.Escape(kind)} files cannot be replaced or deleted while Revela is running.\n" +
                 "Please use the command line instead:\n\n" +
-                $"[cyan]revela {kind} uninstall <{kind}-name>[/]"))
+                $"[cyan]revela {Markup.Escape(kind)} {Markup.Escape(action)} <{Markup.Escape(kind)}-name>[/]" +
+                wizardHint))
             .WithHeader("[yellow]⚠ Not Available[/]")
             .WithWarningStyle()
             .Padding(1, 0);

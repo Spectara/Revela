@@ -77,6 +77,36 @@ public sealed class ThemeExtractFileSelectionTests
         Assert.AreEqual(StatisticsLocaleJson, await File.ReadAllTextAsync(Path.Combine(themeFolder, "Locales", "Statistics", "de.json")));
     }
 
+    [TestMethod]
+    public async Task ExtractCommand_NoSourceNonInteractive_FailsWithHint()
+    {
+        using var project = TestProject.Create();
+        var command = CreateCommand(project.RootPath).Create();
+
+        var (exitCode, output) = await ConsoleCapture.InvokeAsync(command);
+
+        Assert.AreEqual(1, exitCode);
+        Assert.Contains("revela theme extract <theme> [target]", output);
+        Assert.Contains("revela theme extract --file <path>", output);
+        Assert.IsFalse(Directory.Exists(Path.Combine(project.RootPath, ProjectPaths.Themes)));
+    }
+
+    [TestMethod]
+    public async Task ExtractCommand_ExistingFileWithoutForceNonInteractive_FailsAndKeepsFile()
+    {
+        using var project = TestProject.Create();
+        var existing = Path.Combine(project.RootPath, ProjectPaths.Themes, ThemeName, "Configuration", "images.json");
+        Directory.CreateDirectory(Path.GetDirectoryName(existing)!);
+        await File.WriteAllTextAsync(existing, "customized");
+        var command = CreateCommand(project.RootPath).Create();
+
+        var (exitCode, output) = await ConsoleCapture.InvokeAsync(command, "--file", "Configuration/images.json");
+
+        Assert.AreEqual(1, exitCode);
+        Assert.Contains("--force", output);
+        Assert.AreEqual("customized", await File.ReadAllTextAsync(existing));
+    }
+
     private static ThemeExtractCommand CreateCommand(string projectPath)
     {
         var theme = Substitute.For<ITheme>();
@@ -120,6 +150,7 @@ public sealed class ThemeExtractFileSelectionTests
             Substitute.For<IAssetResolver>(),
             Options.Create(new ProjectEnvironment { Path = projectPath }),
             themeConfig,
+            FakeConsoleCapabilities.NonInteractive,
             NullLogger<ThemeExtractCommand>.Instance);
     }
 

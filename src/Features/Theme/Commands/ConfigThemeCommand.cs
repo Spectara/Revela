@@ -1,6 +1,8 @@
 using System.CommandLine;
+using Spectara.Revela.Core.Helpers;
 using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Abstractions;
+using Spectara.Revela.Sdk.Hosting;
 using Spectara.Revela.Sdk.Models;
 using Spectara.Revela.Sdk.Output;
 using Spectara.Revela.Sdk.Services;
@@ -14,7 +16,8 @@ namespace Spectara.Revela.Features.Theme.Commands;
 internal sealed partial class ConfigThemeCommand(
     ILogger<ConfigThemeCommand> logger,
     IConfigService configService,
-    IThemeService themeService)
+    IThemeService themeService,
+    IConsoleCapabilities consoleCapabilities)
 {
     /// <summary>
     /// Creates the command definition.
@@ -74,10 +77,6 @@ internal sealed partial class ConfigThemeCommand(
             return 1;
         }
 
-        var current = themeService.GetCurrentTheme();
-        var currentThemeName = string.IsNullOrWhiteSpace(current.ThemeName) ? Sdk.Configuration.ThemeConfig.DefaultName : current.ThemeName;
-        var listResult = await themeService.ListAsync(cancellationToken: cancellationToken);
-
         if (!string.IsNullOrWhiteSpace(viewerArg) && clearViewer)
         {
             ErrorPanels.ShowError("Invalid Options", "[yellow]--viewer and --clear-viewer are mutually exclusive.[/]");
@@ -92,6 +91,20 @@ internal sealed partial class ConfigThemeCommand(
                 $"[yellow]Unknown viewer mode '{Markup.Escape(viewerArg)}'.[/] Supported values: page, lightbox, none.");
             return 1;
         }
+
+        var promptForTheme = string.IsNullOrEmpty(themeArg) && viewer is null && !clearViewer;
+        if (promptForTheme && !consoleCapabilities.EnsureInteractive(
+            InteractiveInput.NoOptionsGiven,
+            "revela config theme --set <theme> [--viewer page|lightbox|none]",
+            "revela config theme --viewer page|lightbox|none",
+            "revela config theme --clear-viewer"))
+        {
+            return 1;
+        }
+
+        var current = themeService.GetCurrentTheme();
+        var currentThemeName = string.IsNullOrWhiteSpace(current.ThemeName) ? Sdk.Configuration.ThemeConfig.DefaultName : current.ThemeName;
+        var listResult = await themeService.ListAsync(cancellationToken: cancellationToken);
 
         if (listResult.Installed.Count == 0)
         {
@@ -123,7 +136,7 @@ internal sealed partial class ConfigThemeCommand(
 
             selectedTheme = match.Metadata.Name;
         }
-        else if (viewer is null && !clearViewer)
+        else if (promptForTheme)
         {
             var choices = listResult.Installed
                 .Select(t => new ThemeChoice(
@@ -156,7 +169,7 @@ internal sealed partial class ConfigThemeCommand(
             return 1;
         }
 
-        if (themeArg is null && viewer is null && !clearViewer)
+        if (promptForTheme)
         {
             var viewerChoices = new[]
             {

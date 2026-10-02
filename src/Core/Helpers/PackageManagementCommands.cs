@@ -11,7 +11,7 @@ namespace Spectara.Revela.Core.Helpers;
 /// <item>Startup skips loading packages for <see cref="ModifiesPackageFiles"/> commands, so the
 /// files they replace or delete are not locked by the running process.</item>
 /// <item>The interactive menu runs with packages loaded, so it refuses
-/// <see cref="DeletesPackageFiles"/> commands, which would delete loaded assemblies.</item>
+/// <see cref="ModifiesPackageFiles"/> commands, which would replace or delete loaded assemblies.</item>
 /// </list>
 /// </remarks>
 public static class PackageManagementCommands
@@ -23,13 +23,6 @@ public static class PackageManagementCommands
     public static bool ModifiesPackageFiles(IReadOnlyList<string> commandPath) =>
         IsPackageCommand(commandPath)
         && (IsSubcommand(commandPath, "install") || IsSubcommand(commandPath, "uninstall"));
-
-    /// <summary>
-    /// Returns whether the command path is <c>plugin|theme uninstall</c>.
-    /// </summary>
-    /// <param name="commandPath">CLI arguments or menu command path, starting at the root command.</param>
-    public static bool DeletesPackageFiles(IReadOnlyList<string> commandPath) =>
-        IsPackageCommand(commandPath) && IsSubcommand(commandPath, "uninstall");
 
     private static bool IsPackageCommand(IReadOnlyList<string> commandPath) =>
         commandPath.Count >= 2

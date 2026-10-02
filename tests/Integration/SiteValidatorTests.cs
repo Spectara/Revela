@@ -30,7 +30,7 @@ public sealed class SiteValidatorTests
 
         // The image pipeline step depends on console capabilities; provide a
         // non-interactive stub so the engine (IEnumerable<IPipelineStep>) resolves.
-        services.AddSingleton<IConsoleCapabilities>(new NonInteractiveConsole());
+        services.AddSingleton<IConsoleCapabilities>(FakeConsoleCapabilities.NonInteractive);
 
         // The host normally populates step order during command registration; supply
         // the production ordering so the engine runs check (50) → scan → pages → images.
@@ -345,13 +345,6 @@ public sealed class SiteValidatorTests
 
         public ValueTask<IReadOnlyList<ValidationDiagnostic>> ValidateAsync(CancellationToken cancellationToken = default) =>
             ValueTask.FromResult(diagnostics);
-    }
-
-    private sealed class NonInteractiveConsole : IConsoleCapabilities
-    {
-        public bool IsInteractive => false;
-
-        public bool CanRenderLive => false;
     }
 
     private sealed class TestStepOrderProvider : IPipelineStepOrderProvider

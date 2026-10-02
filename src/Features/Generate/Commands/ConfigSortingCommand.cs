@@ -2,9 +2,11 @@ using System.CommandLine;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 
+using Spectara.Revela.Core.Helpers;
 using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Abstractions;
 using Spectara.Revela.Sdk.Configuration.Keys;
+using Spectara.Revela.Sdk.Hosting;
 using Spectara.Revela.Sdk.Output;
 
 using Spectre.Console;
@@ -30,7 +32,7 @@ namespace Spectara.Revela.Features.Generate.Commands;
 ///   <item><c>exif.raw.Rating</c> - Star rating (1-5)</item>
 /// </list>
 /// </remarks>
-internal sealed class ConfigSortingCommand(IConfigService configService)
+internal sealed class ConfigSortingCommand(IConfigService configService, IConsoleCapabilities consoleCapabilities)
 {
     /// <summary>
     /// Creates the command definition.
@@ -101,6 +103,13 @@ internal sealed class ConfigSortingCommand(IConfigService configService)
         }
 
         // Interactive mode
+        if (!consoleCapabilities.EnsureInteractive(
+            InteractiveInput.NoOptionsGiven,
+            "revela config sorting [--galleries asc|desc] [--field <field>] [--direction asc|desc] [--fallback <field>]"))
+        {
+            return 1;
+        }
+
         return await ExecuteInteractiveAsync(cancellationToken);
     }
 

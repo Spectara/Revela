@@ -1,7 +1,9 @@
 using System.CommandLine;
 
+using Spectara.Revela.Core.Helpers;
 using Spectara.Revela.Core.Services;
 using Spectara.Revela.Sdk;
+using Spectara.Revela.Sdk.Hosting;
 using Spectara.Revela.Sdk.Output;
 
 using Spectre.Console;
@@ -13,7 +15,8 @@ namespace Spectara.Revela.Features.Packages.Commands.Plugins;
 /// </summary>
 internal sealed partial class PluginUninstallCommand(
     ILogger<PluginUninstallCommand> logger,
-    PackageInstallService installService)
+    PackageInstallService installService,
+    IConsoleCapabilities consoleCapabilities)
 {
     /// <summary>
     /// Creates the command definition.
@@ -49,6 +52,13 @@ internal sealed partial class PluginUninstallCommand(
         try
         {
             var packageId = PackageIds.FromPluginName(name);
+
+            if (!skipConfirm && !consoleCapabilities.EnsureInteractive(
+                "Uninstalling asks for confirmation and this console is not interactive.",
+                $"revela plugin uninstall {name} --yes"))
+            {
+                return 1;
+            }
 
             if (!skipConfirm && !await AnsiConsole.ConfirmAsync($"[yellow]Uninstall plugin '{Markup.Escape(packageId)}'?[/]", defaultValue: false, cancellationToken))
             {

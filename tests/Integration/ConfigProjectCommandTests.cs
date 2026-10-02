@@ -1,5 +1,3 @@
-using System.Globalization;
-
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
@@ -13,8 +11,6 @@ using Spectara.Revela.Sdk.Configuration;
 using Spectara.Revela.Sdk.Hosting;
 using Spectara.Revela.Tests.Shared.Fixtures;
 using Spectara.Revela.Themes.Lumina;
-
-using Spectre.Console;
 
 namespace Spectara.Revela.Tests.Integration;
 
@@ -160,37 +156,9 @@ public sealed class ConfigProjectCommandTests
             services.AddSingleton(Capabilities(interactive));
         });
 
-    private static IConsoleCapabilities Capabilities(bool interactive) => new FakeConsoleCapabilities(interactive);
+    private static IConsoleCapabilities Capabilities(bool interactive) =>
+        new FakeConsoleCapabilities(interactive, canRenderLive: interactive);
 
-    private static async Task<(int ExitCode, string Output)> RunQuietAsync(Func<Task<int>> action)
-    {
-        using var writer = new StringWriter(CultureInfo.InvariantCulture);
-        var originalConsole = AnsiConsole.Console;
-        var console = AnsiConsole.Create(new AnsiConsoleSettings
-        {
-            Ansi = AnsiSupport.No,
-            ColorSystem = ColorSystemSupport.NoColors,
-            Interactive = InteractionSupport.No,
-            Out = new AnsiConsoleOutput(writer),
-        });
-        console.Profile.Width = 200;
-        AnsiConsole.Console = console;
-
-        try
-        {
-            var exitCode = await action();
-            return (exitCode, writer.ToString());
-        }
-        finally
-        {
-            AnsiConsole.Console = originalConsole;
-        }
-    }
-
-    private sealed class FakeConsoleCapabilities(bool interactive) : IConsoleCapabilities
-    {
-        public bool IsInteractive => interactive;
-
-        public bool CanRenderLive => interactive;
-    }
+    private static Task<(int ExitCode, string Output)> RunQuietAsync(Func<Task<int>> action) =>
+        ConsoleCapture.RunAsync(action);
 }

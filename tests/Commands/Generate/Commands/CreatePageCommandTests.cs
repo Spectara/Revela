@@ -3,13 +3,27 @@ using NSubstitute;
 using Spectara.Revela.Features.Generate.Commands;
 using Spectara.Revela.Sdk.Abstractions;
 using Spectara.Revela.Sdk.Services;
+using Spectara.Revela.Tests.Shared.Fixtures;
 
 namespace Spectara.Revela.Tests.Commands.Generate.Commands;
 
 [TestClass]
 [TestCategory("Unit")]
+[DoNotParallelize]
 public sealed class CreatePageCommandTests
 {
+    [TestMethod]
+    public async Task CreatePage_NoPathNonInteractive_FailsWithHintWithoutWritingPage()
+    {
+        using var source = new TempDirectory();
+
+        var (exitCode, output) = await ConsoleCapture.InvokeAsync(CreateCommand(source.Path), "booking");
+
+        Assert.AreEqual(1, exitCode);
+        Assert.Contains("revela create page booking <path>", output);
+        Assert.IsEmpty(Directory.GetFileSystemEntries(source.Path));
+    }
+
     [TestMethod]
     public async Task CreatePage_RequiredPropertyMissing_FailsWithoutWritingPage()
     {
@@ -33,16 +47,18 @@ public sealed class CreatePageCommandTests
         Assert.Contains("calendar.source = \"bookings.ics\"", frontmatter);
     }
 
-    private static async Task<int> InvokeAsync(string sourcePath, params string[] args)
+    private static async Task<int> InvokeAsync(string sourcePath, params string[] args) =>
+        await CreateCommand(sourcePath).Parse(args).InvokeAsync(new InvocationConfiguration { Output = TextWriter.Null, Error = TextWriter.Null });
+
+    private static Command CreateCommand(string sourcePath)
     {
         var pathResolver = Substitute.For<IPathResolver>();
         pathResolver.SourcePath.Returns(sourcePath);
-        var command = new CreatePageCommand(
+        return new CreatePageCommand(
             Substitute.For<ILogger<CreatePageCommand>>(),
             pathResolver,
-            [new RequiredSourceTemplate()]).Create();
-
-        return await command.Parse(args).InvokeAsync(new InvocationConfiguration { Output = TextWriter.Null, Error = TextWriter.Null });
+            [new RequiredSourceTemplate()],
+            FakeConsoleCapabilities.NonInteractive).Create();
     }
 
     private sealed class RequiredSourceTemplate : IPageTemplate
