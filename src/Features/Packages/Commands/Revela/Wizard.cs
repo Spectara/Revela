@@ -1,29 +1,26 @@
-using Spectara.Revela.Commands.Packages;
-using Spectara.Revela.Core;
 using Spectara.Revela.Core.Models;
 using Spectara.Revela.Core.Services;
+using Spectara.Revela.Features.Packages.Commands.Packages;
 using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Abstractions;
 using Spectara.Revela.Sdk.Output;
-using Spectara.Revela.Sdk.Services;
 using Spectre.Console;
 
-namespace Spectara.Revela.Commands.Revela;
+namespace Spectara.Revela.Features.Packages.Commands.Revela;
 
 /// <summary>
 /// Setup wizard for first-time Revela configuration.
 /// </summary>
 /// <remarks>
-/// Uses <see cref="IPackageIndexService"/> to discover available themes and plugins,
-/// and <see cref="PackageManager"/> directly for installation (bypasses type checks
-/// in PluginInstallCommand so both themes and plugins can be installed).
+/// Uses <see cref="IPackageIndexService"/> to discover available themes and plugins and
+/// <see cref="PackageInstallService"/> to install them (same type check and declaration rule
+/// as 'plugin install' and 'theme install').
 /// </remarks>
 internal sealed partial class Wizard(
     ILogger<Wizard> logger,
     IPackageIndexService packageIndexService,
     RefreshCommand packagesRefreshCommand,
-    PackageManager pluginManager,
-    IGlobalConfigManager globalConfigManager) : ISetupWizard
+    PackageInstallService installService) : ISetupWizard
 {
     /// <summary>
     /// Exit code indicating packages were installed and restart is required.
@@ -61,8 +58,8 @@ internal sealed partial class Wizard(
 
         // Get available packages directly from package index (no plugin dependency)
         var (availableThemes, availablePlugins) = PartitionPackages(
-            await packageIndexService.SearchByTypeAsync("RevelaTheme", cancellationToken),
-            await packageIndexService.SearchByTypeAsync("RevelaPlugin", cancellationToken));
+            await packageIndexService.SearchByTypeAsync(PackageIds.ThemePackageType, cancellationToken),
+            await packageIndexService.SearchByTypeAsync(PackageIds.PluginPackageType, cancellationToken));
 
         var totalAvailable = availableThemes.Count + availablePlugins.Count;
 
@@ -86,8 +83,8 @@ internal sealed partial class Wizard(
             AnsiConsole.MarkupLine("[cyan]Installing all packages...[/]");
             AnsiConsole.WriteLine();
 
-            themeResult = await InstallThemesAsync(availableThemes, cancellationToken);
-            pluginResult = await InstallPackagesAsync(availablePlugins, cancellationToken);
+            themeResult = await InstallSelectedAsync([.. availableThemes.Select(t => t.Id)], PackageIds.ThemePackageType, cancellationToken);
+            pluginResult = await InstallSelectedAsync([.. availablePlugins.Select(p => p.Id)], PackageIds.PluginPackageType, cancellationToken);
         }
         else
         {
@@ -95,25 +92,21 @@ internal sealed partial class Wizard(
             var (selectedThemes, selectedPlugins) = PromptCustomSelection(availableThemes, availablePlugins);
 
             // Must have at least one theme
-            if (selectedThemes.Count == 0)
+            if (selectedThemes.Count == 0 && !availableThemes.Any(theme => installService.IsInstalled(theme.Id)))
             {
-                var declaredPackages = await globalConfigManager.GetPackagesAsync(cancellationToken);
-                if (!availableThemes.Any(theme => declaredPackages.ContainsKey(theme.Id)))
-                {
-                    ShowNoThemesError();
-                    return 1;
-                }
+                ShowNoThemesError();
+                return 1;
             }
 
             // Install user-selected packages
             themeResult = await InstallSelectedAsync(
                 selectedThemes,
-                InstallPackageAsync,
+                PackageIds.ThemePackageType,
                 cancellationToken);
 
             pluginResult = await InstallSelectedAsync(
                 selectedPlugins,
-                InstallPackageAsync,
+                PackageIds.PluginPackageType,
                 cancellationToken);
         }
 
@@ -211,11 +204,11 @@ internal sealed partial class Wizard(
         var description = Markup.Escape(Truncate(package.Description, 40));
         if (isTheme)
         {
-            var themeName = Markup.Escape(package.Id.Replace("Spectara.Revela.Themes.", "", StringComparison.Ordinal));
+            var themeName = Markup.Escape(PackageIds.ToShortName(package.Id));
             return $"[cyan]Theme:[/] {themeName} [dim]- {description}[/]";
         }
 
-        var pluginName = Markup.Escape(package.Id.Replace("Spectara.Revela.Plugins.", "", StringComparison.Ordinal));
+        var pluginName = Markup.Escape(PackageIds.ToShortName(package.Id));
         return $"[blue]Plugin:[/] {pluginName} [dim]- {description}[/]";
     }
 
@@ -272,7 +265,7 @@ internal sealed partial class Wizard(
             if (originalChoice is not null)
             {
                 var packageId = originalChoice.Split('|')[0];
-                if (packageId.Contains(".Themes.", StringComparison.Ordinal))
+                if (availableThemes.Any(theme => theme.Id.Equals(packageId, StringComparison.OrdinalIgnoreCase)))
                 {
                     selectedThemes.Add(packageId);
                 }
@@ -286,9 +279,9 @@ internal sealed partial class Wizard(
         return (selectedThemes, selectedPlugins);
     }
 
-    private static async Task<InstallResult> InstallSelectedAsync(
+    private async Task<InstallResult> InstallSelectedAsync(
         List<string> packageIds,
-        Func<string, string?, string?, CancellationToken, Task<int>> installFunc,
+        string packageType,
         CancellationToken cancellationToken)
     {
         if (packageIds.Count == 0)
@@ -302,8 +295,8 @@ internal sealed partial class Wizard(
         foreach (var packageId in packageIds)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            var result = await installFunc(packageId, null, null, cancellationToken);
-            if (result == 0)
+            var result = await installService.InstallAsync(packageId, packageType, cancellationToken: cancellationToken);
+            if (result.Status == PackageInstallStatus.Installed)
             {
                 installed.Add(packageId);
             }
@@ -314,89 +307,6 @@ internal sealed partial class Wizard(
         }
 
         return new InstallResult(installed, [], failed);
-    }
-
-    /// <summary>
-    /// Installs all available themes using PluginManager directly.
-    /// </summary>
-    private async Task<InstallResult> InstallThemesAsync(
-        IReadOnlyList<PackageIndexEntry> themes,
-        CancellationToken cancellationToken)
-    {
-        if (themes.Count == 0)
-        {
-            return InstallResult.Empty;
-        }
-
-        var installed = new List<string>();
-        var failed = new List<string>();
-
-        foreach (var theme in themes)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            var result = await InstallPackageAsync(theme.Id, null, null, cancellationToken);
-            if (result == 0)
-            {
-                installed.Add(theme.Id);
-            }
-            else
-            {
-                failed.Add(theme.Id);
-            }
-        }
-
-        return new InstallResult(installed, [], failed);
-    }
-
-    /// <summary>
-    /// Installs all available plugins using PluginManager directly.
-    /// </summary>
-    private async Task<InstallResult> InstallPackagesAsync(
-        IReadOnlyList<PackageIndexEntry> packages,
-        CancellationToken cancellationToken)
-    {
-        if (packages.Count == 0)
-        {
-            return InstallResult.Empty;
-        }
-
-        var installed = new List<string>();
-        var failed = new List<string>();
-
-        foreach (var package in packages)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            var result = await InstallPackageAsync(package.Id, null, null, cancellationToken);
-            if (result == 0)
-            {
-                installed.Add(package.Id);
-            }
-            else
-            {
-                failed.Add(package.Id);
-            }
-        }
-
-        return new InstallResult(installed, [], failed);
-    }
-
-    /// <summary>
-    /// Installs a single package and registers its exact version in the global config.
-    /// </summary>
-    private async Task<int> InstallPackageAsync(
-        string packageId,
-        string? version,
-        string? source,
-        CancellationToken cancellationToken)
-    {
-        var package = await pluginManager.InstallAsync(packageId, version, source, cancellationToken);
-        if (package is null)
-        {
-            return 1;
-        }
-
-        await globalConfigManager.AddPackageAsync(package.Id, package.Version, cancellationToken);
-        return 0;
     }
 
     private static string Truncate(string? text, int maxLength)
@@ -464,7 +374,7 @@ internal sealed partial class Wizard(
                 lines.Add("[bold]Installed themes:[/]");
                 foreach (var theme in themeResult.Installed)
                 {
-                    var shortName = theme.Replace("Spectara.Revela.Themes.", "", StringComparison.Ordinal);
+                    var shortName = PackageIds.ToShortName(theme);
                     lines.Add($"  [cyan]•[/] {Markup.Escape(shortName)}");
                 }
 
@@ -476,7 +386,7 @@ internal sealed partial class Wizard(
                 lines.Add("[bold]Installed plugins:[/]");
                 foreach (var plugin in pluginResult.Installed)
                 {
-                    var shortName = plugin.Replace("Spectara.Revela.Plugins.", "", StringComparison.Ordinal);
+                    var shortName = PackageIds.ToShortName(plugin);
                     lines.Add($"  [cyan]•[/] {Markup.Escape(shortName)}");
                 }
 

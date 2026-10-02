@@ -1,7 +1,6 @@
 using System.CommandLine;
 using System.IO.Compression;
 using System.Net.Http.Json;
-using System.Text.Json;
 using System.Text.Json.Serialization;
 using NuGet.Packaging;
 using Spectara.Revela.Core.Models;
@@ -10,7 +9,7 @@ using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Output;
 using Spectre.Console;
 
-namespace Spectara.Revela.Commands.Packages;
+namespace Spectara.Revela.Features.Packages.Commands.Packages;
 
 /// <summary>
 /// Command to refresh the local package index from all feeds.
@@ -22,12 +21,10 @@ namespace Spectara.Revela.Commands.Packages;
 internal sealed partial class RefreshCommand(
     ILogger<RefreshCommand> logger,
     INuGetSourceManager nugetSourceManager,
+    IPackageIndexService packageIndexService,
     HttpClient httpClient,
     TimeProvider timeProvider)
 {
-    private static readonly string IndexFilePath = Path.Combine(
-        ConfigPathResolver.ConfigDirectory, "packages.json");
-
     /// <summary>
     /// Creates the CLI command.
     /// </summary>
@@ -93,19 +90,18 @@ internal sealed partial class RefreshCommand(
                 .OrderBy(p => p.Id)
                 .ToList();
 
-            // Save index (ConfigDirectory is ensured to exist by ConfigPathResolver)
+            // Save index
             var index = new PackageIndex
             {
                 LastUpdated = timeProvider.GetUtcNow().UtcDateTime,
                 Packages = uniquePackages
             };
 
-            var json = JsonSerializer.Serialize(index, PackageIndexJsonContext.Default.PackageIndex);
-            await File.WriteAllTextAsync(IndexFilePath, json, cancellationToken);
+            await packageIndexService.SaveIndexAsync(index, cancellationToken);
 
             AnsiConsole.WriteLine();
             AnsiConsole.MarkupLine($"{OutputMarkers.Success} Indexed [cyan]{uniquePackages.Count}[/] packages from [cyan]{sources.Count}[/] sources");
-            AnsiConsole.MarkupLine($"  Cache: [dim]{Markup.Escape(IndexFilePath)}[/]");
+            AnsiConsole.MarkupLine($"  Cache: [dim]{Markup.Escape(packageIndexService.IndexFilePath)}[/]");
 
             return 0;
         }
@@ -164,7 +160,7 @@ internal sealed partial class RefreshCommand(
                                     // Fallback to inference if no types defined
                                     if (packageTypes.Count == 0)
                                     {
-                                        packageTypes = InferPackageTypes(reader.GetId());
+                                        packageTypes = [.. PackageIds.InferPackageTypes(packageId)];
                                     }
 
                                     packages.Add(new PackageIndexEntry
@@ -246,7 +242,7 @@ internal sealed partial class RefreshCommand(
                         // Fallback to inference if no types in response
                         if (packageTypes.Count == 0)
                         {
-                            packageTypes = InferPackageTypes(result.Id ?? "");
+                            packageTypes = [.. PackageIds.InferPackageTypes(result.Id ?? "")];
                         }
 
                         packages.Add(new PackageIndexEntry
@@ -264,31 +260,6 @@ internal sealed partial class RefreshCommand(
         }
 
         return packages;
-    }
-
-    /// <summary>
-    /// Infers package types from naming convention.
-    /// </summary>
-    /// <remarks>
-    /// Fallback when packageTypes is not available in API response.
-    /// - Spectara.Revela.Themes.* → RevelaTheme
-    /// - Spectara.Revela.Plugins.* → RevelaPlugin
-    /// </remarks>
-    private static List<string> InferPackageTypes(string packageId)
-    {
-        var types = new List<string>();
-
-        if (packageId.Contains(".Theme.", StringComparison.OrdinalIgnoreCase))
-        {
-            types.Add("RevelaTheme");
-        }
-
-        if (packageId.Contains(".Plugin.", StringComparison.OrdinalIgnoreCase))
-        {
-            types.Add("RevelaPlugin");
-        }
-
-        return types;
     }
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Refreshing package index")]

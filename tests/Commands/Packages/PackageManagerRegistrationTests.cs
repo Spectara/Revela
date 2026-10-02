@@ -1,16 +1,15 @@
 using System.CommandLine;
 using System.Globalization;
-using System.Text.Json.Nodes;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using NuGet.Packaging;
 using NuGet.Versioning;
 using Spectara.Revela.Commands;
-using Spectara.Revela.Commands.Plugins;
-using Spectara.Revela.Core;
 using Spectara.Revela.Core.Models;
 using Spectara.Revela.Core.Services;
+using Spectara.Revela.Features.Packages.Commands.Plugins;
+using Spectara.Revela.Features.Packages.Services;
 using Spectara.Revela.Sdk.Abstractions;
 using Spectara.Revela.Sdk.Hosting;
 using Spectara.Revela.Sdk.Services;
@@ -47,12 +46,13 @@ public sealed class PackageManagerRegistrationTests
         indexService.SearchByTypeAsync("RevelaPlugin", Arg.Any<CancellationToken>()).Returns(
             [new PackageIndexEntry { Id = fullPackageId, Version = "2.0.0", Description = "Fixture plugin", Source = "fixture", Types = ["RevelaPlugin"] }]);
         var globalConfig = Substitute.For<IGlobalConfigManager>();
-        globalConfig.GetPackagesAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<string, string?>());
+        var declarations = new PackageDeclarations(Substitute.For<IConfigService>(), globalConfig, NullLogger<PackageDeclarations>.Instance);
+        var installService = new PackageInstallService([installer], declarations, Path.Combine(Path.GetTempPath(), $"revela-none-{Guid.NewGuid():N}"));
         var logger = new RegistrationLogger<PluginInstallCommand>();
         var sourceManager = Substitute.For<INuGetSourceManager>();
         sourceManager.GetPendingProjectFeeds().Returns([]);
         var consent = new ProjectFeedConsent(sourceManager, Substitute.For<IConsoleCapabilities>());
-        var command = new PluginInstallCommand(logger, installer, indexService, globalConfig, consent).Create();
+        var command = new PluginInstallCommand(logger, installService, indexService, consent).Create();
         using var cancellation = new CancellationTokenSource();
         using var writer = new StringWriter(CultureInfo.InvariantCulture);
         var originalConsole = AnsiConsole.Console;
@@ -108,70 +108,29 @@ public sealed class PackageManagerRegistrationTests
     }
 
     [TestMethod]
-    [DataRow(false)]
-    [DataRow(true)]
-    public async Task InstallFromNupkgAsync_RegistrationFails_RetainsFilesWithoutLoggingSuccess(bool cancel)
+    public async Task InstallFromNupkgAsync_InsideProject_ExtractsWithoutDeclaring()
     {
         using var project = TestProject.Create();
         var original = await File.ReadAllBytesAsync(project.ProjectJsonPath);
         var nupkgPath = await CreatePackageAsync(project);
         var targetDir = Path.Combine(project.RootPath, "installed");
-        using var cancellation = new CancellationTokenSource();
-        var failure = cancel
-            ? (Exception)new OperationCanceledException("Injected registration cancellation.", cancellation.Token)
-            : new IOException("Injected registration write failure.");
         var configService = Substitute.For<IConfigService>();
         configService.IsProjectInitialized().Returns(true);
-        configService.UpdateProjectConfigAsync(Arg.Any<JsonObject>(), cancellation.Token).Returns(async _ =>
-        {
-            if (cancel)
-            {
-                await cancellation.CancelAsync();
-            }
-
-            throw failure;
-        });
         var logger = new RegistrationLogger<PackageManager>();
         using var provider = CreateInstallerProvider(configService, logger);
         var installer = provider.GetRequiredService<PackageManager>();
 
-        if (cancel)
-        {
-            var thrown = await Assert.ThrowsAsync<OperationCanceledException>(() => installer.InstallFromNupkgAsync(
-                nupkgPath, targetDir, nupkgPath, cancellation.Token));
-            Assert.AreSame(failure, thrown);
-            Assert.AreEqual(cancellation.Token, thrown.CancellationToken);
-        }
-        else
-        {
-            Assert.IsNull(await installer.InstallFromNupkgAsync(nupkgPath, targetDir, nupkgPath, cancellation.Token));
-        }
+        var package = await installer.InstallFromNupkgAsync(nupkgPath, targetDir, CancellationToken.None);
 
-        var installedPath = Path.Combine(targetDir, PackageId);
-        CollectionAssert.AreEqual(new byte[] { 1, 2, 3, 4 }, await File.ReadAllBytesAsync(Path.Combine(installedPath, $"{PackageId}.dll")));
-        Assert.IsTrue(File.Exists(Path.Combine(installedPath, $"{PackageId}.meta.json")));
+        Assert.IsNotNull(package);
+        Assert.AreEqual("2.0.0", package.Version);
+        CollectionAssert.AreEqual(new byte[] { 1, 2, 3, 4 }, await File.ReadAllBytesAsync(Path.Combine(targetDir, PackageId, $"{PackageId}.dll")));
         CollectionAssert.AreEqual(original, await File.ReadAllBytesAsync(project.ProjectJsonPath));
-        await configService.Received(1).UpdateProjectConfigAsync(
-            Arg.Is<JsonObject>(patch => patch.Count == 1 && patch["dependencies"]!.AsObject().Count == 1 &&
-                patch["dependencies"]!["packages"]!.AsObject().Count == 1 &&
-                patch["dependencies"]!["packages"]![PackageId]!.GetValue<string>() == "2.0.0"), cancellation.Token);
-        var logs = logger.Entries;
-        Assert.IsFalse(logs.Any(entry => entry.Message.Contains("installed successfully", StringComparison.Ordinal)));
-        if (cancel)
-        {
-            Assert.IsEmpty(logs);
-        }
-        else
-        {
-            Assert.HasCount(1, logs);
-            Assert.AreEqual(LogLevel.Error, logs[0].Level);
-            Assert.AreSame(failure, logs[0].Exception);
-            Assert.Contains("files extracted but project registration failed", logs[0].Message, StringComparison.Ordinal);
-        }
+        Assert.IsEmpty(configService.ReceivedCalls());
     }
 
     [TestMethod]
-    public async Task InstallAndUninstallAsync_PreCanceled_PropagateBeforeAccessingGlobalPaths()
+    public async Task InstallAndUninstall_PreCanceled_PropagateBeforeAccessingGlobalPaths()
     {
         using var project = TestProject.Create();
         using var host = RevelaTestHost.Build(project.RootPath, services => services.AddRevelaCommands());
@@ -185,7 +144,7 @@ public sealed class PackageManagerRegistrationTests
 
         var installFailure = await Assert.ThrowsAsync<OperationCanceledException>(() => installer.InstallAsync(
             PackageId, cancellationToken: cancellation.Token));
-        var uninstallFailure = await Assert.ThrowsAsync<OperationCanceledException>(() => installer.UninstallPluginAsync(
+        var uninstallFailure = Assert.Throws<OperationCanceledException>(() => installer.Uninstall(
             PackageId, cancellation.Token));
 
         Assert.AreEqual(cancellation.Token, installFailure.CancellationToken);
@@ -199,8 +158,7 @@ public sealed class PackageManagerRegistrationTests
         var services = new ServiceCollection();
         services.AddSingleton(configService);
         services.AddSingleton(logger);
-        services.AddSingleton(new NupkgExtractor(NullLogger<NupkgExtractor>.Instance, TimeProvider.System));
-        services.AddSingleton<PluginProjectService>();
+        services.AddSingleton(new NupkgExtractor(NullLogger<NupkgExtractor>.Instance));
         services.AddSingleton(Substitute.For<INuGetSourceManager>());
         services.AddSingleton(Substitute.For<IBuildInfo>());
         services.AddHttpClient<PackageManager>();

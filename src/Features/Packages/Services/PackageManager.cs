@@ -3,40 +3,29 @@ using NuGet.Protocol;
 using NuGet.Protocol.Core.Types;
 using NuGet.Versioning;
 using Spectara.Revela.Core.Helpers;
-using Spectara.Revela.Core.Logging;
 using Spectara.Revela.Core.Services;
+using Spectara.Revela.Features.Packages.Logging;
 using Spectara.Revela.Sdk.Abstractions;
 using Spectara.Revela.Sdk.Hosting;
-
 using NuGetPackageSource = NuGet.Configuration.PackageSource;
 
-namespace Spectara.Revela.Core;
+namespace Spectara.Revela.Features.Packages.Services;
 
 /// <summary>
-/// Orchestrates plugin installation, updates, and removal via NuGet.
+/// Installs and removes package files (plugins and themes) in the plugin directory via NuGet.
 /// </summary>
 /// <remarks>
-/// Delegates extraction to <see cref="NupkgExtractor"/>, project.json management
-/// to <see cref="PluginProjectService"/>, and search to <see cref="PackageSearchService"/>.
+/// Only manages files: declaring packages in <c>dependencies.packages</c> and validating the
+/// package type is done by <see cref="PackageInstallService"/>; extraction by <see cref="NupkgExtractor"/>.
 /// HttpClient is injected via Typed HttpClient pattern for URL-based downloads.
 /// </remarks>
 public sealed class PackageManager(
     HttpClient httpClient,
     NupkgExtractor extractor,
-    PluginProjectService projectService,
     ILogger<PackageManager> logger,
     INuGetSourceManager nugetSourceManager,
     IBuildInfo buildInfo) : IPackageInstaller
 {
-    /// <summary>
-    /// Gets the bundled packages directory (next to executable).
-    /// </summary>
-    /// <remarks>
-    /// Used as a local NuGet feed for offline-first installation.
-    /// Contains .nupkg files bundled with the application.
-    /// </remarks>
-    public static string BundledPackagesDirectory => ConfigPathResolver.BundledPackagesDirectory;
-
     /// <summary>
     /// Gets the plugin directory based on installation type.
     /// </summary>
@@ -74,7 +63,7 @@ public sealed class PackageManager(
             {
                 // Local .nupkg file
                 logger.InstallingFromFile(packageId);
-                return await InstallFromNupkgAsync(packageId, targetDir, Path.GetFullPath(packageId), cancellationToken);
+                return await InstallFromNupkgAsync(packageId, targetDir, cancellationToken);
             }
             else if (Uri.TryCreate(packageId, UriKind.Absolute, out var uri))
             {
@@ -108,7 +97,7 @@ public sealed class PackageManager(
                     }
 
                     logger.InstallingFromFile(filePath);
-                    return await InstallFromNupkgAsync(filePath, targetDir, filePath, cancellationToken);
+                    return await InstallFromNupkgAsync(filePath, targetDir, cancellationToken);
                 }
             }
 
@@ -135,7 +124,7 @@ public sealed class PackageManager(
 
                     var sourceRepo = Repository.Factory.GetCoreV3(new NuGetPackageSource(sourceUrl));
                     var extracted = await ExtractFromNuGetAsync(packageId, version, sourceRepo, targetDir, cancellationToken);
-                    return extracted is null ? null : await RegisterExtractedPluginAsync(extracted, cancellationToken);
+                    return extracted is null ? null : Installed(extracted);
                 }
                 else
                 {
@@ -156,23 +145,9 @@ public sealed class PackageManager(
     }
 
     /// <summary>
-    /// Updates a plugin to the latest version by reinstalling it.
-    /// </summary>
-    /// <param name="packageId">The NuGet package ID of the plugin to update.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns>The installed package with its exact version, or null if the update failed.</returns>
-    public async Task<InstalledPackage?> UpdatePluginAsync(string packageId, CancellationToken cancellationToken = default)
-    {
-        logger.UpdatingPlugin(packageId);
-        _ = await UninstallPluginAsync(packageId, cancellationToken);
-        return await InstallAsync(packageId, version: null, source: null, cancellationToken);
-    }
-
-    /// <summary>
-    /// Uninstalls a plugin by removing its files and project.json entry.
+    /// Uninstalls a package by removing its folder from the plugin directory.
     /// </summary>
     /// <remarks>
-    /// Handles both new structure (plugins/{PackageId}/) and legacy (root DLL).
     /// Plugin configuration files are preserved for potential reinstallation.
     /// </remarks>
     /// <param name="packageId">The NuGet package ID of the plugin to uninstall.</param>
@@ -180,7 +155,7 @@ public sealed class PackageManager(
     /// <returns>True if the plugin was found and removed.</returns>
     /// <exception cref="ArgumentException"><paramref name="packageId"/> is not a valid NuGet package ID.</exception>
     /// <exception cref="InvalidOperationException">The plugin folder escapes the plugin directory or is a symbolic link or junction.</exception>
-    public async Task<bool> UninstallPluginAsync(string packageId, CancellationToken cancellationToken = default)
+    public bool Uninstall(string packageId, CancellationToken cancellationToken = default)
     {
         // The ID becomes a path segment below the plugin directory, so reject anything that
         // could traverse, be rooted or contain separators before touching the filesystem.
@@ -201,33 +176,10 @@ public sealed class PackageManager(
             cancellationToken.ThrowIfCancellationRequested();
             logger.UninstallingPlugin(packageId);
 
-            var found = false;
-
             // Delete plugin subdirectory with all contents (main DLL + dependencies)
             if (Directory.Exists(pluginPath))
             {
                 Directory.Delete(pluginPath, recursive: true);
-                found = true;
-            }
-
-            // Legacy: Also check for root DLL (old structure or development builds)
-            var dllPath = Path.Combine(pluginDir, $"{packageId}.dll");
-            if (File.Exists(dllPath))
-            {
-                File.Delete(dllPath);
-                found = true;
-            }
-
-            // Legacy: Delete .meta.json file in root (old structure)
-            var metaPath = Path.Combine(pluginDir, $"{packageId}.meta.json");
-            if (File.Exists(metaPath))
-            {
-                File.Delete(metaPath);
-            }
-
-            if (found)
-            {
-                await projectService.RemovePackageAsync(packageId, cancellationToken);
                 logger.PluginUninstalled(packageId);
                 return true;
             }
@@ -246,52 +198,9 @@ public sealed class PackageManager(
         }
     }
 
-    /// <summary>
-    /// Lists all installed plugins from the plugin directory.
-    /// </summary>
-    /// <remarks>
-    /// Plugins can be installed in two ways:
-    /// 1. Subdirectory: plugins/{PackageId}/{PackageId}.dll (with dependencies)
-    /// 2. Root DLL: plugins/{PackageId}.dll (development/legacy)
-    /// </remarks>
-
     /// <inheritdoc />
     Task<bool> IPackageInstaller.UninstallAsync(string packageId, CancellationToken cancellationToken) =>
-        UninstallPluginAsync(packageId, cancellationToken);
-
-    public static IEnumerable<(string Name, string Location)> ListInstalledPlugins()
-    {
-        List<(string Name, string Location)> results = [];
-        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-
-        if (!Directory.Exists(PluginDirectory))
-        {
-            return results;
-        }
-
-        // Check subdirectories first (installed plugins)
-        foreach (var subDir in Directory.GetDirectories(PluginDirectory))
-        {
-            var folderName = Path.GetFileName(subDir);
-            var mainDll = Path.Combine(subDir, $"{folderName}.dll");
-            if (File.Exists(mainDll) && seen.Add(folderName))
-            {
-                results.Add((folderName, "installed"));
-            }
-        }
-
-        // Check root DLLs (development/legacy)
-        foreach (var dll in Directory.GetFiles(PluginDirectory, "*.dll", SearchOption.TopDirectoryOnly))
-        {
-            var name = Path.GetFileNameWithoutExtension(dll);
-            if (seen.Add(name))
-            {
-                results.Add((name, "installed"));
-            }
-        }
-
-        return results;
-    }
+        Task.FromResult(Uninstall(packageId, cancellationToken));
 
     internal async Task<InstalledPackage?> ExtractFromNuGetAsync(
         string packageId,
@@ -358,7 +267,7 @@ public sealed class PackageManager(
                 }
             }
 
-            return await extractor.ExtractAsync(tempFile, targetDir, sourceRepo.PackageSource.Source, cancellationToken);
+            return await extractor.ExtractAsync(tempFile, targetDir, cancellationToken);
         }
         finally
         {
@@ -381,7 +290,7 @@ public sealed class PackageManager(
                 await stream.CopyToAsync(fileStream, cancellationToken);
             }
 
-            return await InstallFromNupkgAsync(tempFile, targetDir, url.ToString(), cancellationToken);
+            return await InstallFromNupkgAsync(tempFile, targetDir, cancellationToken);
         }
         finally
         {
@@ -392,28 +301,14 @@ public sealed class PackageManager(
         }
     }
 
-    internal async Task<InstalledPackage?> InstallFromNupkgAsync(string nupkgPath, string targetDir, string installedFrom, CancellationToken cancellationToken)
+    internal async Task<InstalledPackage?> InstallFromNupkgAsync(string nupkgPath, string targetDir, CancellationToken cancellationToken)
     {
-        var extracted = await extractor.ExtractAsync(nupkgPath, targetDir, installedFrom, cancellationToken);
-        return extracted is null ? null : await RegisterExtractedPluginAsync(extracted, cancellationToken);
+        var extracted = await extractor.ExtractAsync(nupkgPath, targetDir, cancellationToken);
+        return extracted is null ? null : Installed(extracted);
     }
 
-    private async Task<InstalledPackage?> RegisterExtractedPluginAsync(InstalledPackage package, CancellationToken cancellationToken)
+    private InstalledPackage Installed(InstalledPackage package)
     {
-        try
-        {
-            await projectService.AddPackageAsync(package.Id, package.Version, cancellationToken);
-        }
-        catch (OperationCanceledException)
-        {
-            throw;
-        }
-        catch (Exception ex)
-        {
-            logger.ProjectRegistrationFailed(ex, package.Id);
-            return null;
-        }
-
         logger.PluginInstalled(package.Id);
         return package;
     }
@@ -454,13 +349,8 @@ public sealed class PackageManager(
 
             if (extracted is not null)
             {
-                var registered = await RegisterExtractedPluginAsync(extracted, cancellationToken);
-                if (registered is not null)
-                {
-                    logger.SuccessFromSource(packageId, source.Name);
-                }
-
-                return registered;
+                logger.SuccessFromSource(packageId, source.Name);
+                return Installed(extracted);
             }
         }
 
@@ -476,7 +366,7 @@ public sealed class PackageManager(
             return source;
         }
 
-        var sources = await nugetSourceManager.GetAllSourcesAsync(cancellationToken);
+        var sources = await nugetSourceManager.LoadSourcesAsync(cancellationToken);
         var namedSource = sources.FirstOrDefault(s => s.Name.Equals(source, StringComparison.OrdinalIgnoreCase));
 
         if (namedSource is not null)

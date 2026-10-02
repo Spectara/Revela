@@ -3,7 +3,7 @@ using Spectara.Revela.Core.Services;
 using Spectara.Revela.Sdk;
 using Spectre.Console;
 
-namespace Spectara.Revela.Commands.Config.Feed;
+namespace Spectara.Revela.Features.Packages.Commands.Config.Feed;
 
 /// <summary>
 /// Command to list all NuGet feeds.

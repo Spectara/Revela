@@ -1,6 +1,6 @@
 using System.CommandLine;
 
-namespace Spectara.Revela.Commands.Config.Feed;
+namespace Spectara.Revela.Features.Packages.Commands.Config.Feed;
 
 /// <summary>
 /// Parent command for NuGet feed management.

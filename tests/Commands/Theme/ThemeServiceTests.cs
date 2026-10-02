@@ -202,7 +202,7 @@ public sealed class ThemeServiceTests
             Substitute.For<ITemplateResolver>(),
             Substitute.For<IAssetResolver>(),
             packageContext,
-            [],
+            new PackageInstallService([], new PackageDeclarations(Substitute.For<IConfigService>(), Substitute.For<IGlobalConfigManager>(), NullLogger<PackageDeclarations>.Instance)),
             Substitute.For<IPackageIndexService>(),
             configService,
             Options.Create(new ProjectEnvironment { Path = "test-project" }),

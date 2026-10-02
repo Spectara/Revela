@@ -1,7 +1,7 @@
 using Microsoft.Extensions.Options;
 using Spectara.Revela.Sdk.Configuration;
 
-namespace Spectara.Revela.Commands.Restore;
+namespace Spectara.Revela.Features.Packages.Commands.Restore;
 
 /// <summary>
 /// A package required by the merged configuration (<c>dependencies.packages</c>).

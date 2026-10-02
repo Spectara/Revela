@@ -1,6 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 
-namespace Spectara.Revela.Commands.Restore;
+namespace Spectara.Revela.Features.Packages.Commands.Restore;
 
 /// <summary>
 /// Extension methods for registering Restore feature services.

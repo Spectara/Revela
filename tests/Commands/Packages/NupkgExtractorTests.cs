@@ -1,5 +1,5 @@
 using Microsoft.Extensions.Logging.Abstractions;
-using Spectara.Revela.Core;
+using Spectara.Revela.Features.Packages.Services;
 
 namespace Spectara.Revela.Tests.Commands.Packages;
 
@@ -19,9 +19,9 @@ public sealed class NupkgExtractorTests
             var targetDir = Path.Combine(root, "plugins");
             _ = Directory.CreateDirectory(targetDir);
             var nupkg = TestPackageFactory.CreateRawPackage(Path.Combine(root, "crafted.nupkg"), nuspecId);
-            var extractor = new NupkgExtractor(NullLogger<NupkgExtractor>.Instance, TimeProvider.System);
+            var extractor = new NupkgExtractor(NullLogger<NupkgExtractor>.Instance);
 
-            var identity = await extractor.ExtractAsync(nupkg, targetDir, nupkg, CancellationToken.None);
+            var identity = await extractor.ExtractAsync(nupkg, targetDir, CancellationToken.None);
 
             Assert.IsNull(identity);
             Assert.IsFalse(Directory.Exists(Path.Combine(root, "escaped")));
@@ -42,9 +42,9 @@ public sealed class NupkgExtractorTests
         {
             var targetDir = Path.Combine(root, "plugins");
             var nupkg = TestPackageFactory.CreatePackage(Path.Combine(root, "feed"), "Spectara.Revela.Plugins.Fixture", "1.0.0");
-            var extractor = new NupkgExtractor(NullLogger<NupkgExtractor>.Instance, TimeProvider.System);
+            var extractor = new NupkgExtractor(NullLogger<NupkgExtractor>.Instance);
 
-            var identity = await extractor.ExtractAsync(nupkg, targetDir, nupkg, CancellationToken.None);
+            var identity = await extractor.ExtractAsync(nupkg, targetDir, CancellationToken.None);
 
             Assert.IsNotNull(identity);
             Assert.IsTrue(File.Exists(Path.Combine(targetDir, "Spectara.Revela.Plugins.Fixture", "Spectara.Revela.Plugins.Fixture.dll")));

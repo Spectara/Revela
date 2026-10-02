@@ -4,19 +4,22 @@ using Spectara.Revela.Core.Models;
 using Spectara.Revela.Core.Services;
 using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Output;
-using Spectara.Revela.Sdk.Services;
 using Spectre.Console;
 
 namespace Spectara.Revela.Features.Theme.Commands;
 
 /// <summary>
-/// Handles 'revela theme install' — interactive UI + delegates to <see cref="IThemeService"/>.
+/// Handles 'revela theme install'.
 /// </summary>
+/// <remarks>
+/// A single package installs without the package index; the package type is validated from the
+/// package's nuspec by <see cref="PackageInstallService"/>. Interactive selection and <c>--all</c>
+/// list themes from the index ('revela packages refresh').
+/// </remarks>
 internal sealed partial class ThemeInstallCommand(
     ILogger<ThemeInstallCommand> logger,
     IPackageIndexService packageIndexService,
-    IThemeService themeService,
-    IGlobalConfigManager globalConfigManager,
+    PackageInstallService installService,
     IEnumerable<ProjectFeedConsent> feedConsents)
 {
     /// <summary>
@@ -97,7 +100,7 @@ internal sealed partial class ThemeInstallCommand(
     /// <returns>Result containing installed, already-installed, and failed packages.</returns>
     public async Task<InstallResult> InstallAllAsync(bool showRestartNotice = true, CancellationToken cancellationToken = default)
     {
-        var themes = await packageIndexService.SearchByTypeAsync("RevelaTheme", cancellationToken);
+        var themes = await packageIndexService.SearchByTypeAsync(PackageIds.ThemePackageType, cancellationToken);
 
         if (themes.Count == 0)
         {
@@ -107,7 +110,7 @@ internal sealed partial class ThemeInstallCommand(
         }
 
         // Get already installed themes to filter them out
-        var installedIds = await GetInstalledThemeIdsAsync(themes, cancellationToken);
+        var installedIds = GetInstalledThemeIds(themes);
 
         var availableThemes = themes.Where(t => !installedIds.Contains(t.Id)).ToList();
 
@@ -169,8 +172,8 @@ internal sealed partial class ThemeInstallCommand(
         if (selectedThemes.Count == 0)
         {
             // Check if all themes are already installed
-            var themes = await packageIndexService.SearchByTypeAsync("RevelaTheme", cancellationToken);
-            var installedThemes = await GetInstalledThemeIdsAsync(themes, cancellationToken);
+            var themes = await packageIndexService.SearchByTypeAsync(PackageIds.ThemePackageType, cancellationToken);
+            var installedThemes = GetInstalledThemeIds(themes);
             if (installedThemes.Count > 0)
             {
                 return new InstallResult([], [.. installedThemes], []);
@@ -221,7 +224,7 @@ internal sealed partial class ThemeInstallCommand(
 
     private async Task<IReadOnlyList<string>> SelectThemesInteractivelyAsync(CancellationToken cancellationToken)
     {
-        var themes = await packageIndexService.SearchByTypeAsync("RevelaTheme", cancellationToken);
+        var themes = await packageIndexService.SearchByTypeAsync(PackageIds.ThemePackageType, cancellationToken);
 
         if (themes.Count == 0)
         {
@@ -241,7 +244,7 @@ internal sealed partial class ThemeInstallCommand(
         }
 
         // Get already installed themes to filter them out
-        var installedThemes = await GetInstalledThemeIdsAsync(themes, cancellationToken);
+        var installedThemes = GetInstalledThemeIds(themes);
 
         // Filter out already installed themes
         var availableThemes = themes.Where(t => !installedThemes.Contains(t.Id)).ToList();
@@ -302,66 +305,30 @@ internal sealed partial class ThemeInstallCommand(
     {
         try
         {
-            // Convert short name to full package ID
-            // Examples: "Lumina" → "Spectara.Revela.Themes.Lumina"
-            //           "Spectara.Revela.Themes.Lumina" → unchanged
-            var packageId = name.StartsWith("Spectara.Revela.", StringComparison.OrdinalIgnoreCase)
-                ? name
-                : $"Spectara.Revela.Themes.{name}";
-
-            // Check if package is in the index
-            var packageEntry = await packageIndexService.FindPackageAsync(packageId, cancellationToken);
-
-            if (packageEntry is null)
-            {
-                // Check if index exists
-                var indexAge = packageIndexService.GetIndexAge();
-                if (indexAge is null)
-                {
-                    AnsiConsole.MarkupLine($"{OutputMarkers.Warning} Package index not found.");
-                    AnsiConsole.MarkupLine("  Run [cyan]revela packages refresh[/] first.");
-                    return 1;
-                }
-
-                AnsiConsole.MarkupLine($"{OutputMarkers.Error} Package [cyan]{Markup.Escape(packageId)}[/] not found in index.");
-                AnsiConsole.MarkupLine("  Run [cyan]revela packages refresh[/] to update the index.");
-                return 1;
-            }
-
-            // Validate package type
-            if (!packageEntry.Types.Contains("RevelaTheme", StringComparer.OrdinalIgnoreCase))
-            {
-                AnsiConsole.MarkupLine($"{OutputMarkers.Error} Package [cyan]{Markup.Escape(packageId)}[/] is not a theme.");
-                AnsiConsole.MarkupLine($"  Package types: {Markup.Escape(string.Join(", ", packageEntry.Types))}");
-                AnsiConsole.MarkupLine("  Use [cyan]revela plugin install[/] for plugins.");
-                return 1;
-            }
+            var packageId = PackageIds.FromThemeName(name);
 
             var sourceInfo = source is not null ? $" from [dim]{Markup.Escape(source)}[/]" : "";
             AnsiConsole.MarkupLine($"[blue]Installing theme:[/] [cyan]{Markup.Escape(packageId)}[/]{sourceInfo}");
             LogInstallingTheme(logger, packageId, version, source);
 
-            var package = await AnsiConsole.Status()
+            var result = await AnsiConsole.Status()
                 .Spinner(Spinner.Known.Dots)
                 .StartAsync("Installing...", async ctx =>
                 {
                     cancellationToken.ThrowIfCancellationRequested();
                     ctx.Status($"Downloading {packageId}...");
-                    return await themeService.InstallAsync(packageId, version, source, cancellationToken);
+                    return await installService.InstallAsync(packageId, PackageIds.ThemePackageType, version, source, cancellationToken);
                 });
 
-            if (package is not null)
-            {
-                // Register the exact installed version in global config (revela.json)
-                await globalConfigManager.AddPackageAsync(package.Id, package.Version, cancellationToken);
-
-                AnsiConsole.MarkupLine($"{OutputMarkers.Success} Theme [cyan]{Markup.Escape(package.Id)}[/] [dim]{Markup.Escape(package.Version)}[/] installed successfully.");
-                AnsiConsole.MarkupLine("[dim]Configure with:[/] revela config theme select");
-                return 0;
-            }
-
-            AnsiConsole.MarkupLine($"{OutputMarkers.Error} Failed to install theme.");
-            return 1;
+            return InstallCommandHelper.ReportInstall(
+                result,
+                packageId,
+                "theme",
+                "[dim]After restarting revela, activate it with:[/] revela config theme --set <name>");
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
         }
         catch (Exception ex)
         {
@@ -372,37 +339,13 @@ internal sealed partial class ThemeInstallCommand(
     }
 
     /// <summary>
-    /// Gets available themes (not yet installed) from the package index.
+    /// Returns the IDs of indexed themes that are installed in the plugin directory.
     /// </summary>
-    /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns>List of available theme packages.</returns>
-    public async Task<IReadOnlyList<PackageIndexEntry>> GetAvailableThemesAsync(CancellationToken cancellationToken = default)
-    {
-        var themes = await packageIndexService.SearchByTypeAsync("RevelaTheme", cancellationToken);
-        if (themes.Count == 0)
-        {
-            return [];
-        }
-
-        var installedIds = await GetInstalledThemeIdsAsync(themes, cancellationToken);
-
-        return [.. themes.Where(t => !installedIds.Contains(t.Id))];
-    }
-
-    /// <summary>
-    /// Returns the IDs of indexed themes that are declared in the global <c>dependencies.packages</c>.
-    /// </summary>
-    private async Task<HashSet<string>> GetInstalledThemeIdsAsync(
-        IReadOnlyList<PackageIndexEntry> themes,
-        CancellationToken cancellationToken)
-    {
-        var packages = await globalConfigManager.GetPackagesAsync(cancellationToken);
-        var packageIds = packages.Keys.ToHashSet(StringComparer.OrdinalIgnoreCase);
-        return themes
+    private HashSet<string> GetInstalledThemeIds(IReadOnlyList<PackageIndexEntry> themes) =>
+        themes
             .Select(theme => theme.Id)
-            .Where(packageIds.Contains)
+            .Where(installService.IsInstalled)
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
-    }
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Installing theme {PackageId} version={Version} source={Source}")]
     private static partial void LogInstallingTheme(ILogger logger, string packageId, string? version, string? source);

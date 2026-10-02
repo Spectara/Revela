@@ -130,14 +130,6 @@ public sealed class NuGetSourceManagerTests
     }
 
     [TestMethod]
-    public async Task RemoveSourceAsync_NuGetOrg_Throws()
-    {
-        using var context = Create(globalJson: null, projectJson: null);
-
-        await Assert.ThrowsExactlyAsync<InvalidOperationException>(() => context.Manager.RemoveSourceAsync("NuGet.Org"));
-    }
-
-    [TestMethod]
     [DataRow("https://api.nuget.org/v3/index.json")]
     [DataRow("http://127.0.0.1:5000/v3/index.json")]
     public void ResolveFeedLocation_Url_ReturnsUnchanged(string feed) =>

@@ -25,6 +25,10 @@ public static class ServiceCollectionExtensions
         // Theme service (UI-free, used by CLI commands, MCP, GUI)
         services.TryAddTransient<IThemeService, ThemeService>();
 
+        // Install flow (installs only work when the Packages feature registers an IPackageInstaller)
+        services.TryAddTransient<PackageDeclarations>();
+        services.TryAddTransient<PackageInstallService>();
+
         // Commands (thin CLI wrappers)
         services.TryAddTransient<ThemeCommand>();
         services.TryAddTransient<ThemeListCommand>();

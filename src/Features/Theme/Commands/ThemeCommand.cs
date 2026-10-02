@@ -1,5 +1,5 @@
 using System.CommandLine;
-using Spectara.Revela.Sdk.Abstractions;
+using Spectara.Revela.Core.Services;
 
 namespace Spectara.Revela.Features.Theme.Commands;
 
@@ -18,7 +18,7 @@ internal sealed class ThemeCommand(
     ThemeListCommand listCommand,
     ThemeFilesCommand filesCommand,
     ThemeExtractCommand extractCommand,
-    IEnumerable<IPackageInstaller> packageInstallers,
+    PackageInstallService packageInstallService,
     ThemeInstallCommand installCommand,
     ThemeUninstallCommand uninstallCommand)
 {
@@ -35,8 +35,8 @@ internal sealed class ThemeCommand(
         command.Subcommands.Add(filesCommand.Create());
         command.Subcommands.Add(extractCommand.Create());
 
-        // Only available when Packages feature is loaded (Cli, not Cli.Embedded)
-        if (packageInstallers.Any())
+        // Only available when the Packages feature is loaded (Cli, not Cli.Embedded — like 'plugin')
+        if (packageInstallService.IsAvailable)
         {
             command.Subcommands.Add(installCommand.Create());
             command.Subcommands.Add(uninstallCommand.Create());

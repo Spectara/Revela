@@ -1,8 +1,13 @@
+using System.Globalization;
 using System.Net;
 using System.Text;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
-using Spectara.Revela.Commands.Packages;
+using NSubstitute;
 using Spectara.Revela.Core.Models;
+using Spectara.Revela.Core.Services;
+using Spectara.Revela.Features.Packages.Commands.Packages;
+using Spectre.Console;
 
 namespace Spectara.Revela.Tests.Commands.Packages;
 
@@ -86,10 +91,90 @@ public sealed class RefreshCommandTests
         }
     }
 
+    [TestMethod]
+    [DataRow("Spectara.Revela.Themes.Noir", "RevelaTheme")]
+    [DataRow("Spectara.Revela.Themes.Lumina.Statistics", "RevelaTheme")]
+    [DataRow("Spectara.Revela.Plugins.Source.OneDrive", "RevelaPlugin")]
+    public async Task ScanSourceAsync_RemoteResultWithoutPackageTypes_InfersTypeFromOfficialNamespace(string packageId, string expectedType)
+    {
+        var response = $$"""
+            { "totalHits": 1, "data": [{ "id": "{{packageId}}", "version": "1.0.0", "description": "No types", "authors": "Spectara", "verified": true }] }
+            """;
+        using var handler = new FeedHandler("https://feed.test/v3/index.json", response);
+        using var httpClient = new HttpClient(handler);
+        var source = new NuGetSource { Name = "nuget.org", Url = "https://feed.test/v3/index.json" };
+
+        var packages = await RefreshCommand.ScanSourceAsync(source, "built-in", httpClient, NullLogger.Instance, CancellationToken.None);
+
+        Assert.HasCount(1, packages);
+        CollectionAssert.AreEqual(new[] { expectedType }, packages[0].Types.ToArray());
+    }
+
+    [TestMethod]
+    [DoNotParallelize]
+    public async Task RefreshThenSearch_LocalFeed_SearchFindsRefreshedPackage()
+    {
+        var root = Directory.CreateTempSubdirectory("revela-index-").FullName;
+        try
+        {
+            var feed = Path.Combine(root, "feed");
+            _ = TestPackageFactory.CreatePackage(feed, "Spectara.Revela.Plugins.Roundtrip", "1.2.3");
+            var sourceManager = Substitute.For<INuGetSourceManager>();
+            sourceManager.GetAllSourcesWithLocationAsync(Arg.Any<CancellationToken>())
+                .Returns([(new NuGetSource { Name = "local", Url = feed }, "local")]);
+            using var httpClient = new HttpClient();
+            var services = new ServiceCollection();
+            services.AddLogging();
+            services.AddSingleton(sourceManager);
+            services.AddSingleton(httpClient);
+            services.AddSingleton(TimeProvider.System);
+            services.AddSingleton<IPackageIndexService>(new PackageIndexService(TimeProvider.System, Path.Combine(root, "packages.json")));
+            using var provider = services.BuildServiceProvider();
+            var refresh = ActivatorUtilities.CreateInstance<RefreshCommand>(provider);
+            var search = ActivatorUtilities.CreateInstance<SearchCommand>(provider);
+
+            var (refreshExit, refreshOutput) = await CaptureAsync(() => refresh.RefreshAsync());
+            var (searchExit, searchOutput) = await CaptureAsync(() => search.Create().Parse(["Roundtrip"]).InvokeAsync());
+
+            Assert.AreEqual(0, refreshExit, refreshOutput);
+            Assert.AreEqual(0, searchExit, searchOutput);
+            Assert.Contains("Roundtrip", searchOutput, StringComparison.Ordinal);
+            Assert.Contains("1.2.3", searchOutput, StringComparison.Ordinal);
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    private static async Task<(int ExitCode, string Output)> CaptureAsync(Func<Task<int>> action)
+    {
+        using var writer = new StringWriter(CultureInfo.InvariantCulture);
+        var originalConsole = AnsiConsole.Console;
+        var console = AnsiConsole.Create(new AnsiConsoleSettings
+        {
+            Ansi = AnsiSupport.No,
+            ColorSystem = ColorSystemSupport.NoColors,
+            Interactive = InteractionSupport.No,
+            Out = new AnsiConsoleOutput(writer)
+        });
+        console.Profile.Width = 240;
+        AnsiConsole.Console = console;
+        try
+        {
+            var exitCode = await action();
+            return (exitCode, writer.ToString());
+        }
+        finally
+        {
+            AnsiConsole.Console = originalConsole;
+        }
+    }
+
     /// <summary>
     /// Serves a NuGet service index at <c>serviceIndexUrl</c> and a fixed search response.
     /// </summary>
-    private sealed class FeedHandler(string serviceIndexUrl) : HttpMessageHandler
+    private sealed class FeedHandler(string serviceIndexUrl, string searchResponse = SearchResponse) : HttpMessageHandler
     {
         public int RequestCount { get; private set; }
 
@@ -99,7 +184,7 @@ public sealed class RefreshCommandTests
             var url = request.RequestUri!.ToString();
             var content = url == serviceIndexUrl
                 ? $$"""{ "version": "3.0.0", "resources": [{ "@id": "{{SearchEndpoint}}", "@type": "SearchQueryService/3.5.0" }] }"""
-                : url.StartsWith(SearchEndpoint, StringComparison.Ordinal) ? SearchResponse : null;
+                : url.StartsWith(SearchEndpoint, StringComparison.Ordinal) ? searchResponse : null;
 
             return Task.FromResult(content is null
                 ? new HttpResponseMessage(HttpStatusCode.NotFound)

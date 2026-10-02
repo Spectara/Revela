@@ -1,4 +1,6 @@
-namespace Spectara.Revela.Core.Logging;
+using Spectara.Revela.Features.Packages.Services;
+
+namespace Spectara.Revela.Features.Packages.Logging;
 
 /// <summary>
 /// High-performance logging for NupkgExtractor using source-generated extension methods.
@@ -19,9 +21,6 @@ internal static partial class NupkgExtractorLogging
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Package {PackageId} extracted successfully ({FileCount} file(s))")]
     public static partial void PackageExtracted(this ILogger<NupkgExtractor> logger, string packageId, int fileCount);
-
-    [LoggerMessage(Level = LogLevel.Debug, Message = "Created metadata file: {MetadataPath}")]
-    public static partial void MetadataCreated(this ILogger<NupkgExtractor> logger, string metadataPath);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Skipped suspicious nupkg entry with unsafe path: {EntryName}")]
     public static partial void SkippedSuspiciousEntry(this ILogger<NupkgExtractor> logger, string entryName);

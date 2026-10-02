@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Abstractions;
 using Spectara.Revela.Sdk.Json;
 using Spectara.Revela.Sdk.Themes;
@@ -52,10 +53,12 @@ public sealed class LocalThemeProvider : ITheme
                 "Local theme.json must describe a base theme; extension fields 'targetTheme' and 'prefix' must be absent or blank.");
         }
 
-        var themeName = themeConfig.Name ?? Path.GetFileName(themeDirectory);
+        var folderName = Path.GetFileName(Path.TrimEndingDirectorySeparator(themeDirectory));
+        var themeName = themeConfig.Name ?? folderName;
         Metadata = new PackageMetadata
         {
-            Id = $"Spectara.Revela.Themes.{themeName}",
+            // Project-relative folder, not a package ID: a local copy must not pose as the package it came from.
+            Id = $"{ProjectPaths.Themes}/{folderName}",
             Name = themeName,
             Version = themeConfig.Version ?? "1.0.0",
             Description = themeConfig.Description ?? "Local theme",

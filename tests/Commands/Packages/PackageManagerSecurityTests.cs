@@ -3,13 +3,11 @@ using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using NuGet.Protocol;
 using NuGet.Protocol.Core.Types;
-using Spectara.Revela.Core;
 using Spectara.Revela.Core.Models;
 using Spectara.Revela.Core.Services;
-using Spectara.Revela.Sdk.Abstractions;
+using Spectara.Revela.Features.Packages.Services;
 using Spectara.Revela.Sdk.Hosting;
 using Spectara.Revela.Tests.Shared.Http;
-
 using NuGetPackageSource = NuGet.Configuration.PackageSource;
 
 namespace Spectara.Revela.Tests.Commands.Packages;
@@ -75,7 +73,7 @@ public sealed class PackageManagerSecurityTests
     {
         using var httpClient = new HttpClient();
         var (manager, logger, sourceManager) = CreateManager(httpClient);
-        sourceManager.GetAllSourcesAsync(Arg.Any<CancellationToken>())
+        sourceManager.LoadSourcesAsync(Arg.Any<CancellationToken>())
             .Returns([new NuGetSource { Name = "corp", Url = InsecureFeed }]);
 
         var installed = await manager.InstallAsync(FixtureId, source: source);
@@ -156,7 +154,6 @@ public sealed class PackageManagerSecurityTests
         var logger = new RecordingLogger<PackageManager>();
         var sourceManager = Substitute.For<INuGetSourceManager>();
         sourceManager.LoadSourcesAsync(Arg.Any<CancellationToken>()).Returns([]);
-        sourceManager.GetAllSourcesAsync(Arg.Any<CancellationToken>()).Returns([]);
         if (buildInfo is null)
         {
             buildInfo = Substitute.For<IBuildInfo>();
@@ -165,8 +162,7 @@ public sealed class PackageManagerSecurityTests
 
         var manager = new PackageManager(
             httpClient,
-            new NupkgExtractor(NullLogger<NupkgExtractor>.Instance, TimeProvider.System),
-            new PluginProjectService(Substitute.For<IConfigService>(), NullLogger<PluginProjectService>.Instance),
+            new NupkgExtractor(NullLogger<NupkgExtractor>.Instance),
             logger,
             sourceManager,
             buildInfo);

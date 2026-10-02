@@ -1,6 +1,6 @@
 using System.CommandLine;
 
-namespace Spectara.Revela.Commands.Plugins;
+namespace Spectara.Revela.Features.Packages.Commands.Plugins;
 
 /// <summary>
 /// Parent command for plugin management.

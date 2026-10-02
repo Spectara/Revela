@@ -21,7 +21,10 @@ public sealed class PackageIndexService : IPackageIndexService
     {
     }
 
-    internal PackageIndexService(TimeProvider timeProvider, string indexFilePath)
+    /// <summary>
+    /// Creates a service that reads and writes the index at <paramref name="indexFilePath"/>.
+    /// </summary>
+    public PackageIndexService(TimeProvider timeProvider, string indexFilePath)
     {
         this.timeProvider = timeProvider;
         IndexFilePath = indexFilePath;
@@ -56,6 +59,23 @@ public sealed class PackageIndexService : IPackageIndexService
         {
             return null;
         }
+    }
+
+    /// <inheritdoc />
+    public async Task SaveIndexAsync(PackageIndex index, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(index);
+
+        var directory = Path.GetDirectoryName(IndexFilePath);
+        if (!string.IsNullOrEmpty(directory))
+        {
+            _ = Directory.CreateDirectory(directory);
+        }
+
+        var json = JsonSerializer.Serialize(index, PackageIndexJsonContext.Default.PackageIndex);
+        await File.WriteAllTextAsync(IndexFilePath, json, cancellationToken);
+        cachedIndex = index;
+        lastLoadTime = timeProvider.GetUtcNow().UtcDateTime;
     }
 
     /// <inheritdoc />

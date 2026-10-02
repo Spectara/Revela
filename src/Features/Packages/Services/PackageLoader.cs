@@ -4,7 +4,7 @@ using Spectara.Revela.Core.Services;
 using Spectara.Revela.Sdk.Abstractions;
 using Spectara.Revela.Sdk.Configuration;
 
-namespace Spectara.Revela.Core;
+namespace Spectara.Revela.Features.Packages.Services;
 
 /// <summary>
 /// Loads plugins and themes from configured directories.
@@ -59,26 +59,20 @@ public sealed partial class PackageLoader(
             return;
         }
 
-        var rootDlls = Directory.GetFiles(directory, "*.dll", SearchOption.TopDirectoryOnly);
-        var subDirDlls = Directory.GetDirectories(directory)
-            .Select(subDir =>
-            {
-                var folderName = Path.GetFileName(subDir);
-                var mainDll = Path.Combine(subDir, $"{folderName}.dll");
-                return File.Exists(mainDll) ? mainDll : null;
-            })
-            .Where(dll => dll is not null)
-            .Cast<string>()
-            .ToArray();
+        var useDefaultContext = source == PackageSource.Bundled;
 
-        var pluginDlls = rootDlls.Concat(subDirDlls).ToArray();
+        // Installed packages always live in plugins/{PackageId}/{PackageId}.dll;
+        // only the application directory holds assemblies at its root.
+        var pluginDlls = useDefaultContext
+            ? Directory.GetFiles(directory, "*.dll", SearchOption.TopDirectoryOnly)
+            : [.. Directory.GetDirectories(directory)
+                .Select(subDir => Path.Combine(subDir, $"{Path.GetFileName(subDir)}.dll"))
+                .Where(File.Exists)];
 
         if (options.EnableVerboseLogging)
         {
             LogSearchingDirectory(directory, sourceLabel, pluginDlls.Length);
         }
-
-        var useDefaultContext = sourceLabel == "application";
 
         foreach (var dll in pluginDlls)
         {

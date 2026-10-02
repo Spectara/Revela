@@ -6,10 +6,10 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using NSubstitute;
 using Spectara.Revela.Commands;
-using Spectara.Revela.Commands.Restore;
-using Spectara.Revela.Core;
 using Spectara.Revela.Core.Models;
 using Spectara.Revela.Core.Services;
+using Spectara.Revela.Features.Packages.Commands.Restore;
+using Spectara.Revela.Features.Packages.Services;
 using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Abstractions;
 using Spectara.Revela.Sdk.Configuration;
@@ -301,6 +301,38 @@ public sealed class RestoreCommandTests
     }
 
     [TestMethod]
+    public async Task Restore_DependencyDeclaredOnlyGlobally_DoesNotPinItIntoProjectJson()
+    {
+        var packageId = $"Acme.Revela.GlobalOnly{Guid.NewGuid():N}";
+        var pluginPath = Path.Combine(PackageManager.PluginDirectory, packageId);
+        using var project = TestProject.CreateMinimal();
+        var feed = Path.Combine(project.RootPath, "feed");
+        _ = TestPackageFactory.CreatePackage(feed, packageId, "2.1.0");
+        var original = await File.ReadAllBytesAsync(project.ProjectJsonPath);
+        var sourceManager = Substitute.For<INuGetSourceManager>();
+        sourceManager.GetPendingProjectFeeds().Returns([]);
+        sourceManager.LoadSourcesAsync(Arg.Any<CancellationToken>()).Returns([new NuGetSource { Name = "local", Url = feed }]);
+
+        try
+        {
+            var (exitCode, output) = await InvokeAsync(
+                project, Scanner([(packageId, "latest")]), EmptyRegistry(), [], sourceManager: sourceManager);
+
+            Assert.AreEqual(0, exitCode, output);
+            Assert.Contains($"Plugin {packageId} 2.1.0", output, StringComparison.Ordinal);
+            Assert.IsTrue(File.Exists(Path.Combine(pluginPath, $"{packageId}.dll")));
+            CollectionAssert.AreEqual(original, await File.ReadAllBytesAsync(project.ProjectJsonPath));
+        }
+        finally
+        {
+            if (Directory.Exists(pluginPath))
+            {
+                Directory.Delete(pluginPath, recursive: true);
+            }
+        }
+    }
+
+    [TestMethod]
     public async Task Restore_ActiveThemeNotProvidedAnywhere_TriesOfficialFallbackAndExplainsFailure()
     {
         using var project = TestProject.CreateMinimal();
@@ -387,15 +419,18 @@ public sealed class RestoreCommandTests
         sourceManager ??= Substitute.For<INuGetSourceManager>();
         using var host = RevelaTestHost.Build(project.RootPath, services => services.AddRevelaCommands());
         var services = new ServiceCollection();
-        services.AddSingleton(new NupkgExtractor(NullLogger<NupkgExtractor>.Instance, TimeProvider.System));
-        services.AddSingleton(new PluginProjectService(
-            configService ?? host.Services.GetRequiredService<IConfigService>(), NullLogger<PluginProjectService>.Instance));
+        services.AddSingleton(new NupkgExtractor(NullLogger<NupkgExtractor>.Instance));
         services.AddSingleton<ILogger<PackageManager>>(NullLogger<PackageManager>.Instance);
         services.AddSingleton(sourceManager);
         services.AddSingleton(Substitute.For<IBuildInfo>());
         services.AddHttpClient<PackageManager>()
             .ConfigurePrimaryHttpMessageHandler(() => new RejectingHttpMessageHandler());
         using var provider = services.BuildServiceProvider();
+        var packageManager = provider.GetRequiredService<PackageManager>();
+        var declarations = new PackageDeclarations(
+            configService ?? host.Services.GetRequiredService<IConfigService>(),
+            Substitute.For<IGlobalConfigManager>(),
+            NullLogger<PackageDeclarations>.Instance);
         var console = Substitute.For<IConsoleCapabilities>();
         console.IsInteractive.Returns(false);
         var command = new RestoreCommand(
@@ -403,7 +438,9 @@ public sealed class RestoreCommandTests
             registry,
             installedPlugins ?? [],
             installedThemes ?? [],
-            provider.GetRequiredService<PackageManager>(),
+            packageManager,
+            new PackageInstallService([packageManager], declarations),
+            declarations,
             new ProjectFeedConsent(sourceManager, console),
             environment,
             NullLogger<RestoreCommand>.Instance).Create();
@@ -452,20 +489,11 @@ public sealed class RestoreCommandTests
         public async Task<List<(NuGetSource Source, string Location)>> GetAllSourcesWithLocationAsync(CancellationToken cancellationToken = default) =>
             [.. (await inner.GetAllSourcesWithLocationAsync(cancellationToken)).Where(s => s.Source.Name != "nuget.org")];
 
-        public Task<List<NuGetSource>> GetAllSourcesAsync(CancellationToken cancellationToken = default) =>
-            LoadSourcesAsync(cancellationToken);
-
         public IReadOnlyList<NuGetSource> GetProjectFeeds() => inner.GetProjectFeeds();
 
         public IReadOnlyList<NuGetSource> GetPendingProjectFeeds() => inner.GetPendingProjectFeeds();
 
         public void ApproveProjectFeeds() => inner.ApproveProjectFeeds();
-
-        public Task AddSourceAsync(string name, string url, CancellationToken cancellationToken = default) =>
-            inner.AddSourceAsync(name, url, cancellationToken);
-
-        public Task<bool> RemoveSourceAsync(string name, CancellationToken cancellationToken = default) =>
-            inner.RemoveSourceAsync(name, cancellationToken);
     }
 
     private sealed class RejectingHttpMessageHandler : HttpMessageHandler

@@ -1,4 +1,6 @@
-namespace Spectara.Revela.Core.Logging;
+using Spectara.Revela.Features.Packages.Services;
+
+namespace Spectara.Revela.Features.Packages.Logging;
 
 /// <summary>
 /// High-performance logging for PackageManager using source-generated extension methods.
@@ -16,9 +18,6 @@ internal static partial class PackageManagerLogging
 
     [LoggerMessage(Level = LogLevel.Error, Message = "Failed to install plugin {PackageId}")]
     public static partial void InstallFailed(this ILogger<PackageManager> logger, Exception exception, string packageId);
-
-    [LoggerMessage(Level = LogLevel.Information, Message = "Updating plugin: {PackageId}")]
-    public static partial void UpdatingPlugin(this ILogger<PackageManager> logger, string packageId);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Uninstalling plugin: {PackageId}")]
     public static partial void UninstallingPlugin(this ILogger<PackageManager> logger, string packageId);
@@ -49,9 +48,6 @@ internal static partial class PackageManagerLogging
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Plugin {PackageId} installed successfully")]
     public static partial void PluginInstalled(this ILogger<PackageManager> logger, string packageId);
-
-    [LoggerMessage(Level = LogLevel.Error, Message = "Plugin {PackageId}: files extracted but project registration failed. Extracted files were retained.")]
-    public static partial void ProjectRegistrationFailed(this ILogger<PackageManager> logger, Exception exception, string packageId);
 
     // Multi-source discovery logging
     [LoggerMessage(Level = LogLevel.Debug, Message = "Using named source '{SourceName}' -> {Url}")]

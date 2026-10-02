@@ -1,20 +1,19 @@
 using System.CommandLine;
 
+using Spectara.Revela.Core.Services;
 using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Output;
-using Spectara.Revela.Sdk.Services;
 
 using Spectre.Console;
 
 namespace Spectara.Revela.Features.Theme.Commands;
 
 /// <summary>
-/// Handles 'revela theme uninstall' — thin UI wrapper around <see cref="IThemeService"/>.
+/// Handles 'revela theme uninstall'.
 /// </summary>
 internal sealed partial class ThemeUninstallCommand(
     ILogger<ThemeUninstallCommand> logger,
-    IThemeService themeService,
-    IGlobalConfigManager globalConfigManager)
+    PackageInstallService installService)
 {
     /// <summary>
     /// Creates the command definition.
@@ -59,15 +58,10 @@ internal sealed partial class ThemeUninstallCommand(
     {
         try
         {
-            // Convert short name to full package ID
-            // Examples: "Lumina" → "Spectara.Revela.Themes.Lumina"
-            //           "Spectara.Revela.Themes.Lumina" → unchanged
-            var packageId = name.StartsWith("Spectara.Revela.", StringComparison.OrdinalIgnoreCase)
-                ? name
-                : $"Spectara.Revela.Themes.{name}";
+            var packageId = PackageIds.FromThemeName(name);
 
             if (!skipConfirm && !await AnsiConsole.ConfirmAsync(
-                $"[yellow]Uninstall theme '{packageId}'?[/]",
+                $"[yellow]Uninstall theme '{Markup.Escape(packageId)}'?[/]",
                 defaultValue: false,
                 cancellationToken))
             {
@@ -78,12 +72,10 @@ internal sealed partial class ThemeUninstallCommand(
             AnsiConsole.MarkupLine($"{OutputMarkers.Info} Uninstalling theme: [cyan]{Markup.Escape(packageId)}[/]");
             LogUninstallingTheme(logger, packageId);
 
-            var success = await themeService.UninstallAsync(packageId, cancellationToken);
+            var success = await installService.UninstallAsync(packageId, cancellationToken);
 
             if (success)
             {
-                // Files and the project.json entry are gone; drop the global dependency too.
-                _ = await globalConfigManager.RemovePackageAsync(packageId, cancellationToken);
                 AnsiConsole.MarkupLine($"{OutputMarkers.Success} Theme [cyan]{Markup.Escape(packageId)}[/] uninstalled successfully.");
                 return 0;
             }

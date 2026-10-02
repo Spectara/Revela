@@ -1,27 +1,22 @@
 using System.CommandLine;
-using System.Text.Json;
-using Spectara.Revela.Core.Models;
 using Spectara.Revela.Core.Services;
 using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Output;
 using Spectre.Console;
 
-namespace Spectara.Revela.Commands.Packages;
+namespace Spectara.Revela.Features.Packages.Commands.Packages;
 
 /// <summary>
 /// Command to search for packages in the local index.
 /// </summary>
 /// <remarks>
-/// Searches the cached package index (cache/packages.json).
-/// Run 'revela packages refresh' first to populate the index.
+/// Searches the index written by 'revela packages refresh' (see <see cref="IPackageIndexService"/>).
 /// </remarks>
 internal sealed partial class SearchCommand(
     ILogger<SearchCommand> logger,
+    IPackageIndexService packageIndexService,
     TimeProvider timeProvider)
 {
-    private static readonly string IndexFilePath = Path.Combine(
-        ConfigPathResolver.ConfigDirectory, "cache", "packages.json");
-
     /// <summary>
     /// Creates the CLI command.
     /// </summary>
@@ -56,17 +51,15 @@ internal sealed partial class SearchCommand(
     {
         try
         {
-            if (!File.Exists(IndexFilePath))
+            var index = await packageIndexService.LoadIndexAsync(cancellationToken);
+            if (index is null)
             {
                 AnsiConsole.MarkupLine($"{OutputMarkers.Warning} Package index not found.");
                 AnsiConsole.MarkupLine("  Run [cyan]revela packages refresh[/] first.");
                 return 1;
             }
 
-            var json = await File.ReadAllTextAsync(IndexFilePath, cancellationToken);
-            var index = JsonSerializer.Deserialize(json, PackageIndexJsonContext.Default.PackageIndex);
-
-            if (index is null || index.Packages.Count == 0)
+            if (index.Packages.Count == 0)
             {
                 AnsiConsole.MarkupLine($"{OutputMarkers.Warning} Package index is empty.");
                 AnsiConsole.MarkupLine("  Run [cyan]revela packages refresh[/] to update.");
@@ -134,9 +127,7 @@ internal sealed partial class SearchCommand(
                 };
 
                 // Shorten package ID for display
-                var shortId = package.Id
-                    .Replace("Spectara.Revela.Themes.", "", StringComparison.Ordinal)
-                    .Replace("Spectara.Revela.Plugins.", "", StringComparison.Ordinal);
+                var shortId = PackageIds.ToShortName(package.Id);
 
                 var description = package.Description.Length > 40
                     ? package.Description[..37] + "..."
