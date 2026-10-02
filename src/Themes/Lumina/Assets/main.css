@@ -83,11 +83,6 @@ figcaption {
   }
 }
 
-/* Enable animated height: auto transitions */
-html {
-  interpolate-size: allow-keywords;
-}
-
 /* ============================================
    CSS-only LQIP Decoder
    Based on: https://leanrada.com/notes/css-only-lqip/
@@ -560,10 +555,6 @@ main {
   margin-top: var(--space-2xl);
 
   >section {
-    > :is(h1, h2, h3, p, ul, pre, table, hr) {
-      flex: 1 1 100%;
-    }
-
     > :is(p, ul, pre, table) {
       margin-bottom: var(--space-m);
     }
@@ -700,13 +691,6 @@ main {
        container, so the sticky motion is unchanged. */
     &:not(:last-child) {
       overflow-y: clip;
-    }
-
-    >h2 {
-      margin-bottom: var(--space-m);
-      background-color: var(--color-bg);
-      position: relative;
-      box-shadow: 0 0 0 var(--space-m) var(--color-bg), 0px calc(var(--space-m) + var(--grid-gap)) 0 0 var(--color-bg);
     }
 
     >article {
@@ -932,12 +916,8 @@ main {
       align-items: baseline;
       justify-content: flex-start;
       gap: var(--space-2xs) var(--space-xs);
-      block-size: auto;
-      min-block-size: 0;
       padding-block-start: var(--space-xs);
       border-block-start: 1px solid color-mix(in oklch, var(--color) 14%, transparent);
-      outline: 0;
-      background: transparent;
       font-size: var(--font-size-0);
 
       >strong {
