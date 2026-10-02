@@ -99,7 +99,7 @@ calendar.labels.depart = "Abreise"
 ## How It Works
 
 1. `revela generate scan` finds every page whose template starts with `calendar/`.
-2. The **calendar** step (part of `generate all`, right after scan) reads each page's `.ics` file and writes `.cache/<page>/calendar.json`.
+2. The **calendar** step (part of `generate all`, right after scan) reads each page's `.ics` file and writes `.revela/cache/<page>/calendar.json`.
 3. `revela generate pages` renders the month grid with the Lumina.Calendar extension.
 
 Past days are dimmed and today is highlighted, based on the day you **build** the site. Rebuild regularly (for example with a scheduled CI job) so the calendar stays current.

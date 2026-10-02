@@ -211,7 +211,7 @@ public sealed class ImageProcessingStateTests
     [TestMethod]
     public async Task ProcessAsync_UpgradeFromLegacyCacheWithManifestState_ReencodesNothing()
     {
-        // The upgrade path of a long-running build server: beta.20 left the processing state only
+        // The upgrade path of a long-running build server: an earlier build left the processing state only
         // inside the version 5 manifest at .cache/manifest.json, next to the existing variants.
         using var project = CreateProject("a.jpg", "b.jpg");
         await RunAsync(project);
@@ -278,7 +278,7 @@ public sealed class ImageProcessingStateTests
     }
 
     /// <summary>
-    /// Rewrites the project as beta.20 left it: everything in <c>.cache</c>, processing state
+    /// Rewrites the project as earlier builds left it: everything in <c>.cache</c>, processing state
     /// inside the manifest, no state file and no <c>.revela</c> folder.
     /// </summary>
     private static void ConvertToLegacyLayout(TestProject project, int quality)

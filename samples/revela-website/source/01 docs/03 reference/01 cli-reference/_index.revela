@@ -59,10 +59,10 @@ Remove generated files.
 
 ```bash
 revela clean all                     # output → images → cache → statistics → calendar → compress
-revela clean output                  # Delete the output directory
+revela clean output                  # Delete the output directory and .revela/state (next build re-encodes all images)
 revela clean images                  # Delete unused image files (orphaned, old sizes/formats)
 revela clean images --dry-run        # Preview only (-d)
-revela clean cache                   # Delete the .cache directory (scan manifest, image state; next build re-encodes all images)
+revela clean cache                   # Delete .revela/cache (scan manifest, plugin data); keeps .revela/state, so no image is re-encoded
 revela clean statistics              # Delete statistics JSON from the cache (Statistics plugin)
 revela clean calendar                # Delete calendar JSON from the cache (Calendar plugin)
 revela clean compress                # Delete .gz/.br files from the output (Compress plugin)

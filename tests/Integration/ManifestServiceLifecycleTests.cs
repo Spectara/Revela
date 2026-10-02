@@ -220,7 +220,7 @@ public sealed class ManifestServiceLifecycleTests
     [TestMethod]
     public async Task SaveAsync_LegacyCacheManifestWithProcessingState_LoadsAndMovesStateOut()
     {
-        // Before beta.21 the processing state lived in the version 5 manifest at .cache/manifest.json;
+        // Earlier builds kept the processing state in the version 5 manifest at .cache/manifest.json;
         // the manifest moves to .revela/cache and keeps loading, the state moves to .revela/state.
         using var project = TestProject.Create();
         var legacyDirectory = Path.Combine(project.RootPath, ".cache");

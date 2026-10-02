@@ -295,7 +295,7 @@ comes from `PackageVersion.FromAssembly(...)`.
 ## Reading the scanned site
 
 Plugins that work from the scanned site (statistics, calendars) inject `IManifestReader`
-(`Spectara.Revela.Sdk.Abstractions`) instead of reading `.cache/manifest.json`:
+(`Spectara.Revela.Sdk.Abstractions`) instead of reading `.revela/cache/manifest.json`:
 
 ```csharp
 var snapshot = await manifestReader.TryLoadAsync(cancellationToken);
@@ -352,9 +352,15 @@ internal sealed class SearchIndexInvalidator(IOptions<ProjectEnvironment> projec
 ```
 
 `DerivedFiles.DeleteAll` removes every file with that name below a directory and never
-follows symbolic links or junctions, so a link inside `.cache` cannot make Revela delete
+follows symbolic links or junctions, so a link inside `.revela/cache` cannot make Revela delete
 files elsewhere. Use the same call from your `clean <name>` step so both remove exactly
 the same files.
+
+Where to write: reproducible data that a rerun can rebuild goes below
+`ProjectPaths.Cache` (`.revela/cache`, deleted by `clean cache`). A record of what your
+plugin produced in the output (for example which files it owns) goes in
+`ProjectPaths.State` (`.revela/state`, deleted with the output by `clean output`). Never
+write Revela-internal files into the output directory: everything there is published.
 
 Register the invalidator as an enumerable service:
 

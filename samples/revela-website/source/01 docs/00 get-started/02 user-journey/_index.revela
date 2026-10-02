@@ -152,7 +152,9 @@ The output is a complete static website:
 
 ```
 D:\Photos\MyPortfolio\
-├── .cache\              # Manifest: what was scanned and processed
+├── .revela\             # Revela's own data (never published)
+│   ├── cache\           #   What was scanned (rebuilt when missing)
+│   └── state\           #   Which image files exist in output\ and how they were made
 ├── output\
 │   ├── index.html
 │   ├── galleries\
@@ -187,7 +189,7 @@ Open `http://localhost:8080` in your browser. The server does not watch files: a
 
 ## 5. Everyday Changes
 
-Just run `revela generate all` again after any change. Revela keeps a manifest in `.cache\` and only redoes what's needed.
+Just run `revela generate all` again after any change. Revela keeps track of what it already did in `.revela\` and only redoes what's needed.
 
 ### Edit, add or remove photos
 

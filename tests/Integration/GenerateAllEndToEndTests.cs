@@ -438,7 +438,7 @@ public sealed class GenerateAllEndToEndTests
 
     /// <summary>
     /// Renders one page that uses an extension template with a plugin-style
-    /// <c>.cache/&lt;page&gt;/&lt;dataFile&gt;</c> data file and returns its HTML.
+    /// <c>.revela/cache/&lt;page&gt;/&lt;dataFile&gt;</c> data file and returns its HTML.
     /// </summary>
     private static async Task<string> RenderExtensionPageAsync(
         ITheme extension,

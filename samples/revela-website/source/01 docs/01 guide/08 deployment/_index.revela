@@ -24,7 +24,13 @@ output/
 
 Files from `source/_static/` (for example `CNAME`, `robots.txt` or favicons) are copied to the output root as well.
 
+The output contains only your site: Revela keeps its own bookkeeping in the project's `.revela/` folder, never in `output/`, so you can upload the whole folder as it is.
+
 **No server-side processing needed!** Any web host that serves HTML files will work.
+
+### Building on a Server or in CI
+
+Encoding images is the slow part of a build (hours for a large library with AVIF). Revela only encodes new or changed photos, as long as it finds both the previous `output/` and the project's `.revela/state/` folder, which records how the existing image files were made. On a build server, keep both between runs (for example as a persistent working directory or a CI cache). `.revela/cache/` is optional: without it Revela just rescans your photos. A fresh checkout without them builds everything from scratch, which is correct, just slower.
 
 ## Sitemap
 

@@ -30,10 +30,10 @@ calendar.labels.depart = "Abreise"
 
 3. Run `revela generate all` or `revela generate calendar`
 
-`calendar.json` lives in `.cache/<page>/` and is derived from the manifest: a rescan
+`calendar.json` lives in `.revela/cache/<page>/` and is derived from the manifest: a rescan
 (`generate scan`) removes it, and `generate calendar` rebuilds it for every calendar
 page and removes the files of pages that no longer exist. `revela clean calendar`
-removes all of them; symbolic links and junctions inside `.cache` are never followed.
+removes all of them; symbolic links and junctions inside `.revela/cache` are never followed.
 
 ## Invalid and Empty Calendars
 

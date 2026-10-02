@@ -128,5 +128,6 @@ revela serve
 - **Correct MIME types** – HTML, CSS, JS, JSON, AVIF, WebP, JPG, PNG, SVG, ICO
 - **404 logging** – missing files always shown, even in non-verbose mode
 - **404 page** – missing files return status 404 with your site's generated `404.html`, like on your web host
+- **Hidden files stay hidden** – files and folders whose name starts with a dot (such as `.env` or `.git`) answer 404; only `/.well-known/` is served
 - **CLI overrides** – `--port` and `--verbose` override `project.json` settings
 - **No live reload** – no file watching or browser auto-open; regenerate and refresh manually

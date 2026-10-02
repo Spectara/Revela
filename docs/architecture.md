@@ -194,15 +194,35 @@ have separate parallelism settings. There is no fixed speedup guarantee: work
 depends on input images, formats, cache state, and hardware.
 
 Skipping unchanged images relies on the image processing state in
-`.cache/images.json` ([`ImageStateStore`](../src/Features/Generate/Services/ImageStateStore.cs)),
+`.revela/state/images.json` ([`ImageStateStore`](../src/Features/Generate/Services/ImageStateStore.cs)),
 not on the scan manifest. Per source image it records a fingerprint of the source
 file (size, modification time) and the pipeline (output version, resize mode) plus
 the quality each format was encoded with. An image is re-encoded only when that
 fingerprint changes, a configured quality differs, or an expected variant file is
 missing. The state has its own schema version, so manifest format changes and
 manifest rebuilds never re-encode images; only image-output changes do. It is
-checkpointed during long runs and written atomically. Deleting `.cache/` (for
-example `clean cache`) drops it and re-encodes everything on the next build.
+checkpointed during long runs and written atomically.
+
+### Project Folders: Cache And State
+
+Revela keeps its own data in `.revela/` in the project
+([`ProjectPaths`](../src/Sdk/ProjectPaths.cs)), split by what losing it costs:
+
+| Folder | Holds | Lost by | Cost of losing it |
+|--------|-------|---------|-------------------|
+| `.revela/cache/` (`ProjectPaths.Cache`) | Scan manifest, plugin data (`<page>/statistics.json`, `<page>/calendar.json`) | `clean cache`, `clean all` | A rescan |
+| `.revela/state/` (`ProjectPaths.State`) | State of the output: `images.json` (image variants), `compress.json` (owned `.gz`/`.br` sidecars) | `clean output`, `clean all` | Re-encoding every image while the output still exists |
+
+The state describes the output, so the two are deleted together; `clean cache`
+never touches it. Nothing Revela-internal is written into the output directory,
+so a deployed site contains only the site, and `revela serve` refuses dot-files
+and dot-folders (except `/.well-known/`) as defense in depth. Projects from
+before beta.21 kept everything in `.cache/`; it is carried over once
+([`LegacyCacheCarryOver`](../src/Features/Generate/Services/LegacyCacheCarryOver.cs)):
+the image state (`.cache/images.json`, or the `processedImages` of an old
+manifest) moves to `.revela/state/images.json`, then the rest of `.cache/` moves
+to `.revela/cache/`. If `.revela/cache/` already exists, the old folder is left
+in place with a warning.
 
 NetVips keeps image processing and EXIF extraction in-process. Markdig and Scriban
 separate content parsing from theme presentation without requiring a web server.
@@ -263,8 +283,10 @@ honor the same preparation/cleanup contract; see
 Changing the installed or enabled plugin set requires `revela clean all` before
 regeneration because unloaded plugins cannot participate in invalidation. Artifact
 dependencies do not imply ownership of unrelated files. Compression separately
-records owned sidecars and fingerprints in the output-root
-`.revela-compress.manifest`, which survives cache cleanup. It never adopts files
+records owned sidecars and fingerprints in `.revela/state/compress.json` (outside
+the output, so it is never published; a legacy output-root
+`.revela-compress.manifest` is moved there on open). It survives cache cleanup and
+is removed by `clean output`. It never adopts files
 based on their extension or contents; unowned or externally changed targets are
 preserved and conflicts fail explicitly. Completed sibling-staged writes are
 recorded, and failed registration rolls back only files created by that operation.

@@ -8,7 +8,7 @@ namespace Spectara.Revela.Features.Generate.Services;
 /// </summary>
 /// <remarks>
 /// <para>
-/// Before beta.21 everything lived in <c>.cache</c>: the scan manifest, plugin data and the image
+/// Earlier builds kept everything in <c>.cache</c>: the scan manifest, plugin data and the image
 /// processing state (first inside the manifest's <c>_meta.processedImages</c>, later in
 /// <c>.cache/images.json</c>). Re-encoding a large AVIF library takes hours, so the state is
 /// carried over to <see cref="ProjectPaths.State"/> first; then the remaining reproducible data

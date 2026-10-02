@@ -97,10 +97,14 @@ Revela automatically detects what's missing and only generates those variants.
 An image is regenerated completely when its source file changes (size or
 modification time), when the theme's resize mode changes, or when a Revela
 update changes how images are encoded. Revela remembers what each photo's
-variants were made from in `.cache/images.json`, separately from the scan data,
-so a rescan or a Revela update that only changes the scan data never re-encodes
-your photos. Deleting `.cache/` (`revela clean cache`) forgets it, and the next
-build re-encodes every photo.
+variants were made from in `.revela/state/images.json`, separately from the scan
+data, so a rescan, `revela clean cache` or a Revela update that only changes the
+scan data never re-encodes your photos. `revela clean output` deletes the output
+together with that record, so the next build encodes every photo again.
+
+If your site is built on a server, keep the project's `.revela/` folder between
+builds (it is not part of the published site): with `.revela/state/` and the
+existing output in place, a new build only encodes new or changed photos.
 
 Large libraries can take a while, especially the first time or after such an
 update. If a run is interrupted (Ctrl+C, a closed terminal or a restart), just

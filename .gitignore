@@ -494,9 +494,11 @@ $RECYCLE.BIN/
 /test-*/
 /*-test/
 
-# Sample projects - exclude generated output and cache
+# Sample projects - exclude generated output and Revela's local build data
 samples/**/output/
 samples/**/images/
+samples/**/.revela/
+# Legacy cache folder of older builds (moved to .revela/ by the next build)
 samples/**/.cache/
 
 # Homepage photo strip - synced from OneDrive (full-res), not committed
