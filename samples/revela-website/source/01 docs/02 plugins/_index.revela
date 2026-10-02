@@ -54,7 +54,7 @@ All `Spectara.Revela.*` release packages come with a `SHA256SUMS` file and Sigst
 
 How you get plugins depends on your edition:
 
-- **Standalone**: all six official plugins and both theme extensions are built in. There is nothing to install, and the `plugin`, `packages` and `restore` commands are not available. `revela info plugins` lists what's loaded.
+- **Standalone**: all six official plugins and both theme extensions are built in. There is nothing to install, and the `plugin`, `packages` and `restore` commands are not available. `revela info` shows how many plugins and themes are loaded, and `revela theme list` lists the themes.
 - **Full**: the `packages/` folder next to the executable is used as a local feed (`bundled`), so the commands below work offline.
 - **.NET tool**: there is no bundled folder. Download the `.nupkg` files from the release into a folder and register it once with `revela config feed add releases /absolute/path/to/folder`.
 
@@ -71,7 +71,7 @@ revela plugin install Spectara.Revela.Plugins.Statistics
 revela plugin install Statistics --version 1.2.0
 ```
 
-Installing records the package and its exact installed version under `dependencies.packages` in your global `revela.json` and, inside a project, in `project.json` (see [Configuration](../guide/configuration/#dependencies-and-feeds)).
+Installing records the package and its exact installed version under `dependencies.packages` in exactly one file: `project.json` when you run it inside a project, otherwise your global `revela.json` (see [Configuration](../guide/configuration/#dependencies-and-feeds)). Uninstalling removes it from the same file. Themes and theme extensions are installed with `revela theme install`, not `plugin install`.
 
 ## Managing Plugins
 
@@ -134,7 +134,7 @@ revela restore
 revela restore --check
 ```
 
-Revela reads `dependencies.packages` and `theme.name` from your configuration (global `revela.json` plus `project.json`) and installs anything that's missing. Every package in `dependencies.packages` is required, whatever its ID; installed packages are matched by package ID across plugins and themes. Restoring pins the exact installed version in `project.json`.
+Revela reads `dependencies.packages` and `theme.name` from your configuration (global `revela.json` plus `project.json`) and installs anything that's missing. Every package in `dependencies.packages` is required, whatever its ID; installed packages are matched by package ID across plugins and themes. Restoring pins the exact installed version for the entries `project.json` declares; packages from your global `revela.json` are installed without being copied into the project.
 
 Feeds declared only in `project.json` are never used silently. Restore lists them and asks for confirmation; in scripts and CI, where Revela cannot ask, it stops unless you pass `--allow-project-feeds`:
 

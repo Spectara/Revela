@@ -112,9 +112,11 @@ Settings are stored in `project.json` below `plugins.statistics`:
 # Configure interactively
 revela config statistics
 
-# Or set specific options
+# Or set specific options (needed in scripts and CI, where Revela doesn't prompt)
 revela config statistics --max-entries 20 --sort-by-count false
 ```
+
+`config statistics` writes `project.json`, so run it inside your project.
 
 The same settings can be supplied as environment variables:
 
