@@ -112,7 +112,7 @@ internal sealed class GroupedHelpAction(
 
     private static string GetCommandPath(Command command)
     {
-        // Build full command path (e.g., "revela init" or "revela")
+        // Build full command path (e.g., "revela config" or "revela")
         var parts = new List<string>();
         var current = command;
 

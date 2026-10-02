@@ -375,11 +375,11 @@ internal sealed partial class RenderService(
         var site = siteCoreConfig.CurrentValue;
 
         // Get theme name from ThemeConfig (IOptions pattern)
-        // Fallback to "Lumina" if not configured
+        // Fallback to the default theme if not configured
         var themeName = themeConfig.CurrentValue.Name;
         if (string.IsNullOrEmpty(themeName))
         {
-            themeName = "Lumina";
+            themeName = ThemeConfig.DefaultName;
         }
 
         return new RenderContext

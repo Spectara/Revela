@@ -18,9 +18,8 @@ namespace Spectara.Revela.Commands.Info;
 /// <remarks>
 /// <para>
 /// Default action prints a compact Revela summary (version, framework, host
-/// kind, plugin/theme counts, active theme). Subcommands <c>plugins</c> and
-/// <c>themes</c> show detail tables. Plugins may register additional detail
-/// commands via <c>ParentCommand: "info plugins"</c>.
+/// kind, plugin/theme counts, active theme). Package details live in
+/// <c>revela plugin list</c> and <c>revela theme list</c>.
 /// </para>
 /// <para>
 /// The first line of output is <see cref="IBuildInfo.FormatVersionLine"/>
@@ -75,7 +74,9 @@ internal sealed class InfoCommand(
         AnsiConsole.Write(panel);
 
         AnsiConsole.WriteLine();
-        AnsiConsole.MarkupLine("[dim]For details: [white]revela info plugins[/] · [white]revela info themes[/][/]");
+        AnsiConsole.MarkupLine(buildInfo.Kind == HostKind.Standalone
+            ? "[dim]For details: [white]revela theme list[/][/]"
+            : "[dim]For details: [white]revela plugin list[/] · [white]revela theme list[/][/]");
 
         return 0;
     }

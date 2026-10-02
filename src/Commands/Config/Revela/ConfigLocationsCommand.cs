@@ -34,8 +34,7 @@ internal sealed partial class ConfigLocationsCommand(
             table.AddRow("[cyan]Installation Type[/]", $"[green]{locationType}[/]");
             table.AddRow("[cyan]Config Directory[/]", $"[dim]{Markup.Escape(ConfigPathResolver.ConfigDirectory)}[/]");
             table.AddRow("[cyan]Config File[/]", $"[dim]{Markup.Escape(ConfigPathResolver.ConfigFilePath)}[/]");
-            table.AddRow("[cyan]Plugins (local)[/]", $"[dim]{Markup.Escape(ConfigPathResolver.LocalPluginDirectory)}[/]");
-            table.AddRow("[cyan]Plugins (global)[/]", $"[dim]{Markup.Escape(ConfigPathResolver.GlobalPluginDirectory)}[/]");
+            table.AddRow("[cyan]Plugins[/]", $"[dim]{Markup.Escape(ConfigPathResolver.LocalPluginDirectory)}[/]");
 
             var environment = projectEnvironment.Value;
             if (environment.IsInitialized)
@@ -55,8 +54,8 @@ internal sealed partial class ConfigLocationsCommand(
             }
             else
             {
-                AnsiConsole.MarkupLine($"{OutputMarkers.Warning} Configuration file not found");
-                AnsiConsole.MarkupLine("  Run [cyan]revela init revela[/] to create it");
+                AnsiConsole.MarkupLine($"{OutputMarkers.Info} Configuration file not found (optional)");
+                AnsiConsole.MarkupLine("  [dim]Revela creates it when you add a feed or install a plugin or theme.[/]");
             }
 
             return Task.FromResult(0);

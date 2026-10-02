@@ -14,7 +14,7 @@ public sealed partial class ThemeRegistry(
     IEnumerable<ITheme> installedThemes,
     ILogger<ThemeRegistry> logger) : IThemeRegistry
 {
-    private const string DefaultThemeName = "Lumina";
+    private const string DefaultThemeName = Sdk.Configuration.ThemeConfig.DefaultName;
 
     /// <inheritdoc />
     public IReadOnlyList<ITheme> GetExtensions(string themeName)

@@ -33,7 +33,7 @@ public sealed class ConfigFileWatchingTests
             .Select(source => source.Path)
             .ToList();
 
-        Assert.IsGreaterThanOrEqualTo(4, fileSources.Count, "revela.json, project.json, site.json and logging.json are file sources.");
+        Assert.HasCount(4, fileSources, "Only revela.json, project.json, site.json and logging.json are file sources (no appsettings*.json).");
         Assert.IsEmpty(watching, $"Watching sources: {string.Join(", ", watching)}");
     }
 

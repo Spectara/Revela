@@ -1,7 +1,6 @@
 using System.Globalization;
 
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
 
 using NSubstitute;
 
@@ -140,13 +139,7 @@ public sealed class PipelineStepHintsTests
 
         try
         {
-            var builder = Host.CreateApplicationBuilder(new HostApplicationBuilderSettings
-            {
-                ContentRootPath = projectPath,
-                EnvironmentName = "Testing",
-            });
-
-            builder.ConfigureRevela(args, new StatisticsPackageSource());
+            var builder = HostBootstrap.CreateBuilder(args, new StatisticsPackageSource(), projectPath);
             builder.Services.AddSingleton<ITheme>(new LuminaTheme());
 
             var imageSizes = Substitute.For<IImageSizesProvider>();

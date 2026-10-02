@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Configuration;
 using Spectara.Revela.Core;
 using Spectara.Revela.Core.Configuration;
+using Spectara.Revela.Core.Helpers;
 using Spectara.Revela.Core.Logging;
 using Spectara.Revela.Sdk.Abstractions;
 
@@ -25,7 +26,8 @@ public static class PackageServiceCollectionExtensions
         IConfigurationBuilder configuration,
         string[] args)
     {
-        if (IsPackageManagementCommand(args))
+        // plugin|theme install/uninstall replace or delete package files: don't load (and lock) them
+        if (PackageManagementCommands.ModifiesPackageFiles(args))
         {
             services.AddSingleton<IPackageContext>(sp =>
             {
@@ -114,8 +116,6 @@ public static class PackageServiceCollectionExtensions
     {
         var logger = loggerFactory.CreateLogger("Spectara.Revela.Core.PluginBootstrap");
 
-        configuration.AddEnvironmentVariables(prefix: "SPECTARA__REVELA__");
-
         foreach (var pluginInfo in plugins)
         {
             try
@@ -171,34 +171,6 @@ public static class PackageServiceCollectionExtensions
             var contextLogger = sp.GetRequiredService<ILogger<PackageContext>>();
             return new PackageContext(plugins, themes, contextLogger);
         });
-    }
-
-    /// <summary>
-    /// Checks if the command modifies plugin/theme files on disk.
-    /// When true, package loading is skipped to avoid locking DLLs.
-    /// </summary>
-    private static bool IsPackageManagementCommand(string[] args)
-    {
-        if (args.Length < 2)
-        {
-            return false;
-        }
-
-        var command = args[0];
-        var subcommand = args[1];
-
-        // Read-only subcommands need packages loaded (e.g., to read installed themes/plugins)
-        if (subcommand.Equals("list", StringComparison.OrdinalIgnoreCase)
-            || subcommand.Equals("extract", StringComparison.OrdinalIgnoreCase)
-            || subcommand.Equals("files", StringComparison.OrdinalIgnoreCase)
-            || subcommand.Equals("info", StringComparison.OrdinalIgnoreCase))
-        {
-            return false;
-        }
-
-        // "plugin install/uninstall" or "theme install/uninstall" modify files
-        return command.Equals("plugin", StringComparison.OrdinalIgnoreCase)
-            || command.Equals("theme", StringComparison.OrdinalIgnoreCase);
     }
 }
 

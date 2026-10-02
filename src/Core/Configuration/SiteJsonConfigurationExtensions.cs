@@ -30,13 +30,14 @@ public static class SiteJsonConfigurationExtensions
     /// <param name="builder">The configuration builder.</param>
     /// <param name="path">Absolute or relative path to <c>site.json</c>.</param>
     /// <param name="optional">Whether the file is optional.</param>
-    /// <param name="reloadOnChange">Whether to reload when the file changes.</param>
     /// <returns>The builder for chaining.</returns>
+    /// <remarks>
+    /// The file is not watched; callers that change it in-process reload the configuration.
+    /// </remarks>
     public static IConfigurationBuilder AddSiteJson(
         this IConfigurationBuilder builder,
         string path,
-        bool optional,
-        bool reloadOnChange)
+        bool optional)
     {
         ArgumentNullException.ThrowIfNull(builder);
         ArgumentException.ThrowIfNullOrEmpty(path);
@@ -45,7 +46,7 @@ public static class SiteJsonConfigurationExtensions
         {
             source.Path = path;
             source.Optional = optional;
-            source.ReloadOnChange = reloadOnChange;
+            source.ReloadOnChange = false;
             source.ResolveFileProvider();
         });
     }

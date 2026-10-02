@@ -1,9 +1,12 @@
 using System.Text.Json;
+using System.Text.Json.Nodes;
+
+using Spectara.Revela.Sdk.Json;
 
 namespace Spectara.Revela.Commands.Config.Services;
 
 /// <summary>
-/// Extracts property paths and values from JSON documents.
+/// Extracts property paths and values from JSON documents and builds the edited document.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -20,33 +23,95 @@ internal static class JsonPropertyExtractor
     /// <summary>
     /// Extracts all leaf properties from a JSON document.
     /// </summary>
-    /// <param name="json">The JSON content to parse.</param>
-    /// <returns>A list of (path, value) tuples for all string leaf properties.</returns>
+    /// <param name="json">The JSON content to parse (comments and trailing commas allowed).</param>
+    /// <returns>A list of (path, value) tuples for all scalar leaf properties.</returns>
     /// <exception cref="JsonException">Thrown if the JSON is invalid.</exception>
     public static IReadOnlyList<JsonProperty> ExtractProperties(string json)
     {
-        using var document = JsonDocument.Parse(json);
+        using var document = JsonDocument.Parse(json, RevelaJsonOptions.LenientDocument);
         var properties = new List<JsonProperty>();
         ExtractPropertiesRecursive(document.RootElement, "", properties);
         return properties;
     }
 
     /// <summary>
-    /// Builds a JSON document from property values.
+    /// Builds the document to save: the template's structure merged with the existing document.
     /// </summary>
-    /// <param name="templateJson">The template JSON to use as structure.</param>
-    /// <param name="values">The values to set, keyed by dot-notation path.</param>
-    /// <returns>The JSON string with values filled in.</returns>
-    public static string BuildJson(string templateJson, IReadOnlyDictionary<string, string> values)
+    /// <remarks>
+    /// Template keys come first, in template order; every key of the existing document is kept
+    /// (values the template doesn't know, e.g. <c>language</c>, are appended rather than dropped)
+    /// and existing values win over template placeholders. Keys are matched ignoring case, like the
+    /// configuration reader does, and keep the template's spelling. Prompted values then replace string
+    /// leaves, and fill <c>null</c> leaves when not empty; numbers, booleans and arrays keep their value.
+    /// </remarks>
+    /// <param name="templateJson">The theme's site template.</param>
+    /// <param name="existingJson">The current file content, or <see langword="null"/> when creating.</param>
+    /// <param name="values">The prompted values, keyed by dot-notation path.</param>
+    /// <returns>The merged document.</returns>
+    /// <exception cref="JsonException">Either document is invalid or not a JSON object.</exception>
+    public static JsonObject BuildJson(
+        string templateJson,
+        string? existingJson,
+        IReadOnlyDictionary<string, string> values)
     {
-        using var document = JsonDocument.Parse(templateJson);
-        using var stream = new MemoryStream();
-        using var writer = new Utf8JsonWriter(stream, new JsonWriterOptions { Indented = true });
+        var result = ParseObject(templateJson);
+        if (existingJson is not null)
+        {
+            Overlay(result, ParseObject(existingJson));
+        }
 
-        WriteElement(writer, document.RootElement, "", values);
+        ApplyValues(result, "", values);
+        return result;
+    }
 
-        writer.Flush();
-        return System.Text.Encoding.UTF8.GetString(stream.ToArray());
+    private static JsonObject ParseObject(string json) =>
+        JsonNode.Parse(json, nodeOptions: null, RevelaJsonOptions.LenientDocument) as JsonObject
+            ?? throw new JsonException("Expected a JSON object.");
+
+    private static void Overlay(JsonObject target, JsonObject source)
+    {
+        foreach (var (sourceKey, value) in source)
+        {
+            // The configuration reader ignores key case: "Title" must update "title", not add a duplicate
+            var key = target.Select(property => property.Key)
+                .FirstOrDefault(existing => string.Equals(existing, sourceKey, StringComparison.OrdinalIgnoreCase))
+                ?? sourceKey;
+
+            if (value is JsonObject sourceObject && target[key] is JsonObject targetObject)
+            {
+                Overlay(targetObject, sourceObject);
+            }
+            else
+            {
+                target[key] = value?.DeepClone();
+            }
+        }
+    }
+
+    private static void ApplyValues(JsonObject node, string currentPath, IReadOnlyDictionary<string, string> values)
+    {
+        foreach (var key in node.Select(property => property.Key).ToList())
+        {
+            var path = string.IsNullOrEmpty(currentPath) ? key : $"{currentPath}.{key}";
+
+            switch (node[key])
+            {
+                case JsonObject child:
+                    ApplyValues(child, path, values);
+                    break;
+
+                case null when values.TryGetValue(path, out var value) && !string.IsNullOrEmpty(value):
+                    node[key] = value;
+                    break;
+
+                case JsonValue leaf when leaf.GetValueKind() == JsonValueKind.String && values.TryGetValue(path, out var value):
+                    node[key] = value;
+                    break;
+
+                default:
+                    break;
+            }
+        }
     }
 
     private static void ExtractPropertiesRecursive(
@@ -90,61 +155,6 @@ internal static class JsonPropertyExtractor
 
             case JsonValueKind.Null:
                 properties.Add(new JsonProperty(currentPath, ""));
-                break;
-
-            case JsonValueKind.Undefined:
-            default:
-                // Skip undefined or unknown value kinds
-                break;
-        }
-    }
-
-    private static void WriteElement(
-        Utf8JsonWriter writer,
-        JsonElement element,
-        string currentPath,
-        IReadOnlyDictionary<string, string> values)
-    {
-        switch (element.ValueKind)
-        {
-            case JsonValueKind.Object:
-                writer.WriteStartObject();
-                foreach (var property in element.EnumerateObject())
-                {
-                    var path = string.IsNullOrEmpty(currentPath)
-                        ? property.Name
-                        : $"{currentPath}.{property.Name}";
-
-                    writer.WritePropertyName(property.Name);
-                    WriteElement(writer, property.Value, path, values);
-                }
-
-                writer.WriteEndObject();
-                break;
-
-            case JsonValueKind.String:
-                // Use value from dictionary if available, otherwise keep original
-                var stringValue = values.TryGetValue(currentPath, out var newValue)
-                    ? newValue
-                    : element.GetString() ?? "";
-                writer.WriteStringValue(stringValue);
-                break;
-
-            case JsonValueKind.Number:
-                element.WriteTo(writer);
-                break;
-
-            case JsonValueKind.True:
-            case JsonValueKind.False:
-                element.WriteTo(writer);
-                break;
-
-            case JsonValueKind.Array:
-                element.WriteTo(writer);
-                break;
-
-            case JsonValueKind.Null:
-                writer.WriteNullValue();
                 break;
 
             case JsonValueKind.Undefined:

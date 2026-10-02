@@ -1,12 +1,10 @@
-using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
-using Spectara.Revela.Core.Helpers;
+using Spectara.Revela.Core.Configuration;
 using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Abstractions;
-using Spectara.Revela.Sdk.Configuration;
 using Spectara.Revela.Sdk.Json;
 
 namespace Spectara.Revela.Commands.Config.Services;
@@ -17,24 +15,15 @@ namespace Spectara.Revela.Commands.Config.Services;
 /// <remarks>
 /// Provides JSON configuration file management with:
 /// - JsonObject-based access
-/// - Deep merge for partial updates
-/// - Pretty-printed output
-/// - Automatic IConfiguration reload and IOptionsMonitor cache invalidation after writes
+/// - Deep merge for partial updates, serialized per instance
+/// - Validated, atomic writes through <see cref="ConfigFileWriter"/>, which also reloads the
+///   configuration (and with it every <c>IOptionsMonitor&lt;T&gt;</c>)
 /// </remarks>
 internal sealed partial class ConfigService(
     ILogger<ConfigService> logger,
-    IConfiguration configuration,
     IOptions<ProjectEnvironment> projectEnvironment,
-    IOptionsMonitorCache<ThemeConfig> themeCache,
-    IOptionsMonitorCache<ProjectConfig> projectCache,
-    IOptionsMonitorCache<GenerateConfig> generateCache,
-    IOptionsMonitorCache<DependenciesConfig> dependenciesCache) : IConfigService, IDisposable
+    ConfigFileWriter configFileWriter) : IConfigService, IDisposable
 {
-    private static readonly JsonSerializerOptions JsonOptions = new()
-    {
-        WriteIndented = true
-    };
-
     private readonly SemaphoreSlim updateGate = new(1, 1);
     private readonly Lock lifetimeGate = new();
     private int pendingUpdates;
@@ -139,57 +128,7 @@ internal sealed partial class ConfigService(
             return;
         }
 
-        var json = Encoding.UTF8.GetBytes(existing.ToJsonString(JsonOptions));
-        ValidateProjectConfiguration(json);
-        var directory = Path.GetDirectoryName(ProjectConfigPath)
-            ?? throw new InvalidOperationException("Project configuration path has no parent directory.");
-        var tempPath = Path.Combine(
-            directory,
-            $".{Path.GetFileName(ProjectConfigPath)}.{Guid.NewGuid():N}.tmp");
-        var streamOptions = new FileStreamOptions
-        {
-            Mode = FileMode.CreateNew,
-            Access = FileAccess.Write,
-            Share = FileShare.None,
-            Options = FileOptions.Asynchronous
-        };
-        var originalMode = (UnixFileMode?)null;
-        if (!OperatingSystem.IsWindows())
-        {
-            streamOptions.UnixCreateMode = UnixFileMode.UserRead | UnixFileMode.UserWrite;
-            if (File.Exists(ProjectConfigPath))
-            {
-                originalMode = File.GetUnixFileMode(ProjectConfigPath);
-            }
-        }
-
-        try
-        {
-            await using (var stream = new FileStream(tempPath, streamOptions))
-            {
-                await stream.WriteAsync(json, cancellationToken);
-                await stream.FlushAsync(cancellationToken);
-            }
-
-            cancellationToken.ThrowIfCancellationRequested();
-            if (!OperatingSystem.IsWindows() && originalMode is { } mode)
-            {
-                File.SetUnixFileMode(tempPath, mode);
-            }
-
-            await AtomicFileReplace.ReplaceAsync(tempPath, ProjectConfigPath, cancellationToken);
-        }
-        finally
-        {
-            if (File.Exists(tempPath))
-            {
-                File.Delete(tempPath);
-            }
-        }
-
-        // Configuration sources don't watch files: reload explicitly so this process sees the change,
-        // then invalidate IOptionsMonitor caches so CurrentValue returns fresh data
-        ReloadConfigurationAndInvalidateCaches();
+        await configFileWriter.WriteAsync(ProjectConfigPath, existing, cancellationToken: cancellationToken);
 
         LogConfigUpdated(ProjectConfigPath);
     }
@@ -214,33 +153,6 @@ internal sealed partial class ConfigService(
     {
         using var stream = new MemoryStream(json, writable: false);
         using var validation = (ConfigurationRoot)new ConfigurationBuilder().AddJsonStream(stream).Build();
-    }
-
-    /// <summary>
-    /// Reloads configuration from files and invalidates all IOptionsMonitor caches.
-    /// </summary>
-    /// <remarks>
-    /// This is needed for immediate in-process updates (e.g., wizard flows): configuration
-    /// sources don't watch files, so nothing else picks up the change.
-    /// </remarks>
-    private void ReloadConfigurationAndInvalidateCaches()
-    {
-        // Force configuration to reload from all sources
-        (configuration as IConfigurationRoot)?.Reload();
-
-        // Invalidate caches (BindConfiguration registered change tokens, so this triggers re-bind)
-        InvalidateProjectConfigCaches();
-    }
-
-    /// <summary>
-    /// Invalidates all IOptionsMonitor caches that depend on project.json.
-    /// </summary>
-    private void InvalidateProjectConfigCaches()
-    {
-        themeCache.TryRemove(Options.DefaultName);
-        projectCache.TryRemove(Options.DefaultName);
-        generateCache.TryRemove(Options.DefaultName);
-        dependenciesCache.TryRemove(Options.DefaultName);
     }
 
     /// <inheritdoc />

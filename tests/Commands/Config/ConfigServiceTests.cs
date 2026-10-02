@@ -4,8 +4,10 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using Spectara.Revela.Commands;
 using Spectara.Revela.Sdk.Abstractions;
+using Spectara.Revela.Sdk.Configuration;
 using Spectara.Revela.Tests.Shared.Fixtures;
 
 namespace Spectara.Revela.Tests.Commands.Config;
@@ -767,6 +769,42 @@ public sealed class ConfigServiceTests
         var config = await configService.ReadProjectConfigAsync();
         Assert.AreEqual("Lumina", config?["theme"]?["name"]?.GetValue<string>());
         Assert.IsEmpty(GetTempFiles(project.RootPath));
+    }
+
+    [TestMethod]
+    public async Task UpdateProjectConfigAsync_BoundOptionsMonitors_SeeNewValuesAfterReload()
+    {
+        // Proves that the configuration reload alone refreshes IOptionsMonitor<T>:
+        // BindConfiguration registers the reload token, so no manual cache invalidation is needed.
+        using var project = TestProject.Create(p => p.WithProjectJson(new
+        {
+            project = new { name = "Before" },
+            theme = new { name = "Before" },
+            generate = new { render = new { maxDegreeOfParallelism = 1 } },
+        }));
+        using var host = RevelaTestHost.Build(project.RootPath, services => services.AddRevelaCommands());
+        var configService = host.Services.GetRequiredService<IConfigService>();
+        var projectMonitor = host.Services.GetRequiredService<IOptionsMonitor<ProjectConfig>>();
+        var themeMonitor = host.Services.GetRequiredService<IOptionsMonitor<ThemeConfig>>();
+        var generateMonitor = host.Services.GetRequiredService<IOptionsMonitor<GenerateConfig>>();
+        var dependenciesMonitor = host.Services.GetRequiredService<IOptionsMonitor<DependenciesConfig>>();
+        Assert.AreEqual("Before", projectMonitor.CurrentValue.Name);
+        Assert.AreEqual("Before", themeMonitor.CurrentValue.Name);
+        Assert.AreEqual(1, generateMonitor.CurrentValue.Render.MaxDegreeOfParallelism);
+        Assert.IsEmpty(dependenciesMonitor.CurrentValue.Packages);
+
+        await configService.UpdateProjectConfigAsync(new JsonObject
+        {
+            ["project"] = new JsonObject { ["name"] = "After" },
+            ["theme"] = new JsonObject { ["name"] = "After" },
+            ["generate"] = new JsonObject { ["render"] = new JsonObject { ["maxDegreeOfParallelism"] = 4 } },
+            ["dependencies"] = new JsonObject { ["packages"] = new JsonObject { ["Some.Plugin"] = "1.0.0" } },
+        });
+
+        Assert.AreEqual("After", projectMonitor.CurrentValue.Name);
+        Assert.AreEqual("After", themeMonitor.CurrentValue.Name);
+        Assert.AreEqual(4, generateMonitor.CurrentValue.Render.MaxDegreeOfParallelism);
+        Assert.AreEqual("1.0.0", dependenciesMonitor.CurrentValue.Packages["Some.Plugin"]);
     }
 
     private static IReadOnlyList<string> GetTempFiles(string projectPath) =>

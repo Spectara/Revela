@@ -57,8 +57,8 @@ public sealed class SiteCoreConfig
     /// this config — via the change-token reload that <c>IOptionsMonitor</c> fires — before
     /// the user has supplied a title. A top-level <c>[Required]</c> would throw
     /// <c>OptionsValidationException</c> from inside that callback and crash the wizard.
-    /// The required-title check lives at the call site instead (<c>revela check</c> /
-    /// <c>ValidationService</c>), mirroring <c>OneDrivePluginConfig.ShareUrl</c>.
+    /// The required-title check lives at the call site instead (<c>revela check</c>),
+    /// mirroring <c>OneDrivePluginConfig.ShareUrl</c>.
     /// </remarks>
     public string Title { get; set; } = string.Empty;
 

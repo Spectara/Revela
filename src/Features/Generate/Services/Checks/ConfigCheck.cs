@@ -82,7 +82,7 @@ internal sealed class ConfigCheck(
             return;
         }
 
-        var themeName = string.IsNullOrWhiteSpace(config.Name) ? "Lumina" : config.Name;
+        var themeName = string.IsNullOrWhiteSpace(config.Name) ? ThemeConfig.DefaultName : config.Name;
         ITheme? theme;
         try
         {

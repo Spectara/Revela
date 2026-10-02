@@ -5,7 +5,7 @@ namespace Spectara.Revela.Core.Helpers;
 /// </summary>
 /// <remarks>
 /// On Windows a replace fails while the target is open without <see cref="FileShare.Delete"/>, which is
-/// how the configuration file watcher's reload and virus scanners open it. Those handles are short-lived,
+/// how the JSON configuration provider's (re)load and virus scanners open it. Those handles are short-lived,
 /// so the replace is retried for about a second before the error is surfaced.
 /// </remarks>
 public static class AtomicFileReplace

@@ -133,10 +133,12 @@ public sealed class ConfigLocationsCommandTests
         StringAssert.Contains(output, ConfigPathResolver.ConfigDirectory, StringComparison.Ordinal);
         StringAssert.Contains(output, "Config File", StringComparison.Ordinal);
         StringAssert.Contains(output, ConfigPathResolver.ConfigFilePath, StringComparison.Ordinal);
-        StringAssert.Contains(output, "Plugins (local)", StringComparison.Ordinal);
+        StringAssert.Contains(output, "Plugins ", StringComparison.Ordinal);
         StringAssert.Contains(output, ConfigPathResolver.LocalPluginDirectory, StringComparison.Ordinal);
-        StringAssert.Contains(output, "Plugins (global)", StringComparison.Ordinal);
-        StringAssert.Contains(output, ConfigPathResolver.GlobalPluginDirectory, StringComparison.Ordinal);
+
+        // Packages are only loaded from the config directory's plugins folder
+        Assert.IsFalse(output.Contains("Plugins (global)", StringComparison.Ordinal));
+        Assert.IsFalse(output.Contains("revela init", StringComparison.Ordinal), "There is no `revela init` command.");
         StringAssert.Contains(output, File.Exists(ConfigPathResolver.ConfigFilePath)
             ? "Configuration file exists"
             : "Configuration file not found", StringComparison.Ordinal);

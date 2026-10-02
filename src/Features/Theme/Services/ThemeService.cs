@@ -160,7 +160,7 @@ internal sealed partial class ThemeService(
             return new ThemeUpdateResult
             {
                 Success = false,
-                ThemeName = request.ThemeName ?? themeConfig.CurrentValue.Name ?? "Lumina",
+                ThemeName = request.ThemeName ?? themeConfig.CurrentValue.Name ?? ThemeConfig.DefaultName,
                 ErrorMessage = "A photo viewer override cannot be set and cleared in the same update."
             };
         }
@@ -169,7 +169,7 @@ internal sealed partial class ThemeService(
         var themeName = request.ThemeName ?? current.Name;
         if (string.IsNullOrWhiteSpace(themeName))
         {
-            themeName = "Lumina";
+            themeName = ThemeConfig.DefaultName;
         }
 
         var theme = themeRegistry.Resolve(themeName, ProjectPath);
@@ -326,7 +326,7 @@ internal sealed partial class ThemeService(
         bool force = false,
         CancellationToken cancellationToken = default)
     {
-        var currentThemeName = themeConfig.CurrentValue.Name ?? "Lumina";
+        var currentThemeName = themeConfig.CurrentValue.Name ?? ThemeConfig.DefaultName;
         var theme = themeRegistry.Resolve(currentThemeName, ProjectPath);
 
         if (theme is null)
@@ -483,7 +483,7 @@ internal sealed partial class ThemeService(
         string.Join(", ", supported.Select(Canonical));
 
     private static string NormalizeThemeName(string? themeName) =>
-        string.IsNullOrWhiteSpace(themeName) ? "Lumina" : themeName;
+        string.IsNullOrWhiteSpace(themeName) ? ThemeConfig.DefaultName : themeName;
 
     private static string Canonical(PhotoViewerMode mode) => mode switch
     {

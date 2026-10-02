@@ -1,11 +1,10 @@
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
-using System.Text.Json.Serialization;
 
 using Microsoft.Extensions.Configuration;
 
-using Spectara.Revela.Core.Helpers;
+using Spectara.Revela.Core.Configuration;
 using Spectara.Revela.Sdk.Configuration;
 using Spectara.Revela.Sdk.Json;
 using Spectara.Revela.Sdk.Services;
@@ -23,14 +22,17 @@ namespace Spectara.Revela.Core.Services;
 /// <item>dotnet tool: %APPDATA%/Revela/revela.json</item>
 /// </list>
 /// <para>
-/// The config file is created with defaults on first access if it doesn't exist.
+/// The file is created by the first write (feed or package); reading a missing file
+/// yields an empty document. Writes keep every unrelated value.
 /// </para>
 /// <para>
 /// NOTE: This class handles WRITING to revela.json. For READING the merged configuration,
 /// use IOptionsMonitor&lt;DependenciesConfig&gt;, etc.
 /// </para>
 /// </remarks>
-public sealed partial class GlobalConfigManager(ILogger<GlobalConfigManager> logger) : IGlobalConfigManager
+public sealed partial class GlobalConfigManager(
+    ILogger<GlobalConfigManager> logger,
+    ConfigFileWriter configFileWriter) : IGlobalConfigManager
 {
     private const string DependenciesSection = DependenciesConfig.Section;
     private const string FeedsKey = "feeds";
@@ -39,7 +41,10 @@ public sealed partial class GlobalConfigManager(ILogger<GlobalConfigManager> log
     private string? ExplicitConfigFilePath { get; }
     private JsonObject? cachedConfig;
 
-    internal GlobalConfigManager(ILogger<GlobalConfigManager> logger, string configFilePath) : this(logger)
+    internal GlobalConfigManager(
+        ILogger<GlobalConfigManager> logger,
+        ConfigFileWriter configFileWriter,
+        string configFilePath) : this(logger, configFileWriter)
     {
         if (!Path.IsPathFullyQualified(configFilePath))
         {
@@ -56,8 +61,11 @@ public sealed partial class GlobalConfigManager(ILogger<GlobalConfigManager> log
     public bool ConfigFileExists() => File.Exists(ConfigFilePath);
 
     /// <summary>
-    /// Loads the global configuration file, creating defaults if not exists.
+    /// Loads the global configuration file; a missing file reads as an empty document.
     /// </summary>
+    /// <remarks>
+    /// Reading never creates the file: its absence is how the interactive menu detects a first run.
+    /// </remarks>
     private async Task<JsonObject> LoadFileAsync(CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
@@ -70,10 +78,7 @@ public sealed partial class GlobalConfigManager(ILogger<GlobalConfigManager> log
 
         if (!File.Exists(configPath))
         {
-            LogCreatingDefaultConfig(configPath);
-            var defaults = JsonSerializer.SerializeToNode(new GlobalConfigFile(), GlobalConfigJsonContext.Default.GlobalConfigFile)!.AsObject();
-            await SaveFileAsync(defaults, cancellationToken);
-            return defaults;
+            return [];
         }
 
         try
@@ -93,64 +98,23 @@ public sealed partial class GlobalConfigManager(ILogger<GlobalConfigManager> log
     }
 
     /// <summary>
-    /// Saves the global configuration file.
+    /// Saves the global configuration file and reloads the configuration.
     /// </summary>
+    /// <remarks>
+    /// revela.json can hold private feed URLs, so it is always written owner-only on Unix.
+    /// </remarks>
     private async Task SaveFileAsync(JsonObject config, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        var json = config.ToJsonString(GlobalConfigJsonContext.Default.Options);
-        ValidateConfiguration(json);
-        var configPath = ConfigFilePath;
+        ValidateConfiguration(config.ToJsonString());
 
-        // Ensure directory exists
-        var dir = Path.GetDirectoryName(configPath);
-        if (!string.IsNullOrEmpty(dir))
-        {
-            _ = Directory.CreateDirectory(dir);
-        }
-
-        var temporaryPath = configPath + "." + Guid.NewGuid().ToString("N") + ".tmp";
-        var streamOptions = new FileStreamOptions
-        {
-            Mode = FileMode.CreateNew,
-            Access = FileAccess.Write,
-            Share = FileShare.None,
-            Options = FileOptions.Asynchronous
-        };
-        if (!OperatingSystem.IsWindows())
-        {
-            streamOptions.UnixCreateMode = UnixFileMode.UserRead | UnixFileMode.UserWrite;
-        }
-
-        var temporaryFileCreated = false;
-        try
-        {
-            await using (var stream = new FileStream(temporaryPath, streamOptions))
-            {
-                temporaryFileCreated = true;
-                await stream.WriteAsync(Encoding.UTF8.GetBytes(json), cancellationToken);
-                await stream.FlushAsync(cancellationToken);
-            }
-
-            cancellationToken.ThrowIfCancellationRequested();
-            await AtomicFileReplace.ReplaceAsync(temporaryPath, configPath, cancellationToken);
-            temporaryFileCreated = false;
-        }
-        finally
-        {
-            if (temporaryFileCreated)
-            {
-                try
-                {
-                    File.Delete(temporaryPath);
-                }
-                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
-                {
-                    LogTemporaryFileCleanupFailed(temporaryPath, ex.Message);
-                }
-            }
-        }
-
+        // A failed write or reload must not leave a cache that differs from the file
+        cachedConfig = null;
+        await configFileWriter.WriteAsync(
+            ConfigFilePath,
+            config,
+            UnixFileMode.UserRead | UnixFileMode.UserWrite,
+            cancellationToken);
         cachedConfig = config;
     }
 
@@ -304,60 +268,11 @@ public sealed partial class GlobalConfigManager(ILogger<GlobalConfigManager> log
 
     #region Logging
 
-    [LoggerMessage(Level = LogLevel.Debug, Message = "Creating default config at '{ConfigPath}'")]
-    private partial void LogCreatingDefaultConfig(string configPath);
-
     [LoggerMessage(Level = LogLevel.Debug, Message = "Loaded config from '{ConfigPath}'")]
     private partial void LogConfigLoaded(string configPath);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Config file '{ConfigPath}' is invalid ({Error}), refusing to overwrite it")]
     private partial void LogConfigCorrupted(string configPath, string error);
 
-    [LoggerMessage(Level = LogLevel.Warning, Message = "Could not remove temporary configuration file '{TemporaryPath}' ({Error})")]
-    private partial void LogTemporaryFileCleanupFailed(string temporaryPath, string error);
-
     #endregion
-
-    /// <summary>
-    /// Internal file structure for revela.json serialization
-    /// </summary>
-    internal sealed class GlobalConfigFile
-    {
-        public DependenciesSectionFile Dependencies { get; init; } = new();
-        public LoggingSection Logging { get; init; } = new();
-        public DefaultsSection Defaults { get; init; } = new();
-        public bool CheckUpdates { get; init; } = true;
-
-        public sealed class DependenciesSectionFile
-        {
-            public Dictionary<string, string> Feeds { get; init; } = [];
-            public Dictionary<string, string> Packages { get; init; } = [];
-        }
-
-        public sealed class LoggingSection
-        {
-            public Dictionary<string, string> LogLevel { get; init; } = new()
-            {
-                ["Default"] = "Warning",
-                ["Spectara.Revela"] = "Warning",
-                ["Microsoft"] = "Warning",
-                ["System"] = "Warning"
-            };
-        }
-
-        public sealed class DefaultsSection
-        {
-            public string Theme { get; init; } = "Lumina";
-        }
-    }
 }
-
-/// <summary>
-/// Source-generated JSON serializer context for the global revela.json file.
-/// </summary>
-[JsonSerializable(typeof(GlobalConfigManager.GlobalConfigFile))]
-[JsonSourceGenerationOptions(
-    WriteIndented = true,
-    PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase,
-    DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull)]
-internal sealed partial class GlobalConfigJsonContext : JsonSerializerContext;

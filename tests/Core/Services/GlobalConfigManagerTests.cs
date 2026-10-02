@@ -4,6 +4,7 @@ using System.Text.Json.Nodes;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
 
+using Spectara.Revela.Core.Configuration;
 using Spectara.Revela.Core.Services;
 using Spectara.Revela.Tests.Shared.Fixtures;
 
@@ -32,7 +33,7 @@ public sealed class GlobalConfigManagerTests
             }
             """;
         await File.WriteAllTextAsync(configPath, original);
-        var manager = new GlobalConfigManager(NullLogger<GlobalConfigManager>.Instance, configPath);
+        var manager = CreateManager(configPath);
 
         await manager.AddFeedAsync("Private", "https://example.test/private");
 
@@ -42,7 +43,7 @@ public sealed class GlobalConfigManagerTests
         Assert.AreEqual("https://example.test/private", actual?["dependencies"]?["feeds"]?["Private"]?.GetValue<string>());
         Assert.IsTrue(JsonNode.DeepEquals(expected, actual), "Adding a feed must retain all unrelated JSON values.");
 
-        var freshManager = new GlobalConfigManager(NullLogger<GlobalConfigManager>.Instance, configPath);
+        var freshManager = CreateManager(configPath);
         await freshManager.AddPackageAsync("New.Plugin", "3.0.0");
         expected["dependencies"]!["packages"]!["New.Plugin"] = "3.0.0";
         await AssertDocumentAsync(configPath, expected);
@@ -61,7 +62,7 @@ public sealed class GlobalConfigManagerTests
         using var project = TestProject.Create();
         var configPath = Path.Combine(project.RootPath, "test-global.json");
         await File.WriteAllTextAsync(configPath, /*lang=json,strict*/ "{ \"theme\": { \"name\": \"Lumina\" } }");
-        var manager = new GlobalConfigManager(NullLogger<GlobalConfigManager>.Instance, configPath);
+        var manager = CreateManager(configPath);
 
         await manager.AddPackageAsync("Acme.Revela.Watermark", "1.2.3-beta.4");
 
@@ -69,7 +70,7 @@ public sealed class GlobalConfigManagerTests
             { "theme": { "name": "Lumina" }, "dependencies": { "packages": { "Acme.Revela.Watermark": "1.2.3-beta.4" } } }
             """)!;
         await AssertDocumentAsync(configPath, expected);
-        var packages = await new GlobalConfigManager(NullLogger<GlobalConfigManager>.Instance, configPath).GetPackagesAsync();
+        var packages = await CreateManager(configPath).GetPackagesAsync();
         Assert.HasCount(1, packages);
         Assert.AreEqual("1.2.3-beta.4", packages["Acme.Revela.Watermark"]);
     }
@@ -96,7 +97,7 @@ public sealed class GlobalConfigManagerTests
             """;
         await File.WriteAllTextAsync(configPath, original);
         var expected = JsonNode.Parse(original)!;
-        var manager = new GlobalConfigManager(NullLogger<GlobalConfigManager>.Instance, configPath);
+        var manager = CreateManager(configPath);
 
         await manager.AddFeedAsync("Private", "private-feed");
         await manager.AddPackageAsync("New.Plugin", "3.0.0");
@@ -106,7 +107,7 @@ public sealed class GlobalConfigManagerTests
         expected[dependenciesName]![packagesName]!["Existing.Plugin"] = "1.1.0";
         await AssertDocumentAsync(configPath, expected);
 
-        var freshManager = new GlobalConfigManager(NullLogger<GlobalConfigManager>.Instance, configPath);
+        var freshManager = CreateManager(configPath);
         var packages = await freshManager.GetPackagesAsync();
         Assert.HasCount(3, packages);
         Assert.AreEqual("1.1.0", packages["Existing.Plugin"]);
@@ -143,7 +144,7 @@ public sealed class GlobalConfigManagerTests
         await File.WriteAllTextAsync(configPath, original);
         var expectedValues = ReadConfiguration(original);
         var originalDocument = JsonNode.Parse(original)!;
-        var manager = new GlobalConfigManager(NullLogger<GlobalConfigManager>.Instance, configPath);
+        var manager = CreateManager(configPath);
 
         await manager.AddFeedAsync("Private", "private-feed");
         expectedValues["dependencies:feeds:Private"] = "private-feed";
@@ -154,7 +155,7 @@ public sealed class GlobalConfigManagerTests
         }
 
         await AssertReaderValuesAsync(configPath, expectedValues);
-        var freshManager = new GlobalConfigManager(NullLogger<GlobalConfigManager>.Instance, configPath);
+        var freshManager = CreateManager(configPath);
         Assert.HasCount(2, await freshManager.GetPackagesAsync());
         await freshManager.AddPackageAsync("New.Plugin", "5.0.0");
         expectedValues["dependencies:packages:New.Plugin"] = "5.0.0";
@@ -180,7 +181,7 @@ public sealed class GlobalConfigManagerTests
         var configPath = Path.Combine(project.RootPath, "test-global.json");
         await File.WriteAllTextAsync(configPath, original);
         var originalBytes = await File.ReadAllBytesAsync(configPath);
-        var manager = new GlobalConfigManager(NullLogger<GlobalConfigManager>.Instance, configPath);
+        var manager = CreateManager(configPath);
 
         var error = await Assert.ThrowsExactlyAsync<InvalidDataException>(() => manager.AddFeedAsync("Private", "private-feed"));
 
@@ -206,7 +207,7 @@ public sealed class GlobalConfigManagerTests
         var configPath = Path.Combine(project.RootPath, "test-global.json");
         await File.WriteAllTextAsync(configPath, original);
         var originalBytes = await File.ReadAllBytesAsync(configPath);
-        var manager = new GlobalConfigManager(NullLogger<GlobalConfigManager>.Instance, configPath);
+        var manager = CreateManager(configPath);
 
         await Assert.ThrowsExactlyAsync<InvalidDataException>(() => AddEntryAsync(manager, operation, "New"));
         await Assert.ThrowsExactlyAsync<InvalidDataException>(() => RemoveEntryAsync(manager, operation, "Existing"));
@@ -233,7 +234,7 @@ public sealed class GlobalConfigManagerTests
             """;
         await File.WriteAllTextAsync(configPath, original);
         var originalBytes = await File.ReadAllBytesAsync(configPath);
-        var manager = new GlobalConfigManager(NullLogger<GlobalConfigManager>.Instance, configPath);
+        var manager = CreateManager(configPath);
 
         var error = await Assert.ThrowsExactlyAsync<InvalidDataException>(() => AddEntryAsync(manager, operation, name));
 
@@ -243,7 +244,7 @@ public sealed class GlobalConfigManagerTests
         var expected = JsonNode.Parse(original)!;
         expected["dependencies"]!["packages"]!["Valid.Plugin"] = "5.0.0";
         await AssertDocumentAsync(configPath, expected);
-        Assert.IsEmpty(Directory.GetFiles(project.RootPath, "test-global.json.*.tmp"));
+        Assert.IsEmpty(Directory.GetFiles(project.RootPath, ".test-global.json.*.tmp"));
     }
 
     [TestMethod]
@@ -259,7 +260,7 @@ public sealed class GlobalConfigManagerTests
             """;
         await File.WriteAllTextAsync(configPath, original);
         var originalBytes = await File.ReadAllBytesAsync(configPath);
-        var manager = new GlobalConfigManager(NullLogger<GlobalConfigManager>.Instance, configPath);
+        var manager = CreateManager(configPath);
         if (warmCache)
         {
             Assert.HasCount(1, await manager.GetPackagesAsync());
@@ -278,7 +279,7 @@ public sealed class GlobalConfigManagerTests
         var expected = JsonNode.Parse(original)!;
         expected["dependencies"]!["feeds"]!["Valid"] = "valid-feed";
         await AssertDocumentAsync(configPath, expected);
-        Assert.IsEmpty(Directory.GetFiles(project.RootPath, "test-global.json.*.tmp"));
+        Assert.IsEmpty(Directory.GetFiles(project.RootPath, ".test-global.json.*.tmp"));
     }
 
     [TestMethod]
@@ -286,7 +287,7 @@ public sealed class GlobalConfigManagerTests
     {
         using var project = TestProject.Create();
         var configPath = Path.Combine(project.RootPath, "test-global.json");
-        var manager = new GlobalConfigManager(NullLogger<GlobalConfigManager>.Instance, configPath);
+        var manager = CreateManager(configPath);
         using var cancellation = new CancellationTokenSource();
         await cancellation.CancelAsync();
 
@@ -294,29 +295,37 @@ public sealed class GlobalConfigManagerTests
         await Assert.ThrowsAsync<OperationCanceledException>(() => manager.AddFeedAsync("Private", "private-feed", cancellation.Token));
 
         Assert.IsFalse(File.Exists(configPath));
-        Assert.IsEmpty(Directory.GetFiles(project.RootPath, "test-global.json.*.tmp"));
+        Assert.IsEmpty(Directory.GetFiles(project.RootPath, ".test-global.json.*.tmp"));
     }
 
     [TestMethod]
-    public async Task GetPackagesAsync_MissingFile_CreatesDefaultsInNewShapeAtExplicitPath()
+    public async Task GetPackagesAsync_MissingFile_ReturnsEmptyWithoutCreatingFile()
     {
+        // First-run detection relies on revela.json not existing until something is saved.
         using var project = TestProject.Create();
         var configPath = Path.Combine(project.RootPath, "test-global.json");
-        var manager = new GlobalConfigManager(NullLogger<GlobalConfigManager>.Instance, configPath);
+        var manager = CreateManager(configPath);
         Assert.AreEqual(configPath, manager.ConfigFilePath);
-        Assert.IsFalse(manager.ConfigFileExists());
 
         var packages = await manager.GetPackagesAsync();
 
         Assert.IsEmpty(packages);
-        Assert.IsTrue(manager.ConfigFileExists());
+        Assert.IsFalse(manager.ConfigFileExists());
+        Assert.IsFalse(await manager.RemoveFeedAsync("Missing"));
+        Assert.IsFalse(manager.ConfigFileExists());
+    }
+
+    [TestMethod]
+    public async Task AddFeedAsync_MissingFile_CreatesFileWithOnlyTheFeed()
+    {
+        using var project = TestProject.Create();
+        var configPath = Path.Combine(project.RootPath, "test-global.json");
+        var manager = CreateManager(configPath);
+
+        await manager.AddFeedAsync("Private", "https://example.test/private");
+
         var expected = JsonNode.Parse("""
-            {
-              "dependencies": { "feeds": {}, "packages": {} },
-              "logging": { "logLevel": { "Default": "Warning", "Spectara.Revela": "Warning", "Microsoft": "Warning", "System": "Warning" } },
-              "defaults": { "theme": "Lumina" },
-              "checkUpdates": true
-            }
+            { "dependencies": { "feeds": { "Private": "https://example.test/private" } } }
             """)!;
         await AssertDocumentAsync(configPath, expected);
         if (!OperatingSystem.IsWindows())
@@ -334,7 +343,7 @@ public sealed class GlobalConfigManagerTests
         var configPath = Path.Combine(project.RootPath, "test-global.json");
         const string original = /*lang=json,strict*/ "{ \"dependencies\": { \"feeds\": {} }, \"custom\": [null, true] }";
         await File.WriteAllTextAsync(configPath, original);
-        var manager = new GlobalConfigManager(NullLogger<GlobalConfigManager>.Instance, configPath);
+        var manager = CreateManager(configPath);
 
         await Assert.ThrowsExactlyAsync<InvalidOperationException>(() => manager.AddFeedAsync(name, "private-feed"));
         await Assert.ThrowsExactlyAsync<InvalidOperationException>(() => manager.RemoveFeedAsync(name));
@@ -349,7 +358,7 @@ public sealed class GlobalConfigManagerTests
         var configPath = Path.Combine(project.RootPath, "test-global.json");
         const string original = /*lang=json,strict*/ "{ \"dependencies\": { \"feeds\": { \"Existing\": \"existing-feed\" } }, \"custom\": null }";
         await File.WriteAllTextAsync(configPath, original);
-        var manager = new GlobalConfigManager(NullLogger<GlobalConfigManager>.Instance, configPath);
+        var manager = CreateManager(configPath);
 
         await Assert.ThrowsExactlyAsync<InvalidOperationException>(() => manager.AddFeedAsync("Existing", "replacement-feed"));
         Assert.IsFalse(await manager.RemoveFeedAsync("Missing"));
@@ -371,7 +380,7 @@ public sealed class GlobalConfigManagerTests
               "custom": [null, true,],
             }
             """);
-        var manager = new GlobalConfigManager(NullLogger<GlobalConfigManager>.Instance, configPath);
+        var manager = CreateManager(configPath);
 
         await manager.AddPackageAsync("New.Plugin", "1.0.0");
 
@@ -405,14 +414,40 @@ public sealed class GlobalConfigManagerTests
                 UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.GroupRead | UnixFileMode.OtherRead);
         }
 
-        var manager = new GlobalConfigManager(NullLogger<GlobalConfigManager>.Instance, configPath);
+        var manager = CreateManager(configPath);
 
         await manager.AddFeedAsync("Private", "private-feed");
 
         Assert.AreEqual(UnixFileMode.UserRead | UnixFileMode.UserWrite, File.GetUnixFileMode(configPath));
         Assert.AreEqual("private-feed", ReadConfiguration(await File.ReadAllTextAsync(configPath))["dependencies:feeds:Private"]);
-        Assert.IsEmpty(Directory.GetFiles(project.RootPath, "test-global.json.*.tmp"));
+        Assert.IsEmpty(Directory.GetFiles(project.RootPath, ".test-global.json.*.tmp"));
     }
+
+    [TestMethod]
+    [DataRow("feed")]
+    [DataRow("package")]
+    public async Task ManagedOperations_Write_ReloadsConfiguration(string operation)
+    {
+        // The interactive menu runs `config feed add` and then install in one process:
+        // the install must see the new feed without a restart.
+        using var project = TestProject.Create();
+        var configPath = Path.Combine(project.RootPath, "test-global.json");
+        await File.WriteAllTextAsync(configPath, "{}");
+        using var configuration = new ConfigurationManager();
+        configuration.AddJsonFile(configPath, optional: true, reloadOnChange: false);
+        var manager = CreateManager(configPath, configuration);
+
+        await AddEntryAsync(manager, operation, "Added");
+
+        var key = operation == "feed" ? "dependencies:feeds:Added" : "dependencies:packages:Added";
+        Assert.IsNotNull(configuration[key]);
+    }
+
+    private static GlobalConfigManager CreateManager(string configPath, IConfiguration? configuration = null) =>
+        new(
+            NullLogger<GlobalConfigManager>.Instance,
+            new ConfigFileWriter(configuration ?? new ConfigurationBuilder().Build(), NullLogger<ConfigFileWriter>.Instance),
+            configPath);
 
     private static Task AddEntryAsync(GlobalConfigManager manager, string operation, string name) => operation switch
     {

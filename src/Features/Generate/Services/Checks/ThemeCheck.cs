@@ -39,7 +39,7 @@ internal sealed class ThemeCheck(
         var themeName = themeConfig.CurrentValue.Name;
         if (string.IsNullOrEmpty(themeName))
         {
-            themeName = "Lumina";
+            themeName = ThemeConfig.DefaultName;
         }
 
         var projectPath = projectEnvironment.Value.Path;

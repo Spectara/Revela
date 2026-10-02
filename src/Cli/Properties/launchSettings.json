@@ -55,7 +55,7 @@
       "workingDirectory": "$(SolutionDir)debug",
       "environmentVariables": {
         "DOTNET_ENVIRONMENT": "Development",
-        "LOGGING__LOGLEVEL__DEFAULT": "Error"
+        "SPECTARA__REVELA__LOGGING__LOGLEVEL__DEFAULT": "Error"
       }
     },
     "OneDrive Init": {
@@ -66,9 +66,9 @@
         "DOTNET_ENVIRONMENT": "Development"
       }
     },
-    "Init Project": {
+    "Config Project": {
       "commandName": "Project",
-      "commandLineArgs": "init project",
+      "commandLineArgs": "config project",
       "workingDirectory": "$(SolutionDir)debug",
       "environmentVariables": {
         "DOTNET_ENVIRONMENT": "Development"

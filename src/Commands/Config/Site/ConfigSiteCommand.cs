@@ -1,11 +1,12 @@
 using System.CommandLine;
 using System.Globalization;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
 using Spectara.Revela.Commands.Config.Services;
+using Spectara.Revela.Core.Configuration;
 using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Abstractions;
 using Spectara.Revela.Sdk.Configuration;
+using Spectara.Revela.Sdk.Hosting;
 using Spectara.Revela.Sdk.Services;
 using Spectre.Console;
 
@@ -18,7 +19,8 @@ namespace Spectara.Revela.Commands.Config.Site;
 /// <para>
 /// Creates or edits site.json with interactive prompts.
 /// Uses JSON structure from theme template to determine available properties.
-/// When editing, existing values are used as defaults.
+/// When editing, existing values are used as defaults and keys the template doesn't
+/// know are kept.
 /// </para>
 /// </remarks>
 internal sealed partial class ConfigSiteCommand(
@@ -27,7 +29,8 @@ internal sealed partial class ConfigSiteCommand(
     IOptionsMonitor<ThemeConfig> themeConfig,
     IConfigService configService,
     IThemeRegistry themeRegistry,
-    IConfiguration configuration,
+    ConfigFileWriter configFileWriter,
+    IConsoleCapabilities consoleCapabilities,
     TimeProvider timeProvider)
 {
     /// <summary>
@@ -56,6 +59,15 @@ internal sealed partial class ConfigSiteCommand(
             return 1;
         }
 
+        if (!consoleCapabilities.IsInteractive)
+        {
+            ErrorPanels.ShowError(
+                "Interactive Input Required",
+                "[yellow]revela config site asks for every value and needs an interactive terminal.[/]\n\n" +
+                "[dim]In scripts and CI, edit site.json directly.[/]");
+            return 1;
+        }
+
         // Get selected theme from IOptions (cache is invalidated after theme change)
         var themeName = themeConfig.CurrentValue.Name;
 
@@ -79,10 +91,11 @@ internal sealed partial class ConfigSiteCommand(
 
         if (selectedTheme is null)
         {
+            var escapedName = Markup.Escape(themeName);
             ErrorPanels.ShowError(
                 "Theme Not Found",
-                $"[yellow]Theme '{themeName}' is not installed.[/]\n\n" +
-                "[bold]Install it:[/] [cyan]revela plugin install Spectara.Revela.Themes.{themeName}[/]");
+                $"[yellow]Theme '{escapedName}' is not installed.[/]\n\n" +
+                $"[bold]Install it:[/] [cyan]revela theme install {escapedName}[/]");
             return 1;
         }
 
@@ -92,7 +105,7 @@ internal sealed partial class ConfigSiteCommand(
         {
             ErrorPanels.ShowWarning(
                 "No Template",
-                $"[yellow]Theme '{selectedTheme.Metadata.Name}' doesn't provide a site.json template.[/]\n\n" +
+                $"[yellow]Theme '{Markup.Escape(selectedTheme.Metadata.Name)}' doesn't provide a site.json template.[/]\n\n" +
                 "[dim]Create site.json manually.[/]");
             return 1;
         }
@@ -126,13 +139,21 @@ internal sealed partial class ConfigSiteCommand(
         // Collect values via interactive prompts
         var values = CollectValues(properties, isEditMode, projectName, timeProvider);
 
-        // Build final JSON using template structure
-        var finalJson = JsonPropertyExtractor.BuildJson(templateJson, values);
-        await File.WriteAllTextAsync(siteConfigPath, finalJson, cancellationToken);
-
-        // Configuration sources don't watch files, so later steps in this process
-        // (e.g. generate from the interactive menu) only see the new values after a reload
-        (configuration as IConfigurationRoot)?.Reload();
+        // Template structure + existing document (unknown keys kept); the writer validates,
+        // replaces atomically and reloads, so later steps in this process (e.g. generate from
+        // the menu) see it
+        var siteJson = JsonPropertyExtractor.BuildJson(templateJson, isEditMode ? sourceJson : null, values);
+        try
+        {
+            await configFileWriter.WriteAsync(siteConfigPath, siteJson, cancellationToken: cancellationToken);
+        }
+        catch (FormatException ex)
+        {
+            ErrorPanels.ShowError(
+                "site.json Not Saved",
+                $"[yellow]The configuration reader would reject the result:[/]\n{Markup.Escape(ex.Message)}");
+            return 1;
+        }
 
         LogSavedSiteConfig(logger, siteConfigPath);
 
@@ -268,8 +289,8 @@ internal sealed partial class ConfigSiteCommand(
         var panel = new Panel(
             $"[green]{action} site.json[/]\n\n" +
             $"[bold]Values:[/]\n{valuesSummary}\n\n" +
-            $"[bold]File:[/]\n[link={path}]{path}[/]\n\n" +
-            $"[dim]Theme: {themeName}[/]")
+            $"[bold]File:[/]\n{Markup.Escape(path)}\n\n" +
+            $"[dim]Theme: {Markup.Escape(themeName)}[/]")
             .WithHeader($"[bold green]✓ Site {action}[/]")
             .WithSuccessStyle();
 

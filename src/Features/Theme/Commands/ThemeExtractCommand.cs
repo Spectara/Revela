@@ -116,7 +116,7 @@ internal sealed partial class ThemeExtractCommand(
         var themeName = themeConfig.CurrentValue.Name;
         if (string.IsNullOrWhiteSpace(themeName))
         {
-            themeName = "Lumina";
+            themeName = ThemeConfig.DefaultName;
         }
 
         // Resolve theme

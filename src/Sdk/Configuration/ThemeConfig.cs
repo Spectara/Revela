@@ -43,8 +43,15 @@ public sealed class ThemeConfig
     /// argument; passed to <c>BindConfiguration</c> at registration time.
     /// </summary>
     public const string Section = "theme";
+
     /// <summary>
-    /// Name of the theme to use (e.g., "Lumina").
+    /// Theme used when a project doesn't name one.
+    /// </summary>
+    public const string DefaultName = "Lumina";
+
+    /// <summary>
+    /// Name of the theme to use (e.g., "Lumina"). Generation and theme commands fall back
+    /// to <see cref="DefaultName"/> when it is empty.
     /// </summary>
     public string Name { get; set; } = string.Empty;
 

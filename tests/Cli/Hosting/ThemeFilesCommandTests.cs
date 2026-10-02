@@ -1,6 +1,5 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
 
 using NSubstitute;
 
@@ -95,12 +94,7 @@ public sealed class ThemeFilesCommandTests
 
         try
         {
-            var builder = Host.CreateApplicationBuilder(new HostApplicationBuilderSettings
-            {
-                ContentRootPath = projectPath,
-                EnvironmentName = "Testing",
-            });
-            builder.ConfigureRevela(args, source);
+            var builder = HostBootstrap.CreateBuilder(args, source, projectPath);
             using var host = builder.Build();
 
             var exitCode = await host.RunRevelaAsync(args);

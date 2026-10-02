@@ -89,7 +89,7 @@ public sealed class MalformedConfigTests
             // Act
             var ex = Assert.ThrowsExactly<InvalidDataException>(() =>
                 new ConfigurationManager()
-                    .AddSiteJson(path, optional: false, reloadOnChange: false));
+                    .AddSiteJson(path, optional: false));
 
             // Assert
             var baseException = ex.GetBaseException();

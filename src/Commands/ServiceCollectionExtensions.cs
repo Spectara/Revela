@@ -38,10 +38,8 @@ internal static class ServiceCollectionExtensions
         // Host-owned commands
         services.AddConfigFeature();
 
-        // Info commands (always available, in both Cli and Cli.Embedded)
+        // Info command (always available, in both Cli and Cli.Embedded)
         services.AddTransient<InfoCommand>();
-        services.AddTransient<InfoPluginsCommand>();
-        services.AddTransient<InfoThemesCommand>();
 
         // Core features — always available, not plugin-loaded
         services.AddGenerateFeature();

@@ -6,6 +6,7 @@ using Microsoft.Extensions.Options;
 using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Abstractions;
 using Spectara.Revela.Sdk.Configuration.Keys;
+using Spectara.Revela.Sdk.Hosting;
 using Spectara.Revela.Sdk.Output;
 
 using Spectre.Console;
@@ -24,7 +25,8 @@ namespace Spectara.Revela.Commands.Config.Project;
 internal sealed partial class ConfigProjectCommand(
     ILogger<ConfigProjectCommand> logger,
     IOptions<ProjectEnvironment> projectEnvironment,
-    IConfigService configService)
+    IConfigService configService,
+    IConsoleCapabilities consoleCapabilities)
 {
     /// <summary>
     /// Creates the command definition.
@@ -70,11 +72,19 @@ internal sealed partial class ConfigProjectCommand(
     {
         var isFirstTime = !configService.IsProjectInitialized();
 
+        // No options means "ask"; without a terminal there is nobody to ask
+        var isInteractive = nameArg is null && urlArg is null;
+        if (isInteractive && !consoleCapabilities.IsInteractive)
+        {
+            ErrorPanels.ShowError(
+                "Interactive Input Required",
+                "[yellow]No options given and this console is not interactive.[/]\n\n" +
+                "[bold]Use:[/] [cyan]revela config project --name <name> [[--url <url>]][/]");
+            return 1;
+        }
+
         // Get current config (or empty for new project)
         var current = await configService.ReadProjectConfigAsync(cancellationToken);
-
-        // Determine if interactive mode (no arguments provided)
-        var isInteractive = nameArg is null && urlArg is null;
 
         string name, url;
 
@@ -132,7 +142,7 @@ internal sealed partial class ConfigProjectCommand(
 
         if (isFirstTime)
         {
-            AnsiConsole.MarkupLine($"\n{OutputMarkers.Success} Project '{name}' initialized");
+            AnsiConsole.MarkupLine($"\n{OutputMarkers.Success} Project '{Markup.Escape(name)}' initialized");
             AnsiConsole.MarkupLine("[dim]Created: project.json[/]");
 
             AnsiConsole.MarkupLine("\n[yellow]Next:[/] Run [cyan]revela config theme[/] to select a theme");
