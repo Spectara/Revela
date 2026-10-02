@@ -119,6 +119,9 @@ internal sealed class Gallery
     /// <summary>
     /// Images contained in this gallery.
     /// </summary>
-    public IReadOnlyList<Image> Images { get; init; } = [];
+    /// <remarks>
+    /// Replaced at render time when a page filter sorts randomly (drawn once per render).
+    /// </remarks>
+    public IReadOnlyList<Image> Images { get; set; } = [];
 }
 

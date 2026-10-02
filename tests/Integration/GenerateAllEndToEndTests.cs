@@ -2102,6 +2102,46 @@ public sealed class GenerateAllEndToEndTests
         }
     }
 
+    [TestMethod]
+    public async Task RenderAsync_PageFilterSortRandom_ShufflesOnEveryRenderLikeInlineGalleries()
+    {
+        using var project = TestProject.Create(p => p
+            .WithSiteJson(new { title = "Random", author = "Test" })
+            .AddGallery("Picks"));
+        for (var index = 0; index < 8; index++)
+        {
+            TestImageGenerator.CreateJpeg(
+                Path.Combine(project.SourcePath, "_images", $"pick-{index}.jpg"), 64, 48);
+        }
+
+        await File.WriteAllTextAsync(
+            Path.Combine(project.SourcePath, "Picks", "_index.revela"),
+            "+++\nfilter = \"all | sort random\"\n+++\n");
+
+        using var host = RevelaTestHost.Build(project.RootPath, services =>
+        {
+            services.AddRevelaCommands();
+            services.AddGenerateFeature();
+            services.AddSingleton<ITheme>(new LuminaTheme());
+        });
+        var scanResult = await host.Services.GetRequiredService<IContentService>().ScanAsync();
+        Assert.IsTrue(scanResult.Success, scanResult.ErrorMessage);
+
+        // 8! orders: four renders of one scan in the same order would mean the order was frozen at scan.
+        var orders = new List<string>();
+        for (var render = 0; render < 4; render++)
+        {
+            var renderResult = await host.Services.GetRequiredService<IRenderService>().RenderAsync();
+            Assert.IsTrue(renderResult.Success, renderResult.ErrorMessage);
+            var html = await File.ReadAllTextAsync(Path.Combine(project.OutputPath, "picks", "index.html"));
+            var order = ExtractPhotoHrefs(html);
+            Assert.HasCount(8, order);
+            orders.Add(string.Join(',', order));
+        }
+
+        Assert.IsGreaterThan(1, orders.Distinct(StringComparer.Ordinal).Count());
+    }
+
     private static IReadOnlyList<string> ExtractPhotoHrefs(string html)
     {
         const string hrefPrefix = "href=\"";

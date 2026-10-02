@@ -4,6 +4,7 @@ using Microsoft.Extensions.Options;
 using Scriban.Runtime;
 using Spectara.Revela.Core.Themes;
 using Spectara.Revela.Features.Generate.Abstractions;
+using Spectara.Revela.Features.Generate.Filtering;
 using Spectara.Revela.Features.Generate.Infrastructure;
 using Spectara.Revela.Features.Generate.Models;
 using Spectara.Revela.Features.Generate.Models.Results;
@@ -904,6 +905,18 @@ internal sealed partial class RenderService(
             }
 
             var metadata = await revelaParser.ParseFileAsync(sourcePath, cancellationToken);
+
+            // A page filter with `sort random` is drawn again on every render, once for the whole
+            // run like [[gallery: ... | sort random]] blocks — the order frozen at scan is ignored.
+            if (!string.IsNullOrWhiteSpace(metadata.Filter) && FilterService.ParseQuery(metadata.Filter).Sort is { IsRandom: true })
+            {
+                gallery.Images = GalleryImageResolver.Resolve(
+                    imageContentsBySourcePath,
+                    metadata.Filter,
+                    metadata.Sort,
+                    options.CurrentValue.Sorting.Images);
+            }
+
             var viewerMode = PhotoViewerResolver.Resolve(
                 metadata.PhotoViewer,
                 themeConfig.CurrentValue.PhotoViewer,
