@@ -18,10 +18,11 @@ Expects:
 - not_found: true only for 404.html (rendered with body/notfound, root-absolute basepath)
 
 Body Template Selection:
-- Default: "body/gallery" (shows images and optional intro text)
-- Custom: Specify in _index.revela frontmatter: template = "body/page"
+- Default: "gallery" (shows images and optional intro text)
+- Custom: Specify in _index.revela frontmatter: template = "page"
 - Extension templates: "statistics/overview" etc.
-- 404 page: "body/notfound"
+- 404 page: "notfound"
+The layout includes "body/" + template, e.g. Body/Page.revela for template = "page".
 
 Headings: the layout renders no heading of its own. Every body template renders
 exactly one <h1> for the page (visually hidden where the design shows no title).
@@ -101,13 +102,13 @@ exactly one <h1> for the page (visually hidden where the design shows no title).
 
         All body templates are included dynamically with full context.
         Extension templates define data defaults in manifest.json, so users
-        can simply specify template = "body/statistics/overview" without
+        can simply specify template = "statistics/overview" without
         explicit data configuration.
 
         Examples:
-        - template = "body/page" → Simple text page
-        - template = "body/gallery" → Image gallery (default)
-        - template = "body/statistics/overview" → Statistics extension template
+        - template = "page" → Body/Page.revela, simple text page
+        - template = "gallery" → Body/Gallery.revela, image gallery (default)
+        - template = "statistics/overview" → Statistics extension template
         ##~}}
         {{~ body_template = 'body/' + (gallery.template ?? 'gallery') ~}}
         {{~ include body_template ~}}

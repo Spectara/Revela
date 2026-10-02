@@ -9,7 +9,6 @@ Context variables:
 - viewer_mode: 'page' (link to the photo page) or 'none' (theme renders no photo pages)
 - context_id: page context for the photo page's return link, or null for `| gallery`
   (the photo page then uses its primary context, normally the photo's gallery)
-- context_label: label of the page context, or null
 - occurrence_id: anchor id the photo page's return link targets
 - assets_basepath: Path/URL to image folder
 - basepath: Relative path to root

@@ -4,20 +4,33 @@ Availability calendar extension for the Lumina theme.
 
 ## What it provides
 
-- **Template:** `body/calendar/page.revela` — Month grid with CSS-styled day states
-- **CSS:** Responsive calendar grid, legend, arrive/depart diagonals
-- **Data defaults:** Auto-loads `calendar.json` for `calendar/page` template
+- **Template:** `calendar/page` (`Body/page.revela`) — the page's Markdown body, a legend and a month grid
+- **CSS:** `calendar.css`, loaded only on calendar pages — responsive month grid, legend, arrive/depart diagonals
+- **Data defaults:** `calendar/page` loads `calendar.json` automatically
+
+Use it in a page's front matter:
+
+```text
++++
+title = "Availability"
+template = "calendar/page"
+calendar.source = "bookings.ics"
++++
+```
 
 ## Day CSS classes
 
+Day states are monochrome: tints of the text color (`currentColor`), so they follow
+Lumina's light and dark scheme.
+
 | Class | Visual | Used in |
 |-------|--------|---------|
-| `free` | Green tint | Both modes |
-| `booked` | Red tint | Both modes |
-| `arrive` | Diagonal ↘ (green→red) | Nights mode |
-| `depart` | Diagonal ↗ (red→green) | Nights mode |
+| `free` | Light tint | Both modes |
+| `booked` | Strong tint | Both modes |
+| `arrive` | Diagonal split, light → strong | Nights mode |
+| `depart` | Diagonal split, strong → light | Nights mode |
 | `past` | Dimmed | Both modes |
-| `today` | Accent outline | Both modes |
+| `today` | Outline | Both modes |
 
 ## Related Packages
 
