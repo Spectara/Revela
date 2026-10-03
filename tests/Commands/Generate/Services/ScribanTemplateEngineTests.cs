@@ -179,6 +179,30 @@ public sealed class ScribanTemplateEngineTests
     }
 
     [TestMethod]
+    [DataRow("../", "../_assets/main.css?v=3f2a9c1d")]
+    [DataRow("/gallery/", "/gallery/_assets/main.css?v=3f2a9c1d")]
+    public void AssetUrl_WithFingerprint_AppendsVersionQuery(string basePath, string expected)
+    {
+        var engine = CreateEngine();
+        engine.SetAssetFingerprints(path => path == "main.css" ? "3f2a9c1d" : null);
+
+        var result = engine.Render("{{ asset_url \"/main.css\" }}", Model(("basepath", basePath)));
+
+        Assert.AreEqual(expected, result.Trim());
+    }
+
+    [TestMethod]
+    public void AssetUrl_UnknownAsset_KeepsPlainUrl()
+    {
+        var engine = CreateEngine();
+        engine.SetAssetFingerprints(path => path == "main.css" ? "3f2a9c1d" : null);
+
+        var result = engine.Render("{{ asset_url \"missing.css\" }}", Model(("basepath", "../")));
+
+        Assert.AreEqual("../_assets/missing.css", result.Trim());
+    }
+
+    [TestMethod]
     public void VariantUrl_BuildsAssetPathFromSlugSizeAndFormat()
     {
         var engine = CreateEngine();

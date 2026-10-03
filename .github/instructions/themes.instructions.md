@@ -60,7 +60,7 @@ A missing layout or `Partials/ContentImage.revela` fails the render with a clear
 | `find_image "path"` | Resolve any image (page folder → `_images/` → exact path) — returns the same image object as `images`, or null |
 | `page_url(target)` | Page URL for an `Image`/`Gallery`/`NavigationItem`/slug (null for pageless nav) |
 | `absolute_url(target)` | Absolute URL (host from `baseUrl`) for OG/RSS/sitemap; root-relative fallback |
-| `asset_url "path"` | Theme asset URL: `basepath + "_assets/" + path` (base-path safe) |
+| `asset_url "path"` | Theme asset URL: `basepath + "_assets/" + path + "?v=<content hash>"` (base-path safe, cache-busting) |
 | `variant_url(image, size, format)` | Generate image variant URL |
 | `absolute_variant_url(image, size, format)` | Absolute variant URL in a full page context, or local root-relative fallback without base_url |
 | `html_escape(value)` | Encode dynamic text/attribute values (only `& < > " '`; non-ASCII stays literal); Scriban does not auto-escape |
@@ -131,7 +131,7 @@ Every theme must implement this partial — it's invoked for every `![alt](path)
 
 ## Assets
 - Declare `stylesheets` and `scripts` in `manifest.json` (embedded) or `theme.json` (local). Theme entries are objects, for example `"stylesheets": [{ "path": "main.css" }, { "path": "photo.css", "scope": ["photo"] }]`. Omitted scope means global. `site.json` also accepts string shorthand, but theme manifests do not.
-- Render the resolved `stylesheets`/`scripts` arrays using escaped `basepath + '_assets/' + path`, as Lumina's layout does, or `asset_url path` for individual assets (same result). Undeclared assets may be copied without being linked.
+- Render the resolved `stylesheets`/`scripts` arrays with escaped `asset_url path`, as Lumina's layout does. Never build `_assets/` URLs by hand: `asset_url` appends the `?v=` content fingerprint that lets hosts cache `/_assets/` immutably. Undeclared assets may be copied without being linked.
 - Use `variant_url` for local/CDN image references and `absolute_variant_url` for absolute image metadata. Neither helper creates variants. Use only prepared sizes and formats.
 - Escape text and attributes with `html_escape`; deliberately rendered Markdown/body HTML and documented HTML-valued fields are separate trusted boundaries.
 

@@ -55,6 +55,21 @@ public interface IAssetResolver
     Task CopyToOutputAsync(string outputDirectory, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Gets a short content fingerprint of an asset for cache-busting URLs.
+    /// </summary>
+    /// <param name="path">Asset path relative to <c>_assets/</c> (e.g. <c>main.css</c>).</param>
+    /// <returns>
+    /// The first 8 lowercase hex characters of the SHA-256 of exactly the bytes
+    /// <see cref="CopyToOutputAsync"/> writes (after override resolution), or <c>null</c>
+    /// when no asset exists at <paramref name="path"/>.
+    /// </returns>
+    /// <remarks>
+    /// Thread-safe. Each asset is hashed at most once between calls to <see cref="Initialize"/>,
+    /// so one render run sees one stable fingerprint per asset.
+    /// </remarks>
+    string? GetFingerprint(string path);
+
+    /// <summary>
     /// Gets all resolved asset entries with full source information.
     /// </summary>
     IReadOnlyList<ResolvedFileInfo> GetAllEntries();

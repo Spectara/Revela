@@ -370,7 +370,10 @@ exists) the renderer writes `404.html` once at the output root with a root-absol
 `basepath`, outside navigation, sitemap and page count.
 
 Template properties describe identity and data. URL helpers such as `page_url`,
-`variant_url`, and `asset_url` own rendering paths and prefixes. The SDK's
+`variant_url`, and `asset_url` own rendering paths and prefixes. `asset_url` also
+appends `?v=` with the first 8 hex characters of the SHA-256 of the resolved asset
+(`IAssetResolver.GetFingerprint`, hashed once per render run), so changed theme
+assets get new URLs and hosts can cache `/_assets/` immutably. The SDK's
 [template-model generation](../src/Sdk/README.md#template-models) provides
 direct-property conversions without runtime reflection; consumers using it must
 reference Scriban explicitly.

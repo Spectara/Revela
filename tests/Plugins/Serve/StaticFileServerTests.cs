@@ -656,6 +656,73 @@ public sealed class StaticFileServerTests
 
     [TestMethod]
     [TestCategory("Integration")]
+    [DataRow("br")]
+    [DataRow("gzip")]
+    public async Task Server_VersionedAssetUrl_IgnoresQueryAndNegotiatesEncoding(string encoding)
+    {
+        var tempDir = Path.Combine(Path.GetTempPath(), $"revela-serve-test-{Guid.NewGuid():N}");
+        var filePath = Path.Combine(tempDir, "_assets", "main.css");
+        Directory.CreateDirectory(Path.GetDirectoryName(filePath)!);
+        const string expectedContent = "body { color: red; }";
+        await File.WriteAllTextAsync(filePath, expectedContent);
+        await WriteCompressedAsync(filePath + ".br", expectedContent, useBrotli: true);
+        await WriteCompressedAsync(filePath + ".gz", expectedContent, useBrotli: false);
+
+        try
+        {
+            await using var server = StartServer(tempDir, out var port);
+            using var client = new HttpClient();
+            using var request = new HttpRequestMessage(HttpMethod.Get, LocalUri(port, "/_assets/main.css?v=3f2a9c1d"));
+            request.Headers.AcceptEncoding.ParseAdd(encoding);
+
+            using var response = await client.SendAsync(request);
+            await using var compressed = await response.Content.ReadAsStreamAsync();
+            await using Stream decoded = encoding == "br"
+                ? new BrotliStream(compressed, CompressionMode.Decompress)
+                : new GZipStream(compressed, CompressionMode.Decompress);
+            using var reader = new StreamReader(decoded);
+            var content = await reader.ReadToEndAsync();
+
+            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+            CollectionAssert.Contains(response.Content.Headers.ContentEncoding.ToList(), encoding);
+            Assert.AreEqual("text/css; charset=utf-8", response.Content.Headers.ContentType?.ToString());
+            Assert.AreEqual(expectedContent, content);
+        }
+        finally
+        {
+            Directory.Delete(tempDir, recursive: true);
+        }
+    }
+
+    [TestMethod]
+    [TestCategory("Integration")]
+    public async Task Server_VersionedAssetUrl_IsCachedImmutable()
+    {
+        var tempDir = Path.Combine(Path.GetTempPath(), $"revela-serve-test-{Guid.NewGuid():N}");
+        var filePath = Path.Combine(tempDir, "_assets", "main.css");
+        Directory.CreateDirectory(Path.GetDirectoryName(filePath)!);
+        await File.WriteAllTextAsync(filePath, "body { color: red; }");
+
+        try
+        {
+            await using var server = StartServer(tempDir, out var port);
+            using var client = new HttpClient();
+
+            using var versioned = await client.GetAsync(LocalUri(port, "/_assets/main.css?v=3f2a9c1d"));
+            using var plain = await client.GetAsync(LocalUri(port, "/_assets/main.css"));
+
+            Assert.AreEqual(HttpStatusCode.OK, versioned.StatusCode);
+            Assert.AreEqual("public, max-age=31536000, immutable", versioned.Headers.CacheControl?.ToString());
+            Assert.AreEqual("public, max-age=3600", plain.Headers.CacheControl?.ToString());
+        }
+        finally
+        {
+            Directory.Delete(tempDir, recursive: true);
+        }
+    }
+
+    [TestMethod]
+    [TestCategory("Integration")]
     public async Task Server_HtmlFile_NoCacheHeaders()
     {
         // Arrange

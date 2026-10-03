@@ -54,12 +54,17 @@ internal sealed partial class ScribanTemplateEngine(
     private ThemeStrings strings = ThemeStrings.Empty;
     private TranslateFunction translateFunction = new(ThemeStrings.Empty);
     private string ogLocale = ToOpenGraphLocale(ThemeStrings.Empty.Language);
+    private Func<string, string?> assetFingerprint = static _ => null;
 
     private static readonly SearchValues<char> HtmlSpecialCharacters = SearchValues.Create("&<>\"'");
 
     /// <inheritdoc />
     public void SetImageLookup(IReadOnlyDictionary<string, Image> imagesBySourcePath) =>
         imageLookup = imagesBySourcePath;
+
+    /// <inheritdoc />
+    public void SetAssetFingerprints(Func<string, string?> fingerprint) =>
+        assetFingerprint = fingerprint;
 
     /// <inheritdoc />
     public void SetStrings(ThemeStrings themeStrings)
@@ -171,7 +176,8 @@ internal sealed partial class ScribanTemplateEngine(
         scriptObject.Import("variant_url", new Func<object?, int, string, string>((image, size, format) => VariantUrl(image, size, format, assetsBasePath)));
         scriptObject.Import("absolute_variant_url", new Func<object?, int, string, string>((image, size, format) =>
             AbsoluteVariantUrl(image, size, format, assetsBasePath, baseUrl, basePath, currentPagePath)));
-        scriptObject.Import("asset_url", new Func<string?, string>(path => AssetUrl(path, basePath)));
+        var fingerprint = assetFingerprint;
+        scriptObject.Import("asset_url", new Func<string?, string>(path => AssetUrl(path, basePath, fingerprint)));
         var culture = strings.Culture;
         scriptObject.Import("format_date", new Func<DateTime, string, string>((date, format) => FormatDate(date, format, culture)));
         scriptObject.Import("format_filesize", new Func<long, string>(bytes => FormatFileSize(bytes, culture)));
@@ -381,11 +387,18 @@ internal sealed partial class ScribanTemplateEngine(
     /// folder, resolved against the current page's base path (relative directory
     /// or configured subdirectory like <c>/photos/</c>).
     /// </summary>
-    /// <example>{{ asset_url "main.css" }} → ../_assets/main.css</example>
-    private static string AssetUrl(string? path, string basePath)
+    /// <remarks>
+    /// Known assets get a <c>?v=</c> content fingerprint, so a changed file gets a new URL and
+    /// browsers (also installed home-screen apps) fetch it at once while unchanged files keep
+    /// their cached URL. Unknown paths keep the plain URL.
+    /// </remarks>
+    /// <example>{{ asset_url "main.css" }} → ../_assets/main.css?v=3f2a9c1d</example>
+    private static string AssetUrl(string? path, string basePath, Func<string, string?> fingerprint)
     {
         var normalized = (path ?? string.Empty).Replace('\\', '/').Trim('/');
-        return $"{basePath}_assets/{normalized}";
+        var url = $"{basePath}_assets/{normalized}";
+        var version = normalized.Length == 0 ? null : fingerprint(normalized);
+        return version is null ? url : $"{url}?v={version}";
     }
 
     /// <summary>

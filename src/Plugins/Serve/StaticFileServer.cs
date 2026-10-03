@@ -320,11 +320,14 @@ internal sealed class StaticFileServer : IAsyncDisposable, IDisposable
             response.Headers.Add("Vary", "Accept-Encoding");
         }
 
-        // Add cache headers for assets (not HTML)
+        // Add cache headers for assets (not HTML). A ?v= content version (asset_url) changes
+        // with the bytes, so such URLs can be cached for good, as recommended for production.
         if (!extension.Equals(".html", StringComparison.OrdinalIgnoreCase) &&
             !extension.Equals(".htm", StringComparison.OrdinalIgnoreCase))
         {
-            response.Headers.Add("Cache-Control", "public, max-age=3600");
+            response.Headers.Add(
+                "Cache-Control",
+                string.IsNullOrEmpty(request.QueryString["v"]) ? "public, max-age=3600" : "public, max-age=31536000, immutable");
         }
 
         await using var fileStream = new FileStream(

@@ -107,18 +107,85 @@ public sealed class GenerateAllEndToEndTests
 
         Assert.IsTrue(scan.Success, scan.ErrorMessage);
         Assert.IsTrue(render.Success, render.ErrorMessage);
-        foreach (var page in new[] { "index.html", "photos/index.html" })
+        var photoPage = Path.GetRelativePath(
+            project.OutputPath,
+            Directory.GetFiles(Path.Combine(project.OutputPath, "photo"), "index.html", SearchOption.AllDirectories).Single())
+            .Replace('\\', '/');
+        var checkedScripts = 0;
+        foreach (var page in new[] { "index.html", "photos/index.html", photoPage })
         {
             var html = await File.ReadAllTextAsync(Path.Combine(project.OutputPath, page));
-            var href = ExtractAttributeValues(html, "rel=\"x-asset\" href=\"").Single();
-            var siteRoot = new Uri($"https://example.com{basePath}");
-            var resolved = new Uri(new Uri(siteRoot, page), href);
-            Assert.StartsWith(siteRoot.AbsolutePath, resolved.AbsolutePath, $"{page}: {href}");
-            var outputRelative = resolved.AbsolutePath[siteRoot.AbsolutePath.Length..];
-            Assert.IsTrue(
-                File.Exists(Path.Combine(project.OutputPath, outputRelative)),
-                $"{page}: asset_url produced '{href}', which does not resolve to a written file.");
+            var scripts = ExtractAttributeValues(html, "<script src=\"");
+            checkedScripts += scripts.Count;
+            string[] hrefs =
+            [
+                .. ExtractAttributeValues(html, "rel=\"x-asset\" href=\""),
+                .. ExtractAttributeValues(html, "rel=\"stylesheet\" media=\"all\" href=\""),
+                .. scripts
+            ];
+            Assert.IsGreaterThan(1, hrefs.Length, $"{page}: expected the favicon probe plus Lumina stylesheets.");
+            foreach (var href in hrefs)
+            {
+                Assert.MatchesRegex(@"_assets/[^?]+\?v=[0-9a-f]{8}$", href, $"{page}: asset URL '{href}' carries no content version.");
+                var siteRoot = new Uri($"https://example.com{basePath}");
+                var resolved = new Uri(new Uri(siteRoot, page), href);
+                Assert.StartsWith(siteRoot.AbsolutePath, resolved.AbsolutePath, $"{page}: {href}");
+                var outputRelative = resolved.AbsolutePath[siteRoot.AbsolutePath.Length..];
+                Assert.IsTrue(
+                    File.Exists(Path.Combine(project.OutputPath, outputRelative)),
+                    $"{page}: asset_url produced '{href}', which does not resolve to a written file.");
+            }
         }
+
+        Assert.IsGreaterThan(0, checkedScripts, "Lumina scripts must be among the versioned URLs checked.");
+    }
+
+    [TestMethod]
+    public async Task RenderAsync_LocalAssetOverrideChanged_ChangesOnlyThatAssetVersion()
+    {
+        using var project = TestProject.Create(builder => builder
+            .WithProjectJson(new { project = new { name = "Versions" }, theme = new { name = "Lumina" } })
+            .WithSiteJson(new { title = "Versions", author = "Test" })
+            .AddGallery("Photos", gallery => gallery.AddRealImage("one.jpg", 800, 600)));
+        var localAssets = Path.Combine(project.RootPath, ProjectPaths.Themes, "Lumina", "Assets");
+        Directory.CreateDirectory(localAssets);
+        var overridePath = Path.Combine(localAssets, "main.css");
+
+        await File.WriteAllTextAsync(overridePath, "body { color: black; }");
+        var first = await RenderAssetUrlsAsync(project);
+        var unchanged = await RenderAssetUrlsAsync(project);
+        await File.WriteAllTextAsync(overridePath, "body { color: red; }");
+        var changed = await RenderAssetUrlsAsync(project);
+
+        var mainCss = first.Single(url => url.Contains("_assets/main.css?v=", StringComparison.Ordinal));
+        CollectionAssert.AreEqual(first, unchanged, "Identical bytes must keep identical URLs.");
+        CollectionAssert.DoesNotContain(changed, mainCss);
+        CollectionAssert.AreEqual(
+            first.Where(url => url != mainCss).ToList(),
+            changed.Where(url => !url.Contains("_assets/main.css?", StringComparison.Ordinal)).ToList(),
+            "Assets whose bytes did not change keep their URLs.");
+        Assert.AreEqual("body { color: red; }", await File.ReadAllTextAsync(Path.Combine(project.OutputPath, "_assets", "main.css")));
+    }
+
+    private static async Task<string[]> RenderAssetUrlsAsync(TestProject project)
+    {
+        using var host = RevelaTestHost.Build(project.RootPath, services =>
+        {
+            services.AddRevelaCommands();
+            services.AddGenerateFeature();
+            services.AddSingleton<ITheme>(new LuminaTheme());
+        });
+        var scan = await host.Services.GetRequiredService<IContentService>().ScanAsync();
+        var render = await host.Services.GetRequiredService<IRenderService>().RenderAsync();
+        Assert.IsTrue(scan.Success, scan.ErrorMessage);
+        Assert.IsTrue(render.Success, render.ErrorMessage);
+
+        var html = await File.ReadAllTextAsync(Path.Combine(project.OutputPath, "photos", "index.html"));
+        return
+        [
+            .. ExtractAttributeValues(html, "rel=\"stylesheet\" media=\"all\" href=\""),
+            .. ExtractAttributeValues(html, "<script src=\"")
+        ];
     }
 
     [TestMethod]

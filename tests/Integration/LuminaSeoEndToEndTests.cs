@@ -211,7 +211,7 @@ public sealed partial class LuminaSeoEndToEndTests
         Assert.IsTrue(site.Pages.TryGetValue("404.html", out var notFound), "404.html must be written to the output root.");
         Assert.Contains("<meta name=\"robots\" content=\"noindex\">", notFound);
         Assert.Contains("Seite nicht gefunden", notFound);
-        Assert.Contains($"href=\"{basePath}_assets/main.css\"", notFound);
+        Assert.MatchesRegex($"href=\"{Regex.Escape(basePath)}_assets/main\\.css\\?v=[0-9a-f]{{8}}\"", notFound);
         Assert.Contains($"href=\"{basePath}island/\"", notFound);
         foreach (var url in UrlAttributePattern().Matches(notFound).Select(match => match.Groups["url"].Value))
         {
