@@ -40,6 +40,7 @@ public sealed class InteractiveEntryTests
         using var writer = new StringWriter(CultureInfo.InvariantCulture);
         var inner = AnsiConsole.Create(new AnsiConsoleSettings
         {
+            Enrichment = new ProfileEnrichment { UseDefaultEnrichers = false },
             Ansi = AnsiSupport.No,
             ColorSystem = ColorSystemSupport.NoColors,
             Interactive = InteractionSupport.Yes,

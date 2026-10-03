@@ -87,6 +87,7 @@ public sealed class PlainProgressReporterTests
         var writer = new StringWriter(CultureInfo.InvariantCulture);
         var console = AnsiConsole.Create(new AnsiConsoleSettings
         {
+            Enrichment = new ProfileEnrichment { UseDefaultEnrichers = false },
             Ansi = AnsiSupport.No,
             ColorSystem = ColorSystemSupport.NoColors,
             Interactive = InteractionSupport.No,

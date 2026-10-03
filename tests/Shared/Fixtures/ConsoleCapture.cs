@@ -26,6 +26,8 @@ public static class ConsoleCapture
         var originalConsole = AnsiConsole.Console;
         var console = AnsiConsole.Create(new AnsiConsoleSettings
         {
+            // CI environments (GitHub Actions, Azure Pipelines, …) would switch ANSI back on.
+            Enrichment = new ProfileEnrichment { UseDefaultEnrichers = false },
             Ansi = AnsiSupport.No,
             ColorSystem = ColorSystemSupport.NoColors,
             Interactive = InteractionSupport.No,

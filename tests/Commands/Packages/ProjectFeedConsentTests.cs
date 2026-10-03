@@ -129,6 +129,7 @@ public sealed class ProjectFeedConsentTests
         using var writer = new StringWriter(CultureInfo.InvariantCulture);
         var inner = AnsiConsole.Create(new AnsiConsoleSettings
         {
+            Enrichment = new ProfileEnrichment { UseDefaultEnrichers = false },
             Ansi = AnsiSupport.No,
             ColorSystem = ColorSystemSupport.NoColors,
             Interactive = interactive ? InteractionSupport.Yes : InteractionSupport.No,

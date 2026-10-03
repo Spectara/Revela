@@ -81,6 +81,7 @@ public sealed class ConfigOneDriveCommandTests
         using var writer = new StringWriter(CultureInfo.InvariantCulture);
         AnsiConsole.Console = AnsiConsole.Create(new AnsiConsoleSettings
         {
+            Enrichment = new ProfileEnrichment { UseDefaultEnrichers = false },
             Ansi = AnsiSupport.No,
             ColorSystem = ColorSystemSupport.NoColors,
             Interactive = InteractionSupport.No,

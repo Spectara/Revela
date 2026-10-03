@@ -447,6 +447,7 @@ public sealed class RestoreCommandTests
         var originalConsole = AnsiConsole.Console;
         var ansiConsole = AnsiConsole.Create(new AnsiConsoleSettings
         {
+            Enrichment = new ProfileEnrichment { UseDefaultEnrichers = false },
             Ansi = AnsiSupport.No,
             ColorSystem = ColorSystemSupport.NoColors,
             Interactive = InteractionSupport.No,

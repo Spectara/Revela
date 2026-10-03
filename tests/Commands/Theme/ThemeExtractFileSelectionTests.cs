@@ -160,6 +160,7 @@ public sealed class ThemeExtractFileSelectionTests
         var originalConsole = AnsiConsole.Console;
         AnsiConsole.Console = AnsiConsole.Create(new AnsiConsoleSettings
         {
+            Enrichment = new ProfileEnrichment { UseDefaultEnrichers = false },
             Ansi = AnsiSupport.No,
             ColorSystem = ColorSystemSupport.NoColors,
             Interactive = InteractionSupport.No,

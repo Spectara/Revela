@@ -156,6 +156,7 @@ public sealed class ConfigLocationsCommandTests
         var originalConsole = AnsiConsole.Console;
         var console = AnsiConsole.Create(new AnsiConsoleSettings
         {
+            Enrichment = new ProfileEnrichment { UseDefaultEnrichers = false },
             Ansi = AnsiSupport.No,
             ColorSystem = ColorSystemSupport.NoColors,
             Interactive = InteractionSupport.No,
