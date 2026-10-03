@@ -355,6 +355,8 @@ class. `item.active` is still available when you need to know that a child is th
 
 Every template receives a model with `site`, `gallery`, `images`, `nav_items`, `basepath`, `assets_basepath`, `base_url`, and `image_formats`, plus helper functions such as `page_url`, `asset_url`, `variant_url`, `format_date`, `t`, and `markdown`. Never hardcode paths; use `asset_url` / `page_url` / `variant_url` so the site works at any base path.
 
+**Always link CSS and JavaScript with `asset_url`** (`<link rel="stylesheet" href="{{ html_escape (asset_url css) }}">`), never with a hand-written `_assets/` path. `asset_url` adds a fingerprint of the file content (`main.css?v=3f2a9c1d`), so visitors get your changes on the next page view, even when their browser or an installed home-screen app has cached the old file. See [`asset_url`](../../reference/template-functions/#asset_url).
+
 ## UI Text: `Locales/`
 
 Never hardcode user-visible theme text (labels, headings, `aria-label`s,

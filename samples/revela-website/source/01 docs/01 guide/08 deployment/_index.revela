@@ -100,7 +100,12 @@ A sensible default for your web server or CDN:
 - **Images** (`/images/`): a long cache, e.g. `Cache-Control: public, max-age=2592000` (30 days).
   Variant file names stay the same when you replace a photo under the same name, so only go
   up to a year with `immutable` if you never do that.
-- **Theme assets** (`/_assets/`): a short cache (e.g. one day). Their names are not versioned either.
+- **Theme assets** (`/_assets/`): cache for a year, `Cache-Control: public, max-age=31536000, immutable`.
+  Themes link their CSS and JavaScript through `asset_url`, which adds a fingerprint of the file
+  content (`main.css?v=3f2a9c1d`). Change the file and the URL changes with it, so browsers fetch
+  the new version on the next page view, even home-screen web apps on a phone. Unchanged files keep
+  their URL and stay cached. One exception: files a stylesheet loads by itself (for example a font
+  in `url(fonts/inter.woff2)`) have no fingerprint. Give such a file a new name when you change it.
 
 Caddy example:
 
@@ -109,7 +114,11 @@ Caddy example:
 header @html Cache-Control "no-cache"
 @images path /images/*
 header @images Cache-Control "public, max-age=2592000"
+@assets path /_assets/*
+header @assets Cache-Control "public, max-age=31536000, immutable"
 ```
+
+With a `basePath`, prefix the paths (for example `/photos/_assets/*`).
 
 ## Hosting Options
 

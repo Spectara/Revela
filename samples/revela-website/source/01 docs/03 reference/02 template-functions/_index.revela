@@ -151,7 +151,9 @@ Generate a URL for a theme asset (CSS, JS).
 {{ asset_url "css/style.css" }}
 ```
 
-**Returns** the asset path relative to the current page, including the site base path: `_assets/css/style.css` on the home page, `../_assets/css/style.css` one level down, or `/gallery/_assets/css/style.css` with an absolute base path of `/gallery/`.
+**Returns** the asset path relative to the current page, including the site base path, with a content fingerprint: `_assets/css/style.css?v=3f2a9c1d` on the home page, `../_assets/css/style.css?v=3f2a9c1d` one level down, or `/gallery/_assets/css/style.css?v=3f2a9c1d` with an absolute base path of `/gallery/`.
+
+The `v` value is the start of the SHA-256 hash (8 hex characters) of exactly the file written to `_assets/`, after your local overrides in `themes/<Theme>/Assets/` are applied. When the file changes, the URL changes, so browsers load the new file at once and the server can cache `_assets/` for a long time (see [Caching](../../guide/deployment/#caching)). A path that is not a theme asset gets the plain URL without `?v=`. Always link theme assets through `asset_url` instead of writing `_assets/` paths yourself.
 
 ---
 
