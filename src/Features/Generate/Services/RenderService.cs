@@ -280,6 +280,7 @@ internal sealed partial class RenderService(
             var engine = templateEngineFactory();
             engine.SetStrings(ThemeLocales.Load(theme, extensions, projectEnvironment.Value.Path, config.Project.Language, logger));
             engine.SetImageLookup(allImagesBySourcePath);
+            engine.SetAssetFingerprints(assetResolver.GetFingerprint);
 
             var run = new RenderRun(
                 engine,

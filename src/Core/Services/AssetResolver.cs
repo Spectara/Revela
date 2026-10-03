@@ -1,4 +1,6 @@
+using System.Collections.Concurrent;
 using System.Collections.Frozen;
+using System.Security.Cryptography;
 using System.Text.Json;
 using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Abstractions;
@@ -46,6 +48,14 @@ public sealed partial class AssetResolver(ILogger<AssetResolver> logger) : IAsse
 
     private const string AllScope = "all";
 
+    // Hex characters of the SHA-256 kept in versioned asset URLs: short, yet a collision
+    // between two versions of the same file is a one-in-four-billion event.
+    private const int FingerprintLength = 8;
+
+    // Asset key -> fingerprint (null for unknown paths). Pages render in parallel, so the
+    // cache is concurrent; Initialize resets it so every render run hashes current bytes.
+    private readonly ConcurrentDictionary<string, string?> fingerprints = new(StringComparer.OrdinalIgnoreCase);
+
     private string? localThemePath;
     private bool isInitialized;
 
@@ -56,6 +66,7 @@ public sealed partial class AssetResolver(ILogger<AssetResolver> logger) : IAsse
         styleSheetOrder.Clear();
         scriptOrder.Clear();
         assetScopes.Clear();
+        fingerprints.Clear();
 
         var themeName = theme.Metadata.Name;
         localThemePath = Path.Combine(projectPath, ProjectPaths.Themes, themeName, AssetsFolderName);
@@ -125,6 +136,28 @@ public sealed partial class AssetResolver(ILogger<AssetResolver> logger) : IAsse
         }
 
         return result.AsReadOnly();
+    }
+
+    /// <inheritdoc />
+    public string? GetFingerprint(string path)
+    {
+        EnsureInitialized();
+
+        return fingerprints.GetOrAdd(DeriveKeyFromLocalPath(path.Trim('/', '\\')), ComputeFingerprint);
+    }
+
+    private string? ComputeFingerprint(string key)
+    {
+        using var stream = assets.TryGetValue(key, out var entry) ? GetAssetStream(entry) : null;
+        if (stream is null)
+        {
+            LogFingerprintUnavailable(key);
+            return null;
+        }
+
+        Span<byte> hash = stackalloc byte[SHA256.HashSizeInBytes];
+        SHA256.HashData(stream, hash);
+        return Convert.ToHexStringLower(hash[..(FingerprintLength / 2)]);
     }
 
     /// <inheritdoc />
@@ -500,6 +533,9 @@ public sealed partial class AssetResolver(ILogger<AssetResolver> logger) : IAsse
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Asset not found: '{Key}' at path '{Path}'")]
     private partial void LogAssetNotFound(string key, string path);
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "No asset '{Key}' to fingerprint; its URL stays unversioned")]
+    private partial void LogFingerprintUnavailable(string key);
 
     #endregion
 

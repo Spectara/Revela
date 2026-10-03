@@ -8,8 +8,8 @@ namespace Spectara.Revela.Features.Generate.Abstractions;
 /// </summary>
 /// <remarks>
 /// <para>
-/// One engine serves one render run: configure it once with <see cref="SetImageLookup"/> and
-/// <see cref="SetStrings"/>, then render every page with it. Rendering is thread-safe, and
+/// One engine serves one render run: configure it once with <see cref="SetImageLookup"/>,
+/// <see cref="SetStrings"/> and <see cref="SetAssetFingerprints"/>, then render every page with it. Rendering is thread-safe, and
 /// templates and includes are parsed only once per engine.
 /// </para>
 /// <para>
@@ -35,6 +35,17 @@ internal interface ITemplateEngine
     /// </remarks>
     /// <param name="themeStrings">Strings resolved for the site language</param>
     void SetStrings(ThemeStrings themeStrings);
+
+    /// <summary>
+    /// Set the content fingerprint source for <c>asset_url</c>, which appends it as
+    /// <c>?v=&lt;fingerprint&gt;</c> so changed assets get new URLs.
+    /// </summary>
+    /// <remarks>
+    /// Called concurrently while pages render. Without a source, or when it returns <c>null</c>
+    /// for a path, <c>asset_url</c> renders the plain unversioned URL.
+    /// </remarks>
+    /// <param name="fingerprint">Maps an asset path relative to <c>_assets/</c> to its fingerprint</param>
+    void SetAssetFingerprints(Func<string, string?> fingerprint);
 
     /// <summary>
     /// Render template content with data model
