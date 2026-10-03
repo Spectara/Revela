@@ -9,6 +9,7 @@ body.photo-page {
 
   >main {
     margin: 0;
+    padding-block-start: var(--safe-top);
 
     /* One navigation row per gallery context (layout in main.css): the #ctx-… target,
        else the primary context. An unknown fragment falls back to the primary row. */
@@ -20,8 +21,8 @@ body.photo-page {
         >[data-photo-return] {
           position: fixed;
           z-index: 3;
-          inset-block-start: 0;
-          inset-inline-end: 0;
+          inset-block-start: var(--safe-top);
+          inset-inline-end: var(--safe-right);
         }
       }
 

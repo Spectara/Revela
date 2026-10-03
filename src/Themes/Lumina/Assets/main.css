@@ -58,7 +58,13 @@ figcaption {
   --breakout-max-width: 1240px;
   --breakout-size: calc((var(--breakout-max-width) - var(--content-max-width)) / 2);
   --grid-gap: var(--space-xs);
-  --header-height: calc(var(--space-xl) + var(--space-xs));
+  /* Installed web apps and notched phones draw under the system bars (viewport-fit=cover);
+     these keep content clear of them and are 0 everywhere else. */
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+  --header-height: calc(var(--space-xl) + var(--space-xs) + var(--safe-top));
 
   @media (prefers-reduced-motion: reduce) {
     --animation-time: 0ms;
@@ -289,6 +295,7 @@ body {
   background-color: var(--color-bg);
   color: var(--color);
   position: relative;
+  padding-inline: var(--safe-left) var(--safe-right);
   display: grid;
   grid-template-columns: [full-width-start] minmax(var(--space-s), 1fr) [breakout-start] minmax(0, var(--breakout-size)) [content-start] min(100% - (var(--space-s) * 2), var(--content-max-width)) [content-end] minmax(0, var(--breakout-size)) [breakout-end] minmax(var(--space-s), 1fr) [full-width-end];
 
@@ -459,7 +466,7 @@ header button[popovertarget="site-menu"] {
   backdrop-filter: saturate(180%) blur(2rem);
   padding-top: var(--space-s);
   padding-inline: var(--space-l);
-  padding-bottom: var(--space-l);
+  padding-bottom: calc(var(--space-l) + var(--safe-bottom));
   overflow-y: auto;
   scrollbar-gutter: stable;
   overscroll-behavior: none;
@@ -489,6 +496,7 @@ header {
   position: sticky;
   top: 0;
   margin-top: var(--space-xl);
+  padding-top: var(--safe-top);
   padding-bottom: var(--space-xs);
   height: var(--header-height);
 
@@ -818,15 +826,17 @@ main {
 
   >picture {
     position: sticky;
-    inset-block-start: 0;
+    inset-block-start: var(--safe-top);
     display: flex;
     align-items: center;
     justify-content: center;
     inline-size: 100%;
-    block-size: calc(100dvh - var(--space-xl));
+    /* Fits between the status bar and the photo navigation, which stays above the
+       gesture bar; both insets are 0 outside installed apps and notched phones. */
+    block-size: calc(100dvh - var(--space-xl) - var(--safe-top) - var(--safe-bottom));
     overflow: hidden;
     background-size:
-      min(100%, calc((100dvh - var(--space-xl)) * var(--width) / var(--height))) min(100%, calc(100cqi * var(--height) / var(--width)));
+      min(100%, calc((100dvh - var(--space-xl) - var(--safe-top) - var(--safe-bottom)) * var(--width) / var(--height))) min(100%, calc(100cqi * var(--height) / var(--width)));
 
     >img {
       position: relative;
@@ -866,6 +876,7 @@ main {
     position: relative;
     z-index: 2;
     inline-size: 100%;
+    padding-block-end: var(--safe-bottom);
     background: transparent;
     border-block-start: 1px solid color-mix(in oklch, var(--color) 18%, transparent);
     box-shadow: 0 -0.5rem 1.5rem color-mix(in oklch, black 18%, transparent);
@@ -1069,7 +1080,7 @@ dialog.photo-lightbox {
   block-size: 100dvh;
   max-block-size: none;
   border: 0;
-  padding: 0;
+  padding: var(--safe-top) var(--safe-right) 0 var(--safe-left);
   color: var(--color);
   background: transparent;
   overflow-y: auto;
@@ -1084,7 +1095,7 @@ dialog.photo-lightbox {
   >button[command="close"] {
     position: sticky;
     z-index: 3;
-    inset-block-start: 0;
+    inset-block-start: var(--safe-top);
     inset-inline-end: auto;
     margin-block-end: -2.75rem;
     margin-inline-start: auto;
@@ -1109,6 +1120,7 @@ body>footer {
   height: calc(100svh - var(--space-2xl) + 1px);
   box-shadow: 0 0 0 var(--space-m) var(--color-bg);
   padding-top: var(--space-l);
+  padding-bottom: var(--safe-bottom);
 
   div {
     font-size: var(--font-size-1);

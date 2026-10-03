@@ -40,7 +40,10 @@ exactly one <h1> for the page (visually hidden where the design shows no title).
     <meta charset="UTF-8">
     {{~ # The home page's title falls back to the site title; don't print it twice. ~}}
     <title>{{~ if page_title && page_title != site.title ~}}{{ html_escape site.title }} - {{ html_escape page_title }}{{~ else ~}}{{ html_escape site.title }}{{~ end ~}}</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    {{~ # System bars of installed web apps and mobile browsers follow the page background (--color-bg). ~}}
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#ffffff">
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#000000">
     <meta name="description" content="{{ html_escape page_description }}">
     <meta name="author" content="{{ html_escape site.author }}">
     <meta name="generator" content="Revela {{ html_escape revela.version }}">

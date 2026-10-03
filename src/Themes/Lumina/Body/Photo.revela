@@ -32,7 +32,10 @@ Template contract:
 <head>
     <meta charset="UTF-8">
     <title>{{ html_escape photo.title }}{{ html_escape (site.title ? ' - ' + site.title : '') }}</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    {{~ # System bars of installed web apps and mobile browsers follow the page background (--color-bg). ~}}
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#ffffff">
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#000000">
     {{~ if description != '' ~}}
     <meta name="description" content="{{ html_escape description }}">
     {{~ end ~}}
