@@ -67,6 +67,13 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
+# Release builds run without long-lived build servers: reused MSBuild nodes and the
+# shared compiler server from earlier (IDE or Debug) builds have left zero-filled
+# reference assemblies (CS0009) in artifacts/obj. Fresh processes, like CI.
+$env:MSBUILDDISABLENODEREUSE = '1'
+$env:DOTNET_CLI_USE_MSBUILD_SERVER = '0'
+$env:UseSharedCompilation = 'false'
+
 # --------------------------------------------------------------------------
 # Output helpers
 # --------------------------------------------------------------------------
