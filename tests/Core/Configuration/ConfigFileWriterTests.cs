@@ -144,7 +144,8 @@ public sealed class ConfigFileWriterTests
         }
 
         using var workspace = TestProject.Create();
-        var path = Path.Combine(workspace.RootPath, "project.json");
+        var path = Path.Combine(workspace.RootPath, "new-config.json");
+        Assert.IsFalse(File.Exists(path), "The test needs a file that does not exist yet.");
 
         await CreateWriter(new ConfigurationBuilder().Build()).WriteAsync(path, new JsonObject { ["key"] = "value" });
 
