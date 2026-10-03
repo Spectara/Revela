@@ -4,7 +4,9 @@
 // scaled with a CSS transform. The script sets the custom properties --zoom-scale,
 // --zoom-x and --zoom-y and the state attributes data-zoomable, data-zoomed and
 // data-gesture; main.css turns them into the cursor, the transform and its
-// animation. Zooming in also points the picture's `sizes` at the original width,
+// animation. At rest a zoomed image is laid out at its zoomed size instead
+// (data-settled, --zoom-width, --zoom-height), so the browser decodes it sharply.
+// Zooming in also points the picture's `sizes` at the original width,
 // so the browser loads the full-resolution image. Without JavaScript the photo is
 // shown fitted to the viewport.
 //
@@ -342,10 +344,45 @@
     }
 
     apply() {
+      this.unsettle();
       this.image.toggleAttribute("data-zoomed", this.isZoomed);
       this.image.style.setProperty("--zoom-scale", String(this.transform.scale));
       this.image.style.setProperty("--zoom-x", `${this.transform.x}px`);
       this.image.style.setProperty("--zoom-y", `${this.transform.y}px`);
+      this.scheduleSettle();
+    }
+
+    // Once the zoom animation has run its course, lay the image out at its zoomed size.
+    scheduleSettle() {
+      clearTimeout(this.settleTimer);
+      if (this.isZoomed && !this.image.hasAttribute("data-gesture")) {
+        const seconds = Number.parseFloat(getComputedStyle(this.image).transitionDuration) || 0;
+        this.settleTimer = setTimeout(() => this.settleLayout(), seconds * 1000 + 50);
+      }
+    }
+
+    // A transform only enlarges what the browser already decoded for the fitted size:
+    // Safari (iOS, iPadOS) decodes large photos at reduced resolution for that size, so a
+    // zoomed photo stays soft. At rest, the zoomed photo is therefore laid out at its
+    // zoomed size (same position, scale 1); main.css switches on data-settled. Any
+    // further move returns to the transform first, so gestures stay smooth.
+    settleLayout() {
+      const { width, height } = this.getBaseSize();
+      const { scale } = this.transform;
+      this.settledSize = { width: Math.round(width * scale), height: Math.round(height * scale) };
+      this.image.style.setProperty("--zoom-width", `${this.settledSize.width}px`);
+      this.image.style.setProperty("--zoom-height", `${this.settledSize.height}px`);
+      this.image.setAttribute("data-settled", "");
+    }
+
+    unsettle() {
+      clearTimeout(this.settleTimer);
+      if (this.settledSize) {
+        this.settledSize = null;
+        this.image.removeAttribute("data-settled");
+        this.image.style.removeProperty("--zoom-width");
+        this.image.style.removeProperty("--zoom-height");
+      }
     }
 
     // The fitted size changed: the window or the iOS toolbars resized, the layout
@@ -354,7 +391,12 @@
     // changes (the original replacing the viewport-sized variant) are ignored.
     refit() {
       const { clientWidth: width, clientHeight: height } = this.image;
-      if (this.baseSize?.width === width && this.baseSize?.height === height) {
+      // Laying out the settled zoom resizes the image too; only a real change counts.
+      if (this.settledSize && Math.abs(this.settledSize.width - width) <= 1 && Math.abs(this.settledSize.height - height) <= 1) {
+        return;
+      }
+
+      if (!this.settledSize && this.baseSize?.width === width && this.baseSize?.height === height) {
         return;
       }
 
@@ -369,10 +411,18 @@
 
     // While a finger or the mouse moves the image, CSS skips the transition.
     setGesture(active) {
+      if (active) {
+        this.unsettle();
+      }
+
       this.image.toggleAttribute("data-gesture", active);
+      if (!active) {
+        this.scheduleSettle();
+      }
     }
 
     reset() {
+      this.unsettle();
       this.transform = { scale: 1, x: 0, y: 0 };
       this.baseSize = null;
       this.pinch = null;

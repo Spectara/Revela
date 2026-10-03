@@ -869,6 +869,20 @@ main {
       &[data-zoomed][data-gesture] {
         cursor: grabbing;
       }
+
+      /* At rest the zoomed photo is laid out at its zoomed size (centred by the picture,
+         moved only by translation): Safari decodes large photos for their layout size,
+         so a scaled transform alone would stay soft there. */
+      &[data-settled] {
+        inline-size: var(--zoom-width);
+        block-size: var(--zoom-height);
+        max-inline-size: none;
+        max-block-size: none;
+        margin: 0;
+        flex-shrink: 0;
+        transform: translate3d(var(--zoom-x, 0px), var(--zoom-y, 0px), 0);
+        transition: none;
+      }
     }
   }
 
