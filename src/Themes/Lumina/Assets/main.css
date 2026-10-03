@@ -27,7 +27,7 @@ figcaption {
 :root {
   color-scheme: light dark;
   --lumina-color: light-dark(hsl(0 0% 40%), hsl(0 0% 70%));
-  --lumina-color-light: light-dark(hsl(0 0% 50%), hsl(0 0% 50%));
+  --lumina-color-light: light-dark(hsl(0 0% 45%), hsl(0 0% 50%));
   --lumina-color-dark: light-dark(hsl(0 0% 10%), hsl(0 0% 90%));
   --color: var(--lumina-color);
   --color-light: var(--lumina-color-light);
@@ -377,9 +377,9 @@ header button[popovertarget="site-menu"] {
     padding-bottom: var(--space-3xs);
     border-bottom: 1px solid color-mix(in srgb, var(--color) 15%, transparent);
 
-    /* Container headings (no link) are visually muted */
+    /* Container headings (no link) use the light text color; fading it further fails WCAG AA */
     &:not(:has(a)) {
-      color: color-mix(in srgb, var(--color-light) 85%, transparent);
+      color: var(--color-light);
       cursor: default;
     }
   }
@@ -396,7 +396,7 @@ header button[popovertarget="site-menu"] {
     }
 
     >span {
-      color: color-mix(in srgb, var(--color-light) 85%, transparent);
+      color: var(--color-light);
       cursor: default;
     }
 

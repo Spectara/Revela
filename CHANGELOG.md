@@ -79,6 +79,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - **Invalid settings no longer crash before a command starts** - commands read some settings while they are set up; an invalid value there (for example `generate.images.avifEffort: 12`) printed a stack trace instead of the configuration-problem panel with exit code 2.
+- **Text contrast (WCAG AA)** - Lumina's light grey text (navigation, footer, captions) reached only 3.9:1 on the light background, and the footer's section headings ("Years", "Pages") were faded further to about 4:1 on black. The light grey is a touch darker in light mode (4.7:1), the extra fading is gone; dark mode is unchanged. Checked with axe on home, gallery, photo and statistics pages in both color schemes.
 - **Thumbnail placeholders** - gallery thumbnails show their blurred preview again while the photo loads (the rule had become invalid CSS), and images in page text now get one too.
 - **Keyboard access to photos** - visitors using a keyboard can tab to every gallery photo and open its photo page; the focused photo is outlined.
 - **Smaller images in page text** - images in your page text download at the width of the text column instead of the full screen width.
