@@ -60,7 +60,6 @@
       this.pinch = null;
       this.lastTapTime = Number.NEGATIVE_INFINITY;
       this.fullResolutionRequested = false;
-      this.originalPreload = null;
 
       // Mouse and pen use Pointer Events with pointer capture, so a drag that
       // leaves the image keeps panning without document-wide listeners.
@@ -296,7 +295,7 @@
 
     // The viewer first shows a viewport-sized variant; zooming asks for the
     // widest candidate (the original). Switching the visible image right away
-    // would blank it until the original arrives, so a detached copy of the
+    // would blank it until the original arrives, so a hidden copy of the
     // <picture> fetches and decodes it first; the visible image switches
     // afterwards and gets the already loaded original without a gap.
     loadFullResolution() {
@@ -312,15 +311,28 @@
       };
 
       this.fullResolutionRequested = true;
-      // Referenced until the switch so the detached copy, and its download, stay alive.
-      this.originalPreload = this.picture.cloneNode(true);
-      const preloadImage = this.originalPreload.querySelector("img");
+      // Built element by element and attached before the <img> gets its URLs: a cloned
+      // <img> starts loading its fallback immediately, and WebKit ignores <source> in a
+      // detached <picture>; either way it would fetch the fallback JPEG first.
+      const preload = document.createElement("picture");
+      preload.setAttribute("aria-hidden", "true");
+      preload.style.cssText = "position:fixed;inset:0 auto auto 0;inline-size:1px;block-size:1px;overflow:hidden;opacity:0;pointer-events:none";
+      for (const source of this.picture.querySelectorAll(":scope > source")) {
+        preload.append(source.cloneNode());
+      }
+      const preloadImage = document.createElement("img");
+      preloadImage.alt = "";
       preloadImage.loading = "eager";
       preloadImage.fetchPriority = "high";
-      useOriginal(this.originalPreload);
+      preload.append(preloadImage);
+      useOriginal(preload);
+      document.body.append(preload);
+      preloadImage.sizes = `${sourceWidth}px`;
+      preloadImage.srcset = this.image.getAttribute("srcset") ?? "";
+      preloadImage.src = this.image.getAttribute("src") ?? "";
       preloadImage.decode().catch(() => {}).then(() => {
         useOriginal(this.picture);
-        this.originalPreload = null;
+        preload.remove();
       });
     }
 
