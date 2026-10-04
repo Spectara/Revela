@@ -77,7 +77,7 @@ public sealed class ExamplePlugin : IPlugin
 }
 ```
 
-The plugin lifecycle has four phases: **discovery** → `ConfigureConfiguration` (optional) → `ConfigureServices` (required) → `GetCommands` (optional).
+The plugin lifecycle has three phases: **discovery** → `ConfigureServices` (required) → `GetCommands` (optional).
 
 The [SDK package readme](../src/Sdk/README.md) contains a minimal plugin, configuration
 section, theme and template model; its examples are compiled by the test suite.
@@ -512,7 +512,7 @@ Choose an SDK package version compatible with the Revela host you target; the ve
 
 ## Configuration
 
-The host loads global `revela.json`, local `project.json`, `site.json` (under `site`), an optional `logging.json` and environment variables prefixed `SPECTARA__REVELA__` — nothing else (no `appsettings*.json`, no `plugins/*.json`, and command-line options are not a configuration layer). No source watches its file; Revela's own config writers reload the configuration after writing. You usually don't override `ConfigureConfiguration`; use it only to add an explicit configuration source. See the [configuration chain](architecture.md#configuration-and-paths) for precedence and the `site.json` split.
+The host loads global `revela.json`, local `project.json`, `site.json` (under `site`), an optional `logging.json` and environment variables prefixed `SPECTARA__REVELA__` — nothing else (no `appsettings*.json`, no `plugins/*.json`, and command-line options are not a configuration layer). No source watches its file; Revela's own config writers reload the configuration after writing. Plugins cannot add configuration sources. See the [configuration chain](architecture.md#configuration-and-paths) for precedence and the `site.json` split.
 
 All plugin settings live below the host-owned `plugins` node. Your plugin **declares its own key** and binds the section `plugins:<key>`:
 

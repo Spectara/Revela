@@ -45,10 +45,9 @@ precedence, are:
 5. Optional project-local `logging.json`.
 6. Environment variables prefixed `SPECTARA__REVELA__`.
 
-Command handlers apply their supported CLI overrides when executing. Plugin
-`ConfigureConfiguration` hooks can append explicit sources after the environment
-provider; arbitrary plugin sources are not restricted to the normal precedence.
-The host does not implicitly load a `plugins/*.json` configuration directory.
+Command handlers apply their supported CLI overrides when executing. Plugins
+cannot add configuration sources, and the host does not implicitly load a
+`plugins/*.json` configuration directory.
 See [host configuration wiring](../src/Cli/Hosting/HostBuilderExtensions.cs) and
 [plugin configuration wiring](../src/Core/Extensions/PackageServiceCollectionExtensions.cs).
 
@@ -227,12 +226,12 @@ The normal host lifecycle is:
 2. Required plugin dependencies are checked before registration. Plugins whose
    required plugins are missing are excluded; optional extension targets are
    represented separately by `ExtendsPackages`.
-3. Plugin `ConfigureConfiguration` hooks run before plugin `ConfigureServices`.
-   Services and options are registered before the host service provider is built.
+3. Plugin `ConfigureServices` registers services and options before the host
+   service provider is built.
 4. After host construction, `GetCommands(IServiceProvider)` supplies command
    descriptors for the CLI tree and interactive menu.
 
-`ConfigureConfiguration` and `GetCommands` are optional; `ConfigureServices` is the
+`GetCommands` is optional; `ConfigureServices` is the
 required registration hook. Use idempotent DI registrations and typed HTTP clients.
 Package-mutating CLI commands avoid normal package loading so loaded assemblies do
 not lock files being installed or removed.

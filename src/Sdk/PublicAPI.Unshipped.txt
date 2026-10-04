@@ -145,7 +145,6 @@ Spectara.Revela.Sdk.Abstractions.IPipelineStep.Category.get -> string!
 Spectara.Revela.Sdk.Abstractions.IPipelineStep.ExecuteAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask<Spectara.Revela.Sdk.Abstractions.OperationResult!>
 Spectara.Revela.Sdk.Abstractions.IPipelineStep.Name.get -> string!
 Spectara.Revela.Sdk.Abstractions.IPlugin
-Spectara.Revela.Sdk.Abstractions.IPlugin.ConfigureConfiguration(Microsoft.Extensions.Configuration.IConfigurationBuilder! configuration) -> void
 Spectara.Revela.Sdk.Abstractions.IPlugin.ConfigureServices(Microsoft.Extensions.DependencyInjection.IServiceCollection! services) -> void
 Spectara.Revela.Sdk.Abstractions.IPlugin.GetCommands(System.IServiceProvider! services) -> System.Collections.Generic.IEnumerable<Spectara.Revela.Sdk.Abstractions.CommandDescriptor!>!
 Spectara.Revela.Sdk.Abstractions.ITheme
