@@ -25,7 +25,7 @@ namespace Spectara.Revela.Features.Generate.Services;
 /// fingerprint (source size + modification time, resize mode, output version, applied maxSize cap)
 /// matches the one recorded in <see cref="ImageStateStore"/> after its last successful
 /// processing and every expected variant exists with the recorded quality and encoder effort of its format.
-/// The scan manifest only supplies sizes, dimensions and placeholders, so rebuilding it
+/// The scan manifest only supplies sizes and dimensions, so rebuilding it
 /// never re-encodes images.
 /// </para>
 /// </remarks>
@@ -174,9 +174,6 @@ internal sealed partial class ImageService(
                 var width = existingEntry?.Width ?? 0;
                 var height = existingEntry?.Height ?? 0;
 
-                // Get existing placeholder from manifest (generated during scan)
-                var existingPlaceholder = existingEntry?.Placeholder;
-
                 // Change detection against the state recorded after the last successful
                 // processing — never against scan metadata, which already reflects the edit.
                 var appliedMaxSize = ImageSettings.MaxSize > 0
@@ -192,7 +189,7 @@ internal sealed partial class ImageService(
                     // Variants of formats that are no longer configured are now stale, so only
                     // the configured qualities and efforts are recorded.
                     imagesToProcess.Add(new PendingImage(
-                        fullPath, manifestKey, imageName, manifestSizes, null, existingPlaceholder, width, height,
+                        fullPath, manifestKey, imageName, manifestSizes, null, width, height,
                         new ProcessedImage
                         {
                             Fingerprint = fingerprint,
@@ -230,7 +227,7 @@ internal sealed partial class ImageService(
                 }
 
                 imagesToProcess.Add(new PendingImage(
-                    fullPath, manifestKey, imageName, manifestSizes, missingVariants, existingPlaceholder, width, height,
+                    fullPath, manifestKey, imageName, manifestSizes, missingVariants, width, height,
                     recorded with { Qualities = qualities, Efforts = recordedEfforts.Count > 0 ? recordedEfforts : null }));
             }
 
@@ -333,7 +330,6 @@ internal sealed partial class ImageService(
             using var checkpointGate = new SemaphoreSlim(1, 1);
             var imagesSinceCheckpoint = 0;
             var lastCheckpoint = stopwatch.Elapsed;
-            var manifestChanged = false;
 
             // Lock-free shared counters that the encode workers update. A single
             // reporting path turns them into immutable snapshots for the UI — the
@@ -387,7 +383,7 @@ internal sealed partial class ImageService(
                 },
                 async (item, ct) =>
                 {
-                    var (sourcePath, manifestKey, imageSlug, manifestSizes, missingVariants, existingPlaceholder, width, height, processed) = item;
+                    var (sourcePath, manifestKey, imageSlug, manifestSizes, missingVariants, width, height, processed) = item;
 
                     // Use sizes from manifest (calculated during scan with original width).
                     // Fall back to config sizes if manifest sizes are empty (shouldn't happen).
@@ -414,8 +410,6 @@ internal sealed partial class ImageService(
                                 ImageSlug = imageSlug,
                                 CacheDirectory = cacheDirectory,
                                 ResizeMode = resizeMode,
-                                Placeholder = ImageSettings.Placeholder,
-                                ExistingPlaceholder = existingPlaceholder,
                                 Width = width,
                                 Height = height,
                                 MaxSize = ImageSettings.MaxSize
@@ -460,8 +454,8 @@ internal sealed partial class ImageService(
 
                         ReportProgress();
 
-                        // Record success, update placeholder if changed, and checkpoint regularly
-                        // so an interrupted run keeps the images it already finished.
+                        // Record success and checkpoint regularly so an interrupted run keeps the
+                        // images it already finished.
                         // CancellationToken.None: a finished image must be recorded even if the
                         // run is being cancelled.
                         await checkpointGate.WaitAsync(CancellationToken.None);
@@ -469,26 +463,11 @@ internal sealed partial class ImageService(
                         {
                             imageState.Set(manifestKey, processed);
 
-                            var existingEntry = manifestRepository.GetImage(manifestKey);
-                            if (existingEntry != null && existingEntry.Placeholder != image.Placeholder)
-                            {
-                                manifestRepository.SetImage(manifestKey, existingEntry with
-                                {
-                                    Placeholder = image.Placeholder
-                                });
-                                manifestChanged = true;
-                            }
-
                             imagesSinceCheckpoint++;
                             if (imagesSinceCheckpoint >= CheckpointEveryImages
                                 || stopwatch.Elapsed - lastCheckpoint >= CheckpointInterval)
                             {
                                 await imageState.SaveAsync(CancellationToken.None);
-                                if (manifestChanged)
-                                {
-                                    await manifestRepository.SaveAsync(CancellationToken.None);
-                                    manifestChanged = false;
-                                }
 
                                 imagesSinceCheckpoint = 0;
                                 lastCheckpoint = stopwatch.Elapsed;
@@ -782,7 +761,6 @@ internal sealed partial class ImageService(
         string ImageSlug,
         IReadOnlyList<int> Sizes,
         IReadOnlyList<(int Size, string Format)>? MissingVariants,
-        string? ExistingPlaceholder,
         int Width,
         int Height,
         ProcessedImage Processed);

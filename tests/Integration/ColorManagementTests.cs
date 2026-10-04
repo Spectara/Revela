@@ -6,6 +6,7 @@ using Spectara.Revela.Core.Services;
 using Spectara.Revela.Features.Generate;
 using Spectara.Revela.Features.Generate.Abstractions;
 using Spectara.Revela.Features.Generate.Models.Results;
+using Spectara.Revela.Features.Generate.Services;
 using Spectara.Revela.Sdk.Abstractions;
 using Spectara.Revela.Tests.Shared.Fixtures;
 using Spectara.Revela.Themes.Lumina;
@@ -102,7 +103,7 @@ public sealed class ColorManagementTests
     }
 
     [TestMethod]
-    public async Task ScanAsync_DisplayP3Source_PlaceholderMatchesSrgbEquivalent()
+    public async Task ScanAsync_DisplayP3Source_ColorMatchesSrgbEquivalent()
     {
         double[] saturatedGreen = [20, 200, 60];
         using var project = CreateProject(g => g
@@ -112,17 +113,51 @@ public sealed class ColorManagementTests
         WriteSolidJpeg(SourceFile(project, "srgb.jpg"), saturatedGreen, profile: null);
         WriteSolidJpeg(SourceFile(project, "p3.jpg"), saturatedGreen, "p3");
         WriteSolidJpeg(SourceFile(project, "p3-untagged.jpg"), saturatedGreen, "p3", keepProfile: false);
-        using var host = BuildHost(project);
 
-        var scan = await host.Services.GetRequiredService<IContentService>().ScanAsync();
+        var colors = await ScanColorsAsync(project);
 
-        Assert.IsTrue(scan.Success, scan.ErrorMessage);
-        var images = host.Services.GetRequiredService<IManifestRepository>().Images.Values.ToList();
-        string? Placeholder(string fileName) => images.Single(i => i.Filename == fileName).Placeholder;
-        Assert.IsNotNull(Placeholder("srgb.jpg"));
-        Assert.AreNotEqual(Placeholder("srgb.jpg"), Placeholder("p3-untagged.jpg"), "Control: raw P3 values must yield a different placeholder.");
-        Assert.AreEqual(Placeholder("srgb.jpg"), Placeholder("p3.jpg"));
+        AssertColorNear(saturatedGreen, colors["srgb.jpg"], tolerance: 3);
+        AssertColorNear(saturatedGreen, colors["p3.jpg"], tolerance: 3);
+        Assert.IsGreaterThan(10, MaxChannelDistance(saturatedGreen, colors["p3-untagged.jpg"]), "Control: raw P3 values must yield a different colour.");
     }
+
+    [TestMethod]
+    [DataRow(200d, 40d, 40d)]
+    [DataRow(12d, 34d, 250d)]
+    [DataRow(128d, 128d, 128d)]
+    public async Task ScanAsync_SolidSource_ColorIsLowercaseHexOfThatColor(double red, double green, double blue)
+    {
+        double[] srgb = [red, green, blue];
+        using var project = CreateProject(g => g.AddRealImage("solid.jpg", 800, 600));
+        WriteSolidJpeg(SourceFile(project, "solid.jpg"), srgb, profile: null);
+
+        var colors = await ScanColorsAsync(project);
+
+        Assert.MatchesRegex("^#[0-9a-f]{6}$", colors["solid.jpg"]);
+        AssertColorNear(srgb, colors["solid.jpg"], tolerance: 2);
+    }
+
+    [TestMethod]
+    public async Task ScanAsync_BlackAndWhiteHalves_ColorIsOklabAverage()
+    {
+        // The Oklab mean of black and white is L 0.5: sRGB #636363, darker than the mean of the
+        // gamma-encoded values (#808080) and close to how the halves look side by side.
+        using var project = CreateProject(g => g.AddRealImage("halves.jpg", 800, 600));
+        WriteHalvesJpeg(SourceFile(project, "halves.jpg"), [0, 0, 0], [255, 255, 255]);
+
+        var colors = await ScanColorsAsync(project);
+
+        AssertColorNear([99, 99, 99], colors["halves.jpg"], tolerance: 8);
+    }
+
+    [TestMethod]
+    [DataRow(0d, 0d, 0d, "#000000")]
+    [DataRow(1d, 0d, 0d, "#ffffff")]
+    [DataRow(0.5d, 0d, 0d, "#636363")]
+    [DataRow(0.627955d, 0.224863d, 0.125846d, "#ff0000")]
+    [DataRow(0.7d, 0.4d, 0d, "#ff0094")]
+    public void OklabToSrgbHex_KnownColors_ReturnsClampedLowercaseHex(double lightness, double a, double b, string expected) =>
+        Assert.AreEqual(expected, NetVipsImageProcessor.OklabToSrgbHex(lightness, a, b));
 
     [TestMethod]
     public async Task ProcessAsync_UltraHdrSource_ProducesSdrVariants()
@@ -177,6 +212,23 @@ public sealed class ColorManagementTests
         Assert.IsTrue(images.Success, images.ErrorMessage);
     }
 
+    private static async Task<Dictionary<string, string>> ScanColorsAsync(TestProject project)
+    {
+        using var host = BuildHost(project);
+        var scan = await host.Services.GetRequiredService<IContentService>().ScanAsync();
+        Assert.IsTrue(scan.Success, scan.ErrorMessage);
+
+        return host.Services.GetRequiredService<IManifestRepository>().Images.Values
+            .ToDictionary(i => i.Filename, i => i.Color ?? throw new AssertFailedException($"{i.Filename} has no colour."), StringComparer.Ordinal);
+    }
+
+    private static double MaxChannelDistance(double[] expected, string hex) =>
+        Enumerable.Range(0, 3).Max(band =>
+            Math.Abs(expected[band] - int.Parse(hex.AsSpan(1 + (band * 2), 2), System.Globalization.NumberStyles.HexNumber, System.Globalization.CultureInfo.InvariantCulture)));
+
+    private static void AssertColorNear(double[] expected, string hex, int tolerance) =>
+        Assert.IsLessThanOrEqualTo(tolerance, MaxChannelDistance(expected, hex), $"{hex} vs rgb({string.Join(", ", expected)})");
+
     private static string SourceFile(TestProject project, string fileName) =>
         Path.Combine(project.SourcePath, GalleryName, fileName);
 
@@ -210,6 +262,22 @@ public sealed class ColorManagementTests
 
         using var converted = pixels.IccTransform(profile, inputProfile: "srgb", intent: Enums.Intent.Relative);
         converted.Jpegsave(path, q: 95, keep: keepProfile ? Enums.ForeignKeep.All : Enums.ForeignKeep.None);
+    }
+
+    /// <summary>
+    /// Writes an untagged sRGB JPEG whose left and right halves have the given colours.
+    /// </summary>
+    private static void WriteHalvesJpeg(string path, double[] left, double[] right)
+    {
+        using var xyz = Image.Xyz(800, 600);
+        using var x = xyz[0];
+        using var isLeft = x < 400;
+        using var black = Image.Black(800, 600, bands: 3);
+        using var leftImage = black + left;
+        using var rightImage = black + right;
+        using var joined = isLeft.Ifthenelse(leftImage, rightImage);
+        using var pixels = joined.Cast(Enums.BandFormat.Uchar).Copy(interpretation: Enums.Interpretation.Srgb);
+        pixels.Jpegsave(path, q: 95);
     }
 
     /// <summary>

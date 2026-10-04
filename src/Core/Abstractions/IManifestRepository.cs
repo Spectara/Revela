@@ -74,7 +74,7 @@ public interface IManifestRepository
     #region Metadata
 
     /// <summary>
-    /// Hash of scan configuration (placeholder strategy, min dimensions).
+    /// Hash of scan configuration (metadata version, min dimensions).
     /// When this changes, all metadata needs to be re-read.
     /// </summary>
     string ScanConfigHash { get; set; }

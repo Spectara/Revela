@@ -9,7 +9,7 @@ back to it via CSS (:target + :has).
 
 Template contract:
 - photo: { image, slug, title, primary_context, contexts }
-- image: ImageData { id, slug, width, height, title?, description?, keywords, rating?, exif?, sizes, placeholder? }
+- image: ImageData { id, slug, width, height, title?, description?, keywords, rating?, exif?, sizes, color? }
 - contexts: PhotoContext[] { route, label, context_id, anchor, is_physical, previous_photo?, next_photo? }
 - primary_context: PhotoContext
 - site, base_url, basepath, assets_basepath, image_formats, stylesheets, scripts, revela
@@ -65,8 +65,8 @@ Template contract:
 <body class="photo-page">
     <main>
         <h1 class="visually-hidden">{{ html_escape heading }}</h1>
-        <article style="--width:{{ html_escape image.width }}; --height:{{ html_escape image.height }};{{~ if image.placeholder ~}} --lqip:{{ html_escape image.placeholder }};{{~ end ~}}">
-            <picture id="photo-{{ html_escape image.id }}"{{~ if image.placeholder }} data-lqip{{ end }}>
+        <article style="--width:{{ html_escape image.width }}; --height:{{ html_escape image.height }};{{~ if image.color ~}} --image-color:{{ html_escape image.color }};{{~ end ~}}">
+            <picture id="photo-{{ html_escape image.id }}">
                 {{~ for format in image_formats ~}}
                 <source type="{{ html_escape (image_type format) }}" sizes="{{ html_escape photo_sizes }}" srcset="{{ html_escape (image_srcset image format) }}">
                 {{~ end ~}}

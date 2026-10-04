@@ -45,7 +45,7 @@ Use the **Revela Dev** agent for implementation. Follow [`.github/instructions/t
 Available in every template (see [`themes.instructions.md`](../instructions/themes.instructions.md)):
 - `site`, `basepath`, `assets_basepath`, `base_url`, `image_formats`, `nav_items`
 - `gallery` (with `title`, `body`, `cover_image`, `template`)
-- `images` array with per-image `sizes` and `placeholder`
+- `images` array with per-image `sizes` and `color`
 
 Built-in functions: `find_image`, `page_url`, `absolute_url`, `asset_url`, `variant_url`, `format_date`, `format_filesize`, `markdown`.
 

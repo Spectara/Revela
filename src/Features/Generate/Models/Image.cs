@@ -93,15 +93,13 @@ internal sealed class Image
     public IReadOnlyList<int> Sizes { get; init; } = [];
 
     /// <summary>
-    /// Placeholder CSS value for lazy loading
+    /// Average colour of the photo as lowercase sRGB hex (<c>#rrggbb</c>).
     /// </summary>
     /// <remarks>
-    /// Contains a CSS-only LQIP hash (20-bit integer as string, e.g., "-721311")
-    /// that CSS decodes into 6 radial gradients over a base color.
-    /// <c>null</c> when placeholder generation is disabled.
-    /// Used in templates: <c>style="--lqip:{{ image.placeholder }}"</c>
+    /// Computed during scan. Themes paint it while the photo loads, e.g.
+    /// <c>style="--image-color:{{ image.color }}"</c>. <c>null</c> when unknown.
     /// </remarks>
-    public string? Placeholder { get; init; }
+    public string? Color { get; init; }
 
     /// <summary>
     /// Create an Image from a manifest entry (for cache hits).
@@ -126,7 +124,7 @@ internal sealed class Image
             Keywords = entry.Keywords,
             Rating = entry.Rating,
             Sizes = entry.Sizes,
-            Placeholder = entry.Placeholder
+            Color = entry.Color
         };
     }
 }

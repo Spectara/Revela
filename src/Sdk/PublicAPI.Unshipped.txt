@@ -333,8 +333,6 @@ Spectara.Revela.Sdk.Configuration.ImageConfig.MinHeight.get -> int
 Spectara.Revela.Sdk.Configuration.ImageConfig.MinHeight.set -> void
 Spectara.Revela.Sdk.Configuration.ImageConfig.MinWidth.get -> int
 Spectara.Revela.Sdk.Configuration.ImageConfig.MinWidth.set -> void
-Spectara.Revela.Sdk.Configuration.ImageConfig.Placeholder.get -> Spectara.Revela.Sdk.Configuration.PlaceholderConfig!
-Spectara.Revela.Sdk.Configuration.ImageConfig.Placeholder.set -> void
 Spectara.Revela.Sdk.Configuration.ImageConfig.Webp.get -> int
 Spectara.Revela.Sdk.Configuration.ImageConfig.Webp.set -> void
 Spectara.Revela.Sdk.Configuration.ImageConfig.WebpEffort.get -> int
@@ -365,13 +363,6 @@ Spectara.Revela.Sdk.Configuration.PathsConfig.Output.set -> void
 Spectara.Revela.Sdk.Configuration.PathsConfig.PathsConfig() -> void
 Spectara.Revela.Sdk.Configuration.PathsConfig.Source.get -> string!
 Spectara.Revela.Sdk.Configuration.PathsConfig.Source.set -> void
-Spectara.Revela.Sdk.Configuration.PlaceholderConfig
-Spectara.Revela.Sdk.Configuration.PlaceholderConfig.PlaceholderConfig() -> void
-Spectara.Revela.Sdk.Configuration.PlaceholderConfig.Strategy.get -> Spectara.Revela.Sdk.Configuration.PlaceholderStrategy
-Spectara.Revela.Sdk.Configuration.PlaceholderConfig.Strategy.set -> void
-Spectara.Revela.Sdk.Configuration.PlaceholderStrategy
-Spectara.Revela.Sdk.Configuration.PlaceholderStrategy.CssHash = 1 -> Spectara.Revela.Sdk.Configuration.PlaceholderStrategy
-Spectara.Revela.Sdk.Configuration.PlaceholderStrategy.None = 0 -> Spectara.Revela.Sdk.Configuration.PlaceholderStrategy
 Spectara.Revela.Sdk.Configuration.PluginConfigSection
 Spectara.Revela.Sdk.Configuration.ProjectConfig
 Spectara.Revela.Sdk.Configuration.ProjectConfig.AssetsBasePath.get -> string?
@@ -570,6 +561,8 @@ Spectara.Revela.Sdk.Models.ExifData.Raw.get -> System.Collections.Generic.IReadO
 Spectara.Revela.Sdk.Models.ExifData.Raw.init -> void
 Spectara.Revela.Sdk.Models.Manifest.ImageContent
 Spectara.Revela.Sdk.Models.Manifest.ImageContent.<Clone>$() -> Spectara.Revela.Sdk.Models.Manifest.ImageContent!
+Spectara.Revela.Sdk.Models.Manifest.ImageContent.Color.get -> string?
+Spectara.Revela.Sdk.Models.Manifest.ImageContent.Color.init -> void
 Spectara.Revela.Sdk.Models.Manifest.ImageContent.DateTaken.get -> System.DateTime?
 Spectara.Revela.Sdk.Models.Manifest.ImageContent.DateTaken.init -> void
 Spectara.Revela.Sdk.Models.Manifest.ImageContent.Description.get -> string?
@@ -588,8 +581,6 @@ Spectara.Revela.Sdk.Models.Manifest.ImageContent.Keywords.get -> System.Collecti
 Spectara.Revela.Sdk.Models.Manifest.ImageContent.Keywords.init -> void
 Spectara.Revela.Sdk.Models.Manifest.ImageContent.LastModified.get -> System.DateTime
 Spectara.Revela.Sdk.Models.Manifest.ImageContent.LastModified.init -> void
-Spectara.Revela.Sdk.Models.Manifest.ImageContent.Placeholder.get -> string?
-Spectara.Revela.Sdk.Models.Manifest.ImageContent.Placeholder.init -> void
 Spectara.Revela.Sdk.Models.Manifest.ImageContent.Rating.get -> int?
 Spectara.Revela.Sdk.Models.Manifest.ImageContent.Rating.init -> void
 Spectara.Revela.Sdk.Models.Manifest.ImageContent.Sizes.get -> System.Collections.Generic.IReadOnlyList<int>!

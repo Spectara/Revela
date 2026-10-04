@@ -153,7 +153,7 @@ public sealed partial class LuminaSeoEndToEndTests
     }
 
     [TestMethod]
-    public async Task RenderAsync_LuminaPictures_SizeEverySourceAndPaintContentImagePlaceholders()
+    public async Task RenderAsync_LuminaPictures_SizeEverySourceAndPaintTheAverageColor()
     {
         var site = await RenderSiteAsync(baseUrl: null);
 
@@ -163,12 +163,16 @@ public sealed partial class LuminaSeoEndToEndTests
             {
                 Assert.Contains(" sizes=\"", source.Value, StringComparison.Ordinal, $"{page}: without sizes a browser assumes 100vw: {source.Value}");
             }
+
+            Assert.DoesNotContain("lqip", html, StringComparison.Ordinal, page);
         }
 
         var notes = site.Pages["notes/index.html"];
-        Assert.Contains("data-lqip>", notes);
+        Assert.MatchesRegex("<picture class=\"content-image\" style=\"--image-color:#[0-9a-f]{6}\">", notes);
         Assert.AreEqual(3, CountOccurrences(notes, "sizes=\"auto, (min-width: 900px) 900px, 100vw\""),
             "The content image's two <source> elements and its <img> fit the 900px text column.");
+        Assert.HasCount(2, ImageColorPattern().Matches(site.Pages["island/index.html"]), "Each River Flow thumbnail.");
+        Assert.HasCount(1, ImageColorPattern().Matches(site.Pages["photo/island/one/index.html"]), "The photo page.");
     }
 
     [TestMethod]
@@ -349,6 +353,9 @@ public sealed partial class LuminaSeoEndToEndTests
 
     [GeneratedRegex(@"<source\s[^>]*>")]
     private static partial Regex SourcePattern();
+
+    [GeneratedRegex("--image-color:#[0-9a-f]{6}[;\"]")]
+    private static partial Regex ImageColorPattern();
 
     [GeneratedRegex(@"<nav(?:\s[^>]*)?>")]
     private static partial Regex NavPattern();

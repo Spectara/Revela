@@ -201,12 +201,11 @@ public sealed class ContentImageTests
     }
 
     [TestMethod]
-    public void ToHtml_WithImageContext_Placeholder_IncludesLqip()
+    public void ToHtml_WithImageContext_Color_PassesColorToRenderer()
     {
         // Arrange
         var service = new MarkdownService();
-        var image = CreateImage("photo", 1920, 1080, [320, 640]);
-        image = new Image
+        var image = new Image
         {
             SourcePath = "photo.jpg",
             FileName = "photo",
@@ -214,7 +213,7 @@ public sealed class ContentImageTests
             Width = 1920,
             Height = 1080,
             Sizes = [320, 640],
-            Placeholder = "-721311"
+            Color = "#5a6b7c"
         };
         var images = new Dictionary<string, Image>(StringComparer.OrdinalIgnoreCase)
         {
@@ -226,7 +225,7 @@ public sealed class ContentImageTests
         var html = service.ToHtml("![Photo](photo.jpg)", context);
 
         // Assert
-        Assert.Contains("--lqip:-721311", html);
+        Assert.Contains("--image-color:#5a6b7c", html);
     }
 
     [TestMethod]
@@ -371,7 +370,7 @@ public sealed class ContentImageTests
             classAttr += " " + string.Join(" ", classes);
         }
 
-        var placeholder = image.Placeholder is not null ? $" style=\"--lqip:{image.Placeholder}\"" : "";
+        var color = image.Color is not null ? $" style=\"--image-color:{image.Color}\"" : "";
         var isLandscape = image.Width >= image.Height;
 
         var srcsetParts = new List<string>();
@@ -381,7 +380,7 @@ public sealed class ContentImageTests
             srcsetParts.Add(FormattableString.Invariant($"{image.Slug}/{size}.jpg {w}w"));
         }
 
-        return $"<picture class=\"{classAttr}\"{placeholder}>" +
+        return $"<picture class=\"{classAttr}\"{color}>" +
                $"<source type=\"image/avif\" srcset=\"{string.Join(", ", srcsetParts.Select(s => s.Replace(".jpg", ".avif", StringComparison.Ordinal)))}\">" +
                $"<source type=\"image/webp\" srcset=\"{string.Join(", ", srcsetParts.Select(s => s.Replace(".jpg", ".webp", StringComparison.Ordinal)))}\">" +
                $"<source type=\"image/jpeg\" srcset=\"{string.Join(", ", srcsetParts)}\">" +

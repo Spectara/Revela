@@ -57,7 +57,13 @@ Resolve an image from the project by path. Uses the same 3-step lookup as Markdo
 2. Shared images: `_images/{path}`
 3. Exact match: `{path}` as-is
 
-The image object exposes `slug`, `file_name`, `source_path`, `width`, `height`, `sizes`, `file_size`, `date_taken`, `exif`, `title`, `description`, `keywords`, `rating`, and `placeholder`.
+The image object exposes `slug`, `file_name`, `source_path`, `width`, `height`, `sizes`, `file_size`, `date_taken`, `exif`, `title`, `description`, `keywords`, `rating`, and `color`.
+
+`color` is the photo's average colour as lowercase sRGB hex (`#rrggbb`), computed during scan, or `null` when unknown. Themes paint it while the photo loads; Lumina writes it as a CSS custom property:
+
+```scriban
+<article style="--width:{{ image.width }}; --height:{{ image.height }};{{ if image.color }} --image-color:{{ html_escape image.color }};{{ end }}">
+```
 
 The descriptive fields come from the photo's XMP metadata, as Capture One and Lightroom export it:
 

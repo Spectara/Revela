@@ -40,7 +40,7 @@ internal sealed record ManifestMeta
     public const int CurrentVersion = 5;
 
     /// <summary>
-    /// Hash of scan configuration (placeholder strategy, min dimensions).
+    /// Hash of scan configuration (metadata version, min dimensions).
     /// When this changes, all metadata needs to be re-read from source files.
     /// </summary>
     [JsonPropertyName("scanConfigHash")]

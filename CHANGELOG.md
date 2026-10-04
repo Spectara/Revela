@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **Photo placeholders are a single dimmed average colour** - while a photo loads, Lumina now shows one flat colour, the photo's average (computed in Oklab during scan from a small preview), mixed 70 % into the page background, instead of blurred gradients. The gradients were 12 radial gradients with blend modes per thumbnail on an extra sticky layer behind each River Flow photo; on iPad they made placeholders pop in randomly and scrolling stutter. Scrolling a 70-photo gallery with the CPU slowed down 6× in Chromium took 2058 ms of main-thread time with a 16.8 ms p95 frame before and 1404 ms / 8.6 ms with a single colour, the same as without any placeholder (1577 ms / 8.5 ms). Loaded photos look the same as before; lazy loading is unchanged. Templates read the colour as `image.color` (`#rrggbb`, replacing `image.placeholder`); Lumina writes it as `--image-color` and its strength is the `--image-color-strength` custom property. The next scan re-reads every photo's metadata once to compute the colour; images are not re-encoded.
+
+### Removed
+
+- **Placeholder configuration and CSS-only LQIP** - `generate.images.placeholder` (`strategy`: `csshash`/`none`) and the `--lqip` hash decoder in Lumina are gone; every photo gets its colour, with nothing to configure. A leftover `placeholder` block in `project.json` is ignored; remove it at your convenience.
 ## [0.0.1-beta.21] - 2026-10-03
 
 ### Added

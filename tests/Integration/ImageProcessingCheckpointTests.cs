@@ -9,7 +9,6 @@ using Spectara.Revela.Features.Generate.Models;
 using Spectara.Revela.Features.Generate.Models.Results;
 using Spectara.Revela.Features.Generate.Services;
 using Spectara.Revela.Sdk.Abstractions;
-using Spectara.Revela.Sdk.Configuration;
 using Spectara.Revela.Tests.Shared.Fixtures;
 using Spectara.Revela.Themes.Lumina;
 
@@ -217,9 +216,8 @@ public sealed class ImageProcessingCheckpointTests
 
         public Task<ImageMetadata> ReadMetadataAsync(
             string inputPath,
-            PlaceholderConfig? placeholderConfig = null,
             CancellationToken cancellationToken = default) =>
-            Inner!.ReadMetadataAsync(inputPath, placeholderConfig, cancellationToken);
+            Inner!.ReadMetadataAsync(inputPath, cancellationToken);
     }
 
     private sealed class FixedSizesProvider(IReadOnlyList<int> sizes) : IImageSizesProvider

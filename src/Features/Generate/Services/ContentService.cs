@@ -103,7 +103,6 @@ internal sealed partial class ContentService(
 
             // Check if scan config changed - if so, don't use metadata cache
             var scanConfigHash = ManifestService.ComputeScanConfigHash(
-                ImageSettings.Placeholder.Strategy,
                 ImageSettings.MinWidth,
                 ImageSettings.MinHeight);
             var scanConfigChanged = manifestRepository.ScanConfigHash != scanConfigHash;
@@ -269,11 +268,6 @@ internal sealed partial class ContentService(
         var minWidth = ImageSettings.MinWidth;
         var minHeight = ImageSettings.MinHeight;
 
-        // Get placeholder config - will be null if strategy is None (= no placeholder generation during scan)
-        var placeholderConfig = ImageSettings.Placeholder.Strategy != PlaceholderStrategy.None
-            ? ImageSettings.Placeholder
-            : null;
-
         await Parallel.ForEachAsync(
             images,
             cancellationToken,
@@ -302,14 +296,14 @@ internal sealed partial class ContentService(
                             Description = cached.Description,
                             Keywords = cached.Keywords,
                             Rating = cached.Rating,
-                            Placeholder = cached.Placeholder
+                            Color = cached.Color
                         };
                         Interlocked.Increment(ref cachedCount);
                     }
                     else
                     {
                         // Cache miss - read metadata from disk
-                        meta = await imageProcessor.ReadMetadataAsync(image.SourcePath, placeholderConfig, ct);
+                        meta = await imageProcessor.ReadMetadataAsync(image.SourcePath, ct);
                         Interlocked.Increment(ref newCount);
                     }
 
@@ -539,7 +533,7 @@ internal sealed partial class ContentService(
             Description = meta.Description,
             Keywords = meta.Keywords,
             Rating = meta.Rating,
-            Placeholder = meta.Placeholder
+            Color = meta.Color
         };
     }
 
@@ -649,7 +643,7 @@ internal sealed partial class ContentService(
             Description = meta?.Description,
             Keywords = meta?.Keywords ?? [],
             Rating = meta?.Rating,
-            Placeholder = meta?.Placeholder
+            Color = meta?.Color
         };
     }
 

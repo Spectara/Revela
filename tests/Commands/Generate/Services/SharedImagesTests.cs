@@ -332,7 +332,7 @@ public sealed class SharedImagesTests : IDisposable
         // Mock: IImageProcessor returns dummy metadata for any image
         var imageProcessor = Substitute.For<IImageProcessor>();
         imageProcessor
-            .ReadMetadataAsync(Arg.Any<string>(), Arg.Any<PlaceholderConfig?>(), Arg.Any<CancellationToken>())
+            .ReadMetadataAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(callInfo => Task.FromResult(new ImageMetadata
             {
                 Width = 1920,
