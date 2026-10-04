@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - **`packages refresh` reads nuget.org search results again** - nuget.org lists package authors as a list, which made the whole nuget.org feed fail to load into the package index. Authors are now accepted as a list or as plain text.
+- **`config feed add` refuses insecure feeds** - a plain `http://` feed URL (or any URL other than `https://`) was saved and then skipped by every package command. It is now rejected straight away with an explanation; local folders, network shares and `http://localhost` still work.
 
 ## [0.0.1-beta.21] - 2026-10-03
 

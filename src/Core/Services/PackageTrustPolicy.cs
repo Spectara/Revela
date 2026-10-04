@@ -27,8 +27,9 @@ public static class PackageTrustPolicy
     /// Returns whether a package source (feed URL, package URL, or local path) may be used.
     /// </summary>
     /// <remarks>
-    /// Plain <c>http://</c> is rejected because packages contain executable code and would be
-    /// exposed to tampering in transit. Loopback <c>http://</c> and local folders remain allowed.
+    /// Remote sources must use <c>https://</c>: packages contain executable code and would be exposed
+    /// to tampering in transit. Loopback <c>http://</c> and local folders (including UNC paths) remain
+    /// allowed; any other URL scheme is rejected.
     /// </remarks>
     public static bool IsAllowedSource(string source) =>
         !Uri.TryCreate(source, UriKind.Absolute, out var uri) || IsAllowedSource(uri);
@@ -37,6 +38,8 @@ public static class PackageTrustPolicy
     public static bool IsAllowedSource(Uri source)
     {
         ArgumentNullException.ThrowIfNull(source);
-        return source.Scheme != Uri.UriSchemeHttp || source.IsLoopback;
+        return source.IsFile
+            || source.Scheme == Uri.UriSchemeHttps
+            || (source.Scheme == Uri.UriSchemeHttp && source.IsLoopback);
     }
 }

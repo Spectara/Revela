@@ -25,7 +25,7 @@ internal sealed partial class AddCommand(
 
         var urlArg = new Argument<string>("url")
         {
-            Description = "NuGet v3 API URL or local directory path"
+            Description = "NuGet v3 API URL (https://) or local directory path"
         };
 
         var command = new Command("add", "Add a NuGet feed");
@@ -56,6 +56,13 @@ internal sealed partial class AddCommand(
             if (name.Equals("nuget.org", StringComparison.OrdinalIgnoreCase))
             {
                 AnsiConsole.MarkupLine("[yellow]WARNING[/] 'nuget.org' is a reserved feed name");
+                return 1;
+            }
+
+            if (!PackageTrustPolicy.IsAllowedSource(url))
+            {
+                AnsiConsole.MarkupLine($"{OutputMarkers.Error} Feed [cyan]{Markup.Escape(url)}[/] is not allowed.");
+                AnsiConsole.MarkupLine("  Use an [cyan]https://[/] URL or a local folder; plain http:// is only accepted for localhost.");
                 return 1;
             }
 
