@@ -5,6 +5,7 @@ using Microsoft.Extensions.Options;
 
 using NSubstitute;
 
+using Spectara.Revela.Core.Abstractions;
 using Spectara.Revela.Core.Services;
 using Spectara.Revela.Features.Generate.Commands;
 using Spectara.Revela.Sdk;

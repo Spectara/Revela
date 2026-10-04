@@ -18,7 +18,7 @@ namespace Spectara.Revela.Sdk.Abstractions;
 /// <para>
 /// Plugins and themes (MSBuild <c>PackageType</c> <c>RevelaPlugin</c> /
 /// <c>RevelaTheme</c>) must use a section of the form <c>plugins:&lt;key&gt;</c>
-/// where the key matches <c>^[a-z][a-zA-Z0-9]*$</c> (see <see cref="Configuration.PluginConfigSection"/>).
+/// where the key matches <c>^[a-z][a-zA-Z0-9]*$</c> (camelCase letters and digits).
 /// The SDK source generator reports an error for any other section and when the
 /// attribute argument and the <c>Section</c> const differ. It also emits a
 /// <see cref="RevelaPluginConfigKeyAttribute"/> so the host knows which package

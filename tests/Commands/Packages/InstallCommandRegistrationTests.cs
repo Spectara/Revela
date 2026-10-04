@@ -7,7 +7,6 @@ using Spectara.Revela.Core.Models;
 using Spectara.Revela.Core.Services;
 using Spectara.Revela.Features.Packages.Commands.Plugins;
 using Spectara.Revela.Features.Theme.Commands;
-using Spectara.Revela.Sdk.Abstractions;
 using Spectara.Revela.Sdk.Hosting;
 using Spectre.Console;
 

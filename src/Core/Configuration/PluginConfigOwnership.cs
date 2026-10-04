@@ -3,7 +3,6 @@ using System.Collections.Frozen;
 using System.Reflection;
 using Microsoft.Extensions.Configuration;
 using Spectara.Revela.Sdk.Abstractions;
-using Spectara.Revela.Sdk.Configuration;
 
 namespace Spectara.Revela.Core.Configuration;
 

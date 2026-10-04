@@ -2,6 +2,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 
 using NSubstitute;
 
+using Spectara.Revela.Core.Abstractions;
 using Spectara.Revela.Core.Services;
 using Spectara.Revela.Features.Theme.Commands;
 using Spectara.Revela.Sdk.Abstractions;

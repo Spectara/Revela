@@ -1,6 +1,6 @@
 using System.Text.Json.Nodes;
 
-namespace Spectara.Revela.Sdk.Abstractions;
+namespace Spectara.Revela.Core.Abstractions;
 
 /// <summary>
 /// Service for reading and writing Revela configuration files.
@@ -9,7 +9,8 @@ namespace Spectara.Revela.Sdk.Abstractions;
 /// Provides abstraction over project.json with:
 /// - JSON-based access via JsonObject
 /// - Deep merge for partial updates (only provided properties are written)
-/// Reusable by Core commands and Plugins.
+/// Host-only: it can write any section, so it is not part of the plugin SDK. Plugins persist
+/// their own settings through <see cref="Sdk.Configuration.IPluginSettingsWriter{TConfig}"/>.
 /// Note: site.json is theme-dependent and handled dynamically via JsonPropertyExtractor.
 /// </remarks>
 public interface IConfigService

@@ -4,7 +4,7 @@ using Spectara.Revela.Commands.Config.Project;
 using Spectara.Revela.Commands.Config.Revela;
 using Spectara.Revela.Commands.Config.Services;
 using Spectara.Revela.Commands.Config.Site;
-using Spectara.Revela.Sdk.Abstractions;
+using Spectara.Revela.Core.Abstractions;
 using Spectara.Revela.Sdk.Configuration;
 
 namespace Spectara.Revela.Commands.Config;

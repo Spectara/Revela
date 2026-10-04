@@ -2,8 +2,8 @@ using System.CommandLine;
 using Spectara.Revela.Commands.Config.Project;
 using Spectara.Revela.Commands.Config.Revela;
 using Spectara.Revela.Commands.Config.Site;
+using Spectara.Revela.Core.Abstractions;
 using Spectara.Revela.Sdk;
-using Spectara.Revela.Sdk.Abstractions;
 using Spectre.Console;
 
 namespace Spectara.Revela.Commands.Config;
