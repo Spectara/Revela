@@ -1,7 +1,4 @@
-using Scriban;
-using Scriban.Parsing;
 using Scriban.Runtime;
-using Scriban.Syntax;
 
 using Spectara.Revela.Features.Generate.Models;
 
@@ -58,9 +55,7 @@ internal sealed partial class RevelaParser(ILogger<RevelaParser> logger)
             return DirectoryMetadata.Empty;
         }
 
-        // Check if content starts with frontmatter marker
-        var trimmed = content.TrimStart();
-        if (!trimmed.StartsWith("+++", StringComparison.Ordinal))
+        if (!FrontMatterEvaluator.HasFrontMatter(content))
         {
             // No frontmatter - treat entire content as body
             return new DirectoryMetadata
@@ -69,54 +64,12 @@ internal sealed partial class RevelaParser(ILogger<RevelaParser> logger)
             };
         }
 
-        // Ensure content ends with newline - Scriban requires this for frontmatter parsing
-        var normalizedContent = content;
-        if (!content.EndsWith('\n'))
-        {
-            normalizedContent = content + "\n";
-        }
-
-        // Parse with Scriban's FrontMatterAndContent mode
-        var lexerOptions = new LexerOptions
-        {
-            Mode = ScriptMode.FrontMatterAndContent,
-            FrontMatterMarker = "+++"
-        };
-
-        var template = Template.Parse(normalizedContent, lexerOptions: lexerOptions);
-
-        if (template.HasErrors)
+        // Dotted plugin keys (calendar.source = "x") are evaluated too; the core ignores
+        // them, plugins read them through the same FrontMatterEvaluator.
+        var global = FrontMatterEvaluator.Evaluate(content);
+        if (global is null)
         {
             // Return empty on parse errors - errors will be logged by caller
-            return DirectoryMetadata.Empty;
-        }
-
-        // Evaluate frontmatter statement by statement so one failing line cannot
-        // hide the keys after it. Dotted plugin keys (calendar.source = "x") get
-        // their parent objects created first; the core ignores them, plugins read
-        // them with their own reader.
-        var context = new TemplateContext();
-
-        if (template.Page?.FrontMatter is { } frontMatter && context.CurrentGlobal is ScriptObject root)
-        {
-            foreach (var statement in frontMatter.Statements.Statements)
-            {
-                EnsureAssignmentParents(root, statement);
-
-                try
-                {
-                    context.Evaluate(statement);
-                }
-                catch (ScriptRuntimeException)
-                {
-                    // Skip only this statement; later keys are still evaluated
-                }
-            }
-        }
-
-        // Extract metadata from evaluated context using ScriptObject
-        if (context.CurrentGlobal is not ScriptObject global)
-        {
             return DirectoryMetadata.Empty;
         }
 
@@ -188,42 +141,6 @@ internal sealed partial class RevelaParser(ILogger<RevelaParser> logger)
             LogReadError(logger, filePath, ex);
             return DirectoryMetadata.Empty;
         }
-    }
-
-    /// <summary>
-    /// For an assignment like <c>a.b.c = value</c>, creates the missing parent objects
-    /// <c>a</c> and <c>a.b</c> so Scriban can assign into them.
-    /// </summary>
-    private static void EnsureAssignmentParents(ScriptObject root, ScriptStatement statement)
-    {
-        if (statement is ScriptExpressionStatement { Expression: ScriptAssignExpression { Target: ScriptMemberExpression { Target: { } parent } } })
-        {
-            EnsureObject(root, parent);
-        }
-    }
-
-    private static ScriptObject? EnsureObject(ScriptObject root, ScriptExpression expression)
-    {
-        var (parent, name) = expression switch
-        {
-            ScriptVariableGlobal variable => (root, variable.Name),
-            ScriptMemberExpression { Target: { } target, Member: ScriptVariable memberVariable } => (EnsureObject(root, target), memberVariable.Name),
-            _ => (null, null)
-        };
-
-        if (parent is null || name is null)
-        {
-            return null;
-        }
-
-        if (parent.TryGetValue(name, out var existing) && existing is not null)
-        {
-            return existing as ScriptObject;
-        }
-
-        var created = new ScriptObject();
-        parent[name] = created;
-        return created;
     }
 
     private static string? GetStringValue(ScriptObject global, string key)

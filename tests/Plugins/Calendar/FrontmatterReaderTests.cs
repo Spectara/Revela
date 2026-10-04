@@ -126,6 +126,61 @@ public sealed class FrontmatterReaderTests
     }
 
     [TestMethod]
+    public void Read_OtherDottedKeysBeforeCalendar_StillReadsCalendar()
+    {
+        // Same semantics as the core parser: unknown dotted keys get their parent objects.
+        var content = """
+            +++
+            title = "Availability"
+            gallery.options.columns = 3
+            calendar.source = "bookings.ics"
+            calendar.months = 3
+            +++
+            """;
+
+        var config = FrontmatterReader.Read(content);
+
+        Assert.IsNotNull(config);
+        Assert.AreEqual("bookings.ics", config.Source);
+        Assert.AreEqual(3, config.Months);
+    }
+
+    [TestMethod]
+    public void Read_FailingStatementBeforeCalendar_SkipsOnlyThatStatement()
+    {
+        var content = """
+            +++
+            title = "Availability"
+            broken = missing.member.value
+            calendar.source = "bookings.ics"
+            calendar.mode = "nights"
+            +++
+            """;
+
+        var config = FrontmatterReader.Read(content);
+
+        Assert.IsNotNull(config);
+        Assert.AreEqual("bookings.ics", config.Source);
+        Assert.AreEqual(CalendarMode.Nights, config.Mode);
+    }
+
+    [TestMethod]
+    public void Read_CalendarObjectLiteral_ParsesFields()
+    {
+        var content = """
+            +++
+            calendar = { source: "bookings.ics", months: 4 }
+            +++
+            """;
+
+        var config = FrontmatterReader.Read(content);
+
+        Assert.IsNotNull(config);
+        Assert.AreEqual("bookings.ics", config.Source);
+        Assert.AreEqual(4, config.Months);
+    }
+
+    [TestMethod]
     public void Read_PartialLabels_LeavesUnsetLabelsForTheme()
     {
         var content = """
