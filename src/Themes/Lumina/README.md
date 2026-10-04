@@ -108,6 +108,15 @@ photo_viewer = "none"
 Page overrides win over the project setting, which wins over Lumina's default. The selected body
 template does not affect the viewer.
 
+## Photo Placeholders
+
+While a photo loads, Lumina shows its average colour (`image.color`, written as
+`--image-color` on the photo's article or picture), mixed into the page background. How much of
+the colour shows is set by `--image-color-strength` (default `70%`) in `:root` of
+`Assets/main.css`; change it there after `revela theme extract Lumina --file Assets/main.css`.
+The colour sits behind the `<img>` (on photo pages and in the lightbox behind the `<picture>`,
+sized like the photo), so the loaded photo covers it completely.
+
 ## Language
 
 Lumina's UI text (menu, photo navigation, screen-reader labels) follows `language` in
