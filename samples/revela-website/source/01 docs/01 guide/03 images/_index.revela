@@ -80,6 +80,11 @@ resets when a Lightbox closes or switches images.
 A Lightbox fills the whole screen and closes with its × button or the Escape key; clicking
 around the photo does not close it.
 
+On a photo page and in a Lightbox, the ← and → arrow keys go to the previous and next photo
+(also while zoomed). They do nothing while you type in a form field or hold a modifier key, so
+browser shortcuts such as Alt+← (back) keep working. Without JavaScript the ‹ and › links do the
+same.
+
 Mouse-wheel zoom and swipe-to-close are intentionally not enabled, so vertical scrolling to
 photo metadata remains predictable.
 
