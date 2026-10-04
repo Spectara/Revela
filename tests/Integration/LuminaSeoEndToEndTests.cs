@@ -140,10 +140,14 @@ public sealed partial class LuminaSeoEndToEndTests
     {
         var site = await RenderSiteAsync(baseUrl: null);
 
-        foreach (var page in new[] { "island/index.html", "notes/index.html", "photo/island/one/index.html" })
+        foreach (var (page, html) in site.Pages)
+        {
+            Assert.DoesNotContain("type=\"image/jpg\"", html, StringComparison.Ordinal, page);
+        }
+
+        foreach (var page in new[] { "island/index.html", "notes/index.html", "light/index.html", "photo/island/one/index.html" })
         {
             var html = site.Pages[page];
-            Assert.DoesNotContain("type=\"image/jpg\"", html, StringComparison.Ordinal, page);
             Assert.Contains("type=\"image/jpeg\"", html, StringComparison.Ordinal, page);
             foreach (Match img in ImgPattern().Matches(html))
             {
@@ -272,7 +276,7 @@ public sealed partial class LuminaSeoEndToEndTests
 
     /// <summary>
     /// Renders a small Lumina site: a titled home page, a gallery with intro text and images,
-    /// a gallery whose Markdown body brings its own H1 (plus a content image) and a text page.
+    /// a gallery whose Markdown body brings its own H1 (plus a content image), a lightbox gallery and a text page.
     /// </summary>
     private static async Task<RenderedSite> RenderSiteAsync(
         string? baseUrl,
@@ -294,6 +298,7 @@ public sealed partial class LuminaSeoEndToEndTests
             .WithSiteJson(site)
             .AddGallery("Island", g => g.AddRealImage("one.jpg", 2400, 1600).AddRealImage("two.jpg", 800, 1200))
             .AddGallery("Notes", g => g.AddRealImage("three.jpg", 800, 600))
+            .AddGallery("Light", g => g.AddRealImage("four.jpg", 800, 600))
             .AddGallery("About"));
         await File.WriteAllTextAsync(Path.Combine(project.SourcePath, "_index.revela"), $"+++\ntitle = \"{homeTitle}\"\n+++\n");
         await File.WriteAllTextAsync(
@@ -302,6 +307,9 @@ public sealed partial class LuminaSeoEndToEndTests
         await File.WriteAllTextAsync(
             Path.Combine(project.SourcePath, "Notes", "_index.revela"),
             "+++\ntitle = \"Notes\"\n+++\n# Own heading\n\n![Three](three.jpg)\n");
+        await File.WriteAllTextAsync(
+            Path.Combine(project.SourcePath, "Light", "_index.revela"),
+            "+++\ntitle = \"Light\"\nphoto_viewer = \"lightbox\"\n+++\n");
         await File.WriteAllTextAsync(
             Path.Combine(project.SourcePath, "About", "_index.revela"),
             "+++\ntitle = \"About\"\ntemplate = \"page\"\n+++\nAbout text.\n");
