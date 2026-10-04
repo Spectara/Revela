@@ -41,7 +41,7 @@ If nothing is staged, suggest what to stage based on logical grouping.
   | `chore` | Maintenance tasks that don't fit elsewhere |
 
 - **Scope** (optional) — affected area in parentheses:
-  `plugin`, `theme`, `images`, `lqip`, `cli`, `config`, `website`, `sdk`, etc.
+  `plugin`, `theme`, `images`, `scan`, `cli`, `config`, `website`, `sdk`, etc.
 
 - **Subject** — imperative mood, lowercase, no period, max 72 chars
   - Good: `add EXIF extraction for AVIF files`

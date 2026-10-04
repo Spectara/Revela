@@ -235,7 +235,7 @@ Variables available inside it:
 
 | Variable | Type | Description |
 |----------|------|-------------|
-| `image` | Image | Image object (`slug`, `width`, `height`, `sizes`, `placeholder`, `exif`, `title`, `description`, `keywords`, `rating`) |
+| `image` | Image | Image object (`slug`, `width`, `height`, `sizes`, `color`, `exif`, `title`, `description`, `keywords`, `rating`) |
 | `alt` | string | Alt text from Markdown |
 | `classes` | string[] | CSS classes from `{.class}` syntax |
 | `assets_basepath` | string | Base path to image variants |
@@ -305,7 +305,7 @@ Variables available inside it:
 
 | Variable | Type | Description |
 |----------|------|-------------|
-| `image` | Image | The photo (`id`, `slug`, `width`, `height`, `title`, `description`, `sizes`, `placeholder`) |
+| `image` | Image | The photo (`id`, `slug`, `width`, `height`, `title`, `description`, `sizes`, `color`) |
 | `viewer_mode` | string | `page` (link to the photo page) or `none` (the theme renders no photo pages) |
 | `context_id` | string? | Page context for the photo page's return link; `null` with the `gallery` option (the photo page then uses its primary context) |
 | `context_label` | string? | Name of the page context, `null` without one |

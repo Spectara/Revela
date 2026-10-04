@@ -165,8 +165,9 @@ step. Steps read it with `parseResult.IsInPipeline()` and omit their standalone
 
 Scanning discovers `_index.revela` content, images, shared images, and navigation
 under the configured source root. It parses frontmatter, reads image metadata and
-EXIF, and prepares the content tree and image manifest. Placeholders are prepared
-during scanning when configured. Invalid content or conflicting output slugs must
+EXIF, and prepares the content tree and image manifest. Each image's average colour
+(the theme's loading placeholder) is computed from a small shrink-on-load thumbnail
+during scanning. Invalid content or conflicting output slugs must
 fail before rendering.
 
 ### Enrich And Render

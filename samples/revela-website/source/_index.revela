@@ -51,4 +51,4 @@ No installer, no account, no subscription, no database. Unzip and start.
 
 ## For developers
 
-Under the hood: libvips image processing via NetVips, AVIF/WebP/JPEG output with responsive `<picture>` elements and blurred placeholders (LQIP), Scriban templates, Markdown pages, Gzip/Brotli pre-compression and a NuGet-based plugin system. Extend it, script it in CI, or contribute: see the [developer orientation](docs/developer/).
+Under the hood: libvips image processing via NetVips, AVIF/WebP/JPEG output with responsive `<picture>` elements and average-colour placeholders, Scriban templates, Markdown pages, Gzip/Brotli pre-compression and a NuGet-based plugin system. Extend it, script it in CI, or contribute: see the [developer orientation](docs/developer/).

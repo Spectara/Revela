@@ -259,42 +259,19 @@ revela generate images
 # → Shows: 0 processed, 1153 cached
 ```
 
-## Low-Quality Image Placeholders (LQIP)
+## Photo Placeholders
 
-Revela generates **CSS-only placeholders** that display while images load. This creates a smooth loading experience without layout shifts.
+While a photo loads, Lumina shows a **single colour**: the photo's average colour, dimmed towards the page background. Layouts don't shift, there are no extra requests, and nothing needs configuring.
 
 ### How It Works
 
-1. During scan, Revela analyzes the average color and brightness pattern of a small preview of each image (the full-size photo is not decoded)
-2. This data is encoded into a compact integer (e.g., `-721311`)
-3. The theme's CSS decodes this integer into gradient placeholders
-4. When the image loads, it smoothly replaces the placeholder
+1. During scan, Revela averages a small preview of each image (the full-size photo is not decoded) in the perceptual Oklab colour space and stores it as `#rrggbb` in the manifest
+2. Templates write it as a CSS custom property, e.g. `style="--image-color:#5a6b7c"`
+3. The theme paints it behind the image; the loaded photo covers it completely
 
-**Result:** ~7 bytes per image instead of a separate LQIP file. No additional HTTP requests.
+A plain colour is deliberately simple: the earlier gradient placeholders made scrolling large galleries stutter, especially on iPad. Themes read the colour as `image.color` (see the [template reference](../../reference/template-functions/)); Lumina mixes 70% of it into the page background, adjustable with `--image-color-strength` in its CSS.
 
-### Configuration
-
-LQIP is **enabled by default**. To disable it:
-
-```json
-{
-  "generate": {
-    "images": {
-      "placeholder": {
-        "strategy": "none"
-      }
-    }
-  }
-}
-```
-
-### Technical Details
-
-The CSS hash encodes:
-- **Average color** in Oklab color space (8 bits)
-- **3×2 brightness grid** as grayscale values (12 bits)
-
-The browser reconstructs this as radial gradients with blend modes, creating a blurred approximation of the image. Based on [Lean Rada's CSS-only LQIP technique](https://leanrada.com/notes/css-only-lqip/).
+Upgrading from a version with gradient placeholders re-reads the image metadata once on the next scan. Image variants are not re-encoded.
 
 ## Best Practices
 
