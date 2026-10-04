@@ -783,6 +783,8 @@ jobs:
 
 > Store your NuGet API key as a repository secret (`NUGET_API_KEY`), never in source.
 
+Any other NuGet v3 feed works too (GitHub Packages, Azure Artifacts, a self-hosted server), as long as it is served over `https://`: Revela refuses plain `http://` package sources except on `localhost`, because a plugin is code that runs on the user's machine. See [Security Model](security-model.md#plugin-trust).
+
 ---
 
 ## Best practices

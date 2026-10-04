@@ -113,7 +113,7 @@ SPECTARA__REVELA__PLUGINS__SERVE__PORT=3000
 
 ## Community Plugins
 
-In the Full edition and the .NET tool, Revela supports third-party plugins from any NuGet source. Community plugins use their own package prefix:
+In the Full edition and the .NET tool, Revela supports third-party plugins from any NuGet source that uses `https://`, or from a local folder. Community plugins use their own package prefix:
 
 ```bash
 # Install from custom NuGet feed

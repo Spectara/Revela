@@ -115,7 +115,8 @@ to `DependenciesConfig` (section `dependencies`) and merged per key:
   a fallback when neither an installed theme nor a newly restored theme package
   can provide it.
 - `dependencies.feeds` values are URLs or folders; relative folders resolve from
-  the declaring file. Feeds declared only in `project.json` are excluded from
+  the declaring file. Remote URLs must be `https://` (loopback `http://` only),
+  enforced by `PackageTrustPolicy.IsAllowedSource`. Feeds declared only in `project.json` are excluded from
   package sources until the owner consents (see
   [Security Model](security-model.md#project-declared-package-feeds)).
   Provenance comes from reading `revela.json` and `project.json` separately,
