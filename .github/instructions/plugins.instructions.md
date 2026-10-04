@@ -7,11 +7,12 @@ description: "Plugin development conventions — IPlugin lifecycle, CommandDescr
 
 External plugins live under `src/Plugins/`. **Built-in features (`Generate`, `Packages`, `Theme`) are NOT plugins** — they live in `src/Features/` and are registered via `AddRevelaCommands()`.
 
-## Plugin Lifecycle (4 phases)
+## Plugin Lifecycle (3 phases)
 1. **Discovery** — `IPackageSource.LoadPlugins()` (Disk or Embedded).
-2. **`ConfigureConfiguration`** *(optional, default no-op)* — usually unused; ENV vars auto-loaded with `SPECTARA__REVELA__` prefix.
-3. **`ConfigureServices`** *(required)* — register services, options, HttpClients. Use `TryAdd*` for idempotent registration.
-4. **`GetCommands(IServiceProvider)`** *(optional, default `[]`)* — yield `CommandDescriptor` records. Resolve commands directly from DI.
+2. **`ConfigureServices`** *(required)* — register services, options, HttpClients. Use `TryAdd*` for idempotent registration.
+3. **`GetCommands(IServiceProvider)`** *(optional, default `[]`)* — yield `CommandDescriptor` records. Resolve commands directly from DI.
+
+Configuration sources belong to the host; plugins cannot add any.
 
 ## Minimal Plugin
 ```csharp

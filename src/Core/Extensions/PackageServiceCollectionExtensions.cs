@@ -1,4 +1,3 @@
-using Microsoft.Extensions.Configuration;
 using Spectara.Revela.Core;
 using Spectara.Revela.Core.Abstractions;
 using Spectara.Revela.Core.Configuration;
@@ -18,18 +17,18 @@ public static class PackageServiceCollectionExtensions
     /// </summary>
     /// <param name="services">The service collection.</param>
     /// <param name="packageSource">Source that provides plugins and themes.</param>
-    /// <param name="configuration">The configuration builder for plugin configuration.</param>
     /// <param name="args">CLI arguments (used to detect package management commands).</param>
     /// <exception cref="PluginConfigConflictException">Two loaded packages claim the same <c>plugins:&lt;key&gt;</c>.</exception>
     public static void AddPackages(
         this IServiceCollection services,
         IPackageSource packageSource,
-        IConfigurationBuilder configuration,
         string[] args)
     {
         // plugin|theme install/uninstall replace or delete package files: don't load (and lock) them
         if (PackageManagementCommands.ModifiesPackageFiles(args))
         {
+            // No package is loaded, so nothing claims a plugins:<key> node.
+            services.AddSingleton(PluginConfigOwnership.FromClaims([]));
             services.AddSingleton<IPackageContext>(sp =>
             {
                 var logger = sp.GetRequiredService<ILogger<PackageContext>>();
@@ -51,7 +50,7 @@ public static class PackageServiceCollectionExtensions
         services.AddSingleton(ownership);
         services.AddSingleton<UnclaimedPluginConfigReporter>();
 
-        ConfigurePlugins(services, configuration, plugins, loggerFactory);
+        ConfigurePlugins(services, plugins, loggerFactory);
         RegisterServices(services, plugins, themes);
     }
 
@@ -111,25 +110,10 @@ public static class PackageServiceCollectionExtensions
 
     private static void ConfigurePlugins(
         IServiceCollection services,
-        IConfigurationBuilder configuration,
         List<LoadedPluginInfo> plugins,
         ILoggerFactory loggerFactory)
     {
         var logger = loggerFactory.CreateLogger("Spectara.Revela.Core.PluginBootstrap");
-
-        foreach (var pluginInfo in plugins)
-        {
-            try
-            {
-                pluginInfo.Plugin.ConfigureConfiguration(configuration);
-            }
-            catch (Exception ex)
-            {
-                Console.Error.WriteLine(
-                    $"Error: Plugin '{pluginInfo.Plugin.Metadata.Name}' failed to configure configuration: {ex.Message}");
-                logger.ConfigureConfigurationFailed(ex, pluginInfo.Plugin.Metadata.Name);
-            }
-        }
 
         foreach (var pluginInfo in plugins)
         {

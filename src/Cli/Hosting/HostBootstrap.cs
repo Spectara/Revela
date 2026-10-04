@@ -173,7 +173,7 @@ internal static class HostBootstrap
         builder.Services.AddCoreServices();
         builder.Services.AddRevelaCommands();
         builder.Services.AddInteractiveMode();
-        builder.Services.AddPackages(packageSource, builder.Configuration, args);
+        builder.Services.AddPackages(packageSource, args);
 
         // Build identity (HostKind, Version, Framework, ...) — single source
         // of truth for `--version` and `revela info`. Idempotent registration

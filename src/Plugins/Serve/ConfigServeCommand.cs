@@ -4,7 +4,6 @@ using System.Text.Json.Nodes;
 using Microsoft.Extensions.Options;
 using Spectara.Revela.Plugins.Serve.Configuration;
 using Spectara.Revela.Sdk;
-using Spectara.Revela.Sdk.Abstractions;
 using Spectara.Revela.Sdk.Configuration;
 using Spectara.Revela.Sdk.Configuration.Keys;
 using Spectara.Revela.Sdk.Hosting;
@@ -27,7 +26,7 @@ namespace Spectara.Revela.Plugins.Serve;
 /// </remarks>
 internal sealed partial class ConfigServeCommand(
     ILogger<ConfigServeCommand> logger,
-    IConfigService configService,
+    IPluginSettingsWriter<ServePluginConfig> settingsWriter,
     IOptionsMonitor<ServePluginConfig> configMonitor,
     IConsoleCapabilities consoleCapabilities)
 {
@@ -111,12 +110,10 @@ internal sealed partial class ConfigServeCommand(
             [ServePluginConfigKeys.Verbose] = verbose
         };
 
-        // Nest below plugins:<key> and update project.json
-        var updates = PluginConfigSection.CreateUpdate(ServePluginConfigKeys.Section, pluginConfig);
+        // Written below this plugin's own plugins:serve node in project.json
+        await settingsWriter.WriteAsync(pluginConfig, cancellationToken);
 
-        await configService.UpdateProjectConfigAsync(updates, cancellationToken);
-
-        LogConfigSaved(logger, configService.ProjectConfigPath);
+        LogConfigSaved(logger);
         AnsiConsole.MarkupLine($"\n{OutputMarkers.Success} Configuration saved to [cyan]project.json[/]");
 
         // Show summary
@@ -133,6 +130,6 @@ internal sealed partial class ConfigServeCommand(
         return 0;
     }
 
-    [LoggerMessage(Level = LogLevel.Information, Message = "Serve config saved to {Path}")]
-    private static partial void LogConfigSaved(ILogger logger, string path);
+    [LoggerMessage(Level = LogLevel.Information, Message = "Serve config saved to project.json")]
+    private static partial void LogConfigSaved(ILogger logger);
 }

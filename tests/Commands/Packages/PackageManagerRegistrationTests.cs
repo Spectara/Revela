@@ -11,7 +11,6 @@ using Spectara.Revela.Core.Models;
 using Spectara.Revela.Core.Services;
 using Spectara.Revela.Features.Packages.Commands.Plugins;
 using Spectara.Revela.Features.Packages.Services;
-using Spectara.Revela.Sdk.Abstractions;
 using Spectara.Revela.Sdk.Hosting;
 using Spectara.Revela.Tests.Shared.Fixtures;
 using Spectre.Console;

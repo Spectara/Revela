@@ -8,6 +8,7 @@ using Spectara.Revela.Plugins.Statistics.Configuration;
 using Spectara.Revela.Plugins.Statistics.Services;
 using Spectara.Revela.Sdk.Abstractions;
 using Spectara.Revela.Sdk.Artifacts;
+using Spectara.Revela.Sdk.Configuration;
 using Spectara.Revela.Sdk.Hosting;
 
 namespace Spectara.Revela.Tests.Plugins.Statistics;
@@ -67,9 +68,8 @@ public sealed class StatisticsPluginRegistrationTests
 
         services.AddSingleton<IConfiguration>(configuration);
 
-        // Add mock IConfigService (required by ConfigStatisticsCommand)
-        var configService = Substitute.For<IConfigService>();
-        services.AddSingleton(configService);
+        // Add mock settings writer (required by ConfigStatisticsCommand)
+        services.AddSingleton(Substitute.For<IPluginSettingsWriter<StatisticsPluginConfig>>());
         services.AddSingleton(Substitute.For<IConsoleCapabilities>());
 
         var plugin = new StatisticsPlugin();
@@ -102,9 +102,8 @@ public sealed class StatisticsPluginRegistrationTests
         var configuration = new ConfigurationBuilder().Build();
         services.AddSingleton<IConfiguration>(configuration);
 
-        // Add mock IConfigService (required by ConfigStatisticsCommand)
-        var configService = Substitute.For<IConfigService>();
-        services.AddSingleton(configService);
+        // Add mock settings writer (required by ConfigStatisticsCommand)
+        services.AddSingleton(Substitute.For<IPluginSettingsWriter<StatisticsPluginConfig>>());
         services.AddSingleton(Substitute.For<IConsoleCapabilities>());
 
         var plugin = new StatisticsPlugin();

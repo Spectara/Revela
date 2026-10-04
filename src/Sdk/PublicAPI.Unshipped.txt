@@ -14,8 +14,6 @@ const Spectara.Revela.Sdk.Configuration.DependenciesConfig.Section = "dependenci
 const Spectara.Revela.Sdk.Configuration.GenerateConfig.Section = "generate" -> string!
 const Spectara.Revela.Sdk.Configuration.LoggingConfig.Section = "Logging" -> string!
 const Spectara.Revela.Sdk.Configuration.PathsConfig.Section = "paths" -> string!
-const Spectara.Revela.Sdk.Configuration.PluginConfigSection.Prefix = "plugins:" -> string!
-const Spectara.Revela.Sdk.Configuration.PluginConfigSection.Root = "plugins" -> string!
 const Spectara.Revela.Sdk.Configuration.ProjectConfig.Section = "project" -> string!
 const Spectara.Revela.Sdk.Configuration.SiteCoreConfig.Section = "site" -> string!
 const Spectara.Revela.Sdk.Configuration.ThemeConfig.DefaultName = "Lumina" -> string!
@@ -121,14 +119,6 @@ Spectara.Revela.Sdk.Abstractions.ICheck
 Spectara.Revela.Sdk.Abstractions.ICheck.Name.get -> string!
 Spectara.Revela.Sdk.Abstractions.ICheck.Title.get -> string!
 Spectara.Revela.Sdk.Abstractions.ICheck.ValidateAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask<System.Collections.Generic.IReadOnlyList<Spectara.Revela.Sdk.Abstractions.ValidationDiagnostic!>!>
-Spectara.Revela.Sdk.Abstractions.IConfigService
-Spectara.Revela.Sdk.Abstractions.IConfigService.IsProjectInitialized() -> bool
-Spectara.Revela.Sdk.Abstractions.IConfigService.IsSiteConfigured() -> bool
-Spectara.Revela.Sdk.Abstractions.IConfigService.ProjectConfigPath.get -> string!
-Spectara.Revela.Sdk.Abstractions.IConfigService.ReadProjectConfigAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Text.Json.Nodes.JsonObject?>!
-Spectara.Revela.Sdk.Abstractions.IConfigService.ReadSiteConfigAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Text.Json.Nodes.JsonObject?>!
-Spectara.Revela.Sdk.Abstractions.IConfigService.SiteConfigPath.get -> string!
-Spectara.Revela.Sdk.Abstractions.IConfigService.UpdateProjectConfigAsync(System.Text.Json.Nodes.JsonObject! updates, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
 Spectara.Revela.Sdk.Abstractions.IManifestReader
 Spectara.Revela.Sdk.Abstractions.IManifestReader.TryLoadAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Spectara.Revela.Sdk.Models.Manifest.ManifestSnapshot?>!
 Spectara.Revela.Sdk.Abstractions.IPackage
@@ -145,7 +135,6 @@ Spectara.Revela.Sdk.Abstractions.IPipelineStep.Category.get -> string!
 Spectara.Revela.Sdk.Abstractions.IPipelineStep.ExecuteAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask<Spectara.Revela.Sdk.Abstractions.OperationResult!>
 Spectara.Revela.Sdk.Abstractions.IPipelineStep.Name.get -> string!
 Spectara.Revela.Sdk.Abstractions.IPlugin
-Spectara.Revela.Sdk.Abstractions.IPlugin.ConfigureConfiguration(Microsoft.Extensions.Configuration.IConfigurationBuilder! configuration) -> void
 Spectara.Revela.Sdk.Abstractions.IPlugin.ConfigureServices(Microsoft.Extensions.DependencyInjection.IServiceCollection! services) -> void
 Spectara.Revela.Sdk.Abstractions.IPlugin.GetCommands(System.IServiceProvider! services) -> System.Collections.Generic.IEnumerable<Spectara.Revela.Sdk.Abstractions.CommandDescriptor!>!
 Spectara.Revela.Sdk.Abstractions.ITheme
@@ -337,6 +326,8 @@ Spectara.Revela.Sdk.Configuration.ImageConfig.Webp.get -> int
 Spectara.Revela.Sdk.Configuration.ImageConfig.Webp.set -> void
 Spectara.Revela.Sdk.Configuration.ImageConfig.WebpEffort.get -> int
 Spectara.Revela.Sdk.Configuration.ImageConfig.WebpEffort.set -> void
+Spectara.Revela.Sdk.Configuration.IPluginSettingsWriter<TConfig>
+Spectara.Revela.Sdk.Configuration.IPluginSettingsWriter<TConfig>.WriteAsync(System.Text.Json.Nodes.JsonObject! settings, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
 Spectara.Revela.Sdk.Configuration.ImageSortConfig
 Spectara.Revela.Sdk.Configuration.ImageSortConfig.Direction.get -> Spectara.Revela.Sdk.Configuration.SortDirection
 Spectara.Revela.Sdk.Configuration.ImageSortConfig.Direction.set -> void
@@ -363,7 +354,6 @@ Spectara.Revela.Sdk.Configuration.PathsConfig.Output.set -> void
 Spectara.Revela.Sdk.Configuration.PathsConfig.PathsConfig() -> void
 Spectara.Revela.Sdk.Configuration.PathsConfig.Source.get -> string!
 Spectara.Revela.Sdk.Configuration.PathsConfig.Source.set -> void
-Spectara.Revela.Sdk.Configuration.PluginConfigSection
 Spectara.Revela.Sdk.Configuration.ProjectConfig
 Spectara.Revela.Sdk.Configuration.ProjectConfig.AssetsBasePath.get -> string?
 Spectara.Revela.Sdk.Configuration.ProjectConfig.AssetsBasePath.set -> void
@@ -734,9 +724,6 @@ static Spectara.Revela.Sdk.Artifacts.DerivedFileDeletionFailure.operator !=(Spec
 static Spectara.Revela.Sdk.Artifacts.DerivedFileDeletionFailure.operator ==(Spectara.Revela.Sdk.Artifacts.DerivedFileDeletionFailure? left, Spectara.Revela.Sdk.Artifacts.DerivedFileDeletionFailure? right) -> bool
 static Spectara.Revela.Sdk.Artifacts.DerivedFiles.DeleteAll(string! directory, string! fileName, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> Spectara.Revela.Sdk.Artifacts.DerivedFileDeletion!
 static Spectara.Revela.Sdk.Configuration.ConfigurationServiceCollectionExtensions.AddRevelaConfigSections(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
-static Spectara.Revela.Sdk.Configuration.PluginConfigSection.CreateUpdate(string! section, System.Text.Json.Nodes.JsonObject! settings) -> System.Text.Json.Nodes.JsonObject!
-static Spectara.Revela.Sdk.Configuration.PluginConfigSection.IsValidKey(string? key) -> bool
-static Spectara.Revela.Sdk.Configuration.PluginConfigSection.TryGetKey(string? section, out string? key) -> bool
 static Spectara.Revela.Sdk.ErrorPanels.ShowConfigFileError(string! path, long? line, long? position) -> void
 static Spectara.Revela.Sdk.ErrorPanels.ShowConfigRequiredError(string! what, string! configCommand, string? additionalHints = null) -> void
 static Spectara.Revela.Sdk.ErrorPanels.ShowConfigurationProblem(System.Collections.Generic.IEnumerable<string!>! problems) -> void

@@ -138,7 +138,11 @@ Artifact mode skips product restore/build/publish/pack entirely. Full/Core may
 still build the isolated SDK consumer and install the existing CLI tool package
 as tests; they do not repack it. The SDK consumer uses
 [test-sdk-consumer.ps1](../scripts/test-sdk-consumer.ps1) with `-PackageDirectory`
-and the exact `-Version` to avoid rebuilding the SDK package.
+and the exact `-Version` to avoid rebuilding the SDK package. Besides the
+generator check it builds three isolated plugin projects against the package: a
+compliant one must build, one reading `IConfiguration` must fail with RS0030 and
+one binding a foreign section must fail with REVELA003 (see
+[plugin configuration isolation](security-model.md#plugin-configuration-isolation)).
 
 Core's initial package installation uses an explicit local `--source`. For the
 R1 parallel-restore regression only, the suite temporarily copies the supplied

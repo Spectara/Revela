@@ -8,7 +8,8 @@ using NSubstitute;
 
 using Spectara.Revela.Plugins.Statistics.Commands;
 using Spectara.Revela.Plugins.Statistics.Configuration;
-using Spectara.Revela.Sdk.Abstractions;
+using Spectara.Revela.Sdk.Configuration;
+using Spectara.Revela.Sdk.Configuration.Keys;
 using Spectara.Revela.Sdk.Hosting;
 
 using Spectre.Console;
@@ -23,38 +24,38 @@ public sealed class ConfigStatisticsCommandTests
     [TestMethod]
     public async Task Invoke_NoArgumentsOnNonInteractiveConsole_FailsWithoutPromptingOrSaving()
     {
-        var configService = Substitute.For<IConfigService>();
-        var command = CreateCommand(configService, isInteractive: false);
+        var settingsWriter = Substitute.For<IPluginSettingsWriter<StatisticsPluginConfig>>();
+        var command = CreateCommand(settingsWriter, isInteractive: false);
 
         var (exitCode, output) = await InvokeAsync(command, []);
 
         Assert.AreNotEqual(0, exitCode);
         Assert.Contains("--max-entries", output, StringComparison.Ordinal);
-        await configService.DidNotReceive().UpdateProjectConfigAsync(Arg.Any<JsonObject>(), Arg.Any<CancellationToken>());
+        await settingsWriter.DidNotReceive().WriteAsync(Arg.Any<JsonObject>(), Arg.Any<CancellationToken>());
     }
 
     [TestMethod]
     public async Task Invoke_ArgumentsOnNonInteractiveConsole_SavesConfig()
     {
-        var configService = Substitute.For<IConfigService>();
-        var command = CreateCommand(configService, isInteractive: false);
+        var settingsWriter = Substitute.For<IPluginSettingsWriter<StatisticsPluginConfig>>();
+        var command = CreateCommand(settingsWriter, isInteractive: false);
 
         var (exitCode, _) = await InvokeAsync(command, ["--max-entries", "42"]);
 
         Assert.AreEqual(0, exitCode);
-        await configService.Received(1).UpdateProjectConfigAsync(
-            Arg.Is<JsonObject>(updates => updates.ToJsonString().Contains("42", StringComparison.Ordinal)),
+        await settingsWriter.Received(1).WriteAsync(
+            Arg.Is<JsonObject>(settings => (int?)settings[StatisticsPluginConfigKeys.MaxEntriesPerCategory] == 42),
             Arg.Any<CancellationToken>());
     }
 
-    private static ConfigStatisticsCommand CreateCommand(IConfigService configService, bool isInteractive)
+    private static ConfigStatisticsCommand CreateCommand(IPluginSettingsWriter<StatisticsPluginConfig> settingsWriter, bool isInteractive)
     {
         var monitor = Substitute.For<IOptionsMonitor<StatisticsPluginConfig>>();
         monitor.CurrentValue.Returns(new StatisticsPluginConfig());
         var console = Substitute.For<IConsoleCapabilities>();
         console.IsInteractive.Returns(isInteractive);
         console.CanRenderLive.Returns(isInteractive);
-        return new ConfigStatisticsCommand(NullLogger<ConfigStatisticsCommand>.Instance, configService, monitor, console);
+        return new ConfigStatisticsCommand(NullLogger<ConfigStatisticsCommand>.Instance, settingsWriter, monitor, console);
     }
 
     private static async Task<(int ExitCode, string Output)> InvokeAsync(ConfigStatisticsCommand command, string[] args)

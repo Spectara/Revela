@@ -1,10 +1,7 @@
 using System.Collections.Immutable;
-using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
-using Microsoft.CodeAnalysis.Diagnostics;
-using Spectara.Revela.Sdk.Abstractions;
 using Spectara.Revela.Sdk.Generators;
 
 namespace Spectara.Revela.Tests.Sdk.Generators;
@@ -17,8 +14,6 @@ public sealed class PluginConfigSectionGeneratorTests
     private const string ClaimAttributeName = "RevelaPluginConfigKeyAttribute";
 
     private static readonly string[] ExpectedSharedClaims = ["analytics", "serve"];
-
-    private static readonly Lazy<IReadOnlyList<MetadataReference>> References = new(CreateReferences);
 
     [TestMethod]
     [DataRow("plugins:serve", "serve")]
@@ -156,11 +151,7 @@ public sealed class PluginConfigSectionGeneratorTests
 
     private static GeneratorRun Run(string source, string? packageType)
     {
-        var compilation = CSharpCompilation.Create(
-            "Sample.Plugin",
-            [CSharpSyntaxTree.ParseText(source)],
-            References.Value,
-            new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
+        var compilation = RoslynTestHost.Compile(source);
 
         GeneratorDriver driver = CSharpGeneratorDriver.Create(
             generators: [new PluginConfigSectionGenerator().AsSourceGenerator()],
@@ -180,43 +171,8 @@ public sealed class PluginConfigSectionGeneratorTests
         return new GeneratorRun(diagnostics, errors, claims);
     }
 
-    private static IReadOnlyList<MetadataReference> CreateReferences()
-    {
-        var paths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        var trustedAssemblies = (string?)AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES") ?? string.Empty;
-        foreach (var path in trustedAssemblies.Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries))
-        {
-            paths.Add(path);
-        }
-
-        // The SDK declares [RevelaConfig] and the claim attribute the generated code references.
-        paths.Add(Path.Combine(AppContext.BaseDirectory, typeof(RevelaConfigAttribute).Assembly.GetName().Name + ".dll"));
-
-        return [.. paths.Select(path => MetadataReference.CreateFromFile(path))];
-    }
-
     private sealed record GeneratorRun(
         ImmutableArray<Diagnostic> GeneratorDiagnostics,
         ImmutableArray<Diagnostic> CompilationErrors,
         ImmutableArray<string> Claims);
-
-    private sealed class PackageTypeOptionsProvider(string? packageType) : AnalyzerConfigOptionsProvider
-    {
-        public override AnalyzerConfigOptions GlobalOptions { get; } = new PackageTypeOptions(packageType);
-
-        public override AnalyzerConfigOptions GetOptions(SyntaxTree tree) => PackageTypeOptions.Empty;
-
-        public override AnalyzerConfigOptions GetOptions(AdditionalText textFile) => PackageTypeOptions.Empty;
-    }
-
-    private sealed class PackageTypeOptions(string? packageType) : AnalyzerConfigOptions
-    {
-        public static PackageTypeOptions Empty { get; } = new(null);
-
-        public override bool TryGetValue(string key, [NotNullWhen(true)] out string? value)
-        {
-            value = string.Equals(key, "build_property.PackageType", StringComparison.Ordinal) ? packageType : null;
-            return value is not null;
-        }
-    }
 }

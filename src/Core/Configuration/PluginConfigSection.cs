@@ -1,7 +1,6 @@
 using System.Diagnostics.CodeAnalysis;
-using System.Text.Json.Nodes;
 
-namespace Spectara.Revela.Sdk.Configuration;
+namespace Spectara.Revela.Core.Configuration;
 
 /// <summary>
 /// Rules for the host-owned <c>plugins</c> configuration node that holds all plugin settings.
@@ -14,7 +13,8 @@ namespace Spectara.Revela.Sdk.Configuration;
 /// <c>^[a-z][a-zA-Z0-9]*$</c> — camelCase letters and digits, no <c>.</c>, <c>:</c>,
 /// <c>/</c> or <c>_</c> — so it maps cleanly to environment variables
 /// (<c>SPECTARA__REVELA__PLUGINS__SERVE__PORT</c>). The SDK source generator enforces
-/// this at compile time for plugin and theme assemblies.
+/// this at compile time for plugin and theme assemblies (REVELA001); the host uses these
+/// rules to resolve ownership and to write a plugin's own settings.
 /// </para>
 /// </remarks>
 public static class PluginConfigSection
@@ -70,27 +70,5 @@ public static class PluginConfigSection
 
         key = candidate;
         return true;
-    }
-
-    /// <summary>
-    /// Wraps plugin settings into a <c>project.json</c> update object
-    /// (<c>{ "plugins": { "&lt;key&gt;": settings } }</c>) for <see cref="Abstractions.IConfigService.UpdateProjectConfigAsync"/>.
-    /// </summary>
-    /// <param name="section">The plugin section (e.g. <c>plugins:serve</c>).</param>
-    /// <param name="settings">The settings to write below the plugin key.</param>
-    /// <returns>The nested update object.</returns>
-    /// <exception cref="ArgumentException"><paramref name="section"/> is not a valid plugin section.</exception>
-    public static JsonObject CreateUpdate(string section, JsonObject settings)
-    {
-        ArgumentNullException.ThrowIfNull(settings);
-
-        if (!TryGetKey(section, out var key))
-        {
-            throw new ArgumentException(
-                $"'{section}' is not a plugin configuration section (expected '{Prefix}<key>').",
-                nameof(section));
-        }
-
-        return new JsonObject { [Root] = new JsonObject { [key] = settings } };
     }
 }

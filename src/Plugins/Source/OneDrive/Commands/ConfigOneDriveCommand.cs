@@ -3,7 +3,6 @@ using System.Text.Json.Nodes;
 using Microsoft.Extensions.Options;
 using Spectara.Revela.Plugins.Source.OneDrive.Configuration;
 using Spectara.Revela.Sdk;
-using Spectara.Revela.Sdk.Abstractions;
 using Spectara.Revela.Sdk.Configuration;
 using Spectara.Revela.Sdk.Configuration.Keys;
 using Spectara.Revela.Sdk.Hosting;
@@ -26,7 +25,7 @@ namespace Spectara.Revela.Plugins.Source.OneDrive.Commands;
 /// </remarks>
 internal sealed partial class ConfigOneDriveCommand(
     ILogger<ConfigOneDriveCommand> logger,
-    IConfigService configService,
+    IPluginSettingsWriter<OneDrivePluginConfig> settingsWriter,
     IOptionsMonitor<OneDrivePluginConfig> configMonitor,
     IOptionsMonitor<PathsConfig> pathsConfig,
     IConsoleCapabilities consoleCapabilities)
@@ -120,12 +119,10 @@ internal sealed partial class ConfigOneDriveCommand(
             pluginConfig[OneDrivePluginConfigKeys.ShareUrl] = shareUrl;
         }
 
-        // Nest below plugins:<key> and update project.json
-        var updates = PluginConfigSection.CreateUpdate(OneDrivePluginConfigKeys.Section, pluginConfig);
+        // Written below this plugin's own plugins:oneDrive node in project.json
+        await settingsWriter.WriteAsync(pluginConfig, cancellationToken);
 
-        await configService.UpdateProjectConfigAsync(updates, cancellationToken);
-
-        LogConfigSaved(configService.ProjectConfigPath);
+        LogConfigSaved();
 
         // Show success panel
         var action = isFirstTime ? "created" : "updated";
@@ -177,6 +174,6 @@ internal sealed partial class ConfigOneDriveCommand(
         return null;
     }
 
-    [LoggerMessage(Level = LogLevel.Information, Message = "OneDrive config saved to {Path}")]
-    private partial void LogConfigSaved(string path);
+    [LoggerMessage(Level = LogLevel.Information, Message = "OneDrive config saved to project.json")]
+    private partial void LogConfigSaved();
 }

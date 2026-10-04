@@ -151,11 +151,12 @@ The parent owns integration and the applicable final gates; a Worker runs its as
 
 ## Architecture Quick Reference
 
-### Plugin lifecycle (4 phases)
+### Plugin lifecycle (3 phases)
 1. **Discovery** — `IPackageSource.LoadPlugins()` (Disk or Embedded)
-2. **`ConfigureConfiguration`** *(optional)* — usually no-op; ENV vars auto-loaded with `SPECTARA__REVELA__` prefix
-3. **`ConfigureServices`** *(required)* — register services, options, HttpClients (use `TryAdd*` for idempotency)
-4. **`GetCommands(IServiceProvider)`** *(optional)* — yield `CommandDescriptor` records
+2. **`ConfigureServices`** *(required)* — register services, options, HttpClients (use `TryAdd*` for idempotency)
+3. **`GetCommands(IServiceProvider)`** *(optional)* — yield `CommandDescriptor` records
+
+Plugins never touch `IConfiguration`: they bind only their own `[RevelaConfig]` section (REVELA003) and persist settings via `IPluginSettingsWriter<T>`.
 
 ### Configuration chain (merged in order, later wins)
 1. C# property defaults

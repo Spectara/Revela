@@ -204,6 +204,36 @@ Replace it with explicit verification (in Revela code, optional, currently not i
 
 Neither is necessary for the current single-user threat model. They become relevant if Revela starts being used in CI pipelines or air-gapped environments where the user cannot manually verify packages.
 
+### Plugin configuration isolation
+
+A plugin or theme reads and writes only its own settings below `plugins:<key>`. Host
+settings reach it as the `IOptions<T>` the host registers (`PathsConfig`, `SiteCoreConfig`, …);
+another plugin's settings do not reach it at all.
+
+| Rule | When | Mechanism |
+| ---- | ---- | --------- |
+| Settings live below `plugins:<key>`; the `Section` const matches `[RevelaConfig]` | Compile time | `REVELA001` / `REVELA002` (SDK source generator) |
+| `BindConfiguration` binds only a `[RevelaConfig]` type of the same assembly, to its own section | Compile time | `REVELA003` (SDK analyzer) |
+| No `IConfiguration` & co., `ConfigurationBinder`, `Configure<T>(IConfiguration)`, `OptionsBuilder.Bind`, configuration sources | Compile time | `RS0030` with [`BannedSymbols.RevelaPlugin.txt`](../src/Sdk/build/BannedSymbols.RevelaPlugin.txt) |
+| No plugin-added configuration sources; no general config writer | API | `IPlugin` has no configuration hook; `IConfigService` is host-only (Core, not in the SDK) |
+| One owner per key | Load time | Generated `[assembly: RevelaPluginConfigKey]` claims; a duplicate claim stops plugin loading |
+| A plugin writes only its own key | Runtime | `IPluginSettingsWriter<T>` throws unless the assembly declaring `T` claims `T`'s key |
+
+[`Spectara.Revela.Sdk.targets`](../src/Sdk/build/Spectara.Revela.Sdk.targets) applies the
+compile-time rules to every project with `PackageType` `RevelaPlugin` or `RevelaTheme` —
+in this repository and through the NuGet package — and makes them errors via
+`WarningsAsErrors`, which a project `.editorconfig` cannot downgrade. Host projects (Core,
+Commands, Features, CLI) get no ban list. Code that the .NET configuration binding generator
+emits for an allowed `BindConfiguration` call necessarily uses `IConfiguration`; only that
+generated code is exempt (suppression `REVELASP001`). The packaged flow is proven by
+[test-sdk-consumer.ps1](../scripts/test-sdk-consumer.ps1), which the release workflow runs.
+
+**Limit:** a plugin is in-process .NET code running with the user's full trust (see above).
+These rules prevent mistakes and keep the plugin contract clear; they are not a sandbox. A
+plugin that drops its `PackageType`, suppresses the diagnostics, uses reflection or reads
+`project.json` from disk can bypass them. The boundary against a malicious plugin remains the
+install-time trust decision.
+
 ---
 
 ## Upgrade paths (if your threat model changes)

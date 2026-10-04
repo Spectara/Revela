@@ -6,7 +6,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Spectara.Revela.Commands;
-using Spectara.Revela.Sdk.Abstractions;
+using Spectara.Revela.Core.Abstractions;
 using Spectara.Revela.Sdk.Configuration;
 using Spectara.Revela.Tests.Shared.Fixtures;
 

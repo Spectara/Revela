@@ -8,6 +8,7 @@
   2. NuGet packaging that EXCLUDES host-provided ("shared") assemblies
   3. Inclusion of .deps.json for runtime dependency resolution
   4. PackageType as a compiler-visible property for the SDK source generator
+  5. Plugin configuration isolation: the configuration API ban list (RS0030, always an error)
 
   SYNC: The shared assembly exclusion rules MUST match
         PackageLoadContext.IsSharedAssembly() in Spectara.Revela.Core.
@@ -45,6 +46,27 @@
   <ItemGroup>
     <CompilerVisibleProperty Include="PackageType" />
   </ItemGroup>
+
+  <!-- ================================================================== -->
+  <!-- Plugin configuration isolation                                      -->
+  <!-- Plugins and themes may not touch IConfiguration & co. (RS0030 from  -->
+  <!-- Microsoft.CodeAnalysis.BannedApiAnalyzers, a dependency of this     -->
+  <!-- package that flows its analyzer only). They bind their own section  -->
+  <!-- with BindConfiguration(T.Section) — checked by REVELA003 — and write -->
+  <!-- it through IPluginSettingsWriter<T>. Host projects never import     -->
+  <!-- this ban: they have no RevelaPlugin/RevelaTheme PackageType.        -->
+  <!-- ================================================================== -->
+  <ItemGroup Condition="'$(PackageType)' == 'RevelaPlugin' Or '$(PackageType)' == 'RevelaTheme'">
+    <AdditionalFiles Include="$(MSBuildThisFileDirectory)BannedSymbols.RevelaPlugin.txt" />
+  </ItemGroup>
+
+  <!-- The ban (RS0030) and the SDK's configuration rules (REVELA001-003) are errors, with or
+       without TreatWarningsAsErrors. /warnaserror is used instead of a severity in an analyzer
+       config file because a project's .editorconfig (e.g. dotnet_analyzer_diagnostic.severity =
+       warning) outranks both a packaged globalconfig and the rules' default Error severity. -->
+  <PropertyGroup Condition="'$(PackageType)' == 'RevelaPlugin' Or '$(PackageType)' == 'RevelaTheme'">
+    <WarningsAsErrors>$(WarningsAsErrors);RS0030;REVELA001;REVELA002;REVELA003</WarningsAsErrors>
+  </PropertyGroup>
 
   <!-- ================================================================== -->
   <!-- NuGet Package: Include plugin-specific dependencies only            -->

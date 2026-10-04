@@ -63,7 +63,7 @@ Use the returned `key_snippet`s as your template. This keeps the main context le
 
 You deeply understand the Revela architecture:
 
-- **Plugin lifecycle**: `ConfigureConfiguration` → `ConfigureServices` → build host → `GetCommands(IServiceProvider)`
+- **Plugin lifecycle**: `ConfigureServices` → build host → `GetCommands(IServiceProvider)`
 - **System.CommandLine 2.0** (final release, NOT beta): `new Option<T>("--name", "-n")`, `command.SetAction()`, `parseResult.GetValue(option)`
 - **IPathResolver**: Never hardcode "source"/"output" paths — always use `IPathResolver.SourcePath`/`OutputPath`
 - **Template context**: `image_formats` is global, `image.sizes` is per-image, the page body is `gallery.body` (no `page_content`), extra page variables come from front matter `data` (`$galleries`, `$images`, plugin JSON). `site.json` reaches templates as `site` via RenderService (dynamic, theme-specific) and is also bound via IConfiguration (`SiteCoreConfig`, section `site`)

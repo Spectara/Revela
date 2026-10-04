@@ -8,8 +8,8 @@ using NSubstitute;
 
 using Spectara.Revela.Plugins.Source.OneDrive.Commands;
 using Spectara.Revela.Plugins.Source.OneDrive.Configuration;
-using Spectara.Revela.Sdk.Abstractions;
 using Spectara.Revela.Sdk.Configuration;
+using Spectara.Revela.Sdk.Configuration.Keys;
 using Spectara.Revela.Sdk.Hosting;
 
 using Spectre.Console;
@@ -24,27 +24,27 @@ public sealed class ConfigOneDriveCommandTests
     [TestMethod]
     public async Task Invoke_NoArgumentsOnNonInteractiveConsole_FailsWithoutPromptingOrSaving()
     {
-        var configService = Substitute.For<IConfigService>();
-        var command = CreateCommand(configService, isInteractive: false);
+        var settingsWriter = Substitute.For<IPluginSettingsWriter<OneDrivePluginConfig>>();
+        var command = CreateCommand(settingsWriter, isInteractive: false);
 
         var (exitCode, output) = await InvokeAsync(command, []);
 
         Assert.AreNotEqual(0, exitCode);
         Assert.Contains("--share-url", output, StringComparison.Ordinal);
-        await configService.DidNotReceive().UpdateProjectConfigAsync(Arg.Any<JsonObject>(), Arg.Any<CancellationToken>());
+        await settingsWriter.DidNotReceive().WriteAsync(Arg.Any<JsonObject>(), Arg.Any<CancellationToken>());
     }
 
     [TestMethod]
     public async Task Invoke_ValidShareUrlOnNonInteractiveConsole_SavesConfig()
     {
-        var configService = Substitute.For<IConfigService>();
-        var command = CreateCommand(configService, isInteractive: false);
+        var settingsWriter = Substitute.For<IPluginSettingsWriter<OneDrivePluginConfig>>();
+        var command = CreateCommand(settingsWriter, isInteractive: false);
 
         var (exitCode, _) = await InvokeAsync(command, ["--share-url", "https://1drv.ms/f/s!example"]);
 
         Assert.AreEqual(0, exitCode);
-        await configService.Received(1).UpdateProjectConfigAsync(
-            Arg.Is<JsonObject>(updates => updates.ToJsonString().Contains("1drv.ms", StringComparison.Ordinal)),
+        await settingsWriter.Received(1).WriteAsync(
+            Arg.Is<JsonObject>(settings => (string?)settings[OneDrivePluginConfigKeys.ShareUrl] == "https://1drv.ms/f/s!example"),
             Arg.Any<CancellationToken>());
     }
 
@@ -54,16 +54,16 @@ public sealed class ConfigOneDriveCommandTests
     [DataRow("not a url")]
     public async Task Invoke_UnsafeShareUrlArgument_FailsWithoutSaving(string argument)
     {
-        var configService = Substitute.For<IConfigService>();
-        var command = CreateCommand(configService, isInteractive: false);
+        var settingsWriter = Substitute.For<IPluginSettingsWriter<OneDrivePluginConfig>>();
+        var command = CreateCommand(settingsWriter, isInteractive: false);
 
         var (exitCode, _) = await InvokeAsync(command, ["--share-url", argument]);
 
         Assert.AreNotEqual(0, exitCode);
-        await configService.DidNotReceive().UpdateProjectConfigAsync(Arg.Any<JsonObject>(), Arg.Any<CancellationToken>());
+        await settingsWriter.DidNotReceive().WriteAsync(Arg.Any<JsonObject>(), Arg.Any<CancellationToken>());
     }
 
-    private static ConfigOneDriveCommand CreateCommand(IConfigService configService, bool isInteractive)
+    private static ConfigOneDriveCommand CreateCommand(IPluginSettingsWriter<OneDrivePluginConfig> settingsWriter, bool isInteractive)
     {
         var monitor = Substitute.For<IOptionsMonitor<OneDrivePluginConfig>>();
         monitor.CurrentValue.Returns(new OneDrivePluginConfig());
@@ -72,7 +72,7 @@ public sealed class ConfigOneDriveCommandTests
         var console = Substitute.For<IConsoleCapabilities>();
         console.IsInteractive.Returns(isInteractive);
         console.CanRenderLive.Returns(isInteractive);
-        return new ConfigOneDriveCommand(NullLogger<ConfigOneDriveCommand>.Instance, configService, monitor, paths, console);
+        return new ConfigOneDriveCommand(NullLogger<ConfigOneDriveCommand>.Instance, settingsWriter, monitor, paths, console);
     }
 
     private static async Task<(int ExitCode, string Output)> InvokeAsync(ConfigOneDriveCommand command, string[] args)

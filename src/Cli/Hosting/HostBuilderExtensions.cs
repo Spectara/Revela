@@ -35,7 +35,7 @@ internal static class HostBuilderExtensions
     /// <item><b>Environment variables</b> with the <c>SPECTARA__REVELA__</c> prefix</item>
     /// </list>
     /// <para>
-    /// Plugins may append further sources in <c>IPlugin.ConfigureConfiguration</c>.
+    /// These are the only sources; plugins cannot add any.
     /// </para>
     /// <para>
     /// The project directory is the host's ContentRootPath, which <c>HostBootstrap</c>

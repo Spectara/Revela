@@ -116,6 +116,12 @@ public static class GreetingRegistration
 { "plugins": { "greeting": { "salutation": "Hi" } } }
 ```
 
+A plugin only sees its own node. `REVELA003` rejects `BindConfiguration` for any other
+type or section, `IConfiguration` and the other configuration APIs are banned (`RS0030`),
+and the only writer is `IPluginSettingsWriter<GreetingConfig>`, which merges a `JsonObject`
+into `plugins:greeting` in `project.json`. These rules apply to projects with `PackageType`
+`RevelaPlugin` or `RevelaTheme` and fail the build.
+
 ## Reading the scanned site
 
 Inject `IManifestReader` to read what the last `revela generate scan` found. It returns

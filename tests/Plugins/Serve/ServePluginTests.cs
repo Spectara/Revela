@@ -3,7 +3,7 @@ using Microsoft.Extensions.Options;
 using NSubstitute;
 using Spectara.Revela.Plugins.Serve;
 using Spectara.Revela.Plugins.Serve.Configuration;
-using Spectara.Revela.Sdk.Abstractions;
+using Spectara.Revela.Sdk.Configuration;
 using Spectara.Revela.Sdk.Hosting;
 using Spectara.Revela.Sdk.Services;
 
@@ -59,9 +59,8 @@ public sealed class ServePluginTests
         var configuration = configBuilder.Build();
         services.AddSingleton<Microsoft.Extensions.Configuration.IConfiguration>(configuration);
 
-        // Add mock IConfigService (required by ConfigServeCommand)
-        var configService = Substitute.For<IConfigService>();
-        services.AddSingleton(configService);
+        // Add mock settings writer (required by ConfigServeCommand)
+        services.AddSingleton(Substitute.For<IPluginSettingsWriter<ServePluginConfig>>());
 
         // Add mock IPathResolver (required by ServeCommand)
         var pathResolver = Substitute.For<IPathResolver>();

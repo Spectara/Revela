@@ -1,7 +1,6 @@
 using System.Text;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
-using Microsoft.CodeAnalysis.Diagnostics;
 using Microsoft.CodeAnalysis.Text;
 
 namespace Spectara.Revela.Sdk.Generators;
@@ -72,7 +71,7 @@ public sealed class PluginConfigSectionGenerator : IIncrementalGenerator
             .Collect();
 
         var isPackage = context.AnalyzerConfigOptionsProvider
-            .Select(static (provider, _) => IsRevelaPackage(provider.GlobalOptions));
+            .Select(static (provider, _) => RevelaPackageType.IsPluginOrTheme(provider.GlobalOptions));
 
         var hasClaimAttribute = context.CompilationProvider
             .Select(static (compilation, _) => compilation.GetTypeByMetadataName(ClaimAttributeFullName) is not null);
@@ -175,27 +174,6 @@ public sealed class PluginConfigSectionGenerator : IIncrementalGenerator
         }
 
         return true;
-    }
-
-    private static bool IsRevelaPackage(AnalyzerConfigOptions options)
-    {
-        if (!options.TryGetValue("build_property.PackageType", out var value) || string.IsNullOrWhiteSpace(value))
-        {
-            return false;
-        }
-
-        // NuGet PackageType is a ';'-separated list whose entries may carry a version ("Name, 1.0").
-        foreach (var entry in value.Split(';'))
-        {
-            var name = entry.Split(',')[0].Trim();
-            if (string.Equals(name, "RevelaPlugin", StringComparison.OrdinalIgnoreCase) ||
-                string.Equals(name, "RevelaTheme", StringComparison.OrdinalIgnoreCase))
-            {
-                return true;
-            }
-        }
-
-        return false;
     }
 
     private static string GenerateClaims(IEnumerable<string> keys)

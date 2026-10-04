@@ -77,7 +77,7 @@ public sealed class ExamplePlugin : IPlugin
 }
 ```
 
-The plugin lifecycle has four phases: **discovery** → `ConfigureConfiguration` (optional) → `ConfigureServices` (required) → `GetCommands` (optional).
+The plugin lifecycle has three phases: **discovery** → `ConfigureServices` (required) → `GetCommands` (optional).
 
 The [SDK package readme](../src/Sdk/README.md) contains a minimal plugin, configuration
 section, theme and template model; its examples are compiled by the test suite.
@@ -512,14 +512,26 @@ Choose an SDK package version compatible with the Revela host you target; the ve
 
 ## Configuration
 
-The host loads global `revela.json`, local `project.json`, `site.json` (under `site`), an optional `logging.json` and environment variables prefixed `SPECTARA__REVELA__` — nothing else (no `appsettings*.json`, no `plugins/*.json`, and command-line options are not a configuration layer). No source watches its file; Revela's own config writers reload the configuration after writing. You usually don't override `ConfigureConfiguration`; use it only to add an explicit configuration source. See the [configuration chain](architecture.md#configuration-and-paths) for precedence and the `site.json` split.
+The host loads global `revela.json`, local `project.json`, `site.json` (under `site`), an optional `logging.json` and environment variables prefixed `SPECTARA__REVELA__` — nothing else (no `appsettings*.json`, no `plugins/*.json`, and command-line options are not a configuration layer). No source watches its file; Revela's own config writers reload the configuration after writing. Plugins cannot add configuration sources. See the [configuration chain](architecture.md#configuration-and-paths) for precedence and the `site.json` split.
 
 All plugin settings live below the host-owned `plugins` node. Your plugin **declares its own key** and binds the section `plugins:<key>`:
 
 - **Key rule:** `^[a-z][a-zA-Z0-9]*$` — camelCase letters and digits, no `.`, `:`, `/` or `_` (e.g. `example`, `oneDrive`). Pick a short, descriptive key; it is what users type in `project.json` and in environment variables (`SPECTARA__REVELA__PLUGINS__EXAMPLE__APIURL`).
 - **Compile-time enforcement:** in a project with `PackageType` `RevelaPlugin` or `RevelaTheme`, the SDK source generator reports `REVELA001` (error) for any other section (package-ID names, dotted or nested keys, core sections such as `generate`) and `REVELA002` when the `[RevelaConfig]` argument and the `Section` const differ.
-- **Ownership:** the generator records the key in your assembly (`[assembly: RevelaPluginConfigKey("example")]`). The host reads these claims before any plugin configures services; if two installed packages claim the same key, loading fails with an error naming both packages. Other plugins may still *read* your node — only claiming is exclusive.
+- **Ownership:** the generator records the key in your assembly (`[assembly: RevelaPluginConfigKey("example")]`). The host reads these claims before any plugin configures services; if two installed packages claim the same key, loading fails with an error naming both packages.
+- **Isolation:** your plugin reads and writes only its own node. It binds it with `BindConfiguration(ExampleConfig.Section)`, reads it through `IOptions<ExampleConfig>` and writes it through `IPluginSettingsWriter<ExampleConfig>` (see below). `IConfiguration` and the other configuration APIs are not available to plugin code, and plugins cannot add configuration sources.
 - **Unknown keys:** a key below `plugins` that no installed plugin claims (e.g. the typo `plugins:serv`) produces a warning with the closest claimed key as suggestion.
+
+The SDK enforces these rules in every project with `PackageType` `RevelaPlugin` or `RevelaTheme`. They are build errors even without `TreatWarningsAsErrors`:
+
+| Diagnostic | Reported for | Fix |
+| ---------- | ------------ | --- |
+| `REVELA001` | A `[RevelaConfig]` section that is not `plugins:<key>` with a valid key | Use `plugins:<key>`, e.g. `plugins:example` |
+| `REVELA002` | `[RevelaConfig("…")]` and the `Section` const differ | Make both identical |
+| `REVELA003` | `BindConfiguration` for a type without `[RevelaConfig]`, a type from another assembly (including host types such as `PathsConfig`), a foreign section or a non-constant section | `AddOptions<ExampleConfig>().BindConfiguration(ExampleConfig.Section)`; inject host settings as `IOptions<PathsConfig>` instead |
+| `RS0030` | `IConfiguration`, `IConfigurationSection`, `IConfigurationBuilder` and related types, `ConfigurationBinder` (`Get`, `GetValue`, `Bind`), `services.Configure<T>(IConfiguration)`, `OptionsBuilder.Bind(IConfiguration)` | Use your own options type as above |
+
+The ban list ships with the SDK as [`BannedSymbols.RevelaPlugin.txt`](../src/Sdk/build/BannedSymbols.RevelaPlugin.txt). See [plugin configuration isolation](security-model.md#plugin-configuration-isolation) for what is enforced when, and its limits.
 
 Keep properties writable (`set`, not `init`) for generated binding, and declare `Section` by hand so the .NET configuration binding generator can resolve it:
 
@@ -578,23 +590,30 @@ Or for a single run: `SPECTARA__REVELA__PLUGINS__EXAMPLE__TIMEOUT=60`.
 
 ### Persisting config from a CLI command
 
-If your plugin contributes a `config <plugin>` command, persist settings through `IConfigService.UpdateProjectConfigAsync(...)`, not a separate file writer. It validates and deep-merges a `JsonObject` patch into `project.json`, preserving unrelated settings. Include only intended changes under your section; omission leaves an existing value unchanged, while `null` deletes a key. Use generated keys for the camelCase property names and `PluginConfigSection.CreateUpdate` to nest them below `plugins:<key>`:
+If your plugin contributes a `config <plugin>` command, persist settings through `IPluginSettingsWriter<ExampleConfig>` — the only configuration writer a plugin gets. Inject it like any service; the type argument is your `[RevelaConfig]` class, and its section decides where the settings go, so there is no way to write another plugin's node. `WriteAsync` validates and deep-merges a `JsonObject` of your settings into `plugins:<key>` in `project.json`, preserving unrelated settings, and reloads the configuration so `IOptionsMonitor<ExampleConfig>` sees the new values. Include only intended changes; omission leaves an existing value unchanged, while `null` deletes a key. Use generated keys for the camelCase property names:
 
 ```csharp
 using System.Text.Json.Nodes;
 using Spectara.Revela.Sdk.Configuration;
 using Spectara.Revela.Sdk.Configuration.Keys;
 
-var settings = new JsonObject();
-if (!string.IsNullOrEmpty(apiUrl))
+internal sealed class ConfigExampleCommand(IPluginSettingsWriter<ExampleConfig> settingsWriter)
 {
-    settings[ExampleConfigKeys.ApiUrl] = apiUrl;
-}
+    private async Task SaveAsync(string? apiUrl, CancellationToken cancellationToken)
+    {
+        var settings = new JsonObject();
+        if (!string.IsNullOrEmpty(apiUrl))
+        {
+            settings[ExampleConfigKeys.ApiUrl] = apiUrl;
+        }
 
-// { "plugins": { "example": { ... } } }
-var updates = PluginConfigSection.CreateUpdate(ExampleConfigKeys.Section, settings);
-await configService.UpdateProjectConfigAsync(updates, cancellationToken);
+        // Written to { "plugins": { "example": { ... } } }
+        await settingsWriter.WriteAsync(settings, cancellationToken);
+    }
+}
 ```
+
+Before writing, the host checks that your package claims the key of `ExampleConfig`'s section; otherwise `WriteAsync` throws `InvalidOperationException`. In tests, substitute `IPluginSettingsWriter<ExampleConfig>` and assert on the `JsonObject` it receives.
 
 The SDK's `ConfigKeysGenerator` emits an internal `<Poco>Keys` class in `Spectara.Revela.Sdk.Configuration.Keys` for local `[RevelaConfig]` classes. For an options type declared in another assembly, opt in with `[assembly: RevelaConfigKeys(typeof(ThatConfig))]`. These constants are generated in your assembly for JSON writers; use the handwritten `ExampleConfig.Section`, not a generated constant, at the `BindConfiguration` call site.
 
