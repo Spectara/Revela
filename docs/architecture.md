@@ -124,7 +124,11 @@ to `DependenciesConfig` (section `dependencies`) and merged per key:
   dependency list.
 
 Configuration commands and package registration update project settings through
-`IConfigService`. Reading, merging, provider validation, staged replacement and
+the host-only `IConfigService` (Core). Plugins never get it: they write their own
+`plugins:<key>` through `IPluginSettingsWriter<T>`, which delegates to
+`IConfigService` after checking that the assembly declaring `T` claims the key (see
+[plugin configuration isolation](security-model.md#plugin-configuration-isolation)).
+Reading, merging, provider validation, staged replacement and
 reload are serialized within the service instance. Invalid originals or ambiguous
 case-split patches fail unchanged; null deletes against the current document,
 and valid semantic no-ops preserve bytes without reloading. Global writers mutate
