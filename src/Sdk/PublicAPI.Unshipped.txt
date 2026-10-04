@@ -336,6 +336,8 @@ Spectara.Revela.Sdk.Configuration.ImageConfig.Webp.get -> int
 Spectara.Revela.Sdk.Configuration.ImageConfig.Webp.set -> void
 Spectara.Revela.Sdk.Configuration.ImageConfig.WebpEffort.get -> int
 Spectara.Revela.Sdk.Configuration.ImageConfig.WebpEffort.set -> void
+Spectara.Revela.Sdk.Configuration.IPluginSettingsWriter<TConfig>
+Spectara.Revela.Sdk.Configuration.IPluginSettingsWriter<TConfig>.WriteAsync(System.Text.Json.Nodes.JsonObject! settings, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
 Spectara.Revela.Sdk.Configuration.ImageSortConfig
 Spectara.Revela.Sdk.Configuration.ImageSortConfig.Direction.get -> Spectara.Revela.Sdk.Configuration.SortDirection
 Spectara.Revela.Sdk.Configuration.ImageSortConfig.Direction.set -> void

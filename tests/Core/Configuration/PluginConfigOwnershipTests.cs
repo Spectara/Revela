@@ -1,3 +1,4 @@
+using System.Reflection;
 using Microsoft.Extensions.Configuration;
 using Spectara.Revela.Core.Configuration;
 
@@ -7,13 +8,15 @@ namespace Spectara.Revela.Tests.Core.Configuration;
 [TestCategory("Unit")]
 public sealed class PluginConfigOwnershipTests
 {
+    private static readonly Assembly ClaimingAssembly = typeof(PluginConfigOwnershipTests).Assembly;
+
     [TestMethod]
     public void FromClaims_TwoPackagesClaimSameKey_ThrowsNamingBothPackagesAndKey()
     {
         PluginConfigClaim[] claims =
         [
-            new("serve", "Spectara.Revela.Plugins.Serve"),
-            new("serve", "Contoso.Revela.Plugins.Serve"),
+            new("serve", "Spectara.Revela.Plugins.Serve", ClaimingAssembly),
+            new("serve", "Contoso.Revela.Plugins.Serve", ClaimingAssembly),
         ];
 
         var exception = Assert.ThrowsExactly<PluginConfigConflictException>(() => PluginConfigOwnership.FromClaims(claims));
@@ -30,7 +33,7 @@ public sealed class PluginConfigOwnershipTests
     public void FromClaims_KeysDifferOnlyInCase_ThrowsConflict()
     {
         // IConfiguration is case-insensitive, so "Serve" and "serve" are the same node.
-        PluginConfigClaim[] claims = [new("serve", "A.Package"), new("Serve", "B.Package")];
+        PluginConfigClaim[] claims = [new("serve", "A.Package", ClaimingAssembly), new("Serve", "B.Package", ClaimingAssembly)];
 
         Assert.ThrowsExactly<PluginConfigConflictException>(() => PluginConfigOwnership.FromClaims(claims));
     }
@@ -38,11 +41,30 @@ public sealed class PluginConfigOwnershipTests
     [TestMethod]
     public void FromClaims_SamePackageClaimsKeyTwice_DoesNotThrow()
     {
-        PluginConfigClaim[] claims = [new("serve", "Spectara.Revela.Plugins.Serve"), new("serve", "Spectara.Revela.Plugins.Serve")];
+        PluginConfigClaim[] claims = [new("serve", "Spectara.Revela.Plugins.Serve", ClaimingAssembly), new("serve", "Spectara.Revela.Plugins.Serve", ClaimingAssembly)];
 
         var ownership = PluginConfigOwnership.FromClaims(claims);
 
-        Assert.AreEqual("Spectara.Revela.Plugins.Serve", Assert.ContainsSingle(ownership.Owners).Value);
+        Assert.AreEqual("Spectara.Revela.Plugins.Serve", Assert.ContainsSingle(ownership.Owners).Value.PackageId);
+    }
+
+    [TestMethod]
+    public void FindClaim_ClaimedKeyInOtherCase_ReturnsClaimWithAssembly()
+    {
+        var ownership = PluginConfigOwnership.FromClaims([new("oneDrive", "Spectara.Revela.Plugins.Source.OneDrive", ClaimingAssembly)]);
+
+        var claim = ownership.FindClaim("ONEDRIVE");
+
+        Assert.IsNotNull(claim);
+        Assert.AreSame(ClaimingAssembly, claim.Assembly);
+    }
+
+    [TestMethod]
+    public void FindClaim_UnclaimedKey_ReturnsNull()
+    {
+        var ownership = PluginConfigOwnership.FromClaims([new("serve", "Spectara.Revela.Plugins.Serve", ClaimingAssembly)]);
+
+        Assert.IsNull(ownership.FindClaim("statistics"));
     }
 
     [TestMethod]
@@ -128,7 +150,7 @@ public sealed class PluginConfigOwnershipTests
     }
 
     private static PluginConfigOwnership Ownership(params string[] keys) =>
-        PluginConfigOwnership.FromClaims(keys.Select(key => new PluginConfigClaim(key, $"Package.{key}")));
+        PluginConfigOwnership.FromClaims(keys.Select(key => new PluginConfigClaim(key, $"Package.{key}", ClaimingAssembly)));
 
     private static IConfiguration Configuration(params (string Key, string Value)[] values) =>
         new ConfigurationBuilder()

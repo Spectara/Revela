@@ -27,6 +27,8 @@ public static class PackageServiceCollectionExtensions
         // plugin|theme install/uninstall replace or delete package files: don't load (and lock) them
         if (PackageManagementCommands.ModifiesPackageFiles(args))
         {
+            // No package is loaded, so nothing claims a plugins:<key> node.
+            services.AddSingleton(PluginConfigOwnership.FromClaims([]));
             services.AddSingleton<IPackageContext>(sp =>
             {
                 var logger = sp.GetRequiredService<ILogger<PackageContext>>();

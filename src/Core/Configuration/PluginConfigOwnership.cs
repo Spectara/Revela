@@ -18,7 +18,9 @@ namespace Spectara.Revela.Core.Configuration;
 /// stops plugin loading instead of letting two packages bind the same settings.
 /// </para>
 /// <para>
-/// Only claiming is exclusive — any plugin may still <em>read</em> another plugin's node.
+/// A claim also records the claiming assembly, so the plugin settings writer can check that a
+/// plugin only writes the key its own assembly claims. Reading another plugin's node is
+/// prevented at compile time (REVELA003 and the SDK's banned configuration APIs).
 /// Keys are compared case-insensitively because <see cref="IConfiguration"/> is.
 /// </para>
 /// </remarks>
@@ -27,12 +29,12 @@ public sealed class PluginConfigOwnership
     private static readonly SearchValues<char> KeyCharacters =
         SearchValues.Create("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789");
 
-    private PluginConfigOwnership(FrozenDictionary<string, string> owners) => Owners = owners;
+    private PluginConfigOwnership(FrozenDictionary<string, PluginConfigClaim> owners) => Owners = owners;
 
     /// <summary>
-    /// Claimed keys mapped to the ID of the owning package.
+    /// Claimed keys mapped to the owning claim (package ID and assembly).
     /// </summary>
-    public FrozenDictionary<string, string> Owners { get; }
+    public FrozenDictionary<string, PluginConfigClaim> Owners { get; }
 
     /// <summary>
     /// Collects the claims of all loaded packages.
@@ -58,7 +60,7 @@ public sealed class PluginConfigOwnership
 
             foreach (var attribute in assembly.GetCustomAttributes<RevelaPluginConfigKeyAttribute>())
             {
-                claims.Add(new PluginConfigClaim(attribute.Key, package.Metadata.Id));
+                claims.Add(new PluginConfigClaim(attribute.Key, package.Metadata.Id, assembly));
             }
         }
 
@@ -75,23 +77,34 @@ public sealed class PluginConfigOwnership
     {
         ArgumentNullException.ThrowIfNull(claims);
 
-        var owners = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        var owners = new Dictionary<string, PluginConfigClaim>(StringComparer.OrdinalIgnoreCase);
         foreach (var claim in claims)
         {
             if (owners.TryGetValue(claim.Key, out var existing))
             {
-                if (!string.Equals(existing, claim.PackageId, StringComparison.OrdinalIgnoreCase))
+                if (!string.Equals(existing.PackageId, claim.PackageId, StringComparison.OrdinalIgnoreCase))
                 {
-                    throw new PluginConfigConflictException(claim.Key, existing, claim.PackageId);
+                    throw new PluginConfigConflictException(claim.Key, existing.PackageId, claim.PackageId);
                 }
 
                 continue;
             }
 
-            owners[claim.Key] = claim.PackageId;
+            owners[claim.Key] = claim;
         }
 
         return new PluginConfigOwnership(owners.ToFrozenDictionary(StringComparer.OrdinalIgnoreCase));
+    }
+
+    /// <summary>
+    /// Returns the claim on <paramref name="key"/>, if any package claims it.
+    /// </summary>
+    /// <param name="key">The plugin key (e.g. <c>serve</c>), compared case-insensitively.</param>
+    /// <returns>The claim, or <see langword="null"/> when no loaded package claims the key.</returns>
+    public PluginConfigClaim? FindClaim(string key)
+    {
+        ArgumentNullException.ThrowIfNull(key);
+        return Owners.GetValueOrDefault(key);
     }
 
     /// <summary>
@@ -179,7 +192,8 @@ public sealed class PluginConfigOwnership
 /// </summary>
 /// <param name="Key">The claimed key (e.g. <c>serve</c>).</param>
 /// <param name="PackageId">The claiming package ID.</param>
-public sealed record PluginConfigClaim(string Key, string PackageId);
+/// <param name="Assembly">The assembly that carries the claim (declares the <c>[RevelaConfig]</c> type).</param>
+public sealed record PluginConfigClaim(string Key, string PackageId, Assembly Assembly);
 
 /// <summary>
 /// A key below <c>plugins</c> that no loaded package claims.

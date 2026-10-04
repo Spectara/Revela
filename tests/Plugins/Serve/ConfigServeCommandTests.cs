@@ -8,7 +8,8 @@ using NSubstitute;
 
 using Spectara.Revela.Plugins.Serve;
 using Spectara.Revela.Plugins.Serve.Configuration;
-using Spectara.Revela.Sdk.Abstractions;
+using Spectara.Revela.Sdk.Configuration;
+using Spectara.Revela.Sdk.Configuration.Keys;
 using Spectara.Revela.Sdk.Hosting;
 
 using Spectre.Console;
@@ -23,38 +24,38 @@ public sealed class ConfigServeCommandTests
     [TestMethod]
     public async Task Invoke_NoArgumentsOnNonInteractiveConsole_FailsWithoutPromptingOrSaving()
     {
-        var configService = Substitute.For<IConfigService>();
-        var command = CreateCommand(configService, isInteractive: false);
+        var settingsWriter = Substitute.For<IPluginSettingsWriter<ServePluginConfig>>();
+        var command = CreateCommand(settingsWriter, isInteractive: false);
 
         var (exitCode, output) = await InvokeAsync(command, []);
 
         Assert.AreNotEqual(0, exitCode);
         Assert.Contains("--port", output, StringComparison.Ordinal);
-        await configService.DidNotReceive().UpdateProjectConfigAsync(Arg.Any<JsonObject>(), Arg.Any<CancellationToken>());
+        await settingsWriter.DidNotReceive().WriteAsync(Arg.Any<JsonObject>(), Arg.Any<CancellationToken>());
     }
 
     [TestMethod]
     public async Task Invoke_ArgumentsOnNonInteractiveConsole_SavesConfig()
     {
-        var configService = Substitute.For<IConfigService>();
-        var command = CreateCommand(configService, isInteractive: false);
+        var settingsWriter = Substitute.For<IPluginSettingsWriter<ServePluginConfig>>();
+        var command = CreateCommand(settingsWriter, isInteractive: false);
 
         var (exitCode, _) = await InvokeAsync(command, ["--port", "3000"]);
 
         Assert.AreEqual(0, exitCode);
-        await configService.Received(1).UpdateProjectConfigAsync(
-            Arg.Is<JsonObject>(updates => updates.ToJsonString().Contains("3000", StringComparison.Ordinal)),
+        await settingsWriter.Received(1).WriteAsync(
+            Arg.Is<JsonObject>(settings => (int?)settings[ServePluginConfigKeys.Port] == 3000),
             Arg.Any<CancellationToken>());
     }
 
-    private static ConfigServeCommand CreateCommand(IConfigService configService, bool isInteractive)
+    private static ConfigServeCommand CreateCommand(IPluginSettingsWriter<ServePluginConfig> settingsWriter, bool isInteractive)
     {
         var monitor = Substitute.For<IOptionsMonitor<ServePluginConfig>>();
         monitor.CurrentValue.Returns(new ServePluginConfig());
         var console = Substitute.For<IConsoleCapabilities>();
         console.IsInteractive.Returns(isInteractive);
         console.CanRenderLive.Returns(isInteractive);
-        return new ConfigServeCommand(NullLogger<ConfigServeCommand>.Instance, configService, monitor, console);
+        return new ConfigServeCommand(NullLogger<ConfigServeCommand>.Instance, settingsWriter, monitor, console);
     }
 
     private static async Task<(int ExitCode, string Output)> InvokeAsync(ConfigServeCommand command, string[] args)

@@ -14,7 +14,7 @@ namespace Spectara.Revela.Sdk.Abstractions;
 /// <para>
 /// Configuration sources belong to the host. A plugin reads its own settings through
 /// <c>IOptions&lt;T&gt;</c> of its <see cref="RevelaConfigAttribute"/> type and writes them
-/// through <c>IPluginSettingsWriter&lt;T&gt;</c>.
+/// through <see cref="Configuration.IPluginSettingsWriter{TConfig}"/>.
 /// </para>
 /// </remarks>
 public interface IPlugin : IPackage

@@ -38,10 +38,12 @@ public sealed class PluginConfigOwnershipHostTests
         ]);
 
         Assert.HasCount(4, ownership.Owners);
-        Assert.AreEqual("Spectara.Revela.Plugins.Serve", ownership.Owners["serve"]);
-        Assert.AreEqual("Spectara.Revela.Plugins.Statistics", ownership.Owners["statistics"]);
-        Assert.AreEqual("Spectara.Revela.Plugins.Source.OneDrive", ownership.Owners["oneDrive"]);
-        Assert.AreEqual("Spectara.Revela.Plugins.Source.Calendar", ownership.Owners["calendarFeeds"]);
+        Assert.AreEqual("Spectara.Revela.Plugins.Serve", ownership.Owners["serve"].PackageId);
+        Assert.AreEqual("Spectara.Revela.Plugins.Statistics", ownership.Owners["statistics"].PackageId);
+        Assert.AreEqual("Spectara.Revela.Plugins.Source.OneDrive", ownership.Owners["oneDrive"].PackageId);
+        Assert.AreEqual("Spectara.Revela.Plugins.Source.Calendar", ownership.Owners["calendarFeeds"].PackageId);
+        Assert.AreSame(typeof(ServePlugin).Assembly, ownership.Owners["serve"].Assembly);
+        Assert.AreSame(typeof(OneDrivePlugin).Assembly, ownership.Owners["oneDrive"].Assembly);
     }
 
     [TestMethod]
