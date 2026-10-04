@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Net;
 using System.Text;
+using System.Text.Json;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
@@ -108,6 +109,42 @@ public sealed class RefreshCommandTests
 
         Assert.HasCount(1, packages);
         CollectionAssert.AreEqual(new[] { expectedType }, packages[0].Types.ToArray());
+    }
+
+    [TestMethod]
+    public void NuGetSearchResponse_CapturedNuGetOrgResponse_ParsesAuthorsArray()
+    {
+        // Captured unmodified from https://azuresearch-usnc.nuget.org/query?q=packageid:NSubstitute
+        var json = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "Packages", "Fixtures", "nuget-search-nsubstitute.json"));
+
+        var response = JsonSerializer.Deserialize(json, NuGetSearchJsonContext.Default.NuGetSearchResponse);
+
+        Assert.IsNotNull(response?.Data);
+        Assert.HasCount(1, response.Data);
+        Assert.AreEqual("NSubstitute", response.Data[0].Id);
+        Assert.AreEqual("Anthony Egerton,David Tchepak,Alexandr Nikitin,Oleksandr Povar", response.Data[0].Authors);
+        Assert.IsTrue(response.Data[0].Verified);
+    }
+
+    [TestMethod]
+    [DataRow("""["Spectara"]""", "Spectara")]
+    [DataRow("""["Spectara", "Kirsten Kluge"]""", "Spectara, Kirsten Kluge")]
+    [DataRow("[]", "")]
+    [DataRow("\"Spectara\"", "Spectara")]
+    [DataRow("null", "")]
+    public async Task ScanSourceAsync_AuthorsAsArrayOrString_IndexesNormalizedAuthors(string authorsJson, string expected)
+    {
+        var response = $$"""
+            { "totalHits": 1, "data": [{ "id": "Spectara.Revela.Plugins.Shape", "version": "1.0.0", "description": "Shape", "authors": {{authorsJson}}, "verified": true, "packageTypes": [{ "name": "RevelaPlugin" }] }] }
+            """;
+        using var handler = new FeedHandler("https://feed.test/v3/index.json", response);
+        using var httpClient = new HttpClient(handler);
+        var source = new NuGetSource { Name = "nuget.org", Url = "https://feed.test/v3/index.json" };
+
+        var packages = await RefreshCommand.ScanSourceAsync(source, "built-in", httpClient, NullLogger.Instance, CancellationToken.None);
+
+        Assert.HasCount(1, packages);
+        Assert.AreEqual(expected, packages[0].Authors);
     }
 
     [TestMethod]

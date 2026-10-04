@@ -14,6 +14,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 
 - **Placeholder configuration and CSS-only LQIP** - `generate.images.placeholder` (`strategy`: `csshash`/`none`) and the `--lqip` hash decoder in Lumina are gone; every photo gets its colour, with nothing to configure. A leftover `placeholder` block in `project.json` is ignored; remove it at your convenience.
+
+### Fixed
+
+- **`packages refresh` reads nuget.org search results again** - nuget.org lists package authors as a list, which made the whole nuget.org feed fail to load into the package index. Authors are now accepted as a list or as plain text.
+
 ## [0.0.1-beta.21] - 2026-10-03
 
 ### Added
