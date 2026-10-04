@@ -856,6 +856,7 @@ public sealed partial class GenerateAllEndToEndTests
         Assert.DoesNotContain("Dimensions", sunsetPhotoContent);
         Assert.DoesNotContain("File size", sunsetPhotoContent);
         Assert.Contains("_assets/zoom.js", sunsetPhotoContent);
+        Assert.Contains("_assets/photo.js", sunsetPhotoContent);
         Assert.DoesNotContain("_assets/lightbox.js", sunsetPhotoContent);
 
         // Assert: the Lumina gallery no longer emits an inline lightbox figure (#77).
@@ -1747,6 +1748,7 @@ public sealed partial class GenerateAllEndToEndTests
             Assert.DoesNotContain("<dialog", html);
             Assert.DoesNotContain("_assets/lightbox.js", html);
             Assert.DoesNotContain("_assets/zoom.js", html);
+            Assert.DoesNotContain("_assets/photo.js", html);
         }
 
         Assert.IsFalse(Directory.Exists(Path.Combine(project.OutputPath, "photo")));

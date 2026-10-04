@@ -35,6 +35,12 @@
         "photo",
         "lightbox"
       ]
+    },
+    {
+      "path": "photo.js",
+      "scope": [
+        "photo"
+      ]
     }
   ]
 }

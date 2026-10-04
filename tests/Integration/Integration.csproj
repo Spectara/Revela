@@ -33,4 +33,11 @@
     <Using Include="Microsoft.VisualStudio.TestTools.UnitTesting" />
   </ItemGroup>
 
+  <!-- The revela.website theme override, rendered by WebsiteThemeEndToEndTests. -->
+  <ItemGroup>
+    <None Include="..\..\samples\revela-website\themes\Lumina\**\*"
+          Link="WebsiteTheme\%(RecursiveDir)%(Filename)%(Extension)"
+          CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>

@@ -17,6 +17,12 @@
     <None Include="../../../assets/revela_100.png" Pack="true" PackagePath="icon.png" />
   </ItemGroup>
 
+  <!-- Same frontmatter semantics as the core parser. Linked as source because the SDK
+       intentionally has no Scriban dependency. -->
+  <ItemGroup>
+    <Compile Include="..\..\Features\Generate\Infrastructure\FrontMatterEvaluator.cs" Link="Services\FrontMatterEvaluator.cs" />
+  </ItemGroup>
+
   <ItemGroup>
     <ProjectReference Include="..\..\Sdk\Sdk.csproj">
       <Private>false</Private>

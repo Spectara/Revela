@@ -7,15 +7,15 @@ namespace Spectara.Revela.Tests.Integration;
 /// headings start at <c>h1</c> and never skip a level when descending.
 /// </summary>
 /// <remarks>
-/// The closed site menu popover is excluded because audits ignore hidden content.
+/// The closed site menu popover counts too: it precedes <c>&lt;main&gt;</c>, and crawlers and
+/// outline tools read it even though accessibility audits skip hidden content.
 /// </remarks>
 internal static partial class HeadingOrderAssert
 {
     public static void Sequential(string page, string html)
     {
-        var visible = SiteMenuPattern().Replace(html, string.Empty);
         var previous = 0;
-        foreach (Match heading in HeadingPattern().Matches(visible))
+        foreach (Match heading in HeadingPattern().Matches(html))
         {
             var level = heading.Groups["level"].Value[0] - '0';
             Assert.IsLessThanOrEqualTo(
@@ -25,9 +25,6 @@ internal static partial class HeadingOrderAssert
             previous = level;
         }
     }
-
-    [GeneratedRegex(@"<nav id=""site-menu""[\s\S]*?</nav>")]
-    private static partial Regex SiteMenuPattern();
 
     [GeneratedRegex(@"<h(?<level>[1-6])[\s>]")]
     private static partial Regex HeadingPattern();

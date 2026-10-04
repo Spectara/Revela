@@ -6,7 +6,8 @@ whole tree in order, which puts 20+ docs links before Showcase/FAQ/Downloads
 on small screens. This override starts with the flat primary links, then the
 sections that have a tree of their own (Docs, Showcase). Containers without a
 page whose children are plain pages (Pages) are already covered by the
-primary links and are skipped.
+primary links and are skipped. Section titles are <p> labels, not headings,
+so the page's <h1> stays the first heading (see the base partial).
 
 Expects: nav_items (Array of NavigationItem)
 ##~}}
@@ -16,9 +17,9 @@ Expects: nav_items (Array of NavigationItem)
 {{~ if is_top_level ~}}
 <section>
 {{~ if link ~}}
-  <h2><a href="{{ html_escape link }}"{{ current_attrs }}>{{ html_escape item.text }}</a></h2>
+  <p><a href="{{ html_escape link }}"{{ current_attrs }}>{{ html_escape item.text }}</a></p>
 {{~ else ~}}
-  <h2>{{ html_escape item.text }}</h2>
+  <p>{{ html_escape item.text }}</p>
 {{~ end ~}}
 {{~ for child in item.children ~}}
 {{~ render_item child false ~}}

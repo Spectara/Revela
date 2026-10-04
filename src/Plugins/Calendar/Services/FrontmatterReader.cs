@@ -1,7 +1,6 @@
-using Scriban;
-using Scriban.Parsing;
 using Scriban.Runtime;
 
+using Spectara.Revela.Features.Generate.Infrastructure;
 using Spectara.Revela.Plugins.Calendar.Models;
 
 namespace Spectara.Revela.Plugins.Calendar.Services;
@@ -10,8 +9,9 @@ namespace Spectara.Revela.Plugins.Calendar.Services;
 /// Reads calendar.* frontmatter fields from _index.revela files.
 /// </summary>
 /// <remarks>
-/// Re-parses the frontmatter using Scriban to extract calendar-specific fields
-/// that the core RevelaParser does not expose. This keeps the plugin self-contained.
+/// Evaluates the frontmatter with the core's <see cref="FrontMatterEvaluator"/> (linked source),
+/// so calendar.* keys follow the same rules as every other key: a failing statement is
+/// skipped and dotted keys get their parent objects.
 /// </remarks>
 internal static class FrontmatterReader
 {
@@ -22,67 +22,12 @@ internal static class FrontmatterReader
     /// <returns>Calendar page config, or null if no calendar section found.</returns>
     public static CalendarPageConfig? Read(string content)
     {
-        if (string.IsNullOrWhiteSpace(content))
+        if (FrontMatterEvaluator.Evaluate(content) is not { } global)
         {
             return null;
         }
 
-        var trimmed = content.TrimStart();
-        if (!trimmed.StartsWith("+++", StringComparison.Ordinal))
-        {
-            return null;
-        }
-
-        // Ensure content ends with newline — Scriban requires this for frontmatter parsing
-        var normalizedContent = content;
-        if (!content.EndsWith('\n'))
-        {
-            normalizedContent = content + "\n";
-        }
-
-        var lexerOptions = new LexerOptions
-        {
-            Mode = ScriptMode.FrontMatterAndContent,
-            FrontMatterMarker = "+++"
-        };
-
-        var template = Template.Parse(normalizedContent, lexerOptions: lexerOptions);
-
-        if (template.HasErrors)
-        {
-            return null;
-        }
-
-        var context = new TemplateContext
-        {
-            StrictVariables = false
-        };
-
-        // Pre-seed nested objects so Scriban can assign into them
-        // (e.g., calendar.source = "..." requires calendar to exist as an object)
-        if (context.CurrentGlobal is not ScriptObject global)
-        {
-            return null;
-        }
-
-        global["calendar"] = new ScriptObject
-        {
-            ["labels"] = new ScriptObject()
-        };
-        global["data"] = new ScriptObject();
-
-        if (template.Page?.FrontMatter is not null)
-        {
-            context.Evaluate(template.Page.FrontMatter);
-        }
-
-        // Re-read global after evaluation
-        if (context.CurrentGlobal is not ScriptObject updatedGlobal)
-        {
-            return null;
-        }
-
-        if (!updatedGlobal.TryGetValue("calendar", out var calendarValue) || calendarValue is not ScriptObject calendarObj)
+        if (!global.TryGetValue("calendar", out var calendarValue) || calendarValue is not ScriptObject calendarObj)
         {
             return null;
         }
@@ -117,7 +62,7 @@ internal static class FrontmatterReader
             return null;
         }
 
-        // Check if any label was actually set (vs. empty seed object)
+        // Unknown label keys alone don't count as labels
         var booked = GetString(labelsObj, "booked");
         var free = GetString(labelsObj, "free");
         var arrive = GetString(labelsObj, "arrive");

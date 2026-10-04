@@ -2,12 +2,15 @@
   Recursive Navigation Template - Lumina Theme
 
   Structure:
-  - Section with children: <section><h2>Title</h2>...children...</section>
-  - Section with link: <section><h2><a>Title</a></h2>...children...</section>
+  - Section with children: <section><p>Title</p>...children...</section>
+  - Section with link: <section><p><a>Title</a></p>...children...</section>
   - Top-level leaf: <a href="#">Title</a> (flat navigation)
   - Branch with link: <div><a href="#">Title</a>...children...</div>
   - Branch without link: <div><span>Title</span>...children...</div>
   - Leaf: <a href="#">Title</a>
+
+  Section titles are labels, not headings: the overlay menu precedes <main>, so headings
+  here would come before the page's <h1> in the document outline.
 
   Expects: nav_items (Array of NavigationItem)
   NavigationItem: { text, url?, active?, current?, children }
@@ -22,9 +25,9 @@
 {{~ # Top-level with children = section ~}}
 <section>
 {{~ if link ~}}
-  <h2><a href="{{ html_escape link }}"{{ item.current ? ' aria-current="page"' : '' }}>{{ html_escape item.text }}</a></h2>
+  <p><a href="{{ html_escape link }}"{{ item.current ? ' aria-current="page"' : '' }}>{{ html_escape item.text }}</a></p>
 {{~ else ~}}
-  <h2>{{ html_escape item.text }}</h2>
+  <p>{{ html_escape item.text }}</p>
 {{~ end ~}}
 {{~ for child in item.children ~}}
 {{~ render_item child false ~}}
@@ -33,7 +36,7 @@
 {{~ else ~}}
 {{~ # Top-level leaf = section with heading link (consistent with branch sections) ~}}
 <section>
-  <h2><a href="{{ html_escape link }}"{{ item.current ? ' aria-current="page"' : '' }}>{{ html_escape item.text }}</a></h2>
+  <p><a href="{{ html_escape link }}"{{ item.current ? ' aria-current="page"' : '' }}>{{ html_escape item.text }}</a></p>
 </section>
 {{~ end ~}}
 {{~ else if item.children.size > 0 ~}}

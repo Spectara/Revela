@@ -3,7 +3,8 @@ Photo Page Body - Lumina Theme (#77)
 
 A standalone, image-led photo page served at /photo/{slug}/. Unlike gallery pages it has
 no site header or overlay-menu trigger. Navigation works without JavaScript; the scoped zoom
-script progressively adds pinch, double-tap, and pan gestures. When opened directly (no fragment /
+script progressively adds pinch, double-tap, and pan gestures, and photo.js adds the Left/Right
+arrow keys for the previous/next links of the shown context. When opened directly (no fragment /
 no referrer), the primary context is shown by default and an unknown/stale #ctx-* fragment falls
 back to it via CSS (:target + :has).
 

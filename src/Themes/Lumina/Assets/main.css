@@ -205,7 +205,9 @@ header button[popovertarget="site-menu"] {
   display: flex;
   flex-direction: column;
 
-  h2 {
+  /* Section labels are <p>, not headings (see Partials/Navigation.revela) */
+  >p {
+    max-width: none;
     font-weight: 100;
     font-size: var(--nav-font-size);
     margin-bottom: var(--nav-heading-gap);
