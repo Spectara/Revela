@@ -24,6 +24,17 @@
   <ItemGroup>
     <None Include="build/Spectara.Revela.Sdk.targets" Pack="true" PackagePath="build/Spectara.Revela.Sdk.targets" />
     <None Include="build/Spectara.Revela.Sdk.targets" Pack="true" PackagePath="buildTransitive/Spectara.Revela.Sdk.targets" />
+    <None Include="build/BannedSymbols.RevelaPlugin.txt" Pack="true" PackagePath="build/BannedSymbols.RevelaPlugin.txt" />
+    <None Include="build/BannedSymbols.RevelaPlugin.txt" Pack="true" PackagePath="buildTransitive/BannedSymbols.RevelaPlugin.txt" />
+  </ItemGroup>
+
+  <!-- RS0030 analyzer for the plugin configuration ban in build/Spectara.Revela.Sdk.targets.
+       Only the analyzer flows to consumers (in-repo ProjectReferences and the NuGet dependency);
+       it reports nothing without the ban list, which only plugin/theme projects receive. -->
+  <ItemGroup>
+    <PackageReference Include="Microsoft.CodeAnalysis.BannedApiAnalyzers"
+                      IncludeAssets="analyzers"
+                      PrivateAssets="compile;runtime;native;contentfiles;build;buildtransitive" />
   </ItemGroup>
 
   <ItemGroup>

@@ -26,7 +26,7 @@ internal static class RoslynTestHost
 
     public static async Task<ImmutableArray<Diagnostic>> AnalyzeAsync(
         Compilation compilation,
-        DiagnosticAnalyzer analyzer,
+        ImmutableArray<DiagnosticAnalyzer> analyzers,
         string? packageType,
         ImmutableArray<AdditionalText> additionalFiles = default)
     {
@@ -35,7 +35,7 @@ internal static class RoslynTestHost
             new PackageTypeOptionsProvider(packageType));
 
         return await compilation
-            .WithAnalyzers([analyzer], options)
+            .WithAnalyzers(analyzers, options)
             .GetAnalyzerDiagnosticsAsync();
     }
 

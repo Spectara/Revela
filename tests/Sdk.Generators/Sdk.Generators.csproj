@@ -28,6 +28,17 @@
     <PackageReference Include="MSTest.Analyzers" />
     <!-- TemplateModelGenerator output references Scriban; tests compile and run it. -->
     <PackageReference Include="Scriban" />
+    <!-- BannedPluginApiTests run the real RS0030 analyzer against the SDK's plugin ban list.
+         The analyzer is loaded explicitly, never added to this project's own compilation. -->
+    <PackageReference Include="Microsoft.CodeAnalysis.BannedApiAnalyzers" GeneratePathProperty="true" ExcludeAssets="all" PrivateAssets="all" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="$(PkgMicrosoft_CodeAnalysis_BannedApiAnalyzers)/analyzers/dotnet/cs/*.dll"
+          Link="BannedApiAnalyzers/%(Filename)%(Extension)"
+          CopyToOutputDirectory="PreserveNewest"
+          Visible="false" />
+    <None Include="..\..\src\Sdk\build\BannedSymbols.RevelaPlugin.txt" Link="Sdk\BannedSymbols.RevelaPlugin.txt" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>

@@ -89,7 +89,7 @@ public sealed class PluginConfigBindingAnalyzerTests
         var errors = compilation.GetDiagnostics().Where(d => d.Severity == DiagnosticSeverity.Error).ToList();
         Assert.IsEmpty(errors, string.Join(Environment.NewLine, errors));
 
-        return await RoslynTestHost.AnalyzeAsync(compilation, new PluginConfigBindingAnalyzer(), packageType);
+        return await RoslynTestHost.AnalyzeAsync(compilation, [new PluginConfigBindingAnalyzer()], packageType);
     }
 
     private static string Bind(string optionsType, string sectionExpression) => $$"""

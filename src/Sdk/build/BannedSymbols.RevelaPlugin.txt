@@ -1,0 +1,20 @@
+// Configuration APIs banned in Revela plugin and theme projects (RS0030, reported as an error).
+// Flowed by Spectara.Revela.Sdk.targets to every project with PackageType RevelaPlugin or RevelaTheme.
+// A plugin reads its own [RevelaConfig] section through IOptions<T>, binds it only with
+// BindConfiguration(T.Section) (checked by REVELA003) and writes it through IPluginSettingsWriter<T>.
+T:Microsoft.Extensions.Configuration.IConfiguration;Revela plugins only see their own settings: bind them with AddOptions<T>().BindConfiguration(T.Section), read IOptions<T>, write IPluginSettingsWriter<T>
+T:Microsoft.Extensions.Configuration.IConfigurationRoot;Revela plugins only see their own settings: bind them with AddOptions<T>().BindConfiguration(T.Section), read IOptions<T>, write IPluginSettingsWriter<T>
+T:Microsoft.Extensions.Configuration.IConfigurationSection;Revela plugins only see their own settings: bind them with AddOptions<T>().BindConfiguration(T.Section), read IOptions<T>, write IPluginSettingsWriter<T>
+T:Microsoft.Extensions.Configuration.IConfigurationManager;Revela plugins only see their own settings: bind them with AddOptions<T>().BindConfiguration(T.Section), read IOptions<T>, write IPluginSettingsWriter<T>
+T:Microsoft.Extensions.Configuration.IConfigurationBuilder;Configuration sources belong to the Revela host
+T:Microsoft.Extensions.Configuration.IConfigurationProvider;Configuration sources belong to the Revela host
+T:Microsoft.Extensions.Configuration.IConfigurationSource;Configuration sources belong to the Revela host
+T:Microsoft.Extensions.Configuration.ConfigurationExtensions;Revela plugins only see their own settings: bind them with AddOptions<T>().BindConfiguration(T.Section), read IOptions<T>, write IPluginSettingsWriter<T>
+T:Microsoft.Extensions.Configuration.ConfigurationRootExtensions;Revela plugins only see their own settings: bind them with AddOptions<T>().BindConfiguration(T.Section), read IOptions<T>, write IPluginSettingsWriter<T>
+T:Microsoft.Extensions.Configuration.ConfigurationBinder;Revela plugins only see their own settings: bind them with AddOptions<T>().BindConfiguration(T.Section), read IOptions<T>, write IPluginSettingsWriter<T>
+T:Microsoft.Extensions.DependencyInjection.OptionsConfigurationServiceCollectionExtensions;Revela plugins only see their own settings: bind them with AddOptions<T>().BindConfiguration(T.Section), read IOptions<T>, write IPluginSettingsWriter<T>
+M:Microsoft.Extensions.DependencyInjection.OptionsBuilderConfigurationExtensions.Bind``1(Microsoft.Extensions.Options.OptionsBuilder{``0},Microsoft.Extensions.Configuration.IConfiguration);Revela plugins only see their own settings: bind them with AddOptions<T>().BindConfiguration(T.Section), read IOptions<T>, write IPluginSettingsWriter<T>
+M:Microsoft.Extensions.DependencyInjection.OptionsBuilderConfigurationExtensions.Bind``1(Microsoft.Extensions.Options.OptionsBuilder{``0},Microsoft.Extensions.Configuration.IConfiguration,System.Action{Microsoft.Extensions.Configuration.BinderOptions});Revela plugins only see their own settings: bind them with AddOptions<T>().BindConfiguration(T.Section), read IOptions<T>, write IPluginSettingsWriter<T>
+T:Microsoft.Extensions.Options.ConfigureFromConfigurationOptions`1;Revela plugins only see their own settings: bind them with AddOptions<T>().BindConfiguration(T.Section), read IOptions<T>, write IPluginSettingsWriter<T>
+T:Microsoft.Extensions.Options.NamedConfigureFromConfigurationOptions`1;Revela plugins only see their own settings: bind them with AddOptions<T>().BindConfiguration(T.Section), read IOptions<T>, write IPluginSettingsWriter<T>
+T:Microsoft.Extensions.Options.ConfigurationChangeTokenSource`1;Revela plugins only see their own settings: bind them with AddOptions<T>().BindConfiguration(T.Section), read IOptions<T>, write IPluginSettingsWriter<T>
