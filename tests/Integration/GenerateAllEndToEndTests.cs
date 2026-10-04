@@ -34,7 +34,7 @@ namespace Spectara.Revela.Tests.Integration;
 /// </remarks>
 [TestClass]
 [TestCategory("E2E")]
-public sealed class GenerateAllEndToEndTests
+public sealed partial class GenerateAllEndToEndTests
 {
     private const string UntrustedText = "<script>x</script> & \"q\"";
     private const string EscapedText = "&lt;script&gt;x&lt;/script&gt; &amp; &quot;q&quot;";
@@ -834,8 +834,8 @@ public sealed class GenerateAllEndToEndTests
         Assert.AreEqual(1, CountOccurrences(sunsetPhotoContent, ">Landscapes</a>"));
         var normalizedSunsetPhoto = NormalizeLineEndings(sunsetPhotoContent);
         Assert.Contains("<body class=\"photo-page\">\n    <main>\n        <h1 class=\"visually-hidden\">Foto sunset</h1>\n        <article style=", normalizedSunsetPhoto);
-        Assert.Contains("--lqip:", sunsetPhotoContent);
-        Assert.Contains(" data-lqip>", sunsetPhotoContent);
+        Assert.AreEqual(1, CountImageColors(sunsetPhotoContent), "The photo page paints the photo's average colour.");
+        Assert.DoesNotContain("lqip", sunsetPhotoContent);
         Assert.DoesNotContain("sizes=\"100vw\"", sunsetPhotoContent);
         Assert.Contains("/1920.avif 1920w\">", sunsetPhotoContent);
         Assert.Contains("sizes=\"(min-aspect-ratio: ", sunsetPhotoContent);
@@ -1339,6 +1339,8 @@ public sealed class GenerateAllEndToEndTests
 
         var storyHtml = await File.ReadAllTextAsync(Path.Combine(project.OutputPath, "story", "index.html"));
         Assert.AreEqual(2, CountOccurrences(storyHtml, "<figure class=\"photo-figure\""));
+        Assert.AreEqual(2, CountOccurrences(storyHtml, "<picture class=\"content-image\" style=\"--image-color:#"));
+        Assert.AreEqual(3, CountImageColors(storyHtml), "Both [[photo]] blocks and the inline gallery's thumbnail paint the average colour.");
         Assert.AreEqual(1, CountOccurrences(storyHtml, $"id=\"photo-1-photo-i-{FenceSlugId}\""));
         var storyHrefs = ExtractPhotoHrefs(storyHtml);
         Assert.IsTrue(
@@ -1805,7 +1807,8 @@ public sealed class GenerateAllEndToEndTests
             Assert.IsTrue(controls.All(dialogIds.Contains), "Every aria-controls value must resolve to a dialog.");
             Assert.AreEqual(expectedCount, CountOccurrences(normalizedHtml,
                 "command=\"close\" aria-label=\"Close photo\">&times;</button>\n    <article style="));
-            Assert.AreEqual(expectedCount, CountOccurrences(html, "<picture data-lqip>"));
+            Assert.AreEqual(expectedCount * 2, CountImageColors(html), "Each thumbnail and its lightbox paint the average colour.");
+            Assert.DoesNotContain("lqip", html);
             Assert.DoesNotContain("sizes=\"100vw\"", html);
             Assert.AreEqual(expectedCount, CountOccurrences(normalizedHtml,
                 "</picture>\n        <section>\n            <nav aria-label=\"Photo navigation\">"));
@@ -2164,6 +2167,14 @@ public sealed class GenerateAllEndToEndTests
 
         return count;
     }
+
+    /// <summary>
+    /// Counts the average-colour custom properties (<c>--image-color:#rrggbb</c>) in rendered HTML.
+    /// </summary>
+    private static int CountImageColors(string html) => ImageColorPattern().Count(html);
+
+    [System.Text.RegularExpressions.GeneratedRegex("--image-color:#[0-9a-f]{6}[;\"]")]
+    private static partial System.Text.RegularExpressions.Regex ImageColorPattern();
 
     private static string NormalizeLineEndings(string value) =>
         value.Replace("\r\n", "\n", StringComparison.Ordinal);

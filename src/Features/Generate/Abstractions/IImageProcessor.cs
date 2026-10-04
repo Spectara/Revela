@@ -1,6 +1,5 @@
 using Spectara.Revela.Features.Generate.Models;
 using Spectara.Revela.Features.Generate.Models.Results;
-using Spectara.Revela.Sdk.Configuration;
 using Spectara.Revela.Sdk.Models;
 
 namespace Spectara.Revela.Features.Generate.Abstractions;
@@ -35,26 +34,14 @@ internal interface IImageProcessor
     /// Read image metadata without processing (fast operation).
     /// </summary>
     /// <remarks>
-    /// <para>
-    /// Reads only the image header - does NOT decode the full image (a placeholder decodes a small thumbnail).
-    /// Used during scan phase for:
-    /// - Width/Height extraction
-    /// - EXIF data extraction
-    /// - Hash calculation
-    /// </para>
-    /// <para>
-    /// When <paramref name="placeholderConfig"/> is provided with Strategy != None,
-    /// the placeholder is generated during scan and included in the metadata, from a
-    /// shrink-on-load thumbnail rather than the full-resolution image.
-    /// </para>
+    /// Reads the image header for dimensions, EXIF and XMP, and computes the photo's average
+    /// colour from a small shrink-on-load thumbnail rather than the full-resolution image.
     /// </remarks>
     /// <param name="inputPath">Path to the source image</param>
-    /// <param name="placeholderConfig">Optional placeholder configuration (null = no placeholder)</param>
     /// <param name="cancellationToken">Cancellation token</param>
-    /// <returns>Image metadata (dimensions, EXIF, file info, optional placeholder)</returns>
+    /// <returns>Image metadata (dimensions, EXIF, file info, average colour)</returns>
     Task<ImageMetadata> ReadMetadataAsync(
         string inputPath,
-        PlaceholderConfig? placeholderConfig = null,
         CancellationToken cancellationToken = default);
 }
 
@@ -91,12 +78,8 @@ internal sealed class ImageMetadata
     public int? Rating { get; init; }
 
     /// <summary>
-    /// Pre-generated placeholder for lazy loading (CSS-only LQIP hash).
+    /// Average colour as lowercase sRGB hex (<c>#rrggbb</c>), the theme's loading placeholder.
     /// </summary>
-    /// <remarks>
-    /// Generated during scan when PlaceholderConfig is provided.
-    /// Contains a 20-bit integer as string (e.g., "-721311").
-    /// </remarks>
-    public string? Placeholder { get; init; }
+    public string? Color { get; init; }
 }
 

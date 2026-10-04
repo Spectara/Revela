@@ -7,7 +7,6 @@ using Spectara.Revela.Core.Abstractions;
 using Spectara.Revela.Features.Generate.Models;
 using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Artifacts;
-using Spectara.Revela.Sdk.Configuration;
 using Spectara.Revela.Sdk.Models.Manifest;
 
 namespace Spectara.Revela.Features.Generate.Services;
@@ -465,14 +464,13 @@ internal sealed partial class ManifestService(
     /// </summary>
     /// <remarks>
     /// When this hash changes, all metadata needs to be re-read from source files.
-    /// Includes: metadata version, placeholder strategy, min dimensions.
+    /// Includes: metadata version, min dimensions.
     /// </remarks>
     public static string ComputeScanConfigHash(
-        PlaceholderStrategy placeholderStrategy,
         int minWidth,
         int minHeight)
     {
-        var input = $"metadata:{NetVipsImageProcessor.MetadataVersion}|placeholder:{placeholderStrategy}|minWidth:{minWidth}|minHeight:{minHeight}";
+        var input = $"metadata:{NetVipsImageProcessor.MetadataVersion}|minWidth:{minWidth}|minHeight:{minHeight}";
         var hashBytes = SHA256.HashData(Encoding.UTF8.GetBytes(input));
         return Convert.ToHexString(hashBytes)[..12];
     }

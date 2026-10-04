@@ -47,7 +47,6 @@ public sealed class ConfigKeysGeneratorTests
         Assert.AreEqual("maxDegreeOfParallelism", Actual(ImageConfigKeys.MaxDegreeOfParallelism));
         Assert.AreEqual("minWidth", Actual(ImageConfigKeys.MinWidth));
         Assert.AreEqual("minHeight", Actual(ImageConfigKeys.MinHeight));
-        Assert.AreEqual("placeholder", Actual(ImageConfigKeys.Placeholder));
         Assert.AreEqual("avifEffort", Actual(ImageConfigKeys.AvifEffort));
         Assert.AreEqual("webpEffort", Actual(ImageConfigKeys.WebpEffort));
         Assert.AreEqual("maxSize", Actual(ImageConfigKeys.MaxSize));

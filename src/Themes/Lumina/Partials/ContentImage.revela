@@ -5,7 +5,7 @@ Renders a responsive <picture> element for images in Markdown body content.
 This template is called by the Markdown image renderer for ![alt](path) syntax.
 
 Context variables:
-- image: ImageData { slug, width, height, sizes, placeholder? }
+- image: ImageData { slug, width, height, sizes, color? }
 - alt: Alt text from Markdown
 - classes: Optional CSS classes from Markdown generic attributes {.class}
 - assets_basepath: Path/URL to image folder
@@ -17,7 +17,7 @@ Context variables:
 {{~ ## The text column is at most 900px wide (--content-max-width); "auto" lets browsers
    that support it use the laid-out width instead. ## ~}}
 {{~ content_sizes = 'auto, (min-width: 900px) 900px, 100vw' ~}}
-<picture class="content-image{{ for cls in classes }} {{ html_escape cls }}{{ end }}"{{ if image.placeholder }} style="--lqip:{{ html_escape image.placeholder }}" data-lqip{{ end }}>
+<picture class="content-image{{ for cls in classes }} {{ html_escape cls }}{{ end }}"{{ if image.color }} style="--image-color:{{ html_escape image.color }}"{{ end }}>
 {{~ for format in image_formats ~}}
   <source type="{{ html_escape (image_type format) }}" sizes="{{ content_sizes }}" srcset="{{ html_escape (image_srcset image format) }}">
 {{~ end ~}}

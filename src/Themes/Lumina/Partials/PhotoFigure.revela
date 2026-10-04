@@ -5,7 +5,7 @@ Renders a [[photo: path]] block from Markdown: one photo at full content width,
 linked to its photo page. The picture markup is the shared ContentImage partial.
 
 Context variables:
-- image: ImageData { id, slug, width, height, title?, description?, sizes, placeholder? }
+- image: ImageData { id, slug, width, height, title?, description?, sizes, color? }
 - viewer_mode: 'page' (link to the photo page) or 'none' (theme renders no photo pages)
 - context_id: page context for the photo page's return link, or null for `| gallery`
   (the photo page then uses its primary context, normally the photo's gallery)

@@ -5,7 +5,7 @@ Renders a responsive River Flow thumbnail. Page mode links to the canonical phot
 lightbox mode adds a progressively enhanced dialog, and none mode remains static.
 
 Context variables:
-- image: ImageData { id, slug, width, height, title?, sizes, placeholder? }
+- image: ImageData { id, slug, width, height, title?, sizes, color? }
 - assets_basepath: path/URL to image folder (can be CDN URL)
 - image_formats: available formats ["avif", "webp", "jpg"]
 - viewer_mode: lowercase viewer mode
@@ -40,7 +40,7 @@ rendered size instead of viewport. Firefox/Safari fallback to 100vw.
 {{~ end ~}}
 {{~ end ~}}
 
-<article id="{{ html_escape occurrence_id }}" style="--width:{{ html_escape image.width }}; --height:{{ html_escape image.height }};{{~ if image.placeholder ~}} --lqip:{{ html_escape image.placeholder }};{{~ end ~}}">
+<article id="{{ html_escape occurrence_id }}" style="--width:{{ html_escape image.width }}; --height:{{ html_escape image.height }};{{~ if image.color ~}} --image-color:{{ html_escape image.color }};{{~ end ~}}">
     {{~ if should_link_to_photo_page ~}}
     <a href="{{ html_escape photo_href }}"{{~ if alt_text == '' }} aria-label="{{ html_escape (t 'photo.view' image.id) }}"{{ end }}>
     {{~ end ~}}

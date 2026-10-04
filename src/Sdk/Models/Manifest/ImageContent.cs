@@ -98,14 +98,12 @@ public sealed record ImageContent
     public DateTime LastModified { get; init; }
 
     /// <summary>
-    /// Placeholder for lazy loading (CSS-only LQIP hash)
+    /// Average colour of the photo as lowercase sRGB hex (<c>#rrggbb</c>).
     /// </summary>
     /// <remarks>
-    /// Contains a 20-bit integer as string (e.g., "-721311") that CSS decodes
-    /// into 6 radial gradients over a base color. <c>null</c> when placeholder
-    /// generation is disabled.
-    /// Used in templates: <c>style="--lqip:{{ image.placeholder }}"</c>
+    /// Computed during scan; themes paint it as the placeholder while the photo loads.
+    /// <c>null</c> when the image's metadata could not be read.
     /// </remarks>
-    [JsonPropertyName("placeholder")]
-    public string? Placeholder { get; init; }
+    [JsonPropertyName("color")]
+    public string? Color { get; init; }
 }

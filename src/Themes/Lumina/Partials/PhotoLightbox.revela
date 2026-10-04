@@ -11,8 +11,8 @@ previous_occurrence_id, next_occurrence_id, lightbox_id, and alt_text.
 {{~ display_label = alt_text != '' ? alt_text : (image.description && image.description != '' ? image.description : image.id) ~}}
 <dialog id="{{ html_escape lightbox_id }}" class="photo-lightbox" data-lightbox aria-label="{{~ if alt_text != '' }}{{ html_escape alt_text }}{{ else }}{{ html_escape (t 'photo.label' image.id) }}{{ end }}">
     <button type="button" commandfor="{{ html_escape lightbox_id }}" command="close" aria-label="{{ html_escape (t 'photo.close') }}">&times;</button>
-    <article style="--width:{{ html_escape image.width }}; --height:{{ html_escape image.height }};{{~ if image.placeholder ~}} --lqip:{{ html_escape image.placeholder }};{{~ end ~}}">
-        <picture{{~ if image.placeholder }} data-lqip{{ end }}>
+    <article style="--width:{{ html_escape image.width }}; --height:{{ html_escape image.height }};{{~ if image.color ~}} --image-color:{{ html_escape image.color }};{{~ end ~}}">
+        <picture>
             {{~ for format in image_formats ~}}
             <source type="{{ html_escape (image_type format) }}" sizes="{{ html_escape photo_sizes }}" srcset="{{ html_escape (image_srcset image format) }}">
             {{~ end ~}}
