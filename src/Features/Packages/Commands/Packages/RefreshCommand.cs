@@ -1,6 +1,7 @@
 using System.CommandLine;
 using System.IO.Compression;
 using System.Net.Http.Json;
+using System.Text.Json;
 using System.Text.Json.Serialization;
 using NuGet.Packaging;
 using Spectara.Revela.Core.Models;
@@ -333,7 +334,11 @@ internal sealed class NuGetSearchResult
     [JsonPropertyName("description")]
     public string? Description { get; init; }
 
+    /// <summary>
+    /// Package authors. nuget.org returns a JSON array, other feeds may return a string.
+    /// </summary>
     [JsonPropertyName("authors")]
+    [JsonConverter(typeof(NuGetAuthorsConverter))]
     public string? Authors { get; init; }
 
     /// <summary>
@@ -350,6 +355,60 @@ internal sealed class NuGetPackageType
 {
     [JsonPropertyName("name")]
     public string? Name { get; init; }
+}
+
+/// <summary>
+/// Reads the search API <c>authors</c> field as a string or an array of strings (joined with ", ").
+/// </summary>
+internal sealed class NuGetAuthorsConverter : JsonConverter<string?>
+{
+    public override bool HandleNull => true;
+
+    public override string? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+    {
+        if (reader.TokenType is JsonTokenType.Null)
+        {
+            return null;
+        }
+
+        if (reader.TokenType is JsonTokenType.String)
+        {
+            return reader.GetString();
+        }
+
+        if (reader.TokenType is not JsonTokenType.StartArray)
+        {
+            throw new JsonException($"Unexpected token {reader.TokenType} for package authors.");
+        }
+
+        var authors = new List<string>();
+        while (reader.Read() && reader.TokenType is not JsonTokenType.EndArray)
+        {
+            if (reader.TokenType is JsonTokenType.String && reader.GetString() is { Length: > 0 } author)
+            {
+                authors.Add(author);
+            }
+            else
+            {
+                reader.Skip();
+            }
+        }
+
+        return string.Join(", ", authors);
+    }
+
+    public override void Write(Utf8JsonWriter writer, string? value, JsonSerializerOptions options)
+    {
+        ArgumentNullException.ThrowIfNull(writer);
+        if (value is null)
+        {
+            writer.WriteNullValue();
+        }
+        else
+        {
+            writer.WriteStringValue(value);
+        }
+    }
 }
 
 [JsonSerializable(typeof(NuGetServiceIndex))]
