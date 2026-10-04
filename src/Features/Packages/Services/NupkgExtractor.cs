@@ -1,6 +1,7 @@
 using System.IO.Compression;
 using NuGet.Packaging;
 using Spectara.Revela.Core.Abstractions;
+using Spectara.Revela.Core.Helpers;
 using Spectara.Revela.Core.Services;
 using Spectara.Revela.Features.Packages.Logging;
 
@@ -69,7 +70,7 @@ public sealed class NupkgExtractor(ILogger<NupkgExtractor> logger)
 
         // The ID comes from the untrusted .nuspec and becomes a directory name below.
         var pluginDir = Path.Combine(targetDir, identity.Id);
-        if (!PackageIdRules.IsValid(identity.Id) || !PackageIdRules.IsContainedIn(targetDir, pluginDir))
+        if (!PackageIdRules.IsValid(identity.Id) || !PathContainment.IsStrictlyInside(targetDir, pluginDir))
         {
             logger.InvalidPackageId(identity.Id);
             return new PackageInstallResult(PackageInstallStatus.Failed);
@@ -102,8 +103,7 @@ public sealed class NupkgExtractor(ILogger<NupkgExtractor> logger)
             }
 
             var destPath = Path.GetFullPath(Path.Combine(pluginDirFull, fileName));
-            var rel = Path.GetRelativePath(pluginDirFull, destPath);
-            if (rel.StartsWith("..", StringComparison.Ordinal) || Path.IsPathRooted(rel))
+            if (!PathContainment.IsStrictlyInside(pluginDirFull, destPath))
             {
                 logger.SkippedSuspiciousEntry(item);
                 continue;

@@ -18,16 +18,4 @@ internal static class PackageIdRules
         !string.IsNullOrEmpty(packageId) &&
         packageId.Length <= PackageIdValidator.MaxPackageIdLength &&
         PackageIdValidator.IsValidPackageId(packageId);
-
-    /// <summary>
-    /// Returns whether <paramref name="path"/> resolves to a location strictly inside <paramref name="rootDirectory"/>.
-    /// </summary>
-    public static bool IsContainedIn(string rootDirectory, string path)
-    {
-        var relative = Path.GetRelativePath(Path.GetFullPath(rootDirectory), Path.GetFullPath(path));
-        return relative != "." &&
-               !Path.IsPathRooted(relative) &&
-               relative != ".." &&
-               !relative.StartsWith(".." + Path.DirectorySeparatorChar, StringComparison.Ordinal);
-    }
 }

@@ -7,9 +7,8 @@ namespace Spectara.Revela.Core.Helpers;
 /// </summary>
 /// <remarks>
 /// <para>
-/// Paths are compared after <see cref="Path.GetFullPath(string)"/> normalization with trailing
-/// separators removed. Containment is evaluated with <see cref="Path.GetRelativePath(string, string)"/>,
-/// which uses the platform's path case sensitivity.
+/// Paths are compared with <see cref="PathContainment"/>: <see cref="Path.GetFullPath(string)"/>
+/// normalization with trailing separators removed, using the platform's path case sensitivity.
 /// </para>
 /// <para>
 /// Symbolic links and junctions are never followed out of a containment root, and configured
@@ -63,7 +62,7 @@ public static class DirectoryDeletionGuard
             }
 
             var protectedCandidates = WithResolvedLinks(protectedPath);
-            if (outputCandidates.Any(output => protectedCandidates.Any(target => IsSameOrAncestor(output, target))))
+            if (outputCandidates.Any(output => protectedCandidates.Any(target => PathContainment.IsSameOrInside(output, target))))
             {
                 error = $"Refusing to delete '{outputPath}': it is or contains {label} '{protectedPath}'.";
                 return false;
@@ -86,18 +85,17 @@ public static class DirectoryDeletionGuard
         string containerPath,
         [NotNullWhen(false)] out string? error)
     {
-        var container = Normalize(containerPath);
-        var target = Normalize(targetPath);
-        var relative = Path.GetRelativePath(container, target);
+        var container = PathContainment.Normalize(containerPath);
+        var target = PathContainment.Normalize(targetPath);
 
-        if (relative == "." || IsOutside(relative))
+        if (!PathContainment.IsStrictlyInside(container, target))
         {
             error = $"Refusing to delete '{targetPath}': it is not strictly inside '{containerPath}'.";
             return false;
         }
 
         var current = container;
-        foreach (var segment in relative.Split(Path.DirectorySeparatorChar))
+        foreach (var segment in Path.GetRelativePath(container, target).Split(Path.DirectorySeparatorChar))
         {
             current = Path.Combine(current, segment);
             var info = new DirectoryInfo(current);
@@ -117,20 +115,6 @@ public static class DirectoryDeletionGuard
         return true;
     }
 
-    private static string Normalize(string path) =>
-        Path.TrimEndingDirectorySeparator(Path.GetFullPath(path));
-
-    private static bool IsOutside(string relative) =>
-        Path.IsPathRooted(relative) ||
-        relative == ".." ||
-        relative.StartsWith(".." + Path.DirectorySeparatorChar, StringComparison.Ordinal);
-
-    private static bool IsSameOrAncestor(string ancestor, string path)
-    {
-        var relative = Path.GetRelativePath(ancestor, path);
-        return relative == "." || !IsOutside(relative);
-    }
-
     private static bool IsFilesystemRoot(string path)
     {
         var root = Path.GetPathRoot(path);
@@ -139,7 +123,7 @@ public static class DirectoryDeletionGuard
 
     private static string[] WithResolvedLinks(string path)
     {
-        var normalized = Normalize(path);
+        var normalized = PathContainment.Normalize(path);
         var resolved = ResolveLinks(normalized, depth: 0);
         return resolved == normalized ? [normalized] : [normalized, resolved];
     }
@@ -176,7 +160,7 @@ public static class DirectoryDeletionGuard
                 var target = info.ResolveLinkTarget(returnFinalTarget: true);
                 return target is null
                     ? path
-                    : ResolveLinks(Normalize(Path.Combine([target.FullName, .. segments[(i + 1)..]])), depth + 1);
+                    : ResolveLinks(PathContainment.Normalize(Path.Combine([target.FullName, .. segments[(i + 1)..]])), depth + 1);
             }
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
