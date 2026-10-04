@@ -53,6 +53,15 @@ pwsh scripts/generate-test-image.ps1 -OutPath "$outDir/portraits/outdoor-portrai
 
 Or use any existing JPEG images with EXIF data.
 
+### Titles and Alt Text
+
+Each test card in `source/_images/` carries an XMP title (`dc:title`) and description
+(`dc:description`), the way photo editors such as Lightroom store them. Revela reads them as
+`image.title` and `image.description`; Lumina uses the title as the photo's alt text and label.
+The texts describe what the cards show (gradient, circle, printed camera settings), nothing more.
+`generate-test-image.ps1` does not write them, so freshly generated cards have no title until you
+add one in your photo editor.
+
 ### 2. Generate the Site
 
 ```bash
