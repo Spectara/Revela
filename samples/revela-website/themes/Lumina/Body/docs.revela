@@ -2,7 +2,8 @@
 Docs Body Template - Documentation with Sidebar
 
 Renders a documentation page with sidebar navigation.
-Supports nested documentation (e.g., docs/source-structure/static-files).
+Supports nested documentation at any depth (e.g., docs/guide/source-structure/static-files);
+every level is listed in the sidebar, indented below its parent.
 
 The sidebar sits in a <details> element: collapsed on small screens so the
 article title is on the first screen, forced open on wide screens via CSS
@@ -17,6 +18,24 @@ Expects:
 Heading: like Lumina, exactly one <h1> per page. The title is the <h1> unless the
 rendered Markdown body already contains one (`# Heading`).
 ##~}}
+{{~ # Renders the docs tree at any depth (e.g. Docs / Guide / Source Structure / Static Files). ~}}
+{{~ func render_docs_items(items) ~}}
+<ul>
+{{~ for doc in items ~}}
+{{~ doc_link = page_url(doc) ~}}
+<li>
+{{~ if doc_link ~}}
+<a href="{{ html_escape doc_link }}"{{ if doc.current }} aria-current="page"{{ end }}>{{ html_escape doc.text }}</a>
+{{~ else ~}}
+<span>{{ html_escape doc.text }}</span>
+{{~ end ~}}
+{{~ if doc.children.size > 0 ~}}
+{{~ render_docs_items doc.children ~}}
+{{~ end ~}}
+</li>
+{{~ end ~}}
+</ul>
+{{~ end ~}}
 {{~ body_has_h1 = gallery.body && (gallery.body | string.contains '<h1') ~}}
 {{~ section = null ~}}
 {{~ for item in nav_items ~}}
@@ -27,30 +46,7 @@ rendered Markdown body already contains one (`# Heading`).
     <details>
         <summary>{{ html_escape section.text }} menu</summary>
         <nav aria-label="{{ html_escape section.text }}">
-            <ul>
-{{~ for child in section.children }}
-{{~ child_link = page_url(child) ~}}
-                <li>
-{{~ if child_link ~}}
-                    <a href="{{ html_escape child_link }}"{{ if child.current }} aria-current="page"{{ end }}>{{ html_escape child.text }}</a>
-{{~ else ~}}
-                    <span>{{ html_escape child.text }}</span>
-{{~ end ~}}
-{{~ if child.children.size > 0 ~}}
-                    <ul>
-{{~ for grandchild in child.children ~}}
-{{~ grandchild_link = page_url(grandchild) ~}}
-{{~ if grandchild_link ~}}
-                        <li><a href="{{ html_escape grandchild_link }}"{{ if grandchild.current }} aria-current="page"{{ end }}>{{ html_escape grandchild.text }}</a></li>
-{{~ else ~}}
-                        <li><span>{{ html_escape grandchild.text }}</span></li>
-{{~ end ~}}
-{{~ end ~}}
-                    </ul>
-{{~ end ~}}
-                </li>
-{{~ end ~}}
-            </ul>
+{{~ render_docs_items section.children ~}}
         </nav>
     </details>
 {{~ end ~}}
