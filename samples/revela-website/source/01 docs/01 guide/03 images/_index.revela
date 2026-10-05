@@ -92,6 +92,23 @@ a P3 photo look dull. Each wide-gamut photo therefore also gets one untagged sRG
 
 HDR photos (JPEG with gain map) are published as their standard dynamic range image.
 
+### Exporting From Your Photo Editor
+
+Revela re-encodes every photo for the web, so export **source files**, not web-ready files. A good export preset (Capture One process recipe, Lightroom export preset, …):
+
+| Setting | Recommendation | Why |
+|---|---|---|
+| Format | **JPEG**, quality 95–100 | Revela reads JPG, PNG, WebP and GIF (not TIFF or HEIC). 16-bit or PNG gains nothing: web images are 8-bit. |
+| Color profile | **Display P3**, otherwise **Adobe RGB (1998)**, embedded | Exporting in sRGB clips saturated colors for good, so wide-gamut screens can never show them. Avoid ProPhoto RGB in 8-bit JPEG (banding in smooth gradients), monitor profiles and camera profiles. |
+| Size | Full resolution, or at least 4000 px on the long edge | Revela makes the theme sizes plus the original for the 100 % zoom; [`maxSize`](#limit-the-largest-image-maxsize) caps it later without a new export. |
+| Metadata | Keep EXIF and title/description/keywords, **leave out GPS** | Revela reads capture time, camera, title (used as alt text), description, keywords and rating. Published images never contain EXIF or GPS, but your source files might be shared. |
+| Output sharpening | Off or light | Most of it is lost when Revela scales the photo down. |
+| File names | Keep them stable | Photo page URLs are derived from them. |
+
+**No Display P3 in the profile list?** Windows ships no Display P3 profile, so Windows editors such as Capture One may not offer it. Either use **Adobe RGB (1998)**, which works just as well (Revela converts wide-gamut photos to Display P3), or install a free Display P3 profile: download `DisplayP3Compat-v2-magic.icc` from [Compact ICC Profiles](https://github.com/saucecontrol/Compact-ICC-Profiles) (public domain), right-click it → **Install Profile**, and restart the editor. A direct P3 export lets you soft-proof exactly what wide-gamut screens will show.
+
+Re-exporting a library in a wide color space is worth it mainly for saturated motifs: in one 1,197-photo portfolio exported in Adobe RGB, about 20 % of the photos contained colors outside sRGB, and in the most colorful ones up to a third of the image looked visibly different on an iPad.
+
 ## Detail View Zoom
 
 Canonical photo pages and Lightbox images can be zoomed:
