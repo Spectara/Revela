@@ -105,7 +105,7 @@ If any of those apply to you, the current Revela renderer is not enough. The upg
 
 ### Stale image EXIF / GPS data in published images
 
-**Published image variants are stripped of all embedded metadata** — EXIF, XMP, ICC profiles, and GPS coordinates. The image writer saves every variant with `keep: ForeignKeep.None` for JPEG, WebP, AVIF, and PNG (see [`NetVipsImageProcessor.SaveImage`](../src/Features/Generate/Services/NetVipsImageProcessor.cs), the `Jpegsave`/`Webpsave`/`Heifsave`/`Pngsave` calls), so the GPS coordinates of your home do **not** leak into the rendered site.
+**Published image variants are stripped of all embedded metadata** — EXIF, XMP, ICC profiles, and GPS coordinates. The image writer saves every variant with `keep: ForeignKeep.None` for JPEG, WebP, AVIF, and PNG (see [`NetVipsImageProcessor.SaveVariantAsync`](../src/Features/Generate/Services/NetVipsImageProcessor.cs), the `Jpegsave`/`Webpsave`/`Heifsave`/`Pngsave` calls), so the GPS coordinates of your home do **not** leak into the rendered site. The only exception is the colour profile of wide-gamut variants: they are saved with `keep: ForeignKeep.Icc`, which keeps libvips' built-in Display P3 profile (written by the conversion, not copied from the source) and nothing else.
 
 Distinguish two separate things:
 
@@ -256,7 +256,7 @@ If you publish Revela plugins to nuget.org and want consumers to verify they cam
 
 ### Stripping image EXIF
 
-Already done — published variants are written with `ForeignKeep.None` (see [Stale image EXIF / GPS data in published images](#stale-image-exif--gps-data-in-published-images)). Only the in-memory manifest retains EXIF, for display and statistics. No extra step is needed to keep metadata out of the output files.
+Already done — published variants are written with `ForeignKeep.None`, or `ForeignKeep.Icc` (only the Display P3 profile) for wide-gamut variants (see [Stale image EXIF / GPS data in published images](#stale-image-exif--gps-data-in-published-images)). Only the in-memory manifest retains EXIF, for display and statistics. No extra step is needed to keep metadata out of the output files.
 
 ---
 

@@ -55,7 +55,7 @@ revela config image --formats avif:75,webp:85,jpg:90
 }
 ```
 
-> **Note:** Image sizes are defined by the theme in its `Configuration/images.json`, not in `project.json` (see [Themes](../themes/#theme-structure)). Every photo gets the theme sizes smaller than the photo, plus its original width. Image format quality (`webp`, `jpg`, `avif`) are flat properties under `generate.images`. Set one to `0` to disable that format. The optional `avifEffort`, `webpEffort`, `maxSize` and `maxDegreeOfParallelism` settings trade file size or zoom detail for encoding speed (see [Encoding Speed](../images/#encoding-speed)).
+> **Note:** Image sizes are defined by the theme in its `Configuration/images.json`, not in `project.json` (see [Themes](../themes/#theme-structure)). Every photo gets the theme sizes smaller than the photo, plus its original width. Image format quality (`webp`, `jpg`, `avif`) are flat properties under `generate.images`. Set one to `0` to disable that format. The optional `avifEffort`, `webpEffort`, `maxSize` and `maxDegreeOfParallelism` settings trade file size or zoom detail for encoding speed (see [Encoding Speed](../images/#encoding-speed)). `wideGamut` (default `true`) publishes photos with colors beyond sRGB in Display P3; set it to `false` for sRGB only (see [Wide Gamut](../images/#wide-gamut-display-p3)).
 
 > **Language belongs in `site.json`.** A `language` key in the `project` section of `project.json` is rejected with a configuration error. Set `"language": "en"` in `site.json` instead (see [Site Metadata](#site-metadata)).
 

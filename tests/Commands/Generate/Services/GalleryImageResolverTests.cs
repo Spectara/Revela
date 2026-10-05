@@ -27,7 +27,8 @@ public sealed class GalleryImageResolverTests
         // Act
         var result = GalleryImageResolver.Resolve(
             images,
-            "exif.make == 'Canon' | sort dateTaken desc | limit 2");
+            "exif.make == 'Canon' | sort dateTaken desc | limit 2",
+            wideGamut: true);
 
         // Assert
         Assert.HasCount(2, result);
@@ -47,7 +48,7 @@ public sealed class GalleryImageResolverTests
         };
 
         // Act
-        var result = GalleryImageResolver.Resolve(images, "all | sort dateTaken asc");
+        var result = GalleryImageResolver.Resolve(images, "all | sort dateTaken asc", wideGamut: true);
 
         // Assert
         Assert.AreEqual("dated.jpg", result[0].SourcePath);
@@ -72,7 +73,7 @@ public sealed class GalleryImageResolverTests
         };
 
         // Act
-        var result = GalleryImageResolver.Resolve(images, "all | limit 2", "dateTaken:desc", globalSort);
+        var result = GalleryImageResolver.Resolve(images, "all | limit 2", wideGamut: true, "dateTaken:desc", globalSort);
 
         // Assert
         Assert.AreEqual("second.jpg", result[0].SourcePath);
@@ -97,7 +98,7 @@ public sealed class GalleryImageResolverTests
             }
         };
 
-        var result = GalleryImageResolver.Resolve(images, "all");
+        var result = GalleryImageResolver.Resolve(images, "all", wideGamut: true);
 
         Assert.HasCount(1, result);
         Assert.AreEqual("Abendlicht", result[0].Title);

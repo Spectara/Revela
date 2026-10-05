@@ -57,10 +57,10 @@ internal sealed partial class NetVipsImageProcessor(
     /// sRGB placeholders; 3: XMP title, description, keywords, and rating; 4: placeholders from
     /// a shrink-on-load thumbnail; 5: average colour instead of the gradient placeholder hash;
     /// 6: EXIF capture time as unspecified wall-clock time instead of UTC, plus its
-    /// <c>OffsetTimeOriginal</c>), so manifests from older versions re-read their metadata.
+    /// <c>OffsetTimeOriginal</c>; 7: content gamut), so manifests from older versions re-read their metadata.
     /// Images are not re-encoded: their processing state is independent of the scan.
     /// </remarks>
-    internal const int MetadataVersion = 6;
+    internal const int MetadataVersion = 7;
 
     /// <summary>
     /// libvips metadata field holding the raw XMP packet.
@@ -68,10 +68,15 @@ internal sealed partial class NetVipsImageProcessor(
     private const string XmpField = "xmp-data";
 
     /// <summary>
-    /// Color space of published variants. Variants are saved without metadata, and browsers
+    /// Color space of published sRGB variants. They are saved without metadata, and browsers
     /// interpret untagged images as sRGB.
     /// </summary>
     private const string OutputProfile = "srgb";
+
+    /// <summary>
+    /// libvips' built-in Display P3 profile (480 bytes), embedded in the variants of P3 photos.
+    /// </summary>
+    private const string WideGamutProfile = "p3";
 
     /// <summary>
     /// Largest image dimension libvips accepts (<c>VIPS_MAX_COORD</c>).
@@ -289,6 +294,10 @@ internal sealed partial class NetVipsImageProcessor(
             var capped = options.MaxSize > 0
                 && GetResizeExtent(original.Width, original.Height, options.ResizeMode) > options.MaxSize;
 
+            var wideGamut = string.Equals(options.Gamut, ImageGamut.P3, StringComparison.Ordinal);
+            var imageDirectory = Path.Combine(options.OutputDirectory, options.ImageSlug.Replace('/', Path.DirectorySeparatorChar));
+            RemoveStaleSocialCopies(imageDirectory, options.SocialCopySize);
+
             foreach (var size in sizesToGenerate)
             {
                 cancellationToken.ThrowIfCancellationRequested();
@@ -322,13 +331,18 @@ internal sealed partial class NetVipsImageProcessor(
 
                 // Convert after resizing: converting the original once would be recomputed
                 // for every size and format by the lazy pipeline (~60% slower overall).
-                using var converted = ConvertToOutputColorSpace(source, keepGrey: true);
+                // P3 photos keep their wide colours and the Display P3 profile; if their profile
+                // cannot be applied, they are published in sRGB like every other photo.
+                using var wide = wideGamut ? ConvertToWideGamut(source) : null;
+                using var converted = wide is null ? ConvertToOutputColorSpace(source, keepGrey: true) : null;
+                var keep = wide is null ? Enums.ForeignKeep.None : Enums.ForeignKeep.Icc;
+                var output = wide ?? converted;
 
                 // Materialize the conversion when several formats encode it (one extra frame per
                 // worker); a single encode streams it.
                 var encodeCount = isIncrementalMode ? formatsNeededForSize!.Count : options.Formats.Count;
-                using var convertedFrame = converted is not null && encodeCount > 1 ? converted.CopyMemory() : null;
-                var publishable = convertedFrame ?? converted ?? source;
+                using var convertedFrame = output is not null && encodeCount > 1 ? output.CopyMemory() : null;
+                var publishable = convertedFrame ?? output ?? source;
 
                 // Process each format - report saved or skipped in order
                 foreach (var (format, quality) in options.Formats)
@@ -351,7 +365,8 @@ internal sealed partial class NetVipsImageProcessor(
                             size,
                             thumbHeight,
                             quality,
-                            options.Efforts.TryGetValue(format, out var effort) ? effort : null);
+                            options.Efforts.TryGetValue(format, out var effort) ? effort : null,
+                            keep);
 
                         variants.Add(variant);
                         onVariantProgress?.Invoke(VariantState.Done, format);
@@ -360,6 +375,12 @@ internal sealed partial class NetVipsImageProcessor(
                     {
                         onVariantProgress?.Invoke(VariantState.Skipped, format);
                     }
+                }
+
+                if (options.SocialCopySize == size)
+                {
+                    using var srgb = ConvertToOutputColorSpace(source, keepGrey: true);
+                    SaveSocialCopy(srgb ?? source, imageDirectory, size, options.SocialCopyQuality);
                 }
             }
         }
@@ -391,8 +412,9 @@ internal sealed partial class NetVipsImageProcessor(
     /// Dimensions, EXIF and XMP come from the header (sequential access, no pixel decode).
     /// </para>
     /// <para>
-    /// The average colour is computed from a small shrink-on-load thumbnail: a JPEG is decoded
-    /// at 1/2–1/8 scale instead of at full resolution, which was 90% of the scan's cost.
+    /// The average colour and the content gamut are computed from a small shrink-on-load
+    /// thumbnail: a JPEG is decoded at 1/2–1/8 scale instead of at full resolution, which was
+    /// 90% of the scan's cost.
     /// </para>
     /// </remarks>
     public Task<ImageMetadata> ReadMetadataAsync(
@@ -429,6 +451,7 @@ internal sealed partial class NetVipsImageProcessor(
         using var thumbnail = Image.Thumbnail(inputPath, ColorSourceSize, height: ColorSourceSize, size: Enums.Size.Down);
         using var source = thumbnail.CopyMemory();
         var color = ComputeAverageColor(source);
+        var gamut = DetectGamut(source, inputPath);
 
         return Task.FromResult(new ImageMetadata
         {
@@ -442,8 +465,40 @@ internal sealed partial class NetVipsImageProcessor(
             Description = xmp.Description ?? GetRawExifText(exif, "ImageDescription"),
             Keywords = xmp.Keywords,
             Rating = xmp.Rating,
-            Color = color
+            Color = color,
+            Gamut = gamut
         });
+    }
+
+    /// <summary>
+    /// Detects whether a photo has colours that sRGB cannot show.
+    /// </summary>
+    /// <remarks>
+    /// The photo is P3 when at least <see cref="GamutDetector.MinOutOfGamutShare"/> of its
+    /// thumbnail is visibly outside sRGB (see <see cref="GamutDetector"/>). Untagged photos are
+    /// sRGB, and a profile that cannot be applied counts as sRGB.
+    /// </remarks>
+    /// <param name="thumbnail">Materialized scan thumbnail with the source's profile attached.</param>
+    /// <param name="inputPath">Source path for the log.</param>
+    /// <returns><see cref="ImageGamut.P3"/> or <see cref="ImageGamut.Srgb"/>.</returns>
+    private string DetectGamut(Image thumbnail, string inputPath)
+    {
+        if (!thumbnail.Contains(IccTransformShortcut.ProfileField))
+        {
+            return ImageGamut.Srgb;
+        }
+
+        try
+        {
+            var share = GamutDetector.MeasureOutOfGamutShare(thumbnail);
+            LogGamutDetected(logger, inputPath, share);
+            return share >= GamutDetector.MinOutOfGamutShare ? ImageGamut.P3 : ImageGamut.Srgb;
+        }
+        catch (VipsException ex)
+        {
+            LogGamutDetectionFailed(logger, inputPath, ex);
+            return ImageGamut.Srgb;
+        }
     }
 
     /// <summary>
@@ -521,10 +576,11 @@ internal sealed partial class NetVipsImageProcessor(
     /// </summary>
     /// <remarks>
     /// <para>
-    /// Variants are saved without metadata, so the pixels must already be sRGB. An embedded
+    /// sRGB variants are saved without metadata, so the pixels must already be sRGB. An embedded
     /// ICC profile (Display P3, Adobe RGB, CMYK, …) is applied with the perceptual intent;
     /// untagged images outside 8-bit RGB (CMYK, 16-bit, Lab, …) use libvips' default profiles.
-    /// Colors outside sRGB are mapped into it — the source file is never modified.
+    /// Colors outside sRGB are mapped into it — the source file is never modified. Wide-gamut
+    /// photos use <see cref="ConvertToWideGamut"/> instead.
     /// </para>
     /// <para>
     /// ThumbnailImage/Resize keep the pixel values and the attached profile unchanged,
@@ -568,6 +624,33 @@ internal sealed partial class NetVipsImageProcessor(
     /// </summary>
     internal static Image TransformToOutputProfile(Image image) =>
         image.IccTransform(OutputProfile, embedded: true, intent: Enums.Intent.Perceptual);
+
+    /// <summary>
+    /// Converts a photo with an embedded ICC profile to 8-bit Display P3, the colour space of P3 variants.
+    /// </summary>
+    /// <remarks>
+    /// Uses the perceptual intent like the sRGB conversion, so Adobe RGB or ProPhoto colours beyond
+    /// P3 are compressed rather than clipped. The result carries libvips' Display P3 profile, which
+    /// the variants keep (<see cref="Enums.ForeignKeep.Icc"/>).
+    /// </remarks>
+    /// <returns>The converted image (caller disposes), or <c>null</c> to publish the photo in sRGB instead.</returns>
+    private Image? ConvertToWideGamut(Image image)
+    {
+        if (!image.Contains(IccTransformShortcut.ProfileField))
+        {
+            return null;
+        }
+
+        try
+        {
+            return image.IccTransform(WideGamutProfile, embedded: true, intent: Enums.Intent.Perceptual);
+        }
+        catch (VipsException ex)
+        {
+            LogIccTransformFailed(logger, ex);
+            return null;
+        }
+    }
 
     /// <summary>
     /// Extract EXIF data from image
@@ -937,7 +1020,8 @@ internal sealed partial class NetVipsImageProcessor(
         int width,
         int height,
         int quality,
-        int? effort)
+        int? effort,
+        Enums.ForeignKeep keep)
     {
         // Build output path: images/{imageSlug}/{width}.{format}
         var imageDirectory = Path.Combine(outputDirectory, imageSlug.Replace('/', Path.DirectorySeparatorChar));
@@ -952,7 +1036,8 @@ internal sealed partial class NetVipsImageProcessor(
         // each save internally (see SetThreadsPerImage), so an extra Task.Run would only add
         // thread-pool overhead.
         //
-        // keep: ForeignKeep.None - removes all metadata (EXIF, XMP, ICC profiles)
+        // keep: ForeignKeep.None (sRGB variants) removes all metadata (EXIF, XMP, ICC profiles);
+        // P3 variants keep only their Display P3 profile (ForeignKeep.Icc).
         // Benefits:
         // - Smaller file sizes (XMP/EXIF can add several KB per image)
         // - No "large XMP not saved" warnings from libvips
@@ -961,21 +1046,21 @@ internal sealed partial class NetVipsImageProcessor(
         switch (format.ToUpperInvariant())
         {
             case "WEBP":
-                image.Webpsave(outputPath, q: quality, effort: effort, keep: Enums.ForeignKeep.None);
+                image.Webpsave(outputPath, q: quality, effort: effort, keep: keep);
                 break;
 
             case "JPG":
             case "JPEG":
-                image.Jpegsave(outputPath, q: quality, keep: Enums.ForeignKeep.None);
+                image.Jpegsave(outputPath, q: quality, keep: keep);
                 break;
 
             case "AVIF":
                 // AVIF uses AV1 compression via HEIF container
-                image.Heifsave(outputPath, q: quality, compression: Enums.ForeignHeifCompression.Av1, effort: effort, keep: Enums.ForeignKeep.None);
+                image.Heifsave(outputPath, q: quality, compression: Enums.ForeignHeifCompression.Av1, effort: effort, keep: keep);
                 break;
 
             case "PNG":
-                image.Pngsave(outputPath, compression: 9, keep: Enums.ForeignKeep.None);
+                image.Pngsave(outputPath, compression: 9, keep: keep);
                 break;
 
             default:
@@ -996,6 +1081,41 @@ internal sealed partial class NetVipsImageProcessor(
         return Task.FromResult(variant);
     }
 
+    /// <summary>
+    /// Writes the untagged sRGB JPEG (<c>{size}.srgb.jpg</c>) that social previews of a P3 photo use.
+    /// </summary>
+    private void SaveSocialCopy(Image srgb, string imageDirectory, int size, int quality)
+    {
+        Directory.CreateDirectory(imageDirectory);
+        var outputPath = Path.Combine(imageDirectory, SocialCopyFileName(size));
+        srgb.Jpegsave(outputPath, q: quality, keep: Enums.ForeignKeep.None);
+        LogSavedVariant(logger, outputPath, srgb.Width, srgb.Height, ImageGamut.SocialCopyFormat);
+    }
+
+    /// <summary>
+    /// Deletes social copies other than the one of <paramref name="keepSize"/> (all when <c>null</c>),
+    /// e.g. after <c>wideGamut</c> was switched off or the sizes changed.
+    /// </summary>
+    private static void RemoveStaleSocialCopies(string imageDirectory, int? keepSize)
+    {
+        if (!Directory.Exists(imageDirectory))
+        {
+            return;
+        }
+
+        var keep = keepSize is { } size ? SocialCopyFileName(size) : null;
+        foreach (var path in Directory.EnumerateFiles(imageDirectory, $"*.{ImageGamut.SocialCopyFormat}"))
+        {
+            if (!string.Equals(Path.GetFileName(path), keep, StringComparison.Ordinal))
+            {
+                File.Delete(path);
+            }
+        }
+    }
+
+    private static string SocialCopyFileName(int size) =>
+        string.Create(CultureInfo.InvariantCulture, $"{size}.{ImageGamut.SocialCopyFormat}");
+
     // High-performance logging with LoggerMessage source generator
     [LoggerMessage(Level = LogLevel.Debug, Message = "Processing image: {Path}")]
     private static partial void LogProcessingImage(ILogger logger, string path);
@@ -1014,6 +1134,12 @@ internal sealed partial class NetVipsImageProcessor(
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Embedded ICC profile could not be applied, converting without it")]
     private static partial void LogIccTransformFailed(ILogger logger, Exception exception);
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "{Path}: {Share:P2} of the preview is visibly outside sRGB")]
+    private static partial void LogGamutDetected(ILogger logger, string path, double share);
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Could not detect the colour gamut of {Path}, treating it as sRGB")]
+    private static partial void LogGamutDetectionFailed(ILogger logger, string path, Exception exception);
 
     /// <summary>
     /// Computes the photo's average colour, the placeholder themes paint while it loads.

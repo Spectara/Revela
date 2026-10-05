@@ -57,13 +57,15 @@ Resolve an image from the project by path. Uses the same 3-step lookup as Markdo
 2. Shared images: `_images/{path}`
 3. Exact match: `{path}` as-is
 
-The image object exposes `slug`, `file_name`, `source_path`, `width`, `height`, `sizes`, `file_size`, `date_taken`, `exif`, `title`, `description`, `keywords`, `rating`, and `color`.
+The image object exposes `slug`, `file_name`, `source_path`, `width`, `height`, `sizes`, `file_size`, `date_taken`, `exif`, `title`, `description`, `keywords`, `rating`, `color`, and `gamut`.
 
 `color` is the photo's average colour as lowercase sRGB hex (`#rrggbb`), computed during scan, or `null` when unknown. Themes paint it while the photo loads; Lumina writes it as a CSS custom property:
 
 ```scriban
 <article style="--width:{{ image.width }}; --height:{{ image.height }};{{ if image.color }} --image-color:{{ html_escape image.color }};{{ end }}">
 ```
+
+`gamut` is the colour space of the photo's variants: `"p3"` when they are Display P3 with the profile embedded (photos with colours beyond sRGB, see [Wide Gamut](../../guide/images/#wide-gamut-display-p3)), otherwise `"srgb"`. `<picture>` markup needs no change for P3 — browsers read the embedded profile. P3 photos also have one untagged sRGB JPEG for social previews, at the largest size up to 1920 px; use the format `'srgb.jpg'` for it (see [`absolute_variant_url`](#absolute_variant_url)).
 
 The descriptive fields come from the photo's XMP metadata, as Capture One and Lightroom export it:
 
@@ -95,7 +97,7 @@ Build a URL for a specific image variant (size + format), resolved against the c
 |-----------|------|-------------|
 | `image` | Image | Image object (e.g. from `images` or `find_image`) |
 | `size` | int | Target width |
-| `format` | string | `"avif"`, `"webp"`, or `"jpg"` |
+| `format` | string | `"avif"`, `"webp"`, or `"jpg"`; `"srgb.jpg"` for the social copy of a P3 photo |
 
 **Returns** `{assets_basepath}{image.slug}/{size}.{format}`, e.g. `../images/events/fireworks/029081/1920.webp`.
 
@@ -117,6 +119,15 @@ prefix and asset base path, including absolute CDN addresses.
 Social crawlers prefer JPEG around 1200–1920 px; Lumina's `Partials/OpenGraphImage.revela`
 picks the largest generated size up to 1920 (with `image_size image 1920` from
 [`Partials/ImageHelpers.revela`](../../guide/themes/#shared-image-helpers)) and also emits `og:image:width`/`og:image:height`.
+
+Social networks often drop colour profiles, so for a photo with `image.gamut == 'p3'` Lumina
+links the untagged sRGB copy instead — it exists at exactly that size:
+
+```scriban
+{{~ og_size = image_size image 1920 ~}}
+{{~ og_format = image.gamut == 'p3' ? 'srgb.jpg' : 'jpg' ~}}
+<meta property="og:image" content="{{ html_escape (absolute_variant_url image og_size og_format) }}">
+```
 
 Without `base_url`, local variants use a root-relative URL; an absolute CDN URL
 remains absolute. This helper needs the normal page context (`base_url`,

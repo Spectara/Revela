@@ -180,8 +180,12 @@ internal sealed partial class ImageService(
                     && NetVipsImageProcessor.GetResizeExtent(width, height, resizeMode) > ImageSettings.MaxSize
                         ? ImageSettings.MaxSize
                         : 0;
-                var fingerprint = ComputeProcessingFingerprint(fileInfo.Length, fileInfo.LastWriteTimeUtc, resizeMode, appliedMaxSize);
+                var gamut = ImageGamut.Published(existingEntry?.Gamut, ImageSettings.WideGamut);
+                var fingerprint = ComputeProcessingFingerprint(fileInfo.Length, fileInfo.LastWriteTimeUtc, resizeMode, appliedMaxSize, gamut);
                 var recorded = imageState.Get(manifestKey);
+                var socialCopySize = gamut == ImageGamut.P3
+                    ? ImageGamut.SelectSocialCopySize(manifestSizes.Count > 0 ? manifestSizes : sizes)
+                    : null;
 
                 if (options.Force || recorded is null || !string.Equals(recorded.Fingerprint, fingerprint, StringComparison.Ordinal))
                 {
@@ -189,7 +193,7 @@ internal sealed partial class ImageService(
                     // Variants of formats that are no longer configured are now stale, so only
                     // the configured qualities and efforts are recorded.
                     imagesToProcess.Add(new PendingImage(
-                        fullPath, manifestKey, imageName, manifestSizes, null, width, height,
+                        fullPath, manifestKey, imageName, manifestSizes, null, width, height, gamut, socialCopySize,
                         new ProcessedImage
                         {
                             Fingerprint = fingerprint,
@@ -203,7 +207,7 @@ internal sealed partial class ImageService(
                 // format, interrupted run) or encoded with another quality or effort than configured.
                 // Cost: ~10 File.Exists calls per image (cheap I/O, typically cached by OS)
                 var staleFormats = GetStaleFormats(recorded, formats, efforts, qualityChanges, effortChanges);
-                var missingVariants = GetMissingVariants(outputImagesDirectory, imageName, manifestSizes, formats, staleFormats);
+                var missingVariants = GetMissingVariants(outputImagesDirectory, imageName, manifestSizes, formats, staleFormats, socialCopySize);
                 if (missingVariants.Count == 0)
                 {
                     cachedCount++;
@@ -227,7 +231,7 @@ internal sealed partial class ImageService(
                 }
 
                 imagesToProcess.Add(new PendingImage(
-                    fullPath, manifestKey, imageName, manifestSizes, missingVariants, width, height,
+                    fullPath, manifestKey, imageName, manifestSizes, missingVariants, width, height, gamut, socialCopySize,
                     recorded with { Qualities = qualities, Efforts = recordedEfforts.Count > 0 ? recordedEfforts : null }));
             }
 
@@ -249,8 +253,8 @@ internal sealed partial class ImageService(
             {
                 if (pending.MissingVariants != null)
                 {
-                    // Incremental mode: count only missing variants
-                    plannedVariants += pending.MissingVariants.Count;
+                    // Incremental mode: count only missing variants (the social copy is no variant)
+                    plannedVariants += pending.MissingVariants.Count(v => v.Format != ImageGamut.SocialCopyFormat);
                 }
                 else
                 {
@@ -383,7 +387,7 @@ internal sealed partial class ImageService(
                 },
                 async (item, ct) =>
                 {
-                    var (sourcePath, manifestKey, imageSlug, manifestSizes, missingVariants, width, height, processed) = item;
+                    var (sourcePath, manifestKey, imageSlug, manifestSizes, missingVariants, width, height, gamut, socialCopySize, processed) = item;
 
                     // Use sizes from manifest (calculated during scan with original width).
                     // Fall back to config sizes if manifest sizes are empty (shouldn't happen).
@@ -412,7 +416,10 @@ internal sealed partial class ImageService(
                                 ResizeMode = resizeMode,
                                 Width = width,
                                 Height = height,
-                                MaxSize = ImageSettings.MaxSize
+                                MaxSize = ImageSettings.MaxSize,
+                                Gamut = gamut,
+                                SocialCopySize = socialCopySize,
+                                SocialCopyQuality = formats.TryGetValue("jpg", out var jpgQuality) ? jpgQuality : ImageGamut.SocialCopyDefaultQuality
                             },
                             // O(1), lock-free per-variant bookkeeping. No rendering and no
                             // display-state allocation — this runs tens of thousands of times.
@@ -574,15 +581,21 @@ internal sealed partial class ImageService(
     /// A <c>maxSize</c> cap is included only for images it shrinks (<paramref name="appliedMaxSize"/>
     /// &gt; 0): their largest variant becomes a resize instead of the original, so they are
     /// re-encoded when the cap changes, while images within the cap and the default
-    /// configuration keep their fingerprint.
+    /// configuration keep their fingerprint. Likewise the published <paramref name="gamut"/> is
+    /// included only for P3, so switching <c>wideGamut</c> re-encodes the P3 photos only.
     /// </remarks>
-    internal static string ComputeProcessingFingerprint(long fileSize, DateTime lastWriteTimeUtc, string resizeMode, int appliedMaxSize = 0)
+    internal static string ComputeProcessingFingerprint(long fileSize, DateTime lastWriteTimeUtc, string resizeMode, int appliedMaxSize = 0, string gamut = ImageGamut.Srgb)
     {
         var fingerprint = string.Create(
             CultureInfo.InvariantCulture,
             $"v{NetVipsImageProcessor.OutputVersion}|size:{fileSize}|mtime:{lastWriteTimeUtc.Ticks}|resize:{resizeMode}");
-        return appliedMaxSize > 0
-            ? string.Create(CultureInfo.InvariantCulture, $"{fingerprint}|max:{appliedMaxSize}")
+        if (appliedMaxSize > 0)
+        {
+            fingerprint = string.Create(CultureInfo.InvariantCulture, $"{fingerprint}|max:{appliedMaxSize}");
+        }
+
+        return string.Equals(gamut, ImageGamut.P3, StringComparison.Ordinal)
+            ? $"{fingerprint}|gamut:{gamut}"
             : fingerprint;
     }
 
@@ -698,14 +711,17 @@ internal sealed partial class ImageService(
     /// Checks each expected output file and returns those that:
     /// - Don't exist on disk (deleted, new size, new format)
     /// - Belong to a stale format (encoded with another quality than configured)
-    /// This enables incremental generation when config changes.
+    /// This enables incremental generation when config changes. A P3 photo's sRGB social copy
+    /// (<paramref name="socialCopySize"/>) is requested with the format
+    /// <see cref="ImageGamut.SocialCopyFormat"/> when it is missing or JPEG quality changed.
     /// </remarks>
     private static List<(int Size, string Format)> GetMissingVariants(
         string outputDirectory,
         string imageName,
         IReadOnlyList<int> sizes,
         IReadOnlyDictionary<string, int> formats,
-        HashSet<string> staleFormats)
+        HashSet<string> staleFormats,
+        int? socialCopySize)
     {
         var missing = new List<(int Size, string Format)>();
 
@@ -728,6 +744,11 @@ internal sealed partial class ImageService(
                 }
             }
 
+            if (socialCopySize is { } missingSocialSize)
+            {
+                missing.Add((missingSocialSize, ImageGamut.SocialCopyFormat));
+            }
+
             return missing;
         }
 
@@ -746,6 +767,12 @@ internal sealed partial class ImageService(
             }
         }
 
+        if (socialCopySize is { } socialSize
+            && (staleFormats.Contains("jpg") || !File.Exists(Path.Combine(imageDirectory, $"{socialSize}.{ImageGamut.SocialCopyFormat}"))))
+        {
+            missing.Add((socialSize, ImageGamut.SocialCopyFormat));
+        }
+
         return missing;
     }
 
@@ -754,7 +781,10 @@ internal sealed partial class ImageService(
     /// <summary>
     /// An image selected for processing, with the state to record once its variants are written.
     /// </summary>
-    /// <remarks><c>MissingVariants</c> is <c>null</c> to generate all variants.</remarks>
+    /// <remarks>
+    /// <c>MissingVariants</c> is <c>null</c> to generate all variants. <c>Gamut</c> is the
+    /// published gamut; <c>SocialCopySize</c> the size of the sRGB social copy of a P3 photo.
+    /// </remarks>
     private sealed record PendingImage(
         string SourcePath,
         string ManifestKey,
@@ -763,6 +793,8 @@ internal sealed partial class ImageService(
         IReadOnlyList<(int Size, string Format)>? MissingVariants,
         int Width,
         int Height,
+        string Gamut,
+        int? SocialCopySize,
         ProcessedImage Processed);
 
     #region Logging

@@ -87,5 +87,28 @@ internal sealed class ImageProcessingOptions
     /// resized and the full-resolution original is never written.
     /// </remarks>
     public int MaxSize { get; init; }
+
+    /// <summary>
+    /// Gamut of the published variants (<see cref="ImageGamut.Srgb"/> or <see cref="ImageGamut.P3"/>).
+    /// </summary>
+    /// <remarks>
+    /// P3 variants are converted to Display P3 and keep that ICC profile (no other metadata).
+    /// </remarks>
+    public string Gamut { get; init; } = ImageGamut.Srgb;
+
+    /// <summary>
+    /// Size of the untagged sRGB JPEG (<see cref="ImageGamut.SocialCopyFormat"/>) written for
+    /// social previews of P3 photos; <c>null</c> for none.
+    /// </summary>
+    /// <remarks>
+    /// Written whenever this size is generated; in incremental mode request it like a variant
+    /// with the format <see cref="ImageGamut.SocialCopyFormat"/>.
+    /// </remarks>
+    public int? SocialCopySize { get; init; }
+
+    /// <summary>
+    /// JPEG quality of the social copy.
+    /// </summary>
+    public int SocialCopyQuality { get; init; } = ImageGamut.SocialCopyDefaultQuality;
 }
 

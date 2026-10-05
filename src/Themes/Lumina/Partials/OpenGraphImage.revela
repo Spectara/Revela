@@ -4,10 +4,12 @@ Open Graph Image Partial - Lumina Theme
 Emits og:image (+ width/height) for a social preview of one image. Social crawlers
 need an absolute URL and handle JPEG best, and the original file is often far too
 large, so this picks a generated variant: the largest size up to 1920px, else the
-smallest available size; JPEG when the site generates it.
+smallest available size; JPEG when the site generates it. Photos published in
+Display P3 (og_image.gamut == 'p3') use their untagged sRGB JPEG ('srgb.jpg',
+written at that same size), because social platforms often drop colour profiles.
 
 Expects:
-- og_image: Image { slug, width, height, sizes } (nothing is emitted when null)
+- og_image: Image { slug, width, height, sizes, gamut } (nothing is emitted when null)
 - image_formats: Array of generated formats ["avif", "webp", "jpg"]
 - base_url: Absolute site URL (nothing is emitted without it)
 ##~}}
@@ -16,6 +18,7 @@ Expects:
 {{~ og_size = image_size og_image 1920 ~}}
 {{~ og_format = image_fallback_format ~}}
 {{~ for format in image_formats; if format == 'jpg'; og_format = 'jpg'; end; end ~}}
+{{~ if og_image.gamut == 'p3'; og_format = 'srgb.jpg'; end ~}}
 {{~ # Sizes describe the longest edge (resizeMode "longest"); the short edge is rounded. ~}}
 {{~ if og_image.width >= og_image.height ~}}
 {{~ og_width = og_size; og_height = (2 * og_size * og_image.height + og_image.width) // (2 * og_image.width) ~}}

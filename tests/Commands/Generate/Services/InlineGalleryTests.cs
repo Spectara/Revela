@@ -250,7 +250,7 @@ public sealed class InlineGalleryTests
                 markdown,
                 SourcePath,
                 [],
-                filterExpression => GalleryImageResolver.Resolve(imageContents, filterExpression)));
+                filterExpression => GalleryImageResolver.Resolve(imageContents, filterExpression, wideGamut: true)));
 
         // Assert
         Assert.AreEqual(SourcePath, exception.SourcePath);
