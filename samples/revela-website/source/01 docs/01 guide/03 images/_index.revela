@@ -48,14 +48,47 @@ To use different sizes, see [Themes](../themes/#theme-structure).
 
 ## Color Spaces
 
-Generated images are always **sRGB**, the color space browsers assume for web images.
+Most photos are published in **sRGB**, the color space browsers assume for web images.
 Photos exported with another embedded profile (Display P3, Adobe RGB, CMYK) are converted
-using that profile, so colors look the same as in your editor on standard displays.
+using that profile, so colors look the same as in your editor on standard displays. Your
+source files are never changed.
 
-Colors that sRGB cannot represent — very saturated reds, greens and cyans that wide-gamut
-displays can show — are mapped to the closest sRGB color. Your source files are never
-changed. For full control over that mapping, soft-proof and export in sRGB from your
-photo editor.
+### Wide Gamut (Display P3)
+
+Many screens show more saturated colors than sRGB can describe: iPhones, iPads and Macs,
+flagship Android phones and wide-gamut monitors. When a photo actually contains such colors —
+a sunset, flowers or neon exported in Display P3 or Adobe RGB — Revela publishes it in
+**Display P3** with the color profile embedded (about 480 bytes per file):
+
+- **Wide-gamut screens** show the full colors.
+- **Standard screens** convert the profile and show the photo like an sRGB version, without a
+  color cast.
+- **Every other photo** is published exactly as before: untagged sRGB, byte for byte.
+
+This works for AVIF, WebP and JPG alike, and themes need no changes. Revela decides per photo
+during the scan, from a small preview: a photo counts as wide-gamut when a visible part of it
+(at least 0.1 % of the preview, differing by more than ΔE 3 from the nearest sRGB color) lies
+outside sRGB. A Display P3 or Adobe RGB profile alone is not enough — most photos with such a
+profile fit inside sRGB and stay sRGB. Adobe RGB and ProPhoto photos with wider colors are
+converted to Display P3; colors beyond P3 are mapped into it.
+
+To publish every photo in sRGB, switch it off:
+
+```json
+{
+  "generate": {
+    "images": {
+      "wideGamut": false
+    }
+  }
+}
+```
+
+Switching it off or on re-encodes only the wide-gamut photos.
+
+Social networks and messengers often drop color profiles from link previews, which would make
+a P3 photo look dull. Each wide-gamut photo therefore also gets one untagged sRGB JPEG
+(`<size>.srgb.jpg`, the largest size up to 1920 px), and Lumina uses it for `og:image`.
 
 HDR photos (JPEG with gain map) are published as their standard dynamic range image.
 
@@ -132,7 +165,7 @@ revela generate images
 
 ### Changing Quality
 
-When you change a format's quality (for example AVIF from 80 to 70), the next build re-encodes **only that format** for all photos. The other formats are kept, and you don't need `--force`. Changing `avifEffort` or `webpEffort` works the same way, and changing `maxSize` re-encodes only the photos larger than the old or the new limit (see [Encoding Speed](#encoding-speed)).
+When you change a format's quality (for example AVIF from 80 to 70), the next build re-encodes **only that format** for all photos. The other formats are kept, and you don't need `--force`. Changing `avifEffort` or `webpEffort` works the same way, changing `maxSize` re-encodes only the photos larger than the old or the new limit (see [Encoding Speed](#encoding-speed)), and changing `wideGamut` re-encodes only the wide-gamut photos (see [Wide Gamut](#wide-gamut-display-p3)).
 
 ### Progress Display
 

@@ -49,7 +49,7 @@ public sealed class LuminaTheme : EmbeddedTheme  // base class for NuGet themes
 | `nav_items` | Navigation tree with active state |
 | `gallery` | Current page (home page included): `title`, `description`, `body` (rendered Markdown), `cover_image`, `template`, `slug`, `images`. The home page without a front-matter title uses the site title |
 | `gallery.cover_image` | Resolved `Image` from `cover` front-matter (null if unset) |
-| `images` | Array of `Image` objects (per-image: `sizes`, `color`) |
+| `images` | Array of `Image` objects (per-image: `sizes`, `color`, `gamut`) |
 | *(data sources)* | Front matter `data = { name: source }` adds variables: `$galleries` (all galleries), `$images` (page images) or a plugin JSON file from the page's folder in a plugin's owner folder `.revela/<owner>/` (e.g. `statistics.json`). Extensions can declare defaults per template |
 
 A missing layout or `Partials/ContentImage.revela` fails the render with a clear error — there is no built-in fallback markup. Templates and includes are parsed once per build and shared by all pages.
@@ -83,7 +83,7 @@ A missing layout or `Partials/ContentImage.revela` fails the render with a clear
 
 ## Document Structure (SEO)
 - **One `<h1>` per page**, rendered by the body template (the layout has none). Skip the title `<h1>` when the Markdown body contains one; use `.visually-hidden` where the design shows no title (home, photo pages).
-- Canonical / `og:url` / `og:image` only when `base_url` is set (absolute URLs). `og:image` uses a generated JPG variant ≤ 1920px (`Partials/OpenGraphImage.revela`), never the original.
+- Canonical / `og:url` / `og:image` only when `base_url` is set (absolute URLs). `og:image` uses a generated JPG variant ≤ 1920px (`Partials/OpenGraphImage.revela`), never the original; for `image.gamut == 'p3'` it uses the untagged sRGB copy (`'srgb.jpg'` at that size), because social platforms drop colour profiles.
 - `<source type>` must be a MIME type: map the format `jpg` to `image/jpeg`. Give the fallback `<img>` a `srcset`.
 
 ## Scriban Under Native AOT
