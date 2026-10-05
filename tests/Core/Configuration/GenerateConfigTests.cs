@@ -32,6 +32,14 @@ public sealed class GenerateConfigTests
     }
 
     [TestMethod]
+    public void Images_Defaults_PublishWideGamutPhotosInDisplayP3() =>
+        Assert.IsTrue(new GenerateConfig().Images.WideGamut, "Wide-gamut photos are published in Display P3 unless switched off.");
+
+    [TestMethod]
+    public void Images_WideGamutFalse_Binds() =>
+        Assert.IsFalse(Bind("wideGamut", "false").Images.WideGamut);
+
+    [TestMethod]
     public void Images_NegativeMaxSize_FailsValidation()
     {
         var exception = Assert.ThrowsExactly<OptionsValidationException>(() => Bind("maxSize", "-1"));

@@ -35,11 +35,12 @@ internal interface IImageProcessor
     /// </summary>
     /// <remarks>
     /// Reads the image header for dimensions, EXIF and XMP, and computes the photo's average
-    /// colour from a small shrink-on-load thumbnail rather than the full-resolution image.
+    /// colour and content gamut from a small shrink-on-load thumbnail rather than the
+    /// full-resolution image.
     /// </remarks>
     /// <param name="inputPath">Path to the source image</param>
     /// <param name="cancellationToken">Cancellation token</param>
-    /// <returns>Image metadata (dimensions, EXIF, file info, average colour)</returns>
+    /// <returns>Image metadata (dimensions, EXIF, file info, average colour, gamut)</returns>
     Task<ImageMetadata> ReadMetadataAsync(
         string inputPath,
         CancellationToken cancellationToken = default);
@@ -81,5 +82,10 @@ internal sealed class ImageMetadata
     /// Average colour as lowercase sRGB hex (<c>#rrggbb</c>), the theme's loading placeholder.
     /// </summary>
     public string? Color { get; init; }
+
+    /// <summary>
+    /// Gamut of the photo's content (<see cref="ImageGamut.Srgb"/> or <see cref="ImageGamut.P3"/>).
+    /// </summary>
+    public string? Gamut { get; init; }
 }
 

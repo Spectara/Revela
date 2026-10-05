@@ -296,7 +296,8 @@ internal sealed partial class ContentService(
                             Description = cached.Description,
                             Keywords = cached.Keywords,
                             Rating = cached.Rating,
-                            Color = cached.Color
+                            Color = cached.Color,
+                            Gamut = cached.Gamut
                         };
                         Interlocked.Increment(ref cachedCount);
                     }
@@ -533,7 +534,8 @@ internal sealed partial class ContentService(
             Description = meta.Description,
             Keywords = meta.Keywords,
             Rating = meta.Rating,
-            Color = meta.Color
+            Color = meta.Color,
+            Gamut = meta.Gamut
         };
     }
 
@@ -643,7 +645,8 @@ internal sealed partial class ContentService(
             Description = meta?.Description,
             Keywords = meta?.Keywords ?? [],
             Rating = meta?.Rating,
-            Color = meta?.Color
+            Color = meta?.Color,
+            Gamut = meta?.Gamut
         };
     }
 

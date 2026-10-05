@@ -106,4 +106,16 @@ public sealed record ImageContent
     /// </remarks>
     [JsonPropertyName("color")]
     public string? Color { get; init; }
+
+    /// <summary>
+    /// Colour gamut of the photo's content: <c>"p3"</c> when it has visible colours outside
+    /// sRGB, otherwise <c>"srgb"</c>.
+    /// </summary>
+    /// <remarks>
+    /// Detected during scan from the same small preview as <see cref="Color"/>. Whether the
+    /// variants are published in Display P3 also depends on <c>generate.images.wideGamut</c>.
+    /// <c>null</c> when the image's metadata could not be read.
+    /// </remarks>
+    [JsonPropertyName("gamut")]
+    public string? Gamut { get; init; }
 }

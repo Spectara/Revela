@@ -320,6 +320,8 @@ Spectara.Revela.Sdk.Configuration.ImageConfig.MaxSize.get -> int
 Spectara.Revela.Sdk.Configuration.ImageConfig.MaxSize.set -> void
 Spectara.Revela.Sdk.Configuration.ImageConfig.MinHeight.get -> int
 Spectara.Revela.Sdk.Configuration.ImageConfig.MinHeight.set -> void
+Spectara.Revela.Sdk.Configuration.ImageConfig.WideGamut.get -> bool
+Spectara.Revela.Sdk.Configuration.ImageConfig.WideGamut.set -> void
 Spectara.Revela.Sdk.Configuration.ImageConfig.MinWidth.get -> int
 Spectara.Revela.Sdk.Configuration.ImageConfig.MinWidth.set -> void
 Spectara.Revela.Sdk.Configuration.ImageConfig.Webp.get -> int
@@ -544,6 +546,8 @@ Spectara.Revela.Sdk.Models.Manifest.ImageContent
 Spectara.Revela.Sdk.Models.Manifest.ImageContent.<Clone>$() -> Spectara.Revela.Sdk.Models.Manifest.ImageContent!
 Spectara.Revela.Sdk.Models.Manifest.ImageContent.Color.get -> string?
 Spectara.Revela.Sdk.Models.Manifest.ImageContent.Color.init -> void
+Spectara.Revela.Sdk.Models.Manifest.ImageContent.Gamut.get -> string?
+Spectara.Revela.Sdk.Models.Manifest.ImageContent.Gamut.init -> void
 Spectara.Revela.Sdk.Models.Manifest.ImageContent.DateTaken.get -> System.DateTime?
 Spectara.Revela.Sdk.Models.Manifest.ImageContent.DateTaken.init -> void
 Spectara.Revela.Sdk.Models.Manifest.ImageContent.Description.get -> string?

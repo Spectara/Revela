@@ -437,14 +437,14 @@ internal sealed partial class RenderService(
     /// Reconstruct galleries from the unified root tree: the root (home page) first, then
     /// every node with a slug (a page).
     /// </summary>
-    private static List<Gallery> ReconstructGalleries(ManifestEntry root)
+    private List<Gallery> ReconstructGalleries(ManifestEntry root)
     {
         var galleries = new List<Gallery> { ReconstructGalleryFromEntry(root) };
         CollectGalleries(root.Children, galleries);
         return galleries;
     }
 
-    private static void CollectGalleries(IReadOnlyList<ManifestEntry> entries, List<Gallery> galleries)
+    private void CollectGalleries(IReadOnlyList<ManifestEntry> entries, List<Gallery> galleries)
     {
         foreach (var entry in entries)
         {
@@ -459,7 +459,7 @@ internal sealed partial class RenderService(
         }
     }
 
-    private static Gallery ReconstructGalleryFromEntry(ManifestEntry entry)
+    private Gallery ReconstructGalleryFromEntry(ManifestEntry entry)
     {
         var images = new List<Image>();
         foreach (var imageEntry in entry.Content.OfType<ImageContent>())
@@ -472,7 +472,7 @@ internal sealed partial class RenderService(
                     ? imageEntry.Filename
                     : $"{entry.Path}/{imageEntry.Filename}";
             // Normalize any remaining backslashes for cross-platform consistency
-            images.Add(Image.FromManifestEntry(sourcePath.Replace('\\', '/'), imageEntry));
+            images.Add(Image.FromManifestEntry(sourcePath.Replace('\\', '/'), imageEntry, ImageSettings.WideGamut));
         }
 
         return new Gallery
@@ -539,7 +539,7 @@ internal sealed partial class RenderService(
         {
             if (!lookup.ContainsKey(sourcePath))
             {
-                lookup[sourcePath] = Image.FromManifestEntry(sourcePath, imageContent);
+                lookup[sourcePath] = Image.FromManifestEntry(sourcePath, imageContent, ImageSettings.WideGamut);
             }
         }
 
@@ -925,6 +925,7 @@ internal sealed partial class RenderService(
                 gallery.Images = GalleryImageResolver.Resolve(
                     imageContentsBySourcePath,
                     metadata.Filter,
+                    ImageSettings.WideGamut,
                     metadata.Sort,
                     options.CurrentValue.Sorting.Images);
             }
@@ -945,6 +946,7 @@ internal sealed partial class RenderService(
                     filterExpression => GalleryImageResolver.Resolve(
                         imageContentsBySourcePath,
                         filterExpression,
+                        ImageSettings.WideGamut,
                         metadata.Sort,
                         options.CurrentValue.Sorting.Images),
                     photoPath => ImagePathResolver.Resolve(photoPath, gallery.Path, imagesBySourcePath));

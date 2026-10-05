@@ -143,6 +143,18 @@ public sealed class ImageConfig
     public int MinHeight { get; set; }
 
     /// <summary>
+    /// Publish photos with colours outside sRGB in Display P3 (default <c>true</c>).
+    /// </summary>
+    /// <remarks>
+    /// The scan detects photos whose colours sRGB cannot show (e.g. Display P3 or Adobe RGB
+    /// exports of saturated flowers or sunsets). With this switch on, their variants are encoded
+    /// in Display P3 with the profile embedded, so wide-gamut screens show the full colours and
+    /// other screens convert them. All other photos are published in sRGB as before. Set to
+    /// <c>false</c> to publish every photo in sRGB. Changing it re-encodes the detected photos only.
+    /// </remarks>
+    public bool WideGamut { get; set; } = true;
+
+    /// <summary>
     /// Gets the active formats (quality > 0) as a dictionary.
     /// </summary>
     /// <returns>Dictionary of format name to quality.</returns>

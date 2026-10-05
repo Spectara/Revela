@@ -102,12 +102,24 @@ internal sealed class Image
     public string? Color { get; init; }
 
     /// <summary>
+    /// Colour space of the published variants: <c>"p3"</c> (Display P3 with the profile embedded)
+    /// or <c>"srgb"</c> (untagged sRGB).
+    /// </summary>
+    /// <remarks>
+    /// P3 for photos with visible colours outside sRGB while <c>generate.images.wideGamut</c> is on.
+    /// Such photos also have an untagged sRGB JPEG for social previews:
+    /// <c>absolute_variant_url image size 'srgb.jpg'</c> at the largest size up to 1920 px.
+    /// </remarks>
+    public string Gamut { get; init; } = ImageGamut.Srgb;
+
+    /// <summary>
     /// Create an Image from a manifest entry (for cache hits).
     /// </summary>
     /// <param name="sourcePath">Full path to source image</param>
     /// <param name="entry">Manifest entry with cached metadata</param>
+    /// <param name="wideGamut">Whether P3 photos are published in Display P3 (<c>generate.images.wideGamut</c>)</param>
     /// <returns>Image populated from manifest data</returns>
-    public static Image FromManifestEntry(string sourcePath, ImageContent entry)
+    public static Image FromManifestEntry(string sourcePath, ImageContent entry, bool wideGamut)
     {
         return new Image
         {
@@ -124,7 +136,8 @@ internal sealed class Image
             Keywords = entry.Keywords,
             Rating = entry.Rating,
             Sizes = entry.Sizes,
-            Color = entry.Color
+            Color = entry.Color,
+            Gamut = ImageGamut.Published(entry.Gamut, wideGamut)
         };
     }
 }
