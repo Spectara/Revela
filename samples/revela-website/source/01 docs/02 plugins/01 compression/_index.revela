@@ -45,6 +45,10 @@ revela generate compress
 
 In a terminal, compression shows a live progress bar; in CI logs or redirected output it prints plain progress lines instead (one about every 10 %).
 
+Running it again only compresses what changed. Revela keeps a `.gz`/`.br` file when the page it was made from has exactly the same content as last time and the compressed file itself is untouched; everything else is compressed again. The summary shows how many files were compressed and how many were unchanged.
+
+> **Note:** `revela generate pages` (and therefore `generate all`) removes all compressed files before it writes new pages, so no outdated `.gz`/`.br` file can be served. After such a build, the next `revela generate compress` compresses everything again.
+
 The local `revela serve` preview server automatically negotiates existing `.br` and `.gz`
 variants using the browser's `Accept-Encoding` header. Production servers still need their
 equivalent static Brotli/Gzip configuration.
@@ -83,7 +87,7 @@ output/
 │   └── main.css.br
 ```
 
-Revela remembers which `.gz` and `.br` files it created in `.revela/compress/ownership.json` in your project, not in the output, so that record is never uploaded with your site. `revela clean compress` removes only those files and never touches other `.gz`/`.br` files you put there yourself.
+Revela remembers which `.gz` and `.br` files it created in `.revela/compress/ownership.json` in your project, not in the output, so that record is never uploaded with your site. Together with each file it stores a fingerprint of the page it was compressed from, which is how it recognises unchanged pages. `revela clean compress` removes only those files and never touches other `.gz`/`.br` files you put there yourself.
 
 ## Example Output
 
@@ -92,8 +96,10 @@ Revela remembers which `.gz` and `.br` files it created in `.revela/compress/own
 │ Compression complete!              │
 │                                    │
 │ Summary:                           │
-│   Files:    14                     │
-│   Original: 1.22 MB                │
+│   Files:      14                   │
+│   Compressed: 3                    │
+│   Unchanged:  11                   │
+│   Original:   1.22 MB              │
 │                                    │
 │ Compressed sizes:                  │
 │   Gzip:    93.4 KB (92.5% savings) │

@@ -41,8 +41,14 @@ internal sealed record CompressionStats
     /// <summary>Number of files skipped (too small).</summary>
     public int SkippedCount { get; set; }
 
+    /// <summary>Number of files whose sidecars were kept because the source did not change.</summary>
+    public int UnchangedCount { get; set; }
+
     /// <summary>Total files processed.</summary>
     public int TotalFiles => Gzip.FileCount;
+
+    /// <summary>Files compressed in this run (at least one sidecar written).</summary>
+    public int CompressedCount => TotalFiles - UnchangedCount;
 }
 
 /// <summary>
@@ -99,6 +105,25 @@ internal sealed partial class CompressionService(ILogger<CompressionService> log
         IProgress<(int current, int total, string fileName)>? progress = null,
         CancellationToken cancellationToken = default)
     {
+        try
+        {
+            var stats = await CompressFilesAsync(outputPath, ownership, progress, cancellationToken);
+            await ownership.CommitAsync(cancellationToken);
+            return stats;
+        }
+        catch (Exception exception)
+        {
+            await ownership.CommitAfterFailureAsync(exception);
+            throw;
+        }
+    }
+
+    private async Task<CompressionStats> CompressFilesAsync(
+        string outputPath,
+        CompressedSiteOwnership ownership,
+        IProgress<(int current, int total, string fileName)>? progress,
+        CancellationToken cancellationToken)
+    {
         var stats = new CompressionStats();
 
         // Find all compressible files
@@ -112,6 +137,9 @@ internal sealed partial class CompressionService(ILogger<CompressionService> log
                 })
             .Where(f => CompressibleExtensions.Contains(Path.GetExtension(f)))
             .ToList();
+
+        // Sidecars of sources that no longer exist (e.g. a deleted output file)
+        await ownership.RemoveOrphansAsync(files, cancellationToken);
 
         if (files.Count == 0)
         {
@@ -150,23 +178,35 @@ internal sealed partial class CompressionService(ILogger<CompressionService> log
                 }
 
                 // Read original content once
-                var content = await File.ReadAllBytesAsync(ownership.GetSourcePath(filePath), ct);
-                var originalSize = content.Length;
+                var content = await File.ReadAllBytesAsync(filePath, ct);
+                var source = SourceFingerprint.FromContent(content);
 
-                // Compress with both formats
-                var gzipSize = await CompressGzipAsync(ownership, filePath, content, ct);
-                var brotliSize = await CompressBrotliAsync(ownership, filePath, content, ct);
+                // Keep sidecars compressed from identical content; compress the rest
+                var gzipSize = await ownership.GetReusableLengthAsync(filePath + ".gz", source, ct);
+                var brotliSize = await ownership.GetReusableLengthAsync(filePath + ".br", source, ct);
+                var unchanged = gzipSize is not null && brotliSize is not null;
+                if (unchanged)
+                {
+                    LogUnchangedFile(logger, filePath);
+                }
+                gzipSize ??= await CompressGzipAsync(ownership, filePath, content, source, ct);
+                brotliSize ??= await CompressBrotliAsync(ownership, filePath, content, source, ct);
 
                 // Update statistics (thread-safe)
                 lock (lockObj)
                 {
                     stats.Gzip.FileCount++;
-                    stats.Gzip.OriginalSize += originalSize;
-                    stats.Gzip.CompressedSize += gzipSize;
+                    stats.Gzip.OriginalSize += content.Length;
+                    stats.Gzip.CompressedSize += gzipSize.Value;
 
                     stats.Brotli.FileCount++;
-                    stats.Brotli.OriginalSize += originalSize;
-                    stats.Brotli.CompressedSize += brotliSize;
+                    stats.Brotli.OriginalSize += content.Length;
+                    stats.Brotli.CompressedSize += brotliSize.Value;
+
+                    if (unchanged)
+                    {
+                        stats.UnchangedCount++;
+                    }
 
                     processedCount++;
                 }
@@ -174,7 +214,7 @@ internal sealed partial class CompressionService(ILogger<CompressionService> log
                 progress?.Report((processedCount, files.Count, Path.GetFileName(filePath)));
             });
 
-        LogCompressionComplete(logger, stats.TotalFiles, stats.SkippedCount);
+        LogCompressionComplete(logger, stats.CompressedCount, stats.UnchangedCount, stats.SkippedCount);
 
         return stats;
     }
@@ -182,9 +222,14 @@ internal sealed partial class CompressionService(ILogger<CompressionService> log
     /// <summary>
     /// Compresses content with Gzip and writes to .gz file.
     /// </summary>
-    private async Task<long> CompressGzipAsync(CompressedSiteOwnership ownership, string filePath, byte[] content, CancellationToken ct)
+    private async Task<long> CompressGzipAsync(
+        CompressedSiteOwnership ownership,
+        string filePath,
+        byte[] content,
+        SourceFingerprint source,
+        CancellationToken ct)
     {
-        var size = await ownership.PublishAsync(filePath + ".gz", async (outputStream, cancellationToken) =>
+        var size = await ownership.PublishAsync(filePath + ".gz", source, async (outputStream, cancellationToken) =>
         {
             await using var gzipStream = new GZipStream(outputStream, GzipLevel, leaveOpen: true);
             await gzipStream.WriteAsync(content, cancellationToken);
@@ -197,9 +242,14 @@ internal sealed partial class CompressionService(ILogger<CompressionService> log
     /// <summary>
     /// Compresses content with Brotli and writes to .br file.
     /// </summary>
-    private async Task<long> CompressBrotliAsync(CompressedSiteOwnership ownership, string filePath, byte[] content, CancellationToken ct)
+    private async Task<long> CompressBrotliAsync(
+        CompressedSiteOwnership ownership,
+        string filePath,
+        byte[] content,
+        SourceFingerprint source,
+        CancellationToken ct)
     {
-        var size = await ownership.PublishAsync(filePath + ".br", async (outputStream, cancellationToken) =>
+        var size = await ownership.PublishAsync(filePath + ".br", source, async (outputStream, cancellationToken) =>
         {
             await using var brotliStream = new BrotliStream(outputStream, CompressionLevel.SmallestSize, leaveOpen: true);
             await brotliStream.WriteAsync(content, cancellationToken);
@@ -233,8 +283,11 @@ internal sealed partial class CompressionService(ILogger<CompressionService> log
     [LoggerMessage(Level = LogLevel.Debug, Message = "{Format}: {FilePath} ({OriginalSize} → {CompressedSize})")]
     private static partial void LogCompressedFile(ILogger logger, string format, string filePath, long originalSize, long compressedSize);
 
-    [LoggerMessage(Level = LogLevel.Information, Message = "Compression complete: {Count} files, {Skipped} skipped")]
-    private static partial void LogCompressionComplete(ILogger logger, int count, int skipped);
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Unchanged: {FilePath} (sidecars kept)")]
+    private static partial void LogUnchangedFile(ILogger logger, string filePath);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Compression complete: {Count} compressed, {Unchanged} unchanged, {Skipped} skipped")]
+    private static partial void LogCompressionComplete(ILogger logger, int count, int unchanged, int skipped);
 
     #endregion
 }

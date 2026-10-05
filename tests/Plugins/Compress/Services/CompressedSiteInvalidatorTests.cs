@@ -147,6 +147,9 @@ public sealed class CompressedSiteInvalidatorTests
     [DataRow("suffix")]
     [DataRow("hash")]
     [DataRow("length")]
+    [DataRow("source-hash")]
+    [DataRow("source-length")]
+    [DataRow("source-half")]
     [DataRow("duplicate-path")]
     [DataRow("null-entry")]
     [DataRow("null-files")]
@@ -192,6 +195,15 @@ public sealed class CompressedSiteInvalidatorTests
                 break;
             case "length":
                 entries[1]!["length"] = -1;
+                break;
+            case "source-hash":
+                entries[1]!["sourceSha256"] = "invalid";
+                break;
+            case "source-length":
+                entries[1]!["sourceLength"] = -1;
+                break;
+            case "source-half":
+                entries[1]!.AsObject().Remove("sourceLength");
                 break;
             case "duplicate-path":
                 entries[1] = entries[0]!.DeepClone();

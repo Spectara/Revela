@@ -23,19 +23,54 @@ public sealed class CompressCommandConsoleTests
         using var project = TestProject.Create();
         Directory.CreateDirectory(project.OutputPath);
         await File.WriteAllTextAsync(Path.Combine(project.OutputPath, "index.html"), new string('x', 512));
+        var command = CreateCommand(project);
+
+        var (exitCode, output) = await RunCapturedAsync(command);
+
+        Assert.AreEqual(0, exitCode);
+        Assert.Contains("Compressed 1/1", output, StringComparison.Ordinal);
+    }
+
+    [TestMethod]
+    public async Task ExecuteAsync_SecondRunWithOneChangedFile_ReportsCompressedAndUnchangedCounts()
+    {
+        using var project = TestProject.Create();
+        Directory.CreateDirectory(project.OutputPath);
+        await File.WriteAllTextAsync(Path.Combine(project.OutputPath, "index.html"), new string('x', 512));
+        await File.WriteAllTextAsync(Path.Combine(project.OutputPath, "about.html"), new string('x', 512));
+        var command = CreateCommand(project);
+        var (firstExitCode, firstOutput) = await RunCapturedAsync(command);
+        await File.WriteAllTextAsync(Path.Combine(project.OutputPath, "about.html"), new string('y', 512));
+
+        var (exitCode, output) = await RunCapturedAsync(command);
+
+        Assert.AreEqual(0, firstExitCode);
+        Assert.Contains("Compressed: 2", firstOutput, StringComparison.Ordinal);
+        Assert.Contains("Unchanged:  0", firstOutput, StringComparison.Ordinal);
+        Assert.AreEqual(0, exitCode);
+        Assert.Contains("Files:      2", output, StringComparison.Ordinal);
+        Assert.Contains("Compressed: 1", output, StringComparison.Ordinal);
+        Assert.Contains("Unchanged:  1", output, StringComparison.Ordinal);
+    }
+
+    private static CompressCommand CreateCommand(TestProject project)
+    {
         var pathResolver = Substitute.For<IPathResolver>();
         pathResolver.OutputPath.Returns(project.OutputPath);
         var lifecycle = Substitute.For<IArtifactLifecycle>();
         lifecycle.PrepareToReplaceAsync(Arg.Any<ArtifactId>(), Arg.Any<CancellationToken>())
             .Returns(OperationResult.Ok());
-        var command = new CompressCommand(
+        return new CompressCommand(
             NullLogger<CompressCommand>.Instance,
             pathResolver,
             project.Environment(),
             new CompressionService(NullLogger<CompressionService>.Instance),
             lifecycle,
             Substitute.For<IConsoleCapabilities>());
+    }
 
+    private static async Task<(int ExitCode, string Output)> RunCapturedAsync(CompressCommand command)
+    {
         var originalConsole = AnsiConsole.Console;
         using var writer = new StringWriter(CultureInfo.InvariantCulture);
         AnsiConsole.Console = AnsiConsole.Create(new AnsiConsoleSettings
@@ -48,17 +83,14 @@ public sealed class CompressCommandConsoleTests
         });
         AnsiConsole.Console.Profile.Width = 240;
 
-        int exitCode;
         try
         {
-            exitCode = await command.ExecuteAsync();
+            var exitCode = await command.ExecuteAsync();
+            return (exitCode, writer.ToString());
         }
         finally
         {
             AnsiConsole.Console = originalConsole;
         }
-
-        Assert.AreEqual(0, exitCode);
-        Assert.Contains("Compressed 1/1", writer.ToString(), StringComparison.Ordinal);
     }
 }

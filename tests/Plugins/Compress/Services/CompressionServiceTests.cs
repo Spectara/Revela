@@ -523,6 +523,7 @@ public sealed class CompressionServiceTests
 
                 var recoveredPath = Path.Combine(testDirectory, "recovered.html.gz");
                 await ownership.PublishAsync(recoveredPath, async (stream, token) => await stream.WriteAsync("complete"u8.ToArray(), token));
+                await ownership.CommitAsync();
                 CollectionAssert.AreEqual("complete"u8.ToArray(), await File.ReadAllBytesAsync(recoveredPath));
             }
 
@@ -558,8 +559,12 @@ public sealed class CompressionServiceTests
         using (var ownership = await CompressedSiteOwnership.OpenAsync(testDirectory, project.OwnerDirectory()))
         await using (var locked = new FileStream(manifestPath, FileMode.Open, FileAccess.Read, FileShare.Read))
         {
-            await Assert.ThrowsExactlyAsync<UnauthorizedAccessException>(() => ownership.PublishAsync(
-                Path.Combine(testDirectory, "new.html.gz"), async (stream, token) => await stream.WriteAsync("complete"u8.ToArray(), token)));
+            await Assert.ThrowsExactlyAsync<UnauthorizedAccessException>(async () =>
+            {
+                await ownership.PublishAsync(
+                    Path.Combine(testDirectory, "new.html.gz"), async (stream, token) => await stream.WriteAsync("complete"u8.ToArray(), token));
+                await ownership.CommitAsync();
+            });
             Assert.IsGreaterThan(0L, locked.Length);
         }
 

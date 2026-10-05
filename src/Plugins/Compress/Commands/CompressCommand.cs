@@ -19,7 +19,8 @@ namespace Spectara.Revela.Plugins.Compress.Commands;
 /// </summary>
 /// <remarks>
 /// <para>
-/// Creates .gz (Gzip) and .br (Brotli) files alongside originals.
+/// Creates .gz (Gzip) and .br (Brotli) files alongside originals. Sidecars whose source content
+/// is unchanged since they were compressed are kept as they are.
 /// </para>
 /// <para>
 /// <b>Note:</b> This command is NOT included in 'generate all' pipeline.
@@ -79,7 +80,6 @@ internal sealed partial class CompressCommand(
                 outputPath,
                 CompressedSiteOwnership.GetOwnerDirectory(projectEnvironment.Value.Path),
                 cancellationToken);
-            await ownership.CleanAsync(cancellationToken);
             return await CompressAsync(outputPath, ownership, cancellationToken);
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
@@ -160,8 +160,10 @@ internal sealed partial class CompressCommand(
     {
         var content = $"[green]Compression complete![/]\n\n" +
                       $"[dim]Summary:[/]\n" +
-                      $"  Files:    {stats.TotalFiles}\n" +
-                      $"  Original: {CompressionService.FormatSize(stats.Gzip.OriginalSize)}\n\n" +
+                      $"  Files:      {stats.TotalFiles}\n" +
+                      $"  Compressed: {stats.CompressedCount}\n" +
+                      $"  Unchanged:  {stats.UnchangedCount}\n" +
+                      $"  Original:   {CompressionService.FormatSize(stats.Gzip.OriginalSize)}\n\n" +
                       $"[dim]Compressed sizes:[/]\n" +
                       string.Format(
                           CultureInfo.InvariantCulture,

@@ -9,7 +9,8 @@ Static file compression plugin for Revela - compresses HTML, CSS, JS, JSON, SVG,
 - **Smart filtering** - Only compresses text-based files (HTML, CSS, JS, JSON, SVG, XML)
 - **Size threshold** - Skips files smaller than 256 bytes
 - **Parallel processing** - Compresses up to one file per logical CPU core (`Environment.ProcessorCount`)
-- **Statistics** - Shows compression savings per format
+- **Incremental** - Keeps sidecars whose source content (SHA-256 + length) is unchanged and whose own fingerprint still matches the record
+- **Statistics** - Shows compression savings per format and how many files were compressed or unchanged
 
 ## Installation
 
@@ -48,6 +49,16 @@ plugin. Sidecars and record form one output artifact (`compress/precompressed-si
 `clean output`, `clean all` and `clean compress` remove both, `clean cache` keeps them.
 Compression cleanup removes tracked sidecars even when their source files
 have disappeared, but preserves independent gzip/Brotli downloads.
+
+Each entry also stores the SHA-256 and length of the source the sidecar was
+compressed from. `generate compress` keeps a sidecar when both still match
+(source content and sidecar fingerprint) and compresses it again otherwise; tracked
+sidecars of deleted sources are removed. Rendering pages invalidates the artifact
+(it depends on `core/rendered-site`), so the first compression after a render
+compresses everything. The record is loaded once and written back in batches
+(after 256 changes or a quarter of the record, whichever is larger, and at the
+end), and changes made before a failure or cancellation are still recorded, so
+sidecars already in the output stay owned.
 
 An existing untracked destination, a changed tracked file, or an invalid
 ownership record causes an explicit failure instead of overwriting or deleting
