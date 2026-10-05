@@ -14,7 +14,8 @@ namespace Spectara.Revela.Plugins.Statistics.Commands;
 /// Command to generate statistics page from manifest EXIF data.
 /// </summary>
 /// <remarks>
-/// Output: Creates statistics.json in .revela/statistics/{page.Path}/.
+/// Output: Creates the page's data file (<c>data.statistics</c>, default <c>statistics.json</c>)
+/// in .revela/statistics/{page.Path}/.
 /// The actual rendering is done by the theme extension (Lumina.Statistics).
 /// </remarks>
 internal sealed partial class StatsCommand(
@@ -25,6 +26,7 @@ internal sealed partial class StatsCommand(
     IArtifactLifecycle artifactLifecycle,
     StatisticsDataInvalidator statisticsDataInvalidator) : IPipelineStep
 {
+    private const string DataFileExtension = ".json";
 
     // ── IPipelineStep (service-level, no UI) ──
 
@@ -40,6 +42,13 @@ internal sealed partial class StatsCommand(
         if (manifest is null)
         {
             return OperationResult.Fail("Manifest not found — run scan first");
+        }
+
+        var statsPages = FindStatisticsPages(manifest.Root);
+        var invalidPage = FindInvalidDataFileName(statsPages);
+        if (invalidPage is not null)
+        {
+            return OperationResult.Fail(InvalidDataFileNameMessage(invalidPage));
         }
 
         var invalidationResult = await artifactLifecycle.PrepareToReplaceAsync(
@@ -62,18 +71,16 @@ internal sealed partial class StatsCommand(
             return OperationResult.Ok();
         }
 
-        var statsPages = FindStatisticsPages(manifest.Root);
-
         if (statsPages.Count == 0)
         {
             return OperationResult.Ok();
         }
 
-        foreach (var pagePath in statsPages)
+        foreach (var page in statsPages)
         {
             var stats = aggregator.Aggregate(manifest);
-            var cacheDir = Path.Combine(StatisticsDataInvalidator.GetDataDirectory(projectPath), pagePath);
-            var jsonPath = Path.Combine(cacheDir, "statistics.json");
+            var cacheDir = Path.Combine(StatisticsDataInvalidator.GetDataDirectory(projectPath), page.Path);
+            var jsonPath = Path.Combine(cacheDir, page.DataFileName);
             Directory.CreateDirectory(cacheDir);
             await JsonWriter.WriteAsync(jsonPath, stats, cancellationToken);
         }
@@ -117,6 +124,17 @@ internal sealed partial class StatsCommand(
             return 1;
         }
 
+        // Find all pages that need statistics (data = { statistics: "..." })
+        var statsPages = FindStatisticsPages(manifest.Root);
+        var invalidPage = FindInvalidDataFileName(statsPages);
+        if (invalidPage is not null)
+        {
+            ErrorPanels.ShowError(
+                "Invalid Statistics Data File",
+                $"[yellow]{Markup.Escape(InvalidDataFileNameMessage(invalidPage))}[/]");
+            return 1;
+        }
+
         var invalidationResult = await artifactLifecycle.PrepareToReplaceAsync(
             StatisticsArtifacts.Data,
             cancellationToken);
@@ -143,9 +161,6 @@ internal sealed partial class StatsCommand(
             return 0;
         }
 
-        // Find all pages that need statistics (data = { statistics: "..." })
-        var statsPages = FindStatisticsPages(manifest.Root);
-
         if (statsPages.Count == 0)
         {
             ErrorPanels.ShowWarning(
@@ -158,20 +173,20 @@ internal sealed partial class StatsCommand(
         LogGeneratingStats(statsPages.Count);
 
         var generatedCount = 0;
-        foreach (var pagePath in statsPages)
+        foreach (var page in statsPages)
         {
             // Aggregate statistics (TODO: filter by page metadata)
             var stats = aggregator.Aggregate(manifest);
 
             // Calculate output path in .revela/statistics/{pagePath}/
-            // pagePath is already relative (e.g., "03 Pages\Statistics")
-            var cacheDir = Path.Combine(StatisticsDataInvalidator.GetDataDirectory(projectPath), pagePath);
-            var jsonPath = Path.Combine(cacheDir, "statistics.json");
+            // page.Path is already relative (e.g., "03 Pages\Statistics")
+            var cacheDir = Path.Combine(StatisticsDataInvalidator.GetDataDirectory(projectPath), page.Path);
+            var jsonPath = Path.Combine(cacheDir, page.DataFileName);
 
             // Write JSON data file
             Directory.CreateDirectory(cacheDir);
             await JsonWriter.WriteAsync(jsonPath, stats, cancellationToken);
-            LogGeneratedJsonFile(pagePath, stats.TotalImages);
+            LogGeneratedJsonFile(page.Path, stats.TotalImages);
 
             generatedCount++;
         }
@@ -204,24 +219,24 @@ internal sealed partial class StatsCommand(
     /// </summary>
     /// <remarks>
     /// Matches pages with:
-    /// 1. Explicit data source: data = { statistics: "statistics.json" }
-    /// 2. Statistics template: template = "statistics/..." (uses extension data defaults)
+    /// 1. Explicit data source: data = { statistics: "statistics.json" } — the page's file name is used
+    /// 2. Statistics template: template = "statistics/..." (uses the extension's default, statistics.json)
     /// </remarks>
-    private static List<string> FindStatisticsPages(ManifestEntry root)
+    private static List<StatisticsPage> FindStatisticsPages(ManifestEntry root)
     {
-        var results = new List<string>();
+        var results = new List<StatisticsPage>();
         FindRecursive(root, results);
         return results;
 
-        static void FindRecursive(ManifestEntry node, List<string> results)
+        static void FindRecursive(ManifestEntry node, List<StatisticsPage> results)
         {
             // Match explicit data source OR statistics template
-            var hasStatisticsData = node.DataSources.ContainsKey("statistics");
+            var hasStatisticsData = node.DataSources.TryGetValue("statistics", out var dataFileName);
             var hasStatisticsTemplate = node.Template?.StartsWith("statistics/", StringComparison.OrdinalIgnoreCase) == true;
 
             if (hasStatisticsData || hasStatisticsTemplate)
             {
-                results.Add(node.Path);
+                results.Add(new StatisticsPage(node.Path, dataFileName ?? StatisticsDataInvalidator.DefaultFileName));
             }
 
             foreach (var child in node.Children)
@@ -230,6 +245,29 @@ internal sealed partial class StatsCommand(
             }
         }
     }
+
+    private static StatisticsPage? FindInvalidDataFileName(IEnumerable<StatisticsPage> pages) =>
+        pages.FirstOrDefault(page => !IsDataFileName(page.DataFileName));
+
+    private static string InvalidDataFileNameMessage(StatisticsPage page) =>
+        $"Statistics page '{page.Path}' sets data.statistics to '{page.DataFileName}'. " +
+        $"Use a file name ending in .json without folders, e.g. \"{StatisticsDataInvalidator.DefaultFileName}\".";
+
+    /// <summary>
+    /// Returns whether <paramref name="fileName"/> is a bare <c>*.json</c> file name
+    /// (no folder, no drive, no <c>..</c>), so the data stays in the page's folder below
+    /// <c>.revela/statistics</c>.
+    /// </summary>
+    private static bool IsDataFileName(string? fileName) =>
+        !string.IsNullOrWhiteSpace(fileName)
+        && string.Equals(fileName, fileName.Trim(), StringComparison.Ordinal)
+        && fileName.Length > DataFileExtension.Length
+        && fileName.EndsWith(DataFileExtension, StringComparison.Ordinal)
+        && fileName.IndexOfAny(['/', '\\', ':']) < 0
+        && fileName.IndexOfAny(Path.GetInvalidFileNameChars()) < 0;
+
+    /// <summary>A statistics page and the data file name its template reads.</summary>
+    private sealed record StatisticsPage(string Path, string DataFileName);
 
     [LoggerMessage(Level = LogLevel.Debug, Message = "Loading manifest...")]
     private partial void LogLoadingManifest();
