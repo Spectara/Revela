@@ -1,5 +1,6 @@
 using System.CommandLine;
 using System.Globalization;
+using System.Runtime.InteropServices;
 
 using Microsoft.Extensions.Logging.Abstractions;
 
@@ -57,6 +58,39 @@ public sealed class CommandExecutorTests
 
         Assert.IsTrue(invoked);
         Assert.AreEqual(0, exitCode);
+    }
+
+    [TestMethod]
+    public async Task ExecuteAsync_CtrlCDuringCommand_ReturnsCancelledExitCodeWithoutSuccessMessage()
+    {
+        CommandCancellation? cancellation = null;
+        var stoppedGracefully = false;
+        var serve = new Command("serve");
+        serve.SetAction(async (_, token) =>
+        {
+            cancellation!.Request(PosixSignal.SIGINT);
+            try
+            {
+                await Task.Delay(Timeout.Infinite, token);
+            }
+            catch (OperationCanceledException)
+            {
+                stoppedGracefully = true;
+            }
+
+            return ExitCodes.Success;
+        });
+        var root = new RootCommand { serve };
+        var executor = new CommandExecutor(
+            NullLogger<CommandExecutor>.Instance,
+            token => cancellation = CommandCancellation.CreateUnregistered(token));
+
+        var (exitCode, output) = await RunQuietAsync(
+            () => executor.ExecuteAsync(root, serve, ["serve"], CancellationToken.None));
+
+        Assert.IsTrue(stoppedGracefully);
+        Assert.AreEqual(ExitCodes.Cancelled, exitCode);
+        Assert.DoesNotContain("Command completed successfully", output, StringComparison.Ordinal);
     }
 
     private static async Task<(int ExitCode, string Output)> RunQuietAsync(Func<Task<int>> action)

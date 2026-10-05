@@ -46,7 +46,7 @@ internal static class HostBootstrap
     /// during <see cref="ConfigureRevela"/>, which loads them <b>eagerly</b>. A syntax error in
     /// <c>revela.json</c>, <c>project.json</c>, <c>site.json</c> or <c>logging.json</c> therefore
     /// throws while the host is still being constructed — <em>before</em> the guarded region inside
-    /// <see cref="RunRevelaAsync"/>. Wrapping <c>create builder → ConfigureRevela → build → run</c>
+    /// <see cref="RunRevelaAsync(IHost, string[])"/>. Wrapping <c>create builder → ConfigureRevela → build → run</c>
     /// in one <c>try</c> lets both entry points handle build-time and run-time config errors uniformly.
     /// </para>
     /// <para>
@@ -99,18 +99,20 @@ internal static class HostBootstrap
             var builder = CreateBuilder(args, createPackageSource, contentRootPath);
             configureExtra?.Invoke(builder);
 
-            return await builder.Build().RunRevelaAsync(args);
+            // Disposing the host disposes singletons and flushes the console logger's queue.
+            using var host = builder.Build();
+            return await host.RunRevelaAsync(args);
         }
         catch (PluginConfigConflictException ex)
         {
             ErrorPanels.ShowError("Plugin configuration conflict", Markup.Escape(ex.Message));
-            return 1;
+            return ExitCodes.ConfigurationProblem;
         }
         catch (InvalidDataException ex) when (ex.GetBaseException() is JsonException jsonException)
         {
             var path = ExtractConfigFilePath(ex.Message);
             ErrorPanels.ShowConfigFileError(path, jsonException.LineNumber, jsonException.BytePositionInLine);
-            return 2;
+            return ExitCodes.ConfigurationProblem;
         }
     }
 
@@ -235,17 +237,21 @@ internal static class HostBootstrap
     /// <param name="host">The built host with all services registered.</param>
     /// <param name="args">CLI arguments to parse and execute.</param>
     /// <returns>The exit code.</returns>
-    public static async Task<int> RunRevelaAsync(this IHost host, string[] args)
-    {
-        // Opt out of System.CommandLine's default exception handler so we can turn
-        // a configuration validation failure into a friendly panel ourselves.
-        // Otherwise it would swallow the exception, print a raw stack trace, and
-        // return 1 before our catch below could run.
-        var invocationConfiguration = new InvocationConfiguration
-        {
-            EnableDefaultExceptionHandler = false,
-        };
+    public static Task<int> RunRevelaAsync(this IHost host, string[] args) =>
+        host.RunRevelaAsync(args, CommandCancellation.Listen);
 
+    /// <summary>
+    /// Runs the Revela CLI from a built host with a custom Ctrl+C owner (tests).
+    /// </summary>
+    /// <param name="host">The built host with all services registered.</param>
+    /// <param name="args">CLI arguments to parse and execute.</param>
+    /// <param name="listenForCancellation">Creates the Ctrl+C owner for a direct command run.</param>
+    /// <returns>The exit code.</returns>
+    internal static async Task<int> RunRevelaAsync(
+        this IHost host,
+        string[] args,
+        Func<CancellationToken, CommandCancellation> listenForCancellation)
+    {
         // Guard command construction and both invocation paths: configuration is
         // validated lazily on first IOptions/IOptionsMonitor access, which happens while
         // services are resolved for the command tree or inside a command, so an invalid
@@ -277,25 +283,21 @@ internal static class HostBootstrap
                 return await interactiveService.RunAsync(CancellationToken.None);
             }
 
-            return await rootCommand.Parse(args).InvokeAsync(invocationConfiguration);
+            using var cancellation = listenForCancellation(CancellationToken.None);
+            return await cancellation.InvokeAsync(rootCommand.Parse(args));
         }
         catch (OptionsValidationException ex)
         {
             ErrorPanels.ShowConfigurationProblem(ex.Failures);
-            return 2;
-        }
-        catch (OperationCanceledException)
-        {
-            // Cancellation (Ctrl+C) — nothing to report; mirror the previous exit code.
-            return 1;
+            return ExitCodes.ConfigurationProblem;
         }
         catch (Exception ex)
         {
-            // Preserve System.CommandLine's former default-handler behaviour for any
-            // other unexpected error now that we've opted out of it: write the
-            // details to stderr and return exit code 1.
+            // System.CommandLine's default exception handler is off (see CommandCancellation),
+            // so mirror it for any other unexpected error, including cancellations that did not
+            // come from Ctrl+C (e.g. an HTTP timeout): details to stderr, exit code 1.
             await Console.Error.WriteLineAsync($"Unhandled exception: {ex}");
-            return 1;
+            return ExitCodes.Error;
         }
     }
 
@@ -310,7 +312,7 @@ internal static class HostBootstrap
         public override int Invoke(ParseResult parseResult)
         {
             parseResult.InvocationConfiguration.Output.WriteLine(buildInfo.FormatVersionLine());
-            return 0;
+            return ExitCodes.Success;
         }
     }
 }

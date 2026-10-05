@@ -268,10 +268,16 @@ In the interactive menu, installing and uninstalling plugins and themes is not o
 | Code | Meaning |
 |------|---------|
 | `0` | Success |
-| `1` | Error or cancelled; see the output |
-| `2` | Configuration problem (invalid JSON or setting), or `revela check` found an error |
+| `1` | Error; see the output |
+| `2` | Configuration problem (invalid JSON or setting, two plugins claiming the same `plugins:<key>` settings), or `revela check` found an error |
+| `130` | Cancelled with Ctrl+C |
+| `143` | Stopped by `SIGTERM` (for example `docker stop`) |
 
 Handy for scripting: treat any non-zero code as a failure. Running `revela` without arguments outside a terminal (for example in CI) exits with `1`; always pass a command there.
+
+Ctrl+C asks the running command to stop cleanly (`revela serve` shuts down its server, for example), both on the command line and for a command started from the interactive menu, which then returns to the menu. Pressing Ctrl+C a second time ends Revela immediately.
+
+A plugin that fails to start is skipped with a warning; Revela runs without its commands and the exit code is not affected.
 
 ---
 

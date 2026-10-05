@@ -13,9 +13,30 @@ namespace Spectara.Revela.Cli.Hosting;
 /// <summary>
 /// Executes CLI commands from the interactive menu with Ctrl+C support.
 /// </summary>
-internal sealed partial class CommandExecutor(
-    ILogger<CommandExecutor> logger)
+internal sealed partial class CommandExecutor
 {
+    private readonly ILogger<CommandExecutor> logger;
+    private readonly Func<CancellationToken, CommandCancellation> listenForCancellation;
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="CommandExecutor"/> class.
+    /// </summary>
+    public CommandExecutor(ILogger<CommandExecutor> logger)
+        : this(logger, CommandCancellation.Listen)
+    {
+    }
+
+    /// <summary>
+    /// Initializes a new instance with a custom Ctrl+C owner (tests).
+    /// </summary>
+    internal CommandExecutor(
+        ILogger<CommandExecutor> logger,
+        Func<CancellationToken, CommandCancellation> listenForCancellation)
+    {
+        this.logger = logger;
+        this.listenForCancellation = listenForCancellation;
+    }
+
     /// <summary>
     /// Executes a command interactively, prompting for arguments and options.
     /// </summary>
@@ -37,7 +58,7 @@ internal sealed partial class CommandExecutor(
         if (PackageManagementCommands.ModifiesPackageFiles(commandPath))
         {
             ShowPackageChangeNotAvailable(commandPath);
-            return 0;
+            return ExitCodes.Success;
         }
 
         var pathDisplay = string.Join(" ", commandPath);
@@ -58,61 +79,31 @@ internal sealed partial class CommandExecutor(
         AnsiConsole.MarkupLine($"[dim]Executing: revela {Markup.Escape(argsDisplay)}[/]");
         AnsiConsole.WriteLine();
 
-        // Create a linked token source that can be cancelled by Ctrl+C
-        // This allows long-running commands (like serve) to be stopped gracefully
-        using var commandCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        // Ctrl+C cancels only this command (e.g. stops serve) and returns to the menu
+        using var cancellation = listenForCancellation(cancellationToken);
 
-        // Setup Ctrl+C handler for this command execution
-        void OnCancelKeyPress(object? sender, ConsoleCancelEventArgs e)
-        {
-            e.Cancel = true; // Don't terminate the process
-            commandCts.Cancel();
-        }
-
-        Console.CancelKeyPress += OnCancelKeyPress;
-
-        // Execute the command
         int exitCode;
         try
         {
-            // Opt out of System.CommandLine's default exception handler so config
-            // validation failures (and other errors) reach the catch blocks below
-            // and are rendered as friendly panels instead of raw stack traces.
-            var invocationConfiguration = new InvocationConfiguration
-            {
-                EnableDefaultExceptionHandler = false,
-            };
-
-            var parseResult = rootCommand.Parse(args);
-            exitCode = await parseResult.InvokeAsync(invocationConfiguration, commandCts.Token);
-        }
-        catch (OperationCanceledException)
-        {
-            // Command was cancelled by Ctrl+C - this is expected
-            exitCode = 0;
+            exitCode = await cancellation.InvokeAsync(rootCommand.Parse(args));
         }
         catch (OptionsValidationException ex)
         {
             // A configuration value is invalid (e.g. a stray project.language — #75).
             // Show the same friendly panel as the non-interactive path.
             ErrorPanels.ShowConfigurationProblem(ex.Failures);
-            exitCode = 2;
+            exitCode = ExitCodes.ConfigurationProblem;
         }
         catch (Exception ex)
         {
             LogCommandFailed(logger, pathDisplay, ex);
             ErrorPanels.ShowException(ex);
-            exitCode = 1;
-        }
-        finally
-        {
-            Console.CancelKeyPress -= OnCancelKeyPress;
+            exitCode = ExitCodes.Error;
         }
 
-        // Show result only for success (and not cancelled)
-        // Errors should be shown by the command itself using ErrorPanels
+        // Show result only for success; errors are shown by the command itself using ErrorPanels
         AnsiConsole.WriteLine();
-        if (exitCode == 0 && !commandCts.IsCancellationRequested)
+        if (exitCode == ExitCodes.Success)
         {
             AnsiConsole.MarkupLine($"{OutputMarkers.Success} Command completed successfully");
         }
