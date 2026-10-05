@@ -62,7 +62,16 @@ internal sealed class CalendarDataCheck(IPathResolver pathResolver) : ICheck
             }
 
             var pageDir = Path.GetDirectoryName(indexPath)!;
-            var icsPath = Path.Combine(pageDir, pageConfig.Source);
+            var icsPath = CalendarInputPaths.ResolveSource(source, pageDir, pageConfig.Source);
+            if (icsPath is null)
+            {
+                diagnostics.Add(ValidationDiagnostic.Error(
+                    $"Calendar page references a calendar file outside the source folder: {pageConfig.Source}",
+                    file: RelativeToSource(source, indexPath),
+                    suggestion: "Place the .ics file inside the source folder, e.g. next to the page, and set calendar.source to its relative path."));
+                continue;
+            }
+
             var relativeIcs = RelativeToSource(source, icsPath);
 
             if (!File.Exists(icsPath))

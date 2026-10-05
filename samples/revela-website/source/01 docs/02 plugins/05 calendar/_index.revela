@@ -63,7 +63,7 @@ The Markdown below the front matter appears above the calendar.
 
 | Field | Default | Description |
 |-------|---------|-------------|
-| `calendar.source` | (required) | The `.ics` file, relative to the page folder |
+| `calendar.source` | (required) | The `.ics` file, relative to the page folder. It must be inside the source folder |
 | `calendar.months` | `12` | Number of months to show, starting with the current month |
 | `calendar.mode` | `"days"` | `"days"` or `"nights"` (see below) |
 | `calendar.locale` | site language | Language for month and day names, for example `"de"` |
@@ -71,6 +71,7 @@ The Markdown below the front matter appears above the calendar.
 | `calendar.labels.free` | theme text (`"Free"`, de: `"Frei"`) | Label for free days |
 | `calendar.labels.arrive` | theme text (`"Arrival"`, de: `"Anreise"`) | Label for arrival days (nights mode) |
 | `calendar.labels.depart` | theme text (`"Departure"`, de: `"Abreise"`) | Label for departure days (nights mode) |
+| `data.calendar` | `"calendar.json"` | Name of the generated data file the page reads. Use a plain file name ending in `.json`, without folders |
 
 The site language comes from `language` in `site.json` (default `en`). An unknown locale falls back to neutral formatting and prints a warning. Labels you don't set are shown in the site language by the theme (see [Theme Language](../../guide/themes/#theme-language)); set them only to use your own wording.
 
@@ -99,7 +100,7 @@ calendar.labels.depart = "Abreise"
 ## How It Works
 
 1. `revela generate scan` finds every page whose template starts with `calendar/`.
-2. The **calendar** step (part of `generate all`, right after scan) reads each page's `.ics` file and writes `.revela/calendar/<page>/calendar.json`.
+2. The **calendar** step (part of `generate all`, right after scan) reads each page's `.ics` file and writes `.revela/calendar/<page>/calendar.json` (or the name set in `data.calendar`).
 3. `revela generate pages` renders the month grid with the Lumina.Calendar extension.
 
 Past days are dimmed and today is highlighted, based on the day you **build** the site. Rebuild regularly (for example with a scheduled CI job) so the calendar stays current.
@@ -123,10 +124,10 @@ Lumina.Calendar marks each day with a CSS class you can restyle in your own them
 |---------|-------------|
 | `revela generate calendar` | Build calendar data for all calendar pages |
 | `revela generate all` | Full pipeline (includes the calendar step) |
-| `revela clean calendar` | Delete generated `calendar.json` files from the cache |
-| `revela check calendar` | Check that every calendar page's `.ics` file exists and is valid |
+| `revela clean calendar` | Delete the generated calendar data files from the cache |
+| `revela check calendar` | Check that every calendar page's `.ics` file is inside the source folder, exists and is valid |
 | `revela create page calendar` | Create a calendar page |
 
 ## Troubleshooting
 
-Run `revela check calendar` (or just `revela check`). It reports a missing `.ics` file or one that isn't valid iCal data, with the page it belongs to and how to fix it. The calendar step stops the build for the same problems.
+Run `revela check calendar` (or just `revela check`). It reports a missing `.ics` file, one outside the source folder, or one that isn't valid iCal data, with the page it belongs to and how to fix it. The calendar step stops the build for the same problems, and for a `data.calendar` value that isn't a plain `.json` file name.

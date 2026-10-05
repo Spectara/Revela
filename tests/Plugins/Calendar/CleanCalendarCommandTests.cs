@@ -24,14 +24,16 @@ public sealed class CleanCalendarCommandTests
     {
         using var project = TestProject.CreateMinimal();
         var calendar = WriteCacheFile(project, Path.Combine("a [b]", "calendar.json"));
-        var manifest = WriteCacheFile(project, "manifest.json");
+        var customNamed = WriteCacheFile(project, Path.Combine("rentals", "rentals.json"));
+        var other = WriteCacheFile(project, "notes.txt");
         var command = CreateCommand(project);
 
         var success = await ExecuteAsync(command, useCli);
 
         Assert.IsTrue(success);
         Assert.IsFalse(File.Exists(calendar));
-        Assert.IsTrue(File.Exists(manifest));
+        Assert.IsFalse(File.Exists(customNamed));
+        Assert.IsTrue(File.Exists(other));
     }
 
     [TestMethod]

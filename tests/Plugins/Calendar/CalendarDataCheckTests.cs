@@ -1,3 +1,5 @@
+using System.Globalization;
+
 using NSubstitute;
 
 using Spectara.Revela.Plugins.Calendar;
@@ -83,6 +85,33 @@ public sealed class CalendarDataCheckTests
         var diagnostics = await CreateValidator(source).ValidateAsync();
 
         Assert.IsEmpty(diagnostics);
+    }
+
+    [TestMethod]
+    [DataRow("../../{0}")]
+    [DataRow("../availability/../../{0}")]
+    public async Task ValidateAsync_CalendarFileOutsideSourceFolder_ReturnsErrorWithoutReadingIt(string icsSourceFormat)
+    {
+        using var source = new TempSource();
+        var outsideName = "outside-" + Guid.NewGuid().ToString("N") + ".ics";
+        source.WriteCalendarPage("availability", string.Format(CultureInfo.InvariantCulture, icsSourceFormat, outsideName));
+        var outside = Path.Combine(Path.GetDirectoryName(source.Path)!, outsideName);
+        // A valid file exists at the escaped location; the check must still refuse it.
+        await File.WriteAllTextAsync(outside, ValidIcs);
+
+        try
+        {
+            var diagnostics = await CreateValidator(source).ValidateAsync();
+
+            var diagnostic = diagnostics.Single();
+            Assert.AreEqual(ValidationSeverity.Error, diagnostic.Severity);
+            Assert.Contains("outside the source folder", diagnostic.Message, StringComparison.Ordinal);
+            Assert.AreEqual("availability/_index.revela", diagnostic.File);
+        }
+        finally
+        {
+            File.Delete(outside);
+        }
     }
 
     [TestMethod]

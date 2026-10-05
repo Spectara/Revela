@@ -13,15 +13,19 @@ namespace Spectara.Revela.Tests.Calendar;
 public sealed class CalendarDataInvalidatorTests
 {
     [TestMethod]
-    public async Task InvalidateAsync_CalendarFilesExist_DeletesCalendarFilesOnly()
+    public async Task InvalidateAsync_PageDataFilesExist_DeletesEveryJsonDataFileOnly()
     {
         using var project = TestProject.CreateMinimal();
-        var pageCache = Path.Combine(project.RootPath, ProjectPaths.GetOwnerDirectory("calendar"), "availability");
+        var ownerPath = Path.Combine(project.RootPath, ProjectPaths.GetOwnerDirectory("calendar"));
+        var pageCache = Path.Combine(ownerPath, "availability");
         Directory.CreateDirectory(pageCache);
         var calendarPath = Path.Combine(pageCache, "calendar.json");
-        var unrelatedPath = Path.Combine(pageCache, "statistics.json");
+        // A page may name its data file (data.calendar = "rentals.json"); it is calendar data too.
+        var customPath = Path.Combine(ownerPath, "rentals.json");
+        var unrelatedPath = Path.Combine(pageCache, "notes.txt");
         await File.WriteAllTextAsync(calendarPath, "{}");
-        await File.WriteAllTextAsync(unrelatedPath, "{}");
+        await File.WriteAllTextAsync(customPath, "{}");
+        await File.WriteAllTextAsync(unrelatedPath, "keep");
         var invalidator = CreateInvalidator(project.RootPath);
 
         var result = await invalidator.InvalidateAsync();
@@ -30,6 +34,7 @@ public sealed class CalendarDataInvalidatorTests
         Assert.AreEqual(CalendarArtifacts.Data, invalidator.Artifact);
         CollectionAssert.AreEqual(new[] { CoreArtifacts.Manifest }, invalidator.DependsOn.ToArray());
         Assert.IsFalse(File.Exists(calendarPath));
+        Assert.IsFalse(File.Exists(customPath));
         Assert.IsTrue(File.Exists(unrelatedPath));
     }
 
