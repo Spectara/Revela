@@ -684,7 +684,14 @@ internal sealed partial class RenderService(
             }
             else if (source.EndsWith(".json", StringComparison.OrdinalIgnoreCase))
             {
-                LogDataFileMissing(logger, source, gallery.Slug);
+                if (IsDataFileName(source))
+                {
+                    LogDataFileMissing(logger, source, gallery.Slug);
+                }
+                else
+                {
+                    LogInvalidDataFileName(logger, source, variableName, gallery.Slug);
+                }
             }
         }
 
@@ -1298,10 +1305,16 @@ internal sealed partial class RenderService(
     /// <remarks>
     /// Owners are searched in ordinal order and linked folders are skipped. Two owners writing a
     /// file with the same name for the same page is a plugin conflict: the first one is used and
-    /// a warning names both.
+    /// a warning names both. Only bare <c>*.json</c> file names are looked up (see
+    /// <see cref="IsDataFileName"/>), so a front-matter value cannot leave the page's data folder.
     /// </remarks>
     private string? FindOwnerDataFile(string relativePagePath, string fileName)
     {
+        if (!IsDataFileName(fileName))
+        {
+            return null;
+        }
+
         var revelaPath = Path.Combine(projectEnvironment.Value.Path, ProjectPaths.Revela);
         if (!Directory.Exists(revelaPath))
         {
@@ -1325,6 +1338,18 @@ internal sealed partial class RenderService(
 
         return matches.FirstOrDefault();
     }
+
+    /// <summary>
+    /// Returns whether <paramref name="fileName"/> is a bare <c>*.json</c> file name: no folder,
+    /// drive or <c>..</c>, so it names a file directly in the page's data folder.
+    /// </summary>
+    private static bool IsDataFileName(string fileName) =>
+        !string.IsNullOrWhiteSpace(fileName)
+        && string.Equals(fileName, fileName.Trim(), StringComparison.Ordinal)
+        && fileName.Length > ".json".Length
+        && fileName.EndsWith(".json", StringComparison.OrdinalIgnoreCase)
+        && fileName.IndexOfAny(['/', '\\', ':']) < 0
+        && fileName.IndexOfAny(Path.GetInvalidFileNameChars()) < 0;
 
     #endregion
 
@@ -1373,6 +1398,9 @@ internal sealed partial class RenderService(
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Data file '{DataFile}' for page '/{PagePath}' is missing, so the page renders without it. Run the generate step that creates it (for example 'revela generate statistics') or 'revela generate all'")]
     private static partial void LogDataFileMissing(ILogger logger, string dataFile, string pagePath);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Data file '{DataFile}' (data.{Variable}) for page '/{PagePath}' is not read: use a file name ending in .json without folders, for example 'statistics.json'")]
+    private static partial void LogInvalidDataFileName(ILogger logger, string dataFile, string variable, string pagePath);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Data file '{DataFile}' for page '{PagePath}' exists in more than one owner folder ({Paths}); using the first. Two plugins write the same file name")]
     private static partial void LogAmbiguousDataFile(ILogger logger, string dataFile, string pagePath, string paths);
