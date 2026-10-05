@@ -6,8 +6,11 @@
 
   <ItemGroup>
     <PackageReference Include="BenchmarkDotNet" />
-    <PackageReference Include="NetVips" />
-    <PackageReference Include="NetVips.Native" />
+  </ItemGroup>
+
+  <!-- Benchmarks the production pipeline (internal types via InternalsVisibleTo in Generate.csproj). -->
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Features\Generate\Generate.csproj" />
   </ItemGroup>
 
 </Project>

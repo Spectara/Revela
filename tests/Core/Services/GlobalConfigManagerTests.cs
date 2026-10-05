@@ -268,11 +268,11 @@ public sealed class GlobalConfigManagerTests
 
         using var cancellation = new CancellationTokenSource();
         await cancellation.CancelAsync();
-        await Assert.ThrowsAsync<OperationCanceledException>(() => manager.AddFeedAsync("Canceled", "canceled-feed", cancellation.Token));
-        await Assert.ThrowsAsync<OperationCanceledException>(() => manager.AddPackageAsync("Canceled.Plugin", "3.0.0", cancellation.Token));
-        await Assert.ThrowsAsync<OperationCanceledException>(() => manager.RemoveFeedAsync("Existing", cancellation.Token));
-        await Assert.ThrowsAsync<OperationCanceledException>(() => manager.RemovePackageAsync("Existing.Plugin", cancellation.Token));
-        await Assert.ThrowsAsync<OperationCanceledException>(() => manager.GetPackagesAsync(cancellation.Token));
+        await Assert.ThrowsExactlyAsync<OperationCanceledException>(() => manager.AddFeedAsync("Canceled", "canceled-feed", cancellation.Token));
+        await Assert.ThrowsExactlyAsync<OperationCanceledException>(() => manager.AddPackageAsync("Canceled.Plugin", "3.0.0", cancellation.Token));
+        await Assert.ThrowsExactlyAsync<OperationCanceledException>(() => manager.RemoveFeedAsync("Existing", cancellation.Token));
+        await Assert.ThrowsExactlyAsync<OperationCanceledException>(() => manager.RemovePackageAsync("Existing.Plugin", cancellation.Token));
+        await Assert.ThrowsExactlyAsync<OperationCanceledException>(() => manager.GetPackagesAsync(cancellation.Token));
         CollectionAssert.AreEqual(originalBytes, await File.ReadAllBytesAsync(configPath));
 
         await manager.AddFeedAsync("Valid", "valid-feed");
@@ -291,8 +291,8 @@ public sealed class GlobalConfigManagerTests
         using var cancellation = new CancellationTokenSource();
         await cancellation.CancelAsync();
 
-        await Assert.ThrowsAsync<OperationCanceledException>(() => manager.GetPackagesAsync(cancellation.Token));
-        await Assert.ThrowsAsync<OperationCanceledException>(() => manager.AddFeedAsync("Private", "private-feed", cancellation.Token));
+        await Assert.ThrowsExactlyAsync<OperationCanceledException>(() => manager.GetPackagesAsync(cancellation.Token));
+        await Assert.ThrowsExactlyAsync<OperationCanceledException>(() => manager.AddFeedAsync("Private", "private-feed", cancellation.Token));
 
         Assert.IsFalse(File.Exists(configPath));
         Assert.IsEmpty(Directory.GetFiles(project.RootPath, ".test-global.json.*.tmp"));

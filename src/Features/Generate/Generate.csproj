@@ -10,6 +10,7 @@
     <InternalsVisibleTo Include="$(RevelaNamespacePrefix).Tests.Commands" />
     <InternalsVisibleTo Include="$(RevelaNamespacePrefix).Tests.Integration" />
     <InternalsVisibleTo Include="$(RevelaNamespacePrefix).Commands" />
+    <InternalsVisibleTo Include="$(RevelaNamespacePrefix).Benchmarks.ImageProcessing" />
     <InternalsVisibleTo Include="revela" />
     <InternalsVisibleTo Include="DynamicProxyGenAssembly2" />
   </ItemGroup>

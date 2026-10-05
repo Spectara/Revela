@@ -36,7 +36,7 @@ public sealed class OneDriveSourceCommandTests : IDisposable
     }
 
     [TestMethod]
-    public void Create_ShouldReturnSyncCommand()
+    public void Create_Default_ReturnsSyncCommand()
     {
         // Arrange
         var command = CreateCommand();
@@ -50,7 +50,7 @@ public sealed class OneDriveSourceCommandTests : IDisposable
     }
 
     [TestMethod]
-    public void Create_ShouldHaveExpectedOptions()
+    public void Create_Default_ExposesOnlyEssentialOptions()
     {
         // Arrange
         var command = CreateCommand();
@@ -235,6 +235,7 @@ public sealed class OneDriveSourceCommandTests : IDisposable
             ? Path.Combine(project.SourcePath, "missing", "orphan.jpg")
             : Path.Combine(project.SourcePath, "orphan.jpg");
 
+        // Not exact: the IOException subtype for a missing path differs between operating systems.
         Assert.Throws<IOException>(() => OneDriveSourceCommand.DeleteOrphanedFile(project.SourcePath, new FileInfo(orphanPath)));
     }
 
@@ -390,7 +391,8 @@ public sealed class OneDriveSourceCommandTests : IDisposable
             var parsed = command.Parse(["--share-url", PrivacyHttpMessageHandler.ShareUrl]);
             if (callerCancellation)
             {
-                var exception = await Assert.ThrowsAsync<OperationCanceledException>(
+                // HttpClient reports caller cancellation as TaskCanceledException.
+                var exception = await Assert.ThrowsExactlyAsync<TaskCanceledException>(
                     () => parsed.InvokeAsync(invocation, cancellationSource.Token));
                 Assert.IsTrue(exception.CancellationToken.IsCancellationRequested);
                 Assert.IsFalse(writer.ToString().Contains("Download failed", StringComparison.Ordinal));

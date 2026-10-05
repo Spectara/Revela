@@ -77,7 +77,7 @@ public sealed class PackageManagerRegistrationTests
             Assert.IsFalse(execution.IsCompleted);
             await cancellation.CancelAsync();
 
-            var exception = await Assert.ThrowsAsync<OperationCanceledException>(() => execution.WaitAsync(OperationTimeout));
+            var exception = await Assert.ThrowsExactlyAsync<TaskCanceledException>(() => execution.WaitAsync(OperationTimeout));
 
             Assert.AreEqual(installerToken, exception.CancellationToken);
             Assert.IsTrue(exception.CancellationToken.IsCancellationRequested);
@@ -142,9 +142,9 @@ public sealed class PackageManagerRegistrationTests
         using var cancellation = new CancellationTokenSource();
         await cancellation.CancelAsync();
 
-        var installFailure = await Assert.ThrowsAsync<OperationCanceledException>(() => installer.InstallAsync(
+        var installFailure = await Assert.ThrowsExactlyAsync<OperationCanceledException>(() => installer.InstallAsync(
             PackageId, "RevelaPlugin", cancellationToken: cancellation.Token));
-        var uninstallFailure = Assert.Throws<OperationCanceledException>(() => installer.Uninstall(
+        var uninstallFailure = Assert.ThrowsExactly<OperationCanceledException>(() => installer.Uninstall(
             PackageId, cancellation.Token));
 
         Assert.AreEqual(cancellation.Token, installFailure.CancellationToken);

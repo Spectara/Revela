@@ -8,7 +8,7 @@ This directory hosts all automation used to build, test, sign, and ship Revela. 
 
 | Workflow           | File                                     | Triggers                                                     | Purpose                                                                                                                                                    |
 | ------------------ | ---------------------------------------- | ------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| CI                 | [ci.yml](ci.yml)                         | Push/PR to `main` (subject to path filters), manual dispatch | Ubuntu Release build, full-solution tests with coverage and formatting.                                                                                    |
+| CI                 | [ci.yml](ci.yml)                         | Push/PR to `main` (subject to path filters), nightly schedule, manual dispatch | Ubuntu Release build, full-solution tests with coverage and formatting; Windows tests; linux-x64 Native AOT smoke; macOS tests on `main`, nightly and manual runs. |
 | Release            | [release.yml](release.yml)               | `v*` tag push or manual dispatch with `version`              | Validate, test and pack, verify actual platform archives, attest and sign. Only tag pushes create a GitHub Release; no NuGet.org publication.             |
 | Deploy Website     | [deploy-website.yml](deploy-website.yml) | Reusable call after Release publication, or manual dispatch  | Automatic: caller's exact commit and tag. Manual: explicit source ref and existing release tag. Both generate and check before publishing to GitHub Pages. |
 | Dependency Updates | [Dependabot](../dependabot.yml)          | Weekly (Monday), automatic                                   | Creates PRs for outdated NuGet packages and GitHub Actions.                                                                                                |
@@ -52,9 +52,9 @@ release resolver and Node metadata producer have been removed. Actions may use
 their own internal runtimes. There is no repository-owned pipeline test framework
 or Node/npm toolchain.
 
-SDK selection continues to follow the repository's `global.json`. CI uses Ubuntu;
-the release matrix retains all five native RIDs. NuGet packages remain available
-as GitHub Release downloads; they are not pushed to NuGet.org.
+SDK selection continues to follow the repository's `global.json`. CI runs on Ubuntu,
+Windows and macOS (see below); the release matrix retains all five native RIDs. NuGet
+packages remain available as GitHub Release downloads; they are not pushed to NuGet.org.
 
 ### Execution
 
@@ -63,18 +63,40 @@ their required signing, attestation or release-publication rights. The website
 build uses read-only contents access; only its deploy job receives Pages/OIDC
 write permissions. The reusable caller grants that upper bound explicitly.
 
+CI jobs per trigger:
+
+| Job                            | Pull request | Push to `main` | Nightly (03:17 UTC) | Manual |
+| ------------------------------ | :----------: | :------------: | :-----------------: | :----: |
+| `Build & Test` (Ubuntu)        | ✓            | ✓              | ✓                   | ✓      |
+| Build & Test (windows-latest)  | ✓            | ✓              | ✓                   | ✓      |
+| Native AOT Smoke (linux-x64)   | ✓            | ✓              | ✓                   | ✓      |
+| Build & Test (macos-latest)    |              | ✓              | ✓                   | ✓      |
+
+macOS runners are the most expensive, so pull requests skip them; `main` and the
+nightly run still catch macOS regressions before a tag. The concurrency group includes
+the event name, so a nightly run and a push to `main` do not queue behind each other.
+
 On Ubuntu, CI builds the full solution, including the referenced source generator, in
 Release, then runs `dotnet test --solution Spectara.Revela.slnx --no-build -c Release`
 with TRX and Cobertura coverage. Reports are uploaded from `TestResults`.
 The formatting step sets the MSBuild environment property `Configuration=Release` for
 `dotnet format Spectara.Revela.slnx --verify-no-changes --no-restore --verbosity minimal`,
 so it uses the existing Release generator output without a separate Debug build.
+Windows and macOS run the same Release build and test suite without formatting or
+coverage (both platform-independent) and upload TRX files as `test-results-<os>`.
 
-CI does not package releases, publish Native AOT binaries or run a custom
-workflow-contract suite. Package, SDK-consumer and Native AOT execution checks
-remain in Release against the actual artifacts. This deliberately detects those
-failures later. Windows/macOS-specific unit tests no longer run automatically;
-the native release checks cover artifact workflows, not their entire unit suites.
+The Native AOT smoke job publishes `src/Cli.Embedded` for `linux-x64` with the same
+`dotnet publish` arguments as the Standalone step in Release (the hosted Ubuntu image
+provides clang and zlib). It runs `revela --version`, then `revela generate all` on a
+copy of `samples/showcase` in `RUNNER_TEMP`, and requires the gallery, photo,
+statistics and 404 pages, `_assets/main.css`, and at least 14 images with 228
+non-empty variants. Trimming removes unused Scriban built-ins, so only rendering every
+template kind proves the published binary. A final check fails if the run modified
+`samples/showcase`.
+
+CI does not package releases or run a custom workflow-contract suite. Package and
+SDK-consumer checks, the other RIDs and the Full/Core editions remain in Release
+against the actual artifacts.
 
 ## Release Stages
 

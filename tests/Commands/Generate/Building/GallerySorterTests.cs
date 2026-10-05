@@ -78,18 +78,18 @@ public sealed class GallerySorterTests
     }
 
     [TestMethod]
-    public void ExtractDisplayName_WithNullInput_ShouldThrow()
+    public void ExtractDisplayName_WithNullInput_ThrowsArgumentNullException()
     {
-        // Act & Assert - ArgumentNullException is derived from ArgumentException
-        Assert.Throws<ArgumentException>(() =>
+        // Act & Assert
+        Assert.ThrowsExactly<ArgumentNullException>(() =>
             GallerySorter.ExtractDisplayName(null!));
     }
 
     [TestMethod]
-    public void ExtractDisplayName_WithEmptyInput_ShouldThrow()
+    public void ExtractDisplayName_WithEmptyInput_ThrowsArgumentException()
     {
         // Act & Assert
-        Assert.Throws<ArgumentException>(() =>
+        Assert.ThrowsExactly<ArgumentException>(() =>
             GallerySorter.ExtractDisplayName(string.Empty));
     }
 
@@ -98,7 +98,7 @@ public sealed class GallerySorterTests
     #region NaturalComparer Tests
 
     [TestMethod]
-    public void NaturalComparer_ShouldSortNumerically()
+    public void NaturalComparer_NumberedItems_SortsNumerically()
     {
         // Arrange
         var items = new[] { "item10", "item2", "item1", "item20" };
@@ -114,7 +114,7 @@ public sealed class GallerySorterTests
     }
 
     [TestMethod]
-    public void NaturalComparer_ShouldSortFolderNamesNaturally()
+    public void NaturalComparer_PrefixedFolderNames_SortsNaturally()
     {
         // Arrange
         var folders = new[] { "01 Events", "10 Portraits", "2 Wedding" };
@@ -133,7 +133,7 @@ public sealed class GallerySorterTests
     #region SortNatural Extension Tests
 
     [TestMethod]
-    public void SortNatural_ShouldSortStringsNaturally()
+    public void SortNatural_NumberedFileNames_SortsNaturally()
     {
         // Arrange
         var items = new[] { "photo10.jpg", "photo2.jpg", "photo1.jpg" };
@@ -163,7 +163,7 @@ public sealed class GallerySorterTests
     }
 
     [TestMethod]
-    public void SortPathsNatural_ShouldSortByFileName()
+    public void SortPathsNatural_SameDirectory_SortsByFileName()
     {
         // Arrange
         var paths = new[]

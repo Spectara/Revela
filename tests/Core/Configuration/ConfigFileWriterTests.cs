@@ -93,7 +93,7 @@ public sealed class ConfigFileWriterTests
         using var cancellation = new CancellationTokenSource();
         await cancellation.CancelAsync();
 
-        await Assert.ThrowsAsync<OperationCanceledException>(() => CreateWriter(new ConfigurationBuilder().Build())
+        await Assert.ThrowsExactlyAsync<OperationCanceledException>(() => CreateWriter(new ConfigurationBuilder().Build())
             .WriteAsync(path, new JsonObject { ["title"] = "Canceled" }, cancellationToken: cancellation.Token));
 
         Assert.IsFalse(File.Exists(path));

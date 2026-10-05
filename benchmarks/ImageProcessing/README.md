@@ -1,57 +1,49 @@
 # Image Processing Benchmarks
 
-Benchmarks for comparing different image processing strategies in Revela.
+Benchmarks for Revela's **production** image pipeline. They call the real
+`NetVipsImageProcessor` and `ImageWorkerPlan` from `src/Features/Generate`
+(internal types, visible through `InternalsVisibleTo` in `Generate.csproj`), so a
+change to the pipeline shows up here without copying code.
 
 ## Running Benchmarks
 
 ```bash
-# Run all benchmarks
 cd benchmarks/ImageProcessing
-dotnet run -c Release
 
-# Run specific benchmark
-dotnet run -c Release -- --filter *ResizeStrategy*
-dotnet run -c Release -- --filter *FormatSequential*
+# Run all benchmarks (1 warmup + 3 measured iterations each)
+dotnet run -c Release -- --filter *
 
-# Quick test run (fewer iterations)
-dotnet run -c Release -- --filter *ResizeStrategy* --job short
+# Run one benchmark
+dotnet run -c Release -- --filter *ProcessImage*
+dotnet run -c Release -- --filter *ProcessBatch*
+dotnet run -c Release -- --filter *ReadMetadata*
+
+# Smoke check: every case once, no statistics
+dotnet run -c Release -- --filter * --job dry
 
 # List available benchmarks
 dotnet run -c Release -- --list flat
 ```
 
+Benchmarks run in-process (`--inProcess` is added automatically): BenchmarkDotNet's
+out-of-process runner requires the `.csproj` file name to match the assembly name
+(`Spectara.Revela.Benchmarks.ImageProcessing`). Each operation takes seconds, so the
+in-process overhead is negligible.
+
+The source photo is a deterministic, photo-like 6000×4000 JPEG (24 MP), generated once
+into `%TEMP%/revela-benchmarks/` (`$TMPDIR` on Linux/macOS). Delete it to regenerate.
+
 ## Benchmarks
 
-### ResizeStrategyBenchmark
+All benchmarks use the bundled Lumina sizes (160–2560 px, plus the full resolution)
+and the qualities written by `revela config image` (jpg 90, webp 85, avif 75) with the
+default encoder efforts.
 
-Compares resize strategies for generating multiple image sizes:
+| Benchmark | What it measures |
+|-----------|------------------|
+| **ProcessImageBenchmark** | One photo through `ProcessImageAsync` per format set (`jpg`, `webp`, `avif`, `jpg,webp`) |
+| **ProcessBatchBenchmark** | Eight photos in parallel, scheduled like `ImageService` (`ImageWorkerPlan` workers and libvips threads per image), for `jpg,webp` and `avif,webp,jpg` |
+| **ReadMetadataBenchmark** | The scan step (`ReadMetadataAsync`): dimensions, EXIF/XMP and the average-colour placeholder |
 
-| Strategy | Description |
-|----------|-------------|
-| **StarFromOriginal** | Load original once with `NewFromFile()`, call `ThumbnailImage()` for each size |
-| **ThumbnailPerSize** | Call `Image.Thumbnail()` for each size (libvips recommended) |
-| **ThumbnailThenResize** | `Thumbnail()` to largest size, then `Resize()` for smaller |
-
-### FormatSequentialBenchmark
-
-Compares processing order for multiple formats (JPG, WebP, AVIF):
-
-| Strategy | Description |
-|----------|-------------|
-| **AllFormatsPerImage** | Process all formats for each image before moving on |
-| **FormatSequential** | All images → JPG, then all → WebP, then all → AVIF |
-| **FormatSequentialSameWorkers** | Format-sequential without AVIF worker optimization |
-
-## Expected Results
-
-Based on libvips maintainer recommendations and our use case:
-
-1. **StarFromOriginal** should be competitive because:
-   - We always need original size (for lightbox)
-   - No shrink-on-load benefit when loading full resolution
-   - Single disk read vs multiple
-
-2. **FormatSequential** may help because:
-   - Better CPU cache locality (same encoder code stays hot)
-   - AVIF can use different parallelism settings
-   - OS file cache benefits subsequent format phases
+To compare an alternative strategy, change the production code on a branch and run the
+same benchmark on both branches.

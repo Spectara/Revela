@@ -146,7 +146,7 @@ public sealed class ConfigServiceTests
                 var completedBeforeCancellation = queuedUpdate.IsCompleted;
                 await cancellation.CancelAsync();
 
-                await Assert.ThrowsAsync<OperationCanceledException>(() => queuedUpdate.WaitAsync(OperationTimeout));
+                await Assert.ThrowsExactlyAsync<OperationCanceledException>(() => queuedUpdate.WaitAsync(OperationTimeout));
                 Assert.IsFalse(completedBeforeCancellation, "The second writer must wait for reload to finish.");
             }
 
@@ -538,6 +538,7 @@ public sealed class ConfigServiceTests
         await File.WriteAllTextAsync(project.ProjectJsonPath, "{ malformed json");
         var original = await File.ReadAllBytesAsync(project.ProjectJsonPath);
 
+        // Not exact: System.Text.Json throws its internal JsonReaderException subtype.
         await Assert.ThrowsAsync<JsonException>(() => configService.UpdateProjectConfigAsync(
             new JsonObject { ["paths"] = new JsonObject { ["source"] = "changed-source" } }));
 
@@ -663,7 +664,7 @@ public sealed class ConfigServiceTests
     }
 
     [TestMethod]
-    public async Task UpdateProjectConfigAsync_DeepMergesAndPreservesExistingValues()
+    public async Task UpdateProjectConfigAsync_NestedUpdate_DeepMergesAndPreservesExistingValues()
     {
         using var project = TestProject.Create(p => p.WithProjectJson(new
         {
@@ -701,7 +702,7 @@ public sealed class ConfigServiceTests
         using var cancellation = new CancellationTokenSource();
         await cancellation.CancelAsync();
 
-        await Assert.ThrowsAsync<OperationCanceledException>(() => configService.UpdateProjectConfigAsync(
+        await Assert.ThrowsExactlyAsync<TaskCanceledException>(() => configService.UpdateProjectConfigAsync(
             new JsonObject { ["theme"] = new JsonObject { ["name"] = "Other" } },
             cancellation.Token));
 
