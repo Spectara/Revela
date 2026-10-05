@@ -96,6 +96,7 @@ In a CI workflow, add `./revela source calendar fetch` before `./revela generate
 ## Error Handling
 
 - Each download times out after 30 seconds.
+- A feed larger than 10 MB is rejected; the previous file stays untouched.
 - A failed download leaves the previous file untouched and prints which feed failed. The other feeds are still fetched.
 - The command exits with `1` if any feed failed, so scripts can react.
 - Without any configured feeds, the command shows an example configuration.

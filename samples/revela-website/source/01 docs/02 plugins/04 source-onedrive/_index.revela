@@ -164,3 +164,4 @@ SPECTARA__REVELA__PLUGINS__ONEDRIVE__DEFAULTCONCURRENCY=8
 
 - OneDrive shared folder link (public or organization-shared)
 - Internet connection for syncing
+- Files up to 1 GB each; a larger file stops the sync with an error and keeps any existing local copy

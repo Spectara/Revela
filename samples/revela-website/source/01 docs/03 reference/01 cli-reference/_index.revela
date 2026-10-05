@@ -165,7 +165,7 @@ revela config feed add releases /absolute/path/to/revela-packages # Add a folder
 revela config feed remove releases                                # Remove a feed (asks when no name is given)
 ```
 
-Remote feeds must use `https://`; plain `http://` is only accepted for `localhost`.
+Remote feeds must use `https://`; plain `http://` is only accepted for `localhost`. URLs with credentials (`https://user:token@…`) are refused, because `revela.json` is plain text; feed URLs in log output never show credentials or query strings.
 
 See [Configuration](../../guide/configuration/).
 
