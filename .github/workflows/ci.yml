@@ -1,6 +1,15 @@
 # Continuous Integration
-# Runs on every push and pull request
-# Builds all projects and runs tests to ensure code quality
+# Builds all projects and runs tests to ensure code quality.
+#
+# Jobs per trigger:
+#   pull_request        → Build & Test (Ubuntu, incl. format + coverage),
+#                         Build & Test (windows-latest), Native AOT Smoke (linux-x64)
+#   push to main        → all of the above + Build & Test (macos-latest)
+#   schedule (nightly)  → all of the above + Build & Test (macos-latest)
+#   workflow_dispatch   → all of the above + Build & Test (macos-latest)
+#
+# The release matrix (all RIDs, signing, packaging) stays in release.yml; this workflow
+# catches platform and Native AOT regressions before a tag is pushed.
 
 name: CI
 
@@ -25,14 +34,18 @@ on:
       - 'assets/**'
       - '.github/ISSUE_TEMPLATE/**'
       - '.github/dependabot.yml'
+  schedule:
+    # Nightly on the default branch (03:17 UTC, off the top of the hour to avoid queue peaks)
+    - cron: '17 3 * * *'
   workflow_dispatch:
 
 permissions:
   contents: read
 
-# Cancel previous runs on the same branch / PR when a new commit comes in
+# Cancel previous runs on the same branch / PR when a new commit comes in.
+# The event name keeps nightly runs and pushes to main from queueing behind each other.
 concurrency:
-  group: ci-${{ github.workflow }}-${{ github.ref }}
+  group: ci-${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
@@ -79,3 +92,129 @@ jobs:
           path: |
             ./TestResults/**/*.trx
             ./TestResults/**/*.cobertura.xml
+
+  # Build and test on the other desktop platforms. Formatting and coverage are
+  # platform-independent and stay in the Ubuntu job. macOS runners are the most
+  # expensive, so macOS runs on main and nightly only, not on every PR.
+  build-and-test-os:
+    name: Build & Test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest]
+        exclude:
+          # macOS is skipped on pull requests only ('none' matches no entry otherwise)
+          - os: ${{ github.event_name == 'pull_request' && 'macos-latest' || 'none' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6
+        with:
+          global-json-file: global.json
+          cache: true
+          cache-dependency-path: '**/Directory.Packages.props'
+
+      - name: Restore
+        run: dotnet restore
+
+      - name: Build
+        run: dotnet build Spectara.Revela.slnx --no-restore -c Release
+
+      - name: Run Tests
+        run: dotnet test --solution Spectara.Revela.slnx --no-build -c Release --report-trx --results-directory ./TestResults
+
+      - name: Upload Test Results
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: test-results-${{ matrix.os }}
+          path: ./TestResults/**/*.trx
+
+  # Publish the Standalone host (Cli.Embedded) as Native AOT exactly like release.yml and
+  # run it against a copy of the showcase sample. Trimming/AOT regressions (for example
+  # Scriban built-ins removed by the trimmer) only show up in the published binary, so the
+  # sample renders every template kind: gallery, photo, statistics and 404 pages.
+  # ubuntu-latest ships the Native AOT prerequisites (clang, zlib), as release.yml relies on.
+  aot-smoke:
+    name: Native AOT Smoke (linux-x64)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6
+        with:
+          global-json-file: global.json
+          cache: true
+          cache-dependency-path: '**/Directory.Packages.props'
+
+      - name: Publish Cli.Embedded (Native AOT)
+        run: |
+          dotnet publish src/Cli.Embedded/Cli.Embedded.csproj \
+            -c Release \
+            -r linux-x64 \
+            --self-contained \
+            -p:DebugType=none \
+            -p:DebugSymbols=false \
+            -p:StripSymbols=true \
+            -o ./publish-standalone
+
+      - name: Smoke - version
+        run: |
+          set -euo pipefail
+          version="$(./publish-standalone/revela --version)"
+          echo "revela --version: $version"
+          test -n "$version"
+
+      - name: Smoke - generate all (showcase copy)
+        run: |
+          set -euo pipefail
+          project="$RUNNER_TEMP/showcase"
+          mkdir -p "$project"
+          cp samples/showcase/project.json samples/showcase/site.json "$project/"
+          cp -R samples/showcase/source "$project/source"
+          cd "$project"
+          "$GITHUB_WORKSPACE/publish-standalone/revela" generate all
+
+      - name: Smoke - verify output
+        run: |
+          set -euo pipefail
+          output="$RUNNER_TEMP/showcase/output"
+          for page in index.html 404.html galleries/statistics/index.html photo/landscapes/ocean-sunset/index.html _assets/main.css; do
+            if [ ! -s "$output/$page" ]; then
+              echo "::error::Missing or empty output: $page"
+              exit 1
+            fi
+          done
+          invalid="$(find "$output" -name '*.html' -type f -exec grep -L '<html' {} +)"
+          if [ -n "$invalid" ]; then
+            echo "::error::HTML files without <html>: $invalid"
+            exit 1
+          fi
+          variants="$(find "$output/images" -type f \( -name '*.jpg' -o -name '*.webp' -o -name '*.avif' \) -size +0 | wc -l)"
+          images="$(find "$output/images" -type f \( -name '*.jpg' -o -name '*.webp' -o -name '*.avif' \) -size +0 -exec dirname {} \; | sort -u | wc -l)"
+          echo "Generated $images images with $variants non-empty variants"
+          if [ "$variants" -lt 228 ] || [ "$images" -lt 14 ]; then
+            echo "::error::Expected at least 14 images and 228 variants, found $images / $variants"
+            exit 1
+          fi
+
+      - name: Smoke - sample left untouched
+        run: |
+          set -euo pipefail
+          changes="$(git status --porcelain --untracked-files=all -- samples/showcase)"
+          if [ -n "$changes" ]; then
+            echo "::error::The smoke run modified samples/showcase:"
+            echo "$changes"
+            exit 1
+          fi
