@@ -47,6 +47,9 @@ public sealed partial class OneDrivePlugin : IPlugin
         services.AddHttpClient<SharedLinkProvider>((serviceProvider, client) =>
         {
             client.Timeout = TimeSpan.FromMinutes(5); // OneDrive API can be slow for large files
+            // SharedLinkProvider streams every response with its own caps; this bounds any
+            // HttpClient-buffered (ResponseContentRead) call as well.
+            client.MaxResponseContentBufferSize = SharedLinkProvider.DefaultMaxJsonResponseBytes;
             var version = serviceProvider.GetRequiredService<IBuildInfo>().Version;
             client.DefaultRequestHeaders.UserAgent.ParseAdd($"Revela/{version} (Static Site Generator)");
         })
