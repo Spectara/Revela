@@ -103,19 +103,6 @@ internal sealed partial class ServeCommand(
             }
         }
 
-        // Create linked CancellationTokenSource for graceful shutdown
-        // Combines external cancellation (interactive menu) with Ctrl+C
-        using var shutdownCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-
-        // Handle Ctrl+C directly for non-interactive mode
-        Console.CancelKeyPress += OnCancelKeyPress;
-
-        void OnCancelKeyPress(object? sender, ConsoleCancelEventArgs e)
-        {
-            e.Cancel = true; // Prevent immediate termination
-            shutdownCts.Cancel();
-        }
-
         // Create and start server
         await using var server = new StaticFileServer(fullOutputPath, port, RequestCallback);
         try
@@ -147,20 +134,18 @@ internal sealed partial class ServeCommand(
 
         LogServerStarted(logger, fullOutputPath, port);
 
-        // Wait for cancellation (zero-CPU, no polling)
+        // Wait for cancellation (zero-CPU, no polling). The host cancels the token on Ctrl+C,
+        // both for `revela serve` and when serve was started from the interactive menu.
         try
         {
-            await Task.Delay(Timeout.Infinite, shutdownCts.Token);
+            await Task.Delay(Timeout.Infinite, cancellationToken);
         }
         catch (OperationCanceledException)
         {
-            // Expected — shutdown requested via Ctrl+C or external cancellation
+            // Expected — shutdown requested
         }
 
         AnsiConsole.MarkupLine("\n[yellow]Stopping server...[/]");
-
-        // Cleanup event handler
-        Console.CancelKeyPress -= OnCancelKeyPress;
 
         // Server disposed automatically by using statement
         LogServerStopped(logger);
