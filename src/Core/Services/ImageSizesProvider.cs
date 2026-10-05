@@ -97,7 +97,8 @@ public sealed partial class ImageSizesProvider(
     }
 
     /// <summary>
-    /// Invalidates cached values when the theme name changes (hot-reload support).
+    /// Invalidates cached values when the theme name changes, e.g. after Revela itself
+    /// rewrote the configuration during an interactive session (files are not watched).
     /// </summary>
     private void InvalidateCacheIfThemeChanged()
     {

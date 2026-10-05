@@ -58,7 +58,7 @@ template = "statistics/overview"
 
 The plugin treats any page whose `template` starts with `statistics/` as a statistics page: it aggregates EXIF data from the manifest and writes a data file to `.revela/statistics/<page-path>/statistics.json` for the theme to render.
 
-> **Advanced:** instead of the statistics template, you can point an existing page at a data file explicitly with a `data.statistics` front-matter field.
+> **Advanced:** instead of the statistics template, you can point an existing page at a data file explicitly with a `data.statistics` front-matter field, for example `data.statistics = "camera-stats.json"`. The plugin then writes that file instead of `statistics.json`. The name must be a plain file name ending in `.json`, without folders; otherwise the statistics step stops with a hint.
 
 ## Generating Statistics
 

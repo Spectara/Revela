@@ -76,12 +76,102 @@ public sealed class StatsCommandTests : IDisposable
         Assert.IsTrue(File.Exists(statisticsPath));
     }
 
+    [TestMethod]
+    [DataRow(false)]
+    [DataRow(true)]
+    public async Task Execute_CustomDataFileName_WritesFrontMatterFileName(bool useCli)
+    {
+        var defaultPath = await CreateStatisticsArtifactAsync();
+        var command = CreateCommand(new SuccessfulArtifactLifecycle(), ScanWithStatisticsPage("camera-stats.json"));
+
+        var success = await ExecuteAsync(command, useCli);
+
+        Assert.IsTrue(success);
+        var customPath = Path.Combine(projectPath, ProjectPaths.GetOwnerDirectory("statistics"), "statistics", "camera-stats.json");
+        Assert.IsTrue(File.Exists(customPath));
+        Assert.IsFalse(File.Exists(defaultPath), "Data under the default name is stale once the page names another file.");
+    }
+
+    [TestMethod]
+    public async Task PipelineExecuteAsync_StatisticsTemplateWithoutData_WritesDefaultFileName()
+    {
+        var scan = new ManifestSnapshot
+        {
+            Root = new ManifestEntry { Text = "Stats", Path = "statistics", Template = "statistics/overview" },
+            Images = OneImage,
+        };
+        var command = CreateCommand(new SuccessfulArtifactLifecycle(), scan);
+
+        var result = await ((IPipelineStep)command).ExecuteAsync();
+
+        Assert.IsTrue(result.Success, result.ErrorMessage);
+        Assert.IsTrue(File.Exists(Path.Combine(projectPath, ProjectPaths.GetOwnerDirectory("statistics"), "statistics", "statistics.json")));
+    }
+
+    [TestMethod]
+    [DataRow("../escape.json", false)]
+    [DataRow("nested/statistics.json", false)]
+    [DataRow("statistics.txt", true)]
+    [DataRow("$images", true)]
+    public async Task Execute_InvalidDataFileName_FailsWithHintAndPreservesArtifacts(string dataFileName, bool useCli)
+    {
+        var statisticsPath = await CreateStatisticsArtifactAsync();
+        var command = CreateCommand(new SuccessfulArtifactLifecycle(), ScanWithStatisticsPage(dataFileName));
+
+        string message;
+        if (useCli)
+        {
+            var (exitCode, output) = await CaptureAsync(() => command.ExecuteAsync());
+            Assert.AreEqual(1, exitCode);
+            message = output;
+        }
+        else
+        {
+            var result = await ((IPipelineStep)command).ExecuteAsync();
+            Assert.IsFalse(result.Success);
+            message = result.ErrorMessage!;
+        }
+
+        Assert.Contains("statistics.json", message, StringComparison.Ordinal);
+        Assert.Contains("data.statistics", message, StringComparison.Ordinal);
+        Assert.IsTrue(File.Exists(statisticsPath));
+        Assert.IsFalse(File.Exists(Path.Combine(projectPath, ProjectPaths.GetOwnerDirectory("statistics"), "escape.json")));
+    }
+
     public void Dispose()
     {
         if (Directory.Exists(projectPath))
         {
             Directory.Delete(projectPath, recursive: true);
         }
+    }
+
+    private static readonly Dictionary<string, ImageContent> OneImage = new()
+    {
+        ["a.jpg"] = new ImageContent { Filename = "a.jpg", Width = 10, Height = 10, Sizes = [] },
+    };
+
+    private static ManifestSnapshot ScanWithStatisticsPage(string dataFileName) => new()
+    {
+        Root = new ManifestEntry
+        {
+            Text = "Stats",
+            Path = "statistics",
+            DataSources = new Dictionary<string, string> { ["statistics"] = dataFileName },
+        },
+        Images = OneImage,
+    };
+
+    private static async Task<bool> ExecuteAsync(StatsCommand command, bool useCli)
+    {
+        if (useCli)
+        {
+            var (exitCode, _) = await CaptureAsync(() => command.ExecuteAsync());
+            return exitCode == 0;
+        }
+
+        var result = await ((IPipelineStep)command).ExecuteAsync();
+        return result.Success;
     }
 
     private async Task<string> CreateStatisticsArtifactAsync()

@@ -45,13 +45,13 @@ internal sealed partial class ContentService(
     TimeProvider timeProvider,
     ILogger<ContentService> logger) : IContentService
 {
-    /// <summary>Gets full path to source directory (supports hot-reload)</summary>
+    /// <summary>Gets full path to source directory (resolved on every access)</summary>
     private string SourcePath => pathResolver.SourcePath;
 
-    /// <summary>Gets current image settings (supports hot-reload)</summary>
+    /// <summary>Gets current image settings (read on every access)</summary>
     private ImageConfig ImageSettings => generateOptions.CurrentValue.Images;
 
-    /// <summary>Gets current sorting settings (supports hot-reload)</summary>
+    /// <summary>Gets current sorting settings (read on every access)</summary>
     private SortingConfig SortingSettings => generateOptions.CurrentValue.Sorting;
 
     /// <inheritdoc />

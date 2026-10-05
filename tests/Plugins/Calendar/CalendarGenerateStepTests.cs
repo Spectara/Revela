@@ -236,17 +236,108 @@ public sealed class CalendarGenerateStepTests
         Assert.AreEqual(SentinelJson, await File.ReadAllTextAsync(GetCalendarJsonPath(project)));
     }
 
+    [TestMethod]
+    [DataRow(false)]
+    [DataRow(true)]
+    public async Task ExecuteAsync_SourceLeavesSourceFolder_FailsAndPreservesLastGoodJson(bool absolute)
+    {
+        using var project = TestProject.Create();
+        var outside = Path.Combine(project.RootPath, "outside.ics");
+        await File.WriteAllTextAsync(outside, EmptyCalendar);
+        var source = absolute ? outside.Replace('\\', '/') : "../../outside.ics";
+        var step = CreateStep(project, content: null, source: source);
+
+        var result = await ((IPipelineStep)step).ExecuteAsync();
+
+        Assert.IsFalse(result.Success);
+        Assert.Contains(PagePath, result.ErrorMessage!, StringComparison.Ordinal);
+        Assert.Contains("outside the source folder", result.ErrorMessage!, StringComparison.Ordinal);
+        Assert.AreEqual(SentinelJson, await File.ReadAllTextAsync(GetCalendarJsonPath(project)));
+    }
+
+    [TestMethod]
+    public async Task ExecuteAsync_SourceInSubfolderOfPage_IsAccepted()
+    {
+        using var project = TestProject.Create();
+        var step = CreateStep(project, content: null, source: "feeds/" + SourceFileName);
+        var feeds = Path.Combine(project.SourcePath, PagePath, "feeds");
+        Directory.CreateDirectory(feeds);
+        await File.WriteAllTextAsync(Path.Combine(feeds, SourceFileName), EmptyCalendar);
+
+        var result = await ((IPipelineStep)step).ExecuteAsync();
+
+        Assert.IsTrue(result.Success, result.ErrorMessage);
+    }
+
+    [TestMethod]
+    public async Task ExecuteAsync_TimeProvider_DeterminesFirstMonthAndToday()
+    {
+        using var project = TestProject.Create();
+        var step = CreateStep(
+            project,
+            EmptyCalendar,
+            timeProvider: new FixedTimeProvider(new DateTimeOffset(2030, 1, 15, 12, 0, 0, TimeSpan.Zero)));
+
+        var result = await ((IPipelineStep)step).ExecuteAsync();
+
+        Assert.IsTrue(result.Success, result.ErrorMessage);
+        using var document = JsonDocument.Parse(await File.ReadAllTextAsync(GetCalendarJsonPath(project)));
+        var firstMonth = document.RootElement.GetProperty("months")[0];
+        Assert.AreEqual("Januar 2030", firstMonth.GetProperty("name").GetString());
+        var today = firstMonth.GetProperty("weeks").EnumerateArray()
+            .SelectMany(week => week.EnumerateArray())
+            .Single(day => day.GetProperty("css").GetString() == "today");
+        Assert.AreEqual(15, today.GetProperty("number").GetInt32());
+    }
+
+    [TestMethod]
+    [DataRow(false)]
+    [DataRow(true)]
+    public async Task ExecuteAsync_CustomDataFileName_WritesFrontMatterFileName(bool useCli)
+    {
+        using var project = TestProject.Create();
+        var step = CreateStep(project, EmptyCalendar, dataFileName: "availability.json");
+
+        await AssertSuccessfulExecutionAsync(step, useCli);
+
+        var customPath = Path.Combine(Path.GetDirectoryName(GetCalendarJsonPath(project))!, "availability.json");
+        Assert.IsTrue(File.Exists(customPath));
+        Assert.IsFalse(File.Exists(GetCalendarJsonPath(project)), "Data under the default name is stale once the page names another file.");
+    }
+
+    [TestMethod]
+    [DataRow("../escape.json")]
+    [DataRow("nested/calendar.json")]
+    [DataRow("calendar.txt")]
+    [DataRow("$images")]
+    public async Task ExecuteAsync_InvalidDataFileName_FailsWithHintAndPreservesLastGoodJson(string dataFileName)
+    {
+        using var project = TestProject.Create();
+        var step = CreateStep(project, EmptyCalendar, dataFileName: dataFileName);
+
+        var (exitCode, output) = await ExecuteCliAsync(step);
+
+        Assert.AreEqual(1, exitCode);
+        Assert.Contains(PagePath, output, StringComparison.Ordinal);
+        Assert.Contains("calendar.json", output, StringComparison.Ordinal);
+        Assert.AreEqual(SentinelJson, await File.ReadAllTextAsync(GetCalendarJsonPath(project)));
+        Assert.IsFalse(File.Exists(Path.Combine(project.RootPath, ProjectPaths.GetOwnerDirectory("calendar"), "escape.json")));
+    }
+
     private static CalendarGenerateStep CreateStep(
         TestProject project,
         string? content,
         bool withCalendarPage = true,
         IArtifactLifecycle? artifactLifecycle = null,
-        bool scanned = true)
+        bool scanned = true,
+        string source = SourceFileName,
+        string dataFileName = "calendar.json",
+        TimeProvider? timeProvider = null)
     {
         var pageDirectory = Path.Combine(project.SourcePath, PagePath);
         Directory.CreateDirectory(pageDirectory);
         File.WriteAllText(Path.Combine(pageDirectory, "_index.revela"),
-            $"+++\ncalendar.source = \"{SourceFileName}\"\ncalendar.months = 2\n" +
+            $"+++\ncalendar.source = \"{source}\"\ncalendar.months = 2\n" +
             "calendar.locale = \"de-DE\"\ncalendar.labels.free = \"Available\"\n+++\n");
         if (content is not null)
         {
@@ -267,7 +358,7 @@ public sealed class CalendarGenerateStepTests
                     Text = "Availability",
                     Path = PagePath,
                     DataSources = withCalendarPage
-                        ? new Dictionary<string, string> { ["calendar"] = "calendar.json" }
+                        ? new Dictionary<string, string> { ["calendar"] = dataFileName }
                         : []
                 },
                 Images = new Dictionary<string, ImageContent>()
@@ -291,7 +382,15 @@ public sealed class CalendarGenerateStepTests
             Options.Create(new SiteCoreConfig { Language = "en" }),
             pathResolver,
             artifactLifecycle,
-            new CalendarDataInvalidator(projectEnvironment));
+            new CalendarDataInvalidator(projectEnvironment),
+            timeProvider ?? TimeProvider.System);
+    }
+
+    private sealed class FixedTimeProvider(DateTimeOffset now) : TimeProvider
+    {
+        public override TimeZoneInfo LocalTimeZone => TimeZoneInfo.Utc;
+
+        public override DateTimeOffset GetUtcNow() => now;
     }
 
     private static string WriteCalendarJson(TestProject project, string pagePath)

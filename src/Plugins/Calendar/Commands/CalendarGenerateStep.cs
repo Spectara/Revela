@@ -18,12 +18,13 @@ using Spectre.Console;
 namespace Spectara.Revela.Plugins.Calendar.Commands;
 
 /// <summary>
-/// Generate step that reads local .ics files and produces calendar.json for each calendar page.
+/// Generate step that reads local .ics files and produces the calendar data file
+/// (<c>data.calendar</c>, default <c>calendar.json</c>) for each calendar page.
 /// </summary>
 /// <remarks>
 /// All calendar pages are built in memory first. Only when every page succeeded are the
-/// previous <c>calendar.json</c> files removed and the new ones written, so a broken page
-/// keeps the last good data and pages that no longer exist leave no stale data behind.
+/// previous data files removed and the new ones written, so a broken page keeps the last
+/// good data and pages that no longer exist leave no stale data behind.
 /// </remarks>
 internal sealed partial class CalendarGenerateStep(
     ILogger<CalendarGenerateStep> logger,
@@ -32,7 +33,8 @@ internal sealed partial class CalendarGenerateStep(
     IOptions<SiteCoreConfig> siteCoreConfig,
     IPathResolver pathResolver,
     IArtifactLifecycle artifactLifecycle,
-    CalendarDataInvalidator calendarDataInvalidator) : IPipelineStep
+    CalendarDataInvalidator calendarDataInvalidator,
+    TimeProvider timeProvider) : IPipelineStep
 {
 
     private const string IndexFileName = "_index.revela";
@@ -149,14 +151,24 @@ internal sealed partial class CalendarGenerateStep(
             LogGeneratingCalendars(calendarPages.Count);
         }
 
-        var today = DateOnly.FromDateTime(DateTime.Today);
-        var calendars = new List<(string PagePath, CalendarData Data)>();
+        var today = DateOnly.FromDateTime(timeProvider.GetLocalNow().DateTime);
+        var calendars = new List<(CalendarPage Page, CalendarData Data)>();
 
-        foreach (var pagePath in calendarPages)
+        foreach (var page in calendarPages)
         {
             cancellationToken.ThrowIfCancellationRequested();
+            var pagePath = page.Path;
 
-            var indexPath = Path.Combine(sourcePath, pagePath, IndexFileName);
+            if (!CalendarInputPaths.IsDataFileName(page.DataFileName))
+            {
+                return GenerationOutcome.Failure(
+                    "Invalid Calendar Data File",
+                    $"Calendar page '{pagePath}' sets data.calendar to '{page.DataFileName}'. " +
+                    $"Use a file name ending in .json without folders, e.g. \"{CalendarDataInvalidator.DefaultFileName}\".");
+            }
+
+            var pageDirectory = Path.Combine(sourcePath, pagePath);
+            var indexPath = Path.Combine(pageDirectory, IndexFileName);
             if (!File.Exists(indexPath))
             {
                 LogIndexFileNotFound(pagePath);
@@ -171,7 +183,15 @@ internal sealed partial class CalendarGenerateStep(
                 continue;
             }
 
-            var icsPath = Path.Combine(sourcePath, pagePath, pageConfig.Source);
+            var icsPath = CalendarInputPaths.ResolveSource(sourcePath, pageDirectory, pageConfig.Source);
+            if (icsPath is null)
+            {
+                return GenerationOutcome.Failure(
+                    "iCal File Outside Source",
+                    $"Calendar page '{pagePath}' references iCalendar file '{pageConfig.Source}' outside the source folder. " +
+                    "Place the .ics file inside the source folder, e.g. next to the page.");
+            }
+
             if (!File.Exists(icsPath))
             {
                 return GenerationOutcome.Failure(
@@ -196,7 +216,7 @@ internal sealed partial class CalendarGenerateStep(
                 LogInvalidLocale(pageConfig.Locale ?? siteCoreConfig.Value.Language, pagePath);
             }
 
-            calendars.Add((pagePath, CalendarBuilder.Build(bookings, pageConfig.Months, today, pageConfig.Mode, labels, culture)));
+            calendars.Add((page, CalendarBuilder.Build(bookings, pageConfig.Months, today, pageConfig.Mode, labels, culture)));
         }
 
         var invalidation = await artifactLifecycle.PrepareToReplaceAsync(CalendarArtifacts.Data, cancellationToken);
@@ -211,13 +231,13 @@ internal sealed partial class CalendarGenerateStep(
             return GenerationOutcome.Failure("Calendar Cleanup Failed", cleanup.ErrorMessage ?? "Unknown error");
         }
 
-        foreach (var (pagePath, calendarData) in calendars)
+        foreach (var (page, calendarData) in calendars)
         {
-            var cacheDir = Path.Combine(CalendarDataInvalidator.GetDataDirectory(projectPath), pagePath);
+            var cacheDir = Path.Combine(CalendarDataInvalidator.GetDataDirectory(projectPath), page.Path);
             Directory.CreateDirectory(cacheDir);
             var json = JsonSerializer.Serialize(calendarData, CalendarJsonContext.Default.CalendarData);
-            await File.WriteAllTextAsync(Path.Combine(cacheDir, CalendarDataInvalidator.FileName), json, cancellationToken);
-            LogGeneratedJson(pagePath, calendarData.Months.Count);
+            await File.WriteAllTextAsync(Path.Combine(cacheDir, page.DataFileName), json, cancellationToken);
+            LogGeneratedJson(page.Path, calendarData.Months.Count);
         }
 
         return calendarPages.Count == 0
@@ -289,20 +309,28 @@ internal sealed partial class CalendarGenerateStep(
         }
     }
 
-    private static List<string> FindCalendarPages(ManifestEntry root)
+    /// <summary>A calendar page and the data file name its template reads.</summary>
+    private sealed record CalendarPage(string Path, string DataFileName);
+
+    /// <summary>
+    /// Finds the calendar pages and the data file each one reads: the page's
+    /// <c>data.calendar</c>, or the extension's default <c>calendar.json</c> for pages
+    /// that only set a <c>calendar/*</c> template.
+    /// </summary>
+    private static List<CalendarPage> FindCalendarPages(ManifestEntry root)
     {
-        var results = new List<string>();
+        var results = new List<CalendarPage>();
         FindRecursive(root, results);
         return results;
 
-        static void FindRecursive(ManifestEntry node, List<string> results)
+        static void FindRecursive(ManifestEntry node, List<CalendarPage> results)
         {
-            var hasCalendarData = node.DataSources.ContainsKey("calendar");
+            var hasCalendarData = node.DataSources.TryGetValue("calendar", out var dataFileName);
             var hasCalendarTemplate = node.Template?.StartsWith("calendar/", StringComparison.OrdinalIgnoreCase) == true;
 
             if (hasCalendarData || hasCalendarTemplate)
             {
-                results.Add(node.Path);
+                results.Add(new CalendarPage(node.Path, dataFileName ?? CalendarDataInvalidator.DefaultFileName));
             }
 
             foreach (var child in node.Children)

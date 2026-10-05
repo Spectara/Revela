@@ -13,18 +13,22 @@ namespace Spectara.Revela.Tests.Plugins.Statistics;
 public sealed class StatisticsDataInvalidatorTests
 {
     [TestMethod]
-    public async Task InvalidateAsync_StatisticsFilesExist_DeletesStatisticsFilesOnly()
+    public async Task InvalidateAsync_PageDataFilesExist_DeletesEveryJsonDataFileOnly()
     {
         var projectPath = Path.Combine(
             Path.GetTempPath(),
             "revela-statistics-invalidation-tests",
             Guid.NewGuid().ToString());
-        var cachePath = Path.Combine(projectPath, ProjectPaths.GetOwnerDirectory("statistics"), "statistics");
+        var ownerPath = Path.Combine(projectPath, ProjectPaths.GetOwnerDirectory("statistics"));
+        var cachePath = Path.Combine(ownerPath, "statistics");
         Directory.CreateDirectory(cachePath);
         var statisticsPath = Path.Combine(cachePath, "statistics.json");
-        var unrelatedPath = Path.Combine(cachePath, "calendar.json");
+        // A page may name its data file (data.statistics = "camera-stats.json"); it is statistics data too.
+        var customPath = Path.Combine(ownerPath, "camera-stats.json");
+        var unrelatedPath = Path.Combine(cachePath, "notes.txt");
         await File.WriteAllTextAsync(statisticsPath, "{}");
-        await File.WriteAllTextAsync(unrelatedPath, "{}");
+        await File.WriteAllTextAsync(customPath, "{}");
+        await File.WriteAllTextAsync(unrelatedPath, "keep");
         var invalidator = new StatisticsDataInvalidator(Options.Create(new ProjectEnvironment
         {
             Path = projectPath
@@ -40,6 +44,7 @@ public sealed class StatisticsDataInvalidatorTests
                 new[] { CoreArtifacts.Manifest },
                 invalidator.DependsOn.ToArray());
             Assert.IsFalse(File.Exists(statisticsPath));
+            Assert.IsFalse(File.Exists(customPath));
             Assert.IsTrue(File.Exists(unrelatedPath));
         }
         finally

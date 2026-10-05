@@ -59,13 +59,13 @@ internal sealed partial class ImageService(
     /// <summary>Save the processing state at least this often during a run.</summary>
     private static readonly TimeSpan CheckpointInterval = TimeSpan.FromSeconds(30);
 
-    /// <summary>Gets full path to source directory (supports hot-reload)</summary>
+    /// <summary>Gets full path to source directory (resolved on every access)</summary>
     private string SourcePath => pathResolver.SourcePath;
 
-    /// <summary>Gets full path to output directory (supports hot-reload)</summary>
+    /// <summary>Gets full path to output directory (resolved on every access)</summary>
     private string OutputPath => pathResolver.OutputPath;
 
-    /// <summary>Gets current image format settings (supports hot-reload)</summary>
+    /// <summary>Gets current image format settings (read on every access)</summary>
     private ImageConfig ImageSettings => generateOptions.CurrentValue.Images;
 
     /// <inheritdoc />
