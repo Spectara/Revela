@@ -55,11 +55,12 @@ internal sealed partial class NetVipsImageProcessor(
     /// Part of the scan cache key. Increment whenever <see cref="ReadMetadataAsync"/> computes
     /// different values for the same file (2: upright dimensions after EXIF orientation and
     /// sRGB placeholders; 3: XMP title, description, keywords, and rating; 4: placeholders from
-    /// a shrink-on-load thumbnail; 5: average colour instead of the gradient placeholder hash), so
-    /// manifests from older versions re-read their metadata.
+    /// a shrink-on-load thumbnail; 5: average colour instead of the gradient placeholder hash;
+    /// 6: EXIF capture time as unspecified wall-clock time instead of UTC, plus its
+    /// <c>OffsetTimeOriginal</c>), so manifests from older versions re-read their metadata.
     /// Images are not re-encoded: their processing state is independent of the scan.
     /// </remarks>
-    internal const int MetadataVersion = 5;
+    internal const int MetadataVersion = 6;
 
     /// <summary>
     /// libvips metadata field holding the raw XMP packet.
@@ -685,6 +686,9 @@ internal sealed partial class NetVipsImageProcessor(
 
         // Software
         "Software",             // Processing software
+
+        // Time zone of DateTimeOriginal (e.g. "+02:00"); the date itself has no offset
+        "OffsetTimeOriginal",
     }.ToFrozenSet();
 
     /// <summary>
@@ -868,6 +872,9 @@ internal sealed partial class NetVipsImageProcessor(
     /// NetVips format: "2022:07:31 22:22:22 (2022:07:31 22:22:22, ASCII, 20 components...)"
     /// Standard EXIF format: "2024:01:20 14:30:45"
     /// We need to extract "YYYY:MM:DD HH:MM:SS" from the beginning.
+    /// EXIF stores the camera's wall-clock time without a time zone, so the result is
+    /// <see cref="DateTimeKind.Unspecified"/>. The camera's UTC offset, when recorded,
+    /// is kept separately as <c>OffsetTimeOriginal</c> in <see cref="ExifData.Raw"/>.
     /// </remarks>
     private static DateTime? ParseExifDate(string? dateString)
     {
@@ -904,7 +911,7 @@ internal sealed partial class NetVipsImageProcessor(
                 int.Parse(timeParts[0], CultureInfo.InvariantCulture),
                 int.Parse(timeParts[1], CultureInfo.InvariantCulture),
                 int.Parse(timeParts[2], CultureInfo.InvariantCulture),
-                DateTimeKind.Utc);
+                DateTimeKind.Unspecified);
         }
         catch
         {
