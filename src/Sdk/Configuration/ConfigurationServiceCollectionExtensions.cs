@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
 using Spectara.Revela.Sdk.Services;
 
@@ -75,14 +76,15 @@ public static class ConfigurationServiceCollectionExtensions
 
         // Breaking change (#75): 'language' moved to site.json. Fail loudly if it is
         // still present in the project.json "project" section instead of ignoring it.
-        services.AddSingleton<IValidateOptions<ProjectConfig>, ProjectConfigLanguageValidator>();
+        // TryAddEnumerable keeps each validator single when sections are registered twice.
+        services.TryAddEnumerable(ServiceDescriptor.Singleton<IValidateOptions<ProjectConfig>, ProjectConfigLanguageValidator>());
 
         // Breaking change (#76): basePath is a subdirectory prefix, not a host. Reject
         // absolute-URL basePath values with a hint pointing at baseUrl for the host.
-        services.AddSingleton<IValidateOptions<ProjectConfig>, ProjectConfigBasePathValidator>();
+        services.TryAddEnumerable(ServiceDescriptor.Singleton<IValidateOptions<ProjectConfig>, ProjectConfigBasePathValidator>());
 
         // Encoder effort ranges (and other annotated generate settings).
-        services.AddSingleton<IValidateOptions<GenerateConfig>, GenerateConfigValidator>();
+        services.TryAddEnumerable(ServiceDescriptor.Singleton<IValidateOptions<GenerateConfig>, GenerateConfigValidator>());
 
         // Path resolver service (resolves relative paths against project root).
         // Reads IOptionsMonitor on every access, so in-process config writes are reflected.
