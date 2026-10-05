@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using Spectara.Revela.Cli.Hosting;
 using Spectara.Revela.Core.Abstractions;
@@ -55,7 +56,7 @@ public sealed class ThemeFilesCommandTests
         var source = Substitute.For<IPackageSource>();
         var services = new ServiceCollection();
 
-        services.AddPackages(source, [command, subcommand]);
+        services.AddPackages(source, [command, subcommand], NullLoggerFactory.Instance);
 
         source.DidNotReceive().LoadPlugins();
         source.DidNotReceive().LoadThemes();

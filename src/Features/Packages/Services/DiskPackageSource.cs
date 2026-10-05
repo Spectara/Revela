@@ -1,5 +1,4 @@
 using Spectara.Revela.Core.Abstractions;
-using Spectara.Revela.Sdk.Configuration;
 
 namespace Spectara.Revela.Features.Packages.Services;
 
@@ -12,21 +11,16 @@ namespace Spectara.Revela.Features.Packages.Services;
 /// Discovers plugins from:
 /// </para>
 /// <list type="bullet">
-/// <item>Application directory (ProjectReference in development, bundled in release)</item>
 /// <item>User plugin directory (~/.revela/plugins or %APPDATA%/Revela/plugins)</item>
+/// <item>Application directory, in Development only (ProjectReference builds, see <see cref="PackageOptions.SearchApplicationDirectory"/>)</item>
 /// </list>
 /// </remarks>
-public sealed class DiskPackageSource : IPackageSource
+/// <param name="options">Where to look for packages.</param>
+/// <param name="loggerFactory">Bootstrap logger factory; only used while packages are loaded.</param>
+internal sealed class DiskPackageSource(PackageOptions options, ILoggerFactory loggerFactory) : IPackageSource
 {
-    private readonly PackageOptions options;
     private IReadOnlyList<LoadedPluginInfo>? plugins;
     private IReadOnlyList<LoadedThemeInfo>? themes;
-
-    /// <summary>
-    /// Initializes a new instance of the <see cref="DiskPackageSource"/> class.
-    /// </summary>
-    /// <param name="options">Package loading options, or null for defaults.</param>
-    public DiskPackageSource(PackageOptions? options = null) => this.options = options ?? new PackageOptions();
 
     /// <inheritdoc />
     public IReadOnlyList<LoadedPluginInfo> LoadPlugins()
@@ -49,9 +43,7 @@ public sealed class DiskPackageSource : IPackageSource
             return;
         }
 
-        using var loggerFactory = LoggerFactory.Create(_ => { });
-        var logger = loggerFactory.CreateLogger<PackageLoader>();
-        var loader = new PackageLoader(options, logger);
+        var loader = new PackageLoader(options, loggerFactory.CreateLogger<PackageLoader>());
         loader.Load();
         plugins = loader.GetLoadedPlugins();
         themes = loader.GetLoadedThemes();

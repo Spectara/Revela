@@ -16,7 +16,7 @@ namespace Spectara.Revela.Tests.Integration;
 /// <remarks>
 /// Config files load eagerly during host construction (<c>ConfigureRevela</c> →
 /// <c>AddRevelaConfiguration</c>), which runs outside the guarded region inside
-/// <c>RunRevelaAsync</c>. <see cref="HostBootstrap.RunAsync"/> wraps construction in a single
+/// <c>RunRevelaAsync</c>. <see cref="HostBootstrap.RunAsync(string[], IPackageSource, string, Action{Microsoft.Extensions.Hosting.HostApplicationBuilder})"/> wraps construction in a single
 /// guarded region so build-time parse errors are handled like the validation path.
 /// These tests capture the shared <see cref="AnsiConsole.Console"/>, so they must not run
 /// in parallel with each other.
@@ -67,7 +67,7 @@ public sealed class MalformedConfigTests
 
     /// <summary>
     /// Pins the framework behaviour the <c>when</c> filter in
-    /// <see cref="HostBootstrap.RunAsync"/> depends on: a malformed JSON config source throws
+    /// <see cref="HostBootstrap.RunAsync(string[], IPackageSource, string, Action{Microsoft.Extensions.Hosting.HostApplicationBuilder})"/> depends on: a malformed JSON config source throws
     /// an <see cref="InvalidDataException"/> whose base exception is a
     /// <see cref="JsonException"/> carrying a non-null line number. Guards against a future
     /// framework change silently defeating the friendly-panel path.

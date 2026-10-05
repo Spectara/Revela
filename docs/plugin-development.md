@@ -79,6 +79,9 @@ public sealed class ExamplePlugin : IPlugin
 
 The plugin lifecycle has three phases: **discovery** → `ConfigureServices` (required) → `GetCommands` (optional).
 
+If `ConfigureServices` throws, the host discards everything the plugin registered, skips the
+plugin and its commands, and logs one warning; Revela keeps running without it.
+
 The [SDK package readme](../src/Sdk/README.md) contains a minimal plugin, configuration
 section, theme and template model; its examples are compiled by the test suite.
 

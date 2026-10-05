@@ -16,7 +16,8 @@ namespace Spectara.Revela.Sdk;
 /// </para>
 /// <para>
 /// For resolved source/output paths, use <see cref="Services.IPathResolver"/> instead.
-/// That service supports hot-reload when configuration changes during a session.
+/// It reads the current configuration on every access, so a value written in-process
+/// (e.g. by a setup wizard) is reflected; changes made by other processes are not.
 /// </para>
 /// </remarks>
 public sealed class ProjectEnvironment

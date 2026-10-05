@@ -1,9 +1,7 @@
 using System.Reflection;
 using System.Runtime.Loader;
 using Spectara.Revela.Core.Abstractions;
-using Spectara.Revela.Core.Services;
 using Spectara.Revela.Sdk.Abstractions;
-using Spectara.Revela.Sdk.Configuration;
 
 namespace Spectara.Revela.Features.Packages.Services;
 
@@ -14,13 +12,10 @@ namespace Spectara.Revela.Features.Packages.Services;
 /// Discovers <see cref="IPlugin"/> and <see cref="ITheme"/> separately.
 /// No filtering needed — plugins are plugins, themes are themes.
 /// </remarks>
-public sealed partial class PackageLoader(
+internal sealed partial class PackageLoader(
     PackageOptions options,
     ILogger<PackageLoader> logger)
 {
-    private static readonly string PluginDirectory = ConfigPathResolver.LocalPluginDirectory;
-    private static readonly string ApplicationDirectory = AppContext.BaseDirectory;
-
     private readonly HashSet<string> loadedAssemblyPaths = new(StringComparer.OrdinalIgnoreCase);
     private readonly List<LoadedPluginInfo> loadedPlugins = [];
     private readonly List<LoadedThemeInfo> loadedThemes = [];
@@ -43,10 +38,10 @@ public sealed partial class PackageLoader(
     {
         if (options.SearchApplicationDirectory)
         {
-            LoadFromDirectory(ApplicationDirectory, "application", PackageSource.Bundled);
+            LoadFromDirectory(options.ApplicationDirectory, "application", PackageSource.Bundled);
         }
 
-        LoadFromDirectory(PluginDirectory, "installed", PackageSource.Local);
+        LoadFromDirectory(options.PluginDirectory, "installed", PackageSource.Local);
 
         LogPluginsLoaded(loadedPlugins.Count);
         LogThemesLoaded(loadedThemes.Count);
@@ -70,10 +65,7 @@ public sealed partial class PackageLoader(
                 .Select(subDir => Path.Combine(subDir, $"{Path.GetFileName(subDir)}.dll"))
                 .Where(File.Exists)];
 
-        if (options.EnableVerboseLogging)
-        {
-            LogSearchingDirectory(directory, sourceLabel, pluginDlls.Length);
-        }
+        LogSearchingDirectory(directory, sourceLabel, pluginDlls.Length);
 
         foreach (var dll in pluginDlls)
         {
@@ -83,11 +75,6 @@ public sealed partial class PackageLoader(
             }
 
             var fileName = Path.GetFileName(dll);
-            if (options.ExcludePatterns.Any(pattern => MatchesPattern(fileName, pattern)))
-            {
-                LogPluginExcluded(fileName);
-                continue;
-            }
 
             try
             {
@@ -96,24 +83,24 @@ public sealed partial class PackageLoader(
             }
             catch (ReflectionTypeLoadException rtle)
             {
-                Console.Error.WriteLine(
-                    $"Error: Plugin '{fileName}' failed to load: {rtle.Message}");
-                foreach (var ex in rtle.LoaderExceptions.Where(e => e is not null).Take(3))
-                {
-                    if (ex is FileNotFoundException fnf && !string.IsNullOrEmpty(fnf.FileName))
-                    {
-                        Console.Error.WriteLine($"  Missing dependency: {fnf.FileName}");
-                        LogMissingDependency(fnf.FileName);
-                    }
-                }
+                var missing = rtle.LoaderExceptions
+                    .OfType<FileNotFoundException>()
+                    .Select(fnf => fnf.FileName)
+                    .Where(name => !string.IsNullOrEmpty(name))
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .Take(3)
+                    .ToList();
+                var reason = missing.Count > 0
+                    ? $"missing dependency {string.Join(", ", missing)}"
+                    : rtle.Message;
 
-                LogPluginLoadFailed(rtle, dll);
+                LogPluginLoadFailed(fileName, reason);
+                LogPluginLoadFailedDetails(rtle, dll);
             }
             catch (Exception ex)
             {
-                Console.Error.WriteLine(
-                    $"Error: Plugin '{fileName}' failed to load: {ex.Message}");
-                LogPluginLoadFailed(ex, dll);
+                LogPluginLoadFailed(fileName, ex.Message);
+                LogPluginLoadFailedDetails(ex, dll);
             }
         }
     }
@@ -225,33 +212,20 @@ public sealed partial class PackageLoader(
         }
     }
 
-    private static bool MatchesPattern(string fileName, string pattern)
-    {
-        if (pattern.StartsWith('*'))
-        {
-            return fileName.AsSpan().EndsWith(pattern.AsSpan(1), StringComparison.OrdinalIgnoreCase);
-        }
-
-        return fileName.Equals(pattern, StringComparison.OrdinalIgnoreCase);
-    }
-
     [LoggerMessage(Level = LogLevel.Debug, Message = "Plugin directory does not exist: {Directory} ({Source})")]
     private partial void LogPluginDirectoryNotFound(string directory, string source);
 
     [LoggerMessage(Level = LogLevel.Debug, Message = "Searching {Directory} ({Source}): found {Count} plugin candidate(s)")]
     private partial void LogSearchingDirectory(string directory, string source, int count);
 
-    [LoggerMessage(Level = LogLevel.Debug, Message = "Plugin excluded by pattern: {FileName}")]
-    private partial void LogPluginExcluded(string fileName);
-
-    [LoggerMessage(Level = LogLevel.Debug, Message = "Missing dependency: {FileName}")]
-    private partial void LogMissingDependency(string fileName);
-
     [LoggerMessage(Level = LogLevel.Warning, Message = "Plugin '{Name}' already loaded, skipping duplicate from {Assembly}")]
     private partial void LogPluginDuplicate(string name, string assembly);
 
-    [LoggerMessage(Level = LogLevel.Error, Message = "Failed to load plugin from {Assembly}")]
-    private partial void LogPluginLoadFailed(Exception exception, string assembly);
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Package '{FileName}' was skipped because it failed to load: {Reason}")]
+    private partial void LogPluginLoadFailed(string fileName, string reason);
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Loading {Assembly} threw")]
+    private partial void LogPluginLoadFailedDetails(Exception exception, string assembly);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Loaded {Count} plugin(s)")]
     private partial void LogPluginsLoaded(int count);

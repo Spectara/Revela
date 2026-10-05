@@ -55,7 +55,7 @@ public sealed class PluginConfigOwnershipHostTests
 
         var (exitCode, output) = await RunCliAsync(project.RootPath, source);
 
-        Assert.AreEqual(1, exitCode);
+        Assert.AreEqual(ExitCodes.ConfigurationProblem, exitCode);
         Assert.Contains("Spectara.Revela.Plugins.Serve", output, StringComparison.Ordinal);
         Assert.Contains(ForeignServePlugin.PackageId, output, StringComparison.Ordinal);
         Assert.Contains("plugins:serve", output, StringComparison.Ordinal);

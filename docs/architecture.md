@@ -224,14 +224,18 @@ not a display name that may contain spaces.
 
 The normal host lifecycle is:
 
-1. `IPackageSource` discovers plugins and themes. The disk source uses the
-   application's and user's package locations; the embedded source supplies
-   statically referenced implementations.
+1. `IPackageSource` discovers plugins and themes. The disk source loads installed
+   packages from the user's package location; only in the Development environment
+   (F5 / `launchSettings.json`) does it also load assemblies next to the executable.
+   The embedded source supplies statically referenced implementations.
 2. Required plugin dependencies are checked before registration. Plugins whose
    required plugins are missing are excluded; optional extension targets are
    represented separately by `ExtendsPackages`.
 3. Plugin `ConfigureServices` registers services and options before the host
-   service provider is built.
+   service provider is built. Each plugin configures a copy of the service
+   collection that is only taken over when it returns; a plugin that throws is
+   skipped completely (no registrations, no commands) with one warning, and the
+   run continues.
 4. After host construction, `GetCommands(IServiceProvider)` supplies command
    descriptors for the CLI tree and interactive menu.
 
