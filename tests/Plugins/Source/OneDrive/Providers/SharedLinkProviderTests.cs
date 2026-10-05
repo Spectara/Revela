@@ -825,6 +825,155 @@ public sealed class SharedLinkProviderTests : IDisposable
 
     #endregion
 
+    #region Response Disposal and Size Limits
+
+    [TestMethod]
+    public void Defaults_JsonAndDownloadLimits()
+    {
+        Assert.AreEqual(10L * 1024 * 1024, provider.MaxJsonResponseBytes);
+        Assert.AreEqual(1024L * 1024 * 1024, provider.MaxDownloadBytes);
+    }
+
+    [TestMethod]
+    public async Task ListItemsAsync_DisposesEveryResponseIncludingBadgerToken()
+    {
+        using var handler = new ScriptedHttpMessageHandler(ApiResponse);
+        using var client = new HttpClient(handler);
+
+        await new SharedLinkProvider(client, logger).ListItemsAsync("https://1drv.ms/f/s!example");
+
+        Assert.HasCount(3, handler.Contents);
+        Assert.IsTrue(handler.Contents.All(content => content.Disposed), "Every OneDrive response (token, activation, listing) must be disposed.");
+    }
+
+    [TestMethod]
+    [DataRow(true)]
+    [DataRow(false)]
+    public async Task ListItemsAsync_ListingExceedsJsonLimit_ThrowsAndDisposesResponses(bool declareLength)
+    {
+        var oversizedPage = JsonSerializer.Serialize(new { value = Array.Empty<object>() }) + new string(' ', 256);
+        using var handler = new ScriptedHttpMessageHandler(request =>
+            request.RequestUri!.AbsolutePath.EndsWith("/children", StringComparison.Ordinal)
+                ? new TrackedContent(Encoding.UTF8.GetBytes(oversizedPage), declareLength)
+                : ApiResponse(request));
+        using var client = new HttpClient(handler);
+        var limitedProvider = new SharedLinkProvider(client, logger) { MaxJsonResponseBytes = 128 };
+
+        var error = await Assert.ThrowsExactlyAsync<HttpRequestException>(
+            () => limitedProvider.ListItemsAsync("https://1drv.ms/f/s!example"));
+
+        Assert.AreEqual(HttpRequestError.ConfigurationLimitExceeded, error.HttpRequestError);
+        Assert.Contains("128 B", error.Message);
+        Assert.HasCount(3, handler.Contents);
+        Assert.IsTrue(handler.Contents.All(content => content.Disposed));
+        Assert.AreEqual(!declareLength, handler.Contents[2].Serialized, "A declared oversized Content-Length must fail before the body is read.");
+    }
+
+    [TestMethod]
+    public async Task ListItemsAsync_BadgerTokenExceedsJsonLimit_ThrowsBeforeShareRequests()
+    {
+        using var handler = new ScriptedHttpMessageHandler(_ =>
+            new TrackedContent(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(new { token = "t" }) + new string(' ', 256)), declareLength: false));
+        using var client = new HttpClient(handler);
+        var limitedProvider = new SharedLinkProvider(client, logger) { MaxJsonResponseBytes = 128 };
+
+        var error = await Assert.ThrowsExactlyAsync<HttpRequestException>(
+            () => limitedProvider.ListItemsAsync("https://1drv.ms/f/s!example"));
+
+        Assert.AreEqual(HttpRequestError.ConfigurationLimitExceeded, error.HttpRequestError);
+        Assert.HasCount(1, handler.Contents);
+        Assert.IsTrue(handler.Contents[0].Disposed);
+    }
+
+    [TestMethod]
+    [DataRow(true)]
+    [DataRow(false)]
+    public async Task DownloadFileAsync_BodyExceedsDownloadLimit_ThrowsAndPreservesDestination(bool declareLength)
+    {
+        using var project = TestProject.Create();
+        var destinationPath = Path.Combine(project.SourcePath, "photo.jpg");
+        var previousBytes = "previous image bytes"u8.ToArray();
+        await File.WriteAllBytesAsync(destinationPath, previousBytes);
+        using var handler = new ScriptedHttpMessageHandler(_ => new TrackedContent(new byte[32], declareLength));
+        using var client = new HttpClient(handler);
+        var limitedProvider = new SharedLinkProvider(client, logger) { MaxDownloadBytes = 16 };
+        var item = CreateTestItem("photo.jpg", "https://public.am.files.1drv.com/photo.jpg", size: 16);
+
+        var error = await Assert.ThrowsExactlyAsync<HttpRequestException>(
+            () => limitedProvider.DownloadFileAsync(item, destinationPath));
+
+        Assert.AreEqual(HttpRequestError.ConfigurationLimitExceeded, error.HttpRequestError);
+        Assert.Contains("photo.jpg", error.Message);
+        Assert.Contains("16 B", error.Message);
+        CollectionAssert.AreEqual(previousBytes, await File.ReadAllBytesAsync(destinationPath));
+        CollectionAssert.AreEquivalent(new[] { destinationPath }, Directory.GetFiles(project.SourcePath));
+        Assert.AreEqual(!declareLength, handler.Contents[0].Serialized);
+        Assert.IsTrue(handler.Contents[0].Disposed);
+    }
+
+    [TestMethod]
+    public async Task DownloadFileAsync_BodyAtDownloadLimit_Publishes()
+    {
+        using var project = TestProject.Create();
+        var destinationPath = Path.Combine(project.SourcePath, "photo.jpg");
+        using var handler = new ScriptedHttpMessageHandler(_ => new TrackedContent(new byte[16], declareLength: false));
+        using var client = new HttpClient(handler);
+        var limitedProvider = new SharedLinkProvider(client, logger) { MaxDownloadBytes = 16 };
+
+        await limitedProvider.DownloadFileAsync(CreateTestItem("photo.jpg", "https://public.am.files.1drv.com/photo.jpg", size: 16), destinationPath);
+
+        Assert.AreEqual(16L, new FileInfo(destinationPath).Length);
+    }
+
+    [TestMethod]
+    public async Task DownloadFileAsync_ReportedSizeExceedsDownloadLimit_ThrowsWithoutRequest()
+    {
+        using var project = TestProject.Create();
+        var destinationPath = Path.Combine(project.SourcePath, "photo.jpg");
+        var limitedProvider = new SharedLinkProvider(httpClient, logger) { MaxDownloadBytes = 16 };
+        var item = new OneDriveItem
+        {
+            Id = "photo",
+            Name = "photo.jpg",
+            DownloadUrl = "https://public.am.files.1drv.com/photo.jpg",
+            Size = 17
+        };
+
+        var error = await Assert.ThrowsExactlyAsync<HttpRequestException>(
+            () => limitedProvider.DownloadFileAsync(item, destinationPath));
+
+        Assert.AreEqual(HttpRequestError.ConfigurationLimitExceeded, error.HttpRequestError);
+        Assert.IsEmpty(mockHandler.RecordedRequests);
+        Assert.IsEmpty(Directory.GetFiles(project.SourcePath));
+    }
+
+    [TestMethod]
+    public void ConfigureServices_HttpClient_CapsBufferedResponses()
+    {
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddSingleton(CreateBuildInfo("0.0.0-test"));
+        new OneDrivePlugin().ConfigureServices(services);
+        using var serviceProvider = services.BuildServiceProvider();
+
+        using var client = serviceProvider.GetRequiredService<IHttpClientFactory>().CreateClient(nameof(SharedLinkProvider));
+
+        Assert.AreEqual(10L * 1024 * 1024, client.MaxResponseContentBufferSize);
+    }
+
+    private static TrackedContent ApiResponse(HttpRequestMessage request)
+    {
+        var uri = request.RequestUri!;
+        object payload = string.Equals(uri.Host, "api-badgerp.svc.ms", StringComparison.Ordinal)
+            ? new { token = "t" }
+            : uri.AbsolutePath.EndsWith("/driveItem", StringComparison.Ordinal)
+                ? new { id = "folder123", parentReference = new { driveId = "drive123" } }
+                : new { value = Array.Empty<object>() };
+        return new TrackedContent(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(payload)), declareLength: true);
+    }
+
+    #endregion
+
     #region Helper Methods
 
     private void SetupBadgerTokenResponse(string token = "test-token-123")
@@ -994,14 +1143,14 @@ public sealed class SharedLinkProviderTests : IDisposable
         return json;
     }
 
-    private static OneDriveItem CreateTestItem(string name, string downloadUrl, DateTime? lastModified = null)
+    private static OneDriveItem CreateTestItem(string name, string downloadUrl, DateTime? lastModified = null, long size = 1024)
     {
         return new OneDriveItem
         {
             Id = Guid.NewGuid().ToString(),
             Name = name,
             DownloadUrl = downloadUrl,
-            Size = 1024,
+            Size = size,
             LastModified = lastModified ?? DateTime.UtcNow
         };
     }
@@ -1201,6 +1350,46 @@ public sealed class SharedLinkProviderTests : IDisposable
     {
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) =>
             Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = new StreamContent(body) });
+    }
+
+    /// <summary>
+    /// Answers every request with 200 OK and the content produced by <paramref name="respond"/>,
+    /// recording each content so tests can verify disposal and whether the body was read.
+    /// </summary>
+    private sealed class ScriptedHttpMessageHandler(Func<HttpRequestMessage, TrackedContent> respond) : HttpMessageHandler
+    {
+        public List<TrackedContent> Contents { get; } = [];
+
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            var content = respond(request);
+            Contents.Add(content);
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = content });
+        }
+    }
+
+    private sealed class TrackedContent(byte[] body, bool declareLength) : HttpContent
+    {
+        public bool Disposed { get; private set; }
+        public bool Serialized { get; private set; }
+
+        protected override bool TryComputeLength(out long length)
+        {
+            length = body.Length;
+            return declareLength;
+        }
+
+        protected override async Task SerializeToStreamAsync(Stream stream, TransportContext? context)
+        {
+            Serialized = true;
+            await stream.WriteAsync(body);
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            Disposed = true;
+            base.Dispose(disposing);
+        }
     }
 
     private sealed class DownloadBodyStream(ReadOnlyMemory<byte> content, Action? onEndOfStream = null, Action? onRead = null) : Stream

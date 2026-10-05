@@ -1,3 +1,4 @@
+using System.Globalization;
 using Spectara.Revela.Sdk.Validation;
 
 namespace Spectara.Revela.Plugins.Source.Calendar.Services;
@@ -9,6 +10,12 @@ internal sealed partial class ICalFetcher(
     HttpClient httpClient,
     ILogger<ICalFetcher> logger)
 {
+    /// <summary>
+    /// Maximum accepted size of an iCal feed (10 MB). Real booking/holiday feeds are a few
+    /// hundred KB at most; the cap stops a misbehaving or hostile server from filling the disk.
+    /// </summary>
+    internal const long MaxFeedBytes = 10 * 1024 * 1024;
+
     /// <summary>
     /// Fetches an iCal feed from a URL and saves it to the specified path.
     /// </summary>
@@ -32,6 +39,10 @@ internal sealed partial class ICalFetcher(
         timeout.CancelAfter(httpClient.Timeout);
         using var response = await GetResponseAsync(uri, timeout.Token);
         response.EnsureSuccessStatusCode();
+        if (response.Content.Headers.ContentLength > MaxFeedBytes)
+        {
+            throw FeedTooLarge(uri.Host);
+        }
 
         var destination = Path.GetFullPath(outputPath);
         Directory.CreateDirectory(Path.GetDirectoryName(destination)!);
@@ -41,7 +52,17 @@ internal sealed partial class ICalFetcher(
             long bytesWritten;
             await using (var fileStream = new FileStream(temporaryPath, FileMode.CreateNew, FileAccess.Write, FileShare.None, 81920, FileOptions.Asynchronous))
             {
-                await response.Content.CopyToAsync(fileStream, timeout.Token);
+                await using var limitedStream = new SizeLimitedWriteStream(fileStream, MaxFeedBytes);
+                try
+                {
+                    await response.Content.CopyToAsync(limitedStream, timeout.Token);
+                }
+                catch (Exception ex) when (limitedStream.LimitExceeded && ex is not OperationCanceledException)
+                {
+                    // HttpContent may wrap the IOException thrown by the stream; report the limit instead.
+                    throw FeedTooLarge(uri.Host);
+                }
+
                 bytesWritten = fileStream.Length;
             }
 
@@ -99,12 +120,75 @@ internal sealed partial class ICalFetcher(
         }
     }
 
+    private HttpRequestException FeedTooLarge(string host)
+    {
+        LogFeedTooLarge(host, MaxFeedBytes);
+        return new HttpRequestException(
+            HttpRequestError.ConfigurationLimitExceeded,
+            string.Create(CultureInfo.InvariantCulture, $"The iCal feed exceeds the {MaxFeedBytes / (1024 * 1024)} MB size limit; the download was aborted."));
+    }
+
     [LoggerMessage(Level = LogLevel.Information, Message = "Fetching iCal feed from {Host}")]
     private partial void LogFetchingHost(string host);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "iCal feed from {Host} exceeds the size limit of {LimitBytes} bytes; download aborted and the previous file retained")]
+    private partial void LogFeedTooLarge(string host, long limitBytes);
 
     [LoggerMessage(Level = LogLevel.Debug, Message = "Saved iCal feed to {Path} ({Bytes} bytes)")]
     private partial void LogFetched(string path, long bytes);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Could not remove temporary calendar download. The previous output file was retained; inspect temporary files in its directory.")]
     private partial void LogTemporaryCleanupFailed();
+
+    /// <summary>
+    /// Write-only pass-through that fails once more than <paramref name="maxBytes"/> are written.
+    /// Bounding the destination keeps <see cref="HttpContent.CopyToAsync(Stream, CancellationToken)"/>
+    /// streaming (no buffering) for any content implementation. Does not dispose <paramref name="inner"/>.
+    /// </summary>
+    private sealed class SizeLimitedWriteStream(Stream inner, long maxBytes) : Stream
+    {
+        private long written;
+
+        public bool LimitExceeded { get; private set; }
+
+        public override bool CanRead => false;
+        public override bool CanSeek => false;
+        public override bool CanWrite => true;
+        public override long Length => throw new NotSupportedException();
+        public override long Position { get => throw new NotSupportedException(); set => throw new NotSupportedException(); }
+
+        public override void Write(byte[] buffer, int offset, int count) => Write(buffer.AsSpan(offset, count));
+
+        public override void Write(ReadOnlySpan<byte> buffer)
+        {
+            Reserve(buffer.Length);
+            inner.Write(buffer);
+        }
+
+        public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken) =>
+            WriteAsync(buffer.AsMemory(offset, count), cancellationToken).AsTask();
+
+        public override ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken = default)
+        {
+            Reserve(buffer.Length);
+            return inner.WriteAsync(buffer, cancellationToken);
+        }
+
+        public override void Flush() => inner.Flush();
+        public override Task FlushAsync(CancellationToken cancellationToken) => inner.FlushAsync(cancellationToken);
+        public override int Read(byte[] buffer, int offset, int count) => throw new NotSupportedException();
+        public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+        public override void SetLength(long value) => throw new NotSupportedException();
+
+        private void Reserve(int count)
+        {
+            if (written + count > maxBytes)
+            {
+                LimitExceeded = true;
+                throw new IOException("Size limit exceeded.");
+            }
+
+            written += count;
+        }
+    }
 }

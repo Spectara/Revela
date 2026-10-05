@@ -4,6 +4,7 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using NuGet.Packaging;
+using Spectara.Revela.Core.Helpers;
 using Spectara.Revela.Core.Models;
 using Spectara.Revela.Core.Services;
 using Spectara.Revela.Sdk;
@@ -188,7 +189,7 @@ internal sealed partial class RefreshCommand(
         {
             if (!PackageTrustPolicy.IsAllowedSource(source.Url))
             {
-                LogInsecureSourceSkipped(logger, source.Name, source.Url);
+                LogInsecureSourceSkipped(logger, source.Name, UrlRedaction.Redact(source.Url));
                 return packages;
             }
 

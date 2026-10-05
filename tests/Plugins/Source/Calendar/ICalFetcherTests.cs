@@ -74,11 +74,11 @@ public sealed class ICalFetcherTests : IDisposable
 
         if (cancel)
         {
-            await Assert.ThrowsAsync<OperationCanceledException>(() => fetcher.FetchAsync("https://example.com/calendar.ics", outputPath));
+            await Assert.ThrowsExactlyAsync<OperationCanceledException>(() => fetcher.FetchAsync("https://example.com/calendar.ics", outputPath));
         }
         else
         {
-            await Assert.ThrowsAsync<HttpRequestException>(() => fetcher.FetchAsync("https://example.com/calendar.ics", outputPath));
+            await Assert.ThrowsExactlyAsync<HttpRequestException>(() => fetcher.FetchAsync("https://example.com/calendar.ics", outputPath));
         }
 
         Assert.AreEqual(SampleIcal, await File.ReadAllTextAsync(outputPath));
@@ -145,7 +145,7 @@ public sealed class ICalFetcherTests : IDisposable
         using var handler = new CancelingBodyHandler(cancellation);
         using var client = new HttpClient(handler);
 
-        await Assert.ThrowsAsync<OperationCanceledException>(() =>
+        await Assert.ThrowsExactlyAsync<OperationCanceledException>(() =>
             new ICalFetcher(client, NullLogger<ICalFetcher>.Instance).FetchAsync("https://example.com/calendar.ics", outputPath, cancellation.Token));
 
         Assert.AreEqual(SampleIcal, await File.ReadAllTextAsync(outputPath));
@@ -192,11 +192,11 @@ public sealed class ICalFetcherTests : IDisposable
         var outputPath = Path.Combine(tempDir, "bookings.ics");
         await File.WriteAllTextAsync(outputPath, SampleIcal);
         using var cancellation = new CancellationTokenSource();
-        using var handler = new CancelingBodyHandler(cancellation, blockCleanup: true);
+        using var handler = new CancelingBodyHandler(cancellation, readOnlyTempFileDirectory: tempDir);
         using var client = new HttpClient(handler);
         try
         {
-            await Assert.ThrowsAsync<OperationCanceledException>(() =>
+            await Assert.ThrowsExactlyAsync<OperationCanceledException>(() =>
                 new ICalFetcher(client, NullLogger<ICalFetcher>.Instance).FetchAsync("https://example.com/calendar.ics", outputPath, cancellation.Token));
 
             Assert.AreEqual(SampleIcal, await File.ReadAllTextAsync(outputPath));
@@ -221,7 +221,7 @@ public sealed class ICalFetcherTests : IDisposable
         using var handler = new StalledBodyHandler();
         using var client = new HttpClient(handler) { Timeout = TimeSpan.FromMilliseconds(100) };
 
-        await Assert.ThrowsAsync<OperationCanceledException>(() =>
+        await Assert.ThrowsExactlyAsync<TaskCanceledException>(() =>
             new ICalFetcher(client, NullLogger<ICalFetcher>.Instance).FetchAsync("https://example.com/calendar.ics", outputPath));
 
         Assert.IsTrue(handler.Content.Started);
@@ -242,6 +242,54 @@ public sealed class ICalFetcherTests : IDisposable
 
         Assert.DoesNotContain("private-token", error.ToString(), StringComparison.Ordinal);
         Assert.IsFalse(Directory.Exists(tempDir));
+    }
+
+    [TestMethod]
+    public async Task FetchAsync_BodyExceedsLimitWithoutContentLength_FailsAndPreservesExistingFile()
+    {
+        Directory.CreateDirectory(tempDir);
+        var outputPath = Path.Combine(tempDir, "bookings.ics");
+        await File.WriteAllTextAsync(outputPath, SampleIcal);
+        var content = new ChunkedContent(ICalFetcher.MaxFeedBytes + 1, reportLength: false);
+        using var handler = new ContentHandler(content);
+        using var client = new HttpClient(handler);
+
+        var error = await Assert.ThrowsExactlyAsync<HttpRequestException>(() =>
+            new ICalFetcher(client, NullLogger<ICalFetcher>.Instance).FetchAsync("https://example.com/calendar.ics", outputPath));
+
+        Assert.AreEqual(HttpRequestError.ConfigurationLimitExceeded, error.HttpRequestError);
+        Assert.Contains("10 MB", error.Message);
+        Assert.AreEqual(SampleIcal, await File.ReadAllTextAsync(outputPath));
+        Assert.HasCount(1, Directory.GetFiles(tempDir));
+    }
+
+    [TestMethod]
+    public async Task FetchAsync_ContentLengthExceedsLimit_FailsWithoutReadingBody()
+    {
+        var content = new ChunkedContent(ICalFetcher.MaxFeedBytes + 1, reportLength: true);
+        using var handler = new ContentHandler(content);
+        using var client = new HttpClient(handler);
+
+        var error = await Assert.ThrowsExactlyAsync<HttpRequestException>(() =>
+            new ICalFetcher(client, NullLogger<ICalFetcher>.Instance).FetchAsync("https://example.com/calendar.ics", Path.Combine(tempDir, "bookings.ics")));
+
+        Assert.AreEqual(HttpRequestError.ConfigurationLimitExceeded, error.HttpRequestError);
+        Assert.AreEqual(0L, content.BytesWritten);
+        Assert.IsFalse(Directory.Exists(tempDir));
+    }
+
+    [TestMethod]
+    public async Task FetchAsync_BodyExactlyAtLimit_WritesFile()
+    {
+        var content = new ChunkedContent(ICalFetcher.MaxFeedBytes, reportLength: false);
+        using var handler = new ContentHandler(content);
+        using var client = new HttpClient(handler);
+        var outputPath = Path.Combine(tempDir, "bookings.ics");
+
+        var bytes = await new ICalFetcher(client, NullLogger<ICalFetcher>.Instance).FetchAsync("https://example.com/calendar.ics", outputPath);
+
+        Assert.AreEqual(ICalFetcher.MaxFeedBytes, bytes);
+        Assert.AreEqual(ICalFetcher.MaxFeedBytes, new FileInfo(outputPath).Length);
     }
 
     [TestMethod]
@@ -327,15 +375,15 @@ public sealed class ICalFetcherTests : IDisposable
         }
     }
 
-    private sealed class CancelingBodyHandler(CancellationTokenSource source, bool blockCleanup = false) : HttpMessageHandler
+    private sealed class CancelingBodyHandler(CancellationTokenSource source, string? readOnlyTempFileDirectory = null) : HttpMessageHandler
     {
-        public CancelingContent Content { get; } = new(source, blockCleanup);
+        public CancelingContent Content { get; } = new(source, readOnlyTempFileDirectory);
 
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) =>
             Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = Content });
     }
 
-    private sealed class CancelingContent(CancellationTokenSource source, bool blockCleanup) : HttpContent
+    private sealed class CancelingContent(CancellationTokenSource source, string? readOnlyTempFileDirectory) : HttpContent
     {
         public bool TokenObserved { get; private set; }
 
@@ -351,9 +399,9 @@ public sealed class ICalFetcherTests : IDisposable
         protected override async Task SerializeToStreamAsync(Stream stream, TransportContext? context, CancellationToken cancellationToken)
         {
             await stream.WriteAsync("partial"u8.ToArray(), cancellationToken);
-            if (blockCleanup)
+            if (readOnlyTempFileDirectory is not null)
             {
-                File.SetAttributes(((FileStream)stream).Name, FileAttributes.ReadOnly);
+                File.SetAttributes(Directory.GetFiles(readOnlyTempFileDirectory, "*.tmp").Single(), FileAttributes.ReadOnly);
             }
 
             await source.CancelAsync();
@@ -382,6 +430,40 @@ public sealed class ICalFetcherTests : IDisposable
 
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) =>
             Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = Content });
+    }
+
+    private sealed class ContentHandler(HttpContent content) : HttpMessageHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) =>
+            Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = content });
+    }
+
+    /// <summary>
+    /// Streams <paramref name="length"/> bytes in 64 KB chunks, optionally without a Content-Length.
+    /// </summary>
+    private sealed class ChunkedContent(long length, bool reportLength) : HttpContent
+    {
+        public long BytesWritten { get; private set; }
+
+        protected override bool TryComputeLength(out long computed)
+        {
+            computed = length;
+            return reportLength;
+        }
+
+        protected override Task SerializeToStreamAsync(Stream stream, TransportContext? context) =>
+            SerializeToStreamAsync(stream, context, CancellationToken.None);
+
+        protected override async Task SerializeToStreamAsync(Stream stream, TransportContext? context, CancellationToken cancellationToken)
+        {
+            var chunk = new byte[64 * 1024];
+            while (BytesWritten < length)
+            {
+                var size = (int)Math.Min(chunk.Length, length - BytesWritten);
+                await stream.WriteAsync(chunk.AsMemory(0, size), cancellationToken);
+                BytesWritten += size;
+            }
+        }
     }
 
     private sealed class StalledContent : HttpContent

@@ -1,3 +1,4 @@
+using Spectara.Revela.Core.Helpers;
 using Spectara.Revela.Features.Packages.Services;
 
 namespace Spectara.Revela.Features.Packages.Logging;
@@ -41,7 +42,17 @@ internal static partial class PackageManagerLogging
     public static partial void LocalPackageNotNupkg(this ILogger<PackageManager> logger, string filePath);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Installing plugin from URL: {Url}")]
-    public static partial void InstallingFromUrl(this ILogger<PackageManager> logger, string url);
+    private static partial void LogInstallingFromUrl(ILogger<PackageManager> logger, string url);
+
+    /// <summary>Logs a package URL install; the URL is redacted (no user info, query or fragment).</summary>
+    public static void InstallingFromUrl(this ILogger<PackageManager> logger, string url)
+    {
+        if (logger.IsEnabled(LogLevel.Information))
+        {
+            var redacted = UrlRedaction.Redact(url);
+            LogInstallingFromUrl(logger, redacted);
+        }
+    }
 
     [LoggerMessage(Level = LogLevel.Error, Message = "Failed to download package {PackageId} v{Version}")]
     public static partial void DownloadFailed(this ILogger<PackageManager> logger, string packageId, string version);
@@ -49,18 +60,46 @@ internal static partial class PackageManagerLogging
     [LoggerMessage(Level = LogLevel.Information, Message = "Plugin {PackageId} installed successfully")]
     public static partial void PluginInstalled(this ILogger<PackageManager> logger, string packageId);
 
-    // Multi-source discovery logging
+    // Multi-source discovery logging. Every source/URL argument is passed through
+    // UrlRedaction because feed URLs may carry credentials or signed query strings.
     [LoggerMessage(Level = LogLevel.Debug, Message = "Using named source '{SourceName}' -> {Url}")]
-    public static partial void UsingNamedSource(this ILogger<PackageManager> logger, string sourceName, string url);
+    private static partial void LogUsingNamedSource(ILogger<PackageManager> logger, string sourceName, string url);
+
+    public static void UsingNamedSource(this ILogger<PackageManager> logger, string sourceName, string url)
+    {
+        if (logger.IsEnabled(LogLevel.Debug))
+        {
+            var redacted = UrlRedaction.Redact(url);
+            LogUsingNamedSource(logger, sourceName, redacted);
+        }
+    }
 
     [LoggerMessage(Level = LogLevel.Debug, Message = "Source '{Source}' not found in config, treating as path/URL")]
-    public static partial void SourceNotFoundTreatingAsUrl(this ILogger<PackageManager> logger, string source);
+    private static partial void LogSourceNotFoundTreatingAsUrl(ILogger<PackageManager> logger, string source);
+
+    public static void SourceNotFoundTreatingAsUrl(this ILogger<PackageManager> logger, string source)
+    {
+        if (logger.IsEnabled(LogLevel.Debug))
+        {
+            var redacted = UrlRedaction.Redact(source);
+            LogSourceNotFoundTreatingAsUrl(logger, redacted);
+        }
+    }
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Trying {SourceCount} source(s) for package {PackageId}")]
     public static partial void TryingMultipleSources(this ILogger<PackageManager> logger, string packageId, int sourceCount);
 
     [LoggerMessage(Level = LogLevel.Debug, Message = "Trying source '{SourceName}' ({Url})")]
-    public static partial void TryingSource(this ILogger<PackageManager> logger, string sourceName, string url);
+    private static partial void LogTryingSource(ILogger<PackageManager> logger, string sourceName, string url);
+
+    public static void TryingSource(this ILogger<PackageManager> logger, string sourceName, string url)
+    {
+        if (logger.IsEnabled(LogLevel.Debug))
+        {
+            var redacted = UrlRedaction.Redact(url);
+            LogTryingSource(logger, sourceName, redacted);
+        }
+    }
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Successfully installed {PackageId} from source '{SourceName}'")]
     public static partial void SuccessFromSource(this ILogger<PackageManager> logger, string packageId, string sourceName);
@@ -79,10 +118,28 @@ internal static partial class PackageManagerLogging
     public static partial void InvalidVersion(this ILogger<PackageManager> logger, string packageId, string version);
 
     [LoggerMessage(Level = LogLevel.Error, Message = "Rejected insecure package source {Source}: use https:// or a local folder (plain http:// is only allowed for localhost)")]
-    public static partial void InsecureSourceRejected(this ILogger<PackageManager> logger, string source);
+    private static partial void LogInsecureSourceRejected(ILogger<PackageManager> logger, string source);
+
+    public static void InsecureSourceRejected(this ILogger<PackageManager> logger, string source)
+    {
+        if (logger.IsEnabled(LogLevel.Error))
+        {
+            var redacted = UrlRedaction.Redact(source);
+            LogInsecureSourceRejected(logger, redacted);
+        }
+    }
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Skipping insecure package source '{SourceName}' ({Url}): use https:// or a local folder")]
-    public static partial void InsecureSourceSkipped(this ILogger<PackageManager> logger, string sourceName, string url);
+    private static partial void LogInsecureSourceSkipped(ILogger<PackageManager> logger, string sourceName, string url);
+
+    public static void InsecureSourceSkipped(this ILogger<PackageManager> logger, string sourceName, string url)
+    {
+        if (logger.IsEnabled(LogLevel.Warning))
+        {
+            var redacted = UrlRedaction.Redact(url);
+            LogInsecureSourceSkipped(logger, sourceName, redacted);
+        }
+    }
 }
 
 

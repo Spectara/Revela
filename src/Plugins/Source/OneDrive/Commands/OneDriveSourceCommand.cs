@@ -20,7 +20,7 @@ namespace Spectara.Revela.Plugins.Source.OneDrive.Commands;
 /// </summary>
 /// <remarks>
 /// Uses Dependency Injection with Primary Constructor (C# 12).
-/// Configuration is injected via IOptionsMonitor for hot-reload support.
+/// Configuration is injected via IOptionsMonitor and read when the command runs.
 /// Dependencies are injected at construction time, making the command fully testable.
 /// </remarks>
 internal sealed partial class OneDriveSourceCommand(
@@ -103,7 +103,7 @@ internal sealed partial class OneDriveSourceCommand(
     {
         try
         {
-            // Get current config from IOptionsMonitor (hot-reload support)
+            // Read the configuration as it is when the command runs
             var currentConfig = config.CurrentValue;
 
             // CLI --share-url overrides config file

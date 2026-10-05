@@ -130,7 +130,95 @@ public sealed class UrlSafetyTests
         Assert.IsFalse(ok);
     }
 
+    // ── Special-purpose IPv4 ranges (RFC 6890 registry) ──────────────────
+
+    [TestMethod]
+    [DataRow("https://0.1.2.3/")]           // 0.0.0.0/8 "this network"
+    [DataRow("https://192.0.0.8/")]         // 192.0.0.0/24 IETF protocol assignments
+    [DataRow("https://192.0.2.10/")]        // TEST-NET-1
+    [DataRow("https://198.18.0.1/")]        // benchmarking 198.18.0.0/15
+    [DataRow("https://198.19.255.255/")]
+    [DataRow("https://198.51.100.7/")]      // TEST-NET-2
+    [DataRow("https://203.0.113.9/")]       // TEST-NET-3
+    [DataRow("https://240.0.0.1/")]         // reserved 240.0.0.0/4
+    [DataRow("https://255.255.255.255/")]   // limited broadcast
+    public void IsSafeOutboundUrl_ReservedIPv4Rejected(string input)
+    {
+        var ok = UrlSafety.IsSafeOutboundUrl(new Uri(input));
+        Assert.IsFalse(ok);
+    }
+
+    [TestMethod]
+    [DataRow("https://1.0.0.1/")]
+    [DataRow("https://192.0.1.1/")]
+    [DataRow("https://192.0.3.1/")]
+    [DataRow("https://198.17.255.255/")]
+    [DataRow("https://198.20.0.1/")]
+    [DataRow("https://203.0.114.1/")]
+    [DataRow("https://223.255.255.254/")]
+    public void IsSafeOutboundUrl_PublicIPv4NextToReservedRangesAllowed(string input)
+    {
+        var ok = UrlSafety.IsSafeOutboundUrl(new Uri(input));
+        Assert.IsTrue(ok);
+    }
+
+    // ── Special-purpose IPv6 ranges and embedded IPv4 ────────────────────
+
+    [TestMethod]
+    [DataRow("https://[::]/")]                               // unspecified
+    [DataRow("https://[::7f00:1]/")]                         // deprecated IPv4-compatible ::127.0.0.1
+    [DataRow("https://[::808:808]/")]                        // deprecated IPv4-compatible ::8.8.8.8
+    [DataRow("https://[::ffff:10.0.0.1]/")]                  // IPv4-mapped private
+    [DataRow("https://[::ffff:198.51.100.1]/")]              // IPv4-mapped documentation
+    [DataRow("https://[64:ff9b::a00:1]/")]                   // NAT64 → 10.0.0.1
+    [DataRow("https://[64:ff9b::a9fe:a9fe]/")]               // NAT64 → 169.254.169.254
+    [DataRow("https://[64:ff9b:1::1]/")]                     // local-use NAT64
+    [DataRow("https://[2002:c0a8:101::1]/")]                 // 6to4 → 192.168.1.1
+    [DataRow("https://[2002:7f00:1::1]/")]                   // 6to4 → 127.0.0.1
+    [DataRow("https://[2001:0:4136:e378:8000:63bf:f5ff:fffe]/")] // Teredo client 10.0.0.1
+    [DataRow("https://[2001:db8::1]/")]                      // documentation
+    [DataRow("https://[100::1]/")]                           // discard-only
+    [DataRow("https://[fec0::1]/")]                          // deprecated site-local
+    public void IsSafeOutboundUrl_ReservedOrEmbeddedPrivateIPv6Rejected(string input)
+    {
+        var ok = UrlSafety.IsSafeOutboundUrl(new Uri(input));
+        Assert.IsFalse(ok);
+    }
+
+    [TestMethod]
+    [DataRow("https://[64:ff9b::808:808]/")]                 // NAT64 → 8.8.8.8
+    [DataRow("https://[2002:808:808::1]/")]                  // 6to4 → 8.8.8.8
+    [DataRow("https://[2001:0:4136:e378:8000:63bf:f7f7:f7f7]/")] // Teredo client 8.8.8.8
+    [DataRow("https://[2001:4860:4860::8888]/")]
+    [DataRow("https://[::ffff:8.8.8.8]/")]
+    public void IsSafeOutboundUrl_PublicIPv6Or6to4Allowed(string input)
+    {
+        var ok = UrlSafety.IsSafeOutboundUrl(new Uri(input));
+        Assert.IsTrue(ok);
+    }
+
     // ── Hostnames (no DNS resolution) ────────────────────────────────────
+
+    [TestMethod]
+    [DataRow("https://foo.localhost/")]
+    [DataRow("https://a.b.LOCALHOST/")]
+    [DataRow("https://localhost./")]
+    [DataRow("https://foo.localhost./")]
+    public void IsSafeOutboundUrl_LocalhostSubdomainRejected(string input)
+    {
+        var ok = UrlSafety.IsSafeOutboundUrl(new Uri(input));
+        Assert.IsFalse(ok);
+    }
+
+    [TestMethod]
+    [DataRow("https://notlocalhost.com/")]
+    [DataRow("https://localhost.example.com/")]
+    [DataRow("https://mylocalhost/")]
+    public void IsSafeOutboundUrl_HostnameContainingLocalhostAllowed(string input)
+    {
+        var ok = UrlSafety.IsSafeOutboundUrl(new Uri(input));
+        Assert.IsTrue(ok);
+    }
 
     [TestMethod]
     [DataRow("https://1drv.ms/f/s!ABC")]

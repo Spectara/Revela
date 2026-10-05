@@ -1,3 +1,4 @@
+using System.Buffers;
 using System.Globalization;
 using System.Net;
 using System.Net.Http.Headers;
@@ -5,6 +6,7 @@ using System.Net.Http.Json;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using Spectara.Revela.Plugins.Source.OneDrive.Formatting;
 using Spectara.Revela.Plugins.Source.OneDrive.Models;
 using Spectara.Revela.Plugins.Source.OneDrive.Providers.Logging;
 using Spectara.Revela.Sdk.Validation;
@@ -30,6 +32,26 @@ internal sealed partial class SharedLinkProvider(
     private const string BadgerTokenUrl = "https://api-badgerp.svc.ms/v1.0/token";
     private const string OneDriveApiBaseUrl = "https://api.onedrive.com/v1.0";
     private const int MaxRedirects = 5;
+    private const int CopyBufferSize = 81920;
+
+    /// <summary>
+    /// Default cap for one OneDrive API JSON response (10 MB). A listing page of ~200 items is
+    /// well under 1 MB, so only a broken or hostile response reaches this limit.
+    /// </summary>
+    internal const long DefaultMaxJsonResponseBytes = 10L * 1024 * 1024;
+
+    /// <summary>
+    /// Default cap for one downloaded file (1 GB). Generous enough for large TIFF/PSB masters,
+    /// while still bounding the disk space a single misbehaving response can consume.
+    /// </summary>
+    internal const long DefaultMaxDownloadBytes = 1024L * 1024 * 1024;
+
+    /// <summary>Maximum size of one OneDrive API JSON response (Badger token, metadata, listing page).</summary>
+    internal long MaxJsonResponseBytes { get; init; } = DefaultMaxJsonResponseBytes;
+
+    /// <summary>Maximum size of one downloaded file, checked against the reported item size,
+    /// the Content-Length header and the streamed body.</summary>
+    internal long MaxDownloadBytes { get; init; } = DefaultMaxDownloadBytes;
 
     /// <summary>
     /// Hosts (and their subdomains) that API calls, pagination links, download URLs and
@@ -108,15 +130,10 @@ internal sealed partial class SharedLinkProvider(
         while (nextLink is not null)
         {
             // nextLink comes from the API response: GetAsync only follows it to OneDrive hosts.
-            using var response = await GetAsync(new Uri(nextLink), token, preferAutoRedeem: false, HttpCompletionOption.ResponseContentRead, cancellationToken);
+            using var response = await GetAsync(new Uri(nextLink), token, preferAutoRedeem: false, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
             response.EnsureSuccessStatusCode();
 
-            using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
-            using var jsonResponse = await JsonDocument.ParseAsync(stream, cancellationToken: cancellationToken);
-            if (jsonResponse is null)
-            {
-                break;
-            }
+            using var jsonResponse = await ReadJsonDocumentAsync(response, cancellationToken);
 
             // Parse children
             if (jsonResponse.RootElement.TryGetProperty("value", out var valueArray))
@@ -178,6 +195,11 @@ internal sealed partial class SharedLinkProvider(
             throw new ArgumentException("Item does not have a download URL", nameof(item));
         }
 
+        if (item.Size > MaxDownloadBytes)
+        {
+            throw DownloadTooLarge(item.Name);
+        }
+
         logger.DownloadingFile(item.Name, destinationPath);
 
         // Ensure directory exists
@@ -196,6 +218,10 @@ internal sealed partial class SharedLinkProvider(
 
         using var response = await GetAsync(downloadUri, badgerToken: null, preferAutoRedeem: false, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
         response.EnsureSuccessStatusCode();
+        if (response.Content.Headers.ContentLength > MaxDownloadBytes)
+        {
+            throw DownloadTooLarge(item.Name);
+        }
 
         var temporaryPath = destinationPath + "." + Guid.NewGuid().ToString("N", CultureInfo.InvariantCulture) + ".tmp";
         var streamOptions = new FileStreamOptions
@@ -223,7 +249,10 @@ internal sealed partial class SharedLinkProvider(
             await using (var fileStream = new FileStream(temporaryPath, streamOptions))
             {
                 ownsTemporaryFile = true;
-                await stream.CopyToAsync(fileStream, cancellationToken);
+                if (!await TryCopyBoundedAsync(stream, fileStream, MaxDownloadBytes, cancellationToken))
+                {
+                    throw DownloadTooLarge(item.Name);
+                }
             }
 
             File.SetLastWriteTimeUtc(temporaryPath, item.LastModified);
@@ -344,6 +373,95 @@ internal sealed partial class SharedLinkProvider(
         HttpStatusCode.TemporaryRedirect or
         HttpStatusCode.PermanentRedirect;
 
+    private async Task<JsonDocument> ReadJsonDocumentAsync(HttpResponseMessage response, CancellationToken cancellationToken)
+    {
+        await using var body = await ReadJsonBodyAsync(response, cancellationToken);
+        return await JsonDocument.ParseAsync(body, cancellationToken: cancellationToken);
+    }
+
+    /// <summary>
+    /// Buffers a JSON response body, failing once it exceeds <see cref="MaxJsonResponseBytes"/>.
+    /// </summary>
+    private async Task<MemoryStream> ReadJsonBodyAsync(HttpResponseMessage response, CancellationToken cancellationToken)
+    {
+        if (response.Content.Headers.ContentLength > MaxJsonResponseBytes)
+        {
+            throw JsonResponseTooLarge();
+        }
+
+        var buffer = new MemoryStream();
+        try
+        {
+            await using (var stream = await response.Content.ReadAsStreamAsync(cancellationToken))
+            {
+                if (!await TryCopyBoundedAsync(stream, buffer, MaxJsonResponseBytes, cancellationToken))
+                {
+                    throw JsonResponseTooLarge();
+                }
+            }
+
+            buffer.Position = 0;
+            return buffer;
+        }
+        catch
+        {
+            await buffer.DisposeAsync();
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Copies <paramref name="source"/> to <paramref name="destination"/> and returns <see langword="false"/>
+    /// as soon as more than <paramref name="maxBytes"/> would be written (nothing beyond the limit is written).
+    /// </summary>
+    private static async Task<bool> TryCopyBoundedAsync(Stream source, Stream destination, long maxBytes, CancellationToken cancellationToken)
+    {
+        var buffer = ArrayPool<byte>.Shared.Rent(CopyBufferSize);
+        try
+        {
+            long total = 0;
+            int read;
+            while ((read = await source.ReadAsync(buffer.AsMemory(0, CopyBufferSize), cancellationToken)) > 0)
+            {
+                total += read;
+                if (total > maxBytes)
+                {
+                    return false;
+                }
+
+                await destination.WriteAsync(buffer.AsMemory(0, read), cancellationToken);
+            }
+
+            return true;
+        }
+        finally
+        {
+            ArrayPool<byte>.Shared.Return(buffer);
+        }
+    }
+
+    private HttpRequestException JsonResponseTooLarge()
+    {
+        LogJsonResponseTooLarge(MaxJsonResponseBytes);
+        return new HttpRequestException(
+            HttpRequestError.ConfigurationLimitExceeded,
+            $"A OneDrive API response exceeded the {FileSizeFormatter.Format(MaxJsonResponseBytes)} limit; the request was aborted.");
+    }
+
+    private HttpRequestException DownloadTooLarge(string itemName)
+    {
+        LogDownloadTooLarge(itemName, MaxDownloadBytes);
+        return new HttpRequestException(
+            HttpRequestError.ConfigurationLimitExceeded,
+            $"OneDrive file '{itemName}' exceeds the {FileSizeFormatter.Format(MaxDownloadBytes)} per-file download limit; the download was aborted.");
+    }
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "OneDrive API response exceeded the size limit of {LimitBytes} bytes; aborting")]
+    private partial void LogJsonResponseTooLarge(long limitBytes);
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "OneDrive file {Name} exceeds the per-file download limit of {LimitBytes} bytes; aborting and keeping any existing local copy")]
+    private partial void LogDownloadTooLarge(string name, long limitBytes);
+
     /// <summary>
     /// Gets a Badger authentication token from Microsoft API
     /// </summary>
@@ -357,10 +475,15 @@ internal sealed partial class SharedLinkProvider(
         logger.RequestingBadgerToken();
 
         var requestBody = new BadgerTokenRequest { AppId = BadgerAppId };
-        var response = await httpClient.PostAsJsonAsync(BadgerTokenUrl, requestBody, OneDriveJsonContext.Default.BadgerTokenRequest, cancellationToken);
+        using var request = new HttpRequestMessage(HttpMethod.Post, BadgerTokenUrl)
+        {
+            Content = JsonContent.Create(requestBody, OneDriveJsonContext.Default.BadgerTokenRequest)
+        };
+        using var response = await httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
         response.EnsureSuccessStatusCode();
 
-        var tokenResponse = await response.Content.ReadFromJsonAsync(OneDriveJsonContext.Default.BadgerTokenResponse, cancellationToken: cancellationToken);
+        await using var body = await ReadJsonBodyAsync(response, cancellationToken);
+        var tokenResponse = await JsonSerializer.DeserializeAsync(body, OneDriveJsonContext.Default.BadgerTokenResponse, cancellationToken);
         if (tokenResponse?.Token is null)
         {
             throw new InvalidOperationException("Failed to obtain Badger token");
@@ -380,11 +503,10 @@ internal sealed partial class SharedLinkProvider(
         var encodedUrl = EncodeShareUrl(shareUrl);
         var activationUrl = new Uri($"{OneDriveApiBaseUrl}/shares/u!{encodedUrl}/driveItem");
 
-        using var response = await GetAsync(activationUrl, token, preferAutoRedeem: true, HttpCompletionOption.ResponseContentRead, cancellationToken);
+        using var response = await GetAsync(activationUrl, token, preferAutoRedeem: true, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
         response.EnsureSuccessStatusCode();
 
-        using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
-        using var jsonResponse = await JsonDocument.ParseAsync(stream, cancellationToken: cancellationToken) ?? throw new InvalidOperationException("Failed to get share metadata");
+        using var jsonResponse = await ReadJsonDocumentAsync(response, cancellationToken);
 
         // Extract driveId and folderId from metadata
         var driveId = jsonResponse.RootElement.TryGetProperty("parentReference", out var parentRef) &&
