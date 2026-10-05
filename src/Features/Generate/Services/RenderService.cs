@@ -73,13 +73,13 @@ internal sealed partial class RenderService(
     /// <summary>Current theme extensions (set during rendering)</summary>
     private IReadOnlyList<ITheme> currentExtensions = [];
 
-    /// <summary>Gets full path to source directory (supports hot-reload)</summary>
+    /// <summary>Gets full path to source directory (resolved on every access)</summary>
     private string SourcePath => pathResolver.SourcePath;
 
-    /// <summary>Gets full path to output directory (supports hot-reload)</summary>
+    /// <summary>Gets full path to output directory (resolved on every access)</summary>
     private string OutputPath => pathResolver.OutputPath;
 
-    /// <summary>Gets current image settings (supports hot-reload)</summary>
+    /// <summary>Gets current image settings (read on every access)</summary>
     private ImageConfig ImageSettings => options.CurrentValue.Images;
 
     private RenderConfig RenderSettings => options.CurrentValue.Render;

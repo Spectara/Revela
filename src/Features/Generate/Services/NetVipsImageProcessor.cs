@@ -947,9 +947,10 @@ internal sealed partial class NetVipsImageProcessor(
         // Ensure image-specific output directory exists
         Directory.CreateDirectory(imageDirectory);
 
-        // Save with format-specific options
-        // IMPORTANT: Do NOT use Task.Run here!
-        // NetVips is NOT thread-safe - all operations on an Image must happen on the same thread
+        // Save with format-specific options. The save runs synchronously on the caller's thread:
+        // ImageService already processes several images in parallel, and libvips parallelises
+        // each save internally (see SetThreadsPerImage), so an extra Task.Run would only add
+        // thread-pool overhead.
         //
         // keep: ForeignKeep.None - removes all metadata (EXIF, XMP, ICC profiles)
         // Benefits:
