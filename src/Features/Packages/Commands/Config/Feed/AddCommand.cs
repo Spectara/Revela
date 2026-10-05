@@ -1,4 +1,5 @@
 using System.CommandLine;
+using Spectara.Revela.Core.Helpers;
 using Spectara.Revela.Core.Services;
 using Spectara.Revela.Sdk;
 using Spectara.Revela.Sdk.Output;
@@ -59,19 +60,27 @@ internal sealed partial class AddCommand(
                 return 1;
             }
 
+            var displayUrl = UrlRedaction.Redact(url);
+            if (Uri.TryCreate(url, UriKind.Absolute, out var uri) && !uri.IsFile && uri.UserInfo.Length > 0)
+            {
+                AnsiConsole.MarkupLine($"{OutputMarkers.Error} Feed [cyan]{Markup.Escape(displayUrl)}[/] contains credentials (user:password@).");
+                AnsiConsole.MarkupLine("  Feeds are stored in plain text in revela.json; remove the credentials from the URL.");
+                return 1;
+            }
+
             if (!PackageTrustPolicy.IsAllowedSource(url))
             {
-                AnsiConsole.MarkupLine($"{OutputMarkers.Error} Feed [cyan]{Markup.Escape(url)}[/] is not allowed.");
+                AnsiConsole.MarkupLine($"{OutputMarkers.Error} Feed [cyan]{Markup.Escape(displayUrl)}[/] is not allowed.");
                 AnsiConsole.MarkupLine("  Use an [cyan]https://[/] URL or a local folder; plain http:// is only accepted for localhost.");
                 return 1;
             }
 
-            LogAddingFeed(logger, name, url);
+            LogAddingFeed(logger, name, displayUrl);
 
             await globalConfigManager.AddFeedAsync(name, url, cancellationToken);
 
             AnsiConsole.MarkupLine($"{OutputMarkers.Success} Added feed [cyan]{Markup.Escape(name)}[/]");
-            AnsiConsole.MarkupLine($"  URL: [dim]{Markup.Escape(url)}[/]");
+            AnsiConsole.MarkupLine($"  URL: [dim]{Markup.Escape(displayUrl)}[/]");
             AnsiConsole.WriteLine();
             AnsiConsole.MarkupLine($"Config: [dim]{Markup.Escape(ConfigPathResolver.ConfigFilePath)}[/]");
             AnsiConsole.WriteLine();

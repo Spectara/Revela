@@ -318,9 +318,13 @@ internal sealed partial class ThemeInstallCommand(
         {
             var packageId = PackageIds.FromThemeName(name);
 
-            var sourceInfo = source is not null ? $" from [dim]{Markup.Escape(source)}[/]" : "";
+            var sourceInfo = source is not null ? $" from [dim]{Markup.Escape(UrlRedaction.Redact(source))}[/]" : "";
             AnsiConsole.MarkupLine($"[blue]Installing theme:[/] [cyan]{Markup.Escape(packageId)}[/]{sourceInfo}");
-            LogInstallingTheme(logger, packageId, version, source);
+            if (logger.IsEnabled(LogLevel.Information))
+            {
+                var redactedSource = UrlRedaction.Redact(source);
+                LogInstallingTheme(logger, packageId, version, redactedSource);
+            }
 
             var result = await AnsiConsole.Status()
                 .Spinner(Spinner.Known.Dots)
