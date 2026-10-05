@@ -94,15 +94,31 @@ internal static class HostBuilderExtensions
     /// <returns>The builder for chaining.</returns>
     public static HostApplicationBuilder AddRevelaLogging(this HostApplicationBuilder builder)
     {
+        builder.Logging.AddRevelaLogging(builder.Configuration);
+        return builder;
+    }
+
+    /// <summary>
+    /// Adds the console and debug logging providers with the configured log levels.
+    /// </summary>
+    /// <remarks>
+    /// Shared by the host and by the bootstrap logger factory that reports plugin loading
+    /// problems before the host is built, so both honour the same levels.
+    /// </remarks>
+    /// <param name="logging">The logging builder.</param>
+    /// <param name="configuration">The complete Revela configuration.</param>
+    /// <returns>The logging builder for chaining.</returns>
+    public static ILoggingBuilder AddRevelaLogging(this ILoggingBuilder logging, IConfiguration configuration)
+    {
         // Provider-specific settings (e.g. Logging:Console:FormatterName) still apply
-        builder.Logging.AddConfiguration(builder.Configuration.GetSection("Logging"));
-        builder.Logging.AddConsole();
-        builder.Logging.AddDebug();
+        logging.AddConfiguration(configuration.GetSection("Logging"));
+        logging.AddConsole();
+        logging.AddDebug();
 
         // Read IConfiguration directly instead of Bind() to avoid IL2026 trimming warning
         var logLevels = new LoggingConfig().LogLevel;
 
-        foreach (var child in builder.Configuration.GetSection("Logging:LogLevel").GetChildren())
+        foreach (var child in configuration.GetSection("Logging:LogLevel").GetChildren())
         {
             if (child.Value is not null)
             {
@@ -116,15 +132,15 @@ internal static class HostBuilderExtensions
             {
                 if (category == "Default")
                 {
-                    builder.Logging.SetMinimumLevel(logLevel);
+                    logging.SetMinimumLevel(logLevel);
                 }
                 else
                 {
-                    builder.Logging.AddFilter(category, logLevel);
+                    logging.AddFilter(category, logLevel);
                 }
             }
         }
 
-        return builder;
+        return logging;
     }
 }

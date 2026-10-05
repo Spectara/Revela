@@ -66,15 +66,37 @@ internal static class HostBootstrap
     /// <c>Build()</c> (e.g. the dynamic CLI registers NuGet package management here).
     /// </param>
     /// <returns>The process exit code.</returns>
-    public static async Task<int> RunAsync(
+    public static Task<int> RunAsync(
         string[] args,
         IPackageSource packageSource,
+        string? contentRootPath = null,
+        Action<HostApplicationBuilder>? configureExtra = null) =>
+        RunAsync(args, (_, _) => packageSource, contentRootPath, configureExtra);
+
+    /// <summary>
+    /// Builds and runs the Revela host with a package source that depends on the host
+    /// environment and reports discovery problems through the bootstrap logger.
+    /// </summary>
+    /// <param name="args">CLI arguments.</param>
+    /// <param name="createPackageSource">
+    /// Creates the package source once configuration and the environment are known.
+    /// The logger factory is only valid while packages are loaded.
+    /// </param>
+    /// <param name="contentRootPath">
+    /// Project directory used as the host content root. Defaults to
+    /// <see cref="Directory.GetCurrentDirectory"/> when <see langword="null"/>.
+    /// </param>
+    /// <param name="configureExtra">Optional host-specific configuration applied before <c>Build()</c>.</param>
+    /// <returns>The process exit code.</returns>
+    public static async Task<int> RunAsync(
+        string[] args,
+        Func<IHostEnvironment, ILoggerFactory, IPackageSource> createPackageSource,
         string? contentRootPath = null,
         Action<HostApplicationBuilder>? configureExtra = null)
     {
         try
         {
-            var builder = CreateBuilder(args, packageSource, contentRootPath);
+            var builder = CreateBuilder(args, createPackageSource, contentRootPath);
             configureExtra?.Invoke(builder);
 
             return await builder.Build().RunRevelaAsync(args);
@@ -105,7 +127,13 @@ internal static class HostBootstrap
     internal static HostApplicationBuilder CreateBuilder(
         string[] args,
         IPackageSource packageSource,
-        string? contentRootPath = null)
+        string? contentRootPath = null) =>
+        CreateBuilder(args, (_, _) => packageSource, contentRootPath);
+
+    private static HostApplicationBuilder CreateBuilder(
+        string[] args,
+        Func<IHostEnvironment, ILoggerFactory, IPackageSource> createPackageSource,
+        string? contentRootPath)
     {
         // No host defaults: they would add appsettings*.json from the project directory,
         // unprefixed environment variables and the CLI arguments as configuration in front of
@@ -127,7 +155,7 @@ internal static class HostBootstrap
             }));
         }
 
-        builder.ConfigureRevela(args, packageSource);
+        builder.ConfigureRevela(args, createPackageSource);
         return builder;
     }
 
@@ -156,12 +184,12 @@ internal static class HostBootstrap
     /// </summary>
     /// <param name="builder">The host application builder.</param>
     /// <param name="args">CLI arguments.</param>
-    /// <param name="packageSource">Source for loading plugins and themes.</param>
+    /// <param name="createPackageSource">Creates the source for loading plugins and themes.</param>
     /// <returns>The builder for chaining.</returns>
     public static HostApplicationBuilder ConfigureRevela(
         this HostApplicationBuilder builder,
         string[] args,
-        IPackageSource packageSource)
+        Func<IHostEnvironment, ILoggerFactory, IPackageSource> createPackageSource)
     {
         // Enable UTF-8 output for proper Unicode/emoji rendering
         Console.OutputEncoding = Encoding.UTF8;
@@ -173,7 +201,15 @@ internal static class HostBootstrap
         builder.Services.AddCoreServices();
         builder.Services.AddRevelaCommands();
         builder.Services.AddInteractiveMode();
-        builder.Services.AddPackages(packageSource, args);
+
+        // Packages load before the host (and its loggers) exist. A bootstrap logger factory
+        // with the same providers and levels reports discovery and ConfigureServices
+        // problems; disposing it flushes the console queue before the command starts.
+        using (var bootstrapLoggerFactory = LoggerFactory.Create(logging => logging.AddRevelaLogging(builder.Configuration)))
+        {
+            var packageSource = createPackageSource(builder.Environment, bootstrapLoggerFactory);
+            builder.Services.AddPackages(packageSource, args, bootstrapLoggerFactory);
+        }
 
         // Build identity (HostKind, Version, Framework, ...) — single source
         // of truth for `--version` and `revela info`. Idempotent registration

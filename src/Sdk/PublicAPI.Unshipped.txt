@@ -339,15 +339,6 @@ Spectara.Revela.Sdk.Configuration.ImageSortConfig.ImageSortConfig() -> void
 Spectara.Revela.Sdk.Configuration.LoggingConfig
 Spectara.Revela.Sdk.Configuration.LoggingConfig.LoggingConfig() -> void
 Spectara.Revela.Sdk.Configuration.LoggingConfig.LogLevel.get -> System.Collections.Generic.Dictionary<string!, string!>!
-Spectara.Revela.Sdk.Configuration.PackageOptions
-Spectara.Revela.Sdk.Configuration.PackageOptions.EnableVerboseLogging.get -> bool
-Spectara.Revela.Sdk.Configuration.PackageOptions.EnableVerboseLogging.set -> void
-Spectara.Revela.Sdk.Configuration.PackageOptions.ExcludePatterns.get -> System.Collections.ObjectModel.Collection<string!>!
-Spectara.Revela.Sdk.Configuration.PackageOptions.PackageOptions() -> void
-Spectara.Revela.Sdk.Configuration.PackageOptions.RequirePlugins.get -> bool
-Spectara.Revela.Sdk.Configuration.PackageOptions.RequirePlugins.set -> void
-Spectara.Revela.Sdk.Configuration.PackageOptions.SearchApplicationDirectory.get -> bool
-Spectara.Revela.Sdk.Configuration.PackageOptions.SearchApplicationDirectory.set -> void
 Spectara.Revela.Sdk.Configuration.PathsConfig
 Spectara.Revela.Sdk.Configuration.PathsConfig.Output.get -> string!
 Spectara.Revela.Sdk.Configuration.PathsConfig.Output.set -> void

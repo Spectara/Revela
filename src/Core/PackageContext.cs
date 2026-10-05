@@ -28,26 +28,12 @@ internal sealed class PackageContext(
                     RegisterCommand(rootCommand, pluginInfo.Plugin, descriptor, onCommandRegistered);
                 }
             }
-            catch (InvalidOperationException ex)
-            {
-                // DI resolution failure (missing service registration) or command creation error
-                Console.Error.WriteLine(
-                    $"Error: Plugin '{pluginInfo.Plugin.Metadata.Name}' failed to register commands: {ex.Message}");
-                logger.CommandRegistrationFailed(pluginInfo.Plugin.Metadata.Name, ex);
-            }
-            catch (ArgumentException ex)
-            {
-                // Invalid command configuration (duplicate names, invalid options)
-                Console.Error.WriteLine(
-                    $"Error: Plugin '{pluginInfo.Plugin.Metadata.Name}' has invalid command configuration: {ex.Message}");
-                logger.CommandRegistrationFailed(pluginInfo.Plugin.Metadata.Name, ex);
-            }
             catch (Exception ex)
             {
-                // Safety net: ensure a single broken plugin cannot crash CLI construction
-                Console.Error.WriteLine(
-                    $"Error: Plugin '{pluginInfo.Plugin.Metadata.Name}' failed unexpectedly: {ex.Message}");
-                logger.CommandRegistrationFailed(pluginInfo.Plugin.Metadata.Name, ex);
+                // A missing service registration, an invalid command definition or any other
+                // error in one plugin must not break the command tree of the others.
+                logger.CommandRegistrationFailed(pluginInfo.Plugin.Metadata.Name, ex.Message);
+                logger.CommandRegistrationFailedDetails(pluginInfo.Plugin.Metadata.Name, ex);
             }
         }
     }
