@@ -241,7 +241,7 @@ public sealed class PackageDeclarationsTests
         using var cancellation = new CancellationTokenSource();
         await cancellation.CancelAsync();
 
-        var exception = await Assert.ThrowsAsync<OperationCanceledException>(() => remove
+        var exception = await Assert.ThrowsExactlyAsync<OperationCanceledException>(() => remove
             ? service.RemoveAsync("mixedcasepackage", cancellation.Token)
             : service.DeclareAsync("mixedcasepackage", "2.0.0", cancellation.Token));
 
@@ -265,6 +265,7 @@ public sealed class PackageDeclarationsTests
         await File.WriteAllTextAsync(project.ProjectJsonPath, "{ malformed json");
         var original = await File.ReadAllBytesAsync(project.ProjectJsonPath);
 
+        // Not exact: System.Text.Json throws its internal JsonReaderException subtype.
         await Assert.ThrowsAsync<JsonException>(() => remove
             ? service.RemoveAsync("mixedcasepackage", CancellationToken.None)
             : service.DeclareAsync("mixedcasepackage", "2.0.0", CancellationToken.None));
@@ -365,7 +366,7 @@ public sealed class PackageDeclarationsTests
             var completedBeforeCancellation = canceledUpdate.IsCompleted;
             await cancellation.CancelAsync();
 
-            var exception = await Assert.ThrowsAsync<OperationCanceledException>(() => canceledUpdate.WaitAsync(OperationTimeout));
+            var exception = await Assert.ThrowsExactlyAsync<OperationCanceledException>(() => canceledUpdate.WaitAsync(OperationTimeout));
             Assert.AreEqual(cancellation.Token, exception.CancellationToken);
             Assert.IsFalse(completedBeforeCancellation);
             Assert.IsFalse(firstPackageUpdate.IsCompleted);

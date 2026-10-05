@@ -92,10 +92,10 @@ public sealed class UrlBuilderTests
     }
 
     [TestMethod]
-    public void ToSlug_WithNull_ShouldThrow()
+    public void ToSlug_WithNull_ThrowsArgumentNullException()
     {
-        // Act & Assert - ArgumentNullException is derived from ArgumentException
-        Assert.Throws<ArgumentException>(() =>
+        // Act & Assert
+        Assert.ThrowsExactly<ArgumentNullException>(() =>
             UrlBuilder.ToSlug(null!));
     }
 

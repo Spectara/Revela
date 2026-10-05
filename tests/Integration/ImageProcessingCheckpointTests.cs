@@ -57,7 +57,8 @@ public sealed class ImageProcessingCheckpointTests
             var imageService = host.Services.GetRequiredService<IImageService>();
             if (cancel)
             {
-                await Assert.ThrowsAsync<OperationCanceledException>(
+                // Parallel.ForEachAsync completes as canceled, which surfaces as TaskCanceledException.
+                await Assert.ThrowsExactlyAsync<TaskCanceledException>(
                     () => imageService.ProcessAsync(new ProcessImagesOptions(), cancellationToken: cancellation.Token));
             }
             else
