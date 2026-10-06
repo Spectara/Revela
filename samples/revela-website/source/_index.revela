@@ -15,7 +15,7 @@ photo_viewer = "lightbox"
 
 ## How it works
 
-Revela is a small program that runs on your computer: one download, with no installer, account, subscription or database. It opens a simple text menu: you choose with the arrow keys and <kbd>Enter</kbd>, there's nothing to type and no code to write.
+Revela is a small program that runs on your computer: one download, with no installer, account, subscription or database. It opens a simple text menu: you choose with the arrow keys and <kbd>Enter</kbd>, with no commands to remember or code to write.
 
 ### 1. Put your photos in folders
 
@@ -67,7 +67,7 @@ Other website builders are made for blogs and online shops. Revela focuses on on
 
 Fast, stable pages make browsing more pleasant. Search engines count page experience as one of many signals, but no site generator can promise a ranking.
 
-> **Measured:** a Revela build of [photo.kirk.one](https://photo.kirk.one), a portfolio with about 1,200 photos, in Google Lighthouse (October 2026): **100** for Performance, Accessibility and Best Practices; first content after **0.3 s**, the largest image after **0.4 s**, no layout shift. Results depend on the device, the network and your web host.
+> **Measured:** a Revela build of [photo.kirk.one](https://photo.kirk.one), a portfolio with about 1,200 photos, in Google Lighthouse (October 2026): **100** for Performance, Accessibility and Best Practices; First Contentful Paint **0.3 s**, Largest Contentful Paint **0.4 s**, Cumulative Layout Shift **0**. Results depend on the device, the network and your web host.
 
 <nav class="cta">
   <a href="pages/downloads/">Download Revela</a>
