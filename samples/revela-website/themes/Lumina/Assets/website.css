@@ -128,14 +128,17 @@ main>section:first-child {
   padding: clamp(var(--space-m), 5vh, var(--space-2xl)) var(--space-s);
   max-width: var(--content-max-width);
 
-  /* Brand lockup: the logo left of the name and the claim, as tall as both lines.
-     The line heights are fixed so the logo height can be computed from them. */
+  /* Brand lockup: the logo left of the name and the claim. The line heights are fixed
+     so the logo can be sized from them: revela.svg's shape fills about 72 % of its
+     box (more padding below than above), so the box is 1.13x the two lines and
+     top-aligned. The visible logo then runs from the cap top of "Revela" to the
+     claim's baseline, measured at 390 and 1056 px wide. */
   >div {
     --brand-name-size: calc(var(--font-size-5) * 2);
     --brand-claim-size: var(--font-size-3);
     --brand-line-gap: var(--space-2xs);
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     justify-content: center;
     gap: var(--space-m);
     margin-bottom: var(--space-l);
@@ -144,7 +147,7 @@ main>section:first-child {
     >img {
       flex: none;
       width: auto;
-      height: calc(var(--brand-name-size) + var(--brand-claim-size) * 1.25 + var(--brand-line-gap));
+      height: calc((var(--brand-name-size) + var(--brand-claim-size) * 1.25 + var(--brand-line-gap)) * 1.13);
     }
   }
 
