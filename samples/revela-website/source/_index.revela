@@ -8,7 +8,7 @@ photo_viewer = "lightbox"
 
 <nav class="cta">
   <a href="pages/downloads/">Download</a>
-  <a href="docs/get-started/first-site/">Getting started</a>
+  <a href="docs/get-started/first-site/">Getting started <span aria-hidden="true">→</span></a>
 </nav>
 
 [[gallery]]

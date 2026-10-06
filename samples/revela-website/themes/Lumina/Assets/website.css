@@ -26,6 +26,8 @@ body:not(.photo-page) {
   --glass-bg: light-dark(oklch(0.98 0.005 260 / 0.5), oklch(0.17 0.02 260 / 0.4));
   --glass-border: color-mix(in oklch, var(--accent-glow) 15%, transparent);
   --glass-shadow: color-mix(in oklch, var(--accent-glow) 8%, transparent);
+  /* The "Revela" wordmark in the hero; its claim and the hero's text link share it. */
+  --brand-wordmark-color: light-dark(oklch(0.23 0.04 260), oklch(1 0 0));
 
   /* Override Lumina base colors for website */
   --color: light-dark(oklch(0 0 0), oklch(1 0 0));
@@ -156,7 +158,7 @@ main>section:first-child {
     letter-spacing: 0.1em;
     font-weight: 100;
     margin-bottom: var(--space-m);
-    color: light-dark(oklch(0.23 0.04 260), oklch(1 0 0));
+    color: var(--brand-wordmark-color);
     text-shadow:
       0 0 10px color-mix(in oklch, var(--accent-glow) 50%, transparent),
       0 0 30px color-mix(in oklch, var(--accent-glow) 25%, transparent),
@@ -177,7 +179,7 @@ main>section:first-child {
       line-height: 1.25;
       font-weight: 200;
       letter-spacing: 0.04em;
-      color: light-dark(oklch(0.23 0.04 260), oklch(1 0 0));
+      color: var(--brand-wordmark-color);
       margin-bottom: 0;
     }
 
@@ -453,6 +455,111 @@ main article nav.cta+p {
 
     &:hover {
       color: var(--accent);
+    }
+  }
+}
+
+/* ============================================
+   Hero CTA — the home page's <nav class="cta">, the first element of the
+   body <article> right after the hero section. Light links matching the logo
+   and the wordmark instead of filled buttons: Download as an outline in the
+   logo gradient, Getting started as a plain text link. Every other CTA group
+   keeps the shared rule above.
+   ============================================ */
+main>section:first-child+article>nav.cta:first-child {
+  align-items: center;
+  gap: var(--space-xs) 1.8rem;
+
+  a {
+    padding: 0.65rem 0;
+    font-size: 1rem;
+    font-weight: 400;
+    letter-spacing: 0.025em;
+    line-height: 1.5;
+    background: none;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+    text-shadow: none;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    transition: color 160ms ease, background-color 160ms ease, border-color 160ms ease;
+
+    &:hover {
+      box-shadow: none;
+    }
+
+    &:focus-visible {
+      outline: 2px solid light-dark(#0e7490, #67e8f9);
+      outline-offset: 5px;
+    }
+
+    /* Download. Without mask compositing the outline stays a single colour
+       (the gradient's middle stop); the @supports block below swaps it for the gradient. */
+    &:first-child {
+      position: relative;
+      padding: 0.65rem 1.55rem;
+      color: light-dark(#26344d, #e4eaf3);
+      background: transparent;
+      border: 1px solid rgb(123 94 240 / 0.7);
+      border-radius: 4px;
+
+      &:hover {
+        color: light-dark(#26344d, #e4eaf3);
+        background: light-dark(#7b5ef00a, #7b5ef014);
+        border-color: rgb(123 94 240);
+      }
+    }
+
+    /* Getting started: plain text in the wordmark's colour. */
+    &:not(:first-child) {
+      color: var(--brand-wordmark-color);
+
+      &:hover {
+        color: var(--brand-wordmark-color);
+        text-decoration: underline;
+        text-underline-offset: 0.3em;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      transition: none;
+    }
+  }
+}
+
+/* The gradient outline: a ring masked out of a gradient layer that covers the
+   link's transparent 1px border, so there is no second outline beneath it. */
+@supports (mask-composite: exclude) or (-webkit-mask-composite: xor) {
+  main>section:first-child+article>nav.cta:first-child>a:first-child {
+    border-color: transparent;
+
+    &::before {
+      content: "";
+      position: absolute;
+      inset: -1px;
+      border-radius: inherit;
+      padding: 1px;
+      background: linear-gradient(115deg, #ff2d95, #c040e0, #7b5ef0, #4d8df7, #00d4ff);
+      -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+      -webkit-mask-composite: xor;
+      mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+      mask-composite: exclude;
+      opacity: 0.7;
+      pointer-events: none;
+      transition: opacity 160ms ease;
+
+      @media (prefers-reduced-motion: reduce) {
+        transition: none;
+      }
+    }
+
+    &:hover {
+      border-color: transparent;
+
+      &::before {
+        opacity: 1;
+      }
     }
   }
 }
