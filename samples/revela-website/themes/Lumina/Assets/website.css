@@ -136,8 +136,11 @@ main>section:first-child {
      top-aligned. The visible logo then runs from the cap top of "Revela" to the
      claim's baseline, measured at 390 and 1056 px wide. */
   >div {
-    --brand-name-size: calc(var(--font-size-5) * 2);
-    --brand-claim-size: var(--font-size-3);
+    /* The vw caps shrink name and claim together on narrow phones (320-430 px) so the
+       lockup fits on one row with the claim on one line; wider screens hit the theme
+       sizes first and are unchanged. */
+    --brand-name-size: min(calc(var(--font-size-5) * 2), 15vw);
+    --brand-claim-size: min(var(--font-size-3), 5.1vw);
     --brand-line-gap: var(--space-2xs);
     display: flex;
     align-items: flex-start;
@@ -179,6 +182,7 @@ main>section:first-child {
       line-height: 1.25;
       font-weight: 200;
       letter-spacing: 0.04em;
+      white-space: nowrap;
       color: var(--brand-wordmark-color);
       margin-bottom: 0;
     }
@@ -316,6 +320,8 @@ main article {
     background: light-dark(oklch(0.94 0.01 260 / 0.8), oklch(0.23 0.02 260 / 0.6));
     border: 1px solid var(--glass-border);
     border-radius: 0.25rem;
+    /* Long inline commands and paths would push narrow phones (320 px) sideways. */
+    overflow-wrap: anywhere;
   }
 
   table {
@@ -569,7 +575,7 @@ main>section:first-child+article>nav.cta:first-child {
    ============================================ */
 .features-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));
   gap: var(--space-l);
   margin: var(--space-xl) 0;
   background: var(--glass-bg);
@@ -599,7 +605,7 @@ main>section:first-child+article>nav.cta:first-child {
    ============================================ */
 .path-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr));
   gap: var(--space-m);
   margin: var(--space-xl) 0;
 }
