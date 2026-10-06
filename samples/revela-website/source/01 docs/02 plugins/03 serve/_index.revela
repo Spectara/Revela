@@ -5,6 +5,8 @@ template = "docs"
 
 The Serve plugin starts a **local static HTTP server** so you can preview your generated site during development. It serves the files in `output/` as they are: it does not open a browser, watch your files, or live-reload pages.
 
+<h2 class="visually-hidden">Overview</h2>
+
 <div class="features-grid">
 
 ### ⚡ Instant Preview

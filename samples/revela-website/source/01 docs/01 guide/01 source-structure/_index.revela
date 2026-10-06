@@ -5,6 +5,8 @@ template = "docs"
 
 Revela supports two approaches for organizing your photos, and you can combine them in the same project:
 
+<h2 class="visually-hidden">Overview</h2>
+
 <div class="features-grid">
 
 ### 📁 Traditional Galleries

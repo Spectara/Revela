@@ -5,6 +5,8 @@ template = "docs"
 
 The OneDrive plugin lets you **sync photos from a shared OneDrive folder** directly into your Revela project. Share a folder on OneDrive, paste the link, and your photos are downloaded automatically.
 
+<h2 class="visually-hidden">Overview</h2>
+
 <div class="features-grid">
 
 ### ☁️ Cloud Sync

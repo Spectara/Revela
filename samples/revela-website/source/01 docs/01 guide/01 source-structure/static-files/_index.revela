@@ -5,6 +5,8 @@ template = "docs"
 
 Static files are files that should be copied directly to the output root without any processing.
 
+<h2 class="visually-hidden">Overview</h2>
+
 <div class="features-grid">
 
 ### 🎨 Favicons

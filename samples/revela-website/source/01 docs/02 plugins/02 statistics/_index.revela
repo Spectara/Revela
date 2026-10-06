@@ -5,6 +5,8 @@ template = "docs"
 
 The Statistics plugin analyzes **EXIF data** from your photos and generates statistics pages showing camera usage, lens preferences, aperture distribution, and more.
 
+<h2 class="visually-hidden">Overview</h2>
+
 <div class="features-grid">
 
 ### 📷 EXIF Analysis

@@ -5,6 +5,8 @@ template = "docs"
 
 Revela lets you customize a theme without touching the original theme files. You override only what you want, and everything else falls back to the installed theme.
 
+<h2 class="visually-hidden">Overview</h2>
+
 <div class="features-grid">
 
 ### ✍️ Footer Text

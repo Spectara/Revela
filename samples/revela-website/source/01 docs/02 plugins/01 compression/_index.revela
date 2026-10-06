@@ -7,6 +7,8 @@ Revela can pre-compress your static files with **Gzip** and **Brotli** for faste
 
 > **Do you need this?** If you're using GitHub Pages, Netlify, Vercel, or Cloudflare Pages – **no!** These platforms compress automatically. This plugin is for self-hosted servers, AWS S3, or basic web hosts.
 
+<h2 class="visually-hidden">Overview</h2>
+
 <div class="features-grid">
 
 ### 📦 Pre-Generated

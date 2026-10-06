@@ -5,6 +5,8 @@ template = "docs"
 
 The Source.Calendar plugin **downloads iCal feeds** (`.ics` URLs) into your `source/` folder. Use it together with the [Availability Calendar](../calendar/) plugin: your booking platform or calendar app keeps the bookings, and Revela fetches the latest version before each build.
 
+<h2 class="visually-hidden">Overview</h2>
+
 <div class="features-grid">
 
 ### 🔗 Any iCal URL

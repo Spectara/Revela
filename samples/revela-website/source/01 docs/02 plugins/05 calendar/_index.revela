@@ -5,6 +5,8 @@ template = "docs"
 
 The Calendar plugin turns an **iCal file** (`.ics`) into an **availability calendar** on your site: a month grid that shows which days are booked and which are free. It's made for photographers who take bookings, and for holiday rentals.
 
+<h2 class="visually-hidden">Overview</h2>
+
 <div class="features-grid">
 
 ### 📅 From Any Calendar

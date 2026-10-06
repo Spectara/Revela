@@ -7,6 +7,8 @@ Revela themes are [Scriban](https://github.com/scriban/scriban) templates (`.rev
 
 > **Prefer plain language features over Scriban's built-in libraries.** The Standalone edition is compiled with Native AOT, which keeps only the Scriban built-ins that Revela itself references; a template calling another one (for example `array.last`, `array.join`, `math.floor`) can fail there. Use indexing (`list[0]`, `list[-1]`), integer division (`//`), `for` loops and the functions on this page instead. Lumina only uses `string.contains`, and revela.website's own overrides add `string.replace`.
 
+<h2 class="visually-hidden">Overview</h2>
+
 <div class="features-grid">
 
 ### 🖼️ Images
