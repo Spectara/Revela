@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.0.1-beta.22] - 2026-10-06
+
 ### Added
 
 - **Wide-gamut photos in Display P3** - photos whose colours sRGB cannot show (a sunset, flowers or neon exported in Display P3 or Adobe RGB) are now published in Display P3 with the 480-byte profile embedded, in AVIF, WebP and JPG alike. iPhones, iPads, Macs, flagship Android phones and wide-gamut monitors show the full colours; other screens convert the profile and show the photo as before, without a colour cast. Every other photo is published exactly as before (untagged sRGB, byte-identical). The scan decides per photo from its small preview: at least 0.1 % of it must differ by more than ΔE00 3 from the nearest sRGB colour, so a Display P3 or Adobe RGB profile alone is not enough — in-gamut photos with such profiles stay sRGB, even with JPEG noise just outside sRGB. Photos with an sRGB profile are recognised by their profile, so the scan is as fast as before (1,201 photos: no measurable difference, none detected as P3). Adobe RGB and ProPhoto photos with wider colours are converted to Display P3 (perceptual). `generate.images.wideGamut: false` publishes every photo in sRGB; switching it re-encodes only the wide-gamut photos. Because social networks often drop colour profiles, each P3 photo also gets one untagged sRGB JPEG (`<size>.srgb.jpg`, the largest size up to 1920 px) that Lumina's `og:image` uses. Templates read the variants' colour space as `image.gamut` (`"p3"` or `"srgb"`); the placeholder `image.color` stays sRGB. The manifest records the detected gamut, so the next scan re-reads metadata once; sRGB photos are not re-encoded. HDR gain maps are still published as standard dynamic range.
@@ -26,6 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Consistent exit codes** - Ctrl+C now exits with **130** everywhere (direct commands, commands started from the interactive menu, `serve`), SIGTERM with 143, and a plugin configuration conflict with **2** (configuration problem) instead of 1. See the Exit Codes section of the CLI reference.
 - **Release builds load only installed and bundled packages** - scanning Revela's own program folder for plugin DLLs now happens only in the `Development` environment (F5 debugging), so a stray DLL next to `revela.exe` is no longer loaded.
 - **EXIF capture times are camera time** - the time a photo was taken is now kept as the camera's local wall-clock time instead of being marked as UTC (`2022-07-31T22:22:22`, no `Z`); a recorded `OffsetTimeOriginal` stays available in the raw EXIF data. Sorting, `format_date`, statistics and the calendar are unaffected. The next scan re-reads metadata once; images are not re-encoded.
+- **revela.website explains how Revela is used** - the home page has the claim "Reveal what *you* see." next to the logo, a "How it works" section with real captures of the menu and a build, notes that the site is built locally and published wherever you like and that originals stay untouched, and speed claims replaced by a dated Lighthouse measurement. All call-to-action links share one light style (gradient outline for actions, arrow text links for "read on"); body text uses a softer tone; docs headings no longer skip a level. The FAQ answers whether the site is online after a build, whether originals change and which files Revela reads; the images guide adds export recommendations for Capture One, Lightroom and other photo editors.
 
 ### Removed
 
@@ -684,7 +687,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Source.OneDrive (OneDrive Shared Folder Support)
 - Commands: generate, init, clean, theme, plugins, restore
 
-[Unreleased]: https://github.com/spectara/revela/compare/v0.0.1-beta.21...HEAD
+[Unreleased]: https://github.com/spectara/revela/compare/v0.0.1-beta.22...HEAD
+[0.0.1-beta.22]: https://github.com/spectara/revela/compare/v0.0.1-beta.21...v0.0.1-beta.22
 [0.0.1-beta.21]: https://github.com/spectara/revela/compare/v0.0.1-beta.20...v0.0.1-beta.21
 [0.0.1-beta.20]: https://github.com/spectara/revela/compare/v0.0.1-beta.19...v0.0.1-beta.20
 [0.0.1-beta.19]: https://github.com/spectara/revela/compare/v0.0.1-beta.18...v0.0.1-beta.19
