@@ -260,7 +260,8 @@ body:not(.photo-page) main>article {
     margin-bottom: var(--space-xs);
   }
 
-  a:not(dialog *) {
+  /* Body text links; CTA links have their own look (see CTA Links). */
+  a:not(dialog *, nav.cta *) {
     color: var(--accent);
     text-decoration: none;
     border-bottom: solid 1px color-mix(in oklch, var(--accent) 30%, transparent);
@@ -390,109 +391,43 @@ main article {
 }
 
 /* ============================================
-   CTA Buttons — Glass style for download/action navs.
-   Use `<nav class="cta">` in any page (home, page, docs) — the rule
-   no longer depends on a specific template wrapping the nav in <article>.
+   CTA Links — `<nav class="cta">` in any page (home, page, docs).
+   Light links matching the logo and the wordmark instead of filled buttons:
+   every action is an outline in the logo gradient (so equal choices, like the
+   download platforms, look equal); a link that ends in an arrow
+   (`<span aria-hidden="true">→</span>`) is a plain "read on" text link in the
+   wordmark's colour.
    ============================================ */
-main nav.cta,
-main article nav.cta {
+main nav.cta {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--space-m);
+  align-items: center;
   justify-content: center;
+  gap: var(--space-xs) 1.8rem;
   margin-bottom: var(--space-2xl);
 
   a {
-    padding: var(--space-xs) var(--space-l);
-    font-size: var(--font-size-1);
-    font-weight: 100;
-    letter-spacing: 0.1em;
-    text-decoration: none;
-    background: var(--glass-bg);
-    color: var(--accent);
-    border: 1px solid var(--glass-border);
-    border-radius: 0.5rem;
-    -webkit-backdrop-filter: blur(1rem);
-    backdrop-filter: blur(1rem);
-    transition-property: border-color, color, box-shadow;
-    transition-duration: var(--animation-time);
-
-    &:hover {
-      color: var(--accent-light);
-      border-color: color-mix(in oklch, var(--accent-glow) 40%, transparent);
-      box-shadow:
-        0 0 20px color-mix(in oklch, var(--accent-glow) 15%, transparent),
-        inset 0 0 20px color-mix(in oklch, var(--accent-glow) 3%, transparent);
-    }
-
-    /* The first action is the primary one (e.g. Download); the rest stay glass. */
-    &:first-child {
-      --cta-primary-color: light-dark(oklch(1 0 0), oklch(0.17 0.02 260));
-      background: var(--accent);
-      border-color: var(--accent);
-      color: var(--cta-primary-color);
-      font-weight: 400;
-
-      &:hover {
-        background: var(--accent-light);
-        border-color: var(--accent-light);
-        color: var(--cta-primary-color);
-      }
-    }
-  }
-}
-
-/* ============================================
-   Centered link after a CTA nav (e.g. 'All downloads →').
-   ============================================ */
-main nav.cta+p,
-main article nav.cta+p {
-  text-align: center;
-  margin-top: var(--space-s);
-  margin-bottom: var(--space-xl);
-
-  a {
-    font-size: var(--font-size-1);
-    color: var(--color-light);
-    text-decoration: none;
-    letter-spacing: 0.05em;
-    transition-property: color;
-    transition-duration: var(--animation-time);
-
-    &:hover {
-      color: var(--accent);
-    }
-  }
-}
-
-/* ============================================
-   Hero CTA — the home page's <nav class="cta">, the first element of the
-   body <article> right after the hero section. Light links matching the logo
-   and the wordmark instead of filled buttons: Download as an outline in the
-   logo gradient, Getting started as a plain text link. Every other CTA group
-   keeps the shared rule above.
-   ============================================ */
-main>section:first-child+article>nav.cta:first-child {
-  align-items: center;
-  gap: var(--space-xs) 1.8rem;
-
-  a {
-    padding: 0.65rem 0;
+    position: relative;
+    padding: 0.65rem 1.55rem;
     font-size: 1rem;
     font-weight: 400;
     letter-spacing: 0.025em;
     line-height: 1.5;
-    background: none;
-    border: 0;
-    border-radius: 0;
-    box-shadow: none;
+    text-decoration: none;
     text-shadow: none;
-    -webkit-backdrop-filter: none;
-    backdrop-filter: none;
+    box-shadow: none;
+    /* Without mask compositing the outline stays a single colour (the gradient's
+       middle stop); the @supports block below swaps it for the gradient. */
+    color: light-dark(#26344d, #e4eaf3);
+    background: transparent;
+    border: 1px solid rgb(123 94 240 / 0.7);
+    border-radius: 4px;
     transition: color 160ms ease, background-color 160ms ease, border-color 160ms ease;
 
     &:hover {
-      box-shadow: none;
+      color: light-dark(#26344d, #e4eaf3);
+      background: light-dark(#7b5ef00a, #7b5ef014);
+      border-color: rgb(123 94 240);
     }
 
     &:focus-visible {
@@ -500,29 +435,17 @@ main>section:first-child+article>nav.cta:first-child {
       outline-offset: 5px;
     }
 
-    /* Download. Without mask compositing the outline stays a single colour
-       (the gradient's middle stop); the @supports block below swaps it for the gradient. */
-    &:first-child {
-      position: relative;
-      padding: 0.65rem 1.55rem;
-      color: light-dark(#26344d, #e4eaf3);
-      background: transparent;
-      border: 1px solid rgb(123 94 240 / 0.7);
-      border-radius: 4px;
-
-      &:hover {
-        color: light-dark(#26344d, #e4eaf3);
-        background: light-dark(#7b5ef00a, #7b5ef014);
-        border-color: rgb(123 94 240);
-      }
-    }
-
-    /* Getting started: plain text in the wordmark's colour. */
-    &:not(:first-child) {
+    /* "Read on" links: plain text in the wordmark's colour. */
+    &:has(> span[aria-hidden="true"]) {
+      padding: 0.65rem 0;
       color: var(--brand-wordmark-color);
+      background: none;
+      border: 0;
+      border-radius: 0;
 
       &:hover {
         color: var(--brand-wordmark-color);
+        background: none;
         text-decoration: underline;
         text-underline-offset: 0.3em;
       }
@@ -537,7 +460,7 @@ main>section:first-child+article>nav.cta:first-child {
 /* The gradient outline: a ring masked out of a gradient layer that covers the
    link's transparent 1px border, so there is no second outline beneath it. */
 @supports (mask-composite: exclude) or (-webkit-mask-composite: xor) {
-  main>section:first-child+article>nav.cta:first-child>a:first-child {
+  main nav.cta a:not(:has(> span[aria-hidden="true"])) {
     border-color: transparent;
 
     &::before {
@@ -566,6 +489,29 @@ main>section:first-child+article>nav.cta:first-child {
       &::before {
         opacity: 1;
       }
+    }
+  }
+}
+
+/* ============================================
+   Centered link after a CTA nav (e.g. 'All downloads →').
+   ============================================ */
+main nav.cta+p,
+main article nav.cta+p {
+  text-align: center;
+  margin-top: var(--space-s);
+  margin-bottom: var(--space-xl);
+
+  a {
+    font-size: var(--font-size-1);
+    color: var(--color-light);
+    text-decoration: none;
+    letter-spacing: 0.05em;
+    transition-property: color;
+    transition-duration: var(--animation-time);
+
+    &:hover {
+      color: var(--accent);
     }
   }
 }

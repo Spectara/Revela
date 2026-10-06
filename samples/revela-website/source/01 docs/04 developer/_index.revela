@@ -32,7 +32,7 @@ Every menu entry is also a command, so Revela runs unattended in scripts and CI 
 
 <nav class="cta">
   <a href="https://github.com/Spectara/Revela">Revela on GitHub</a>
-  <a href="https://github.com/Spectara/Revela/tree/main/docs">All developer docs</a>
+  <a href="https://github.com/Spectara/Revela/tree/main/docs">All developer docs <span aria-hidden="true">→</span></a>
 </nav>
 
 Bug reports, ideas and pull requests are always welcome. See you in the repo! 👋

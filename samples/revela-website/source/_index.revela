@@ -44,7 +44,7 @@ No installer, no account, no subscription, no database. Unzip and start.
 
 <nav class="cta">
   <a href="pages/downloads/">Download Revela</a>
-  <a href="showcase/">See real sites</a>
+  <a href="showcase/">See real sites <span aria-hidden="true">→</span></a>
 </nav>
 
 ## For developers
