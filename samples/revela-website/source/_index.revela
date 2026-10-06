@@ -15,12 +15,11 @@ photo_viewer = "lightbox"
 
 ## How it works
 
-Revela is a small program that runs on your computer. It opens a simple text menu: you choose with the arrow keys and <kbd>Enter</kbd>, there's nothing to type and no code to write.
+Revela is a small program that runs on your computer: one download, with no installer, account, subscription or database. It opens a simple text menu: you choose with the arrow keys and <kbd>Enter</kbd>, there's nothing to type and no code to write.
 
-<ol class="steps">
-<li>
+### 1. Put your photos in folders
 
-**Put your photos in folders.** Make a folder for your site, unzip Revela into it, and copy your photos into a `source` folder inside. Each subfolder becomes a gallery.
+Make a folder for your site, unzip Revela into it, and copy your photos into a `source` folder inside. Each subfolder becomes a gallery.
 
 ```
 My Portfolio/
@@ -30,19 +29,17 @@ My Portfolio/
     └── 02 Portraits/
 ```
 
-</li>
-<li>
+### 2. Start Revela
 
-**Start Revela.** Double-click it (on macOS and Linux, use the included launcher). The first time, it offers to set up your project and asks a few questions, such as your site's title. <kbd>Enter</kbd> keeps the suggested answer, and you can change everything later.
+Double-click it (on macOS and Linux, use the included launcher). The first time, it offers to set up your project and asks a few questions, such as your site's title. <kbd>Enter</kbd> keeps the suggested answer, and you can change everything later.
 
 <figure class="screenshot">
 <img src="how-it-works/revela-first-start.webp" width="625" height="245" loading="lazy" alt="Revela's first start: a box titled Create Project says the folder My Portfolio doesn't contain a Revela project yet and offers Create New Project, Skip or Exit.">
 </figure>
 
-</li>
-<li>
+### 3. Build your website
 
-**Build your website.** Choose **generate → all** in the menu. Revela makes several sizes and formats of every photo and writes your finished website into the `output` folder. The first build of a large collection takes a while; later builds only redo what changed.
+Choose **generate → all** in the menu. Revela makes several sizes and formats of every photo and writes your finished website into the `output` folder. The first build of a large collection takes a while; later builds only redo what changed.
 
 <figure class="screenshot">
 <img src="how-it-works/revela-menu.webp" width="599" height="447" loading="lazy" alt="Revela's main menu with the project My Portfolio, grouped into Build (generate, serve, clean), Content, Setup, Addons and Info. generate is highlighted.">
@@ -50,42 +47,19 @@ My Portfolio/
 <figcaption>A real run with a small 14-photo sample project.</figcaption>
 </figure>
 
-</li>
-<li>
+### 4. Look at it, then publish it
 
-**Look at it, then publish it.** Choose **serve** and open <http://localhost:8080> to see your website in your browser. When you're happy, upload the `output` folder to a web host.
+Choose **serve** and open <http://localhost:8080> to see your website in your browser. When you're happy, upload the `output` folder to a web host.
 
-</li>
-</ol>
-
-> **Made on your computer, published where you like.** Revela isn't an online service and needs no account: it builds the website on your computer, and you decide where it goes online. The [Deployment guide](docs/guide/deployment/) shows free options such as GitHub Pages, Netlify and Cloudflare Pages.
+> **Made on your computer, published where you like.** Revela isn't an online service: it builds the website on your computer, and you decide where it goes online. The [Deployment guide](docs/guide/deployment/) shows free options such as GitHub Pages, Netlify and Cloudflare Pages.
 
 > **Your originals stay untouched.** Revela only reads your photos and writes separate web versions into `output`. Use JPEG exports from Capture One or Lightroom, ideally in Display P3 or Adobe RGB for rich colours; RAW files aren't read. See [exporting from your photo editor](docs/guide/images/#exporting-from-your-photo-editor).
 
 Prefer a terminal? Every menu entry is also a command, for example `revela generate all`. [Your First Site](docs/get-started/first-site/) walks through the same steps in detail.
 
-## Why Revela?
+## Made for photographers
 
-**Built for photographers.** Other website builders are made for blogs and online shops. Revela focuses on one thing: **showing your photos beautifully**.
-
-<div class="features-grid">
-
-### 📁 Your folders are your website
-Each folder of photos becomes a gallery. Add, change or remove photos and build again; Revela only redoes what changed.
-
-### ⚡ Fast for every visitor
-Revela prepares each photo in several sizes and modern formats, so phones and big screens each load a size that fits them.
-
-### 🎨 Beautiful out of the box
-A clean, minimal theme that puts your photos first, with dark mode. Set your site's title, language and how photos open in the menu. Colours and fonts are a few lines in one CSS file, and templates let you go further. Labels come in English or German, and you can add your own language.
-
-### 🌍 Publish anywhere
-The result is plain website files. Host them for free on GitHub Pages, Netlify or Cloudflare Pages, or on any web space.
-
-### 📦 One download, nothing else
-No installer, no account, no subscription, no database. Unzip and start.
-
-</div>
+Other website builders are made for blogs and online shops. Revela focuses on one thing: **showing your photos beautifully**. The built-in theme puts your photos first, with dark mode and labels in English or German, and you can add your own language. Set your site's title, language and how photos open in the menu; colours and fonts are a few lines in one CSS file, and templates let you go further.
 
 ## Fast by design
 

@@ -391,41 +391,21 @@ main article {
 }
 
 /* ============================================
-   How it works (home): numbered steps with real program screenshots, plus
-   article details (keyboard keys, callout spacing). Prefixed like the article
-   rules so it beats their list padding and paragraph margins.
+   Article text tone, program screenshots and small article details.
+   Prefixed like the article rules so it beats their paragraph margins.
    ============================================ */
 body:not(.photo-page) main>article {
-  /* "How it works": numbered steps; the number sits in a small accent circle. */
-  ol.steps {
-    list-style: none;
-    counter-reset: step;
-    padding-left: 0;
+  /* Body text in the softer tone of the home hero's description; headings and
+     emphasis keep the full text colour, so the hierarchy stays clear. Callout
+     emphasis keeps its accent colour. */
+  color: var(--color-light);
 
-    >li {
-      counter-increment: step;
-      position: relative;
-      padding-left: 2.75rem;
-      margin-bottom: var(--space-l);
-
-      &::before {
-        content: counter(step);
-        position: absolute;
-        left: 0;
-        top: 0.1em;
-        width: 1.9rem;
-        height: 1.9rem;
-        display: grid;
-        place-items: center;
-        border-radius: 50%;
-        border: 1px solid color-mix(in oklch, var(--accent-glow) 60%, transparent);
-        color: var(--brand-wordmark-color);
-        font-size: var(--font-size-1);
-      }
-    }
+  :is(h1, h2, h3, h4),
+  strong:not(blockquote *) {
+    color: var(--color);
   }
 
-  /* Real program screenshots: centred, never wider than the column. */
+  /* Real program screenshots: never wider than the column. */
   figure.screenshot {
     margin: var(--space-m) 0;
     display: flex;
