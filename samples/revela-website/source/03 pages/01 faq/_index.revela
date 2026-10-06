@@ -12,7 +12,15 @@ Revela is a static site generator built specifically for photographers. It takes
 
 ### Do I need programming experience?
 
-No. Revela has an interactive setup wizard that guides you through creating your first site. You'll need to be comfortable with basic file management (creating folders, copying files), but no coding is required. [Your First Site](../../docs/get-started/first-site/) walks you through it in six steps.
+No. Revela runs as a simple text menu that you control with the arrow keys and <kbd>Enter</kbd>, and a setup wizard guides you through creating your first site. You'll need to be comfortable with basic file management (creating folders, copying files), but no coding is required. [Your First Site](../../docs/get-started/first-site/) walks you through it in six steps.
+
+### Is my website online as soon as Revela has built it?
+
+No. Revela builds the website on your computer, in the `output` folder; it isn't an online service and needs no account. To put the site online, you upload that folder to a web host of your choice. The [Deployment guide](../../docs/guide/deployment/) shows free options such as GitHub Pages, Netlify and Cloudflare Pages.
+
+### Does Revela change my original photos?
+
+No. Revela only reads the photos in your `source` folder and writes separate web versions into `output`. Your originals are never resized, re-saved or moved.
 
 ### What platforms does Revela run on?
 
@@ -26,6 +34,10 @@ No. The Standalone and Full [downloads](../downloads/) are self-contained progra
 
 ## Images
 
+### Which files can I put in?
+
+JPEG, PNG, WebP and GIF. RAW files are not read, so export JPEGs from Capture One, Lightroom or your photo editor first, ideally at full resolution in Display P3 or Adobe RGB. See [exporting from your photo editor](../../docs/guide/images/#exporting-from-your-photo-editor) for a recommended preset.
+
 ### What image formats does Revela generate?
 
 Revela generates **AVIF**, **WebP**, and **JPEG**: modern formats for maximum compression, with fallbacks for older browsers. Each image is generated in multiple sizes for responsive loading.
@@ -36,7 +48,7 @@ The theme decides. The built-in Lumina theme defines 160, 320, 480, 640, 720, 96
 
 ### How fast is image processing?
 
-Revela uses **NetVips** (libvips), one of the fastest image processing libraries available. Processing is parallelized and incremental, so only new or changed images are processed. A typical portfolio with 100 photos processes in under a minute.
+Revela uses **NetVips** (libvips) and processes several photos in parallel. Builds are incremental: only new or changed photos are processed again. The first build of a large collection still takes a while, because every photo is turned into several sizes in AVIF, WebP and JPEG. As an example, about 1,200 full-resolution photos took around half an hour on a 6-core server; later builds took seconds to minutes, depending on how much changed.
 
 ### What EXIF data is preserved?
 
@@ -48,7 +60,13 @@ By default, EXIF data is **stripped** from generated images (for privacy and fil
 
 ### Can I customize the built-in theme?
 
-Yes. Place files in your project's `themes/Lumina/` folder to override any template, partial, or asset from the built-in theme. Only the files you change need to live in your project, and everything else comes from the built-in theme. `revela theme extract --file <path>` copies a single theme file there for you. See [Theme Customization](../../docs/guide/themes/) for details.
+Yes, in three levels:
+
+- **In the menu, without code:** your site's title, description, author, copyright line and language (**config → site**), the theme and how photos open, on their own page or in a lightbox (**config → theme**), and image formats and quality (**config → image**).
+- **Colours, spacing and fonts:** a few CSS custom properties in one file. Extract `Assets/main.css` with **theme → extract** and edit the values; no template changes needed.
+- **Layout and markup:** place files in your project's `themes/Lumina/` folder to override any template, partial or asset. Only the files you change need to live in your project, and everything else comes from the built-in theme.
+
+See [Theme Customization](../../docs/guide/themes/) for details.
 
 ### Can I create my own theme from scratch?
 
@@ -84,7 +102,7 @@ Anywhere that serves static files: **GitHub Pages**, **Netlify**, **Cloudflare P
 
 ### How large is a typical generated site?
 
-It depends on your images and quality settings. A portfolio with 50 photos at default settings produces roughly 150-300 MB of optimized images plus a few hundred KB of HTML/CSS. With Brotli pre-compression (Compress plugin), the HTML/CSS portion shrinks by ~85%.
+It depends on your images and quality settings. A portfolio with 50 photos at default settings produces roughly 150-300 MB of optimized images plus a few hundred KB of HTML/CSS. With Brotli pre-compression (Compress plugin), the HTML/CSS portion shrinks by about 80%.
 
 ### Can I use a CDN for images?
 

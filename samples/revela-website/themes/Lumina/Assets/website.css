@@ -391,6 +391,75 @@ main article {
 }
 
 /* ============================================
+   How it works (home): numbered steps with real program screenshots, plus
+   article details (keyboard keys, callout spacing). Prefixed like the article
+   rules so it beats their list padding and paragraph margins.
+   ============================================ */
+body:not(.photo-page) main>article {
+  /* "How it works": numbered steps; the number sits in a small accent circle. */
+  ol.steps {
+    list-style: none;
+    counter-reset: step;
+    padding-left: 0;
+
+    >li {
+      counter-increment: step;
+      position: relative;
+      padding-left: 2.75rem;
+      margin-bottom: var(--space-l);
+
+      &::before {
+        content: counter(step);
+        position: absolute;
+        left: 0;
+        top: 0.1em;
+        width: 1.9rem;
+        height: 1.9rem;
+        display: grid;
+        place-items: center;
+        border-radius: 50%;
+        border: 1px solid color-mix(in oklch, var(--accent-glow) 60%, transparent);
+        color: var(--brand-wordmark-color);
+        font-size: var(--font-size-1);
+      }
+    }
+  }
+
+  /* Real program screenshots: centred, never wider than the column. */
+  figure.screenshot {
+    margin: var(--space-m) 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-s);
+
+    img {
+      max-width: 100%;
+      height: auto;
+    }
+
+    figcaption {
+      flex-basis: 100%;
+      font-size: var(--font-size-0);
+      color: var(--color-light);
+    }
+  }
+
+  kbd {
+    padding: 0 0.35em;
+    border: 1px solid var(--glass-border);
+    border-bottom-width: 2px;
+    border-radius: 0.25rem;
+    font-family: inherit;
+    font-size: 0.9em;
+  }
+
+  /* The article's paragraph margin would otherwise leave a gap at the bottom of every callout. */
+  blockquote>p:last-child {
+    margin-bottom: 0;
+  }
+}
+
+/* ============================================
    CTA Links — `<nav class="cta">` in any page (home, page, docs).
    Light links matching the logo and the wordmark instead of filled buttons:
    every action is an outline in the logo gradient (so equal choices, like the

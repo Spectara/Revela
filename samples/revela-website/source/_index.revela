@@ -13,6 +13,57 @@ photo_viewer = "lightbox"
 
 [[gallery]]
 
+## How it works
+
+Revela is a small program that runs on your computer. It opens a simple text menu: you choose with the arrow keys and <kbd>Enter</kbd>, there's nothing to type and no code to write.
+
+<ol class="steps">
+<li>
+
+**Put your photos in folders.** Make a folder for your site, unzip Revela into it, and copy your photos into a `source` folder inside. Each subfolder becomes a gallery.
+
+```
+My Portfolio/
+├── revela.exe          ← "revela" on macOS and Linux
+└── source/
+    ├── 01 Landscapes/
+    └── 02 Portraits/
+```
+
+</li>
+<li>
+
+**Start Revela.** Double-click it (on macOS and Linux, use the included launcher). The first time, it offers to set up your project and asks a few questions, such as your site's title. <kbd>Enter</kbd> keeps the suggested answer, and you can change everything later.
+
+<figure class="screenshot">
+<img src="how-it-works/revela-first-start.webp" width="625" height="245" loading="lazy" alt="Revela's first start: a box titled Create Project says the folder My Portfolio doesn't contain a Revela project yet and offers Create New Project, Skip or Exit.">
+</figure>
+
+</li>
+<li>
+
+**Build your website.** Choose **generate → all** in the menu. Revela makes several sizes and formats of every photo and writes your finished website into the `output` folder. The first build of a large collection takes a while; later builds only redo what changed.
+
+<figure class="screenshot">
+<img src="how-it-works/revela-menu.webp" width="599" height="447" loading="lazy" alt="Revela's main menu with the project My Portfolio, grouped into Build (generate, serve, clean), Content, Setup, Addons and Info. generate is highlighted.">
+<img src="how-it-works/revela-generate.webp" width="581" height="326" loading="lazy" alt="The end of a build: a Success box reports 14 images processed and 228 files created, followed by Pipeline completed and the hint to preview with revela serve, then deploy the output folder.">
+<figcaption>A real run with a small 14-photo sample project.</figcaption>
+</figure>
+
+</li>
+<li>
+
+**Look at it, then publish it.** Choose **serve** and open <http://localhost:8080> to see your website in your browser. When you're happy, upload the `output` folder to a web host.
+
+</li>
+</ol>
+
+> **Made on your computer, published where you like.** Revela isn't an online service and needs no account: it builds the website on your computer, and you decide where it goes online. The [Deployment guide](docs/guide/deployment/) shows free options such as GitHub Pages, Netlify and Cloudflare Pages.
+
+> **Your originals stay untouched.** Revela only reads your photos and writes separate web versions into `output`. Use JPEG exports from Capture One or Lightroom, ideally in Display P3 or Adobe RGB for rich colours; RAW files aren't read. See [exporting from your photo editor](docs/guide/images/#exporting-from-your-photo-editor).
+
+Prefer a terminal? Every menu entry is also a command, for example `revela generate all`. [Your First Site](docs/get-started/first-site/) walks through the same steps in detail.
+
 ## Why Revela?
 
 **Built for photographers.** Other website builders are made for blogs and online shops. Revela focuses on one thing: **showing your photos beautifully**.
@@ -26,7 +77,7 @@ Each folder of photos becomes a gallery. Add, change or remove photos and build 
 Revela prepares each photo in several sizes and modern formats, so phones and big screens each load a size that fits them.
 
 ### 🎨 Beautiful out of the box
-A clean, minimal theme that puts your photos first, with dark mode. Change colors and layout whenever you like. Its labels come in English or German, and you can add your own language.
+A clean, minimal theme that puts your photos first, with dark mode. Set your site's title, language and how photos open in the menu. Colours and fonts are a few lines in one CSS file, and templates let you go further. Labels come in English or German, and you can add your own language.
 
 ### 🌍 Publish anywhere
 The result is plain website files. Host them for free on GitHub Pages, Netlify or Cloudflare Pages, or on any web space.
