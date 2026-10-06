@@ -145,6 +145,41 @@ main>section:first-child {
       0 0 60px color-mix(in oklch, var(--accent-light) 12%, transparent);
   }
 
+  /* Brand claim under the name: lighter than the name, quieter than the description's
+     facts are loud. The emphasised "you" carries the message. */
+  hgroup {
+    margin-bottom: var(--space-l);
+
+    h1:not(dialog *) {
+      margin-bottom: var(--space-2xs);
+    }
+
+    p {
+      font-size: var(--font-size-3);
+      font-weight: 200;
+      letter-spacing: 0.04em;
+      color: light-dark(oklch(0.23 0.04 260), oklch(1 0 0));
+      margin-bottom: 0;
+    }
+
+    em {
+      font-weight: 400;
+    }
+  }
+
+  /* Short screens (laptops around 1366x768): the claim adds a line, so the logo and
+     the gaps shrink to keep the call-to-action buttons above the fold. */
+  @media (max-height: 820px) {
+    img[alt="Revela"] {
+      width: clamp(7rem, 20vh, calc(var(--font-size-5) * 5.5));
+    }
+
+    hgroup,
+    >p {
+      margin-bottom: var(--space-m);
+    }
+  }
+
   p {
     font-size: var(--font-size-2);
     color: var(--color-light);

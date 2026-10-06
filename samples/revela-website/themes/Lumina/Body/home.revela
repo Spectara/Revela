@@ -7,7 +7,9 @@ worked, but conflated 'what's the page called' with 'what's the brand',
 which made the tab title (<title>) and the manifest navigation noisy
 (Home -> 'Revela', /faq/ -> 'Revela', etc.). With the hero fixed, the
 rest of the title-resolution chain is free to do the boring, correct
-'{site.title} - {page.title}' thing.
+'{site.title} - {page.title}' thing. The claim below it belongs to the
+brand as well, so it is hardcoded too; <hgroup> marks it as the heading's
+tagline rather than a separate heading.
 
 Expects:
 - site: { title, description }
@@ -16,7 +18,10 @@ Expects:
 ##~}}
 <section>
     <img src="{{ html_escape basepath }}revela.svg" alt="Revela" />
-    <h1>Revela</h1>
+    <hgroup>
+        <h1>Revela</h1>
+        <p>Reveal what <em>you</em> see.</p>
+    </hgroup>
     <p>{{ html_escape (gallery.description ?? site.description) }}</p>
 </section>
 
