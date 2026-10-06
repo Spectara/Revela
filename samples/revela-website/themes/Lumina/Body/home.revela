@@ -9,7 +9,10 @@ which made the tab title (<title>) and the manifest navigation noisy
 rest of the title-resolution chain is free to do the boring, correct
 '{site.title} - {page.title}' thing. The claim below it belongs to the
 brand as well, so it is hardcoded too; <hgroup> marks it as the heading's
-tagline rather than a separate heading.
+tagline rather than a separate heading. The logo sits left of both in a
+<div> lockup (not <header>: Lumina styles every header as the sticky site
+header); its alt text is empty because the <h1> already says
+'Revela' (screen readers would otherwise announce the name twice).
 
 Expects:
 - site: { title, description }
@@ -17,11 +20,13 @@ Expects:
 - occurrences: images of the page, rendered by Lumina's GalleryGrid partial
 ##~}}
 <section>
-    <img src="{{ html_escape basepath }}revela.svg" alt="Revela" />
-    <hgroup>
-        <h1>Revela</h1>
-        <p>Reveal what <em>you</em> see.</p>
-    </hgroup>
+    <div>
+        <img src="{{ html_escape basepath }}revela.svg" alt="" />
+        <hgroup>
+            <h1>Revela</h1>
+            <p>Reveal what <em>you</em> see.</p>
+        </hgroup>
+    </div>
     <p>{{ html_escape (gallery.description ?? site.description) }}</p>
 </section>
 

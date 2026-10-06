@@ -128,9 +128,24 @@ main>section:first-child {
   padding: clamp(var(--space-m), 5vh, var(--space-2xl)) var(--space-s);
   max-width: var(--content-max-width);
 
-  img[alt="Revela"] {
-    width: clamp(8rem, 25vh, calc(var(--font-size-5) * 5.5));
-    height: auto;
+  /* Brand lockup: the logo left of the name and the claim, as tall as both lines.
+     The line heights are fixed so the logo height can be computed from them. */
+  >div {
+    --brand-name-size: calc(var(--font-size-5) * 2);
+    --brand-claim-size: var(--font-size-3);
+    --brand-line-gap: var(--space-2xs);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-m);
+    margin-bottom: var(--space-l);
+    text-align: start;
+
+    >img {
+      flex: none;
+      width: auto;
+      height: calc(var(--brand-name-size) + var(--brand-claim-size) * 1.25 + var(--brand-line-gap));
+    }
   }
 
   h1:not(dialog *) {
@@ -148,14 +163,15 @@ main>section:first-child {
   /* Brand claim under the name: lighter than the name, quieter than the description's
      facts are loud. The emphasised "you" carries the message. */
   hgroup {
-    margin-bottom: var(--space-l);
-
     h1:not(dialog *) {
-      margin-bottom: var(--space-2xs);
+      font-size: var(--brand-name-size);
+      line-height: 1;
+      margin-bottom: var(--brand-line-gap);
     }
 
     p {
-      font-size: var(--font-size-3);
+      font-size: var(--brand-claim-size);
+      line-height: 1.25;
       font-weight: 200;
       letter-spacing: 0.04em;
       color: light-dark(oklch(0.23 0.04 260), oklch(1 0 0));
@@ -169,19 +185,6 @@ main>section:first-child {
         0 0 6px color-mix(in oklch, var(--accent-glow) 50%, transparent),
         0 0 18px color-mix(in oklch, var(--accent-glow) 25%, transparent),
         0 0 36px color-mix(in oklch, var(--accent-light) 12%, transparent);
-    }
-  }
-
-  /* Short screens (laptops around 1366x768): the claim adds a line, so the logo and
-     the gaps shrink to keep the call-to-action buttons above the fold. */
-  @media (max-height: 820px) {
-    img[alt="Revela"] {
-      width: clamp(7rem, 20vh, calc(var(--font-size-5) * 5.5));
-    }
-
-    hgroup,
-    >p {
-      margin-bottom: var(--space-m);
     }
   }
 
