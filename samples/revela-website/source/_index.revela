@@ -1,7 +1,7 @@
 +++
 title = "Home"
 template = "home"
-description = "Revela turns a folder of photos into a fast, beautiful portfolio website. Free, and no programming needed."
+description = "Revela turns a folder of photos into a fast, beautiful portfolio website. Free, no programming needed, for Windows, macOS and Linux."
 filter = "contains(sourcePath, '_images/home/')"
 photo_viewer = "lightbox"
 +++
@@ -10,8 +10,6 @@ photo_viewer = "lightbox"
   <a href="pages/downloads/">Download</a>
   <a href="docs/get-started/first-site/">Getting started</a>
 </nav>
-
-**Put your photos in folders, run Revela, and get a finished website** that you can publish anywhere. Runs on Windows, macOS and Linux.
 
 [[gallery]]
 

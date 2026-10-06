@@ -164,6 +164,11 @@ main>section:first-child {
 
     em {
       font-weight: 400;
+      /* The brand name's glow, scaled down to the claim's size. */
+      text-shadow:
+        0 0 6px color-mix(in oklch, var(--accent-glow) 50%, transparent),
+        0 0 18px color-mix(in oklch, var(--accent-glow) 25%, transparent),
+        0 0 36px color-mix(in oklch, var(--accent-light) 12%, transparent);
     }
   }
 
