@@ -1441,3 +1441,7 @@ finally {
     }
 
 }
+
+# Success: expected-to-fail checks (restore --check, SDK consumer probes) leave a non-zero
+# $LASTEXITCODE that GitHub's pwsh shell would report. Failures throw above.
+exit 0

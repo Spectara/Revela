@@ -451,3 +451,7 @@ public sealed class ProbePlugin : IPlugin
 finally {
     Pop-Location
 }
+
+# Success: the last native command was an expected-to-fail consumer build, and GitHub's pwsh
+# shell (and callers checking $LASTEXITCODE) would report its exit code. Failures throw above.
+exit 0
