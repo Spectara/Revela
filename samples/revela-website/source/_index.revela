@@ -23,7 +23,7 @@ photo_viewer = "lightbox"
 Each folder of photos becomes a gallery. Add, change or remove photos and build again; Revela only redoes what changed.
 
 ### ⚡ Fast for every visitor
-Revela prepares each photo in several sizes and modern formats, so phones and big screens both get the smallest file that still looks perfect.
+Revela prepares each photo in several sizes and modern formats, so phones and big screens each load a size that fits them.
 
 ### 🎨 Beautiful out of the box
 A clean, minimal theme that puts your photos first, with dark mode. Change colors and layout whenever you like. Its labels come in English or German, and you can add your own language.
@@ -36,11 +36,13 @@ No installer, no account, no subscription, no database. Unzip and start.
 
 </div>
 
-## Noticeably faster
+## Fast by design
 
-**Your images load in 0.2 seconds, not 3.** No loading spinner, no bounce. And because Revela produces lean, static pages, search engines rank you higher and every visitor sees your work instantly.
+**Speed is built in.** Every photo comes in several sizes and in AVIF, WebP and JPEG, and each browser loads only the size that fits its screen. Photos further down the page load as visitors scroll, and the space for each photo is reserved before it arrives, so the page doesn't jump while it loads. The pages themselves are plain HTML and CSS; JavaScript only adds extras such as the lightbox and zoom, and everything works without it.
 
-> **Proof:** [photo.kirk.one](https://photo.kirk.one) scores **100 / 100 / 100 / 100** on Google Lighthouse (Performance · Accessibility · Best Practices · SEO) — First Contentful Paint 0.2 s, zero layout shift.
+Fast, stable pages make browsing more pleasant. Search engines count page experience as one of many signals, but no site generator can promise a ranking.
+
+> **Measured:** a Revela build of [photo.kirk.one](https://photo.kirk.one), a portfolio with about 1,200 photos, in Google Lighthouse's mobile test (October 2026): **100** for Performance, Accessibility and Best Practices; first content after **0.9 s**, the largest image after **1.4 s**, no layout shift. Results depend on the device, the network and your web host.
 
 <nav class="cta">
   <a href="pages/downloads/">Download Revela</a>

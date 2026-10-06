@@ -13,13 +13,13 @@ Revela can pre-compress your static files with **Gzip** and **Brotli** for faste
 
 Compressed files created at build time, not on every request.
 
-### 🚀 95% Smaller
+### 🚀 About 80% Smaller
 
-HTML, CSS, and JS files compress dramatically with Brotli.
+HTML, CSS, and JS files shrink a lot with Brotli: about 80% for this website's own pages (HTML −80%, CSS −78%, JS −69%).
 
-### ⚡ Zero CPU Cost
+### ⚡ No Work per Request
 
-Servers deliver pre-compressed files instantly.
+Servers send the pre-compressed files as they are instead of compressing every request.
 
 </div>
 
