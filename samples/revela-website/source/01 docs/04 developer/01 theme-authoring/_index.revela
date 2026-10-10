@@ -1,0 +1,198 @@
++++
+title = "Theme Authoring"
+template = "docs"
+description = "Build a Revela theme or change one deeply: the required partials, image helpers, template editing, UI text, image sizes and theme extensions."
++++
+
+This page is for building a theme or changing one deeply with Scriban templates. For everyday changes, such as the footer text, colors, fonts or the site language, see [Theme Customization](../../guide/themes/): no template editing needed.
+
+## Required: `Partials/ContentImage.revela`
+
+Every theme **must** include this partial, because Revela calls it for every Markdown image (`![alt](path)`).
+
+Variables available inside it:
+
+| Variable | Type | Description |
+|----------|------|-------------|
+| `image` | Image | Image object (`slug`, `width`, `height`, `sizes`, `color`, `exif`, `title`, `description`, `keywords`, `rating`) |
+| `alt` | string | Alt text from Markdown |
+| `classes` | string[] | CSS classes from `{.class}` syntax |
+| `assets_basepath` | string | Base path to image variants |
+| `image_formats` | string[] | Active formats, e.g. `["avif", "webp", "jpg"]` |
+
+Minimal implementation:
+
+```scriban
+{{~ if !image.sizes || image.sizes.size == 0; ret; end ~}}
+<picture class="content-image{{ for cls in classes }} {{ html_escape cls }}{{ end }}">
+{{~ for format in image_formats ~}}
+  <source type="image/{{ format == 'jpg' ? 'jpeg' : format }}" srcset="
+    {{~ for size in image.sizes ~}}
+    {{ variant_url(image, size, format) }} {{ size }}w{{ if !for.last }},{{ end }}
+    {{~ end ~}}">
+{{~ end ~}}
+  <img src="{{ variant_url(image, image.sizes[-1], 'jpg') }}"
+       alt="{{ html_escape alt }}" loading="lazy" decoding="async">
+</picture>
+```
+
+`image.sizes` is in ascending order, so `image.sizes[-1]` is the largest size. Write templates with
+plain language features (indexing, `//` integer division, `for` loops) rather than Scriban's
+`array.*`/`math.*` libraries: the Standalone edition is compiled with Native AOT and keeps only
+the built-ins Revela references (see [Template Functions](../../reference/template-functions/)).
+
+## Shared Image Helpers
+
+Lumina keeps its responsive-image logic in one partial, `Partials/ImageHelpers.revela`, so every `<picture>` (gallery thumbnails,
+content images, lightbox, photo page, Open Graph image) is built the same way. It renders nothing
+itself; it defines functions. If you override `Image`, `ContentImage`, `PhotoLightbox`,
+`OpenGraphImage` or `Body/Photo`, include it and reuse them instead of copying the logic:
+
+```scriban
+{{~ include 'imagehelpers' ~}}
+{{~ fallback_format = image_fallback_format ~}}
+<picture>
+{{~ for format in image_formats ~}}
+  <source type="{{ html_escape (image_type format) }}" sizes="100vw" srcset="{{ html_escape (image_srcset image format) }}">
+{{~ end ~}}
+  <img src="{{ html_escape (variant_url image (image_size image 1280) fallback_format) }}"
+       srcset="{{ html_escape (image_srcset image fallback_format) }}" sizes="100vw"
+       alt="{{ html_escape alt }}" width="{{ image.width }}" height="{{ image.height }}">
+</picture>
+```
+
+| Function | Returns |
+|----------|---------|
+| `image_type format` | MIME type for `<source type>`: `jpg` → `image/jpeg`, otherwise `image/<format>` |
+| `image_fallback_format` | The last entry of `image_formats` (normally `jpg`), for the `<img>` fallback |
+| `image_srcset image format` | Every generated size as `url <width>w` candidates (portrait widths are computed from the longest edge) |
+| `image_size image limit` | The largest generated size up to `limit`, else the smallest |
+| `viewer_sizes image` | A `sizes` value that fits the photo into the photo viewer (viewport minus the navigation bar) |
+
+`image_formats` can't be indexed, which is why `image_fallback_format` loops over it. Like every
+theme file, the partial falls back to the installed theme, so your overrides can include it
+without extracting it; extract it (`revela theme extract Lumina --file Partials/ImageHelpers.revela`)
+only to change the helpers themselves.
+
+## Optional: `Partials/PhotoFigure.revela`
+
+Renders a `[[photo: path]]` block: one photo in the page text, linked to its photo
+page. Themes without this partial still work: Revela then renders
+`ContentImage.revela` wrapped in a link to the photo page.
+
+Variables available inside it:
+
+| Variable | Type | Description |
+|----------|------|-------------|
+| `image` | Image | The photo (`id`, `slug`, `width`, `height`, `title`, `description`, `sizes`, `color`) |
+| `viewer_mode` | string | `page` (link to the photo page) or `none` (the theme renders no photo pages) |
+| `context_id` | string? | Page context for the photo page's return link; `null` with the `gallery` option (the photo page then uses its primary context) |
+| `context_label` | string? | Name of the page context, `null` without one |
+| `occurrence_id` | string | Anchor id for the element; the photo page's return link points here |
+| `basepath` | string | Relative path to the site root (for `page_url`) |
+| `assets_basepath` | string | Base path to image variants |
+| `image_formats` | string[] | Active formats, e.g. `["avif", "webp", "jpg"]` |
+
+Build the link like a gallery thumbnail and put `occurrence_id` on the outer element:
+
+```scriban
+{{~ href = page_url(image) + (context_id ? '#ctx-' + context_id : '') ~}}
+<figure id="{{ html_escape occurrence_id }}">
+  <a href="{{ html_escape href }}">…picture…</a>
+</figure>
+```
+
+Lumina's version reuses `ContentImage.revela` for the picture (set `alt` and
+`classes`, then `{{ include 'contentimage' }}`) and takes the alt text from the
+photo's title, then its description, then `t 'photo.label' image.id`.
+
+## Editing Templates
+
+Templates are Scriban `.revela` files. The main ones:
+
+- `Layout.revela`: the HTML shell (`<head>`, navigation include, `{{ body }}`)
+- `Body/Gallery.revela`: gallery page content
+- `Body/Page.revela`: text or landing page content
+- `Body/Photo.revela`: a complete document for each photo page
+- `Body/NotFound.revela` *(optional)*: rendered once into `404.html` at the output root. The
+  renderer passes a root-absolute `basepath` (`/` or your `basePath`) and `not_found = true`;
+  build every link from `basepath`/`asset_url`, never relative. Without this template no
+  404 page is generated.
+
+The format name `jpg` is not a MIME type: write `type="image/{{ format == 'jpg' ? 'jpeg' : format }}"`
+on `<source>` elements.
+
+**Headings:** the layout renders no heading of its own; each body template renders exactly one
+`<h1>`. Lumina uses the page title, skips it when the Markdown body contains its own
+`# Heading`, and keeps it visually hidden on the home page and on photo pages.
+
+**Current page in navigation:** mark the link to the current page with `aria-current="page"`
+(`{{ if item.current }} aria-current="page"{{ end }}`) and style that attribute
+(`a[aria-current="page"]`), not a class. Screen readers announce it; Lumina sets no `active`
+class. `item.active` is still available when you need to know that a child is the current page
+(for example to expand a section).
+
+Every template receives a model with `site`, `gallery`, `images`, `nav_items`, `basepath`, `assets_basepath`, `base_url`, and `image_formats`, plus helper functions such as `page_url`, `asset_url`, `variant_url`, `format_date`, `t`, and `markdown`. Never hardcode paths; use `asset_url` / `page_url` / `variant_url` so the site works at any base path.
+
+**Always link CSS and JavaScript with `asset_url`** (`<link rel="stylesheet" href="{{ html_escape (asset_url css) }}">`), never with a hand-written `_assets/` path. `asset_url` adds a fingerprint of the file content (`main.css?v=3f2a9c1d`), so visitors get your changes on the next page view, even when their browser or an installed home-screen app has cached the old file. See [`asset_url`](../../reference/template-functions/#asset_url).
+
+## UI Text: `Locales/`
+
+Never hardcode user-visible theme text (labels, headings, `aria-label`s,
+visually hidden text). Put it in `Locales/en.json` (required: every lookup
+falls back to English) plus any other languages, and render it with
+[`t`](../../reference/template-functions/#t):
+
+```scriban
+<nav aria-label="{{ html_escape (t 'photo.navigation') }}">
+<a aria-label="{{ html_escape (t 'photo.return_to' ctx.label) }}">&times;</a>
+```
+
+- **Namespace keys by owner** (`photo.*`, `nav.*` for the base theme,
+  `statistics.*` for the Statistics extension) so extensions never collide.
+- **Escape the result.** `t` returns plain text and its arguments are often user
+  data.
+- **Layers:** base theme → extensions → project `themes/<Theme>/Locales/<lang>.json`
+  → `themes/<Theme>/Locales/<Prefix>/<lang>.json`; later layers win per key.
+- If JavaScript needs text, render it into a `data-` attribute with `t` instead of
+  hardcoding it in the script.
+- Embedded (NuGet) themes must embed `Locales/*.json` as resources with the
+  logical name `Locales\<file>`, like `Configuration/` and `Assets/`.
+
+## Image Sizes: `Configuration/images.json`
+
+Control the responsive widths the theme requests:
+
+```json
+{
+  "sizes": [160, 320, 480, 640, 720, 960, 1280, 1440, 1920, 2560]
+}
+```
+
+Image **formats and quality** are a project setting, not a theme setting, so they live in `project.json`:
+
+```json
+{
+  "generate": {
+    "images": { "avif": 75, "webp": 85, "jpg": 90 }
+  }
+}
+```
+
+## Theme Extensions
+
+Extensions (such as Statistics or Calendar for Lumina) add views and partials. When you extract a theme, its extension files come along in `Category/ExtensionName/` subfolders to avoid name clashes:
+
+```
+themes/Lumina/
+├── Assets/
+│   └── statistics/main.css
+└── Partials/
+    └── Statistics/Bar-chart.revela
+```
+
+Extract a single extension file the same way, using the path shown by `revela theme files`:
+
+```bash
+revela theme extract Lumina --file partials/statistics/bar-chart.revela
+```

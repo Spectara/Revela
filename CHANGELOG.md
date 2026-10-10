@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **Docs separate everyday customization from theme authoring** - "Theme Customization" on revela.website now covers only what site owners change without template code (footer text, colors, fonts, language, overrides). Required partials, image helpers, template editing, UI text files, image sizes and theme extensions moved to a new **Theme Authoring** page in the developer section. The docs start page points developers straight to their section. A first, small step for #86; no other URLs changed.
+
 ## [0.0.1-beta.22] - 2026-10-06
 
 ### Added

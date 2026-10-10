@@ -316,15 +316,15 @@ revela generate images
 
 ## Photo Placeholders
 
-While a photo loads, Lumina shows a **single colour**: the photo's average colour, dimmed towards the page background. Layouts don't shift, there are no extra requests, and nothing needs configuring.
+While a photo loads, Lumina shows a **single color**: the photo's average color, dimmed towards the page background. Layouts don't shift, there are no extra requests, and nothing needs configuring.
 
 ### How It Works
 
-1. During scan, Revela averages a small preview of each image (the full-size photo is not decoded) in the perceptual Oklab colour space and stores it as `#rrggbb` in the manifest
+1. During scan, Revela averages a small preview of each image (the full-size photo is not decoded) in the perceptual Oklab color space and stores it as `#rrggbb` in the manifest
 2. Templates write it as a CSS custom property, e.g. `style="--image-color:#5a6b7c"`
 3. The theme paints it behind the image; the loaded photo covers it completely
 
-A plain colour is deliberately simple: the earlier gradient placeholders made scrolling large galleries stutter, especially on iPad. Themes read the colour as `image.color` (see the [template reference](../../reference/template-functions/)); Lumina mixes 70% of it into the page background, adjustable with `--image-color-strength` in its CSS.
+A plain color is deliberately simple: the earlier gradient placeholders made scrolling large galleries stutter, especially on iPad. Themes read the color as `image.color` (see the [template reference](../../reference/template-functions/)); Lumina mixes 70% of it into the page background, adjustable with `--image-color-strength` in its CSS.
 
 Upgrading from a version with gradient placeholders re-reads the image metadata once on the next scan. Image variants are not re-encoded.
 

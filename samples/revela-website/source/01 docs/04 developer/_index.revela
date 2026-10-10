@@ -11,7 +11,7 @@ As a developer, you can extend Revela with your own plugins and themes, script i
 <div class="path-grid">
 <a class="path-card" href="https://github.com/Spectara/Revela/blob/main/docs/plugin-development.md"><span class="path-title">🧩 Plugin Development <span class="arrow">→</span></span><span class="path-desc">Implement <code>IPlugin</code>, register services, add CLI commands, test and package your plugin.</span></a>
 <a class="path-card" href="https://github.com/Spectara/Revela/tree/main/src/Sdk"><span class="path-title">📦 SDK <span class="arrow">→</span></span><span class="path-desc"><code>Spectara.Revela.Sdk</code>: the public interfaces for plugins and themes. The package is attached to every GitHub Release.</span></a>
-<a class="path-card" href="../guide/themes/"><span class="path-title">🎨 Themes <span class="arrow">→</span></span><span class="path-desc">Override or extract a theme, then shape it with Scriban templates.</span></a>
+<a class="path-card" href="theme-authoring/"><span class="path-title">🎨 Theme Authoring <span class="arrow">→</span></span><span class="path-desc">Build a theme or change one deeply with Scriban templates: required partials, image helpers, UI text and extensions.</span></a>
 <a class="path-card" href="../reference/template-functions/"><span class="path-title">🧰 Template Functions <span class="arrow">→</span></span><span class="path-desc">Every function and variable available in templates.</span></a>
 </div>
 

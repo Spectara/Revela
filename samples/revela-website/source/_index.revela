@@ -53,13 +53,13 @@ Choose **serve** and open <http://localhost:8080> to see your website in your br
 
 > **Made on your computer, published where you like.** Revela isn't an online service: it builds the website on your computer, and you decide where it goes online. The [Deployment guide](docs/guide/deployment/) shows free options such as GitHub Pages, Netlify and Cloudflare Pages.
 
-> **Your originals stay untouched.** Revela only reads your photos and writes separate web versions into `output`. Use JPEG exports from Capture One or Lightroom, ideally in Display P3 or Adobe RGB for rich colours; RAW files aren't read. See [exporting from your photo editor](docs/guide/images/#exporting-from-your-photo-editor).
+> **Your originals stay untouched.** Revela only reads your photos and writes separate web versions into `output`. Use JPEG exports from Capture One or Lightroom, ideally in Display P3 or Adobe RGB for rich colors; RAW files aren't read. See [exporting from your photo editor](docs/guide/images/#exporting-from-your-photo-editor).
 
 Prefer a terminal? Every menu entry is also a command, for example `revela generate all`. [Your First Site](docs/get-started/first-site/) walks through the same steps in detail.
 
 ## Made for photographers
 
-Other website builders are made for blogs and online shops. Revela focuses on one thing: **showing your photos beautifully**. The built-in theme puts your photos first, with dark mode and labels in English or German, and you can add your own language. Set your site's title, language and how photos open in the menu; colours and fonts are a few lines in one CSS file, and templates let you go further.
+Other website builders are made for blogs and online shops. Revela focuses on one thing: **showing your photos beautifully**. The built-in theme puts your photos first, with dark mode and labels in English or German, and you can add your own language. Set your site's title, language and how photos open in the menu; colors and fonts are a few lines in one CSS file, and templates let you go further.
 
 ## Fast by design
 
@@ -76,4 +76,4 @@ Fast, stable pages make browsing more pleasant. Search engines count page experi
 
 ## For developers
 
-Under the hood: libvips image processing via NetVips, AVIF/WebP/JPEG output with responsive `<picture>` elements and average-colour placeholders, Scriban templates, Markdown pages, Gzip/Brotli pre-compression and a NuGet-based plugin system. Extend it, script it in CI, or contribute: see the [developer orientation](docs/developer/).
+Under the hood: libvips image processing via NetVips, AVIF/WebP/JPEG output with responsive `<picture>` elements and average-color placeholders, Scriban templates, Markdown pages, Gzip/Brotli pre-compression and a NuGet-based plugin system. Extend it, script it in CI, or contribute: see the [developer orientation](docs/developer/).

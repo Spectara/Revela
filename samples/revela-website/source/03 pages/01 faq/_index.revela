@@ -63,8 +63,8 @@ By default, EXIF data is **stripped** from generated images (for privacy and fil
 Yes, in three levels:
 
 - **In the menu, without code:** your site's title, description, author, copyright line and language (**config → site**), the theme and how photos open, on their own page or in a lightbox (**config → theme**), and image formats and quality (**config → image**).
-- **Colours, spacing and fonts:** a few CSS custom properties in one file. Extract `Assets/main.css` with **theme → extract** and edit the values; no template changes needed.
-- **Layout and markup:** place files in your project's `themes/Lumina/` folder to override any template, partial or asset. Only the files you change need to live in your project, and everything else comes from the built-in theme.
+- **Colors, spacing and fonts:** a few CSS custom properties in one file. Extract `Assets/main.css` with **theme → extract** and edit the values; no template changes needed.
+- **Layout and markup:** place files in your project's `themes/Lumina/` folder to override any template, partial or asset. Only the files you change need to live in your project, and everything else comes from the built-in theme. [Theme Authoring](../../docs/developer/theme-authoring/) covers the templates.
 
 See [Theme Customization](../../docs/guide/themes/) for details.
 

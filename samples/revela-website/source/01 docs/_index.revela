@@ -5,7 +5,7 @@ pinned = true
 description = "Revela documentation: get started, guides, plugins, reference and developer resources."
 +++
 
-Everything you need to turn your photos into a fast portfolio website.
+Everything you need to turn your photos into a fast portfolio website. Building a plugin or theme, or automating Revela? Go straight to the [developer section](developer/).
 
 ## Start here (photographers)
 
@@ -23,7 +23,7 @@ Everything you need to turn your photos into a fast portfolio website.
 <a class="path-card" href="guide/images/"><span class="path-title">🖼️ Image Processing <span class="arrow">→</span></span><span class="path-desc">Formats, sizes, quality and fast rebuilds.</span></a>
 <a class="path-card" href="guide/sorting/"><span class="path-title">📊 Sorting <span class="arrow">→</span></span><span class="path-desc">Control the order of galleries and photos.</span></a>
 <a class="path-card" href="guide/filtering/"><span class="path-title">🔍 Filter Galleries <span class="arrow">→</span></span><span class="path-desc">Galleries that pick photos by camera, date or name.</span></a>
-<a class="path-card" href="guide/themes/"><span class="path-title">🎨 Theme Customization <span class="arrow">→</span></span><span class="path-desc">Change colors, fonts and layout.</span></a>
+<a class="path-card" href="guide/themes/"><span class="path-title">🎨 Theme Customization <span class="arrow">→</span></span><span class="path-desc">Footer text, colors, fonts and language, without template code.</span></a>
 <a class="path-card" href="guide/configuration/"><span class="path-title">⚙️ Configuration <span class="arrow">→</span></span><span class="path-desc">All project and site settings.</span></a>
 <a class="path-card" href="guide/deployment/"><span class="path-title">🌍 Deployment <span class="arrow">→</span></span><span class="path-desc">Publish on GitHub Pages, Netlify or your own host.</span></a>
 </div>
@@ -43,5 +43,6 @@ Everything you need to turn your photos into a fast portfolio website.
 Building a plugin or theme, automating Revela, or contributing to its code?
 
 <div class="path-grid">
-<a class="path-card" href="developer/"><span class="path-title">🛠️ Developer Orientation <span class="arrow">→</span></span><span class="path-desc">Architecture, plugin and theme development, and how to contribute.</span></a>
+<a class="path-card" href="developer/"><span class="path-title">🛠️ Developer Orientation <span class="arrow">→</span></span><span class="path-desc">Plugin development, automation and how to contribute.</span></a>
+<a class="path-card" href="developer/theme-authoring/"><span class="path-title">🎨 Theme Authoring <span class="arrow">→</span></span><span class="path-desc">Build a theme or change templates.</span></a>
 </div>

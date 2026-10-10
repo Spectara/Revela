@@ -3,7 +3,7 @@ title = "Template Functions"
 template = "docs"
 +++
 
-Revela themes are [Scriban](https://github.com/scriban/scriban) templates (`.revela` files). Every template has access to the built-in functions below for URLs, images, date/EXIF formatting, UI text, and Markdown. For where these are used, see [Theme Customization](../../guide/themes/).
+Revela themes are [Scriban](https://github.com/scriban/scriban) templates (`.revela` files). Every template has access to the built-in functions below for URLs, images, date/EXIF formatting, UI text, and Markdown. For where these are used, see [Theme Authoring](../../developer/theme-authoring/).
 
 > **Prefer plain language features over Scriban's built-in libraries.** The Standalone edition is compiled with Native AOT, which keeps only the Scriban built-ins that Revela itself references; a template calling another one (for example `array.last`, `array.join`, `math.floor`) can fail there. Use indexing (`list[0]`, `list[-1]`), integer division (`//`), `for` loops and the functions on this page instead. Lumina only uses `string.contains`, and revela.website's own overrides add `string.replace`.
 
@@ -61,13 +61,13 @@ Resolve an image from the project by path. Uses the same 3-step lookup as Markdo
 
 The image object exposes `slug`, `file_name`, `source_path`, `width`, `height`, `sizes`, `file_size`, `date_taken`, `exif`, `title`, `description`, `keywords`, `rating`, `color`, and `gamut`.
 
-`color` is the photo's average colour as lowercase sRGB hex (`#rrggbb`), computed during scan, or `null` when unknown. Themes paint it while the photo loads; Lumina writes it as a CSS custom property:
+`color` is the photo's average color as lowercase sRGB hex (`#rrggbb`), computed during scan, or `null` when unknown. Themes paint it while the photo loads; Lumina writes it as a CSS custom property:
 
 ```scriban
 <article style="--width:{{ image.width }}; --height:{{ image.height }};{{ if image.color }} --image-color:{{ html_escape image.color }};{{ end }}">
 ```
 
-`gamut` is the colour space of the photo's variants: `"p3"` when they are Display P3 with the profile embedded (photos with colours beyond sRGB, see [Wide Gamut](../../guide/images/#wide-gamut-display-p3)), otherwise `"srgb"`. `<picture>` markup needs no change for P3 — browsers read the embedded profile. P3 photos also have one untagged sRGB JPEG for social previews, at the largest size up to 1920 px; use the format `'srgb.jpg'` for it (see [`absolute_variant_url`](#absolute_variant_url)).
+`gamut` is the color space of the photo's variants: `"p3"` when they are Display P3 with the profile embedded (photos with colors beyond sRGB, see [Wide Gamut](../../guide/images/#wide-gamut-display-p3)), otherwise `"srgb"`. `<picture>` markup needs no change for P3 — browsers read the embedded profile. P3 photos also have one untagged sRGB JPEG for social previews, at the largest size up to 1920 px; use the format `'srgb.jpg'` for it (see [`absolute_variant_url`](#absolute_variant_url)).
 
 The descriptive fields come from the photo's XMP metadata, as Capture One and Lightroom export it:
 
@@ -120,9 +120,9 @@ prefix and asset base path, including absolute CDN addresses.
 `image.sizes` is in ascending order, so `image.sizes[-1]` is the largest generated size.
 Social crawlers prefer JPEG around 1200–1920 px; Lumina's `Partials/OpenGraphImage.revela`
 picks the largest generated size up to 1920 (with `image_size image 1920` from
-[`Partials/ImageHelpers.revela`](../../guide/themes/#shared-image-helpers)) and also emits `og:image:width`/`og:image:height`.
+[`Partials/ImageHelpers.revela`](../../developer/theme-authoring/#shared-image-helpers)) and also emits `og:image:width`/`og:image:height`.
 
-Social networks often drop colour profiles, so for a photo with `image.gamut == 'p3'` Lumina
+Social networks often drop color profiles, so for a photo with `image.gamut == 'p3'` Lumina
 links the untagged sRGB copy instead — it exists at exactly that size:
 
 ```scriban
@@ -325,5 +325,5 @@ their templates, so their pages work without a `data` line.
 
 ## See Also
 
-- [Theme Customization](../../guide/themes/): where templates and the required `ContentImage.revela` partial live
+- [Theme Authoring](../../developer/theme-authoring/): where templates and the required `ContentImage.revela` partial live
 - [Source Structure](../../guide/source-structure/): how galleries and images map into templates
