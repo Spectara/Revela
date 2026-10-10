@@ -34,6 +34,20 @@ body:not(.photo-page) {
   --color-light: light-dark(oklch(0.44 0.02 255), oklch(0.76 0.01 255));
 }
 
+/* Scrollbars in the accent color: a calm thumb on a transparent track. scrollbar-color is
+   inherited, so setting it on <html> covers the page, the docs sidebar and code blocks. The
+   page scrollbar reads it from <html>, which can't see the body's tokens above, so the
+   accent-glow values are repeated here. Photo pages keep Lumina's own look. */
+html:has(> body:not(.photo-page)) {
+  scrollbar-color: light-dark(oklch(0.46 0.15 260 / 0.45), oklch(0.70 0.13 220 / 0.45)) transparent;
+}
+
+/* Inner scroll areas get the slim variant; the page scrollbar keeps the system width so it
+   stays easy to grab. */
+body:not(.photo-page) :is(main aside, pre) {
+  scrollbar-width: thin;
+}
+
 /* ============================================
    Background Gradient
    ============================================ */
