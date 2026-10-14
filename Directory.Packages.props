@@ -23,7 +23,7 @@
     <PackageVersion Include="Microsoft.Extensions.Logging.Debug" Version="10.0.12" />
   </ItemGroup>
   <ItemGroup Label="CLI Framework">
-    <PackageVersion Include="System.CommandLine" Version="2.0.12" />
+    <PackageVersion Include="System.CommandLine" Version="2.0.13" />
     <PackageVersion Include="Spectre.Console" Version="0.57.2" />
   </ItemGroup>
   <ItemGroup Label="Template Engine">
