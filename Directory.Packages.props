@@ -46,7 +46,7 @@
   </ItemGroup>
   <ItemGroup Label="Testing">
     <PackageVersion Include="MSTest" Version="4.4.1" />
-    <PackageVersion Include="MSTest.Analyzers" Version="4.4.1" />
+    <PackageVersion Include="MSTest.Analyzers" Version="4.5.1" />
     <PackageVersion Include="NSubstitute" Version="6.2.0" />
   </ItemGroup>
   <ItemGroup Label="Benchmarking">
