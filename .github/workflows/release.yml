@@ -130,7 +130,7 @@ jobs:
           subject-path: ./nupkgs/*.nupkg
 
       - name: Upload NuGet packages
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: nupkgs
           path: ./nupkgs/*.nupkg
@@ -354,7 +354,7 @@ jobs:
 
       - name: Upload artifact test evidence
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: artifact-tests-${{ matrix.rid }}
           path: |
@@ -379,21 +379,21 @@ jobs:
           subject-path: revela-${{ matrix.rid }}-standalone.*
 
       - name: Upload Core artifact
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: ${{ matrix.rid }}-core
           path: revela-${{ matrix.rid }}-core.*
           retention-days: 1
 
       - name: Upload Full artifact
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: ${{ matrix.rid }}-full
           path: revela-${{ matrix.rid }}-full.*
           retention-days: 1
 
       - name: Upload Standalone artifact
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: ${{ matrix.rid }}-standalone
           path: revela-${{ matrix.rid }}-standalone.*
@@ -472,7 +472,7 @@ jobs:
             ../signatures/SHA256SUMS
 
       - name: Upload signatures and checksums
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: signatures
           path: signatures/**
