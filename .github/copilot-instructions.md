@@ -79,12 +79,15 @@ scripts/              # build-release.ps1, test-release.ps1
 | [`plugins.instructions.md`](./instructions/plugins.instructions.md) | `src/Plugins/**` — plugin lifecycle, CommandDescriptor |
 | [`themes.instructions.md`](./instructions/themes.instructions.md) | `src/Themes/**` — Scriban templates, manifest, partials |
 
-| Prompt file | Invocation |
+| Explicit-invocation skill | Workflow |
 |-------------|------------|
-| `/full-review` | Multi-phase deep review → routes to Revela Reviewer |
-| `/new-plugin` | Scaffold a new plugin → routes to Revela Dev |
-| `/new-theme` | Scaffold a new theme → routes to Revela Dev |
-| `/release-notes` | Generate CHANGELOG entries from commits |
+| [`/full-review`](./skills/full-review/SKILL.md) | Multi-phase deep review → explicitly delegates to Revela Reviewer |
+| [`/new-plugin`](./skills/new-plugin/SKILL.md) | Scaffold a new plugin → explicitly delegates to Revela Dev |
+| [`/new-theme`](./skills/new-theme/SKILL.md) | Scaffold a new theme → explicitly delegates to Revela Dev |
+| [`/release-notes`](./skills/release-notes/SKILL.md) | Generate CHANGELOG entries from commits → explicitly delegates to Revela Dev |
+
+These skills are invoked explicitly, not loaded automatically. Skills do not switch
+personas through `agent:` frontmatter; each workflow requests the named custom agent.
 
 ---
 

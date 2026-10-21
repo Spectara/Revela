@@ -109,4 +109,4 @@ copilot -p "Output only a JSON array of the tools you can call." --agent <file-n
 
 - [`AGENTS.md`](../AGENTS.md) — Repo orientation for agents
 - [`.github/agents/revela-reviewer.agent.md`](../.github/agents/revela-reviewer.agent.md) — Reviewer agent definition
-- [`.github/prompts/full-review.prompt.md`](../.github/prompts/full-review.prompt.md) — Full review workflow
+- [`.github/skills/full-review/SKILL.md`](../.github/skills/full-review/SKILL.md) — Explicit-invocation full review workflow

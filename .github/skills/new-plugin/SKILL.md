@@ -1,12 +1,16 @@
 ---
-agent: Revela Dev
-argument-hint: "[plugin-name]"
+name: new-plugin
 description: "Scaffold a new Revela plugin — project, csproj, plugin class, command, config, tests"
+argument-hint: "[plugin-name]"
+user-invocable: true
+disable-model-invocation: true
 ---
 
 # New Plugin Scaffold
 
-Create a new external plugin for the Revela project under `src/Plugins/${input:pluginName:e.g. MyFeature}/`.
+Create a new external plugin for the Revela project under `src/Plugins/${pluginName}/`, where `${pluginName}` is the name collected below, not a VS Code input variable.
+
+Skills do not switch agents automatically: explicitly delegate this workflow to **Revela Dev**. If that agent is unavailable, report the limitation rather than silently using a different persona.
 
 ## Inputs (ask the user if not supplied)
 
@@ -19,7 +23,7 @@ Create a new external plugin for the Revela project under `src/Plugins/${input:p
 
 ## Steps
 
-Use the **Revela Dev** agent for actual implementation. Follow the conventions in [`.github/instructions/plugins.instructions.md`](../instructions/plugins.instructions.md).
+Use the **Revela Dev** agent for actual implementation. Follow the conventions in [`.github/instructions/plugins.instructions.md`](../../instructions/plugins.instructions.md).
 
 1. **Create csproj** at `src/Plugins/${pluginName}/Spectara.Revela.Plugins.${pluginName}.csproj`
    - Reference `src/Sdk/Spectara.Revela.Sdk.csproj`

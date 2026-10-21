@@ -1,11 +1,13 @@
 ---
-agent: Revela Reviewer
+name: full-review
 description: "Run a multi-phase deep review of the Revela codebase (architecture → quality → security → performance)"
+user-invocable: true
+disable-model-invocation: true
 ---
 
 # Full Codebase Review
 
-Execute a complete five-phase review using the **Revela Reviewer** persona (auto-routed via the `agent:` frontmatter).
+Execute a complete five-phase review using the **Revela Reviewer** custom agent. Skills do not switch agents automatically: explicitly delegate this workflow to **Revela Reviewer**. If that agent is unavailable, report the limitation rather than silently using a different persona.
 
 ## Phases (run in order — each phase blocks on the previous)
 
@@ -58,7 +60,7 @@ Manual + targeted searches:
 
 ## Output Format
 
-Single Markdown report with the structure defined in `revela-reviewer.agent.md`:
+Single Markdown report with the structure defined in [Revela Reviewer](../../agents/revela-reviewer.agent.md):
 - Header (date, scope, build/test/format status)
 - Findings grouped by severity (🔴 Blocker / 🟠 Major / 🟡 Minor / 🟢 Nitpick)
 - Metrics table (LOC, coverage, status per module)
