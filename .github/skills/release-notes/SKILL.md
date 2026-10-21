@@ -1,12 +1,16 @@
 ---
-agent: Revela Dev
-argument-hint: "[version]"
+name: release-notes
 description: "Generate CHANGELOG.md entries from git commits since the last release tag"
+argument-hint: "[version]"
+user-invocable: true
+disable-model-invocation: true
 ---
 
 # Release Notes Generator
 
 Generate a new `CHANGELOG.md` section from commits since the last release tag.
+
+Skills do not switch agents automatically: explicitly delegate this workflow to **Revela Dev**. If that agent is unavailable, report the limitation rather than silently using a different persona.
 
 ## Inputs
 

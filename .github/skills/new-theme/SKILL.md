@@ -1,12 +1,16 @@
 ---
-agent: Revela Dev
-argument-hint: "[theme-name]"
+name: new-theme
 description: "Scaffold a new Revela theme or theme extension — manifest, layouts, partials, assets"
+argument-hint: "[theme-name]"
+user-invocable: true
+disable-model-invocation: true
 ---
 
 # New Theme Scaffold
 
-Create a new theme or theme extension under `src/Themes/${input:themeName}/`.
+Create a new theme or theme extension under `src/Themes/${themeName}/`, where `${themeName}` is the name collected below, not a VS Code input variable.
+
+Skills do not switch agents automatically: explicitly delegate this workflow to **Revela Dev**. If that agent is unavailable, report the limitation rather than silently using a different persona.
 
 ## Inputs (ask the user if not supplied)
 
@@ -19,7 +23,7 @@ Create a new theme or theme extension under `src/Themes/${input:themeName}/`.
 
 ## Steps
 
-Use the **Revela Dev** agent for implementation. Follow [`.github/instructions/themes.instructions.md`](../instructions/themes.instructions.md).
+Use the **Revela Dev** agent for implementation. Follow [`.github/instructions/themes.instructions.md`](../../instructions/themes.instructions.md).
 
 1. **Create csproj** at `src/Themes/${themeName}/Spectara.Revela.Themes.${themeName}.csproj`
    - Reference `src/Sdk/Spectara.Revela.Sdk.csproj`
@@ -42,7 +46,7 @@ Use the **Revela Dev** agent for implementation. Follow [`.github/instructions/t
 
 ## Template Context Reference
 
-Available in every template (see [`themes.instructions.md`](../instructions/themes.instructions.md)):
+Available in every template (see [`themes.instructions.md`](../../instructions/themes.instructions.md)):
 - `site`, `basepath`, `assets_basepath`, `base_url`, `image_formats`, `nav_items`
 - `gallery` (with `title`, `body`, `cover_image`, `template`)
 - `images` array with per-image `sizes` and `color`
