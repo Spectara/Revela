@@ -61,20 +61,27 @@ function Invoke-DotNet {
 }
 
 function Invoke-DotNetExpectFailure {
-    param([string]$LogName, [string[]]$Arguments)
+    param([string]$LogName, [string[]]$Arguments, [string]$ExpectedError)
 
     Write-Host "dotnet $($Arguments -join ' ') (expected to fail)"
     $commandOutput = @(& dotnet @Arguments 2>&1)
     $exitCode = $LASTEXITCODE
-    $commandOutput | Set-Content -LiteralPath (Join-Path $RunRoot "$LogName.log") -Encoding utf8
-    foreach ($line in $commandOutput) {
-        Write-Host $line
+    $logPath = Join-Path $RunRoot "$LogName.log"
+    $commandOutput | Set-Content -LiteralPath $logPath -Encoding utf8
+    $errorCodes = @([regex]::Matches(($commandOutput -join [Environment]::NewLine), '\berror\s+([A-Za-z]+\d+)\s*:') |
+        ForEach-Object { $_.Groups[1].Value })
+    $unexpectedErrors = @($errorCodes | Where-Object { $_ -cne $ExpectedError })
+    if ($exitCode -eq 0 -or $errorCodes.Count -eq 0 -or $unexpectedErrors.Count -ne 0) {
+        foreach ($line in $commandOutput) {
+            Write-Host $line
+        }
+        Write-Host "$LogName exit code: $exitCode"
+        if ($exitCode -eq 0) {
+            throw "$LogName unexpectedly succeeded. Evidence: $RunRoot"
+        }
+        throw "$LogName did not fail exclusively with error $ExpectedError. Evidence: $RunRoot"
     }
-    Write-Host "$LogName exit code: $exitCode"
-    if ($exitCode -eq 0) {
-        throw "$LogName unexpectedly succeeded. Evidence: $RunRoot"
-    }
-    return $commandOutput
+    Write-Host "$LogName exit code: $exitCode (expected $ExpectedError; diagnostics: $logPath)"
 }
 
 function New-PluginConsumer {
@@ -421,14 +428,14 @@ public sealed class ProbePlugin : IPlugin
     internal static string? ReadForeign(Microsoft.Extensions.Configuration.IConfiguration configuration) =>
         configuration["plugins:serve:port"];
 }'
-            ExpectedError = 'error RS0030'
+            ExpectedError = 'RS0030'
         },
         @{
             Name = 'ForeignBindingPlugin'
             Body = '    public void ConfigureServices(IServiceCollection services) =>
         services.AddOptions<ProbeConfig>().BindConfiguration("plugins:serve");
 }'
-            ExpectedError = 'error REVELA003'
+            ExpectedError = 'REVELA003'
         }
     )
     foreach ($consumer in $pluginConsumers) {
@@ -440,11 +447,8 @@ public sealed class ProbePlugin : IPlugin
             Write-Host "PASS: $($consumer.Name) builds."
             continue
         }
-        $failureOutput = (Invoke-DotNetExpectFailure "$($consumer.Name)-build" $buildArguments) -join [Environment]::NewLine
-        if (-not $failureOutput.Contains($consumer.ExpectedError, [StringComparison]::Ordinal)) {
-            throw "$($consumer.Name) failed without the expected '$($consumer.ExpectedError)'. Evidence: $RunRoot"
-        }
-        Write-Host "PASS: $($consumer.Name) fails with $($consumer.ExpectedError)."
+        Invoke-DotNetExpectFailure "$($consumer.Name)-build" $buildArguments $consumer.ExpectedError
+        Write-Host "PASS: $($consumer.Name) fails with error $($consumer.ExpectedError)."
     }
     Write-Host "SDK consumer passed. Evidence: $RunRoot"
 }
