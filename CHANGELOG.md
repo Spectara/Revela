@@ -7,10 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.0.1-beta.23] - 2026-10-27
+
 ### Changed
 
 - **Docs separate everyday customization from theme authoring** - "Theme Customization" on revela.website now covers only what site owners change without template code (footer text, colors, fonts, language, overrides). Required partials, image helpers, template editing, UI text files, image sizes and theme extensions moved to a new **Theme Authoring** page in the developer section. The docs start page points developers straight to their section. A first, small step for #86; no other URLs changed.
 - **revela.website scrollbars match the theme** - the page, the docs sidebar and code blocks scroll with an accent-colored thumb on a transparent track (CSS `scrollbar-color`), slim inside the sidebar and code blocks. Photo pages keep Lumina's own look.
+- **Updated dependencies** - Microsoft.Extensions packages to 10.0.14, Microsoft.Extensions.Http.Resilience to 10.11.0, System.CommandLine to 2.0.14, Markdig to 1.5.0, MSTest and MSTest.Analyzers to 4.5.2, and Microsoft.SourceLink.GitHub to 10.0.402.
+
+### Security
+
+- **Scriban 7.5.3** - includes fixes for template-triggered resource exhaustion ([GHSA-95w2-9mjq-6c74](https://github.com/scriban/scriban/security/advisories/GHSA-95w2-9mjq-6c74)) and additional runtime hardening. Revela continues to treat templates as trusted input, not as sandboxed code.
+- **Patched package-signature dependency** - pin the transitive System.Security.Cryptography.Pkcs dependency to 10.0.13 instead of the vulnerable 8.0.1 pulled in by NuGet.Packaging ([GHSA-846f-f764-76mx](https://github.com/advisories/GHSA-846f-f764-76mx), [GHSA-2fmv-rv2c-59x7](https://github.com/advisories/GHSA-2fmv-rv2c-59x7)).
+- **Patched runtime in self-contained releases** - builds now use .NET SDK 10.0.403 with .NET 10.0.14, including the [out-of-band runtime security fixes](https://github.com/dotnet/core/blob/main/release-notes/10.0/10.0.14/10.0.14.md). Updating an installed .NET runtime does not update older self-contained Revela downloads; replace those downloads to receive the fixes.
 
 ## [0.0.1-beta.22] - 2026-10-06
 
@@ -692,7 +701,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Source.OneDrive (OneDrive Shared Folder Support)
 - Commands: generate, init, clean, theme, plugins, restore
 
-[Unreleased]: https://github.com/spectara/revela/compare/v0.0.1-beta.22...HEAD
+[Unreleased]: https://github.com/spectara/revela/compare/v0.0.1-beta.23...HEAD
+[0.0.1-beta.23]: https://github.com/spectara/revela/compare/v0.0.1-beta.22...v0.0.1-beta.23
 [0.0.1-beta.22]: https://github.com/spectara/revela/compare/v0.0.1-beta.21...v0.0.1-beta.22
 [0.0.1-beta.21]: https://github.com/spectara/revela/compare/v0.0.1-beta.20...v0.0.1-beta.21
 [0.0.1-beta.20]: https://github.com/spectara/revela/compare/v0.0.1-beta.19...v0.0.1-beta.20
