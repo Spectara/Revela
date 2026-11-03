@@ -7,28 +7,28 @@ description: "Theme conventions — Scriban templates, manifest, partials, CSS/S
 
 Themes live under `src/Themes/`. Two kinds:
 - **Base themes** (`Lumina`) — standalone, render the entire site.
-- **Theme extensions** (`Lumina.Calendar`, `Lumina.Statistics`) — add views/partials to a target theme. Set `TargetTheme` in metadata.
+- **Theme extensions** (`Lumina.Calendar`, `Lumina.Statistics`) — add views/partials to a target theme. Declare `targetTheme` and `prefix` in `manifest.json`.
 
 ## Theme Class
 ```csharp
+using Spectara.Revela.Sdk.Themes;
+
 namespace Spectara.Revela.Themes.Lumina;
 
-public sealed class LuminaTheme : EmbeddedTheme  // base class for NuGet themes
-{
-    public override string? Prefix => null;          // null = base, "statistics" = extension
-    public override string? TargetTheme => null;     // null = standalone, "Lumina" = extends Lumina
-    // PackageMetadata + ThemeManifest come from manifest.json
-}
+public sealed class LuminaTheme() : EmbeddedTheme(typeof(LuminaTheme).Assembly);
 ```
+
+The base class reads the manifest; `Prefix` and `TargetTheme` are not virtual
+overrides. Package identity/version come from the assembly.
 
 ## Required Files
 | File | Purpose |
 |------|---------|
-| `manifest.json` (or `theme.json` for local themes) | Metadata, version, target theme, asset list |
+| `manifest.json` (or `theme.json` for local themes) | Metadata, templates, viewer capabilities, target theme and asset list |
 | `Layout.revela` (or `templates.layout`) | Main page layout |
 | `Body/Photo.revela` | Required only when the theme declares `page` viewer support |
 | `Body/NotFound.revela` | Optional — rendered once into `404.html` at the output root (root-absolute `basepath`, `not_found = true`); skipped when absent or when `source/_static/404.html` exists |
-| `Partials/ContentImage.revela` | **Required for all themes** — renders `![alt](path)` from Markdown |
+| `Partials/ContentImage.revela` | **Required in the resolved base theme** — renders `![alt](path)` from Markdown; extensions can inherit it |
 | `Locales/en.json` | UI strings (fallback language); add `Locales/<lang>.json` per language |
 | `Assets/*.css`, `Assets/*.js` | Static assets copied to `_assets/`; declarations determine which pages link them |
 
@@ -109,7 +109,7 @@ Build variant URLs with `variant_url`, never by concatenating `assets_basepath +
 - The lightbox `<dialog>` fills the viewport: it closes with its × (`command="close"`) or Escape. No `closedby="any"` — there is no backdrop to click.
 
 ## ContentImage.revela (mandatory)
-Every theme must implement this partial — it's invoked for every `![alt](path)` in Markdown:
+Every base theme must implement this partial; extensions may inherit it. It is invoked for every `![alt](path)` in Markdown:
 ```scriban
 {{- # variables: image, alt, classes, assets_basepath, image_formats -}}
 <picture class="{{ classes }}">
@@ -123,7 +123,7 @@ Every theme must implement this partial — it's invoked for every `![alt](path)
 ## Theme Extensions
 - Override or add specific files — only files NOT present in extension fall through to the base theme.
 - Use `Prefix` for namespacing partials.
-- Declare base theme via `TargetTheme = "Lumina"` and `ExtendsPackages = ["Spectara.Revela.Themes.Lumina"]` in metadata.
+- Declare the base theme with `"targetTheme": "Lumina"` and a unique `"prefix"` in `manifest.json`, as Lumina.Calendar does; do not add class overrides or invent package metadata properties.
 
 ## CSS / SCSS
 - Source SCSS is compiled before packaging; assets are copied to `_assets/`.

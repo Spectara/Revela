@@ -10,7 +10,9 @@ disable-model-invocation: true
 
 Generate a new `CHANGELOG.md` section from commits since the last release tag.
 
-Skills do not switch agents automatically: explicitly delegate this workflow to **Revela Dev**. If that agent is unavailable, report the limitation rather than silently using a different persona.
+Use **Revela Dev**. If that agent is already active, work here; otherwise
+explicitly delegate to it. Skills do not switch agents automatically. If the
+agent is unavailable, report the limitation rather than silently changing personas.
 
 ## Inputs
 

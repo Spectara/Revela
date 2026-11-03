@@ -38,7 +38,10 @@ are not dynamically loaded plugins.
 
 Use the [reasoned delegation workflow](docs/subagent-patterns.md#reasoned-delegation) and [assignment contract](docs/subagent-patterns.md#assignment-contract) for scoped outcomes, reasons, protected behaviors, resource ownership, and acceptance. Workers own reversible local details and challenge contradicted assumptions with evidence; the parent owns decisions, integration, and final verification.
 
-Keep **Revela Scout MAI** and **Revela Worker MAI** pinned to **MAI Code 1.1**, as explained by the [delegation rationale](docs/subagent-patterns.md#reasoned-delegation). Configuration alone does not prove runtime availability or general reliability.
+Role routing does not require delegation for every task: do bounded work directly
+and use separate agents only when their context or expertise is needed. Preserve
+the models configured in the agent definitions; see the linked delegation rationale
+for model-change verification and experiment attribution.
 
 ## Build / Test / Run
 
@@ -48,16 +51,13 @@ dotnet test --solution Spectara.Revela.slnx
 dotnet format --verify-no-changes
 ```
 
-**Task-scoped post-edit gates:**
-
-- **.NET code/build changes:** `dotnet build` -> relevant `dotnet test` -> `dotnet format --verify-no-changes` remains mandatory.
-- **Theme/site changes:** fresh generation with the target configuration, generated output/link/image/asset checks, and browser checks for affected journeys and viewports.
-- **Documentation/agent-only changes:** local links, applicable YAML frontmatter, routing/tool availability, and instruction consistency; no unrelated .NET checks.
-- **Mixed changes:** the union of applicable gates. Unavailable checks are reported as verification gaps, not passes.
-
-The parent owns integration and final gates; a Worker runs its focused check.
-See the [verification workflow](docs/subagent-patterns.md#shared-resources-and-verification)
-and [Development Guide](docs/development.md) for sample, packaging and runtime checks.
+Choose the task-scoped gates from the
+[verification workflow](docs/subagent-patterns.md#shared-resources-and-verification):
+.NET changes require build, relevant tests and format verification; theme/site
+changes require generation/output/browser checks; documentation/agent changes
+require local links, frontmatter and routing/tool checks, not unrelated builds.
+The parent owns the final gate and reports unavailable checks as gaps.
+See the [Development Guide](docs/development.md) for sample, packaging and runtime checks.
 
 ## Git Consent
 
