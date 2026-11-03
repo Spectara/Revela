@@ -112,7 +112,10 @@ NuGet.org publication is not configured; adding it requires separate setup and a
 	package carries its assembly and `.deps.json`, which proves the SDK packaging
 	target ran ([test-package-contents.ps1](../../scripts/test-package-contents.ps1)),
 	and tests an isolated consumer of the packaged SDK before attesting and
-	uploading the packages as `nupkgs`.
+	uploading the packages as `nupkgs`. Expected negative-test compiler errors
+	remain in build logs, not CI error annotations; unexpected diagnostics still
+	fail the check and appear in the console. Consumer logs are uploaded as
+	`sdk-consumer-package-check`, including on failure when evidence exists.
 3. `build` publishes and archives Core, Full and Standalone on five native RIDs:
 	`win-x64`, `win-arm64`, `linux-x64`, `linux-arm64` and `osx-arm64`. Full bundles
 	the packages downloaded from `packages`. Each `dotnet publish` restores its
@@ -300,4 +303,3 @@ gh workflow run deploy-website.yml --ref main -f source-ref='<CONTENT_REF>' -f r
 ```
 
 For deeper details, inspect the workflow files alongside this guide.
-

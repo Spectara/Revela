@@ -7,15 +7,9 @@
 
 ## Project Overview
 
-**Revela** ([revela.website](https://revela.website)) is a **.NET 10 / C# 14** static site generator for photographers. It is a complete rewrite of the original Bash project [`Expose`](https://github.com/kirkone/Expose) — same output, modern internals.
-
-| Aspect | Original (Bash) | Revela |
-|--------|-----------------|--------|
-| Templates | Mustache-Light (regex) | Scriban |
-| Markdown | Perl | Markdig |
-| Images | VIPS CLI | NetVips |
-| EXIF | ExifTool | NetVips built-in |
-| Plugins | ❌ | ✅ NuGet-based |
+**Revela** ([revela.website](https://revela.website)) is a **.NET 10 / C# 14**
+static site generator for photographers, using Scriban, Markdig, NetVips and
+NuGet-based plugins.
 
 **Status:** Pre-release — **no users, no backward compatibility required.** Rename, restructure, refactor freely. No migration scripts, no deprecation warnings.
 
@@ -23,25 +17,13 @@
 
 ## Project Structure
 
-```
-src/
-├── Sdk/              # Public abstractions for plugin/theme authors
-├── Sdk.Generators/   # Roslyn source generators ([RevelaConfig], etc.)
-├── Core/             # Shared kernel — services, package loading, configuration
-├── Commands/         # Host-owned CLI commands (Config, Info, Project)
-├── Features/         # Always built-in (Generate, Packages, Theme) — NOT plugins
-├── Plugins/          # External plugins (Calendar, Compress, Serve, Source/*, Statistics)
-├── Themes/           # Lumina (base) + Lumina.Calendar, Lumina.Statistics (extensions)
-├── Cli/              # Entry point — dynamic plugin loading (DiskPackageSource)
-└── Cli.Embedded/     # Entry point — static plugin refs (EmbeddedPackageSource) ← F5 debug
-tests/                # Mirrors src/ + Shared (fixtures)
-samples/              # revela-website, showcase, onedrive, calendar
-benchmarks/           # BenchmarkDotNet projects
-docs/                 # Architecture, plugin dev, setup
-scripts/              # build-release.ps1, test-release.ps1
-```
+The [project structure](../docs/project-structure.md) owns the directory/build
+map. Public contracts live in `src/Sdk`; host-only code lives in `src/Core`.
+Built-in `src/Features` are not external `src/Plugins`.
 
-**Two entry points, one bootstrap:** `Cli` and `Cli.Embedded` differ only in their `IPackageSource`. All shared setup lives in `src/Cli/Hosting/HostBootstrap.cs`.
+**Two entry points, one bootstrap:** `Cli` uses `DiskPackageSource`;
+`Cli.Embedded` uses static `EmbeddedPackageSource` references and is the F5/sample
+host. Shared setup lives in `src/Cli/Hosting/HostBootstrap.cs`.
 
 ---
 
@@ -54,14 +36,20 @@ scripts/              # build-release.ps1, test-release.ps1
 | **Revela Docs** | Website documentation — write/maintain product docs, persona paths (#86), migrate docs/ → website, keep docs in sync with code |
 | **UX Advocate** | Read-only UX assessment for the assigned audience and browser verification of affected journeys on an assigned local preview; reports observed findings and untested conditions, without implementing fixes |
 | **Spike Analyst** | New feature ideas — sharpens problem, weighs trade-offs, compares prior art, produces decision-ready spike report (read-only) |
-| **Explore** | Fast read-only codebase exploration (subagent — call in parallel) |
-| **Pattern Finder** | Subagent — finds 2-3 canonical examples to mirror; dispatched by Dev before implementing something new |
+| **Explore** | Broader read-only research when a substantial independent question needs separate context |
+| **Pattern Finder** | Finds 2-3 canonical examples when the applicable implementation pattern is unclear |
 | **Revela Scout MAI** | Internal read-only subagent — finds the owning code path, one hypothesis, and one focused falsifying check for a bounded existing behavior |
 | **Revela Worker MAI** | Internal implementation subagent — changes only an explicit allowed scope and runs one exact acceptance check; Dev owns integration and the final gate |
 | **Convention Sentry** | Subagent — anti-pattern scanner (underscore fields, log interpolation, missing `StringComparison`, hardcoded paths) |
-| **Plugin Auditor** | Subagent — single-plugin lifecycle/convention check; dispatch one per plugin in parallel |
+| **Plugin Auditor** | Bounded single-plugin lifecycle/convention check when specialist depth is useful |
 | **Test Doctor** | Subagent — test-quality auditor (FluentAssertions/Moq leftovers, missing assertions, tautologies) |
 | **Security Scout** | Subagent — OWASP scanner (secrets, vulnerable packages, path traversal, SSRF, weak crypto) |
+
+These roles describe ownership, not a requirement to spawn an agent per task.
+Handle small reviews, known-file edits and one continuous behavior trace directly.
+Delegate only concrete work that needs substantial separate context; parallelize
+only independent scopes. Explicit skills keep their named-agent routing, without
+delegating back to an agent that is already active.
 
 | Skill (`.github/skills/`) | Purpose |
 |---------------------------|---------|
@@ -95,7 +83,15 @@ personas through `agent:` frontmatter; each workflow requests the named custom a
 
 Use the [reasoned delegation workflow](../docs/subagent-patterns.md#reasoned-delegation) and [assignment contract](../docs/subagent-patterns.md#assignment-contract) for scoped outcomes, reasons, protected behaviors, resource ownership, and acceptance. Workers own reversible local details and challenge contradicted assumptions with evidence; the parent owns decisions, integration, and final verification.
 
-Keep **Revela Scout MAI** and **Revela Worker MAI** pinned to **MAI Code 1.1**, as explained by the [delegation rationale](../docs/subagent-patterns.md#reasoned-delegation). Configuration alone does not prove runtime availability or general reliability.
+Include the target repository, execution cwd and required instruction paths in
+delegated assignments. Subagents read the target's baseline and scoped instructions
+explicitly; parent context is not guaranteed to transfer. See
+[instruction loading](../docs/subagent-patterns.md#repository-instructions-for-subagents).
+
+Preserve the models configured in the Scout/Worker agent definitions; the
+[delegation rationale](../docs/subagent-patterns.md#reasoned-delegation) defines
+experiment attribution and model-change verification. Do not repeat model
+versions in shared instructions or silently substitute another model.
 
 ---
 
@@ -138,7 +134,8 @@ dotnet format                               # auto-fix style for .NET code/build
 dotnet format --verify-no-changes           # required gate for .NET code/build changes
 
 # Run CLI against a sample
-cd samples/showcase ; dotnet run --project ../../src/Cli -- generate all
+Set-Location samples\showcase
+dotnet run --project ..\..\src\Cli.Embedded -- generate all
 ```
 
 **Task-scoped post-edit gates:**
@@ -154,12 +151,11 @@ The parent owns integration and the applicable final gates; a Worker runs its as
 
 ## Architecture Quick Reference
 
-### Plugin lifecycle (3 phases)
-1. **Discovery** — `IPackageSource.LoadPlugins()` (Disk or Embedded)
-2. **`ConfigureServices`** *(required)* — register services, options, HttpClients (use `TryAdd*` for idempotency)
-3. **`GetCommands(IServiceProvider)`** *(optional)* — yield `CommandDescriptor` records
-
-Plugins never touch `IConfiguration`: they bind only their own `[RevelaConfig]` section (REVELA003) and persist settings via `IPluginSettingsWriter<T>`.
+### Plugin contracts
+The [scoped plugin instructions](./instructions/plugins.instructions.md) own
+lifecycle, command registration, typed HttpClients, configuration binding and
+artifact ownership. Plugins never touch `IConfiguration`: bind only their own
+`[RevelaConfig]` section and persist it via `IPluginSettingsWriter<T>`.
 
 ### Configuration chain (merged in order, later wins)
 1. C# property defaults
@@ -175,16 +171,13 @@ Nothing else: no `appsettings*.json`, no unprefixed env vars, CLI options are ne
 
 ### Path resolution
 - **Configurable paths** (`source`, `output`) → inject `IPathResolver`
-- **Fixed paths** (`Cache`, `Themes`, `Plugins`, `SharedImages`, `Static`) → `ProjectPaths` constants
-
-### HttpClient
-Always **Typed Client pattern** — `services.AddHttpClient<MyService>()` then inject `HttpClient` directly. Never `new HttpClient()`, never `IHttpClientFactory` inside a typed client.
+- **Fixed paths** (`Themes`, `Plugins`, `SharedImages`, `Static`) → `ProjectPaths` constants
+- **Produced non-published files** → `ProjectPaths.GetOwnerDirectory(artifact.Owner)` and registered artifact ownership/lifetimes; see [plugin file ownership](./instructions/plugins.instructions.md#where-plugins-keep-files-and-how-clean-works)
 
 ### Template context (Scriban)
-- **Global** — `image_formats`, `site`, `basepath`, `assets_basepath`, `base_url`, `nav_items`, `og_locale`, `revela`, `stylesheets`, `scripts`
-- **Per page** — `gallery` (`gallery.body` = rendered Markdown), `images`; extra variables via front matter `data` (`$galleries`, `$images`, plugin `*.json`)
-- **Per image** — `sizes`, `color`
-- **Functions** — `find_image`, `page_url`, `absolute_url`, `asset_url`, `variant_url`, `absolute_variant_url`, `format_date`, `format_filesize`, `markdown`, `t`, `html_escape`. Avoid Scriban's `array.*`/`math.*` libraries (Native AOT trims them) — use indexing, `//`, loops; Lumina's responsive-image helpers live in `Partials/ImageHelpers.revela`
+The [scoped theme instructions](./instructions/themes.instructions.md) own
+template variables/functions, escaping, URL/image helpers, localization and
+Native AOT restrictions. Page HTML is `gallery.body`, not `page_content`.
 
 ---
 

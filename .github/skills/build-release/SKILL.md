@@ -10,6 +10,13 @@ context: fork
 Build one or both release variants locally to mirror what GitHub Releases publishes.
 Does NOT create a git tag or GitHub release — for local testing only.
 
+## Execution Context
+
+`context: fork` requests isolation where supported; it is not a permission or
+resource boundary. A runtime may load this skill inline instead. The executing
+agent must reserve the shared build outputs and release directory either way;
+never run concurrent builds against them. See [harness checks](../../../docs/subagent-patterns.md#harness-compatibility).
+
 ## Variants
 
 | Variant | Source | Contents | Size |

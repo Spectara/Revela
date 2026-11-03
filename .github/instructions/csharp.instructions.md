@@ -101,7 +101,8 @@ These rules apply to every `.cs` file. They are enforced by `.editorconfig` (war
 
 ## Paths
 - **Never hardcode `"source"` or `"output"`** — inject `IPathResolver` and use `SourcePath` / `OutputPath`.
-- Non-configurable paths: use `ProjectPaths` constants (`Cache`, `Themes`, `Plugins`, `SharedImages`, `Static`).
+- Non-configurable paths: use `ProjectPaths` constants (`Themes`, `Plugins`, `SharedImages`, `Static`).
+- Produced files outside the published output belong in `ProjectPaths.GetOwnerDirectory(artifact.Owner)` and to a registered artifact. Cache/output/durable lifetimes are artifact kinds, not shared cache-directory constants; see the [artifact ownership rules](plugins.instructions.md#where-plugins-keep-files-and-how-clean-works).
 
 ## Console Output (Spectre.Console)
 - Use `OutputMarkers.Success/Error/Warning/Info` from `Spectara.Revela.Sdk.Output`.

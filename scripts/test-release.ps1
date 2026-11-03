@@ -207,10 +207,12 @@ if ($PackageDirectory) {
     $InputPaths += $PackageDirectory
 }
 $InputHashes = Get-InputHashes $InputPaths
+$IsolatedEnvironmentNames = @('HOME', 'USERPROFILE', 'APPDATA', 'LOCALAPPDATA', 'XDG_CONFIG_HOME', 'XDG_DATA_HOME', 'XDG_CACHE_HOME', 'DOTNET_CLI_HOME', 'NUGET_PACKAGES', 'NUGET_HTTP_CACHE_PATH', 'NUGET_PLUGINS_CACHE_PATH', 'DOTNET_BUNDLE_EXTRACT_BASE_DIR')
 $SavedEnvironment = @{}
-foreach ($name in @('HOME', 'USERPROFILE', 'APPDATA', 'LOCALAPPDATA', 'XDG_CONFIG_HOME', 'XDG_DATA_HOME', 'XDG_CACHE_HOME', 'DOTNET_CLI_HOME', 'NUGET_PACKAGES', 'NUGET_HTTP_CACHE_PATH', 'NUGET_PLUGINS_CACHE_PATH', 'DOTNET_BUNDLE_EXTRACT_BASE_DIR')) {
+foreach ($name in $IsolatedEnvironmentNames) {
     $SavedEnvironment[$name] = [Environment]::GetEnvironmentVariable($name, 'Process')
 }
+$SavedEnvironment['DOTNET_ADD_GLOBAL_TOOLS_TO_PATH'] = [Environment]::GetEnvironmentVariable('DOTNET_ADD_GLOBAL_TOOLS_TO_PATH', 'Process')
 $PipelineFailure = $null
 $TranscriptStarted = $false
 
@@ -255,7 +257,10 @@ try {
         New-Item -ItemType Directory -Path $TestDir | Out-Null
         New-Item -ItemType Directory -Path $CliDir -Force | Out-Null
         New-Item -ItemType Directory -Path $ToolDir -Force | Out-Null
-        foreach ($name in $SavedEnvironment.Keys) {
+        # A fresh DOTNET_CLI_HOME triggers SDK first-run setup, which otherwise persists
+        # its temporary global tools directory in the Windows user PATH.
+        $env:DOTNET_ADD_GLOBAL_TOOLS_TO_PATH = '0'
+        foreach ($name in $IsolatedEnvironmentNames) {
             $isolatedPath = Join-Path $TestDir "environment/$name"
             New-Item -ItemType Directory -Path $isolatedPath -Force | Out-Null
             [Environment]::SetEnvironmentVariable($name, $isolatedPath, 'Process')
@@ -1416,7 +1421,10 @@ catch {
 finally {
     Pop-Location
     foreach ($name in $SavedEnvironment.Keys) {
-        [Environment]::SetEnvironmentVariable($name, $SavedEnvironment[$name], 'Process')
+        $savedValue = $SavedEnvironment[$name]
+        # PowerShell binds $null as an empty string; preserve absent variables.
+        if ($null -eq $savedValue) { $savedValue = [NullString]::Value }
+        [Environment]::SetEnvironmentVariable($name, $savedValue, 'Process')
     }
     try {
         $afterHashes = Get-InputHashes $InputPaths

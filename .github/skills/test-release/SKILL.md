@@ -11,6 +11,13 @@ Run the existing local suite, not a remote workflow. Read the
 [Development Guide](../../../docs/development.md#building-releases) for Build vs.
 Artifact mode, exact inputs, isolation and host requirements before execution.
 
+## Execution Context
+
+`context: fork` requests isolation where supported; discovery does not prove a
+separate context. If loaded inline, the current agent owns the same reservations,
+authorization checks and result reporting. Do not manually spawn another agent
+merely to simulate a fork. See [harness checks](../../../docs/subagent-patterns.md#harness-compatibility).
+
 ## Script
 
 ```powershell

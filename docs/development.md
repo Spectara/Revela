@@ -143,6 +143,9 @@ generator check it builds three isolated plugin projects against the package: a
 compliant one must build, one reading `IConfiguration` must fail with RS0030 and
 one binding a foreign section must fail with REVELA003 (see
 [plugin configuration isolation](security-model.md#plugin-configuration-isolation)).
+Expected compiler diagnostics stay in the consumer's build logs rather than
+producing misleading CI error annotations. Unexpected success, a missing expected
+diagnostic or any additional error prints the full build output and fails the check.
 
 Core's initial package installation uses an explicit local `--source`. For the
 R1 parallel-restore regression only, the suite temporarily copies the supplied
@@ -153,7 +156,12 @@ registration/restore behavior, not that Core includes a usable theme out of the
 box or can obtain unpublished packages from NuGet.org.
 
 The suite stages copies and isolates test configuration/caches under a unique
-`artifacts/release-test-<timestamp>-<id>/` directory. It records
+`artifacts/release-test-<timestamp>-<id>/` directory. It sets
+`DOTNET_ADD_GLOBAL_TOOLS_TO_PATH=0` for the process so SDK first-run setup in the
+isolated `DOTNET_CLI_HOME` cannot append temporary tool directories to the user
+PATH. Tools use `--tool-path` and run by explicit path, without changing PATH.
+The original environment values are restored in `finally`, including on failure.
+It records
 `verification.log`, `input-hashes.json` and `after-hashes.json`, comparing SHA256
 hashes and the file inventory of supplied artifacts/feed and original Showcase
 inputs. Test directories are always retained, including after failures; remove

@@ -91,7 +91,7 @@ Every file a plugin produces belongs to one `IArtifactInvalidator` artifact (`ow
 5. Inject `IOptions<MyFeatureConfig>` (read once) or `IOptionsMonitor<MyFeatureConfig>.CurrentValue` (when the same process may write the config first, e.g. the interactive menu after a `config` command). Config files are not watched; Revela's own writers reload the configuration after writing.
 6. CLI options override config inside the command: `var url = urlOverride ?? config.CurrentValue.ApiUrl;` (command-line values are never a configuration layer).
 
-7. Persist settings from a `config` command via `configService.UpdateProjectConfigAsync(PluginConfigSection.CreateUpdate(MyFeatureConfigKeys.Section, settings))`. Such commands write `project.json`, so keep `RequiresProject: true`. Without options on a non-interactive console (`!IConsoleCapabilities.IsInteractive`), don't prompt — show the options to pass and return 1.
+7. Inject `IPluginSettingsWriter<MyFeatureConfig>` from the SDK and persist a `JsonObject` of changed properties with `await settingsWriter.WriteAsync(settings, cancellationToken)`. Use generated property keys such as `MyFeatureConfigKeys.Timeout`; the writer owns section selection, merging and reload. Never reference host-only `IConfigService`/`PluginConfigSection` from a plugin. Such commands write `project.json`, so keep `RequiresProject: true`. Without options on a non-interactive console (`!IConsoleCapabilities.IsInteractive`), don't prompt — show the options to pass and return 1.
 
 Example `project.json`:
 ```json

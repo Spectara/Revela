@@ -7,23 +7,30 @@ disable-model-invocation: true
 
 # Full Codebase Review
 
-Execute a complete five-phase review using the **Revela Reviewer** custom agent. Skills do not switch agents automatically: explicitly delegate this workflow to **Revela Reviewer**. If that agent is unavailable, report the limitation rather than silently using a different persona.
+Execute a complete five-phase review using **Revela Reviewer**. If that agent is already active, work here; otherwise explicitly delegate to it. Skills do not switch agents automatically. If the agent is unavailable, report the limitation rather than silently using a different persona.
 
 ## Phases (run in order — each phase blocks on the previous)
 
-### Phase 1 — Inventory (5 min)
-Establish baseline. Run these in parallel via terminal:
+### Phase 1 — Inventory
+Reserve the shared build outputs and run these checks sequentially:
 - `dotnet build` (warnings count, errors)
 - `dotnet test --no-build` (pass/fail per project)
 - `dotnet format --verify-no-changes` (style violations)
+
+**Gate:** if build is broken, STOP and report before running dependent tests.
+Do not run another build, test, restore or format command against the same
+outputs concurrently. Then inspect:
 - `dotnet outdated` (outdated packages)
 - `dotnet list package --vulnerable --include-transitive` (CVEs)
 - LOC per module (count `*.cs` lines under `src/Sdk`, `src/Core`, `src/Plugins/*`, `src/Themes/*`)
 
-**Gate:** if build is broken, STOP and report. Don't continue review on broken code.
+Dependency freshness is not a vulnerability scan. Report unavailable tools,
+failed checks and unmeasured coverage explicitly; do not infer a pass.
 
 ### Phase 2 — Architecture
-Dispatch parallel `Explore` subagents:
+Investigate these checks together. Delegate only substantial independent
+questions that benefit from separate context, using the narrowest matching
+specialist; do not create an agent per search:
 1. "List every `IPlugin` implementation in `src/Plugins/` — file path, plugin ID, parent commands used, whether `ConfigureServices` uses `TryAdd*`."
 2. "Find every hardcoded `\"source\"` or `\"output\"` string literal in `src/` (excluding `PathResolver.cs` and tests). Return file:line + surrounding line."
 3. "List every `Path.Combine(...)` call in `src/`. Return file:line + arguments. Flag any combining with method parameters or external input."
@@ -31,10 +38,11 @@ Dispatch parallel `Explore` subagents:
 5. "Find any `Singleton` service that injects a `Scoped` service (captive dependency). Return file:line."
 
 ### Phase 3 — Code Quality
-Dispatch parallel `Explore` subagents:
+Check reachable behavior and regressions first, then the applicable conventions.
+Use direct searches for bounded checks and delegate only substantial independent work:
 1. "Find every log call using string interpolation (e.g. `logger.LogInformation($\"...\"`). Return file:line."
-2. "Find every `Contains/Replace/IndexOf/StartsWith/EndsWith` call on a string that doesn't pass `StringComparison`. Return file:line."
-3. "Find every `ToString()`, `Format()`, `Parse()` call without `CultureInfo.InvariantCulture`. Return file:line."
+2. "Find string overloads of `Contains/Replace/IndexOf/StartsWith/EndsWith` missing an intentional `StringComparison`; exclude char overloads. Return file:line."
+3. "Find formatting/parsing calls missing an intentional culture; distinguish invariant machine data from localized user-facing output. Return file:line."
 4. "Find every `#pragma warning disable` in `src/`. Return file:line + rule code + 3 lines of context."
 5. "Find every private field starting with underscore (`_`) in `src/`. Return file:line."
 6. "Find every `async` method that contains no `await` (fake-async). Return file:line."
@@ -46,7 +54,7 @@ Manual + targeted searches:
 - **OneDrive plugin** — token storage location, expiry, refresh; SSRF check on shared link redirects
 - **Logging** — search for any `Log*` calls that include URLs, tokens, or auth headers
 - **Plugin loading** — assembly load context isolation (PackageLoader)
-- **Scriban templates** — any raw HTML output bypassing auto-escape?
+- **Scriban templates** — Scriban does not auto-escape. Check `html_escape` for untrusted text/attributes; distinguish intentionally trusted author Markdown/body HTML.
 - **`HttpClient` config** — TLS pinning, cert validation defaults
 - **Vulnerable packages** — from Phase 1 `--vulnerable` results
 
@@ -62,15 +70,15 @@ Manual + targeted searches:
 
 Single Markdown report with the structure defined in [Revela Reviewer](../../agents/revela-reviewer.agent.md):
 - Header (date, scope, build/test/format status)
-- Findings grouped by severity (🔴 Blocker / 🟠 Major / 🟡 Minor / 🟢 Nitpick)
+- Findings grouped by the shared [severity policy](../../agents/revela-reviewer.agent.md#severity-policy); optional improvements are separate
 - Metrics table (LOC, coverage, status per module)
 - Recommendations (immediate / sprint / backlog)
-- Collapsed subagent raw outputs
+- Concise delegated findings and verification gaps, only when subagents were used
 
 ## Hand-off
 
 End the report with:
-> **Next steps:** Switch to **Revela Dev** agent and reference this report to apply fixes. Recommended order: Blockers → Major → Minor.
+> **Next steps:** Authorize the desired fixes, then use **Revela Dev** with this report. Recommended order: Blockers → Major → Minor.
 
 ## Hard Constraints
 

@@ -124,6 +124,14 @@ jobs:
         shell: pwsh
         run: ./scripts/test-sdk-consumer.ps1 -PackageDirectory ./nupkgs -Version $env:VERSION
 
+      - name: Upload SDK consumer diagnostics
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: sdk-consumer-package-check
+          path: artifacts/sdk-consumer-*/*.log
+          if-no-files-found: warn
+
       - name: Attest build provenance
         uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4
         with:
