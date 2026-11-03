@@ -156,7 +156,12 @@ registration/restore behavior, not that Core includes a usable theme out of the
 box or can obtain unpublished packages from NuGet.org.
 
 The suite stages copies and isolates test configuration/caches under a unique
-`artifacts/release-test-<timestamp>-<id>/` directory. It records
+`artifacts/release-test-<timestamp>-<id>/` directory. It sets
+`DOTNET_ADD_GLOBAL_TOOLS_TO_PATH=0` for the process so SDK first-run setup in the
+isolated `DOTNET_CLI_HOME` cannot append temporary tool directories to the user
+PATH. Tools use `--tool-path` and run by explicit path, without changing PATH.
+The original environment values are restored in `finally`, including on failure.
+It records
 `verification.log`, `input-hashes.json` and `after-hashes.json`, comparing SHA256
 hashes and the file inventory of supplied artifacts/feed and original Showcase
 inputs. Test directories are always retained, including after failures; remove
