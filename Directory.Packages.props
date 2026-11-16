@@ -37,9 +37,9 @@
     <PackageVersion Include="NetVips.Native" Version="8.18.7" />
   </ItemGroup>
   <ItemGroup Label="Plugin Management">
-    <PackageVersion Include="NuGet.Protocol" Version="7.9.0" />
-    <PackageVersion Include="NuGet.Packaging" Version="7.9.0" />
-    <PackageVersion Include="NuGet.Configuration" Version="7.9.0" />
+    <PackageVersion Include="NuGet.Protocol" Version="8.0.0" />
+    <PackageVersion Include="NuGet.Packaging" Version="8.0.0" />
+    <PackageVersion Include="NuGet.Configuration" Version="8.0.0" />
   </ItemGroup>
   <ItemGroup Label="Transitive Security Pins">
     <!-- NuGet.Packaging 7.9.0 pulls 8.0.1 (GHSA-846f-f764-76mx, GHSA-2fmv-rv2c-59x7) -->
