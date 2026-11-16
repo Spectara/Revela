@@ -49,7 +49,7 @@
     <PackageVersion Include="Microsoft.SourceLink.GitHub" Version="10.0.402" />
   </ItemGroup>
   <ItemGroup Label="Testing">
-    <PackageVersion Include="MSTest" Version="4.5.2" />
+    <PackageVersion Include="MSTest" Version="4.5.3" />
     <PackageVersion Include="MSTest.Analyzers" Version="4.5.2" />
     <PackageVersion Include="NSubstitute" Version="6.2.0" />
   </ItemGroup>
